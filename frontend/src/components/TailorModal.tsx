@@ -36,6 +36,7 @@ const ownerSnapshot = () => {
 };
 
 import { STORAGE_KEYS } from '@/lib/storage-keys';
+import { storedWraps, wrapJoin } from '@/lib/resume-input';
 import { writingTargetVersion } from '@/lib/writing-target-version';
 import type { Opportunity, ProfileData, TailorResponse, TailoredBullet } from '@/lib/types';
 import { useT } from '@/i18n/client';
@@ -120,19 +121,27 @@ interface TailorModalProps {
 // Heuristic to pre-fill bullets from a parsed resume's `raw_text`. We
 // don't want to invoke an LLM here — just look for lines that look
 // resume-bullet-shaped (start with •, -, *, –, —, +, or a digit).
-// Keeps the bar low: any string with a leading bullet glyph counts.
+// Keeps the bar low: any string with a leading bullet glyph counts. Text
+// stored before the PDF reflow keeps a bullet's wrapped lines as rows of
+// their own; the rows that only wrap it are joined back, as the reflow and
+// the experience library read them.
 const BULLET_PREFIX_RE = /^\s*([•\-*–—+]|\d+[.)])\s+(.+)$/;
 
 function extractBulletLines(resumeText: string | undefined, limit = 12): string[] {
   if (!resumeText) return [];
+  const rows = resumeText.split(/\r?\n/);
+  const wraps = storedWraps(rows);
   const out: string[] = [];
-  for (const raw of resumeText.split(/\r?\n/)) {
-    const m = raw.match(BULLET_PREFIX_RE);
-    if (m) {
-      const cleaned = m[2].trim();
-      if (cleaned.length >= 10) out.push(cleaned);
+  for (let index = 0; index < rows.length && out.length < limit; index++) {
+    const m = rows[index].match(BULLET_PREFIX_RE);
+    if (!m) continue;
+    let bullet = m[2].trim();
+    while (wraps[index + 1]) {
+      index += 1;
+      const row = rows[index].trim();
+      bullet += wrapJoin(bullet, row) + row;
     }
-    if (out.length >= limit) break;
+    if (bullet.length >= 10) out.push(bullet);
   }
   return out;
 }

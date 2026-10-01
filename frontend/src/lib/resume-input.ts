@@ -109,6 +109,9 @@ const YEAR = /\b(?:19|20)\d{2}\b/u;
 const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
 // CJK text and its full-width punctuation wrap with no space at the break.
 const CJK_BREAK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\u3000-\u303f\uff00-\uffef]/u;
+// A stored row that only wraps ends within a word of the widest rows; glyph
+// widths vary, so character counts are compared with some slack.
+const STORED_SLACK = 0.85;
 
 /** A line that opens an item with a bullet glyph or number. */
 export function glyphLine(line: string): boolean {
@@ -177,4 +180,30 @@ export function glyphItemsEndWithStop(lines: readonly string[], tabular: (index:
 export function wrapJoin(before: string, after: string): string {
   if (/\p{L}[-\u2010\u2011]$/u.test(before) && /^[\p{L}\p{N}]/u.test(after)) return '';
   return CJK_BREAK.test(Array.from(before).pop()!) && CJK_BREAK.test(Array.from(after)[0]) ? '' : ' ';
+}
+
+/** A row's width in characters, a CJK character counting as two. */
+function rowWidth(row: string): number {
+  return Array.from(row).reduce((width, character) => width + (CJK_BREAK.test(character) ? 2 : 1), 0);
+}
+
+/** Text stored before the PDF reflow keeps a row per visual line. Whether
+ *  each row only wraps the one before, read from the words as the reflow
+ *  reads them. With the page gone, a row ran to the column edge when it and
+ *  the next row's first word would not fit in the widest rows' width,
+ *  counted in characters with slack for glyph widths. */
+export function storedWraps(rows: readonly string[]): boolean[] {
+  const width = rows.reduce((widest, row) => Math.max(widest, rowWidth(row.trim())), 0);
+  const periodItems = glyphItemsEndWithStop(rows, (index) => rows[index].includes('\t'));
+  const wraps = rows.map(() => false);
+  let glyphItem = rows.length > 0 && glyphLine(rows[0]);
+  for (let index = 1; index < rows.length; index++) {
+    const before = rows[index - 1].trim();
+    const after = rows[index].trim();
+    wraps[index] = !!before && !!after && !before.includes('\t') && !after.includes('\t') && !lineBreakText(before, after)
+      && (wrapEvidence(before, after) || wrapsWithoutEvidence(after, glyphItem && periodItems))
+      && rowWidth(before) + 1 + rowWidth(firstWord(after)) > STORED_SLACK * width;
+    if (!wraps[index]) glyphItem = glyphLine(rows[index]);
+  }
+  return wraps;
 }

@@ -1,6 +1,6 @@
 import type { ExperienceEntry } from './types';
 import {
-  BULLET_LINE, MAX_RESUME_TEXT_CHARACTERS, resumeContactLine, resumeSectionHeading, resumeTextCharacters,
+  BULLET_LINE, MAX_RESUME_TEXT_CHARACTERS, resumeContactLine, resumeSectionHeading, resumeTextCharacters, storedWraps,
 } from './resume-input';
 
 export const MAX_EXPERIENCE_ENTRIES = 100;
@@ -149,13 +149,15 @@ function endsHeader(line: string): boolean {
   return resumeSectionHeading(line) !== null || resumeSectionHeading(line.toUpperCase()) !== null;
 }
 
-/** PDF text has one row per line and no blank lines. A bullet absorbs its
- *  wrapped lowercase continuation rows. A two-page résumé can exceed the entry
- *  cap line by line; only then, the non-bullet rows directly before a bullet
- *  (title, dates) also form one context entry. Rows that no bullet follows
- *  stay one per line, so a bullet-free résumé is still refused whole when it
- *  is over the cap. Headings and contact rows are dropped and end a context.
- *  Every span stays a contiguous slice of the text. */
+/** PDF text has one row per line and no blank lines. A bullet absorbs the
+ *  rows that only wrap it, as the PDF reflow would have joined them (text
+ *  stored before the reflow still has them). A two-page résumé can exceed
+ *  the entry cap line by line; only then, the non-bullet rows directly
+ *  before a bullet (title, dates) also form one context entry. Rows that no
+ *  bullet follows stay one per line, so a bullet-free résumé is still
+ *  refused whole when it is over the cap. Headings and contact rows are
+ *  dropped and end a context. Every span stays a contiguous slice of the
+ *  text. */
 function lineSpans(points: string[], lines: Array<[number, number]>, mergeContext: boolean): Array<[number, number]> {
   const grouped: Array<[number, number]> = [];
   let context: Array<[number, number]> = [];
@@ -167,6 +169,7 @@ function lineSpans(points: string[], lines: Array<[number, number]>, mergeContex
   };
   const texts = lines.map(([from, to]) => points.slice(from, to).join(''));
   const firstHeading = texts.findIndex(endsHeader);
+  const wraps = storedWraps(texts);
   for (const [index, [from, to]] of lines.entries()) {
     const text = texts[index];
     if (notExperience(text, index < firstHeading)) {
@@ -176,7 +179,7 @@ function lineSpans(points: string[], lines: Array<[number, number]>, mergeContex
       flush(mergeContext);
       grouped.push([from, to]);
       inBullet = true;
-    } else if (inBullet && /^[\t ]*\p{Ll}/u.test(text)) {
+    } else if (inBullet && wraps[index]) {
       grouped[grouped.length - 1][1] = to;
     } else {
       inBullet = false;

@@ -3,6 +3,7 @@ import { webcrypto } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ExperienceEntry } from './types';
+import { storedWraps } from './resume-input';
 import {
   activeExperienceEntries, createManualCandidate, createResumeCandidates,
   isActiveExperience, removeResumeEntries, sourceDigest,
@@ -221,6 +222,57 @@ describe('local proposals and confirmed eligibility', () => {
       '- Built a PyTorch pipeline that trains a ResNet-18 baseline,\nreaching 0.87 AUC on a held-out split.',
       '- Compared Grad-CAM and integrated-gradients\nsaliency maps; I wrote the evaluation scripts.',
       'Software Engineering Intern, Prairie Analytics',
+    ]);
+  });
+  it('joins a stored bullet with the rows that only wrap it, as the PDF reflow reads them', async () => {
+    // Text the old PDF reader stored for the target-résumé walk: one row per
+    // printed line. "AUC" is capitalized, but these items end with a full
+    // stop and the row before ran to the width of the widest rows.
+    const raw = [
+      'EXPERIENCE',
+      'Undergraduate Research Assistant, Health Imaging Lab (UIUC) - Jan 2026 - Present',
+      '- Built a PyTorch pipeline that preprocesses 12,000 chest X-ray images and trains a ResNet-18 baseline, reaching 0.87',
+      'AUC on a held-out split.',
+      '- Worked with a PhD mentor as part of a four-person team to compare Grad-CAM and integrated-gradients saliency',
+      'maps; I wrote the evaluation scripts.',
+      "- Wrote SQL and Python ETL jobs that cut a nightly report's runtime from 40 minutes to 9 minutes.",
+      '- Added unit tests (pytest) for 14 data-validation functions.',
+    ].join('\n');
+    expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual([
+      'Undergraduate Research Assistant, Health Imaging Lab (UIUC) - Jan 2026 - Present',
+      '- Built a PyTorch pipeline that preprocesses 12,000 chest X-ray images and trains a ResNet-18 baseline, reaching 0.87\nAUC on a held-out split.',
+      '- Worked with a PhD mentor as part of a four-person team to compare Grad-CAM and integrated-gradients saliency\nmaps; I wrote the evaluation scripts.',
+      "- Wrote SQL and Python ETL jobs that cut a nightly report's runtime from 40 minutes to 9 minutes.",
+      '- Added unit tests (pytest) for 14 data-validation functions.',
+    ]);
+  });
+  it('reads stored rows the way the reflow reads a page, with widths counted in characters', () => {
+    expect(storedWraps([
+      '- Built a gait-analysis toolkit in Python used by eleven graduate students across two labs and',
+      'three clinics',
+      'Research Intern, Biomechanics Lab\tJun 2025 - Aug 2025',
+      '- Collected force-plate recordings from twenty volunteers under an approved protocol with the',
+      'lab manager.',
+      'EDUCATION',
+    ])).toEqual([false, true, false, false, true, false]);
+    // A row with a column gap is a row of its own, even after a word that goes on.
+    expect(storedWraps(['- Calibrated the motion capture system and wrote the setup guide for new lab staff with',
+      'Python\tSpring 2025'])).toEqual([false, false]);
+    // A Chinese character is as wide as two Latin ones.
+    expect(storedWraps([
+      'JORDAN AVERY LEE | jordan.lee.test@example.com | Urbana, IL | github.com/jlee',
+      '• 负责后端接口设计与数据库建模，使用 Flask 与 PostgreSQL 实现用户、商品与订单模块，',
+      '并编写部署文档。',
+    ])).toEqual([false, false, true]);
+  });
+  it('keeps a lowercase row apart from a stored bullet that stopped well short of the widest rows', async () => {
+    // A bullet this short did not wrap, so the row after it is not its rest.
+    const raw = ['EXPERIENCE', '- Built a thermal sensor in Java for the ME 270 capstone with a team of four',
+      '- Wrote a 12-page final lab report', 'iterated on the enclosure design with the machine shop'].join('\n');
+    expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual([
+      '- Built a thermal sensor in Java for the ME 270 capstone with a team of four',
+      '- Wrote a 12-page final lab report',
+      'iterated on the enclosure design with the machine shop',
     ]);
   });
   it('keeps a widowed lowercase word with its bullet even when it is also a section title', async () => {
