@@ -1,11 +1,11 @@
-import { webcrypto } from 'node:crypto';
+import { createHash, webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import actual from './__fixtures__/private-email-api.json';
 vi.mock('./supabase', () => ({ getAuthState: vi.fn() }));
 import { getAuthState } from './supabase';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from './identity-owner';
 import { DEFAULT_PROFILE } from '@/app/home/types';
-import { getPrivateEmailContext, privateEmailVariants, validatePrivateEmail, type PrivateEmailContext } from './private-email';
+import { getPrivateEmailContext, privateEmailKey, privateEmailVariants, validatePrivateEmail, type PrivateEmailContext } from './private-email';
 import { PRIVATE_TARGET_MAX_BYTES, privateImportEmailRequest } from './private-import-target-api';
 import { defaultEmailContactContext } from './email-contact-context';
 import type { ProfileData } from './types';
@@ -88,7 +88,6 @@ const changes: Mutation[] = [
   ['URL credentials', v => { v.source_url = 'https://user:pass@example.edu/'; }],
   ['URL backslash', v => { v.source_url = 'https://example.edu\\secret'; }],
   ['URL control', v => { v.source_url = 'https://example.edu/\nsecret'; }],
-  ['full source provider label', v => { v.import_source = { ...base.import_source, ai_input_scope: 'full_source' }; }],
   ['excerpt without enrichment', v => { v.import_source = { ...base.import_source, llm_enriched: false }; }],
   ['unknown source marked enriched', v => { v.import_source = { ...base.import_source, description_source: 'unknown', ai_input_scope: 'unknown' }; }],
   ['array source label', v => { v.import_source = { ...base.import_source, description_source: ['pasted_text'] }; }],
@@ -101,6 +100,31 @@ const changes: Mutation[] = [
 it.each(changes)('rejects GET %s', async (_label, mutate) => {
   const value = clone(base) as Record<string, unknown>; mutate(value);
   fetchMock.mockResolvedValueOnce(json(value));
+  await expect(getPrivateEmailContext(id, options())).rejects.toMatchObject({ code: 'invalid_receipt' });
+});
+
+// An account copy can say the whole text was sent: the parser stamps full_source
+// when every saved word reached the model. The label still needs the recorded
+// enrichment and a page or pasted text, as source_excerpt needs its enrichment.
+// Each case re-signs the projection, so only the label decides.
+function resigned(importSource: Record<string, unknown>) {
+  const value = clone(base) as Record<string, unknown>;
+  value.import_source = importSource;
+  const projection = Object.fromEntries(Object.entries(value).filter(([key]) => key !== 'writing_version'));
+  value.writing_version = 'pwt1:' + createHash('sha256').update(privateEmailKey(projection as unknown as PrivateEmailContext)!).digest('hex');
+  return value;
+}
+it.each(['pasted_text', 'page_text'])('reads a full-source label for %s', async (source) => {
+  const value = resigned({ version: 1, description_source: source, ai_input_scope: 'full_source', llm_enriched: true });
+  fetchMock.mockResolvedValueOnce(json(value));
+  expect((await getPrivateEmailContext(id, options())).import_source).toEqual(value.import_source);
+});
+it.each([
+  ['without recorded enrichment', { description_source: 'pasted_text', llm_enriched: false }],
+  ['for a historical page excerpt', { description_source: 'page_excerpt', llm_enriched: true }],
+  ['for an unknown source', { description_source: 'unknown', llm_enriched: false }],
+])('rejects a full-source label %s', async (_label, labels) => {
+  fetchMock.mockResolvedValueOnce(json(resigned({ version: 1, ai_input_scope: 'full_source', ...labels })));
   await expect(getPrivateEmailContext(id, options())).rejects.toMatchObject({ code: 'invalid_receipt' });
 });
 
