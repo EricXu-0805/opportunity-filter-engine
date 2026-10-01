@@ -543,6 +543,66 @@ class TestLabTypeDetection:
                                         ["clinical trial transparency", "informed consent"])) is None
         assert _detect_lab_type(faculty("Department of Medicine", ["heart failure"])) == "wet"
 
+    def test_bench_work_named_after_the_field_it_serves_stays_wet(self):
+        # Setting "medicine" aside inside every word moved real benches to Dry
+        # Lab (review of the fix above, 2026-09-30). "Nanomedicine" and
+        # "Regenerative Medicine" name bench work, and so do drug delivery and
+        # biomaterials, under a mechanical or materials department as well.
+        # Byte-real keywords of faculty-cornell-mae-89be0901,
+        # faculty-uf-mse-637c113b, faculty-stanford-mse-0ce19e87,
+        # faculty-ucf-mse-e0682e23, faculty-psu-matse-39a9b708 and
+        # faculty-uf-mse-f9ef175c.
+        def faculty(department, keywords, areas=""):
+            return {"source_type": "faculty_research", "title": "Research with Prof. X",
+                    "department": department, "lab_or_program": "", "keywords": keywords,
+                    "metadata": {"research_areas_raw": areas}, "eligibility": {"skills_required": []}}
+
+        assert _detect_lab_type(faculty("Sibley School of Mechanical & Aerospace Engineering", [
+            "Drug Delivery and Nanomedicine", "Polymers and Soft Matter", "Energy Systems",
+            "Mechanics of Biological Materials", "Biomedical Imaging and Instrumentation",
+            "Materials Synthesis and Processing", "Nanotechnology", "Biomedical Engineering"])) == "wet"
+        regenerative = ["Polymer Synthesis", "Hydrogels", "Drug Delivery", "Bioprinting",
+                        "Tissue Engineering and Regenerative Medicine"]
+        assert _detect_lab_type(faculty("Materials Science & Engineering", regenerative,
+                                        ", ".join(regenerative))) == "wet"
+        assert _detect_lab_type(faculty("Department of Materials Science & Engineering", [
+            "biomaterials in regenerative medicine", "engineered proteins", "microfluidics and photolithography",
+            "stem cell differentiation", "tissue engineering", "injectable materials"])) == "wet"
+        assert _detect_lab_type(faculty("Department of Materials Science and Engineering", [
+            "Molecular engineering and self assembly", "Biomaterials", "Polyelectrolyte complexation",
+            "Soft materials characterization", "Nanomedicine"])) == "wet"
+        assert _detect_lab_type(faculty("Department of Materials Science and Engineering", [
+            "Drug Delivery Systems", "Stimuli-sensitive materials", "Bioresponsive materials",
+            "Self-assembly"])) == "wet"
+        biomaterials = ["Biomaterials", "hydrogels", "cell-material interactions", "bioinspired materials",
+                        "peptide materials", "mechanical properties"]
+        assert _detect_lab_type(faculty("Materials Science & Engineering", biomaterials,
+                                        ", ".join(biomaterials))) == "wet"
+
+    def test_a_field_word_inside_another_word_is_no_bench_either(self):
+        # "Biomedicine", "Telemedicine" and "Medicalization" name the field
+        # the work serves just as "medicine" does: a language-model group, a
+        # business-school telehealth study and a social-welfare critique of
+        # medicalization (faculty-usc-cs-02bb7b92, faculty-wpi-bus-575bb40e,
+        # faculty-ucla-socwel-3d2fd3e3) are not benches. A department name is
+        # a prior only through the whole word, so a telemedicine program is
+        # not a medical school.
+        def faculty(department, keywords):
+            return {"source_type": "faculty_research", "title": "Research with Prof. X",
+                    "department": department, "lab_or_program": "", "keywords": keywords,
+                    "metadata": {}, "eligibility": {"skills_required": []}}
+
+        assert _detect_lab_type(faculty("Thomas Lord Department of Computer Science", [
+            "Next Generation in Biomedicine", "large language models", "reinforcement learning"])) == "dry"
+        assert _detect_lab_type(faculty("The Business School", [
+            "Health Information Technology Implementations", "Mobile Health / Telehealth / Telemedicine",
+            "Technology Innovation", "System Usability"])) is None
+        assert _detect_lab_type(faculty("Social Welfare", [
+            "Coercive mental health care", "Controlled substances", "Data justice", "Deprescribing",
+            "Harm reduction", "History of ideas", "Medicalization", "Mental health"])) == "humanities"
+        assert _detect_lab_type(faculty("Telemedicine and Digital Health Program",
+                                        ["mobile app development", "python"])) == "dry"
+
     def test_wet_wins_over_dry_buzzword(self):
         """A wet-lab posting that mentions Python for analysis should
         not be misrouted to dry. Wet-lab signals (cell culture, microscopy)

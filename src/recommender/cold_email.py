@@ -98,6 +98,8 @@ _WET_LAB_KEYWORDS = frozenset({
     "fluorescence", "flow cytometry", "crispr", "sequencing", "rna-seq",
     "wet lab", "wet bench", "assay", "bench work", "protein purification",
     "gel electrophoresis", "pipetting", "sterile technique",
+    # bench work that read wet only through "medical"/"medicine" beside it
+    "drug delivery", "biomaterial", "nanomedicine", "regenerative medicine",
 })
 
 _DRY_LAB_KEYWORDS = frozenset({
@@ -130,12 +132,18 @@ _DRY_LAB_KEYWORDS = frozenset({
 # learning for clinical decision-making" name computational groups as often as
 # bench ones. Two imaging professors in Bioengineering were told to lead with
 # PCR and cell culture on the strength of these words (faculty-bioe-4156cbf9,
-# faculty-bioe-b4e047a5, walked 2026-09-30). A department name keeps them as the
-# prior it always was ("College of Medicine"); anywhere else they are not bench
-# evidence. "biomedical" stays: discounting it too moved 89 more records, and
-# among them "biomedical research" summer programs and an mRNA-vaccine
-# pharmaceutics group lost their only wet signal.
+# faculty-bioe-b4e047a5, walked 2026-09-30). A department name keeps them, as
+# whole words, as the prior it always was ("College of Medicine"); anywhere else
+# they are not bench evidence, inside a longer word either ("telemedicine",
+# "medicalization"). Bench work named after the field it serves is read before
+# the field is set aside: setting "medicine" aside inside "Drug Delivery and
+# Nanomedicine" and "Tissue Engineering and Regenerative Medicine" moved
+# faculty-cornell-mae-89be0901 and faculty-uf-mse-637c113b to Dry Lab.
+# "biomedical" stays: discounting it too moved 89 more records, and among them
+# "biomedical research" summer programs and an mRNA-vaccine pharmaceutics group
+# lost their only wet signal.
 _APPLICATION_DOMAIN_WORDS = ("medicine", "medical", "clinical")
+_FIELD_NAMED_BENCH_WORK = ("regenerative medicine", "nanomedicine")
 
 # Departments this classifier has no category for. A business school is not
 # a wet lab, not a dry lab and not the humanities, yet every one of its
@@ -203,10 +211,15 @@ def _detect_lab_type(opportunity: dict) -> LabType | None:
          getting a "highlight your IRB training" template) would feel
          badly off-target.
     """
-    def _score(text: str, vocab: frozenset[str], ignore: tuple[str, ...] = ()) -> int:
+    def _score(text: str, vocab: frozenset[str], ignore: tuple[str, ...] = (),
+               whole_words: tuple[str, ...] = ()) -> int:
         if not text:
             return 0
         lower = text.lower()
+        hits = 0
+        if ignore:
+            # Bench work named after a field set aside below is still bench work.
+            hits += sum(work in lower for work in _FIELD_NAMED_BENCH_WORK)
         for word in ignore:
             lower = lower.replace(word, "\x00")
         # Longest entry first, blanking each match: nested entries must not
@@ -215,9 +228,8 @@ def _detect_lab_type(opportunity: dict) -> LabType | None:
         # The stacking systematically inflated wet scores (that vocabulary
         # is nesting-heavy) and routed theory groups to bench-technique
         # guidance (faculty-ece-817eb026, observed live 2026-08-07).
-        hits = 0
         for kw in sorted(vocab, key=lambda k: (-len(k), k)):
-            if len(kw) <= 4:
+            if len(kw) <= 4 or kw in whole_words:
                 # Short entries only count as standalone words: bare
                 # substrings turn person/school names into phantom signals —
                 # "law" and "aws" both live inside "Lawson", "irb" inside
@@ -225,7 +237,8 @@ def _detect_lab_type(opportunity: dict) -> LabType | None:
                 # a humanities point. "bio" alone keeps prefix rights
                 # ("biophysics", "bioengineering" are real wet signals not in
                 # the vocabulary as words) but must not fire mid-word
-                # ("autobiographical").
+                # ("autobiographical"). A field word in a department name is
+                # read the same way: a telemedicine program is no medical school.
                 pattern = _entry_pattern(kw)
                 if pattern.search(lower):
                     hits += 1
@@ -258,7 +271,7 @@ def _detect_lab_type(opportunity: dict) -> LabType | None:
     # because UIUC department names are the cleanest classifier we have
     # (e.g. "Molecular and Cellular Biology" is unambiguously wet).
     wet = (
-        3 * _score(department, _WET_LAB_KEYWORDS)
+        3 * _score(department, _WET_LAB_KEYWORDS, whole_words=_APPLICATION_DOMAIN_WORDS)
         + 2 * _score(title, _WET_LAB_KEYWORDS, _APPLICATION_DOMAIN_WORDS)
         + 2 * _score(lab, _WET_LAB_KEYWORDS, _APPLICATION_DOMAIN_WORDS)
         + 1 * _score(keywords_text, _WET_LAB_KEYWORDS, _APPLICATION_DOMAIN_WORDS)
