@@ -82,7 +82,7 @@ def test_source_to_disk_to_match_and_email(monkeypatch, tmp_path, snapshot_env, 
     assert explanation.status_code == 200, explanation.text
     detail = explanation.json()
     assert listing['matcher_version'] == MATCHER_VERSION
-    assert MATCHER_VERSION.split('.')[0] == '16'
+    assert int(MATCHER_VERSION.split('.')[0]) >= 16
     for field in ('final_score','bucket','eligibility_score','reasons_fit','reasons_gap','unknowns'):
         assert detail[field] == result[field]
     assert not any('Missing skills' in reason for reason in result['reasons_gap'])

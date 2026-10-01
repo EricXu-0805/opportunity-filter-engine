@@ -290,7 +290,12 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # 16: inferred major and skill labels, and optional skills, are positive-only
 # relevance signals. They cannot manufacture missing qualifications or score
 # below unknown requirements. Retire cached scores and gap explanations.
-_MATCHER_VERSION_BASE = "16"
+# 17: buckets are cut per opportunity type. The Reach cut was the p40 of every
+# selected type at once, so ticking Research revealed 200 summer programs that
+# Summer alone hid. Each type now takes its cutoffs from its own scores and only
+# the 20-place High Priority shortlist is shared, so snapshots, cursors and
+# cached lists cut from the mixed distribution must not survive.
+_MATCHER_VERSION_BASE = "17"
 
 
 def _matcher_fingerprint() -> str:
