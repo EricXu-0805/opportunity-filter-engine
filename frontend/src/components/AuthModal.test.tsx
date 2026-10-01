@@ -267,6 +267,22 @@ describe('AuthModal — signin phase', () => {
     expect(screen.queryByText('auth.modal.signin.guestFilesStay')).toBeNull();
   });
 
+  // Only a guest session has tracker files to leave behind. Before the sign-in
+  // check answers, or when it fails, nothing says this visitor is a guest.
+  it.each([
+    ['before the sign-in check answers', () => mockGetAuthState.mockReturnValue(new Promise(() => {}))],
+    ['when the sign-in check fails', () => mockGetAuthState.mockRejectedValue(new Error('auth down'))],
+    ['with no session', () => mockGetAuthState.mockResolvedValue({ session: null, user: null, isAnonymous: false, email: null })],
+  ])('says nothing about tracker files on the contact sign-in %s', async (name, arrange) => {
+    modalState = { open: true, phase: 'signin', reason: 'contact-reveal' };
+    arrange();
+    render(<AuthModal />);
+    await settledAuth();
+    if (name === 'when the sign-in check fails') await screen.findByTestId('auth-state-error');
+    expect(screen.getByLabelText('auth.modal.signin.emailLabel')).toBeInTheDocument();
+    expect(screen.queryByText('auth.modal.signin.guestFilesStay')).toBeNull();
+  });
+
   it('shows the tracker-file notice once when the guest contact sign-in meets an identity conflict', async () => {
     vi.stubEnv('NEXT_PUBLIC_AUTH_PROVIDERS', 'google');
     modalState = { open: true, phase: 'signin', reason: 'contact-reveal' };
