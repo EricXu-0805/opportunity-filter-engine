@@ -4,9 +4,9 @@ import type {
 } from './types';
 import { isActiveExperience, validateExperienceEntries, type ExperienceSourceContext } from './experience-evidence';
 import {
-  BULLET_LINE, MAX_RESUME_TEXT_CHARACTERS, RESUME_EMAIL, RESUME_FIELD_SEPARATOR as FIELD_SEPARATOR, RESUME_PHONE,
-  RESUME_PLACE as PLACE, RESUME_ROLE as ROLE, RESUME_URL, resumeContactLine, resumeSectionHeading, resumeTextCharacters,
-  type ResumeSectionKind,
+  BULLET_LINE, MAX_RESUME_TEXT_CHARACTERS, RESUME_EMAIL, RESUME_FIELD_SEPARATOR as FIELD_SEPARATOR, RESUME_PERSON as PERSON,
+  RESUME_PHONE, RESUME_PLACE as PLACE, RESUME_ROLE as ROLE, RESUME_URL, resumeContactLine, resumeSectionHeading,
+  resumeTextCharacters, type ResumeSectionKind,
 } from './resume-input';
 
 export const MAX_RESUME_MASTER_FACTS = 300;
@@ -364,7 +364,6 @@ const EXPECTED_DATE = new RegExp(String.raw`(?:expected|anticipated|graduating|g
 const LAST_DATE = new RegExp(String.raw`(?:^|\t|\s[|–—-]\s)(${DATE})\s*$`, 'u');
 const LABELLED_PLACE = new RegExp(String.raw`^(?:[\p{L} ]{2,20}:\s*)?(${PLACE})$`, 'u');
 const TRAILING_PLACE = new RegExp(String.raw`(?:\(\s*(${PLACE})\s*\)|(?:,\s*|\t|\s[|–—-]\s)(${PLACE}))\s*$`, 'u');
-const PERSON = /^(?:[\p{Lu}][\p{L}.'’-]*)(?:\s+[\p{Lu}][\p{L}.'’-]*){1,4}$|^\p{Script=Han}{2,4}$/u;
 const SCHOOL = /\b(?:University|College|Institute|School|Academy|Polytechnic|UNIVERSITY|COLLEGE|INSTITUTE|SCHOOL|ACADEMY|POLYTECHNIC)\b|大学|学院/u;
 const DEGREE = /(?<![\p{L}.])(?:(?:B|M)\.?\s?(?:S|A|Sc|Eng|E|Ed)\.?|Ph\.?\s?D\.?|MBA|(?:Bachelor|Master)(?:'s|’s)?(?: of (?:Science|Arts|Engineering|Fine Arts|Business Administration|Applied Science))?|Associate(?:'s|’s)? of (?:Science|Arts)|Doctor of Philosophy|本科|学士|硕士|博士)(?![\p{L}])/u;
 const FIELD = /^(?:,\s*|\s+in\s+|\s+of\s+|\s+)((?:[\p{Lu}][\p{L}&'-]*)(?:\s+(?:(?:and|&|of|in)\s+)?[\p{Lu}][\p{L}&'-]*)*)/u;

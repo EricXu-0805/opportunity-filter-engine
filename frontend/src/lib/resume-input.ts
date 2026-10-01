@@ -72,6 +72,9 @@ export const RESUME_PHONE = /(?:\+\d{1,3}[\s.-]?)?(?:\(\d{2,4}\)|\d{2,4})[\s.-]?
 export const RESUME_URL = /(?:https?:\/\/|www\.)\S+|\b[\w-]+(?:\.[\w-]+)*\.(?:com|org|net|edu|io|dev|ai|me|co)(?:\/\S*)?/iu;
 /** A place as a résumé prints it: "Champaign, IL", "Shanghai, China". */
 export const RESUME_PLACE = String.raw`[\p{Lu}][\p{L}.' -]*,\s*(?:[A-Z]{2}|USA|China|Canada|United States|United Kingdom|UK|India|Japan|Korea|South Korea|Singapore|Germany|France|Hong Kong|Taiwan|Australia)`;
+/** A name as the first line of a résumé prints it: two to five capitalized
+ *  words, or two to four Chinese characters. */
+export const RESUME_PERSON = /^(?:[\p{Lu}][\p{L}.'’-]*)(?:\s+[\p{Lu}][\p{L}.'’-]*){1,4}$|^\p{Script=Han}{2,4}$/u;
 /** A word that names a role in a role row ("Teaching Assistant, …"). */
 export const RESUME_ROLE = /\b(?:intern|assistant|engineer|researcher|developer|analyst|manager|lead|leader|fellow|tutor|consultant|scientist|coordinator|director|president|officer|volunteer|member|designer|associate|specialist|technician|founder|chair|captain|mentor|instructor|grader|programmer|trainee|editor|writer)s?\b/iu;
 /** What separates the fields of a role row: a column gap, a spaced bar or

@@ -1,6 +1,7 @@
 import type { ExperienceEntry } from './types';
 import {
-  BULLET_LINE, MAX_RESUME_TEXT_CHARACTERS, resumeContactLine, resumeSectionHeading, resumeTextCharacters, storedWraps,
+  BULLET_LINE, MAX_RESUME_TEXT_CHARACTERS, RESUME_PERSON, RESUME_PLACE, resumeContactLine, resumeSectionHeading,
+  resumeTextCharacters, storedWraps,
 } from './resume-input';
 
 export const MAX_EXPERIENCE_ENTRIES = 100;
@@ -134,19 +135,26 @@ export function activeExperienceEntries(value: unknown, context: ExperienceSourc
   return checked.ok ? checked.value.filter((entry) => isActiveExperience(entry, context)) : [];
 }
 
-/** Not experience: a section heading, contact details, or a short line (a
- *  name, a place) above the first section heading. */
+/** Not experience: a section heading, contact details, or a line of the
+ *  header block (the name, a place). */
 function notExperience(line: string, header: boolean): boolean {
   const text = line.trim();
-  return !text || resumeSectionHeading(text) !== null || resumeContactLine(text)
-    || (header && text.split(/\s+/u).length <= 4);
+  return !text || resumeSectionHeading(text) !== null || resumeContactLine(text) || header;
 }
 
-/** The header block ends at the first heading, or at a line that would be
- *  one in capitals ("Campus Leadership"), so an unknown heading cannot hide
- *  the role and organization lines below it. */
-function endsHeader(line: string): boolean {
-  return resumeSectionHeading(line) !== null || resumeSectionHeading(line.toUpperCase()) !== null;
+const PLACE_LINE = new RegExp(String.raw`^(?:[\p{L} ]{2,20}:\s*)?${RESUME_PLACE}$`, 'u');
+
+/** How many of the first non-blank lines form the header block: the name on
+ *  the first line, then the contact and place lines right below it. Any
+ *  other line ends it, so a heading the title list does not know cannot hide
+ *  the lines under it. A text with no heading has no header block. */
+function headerRows(lines: readonly string[]): number {
+  const rows = lines.map((line) => line.trim()).filter(Boolean);
+  if (!rows.some((row) => resumeSectionHeading(row) !== null)) return 0;
+  let count = 0;
+  while (count < rows.length && (resumeContactLine(rows[count]) || PLACE_LINE.test(rows[count])
+    || (count === 0 && RESUME_PERSON.test(rows[count])))) count += 1;
+  return count;
 }
 
 /** PDF text has one row per line and no blank lines. A bullet absorbs the
@@ -168,11 +176,12 @@ function lineSpans(points: string[], lines: Array<[number, number]>, mergeContex
     context = [];
   };
   const texts = lines.map(([from, to]) => points.slice(from, to).join(''));
-  const firstHeading = texts.findIndex(endsHeader);
+  const header = headerRows(texts);
   const wraps = storedWraps(texts);
+  let row = 0;
   for (const [index, [from, to]] of lines.entries()) {
     const text = texts[index];
-    if (notExperience(text, index < firstHeading)) {
+    if (notExperience(text, !!text.trim() && row++ < header)) {
       flush(false);
       inBullet = false;
     } else if (BULLET_LINE.test(text)) {
@@ -209,12 +218,12 @@ export async function createResumeCandidates(rawText: string): Promise<Experienc
   }
   spans.push([start, points.length]);
   const entries: ExperienceEntry[] = [];
-  const firstHeading = spans.find(([from, to], index) => index > 0 && points.slice(from, to).join('').split(/\r?\n/u)
-    .some(endsHeader))?.[0] ?? -1;
+  const header = headerRows(rawText.split(/\r?\n/u));
+  let row = 0;
   const proposals = hasParagraphBreak
     // A paragraph is dropped only when none of its lines is experience.
     ? spans.filter(([from, to]) => !points.slice(from, to).join('').split(/\r?\n/u)
-      .every((line) => notExperience(line, from < firstHeading)))
+      .map((line) => notExperience(line, !!line.trim() && row++ < header)).every(Boolean))
     : lineSpans(points, spans, spans.length > MAX_EXPERIENCE_ENTRIES);
   for (const [from, to] of proposals) {
     let left = from;

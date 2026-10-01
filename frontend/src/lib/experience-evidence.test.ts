@@ -208,6 +208,25 @@ describe('local proposals and confirmed eligibility', () => {
     // offered like any other line rather than hiding what follows it.
     expect((await createResumeCandidates(lines('Campus Leadership'))).map((entry) => entry.text)).toEqual(['Campus Leadership', ...below]);
   });
+  it('ends the header block at the first line that is not the name, a contact line or a place, whatever heading follows', async () => {
+    // A heading the title list does not name must not hide the role lines
+    // under it: only the name and the contact and place lines are header.
+    const role = ['Course Assistant', 'CS 124 Staff', '- Held weekly office hours for 120 students in the intro course.'];
+    for (const heading of ['Teaching & Mentoring', 'Outreach', 'Mentorship', 'PATENTS', 'Lab Work']) {
+      const raw = ['Jordan Lee', 'jordan.lee@example.com', 'Champaign, IL', 'github.com/jlee', heading, ...role,
+        'EDUCATION', 'University of Illinois'].join('\n');
+      expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual([heading, ...role, 'University of Illinois']);
+    }
+    // Without any heading there is no header block to drop.
+    expect((await createResumeCandidates(['Course Assistant', 'Champaign, IL', ...role.slice(1)].join('\n')))
+      .map((entry) => entry.text)).toEqual(['Course Assistant', 'Champaign, IL', ...role.slice(1)]);
+    // The same with blank lines between paragraphs.
+    const raw = ['Jordan Lee\njordan.lee@example.com\nChampaign, IL', `Outreach\n${role[0]}\n${role[1]}`, role[2],
+      'EDUCATION\nUniversity of Illinois'].join('\n\n');
+    expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual([
+      `Outreach\n${role[0]}\n${role[1]}`, role[2], 'EDUCATION\nUniversity of Illinois',
+    ]);
+  });
   it('treats a first line in capitals as the name, not as the heading that ends the header block', async () => {
     const raw = ['PRIYA NATARAJAN', 'Champaign, IL', 'priya.natarajan.test@example.com', 'SKILLS', 'SQL', 'MATLAB'].join('\n');
     expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual(['SQL', 'MATLAB']);
