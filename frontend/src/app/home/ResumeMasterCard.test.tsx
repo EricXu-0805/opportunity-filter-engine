@@ -66,6 +66,14 @@ describe('complete résumé master editor', () => {
     fireEvent.click(propose);
     expect(screen.getByText('No new candidates found in your résumé.')).toBeVisible();
   });
+  it('counts a single résumé candidate in the singular', async () => {
+    render(<Harness initial={{ ...DEFAULT_PROFILE, resume_text: 'SKILLS\nPython' }} />); open();
+    const propose = screen.getByRole('button', { name: 'Add candidates from my résumé' });
+    await waitFor(() => expect(propose).toBeEnabled());
+    fireEvent.click(propose);
+    expect(screen.getByText('Added 1 candidate quoted from your résumé. Confirm it before it appears in the preview.'))
+      .toHaveAttribute('role', 'status');
+  });
   it('offers no résumé candidates without a résumé', () => {
     render(<Harness />); open();
     expect(screen.queryByRole('button', { name: 'Add candidates from my résumé' })).toBeNull();

@@ -220,10 +220,13 @@ export function ResumeMasterCard({ profile, ready, onChange }: {
         {raw.trim() && <div className="mt-4">
           <button type="button" className={button} disabled={blocked || !context.expectedDigest} onClick={propose}>
             {copy('Add candidates from my résumé', '从简历添加待确认内容')}</button>
-          {proposed !== null && <p role="status" className="mt-2 text-xs text-gray-600">{proposed > 0
-            ? copy(`Added ${proposed} candidates quoted from your résumé. Confirm each one before it appears in the preview.`,
-              `已从简历原文添加 ${proposed} 条待确认内容，逐条确认后才会进入预览。`)
-            : copy('No new candidates found in your résumé.', '简历中没有新的待确认内容。')}</p>}
+          {proposed !== null && <p role="status" className="mt-2 text-xs text-gray-600">{proposed === 1
+            ? copy('Added 1 candidate quoted from your résumé. Confirm it before it appears in the preview.',
+              '已从简历原文添加 1 条待确认内容，确认后才会进入预览。')
+            : proposed > 0
+              ? copy(`Added ${proposed} candidates quoted from your résumé. Confirm each one before it appears in the preview.`,
+                `已从简历原文添加 ${proposed} 条待确认内容，逐条确认后才会进入预览。`)
+              : copy('No new candidates found in your résumé.', '简历中没有新的待确认内容。')}</p>}
         </div>}
         <div className="mt-5 space-y-4">
           {master.section_order.map((sectionId, position) => <details open key={sectionId} className="rounded-xl border border-gray-200 p-4">
