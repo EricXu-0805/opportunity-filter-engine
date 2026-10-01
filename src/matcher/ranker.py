@@ -11,7 +11,7 @@ import re
 import threading
 from collections import Counter, OrderedDict
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 from functools import lru_cache
 
 from backend.lib.contact_visibility import send_target_strength, verified_send_target
@@ -76,7 +76,32 @@ REGISTERED_SCHOOLS = frozenset(s for s, _ in SOURCE_DEFAULTS.values() if s)
 _PRESTIGE_ORG_RE = re.compile(r"\b(?:caltech|mit|stanford|cmu|berkeley|nasa|doe)\b")
 
 
-def _is_actionable(opportunity: dict) -> bool:
+def _contact_checked_at(today: date) -> datetime:
+    """When ranking judges a contact stamp's age: the end of the server's day.
+
+    The reveal flow checks the 60-day verification window at the moment of
+    each request. A ranking must not: the evidence rank a stamp earns breaks
+    score ties and is part of the result-set id, and production runs more than
+    one API worker. Ranked at the moment, one profile's list split in two
+    whenever a stamp expired between two workers' rankings on the same day,
+    and each worker refused the other's cursors (the committed corpus has 388
+    UCB stamps expiring on 2026-11-28 between 06:12 and 07:02 UTC). Judged
+    at the end of the day, a stamp can move a ranking only when the day turns,
+    which is when every stored snapshot is re-ranked anyway.
+
+    The end, not the start: a stamp that expires at any moment of a day
+    counts as expired for all of it, so ranking never prefers an address the
+    reveal flow would refuse later that day. The check's other edge, which
+    refuses a stamp dated after the moment it is judged at, is looser here: a
+    stamp dated later today passes. Stamps are written before the corpus is
+    published, so none lies ahead of the moment it is served.
+    """
+    tomorrow = today + timedelta(days=1)
+    # Local midnight, as date.today() is the local date.
+    return datetime(tomorrow.year, tomorrow.month, tomorrow.day).astimezone(UTC)
+
+
+def _is_actionable(opportunity: dict, now: datetime | None = None) -> bool:
     """The student can act on this result. An email-outreach posting
     (contact_method='email' — every faculty record) is actionable only with an
     actual address: faculty collectors stamp the PROFILE url into
@@ -89,8 +114,12 @@ def _is_actionable(opportunity: dict) -> bool:
     email AND a safe, matching source URL AND a fresh timestamp. A record the
     product would refuse to reveal must never win a ranking tie as
     "actionable" — imported directly rather than re-approximated here, so the
-    two bars can never drift apart again."""
-    if verified_send_target(opportunity):
+    two bars can never drift apart again. Freshness is judged at the end of
+    the server's day (_contact_checked_at), never more kindly than the reveal
+    flow judges it at any moment of that day."""
+    if verified_send_target(
+        opportunity, now=now or _contact_checked_at(date.today())
+    ):
         return True
     app = opportunity.get("application") or {}
     if app.get("contact_method") == "email":
@@ -98,13 +127,16 @@ def _is_actionable(opportunity: dict) -> bool:
     return bool(app.get("application_url"))
 
 
-def _evidence_rank(opportunity: dict) -> int:
+def _evidence_rank(opportunity: dict, now: datetime | None = None) -> int:
     """Tie-break ladder: 2 fully-bound email > 1 legacy email or a real
     application URL > 0 dead end. Fully-proven evidence outranks the W7a
     legacy pass-through in a tie (the truthfulness contract), while a
     legacy address still outranks a record the student cannot act on at
-    all."""
-    strength = send_target_strength(opportunity)
+    all. A stamp's age is judged at the end of the server's day, as in
+    _is_actionable."""
+    strength = send_target_strength(
+        opportunity, now=now or _contact_checked_at(date.today())
+    )
     if strength:
         return strength
     app = opportunity.get("application") or {}
@@ -2523,6 +2555,7 @@ def _reason_priority(reason: str) -> int:
     return 4
 
 
+
 def _rank_opportunity_unlocked(
     profile: dict,
     opportunity: dict,
@@ -2532,6 +2565,7 @@ def _rank_opportunity_unlocked(
     today=None,
     implicit_keywords: set[str] | None = None,
     responsiveness: dict[str, dict] | None = None,
+    contact_checked_at: datetime | None = None,
 ) -> MatchResult:
     st = _opp_static(opportunity)
 
@@ -2546,6 +2580,8 @@ def _rank_opportunity_unlocked(
         )
     if implicit_keywords is None:
         implicit_keywords = _implicit_steer(profile)
+    if contact_checked_at is None:
+        contact_checked_at = _contact_checked_at(date.today())
 
     desired_lc = {f.lower() for f in profile.get("desired_fields", [])}
     desired_overlap = _desired_field_overlap(
@@ -2662,7 +2698,7 @@ def _rank_opportunity_unlocked(
         # the "This lab focuses on …" framing is a category error there, and the
         # keyword/interest reasons already convey relevance, so skip it.
 
-    next_steps = _generate_next_steps(profile, opportunity, all_gap)
+    next_steps = _generate_next_steps(profile, opportunity, all_gap, contact_checked_at)
 
     # Field-relevant = the opportunity topically matches the student's stated
     # interests OR their major-derived field. Drives the "N strong matches in
@@ -2684,8 +2720,8 @@ def _rank_opportunity_unlocked(
         reasons_gap=all_gap,
         next_steps=next_steps,
         field_relevant=field_relevant,
-        actionable=_is_actionable(opportunity),
-        evidence_rank=_evidence_rank(opportunity),
+        actionable=_is_actionable(opportunity, contact_checked_at),
+        evidence_rank=_evidence_rank(opportunity, contact_checked_at),
         unknowns=_decision_unknowns(profile, opportunity),
     )
 
@@ -2763,7 +2799,12 @@ def _decision_unknowns(profile: dict, opportunity: dict) -> list[str]:
     return unknowns
 
 
-def _generate_next_steps(profile: dict, opportunity: dict, gaps: list[str]) -> list[str]:
+def _generate_next_steps(
+    profile: dict,
+    opportunity: dict,
+    gaps: list[str],
+    contact_checked_at: datetime,
+) -> list[str]:
     """Generate actionable next steps based on gaps."""
     steps = []
     is_faculty_contact = opportunity.get("source_type") == "faculty_research"
@@ -2785,7 +2826,7 @@ def _generate_next_steps(profile: dict, opportunity: dict, gaps: list[str]) -> l
     # neutralized. A verified target can still produce a send-ready next step;
     # otherwise the honest action is to verify a channel on the profile.
     if is_faculty_contact and profile.get("can_cold_email"):
-        if verified_send_target(opportunity):
+        if verified_send_target(opportunity, now=contact_checked_at):
             steps.append("Send a brief cold email to the PI expressing interest")
         else:
             steps.append("Open the faculty profile and verify a contact channel")
@@ -3177,6 +3218,7 @@ def _iter_scored_results_unlocked(
     implicit_kw = _implicit_steer(profile)
     research_text = (profile.get("research_interests_text") or "").lower()
     min_threshold = (profile.get("preferences") or {}).get("min_match_threshold", 0)
+    contact_checked_at = _contact_checked_at(date.today())
     pending: list[tuple[dict, tuple[float, list[str], list[str]]]] = []
 
     def flush_pending():
@@ -3195,6 +3237,7 @@ def _iter_scored_results_unlocked(
                 precomputed_sim=sim,
                 implicit_keywords=implicit_kw,
                 responsiveness=responsiveness,
+                contact_checked_at=contact_checked_at,
             )
             if result.final_score >= min_threshold:
                 yield result

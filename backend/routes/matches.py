@@ -712,9 +712,9 @@ def _result_set_id(
     and field relevance that views filter, order and count by, plus the counts.
     A process that materializes the same list names it the same, so a cursor
     survives a worker switch, a TTL expiry or an eviction. A list that moved (a
-    deadline passing at midnight, a professor-signals window turning, an LLM
-    blend) gets a new id, so its old cursors still fail closed instead of
-    skipping or repeating rows.
+    deadline passing or a contact stamp expiring as the day turns, a
+    professor-signals window turning, an LLM blend) gets a new id, so its old
+    cursors still fail closed instead of skipping or repeating rows.
 
     Left out on purpose: the cards, which the key already names (this corpus
     through this release's projection), and the wording of reasons and steps.
@@ -883,12 +883,13 @@ def _ranked_with(responsiveness: dict | None) -> str:
     """Name the ranking inputs that come from the worker, not the request.
 
     The ranker reads the calendar (a deadline that has just passed costs a
-    record its place) and the professor-signals map. Every worker reads the
-    same day, and the same map within a signals window, but a stored snapshot
-    freezes the values it was ranked with. Serving it only while they still
-    hold makes a worker re-rank when the day or the window turns, as its
-    sibling does, instead of serving the old list for the rest of its TTL and
-    refusing every cursor the sibling mints.
+    record its place, and a contact stamp is judged at the end of the day) and
+    the professor-signals map. It reads no finer clock than the day. Every
+    worker reads the same day, and the same map within a signals window, but
+    a stored snapshot freezes the values it was ranked with. Serving it only
+    while they still hold makes a worker re-rank when the day or the window
+    turns, as its sibling does, instead of serving the old list for the rest
+    of its TTL and refusing every cursor the sibling mints.
 
     Neither joins the snapshot key or the result-set id: when they change the
     list, the rows the id hashes change with it, and when they do not, a

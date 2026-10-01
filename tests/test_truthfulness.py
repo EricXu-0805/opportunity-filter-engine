@@ -13,6 +13,7 @@ suites (test_publication_trust.py, test_grounding.py).
 """
 from __future__ import annotations
 
+import time
 from datetime import UTC, date, datetime, timedelta
 
 from backend.lib.contact_visibility import contact_email_status, verified_send_target
@@ -351,6 +352,79 @@ class TestEmailProvenance:
         ]
         for opp in cases:
             assert bool(_is_actionable(opp)) == bool(verified_send_target(opp)), opp
+
+    def test_the_ranker_judges_a_stamp_by_its_day_and_never_more_kindly_than_the_reveal(
+        self, monkeypatch
+    ):
+        """Ranking reads the server's day; the reveal flow reads the moment.
+
+        A stamp that expires at 21:00 counts as expired for ranking all that
+        day (evidence 0, not actionable, the step that verifies a channel),
+        while the reveal flow still hands the address out until 21:00. So a
+        ranking is the same at every moment of a day, which is what lets two
+        API workers agree on it, and it never prefers an address the reveal
+        flow would refuse later that day. The server here keeps Chicago time,
+        so its day ends at local midnight, six hours after the UTC one.
+        """
+        from backend.lib import contact_visibility
+        from backend.lib.contact_visibility import CONTACT_VERIFICATION_TTL_DAYS
+        from src.matcher import ranker
+
+        monkeypatch.setenv("TZ", "America/Chicago")
+        time.tzset()
+        try:
+            day = date(2026, 11, 28)
+            expiry = datetime(2026, 11, 28, 21, 0).astimezone(UTC)
+            clock = {"today": day, "now": expiry}
+
+            class _Instant(datetime):
+                @classmethod
+                def now(cls, tz=None):
+                    return clock["now"]
+
+            class _Calendar(date):
+                @classmethod
+                def today(cls):
+                    return clock["today"]
+
+            monkeypatch.setattr(contact_visibility, "datetime", _Instant)
+            monkeypatch.setattr(ranker, "date", _Calendar)
+            opp = {**_bound_opp("jdoe@test.edu"), "id": "jdoe", "source_type": "faculty_research"}
+            opp["metadata"] = {
+                **opp["metadata"],
+                "contact_verified_at": (
+                    expiry - timedelta(days=CONTACT_VERIFICATION_TTL_DAYS)
+                ).isoformat(),
+            }
+            profile = {"major": "CS", "year": "sophomore", "can_cold_email": True}
+
+            def local(on: date, hour: int, minute: int) -> datetime:
+                return datetime(on.year, on.month, on.day, hour, minute).astimezone(UTC)
+
+            eve = day - timedelta(days=1)
+            moments = [
+                (eve, local(eve, 0, 1), True, 2),
+                (eve, local(eve, 23, 59), True, 2),
+                (day, local(day, 0, 1), True, 0),
+                (day, local(day, 20, 58), True, 0),
+                (day, local(day, 21, 2), False, 0),
+                (day, local(day, 23, 59), False, 0),
+            ]
+            ranked: dict[date, object] = {}
+            for today, now, revealed, evidence in moments:
+                clock["today"], clock["now"] = today, now
+                assert bool(verified_send_target(opp)) is revealed, now
+                assert _evidence_rank(opp) == evidence, now
+                assert _is_actionable(opp) is (evidence == 2), now
+                result = ranker.rank_opportunity(profile, opp)
+                assert result == ranked.setdefault(today, result), now
+            assert ranked[eve].evidence_rank == 2
+            assert "Send a brief cold email to the PI expressing interest" in ranked[eve].next_steps
+            assert ranked[day].evidence_rank == 0
+            assert "Open the faculty profile and verify a contact channel" in ranked[day].next_steps
+        finally:
+            monkeypatch.undo()
+            time.tzset()
 
     def test_missing_email_is_unavailable_not_guessed(self):
         status, email = contact_email_status({"contact_email": None, "metadata": {}}, authenticated=True)

@@ -20,7 +20,7 @@ import json
 import os
 import subprocess
 import sys
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from fastapi import HTTPException
@@ -30,6 +30,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import backend.routes.matches as m_module
 from backend import data_loader
+from backend.lib import contact_visibility
 from backend.main import app
 from backend.routes import responsiveness as resp_mod
 from backend.schemas import ProfileRequest
@@ -1274,6 +1275,96 @@ class TestServerMatchView:
         assert response.status_code == 200, response.text
         assert response.json()["result_set_id"] == page_one["result_set_id"]
         assert response.json()["view_start"] == 4
+
+    def test_view_cursor_pages_across_workers_either_side_of_a_contact_stamp_expiry(
+        self, snapshot_env, monkeypatch
+    ):
+        """The ranking reads the day, never the moment within it.
+
+        A contact stamp is good for 60 days, and the evidence rank it earns
+        breaks score ties and is part of the result-set id. The ranker judged
+        the stamp's age at the moment it ranked, so two workers that ranked one
+        profile minutes apart on the same day, either side of an expiry, named
+        the list differently and refused each other's cursors. The committed
+        corpus has 388 UCB stamps expiring on 2026-11-28 between 06:12 and
+        07:02 UTC.
+        """
+        day = date(2026, 11, 28)
+        # Noon of the server's own day, so the day before and the day itself
+        # fall either side of the expiry whatever zone the server runs in.
+        expiry = datetime(2026, 11, 28, 12, 0).astimezone(UTC)
+        clock = {"now": expiry - timedelta(days=1)}
+        calendar = {"today": day - timedelta(days=1)}
+
+        class _Instant(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return clock["now"] if tz is not None else clock["now"].replace(tzinfo=None)
+
+        class _Calendar(date):
+            @classmethod
+            def today(cls):
+                return calendar["today"]
+
+        monkeypatch.setattr(contact_visibility, "datetime", _Instant)
+        monkeypatch.setattr(m_module, "date", _Calendar)
+        monkeypatch.setattr(ranker, "date", _Calendar)
+        stamped = _opp(
+            "opp-00b",
+            contact_email="prof@cs.berkeley.edu",
+            metadata={
+                "is_active": True,
+                "identity_bound": True,
+                "email_source": "bound_directory_card",
+                "contact_verified_email": "prof@cs.berkeley.edu",
+                "contact_source_url": "https://www2.eecs.berkeley.edu/Faculty/Lists/faculty.html",
+                "contact_verified_at": (
+                    expiry - timedelta(days=contact_visibility.CONTACT_VERIFICATION_TTL_DAYS)
+                ).isoformat(),
+            },
+        )
+        corpus = sorted([*snapshot_env["corpus"], stamped], key=lambda record: record["id"])
+        ranker.register_corpus(corpus)
+        monkeypatch.setattr(
+            m_module, "load_opportunities_generation", lambda: (corpus, "stamp-fixture")
+        )
+        monkeypatch.setattr(
+            m_module, "load_opportunities_by_id", lambda: {o["id"]: o for o in corpus}
+        )
+        request = self._request(_profile(), today=day.isoformat())
+        workers = ({}, {})
+
+        _serve_from(monkeypatch, {})
+        while_good = client.post("/api/matches/view", json=request).json()
+        calendar["today"] = day
+        clock["now"] = expiry + timedelta(minutes=2)
+        _serve_from(monkeypatch, {})
+        expired = client.post("/api/matches/view", json=request).json()
+        assert expired["result_set_id"] != while_good["result_set_id"], (
+            "the expiry must move this list, or the test proves nothing"
+        )
+
+        clock["now"] = expiry - timedelta(minutes=2)
+        _serve_from(monkeypatch, workers[0])
+        page_one = client.post("/api/matches/view", json=request).json()
+
+        clock["now"] = expiry + timedelta(minutes=2)
+        _serve_from(monkeypatch, workers[1])
+        page_two = client.post(
+            "/api/matches/view", json={**request, "cursor": page_one["next_cursor"]}
+        )
+        assert page_two.status_code == 200, page_two.text
+        assert page_two.json()["result_set_id"] == page_one["result_set_id"]
+        assert page_two.json()["view_start"] == 4
+
+        # The worker that ranked before the expiry keeps serving its list.
+        _serve_from(monkeypatch, workers[0])
+        page_three = client.post(
+            "/api/matches/view", json={**request, "cursor": page_two.json()["next_cursor"]}
+        )
+        assert page_three.status_code == 200, page_three.text
+        assert page_three.json()["result_set_id"] == page_one["result_set_id"]
+        assert page_three.json()["view_start"] == 8
 
     @staticmethod
     def _signals_on(monkeypatch, snapshot_env) -> _Clock:
