@@ -256,6 +256,25 @@ def personal_actions(text, gerunds=False):
     return found
 
 
+# The gates with no review behind them (the selection plan's compress rewrites,
+# a multi-source merge) read actions as source-checks-v3 did. "Jointly", "with
+# two classmates", "a team that built" and a "design team" noun never hide an
+# action there; personal_actions reads that wider team context only because
+# every rewrite claim_upgrade_findings passes still goes to the review.
+_STATED_ACTIONS = {**ACTIONS, "design": r"\b(?:designed|design)\b|设计"}
+
+
+def _stated_personal_actions(text):
+    found = set()
+    for clause in clauses(text):
+        if NEGATION.search(clause) or (TEAM.search(clause) and not PERSONAL.search(clause)):
+            continue
+        for name, pattern in _STATED_ACTIONS.items():
+            if re.search(pattern, clause, re.I):
+                found.add(name)
+    return found
+
+
 def publication_stages(text):
     return {name for clause in clauses(text) if not NEGATION.search(clause)
             for name, pattern in STAGES.items() if re.search(pattern, clause, re.I)}
@@ -271,7 +290,7 @@ def claim_upgrade_detected(proposed, original):
     for clause in clauses(original):
         if (NEGATION.search(clause) or TEAM.search(clause) or PUBLICATION.search(clause)) and normalized(clause) not in proposed_normal:
             return True
-    if personal_actions(proposed) - personal_actions(original):
+    if _stated_personal_actions(proposed) - _stated_personal_actions(original):
         return True
     if publication_stages(proposed) - publication_stages(original):
         return True
@@ -892,7 +911,7 @@ def supported_claim_upgrade_detected(proposed, originals):
         for clause in clauses(original):
             if (NEGATION.search(clause) or TEAM.search(clause) or PUBLICATION.search(clause)) and normalized(clause) not in proposed_normal:
                 return True
-    if personal_actions(proposed) - set().union(*(personal_actions(original) for original in originals)):
+    if _stated_personal_actions(proposed) - set().union(*(_stated_personal_actions(original) for original in originals)):
         return True
     if publication_stages(proposed) - set().union(*(publication_stages(original) for original in originals)):
         return True

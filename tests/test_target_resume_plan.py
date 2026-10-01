@@ -197,6 +197,11 @@ def test_any_invalid_structure_or_quote_invalidates_the_whole_plan(endpoint, kin
      "Implemented Python ML projects in CS 225. My team implemented Python ML projects for CS 225."),
     ("I analyzed measurement uncertainty, never carefully. Additional context for length.",
      "Analyzed measurement uncertainty carefully."),
+    # Shared credit is not a licence for a new action: this gate has no review behind it.
+    ("Helped two classmates sort and scan 120 paper survey forms for the PSYC 238 sleep study.",
+     "Jointly designed the PSYC 238 sleep study survey with two classmates."),
+    ("Proofread the methods section of a lab manuscript and formatted its 4 figures.",
+     "Collectively reviewed the lab manuscript and formatted its 4 figures."),
 ])
 def test_compression_reuses_b43_attribution_guard_without_discarding_valid_plan(endpoint, original, proposed):
     assert len(proposed) < len(original)

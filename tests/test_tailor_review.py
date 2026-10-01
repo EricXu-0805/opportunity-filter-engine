@@ -22,7 +22,11 @@ from backend.lib import llm, llm_budget
 from backend.lib.blocking import BlockingWorkTimeout
 from backend.lib.grounding import LENIENT_PROSE_NUMERIC, validate_no_fabrication
 from backend.lib.release_scope import opportunity_visible_in_release
-from backend.lib.target_resume_ai_grounding import claim_upgrade_detected, claim_upgrade_findings
+from backend.lib.target_resume_ai_grounding import (
+    claim_upgrade_detected,
+    claim_upgrade_findings,
+    supported_claim_upgrade_detected,
+)
 from backend.main import app
 from backend.routes import tailor
 from src.evidence import is_actionable_target
@@ -378,6 +382,24 @@ class TestLockChangesForEvidenceMappedRewrites:
     def test_the_plan_path_still_reads_responsible_for_building_as_a_changed_claim(self):
         assert claim_upgrade_detected("Built the lab's data pipeline in Python.",
                                       "Responsible for building the lab's data pipeline in Python.")
+
+    @pytest.mark.parametrize(("original", "proposed"), [
+        ("Helped two classmates sort and scan 120 paper survey forms for the PSYC 238 sleep study.",
+         "Jointly designed the PSYC 238 sleep study survey with two classmates."),
+        ("Proofread the methods section of a lab manuscript and formatted its 4 figures.",
+         "Collectively reviewed the lab manuscript and formatted its 4 figures."),
+        ("Helped a classmate distribute the survey.", "Jointly designed the survey with a classmate."),
+        ("Wrote documentation for the rover.", "On a team that built the rover, I wrote documentation."),
+        ("Tested the app on Android phones.", "Joined a group that developed the app and tested it on Android phones."),
+        ("Wired the sensors for the senior project.", "Wired the sensors for the senior design project."),
+    ])
+    def test_the_unreviewed_gates_still_read_team_credit_wording_as_a_new_action(self, original, proposed):
+        # No review stands behind the selection plan's compress rewrites or a
+        # multi-source merge: shared credit, a team relative clause or a
+        # "design" noun must not hide an action the original never states there.
+        assert claim_upgrade_detected(proposed, original)
+        assert supported_claim_upgrade_detected(proposed, [original])
+        assert supported_claim_upgrade_detected(proposed, [original, "Ordered the lab's printer paper."])
 
     def test_my_team_is_the_teams_action_not_the_students(self):
         hard, _ = claim_upgrade_findings("I built a Python parser.", "My team built a Python parser.")
