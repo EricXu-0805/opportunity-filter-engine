@@ -640,6 +640,21 @@
    "original": "Research assistant in the Fluids Lab, analyzing Python simulation data for CS 225.",
    "rewrite": "Analyzed Python simulation data for CS 225 as a research assistant in the Fluids Lab.",
    "kind": "verb first; 'research assistant' is a role, not a setting"
+  },
+  {
+   "original": "On a five-person CHBE 421 design team, built a benchtop vanadium redox flow battery that reached 72% round-trip efficiency; my part was wiring the data logger and keeping the test log.",
+   "rewrite": "My part was wiring the data logger and keeping the test log, on a five-person CHBE 421 design team that built a benchtop vanadium redox flow battery that reached 72% round-trip efficiency.",
+   "kind": "own part first, the team's result in a relative clause (real model, 2026-09-30)"
+  },
+  {
+   "original": "On a five-person CHBE 421 design team, built a benchtop vanadium redox flow battery that reached 72% round-trip efficiency; my part was wiring the data logger and keeping the test log.",
+   "rewrite": "My part was wiring the data logger and keeping the test log. On a five-person CHBE 421 design team, built a benchtop vanadium redox flow battery that reached 72% round-trip efficiency.",
+   "kind": "own part first, team part as its own sentence"
+  },
+  {
+   "original": "Research assistant in the Cognitive Aging Lab since Fall 2025, scheduling participants and scoring cognitive tests.",
+   "rewrite": "Scheduling participants and scoring cognitive tests as research assistant in the Cognitive Aging Lab since Fall 2025.",
+   "kind": "verb first, role kept after the action, ongoing form kept"
   }
  ],
  "unfaithful": [
@@ -1410,6 +1425,16 @@
    "original": "Helped plan the club fair and made the posters.",
    "rewrite": "Planned the club fair and helped make the posters.",
    "kind": "qualifier moved to another action"
+  },
+  {
+   "original": "My team built a Python parser; I wrote parser tests.",
+   "rewrite": "I built a Python parser on a team that wrote parser tests.",
+   "kind": "the student's and the team's actions swapped around a relative clause"
+  },
+  {
+   "original": "On a five-person design team, built a benchtop flow battery; my part was wiring the data logger.",
+   "rewrite": "My part was wiring the data logger and designing the battery, on a five-person design team that built a benchtop flow battery.",
+   "kind": "new own part beside a team relative clause"
   }
  ]
 }

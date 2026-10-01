@@ -83,8 +83,8 @@ STEP 1 - MAP. For each unit list up to 3 links. A link joins a phrase copied exa
 STEP 2 - DECIDE. Rewrite only with these operations:
 - lead_with(link): the link must be "same". Move the linked part of the original to the front by reordering the line's own words. The only word you may change is the form of the verb that starts the moved part ("reached" -> "Reached").
 - relabel(link, from, to): the link must be "same". Replace words of the original ("from") with the term's wording, or add the term's missing words next to them. "to" is the exact new wording in your rewrite and may contain only the term's words and the words of "from". Keep the term's spelling; capitalization may change. At most two relabels per unit.
-- verb_first: only when the original opens with a role noun ("Research assistant in ...", "Volunteer at ...") or with "Responsible for", "In charge of", "Worked", "Served as", 负责 or 担任. Start with a verb the original already uses: "holding weekly office hours" -> "Held weekly office hours"; "Responsible for building" -> "Built". Keep the original's time sense: ongoing, planned or hoped-for work ("since Fall 2025", "co-authoring", "(in preparation)", "hoping to") keeps its form. Never bring in a verb the original does not use: no "Served as", "Worked as", "Participated in", "Contributed to", "Led".
-- personal_first: when the original states team work and then the student's own part ("... with two teammates; I designed ...", "my part was ...", 本人只负责 ...), put the student's own part first and keep the team part in its own clause with its team words.
+- verb_first: only when the original opens with a role noun ("Research assistant in ...", "Volunteer at ...") or with "Responsible for", "In charge of", "Worked", "Served as", 负责 or 担任. Start with a verb the original already uses: "holding weekly office hours" -> "Held weekly office hours"; "Responsible for building" -> "Built". A role noun is never dropped: move it after the action with "as" ("Course assistant for CS 124, holding office hours" -> "Held office hours as course assistant for CS 124"). Keep the original's time sense: ongoing, planned or hoped-for work ("since Fall 2025", "co-authoring", "(in preparation)", "hoping to") keeps its form. Never bring in a verb the original does not use: no "Served as", "Worked as", "Participated in", "Contributed to", "Led".
+- personal_first: when the original states team work and then the student's own part ("... with two teammates; I designed ...", "my part was ...", 本人只负责 ...), put the student's own part first as its own sentence, then the team part as its own sentence, word for word: "Built a rover with two teammates; I designed the mount." -> "I designed the mount. Built a rover with two teammates."
 - tighten: together with another operation only, drop a leading "I" or 我 or a repeated word. Never on a line that mentions a team, teammates or help.
 Decide in this order: if a "same" link's term is not yet in the line, relabel with it; if the strongest "same"-linked part is not at the start, lead_with it; if the line opens with a role noun or a weak opener, verb_first; if it states team work before the student's own part, personal_first. Return decision "rewrite" when one of these applies, else decision "keep" with keep_reason "no_link" (no "same" link) or "already_aligned" (the linked words are already in the line and first). A change of punctuation, "I" or tense alone is not a rewrite.
 
@@ -444,16 +444,36 @@ def verify_links(raw: object, sources: list[tuple[str | None, str]], anchors: di
     return links
 
 
+def _last_envelope(raw: str, key: str) -> object | None:
+    """The last JSON object in ``raw`` whose only key is ``key``.
+
+    A model sometimes writes a note after its answer, or corrects itself with a
+    second one; the later answer is the one it means. Every row is still
+    checked as if it were the only one.
+    """
+    decoder, found = json.JSONDecoder(), None
+    for match in re.finditer(r"\{", raw):
+        try:
+            value, _ = decoder.raw_decode(raw, match.start())
+        except ValueError:
+            continue
+        if isinstance(value, dict) and set(value) == {key}:
+            found = value
+    return found
+
+
 def parse_rows(raw: str, expected_ids: set[str], *, key: str) -> dict[str, object] | None:
     """{unit_id: row} from a model reply whose only top-level key is ``key``.
 
     None for an unusable envelope. A row with a missing, unknown or repeated
     unit_id is dropped, so only its own unit keeps the original.
     """
+    if not isinstance(raw, str):
+        return None
     try:
         parsed = json.loads(strip_json_fence(raw))
-    except (ValueError, TypeError):
-        return None
+    except ValueError:
+        parsed = _last_envelope(raw, key)
     if not isinstance(parsed, dict) or set(parsed) != {key} or not isinstance(parsed[key], list):
         return None
     rows: dict[str, object] = {}
@@ -642,20 +662,25 @@ def check_rewrite(unit: Unit, row: object, anchors: dict[str, Anchor], *, output
     no_link / already_aligned / no_safe_change for a model keep, cosmetic_only
     or beyond_allowed_edit for a rewrite this contract refuses.
     """
-    if not isinstance(row, dict) or set(row) != {*ROW_KEYS, *extra_keys}:
+    # A field the decision makes empty may be left out: links, ops, text, keep_reason.
+    if (not isinstance(row, dict) or not {"unit_id", "decision", *extra_keys} <= set(row)
+            or set(row) - {*ROW_KEYS, *extra_keys}):
         return Outcome(unit.unit_id, "invalid", detail="row_shape")
+    row = {"links": [], "ops": [], "text": None, "keep_reason": None, **row}
     links = verify_links(row["links"], unit.sources, anchors)
     ops_raw, text, decision = row["ops"], row["text"], row["decision"]
     if (not isinstance(ops_raw, list) or len(ops_raw) > MAX_OPS
             or any(not isinstance(op, dict) or not isinstance(op.get("op"), str) for op in ops_raw)):
         return Outcome(unit.unit_id, "invalid", detail="ops_shape")
     if decision == "keep":
-        if text is not None or row["keep_reason"] not in KEEP_REASONS:
+        if text is not None or row["keep_reason"] not in (*KEEP_REASONS, None):
             return Outcome(unit.unit_id, "invalid", detail="keep_shape")
         return _keep(unit, keep_code(unit, links), "model_keep", links=links)
     if decision != "rewrite" or not isinstance(text, str) or not text.strip() or len(text) > MAX_TEXT_CHARACTERS:
         return Outcome(unit.unit_id, "invalid", detail="rewrite_shape")
     text = text.strip()
+    if " ".join(text.split()) == " ".join(unit.current.split()):
+        return _keep(unit, "cosmetic_only", "unchanged_text", links=links)
     names = [op["op"] for op in ops_raw]
     if any(name not in OPS for name in names):
         return _keep(unit, "beyond_allowed_edit", "unknown_op", links=links)

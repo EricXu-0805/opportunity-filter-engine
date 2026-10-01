@@ -28,7 +28,8 @@ ACTIONS = {
     "lead": r"\b(?:lead|led|leading|leader|leadership|managed|headed)\b|主导|带领|领导|牵头",
     "own": r"\b(?:owned|ownership|responsible)\b|负责|承担",
     "build": r"\b(?:built|build|developed|implemented|created)\b|开发|构建|实现|搭建|完成",
-    "design": r"\b(?:designed|design)\b|设计",
+    # "design team", "design project": the noun, not something the student designed.
+    "design": r"\b(?:designed|design(?!\s+(?:teams?|groups?|projects?|courses?|class(?:es)?|competitions?|challenges?|studios?)\b))\b|设计",
     "review": r"\b(?:reviewed|review)\b|审阅|检查",
     "independent": r"\b(?:independently|solely|alone|sole)\b|独立|独自|单独",
 }
@@ -47,8 +48,11 @@ ACTION_GERUNDS = {
     "review": r"reviewing",
 }
 _GERUND_POSITION = re.compile(
-    r"(?:^|[,，]\s*|\b(?:responsible\s+for|in\s+charge\s+of|helped(?:\s+with)?|assisted\s+(?:with|in))\s+)"
+    r"(?:^|[,，]\s*|\b(?:responsible\s+for|in\s+charge\s+of|helped(?:\s+with)?|assisted\s+(?:with|in)"
+    r"|my\s+(?:part|role|job|task)s?\s+(?:was|were|is|are|included))\s+)"
     r"(?:(?:also|currently|still|personally|independently|jointly|actively)\s+)?(?P<word>[a-z]+ing)\b", re.I)
+# "wiring the logger and designing the battery": a gerund joined to a guarded one is guarded too.
+_GERUND_AND = re.compile(r"^[^,，;；]*?\b(?:and|or)\s+(?P<word>[a-z]+ing)\b", re.I)
 # Hoped-for, planned or tried work. Dropping the word turns it into work done.
 INTENT = re.compile(
     r"\b(?:aim(?:s|ed|ing)?|hop(?:e|es|ed|ing)|plan(?:s|ned|ning)?|tr(?:y|ies|ied|ying)|attempt(?:s|ed|ing)?"
@@ -224,11 +228,16 @@ def clauses(text):
 
 def _guarded_gerunds(clause):
     """Action families of the gerunds that are this clause's own action."""
-    found = set()
-    for match in _GERUND_POSITION.finditer(clause.strip()):
-        for name, pattern in ACTION_GERUNDS.items():
-            if re.fullmatch(pattern, match["word"], re.I):
-                found.add(name)
+    found, text = set(), clause.strip()
+    for match in _GERUND_POSITION.finditer(text):
+        words, rest = [match["word"]], text[match.end():]
+        while more := _GERUND_AND.match(rest):
+            words.append(more["word"])
+            rest = rest[more.end():]
+        for word in words:
+            for name, pattern in ACTION_GERUNDS.items():
+                if re.fullmatch(pattern, word, re.I):
+                    found.add(name)
     return found
 
 
@@ -240,7 +249,7 @@ def personal_actions(text, gerunds=False):
             continue
         # Résumé fragments with no subject are personal claims too.
         for name, pattern in ACTIONS.items():
-            if re.search(pattern, clause, re.I):
+            if any(not _team_relative(clause, match.start()) for match in re.finditer(pattern, clause, re.I)):
                 found.add(name)
         if gerunds:
             found |= _guarded_gerunds(clause)
@@ -354,12 +363,26 @@ def _team_attributed(clause):
     return _team_marked(clause) and not PERSONAL.search(_TEAM_OWNER.sub(" ", clause))
 
 
-def _action_objects(clause, after=0, before=None):
-    """(action family, object words) for each ACTIONS verb in ``clause``, EN or ZH."""
+# "... on a team that built X": the relative clause's doer is the team, whatever
+# the sentence's own subject.
+_TEAM_RELATIVE = re.compile(
+    r"\b(?:teams?|teammates|groups?|labmates|classmates)\s+(?:that|which|who)\s+(?:also\s+|then\s+)?$", re.I)
+
+
+def _team_relative(clause, start):
+    return bool(_TEAM_RELATIVE.search(clause[max(0, start - 60):start]))
+
+
+def _action_objects(clause, after=0, before=None, team_relative=False):
+    """(action family, object words) for each ACTIONS verb in ``clause``, EN or ZH.
+
+    Verbs whose doer is a team relative clause count only with team_relative=True.
+    """
     pairs = set()
     for name, pattern in ACTIONS.items():
         for match in re.finditer(pattern, clause, re.I):
-            if match.start() < after or (before is not None and match.start() >= before):
+            if (match.start() < after or (before is not None and match.start() >= before)
+                    or _team_relative(clause, match.start()) != team_relative):
                 continue
             rest = re.sub(r"^\s*(?:了|过)?", "", clause[match.end():])
             words = re.sub(r"\b(?:a|an|the|its|their)\b", " ", _OBJECT_END.split(rest, maxsplit=1)[0].lower())
@@ -378,6 +401,7 @@ def _moved_claims(proposed, original):
         # What a clause says before its denial is still asserted.
         (team if _team_attributed(clause) else affirmed).update(
             _action_objects(clause, before=denial.start() if denial else None))
+        team |= _action_objects(clause, team_relative=True)
     found = []
     for clause in clauses(proposed):
         denial = DENIAL.search(clause)

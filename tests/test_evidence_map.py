@@ -148,6 +148,21 @@ class TestLemma:
         assert em.personal_markers("I built it; my part; 本人负责；我们") == 3
 
 
+class TestEnvelope:
+    ROW = {"unit_id": "b1", "links": [], "decision": "keep", "ops": [], "text": None, "keep_reason": "no_link"}
+
+    def test_a_model_that_corrects_itself_is_read_by_its_last_answer(self):
+        first = json.dumps({"bullets": [{**self.ROW, "decision": "rewrite", "text": "x", "keep_reason": None}]})
+        second = json.dumps({"bullets": [self.ROW]})
+        raw = f"{first}\n\nWait, verb_first does not apply here. Let me correct this output.\n\n{second}"
+        assert em.parse_rows(raw, {"b1"}, key="bullets") == {"b1": self.ROW}
+        assert em.parse_rows(f"{second}\nThat is my answer.", {"b1"}, key="bullets") == {"b1": self.ROW}
+
+    @pytest.mark.parametrize("raw", ["no JSON at all", '{"units": []}', '{"bullets": {}}', '{"bullets": [], "extra": 1}'])
+    def test_an_unusable_reply_is_none(self, raw):
+        assert em.parse_rows(raw, {"b1"}, key="bullets") is None
+
+
 class TestLinks:
     def test_only_literal_links_survive_and_same_needs_a_shared_word(self):
         anchors = anchors_for(["Specific techniques include PCR and cloning", "Deep learning for imaging"])
@@ -198,6 +213,24 @@ class TestContract:
                "keep_reason": keep_reason}
         assert em.check_rewrite(unit, row, {}, output_language="en").status == "invalid"
         assert em.check_rewrite(unit, {**row, "extra": 1}, {}, output_language="en").status == "invalid"
+
+    def test_a_row_may_leave_out_the_fields_its_decision_makes_null(self):
+        anchors = anchors_for(["Python"])
+        unit = em.Unit("b1", "Wrote parser tests using Python.", "Wrote parser tests using Python.")
+        keep = {"unit_id": "b1", "decision": "keep"}
+        assert em.check_rewrite(unit, keep, anchors, output_language="en").code == "no_link"
+        rewrite = {"unit_id": "b1", "decision": "rewrite", "ops": [{"op": "lead_with", "link": "L1"}],
+                   "links": [{"id": "L1", "anchor": "t1", "term": "Python", "source": "Python", "relation": "same"}],
+                   "text": "Using Python, wrote parser tests."}
+        assert em.check_rewrite(unit, rewrite, anchors, output_language="en").status == "pending"
+
+    def test_an_unchanged_rewrite_is_a_keep(self):
+        # A model that "translates" a line already in the output language returns it as written.
+        unit = em.Unit("b1", "本人负责浊度和 pH 测定。", "本人负责浊度和 pH 测定。")
+        row = {"unit_id": "b1", "links": [], "decision": "rewrite", "ops": [{"op": "translate"}],
+               "text": " 本人负责浊度和 pH 测定。", "keep_reason": None}
+        outcome = em.check_rewrite(unit, row, {}, output_language="zh")
+        assert (outcome.status, outcome.code, outcome.detail) == ("kept", "cosmetic_only", "unchanged_text")
 
     def test_the_server_names_a_keep(self):
         anchors = anchors_for(["PCR genotyping of mutant lines", "Protein folding"])
