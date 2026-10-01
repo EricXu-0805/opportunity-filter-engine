@@ -20,7 +20,8 @@ export function importFailureKey(mode: 'url' | 'text', result: ImportUrlResponse
     return mode === 'url' ? 'import.errorPageTooLong' : 'import.errorTextTooLong';
   }
   if (result.error_code === 'import_source_unreadable') {
-    return result.error_reason === 'access_page' ? 'import.errorSourceBlocked' : 'import.errorSourceUnreadable';
+    if (result.error_reason === 'access_page') return 'import.errorSourceBlocked';
+    return result.error_reason === 'javascript_required' ? 'import.errorSourceScript' : 'import.errorSourceUnreadable';
   }
   if (mode === 'url' && result.error?.toLowerCase().includes('unsafe')) return 'import.errorUnsafe';
   return mode === 'url' ? 'import.errorFetch' : 'import.errorExtract';

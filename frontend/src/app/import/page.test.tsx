@@ -221,6 +221,33 @@ describe('ImportPage — actionable input errors', () => {
     await screen.findByText('Retried source');
   });
 
+  // A page its scripts have yet to fill ("Loading positions, this may take a
+  // few seconds...") used to be called a bot check; it needs JavaScript.
+  it('says a page needs JavaScript, keeps the link, and permits retry', async () => {
+    mockImportByUrl.mockResolvedValueOnce({
+      ok: false, error_code: 'import_source_unreadable', error_reason: 'javascript_required', llm_enriched: false,
+    });
+    mockImportByUrl.mockResolvedValueOnce({ ok: true, opportunity: { title: 'Retried source', extra_fields: {} }, llm_enriched: false });
+    render(<ImportPage />);
+    const input = screen.getByPlaceholderText('import.urlPlaceholder');
+    fireEvent.change(input, { target: { value: 'https://jobs.example.edu/positions' } });
+    fireEvent.click(screen.getByText('import.fetchButton'));
+    await screen.findByText('import.errorSourceScript');
+    expect(screen.queryByText('import.errorSourceBlocked')).toBeNull();
+    expect(screen.queryByText('import.errorSourceUnreadable')).toBeNull();
+    expect(input).toHaveValue('https://jobs.example.edu/positions');
+    fireEvent.click(screen.getByText('import.fetchButton'));
+    await screen.findByText('Retried source');
+  });
+
+  it('words the JavaScript message in both languages and points to pasting the text', async () => {
+    const { translate } = await import('@/i18n/translate');
+    expect(translate('en', 'import.errorSourceScript')).toMatch(/needs JavaScript/);
+    expect(translate('en', 'import.errorSourceScript')).toMatch(/"By text"/);
+    expect(translate('zh', 'import.errorSourceScript')).toMatch(/JavaScript/);
+    expect(translate('zh', 'import.errorSourceScript')).toMatch(/“按文本”/);
+  });
+
   // access_page also covers a posting that is gone: a site answering 200 with
   // "Page not found", "404 Error" or "Service Unavailable". The message has to
   // name that case and ask for the text only if the posting opens.

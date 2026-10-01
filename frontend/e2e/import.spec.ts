@@ -67,6 +67,31 @@ test.describe('Import by URL', () => {
     await expect(page.getByRole('button', { name: /Save in this browser/i })).toHaveCount(0);
   });
 
+  // A page whose scripts have yet to fill it ("Loading positions, this may take
+  // a few seconds...") used to be called a bot check. It needs JavaScript.
+  test('says the page needs JavaScript, and keeps the link', async ({ page }) => {
+    await page.route('**/api/import-url', (route: Route) =>
+      route.fulfill({
+        status: 422,
+        contentType: 'application/json',
+        body: JSON.stringify({ detail: {
+          code: 'import_source_unreadable',
+          reason: 'javascript_required',
+          message: 'The page text requires JavaScript. Paste the complete opportunity text.',
+          retryable: false,
+        } }),
+      }),
+    );
+    const link = 'https://jobs.example.edu/positions';
+    await page.goto('/import');
+    await page.getByPlaceholder('https://...').fill(link);
+    await page.getByRole('button', { name: /Fetch & parse/i }).click();
+    await expect(page.getByText(/needs JavaScript to show the posting/i)).toBeVisible();
+    await expect(page.getByText(/bot-check/i)).toHaveCount(0);
+    await expect(page.getByPlaceholder('https://...')).toHaveValue(link);
+    await expect(page.getByRole('button', { name: /Save in this browser/i })).toHaveCount(0);
+  });
+
   test('renders extracted opportunity card on success', async ({ page }) => {
     await page.route('**/api/import-url', (route: Route) =>
       route.fulfill({
