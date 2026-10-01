@@ -49,6 +49,7 @@ DATE_COLUMNS = 36  # Longer date text stays in its row instead of the right marg
 # line breaks, and in the DOCX any tab in the row jumps to that margin's tab stop.
 DATE_BREAKS = frozenset('\r\n\t')
 PDF_STYLES = {'name': (18, 8), 'heading': (12, 6), 'body': (10.5, 5.3)}
+PAGE_SLACK = 1e-6  # mm. The same heights summed in another order can round apart.
 DOCX_SIZES = {'name': 18, 'heading': 12, 'body': 10.5}
 
 
@@ -324,7 +325,14 @@ def render_pdf(projection, assets, deadline=None):
                 return False
         return True
 
-    for index, item in enumerate(layout(projection)):
+    def above(item, index):
+        return 3 if item.style == 'heading' and index else 0
+
+    def below(item):
+        return 1.8 if item.style == 'heading' else 2.6 if item.end else 0.6
+
+    items, rows = layout(projection), []
+    for item in items:
         check_deadline(deadline)
         size, leading = PDF_STYLES[item.style]
         pdf.set_font('ResumeSans', size=size)
@@ -335,12 +343,32 @@ def render_pdf(projection, assets, deadline=None):
             # Dates beside a long head would squeeze it: they end its row instead.
             text, right, width = text + SEPARATOR + right, '', 0
             height = pdf.multi_cell(0, leading, text, align='L', dry_run=True, output=MethodReturnValue.HEIGHT)
-        # A heading or role row never ends a page without the line after it.
-        if (item.keep or right) and pdf.will_page_break(height + (PDF_STYLES['body'][1] if item.keep else 0)) \
-                and pdf.get_y() > pdf.t_margin:
+        rows.append((text, right, width, height))
+    # The room each row needs left on its page, counted from the gap above it:
+    # all of a heading, role row or row with dates at its right; else its first
+    # line. A heading or role row also needs the gap below it and what the next
+    # row needs, or only that row's first line when no page can hold it all.
+    room = pdf.page_break_trigger - pdf.t_margin
+    needs, firsts = [0.0] * len(items), [0.0] * len(items)
+    for index in reversed(range(len(items))):
+        item, (_text, right, _width, height) = items[index], rows[index]
+        firsts[index] = above(item, index) + PDF_STYLES[item.style][1]
+        needs[index] = above(item, index) + height if item.keep or right else firsts[index]
+        if item.keep and index + 1 < len(items):
+            needs[index] += below(item) + (needs[index + 1] if needs[index + 1] <= room else firsts[index + 1])
+
+    for index, (item, (text, right, width, _height)) in enumerate(zip(items, rows, strict=True)):
+        check_deadline(deadline)
+        size, leading = PDF_STYLES[item.style]
+        pdf.set_font('ResumeSans', size=size)
+        # Keep a heading or role row with the line after it: move it to the next
+        # page when the rest of this one cannot hold what it needs and an empty
+        # page can.
+        if (item.keep or right) and pdf.get_y() > pdf.t_margin and pdf.will_page_break(needs[index] + PAGE_SLACK) \
+                and needs[index] <= room:
             pdf.add_page()
-        elif item.style == 'heading' and index:
-            pdf.ln(3)
+        elif above(item, index):
+            pdf.ln(above(item, index))
         links = [link for _piece, link in item.pieces if link]
         if links and len(item.pieces) > 1:
             # A row alternates items and separators (joined()). It breaks between
@@ -370,9 +398,7 @@ def render_pdf(projection, assets, deadline=None):
         check_deadline(deadline)
         if item.style == 'heading':
             pdf.line(pdf.l_margin, pdf.get_y() + 0.4, pdf.l_margin + pdf.epw, pdf.get_y() + 0.4)
-            pdf.ln(1.8)
-        else:
-            pdf.ln(2.6 if item.end else 0.6)
+        pdf.ln(below(item))
     check_deadline(deadline)
     data = bytes(pdf.output())
     check_deadline(deadline)

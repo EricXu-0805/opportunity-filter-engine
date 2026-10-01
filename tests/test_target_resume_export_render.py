@@ -174,6 +174,77 @@ def test_a_tab_or_line_break_in_an_entry_row_keeps_its_dates_in_the_row(lines, r
     assert not entry.paragraph_format.tab_stops
 
 
+def kept_rows(page_size, case, lines, paragraphs, blocks=1, title='Research Assistant'):
+    """Page 1: a name, 'Experience' and `lines` filler lines in `paragraphs` paragraphs and `blocks` blocks.
+    Then the rows of `case`."""
+    def block(*fields):
+        return {'lines': [{'role': role, 'label': '', 'text': text} for role, text in fields]}
+    sizes = [lines // paragraphs + (index < lines % paragraphs) for index in range(paragraphs)]
+    role = block(('title', title), ('organization', 'Vision Lab'), ('start', 'Jan 2026'), ('end', 'Present'),
+                 ('experience', 'Built the data pipeline.\nWrote its tests.'))
+    experience = [block(*[('experience', '\n'.join(['Filler line'] * size)) for size in sizes[start::blocks]])
+                  for start in range(blocks)]
+    sections = [{'kind': 'basics', 'heading': '', 'blocks': [block(('name', 'Jordan Lee'))]},
+                {'kind': 'activities', 'heading': '', 'blocks': experience}]
+    if case == 'role':
+        experience.append(role)
+    elif case == 'heading':
+        sections.append({'kind': 'skills', 'heading': '', 'blocks': [block(('skill', 'Python')), block(('skill', 'SQL'))]})
+    else:
+        sections.append({'kind': 'activities', 'heading': 'Leadership', 'blocks': [role]})
+    return {'version': 1, 'template': 'standard-v1', 'locale': 'en', 'page_size': page_size, 'sections': sections}
+
+
+# Only the first line after a heading or role row keeps with it: 'Wrote its tests.' may start the next page.
+KEPT_ROWS = {'role': ['Research Assistant · Vision Lab Jan 2026 – Present', 'Built the data pipeline.'],
+             'heading': ['Skills', 'Python, SQL'],
+             'chain': ['Leadership', 'Research Assistant · Vision Lab Jan 2026 – Present', 'Built the data pipeline.']}
+
+
+def pdf_pages(data):
+    return [page.extract_text().splitlines() for page in pdf_reader(data).pages]
+
+
+def together(rows, page):
+    return rows in [page[start:start + len(rows)] for start in range(len(page))]
+
+
+@pytest.mark.parametrize('page_size,case,lines,paragraphs', [
+    # Room left on page 1, then with one more paragraph break in the filler. A role row, the 0.6 mm
+    # gap and its first bullet line need 11.2 mm. A 6 mm heading needs 3 mm above it and 1.8 mm below
+    # its rule, then one row: 16.1 mm. That heading, then the role row and its bullet: 22.0 mm.
+    ('letter', 'role', 40, 4),  # 11.6, then 11.0 mm
+    ('letter', 'heading', 39, 5),  # 16.3, then 15.7 mm
+    ('letter', 'chain', 38, 4),  # 22.2, then 21.6 mm
+    ('a4', 'role', 43, 7),  # 11.5, then 10.9 mm
+    ('a4', 'heading', 42, 8),  # 16.2, then 15.6 mm
+    ('a4', 'chain', 41, 7),  # 22.1, then 21.5 mm
+])
+def test_pdf_heading_or_role_row_starts_a_page_with_the_line_after_it(page_size, case, lines, paragraphs):
+    # 2026-09-30 review: the check left out the gaps printed around a row, so 'Skills' or a role row could end
+    # page 1 with its next line on page 2; and a heading stayed while the role row after it moved.
+    for breaks, page in ((paragraphs, 0), (paragraphs + 1, 1)):
+        pages = pdf_pages(renderer.render_export(kept_rows(page_size, case, lines, breaks), 'pdf'))
+        # With room for them the rows stay on page 1, else they open page 2 together.
+        assert together(KEPT_ROWS[case], pages[page]), pages
+
+
+def test_pdf_rows_that_need_exactly_the_room_left_stay_together():
+    # The filler leaves exactly the 22.0 mm that 'Leadership', its role row and the bullet need on Letter.
+    # The same heights summed in another order rounded apart: the heading's check found 241.4 + 22.0 = 263.4,
+    # the page's limit, but the role row's check then found 252.20000000000002 + 11.2, just past it. The role
+    # row moved and 'Leadership' ended page 1.
+    pages = pdf_pages(renderer.render_export(kept_rows('letter', 'chain', 34, 33, blocks=3), 'pdf'))
+    assert any(together(KEPT_ROWS['chain'], page) for page in pages), pages
+
+
+def test_pdf_heading_keeps_with_a_role_row_taller_than_a_page():
+    # No page holds this role row, so it starts where it is, and its heading keeps with its first line.
+    title = '\n'.join(f'Title line {number}' for number in range(60))
+    pages = pdf_pages(renderer.render_export(kept_rows('letter', 'chain', 39, 6, title=title), 'pdf'))  # 15.7 mm left
+    assert pages[0][-1] == 'Filler line' and pages[1][:2] == ['Leadership', 'Title line 0'], pages
+
+
 def pdf_reader(data):
     from pypdf import PdfReader
     return PdfReader(io.BytesIO(data), strict=True)
