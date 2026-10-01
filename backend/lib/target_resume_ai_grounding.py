@@ -775,7 +775,27 @@ def actor_changed(proposed, original):
 # Each qualifier stays on its action: "I helped design X and cleaned Y" ->
 # "Designed X and helped clean Y" moves the help. A qualifier binds to the next
 # verb in its clause (a span word to the next word or number); "alone" binds to
-# the verb before it.
+# the verb before it. Shared credit ("with two teammates", "jointly", 与组员一起)
+# binds to its action, and a publication status to the work it describes.
+_TEAM_WITH = re.compile(
+    r"\b(?:together\s+)?(?:with|alongside)\s+(?:(?:my|our|the|other|a|an|another|fellow|several|one|two|three|four"
+    r"|five|six|\d+)\s+)?(?:(?:research|lab|project|fellow|other)\s+)?(?:team(?:mates?)?|colleagues?|classmates?"
+    r"|lab\s*mates?|lab\s+partners?|partners?|peers?|group\s*mates?|friends?|roommates?)\b"
+    r"|\b(?:jointly|collectively|cooperatively|collaboratively)\b"
+    r"|(?:与|和|同|跟)[^，,。；;、]{1,12}?(?:一起|共同|合作)", re.I)
+# Each publication status is its own family, so a swap between two works shows.
+# Pre-verbal ones ("currently", 正在, 计划) are status_upgraded's and intent's.
+_STATUS_CLASSES = {
+    "submitted": r"\b(?:submitted|submission)\b|投稿|提交|在投",
+    "under_review": r"\bunder\s+review\b|审稿|评审",
+    "accepted": r"\b(?:accepted|acceptance)\b|录用",
+    "published": r"\b(?:published|publication)\b|发表|出版",
+    "preprint": r"\bpreprints?\b|预印本",
+    "rejected": r"\brejected\b|拒稿",
+    "withdrawn": r"\bwithdrawn\b|撤稿",
+    "unfinished": r"\b(?:in\s+preparation|in\s+progress|ongoing|on-going|not\s+yet|pending|forthcoming|upcoming"
+                  r"|under\s+(?:revision|development))\b|撰写中|准备中|进行中|筹备中|待发表|未完成",
+}
 _QUALIFIERS = {
     "help": (HELP, "verb"),
     "negation": (re.compile(r"\b(?:not|never|didn['’]t|no\s+longer)\b|没有|并非|尚未|从未|未(?!来|知)"
@@ -784,17 +804,71 @@ _QUALIFIERS = {
     "solo": (re.compile(r"\b(?:alone|independently|single-handedly|by\s+myself|on\s+my\s+own)\b", re.I), "previous"),
     "solo_zh": (re.compile(r"独立|独自|单独"), "verb"),
     "span": (re.compile(r"\b(?:about|approximately|approx\.?|roughly|nearly|almost|around|over|more\s+than|less\s+than"
-                        r"|at\s+least|at\s+most|up\s+to)\b|约|大约|将近|超过|至少", re.I), "next"),
+                        r"|at\s+least|at\s+most|up\s+to|since|until|per)\b|约|大约|将近|超过|至少", re.I), "next"),
     "intent": (INTENT, "verb"),
+    "team": (_TEAM_WITH, "action"),
+    **{f"status_{name}": (re.compile(pattern, re.I), "object") for name, pattern in _STATUS_CLASSES.items()},
 }
 _NEXT_TOKEN = re.compile(r"\d+(?:[.,]\d+)*%?|[A-Za-z]+(?:-[A-Za-z]+)*|[\u4e00-\u9fff]")
+# "Collaborated with two teammates to build X": the team is on the build.
+_CO_ACTIONS = frozenset({"collaborate", "work"})
+_NOUN_END = re.compile(_OBJECT_END.pattern + r"|[(（]", re.I)
+_NOT_HEAD = frozenset({"a", "an", "the", "its", "their", "his", "her", "my", "our", "this", "that", "these", "those",
+                       "another", "one", "two", "three", "not", "yet", "also"})
+_ZH_LEAD = re.compile(r"^(?:了|过|的|另有|还有|有|另|已经|已|一(?:篇|个|份|项|部|本)|[篇个份项部本])+")
+_ZH_TAIL = re.compile(r"(?:了|过|的|已经|已|正在|在|中)+$")
+
+
+def _action_target(verbs, match, sentence_verbs, offset, *, co_action=False):
+    """The action a qualifier belongs to: the verb before it in its clause, else the next one in its sentence.
+
+    With ``co_action``, "collaborated with" or "worked with" hands shared credit
+    on to the verb that follows.
+    """
+    before = [verb for position, verb in verbs if position < match.start()]
+    if before and not (co_action and before[-1] in _CO_ACTIONS):
+        return before[-1]
+    after = [verb for position, verb in sentence_verbs if position >= offset + match.end()]
+    if after:
+        return after[0]
+    earlier = [verb for position, verb in sentence_verbs if position < offset + match.start()]
+    return earlier[-1] if earlier else None
+
+
+def _noun_head(text):
+    words = [word.casefold() for word in _WORD.findall(_NOUN_END.split(text, maxsplit=1)[0])]
+    words = [word for word in words if word not in _NOT_HEAD and not any(
+        re.fullmatch(pattern, word, re.I) for pattern in _STATUS_CLASSES.values())]
+    if not words:
+        return None
+    head = words[-1]
+    return head[:-1] if len(head) > 3 and head.endswith("s") else head
+
+
+def _status_target(clause, match, verbs):
+    """The work a publication status describes: the object of its clause's first verb, else its first noun."""
+    if _CJK.search(match.group(0)):
+        after = _ZH_LEAD.sub("", re.match(r"[\u4e00-\u9fff]*", clause[match.end():]).group(0))
+        if after:
+            return after[:4]
+        before = re.search(r"[\u4e00-\u9fff]*$", clause[:match.start()]).group(0)
+        return _ZH_LEAD.sub("", _ZH_TAIL.sub("", before))[-4:] or None
+    first = next((position for position, verb in verbs if position <= match.start()), None)
+    if first is None:
+        return _noun_head(_CLAUSE_LEAD.sub("", clause))
+    verb = _WORD.match(clause, first)
+    # "Paper submitted to CHI 2026": nothing after the verb names the work.
+    return _noun_head(clause[verb.end() if verb else first:]) or _noun_head(clause[:first])
 
 
 def _qualifier_bindings(text):
     found = []
     for sentence_start, sentence_end in _pieces(text, _SENTENCE_BREAK):
         sentence = text[sentence_start:sentence_end]
-        for clause_start, clause_end in _pieces(sentence, _CLAUSE_BREAK):
+        pieces = _pieces(sentence, _CLAUSE_BREAK)
+        sentence_verbs = [(clause_start + position, verb) for clause_start, clause_end in pieces
+                          for position, verb in _verbs(sentence[clause_start:clause_end])]
+        for clause_start, clause_end in pieces:
             clause = sentence[clause_start:clause_end]
             verbs = _verbs(clause)
             for family, (pattern, binds) in _QUALIFIERS.items():
@@ -805,6 +879,10 @@ def _qualifier_bindings(text):
                     elif binds == "next":
                         token = _NEXT_TOKEN.search(clause, match.end())
                         target = token.group(0).casefold() if token else None
+                    elif binds == "action":
+                        target = _action_target(verbs, match, sentence_verbs, clause_start, co_action=True)
+                    elif binds == "object":
+                        target = _status_target(clause, match, verbs)
                     else:
                         after = [verb for position, verb in verbs if position >= match.end()]
                         target = after[0] if after else None
@@ -812,10 +890,47 @@ def _qualifier_bindings(text):
     return sorted(found, key=str)
 
 
+_DURATION = re.compile(r"\b(?:since|until|till)\b", re.I)
+
+
+def _duration_bindings(text):
+    """((word, time), verb) for each since/until: the verb before it in its clause, else the next one."""
+    found = []
+    for sentence_start, sentence_end in _pieces(text, _SENTENCE_BREAK):
+        sentence = text[sentence_start:sentence_end]
+        pieces = _pieces(sentence, _CLAUSE_BREAK)
+        sentence_verbs = [(clause_start + position, verb) for clause_start, clause_end in pieces
+                          for position, verb in _verbs(sentence[clause_start:clause_end])]
+        for clause_start, clause_end in pieces:
+            clause = sentence[clause_start:clause_end]
+            for match in _DURATION.finditer(clause):
+                token = _NEXT_TOKEN.search(clause, match.end())
+                key = (match.group(0).casefold(), token.group(0).casefold() if token else None)
+                found.append((key, _action_target(_verbs(clause), match, sentence_verbs, clause_start)))
+    return found
+
+
+def _duration_moved(proposed, original):
+    """"Tutored 30 students since 2024; graded exams in 2023" -> "Graded exams since 2024; ...".
+
+    Only verbs both texts keep are compared: a verb-first rewrite that drops
+    "Worked" may carry "since January 2026" to the line's end.
+    """
+    before, after = _duration_bindings(original), _duration_bindings(proposed)
+    kept = set(action_actors(original)) & set(action_actors(proposed))
+    for key in {key for key, _ in before} & {key for key, _ in after}:
+        old = sorted(verb for item, verb in before if item == key and verb in kept)
+        new = sorted(verb for item, verb in after if item == key and verb in kept)
+        if old and new and old != new:
+            return True
+    return False
+
+
 def qualifier_moved(proposed, original):
     before, after = _qualifier_bindings(original), _qualifier_bindings(proposed)
     families = {family for family, _ in before} & {family for family, _ in after}
-    return [pair for pair in before if pair[0] in families] != [pair for pair in after if pair[0] in families]
+    return ([pair for pair in before if pair[0] in families] != [pair for pair in after if pair[0] in families]
+            or _duration_moved(proposed, original))
 
 
 def _leadership(text, name):

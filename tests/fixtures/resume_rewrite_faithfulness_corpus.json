@@ -710,6 +710,51 @@
    "original": "Helped a PhD student test about 40 water samples with qPCR.",
    "rewrite": "协助一名博士生用 qPCR 检测了约 40 份水样。",
    "kind": "faithful translation"
+  },
+  {
+   "original": "Co-wrote a conference paper on soft robots (accepted) and a journal manuscript on grippers (in preparation).",
+   "rewrite": "Co-wrote a journal manuscript on grippers (in preparation) and a conference paper on soft robots (accepted).",
+   "kind": "reordered; each status kept on its work"
+  },
+  {
+   "original": "Submitted a poster on EEG artifacts to the 2025 SfN meeting and drafted a paper on sleep spindles (not yet submitted).",
+   "rewrite": "Drafted a paper on sleep spindles (not yet submitted) and submitted a poster on EEG artifacts to the 2025 SfN meeting.",
+   "kind": "reordered; each status kept on its work"
+  },
+  {
+   "original": "发表了一篇会议论文，另有一篇期刊论文撰写中。",
+   "rewrite": "另有一篇期刊论文撰写中；发表了一篇会议论文。",
+   "kind": "reordered; each status kept on its work"
+  },
+  {
+   "original": "会议论文已录用，期刊论文撰写中。",
+   "rewrite": "期刊论文撰写中，会议论文已录用。",
+   "kind": "reordered; each status kept on its work"
+  },
+  {
+   "original": "Tutored 30 students weekly since 2024 and graded exams in 2023.",
+   "rewrite": "Graded exams in 2023 and tutored 30 students weekly since 2024.",
+   "kind": "reordered; each duration kept on its action"
+  },
+  {
+   "original": "与组员一起搭建了小车底盘，编写了电机控制程序。",
+   "rewrite": "编写了电机控制程序，与组员一起搭建了小车底盘。",
+   "kind": "reordered; the team kept on its action"
+  },
+  {
+   "original": "Jointly designed the survey and analyzed the results.",
+   "rewrite": "Analyzed the results and jointly designed the survey.",
+   "kind": "reordered; the team kept on its action"
+  },
+  {
+   "original": "Built the rover chassis with two teammates and wrote the motor control code.",
+   "rewrite": "Wrote the motor control code and built the rover chassis with two teammates.",
+   "kind": "reordered; the team kept on its action"
+  },
+  {
+   "original": "Collaborated with two classmates to build a weather station and wrote its data logger in Python.",
+   "rewrite": "Wrote the data logger in Python and, with two classmates, built a weather station.",
+   "kind": "reordered; the team kept on its action"
   }
  ],
  "unfaithful": [
@@ -1318,8 +1363,7 @@
   {
    "original": "Worked 10 hours per week in a yeast genetics lab since January 2026, running PCR genotyping and maintaining strain stocks.",
    "rewrite": "Worked 10 hours per week in a yeast genetics lab in January 2026, running PCR genotyping and maintaining strain stocks.",
-   "kind": "duration changed (since -> in)",
-   "caught": "review"
+   "kind": "duration changed (since -> in)"
   },
   {
    "original": "Helped the TA grade weekly quizzes and wrote the answer keys.",
@@ -1644,6 +1688,41 @@
    "kind": "translation appends relevance",
    "caught": "contract",
    "case": "ZH to EN appends relevance"
+  },
+  {
+   "original": "Co-wrote a conference paper on soft robots (accepted) and a journal manuscript on grippers (in preparation).",
+   "rewrite": "Co-wrote a journal manuscript on grippers (accepted) and a conference paper on soft robots (in preparation).",
+   "kind": "publication status moved to another work"
+  },
+  {
+   "original": "Submitted a poster on EEG artifacts to the 2025 SfN meeting and drafted a paper on sleep spindles (not yet submitted).",
+   "rewrite": "Drafted a paper on sleep spindles and submitted a poster on EEG artifacts to the 2025 SfN meeting (not yet submitted).",
+   "kind": "publication status moved to another work"
+  },
+  {
+   "original": "发表了一篇会议论文，另有一篇期刊论文撰写中。",
+   "rewrite": "期刊论文发表了一篇，另有一篇会议论文撰写中。",
+   "kind": "publication status moved to another work"
+  },
+  {
+   "original": "会议论文已录用，期刊论文撰写中。",
+   "rewrite": "期刊论文已录用，会议论文撰写中。",
+   "kind": "publication status moved to another work"
+  },
+  {
+   "original": "Tutored 30 students weekly since 2024 and graded exams in 2023.",
+   "rewrite": "Graded exams weekly since 2024 and tutored 30 students in 2023.",
+   "kind": "duration moved to another action"
+  },
+  {
+   "original": "与组员一起搭建了小车底盘，编写了电机控制程序。",
+   "rewrite": "与组员一起编写了电机控制程序，搭建了小车底盘。",
+   "kind": "team qualifier moved to another action"
+  },
+  {
+   "original": "Jointly designed the survey and analyzed the results.",
+   "rewrite": "Designed the survey and jointly analyzed the results.",
+   "kind": "team qualifier moved to another action"
   }
  ]
 }

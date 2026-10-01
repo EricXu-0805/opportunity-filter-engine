@@ -483,6 +483,22 @@ class TestLockChangesForEvidenceMappedRewrites:
         ("With two teammates, built the rover chassis; wrote the control code alone.",
          "Built the rover chassis alone; wrote the control code with two teammates."),
         ("协助博士生设计了实验方案，本人独立完成了数据录入。", "本人独立设计了实验方案，协助博士生完成了数据录入。"),
+        # A publication status stays on its own work.
+        ("Co-wrote a conference paper on soft robots (accepted) and a journal manuscript on grippers (in preparation).",
+         "Co-wrote a journal manuscript on grippers (accepted) and a conference paper on soft robots (in preparation)."),
+        ("Submitted a poster on EEG artifacts to the 2025 SfN meeting and drafted a paper on sleep spindles (not yet "
+         "submitted).", "Drafted a paper on sleep spindles and submitted a poster on EEG artifacts to the 2025 SfN "
+                        "meeting (not yet submitted)."),
+        ("发表了一篇会议论文，另有一篇期刊论文撰写中。", "期刊论文发表了一篇，另有一篇会议论文撰写中。"),
+        ("会议论文已录用，期刊论文撰写中。", "期刊论文已录用，会议论文撰写中。"),
+        # A duration stays on its action.
+        ("Tutored 30 students weekly since 2024 and graded exams in 2023.",
+         "Graded exams weekly since 2024 and tutored 30 students in 2023."),
+        # Shared credit stays on its action.
+        ("与组员一起搭建了小车底盘，编写了电机控制程序。", "与组员一起编写了电机控制程序，搭建了小车底盘。"),
+        ("Jointly designed the survey and analyzed the results.", "Designed the survey and jointly analyzed the results."),
+        ("Built the rover chassis with two teammates and wrote the motor control code.",
+         "Wrote the motor control code with two teammates and built the rover chassis."),
     ])
     def test_a_qualifier_moved_to_another_action_is_hard(self, original, proposed):
         assert "qualifier_moved" in claim_upgrade_findings(proposed, original)[0]
