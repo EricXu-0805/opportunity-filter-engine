@@ -447,6 +447,22 @@ describe('résumé master candidates proposed from the résumé text', () => {
     ]);
   });
 
+  it('takes a role row only from a row of names when the section has no glyph bullets', async () => {
+    // Graphic list markers leave no glyph: a short point with a comma or a
+    // role word in it ("mentors") is still a point, not the next role.
+    const raw = ['Jordan Lee', 'EXPERIENCE', 'Research Assistant, Health Imaging Lab - Jan 2026 - Present',
+      'Built a PyTorch pipeline that preprocesses 12,000 chest X-ray images and reports AUC.',
+      'Built dashboards with Python, SQL', 'Presented weekly progress updates to the PI and two graduate mentors',
+      'Python, SQL, Tableau',
+      'Teaching Assistant, CS 225 Data Structures', 'Graded weekly assignments for 180 students',
+      'Grader - Aug 2023 - May 2024', 'Checked weekly problem sets for two sections'].join('\n');
+    expect(values(proposeResumeMaster(null, raw, await sourceDigest(raw))).activities).toEqual([
+      { kind: 'research', title: 'Research Assistant', organization: 'Health Imaging Lab', start: 'Jan 2026', end: 'Present' },
+      { kind: 'employment', title: 'Teaching Assistant', organization: 'CS 225 Data Structures' },
+      { kind: 'employment', title: 'Grader', start: 'Aug 2023', end: 'May 2024' },
+    ]);
+  });
+
   it('reads Title Case section titles joined by "&" as headings', async () => {
     const raw = ['Jordan Lee', 'Experience & Leadership', 'President, Chess Club - Aug 2024 - Present', '- Organized weekly tournaments.',
       'Research & Projects', 'Campus Bus Tracker - React and Flask web app used by about 200 students during Fall 2025.',

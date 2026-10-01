@@ -371,6 +371,17 @@ const FIELD = /^(?:,\s*|\s+in\s+|\s+of\s+|\s+)((?:[\p{Lu}][\p{L}&'-]*)(?:\s+(?:(
 const NOT_A_FIELD = new RegExp(String.raw`^(?:${MONTH}|Spring|Summer|Fall|Autumn|Winter|Expected|Class|GPA|Minor|Honors|Present)\b`, 'u');
 const ROLE = /\b(?:intern|assistant|engineer|researcher|developer|analyst|manager|lead|leader|fellow|tutor|consultant|scientist|coordinator|director|president|officer|volunteer|member|designer|associate|specialist|technician|founder|chair|captain|mentor|instructor|grader|programmer|trainee|editor|writer)s?\b/iu;
 const FIELD_SEPARATOR = /\t|\s[|–—]\s|\s-\s|,\s|\s(?:at|@)\s/u;
+const JOINERS = new Set(['of', 'and', '&', 'for', 'the', 'in', 'at', 'on', 'de', 'la']);
+
+/** A row of names: every field is a few words that start with a capital or
+ *  a digit, joined by small words ("Teaching Assistant, CS 225 Data
+ *  Structures", "Department of Computer Science"). */
+function namesRow(text: string): boolean {
+  return text.split(FIELD_SEPARATOR).every((field) => {
+    const words = field.trim().split(/\s+/u);
+    return words.length <= 6 && words.every((word) => JOINERS.has(word) || /^[^\p{L}\p{N}]*[\p{Lu}\p{N}]/u.test(word));
+  });
+}
 const SKILL_LABEL = /^[\p{L} &/]{2,30}:\s*/u;
 // "School: …" / "学校: …" rows, as this product's own résumé export prints them.
 const LABELLED = /^\s*([\p{L}][\p{L} /-]{0,28}?)\s*[:：]\s*(\S.*?)\s*$/u;
@@ -467,11 +478,21 @@ export function proposeResumeMaster(value: unknown, rawText: string, signature: 
     return item;
   };
 
+  // Sections that mark their points with glyph bullets. In the others a
+  // point has no glyph, so a short line with a comma or a role word in it is
+  // as likely a point as a role row.
+  const sectionOf: number[] = [];
+  const glyphSections = new Set<number>();
+  lines.forEach((line, index) => {
+    sectionOf[index] = (sectionOf[index - 1] ?? 0) + (resumeSectionHeading(line.text.trim()) ? 1 : 0);
+    if (BULLET_LINE.test(line.text)) glyphSections.add(sectionOf[index]);
+  });
+
   let section: { kind: ResumeSectionKind; heading: string } | null = null;
   let current: ProposedItem | null = null;
   let headerOpen = false;
   let opening = true;
-  for (const line of lines) {
+  for (const [index, line] of lines.entries()) {
     const text = line.text.trim();
     if (!text) continue;
     // The first line names the student, even when it is set in capitals,
@@ -555,7 +576,9 @@ export function proposeResumeMaster(value: unknown, rawText: string, signature: 
     } else if (role) {
       const project = section.kind === 'projects';
       const range = DATE_RANGE.test(line.text);
-      if (current && headerOpen && !project && words <= 12 && !sentence && !(range && current.fields.start)) {
+      const glyphs = glyphSections.has(sectionOf[index]);
+      if (current && headerOpen && !project && words <= 12 && !sentence && !(range && current.fields.start)
+        && (glyphs || range || namesRow(text))) {
         // A second header row: the organization, place or dates of the same role.
         dates(line, current, false);
         const trailing = TRAILING_PLACE.exec(line.text);
@@ -569,7 +592,8 @@ export function proposeResumeMaster(value: unknown, rawText: string, signature: 
       // else (an accomplishment sentence) stays with the experience library.
       const header = range || (words <= 12 && !sentence && (project
         ? /\t|\s[-–—|:]\s/u.test(line.text) || words <= 8
-        : ROLE.test(text) || FIELD_SEPARATOR.test(text)))
+        : glyphs ? ROLE.test(text) || FIELD_SEPARATOR.test(text)
+          : namesRow(text) && text.split(FIELD_SEPARATOR).slice(0, 2).some((field) => ROLE.test(field))))
         || (project && words > 12 && /^[^\t]{1,80}?\s[-–—|:]\s/u.test(line.text) && !/^\p{Ll}/u.test(text));
       if (!header) {
         headerOpen = false;
