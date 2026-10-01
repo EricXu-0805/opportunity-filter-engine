@@ -9,13 +9,17 @@ no network. Invariants pinned:
   * 'dismissed' transitions are not contacts
   * the map is cached in-process (~1h) — one Supabase fetch per TTL
   * a failed fetch is cached too (short backoff) — no per-request retry storm
+  * every worker holds the same map at the same moment: the map counts what
+    was logged before an epoch-aligned window began, whenever it was fetched
   * ranker bonus defaults to 2.0 (OFE_RESPONSIVENESS_BONUS=0 disables), clamped ≤ 3
 """
 
 from __future__ import annotations
 
+import asyncio
 import os
 import sys
+from datetime import datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -98,6 +102,7 @@ def _install_httpx_stub(monkeypatch, rows, calls=None):
 def _fresh_cache(monkeypatch):
     monkeypatch.setattr(resp_mod, "_cache", None)
     monkeypatch.setattr(resp_mod, "_cache_time", 0.0)
+    monkeypatch.setattr(resp_mod, "_retry_at", 0.0)
 
 
 class TestAggregationEndpoint:
@@ -184,6 +189,123 @@ class TestAggregationEndpoint:
         assert first.json()["signals"] == {}
         client.get("/api/opportunities/responsiveness")
         assert len(calls) == 1
+
+
+
+class _Clock:
+    """A settable wall clock standing in for one module's ``time``."""
+
+    def __init__(self, now: float):
+        self.now = now
+
+    def time(self) -> float:
+        return self.now
+
+
+# The top of an hour. Signals windows are aligned to the epoch, not to the
+# moment a worker happened to fetch.
+_WINDOW_START = 1_790_791_200.0
+
+
+def _logged(opp, dev, to_status, changed_at):
+    return {**_row(opp, dev, to_status), "changed_at": changed_at}
+
+
+def _install_status_log(monkeypatch, rows, clock):
+    """Supabase's interaction_status_changes log, growing as the clock moves.
+
+    A row exists once the clock has reached its ``changed_at`` (epoch
+    seconds), and a ``changed_at=lt.<ISO time>`` filter applies the way
+    PostgREST applies it. The clock also becomes the module's wall clock.
+    """
+
+    class _Resp:
+        def __init__(self, data):
+            self._data = data
+
+        def json(self):
+            return self._data
+
+        def raise_for_status(self):
+            return None
+
+    class _Client:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+        async def get(self, url, **kwargs):
+            params = kwargs.get("params", {})
+            logged = [row for row in rows if row["changed_at"] <= clock.now]
+            bound = params.get("changed_at")
+            if bound is not None:
+                operator, _, value = bound.partition(".")
+                assert operator == "lt", bound
+                cutoff = datetime.fromisoformat(value).timestamp()
+                logged = [row for row in logged if row["changed_at"] < cutoff]
+            offset = int(params.get("offset", 0))
+            return _Resp([
+                {key: row[key] for key in ("opportunity_id", "device_id", "to_status")}
+                for row in logged[offset:offset + resp_mod._PAGE_SIZE]
+            ])
+
+    import httpx
+    monkeypatch.setattr(httpx, "AsyncClient", _Client)
+    monkeypatch.setattr(resp_mod, "time", clock)
+
+
+def _window_rows(opp="opp-late"):
+    """Two contacts before the window; the third device's reply 10 min into it."""
+    before = _WINDOW_START - 600
+    return [
+        _logged("opp-hot", "d1", "applied", before),
+        _logged("opp-hot", "d2", "applied", before),
+        _logged("opp-hot", "d3", "replied", before),
+        _logged(opp, "d4", "applied", before),
+        _logged(opp, "d5", "applied", before),
+        _logged(opp, "d6", "replied", _WINDOW_START + 600),
+    ]
+
+
+class TestSharedWindows:
+    """Every API worker ranks with the same map at the same moment.
+
+    Match names a result set by its content, so a worker whose map counted a
+    reply its sibling's had not yet seen ranked one profile differently and
+    refused every cursor the sibling minted.
+    """
+
+    def test_workers_fetching_at_different_moments_of_a_window_hold_one_map(
+        self, monkeypatch
+    ):
+        _set_env(monkeypatch)
+        clock = _Clock(_WINDOW_START + 60)
+        _install_status_log(monkeypatch, _window_rows(), clock)
+        first = asyncio.run(resp_mod.signals_map())
+
+        # The sibling worker: its own empty cache, after the reply was logged.
+        monkeypatch.setattr(resp_mod, "_cache", None)
+        clock.now = _WINDOW_START + 1800
+        second = asyncio.run(resp_mod.signals_map())
+
+        assert second == first == {"opp-hot": {"contacted_n": 3, "replied_n": 1}}
+
+    def test_the_next_window_counts_what_was_logged_during_this_one(self, monkeypatch):
+        _set_env(monkeypatch)
+        clock = _Clock(_WINDOW_START + 60)
+        _install_status_log(monkeypatch, _window_rows(), clock)
+        assert "opp-late" not in asyncio.run(resp_mod.signals_map())
+
+        clock.now = _WINDOW_START + resp_mod._CACHE_TTL + 60
+        assert asyncio.run(resp_mod.signals_map())["opp-late"] == {
+            "contacted_n": 3,
+            "replied_n": 1,
+        }
 
 
 _SIGNALS = {"opp-1": {"contacted_n": 3, "replied_n": 2}}

@@ -31,8 +31,16 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 import backend.routes.matches as m_module
 from backend import data_loader
 from backend.main import app
+from backend.routes import responsiveness as resp_mod
+from backend.schemas import ProfileRequest
 from src.matcher import ranker
 from src.matcher.config import MATCHER_VERSION
+from tests.test_responsiveness import (
+    _WINDOW_START,
+    _Clock,
+    _install_status_log,
+    _window_rows,
+)
 
 client = TestClient(app)
 
@@ -186,6 +194,24 @@ def _serve_from(monkeypatch, worker: dict) -> None:
     also what a TTL expiry or a capacity eviction leaves behind.
     """
     monkeypatch.setattr(m_module, "_match_snapshots", worker)
+
+
+def _signals_worker() -> dict:
+    """One simulated API worker that also keeps its own professor-signals cache."""
+    return {
+        "snapshots": {},
+        "signals": {"_cache": None, "_cache_time": 0.0, "_retry_at": 0.0},
+    }
+
+
+def _view_as(monkeypatch, worker: dict, body: dict):
+    """Serve one /matches/view request from ``worker``'s own caches."""
+    _serve_from(monkeypatch, worker["snapshots"])
+    for name, value in worker["signals"].items():
+        monkeypatch.setattr(resp_mod, name, value, raising=False)
+    response = client.post("/api/matches/view", json=body)
+    worker["signals"] = {name: getattr(resp_mod, name) for name in worker["signals"]}
+    return response
 
 
 # One API worker in its own interpreter: the fixture corpus from argv[1], the
@@ -1151,6 +1177,140 @@ class TestServerMatchView:
         page_two = followed["pages"][0]["body"]
         assert page_two["result_set_id"] == page_one["body"]["result_set_id"]
         assert page_two["view_start"] == 4
+
+    def test_view_cursor_pages_across_workers_after_the_day_turns(
+        self, snapshot_env, monkeypatch
+    ):
+        """No worker keeps serving yesterday's ranking once the day turns.
+
+        The ranker reads the calendar: a deadline that has just passed costs a
+        record its place. A worker that had ranked a profile before midnight
+        kept that list for the rest of its TTL while its sibling ranked the
+        same key with today's date, and each refused the other's cursors.
+        """
+        yesterday, today = date(2026, 9, 30), date(2026, 10, 1)
+        calendar = {"today": yesterday}
+
+        class _Calendar(date):
+            @classmethod
+            def today(cls):
+                return calendar["today"]
+
+        monkeypatch.setattr(m_module, "date", _Calendar)
+        monkeypatch.setattr(ranker, "date", _Calendar)
+        corpus = sorted(
+            [*snapshot_env["corpus"], _opp("due-sep-30", deadline=yesterday.isoformat())],
+            key=lambda record: record["id"],
+        )
+        ranker.register_corpus(corpus)
+        monkeypatch.setattr(
+            m_module, "load_opportunities_generation", lambda: (corpus, "calendar-fixture")
+        )
+        monkeypatch.setattr(
+            m_module, "load_opportunities_by_id", lambda: {o["id"]: o for o in corpus}
+        )
+        request = self._request(_profile())
+        workers = ({}, {})
+
+        _serve_from(monkeypatch, workers[0])
+        ranked_yesterday = client.post("/api/matches/view", json=request).json()
+
+        calendar["today"] = today
+        _serve_from(monkeypatch, workers[1])
+        page_one = client.post("/api/matches/view", json=request).json()
+        assert page_one["result_set_id"] != ranked_yesterday["result_set_id"], (
+            "the passed deadline must move this list, or the test proves nothing"
+        )
+
+        _serve_from(monkeypatch, workers[0])
+        response = client.post(
+            "/api/matches/view", json={**request, "cursor": page_one["next_cursor"]}
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["result_set_id"] == page_one["result_set_id"]
+        assert response.json()["view_start"] == 4
+
+    @staticmethod
+    def _signals_on(monkeypatch, snapshot_env) -> _Clock:
+        """Professor signals released, with one reply that moves opp-12.
+
+        opp-12 ties three others at the top of the fixture list and wins the
+        tie only with the reply bonus, so whether a worker's map counts that
+        reply decides the order every cursor indexes into.
+        """
+        released = m_module.feature_enabled
+        monkeypatch.setattr(
+            m_module,
+            "feature_enabled",
+            lambda feature: feature == "professor_signals" or released(feature),
+        )
+        monkeypatch.setenv("SUPABASE_URL", "https://proj.supabase.co")
+        monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+        clock = _Clock(_WINDOW_START)
+        _install_status_log(monkeypatch, _window_rows("opp-12"), clock)
+
+        profile = m_module._normalized_profile(ProfileRequest(**_profile()))
+        record = snapshot_env["by_id"]["opp-12"]
+        replied = {"opp-12": {"contacted_n": 3, "replied_n": 1}}
+        assert (
+            ranker.rank_opportunity(profile, record, responsiveness=replied).final_score
+            > ranker.rank_opportunity(profile, record).final_score
+        ), "the reply must move opp-12, or these tests prove nothing"
+        return clock
+
+    def test_view_cursor_pages_across_workers_that_fetched_signals_at_different_moments(
+        self, snapshot_env, monkeypatch
+    ):
+        """Within one signals window every worker ranks with the same map.
+
+        Each worker caches the map it fetched. Fetched at different moments,
+        the two maps differed by whatever had been logged in between, so one
+        profile ranked differently per worker and each refused the other's
+        cursors.
+        """
+        clock = self._signals_on(monkeypatch, snapshot_env)
+        request = self._request(_profile())
+        workers = (_signals_worker(), _signals_worker())
+
+        clock.now = _WINDOW_START + 60
+        page_one = _view_as(monkeypatch, workers[0], request).json()
+
+        clock.now = _WINDOW_START + 1800
+        response = _view_as(
+            monkeypatch, workers[1], {**request, "cursor": page_one["next_cursor"]}
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["result_set_id"] == page_one["result_set_id"]
+        assert response.json()["view_start"] == 4
+
+    def test_view_cursor_pages_across_workers_after_the_signals_window_turns(
+        self, snapshot_env, monkeypatch
+    ):
+        """No worker keeps serving a ranking from the previous signals window.
+
+        Both workers agree on the map within a window. A list stored in the
+        last one has to be re-ranked once the window turns, as the sibling
+        does, instead of being served for the rest of its TTL.
+        """
+        clock = self._signals_on(monkeypatch, snapshot_env)
+        request = self._request(_profile())
+        workers = (_signals_worker(), _signals_worker())
+
+        clock.now = _WINDOW_START + 60
+        ranked_before = _view_as(monkeypatch, workers[0], request).json()
+
+        clock.now = _WINDOW_START + resp_mod._CACHE_TTL + 60
+        page_one = _view_as(monkeypatch, workers[1], request).json()
+        assert page_one["result_set_id"] != ranked_before["result_set_id"], (
+            "the reply must move this list, or the test proves nothing"
+        )
+
+        response = _view_as(
+            monkeypatch, workers[0], {**request, "cursor": page_one["next_cursor"]}
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["result_set_id"] == page_one["result_set_id"]
+        assert response.json()["view_start"] == 4
 
     def test_paid_filter_and_bucket_counts_match_full_snapshot(self, snapshot_env):
         profile = _profile()

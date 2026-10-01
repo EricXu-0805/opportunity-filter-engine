@@ -558,9 +558,10 @@ def llm_rerank(profile, results, opportunities_by_id, top_k=_LLM_RERANK_TOPK,
 # and the per-card modal can never reach different conclusions for the same
 # pair. The key embeds corpus_version + MATCHER_VERSION, so a data refresh or a
 # scoring change can never serve mixed-generation results; the TTL bounds
-# memory and how long a responsiveness-signal flip is deliberately NOT
-# reflected (order stability while a student pages beats a ±2.0 tie-break
-# bonus arriving mid-session).
+# memory. A stored snapshot is also dropped once the calendar day or the
+# professor-signals window it was ranked with has moved on (_ranked_with):
+# production runs more than one API worker, and the order a student pages
+# through only stays put if every worker serves the same list at once.
 _SNAPSHOT_TTL_SECONDS = int(os.environ.get("OFE_MATCH_SNAPSHOT_TTL", "600"))
 _SNAPSHOT_MAX_ENTRIES = int(os.environ.get("OFE_MATCH_SNAPSHOT_MAX", "8"))
 _MATCH_MAX_WORKERS = 1
@@ -593,6 +594,10 @@ class _MatchSnapshot:
     # also False. Every response built from this snapshot reports it, so no
     # surface has to infer the mode from the request flag.
     refined: bool = False
+    # The calendar day and professor-signals map the ranking read from this
+    # worker rather than from the request (see _ranked_with). Served only
+    # while the worker still reads the same.
+    ranked_with: str = ""
 
 
 _match_snapshots: dict[str, _MatchSnapshot] = {}
@@ -863,6 +868,31 @@ async def _responsiveness_for_matching() -> dict | None:
     return await signals_map()
 
 
+def _ranked_with(responsiveness: dict | None) -> str:
+    """Name the ranking inputs that come from the worker, not the request.
+
+    The ranker reads the calendar (a deadline that has just passed costs a
+    record its place) and the professor-signals map. Every worker reads the
+    same day, and the same map within a signals window, but a stored snapshot
+    freezes the values it was ranked with. Serving it only while they still
+    hold makes a worker re-rank when the day or the window turns, as its
+    sibling does, instead of serving the old list for the rest of its TTL and
+    refusing every cursor the sibling mints.
+
+    Neither joins the snapshot key or the result-set id: when they change the
+    list, the rows the id hashes change with it, and when they do not, a
+    cursor minted before the turn keeps paging.
+    """
+    signals = (
+        "off"
+        if responsiveness is None
+        else hashlib.sha256(
+            json.dumps(responsiveness, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+    )
+    return f"{date.today().isoformat()}|{signals}"
+
+
 def _store_snapshot(key: str, snap: _MatchSnapshot) -> _MatchSnapshot:
     with _match_inflight_lock:
         # A scorer for generation A may finish just after a hot reload activated
@@ -921,6 +951,7 @@ def _compute_rule_snapshot(
             or registered_corpus_identity() != corpus_identity
         ):
             raise _MatchGenerationChanged
+        ranked_with = _ranked_with(responsiveness)
         universe = rank_visible_universe(
             profile_dict,
             opportunities,
@@ -948,6 +979,7 @@ def _compute_rule_snapshot(
         opportunities_by_id=opportunities_by_id,
         buckets=universe.buckets,
         field_relevant_count=universe.field_relevant_count,
+        ranked_with=ranked_with,
     )
     return _store_snapshot(key, snap)
 
@@ -1086,12 +1118,15 @@ async def _get_or_compute_snapshot(profile_dict: dict, llm: bool) -> _MatchSnaps
         )
     corpus_identity = _activate_corpus_generation(corpus)
     key = _snapshot_key(profile_dict, llm, corpus_generation)
+    responsiveness = await _responsiveness_for_matching()
+    ranked_with = _ranked_with(responsiveness)
     with _match_inflight_lock:
         snap = _match_snapshots.get(key)
         if (
             snap is not None
             and _SNAPSHOT_TTL_SECONDS > 0
             and snap.corpus_identity == corpus_identity
+            and snap.ranked_with == ranked_with
             and time.time() - snap.created_at <= _SNAPSHOT_TTL_SECONDS
         ):
             return snap
@@ -1100,7 +1135,6 @@ async def _get_or_compute_snapshot(profile_dict: dict, llm: bool) -> _MatchSnaps
     # Cursor/view pages normally hit the snapshot above, so only a true miss
     # should pay that cost.
     opportunities = actionable_opportunities(release_visible_opportunities(corpus))
-    responsiveness = await _responsiveness_for_matching()
     if not llm:
         return await _get_or_compute_rule_snapshot(
             key,
@@ -1201,6 +1235,7 @@ async def _get_or_compute_snapshot(profile_dict: dict, llm: bool) -> _MatchSnaps
         buckets=buckets,
         field_relevant_count=field_relevant_count,
         refined=refined,
+        ranked_with=ranked_with,
     )
     return _store_snapshot(key, snap)
 
