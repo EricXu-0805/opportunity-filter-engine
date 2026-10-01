@@ -82,7 +82,7 @@ STEP 1 - MAP. For each unit list up to 3 links. A link joins a phrase copied exa
 
 STEP 2 - DECIDE. Rewrite only with these operations:
 - lead_with(link): the link must be "same". Move the linked part of the original to the front by reordering the line's own words. The only word you may change is the form of the verb that starts the moved part ("reached" -> "Reached").
-- relabel(link, from, to): the link must be "same". Replace words of the original ("from") with the term's wording, or add the term's missing words next to them. "to" is the exact new wording in your rewrite and may contain only the term's words and the words of "from". Keep the term's spelling; capitalization may change. At most two relabels per unit.
+- relabel(link, from, to): the link must be "same". Replace words of the link's source ("from", copied from inside the source) with the term's wording, or add the term's missing words next to them. "to" is the exact new wording in your rewrite and may contain only the term's words and the words of "from"; it keeps every number, qualifier and "I", "my" or 本人 that "from" has. Keep the term's spelling; capitalization may change. At most two relabels per unit.
 - verb_first: only when the original opens with a role noun ("Research assistant in ...", "Volunteer at ...") or with "Responsible for", "In charge of", "Worked", "Served as", 负责 or 担任. Start with a verb the original already uses: "holding weekly office hours" -> "Held weekly office hours"; "Responsible for building" -> "Built". A role noun is never dropped: move it after the action with "as" ("Course assistant for CS 124, holding office hours" -> "Held office hours as course assistant for CS 124"). Keep the original's time sense: ongoing, planned or hoped-for work ("since Fall 2025", "co-authoring", "(in preparation)", "hoping to") keeps its form. Never bring in a verb the original does not use: no "Served as", "Worked as", "Participated in", "Contributed to", "Led".
 - personal_first: when the original states team work and then the student's own part ("... with two teammates; I designed ...", "my part was ...", 本人只负责 ...), put the student's own part first as its own sentence, then the team part as its own sentence, word for word: "Built a rover with two teammates; I designed the mount." -> "I designed the mount. Built a rover with two teammates."
 - tighten: together with another operation only, drop a leading "I" or 我 or a repeated word. Never on a line that mentions a team, teammates or help.
@@ -627,6 +627,28 @@ def _relabel_refusal(added_text: str, added: list[str], unit: Unit, term: str) -
     return None
 
 
+_NUMBER = re.compile(r"\d+(?:[.,]\d+)*")
+
+
+def _relabel_swap_refusal(source: str, target: str) -> str | None:
+    """Why a relabel's "from" -> "to" swap loses or adds a protected word, or None.
+
+    The vocabulary checks count only content tokens, and "from" may drop all of
+    its own. So "from" -> "to" may not lose a number, a qualifier, a status or
+    another person's part, nor add or drop "I", "my", 本人 or 我: the swap only
+    renames the thing the link's source names.
+    """
+    if personal_markers(target) != personal_markers(source):
+        return "relabel_personal_marker"
+    if Counter(_NUMBER.findall(source)) - Counter(_NUMBER.findall(target)):
+        return "relabel_drops_protected"
+    for pattern in _LOCK_WORD:
+        before, after = len(pattern.findall(source)), len(pattern.findall(target))
+        if before != after:
+            return "relabel_drops_protected" if before > after else "relabel_lock_word"
+    return None
+
+
 def _check_translation(unit: Unit, text: str) -> str | None:
     """Why a translation fails the checks that work across languages, or None."""
     source = unit.current
@@ -723,6 +745,12 @@ def _check_same_language(unit: Unit, text: str, links: list[Link], ops_raw: list
                 return _keep(unit, "beyond_allowed_edit", "relabel_span_missing", links=links)
             if language(link.term) != language(unit.current) or _CJK.search(link.term) and not _CJK.search(source):
                 return _keep(unit, "beyond_allowed_edit", "relabel_cross_language", links=links)
+            # "from" renames what the link's source names, nothing next to it.
+            if source_span(link.source, source) is None:
+                return _keep(unit, "beyond_allowed_edit", "relabel_outside_source", links=links)
+            refusal = _relabel_swap_refusal(source, target)
+            if refusal:
+                return _keep(unit, "beyond_allowed_edit", refusal, links=links)
             if Counter(tokens(link.term)) - Counter(tokens(target)):
                 return _keep(unit, "beyond_allowed_edit", "relabel_term_missing", links=links)
             added = Counter(tokens(target)) - Counter(tokens(source))
@@ -778,6 +806,10 @@ def _check_same_language(unit: Unit, text: str, links: list[Link], ops_raw: list
     dropped = Counter(current) - Counter(rewrite) - allowed_drop
     if dropped and not ("tighten" in names and all(word in rewrite for word in dropped)):
         return _keep(unit, "beyond_allowed_edit", "dropped:" + ",".join(sorted(dropped)), links=links)
+    # No operation adds "I", "my", 本人 or 我; a confirmed support line may lend its own.
+    if personal_markers(text) > personal_markers(unit.current) + sum(
+            personal_markers(source) for _, source in unit.support):
+        return _keep(unit, "beyond_allowed_edit", "personal_marker_added", links=links)
     # After a shared part, "I" and 本人 mark the student's own part. Only
     # personal_first, which moves that part to the front, may drop one.
     if (personal_markers(text) < personal_markers(unit.current) and _marks_own_part(unit.current)

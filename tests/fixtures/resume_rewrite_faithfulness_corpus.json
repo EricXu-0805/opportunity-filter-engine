@@ -1,5 +1,5 @@
 {
- "_about": "Single-bullet résumé rewrites for claim_upgrade_findings. 'faithful' rewrites say nothing the original does not; none may carry a hard finding, and each is accepted on a faithful review verdict. 'unfaithful' ones change who did what, a denial, leadership, the setting, the object or a number, or add a relevance, quality or other new claim; none may be accepted without the review. Each is rejected by a hard finding before any review, unless its 'caught' is 'review': those carry no hard finding and are rejected by an unfaithful verdict.",
+ "_about": "Single-bullet résumé rewrites for claim_upgrade_findings. 'faithful' rewrites say nothing the original does not; none may carry a hard finding, and each is accepted on a faithful review verdict. 'unfaithful' ones change who did what, a denial, leadership, the setting, the object or a number, or add a relevance, quality or other new claim; none may be accepted without the review. Each is rejected by a hard finding before any review, unless its 'caught' is 'review': those carry no hard finding and are rejected by an unfaithful verdict; or 'contract': the closed-vocabulary contract keeps the original before the locks for the declared map that tests/fixtures/evidence_map_cases.json holds under the label in 'case'.",
  "faithful": [
   {
    "original": "I built a Python parser for the course project.",
@@ -1435,6 +1435,118 @@
    "original": "On a five-person design team, built a benchtop flow battery; my part was wiring the data logger.",
    "rewrite": "My part was wiring the data logger and designing the battery, on a five-person design team that built a benchtop flow battery.",
    "kind": "new own part beside a team relative clause"
+  },
+  {
+   "original": "Drafted the methods section of a grant proposal, which my advisor later rewrote.",
+   "rewrite": "Drafted the methods section of a funding proposal.",
+   "kind": "relabel drops another person's part",
+   "caught": "contract",
+   "case": "relabel from drops the advisor's part"
+  },
+  {
+   "original": "Processed over 200 tissue samples for histology.",
+   "rewrite": "Processed 200 tissue specimens for histology.",
+   "kind": "relabel drops an approximation",
+   "caught": "contract",
+   "case": "relabel from drops over"
+  },
+  {
+   "original": "Annotated about 40 hours of EEG recordings from a sleep study.",
+   "rewrite": "Annotated 40 hours of EEG data from a sleep study.",
+   "kind": "relabel drops an approximation",
+   "caught": "contract",
+   "case": "relabel from drops about"
+  },
+  {
+   "original": "Maintained the lab's zebrafish colony since March 2025 with two other undergraduates.",
+   "rewrite": "Maintained the lab's zebrafish husbandry in March 2025 with two other undergraduates.",
+   "kind": "relabel changes a duration (since -> in)",
+   "caught": "contract",
+   "case": "relabel from turns since into in"
+  },
+  {
+   "original": "Cleaned EEG recordings from 20 participants for a sleep study.",
+   "rewrite": "Cleaned EEG data for a sleep study.",
+   "kind": "relabel drops a number",
+   "caught": "contract",
+   "case": "relabel inside its source still keeps its number"
+  },
+  {
+   "original": "Trained an image classifier from starter code provided by the TA in CS 444.",
+   "rewrite": "Trained a convolutional image classifier in CS 444.",
+   "kind": "relabel drops another person's part",
+   "caught": "contract",
+   "case": "relabel from drops the TA's starter code"
+  },
+  {
+   "original": "Built a Python data pipeline based on my PI's earlier MATLAB scripts.",
+   "rewrite": "Built a reproducible Python data pipeline.",
+   "kind": "relabel drops another person's part",
+   "caught": "contract",
+   "case": "relabel from drops based on my PI's scripts"
+  },
+  {
+   "original": "Ran a data pipeline adapted from lab scripts to clean 300 survey files.",
+   "rewrite": "Ran a reproducible data pipeline to clean 300 survey files.",
+   "kind": "relabel drops another person's part",
+   "caught": "contract",
+   "case": "relabel inside its source still keeps adapted from"
+  },
+  {
+   "original": "Co-authoring a manuscript on electrolyte additives (in preparation).",
+   "rewrite": "Co-authoring a manuscript on battery electrolyte additives.",
+   "kind": "relabel drops a status",
+   "caught": "contract",
+   "case": "relabel from drops in preparation"
+  },
+  {
+   "original": "基于导师提供的代码训练了分类模型，并整理了实验记录。",
+   "rewrite": "训练了深度学习分类模型，并整理了实验记录。",
+   "kind": "relabel drops another person's part",
+   "caught": "contract",
+   "case": "zh relabel from drops 基于导师"
+  },
+  {
+   "original": "整理了约200份问卷数据并录入数据库。",
+   "rewrite": "整理了200份问卷调查数据并录入数据库。",
+   "kind": "relabel drops an approximation",
+   "caught": "contract",
+   "case": "zh relabel from drops 约"
+  },
+  {
+   "original": "参与师兄的小鼠行为实验，记录了旷场实验数据。",
+   "rewrite": "小鼠行为学实验，记录了旷场实验数据。",
+   "kind": "relabel drops another person's part",
+   "caught": "contract",
+   "case": "zh relabel from drops 参与师兄的"
+  },
+  {
+   "original": "Analyzed EEG recordings from 20 participants in a sleep study.",
+   "rewrite": "Analyzed my EEG data from 20 participants in a sleep study.",
+   "kind": "relabel adds a personal marker",
+   "caught": "contract",
+   "case": "relabel adds my"
+  },
+  {
+   "original": "Analyzed EEG recordings from 20 participants in a sleep study.",
+   "rewrite": "Analyzed just EEG data from 20 participants in a sleep study.",
+   "kind": "relabel adds a limit",
+   "caught": "contract",
+   "case": "relabel adds just"
+  },
+  {
+   "original": "与组员一起采集了水样并测定了浊度。",
+   "rewrite": "测定了浊度，本人采集了水样，与组员一起。",
+   "kind": "personal marker added to a team action",
+   "caught": "contract",
+   "case": "zh lead_with adds 本人 to a team action"
+  },
+  {
+   "original": "Analyzed EEG recordings for a sleep study.",
+   "rewrite": "For my sleep study, analyzed EEG recordings.",
+   "kind": "personal marker added",
+   "caught": "contract",
+   "case": "lead_with adds my to a setting"
   }
  ]
 }

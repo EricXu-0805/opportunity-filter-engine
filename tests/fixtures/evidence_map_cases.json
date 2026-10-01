@@ -1185,6 +1185,591 @@
     "beyond_allowed_edit",
     "translation_ops"
    ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel from drops the advisor's part",
+   "anchors": [
+    "Writing funding proposals for NIH grants"
+   ],
+   "original": "Drafted the methods section of a grant proposal, which my advisor later rewrote.",
+   "rewrite": "Drafted the methods section of a funding proposal.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "funding proposals",
+     "source": "grant proposal",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "grant proposal, which my advisor later rewrote",
+     "to": "funding proposal"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_outside_source"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel from drops over",
+   "anchors": [
+    "Process tissue specimens for histology and imaging"
+   ],
+   "original": "Processed over 200 tissue samples for histology.",
+   "rewrite": "Processed 200 tissue specimens for histology.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "tissue specimens",
+     "source": "tissue samples",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "Processed over 200 tissue samples",
+     "to": "Processed 200 tissue specimens"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_outside_source"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel from drops about",
+   "anchors": [
+    "Analyze EEG data from sleep studies"
+   ],
+   "original": "Annotated about 40 hours of EEG recordings from a sleep study.",
+   "rewrite": "Annotated 40 hours of EEG data from a sleep study.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "EEG data",
+     "source": "EEG recordings",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "Annotated about 40 hours of EEG recordings",
+     "to": "Annotated 40 hours of EEG data"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_outside_source"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel from turns since into in",
+   "anchors": [
+    "Zebrafish husbandry and colony management"
+   ],
+   "original": "Maintained the lab's zebrafish colony since March 2025 with two other undergraduates.",
+   "rewrite": "Maintained the lab's zebrafish husbandry in March 2025 with two other undergraduates.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "zebrafish husbandry",
+     "source": "zebrafish colony",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "zebrafish colony since March 2025",
+     "to": "zebrafish husbandry in March 2025"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_outside_source"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel inside its source still keeps since",
+   "anchors": [
+    "Zebrafish husbandry and colony management"
+   ],
+   "original": "Maintained the lab's zebrafish colony since March 2025 with two other undergraduates.",
+   "rewrite": "Maintained the lab's zebrafish husbandry in March 2025 with two other undergraduates.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "zebrafish husbandry",
+     "source": "zebrafish colony since March 2025",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "zebrafish colony since March 2025",
+     "to": "zebrafish husbandry in March 2025"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel inside its source still keeps its number",
+   "anchors": [
+    "Analyze EEG data from sleep studies"
+   ],
+   "original": "Cleaned EEG recordings from 20 participants for a sleep study.",
+   "rewrite": "Cleaned EEG data for a sleep study.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "EEG data",
+     "source": "EEG recordings from 20 participants",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "EEG recordings from 20 participants",
+     "to": "EEG data"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel from drops the TA's starter code",
+   "anchors": [
+    "Train convolutional image classifiers on medical images"
+   ],
+   "original": "Trained an image classifier from starter code provided by the TA in CS 444.",
+   "rewrite": "Trained a convolutional image classifier in CS 444.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "convolutional image classifiers",
+     "source": "image classifier",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "image classifier from starter code provided by the TA",
+     "to": "convolutional image classifier"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_outside_source"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel from drops based on my PI's scripts",
+   "anchors": [
+    "Develop reproducible data pipelines in Python"
+   ],
+   "original": "Built a Python data pipeline based on my PI's earlier MATLAB scripts.",
+   "rewrite": "Built a reproducible Python data pipeline.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "reproducible data pipelines",
+     "source": "data pipeline",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "Python data pipeline based on my PI's earlier MATLAB scripts",
+     "to": "reproducible Python data pipeline"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_outside_source"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel inside its source still keeps adapted from",
+   "anchors": [
+    "Develop reproducible data pipelines in Python"
+   ],
+   "original": "Ran a data pipeline adapted from lab scripts to clean 300 survey files.",
+   "rewrite": "Ran a reproducible data pipeline to clean 300 survey files.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "reproducible data pipelines",
+     "source": "data pipeline adapted from lab scripts",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "data pipeline adapted from lab scripts",
+     "to": "reproducible data pipeline"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel from drops in preparation",
+   "anchors": [
+    "Battery electrolyte additives for lithium metal anodes"
+   ],
+   "original": "Co-authoring a manuscript on electrolyte additives (in preparation).",
+   "rewrite": "Co-authoring a manuscript on battery electrolyte additives.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Battery electrolyte additives",
+     "source": "electrolyte additives",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "manuscript on electrolyte additives (in preparation)",
+     "to": "manuscript on battery electrolyte additives"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_outside_source"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "zh relabel from drops 基于导师",
+   "anchors": [
+    "深度学习分类模型的训练与评估"
+   ],
+   "original": "基于导师提供的代码训练了分类模型，并整理了实验记录。",
+   "rewrite": "训练了深度学习分类模型，并整理了实验记录。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "深度学习分类模型",
+     "source": "分类模型",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "基于导师提供的代码训练了分类模型",
+     "to": "训练了深度学习分类模型"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_outside_source"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "zh relabel from drops 约",
+   "anchors": [
+    "问卷调查数据的整理与分析"
+   ],
+   "original": "整理了约200份问卷数据并录入数据库。",
+   "rewrite": "整理了200份问卷调查数据并录入数据库。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "问卷调查数据",
+     "source": "问卷数据",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "约200份问卷数据",
+     "to": "200份问卷调查数据"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_outside_source"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "zh relabel inside its source still keeps 约",
+   "anchors": [
+    "问卷调查数据的整理与分析"
+   ],
+   "original": "整理了约200份问卷数据并录入数据库。",
+   "rewrite": "整理了200份问卷调查数据并录入数据库。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "问卷调查数据",
+     "source": "约200份问卷数据",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "约200份问卷数据",
+     "to": "200份问卷调查数据"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "zh relabel from drops 参与师兄的",
+   "anchors": [
+    "小鼠行为学实验与数据分析"
+   ],
+   "original": "参与师兄的小鼠行为实验，记录了旷场实验数据。",
+   "rewrite": "小鼠行为学实验，记录了旷场实验数据。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "小鼠行为学实验",
+     "source": "小鼠行为实验",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "参与师兄的小鼠行为实验",
+     "to": "小鼠行为学实验"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_outside_source"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel adds my",
+   "anchors": [
+    "Analyze EEG data from sleep studies"
+   ],
+   "original": "Analyzed EEG recordings from 20 participants in a sleep study.",
+   "rewrite": "Analyzed my EEG data from 20 participants in a sleep study.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "EEG data",
+     "source": "EEG recordings",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "EEG recordings",
+     "to": "my EEG data"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_personal_marker"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel adds just",
+   "anchors": [
+    "Analyze EEG data from sleep studies"
+   ],
+   "original": "Analyzed EEG recordings from 20 participants in a sleep study.",
+   "rewrite": "Analyzed just EEG data from 20 participants in a sleep study.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "EEG data",
+     "source": "EEG recordings",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "EEG recordings",
+     "to": "just EEG data"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_lock_word"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "a same relabel inside its source is still allowed",
+   "anchors": [
+    "Analyze EEG data from sleep studies"
+   ],
+   "original": "Analyzed EEG recordings from 20 participants in a sleep study.",
+   "rewrite": "Analyzed EEG data from 20 participants in a sleep study.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "EEG data",
+     "source": "EEG recordings",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "EEG recordings",
+     "to": "EEG data"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "marker",
+   "label": "zh lead_with adds 本人 to a team action",
+   "anchors": [
+    "浊度测定方法"
+   ],
+   "original": "与组员一起采集了水样并测定了浊度。",
+   "rewrite": "测定了浊度，本人采集了水样，与组员一起。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "浊度测定",
+     "source": "浊度",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "personal_marker_added"
+   ]
+  },
+  {
+   "group": "marker",
+   "label": "lead_with adds my to a setting",
+   "anchors": [
+    "Sleep study"
+   ],
+   "original": "Analyzed EEG recordings for a sleep study.",
+   "rewrite": "For my sleep study, analyzed EEG recordings.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Sleep study",
+     "source": "sleep study",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "personal_marker_added"
+   ]
   }
  ]
 }

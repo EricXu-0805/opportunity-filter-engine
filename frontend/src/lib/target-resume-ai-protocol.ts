@@ -14,7 +14,7 @@ export const FULL_TARGET_AI_MAX_PROMPT_CHARACTERS = 60_000;
 /** Direction longer than this is refused by name; it is never clipped. */
 export const FULL_TARGET_AI_MAX_INTERESTS_CHARACTERS = 8_000;
 /** Server instruction length; the batch planner counts it toward every prompt. */
-export const FULL_TARGET_AI_SYSTEM_PROMPT_CHARACTERS = 8_267;
+export const FULL_TARGET_AI_SYSTEM_PROMPT_CHARACTERS = 8_373;
 /** The server cuts at most this many anchors from the target for one prompt. */
 export const FULL_TARGET_AI_MAX_ANCHORS = 48;
 

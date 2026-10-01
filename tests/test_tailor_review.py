@@ -113,6 +113,7 @@ APPENDED = [PAD_BASE[:-1] + f", {word} human factors research." for word in (
 APPENDED_ZH = [PAD_BASE_ZH[:-1] + tail for tail in (
     "，培养了严谨态度。", "，提升了科研素养。", "，锻炼了科研思维。", "，为后续研究打下基础。", "，与人因研究相关。")]
 CORPUS = json.loads((Path(__file__).parent / "fixtures" / "resume_rewrite_faithfulness_corpus.json").read_text())
+EVIDENCE_MAP_CASES = json.loads((Path(__file__).parent / "fixtures" / "evidence_map_cases.json").read_text())["cases"]
 # The numeric grounding step, not the claim locks, rejects a number the original never states.
 GROUNDING_ONLY = {"new number"}
 
@@ -563,6 +564,12 @@ class TestFaithfulnessCorpus:
         hard = claim_upgrade_findings(case["rewrite"], case["original"])[0]
         if case.get("caught") == "review":
             assert (found, hard) == ([], [])
+        elif case.get("caught") == "contract":
+            # The words a relabel or a move loses or adds, which the locks may
+            # not read; tests/test_evidence_map.py runs the declared map.
+            [declared] = [item for item in EVIDENCE_MAP_CASES if item["label"] == case["case"]]
+            assert (declared["original"], declared["rewrite"]) == (case["original"], case["rewrite"])
+            assert declared["expected"][:2] == ["kept", "beyond_allowed_edit"]
         else:
             assert found
             if case["kind"] not in GROUNDING_ONLY:
