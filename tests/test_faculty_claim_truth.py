@@ -629,7 +629,9 @@ def test_sanitized_faculty_can_offer_verified_cold_email_without_application_met
 ):
     opportunity = data_loader._sanitize_opportunity(_legacy_faculty())
     assert opportunity["application"]["contact_method"] == "unknown"
-    monkeypatch.setattr(ranker_module, "verified_send_target", lambda _record: "ada@example.edu")
+    monkeypatch.setattr(
+        ranker_module, "verified_send_target", lambda _record, *, now=None: "ada@example.edu"
+    )
     profile = {
         "year": "junior",
         "major": "Computer Science",

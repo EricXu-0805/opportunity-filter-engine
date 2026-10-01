@@ -175,6 +175,22 @@ describe('results session hydration and accepted request lifetime', () => {
     expect(window.scrollTo).not.toHaveBeenCalled();
   });
 
+  // F4: the notice explains a landing on page one. A student who then reached
+  // page two read "Showing the first page" above page-two cards.
+  it.each(['an expired cursor', 'a rejected return ticket'])('clears the reset notice after %s once a later page validates', (reason) => {
+    const currentView = reason === 'an expired cursor' ? view : { ...view, search_query: 'chemistry' };
+    const requestKey = resultRequestKey(profile, false, currentView);
+    const { result } = renderHook(useHarness, { initialProps: { arrivalId: seed().id, currentView } });
+    if (reason === 'an expired cursor') act(() => result.current.cursorExpired());
+    expect(result.current.page).toBe(1);
+    expect(result.current.resetNotice).toBe(true);
+    act(() => result.current.onValidated({ requestKey, page: 1, cursors: [[1, null], [2, 'fresh-cursor']] }));
+    expect(result.current.resetNotice).toBe(true);
+    act(() => result.current.setPage(2));
+    act(() => result.current.onValidated({ requestKey, page: 2, cursors: [[1, null], [2, 'fresh-cursor']] }));
+    expect(result.current.resetNotice).toBe(false);
+  });
+
   it('marks viewed independently and flushes immediate reload position without waiting for debounce', () => {
     const { result } = renderHook(useHarness, { initialProps: {} });
     act(() => result.current.onValidated(first));

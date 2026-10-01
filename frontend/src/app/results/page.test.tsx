@@ -452,6 +452,26 @@ describe('ResultsPage -> FilterRail: deadline chips render on evidence', () => {
 });
 
 
+// RN-3: with Summer program deselected the rail still promised "National
+// programs and summer programs are always shown", and the list held none.
+describe('ResultsPage — the cross-school hint promises only the selected types', () => {
+  it.each([
+    ['Research only', ['research'], 'results.filters.crossSchoolHintNoSummer'],
+    ['Research + Internship', ['research', 'internship'], 'results.filters.crossSchoolHintNoSummer'],
+    ['Research + Summer program', ['research', 'summer_program'], 'results.filters.crossSchoolHint'],
+    ['the untouched defaults', undefined, 'results.filters.crossSchoolHint'],
+  ])('%s', async (_label, seekingTypes, hint) => {
+    acceptedProfile.current = seekingTypes ? { ...TEST_PROFILE, seeking_types: seekingTypes } : TEST_PROFILE;
+    render(<ResultsPage />);
+    await waitFor(() => expect(screen.getByTestId('mock-match-list')).toBeInTheDocument());
+    expect(screen.getByText(hint)).toBeInTheDocument();
+    const other = hint === 'results.filters.crossSchoolHint'
+      ? 'results.filters.crossSchoolHintNoSummer'
+      : 'results.filters.crossSchoolHint';
+    expect(screen.queryByText(other)).toBeNull();
+  });
+});
+
 describe('ResultsPage — recover from an old explicit empty type selection', () => {
   it('offers profile editing instead of reload, without filling defaults or changing the stored profile', async () => {
     const emptyProfile = { ...TEST_PROFILE, seeking_types: [] };

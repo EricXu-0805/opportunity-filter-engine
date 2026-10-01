@@ -45,7 +45,7 @@ describe('profileChecks', () => {
   });
 
   it('applies the home meter thresholds: two skills, a non-blank interest, a stored résumé, a chosen type', () => {
-    expect(done(base)).toEqual({ academic: true, skills: false, interests: false, resume: false, type: false });
+    expect(done({ ...base, seeking_types: [] })).toEqual({ academic: true, skills: false, interests: false, resume: false, type: false });
     expect(done({ ...base, skills: [{ name: 'Python', level: 'expert' }] }).skills).toBe(false);
     expect(done({ ...base, skills: [{ name: 'Python', level: 'expert' }, { name: 'R', level: 'beginner' }] }).skills).toBe(true);
     expect(done({ ...base, research_interests: '   ' }).interests).toBe(false);
@@ -53,5 +53,14 @@ describe('profileChecks', () => {
     expect(done({ ...base, resume_text: 'x' }).resume).toBe(true);
     expect(done({ ...base, seeking_types: ['research'] }).type).toBe(true);
     expect(done({ ...base, major: '' }).academic).toBe(false);
+  });
+
+  // F5 / tailor-renovate-11: a student who never touches the type chips sees
+  // Research and Summer program pressed, and matching uses exactly those, yet
+  // both meters asked them to "add an opportunity type".
+  it('counts the default types an untouched profile shows and matches with', () => {
+    expect(done(base).type).toBe(true);
+    expect(done({ ...base, seeking_types: [] }).type).toBe(false);
+    expect(done({ ...base, seeking_types: ['fellowship'] }).type).toBe(false);
   });
 });

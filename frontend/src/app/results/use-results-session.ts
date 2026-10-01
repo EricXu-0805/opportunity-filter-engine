@@ -100,6 +100,9 @@ export function useResultsSession(props: Props) {
     if (state.requestKey !== requestKey || state.page !== page) return;
     const token = origin ?? captureOwnerToken();
     if (!isOwnerTokenValid(token, token.uid)) return;
+    // The notice explains a landing on page one; a later page the student
+    // reached on their own means it no longer describes the screen.
+    if (state.page > 1) setResetNotice(false);
     validatedRef.current = state;
     validatedOwnerRef.current = token;
     if (!ready) return;

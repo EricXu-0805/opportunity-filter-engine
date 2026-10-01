@@ -21,6 +21,7 @@ from __future__ import annotations
 import logging
 import os
 import time
+from datetime import UTC, datetime
 
 from fastapi import APIRouter
 
@@ -34,6 +35,12 @@ logger = logging.getLogger("ofe.responsiveness")
 CONTACT_STATUSES = frozenset({"contacted", "applied", "replied", "interviewing", "rejected"})
 REPLIED_STATUSES = frozenset({"replied", "interviewing"})
 
+# The map is cut at windows of this length, aligned to the epoch rather than
+# to when a worker last fetched: each window serves the aggregate of every
+# change logged before it began. API workers keep separate caches, and match
+# names a result set by its content, so two workers that fetched minutes apart
+# must still hold the same map or they rank one profile differently and refuse
+# each other's cursors.
 _CACHE_TTL = 3600
 # With the bonus on by default, signals_map sits on the match request path.
 # A failed fetch must not retry per-request (worst case 30s httpx timeout each);
@@ -43,12 +50,25 @@ _PAGE_SIZE = 1000
 _MAX_PAGES = 50
 
 _cache: dict[str, dict[str, int]] | None = None
+# Start of the window the cached map was cut at.
 _cache_time: float = 0.0
+# After a failed fetch, the earliest moment to try again.
+_retry_at: float = 0.0
 
 
-async def _fetch_status_rows(supabase_url: str, headers: dict) -> list[dict]:
+async def _fetch_status_rows(
+    supabase_url: str,
+    headers: dict,
+    before: float,
+) -> list[dict]:
     import httpx
 
+    # changed_at is stamped when the logging trigger inserts the row (DEFAULT
+    # now()), so no new row lands before an instant that has passed: workers
+    # that fetch one window at different moments read the same rows, unless a
+    # device merge rewrote some in between. The bound also keeps offset paging
+    # stable while new changes are being logged.
+    cutoff = datetime.fromtimestamp(before, UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     rows: list[dict] = []
     async with httpx.AsyncClient(timeout=30.0, trust_env=False, follow_redirects=False) as client:
         for page in range(_MAX_PAGES):
@@ -56,6 +76,7 @@ async def _fetch_status_rows(supabase_url: str, headers: dict) -> list[dict]:
                 f"{supabase_url}/rest/v1/interaction_status_changes",
                 params={
                     "select": "opportunity_id,device_id,to_status",
+                    "changed_at": f"lt.{cutoff}",
                     "limit": str(_PAGE_SIZE),
                     "offset": str(page * _PAGE_SIZE),
                     "order": "changed_at.desc",
@@ -91,9 +112,10 @@ def _aggregate(rows: list[dict]) -> dict[str, dict[str, int]]:
 
 
 async def signals_map() -> dict[str, dict[str, int]]:
-    global _cache, _cache_time
+    global _cache, _cache_time, _retry_at
     now = time.time()
-    if _cache is not None and now - _cache_time < _CACHE_TTL:
+    window = now // _CACHE_TTL * _CACHE_TTL
+    if _cache is not None and (_cache_time == window or now < _retry_at):
         return _cache
 
     supabase_url = os.environ.get("SUPABASE_URL", "").rstrip("/")
@@ -103,15 +125,15 @@ async def signals_map() -> dict[str, dict[str, int]]:
 
     headers = {"apikey": key, "Authorization": f"Bearer {key}"}
     try:
-        rows = await _fetch_status_rows(supabase_url, headers)
+        rows = await _fetch_status_rows(supabase_url, headers, window)
     except Exception as exc:
         logger.warning("responsiveness fetch failed: %s", type(exc).__name__)
         _cache = _cache or {}
-        _cache_time = now - _CACHE_TTL + _FAILURE_BACKOFF
+        _retry_at = now + _FAILURE_BACKOFF
         return _cache
 
     _cache = _aggregate(rows)
-    _cache_time = now
+    _cache_time = window
     return _cache
 
 

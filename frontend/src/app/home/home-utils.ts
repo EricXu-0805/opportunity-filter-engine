@@ -1,5 +1,5 @@
 import type { ProfileData } from '@/lib/types';
-import type { TFunc } from './types';
+import { hasSelectedSeekingType, type TFunc } from './types';
 
 // formatRelativeAge lived here and returned hardcoded English. It is now
 // lib/humanize-time.formatAgo, which renders through the dictionary.
@@ -26,6 +26,8 @@ export function profileChecks(profile: ProfileData): Array<{ key: ProfileCheckKe
     { key: 'skills', done: (profile.skills?.length ?? 0) >= 2 },
     { key: 'interests', done: !!profile.research_interests?.trim() },
     { key: 'resume', done: !!profile.resume_text?.trim() },
-    { key: 'type', done: (profile.seeking_types?.length ?? 0) > 0 },
+    // The chips and the match request both default a missing field to
+    // Research + Summer program; the meter has to count the same selection.
+    { key: 'type', done: hasSelectedSeekingType(profile) },
   ];
 }

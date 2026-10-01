@@ -51,6 +51,7 @@ import { bySlug } from '@/lib/schools';
 import type { MatchResult } from '@/lib/types';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
+import { selectedSeekingTypes } from '@/app/home/types';
 import {
   getAuthState,
   type InteractionType,
@@ -469,6 +470,14 @@ function ResultsContent() {
       ? 'results.scopeIndicatorPending'
       : 'results.scopeIndicator',
     { school: homeSchoolEntry?.shortName ?? homeSchool },
+  );
+  // Names what the cross-school toggle never hides. Summer programs belong in
+  // that sentence only when the student selected them: a Research-only list
+  // holds none, and the line used to promise them anyway.
+  const crossSchoolHint = t(
+    profile && !selectedSeekingTypes(profile).includes('summer_program')
+      ? 'results.filters.crossSchoolHintNoSummer'
+      : 'results.filters.crossSchoolHint',
   );
 
   // Match-accuracy thumbs (Phase 9.6). Optimistic like favorites; the card
@@ -1026,7 +1035,7 @@ function ResultsContent() {
             <p className="text-[12px] text-gray-500">{scopeIndicator}</p>
           )}
           {RELEASE_SCOPE.crossSchoolMatching && (
-            <p className="text-[12px] text-gray-500">{t('results.filters.crossSchoolHint')}</p>
+            <p className="text-[12px] text-gray-500">{crossSchoolHint}</p>
           )}
         </div>
       )}

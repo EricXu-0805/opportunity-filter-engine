@@ -357,7 +357,7 @@ def _has_identity_bound_contact_evidence(
     )
 
 
-def verified_send_target(opp: dict) -> str:
+def verified_send_target(opp: dict, *, now: datetime | None = None) -> str:
     """Return a professor-specific, identity-bound send target or ``""``.
 
     Legacy rows without the three-part evidence contract
@@ -376,6 +376,8 @@ def verified_send_target(opp: dict) -> str:
       faculty-only. Collector hygiene nulls most of these at build time; this
       is the serve-time backstop for page_scan grabs and below-threshold
       shared inboxes it never sees.
+
+    ``now`` is when the stamp's age is judged, the current moment by default.
     """
     email = opp.get("contact_email") or ""
     if not isinstance(email, str):
@@ -390,7 +392,7 @@ def verified_send_target(opp: dict) -> str:
     if (
         not email
         or not _valid_email_target(email)
-        or not _has_identity_bound_contact_evidence(opp, email)
+        or not _has_identity_bound_contact_evidence(opp, email, now=now)
         or is_synthesized_email_source(md.get("email_source") or "")
         or md.get("is_active") is False
         or (
@@ -402,7 +404,7 @@ def verified_send_target(opp: dict) -> str:
     return email
 
 
-def send_target_strength(opp: dict) -> int:
+def send_target_strength(opp: dict, *, now: datetime | None = None) -> int:
     """Evidence strength of the send target, for ranking tie-breaks.
 
     2 — passes the full identity-bound contract (stamped and proven);
@@ -413,8 +415,10 @@ def send_target_strength(opp: dict) -> int:
 
     The reveal/send flow stays binary (verified_send_target); ranking uses
     this so a fully-proven address still outranks a legacy one in a tie
-    without pretending the legacy one is not actionable at all."""
-    if not verified_send_target(opp):
+    without pretending the legacy one is not actionable at all. ``now`` is
+    passed on to verified_send_target: the ranker judges a stamp at the end of
+    its day (src.matcher.ranker._contact_checked_at)."""
+    if not verified_send_target(opp, now=now):
         return 0
     return 1 if _predates_contact_stamping(opp) else 2
 

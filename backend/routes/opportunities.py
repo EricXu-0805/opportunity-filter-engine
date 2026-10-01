@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import time
@@ -181,8 +182,10 @@ def _list_card(opp: dict) -> dict:
     return project_public_opportunity_payload(out, opp)
 
 
+# Plain def, like /similar and /upcoming below: every call filters the full
+# corpus, which on the event loop stalled every other request on the worker.
 @router.get("/opportunities")
-async def list_opportunities(
+def list_opportunities(
     opportunity_type: str | None = None,
     paid: str | None = None,
     international_friendly: str | None = None,
@@ -301,7 +304,9 @@ async def opportunity_coverage() -> dict:
     if _coverage_cache is not None and _coverage_cache[0] == version:
         return _coverage_cache[1]
 
-    payload = coverage_payload(load_opportunities())
+    # A miss walks the whole corpus through target_truth. On the event loop it
+    # stalled every other request on this worker; the hit above stays here.
+    payload = await asyncio.to_thread(lambda: coverage_payload(load_opportunities()))
     _coverage_cache = (version, payload)
     return payload
 
@@ -332,7 +337,7 @@ async def get_opportunities_batch(request: dict):
 
 
 @router.get("/opportunities/upcoming")
-async def get_upcoming_deadlines(days: int = Query(default=30, ge=1, le=365)):
+def get_upcoming_deadlines(days: int = Query(default=30, ge=1, le=365)):
     """Opportunities with deadlines within the next ``days`` days, sorted ascending.
 
     Useful for building a calendar / "what's due soon" widget without
@@ -536,6 +541,15 @@ async def get_stats():
     if _stats_cache and now - _stats_cache_time < _STATS_TTL:
         return _stats_cache
 
+    # A miss scans the whole corpus. On the event loop it stalled every other
+    # request on this worker; the hit above stays here.
+    result = await asyncio.to_thread(_stats_summary)
+    _stats_cache = result
+    _stats_cache_time = now
+    return result
+
+
+def _stats_summary() -> dict:
     records = actionable_opportunities(release_visible_opportunities(load_opportunities()))
     opportunities = [
         opportunity
@@ -569,7 +583,7 @@ async def get_stats():
     # genuinely unknown — callers must render that as unknown, not as fresh.
     last_updated_at = corpus_last_updated_at()
 
-    result = _public_payload({
+    return _public_payload({
         "total": len(opportunities),
         "active": active,
         "faculty_contact_total": faculty_contact_total,
@@ -581,9 +595,6 @@ async def get_stats():
         "by_international": intl_counts,
         "last_updated_at": last_updated_at,
     })
-    _stats_cache = result
-    _stats_cache_time = now
-    return result
 
 
 class ChatMessage(BaseModel):

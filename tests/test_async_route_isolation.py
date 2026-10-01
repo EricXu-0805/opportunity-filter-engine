@@ -128,6 +128,48 @@ def _post(path: str, payload: dict):
     return asyncio.run(request())
 
 
+@pytest.mark.parametrize(
+    ("path", "scan_name"),
+    [
+        ("/api/opportunities?opportunity_type=bogus&limit=1", "actionable_opportunities"),
+        ("/api/opportunities/upcoming?days=30", "actionable_opportunities"),
+        ("/api/opportunities/stats/summary", "actionable_opportunities"),
+        ("/api/opportunities/coverage", "coverage_payload"),
+    ],
+)
+def test_public_corpus_scans_do_not_block_live(monkeypatch, path, scan_name):
+    # F6: on 2026-09-30 production took 1.0-3.3 s to answer a list query for a
+    # type nothing has, and one /api/health on that worker finished 1 ms after
+    # it. The list and upcoming routes filter the whole corpus on every call;
+    # stats and coverage do on a cache miss (every 300 s, and once per corpus
+    # version, on each worker).
+    corpus = [{
+        "id": "scan-1",
+        "title": "Scan fixture",
+        "opportunity_type": "research",
+        "source_type": "campus_program",
+        "metadata": {"is_active": True},
+    }]
+    monkeypatch.setattr(opportunities, "load_opportunities", lambda: corpus)
+    monkeypatch.setattr(opportunities, "_stats_cache", None)
+    monkeypatch.setattr(opportunities, "_coverage_cache", None)
+    scan, gate = _gated(getattr(opportunities, scan_name))
+    monkeypatch.setattr(opportunities, scan_name, scan)
+
+    async def probe():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            request = asyncio.create_task(client.get(path))
+            try:
+                await _probe_health(client, gate, path)
+            finally:
+                gate.release.set()
+            response = await request
+            assert response.status_code == 200, response.text
+
+    asyncio.run(probe())
+
+
 def test_import_text_does_not_block_live(monkeypatch):
     fake, gate = _gated(lambda _text: None)
     monkeypatch.setattr(import_text, "parse_text_llm", fake)

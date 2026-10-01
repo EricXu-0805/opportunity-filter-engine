@@ -18,8 +18,9 @@ matcher version, llm flag):
 
 import json
 import os
+import subprocess
 import sys
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from fastapi import HTTPException
@@ -29,9 +30,18 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import backend.routes.matches as m_module
 from backend import data_loader
+from backend.lib import contact_visibility
 from backend.main import app
+from backend.routes import responsiveness as resp_mod
+from backend.schemas import ProfileRequest
 from src.matcher import ranker
 from src.matcher.config import MATCHER_VERSION
+from tests.test_responsiveness import (
+    _WINDOW_START,
+    _Clock,
+    _install_status_log,
+    _window_rows,
+)
 
 client = TestClient(app)
 
@@ -174,6 +184,119 @@ def snapshot_env(monkeypatch):
         ) = ranker_state
         ranker._kw_word_res.clear()
         ranker._kw_word_res.update(old_keyword_res)
+
+
+def _serve_from(monkeypatch, worker: dict) -> None:
+    """Send the next request to one simulated API worker process.
+
+    Production answers /api from two uvicorn workers (two /api/health
+    started_at values on 2026-09-30), each with its own snapshot store, and
+    consecutive requests from one browser land on either. An empty store is
+    also what a TTL expiry or a capacity eviction leaves behind.
+    """
+    monkeypatch.setattr(m_module, "_match_snapshots", worker)
+
+
+def _signals_worker() -> dict:
+    """One simulated API worker that also keeps its own professor-signals cache."""
+    return {
+        "snapshots": {},
+        "signals": {"_cache": None, "_cache_time": 0.0, "_retry_at": 0.0},
+    }
+
+
+def _view_as(monkeypatch, worker: dict, body: dict):
+    """Serve one /matches/view request from ``worker``'s own caches."""
+    _serve_from(monkeypatch, worker["snapshots"])
+    for name, value in worker["signals"].items():
+        monkeypatch.setattr(resp_mod, name, value, raising=False)
+    response = client.post("/api/matches/view", json=body)
+    worker["signals"] = {name: getattr(resp_mod, name) for name in worker["signals"]}
+    return response
+
+
+# One API worker in its own interpreter: the fixture corpus from argv[1], the
+# /matches/view body from argv[2], then argv[3] pages following next_cursor.
+_VIEW_WORKER_PROCESS = """
+import json
+import sys
+
+from fastapi.testclient import TestClient
+
+import backend.routes.matches as matches
+from backend.main import app
+from src.matcher import ranker
+
+with open(sys.argv[1]) as handle:
+    corpus = json.load(handle)
+with open(sys.argv[2]) as handle:
+    request = json.load(handle)
+ranker.register_corpus(corpus)
+matches.load_opportunities_generation = lambda: (corpus, "two-process-fixture")
+matches.load_opportunities_by_id = lambda: {item["id"]: item for item in corpus}
+client = TestClient(app)
+pages = []
+for _ in range(int(sys.argv[3])):
+    response = client.post("/api/matches/view", json=request)
+    pages.append({"status": response.status_code, "body": response.json()})
+    if response.status_code != 200 or not response.json()["has_more"]:
+        break
+    request["cursor"] = response.json()["next_cursor"]
+print(json.dumps(pages))
+"""
+
+# The same worker, with its corpus coming through the real loader from the
+# data directory in argv[1], published argv[4] times. Between publishes the
+# file is rewritten with the same bytes (a newer mtime), the way a reload
+# during a shard rewrite looks to the loader.
+_LOADER_WORKER_PROCESS = """
+import json
+import os
+import sys
+from pathlib import Path
+
+from fastapi.testclient import TestClient
+
+from backend import data_loader
+from backend.main import app
+
+data_loader.DATA_DIR = Path(sys.argv[1])
+corpus_file = data_loader.DATA_DIR / "opportunities.json"
+for publish in range(int(sys.argv[4])):
+    if publish:
+        stat = corpus_file.stat()
+        os.utime(corpus_file, ns=(stat.st_atime_ns, stat.st_mtime_ns + 1_000_000_000))
+    data_loader.load_opportunities()
+with open(sys.argv[2]) as handle:
+    request = json.load(handle)
+client = TestClient(app)
+pages = []
+for _ in range(int(sys.argv[3])):
+    response = client.post("/api/matches/view", json=request)
+    pages.append({"status": response.status_code, "body": response.json()})
+    if response.status_code != 200 or not response.json()["has_more"]:
+        break
+    request["cursor"] = response.json()["next_cursor"]
+print(json.dumps({"publishes": data_loader._opp_cache_generation, "pages": pages}))
+"""
+
+
+def _promote_last_result(monkeypatch) -> None:
+    """Make every later materialization rank the current last result first.
+
+    Stands in for what the snapshot key cannot see: a calendar day turning
+    or an accepted responsiveness signal arriving reorders an otherwise
+    identical profile + corpus + matcher key.
+    """
+    rank = m_module.rank_visible_universe
+
+    def reordered(*args, **kwargs):
+        universe = rank(*args, **kwargs)
+        universe.visible[-1].final_score = universe.visible[0].final_score + 1.0
+        universe.visible.sort(key=ranker.canonical_sort_key)
+        return universe
+
+    monkeypatch.setattr(m_module, "rank_visible_universe", reordered)
 
 
 class TestExplainServesTheListConclusion:
@@ -412,9 +535,42 @@ class TestSnapshotPagination:
         assert response.status_code == 409
         assert response.json()["detail"]["code"] == "MATCH_CURSOR_EXPIRED"
 
-    def test_cursor_rejects_evicted_snapshot_even_when_inputs_match(
+    def test_cursor_pages_across_workers_that_never_saw_its_snapshot(
         self,
         snapshot_env,
+        monkeypatch,
+    ):
+        profile = _profile()
+        expected = [
+            result["opportunity_id"]
+            for result in client.post("/api/matches", json=profile).json()["results"]
+        ]
+        workers = ({}, {})
+        pages = []
+        seen: list[str] = []
+        cursor = None
+        for turn in range(len(expected)):
+            _serve_from(monkeypatch, workers[turn % 2])
+            params = {"limit": 3} if cursor is None else {"limit": 3, "cursor": cursor}
+            response = client.post("/api/matches", params=params, json=profile)
+            assert response.status_code == 200, response.text
+            page = response.json()
+            pages.append(page)
+            seen.extend(result["opportunity_id"] for result in page["results"])
+            if not page["has_more"]:
+                break
+            cursor = page["next_cursor"]
+
+        assert len(pages) >= 3, "both workers must serve a cursor page"
+        assert seen == expected
+        assert len(seen) == len(set(seen))
+        assert {page["result_set_id"] for page in pages} == {pages[0]["result_set_id"]}
+        assert all(len(worker) == 1 for worker in workers)
+
+    def test_cursor_rejects_a_recomputed_snapshot_whose_order_moved(
+        self,
+        snapshot_env,
+        monkeypatch,
     ):
         first = client.post(
             "/api/matches?limit=3",
@@ -422,10 +578,11 @@ class TestSnapshotPagination:
         ).json()
         assert first["next_cursor"]
 
-        # Simulate TTL eviction, process restart, or capacity eviction. The
-        # profile/corpus/matcher key is unchanged, but a newly materialized
-        # snapshot is a new generation and must not accept the old offset.
-        m_module._match_snapshots.clear()
+        # Same profile/corpus/matcher key, but the worker that recomputes it
+        # (another process, or this one after TTL or capacity eviction) now
+        # ranks a different list. The old offset would skip or repeat rows.
+        _promote_last_result(monkeypatch)
+        _serve_from(monkeypatch, {})
         response = client.post(
             f"/api/matches?limit=3&cursor={first['next_cursor']}",
             json=_profile(),
@@ -570,6 +727,15 @@ class TestSnapshotPagination:
         assert m_module._snapshot_key(profile_dict, True) != m_module._snapshot_key(
             profile_dict, False
         )
+
+    def test_the_running_release_participates_in_snapshot_key(self, snapshot_env, monkeypatch):
+        # The result-set id leaves the cards to the key, so the key has to
+        # change with the code that projects them.
+        profile_dict = m_module._normalized_profile(ProfileRequest(**_profile()))
+        monkeypatch.setenv("RENDER_GIT_COMMIT", "a" * 40)
+        key_now = m_module._snapshot_key(profile_dict, False, "corpus-1")
+        monkeypatch.setenv("RENDER_GIT_COMMIT", "b" * 40)
+        assert m_module._snapshot_key(profile_dict, False, "corpus-1") != key_now
 
     def test_same_key_concurrent_miss_is_single_flight(self, snapshot_env, monkeypatch):
         import asyncio
@@ -884,6 +1050,464 @@ class TestServerMatchView:
         assert response.status_code == 409
         assert response.json()["detail"]["code"] == "MATCH_CURSOR_EXPIRED"
 
+    def test_view_cursor_pages_across_workers_that_never_saw_its_snapshot(
+        self, snapshot_env, monkeypatch
+    ):
+        # RN-1 / F1: production answered about half of all Next clicks with
+        # 409 MATCH_CURSOR_EXPIRED, because the page-2 request reached the
+        # other worker, which had ranked the identical list under its own id.
+        profile = _profile()
+        expected = [
+            result.opportunity_id
+            for result in ranker.rank_all(profile, snapshot_env["corpus"])
+            if result.bucket != "low_fit"
+        ]
+        request = self._request(profile)
+        workers = ({}, {})
+        pages = []
+        seen: list[str] = []
+        for turn in range(len(expected)):
+            _serve_from(monkeypatch, workers[turn % 2])
+            response = client.post("/api/matches/view", json=request)
+            assert response.status_code == 200, response.text
+            page = response.json()
+            pages.append(page)
+            seen.extend(result["opportunity_id"] for result in page["results"])
+            if not page["has_more"]:
+                break
+            request["cursor"] = page["next_cursor"]
+
+        assert len(pages) >= 3, "both workers must serve a cursor page"
+        assert seen == expected
+        assert len(seen) == len(set(seen))
+        assert [page["view_start"] for page in pages] == list(range(0, len(expected), 4))
+        assert {page["result_set_id"] for page in pages} == {pages[0]["result_set_id"]}
+        assert all(len(worker) == 1 for worker in workers)
+
+    def test_view_cursor_rejects_a_recomputed_snapshot_whose_order_moved(
+        self, snapshot_env, monkeypatch
+    ):
+        request = self._request(_profile())
+        first = client.post("/api/matches/view", json=request).json()
+        assert first["next_cursor"]
+
+        _promote_last_result(monkeypatch)
+        _serve_from(monkeypatch, {})
+        request["cursor"] = first["next_cursor"]
+        response = client.post("/api/matches/view", json=request)
+        assert response.status_code == 409
+        assert response.json()["detail"]["code"] == "MATCH_CURSOR_EXPIRED"
+
+    def test_view_cursor_pages_across_workers_whose_rows_differ_only_in_wording(
+        self, snapshot_env, monkeypatch
+    ):
+        """The id names what a page is cut from, not every sentence on it.
+
+        Whole rows used to be hashed, so any wording one worker produced and
+        its sibling did not (a next step, a gap line, a refine reason) split
+        the id and refused the cursor, although no view selects or orders by
+        that text. It also cost about a second per cross-school snapshot.
+        """
+        rank = m_module.rank_visible_universe
+        wording = {"line": "Email the lab"}
+
+        def worded(*args, **kwargs):
+            universe = rank(*args, **kwargs)
+            for result in universe.visible:
+                result.next_steps = [*result.next_steps, wording["line"]]
+                result.reasons_gap = [*result.reasons_gap, wording["line"]]
+            return universe
+
+        monkeypatch.setattr(m_module, "rank_visible_universe", worded)
+        request = self._request(_profile())
+        workers = ({}, {})
+
+        _serve_from(monkeypatch, workers[0])
+        page_one = client.post("/api/matches/view", json=request).json()
+
+        wording["line"] = "Write to the lab"
+        _serve_from(monkeypatch, workers[1])
+        response = client.post(
+            "/api/matches/view", json={**request, "cursor": page_one["next_cursor"]}
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["result_set_id"] == page_one["result_set_id"]
+        assert response.json()["results"][0]["next_steps"][-1] == "Write to the lab"
+
+    def test_view_cursor_minted_in_one_process_pages_in_another(
+        self, snapshot_env, tmp_path
+    ):
+        """Two real interpreters with different hash seeds, one corpus.
+
+        The simulated workers above share one interpreter. This one does not:
+        process B has never seen process A's snapshot and hashes strings with
+        another seed, which is what the second production worker looks like.
+        """
+        corpus_path = tmp_path / "corpus.json"
+        corpus_path.write_text(json.dumps(snapshot_env["corpus"]))
+        request = self._request(_profile())
+
+        def run(seed: str, body: dict, pages: int) -> list[dict]:
+            request_path = tmp_path / f"request-{seed}.json"
+            request_path.write_text(json.dumps(body))
+            completed = subprocess.run(
+                [
+                    sys.executable, "-c", _VIEW_WORKER_PROCESS,
+                    str(corpus_path), str(request_path), str(pages),
+                ],
+                cwd=os.path.join(os.path.dirname(__file__), ".."),
+                env={
+                    **os.environ,
+                    "PYTHONHASHSEED": seed,
+                    "OFE_MATCH_SNAPSHOT_TTL": "600",
+                },
+                capture_output=True,
+                text=True,
+                timeout=120,
+                check=True,
+            )
+            return json.loads(completed.stdout.strip().splitlines()[-1])
+
+        minted = run("1", request, 2)
+        assert [page["status"] for page in minted] == [200, 200]
+        followed = run("2", {**request, "cursor": minted[0]["body"]["next_cursor"]}, 1)
+
+        assert followed[0]["status"] == 200, followed[0]["body"]
+        page_two = followed[0]["body"]
+        assert page_two["result_set_id"] == minted[0]["body"]["result_set_id"]
+        assert page_two["view_start"] == minted[1]["body"]["view_start"] == 4
+        assert [row["opportunity_id"] for row in page_two["results"]] == [
+            row["opportunity_id"] for row in minted[1]["body"]["results"]
+        ]
+
+    def test_view_cursor_pages_between_workers_that_published_the_data_unequally(
+        self, tmp_path
+    ):
+        """The corpus token names the data, not how often a worker loaded it.
+
+        It read "<publishes>:<mtime>", and each process keeps its own count. A
+        worker that had published once more than its sibling (the files
+        rewritten with the same bytes, or a reload caught mid-rewrite) named
+        the identical list differently and refused every cursor it minted.
+        """
+        data_dir = tmp_path / "processed"
+        data_dir.mkdir()
+        (data_dir / "opportunities.json").write_text(json.dumps(_varied_corpus()))
+        request = self._request(_profile())
+
+        def run(body: dict, publishes: int) -> dict:
+            request_path = tmp_path / f"request-{publishes}.json"
+            request_path.write_text(json.dumps(body))
+            completed = subprocess.run(
+                [
+                    sys.executable, "-c", _LOADER_WORKER_PROCESS,
+                    str(data_dir), str(request_path), "1", str(publishes),
+                ],
+                cwd=os.path.join(os.path.dirname(__file__), ".."),
+                env={**os.environ, "OFE_MATCH_SNAPSHOT_TTL": "600"},
+                capture_output=True,
+                text=True,
+                timeout=120,
+                check=True,
+            )
+            return json.loads(completed.stdout.strip().splitlines()[-1])
+
+        minted = run(request, publishes=2)
+        page_one = minted["pages"][0]
+        assert page_one["status"] == 200, page_one["body"]
+        assert page_one["body"]["next_cursor"]
+        followed = run({**request, "cursor": page_one["body"]["next_cursor"]}, publishes=1)
+
+        assert (minted["publishes"], followed["publishes"]) == (2, 1)
+        assert followed["pages"][0]["status"] == 200, followed["pages"][0]["body"]
+        page_two = followed["pages"][0]["body"]
+        assert page_two["result_set_id"] == page_one["body"]["result_set_id"]
+        assert page_two["view_start"] == 4
+
+    def test_view_cursor_pages_across_workers_after_the_day_turns(
+        self, snapshot_env, monkeypatch
+    ):
+        """No worker keeps serving yesterday's ranking once the day turns.
+
+        The ranker reads the calendar: a deadline that has just passed costs a
+        record its place. A worker that had ranked a profile before midnight
+        kept that list for the rest of its TTL while its sibling ranked the
+        same key with today's date, and each refused the other's cursors.
+        """
+        yesterday, today = date(2026, 9, 30), date(2026, 10, 1)
+        calendar = {"today": yesterday}
+
+        class _Calendar(date):
+            @classmethod
+            def today(cls):
+                return calendar["today"]
+
+        monkeypatch.setattr(m_module, "date", _Calendar)
+        monkeypatch.setattr(ranker, "date", _Calendar)
+        corpus = sorted(
+            [*snapshot_env["corpus"], _opp("due-sep-30", deadline=yesterday.isoformat())],
+            key=lambda record: record["id"],
+        )
+        ranker.register_corpus(corpus)
+        monkeypatch.setattr(
+            m_module, "load_opportunities_generation", lambda: (corpus, "calendar-fixture")
+        )
+        monkeypatch.setattr(
+            m_module, "load_opportunities_by_id", lambda: {o["id"]: o for o in corpus}
+        )
+        request = self._request(_profile())
+        workers = ({}, {})
+
+        _serve_from(monkeypatch, workers[0])
+        ranked_yesterday = client.post("/api/matches/view", json=request).json()
+
+        calendar["today"] = today
+        _serve_from(monkeypatch, workers[1])
+        page_one = client.post("/api/matches/view", json=request).json()
+        assert page_one["result_set_id"] != ranked_yesterday["result_set_id"], (
+            "the passed deadline must move this list, or the test proves nothing"
+        )
+
+        _serve_from(monkeypatch, workers[0])
+        response = client.post(
+            "/api/matches/view", json={**request, "cursor": page_one["next_cursor"]}
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["result_set_id"] == page_one["result_set_id"]
+        assert response.json()["view_start"] == 4
+
+    def test_view_cursor_pages_across_workers_either_side_of_a_contact_stamp_expiry(
+        self, snapshot_env, monkeypatch
+    ):
+        """The ranking reads the day, never the moment within it.
+
+        A contact stamp is good for 60 days, and the evidence rank it earns
+        breaks score ties and is part of the result-set id. The ranker judged
+        the stamp's age at the moment it ranked, so two workers that ranked one
+        profile minutes apart on the same day, either side of an expiry, named
+        the list differently and refused each other's cursors. The committed
+        corpus has 388 UCB stamps expiring on 2026-11-28 between 06:12 and
+        07:02 UTC.
+        """
+        day = date(2026, 11, 28)
+        # Noon of the server's own day, so the day before and the day itself
+        # fall either side of the expiry whatever zone the server runs in.
+        expiry = datetime(2026, 11, 28, 12, 0).astimezone(UTC)
+        clock = {"now": expiry - timedelta(days=1)}
+        calendar = {"today": day - timedelta(days=1)}
+
+        class _Instant(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return clock["now"] if tz is not None else clock["now"].replace(tzinfo=None)
+
+        class _Calendar(date):
+            @classmethod
+            def today(cls):
+                return calendar["today"]
+
+        monkeypatch.setattr(contact_visibility, "datetime", _Instant)
+        monkeypatch.setattr(m_module, "date", _Calendar)
+        monkeypatch.setattr(ranker, "date", _Calendar)
+        stamped = _opp(
+            "opp-00b",
+            contact_email="prof@cs.berkeley.edu",
+            metadata={
+                "is_active": True,
+                "identity_bound": True,
+                "email_source": "bound_directory_card",
+                "contact_verified_email": "prof@cs.berkeley.edu",
+                "contact_source_url": "https://www2.eecs.berkeley.edu/Faculty/Lists/faculty.html",
+                "contact_verified_at": (
+                    expiry - timedelta(days=contact_visibility.CONTACT_VERIFICATION_TTL_DAYS)
+                ).isoformat(),
+            },
+        )
+        corpus = sorted([*snapshot_env["corpus"], stamped], key=lambda record: record["id"])
+        ranker.register_corpus(corpus)
+        monkeypatch.setattr(
+            m_module, "load_opportunities_generation", lambda: (corpus, "stamp-fixture")
+        )
+        monkeypatch.setattr(
+            m_module, "load_opportunities_by_id", lambda: {o["id"]: o for o in corpus}
+        )
+        request = self._request(_profile(), today=day.isoformat())
+        workers = ({}, {})
+
+        _serve_from(monkeypatch, {})
+        while_good = client.post("/api/matches/view", json=request).json()
+        calendar["today"] = day
+        clock["now"] = expiry + timedelta(minutes=2)
+        _serve_from(monkeypatch, {})
+        expired = client.post("/api/matches/view", json=request).json()
+        assert expired["result_set_id"] != while_good["result_set_id"], (
+            "the expiry must move this list, or the test proves nothing"
+        )
+
+        clock["now"] = expiry - timedelta(minutes=2)
+        _serve_from(monkeypatch, workers[0])
+        page_one = client.post("/api/matches/view", json=request).json()
+
+        clock["now"] = expiry + timedelta(minutes=2)
+        _serve_from(monkeypatch, workers[1])
+        page_two = client.post(
+            "/api/matches/view", json={**request, "cursor": page_one["next_cursor"]}
+        )
+        assert page_two.status_code == 200, page_two.text
+        assert page_two.json()["result_set_id"] == page_one["result_set_id"]
+        assert page_two.json()["view_start"] == 4
+
+        # The worker that ranked before the expiry keeps serving its list.
+        _serve_from(monkeypatch, workers[0])
+        page_three = client.post(
+            "/api/matches/view", json={**request, "cursor": page_two.json()["next_cursor"]}
+        )
+        assert page_three.status_code == 200, page_three.text
+        assert page_three.json()["result_set_id"] == page_one["result_set_id"]
+        assert page_three.json()["view_start"] == 8
+
+    def test_search_cursor_neither_repeats_nor_skips_a_row_across_the_servers_midnight(
+        self, snapshot_env, monkeypatch
+    ):
+        """A search reads nothing the result-set id leaves out.
+
+        The id leaves fit-reason wording out, and the search read all of it,
+        including "Deadline in 7 days — apply soon", which a record gains at the
+        server's midnight (00:00 UTC on Render, evening in the US) with no
+        change to its score. A search cursor minted before that midnight kept
+        its id after it, and every record entering the window that ranked above
+        the cursor's offset shifted the page under it: a row repeated or a row
+        skipped.
+        """
+        today, tomorrow = date(2026, 11, 2), date(2026, 11, 3)
+        calendar = {"today": today}
+
+        class _Calendar(date):
+            @classmethod
+            def today(cls):
+                return calendar["today"]
+
+        monkeypatch.setattr(m_module, "date", _Calendar)
+        monkeypatch.setattr(ranker, "date", _Calendar)
+        opening = [_opp(f"soon-{name}", title=f"ML lab opening soon {name}") for name in "abc"]
+        # Ranks above the three (equal score, earlier id) and only enters the
+        # 7-day window tomorrow; nothing in its own text says "soon".
+        due = _opp("due-in-8-days", deadline=(today + timedelta(days=8)).isoformat())
+        corpus = sorted(
+            [*snapshot_env["corpus"], *opening, due], key=lambda record: record["id"]
+        )
+        ranker.register_corpus(corpus)
+        monkeypatch.setattr(
+            m_module, "load_opportunities_generation", lambda: (corpus, "search-fixture")
+        )
+        monkeypatch.setattr(
+            m_module, "load_opportunities_by_id", lambda: {o["id"]: o for o in corpus}
+        )
+        profile = m_module._normalized_profile(ProfileRequest(**_profile()))
+        assert ranker.rank_opportunity(profile, due).final_score == max(
+            ranker.rank_opportunity(profile, record).final_score for record in opening
+        ), "the dated record must rank above the three, or the test proves nothing"
+        request = self._request(_profile(), search_query="soon", today=today.isoformat())
+        request["page_size"] = 1
+
+        _serve_from(monkeypatch, {})
+        page = client.post("/api/matches/view", json=request).json()
+
+        calendar["today"] = tomorrow
+        rows = [row["opportunity_id"] for row in page["results"]]
+        _serve_from(monkeypatch, {})
+        while page["has_more"]:
+            response = client.post(
+                "/api/matches/view", json={**request, "cursor": page["next_cursor"]}
+            )
+            assert response.status_code == 200, response.text
+            page = response.json()
+            rows.extend(row["opportunity_id"] for row in page["results"])
+
+        assert rows == ["soon-a", "soon-b", "soon-c"]
+
+    @staticmethod
+    def _signals_on(monkeypatch, snapshot_env) -> _Clock:
+        """Professor signals released, with one reply that moves opp-12.
+
+        opp-12 ties three others at the top of the fixture list and wins the
+        tie only with the reply bonus, so whether a worker's map counts that
+        reply decides the order every cursor indexes into.
+        """
+        released = m_module.feature_enabled
+        monkeypatch.setattr(
+            m_module,
+            "feature_enabled",
+            lambda feature: feature == "professor_signals" or released(feature),
+        )
+        monkeypatch.setenv("SUPABASE_URL", "https://proj.supabase.co")
+        monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "service-key")
+        clock = _Clock(_WINDOW_START)
+        _install_status_log(monkeypatch, _window_rows("opp-12"), clock)
+
+        profile = m_module._normalized_profile(ProfileRequest(**_profile()))
+        record = snapshot_env["by_id"]["opp-12"]
+        replied = {"opp-12": {"contacted_n": 3, "replied_n": 1}}
+        assert (
+            ranker.rank_opportunity(profile, record, responsiveness=replied).final_score
+            > ranker.rank_opportunity(profile, record).final_score
+        ), "the reply must move opp-12, or these tests prove nothing"
+        return clock
+
+    def test_view_cursor_pages_across_workers_that_fetched_signals_at_different_moments(
+        self, snapshot_env, monkeypatch
+    ):
+        """Within one signals window every worker ranks with the same map.
+
+        Each worker caches the map it fetched. Fetched at different moments,
+        the two maps differed by whatever had been logged in between, so one
+        profile ranked differently per worker and each refused the other's
+        cursors.
+        """
+        clock = self._signals_on(monkeypatch, snapshot_env)
+        request = self._request(_profile())
+        workers = (_signals_worker(), _signals_worker())
+
+        clock.now = _WINDOW_START + 60
+        page_one = _view_as(monkeypatch, workers[0], request).json()
+
+        clock.now = _WINDOW_START + 1800
+        response = _view_as(
+            monkeypatch, workers[1], {**request, "cursor": page_one["next_cursor"]}
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["result_set_id"] == page_one["result_set_id"]
+        assert response.json()["view_start"] == 4
+
+    def test_view_cursor_pages_across_workers_after_the_signals_window_turns(
+        self, snapshot_env, monkeypatch
+    ):
+        """No worker keeps serving a ranking from the previous signals window.
+
+        Both workers agree on the map within a window. A list stored in the
+        last one has to be re-ranked once the window turns, as the sibling
+        does, instead of being served for the rest of its TTL.
+        """
+        clock = self._signals_on(monkeypatch, snapshot_env)
+        request = self._request(_profile())
+        workers = (_signals_worker(), _signals_worker())
+
+        clock.now = _WINDOW_START + 60
+        ranked_before = _view_as(monkeypatch, workers[0], request).json()
+
+        clock.now = _WINDOW_START + resp_mod._CACHE_TTL + 60
+        page_one = _view_as(monkeypatch, workers[1], request).json()
+        assert page_one["result_set_id"] != ranked_before["result_set_id"], (
+            "the reply must move this list, or the test proves nothing"
+        )
+
+        response = _view_as(
+            monkeypatch, workers[0], {**request, "cursor": page_one["next_cursor"]}
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["result_set_id"] == page_one["result_set_id"]
+        assert response.json()["view_start"] == 4
+
     def test_paid_filter_and_bucket_counts_match_full_snapshot(self, snapshot_env):
         profile = _profile()
         request = self._request(profile, paid="yes")
@@ -969,6 +1593,50 @@ class TestServerMatchView:
             {"source": "source-b", "count": 1},
         ]
         assert scope_available is True
+
+    def test_search_does_not_read_the_reasons_that_state_the_servers_calendar(self):
+        """The countdown and the season line describe the server's day, not the record.
+
+        Their wording turns at the server's midnight while everything the
+        result-set id names stays put, so a search that read them could move
+        under a cursor the id still vouched for. Every other fit reason is the
+        same on every day for one profile and one record.
+        """
+        from backend.schemas import MatchViewState
+        from src.matcher.ranker import MatchResult
+
+        def row(ident: str, reasons: list[str]) -> MatchResult:
+            return MatchResult(
+                opportunity_id=ident,
+                eligibility_score=80,
+                readiness_score=80,
+                upside_score=80,
+                final_score=80.0,
+                bucket="good_match",
+                reasons_fit=reasons,
+                reasons_gap=[],
+                next_steps=[],
+            )
+
+        results = [
+            row("due", [
+                "Deadline in 3 days — apply soon",
+                "Your interest in robotics matches this lab",
+            ]),
+            row("season", [
+                "Summer research — in season; applications are typically active now",
+            ]),
+        ]
+        opportunities = {ident: _opp(ident, title="Lab") for ident in ("due", "season")}
+
+        def search(query: str) -> list[str]:
+            view = MatchViewState(search_query=query, today="2026-11-02")
+            filtered, *_rest = m_module._apply_match_view(results, opportunities, view, "uiuc")
+            return [result.opportunity_id for result in filtered]
+
+        assert search("apply soon") == []
+        assert search("in season") == []
+        assert search("robotics") == ["due"]
 
     def test_rolling_deadline_excludes_unconfirmed_faculty_contacts(self):
         """A legacy faculty stamp cannot turn a directory profile into an opening."""
@@ -1279,6 +1947,76 @@ class TestUnknownPolicy:
         assert ranker.hard_exclusion(_opp("x"), ctx) is None
 
 
+class TestResultSetId:
+    """The id names the ranked rows a page is cut from, and only those."""
+
+    @staticmethod
+    def _rows():
+        return [
+            ranker.MatchResult(
+                opportunity_id=f"rs-{index}",
+                eligibility_score=70.0,
+                readiness_score=60.0,
+                upside_score=50.0,
+                final_score=90.0 - index,
+                bucket="good_match",
+                reasons_fit=["fit"],
+                reasons_gap=["gap"],
+                next_steps=["step"],
+                field_relevant=True,
+                evidence_rank=1,
+            )
+            for index in range(3)
+        ]
+
+    @staticmethod
+    def _id(rows, key="key", refined=False, buckets=None, field_relevant_count=3):
+        return m_module._result_set_id(
+            key,
+            rows,
+            buckets or {"high_priority": 0, "good_match": 3, "reach": 0, "low_fit": 2},
+            field_relevant_count,
+            refined=refined,
+        )
+
+    @pytest.mark.parametrize(
+        "move",
+        [
+            lambda rows: rows.reverse(),
+            lambda rows: rows.pop(),
+            lambda rows: setattr(rows[1], "opportunity_id", "rs-other"),
+            lambda rows: setattr(rows[1], "final_score", 88.9),
+            lambda rows: setattr(rows[1], "bucket", "reach"),
+            lambda rows: setattr(rows[1], "evidence_rank", 2),
+            lambda rows: setattr(rows[1], "field_relevant", False),
+        ],
+        ids=["order", "membership", "id", "score", "bucket", "tie_break", "field"],
+    )
+    def test_every_row_field_a_view_cuts_by_moves_the_id(self, move):
+        rows = self._rows()
+        move(rows)
+        assert self._id(rows) != self._id(self._rows())
+
+    def test_the_key_and_the_counts_move_the_id(self):
+        base = self._id(self._rows())
+        assert self._id(self._rows(), key="other") != base
+        assert self._id(self._rows(), refined=True) != base
+        assert self._id(self._rows(), field_relevant_count=2) != base
+        assert self._id(
+            self._rows(),
+            buckets={"high_priority": 0, "good_match": 3, "reach": 0, "low_fit": 3},
+        ) != base
+
+    def test_an_id_cannot_pass_for_two_rows(self):
+        two = self._rows()[:2]
+        # One row whose id spells out the first row and the start of the
+        # second, and whose own fields finish the second: written unquoted,
+        # the two lists would encode to the same bytes.
+        one = self._rows()[1:2]
+        one[0].opportunity_id = "rs-0 90.0 good_match 1 1\nrs-1"
+        assert self._id(one) != self._id(two)
+
+
 class TestCorpusDedup:
     @pytest.fixture
     def _reset_loader(self):
@@ -1338,6 +2076,36 @@ class TestCorpusDedup:
         dup = next(o for o in loaded if o["id"] == "dup-1")
         assert by_id["dup-1"] is dup
         assert dup["title"] == "From shard A"
+
+    def test_a_worker_that_published_twice_names_the_data_like_one_that_published_once(
+        self, tmp_path, monkeypatch, _reset_loader
+    ):
+        # The match snapshot key embeds this token, and two API workers have to
+        # agree on it before a cursor can page across them. It used to carry
+        # the process's own publish count: "2:<mtime>" here, "1:<mtime>" in the
+        # sibling that loaded the same file once.
+        corpus_file = tmp_path / "opportunities.json"
+        corpus_file.write_text(json.dumps([_opp("t-1"), _opp("t-2")]))
+        monkeypatch.setattr(data_loader, "DATA_DIR", tmp_path)
+        data_loader._opp_cache_generation = 0
+
+        data_loader.load_opportunities()
+        stat = corpus_file.stat()
+        os.utime(corpus_file, ns=(stat.st_atime_ns, stat.st_mtime_ns + 1_000_000_000))
+        twice, twice_token = data_loader.load_opportunities_generation()
+        assert data_loader._opp_cache_generation == 2
+
+        # The sibling process, started after the rewrite: same file, one load.
+        data_loader._opp_cache = []
+        data_loader._opp_cache_by_id = {}
+        data_loader._opp_cache_mtime = 0
+        data_loader._opp_cache_generation = 0
+        data_loader._tfidf_fitted_mtime = -1
+        once, once_token = data_loader.load_opportunities_generation()
+        assert data_loader._opp_cache_generation == 1
+
+        assert [o["id"] for o in once] == [o["id"] for o in twice]
+        assert once_token == twice_token
 
     def test_corpus_version_tracks_load(self, tmp_path, monkeypatch, _reset_loader):
         shards = tmp_path / "shards"
@@ -1699,16 +2467,16 @@ class TestMatchResponsesAttestToTheirOwnContract:
             # Structurally unreadable: not our encoding at all. A malformed
             # request is 400 — the server rejects it, nothing conflicts.
             ("invalid", "not-a-real-cursor", 400),
-            # Well-formed and correctly signed, but naming a result set this
-            # process no longer holds — the shape a client gets after a backend
-            # restart or a snapshot TTL expiry. 409, because the request is
-            # fine and the state it refers to is what moved.
+            # Well-formed and correctly signed, but naming a result set that no
+            # longer exists — the shape a client gets after a data refresh.
+            # 409, because the request is fine and the state it refers to is
+            # what moved.
             ("expired", None, 409),
         ],
     )
     @pytest.mark.parametrize("path", ["/api/matches", "/api/matches/view"])
     def test_a_dead_cursor_never_asks_the_client_to_retry_it(
-        self, path, label, cursor, status, mixed_corpus,
+        self, path, label, cursor, status, mixed_corpus, monkeypatch,
     ):
         """Asserted on the real response, not on the constant in the source.
 
@@ -1718,10 +2486,12 @@ class TestMatchResponsesAttestToTheirOwnContract:
         frontend does once — so the flag has to say "do not repeat this".
         """
         if cursor is None:
-            # Mint a real signed cursor, then drop the snapshot it points at.
+            # Mint a real signed cursor, then refresh the data it points at.
             # page_size 1 on both endpoints: the mixed fixture holds two live
             # records, so a default page would return everything and there
-            # would be no next_cursor to expire.
+            # would be no next_cursor to expire. Dropping the snapshot alone
+            # no longer kills it: any worker re-ranks the identical list under
+            # the identical id and pages on.
             live = (
                 client.post(path, json={**_view_body(), "page_size": 1}).json()
                 if path.endswith("/view")
@@ -1729,7 +2499,11 @@ class TestMatchResponsesAttestToTheirOwnContract:
             )
             cursor = live["next_cursor"]
             assert cursor, f"{path}: fixture must produce a second page"
-            m_module._match_snapshots.clear()
+            monkeypatch.setattr(
+                m_module,
+                "load_opportunities_generation",
+                lambda: (mixed_corpus, "mixed-fixture-refreshed"),
+            )
 
         if path.endswith("/view"):
             body = {**_view_body(), "page_size": 1, "cursor": cursor}

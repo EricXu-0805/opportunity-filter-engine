@@ -9,7 +9,6 @@ import logging
 import math
 import os
 import re
-import secrets
 import threading
 import time
 from collections.abc import Callable
@@ -30,6 +29,7 @@ from backend.lib.blocking import (
     BlockingWorkTimeout,
     run_blocking,
 )
+from backend.lib.build_info import release_sha
 from backend.lib.llm import _resolve, chat_completion
 from backend.lib.position_truth import displayed_title, stated_rank
 from backend.lib.prompt_budget import PromptInputTooLarge, check_prompt_size
@@ -85,6 +85,7 @@ from src.matcher.ranker import (
     corpus_generation_lock,
     expand_search_aliases,
     hard_exclusion,
+    is_dated_fit_reason,
     rank_all,
     rank_opportunity,
     rank_visible_universe,
@@ -561,9 +562,10 @@ def llm_rerank(profile, results, opportunities_by_id, top_k=_LLM_RERANK_TOPK,
 # and the per-card modal can never reach different conclusions for the same
 # pair. The key embeds corpus_version + MATCHER_VERSION, so a data refresh or a
 # scoring change can never serve mixed-generation results; the TTL bounds
-# memory and how long a responsiveness-signal flip is deliberately NOT
-# reflected (order stability while a student pages beats a ±2.0 tie-break
-# bonus arriving mid-session).
+# memory. A stored snapshot is also dropped once the calendar day or the
+# professor-signals window it was ranked with has moved on (_ranked_with):
+# production runs more than one API worker, and the order a student pages
+# through only stays put if every worker serves the same list at once.
 _SNAPSHOT_TTL_SECONDS = int(os.environ.get("OFE_MATCH_SNAPSHOT_TTL", "600"))
 _SNAPSHOT_MAX_ENTRIES = int(os.environ.get("OFE_MATCH_SNAPSHOT_MAX", "8"))
 _MATCH_MAX_WORKERS = 1
@@ -596,6 +598,10 @@ class _MatchSnapshot:
     # also False. Every response built from this snapshot reports it, so no
     # surface has to infer the mode from the request flag.
     refined: bool = False
+    # The calendar day and professor-signals map the ranking read from this
+    # worker rather than from the request (see _ranked_with). Served only
+    # while the worker still reads the same.
+    ranked_with: str = ""
 
 
 _match_snapshots: dict[str, _MatchSnapshot] = {}
@@ -678,8 +684,69 @@ def _snapshot_key(
         # still says v3, but a snapshot from before the target-truth filter
         # describes a universe that included the closed records.
         f"|snapshot={MATCH_SNAPSHOT_VERSION}"
+        # The code that projected the cards. The result-set id hashes the
+        # ranked rows but not the cards, which are this key's corpus run
+        # through this release's projection: the same on every worker of one
+        # deploy, not across deploys.
+        f"|release={release_sha() or ''}"
     )
     return hashlib.sha256(raw.encode()).hexdigest()
+
+
+def _result_set_id(
+    key: str,
+    visible: list[MatchResult],
+    buckets: dict[str, int],
+    field_relevant_count: int,
+    refined: bool,
+) -> str:
+    """Name one materialized result set by what it serves, not by the process.
+
+    Production answers /api from two worker processes, each with its own
+    snapshot store. A random id per materialization made every cursor a claim
+    about one process's memory: a production walk on 2026-09-30 saw 11 of 30
+    Next clicks refused with MATCH_CURSOR_EXPIRED, because the page-2 request
+    reached the other worker, which had ranked the identical list under
+    another id.
+
+    The id covers the snapshot key (scoring profile, llm flag, corpus data,
+    matcher and snapshot versions, release) and the ranked rows a page is cut
+    from: each visible result in order, with the score, bucket, tie-break rank
+    and field relevance that views filter, order and count by, plus the counts.
+    A process that materializes the same list names it the same, so a cursor
+    survives a worker switch, a TTL expiry or an eviction. A list that moved (a
+    deadline passing or a contact stamp expiring as the day turns, a
+    professor-signals window turning, an LLM blend) gets a new id, so its old
+    cursors still fail closed instead of skipping or repeating rows.
+
+    Left out on purpose: the cards, which the key already names (this corpus
+    through this release's projection), and the wording of reasons and steps.
+    Gap lines, next steps and a refine reason are text no view reads. The
+    search does read fit reasons, but none whose wording can change while
+    this id holds: the rest follow from the key's profile and corpus, and the
+    two that state the server's calendar, the deadline countdown and the
+    season line, are left out of the search (ranker.is_dated_fit_reason).
+    Hashing those two instead would refuse, at every server midnight, each
+    cursor over a list holding a record within a week of its deadline.
+    Hashing whole rows and cards also cost about a second per cross-school
+    snapshot of 84,092 rows; this costs about 45 ms.
+    """
+    digest = hashlib.sha256(
+        json.dumps(
+            [key, refined, buckets, field_relevant_count],
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode()
+    )
+    digest.update(
+        "\n".join(
+            # repr quotes the id, so no corpus id can blur two rows together.
+            f"{result.opportunity_id!r} {result.final_score!r} {result.bucket} "
+            f"{result.evidence_rank} {result.field_relevant:d}"
+            for result in visible
+        ).encode()
+    )
+    return digest.hexdigest()
 
 
 def _cursor_signature(result_set_id: str, offset: int) -> str:
@@ -817,6 +884,32 @@ async def _responsiveness_for_matching() -> dict | None:
     return await signals_map()
 
 
+def _ranked_with(responsiveness: dict | None) -> str:
+    """Name the ranking inputs that come from the worker, not the request.
+
+    The ranker reads the calendar (a deadline that has just passed costs a
+    record its place, and a contact stamp is judged at the end of the day) and
+    the professor-signals map. It reads no finer clock than the day. Every
+    worker reads the same day, and the same map within a signals window, but
+    a stored snapshot freezes the values it was ranked with. Serving it only
+    while they still hold makes a worker re-rank when the day or the window
+    turns, as its sibling does, instead of serving the old list for the rest
+    of its TTL and refusing every cursor the sibling mints.
+
+    Neither joins the snapshot key or the result-set id: when they change the
+    list, the rows the id hashes change with it, and when they do not, a
+    cursor minted before the turn keeps paging.
+    """
+    signals = (
+        "off"
+        if responsiveness is None
+        else hashlib.sha256(
+            json.dumps(responsiveness, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+    )
+    return f"{date.today().isoformat()}|{signals}"
+
+
 def _store_snapshot(key: str, snap: _MatchSnapshot) -> _MatchSnapshot:
     with _match_inflight_lock:
         # A scorer for generation A may finish just after a hot reload activated
@@ -875,6 +968,7 @@ def _compute_rule_snapshot(
             or registered_corpus_identity() != corpus_identity
         ):
             raise _MatchGenerationChanged
+        ranked_with = _ranked_with(responsiveness)
         universe = rank_visible_universe(
             profile_dict,
             opportunities,
@@ -884,12 +978,13 @@ def _compute_rule_snapshot(
     snap = _MatchSnapshot(
         created_at=time.time(),
         corpus_identity=corpus_identity,
-        # A result-set id identifies this concrete materialized snapshot, not
-        # merely its input key. If the entry expires/is evicted (or the process
-        # restarts), an old cursor must fail closed: calendar- and accepted
-        # responsiveness-based signals can legitimately reorder an otherwise
-        # identical profile+corpus+matcher key.
-        result_set_id=secrets.token_hex(32),
+        result_set_id=_result_set_id(
+            key,
+            universe.visible,
+            universe.buckets,
+            universe.field_relevant_count,
+            refined=False,
+        ),
         visible=universe.visible,
         by_id={result.opportunity_id: result for result in universe.visible},
         opportunities_by_id={
@@ -899,6 +994,7 @@ def _compute_rule_snapshot(
         },
         buckets=universe.buckets,
         field_relevant_count=universe.field_relevant_count,
+        ranked_with=ranked_with,
     )
     return _store_snapshot(key, snap)
 
@@ -1037,12 +1133,15 @@ async def _get_or_compute_snapshot(profile_dict: dict, llm: bool) -> _MatchSnaps
         )
     corpus_identity = _activate_corpus_generation(corpus)
     key = _snapshot_key(profile_dict, llm, corpus_generation)
+    responsiveness = await _responsiveness_for_matching()
+    ranked_with = _ranked_with(responsiveness)
     with _match_inflight_lock:
         snap = _match_snapshots.get(key)
         if (
             snap is not None
             and _SNAPSHOT_TTL_SECONDS > 0
             and snap.corpus_identity == corpus_identity
+            and snap.ranked_with == ranked_with
             and time.time() - snap.created_at <= _SNAPSHOT_TTL_SECONDS
         ):
             return snap
@@ -1051,7 +1150,6 @@ async def _get_or_compute_snapshot(profile_dict: dict, llm: bool) -> _MatchSnaps
     # Cursor/view pages normally hit the snapshot above, so only a true miss
     # should pay that cost.
     opportunities = actionable_opportunities(release_visible_opportunities(corpus))
-    responsiveness = await _responsiveness_for_matching()
     if not llm:
         return await _get_or_compute_rule_snapshot(
             key,
@@ -1133,7 +1231,13 @@ async def _get_or_compute_snapshot(profile_dict: dict, llm: bool) -> _MatchSnaps
     snap = _MatchSnapshot(
         created_at=time.time(),
         corpus_identity=corpus_identity,
-        result_set_id=secrets.token_hex(32),
+        result_set_id=_result_set_id(
+            key,
+            visible_results,
+            buckets,
+            field_relevant_count,
+            refined=refined,
+        ),
         visible=visible_results,
         by_id={r.opportunity_id: r for r in visible_results},
         opportunities_by_id={
@@ -1144,6 +1248,7 @@ async def _get_or_compute_snapshot(profile_dict: dict, llm: bool) -> _MatchSnaps
         buckets=buckets,
         field_relevant_count=field_relevant_count,
         refined=refined,
+        ranked_with=ranked_with,
     )
     return _store_snapshot(key, snap)
 
@@ -1329,7 +1434,11 @@ def _apply_match_view(
                 if description_clean is not None
                 else opportunity.get("description_raw") or ""
             ).lower()
-            reasons = " ".join(result.reasons_fit).lower()
+            # Not the countdown or the season line: they turn with the
+            # server's calendar while the result-set id holds.
+            reasons = " ".join(
+                reason for reason in result.reasons_fit if not is_dated_fit_reason(reason)
+            ).lower()
             if not any(
                 matches(title)
                 or matches(organization)
