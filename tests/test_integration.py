@@ -275,9 +275,14 @@ class TestRankerSanity:
             assert 0 <= r.readiness_score <= 100
             assert 0 <= r.upside_score <= 100
 
-    def test_results_sorted_descending(self, sanity_ranked_results):
-        for i in range(len(sanity_ranked_results) - 1):
-            assert sanity_ranked_results[i].final_score >= sanity_ranked_results[i + 1].final_score
+    def test_results_sorted_by_label_then_score(self, sanity_ranked_results):
+        # Labels are cut per opportunity type (F2), so a mixed selection lists
+        # High Priority, Good Match, Reach, then low fit, each by score.
+        order = ("high_priority", "good_match", "reach", "low_fit")
+        for current, following in zip(sanity_ranked_results, sanity_ranked_results[1:], strict=False):
+            assert order.index(current.bucket) <= order.index(following.bucket)
+            if current.bucket == following.bucket:
+                assert current.final_score >= following.final_score
 
     def test_good_match_scores_high(self, sample_profile, sample_opportunity):
         result = rank_opportunity(sample_profile, sample_opportunity)
