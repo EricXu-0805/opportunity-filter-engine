@@ -57,6 +57,16 @@ def test_access_and_error_pages_are_not_a_successful_empty_check(title):
     assert SOURCE_KEY not in capture_metadata(result)
 
 
+# Bot-check names count only as a whole heading; a research page can open with them.
+@pytest.mark.parametrize("title", [
+    "Human verification: a psychology study", "Security Checkpoint - Airport Screening Research",
+    "Bot Verification | Undergraduate security research",
+])
+def test_heading_that_only_begins_with_a_bot_check_name_is_still_read(title):
+    result = capture("<h1>" + title + "</h1><p>We study robotics.</p>")
+    assert result["status"] == "empty"
+
+
 def test_password_form_is_not_a_successful_source_page():
     result = capture('<h1>University SSO</h1><p>Apply now.</p><input type="password">')
     assert result["status"] == "unsupported"

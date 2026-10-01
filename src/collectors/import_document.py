@@ -45,8 +45,19 @@ _ACCESS_SHELL = re.compile(
     r'(?:sign[ -]?in|log[ -]?in) to (?:continue|view (?:this|the) (?:page|content)|access (?:this|the) (?:page|content)))'
     r'[.!…\s]*$', re.I,
 )
-_LOADING_SHELL = re.compile(r'^(?:loading|please wait)[.!…\s]*$', re.I)
-_LOGIN = re.compile(r'^(?:sign[ -]?in|log[ -]?in)(?:[.!…]+|\s*[-|:–—].*)?$', re.I)
+# A page its scripts have yet to fill: nothing but loading lines. Not source,
+# and not a bot check either; the posting appears once the scripts run.
+_LOADING_SHELL = re.compile(
+    r'^(?:(?:loading(?:(?: [\w-]+){1,3}(?:\.{2,}|…|,))?|please wait|'
+    r'(?:this|it) (?:may|might|can|could) take (?:a few|several|a couple of) (?:seconds|moments))[.…!,]*\s*)+$',
+    re.I,
+)
+# Titles an ordinary page can carry too: a sign-in page, or a courtesy line a
+# real posting may have as its title. They are a wall only when nothing else
+# on the page is readable.
+_GATE_TITLE = re.compile(
+    r'^(?:sign[ -]?in|log[ -]?in)(?:[.!…]+|\s*[-|:–—].*)?$|^one moment,? please[.!…]*$', re.I,
+)
 _GATE_TEXT = re.compile(
     r'\b(?:sign[ -]?in|log[ -]?in|password|username|verify you are human|checking your browser|'
     r'cookies?|copyright|privacy policy|terms of (?:use|service)|all rights reserved)\b', re.I,
@@ -56,23 +67,28 @@ _GATE_TEXT = re.compile(
 # scripts and frames, but an ordinary page can carry them too, so they refuse
 # only a page with nothing else to read.
 _CHALLENGE_TEXT = re.compile(
-    r'\b(?:(?:your|the|this) (?:request|browser|connection) (?:is being|will be) (?:verified|checked)|'
+    r'\b(?:(?:your|the|this) (?:request|browser|connection) is being (?:verified|checked)|'
     r'verif(?:y|ying) (?:that )?you(?: are|\'re|’re) (?:a )?(?:human|not a (?:ro)?bot)|'
     r'confirm you are (?:a )?human|making sure you(?: are|\'re|’re) not a (?:ro)?bot|'
     r'checking (?:your browser|if the site connection is secure)|'
     r'needs to review the security of your connection|performing security verification|'
-    r'this may take a few seconds|press (?:&|and) hold|(?:incapsula|imperva) incident|request unsuccessful|'
+    r'(?:incapsula|imperva) incident|'
     r'protected by anubis|ddos protection by|enable js and disable any ad ?blocker)\b',
     re.I,
 )
-_CHALLENGE_SOURCE = re.compile(r'/cdn-cgi/challenge-platform/|captcha-delivery\.com', re.I)
+# Cloudflare's challenge-platform script is left out: Cloudflare adds it to
+# ordinary pages too, and its challenge page has the refused title or text.
+_CHALLENGE_SOURCE = re.compile(r'captcha-delivery\.com', re.I)
 # Imperva also loads this script on ordinary pages it protects; only its frame is a challenge.
 _CHALLENGE_FRAME = re.compile(r'/_Incapsula_Resource\b', re.I)
 # Only a vendor's bot-check page carries these ids, scripts and redirects, so
-# they refuse it whatever title and explanation it shows around them.
-_CHALLENGE_PAGE_IDS = {'challenge-running', 'cf-challenge-running', 'challenge-form', 'anubis_challenge', 'px-captcha',
-                       'wsidchk-form'}
+# they refuse it whatever title and explanation it shows around them. Ids a
+# site can use for itself (challenge-form, challenge-running, px-captcha) are
+# not among them.
+_CHALLENGE_PAGE_IDS = {'cf-challenge-running', 'anubis_challenge', 'wsidchk-form'}
 _CHALLENGE_PAGE_SOURCE = re.compile(r'/\.within\.website/x/cmd/anubis/|/\.well-known/sgcaptcha\b', re.I)
+# Cloudflare's challenge form posts back with this token in its action.
+_CF_CHALLENGE_ACTION = re.compile(r'[?&]__cf_chl_')
 
 
 class ImportDocumentError(ValueError):
@@ -172,7 +188,7 @@ def _has_independent_source(root: Tag, *, forms: bool = False) -> bool:
         # sentences separately; a gate phrase must not discard adjacent facts.
         for sentence in re.split(r'(?<=[.!?])\s+|(?<=[;。！？；])\s*', line):
             if (_BLOCKED_PAGE_TITLE.fullmatch(sentence) or _JS_WALL.search(sentence) or _GATE_TEXT.search(sentence)
-                    or _CHALLENGE_TEXT.search(sentence)):
+                    or _CHALLENGE_TEXT.search(sentence) or _LOADING_SHELL.fullmatch(sentence)):
                 continue
             if sum(char.isalpha() for char in sentence) >= 12:
                 return True
@@ -187,8 +203,11 @@ def _address(tag: Tag) -> str:
 
 def _is_challenge_page(soup: BeautifulSoup) -> bool:
     """Vendor bot-check markup, visible or not."""
-    return soup.find(id=lambda value: value in _CHALLENGE_PAGE_IDS) is not None or any(
-        _CHALLENGE_PAGE_SOURCE.search(_address(tag)) for tag in soup.find_all(['script', 'form', 'meta']))
+    return (
+        soup.find(id=lambda value: value in _CHALLENGE_PAGE_IDS) is not None
+        or soup.find('form', id='challenge-form', action=_CF_CHALLENGE_ACTION) is not None
+        or any(_CHALLENGE_PAGE_SOURCE.search(_address(tag)) for tag in soup.find_all(['script', 'form', 'meta']))
+    )
 
 
 def _has_challenge_machinery(soup: BeautifulSoup) -> bool:
@@ -235,12 +254,15 @@ def extract_import_document(html: str, *, content_type: str | None = None) -> di
             titles.append(soup.title.get_text(' ', strip=True))
         blocked = [value for value in titles if _BLOCKED_PAGE_TITLE.fullmatch(value)]
         # Denial/challenge titles and challenge markup are not job content. A
-        # bare sign-in heading or password form is only a wall when no
-        # independent source remains.
-        if any(not _LOGIN.fullmatch(value) for value in blocked) or _is_challenge_page(soup):
+        # sign-in or courtesy title, a password form or a visible challenge box
+        # is only a wall when no independent source remains.
+        if any(not _GATE_TITLE.fullmatch(value) for value in blocked) or _is_challenge_page(soup):
             raise ImportDocumentError('access_page')
         gate = bool(blocked) or any(
-            _visible_in_body(tag) and str(tag.get('type', '')).lower() == 'password' for tag in root.find_all('input')
+            _visible_in_body(tag) and (
+                (tag.name == 'input' and str(tag.get('type', '')).lower() == 'password')
+                or tag.get('id') == 'challenge-running'
+            ) for tag in root.find_all(['input', 'div', 'section', 'form'])
         )
         if gate and not _has_independent_source(root):
             raise ImportDocumentError('access_page')
@@ -249,7 +271,8 @@ def extract_import_document(html: str, *, content_type: str | None = None) -> di
                 (_has_challenge_machinery(soup) or _CHALLENGE_TEXT.search(text))
                 and not _has_independent_source(root, forms=True)):
             raise ImportDocumentError('access_page')
-        if root.find('script') is not None and _LOADING_SHELL.fullmatch(text):
+        # Scripts in the head fill a page as surely as scripts in its body.
+        if soup.find('script') is not None and _LOADING_SHELL.fullmatch(text):
             raise ImportDocumentError('javascript_required')
         if _JS_WALL.search(text) and not _has_independent_source(root):
             raise ImportDocumentError('javascript_required')

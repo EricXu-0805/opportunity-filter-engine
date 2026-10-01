@@ -192,3 +192,17 @@ def test_anubis_check_under_the_site_title_is_refused_before_any_model_call(impo
     detail = result.json()['detail']
     assert (detail['code'], detail['reason']) == ('import_source_unreadable', 'access_page')
     assert not calls
+
+
+def test_script_page_with_only_a_loading_line_is_refused_as_needing_javascript(importer, monkeypatch):
+    # The page's scripts have yet to fill it. It used to come back as an
+    # access/bot-check refusal, which told the student the wrong thing.
+    client, calls = importer
+    html = ('<!doctype html><html><head><title>Posting</title></head><body><div id="app">'
+            '<p>Loading positions, this may take a few seconds...</p></div><script src="/app.js"></script></body></html>')
+    monkeypatch.setattr(url_parser.requests, 'get', lambda *a, **k: response(html))
+    result = client.post('/api/import-url', json={'url': URL})
+    assert result.status_code == 422
+    detail = result.json()['detail']
+    assert (detail['code'], detail['reason']) == ('import_source_unreadable', 'javascript_required')
+    assert not calls

@@ -310,6 +310,10 @@ IMUNIFY_WEBSHIELD = (
     pytest.param(page('<div id="px-captcha"></div><p>Press &amp; Hold to confirm you are a human (and not a bot).</p>'
                       '<p>Reference ID 5b0f8a10-1234-11ef-9c1a-7a6f1f1c0000</p>',
                       '<title>Access to this page has been denied</title>'), id='perimeterx'),
+    # PerimeterX's template breaks its sentence over two lines; its title refuses it.
+    pytest.param(page('<h1>Before we continue...</h1><p>Press &amp; Hold to confirm you are<br>a human (and not a bot).</p>'
+                      '<div id="px-captcha"></div><p>Reference ID 5b0f8a10-1234-11ef-9c1a-7a6f1f1c0000</p>',
+                      '<title>Access to this page has been denied</title>'), id='perimeterx-template'),
     # DataDome: the site's own name as title, a captcha frame as the body.
     pytest.param('<html lang="en"><head><title>example.edu</title>'
                  "<script>var dd={'rt':'c','cid':'AHrlqAAAAAMA','host':'geo.captcha-delivery.com'}</script>"
@@ -333,6 +337,12 @@ IMUNIFY_WEBSHIELD = (
                  id='ddos-guard'),
     pytest.param(page('<p>Verifying you are human. This may take a few seconds.</p>',
                       '<title>Human Verification</title>'), id='human-verification'),
+    # Under the site's own title, a loading line beside the check is not source.
+    pytest.param(page('<p id="status">Loading...</p><p>Verifying you are human. This may take a few seconds.</p>'
+                      '<script src="/challenge.js"></script>', '<title>example.edu</title>'), id='verifying-with-loading-line'),
+    # "Please wait" opens the sentence, but it is a bot check, not a loading page.
+    pytest.param(page('<h1>Please wait while your request is being verified...</h1><script>(function(){})();</script>'),
+                 id='verification-sentence-script'),
     pytest.param(page('<h1>Vercel Security Checkpoint</h1><p>We are verifying your browser.</p>',
                       '<title>Vercel Security Checkpoint</title>'), id='vercel-checkpoint'),
     pytest.param(page('<p>Robot Challenge Screen</p>', '<title>Robot Challenge Screen</title>'
@@ -357,7 +367,8 @@ def test_anubis_check_under_the_site_title_with_its_explanation_is_an_access_pag
 
 
 # One vendor's challenge markup per case. Only a bot-check page carries it, so
-# it refuses the page whatever title and explanation surround it.
+# it refuses the page whatever title and explanation surround it. Cloudflare's
+# form counts by the __cf_chl_ token it posts back, not by its id.
 @pytest.mark.parametrize(('head', 'body'), [
     pytest.param('<script id="anubis_challenge" type="application/json">{"rules":{"algorithm":"fast"}}</script>', '',
                  id='anubis-challenge-data'),
@@ -365,10 +376,8 @@ def test_anubis_check_under_the_site_title_with_its_explanation_is_an_access_pag
                  '</script>', id='anubis-script'),
     pytest.param('', '<form id="wsidchk-form" style="display:none;" action="/z0f76a1d14fd" method="GET">'
                  '<input type="hidden" id="wsidchk" name="wsidchk"></form>', id='imunify360-form'),
-    pytest.param('', '<div id="px-captcha"></div>', id='perimeterx-captcha'),
     pytest.param('', '<form id="challenge-form" action="/?__cf_chl_f_tk=abc" method="POST">'
                  '<input type="hidden" name="md" value="x"></form>', id='cloudflare-form'),
-    pytest.param('', '<div id="challenge-running"></div>', id='cloudflare-running'),
     pytest.param('', '<div id="cf-challenge-running"></div>', id='cloudflare-legacy-running'),
     pytest.param('<meta http-equiv="refresh" content="0;/.well-known/sgcaptcha/?r=%2Fprogram">', '',
                  id='siteground-refresh'),
@@ -427,3 +436,110 @@ def test_imperva_page_script_alone_is_not_a_bot_check(body):
     source = '<main><h1>Open positions</h1>' + body + '</main>'
     script = '<script src="/_Incapsula_Resource?SWJIYLWA=719d34d31c8e3a6e6fffd425f7e032f3&ns=2"></script>'
     assert extract_import_document(page(source + script)) == extract_import_document(page(source))
+
+
+# Markup a site can carry for its own reasons: a "Grand Challenge" sign-up form,
+# a competition's status box, PerimeterX's widget inside an apply form, and the
+# script Cloudflare adds to pages it serves. Main imports these pages; the
+# markup must not refuse them, however little else they say.
+CHALLENGE_SCHOLARS = ('<main><h1>Illinois Grand Challenge Scholars</h1><p>Undergraduates may join the Grand Challenge '
+                      'program in spring 2027. Scholars complete research, service and entrepreneurship components.</p>'
+                      '{}</main>')
+SOIL_POSTING = ('<main><h1>Undergraduate Research Assistant</h1><p>The Soil Microbiology Lab seeks an undergraduate '
+                'research assistant for spring 2027. Students will analyze soil samples.</p>'
+                '<p>Deadline: January 15, 2027.</p>{}</main>')
+SHORT_LIST = ('<main><h1>Summer REU 2027</h1><h2>Deadline Feb 1</h2><ul><li>Paid</li><li>10 weeks</li>'
+              '<li>Housing</li></ul><p><a href="/apply">Apply</a></p>{}</main>')
+LAB_TABLE = ('<main><h1>Open positions</h1><table><tr><th>Lab</th><th>Pay</th></tr><tr><td>Optics</td><td>$15</td></tr>'
+             '<tr><td>Robotics</td><td>$16</td></tr></table>{}</main>')
+LABELS_ONLY = ('<form action="/apply"><h2>Research assistant application</h2><label>Describe your interest in soil '
+               'microbiology research</label><textarea></textarea></form>{}')
+CLOUDFLARE_PAGE_SCRIPT = '<script src="/cdn-cgi/challenge-platform/scripts/jsd/main.js"></script>'
+
+
+@pytest.mark.parametrize(('source', 'markup'), [
+    pytest.param(CHALLENGE_SCHOLARS, '<form id="challenge-form" action="/register" method="post"><label>Email</label>'
+                 '<input name="email"><button>Register</button></form>', id='competition-sign-up-form'),
+    pytest.param(CHALLENGE_SCHOLARS, '<div id="challenge-running">The challenge is running now.</div>',
+                 id='competition-status'),
+    pytest.param(SOIL_POSTING, '<form action="/apply"><div id="px-captcha"></div><button>Apply</button></form>',
+                 id='captcha-widget-in-apply-form'),
+    pytest.param(SHORT_LIST, CLOUDFLARE_PAGE_SCRIPT, id='short-list-cloudflare-script'),
+    pytest.param(LAB_TABLE, CLOUDFLARE_PAGE_SCRIPT, id='table-cloudflare-script'),
+    pytest.param(LABELS_ONLY, CLOUDFLARE_PAGE_SCRIPT, id='form-labels-cloudflare-script'),
+])
+def test_markup_a_site_can_carry_for_itself_does_not_refuse_its_page(source, markup):
+    plain = extract_import_document(page(source.format('')))['text']
+    marked = extract_import_document(page(source.format(markup)))['text']
+    assert all(line in marked.splitlines() for line in plain.splitlines())
+
+
+def test_an_empty_challenge_box_is_still_a_bot_check():
+    with pytest.raises(ImportDocumentError) as raised:
+        extract_import_document(page('<div id="challenge-running"></div>'))
+    assert raised.value.reason == 'access_page'
+
+
+# A title that only begins with a bot check's name, or a courtesy title over a
+# readable posting, belongs to the site's own page. The whole stock title still
+# refuses (human-verification, vercel-checkpoint and the Imunify360 cases above).
+@pytest.mark.parametrize(('body', 'head', 'kept'), [
+    pytest.param('<main><h1>Human verification: a psychology study</h1><p>We are recruiting undergraduate research '
+                 'assistants for a study of how people judge CAPTCHA tasks.</p></main>',
+                 '<title>Human Verification: RA position</title>', 'how people judge CAPTCHA tasks', id='human-verification-study'),
+    pytest.param('<main><h1>Security Checkpoint - Airport Screening Research</h1><p>The Human Factors Lab seeks '
+                 'undergraduates to study airport screening queues. Paid, 10 hours a week.</p></main>', '',
+                 'study airport screening queues', id='security-checkpoint-study'),
+    pytest.param('<main><h1>Bot Verification | Undergraduate security research</h1><p>Join our lab to study automated '
+                 'traffic detection on university networks.</p></main>', '',
+                 'automated traffic detection', id='bot-verification-lab'),
+    pytest.param('<main><h1>TSA Research</h1><h1>Security checkpoint</h1><p>Undergraduates will observe checkpoint '
+                 'throughput this summer.</p></main>', '', 'observe checkpoint throughput', id='security-checkpoint-heading'),
+    pytest.param(SOIL_POSTING.format(''), '<title>One moment, please</title>', 'Soil Microbiology Lab',
+                 id='one-moment-title'),
+])
+def test_bot_check_words_in_a_postings_title_do_not_refuse_it(body, head, kept):
+    assert kept in extract_import_document(page(body, head))['text']
+
+
+# Sentences an ordinary sparse posting can hold. Bot checks print different
+# ones (PerimeterX "confirm you are a human", Imunify360 "is being verified",
+# Imperva's incident ID), and main imports these pages.
+SPARSE = '<main><h1>Summer REU 2027</h1><ul><li>Stipend $6,000</li><li>10 weeks</li></ul>{}</main>'
+
+
+@pytest.mark.parametrize('note', [
+    pytest.param('<p>Press and hold the record key to test.</p>', id='press-and-hold'),
+    pytest.param('<p>This may take a few seconds.</p>', id='may-take-seconds'),
+    pytest.param('<form action="/apply"><p>Request unsuccessful. Try again.</p><button>Apply</button></form>',
+                 id='request-unsuccessful'),
+    pytest.param('<p>Your request will be verified by the lab manager.</p>', id='request-will-be-verified'),
+])
+def test_ordinary_sentences_on_a_sparse_posting_are_not_a_bot_check(note):
+    text = extract_import_document(page(SPARSE.format(note)))['text']
+    assert '- Stipend $6,000' in text
+
+
+# A script page whose only text is a loading line is a page its scripts have
+# yet to fill, not a bot check, so the student hears that it needs JavaScript.
+@pytest.mark.parametrize('html', [
+    pytest.param(page('<div id="app"><p>Loading positions, this may take a few seconds...</p></div>'
+                      '<script src="/app.js"></script>'), id='loading-sentence'),
+    pytest.param(page('<div id="root">Loading, please wait...</div>', '<script type="module" src="/assets/index.js">'
+                      '</script>'), id='head-script'),
+    pytest.param(page('<div id="app"><p>Loading jobs…</p><p>This may take a few seconds.</p></div>'
+                      '<script src="/app.js"></script>'), id='two-lines'),
+])
+def test_script_page_with_only_a_loading_line_needs_javascript(html):
+    with pytest.raises(ImportDocumentError) as raised:
+        extract_import_document(html)
+    assert raised.value.reason == 'javascript_required'
+
+
+@pytest.mark.parametrize(('body', 'kept'), [
+    pytest.param('<main><h1>Loading dock assistant</h1><p>Loading dock worker needed</p></main>',
+                 'Loading dock worker needed', id='loading-dock'),
+    pytest.param(SOIL_POSTING.format('<p id="status">Loading...</p>'), 'Soil Microbiology Lab', id='posting-with-status'),
+])
+def test_loading_words_beside_source_are_not_a_loading_page(body, kept):
+    assert kept in extract_import_document(page(body + '<script src="/app.js"></script>'))['text']
