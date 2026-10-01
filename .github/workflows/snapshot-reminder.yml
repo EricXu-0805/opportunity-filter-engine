@@ -1,0 +1,94 @@
+name: snapshot-reminder
+
+# Some listings come from a source no collector can fetch. CMU's undergraduate
+# research project list opens only for a CMU login, so a person exports it by
+# hand into data/snapshots/cmu_uro_projects.json, and nothing in the refresh
+# can notice that export going stale. Once a week this reads the snapshot's
+# own refresh-due and valid-until dates and emails the operator while a new
+# export is due (or the snapshot is within 30 days of its end). Past the end
+# the rows are retired: it emails on the first run after it and then every
+# fifth week. ops-scan files the same reminder in the incident queue, daily
+# before the end date and once after it.
+#
+# Monday 13:00 UTC: clear of the 06:00 refresh and the 11:00 ops-scan.
+on:
+  schedule:
+    - cron: '0 13 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: snapshot-reminder
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      # Standard library only, so nothing to install. Exits 0 whether or not
+      # a refresh is due; a snapshot it cannot read fails the job instead.
+      - name: Check whether a hand-exported snapshot is due for a new export
+        id: check
+        env:
+          OPERATOR_EMAIL: ${{ secrets.OPERATOR_EMAIL }}
+          RESEND_FROM: ${{ vars.RESEND_FROM_EMAIL || 'JoinALab <onboarding@resend.dev>' }}
+        run: >-
+          python3 scripts/snapshot_reminder.py
+          --github-output "$GITHUB_OUTPUT"
+          --email-payload "$RUNNER_TEMP/snapshot-reminder.json"
+
+      # Unlike the failure alert below, this email is the job's work, so
+      # missing mail settings or a rejected send fail the run.
+      - name: Email the operator that a snapshot refresh is due
+        if: steps.check.outputs.due == 'true'
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          OPERATOR_EMAIL: ${{ secrets.OPERATOR_EMAIL }}
+        run: |
+          if [ -z "$RESEND_API_KEY" ] || [ -z "$OPERATOR_EMAIL" ]; then
+            echo "::error::a snapshot refresh is due, but RESEND_API_KEY / OPERATOR_EMAIL is not set, so the reminder cannot be sent"
+            exit 1
+          fi
+          curl -sf -X POST https://api.resend.com/emails \
+            -H "Authorization: Bearer $RESEND_API_KEY" \
+            -H "Content-Type: application/json" \
+            --data @"$RUNNER_TEMP/snapshot-reminder.json"
+
+      # Dead man's switch (migration 032; this name is registered by
+      # 20260930220000). Only reached when every step above succeeded.
+      - name: Check in to the dead man's switch
+        run: |
+          curl -sfSL -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d '{"name":"snapshot_reminder","detail":{"run_id":"${{ github.run_id }}"}}' \
+            "${{ secrets.BACKEND_URL }}/api/cron/heartbeat"
+
+      - name: Alert operator on failure
+        if: failure() || cancelled()
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          OPERATOR_EMAIL: ${{ secrets.OPERATOR_EMAIL }}
+        run: |
+          if [ -z "$RESEND_API_KEY" ] || [ -z "$OPERATOR_EMAIL" ]; then
+            echo "::warning::RESEND_API_KEY / OPERATOR_EMAIL not set — cannot alert"
+            exit 0
+          fi
+          curl -sf -X POST https://api.resend.com/emails \
+            -H "Authorization: Bearer $RESEND_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"from\": \"${{ vars.RESEND_FROM_EMAIL || 'JoinALab <onboarding@resend.dev>' }}\",
+              \"to\": [\"$OPERATOR_EMAIL\"],
+              \"subject\": \"JoinALab: snapshot-reminder check FAILED\",
+              \"text\": \"The weekly check for hand-exported snapshots that are due for a new export failed.\n\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\nUntil it runs cleanly nobody is emailed when the CMU research project list needs a refresh; ops-scan still files the reminder in the incident queue.\"
+            }" || true

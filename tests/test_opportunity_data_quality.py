@@ -291,6 +291,23 @@ class TestR70ADataQuality:
             f"First 3: {leaks[:3]}"
         )
 
+    def test_nothing_stays_active_past_its_stated_expiry(self):
+        """A dated snapshot row carries ``metadata.expires_at`` (the CMU URO
+        project list's valid-until date). deactivate_past retires it on every
+        committed shard once that date passes, so a live one is a leak — the
+        same anchoring to the data's as-of date as the deadline gate above."""
+        data = _load_data()
+        as_of = _data_as_of(data)
+        leaks = [
+            o.get("id") for o in data
+            if (o.get("metadata") or {}).get("is_active") is not False
+            and (expiry := _parse_iso((o.get("metadata") or {}).get("expires_at"))) is not None
+            and expiry < as_of
+        ]
+        assert not leaks, (
+            f"{len(leaks)} records past expires_at as of {as_of} still active: {leaks[:3]}"
+        )
+
     def test_no_shared_department_keyword_pollution(self):
         """DQ-1: a department-wide 'Research Areas' nav block scraped into many
         profiles produced byte-identical multi-keyword sets across same-department
@@ -1194,3 +1211,27 @@ class TestTwoWaysACitationGoesWrong:
             {"id": "g", "pi_name": "Ada Lovelace", "metadata": {"publication_author_id": "A4"}},
         ]
         assert ambiguous_author_ids(records) == {"A1"}
+
+
+class TestPublicationTrust:
+    def test_no_paper_is_trusted_on_a_superseded_gate(self):
+        """refresh_all withdraws superseded-gate trust on every refresh, but a
+        PR that regenerates shards from data older than the remediation (a
+        refresh branch cut before it merged, a shard restore) can put the
+        verified_author_id stamps back, and nothing else fails: every consumer
+        reads the stamp alone, so gate 1's department-field-family papers go
+        straight back onto match cards and into cold emails.
+
+        Fix a failure with `python3 scripts/remediate_publications.py
+        invalidate --save` and commit the shards and the ledger it writes.
+        """
+        from src.publication_remediation import population_summary, remediation_population
+
+        data = _load_data()
+        summary = population_summary(data)
+        assert summary["old_gate_professors"] == 0, (
+            f"{summary['old_gate_professors']} professors / "
+            f"{summary['old_gate_relationships']} papers are trusted on a "
+            f"superseded works gate. First 3: "
+            f"{[u['professor_id'] for u in remediation_population(data)[:3]]}"
+        )
