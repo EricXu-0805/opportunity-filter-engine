@@ -198,6 +198,9 @@ describe('sourceLabel (derived source filter)', () => {
     expect(sourceLabel('ucb_chem_faculty', t)).toBe('results.filters.sourceUcbChemFaculty');
     expect(sourceLabel('ucb_cee_faculty', t)).toBe('results.filters.sourceUcbCeeFaculty');
   });
+  it('names the CMU project-list snapshot instead of humanizing its key', () => {
+    expect(sourceLabel('cmu_uro_projects', t)).toBe('results.filters.sourceCmuUroProjects');
+  });
   it('uses i18n keys for the UC Berkeley campus opportunity-graph sources', () => {
     // These three emit buckets must map to real labels — not the humanized
     // fallback ("Ucb Research Programs"), which reads as a bug in the UI.

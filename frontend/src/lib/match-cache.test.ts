@@ -155,6 +155,44 @@ describe('match-cache target-truth fail-close', () => {
     expect(localStorage.getItem(MATCH_KEY)).toBeNull();
   });
 
+  it('discards a page cached before pubtrust-v3 that cites a verified paper', () => {
+    // pubtrust-v3 retired this version. A page stored under it can carry
+    // papers a retired works gate stamped verified, and after the server
+    // withdrew them the version is the only thing that keeps this device from
+    // rendering them, and handing them to a cold-email draft, for seven days.
+    const RETIRED_CACHE_VERSION = 'mvp-core-close-v1-contact-trust-v1-target-truth-v2';
+    const paper = {
+      title: 'Structural and dynamical properties of tidal dwarf galaxies in the tails and bridge of the Guitar galaxy Arp 105',
+      year: 2026,
+    };
+    const response = makeResponse(1);
+    Object.assign(response.results[0].opportunity, {
+      source_type: 'faculty_research',
+      record_kind: 'faculty_contact',
+      target_truth: {
+        listing_state: 'unknown', reference_only: false, actionable: true,
+        accepting_state: 'unknown', reason_code: null,
+        verified_at: null, expires_at: null,
+      },
+      publication_attribution_status: 'verified_author_id',
+      recent_works: [paper],
+    });
+    expect(writeMatchCache('h', false, response)).toBe(true);
+    // Under the current version the same page reads back paper and all, so
+    // nothing in its content is refusable: only the version can retire it.
+    const current = readMatchCache('h', false)!.results[0].opportunity as unknown as Record<string, unknown>;
+    expect(current.publication_attribution_status).toBe('verified_author_id');
+    expect(current.recent_works).toEqual([paper]);
+
+    const planted = JSON.parse(localStorage.getItem(MATCH_KEY)!);
+    planted.version = RETIRED_CACHE_VERSION;
+    localStorage.setItem(MATCH_KEY, JSON.stringify(planted));
+
+    expect(readMatchCache('h', false)).toBeNull();
+    expect(hasMatchCache()).toBe(false);
+    expect(localStorage.getItem(MATCH_KEY)).toBeNull();
+  });
+
   it.each(BAD_TRUTHS)('rejects and clears a stored page containing a %s truth', (_label, truth) => {
     expect(writeMatchCache('h', false, makeResponse(3))).toBe(true);
     expect(readMatchCache('h', false)).not.toBeNull();
@@ -320,8 +358,13 @@ describe('match-cache', () => {
   it('projects opportunities to display fields (drops metadata, raw desc, truncates clean)', () => {
     writeMatchCache('h1', false, makeResponse(1));
     const raw = localStorage.getItem(MATCH_KEY)!;
+    // Pinned as a literal on purpose: this version string is what invalidates
+    // seven-day local payloads when the record-visibility contract moves, so
+    // moving it has to be a deliberate edit here too. `-pubtrust-v3` is the
+    // historical publication remediation — a page cached before it holds
+    // citations the server has since withdrawn.
     expect(JSON.parse(raw).version).toBe(
-      'mvp-core-close-v1-contact-trust-v1-target-truth-v2',
+      'mvp-core-close-v1-contact-trust-v1-target-truth-v2-pubtrust-v3',
     );
     expect(raw).not.toContain('"metadata"');
     expect(raw).not.toContain('eligibility_text_raw');

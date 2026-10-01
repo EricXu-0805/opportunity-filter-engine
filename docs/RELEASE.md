@@ -39,7 +39,7 @@ would say nothing about what is actually running). `/api/health` and
 | `flag_parity` | backend vs frontend release-scope tables | the gate itself |
 | `restore_drill` | `data/releases/drills/<drill_id>.json` | an operator, via `scripts/restore_drill.py` |
 | `ci:*` (4 required checks) | `scripts/verify_refresh_pr.py`-shaped snapshot | CI, bound to the head SHA |
-| `open_incidents` | `GET /api/admin/ops/incidents?unresolved_only=true` | an operator with `ADMIN_TOKEN` |
+| `open_incidents` | `GET /api/admin/ops/incidents?unresolved_only=true` → `rollup` (the gate counts `release_blocking_total`: every unresolved incident except a `manual_review:snapshot_refresh:*` reminder) | an operator with `ADMIN_TOKEN` |
 | `provider_readiness` | `GET /api/ready` → `reported.providers` | an operator with `ADMIN_TOKEN` |
 | `api_ready` | `GET /api/ready` on the deployed instance | an operator |
 | `render_canary`, `vercel_canary`, `supabase_canary` | the deployed environments | an operator |

@@ -64,6 +64,14 @@ RESOLUTIONS = (
 TERMINAL_STATUSES = ("resolved", "suppressed")
 _NOT_TERMINAL = f"not.in.({','.join(TERMINAL_STATUSES)})"
 
+# Reminders that a hand-exported snapshot needs a new export
+# (``_scan_snapshot_refresh``). They are work for whoever holds the source's
+# login, not a fault in what is deployed — past the end date the snapshot's
+# rows retire by themselves — so the rollup counts them in ``open_total`` and
+# leaves them out of ``release_blocking_total``, the count the release gate's
+# ``open_incidents`` check reads.
+SNAPSHOT_REMINDER_PREFIX = "manual_review:snapshot_refresh:"
+
 # Kinds where "try it again" is a meaningful operator action at all.
 RETRYABLE_KINDS = ("notification_failure", "collector_failure")
 
@@ -85,6 +93,7 @@ _COLLECTOR_STATUS_PATH = _PROCESSED_DIR / "collector_status.json"
 _COLLECTOR_HISTORY_PATH = _PROCESSED_DIR / "collector_status_history.jsonl"
 _SOURCE_HEALTH_PATH = _PROCESSED_DIR / "source_health.json"
 _TRACKING_PATH = _PROCESSED_DIR / "professor_tracking.json"
+_URO_SNAPSHOT_PATH = _PROCESSED_DIR.parent / "snapshots" / "cmu_uro_projects.json"
 
 # Drift thresholds. Both must trip: the percentage catches a real collapse,
 # the absolute floor stops a 12 -> 7 wobble on a tiny department from paging
@@ -268,7 +277,8 @@ async def list_incidents(
 
     The ``rollup`` block always counts UNRESOLVED incidents regardless of the
     caller's filters, so narrowing the list to one kind (or to closed rows)
-    never hides that another kind is on fire.
+    never hides that another kind is on fire. ``release_blocking_total`` is
+    ``open_total`` less the open snapshot reminders (``SNAPSHOT_REMINDER_PREFIX``).
     """
     _require_enum(kind, KINDS, "kind")
     _require_enum(status, STATUSES, "status")
@@ -312,7 +322,7 @@ async def list_incidents(
             rollup_resp = await client.get(
                 f"{base}/rest/v1/ops_incidents",
                 params={
-                    "select": "kind,priority",
+                    "select": "kind,priority,dedup_key",
                     "status": _NOT_TERMINAL,
                     "limit": str(_ROLLUP_LIMIT),
                 },
@@ -325,13 +335,17 @@ async def list_incidents(
 
     open_by_kind = {k: 0 for k in KINDS}
     open_by_priority = {p: 0 for p in PRIORITIES}
+    snapshot_reminders = 0
     for row in open_rows if isinstance(open_rows, list) else []:
         if not isinstance(row, dict):
             continue
         if row.get("kind") in open_by_kind:
             open_by_kind[row["kind"]] += 1
+            if str(row.get("dedup_key") or "").startswith(SNAPSHOT_REMINDER_PREFIX):
+                snapshot_reminders += 1
         if row.get("priority") in open_by_priority:
             open_by_priority[row["priority"]] += 1
+    open_total = sum(open_by_kind.values())
 
     return {
         "status": "ok",
@@ -340,7 +354,9 @@ async def list_incidents(
         "rollup": {
             "open_by_kind": open_by_kind,
             "open_by_priority": open_by_priority,
-            "open_total": sum(open_by_kind.values()),
+            "open_total": open_total,
+            "open_snapshot_reminders": snapshot_reminders,
+            "release_blocking_total": open_total - snapshot_reminders,
             # The rollup reads at most _ROLLUP_LIMIT rows; say so rather than
             # letting a capped count masquerade as the true total.
             "truncated": isinstance(open_rows, list) and len(open_rows) >= _ROLLUP_LIMIT,
@@ -836,6 +852,39 @@ class _Recorder:
             row["dedup_key"] for row in rows
             if isinstance(row, dict) and isinstance(row.get("dedup_key"), str)
         }
+
+    async def lookup(self, dedup_key: str) -> tuple[bool, dict | None]:
+        """The stored incident for one dedup_key, whatever its status.
+
+        ``(True, row)``, ``(True, None)`` when there is none, and
+        ``(False, None)`` when it could not be read — which a detector that
+        must not reopen a suppression has to tell apart from "none", so it is
+        counted in ``errors`` rather than swallowed like ``open_keys``.
+        """
+        try:
+            resp = await self._client.get(
+                f"{self._base}/rest/v1/ops_incidents",
+                params={
+                    "select": "dedup_key,status,detail",
+                    "dedup_key": f"eq.{dedup_key}",
+                    "limit": "1",
+                },
+                headers=self._headers,
+            )
+            if getattr(resp, "status_code", 500) >= 400:
+                raise RuntimeError(f"HTTP {resp.status_code}")
+            rows = resp.json()
+            if not isinstance(rows, list):
+                raise TypeError("expected a list of rows")
+        except Exception as e:
+            logger.exception("ops-scan: incident lookup failed for %s", dedup_key)
+            self.errors.append({
+                "query": "ops_incidents", "dedup_key": dedup_key,
+                "error": _truncate(f"{type(e).__name__}: {e}", 120),
+            })
+            return False, None
+        row = next((r for r in rows if isinstance(r, dict) and r.get("dedup_key") == dedup_key), None)
+        return True, row
 
 
 # ---------------------------------------------------------------------------
@@ -1632,6 +1681,210 @@ async def _scan_professor_tracking(rec: _Recorder, summary: dict) -> None:
     }
 
 
+async def _scan_snapshot_refresh(rec: _Recorder, summary: dict) -> None:
+    """A hand-exported snapshot that is due for a new export -> manual_review.
+
+    CMU's project list opens only for a CMU login, so no collector can
+    re-fetch it and nothing else would ever notice it going stale. From its
+    refresh-due date (or 30 days before it expires) this files one incident
+    naming the snapshot, who exported it and how to redo that, and re-sights
+    it daily until a newer snapshot is deployed — which is complete evidence
+    the reminder was acted on, so that recovery closes it.
+
+    Past the end date the snapshot's rows are retired, so nothing on the site
+    is stale and the reminder stops asking. The incident is filed once for
+    that snapshot and not re-sighted, so an operator's resolve stands, and so
+    does a suppression: 031's RPC reopens a suppressed incident it is asked to
+    record, so the detector does not ask while the snapshot (its export date
+    and its two dates) is the one the stored incident describes. A different
+    snapshot is new information and files again. In no state does the
+    reminder block a release (``SNAPSHOT_REMINDER_PREFIX``).
+    """
+    try:
+        from src.collectors import cmu_uro_projects
+    except Exception as e:  # noqa: BLE001
+        summary["skipped"].append({
+            "detector": "snapshot_refresh",
+            "reason": f"module unavailable ({type(e).__name__})",
+        })
+        return
+    if not _URO_SNAPSHOT_PATH.exists():
+        summary["skipped"].append({"detector": "snapshot_refresh", "reason": "snapshot not present"})
+        return
+    try:
+        snapshot = cmu_uro_projects.load_snapshot(_URO_SNAPSHOT_PATH)
+    except Exception as e:  # noqa: BLE001
+        summary["skipped"].append({
+            "detector": "snapshot_refresh",
+            "reason": _truncate(f"snapshot unreadable ({type(e).__name__})", 120),
+        })
+        return
+
+    summary["scanned"] += 1
+    status = cmu_uro_projects.refresh_status(snapshot, datetime.now(UTC).date())
+    key = cmu_uro_projects.REMINDER_DEDUP_KEY
+
+    async def file() -> str:
+        note = cmu_uro_projects.reminder(snapshot, status)
+        ok = await rec.record(
+            kind="manual_review", dedup_key=key, title=note["title"],
+            summary=note["summary"], detail=note["detail"],
+            scope=cmu_uro_projects.SOURCE, priority=note["priority"],
+            entity_type="source_snapshot", entity_id=cmu_uro_projects.SOURCE,
+            field="refresh_due",
+        )
+        return "filed" if ok else "filing_failed"
+
+    if status["state"] in ("refresh_due", "expiring"):
+        action = await file()
+    else:
+        found, stored = await rec.lookup(key)
+        stored_detail = (stored or {}).get("detail")
+        same_snapshot = isinstance(stored_detail, dict) and all(
+            stored_detail.get(k) == status[k] for k in ("snapshot_date", "refresh_due", "valid_until"))
+        if not found:
+            action = "lookup_failed"
+        elif status["state"] == "expired":
+            if same_snapshot and stored.get("status") == "suppressed":
+                action = "suppressed"
+            elif same_snapshot and stored_detail.get("state") == "expired":
+                action = "already_filed"
+            else:
+                action = await file()
+        elif stored is not None and stored.get("status") not in TERMINAL_STATUSES:
+            ok = await rec.recover(
+                key, auto_resolve=True,
+                note=(f"snapshot refreshed: taken {status['snapshot_date']}, "
+                      f"next refresh due {status['refresh_due']}"),
+            )
+            action = "recovered" if ok else "recovery_failed"
+        else:
+            action = "none"
+    summary["detectors"]["snapshot_refresh"] = {**status, "incident": action}
+
+
+_MANUAL_REVIEW_ROLLUP = 25
+_REMEDIATION_LEDGER_PATH = _PROCESSED_DIR / "publication_remediation_ledger.jsonl"
+
+
+def _pending_publication_professors() -> int:
+    """How many corpus records are currently withdrawn from publication trust.
+
+    Counted off the loaded corpus rather than off the ledger: the ledger says
+    what the remediation did, the corpus says what is true now, and the
+    incident is about the second. A ledger that believes it finished while
+    records remain withdrawn is precisely the disagreement worth surfacing.
+    """
+    from backend.data_loader import load_opportunities
+    from src.publication_trust import is_pending_remediation
+
+    return sum(1 for o in load_opportunities() if is_pending_remediation(o))
+
+
+async def _scan_publication_remediation(rec: _Recorder, summary: dict) -> None:
+    """The publication-remediation ledger -> manual_review + data_drift incidents.
+
+    Two different facts needing two different incidents, because they need two
+    different people.
+
+    ``data_drift`` while professors remain withdrawn: those records serve no
+    paper personalization at all. That is the correct fail-closed state AND a
+    degraded product, and it is the operator's business that it persists — a
+    remediation nobody finishes is indistinguishable, from outside, from one
+    nobody started.
+
+    ``manual_review`` for units the current gate could not settle. An ambiguous
+    author is not a bug to fix in code; it is a judgement someone makes with
+    the evidence in front of them, which is what migration 031 added that kind
+    for. Rolled into ONE incident rather than one per professor: a few thousand
+    individually-keyed rows would bury every other incident, and the queue is
+    worth having only because a human reads it.
+    """
+    if not _REMEDIATION_LEDGER_PATH.exists():
+        summary["skipped"].append({
+            "detector": "publication_remediation",
+            "reason": "no remediation ledger on disk",
+        })
+        return
+
+    try:
+        from src.publication_remediation import Ledger
+
+        ledger = Ledger(_REMEDIATION_LEDGER_PATH)
+        report = ledger.report()
+        queue = ledger.manual_review_queue()
+        pending = _pending_publication_professors()
+    except Exception as e:
+        summary["skipped"].append({
+            "detector": "publication_remediation",
+            "reason": _truncate(f"{type(e).__name__}: {e}", 120),
+        })
+        return
+
+    summary["scanned"] += 1
+
+    drift_key = "data_drift:publication_remediation:pending"
+    if pending:
+        await rec.record(
+            kind="data_drift",
+            dedup_key=drift_key,
+            title=f"{pending} professor(s) awaiting publication re-attribution",
+            summary=(
+                "their papers are withheld from match reasons, Ask AI, resume and "
+                "cold email until the current gate has re-judged them"
+            ),
+            detail={
+                "metric": "pending_remediation_professors",
+                "current": pending,
+                "ledger_units": report["units"],
+                "ledger_completed": report["completed"],
+                "by_result": report["by_result"],
+                "retry_count": report["retry_count"],
+                "duplicate_logical_remediations": report["duplicate_logical_remediations"],
+            },
+            scope="publication_remediation",
+            field="pending_remediation_professors",
+            priority="normal",
+        )
+    elif drift_key in summary["_open_keys"]:
+        # Auto-resolvable because the evidence is exact and local: zero records
+        # carry the withdrawn status, which is the whole claim the incident made.
+        await rec.recover(
+            drift_key, auto_resolve=True,
+            note="no professor remains withdrawn pending re-attribution",
+        )
+
+    review_key = "manual_review:publication_attribution"
+    if queue:
+        await rec.record(
+            kind="manual_review",
+            dedup_key=review_key,
+            title=f"{len(queue)} professor-paper attribution(s) need a human",
+            summary=(
+                "the current gate could not settle who these records belong to; "
+                "the relationships stay untrusted until a review says otherwise"
+            ),
+            detail={
+                "count": len(queue),
+                "sample": queue[:_MANUAL_REVIEW_ROLLUP],
+                "truncated": max(0, len(queue) - _MANUAL_REVIEW_ROLLUP),
+            },
+            scope="publication_remediation",
+            priority="normal",
+        )
+    elif review_key in summary["_open_keys"]:
+        await rec.recover(
+            review_key, auto_resolve=False,
+            note="the ledger lists no unsettled attribution — confirm each was reviewed",
+        )
+
+    summary["detectors"]["publication_remediation"] = {
+        "pending_professors": pending,
+        "ledger": report,
+        "manual_review": len(queue),
+    }
+
+
 @router.post("/cron/ops-scan")
 async def ops_scan(authorization: str | None = Header(default=None)):
     """Detector entry point: turn the run artifacts into durable incidents.
@@ -1672,7 +1925,12 @@ async def ops_scan(authorization: str | None = Header(default=None)):
 
     async with _client() as client:
         rec = _Recorder(client, base, headers)
-        summary["_open_keys"] = await rec.open_keys(("collector_failure", "data_drift"))
+        # manual_review joins the two the scan has always read because the
+        # publication-remediation detector recovers one: without its open keys
+        # here, a settled review queue would never close its incident.
+        summary["_open_keys"] = await rec.open_keys(
+            ("collector_failure", "data_drift", "manual_review")
+        )
 
         # Each detector is independently fenced: one crashing artifact must
         # not cost the operator the other two detectors' findings.
@@ -1716,6 +1974,24 @@ async def ops_scan(authorization: str | None = Header(default=None)):
             logger.exception("ops-scan: professor_tracking detector crashed")
             summary["errors"].append({
                 "detector": "professor_tracking",
+                "error": _truncate(f"{type(e).__name__}: {e}", 120),
+            })
+
+        try:
+            await _scan_publication_remediation(rec, summary)
+        except Exception as e:
+            logger.exception("ops-scan: publication_remediation detector crashed")
+            summary["errors"].append({
+                "detector": "publication_remediation",
+                "error": _truncate(f"{type(e).__name__}: {e}", 120),
+            })
+
+        try:
+            await _scan_snapshot_refresh(rec, summary)
+        except Exception as e:
+            logger.exception("ops-scan: snapshot_refresh detector crashed")
+            summary["errors"].append({
+                "detector": "snapshot_refresh",
                 "error": _truncate(f"{type(e).__name__}: {e}", 120),
             })
 
