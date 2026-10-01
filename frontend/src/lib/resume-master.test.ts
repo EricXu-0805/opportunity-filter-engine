@@ -463,6 +463,29 @@ describe('résumé master candidates proposed from the résumé text', () => {
     ]);
   });
 
+  it('takes no project from a row without a separator where the other projects have one', async () => {
+    // A section title the list does not know ("Competitions") and the award
+    // and outreach rows under it would read as projects in a list of bare
+    // project names, but not among "Name | stack" rows.
+    const raw = JSON.parse(readFileSync(join(__dirname, '__fixtures__/resume-pdf/resume-texts.json'), 'utf8'))['reflowed-unlisted-title'] as string;
+    const master = values(proposeResumeMaster(null, raw, await sourceDigest(raw)));
+    expect(master.activities.filter((activity) => activity.kind === 'project')).toEqual([
+      { kind: 'project', title: 'Lumos' }, { kind: 'project', title: 'Quill' },
+    ]);
+    // Dates name a project too.
+    const dated = ['Jordan Lee', 'PROJECTS', 'Quill (2024–2025)', '- Wrote the sync engine.', 'Competitions',
+      'Finalist, Illinois Innovation Prize'].join('\n');
+    expect(values(proposeResumeMaster(null, dated, await sourceDigest(dated))).activities).toEqual([
+      { kind: 'project', title: 'Quill', start: '2024', end: '2025' },
+    ]);
+    // A list of bare project names still reads as projects, whatever its points say.
+    const bare = ['Jordan Lee', 'PROJECTS', 'PantryPal', '- Built the inventory tracker for the food pantry.', 'Lumos',
+      '- Trained a plant disease classifier - 4,000 leaf images.'].join('\n');
+    expect(values(proposeResumeMaster(null, bare, await sourceDigest(bare))).activities).toEqual([
+      { kind: 'project', title: 'PantryPal' }, { kind: 'project', title: 'Lumos' },
+    ]);
+  });
+
   it('reads Title Case section titles joined by "&" as headings', async () => {
     const raw = ['Jordan Lee', 'Experience & Leadership', 'President, Chess Club - Aug 2024 - Present', '- Organized weekly tournaments.',
       'Research & Projects', 'Campus Bus Tracker - React and Flask web app used by about 200 students during Fall 2025.',

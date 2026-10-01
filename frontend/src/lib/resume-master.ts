@@ -369,6 +369,8 @@ const DEGREE = /(?<![\p{L}.])(?:(?:B|M)\.?\s?(?:S|A|Sc|Eng|E|Ed)\.?|Ph\.?\s?D\.?
 const FIELD = /^(?:,\s*|\s+in\s+|\s+of\s+|\s+)((?:[\p{Lu}][\p{L}&'-]*)(?:\s+(?:(?:and|&|of|in)\s+)?[\p{Lu}][\p{L}&'-]*)*)/u;
 const NOT_A_FIELD = new RegExp(String.raw`^(?:${MONTH}|Spring|Summer|Fall|Autumn|Winter|Expected|Class|GPA|Minor|Honors|Present)\b`, 'u');
 const JOINERS = new Set(['of', 'and', '&', 'for', 'the', 'in', 'at', 'on', 'de', 'la']);
+// "Campus Bus Tracker - React…", "Lumos | Swift", "Quill<tab>Spring 2025".
+const PROJECT_SEPARATOR = /\t|\s[-–—|:]\s/u;
 
 /** A row of names: every field is a few words that start with a capital or
  *  a digit, joined by small words ("Teaching Assistant, CS 225 Data
@@ -477,12 +479,16 @@ export function proposeResumeMaster(value: unknown, rawText: string, signature: 
 
   // Sections that mark their points with glyph bullets. In the others a
   // point has no glyph, so a short line with a comma or a role word in it is
-  // as likely a point as a role row.
+  // as likely a point as a role row. Sections whose rows name a project with
+  // a separator or dates: there a bare short row is not a project name, but
+  // a title the heading list does not know or a row under it.
   const sectionOf: number[] = [];
   const glyphSections = new Set<number>();
+  const separatedSections = new Set<number>();
   lines.forEach((line, index) => {
     sectionOf[index] = (sectionOf[index - 1] ?? 0) + (resumeSectionHeading(line.text.trim()) ? 1 : 0);
     if (BULLET_LINE.test(line.text)) glyphSections.add(sectionOf[index]);
+    else if (PROJECT_SEPARATOR.test(line.text) || DATE_RANGE.test(line.text)) separatedSections.add(sectionOf[index]);
   });
 
   let section: { kind: ResumeSectionKind; heading: string } | null = null;
@@ -588,7 +594,7 @@ export function proposeResumeMaster(value: unknown, rawText: string, signature: 
       // project header names one, usually with dates or a separator; anything
       // else (an accomplishment sentence) stays with the experience library.
       const header = range || (words <= 12 && !sentence && (project
-        ? /\t|\s[-–—|:]\s/u.test(line.text) || words <= 8
+        ? PROJECT_SEPARATOR.test(line.text) || (words <= 8 && !separatedSections.has(sectionOf[index]))
         : glyphs ? ROLE.test(text) || FIELD_SEPARATOR.test(text)
           : namesRow(text) && text.split(FIELD_SEPARATOR).slice(0, 2).some((field) => ROLE.test(field))))
         || (project && words > 12 && /^[^\t]{1,80}?\s[-–—|:]\s/u.test(line.text) && !/^\p{Ll}/u.test(text));
@@ -601,7 +607,7 @@ export function proposeResumeMaster(value: unknown, rawText: string, signature: 
           : /leadership|activities/u.test(section.heading) ? 'other'
             : /research/u.test(section.heading) || /\bresearch\b|\blab(?:oratory)?\b/iu.test(text) ? 'research' : 'employment');
       headerOpen = true;
-      let head = line.text.slice(0, dates(line, current, false)).replace(/[\s|–—-]+$/u, '');
+      let head = line.text.slice(0, dates(line, current, false)).replace(/[\s|–—(-]+$/u, '');
       const trailing = TRAILING_PLACE.exec(head);
       if (trailing) {
         current.fields.location = match(line, trailing, place(trailing));
