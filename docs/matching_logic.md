@@ -100,32 +100,41 @@ Interest text does not establish research experience.
 ## Recommendation Buckets
 
 Buckets are assigned by **one** algorithm — `_assign_buckets` in
-`src/matcher/ranker.py`, applied to the full ranked result set:
+`src/matcher/ranker.py`. Each opportunity type (the normalised
+`opportunity_type` the type filter reads) is banded on its own results, so `n`
+and `s` below are that type's count and scores. A row's visibility and label
+therefore never depend on which other types the student selected: a selection
+of several types serves exactly the union of its single-type lists, each row
+labelled as its own type labels it, except for the shared shortlist below.
 
-- **≥ 10 results (the normal case):** percentile banding with a strict top-N cap.
-  `high_priority` = at most the first `HIGH_PRIORITY_TARGET_COUNT` (20) results
-  in canonical order that also clear the 70.0 floor. Boundary ties do not expand
-  the shortlist: evidence strength, then opportunity id, decide which tied rows
-  occupy the remaining places. Other tied rows fall through to `good_match`.
-  With zero-based descending score array `s` and positive N, high cutoff is
-  `max(70,s[min(N-1,n-1)])`; p70 is `s[floor(.3*n)]` and p40 is `s[floor(.6*n)]`.
-  Good cutoff is `min(high,max(62,p70))`, reach is
+- **≥ 10 results of a type (the normal case):** percentile banding with a strict
+  top-N cap. With zero-based descending score array `s` and positive N, the
+  type's high cutoff is `max(70,s[min(N-1,n-1)])`; p70 is `s[floor(.3*n)]` and
+  p40 is `s[floor(.6*n)]`. Good cutoff is `min(high,max(62,p70))`, reach is
   `min(good,max(42,p40))`; everything below is `low_fit`.
   This keeps cutoffs ordered even when a small universe puts its percentiles
   above the Nth score. Bands may have equal cutoffs or no members.
   A score of 75 can therefore legitimately land in `good_match` when the
-  profile's distribution is strong — the flat table alone is NOT the contract.
-- **< 10 results:** flat floors from `BUCKET_THRESHOLDS` — 70.0 / 62.0 / 42.0;
-  the same count cap still applies if configured below the result count
-  (env-overridable `OFE_BUCKET_HIGH/GOOD/REACH`; an override changes
-  `MATCHER_VERSION`, see below).
+  type's distribution is strong — the flat table alone is NOT the contract.
+- **< 10 results of a type:** flat floors from `BUCKET_THRESHOLDS` — 70.0 /
+  62.0 / 42.0 (env-overridable `OFE_BUCKET_HIGH/GOOD/REACH`; an override
+  changes `MATCHER_VERSION`, see below).
+- **High Priority is one shortlist for the whole selection.** Each type
+  nominates its first `HIGH_PRIORITY_TARGET_COUNT` (20) results in canonical
+  order that clear its high cutoff; `high_priority` is the first 20 nominees in
+  canonical order across the selection. Boundary ties do not expand the
+  shortlist: evidence strength, then opportunity id, decide which tied rows
+  occupy the remaining places. A nominee past the twentieth place, and any
+  other tied row, falls through to `good_match`. Equivalently, the shortlist is
+  the selection's first 20 results that score at least 70.
 
 `low_fit` results are counted but never returned by `/matches`.
 
 For 100 equal scores of 75, exactly 20 are high and 80 are good. Reordering the
 source corpus cannot change those 20 ids. Semantic and LLM reranking reapply
-the same cap after updating scores; the histogram-based public path sorts its
-retained rows canonically before choosing the tied boundary.
+the same per-type bands and cap after updating scores; the histogram-based
+public path keeps one histogram per type and sorts its retained rows
+canonically before choosing the tied boundary.
 
 Lists and view pagination share a canonical snapshot. The internal explain and
 compare implementations read its buckets too; their release gates still control
@@ -258,7 +267,7 @@ Input: (student_profile, list[opportunity])
   ├─ Step 6: Canonical sort
   │   (-final_score, not actionable, opportunity_id) — total order
   │
-  ├─ Step 7: Bucket assignment (_assign_buckets, percentile + top-N cap)
+  ├─ Step 7: Bucket assignment (_assign_buckets, per-type percentiles + top-N cap)
   │   High Priority / Good Match / Reach / Low Fit
   │
   └─ Step 8: Generate explanations

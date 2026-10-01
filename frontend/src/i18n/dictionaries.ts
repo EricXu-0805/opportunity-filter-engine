@@ -2570,7 +2570,7 @@ export const en = {
     },
     experience: {
       "title": "Experience library",
-      "description": "Review your resume excerpts or add an experience. Only entries you confirm can supply experience facts for cold emails. Matching and resume rewriting do not use this library yet.",
+      "description": "Review your resume excerpts or add an experience. Only entries you confirm can supply experience facts for cold emails, your résumé master and target résumés. Matching and the résumé bullet editor do not use this library yet.",
       "limits": "Up to 100 entries, 6,000 characters each and 60,000 in total. Original resume text is kept separately.",
       "invalidStored": "The saved experience library could not be read. It has not been replaced. Reload your profile or resolve the sync error before editing.",
       "count": "{active} confirmed and available · {total} entries",
@@ -2918,6 +2918,7 @@ export const en = {
     sourceOurRss: 'OUR RSS',
     sourceUcbUrap: 'UC Berkeley URAP',
     sourceUcbUrapProjects: 'UC Berkeley URAP Projects',
+    sourceCmuUroProjects: 'CMU Undergraduate Research Projects',
     sourceUcbEecsFaculty: 'UC Berkeley Faculty (EECS)',
     sourceUcbStatFaculty: 'UC Berkeley Faculty (Statistics)',
     sourceUcbChemFaculty: 'UC Berkeley Faculty (Chemistry)',
@@ -7715,7 +7716,7 @@ export const zh = {
     },
     experience: {
       "title": "经历库",
-      "description": "核对简历原文片段，也可以手动补充经历。只有你确认的条目才会作为经历事实供邮件选用；匹配和简历修改暂未接入。",
+      "description": "核对简历原文片段，也可以手动补充经历。只有你确认的条目才会作为经历事实，供邮件、简历母版和目标简历选用；匹配和经历条目编辑暂未接入。",
       "limits": "最多 100 条，每条 6,000 字，总计 60,000 字。简历原文单独保留。",
       "invalidStored": "暂时无法读取已保存的经历，原数据没有被覆盖。请重新加载资料或处理同步错误后再编辑。",
       "count": "{active} 条已确认且可用 · 共 {total} 条",
@@ -8062,6 +8063,7 @@ export const zh = {
     sourceOurRss: 'OUR RSS',
     sourceUcbUrap: 'UC Berkeley URAP',
     sourceUcbUrapProjects: 'UC Berkeley URAP 项目',
+    sourceCmuUroProjects: 'CMU 本科科研项目',
     sourceUcbEecsFaculty: 'UC Berkeley 教授（EECS）',
     sourceUcbStatFaculty: 'UC Berkeley 教授（统计）',
     sourceUcbChemFaculty: 'UC Berkeley 教授（化学）',

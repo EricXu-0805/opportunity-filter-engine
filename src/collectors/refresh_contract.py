@@ -73,6 +73,8 @@ _ALWAYS_SPECIAL: dict[str, frozenset[str]] = {
         }
     ),
     "ucb": frozenset({"ucb_urap", "ucb_campus"}),
+    # Offline snapshot reader: a CMU run that did not emit it lost the rows.
+    "cmu": frozenset({"cmu_uro_projects"}),
 }
 _DEEP_SPECIAL: dict[str, frozenset[str]] = {
     "ucb": frozenset({"ucb_urap_projects"}),

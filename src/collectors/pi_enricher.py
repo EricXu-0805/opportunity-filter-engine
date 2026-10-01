@@ -399,6 +399,12 @@ def enrich_opportunities(opps: list[dict], save: bool = False,
         if _is_ucb_program_record(opp):
             stats["skipped_program"] += 1
             continue
+        # A hand-exported snapshot row states its own contact route, including
+        # "write to the students named above" with no single address; its
+        # listing page would only yield whatever address that page shows.
+        if isinstance((opp.get("metadata") or {}).get("source_snapshot"), dict):
+            stats["skipped_program"] += 1
+            continue
         # ``identity_bound: False`` is the tombstone for an address that was
         # reviewed and rejected (clear_contact_claim nulls it). Scraping the
         # page again would put an address back beside the tombstone, which

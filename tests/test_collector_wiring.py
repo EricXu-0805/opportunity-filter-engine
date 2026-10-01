@@ -271,6 +271,11 @@ def test_refresh_all_status_keys_are_mapped_for_school_audience():
         # withdrawn (src/school_scope.py) inactive on every run. It writes no
         # records, so it has no record-level source to map.
         "unsupported_schools",
+        # Withdraws publication trust from records a superseded attribution
+        # gate approved. It fetches nothing and emits no record — it edits the
+        # trust stamp on records other collectors produced — so it has no
+        # school/audience of its own to map.
+        "publication_remediation",
         # Run key, not a record source: ucb_campus records ship as
         # ucb_research_programs / ucb_external_research / ucb_labs, whose
         # SOURCE_DEFAULTS coverage is asserted by test_ucb_campus.TestRegistry.

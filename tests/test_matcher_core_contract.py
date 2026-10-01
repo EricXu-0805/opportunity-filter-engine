@@ -4,17 +4,22 @@ Synthetic records only. Provider calls in reranking tests are replaced at their
 boundary; the release gates and the production scoring weights are unchanged.
 """
 
+import random
 from collections import Counter
 from copy import deepcopy
 from dataclasses import asdict, replace
 from datetime import date, timedelta
-from itertools import permutations
+from itertools import combinations, permutations
 
 import pytest
 
 from src.matcher import ranker
 
 RELEASE_CONTRACT_TESTS = True
+
+SERVED_TYPES = ("research", "summer_program", "internship")
+SELECTIONS = [list(combo) for size in (1, 2, 3) for combo in combinations(SERVED_TYPES, size)]
+BUCKETS = ("high_priority", "good_match", "reach", "low_fit")
 
 
 def _profile(**overrides):
@@ -48,6 +53,64 @@ def _result(ident, score, evidence=1):
         upside_score=score, final_score=score, bucket="low_fit",
         reasons_fit=[], reasons_gap=[], next_steps=[], evidence_rank=evidence,
     )
+
+
+def expected_selection_labels(single, selection):
+    """What a selection must serve, derived from its single-type views alone:
+    every row they show, under the label they show it with — except that the
+    selection keeps one twenty-place High Priority shortlist, the first twenty
+    of those rows in canonical order. Single-type High Priority rows past it
+    are Good Matches."""
+    rows = [row for kind in selection for row in single[kind] if row.bucket != "low_fit"]
+    shortlist = sorted(
+        (row for row in rows if row.bucket == "high_priority"), key=ranker.canonical_sort_key
+    )[:20]
+    kept = {row.opportunity_id for row in shortlist}
+    return {
+        row.opportunity_id: (
+            "good_match"
+            if row.bucket == "high_priority" and row.opportunity_id not in kept
+            else row.bucket
+        )
+        for row in rows
+    }
+
+
+def pin_scores(monkeypatch):
+    """Choose each record's final score and evidence rank; the real scorer,
+    type filter and banding still run around them."""
+    table = {}
+    score = ranker._rank_opportunity_unlocked
+
+    def pinned(profile, opportunity, *args, **kwargs):
+        result = score(profile, opportunity, *args, **kwargs)
+        result.final_score, result.evidence_rank = table[result.opportunity_id]
+        return result
+
+    monkeypatch.setattr(ranker, "_rank_opportunity_unlocked", pinned)
+    return table
+
+
+@pytest.fixture
+def pinned_scores(monkeypatch):
+    return pin_scores(monkeypatch)
+
+
+def _generated_corpus(seed, scores):
+    """Three types with independent sizes and score distributions, ties on a
+    half-point grid, and the type sometimes spelled the way a form sends it."""
+    rng = random.Random(seed)
+    corpus = []
+    for kind in SERVED_TYPES:
+        centre, spread = rng.uniform(30, 95), rng.uniform(2, 20)
+        for index in range(rng.choice([0, 4, 9, 10, 14, 21, 35, 60])):
+            ident = f"{kind}-{index:03}"
+            spelling = rng.choice([kind, kind.replace("_", " ").title()])
+            corpus.append(_opp(ident, opportunity_type=spelling))
+            score = min(100.0, max(0.0, round(rng.gauss(centre, spread) * 2) / 2))
+            scores[ident] = (score, rng.choice([0, 1, 2]))
+    rng.shuffle(corpus)
+    return corpus
 
 
 class TestDeadlineEvidenceControlsEveryScoringClaim:
@@ -209,6 +272,98 @@ class TestHighPriorityIsAStrictStableShortlist:
         assert sum(r.final_score == 100.0 and r.bucket == "good_match" for r in outcome.results) == 3
 
 
+class TestEachTypeIsBandedOnItsOwnScores:
+    """F2 (2026-09-30): the Reach cut was the 40th percentile of every ticked
+    type at once, so a record's visibility and label moved with the other
+    types in the selection while its own score stood still. Each type is now
+    cut on its own distribution. A selection serves exactly the union of its
+    single-type views, and the one thing the types share is the twenty-place
+    High Priority shortlist."""
+
+    def test_ticking_another_type_neither_reveals_nor_hides_a_summer_program(self, pinned_scores):
+        # The production finding in miniature: thirty summer programs scoring
+        # 69..40 are cut at their own p40, 51. Research rows all below 42 used
+        # to drag the shared p40 down to the 42 floor and reveal nine of them;
+        # internships scoring 95..76 used to push it up to 59 and hide eight.
+        corpus = []
+        for kind, top, count in (
+            ("summer_program", 69.0, 30), ("research", 39.0, 40), ("internship", 95.0, 20),
+        ):
+            for index in range(count):
+                ident = f"{kind}-{index:02}"
+                corpus.append(_opp(ident, opportunity_type=kind))
+                pinned_scores[ident] = (top - index, 1)
+
+        def summer_rows(selection):
+            return {
+                row.opportunity_id: row.bucket
+                for row in ranker.rank_all(_profile(seeking_type=selection), corpus)
+                if row.bucket != "low_fit" and row.opportunity_id.startswith("summer")
+            }
+
+        alone = summer_rows(["summer_program"])
+        assert sorted(alone) == [f"summer_program-{index:02}" for index in range(19)]
+        assert summer_rows(["summer_program", "research"]) == alone
+        assert summer_rows(["summer_program", "internship"]) == alone
+
+    @pytest.mark.parametrize("seed", range(40))
+    def test_every_selection_is_the_union_of_its_single_type_views(self, seed, pinned_scores):
+        corpus = _generated_corpus(seed, pinned_scores)
+        exploring = bool(seed % 2)
+        single = {
+            kind: ranker.rank_all(_profile(seeking_type=[kind], exploring=exploring), corpus)
+            for kind in SERVED_TYPES
+        }
+        for selection in SELECTIONS:
+            profile = _profile(seeking_type=selection, exploring=exploring)
+            full = ranker.rank_all(profile, corpus)
+            compact = ranker.rank_visible_universe(profile, corpus)
+            served = {row.opportunity_id: row.bucket for row in compact.visible}
+            assert set(served) == {
+                row.opportunity_id
+                for kind in selection
+                for row in single[kind]
+                if row.bucket != "low_fit"
+            }
+            assert served == expected_selection_labels(single, selection)
+            assert [asdict(row) for row in compact.visible] == [
+                asdict(row) for row in full if row.bucket != "low_fit"
+            ]
+            assert compact.buckets == {
+                label: sum(row.bucket == label for row in full) for label in BUCKETS
+            }
+            assert sum(compact.buckets.values()) == sum(len(single[kind]) for kind in selection)
+
+    def test_the_shortlist_is_the_first_twenty_nominees_across_the_selection(self, pinned_scores):
+        # Alone, each type shortlists every one of its rows. Together the 42
+        # nominees compete for twenty places: the twelve research rows at 90,
+        # then eight of the thirty tied 80s — strongest evidence first, then
+        # id, whichever type they come from. The other 22 are Good Matches.
+        corpus = []
+        for kind, score, count in (
+            ("research", 90.0, 12), ("summer_program", 80.0, 15), ("internship", 80.0, 15),
+        ):
+            for index in range(count):
+                ident = f"{kind}-{index:02}"
+                corpus.append(_opp(ident, opportunity_type=kind))
+                pinned_scores[ident] = (score, index % 3)
+        shortlist = [f"research-{i:02}" for i in (2, 5, 8, 11, 1, 4, 7, 10, 0, 3, 6, 9)]
+        shortlist += [f"internship-{i:02}" for i in (2, 5, 8, 11, 14)]
+        shortlist += [f"summer_program-{i:02}" for i in (2, 5, 8)]
+
+        for order in (corpus, corpus[::-1]):
+            for kind in SERVED_TYPES:
+                alone = ranker.rank_all(_profile(seeking_type=[kind]), order)
+                assert {row.bucket for row in alone} == {"high_priority"}
+            profile = _profile(seeking_type=list(SERVED_TYPES))
+            ranked = ranker.rank_all(profile, order)
+            assert [r.opportunity_id for r in ranked if r.bucket == "high_priority"] == shortlist
+            assert Counter(row.bucket for row in ranked) == {"high_priority": 20, "good_match": 22}
+            compact = ranker.rank_visible_universe(profile, order)
+            assert [r.opportunity_id for r in compact.visible if r.bucket == "high_priority"] == shortlist
+            assert compact.buckets == {"high_priority": 20, "good_match": 22, "reach": 0, "low_fit": 0}
+
+
 class TestWhatTheAuditOfTheCandidateFound:
     """Three effects of the candidate's ranker changes, reproduced on the
     corpus or synthetically by an independent read-only audit."""
@@ -257,3 +412,46 @@ class TestWhatTheAuditOfTheCandidateFound:
         ctx = ranker._filter_context(_profile(seeking_type=["Research", "", "  "]))
         assert ctx.seeking == {"research"}
         assert ranker.hard_exclusion(_opp(opportunity_type="research"), ctx) is None
+
+
+class TestAMixedSelectionListsItsLabelsInOrder:
+    """F2 follow-up, the owner's choice (2026-09-30): labels are cut per type
+    and the types score on different scales, so a score-ordered mixed list put
+    an internship Reach above a research Good Match. A selection now lists
+    High Priority, then Good Match, then Reach, each in canonical order. A
+    single type's list is unchanged: its labels already follow its scores."""
+
+    @pytest.mark.parametrize("seed", range(40))
+    def test_labels_never_step_back_and_one_type_keeps_the_canonical_order(self, seed, pinned_scores):
+        corpus = _generated_corpus(seed, pinned_scores)
+        rank = {label: index for index, label in enumerate(BUCKETS)}
+        for selection in SELECTIONS:
+            profile = _profile(seeking_type=selection)
+            for rows in (ranker.rank_all(profile, corpus), ranker.rank_visible_universe(profile, corpus).visible):
+                assert [rank[row.bucket] for row in rows] == sorted(rank[row.bucket] for row in rows)
+                for label in BUCKETS:
+                    group = [row.opportunity_id for row in rows if row.bucket == label]
+                    in_canonical = sorted((row for row in rows if row.bucket == label), key=ranker.canonical_sort_key)
+                    assert group == [row.opportunity_id for row in in_canonical]
+                if len(selection) == 1:
+                    assert rows == sorted(rows, key=ranker.canonical_sort_key)
+
+    def test_a_research_good_match_comes_before_a_higher_scoring_internship_reach(self, pinned_scores):
+        # Internships score higher across the board: their Reach band (71-82.5)
+        # sits above research's Good Match band (62-68).
+        corpus = []
+        for kind, top, step, count in (("research", 68.0, 1.0, 40), ("internship", 95.0, 0.5, 80)):
+            for index in range(count):
+                ident = f"{kind}-{index:02}"
+                corpus.append(_opp(ident, opportunity_type=kind))
+                pinned_scores[ident] = (top - index * step, 1)
+        rows = ranker.rank_visible_universe(_profile(seeking_type=["research", "internship"]), corpus).visible
+        position = {row.opportunity_id: index for index, row in enumerate(rows)}
+        pairs = [
+            (good, reach)
+            for good in rows if good.opportunity_type == "research" and good.bucket == "good_match"
+            for reach in rows if reach.opportunity_type == "internship" and reach.bucket == "reach"
+            if reach.final_score > good.final_score
+        ]
+        assert pairs, "the fixture must contain an internship Reach that outscores a research Good Match"
+        assert all(position[good.opportunity_id] < position[reach.opportunity_id] for good, reach in pairs)

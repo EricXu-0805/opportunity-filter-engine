@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { useState } from 'react';
 import { webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { dictionaries } from '@/i18n/dictionaries';
 import * as evidence from '@/lib/experience-evidence';
 import type { ExperienceEntry, ProfileData } from '@/lib/types';
 import { DEFAULT_PROFILE, type TFunc } from './types';
@@ -20,6 +21,12 @@ function Harness({ initial }: { initial: ProfileData }) {
 const stored = (): ExperienceEntry[] => JSON.parse(screen.getByTestId('entries').textContent!);
 const editorFor = (text: string) => { const el = screen.getAllByText(text).find((item) => item.closest('summary'))!.closest('details')!; el.open = true; return el; };
 describe('experience library review', () => {
+  it('says which features read confirmed entries: cold emails and both résumés, not matching', () => {
+    // It used to say résumé rewriting ignored the library, yet every target-résumé
+    // experience line, the lines AI may rewrite, is a confirmed library entry.
+    expect(dictionaries.en.home.experience.description).toBe('Review your resume excerpts or add an experience. Only entries you confirm can supply experience facts for cold emails, your résumé master and target résumés. Matching and the résumé bullet editor do not use this library yet.');
+    expect(dictionaries.zh.home.experience.description).toBe('核对简历原文片段，也可以手动补充经历。只有你确认的条目才会作为经历事实，供邮件、简历母版和目标简历选用；匹配和经历条目编辑暂未接入。');
+  });
   it('extracts candidates, confirms a correction with original quote and preserves it on re-extraction', async () => {
     render(<Harness initial={{ ...DEFAULT_PROFILE, resume_text: 'Built a Python robot.\n\nMeasured 20 trials.' }} />);
     fireEvent.click(screen.getByRole('button', { name: 'home.experience.extract' }));

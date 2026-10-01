@@ -135,6 +135,7 @@ def _install_supabase(
     heartbeats=None,
     rpc_status: int = 200,
     schema_missing: bool = False,
+    lookup_fails: bool = False,
 ):
     """Stub ops.httpx.AsyncClient with a PostgREST-shaped recorder.
 
@@ -142,7 +143,8 @@ def _install_supabase(
     ``{"method", "url", "params", "json"}`` so a test can assert on the exact
     filter, patch body, audit row, or RPC payload the route produced — the
     only way to prove a detector wrote through the RPC rather than touching
-    the table directly.
+    the table directly. ``lookup_fails`` makes a detector's read of one
+    stored incident (``_Recorder.lookup``) fail in transport.
     """
     incidents = [] if incidents is None else incidents
     events = [] if events is None else events
@@ -179,8 +181,11 @@ def _install_supabase(
             if "ops_incident_events" in url:
                 return _Resp(events)
             if "ops_incidents" in url:
-                if (params or {}).get("select") in ("kind,priority", "dedup_key"):
+                select = (params or {}).get("select")
+                if select in ("kind,priority,dedup_key", "dedup_key"):
                     return _Resp(open_rows if open_rows is not None else incidents)
+                if select == "dedup_key,status,detail" and lookup_fails:
+                    raise ConnectionError("connection reset by peer")
                 return _Resp(incidents)
             return _Resp([])
 
@@ -404,7 +409,34 @@ class TestIncidentList:
             "notification_failure": 1, "manual_review": 0,
         }
         assert rollup["open_total"] == 4
+        assert rollup["release_blocking_total"] == 4
         assert rollup["truncated"] is False
+
+    def test_rollup_sets_snapshot_reminders_apart_from_release_blocking_work(self, monkeypatch):
+        """The release gate reads release_blocking_total: a reminder that a
+        hand-exported snapshot needs a new export is still counted in the
+        queue, but it is not a fault in what is deployed."""
+        _admin_env(monkeypatch)
+        reminder = "manual_review:snapshot_refresh:cmu_uro_projects"
+        open_rows = [
+            {"kind": "manual_review", "priority": "normal", "dedup_key": reminder},
+            {"kind": "manual_review", "priority": "normal", "dedup_key": "manual_review:publication:1"},
+            {"kind": "data_drift", "priority": "high", "dedup_key": "data_drift:x:y"},
+        ]
+        _install_supabase(monkeypatch, incidents=[_incident()], open_rows=open_rows)
+
+        rollup = client.get(
+            "/api/admin/ops/incidents", headers=_hdr(), params={"unresolved_only": "true"}
+        ).json()["rollup"]
+        assert rollup["open_by_kind"]["manual_review"] == 2
+        assert rollup["open_total"] == 3
+        assert rollup["open_snapshot_reminders"] == 1
+        assert rollup["release_blocking_total"] == 2
+
+    def test_the_snapshot_reminder_key_is_the_one_set_apart(self):
+        from src.collectors import cmu_uro_projects
+
+        assert cmu_uro_projects.REMINDER_DEDUP_KEY.startswith(ops_mod.SNAPSHOT_REMINDER_PREFIX)
 
 
 class TestIncidentDetail:
@@ -733,18 +765,30 @@ def _scan_env(monkeypatch):
 
 
 def _write_artifacts(monkeypatch, tmp_path, *, snapshot=None, history=None,
-                     tracking=None, source_health=None):
+                     tracking=None, source_health=None, remediation_ledger=None,
+                     uro_snapshot=None):
     """Point the detector at tmp artifacts; omit one to simulate it missing.
 
     Every path is redirected, including the ones a test does not populate:
     left pointing at the repo the detector would scan the real committed
     ledger and open incidents for whatever is genuinely stale today, so a
     test's assertions would depend on the state of production data.
+
+    ``remediation_ledger`` is redirected for the same reason: the repository
+    ships a real one, so a test about the collector detector would otherwise
+    open a publication-remediation incident off whatever the last remediation
+    run left on disk, and every RPC-count assertion in this file would be
+    measuring that too.
     """
     status_path = tmp_path / "collector_status.json"
     history_path = tmp_path / "collector_status_history.jsonl"
     tracking_path = tmp_path / "professor_tracking.json"
+    ledger_path = tmp_path / "publication_remediation_ledger.jsonl"
     health_path = tmp_path / "source_health.json"
+    uro_path = tmp_path / "cmu_uro_projects.json"
+    if uro_snapshot is not None:
+        uro_path.write_text(json.dumps(uro_snapshot), encoding="utf-8")
+    monkeypatch.setattr(ops_mod, "_URO_SNAPSHOT_PATH", uro_path)
     if source_health is not None:
         health_path.write_text(json.dumps(source_health), encoding="utf-8")
     monkeypatch.setattr(ops_mod, "_SOURCE_HEALTH_PATH", health_path)
@@ -756,9 +800,14 @@ def _write_artifacts(monkeypatch, tmp_path, *, snapshot=None, history=None,
         )
     if tracking is not None:
         tracking_path.write_text(json.dumps(tracking), encoding="utf-8")
+    if remediation_ledger is not None:
+        ledger_path.write_text(
+            "".join(json.dumps(e) + "\n" for e in remediation_ledger), encoding="utf-8"
+        )
     monkeypatch.setattr(ops_mod, "_COLLECTOR_STATUS_PATH", status_path)
     monkeypatch.setattr(ops_mod, "_COLLECTOR_HISTORY_PATH", history_path)
     monkeypatch.setattr(ops_mod, "_TRACKING_PATH", tracking_path)
+    monkeypatch.setattr(ops_mod, "_REMEDIATION_LEDGER_PATH", ledger_path)
 
 
 def _run_scan():
@@ -1549,6 +1598,91 @@ class TestEveryFailureStateTheSchemaAccepts:
             f"allowed: {sorted(SCHEMA_FAILURE_STATES)}")
 
 
+class TestOpsScanPublicationRemediation:
+    """The remediation is only real if its unfinished state is visible.
+
+    A withdrawn professor serves no paper personalization, which is the
+    correct fail-closed answer AND a degraded product. Left off the operator
+    queue, a remediation nobody finishes looks exactly like one nobody started.
+    """
+
+    @staticmethod
+    def _ledger(result, professor_id="fac-1"):
+        key = f"{professor_id}@gate2"
+        return [
+            {"idempotency_key": key, "professor_id": professor_id,
+             "school": "uiuc", "status": "started", "from_gate_version": 1,
+             "to_gate_version": 2},
+            {"idempotency_key": key, "professor_id": professor_id,
+             "school": "uiuc", "status": "verified_complete", "result": result,
+             "from_gate_version": 1, "to_gate_version": 2},
+        ]
+
+    def test_pending_professors_open_a_drift_incident(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls)
+        _write_artifacts(monkeypatch, tmp_path,
+                         remediation_ledger=self._ledger("verified"))
+        monkeypatch.setattr(ops_mod, "_pending_publication_professors", lambda: 4211)
+
+        body = _run_scan().json()
+        payloads = _rpcs(calls, "record_ops_incident")
+        drift = [p for p in payloads
+                 if p["p_dedup_key"] == "data_drift:publication_remediation:pending"]
+        assert len(drift) == 1
+        assert "4211" in drift[0]["p_title"]
+        assert drift[0]["p_detail"]["duplicate_logical_remediations"] == 0
+        assert body["detectors"]["publication_remediation"]["pending_professors"] == 4211
+
+    def test_ambiguous_units_reach_the_manual_review_queue(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls)
+        _write_artifacts(monkeypatch, tmp_path,
+                         remediation_ledger=self._ledger("ambiguous"))
+        monkeypatch.setattr(ops_mod, "_pending_publication_professors", lambda: 1)
+
+        _run_scan()
+        review = [p for p in _rpcs(calls, "record_ops_incident")
+                  if p["p_dedup_key"] == "manual_review:publication_attribution"]
+        assert len(review) == 1
+        assert review[0]["p_kind"] == "manual_review"
+        assert review[0]["p_detail"]["count"] == 1
+        assert review[0]["p_detail"]["sample"][0]["professor_id"] == "fac-1"
+
+    def test_a_settled_corpus_closes_the_drift_incident(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(
+            monkeypatch,
+            open_rows=[{"dedup_key": "data_drift:publication_remediation:pending"}],
+            calls=calls,
+        )
+        _write_artifacts(monkeypatch, tmp_path,
+                         remediation_ledger=self._ledger("verified"))
+        monkeypatch.setattr(ops_mod, "_pending_publication_professors", lambda: 0)
+
+        _run_scan()
+        recoveries = _rpcs(calls, "record_ops_recovery")
+        assert len(recoveries) == 1
+        # Exact, local evidence — zero records carry the withdrawn status,
+        # which is the whole claim the incident made — so this one may close
+        # itself, unlike the tracking gate above.
+        assert recoveries[0]["p_auto_resolve"] is True
+
+    def test_no_ledger_skips_the_detector_rather_than_guessing(self, monkeypatch, tmp_path):
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls)
+        _write_artifacts(monkeypatch, tmp_path)   # no ledger written
+
+        body = _run_scan().json()
+        assert any(s["detector"] == "publication_remediation"
+                   for s in body["skipped"])
+        assert not _rpcs(calls, "record_ops_incident")
+
+
 class TestOpsScanResilience:
     def test_missing_artifacts_are_reported_not_fatal(self, monkeypatch, tmp_path):
         _scan_env(monkeypatch)
@@ -1568,6 +1702,8 @@ class TestOpsScanResilience:
             "release_degradation",
             "professor_tracking",
             "source_health",
+            "publication_remediation",
+            "snapshot_refresh",
         }
         assert _rpcs(calls, "record_ops_incident") == []
 
@@ -1862,10 +1998,14 @@ WORKFLOW_DIR = REPO / ".github" / "workflows"
 
 
 def _seeded_heartbeat_names() -> set[str]:
-    """Heartbeat names the migration registers, read from the migration."""
-    sql = MIGRATION_032.read_text(encoding="utf-8")
-    body = sql.split("INSERT INTO ops_heartbeats", 1)[1].split("ON CONFLICT", 1)[0]
-    return set(re.findall(r"^\s*\('([a-z0-9_]+)',", body, re.MULTILINE))
+    """Heartbeat names the migrations register: 032's seed and any later row."""
+    names: set[str] = set()
+    for path in sorted(MIGRATION_032.parent.glob("*.sql")):
+        sql = path.read_text(encoding="utf-8")
+        for insert in sql.split("INSERT INTO ops_heartbeats")[1:]:
+            body = insert.split("ON CONFLICT", 1)[0]
+            names |= set(re.findall(r"^\s*\('([a-z0-9_]+)',", body, re.MULTILINE))
+    return names
 
 
 def _scheduled_workflows() -> dict[Path, dict]:
@@ -1983,7 +2123,7 @@ class TestTheRegistryMatchesTheSchedulers:
                 unwatched.append(f"{path.name}: check-in step posts no heartbeat name")
             for name in names:
                 if name not in seeded:
-                    unwatched.append(f"{path.name}: '{name}' is not registered in 032")
+                    unwatched.append(f"{path.name}: '{name}' is not registered in any migration")
         assert unwatched == [], (
             "scheduled workflows the dead man cannot see: " + "; ".join(unwatched))
 
