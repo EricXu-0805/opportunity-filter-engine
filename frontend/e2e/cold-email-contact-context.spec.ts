@@ -218,8 +218,7 @@ test('a refusal or no-contact response cannot be applied as a follow-up and neve
   } finally { await owner.http.dispose(); }
 });
 
-async function reachable(locator: Locator) {
-  await locator.scrollIntoViewIfNeeded(); await expect(locator).toBeVisible(); await expect(locator).toBeInViewport();
+async function onTop(locator: Locator) {
   expect(await locator.evaluate(element => {
     const box = element.getBoundingClientRect();
     const x = box.left + box.width / 2, y = box.top + box.height / 2;
@@ -227,12 +226,28 @@ async function reachable(locator: Locator) {
     return x >= 0 && x <= innerWidth && y >= 0 && y <= innerHeight && !!hit && (hit === element || element.contains(hit));
   })).toBe(true);
 }
+async function reachable(locator: Locator) {
+  await locator.scrollIntoViewIfNeeded(); await expect(locator).toBeVisible(); await expect(locator).toBeInViewport();
+  await onTop(locator);
+}
+// M29: Copy and Open in Email stay in view and usable without scrolling.
+async function actionsPinned(page: Page) {
+  for (const name of ['Copy', 'Open in Email']) {
+    const action = page.getByRole('button', { name, exact: true });
+    await expect(action).toBeInViewport({ ratio: 1 }); await onTop(action);
+  }
+}
 test('contact fields and writing controls remain reachable at 390px, a short window and 200 percent equivalent reflow', async ({ page }, info) => {
   const owner = await account();
   try {
     await page.setViewportSize({ width: 390, height: 640 });
+    // `next dev` pins its Dev Tools badge over the bottom-left corner; the production build has none.
+    await page.addInitScript(() => document.addEventListener('DOMContentLoaded', () => {
+      const style = document.createElement('style'); style.textContent = 'nextjs-portal { display: none !important; }'; document.head.append(style);
+    }));
     await seed(page, owner); const model = writing(page); await model.install;
     await open(page); await ready(page); await expand(page);
+    await actionsPinned(page);
     await purpose(page).selectOption('referral');
     const name = panel(page).getByRole('textbox', { name: 'Who referred you? (required)', exact: true });
     const note = panel(page).getByRole('textbox', { name: 'What did they actually say or suggest? (required)', exact: true });
@@ -245,23 +260,27 @@ test('contact fields and writing controls remain reachable at 390px, a short win
     // Short viewport approximates space lost to a keyboard; this is not a real-device keyboard claim.
     await page.setViewportSize({ width: 390, height: 400 });
     await reachable(apply(page));
+    await actionsPinned(page);
     await page.screenshot({ path: info.outputPath('contact-background-390-short.png'), fullPage: true });
     await apply(page).click();
     await reachable(regenerate(page)); await expect(regenerate(page)).toBeEnabled();
     await reachable(fields(page).body); await fields(page).body.fill(MANUAL.body);
     await reachable(fields(page).request); await fields(page).request.fill(MANUAL.request);
+    await actionsPinned(page);
     const close = page.getByRole('button', { name: 'Close email editor', exact: true });
     await reachable(close);
     // 1280×800 at 200% browser zoom has a 640×400 effective CSS viewport.
     // This verifies that reflow, not native zoom or a 390×400 window zoomed again.
     // CSS zoom:2 is deliberately not used: it doubles 100dvh independently of the viewport.
     await page.setViewportSize({ width: 640, height: 400 });
+    await actionsPinned(page);
     await reachable(name); await reachable(note); await reachable(confirm); await reachable(apply(page));
     await page.screenshot({ path: info.outputPath('contact-background-200-percent-equivalent-reflow.png'), fullPage: true });
     await reachable(regenerate(page)); await expect(regenerate(page)).toBeEnabled();
     await reachable(fields(page).body);
     await page.screenshot({ path: info.outputPath('contact-background-reflow-editor.png'), fullPage: true });
     await reachable(fields(page).request);
+    await actionsPinned(page);
     await page.screenshot({ path: info.outputPath('contact-background-reflow-request.png'), fullPage: true });
     await reachable(close);
     await expect(fields(page).body).toHaveValue(MANUAL.body); await expect(fields(page).request).toHaveValue(MANUAL.request);

@@ -1,6 +1,6 @@
 import { emailValidationReceipt } from './ColdEmailModal.test-fixtures';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
 import { ColdEmailStreamError } from '@/lib/cold-email-stream';
 
 vi.mock('@/i18n/client', () => {
@@ -1405,5 +1405,37 @@ describe('ColdEmailModal editing workspace', () => {
     expect(editor.scrollTop).toBe(90);
     expect(guidelines.scrollTop).toBe(40);
     expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
+  });
+
+  it('pins only Copy and Open in Email below the two-column size; the other actions scroll with the draft', async () => {
+    // M29: on a phone, a short window or at 200% zoom the primary actions stay
+    // in view. Everything else in the footer moves into the scrolling
+    // workspace, and returns to the footer row once the window is wide again.
+    const listeners = new Set<() => void>();
+    let wide = false;
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      media: query,
+      get matches() { return wide && query === '(min-width: 1024px) and (min-height: 720px)'; },
+      addEventListener: (_type: string, listener: () => void) => listeners.add(listener),
+      removeEventListener: (_type: string, listener: () => void) => listeners.delete(listener),
+    }));
+    mockGetVariants.mockResolvedValue({ variants: [makeVariant()], lab_type: 'dry' });
+    render(
+      <ColdEmailModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="layout-opp" opportunityTitle="Research" />,
+    );
+    const button = (label: string) => screen.getByText(label).closest('button')!;
+    const secondary = () => [screen.getByTestId('copy-draft-only'), screen.getByTestId('record-sent-email'),
+      button('coldEmail.gmail'), button('coldEmail.outlook')];
+    const footer = await screen.findByTestId('cold-email-footer');
+    expect(within(footer).getAllByRole('button')).toEqual([button('coldEmail.copy'), button('coldEmail.openInEmail')]);
+    for (const action of secondary()) expect(screen.getByTestId('cold-email-workspace')).toContainElement(action);
+
+    wide = true;
+    act(() => listeners.forEach((listener) => listener()));
+    const row = screen.getByTestId('cold-email-footer');
+    for (const action of [button('coldEmail.copy'), button('coldEmail.openInEmail'), ...secondary()]) {
+      expect(row).toContainElement(action);
+    }
+    expect(screen.getByTestId('cold-email-workspace')).not.toContainElement(button('coldEmail.gmail'));
   });
 });

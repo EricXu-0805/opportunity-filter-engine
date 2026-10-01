@@ -1,3 +1,17 @@
+/* A phone or a short window gets the whole height: 90dvh of a 400px window
+   (1280x800 at 200% zoom) left a 209px editing strip. */
+.dialog {
+  height: 100dvh;
+  max-height: 100dvh;
+}
+
+@media (min-width: 640px) and (min-height: 720px) {
+  .dialog {
+    height: 90dvh;
+    max-height: 90dvh;
+  }
+}
+
 .statePanel {
   flex: 1;
   min-height: 0;
@@ -5,8 +19,9 @@
   overscroll-behavior-y: contain;
 }
 
-/* Narrow or short viewports use one reachable workspace. The header stays
-   outside it, so closing never depends on scrolling through the draft. */
+/* Narrow or short viewports use one scrolling workspace. The header and the
+   Copy / Open in Email bar stay outside it (checklist M29), so closing or
+   sending never depends on scrolling through the draft. */
 .workspace {
   display: flex;
   flex: 1;
