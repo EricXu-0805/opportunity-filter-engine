@@ -181,6 +181,44 @@ def test_a_rejected_edit_suggests_only_what_the_local_rules_changed(client, monk
         assert result["applied"] == []
 
 
+FACULTY_WITHOUT_RESEARCH = {
+    "id": "faculty-without-research", "source_type": "faculty_research", "title": "Jane Doe",
+    "pi_name": "Jane Doe", "organization": "Test University", "department": "School of Computing",
+    "description_raw": "Faculty research profile for Jane Doe.",
+    "description_clean": "Faculty research profile for Jane Doe.", "keywords": ["law"],
+    "eligibility": {}, "application": {},
+    "metadata": {"is_active": True, "faculty_title": "Assistant Professor", "research_areas_raw": "law"}}
+
+
+@pytest.mark.parametrize("edited", [False, True], ids=["unedited-template", "edited-draft"])
+def test_a_rebuilt_template_is_offered_only_where_it_differs(client, monkeypatch, edited):
+    # With no source research to personalize, refine rebuilds the template
+    # and applies only local rules. On the template itself "Make it shorter"
+    # found nothing to drop, yet the student was offered it back without the
+    # blank line after "Dear ...,": the same one-blank-line suggestion as
+    # above. A draft whose words differ still gets the rebuilt template,
+    # never its own unchecked text back.
+    monkeypatch.setattr(ce, "load_opportunities_by_id",
+                        lambda: {FACULTY_WITHOUT_RESEARCH["id"]: deepcopy(FACULTY_WITHOUT_RESEARCH)})
+    variants = client.post("/api/cold-email/variants", json={
+        "profile": PROFILE, "opportunity_id": FACULTY_WITHOUT_RESEARCH["id"]})
+    assert variants.status_code == 200, variants.text
+    template = variants.json()["variants"][0]["body"]
+    current = template.replace("\n\nBest regards", "\n\nI built a Python parser.\n\nBest regards") if edited else template
+    assert edited == (current != template)
+    response = client.post("/api/cold-email/refine", json={
+        "profile": PROFILE, "opportunity_id": FACULTY_WITHOUT_RESEARCH["id"],
+        "current_body": current, "instruction": "Make it shorter."})
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert result["fallback_reason"] == "insufficient_evidence"
+    if edited:
+        assert result["body"].split() == template.split()
+    else:
+        assert result["body"] == current
+        assert result["applied"] == []
+
+
 @pytest.mark.parametrize("failure", ["unconfigured", "no-output", "timeout"])
 def test_local_recovery_does_not_authenticate_an_existing_false_draft(client, monkeypatch, failure):
     if failure == "unconfigured":
