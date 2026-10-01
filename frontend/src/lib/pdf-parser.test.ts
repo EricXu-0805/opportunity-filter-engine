@@ -578,7 +578,8 @@ describe('real résumé PDFs keep every word and bullet intact', () => {
 
   it('keeps items that end without a period on their own lines when their last line nearly fills the column', async () => {
     // Several items here end within a word of the right edge, so geometry
-    // alone would read the next item as the rest of the line.
+    // alone would read the next item as the rest of the line. A lone
+    // capitalized last word ("X-rays") stays apart for the same reason.
     const roles = JSON.parse(readFileSync(join(FIXTURES, 'noperiod-roles.json'), 'utf8')) as Array<[string, string, string[]]>;
     const paragraphs = readFileSync(join(FIXTURES, 'noperiod-paragraphs.txt'), 'utf8').trimEnd().split('\n');
     expect((await parseFixture('resume-noperiod.pdf')).split('\n')).toEqual([
@@ -588,7 +589,7 @@ describe('real résumé PDFs keep every word and bullet intact', () => {
       ...roles.flatMap(([title, dates, bullets]) => [`${title}\t${dates}`, ...bullets]),
       'SKILLS',
       'Python, PyTorch, SQL, C++, Git, Linux, pandas, scikit-learn',
-      ...paragraphs,
+      ...paragraphs.flatMap((paragraph) => (paragraph.endsWith(' on chest X-rays') ? [paragraph.slice(0, -' X-rays'.length), 'X-rays'] : [paragraph])),
     ]);
   });
 
@@ -662,8 +663,10 @@ describe('positioned text items', () => {
     ]);
   });
 
-  it('still joins a capitalized word that wraps inside a glyph bullet, after a word that goes on, inside a list, or alone', async () => {
-    // The first item shows that this list ends its items with a full stop.
+  it('still joins a capitalized word that wraps inside a glyph bullet, after a word that goes on, inside a list, or alone ending the sentence', async () => {
+    // The first item shows that this list ends its items with a full stop. A
+    // lone capitalized word that does not end a sentence could be a name or
+    // a title of its own, so it stays apart.
     mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
       at('- Wrote unit tests for the parser.', 50, 160, 712, { hasEOL: true }),
       at('- Trained a baseline that reached 0.87', 50, 500, 700, { hasEOL: true }),
@@ -673,14 +676,18 @@ describe('positioned text items', () => {
       at('Coursework: Signals and Systems, Biomedical', 50, 500, 652, { hasEOL: true }),
       at('Imaging, Fluid Mechanics', 50, 120, 640, { hasEOL: true }),
       at('Automated the calibration log with a shared Google', 50, 500, 628, { hasEOL: true }),
-      at('Sheet', 50, 25, 616),
+      at('Sheet', 50, 25, 616, { hasEOL: true }),
+      at('Logged the flow sensor readings of every test run in a shared Google', 50, 500, 604, { hasEOL: true }),
+      at('Sheet.', 50, 28, 592),
     ])) });
     expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
       '- Wrote unit tests for the parser.',
       '- Trained a baseline that reached 0.87 AUC on a held-out split.',
       'Compared saliency maps computed with Grad-CAM on chest X-rays.',
       'Coursework: Signals and Systems, Biomedical Imaging, Fluid Mechanics',
-      'Automated the calibration log with a shared Google Sheet',
+      'Automated the calibration log with a shared Google',
+      'Sheet',
+      'Logged the flow sensor readings of every test run in a shared Google Sheet.',
     ]);
   });
 
@@ -862,6 +869,231 @@ describe('positioned text items', () => {
     ]);
   });
 
+  it('keeps a one-word line apart from a full line above it unless its words carry it on', async () => {
+    // An organization, a section title the list does not name, a project
+    // name: a capitalized word alone on a line says nothing about the line
+    // above, even where that line ends at the column edge.
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('- Rewrote the club website in Next.js so officers can post events without asking the webmaster', 50, 500, 736, { hasEOL: true }),
+      at('Caterpillar', 50, 55, 724, { hasEOL: true }),
+      at('Data Science Intern, Summer 2025', 50, 150, 712, { hasEOL: true }),
+      at('• Trained a gradient boosting model to predict which library books will be requested next term', 50, 500, 700, { hasEOL: true }),
+      at('Accomplishments', 50, 80, 688, { hasEOL: true }),
+      at('• Reviewed pull requests for a student-run open-source project and wrote contributor guidelines', 50, 500, 676, { hasEOL: true }),
+      at('COMPETITIONS', 50, 70, 664, { hasEOL: true }),
+      at('• Organized a hackathon for 150 students with sponsors from four local companies and a city office', 50, 500, 652, { hasEOL: true }),
+      at('PantryPal', 50, 45, 640),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      '- Rewrote the club website in Next.js so officers can post events without asking the webmaster',
+      'Caterpillar',
+      'Data Science Intern, Summer 2025',
+      '• Trained a gradient boosting model to predict which library books will be requested next term',
+      'Accomplishments',
+      '• Reviewed pull requests for a student-run open-source project and wrote contributor guidelines',
+      'COMPETITIONS',
+      '• Organized a hackathon for 150 students with sponsors from four local companies and a city office',
+      'PantryPal',
+    ]);
+  });
+
+  it('keeps a row that names a role, an award, a year or a place apart from a list that ends near the edge', async () => {
+    // A list cut a name or two after a comma reads like it goes on, but the
+    // row under it is the next role, award or organization, with or without
+    // a glyph on the list.
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('- Tools: Python, SQL, Airflow, dbt, Docker, Kubernetes, Terraform, AWS Lambda, Redshift, Looker', 50, 500, 736, { hasEOL: true }),
+      at('Teaching Assistant, Statistics Department', 50, 190, 724, { hasEOL: true }),
+      at('Tools: SolidWorks, MATLAB, LabVIEW, COMSOL, Arduino, ImageJ, Excel, Python, Simulink, KiCad', 50, 500, 712, { hasEOL: true }),
+      at('Research Intern, Microfluidics Lab', 50, 160, 700, { hasEOL: true }),
+      at('Technologies: React, TypeScript, Node.js, Express, PostgreSQL, Redis, Docker, GitHub Actions, Jest', 50, 500, 688, { hasEOL: true }),
+      at('Finalist, Illinois Innovation Prize', 50, 160, 676, { hasEOL: true }),
+      at('Tools: Python, SQL, Airflow, dbt, Docker, Terraform, AWS Lambda, Redshift, Looker, Git, Excel, Bash', 50, 500, 664, { hasEOL: true }),
+      at('Campus Bus Tracker, HackIllinois 2025', 50, 170, 652, { hasEOL: true }),
+      at('Skills used: SolidWorks, MATLAB, LabVIEW, COMSOL, Arduino, ImageJ, Simulink, KiCad, Altium, Git', 50, 500, 640, { hasEOL: true }),
+      at('Caterpillar, Peoria, IL', 50, 110, 628, { hasEOL: true }),
+      at('Tech stack: PyTorch, NumPy, pandas, scikit-learn, OpenCV, CUDA, Slurm, Linux, Git, LaTeX, Jupyter', 50, 500, 616, { hasEOL: true }),
+      at('Caterpillar', 50, 55, 604, { hasEOL: true }),
+      at('Tools: Python, SQL, Airflow, dbt, Docker, Kubernetes, Terraform, AWS Lambda, Redshift, Tableau', 50, 500, 592, { hasEOL: true }),
+      at('Quill | TypeScript, Electron', 50, 130, 580, { hasEOL: true }),
+      at('Tools: SolidWorks, MATLAB, LabVIEW, COMSOL, Arduino, ImageJ, Excel, Python, Simulink, Altium', 50, 500, 568, { hasEOL: true }),
+      at('Statistics Department, Teaching Assistant', 50, 190, 556, { hasEOL: true }),
+      at('Tools: Python, SQL, Airflow, dbt, Docker, Kubernetes, Terraform, AWS Lambda, Redshift, Looker', 50, 500, 544, { hasEOL: true }),
+      at('Presented the findings to the city council, which approved the plan', 50, 300, 532),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      '- Tools: Python, SQL, Airflow, dbt, Docker, Kubernetes, Terraform, AWS Lambda, Redshift, Looker',
+      'Teaching Assistant, Statistics Department',
+      'Tools: SolidWorks, MATLAB, LabVIEW, COMSOL, Arduino, ImageJ, Excel, Python, Simulink, KiCad',
+      'Research Intern, Microfluidics Lab',
+      'Technologies: React, TypeScript, Node.js, Express, PostgreSQL, Redis, Docker, GitHub Actions, Jest',
+      'Finalist, Illinois Innovation Prize',
+      'Tools: Python, SQL, Airflow, dbt, Docker, Terraform, AWS Lambda, Redshift, Looker, Git, Excel, Bash',
+      'Campus Bus Tracker, HackIllinois 2025',
+      'Skills used: SolidWorks, MATLAB, LabVIEW, COMSOL, Arduino, ImageJ, Simulink, KiCad, Altium, Git',
+      'Caterpillar, Peoria, IL',
+      'Tech stack: PyTorch, NumPy, pandas, scikit-learn, OpenCV, CUDA, Slurm, Linux, Git, LaTeX, Jupyter',
+      'Caterpillar',
+      'Tools: Python, SQL, Airflow, dbt, Docker, Kubernetes, Terraform, AWS Lambda, Redshift, Tableau',
+      'Quill | TypeScript, Electron',
+      'Tools: SolidWorks, MATLAB, LabVIEW, COMSOL, Arduino, ImageJ, Excel, Python, Simulink, Altium',
+      'Statistics Department, Teaching Assistant',
+      'Tools: Python, SQL, Airflow, dbt, Docker, Kubernetes, Terraform, AWS Lambda, Redshift, Looker',
+      'Presented the findings to the city council, which approved the plan',
+    ]);
+  });
+
+  it('carries a line that ends in a preposition on only into a name that cannot open an item', async () => {
+    // "rely on", "signed up for" and "log in" end their items; the role row
+    // or item after them opens with an ordinary word. A name such as "NIH
+    // ChestX-ray14" carries the line on, unless its row names a role.
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('- Maintained the equipment checkout system that the photography club and two other groups rely on', 50, 500, 736, { hasEOL: true }),
+      at('Research Intern, Microfluidics Lab', 50, 160, 724, { hasEOL: true }),
+      at('- Set up the tutoring schedule and the waitlist form that students in the physics course signed up for', 50, 500, 712, { hasEOL: true }),
+      at('Volunteer Coordinator, Eastern Illinois Foodbank - Jun 2024 - Aug 2024', 50, 330, 700, { hasEOL: true }),
+      at('Built a self-service sign-in portal for the makerspace that all 300 members now use to log in', 50, 500, 688, { hasEOL: true }),
+      at('Mentored two new members through their first pull requests', 50, 260, 676, { hasEOL: true }),
+      at('Cleaned a shared dataset of campus energy use that two later class projects could build on', 50, 500, 664, { hasEOL: true }),
+      at('NSF REU Fellow, Purdue University', 50, 160, 652, { hasEOL: true }),
+      at('Kept the build scripts and the release checklist that two other student teams now rely on', 50, 500, 640, { hasEOL: true }),
+      at('NVIDIA', 50, 40, 628, { hasEOL: true }),
+      at('Wrote the onboarding guide for the summer research program that every new student signed up for', 50, 500, 616, { hasEOL: true }),
+      at('2025 Summer Research Program, Purdue University', 50, 220, 604, { hasEOL: true }),
+      at('Trained a ResNet-18 baseline on chest X-rays from the hospital and evaluated it on', 50, 500, 592, { hasEOL: true }),
+      at('NIH ChestX-ray14 and a held-out split', 50, 180, 580),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      '- Maintained the equipment checkout system that the photography club and two other groups rely on',
+      'Research Intern, Microfluidics Lab',
+      '- Set up the tutoring schedule and the waitlist form that students in the physics course signed up for',
+      'Volunteer Coordinator, Eastern Illinois Foodbank - Jun 2024 - Aug 2024',
+      'Built a self-service sign-in portal for the makerspace that all 300 members now use to log in',
+      'Mentored two new members through their first pull requests',
+      'Cleaned a shared dataset of campus energy use that two later class projects could build on',
+      'NSF REU Fellow, Purdue University',
+      'Kept the build scripts and the release checklist that two other student teams now rely on',
+      'NVIDIA',
+      'Wrote the onboarding guide for the summer research program that every new student signed up for',
+      '2025 Summer Research Program, Purdue University',
+      'Trained a ResNet-18 baseline on chest X-rays from the hospital and evaluated it on NIH ChestX-ray14 and a held-out split',
+    ]);
+    // The hint is weak, so the page must show that the name did not fit
+    // without the slack that words which cannot end a line get.
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('Cleaned the shared dataset of campus energy use and documented every column and unit for the team', 50, 500, 712, { hasEOL: true }),
+      at('Trained a ResNet-18 baseline on chest X-rays from the hospital and then evaluated it on', 50, 481, 700, { hasEOL: true }),
+      at('NIH ChestX-ray14 and a held-out split', 50, 180, 688, { hasEOL: true }),
+      at('Trained a ResNet-18 baseline on chest X-rays from the hospital and then evaluated it with the', 50, 481, 676, { hasEOL: true }),
+      at('NIH ChestX-ray14 test split', 50, 130, 664),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      'Cleaned the shared dataset of campus energy use and documented every column and unit for the team',
+      'Trained a ResNet-18 baseline on chest X-rays from the hospital and then evaluated it on',
+      'NIH ChestX-ray14 and a held-out split',
+      'Trained a ResNet-18 baseline on chest X-rays from the hospital and then evaluated it with the NIH ChestX-ray14 test split',
+    ]);
+    // Nor in a narrow sidebar, where a short line is as likely a list item.
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('Coursework in machine learning built on', 40, 150, 712, { hasEOL: true }),
+      at('PyTorch', 40, 35, 700),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      'Coursework in machine learning built on', 'PyTorch',
+    ]);
+  });
+
+  it('reads a full stop as the end of a glyph item only on a line that opens with a name', async () => {
+    // These items end with a full stop, but a description sentence can
+    // follow an item that lacks one: an ordinary first word ("A", "Custom")
+    // opens a line of its own, an acronym or a model number goes on.
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('- Wrote unit tests for the parser.', 50, 160, 736, { hasEOL: true }),
+      at('- Added a nightly job that checks the backups.', 50, 220, 724, { hasEOL: true }),
+      at('- Mapped bike lane gaps around campus with QGIS and presented the map to the facilities office', 50, 500, 712, { hasEOL: true }),
+      at('A web app that shows live bus positions to about 200 students.', 50, 300, 700, { hasEOL: true }),
+      at('- Designed the logger board and wrote firmware that wakes up once an hour to save battery power', 50, 500, 688, { hasEOL: true }),
+      at('Custom firmware that logs soil moisture every hour on battery power.', 50, 310, 676, { hasEOL: true }),
+      at('- Trained a convolutional baseline on chest X-rays from the hospital and reached a test score of 0.87', 50, 500, 664, { hasEOL: true }),
+      at('AUC on a held-out split.', 50, 110, 652, { hasEOL: true }),
+      at('- Drafted the budget tables and the data management plan for a successful NIH', 50, 500, 640, { hasEOL: true }),
+      at('R21 application.', 50, 70, 628, { hasEOL: true }),
+      at('- Led weekly stand-ups for the six-person capstone team and tracked every sprint task in', 50, 500, 616, { hasEOL: true }),
+      at('Jira with the course staff.', 50, 120, 604, { hasEOL: true }),
+      at('- Built the volunteer check-in kiosk that the food pantry and two shelters now rely on', 50, 500, 592, { hasEOL: true }),
+      at('A web app that shows live bus positions to about 200 students.', 50, 300, 580, { hasEOL: true }),
+      at('- Compared three saliency methods for the clinical team and wrote up the results for the lab manager', 50, 500, 568, { hasEOL: true }),
+      at('PantryPal - React and Flask app used by 200 students.', 50, 250, 556),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      '- Wrote unit tests for the parser.',
+      '- Added a nightly job that checks the backups.',
+      '- Mapped bike lane gaps around campus with QGIS and presented the map to the facilities office',
+      'A web app that shows live bus positions to about 200 students.',
+      '- Designed the logger board and wrote firmware that wakes up once an hour to save battery power',
+      'Custom firmware that logs soil moisture every hour on battery power.',
+      '- Trained a convolutional baseline on chest X-rays from the hospital and reached a test score of 0.87 AUC on a held-out split.',
+      '- Drafted the budget tables and the data management plan for a successful NIH R21 application.',
+      '- Led weekly stand-ups for the six-person capstone team and tracked every sprint task in Jira with the course staff.',
+      '- Built the volunteer check-in kiosk that the food pantry and two shelters now rely on',
+      'A web app that shows live bus positions to about 200 students.',
+      '- Compared three saliency methods for the clinical team and wrote up the results for the lab manager',
+      'PantryPal - React and Flask app used by 200 students.',
+    ]);
+    // Without a glyph, the full line could just as well end the item before.
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('- Wrote unit tests for the parser.', 50, 160, 736, { hasEOL: true }),
+      at('- Added a nightly job that checks the backups.', 50, 220, 724, { hasEOL: true }),
+      at('Trained a convolutional baseline on chest X-rays from the hospital and reached a test score of 0.87', 50, 500, 712, { hasEOL: true }),
+      at('AUC on a held-out split.', 50, 110, 700),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      '- Wrote unit tests for the parser.',
+      '- Added a nightly job that checks the backups.',
+      'Trained a convolutional baseline on chest X-rays from the hospital and reached a test score of 0.87',
+      'AUC on a held-out split.',
+    ]);
+  });
+
+  it('carries a line on into a measure, an open bracket or the rest of a date range, and not into a bare count', async () => {
+    // "12 students mentored…" can open an item; "12,000", "0.87" or "78%"
+    // was moved down by a wrap. A count goes on after a word that takes one.
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('Ran gel electrophoresis and PCR for a plant genetics lab and kept the sample database consistent', 50, 500, 760, { hasEOL: true }),
+      at('12 students mentored through their first research projects', 50, 260, 748, { hasEOL: true }),
+      at('Summarized the answers of a county survey of commuters and presented the main findings to', 50, 500, 736, { hasEOL: true }),
+      at('12 local school principals', 50, 110, 724, { hasEOL: true }),
+      at('Built a pipeline that preprocesses and labels the chest X-ray images of the hospital archive, about', 50, 500, 712, { hasEOL: true }),
+      at('12,000 in total', 50, 70, 700, { hasEOL: true }),
+      at('Fine-tuned a multilingual BERT model on labeled tweets from the Swahili news corpus, 3,000 tweets;', 50, 500, 688, { hasEOL: true }),
+      at('78% accuracy vs 71% baseline', 50, 140, 676, { hasEOL: true }),
+      at('Relevant coursework: Data Structures (CS 225), Computer Architecture (CS 233), Linear Algebra (MATH', 50, 500, 664, { hasEOL: true }),
+      at('257), Probability and Statistics', 50, 150, 652, { hasEOL: true }),
+      at('B.S. in Computer Engineering with a minor in Statistics and Data Science, Aug 2024', 50, 500, 640, { hasEOL: true }),
+      at('- May 2028', 50, 50, 628, { hasEOL: true }),
+      at('Wrote the style guide and the onboarding checklist for new members of the robotics team each fall', 50, 500, 616, { hasEOL: true }),
+      at('- Summer 2025 outreach: ran two coding workshops', 50, 210, 604, { hasEOL: true }),
+      at('Calibrated the motion capture cameras and wrote the setup guide for new staff of the gait lab', 50, 500, 592, { hasEOL: true }),
+      at('2024.09 - 2025.05 Research Assistant, Biomechanics Lab', 50, 250, 580, { hasEOL: true }),
+      at('University of Illinois Urbana-Champaign, B.S. in Computer Science, expected May 2028. GPA', 50, 500, 568, { hasEOL: true }),
+      at('3.7/4.0', 50, 35, 556),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      'Ran gel electrophoresis and PCR for a plant genetics lab and kept the sample database consistent',
+      '12 students mentored through their first research projects',
+      'Summarized the answers of a county survey of commuters and presented the main findings to 12 local school principals',
+      'Built a pipeline that preprocesses and labels the chest X-ray images of the hospital archive, about 12,000 in total',
+      'Fine-tuned a multilingual BERT model on labeled tweets from the Swahili news corpus, 3,000 tweets; 78% accuracy vs 71% baseline',
+      'Relevant coursework: Data Structures (CS 225), Computer Architecture (CS 233), Linear Algebra (MATH 257), Probability and Statistics',
+      'B.S. in Computer Engineering with a minor in Statistics and Data Science, Aug 2024 - May 2028',
+      'Wrote the style guide and the onboarding checklist for new members of the robotics team each fall',
+      '- Summer 2025 outreach: ran two coding workshops',
+      'Calibrated the motion capture cameras and wrote the setup guide for new staff of the gait lab',
+      '2024.09 - 2025.05 Research Assistant, Biomechanics Lab',
+      'University of Illinois Urbana-Champaign, B.S. in Computer Science, expected May 2028. GPA 3.7/4.0',
+    ]);
+  });
+
   it('keeps a space between runs painted out of order on one line', async () => {
     // A right-floated date printed before its title: PDF.js jumps back on
     // the same baseline without a line end.
@@ -933,6 +1165,36 @@ describe('positioned text items', () => {
 });
 
 describe('positioned CJK text', () => {
+  it('keeps a short Chinese title apart from a full item, and joins a lone character or a Latin word that ends the item', async () => {
+    // A two-character line can be a section title; a single character
+    // cannot stand alone. In Chinese text a capitalized Latin word says
+    // nothing about where an item starts.
+    const run = (str: string, y: number, width = 500, hasEOL = true) => ({
+      str, width, height: 10, transform: [10, 0, 0, 10, 50, y], fontName: 'f1', dir: 'ltr', hasEOL,
+    });
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve({
+      numPages: 1, destroy: async () => {},
+      getPage: async () => ({ cleanup: () => {}, getTextContent: async () => ({ items: [
+        run('• 维护实验室网站。', 736, 90),
+        run('• 整理实验数据。', 724, 80),
+        run('• 基于深度学习的医学影像分割系统：使用 PyTorch 训练 U-Net 模型，在公开数据集上将', 712),
+        run('Dice 系数从 0.81 提升到 0.88。', 700, 150),
+        run('• 负责后端接口设计与数据库建模，使用 Flask 与 PostgreSQL 实现用户、商品与订单模块并编写部署文档', 688),
+        run('荣誉', 676, 20),
+        run('• 在暑期实习中重写夜间数据处理任务，运行时间从四十分钟降到九分', 664),
+        run('钟', 652, 10, false),
+      ] as never }) }),
+    } as MockPdf) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      '• 维护实验室网站。',
+      '• 整理实验数据。',
+      '• 基于深度学习的医学影像分割系统：使用 PyTorch 训练 U-Net 模型，在公开数据集上将 Dice 系数从 0.81 提升到 0.88。',
+      '• 负责后端接口设计与数据库建模，使用 Flask 与 PostgreSQL 实现用户、商品与订单模块并编写部署文档',
+      '荣誉',
+      '• 在暑期实习中重写夜间数据处理任务，运行时间从四十分钟降到九分钟',
+    ]);
+  });
+
   it('joins a wrapped Chinese line without a space, across font subsets, and reads Kangxi radicals as ideographs', async () => {
     const run = (str: string, x: number, width: number, y: number, fontName: string, hasEOL = false) => ({
       str, width, height: 10, transform: [10, 0, 0, 10, x, y], fontName, dir: 'ltr', hasEOL,

@@ -150,8 +150,8 @@ function endsHeader(line: string): boolean {
 }
 
 /** PDF text has one row per line and no blank lines. A bullet absorbs the
- *  rows that only wrap it, as the PDF reflow would have joined them (text
- *  stored before the reflow still has them). A two-page résumé can exceed
+ *  rows whose words show that they only wrap it (text stored before the PDF
+ *  reflow still has them; storedWraps). A two-page résumé can exceed
  *  the entry cap line by line; only then, the non-bullet rows directly
  *  before a bullet (title, dates) also form one context entry. Rows that no
  *  bullet follows stay one per line, so a bullet-free résumé is still

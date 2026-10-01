@@ -123,8 +123,8 @@ interface TailorModalProps {
 // resume-bullet-shaped (start with •, -, *, –, —, +, or a digit).
 // Keeps the bar low: any string with a leading bullet glyph counts. Text
 // stored before the PDF reflow keeps a bullet's wrapped lines as rows of
-// their own; the rows that only wrap it are joined back, as the reflow and
-// the experience library read them.
+// their own; a row whose words show that it only wraps the bullet is joined
+// back, as the experience library reads it.
 const BULLET_PREFIX_RE = /^\s*([•\-*–—+]|\d+[.)])\s+(.+)$/;
 
 function extractBulletLines(resumeText: string | undefined, limit = 12): string[] {

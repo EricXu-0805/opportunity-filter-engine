@@ -224,10 +224,11 @@ describe('local proposals and confirmed eligibility', () => {
       'Software Engineering Intern, Prairie Analytics',
     ]);
   });
-  it('joins a stored bullet with the rows that only wrap it, as the PDF reflow reads them', async () => {
+  it('joins a stored bullet with the rows that only wrap it on words that cannot end or open an item', async () => {
     // Text the old PDF reader stored for the target-résumé walk: one row per
-    // printed line. "AUC" is capitalized, but these items end with a full
-    // stop and the row before ran to the width of the widest rows.
+    // printed line. "maps;" starts in lowercase, so it finishes its bullet.
+    // "AUC" is capitalized; only the page's geometry showed that it wrapped,
+    // and with the page gone that row stays apart.
     const raw = [
       'EXPERIENCE',
       'Undergraduate Research Assistant, Health Imaging Lab (UIUC) - Jan 2026 - Present',
@@ -240,7 +241,8 @@ describe('local proposals and confirmed eligibility', () => {
     ].join('\n');
     expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual([
       'Undergraduate Research Assistant, Health Imaging Lab (UIUC) - Jan 2026 - Present',
-      '- Built a PyTorch pipeline that preprocesses 12,000 chest X-ray images and trains a ResNet-18 baseline, reaching 0.87\nAUC on a held-out split.',
+      '- Built a PyTorch pipeline that preprocesses 12,000 chest X-ray images and trains a ResNet-18 baseline, reaching 0.87',
+      'AUC on a held-out split.',
       '- Worked with a PhD mentor as part of a four-person team to compare Grad-CAM and integrated-gradients saliency\nmaps; I wrote the evaluation scripts.',
       "- Wrote SQL and Python ETL jobs that cut a nightly report's runtime from 40 minutes to 9 minutes.",
       '- Added unit tests (pytest) for 14 data-validation functions.',
@@ -255,6 +257,9 @@ describe('local proposals and confirmed eligibility', () => {
       'lab manager.',
       'EDUCATION',
     ])).toEqual([false, true, false, false, true, false]);
+    // A list cut inside a name reads on only where the page shows it.
+    expect(storedWraps(['- Tools: Python, MATLAB, NumPy, SolidWorks, LabVIEW, COMSOL, Arduino, ImageJ, Excel, Power',
+      'BI, Tableau, Excel'])).toEqual([false, false]);
     // A row with a column gap is a row of its own, even after a word that goes on.
     expect(storedWraps(['- Calibrated the motion capture system and wrote the setup guide for new lab staff with',
       'Python\tSpring 2025'])).toEqual([false, false]);
@@ -264,6 +269,42 @@ describe('local proposals and confirmed eligibility', () => {
       '• 负责后端接口设计与数据库建模，使用 Flask 与 PostgreSQL 实现用户、商品与订单模块，',
       '并编写部署文档。',
     ])).toEqual([false, false, true]);
+  });
+  it('keeps every row of reflowed text that the reflow left on its own line', async () => {
+    // Text the PDF reflow already joined: an organization line, a section
+    // title the list does not name and a row of names each sit under a full
+    // bullet that ends without a full stop.
+    const texts = JSON.parse(readFileSync(join(__dirname, '__fixtures__/resume-pdf/resume-texts.json'), 'utf8')) as Record<string, string>;
+    for (const key of ['reflowed-org-lines', 'reflowed-unlisted-title']) {
+      const rows = texts[key].split('\n');
+      expect((await createResumeCandidates(texts[key])).map((entry) => entry.text))
+        .toEqual(rows.slice(2).filter((row) => !/^[A-Z]+$/.test(row)));
+    }
+  });
+  it('joins a stored row to its bullet only on words that cannot end or open an item', async () => {
+    // Stored by the old PDF reader, one row per printed line. A lowercase
+    // row or a row after "a" finishes its bullet; a role row after a list
+    // or after "rely on" opens the next role.
+    const texts = JSON.parse(readFileSync(join(__dirname, '__fixtures__/resume-pdf/resume-texts.json'), 'utf8')) as Record<string, string>;
+    const quotes = (await createResumeCandidates(texts['stored-particle-then-role'])).map((entry) => entry.text);
+    expect(quotes.slice(3, 15)).toEqual([
+      'Software Engineering Intern, Prairie Analytics - Jun 2024 - Aug 2024',
+      "• Migrated the lab's analysis scripts from MATLAB to Python and added unit tests for each function",
+      '• Interviewed fourteen local restaurant owners about delivery fees and summarized the fi ndings for student\ngovernment',
+      '• Tech stack: PyTorch, NumPy, pandas, scikit-learn, OpenCV, CUDA, Slurm, Linux, Git',
+      'Hardware Lead, Illini Solar Car - Jun 2024 - Aug 2024',
+      '• Assembled a low-cost air quality monitor with an ESP32 and logged readings from six dorm rooms for a\nmonth',
+      '• Built a Flask service that matches tutoring requests to volunteer tutors by course and availability',
+      '• Cleaned and merged three years of county health records and built a dashboard in Tableau',
+      '• Maintained the equipment checkout system that the photography club and two other groups rely on',
+      'Volunteer Coordinator, Eastern Illinois Foodbank - Jun 2024 - Aug 2024',
+      '• Analyzed 2 million taxi trips with Spark and presented fare patterns to the transportation group',
+      '• Organized a hackathon for 150 students with sponsors from four local companies',
+    ]);
+    const listed = (await createResumeCandidates(texts['stored-list-then-role'])).map((entry) => entry.text);
+    expect(listed).toContain('• Tech stack: PyTorch, NumPy, pandas, scikit-learn, OpenCV, CUDA, Slurm, Linux, Git');
+    expect(listed).toContain('Undergraduate Research Assistant, Plant Phenomics Lab');
+    expect(listed).toContain('• Automated the weekly inventory report for the chemistry stockroom so staff no longer copy numbers between\nspreadsheets');
   });
   it('keeps a lowercase row apart from a stored bullet that stopped well short of the widest rows', async () => {
     // A bullet this short did not wrap, so the row after it is not its rest.

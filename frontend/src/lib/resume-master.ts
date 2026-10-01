@@ -4,8 +4,9 @@ import type {
 } from './types';
 import { isActiveExperience, validateExperienceEntries, type ExperienceSourceContext } from './experience-evidence';
 import {
-  BULLET_LINE, MAX_RESUME_TEXT_CHARACTERS, RESUME_EMAIL, RESUME_PHONE, RESUME_URL, resumeContactLine,
-  resumeSectionHeading, resumeTextCharacters, type ResumeSectionKind,
+  BULLET_LINE, MAX_RESUME_TEXT_CHARACTERS, RESUME_EMAIL, RESUME_FIELD_SEPARATOR as FIELD_SEPARATOR, RESUME_PHONE,
+  RESUME_PLACE as PLACE, RESUME_ROLE as ROLE, RESUME_URL, resumeContactLine, resumeSectionHeading, resumeTextCharacters,
+  type ResumeSectionKind,
 } from './resume-input';
 
 export const MAX_RESUME_MASTER_FACTS = 300;
@@ -361,7 +362,6 @@ const DATE_RANGE = new RegExp(String.raw`(${DATE})\s*(?:[-–—~]|to)\s*(${DATE
 const EXPECTED_DATE = new RegExp(String.raw`(?:expected|anticipated|graduating|graduation|class of)\s*:?\s*${DATE}|${DATE}\s*\(expected\)`, 'iu');
 // One date that ends a line after a column gap or separator: "Project<tab>Spring 2025".
 const LAST_DATE = new RegExp(String.raw`(?:^|\t|\s[|–—-]\s)(${DATE})\s*$`, 'u');
-const PLACE = String.raw`[\p{Lu}][\p{L}.' -]*,\s*(?:[A-Z]{2}|USA|China|Canada|United States|United Kingdom|UK|India|Japan|Korea|South Korea|Singapore|Germany|France|Hong Kong|Taiwan|Australia)`;
 const LABELLED_PLACE = new RegExp(String.raw`^(?:[\p{L} ]{2,20}:\s*)?(${PLACE})$`, 'u');
 const TRAILING_PLACE = new RegExp(String.raw`(?:\(\s*(${PLACE})\s*\)|(?:,\s*|\t|\s[|–—-]\s)(${PLACE}))\s*$`, 'u');
 const PERSON = /^(?:[\p{Lu}][\p{L}.'’-]*)(?:\s+[\p{Lu}][\p{L}.'’-]*){1,4}$|^\p{Script=Han}{2,4}$/u;
@@ -369,8 +369,6 @@ const SCHOOL = /\b(?:University|College|Institute|School|Academy|Polytechnic|UNI
 const DEGREE = /(?<![\p{L}.])(?:(?:B|M)\.?\s?(?:S|A|Sc|Eng|E|Ed)\.?|Ph\.?\s?D\.?|MBA|(?:Bachelor|Master)(?:'s|’s)?(?: of (?:Science|Arts|Engineering|Fine Arts|Business Administration|Applied Science))?|Associate(?:'s|’s)? of (?:Science|Arts)|Doctor of Philosophy|本科|学士|硕士|博士)(?![\p{L}])/u;
 const FIELD = /^(?:,\s*|\s+in\s+|\s+of\s+|\s+)((?:[\p{Lu}][\p{L}&'-]*)(?:\s+(?:(?:and|&|of|in)\s+)?[\p{Lu}][\p{L}&'-]*)*)/u;
 const NOT_A_FIELD = new RegExp(String.raw`^(?:${MONTH}|Spring|Summer|Fall|Autumn|Winter|Expected|Class|GPA|Minor|Honors|Present)\b`, 'u');
-const ROLE = /\b(?:intern|assistant|engineer|researcher|developer|analyst|manager|lead|leader|fellow|tutor|consultant|scientist|coordinator|director|president|officer|volunteer|member|designer|associate|specialist|technician|founder|chair|captain|mentor|instructor|grader|programmer|trainee|editor|writer)s?\b/iu;
-const FIELD_SEPARATOR = /\t|\s[|–—]\s|\s-\s|,\s|\s(?:at|@)\s/u;
 const JOINERS = new Set(['of', 'and', '&', 'for', 'the', 'in', 'at', 'on', 'de', 'la']);
 
 /** A row of names: every field is a few words that start with a capital or

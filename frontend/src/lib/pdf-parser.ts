@@ -1,7 +1,7 @@
 import type { ResumeParseResponse } from './types';
 import {
-  BULLET_LINE, firstWord, glyphItemsEndWithStop, glyphLine, lineBreakText, MAX_RESUME_TEXT_CHARACTERS,
-  resumeTextCharacters, wrapEvidence, wrapJoin, wrapsWithoutEvidence,
+  BULLET_LINE, firstWord, glyphItemsEndWithStop, glyphLine, lineBreakText, listContinues, MAX_RESUME_TEXT_CHARACTERS,
+  resumeTextCharacters, weakWrapEvidence, wrapEvidence, wrapJoin,
 } from './resume-input';
 import { createPdfResourceLoaders, PDF_CMAP_URL, PDF_STANDARD_FONT_URL } from './pdf-resources';
 
@@ -224,7 +224,7 @@ function shapeOf(line: VisualLine, text: string): LineShape | null {
  *  the words at the break must carry the line on (resume-input.ts).
  *  `periodItem` says the previous line belongs to an item that opened with a
  *  bullet glyph or number, on a page whose glyph items end with a full stop,
- *  so a next line that ends a sentence finishes that item. */
+ *  so a next line that ends a sentence may finish that item. */
 function wrapSeparator(
   shapes: Array<LineShape | null>, index: number, texts: string[], pitch: Map<number, number>, periodItem: boolean,
 ): string | null {
@@ -237,8 +237,8 @@ function wrapSeparator(
   const step = prev.baseline - next.baseline;
   if (step < 0.8 * prev.size || step > PITCH_SLACK * (pitch.get(Math.round(prev.size * 2)) ?? Infinity)) return null;
   if (Math.abs(next.left - prev.left) > ALIGN * prev.size && Math.abs(next.left - prev.textLeft) > ALIGN * prev.size) return null;
-  const evidence = wrapEvidence(before, after);
-  if (!evidence && !wrapsWithoutEvidence(after, periodItem)) return null;
+  const evidence = wrapEvidence(before, after) || listContinues(before, after);
+  if (!evidence && !weakWrapEvidence(before, after, periodItem)) return null;
   // The column's right edge, from the lines aligned with this one. A line
   // with no space in it cannot wrap and may overflow (a long email address).
   let left = prev.left;
