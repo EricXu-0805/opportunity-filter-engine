@@ -196,6 +196,17 @@ describe('local proposals and confirmed eligibility', () => {
       'Bioengineering student who builds low-cost medical sensors.', 'University of Illinois Urbana-Champaign', 'Python, MATLAB',
     ]);
   });
+  it('ends the header block at a Title Case heading with "&" or an unknown one, keeping the role lines below it', async () => {
+    const lines = (heading: string) => ['Jordan Lee', 'jordan.lee@example.com', heading, 'Research Assistant', 'Health Imaging Lab',
+      '- Built a PyTorch pipeline that trains a ResNet-18 baseline.', 'EDUCATION', 'University of Illinois'].join('\n');
+    const below = ['Research Assistant', 'Health Imaging Lab', '- Built a PyTorch pipeline that trains a ResNet-18 baseline.', 'University of Illinois'];
+    for (const heading of ['Research & Projects', 'Experience & Leadership', 'Honors & Awards', 'Selected Experience']) {
+      expect((await createResumeCandidates(lines(heading))).map((entry) => entry.text)).toEqual(below);
+    }
+    // A heading the list does not name still ends the header block, and is
+    // offered like any other line rather than hiding what follows it.
+    expect((await createResumeCandidates(lines('Campus Leadership'))).map((entry) => entry.text)).toEqual(['Campus Leadership', ...below]);
+  });
   it('treats a first line in capitals as the name, not as the heading that ends the header block', async () => {
     const raw = ['PRIYA NATARAJAN', 'Champaign, IL', 'priya.natarajan.test@example.com', 'SKILLS', 'SQL', 'MATLAB'].join('\n');
     expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual(['SQL', 'MATLAB']);

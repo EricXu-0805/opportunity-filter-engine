@@ -142,6 +142,13 @@ function notExperience(line: string, header: boolean): boolean {
     || (header && text.split(/\s+/u).length <= 4);
 }
 
+/** The header block ends at the first heading, or at a line that would be
+ *  one in capitals ("Campus Leadership"), so an unknown heading cannot hide
+ *  the role and organization lines below it. */
+function endsHeader(line: string): boolean {
+  return resumeSectionHeading(line) !== null || resumeSectionHeading(line.toUpperCase()) !== null;
+}
+
 /** PDF text has one row per line and no blank lines. A bullet absorbs its
  *  wrapped lowercase continuation rows. A two-page résumé can exceed the entry
  *  cap line by line; only then, the non-bullet rows directly before a bullet
@@ -159,7 +166,7 @@ function lineSpans(points: string[], lines: Array<[number, number]>, mergeContex
     context = [];
   };
   const texts = lines.map(([from, to]) => points.slice(from, to).join(''));
-  const firstHeading = texts.findIndex((text) => resumeSectionHeading(text) !== null);
+  const firstHeading = texts.findIndex(endsHeader);
   for (const [index, [from, to]] of lines.entries()) {
     const text = texts[index];
     if (notExperience(text, index < firstHeading)) {
@@ -200,7 +207,7 @@ export async function createResumeCandidates(rawText: string): Promise<Experienc
   spans.push([start, points.length]);
   const entries: ExperienceEntry[] = [];
   const firstHeading = spans.find(([from, to], index) => index > 0 && points.slice(from, to).join('').split(/\r?\n/u)
-    .some((line) => resumeSectionHeading(line) !== null))?.[0] ?? -1;
+    .some(endsHeader))?.[0] ?? -1;
   const proposals = hasParagraphBreak
     // A paragraph is dropped only when none of its lines is experience.
     ? spans.filter(([from, to]) => !points.slice(from, to).join('').split(/\r?\n/u)

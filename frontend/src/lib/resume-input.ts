@@ -13,20 +13,25 @@ export const BULLET_LINE = /^[\t ]*(?:[•●▪◦‣∙·*–—\-■►➢✓
 
 export type ResumeSectionKind = 'education' | 'experience' | 'projects' | 'skills' | 'publications' | 'other';
 
+// Matched in any case, with "&" read as "and".
 const SECTION_TITLES: ReadonlyArray<[ResumeSectionKind, readonly string[]]> = [
-  ['education', ['education', 'academic background', 'education and coursework']],
+  ['education', ['education', 'academic background', 'education and coursework', 'education and honors']],
   ['experience', ['experience', 'work experience', 'research experience', 'professional experience',
-    'relevant experience', 'employment', 'work history', 'internships', 'teaching experience',
+    'relevant experience', 'selected experience', 'additional experience', 'other experience',
+    'employment', 'work history', 'internships', 'teaching experience', 'research and teaching',
     'leadership', 'leadership experience', 'activities', 'leadership and activities', 'involvement',
+    'experience and leadership', 'leadership and experience', 'leadership and service',
     'extracurricular activities', 'volunteer experience', 'volunteering', 'research', 'teaching']],
   ['projects', ['projects', 'selected projects', 'technical projects', 'personal projects',
-    'academic projects', 'research projects', 'course projects']],
-  ['skills', ['skills', 'technical skills', 'skills and interests', 'skills & interests',
+    'academic projects', 'research projects', 'course projects', 'relevant projects',
+    'research and projects', 'projects and research']],
+  ['skills', ['skills', 'technical skills', 'skills and interests', 'skills and tools',
     'technologies', 'tools', 'languages', 'programming languages']],
   ['publications', ['publications', 'papers', 'presentations', 'publications and presentations']],
   ['other', ['summary', 'profile', 'objective', 'about', 'about me', 'contact', 'contact information',
-    'awards', 'honors', 'honors and awards', 'awards and honors', 'achievements', 'scholarships',
-    'certifications', 'certificates', 'coursework', 'relevant coursework', 'interests', 'hobbies',
+    'professional summary', 'career objective', 'research interests', 'additional information',
+    'awards', 'honors', 'honors and awards', 'awards and honors', 'awards and achievements', 'achievements',
+    'scholarships', 'certifications', 'certificates', 'coursework', 'relevant coursework', 'interests', 'hobbies',
     'service', 'affiliations', 'memberships', 'references']],
   ['education', ['教育', '教育背景', '教育经历']],
   ['experience', ['工作经历', '实习经历', '科研经历', '研究经历', '实践经历', '社会实践', '校园经历', '项目与经历', '经历与项目']],
@@ -52,7 +57,7 @@ const SECTION_WORDS: ReadonlyArray<[ResumeSectionKind, RegExp]> = [
 export function resumeSectionHeading(line: string): ResumeSectionKind | null {
   const label = line.trim().replace(/[:：]$/u, '').trim();
   if (!label || label.length > 40 || /\d/u.test(label) || /^\p{Ll}/u.test(label)) return null;
-  const lower = label.toLowerCase().replace(/\s+/gu, ' ');
+  const lower = label.toLowerCase().replace(/\s*&\s*/gu, ' and ').replace(/\s+/gu, ' ');
   for (const [kind, titles] of SECTION_TITLES) if (titles.includes(lower)) return kind;
   const letters = label.replace(/[^\p{L}]/gu, '');
   if (letters.length < 2 || letters !== letters.toUpperCase() || letters === letters.toLowerCase()

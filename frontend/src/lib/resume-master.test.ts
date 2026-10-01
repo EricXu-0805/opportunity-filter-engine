@@ -447,6 +447,18 @@ describe('résumé master candidates proposed from the résumé text', () => {
     ]);
   });
 
+  it('reads Title Case section titles joined by "&" as headings', async () => {
+    const raw = ['Jordan Lee', 'Experience & Leadership', 'President, Chess Club - Aug 2024 - Present', '- Organized weekly tournaments.',
+      'Research & Projects', 'Campus Bus Tracker - React and Flask web app used by about 200 students during Fall 2025.',
+      'Skills & Tools', 'Python, SQL'].join('\n');
+    const master = values(proposeResumeMaster(null, raw, await sourceDigest(raw)));
+    expect(master.activities).toEqual([
+      { kind: 'other', title: 'President', organization: 'Chess Club', start: 'Aug 2024', end: 'Present' },
+      { kind: 'project', title: 'Campus Bus Tracker' },
+    ]);
+    expect(master.skills).toEqual(['Python', 'SQL']);
+  });
+
   it('skips a link that names no usable host instead of failing the whole proposal', async () => {
     const raw = [`Jordan Lee | https:///weird | www.${'a'.repeat(130)}.com | github.com/jlee`, 'SKILLS', 'Python'].join('\n');
     const master = proposeResumeMaster(null, raw, await sourceDigest(raw));
