@@ -149,7 +149,7 @@ def test_every_real_pipeline_call_receives_the_same_connection_boundary(client, 
     for response in (initial, refined):
         assert evidence in response.json()["body"]
         assert response.json()["experience_usage"]["selected"][0]["excerpt"] == evidence
-        assert response.json()["pipeline_version"] == "w12.18"
+        assert response.json()["pipeline_version"] == "w12.19"
 
 
 def test_draft_and_revise_carry_the_reader_rules_and_today_but_user_edits_do_not(client, monkeypatch):

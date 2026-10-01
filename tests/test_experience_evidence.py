@@ -175,7 +175,7 @@ def test_every_public_route_uses_confirmed_current_evidence_and_returns_receipt(
     assert out["experience_usage"]["eligible_count"] == 1
     assert len(out["experience_usage"]["selected"]) == 1
     assert out["experience_usage"]["selected"][0]["excerpt"] == RELEVANT
-    assert out["pipeline_version"] == "w12.18"
+    assert out["pipeline_version"] == "w12.19"
     if endpoint == "variants":
         assert all(v["experience_usage"]["selected"] == out["experience_usage"]["selected"] for v in out["variants"])
 
