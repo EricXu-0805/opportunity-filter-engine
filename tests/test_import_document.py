@@ -101,6 +101,9 @@ def test_binary_signatures_or_null_are_refused_without_mime(html):
     (page('', '<meta name="description" content="Not the source">'), 'metadata_only'),
     (page('', '<title>Source title</title>'), 'metadata_only'),
     (page('<script>window.source="PRIVATE"</script><div id="root"></div>'), 'javascript_required'),
+    # A bundler's shell: the script sits in the head and the body is one empty mount point.
+    (page('<div id="app"></div>', '<title>Jobs</title><script type="module" crossorigin src="/assets/index-4f2a.js">'
+                                  '</script>'), 'javascript_required'),
     (page('<noscript>Please enable JavaScript to view this page.</noscript>'), 'javascript_required'),
     (page('<h1>Access denied</h1><p>Verify you are human.</p>', '<title>Access denied</title>'), 'access_page'),
     (page('<form><label>Email</label><input><input type="password"><button>Log in</button></form>'), 'access_page'),
@@ -531,6 +534,8 @@ def test_ordinary_sentences_on_a_sparse_posting_are_not_a_bot_check(note):
                       '</script>'), id='head-script'),
     pytest.param(page('<div id="app"><p>Loading jobs…</p><p>This may take a few seconds.</p></div>'
                       '<script src="/app.js"></script>'), id='two-lines'),
+    pytest.param(page('<div id="app"><p>Loading jobs. This may take a few seconds.</p></div>'
+                      '<script src="/app.js"></script>'), id='single-period'),
 ])
 def test_script_page_with_only_a_loading_line_needs_javascript(html):
     with pytest.raises(ImportDocumentError) as raised:
@@ -542,6 +547,8 @@ def test_script_page_with_only_a_loading_line_needs_javascript(html):
     pytest.param('<main><h1>Loading dock assistant</h1><p>Loading dock worker needed</p></main>',
                  'Loading dock worker needed', id='loading-dock'),
     pytest.param(SOIL_POSTING.format('<p id="status">Loading...</p>'), 'Soil Microbiology Lab', id='posting-with-status'),
+    pytest.param('<main><p>Loading dock worker needed.</p><p>The campus warehouse hires students for spring 2027.</p></main>',
+                 'campus warehouse hires students', id='loading-dock-sentence'),
 ])
 def test_loading_words_beside_source_are_not_a_loading_page(body, kept):
     assert kept in extract_import_document(page(body + '<script src="/app.js"></script>'))['text']

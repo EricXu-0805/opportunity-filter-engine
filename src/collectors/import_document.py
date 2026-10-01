@@ -50,7 +50,7 @@ _ACCESS_SHELL = re.compile(
 # Each line is matched atomically. A run of "loading" words splits into lines
 # many ways, and retrying every split took exponential time on page text.
 _LOADING_SHELL = re.compile(
-    r'^(?>(?:loading(?:(?: [\w-]+){1,3}(?:\.{2,}|…|,))?|please wait|'
+    r'^(?>(?:loading(?:(?: [\w-]+){1,3}(?:\.+|…|,))?|please wait|'
     r'(?:this|it) (?:may|might|can|could) take (?:a few|several|a couple of) (?:seconds|moments))[.…!,]*\s*)+$',
     re.I,
 )
@@ -279,7 +279,7 @@ def extract_import_document(html: str, *, content_type: str | None = None) -> di
         if _JS_WALL.search(text) and not _has_independent_source(root):
             raise ImportDocumentError('javascript_required')
         if not text.strip():
-            if root.find('script') is not None:
+            if soup.find('script') is not None:
                 raise ImportDocumentError('javascript_required')
             raise ImportDocumentError('metadata_only' if title or meta_summary else 'empty_page')
     except ImportDocumentError:
