@@ -67,10 +67,29 @@ def test_source_type_contradiction_downgrades_both_scopes(source, label):
     assert import_source_from_raw(raw(source, label, ai_input_scope='source_excerpt', llm_enriched=True)) == info('unknown')
 
 
-@pytest.mark.parametrize('scope', ['full_source', 'other', None, [], {}, True])
+@pytest.mark.parametrize('scope', ['other', 'FULL_SOURCE', None, [], {}, True])
 def test_unsupported_scope_cannot_claim_complete_model_reading(scope):
     value = raw(ai_input_scope=scope, llm_enriched=True)
     assert import_source_from_raw(value) == info('page_text', 'unknown', True)
+
+
+# The parser stamps full_source when every saved word reached the model. Like
+# source_excerpt, the label needs the literal enrichment flag, and only page or
+# pasted text can have reached the model whole.
+@pytest.mark.parametrize(('source', 'label'), [('url_parser', 'page_text'), ('text_parser', 'pasted_text')])
+def test_recorded_full_source_scope_is_kept(source, label):
+    assert import_source_from_raw(raw(source, label, ai_input_scope='full_source', llm_enriched=True)) == info(
+        label, 'full_source', True)
+
+
+@pytest.mark.parametrize(('source', 'label', 'enriched', 'expected'), [
+    ('url_parser', 'page_excerpt', True, info('page_excerpt', 'unknown', True)),
+    ('url_parser', 'page_text', False, info()),
+    ('url_parser', 'page_text', 'true', info()),
+    ('text_parser', 'page_text', True, info('unknown')),
+])
+def test_full_source_scope_needs_enrichment_and_whole_page_or_pasted_text(source, label, enriched, expected):
+    assert import_source_from_raw(raw(source, label, ai_input_scope='full_source', llm_enriched=enriched)) == expected
 
 
 @pytest.mark.parametrize('enriched', [False, 1, 'true', [], {}, None])
@@ -102,7 +121,8 @@ def test_normalized_manual_save_and_actual_loader_preserve_valid_scope(temporary
 
 
 @pytest.mark.parametrize('stored', [None, [], True, {'version':True}, {'version':2},
-                                   {'version':1,'description_source':'page_text','ai_input_scope':'full_source','llm_enriched':True}])
+                                   {'version':1,'description_source':'page_text','ai_input_scope':'full_source','llm_enriched':False},
+                                   {'version':1,'description_source':'page_excerpt','ai_input_scope':'full_source','llm_enriched':True}])
 def test_loader_sanitizes_invalid_persisted_scope_without_rewriting_disk(stored, temporary_loader):
     record = normalize(raw())
     record['id'] = 'invalid-scope'
@@ -112,6 +132,14 @@ def test_loader_sanitizes_invalid_persisted_scope_without_rewriting_disk(stored,
     restored = data_loader.load_opportunities_by_id()['invalid-scope']
     assert restored['metadata']['import_source']['ai_input_scope'] == 'unknown'
     assert temporary_loader.read_bytes() == on_disk
+
+
+def test_actual_loader_keeps_a_recorded_full_source_scope(temporary_loader):
+    value = normalize(raw('text_parser', 'pasted_text', ai_input_scope='full_source', llm_enriched=True))
+    value['id'] = 'full-source-roundtrip'
+    assert save_opportunities([value], str(temporary_loader)) == (1, 0)
+    restored = data_loader.load_opportunities_by_id()['full-source-roundtrip']
+    assert restored['metadata']['import_source'] == info('pasted_text', 'full_source', True)
 
 
 def test_source_record_changed_after_normalization_cannot_keep_old_scope():

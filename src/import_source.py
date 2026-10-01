@@ -1,13 +1,17 @@
 """Conservative local import-source labels; never evidence of official status.
 
-No provider calls. Full-source AI processing has no authorized producer in the
-current pipeline, so its label is deliberately not accepted here.
+No provider calls. The labels repeat what the parser recorded at import time.
+It stamps ``full_source`` when every saved word reached the model, otherwise
+``source_excerpt``. Either scope is kept only with the literal successful-
+enrichment flag, and ``full_source`` only for page or pasted text: a historical
+page excerpt was never sent whole.
 """
 from __future__ import annotations
 
 IMPORT_SOURCE_KEY = 'import_source'
 _RAW_KEYS = {'description_source', 'ai_input_scope', 'llm_enriched'}
 _ALLOWED_SOURCES = {'url_parser': {'page_text', 'page_excerpt'}, 'text_parser': {'pasted_text'}}
+_WHOLE_SOURCES = {'page_text', 'pasted_text'}
 
 
 def _unknown() -> dict:
@@ -30,10 +34,11 @@ def _validate_labels(value: object, *, source: object, body: object, persisted: 
         return result
     result['description_source'] = label
     # False means successful enrichment was not recorded, not proof that no
-    # provider was called. It is only a gate for the recorded excerpt label.
+    # provider was called. It is only a gate for the recorded scope labels.
     result['llm_enriched'] = value.get('llm_enriched') is True
-    if result['llm_enriched'] and value.get('ai_input_scope') == 'source_excerpt':
-        result['ai_input_scope'] = 'source_excerpt'
+    scope = value.get('ai_input_scope')
+    if result['llm_enriched'] and (scope == 'source_excerpt' or (scope == 'full_source' and label in _WHOLE_SOURCES)):
+        result['ai_input_scope'] = scope
     return result
 
 
