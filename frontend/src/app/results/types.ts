@@ -98,6 +98,7 @@ const SOURCE_LABEL_KEY: Record<string, string> = {
   uiuc_our_rss: 'results.filters.sourceOurRss',
   ucb_urap: 'results.filters.sourceUcbUrap',
   ucb_urap_projects: 'results.filters.sourceUcbUrapProjects',
+  cmu_uro_projects: 'results.filters.sourceCmuUroProjects',
   // UC Berkeley department faculty directories. One label per collector so the
   // source filter never falls back to a humanized "Ucb <Dept> Faculty" string.
   // Keep in lockstep with the ucb_*_faculty collectors wired in refresh_all.

@@ -135,6 +135,7 @@ def _install_supabase(
     heartbeats=None,
     rpc_status: int = 200,
     schema_missing: bool = False,
+    lookup_fails: bool = False,
 ):
     """Stub ops.httpx.AsyncClient with a PostgREST-shaped recorder.
 
@@ -142,7 +143,8 @@ def _install_supabase(
     ``{"method", "url", "params", "json"}`` so a test can assert on the exact
     filter, patch body, audit row, or RPC payload the route produced — the
     only way to prove a detector wrote through the RPC rather than touching
-    the table directly.
+    the table directly. ``lookup_fails`` makes a detector's read of one
+    stored incident (``_Recorder.lookup``) fail in transport.
     """
     incidents = [] if incidents is None else incidents
     events = [] if events is None else events
@@ -179,8 +181,11 @@ def _install_supabase(
             if "ops_incident_events" in url:
                 return _Resp(events)
             if "ops_incidents" in url:
-                if (params or {}).get("select") in ("kind,priority", "dedup_key"):
+                select = (params or {}).get("select")
+                if select in ("kind,priority,dedup_key", "dedup_key"):
                     return _Resp(open_rows if open_rows is not None else incidents)
+                if select == "dedup_key,status,detail" and lookup_fails:
+                    raise ConnectionError("connection reset by peer")
                 return _Resp(incidents)
             return _Resp([])
 
@@ -404,7 +409,34 @@ class TestIncidentList:
             "notification_failure": 1, "manual_review": 0,
         }
         assert rollup["open_total"] == 4
+        assert rollup["release_blocking_total"] == 4
         assert rollup["truncated"] is False
+
+    def test_rollup_sets_snapshot_reminders_apart_from_release_blocking_work(self, monkeypatch):
+        """The release gate reads release_blocking_total: a reminder that a
+        hand-exported snapshot needs a new export is still counted in the
+        queue, but it is not a fault in what is deployed."""
+        _admin_env(monkeypatch)
+        reminder = "manual_review:snapshot_refresh:cmu_uro_projects"
+        open_rows = [
+            {"kind": "manual_review", "priority": "normal", "dedup_key": reminder},
+            {"kind": "manual_review", "priority": "normal", "dedup_key": "manual_review:publication:1"},
+            {"kind": "data_drift", "priority": "high", "dedup_key": "data_drift:x:y"},
+        ]
+        _install_supabase(monkeypatch, incidents=[_incident()], open_rows=open_rows)
+
+        rollup = client.get(
+            "/api/admin/ops/incidents", headers=_hdr(), params={"unresolved_only": "true"}
+        ).json()["rollup"]
+        assert rollup["open_by_kind"]["manual_review"] == 2
+        assert rollup["open_total"] == 3
+        assert rollup["open_snapshot_reminders"] == 1
+        assert rollup["release_blocking_total"] == 2
+
+    def test_the_snapshot_reminder_key_is_the_one_set_apart(self):
+        from src.collectors import cmu_uro_projects
+
+        assert cmu_uro_projects.REMINDER_DEDUP_KEY.startswith(ops_mod.SNAPSHOT_REMINDER_PREFIX)
 
 
 class TestIncidentDetail:
@@ -733,7 +765,8 @@ def _scan_env(monkeypatch):
 
 
 def _write_artifacts(monkeypatch, tmp_path, *, snapshot=None, history=None,
-                     tracking=None, source_health=None, remediation_ledger=None):
+                     tracking=None, source_health=None, remediation_ledger=None,
+                     uro_snapshot=None):
     """Point the detector at tmp artifacts; omit one to simulate it missing.
 
     Every path is redirected, including the ones a test does not populate:
@@ -752,6 +785,10 @@ def _write_artifacts(monkeypatch, tmp_path, *, snapshot=None, history=None,
     tracking_path = tmp_path / "professor_tracking.json"
     ledger_path = tmp_path / "publication_remediation_ledger.jsonl"
     health_path = tmp_path / "source_health.json"
+    uro_path = tmp_path / "cmu_uro_projects.json"
+    if uro_snapshot is not None:
+        uro_path.write_text(json.dumps(uro_snapshot), encoding="utf-8")
+    monkeypatch.setattr(ops_mod, "_URO_SNAPSHOT_PATH", uro_path)
     if source_health is not None:
         health_path.write_text(json.dumps(source_health), encoding="utf-8")
     monkeypatch.setattr(ops_mod, "_SOURCE_HEALTH_PATH", health_path)
@@ -1666,6 +1703,7 @@ class TestOpsScanResilience:
             "professor_tracking",
             "source_health",
             "publication_remediation",
+            "snapshot_refresh",
         }
         assert _rpcs(calls, "record_ops_incident") == []
 
@@ -1960,10 +1998,14 @@ WORKFLOW_DIR = REPO / ".github" / "workflows"
 
 
 def _seeded_heartbeat_names() -> set[str]:
-    """Heartbeat names the migration registers, read from the migration."""
-    sql = MIGRATION_032.read_text(encoding="utf-8")
-    body = sql.split("INSERT INTO ops_heartbeats", 1)[1].split("ON CONFLICT", 1)[0]
-    return set(re.findall(r"^\s*\('([a-z0-9_]+)',", body, re.MULTILINE))
+    """Heartbeat names the migrations register: 032's seed and any later row."""
+    names: set[str] = set()
+    for path in sorted(MIGRATION_032.parent.glob("*.sql")):
+        sql = path.read_text(encoding="utf-8")
+        for insert in sql.split("INSERT INTO ops_heartbeats")[1:]:
+            body = insert.split("ON CONFLICT", 1)[0]
+            names |= set(re.findall(r"^\s*\('([a-z0-9_]+)',", body, re.MULTILINE))
+    return names
 
 
 def _scheduled_workflows() -> dict[Path, dict]:
@@ -2081,7 +2123,7 @@ class TestTheRegistryMatchesTheSchedulers:
                 unwatched.append(f"{path.name}: check-in step posts no heartbeat name")
             for name in names:
                 if name not in seeded:
-                    unwatched.append(f"{path.name}: '{name}' is not registered in 032")
+                    unwatched.append(f"{path.name}: '{name}' is not registered in any migration")
         assert unwatched == [], (
             "scheduled workflows the dead man cannot see: " + "; ".join(unwatched))
 

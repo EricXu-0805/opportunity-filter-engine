@@ -56,6 +56,8 @@ from .campus_graph import (
 from .campus_graph import (
     merge_into_processed as merge_campus_graph,
 )
+from .cmu_uro_projects import fetch_and_normalize as fetch_cmu_uro_projects
+from .cmu_uro_projects import merge_into_processed as merge_cmu_uro_projects
 from .faculty_condition_refresh import refresh_faculty_condition_sources
 from .nsf_reu import fetch_and_normalize as fetch_reu
 from .nsf_reu import merge_into_processed as merge_reu
@@ -894,6 +896,9 @@ def refresh_all(
         ("uiuc_siebel", fetch_siebel, merge_siebel, "uiuc"),
         ("uiuc_other", fetch_other, merge_other, "uiuc"),
         ("ucb_urap", fetch_ucb_urap, merge_ucb_urap, "ucb"),
+        # Hand-exported snapshot of CMU's login-only project list: read from
+        # data/snapshots, no network, so it runs in quick mode too.
+        ("cmu_uro_projects", fetch_cmu_uro_projects, merge_cmu_uro_projects, "cmu"),
     ]:
         if not selected(school):
             continue

@@ -2,7 +2,9 @@
 
 Runs after every refresh. Idempotent: opps already marked inactive stay inactive,
 opps newly past-deadline get `metadata.is_active = False`, opps with rolling
-deadlines or no deadline are left alone.
+deadlines or no deadline are left alone. A record whose ``metadata.expires_at``
+(the end of a dated snapshot's validity) has passed is retired the same way,
+with ``deactivation_reason: expired``, rolling or not.
 
 Also records `metadata.deactivated_at` (UTC ISO date) the first time we mark
 something inactive, so the admin dashboard can surface freshly-expired entries.
@@ -36,6 +38,17 @@ DEFAULT_PATH = _PROCESSED / "opportunities.json"
 DEFAULT_SHARDS_DIR = _PROCESSED / "shards"
 
 
+def _expiry(meta: dict) -> date | None:
+    """``metadata.expires_at`` as a date; ISO by contract, anything else is no expiry."""
+    value = meta.get("expires_at")
+    if not isinstance(value, str):
+        return None
+    try:
+        return date.fromisoformat(value[:10])
+    except ValueError:
+        return None
+
+
 def deactivate_past(opps: list[dict], today: date | None = None) -> dict:
     """Mark opportunities past their deadline as inactive (in place).
 
@@ -56,6 +69,19 @@ def deactivate_past(opps: list[dict], today: date | None = None) -> dict:
 
     for opp in opps:
         meta = opp.setdefault("metadata", {})
+
+        # A snapshot row states when its whole list stops being valid; that
+        # holds for rolling rows too, which is why it is checked first.
+        expires = _expiry(meta)
+        if expires is not None and expires < today:
+            if meta.get("is_active") is False:
+                counts["already_inactive"] += 1
+            else:
+                meta["is_active"] = False
+                meta.setdefault("deactivated_at", today.isoformat())
+                meta["deactivation_reason"] = "expired"
+                counts["newly_deactivated"] += 1
+            continue
 
         if opp.get("is_rolling"):
             counts["skipped_rolling"] += 1
