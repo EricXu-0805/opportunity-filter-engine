@@ -758,6 +758,42 @@ class TestInferResearchAreaNoDeptFallback_CE_C2:
         assert _LAB in h
 
 
+class TestTopicKeywordsNameResearchNotPeopleOrPlaces:
+    """Walked 2026-09-30: faculty-bioe-b4e047a5's directory keywords carry a job
+    title, a hospital and her city between her research areas, and the
+    template told her "your work on image-guided adaptive radiation therapy,
+    deep learning for clinical decision-making, and medical physicist"."""
+
+    _HUA_LI = {
+        "keywords": ["image-guided adaptive radiation therapy", "deep learning for clinical decision-making",
+                     "medical physicist", "carle cancer center", "urbana",
+                     "task-based medical imaging quality assessment", "early cancer detection"],
+        "location": "Urbana-Champaign, IL",
+    }
+
+    def test_a_job_title_an_institution_or_the_city_is_not_a_topic(self):
+        assert _infer_research_topic(self._HUA_LI) == (
+            "image-guided adaptive radiation therapy, deep learning for clinical decision-making, "
+            "and task-based medical imaging quality assessment")
+
+    def test_an_area_is_never_a_role(self):
+        assert _infer_research_area({"keywords": ["medical physicist", "radiation therapy"]}) == "radiation therapy"
+
+    def test_topics_about_people_or_places_stay_topics(self):
+        opp = {"keywords": ["technical communication for engineers", "data centers",
+                            "hospital employment of physicians"]}
+        assert _infer_research_topic(opp) == (
+            "technical communication for engineers, data centers, and hospital employment of physicians")
+
+    def test_a_role_or_place_after_a_function_word_is_still_a_topic(self):
+        # Corpus topics that end in a role or an institution noun but name a
+        # subject of study (reviewed 2026-09-30).
+        opp = {"keywords": ["board of directors", "sustainability in the laboratory",
+                            "learning in the laboratory"]}
+        assert _infer_research_topic(opp) == (
+            "board of directors, sustainability in the laboratory, and learning in the laboratory")
+
+
 class TestColdEmailPromptInjection:
     """SEC: scraped opportunity fields must be flattened before they enter the
     AI cold-email prompt, so a poisoned posting can't inject a fake role/Subject

@@ -26,7 +26,7 @@ import EmailVersionHistory from './EmailVersionHistory';
 import { useColdEmailDraftPersistence } from '@/lib/use-cold-email-draft';
 import { createContactEventInput, contactMaterialVersion, ContactEventError, validContactRecipient } from '@/lib/contact-ledger';
 
-import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, type MouseEvent } from 'react';
+import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, useSyncExternalStore, type MouseEvent } from 'react';
 import Link from 'next/link';
 import { captureOwnerToken, isOwnerTokenValid, isTokenOwnerStillCurrent, onLocalOwnerStateChange } from '@/lib/identity-owner';
 import { canDeliverReminder } from '@/lib/reminders';
@@ -341,6 +341,20 @@ function applyQuickEdit(
   }
 }
 
+// ColdEmailModal.module.css lays the workspace out in two columns from this
+// size up. Below it the workspace is one scroll column, so only Copy and Open
+// in Email stay pinned (checklist M29) and the other footer actions scroll
+// with the draft. Without matchMedia (tests, old browsers) the footer stays
+// one row, as before.
+const WIDE_WORKSPACE_QUERY = '(min-width: 1024px) and (min-height: 720px)';
+function subscribeWideWorkspace(onChange: () => void): () => void {
+  if (typeof window.matchMedia !== 'function') return () => {};
+  const query = window.matchMedia(WIDE_WORKSPACE_QUERY);
+  query.addEventListener('change', onChange);
+  return () => query.removeEventListener('change', onChange);
+}
+const wideWorkspace = () => typeof window.matchMedia !== 'function' || window.matchMedia(WIDE_WORKSPACE_QUERY).matches;
+
 export default function ColdEmailModal({
   isOpen,
   onClose,
@@ -361,6 +375,7 @@ export default function ColdEmailModal({
   targetMembershipReady,
 }: ColdEmailModalProps) {
   const { t, locale } = useT();
+  const wide = useSyncExternalStore(subscribeWideWorkspace, wideWorkspace, () => true);
   const incomingProfileKey = profileActionKey(incomingProfile);
   const [supplementProfile, setSupplementProfile] = useState<{ view: ProfileViewSnapshot; inputKey: string | null; targetId: string } | null>(null);
   const profile = profileAvailable && supplementProfile && supplementProfile.inputKey === incomingProfileKey
@@ -1783,7 +1798,7 @@ export default function ColdEmailModal({
       const proposed: EmailEditProposal = { ...edit, id: requestId, afterBody,
         usage: result.experience_usage ?? null, conditions: readEmailTargetConditions(result), ...(typed ? { instruction } : {}) };
       proposalRef.current = proposed; setEditProposal(proposed);
-      reply(result.fallback_reason === 'fabrication' ? t('coldEmail.refineFabrication')
+      reply(result.fallback_reason === 'fabrication' ? t('coldEmail.refineFabricationSuggestion')
         : result.fallback_reason === 'insufficient_evidence' ? aiFallbackMessage('insufficient_evidence', t)
         : locale === 'zh' ? (result.method === 'llm' ? '建议已准备好，请比较后接受或拒绝。' : '已生成基础修改建议，请比较后接受或拒绝。')
           : result.method === 'llm' ? 'Suggestion ready. Compare it, then accept or reject.' : 'Basic edit suggestion ready. Compare it, then accept or reject.');
@@ -2168,6 +2183,39 @@ export default function ColdEmailModal({
   const showInitialWait = loading && !error && !targetVersionError && !nameRequired && !action.error && profileAvailable
     && (targetReady || targetChecking) && profileRefresh?.status !== 'failed' && profileRefresh?.status !== 'conflict';
 
+  // The footer row on a wide workspace. When only Copy and Open in Email stay
+  // pinned (narrow, short or zoomed windows), these follow the draft instead.
+  const draftActions = <>
+    <button type="button" onClick={() => { cancelCompose(); void handleCopy(false); }}
+      className="px-2 py-2 text-xs text-gray-600 underline" data-testid="copy-draft-only">
+      {backupCopied ? (locale === 'zh' ? '草稿已复制' : 'Draft copied') : (locale === 'zh' ? '仅复制草稿' : 'Copy draft only')}
+    </button>
+    {!contactedHere && <button type="button" onClick={() => { cancelCompose(); markContacted(); }} disabled={confirming}
+      className="px-2 py-2 text-xs text-gray-600 underline disabled:opacity-50" data-testid="record-sent-email">
+      {locale === 'zh' ? '记录已发送的邮件' : 'Record an email already sent'}
+    </button>}
+  </>;
+  const providerActions = <>
+    <button
+      type="button"
+      disabled={!sourceReady || !paperReadingCurrent || !!(privateMode ? null : contactEmailBlock(target, subject, { subjectFormatConfirmed })) || action.busy || composeBusy || contextDirty || profileChanged || profileRegenerating || !!targetVersionError || privateBlocked || !privateReviewed || !validContactRecipient(recipient.trim())}
+      onClick={() => startCompose('gmail')}
+      className="inline-flex items-center justify-center px-3 py-2.5 text-[11px] font-semibold text-indigo-100 bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      title={t('coldEmail.openGmailTitle')}
+    >
+      {t('coldEmail.gmail')}
+    </button>
+    <button
+      type="button"
+      disabled={!sourceReady || !paperReadingCurrent || !!(privateMode ? null : contactEmailBlock(target, subject, { subjectFormatConfirmed })) || action.busy || composeBusy || contextDirty || profileChanged || profileRegenerating || !!targetVersionError || privateBlocked || !privateReviewed || !validContactRecipient(recipient.trim())}
+      onClick={() => startCompose('outlook')}
+      className="inline-flex items-center justify-center px-3 py-2.5 text-[11px] font-semibold text-indigo-100 bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      title={t('coldEmail.openOutlookTitle')}
+    >
+      {t('coldEmail.outlook')}
+    </button>
+  </>;
+
   return (
     <div
       className="fixed inset-0 z-[55] flex sm:items-center sm:justify-center"
@@ -2179,7 +2227,7 @@ export default function ColdEmailModal({
 
       <div
         ref={modalRef}
-        className="relative w-full sm:max-w-5xl sm:mx-4 bg-white sm:rounded-2xl shadow-2xl h-[100dvh] max-h-[100dvh] sm:h-[90dvh] sm:max-h-[90dvh] min-w-0 flex flex-col overflow-hidden animate-in"
+        className={`${styles.dialog} relative w-full sm:max-w-5xl sm:mx-4 bg-white sm:rounded-2xl shadow-2xl min-w-0 flex flex-col overflow-hidden animate-in`}
       >
         {/* Header */}
         <div className="flex items-start justify-between gap-2 px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100 shrink-0">
@@ -2310,7 +2358,7 @@ export default function ColdEmailModal({
         )}
 
         {/* Two-panel layout */}
-        {hasEditor && !loading && !error && !nameRequired && (
+        {hasEditor && !loading && !error && !nameRequired && (<>
           <div className={styles.workspace} data-testid="cold-email-workspace">
             <div className={styles.panels} data-private={privateMode}>
               <div className={`${styles.editorPane} lg:border-r border-gray-100`} data-testid="cold-email-editor">
@@ -2735,202 +2783,185 @@ export default function ColdEmailModal({
                 </section>
               </div>}
             </div>
-
-            {/* Post-draft strip — appears once the email is copied/opened.
-                First asks for explicit confirmation that the email was
-                actually sent (copying/opening a draft is not a send); only
-                after the user confirms is the contact recorded and the
-                follow-up reminder offered. */}
-            {contactedHere && (
-              <div className="flex flex-wrap items-center gap-2 px-6 py-2.5 border-t border-gray-100 bg-amber-50/60 shrink-0 text-sm">
-                {!confirmedHere ? (
-                  <>
-                    <span className="inline-flex items-center gap-1.5 text-gray-600">
-                      <Send className="w-4 h-4 text-amber-500" />
-                      {t('coldEmail.sentQuestion')}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => { void confirmSent(); }}
-                      disabled={confirming}
-                      data-testid="cold-email-confirm-sent"
-                      className="px-2.5 py-1 rounded-lg border border-amber-200 bg-white text-[12px] font-medium text-amber-700 hover:bg-amber-100 transition-colors disabled:opacity-60 disabled:cursor-wait"
-                    >
-                      {confirming
-                        ? t('coldEmail.confirming')
-                        : sendError === 'confirm'
-                          ? t('coldEmail.confirmRetry')
-                          : t('coldEmail.confirmSent')}
-                    </button>
-                    {(sendError === 'confirm' || sendError === 'owner-changed' || sendError === 'invalid-contact' || sendError === 'contact-conflict' || sendError === 'private-target') && (
-                      <span className="inline-flex items-center gap-1.5 text-red-600" role="status">
-                        <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
-                        {t(sendError === 'confirm' ? 'coldEmail.confirmFailed'
-                          : sendError === 'invalid-contact' ? 'coldEmail.contactInvalid'
-                          : sendError === 'contact-conflict' ? 'coldEmail.contactConflict'
-                          : sendError === 'private-target' ? 'coldEmail.privateTargetUnconfirmed'
-                          : 'coldEmail.confirmOwnerChanged')}
-                      </span>
-                    )}
-                  </>
-                ) : confirmedStatus === undefined ? (
-                  <span className="text-gray-600">{t('coldEmail.contactRecordedNoStatus')}</span>
-                ) : confirmedStatus === 'dismissed' || confirmedStatus === 'rejected' ? (
-                  // The confirm RPC never downgrades a status, so a row the
-                  // student had already marked reaches here after a perfectly
-                  // real send and comes back unchanged. Saying only that a
-                  // reminder is unavailable left them believing the outreach
-                  // was on their board — and for 'dismissed' the tracker omits
-                  // the row from every column, so it is nowhere at all.
-                  <span className="inline-flex items-center gap-1.5 text-gray-500">
-                    <BellRing className="w-4 h-4 text-gray-400" />
-                    {t(
-                      confirmedStatus === 'dismissed'
-                        ? 'coldEmail.confirmedKeptDismissed'
-                        : 'coldEmail.confirmedKeptStatus',
-                    )}
-                  </span>
-                ) : !followUpDeliverable ? (
-                  // The whole reminder block, not just the chips. Offering
-                  // "want a reminder?" and then having nothing to offer is
-                  // the same false capability one step earlier.
-                  <span className="inline-flex items-center gap-1.5 text-gray-500">
-                    <BellRing className="w-4 h-4 text-gray-400" />
-                    {t('coldEmail.reminderUnavailable')}
-                  </span>
-                ) : (
-                  <>
-                    {followUpDate ? (
-                      <span className="inline-flex items-center gap-1.5 font-medium text-amber-700">
-                        <BellRing className="w-4 h-4" />
-                        {t('coldEmail.reminderSet', { date: followUpDate })}
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 text-gray-600">
-                        <BellRing className="w-4 h-4 text-amber-500" />
-                        {t('coldEmail.remindPrompt')}
-                      </span>
-                    )}
-                    {/* The chips stay after a date is chosen: a reminder is
-                        changeable, and changing it must go through the same
-                        reminder-only write rather than another confirmation. */}
-                    {([['coldEmail.remind3', 3], ['coldEmail.remind7', 7], ['coldEmail.remind14', 14]] as const).map(
-                      ([key, days]) => (
-                        <button
-                          key={days}
-                          type="button"
-                          disabled={!sourceReady}
-                          onClick={() => { void setFollowUp(days); }}
-                          className="px-2.5 py-1 rounded-lg border border-amber-200 bg-white text-[12px] font-medium text-amber-700 hover:bg-amber-100 transition-colors"
-                        >
-                          {t(key)}
-                        </button>
-                      ),
-                    )}
-                    {followUpDate && pushOffer === 'available' && (
-                      <span className="inline-flex items-center gap-1.5 text-[12px] text-gray-500">
-                        {t('coldEmail.reminderInAppOnly')}
-                        <button
-                          type="button"
-                          disabled={!sourceReady || pushBusy}
-                          onClick={() => { void enableNotifications(); }}
-                          className="font-semibold text-indigo-600 hover:text-indigo-700 underline underline-offset-2 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded"
-                        >
-                          {t('coldEmail.reminderEnablePush')}
-                        </button>
-                      </span>
-                    )}
-                    {sendError === 'reminder' && (
-                      <span className="inline-flex items-center gap-1.5 text-red-600" role="status">
-                        <AlertCircle className="w-4 h-4" aria-hidden="true" />
-                        {t('coldEmail.reminderFailed')}
-                      </span>
-                    )}
-                  </>
-                )}
+            {!wide && <div className="flex flex-wrap items-center justify-end gap-2 px-4 py-3 border-t border-gray-100 bg-gray-50/50" data-testid="cold-email-more-actions">
+              {draftActions}
+              <div className="flex rounded-xl overflow-hidden shadow-sm" title={!recipient.trim() ? t('coldEmail.toHint') : undefined}>
+                {providerActions}
               </div>
-            )}
+            </div>}
+          </div>
 
-            {/* Footer */}
-            <div className="flex flex-wrap items-center justify-end gap-2 px-4 sm:px-6 py-3 border-t border-gray-100 bg-gray-50/50 shrink-0" data-testid="cold-email-footer">
-              {conditionCheck?.key === composeKey && <div role="status" data-testid="email-condition-review" className="w-full max-h-[18dvh] overflow-y-auto text-xs text-amber-900">
-                {conditionCheck.message && <p>{conditionCheck.message}</p>}
-                {conditionCheck.issues.length > 0 && <ul className="list-disc pl-4 space-y-1">{conditionCheck.issues.map(issue => <li key={issue}>{issue === 'invalid_recipient' ? (locale === 'zh' ? '请填写一个有效的收件邮箱。' : 'Enter one valid recipient address.') : issue === 'contact_review_required' ? (locale === 'zh' ? '请核对来源的联系要求和收件地址。' : 'Review the source’s contact instructions and recipient.') : issue === 'contact_blocked' ? (locale === 'zh' ? '当前导入内容有联系限制，请查看来源。' : 'The current import has contact restrictions. Review the source.') : emailConditionIssueText(issue, locale)}</li>)}</ul>}
-              </div>}
-              {(composeBusy || composeFailure) && <p role="status" data-testid="cold-email-compose-status" className="w-full text-xs text-amber-900">
-                {composeBusy ? (locale === 'zh' ? '正在核对草稿、资料和目标条件…' : 'Checking your draft, profile and target conditions…')
-                  : composeFailure === 'conditions' ? (locale === 'zh' ? '请核对提示内容。原稿保留，邮件尚未打开。' : 'Review the flagged points. Your draft is kept; no email was opened.')
-                  : composeFailure === 'popup' ? (locale === 'zh' ? '浏览器阻止了新窗口。请允许弹窗后重试；邮件尚未打开。' : 'The browser blocked the new window. Allow popups and try again; no email was opened.')
-                  : composeFailure === 'recipient' ? (locale === 'zh' ? '官网收件地址已改变或无法确认。草稿仍保留，请核对收件人后重试。' : 'The source email address changed or could not be verified. Your draft is kept; review the recipient before trying again.')
-                  : (locale === 'zh' ? '本次核对未完成，邮件尚未打开。草稿仍保留，请重试。' : 'The check did not finish, so no email was opened. Your draft is kept; try again.')}
-              </p>}
-              {copyFailed && (
-                <span className="inline-flex items-center gap-1.5 text-[12px] text-red-600" role="status">
-                  <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
-                  {t('coldEmail.copyFailed')}
+          {/* Post-draft strip — appears once the email is copied/opened.
+              First asks for explicit confirmation that the email was
+              actually sent (copying/opening a draft is not a send); only
+              after the user confirms is the contact recorded and the
+              follow-up reminder offered. */}
+          {contactedHere && (
+            <div className="flex flex-wrap items-center gap-2 px-6 py-2.5 border-t border-gray-100 bg-amber-50/60 shrink-0 text-sm">
+              {!confirmedHere ? (
+                <>
+                  <span className="inline-flex items-center gap-1.5 text-gray-600">
+                    <Send className="w-4 h-4 text-amber-500" />
+                    {t('coldEmail.sentQuestion')}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => { void confirmSent(); }}
+                    disabled={confirming}
+                    data-testid="cold-email-confirm-sent"
+                    className="px-2.5 py-1 rounded-lg border border-amber-200 bg-white text-[12px] font-medium text-amber-700 hover:bg-amber-100 transition-colors disabled:opacity-60 disabled:cursor-wait"
+                  >
+                    {confirming
+                      ? t('coldEmail.confirming')
+                      : sendError === 'confirm'
+                        ? t('coldEmail.confirmRetry')
+                        : t('coldEmail.confirmSent')}
+                  </button>
+                  {(sendError === 'confirm' || sendError === 'owner-changed' || sendError === 'invalid-contact' || sendError === 'contact-conflict' || sendError === 'private-target') && (
+                    <span className="inline-flex items-center gap-1.5 text-red-600" role="status">
+                      <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
+                      {t(sendError === 'confirm' ? 'coldEmail.confirmFailed'
+                        : sendError === 'invalid-contact' ? 'coldEmail.contactInvalid'
+                        : sendError === 'contact-conflict' ? 'coldEmail.contactConflict'
+                        : sendError === 'private-target' ? 'coldEmail.privateTargetUnconfirmed'
+                        : 'coldEmail.confirmOwnerChanged')}
+                    </span>
+                  )}
+                </>
+              ) : confirmedStatus === undefined ? (
+                <span className="text-gray-600">{t('coldEmail.contactRecordedNoStatus')}</span>
+              ) : confirmedStatus === 'dismissed' || confirmedStatus === 'rejected' ? (
+                // The confirm RPC never downgrades a status, so a row the
+                // student had already marked reaches here after a perfectly
+                // real send and comes back unchanged. Saying only that a
+                // reminder is unavailable left them believing the outreach
+                // was on their board — and for 'dismissed' the tracker omits
+                // the row from every column, so it is nowhere at all.
+                <span className="inline-flex items-center gap-1.5 text-gray-500">
+                  <BellRing className="w-4 h-4 text-gray-400" />
+                  {t(
+                    confirmedStatus === 'dismissed'
+                      ? 'coldEmail.confirmedKeptDismissed'
+                      : 'coldEmail.confirmedKeptStatus',
+                  )}
                 </span>
+              ) : !followUpDeliverable ? (
+                // The whole reminder block, not just the chips. Offering
+                // "want a reminder?" and then having nothing to offer is
+                // the same false capability one step earlier.
+                <span className="inline-flex items-center gap-1.5 text-gray-500">
+                  <BellRing className="w-4 h-4 text-gray-400" />
+                  {t('coldEmail.reminderUnavailable')}
+                </span>
+              ) : (
+                <>
+                  {followUpDate ? (
+                    <span className="inline-flex items-center gap-1.5 font-medium text-amber-700">
+                      <BellRing className="w-4 h-4" />
+                      {t('coldEmail.reminderSet', { date: followUpDate })}
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 text-gray-600">
+                      <BellRing className="w-4 h-4 text-amber-500" />
+                      {t('coldEmail.remindPrompt')}
+                    </span>
+                  )}
+                  {/* The chips stay after a date is chosen: a reminder is
+                      changeable, and changing it must go through the same
+                      reminder-only write rather than another confirmation. */}
+                  {([['coldEmail.remind3', 3], ['coldEmail.remind7', 7], ['coldEmail.remind14', 14]] as const).map(
+                    ([key, days]) => (
+                      <button
+                        key={days}
+                        type="button"
+                        disabled={!sourceReady}
+                        onClick={() => { void setFollowUp(days); }}
+                        className="px-2.5 py-1 rounded-lg border border-amber-200 bg-white text-[12px] font-medium text-amber-700 hover:bg-amber-100 transition-colors"
+                      >
+                        {t(key)}
+                      </button>
+                    ),
+                  )}
+                  {followUpDate && pushOffer === 'available' && (
+                    <span className="inline-flex items-center gap-1.5 text-[12px] text-gray-500">
+                      {t('coldEmail.reminderInAppOnly')}
+                      <button
+                        type="button"
+                        disabled={!sourceReady || pushBusy}
+                        onClick={() => { void enableNotifications(); }}
+                        className="font-semibold text-indigo-600 hover:text-indigo-700 underline underline-offset-2 disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded"
+                      >
+                        {t('coldEmail.reminderEnablePush')}
+                      </button>
+                    </span>
+                  )}
+                  {sendError === 'reminder' && (
+                    <span className="inline-flex items-center gap-1.5 text-red-600" role="status">
+                      <AlertCircle className="w-4 h-4" aria-hidden="true" />
+                      {t('coldEmail.reminderFailed')}
+                    </span>
+                  )}
+                </>
               )}
+            </div>
+          )}
+
+          {/* Footer — outside the workspace, so it stays in view however far
+              the draft is scrolled. */}
+          <div className={`flex flex-wrap items-center justify-end gap-2 px-4 sm:px-6 border-t border-gray-100 shrink-0 ${wide ? 'py-3 bg-gray-50/50' : 'py-2 bg-white'}`} data-testid="cold-email-footer">
+            {conditionCheck?.key === composeKey && <div role="status" data-testid="email-condition-review" className="w-full max-h-[18dvh] overflow-y-auto text-xs text-amber-900">
+              {conditionCheck.message && <p>{conditionCheck.message}</p>}
+              {conditionCheck.issues.length > 0 && <ul className="list-disc pl-4 space-y-1">{conditionCheck.issues.map(issue => <li key={issue}>{issue === 'invalid_recipient' ? (locale === 'zh' ? '请填写一个有效的收件邮箱。' : 'Enter one valid recipient address.') : issue === 'contact_review_required' ? (locale === 'zh' ? '请核对来源的联系要求和收件地址。' : 'Review the source’s contact instructions and recipient.') : issue === 'contact_blocked' ? (locale === 'zh' ? '当前导入内容有联系限制，请查看来源。' : 'The current import has contact restrictions. Review the source.') : emailConditionIssueText(issue, locale)}</li>)}</ul>}
+            </div>}
+            {(composeBusy || composeFailure) && <p role="status" data-testid="cold-email-compose-status" className="w-full text-xs text-amber-900">
+              {composeBusy ? (locale === 'zh' ? '正在核对草稿、资料和目标条件…' : 'Checking your draft, profile and target conditions…')
+                : composeFailure === 'conditions' ? (locale === 'zh' ? '请核对提示内容。原稿保留，邮件尚未打开。' : 'Review the flagged points. Your draft is kept; no email was opened.')
+                : composeFailure === 'popup' ? (locale === 'zh' ? '浏览器阻止了新窗口。请允许弹窗后重试；邮件尚未打开。' : 'The browser blocked the new window. Allow popups and try again; no email was opened.')
+                : composeFailure === 'recipient' ? (locale === 'zh' ? '官网收件地址已改变或无法确认。草稿仍保留，请核对收件人后重试。' : 'The source email address changed or could not be verified. Your draft is kept; review the recipient before trying again.')
+                : (locale === 'zh' ? '本次核对未完成，邮件尚未打开。草稿仍保留，请重试。' : 'The check did not finish, so no email was opened. Your draft is kept; try again.')}
+            </p>}
+            {copyFailed && (
+              <span className="inline-flex items-center gap-1.5 text-[12px] text-red-600" role="status">
+                <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
+                {t('coldEmail.copyFailed')}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => startCompose('copy')}
+              disabled={composeBusy || action.busy}
+              className={`inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors ${wide ? '' : 'flex-1 sm:flex-none'}`}
+            >
+              {copied ? (
+                <><CheckCircle className="w-4 h-4 text-emerald-500" />{t('coldEmail.copied')}</>
+              ) : (
+                <><Copy className="w-4 h-4" />{t('coldEmail.copy')}</>
+              )}
+            </button>
+            {wide && draftActions}
+            {/* FE-2: the deep-link send buttons open a real compose window, so
+                disable them when no recipient is resolved — otherwise the user
+                is dropped into a draft addressed to nobody with no warning. The
+                amber "To" hint above guides them to add an address; the Copy
+                button stays enabled since pasting elsewhere is still useful. */}
+            <div
+              className={wide ? 'grid w-full min-w-0 grid-cols-2 rounded-xl overflow-hidden shadow-sm sm:flex sm:w-auto'
+                : 'flex flex-1 min-w-0 rounded-xl overflow-hidden shadow-sm sm:flex-none'}
+              title={!recipient.trim() ? t('coldEmail.toHint') : undefined}
+            >
               <button
                 type="button"
-                onClick={() => startCompose('copy')}
-                disabled={composeBusy || action.busy}
-                className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+                disabled={!sourceReady || !paperReadingCurrent || !!(privateMode ? null : contactEmailBlock(target, subject, { subjectFormatConfirmed })) || action.busy || composeBusy || contextDirty || profileChanged || profileRegenerating || !!targetVersionError || privateBlocked || !privateReviewed || !validContactRecipient(recipient.trim())}
+                onClick={() => startCompose('default')}
+                className={`col-span-2 inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${wide ? '' : 'flex-1'}`}
               >
-                {copied ? (
-                  <><CheckCircle className="w-4 h-4 text-emerald-500" />{t('coldEmail.copied')}</>
-                ) : (
-                  <><Copy className="w-4 h-4" />{t('coldEmail.copy')}</>
-                )}
+                <ExternalLink className="w-4 h-4" />
+                {t('coldEmail.openInEmail')}
               </button>
-              <button type="button" onClick={() => { cancelCompose(); void handleCopy(false); }}
-                className="px-2 py-2 text-xs text-gray-600 underline" data-testid="copy-draft-only">
-                {backupCopied ? (locale === 'zh' ? '草稿已复制' : 'Draft copied') : (locale === 'zh' ? '仅复制草稿' : 'Copy draft only')}
-              </button>
-              {!contactedHere && <button type="button" onClick={() => { cancelCompose(); markContacted(); }} disabled={confirming}
-                className="px-2 py-2 text-xs text-gray-600 underline disabled:opacity-50" data-testid="record-sent-email">
-                {locale === 'zh' ? '记录已发送的邮件' : 'Record an email already sent'}
-              </button>}
-              {/* FE-2: the deep-link send buttons open a real compose window, so
-                  disable them when no recipient is resolved — otherwise the user
-                  is dropped into a draft addressed to nobody with no warning. The
-                  amber "To" hint above guides them to add an address; the Copy
-                  button stays enabled since pasting elsewhere is still useful. */}
-              <div
-                className="grid w-full min-w-0 grid-cols-2 rounded-xl overflow-hidden shadow-sm sm:flex sm:w-auto"
-                title={!recipient.trim() ? t('coldEmail.toHint') : undefined}
-              >
-                <button
-                  type="button"
-                  disabled={!sourceReady || !paperReadingCurrent || !!(privateMode ? null : contactEmailBlock(target, subject, { subjectFormatConfirmed })) || action.busy || composeBusy || contextDirty || profileChanged || profileRegenerating || !!targetVersionError || privateBlocked || !privateReviewed || !validContactRecipient(recipient.trim())}
-                  onClick={() => startCompose('default')}
-                  className="col-span-2 inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <ExternalLink className="w-4 h-4" />
-                  {t('coldEmail.openInEmail')}
-                </button>
-                <div className="hidden w-px bg-indigo-400 sm:block" />
-                <button
-                  type="button"
-                  disabled={!sourceReady || !paperReadingCurrent || !!(privateMode ? null : contactEmailBlock(target, subject, { subjectFormatConfirmed })) || action.busy || composeBusy || contextDirty || profileChanged || profileRegenerating || !!targetVersionError || privateBlocked || !privateReviewed || !validContactRecipient(recipient.trim())}
-                  onClick={() => startCompose('gmail')}
-                  className="inline-flex items-center justify-center px-3 py-2.5 text-[11px] font-semibold text-indigo-100 bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  title={t('coldEmail.openGmailTitle')}
-                >
-                  {t('coldEmail.gmail')}
-                </button>
-                <button
-                  type="button"
-                  disabled={!sourceReady || !paperReadingCurrent || !!(privateMode ? null : contactEmailBlock(target, subject, { subjectFormatConfirmed })) || action.busy || composeBusy || contextDirty || profileChanged || profileRegenerating || !!targetVersionError || privateBlocked || !privateReviewed || !validContactRecipient(recipient.trim())}
-                  onClick={() => startCompose('outlook')}
-                  className="inline-flex items-center justify-center px-3 py-2.5 text-[11px] font-semibold text-indigo-100 bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  title={t('coldEmail.openOutlookTitle')}
-                >
-                  {t('coldEmail.outlook')}
-                </button>
-              </div>
+              {wide && <><div className="hidden w-px bg-indigo-400 sm:block" />{providerActions}</>}
             </div>
           </div>
-        )}
+        </>)}
       </div>
     </div>
   );
