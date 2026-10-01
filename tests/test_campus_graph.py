@@ -18,6 +18,7 @@ from datetime import UTC, datetime
 import pytest
 from bs4 import BeautifulSoup
 
+from scripts.shard_corpus import assemble, load_shards, split
 from src.collectors import campus_graph as cg
 from src.collectors.schools import SCHOOL_CONFIGS
 from src.collectors.schools.boulder import SCHOOL as BOULDER
@@ -650,6 +651,348 @@ class TestSeedNormalization:
 
         assert record["metadata"]["status"] == "closed"
         assert record["metadata"]["is_active"] is False
+
+
+# --- A program dropped from a config retires its stored row -----------------
+
+def _listing_school(*keys, open_keys=(), titles=None, urls=None):
+    """One school: ``keys`` in a campus source, ``open_keys`` in an open one."""
+    titles, urls = titles or {}, urls or {}
+
+    def programs(names):
+        return [
+            cg.program(key, titles.get(key, f"{key.title()} Fellowship"),
+                       urls.get(key, f"https://example.edu/{key}/"), "Curated")
+            for key in names
+        ]
+
+    def source(name, emit, names):
+        return {"source_name": name, "source_type": cg.PROGRAM, "emit": emit,
+                "crawl": cg.STATIC, "seeds": [f"https://example.edu/{name}/"],
+                "programs": programs(names)}
+
+    return {
+        "school_slug": "example",
+        "organization": "Example University",
+        "location": "Example, EX",
+        "emit": {"campus": ("example_programs", "example", "campus"),
+                 "open": ("example_external", None, "open")},
+        "sources": [source("example_programs", "campus", keys),
+                    source("example_external", "open", open_keys)],
+    }
+
+
+def _program_id(school, bucket, key):
+    return cg._hash_id(school["school_slug"], school["emit"][bucket][0], key)
+
+
+def _refresh_school(school, deep=False):
+    """One refresh of ``school``, quick by default, merged the way refresh_all merges it."""
+    records, evidence = cg.fetch_and_normalize_with_evidence(school, deep=deep)
+    cg.merge_into_processed(
+        records,
+        complete_recursive_sources=set(evidence["complete_recursive_sources"]),
+        condition_capture_updates=evidence["condition_capture_updates"],
+        listed_program_keys=set(evidence["listed_program_keys"]),
+        school_slug=school["school_slug"],
+    )
+    return evidence
+
+
+def _stored(processed):
+    return {row["id"]: row for row in json.loads(processed.read_text(encoding="utf-8"))}
+
+
+@pytest.fixture
+def processed(monkeypatch, tmp_path):
+    path = tmp_path / "opportunities.json"
+    path.write_text("[]", encoding="utf-8")
+    monkeypatch.setattr(cg, "PROCESSED_FILE", path)
+    return path
+
+
+class TestDroppedProgramRetirement:
+    """Merge only upserts, so a program dropped from a school config used to
+    keep its stored row active for good. Duke's Program II and Macalester's
+    Serie Center kept sending students to 404s until fba47cb6 retired them by
+    hand, and Duke's two dead Data+/Climate+ duplicates needed the same."""
+
+    def test_a_dropped_program_is_retired_not_deleted(self, processed):
+        before = _listing_school("kept", "dropped")
+        _refresh_school(before)
+
+        _refresh_school(_listing_school("kept"))
+
+        saved = _stored(processed)
+        assert len(saved) == 2
+        kept = saved[_program_id(before, "campus", "kept")]["metadata"]
+        dropped = saved[_program_id(before, "campus", "dropped")]["metadata"]
+        assert kept["is_active"] is True
+        assert dropped["is_active"] is False
+        assert dropped["deactivation_reason"] == "no_longer_listed"
+        assert dropped["deactivated_at"] == datetime.now(UTC).date().isoformat()
+
+    def test_an_empty_config_retires_nothing_and_a_failed_record_stays_listed(self, monkeypatch, processed):
+        school = _listing_school("first", "second", "third")
+        _refresh_school(school)
+
+        assert _refresh_school(_listing_school())["listed_program_keys"] == []
+        assert all(row["metadata"]["is_active"] for row in _stored(processed).values())
+
+        normalize = cg._normalize_program
+
+        def fail_second(school, source, spec, **kwargs):
+            if spec["key"] == "second":
+                raise RuntimeError("synthetic normalization failure")
+            return normalize(school, source, spec, **kwargs)
+
+        monkeypatch.setattr(cg, "_normalize_program", fail_second)
+        evidence = _refresh_school(_listing_school("first", "second"))
+        assert evidence["normalization_failed"] == 1
+        assert evidence["listed_program_keys"] == ["first", "second"]
+
+        saved = _stored(processed)
+        assert saved[_program_id(school, "campus", "second")]["metadata"]["is_active"] is True
+        third = saved[_program_id(school, "campus", "third")]["metadata"]
+        assert third["deactivation_reason"] == "no_longer_listed"
+
+    def test_other_sources_other_schools_and_inactive_rows_are_left_alone(self, processed):
+        school = _listing_school("kept", "dropped", "closed", open_keys=("open_dropped",))
+        _refresh_school(school)
+        rows = json.loads(processed.read_text(encoding="utf-8"))
+        closed_id = _program_id(school, "campus", "closed")
+        for row in rows:
+            if row["id"] == closed_id:
+                row["metadata"].update({"status": "closed", "is_active": False})
+        source = school["sources"][0]
+        discovery = cg._normalize_discovered(
+            school, source, "Summer Lab Fellowship", "https://example.edu/lab/", "lab")
+        discovery["metadata"].update(
+            {"discovered_page_verified": True, "status": "open", "is_active": True})
+        # Same source name and key, another school: only the id tells them apart.
+        other_school = {**school, "school_slug": "other",
+                        "emit": {"campus": ("other_programs", "other", "campus")}}
+        other = cg._normalize_program(other_school, source, source["programs"][1])
+        faculty = {"id": "faculty-example-1", "source": "example_faculty",
+                   "source_type": "faculty_research", "school": "example",
+                   "metadata": {"is_active": True}}
+        processed.write_text(json.dumps([*rows, discovery, other, faculty]), encoding="utf-8")
+
+        _refresh_school(_listing_school("kept"))
+
+        saved = _stored(processed)
+        assert saved[_program_id(school, "campus", "dropped")]["metadata"]["is_active"] is False
+        # An "open" row lives in national.json, which no school-shard refresh
+        # writes, so retiring it here would never publish: it is left alone.
+        open_row = saved[_program_id(school, "open", "open_dropped")]
+        assert open_row["school"] is None
+        assert open_row["metadata"]["is_active"] is True
+        assert "deactivation_reason" not in open_row["metadata"]
+        assert saved[closed_id]["metadata"]["is_active"] is False
+        assert "deactivation_reason" not in saved[closed_id]["metadata"]
+        for row in (discovery, other, faculty):
+            assert saved[row["id"]]["metadata"]["is_active"] is True
+            assert "deactivation_reason" not in saved[row["id"]]["metadata"]
+
+    def test_a_program_listed_again_comes_back(self, processed):
+        school = _listing_school("kept", "back")
+        back_id = _program_id(school, "campus", "back")
+        _refresh_school(school)
+        _refresh_school(_listing_school("kept"))
+        assert _stored(processed)[back_id]["metadata"]["is_active"] is False
+
+        _refresh_school(school)
+
+        metadata = _stored(processed)[back_id]["metadata"]
+        assert metadata["is_active"] is True
+        assert "deactivated_at" not in metadata
+        assert "deactivation_reason" not in metadata
+
+    def test_a_second_run_changes_nothing_it_already_retired(self, processed):
+        before = _listing_school("kept", "dropped")
+        dropped_id = _program_id(before, "campus", "dropped")
+        _refresh_school(before)
+        _refresh_school(_listing_school("kept"))
+        rows = json.loads(processed.read_text(encoding="utf-8"))
+        for row in rows:
+            if row["id"] == dropped_id:
+                row["metadata"]["deactivated_at"] = "2026-09-01"
+        processed.write_text(json.dumps(rows), encoding="utf-8")
+        retired = _stored(processed)[dropped_id]
+
+        _refresh_school(_listing_school("kept"))
+
+        assert _stored(processed)[dropped_id] == retired
+
+    def test_a_renamed_key_takes_over_the_page_of_its_retired_row(self, processed):
+        """The new record shares the old row's URL and title, which the
+        near-duplicate filter would otherwise hold against it: the program
+        would vanish, its old row retired and its new one suppressed."""
+        url = "https://example.edu/summer/"
+        before = _listing_school("old_key", titles={"old_key": "Summer Fellowship"},
+                                 urls={"old_key": url})
+        after = _listing_school("new_key", titles={"new_key": "Summer Fellowship"},
+                                urls={"new_key": url})
+        _refresh_school(before)
+
+        _refresh_school(after)
+
+        saved = _stored(processed)
+        old = saved[_program_id(before, "campus", "old_key")]["metadata"]
+        assert old["deactivation_reason"] == "no_longer_listed"
+        assert saved[_program_id(after, "campus", "new_key")]["metadata"]["is_active"] is True
+
+    def test_other_retired_rows_keep_their_page_against_a_new_program(self, processed):
+        """Only this school's own program rows retired as no longer listed give
+        up their page. Other collectors retire rows with the same reason
+        (simplify_internships does), and another school's retired program is
+        no replacement of this one's: both keep the claim every stored row has
+        against a new near-duplicate."""
+        _refresh_school(_listing_school("kept"))
+        retired = {"is_active": False, "deactivated_at": "2026-09-01", "deactivation_reason": "no_longer_listed"}
+        internship = {"id": "simplify-0001", "source": "simplify_internships", "source_type": "internship",
+                      "school": None, "title": "Data Internship", "url": "https://example.edu/internship/",
+                      "metadata": dict(retired)}
+        other_school = {**_listing_school(), "school_slug": "other",
+                        "emit": {"campus": ("other_programs", "other", "campus")}}
+        theirs = cg._normalize_program(other_school, other_school["sources"][0], cg.program(
+            "theirs", "Their Fellowship", "https://example.edu/theirs/", "Curated"))
+        theirs["metadata"].update(retired)
+        rows = json.loads(processed.read_text(encoding="utf-8"))
+        processed.write_text(json.dumps([*rows, internship, theirs]), encoding="utf-8")
+
+        after = _listing_school("kept", "new_a", "new_b",
+                                urls={"new_a": internship["url"], "new_b": theirs["url"]})
+        _refresh_school(after)
+
+        saved = _stored(processed)
+        assert _program_id(after, "campus", "new_a") not in saved
+        assert _program_id(after, "campus", "new_b") not in saved
+
+    def test_a_retired_row_keeps_its_page_against_a_discovery(self, monkeypatch, processed):
+        """A crawl that finds a link to a dropped program's page has found the
+        page, not the program's replacement."""
+        before = _listing_school("kept", "dropped")
+        dropped_id = _program_id(before, "campus", "dropped")
+        dropped_url = "https://example.edu/dropped/"
+        _refresh_school(before)
+        after = _listing_school("kept")
+        after["sources"][0]["crawl"] = cg.RECURSIVE
+        hub_url = after["sources"][0]["seeds"][0]
+        hub = f'<body><p>Programs</p><a href="{dropped_url}">Dropped Summer Research Fellowship</a></body>'
+        monkeypatch.setattr(cg, "_fetch", lambda url, **_: (
+            _observed(BeautifulSoup(hub, "html.parser"), url) if url == hub_url else _StaticSoup(url)))
+
+        evidence = _refresh_school(after, deep=True)
+
+        assert evidence["discovered_records"] == 1
+        saved = _stored(processed)
+        assert [row["id"] for row in saved.values() if row["url"] == dropped_url] == [dropped_id]
+        assert saved[dropped_id]["metadata"]["deactivation_reason"] == "no_longer_listed"
+
+    def test_a_stored_discovery_on_a_retired_rows_page_still_updates(self, monkeypatch, processed):
+        """Holding the retired row's page against discoveries stops a new one
+        landing there; one already stored is an upsert, not a near-duplicate."""
+        before = _listing_school("kept", "dropped")
+        _refresh_school(before)
+        after = _listing_school("kept")
+        after["sources"][0]["crawl"] = cg.RECURSIVE
+        hub_url, dropped_url = after["sources"][0]["seeds"][0], "https://example.edu/dropped/"
+        anchor = "Dropped Summer Research Fellowship"
+        stored = cg._normalize_discovered(after, after["sources"][0], anchor, dropped_url, anchor)
+        stored["metadata"].update({"discovered_page_verified": True, "status": "open", "is_active": True,
+                                   "last_verified": "2026-09-01T00:00:00"})
+        rows = json.loads(processed.read_text(encoding="utf-8"))
+        processed.write_text(json.dumps([*rows, stored]), encoding="utf-8")
+        hub = f'<body><p>Programs</p><a href="{dropped_url}">{anchor}</a></body>'
+        monkeypatch.setattr(cg, "_fetch", lambda url, **_: (
+            _observed(BeautifulSoup(hub, "html.parser"), url) if url == hub_url else _StaticSoup(url)))
+
+        _refresh_school(after, deep=True)
+
+        saved = _stored(processed)
+        assert saved[_program_id(before, "campus", "dropped")]["metadata"]["deactivation_reason"] == "no_longer_listed"
+        assert saved[stored["id"]]["metadata"]["last_verified"] != "2026-09-01T00:00:00"
+
+    def test_a_listed_program_the_fetch_drops_as_a_duplicate_stays(self, processed):
+        """Listing is the config's, not the dedupe's: a configured program
+        whose record lost a near-duplicate tie this run is still listed."""
+        _refresh_school(_listing_school(
+            "first", "second", titles={"first": "Summer Fellowship", "second": "Winter Fellowship"}))
+        clash = _listing_school(
+            "first", "second", titles={"first": "Summer Fellowship", "second": "Summer Fellowship"})
+        second_id = _program_id(clash, "campus", "second")
+        records, evidence = cg.fetch_and_normalize_with_evidence(clash, deep=False)
+        assert second_id not in {record["id"] for record in records}
+        assert "second" in evidence["listed_program_keys"]
+
+        _refresh_school(clash)
+
+        assert _stored(processed)[second_id]["metadata"]["is_active"] is True
+
+
+class TestProgramMovesBetweenShards:
+    """A school-shard refresh publishes only its own shard; national.json,
+    where "open" rows live, is written by a full refresh alone. Listing by
+    record id got a program moving between the two wrong, because the id
+    names the bucket: its old row retired and its new one published on
+    different schedules."""
+
+    @staticmethod
+    def _commit(processed, shards, school):
+        """The committed corpus: ``school`` refreshed and every shard written."""
+        _refresh_school(school)
+        split(processed, shards)
+
+    @staticmethod
+    def _school_shard_refresh(processed, shards, school):
+        """The refresh workflow for one shard: assemble the work file from the
+        committed shards, refresh the school, split only its shard back."""
+        assemble(processed, shards, force=True, allow_empty=True)
+        _refresh_school(school)
+        split(processed, shards, only_shards={school["school_slug"]})
+
+    @staticmethod
+    def _published(shards, key):
+        return [row["metadata"]["is_active"] for row in load_shards(shards)
+                if row["metadata"].get("collector_key") == key]
+
+    def test_a_program_moved_to_the_open_bucket_stays_listed_once(self, processed, tmp_path):
+        """Its campus row retired in example.json while its open record waited
+        in the work file for a full refresh, so the program was gone."""
+        shards = tmp_path / "shards"
+        self._commit(processed, shards, _listing_school("kept", "moving"))
+
+        self._school_shard_refresh(processed, shards, _listing_school("kept", open_keys=("moving",)))
+
+        assert self._published(shards, "moving") == [True]
+        split(processed, shards)
+        assert self._published(shards, "moving") == [True]
+
+    def test_a_program_moved_out_of_the_open_bucket_is_listed_once(self, processed, tmp_path):
+        """Its open row retired only in the work file while its campus record
+        published, so the program was listed twice."""
+        shards = tmp_path / "shards"
+        self._commit(processed, shards, _listing_school("kept", open_keys=("moving",)))
+        national = (shards / "national.json").read_bytes()
+
+        self._school_shard_refresh(processed, shards, _listing_school("kept", "moving"))
+
+        assert (shards / "national.json").read_bytes() == national
+        assert self._published(shards, "moving") == [True]
+        split(processed, shards)
+        assert self._published(shards, "moving") == [True]
+
+    def test_a_program_gone_from_the_whole_config_still_retires(self, processed, tmp_path):
+        shards = tmp_path / "shards"
+        self._commit(processed, shards, _listing_school("kept", "dropped"))
+
+        self._school_shard_refresh(processed, shards, _listing_school("kept"))
+
+        [row] = [row for row in load_shards(shards) if row["metadata"].get("collector_key") == "dropped"]
+        assert row["school"] == "example"
+        assert row["metadata"]["is_active"] is False
+        assert row["metadata"]["deactivation_reason"] == "no_longer_listed"
 
 
 # --- Per-school: Princeton (the reference config) ---------------------------
