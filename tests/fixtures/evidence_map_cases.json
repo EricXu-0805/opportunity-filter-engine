@@ -7029,9 +7029,9 @@
     }
    ],
    "expected": [
-    "kept",
-    "beyond_allowed_edit",
-    "translation_unfinished"
+    "pending",
+    null,
+    null
    ]
   },
   {
@@ -7048,9 +7048,9 @@
     }
    ],
    "expected": [
-    "kept",
-    "beyond_allowed_edit",
-    "translation_unfinished"
+    "pending",
+    null,
+    null
    ]
   },
   {
@@ -7067,9 +7067,9 @@
     }
    ],
    "expected": [
-    "kept",
-    "beyond_allowed_edit",
-    "translation_unfinished"
+    "pending",
+    null,
+    null
    ]
   },
   {
@@ -7086,9 +7086,9 @@
     }
    ],
    "expected": [
-    "kept",
-    "beyond_allowed_edit",
-    "translation_unfinished"
+    "pending",
+    null,
+    null
    ]
   },
   {
@@ -7105,9 +7105,9 @@
     }
    ],
    "expected": [
-    "kept",
-    "beyond_allowed_edit",
-    "translation_unfinished"
+    "pending",
+    null,
+    null
    ]
   },
   {
@@ -7124,9 +7124,9 @@
     }
    ],
    "expected": [
-    "kept",
-    "beyond_allowed_edit",
-    "translation_unfinished"
+    "pending",
+    null,
+    null
    ]
   },
   {
@@ -7143,9 +7143,9 @@
     }
    ],
    "expected": [
-    "kept",
-    "beyond_allowed_edit",
-    "translation_unfinished"
+    "pending",
+    null,
+    null
    ]
   },
   {
@@ -7162,9 +7162,9 @@
     }
    ],
    "expected": [
-    "kept",
-    "beyond_allowed_edit",
-    "translation_unfinished"
+    "pending",
+    null,
+    null
    ]
   },
   {
@@ -7181,9 +7181,9 @@
     }
    ],
    "expected": [
-    "kept",
-    "beyond_allowed_edit",
-    "translation_unfinished"
+    "pending",
+    null,
+    null
    ]
   },
   {
@@ -7200,9 +7200,9 @@
     }
    ],
    "expected": [
-    "kept",
-    "beyond_allowed_edit",
-    "translation_unfinished"
+    "pending",
+    null,
+    null
    ]
   },
   {
@@ -7219,9 +7219,9 @@
     }
    ],
    "expected": [
-    "kept",
-    "beyond_allowed_edit",
-    "translation_unfinished"
+    "pending",
+    null,
+    null
    ]
   },
   {
@@ -7238,9 +7238,9 @@
     }
    ],
    "expected": [
-    "kept",
-    "beyond_allowed_edit",
-    "translation_unfinished"
+    "pending",
+    null,
+    null
    ]
   },
   {
@@ -7371,9 +7371,9 @@
     }
    ],
    "expected": [
-    "kept",
-    "beyond_allowed_edit",
-    "translation_unfinished"
+    "pending",
+    null,
+    null
    ]
   },
   {
@@ -7390,9 +7390,9 @@
     }
    ],
    "expected": [
-    "kept",
-    "beyond_allowed_edit",
-    "translation_unfinished"
+    "pending",
+    null,
+    null
    ]
   },
   {
@@ -9074,9 +9074,9 @@
     }
    ],
    "expected": [
-    "kept",
-    "beyond_allowed_edit",
-    "translation_unfinished"
+    "pending",
+    null,
+    null
    ]
   },
   {
@@ -9093,9 +9093,9 @@
     }
    ],
    "expected": [
-    "kept",
-    "beyond_allowed_edit",
-    "translation_unfinished"
+    "pending",
+    null,
+    null
    ]
   },
   {
@@ -9253,6 +9253,215 @@
     "kept",
     "beyond_allowed_edit",
     "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful 正在 + 造成 (cause) EN to ZH",
+   "output": "zh",
+   "anchors": [],
+   "original": "Analyzing the damage caused by the 2023 floods in Hebei.",
+   "rewrite": "正在分析 2023 年河北洪水造成的损失。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful 正在 + 造成 (cause) ZH to EN",
+   "output": "en",
+   "anchors": [],
+   "original": "正在分析 2023 年河北洪水造成的损失。",
+   "rewrite": "Analyzing the damage caused by the 2023 floods in Hebei.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful 正在 + 线上线下 (online and offline)",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing an app for online and offline tutoring.",
+   "rewrite": "正在开发一款支持线上线下辅导的应用。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful 正在 + 持续交付 (continuous delivery)",
+   "output": "zh",
+   "anchors": [],
+   "original": "Building a continuous delivery pipeline for the club's website.",
+   "rewrite": "正在为社团网站搭建持续交付流水线。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful 正在 + 曾 in a relative clause",
+   "output": "zh",
+   "anchors": [],
+   "original": "Interviewing 10 students who once studied abroad.",
+   "rewrite": "正在采访 10 名曾经出国留学的学生。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful 正在 + 建成区 (built-up area)",
+   "output": "zh",
+   "anchors": [],
+   "original": "Writing a review of methods for mapping urban built-up areas.",
+   "rewrite": "正在撰写一篇关于城市建成区制图方法的综述。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful 正在 + 设计成 (design as)",
+   "output": "zh",
+   "anchors": [],
+   "original": "Designing the robot as a modular platform.",
+   "rewrite": "正在把机器人设计成一个模块化平台。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful 正在 + 研发出 in a relative clause",
+   "output": "zh",
+   "anchors": [],
+   "original": "Testing the drug candidates the lab developed last year.",
+   "rewrite": "正在测试实验室去年研发出的候选药物。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful 正在 + 结束的 (the end of)",
+   "output": "zh",
+   "anchors": [],
+   "original": "Preparing for the end-of-semester showcase.",
+   "rewrite": "正在为学期结束的成果展做准备。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful 正在 + which was released",
+   "output": "en",
+   "anchors": [],
+   "original": "正在分析 2022 年发布的 ChatGPT 的用户评论。",
+   "rewrite": "Analyzing user reviews of ChatGPT, which was released in 2022.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful 正在 + which are online",
+   "output": "en",
+   "anchors": [],
+   "original": "正在维护 3 个全天候在线的气象站。",
+   "rewrite": "Maintaining 3 weather stations that are online around the clock.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
    ]
   }
  ]

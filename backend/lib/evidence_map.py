@@ -23,7 +23,6 @@ from backend.lib.grounding import _TECH_TERMS, LENIENT_PROSE_NUMERIC, validate_n
 from backend.lib.llm import chat_completion, model_for
 from backend.lib.target_resume_ai_grounding import (
     _UNDERWAY_ACTION,
-    _ZH_UNDERWAY_VERBS,
     ACTIONS,
     CO_CREDIT,
     DENIAL,
@@ -836,23 +835,6 @@ _PROGRESSIVE_METHODS = frozenset({"use", "apply", "leveraging", "utilizing", "ut
 # Chinese that states work done: 开发了, 已搭建, 完成. The 了 of 为了, 除了 and 了解, and
 # the 完成 of 正在完成 and 未完成, state nothing done.
 _ZH_DONE = re.compile(r"(?<![为除])了(?!解)|已(?!在)|(?<!正在)(?<!未)完成")
-# More ways to state it, which only the rules that refuse a done mark read: 开发过, 曾,
-# 开发出, 建成, 开发好, 写完, 完毕, 上线, 投入使用, 交付, 定稿. 经过, 通过, 不过, 超过, 过程 and
-# 过滤 are no 过; 出版, 成员, 成果 and 良好 follow no verb's result, nor does 能分析出; and a
-# part that says it is still to come (预计下月上线, 尚未交付) states nothing done.
-_ZH_DONE_MORE = re.compile(
-    r"(?<![经通不超难错跳越太])过(?![程滤去度敏期量渡于多少来年往半夜节])|曾(?![老教博同先女医总])"
-    rf"|(?<!能)(?<!可以)(?:{_ZH_UNDERWAY_VERBS}|做|写|建|搭|造|编|画|拍|跑|修|装)"
-    r"(?:出(?![版现席差发口生门国境台租])|成(?![员果绩本像为立熟长分型])|好(?![的奇评友处感转像])|完(?![善整全美备]))"
-    r"|完毕|竣工|完工|落成|定稿|结束(?![后前时])|上线(?!前)|投入使用|交付")
-_ZH_NOT_YET = re.compile(r"预计|即将|将于|将在|将会|将要|计划|打算|准备|拟|希望|未|没|待")
-
-
-def _has_done(text: str, *, wide: bool = False) -> bool:
-    """Whether Chinese text states something done; ``wide`` reads _ZH_DONE_MORE too."""
-    if _ZH_DONE.search(text):
-        return True
-    return wide and any(not _ZH_NOT_YET.search(text, 0, match.start()) for match in _ZH_DONE_MORE.finditer(text))
 # A Chinese line's first clause, and 正在 or 目前 on its leading verb: only a subject
 # or a time word may stand before it (目前正在为实验室开发 ..., 本学期正在, 目前我正在).
 # No word of the run is two others joined (今年暑假 is 今年 + 暑假), so a run of them
@@ -864,13 +846,6 @@ _ZH_LEAD_PROGRESSIVE = re.compile(
 # Chinese clauses, and their parts: 开发了网站并撰写了综述 states two things done.
 _ZH_CLAUSE_BREAK = re.compile(r"[，,。；;：:！？!?]")
 _ZH_PART_BREAK = re.compile(_ZH_CLAUSE_BREAK.pattern + "|、|并")
-# English that says a work is finished without a finished verb opening a clause: "it is
-# now complete", "which was launched in March", "already online". Only the rule a
-# finished English clause triggers reads it.
-_FINISHED_STATE = re.compile(
-    r"\b(?:is|are|was|were|(?:has|have|had)\s+been|now|already)\s+(?:(?:now|already|fully|successfully)\s+)?"
-    r"(?:complete|completed|finished|done|live|online|launched|deployed|published|released|in\s+use|operational)\b"
-    r"|\b(?:went|gone)\s+(?:live|online)\b", re.I)
 # An English clause, and the words that may open it before its verb (as may an -ly adverb).
 _EN_CLAUSE_BREAK = re.compile(r"[;:,.()]|\s(?=(?:and|but|then)\s)", re.I)
 _EN_CLAUSE_LEAD = frozenset({"and", "but", "then", "also", "later", "which", "that", "who", "i", "we", "have", "has",
@@ -937,9 +912,9 @@ def _finished_clause(text: str, *, wide: bool = False) -> bool:
     return _finished_clauses(text, wide=wide) > 0
 
 
-def _done_parts(chinese: str, *, wide: bool = False) -> int:
+def _done_parts(chinese: str) -> int:
     """How many parts of a Chinese line carry their own done mark (了, 已, 完成)."""
-    return sum(1 for part in _ZH_PART_BREAK.split(chinese) if _has_done(part, wide=wide))
+    return sum(1 for part in _ZH_PART_BREAK.split(chinese) if _ZH_DONE.search(part))
 
 
 def _leading_clause(chinese: str) -> str:
@@ -988,15 +963,14 @@ def _finished_in_translation(english: str, chinese: str, *, chinese_source: bool
     verb + 中 in a Chinese line is finished in English ("...; tested it") only
     where the Chinese marks something done too.
     """
-    finished, done = _finished_clauses(english), _done_parts(chinese, wide=True)
-    if _progressive_led(english) and (_has_done(_leading_clause(chinese), wide=True)
+    finished, done = _finished_clauses(english), _done_parts(chinese)
+    if _progressive_led(english) and (_ZH_DONE.search(_leading_clause(chinese))
                                       or done and (done > finished or not _lead_spans(chinese))):
         return True
     if chinese_source:
         underway = "正在" in chinese or any(not chinese.startswith("的", match.end())
                                            for match in _UNDERWAY_ACTION.finditer(chinese))
-        return bool(underway and (_finished_clause(english, wide=True) or _FINISHED_STATE.search(english))
-                    and not _done_parts(chinese))
+        return bool(underway and _finished_clause(english, wide=True) and not done)
     return bool(done > finished and (UNFINISHED.search(english) or INTENT.search(english)
                                      or PLANNED.search(english)))
 

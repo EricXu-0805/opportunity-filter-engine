@@ -219,16 +219,6 @@ class TestMoreListedShapes:
     def test_the_students_own_review_is_no_one_elses_part(self, text):
         assert not em._OTHER_PERSON.search(text)
 
-    @pytest.mark.parametrize("text", ["It went live in March.", "It went online in March.", "It has gone live.",
-                                      "It has gone online."])
-    def test_going_live_is_a_finished_state(self, text):
-        assert em._FINISHED_STATE.search(text)
-
-    @pytest.mark.parametrize(("text", "done"), [("实验室网站开发结束", True), ("项目结束后继续维护", False),
-                                                ("项目结束前提交报告", False), ("项目结束时提交报告", False)])
-    def test_结束_is_done_unless_it_names_a_time(self, text, done):
-        assert em._has_done(text, wide=True) is done
-
     @pytest.mark.parametrize(("text", "span"), [
         ("Surveyed upwards of 200 students.", True), ("Surveyed close to 200 students.", True),
         ("Lives close to the lab.", False), ("调查了上百名学生", True), ("调查了上千名学生", True), ("调查了上万名学生", True),
@@ -365,38 +355,12 @@ class TestTeamAndShare:
 
 
 class TestDoneMarks:
-    @pytest.mark.parametrize("text", [
-        "开发过网站", "曾为实验室开发网站", "开发出网站", "网站开发完毕", "建成网站", "网站上线", "网站投入使用", "网站交付",
-        "开发好网站", "写完论文", "论文定稿", "大楼竣工", "工程完工", "新馆落成", "测试成功", "整理成表格", "做好网站",
-        "搭好装置", "造出原型", "编好程序", "画完图纸", "拍完视频", "跑完实验", "修好设备", "装好系统"])
-    def test_only_the_refusing_rules_read_the_wider_done_marks(self, text):
-        assert em._has_done(text, wide=True)
-        assert not em._has_done(text)
-
-    @pytest.mark.parametrize("text", [
-        *(f"{word}过网站" for word in "经通不超难错跳越太"), *(f"数据过{word}" for word in "程滤去度敏期量渡于多少来年往半夜节"),
-        *(f"曾{word}指导" for word in "老教博同先女医总"), *(f"开发出{word}" for word in "版现席差发口生门国境台租"),
-        *(f"开发成{word}" for word in "员果绩本像为立熟长分型"), *(f"开发好{word}" for word in "的奇评友处感转像"),
-        *(f"开发完{word}" for word in "善整全美备"), "网站上线前", "能分析出基因", "可以写完论文",
-        *(f"{word}上线" for word in ("预计", "即将", "将于", "将在", "将会", "将要", "计划", "打算", "准备", "拟", "希望",
-                                     "尚未", "没", "待"))])
-    def test_a_word_that_only_looks_like_a_done_mark_states_nothing_done(self, text):
-        assert not em._has_done(text, wide=True)
-
-    @pytest.mark.parametrize("text", [
-        *(f"The site {aux} complete." for aux in ("is", "are", "was", "were", "has been", "have been", "had been",
-                                                  "now", "already")),
-        *(f"The site is {state}." for state in ("complete", "completed", "finished", "done", "live", "online",
-                                                "launched", "deployed", "published", "released", "in use",
-                                                "operational")),
-        *(f"The site is {adverb} complete." for adverb in ("now", "already", "fully", "successfully"))])
-    def test_a_finished_state_is_read_for_the_rule_it_triggers(self, text):
-        assert em._FINISHED_STATE.search(text)
-
-    @pytest.mark.parametrize("text", ["The site is not yet complete.", "Built an online course.", "Paper is under review.",
-                                      "A live dashboard."])
-    def test_a_state_still_to_come_is_no_finished_state(self, text):
-        assert not em._FINISHED_STATE.search(text)
+    @pytest.mark.parametrize("chinese", ["开发过网站", "曾为实验室开发网站", "开发出网站", "建成网站", "网站上线",
+                                         "网站投入使用", "论文定稿", "实验室网站开发结束"])
+    def test_only_了_已_and_完成_are_done_marks(self, chinese):
+        # Reading these as done marks also read 造成, 线上线下, 持续交付 and 曾经出国的学生 as
+        # done, and kept faithful translations; the review judges these shapes.
+        assert em._done_parts(chinese) == 0
 
 
 class TestUnknownVerbs:
