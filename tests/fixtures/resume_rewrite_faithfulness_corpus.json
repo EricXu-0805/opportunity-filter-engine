@@ -2236,6 +2236,27 @@
    "kind": "translation drops an edit by someone else",
    "caught": "contract",
    "case": "EN to ZH drops an edit by someone else"
+  },
+  {
+   "original": "Labeled roughly segmented MRI scans for the lab.",
+   "rewrite": "Labeled MRI segmentations for the lab.",
+   "kind": "relabel drops roughly",
+   "caught": "contract",
+   "case": "relabel drops roughly before a word"
+  },
+  {
+   "original": "Labeled roughly segmented MRI scans.",
+   "rewrite": "标注了分割好的 MRI 扫描图。",
+   "kind": "translation drops roughly",
+   "caught": "contract",
+   "case": "EN to ZH drops roughly before a word"
+  },
+  {
+   "original": "Proofread the revised grant proposal for the lab.",
+   "rewrite": "Proofread the funding proposal for the lab.",
+   "kind": "relabel drops a revised version",
+   "caught": "contract",
+   "case": "relabel drops a revised version"
   }
  ]
 }

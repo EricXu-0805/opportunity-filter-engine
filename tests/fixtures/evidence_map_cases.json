@@ -4459,6 +4459,87 @@
     "beyond_allowed_edit",
     "translation_other_person"
    ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops roughly before a word",
+   "anchors": [
+    "MRI segmentations"
+   ],
+   "original": "Labeled roughly segmented MRI scans for the lab.",
+   "rewrite": "Labeled MRI segmentations for the lab.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "MRI segmentations",
+     "source": "roughly segmented MRI scans",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "roughly segmented MRI scans",
+     "to": "MRI segmentations"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops roughly before a word",
+   "output": "zh",
+   "anchors": [],
+   "original": "Labeled roughly segmented MRI scans.",
+   "rewrite": "标注了分割好的 MRI 扫描图。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_span"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops a revised version",
+   "anchors": [
+    "funding proposal"
+   ],
+   "original": "Proofread the revised grant proposal for the lab.",
+   "rewrite": "Proofread the funding proposal for the lab.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "funding proposal",
+     "source": "revised grant proposal",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "revised grant proposal",
+     "to": "funding proposal"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
   }
  ]
 }
