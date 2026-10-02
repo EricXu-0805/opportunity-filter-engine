@@ -636,15 +636,18 @@ describe('positioned text items', () => {
     expect((await parseResumePDF(fakeFile())).raw_text).toBe('Classifier for');
   });
 
-  it('never joins a line into a bullet, a heading or a line in another font', async () => {
+  it('never joins a line into a bullet, a heading or a line in another font, size or column', async () => {
     const wide = 'x '.repeat(40).trim();
+    const full = 'Measured the latency of a quantized model on a Raspberry Pi against a laptop and';
     mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
       at(wide, 50, 500, 700, { hasEOL: true }), at('- next bullet', 50, 60, 688, { hasEOL: true }),
       at(wide, 50, 500, 676, { hasEOL: true }), at('EXPERIENCE', 50, 60, 664, { hasEOL: true }),
-      at(wide, 50, 500, 652, { hasEOL: true }), at('bold words', 50, 50, 640, { fontName: 'f2' }),
+      at(wide, 50, 500, 652, { hasEOL: true }), at('bold words', 50, 50, 640, { fontName: 'f2', hasEOL: true }),
+      at(full, 50, 500, 628, { hasEOL: true }), at('small words', 50, 45, 616, { height: 8, transform: [8, 0, 0, 8, 50, 616], hasEOL: true }),
+      at(full, 50, 500, 604, { hasEOL: true }), at('words in the next column', 300, 110, 592),
     ])) });
     expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
-      wide, '- next bullet', wide, 'EXPERIENCE', wide, 'bold words',
+      wide, '- next bullet', wide, 'EXPERIENCE', wide, 'bold words', full, 'small words', full, 'words in the next column',
     ]);
   });
 
@@ -1305,7 +1308,9 @@ describe('positioned text items', () => {
     for (const word of ['about', 'around', 'nearly', 'almost', 'approximately', 'roughly', 'reaching', 'reached', 'GPA']) {
       expect(wrapEvidence(`Cut the runtime of the nightly job ${word}`, '40% after caching resized tiles')).toBe(true);
       expect(wrapEvidence(`Cut the runtime of the nightly job ${word}`, '12 students in the course')).toBe(true);
+      expect(wrapEvidence(`Labeled the chest X-ray images of the archive, ${word}`, '12,000, most of them by hand')).toBe(true);
     }
+    expect(wrapEvidence('Raised the test accuracy of the classifier by 12', '% over the baseline')).toBe(true);
     // A preposition among those words can also end an item ("…the staff of
     // the gait lab refer to"), so a number after it is only a weak hint.
     for (const word of ['by', 'to', 'from', 'over', 'under', 'at', 'with']) {
@@ -1361,6 +1366,10 @@ describe('positioned text items', () => {
       [[at('Ported the lab inventory spreadsheet to a small web app and', 50, 380, 736, { hasEOL: true }),
         at('trained the staff to use it', 50, 120, 724, { hasEOL: true })],
       ['Ported the lab inventory spreadsheet to a small web app and trained the staff to use it'], joined],
+      // Words that carry a line on show the edge only where the line also ran
+      // out of room: these end far short of it.
+      [[at('Mentored three first-year students,', 50, 160, 724, { hasEOL: true })], ['Mentored three first-year students,'], kept],
+      [[at('Ran the robotics club workshops and', 50, 170, 724, { hasEOL: true })], ['Ran the robotics club workshops and'], kept],
     ];
     for (const [others, head, lines] of cases) {
       mockGetDocument.mockReturnValue({ promise: Promise.resolve(page(...others)) });
@@ -1516,7 +1525,7 @@ describe('positioned text items', () => {
       mockGetDocument.mockReturnValue({ promise: Promise.resolve(page(row)) });
       expect((await parseResumePDF(fakeFile())).raw_text.split('\n').slice(1)).toEqual([item, row]);
     }
-    for (const row of ['NIH ChestX-ray14 and a held-out split', 'NIH ChestX-ray14 labels']) {
+    for (const row of ['NIH ChestX-ray14 and a held-out split', 'NIH ChestX-ray14 labels', 'ImageNet and a held-out split']) {
       mockGetDocument.mockReturnValue({ promise: Promise.resolve(page(row)) });
       expect((await parseResumePDF(fakeFile())).raw_text.split('\n').slice(1)).toEqual([`${item} ${row}`]);
     }
