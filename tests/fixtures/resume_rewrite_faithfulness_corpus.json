@@ -940,6 +940,11 @@
    "original": "Using Python, cleaned 200 survey responses.",
    "rewrite": "用 Python 清洗了 200 份问卷回复。",
    "kind": "EN to ZH: Using opens a method, not work under way"
+  },
+  {
+   "original": "Gave a talk about a campus recycling program.",
+   "rewrite": "做了一个关于校园回收项目的报告。",
+   "kind": "EN to ZH: about a as a preposition"
   }
  ],
  "unfaithful": [
@@ -2286,6 +2291,13 @@
    "kind": "translation states a progressive build finished",
    "caught": "contract",
    "case": "EN to ZH states a progressive build finished with 已"
+  },
+  {
+   "original": "Tested water samples from the campus pond over a year.",
+   "rewrite": "检测了校园池塘的水样。",
+   "kind": "translation drops over a year",
+   "caught": "contract",
+   "case": "EN to ZH drops over a year"
   }
  ]
 }

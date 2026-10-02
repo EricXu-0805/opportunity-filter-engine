@@ -561,11 +561,13 @@ _OTHER_PERSON = re.compile(
     re.I)
 # A hedge always qualifies ("roughly segmented", "nearly finished"). A word that is
 # also a preposition does only before a quantity: "about 40 samples", "over a
-# year", not "a survey about sleep" or "under development". 约 estimates (约 200
-# 份), but 预约 schedules; 起 starts a span (2024 年起), but 起草 drafts and 发起 launches.
-_QUANTITY = (r"(?=\s+(?:[$€£¥~≈]?\d|(?:a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen"
+# year", not "a talk about a campus program" or "under development". 约 estimates
+# (约 200 份), but 预约 schedules; 起 starts a span (2024 年起), but 起草 drafts and
+# 发起 launches.
+_QUANTITY = (r"(?=\s+(?:[$€£¥~≈]?\d|(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen"
              r"|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|half|dozens?|hundreds|thousands"
-             r"|all|every|each)\b))")
+             r"|all|every|each)\b|(?:a|an)\s+(?:few|couple|dozen|hundred|thousand|year|month|week|day|hour|minute"
+             r"|semester|term|summer|decade|half|third|quarter)\b))")
 _SPAN = re.compile(r"\b(?:about|around|over|under|more\s+than|less\s+than|up\s+to)" + _QUANTITY
                    + r"|\b(?:approximately|roughly|nearly|almost|at\s+least|at\s+most|since|until|per)\b"
                    r"|(?<![预制节简邀相契合公条])约(?![定会束谈请见稿])|将近|超过|至少|左右"
