@@ -3684,6 +3684,13 @@
    "kind": "relabel drops in development",
    "caught": "contract",
    "case": "relabel drops in development"
+  },
+  {
+   "original": "Analyzed untested EEG recordings in MATLAB.",
+   "rewrite": "Analyzed EEG data in MATLAB.",
+   "kind": "relabel drops untested",
+   "caught": "contract",
+   "case": "relabel drops untested"
   }
  ]
 }

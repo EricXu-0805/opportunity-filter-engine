@@ -664,9 +664,9 @@ _REVISION_WORD = re.compile(r"\b(?:revised|rewrote|rewritten|edited)\b", re.I)
 _SPAN_WORD = re.compile(r"\b(?:about|around|over|under|more\s+than|less\s+than|fewer\s+than|up\s+to|upwards\s+of"
                         r"|close\s+to"
                         r"|as\s+(?:many|much|few|little|high|low)\s+as)\b", re.I)
-_LOCK_WORD = [TEAM, HELP, NEGATION, DENIAL, PUBLICATION, INTENT, UNFINISHED, UNFINISHED_ZH, _STATUS_WORD, _SPAN,
-              _SPAN_WORD, _SOLO, _LIMIT, _OTHER_PERSON, _REVISION_WORD, _TEAM_ZH_EXTRA, _TEAM_EN_EXTRA, _TEAM_OTHERS,
-              CO_CREDIT, _PARTICIPATION_EN, _PARTICIPATION_ZH, _PERSONAL_MARKER]
+_LOCK_WORD = [TEAM, HELP, NEGATION, DENIAL, _UN_DONE, PUBLICATION, INTENT, UNFINISHED, UNFINISHED_ZH, _STATUS_WORD,
+              _SPAN, _SPAN_WORD, _SOLO, _LIMIT, _OTHER_PERSON, _REVISION_WORD, _TEAM_ZH_EXTRA, _TEAM_EN_EXTRA,
+              _TEAM_OTHERS, CO_CREDIT, _PARTICIPATION_EN, _PARTICIPATION_ZH, _PERSONAL_MARKER]
 # Families a translation must carry across in both directions. A work's status is
 # four of them: planned or hoped for (INTENT, PLANNED: 计划, 预定), under way or
 # still to come (UNFINISHED, UNDERWAY_ZH: 开发中, 即将), still to come on its own

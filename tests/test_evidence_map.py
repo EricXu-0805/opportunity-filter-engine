@@ -201,8 +201,9 @@ class TestMoreListedShapes:
 
     @pytest.mark.parametrize("word", ["unpublished", "unsubmitted", "unfinished", "untested", "unverified",
                                       "unvalidated", "unreviewed"])
-    def test_an_un_done_word_is_a_negation_and_no_finished_verb(self, word):
+    def test_an_un_done_word_is_a_negation_a_lock_word_and_no_finished_verb(self, word):
         assert em._has(em._FAMILIES["negation"], f"Built a sensor; accuracy {word}.")
+        assert em._relabel_swap_refusal(f"{word} EEG recordings", "EEG data") == "relabel_drops_protected"
         assert not em._finished_clause(f"Sensor under construction; {word} for months.", wide=True)
 
     @pytest.mark.parametrize("text", [

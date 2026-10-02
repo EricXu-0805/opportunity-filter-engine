@@ -9223,6 +9223,37 @@
     "beyond_allowed_edit",
     "relabel_drops_protected"
    ]
+  },
+  {
+   "group": "relabel",
+   "label": "relabel drops untested",
+   "anchors": [
+    "EEG data"
+   ],
+   "original": "Analyzed untested EEG recordings in MATLAB.",
+   "rewrite": "Analyzed EEG data in MATLAB.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "EEG data",
+     "source": "untested EEG recordings",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "untested EEG recordings",
+     "to": "EEG data"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
   }
  ]
 }
