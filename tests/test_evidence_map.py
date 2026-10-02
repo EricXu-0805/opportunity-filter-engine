@@ -373,24 +373,34 @@ class TestDoneMarks:
 
 
 class TestUnknownVerbs:
-    @pytest.mark.parametrize("word", ["fine-tuning", "scraping", "wiring", "filming", "proofreading", "pipetting",
-                                      "cloning", "parsing", "porting", "rendering", "animating", "coaching",
-                                      "profiling", "crawling", "developing"])
-    def test_an_ing_word_is_a_verb_form_whether_or_not_the_list_knows_it(self, word):
-        assert grounding.ing_form(word)
-        assert em._progressive_led(f"{word.capitalize()} a model for the lab.")
+    @pytest.mark.parametrize("word", ["Visiting", "Founding", "Fundraising", "Swimming", "Rising", "Returning",
+                                      "Starting", "Peking", "Beijing", "Boeing", "Wyoming", "Fine-tuning", "Wiring"])
+    def test_an_ing_word_the_verb_list_does_not_know_leads_no_progressive_line(self, word):
+        # Read by its suffix, every role word and place name in -ing led work under way.
+        assert not em._progressive_led(f"{word} student at the lab: analyzed 30 EEG recordings.")
 
-    @pytest.mark.parametrize("word", [
-        "during", "morning", "evening", "spring", "string", "nothing", "something", "anything", "everything",
-        "ceiling", "sibling", "having", "upcoming", "ongoing", "incoming", "outgoing", "following", "including",
-        "according", "regarding", "concerning", "considering", "pending", "notwithstanding", "existing",
-        "remaining", "accounting", "nursing", "banking", "housing", "funding", "clothing", "catering", "wedding",
-        "opening", "offering", "thing", "being"])
-    def test_a_noun_or_preposition_in_ing_leads_no_progressive_line(self, word):
-        assert not grounding.ing_form(word)
-        assert not em._progressive_led(f"{word.capitalize()} shift at the food bank; sorted 500 cans.")
+    @pytest.mark.parametrize(("original", "proposed"), [
+        ("Visiting student at Peking University in Summer 2025, analyzing 30 EEG recordings.",
+         "Analyzed 30 EEG recordings as visiting student at Peking University in Summer 2025."),
+        ("Fundraising chair for CSSA since Fall 2025, organizing 3 charity galas.",
+         "Organized 3 charity galas as fundraising chair for CSSA since Fall 2025."),
+        ("Swimming instructor at the ARC since May 2025, teaching 40 children a week.",
+         "Taught 40 children a week as swimming instructor at the ARC since May 2025.")])
+    def test_a_role_word_in_ing_keeps_verb_first_open(self, original, proposed):
+        assert not grounding.status_upgraded(proposed, original)
 
-    @pytest.mark.parametrize("word", ["Using", "Applying", "Leveraging", "Utilizing", "Utilising", "Employing"])
+    @pytest.mark.parametrize(("original", "proposed", "upgraded"), [
+        ("Wiring 3 soil sensors.", "Soil sensors: wired 3.", True),
+        ("Also scraping 2,000 postings.", "Postings: scraped 2,000.", True),
+        ("Wiring 3 soil sensors.", "Soil sensors: wiring 3.", False),
+        ("Wired 2 sensors; now wiring 3 more.", "Now wiring 3 more; wired 2 sensors.", False),
+        ("Wiring the sensor wires.", "Sensor wires: wired them.", True),
+        ("Wiring the sensor wires.", "Sensor wires: wiring them.", False),
+        ("Organizers of the club fair: booked 40 booths.", "Organized the club fair: booked 40 booths.", False)])
+    def test_an_unknown_lead_is_finished_only_by_its_own_ed_form(self, original, proposed, upgraded):
+        assert grounding.status_upgraded(proposed, original) is upgraded
+
+    @pytest.mark.parametrize("word", ["Using", "Applying"])
     def test_a_method_leads_no_progressive_line(self, word):
         assert not em._progressive_led(f"{word} R, cleaned 212 survey responses.")
 

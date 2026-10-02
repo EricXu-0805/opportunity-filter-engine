@@ -6838,9 +6838,9 @@
     }
    ],
    "expected": [
-    "kept",
-    "beyond_allowed_edit",
-    "translation_unfinished"
+    "pending",
+    null,
+    null
    ]
   },
   {
@@ -6857,9 +6857,9 @@
     }
    ],
    "expected": [
-    "kept",
-    "beyond_allowed_edit",
-    "translation_unfinished"
+    "pending",
+    null,
+    null
    ]
   },
   {
@@ -6876,9 +6876,9 @@
     }
    ],
    "expected": [
-    "kept",
-    "beyond_allowed_edit",
-    "translation_unfinished"
+    "pending",
+    null,
+    null
    ]
   },
   {
@@ -6895,14 +6895,14 @@
     }
    ],
    "expected": [
-    "kept",
-    "beyond_allowed_edit",
-    "translation_unfinished"
+    "pending",
+    null,
+    null
    ]
   },
   {
    "group": "translate",
-   "label": "EN to ZH keeps a line led by Fine-tuning under way",
+   "label": "EN to ZH loses a line led by Fine-tuning under way: the verb list does not know it",
    "output": "zh",
    "anchors": [],
    "original": "Fine-tuning a BERT model on 5,000 tweets for sentiment analysis.",
@@ -6914,9 +6914,9 @@
     }
    ],
    "expected": [
-    "pending",
-    null,
-    null
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
    ]
   },
   {
@@ -9722,6 +9722,288 @@
    "ops": [
     {
      "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN turns 正在筹备 into a Fundraising headline",
+   "output": "en",
+   "anchors": [],
+   "original": "目前正在为食物银行筹备一场募捐活动。",
+   "rewrite": "Fundraising event for the food pantry organized.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN drops 目前 before a Fundraising title",
+   "output": "en",
+   "anchors": [],
+   "original": "目前担任食物银行的募捐委员会主席。",
+   "rewrite": "Fundraising committee chair at the food pantry.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN turns 正在发起 into a Crowdfunding headline",
+   "output": "en",
+   "anchors": [],
+   "original": "正在为社团的机器人项目发起众筹。",
+   "rewrite": "Crowdfunding campaign for the club's robot project launched.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN turns 正在撰写 into a Copywriting headline",
+   "output": "en",
+   "anchors": [],
+   "original": "正在为实验室撰写网站文案。",
+   "rewrite": "Copywriting for the lab website finished.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN turns 正在搭建 into a Livestreaming headline",
+   "output": "en",
+   "anchors": [],
+   "original": "正在为社团搭建直播设备。",
+   "rewrite": "Livestreaming setup for the club built.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN turns 正在校对 into a Proofreading headline",
+   "output": "en",
+   "anchors": [],
+   "original": "正在校对实验室手册。",
+   "rewrite": "Proofreading of the lab manual completed.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful Visiting role EN to ZH",
+   "output": "zh",
+   "anchors": [],
+   "original": "Visiting student at Peking University, Summer 2025: analyzed 30 EEG recordings.",
+   "rewrite": "2025 年夏季北京大学访问学生：分析了 30 份 EEG 记录。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful Visiting role ZH to EN",
+   "output": "en",
+   "anchors": [],
+   "original": "2025 年夏季北京大学访问学生：分析了 30 份 EEG 记录。",
+   "rewrite": "Visiting student at Peking University, Summer 2025: analyzed 30 EEG recordings.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful Founding role EN to ZH",
+   "output": "zh",
+   "anchors": [],
+   "original": "Founding member of the UIUC AI Safety Club: organized 6 reading groups.",
+   "rewrite": "UIUC AI 安全社团创始成员：组织了 6 次读书会。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful Peking place EN to ZH",
+   "output": "zh",
+   "anchors": [],
+   "original": "Peking University summer research program: analyzed 30 EEG recordings.",
+   "rewrite": "北京大学暑期科研项目：分析了 30 份 EEG 记录。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful Boeing name EN to ZH",
+   "output": "zh",
+   "anchors": [],
+   "original": "Boeing summer intern: designed a test fixture for 3 actuators.",
+   "rewrite": "Boeing 暑期实习生：为 3 个执行器设计了一个测试夹具。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful Starting in EN to ZH",
+   "output": "zh",
+   "anchors": [],
+   "original": "Starting in Fall 2025, tutored 15 students in calculus.",
+   "rewrite": "从 2025 年秋季开始，辅导了 15 名学生学习微积分。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "status",
+   "label": "verb_first after a Visiting role",
+   "anchors": [],
+   "original": "Visiting student at Peking University in Summer 2025, analyzing 30 EEG recordings.",
+   "rewrite": "Analyzed 30 EEG recordings as visiting student at Peking University in Summer 2025.",
+   "links": [],
+   "ops": [
+    {
+     "op": "verb_first"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "status",
+   "label": "verb_first after a Fundraising role",
+   "anchors": [],
+   "original": "Fundraising chair for CSSA since Fall 2025, organizing 3 charity galas.",
+   "rewrite": "Organized 3 charity galas as fundraising chair for CSSA since Fall 2025.",
+   "links": [],
+   "ops": [
+    {
+     "op": "verb_first"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "status",
+   "label": "verb_first after a Swimming role",
+   "anchors": [],
+   "original": "Swimming instructor at the ARC since May 2025, teaching 40 children a week.",
+   "rewrite": "Taught 40 children a week as swimming instructor at the ARC since May 2025.",
+   "links": [],
+   "ops": [
+    {
+     "op": "verb_first"
     }
    ],
    "expected": [

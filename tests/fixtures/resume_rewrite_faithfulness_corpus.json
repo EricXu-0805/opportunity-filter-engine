@@ -1495,6 +1495,51 @@
    "original": "Cut the error rate to as low as 2%.",
    "rewrite": "将错误率降低至 2%。",
    "kind": "EN to ZH: as low as 2% is 降低至 2%"
+  },
+  {
+   "original": "Visiting student at Peking University, Summer 2025: analyzed 30 EEG recordings.",
+   "rewrite": "2025 年夏季北京大学访问学生：分析了 30 份 EEG 记录。",
+   "kind": "EN to ZH: Visiting student is a role"
+  },
+  {
+   "original": "2025 年夏季北京大学访问学生：分析了 30 份 EEG 记录。",
+   "rewrite": "Visiting student at Peking University, Summer 2025: analyzed 30 EEG recordings.",
+   "kind": "ZH to EN: Visiting student is a role"
+  },
+  {
+   "original": "Founding member of the UIUC AI Safety Club: organized 6 reading groups.",
+   "rewrite": "UIUC AI 安全社团创始成员：组织了 6 次读书会。",
+   "kind": "EN to ZH: Founding member is a role"
+  },
+  {
+   "original": "Peking University summer research program: analyzed 30 EEG recordings.",
+   "rewrite": "北京大学暑期科研项目：分析了 30 份 EEG 记录。",
+   "kind": "EN to ZH: Peking is a place"
+  },
+  {
+   "original": "Boeing summer intern: designed a test fixture for 3 actuators.",
+   "rewrite": "Boeing 暑期实习生：为 3 个执行器设计了一个测试夹具。",
+   "kind": "EN to ZH: Boeing is a company"
+  },
+  {
+   "original": "Starting in Fall 2025, tutored 15 students in calculus.",
+   "rewrite": "从 2025 年秋季开始，辅导了 15 名学生学习微积分。",
+   "kind": "EN to ZH: Starting in is a time"
+  },
+  {
+   "original": "Visiting student at Peking University in Summer 2025, analyzing 30 EEG recordings.",
+   "rewrite": "Analyzed 30 EEG recordings as visiting student at Peking University in Summer 2025.",
+   "kind": "verb_first after a role noun that ends in -ing"
+  },
+  {
+   "original": "Fundraising chair for CSSA since Fall 2025, organizing 3 charity galas.",
+   "rewrite": "Organized 3 charity galas as fundraising chair for CSSA since Fall 2025.",
+   "kind": "verb_first after a role noun that ends in -ing"
+  },
+  {
+   "original": "Swimming instructor at the ARC since May 2025, teaching 40 children a week.",
+   "rewrite": "Taught 40 children a week as swimming instructor at the ARC since May 2025.",
+   "kind": "verb_first after a role noun that ends in -ing"
   }
  ],
  "unfaithful": [
@@ -3252,29 +3297,25 @@
    "original": "Fine-tuning a BERT model on 5,000 tweets for sentiment analysis.",
    "rewrite": "为情感分析在 5,000 条推文上微调了一个 BERT 模型。",
    "kind": "translation finishes a progressive line led by a verb the list does not know (Fine-tuning)",
-   "caught": "contract",
-   "case": "EN to ZH finishes a line led by Fine-tuning"
+   "caught": "review"
   },
   {
    "original": "Scraping 2,000 job postings for a labor-market study.",
    "rewrite": "为劳动力市场研究爬取了 2,000 条招聘信息。",
    "kind": "translation finishes a progressive line led by a verb the list does not know (Scraping)",
-   "caught": "contract",
-   "case": "EN to ZH finishes a line led by Scraping"
+   "caught": "review"
   },
   {
    "original": "Wiring 3 soil sensors to an Arduino logger for the campus garden.",
    "rewrite": "为校园花园将 3 个土壤传感器连接到了 Arduino 记录器。",
    "kind": "translation finishes a progressive line led by a verb the list does not know (Wiring)",
-   "caught": "contract",
-   "case": "EN to ZH finishes a line led by Wiring"
+   "caught": "review"
   },
   {
    "original": "Proofreading a 40-page grant proposal for the lab.",
    "rewrite": "为实验室校对了一份 40 页的基金申请书。",
    "kind": "translation finishes a progressive line led by a verb the list does not know (Proofreading)",
-   "caught": "contract",
-   "case": "EN to ZH finishes a line led by Proofreading"
+   "caught": "review"
   },
   {
    "original": "Fine-tuning a BERT model on 5,000 tweets for sentiment analysis.",
@@ -3802,6 +3843,48 @@
    "kind": "ZH to EN: 找不到 (could not find) dropped",
    "caught": "contract",
    "case": "ZH to EN drops 找不到"
+  },
+  {
+   "original": "目前正在为食物银行筹备一场募捐活动。",
+   "rewrite": "Fundraising event for the food pantry organized.",
+   "kind": "ZH to EN: an -ing noun leads a finished headline",
+   "caught": "contract",
+   "case": "ZH to EN turns 正在筹备 into a Fundraising headline"
+  },
+  {
+   "original": "目前担任食物银行的募捐委员会主席。",
+   "rewrite": "Fundraising committee chair at the food pantry.",
+   "kind": "ZH to EN: 目前 dropped beside an -ing noun",
+   "caught": "contract",
+   "case": "ZH to EN drops 目前 before a Fundraising title"
+  },
+  {
+   "original": "正在为社团的机器人项目发起众筹。",
+   "rewrite": "Crowdfunding campaign for the club's robot project launched.",
+   "kind": "ZH to EN: an -ing noun leads a finished headline",
+   "caught": "contract",
+   "case": "ZH to EN turns 正在发起 into a Crowdfunding headline"
+  },
+  {
+   "original": "正在为实验室撰写网站文案。",
+   "rewrite": "Copywriting for the lab website finished.",
+   "kind": "ZH to EN: an -ing noun leads a finished headline",
+   "caught": "contract",
+   "case": "ZH to EN turns 正在撰写 into a Copywriting headline"
+  },
+  {
+   "original": "正在为社团搭建直播设备。",
+   "rewrite": "Livestreaming setup for the club built.",
+   "kind": "ZH to EN: an -ing noun leads a finished headline",
+   "caught": "contract",
+   "case": "ZH to EN turns 正在搭建 into a Livestreaming headline"
+  },
+  {
+   "original": "正在校对实验室手册。",
+   "rewrite": "Proofreading of the lab manual completed.",
+   "kind": "ZH to EN: an -ing noun leads a finished headline",
+   "caught": "contract",
+   "case": "ZH to EN turns 正在校对 into a Proofreading headline"
   }
  ]
 }

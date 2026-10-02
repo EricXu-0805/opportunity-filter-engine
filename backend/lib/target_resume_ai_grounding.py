@@ -212,45 +212,40 @@ def _verb_uses(text):
     return [use for word in _WORD.findall(text) if (use := verb_use(word))]
 
 
-# -ing words that open a clause without being its verb: "During the summer", "Morning
-# shift volunteer", "Accounting intern".
-_NOT_ING_VERBS = frozenset(
-    "during morning evening spring string nothing something anything everything ceiling sibling having upcoming "
-    "ongoing incoming outgoing following including according regarding concerning considering pending "
-    "notwithstanding existing remaining accounting nursing banking housing funding clothing catering wedding "
-    "opening offering".split())
-
-
-def ing_form(word):
-    """Whether ``word`` is a verb's -ing form: a résumé verb's ("developing") or, for a verb
-    the list does not know, a trailing -ing ("fine-tuning", "scraping", "wiring")."""
-    use = verb_use(word)
-    if use:
-        return use[1] == "ing"
-    word = word.casefold()
-    return len(word) > 5 and word.endswith("ing") and word not in _NOT_ING_VERBS
-
-
-def _unknown_stems(text, suffix):
-    """The stems of words the verb list does not know that end in ``suffix``: "wiring" -> "wir"."""
-    return {word.casefold()[:-len(suffix)] for word in _WORD.findall(text)
-            if not verb_use(word) and word.casefold().endswith(suffix) and (suffix == "ed" or ing_form(word))}
-
-
-def _progressive_clause(clause):
+def _lead_word(clause):
+    """The clause's first word after "also", "still", "now", "currently" or an -ly adverb."""
     words = [word.casefold() for word in _WORD.findall(clause)]
     while words and (words[0] in {"also", "still", "now", "currently"} or words[0].endswith("ly")):
         words.pop(0)
-    return bool(words) and ing_form(words[0])
+    return words[0] if words else ""
+
+
+def _progressive_clause(clause):
+    return (verb_use(_lead_word(clause)) or ("", ""))[1] == "ing"
+
+
+def _unknown_lead_finished(proposed, original):
+    """A clause of the original led by an -ing word whose -ed form the rewrite adds.
+
+    This reads the verbs the résumé list does not know: in "Wiring 3 soil
+    sensors" -> "...: wired 3 soil sensors" the rewrite's own past form shows
+    the word is a verb. Read by its suffix alone, "Visiting student",
+    "Fundraising chair" and "Peking University" would lead work under way too.
+    """
+    leads = {lead[:-3] for clause in clauses(original) if (lead := _lead_word(clause)).endswith("ing")}
+    stated = {word.casefold()[:-2] for word in _WORD.findall(original) if word.casefold().endswith("ed")}
+    return any(word.casefold()[:-2] in leads - stated for word in _WORD.findall(proposed) if word.casefold().endswith("ed"))
 
 
 def status_upgraded(proposed, original):
     """Planned, hoped-for or unfinished work now stated as done.
 
     English: the original marks the work as unfinished or intended (a status
-    word, an intent phrase, or a clause led by an -ing verb) and the rewrite
-    uses the past tense of a verb the original only has in another form
-    ("Co-authoring ... (in preparation)" -> "Co-authored ..."). Chinese: one
+    word, an intent phrase, or a clause led by a résumé verb's -ing form) and
+    the rewrite uses the past tense of a verb the original only has in another
+    form ("Co-authoring ... (in preparation)" -> "Co-authored ..."), or a clause
+    led by an -ing word the list does not know has its -ed form in the rewrite
+    ("Wiring ..." -> "wired"). Chinese: one
     of the original's unfinished or intent words is gone from a Chinese
     rewrite ("正在开发" -> "开发了"), even beside another one. A kept "(in
     preparation)" does not make a finished verb faithful.
@@ -260,16 +255,15 @@ def status_upgraded(proposed, original):
     if _CJK.search(proposed) and any(len(pattern.findall(proposed)) < len(pattern.findall(original))
                                      for pattern in (FUTURE_ZH, UNDERWAY_ZH, UNFINISHED_ZH)):
         return True
+    if _unknown_lead_finished(proposed, original):
+        return True
     if not (UNFINISHED.search(original) or INTENT.search(original)
             or any(_progressive_clause(clause) for clause in clauses(original))):
         return False
     uses = _verb_uses(original)
     past = {base for base, kind in uses if kind == "past"}
     other = {base for base, kind in uses if kind != "past"}
-    if any(kind == "past" and base in other - past for base, kind in _verb_uses(proposed)):
-        return True
-    # A verb the list does not know, by its suffix: "Fine-tuning ..." -> "fine-tuned".
-    return bool(_unknown_stems(proposed, "ed") & (_unknown_stems(original, "ing") - _unknown_stems(original, "ed")))
+    return any(kind == "past" and base in other - past for base, kind in _verb_uses(proposed))
 
 
 def normalized(text):

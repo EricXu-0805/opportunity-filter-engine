@@ -44,7 +44,6 @@ from backend.lib.target_resume_ai_grounding import (
     _team_marked,
     claim_text,
     claim_upgrade_findings,
-    ing_form,
     language,
     supported_claim_upgrade_detected,
     verb_use,
@@ -824,10 +823,11 @@ def _relabel_swap_refusal(source: str, target: str) -> str | None:
 
 
 # "Developing a dashboard": work under way with no status word, said by a leading
-# progressive verb ("Using Python, ..." and "Applying ..." name a method, as do
-# "Leveraging", "Utilizing" and "Employing", which the verb list does not know).
+# progressive form of a résumé verb ("Using Python, ..." and "Applying ..." name a
+# method). An -ing word the verb list does not know may be a role or a name ("Visiting
+# student", "Fundraising chair", "Peking University"), so it leads no progressive line.
 _PROGRESSIVE_LEAD_SKIP = frozenset({"currently", "still", "now", "also", "actively", "jointly"})
-_PROGRESSIVE_METHODS = frozenset({"use", "apply", "leveraging", "utilizing", "utilising", "employing"})
+_PROGRESSIVE_METHODS = frozenset({"use", "apply"})
 # Chinese that states work done: 开发了, 已搭建, 完成. The 了 of 为了, 除了 and 了解, and
 # the 完成 of 正在完成 and 未完成, state nothing done.
 _ZH_DONE = re.compile(r"(?<![为除])了(?!解)|已(?!在)|(?<!正在)(?<!未)完成")
@@ -852,10 +852,8 @@ def _progressive_led(text: str) -> bool:
     words = [word.casefold() for word in re.findall(r"[A-Za-z]+(?:-[A-Za-z]+)*", text)]
     while words and words[0] in _PROGRESSIVE_LEAD_SKIP:
         words.pop(0)
-    if not words or _CJK.match(text.strip()[:1]) or not ing_form(words[0]):
-        return False
-    use = verb_use(words[0])
-    return (use[0] if use else words[0]) not in _PROGRESSIVE_METHODS
+    use = verb_use(words[0]) if words and not _CJK.match(text.strip()[:1]) else None
+    return bool(use) and use[1] == "ing" and use[0] not in _PROGRESSIVE_METHODS
 
 
 def _names_status(word: str) -> bool:
