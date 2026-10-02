@@ -340,8 +340,17 @@ IMUNIFY_WEBSHIELD = (
                  id='cloudflare-untitled'),
     pytest.param(page('<h1>Checking your browser before accessing example.edu</h1>', '<title>DDoS-Guard</title>'),
                  id='ddos-guard'),
+    # The heading that names the site refuses on its own, explanation and all.
+    pytest.param(page('<h1>Checking your browser before accessing example.edu.</h1><p>This process is automatic. Your '
+                      'browser will redirect to your requested content shortly.</p><p>Please allow up to 5 seconds…</p>'),
+                 id='checking-your-browser-before-accessing'),
     pytest.param(page('<p>Verifying you are human. This may take a few seconds.</p>',
                       '<title>Human Verification</title>'), id='human-verification'),
+    # A captcha box and a button under the stock title: nothing else to read.
+    pytest.param(page('<h1>Human Verification</h1><div class="h-captcha" data-sitekey="10000000-ffff"></div>'
+                      '<button>Submit</button>', '<title>Human Verification</title>'), id='human-verification-widget'),
+    pytest.param(page('<h1>Bot Verification</h1><div class="g-recaptcha" data-sitekey="6Le-test"></div>'
+                      '<button>Verify</button>', '<title>Bot Verification</title>'), id='bot-verification-widget'),
     # Under the site's own title, a loading line beside the check is not source.
     pytest.param(page('<p id="status">Loading...</p><p>Verifying you are human. This may take a few seconds.</p>'
                       '<script src="/challenge.js"></script>', '<title>example.edu</title>'), id='verifying-with-loading-line'),
@@ -485,9 +494,11 @@ def test_an_empty_challenge_box_is_still_a_bot_check():
     assert raised.value.reason == 'access_page'
 
 
-# A title that only begins with a bot check's name, or a courtesy title over a
-# readable posting, belongs to the site's own page. The whole stock title still
-# refuses (human-verification, vercel-checkpoint and the Imunify360 cases above).
+# A title that only begins with a bot check's name belongs to the site's own
+# page. A courtesy title or a stock check name a posting can share ("One moment,
+# please", "Human Verification", "Bot Verification", "Checking your browser")
+# refuses a page only when nothing else is readable (the human-verification and
+# Imunify360 cases above); other whole stock titles refuse outright.
 @pytest.mark.parametrize(('body', 'head', 'kept'), [
     pytest.param('<main><h1>Human verification: a psychology study</h1><p>We are recruiting undergraduate research '
                  'assistants for a study of how people judge CAPTCHA tasks.</p></main>',
@@ -502,6 +513,14 @@ def test_an_empty_challenge_box_is_still_a_bot_check():
                  'throughput this summer.</p></main>', '', 'observe checkpoint throughput', id='security-checkpoint-heading'),
     pytest.param(SOIL_POSTING.format(''), '<title>One moment, please</title>', 'Soil Microbiology Lab',
                  id='one-moment-title'),
+    pytest.param(SOIL_POSTING.format(''), '<title>Human Verification</title>', 'Soil Microbiology Lab',
+                 id='human-verification-title'),
+    pytest.param('<main><h1>Undergraduate security research</h1><p>Join our lab to study how websites tell automated '
+                 'traffic from people. Paid, 8 hours a week, spring 2027.</p></main>', '<title>Bot Verification</title>',
+                 'tell automated traffic from people', id='bot-verification-title'),
+    pytest.param('<main><h1>Checking your browser</h1><p>The research application portal works in current Chrome, '
+                 'Firefox and Safari. Undergraduates apply by March 1, 2027.</p></main>', '',
+                 'Undergraduates apply by March 1, 2027.', id='checking-your-browser-heading'),
 ])
 def test_bot_check_words_in_a_postings_title_do_not_refuse_it(body, head, kept):
     assert kept in extract_import_document(page(body, head))['text']

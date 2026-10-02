@@ -54,11 +54,12 @@ _LOADING_SHELL = re.compile(
     r'(?:this|it) (?:may|might|can|could) take (?:a few|several|a couple of) (?:seconds|moments))[.…!,]*\s*)+$',
     re.I,
 )
-# Titles an ordinary page can carry too: a sign-in page, or a courtesy line a
-# real posting may have as its title. They are a wall only when nothing else
-# on the page is readable.
+# Titles an ordinary page can carry too: a sign-in page, a courtesy line, or a
+# stock check name a real posting may have as its title. They are a wall only
+# when nothing else on the page is readable.
 _GATE_TITLE = re.compile(
-    r'^(?:sign[ -]?in|log[ -]?in)(?:[.!…]+|\s*[-|:–—].*)?$|^one moment,? please[.!…]*$', re.I,
+    r'^(?:sign[ -]?in|log[ -]?in)(?:[.!…]+|\s*[-|:–—].*)?$|'
+    r'^(?:one moment,? please|(?:human|bot) verification|checking your browser)[.!…]*$', re.I,
 )
 _GATE_TEXT = re.compile(
     r'\b(?:sign[ -]?in|log[ -]?in|password|username|verify you are human|checking your browser|'
