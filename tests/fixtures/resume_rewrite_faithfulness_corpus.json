@@ -1005,6 +1005,21 @@
    "original": "在网站项目开发中，用 Python 编写了 3 个脚本。",
    "rewrite": "During the website project's development, wrote 3 scripts in Python.",
    "kind": "ZH to EN: 在 … 中 with four characters between is a place"
+  },
+  {
+   "original": "Drafted the report and revised it after feedback.",
+   "rewrite": "起草了报告，并根据反馈进行了修改。",
+   "kind": "EN to ZH: the student's own revision after and"
+  },
+  {
+   "original": "I edited 12 issues of the club newsletter.",
+   "rewrite": "我编辑了 12 期社团通讯。",
+   "kind": "EN to ZH: the student's own edit after I"
+  },
+  {
+   "original": "Submitted the revised proposal to the committee.",
+   "rewrite": "向委员会提交了修改后的提案。",
+   "kind": "EN to ZH: a revised version, not a reviser"
   }
  ],
  "unfaithful": [
@@ -2512,6 +2527,34 @@
    "kind": "translation finishes 开发中 that a long 在 phrase precedes",
    "caught": "contract",
    "case": "ZH to EN finishes 开发中 after a long 在 phrase"
+  },
+  {
+   "original": "Drafted the lab report; Sam revised it.",
+   "rewrite": "撰写了实验报告。",
+   "kind": "translation drops another person's revision",
+   "caught": "contract",
+   "case": "EN to ZH drops another person's revision after a semicolon"
+  },
+  {
+   "original": "Wrote the club newsletter, and Sam edited it.",
+   "rewrite": "撰写了社团通讯。",
+   "kind": "translation drops another person's edit",
+   "caught": "contract",
+   "case": "EN to ZH drops another person's edit after and"
+  },
+  {
+   "original": "Built the parser; Priya rewrote the tokenizer.",
+   "rewrite": "编写了解析器。",
+   "kind": "translation drops another person's rewrite",
+   "caught": "contract",
+   "case": "EN to ZH drops a classmate's rewrite"
+  },
+  {
+   "original": "Drafted the proposal, which Sam and I revised.",
+   "rewrite": "起草了提案。",
+   "kind": "translation drops a revision shared with another person",
+   "caught": "contract",
+   "case": "EN to ZH drops a revision two people made"
   }
  ]
 }

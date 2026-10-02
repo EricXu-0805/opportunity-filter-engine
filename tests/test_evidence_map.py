@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -125,6 +126,16 @@ class TestSpans:
         assert em.source_span(original, "pcr genotyping") == (4, 19)
         assert em.source_span(original, "PCR genotype") is None
         assert em.source_span(original, "on 40 lines") is None
+
+
+class TestLockWordsScanLinearly:
+    @pytest.mark.parametrize("text", ["a-" * 30000, "then " * 12000 + "x"])
+    def test_another_persons_revision_is_read_in_linear_time(self, text):
+        # Starting the word anywhere inside "a-a-a-..." or repeating "then" without
+        # a bound took about 6 s here; the anchored scan takes ~0.02 s.
+        started = time.perf_counter()
+        em._OTHER_PERSON.findall(text)
+        assert time.perf_counter() - started < 1
 
 
 class TestLemma:

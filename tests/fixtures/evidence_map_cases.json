@@ -5338,6 +5338,139 @@
     null,
     null
    ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops another person's revision after a semicolon",
+   "output": "zh",
+   "anchors": [],
+   "original": "Drafted the lab report; Sam revised it.",
+   "rewrite": "撰写了实验报告。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_other_person"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops another person's edit after and",
+   "output": "zh",
+   "anchors": [],
+   "original": "Wrote the club newsletter, and Sam edited it.",
+   "rewrite": "撰写了社团通讯。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_other_person"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops a classmate's rewrite",
+   "output": "zh",
+   "anchors": [],
+   "original": "Built the parser; Priya rewrote the tokenizer.",
+   "rewrite": "编写了解析器。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_other_person"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops a revision two people made",
+   "output": "zh",
+   "anchors": [],
+   "original": "Drafted the proposal, which Sam and I revised.",
+   "rewrite": "起草了提案。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_other_person"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps the student's own revision after and",
+   "output": "zh",
+   "anchors": [],
+   "original": "Drafted the report and revised it after feedback.",
+   "rewrite": "起草了报告，并根据反馈进行了修改。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps the student's own edit after I",
+   "output": "zh",
+   "anchors": [],
+   "original": "I edited 12 issues of the club newsletter.",
+   "rewrite": "我编辑了 12 期社团通讯。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps a revised version",
+   "output": "zh",
+   "anchors": [],
+   "original": "Submitted the revised proposal to the committee.",
+   "rewrite": "向委员会提交了修改后的提案。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
   }
  ]
 }

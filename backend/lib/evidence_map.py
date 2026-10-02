@@ -554,10 +554,13 @@ _OTHER_PERSON = re.compile(
     r"|instructors?|technicians?|engineers?|(?:teaching|course)\s+assistants?"
     r"|(?:graduate|grad|phd|ph\.d\.?|doctoral|master'?s)\s+students?|nurses?|doctors?|physicians?|surgeons?"
     r"|therapists?|pharmacists?|adapted|starter|template|based\s+on)\b"
-    # Someone else's revision ("which was later revised", "edited by the lab
-    # manager"), not the student's own ("Revised the safety manual").
-    r"|\b(?:which|that|who|later|was|were|been|has|had|then)\s+(?:[\w'’]+\s+){0,2}?(?:revised|rewrote|rewritten|edited)\b"
-    r"|\b(?:revised|rewritten|edited)\s+by\b"
+    # A revision is someone else's part ("; Sam revised it", "which was later revised",
+    # "edited by the lab manager") unless it opens the student's own clause: "Revised
+    # the safety manual", "Drafted the report and revised it", "I edited". "The
+    # revised proposal" names a version.
+    r"|(?<![\w'’-])(?!(?:and|or|also|I|a|an|the|this|these|those|my|our|its|their|his|her)\b)[\w'’-]+\s+"
+    r"(?:(?:then|also|I|and\s+I)\s+){0,3}(?:revised|rewrote|rewritten|edited)\b"
+    r"|\b(?:revised|rewrote|rewritten|edited)\s+by\b"
     r"|导师|老师|师兄|师姐|博士生|博士后|硕士生|研究生|技术员|工程师|助教|教授|参考(?!文献|资料|书目)|基于|医生|护士",
     re.I)
 # A hedge always qualifies ("roughly segmented", "nearly finished"). A word that is
