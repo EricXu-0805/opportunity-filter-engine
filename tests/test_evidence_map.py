@@ -140,6 +140,20 @@ class TestLockWordsScanLinearly:
         assert time.perf_counter() - started < 1
 
 
+class TestRunsAreReadOnce:
+    @pytest.mark.parametrize(("name", "read", "text"), [
+        ("_SPAN", lambda text: em._SPAN.findall(text), "1" * 60000),
+        ("_SHARE_ZH", em._shares_work, "1" * 60000),
+        ("_SHARE_ZH numerals", em._shares_work, "一" * 60000),
+        ("_TEAM_ZH_EXTRA", lambda text: em._TEAM_ZH_EXTRA.findall(text), "1" * 60000),
+        ("_URL_OR_EMAIL", lambda text: em._URL_OR_EMAIL.findall(text), "开发" * 30000)])
+    def test_a_long_run_of_digits_or_word_characters_is_read_in_linear_time(self, name, read, text):
+        # Each of these took 9 to 36 s on such a run before its start was anchored.
+        started = time.perf_counter()
+        read(text)
+        assert time.perf_counter() - started < 1, name
+
+
 class TestSpanWords:
     @pytest.mark.parametrize("quantity", [
         "thirteen", "fourteen", "sixteen", "seventeen", "eighteen", "nineteen", "twice", "double", "triple", "half",

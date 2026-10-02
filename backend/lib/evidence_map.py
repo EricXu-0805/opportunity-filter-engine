@@ -129,7 +129,7 @@ _SENTENCE_END = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"“(])|(?<=[。！？；;]
 _LIST_ITEM = re.compile(r"\s*;\s*")
 _CLAUSE = re.compile(r",\s+|，")
 _EDGE = " \t\r\n,;:，；、.。"
-_URL_OR_EMAIL = re.compile(r"https?://\S+|www\.\S+|[\w.+-]+@[\w-]+(?:\.[\w-]+)+", re.I)
+_URL_OR_EMAIL = re.compile(r"https?://\S+|www\.\S+|(?<![\w.+-])[\w.+-]+@[\w-]+(?:\.[\w-]+)+", re.I)
 # Directions for applying, not the opportunity's topics.
 _BOILERPLATE = re.compile(
     r"\b(?:for more information|more information|how to apply|to apply|apply (?:online|now|here|by|at|through|via)"
@@ -604,7 +604,7 @@ _SPAN = re.compile(r"\b(?:about|around|over|under|more\s+than|less\s+than|fewer\
                    r"|(?<![预制节简邀相契合公条])约(?![定会束谈请见稿])|将近|超过|至少|左右|最多(?![的。，,；;）)]|$)|至多|多达"
                    r"|高达|上(?=[千万]|百(?!度))|(?<![找做想看达得用等买收见听])不到|(?<![附最])近(?=\s*(?:\d|[一二两三四五六七八九十百千万几半]))"
                    r"(?!\s*(?:\d+|[一二两三四五六七八九十百千万几半]+)\s*个?(?:年|月|周|天|日|季度|学期)[的来内间])"
-                   r"|(?<=\d)\s*[余多]|(?<=[十百千万])[余多]|(?:\d[\d.,]*|[十百千万])\s*[^\s\d，,。；;]{0,2}?\s*以[上下]"
+                   r"|(?<=\d)\s*[余多]|(?<=[十百千万])[余多]|(?:(?<![\d.,])\d[\d.,]*|[十百千万])\s*[^\s\d，,。；;]{0,2}?\s*以[上下]"
                    r"|(?<![一发引提拿想兴崛缘])起(?![来草源始点因诉步飞初])|以来|至今", re.I)
 _SOLO = re.compile(r"\b(?:alone|independently|solely|single-handedly|by\s+myself|on\s+my\s+own)\b|独立|独自|单独", re.I)
 _LIMIT = re.compile(r"\b(?:only|just)\b|只|仅", re.I)
@@ -624,7 +624,7 @@ _DRAFT = re.compile(r"(?:(?<=[(\[-])|(?<=[\w'’-]\s)(?<!\bto\s)(?<!\band\s)(?<!
                     r"(?<!\bcurrently\s))\bdrafts?\b|初稿|草稿|草案", re.I)
 _UN_DONE = re.compile(r"\bun(?:published|submitted|finished|tested|verified|validated|reviewed)\b", re.I)
 _UNPUBLISHED = re.compile(r"\bun(?:published|submitted)\b|\bto\s+appear\b|\bin\s+press\b", re.I)
-_TEAM_ZH_EXTRA = re.compile(r"组员|队友|同学|室友|搭档|伙伴|朋友|一起|协同|课题组|项目组|(?:\d+|[一二三四五六七八九十两])\s*人", re.I)
+_TEAM_ZH_EXTRA = re.compile(r"组员|队友|同学|室友|搭档|伙伴|朋友|一起|协同|课题组|项目组|(?:(?<!\d)\d+|[一二三四五六七八九十两])\s*人", re.I)
 # English shared-work words the TEAM lock leaves out; each has a Chinese pair above or in TEAM.
 _TEAM_EN_EXTRA = re.compile(
     r"\b(?:research|lab|project|study|student|my|our)\s+groups?\b|\bgroup\s*(?:mates?|members?)\b"
@@ -643,7 +643,7 @@ _TEAM_OTHERS = re.compile(
 _PARTICIPATION_EN = re.compile(r"\b(?:participat\w*|contribut\w*|involved\s+in|involvement|t(?:ake|akes|aking|ook)"
                                r"\s+part)\b", re.I)
 _PARTICIPATION_ZH = re.compile(r"参与|参加|贡献")
-_SHARE_ZH = re.compile(r"(?:\d+|[一二两三四五六七八九十百千]+)\s*(?:名|位|个|人)[^，,。；;参]{0,4}参与|(参与)(?!者)|(贡献)")
+_SHARE_ZH = re.compile(r"(?:(?<!\d)\d+|(?<![一二两三四五六七八九十百千])[一二两三四五六七八九十百千]+)\s*(?:名|位|个|人)[^，,。；;参]{0,4}参与|(参与)(?!者)|(贡献)")
 
 
 def _shares_work(chinese: str) -> bool:
