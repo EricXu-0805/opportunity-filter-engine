@@ -10175,6 +10175,221 @@
     null,
     null
    ]
+  },
+  {
+   "group": "trap",
+   "label": "relabel to a dropped head noun: Python ML exercises -> Python ML",
+   "anchors": [
+    "Python ML"
+   ],
+   "original": "Implemented Python ML exercises in CS 225",
+   "rewrite": "Implemented Python ML in CS 225",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Python ML",
+     "source": "Python ML exercises",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "Python ML exercises",
+     "to": "Python ML"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_redundant"
+   ]
+  },
+  {
+   "group": "trap",
+   "label": "relabel to a dropped head noun: web app mockup -> web app",
+   "anchors": [
+    "web app"
+   ],
+   "original": "Built a web app mockup.",
+   "rewrite": "Built a web app.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "web app",
+     "source": "web app mockup",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "web app mockup",
+     "to": "web app"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_redundant"
+   ]
+  },
+  {
+   "group": "trap",
+   "label": "relabel to a dropped head noun: parser test -> parser",
+   "anchors": [
+    "parser"
+   ],
+   "original": "Wrote a parser test.",
+   "rewrite": "Wrote a parser.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "parser",
+     "source": "parser test",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "parser test",
+     "to": "parser"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_redundant"
+   ]
+  },
+  {
+   "group": "trap",
+   "label": "relabel to a dropped head noun: Python daily reports -> Python",
+   "anchors": [
+    "Python"
+   ],
+   "original": "Wrote Python daily reports.",
+   "rewrite": "Wrote Python.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Python",
+     "source": "Python daily reports",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "Python daily reports",
+     "to": "Python"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_redundant"
+   ]
+  },
+  {
+   "group": "trap",
+   "label": "relabel to a dropped head noun: PCB assembly -> PCB",
+   "anchors": [
+    "PCB"
+   ],
+   "original": "Built a PCB assembly.",
+   "rewrite": "Built a PCB.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "PCB",
+     "source": "PCB assembly",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "PCB assembly",
+     "to": "PCB"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_redundant"
+   ]
+  },
+  {
+   "group": "trap",
+   "label": "lead_with that swaps two numbers",
+   "anchors": [
+    "parser throughput"
+   ],
+   "original": "I improved parser throughput by 45% and reduced parser latency by 12%.",
+   "rewrite": "I improved parser throughput by 12% and reduced parser latency by 45%.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "parser throughput",
+     "source": "parser throughput",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "lead_with_not_leading"
+   ]
+  },
+  {
+   "group": "trap",
+   "label": "relabel motor mount -> robot mechanism, no shared word",
+   "anchors": [
+    "robot mechanism design"
+   ],
+   "original": "Built the drivetrain for the Illini Robotics club rover in 2025 with two teammates; I designed the motor mount in SolidWorks.",
+   "rewrite": "Built the drivetrain for the Illini Robotics club rover in 2025 with two teammates; I designed the robot mechanism in SolidWorks.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "robot mechanism",
+     "source": "motor mount",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "motor mount",
+     "to": "robot mechanism"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_not_same"
+   ]
   }
  ]
 }

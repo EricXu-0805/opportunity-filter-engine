@@ -43,7 +43,6 @@ from backend.lib.target_resume_ai_grounding import (
     UNDERWAY_ZH,
     UNFINISHED,
     UNFINISHED_ZH,
-    _parsed_claim_findings,
     _team_marked,
     claim_text,
     claim_upgrade_findings,
@@ -1191,9 +1190,6 @@ def _check_same_language(unit: Unit, text: str, links: list[Link], ops_raw: list
 
 # ------------------------------------------------------------------------ gate
 
-RELABEL_SENSITIVE = frozenset({"object_changed", "quantity_moved"})
-
-
 def reverse_relabels(text: str, relabels: list[tuple[str, str]]) -> str | None:
     """Undo each declared (from, to) replacement; None when a "to" is not in the text as whole words."""
     for source, target in relabels:
@@ -1205,22 +1201,11 @@ def reverse_relabels(text: str, relabels: list[tuple[str, str]]) -> str | None:
 
 
 def rewrite_findings(text: str, evidence: str, relabels: list[tuple[str, str]]) -> list[str]:
-    """Hard claim-lock findings on the text as written.
-
-    Only object_changed and quantity_moved are re-read with the declared
-    relabels undone: a relabel's new word is a new object head by design,
-    which the review, not a lock, judges. Everything else, including a denial
-    or a team result, comes from the text as written.
-    """
+    """Hard claim-lock findings on the text as written; each declared relabel must stand in it as whole words."""
     hard, _ = claim_upgrade_findings(text, evidence)
-    if not relabels:
-        return hard
-    reversed_text = reverse_relabels(text, relabels)
-    if reversed_text is None:
+    if relabels and reverse_relabels(text, relabels) is None:
         return [*hard, "relabel_not_found"]
-    reread, _ = _parsed_claim_findings(reversed_text, evidence)
-    kept = [finding for finding in hard if finding not in RELABEL_SENSITIVE]
-    return list(dict.fromkeys(kept + [finding for finding in reread if finding in RELABEL_SENSITIVE]))
+    return hard
 
 
 def grounding_findings(text: str, corpus: str, *, translated: bool = False) -> list[str]:

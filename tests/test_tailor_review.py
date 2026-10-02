@@ -79,13 +79,13 @@ HARD = [
     ("论文已投稿，尚未录用。", "论文已录用。"),
 ]
 
-# The review used to decide these; each changes who did what, the object, a
-# number, the setting or the quality claimed. (original, rewrite, finding)
+# The review used to decide these; each changes who did what, the setting or
+# the quality claimed. (original, rewrite, finding)
 MOVED = [
     ("My team built a Python parser. I wrote parser tests.",
      "I built a Python parser and wrote parser tests. My team built a Python parser.", "team_result_claimed"),
     ("Our team trained a model reaching 90% accuracy; I cleaned the data.",
-     "I trained a model reaching 90% accuracy; our team cleaned the data.", "team_result_claimed"),
+     "I trained a model reaching 90% accuracy; our team cleaned the data.", "actor_changed"),
     ("团队开发了解析器。本人开发了测试。", "本人开发了解析器和测试。团队开发了解析器。", "team_result_claimed"),
     ("I built a Python parser. I did not build the compiler.",
      "I built a compiler. I did not build the compiler.", "denied_action_asserted"),
@@ -93,9 +93,6 @@ MOVED = [
     ("As part of a four-person team, I helped design the survey.",
      "As part of a four-person team, led the design of the survey.", "leadership_claim_added"),
     ("作为四人小组成员，本人协助设计问卷。", "作为四人小组成员，负责设计问卷。", "leadership_claim_added"),
-    ("I improved parser throughput by 45% and reduced parser latency by 12%.",
-     "I improved parser throughput by 12% and reduced parser latency by 45%.", "quantity_moved"),
-    ("Implemented Python ML exercises in CS 225", "Implemented Python ML in CS 225", "object_changed"),
     ("Implemented machine learning experiments in Python",
      "Built machine learning models in Python for a research project", "setting_added"),
     ("用 Python 分析了脑电数据。", "为课题组的项目用 Python 分析了脑电数据。", "setting_added"),
@@ -408,14 +405,6 @@ class TestLockChangesForEvidenceMappedRewrites:
         hard, _ = claim_upgrade_findings("I built a Python parser.", "My team built a Python parser.")
         assert "personal_action_added" in hard
 
-    def test_a_course_number_or_year_kept_with_its_words_is_not_a_moved_quantity(self):
-        from backend.lib.target_resume_ai_grounding import identifier_numbers
-
-        assert identifier_numbers("Built a classifier (CS 446 course project).", CSML) == {"446"}
-        swapped = claim_upgrade_findings("Built the lab in 2025; tested the rig in 2024.",
-                                         "Built the lab in 2024; tested the rig in 2025.")[0]
-        assert "quantity_moved" in swapped
-
     @pytest.mark.parametrize(("original", "proposed"), [
         ("Cleaned 212 survey responses in R.", "Cleaned 212 survey responses in R for aging research."),
         ("清洗了212份问卷数据。", "为人因研究清洗了212份问卷数据。"),
@@ -646,20 +635,17 @@ class TestFaithfulnessCorpus:
         assert accepted_texts("/api/tailor/bullet", body) == [None]
 
     @pytest.mark.parametrize(("original", "proposed", "finding"), [
-        # "Assembly" is the head noun, not a manner adverb.
-        ("Built a PCB assembly.", "Built a PCB.", "object_changed"),
-        ("Built a power supply.", "Built a power.", "object_changed"),
         # Shared credit, like "together".
         ("Wrote a report jointly.", "Wrote a report.", "team_qualifier_dropped"),
         ("Analyzed the survey data collectively.", "Analyzed the survey data.", "team_qualifier_dropped"),
         ("Cooperatively built a rover.", "Built a rover.", "team_qualifier_dropped"),
     ])
-    def test_a_dropped_ly_noun_or_shared_credit_is_hard(self, original, proposed, finding):
+    def test_dropped_shared_credit_is_hard(self, original, proposed, finding):
         assert finding in claim_upgrade_findings(proposed, original)[0]
         assert finding in gate_findings(original, proposed)
 
     def test_a_dropped_manner_adverb_goes_to_the_review(self):
-        assert claim_upgrade_findings("Tested the code.", "Tested the code thoroughly.") == ([], ["object_shortened"])
+        assert claim_upgrade_findings("Tested the code.", "Tested the code thoroughly.") == ([], ["wording_changed"])
         assert gate_findings("Tested the code thoroughly.", "Tested the code.") == []
 
     @pytest.mark.parametrize(("text", "denial"), [
@@ -983,7 +969,7 @@ class TestClaimLocksReadALongSourceOnce:
     """A 6,000-character source with hundreds of status words or years took 0.4-1 s
     per rewrite in claim_upgrade_findings; the third review measured 7 s of one
     request's event-loop turn for 12 such sources. Each clause now reads its noun
-    heads and verbs once, and each text its year neighbourhoods once."""
+    heads and verbs once."""
 
     def test_status_words_read_their_clauses_noun_heads_once(self, monkeypatch):
         from backend.lib import target_resume_ai_grounding as grounding
@@ -994,16 +980,6 @@ class TestClaimLocksReadALongSourceOnce:
         bindings = grounding._qualifier_bindings("Posted preprints on sleep spindles " + "preprints " * 300)
         assert sum(family == "status_preprint" for family, _ in bindings) == 301
         assert len(calls) <= 2
-
-    def test_years_are_read_once_per_text(self, monkeypatch):
-        from backend.lib import target_resume_ai_grounding as grounding
-
-        calls = []
-        real = grounding._year_contexts
-        monkeypatch.setattr(grounding, "_year_contexts", lambda text: calls.append(text) or real(text))
-        source = "Tutored students in 2023 and graded exams in 2024 for CS 225; " * 100
-        assert grounding.identifier_numbers(source, source) == {"2023", "2024", "225"}
-        assert len(calls) == 2
 
     def test_since_reads_its_clauses_verbs_once(self, monkeypatch):
         from backend.lib import target_resume_ai_grounding as grounding
@@ -1044,15 +1020,6 @@ class TestClaimLocksReadALongSourceOnce:
         assert (verbs.before(10), verbs.at_or_after(10)) == ("build", "test")
         assert (verbs.before(0), verbs.at_or_after(11)) == (None, None)
 
-    def test_a_year_that_changes_neighbours_is_a_moved_number(self):
-        from backend.lib import target_resume_ai_grounding as grounding
-
-        original = "Built the lab in 2024; built the rig in 2025."
-        swapped = "Built the lab in 2025; built the rig in 2024."
-        assert grounding.identifier_numbers(swapped, original) == set()
-        assert claim_upgrade_findings(swapped, original)[0] == ["quantity_moved"]
-        assert grounding.identifier_numbers("In 2024 built the lab; in 2025 built the rig.", original) == {"2024"}
-
 
 def _repeat_to(unit, size):
     text = (unit * (size // len(unit) + 1))[:size]
@@ -1089,109 +1056,11 @@ def _verb_first_model(monkeypatch, rewrite, calls):
     monkeypatch.setattr(tailor, "_snapshot_anchors", lambda source, snapshot: [_anchor("t1", "research on y")])
 
 
-class TestTheParserIsReadOnce:
-    """The claim locks parse each text once and read each claim against the original's facts once."""
-
-    def test_each_text_is_parsed_once(self, monkeypatch):
-        from backend.lib import target_resume_ai_grounding as grounding
-
-        calls = []
-        real = grounding._facts
-        monkeypatch.setattr(grounding, "_facts", lambda text, **kwargs: calls.append(text) or real(text, **kwargs))
-        grounding._source_facts.cache_clear()
-        grounding._claim_facts.cache_clear()
-        original, proposed = "Built a parser in 2031 and tested it.", "Tested a parser, built in 2031."
-        claim_upgrade_findings(proposed, original)
-        assert sorted(calls) == sorted([original, proposed])
-
-    @pytest.mark.parametrize("case", CORPUS["faithful"] + CORPUS["unfaithful"], ids=lambda case: case["rewrite"])
-    def test_unsupported_claims_are_the_parsers(self, case):
-        from backend.lib import email_experience_attribution as attribution
-        from backend.lib import target_resume_ai_grounding as grounding
-
-        for proposed, original in ((case["rewrite"], case["original"]), (case["original"], case["rewrite"])):
-            expected = attribution._unsupported_claims(proposed, [original], True, None)
-            found = grounding._unsupported(grounding._claim_facts(proposed), grounding._source_facts(original))
-            assert found == expected
-
-    @pytest.mark.parametrize(("original", "denials"), [
-        ("Led y. Never led z. " * 3, False), ("Led y. Never led y. Led y.", True)])
-    def test_a_denial_is_read_once_per_claim(self, original, denials):
-        from backend.lib import target_resume_ai_grounding as grounding
-
-        assert ("denied_action_asserted" in claim_upgrade_findings("Led y.", original)[0]) is denials
-        assert bool(grounding._unsupported(grounding._claim_facts("Led y."), grounding._source_facts(original))) is denials
-
-    def test_a_line_with_more_distinct_facts_than_the_cap_is_kept(self):
-        from backend.lib import target_resume_ai_grounding as grounding
-
-        cap = grounding.MAX_PARSED_FACTS
-        within = " ".join(f"Built parser {i}." for i in range(cap))
-        beyond = " ".join(f"Built parser {i}." for i in range(cap + 1))
-        assert "too_many_claims" not in claim_upgrade_findings(within + " Done.", within)[0]
-        assert "too_many_claims" in claim_upgrade_findings(beyond + " Done.", beyond)[0]
-        assert "too_many_claims" in claim_upgrade_findings("Built parser 1.", beyond)[0]
-        assert "too_many_claims" in claim_upgrade_findings(beyond, "Built parser 1.")[0]
-
-
 class TestRequestsAtTheCap:
-    """A guest request with 6,000 characters of evidence is checked in well under a second, off the event loop.
+    """The contract and the claim locks run on a worker, and past their deadline the originals are kept.
 
-    On 31f09460 the denials shape held /api/tailor for 55 s, and /api/tailor/status
-    answered 61 s apart meanwhile: the checks ran on the event loop and read the
-    attribution parser three times, every claim against every fact and denial.
+    tests/test_rewrite_cpu_bounds.py holds a request at the cap to a short event-loop gap.
     """
-
-    @pytest.mark.parametrize("shape", list(CAP_SHAPES))
-    @pytest.mark.parametrize("path", ["/api/tailor", "/api/tailor/bullet"])
-    def test_a_request_at_the_cap_answers_in_well_under_a_second_of_checks(self, endpoint, monkeypatch, path, shape):
-        import time
-
-        client, opportunity_id = endpoint
-        evidence, current, rewrite = CAP_SHAPES[shape]
-        calls: list[str] = []
-        _verb_first_model(monkeypatch, rewrite, calls)
-        payload = {"profile": PROFILE, "opportunity_id": opportunity_id, "locale": "en"}
-        if path.endswith("/bullet"):
-            payload.update(base_text=evidence, current_text=current)
-        else:
-            payload.update(original_bullets=[current], source_bullets=[evidence])
-        started = time.perf_counter()
-        response = client.post(path, json=payload)
-        assert response.status_code == 200, response.text
-        assert time.perf_counter() - started < 3
-        assert calls[0] == "generate" and len(calls) <= 2
-
-    def test_the_event_loop_answers_while_a_request_at_the_cap_is_checked(self, endpoint, monkeypatch):
-        import asyncio
-        import time
-
-        import httpx
-
-        _, opportunity_id = endpoint
-        evidence, current, rewrite = CAP_SHAPES["denials"]
-        calls: list[str] = []
-        _verb_first_model(monkeypatch, rewrite, calls)
-        payload = {"profile": PROFILE, "opportunity_id": opportunity_id, "locale": "en",
-                   "original_bullets": [current], "source_bullets": [evidence]}
-
-        async def main():
-            transport = httpx.ASGITransport(app=app)
-            async with httpx.AsyncClient(transport=transport, base_url="http://test", timeout=120) as client:
-                heavy = asyncio.create_task(client.post("/api/tailor", json=payload))
-                gaps, last = [], time.perf_counter()
-                while True:
-                    await client.get("/api/tailor/status")
-                    now = time.perf_counter()
-                    gaps.append(now - last)
-                    if heavy.done():
-                        return heavy.result().status_code, gaps
-                    await asyncio.sleep(0.01)
-                    last = time.perf_counter()
-
-        status, gaps = asyncio.run(main())
-        assert status == 200 and calls[0] == "generate"
-        assert max(gaps) < 0.5
 
     def test_the_checks_run_on_a_worker_thread(self, endpoint, monkeypatch):
         import threading

@@ -1676,22 +1676,30 @@
   {
    "original": "Implemented Python ML exercises in CS 225",
    "rewrite": "Implemented Python ML in CS 225",
-   "kind": "dropped head noun"
+   "kind": "dropped head noun",
+   "caught": "contract",
+   "case": "relabel to a dropped head noun: Python ML exercises -> Python ML"
   },
   {
    "original": "Built a web app mockup.",
    "rewrite": "Built a web app.",
-   "kind": "dropped head noun"
+   "kind": "dropped head noun",
+   "caught": "contract",
+   "case": "relabel to a dropped head noun: web app mockup -> web app"
   },
   {
    "original": "Wrote a parser test.",
    "rewrite": "Wrote a parser.",
-   "kind": "dropped head noun"
+   "kind": "dropped head noun",
+   "caught": "contract",
+   "case": "relabel to a dropped head noun: parser test -> parser"
   },
   {
    "original": "I improved parser throughput by 45% and reduced parser latency by 12%.",
    "rewrite": "I improved parser throughput by 12% and reduced parser latency by 45%.",
-   "kind": "number moved"
+   "kind": "number moved",
+   "caught": "contract",
+   "case": "lead_with that swaps two numbers"
   },
   {
    "original": "Cleaned 212 survey responses in R.",
@@ -1751,7 +1759,9 @@
   {
    "original": "Wrote Python daily reports.",
    "rewrite": "Wrote Python.",
-   "kind": "dropped head noun"
+   "kind": "dropped head noun",
+   "caught": "contract",
+   "case": "relabel to a dropped head noun: Python daily reports -> Python"
   },
   {
    "original": "我编写了测试，不太参与开发。",
@@ -1806,7 +1816,9 @@
   {
    "original": "Built a PCB assembly.",
    "rewrite": "Built a PCB.",
-   "kind": "dropped head noun (-ly noun)"
+   "kind": "dropped head noun (-ly noun)",
+   "caught": "contract",
+   "case": "relabel to a dropped head noun: PCB assembly -> PCB"
   },
   {
    "original": "Analyzed EEG data in MATLAB.",
@@ -2037,7 +2049,9 @@
   {
    "original": "Built the drivetrain for the Illini Robotics club rover in 2025 with two teammates; I designed the motor mount in SolidWorks.",
    "rewrite": "Built the drivetrain for the Illini Robotics club rover in 2025 with two teammates; I designed the robot mechanism in SolidWorks.",
-   "kind": "relabel to a narrower or different thing"
+   "kind": "relabel to a narrower or different thing",
+   "caught": "contract",
+   "case": "relabel motor mount -> robot mechanism, no shared word"
   },
   {
    "original": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
@@ -2234,7 +2248,8 @@
   {
    "original": "Measured water hardness in 20 household samples by titration.",
    "rewrite": "Measured heavy-metal contamination in 20 household samples by titration.",
-   "kind": "relabel to a narrower or different thing"
+   "kind": "relabel to a narrower or different thing",
+   "caught": "review"
   },
   {
    "original": "用 GIS 绘制了校园树木分布图。",
