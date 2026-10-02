@@ -26,10 +26,10 @@ _REASONS = {
 # reads it in time linear in its size, and these limits bound that size. A
 # page past one is refused whole as too large, never read in part, so a limit
 # cannot change how a page that is read is classified.
-MAX_NODES = 100_000           # tags, text runs and comments the parser builds
+MAX_NODES = 30_000            # tags, text runs and comments the parser builds
 MAX_DEPTH = 512               # tags open at once
 MAX_TEXT_CHARS = 1_000_000    # characters of each text built from the page
-MAX_PARSE_EVENTS = 1_000_000  # tags, attributes and text pieces html.parser reads
+MAX_PARSE_EVENTS = 300_000    # tags, attributes and text pieces html.parser reads
 MAX_TAG_ATTRIBUTES = 10_000   # attributes in one tag
 _NON_BODY = {'head', 'title', 'meta', 'link', 'script', 'style', 'template', 'svg', 'canvas', 'iframe', 'object', 'embed'}
 _BLOCKS = {

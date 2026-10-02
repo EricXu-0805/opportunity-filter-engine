@@ -260,11 +260,11 @@ def test_a_page_past_the_reader_limits_is_refused_as_too_large_at_once(importer,
 def test_a_page_crowded_with_navigation_does_not_hold_the_import_route(importer, monkeypatch):
     # The contact capture and the model excerpt each removed every <nav> from a
     # copy of the page one at a time, each removal searching its parent's
-    # children: 10,000 of them held the route for 3.9 s. The page is now
-    # parsed once and read without removing anything.
+    # children: 14,000 of them, each followed by a <span>, took the old route
+    # 3.9 s. The page is now parsed once and read without removing anything.
     client, calls = importer
     html = ('<html><body><main><h1>Undergraduate Research Assistant</h1><p>The Soil Microbiology Lab seeks an '
-            'undergraduate research assistant for spring 2027.</p>' + '<nav>x</nav><span>y</span>' * 10_000
+            'undergraduate research assistant for spring 2027.</p>' + '<nav></nav><span></span>' * 14_000
             + '</main></body></html>')
     monkeypatch.setattr(url_parser.requests, 'get', lambda *a, **k: response(html))
     started = time.perf_counter()

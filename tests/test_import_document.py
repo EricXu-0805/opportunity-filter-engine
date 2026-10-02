@@ -688,18 +688,18 @@ def test_blocked_title_rule_reads_a_long_punctuation_run_in_linear_time(where, m
 # up through every tag above each <h1>, input, div, section and form it
 # weighed, read each nested heading's text again and recursed down the page;
 # bs4 searched a list of the void tags it had closed on every end tag, and the
-# charset in a <meta> in quadratic time. Each page below, 16 KB to 332 KB,
+# charset in a <meta> in quadratic time. Each page below, 16 KB to 267 KB,
 # took the seconds shown with the old reader (one run each on a laptop).
 @pytest.mark.parametrize(('html', 'refused'), [
     pytest.param(page(SOIL_POSTING.format('') + '<h1>' * 4000 + 'x'), True, id='4000-nested-h1-4.2s'),
     pytest.param(page(SOIL_POSTING.format('') + '<div>' * 4000 + 'x'), True, id='4000-nested-div-3.0s'),
     pytest.param(page(SOIL_POSTING.format('') + '<div>' * 500 + '<div></div>' * 20_000), False,
                  id='boxes-500-deep-4.0s'),
-    pytest.param(page(SOIL_POSTING.format('') + '<div hidden>' + '<div>' * 300 + '<div></div>' * 30_000 + '</div>'),
-                 False, id='hidden-boxes-300-deep-3.5s'),
-    pytest.param(page(SOIL_POSTING.format('') + '<div>' * 500 + '<h1>Lab news</h1>' * 15_000), False,
-                 id='headings-500-deep-3.0s'),
-    pytest.param(page(SOIL_POSTING.format('') + '<br>' * 30_000 + '</p>' * 30_000), False, id='void-then-end-tags-3.9s'),
+    pytest.param(page(SOIL_POSTING.format('') + '<div hidden>' + '<div>' * 500 + '<div></div>' * 24_000 + '</div>'),
+                 False, id='hidden-boxes-500-deep-4.2s'),
+    pytest.param(page(SOIL_POSTING.format('') + '<div>' * 500 + '<h1>Lab news</h1>' * 14_000), False,
+                 id='headings-500-deep-2.5s'),
+    pytest.param(page(SOIL_POSTING.format('') + '<br>' * 29_000 + '</p>' * 29_000), False, id='void-then-end-tags-3.2s'),
     pytest.param(page(SOIL_POSTING.format(''), '<meta http-equiv="Content-Type" content="' + '\n' * 100_000 + '">'),
                  False, id='meta-charset-line-breaks-6.0s'),
 ])
