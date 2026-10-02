@@ -1352,6 +1352,12 @@ describe('positioned text items', () => {
         ['github.com/jordan-lee/robotics-lab-build-scripts-and-release-checklists'], kept],
       [[at('Research Intern, Robotics Lab', 50, 140, 724), at('Jun 2025 - Aug 2025', 360, 90, 724, { hasEOL: true })],
         ['Research Intern, Robotics Lab\tJun 2025 - Aug 2025'], joined],
+      // A right-aligned field ends within about a word of the edge; a label
+      // column's gap does not bring its row anywhere near it.
+      [[at('Research Intern, Robotics Lab', 50, 140, 724), at('Jun 2025 - Aug 2025', 350, 90, 724, { hasEOL: true })],
+        ['Research Intern, Robotics Lab\tJun 2025 - Aug 2025'], joined],
+      [[at('Languages', 50, 45, 724), at('Python, SQL, Git', 160, 80, 724, { hasEOL: true })],
+        ['Languages\tPython, SQL, Git'], kept],
       [[at('Ported the lab inventory spreadsheet to a small web app and', 50, 380, 736, { hasEOL: true }),
         at('trained the staff to use it', 50, 120, 724, { hasEOL: true })],
       ['Ported the lab inventory spreadsheet to a small web app and trained the staff to use it'], joined],
@@ -1491,6 +1497,53 @@ describe('positioned text items', () => {
       '- Kept the shuttle schedule and the route maps that the dispatch coordinators and drivers rely on',
       'IBM Research',
       '- Trained a ResNet-18 baseline on chest X-rays from the hospital and then evaluated it on NIH ChestX-ray14 and a held-out split',
+    ]);
+  });
+
+  it('keeps a row of names joined by small words apart from a line that ends in a preposition', async () => {
+    // "of", "at", "for", "the" and the like join the words of a name ("UIUC
+    // Department of Physics"); only another lowercase word reads as the rest
+    // of a sentence ("NIH ChestX-ray14 and a held-out split").
+    const item = '- Built the badge scanner that the volunteers at the food pantry use whenever they check in';
+    const page = (row: string) => pdfOf([
+      at('- Kept the shuttle schedule and the route maps that the dispatch coordinators and drivers rely on', 50, 500, 724, { hasEOL: true }),
+      at(item, 50, 500, 712, { hasEOL: true }),
+      at(row, 50, 160, 700),
+    ]);
+    for (const row of ['UIUC Department of Physics', 'NCSA at the University of Illinois', 'NSF Center for Digital Agriculture',
+      'IEEE Robotics and Automation Society', 'NIH National Institute on Aging', 'REU Program in Applied Mathematics',
+      'UNAM Facultad de Ciencias', 'UdelaR Universidad de la República']) {
+      mockGetDocument.mockReturnValue({ promise: Promise.resolve(page(row)) });
+      expect((await parseResumePDF(fakeFile())).raw_text.split('\n').slice(1)).toEqual([item, row]);
+    }
+    for (const row of ['NIH ChestX-ray14 and a held-out split', 'NIH ChestX-ray14 labels']) {
+      mockGetDocument.mockReturnValue({ promise: Promise.resolve(page(row)) });
+      expect((await parseResumePDF(fakeFile())).raw_text.split('\n').slice(1)).toEqual([`${item} ${row}`]);
+    }
+  });
+
+  it('reads a full stop as the end of a glyph item after an acronym only where a measure comes before it', async () => {
+    // "…a test score of 0.87" / "AUC on a held-out split." is a score and its
+    // metric. After an item that lacks its period, "NASA outreach day…" or
+    // "IEEE paper on…" is a line of its own.
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('- Wrote unit tests for the parser.', 50, 160, 736, { hasEOL: true }),
+      at('- Added a nightly job that checks the backups.', 50, 220, 724, { hasEOL: true }),
+      at('- Mapped bike lane gaps around campus with QGIS and presented the map to the facilities office', 50, 500, 712, { hasEOL: true }),
+      at('NASA outreach day for local middle schools.', 50, 200, 700, { hasEOL: true }),
+      at('- Built the bike map site, cut its load time by 40% and shared the survey form with the council', 50, 500, 688, { hasEOL: true }),
+      at('IEEE paper on the bike map accepted at a regional workshop.', 50, 270, 676, { hasEOL: true }),
+      at('- Trained a convolutional baseline on chest X-rays from the hospital and reached a test score of 0.87', 50, 500, 664, { hasEOL: true }),
+      at('AUC on a held-out split.', 50, 110, 652),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      '- Wrote unit tests for the parser.',
+      '- Added a nightly job that checks the backups.',
+      '- Mapped bike lane gaps around campus with QGIS and presented the map to the facilities office',
+      'NASA outreach day for local middle schools.',
+      '- Built the bike map site, cut its load time by 40% and shared the survey form with the council',
+      'IEEE paper on the bike map accepted at a regional workshop.',
+      '- Trained a convolutional baseline on chest X-rays from the hospital and reached a test score of 0.87 AUC on a held-out split.',
     ]);
   });
 

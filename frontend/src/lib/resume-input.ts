@@ -124,13 +124,19 @@ const LOWERCASE_START = /^\p{Ll}(?![\p{L}\p{N}]*\p{Lu})/u;
 // words can also end an item ("…that the staff of the gait lab refer to"),
 // so a number after one is only a weak hint ("cut its runtime by" / "40%").
 const NUMBER_START = /^(?!(?:19|20)\d{2}\b)\d+(?:[,.]\d+)*(?:\/\d+(?:[,.]\d+)*)?%?(?=[\s,)]|$)/u;
-const MEASURE_START = /^(?!(?:19|20)\d{2}\b)(?:\d+(?:[,.]\d+)+(?:\/\d+(?:[,.]\d+)*)?%?|\d+%)(?=[\s)]|$)/u;
+const MEASURE = String.raw`(?!(?:19|20)\d{2}\b)(?:\d+(?:[,.]\d+)+(?:\/\d+(?:[,.]\d+)*)?%?|\d+%)`;
+const MEASURE_START = new RegExp(String.raw`^${MEASURE}(?=[\s)]|$)`, 'u');
+const MEASURE_END = new RegExp(String.raw`(?:^|\s)${MEASURE}$`, 'u');
 const TAKES_NUMBER = /(?:^|\s)(?:by|to|from|over|under|at|with|about|around|nearly|almost|approximately|roughly|reaching|reached|GPA)$/u;
 const LABEL = /^[^,:：]{1,40}(?::\s|：)/u;
 // A row of its own rather than the rest of a sentence: a title and its
 // description split by a spaced dash or bar, or a label ("Coursework: …").
 const ROW = new RegExp(String.raw`\s[-–—|]\s|${LABEL.source}`, 'u');
 const YEAR = /\b(?:19|20)\d{2}\b/u;
+// A lowercase word other than the small words that join the words of a name
+// ("UIUC Department of Physics", "NCSA at the University of Illinois"): the
+// rest of a sentence ("NIH ChestX-ray14 and a held-out split").
+const SENTENCE_WORD = /\s(?!(?:of|and|for|the|in|at|on|de|la)(?:\s|$))\p{Ll}/u;
 const ARTICLE = /^(?:a|an|the|this|these|our|my)\s/iu;
 const AWARD = /\b(?:finalist|semifinalist|winner|recipient|award|prize|scholarship|fellowship|honou?rs?|medal(?:ist)?|champion|runner-up|mention)\b/iu;
 const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
@@ -210,13 +216,15 @@ function nameStart(after: string): boolean {
  *  must agree without slack. A lone word or CJK character that cannot stand
  *  as a line of its own ("GPU.", "钟"). A number after a preposition that
  *  takes one ("by" / "40%"). A preposition that could also end the item,
- *  before a name and lowercase words ("ImageNet and a held-out split", not
- *  "IBM Research", "Research Intern, …" or "Mentored…"). In a glyph item on
- *  a page whose glyph items end with a full stop, a next line that ends the
- *  sentence and opens with an acronym or a model number ("AUC on a held-out
- *  split.", not "PantryPal is a tracker…", which may describe a project of
- *  its own), or after a preposition, with any word but an article ("A web
- *  app…"). None of them carries a line on into a role row. */
+ *  before a name and lowercase words that are not part of a name ("ImageNet
+ *  and a held-out split", not "IBM Research", "UIUC Department of Physics",
+ *  "Research Intern, …" or "Mentored…"). In a glyph item on a page whose
+ *  glyph items end with a full stop, a next line that ends the sentence and
+ *  opens with a model number ("R21 application.") or with an acronym right
+ *  after a measure ("0.87" / "AUC on a held-out split.", not "NASA outreach
+ *  day…" or "PantryPal is a tracker…", which may be lines of their own), or
+ *  after a preposition, with any word but an article ("A web app…"). None of
+ *  them carries a line on into a role row. */
 export function weakWrapEvidence(before: string, after: string, periodItem: boolean): boolean {
   const ends = periodItem && SENTENCE_END.test(after) && !ROW.test(after);
   const characters = Array.from(after);
@@ -225,7 +233,11 @@ export function weakWrapEvidence(before: string, after: string, periodItem: bool
   if (roleRow(after)) return false;
   if (!/\s/u.test(after) && SENTENCE_END.test(after)) return true;
   if (NUMBER_START.test(after) && TAKES_NUMBER.test(before)) return true;
-  if (nameStart(after)) return (ends && !/\p{Ll}/u.test(firstWord(after))) || (PARTICLE.test(before) && /\s\p{Ll}/u.test(after));
+  if (nameStart(after)) {
+    const first = firstWord(after);
+    return (ends && !/\p{Ll}/u.test(first) && (/\p{N}/u.test(first) || MEASURE_END.test(before)))
+      || (PARTICLE.test(before) && SENTENCE_WORD.test(after));
+  }
   return ends && PARTICLE.test(before) && !ARTICLE.test(after);
 }
 

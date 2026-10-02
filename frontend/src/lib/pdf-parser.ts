@@ -167,6 +167,9 @@ const COLUMN = 2;
 const NARROW = 20;
 const SLACK = 1.3;
 const JUSTIFIED = 0.05;
+// A right-aligned field ends within about a word of its column's edge; a
+// label column's gap can leave its row far short of it.
+const REACH = 2;
 const PITCH_SLACK = 1.15;
 
 const BULLET_GLYPH = /^[•●▪◦‣∙·*–—\-■►➢✓◆\uf0b7\uf0a7\uf076\uf0d8\uf0fc]$/u;
@@ -255,11 +258,11 @@ function columnOf(shapes: Array<LineShape | null>, line: LineShape): Column {
   return { left, right: right === -Infinity ? line.right : right };
 }
 
-/** Whether another line shows where this line's column ends: a row with a
- *  right-aligned field or a line that the words carry on (`edges`), or a
- *  different line that ends exactly where this one does, as justified lines
- *  do. Otherwise this line may only be the longest of lines that never wrap,
- *  not a full one. */
+/** Whether another line shows where this line's column ends: a row whose
+ *  right-aligned field reaches the edge or a line that the words carry on
+ *  (`edges`), or a different line that ends exactly where this one does, as
+ *  justified lines do. Otherwise this line may only be the longest of lines
+ *  that never wrap, not a full one. */
 function edgeShown(shapes: Array<LineShape | null>, index: number, texts: string[], edges: readonly boolean[]): boolean {
   const line = shapes[index]!;
   const text = texts[index].trim();
@@ -370,10 +373,11 @@ function pageText(items: readonly unknown[]): string {
     if (!hangs[index]) item = glyph[index] ? shape : null;
   }
   const periodItems = glyphItemsEndWithStop(texts, (index) => !!shapes[index]?.tabular);
-  // Each line's column is measured once, and only for a line that may wrap.
+  // Each line's column is measured once, and only for a line that may wrap
+  // or a row that may show the column's edge.
   const columns: Column[] = [];
   const column = (index: number) => (columns[index] ??= columnOf(shapes, shapes[index]!));
-  const edges = shapes.map((shape, index) => !!shape && (shape.tabular
+  const edges = shapes.map((shape, index) => !!shape && ((shape.tabular && column(index).right - shape.right <= REACH * shape.size)
     || (index + 1 < texts.length && wrapSeparator(shapes, index + 1, texts, pitch, false, column, null, hangs) !== null)));
   let out = texts[0];
   let bulletItem = glyph[0];
