@@ -111,13 +111,16 @@ const YEAR_END = /\b(?:19|20)\d{2}$/u;
 const CONTINUES_AFTER = /(?:\p{L}[-\u2010\u2011]|[,:&/(，、：（《「『]|\s[-–—+]|(?:^|\s)(?:and|or|of|the|a|an|as|via|using|including|between|than|that|which|while|per))$/u;
 const PARTICLE = /(?:^|\s)(?:to|for|in|on|with|by|at|from|over|under|into|across)$/u;
 // A line that cannot open an item: a lowercase word that is not a name
-// ("iOS"), "&" or a bracket, or a measure a wrap moved down ("12,000",
-// "0.87", "3.7/4.0", "78%"). A year or a bare count can open one ("12
-// students mentored…").
-const CONTINUES_BEFORE = /^(?:\p{Ll}(?![\p{L}\p{N}]*\p{Lu})|[&()%]|(?!(?:19|20)\d{2}\b)\d+(?:[,.]\d+)+(?:\/\d+(?:[,.]\d+)*)?%?(?=[\s)]|$)|\d+%(?=[\s)]|$))/u;
-// A break a word or two after a comma falls inside a list item ("Signals and
-// Systems, Biomedical" / "Imaging"); a comma further back says nothing.
-const LIST_TAIL = /,\s+\S+(?:\s+\S+)?$/u;
+// ("iOS"), "&" or a bracket.
+const CONTINUES_BEFORE = /^(?:\p{Ll}(?![\p{L}\p{N}]*\p{Lu})|[&()%])/u;
+// A number opens an item as often as it goes on one ("12 students
+// mentored…", "40% faster builds…", "3.92/4.00 GPA, Dean's List"). It goes
+// on a line that ends in a word that takes a number ("cut its runtime by" /
+// "40%", "about" / "12,000", "GPA" / "3.7/4.0"), and a measure goes on
+// after ";" ("3,000 tweets;" / "78% accuracy"). A year is a date of its own.
+const NUMBER_START = /^(?!(?:19|20)\d{2}\b)\d+(?:[,.]\d+)*(?:\/\d+(?:[,.]\d+)*)?%?(?=[\s,)]|$)/u;
+const MEASURE_START = /^(?!(?:19|20)\d{2}\b)(?:\d+(?:[,.]\d+)+(?:\/\d+(?:[,.]\d+)*)?%?|\d+%)(?=[\s)]|$)/u;
+const TAKES_NUMBER = /(?:^|\s)(?:by|to|from|over|under|at|with|about|around|nearly|almost|approximately|roughly|reaching|reached|GPA)$/u;
 const LABEL = /^[^,:：]{1,40}(?::\s|：)/u;
 // A row of its own rather than the rest of a sentence: a title and its
 // description split by a spaced dash or bar, or a label ("Coursework: …").
@@ -125,7 +128,6 @@ const ROW = new RegExp(String.raw`\s[-–—|]\s|${LABEL.source}`, 'u');
 const YEAR = /\b(?:19|20)\d{2}\b/u;
 const ARTICLE = /^(?:a|an|the|this|these|our|my)\s/iu;
 const AWARD = /\b(?:finalist|semifinalist|winner|recipient|award|prize|scholarship|fellowship|honou?rs?|medal(?:ist)?|champion|runner-up|mention)\b/iu;
-const PLACE_END = new RegExp(String.raw`${RESUME_PLACE}$`, 'u');
 const CJK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
 // CJK text and its full-width punctuation wrap with no space at the break.
 const CJK_BREAK = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\u3000-\u303f\uff00-\uffef]/u;
@@ -154,14 +156,6 @@ export function lineBreakText(before: string, after: string): boolean {
     || RESUME_EMAIL.test(first) || RESUME_URL.test(first) || RESUME_PHONE.exec(after)?.index === 0;
 }
 
-/** A run of short comma-separated names ("Imaging, Fluid Mechanics"), after
- *  a label and a glyph. An item that ends in ", SQL" or ", IL" is a sentence
- *  with a short tail, and the next item is a sentence too. */
-function listLike(line: string): boolean {
-  return line.replace(BULLET_LINE, '').replace(LABEL, '').split(/,\s+/u)
-    .every((part) => part.trim().split(/\s+/u).length <= 4);
-}
-
 /** A row that names a role or an award in its first two fields
  *  ("Teaching Assistant, Statistics Department", "Finalist, …"). */
 function roleRow(line: string): boolean {
@@ -174,27 +168,23 @@ function openBracket(line: string): boolean {
 }
 
 /** The words at the break say the line goes on: the line before cannot end
- *  an item, the next line cannot open one, or the break falls inside a
- *  bracket or a date range. */
+ *  an item, the next line cannot open one, a number follows a word that
+ *  takes one, or the break falls inside a bracket or a date range. A list
+ *  cut after a comma and a name says nothing: the row of names under it is
+ *  as likely an organization ("Caterpillar Inc., Peoria") or an honors line
+ *  ("Dean's List, James Scholar") as the rest of the list. */
 export function wrapEvidence(before: string, after: string): boolean {
   return CONTINUES_AFTER.test(before) || CONTINUES_BEFORE.test(after) || openBracket(before)
+    || (NUMBER_START.test(after) && TAKES_NUMBER.test(before)) || (MEASURE_START.test(after) && before.endsWith(';'))
     || (DASH_CONTINUATION.test(after) && YEAR_END.test(before));
-}
-
-/** A list cut a word or two after a comma, whose next line is a list of short
- *  names too: not a label, a title and its description, or a row that names
- *  a role or an award, a year or a place ("Caterpillar, Peoria, IL"). */
-export function listContinues(before: string, after: string): boolean {
-  return LIST_TAIL.test(before) && listLike(before) && listLike(after) && /,\s/u.test(after)
-    && !ROW.test(after) && !YEAR.test(after) && !PLACE_END.test(after) && !roleRow(after);
 }
 
 /** A first word that is a name in itself, not one that opens an item: an
  *  acronym, or a word with a digit or a capital inside ("AUC", "R21",
- *  "Grad-CAM", "PyTorch"), and not a year. */
+ *  "Grad-CAM", "PyTorch"). A number is not one ("25% fewer tickets…"). */
 function nameStart(after: string): boolean {
   const word = firstWord(after).replace(/^[^\p{L}\p{N}]+/u, '');
-  return (/\p{N}/u.test(word) || (word.match(/\p{Lu}/gu)?.length ?? 0) > 1) && !YEAR.test(word);
+  return /^\p{L}/u.test(word) && (/\p{N}/u.test(word) || (word.match(/\p{Lu}/gu)?.length ?? 0) > 1);
 }
 
 /** Hints too weak to carry a line on by themselves, so the page's geometry

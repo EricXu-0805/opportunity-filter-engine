@@ -1,6 +1,6 @@
 import type { ResumeParseResponse } from './types';
 import {
-  BULLET_LINE, firstWord, glyphItemsEndWithStop, glyphLine, lineBreakText, listContinues, MAX_RESUME_TEXT_CHARACTERS,
+  BULLET_LINE, firstWord, glyphItemsEndWithStop, glyphLine, lineBreakText, MAX_RESUME_TEXT_CHARACTERS,
   resumeTextCharacters, weakWrapEvidence, wrapEvidence, wrapJoin,
 } from './resume-input';
 import { createPdfResourceLoaders, PDF_CMAP_URL, PDF_STANDARD_FONT_URL } from './pdf-resources';
@@ -237,7 +237,7 @@ function wrapSeparator(
   const step = prev.baseline - next.baseline;
   if (step < 0.8 * prev.size || step > PITCH_SLACK * (pitch.get(Math.round(prev.size * 2)) ?? Infinity)) return null;
   if (Math.abs(next.left - prev.left) > ALIGN * prev.size && Math.abs(next.left - prev.textLeft) > ALIGN * prev.size) return null;
-  const evidence = wrapEvidence(before, after) || listContinues(before, after);
+  const evidence = wrapEvidence(before, after);
   if (!evidence && !weakWrapEvidence(before, after, periodItem)) return null;
   // The column's right edge, from the lines aligned with this one. A line
   // with no space in it cannot wrap and may overflow (a long email address).
