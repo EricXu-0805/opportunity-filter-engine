@@ -110,9 +110,12 @@ const YEAR_END = /\b(?:19|20)\d{2}$/u;
 // can end an item, and so can a preposition ("…two other groups rely on").
 const CONTINUES_AFTER = /(?:\p{L}[-\u2010\u2011]|[,:&/(，、：（《「『]|\s[-–—+]|(?:^|\s)(?:and|or|of|the|a|an|as|via|using|including|between|than|that|which|while|per))$/u;
 const PARTICLE = /(?:^|\s)(?:to|for|in|on|with|by|at|from|over|under|into|across)$/u;
-// A line that cannot open an item: a lowercase word that is not a name
-// ("iOS"), "&" or a bracket.
-const CONTINUES_BEFORE = /^(?:\p{Ll}(?![\p{L}\p{N}]*\p{Lu})|[&()%])/u;
+// A line that cannot open an item: "&", "%" or a bracket.
+const CONTINUES_BEFORE = /^[&()%]/u;
+// A lowercase first word that is not a name ("iOS") finishes the sentence
+// above far more often than it opens an item, but a tool written in
+// lowercase can open one ("pandas pipeline that…", "scikit-learn baseline…").
+const LOWERCASE_START = /^\p{Ll}(?![\p{L}\p{N}]*\p{Lu})/u;
 // A number opens an item as often as it goes on one ("12 students
 // mentored…", "40% faster builds…", "3.92/4.00 GPA, Dean's List"). It goes
 // on a line that ends in a word that takes a number ("about" / "12,000",
@@ -176,10 +179,23 @@ function openBracket(line: string): boolean {
  *  of names under it is as likely an organization ("Caterpillar Inc.,
  *  Peoria") or an honors line ("Dean's List, James Scholar") as the rest of
  *  the list. */
-export function wrapEvidence(before: string, after: string): boolean {
+function wordsCarryOn(before: string, after: string): boolean {
   return CONTINUES_AFTER.test(before) || CONTINUES_BEFORE.test(after) || openBracket(before)
     || (NUMBER_START.test(after) && TAKES_NUMBER.test(before) && !PARTICLE.test(before))
     || (MEASURE_START.test(after) && before.endsWith(';')) || (DASH_CONTINUATION.test(after) && YEAR_END.test(before));
+}
+
+/** First-tier evidence that a line goes on: the words at the break carry it
+ *  on, or the next line opens with a lowercase word. */
+export function wrapEvidence(before: string, after: string): boolean {
+  return wordsCarryOn(before, after) || LOWERCASE_START.test(after);
+}
+
+/** Only the next line's lowercase first word carries the line on, and more
+ *  words follow it, so the line could open an item of its own; a lone word
+ *  ("district.") cannot. The page must then show where the column ends. */
+export function lowercaseOpening(before: string, after: string): boolean {
+  return LOWERCASE_START.test(after) && /\s/u.test(after) && !wordsCarryOn(before, after);
 }
 
 /** A first word that is a name in itself, not one that opens an item: an

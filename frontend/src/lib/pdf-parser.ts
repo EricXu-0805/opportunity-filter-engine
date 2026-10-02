@@ -1,6 +1,6 @@
 import type { ResumeParseResponse } from './types';
 import {
-  BULLET_LINE, firstWord, glyphItemsEndWithStop, glyphLine, lineBreakText, MAX_RESUME_TEXT_CHARACTERS,
+  BULLET_LINE, firstWord, glyphItemsEndWithStop, glyphLine, lineBreakText, lowercaseOpening, MAX_RESUME_TEXT_CHARACTERS,
   resumeTextCharacters, weakWrapEvidence, wrapEvidence, wrapJoin,
 } from './resume-input';
 import { createPdfResourceLoaders, PDF_CMAP_URL, PDF_STANDARD_FONT_URL } from './pdf-resources';
@@ -273,12 +273,15 @@ function edgeShown(shapes: Array<LineShape | null>, index: number, texts: string
  *  next line's first word could not have fitted. `periodItem` says the
  *  previous line belongs to an item that opened with a bullet glyph or
  *  number, on a page whose glyph items end with a full stop, so a next line
- *  that ends a sentence may finish that item. A weak hint also needs the
- *  page to show where the column ends (`edges`, see edgeShown); without
- *  `edges`, only the words can carry a line on. */
+ *  that ends a sentence may finish that item. A weak hint, and a next line
+ *  whose lowercase words could open an item of their own, also need the page
+ *  to show where the column ends (`edges`, see edgeShown); without `edges`,
+ *  only the words that settle it by themselves carry a line on. A lowercase
+ *  line that hangs under the text of the glyph item above it (`hangs`) needs
+ *  no edge: the next item would open at the glyph. */
 function wrapSeparator(
   shapes: Array<LineShape | null>, index: number, texts: string[], pitch: Map<number, number>, periodItem: boolean,
-  column: (index: number) => Column, edges: readonly boolean[] | null,
+  column: (index: number) => Column, edges: readonly boolean[] | null, hangs: readonly boolean[],
 ): string | null {
   const prev = shapes[index - 1];
   const next = shapes[index];
@@ -286,7 +289,9 @@ function wrapSeparator(
   const after = texts[index].trim();
   if (!prev || !next || !sameParagraph(shapes, index, texts, pitch)) return null;
   const evidence = wrapEvidence(before, after);
-  if (!evidence && (!edges || !weakWrapEvidence(before, after, periodItem) || !edgeShown(shapes, index - 1, texts, edges))) return null;
+  const unsure = evidence ? lowercaseOpening(before, after) && !hangs[index] : !!edges && weakWrapEvidence(before, after, periodItem);
+  if (!evidence && !unsure) return null;
+  if (unsure && (!edges || !edgeShown(shapes, index - 1, texts, edges))) return null;
   // Glyph widths are unknown, so the first word's width is estimated from
   // the next line's average character width. Where the text itself says it
   // goes on, a generous estimate decides; otherwise the plain one must.
@@ -356,16 +361,24 @@ function pageText(items: readonly unknown[]): string {
     if (step >= 0.8 * prev.size && step < (pitch.get(key) ?? Infinity)) pitch.set(key, step);
   }
   const glyph = texts.map(glyphLine);
+  // A line that hangs under the text of the glyph item above it, as that
+  // item's wrapped lines do; the next item would open at the glyph.
+  const hangs: boolean[] = [];
+  let item: LineShape | null = null;
+  for (const [index, shape] of shapes.entries()) {
+    hangs.push(!glyph[index] && !!shape && !!item && Math.abs(shape.left - item.textLeft) < Math.abs(shape.left - item.left));
+    if (!hangs[index]) item = glyph[index] ? shape : null;
+  }
   const periodItems = glyphItemsEndWithStop(texts, (index) => !!shapes[index]?.tabular);
   // Each line's column is measured once, and only for a line that may wrap.
   const columns: Column[] = [];
   const column = (index: number) => (columns[index] ??= columnOf(shapes, shapes[index]!));
   const edges = shapes.map((shape, index) => !!shape && (shape.tabular
-    || (index + 1 < texts.length && wrapSeparator(shapes, index + 1, texts, pitch, false, column, null) !== null)));
+    || (index + 1 < texts.length && wrapSeparator(shapes, index + 1, texts, pitch, false, column, null, hangs) !== null)));
   let out = texts[0];
   let bulletItem = glyph[0];
   for (let index = 1; index < texts.length; index++) {
-    const separator = wrapSeparator(shapes, index, texts, pitch, bulletItem && periodItems, column, edges);
+    const separator = wrapSeparator(shapes, index, texts, pitch, bulletItem && periodItems, column, edges, hangs);
     // A joined line stays in the item it continues; any other line opens one.
     if (separator === null) bulletItem = glyph[index];
     out += separator ?? '\n';

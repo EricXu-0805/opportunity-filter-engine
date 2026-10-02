@@ -1389,6 +1389,91 @@ describe('positioned text items', () => {
     ]);
   });
 
+  it('carries a line on into a lowercase first word only where another line shows the column edge', async () => {
+    // A tool written in lowercase can open an item ("pandas pipeline…",
+    // "scikit-learn baseline…"). In a column where no line wraps, the
+    // longest items only look full, and joins of this kind do not show the
+    // edge to each other.
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('Research Assistant, Plant Phenomics Lab, Jun 2025 - Aug 2025', 50, 300, 736, { hasEOL: true }),
+      at('Prototyped a wearable gait sensor and streamed its data to a phone', 50, 310, 724, { hasEOL: true }),
+      at('pandas pipeline that cleans the sensor logs every night', 50, 250, 712, { hasEOL: true }),
+      at('Wrote unit tests for the parser', 50, 160, 700, { hasEOL: true }),
+      at('Kept the lab inventory in a shared spreadsheet for the team', 50, 290, 688, { hasEOL: true }),
+      at('scikit-learn baseline for the plant imaging study', 50, 230, 676),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      'Research Assistant, Plant Phenomics Lab, Jun 2025 - Aug 2025',
+      'Prototyped a wearable gait sensor and streamed its data to a phone',
+      'pandas pipeline that cleans the sensor logs every night',
+      'Wrote unit tests for the parser',
+      'Kept the lab inventory in a shared spreadsheet for the team',
+      'scikit-learn baseline for the plant imaging study',
+    ]);
+    // A right-aligned date shows the edge, and so does a line that "and"
+    // carries on; the next line's lowercase words then go on.
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('Research Assistant, Plant Phenomics Lab', 50, 180, 736), at('Jun 2025 - Aug 2025', 460, 90, 736, { hasEOL: true }),
+      at('Prototyped a wearable gait sensor with an IMU and streamed the readings to a phone app every', 50, 500, 724, { hasEOL: true }),
+      at('night over the campus network', 50, 140, 712, { hasEOL: true }),
+      at('pandas pipeline that cleans the sensor logs every night', 50, 250, 700),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      'Research Assistant, Plant Phenomics Lab\tJun 2025 - Aug 2025',
+      'Prototyped a wearable gait sensor with an IMU and streamed the readings to a phone app every night over the campus network',
+      'pandas pipeline that cleans the sensor logs every night',
+    ]);
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('Ported the lab inventory spreadsheet to a small web app and', 50, 380, 736, { hasEOL: true }),
+      at('trained the staff to use it', 50, 120, 724, { hasEOL: true }),
+      at('Prototyped a wearable gait sensor and streamed its readings to a phone', 50, 375, 712, { hasEOL: true }),
+      at('every night over the campus network', 50, 160, 700, { hasEOL: true }),
+      at('Wrote unit tests for the parser', 50, 160, 688),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      'Ported the lab inventory spreadsheet to a small web app and trained the staff to use it',
+      'Prototyped a wearable gait sensor and streamed its readings to a phone every night over the campus network',
+      'Wrote unit tests for the parser',
+    ]);
+    // A line that hangs under a glyph item's text continues it: the next item
+    // would open at the glyph. A flat list shows no such thing, so with
+    // nothing else on the page to show the edge, its line stays apart.
+    const glyphItem = (glyph: string, indent: number) => pdfOf([
+      at(`${glyph} Prototyped a wearable gait sensor and streamed its readings to a phone over`, 50, 360, 736, { hasEOL: true }),
+      at('the campus network every night', 50 + indent, 140, 724, { hasEOL: true }),
+      at(`${glyph} Wrote unit tests for the parser`, 50, 160, 712),
+    ]);
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(glyphItem('•', 9)) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      '• Prototyped a wearable gait sensor and streamed its readings to a phone over the campus network every night',
+      '• Wrote unit tests for the parser',
+    ]);
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(glyphItem('-', 0)) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      '- Prototyped a wearable gait sensor and streamed its readings to a phone over',
+      'the campus network every night',
+      '- Wrote unit tests for the parser',
+    ]);
+    // A line hangs under the item right above it: not under a nested item's
+    // parent, and not after a line that does not hang.
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('• Built the volunteer scheduling tool for the food pantry and kept it running', 50, 360, 736, { hasEOL: true }),
+      at('◦ Wrote a calendar sync that the coordinators use to check open slots on their', 59, 345, 724, { hasEOL: true }),
+      at('phones before each shift', 59, 110, 712, { hasEOL: true }),
+      at('• Wrote unit tests for the parser', 50, 160, 700, { hasEOL: true }),
+      at('Kept the lab inventory and the order history in a shared spreadsheet', 50, 355, 688, { hasEOL: true }),
+      at('pandas pipeline that cleans the sensor logs every night', 59, 250, 676),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      '• Built the volunteer scheduling tool for the food pantry and kept it running',
+      '◦ Wrote a calendar sync that the coordinators use to check open slots on their',
+      'phones before each shift',
+      '• Wrote unit tests for the parser',
+      'Kept the lab inventory and the order history in a shared spreadsheet',
+      'pandas pipeline that cleans the sensor logs every night',
+    ]);
+  });
+
   it('carries a line that ends in a preposition on into a name only when lowercase words follow it', async () => {
     // "GitHub Campus Expert Program" and "IBM Research" are rows of names: an
     // organization or a program under the item, not the rest of its sentence.
