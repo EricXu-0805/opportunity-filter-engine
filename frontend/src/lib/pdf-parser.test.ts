@@ -1302,9 +1302,12 @@ describe('positioned text items', () => {
         ['Mentored three students in the robotics club'], kept],
       [[at('Mentored three students in the robotics club', 50, 400.2, 724, { hasEOL: true })],
         ['Mentored three students in the robotics club'], joined],
-      // The same line printed twice says nothing about the edge.
+      // The same line printed twice says nothing about the edge, and neither
+      // does a line that cannot wrap (a long link).
       [[at('Kept the build scripts and the release checklist that two other teams now rely on', 50, 400, 724, { hasEOL: true })],
         ['Kept the build scripts and the release checklist that two other teams now rely on'], kept],
+      [[at('github.com/jordan-lee/robotics-lab-build-scripts-and-release-checklists', 50, 400, 724, { hasEOL: true })],
+        ['github.com/jordan-lee/robotics-lab-build-scripts-and-release-checklists'], kept],
       [[at('Research Intern, Robotics Lab', 50, 140, 724), at('Jun 2025 - Aug 2025', 360, 90, 724, { hasEOL: true })],
         ['Research Intern, Robotics Lab\tJun 2025 - Aug 2025'], joined],
       [[at('Ported the lab inventory spreadsheet to a small web app and', 50, 380, 736, { hasEOL: true }),
@@ -1315,6 +1318,16 @@ describe('positioned text items', () => {
       mockGetDocument.mockReturnValue({ promise: Promise.resolve(page(...others)) });
       expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([...head, ...lines, 'Wrote unit tests for the parser']);
     }
+    // A line in another column shows that column's edge, not this one's.
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('Machine learning with PyTorch and', 40, 150, 736, { hasEOL: true }),
+      at('scikit-learn on lab data', 40, 100, 724, { hasEOL: true }),
+      at('Kept the build scripts and the release checklist that two other teams now rely on', 220, 330, 736, { hasEOL: true }),
+      at('NVIDIA Jetson boards in the robotics lab', 220, 170, 724),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      'Machine learning with PyTorch and scikit-learn on lab data', ...kept,
+    ]);
     // A line that only a weak hint joins does not show the edge to others:
     // the second item ends 2pt short of the two justified lines above.
     mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([

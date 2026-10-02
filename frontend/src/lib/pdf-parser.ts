@@ -233,18 +233,52 @@ function sameParagraph(shapes: Array<LineShape | null>, index: number, texts: st
   return Math.abs(next.left - prev.left) <= ALIGN * prev.size || Math.abs(next.left - prev.textLeft) <= ALIGN * prev.size;
 }
 
+/** Whether another line sits in the same column as this one: it starts at
+ *  this line's left edge or where its text starts after a bullet. */
+function sameColumn(other: LineShape, line: LineShape): boolean {
+  const tolerance = COLUMN * Math.max(other.size, line.size);
+  return Math.abs(other.left - line.left) <= tolerance || Math.abs(other.left - line.textLeft) <= tolerance;
+}
+
+interface Column { left: number; right: number }
+
+/** The left and right edges of a line's column, from the lines in it. A line
+ *  with no space in it cannot wrap and may overflow (a long email address). */
+function columnOf(shapes: Array<LineShape | null>, line: LineShape): Column {
+  let left = line.left;
+  let right = -Infinity;
+  for (const other of shapes) {
+    if (!other || !sameColumn(other, line)) continue;
+    left = Math.min(left, other.left);
+    if (other.wrappable || other.tabular) right = Math.max(right, other.right);
+  }
+  return { left, right: right === -Infinity ? line.right : right };
+}
+
+/** Whether another line shows where this line's column ends: a row with a
+ *  right-aligned field or a line that the words carry on (`edges`), or a
+ *  different line that ends exactly where this one does, as justified lines
+ *  do. Otherwise this line may only be the longest of lines that never wrap,
+ *  not a full one. */
+function edgeShown(shapes: Array<LineShape | null>, index: number, texts: string[], edges: readonly boolean[]): boolean {
+  const line = shapes[index]!;
+  const text = texts[index].trim();
+  return shapes.some((other, at) => !!other && sameColumn(other, line) && (other.wrappable || other.tabular)
+    && (edges[at] || (Math.abs(other.right - line.right) <= JUSTIFIED * line.size && texts[at].trim() !== text)));
+}
+
 /** The separator for a visual line break that is only a wrap, or null for a
  *  real one. A wrap continues the same paragraph, the words at the break
  *  carry the line on (resume-input.ts), and the previous line stops where the
  *  next line's first word could not have fitted. `periodItem` says the
  *  previous line belongs to an item that opened with a bullet glyph or
  *  number, on a page whose glyph items end with a full stop, so a next line
- *  that ends a sentence may finish that item. `edges` marks the lines that
- *  show where their column ends: rows with a column gap, and lines that the
- *  words alone carry on. Without it, only the words can carry a line on. */
+ *  that ends a sentence may finish that item. A weak hint also needs the
+ *  page to show where the column ends (`edges`, see edgeShown); without
+ *  `edges`, only the words can carry a line on. */
 function wrapSeparator(
   shapes: Array<LineShape | null>, index: number, texts: string[], pitch: Map<number, number>, periodItem: boolean,
-  edges: readonly boolean[] | null,
+  column: (index: number) => Column, edges: readonly boolean[] | null,
 ): string | null {
   const prev = shapes[index - 1];
   const next = shapes[index];
@@ -252,30 +286,11 @@ function wrapSeparator(
   const after = texts[index].trim();
   if (!prev || !next || !sameParagraph(shapes, index, texts, pitch)) return null;
   const evidence = wrapEvidence(before, after);
-  if (!evidence && (!edges || !weakWrapEvidence(before, after, periodItem))) return null;
-  // The column's right edge, from the lines aligned with this one. A line
-  // with no space in it cannot wrap and may overflow (a long email address).
-  // A weak hint also needs the column to show where it ends: a row with a
-  // right-aligned field, a line that wraps by its words, or a line that ends
-  // where this one does, as justified lines do. Otherwise this line may only
-  // be the longest of lines that never wrap, not a full one.
-  let left = prev.left;
-  let right = -Infinity;
-  let shown = false;
-  for (const [at, other] of shapes.entries()) {
-    if (!other) continue;
-    const tolerance = COLUMN * Math.max(other.size, prev.size);
-    if (Math.abs(other.left - prev.left) > tolerance && Math.abs(other.left - prev.textLeft) > tolerance) continue;
-    left = Math.min(left, other.left);
-    if (!other.wrappable && !other.tabular) continue;
-    right = Math.max(right, other.right);
-    if (edges?.[at] || (Math.abs(other.right - prev.right) <= JUSTIFIED * prev.size && texts[at].trim() !== before)) shown = true;
-  }
-  if (right === -Infinity) right = prev.right;
-  if (!evidence && !shown) return null;
+  if (!evidence && (!edges || !weakWrapEvidence(before, after, periodItem) || !edgeShown(shapes, index - 1, texts, edges))) return null;
   // Glyph widths are unknown, so the first word's width is estimated from
   // the next line's average character width. Where the text itself says it
   // goes on, a generous estimate decides; otherwise the plain one must.
+  const { left, right } = column(index - 1);
   const room = right - prev.right;
   const space = SPACE * next.size;
   const word = Array.from(firstWord(after)).length * (next.right - next.left) / Array.from(after).length;
@@ -342,12 +357,15 @@ function pageText(items: readonly unknown[]): string {
   }
   const glyph = texts.map(glyphLine);
   const periodItems = glyphItemsEndWithStop(texts, (index) => !!shapes[index]?.tabular);
+  // Each line's column is measured once, and only for a line that may wrap.
+  const columns: Column[] = [];
+  const column = (index: number) => (columns[index] ??= columnOf(shapes, shapes[index]!));
   const edges = shapes.map((shape, index) => !!shape && (shape.tabular
-    || (index + 1 < texts.length && wrapSeparator(shapes, index + 1, texts, pitch, false, null) !== null)));
+    || (index + 1 < texts.length && wrapSeparator(shapes, index + 1, texts, pitch, false, column, null) !== null)));
   let out = texts[0];
   let bulletItem = glyph[0];
   for (let index = 1; index < texts.length; index++) {
-    const separator = wrapSeparator(shapes, index, texts, pitch, bulletItem && periodItems, edges);
+    const separator = wrapSeparator(shapes, index, texts, pitch, bulletItem && periodItems, column, edges);
     // A joined line stays in the item it continues; any other line opens one.
     if (separator === null) bulletItem = glyph[index];
     out += separator ?? '\n';
