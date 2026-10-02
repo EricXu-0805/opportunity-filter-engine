@@ -6,8 +6,10 @@ The caller owns fetch limits and the complete downstream model-input budget.
 from __future__ import annotations
 
 import re
+from itertools import islice
 
-from bs4 import BeautifulSoup, Comment, Declaration, Doctype, NavigableString, ProcessingInstruction, Tag
+from bs4 import BeautifulSoup, CData, Comment, Declaration, Doctype, NavigableString, ProcessingInstruction, Tag
+from bs4.builder._htmlparser import BeautifulSoupHTMLParser, HTMLParserTreeBuilder
 
 from ..contact_instructions import _BLOCKED_PAGE_TITLE
 
@@ -20,6 +22,15 @@ _REASONS = {
     'javascript_required': 'The fetched page contains no readable static source.',
     'too_large': 'The source exceeds the supported input limit.',
 }
+# An imported URL can return any page up to the fetch limit. Every pass below
+# reads it in time linear in its size, and these limits bound that size. A
+# page past one is refused whole as too large, never read in part, so a limit
+# cannot change how a page that is read is classified.
+MAX_NODES = 30_000            # tags, text runs and comments the parser builds
+MAX_DEPTH = 512               # tags open at once
+MAX_TEXT_CHARS = 1_000_000    # characters of each text built from the page
+MAX_PARSE_EVENTS = 300_000    # tags, attributes and text pieces html.parser reads
+MAX_TAG_ATTRIBUTES = 10_000   # attributes in one tag
 _NON_BODY = {'head', 'title', 'meta', 'link', 'script', 'style', 'template', 'svg', 'canvas', 'iframe', 'object', 'embed'}
 _BLOCKS = {
     'address', 'article', 'aside', 'blockquote', 'caption', 'dd', 'details', 'dialog', 'div',
@@ -27,6 +38,24 @@ _BLOCKS = {
     'h4', 'h5', 'h6', 'header', 'hr', 'legend', 'main', 'nav', 'ol', 'p', 'pre', 'section',
     'summary', 'table', 'tbody', 'thead', 'tfoot', 'ul',
 }
+# Controls, headings, navigation and no-script notices: never source on their own.
+_CHROME = frozenset({'noscript', 'button', 'input', 'label', 'nav', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'})
+_CHROME_AND_FORMS = _CHROME | {'form'}
+_LINK_CHROME = frozenset({'footer', 'header', 'nav'})
+_GATE_BOXES = frozenset({'input', 'div', 'section', 'form'})
+# get_text reads these string classes and no others (not comments or script).
+_TEXT_TYPES = (NavigableString, CData)
+_UNRENDERED = (Comment, Declaration, Doctype, ProcessingInstruction)
+_SPACE_RUN = re.compile(r'\s+')
+_SURROGATE = re.compile('[\ud800-\udfff]')
+_SENTENCE_BREAK = re.compile(r'(?<=[.!?])\s+|(?<=[;。！？；])\s*')
+# A tag's name and the attributes after it, as html.parser's locatetagend reads them.
+_TAG_NAME = re.compile(r'[a-zA-Z][^\t\n\r\f />]*[\t\n\r\f /]*')
+_TAG_ATTRIBUTE = re.compile(
+    r'(?<=[\'"\t\n\r\f /])[^\t\n\r\f />][^\t\n\r\f /=>]*'
+    r'(?:[\t\n\r\f ]*=[\t\n\r\f ]*(?:\'[^\']*\'|"[^"]*"|(?![\'"])[^>\t\n\r\f ]*))?[\t\n\r\f /]*'
+)
+_CELL = object()
 _HIDDEN_STYLE = re.compile(r'(?:^|;)\s*(?:display\s*:\s*none|visibility\s*:\s*(?:hidden|collapse))\s*(?:!important\s*)?(?:;|$)', re.I)
 _JS_WALL = re.compile(
     r'\b(?:enable|turn on|activate)\s+(?:your\s+)?javascript\b|'
@@ -43,12 +72,53 @@ _ACCESS_SHELL = re.compile(
     r'(?:sign[ -]?in|log[ -]?in) to (?:continue|view (?:this|the) (?:page|content)|access (?:this|the) (?:page|content)))'
     r'[.!…\s]*$', re.I,
 )
-_LOADING_SHELL = re.compile(r'^(?:loading|please wait)[.!…\s]*$', re.I)
-_LOGIN = re.compile(r'^(?:sign[ -]?in|log[ -]?in)(?:[.!…]+|\s*[-|:–—].*)?$', re.I)
+# A page its scripts have yet to fill: nothing but loading lines. Not source,
+# and not a bot check either; the posting appears once the scripts run.
+# Each line is matched atomically. A run of "loading" words splits into lines
+# many ways, and retrying every split took exponential time on page text.
+_LOADING_SHELL = re.compile(
+    r'^(?>(?:loading(?:(?: [\w-]+){1,3}(?:\.+|…|,))?|please wait|'
+    r'(?:this|it) (?:may|might|can|could) take (?:a few|several|a couple of) (?:seconds|moments))[.…!,]*\s*)+$',
+    re.I,
+)
+# Titles an ordinary page can carry too: a sign-in page, a courtesy line, or a
+# stock check name a real posting may have as its title. They are a wall only
+# when nothing else on the page is readable.
+_GATE_TITLE = re.compile(
+    r'^(?:sign[ -]?in|log[ -]?in)(?:[.!…]+|\s*[-|:–—].*)?$|'
+    r'^(?:one moment,? please|(?:human|bot) verification|checking your browser)[.!…]*$', re.I,
+)
 _GATE_TEXT = re.compile(
     r'\b(?:sign[ -]?in|log[ -]?in|password|username|verify you are human|checking your browser|'
     r'cookies?|copyright|privacy policy|terms of (?:use|service)|all rights reserved)\b', re.I,
 )
+# A site can answer our server's address with a bot check while the same URL
+# opens normally for the student. Checks print these sentences and load these
+# scripts and frames, but an ordinary page can carry them too, so they refuse
+# only a page with nothing else to read.
+_CHALLENGE_TEXT = re.compile(
+    r'\b(?:(?:your|the|this) (?:request|browser|connection) is being (?:verified|checked)|'
+    r'verif(?:y|ying) (?:that )?you(?: are|\'re|’re) (?:a )?(?:human|not a (?:ro)?bot)|'
+    r'confirm you are (?:a )?human|making sure you(?: are|\'re|’re) not a (?:ro)?bot|'
+    r'checking (?:your browser|if the site connection is secure)|'
+    r'needs to review the security of your connection|performing security verification|'
+    r'(?:incapsula|imperva) incident|'
+    r'protected by anubis|ddos protection by|enable js and disable any ad ?blocker)\b',
+    re.I,
+)
+# Cloudflare's challenge-platform script is left out: Cloudflare adds it to
+# ordinary pages too, and its challenge page has the refused title or text.
+_CHALLENGE_SOURCE = re.compile(r'captcha-delivery\.com', re.I)
+# Imperva also loads this script on ordinary pages it protects; only its frame is a challenge.
+_CHALLENGE_FRAME = re.compile(r'/_Incapsula_Resource\b', re.I)
+# Only a vendor's bot-check page carries these ids, scripts and redirects, so
+# they refuse it whatever title and explanation it shows around them. Ids a
+# site can use for itself (challenge-form, challenge-running, px-captcha) are
+# not among them.
+_CHALLENGE_PAGE_IDS = {'cf-challenge-running', 'anubis_challenge', 'wsidchk-form'}
+_CHALLENGE_PAGE_SOURCE = re.compile(r'/\.within\.website/x/cmd/anubis/|/\.well-known/sgcaptcha\b', re.I)
+# Cloudflare's challenge form posts back with this token in its action.
+_CF_CHALLENGE_ACTION = re.compile(r'[?&]__cf_chl_')
 
 
 class ImportDocumentError(ValueError):
@@ -57,6 +127,132 @@ class ImportDocumentError(ValueError):
     def __init__(self, reason: str):
         self.reason = reason if reason in _REASONS else 'invalid_html'
         super().__init__(_REASONS[self.reason])
+
+
+class _ClosedVoidTags:
+    """The void tags bs4's html.parser builder closed itself, by name.
+
+    bs4 keeps them in a list and searches it on every end tag, so a page of
+    <br> tags followed by end tags parsed in quadratic time. Counts answer the
+    same questions in constant time.
+    """
+
+    def __init__(self):
+        self._counts: dict[str, int] = {}
+
+    def __contains__(self, name) -> bool:
+        return self._counts.get(name, 0) > 0
+
+    def append(self, name) -> None:
+        self._counts[name] = self._counts.get(name, 0) + 1
+
+    def remove(self, name) -> None:
+        if not self._counts.get(name):
+            raise ValueError(name)
+        self._counts[name] -= 1
+
+
+class _HTMLParser(BeautifulSoupHTMLParser):
+    """html.parser for one page, its own work held to the limits.
+
+    It reads each '<' or '&' that opens nothing as a text piece of its own:
+    5 MB of them took 3.2 s. It finds where a tag ends with one regular
+    expression whose memory grows by about 320 bytes for each attribute it
+    passes: one 5 MB tag of 'a ' took 806 MB, start tag or end tag alike.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.already_closed_empty_element = _ClosedVoidTags()
+        self._events = 0
+
+    def _read(self, pieces):
+        self._events += pieces
+        if self._events > MAX_PARSE_EVENTS:
+            raise ImportDocumentError('too_large')
+
+    def _count_attributes(self, start):
+        # One attribute at a time, before html.parser's expression walks them all.
+        rawdata = self.rawdata
+        name = _TAG_NAME.match(rawdata, start)
+        if name is None:
+            return
+        position, count = name.end(), 0
+        while attribute := _TAG_ATTRIBUTE.match(rawdata, position):
+            count += 1
+            if count > MAX_TAG_ATTRIBUTES:
+                raise ImportDocumentError('too_large')
+            position = attribute.end()
+        self._read(count)
+
+    def check_for_whole_start_tag(self, i):
+        self._count_attributes(i + 1)
+        return super().check_for_whole_start_tag(i)
+
+    def parse_endtag(self, i):
+        self._count_attributes(i + 2)
+        return super().parse_endtag(i)
+
+    def handle_starttag(self, tag, attrs, handle_empty_element=True):
+        self._read(1)
+        super().handle_starttag(tag, attrs, handle_empty_element)
+
+    def handle_endtag(self, tag, check_already_closed=True):
+        self._read(1)
+        super().handle_endtag(tag, check_already_closed)
+
+    def handle_data(self, data):
+        self._read(1)
+        super().handle_data(data)
+
+
+class _TreeBuilder(HTMLParserTreeBuilder):
+    def feed(self, markup, _parser_class=_HTMLParser):
+        super().feed(markup, _parser_class=_parser_class)
+
+    def set_up_substitutions(self, tag) -> bool:
+        # bs4 readies a <meta> charset for re-encoding the page, searching its
+        # content in time quadratic in its line breaks. Nothing re-encodes it.
+        return False
+
+
+class _Soup(BeautifulSoup):
+    """bs4's html.parser tree of a page, built in linear time within the limits."""
+
+    _nodes = 0
+
+    def reset(self):
+        self._nodes = 0
+        super().reset()
+
+    def _built(self):
+        self._nodes += 1
+        if self._nodes > MAX_NODES:
+            raise ImportDocumentError('too_large')
+
+    def handle_starttag(self, *args, **kwargs):
+        tag = super().handle_starttag(*args, **kwargs)
+        self._built()
+        # The stack starts with the document itself.
+        if len(self.tagStack) > MAX_DEPTH + 1:
+            raise ImportDocumentError('too_large')
+        return tag
+
+    def object_was_parsed(self, *args, **kwargs):
+        self._built()
+        super().object_was_parsed(*args, **kwargs)
+
+    def _linkage_fixer(self, el):
+        # bs4 relinks the last descendant of a node something was inserted
+        # into, walking up through every ancestor to do it. html.parser only
+        # appends to nodes still open, where that walk finds nothing to relink,
+        # yet it ran for every text run after a child: depth times runs.
+        return
+
+
+def parse_import_html(html: str) -> BeautifulSoup:
+    """Parse a page the way html.parser does, refusing one past the limits as too_large."""
+    return _Soup(html, builder=_TreeBuilder())
 
 
 def _hidden(tag: Tag) -> bool:
@@ -68,66 +264,212 @@ def _hidden(tag: Tag) -> bool:
     )
 
 
-def _visible_in_body(tag: Tag) -> bool:
-    return not any(_hidden(item) or item.name in _NON_BODY for item in [tag, *tag.parents] if isinstance(item, Tag))
+def _scan(soup: BeautifulSoup, root: Tag) -> tuple[list[str], bool]:
+    """The text of each visible <h1>, and whether root holds a visible sign-in or challenge box.
+
+    One pass from the top: a tag is visible when neither it nor any tag above
+    it is hidden or outside the body. Heading text is cut from one list of the
+    strings inside visible headings, so an <h1> inside another is not read
+    again; all heading text together must fit in MAX_TEXT_CHARS.
+    """
+    strings: list[str] = []
+    ends = [0]
+    ranges: list[list[int]] = []
+    gate = False
+    frames = [(iter(soup.contents), False, root is soup, False, None)]
+    while frames:
+        children, hidden, in_root, in_heading, slot = frames[-1]
+        node = next(children, None)
+        if node is None:
+            frames.pop()
+            if slot is not None:
+                ranges[slot][1] = len(strings)
+            continue
+        if isinstance(node, Tag):
+            name = node.name
+            node_hidden = hidden or name in _NON_BODY or _hidden(node)
+            if (in_root and not node_hidden and name in _GATE_BOXES
+                    and ((name == 'input' and str(node.get('type', '')).lower() == 'password')
+                         or node.get('id') == 'challenge-running')):
+                gate = True
+            heading = None
+            if name == 'h1' and not node_hidden:
+                heading = len(ranges)
+                ranges.append([len(strings), len(strings)])
+            frames.append((iter(node.contents), node_hidden, in_root or node is root,
+                           in_heading or heading is not None, heading))
+        elif in_heading and type(node) in _TEXT_TYPES:
+            text = node.strip()
+            if text:
+                strings.append(text)
+                ends.append(ends[-1] + len(text))
+    if sum(ends[end] - ends[start] + end - start - 1 for start, end in ranges if end > start) > MAX_TEXT_CHARS:
+        raise ImportDocumentError('too_large')
+    return [' '.join(strings[start:end]) for start, end in ranges], gate
 
 
-def _render(node, *, outside_form: bool = False, list_marker: str | None = None) -> str:
-    if isinstance(node, Comment | Declaration | Doctype | ProcessingInstruction):
-        return ''
-    if isinstance(node, NavigableString):
-        return re.sub(r'\s+', ' ', str(node))
-    if not isinstance(node, Tag):
-        return ''
-    name = node.name.lower()
-    if name in _NON_BODY or _hidden(node) or (outside_form and name in {'form', 'noscript', 'button', 'input', 'label', 'nav', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'}):
-        return ''
-    if outside_form and name == 'a' and any(
-        parent.name in {'footer', 'header', 'nav'} for parent in node.parents if isinstance(parent, Tag)
-    ):
-        return ''
-    if name == 'br':
-        return '\n'
-    if name == 'tr':
-        cells = node.find_all(['td', 'th'], recursive=False)
-        if cells:
-            # Join actual cells rather than trimming a trailing delimiter: empty
-            # first/last cells are meaningful column positions.
-            values = [
-                re.sub(r'[\n\t]+', ' ', _clean_text(_render(cell, outside_form=outside_form)))
-                for cell in cells
-            ]
-            return '\n' + '\t'.join(values) + '\n'
-    if name == 'ol':
-        # Assign each direct item's ordinal once. Computing all prior siblings
-        # separately for every item makes long source lists quadratic.
-        children = list(node.children)
-        item_count = sum(isinstance(child, Tag) and child.name == 'li' for child in children)
-        step = -1 if node.has_attr('reversed') else 1
-        try:
-            number = int(node.get('start', item_count if step == -1 else 1))
-        except (TypeError, ValueError):
-            number = None
-        rendered = []
-        for child in children:
-            marker = None
-            if isinstance(child, Tag) and child.name == 'li':
-                if number is not None:
-                    try:
-                        number = int(child.get('value', number))
-                    except (TypeError, ValueError):
-                        # Preserve the previous stable fallback: once an
-                        # ordinal is invalid, later items use bullet markers.
-                        number = None
-                marker = f'{number}. ' if number is not None else '- '
-                if number is not None:
-                    number += step
-            rendered.append(_render(child, outside_form=outside_form, list_marker=marker))
-        return '\n' + ''.join(rendered) + '\n'
-    text = ''.join(_render(child, outside_form=outside_form) for child in node.children)
-    if name == 'li':
-        return '\n' + (list_marker or '- ') + text.strip() + '\n'
-    return '\n' + text + '\n' if name in _BLOCKS else text
+class _TextWriter:
+    """Text built from a page, held under MAX_TEXT_CHARS.
+
+    A list item's text loses its leading and trailing whitespace: what leads
+    is dropped as it arrives and what trails is popped when the item closes,
+    so items nested to any depth are trimmed in one pass.
+    """
+
+    __slots__ = ('pieces', 'size', 'lstrip')
+
+    def __init__(self):
+        self.pieces: list[str] = []
+        self.size = 0
+        self.lstrip = False
+
+    def write(self, text: str) -> None:
+        self.size += len(text)
+        if self.size > MAX_TEXT_CHARS:
+            raise ImportDocumentError('too_large')
+        if self.lstrip:
+            text = text.lstrip()
+            if not text:
+                return
+            self.lstrip = False
+        if text:
+            self.pieces.append(text)
+
+    def open_item(self, marker: str) -> int:
+        self.write('\n' + marker)
+        self.lstrip = True
+        return len(self.pieces)
+
+    def close_item(self, start: int) -> None:
+        self.lstrip = False
+        pieces = self.pieces
+        while len(pieces) > start:
+            last = pieces[-1].rstrip()
+            if last:
+                pieces[-1] = last
+                break
+            pieces.pop()
+        self.write('\n')
+
+    def open_cell(self):
+        saved = self.pieces, self.lstrip
+        self.pieces, self.lstrip = [], False
+        return saved
+
+    def close_cell(self, saved) -> str:
+        # A cell's value sits on its row's line, so its line breaks, tabs and
+        # spaces each read as one space between its words.
+        value = ' '.join(''.join(self.pieces).split())
+        self.pieces, self.lstrip = saved
+        return value
+
+
+def _ol_items(node: Tag):
+    """An ordered list's children, each <li> with its number."""
+    # Assign each direct item's ordinal once. Computing all prior siblings
+    # separately for every item makes long source lists quadratic.
+    children = node.contents
+    item_count = sum(isinstance(child, Tag) and child.name == 'li' for child in children)
+    step = -1 if node.has_attr('reversed') else 1
+    try:
+        number = int(node.get('start', item_count if step == -1 else 1))
+    except (TypeError, ValueError):
+        number = None
+    for child in children:
+        marker = None
+        if isinstance(child, Tag) and child.name == 'li':
+            if number is not None:
+                try:
+                    number = int(child.get('value', number))
+                except (TypeError, ValueError):
+                    # Preserve the previous stable fallback: once an
+                    # ordinal is invalid, later items use bullet markers.
+                    number = None
+            marker = f'{number}. ' if number is not None else '- '
+            if number is not None:
+                number += step
+        yield child, marker
+
+
+def _flat_cells(cells: list[Tag]):
+    for index, cell in enumerate(cells):
+        if index:
+            yield _CELL, None
+        yield cell, None
+
+
+def _render_text(root: Tag, skip: frozenset[str] = frozenset()) -> str:
+    """The readable text under root, in one pass.
+
+    Blocks and list items sit on their own lines and a table row is one line
+    of tab-separated cells. Hidden tags, tags outside the body and tags named
+    in skip are left out with everything inside them; with skip, so are links
+    in a header, footer or nav. A table inside a cell keeps its words only.
+    """
+    writer = _TextWriter()
+    # Each frame: (children with their list markers, how it closes, what the
+    # close needs, whether a header/footer/nav is above them, inside a cell).
+    frames = [[iter(((root, None),)), None, None, any(tag.name in _LINK_CHROME for tag in root.parents), False]]
+    while frames:
+        frame = frames[-1]
+        item = next(frame[0], None)
+        if item is None:
+            frames.pop()
+            close = frame[1]
+            if close == 'block':
+                writer.write('\n')
+            elif close == 'item':
+                writer.close_item(frame[2])
+            elif close == 'cell':
+                saved, values = frame[2]
+                values.append(writer.close_cell(saved))
+            elif close == 'row':
+                writer.write('\t'.join(frame[2]))
+                writer.write('\n')
+            continue
+        node, marker = item
+        if node is _CELL:
+            writer.write('\t')
+            continue
+        if marker is _CELL:
+            frames.append([iter(((node, None),)), 'cell', (writer.open_cell(), frame[2]), frame[3], True])
+            continue
+        if not isinstance(node, Tag):
+            if not isinstance(node, _UNRENDERED):
+                writer.write(_SPACE_RUN.sub(' ', node))
+            continue
+        name = node.name.lower()
+        if name in _NON_BODY or name in skip or _hidden(node):
+            continue
+        if skip and name == 'a' and frame[3]:
+            continue
+        if name == 'br':
+            writer.write('\n')
+            continue
+        below = frame[3] or node.name in _LINK_CHROME
+        in_cell = frame[4]
+        if name == 'tr':
+            cells = [child for child in node.contents if isinstance(child, Tag) and child.name in ('td', 'th')]
+            if cells:
+                writer.write('\n')
+                if in_cell:
+                    frames.append([_flat_cells(cells), 'block', None, below, True])
+                else:
+                    frames.append([((cell, _CELL) for cell in cells), 'row', [], below, False])
+                continue
+        if name == 'ol':
+            writer.write('\n')
+            frames.append([_ol_items(node), 'block', None, below, in_cell])
+            continue
+        children = ((child, None) for child in node.contents)
+        if name == 'li':
+            frames.append([children, 'item', writer.open_item(marker or '- '), below, in_cell])
+        elif name in _BLOCKS:
+            writer.write('\n')
+            frames.append([children, 'block', None, below, in_cell])
+        else:
+            frames.append([children, None, None, below, in_cell])
+    return _clean_text(''.join(writer.pieces))
 
 
 def _clean_text(text: str) -> str:
@@ -136,17 +478,49 @@ def _clean_text(text: str) -> str:
     return '\n'.join(re.sub(r' *\t *', '\t', line) for line in lines if line)
 
 
-def _has_independent_source(root: Tag) -> bool:
-    """A login form can coexist with source prose; do not reject that page."""
-    for line in _clean_text(_render(root, outside_form=True)).splitlines():
+def _has_independent_source(root: Tag, *, forms: bool = False) -> bool:
+    """A login form can coexist with source prose; do not reject that page.
+
+    A login form's own text is not source. The bot-check rules count text
+    inside forms (``forms``): ASP.NET and SharePoint wrap the whole page,
+    posting included, in one form.
+    """
+    for line in _render_text(root, _CHROME if forms else _CHROME_AND_FORMS).splitlines():
         # Login instructions can share a paragraph with a real deadline. Assess
         # sentences separately; a gate phrase must not discard adjacent facts.
-        for sentence in re.split(r'(?<=[.!?])\s+|(?<=[;。！？；])\s*', line):
-            if _BLOCKED_PAGE_TITLE.fullmatch(sentence) or _JS_WALL.search(sentence) or _GATE_TEXT.search(sentence):
+        for sentence in _SENTENCE_BREAK.split(line):
+            # Letters are counted first, in C and stopping at 12, so a page of
+            # short sentences is not matched against every rule.
+            if len(list(islice(filter(str.isalpha, sentence), 12))) < 12:
                 continue
-            if sum(char.isalpha() for char in sentence) >= 12:
-                return True
+            if (_BLOCKED_PAGE_TITLE.fullmatch(sentence) or _JS_WALL.search(sentence) or _GATE_TEXT.search(sentence)
+                    or _CHALLENGE_TEXT.search(sentence) or _LOADING_SHELL.fullmatch(sentence)):
+                continue
+            return True
     return False
+
+
+def _address(tag: Tag) -> str:
+    if tag.name == 'meta':
+        return str(tag.get('content', '')) if str(tag.get('http-equiv', '')).lower() == 'refresh' else ''
+    return str(tag.get('action' if tag.name == 'form' else 'src') or '')
+
+
+def _is_challenge_page(soup: BeautifulSoup) -> bool:
+    """Vendor bot-check markup, visible or not."""
+    return (
+        soup.find(id=lambda value: value in _CHALLENGE_PAGE_IDS) is not None
+        or soup.find('form', id='challenge-form', action=_CF_CHALLENGE_ACTION) is not None
+        or any(_CHALLENGE_PAGE_SOURCE.search(_address(tag)) for tag in soup.find_all(['script', 'form', 'meta']))
+    )
+
+
+def _has_challenge_machinery(soup: BeautifulSoup) -> bool:
+    """Bot-check scripts, frames and redirects an ordinary page can also load."""
+    return any(
+        _CHALLENGE_SOURCE.search(_address(tag)) or (tag.name == 'iframe' and _CHALLENGE_FRAME.search(_address(tag)))
+        for tag in soup.find_all(['script', 'iframe', 'form', 'meta'])
+    )
 
 
 def _meta(soup: BeautifulSoup, key: str) -> str:
@@ -163,7 +537,12 @@ def extract_import_document(html: str, *, content_type: str | None = None) -> di
     documents, image text, iframes, rendered scripts or computed CSS visibility.
     Metadata is returned separately and never used to stand in for body text.
     """
-    if not isinstance(html, str) or any(0xD800 <= ord(char) <= 0xDFFF for char in html):
+    return read_import_document(html, content_type=content_type)[0]
+
+
+def read_import_document(html: str, *, content_type: str | None = None) -> tuple[dict, BeautifulSoup]:
+    """extract_import_document's result and the parsed page, for other readers of the same page."""
+    if not isinstance(html, str) or _SURROGATE.search(html):
         raise ImportDocumentError('invalid_html')
     if content_type is not None:
         if not isinstance(content_type, str):
@@ -176,39 +555,44 @@ def extract_import_document(html: str, *, content_type: str | None = None) -> di
     if not html.strip():
         raise ImportDocumentError('empty_page')
     try:
-        soup = BeautifulSoup(html, 'html.parser')
+        soup = parse_import_html(html)
         title = _meta(soup, 'title') or (soup.title.get_text(' ', strip=True) if soup.title else '')
         meta_summary = _meta(soup, 'description')
         root = soup.body or soup
-        titles = [tag.get_text(' ', strip=True) for tag in soup.select('h1') if _visible_in_body(tag)]
+        titles, gate_box = _scan(soup, root)
         if soup.title is not None:
             titles.append(soup.title.get_text(' ', strip=True))
         blocked = [value for value in titles if _BLOCKED_PAGE_TITLE.fullmatch(value)]
-        # Denial/challenge titles are not job content. A bare sign-in heading or
-        # password form is only a wall when no independent source remains.
-        if any(not _LOGIN.fullmatch(value) for value in blocked):
+        # Denial/challenge titles and challenge markup are not job content. A
+        # sign-in or courtesy title, a password form or a visible challenge box
+        # is only a wall when no independent source remains.
+        if any(not _GATE_TITLE.fullmatch(value) for value in blocked) or _is_challenge_page(soup):
             raise ImportDocumentError('access_page')
-        gate = bool(blocked) or any(
-            _visible_in_body(tag) and (
-                (tag.name == 'input' and str(tag.get('type', '')).lower() == 'password')
-                or tag.get('id') in {'challenge-running', 'cf-challenge-running'}
-            ) for tag in root.find_all(['input', 'div', 'section', 'form'])
-        )
-        if gate and not _has_independent_source(root):
+        independent: dict[bool, bool] = {}
+
+        def has_independent_source(*, forms: bool = False) -> bool:
+            if forms not in independent:
+                independent[forms] = _has_independent_source(root, forms=forms)
+            return independent[forms]
+
+        if (blocked or gate_box) and not has_independent_source():
             raise ImportDocumentError('access_page')
-        text = _clean_text(_render(root))
-        if _ACCESS_SHELL.fullmatch(text):
+        text = _render_text(root)
+        if _ACCESS_SHELL.fullmatch(text) or (
+                (_has_challenge_machinery(soup) or _CHALLENGE_TEXT.search(text))
+                and not has_independent_source(forms=True)):
             raise ImportDocumentError('access_page')
-        if root.find('script') is not None and _LOADING_SHELL.fullmatch(text):
+        # Scripts in the head fill a page as surely as scripts in its body.
+        if soup.find('script') is not None and _LOADING_SHELL.fullmatch(text):
             raise ImportDocumentError('javascript_required')
-        if _JS_WALL.search(text) and not _has_independent_source(root):
+        if _JS_WALL.search(text) and not has_independent_source():
             raise ImportDocumentError('javascript_required')
         if not text.strip():
-            if root.find('script') is not None:
+            if soup.find('script') is not None:
                 raise ImportDocumentError('javascript_required')
             raise ImportDocumentError('metadata_only' if title or meta_summary else 'empty_page')
     except ImportDocumentError:
         raise
     except (RecursionError, TypeError, ValueError):
         raise ImportDocumentError('invalid_html') from None
-    return {'title': title, 'meta_summary': meta_summary, 'text': text, 'source_kind': 'fetched_html'}
+    return {'title': title, 'meta_summary': meta_summary, 'text': text, 'source_kind': 'fetched_html'}, soup

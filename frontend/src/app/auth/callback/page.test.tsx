@@ -600,6 +600,8 @@ describe('CallbackPage — linkIdentity conflict (email_exists)', () => {
       expect(screen.getByText('auth.callback.identityTakenTitle')).toBeInTheDocument();
     });
     expect(screen.queryByText('auth.callback.errTitle')).toBeNull();
+    // Said before the merge, not only in its summary afterwards.
+    expect(screen.getByText('auth.modal.signin.guestFilesStay')).toBeInTheDocument();
 
     const btn = screen.getByTestId('callback-oauth-signin-existing');
     fireEvent.click(btn);

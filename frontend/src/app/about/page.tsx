@@ -1,4 +1,4 @@
-import { Shield, Mail, User } from 'lucide-react';
+import { Shield, Mail } from 'lucide-react';
 import { getServerT } from '@/i18n/server';
 import { WalkthroughSection } from '@/app/home/WalkthroughSection';
 
@@ -80,13 +80,6 @@ export default async function AboutPage() {
           </h2>
           <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] p-8">
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left">
-              {/* Photo placeholder — reserved; swap the inner block for an <Image /> when the portrait is ready. */}
-              <div className="shrink-0 flex flex-col items-center gap-2">
-                <div className="w-24 h-24 rounded-full bg-gray-50 border-2 border-dashed border-gray-200 flex items-center justify-center">
-                  <User className="w-9 h-9 text-gray-300" aria-hidden="true" />
-                </div>
-                <span className="text-[11px] text-gray-300">{t('about.photoComing')}</span>
-              </div>
               <div className="flex-1">
                 <p className="text-[17px] font-semibold text-gray-900">{t('about.author')}</p>
                 <p className="text-[13px] text-gray-400 mt-1">{t('about.authorRole')}</p>

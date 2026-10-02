@@ -343,7 +343,7 @@ const LIVE_TRUTH = {
 } as const;
 
 const OFFER_POISON = {
-  opportunity_type: 'POISON_TYPE',
+  opportunity_type: 'internship',
   paid: 'yes',
   location: 'POISON Urbana, IL',
   deadline: '2099-12-31',
@@ -362,7 +362,7 @@ const OFFER_POISON = {
 };
 
 const OFFER_TEXT = [
-  'POISON_TYPE', 'badges.paid', 'badges.intlOk',
+  'home.form.seekingInternship', 'badges.paid', 'badges.intlOk',
   'POISON Urbana, IL', '2099-12-31',
   'POISON stipend paid monthly, apply by Friday',
   'POISON_REQUIRED_SKILL', 'favorites.requiredSkills',
@@ -508,7 +508,7 @@ describe('OpportunityCard — a saved target we can no longer vouch for', () => 
     expect(
       screen.getByText('Faculty research profile: computer vision and medical imaging.'),
     ).toBeInTheDocument();
-    for (const text of ['POISON_TYPE', 'badges.paid', 'badges.intlOk',
+    for (const text of ['home.form.seekingInternship', 'badges.paid', 'badges.intlOk',
       '2099-12-31', 'POISON_REQUIRED_SKILL',
       'POISON stipend paid monthly, apply by Friday']) {
       expect(screen.queryByText(text), text).toBeNull();
@@ -565,5 +565,42 @@ describe('browser import account-save entry', () => {
   it('does not offer account adoption for a canonical server record', () => {
     render(<OpportunityCard {...base} opp={{ id: 'server:one', title: 'Canonical project' }} onSaveAccount={vi.fn()} />);
     expect(screen.queryByText('privateImport.prepareSave')).toBeNull();
+  });
+});
+
+describe('OpportunityCard — type badge', () => {
+  // A saved text import showed a lowercase "research" badge — the raw enum —
+  // where the result cards say "Research".
+  it('names the opportunity type the way result cards do', () => {
+    renderCard({ _customId: 'c1', opportunity_type: 'research' });
+    expect(screen.getByText('home.form.seekingResearch')).toBeInTheDocument();
+    expect(screen.queryByText('research')).toBeNull();
+  });
+});
+
+describe('OpportunityCard — faculty profile description', () => {
+  it('says the server-written profile sentences through t(), keeping the source research areas', () => {
+    const tWithVars = ((key: string, vars?: Record<string, string | number>) =>
+      vars ? `${key}:${Object.values(vars).join('|')}` : key) as TFunc;
+    render(
+      <OpportunityCard
+        opp={{
+          id: 'faculty-ada', title: 'Ada Lovelace', pi_name: 'Ada Lovelace', department: 'CS',
+          source_type: 'faculty_research', record_kind: 'faculty_contact',
+          description_clean: 'Faculty research profile for Ada Lovelace in CS. Research areas: Vision '
+            + 'Contact this faculty member to ask whether undergraduate research opportunities are currently available.',
+          target_truth: {
+            listing_state: 'unknown', reference_only: false, actionable: true,
+            accepting_state: 'unknown', reason_code: null, verified_at: null, expires_at: null,
+          },
+        } as never}
+        selectionMode={false} isSelected={false} selectedSize={0} isExpanded hasProfile
+        onToggleExpand={noop} onToggleSelect={noop} onRemove={noop} onOpenEmailModal={noop}
+        tailorDisabled={false} t={tWithVars}
+      />,
+    );
+    expect(screen.getByText('detail.facultyProfile.headDepartment:Ada Lovelace|CS| '
+      + 'detail.facultyProfile.researchAreas:Vision detail.facultyProfile.askAvailability')).toBeInTheDocument();
+    expect(screen.queryByText(/Faculty research profile for/)).toBeNull();
   });
 });

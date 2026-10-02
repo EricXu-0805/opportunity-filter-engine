@@ -131,6 +131,35 @@ it('binds source labels to retained raw metadata without inventing AI coverage',
   expect((await getPrivateImportTarget(id, options()))?.target.import_source).toEqual(labels);
 });
 
+// The parser stamps full_source when every saved word reached the model, and an
+// account copy keeps saying so. The receipt may claim it only where the saved
+// record does; an older backend's "unknown" for it claims less and still reads.
+it('reads a full-source label only where the saved record carries one', async () => {
+  const full = (extra: Record<string, unknown>, source: ImportedOpportunity['source'] = 'text_parser'): ImportedOpportunity =>
+    ({ ...opp(), source, extra_fields: { llm_enriched: true, ai_input_scope: 'full_source', ...extra } });
+  const label = (description_source: string, ai_input_scope: string, llm_enriched = true) =>
+    ({ version: 1, description_source, ai_input_scope, llm_enriched });
+  for (const [record, labels] of [
+    [full({ description_source: 'pasted_text' }), label('pasted_text', 'full_source')],
+    [full({ description_source: 'page_text' }, 'url_parser'), label('page_text', 'full_source')],
+    [full({ description_source: 'pasted_text' }), label('pasted_text', 'unknown')],
+  ] as const) {
+    fetchMock.mockResolvedValueOnce(one(target(1, record, { import_source: labels })));
+    expect((await getPrivateImportTarget(id, options()))?.target.import_source).toEqual(labels);
+  }
+  for (const [record, labels] of [
+    [opp(), label('pasted_text', 'full_source')],
+    // Only full_source may come back as 'unknown': a backend that records
+    // source_excerpt has always recorded it.
+    [opp(), label('pasted_text', 'unknown')],
+    [full({ description_source: 'page_excerpt' }, 'url_parser'), label('page_excerpt', 'full_source')],
+    [full({ description_source: 'pasted_text', llm_enriched: false }), label('pasted_text', 'full_source', false)],
+  ] as const) {
+    fetchMock.mockResolvedValueOnce(one(target(1, record, { import_source: labels })));
+    await expect(getPrivateImportTarget(id, options())).rejects.toMatchObject({ code: 'invalid_receipt' });
+  }
+});
+
 it('consumes actual FastAPI receipts captured with synthetic GoTrue and PostgREST', async () => {
   const uid = actualApi.create.target.owner_id;
   const targetId = actualApi.create.target.id;
@@ -178,6 +207,23 @@ it('rejects forged private display scope, version, links, fields, and action cap
   }
   fetchMock.mockResolvedValueOnce(json({ detail: { code: 'private_target_changed' } }, 409));
   await expect(getResolvedPrivateImportTarget(id, options())).rejects.toMatchObject({ code: 'changed' });
+});
+
+it('reads a full-source display label only with recorded enrichment and page or pasted text', async () => {
+  const withLabels = (import_source: Record<string, unknown>) => ({ ...resolved(), detail: { ...resolved().detail, import_source } });
+  for (const source of ['pasted_text', 'page_text']) {
+    const value = withLabels({ version: 1, description_source: source, ai_input_scope: 'full_source', llm_enriched: true });
+    fetchMock.mockResolvedValueOnce(json(value));
+    expect((await getResolvedPrivateImportTarget(id, options())).detail.import_source).toEqual(value.detail.import_source);
+  }
+  for (const labels of [
+    { description_source: 'pasted_text', llm_enriched: false },
+    { description_source: 'page_excerpt', llm_enriched: true },
+    { description_source: 'unknown', llm_enriched: false },
+  ]) {
+    fetchMock.mockResolvedValueOnce(json(withLabels({ version: 1, ai_input_scope: 'full_source', ...labels })));
+    await expect(getResolvedPrivateImportTarget(id, options())).rejects.toMatchObject({ code: 'invalid_receipt' });
+  }
 });
 
 it('consumes the actual FastAPI resolved fixture without inventing public fields', async () => {

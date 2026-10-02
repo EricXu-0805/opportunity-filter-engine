@@ -188,9 +188,20 @@ def capture_from_sections(sections, *, source_url: str, record_source_url: str |
 
 
 _BLOCKED_PAGE_TITLE = re.compile(
-    r'^(?:sign[ -]?in|log[ -]?in|access denied|permission denied|forbidden|'
-    r'just a moment|attention required|verify (?:you are|that you are) human|'
-    r'page not found|404(?: error)?|service unavailable)(?:[.!…]+|\s*[-|:–—].*)?$',
+    r'^(?:(?:sign[ -]?in|log[ -]?in|access denied|permission denied|forbidden|'
+    r'just a moment|attention required|verify (?:you are|that you are) (?:a )?human|'
+    r'page not found|404(?: error)?|service unavailable)(?:[.!…]+|\s*[-|:–—].*)?|'
+    # Bot-check interstitials served in place of the page, by their whole
+    # title: Imunify360, Anubis, SiteGround, Imperva/Distil, PerimeterX, AWS WAF,
+    # Vercel, DDoS-Guard. A title that only begins with these words, such as
+    # "Human verification: a psychology study", is not one of them.
+    r'(?:one moment,? please|making sure you(?:\'|’)?re not a bot|robot challenge screen|'
+    r'pardon our interruption|access to this page has been denied|(?:human|bot) verification|'
+    r'vercel security checkpoint|ddos-guard|checking your browser)[.!…]*|'
+    # DDoS-Guard and older Cloudflare checks name the site after these words.
+    # The open tail ends the alternative: a run two quantifiers could share
+    # was retried at every split, quadratic in the title's length.
+    r'checking your browser before (?:accessing|continuing|proceeding)\b.*)$',
     re.I,
 )
 
@@ -220,44 +231,141 @@ def capture_from_html(html, *, source_url: str, record_source_url: str | None = 
     if (any(t is not None and _BLOCKED_PAGE_TITLE.fullmatch(t.get_text(' ', strip=True))
             for t in titles) or body.find('input', attrs={'type': re.compile('^password$', re.I)})):
         return unsupported('access_page')
+    strings, blocks, unparsed = _page_blocks(body)
+    ends = [0]
+    for string in strings:
+        ends.append(ends[-1] + len(string))
+
+    def size(start, end):
+        return ends[end] - ends[start] + end - start - 1 if end > start else 0
+
+    def text(start, end):
+        return ' '.join(strings[start:end])
+
     headings = {}
+    heading = None
     sections = []
+    parts = []
+    length = 0
     relevant_heading = False
-    for element in body.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol']):
-        if element.find_parent(['nav', 'header', 'footer', 'aside', 'script', 'style']):
+    for name, start, end, outside, in_list, in_heading in blocks:
+        if outside or (name in ('p', 'ul', 'ol') and in_list):
             continue
-        if element.name in ('ul', 'ol') and element.find_parent(['ul', 'ol']):
+        count = size(start, end)
+        if not count:
             continue
-        if element.name == 'p' and element.find_parent(['ul', 'ol']):
-            continue
-        text = element.get_text(' ', strip=True)
-        if not text:
-            continue
-        if element.name.startswith('h'):
-            if len(text) > 1000:
+        if name in _HEADINGS:
+            if count > 1000:
                 return unsupported('content_limit')
-            relevant_heading = relevant_heading or bool(_CONTACT.search(text) or _APPLICATION_CONDITION.search(text))
-            level = int(element.name[1])
+            # A heading inside another heading was read with it, and what
+            # matches in its text matches in the outer heading's text too.
+            if not relevant_heading and not in_heading:
+                words = text(start, end)
+                relevant_heading = bool(_CONTACT.search(words) or _APPLICATION_CONDITION.search(words))
+            level = int(name[1])
             headings = {n: h for n, h in headings.items() if n < level}
-            headings[level] = text
+            headings[level] = (start, end)
+            heading = None
             continue
-        heading = ' > '.join(headings.values())
-        if element.name in ('ul', 'ol') and sections and sections[-1]['heading'] == heading:
-            sections[-1]['text'] += '\n' + text
-        else:
-            sections.append({'heading': heading, 'text': text})
-        if len(sections) > _MAX_SECTIONS or len(sections[-1]['text']) > _MAX_TEXT:
+        if heading is None:
+            heading = ' > '.join(text(*span) for span in headings.values())
+        if name in ('ul', 'ol') and sections and sections[-1]['heading'] == heading:
+            length += 1 + count
+            if length > _MAX_TEXT:
+                return unsupported('content_limit')
+            parts.append(text(start, end))
+            continue
+        if sections:
+            sections[-1]['text'] = '\n'.join(parts)
+        sections.append({'heading': heading, 'text': ''})
+        if len(sections) > _MAX_SECTIONS or count > _MAX_TEXT:
             return unsupported('content_limit')
+        parts, length = [text(start, end)], count
+    if sections:
+        sections[-1]['text'] = '\n'.join(parts)
     # A supported paragraph beside an unparsed requirements field is not proof
     # that the requirements disappeared. Adapters may handle that DOM explicitly.
-    remainder = BeautifulSoup(str(body), 'html.parser')
-    for element in remainder.find_all(['nav', 'header', 'footer', 'aside', 'script', 'style',
-                                      'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'ul', 'ol']):
-        element.decompose()
-    unparsed = remainder.get_text(' ', strip=True)
     if (unparsed and relevant_heading) or _CONTACT.search(unparsed) or _APPLICATION_CONDITION.search(unparsed):
         return unsupported('unparsed_relevant_content')
     return capture_from_sections(sections, **binding)
+
+
+_HEADINGS = frozenset({'h1', 'h2', 'h3', 'h4', 'h5', 'h6'})
+_SECTION_BLOCKS = _HEADINGS | {'p', 'ul', 'ol'}
+_OUTSIDE_SECTIONS = frozenset({'nav', 'header', 'footer', 'aside', 'script', 'style'})
+_UNPARSED_SKIP = _SECTION_BLOCKS | _OUTSIDE_SECTIONS
+# Tags whose strings bs4 gives its own class, which get_text leaves out.
+_STRING_CONTAINERS = frozenset({'rt', 'rp', 'style', 'script', 'template'})
+
+
+def _page_blocks(body) -> tuple[list[str], list[tuple], str]:
+    """One pass over body for capture_from_html.
+
+    Returns the strings get_text(' ', strip=True) joins, in document order;
+    each heading, paragraph and list as (name, first string, end, inside
+    nav/header/footer/aside/script/style, inside a list, inside a heading in
+    body); and the text outside all of them. An element's text is a slice of
+    the one list, so a paragraph inside another is not read twice.
+
+    The outside text is what bs4 read from a reparsed copy of body, which this
+    used to build: strings with nothing between them join, and only tags
+    inside body decide which strings get_text leaves out.
+    """
+    from bs4 import CData, NavigableString, Tag
+    from bs4.element import PreformattedString
+
+    strings: list[str] = []
+    blocks: list[list] = []
+    unparsed: list[str] = []
+    run: list[str] = []
+
+    def end_run(kept):
+        if run:
+            words = ''.join(run).strip()
+            if words and kept:
+                unparsed.append(words)
+            run.clear()
+
+    above = list(body.parents)
+    # Each frame: the children; whether they are under a nav, header, footer,
+    # aside, script or style anywhere, a list anywhere, a heading in body, a
+    # tag left out of the outside text, or a tag whose strings get_text skips;
+    # and the block whose end they close.
+    frames = [(iter(body.contents), any(tag.name in _OUTSIDE_SECTIONS for tag in above),
+               any(tag.name in ('ul', 'ol') for tag in above), False, False, False, None)]
+    while frames:
+        children, outside, in_list, in_heading, skipped, contained, block = frames[-1]
+        node = next(children, None)
+        if node is None:
+            end_run(not (skipped or contained))
+            frames.pop()
+            if block is not None:
+                blocks[block][2] = len(strings)
+            continue
+        if isinstance(node, Tag):
+            end_run(not (skipped or contained))
+            name = node.name
+            slot = None
+            if name in _SECTION_BLOCKS:
+                slot = len(blocks)
+                blocks.append([name, len(strings), len(strings), outside, in_list, in_heading])
+            frames.append((iter(node.contents), outside or name in _OUTSIDE_SECTIONS,
+                           in_list or name in ('ul', 'ol'), in_heading or name in _HEADINGS,
+                           skipped or name in _UNPARSED_SKIP, contained or name in _STRING_CONTAINERS, slot))
+            continue
+        if type(node) in (NavigableString, CData):
+            words = node.strip()
+            if words:
+                strings.append(words)
+        if isinstance(node, PreformattedString):
+            end_run(not (skipped or contained))
+            if type(node) is CData and not skipped:
+                words = node.strip()
+                if words:
+                    unparsed.append(words)
+        elif isinstance(node, NavigableString):
+            run.append(node)
+    return strings, [tuple(block) for block in blocks], ' '.join(unparsed)
 
 
 def source_from_html(html, *, source_url: str, record_source_url: str | None = None,

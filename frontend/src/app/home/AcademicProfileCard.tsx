@@ -273,16 +273,18 @@ export function AcademicProfileCard({
           <div className="flex items-center gap-3">
             <Globe className="w-5 h-5 text-gray-400" />
             <div>
-              <span className="text-sm font-medium text-gray-700">
+              <span id="international-label" className="text-sm font-medium text-gray-700">
                 {t('home.form.internationalLabel')}
               </span>
-              <p className="text-xs text-gray-400">{t('home.form.internationalHint')}</p>
+              <p id="international-hint" className="text-xs text-gray-400">{t('home.form.internationalHint')}</p>
             </div>
           </div>
           <button
             type="button"
             role="switch"
             aria-checked={profile.is_international}
+            aria-labelledby="international-label"
+            aria-describedby="international-hint"
             onClick={() => update('is_international', !profile.is_international)}
             className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2
               ${profile.is_international ? 'bg-indigo-600' : 'bg-gray-200'}`}

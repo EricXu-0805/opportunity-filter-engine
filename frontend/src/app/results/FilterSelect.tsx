@@ -2,13 +2,17 @@ export function FilterSelect({
   value,
   onChange,
   options,
+  label,
 }: {
   value: string;
   onChange: (value: string) => void;
   options: [string, string][];
+  /** What the select filters; the selected option alone does not say. */
+  label: string;
 }) {
   return (
     <select
+      aria-label={label}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       className={`px-3 py-1.5 rounded-lg text-[12px] font-medium border transition-colors cursor-pointer outline-none ${

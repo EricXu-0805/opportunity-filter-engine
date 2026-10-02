@@ -22,7 +22,7 @@ interface TargetBase {
 }
 export interface PrivateImportTarget extends TargetBase {
   opportunity: ImportedOpportunity | null;
-  import_source: { version: 1; description_source: 'page_text' | 'page_excerpt' | 'pasted_text' | 'unknown'; ai_input_scope: 'source_excerpt' | 'unknown'; llm_enriched: boolean } | null;
+  import_source: { version: 1; description_source: 'page_text' | 'page_excerpt' | 'pasted_text' | 'unknown'; ai_input_scope: 'full_source' | 'source_excerpt' | 'unknown'; llm_enriched: boolean } | null;
 }
 export interface PrivateImportSummary extends TargetBase {
   deleted_at: null; title: string; organization: string | null; source_url: string; url: string; source: 'url_parser' | 'text_parser';
@@ -144,7 +144,9 @@ async function base(value: unknown, owner: OwnerToken, op: Operation, id?: strin
   return value;
 }
 // Must match src/import_source.py: raw labels describe retained source only.
-// Imported metadata never establishes official status or full-source AI use.
+// Imported metadata never establishes official status. full_source is the
+// parser's record that every saved word reached the model; a historical page
+// excerpt cannot carry it.
 function sourceLabels(opportunity: ImportedOpportunity): PrivateImportTarget['import_source'] {
   const extra = opportunity.extra_fields;
   if (!extra || !['description_source', 'ai_input_scope', 'llm_enriched'].some(key => Object.hasOwn(extra, key))) return null;
@@ -153,8 +155,15 @@ function sourceLabels(opportunity: ImportedOpportunity): PrivateImportTarget['im
   const allowed = opportunity.source === 'url_parser' ? ['page_text', 'page_excerpt'] : ['pasted_text'];
   if (typeof source !== 'string' || !allowed.includes(source)) return unknown;
   const enriched = extra.llm_enriched === true;
-  return { version: 1, description_source: source as 'page_text' | 'page_excerpt' | 'pasted_text',
-    ai_input_scope: enriched && extra.ai_input_scope === 'source_excerpt' ? 'source_excerpt' : 'unknown', llm_enriched: enriched };
+  const scope = !enriched ? 'unknown' : extra.ai_input_scope === 'source_excerpt' ? 'source_excerpt'
+    : extra.ai_input_scope === 'full_source' && source !== 'page_excerpt' ? 'full_source' : 'unknown';
+  return { version: 1, description_source: source as 'page_text' | 'page_excerpt' | 'pasted_text', ai_input_scope: scope, llm_enriched: enriched };
+}
+// A backend from before full_source records 'unknown' where this one records
+// full_source. That claims less, so a save still completes across a deploy or rollback.
+function receiptLabels(received: unknown, opportunity: ImportedOpportunity): boolean {
+  const expected = sourceLabels(opportunity);
+  return same(received, expected) || (expected?.ai_input_scope === 'full_source' && same(received, { ...expected, ai_input_scope: 'unknown' }));
 }
 async function receipt(data: Record<string, unknown>, owner: OwnerToken, op: Operation, id: string): Promise<PrivateImportReceipt> {
   if (!exact(data, ['version', 'target', 'replayed']) || data.version !== 1 || typeof data.replayed !== 'boolean') return fail();
@@ -164,7 +173,7 @@ async function receipt(data: Record<string, unknown>, owner: OwnerToken, op: Ope
   else {
     let opportunity: ImportedOpportunity;
     try { opportunity = snapshotOpportunity(value.opportunity); } catch { return fail(); }
-    if (!same(value.import_source, sourceLabels(opportunity))) return fail();
+    if (!receiptLabels(value.import_source, opportunity)) return fail();
   }
   return data as unknown as PrivateImportReceipt;
 }
@@ -272,8 +281,9 @@ export async function getResolvedPrivateImportTarget(id: string, options: Option
     const labels = detail.import_source;
     if (labels !== null && (!record(labels) || !exact(labels, ['version','description_source','ai_input_scope','llm_enriched'])
       || labels.version !== 1 || !['page_text','page_excerpt','pasted_text','unknown'].includes(labels.description_source as string)
-      || !['source_excerpt','unknown'].includes(labels.ai_input_scope as string) || typeof labels.llm_enriched !== 'boolean'
+      || !['full_source','source_excerpt','unknown'].includes(labels.ai_input_scope as string) || typeof labels.llm_enriched !== 'boolean'
       || (labels.ai_input_scope === 'source_excerpt' && (labels.llm_enriched !== true || labels.description_source === 'unknown'))
+      || (labels.ai_input_scope === 'full_source' && (labels.llm_enriched !== true || !['page_text','pasted_text'].includes(labels.description_source as string)))
       || (labels.description_source === 'unknown' && labels.llm_enriched !== false))) return fail();
     const tracker = { id, title: detail.title, organization: detail.organization, source_url: detail.source_url, url: detail.url,
       target_scope: 'private_import', verification: 'unverified', target_version: version };

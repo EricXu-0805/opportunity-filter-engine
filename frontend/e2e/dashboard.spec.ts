@@ -11,6 +11,49 @@ test.describe('Dashboard', () => {
     await expect(page.getByText(/Next 30 days/i)).toHaveCount(0);
   });
 
+  // M51: the Saved tile counted an import saved in this browser that the
+  // saved-deadline list never showed. Its date came from the import, so the
+  // row asks the student to verify it and opens the saved copy.
+  test('an import saved in this browser is counted and its date listed to verify', async ({ page }) => {
+    await page.route('**/api/import-url', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          llm_enriched: true,
+          opportunity: {
+            source: 'url_parser',
+            source_url: 'https://lab.example/summer-reu',
+            url: 'https://lab.example/summer-reu',
+            title: 'Summer REU, Optics Lab',
+            organization: 'Optics Lab',
+            deadline: '2027-01-15',
+            description_raw: 'Paid summer research for undergraduates in optics.',
+            extra_fields: { llm_enriched: true, description_source: 'page_text' },
+          },
+        }),
+      }),
+    );
+    await page.goto('/import');
+    await page.getByPlaceholder('https://...').fill('https://lab.example/summer-reu');
+    await page.getByRole('button', { name: /Fetch & parse/i }).click();
+    const card = page.getByRole('article');
+    await card.getByRole('button', { name: /Save in this browser/i }).click();
+    await expect(card.getByText(/^Saved$/i)).toBeVisible();
+
+    await page.goto('/dashboard');
+    const saved = page.getByTestId('saved-summary');
+    await expect(saved).toHaveAttribute('data-state', 'ready', { timeout: 20_000 });
+    await expect(saved).toContainText('1');
+    const row = page.getByRole('link', { name: /Summer REU, Optics Lab/ });
+    await expect(row).toContainText('Verify date');
+    await expect(row).toContainText('2027-01-15');
+    await expect(row).toContainText('Imported in this browser. Check this date on the posting.');
+    await expect(row).toHaveAttribute('href', '/favorites');
+    await expect(page.getByText('No deadlines among your saved opportunities')).toHaveCount(0);
+  });
+
   test('a fresh visitor sees honest empty states, not fabricated activity', async ({ page }) => {
     await page.goto('/dashboard');
     await expect(page.getByRole('heading', { name: 'Saved deadlines' })).toBeVisible();

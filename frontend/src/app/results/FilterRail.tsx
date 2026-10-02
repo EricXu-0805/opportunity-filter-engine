@@ -128,22 +128,26 @@ export function FilterRail({
         className={`${mobileExpanded ? 'flex' : 'hidden'} sm:flex flex-wrap items-center gap-2 -mx-4 px-4 sm:mx-0 sm:px-0`}
       >
         <FilterSelect
+          label={t('results.filters.paidAria')}
           value={filters.paid}
           onChange={(v) => onFiltersChange({ ...filters, paid: v as Filters['paid'] })}
           options={[['', t('results.filters.paidAll')], ['yes', t('results.filters.paidYes')], ['no', t('results.filters.paidNo')]]}
         />
         <FilterSelect
+          label={t('results.filters.intlAria')}
           value={filters.intl}
           onChange={(v) => onFiltersChange({ ...filters, intl: v as Filters['intl'] })}
           options={[['', t('results.filters.intlAll')], ['yes', t('results.filters.intlYes')], ['no', t('results.filters.intlNo')]]}
         />
         <FilterSelect
+          label={t('results.filters.sourceAria')}
           value={filters.source}
           onChange={(v) => onFiltersChange({ ...filters, source: v })}
           options={sourceOptions}
         />
         {scopeOptions.length > 0 && (
           <FilterSelect
+            label={t('results.filters.scopeAria')}
             value={filters.scope}
             onChange={(v) => onFiltersChange({ ...filters, scope: v as Filters['scope'] })}
             options={scopeOptions}
@@ -179,16 +183,19 @@ export function FilterRail({
           </span>
         )}
         <FilterSelect
+          label={t('results.filters.locAria')}
           value={filters.onCampus}
           onChange={(v) => onFiltersChange({ ...filters, onCampus: v as Filters['onCampus'] })}
           options={[['', t('results.filters.locAll')], ['yes', t('results.filters.locYes')], ['no', t('results.filters.locNo')]]}
         />
         <FilterSelect
+          label={t('results.filters.deadlineAria')}
           value={filters.deadline}
           onChange={(v) => onFiltersChange({ ...filters, deadline: v as Filters['deadline'] })}
           options={deadlineOptions}
         />
         <FilterSelect
+          label={t('results.filters.sortAria')}
           value={sortBy}
           onChange={(v) => onSortByChange(v as SortKey)}
           options={[['score', t('results.filters.sortScore')], ['deadline', t('results.filters.sortDeadline')], ['newest', t('results.filters.sortNewest')]]}

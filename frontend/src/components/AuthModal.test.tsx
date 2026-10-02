@@ -219,6 +219,81 @@ describe('AuthModal — signin phase', () => {
     });
   });
 
+  // Signing a guest in to an account it already has merges its rows but not
+  // its tracker files; the only notice used to come after the merge.
+  it('says guest tracker files stay behind before offering the existing account', async () => {
+    mockSignIn.mockResolvedValue({ ok: false, reason: 'email-taken', message: 'taken' });
+    render(<AuthModal />);
+    await waitFor(() => screen.getByText('auth.modal.signin.headline'));
+    const input = screen.getByLabelText('auth.modal.signin.emailLabel') as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'eric@illinois.edu' } });
+    fireEvent.submit(input.closest('form')!);
+    await screen.findByTestId('auth-modal-signin-existing');
+    expect(screen.getByText('auth.modal.signin.guestFilesStay')).toBeInTheDocument();
+  });
+
+  // The contact-reveal sign-in on a detail page goes straight to the
+  // existing-account link, so a guest never reaches the email-taken
+  // recovery above, yet the same merge leaves its tracker files behind.
+  async function settledAuth() {
+    await waitFor(() => expect(mockGetAuthState).toHaveBeenCalled());
+    await act(async () => { await Promise.resolve(); });
+  }
+
+  it('tells a guest before the contact sign-in that its tracker files stay behind', async () => {
+    modalState = { open: true, phase: 'signin', reason: 'contact-reveal' };
+    mockSignInExisting.mockResolvedValue({ ok: true, mode: 'sign-in', message: 'check inbox' });
+    render(<AuthModal />);
+    await settledAuth();
+    expect(screen.getByText('auth.modal.signin.guestFilesStay')).toBeInTheDocument();
+    const input = screen.getByLabelText('auth.modal.signin.emailLabel');
+    fireEvent.change(input, { target: { value: 'eric@illinois.edu' } });
+    fireEvent.submit(input.closest('form')!);
+    await waitFor(() => expect(mockSignInExisting).toHaveBeenCalled());
+    expect(mockSignIn).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['an account session on the contact sign-in', { open: true, phase: 'signin', reason: 'contact-reveal' }, PERMANENT],
+    // The guest's own "Sign in to reveal" links this session, keeping its files.
+    ['a guest on the contact sign-in that links the guest session', { open: true, phase: 'auto', reason: 'contact-reveal' }, ANON],
+    ['a guest on a forced sign-in for something else', { open: true, phase: 'signin' }, ANON],
+  ])('says nothing about tracker files up front for %s', async (_name, state, auth) => {
+    modalState = state;
+    mockGetAuthState.mockResolvedValue(auth);
+    render(<AuthModal />);
+    await settledAuth();
+    expect(screen.getByLabelText('auth.modal.signin.emailLabel')).toBeInTheDocument();
+    expect(screen.queryByText('auth.modal.signin.guestFilesStay')).toBeNull();
+  });
+
+  // Only a guest session has tracker files to leave behind. Before the sign-in
+  // check answers, or when it fails, nothing says this visitor is a guest.
+  it.each([
+    ['before the sign-in check answers', () => mockGetAuthState.mockReturnValue(new Promise(() => {}))],
+    ['when the sign-in check fails', () => mockGetAuthState.mockRejectedValue(new Error('auth down'))],
+    ['with no session', () => mockGetAuthState.mockResolvedValue({ session: null, user: null, isAnonymous: false, email: null })],
+  ])('says nothing about tracker files on the contact sign-in %s', async (name, arrange) => {
+    modalState = { open: true, phase: 'signin', reason: 'contact-reveal' };
+    arrange();
+    render(<AuthModal />);
+    await settledAuth();
+    if (name === 'when the sign-in check fails') await screen.findByTestId('auth-state-error');
+    expect(screen.getByLabelText('auth.modal.signin.emailLabel')).toBeInTheDocument();
+    expect(screen.queryByText('auth.modal.signin.guestFilesStay')).toBeNull();
+  });
+
+  it('shows the tracker-file notice once when the guest contact sign-in meets an identity conflict', async () => {
+    vi.stubEnv('NEXT_PUBLIC_AUTH_PROVIDERS', 'google');
+    modalState = { open: true, phase: 'signin', reason: 'contact-reveal' };
+    mockOAuth.mockResolvedValue({ ok: false, reason: 'identity-taken', message: 'raw lib message' });
+    render(<AuthModal />);
+    await settledAuth();
+    fireEvent.click(screen.getByTestId('auth-provider-google'));
+    await screen.findByTestId('auth-modal-oauth-signin-existing');
+    expect(screen.getAllByText('auth.modal.signin.guestFilesStay')).toHaveLength(1);
+  });
+
   it('does NOT render Sign-in-existing button for other error reasons', async () => {
     mockSignIn.mockResolvedValue({ ok: false, reason: 'rate-limited', message: 'wait' });
     render(<AuthModal />);
@@ -230,6 +305,7 @@ describe('AuthModal — signin phase', () => {
       expect(mockSignIn).toHaveBeenCalled();
     });
     expect(screen.queryByTestId('auth-modal-signin-existing')).toBeNull();
+    expect(screen.queryByText('auth.modal.signin.guestFilesStay')).toBeNull();
   });
 
   it('Sign-in-existing button calls signInExistingEmail and transitions to sent on ok', async () => {
@@ -408,6 +484,7 @@ describe('AuthModal — OAuth identity-taken fallback', () => {
       expect(screen.getByTestId('auth-modal-oauth-signin-existing')).toBeInTheDocument();
     });
     expect(screen.getByText('auth.modal.signin.identityTakenMsg')).toBeInTheDocument();
+    expect(screen.getByText('auth.modal.signin.guestFilesStay')).toBeInTheDocument();
     expect(screen.queryByText('raw lib message')).toBeNull();
     // The email-taken button is a different recovery path — must not appear.
     expect(screen.queryByTestId('auth-modal-signin-existing')).toBeNull();

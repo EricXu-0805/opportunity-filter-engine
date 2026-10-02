@@ -1600,6 +1600,9 @@ export interface ImportedOpportunity {
 export interface ImportUrlResponse {
   ok: boolean;
   error_code?: 'import_input_too_large' | 'import_source_unreadable';
+  /** The unreadable-source reasons the page words differently: a sign-in, bot-check or error page,
+   *  and a page its scripts have yet to fill. */
+  error_reason?: 'access_page' | 'javascript_required';
   opportunity?: ImportedOpportunity;
   error?: string;
   llm_enriched: boolean;
@@ -1613,7 +1616,11 @@ export async function importByUrl(url: string): Promise<ImportUrlResponse> {
     });
   } catch (err) {
     if (err instanceof ApiError && (err.code === 'import_input_too_large' || err.code === 'import_source_unreadable')) {
-      return { ok: false, error_code: err.code, llm_enriched: false };
+      const reason = err.code === 'import_source_unreadable'
+        ? (err.detail as { reason?: unknown } | null | undefined)?.reason : undefined;
+      return reason === 'access_page' || reason === 'javascript_required'
+        ? { ok: false, error_code: err.code, error_reason: reason, llm_enriched: false }
+        : { ok: false, error_code: err.code, llm_enriched: false };
     }
     const structured = err instanceof ApiError
       ? fastApiDetailText(err.detail)

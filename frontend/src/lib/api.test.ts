@@ -1211,7 +1211,7 @@ describe('import rejection codes', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it.each(['invalid_html', 'unsupported_content_type', 'empty_page', 'metadata_only', 'access_page', 'javascript_required'])(
+  it.each(['invalid_html', 'unsupported_content_type', 'empty_page', 'metadata_only'])(
     'preserves the unreadable-source code for %s without leaking source details', async (reason) => {
       fetchMock.mockResolvedValueOnce(badResponse(422, JSON.stringify({ detail: {
         code: 'import_source_unreadable', reason, message: 'PRIVATE PAGE URL OR BODY', retryable: false,
@@ -1219,4 +1219,16 @@ describe('import rejection codes', () => {
       expect(await importByUrl('https://example.com')).toEqual({ ok: false, error_code: 'import_source_unreadable', llm_enriched: false });
     },
   );
+
+  // A sign-in wall or bot check is the site refusing our server, and a page
+  // its scripts have yet to fill needs JavaScript; neither is a page without
+  // text. The student needs to hear which, and nothing else.
+  it.each(['access_page', 'javascript_required'])('keeps only the fixed %s reason', async (reason) => {
+    fetchMock.mockResolvedValueOnce(badResponse(422, JSON.stringify({ detail: {
+      code: 'import_source_unreadable', reason, message: 'PRIVATE PAGE URL OR BODY', retryable: false,
+    } })));
+    const result = await importByUrl('https://example.com');
+    expect(result).toEqual({ ok: false, error_code: 'import_source_unreadable', error_reason: reason, llm_enriched: false });
+    expect(JSON.stringify(result)).not.toContain('PRIVATE');
+  });
 });
