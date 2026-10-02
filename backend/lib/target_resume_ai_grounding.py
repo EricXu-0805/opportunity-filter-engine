@@ -333,11 +333,11 @@ def _guarded_gerunds(clause):
                      if re.fullmatch(pattern, word, re.I))
 
 
-def personal_actions(text, gerunds=False, shared=()):
+def personal_actions(text, gerunds=False):
     found = set()
     for clause in clauses(text):
         # "My team built" names the team as the actor; "my" there is not the student.
-        if NEGATION.search(clause) or _team_attributed(clause, shared):
+        if NEGATION.search(clause) or _team_attributed(clause):
             continue
         # Résumé fragments with no subject are personal claims too.
         for name, pattern in ACTIONS.items():
@@ -473,20 +473,15 @@ CO_CREDIT = re.compile(
 # Shared credit said with an adverb ("wrote a report jointly") or a co- word. Only
 # the claim locks read it; TEAM itself, and so claim_upgrade_detected, is unchanged.
 _SHARED_CREDIT = re.compile(r"\b(?:jointly|collectively|cooperatively)\b|" + CO_CREDIT.pattern, re.I)
-# Shared work a Chinese line names with words TEAM leaves out: 与两名同学一起, 和搭档, 组员,
-# 4 人. The evidence-map contract compares them with the English ones on both sides of a
-# translation; the claim locks read them in a translation's rewrite (claim_upgrade_findings).
-_TEAM_ZH_EXTRA = re.compile(r"组员|队友|同学|室友|搭档|伙伴|朋友|一起|协同|课题组|项目组|(?:(?<!\d)\d+|[一二三四五六七八九十两])\s*人", re.I)
 
 
-def _team_marked(text, shared=()):
-    return bool(TEAM.search(text) or _TEAM_CONTEXT.search(text) or _SHARED_CREDIT.search(text)
-                or any(pattern.search(text) for pattern in shared))
+def _team_marked(text):
+    return bool(TEAM.search(text) or _TEAM_CONTEXT.search(text) or _SHARED_CREDIT.search(text))
 
 
-def _team_attributed(clause, shared=()):
+def _team_attributed(clause):
     # "My team built" names the team as the actor; "my" there is not the student.
-    return _team_marked(clause, shared) and not PERSONAL.search(_TEAM_OWNER.sub(" ", clause))
+    return _team_marked(clause) and not PERSONAL.search(_TEAM_OWNER.sub(" ", clause))
 
 
 # "... on a team that built X": the relative clause's doer is the team, whatever
@@ -1245,7 +1240,7 @@ def claim_text(text):
     return _COUNT_ZHI.sub(r"\1个", text)
 
 
-def _claimed_actions(text, shared=()):
+def _claimed_actions(text):
     """A rewrite's actions, with a Chinese verb + 中 read as work under way.
 
     "气象站搭建中" translates "weather station under construction", and
@@ -1253,7 +1248,7 @@ def _claimed_actions(text, shared=()):
     anything new. The original keeps its own, so "系统开发中" may become
     "Developing the system".
     """
-    return personal_actions(_UNDERWAY_ACTION.sub("进行中", text), gerunds=True, shared=shared)
+    return personal_actions(_UNDERWAY_ACTION.sub("进行中", text), gerunds=True)
 
 
 def _stages(text):
@@ -1277,14 +1272,8 @@ def claim_upgrade_findings(proposed, original):
     if normalized(proposed) == normalized(original):
         return [], []
     proposed, original = claim_text(proposed), claim_text(original)
-    translated = language(proposed) != language(original)
-    # A translation writes "with two classmates" as 与两名同学一起, which TEAM does not read.
-    # The contract has compared those words with the English ones, so in the rewrite they
-    # mark its clause as shared work, as "with two classmates" marks the English one; the
-    # original is read as before.
-    shared = (_TEAM_ZH_EXTRA,) if translated else ()
     hard = []
-    if _team_marked(original) and not _team_marked(proposed, shared):
+    if _team_marked(original) and not _team_marked(proposed):
         hard.append("team_qualifier_dropped")
     # "As part of a team" may stand in for "helped" only when the original
     # already said the work was shared.
@@ -1298,7 +1287,7 @@ def claim_upgrade_findings(proposed, original):
         hard.append("negation_dropped")
     if PUBLICATION.search(original) and not PUBLICATION.search(proposed):
         hard.append("publication_qualifier_dropped")
-    if _claimed_actions(proposed, shared) - personal_actions(original, gerunds=True):
+    if _claimed_actions(proposed) - personal_actions(original, gerunds=True):
         hard.append("personal_action_added")
     if _stages(proposed) - _stages(original):
         hard.append("publication_stage_added")
@@ -1311,6 +1300,7 @@ def claim_upgrade_findings(proposed, original):
     # Relevance, setting and quality words are compared within one language. A
     # translation's are checked by the evidence-map contract (_check_translation)
     # in both directions, and every translation still goes to the review.
+    translated = language(proposed) != language(original)
     if not translated and (any(normalized(match.group(0)).strip(",，;； ") not in original_normal
                                for match in RELEVANCE_PADDING.finditer(proposed))
                            or _appended_relevance(proposed, original)):
