@@ -541,6 +541,11 @@ _SPAN = re.compile(r"\b(?:about|approximately|roughly|nearly|almost|around|over|
                    r"|at\s+least|at\s+most|up\s+to|since|until|per)\b|约|大约|将近|超过|至少|左右|(?<!一)起(?!来)|以来|至今", re.I)
 _SOLO = re.compile(r"\b(?:alone|independently|solely|single-handedly|by\s+myself|on\s+my\s+own)\b|独立|独自|单独", re.I)
 _LIMIT = re.compile(r"\b(?:only|just)\b|只|仅", re.I)
+# The status a word gives a thing ("a planned study", "a draft manuscript"). INTENT
+# and UNFINISHED need "to" or a progressive form, so a relabel could drop these.
+_STATUS_WORD = re.compile(
+    r"\b(?:planned|proposed|prospective|scheduled|tentative|intended|draft|unpublished|unfinished|incomplete)\b"
+    r"|初稿|草稿|预定", re.I)
 _TEAM_ZH_EXTRA = re.compile(r"组员|队友|同学|室友|搭档|伙伴|朋友|一起|课题组|项目组|(?:\d+|[一二三四五六七八九十两])\s*人", re.I)
 # English shared-work words the TEAM lock leaves out; each has a Chinese pair above or in TEAM.
 _TEAM_EN_EXTRA = re.compile(
@@ -554,8 +559,8 @@ _SETTING_NOUN = re.compile(
 _RELEVANCE_WORD = re.compile(
     r"\b(?:applying|demonstrating|showcasing|highlighting|relevant|relevance|contributing|experience|skills?"
     r"|expertise|proficien\w*)\b|体现|展现|展示|积累|锻炼|提升|培养|相关", re.I)
-_LOCK_WORD = [TEAM, HELP, NEGATION, DENIAL, PUBLICATION, INTENT, UNFINISHED, UNFINISHED_ZH, _SPAN, _SOLO, _LIMIT,
-              _OTHER_PERSON, _TEAM_ZH_EXTRA, _TEAM_EN_EXTRA, _PERSONAL_MARKER]
+_LOCK_WORD = [TEAM, HELP, NEGATION, DENIAL, PUBLICATION, INTENT, UNFINISHED, UNFINISHED_ZH, _STATUS_WORD, _SPAN, _SOLO,
+              _LIMIT, _OTHER_PERSON, _TEAM_ZH_EXTRA, _TEAM_EN_EXTRA, _PERSONAL_MARKER]
 # Families a translation must carry across in both directions.
 _FAMILIES = {
     "team": [TEAM, _TEAM_ZH_EXTRA, _TEAM_EN_EXTRA], "help": [HELP], "limit": [_LIMIT], "negation": [NEGATION, DENIAL],

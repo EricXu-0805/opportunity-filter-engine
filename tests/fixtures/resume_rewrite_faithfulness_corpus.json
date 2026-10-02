@@ -1737,6 +1737,27 @@
    "kind": "own part folded into the shared work",
    "caught": "contract",
    "case": "own part folded after shared work with my lab partner"
+  },
+  {
+   "original": "Drafted the consent form for a planned EEG study on sleep.",
+   "rewrite": "Drafted the consent form for an EEG experiment on sleep.",
+   "kind": "relabel drops a planned status",
+   "caught": "contract",
+   "case": "relabel inside its source still keeps planned"
+  },
+  {
+   "original": "Formatted the references of a draft manuscript on soil microbes.",
+   "rewrite": "Formatted the references of a manuscript on soil microbiomes.",
+   "kind": "relabel drops a draft status",
+   "caught": "contract",
+   "case": "relabel inside its source still keeps draft"
+  },
+  {
+   "original": "整理了论文初稿的参考文献。",
+   "rewrite": "整理了学术论文的参考文献。",
+   "kind": "relabel drops a draft status",
+   "caught": "contract",
+   "case": "zh relabel inside its source still keeps 初稿"
   }
  ]
 }

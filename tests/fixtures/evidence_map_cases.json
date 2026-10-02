@@ -1714,6 +1714,130 @@
    ]
   },
   {
+   "group": "relabel_from",
+   "label": "relabel inside its source still keeps planned",
+   "anchors": [
+    "EEG experiment on sleep and memory"
+   ],
+   "original": "Drafted the consent form for a planned EEG study on sleep.",
+   "rewrite": "Drafted the consent form for an EEG experiment on sleep.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "EEG experiment",
+     "source": "planned EEG study",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "planned EEG study",
+     "to": "EEG experiment"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel inside its source still keeps draft",
+   "anchors": [
+    "Soil microbiomes and nutrient cycling"
+   ],
+   "original": "Formatted the references of a draft manuscript on soil microbes.",
+   "rewrite": "Formatted the references of a manuscript on soil microbiomes.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "soil microbiomes",
+     "source": "draft manuscript on soil microbes",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "draft manuscript on soil microbes",
+     "to": "manuscript on soil microbiomes"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "zh relabel inside its source still keeps 初稿",
+   "anchors": [
+    "学术论文写作"
+   ],
+   "original": "整理了论文初稿的参考文献。",
+   "rewrite": "整理了学术论文的参考文献。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "学术论文",
+     "source": "论文初稿",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "论文初稿",
+     "to": "学术论文"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel keeps planned on the renamed study",
+   "anchors": [
+    "EEG experiment on sleep and memory"
+   ],
+   "original": "Drafted the consent form for a planned EEG study on sleep.",
+   "rewrite": "Drafted the consent form for a planned EEG experiment on sleep.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "EEG experiment",
+     "source": "planned EEG study",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "planned EEG study",
+     "to": "planned EEG experiment"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
    "group": "marker",
    "label": "zh lead_with adds 本人 to a team action",
    "anchors": [
