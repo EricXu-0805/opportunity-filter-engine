@@ -7695,9 +7695,9 @@
     }
    ],
    "expected": [
-    "pending",
-    null,
-    null
+    "kept",
+    "beyond_allowed_edit",
+    "translation_team"
    ]
   },
   {
@@ -7714,9 +7714,9 @@
     }
    ],
    "expected": [
-    "pending",
-    null,
-    null
+    "kept",
+    "beyond_allowed_edit",
+    "translation_team"
    ]
   },
   {
@@ -7835,7 +7835,7 @@
   },
   {
    "group": "translate",
-   "label": "EN to ZH loses three other students as 另外三名同学: no English team word",
+   "label": "EN to ZH: three other students as 另外三名同学共同 reaches the review",
    "output": "zh",
    "anchors": [],
    "original": "Designed a survey with three other students.",
@@ -7847,14 +7847,14 @@
     }
    ],
    "expected": [
-    "kept",
-    "beyond_allowed_edit",
-    "translation_team"
+    "pending",
+    null,
+    null
    ]
   },
   {
    "group": "translate",
-   "label": "EN to ZH loses two other volunteers as 另外两名志愿者: no English team word",
+   "label": "EN to ZH: two other volunteers as 另外两名志愿者一起 reaches the review",
    "output": "zh",
    "anchors": [],
    "original": "Sorted 500 cans of food alongside two other volunteers.",
@@ -7866,9 +7866,9 @@
     }
    ],
    "expected": [
-    "kept",
-    "beyond_allowed_edit",
-    "translation_team"
+    "pending",
+    null,
+    null
    ]
   },
   {
@@ -10014,7 +10014,7 @@
   },
   {
    "group": "translate",
-   "label": "EN to ZH with another student as 与另一名同学一起 is kept, never refused as a fabrication",
+   "label": "EN to ZH with another student as 与另一名同学一起 reaches the review, never refused as a fabrication",
    "output": "zh",
    "anchors": [],
    "original": "Designed a survey with another student.",
@@ -10026,9 +10026,9 @@
     }
    ],
    "expected": [
-    "kept",
-    "beyond_allowed_edit",
-    "translation_team"
+    "pending",
+    null,
+    null
    ]
   },
   {
@@ -10174,6 +10174,139 @@
     "pending",
     null,
     null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH with two classmates as 与两名同学一起 reaches the review, never refused as a fabrication",
+   "output": "zh",
+   "anchors": [],
+   "original": "Built a weather station with two classmates.",
+   "rewrite": "与两名同学一起搭建了一个气象站。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH with a lab partner as 与一名实验搭档一起 reaches the review, never refused as a fabrication",
+   "output": "zh",
+   "anchors": [],
+   "original": "Designed a survey with a lab partner.",
+   "rewrite": "与一名实验搭档一起设计了一份问卷。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH with a classmate as 与一名同学, without 一起, reaches the review",
+   "output": "zh",
+   "anchors": [],
+   "original": "Built a weather station with a classmate.",
+   "rewrite": "与一名同学搭建了一个气象站。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH with two teammates as 和两名队友 reaches the review",
+   "output": "zh",
+   "anchors": [],
+   "original": "Built a weather station with two teammates.",
+   "rewrite": "和两名队友搭建了一个气象站。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH with colleagues as 与同事 is kept, never refused as a fabrication",
+   "output": "zh",
+   "anchors": [],
+   "original": "Wrote a literature review with colleagues.",
+   "rewrite": "与同事撰写了一篇文献综述。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_team"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH with colleagues as 与同事, after the verb, is kept, never refused as a fabrication",
+   "output": "zh",
+   "anchors": [],
+   "original": "Discussed weekly results with colleagues.",
+   "rewrite": "每周与同事讨论结果。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_team"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops colleagues",
+   "output": "zh",
+   "anchors": [],
+   "original": "Wrote a literature review with colleagues.",
+   "rewrite": "撰写了一篇文献综述。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_team"
    ]
   }
  ]

@@ -1615,6 +1615,46 @@
    "original": "在 Building 4 实验室搭建了 3 台测试平台。",
    "rewrite": "Built 3 test rigs in the Building 4 lab.",
    "kind": "translation of a Chinese line naming a Latin-script word that ends in -ing (Ling, Reading, Setting, Sampling)"
+  },
+  {
+   "original": "Built a weather station with two classmates.",
+   "rewrite": "与两名同学一起搭建了一个气象站。",
+   "kind": "EN to ZH: with two classmates as 与两名同学一起"
+  },
+  {
+   "original": "Designed a survey with a lab partner.",
+   "rewrite": "与一名实验搭档一起设计了一份问卷。",
+   "kind": "EN to ZH: with a lab partner as 与一名实验搭档一起"
+  },
+  {
+   "original": "Built a chatbot with a partner for a hackathon.",
+   "rewrite": "与搭档一起为黑客松开发了一个聊天机器人。",
+   "kind": "EN to ZH: with a partner as 与搭档一起, before the purpose"
+  },
+  {
+   "original": "Built a weather station with a classmate.",
+   "rewrite": "与一名同学搭建了一个气象站。",
+   "kind": "EN to ZH: with a classmate as 与一名同学, without 一起"
+  },
+  {
+   "original": "Built a weather station with my lab partner.",
+   "rewrite": "和我的实验搭档一起搭建了一个气象站。",
+   "kind": "EN to ZH: with my lab partner as 和我的实验搭档一起"
+  },
+  {
+   "original": "Tested 40 water samples with a lab partner.",
+   "rewrite": "与一名实验搭档一起检测了 40 份水样。",
+   "kind": "EN to ZH: a lab partner on a test as 与一名实验搭档一起"
+  },
+  {
+   "original": "Worked with two classmates to build a mobile app.",
+   "rewrite": "与两名同学一起开发了一款手机应用。",
+   "kind": "EN to ZH: worked with two classmates to build as 与两名同学一起开发"
+  },
+  {
+   "original": "Built a weather station with two teammates.",
+   "rewrite": "和两名队友搭建了一个气象站。",
+   "kind": "EN to ZH: with two teammates as 和两名队友"
   }
  ],
  "unfaithful": [
@@ -3560,13 +3600,15 @@
    "original": "Designed an online survey on sleep with three other students (PSYC 238).",
    "rewrite": "设计了一份关于睡眠的在线问卷（PSYC 238）。",
    "kind": "translation drops three other students",
-   "caught": "review"
+   "caught": "contract",
+   "case": "EN to ZH drops three other students"
   },
   {
    "original": "Sorted 500 cans of food alongside two other volunteers.",
    "rewrite": "分拣了 500 罐食物。",
    "kind": "translation drops two other volunteers",
-   "caught": "review"
+   "caught": "contract",
+   "case": "EN to ZH drops two other volunteers"
   },
   {
    "original": "参与了 40 份水样的 qPCR 检测。",

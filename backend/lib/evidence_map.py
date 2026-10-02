@@ -25,6 +25,7 @@ from backend.lib.llm import chat_completion, model_for
 from backend.lib.target_resume_ai_grounding import (
     _SHARED_CREDIT,
     _TEAM_CONTEXT,
+    _TEAM_ZH_EXTRA,
     _UNDERWAY_ACTION,
     ACTIONS,
     CO_CREDIT,
@@ -624,8 +625,7 @@ _DRAFT = re.compile(r"(?:(?<=[(\[-])|(?<=[\w'’-]\s)(?<!\bto\s)(?<!\band\s)(?<!
                     r"(?<!\bcurrently\s))\bdrafts?\b|初稿|草稿|草案", re.I)
 _UN_DONE = re.compile(r"\bun(?:published|submitted|finished|tested|verified|validated|reviewed)\b", re.I)
 _UNPUBLISHED = re.compile(r"\bun(?:published|submitted)\b|\bto\s+appear\b|\bin\s+press\b", re.I)
-_TEAM_ZH_EXTRA = re.compile(r"组员|队友|同学|室友|搭档|伙伴|朋友|一起|协同|课题组|项目组|(?:(?<!\d)\d+|[一二三四五六七八九十两])\s*人", re.I)
-# English shared-work words the TEAM lock leaves out; each has a Chinese pair above or in TEAM.
+# English shared-work words the TEAM lock leaves out; each has a Chinese pair in TEAM or _TEAM_ZH_EXTRA.
 _TEAM_EN_EXTRA = re.compile(
     r"\b(?:research|lab|project|study|student|my|our)\s+groups?\b|\bgroup\s*(?:mates?|members?)\b"
     r"|\b(?:classmates?|lab\s*mates?|teammates?|partners?|friends?|roommates?|together|jointly|collectively"
@@ -670,9 +670,12 @@ _LOCK_WORD = [TEAM, HELP, NEGATION, DENIAL, _UN_DONE, PUBLICATION, INTENT, UNFIN
 # Families a translation must carry across in both directions. A work's status is
 # four of them: planned or hoped for (INTENT, PLANNED: 计划, 预定), under way or
 # still to come (UNFINISHED, UNDERWAY_ZH: 开发中, 即将), still to come on its own
-# (FUTURE: "will", 即将, so 即将发表 beside 目前 keeps its own word) and a draft.
+# (FUTURE: "will", 即将, so 即将发表 beside 目前 keeps its own word) and a draft. The
+# team family reads collaborators named by "other", "another" or "fellow" and colleagues
+# too (aa14917b), so a translation that drops them, or writes "with colleagues" as 与同事,
+# which no team word reads, is kept as written.
 _FAMILIES = {
-    "team": [TEAM, _TEAM_ZH_EXTRA, _TEAM_EN_EXTRA, CO_CREDIT], "help": [HELP], "limit": [_LIMIT],
+    "team": [TEAM, _TEAM_ZH_EXTRA, _TEAM_EN_EXTRA, _TEAM_OTHERS, CO_CREDIT], "help": [HELP], "limit": [_LIMIT],
     "negation": [NEGATION, DENIAL, _UN_DONE], "solo": [_SOLO], "span": [_SPAN], "intent": [INTENT, PLANNED],
     "unfinished": [UNFINISHED, UNDERWAY_ZH], "future": [FUTURE_EN, FUTURE_ZH], "draft": [_DRAFT],
     "publication": [PUBLICATION, _UNPUBLISHED],

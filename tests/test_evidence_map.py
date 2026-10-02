@@ -534,10 +534,64 @@ class TestTeamAndShare:
         assert em._TEAM_OTHERS.search(text)
         assert em._TEAM_OTHERS in em._LOCK_WORD
 
-    def test_other_collaborators_are_no_translation_team_word(self):
-        # As a team word, "with another student" passed the contract beside 与另一名同学一起,
-        # and the claim locks, which read no 一起, refused that faithful translation as a fabrication.
-        assert not em._has(em._FAMILIES["team"], "Designed a survey with another student.")
+    @pytest.mark.parametrize("text", ["Designed a survey with another student.", "Discussed results with colleagues.",
+                                      "Sorted 500 cans of food alongside two other volunteers.", "与另外三名同学设计了问卷"])
+    def test_other_collaborators_are_a_translation_team_word(self, text):
+        # aa14917b's reading: a translation that drops them is kept by the contract.
+        assert em._has(em._FAMILIES["team"], text)
+
+    @pytest.mark.parametrize(("original", "rewrite"), [
+        ("Built a weather station with two classmates.", "与两名同学一起搭建了一个气象站。"),
+        ("Built a weather station with a classmate.", "与一名同学搭建了一个气象站。"),
+        ("Designed a survey with a lab partner.", "与一名实验搭档一起设计了一份问卷。"),
+        ("Built a chatbot with a partner for a hackathon.", "与搭档一起为黑客松开发了一个聊天机器人。"),
+        ("Worked with two classmates to build a mobile app.", "与两名同学一起开发了一款手机应用。"),
+        ("Built a weather station with my lab partner.", "和我的实验搭档一起搭建了一个气象站。"),
+        ("Built a weather station with two teammates.", "和两名队友搭建了一个气象站。"),
+        ("Designed a survey with another student.", "与另一名同学一起设计了一份问卷。"),
+    ])
+    def test_a_chinese_translation_names_shared_work_with_its_own_words(self, original, rewrite):
+        # Main shows these; the claim locks read no 同学, 搭档, 队友 or 一起 and refused them as
+        # fabrications (team_qualifier_dropped, personal_action_added).
+        assert grounding.claim_upgrade_findings(rewrite, original)[0] == []
+        unit = em.Unit("b1", original, original)
+        row = {"unit_id": "b1", "decision": "rewrite", "ops": [{"op": "translate"}], "text": rewrite}
+        outcome = em.check_rewrite(unit, row, {}, output_language="zh")
+        assert outcome.status == "pending" and em.gate(outcome, unit).status == "pending"
+
+    @pytest.mark.parametrize(("original", "rewrite", "detail"), [
+        # 同事 is no team word on either list: kept as a lost suggestion, never refused as a fabrication.
+        ("Discussed weekly results with colleagues.", "每周与同事讨论结果。", "translation_team"),
+        ("Wrote a literature review with colleagues.", "与同事撰写了一篇文献综述。", "translation_team"),
+        # The traps aa14917b kept: the translation drops the collaborators.
+        ("Designed an online survey on sleep with three other students (PSYC 238).",
+         "设计了一份关于睡眠的在线问卷（PSYC 238）。", "translation_team"),
+        ("Sorted 500 cans of food alongside two other volunteers.", "分拣了 500 罐食物。", "translation_team"),
+        ("Wrote a literature review with colleagues.", "撰写了一篇文献综述。", "translation_team"),
+        ("Built a weather station with two classmates.", "搭建了一个气象站。", "translation_team"),
+    ])
+    def test_a_translation_that_drops_or_renames_collaborators_is_kept(self, original, rewrite, detail):
+        unit = em.Unit("b1", original, original)
+        row = {"unit_id": "b1", "decision": "rewrite", "ops": [{"op": "translate"}], "text": rewrite}
+        outcome = em.check_rewrite(unit, row, {}, output_language="zh")
+        assert (outcome.status, outcome.code, outcome.detail) == ("kept", "beyond_allowed_edit", detail)
+
+    @pytest.mark.parametrize(("original", "rewrite", "finding"), [
+        # The rewrite's own 同学 marks its clause as shared; an English original's words do not
+        # read the Chinese side, and a same-language Chinese rewrite reads as before.
+        ("Built a weather station with two classmates.", "搭建了一个气象站。", "team_qualifier_dropped"),
+        ("Built a weather station.", "设计并搭建了一个气象站。", "personal_action_added"),
+        ("与两名同学一起搭建了一个气象站。", "设计并搭建了一个气象站。", "personal_action_added"),
+        ("搭建了一个气象站。", "与同学一起设计并搭建了一个气象站。", "personal_action_added"),
+    ])
+    def test_the_chinese_team_words_mark_only_the_translations_own_shared_clause(self, original, rewrite, finding):
+        assert finding in grounding.claim_upgrade_findings(rewrite, original)[0]
+
+    def test_the_selection_plan_gate_reads_no_chinese_team_word(self):
+        # The plan's compress rewrites are not reviewed: their gate stays main's.
+        original, rewrite = "Built a weather station with two classmates.", "与两名同学一起设计了一个气象站。"
+        assert grounding.claim_upgrade_detected(rewrite, original)
+        assert grounding.supported_claim_upgrade_detected(rewrite, [original])
 
     @pytest.mark.parametrize("text", ["Tutored 30 students in calculus.", "Held office hours with 30 students.",
                                       "Trained 5 colleagues in Excel.", "Met with members of the public.",
