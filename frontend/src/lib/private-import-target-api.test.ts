@@ -149,6 +149,9 @@ it('reads a full-source label only where the saved record carries one', async ()
   }
   for (const [record, labels] of [
     [opp(), label('pasted_text', 'full_source')],
+    // Only full_source may come back as 'unknown': a backend that records
+    // source_excerpt has always recorded it.
+    [opp(), label('pasted_text', 'unknown')],
     [full({ description_source: 'page_excerpt' }, 'url_parser'), label('page_excerpt', 'full_source')],
     [full({ description_source: 'pasted_text', llm_enriched: false }), label('pasted_text', 'full_source', false)],
   ] as const) {

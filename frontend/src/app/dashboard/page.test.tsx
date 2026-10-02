@@ -388,20 +388,22 @@ describe('DashboardPage — one saved count with /favorites', () => {
   });
 
   // The list keeps the eight soonest dates of account and browser saves
-  // together, not eight account rows plus every dated browser import.
+  // together, not eight account rows plus every dated browser import. The
+  // account rows arrive in no date order, so they are sorted before the cut.
   it('keeps the eight soonest deadlines across account and browser saves', async () => {
-    const ids = Array.from({ length: 8 }, (_, i) => `fav-${i + 1}`);
+    const ids = Array.from({ length: 10 }, (_, i) => `fav-${i + 1}`);
     mockGetFavorites.mockResolvedValue(new Set(ids));
+    // Account 1 is due last and Account 10 first.
     mockGetShortlistOpportunities.mockResolvedValue(shortlist(ids.map((id, i) => liveListing({
-      id, title: `Account ${i + 1}`, deadline: isoDateIn(10 + i), deadline_is_estimate: false,
+      id, title: `Account ${i + 1}`, deadline: isoDateIn(19 - i), deadline_is_estimate: false,
     }))));
     customStorageFeed.state = { status: 'ready', entries: [browserImport('sooner', { deadline: isoDateIn(3) })] };
     render(<DashboardPage />);
     await screen.findByText('Imported sooner');
     const titles = screen.getAllByRole('listitem').map((item) => item.querySelector('p.text-sm')?.textContent);
-    expect(titles).toEqual(['Imported sooner', ...ids.slice(0, 7).map((_, i) => `Account ${i + 1}`)]);
-    expect(screen.queryByText('Account 8')).toBeNull();
-    expect(screen.getByTestId('saved-summary')).toHaveTextContent('9');
+    expect(titles).toEqual(['Imported sooner', ...[10, 9, 8, 7, 6, 5, 4].map((n) => `Account ${n}`)]);
+    expect(screen.queryByText('Account 3')).toBeNull();
+    expect(screen.getByTestId('saved-summary')).toHaveTextContent('11');
   });
 
   it('lists no browser import while that storage is unreadable', async () => {
