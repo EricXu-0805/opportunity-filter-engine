@@ -5,7 +5,8 @@ import Card from '@/components/Card';
 import { useLocale } from '@/i18n/client';
 import { isActiveExperience, sourceDigest, validateExperienceEntries } from '@/lib/experience-evidence';
 import {
-  buildResumeMasterPreview, createEmptyResumeMaster, isActiveResumeFact, resumeMasterEditBase, validateResumeMaster,
+  buildResumeMasterPreview, createEmptyResumeMaster, isActiveResumeFact, proposeResumeMaster, resumeMasterEditBase,
+  resumeMasterFacts, validateResumeMaster,
 } from '@/lib/resume-master';
 import type { ExperienceSourceContext } from '@/lib/experience-evidence';
 import type {
@@ -100,6 +101,7 @@ export function ResumeMasterCard({ profile, ready, onChange }: {
     ? { master: clone(checked.value ?? createEmptyResumeMaster()), base, dirty: false } : null);
   const [error, setError] = useState<'invalid' | 'stale' | null>(null);
   const [digest, setDigest] = useState<{ raw: string; value: string } | null>(null);
+  const [proposed, setProposed] = useState<number | null>(null);
   useEffect(() => {
     if (!ready) return;
     const parsed = validateResumeMaster(JSON.parse(masterJson));
@@ -176,6 +178,19 @@ export function ResumeMasterCard({ profile, ready, onChange }: {
     setDraft({ master: validated.value, base: resumeMasterEditBase({ ...profile, resume_master: validated.value }), dirty: false });
     setError(null);
   };
+  // Résumé facts enter the editor as candidates only; each one still needs
+  // its own confirmation, and nothing is saved until Apply.
+  const propose = () => {
+    if (!draft || blocked || !context.expectedDigest) return;
+    try {
+      const next = proposeResumeMaster(draft.master, raw, context.expectedDigest);
+      setProposed(resumeMasterFacts(next).length - resumeMasterFacts(draft.master).length);
+      if (next !== draft.master) setDraft({ ...draft, master: next, dirty: true });
+      setError(null);
+    } catch {
+      setError('invalid');
+    }
+  };
   const reload = () => {
     if (blocked || !checked.ok) return;
     setDraft({ master: clone(checked.value ?? createEmptyResumeMaster()), base, dirty: false });
@@ -202,6 +217,17 @@ export function ResumeMasterCard({ profile, ready, onChange }: {
       </details>}
       {ready && master && checked.ok && checkedEntries.ok && <details data-testid="resume-master-editor" className="mt-4">
         <summary className="cursor-pointer text-sm font-semibold text-indigo-700">{copy('Open full résumé editor', '展开完整简历编辑器')}</summary>
+        {raw.trim() && <div className="mt-4">
+          <button type="button" className={button} disabled={blocked || !context.expectedDigest} onClick={propose}>
+            {copy('Add candidates from my résumé', '从简历添加待确认内容')}</button>
+          {proposed !== null && <p role="status" className="mt-2 text-xs text-gray-600">{proposed === 1
+            ? copy('Added 1 candidate quoted from your résumé. Confirm it before it appears in the preview.',
+              '已从简历原文添加 1 条待确认内容，确认后才会进入预览。')
+            : proposed > 0
+              ? copy(`Added ${proposed} candidates quoted from your résumé. Confirm each one before it appears in the preview.`,
+                `已从简历原文添加 ${proposed} 条待确认内容，逐条确认后才会进入预览。`)
+              : copy('No new candidates found in your résumé.', '简历中没有新的待确认内容。')}</p>}
+        </div>}
         <div className="mt-5 space-y-4">
           {master.section_order.map((sectionId, position) => <details open key={sectionId} className="rounded-xl border border-gray-200 p-4">
             <summary className="cursor-pointer font-semibold text-gray-900">{headingFor(sectionId) || copy('Untitled section', '未命名章节')}</summary>

@@ -1,5 +1,8 @@
 import type { ExperienceEntry } from './types';
-import { MAX_RESUME_TEXT_CHARACTERS, resumeTextCharacters } from './resume-input';
+import {
+  BULLET_LINE, MAX_RESUME_TEXT_CHARACTERS, RESUME_PERSON, RESUME_PLACE, RESUME_ROLE, resumeContactLine, resumeSectionHeading,
+  resumeTextCharacters, storedWraps,
+} from './resume-input';
 
 export const MAX_EXPERIENCE_ENTRIES = 100;
 export const MAX_EXPERIENCE_ENTRY_CHARACTERS = 6_000;
@@ -132,15 +135,43 @@ export function activeExperienceEntries(value: unknown, context: ExperienceSourc
   return checked.ok ? checked.value.filter((entry) => isActiveExperience(entry, context)) : [];
 }
 
-const BULLET_LINE = /^[\t ]*(?:[•●▪◦‣∙·*–—-]|\(?\d{1,2}[.)])\s/u;
+/** Not experience: a section heading, contact details, or a line of the
+ *  header block (the name, a place). */
+function notExperience(line: string, header: boolean): boolean {
+  const text = line.trim();
+  return !text || resumeSectionHeading(text) !== null || resumeContactLine(text) || header;
+}
 
-/** PDF text has one row per line and no blank lines, so a two-page résumé can
- *  exceed the entry cap line by line. Only then, a bullet absorbs its wrapped
- *  lowercase continuation rows, and the non-bullet rows directly before a
- *  bullet (heading, title, dates) form one context entry. Rows that no bullet
- *  follows stay one per line, so a bullet-free résumé is still refused whole
- *  when it is over the cap. Every span stays a contiguous slice of the text. */
-function bulletSpans(points: string[], lines: Array<[number, number]>): Array<[number, number]> {
+const PLACE_LINE = new RegExp(String.raw`^(?:[\p{L} ]{2,20}:\s*)?${RESUME_PLACE}$`, 'u');
+
+/** How many of the first non-blank lines form the header block: the name on
+ *  the first line, then the contact and place lines right below it. Any
+ *  other line ends it, so a heading the title list does not know cannot hide
+ *  the lines under it. A text with no heading has no header block. A first
+ *  line with a role word ("Research Assistant", "Michael Fellows") is the
+ *  name only when contact details or a place follow within two lines, a
+ *  headline being the most that sits between: a text can open with its main
+ *  column's first role. */
+function headerRows(lines: readonly string[]): number {
+  const rows = lines.map((line) => line.trim()).filter(Boolean);
+  if (!rows.some((row) => resumeSectionHeading(row) !== null)) return 0;
+  const name = RESUME_PERSON.test(rows[0]) && (!RESUME_ROLE.test(rows[0])
+    || rows.slice(1, 3).some((row) => resumeContactLine(row) || PLACE_LINE.test(row)));
+  let count = 0;
+  while (count < rows.length && (resumeContactLine(rows[count]) || PLACE_LINE.test(rows[count]) || (count === 0 && name))) count += 1;
+  return count;
+}
+
+/** PDF text has one row per line and no blank lines. A bullet absorbs the
+ *  rows whose words show that they only wrap it (text stored before the PDF
+ *  reflow still has them; storedWraps). A two-page résumé can exceed
+ *  the entry cap line by line; only then, the non-bullet rows directly
+ *  before a bullet (title, dates) also form one context entry. Rows that no
+ *  bullet follows stay one per line, so a bullet-free résumé is still
+ *  refused whole when it is over the cap. Headings and contact rows are
+ *  dropped and end a context. Every span stays a contiguous slice of the
+ *  text. */
+function lineSpans(points: string[], lines: Array<[number, number]>, mergeContext: boolean): Array<[number, number]> {
   const grouped: Array<[number, number]> = [];
   let context: Array<[number, number]> = [];
   let inBullet = false;
@@ -149,13 +180,20 @@ function bulletSpans(points: string[], lines: Array<[number, number]>): Array<[n
     else grouped.push(...context);
     context = [];
   };
-  for (const [from, to] of lines) {
-    const text = points.slice(from, to).join('');
-    if (BULLET_LINE.test(text)) {
-      flush(true);
+  const texts = lines.map(([from, to]) => points.slice(from, to).join(''));
+  const header = headerRows(texts);
+  const wraps = storedWraps(texts);
+  let row = 0;
+  for (const [index, [from, to]] of lines.entries()) {
+    const text = texts[index];
+    if (notExperience(text, !!text.trim() && row++ < header)) {
+      flush(false);
+      inBullet = false;
+    } else if (BULLET_LINE.test(text)) {
+      flush(mergeContext);
       grouped.push([from, to]);
       inBullet = true;
-    } else if (inBullet && /^[\t ]*\p{Ll}/u.test(text)) {
+    } else if (inBullet && wraps[index]) {
       grouped[grouped.length - 1][1] = to;
     } else {
       inBullet = false;
@@ -185,7 +223,14 @@ export async function createResumeCandidates(rawText: string): Promise<Experienc
   }
   spans.push([start, points.length]);
   const entries: ExperienceEntry[] = [];
-  for (const [from, to] of hasParagraphBreak || spans.length <= MAX_EXPERIENCE_ENTRIES ? spans : bulletSpans(points, spans)) {
+  const header = headerRows(rawText.split(/\r?\n/u));
+  let row = 0;
+  const proposals = hasParagraphBreak
+    // A paragraph is dropped only when none of its lines is experience.
+    ? spans.filter(([from, to]) => !points.slice(from, to).join('').split(/\r?\n/u)
+      .map((line) => notExperience(line, !!line.trim() && row++ < header)).every(Boolean))
+    : lineSpans(points, spans, spans.length > MAX_EXPERIENCE_ENTRIES);
+  for (const [from, to] of proposals) {
     let left = from;
     let right = to;
     while (left < right && /\s/u.test(points[left])) left += 1;

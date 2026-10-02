@@ -1,0 +1,131 @@
+[
+  {
+    "font": "Helvetica,Arial,sans-serif",
+    "lines": [
+      ["heading", "EXPERIENCE"],
+      ["row", "Research Intern, Microfluidics Lab - Jun 2024 - Aug 2024"],
+      ["item", "• Wrote a grading script that runs student submissions in isolated containers and records time and memory used for each test"],
+      ["item", "• Rebuilt the volunteer scheduling tool so coordinators can swap shifts from their phones and see open slots"],
+      ["row", "Teaching Assistant, Statistics Department - Aug 2024 - May 2025"],
+      ["item", "• Trained a small convolutional network to sort recycling photos taken at the two dining hall bins every week"],
+      ["row", "Machine Learning Reading Group"],
+      ["item", "• Designed a printed circuit board for a soil moisture logger and wrote firmware that wakes up once an hour"],
+      ["row", "Campus Bus Tracker - React and Flask web app used by about 200 students."],
+      ["item", "• Interviewed twenty transit riders about late buses and summarized their answers in a two-page city memo"],
+      ["row", "Presented the results at the Undergraduate Research Symposium in April."],
+      ["heading", "Honors & Awards"],
+      ["item", "• Dean's List for five semesters"]
+    ]
+  },
+  {
+    "font": "Helvetica,Arial,sans-serif",
+    "lines": [
+      ["heading", "ACTIVITIES"],
+      ["row", "Software Engineering Intern, Prairie Analytics"],
+      ["li", "Analyzed survey responses from 1,200 undergraduates about rent and commute costs with Python, SQL"],
+      ["li", "Designed, built and tested a line-following robot for the intro course"],
+      ["li", "Built an inventory dashboard that the campus food pantry checks before every delivery in Champaign, IL"],
+      ["li", "Translated onboarding documents from Spanish to English for a legal clinic"],
+      ["li", "Graded weekly programming assignments for 180 students and wrote the autograder test suites in C++"],
+      ["li", "Led two review sessions before each midterm exam"],
+      ["li", "Ran weekly code reviews for the twelve members of the robotics team and kept notes on recurring bugs;"],
+      ["li", "Mentored two new members through their first pull requests"],
+      ["li", "Rewrote the student radio station's scheduling app so the hosts can trade time slots using React, Node.js"],
+      ["li", "Python, SQL, Tableau"],
+      ["row", "Data Analyst, City of Champaign"],
+      ["p", "Analyzed survey responses from 1,200 undergraduates about rent and commuting costs with Python, SQL"],
+      ["p", "Designed, built and tested a line-following robot for the intro course"],
+      ["p", "Built an inventory dashboard that the campus food pantry checks before every shipment in Champaign, IL"],
+      ["row", "Research Intern, Microfluidics Lab"],
+      ["p", "Rewrote the student radio station's scheduling app so that hosts can trade their slots using React, Node.js"],
+      ["p", "Python, SQL, Tableau"]
+    ]
+  },
+  {
+    "font": "STHeiti,sans-serif",
+    "lines": [
+      ["heading", "实习经历"],
+      ["row", "数据分析实习生，图像模型项目 2025.06 - 2025.08"],
+      ["item", "• 为同学整理课程资料，训练五个模型，为课程设计测试，参与项目设计，维护项目网站，并标注四千张图像"],
+      ["item", "• 分析模型测试数据，维护实验系统，为同学整理课程资料，参与项目设计，整理标注规范，并训练图像模型"],
+      ["row", "研究助理，图像标注实验室 2024.09 - 2025.05"],
+      ["item", "• 负责实验数据的整理与分析，用 Python 训练图像模型，整理标注规范，维护项目网站，并为课程设计测试"],
+      ["row", "校园活动"],
+      ["p", "组织同学参与编程课程，每周撰写实验报告，维护实验系统，用 Python 训练图像模型，并按照规范标注图像"],
+      ["p", "负责实验数据的整理与分析，用 Python 训练图像模型，按照规范标注图像，维护项目网站，并撰写项目报告"],
+      ["p", "组织同学参与编程课程，用 Python 训练图像模型，标注四千张图像，参与项目设计，并为同学整理课程资料"],
+      ["item", "• 撰写项目报告，设计与测试模型，组织同学参与编程课程，整理标注规范，训练五个模型，并维护项目网站"],
+      ["row", "荣誉"],
+      ["item", "• 校级优秀学生奖学金"]
+    ]
+  },
+  {
+    "font": "Helvetica,Arial,sans-serif",
+    "lines": [
+      ["heading", "EXPERIENCE"],
+      ["row", "Software Engineering Intern, Prairie Analytics"],
+      ["item", "• Rewrote the student club website in Next.js so officers can post their events without asking the webmaster"],
+      ["row", "Caterpillar"],
+      ["row", "Data Science Intern"],
+      ["item", "• Trained a gradient boosting model to predict which books students will request next term at the main library"],
+      ["row", "Accomplishments"],
+      ["item", "• Reviewed pull requests for a student-run open-source project and wrote contributor guidelines of the club"],
+      ["row", "COMPETITIONS"],
+      ["item", "• Organized a weekend hackathon for 150 students with prize sponsors from four local companies in Urbana"],
+      ["row", "PantryPal"],
+      ["item", "• Tools: Python, SQL, Airflow, dbt, Docker, Kubernetes, Terraform, AWS Lambda, Redshift, Looker, Git, Jira"],
+      ["row", "Teaching Assistant, Statistics Department"],
+      ["item", "• Maintained the equipment checkout system that the photography club and two other student groups rely on"],
+      ["row", "Research Intern, Microfluidics Lab"],
+      ["item", "• Set up the tutoring schedule and the waitlist form that the students in the intro physics course signed up for"],
+      ["row", "Volunteer Coordinator, Eastern Illinois Foodbank - Jun 2024 - Aug 2024"]
+    ]
+  },
+  {
+    "font": "Helvetica,Arial,sans-serif",
+    "lines": [
+      ["heading", "PROJECTS"],
+      ["item", "• Wrote unit tests for the parser."],
+      ["item", "• Added a nightly job that checks the backups."],
+      ["item", "• Mapped bike lane gaps around campus with QGIS and presented the map to the facilities office last spring"],
+      ["p", "A web app that shows live bus positions to about 200 students."],
+      ["item", "• Designed the logger board and wrote the firmware that wakes up once an hour to save power on the farm"],
+      ["p", "Custom firmware that logs soil moisture every hour on battery power."],
+      ["item", "• Interviewed twenty transit riders about late buses and summarized their answers in a two-page city memo"],
+      ["p", "PantryPal is an inventory tracker for the campus food pantry."]
+    ]
+  },
+  {
+    "font": "Helvetica,Arial,sans-serif",
+    "lines": [
+      ["heading", "ACTIVITIES"],
+      ["p", "Tools: SolidWorks, MATLAB, LabVIEW, COMSOL, Arduino, ImageJ, Excel, Python, Simulink, KiCad, Altium"],
+      ["row", "Research Intern, Microfluidics Lab"],
+      ["p", "Built a self-service sign-in portal for the campus makerspace that all 300 student members now use to log in"],
+      ["p", "Mentored two new members through their first pull requests"],
+      ["p", "Ran gel electrophoresis for a plant genetics lab in Urbana and kept the shared sample database consistent"],
+      ["p", "12 students mentored through their first research projects"],
+      ["p", "Technologies: React, TypeScript, Node.js, Express, PostgreSQL, Redis, Docker, GitHub Actions, Jest, Bash"],
+      ["row", "Finalist, Illinois Innovation Prize"]
+    ]
+  },
+  {
+    "font": "Helvetica,Arial,sans-serif",
+    "lines": [
+      ["heading", "EXPERIENCE"],
+      ["item", "• Tools: SolidWorks, MATLAB, LabVIEW, COMSOL, Arduino, ImageJ, Excel, Python, Simulink, KiCad, Altium"],
+      ["row", "Beckman Institute, University of Illinois"],
+      ["row", "Undergraduate Researcher - Sep 2025 - Present"],
+      ["p", "Skills: Python, SQL, Airflow, dbt, Docker, Kubernetes, Terraform, AWS Lambda, Redshift, Looker, Git, Excel"],
+      ["row", "Caterpillar Inc., Peoria"],
+      ["p", "Relevant Coursework: Operating Systems, Linear Algebra, Computer Vision, Database Systems, Algorithms"],
+      ["row", "Dean's List, James Scholar"],
+      ["p", "Profiled the image preprocessing step of a crop disease classifier and cut its runtime in half on the lab GPU"],
+      ["p", "40% faster nightly builds after moving the test suite to parallel runners"],
+      ["li", "Organized a hackathon for 150 students with sponsors from four local companies and ran the judging day"],
+      ["li", "1,200 survey responses coded for a campus housing study"],
+      ["item", "• Built the badge scanner that the volunteers at the food pantry on Green Street use whenever they check in"],
+      ["row", "GitHub Campus Expert Program"]
+    ]
+  }
+]

@@ -1,9 +1,13 @@
 import type {
-  ExperienceEntry, ExperienceSource, ProfileData, ResumeFact, ResumeMasterV1,
+  ExperienceEntry, ExperienceSource, ProfileData, ResumeActivityItem, ResumeFact, ResumeMasterV1,
   ResumeExperienceRef, ResumeMasterSectionKind,
 } from './types';
 import { isActiveExperience, validateExperienceEntries, type ExperienceSourceContext } from './experience-evidence';
-import { MAX_RESUME_TEXT_CHARACTERS, resumeTextCharacters } from './resume-input';
+import {
+  BULLET_LINE, MAX_RESUME_TEXT_CHARACTERS, RESUME_EMAIL, RESUME_FIELD_SEPARATOR as FIELD_SEPARATOR, RESUME_PERSON as PERSON,
+  RESUME_PHONE, RESUME_PLACE as PLACE, RESUME_ROLE as ROLE, RESUME_URL, resumeContactLine, resumeSectionHeading,
+  resumeTextCharacters, type ResumeSectionKind,
+} from './resume-input';
 
 export const MAX_RESUME_MASTER_FACTS = 300;
 export const MAX_RESUME_MASTER_CHARACTERS = 60_000;
@@ -349,4 +353,319 @@ export function resumeMasterEditBase(profile: Pick<ProfileData, 'resume_text' | 
     entriesJson: canonical(profile.experience_entries ?? []),
     masterJson: canonical(profile.resume_master ?? null),
   };
+}
+
+const MONTH = String.raw`(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\.?`;
+const YEAR = String.raw`(?:19|20)\d{2}`;
+const DATE = String.raw`(?:(?:${MONTH}|Spring|Summer|Fall|Autumn|Winter)\s+${YEAR}|\d{1,2}/${YEAR}|${YEAR}(?:[./]\d{1,2}|年(?:\d{1,2}月)?)?)`;
+const DATE_RANGE = new RegExp(String.raw`(${DATE})\s*(?:[-–—~]|to)\s*(${DATE}|Present|Current|Now|至今)`, 'iu');
+const EXPECTED_DATE = new RegExp(String.raw`(?:expected|anticipated|graduating|graduation|class of)\s*:?\s*${DATE}|${DATE}\s*\(expected\)`, 'iu');
+// One date that ends a line after a column gap or separator: "Project<tab>Spring 2025".
+const LAST_DATE = new RegExp(String.raw`(?:^|\t|\s[|–—-]\s)(${DATE})\s*$`, 'u');
+const LABELLED_PLACE = new RegExp(String.raw`^(?:[\p{L} ]{2,20}:\s*)?(${PLACE})$`, 'u');
+const TRAILING_PLACE = new RegExp(String.raw`(?:\(\s*(${PLACE})\s*\)|(?:,\s*|\t|\s[|–—-]\s)(${PLACE}))\s*$`, 'u');
+const SCHOOL = /\b(?:University|College|Institute|School|Academy|Polytechnic|UNIVERSITY|COLLEGE|INSTITUTE|SCHOOL|ACADEMY|POLYTECHNIC)\b|大学|学院/u;
+const DEGREE = /(?<![\p{L}.])(?:(?:B|M)\.?\s?(?:S|A|Sc|Eng|E|Ed)\.?|Ph\.?\s?D\.?|MBA|(?:Bachelor|Master)(?:'s|’s)?(?: of (?:Science|Arts|Engineering|Fine Arts|Business Administration|Applied Science))?|Associate(?:'s|’s)? of (?:Science|Arts)|Doctor of Philosophy|本科|学士|硕士|博士)(?![\p{L}])/u;
+const FIELD = /^(?:,\s*|\s+in\s+|\s+of\s+|\s+)((?:[\p{Lu}][\p{L}&'-]*)(?:\s+(?:(?:and|&|of|in)\s+)?[\p{Lu}][\p{L}&'-]*)*)/u;
+const NOT_A_FIELD = new RegExp(String.raw`^(?:${MONTH}|Spring|Summer|Fall|Autumn|Winter|Expected|Class|GPA|Minor|Honors|Present)\b`, 'u');
+const JOINERS = new Set(['of', 'and', '&', 'for', 'the', 'in', 'at', 'on', 'de', 'la']);
+// "Campus Bus Tracker - React…", "Lumos | Swift", "Quill<tab>Spring 2025".
+const PROJECT_SEPARATOR = /\t|\s[-–—|:]\s/u;
+
+/** A row of names: every field is a few words that start with a capital or
+ *  a digit, joined by small words ("Teaching Assistant, CS 225 Data
+ *  Structures", "Department of Computer Science"). */
+function namesRow(text: string): boolean {
+  return text.split(FIELD_SEPARATOR).every((field) => {
+    const words = field.trim().split(/\s+/u);
+    return words.length <= 6 && words.every((word) => JOINERS.has(word) || /^[^\p{L}\p{N}]*[\p{Lu}\p{N}]/u.test(word));
+  });
+}
+const SKILL_LABEL = /^[\p{L} &/]{2,30}:\s*/u;
+// "School: …" / "学校: …" rows, as this product's own résumé export prints them.
+const LABELLED = /^\s*([\p{L}][\p{L} /-]{0,28}?)\s*[:：]\s*(\S.*?)\s*$/u;
+const LABELS = new Map<string, string>(Object.entries({
+  email: 'email', 'e-mail': 'email', 邮箱: 'email', phone: 'phone', mobile: 'phone', 电话: 'phone', 手机: 'phone',
+  location: 'location', address: 'location', 地点: 'location', 所在地: 'location',
+  school: 'school', university: 'school', 学校: 'school', degree: 'degree', 学位: 'degree',
+  field: 'field', major: 'field', 'field of study': 'field', 专业: 'field',
+  start: 'start', 'start date': 'start', 开始: 'start', end: 'end', 'end date': 'end', graduation: 'end', 结束: 'end',
+  organization: 'organization', company: 'organization', employer: 'organization', 机构: 'organization',
+  title: 'title', role: 'title', position: 'title', 职位: 'title',
+}));
+
+interface SourceLine { text: string; start: number }
+interface ProposedItem { fields: Partial<Record<string, ResumeFact>>; kind?: ResumeActivityItem['kind'] }
+
+/** Candidate facts found verbatim in the résumé: contact details, schools and
+ *  degrees, roles and projects with their dates, and the skills list. Every
+ *  fact quotes its exact source span and starts unconfirmed; nothing is
+ *  inferred beyond where a span begins and ends. Fields the master already
+ *  holds stay as they are, and a span that was proposed before is never
+ *  proposed again, including one the student excluded. */
+export function proposeResumeMaster(value: unknown, rawText: string, signature: string): ResumeMasterV1 {
+  const master = requireMaster(value) ?? createEmptyResumeMaster();
+  const points = Array.from(rawText);
+  const lines: SourceLine[] = [];
+  for (let start = 0, index = 0; index <= points.length; index++) {
+    if (index === points.length || points[index] === '\n') {
+      lines.push({ text: points.slice(start, index).join('').replace(/\r$/u, ''), start });
+      start = index + 1;
+    }
+  }
+  /** The trimmed text between two UTF-16 offsets of a line, as a candidate. */
+  const fact = (line: SourceLine, from: number, to: number): ResumeFact | undefined => {
+    const raw = line.text.slice(from, to);
+    const quote = raw.trim();
+    if (!quote) return undefined;
+    const start = line.start + Array.from(line.text.slice(0, from + raw.indexOf(quote))).length;
+    return { id: globalThis.crypto.randomUUID(), revision: 1, status: 'candidate', value: quote,
+      source: { kind: 'resume', signature, quote, start, end: start + Array.from(quote).length } };
+  };
+  const match = (line: SourceLine, found: RegExpExecArray | null, group = 0, base = 0): ResumeFact | undefined => {
+    if (!found || found[group] === undefined) return undefined;
+    const offset = base + found.index + found[0].indexOf(found[group]);
+    return fact(line, offset, offset + found[group].length);
+  };
+  const place = (found: RegExpExecArray) => (found[1] ? 1 : 2);
+  /** Date range, an "expected" graduation date, or one trailing date. Returns
+   *  where the dates begin, so the rest of the line can be read as names. */
+  const dates = (line: SourceLine, item: ProposedItem, expected: boolean): number | undefined => {
+    const range = DATE_RANGE.exec(line.text);
+    if (range) {
+      item.fields.start ??= match(line, range, 1);
+      item.fields.end ??= match(line, range, 2);
+      return range.index;
+    }
+    const graduation = expected ? EXPECTED_DATE.exec(line.text) : null;
+    if (graduation) {
+      item.fields.end ??= match(line, graduation);
+      return graduation.index;
+    }
+    const last = LAST_DATE.exec(line.text);
+    if (last) item.fields.start ??= match(line, last, 1);
+    return last?.index;
+  };
+
+  const basics: Partial<Record<(typeof BASIC_FIELDS)[number], ResumeFact>> = {};
+  const links: ResumeFact[] = [];
+  const education: ProposedItem[] = [];
+  const activities: ProposedItem[] = [];
+  const skills: ResumeFact[] = [];
+  /** Name (first line only), email, phone, place and profile links. */
+  const contact = (line: SourceLine, first: boolean) => {
+    const email = RESUME_EMAIL.exec(line.text);
+    basics.email ??= match(line, email);
+    basics.phone ??= match(line, RESUME_PHONE.exec(line.text));
+    for (const url of line.text.matchAll(new RegExp(RESUME_URL.source, 'giu'))) {
+      if (email && url.index >= email.index && url.index < email.index + email[0].length) continue;
+      const link = match(line, url);
+      if (link) links.push(link);
+    }
+    const labelled = LABELLED.exec(line.text);
+    if (labelled && LABELS.get(labelled[1].toLowerCase()) === 'location') basics.location ??= match(line, labelled, 2);
+    let offset = 0;
+    for (const segment of line.text.split(/(\s[|•·]\s|\t)/u)) {
+      if (first && offset === 0 && PERSON.test(segment.trim())) basics.name ??= fact(line, 0, segment.length);
+      basics.location ??= match(line, LABELLED_PLACE.exec(segment.trim()), 1, offset + segment.indexOf(segment.trim()));
+      offset += segment.length;
+    }
+  };
+  const activity = (kind: ResumeActivityItem['kind']): ProposedItem => {
+    const item: ProposedItem = { fields: {}, kind };
+    activities.push(item);
+    return item;
+  };
+
+  // Sections that mark their points with glyph bullets. In the others a
+  // point has no glyph, so a short line with a comma or a role word in it is
+  // as likely a point as a role row. Sections whose rows name a project with
+  // a separator or dates: there a bare short row is not a project name, but
+  // a title the heading list does not know or a row under it.
+  const sectionOf: number[] = [];
+  const glyphSections = new Set<number>();
+  const separatedSections = new Set<number>();
+  lines.forEach((line, index) => {
+    sectionOf[index] = (sectionOf[index - 1] ?? 0) + (resumeSectionHeading(line.text.trim()) ? 1 : 0);
+    if (BULLET_LINE.test(line.text)) glyphSections.add(sectionOf[index]);
+    else if (PROJECT_SEPARATOR.test(line.text) || DATE_RANGE.test(line.text)) separatedSections.add(sectionOf[index]);
+  });
+
+  let section: { kind: ResumeSectionKind; heading: string } | null = null;
+  let current: ProposedItem | null = null;
+  let headerOpen = false;
+  let opening = true;
+  for (const [index, line] of lines.entries()) {
+    const text = line.text.trim();
+    if (!text) continue;
+    // The first line names the student, even when it is set in capitals,
+    // unless it is a heading (a layout that prints the main column first).
+    if (opening) {
+      opening = false;
+      if (PERSON.test(text.split(/\s[|•·]\s|\t/u)[0].trim()) && !resumeSectionHeading(text)) {
+        contact(line, true);
+        continue;
+      }
+    }
+    const role = section && (section.kind === 'experience' || section.kind === 'projects');
+    const heading = resumeSectionHeading(text);
+    if (heading && !(role && heading === 'other' && ROLE.test(text))) {
+      section = { kind: heading, heading: text.toLowerCase() };
+      current = null;
+      headerOpen = false;
+      continue;
+    }
+    // Above the first heading, and any contact line elsewhere (a sidebar
+    // printed after the main column).
+    if (!section || resumeContactLine(text)) {
+      contact(line, false);
+      if (!section) continue;
+    }
+    if (BULLET_LINE.test(line.text)) {
+      headerOpen = false;
+      continue;
+    }
+    const labelled = LABELLED.exec(line.text);
+    const label = labelled ? LABELS.get(labelled[1].toLowerCase()) : undefined;
+    if (label && section.kind === 'education' && ['school', 'degree', 'field', 'start', 'end'].includes(label)) {
+      if (!current || (label === 'school' && current.fields.school)) {
+        current = { fields: {} };
+        education.push(current);
+      }
+      current.fields[label] ??= match(line, labelled, 2);
+      continue;
+    }
+    if (label && role && ['title', 'organization', 'location', 'start', 'end'].includes(label)) {
+      if (!current || label === 'title') current = activity(section.kind === 'projects' ? 'project' : 'other');
+      current.fields[label] ??= match(line, labelled, 2);
+      headerOpen = true;
+      continue;
+    }
+    const words = text.split(/\s+/u).length;
+    const sentence = /[.!?]$/u.test(text);
+    if (section.kind === 'skills') {
+      const skillLabel = SKILL_LABEL.exec(line.text);
+      let offset = skillLabel ? skillLabel[0].length : 0;
+      for (const item of line.text.slice(offset).split(/([,;|•·、，；\t])/u)) {
+        if (/[\p{L}\p{N}]/u.test(item) && item.trim().split(/\s+/u).length <= 4 && Array.from(item.trim()).length <= 60) {
+          const skill = fact(line, offset, offset + item.length);
+          if (skill) skills.push(skill);
+        }
+        offset += item.length;
+      }
+    } else if (section.kind === 'education') {
+      const trailing = TRAILING_PLACE.exec(line.text);
+      const content = trailing ? line.text.slice(0, trailing.index) : line.text;
+      const degree = DEGREE.exec(content);
+      const school = SCHOOL.test(content);
+      if (!school && !degree && !DATE_RANGE.test(content) && !EXPECTED_DATE.test(content)) continue;
+      if (!current || (school && current.fields.school)) {
+        current = { fields: {} };
+        education.push(current);
+      }
+      if (school) {
+        const cut = content.search(/\s[-–—|]\s|\t|\(/u);
+        // A Chinese school name is one token: "北京大学 物理学院 本科".
+        const han = /\S*(?:大学|学院)\S*/u.exec(content);
+        current.fields.school ??= han ? match(line, han) : fact(line, 0, cut < 0 ? content.length : cut);
+      }
+      if (degree) {
+        current.fields.degree ??= match(line, degree);
+        const rest = degree.index + degree[0].length;
+        const field = FIELD.exec(content.slice(rest));
+        if (field && !NOT_A_FIELD.test(field[1])) current.fields.field ??= match(line, field, 1, rest);
+      }
+      dates(line, current, true);
+    } else if (role) {
+      const project = section.kind === 'projects';
+      const range = DATE_RANGE.test(line.text);
+      const glyphs = glyphSections.has(sectionOf[index]);
+      if (current && headerOpen && !project && words <= 12 && !sentence && !(range && current.fields.start)
+        && (glyphs || range || namesRow(text))) {
+        // A second header row: the organization, place or dates of the same role.
+        dates(line, current, false);
+        const trailing = TRAILING_PLACE.exec(line.text);
+        if (trailing) current.fields.location ??= match(line, trailing, place(trailing));
+        const head = (trailing ? line.text.slice(0, trailing.index) : line.text).split(/\t/u)[0];
+        if (!current.fields.organization && !DATE_RANGE.test(head)) current.fields.organization = fact(line, 0, head.length);
+        continue;
+      }
+      // A list printed with graphic markers has no bullet glyphs: a role or
+      // project header names one, usually with dates or a separator; anything
+      // else (an accomplishment sentence) stays with the experience library.
+      const header = range || (words <= 12 && !sentence && (project
+        ? PROJECT_SEPARATOR.test(line.text) || (words <= 8 && !separatedSections.has(sectionOf[index]))
+        : glyphs ? ROLE.test(text) || FIELD_SEPARATOR.test(text)
+          : namesRow(text) && text.split(FIELD_SEPARATOR).slice(0, 2).some((field) => ROLE.test(field))))
+        || (project && words > 12 && /^[^\t]{1,80}?\s[-–—|:]\s/u.test(line.text) && !/^\p{Ll}/u.test(text));
+      if (!header) {
+        headerOpen = false;
+        continue;
+      }
+      current = activity(project ? 'project'
+        : /volunteer/u.test(section.heading) ? 'volunteer'
+          : /leadership|activities/u.test(section.heading) ? 'other'
+            : /research/u.test(section.heading) || /\bresearch\b|\blab(?:oratory)?\b/iu.test(text) ? 'research' : 'employment');
+      headerOpen = true;
+      let head = line.text.slice(0, dates(line, current, false)).replace(/[\s|–—(-]+$/u, '');
+      const trailing = TRAILING_PLACE.exec(head);
+      if (trailing) {
+        current.fields.location = match(line, trailing, place(trailing));
+        head = head.slice(0, trailing.index);
+      }
+      if (project) {
+        const title = head.split(/\s[-–—|:]\s|\t/u)[0].replace(/\s*\([^)]*\)\s*$/u, '');
+        current.fields.title = fact(line, 0, title.length);
+        continue;
+      }
+      const split = FIELD_SEPARATOR.exec(head);
+      const before = fact(line, 0, split ? split.index : head.length);
+      const after = split ? fact(line, split.index + split[0].length, head.length) : undefined;
+      // "Organization — Title" layouts put the role second.
+      const swap = !!after && ROLE.test(after.value) && !ROLE.test(before?.value ?? '');
+      current.fields.title = swap ? after : before;
+      current.fields.organization = swap ? before : after;
+    }
+  }
+
+  const taken = new Set<string>();
+  for (const item of resumeMasterFacts(master)) {
+    if (item.source.kind === 'resume' && item.source.signature === signature) taken.add(`${item.source.start}:${item.source.end}`);
+  }
+  const fresh = (item: ResumeFact | undefined): item is ResumeFact => !!item && item.source.kind === 'resume'
+    && !taken.has(`${item.source.start}:${item.source.end}`);
+  const next: ResumeMasterV1 = JSON.parse(JSON.stringify(master));
+  // A withdrawn fact quotes a résumé that was replaced; it stays visible in
+  // a list, but it holds no field against the current résumé's candidate.
+  const holds = (item: ResumeFact | undefined) => !!item && item.status !== 'withdrawn';
+  for (const key of BASIC_FIELDS) if (!holds(next.basics[key]) && fresh(basics[key])) next.basics[key] = basics[key];
+  const linked = new Set(next.basics.links.filter((link) => holds(link.url)).map((link) => link.url.value));
+  for (const url of links) {
+    const label = url.value.replace(/^(?:https?:\/\/)?(?:www\.)?/iu, '').split('/')[0];
+    // "https:///x" names no host, so it is no profile link to offer.
+    if (!fresh(url) || linked.has(url.value) || !label.trim() || resumeTextCharacters(label) > 120) continue;
+    next.basics.links.push({ id: globalThis.crypto.randomUUID(), label, url });
+    linked.add(url.value);
+  }
+  // An item proposed before (any of its spans taken) is not proposed again.
+  const unseen = (item: ProposedItem) => {
+    const fields = Object.entries(item.fields).filter((entry): entry is [string, ResumeFact] => !!entry[1]);
+    return fields.length && fields.every(([, field]) => fresh(field)) ? Object.fromEntries(fields) : null;
+  };
+  for (const item of education) {
+    const fields = unseen(item);
+    if (fields) next.education.push({ id: globalThis.crypto.randomUUID(), ...fields, details: [] });
+  }
+  for (const item of activities) {
+    const fields = unseen(item);
+    if (fields) next.activities.push({ id: globalThis.crypto.randomUUID(), kind: item.kind!, ...fields, details: [] });
+  }
+  const named = new Set(next.skills.filter(holds).map((skill) => skill.value.trim().toLowerCase()));
+  for (const skill of skills) {
+    if (!fresh(skill) || named.has(skill.value.toLowerCase())) continue;
+    next.skills.push(skill);
+    named.add(skill.value.toLowerCase());
+  }
+  if (JSON.stringify(next) === JSON.stringify(master)) return master;
+  return requireMaster({ ...next, source_signature: signature })!;
 }

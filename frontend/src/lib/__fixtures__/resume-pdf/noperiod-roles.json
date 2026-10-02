@@ -1,0 +1,30 @@
+[
+  [
+    "Undergraduate Research Assistant, Health Imaging Lab",
+    "Jan 2026 - Present",
+    [
+      "Built a PyTorch pipeline that preprocesses 12,000 chest X-ray images and trains a ResNet-18 baseline",
+      "Implemented Grad-CAM and integrated-gradients saliency maps to compare model explanations on chest X-rays",
+      "Annotated 4,000 medical images with bounding boxes following a clinician-written guideline",
+      "Presented weekly progress updates to the PI and two graduate mentors"
+    ]
+  ],
+  [
+    "Software Engineering Intern, Prairie Analytics",
+    "May 2025 - Aug 2025",
+    [
+      "Reduced nightly ETL runtime from 40 minutes to 9 minutes by rewriting SQL joins and adding indexes",
+      "Wrote unit and integration tests with pytest for 14 data-validation functions and raised coverage to 92%",
+      "Configured GitHub Actions CI to run linting, type checks and tests on every pull request"
+    ]
+  ],
+  [
+    "Teaching Assistant, CS 225 Data Structures",
+    "Aug 2024 - May 2025",
+    [
+      "Mentored three first-year students in data structures and algorithms during weekly office hours",
+      "Graded weekly programming assignments for 180 students and wrote autograder test cases in C++",
+      "Led two review sessions before each midterm exam with about 60 students attending"
+    ]
+  ]
+]

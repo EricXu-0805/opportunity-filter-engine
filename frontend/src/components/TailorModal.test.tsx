@@ -11,6 +11,8 @@
  * matchers (R70-F lesson).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 
 vi.mock('@/i18n/client', () => {
@@ -162,6 +164,112 @@ describe('TailorModal', () => {
     expect(textarea.value).toContain('Wrote 12-page final lab report');
     expect(textarea.value).not.toContain('EDUCATION');
     expect(textarea.value).not.toContain('this is not bullet-shaped');
+  });
+
+  it.each([
+    // Stored by the old PDF reader for the target-résumé walk: a bullet
+    // wrapped before a capitalized word, another before a lowercase one.
+    // With the page gone, nothing but the page's geometry showed that "AUC"
+    // wrapped, so that row stays apart and, having no glyph, out of the
+    // prefill.
+    ['a capitalized', 'Built a PyTorch pipeline that preprocesses 12,000 chest X-ray images and trains a ResNet-18 baseline, reaching 0.87', [
+      'JORDAN AVERY LEE | jordan.lee.test@example.com | Urbana, IL',
+      'EDUCATION',
+      'University of Illinois Urbana-Champaign - B.S. Computer Science, expected May 2028. GPA 3.7/4.0.',
+      'Relevant coursework: Data Structures (CS 225), Computer Architecture (CS 233), Linear Algebra (MATH 257), Probability',
+      '& Statistics (STAT 400).',
+      'EXPERIENCE',
+      'Undergraduate Research Assistant, Health Imaging Lab (UIUC) - Jan 2026 - Present',
+      '- Built a PyTorch pipeline that preprocesses 12,000 chest X-ray images and trains a ResNet-18 baseline, reaching 0.87',
+      'AUC on a held-out split.',
+      '- Worked with a PhD mentor as part of a four-person team to compare Grad-CAM and integrated-gradients saliency',
+      'maps; I wrote the evaluation scripts.',
+      'Software Engineering Intern, Prairie Analytics (Champaign, IL) - Jun 2026 - Aug 2026',
+      "- Wrote SQL and Python ETL jobs that cut a nightly report's runtime from 40 minutes to 9 minutes.",
+      '- Added unit tests (pytest) for 14 data-validation functions.',
+      'PROJECTS',
+      'Swahili-English Sentiment Classifier (course project, CS 446) - fine-tuned a multilingual BERT on 3,000 labeled tweets;',
+      '78% accuracy vs 71% baseline.',
+    ]],
+    // The renovate walk, 1in margins: a wrap after a comma and one at a hyphen.
+    ['a hyphen', 'Built a PyTorch pipeline that preprocesses 12,000 chest X-ray images and trains a ResNet-18 baseline, reaching 0.87 AUC on a held-out split.', [
+      'JORDAN AVERY LEE | jordan.lee.test@example.com | Urbana, IL',
+      'EXPERIENCE',
+      'Undergraduate Research Assistant, Health Imaging Lab (UIUC) - Jan 2026 - Present',
+      '- Built a PyTorch pipeline that preprocesses 12,000 chest X-ray images and trains a ResNet-18',
+      'baseline, reaching 0.87 AUC on a held-out split.',
+      '- Worked with a PhD mentor as part of a four-person team to compare Grad-CAM and integrated-',
+      'gradients saliency maps; I wrote the evaluation scripts.',
+      'Software Engineering Intern, Prairie Analytics (Champaign, IL) - Jun 2026 - Aug 2026',
+      "- Wrote SQL and Python ETL jobs that cut a nightly report's runtime from 40 minutes to 9 minutes.",
+      '- Added unit tests (pytest) for 14 data-validation functions.',
+      'Swahili-English Sentiment Classi fi er (course project, CS 446) - fi ne-tuned a multilingual BERT on',
+      '3,000 labeled tweets; 78% accuracy vs 71% baseline.',
+    ]],
+  ])('pre-fills whole bullets from résumé text stored with %s wrap', (_, first, rows) => {
+    render(<TailorModal {...baseProps} profile={makeProfile({ resume_text: rows.join('\n') })} />);
+    const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
+    expect(textarea.value.split('\n')).toEqual([
+      first,
+      'Worked with a PhD mentor as part of a four-person team to compare Grad-CAM and integrated-gradients saliency maps; I wrote the evaluation scripts.',
+      "Wrote SQL and Python ETL jobs that cut a nightly report's runtime from 40 minutes to 9 minutes.",
+      'Added unit tests (pytest) for 14 data-validation functions.',
+    ]);
+  });
+
+  it.each([
+    // The PDF reflow kept each organization line apart from the full bullet above it.
+    ['reflowed-org-lines', [
+      'Profiled the image preprocessing step of a crop disease classifier and cut its runtime in half by caching resized tiles on disk',
+      'Calibrated pressure sensors for a wind tunnel experiment and wrote a MATLAB script that flags drifting channels before each test run',
+      'Built a Flask service that matches tutoring requests to volunteer tutors by course and availability and emails both sides a confirmation',
+      'Assembled a low-cost air quality monitor with an ESP32 and a particulate sensor and logged readings from six dorm rooms for a month',
+      'Interviewed fourteen local restaurant owners about delivery fees and wrote a summary that the student government shared with the city council',
+      'Automated the weekly inventory report for the chemistry stockroom so staff no longer copy numbers between three spreadsheets by hand',
+      'Mapped bike lane gaps around campus with QGIS and presented the map to the facilities office as part of a sustainability proposal',
+      'Organized a hackathon for 150 students with sponsors from four local companies and handled the judging schedule and prize logistics',
+    ]],
+    // Stored by the old PDF reader: a list item and a "rely on" item before
+    // role rows, and bullets wrapped before "government" and "month".
+    ['stored-particle-then-role', [
+      "Migrated the lab's analysis scripts from MATLAB to Python and added unit tests for each function",
+      'Interviewed fourteen local restaurant owners about delivery fees and summarized the fi ndings for student government',
+      'Tech stack: PyTorch, NumPy, pandas, scikit-learn, OpenCV, CUDA, Slurm, Linux, Git',
+      'Assembled a low-cost air quality monitor with an ESP32 and logged readings from six dorm rooms for a month',
+      'Built a Flask service that matches tutoring requests to volunteer tutors by course and availability',
+      'Cleaned and merged three years of county health records and built a dashboard in Tableau',
+      'Maintained the equipment checkout system that the photography club and two other groups rely on',
+      'Analyzed 2 million taxi trips with Spark and presented fare patterns to the transportation group',
+      'Organized a hackathon for 150 students with sponsors from four local companies',
+      'Tools: Python, SQL, Air fl ow, dbt, Docker, Terraform, Redshift, Looker, Git',
+      'Ran gel electrophoresis and PCR for a plant genetics lab and kept the sample database consistent',
+      'Designed a printed circuit board for a soil moisture logger and wrote its low-power fi rmware',
+    ]],
+  ])('pre-fills only the bullets of %s, not the rows under them', (key, bullets) => {
+    const texts = JSON.parse(readFileSync(join(__dirname, '../lib/__fixtures__/resume-pdf/resume-texts.json'), 'utf8')) as Record<string, string>;
+    render(<TailorModal {...baseProps} profile={makeProfile({ resume_text: texts[key] })} />);
+    const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
+    expect(textarea.value.split('\n')).toEqual(bullets);
+  });
+
+  it('keeps the next bullet, role row or project row out of a stored bullet that ends without a full stop', () => {
+    const rows = [
+      'EXPERIENCE',
+      'Research Intern, Microfluidics Lab - Jun 2024 - Aug 2024',
+      '- Rebuilt the volunteer scheduling tool so coordinators can swap shifts from their phones and see open slots',
+      'Teaching Assistant, Statistics Department - Aug 2024 - May 2025',
+      '- Trained a small convolutional network to sort recycling photos taken at the two dining hall bins every week',
+      'Campus Bus Tracker - React and Flask web app used by about 200 students.',
+      '- Designed a printed circuit board for a soil moisture logger and wrote firmware that wakes up once an hour',
+      'iOS app that reminds students of office hours',
+    ];
+    render(<TailorModal {...baseProps} profile={makeProfile({ resume_text: rows.join('\n') })} />);
+    const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder') as HTMLTextAreaElement;
+    expect(textarea.value.split('\n')).toEqual([
+      'Rebuilt the volunteer scheduling tool so coordinators can swap shifts from their phones and see open slots',
+      'Trained a small convolutional network to sort recycling photos taken at the two dining hall bins every week',
+      'Designed a printed circuit board for a soil moisture logger and wrote firmware that wakes up once an hour',
+    ]);
   });
 
   it('calls tailorResume with parsed bullets and renders AI variant on success', async () => {

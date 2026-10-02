@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { webcrypto } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import type { ExperienceEntry } from './types';
+import { storedWraps } from './resume-input';
 import {
   activeExperienceEntries, createManualCandidate, createResumeCandidates,
   isActiveExperience, removeResumeEntries, sourceDigest,
@@ -175,8 +178,218 @@ describe('local proposals and confirmed eligibility', () => {
     expect(quotes).toContain("• Built parser 7 for the lab's EEG\nrecordings and documented it");
     expect(quotes.join('\n')).toBe(raw);
   });
+  it('offers no section heading, contact line or name as an experience, and keeps every other line whole', async () => {
+    const raw = readFileSync(join(__dirname, '__fixtures__/resume-pdf/persona.txt'), 'utf8');
+    const entries = await createResumeCandidates(raw);
+    const kept = raw.split('\n').filter((line) => !/^(?:[A-Z]+|JORDAN AVERY LEE \|.*)$/.test(line));
+    expect(entries.map((entry) => entry.text)).toEqual(kept);
+    expect(kept).toHaveLength(11);
+    for (const entry of entries) {
+      if (entry.source.kind !== 'resume') throw new Error('expected resume');
+      expect(Array.from(raw).slice(entry.source.start, entry.source.end).join('')).toBe(entry.source.quote);
+    }
+  });
+  it('drops the header block of a sidebar résumé but not a summary sentence above the first heading', async () => {
+    const raw = ['Priya Natarajan', 'priya.natarajan.test@example.com', '(217) 555-0142', 'Champaign, IL',
+      'github.com/priya-test', 'Bioengineering student who builds low-cost medical sensors.', 'Education',
+      'University of Illinois Urbana-Champaign', 'Skills', 'Python, MATLAB'].join('\n');
+    expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual([
+      'Bioengineering student who builds low-cost medical sensors.', 'University of Illinois Urbana-Champaign', 'Python, MATLAB',
+    ]);
+  });
+  it('ends the header block at a Title Case heading with "&" or an unknown one, keeping the role lines below it', async () => {
+    const lines = (heading: string) => ['Jordan Lee', 'jordan.lee@example.com', heading, 'Research Assistant', 'Health Imaging Lab',
+      '- Built a PyTorch pipeline that trains a ResNet-18 baseline.', 'EDUCATION', 'University of Illinois'].join('\n');
+    const below = ['Research Assistant', 'Health Imaging Lab', '- Built a PyTorch pipeline that trains a ResNet-18 baseline.', 'University of Illinois'];
+    for (const heading of ['Research & Projects', 'Experience & Leadership', 'Honors & Awards', 'Selected Experience']) {
+      expect((await createResumeCandidates(lines(heading))).map((entry) => entry.text)).toEqual(below);
+    }
+    // A heading the list does not name still ends the header block, and is
+    // offered like any other line rather than hiding what follows it.
+    expect((await createResumeCandidates(lines('Campus Leadership'))).map((entry) => entry.text)).toEqual(['Campus Leadership', ...below]);
+  });
+  it('ends the header block at the first line that is not the name, a contact line or a place, whatever heading follows', async () => {
+    // A heading the title list does not name must not hide the role lines
+    // under it: only the name and the contact and place lines are header.
+    const role = ['Course Assistant', 'CS 124 Staff', '- Held weekly office hours for 120 students in the intro course.'];
+    for (const heading of ['Teaching & Mentoring', 'Outreach', 'Mentorship', 'PATENTS', 'Lab Work']) {
+      const raw = ['Jordan Lee', 'jordan.lee@example.com', 'Champaign, IL', 'github.com/jlee', heading, ...role,
+        'EDUCATION', 'University of Illinois'].join('\n');
+      expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual([heading, ...role, 'University of Illinois']);
+    }
+    // Without any heading there is no header block to drop.
+    expect((await createResumeCandidates(['Course Assistant', 'Champaign, IL', ...role.slice(1)].join('\n')))
+      .map((entry) => entry.text)).toEqual(['Course Assistant', 'Champaign, IL', ...role.slice(1)]);
+    // The same with blank lines between paragraphs.
+    const raw = ['Jordan Lee\njordan.lee@example.com\nChampaign, IL', `Outreach\n${role[0]}\n${role[1]}`, role[2],
+      'EDUCATION\nUniversity of Illinois'].join('\n\n');
+    expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual([
+      `Outreach\n${role[0]}\n${role[1]}`, role[2], 'EDUCATION\nUniversity of Illinois',
+    ]);
+  });
+  it('reads a first line that names a role as the name only when contact details or a place follow it', async () => {
+    // A layout that prints the main column first opens with a role.
+    const role = ['Research Assistant', 'Health Imaging Lab', '- Built a baseline.', 'EDUCATION', 'University of Illinois'];
+    expect((await createResumeCandidates(role.join('\n'))).map((entry) => entry.text)).toEqual([
+      'Research Assistant', 'Health Imaging Lab', '- Built a baseline.', 'University of Illinois',
+    ]);
+    for (const below of ['jordan.chair@example.com', 'Champaign, IL']) {
+      const raw = ['Jordan Chair', below, 'EXPERIENCE', 'Research Assistant', '- Built a baseline.'].join('\n');
+      expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual(['Research Assistant', '- Built a baseline.']);
+    }
+    // A headline can sit between the name and the contact line; a contact
+    // line further down says nothing about the first line.
+    const headline = ['Michael Fellows', 'Software Engineering Student', 'michael.fellows@example.com | (217) 555-0142',
+      'EXPERIENCE', 'Research Assistant, Health Imaging Lab', '- Built a baseline.'];
+    expect((await createResumeCandidates(headline.join('\n'))).map((entry) => entry.text)).toEqual([
+      'Software Engineering Student', 'Research Assistant, Health Imaging Lab', '- Built a baseline.',
+    ]);
+    const later = ['Research Assistant', 'Health Imaging Lab', '- Built a baseline.', 'jordan.lee@example.com', 'EDUCATION', 'University of Illinois'];
+    expect((await createResumeCandidates(later.join('\n'))).map((entry) => entry.text)).toEqual([
+      'Research Assistant', 'Health Imaging Lab', '- Built a baseline.', 'University of Illinois',
+    ]);
+  });
+  it('reads a labelled place line as part of the header block', async () => {
+    const raw = ['Jordan Lee', 'Location: Champaign, IL', 'jordan.lee@example.com', 'EXPERIENCE', 'Research Assistant'].join('\n');
+    expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual(['Research Assistant']);
+  });
+  it('treats a first line in capitals as the name, not as the heading that ends the header block', async () => {
+    const raw = ['PRIYA NATARAJAN', 'Champaign, IL', 'priya.natarajan.test@example.com', 'SKILLS', 'SQL', 'MATLAB'].join('\n');
+    expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual(['SQL', 'MATLAB']);
+  });
+  it('keeps a stored bullet together with its wrapped lowercase rows', async () => {
+    const raw = ['EXPERIENCE', 'Research Assistant, Imaging Lab - Jan 2026 - Present',
+      '- Built a PyTorch pipeline that trains a ResNet-18 baseline,', 'reaching 0.87 AUC on a held-out split.',
+      '- Compared Grad-CAM and integrated-gradients', 'saliency maps; I wrote the evaluation scripts.',
+      'Software Engineering Intern, Prairie Analytics'].join('\n');
+    expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual([
+      'Research Assistant, Imaging Lab - Jan 2026 - Present',
+      '- Built a PyTorch pipeline that trains a ResNet-18 baseline,\nreaching 0.87 AUC on a held-out split.',
+      '- Compared Grad-CAM and integrated-gradients\nsaliency maps; I wrote the evaluation scripts.',
+      'Software Engineering Intern, Prairie Analytics',
+    ]);
+  });
+  it('joins a stored bullet with the rows that only wrap it on words that cannot end or open an item', async () => {
+    // Text the old PDF reader stored for the target-résumé walk: one row per
+    // printed line. "maps;" starts in lowercase, so it finishes its bullet.
+    // "AUC" is capitalized; only the page's geometry showed that it wrapped,
+    // and with the page gone that row stays apart.
+    const raw = [
+      'EXPERIENCE',
+      'Undergraduate Research Assistant, Health Imaging Lab (UIUC) - Jan 2026 - Present',
+      '- Built a PyTorch pipeline that preprocesses 12,000 chest X-ray images and trains a ResNet-18 baseline, reaching 0.87',
+      'AUC on a held-out split.',
+      '- Worked with a PhD mentor as part of a four-person team to compare Grad-CAM and integrated-gradients saliency',
+      'maps; I wrote the evaluation scripts.',
+      "- Wrote SQL and Python ETL jobs that cut a nightly report's runtime from 40 minutes to 9 minutes.",
+      '- Added unit tests (pytest) for 14 data-validation functions.',
+    ].join('\n');
+    expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual([
+      'Undergraduate Research Assistant, Health Imaging Lab (UIUC) - Jan 2026 - Present',
+      '- Built a PyTorch pipeline that preprocesses 12,000 chest X-ray images and trains a ResNet-18 baseline, reaching 0.87',
+      'AUC on a held-out split.',
+      '- Worked with a PhD mentor as part of a four-person team to compare Grad-CAM and integrated-gradients saliency\nmaps; I wrote the evaluation scripts.',
+      "- Wrote SQL and Python ETL jobs that cut a nightly report's runtime from 40 minutes to 9 minutes.",
+      '- Added unit tests (pytest) for 14 data-validation functions.',
+    ]);
+  });
+  it('reads stored rows the way the reflow reads a page, with widths counted in characters', () => {
+    expect(storedWraps([
+      '- Built a gait-analysis toolkit in Python used by eleven graduate students across two labs and',
+      'three clinics',
+      'Research Intern, Biomechanics Lab\tJun 2025 - Aug 2025',
+      '- Collected force-plate recordings from twenty volunteers under an approved protocol with the',
+      'lab manager.',
+      'EDUCATION',
+    ])).toEqual([false, true, false, false, true, false]);
+    // A list cut inside a name reads on only where the page shows it.
+    expect(storedWraps(['- Tools: Python, MATLAB, NumPy, SolidWorks, LabVIEW, COMSOL, Arduino, ImageJ, Excel, Power',
+      'BI, Tableau, Excel'])).toEqual([false, false]);
+    // A row with a column gap is a row of its own, even after a word that goes on.
+    expect(storedWraps(['- Calibrated the motion capture system and wrote the setup guide for new lab staff and',
+      'Python\tSpring 2025'])).toEqual([false, false]);
+    // A Chinese character is as wide as two Latin ones.
+    expect(storedWraps([
+      'JORDAN AVERY LEE | jordan.lee.test@example.com | Urbana, IL | github.com/jlee',
+      '• 负责后端接口设计与数据库建模，使用 Flask 与 PostgreSQL 实现用户、商品与订单模块，',
+      '并编写部署文档。',
+    ])).toEqual([false, false, true]);
+  });
+  it('keeps every row of reflowed text that the reflow left on its own line', async () => {
+    // Text the PDF reflow already joined: an organization line, a section
+    // title the list does not name and a row of names each sit under a full
+    // bullet that ends without a full stop.
+    const texts = JSON.parse(readFileSync(join(__dirname, '__fixtures__/resume-pdf/resume-texts.json'), 'utf8')) as Record<string, string>;
+    for (const key of ['reflowed-org-lines', 'reflowed-unlisted-title']) {
+      const rows = texts[key].split('\n');
+      expect((await createResumeCandidates(texts[key])).map((entry) => entry.text))
+        .toEqual(rows.slice(2).filter((row) => !/^[A-Z]+$/.test(row)));
+    }
+  });
+  it('joins a stored row to its bullet only on words that cannot end or open an item', async () => {
+    // Stored by the old PDF reader, one row per printed line. A lowercase
+    // row or a row after "a" finishes its bullet; a role row after a list
+    // or after "rely on" opens the next role.
+    const texts = JSON.parse(readFileSync(join(__dirname, '__fixtures__/resume-pdf/resume-texts.json'), 'utf8')) as Record<string, string>;
+    const quotes = (await createResumeCandidates(texts['stored-particle-then-role'])).map((entry) => entry.text);
+    expect(quotes.slice(3, 15)).toEqual([
+      'Software Engineering Intern, Prairie Analytics - Jun 2024 - Aug 2024',
+      "• Migrated the lab's analysis scripts from MATLAB to Python and added unit tests for each function",
+      '• Interviewed fourteen local restaurant owners about delivery fees and summarized the fi ndings for student\ngovernment',
+      '• Tech stack: PyTorch, NumPy, pandas, scikit-learn, OpenCV, CUDA, Slurm, Linux, Git',
+      'Hardware Lead, Illini Solar Car - Jun 2024 - Aug 2024',
+      '• Assembled a low-cost air quality monitor with an ESP32 and logged readings from six dorm rooms for a\nmonth',
+      '• Built a Flask service that matches tutoring requests to volunteer tutors by course and availability',
+      '• Cleaned and merged three years of county health records and built a dashboard in Tableau',
+      '• Maintained the equipment checkout system that the photography club and two other groups rely on',
+      'Volunteer Coordinator, Eastern Illinois Foodbank - Jun 2024 - Aug 2024',
+      '• Analyzed 2 million taxi trips with Spark and presented fare patterns to the transportation group',
+      '• Organized a hackathon for 150 students with sponsors from four local companies',
+    ]);
+    const listed = (await createResumeCandidates(texts['stored-list-then-role'])).map((entry) => entry.text);
+    expect(listed).toContain('• Tech stack: PyTorch, NumPy, pandas, scikit-learn, OpenCV, CUDA, Slurm, Linux, Git');
+    expect(listed).toContain('Undergraduate Research Assistant, Plant Phenomics Lab');
+    expect(listed).toContain('• Automated the weekly inventory report for the chemistry stockroom so staff no longer copy numbers between\nspreadsheets');
+  });
+  it('keeps a lowercase row apart from a stored bullet that stopped well short of the widest rows', async () => {
+    // A bullet this short did not wrap, so the row after it is not its rest.
+    const raw = ['EXPERIENCE', '- Built a thermal sensor in Java for the ME 270 capstone with a team of four',
+      '- Wrote a 12-page final lab report', 'iterated on the enclosure design with the machine shop'].join('\n');
+    expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual([
+      '- Built a thermal sensor in Java for the ME 270 capstone with a team of four',
+      '- Wrote a 12-page final lab report',
+      'iterated on the enclosure design with the machine shop',
+    ]);
+  });
+  it('keeps a widowed lowercase word with its bullet even when it is also a section title', async () => {
+    const raw = ['EXPERIENCE', '- Assisted a PhD student with literature reviews and data collection for autonomous driving',
+      'research', '- Wrote SQL and Python ETL jobs'].join('\n');
+    expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual([
+      '- Assisted a PhD student with literature reviews and data collection for autonomous driving\nresearch',
+      '- Wrote SQL and Python ETL jobs',
+    ]);
+  });
+  it('offers school, employer and skill lines set in capitals, and reads a heading on the first line as a heading', async () => {
+    // A layout that prints the main column first opens with a heading, not a name.
+    const raw = ['EXPERIENCE', 'PRAIRIE ANALYTICS', 'Research Intern, Lab', '- Wrote SQL jobs.', 'EDUCATION',
+      'UNIVERSITY OF MICHIGAN', 'SKILLS', 'HTML, CSS, SQL', 'TECHNICAL SKILLS & TOOLS', 'Git', 'HONORS AND AWARDS',
+      "Dean's List"].join('\n');
+    expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual([
+      'PRAIRIE ANALYTICS', 'Research Intern, Lab', '- Wrote SQL jobs.', 'UNIVERSITY OF MICHIGAN', 'HTML, CSS, SQL', 'Git', "Dean's List",
+    ]);
+  });
   it('keeps one proposal per line when a line-per-row résumé fits the cap', async () => {
     const raw = ['Built a robot', 'wrote a report', 'Led a team'].join('\n');
     expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual(['Built a robot', 'wrote a report', 'Led a team']);
+  });
+  it('reads a token of tens of thousands of characters with no address in it in linear time', async () => {
+    // The contact and place patterns scanned such a token once per start: up
+    // to 8 s on these before their parts were bounded, about 50 ms after.
+    for (const token of ['a.'.repeat(29_500), 'A'.repeat(59_000), 'a-'.repeat(29_500), '1'.repeat(59_000),
+      `a@${'a'.repeat(58_998)}`, 'www.'.repeat(14_750)]) {
+      const started = performance.now();
+      await createResumeCandidates(`Jordan Lee\nEXPERIENCE\n- Built a parser\n${token}`);
+      expect(performance.now() - started).toBeLessThan(1_000);
+    }
   });
 });

@@ -8,6 +8,7 @@ import {
 import { HOME_SCHOOL_EVENT, STORAGE_KEYS } from './storage-keys';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner, type OwnerToken } from './identity-owner';
 import {
+  hydrateProfile,
   makeProfileViewSnapshot,
   readProfileView,
   resetProfileDirtyLedger,
@@ -108,10 +109,11 @@ describe('persistHomeSchool', () => {
       STORAGE_KEYS.PROFILE,
       JSON.stringify({ major: 'CS', home_school: 'uiuc' }),
     );
-    // A row already exists in the cloud, so this is a PATCH rather than the
-    // brand-new-account case covered below.
+    // A row already exists in the cloud, and the surface shows it, so this
+    // is a PATCH rather than the brand-new-account case covered below.
     serverRow = { major: 'CS', home_school: 'uiuc' };
     serverRevision = 1;
+    await hydrateProfile();
     const seen: string[] = [];
     const listener = (e: Event) => seen.push((e as CustomEvent<string>).detail);
     window.addEventListener(HOME_SCHOOL_EVENT, listener);
@@ -124,10 +126,24 @@ describe('persistHomeSchool', () => {
     // ONE key was sent — this caller holds a localStorage snapshot that may
     // be older than another device's row, so it says only what it changed.
     expect(commitMock.mock.calls.map((c) => c[0].patch)).toEqual([{ home_school: 'ucb' }]);
+    expect(commitMock.mock.calls.map((c) => c[0].expectedRevision)).toEqual([1]);
     const profile = JSON.parse(localStorage.getItem(STORAGE_KEYS.PROFILE)!);
     expect(profile.home_school).toBe('ucb');
     expect(profile.major).toBe('CS');
     expect(seen).toEqual(['ucb']);
+  });
+
+  it('asks before replacing a campus that the row holds and the view never saw', async () => {
+    // A surface that read nothing declares an unknown baseline (revision 0).
+    // The server refuses a one-field revision-0 patch onto an existing row,
+    // so the write is not sent: it is a question about which campus is right.
+    localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify({ major: 'CS' }));
+    serverRow = { major: 'CS', home_school: 'uiuc' };
+    serverRevision = 1;
+    const result = await persistHomeSchool('ucb', viewFor(token));
+    expect(result).toEqual({ ok: false, reason: 'conflict' });
+    expect(commitMock).not.toHaveBeenCalled();
+    expect(serverRow).toEqual({ major: 'CS', home_school: 'uiuc' });
   });
 
   it('a brand new account stages the campus locally with ZERO requests', async () => {

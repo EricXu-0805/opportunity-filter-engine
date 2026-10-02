@@ -65,7 +65,7 @@ import {
   advanceOwnerEpoch, captureOwnerToken, readUserScopedRaw, syncLocalIdentityOwner, writeUserScopedRaw,
   type OwnerToken,
 } from '@/lib/identity-owner';
-import { resetProfileDirtyLedger } from '@/lib/profile-sync';
+import { hydrateProfile, resetProfileDirtyLedger } from '@/lib/profile-sync';
 import { displayCoverageCount } from '@/lib/school-coverage';
 import { SCHOOL_STATS, SCHOOLS } from '@/lib/schools';
 
@@ -260,6 +260,10 @@ describe('confirming', () => {
 
   it('changing the school in the gate confirms the NEW school', async () => {
     seedExistingUser('uiuc');
+    // The gate shows the row this browser has read, so the new campus is a
+    // patch on it. (A pre-coordinator mirror is no baseline to change a
+    // campus against: school-confirmation.test.ts covers that question.)
+    await hydrateProfile();
     render(<SchoolConfirmGate />);
     fireEvent.click(await screen.findByTestId('university-card-ucb'));
     fireEvent.click(screen.getByText('schoolConfirm.confirm'));

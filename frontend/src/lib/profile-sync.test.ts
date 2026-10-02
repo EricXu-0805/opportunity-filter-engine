@@ -5227,3 +5227,200 @@ describe('full supported resume persistence', () => {
     expect(dirtyKeys(captureOwnerToken())).toEqual([]);
   });
 });
+
+describe('an edit made while this device\'s first create is unanswered', () => {
+  /** supabase/migrations/029_profile_save_cas.sql as deployed: a revision-0
+   *  patch must be a complete create, and that is checked BEFORE the row is
+   *  looked up, so a partial revision-0 patch fails even when the row exists.
+   *  commitProfilePatch reports that RPC error as a transport error. */
+  function productionCas() {
+    let row: Record<string, unknown> | null = null;
+    let rev = 0;
+    const seen: { expected: number; keys: string[] }[] = [];
+    return {
+      get row() { return row; },
+      get rev() { return rev; },
+      seen,
+      /** Another device saves `patch` onto the row. */
+      elsewhere(patch: Record<string, unknown>) {
+        row = { ...row, ...patch };
+        rev += 1;
+      },
+      handle(intent: { expectedRevision: number; patch: Record<string, unknown> }): ProfilePatchOutcome {
+        seen.push({ expected: intent.expectedRevision, keys: Object.keys(intent.patch).sort() });
+        const complete = ['home_school', 'college', 'major', 'grade', 'search_weight'].every((k) => k in intent.patch);
+        if (intent.expectedRevision === 0 && !complete) {
+          return { status: 'transport-error', message: 'commit_profile_patch_cas: incomplete_create' };
+        }
+        if (!row) {
+          if (intent.expectedRevision !== 0) return { status: 'missing', reason: 'absent' };
+          row = { ...intent.patch };
+          rev = 1;
+          return { status: 'saved', revision: rev, profile: { ...row } };
+        }
+        const merged = { ...row, ...intent.patch };
+        if (JSON.stringify(merged) === JSON.stringify(row) && (rev === intent.expectedRevision || rev === intent.expectedRevision + 1)) {
+          return { status: 'already-saved', revision: rev, profile: { ...row } };
+        }
+        if (rev !== intent.expectedRevision) return { status: 'conflict', revision: rev, profile: { ...row } };
+        row = merged;
+        rev += 1;
+        return { status: 'saved', revision: rev, profile: { ...row } };
+      },
+    };
+  }
+
+  it('saves a résumé parsed during the create onto the created row, with no conflict', async () => {
+    loadProfileMock.mockResolvedValue(absent());
+    await hydrateProfile();
+    const token = captureOwnerToken();
+    const noRow = { profile: {} as ProfileData, revision: 0 };
+    const form: ProfileData = { ...FULL, skills: [], resume_text: '', coursework: [] };
+    expect(recordProfileIntent(form, ['college', 'major', 'grade', 'research_interests'], token,
+      { writer: HOME_FORM_WRITER, observedBase: noRow })).toBe(true);
+
+    const server = productionCas();
+    let release: (() => void) | undefined;
+    commitMock.mockImplementationOnce((intent) => new Promise<ProfilePatchOutcome>((resolve) => {
+      release = () => resolve(server.handle(intent));
+    }));
+    const create = stageProfilePatch(form, ['college', 'major', 'grade', 'research_interests'], token, { allowCreate: true });
+    for (let i = 0; i < 50 && !release; i += 1) await Promise.resolve();
+    expect(release, 'the create must actually be in flight').toBeDefined();
+
+    // The résumé parse lands before the create is answered, so the form still
+    // shows no row: its fields are recorded against revision 0.
+    const withResume: ProfileData = { ...form, resume_text: 'Built a PyTorch pipeline.', coursework: ['CS 225'],
+      skills: [{ name: 'PyTorch', level: 'beginner', source: 'resume' }] };
+    expect(recordProfileIntent(withResume, ['resume_text', 'coursework', 'skills'], token,
+      { writer: HOME_FORM_WRITER, observedBase: noRow })).toBe(true);
+    release!();
+    expect((await create).status).toBe('saved');
+    expect(server.rev).toBe(1);
+
+    commitMock.mockImplementation(async (intent) => server.handle(intent));
+    const next = await stageProfilePatch(withResume, ['resume_text', 'coursework', 'skills'], token, { allowCreate: true });
+    expect(next.status).toBe('saved');
+    expect(server.rev).toBe(2);
+    expect(server.row).toMatchObject({ resume_text: 'Built a PyTorch pipeline.', coursework: ['CS 225'], college: 'Grainger' });
+    // The résumé went out as a patch on revision 1, never as a partial create.
+    expect(server.seen.slice(1)).toEqual([{ expected: 1, keys: ['coursework', 'experience_entries', 'resume_master', 'resume_text', 'skills'] }]);
+    expect(journalOps()).toEqual([]);
+  });
+
+  it('still rebases once onto another device\'s disjoint save that lands after the create', async () => {
+    loadProfileMock.mockResolvedValue(absent());
+    await hydrateProfile();
+    const token = captureOwnerToken();
+    const noRow = { profile: {} as ProfileData, revision: 0 };
+    const form: ProfileData = { ...FULL, skills: [], resume_text: '', coursework: [] };
+    expect(recordProfileIntent(form, ['college', 'major', 'grade', 'research_interests'], token,
+      { writer: HOME_FORM_WRITER, observedBase: noRow })).toBe(true);
+    const server = productionCas();
+    let release: (() => void) | undefined;
+    commitMock.mockImplementationOnce((intent) => new Promise<ProfilePatchOutcome>((resolve) => {
+      release = () => resolve(server.handle(intent));
+    }));
+    const create = stageProfilePatch(form, ['college', 'major', 'grade', 'research_interests'], token, { allowCreate: true });
+    for (let i = 0; i < 50 && !release; i += 1) await Promise.resolve();
+    expect(release, 'the create must actually be in flight').toBeDefined();
+    const withResume: ProfileData = { ...form, resume_text: 'Built a PyTorch pipeline.', coursework: ['CS 225'],
+      skills: [{ name: 'PyTorch', level: 'beginner', source: 'resume' }] };
+    expect(recordProfileIntent(withResume, ['resume_text', 'coursework', 'skills'], token,
+      { writer: HOME_FORM_WRITER, observedBase: noRow })).toBe(true);
+    release!();
+    expect((await create).status).toBe('saved');
+
+    // Before this device flushes the résumé, another one saves a field the
+    // résumé does not touch. Taking revision 1 as the base is this device's
+    // own bookkeeping; the one rebase a real disagreement may use is left.
+    server.elsewhere({ research_interests: 'medical imaging' });
+    commitMock.mockImplementation(async (intent) => server.handle(intent));
+    const next = await stageProfilePatch(withResume, ['resume_text', 'coursework', 'skills'], token, { allowCreate: true });
+    expect(next.status).toBe('saved');
+    expect(server.rev).toBe(3);
+    expect(server.row).toMatchObject({ resume_text: 'Built a PyTorch pipeline.', research_interests: 'medical imaging' });
+    const resumeKeys = ['coursework', 'experience_entries', 'resume_master', 'resume_text', 'skills'];
+    expect(server.seen.slice(1)).toEqual([{ expected: 1, keys: resumeKeys }, { expected: 2, keys: resumeKeys }]);
+  });
+
+  it('asks about a field the created row holds other content for, instead of sending a partial create forever', async () => {
+    loadProfileMock.mockResolvedValue(absent());
+    await hydrateProfile();
+    const token = captureOwnerToken();
+    const noRow = { profile: {} as ProfileData, revision: 0 };
+    // The create sends the whole form, and the form already holds a résumé
+    // that no edit recorded.
+    const form: ProfileData = { ...FULL, skills: [], resume_text: 'First résumé.', coursework: [] };
+    expect(recordProfileIntent(form, ['college', 'major', 'grade', 'research_interests'], token,
+      { writer: HOME_FORM_WRITER, observedBase: noRow })).toBe(true);
+    const server = productionCas();
+    let release: (() => void) | undefined;
+    commitMock.mockImplementationOnce((intent) => new Promise<ProfilePatchOutcome>((resolve) => {
+      release = () => resolve(server.handle(intent));
+    }));
+    const create = stageProfilePatch(form, ['college', 'major', 'grade', 'research_interests'], token, { allowCreate: true });
+    for (let i = 0; i < 50 && !release; i += 1) await Promise.resolve();
+    expect(release, 'the create must actually be in flight').toBeDefined();
+
+    // A second résumé lands against revision 0 while that create is out. The
+    // created row then holds other content for the field, so no local pass
+    // may settle it, and a revision-0 patch is refused every time: it is a
+    // question for the student, like any other disagreement.
+    const edited: ProfileData = { ...form, resume_text: 'Second résumé.' };
+    expect(recordProfileIntent(edited, ['resume_text'], token, { writer: HOME_FORM_WRITER, observedBase: noRow })).toBe(true);
+    release!();
+    expect((await create).status).toBe('saved');
+    expect(server.row).toMatchObject({ resume_text: 'First résumé.' });
+
+    commitMock.mockImplementation(async (intent) => server.handle(intent));
+    const next = await stageProfilePatch(edited, ['resume_text'], token, { allowCreate: true });
+    // The résumé and what was read from it are one question.
+    const resumeKeys = ['resume_text', 'coursework', 'experience_entries', 'resume_master'];
+    expect(next).toMatchObject({ status: 'conflict', conflictKeys: resumeKeys });
+    expect(server.seen.slice(1), 'no partial create goes out').toEqual([]);
+
+    const answered = await answerConflict(resumeKeys, 'local', token, edited);
+    expect(answered.status).toBe('saved');
+    expect(server.row).toMatchObject({ resume_text: 'Second résumé.', college: 'Grainger' });
+    expect(server.seen.slice(1).map((sent) => sent.expected)).toEqual([1]);
+    expect(server.seen[1].keys).toContain('resume_text');
+  });
+
+  it('still saves the untouched half when another device\'s save collides with one field after the create', async () => {
+    loadProfileMock.mockResolvedValue(absent());
+    await hydrateProfile();
+    const token = captureOwnerToken();
+    const noRow = { profile: {} as ProfileData, revision: 0 };
+    const form: ProfileData = { ...FULL, skills: [], resume_text: '', coursework: [] };
+    expect(recordProfileIntent(form, ['college', 'major', 'grade', 'research_interests'], token,
+      { writer: HOME_FORM_WRITER, observedBase: noRow })).toBe(true);
+    const server = productionCas();
+    let release: (() => void) | undefined;
+    commitMock.mockImplementationOnce((intent) => new Promise<ProfilePatchOutcome>((resolve) => {
+      release = () => resolve(server.handle(intent));
+    }));
+    const create = stageProfilePatch(form, ['college', 'major', 'grade', 'research_interests'], token, { allowCreate: true });
+    for (let i = 0; i < 50 && !release; i += 1) await Promise.resolve();
+    expect(release, 'the create must actually be in flight').toBeDefined();
+    const withResume: ProfileData = { ...form, resume_text: 'Built a PyTorch pipeline.', coursework: ['CS 225'],
+      skills: [{ name: 'PyTorch', level: 'beginner', source: 'resume' }] };
+    expect(recordProfileIntent(withResume, ['resume_text', 'coursework', 'skills'], token,
+      { writer: HOME_FORM_WRITER, observedBase: noRow })).toBe(true);
+    release!();
+    expect((await create).status).toBe('saved');
+
+    // Another device stores a different résumé before this one flushes. The
+    // résumé and what was read from it are theirs to decide now; the added
+    // skill is not, and the local pass must not have used up the one rebase
+    // that sends it.
+    server.elsewhere({ resume_text: 'Another device\'s résumé.' });
+    commitMock.mockImplementation(async (intent) => server.handle(intent));
+    const next = await stageProfilePatch(withResume, ['resume_text', 'coursework', 'skills'], token, { allowCreate: true });
+    expect(next).toMatchObject({ status: 'conflict', conflictKeys: ['resume_text', 'coursework', 'experience_entries', 'resume_master'] });
+    expect(server.row).toMatchObject({ resume_text: 'Another device\'s résumé.', coursework: [],
+      skills: [{ name: 'PyTorch', level: 'beginner', source: 'resume' }] });
+    const resumeKeys = ['coursework', 'experience_entries', 'resume_master', 'resume_text', 'skills'];
+    expect(server.seen.slice(1)).toEqual([{ expected: 1, keys: resumeKeys }, { expected: 2, keys: ['skills'] }]);
+  });
+});

@@ -487,6 +487,28 @@ describe('W13 save truthfulness + staleness', () => {
       copied.indexOf('Tutored intro statistics'),
     );
   });
+  it('copying leaves out a section heading with no bullets under it', async () => {
+    // Extraction selects experience bullets, so a SKILLS section can come
+    // back empty; its bare heading was pasted at the end of the résumé.
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    const doc = makeDoc();
+    doc.sections.push({ id: 's2', heading: 'Skills', kind: 'skills', bullets: [] } as unknown as RenovationDoc['sections'][number]);
+    mockLoadRenovation.mockResolvedValue({
+      doc: doc as unknown as Record<string, unknown>,
+      base_snapshot: { sections: [] },
+      method: 'ai',
+      warnings: [],
+      updated_at: '2026-09-25T00:00:00Z', revision: 1, owner_id: 'renovation-owner-a', opportunity_id: 'opp-1',
+    });
+    renderModal();
+    await waitFor(() => expect(screen.getByText('renovate.copyAll')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('renovate.copyAll'));
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    const copied = writeText.mock.calls[0][0] as string;
+    expect(copied.startsWith('PROJECTS\n')).toBe(true);
+    expect(copied).not.toContain('SKILLS');
+  });
 
 });
 
