@@ -27,6 +27,8 @@ from backend.lib.target_resume_ai_grounding import (
     ACTIONS,
     CO_CREDIT,
     DENIAL,
+    FUTURE_EN,
+    FUTURE_ZH,
     HELP,
     INTENT,
     NEGATION,
@@ -385,12 +387,13 @@ def tokens(text: str) -> list[str]:
 
     Personal markers (I, my, 本人, 我) are counted separately; see personal_markers.
     """
-    text = _PERSONAL_MARKER.sub(" ", text or "")
+    text = _PERSONAL_MARKER.sub(" ", text or "").replace("-", " ")
     out = []
-    for match in _TOKEN.finditer(text.replace("-", " ")):
+    for match in _TOKEN.finditer(text):
         token = match.group(0)
         if _CJK.match(token):
-            if token not in _FUNCTION_ZH:
+            # 将 that says "will" (将于 5 月发表) is content; 将 that marks an object is not.
+            if token not in _FUNCTION_ZH or FUTURE_ZH.match(text, match.start()):
                 out.append(token)
         elif token.casefold() not in _FUNCTION_EN:
             out.append(lemma(token))
@@ -624,12 +627,14 @@ _LOCK_WORD = [TEAM, HELP, NEGATION, DENIAL, PUBLICATION, INTENT, UNFINISHED, UNF
               _SPAN_WORD, _SOLO, _LIMIT, _OTHER_PERSON, _REVISION_WORD, _TEAM_ZH_EXTRA, _TEAM_EN_EXTRA, CO_CREDIT,
               _PERSONAL_MARKER]
 # Families a translation must carry across in both directions. A work's status is
-# three of them: planned or hoped for (INTENT, PLANNED: 计划, 预定), under way or
-# still to come (UNFINISHED, UNDERWAY_ZH: 开发中, 即将) and a draft.
+# four of them: planned or hoped for (INTENT, PLANNED: 计划, 预定), under way or
+# still to come (UNFINISHED, UNDERWAY_ZH: 开发中, 即将), still to come on its own
+# (FUTURE: "will", 即将, so 即将发表 beside 目前 keeps its own word) and a draft.
 _FAMILIES = {
     "team": [TEAM, _TEAM_ZH_EXTRA, _TEAM_EN_EXTRA, CO_CREDIT], "help": [HELP], "limit": [_LIMIT],
     "negation": [NEGATION, DENIAL, _UN_DONE], "solo": [_SOLO], "span": [_SPAN], "intent": [INTENT, PLANNED],
-    "unfinished": [UNFINISHED, UNDERWAY_ZH], "draft": [_DRAFT], "publication": [PUBLICATION, _UNPUBLISHED],
+    "unfinished": [UNFINISHED, UNDERWAY_ZH], "future": [FUTURE_EN, FUTURE_ZH], "draft": [_DRAFT],
+    "publication": [PUBLICATION, _UNPUBLISHED],
     "other_person": [_OTHER_PERSON],
 }
 

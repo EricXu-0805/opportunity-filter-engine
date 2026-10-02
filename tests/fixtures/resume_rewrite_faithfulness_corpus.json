@@ -1250,6 +1250,21 @@
    "original": "Testing the parser through unit tests.",
    "rewrite": "正在通过单元测试测试解析器。",
    "kind": "EN to ZH: 通过 in a progressive line"
+  },
+  {
+   "original": "论文将于下月发表，目前在修改终稿。",
+   "rewrite": "Paper will be published next month; currently revising the final version.",
+   "kind": "ZH to EN: 将于 as will beside 目前"
+  },
+  {
+   "original": "预计 2026 年 6 月完成毕业论文，目前在分析数据。",
+   "rewrite": "Thesis expected in June 2026; currently analyzing the data.",
+   "kind": "ZH to EN: 预计 as expected beside 目前"
+  },
+  {
+   "original": "Upcoming talk at the 2026 campus symposium; currently drafting slides.",
+   "rewrite": "即将在 2026 年校园研讨会上作报告；目前正在准备幻灯片。",
+   "kind": "EN to ZH: upcoming as 即将 beside currently"
   }
  ],
  "unfaithful": [
@@ -3138,6 +3153,76 @@
    "kind": "translation launches a homepage beside a progressive line",
    "caught": "contract",
    "case": "EN to ZH launches a homepage beside a progressive line"
+  },
+  {
+   "original": "Lab website under development; release expected next month.",
+   "rewrite": "实验室网站目前已上线，预计下月正式发布。",
+   "kind": "translation finishes work beside an expected release it keeps",
+   "caught": "contract",
+   "case": "EN to ZH launches a site beside an expected release it keeps"
+  },
+  {
+   "original": "Manuscript on sleep spindles in preparation; submission expected Dec 2026.",
+   "rewrite": "关于睡眠纺锤波的论文已完成，预计 2026 年 12 月投稿。",
+   "kind": "translation finishes a manuscript beside an expected submission it keeps",
+   "caught": "contract",
+   "case": "EN to ZH submits a manuscript beside an expected submission it keeps"
+  },
+  {
+   "original": "即将在 SfN 2026 上展示关于睡眠纺锤波的海报，目前在准备摘要。",
+   "rewrite": "Presented a poster on sleep spindles at SfN 2026; currently preparing the abstract.",
+   "kind": "translation drops a status word still to come beside another one (即将)",
+   "caught": "contract",
+   "case": "ZH to EN drops 即将 beside 目前"
+  },
+  {
+   "original": "论文将于下月发表，目前在修改终稿。",
+   "rewrite": "Published the paper; currently revising the final version.",
+   "kind": "translation drops a status word still to come beside another one (将于)",
+   "caught": "contract",
+   "case": "ZH to EN drops 将于 beside 目前"
+  },
+  {
+   "original": "预计 2026 年 6 月完成毕业论文，目前在分析数据。",
+   "rewrite": "Completed the thesis in June 2026; currently analyzing the data.",
+   "kind": "translation drops a status word still to come beside another one (预计)",
+   "caught": "contract",
+   "case": "ZH to EN drops 预计 beside 目前"
+  },
+  {
+   "original": "将在校园科技节上展示气象站，目前在调试传感器。",
+   "rewrite": "Showcased the weather station at the campus tech fair; currently debugging the sensors.",
+   "kind": "translation drops a status word still to come beside another one (将在)",
+   "caught": "contract",
+   "case": "ZH to EN drops 将在 beside 目前"
+  },
+  {
+   "original": "论文即将发表，第二篇仍在撰写。",
+   "rewrite": "Published a paper; a second one is in progress.",
+   "kind": "translation drops a status word still to come beside another one (即将 beside 仍在)",
+   "caught": "contract",
+   "case": "ZH to EN drops 即将 beside 仍在"
+  },
+  {
+   "original": "Will present a poster at SfN 2026; currently preparing the abstract.",
+   "rewrite": "在 SfN 2026 上展示海报；目前正在准备摘要。",
+   "kind": "translation drops a status word still to come beside another one (will)",
+   "caught": "contract",
+   "case": "EN to ZH drops will beside currently"
+  },
+  {
+   "original": "论文将于 5 月发表，目前正在准备答辩。",
+   "rewrite": "目前正在准备答辩，论文于 5 月发表。",
+   "kind": "reorder drops 将于 beside 目前正在",
+   "caught": "contract",
+   "case": "ZH lead_with drops 将于 beside 目前正在"
+  },
+  {
+   "original": "将在 SfN 2026 上展示海报，目前在准备摘要。",
+   "rewrite": "目前在准备摘要，在 SfN 2026 上展示海报。",
+   "kind": "reorder drops 将在 beside 目前",
+   "caught": "contract",
+   "case": "ZH lead_with drops 将在 beside 目前"
   }
  ]
 }

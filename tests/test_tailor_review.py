@@ -466,6 +466,11 @@ class TestLockChangesForEvidenceMappedRewrites:
         ("Filming a 10-minute documentary on campus food insecurity.",
          "Campus food insecurity: filmed a 10-minute documentary."),
         ("Pipetting 96-well plates for the lab's ELISA assay.", "Pipetted 96-well plates for the lab's ELISA assay."),
+        # One status word dropped beside another of its kind.
+        ("论文将于 5 月发表，目前正在准备答辩。", "目前正在准备答辩，论文于 5 月发表。"),
+        ("论文将于 5 月发表，目前在准备答辩。", "目前正在准备答辩，论文于 5 月发表。"),
+        ("目前正在开发网站。", "目前计划开发网站。"),
+        ("计划开发网站，目前在设计页面。", "目前在设计页面，开发网站。"),
     ])
     def test_unfinished_work_stated_as_finished_is_hard(self, original, proposed):
         assert "status_upgraded" in claim_upgrade_findings(proposed, original)[0]

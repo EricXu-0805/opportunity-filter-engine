@@ -165,6 +165,20 @@ class TestSpanWords:
         assert not em._has(em._FAMILIES["span"], "引用最多的论文")
 
 
+class TestStatusStillToCome:
+    @pytest.mark.parametrize("text", [
+        "Will present a poster.", "Upcoming talk at SfN.", "Paper forthcoming.", "Paper to appear in CHI.",
+        "Paper in press at Nature.", "Graduation expected in 2027.", "Launch anticipated next spring.", "预计明年毕业",
+        "即将发表", "将于 5 月发表", "将在 SfN 上展示", "将会提交", "将要发表"])
+    def test_work_still_to_come_is_its_own_family(self, text):
+        assert em._has(em._FAMILIES["future"], text)
+
+    @pytest.mark.parametrize("text", ["Currently revising the paper.", "Paper under review.", "目前在修改终稿", "正在撰写论文"])
+    def test_work_under_way_is_not_still_to_come(self, text):
+        assert not em._has(em._FAMILIES["future"], text)
+        assert em._has(em._FAMILIES["unfinished"], text)
+
+
 class TestFinishedClause:
     @pytest.mark.parametrize(("text", "finished"), [
         ("Tutoring 30 students; graded 40 exams.", True), ("Developing a parser and tested it.", True),
@@ -324,6 +338,13 @@ class TestLemma:
     ])
     def test_both_sides_normalize_the_same_way(self, left, right):
         assert em.lemma(left) == em.lemma(right)
+
+    @pytest.mark.parametrize(("text", "will"), [
+        ("论文将于 5 月发表", True), ("将在 SfN 上展示海报", True), ("将会提交论文", True), ("将要发表论文", True),
+        ("将在线问卷录入系统", False), ("将会议记录整理成表", False), ("将要点整理成表", False), ("将要求整理成表", False),
+        ("将数据录入系统", False)])
+    def test_a_will_is_content_and_an_object_marker_is_not(self, text, will):
+        assert ("将" in em.tokens(text)) is will
 
     def test_quantity_status_and_personal_words_are_visible(self):
         assert {em.lemma(word) for word in ("over", "since", "per")} <= set(

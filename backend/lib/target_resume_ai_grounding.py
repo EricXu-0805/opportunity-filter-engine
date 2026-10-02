@@ -88,12 +88,15 @@ _ZH_UNDERWAY_VERBS = (
     "|实验|试验|研发|研制|孵化|运营|维护|升级|评估|审查|审批|投稿|提交|拍摄|剪辑|录制|复现|重构")
 _ZH_PROGRESSIVE = ("".join(rf"(?<![在到入][^，,。；;：:、！？!?]{{{n}}})" for n in range(5))
                    + rf"(?:{_ZH_UNDERWAY_VERBS})中(?=$|[，,。；;：:、！？!?)）\s]|的)")
+# Chinese for work still to come, which a translation pairs with FUTURE_EN: 将在, 将会
+# and 将要 say "will"; in 将在线问卷, 将会议记录, 将要点 and 将要求, 将 marks the object.
+FUTURE_ZH = re.compile(r"预计|即将|将于|将在(?!线)|将会(?!议)|将要(?!点|求)")
+FUTURE_EN = re.compile(r"\b(?:will|upcoming|forthcoming|to\s+appear|in\s+press|expected|anticipated)\b", re.I)
 # Chinese for work under way or still to come; with the intent words below it is
 # what status_upgraded reads. A translation pairs these with UNFINISHED and the
 # intent words with INTENT.
-# 将在, 将会 and 将要 say "will"; in 将在线问卷, 将会议记录, 将要点 and 将要求, 将 marks the object.
-UNDERWAY_ZH = re.compile(r"正在|撰写中|准备中|进行中|筹备中|在投|待发表|目前|尚未|未完成|未发表|预计|即将|将于|将在(?!线)|将会(?!议)"
-                         r"|将要(?!点|求)|" + _ZH_PROGRESSIVE)
+UNDERWAY_ZH = re.compile(r"正在|撰写中|准备中|进行中|筹备中|在投|待发表|目前|尚未|未完成|未发表|" + FUTURE_ZH.pattern + "|"
+                         + _ZH_PROGRESSIVE)
 UNFINISHED_ZH = re.compile(UNDERWAY_ZH.pattern + r"|计划|打算|希望|" + _ZH_PLAN + r"|想要")
 
 # Résumé verbs and their forms. Inflection only, not synonyms: every form maps
@@ -246,12 +249,15 @@ def status_upgraded(proposed, original):
     English: the original marks the work as unfinished or intended (a status
     word, an intent phrase, or a clause led by an -ing verb) and the rewrite
     uses the past tense of a verb the original only has in another form
-    ("Co-authoring ... (in preparation)" -> "Co-authored ..."). Chinese: the
-    original's unfinished or intent word is gone from a Chinese rewrite
-    ("正在开发" -> "开发了"). A kept "(in preparation)" does not make a
-    finished verb faithful.
+    ("Co-authoring ... (in preparation)" -> "Co-authored ..."). Chinese: one
+    of the original's unfinished or intent words is gone from a Chinese
+    rewrite ("正在开发" -> "开发了"), even beside another one. A kept "(in
+    preparation)" does not make a finished verb faithful.
     """
-    if UNFINISHED_ZH.search(original) and _CJK.search(proposed) and not UNFINISHED_ZH.search(proposed):
+    # As many such words stay, of each kind: 论文将于 5 月发表，目前正在准备答辩 keeps its 将于
+    # beside 目前, while 目前在做 may say 正在制作.
+    if _CJK.search(proposed) and any(len(pattern.findall(proposed)) < len(pattern.findall(original))
+                                     for pattern in (FUTURE_ZH, UNDERWAY_ZH, UNFINISHED_ZH)):
         return True
     if not (UNFINISHED.search(original) or INTENT.search(original)
             or any(_progressive_clause(clause) for clause in clauses(original))):
