@@ -14,6 +14,7 @@ from types import SimpleNamespace
 import pytest
 
 from backend.lib import evidence_map as em
+from backend.lib import target_resume_ai_grounding as grounding
 from backend.lib.blocking import BlockingWorkTimeout
 from backend.lib.target_resume_ai_grounding import RESUME_VERB_FORMS
 from src.evidence import _faculty_profile_summary
@@ -200,6 +201,29 @@ class TestFinishedClause:
     @pytest.mark.parametrize("word", ["approved", "archived", "awarded", "funded", "granted", "posted", "released"])
     def test_a_listed_finished_event_is_a_headline(self, word):
         assert em._finished_clause(f"Paper under review; preprint {word} on arXiv.")
+
+
+class TestUnknownVerbs:
+    @pytest.mark.parametrize("word", ["fine-tuning", "scraping", "wiring", "filming", "proofreading", "pipetting",
+                                      "cloning", "parsing", "porting", "rendering", "animating", "coaching",
+                                      "profiling", "crawling", "developing"])
+    def test_an_ing_word_is_a_verb_form_whether_or_not_the_list_knows_it(self, word):
+        assert grounding.ing_form(word)
+        assert em._progressive_led(f"{word.capitalize()} a model for the lab.")
+
+    @pytest.mark.parametrize("word", [
+        "during", "morning", "evening", "spring", "string", "nothing", "something", "anything", "everything",
+        "ceiling", "sibling", "having", "upcoming", "ongoing", "incoming", "outgoing", "following", "including",
+        "according", "regarding", "concerning", "considering", "pending", "notwithstanding", "existing",
+        "remaining", "accounting", "nursing", "banking", "housing", "funding", "clothing", "catering", "wedding",
+        "opening", "offering", "thing", "being"])
+    def test_a_noun_or_preposition_in_ing_leads_no_progressive_line(self, word):
+        assert not grounding.ing_form(word)
+        assert not em._progressive_led(f"{word.capitalize()} shift at the food bank; sorted 500 cans.")
+
+    @pytest.mark.parametrize("word", ["Using", "Applying", "Leveraging", "Utilizing", "Utilising", "Employing"])
+    def test_a_method_leads_no_progressive_line(self, word):
+        assert not em._progressive_led(f"{word} R, cleaned 212 survey responses.")
 
 
 class TestLeadingClause:

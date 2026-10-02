@@ -208,11 +208,36 @@ def _verb_uses(text):
     return [use for word in _WORD.findall(text) if (use := verb_use(word))]
 
 
+# -ing words that open a clause without being its verb: "During the summer", "Morning
+# shift volunteer", "Accounting intern".
+_NOT_ING_VERBS = frozenset(
+    "during morning evening spring string nothing something anything everything ceiling sibling having upcoming "
+    "ongoing incoming outgoing following including according regarding concerning considering pending "
+    "notwithstanding existing remaining accounting nursing banking housing funding clothing catering wedding "
+    "opening offering".split())
+
+
+def ing_form(word):
+    """Whether ``word`` is a verb's -ing form: a résumé verb's ("developing") or, for a verb
+    the list does not know, a trailing -ing ("fine-tuning", "scraping", "wiring")."""
+    use = verb_use(word)
+    if use:
+        return use[1] == "ing"
+    word = word.casefold()
+    return len(word) > 5 and word.endswith("ing") and word not in _NOT_ING_VERBS
+
+
+def _unknown_stems(text, suffix):
+    """The stems of words the verb list does not know that end in ``suffix``: "wiring" -> "wir"."""
+    return {word.casefold()[:-len(suffix)] for word in _WORD.findall(text)
+            if not verb_use(word) and word.casefold().endswith(suffix) and (suffix == "ed" or ing_form(word))}
+
+
 def _progressive_clause(clause):
     words = [word.casefold() for word in _WORD.findall(clause)]
     while words and (words[0] in {"also", "still", "now", "currently"} or words[0].endswith("ly")):
         words.pop(0)
-    return bool(words) and (verb_use(words[0]) or ("", ""))[1] == "ing"
+    return bool(words) and ing_form(words[0])
 
 
 def status_upgraded(proposed, original):
@@ -234,7 +259,10 @@ def status_upgraded(proposed, original):
     uses = _verb_uses(original)
     past = {base for base, kind in uses if kind == "past"}
     other = {base for base, kind in uses if kind != "past"}
-    return any(kind == "past" and base in other - past for base, kind in _verb_uses(proposed))
+    if any(kind == "past" and base in other - past for base, kind in _verb_uses(proposed)):
+        return True
+    # A verb the list does not know, by its suffix: "Fine-tuning ..." -> "fine-tuned".
+    return bool(_unknown_stems(proposed, "ed") & (_unknown_stems(original, "ing") - _unknown_stems(original, "ed")))
 
 
 def normalized(text):

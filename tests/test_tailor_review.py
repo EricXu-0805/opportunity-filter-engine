@@ -457,6 +457,15 @@ class TestLockChangesForEvidenceMappedRewrites:
         ("论文即将发表于 CHI 2026。", "论文已发表于 CHI 2026。"),
         # 在 a dozen characters back opens no place: the verb + 中 is still under way.
         ("在王老师指导下智能温室系统开发中。", "在王老师指导下开发了智能温室系统。"),
+        # A verb the list does not know, read by its suffix.
+        ("Fine-tuning a BERT model on 5,000 tweets for sentiment analysis.",
+         "Sentiment analysis: fine-tuned a BERT model on 5,000 tweets."),
+        ("Scraping 2,000 job postings for a labor-market study.", "Labor-market study: scraped 2,000 job postings."),
+        ("Wiring 3 soil sensors to an Arduino logger for the campus garden.",
+         "Campus garden: wired 3 soil sensors to an Arduino logger."),
+        ("Filming a 10-minute documentary on campus food insecurity.",
+         "Campus food insecurity: filmed a 10-minute documentary."),
+        ("Pipetting 96-well plates for the lab's ELISA assay.", "Pipetted 96-well plates for the lab's ELISA assay."),
     ])
     def test_unfinished_work_stated_as_finished_is_hard(self, original, proposed):
         assert "status_upgraded" in claim_upgrade_findings(proposed, original)[0]
@@ -471,6 +480,13 @@ class TestLockChangesForEvidenceMappedRewrites:
         ("目前在做一个基于 Arduino 的土壤湿度监测装置。", "正在制作一个基于 Arduino 的土壤湿度监测装置。"),
         ("智能温室监测系统开发中，负责传感器数据采集。", "负责传感器数据采集；智能温室监测系统开发中。"),
         ("计划开展一项 30 人的睡眠研究。", "A planned 30-person sleep study."),
+        ("Fine-tuning a BERT model on 5,000 tweets for sentiment analysis.",
+         "Sentiment analysis: fine-tuning a BERT model on 5,000 tweets."),
+        # The original already has the finished form of that verb.
+        ("Fine-tuned a BERT model; now fine-tuning a RoBERTa model.",
+         "Now fine-tuning a RoBERTa model; fine-tuned a BERT model."),
+        # "including" names a part, not an action under way.
+        ("Ongoing survey of 40 sites, including 3 wetlands.", "Included 3 wetlands in an ongoing survey of 40 sites."),
     ])
     def test_status_kept_in_another_form_is_not_an_upgrade(self, original, proposed):
         hard = claim_upgrade_findings(proposed, original)[0]

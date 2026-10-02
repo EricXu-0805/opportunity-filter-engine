@@ -6823,6 +6823,197 @@
     "beyond_allowed_edit",
     "translation_unfinished"
    ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH finishes a line led by Fine-tuning",
+   "output": "zh",
+   "anchors": [],
+   "original": "Fine-tuning a BERT model on 5,000 tweets for sentiment analysis.",
+   "rewrite": "为情感分析在 5,000 条推文上微调了一个 BERT 模型。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH finishes a line led by Scraping",
+   "output": "zh",
+   "anchors": [],
+   "original": "Scraping 2,000 job postings for a labor-market study.",
+   "rewrite": "为劳动力市场研究爬取了 2,000 条招聘信息。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH finishes a line led by Wiring",
+   "output": "zh",
+   "anchors": [],
+   "original": "Wiring 3 soil sensors to an Arduino logger for the campus garden.",
+   "rewrite": "为校园花园将 3 个土壤传感器连接到了 Arduino 记录器。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH finishes a line led by Proofreading",
+   "output": "zh",
+   "anchors": [],
+   "original": "Proofreading a 40-page grant proposal for the lab.",
+   "rewrite": "为实验室校对了一份 40 页的基金申请书。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps a line led by Fine-tuning under way",
+   "output": "zh",
+   "anchors": [],
+   "original": "Fine-tuning a BERT model on 5,000 tweets for sentiment analysis.",
+   "rewrite": "正在为情感分析在 5,000 条推文上微调一个 BERT 模型。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps a method led by Leveraging",
+   "output": "zh",
+   "anchors": [],
+   "original": "Leveraging PyTorch, trained a CNN on 2,000 chest images.",
+   "rewrite": "利用 PyTorch 在 2,000 张胸部图像上训练了一个 CNN。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps a line led by the noun Morning",
+   "output": "zh",
+   "anchors": [],
+   "original": "Morning shift volunteer at the food bank; sorted 500 cans.",
+   "rewrite": "食物银行早班志愿者；分拣了 500 罐食品。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "status",
+   "label": "lead_with finishes a line led by Fine-tuning",
+   "anchors": [
+    "sentiment analysis"
+   ],
+   "original": "Fine-tuning a BERT model on 5,000 tweets for sentiment analysis.",
+   "rewrite": "Sentiment analysis: fine-tuned a BERT model on 5,000 tweets.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "sentiment analysis",
+     "source": "sentiment analysis",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "rewrite_rejected",
+    "locks"
+   ]
+  },
+  {
+   "group": "status",
+   "label": "lead_with finishes a line led by Wiring",
+   "anchors": [
+    "campus garden"
+   ],
+   "original": "Wiring 3 soil sensors to an Arduino logger for the campus garden.",
+   "rewrite": "Campus garden: wired 3 soil sensors to an Arduino logger.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "campus garden",
+     "source": "campus garden",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "rewrite_rejected",
+    "locks"
+   ]
   }
  ]
 }

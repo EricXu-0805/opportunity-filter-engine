@@ -1205,6 +1205,21 @@
    "original": "Lab website under development; homepage launched and backend tested.",
    "rewrite": "实验室网站开发中，主页已上线，后台已测试。",
    "kind": "EN to ZH: two finished headlines beside work under development"
+  },
+  {
+   "original": "Fine-tuning a BERT model on 5,000 tweets for sentiment analysis.",
+   "rewrite": "正在为情感分析在 5,000 条推文上微调一个 BERT 模型。",
+   "kind": "EN to ZH: a line led by an unlisted verb, kept under way"
+  },
+  {
+   "original": "Leveraging PyTorch, trained a CNN on 2,000 chest images.",
+   "rewrite": "利用 PyTorch 在 2,000 张胸部图像上训练了一个 CNN。",
+   "kind": "EN to ZH: a method led by Leveraging, then a finished verb"
+  },
+  {
+   "original": "Morning shift volunteer at the food bank; sorted 500 cans.",
+   "rewrite": "食物银行早班志愿者；分拣了 500 罐食品。",
+   "kind": "EN to ZH: a line led by the noun Morning"
   }
  ],
  "unfaithful": [
@@ -2957,6 +2972,44 @@
    "kind": "translation moves the done mark to the verb after 目前正在开发中",
    "caught": "contract",
    "case": "EN to ZH moves the done mark to the verb after 目前正在开发中"
+  },
+  {
+   "original": "Fine-tuning a BERT model on 5,000 tweets for sentiment analysis.",
+   "rewrite": "为情感分析在 5,000 条推文上微调了一个 BERT 模型。",
+   "kind": "translation finishes a progressive line led by a verb the list does not know (Fine-tuning)",
+   "caught": "contract",
+   "case": "EN to ZH finishes a line led by Fine-tuning"
+  },
+  {
+   "original": "Scraping 2,000 job postings for a labor-market study.",
+   "rewrite": "为劳动力市场研究爬取了 2,000 条招聘信息。",
+   "kind": "translation finishes a progressive line led by a verb the list does not know (Scraping)",
+   "caught": "contract",
+   "case": "EN to ZH finishes a line led by Scraping"
+  },
+  {
+   "original": "Wiring 3 soil sensors to an Arduino logger for the campus garden.",
+   "rewrite": "为校园花园将 3 个土壤传感器连接到了 Arduino 记录器。",
+   "kind": "translation finishes a progressive line led by a verb the list does not know (Wiring)",
+   "caught": "contract",
+   "case": "EN to ZH finishes a line led by Wiring"
+  },
+  {
+   "original": "Proofreading a 40-page grant proposal for the lab.",
+   "rewrite": "为实验室校对了一份 40 页的基金申请书。",
+   "kind": "translation finishes a progressive line led by a verb the list does not know (Proofreading)",
+   "caught": "contract",
+   "case": "EN to ZH finishes a line led by Proofreading"
+  },
+  {
+   "original": "Fine-tuning a BERT model on 5,000 tweets for sentiment analysis.",
+   "rewrite": "Sentiment analysis: fine-tuned a BERT model on 5,000 tweets.",
+   "kind": "reorder finishes a line led by a verb the list does not know"
+  },
+  {
+   "original": "Wiring 3 soil sensors to an Arduino logger for the campus garden.",
+   "rewrite": "Campus garden: wired 3 soil sensors to an Arduino logger.",
+   "kind": "reorder finishes a line led by a verb the list does not know"
   }
  ]
 }
