@@ -27,6 +27,8 @@ _BLOCKS = {
     'h4', 'h5', 'h6', 'header', 'hr', 'legend', 'main', 'nav', 'ol', 'p', 'pre', 'section',
     'summary', 'table', 'tbody', 'thead', 'tfoot', 'ul',
 }
+# Controls, headings, navigation and no-script notices: never source on their own.
+_CHROME = frozenset({'noscript', 'button', 'input', 'label', 'nav', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'})
 _HIDDEN_STYLE = re.compile(r'(?:^|;)\s*(?:display\s*:\s*none|visibility\s*:\s*(?:hidden|collapse))\s*(?:!important\s*)?(?:;|$)', re.I)
 _JS_WALL = re.compile(
     r'\b(?:enable|turn on|activate)\s+(?:your\s+)?javascript\b|'
@@ -43,12 +45,53 @@ _ACCESS_SHELL = re.compile(
     r'(?:sign[ -]?in|log[ -]?in) to (?:continue|view (?:this|the) (?:page|content)|access (?:this|the) (?:page|content)))'
     r'[.!…\s]*$', re.I,
 )
-_LOADING_SHELL = re.compile(r'^(?:loading|please wait)[.!…\s]*$', re.I)
-_LOGIN = re.compile(r'^(?:sign[ -]?in|log[ -]?in)(?:[.!…]+|\s*[-|:–—].*)?$', re.I)
+# A page its scripts have yet to fill: nothing but loading lines. Not source,
+# and not a bot check either; the posting appears once the scripts run.
+# Each line is matched atomically. A run of "loading" words splits into lines
+# many ways, and retrying every split took exponential time on page text.
+_LOADING_SHELL = re.compile(
+    r'^(?>(?:loading(?:(?: [\w-]+){1,3}(?:\.+|…|,))?|please wait|'
+    r'(?:this|it) (?:may|might|can|could) take (?:a few|several|a couple of) (?:seconds|moments))[.…!,]*\s*)+$',
+    re.I,
+)
+# Titles an ordinary page can carry too: a sign-in page, a courtesy line, or a
+# stock check name a real posting may have as its title. They are a wall only
+# when nothing else on the page is readable.
+_GATE_TITLE = re.compile(
+    r'^(?:sign[ -]?in|log[ -]?in)(?:[.!…]+|\s*[-|:–—].*)?$|'
+    r'^(?:one moment,? please|(?:human|bot) verification|checking your browser)[.!…]*$', re.I,
+)
 _GATE_TEXT = re.compile(
     r'\b(?:sign[ -]?in|log[ -]?in|password|username|verify you are human|checking your browser|'
     r'cookies?|copyright|privacy policy|terms of (?:use|service)|all rights reserved)\b', re.I,
 )
+# A site can answer our server's address with a bot check while the same URL
+# opens normally for the student. Checks print these sentences and load these
+# scripts and frames, but an ordinary page can carry them too, so they refuse
+# only a page with nothing else to read.
+_CHALLENGE_TEXT = re.compile(
+    r'\b(?:(?:your|the|this) (?:request|browser|connection) is being (?:verified|checked)|'
+    r'verif(?:y|ying) (?:that )?you(?: are|\'re|’re) (?:a )?(?:human|not a (?:ro)?bot)|'
+    r'confirm you are (?:a )?human|making sure you(?: are|\'re|’re) not a (?:ro)?bot|'
+    r'checking (?:your browser|if the site connection is secure)|'
+    r'needs to review the security of your connection|performing security verification|'
+    r'(?:incapsula|imperva) incident|'
+    r'protected by anubis|ddos protection by|enable js and disable any ad ?blocker)\b',
+    re.I,
+)
+# Cloudflare's challenge-platform script is left out: Cloudflare adds it to
+# ordinary pages too, and its challenge page has the refused title or text.
+_CHALLENGE_SOURCE = re.compile(r'captcha-delivery\.com', re.I)
+# Imperva also loads this script on ordinary pages it protects; only its frame is a challenge.
+_CHALLENGE_FRAME = re.compile(r'/_Incapsula_Resource\b', re.I)
+# Only a vendor's bot-check page carries these ids, scripts and redirects, so
+# they refuse it whatever title and explanation it shows around them. Ids a
+# site can use for itself (challenge-form, challenge-running, px-captcha) are
+# not among them.
+_CHALLENGE_PAGE_IDS = {'cf-challenge-running', 'anubis_challenge', 'wsidchk-form'}
+_CHALLENGE_PAGE_SOURCE = re.compile(r'/\.within\.website/x/cmd/anubis/|/\.well-known/sgcaptcha\b', re.I)
+# Cloudflare's challenge form posts back with this token in its action.
+_CF_CHALLENGE_ACTION = re.compile(r'[?&]__cf_chl_')
 
 
 class ImportDocumentError(ValueError):
@@ -72,7 +115,7 @@ def _visible_in_body(tag: Tag) -> bool:
     return not any(_hidden(item) or item.name in _NON_BODY for item in [tag, *tag.parents] if isinstance(item, Tag))
 
 
-def _render(node, *, outside_form: bool = False, list_marker: str | None = None) -> str:
+def _render(node, *, skip: frozenset[str] = frozenset(), list_marker: str | None = None) -> str:
     if isinstance(node, Comment | Declaration | Doctype | ProcessingInstruction):
         return ''
     if isinstance(node, NavigableString):
@@ -80,9 +123,9 @@ def _render(node, *, outside_form: bool = False, list_marker: str | None = None)
     if not isinstance(node, Tag):
         return ''
     name = node.name.lower()
-    if name in _NON_BODY or _hidden(node) or (outside_form and name in {'form', 'noscript', 'button', 'input', 'label', 'nav', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'}):
+    if name in _NON_BODY or _hidden(node) or name in skip:
         return ''
-    if outside_form and name == 'a' and any(
+    if skip and name == 'a' and any(
         parent.name in {'footer', 'header', 'nav'} for parent in node.parents if isinstance(parent, Tag)
     ):
         return ''
@@ -94,7 +137,7 @@ def _render(node, *, outside_form: bool = False, list_marker: str | None = None)
             # Join actual cells rather than trimming a trailing delimiter: empty
             # first/last cells are meaningful column positions.
             values = [
-                re.sub(r'[\n\t]+', ' ', _clean_text(_render(cell, outside_form=outside_form)))
+                re.sub(r'[\n\t]+', ' ', _clean_text(_render(cell, skip=skip)))
                 for cell in cells
             ]
             return '\n' + '\t'.join(values) + '\n'
@@ -122,9 +165,9 @@ def _render(node, *, outside_form: bool = False, list_marker: str | None = None)
                 marker = f'{number}. ' if number is not None else '- '
                 if number is not None:
                     number += step
-            rendered.append(_render(child, outside_form=outside_form, list_marker=marker))
+            rendered.append(_render(child, skip=skip, list_marker=marker))
         return '\n' + ''.join(rendered) + '\n'
-    text = ''.join(_render(child, outside_form=outside_form) for child in node.children)
+    text = ''.join(_render(child, skip=skip) for child in node.children)
     if name == 'li':
         return '\n' + (list_marker or '- ') + text.strip() + '\n'
     return '\n' + text + '\n' if name in _BLOCKS else text
@@ -136,17 +179,46 @@ def _clean_text(text: str) -> str:
     return '\n'.join(re.sub(r' *\t *', '\t', line) for line in lines if line)
 
 
-def _has_independent_source(root: Tag) -> bool:
-    """A login form can coexist with source prose; do not reject that page."""
-    for line in _clean_text(_render(root, outside_form=True)).splitlines():
+def _has_independent_source(root: Tag, *, forms: bool = False) -> bool:
+    """A login form can coexist with source prose; do not reject that page.
+
+    A login form's own text is not source. The bot-check rules count text
+    inside forms (``forms``): ASP.NET and SharePoint wrap the whole page,
+    posting included, in one form.
+    """
+    for line in _clean_text(_render(root, skip=_CHROME if forms else _CHROME | {'form'})).splitlines():
         # Login instructions can share a paragraph with a real deadline. Assess
         # sentences separately; a gate phrase must not discard adjacent facts.
         for sentence in re.split(r'(?<=[.!?])\s+|(?<=[;。！？；])\s*', line):
-            if _BLOCKED_PAGE_TITLE.fullmatch(sentence) or _JS_WALL.search(sentence) or _GATE_TEXT.search(sentence):
+            if (_BLOCKED_PAGE_TITLE.fullmatch(sentence) or _JS_WALL.search(sentence) or _GATE_TEXT.search(sentence)
+                    or _CHALLENGE_TEXT.search(sentence) or _LOADING_SHELL.fullmatch(sentence)):
                 continue
             if sum(char.isalpha() for char in sentence) >= 12:
                 return True
     return False
+
+
+def _address(tag: Tag) -> str:
+    if tag.name == 'meta':
+        return str(tag.get('content', '')) if str(tag.get('http-equiv', '')).lower() == 'refresh' else ''
+    return str(tag.get('action' if tag.name == 'form' else 'src') or '')
+
+
+def _is_challenge_page(soup: BeautifulSoup) -> bool:
+    """Vendor bot-check markup, visible or not."""
+    return (
+        soup.find(id=lambda value: value in _CHALLENGE_PAGE_IDS) is not None
+        or soup.find('form', id='challenge-form', action=_CF_CHALLENGE_ACTION) is not None
+        or any(_CHALLENGE_PAGE_SOURCE.search(_address(tag)) for tag in soup.find_all(['script', 'form', 'meta']))
+    )
+
+
+def _has_challenge_machinery(soup: BeautifulSoup) -> bool:
+    """Bot-check scripts, frames and redirects an ordinary page can also load."""
+    return any(
+        _CHALLENGE_SOURCE.search(_address(tag)) or (tag.name == 'iframe' and _CHALLENGE_FRAME.search(_address(tag)))
+        for tag in soup.find_all(['script', 'iframe', 'form', 'meta'])
+    )
 
 
 def _meta(soup: BeautifulSoup, key: str) -> str:
@@ -184,27 +256,31 @@ def extract_import_document(html: str, *, content_type: str | None = None) -> di
         if soup.title is not None:
             titles.append(soup.title.get_text(' ', strip=True))
         blocked = [value for value in titles if _BLOCKED_PAGE_TITLE.fullmatch(value)]
-        # Denial/challenge titles are not job content. A bare sign-in heading or
-        # password form is only a wall when no independent source remains.
-        if any(not _LOGIN.fullmatch(value) for value in blocked):
+        # Denial/challenge titles and challenge markup are not job content. A
+        # sign-in or courtesy title, a password form or a visible challenge box
+        # is only a wall when no independent source remains.
+        if any(not _GATE_TITLE.fullmatch(value) for value in blocked) or _is_challenge_page(soup):
             raise ImportDocumentError('access_page')
         gate = bool(blocked) or any(
             _visible_in_body(tag) and (
                 (tag.name == 'input' and str(tag.get('type', '')).lower() == 'password')
-                or tag.get('id') in {'challenge-running', 'cf-challenge-running'}
+                or tag.get('id') == 'challenge-running'
             ) for tag in root.find_all(['input', 'div', 'section', 'form'])
         )
         if gate and not _has_independent_source(root):
             raise ImportDocumentError('access_page')
         text = _clean_text(_render(root))
-        if _ACCESS_SHELL.fullmatch(text):
+        if _ACCESS_SHELL.fullmatch(text) or (
+                (_has_challenge_machinery(soup) or _CHALLENGE_TEXT.search(text))
+                and not _has_independent_source(root, forms=True)):
             raise ImportDocumentError('access_page')
-        if root.find('script') is not None and _LOADING_SHELL.fullmatch(text):
+        # Scripts in the head fill a page as surely as scripts in its body.
+        if soup.find('script') is not None and _LOADING_SHELL.fullmatch(text):
             raise ImportDocumentError('javascript_required')
         if _JS_WALL.search(text) and not _has_independent_source(root):
             raise ImportDocumentError('javascript_required')
         if not text.strip():
-            if root.find('script') is not None:
+            if soup.find('script') is not None:
                 raise ImportDocumentError('javascript_required')
             raise ImportDocumentError('metadata_only' if title or meta_summary else 'empty_page')
     except ImportDocumentError:

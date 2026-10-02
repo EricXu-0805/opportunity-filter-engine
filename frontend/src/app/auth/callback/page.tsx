@@ -388,6 +388,9 @@ function CallbackInner() {
           <p className="mt-3 text-xs text-gray-400">
             {t('auth.callback.identityTakenHint')}
           </p>
+          <p className="mt-2 text-xs text-amber-700">
+            {t('auth.modal.signin.guestFilesStay')}
+          </p>
           <div className="mt-6 flex items-center justify-center gap-3">
             {linkProvider && (
               <button

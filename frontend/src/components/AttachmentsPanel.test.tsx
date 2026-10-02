@@ -19,8 +19,15 @@ const mockUpload = vi.fn<(oppId: string, file: File) => Promise<AttachmentUpload
 const mockDelete = vi.fn<(oppId: string, name: string) => Promise<boolean>>();
 const mockSigned = vi.fn<(oppId: string, name: string) => Promise<string | null>>();
 
+// The auth state a subscriber is told on subscription; null says nothing,
+// which is what every test before the guest notice relied on.
+const authFeed = vi.hoisted(() => ({ state: null as null | { session: object | null; isAnonymous: boolean } }));
+
 vi.mock('@/lib/supabase', () => ({
-  onAuthChange: () => () => {},
+  onAuthChange: (cb: (state: { session: object | null; user: null; isAnonymous: boolean; email: null }) => void) => {
+    if (authFeed.state) cb({ ...authFeed.state, user: null, email: null });
+    return () => {};
+  },
   ATTACHMENTS_MAX_BYTES: 5 * 1024 * 1024,
   ATTACHMENTS_ALLOWED_MIME: new Set([
     'application/pdf',
@@ -56,6 +63,7 @@ function fileFromMime(name: string, mime: string, size = 100): File {
 }
 
 beforeEach(() => {
+  authFeed.state = null;
   mockList.mockReset();
   mockUpload.mockReset();
   mockDelete.mockReset();
@@ -522,4 +530,25 @@ it('old rendered controls cannot borrow the new owner token before React redraws
     await syncLocalIdentityOwner('22222222-2222-4222-8222-222222222222');
   });
   expect(mockSigned).not.toHaveBeenCalled(); expect(mockDelete).not.toHaveBeenCalled();
+});
+
+
+describe('AttachmentsPanel — a guest is told where the files live', () => {
+  // A guest could upload with only "PDF, image, doc, txt · max 5 MB" on
+  // screen; signing in to an existing account then left the files behind,
+  // and the only notice came after the merge.
+  it('warns a guest session before the first upload', async () => {
+    authFeed.state = { session: {}, isAnonymous: true };
+    render(<AttachmentsPanel opportunityId={OPP_ID} />);
+    await waitFor(() => expect(screen.getByText(/detail.attachments.empty/)).toBeInTheDocument());
+    expect(screen.getByTestId('tracker-attachments-guest')).toHaveTextContent('detail.attachments.guestNotice');
+    expect(screen.getByRole('button', { name: /detail.attachments.addButton/ })).toBeEnabled();
+  });
+
+  it('says nothing to a signed-in account', async () => {
+    authFeed.state = { session: {}, isAnonymous: false };
+    render(<AttachmentsPanel opportunityId={OPP_ID} />);
+    await waitFor(() => expect(screen.getByText(/detail.attachments.empty/)).toBeInTheDocument());
+    expect(screen.queryByTestId('tracker-attachments-guest')).toBeNull();
+  });
 });

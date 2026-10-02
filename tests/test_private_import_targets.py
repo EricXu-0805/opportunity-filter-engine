@@ -174,11 +174,12 @@ def test_actual_route_crud_scope_labels_tombstone_and_replay(storage):
     [
         ({}, None),
         ({"description_source": "page_text", "llm_enriched": True, "ai_input_scope": "source_excerpt"}, "unknown"),
-        ({"description_source": "pasted_text", "llm_enriched": True, "ai_input_scope": "full_source"}, "unknown"),
+        ({"description_source": "pasted_text", "llm_enriched": True, "ai_input_scope": "full_source"}, "full_source"),
+        ({"description_source": "pasted_text", "llm_enriched": False, "ai_input_scope": "full_source"}, "unknown"),
         ({"description_source": "pasted_text", "llm_enriched": "true", "ai_input_scope": "source_excerpt"}, "unknown"),
     ],
 )
-def test_labels_never_imply_full_model_or_public_verification(storage, labels, expected):
+def test_labels_follow_the_recorded_import_and_never_public_verification(storage, labels, expected):
     value = deepcopy(OPPORTUNITY)
     value["extra_fields"] = labels
     response = request(TestClient(app), "PUT", save_body(payload=value))

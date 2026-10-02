@@ -35,7 +35,7 @@ export function readPrivateEmailContext(value: unknown, owner: OwnerToken, id: s
     const source = value.import_source;
     if (!obj(source) || !exact(source, ['version','description_source','ai_input_scope','llm_enriched']) || source.version !== 1
       || typeof source.description_source !== 'string' || !['page_text','page_excerpt','pasted_text','unknown'].includes(String(source.description_source))
-      || typeof source.ai_input_scope !== 'string' || !['source_excerpt','unknown'].includes(String(source.ai_input_scope)) || typeof source.llm_enriched !== 'boolean' || (source.ai_input_scope === 'source_excerpt' && (source.llm_enriched !== true || source.description_source === 'unknown')) || (source.description_source === 'unknown' && source.llm_enriched !== false)) return invalid();
+      || typeof source.ai_input_scope !== 'string' || !['full_source','source_excerpt','unknown'].includes(String(source.ai_input_scope)) || typeof source.llm_enriched !== 'boolean' || (source.ai_input_scope === 'source_excerpt' && (source.llm_enriched !== true || source.description_source === 'unknown')) || (source.ai_input_scope === 'full_source' && (source.llm_enriched !== true || !['page_text','pasted_text'].includes(String(source.description_source)))) || (source.description_source === 'unknown' && source.llm_enriched !== false)) return invalid();
   }
   const policy = value.contact_policy;
   if (!obj(policy) || !exact(policy, ['state','reason','quotes']) || !Array.isArray(policy.quotes) || policy.quotes.length > 20

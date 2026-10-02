@@ -325,7 +325,8 @@ describe('MatchCard', () => {
       expect(screen.queryByLabelText(/favorite/i)).toBeNull();
     });
 
-    it('shows "Add to favorites" label when isFavorited is false', () => {
+    // Through t(): the literal English label stayed English in the Chinese UI.
+    it('shows the translated "add to favorites" label when isFavorited is false', () => {
       render(
         <MatchCard
           match={makeMatch()}
@@ -334,10 +335,10 @@ describe('MatchCard', () => {
           isFavorited={false}
         />,
       );
-      expect(screen.getByLabelText('Add to favorites')).toBeInTheDocument();
+      expect(screen.getByLabelText('detail.favoriteAdd')).toBeInTheDocument();
     });
 
-    it('shows "Remove from favorites" label when isFavorited is true', () => {
+    it('shows the translated "remove from favorites" label when isFavorited is true', () => {
       render(
         <MatchCard
           match={makeMatch()}
@@ -346,7 +347,7 @@ describe('MatchCard', () => {
           isFavorited
         />,
       );
-      expect(screen.getByLabelText('Remove from favorites')).toBeInTheDocument();
+      expect(screen.getByLabelText('detail.favoriteRemove')).toBeInTheDocument();
     });
 
     it('calls onToggleFavorite with the opportunity id on click', () => {
@@ -354,7 +355,7 @@ describe('MatchCard', () => {
       render(
         <MatchCard match={makeMatch({ id: 'opp-xyz' })} onDraftEmail={() => {}} onToggleFavorite={handler} />,
       );
-      fireEvent.click(screen.getByLabelText(/favorites/i));
+      fireEvent.click(screen.getByLabelText('detail.favoriteAdd'));
       expect(handler).toHaveBeenCalledWith('opp-xyz');
     });
   });

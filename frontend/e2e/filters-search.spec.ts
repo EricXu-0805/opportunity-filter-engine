@@ -59,6 +59,18 @@ test.describe('Filters, search, sort', () => {
       .toHaveAttribute('aria-selected', 'true');
   });
 
+  // A screen reader met seven unnamed comboboxes: after choosing "Unpaid /
+  // not disclosed" nothing said it was the pay filter.
+  test('each filter dropdown is named by what it filters', async ({ page }) => {
+    await goToResults(page);
+    await openFiltersIfCollapsed(page);
+    for (const name of ['Pay', 'International students', 'Source', 'Location', 'Deadline', 'Sort order']) {
+      await expect(page.getByRole('combobox', { name, exact: true })).toBeVisible();
+    }
+    await page.getByRole('combobox', { name: 'Pay', exact: true }).selectOption({ label: 'Unpaid / not disclosed' });
+    await expect(page.getByRole('combobox', { name: 'Pay', exact: true })).toHaveValue('no');
+  });
+
   test('paid filter reduces visible result count', async ({ page }) => {
     await goToResults(page);
     await openFiltersIfCollapsed(page);

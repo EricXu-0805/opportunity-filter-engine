@@ -41,6 +41,15 @@ describe('account import list display', () => {
     expect(feed.remove).not.toHaveBeenCalled(); expect(screen.getByText(translate('privateImport.deleteWarning'))).toBeInTheDocument();
     fireEvent.click(screen.getByText(translate('privateImport.confirmDelete'))); expect(feed.remove).toHaveBeenCalledWith(current);
   });
+  // An account copy can now carry the parser's full_source record.
+  it.each(['en', 'zh'] as const)('%s says an account copy was sent to AI in full when its label says so', locale => {
+    feed.locale = locale; const current = target();
+    current.import_source = { version: 1, description_source: 'page_text', ai_input_scope: 'full_source', llm_enriched: true };
+    feed.state = { ...ready(), detail: { status: 'ready', target: current, deleting: false, deleteError: null } };
+    render(<PrivateImportList />); const detail = screen.getByRole('region', { name: translate('privateImport.detailTitle') });
+    expect(within(detail).getByText(translate('import.fullAiInput'))).toBeInTheDocument();
+    expect(within(detail).queryByText(translate('import.excerptAiInput'))).toBeNull();
+  });
   it('does not reuse delete confirmation after different full detail is loaded', () => {
     const current = target(); feed.state = { ...ready(), detail: { status: 'ready', target: current, deleting: false, deleteError: null } };
     const view = render(<PrivateImportList />); fireEvent.click(screen.getByText(translate('privateImport.reviewDelete')));

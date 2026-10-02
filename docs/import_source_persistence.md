@@ -16,11 +16,11 @@ The new optional field is `metadata.import_source`:
 ```
 
 - `description_source`: `page_text`, `page_excerpt`, `pasted_text`, or `unknown`.
-- `ai_input_scope`: `source_excerpt` or `unknown`. This implementation does not accept `full_source`: the current producer has no authorized full-source model path.
+- `ai_input_scope`: `full_source`, `source_excerpt` or `unknown`. The parser stamps `full_source` when every saved word reached the model (a short paste or page inside the existing model excerpt), otherwise `source_excerpt`. A persisted copy keeps either label as the parser recorded it. `full_source` additionally requires `page_text` or `pasted_text`: a historical `page_excerpt` was never sent whole.
 - `llm_enriched`: literal boolean. `true` records successful enrichment, not accurate interpretation. `false` means successful enrichment was not recorded; it does not prove that no provider was called.
 - `version`: integer `1`; boolean `true` is invalid.
 
-`url_parser` may carry `page_text` or historical `page_excerpt`. `text_parser` may carry `pasted_text`. A source-type conflict, empty/invalid body, unsupported label, or unsupported version cannot establish a readable source. AI excerpt scope additionally requires the literal successful-enrichment flag and explicit `source_excerpt` marker. Missing or unsupported scope remains unknown even when local source text is available.
+`url_parser` may carry `page_text` or historical `page_excerpt`. `text_parser` may carry `pasted_text`. A source-type conflict, empty/invalid body, unsupported label, or unsupported version cannot establish a readable source. An AI scope additionally requires the literal successful-enrichment flag and an explicit `source_excerpt` or `full_source` marker. Missing or unsupported scope remains unknown even when local source text is available.
 
 Old records without labels remain unlabeled. Text length, source name, suggestions, review flags and URL alone do not imply complete reading. Malformed stored labels are replaced with the bounded unknown form in memory. The loader does not migrate or rewrite the source JSON file.
 
@@ -45,4 +45,4 @@ The standardized display description remains a cleaned, bounded convenience fiel
 
 Tests use controlled local API responses, a stubbed model, blocked external connections, and temporary JSON files. They cover Copy JSON → normalization → save → actual loader, local source equality, valid excerpt preservation, old/malformed/conflicting labels, model-suggestion isolation, and comparison/literal-markup preservation. Model messages are checked to retain the existing excerpt boundary. The loader's ranking preparation is stubbed in these focused tests; no full-corpus matcher or live provider validation is claimed.
 
-The reader's existing static-HTML/access-wall and merged-table-cell limitations remain. Neither the local source label nor these tests establish that AI received the complete source. Full-source model input remains pending explicit authorization of the receiving provider.
+The reader's existing static-HTML/access-wall and merged-table-cell limitations remain. A `full_source` label is the parser's record that the saved text fit inside the existing model excerpt; it does not widen that excerpt, and these tests do not establish what a model made of the text. Sending sources longer than the excerpt remains pending explicit authorization of the receiving provider.

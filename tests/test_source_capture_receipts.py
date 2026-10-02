@@ -14,6 +14,7 @@ from src.contact_instructions import (
     same_source_page,
     source_from_html,
 )
+from tests.test_import_document import _deadline
 
 URL = "https://program.example.edu/research"
 STAMP = "2026-09-28T12:00:00Z"
@@ -49,11 +50,54 @@ def test_capture_keeps_full_quote_and_source_time_independent_of_attempt_metadat
 @pytest.mark.parametrize("title", [
     "Sign in", "Log In", "Access denied", "Attention required",
     "Just a moment...", "Page not found", "404", "Service unavailable",
+    "One moment, please...", "Making sure you're not a bot!", "Pardon Our Interruption",
 ])
 def test_access_and_error_pages_are_not_a_successful_empty_check(title):
     result = capture("<h1>" + title + "</h1><p>Please contact the administrator.</p>")
     assert result["status"] == "unsupported"
     assert SOURCE_KEY not in capture_metadata(result)
+
+
+# Bot-check names count only as a whole heading; a research page can open with them.
+@pytest.mark.parametrize("title", [
+    "Human verification: a psychology study", "Security Checkpoint - Airport Screening Research",
+    "Bot Verification | Undergraduate security research", "Checking your browser settings",
+    "Checking your browser before proceedings begin",
+])
+def test_heading_that_only_begins_with_a_bot_check_name_is_still_read(title):
+    result = capture("<h1>" + title + "</h1><p>We study robotics.</p>")
+    assert result["status"] == "empty"
+
+
+# The whole stock heading, with the site name some checks print after it and
+# the punctuation they end in, is a bot check.
+@pytest.mark.parametrize("title", [
+    "Checking your browser", "Checking your browser...", "Checking your browser before accessing",
+    "Checking your browser before accessing example.edu", "Checking your browser before proceeding.",
+    "Checking your browser before continuing to example.edu…!",
+    "Human Verification", "Bot verification!", "DDoS-Guard", "Sign in - Example University", "Access denied!!",
+    "One moment, please…", "One moment please", "Verify you are a human", "Making sure you’re not a bot",
+    "Robot Challenge Screen",
+])
+def test_whole_bot_check_heading_is_an_access_page(title):
+    result = capture("<h1>" + title + "</h1><p>We study robotics.</p>")
+    assert (result["status"], result["reason"]) == ("unsupported", "access_page")
+
+
+# The <title> and the first <h1> are matched whole against the blocked-title
+# rule. A run of '.', '!' or '…' after "checking your browser before
+# proceeding", then a newline, used to be retried at every split of the run.
+@pytest.mark.parametrize("mark", [".", "!", "…"])
+@pytest.mark.parametrize("where", ["title", "h1"])
+def test_blocked_title_rule_reads_a_long_punctuation_run_in_linear_time(where, mark):
+    heading = "Checking your browser before proceeding" + mark * 50_000 + "\nThe lab"
+    title, h1 = (heading, "Research") if where == "title" else ("Research", heading)
+    html = (f"<html><head><title>{title}</title></head><body><main><h1>{h1}</h1>"
+            "<p>We study robotics.</p></main></body></html>")
+    with _deadline(2):
+        result = capture_from_html(html, source_url=URL, checked_at=STAMP)
+    # A heading that long is past the capture's section limit; the title is not a section.
+    assert (result["status"], result["reason"]) == (("empty", None) if where == "title" else ("unsupported", "content_limit"))
 
 
 def test_password_form_is_not_a_successful_source_page():

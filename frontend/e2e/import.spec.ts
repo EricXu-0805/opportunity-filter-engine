@@ -42,6 +42,56 @@ test.describe('Import by URL', () => {
     await expect(page.getByText(/not allowed|public http\/https/i)).toBeVisible();
   });
 
+  // researchops.web.illinois.edu served the production server a bot check
+  // ("One moment, please..."), which used to come back as a saveable,
+  // "AI-assisted" opportunity. The backend now refuses it as access_page.
+  test('says the site showed a bot check instead of the posting, and keeps the link', async ({ page }) => {
+    await page.route('**/api/import-url', (route: Route) =>
+      route.fulfill({
+        status: 422,
+        contentType: 'application/json',
+        body: JSON.stringify({ detail: {
+          code: 'import_source_unreadable',
+          reason: 'access_page',
+          message: 'The page blocked access to its content. Paste the complete opportunity text.',
+          retryable: false,
+        } }),
+      }),
+    );
+    const link = 'https://researchops.web.illinois.edu/opportunity/ai-and-machine-learning-reu';
+    await page.goto('/import');
+    await page.getByPlaceholder('https://...').fill(link);
+    await page.getByRole('button', { name: /Fetch & parse/i }).click();
+    await expect(page.getByText(/sign-in, bot-check or error page instead of the posting/i)).toBeVisible();
+    await expect(page.getByPlaceholder('https://...')).toHaveValue(link);
+    await expect(page.getByRole('button', { name: /Save in this browser/i })).toHaveCount(0);
+  });
+
+  // A page whose scripts have yet to fill it ("Loading positions, this may take
+  // a few seconds...") used to be called a bot check. It needs JavaScript.
+  test('says the page needs JavaScript, and keeps the link', async ({ page }) => {
+    await page.route('**/api/import-url', (route: Route) =>
+      route.fulfill({
+        status: 422,
+        contentType: 'application/json',
+        body: JSON.stringify({ detail: {
+          code: 'import_source_unreadable',
+          reason: 'javascript_required',
+          message: 'The page text requires JavaScript. Paste the complete opportunity text.',
+          retryable: false,
+        } }),
+      }),
+    );
+    const link = 'https://jobs.example.edu/positions';
+    await page.goto('/import');
+    await page.getByPlaceholder('https://...').fill(link);
+    await page.getByRole('button', { name: /Fetch & parse/i }).click();
+    await expect(page.getByText(/needs JavaScript to show the posting/i)).toBeVisible();
+    await expect(page.getByText(/bot-check/i)).toHaveCount(0);
+    await expect(page.getByPlaceholder('https://...')).toHaveValue(link);
+    await expect(page.getByRole('button', { name: /Save in this browser/i })).toHaveCount(0);
+  });
+
   test('renders extracted opportunity card on success', async ({ page }) => {
     await page.route('**/api/import-url', (route: Route) =>
       route.fulfill({

@@ -289,7 +289,7 @@ export default function MatchCard({ detailHref, isViewed, onViewOpportunity, mat
                   disabled={favoritePending}
                   aria-busy={favoritePending}
                   className="mt-0.5 shrink-0 p-1 -ml-1 rounded-lg hover:bg-amber-50 transition-colors duration-200 disabled:opacity-50 disabled:cursor-wait"
-                  aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+                  aria-label={t(isFavorited ? 'detail.favoriteRemove' : 'detail.favoriteAdd')}
                 >
                   <Star className={`w-4 h-4 transition-colors duration-200 ${isFavorited ? 'fill-amber-400 text-amber-400' : 'text-gray-300 hover:text-amber-300'}`} />
                 </button>

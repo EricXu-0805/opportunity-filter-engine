@@ -29,6 +29,15 @@ vi.mock('@/lib/api', () => ({
   getStats: (...args: unknown[]) => mockGetStats(...args),
 }));
 
+// Opportunities imported and saved in this browser count as saved, exactly as
+// /favorites counts them. Default: storage readable, nothing imported.
+const customStorageFeed = vi.hoisted(() => ({
+  state: { status: 'ready', entries: [] } as import('@/lib/custom-imports').CustomImportStorageState,
+}));
+vi.mock('@/lib/custom-imports', () => ({
+  useCustomImportStorageState: () => customStorageFeed.state,
+}));
+
 vi.mock('@/components/PushToggle', () => ({
   default: () => <div data-testid="push-toggle" />,
 }));
@@ -126,6 +135,7 @@ const FUNNEL_CARDS = [
 ] as const;
 
 beforeEach(() => {
+  customStorageFeed.state = { status: 'ready', entries: [] };
   mockGetFavorites.mockResolvedValue(new Set());
   mockGetInteractionsFull.mockResolvedValue(new Map());
   mockGetShortlistOpportunities.mockResolvedValue(shortlist([]));
@@ -301,6 +311,114 @@ describe('DashboardPage — an identity switch clears the lists in the transitio
     await act(async () => {});
     expect(screen.queryByText('Tracked Lab')).toBeNull();
     expect(screen.queryByText('dashboard.reminders.inDays {"days":2}')).toBeNull();
+  });
+});
+
+describe('DashboardPage — one saved count with /favorites', () => {
+  function browserImport(id: string, fields: Record<string, unknown> = {}) {
+    return {
+      id, imported_at: '2026-09-30T16:00:00Z',
+      opportunity: {
+        source: 'text_parser', source_url: '', url: '', title: `Imported ${id}`,
+        description_raw: 'Pasted posting text.', extra_fields: {}, ...fields,
+      },
+    };
+  }
+
+  // /favorites said "2 saved" (two imports saved in this browser) while the
+  // dashboard said "0 SAVED" and "No saved opportunities yet".
+  it('counts opportunities saved in this browser, as /favorites does', async () => {
+    customStorageFeed.state = { status: 'ready', entries: [browserImport('a'), browserImport('b')] };
+    render(<DashboardPage />);
+    await waitFor(() => expect(screen.getByTestId('saved-summary')).toHaveAttribute('data-state', 'ready'));
+    expect(screen.getByTestId('saved-summary')).toHaveTextContent('2');
+    expect(screen.queryByText('dashboard.deadlines.noSavesTitle')).toBeNull();
+    expect(screen.getByText('dashboard.deadlines.emptyTitle')).toBeInTheDocument();
+  });
+
+  it('adds browser saves to account favorites', async () => {
+    customStorageFeed.state = { status: 'ready', entries: [browserImport('a')] };
+    mockGetFavorites.mockResolvedValue(new Set(['fav-1', 'fav-2']));
+    render(<DashboardPage />);
+    await waitFor(() => expect(screen.getByTestId('saved-summary')).toHaveTextContent('3'));
+  });
+
+  // M51: the saved count and the saved-deadline list have to reconcile. A
+  // browser import counted as saved was never listed, whatever its date; its
+  // date was read from the import, so the row says to verify it.
+  it('lists a browser import with a date under saved deadlines, to verify and open from favorites', async () => {
+    customStorageFeed.state = { status: 'ready', entries: [browserImport('a', { deadline: isoDateIn(6), organization: 'Imported Org' })] };
+    render(<DashboardPage />);
+    const row = (await screen.findByText('Imported a')).closest('li')!;
+    expect(within(row).getByText('dashboard.deadlines.verifyDate')).toBeInTheDocument();
+    expect(within(row).getByText('dashboard.deadlines.browserImport')).toBeInTheDocument();
+    expect(within(row).getByText(isoDateIn(6))).toBeInTheDocument();
+    expect(within(row).getByText('Imported Org')).toBeInTheDocument();
+    expect(within(row).queryByText(/dashboard\.deadlines\.inDays/)).toBeNull();
+    expect(within(row).getByRole('link')).toHaveAttribute('href', '/favorites');
+    expect(screen.getByTestId('saved-summary')).toHaveTextContent('1');
+    expect(screen.queryByText('dashboard.deadlines.emptyTitle')).toBeNull();
+  });
+
+  it('orders browser imports among account deadlines by date, and keeps a date it cannot read', async () => {
+    mockGetFavorites.mockResolvedValue(new Set(['fav-1']));
+    mockGetShortlistOpportunities.mockResolvedValue(shortlist([
+      liveListing({ id: 'fav-1', title: 'Account Lab', deadline: isoDateIn(4), deadline_is_estimate: false }),
+    ]));
+    customStorageFeed.state = { status: 'ready', entries: [
+      browserImport('later', { deadline: 'March 2, 2027' }),
+      browserImport('sooner', { deadline: isoDateIn(2) }),
+      browserImport('undated'),
+    ] };
+    render(<DashboardPage />);
+    await screen.findByText('Account Lab');
+    const titles = screen.getAllByRole('listitem').map((item) => item.querySelector('p.text-sm')?.textContent);
+    expect(titles).toEqual(['Imported sooner', 'Account Lab', 'Imported later']);
+    expect(screen.getByText('March 2, 2027')).toBeInTheDocument();
+    expect(screen.getByTestId('saved-summary')).toHaveTextContent('4');
+  });
+
+  it('lists browser imports when every account favorite was unresolvable, beside the note', async () => {
+    mockGetFavorites.mockResolvedValue(new Set(['gone-1']));
+    mockGetShortlistOpportunities.mockResolvedValue(shortlist([], ['gone-1']));
+    customStorageFeed.state = { status: 'ready', entries: [browserImport('a', { deadline: isoDateIn(6) })] };
+    render(<DashboardPage />);
+    expect(await screen.findByText('Imported a')).toBeInTheDocument();
+    expect(screen.getByText('dashboard.unavailable.saved {"count":1}')).toBeInTheDocument();
+  });
+
+  // The list keeps the eight soonest dates of account and browser saves
+  // together, not eight account rows plus every dated browser import. The
+  // account rows arrive in no date order, so they are sorted before the cut.
+  it('keeps the eight soonest deadlines across account and browser saves', async () => {
+    const ids = Array.from({ length: 10 }, (_, i) => `fav-${i + 1}`);
+    mockGetFavorites.mockResolvedValue(new Set(ids));
+    // Account 1 is due last and Account 10 first.
+    mockGetShortlistOpportunities.mockResolvedValue(shortlist(ids.map((id, i) => liveListing({
+      id, title: `Account ${i + 1}`, deadline: isoDateIn(19 - i), deadline_is_estimate: false,
+    }))));
+    customStorageFeed.state = { status: 'ready', entries: [browserImport('sooner', { deadline: isoDateIn(3) })] };
+    render(<DashboardPage />);
+    await screen.findByText('Imported sooner');
+    const titles = screen.getAllByRole('listitem').map((item) => item.querySelector('p.text-sm')?.textContent);
+    expect(titles).toEqual(['Imported sooner', ...[10, 9, 8, 7, 6, 5, 4].map((n) => `Account ${n}`)]);
+    expect(screen.queryByText('Account 3')).toBeNull();
+    expect(screen.getByTestId('saved-summary')).toHaveTextContent('11');
+  });
+
+  it('lists no browser import while that storage is unreadable', async () => {
+    customStorageFeed.state = { status: 'damaged', entries: [browserImport('a', { deadline: isoDateIn(6) })] };
+    render(<DashboardPage />);
+    await waitFor(() => expect(screen.getByTestId('saved-summary')).toHaveAttribute('data-state', 'unknown'));
+    expect(screen.queryByText('Imported a')).toBeNull();
+  });
+
+  it('does not state a count it cannot read', async () => {
+    customStorageFeed.state = { status: 'damaged', entries: [browserImport('a')] };
+    mockGetFavorites.mockResolvedValue(new Set(['fav-1']));
+    render(<DashboardPage />);
+    await waitFor(() => expect(screen.getByTestId('saved-summary')).toHaveAttribute('data-state', 'unknown'));
+    expect(screen.getByTestId('saved-summary').textContent).not.toMatch(/\d/);
   });
 });
 

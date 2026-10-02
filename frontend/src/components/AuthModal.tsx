@@ -314,6 +314,13 @@ export default function AuthModal() {
   const currentEmail = authState?.email ?? '';
   const providers = getEnabledProviders();
   const detection = detectSchoolFromEmail(email);
+  // Signing a guest in to an account it already has merges its rows but not
+  // its tracker files. The conflict recoveries say so beside their buttons;
+  // the contact sign-in takes that path from the first submit.
+  const filesNoticeInOutcome = !!outcome && !outcome.ok
+    && (outcome.reason === 'email-taken' || outcome.reason === 'identity-taken');
+  const guestContactSignIn = phase === 'signin' && reason === 'contact-reveal'
+    && !!authState?.session && authState.isAnonymous;
 
   return (
     <div
@@ -478,6 +485,12 @@ export default function AuthModal() {
                 </div>
               )}
 
+              {guestContactSignIn && !filesNoticeInOutcome && (
+                <p className="text-[12px] text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 leading-relaxed">
+                  {t('auth.modal.signin.guestFilesStay')}
+                </p>
+              )}
+
               {outcome && !outcome.ok && (
                 <div className="text-[12px] text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 space-y-2">
                   <p>
@@ -485,6 +498,7 @@ export default function AuthModal() {
                       ? t('auth.modal.signin.identityTakenMsg')
                       : outcome.message}
                   </p>
+                  {filesNoticeInOutcome && <p>{t('auth.modal.signin.guestFilesStay')}</p>}
                   {outcome.reason === 'email-taken' && (
                     <button
                       type="button"
