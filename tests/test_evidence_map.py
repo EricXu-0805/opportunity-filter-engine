@@ -179,6 +179,45 @@ class TestStatusStillToCome:
         assert em._has(em._FAMILIES["unfinished"], text)
 
 
+class TestBoundsAndApproximations:
+    @pytest.mark.parametrize(("text", "token"), [
+        ("~300 images", "~300"), ("~ 300 images", "~300"), ("≈300 images", "≈300"), (">90% accuracy", ">90%"),
+        ("<50 ms", "<50"), ("≤5 runs", "≤5"), ("≥99% uptime", "≥99%"), ("40+ participants", "40+"),
+        ("1,000+ users", "1000+"), ("90%+ accuracy", "90%+"), ("~1,000 users", "~1000")])
+    def test_a_number_keeps_its_bound_or_approximation_sign(self, text, token):
+        assert em.tokens(text)[0] == token
+
+    @pytest.mark.parametrize("text", [
+        "Labeled fewer than 300 images.", "Drew as many as 200 students.", "Lifted as much as 5 kg.",
+        "Needed as few as 3 runs.", "Used as little as 2 ml.", "Reached accuracy as high as 95%.",
+        "Kept error as low as 1%.", "Interviewed some 30 farmers.", "Reached an estimated 2,000 readers.",
+        "Reached estimated 2,000 readers.", "Tested 40 or so samples.", "Waited a week or so.", "Surveyed 200-odd students.",
+        "Annotated ~300 images.", "Annotated ≈300 images.", "Cut latency to <50 ms.", "Reached >90% accuracy.",
+        "Kept runs ≤5.", "Kept uptime ≥99%.", "Recruited 40+ participants.", "Reached 90%+ accuracy.",
+        "检测了近 40 份水样", "检测了近百份水样", "接近 90%", "招募了 40 余名参与者", "十余名学生", "招募了 40 多名参与者",
+        "三十多名学生", "准确率达到 90% 以上", "18 岁以下", "3 年以上", "百人以上", "最多 12 名", "每周最多辅导 12 名学生",
+        "历时近两年", *(f"近{number}" for number in "一二两三四五六七八九十百千万几半"),
+        *(f"{number}{word}" for number in "十百千万" for word in "余多"), "3 小时以上", "100 名以下",
+        *(f"{number}人以上" for number in "十百千万"), "Reached an estimated two thousand readers."])
+    def test_a_bound_or_an_estimate_is_a_span(self, text):
+        assert em._has(em._FAMILIES["span"], text)
+
+    @pytest.mark.parametrize("text", [
+        *(f"{verb}不到数据" for verb in "找做想看达得用等买收见听"), "得票最多的人",
+        *(f"得票最多{mark}" for mark in ("。", "，", ",", "；", ";", "）", ")", "")), "附近 3 家医院", "最近 3 年",
+        "近五年的数据", "近三年来", "近两年内", "近 10 个月间", "近 3 年来的", "近两个月的", "近三周的", "近十天的",
+        "近 5 日的", "近两个季度的", "近两学期的", "近期参加了比赛", "靠近校园的实验室", "其余 3 人", "Analyzed some data.",
+        "Estimated the cost of the trip.", "Recruited fewer participants than expected."])
+    def test_a_verb_a_superlative_or_a_recent_past_is_no_span(self, text):
+        assert not em._has(em._FAMILIES["span"], text)
+
+    @pytest.mark.parametrize("text", [
+        "Recruited fewer than expected.", "Ran as many as needed.", "Used as much as needed.", "Needed as few as possible.",
+        "Spent as little as possible.", "Scored as high as the PI.", "Priced as low as the rest."])
+    def test_a_relabel_keeps_a_comparison_word_in_any_use(self, text):
+        assert em._SPAN_WORD.search(text) and not em._SPAN.search(text)
+
+
 class TestFinishedClause:
     @pytest.mark.parametrize(("text", "finished"), [
         ("Tutoring 30 students; graded 40 exams.", True), ("Developing a parser and tested it.", True),

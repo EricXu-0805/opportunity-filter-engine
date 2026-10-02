@@ -349,7 +349,8 @@ _FUNCTION_EN = frozenset(
 # Aspect, status and personal characters (中 已 着 过 本 人 我) are content: "撰写中" ->
 # "已撰写" and a dropped 本人 must be visible to the vocabulary checks.
 _FUNCTION_ZH = frozenset("的了并在为与和及于对将把被由等其该以从向所之也都且或而地得个这那但却")
-_TOKEN = re.compile(r"[一-鿿]|\d+(?:[.,]\d+)*%?|[A-Za-z]+(?:'[a-z]+)?")
+# A number keeps the sign that bounds or approximates it: "~300", ">90%", "40+".
+_TOKEN = re.compile(r"[一-鿿]|(?:[~≈<>≤≥]\s?)?\d+(?:[.,]\d+)*%?\+?|[A-Za-z]+(?:'[a-z]+)?")
 # "I" exactly; "my", "me", "mine" and "myself" also open a sentence ("My part was").
 # All-caps "ME" and "MY" are abbreviations (ME 270), not the student.
 _PERSONAL_MARKER = re.compile(r"\bI\b|\b[Mm](?:e|y|ine|yself)\b|本人|我(?!们)")
@@ -364,8 +365,8 @@ def _undouble(stem: str) -> str:
 def lemma(word: str) -> str:
     """One normal form for both texts: inflections and a final -e fold together."""
     w = word.casefold()
-    if w[:1].isdigit():
-        return w.replace(",", "")
+    if re.match(r"[~≈<>≤≥]?\s?\d", w):
+        return re.sub(r"[,\s]", "", w)
     use = verb_use(w)
     if use:
         w = use[0]
@@ -575,7 +576,10 @@ _OTHER_PERSON = re.compile(
 # magnitude", "over a year", not "a talk about a campus program", "a talk about many
 # species", "under development" or "about double-blind trials". 约 estimates (约 200
 # 份), but 预约 schedules; 起 starts a span (2024 年起), but 起草 drafts and 发起
-# launches; 最多 is "up to", but 最多的 "the most".
+# launches; 最多 is "up to", but 最多的 and a closing 得票最多 "the most"; 不到 is "under", but
+# 找不到 and 意想不到 are verbs. "Fewer than", "as many as" and "some" bound or estimate
+# only a quantity too, as does "estimated"; "or so", "-odd", ~, <, >, ≥, a trailing + and
+# 近, 余, 多 or 以上 next to a number always do, though 近五年的数据 is the past five years.
 _QUANTITY = (r"(?=\s+(?:[$€£¥~≈]?\d|(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen"
              r"|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty"
              r"|ninety|hundreds?|thousands?|millions?|billions?|dozens?|tens|half|twice|all|every|each)\b"
@@ -583,9 +587,15 @@ _QUANTITY = (r"(?=\s+(?:[$€£¥~≈]?\d|(?:one|two|three|four|five|six|seven|e
              r"|millions?|years?|months?|weeks?|days?|hours?|semesters?|terms?|summers?|decades?|times)\b"
              r"|(?:a|an)\s+(?:few|couple|dozen|hundred|thousand|million|billion|year|month|week|day|hour|minute"
              r"|semester|term|summer|decade|half|third|quarter|order\s+of|factor\s+of)\b))")
-_SPAN = re.compile(r"\b(?:about|around|over|under|more\s+than|less\s+than|up\s+to)" + _QUANTITY
-                   + r"|\b(?:approximately|roughly|nearly|almost|at\s+least|at\s+most|since|until|per)\b"
-                   r"|(?<![预制节简邀相契合公条])约(?![定会束谈请见稿])|将近|超过|至少|左右|最多(?!的)|至多|多达|高达|不到"
+_SPAN = re.compile(r"\b(?:about|around|over|under|more\s+than|less\s+than|fewer\s+than|up\s+to|some"
+                   r"|as\s+(?:many|much|few|little|high|low)\s+as)" + _QUANTITY
+                   + r"|\bestimated" + _QUANTITY
+                   + r"|\b(?:approximately|roughly|nearly|almost|at\s+least|at\s+most|since|until|per|or\s+so)\b"
+                   r"|(?<=\d)-odd\b|[~≈<>≤≥]\s?(?=\d)|(?<=[\d%])\+"
+                   r"|(?<![预制节简邀相契合公条])约(?![定会束谈请见稿])|将近|超过|至少|左右|最多(?![的。，,；;）)]|$)|至多|多达"
+                   r"|高达|(?<![找做想看达得用等买收见听])不到|(?<![附最])近(?=\s*(?:\d|[一二两三四五六七八九十百千万几半]))"
+                   r"(?!\s*(?:\d+|[一二两三四五六七八九十百千万几半]+)\s*个?(?:年|月|周|天|日|季度|学期)[的来内间])"
+                   r"|(?<=\d)\s*[余多]|(?<=[十百千万])[余多]|(?:\d[\d.,]*|[十百千万])\s*[^\s\d，,。；;]{0,2}?\s*以[上下]"
                    r"|(?<![一发引提拿想兴崛缘])起(?![来草源始点因诉步飞初])|以来|至今", re.I)
 _SOLO = re.compile(r"\b(?:alone|independently|solely|single-handedly|by\s+myself|on\s+my\s+own)\b|独立|独自|单独", re.I)
 _LIMIT = re.compile(r"\b(?:only|just)\b|只|仅", re.I)
@@ -640,8 +650,10 @@ _RELEVANCE_WORD = re.compile(
 # A relabel keeps "revised" and "edited" in any use: "the revised proposal" names a version.
 _REVISION_WORD = re.compile(r"\b(?:revised|rewrote|rewritten|edited)\b", re.I)
 # ... and the English span words _SPAN reads only before a quantity, in any use, as
-# ab4ebfd9 did: a relabel renames a thing, so it has no reason to drop "about".
-_SPAN_WORD = re.compile(r"\b(?:about|around|over|under|more\s+than|less\s+than|up\s+to)\b", re.I)
+# ab4ebfd9 did: a relabel renames a thing, so it has no reason to drop "about". "Some"
+# is the exception: "some data" may become "EEG recordings".
+_SPAN_WORD = re.compile(r"\b(?:about|around|over|under|more\s+than|less\s+than|fewer\s+than|up\s+to"
+                        r"|as\s+(?:many|much|few|little|high|low)\s+as)\b", re.I)
 _LOCK_WORD = [TEAM, HELP, NEGATION, DENIAL, PUBLICATION, INTENT, UNFINISHED, UNFINISHED_ZH, _STATUS_WORD, _SPAN,
               _SPAN_WORD, _SOLO, _LIMIT, _OTHER_PERSON, _REVISION_WORD, _TEAM_ZH_EXTRA, _TEAM_EN_EXTRA, _TEAM_OTHERS,
               CO_CREDIT, _PARTICIPATION_EN, _PARTICIPATION_ZH, _PERSONAL_MARKER]

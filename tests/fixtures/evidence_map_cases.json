@@ -8089,6 +8089,615 @@
     "beyond_allowed_edit",
     "relabel_drops_protected"
    ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN drops 近",
+   "output": "en",
+   "anchors": [],
+   "original": "协助研究生检测了近 40 份水样。",
+   "rewrite": "Helped a graduate student test 40 water samples.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_span"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH adds 余 after a number",
+   "output": "zh",
+   "anchors": [],
+   "original": "Recruited 40 participants for the sleep study.",
+   "rewrite": "为睡眠研究招募了 40 余名参与者。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_span"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH adds 多 after a number",
+   "output": "zh",
+   "anchors": [],
+   "original": "Recruited 40 participants for the sleep study.",
+   "rewrite": "为睡眠研究招募了 40 多名参与者。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_span"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops a tilde",
+   "output": "zh",
+   "anchors": [],
+   "original": "Annotated ~300 images for the gesture dataset.",
+   "rewrite": "为手势数据集标注了 300 张图像。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_span"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops fewer than",
+   "output": "zh",
+   "anchors": [],
+   "original": "Labeled fewer than 300 images for the gesture dataset.",
+   "rewrite": "为手势数据集标注了 300 张图像。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_span"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN drops 余",
+   "output": "en",
+   "anchors": [],
+   "original": "访谈了 30 余位农民。",
+   "rewrite": "Interviewed 30 farmers.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_span"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops or so",
+   "output": "zh",
+   "anchors": [],
+   "original": "Tested 40 or so water samples with qPCR.",
+   "rewrite": "用 qPCR 检测了 40 份水样。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_span"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops some before a number",
+   "output": "zh",
+   "anchors": [],
+   "original": "Interviewed some 30 farmers about irrigation.",
+   "rewrite": "就灌溉问题访谈了 30 位农民。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_span"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH adds 以上",
+   "output": "zh",
+   "anchors": [],
+   "original": "Reached 90% accuracy on the test set.",
+   "rewrite": "在测试集上的准确率达到 90% 以上。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_span"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops an estimated",
+   "output": "zh",
+   "anchors": [],
+   "original": "Reached an estimated 2,000 readers with the club newsletter.",
+   "rewrite": "社团通讯覆盖了 2,000 名读者。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_span"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops -odd",
+   "output": "zh",
+   "anchors": [],
+   "original": "Surveyed 200-odd students.",
+   "rewrite": "调查了 200 名学生。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_span"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops a trailing plus",
+   "output": "zh",
+   "anchors": [],
+   "original": "Surveyed 200+ students.",
+   "rewrite": "调查了 200 名学生。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_span"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps nearly as 近",
+   "output": "zh",
+   "anchors": [],
+   "original": "Tested nearly 40 water samples with qPCR.",
+   "rewrite": "用 qPCR 检测了近 40 份水样。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps fewer than as 不到",
+   "output": "zh",
+   "anchors": [],
+   "original": "Recruited fewer than 20 participants.",
+   "rewrite": "招募了不到 20 名参与者。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN keeps 多达 as as many as",
+   "output": "en",
+   "anchors": [],
+   "original": "活动吸引了多达 200 名学生参加。",
+   "rewrite": "The event drew as many as 200 students.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN keeps 找不到 as no span",
+   "output": "en",
+   "anchors": [],
+   "original": "解决了实验数据找不到的问题。",
+   "rewrite": "Solved the problem of missing experimental data.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN keeps a closing 得票最多 as no span",
+   "output": "en",
+   "anchors": [],
+   "original": "在社团竞选中得票最多，当选为主席。",
+   "rewrite": "Won the most votes in the club election and was elected president.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN keeps 近五年的 as the past five years",
+   "output": "en",
+   "anchors": [],
+   "original": "收集并整理了近五年的城市空气质量数据。",
+   "rewrite": "Collected and organized city air quality data from the past five years.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "span",
+   "label": "lead_with adds a plus to a number",
+   "anchors": [
+    "sleep study"
+   ],
+   "original": "Recruited 40 participants for the sleep study.",
+   "rewrite": "Sleep study: recruited 40+ participants.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "sleep study",
+     "source": "sleep study",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "added:"
+   ]
+  },
+  {
+   "group": "span",
+   "label": "lead_with adds a greater-than sign",
+   "anchors": [
+    "test set"
+   ],
+   "original": "Trained a classifier that reached 90% accuracy on the test set.",
+   "rewrite": "Test set: trained a classifier that reached >90% accuracy.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "test set",
+     "source": "test set",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "added:"
+   ]
+  },
+  {
+   "group": "span",
+   "label": "lead_with adds a less-than sign",
+   "anchors": [
+    "lab dashboard"
+   ],
+   "original": "Reduced query latency to 50 ms for the lab dashboard.",
+   "rewrite": "Lab dashboard: reduced query latency to <50 ms.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "lab dashboard",
+     "source": "lab dashboard",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "added:"
+   ]
+  },
+  {
+   "group": "span",
+   "label": "lead_with drops a tilde",
+   "anchors": [
+    "gesture dataset"
+   ],
+   "original": "Annotated ~300 images for the gesture dataset.",
+   "rewrite": "Gesture dataset: annotated 300 images.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "gesture dataset",
+     "source": "gesture dataset",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "added:"
+   ]
+  },
+  {
+   "group": "span",
+   "label": "lead_with drops an at-least sign",
+   "anchors": [
+    "campus weather station"
+   ],
+   "original": "Kept sensor uptime ≥99% for the campus weather station.",
+   "rewrite": "Campus weather station: kept sensor uptime 99%.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "campus weather station",
+     "source": "campus weather station",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "added:"
+   ]
+  },
+  {
+   "group": "span",
+   "label": "lead_with keeps a tilde with its number",
+   "anchors": [
+    "gesture dataset"
+   ],
+   "original": "Annotated ~300 images for the gesture dataset.",
+   "rewrite": "Gesture dataset: annotated ~300 images.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "gesture dataset",
+     "source": "gesture dataset",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "relabel",
+   "label": "relabel drops fewer than",
+   "anchors": [
+    "image samples"
+   ],
+   "original": "Labeled fewer than 300 images for the gesture dataset.",
+   "rewrite": "Labeled 300 image samples for the gesture dataset.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "image samples",
+     "source": "fewer than 300 images",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "fewer than 300 images",
+     "to": "300 image samples"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel",
+   "label": "relabel drops a tilde",
+   "anchors": [
+    "image samples"
+   ],
+   "original": "Annotated ~300 images for the gesture dataset.",
+   "rewrite": "Annotated 300 image samples for the gesture dataset.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "image samples",
+     "source": "~300 images",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "~300 images",
+     "to": "300 image samples"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel",
+   "label": "ZH relabel drops 近",
+   "anchors": [
+    "水体样本"
+   ],
+   "original": "检测了近 40 份水样本。",
+   "rewrite": "检测了 40 份水体样本。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "水体样本",
+     "source": "近 40 份水样本",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "近 40 份水样本",
+     "to": "40 份水体样本"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
   }
  ]
 }

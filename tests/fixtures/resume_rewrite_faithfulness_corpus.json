@@ -1300,6 +1300,41 @@
    "original": "Contributed code to the lab's open-source toolkit.",
    "rewrite": "为实验室的开源工具包贡献了代码。",
    "kind": "EN to ZH: contributed as 贡献"
+  },
+  {
+   "original": "Tested nearly 40 water samples with qPCR.",
+   "rewrite": "用 qPCR 检测了近 40 份水样。",
+   "kind": "EN to ZH: nearly as 近"
+  },
+  {
+   "original": "Recruited fewer than 20 participants.",
+   "rewrite": "招募了不到 20 名参与者。",
+   "kind": "EN to ZH: fewer than as 不到"
+  },
+  {
+   "original": "活动吸引了多达 200 名学生参加。",
+   "rewrite": "The event drew as many as 200 students.",
+   "kind": "ZH to EN: 多达 as as many as"
+  },
+  {
+   "original": "解决了实验数据找不到的问题。",
+   "rewrite": "Solved the problem of missing experimental data.",
+   "kind": "ZH to EN: 找不到 is a verb, not under"
+  },
+  {
+   "original": "在社团竞选中得票最多，当选为主席。",
+   "rewrite": "Won the most votes in the club election and was elected president.",
+   "kind": "ZH to EN: 得票最多 is a superlative"
+  },
+  {
+   "original": "收集并整理了近五年的城市空气质量数据。",
+   "rewrite": "Collected and organized city air quality data from the past five years.",
+   "kind": "ZH to EN: 近五年的 is the recent past"
+  },
+  {
+   "original": "Annotated ~300 images for the gesture dataset.",
+   "rewrite": "Gesture dataset: annotated ~300 images.",
+   "kind": "reorder keeps a tilde with its number"
   }
  ],
  "unfaithful": [
@@ -3342,6 +3377,146 @@
    "kind": "ZH relabel drops 参与",
    "caught": "contract",
    "case": "ZH relabel drops 参与"
+  },
+  {
+   "original": "协助研究生检测了近 40 份水样。",
+   "rewrite": "Helped a graduate student test 40 water samples.",
+   "kind": "translation drops 近 before a number",
+   "caught": "contract",
+   "case": "ZH to EN drops 近"
+  },
+  {
+   "original": "Recruited 40 participants for the sleep study.",
+   "rewrite": "为睡眠研究招募了 40 余名参与者。",
+   "kind": "translation adds 余 after a number",
+   "caught": "contract",
+   "case": "EN to ZH adds 余 after a number"
+  },
+  {
+   "original": "Recruited 40 participants for the sleep study.",
+   "rewrite": "为睡眠研究招募了 40 多名参与者。",
+   "kind": "translation adds 多 after a number",
+   "caught": "contract",
+   "case": "EN to ZH adds 多 after a number"
+  },
+  {
+   "original": "Annotated ~300 images for the gesture dataset.",
+   "rewrite": "为手势数据集标注了 300 张图像。",
+   "kind": "translation drops a tilde",
+   "caught": "contract",
+   "case": "EN to ZH drops a tilde"
+  },
+  {
+   "original": "Labeled fewer than 300 images for the gesture dataset.",
+   "rewrite": "为手势数据集标注了 300 张图像。",
+   "kind": "translation drops fewer than",
+   "caught": "contract",
+   "case": "EN to ZH drops fewer than"
+  },
+  {
+   "original": "访谈了 30 余位农民。",
+   "rewrite": "Interviewed 30 farmers.",
+   "kind": "translation drops 余",
+   "caught": "contract",
+   "case": "ZH to EN drops 余"
+  },
+  {
+   "original": "Tested 40 or so water samples with qPCR.",
+   "rewrite": "用 qPCR 检测了 40 份水样。",
+   "kind": "translation drops or so",
+   "caught": "contract",
+   "case": "EN to ZH drops or so"
+  },
+  {
+   "original": "Interviewed some 30 farmers about irrigation.",
+   "rewrite": "就灌溉问题访谈了 30 位农民。",
+   "kind": "translation drops some before a number",
+   "caught": "contract",
+   "case": "EN to ZH drops some before a number"
+  },
+  {
+   "original": "Reached 90% accuracy on the test set.",
+   "rewrite": "在测试集上的准确率达到 90% 以上。",
+   "kind": "translation adds 以上",
+   "caught": "contract",
+   "case": "EN to ZH adds 以上"
+  },
+  {
+   "original": "Reached an estimated 2,000 readers with the club newsletter.",
+   "rewrite": "社团通讯覆盖了 2,000 名读者。",
+   "kind": "translation drops an estimated",
+   "caught": "contract",
+   "case": "EN to ZH drops an estimated"
+  },
+  {
+   "original": "Surveyed 200-odd students.",
+   "rewrite": "调查了 200 名学生。",
+   "kind": "translation drops -odd",
+   "caught": "contract",
+   "case": "EN to ZH drops -odd"
+  },
+  {
+   "original": "Surveyed 200+ students.",
+   "rewrite": "调查了 200 名学生。",
+   "kind": "translation drops a trailing plus",
+   "caught": "contract",
+   "case": "EN to ZH drops a trailing plus"
+  },
+  {
+   "original": "Recruited 40 participants for the sleep study.",
+   "rewrite": "Sleep study: recruited 40+ participants.",
+   "kind": "lead_with adds a plus to a number",
+   "caught": "contract",
+   "case": "lead_with adds a plus to a number"
+  },
+  {
+   "original": "Trained a classifier that reached 90% accuracy on the test set.",
+   "rewrite": "Test set: trained a classifier that reached >90% accuracy.",
+   "kind": "lead_with adds a greater-than sign",
+   "caught": "contract",
+   "case": "lead_with adds a greater-than sign"
+  },
+  {
+   "original": "Reduced query latency to 50 ms for the lab dashboard.",
+   "rewrite": "Lab dashboard: reduced query latency to <50 ms.",
+   "kind": "lead_with adds a less-than sign",
+   "caught": "contract",
+   "case": "lead_with adds a less-than sign"
+  },
+  {
+   "original": "Annotated ~300 images for the gesture dataset.",
+   "rewrite": "Gesture dataset: annotated 300 images.",
+   "kind": "lead_with drops a tilde",
+   "caught": "contract",
+   "case": "lead_with drops a tilde"
+  },
+  {
+   "original": "Kept sensor uptime ≥99% for the campus weather station.",
+   "rewrite": "Campus weather station: kept sensor uptime 99%.",
+   "kind": "lead_with drops an at-least sign",
+   "caught": "contract",
+   "case": "lead_with drops an at-least sign"
+  },
+  {
+   "original": "Labeled fewer than 300 images for the gesture dataset.",
+   "rewrite": "Labeled 300 image samples for the gesture dataset.",
+   "kind": "relabel drops fewer than",
+   "caught": "contract",
+   "case": "relabel drops fewer than"
+  },
+  {
+   "original": "Annotated ~300 images for the gesture dataset.",
+   "rewrite": "Annotated 300 image samples for the gesture dataset.",
+   "kind": "relabel drops a tilde",
+   "caught": "contract",
+   "case": "relabel drops a tilde"
+  },
+  {
+   "original": "检测了近 40 份水样本。",
+   "rewrite": "检测了 40 份水体样本。",
+   "kind": "ZH relabel drops 近",
+   "caught": "contract",
+   "case": "ZH relabel drops 近"
   }
  ]
 }
