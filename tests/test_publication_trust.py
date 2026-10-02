@@ -219,7 +219,7 @@ class TestResumeSurface:
     def test_tailor_quotes_only_verified_titles_and_only_as_target_text(self, monkeypatch):
         # A paper title can be target text a rewrite links to (the professor's
         # own words), never evidence of the student's work. Only a verified
-        # author id admits it; name matches and legacy records never do.
+        # author id admits it; every other status and legacy records never do.
         from backend.routes import tailor
 
         captured = {}
@@ -233,7 +233,8 @@ class TestResumeSurface:
                    "hard_skills": [{"name": "Python", "level": "expert"}],
                    "coursework": ["ECE 385"],
                    "research_interests_text": "brain-computer interfaces"}
-        for status, admitted in ((VERIFIED_AUTHOR_ID, True), (NAME_MATCH, False), ("__absent__", False)):
+        statuses = [(VERIFIED_AUTHOR_ID, True), ("__absent__", False), *((s, False) for s in UNVERIFIED_STATUSES)]
+        for status, admitted in statuses:
             opp = _opp(status)
             captured.clear()
             anchors = tailor._snapshot_anchors(opp, opp)
