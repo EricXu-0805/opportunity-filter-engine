@@ -274,8 +274,9 @@ function rowWidth(row: string): number {
 }
 
 /** Text stored before the PDF reflow keeps a row per visual line. Whether
- *  each row only wraps the one before. With the page gone, only the words
- *  that cannot end or open an item join a row, and only when the row before
+ *  each row only wraps the one before. With the page gone, only first-tier
+ *  evidence joins a row (the words that cannot end or open an item, or a
+ *  lowercase first word; never a weak hint), and only when the row before
  *  ran to the column edge: it and the next row's first word would not fit
  *  in the widest rows' width, counted in characters with slack for glyph
  *  widths. */
