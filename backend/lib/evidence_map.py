@@ -11,7 +11,6 @@ review decides what they let through, and the student decides what to use.
 """
 from __future__ import annotations
 
-import bisect
 import json
 import logging
 import re
@@ -20,31 +19,24 @@ from collections import Counter
 from dataclasses import dataclass, field, replace
 
 from backend.lib.blocking import BlockingWorkTimeout, run_blocking
-from backend.lib.grounding import _TECH_TERMS, LENIENT_PROSE_NUMERIC, validate_no_fabrication
+from backend.lib.grounding import LENIENT_PROSE_NUMERIC, validate_no_fabrication
 from backend.lib.llm import chat_completion, model_for
 from backend.lib.target_resume_ai_grounding import (
     _SHARED_CREDIT,
     _TEAM_CONTEXT,
-    _UNDERWAY_ACTION,
     ACTIONS,
     CO_CREDIT,
     DENIAL,
-    FUTURE_EN,
     FUTURE_ZH,
     HELP,
     INTENT,
     NEGATION,
-    PLANNED,
     PUBLICATION,
     QUALITY,
-    RELEVANCE_PADDING,
-    SETTING,
     TEAM,
-    UNDERWAY_ZH,
     UNFINISHED,
     UNFINISHED_ZH,
     _team_marked,
-    claim_text,
     claim_upgrade_findings,
     language,
     supported_claim_upgrade_detected,
@@ -549,7 +541,6 @@ class Outcome:
     links: list[Link] = field(default_factory=list)
     ops: list[str] = field(default_factory=list)
     relabels: list[tuple[str, str]] = field(default_factory=list)
-    translated: bool = False
     findings: list[str] = field(default_factory=list)
     alternative: str | None = None
 
@@ -582,7 +573,7 @@ _OTHER_PERSON = re.compile(
     + r")\s+)*" + _REVISION_VERB + r"|\b" + _REVISION_VERB + r"\s+by\b"
     r"|导师|老师|师兄|师姐|学长|学姐|主管|博士生|博士后|硕士生|研究生|技术员|工程师|助教|教授|参考(?!文献|资料|书目)|基于|医生|护士",
     re.I)
-# In a translation a hedge always qualifies ("roughly segmented", "nearly finished").
+# A hedge always qualifies ("roughly segmented", "nearly finished").
 # A word that is also a preposition does only before a quantity: "about 40 samples",
 # "about twice as fast", "under several dozen", "over many years", "up to an order of
 # magnitude", "over a year", not "a talk about a campus program", "a talk about many
@@ -614,16 +605,7 @@ _LIMIT = re.compile(r"\b(?:only|just)\b|只|仅", re.I)
 _STATUS_WORD = re.compile(
     r"\b(?:planned|proposed|prospective|scheduled|tentative|intended|draft|unpublished|unfinished|incomplete"
     r"|preliminary|pilot|prototypes?|mock|simulated|synthetic)\b|初稿|草稿|预定|初步|原型|仿真", re.I)
-# For translations: a draft (初稿, 草稿), as a thing ("a draft manuscript", "wrote two
-# drafts"), not the verb ("Draft weekly newsletters", "helped draft", "to draft"); the
-# "un-" words a Chinese line writes with 未, a negation there (未完成, 未发表); and the
-# publication statuses PUBLICATION leaves out, which Chinese writes with 发表 or 出版
-# (未发表, 即将出版).
-_DRAFT = re.compile(r"(?:(?<=[(\[-])|(?<=[\w'’-]\s)(?<!\bto\s)(?<!\band\s)(?<!\bor\s)(?<!\bI\s)(?<!\bwe\s)"
-                    r"(?<!\bwill\s)(?<!\bhelp\s)(?<!\bhelps\s)(?<!\bhelped\s)(?<!\bhelping\s)(?<!\balso\s)"
-                    r"(?<!\bcurrently\s))\bdrafts?\b|初稿|草稿|草案", re.I)
 _UN_DONE = re.compile(r"\bun(?:published|submitted|finished|tested|verified|validated|reviewed)\b", re.I)
-_UNPUBLISHED = re.compile(r"\bun(?:published|submitted)\b|\bto\s+appear\b|\bin\s+press\b", re.I)
 _TEAM_ZH_EXTRA = re.compile(r"组员|队友|同学|室友|搭档|伙伴|朋友|一起|协同|课题组|项目组|(?:(?<!\d)\d+|[一二三四五六七八九十两])\s*人", re.I)
 # English shared-work words the TEAM lock leaves out; each has a Chinese pair above or in TEAM.
 _TEAM_EN_EXTRA = re.compile(
@@ -637,18 +619,10 @@ _TEAM_OTHERS = re.compile(
     r"|volunteers?|members?|researchers?|undergrad(?:uate)?s?|participants?|tutors?|employees?)|colleagues?|peers?"
     r"|co-?workers?|others)\b"
     r"|(?:另外|另一|其他|其余)[^，,。；;]{0,4}?(?:学生|同学|志愿者|实习生|成员|研究员|同事|队员)", re.I)
-# A share of someone else's work: "participated in", "contributed to", 参与, 贡献. 参加 (took
-# part in, attended) carries the English word but needs none; 参与者 and "participants"
-# name people, and in 有 50 名被试参与的实验 the 50 take part, not the student.
+# A share of someone else's work: "participated in", "contributed to", 参与, 参加, 贡献.
 _PARTICIPATION_EN = re.compile(r"\b(?:participat\w*|contribut\w*|involved\s+in|involvement|t(?:ake|akes|aking|ook)"
                                r"\s+part)\b", re.I)
 _PARTICIPATION_ZH = re.compile(r"参与|参加|贡献")
-_SHARE_ZH = re.compile(r"(?:(?<!\d)\d+|(?<![一二两三四五六七八九十百千])[一二两三四五六七八九十百千]+)\s*(?:名|位|个|人)[^，,。；;参]{0,4}参与|(参与)(?!者)|(贡献)")
-
-
-def _shares_work(chinese: str) -> bool:
-    """Whether a Chinese line says the student took a share of someone else's work."""
-    return any(match.group(1) or match.group(2) for match in _SHARE_ZH.finditer(chinese))
 _ACTION_WORDS = re.compile("|".join(ACTIONS.values()), re.I)
 _SETTING_NOUN = re.compile(
     r"\b(?:projects?|study|studies|lab|laboratory|coursework|course|class|internship|competition|hackathon|program"
@@ -667,17 +641,6 @@ _SPAN_WORD = re.compile(r"\b(?:about|around|over|under|more\s+than|less\s+than|f
 _LOCK_WORD = [TEAM, HELP, NEGATION, DENIAL, _UN_DONE, PUBLICATION, INTENT, UNFINISHED, UNFINISHED_ZH, _STATUS_WORD,
               _SPAN, _SPAN_WORD, _SOLO, _LIMIT, _OTHER_PERSON, _REVISION_WORD, _TEAM_ZH_EXTRA, _TEAM_EN_EXTRA,
               _TEAM_OTHERS, CO_CREDIT, _PARTICIPATION_EN, _PARTICIPATION_ZH, _PERSONAL_MARKER]
-# Families a translation must carry across in both directions. A work's status is
-# four of them: planned or hoped for (INTENT, PLANNED: 计划, 预定), under way or
-# still to come (UNFINISHED, UNDERWAY_ZH: 开发中, 即将), still to come on its own
-# (FUTURE: "will", 即将, so 即将发表 beside 目前 keeps its own word) and a draft.
-_FAMILIES = {
-    "team": [TEAM, _TEAM_ZH_EXTRA, _TEAM_EN_EXTRA, CO_CREDIT], "help": [HELP], "limit": [_LIMIT],
-    "negation": [NEGATION, DENIAL, _UN_DONE], "solo": [_SOLO], "span": [_SPAN], "intent": [INTENT, PLANNED],
-    "unfinished": [UNFINISHED, UNDERWAY_ZH], "future": [FUTURE_EN, FUTURE_ZH], "draft": [_DRAFT],
-    "publication": [PUBLICATION, _UNPUBLISHED],
-    "other_person": [_OTHER_PERSON],
-}
 
 
 def _team_or_help(text: str) -> bool:
@@ -768,65 +731,6 @@ def _relabel_refusal(added_text: str, added: list[str], unit: Unit, term: str) -
 
 
 _NUMBER = re.compile(r"\d+(?:[.,]\d+)*")
-_MONTH_NAMES = {name: number for number, names in enumerate(
-    (("January", "Jan"), ("February", "Feb"), ("March", "Mar"), ("April", "Apr"), ("May",), ("June", "Jun"),
-     ("July", "Jul"), ("August", "Aug"), ("September", "Sept", "Sep"), ("October", "Oct"), ("November", "Nov"),
-     ("December", "Dec")), start=1) for name in names}
-_MONTH = "|".join(sorted(_MONTH_NAMES, key=len, reverse=True))
-_MONTH_BEFORE_NUMBER = re.compile(rf"\b({_MONTH})\b\.?(?=,?\s*\d)")
-_MONTH_AFTER_NUMBER = re.compile(rf"(?<=\d)(\s+)({_MONTH})\b")
-# A translation may name only a setting whose noun the other line has: lab,
-# project, course, study, internship, company or competition, in either language.
-# A 课题组 is a research group, so it names research as well as a project.
-_SETTING_CONCEPTS = (
-    re.compile(r"\b(?:labs?|laborator(?:y|ies))\b|实验室", re.I),
-    re.compile(r"\b(?:projects?|programs?)\b|项目|课题", re.I),
-    re.compile(r"\b(?:courses?|coursework|class(?:es)?)\b|课程|课堂", re.I),
-    re.compile(r"\b(?:stud(?:y|ies)|research)\b|研究(?!生|员|助理)|实验(?!室)|课题组", re.I),
-    re.compile(r"\binternships?\b|实习", re.I),
-    re.compile(r"\bcompan(?:y|ies)\b|公司|企业", re.I),
-    re.compile(r"\b(?:competitions?|hackathons?|contests?)\b|比赛|竞赛", re.I),
-)
-_TRANSLATED_RELEVANCE = [RELEVANCE_PADDING, re.compile(
-    r"\b(?:relevant|applicable|useful)\s+(?:to|for)\b|\bwith\s+a\s+focus\s+on\b"
-    r"|为(?:(?!打下)[^，,。；;为])*打下[^，,。；;为]*基础", re.I)]
-# A degree abbreviation an English line uses for a Chinese title it translates.
-_TRANSLATED_DEGREES = {"博士": ("phd", "ph.d"), "硕士": ("msc", "m.sc")}
-
-
-def _month_numbers(text: str) -> str:
-    """English month names written next to a number, as numbers: "September 2025" -> "9 2025"."""
-    text = _MONTH_BEFORE_NUMBER.sub(lambda match: str(_MONTH_NAMES[match[1]]), text)
-    return _MONTH_AFTER_NUMBER.sub(lambda match: match[1] + str(_MONTH_NAMES[match[2]]), text)
-
-
-def _latin_words(text: str) -> set[str]:
-    """Latin-script words, a sentence's final period or a trailing hyphen dropped ("qPCR." -> "qpcr")."""
-    return {word.rstrip(".-").casefold() for word in re.findall(r"[A-Za-z][A-Za-z0-9+#.-]*", text)}
-
-
-_PHRASE_END = re.compile(r"[,，.。;；:：()（）]|(?<!\s)\s+(?:and|but|while|with|using|to)\b", re.I)
-
-
-def _setting_added(source: str, text: str) -> bool:
-    """A setting in ``text`` whose noun ``source`` never names, in either language.
-
-    The setting runs to the end of its phrase: in "for the research group's
-    project" the noun is "project", not the "research" that SETTING stops at.
-    """
-    # Each text is read once: where its phrases end, where each concept stands in it, and
-    # which concepts the source names. A concept is in a phrase when one of its matches
-    # starts at the setting and ends by the phrase's end.
-    ends = [match.start() for match in _PHRASE_END.finditer(text)]
-    places = [[match.span() for match in concept.finditer(text)] for concept in _SETTING_CONCEPTS]
-    named = [bool(concept.search(source)) for concept in _SETTING_CONCEPTS]
-    for match in SETTING.finditer(text):
-        index = bisect.bisect_left(ends, match.end())
-        end = ends[index] if index < len(ends) else len(text)
-        if not any(named[i] for i, spans in enumerate(places)
-                   if (k := bisect.bisect_left(spans, (match.start(),))) < len(spans) and spans[k][1] <= end):
-            return True
-    return False
 
 
 def _relabel_swap_refusal(source: str, target: str) -> str | None:
@@ -848,209 +752,15 @@ def _relabel_swap_refusal(source: str, target: str) -> str | None:
     return None
 
 
-# "Developing a dashboard": work under way with no status word, said by a leading
-# progressive form of a résumé verb ("Using Python, ..." and "Applying ..." name a
-# method). An -ing word the verb list does not know may be a role or a name ("Visiting
-# student", "Fundraising chair", "Peking University"), so it leads no progressive line.
-_PROGRESSIVE_LEAD_SKIP = frozenset({"currently", "still", "now", "also", "actively", "jointly"})
-_PROGRESSIVE_METHODS = frozenset({"use", "apply"})
-# Chinese that states work done: 开发了, 已搭建, 完成. The 了 of 为了, 除了 and 了解, and
-# the 完成 of 正在完成 and 未完成, state nothing done.
-_ZH_DONE = re.compile(r"(?<![为除])了(?!解)|已(?!在)|(?<!正在)(?<!未)完成")
-# A Chinese line's first clause, and 正在 or 目前 on its leading verb: only a subject
-# or a time word may stand before it (目前正在为实验室开发 ..., 本学期正在, 目前我正在).
-# No word of the run is two others joined (今年暑假 is 今年 + 暑假), so a run of them
-# has one reading and is read once; it is read only at the start of a clause.
-_ZH_FIRST_CLAUSE = re.compile(r"[^，,。；;：:！？!?]*")
-_ZH_LEAD_PROGRESSIVE = re.compile(
-    r"\A\s*(?:(?:本人|我们|我|本学期|这学期|今年(?:夏天)?|暑假(?:期间)?|寒假(?:期间)?|最近|近期|目前|现在|现|也)\s*)*"
-    r"(?:正在|目前)")
-# Chinese clauses, and their parts: 开发了网站并撰写了综述 states two things done.
-_ZH_CLAUSE_BREAK = re.compile(r"[，,。；;：:！？!?]")
-_ZH_PART_BREAK = re.compile(_ZH_CLAUSE_BREAK.pattern + "|、|并")
-# An English clause, and the words that may open it before its verb (as may an -ly adverb).
-_EN_CLAUSE_BREAK = re.compile(r"[;:,.()]|\s(?=(?:and|but|then)\s)", re.I)
-_EN_CLAUSE_LEAD = frozenset({"and", "but", "then", "also", "later", "which", "that", "who", "i", "we", "have", "has",
-                             "had"})
-
-
-def _progressive_led(text: str) -> bool:
-    words = [word.casefold() for word in re.findall(r"[A-Za-z]+(?:-[A-Za-z]+)*", text)]
-    while words and words[0] in _PROGRESSIVE_LEAD_SKIP:
-        words.pop(0)
-    use = verb_use(words[0]) if words and not _CJK.match(text.strip()[:1]) else None
-    return bool(use) and use[1] == "ing" and use[0] not in _PROGRESSIVE_METHODS
-
-
-def _names_status(word: str) -> bool:
-    """A word that names a status, never a finished action: expected, planned, unpublished."""
-    return any(pattern.fullmatch(word) for pattern in (UNFINISHED, _STATUS_WORD, _UN_DONE))
-
-
-# Finished events a headline states that the résumé verb list leaves out: "Preprint posted on arXiv".
-_HEADLINE_PAST = frozenset({"posted", "released", "approved", "funded", "awarded", "granted", "archived"})
-
-
-def _finished_verb(words: list[str], *, headline: bool = False, wide: bool = False) -> bool:
-    """Whether ``words`` open with a past verb ("graded", "wired") that states a finished action.
-
-    A participle with its agent ("used by 5 lab members"), a plan ("planned to")
-    or a state ("interested in") does not, nor does a status word that ends in
-    -ed ("expected next month"). After a headline's noun the verb must be a
-    known past form that names no status: "Paper accepted at CHI", not
-    "completion expected" or "homepage planned". ``wide`` reads any other -ed
-    verb there too ("completion delayed"), for the rule a finished clause triggers.
-    """
-    word, after = words[0], words[1:2]
-    if after in (["by"], ["to"]) or headline and _names_status(word):
-        return False
-    use = verb_use(word)
-    if use:
-        return use[1] == "past"
-    if headline and not wide:
-        return word in _HEADLINE_PAST
-    return len(word) > 4 and word.endswith("ed") and after != ["in"] and not _names_status(word)
-
-
-def _finished_clauses(text: str, *, wide: bool = False) -> int:
-    """How many clauses of an English line open with a finished verb: "...; graded 40 exams".
-
-    A headline counts too, its noun before the verb: "Paper accepted at CHI 2026".
-    """
-    count = 0
-    for clause in _EN_CLAUSE_BREAK.split(text):
-        words = [word.casefold() for word in re.findall(r"[A-Za-z]+(?:-[A-Za-z]+)*", clause)]
-        while words and (words[0] in _EN_CLAUSE_LEAD or words[0].endswith("ly")):
-            words.pop(0)
-        if words and (_finished_verb(words) or len(words) > 1 and words[0] not in _FUNCTION_EN
-                      and not verb_use(words[0]) and _finished_verb(words[1:], headline=True, wide=wide)):
-            count += 1
-    return count
-
-
-def _finished_clause(text: str, *, wide: bool = False) -> bool:
-    return _finished_clauses(text, wide=wide) > 0
-
-
-def _done_parts(chinese: str) -> int:
-    """How many parts of a Chinese line carry their own done mark (了, 已, 完成)."""
-    return sum(1 for part in _ZH_PART_BREAK.split(chinese) if _ZH_DONE.search(part))
-
-
-def _leading_clause(chinese: str) -> str:
-    """The Chinese clause that holds the leading verb: the first that is more than a lead marker.
-
-    目前，开发了网站, 本人目前：开发了网站 and 项目进行中，开发了网站 hold it in their
-    second clause; a lone 目前 or a noun with a verb + 中 marks the work, not the verb.
-    """
-    for clause in _ZH_CLAUSE_BREAK.split(chinese):
-        lead = _ZH_LEAD_PROGRESSIVE.match(clause)
-        rest = (clause[lead.end():] if lead else clause).strip()
-        if rest and not any(match.end() == len(rest.rstrip(")）")) for match in _UNDERWAY_ACTION.finditer(rest)):
-            return clause
-    return ""
-
-
-def _lead_spans(chinese: str) -> list[tuple[int, int]]:
-    """Where a Chinese line marks its leading verb as under way.
-
-    正在 or 目前 counts when only a subject or a time word stands before it in the
-    first clause; a verb + 中 counts when it ends that clause, bracketed or not
-    (系统开发中，负责 ..., 预约系统（开发中）).
-    """
-    first = _ZH_FIRST_CLAUSE.match(chinese).group(0)
-    spans = [lead.span()] if (lead := _ZH_LEAD_PROGRESSIVE.match(first)) else []
-    end = len(first.rstrip().rstrip(")）"))
-    return spans + [match.span() for match in _UNDERWAY_ACTION.finditer(first) if match.end() == end]
-
-
-def _only_on_lead(chinese: str) -> bool:
-    """Whether every under-way word of a Chinese line marks its leading verb."""
-    spans = _lead_spans(chinese)
-    return all(any(start <= match.start() and match.end() <= end for start, end in spans)
-               for match in UNDERWAY_ZH.finditer(chinese))
-
-
-def _finished_in_translation(english: str, chinese: str, *, chinese_source: bool) -> bool:
-    """Whether a translation states done what the other line has under way or planned.
-
-    "Developing ..." never becomes 开发了 or 已开发, nor 目前，开发了: the clause that
-    holds the Chinese leading verb carries no done mark. A done mark elsewhere
-    needs 正在, 目前 or a verb + 中 on the leading verb, and no more Chinese parts
-    carry one than English clauses open with a finished verb.
-    English work under way or planned ("under development", "plan to") takes
-    了, 已 or 完成 only in as many parts as it has finished clauses; and 正在 or a
-    verb + 中 in a Chinese line is finished in English ("...; tested it") only
-    where the Chinese marks something done too.
-    """
-    finished, done = _finished_clauses(english), _done_parts(chinese)
-    if _progressive_led(english) and (_ZH_DONE.search(_leading_clause(chinese))
-                                      or done and (done > finished or not _lead_spans(chinese))):
-        return True
-    if chinese_source:
-        underway = "正在" in chinese or any(not chinese.startswith("的", match.end())
-                                           for match in _UNDERWAY_ACTION.finditer(chinese))
-        return bool(underway and _finished_clause(english, wide=True) and not done)
-    return bool(done > finished and (UNFINISHED.search(english) or INTENT.search(english)
-                                     or PLANNED.search(english)))
-
-
-def _check_translation(unit: Unit, text: str) -> str | None:
-    """Why a translation fails the checks that work across languages, or None."""
-    source = unit.current
-    if Counter(_NUMBER.findall(_month_numbers(source))) != Counter(_NUMBER.findall(_month_numbers(text))):
-        return "translation_numbers"
-    source_latin, text_latin = _latin_words(source), _latin_words(text)
-    if language(source) == "zh":
-        # English names inside a Chinese line stay as written.
-        if source_latin - text_latin:
-            return "translation_names"
-    else:
-        if text_latin - source_latin:
-            return "translation_names"
-        kept = {word.rstrip(".-").casefold() for word in re.findall(r"[A-Za-z][A-Za-z0-9+#.-]*", source)
-                if word.casefold() in _TECH_TERMS or re.search(r"\d|[a-z][A-Z]|^[A-Z]{2,}", word)}
-        translated = {word for title, words in _TRANSLATED_DEGREES.items() if title in text for word in words}
-        if kept - text_latin - translated:
-            return "translation_names"
-    # Read as the claim locks read them: "12 只小鼠" counts mice, it limits nothing.
-    counted_source, counted_text = claim_text(source), claim_text(text)
-    english, chinese = (source, text) if language(source) == "en" else (text, source)
-    for name, patterns in _FAMILIES.items():
-        if _has(patterns, counted_source) != _has(patterns, counted_text):
-            # 正在开发 may be "Developing ...", which has no status word of its own, when
-            # 正在, 目前 or a verb + 中 marks the leading verb and the Chinese has no other.
-            if (name == "unfinished" and _progressive_led(english) and not _has(patterns, english)
-                    and _only_on_lead(chinese)):
-                continue
-            return f"translation_{name}"
-    # A share of someone else's work stays one: 参与了 … 检测 is not "Ran ... tests".
-    if (_PARTICIPATION_EN.search(english) and not _PARTICIPATION_ZH.search(chinese)
-            or _shares_work(chinese) and not _PARTICIPATION_EN.search(english)):
-        return "translation_participation"
-    if _finished_in_translation(english, chinese, chinese_source=language(source) == "zh"):
-        return "translation_unfinished"
-    # The claim locks compare these words within one language; across two,
-    # a translation may not bring in a setting, a quality or a relevance claim.
-    if _setting_added(source, text):
-        return "translation_setting"
-    if QUALITY.search(text) and not QUALITY.search(source):
-        return "translation_quality"
-    if _has(_TRANSLATED_RELEVANCE, text) and not _has(_TRANSLATED_RELEVANCE, source):
-        return "translation_relevance"
-    ratio = (1.0, 12) if language(source) == "en" else (4.5, 20)
-    if len(text) > ratio[0] * len(source) + ratio[1]:
-        return "too_long"
-    return None
-
-
 def check_rewrite(unit: Unit, row: object, anchors: dict[str, Anchor], *, output_language: str,
                   extra_keys: tuple[str, ...] = ()) -> Outcome:
     """Verify one model row. "pending" goes on to the claim locks and the review.
 
     "invalid" is a malformed row. "kept" carries the student-facing reason:
     no_link / already_aligned / no_safe_change for a model keep, cosmetic_only
-    or beyond_allowed_edit for a rewrite this contract refuses.
+    or beyond_allowed_edit for a rewrite this contract refuses. ``output_language``
+    is the language of the unit's own original: a rewrite in another language,
+    or of current wording in another language, is kept as written.
     """
     # A field the decision makes empty may be left out: links, ops, text, keep_reason.
     if (not isinstance(row, dict) or not {"unit_id", "decision", *extra_keys} <= set(row)
@@ -1074,17 +784,8 @@ def check_rewrite(unit: Unit, row: object, anchors: dict[str, Anchor], *, output
     names = [op["op"] for op in ops_raw]
     if any(name not in OPS for name in names):
         return _keep(unit, "beyond_allowed_edit", "unknown_op", links=links)
-    if language(text) != output_language:
+    if language(text) != output_language or language(unit.current) != output_language:
         return _keep(unit, "beyond_allowed_edit", "wrong_language", links=links)
-    if language(unit.current) != output_language:
-        if names != ["translate"]:
-            return _keep(unit, "beyond_allowed_edit", "translation_ops", links=links)
-        refusal = _check_translation(unit, text)
-        if refusal:
-            return _keep(unit, "beyond_allowed_edit", refusal, links=links)
-        return Outcome(unit.unit_id, "pending", text=text, links=links, ops=["translate"], translated=True)
-    if "translate" in names:
-        return _keep(unit, "beyond_allowed_edit", "translation_ops", links=links)
     return _check_same_language(unit, text, links, ops_raw)
 
 
@@ -1209,24 +910,16 @@ def rewrite_findings(text: str, evidence: str, relabels: list[tuple[str, str]]) 
     return hard
 
 
-def grounding_findings(text: str, corpus: str, *, translated: bool = False) -> list[str]:
-    """Concrete tokens and digit runs of ``text`` that ``corpus`` does not state.
-
-    A translation may write "September 2025" as 2025 年 9 月, or 博士生 as "PhD
-    student"; _check_translation has already compared its numbers and names.
-    """
-    allow: frozenset[str] = frozenset()
-    if translated:
-        corpus = corpus + "\n" + _month_numbers(corpus)
-        allow = frozenset(word for title, words in _TRANSLATED_DEGREES.items() if title in corpus for word in words)
-    _, fabricated = validate_no_fabrication(text, corpus, extra_allow=allow, policy=LENIENT_PROSE_NUMERIC)
+def grounding_findings(text: str, corpus: str) -> list[str]:
+    """Concrete tokens and digit runs of ``text`` that ``corpus`` does not state."""
+    _, fabricated = validate_no_fabrication(text, corpus, policy=LENIENT_PROSE_NUMERIC)
     return fabricated
 
 
 def gate(outcome: Outcome, unit: Unit) -> Outcome:
     """Run the claim locks on a pending rewrite. A hard finding keeps the original."""
     corpus = "\n".join(text for _, text in unit.sources)
-    fabricated = grounding_findings(outcome.text, corpus, translated=outcome.translated)
+    fabricated = grounding_findings(outcome.text, corpus)
     hard = rewrite_findings(outcome.text, corpus, outcome.relabels)
     if unit.support and supported_claim_upgrade_detected(outcome.text, [text for _, text in unit.sources]):
         hard.append("supported_claim_changed")

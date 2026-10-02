@@ -1,5 +1,5 @@
 {
- "_about": "Single-bullet résumé rewrites for claim_upgrade_findings. 'faithful' rewrites say nothing the original does not; none may carry a hard finding, and each is accepted on a faithful review verdict. 'unfaithful' ones change who did what, a denial, leadership, the setting, the object or a number, or add a relevance, quality or other new claim; none may be accepted without the review. Each is rejected by a hard finding before any review, unless its 'caught' is 'review': those carry no hard finding and are rejected by an unfaithful verdict; or 'contract': the closed-vocabulary contract keeps the original before the locks for the declared map that tests/fixtures/evidence_map_cases.json holds under the label in 'case'.",
+ "_about": "Single-bullet résumé rewrites for claim_upgrade_findings. A rewrite in another language than its original, faithful or not, is never shown: the contract keeps the original before the locks and the review on every route (w14.1), so the lock rules below read only same-language pairs. 'faithful' rewrites say nothing the original does not; none may carry a hard finding, and each is accepted on a faithful review verdict. 'unfaithful' ones change who did what, a denial, leadership, the setting, the object or a number, or add a relevance, quality or other new claim; none may be accepted without the review. Each is rejected by a hard finding before any review, unless its 'caught' is 'review': those carry no hard finding and are rejected by an unfaithful verdict; 'contract': the closed-vocabulary contract keeps the original before the locks for the declared map that tests/fixtures/evidence_map_cases.json holds under the label in 'case'; or 'language': the rewrite is in another language than its original.",
  "faithful": [
   {
    "original": "I built a Python parser for the course project.",
@@ -2084,12 +2084,14 @@
   {
    "original": "Helped three lab mates run cyclic voltammetry on 30 electrolyte samples in Summer 2025; the graduate mentor did the data analysis.",
    "rewrite": "2025 年夏季带领三名实验室同学对 30 个电解液样品进行了循环伏安测试；数据分析由研究生导师完成。",
-   "kind": "cross-language relabel or translation changes the claim"
+   "kind": "cross-language relabel or translation changes the claim",
+   "caught": "language"
   },
   {
    "original": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
    "rewrite": "Since September 2025, undergraduate research assistant in an environmental microbiology lab (about 8 hours per week), using qPCR to detect Legionella in tap-water samples; did not take part in primer design or data analysis.",
-   "kind": "cross-language relabel or translation changes the claim"
+   "kind": "cross-language relabel or translation changes the claim",
+   "caught": "language"
   },
   {
    "original": "Did not write the parser and did not run the benchmarks; only documented the results.",
@@ -2135,18 +2137,19 @@
    "original": "Undergraduate course assistant for CS 124 (Spring 2026), holding weekly office hours for about 40 students.",
    "rewrite": "CS 124 本科课程助教（2026 年春季），每周为约 40 名学生授课。",
    "kind": "cross-language relabel or translation changes the claim",
-   "caught": "review"
+   "caught": "language"
   },
   {
    "original": "Engineers Without Borders 校园分会饮用水项目组成员（共 6 人）：团队为一所乡村小学设计并安装了一套慢砂过滤装置；本人只负责材料采购和预算记录。",
    "rewrite": "Member of the six-person drinking-water project team of the campus Engineers Without Borders chapter: designed and installed a slow sand filter for a rural primary school; only handled materials purchasing and budget records.",
    "kind": "cross-language relabel or translation changes the claim",
-   "caught": "review"
+   "caught": "language"
   },
   {
    "original": "CEE 350 课程项目（4 人小组）：与组员一起采集校园 12 个雨水口的径流水样，本人负责浊度和 pH 测定，并用 Excel 整理了 48 组数据。",
    "rewrite": "CEE 350 course project (4-person group): collected runoff samples from 12 campus storm drains, measured turbidity and pH, and organized 48 sets of data in Excel.",
-   "kind": "cross-language relabel or translation changes the claim"
+   "kind": "cross-language relabel or translation changes the claim",
+   "caught": "language"
   },
   {
    "original": "Built a Python robot with a team of 3. I did not lead the project.",
@@ -2260,7 +2263,8 @@
   {
    "original": "Assisted a nurse in recording vital signs for 30 patients.",
    "rewrite": "为 30 名患者记录并分析了生命体征。",
-   "kind": "cross-language relabel or translation changes the claim"
+   "kind": "cross-language relabel or translation changes the claim",
+   "caught": "language"
   },
   {
    "original": "Reviewed roughly 50 papers on bird migration.",
@@ -2271,19 +2275,20 @@
   {
    "original": "参与了校园雨水花园的设计。",
    "rewrite": "Led the design of a campus rain garden.",
-   "kind": "cross-language relabel or translation changes the claim"
+   "kind": "cross-language relabel or translation changes the claim",
+   "caught": "language"
   },
   {
    "original": "参与了校园雨水花园的设计。",
    "rewrite": "Designed a campus rain garden.",
    "kind": "cross-language relabel or translation changes the claim",
-   "caught": "review"
+   "caught": "language"
   },
   {
    "original": "社团项目组成员（共 8 人）：团队为社区图书馆设计并搭建了一个借阅小程序；本人只负责测试。",
    "rewrite": "Member of an 8-person club project team: designed and built a lending mini-program for the community library; only did the testing.",
    "kind": "cross-language relabel or translation changes the claim",
-   "caught": "review"
+   "caught": "language"
   },
   {
    "original": "Member of a 5-person team: our team designed a campus bike-share app; I only made the logo.",
@@ -2456,43 +2461,37 @@
    "original": "为课题组的项目用 Python 分析了脑电数据。",
    "rewrite": "Analyzed EEG data in Python for the project.",
    "kind": "translation drops the team",
-   "caught": "contract",
-   "case": "ZH to EN that drops the research group"
+   "caught": "language"
   },
   {
    "original": "Helped a graduate student test about 40 water samples with qPCR",
    "rewrite": "在饮用水研究课题中协助研究生用 qPCR 检测约 40 份水样。",
    "kind": "translation adds a setting",
-   "caught": "contract",
-   "case": "EN to ZH adds a research setting"
+   "caught": "language"
   },
   {
    "original": "Helped a graduate student test about 40 water samples with qPCR",
    "rewrite": "协助研究生用 qPCR 高效、严谨地检测约 40 份水样。",
    "kind": "translation adds a quality claim",
-   "caught": "contract",
-   "case": "EN to ZH adds quality words"
+   "caught": "language"
   },
   {
    "original": "用 Python 清洗了 200 份问卷数据。",
    "rewrite": "Cleaned 200 survey responses in Python for a sleep study.",
    "kind": "translation adds a setting",
-   "caught": "contract",
-   "case": "ZH to EN adds a study setting"
+   "caught": "language"
   },
   {
    "original": "整理了实验记录。",
    "rewrite": "Thoroughly organized experiment records.",
    "kind": "translation adds a quality claim",
-   "caught": "contract",
-   "case": "ZH to EN adds a quality word"
+   "caught": "language"
   },
   {
    "original": "用 Python 清洗了 200 份问卷数据并画了 3 张图。",
    "rewrite": "Cleaned 200 survey responses in Python and drew 3 charts, relevant to data visualization.",
    "kind": "translation appends relevance",
-   "caught": "contract",
-   "case": "ZH to EN appends relevance"
+   "caught": "language"
   },
   {
    "original": "Co-wrote a conference paper on soft robots (accepted) and a journal manuscript on grippers (in preparation).",
@@ -2568,29 +2567,25 @@
    "original": "Tested about 40 water samples with qPCR.",
    "rewrite": "用 qPCR 检测了 40 份水样。",
    "kind": "translation drops about on a count",
-   "caught": "contract",
-   "case": "EN to ZH drops about on a count"
+   "caught": "language"
   },
   {
    "original": "检测了约 40 份水样。",
    "rewrite": "Tested 40 water samples.",
    "kind": "translation drops 约",
-   "caught": "contract",
-   "case": "ZH to EN drops 约 on a count"
+   "caught": "language"
   },
   {
    "original": "2024 年起负责小鼠饲养。",
    "rewrite": "Responsible for mouse husbandry in 2024.",
    "kind": "translation turns since 2024 into in 2024",
-   "caught": "contract",
-   "case": "ZH to EN turns 2024 年起 into in 2024"
+   "caught": "language"
   },
   {
    "original": "参考开源教程搭建了数据管道。",
    "rewrite": "Built the data pipeline.",
    "kind": "translation drops the tutorial it was based on",
-   "caught": "contract",
-   "case": "ZH to EN drops 参考 as a source"
+   "caught": "language"
   },
   {
    "original": "Co-authored a review of soil microbiome studies.",
@@ -2617,120 +2612,103 @@
    "original": "Co-developed a sentiment classifier for tweets.",
    "rewrite": "开发了一个推文情感分类器。",
    "kind": "translation drops co-, the shared credit",
-   "caught": "contract",
-   "case": "EN to ZH drops the co- of co-developed"
+   "caught": "language"
   },
   {
    "original": "Coauthored a review of soil microbiome studies.",
    "rewrite": "撰写了一篇土壤微生物组研究的综述。",
    "kind": "translation drops the co of coauthored",
-   "caught": "contract",
-   "case": "EN to ZH drops the co of coauthored"
+   "caught": "language"
   },
   {
    "original": "Wrote a draft manuscript on sleep spindles.",
    "rewrite": "撰写了一篇关于睡眠纺锤波的论文。",
    "kind": "translation drops draft",
-   "caught": "contract",
-   "case": "EN to ZH drops draft"
+   "caught": "language"
   },
   {
    "original": "Designed a planned EEG study with 20 participants.",
    "rewrite": "设计了一项有 20 名参与者的 EEG 研究。",
    "kind": "translation drops planned",
-   "caught": "contract",
-   "case": "EN to ZH drops planned"
+   "caught": "language"
   },
   {
    "original": "Drafted the consent form for a planned EEG study on sleep.",
    "rewrite": "起草了一项睡眠 EEG 研究的知情同意书。",
    "kind": "translation drops planned",
-   "caught": "contract",
-   "case": "EN to ZH drops planned from the consent form line"
+   "caught": "language"
   },
   {
    "original": "Wrote the methods section of a proposed NSF grant.",
    "rewrite": "撰写了一份 NSF 基金的方法部分。",
    "kind": "translation drops proposed from a grant",
-   "caught": "contract",
-   "case": "EN to ZH drops proposed from a grant"
+   "caught": "language"
   },
   {
    "original": "Analyzed unpublished RNA-seq data from 12 mice.",
    "rewrite": "分析了 12 只小鼠的 RNA-seq 数据。",
    "kind": "translation drops unpublished",
-   "caught": "contract",
-   "case": "EN to ZH drops unpublished"
+   "caught": "language"
   },
   {
    "original": "Maintained an in-progress dashboard of lab inventory.",
    "rewrite": "维护了一个实验室库存仪表板。",
    "kind": "translation drops in-progress",
-   "caught": "contract",
-   "case": "EN to ZH drops in-progress"
+   "caught": "language"
   },
   {
    "original": "Designed a planned EEG study with 20 participants.",
    "rewrite": "设计了一项正在进行的、有 20 名参与者的 EEG 研究。",
    "kind": "translation turns a planned study into an ongoing one",
-   "caught": "contract",
-   "case": "EN to ZH turns a planned study into an ongoing one"
+   "caught": "language"
   },
   {
    "original": "撰写了论文初稿。",
    "rewrite": "Wrote a paper.",
    "kind": "translation drops 初稿",
-   "caught": "contract",
-   "case": "ZH to EN drops 初稿"
+   "caught": "language"
   },
   {
    "original": "完成了实验方案草稿。",
    "rewrite": "Completed the experiment protocol.",
    "kind": "translation drops 草稿",
-   "caught": "contract",
-   "case": "ZH to EN drops 草稿"
+   "caught": "language"
   },
   {
    "original": "智能温室监测系统开发中，负责传感器数据采集。",
    "rewrite": "Developed a smart greenhouse monitoring system and collected sensor data.",
    "kind": "translation states 开发中 as finished",
-   "caught": "contract",
-   "case": "ZH to EN drops 开发中"
+   "caught": "language"
   },
   {
    "original": "预定于 2026 年 5 月开展 30 人的睡眠研究。",
    "rewrite": "Ran a 30-person sleep study in May 2026.",
    "kind": "translation states a scheduled study as run",
-   "caught": "contract",
-   "case": "ZH to EN drops 预定"
+   "caught": "language"
   },
   {
    "original": "校园导航 App 测试中，已招募 20 名测试用户。",
    "rewrite": "Tested a campus navigation App and recruited 20 test users.",
    "kind": "translation states 测试中 as finished",
-   "caught": "contract",
-   "case": "ZH to EN drops 测试中"
+   "caught": "language"
   },
   {
    "original": "一项传感器专利申请中。",
    "rewrite": "Applied for a sensor patent.",
    "kind": "translation drops 申请中",
-   "caught": "contract",
-   "case": "ZH to EN drops 申请中"
+   "caught": "language"
   },
   {
    "original": "论文即将发表于 CHI 2026。",
    "rewrite": "Published a paper at CHI 2026.",
    "kind": "translation states 即将发表 as published",
-   "caught": "contract",
-   "case": "ZH to EN drops 即将"
+   "caught": "language"
   },
   {
    "original": "论文将于 2026 年发表。",
    "rewrite": "Published the paper in 2026.",
    "kind": "translation states 将于 as published",
-   "caught": "contract",
-   "case": "ZH to EN drops 将于"
+   "caught": "language"
   },
   {
    "original": "智能温室监测系统开发中，负责传感器数据采集。",
@@ -2862,15 +2840,13 @@
    "original": "Drafted the methods section, which was later revised.",
    "rewrite": "撰写了方法部分。",
    "kind": "translation drops a revision someone else made",
-   "caught": "contract",
-   "case": "EN to ZH drops a revision someone else made"
+   "caught": "language"
   },
   {
    "original": "Wrote the outreach blog post, edited by the lab manager.",
    "rewrite": "撰写了外展博客文章。",
    "kind": "translation drops an edit by someone else",
-   "caught": "contract",
-   "case": "EN to ZH drops an edit by someone else"
+   "caught": "language"
   },
   {
    "original": "Labeled roughly segmented MRI scans for the lab.",
@@ -2883,8 +2859,7 @@
    "original": "Labeled roughly segmented MRI scans.",
    "rewrite": "标注了分割好的 MRI 扫描图。",
    "kind": "translation drops roughly",
-   "caught": "contract",
-   "case": "EN to ZH drops roughly before a word"
+   "caught": "language"
   },
   {
    "original": "Proofread the revised grant proposal for the lab.",
@@ -2897,204 +2872,175 @@
    "original": "Developing a Flask dashboard for the lab's sample inventory.",
    "rewrite": "为实验室的样本库存开发了一个 Flask 仪表板。",
    "kind": "translation states a progressive line finished",
-   "caught": "contract",
-   "case": "EN to ZH states a progressive line finished"
+   "caught": "language"
   },
   {
    "original": "Building a weather station with an Arduino.",
    "rewrite": "已用 Arduino 搭建一个气象站。",
    "kind": "translation states a progressive build finished",
-   "caught": "contract",
-   "case": "EN to ZH states a progressive build finished with 已"
+   "caught": "language"
   },
   {
    "original": "Tested water samples from the campus pond over a year.",
    "rewrite": "检测了校园池塘的水样。",
    "kind": "translation drops over a year",
-   "caught": "contract",
-   "case": "EN to ZH drops over a year"
+   "caught": "language"
   },
   {
    "original": "Developing a Flask dashboard for the lab's sample inventory, used by 5 lab members.",
    "rewrite": "为实验室的样本库存开发了一个 Flask 仪表板，目前有 5 名实验室成员使用。",
    "kind": "translation finishes a progressive build beside 目前",
-   "caught": "contract",
-   "case": "EN to ZH finishes a progressive line beside 目前"
+   "caught": "language"
   },
   {
    "original": "Developing a website for the lab.",
    "rewrite": "为实验室开发了网站，目前已上线。",
    "kind": "translation finishes a progressive build beside 目前已上线",
-   "caught": "contract",
-   "case": "EN to ZH finishes a progressive line beside 目前已上线"
+   "caught": "language"
   },
   {
    "original": "Building a weather station with an Arduino for the campus garden.",
    "rewrite": "用 Arduino 为校园花园搭建了一个气象站，预计明年扩建。",
    "kind": "translation finishes a progressive build beside 预计",
-   "caught": "contract",
-   "case": "EN to ZH finishes a progressive line beside 预计"
+   "caught": "language"
   },
   {
    "original": "Developing a website; wrote a review.",
    "rewrite": "开发了网站；正在撰写综述。",
    "kind": "translation moves under way from one work to the other",
-   "caught": "contract",
-   "case": "EN to ZH moves a progressive status to another work"
+   "caught": "language"
   },
   {
    "original": "Developing a Flask dashboard for the lab's sample inventory and its user guide.",
    "rewrite": "已为实验室的样本库存开发 Flask 仪表板，正在编写其使用指南。",
    "kind": "translation finishes a progressive build with 已 beside 正在",
-   "caught": "contract",
-   "case": "EN to ZH finishes a progressive line with 已 beside 正在"
+   "caught": "language"
   },
   {
    "original": "Developing a Flask dashboard for the lab's sample inventory.",
    "rewrite": "为实验室的样本库存开发了一个 Flask 仪表板，目前已投入使用。",
    "kind": "translation finishes a progressive build beside 目前已投入使用",
-   "caught": "contract",
-   "case": "EN to ZH finishes a progressive line beside 目前已投入使用"
+   "caught": "language"
   },
   {
    "original": "Currently developing a Flask dashboard for the lab.",
    "rewrite": "目前为实验室开发了一个 Flask 仪表板。",
    "kind": "translation finishes a currently-led progressive build",
-   "caught": "contract",
-   "case": "EN to ZH finishes a progressive line led by Currently"
+   "caught": "language"
   },
   {
    "original": "Also developing a Flask dashboard for the lab.",
    "rewrite": "还为实验室开发了一个 Flask 仪表板。",
    "kind": "translation finishes an also-led progressive build",
-   "caught": "contract",
-   "case": "EN to ZH finishes a progressive line led by Also"
+   "caught": "language"
   },
   {
    "original": "Lab website under development.",
    "rewrite": "实验室网站目前已上线。",
    "kind": "translation finishes work under development beside 目前",
-   "caught": "contract",
-   "case": "EN to ZH finishes work under development beside 目前"
+   "caught": "language"
   },
   {
    "original": "正在开发并测试实验室网站。",
    "rewrite": "Developing the lab website; tested it.",
    "kind": "translation finishes a verb 正在 governs",
-   "caught": "contract",
-   "case": "ZH to EN finishes a verb joined to 正在"
+   "caught": "language"
   },
   {
    "original": "正在开发 Flask 仪表板并编写使用指南。",
    "rewrite": "Developing a Flask dashboard; wrote its user guide.",
    "kind": "translation finishes the second verb 正在 governs",
-   "caught": "contract",
-   "case": "ZH to EN finishes the second verb under 正在"
+   "caught": "language"
   },
   {
    "original": "正在开发并测试实验室网站。",
    "rewrite": "Currently developing the lab website; tested it.",
    "kind": "translation finishes a verb 正在 governs beside Currently",
-   "caught": "contract",
-   "case": "ZH to EN finishes a verb joined to 正在 beside Currently"
+   "caught": "language"
   },
   {
    "original": "Developing a website; wrote a review.",
    "rewrite": "目前开发了网站；撰写了综述。",
    "kind": "translation finishes a progressive build in a clause led by 目前",
-   "caught": "contract",
-   "case": "EN to ZH finishes the leading clause after 目前"
+   "caught": "language"
   },
   {
    "original": "Developing a website for the lab.",
    "rewrite": "目前为实验室开发网站，已上线。",
    "kind": "translation finishes a progressive build beside a done mark",
-   "caught": "contract",
-   "case": "EN to ZH finishes a progressive line with no finished English clause"
+   "caught": "language"
   },
   {
    "original": "Developing a website; wrote a review.",
    "rewrite": "撰写综述；开发了网站。",
    "kind": "translation swaps under way and finished between two works",
-   "caught": "contract",
-   "case": "EN to ZH swaps a progressive and a finished clause"
+   "caught": "language"
   },
   {
    "original": "Developing a website for the lab.",
    "rewrite": "为实验室开发网站，预计明年上线。",
    "kind": "translation adds an expected status to a progressive line",
-   "caught": "contract",
-   "case": "EN to ZH adds an expected launch to a progressive line"
+   "caught": "language"
   },
   {
    "original": "Testing the lab dashboard.",
    "rewrite": "测试开发中的实验室仪表板。",
    "kind": "translation adds an in-development status to a thing",
-   "caught": "contract",
-   "case": "EN to ZH adds an in-development status to a progressive line's object"
+   "caught": "language"
   },
   {
    "original": "Planned to survey 50 users in May 2026.",
    "rewrite": "计划于 2026 年 5 月调查了 50 名用户。",
    "kind": "translation finishes planned-to work",
-   "caught": "contract",
-   "case": "EN to ZH finishes planned-to work"
+   "caught": "language"
   },
   {
    "original": "A planned sleep study with 30 participants.",
    "rewrite": "一项有 30 名参与者的计划中的睡眠研究已开展。",
    "kind": "translation finishes a planned study",
-   "caught": "contract",
-   "case": "EN to ZH finishes a planned study"
+   "caught": "language"
   },
   {
    "original": "Lab website under development, used by 5 lab members.",
    "rewrite": "实验室网站目前已上线，已有 5 名实验室成员使用。",
    "kind": "translation finishes work under development beside a participle with its agent",
-   "caught": "contract",
-   "case": "EN to ZH finishes work under development beside used by"
+   "caught": "language"
   },
   {
    "original": "Interested in robotics; hoping to build a rover.",
    "rewrite": "对机器人感兴趣，已开始制作漫游车。",
    "kind": "translation starts hoped-for work",
-   "caught": "contract",
-   "case": "EN to ZH starts hoped-for work beside an interest"
+   "caught": "language"
   },
   {
    "original": "在王老师指导下智能温室系统开发中。",
    "rewrite": "Developed a smart greenhouse system under Prof. Wang's guidance.",
    "kind": "translation finishes 开发中 that a long 在 phrase precedes",
-   "caught": "contract",
-   "case": "ZH to EN finishes 开发中 after a long 在 phrase"
+   "caught": "language"
   },
   {
    "original": "Drafted the lab report; Sam revised it.",
    "rewrite": "撰写了实验报告。",
    "kind": "translation drops another person's revision",
-   "caught": "contract",
-   "case": "EN to ZH drops another person's revision after a semicolon"
+   "caught": "language"
   },
   {
    "original": "Wrote the club newsletter, and Sam edited it.",
    "rewrite": "撰写了社团通讯。",
    "kind": "translation drops another person's edit",
-   "caught": "contract",
-   "case": "EN to ZH drops another person's edit after and"
+   "caught": "language"
   },
   {
    "original": "Built the parser; Priya rewrote the tokenizer.",
    "rewrite": "编写了解析器。",
    "kind": "translation drops another person's rewrite",
-   "caught": "contract",
-   "case": "EN to ZH drops a classmate's rewrite"
+   "caught": "language"
   },
   {
    "original": "Drafted the proposal, which Sam and I revised.",
    "rewrite": "起草了提案。",
    "kind": "translation drops a revision shared with another person",
-   "caught": "contract",
-   "case": "EN to ZH drops a revision two people made"
+   "caught": "language"
   },
   {
    "original": "Ran less than nineteen PCR reactions for the genotyping study.",
@@ -3128,214 +3074,187 @@
    "original": "Cut query latency by up to an order of magnitude.",
    "rewrite": "将查询延迟降低了一个数量级。",
    "kind": "translation drops up to before an order of magnitude",
-   "caught": "contract",
-   "case": "EN to ZH drops up to before an order of magnitude"
+   "caught": "language"
   },
   {
    "original": "Made the parser about twice as fast.",
    "rewrite": "使解析器的速度提高了一倍。",
    "kind": "translation drops about before twice",
-   "caught": "contract",
-   "case": "EN to ZH drops about before twice"
+   "caught": "language"
   },
   {
    "original": "Recruited about sixteen participants for the pilot.",
    "rewrite": "为预实验招募了十六名参与者。",
    "kind": "translation drops about before sixteen",
-   "caught": "contract",
-   "case": "EN to ZH drops about before sixteen"
+   "caught": "language"
   },
   {
    "original": "Surveyed under several dozen students.",
    "rewrite": "调查了几十名学生。",
    "kind": "translation drops under before several dozen",
-   "caught": "contract",
-   "case": "EN to ZH drops under before several dozen"
+   "caught": "language"
   },
   {
    "original": "Tested water samples from the campus pond over many months.",
    "rewrite": "检测了校园池塘的水样。",
    "kind": "translation drops over before many months",
-   "caught": "contract",
-   "case": "EN to ZH drops over before many months"
+   "caught": "language"
   },
   {
    "original": "Sped up the parser by about a factor of 3.",
    "rewrite": "将解析器的速度提高了 3 倍。",
    "kind": "translation drops about before a factor",
-   "caught": "contract",
-   "case": "EN to ZH drops about before a factor"
+   "caught": "language"
   },
   {
    "original": "Wrote draft manuscripts on sleep spindles.",
    "rewrite": "撰写了关于睡眠纺锤波的论文。",
    "kind": "translation drops the noun draft",
-   "caught": "contract",
-   "case": "EN to ZH drops the noun draft after a verb"
+   "caught": "language"
   },
   {
    "original": "Co-wrote a review of soil microbiome studies.",
    "rewrite": "撰写了一篇土壤微生物组研究综述。",
    "kind": "translation drops co-wrote",
-   "caught": "contract",
-   "case": "EN to ZH drops co-wrote"
+   "caught": "language"
   },
   {
    "original": "合写了一篇土壤微生物组研究综述。",
    "rewrite": "Wrote a review of soil microbiome studies.",
    "kind": "translation drops 合写",
-   "caught": "contract",
-   "case": "ZH to EN drops 合写"
+   "caught": "language"
   },
   {
    "original": "将在 SfN 2026 上展示关于睡眠纺锤波的海报。",
    "rewrite": "Presented a poster on sleep spindles at SfN 2026.",
    "kind": "translation drops 将在",
-   "caught": "contract",
-   "case": "ZH to EN drops 将在"
+   "caught": "language"
   },
   {
    "original": "Methods section of a sleep paper (draft).",
    "rewrite": "睡眠论文的方法部分。",
    "kind": "translation drops a bracketed draft",
-   "caught": "contract",
-   "case": "EN to ZH drops a bracketed draft"
+   "caught": "language"
   },
   {
    "original": "正在开发实验室网站。",
    "rewrite": "Developing the lab website; homepage launched.",
    "kind": "translation launches a page the Chinese has under way",
-   "caught": "contract",
-   "case": "ZH to EN launches a page under 正在"
+   "caught": "language"
   },
   {
    "original": "Lab website under development; release expected next month.",
    "rewrite": "实验室网站目前已上线。",
    "kind": "translation finishes work beside an expected release",
-   "caught": "contract",
-   "case": "EN to ZH launches a site whose release is only expected"
+   "caught": "language"
   },
   {
    "original": "Lab website under development; homepage planned.",
    "rewrite": "实验室网站目前已上线。",
    "kind": "translation finishes work beside a planned homepage",
-   "caught": "contract",
-   "case": "EN to ZH launches a site whose homepage is only planned"
+   "caught": "language"
   },
   {
    "original": "Manuscript on sleep spindles in preparation; submission expected Dec 2026.",
    "rewrite": "关于睡眠纺锤波的论文撰写中，已于 2026 年 12 月投稿。",
    "kind": "translation submits a manuscript whose submission is expected",
-   "caught": "contract",
-   "case": "EN to ZH submits a manuscript whose submission is expected"
+   "caught": "language"
   },
   {
    "original": "Weather station under construction; completion expected this spring.",
    "rewrite": "气象站搭建中，已于今年春季完工。",
    "kind": "translation completes a station whose completion is expected",
-   "caught": "contract",
-   "case": "EN to ZH completes a station whose completion is expected"
+   "caught": "language"
   },
   {
    "original": "正在开发一种土壤传感器。",
    "rewrite": "Developing a soil sensor; method patented.",
    "kind": "translation adds a finished headline the Chinese line has under way",
-   "caught": "contract",
-   "case": "ZH to EN patents a design the Chinese has under way"
+   "caught": "language"
   },
   {
    "original": "Developing a website; wrote a review.",
    "rewrite": "目前，开发了网站；撰写了综述。",
    "kind": "translation finishes a progressive line after a lone 目前 and a comma",
-   "caught": "contract",
-   "case": "EN to ZH finishes a progressive line after a lone 目前 and a comma"
+   "caught": "language"
   },
   {
    "original": "Developing a website; wrote a review.",
    "rewrite": "目前：开发了网站；撰写了综述。",
    "kind": "translation finishes a progressive line after a lone 目前 and a colon",
-   "caught": "contract",
-   "case": "EN to ZH finishes a progressive line after a lone 目前 and a colon"
+   "caught": "language"
   },
   {
    "original": "Developing a website; wrote a review.",
    "rewrite": "本人目前，开发了网站，撰写了综述。",
    "kind": "translation finishes a progressive line after 本人目前 and a comma",
-   "caught": "contract",
-   "case": "EN to ZH finishes a progressive line after 本人目前 and a comma"
+   "caught": "language"
   },
   {
    "original": "Developing a website for the lab; wrote a review.",
    "rewrite": "项目进行中，为实验室开发了网站；撰写了一篇综述。",
    "kind": "translation finishes a progressive line after 项目进行中",
-   "caught": "contract",
-   "case": "EN to ZH finishes a progressive line after 项目进行中"
+   "caught": "language"
   },
   {
    "original": "Developing a website; wrote a review.",
    "rewrite": "目前，开发了网站；撰写综述。",
    "kind": "translation moves the done mark to the verb after a lone 目前",
-   "caught": "contract",
-   "case": "EN to ZH moves the done mark to the verb after a lone 目前"
+   "caught": "language"
   },
   {
    "original": "Developing a website for the lab; wrote a review.",
    "rewrite": "项目进行中，为实验室开发了网站；撰写综述。",
    "kind": "translation moves the done mark to the verb after 项目进行中",
-   "caught": "contract",
-   "case": "EN to ZH moves the done mark to the verb after 项目进行中"
+   "caught": "language"
   },
   {
    "original": "Developing a website; wrote a review.",
    "rewrite": "正在进行中：开发了网站；撰写综述。",
    "kind": "translation moves the done mark to the verb after 正在进行中",
-   "caught": "contract",
-   "case": "EN to ZH moves the done mark to the verb after 正在进行中"
+   "caught": "language"
   },
   {
    "original": "Developing a website for the lab; wrote a review.",
    "rewrite": "目前在实验室，开发了网站并撰写了一篇综述。",
    "kind": "translation marks two parts done beside one finished clause",
-   "caught": "contract",
-   "case": "EN to ZH marks more parts done than the English finishes"
+   "caught": "language"
   },
   {
    "original": "Lab website under development; homepage launched.",
    "rewrite": "实验室网站开发中，后台已完成，主页已上线。",
    "kind": "translation marks two parts done beside one finished headline",
-   "caught": "contract",
-   "case": "EN to ZH marks two parts done beside one launched homepage"
+   "caught": "language"
   },
   {
    "original": "Developing a website for the lab; wrote a review.",
    "rewrite": "目前正在开发中，为实验室开发了网站；撰写综述。",
    "kind": "translation moves the done mark to the verb after 目前正在开发中",
-   "caught": "contract",
-   "case": "EN to ZH moves the done mark to the verb after 目前正在开发中"
+   "caught": "language"
   },
   {
    "original": "Fine-tuning a BERT model on 5,000 tweets for sentiment analysis.",
    "rewrite": "为情感分析在 5,000 条推文上微调了一个 BERT 模型。",
    "kind": "translation finishes a progressive line led by a verb the list does not know (Fine-tuning)",
-   "caught": "review"
+   "caught": "language"
   },
   {
    "original": "Scraping 2,000 job postings for a labor-market study.",
    "rewrite": "为劳动力市场研究爬取了 2,000 条招聘信息。",
    "kind": "translation finishes a progressive line led by a verb the list does not know (Scraping)",
-   "caught": "review"
+   "caught": "language"
   },
   {
    "original": "Wiring 3 soil sensors to an Arduino logger for the campus garden.",
    "rewrite": "为校园花园将 3 个土壤传感器连接到了 Arduino 记录器。",
    "kind": "translation finishes a progressive line led by a verb the list does not know (Wiring)",
-   "caught": "review"
+   "caught": "language"
   },
   {
    "original": "Proofreading a 40-page grant proposal for the lab.",
    "rewrite": "为实验室校对了一份 40 页的基金申请书。",
    "kind": "translation finishes a progressive line led by a verb the list does not know (Proofreading)",
-   "caught": "review"
+   "caught": "language"
   },
   {
    "original": "Fine-tuning a BERT model on 5,000 tweets for sentiment analysis.",
@@ -3351,141 +3270,133 @@
    "original": "Developing a Flask dashboard for the lab.",
    "rewrite": "为实验室开发过一个 Flask 仪表板。",
    "kind": "translation finishes a progressive line with 过",
-   "caught": "review"
+   "caught": "language"
   },
   {
    "original": "Developing a Flask dashboard for the lab.",
    "rewrite": "曾为实验室开发一个 Flask 仪表板。",
    "kind": "translation finishes a progressive line with 曾",
-   "caught": "review"
+   "caught": "language"
   },
   {
    "original": "Developing a Flask dashboard for the lab.",
    "rewrite": "为实验室开发出一个 Flask 仪表板。",
    "kind": "translation finishes a progressive line with a result verb",
-   "caught": "review"
+   "caught": "language"
   },
   {
    "original": "Developing a Flask dashboard for the lab.",
    "rewrite": "为实验室的 Flask 仪表板开发完毕。",
    "kind": "translation finishes a progressive line with 完毕",
-   "caught": "review"
+   "caught": "language"
   },
   {
    "original": "Building a weather station for the campus garden.",
    "rewrite": "为校园花园建成一个气象站。",
    "kind": "translation finishes a progressive line with 建成",
-   "caught": "review"
+   "caught": "language"
   },
   {
    "original": "Developing a website for the lab.",
    "rewrite": "为实验室开发网站并正式上线。",
    "kind": "translation finishes a progressive line with 上线",
-   "caught": "review"
+   "caught": "language"
   },
   {
    "original": "Developing a website for the lab.",
    "rewrite": "为实验室开发的网站投入使用。",
    "kind": "translation finishes a progressive line with 投入使用",
-   "caught": "review"
+   "caught": "language"
   },
   {
    "original": "Developing a website for the lab.",
    "rewrite": "为实验室开发好网站。",
    "kind": "translation finishes a progressive line with 好",
-   "caught": "review"
+   "caught": "language"
   },
   {
    "original": "Writing my senior thesis.",
    "rewrite": "毕业论文定稿。",
    "kind": "translation finishes a thesis under way with 定稿",
-   "caught": "review"
+   "caught": "language"
   },
   {
    "original": "正在撰写毕业论文。",
    "rewrite": "Writing my senior thesis; it is now complete.",
    "kind": "translation calls work under 正在 now complete",
-   "caught": "review"
+   "caught": "language"
   },
   {
    "original": "正在为实验室开发网站。",
    "rewrite": "Developing a website for the lab, which was launched in March.",
    "kind": "translation calls work under 正在 launched in a relative clause",
-   "caught": "review"
+   "caught": "language"
   },
   {
    "original": "正在为实验室开发网站。",
    "rewrite": "Developing a website for the lab; already online.",
    "kind": "translation calls work under 正在 already online",
-   "caught": "review"
+   "caught": "language"
   },
   {
    "original": "Developing a website; wrote a review.",
    "rewrite": "目前开发好网站；撰写综述。",
    "kind": "translation moves a 好 done mark onto the leading verb",
-   "caught": "review"
+   "caught": "language"
   },
   {
    "original": "Developing a website for the lab.",
    "rewrite": "正在为实验室开发网站，主页上线。",
    "kind": "translation launches a homepage beside a progressive line",
-   "caught": "review"
+   "caught": "language"
   },
   {
    "original": "Lab website under development; release expected next month.",
    "rewrite": "实验室网站目前已上线，预计下月正式发布。",
    "kind": "translation finishes work beside an expected release it keeps",
-   "caught": "contract",
-   "case": "EN to ZH launches a site beside an expected release it keeps"
+   "caught": "language"
   },
   {
    "original": "Manuscript on sleep spindles in preparation; submission expected Dec 2026.",
    "rewrite": "关于睡眠纺锤波的论文已完成，预计 2026 年 12 月投稿。",
    "kind": "translation finishes a manuscript beside an expected submission it keeps",
-   "caught": "contract",
-   "case": "EN to ZH submits a manuscript beside an expected submission it keeps"
+   "caught": "language"
   },
   {
    "original": "即将在 SfN 2026 上展示关于睡眠纺锤波的海报，目前在准备摘要。",
    "rewrite": "Presented a poster on sleep spindles at SfN 2026; currently preparing the abstract.",
    "kind": "translation drops a status word still to come beside another one (即将)",
-   "caught": "contract",
-   "case": "ZH to EN drops 即将 beside 目前"
+   "caught": "language"
   },
   {
    "original": "论文将于下月发表，目前在修改终稿。",
    "rewrite": "Published the paper; currently revising the final version.",
    "kind": "translation drops a status word still to come beside another one (将于)",
-   "caught": "contract",
-   "case": "ZH to EN drops 将于 beside 目前"
+   "caught": "language"
   },
   {
    "original": "预计 2026 年 6 月完成毕业论文，目前在分析数据。",
    "rewrite": "Completed the thesis in June 2026; currently analyzing the data.",
    "kind": "translation drops a status word still to come beside another one (预计)",
-   "caught": "contract",
-   "case": "ZH to EN drops 预计 beside 目前"
+   "caught": "language"
   },
   {
    "original": "将在校园科技节上展示气象站，目前在调试传感器。",
    "rewrite": "Showcased the weather station at the campus tech fair; currently debugging the sensors.",
    "kind": "translation drops a status word still to come beside another one (将在)",
-   "caught": "contract",
-   "case": "ZH to EN drops 将在 beside 目前"
+   "caught": "language"
   },
   {
    "original": "论文即将发表，第二篇仍在撰写。",
    "rewrite": "Published a paper; a second one is in progress.",
    "kind": "translation drops a status word still to come beside another one (即将 beside 仍在)",
-   "caught": "contract",
-   "case": "ZH to EN drops 即将 beside 仍在"
+   "caught": "language"
   },
   {
    "original": "Will present a poster at SfN 2026; currently preparing the abstract.",
    "rewrite": "在 SfN 2026 上展示海报；目前正在准备摘要。",
    "kind": "translation drops a status word still to come beside another one (will)",
-   "caught": "contract",
-   "case": "EN to ZH drops will beside currently"
+   "caught": "language"
   },
   {
    "original": "论文将于 5 月发表，目前正在准备答辩。",
@@ -3505,55 +3416,49 @@
    "original": "Designed an online survey on sleep with three other students (PSYC 238).",
    "rewrite": "设计了一份关于睡眠的在线问卷（PSYC 238）。",
    "kind": "translation drops three other students",
-   "caught": "review"
+   "caught": "language"
   },
   {
    "original": "Sorted 500 cans of food alongside two other volunteers.",
    "rewrite": "分拣了 500 罐食物。",
    "kind": "translation drops two other volunteers",
-   "caught": "review"
+   "caught": "language"
   },
   {
    "original": "参与了 40 份水样的 qPCR 检测。",
    "rewrite": "Ran qPCR tests on 40 water samples.",
    "kind": "translation drops 参与",
-   "caught": "contract",
-   "case": "ZH to EN drops 参与"
+   "caught": "language"
   },
   {
    "original": "参与了脑电数据的分析。",
    "rewrite": "Analyzed the EEG data.",
    "kind": "translation drops 参与 before an analysis",
-   "caught": "contract",
-   "case": "ZH to EN drops 参与 before an analysis"
+   "caught": "language"
   },
   {
    "original": "Participated in the analysis of 40 water samples.",
    "rewrite": "分析了 40 份水样。",
    "kind": "translation drops participated in",
-   "caught": "contract",
-   "case": "EN to ZH drops participated in"
+   "caught": "language"
   },
   {
    "original": "Contributed to the design of a soil sensor.",
    "rewrite": "设计了一个土壤传感器。",
    "kind": "translation drops contributed to",
-   "caught": "contract",
-   "case": "EN to ZH drops contributed to"
+   "caught": "language"
   },
   {
    "original": "Involved in collecting 200 survey responses.",
    "rewrite": "收集了 200 份问卷回复。",
    "kind": "translation drops involved in",
-   "caught": "contract",
-   "case": "EN to ZH drops involved in"
+   "caught": "language"
   },
   {
    "original": "Took part in testing 40 water samples for lead.",
    "rewrite": "检测了 40 份水样的铅含量。",
    "kind": "translation drops took part in",
-   "caught": "contract",
-   "case": "EN to ZH drops took part in"
+   "caught": "language"
   },
   {
    "original": "Designed a sleep survey with three other students for PSYC 238.",
@@ -3587,80 +3492,73 @@
    "original": "协助研究生检测了近 40 份水样。",
    "rewrite": "Helped a graduate student test 40 water samples.",
    "kind": "translation drops 近 before a number",
-   "caught": "review"
+   "caught": "language"
   },
   {
    "original": "Recruited 40 participants for the sleep study.",
    "rewrite": "为睡眠研究招募了 40 余名参与者。",
    "kind": "translation adds 余 after a number",
-   "caught": "contract",
-   "case": "EN to ZH adds 余 after a number"
+   "caught": "language"
   },
   {
    "original": "Recruited 40 participants for the sleep study.",
    "rewrite": "为睡眠研究招募了 40 多名参与者。",
    "kind": "translation adds 多 after a number",
-   "caught": "review"
+   "caught": "language"
   },
   {
    "original": "Annotated ~300 images for the gesture dataset.",
    "rewrite": "为手势数据集标注了 300 张图像。",
    "kind": "translation drops a tilde",
-   "caught": "contract",
-   "case": "EN to ZH drops a tilde"
+   "caught": "language"
   },
   {
    "original": "Labeled fewer than 300 images for the gesture dataset.",
    "rewrite": "为手势数据集标注了 300 张图像。",
    "kind": "translation drops fewer than",
-   "caught": "review"
+   "caught": "language"
   },
   {
    "original": "访谈了 30 余位农民。",
    "rewrite": "Interviewed 30 farmers.",
    "kind": "translation drops 余",
-   "caught": "contract",
-   "case": "ZH to EN drops 余"
+   "caught": "language"
   },
   {
    "original": "Tested 40 or so water samples with qPCR.",
    "rewrite": "用 qPCR 检测了 40 份水样。",
    "kind": "translation drops or so",
-   "caught": "contract",
-   "case": "EN to ZH drops or so"
+   "caught": "language"
   },
   {
    "original": "Interviewed some 30 farmers about irrigation.",
    "rewrite": "就灌溉问题访谈了 30 位农民。",
    "kind": "translation drops some before a number",
-   "caught": "contract",
-   "case": "EN to ZH drops some before a number"
+   "caught": "language"
   },
   {
    "original": "Reached 90% accuracy on the test set.",
    "rewrite": "在测试集上的准确率达到 90% 以上。",
    "kind": "translation adds 以上",
-   "caught": "review"
+   "caught": "language"
   },
   {
    "original": "Reached an estimated 2,000 readers with the club newsletter.",
    "rewrite": "社团通讯覆盖了 2,000 名读者。",
    "kind": "translation drops an estimated",
-   "caught": "review"
+   "caught": "language"
   },
   {
    "original": "Surveyed 200-odd students.",
    "rewrite": "调查了 200 名学生。",
    "kind": "translation drops -odd",
-   "caught": "contract",
-   "case": "EN to ZH drops -odd"
+   "caught": "language"
   },
   {
    "original": "Surveyed 200+ students.",
    "rewrite": "调查了 200 名学生。",
    "kind": "translation drops a trailing plus",
-   "caught": "contract",
-   "case": "EN to ZH drops a trailing plus"
+   "caught": "language"
   },
   {
    "original": "Recruited 40 participants for the sleep study.",
@@ -3721,104 +3619,91 @@
    "original": "Wrote the first draft of the grant proposal; their revised version was funded.",
    "rewrite": "撰写了基金申请书的初稿，申请书获得资助。",
    "kind": "translation drops their revised version",
-   "caught": "contract",
-   "case": "EN to ZH drops their revised version"
+   "caught": "language"
   },
   {
    "original": "Drafted the lab report; Sam, a senior student, revised it.",
    "rewrite": "撰写了实验报告。",
    "kind": "translation drops a revision after an appositive",
-   "caught": "contract",
-   "case": "EN to ZH drops a revision after an appositive"
+   "caught": "language"
   },
   {
    "original": "Wrote the first draft of the newsletter; her edited version went out to 300 members.",
    "rewrite": "撰写了社团通讯的初稿，发给了 300 名成员。",
    "kind": "translation drops her edited version",
-   "caught": "contract",
-   "case": "EN to ZH drops her edited version"
+   "caught": "language"
   },
   {
    "original": "联合开发了一个校园二手交易小程序。",
    "rewrite": "Developed a campus second-hand trading mini-program.",
    "kind": "translation drops 联合 before a verb",
-   "caught": "contract",
-   "case": "ZH to EN drops 联合 before a verb"
+   "caught": "language"
   },
   {
    "original": "在学长指导下搭建了 3 个传感器节点。",
    "rewrite": "Built 3 sensor nodes.",
    "kind": "translation drops 学长",
-   "caught": "contract",
-   "case": "ZH to EN drops 学长"
+   "caught": "language"
   },
   {
    "original": "在主管指导下整理了 500 条客户数据。",
    "rewrite": "Organized 500 customer records.",
    "kind": "translation drops 主管",
-   "caught": "contract",
-   "case": "ZH to EN drops 主管"
+   "caught": "language"
   },
   {
    "original": "Built a prototype soil sensor; accuracy untested.",
    "rewrite": "制作了一个土壤传感器原型，精度已测试。",
    "kind": "translation drops untested",
-   "caught": "contract",
-   "case": "EN to ZH drops untested"
+   "caught": "language"
   },
   {
    "original": "Drafted the report, reviewed by the lab manager.",
    "rewrite": "起草了报告。",
    "kind": "translation drops reviewed by",
-   "caught": "contract",
-   "case": "EN to ZH drops reviewed by"
+   "caught": "language"
   },
   {
    "original": "Drafted the manual; Sam reviewed and revised it.",
    "rewrite": "起草了手册。",
    "kind": "translation drops Sam reviewed and revised it",
-   "caught": "contract",
-   "case": "EN to ZH drops Sam reviewed and revised"
+   "caught": "language"
   },
   {
    "original": "Drafted the manual; a senior student corrected it.",
    "rewrite": "起草了手册。",
    "kind": "translation drops a senior student corrected it",
-   "caught": "contract",
-   "case": "EN to ZH drops a senior student corrected"
+   "caught": "language"
   },
   {
    "original": "正在为实验室开发网站。",
    "rewrite": "Currently developing a website for the lab; it went live in March.",
    "kind": "translation says work under 正在 went live",
-   "caught": "review"
+   "caught": "language"
   },
   {
    "original": "Developing a website for the lab.",
    "rewrite": "实验室网站开发结束。",
    "kind": "translation finishes a progressive line with 结束",
-   "caught": "review"
+   "caught": "language"
   },
   {
    "original": "Surveyed upwards of 200 students.",
    "rewrite": "调查了 200 名学生。",
    "kind": "translation drops upwards of",
-   "caught": "contract",
-   "case": "EN to ZH drops upwards of"
+   "caught": "language"
   },
   {
    "original": "Surveyed close to 200 students.",
    "rewrite": "调查了 200 名学生。",
    "kind": "translation drops close to",
-   "caught": "contract",
-   "case": "EN to ZH drops close to"
+   "caught": "language"
   },
   {
    "original": "调查了上百名学生。",
    "rewrite": "Surveyed a hundred students.",
    "kind": "translation drops 上百",
-   "caught": "contract",
-   "case": "ZH to EN drops 上百"
+   "caught": "language"
   },
   {
    "original": "Built the backend for a campus dining app in development.",
@@ -3838,71 +3723,61 @@
    "original": "用不到 100 行代码实现了一个解析器。",
    "rewrite": "Implemented a parser in 100 lines of code.",
    "kind": "ZH to EN: 用不到 (in fewer than) dropped",
-   "caught": "contract",
-   "case": "ZH to EN drops 用不到 before a number"
+   "caught": "language"
   },
   {
    "original": "用不到一周时间搭建了实验室网站。",
    "rewrite": "Built the lab website in a week.",
    "kind": "ZH to EN: 用不到 (in under) dropped",
-   "caught": "contract",
-   "case": "ZH to EN drops 用不到 before a duration"
+   "caught": "language"
   },
   {
    "original": "模型在测试集上的准确率达不到 90%。",
    "rewrite": "The model reached 90% accuracy on the test set.",
    "kind": "ZH to EN: 达不到 (fell short of) dropped",
-   "caught": "contract",
-   "case": "ZH to EN drops the 达不到 bound"
+   "caught": "language"
   },
   {
    "original": "找不到公开数据集，自行采集了 200 条样本。",
    "rewrite": "Found a public dataset and collected 200 samples.",
    "kind": "ZH to EN: 找不到 (could not find) dropped",
-   "caught": "contract",
-   "case": "ZH to EN drops 找不到"
+   "caught": "language"
   },
   {
    "original": "目前正在为食物银行筹备一场募捐活动。",
    "rewrite": "Fundraising event for the food pantry organized.",
    "kind": "ZH to EN: an -ing noun leads a finished headline",
-   "caught": "contract",
-   "case": "ZH to EN turns 正在筹备 into a Fundraising headline"
+   "caught": "language"
   },
   {
    "original": "目前担任食物银行的募捐委员会主席。",
    "rewrite": "Fundraising committee chair at the food pantry.",
    "kind": "ZH to EN: 目前 dropped beside an -ing noun",
-   "caught": "contract",
-   "case": "ZH to EN drops 目前 before a Fundraising title"
+   "caught": "language"
   },
   {
    "original": "正在为社团的机器人项目发起众筹。",
    "rewrite": "Crowdfunding campaign for the club's robot project launched.",
    "kind": "ZH to EN: an -ing noun leads a finished headline",
-   "caught": "contract",
-   "case": "ZH to EN turns 正在发起 into a Crowdfunding headline"
+   "caught": "language"
   },
   {
    "original": "正在为实验室撰写网站文案。",
    "rewrite": "Copywriting for the lab website finished.",
    "kind": "ZH to EN: an -ing noun leads a finished headline",
-   "caught": "contract",
-   "case": "ZH to EN turns 正在撰写 into a Copywriting headline"
+   "caught": "language"
   },
   {
    "original": "正在为社团搭建直播设备。",
    "rewrite": "Livestreaming setup for the club built.",
    "kind": "ZH to EN: an -ing noun leads a finished headline",
-   "caught": "contract",
-   "case": "ZH to EN turns 正在搭建 into a Livestreaming headline"
+   "caught": "language"
   },
   {
    "original": "正在校对实验室手册。",
    "rewrite": "Proofreading of the lab manual completed.",
    "kind": "ZH to EN: an -ing noun leads a finished headline",
-   "caught": "contract",
-   "case": "ZH to EN turns 正在校对 into a Proofreading headline"
+   "caught": "language"
   },
   {
    "original": "Setting up a Raspberry Pi server for the robotics lab.",

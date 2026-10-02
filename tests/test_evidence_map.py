@@ -143,8 +143,6 @@ class TestLockWordsScanLinearly:
 class TestRunsAreReadOnce:
     @pytest.mark.parametrize(("name", "read", "text"), [
         ("_SPAN", lambda text: em._SPAN.findall(text), "1" * 60000),
-        ("_SHARE_ZH", em._shares_work, "1" * 60000),
-        ("_SHARE_ZH numerals", em._shares_work, "一" * 60000),
         ("_TEAM_ZH_EXTRA", lambda text: em._TEAM_ZH_EXTRA.findall(text), "1" * 60000),
         ("_URL_OR_EMAIL", lambda text: em._URL_OR_EMAIL.findall(text), "开发" * 30000)])
     def test_a_long_run_of_digits_or_word_characters_is_read_in_linear_time(self, name, read, text):
@@ -155,20 +153,17 @@ class TestRunsAreReadOnce:
 
 
 class TestLinesAreReadInLinearTime:
-    """A run of spaces, of 为 or 为打下, of personal markers or of settings is read once.
+    """A run of spaces, of 为 or 为打下 or of personal markers is read once.
 
     Each of these started a scan at every character of the run, or read the rest of
-    the line once per marker or setting: 0.04 to 1.4 s at 6,000 characters, and
-    15 s for 为打下 through _check_translation. Every check reads a whole line, and
-    a regex holds the GIL while it runs, worker thread or not.
+    the line once per marker: 0.04 to 1.4 s at 6,000 characters. Every check reads a
+    whole line, and a regex holds the GIL while it runs, worker thread or not.
     """
 
     @pytest.mark.parametrize(("name", "read", "text"), [pytest.param(*case, id=case[0]) for case in [
-        ("_PHRASE_END", lambda text: em._PHRASE_END.search(text), "a" + " " * 60000 + "b"),
         ("_LIST_ITEM", lambda text: em._LIST_ITEM.findall(text), " " * 60000 + "x"),
         ("_FACULTY_TAIL", lambda text: em._FACULTY_TAIL.search(text), " " * 60000 + "x"),
         ("strip_json_fence", em.strip_json_fence, "```x" + " " * 60000 + "y"),
-        ("_TRANSLATED_RELEVANCE", lambda text: em._has(em._TRANSLATED_RELEVANCE, text), "为打下" * 20000),
         ("RELEVANCE_PADDING 为", lambda text: grounding.RELEVANCE_PADDING.findall(text), "为" * 60000),
         ("RELEVANCE_PADDING building", lambda text: grounding.RELEVANCE_PADDING.findall(text), "，building" * 6000),
         ("APPENDED_RELEVANCE spaces", lambda text: grounding.APPENDED_RELEVANCE.findall(text), " " * 60000 + "x"),
@@ -178,16 +173,13 @@ class TestLinesAreReadInLinearTime:
         ("clauses", grounding.clauses, " " * 60000 + "x"),
         ("supported_claim_upgrade_detected", lambda text: grounding.supported_claim_upgrade_detected(text, [text, "z"]),
          " " * 60000 + "x"),
-        ("_ZH_LEAD_PROGRESSIVE search", lambda text: em._ZH_LEAD_PROGRESSIVE.search(text), "现" * 60000),
         ("_TEAM_HEADER search", lambda text: em._TEAM_HEADER.search(text), "与" * 60000),
         ("_OTHER_SUBJECT search", lambda text: grounding._OTHER_SUBJECT.search(text), "1" * 60000),
         ("_STUDENT_AGENT search", lambda text: grounding._STUDENT_AGENT.search(text), "1" * 60000),
         ("_BY search", lambda text: grounding._BY.search(text), " " * 60000 + "x"),
         ("_CJK_RUN_END search", lambda text: grounding._CJK_RUN_END.search(text), "中" * 60000 + "x"),
         ("_marks_own_part", em._marks_own_part, "I " * 30000),
-        ("_marks_own_part glued", em._marks_own_part, "a我" * 30000),
-        ("_setting_added", lambda text: em._setting_added("实验室 lab project", text), "在实验室" * 15000),
-        ("_setting_added en", lambda text: em._setting_added("lab project", text), "for a project " * 4300)]])
+        ("_marks_own_part glued", em._marks_own_part, "a我" * 30000)]])
     def test_a_long_run_is_read_in_linear_time(self, name, read, text):
         started = time.perf_counter()
         read(text)
@@ -206,26 +198,11 @@ class TestLinesAreReadInLinearTime:
     def test_the_last_two_markers_and_a_glued_我_decide_the_students_part(self, text, marks):
         assert em._marks_own_part(text) is marks
 
-    @pytest.mark.parametrize(("source", "text", "added"), [
-        ("Built a website.", "Built a website for the lab, then tested it.", True),
-        ("Built a website in the lab.", "Built a website for the lab, then tested it in a course.", True),
-        ("Built a website in the lab for a course.", "Built a website for the lab, then tested it in a course.", False),
-        ("Analyzed data.", "Analyzed data for the research group's project.", True),
-        ("Analyzed data for the project.", "Analyzed data for the research group's project, and wrote a report.", False),
-        ("Built a website for a course.", "Built a website for the lab, in a course.", True),
-        ("Studied soil.", "在实验室研究土壤。", True), ("在实验室研究土壤。", "Studied soil in the lab.", False),
-        ("在实验室研究土壤", "Studied soil in the lab", False)])
-    def test_a_setting_reads_every_noun_of_its_own_phrase(self, source, text, added):
-        assert em._setting_added(source, text) is added
-
     @pytest.mark.parametrize("unit", [" ", "为打下", "为", "在实验室", "I ", "a我"], ids=repr)
     def test_a_line_at_the_cap_is_checked_in_well_under_a_second(self, unit):
         line = (unit * 6000)[:6000]
-        other = ("Built a website. " * 400)[:6000] if em.language(line) == "zh" else ("开发了网站，" * 1000)[:6000]
         started = time.perf_counter()
         grounding.claim_upgrade_findings(line[:-1] + "x", line)
-        em._check_translation(em.Unit("b1", line, line), other)
-        em._check_translation(em.Unit("b1", other, other), line)
         assert time.perf_counter() - started < 1, unit
 
 
@@ -236,9 +213,9 @@ class TestSpanWords:
         "several millions", "many months", "several days", "many hours", "several semesters", "many terms",
         "several summers", "many decades", "hundreds", "thousand", "millions", "billion", "tens", "dozens",
         "a million", "a billion", "an order of", "a factor of"])
-    def test_a_preposition_before_a_quantity_is_a_span_in_a_translation(self, quantity):
-        assert em._has(em._FAMILIES["span"], f"Cut the error by up to {quantity} times.")
-        assert em._has(em._FAMILIES["span"], f"Made it about {quantity} as fast.")
+    def test_a_preposition_before_a_quantity_is_a_span(self, quantity):
+        assert em._SPAN.search(f"Cut the error by up to {quantity} times.")
+        assert em._SPAN.search(f"Made it about {quantity} as fast.")
 
     @pytest.mark.parametrize("text", [
         "Gave a talk about sleep.", "Studied plants under drought.", "Read over the protocol.",
@@ -246,27 +223,13 @@ class TestSpanWords:
         "Covered up to the third chapter.", "Gave a talk about many species of birds.", "Read papers about multiple sclerosis.",
         "Summarized papers about double-blind trials.", "Wrote a review about triple-negative breast cancer."])
     def test_a_relabel_keeps_a_span_word_in_any_use(self, text):
-        assert not em._has(em._FAMILIES["span"], text)
+        assert not em._SPAN.search(text)
         assert any(pattern.search(text) for pattern in em._LOCK_WORD)
 
     @pytest.mark.parametrize("text", ["最多降低了一个数量级", "至多 3 次", "多达 40 名", "高达 90%", "不到一周"])
     def test_chinese_up_to_and_less_than_are_spans(self, text):
-        assert em._has(em._FAMILIES["span"], text)
-        assert not em._has(em._FAMILIES["span"], "引用最多的论文")
-
-
-class TestStatusStillToCome:
-    @pytest.mark.parametrize("text", [
-        "Will present a poster.", "Upcoming talk at SfN.", "Paper forthcoming.", "Paper to appear in CHI.",
-        "Paper in press at Nature.", "Graduation expected in 2027.", "Launch anticipated next spring.", "预计明年毕业",
-        "即将发表", "将于 5 月发表", "将在 SfN 上展示", "将会提交", "将要发表"])
-    def test_work_still_to_come_is_its_own_family(self, text):
-        assert em._has(em._FAMILIES["future"], text)
-
-    @pytest.mark.parametrize("text", ["Currently revising the paper.", "Paper under review.", "目前在修改终稿", "正在撰写论文"])
-    def test_work_under_way_is_not_still_to_come(self, text):
-        assert not em._has(em._FAMILIES["future"], text)
-        assert em._has(em._FAMILIES["unfinished"], text)
+        assert em._SPAN.search(text)
+        assert not em._SPAN.search("引用最多的论文")
 
 
 class TestMoreListedShapes:
@@ -276,10 +239,8 @@ class TestMoreListedShapes:
 
     @pytest.mark.parametrize("word", ["unpublished", "unsubmitted", "unfinished", "untested", "unverified",
                                       "unvalidated", "unreviewed"])
-    def test_an_un_done_word_is_a_negation_a_lock_word_and_no_finished_verb(self, word):
-        assert em._has(em._FAMILIES["negation"], f"Built a sensor; accuracy {word}.")
+    def test_an_un_done_word_is_a_relabel_lock_word(self, word):
         assert em._relabel_swap_refusal(f"{word} EEG recordings", "EEG data") == "relabel_drops_protected"
-        assert not em._finished_clause(f"Sensor under construction; {word} for months.", wide=True)
 
     @pytest.mark.parametrize("text", [
         "在学长指导下搭建了节点", "在学姐指导下搭建了节点", "在主管指导下整理了数据", "Supervised by a senior student.",
@@ -299,14 +260,14 @@ class TestMoreListedShapes:
         ("Lives close to the lab.", False), ("调查了上百名学生", True), ("调查了上千名学生", True), ("调查了上万名学生", True),
         ("上百度搜索资料", False)])
     def test_upwards_of_close_to_and_上百_are_spans(self, text, span):
-        assert em._has(em._FAMILIES["span"], text) is span
+        assert bool(em._SPAN.search(text)) is span
 
     @pytest.mark.parametrize("text", ["Lives upwards of the river.", "Lives close to the lab."])
     def test_a_relabel_keeps_upwards_of_and_close_to_in_any_use(self, text):
         assert em._SPAN_WORD.search(text)
 
     def test_协同_is_shared_work(self):
-        assert em._has(em._FAMILIES["team"], "与组员协同完成了测试")
+        assert em._TEAM_ZH_EXTRA.search("与组员协同完成了测试")
 
 
 class TestBoundsAndApproximations:
@@ -325,16 +286,16 @@ class TestBoundsAndApproximations:
         "招募了 40 余名参与者", "十余名学生", "三十多名学生", "最多 12 名", "每周最多辅导 12 名学生",
         *(f"{number}{word}" for number in "十百千万" for word in "余多")])
     def test_a_bound_or_an_estimate_is_a_span(self, text):
-        assert em._has(em._FAMILIES["span"], text)
+        assert em._SPAN.search(text)
 
     @pytest.mark.parametrize("text", [
         "Labeled fewer than 300 images.", "Needed as few as 3 runs.", "Used as little as 2 ml.", "Kept error as low as 1%.",
         "Reached an estimated 2,000 readers.", "检测了近 40 份水样", "招募了 40 多名参与者", "准确率达到 90% 以上",
         "18 岁以下"])
-    def test_a_bound_with_no_translation_pair_is_left_to_the_review(self, text):
+    def test_a_bound_the_span_words_leave_out_is_left_to_the_review(self, text):
         # Each also matched a faithful line's verb, model name or place ("Estimated 3 models",
         # GPT-4 多模态, 靠近 3 号楼, 2% 以下 for "below 2%"); dropping one reaches the review.
-        assert not em._has(em._FAMILIES["span"], text)
+        assert not em._SPAN.search(text)
 
     @pytest.mark.parametrize("text", [
         "得票最多的人",
@@ -343,56 +304,18 @@ class TestBoundsAndApproximations:
         "近 5 日的", "近两个季度的", "近两学期的", "近期参加了比赛", "靠近校园的实验室", "其余 3 人", "Analyzed some data.",
         "Estimated the cost of the trip.", "Recruited fewer participants than expected."])
     def test_a_verb_a_superlative_or_a_recent_past_is_no_span(self, text):
-        assert not em._has(em._FAMILIES["span"], text)
+        assert not em._SPAN.search(text)
 
     @pytest.mark.parametrize("verb", "找做想看达得用等买收见听")
     def test_不到_after_a_verb_is_still_a_span(self, verb):
-        # 用不到 100 行 bounds a number and 找不到 or 达不到 denies; only the span family reads them.
-        assert em._has(em._FAMILIES["span"], f"{verb}不到数据")
+        # 用不到 100 行 bounds a number and 找不到 or 达不到 denies; only _SPAN reads them.
+        assert em._SPAN.search(f"{verb}不到数据")
 
     @pytest.mark.parametrize("text", [
         "Recruited fewer than expected.", "Ran as many as needed.", "Used as much as needed.", "Needed as few as possible.",
         "Spent as little as possible.", "Scored as high as the PI.", "Priced as low as the rest."])
     def test_a_relabel_keeps_a_comparison_word_in_any_use(self, text):
         assert em._SPAN_WORD.search(text) and not em._SPAN.search(text)
-
-
-class TestFinishedClause:
-    @pytest.mark.parametrize(("text", "finished"), [
-        ("Tutoring 30 students; graded 40 exams.", True), ("Developing a parser and tested it.", True),
-        ("Developing a website; carefully tested the login page.", True), ("Paper accepted at CHI 2026.", True),
-        ("Lab website under development; homepage launched.", True), ("Wired 3 sensors.", True),
-        ("Developing a dashboard, used by 5 lab members.", False), ("Planned to survey 50 users.", False),
-        ("Interested in robotics.", False), ("Dashboard under development; in planned studies.", False),
-        ("Developing a website for the lab.", False), ("Developing automated pipelines for the lab.", False),
-        ("Developing a parser but tested it.", True), ("Developing a parser then tested it.", True),
-        ("Developing a parser; also tested it.", True), ("Developing a parser; later tested it.", True),
-        ("Developing a parser, which I tested.", True), ("Developing a parser; that we tested.", True),
-        ("Mentoring students, who tested the app.", True), ("Developing a parser; we tested it.", True),
-        ("Developing a parser; have tested it.", True), ("Developing a parser; has tested it.", True),
-        ("Developing a parser; had tested it.", True), ("Developing a parser; later we tested it.", True),
-        ("Developing a parser; we have tested it.", True), ("Developing a dashboard; need more data.", False)])
-    def test_a_clause_opens_with_a_finished_verb(self, text, finished):
-        assert em._finished_clause(text) is finished
-
-    @pytest.mark.parametrize("word", ["expected", "anticipated", "planned", "proposed", "scheduled", "intended",
-                                      "unfinished", "unpublished", "unsubmitted"])
-    def test_a_status_word_is_no_finished_headline_or_verb(self, word):
-        for wide in (False, True):
-            assert not em._finished_clause(f"Lab site under development; completion {word} next month.", wide=wide)
-            # A known verb opening a clause is read as before: "Planned the outreach event" is finished.
-            opening = em._finished_clause(f"Lab site under development; {word} next month.", wide=wide)
-            assert opening is bool(em.verb_use(word))
-
-    @pytest.mark.parametrize("word", ["delayed", "postponed", "requested", "needed", "mailed"])
-    def test_a_headline_licenses_a_done_mark_only_with_a_known_verb(self, word):
-        text = f"Lab site under development; completion {word} next month."
-        assert not em._finished_clause(text)
-        assert em._finished_clause(text, wide=True)
-
-    @pytest.mark.parametrize("word", ["approved", "archived", "awarded", "funded", "granted", "posted", "released"])
-    def test_a_listed_finished_event_is_a_headline(self, word):
-        assert em._finished_clause(f"Paper under review; preprint {word} on arXiv.")
 
 
 class TestTeamAndShare:
@@ -412,11 +335,6 @@ class TestTeamAndShare:
         assert em._TEAM_OTHERS.search(text)
         assert em._TEAM_OTHERS in em._LOCK_WORD
 
-    def test_other_collaborators_are_no_translation_team_word(self):
-        # As a team word, "with another student" passed the contract beside 与另一名同学一起,
-        # and the claim locks, which read no 一起, refused that faithful translation as a fabrication.
-        assert not em._has(em._FAMILIES["team"], "Designed a survey with another student.")
-
     @pytest.mark.parametrize("text", ["Tutored 30 students in calculus.", "Held office hours with 30 students.",
                                       "Trained 5 colleagues in Excel.", "Met with members of the public.",
                                       "为其他学院开发了网站"])
@@ -431,34 +349,11 @@ class TestTeamAndShare:
     def test_a_share_of_the_work_is_an_english_participation_word(self, text):
         assert em._PARTICIPATION_EN.search(text)
 
-    @pytest.mark.parametrize(("chinese", "shares"), [
-        ("参与了数据分析", True), ("为项目贡献了代码", True), ("招募了 40 名参与者", False), ("参加了 iGEM 比赛", False),
-        ("为参与者准备了问卷", False),
-        ("开展一项有 50 名被试参与的实验", False), ("两位同学参与了测试", False), ("组织了一场有五十名学生参与的比赛", False)])
-    def test_a_chinese_share_of_the_work_is_taken_by_the_student(self, chinese, shares):
-        assert em._shares_work(chinese) is shares
-        assert em._PARTICIPATION_ZH.search(chinese) or not shares
-
     def test_participants_are_people_not_a_share(self):
         assert not em._PARTICIPATION_EN.search("Recruited 40 participants.")
 
 
-class TestDoneMarks:
-    @pytest.mark.parametrize("chinese", ["开发过网站", "曾为实验室开发网站", "开发出网站", "建成网站", "网站上线",
-                                         "网站投入使用", "论文定稿", "实验室网站开发结束"])
-    def test_only_了_已_and_完成_are_done_marks(self, chinese):
-        # Reading these as done marks also read 造成, 线上线下, 持续交付 and 曾经出国的学生 as
-        # done, and kept faithful translations; the review judges these shapes.
-        assert em._done_parts(chinese) == 0
-
-
 class TestUnknownVerbs:
-    @pytest.mark.parametrize("word", ["Visiting", "Founding", "Fundraising", "Swimming", "Rising", "Returning",
-                                      "Starting", "Peking", "Beijing", "Boeing", "Wyoming", "Fine-tuning", "Wiring"])
-    def test_an_ing_word_the_verb_list_does_not_know_leads_no_progressive_line(self, word):
-        # Read by its suffix, every role word and place name in -ing led work under way.
-        assert not em._progressive_led(f"{word} student at the lab: analyzed 30 EEG recordings.")
-
     @pytest.mark.parametrize(("original", "proposed"), [
         ("Visiting student at Peking University in Summer 2025, analyzing 30 EEG recordings.",
          "Analyzed 30 EEG recordings as visiting student at Peking University in Summer 2025."),
@@ -480,10 +375,6 @@ class TestUnknownVerbs:
     def test_an_unknown_lead_is_finished_only_by_its_own_ed_form(self, original, proposed, upgraded):
         assert grounding.status_upgraded(proposed, original) is upgraded
 
-    @pytest.mark.parametrize("word", ["Using", "Applying"])
-    def test_a_method_leads_no_progressive_line(self, word):
-        assert not em._progressive_led(f"{word} R, cleaned 212 survey responses.")
-
 
 class TestOwnPastVerbs:
     @pytest.mark.parametrize(("original", "proposed", "upgraded"), [
@@ -494,50 +385,6 @@ class TestOwnPastVerbs:
         ("Volunteering at a food bank, sorting donations.", "Food bank volunteer: sorting donations.", False)])
     def test_a_verb_that_is_its_own_past_finishes_work_under_way(self, original, proposed, upgraded):
         assert grounding.status_upgraded(proposed, original) is upgraded
-
-
-class TestLeadingClause:
-    @pytest.mark.parametrize(("chinese", "leading"), [
-        ("目前，开发了网站；撰写了综述。", "开发了网站"), ("目前:开发了网站", "开发了网站"),
-        ("本人目前：开发了网站", "开发了网站"), ("我目前,开发了网站", "开发了网站"),
-        ("项目进行中，为实验室开发了网站", "为实验室开发了网站"), ("目前正在开发中，开发了网站", "开发了网站"),
-        ("正在为实验室开发网站，撰写了综述", "正在为实验室开发网站"), ("系统开发中；负责后端", "负责后端"),
-        ("目前在实验室，开发了网站", "目前在实验室"), ("目前", "")])
-    def test_the_leading_verb_is_in_the_first_clause_that_is_more_than_a_lead_marker(self, chinese, leading):
-        assert em._leading_clause(chinese) == leading
-
-    @pytest.mark.parametrize("chinese", ["预约系统（开发中），撰写了文档", "预约系统(开发中)，撰写了文档"])
-    def test_a_bracketed_verb_and_中_marks_the_work_not_the_verb(self, chinese):
-        assert em._leading_clause(chinese) == "撰写了文档"
-        assert em._lead_spans(chinese)
-
-    @pytest.mark.parametrize("prefix", ["本人", "我们", "我", "本学期", "这学期", "今年", "今年暑假", "今年寒假", "今年夏天",
-                                        "暑假", "暑假期间", "寒假", "寒假期间", "最近", "近期", "目前", "现在", "现", "也",
-                                        "目前我", "本学期我们"])
-    def test_a_subject_or_a_time_word_may_stand_before_正在(self, prefix):
-        assert em._lead_spans(f"{prefix}正在开发网站") == [(0, len(prefix) + 2)]
-
-    @pytest.mark.parametrize("chinese", ["为实验室正在开发网站", "网站正在开发", "上学期开发了网站"])
-    def test_other_words_before_正在_make_no_lead(self, chinese):
-        assert em._lead_spans(chinese) == []
-
-    @pytest.mark.parametrize("word", ["今年暑假", "今年寒假"])
-    def test_a_run_of_time_words_is_read_once(self, word):
-        # Read as one time word and as 今年 + 暑假, each repeat doubled the work:
-        # 22 repeats took 0.7 s, and the server checks a bullet on its only event loop.
-        chinese = word * 60 + "在为实验室开发网站。"
-        started = time.perf_counter()
-        em._ZH_LEAD_PROGRESSIVE.match(word * 60 + "x")
-        assert time.perf_counter() - started < 1
-        started = time.perf_counter()
-        em._check_translation(em.Unit("b1", chinese, chinese), "Developing a website for the lab this summer.")
-        assert time.perf_counter() - started < 1
-
-    @pytest.mark.parametrize(("chinese", "parts"), [
-        ("开发了网站并撰写了一篇综述", 2), ("开发了网站、撰写了综述", 2), ("开发了网站，撰写了综述", 2),
-        ("开发了网站；已撰写综述", 2), ("设计并测试了登录页面", 1), ("已撰写了一篇综述", 1), ("正在开发网站", 0)])
-    def test_each_part_with_its_own_done_mark_counts_once(self, chinese, parts):
-        assert em._done_parts(chinese) == parts
 
 
 REVISION_ADVERBS = ("carefully", "thoroughly", "personally", "independently", "jointly", "extensively", "substantially",
@@ -570,21 +417,6 @@ class TestAnotherPersonsRevision:
         "Drafted it; Sam, a senior student, carefully revised it."])
     def test_a_revision_after_another_word_is_another_persons_part(self, text):
         assert em._OTHER_PERSON.search(text)
-
-
-class TestDraft:
-    @pytest.mark.parametrize("text", [
-        "Draft weekly newsletters.", "Write and draft memos.", "Edit or draft memos.", "I draft memos.",
-        "We draft memos.", "Will draft memos.", "Help draft memos.", "Helps draft memos.", "Helped draft memos.",
-        "Helping draft memos.", "Also draft memos.", "Currently draft memos.", "Volunteered to draft memos.",
-        "Edited memos; draft agendas."])
-    def test_the_verb_draft_is_no_status(self, text):
-        assert not em._DRAFT.search(text)
-
-    @pytest.mark.parametrize("text", ["Wrote a draft manuscript.", "Wrote draft manuscripts.", "Wrote two drafts.",
-                                      "Methods section (draft).", "Wrote a first-draft outline.", "撰写了论文初稿。"])
-    def test_a_draft_thing_is_a_status(self, text):
-        assert em._DRAFT.search(text)
 
 
 class TestLemma:
@@ -659,10 +491,6 @@ class TestContract:
         row = {"unit_id": "b1", "links": case["links"], "decision": "rewrite", "ops": case["ops"],
                "text": case["rewrite"], "keep_reason": None}
         outcome = em.check_rewrite(unit, row, anchors, output_language=em.language(case["original"]))
-        if em.language(case["rewrite"]) != em.language(case["original"]):
-            # w14.1: a rewrite stays in its original's language, so no translation map is offered any more.
-            assert (outcome.status, outcome.code) == ("kept", "beyond_allowed_edit"), outcome
-            return
         if outcome.status == "pending":
             outcome = em.gate(outcome, unit)
         status, code, detail = case["expected"]
@@ -695,7 +523,7 @@ class TestContract:
         assert em.check_rewrite(unit, rewrite, anchors, output_language="en").status == "pending"
 
     def test_an_unchanged_rewrite_is_a_keep(self):
-        # A model that "translates" a line already in the output language returns it as written.
+        # A rewrite that returns the line as written is a keep, whatever operation it declares.
         unit = em.Unit("b1", "本人负责浊度和 pH 测定。", "本人负责浊度和 pH 测定。")
         row = {"unit_id": "b1", "links": [], "decision": "rewrite", "ops": [{"op": "translate"}],
                "text": " 本人负责浊度和 pH 测定。", "keep_reason": None}
@@ -805,6 +633,18 @@ class TestSupport:
     def test_a_fact_moved_between_confirmed_lines_is_rejected(self, text):
         assert self.check(text).code in ("rewrite_rejected", "beyond_allowed_edit")
         assert self.check(text).status == "kept"
+
+    @pytest.mark.parametrize("support", ["Organized 40 interviews with my advisor; I transcribed them.",
+                                         "与导师一起组织了 40 场访谈；本人负责转录。"])
+    def test_the_locks_read_a_support_line_in_either_language(self, support):
+        """The locks read a unit and its support lines as one evidence text. A Chinese support line used
+        to make that text Chinese and skip the actor, qualifier, setting, quality and relevance checks
+        for an English rewrite."""
+        original = "Reviewed the lab's protocol documents. Our team built a sample tracker."
+        unit = em.Unit("b1", original, original, support=(("b2", support),), keyed=True)
+        outcome = em.gate(em.Outcome("b1", "pending", text="Our team built a sample tracker. Reviewed the lab's "
+                                                            "protocol documents."), unit)
+        assert (outcome.code, outcome.findings) == ("rewrite_rejected", ["actor_changed"])
 
 
 def _reply(verdicts):

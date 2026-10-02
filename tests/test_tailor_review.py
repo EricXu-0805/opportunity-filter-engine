@@ -111,6 +111,9 @@ APPENDED = [PAD_BASE[:-1] + f", {word} human factors research." for word in (
 APPENDED_ZH = [PAD_BASE_ZH[:-1] + tail for tail in (
     "，培养了严谨态度。", "，提升了科研素养。", "，锻炼了科研思维。", "，为后续研究打下基础。", "，与人因研究相关。")]
 CORPUS = json.loads((Path(__file__).parent / "fixtures" / "resume_rewrite_faithfulness_corpus.json").read_text())
+# The pairs the claim locks can see: a rewrite in another language never reaches them (w14.1).
+SAME_LANGUAGE = {side: [case for case in CORPUS[side] if em.language(case["original"]) == em.language(case["rewrite"])]
+                 for side in ("faithful", "unfaithful")}
 EVIDENCE_MAP_CASES = json.loads((Path(__file__).parent / "fixtures" / "evidence_map_cases.json").read_text())["cases"]
 # The numeric grounding step, not the claim locks, rejects a number the original never states.
 GROUNDING_ONLY = {"new number"}
@@ -284,8 +287,7 @@ def rejection_warnings(path, body) -> list[str]:
 
 def gate_findings(original, rewrite) -> list[str]:
     """What the evidence map's lock gate refuses: ungrounded tokens and hard claim findings."""
-    translated = em.language(rewrite) != em.language(original)
-    return [*em.grounding_findings(rewrite, original, translated=translated), *em.rewrite_findings(rewrite, original, [])]
+    return [*em.grounding_findings(rewrite, original), *em.rewrite_findings(rewrite, original, [])]
 
 
 class TestFindingsSplit:
@@ -550,15 +552,12 @@ class TestLockChangesForEvidenceMappedRewrites:
         hard = claim_upgrade_findings(proposed, original)[0]
         assert "actor_changed" not in hard and "qualifier_moved" not in hard
 
-    def test_a_translation_is_left_to_the_review(self):
+    def test_a_line_is_in_the_language_that_carries_it(self):
         from backend.lib.target_resume_ai_grounding import language
 
         original = "社团项目组成员（共 8 人）：团队为社区图书馆设计并搭建了一个借阅小程序；本人只负责测试。"
         assert (language(original), language("用 PyTorch 训练 CNN 模型"), language("Volunteered at 北京大学 hospital")) \
             == ("zh", "zh", "en")
-        translated = ("Member of an 8-person club project team: the team designed and built a lending mini-program "
-                      "for the community library; I only did the testing.")
-        assert claim_upgrade_findings(translated, original)[0] == []
 
     def test_every_resume_verb_form_maps_to_its_base(self):
         from backend.lib.target_resume_ai_grounding import RESUME_VERB_FORMS, verb_use
@@ -589,7 +588,7 @@ class TestFaithfulnessCorpus:
             assert any(text.isascii() for text in texts) and not all(text.isascii() for text in texts)
         assert any(case.get("caught") == "review" for case in CORPUS["unfaithful"])
 
-    @pytest.mark.parametrize("case", CORPUS["faithful"], ids=lambda case: case["rewrite"])
+    @pytest.mark.parametrize("case", SAME_LANGUAGE["faithful"], ids=lambda case: case["rewrite"])
     def test_faithful_rewrite_has_no_hard_finding(self, case):
         assert claim_upgrade_findings(case["rewrite"], case["original"])[0] == []
         assert gate_findings(case["original"], case["rewrite"]) == []
@@ -606,7 +605,11 @@ class TestFaithfulnessCorpus:
         else:
             assert reason in ("cosmetic_only", "beyond_allowed_edit") and reviews == []
 
-    @pytest.mark.parametrize("case", CORPUS["unfaithful"], ids=lambda case: case["rewrite"])
+    def test_every_rewrite_in_another_language_is_labelled_so(self):
+        assert [case.get("caught") == "language" for case in CORPUS["unfaithful"]] == [
+            em.language(case["original"]) != em.language(case["rewrite"]) for case in CORPUS["unfaithful"]]
+
+    @pytest.mark.parametrize("case", SAME_LANGUAGE["unfaithful"], ids=lambda case: case["rewrite"])
     def test_unfaithful_rewrite_is_hard_rejected_or_reviewed(self, case):
         found = gate_findings(case["original"], case["rewrite"])
         hard = claim_upgrade_findings(case["rewrite"], case["original"])[0]
@@ -752,6 +755,7 @@ def test_wording_in_another_language_than_its_source_is_kept_unreviewed(endpoint
                                                                           rewrite):
     """Neither language may rewrite it: Chinese would translate the wording back, and English
     would be judged against the Chinese source. w14.0 showed the English verb_first rewrite."""
+    details = _contract_details(monkeypatch)
     client, opportunity_id = endpoint
     anchors = [_anchor("t1", SOURCE_ZH), _anchor("t2", CURRENT_EN)]
     monkeypatch.setattr(tailor, "_snapshot_anchors", lambda source, snapshot: anchors)
@@ -775,7 +779,7 @@ def test_wording_in_another_language_than_its_source_is_kept_unreviewed(endpoint
         payload.update(base_text=SOURCE_ZH, current_text=CURRENT_EN)
     response = client.post(path, json=payload)
     assert response.status_code == 200, response.text
-    assert (outcomes(path, response.json()), reviews) == ([(None, "beyond_allowed_edit")], [])
+    assert (outcomes(path, response.json()), reviews, details) == ([(None, "beyond_allowed_edit")], [], ["wrong_language"])
 
 
 # Rewrites the contract admits: a lead_with reorder and a verb-first role line.

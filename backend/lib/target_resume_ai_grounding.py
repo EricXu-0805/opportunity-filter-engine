@@ -81,14 +81,11 @@ _ZH_UNDERWAY_VERBS = (
     "|实验|试验|研发|研制|孵化|运营|维护|升级|评估|审查|审批|投稿|提交|拍摄|剪辑|录制|复现|重构")
 _ZH_PROGRESSIVE = ("".join(rf"(?<![在到入][^，,。；;：:、！？!?]{{{n}}})" for n in range(5))
                    + rf"(?:{_ZH_UNDERWAY_VERBS})中(?=$|[，,。；;：:、！？!?)）\s]|的)")
-# Chinese for work still to come, which a translation pairs with FUTURE_EN: 将在, 将会
-# and 将要 say "will"; in 将在线问卷, 将会议记录, 将会员信息, 将要点, 将要求 and 将要素, 将
-# marks the object.
+# Chinese for work still to come: 将在, 将会 and 将要 say "will"; in 将在线问卷, 将会议记录,
+# 将会员信息, 将要点, 将要求 and 将要素, 将 marks the object.
 FUTURE_ZH = re.compile(r"预计|即将|将于|将在(?!线)|将会(?!议|员)|将要(?!点|求|素)")
-FUTURE_EN = re.compile(r"\b(?:will|upcoming|forthcoming|to\s+appear|in\s+press|expected|anticipated)\b", re.I)
 # Chinese for work under way or still to come; with the intent words below it is
-# what status_upgraded reads. A translation pairs these with UNFINISHED and the
-# intent words with INTENT.
+# what status_upgraded reads.
 UNDERWAY_ZH = re.compile(r"正在|撰写中|准备中|进行中|筹备中|在投|待发表|目前|尚未|未完成|未发表|" + FUTURE_ZH.pattern + "|"
                          + _ZH_PROGRESSIVE)
 UNFINISHED_ZH = re.compile(UNDERWAY_ZH.pattern + r"|计划|打算|希望|" + _ZH_PLAN + r"|想要")
@@ -884,10 +881,9 @@ def claim_text(text):
 def _claimed_actions(text):
     """A rewrite's actions, with a Chinese verb + 中 read as work under way.
 
-    "气象站搭建中" translates "weather station under construction", and
-    "开发中的仪表板" "an in-progress dashboard": neither says the student built
-    anything new. The original keeps its own, so "系统开发中" may become
-    "Developing the system".
+    "气象站搭建中" (a weather station under construction) and "开发中的仪表板" (an
+    in-progress dashboard) say the student built nothing new. The original keeps
+    its own actions.
     """
     return personal_actions(_UNDERWAY_ACTION.sub("进行中", text), gerunds=True)
 
@@ -938,13 +934,9 @@ def claim_upgrade_findings(proposed, original):
     if status_upgraded(proposed, original):
         hard.append("status_upgraded")
     original_normal = normalized(original)
-    # Relevance, setting and quality words are compared within one language. A
-    # translation's are checked by the evidence-map contract (_check_translation)
-    # in both directions, and every translation still goes to the review.
-    translated = language(proposed) != language(original)
-    if not translated and (any(normalized(match.group(0)).strip(",，;； ") not in original_normal
-                               for match in RELEVANCE_PADDING.finditer(proposed))
-                           or _appended_relevance(proposed, original)):
+    if (any(normalized(match.group(0)).strip(",，;； ") not in original_normal
+            for match in RELEVANCE_PADDING.finditer(proposed))
+            or _appended_relevance(proposed, original)):
         hard.append("relevance_clause_added")
     # Inside a team clause too: personal_actions skips those, and "helped design"
     # as part of a team must not become "led the design".
@@ -952,20 +944,17 @@ def claim_upgrade_findings(proposed, original):
         hard.append("leadership_claim_added")
     # An English line may name a Chinese place ("at 北京大学"): a Chinese word
     # counts only against an original that has Chinese.
-    comparable = [] if translated else [
-        match for pattern in (SETTING, QUALITY) for match in pattern.finditer(proposed)
-        if not _CJK.search(match.group(0)) or _CJK.search(original)]
+    comparable = [match for pattern in (SETTING, QUALITY) for match in pattern.finditer(proposed)
+                  if not _CJK.search(match.group(0)) or _CJK.search(original)]
     if any(match.re is SETTING and not _setting_in(normalized(match.group(0)), original_normal)
            for match in comparable):
         hard.append("setting_added")
     if any(match.re is QUALITY and normalized(match.group(0)) not in original_normal for match in comparable):
         hard.append("quality_claim_added")
-    # A translation is judged by the review; these compare words in one language.
-    if not translated:
-        if actor_changed(proposed, original):
-            hard.append("actor_changed")
-        if qualifier_moved(proposed, original):
-            hard.append("qualifier_moved")
+    if actor_changed(proposed, original):
+        hard.append("actor_changed")
+    if qualifier_moved(proposed, original):
+        hard.append("qualifier_moved")
     hard.extend(dict.fromkeys(_moved_claims(proposed, original)))
     proposed_normal = normalized(proposed)
     reworded = any((NEGATION.search(clause) or TEAM.search(clause) or PUBLICATION.search(clause))
