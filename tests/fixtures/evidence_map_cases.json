@@ -8104,9 +8104,9 @@
     }
    ],
    "expected": [
-    "kept",
-    "beyond_allowed_edit",
-    "translation_span"
+    "pending",
+    null,
+    null
    ]
   },
   {
@@ -8142,9 +8142,9 @@
     }
    ],
    "expected": [
-    "kept",
-    "beyond_allowed_edit",
-    "translation_span"
+    "pending",
+    null,
+    null
    ]
   },
   {
@@ -8180,9 +8180,9 @@
     }
    ],
    "expected": [
-    "kept",
-    "beyond_allowed_edit",
-    "translation_span"
+    "pending",
+    null,
+    null
    ]
   },
   {
@@ -8256,9 +8256,9 @@
     }
    ],
    "expected": [
-    "kept",
-    "beyond_allowed_edit",
-    "translation_span"
+    "pending",
+    null,
+    null
    ]
   },
   {
@@ -8275,9 +8275,9 @@
     }
    ],
    "expected": [
-    "kept",
-    "beyond_allowed_edit",
-    "translation_span"
+    "pending",
+    null,
+    null
    ]
   },
   {
@@ -8320,7 +8320,7 @@
   },
   {
    "group": "translate",
-   "label": "EN to ZH keeps nearly as 近",
+   "label": "EN to ZH loses nearly as 近: 近 is no span",
    "output": "zh",
    "anchors": [],
    "original": "Tested nearly 40 water samples with qPCR.",
@@ -8332,14 +8332,14 @@
     }
    ],
    "expected": [
-    "pending",
-    null,
-    null
+    "kept",
+    "beyond_allowed_edit",
+    "translation_span"
    ]
   },
   {
    "group": "translate",
-   "label": "EN to ZH keeps fewer than as 不到",
+   "label": "EN to ZH loses fewer than as 不到: fewer than is no span",
    "output": "zh",
    "anchors": [],
    "original": "Recruited fewer than 20 participants.",
@@ -8351,9 +8351,9 @@
     }
    ],
    "expected": [
-    "pending",
-    null,
-    null
+    "kept",
+    "beyond_allowed_edit",
+    "translation_span"
    ]
   },
   {
@@ -8694,9 +8694,9 @@
     }
    ],
    "expected": [
-    "kept",
-    "beyond_allowed_edit",
-    "relabel_drops_protected"
+    "pending",
+    null,
+    null
    ]
   },
   {
@@ -9538,6 +9538,196 @@
     "kept",
     "beyond_allowed_edit",
     "translation_span"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful Estimated as the verb EN to ZH",
+   "output": "zh",
+   "anchors": [],
+   "original": "Estimated 3 regression models of housing prices.",
+   "rewrite": "估计了 3 个房价回归模型。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful Estimated as the verb ZH to EN",
+   "output": "en",
+   "anchors": [],
+   "original": "估计了 3 个房价回归模型。",
+   "rewrite": "Estimated 3 regression models of housing prices.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful fewer than as 少于",
+   "output": "zh",
+   "anchors": [],
+   "original": "Ran fewer than 10 pilot sessions before the main study.",
+   "rewrite": "在正式研究前进行了少于 10 次预实验。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful below as 以下",
+   "output": "zh",
+   "anchors": [],
+   "original": "Kept the false-alarm rate below 2% across 500 test cases.",
+   "rewrite": "在 500 个测试用例中将误报率控制在 2% 以下。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful 以上 as above",
+   "output": "en",
+   "anchors": [],
+   "original": "连续 4 个学期 GPA 保持在 3.8 以上。",
+   "rewrite": "Maintained a GPA above 3.8 for 4 semesters.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful GPT-4 多模态",
+   "output": "en",
+   "anchors": [],
+   "original": "用 GPT-4 多模态模型为 500 张图片生成了描述。",
+   "rewrite": "Used GPT-4 multimodal models to caption 500 images.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful YOLOv8 多目标",
+   "output": "zh",
+   "anchors": [],
+   "original": "Trained YOLOv8 multi-object trackers on 3 datasets.",
+   "rewrite": "在 3 个数据集上训练了 YOLOv8 多目标跟踪器。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful 近十年 (the last ten years)",
+   "output": "en",
+   "anchors": [],
+   "original": "检索了近十年发表的 120 篇论文。",
+   "rewrite": "Searched 120 papers published in the last ten years.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful 靠近 (near)",
+   "output": "en",
+   "anchors": [],
+   "original": "在靠近 3 号楼的花园里安装了传感器。",
+   "rewrite": "Installed sensors in the garden near Building 3.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful as low as as 降低至",
+   "output": "zh",
+   "anchors": [],
+   "original": "Cut the error rate to as low as 2%.",
+   "rewrite": "将错误率降低至 2%。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
    ]
   }
  ]

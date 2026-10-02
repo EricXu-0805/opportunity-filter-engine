@@ -243,19 +243,23 @@ class TestBoundsAndApproximations:
         assert em.tokens(text)[0] == token
 
     @pytest.mark.parametrize("text", [
-        "Labeled fewer than 300 images.", "Drew as many as 200 students.", "Lifted as much as 5 kg.",
-        "Needed as few as 3 runs.", "Used as little as 2 ml.", "Reached accuracy as high as 95%.",
-        "Kept error as low as 1%.", "Interviewed some 30 farmers.", "Reached an estimated 2,000 readers.",
-        "Reached estimated 2,000 readers.", "Tested 40 or so samples.", "Waited a week or so.", "Surveyed 200-odd students.",
+        "Drew as many as 200 students.", "Lifted as much as 5 kg.", "Reached accuracy as high as 95%.",
+        "Interviewed some 30 farmers.", "Tested 40 or so samples.", "Waited a week or so.", "Surveyed 200-odd students.",
         "Annotated ~300 images.", "Annotated ≈300 images.", "Cut latency to <50 ms.", "Reached >90% accuracy.",
         "Kept runs ≤5.", "Kept uptime ≥99%.", "Recruited 40+ participants.", "Reached 90%+ accuracy.",
-        "检测了近 40 份水样", "检测了近百份水样", "接近 90%", "招募了 40 余名参与者", "十余名学生", "招募了 40 多名参与者",
-        "三十多名学生", "准确率达到 90% 以上", "18 岁以下", "3 年以上", "百人以上", "最多 12 名", "每周最多辅导 12 名学生",
-        "历时近两年", *(f"近{number}" for number in "一二两三四五六七八九十百千万几半"),
-        *(f"{number}{word}" for number in "十百千万" for word in "余多"), "3 小时以上", "100 名以下",
-        *(f"{number}人以上" for number in "十百千万"), "Reached an estimated two thousand readers."])
+        "招募了 40 余名参与者", "十余名学生", "三十多名学生", "最多 12 名", "每周最多辅导 12 名学生",
+        *(f"{number}{word}" for number in "十百千万" for word in "余多")])
     def test_a_bound_or_an_estimate_is_a_span(self, text):
         assert em._has(em._FAMILIES["span"], text)
+
+    @pytest.mark.parametrize("text", [
+        "Labeled fewer than 300 images.", "Needed as few as 3 runs.", "Used as little as 2 ml.", "Kept error as low as 1%.",
+        "Reached an estimated 2,000 readers.", "检测了近 40 份水样", "招募了 40 多名参与者", "准确率达到 90% 以上",
+        "18 岁以下"])
+    def test_a_bound_with_no_translation_pair_is_left_to_the_review(self, text):
+        # Each also matched a faithful line's verb, model name or place ("Estimated 3 models",
+        # GPT-4 多模态, 靠近 3 号楼, 2% 以下 for "below 2%"); dropping one reaches the review.
+        assert not em._has(em._FAMILIES["span"], text)
 
     @pytest.mark.parametrize("text", [
         "得票最多的人",

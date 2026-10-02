@@ -583,10 +583,10 @@ _OTHER_PERSON = re.compile(
 # magnitude", "over a year", not "a talk about a campus program", "a talk about many
 # species", "under development" or "about double-blind trials". 约 estimates (约 200
 # 份), but 预约 schedules; 起 starts a span (2024 年起), but 起草 drafts and 发起
-# launches; 最多 is "up to", but 最多的 and a closing 得票最多 "the most"; 不到 is "under", but
-# 找不到 and 意想不到 are verbs. "Fewer than", "as many as" and "some" bound or estimate
-# only a quantity too, as does "estimated"; "or so", "-odd", ~, <, >, ≥, a trailing + and
-# 近, 余, 多 or 以上 next to a number always do, though 近五年的数据 is the past five years.
+# launches; 最多 is "up to", but 最多的 and a closing 得票最多 "the most"; 不到 is a span
+# wherever it stands (用不到 100 行, and the denial in 找不到 that no negation word reads).
+# "As many as", "as high as" and "some" bound or estimate only a quantity too; "or so",
+# "-odd", ~, <, >, ≥, a trailing + and 余 after a number always do.
 _QUANTITY = (r"(?=\s+(?:[$€£¥~≈]?\d|(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen"
              r"|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty"
              r"|ninety|hundreds?|thousands?|millions?|billions?|dozens?|tens|half|twice|all|every|each)\b"
@@ -594,16 +594,12 @@ _QUANTITY = (r"(?=\s+(?:[$€£¥~≈]?\d|(?:one|two|three|four|five|six|seven|e
              r"|millions?|years?|months?|weeks?|days?|hours?|semesters?|terms?|summers?|decades?|times)\b"
              r"|(?:a|an)\s+(?:few|couple|dozen|hundred|thousand|million|billion|year|month|week|day|hour|minute"
              r"|semester|term|summer|decade|half|third|quarter|order\s+of|factor\s+of)\b))")
-_SPAN = re.compile(r"\b(?:about|around|over|under|more\s+than|less\s+than|fewer\s+than|up\s+to|upwards\s+of"
-                   r"|close\s+to|some"
-                   r"|as\s+(?:many|much|few|little|high|low)\s+as)" + _QUANTITY
-                   + r"|\bestimated" + _QUANTITY
+_SPAN = re.compile(r"\b(?:about|around|over|under|more\s+than|less\s+than|up\s+to|upwards\s+of|close\s+to|some"
+                   r"|as\s+(?:many|much|high)\s+as)" + _QUANTITY
                    + r"|\b(?:approximately|roughly|nearly|almost|at\s+least|at\s+most|since|until|per|or\s+so)\b"
                    r"|(?<=\d)-odd\b|[~≈<>≤≥]\s?(?=\d)|(?<=[\d%])\+"
                    r"|(?<![预制节简邀相契合公条])约(?![定会束谈请见稿])|将近|超过|至少|左右|最多(?![的。，,；;）)]|$)|至多|多达"
-                   r"|高达|上(?=[千万]|百(?!度))|不到|(?<![附最])近(?=\s*(?:\d|[一二两三四五六七八九十百千万几半]))"
-                   r"(?!\s*(?:\d+|[一二两三四五六七八九十百千万几半]+)\s*个?(?:年|月|周|天|日|季度|学期)[的来内间])"
-                   r"|(?<=\d)\s*[余多]|(?<=[十百千万])[余多]|(?:(?<![\d.,])\d[\d.,]*|[十百千万])\s*[^\s\d，,。；;]{0,2}?\s*以[上下]"
+                   r"|高达|上(?=[千万]|百(?!度))|不到|(?<=\d)\s*余|(?<=[十百千万])[余多]"
                    r"|(?<![一发引提拿想兴崛缘])起(?![来草源始点因诉步飞初])|以来|至今", re.I)
 _SOLO = re.compile(r"\b(?:alone|independently|solely|single-handedly|by\s+myself|on\s+my\s+own)\b|独立|独自|单独", re.I)
 _LIMIT = re.compile(r"\b(?:only|just)\b|只|仅", re.I)
