@@ -945,6 +945,61 @@
    "original": "Gave a talk about a campus recycling program.",
    "rewrite": "做了一个关于校园回收项目的报告。",
    "kind": "EN to ZH: about a as a preposition"
+  },
+  {
+   "original": "Developing a website; wrote a review.",
+   "rewrite": "正在开发网站；撰写了一篇综述。",
+   "kind": "EN to ZH: progressive first clause, finished second clause"
+  },
+  {
+   "original": "正在开发实验室网站，已完成登录模块。",
+   "rewrite": "Developing the lab website; completed the login module.",
+   "kind": "ZH to EN: 正在 first clause, finished second clause"
+  },
+  {
+   "original": "Developing a Flask dashboard for the lab's sample inventory.",
+   "rewrite": "目前正在为实验室的样本库存开发一个 Flask 仪表板。",
+   "kind": "EN to ZH: progressive line as 目前正在"
+  },
+  {
+   "original": "Building an unfinished prototype of a soil sensor.",
+   "rewrite": "正在制作一个未完成的土壤传感器原型。",
+   "kind": "EN to ZH: progressive line with 未完成, which states nothing done"
+  },
+  {
+   "original": "Developing a survey to understand sleep habits.",
+   "rewrite": "正在为了解睡眠习惯开发一份问卷。",
+   "kind": "EN to ZH: progressive line with 为了解, whose 了 is no aspect"
+  },
+  {
+   "original": "维护一个开发中的实验室库存仪表板。",
+   "rewrite": "Maintained an in-progress dashboard of lab inventory.",
+   "kind": "ZH to EN: an in-development thing, a finished verb"
+  },
+  {
+   "original": "Writing a thesis on sleep and memory.",
+   "rewrite": "关于睡眠与记忆的论文撰写中。",
+   "kind": "EN to ZH: progressive line as a verb + 中"
+  },
+  {
+   "original": "Tutoring high school students in math.",
+   "rewrite": "目前辅导高中生数学。",
+   "kind": "EN to ZH: progressive line as 目前"
+  },
+  {
+   "original": "Developing a mobile app for the campus library.",
+   "rewrite": "正在完成校园图书馆手机应用的开发。",
+   "kind": "EN to ZH: progressive line as 正在完成"
+  },
+  {
+   "original": "Developing a website; carefully tested the login page.",
+   "rewrite": "正在开发网站；仔细测试了登录页面。",
+   "kind": "EN to ZH: finished clause after an adverb"
+  },
+  {
+   "original": "Developing a website and tested the login page.",
+   "rewrite": "正在开发网站，并测试了登录页面。",
+   "kind": "EN to ZH: finished clause after and"
   }
  ],
  "unfaithful": [
@@ -2298,6 +2353,153 @@
    "kind": "translation drops over a year",
    "caught": "contract",
    "case": "EN to ZH drops over a year"
+  },
+  {
+   "original": "Developing a Flask dashboard for the lab's sample inventory, used by 5 lab members.",
+   "rewrite": "为实验室的样本库存开发了一个 Flask 仪表板，目前有 5 名实验室成员使用。",
+   "kind": "translation finishes a progressive build beside 目前",
+   "caught": "contract",
+   "case": "EN to ZH finishes a progressive line beside 目前"
+  },
+  {
+   "original": "Developing a website for the lab.",
+   "rewrite": "为实验室开发了网站，目前已上线。",
+   "kind": "translation finishes a progressive build beside 目前已上线",
+   "caught": "contract",
+   "case": "EN to ZH finishes a progressive line beside 目前已上线"
+  },
+  {
+   "original": "Building a weather station with an Arduino for the campus garden.",
+   "rewrite": "用 Arduino 为校园花园搭建了一个气象站，预计明年扩建。",
+   "kind": "translation finishes a progressive build beside 预计",
+   "caught": "contract",
+   "case": "EN to ZH finishes a progressive line beside 预计"
+  },
+  {
+   "original": "Developing a website; wrote a review.",
+   "rewrite": "开发了网站；正在撰写综述。",
+   "kind": "translation moves under way from one work to the other",
+   "caught": "contract",
+   "case": "EN to ZH moves a progressive status to another work"
+  },
+  {
+   "original": "Developing a Flask dashboard for the lab's sample inventory and its user guide.",
+   "rewrite": "已为实验室的样本库存开发 Flask 仪表板，正在编写其使用指南。",
+   "kind": "translation finishes a progressive build with 已 beside 正在",
+   "caught": "contract",
+   "case": "EN to ZH finishes a progressive line with 已 beside 正在"
+  },
+  {
+   "original": "Developing a Flask dashboard for the lab's sample inventory.",
+   "rewrite": "为实验室的样本库存开发了一个 Flask 仪表板，目前已投入使用。",
+   "kind": "translation finishes a progressive build beside 目前已投入使用",
+   "caught": "contract",
+   "case": "EN to ZH finishes a progressive line beside 目前已投入使用"
+  },
+  {
+   "original": "Currently developing a Flask dashboard for the lab.",
+   "rewrite": "目前为实验室开发了一个 Flask 仪表板。",
+   "kind": "translation finishes a currently-led progressive build",
+   "caught": "contract",
+   "case": "EN to ZH finishes a progressive line led by Currently"
+  },
+  {
+   "original": "Also developing a Flask dashboard for the lab.",
+   "rewrite": "还为实验室开发了一个 Flask 仪表板。",
+   "kind": "translation finishes an also-led progressive build",
+   "caught": "contract",
+   "case": "EN to ZH finishes a progressive line led by Also"
+  },
+  {
+   "original": "Lab website under development.",
+   "rewrite": "实验室网站目前已上线。",
+   "kind": "translation finishes work under development beside 目前",
+   "caught": "contract",
+   "case": "EN to ZH finishes work under development beside 目前"
+  },
+  {
+   "original": "正在开发并测试实验室网站。",
+   "rewrite": "Developing the lab website; tested it.",
+   "kind": "translation finishes a verb 正在 governs",
+   "caught": "contract",
+   "case": "ZH to EN finishes a verb joined to 正在"
+  },
+  {
+   "original": "正在开发 Flask 仪表板并编写使用指南。",
+   "rewrite": "Developing a Flask dashboard; wrote its user guide.",
+   "kind": "translation finishes the second verb 正在 governs",
+   "caught": "contract",
+   "case": "ZH to EN finishes the second verb under 正在"
+  },
+  {
+   "original": "正在开发并测试实验室网站。",
+   "rewrite": "Currently developing the lab website; tested it.",
+   "kind": "translation finishes a verb 正在 governs beside Currently",
+   "caught": "contract",
+   "case": "ZH to EN finishes a verb joined to 正在 beside Currently"
+  },
+  {
+   "original": "Developing a website; wrote a review.",
+   "rewrite": "目前开发了网站；撰写了综述。",
+   "kind": "translation finishes a progressive build in a clause led by 目前",
+   "caught": "contract",
+   "case": "EN to ZH finishes the leading clause after 目前"
+  },
+  {
+   "original": "Developing a website for the lab.",
+   "rewrite": "目前为实验室开发网站，已上线。",
+   "kind": "translation finishes a progressive build beside a done mark",
+   "caught": "contract",
+   "case": "EN to ZH finishes a progressive line with no finished English clause"
+  },
+  {
+   "original": "Developing a website; wrote a review.",
+   "rewrite": "撰写综述；开发了网站。",
+   "kind": "translation swaps under way and finished between two works",
+   "caught": "contract",
+   "case": "EN to ZH swaps a progressive and a finished clause"
+  },
+  {
+   "original": "Developing a website for the lab.",
+   "rewrite": "为实验室开发网站，预计明年上线。",
+   "kind": "translation adds an expected status to a progressive line",
+   "caught": "contract",
+   "case": "EN to ZH adds an expected launch to a progressive line"
+  },
+  {
+   "original": "Testing the lab dashboard.",
+   "rewrite": "测试开发中的实验室仪表板。",
+   "kind": "translation adds an in-development status to a thing",
+   "caught": "contract",
+   "case": "EN to ZH adds an in-development status to a progressive line's object"
+  },
+  {
+   "original": "Planned to survey 50 users in May 2026.",
+   "rewrite": "计划于 2026 年 5 月调查了 50 名用户。",
+   "kind": "translation finishes planned-to work",
+   "caught": "contract",
+   "case": "EN to ZH finishes planned-to work"
+  },
+  {
+   "original": "A planned sleep study with 30 participants.",
+   "rewrite": "一项有 30 名参与者的计划中的睡眠研究已开展。",
+   "kind": "translation finishes a planned study",
+   "caught": "contract",
+   "case": "EN to ZH finishes a planned study"
+  },
+  {
+   "original": "Lab website under development, used by 5 lab members.",
+   "rewrite": "实验室网站目前已上线，已有 5 名实验室成员使用。",
+   "kind": "translation finishes work under development beside a participle with its agent",
+   "caught": "contract",
+   "case": "EN to ZH finishes work under development beside used by"
+  },
+  {
+   "original": "Interested in robotics; hoping to build a rover.",
+   "rewrite": "对机器人感兴趣，已开始制作漫游车。",
+   "kind": "translation starts hoped-for work",
+   "caught": "contract",
+   "case": "EN to ZH starts hoped-for work beside an interest"
   }
  ]
 }

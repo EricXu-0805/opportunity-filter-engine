@@ -22,6 +22,7 @@ from backend.lib.blocking import BlockingWorkTimeout, run_blocking
 from backend.lib.grounding import _TECH_TERMS, LENIENT_PROSE_NUMERIC, validate_no_fabrication
 from backend.lib.llm import chat_completion, model_for
 from backend.lib.target_resume_ai_grounding import (
+    _UNDERWAY_ACTION,
     ACTIONS,
     CO_CREDIT,
     DENIAL,
@@ -766,8 +767,17 @@ def _relabel_swap_refusal(source: str, target: str) -> str | None:
 # progressive verb ("Using Python, ..." and "Applying ..." name a method).
 _PROGRESSIVE_LEAD_SKIP = frozenset({"currently", "still", "now", "also", "actively", "jointly"})
 _PROGRESSIVE_METHODS = frozenset({"use", "apply"})
-# Chinese that states work done: 开发了, 已搭建, 完成.
-_ZH_DONE = re.compile(r"了|已(?!在)|完成")
+# Chinese that states work done: 开发了, 已搭建, 完成. The 了 of 为了, 除了 and 了解, and
+# the 完成 of 正在完成 and 未完成, state nothing done.
+_ZH_DONE = re.compile(r"(?<![为除])了(?!解)|已(?!在)|(?<!正在)(?<!未)完成")
+# A Chinese line's first clause, and 正在 or 目前 on its leading verb: only a subject
+# or a time word may stand before it (目前正在为实验室开发 ..., 目前每周辅导 ...).
+_ZH_FIRST_CLAUSE = re.compile(r"[^，,。；;：:！？!?]*")
+_ZH_LEAD_PROGRESSIVE = re.compile(r"\s*(?:本人|我)?(?:(?:目前|现在|当前|仍|还|也)*正在|目前)")
+# An English clause, and the words that may open it before its verb (as may an -ly adverb).
+_EN_CLAUSE_BREAK = re.compile(r"[;:,.()]|\s(?=(?:and|but|then)\s)", re.I)
+_EN_CLAUSE_LEAD = frozenset({"and", "but", "then", "also", "later", "which", "that", "who", "i", "we", "have", "has",
+                             "had"})
 
 
 def _progressive_led(text: str) -> bool:
@@ -776,6 +786,71 @@ def _progressive_led(text: str) -> bool:
         words.pop(0)
     use = verb_use(words[0]) if words and not _CJK.match(text.strip()[:1]) else None
     return bool(use) and use[1] == "ing" and use[0] not in _PROGRESSIVE_METHODS
+
+
+def _finished_verb(words: list[str]) -> bool:
+    """Whether ``words`` open with a past verb ("graded", "wired") that states a finished action.
+
+    A participle with its agent ("used by 5 lab members"), a plan ("planned to")
+    or a state ("interested in") does not.
+    """
+    use = verb_use(words[0])
+    if use:
+        return use[1] == "past" and words[1:2] not in (["by"], ["to"])
+    return len(words[0]) > 4 and words[0].endswith("ed") and words[1:2] not in (["by"], ["to"], ["in"])
+
+
+def _finished_clause(text: str) -> bool:
+    """Whether a clause of an English line opens with a finished verb: "...; graded 40 exams"."""
+    for clause in _EN_CLAUSE_BREAK.split(text):
+        words = [word.casefold() for word in re.findall(r"[A-Za-z]+(?:-[A-Za-z]+)*", clause)]
+        while words and (words[0] in _EN_CLAUSE_LEAD or words[0].endswith("ly")):
+            words.pop(0)
+        if words and _finished_verb(words):
+            return True
+    return False
+
+
+def _lead_spans(chinese: str) -> list[tuple[int, int]]:
+    """Where a Chinese line marks its leading verb as under way.
+
+    正在 or 目前 counts when only a subject or a time word stands before it in the
+    first clause; a verb + 中 counts when it ends that clause (系统开发中，负责 ...).
+    """
+    first = _ZH_FIRST_CLAUSE.match(chinese).group(0)
+    spans = [lead.span()] if (lead := _ZH_LEAD_PROGRESSIVE.match(first)) else []
+    end = len(first.rstrip())
+    return spans + [match.span() for match in _UNDERWAY_ACTION.finditer(first) if match.end() == end]
+
+
+def _only_on_lead(chinese: str) -> bool:
+    """Whether every under-way word of a Chinese line marks its leading verb."""
+    spans = _lead_spans(chinese)
+    return all(any(start <= match.start() and match.end() <= end for start, end in spans)
+               for match in UNDERWAY_ZH.finditer(chinese))
+
+
+def _finished_in_translation(english: str, chinese: str, *, chinese_source: bool) -> bool:
+    """Whether a translation states done what the other line has under way or planned.
+
+    "Developing ..." never becomes 开发了 or 已开发; a done mark elsewhere in its
+    Chinese needs a finished English clause and 正在, 目前 or a verb + 中 on the
+    Chinese leading verb.
+    English work under way or planned ("under development", "plan to") becomes
+    了, 已 or 完成 only beside a finished English clause; and 正在 or a verb + 中
+    in a Chinese line is finished in English ("...; tested it") only where the
+    Chinese marks something done too.
+    """
+    finished, done = _finished_clause(english), _ZH_DONE.search(chinese)
+    if _progressive_led(english) and (_ZH_DONE.search(_ZH_FIRST_CLAUSE.match(chinese).group(0))
+                                      or done and not (finished and _lead_spans(chinese))):
+        return True
+    if chinese_source:
+        underway = "正在" in chinese or any(not chinese.startswith("的", match.end())
+                                           for match in _UNDERWAY_ACTION.finditer(chinese))
+        return bool(underway and finished and not done)
+    return bool(done and not finished and (UNFINISHED.search(english) or INTENT.search(english)
+                                           or PLANNED.search(english)))
 
 
 def _check_translation(unit: Unit, text: str) -> str | None:
@@ -801,12 +876,13 @@ def _check_translation(unit: Unit, text: str) -> str | None:
     english, chinese = (source, text) if language(source) == "en" else (text, source)
     for name, patterns in _FAMILIES.items():
         if _has(patterns, counted_source) != _has(patterns, counted_text):
-            # 正在开发 may be "Developing ...", which has no status word of its own.
-            if name == "unfinished" and _progressive_led(english) and not _has(patterns, english):
+            # 正在开发 may be "Developing ...", which has no status word of its own, when
+            # 正在, 目前 or a verb + 中 marks the leading verb and the Chinese has no other.
+            if (name == "unfinished" and _progressive_led(english) and not _has(patterns, english)
+                    and _only_on_lead(chinese)):
                 continue
             return f"translation_{name}"
-    # ... but "Developing ..." may not become 开发了 or 已开发.
-    if _progressive_led(english) and _ZH_DONE.search(chinese) and not UNDERWAY_ZH.search(chinese):
+    if _finished_in_translation(english, chinese, chinese_source=language(source) == "zh"):
         return "translation_unfinished"
     # The claim locks compare these words within one language; across two,
     # a translation may not bring in a setting, a quality or a relevance claim.
