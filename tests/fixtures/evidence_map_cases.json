@@ -4302,6 +4302,68 @@
     "beyond_allowed_edit",
     "personal_marker_added"
    ]
+  },
+  {
+   "group": "same",
+   "label": "relabel after a longer word that starts with its term",
+   "anchors": [
+    "EEG data"
+   ],
+   "original": "Built an EEG database and analyzed EEG recordings from 20 infants.",
+   "rewrite": "Built an EEG database and analyzed EEG data from 20 infants.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "EEG data",
+     "source": "EEG recordings",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "EEG recordings",
+     "to": "EEG data"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "same",
+   "label": "relabel whose to is only inside a longer word",
+   "anchors": [
+    "EEG data"
+   ],
+   "original": "Built an EEG database and analyzed EEG recordings from 20 infants.",
+   "rewrite": "Built an EEG database and analyzed EEG datasets from 20 infants.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "EEG data",
+     "source": "EEG recordings",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "EEG recordings",
+     "to": "EEG data"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_span_missing"
+   ]
   }
  ]
 }

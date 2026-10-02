@@ -254,6 +254,26 @@ class TestGate:
         assert em.rewrite_findings(model, original, [("image classifier", "computer vision model")]) == []
         assert "relabel_not_found" in em.rewrite_findings(model, original, [("image classifier", "vision system")])
 
+    def test_a_relabel_is_undone_where_it_stands_as_whole_words(self):
+        # "EEG data" first occurs inside "EEG database"; the relabel is the later, whole-word one.
+        original = "Built an EEG database and analyzed EEG recordings from 20 infants."
+        rewrite = "Built an EEG database and analyzed EEG data from 20 infants."
+        assert em.reverse_relabels(rewrite, [("EEG recordings", "EEG data")]) == original
+        assert em.rewrite_findings(rewrite, original, [("EEG recordings", "EEG data")]) == []
+        assert em.reverse_relabels("Built an EEG database.", [("EEG recordings", "EEG data")]) is None
+
+    def test_the_alternative_undoes_the_relabel_beside_a_word_that_contains_it(self):
+        anchors = anchors_for(["EEG data"])
+        original = "Responsible for building an EEG database and analyzing EEG recordings from 20 infants."
+        unit = em.Unit("b1", original, original)
+        ops = [{"op": "relabel", "link": "L1", "from": "EEG recordings", "to": "EEG data"}, {"op": "verb_first"}]
+        row = {"unit_id": "b1", "decision": "rewrite", "ops": ops, "keep_reason": None,
+               "links": [{"id": "L1", "anchor": "t1", "term": "EEG data", "source": "EEG recordings", "relation": "same"}],
+               "text": "Built an EEG database and analyzed EEG data from 20 infants."}
+        outcome = em.gate(em.check_rewrite(unit, row, anchors, output_language="en"), unit)
+        assert outcome.status == "pending", outcome
+        assert em.without_terms(outcome, unit, ops) == "Built an EEG database and analyzed EEG recordings from 20 infants."
+
     def test_a_denial_and_a_team_result_come_from_the_text_as_written(self):
         original = "I built a Python parser. I did not build the compiler."
         assert "denied_action_asserted" in em.rewrite_findings(

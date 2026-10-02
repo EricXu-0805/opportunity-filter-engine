@@ -277,19 +277,21 @@ _STOPWORDS = frozenset(
 _WORD_CHARACTER = re.compile(r"[A-Za-z0-9'’-]")
 
 
-def _bounded(text: str, start: int, end: int) -> bool:
-    """A span that neither cuts a word nor has a stopword at either edge.
+def _cuts_word(text: str, start: int, end: int) -> bool:
+    """Whether the span starts or ends inside a word.
 
     The hyphen and apostrophe are word characters: "Age" is not a term of
     "Age-related Differences". CJK text has no word boundaries.
     """
-    if start >= end:
-        return False
     before = text[start - 1] if start else ""
     after = text[end] if end < len(text) else ""
-    if before and _WORD_CHARACTER.match(before) and _WORD_CHARACTER.match(text[start]):
-        return False
-    if after and _WORD_CHARACTER.match(after) and _WORD_CHARACTER.match(text[end - 1]):
+    return bool(before and _WORD_CHARACTER.match(before) and _WORD_CHARACTER.match(text[start])
+                or after and _WORD_CHARACTER.match(after) and _WORD_CHARACTER.match(text[end - 1]))
+
+
+def _bounded(text: str, start: int, end: int) -> bool:
+    """A span that neither cuts a word nor has a stopword at either edge."""
+    if start >= end or _cuts_word(text, start, end):
         return False
     words = re.findall(r"[A-Za-z]+", text[start:end])
     return not words or (words[0].casefold() not in _STOPWORDS and words[-1].casefold() not in _STOPWORDS)
@@ -321,6 +323,16 @@ def source_span(text: str, phrase: str) -> tuple[int, int] | None:
     if len((phrase or "").strip()) < 2:
         return None
     return _find(text, phrase)
+
+
+def written_span(text: str, phrase: str) -> tuple[int, int] | None:
+    """The first case-insensitive occurrence of ``phrase`` as whole words: a relabel's "to" as written.
+
+    "EEG data" is not the start of "EEG database". Unlike a term, it may begin
+    or end with a stopword.
+    """
+    return next((match.span() for match in re.finditer(re.escape(phrase), text, re.I)
+                 if phrase and not _cuts_word(text, *match.span())), None)
 
 
 # ---------------------------------------------------------------------- tokens
@@ -843,7 +855,7 @@ def _check_same_language(unit: Unit, text: str, links: list[Link], ops_raw: list
         if name == "relabel":
             source, target = op.get("from"), op.get("to")
             if (set(op) != {"op", "link", "from", "to"} or not isinstance(source, str) or not isinstance(target, str)
-                    or source_span(unit.current, source) is None or target.casefold() not in text.casefold()):
+                    or source_span(unit.current, source) is None or written_span(text, target) is None):
                 return _keep(unit, "beyond_allowed_edit", "relabel_span_missing", links=links)
             if language(link.term) != language(unit.current) or _CJK.search(link.term) and not _CJK.search(source):
                 return _keep(unit, "beyond_allowed_edit", "relabel_cross_language", links=links)
@@ -929,12 +941,12 @@ RELABEL_SENSITIVE = frozenset({"object_changed", "quantity_moved"})
 
 
 def reverse_relabels(text: str, relabels: list[tuple[str, str]]) -> str | None:
-    """Undo each declared (from, to) replacement; None when a "to" is not in the text."""
+    """Undo each declared (from, to) replacement; None when a "to" is not in the text as whole words."""
     for source, target in relabels:
-        match = re.search(re.escape(target), text, re.I)
-        if not match:
+        span = written_span(text, target)
+        if span is None:
             return None
-        text = text[:match.start()] + source + text[match.end():]
+        text = text[:span[0]] + source + text[span[1]:]
     return text
 
 
