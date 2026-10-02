@@ -179,6 +179,8 @@ class TestLinesAreReadInLinearTime:
         ("_CLAUSE_BREAK", lambda text: grounding._CLAUSE_BREAK.findall(text), " " * 60000 + "x"),
         ("_NOUN_END", lambda text: grounding._NOUN_END.split(text, maxsplit=1), " " * 60000 + "x"),
         ("clauses", grounding.clauses, " " * 60000 + "x"),
+        ("supported_claim_upgrade_detected", lambda text: grounding.supported_claim_upgrade_detected(text, [text, "z"]),
+         " " * 60000 + "x"),
         ("_marks_own_part", em._marks_own_part, "I " * 30000),
         ("_marks_own_part glued", em._marks_own_part, "a我" * 30000),
         ("identifier_numbers", lambda text: grounding.identifier_numbers(text, text), COURSE_CODES),

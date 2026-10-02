@@ -1242,7 +1242,9 @@ def supported_surface_forms(proposed, originals):
         values = []
         for sentence in re.split(r'(?<!\d)\.(?!\d)|[!?;。！？；\n]+', value):
             actor = 'i'
-            for part in re.split(r'\s+(?:and|then)\s+(?=(?:' + _SURFACE_ACTOR + r'\s+)?(?:' + _SURFACE_ACTION + r')\b)', sentence, flags=re.I):
+            # A run of spaces starts one split, not one per space.
+            for part in re.split(r'(?<!\s)\s+(?:and|then)\s+(?=(?:' + _SURFACE_ACTOR + r'\s+)?(?:' + _SURFACE_ACTION + r')\b)',
+                                 sentence, flags=re.I):
                 clause = normalized(part).strip(' ,')
                 if not clause:
                     continue
