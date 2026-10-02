@@ -203,6 +203,41 @@ class TestFinishedClause:
         assert em._finished_clause(f"Paper under review; preprint {word} on arXiv.")
 
 
+class TestDoneMarks:
+    @pytest.mark.parametrize("text", [
+        "开发过网站", "曾为实验室开发网站", "开发出网站", "网站开发完毕", "建成网站", "网站上线", "网站投入使用", "网站交付",
+        "开发好网站", "写完论文", "论文定稿", "大楼竣工", "工程完工", "新馆落成", "测试成功", "整理成表格", "做好网站",
+        "搭好装置", "造出原型", "编好程序", "画完图纸", "拍完视频", "跑完实验", "修好设备", "装好系统"])
+    def test_only_the_refusing_rules_read_the_wider_done_marks(self, text):
+        assert em._has_done(text, wide=True)
+        assert not em._has_done(text)
+
+    @pytest.mark.parametrize("text", [
+        *(f"{word}过网站" for word in "经通不超难错跳越太"), *(f"数据过{word}" for word in "程滤去度敏期量渡于多少来年往半夜节"),
+        *(f"曾{word}指导" for word in "老教博同先女医总"), *(f"开发出{word}" for word in "版现席差发口生门国境台租"),
+        *(f"开发成{word}" for word in "员果绩本像为立熟长分型"), *(f"开发好{word}" for word in "的奇评友处感转像"),
+        *(f"开发完{word}" for word in "善整全美备"), "网站上线前", "能分析出基因", "可以写完论文",
+        *(f"{word}上线" for word in ("预计", "即将", "将于", "将在", "将会", "将要", "计划", "打算", "准备", "拟", "希望",
+                                     "尚未", "没", "待"))])
+    def test_a_word_that_only_looks_like_a_done_mark_states_nothing_done(self, text):
+        assert not em._has_done(text, wide=True)
+
+    @pytest.mark.parametrize("text", [
+        *(f"The site {aux} complete." for aux in ("is", "are", "was", "were", "has been", "have been", "had been",
+                                                  "now", "already")),
+        *(f"The site is {state}." for state in ("complete", "completed", "finished", "done", "live", "online",
+                                                "launched", "deployed", "published", "released", "in use",
+                                                "operational")),
+        *(f"The site is {adverb} complete." for adverb in ("now", "already", "fully", "successfully"))])
+    def test_a_finished_state_is_read_for_the_rule_it_triggers(self, text):
+        assert em._FINISHED_STATE.search(text)
+
+    @pytest.mark.parametrize("text", ["The site is not yet complete.", "Built an online course.", "Paper is under review.",
+                                      "A live dashboard."])
+    def test_a_state_still_to_come_is_no_finished_state(self, text):
+        assert not em._FINISHED_STATE.search(text)
+
+
 class TestUnknownVerbs:
     @pytest.mark.parametrize("word", ["fine-tuning", "scraping", "wiring", "filming", "proofreading", "pipetting",
                                       "cloning", "parsing", "porting", "rendering", "animating", "coaching",

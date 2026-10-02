@@ -7014,6 +7014,405 @@
     "rewrite_rejected",
     "locks"
    ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH finishes a progressive line with 过",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing a Flask dashboard for the lab.",
+   "rewrite": "为实验室开发过一个 Flask 仪表板。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH finishes a progressive line with 曾",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing a Flask dashboard for the lab.",
+   "rewrite": "曾为实验室开发一个 Flask 仪表板。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH finishes a progressive line with 开发出",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing a Flask dashboard for the lab.",
+   "rewrite": "为实验室开发出一个 Flask 仪表板。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH finishes a progressive line with 开发完毕",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing a Flask dashboard for the lab.",
+   "rewrite": "为实验室的 Flask 仪表板开发完毕。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH finishes a progressive line with 建成",
+   "output": "zh",
+   "anchors": [],
+   "original": "Building a weather station for the campus garden.",
+   "rewrite": "为校园花园建成一个气象站。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH finishes a progressive line with 上线",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing a website for the lab.",
+   "rewrite": "为实验室开发网站并正式上线。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH finishes a progressive line with 投入使用",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing a website for the lab.",
+   "rewrite": "为实验室开发的网站投入使用。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH finishes a progressive line with 开发好",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing a website for the lab.",
+   "rewrite": "为实验室开发好网站。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH finishes a thesis under way with 定稿",
+   "output": "zh",
+   "anchors": [],
+   "original": "Writing my senior thesis.",
+   "rewrite": "毕业论文定稿。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN calls work under 正在 now complete",
+   "output": "en",
+   "anchors": [],
+   "original": "正在撰写毕业论文。",
+   "rewrite": "Writing my senior thesis; it is now complete.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN calls work under 正在 launched in a relative clause",
+   "output": "en",
+   "anchors": [],
+   "original": "正在为实验室开发网站。",
+   "rewrite": "Developing a website for the lab, which was launched in March.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN calls work under 正在 already online",
+   "output": "en",
+   "anchors": [],
+   "original": "正在为实验室开发网站。",
+   "rewrite": "Developing a website for the lab; already online.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps a launch that is only expected beside a progressive line",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing a website; launch expected next month.",
+   "rewrite": "正在开发网站，预计下月上线。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps 过滤 in a progressive line",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing a data-filtering module for the lab.",
+   "rewrite": "正在为实验室开发数据过滤模块。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps 研究成果 in a progressive line",
+   "output": "zh",
+   "anchors": [],
+   "original": "Analyzing research results for the lab.",
+   "rewrite": "正在为实验室分析研究成果。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps a site not yet launched",
+   "output": "zh",
+   "anchors": [],
+   "original": "Lab website under development; not yet launched.",
+   "rewrite": "实验室网站开发中，尚未上线。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps 能分析出 in a progressive line",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing a tool that can identify key genes.",
+   "rewrite": "正在开发一个能分析出关键基因的工具。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps 通过 in a progressive line",
+   "output": "zh",
+   "anchors": [],
+   "original": "Testing the parser through unit tests.",
+   "rewrite": "正在通过单元测试测试解析器。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH moves a 开发好 done mark onto the leading verb",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing a website; wrote a review.",
+   "rewrite": "目前开发好网站；撰写综述。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH launches a homepage beside a progressive line",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing a website for the lab.",
+   "rewrite": "正在为实验室开发网站，主页上线。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN finds no licence in a 上线 without 了 or 已",
+   "output": "en",
+   "anchors": [],
+   "original": "正在开发网站，主页上线。",
+   "rewrite": "Developing a website; launched the homepage.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
   }
  ]
 }
