@@ -219,8 +219,10 @@ def test_unparsed_qualifier_cannot_be_dropped_after_a_supported_requirement():
     # Every heading inside another holds its text: 1,000 characters each here.
     # The crawlers parse pages without the URL reader's depth limit. The old
     # capture took 7.0 s at 4,000 headings, four times longer per doubling.
-    pytest.param("<h2>Lab</h2><p>We study soil.</p>" + "<h2>" * 40_000 + "word " * 199 + "word",
-                 id="40000-nested-h2-around-1000-characters"),
+    # 40,000 took 0.2 s locally but over 2 s on a CI runner, so 10,000 keeps
+    # the margin; the old capture would still take about 44 s.
+    pytest.param("<h2>Lab</h2><p>We study soil.</p>" + "<h2>" * 10_000 + "word " * 199 + "word",
+                 id="10000-nested-h2-around-1000-characters"),
 ])
 def test_deep_or_crowded_page_is_captured_in_linear_time(body):
     with _deadline(2):
