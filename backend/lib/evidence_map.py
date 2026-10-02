@@ -28,11 +28,13 @@ from backend.lib.target_resume_ai_grounding import (
     HELP,
     INTENT,
     NEGATION,
+    PLANNED,
     PUBLICATION,
     QUALITY,
     RELEVANCE_PADDING,
     SETTING,
     TEAM,
+    UNDERWAY_ZH,
     UNFINISHED,
     UNFINISHED_ZH,
     _parsed_claim_findings,
@@ -551,11 +553,18 @@ _SPAN = re.compile(r"\b(?:about|approximately|roughly|nearly|almost|around|over|
                    r"|(?<![一发引提拿想兴崛缘])起(?![来草源始点因诉步飞初])|以来|至今", re.I)
 _SOLO = re.compile(r"\b(?:alone|independently|solely|single-handedly|by\s+myself|on\s+my\s+own)\b|独立|独自|单独", re.I)
 _LIMIT = re.compile(r"\b(?:only|just)\b|只|仅", re.I)
-# The status a word gives a thing ("a planned study", "a draft manuscript"). INTENT
-# and UNFINISHED need "to" or a progressive form, so a relabel could drop these.
+# The status or nature a word gives a thing ("a planned study", "a draft manuscript",
+# "a prototype gripper", "simulated EEG signals"). A relabel renames the thing and
+# keeps every one of these, in any use.
 _STATUS_WORD = re.compile(
-    r"\b(?:planned|proposed|prospective|scheduled|tentative|intended|draft|unpublished|unfinished|incomplete)\b"
-    r"|初稿|草稿|预定", re.I)
+    r"\b(?:planned|proposed|prospective|scheduled|tentative|intended|draft|unpublished|unfinished|incomplete"
+    r"|preliminary|pilot|prototypes?|mock|simulated|synthetic)\b|初稿|草稿|预定|初步|原型|仿真", re.I)
+# For translations: a draft (初稿, 草稿); the "un-" words a Chinese line writes with
+# 未, a negation there (未完成, 未发表); and the publication statuses PUBLICATION
+# leaves out, which Chinese writes with 发表 or 出版 (未发表, 即将出版).
+_DRAFT = re.compile(r"\bdrafts?\b|初稿|草稿|草案", re.I)
+_UN_DONE = re.compile(r"\bun(?:published|submitted|finished)\b", re.I)
+_UNPUBLISHED = re.compile(r"\bun(?:published|submitted)\b|\bto\s+appear\b|\bin\s+press\b", re.I)
 _TEAM_ZH_EXTRA = re.compile(r"组员|队友|同学|室友|搭档|伙伴|朋友|一起|课题组|项目组|(?:\d+|[一二三四五六七八九十两])\s*人", re.I)
 # English shared-work words the TEAM lock leaves out; each has a Chinese pair above or in TEAM.
 _TEAM_EN_EXTRA = re.compile(
@@ -571,12 +580,14 @@ _RELEVANCE_WORD = re.compile(
     r"|expertise|proficien\w*)\b|体现|展现|展示|积累|锻炼|提升|培养|相关", re.I)
 _LOCK_WORD = [TEAM, HELP, NEGATION, DENIAL, PUBLICATION, INTENT, UNFINISHED, UNFINISHED_ZH, _STATUS_WORD, _SPAN, _SOLO,
               _LIMIT, _OTHER_PERSON, _TEAM_ZH_EXTRA, _TEAM_EN_EXTRA, CO_CREDIT, _PERSONAL_MARKER]
-# Families a translation must carry across in both directions.
+# Families a translation must carry across in both directions. A work's status is
+# three of them: planned or hoped for (INTENT, PLANNED: 计划, 预定), under way or
+# still to come (UNFINISHED, UNDERWAY_ZH: 开发中, 即将) and a draft.
 _FAMILIES = {
     "team": [TEAM, _TEAM_ZH_EXTRA, _TEAM_EN_EXTRA, CO_CREDIT], "help": [HELP], "limit": [_LIMIT],
-    "negation": [NEGATION, DENIAL], "solo": [_SOLO], "span": [_SPAN], "intent": [INTENT],
-    "unfinished": [UNFINISHED, UNFINISHED_ZH],
-    "publication": [PUBLICATION], "other_person": [_OTHER_PERSON],
+    "negation": [NEGATION, DENIAL, _UN_DONE], "solo": [_SOLO], "span": [_SPAN], "intent": [INTENT, PLANNED],
+    "unfinished": [UNFINISHED, UNDERWAY_ZH], "draft": [_DRAFT], "publication": [PUBLICATION, _UNPUBLISHED],
+    "other_person": [_OTHER_PERSON],
 }
 
 

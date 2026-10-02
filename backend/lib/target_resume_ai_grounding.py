@@ -63,13 +63,33 @@ INTENT = re.compile(
     r"|intend(?:s|ed|ing)?|want(?:s|ed|ing)?|seek(?:s|ing)?|sought|looking|eager|applying|would\s+like)\s+to\b"
     r"|\binterest(?:ed)?\s+in\b|\bgoal\s+(?:is|was)\s+to\b"
     r"|希望|计划|打算|" + _ZH_PLAN + r"|想要|有意|期望|期待|感兴趣|志在", re.I)
+# A planned or scheduled thing, where INTENT needs "to": "a planned EEG study",
+# "a proposed NSF grant", "a study scheduled for May", 预定于 5 月. "Planned the
+# outreach event" and "the proposed model" state no status.
+PLANNED = re.compile(
+    r"\b(?:a|an|the|this|that|these|those|my|our|their|its|his|her|one|two|three|four|five|several|\d+)\s+"
+    r"(?:planned|scheduled|proposed(?=\s+(?:[\w-]+\s+){0,2}?(?:grants?|stud(?:y|ies)|projects?"
+    r"|experiments?|research|trials?|surveys?|fieldwork)\b))\b"
+    r"|\b(?:planned|scheduled)\s+(?:for|to)\b|\btentative(?:ly)?\b|预定(?!了)|暂定", re.I)
 # Work the original says is unfinished. A past-tense verb for it, or a Chinese
 # rewrite without any such word, states it finished.
 UNFINISHED = re.compile(
-    r"\b(?:in\s+preparation|in\s+progress|ongoing|on-going|currently|not\s+yet|pending|forthcoming|upcoming"
-    r"|expected|anticipated|under\s+(?:review|revision|development)|drafting)\b", re.I)
-UNFINISHED_ZH = re.compile(r"正在|撰写中|准备中|进行中|筹备中|在投|待发表|目前|尚未|未完成|计划|打算|希望|" + _ZH_PLAN
-                           + r"|预计|想要")
+    r"\b(?:in\s+preparation|in[\s-]+progress|wip|ongoing|on-going|currently|not\s+yet|pending|forthcoming|upcoming"
+    r"|to\s+appear|in\s+press|underway|will|unpublished|unfinished|expected|anticipated"
+    r"|under\s+(?:review|revision|development|construction)|drafting)\b", re.I)
+# A Chinese action verb + 中 is work under way when it ends its clause or describes
+# a thing (系统开发中, 开发中的系统); after 在, 到 or 入 it is a place (在研究中发现).
+_ZH_UNDERWAY_VERBS = (
+    "开发|测试|分析|研究|整理|采集|申请|审核|审稿|评审|撰写|准备|进行|筹备|设计|调试|搭建|建设|修改|修订|编写|实施|推进"
+    "|招募|收集|处理|训练|优化|验证|调研|构建|部署|迭代|改进|完善|制作|编辑|翻译|录入|标注|统计|计算|筹建|筹划|策划|起草"
+    "|实验|试验|研发|研制|孵化|运营|维护|升级|评估|审查|审批|投稿|提交|拍摄|剪辑|录制|复现|重构")
+_ZH_PROGRESSIVE = ("".join(rf"(?<![在到入][^，,。；;：:、！？!?]{{{n}}})" for n in range(15))
+                   + rf"(?:{_ZH_UNDERWAY_VERBS})中(?=$|[，,。；;：:、！？!?)）\s]|的)")
+# Chinese for work under way or still to come; with the intent words below it is
+# what status_upgraded reads. A translation pairs these with UNFINISHED and the
+# intent words with INTENT.
+UNDERWAY_ZH = re.compile(r"正在|撰写中|准备中|进行中|筹备中|在投|待发表|目前|尚未|未完成|未发表|预计|即将|将于|" + _ZH_PROGRESSIVE)
+UNFINISHED_ZH = re.compile(UNDERWAY_ZH.pattern + r"|计划|打算|希望|" + _ZH_PLAN + r"|想要")
 
 # Résumé verbs and their forms. Inflection only, not synonyms: every form maps
 # back to one base, so "writing", "wrote" and "writes" are the same verb.
@@ -975,10 +995,28 @@ def _leadership(text, name):
 # actions would count as denied. NEGATION is also the selection plan's, so the
 # claim locks below read both texts with the count word written as 个.
 _COUNT_ZHI = re.compile(r"(?<=[\d一二三四五六七八九十两几数多每])(\s?)只")
+_UNDERWAY_ACTION = re.compile(_ZH_PROGRESSIVE)
+# "to appear" and "in press" say the work is being published, as 即将发表 does.
+_IN_PRESS = re.compile(r"\b(?:to\s+appear|in\s+press)\b", re.I)
 
 
 def claim_text(text):
     return _COUNT_ZHI.sub(r"\1个", text)
+
+
+def _claimed_actions(text):
+    """A rewrite's actions, with a Chinese verb + 中 read as work under way.
+
+    "气象站搭建中" translates "weather station under construction", and
+    "开发中的仪表板" "an in-progress dashboard": neither says the student built
+    anything new. The original keeps its own, so "系统开发中" may become
+    "Developing the system".
+    """
+    return personal_actions(_UNDERWAY_ACTION.sub("进行中", text), gerunds=True)
+
+
+def _stages(text):
+    return publication_stages(text) | ({"published"} if _IN_PRESS.search(text) else set())
 
 
 def claim_upgrade_findings(proposed, original):
@@ -1013,11 +1051,12 @@ def claim_upgrade_findings(proposed, original):
         hard.append("negation_dropped")
     if PUBLICATION.search(original) and not PUBLICATION.search(proposed):
         hard.append("publication_qualifier_dropped")
-    if personal_actions(proposed, gerunds=True) - personal_actions(original, gerunds=True):
+    if _claimed_actions(proposed) - personal_actions(original, gerunds=True):
         hard.append("personal_action_added")
-    if publication_stages(proposed) - publication_stages(original):
+    if _stages(proposed) - _stages(original):
         hard.append("publication_stage_added")
-    if INTENT.search(original) and not INTENT.search(proposed):
+    if (INTENT.search(original) or PLANNED.search(original)) and not (
+            INTENT.search(proposed) or PLANNED.search(proposed)):
         hard.append("intent_dropped")
     if status_upgraded(proposed, original):
         hard.append("status_upgraded")

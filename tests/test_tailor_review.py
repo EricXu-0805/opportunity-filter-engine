@@ -437,6 +437,9 @@ class TestLockChangesForEvidenceMappedRewrites:
         ("Plan to analyze the sleep survey data in R this fall.", "Analyzed the sleep survey data in R."),
         ("计划下学期用 Python 复现该论文的实验。", "用 Python 复现了该论文的实验。"),
         ("希望参与机器人社团的机械臂设计。", "参与了机器人社团的机械臂设计。"),
+        # A planned or scheduled thing, where INTENT needs "to", read in either language.
+        ("Designed a planned EEG study with 20 participants.", "设计了一项有 20 名参与者的 EEG 研究。"),
+        ("预定于 2026 年 5 月开展 30 人的睡眠研究。", "Ran a 30-person sleep study in May 2026."),
     ])
     def test_intended_work_stated_as_done_is_hard(self, original, proposed):
         assert "intent_dropped" in claim_upgrade_findings(proposed, original)[0]
@@ -449,6 +452,9 @@ class TestLockChangesForEvidenceMappedRewrites:
         ("Learning ROS to program the club rover's navigation.", "Programmed the club rover's navigation in ROS."),
         ("正在开发一个课程选课小程序。", "开发了一个课程选课小程序。"),
         ("毕业论文撰写中，研究校园雨水径流的浊度变化。", "撰写了毕业论文，研究校园雨水径流的浊度变化。"),
+        ("Will present a poster on sleep spindles at SfN 2026.", "Presented a poster on sleep spindles at SfN 2026."),
+        ("智能温室监测系统开发中，负责传感器数据采集。", "开发了智能温室监测系统，负责传感器数据采集。"),
+        ("论文即将发表于 CHI 2026。", "论文已发表于 CHI 2026。"),
     ])
     def test_unfinished_work_stated_as_finished_is_hard(self, original, proposed):
         assert "status_upgraded" in claim_upgrade_findings(proposed, original)[0]
@@ -461,6 +467,8 @@ class TestLockChangesForEvidenceMappedRewrites:
          "cognitive tests.", "Scheduled participants and scored cognitive tests as a research assistant in the "
                              "Cognitive Aging Lab since Fall 2025."),
         ("目前在做一个基于 Arduino 的土壤湿度监测装置。", "正在制作一个基于 Arduino 的土壤湿度监测装置。"),
+        ("智能温室监测系统开发中，负责传感器数据采集。", "负责传感器数据采集；智能温室监测系统开发中。"),
+        ("计划开展一项 30 人的睡眠研究。", "A planned 30-person sleep study."),
     ])
     def test_status_kept_in_another_form_is_not_an_upgrade(self, original, proposed):
         hard = claim_upgrade_findings(proposed, original)[0]

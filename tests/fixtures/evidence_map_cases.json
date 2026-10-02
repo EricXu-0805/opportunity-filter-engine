@@ -2868,6 +2868,1362 @@
     "beyond_allowed_edit",
     "translation_team"
    ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops draft",
+   "output": "zh",
+   "anchors": [],
+   "original": "Wrote a draft manuscript on sleep spindles.",
+   "rewrite": "撰写了一篇关于睡眠纺锤波的论文。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_draft"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops planned",
+   "output": "zh",
+   "anchors": [],
+   "original": "Designed a planned EEG study with 20 participants.",
+   "rewrite": "设计了一项有 20 名参与者的 EEG 研究。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_intent"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops planned from the consent form line",
+   "output": "zh",
+   "anchors": [],
+   "original": "Drafted the consent form for a planned EEG study on sleep.",
+   "rewrite": "起草了一项睡眠 EEG 研究的知情同意书。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_intent"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops proposed from a grant",
+   "output": "zh",
+   "anchors": [],
+   "original": "Wrote the methods section of a proposed NSF grant.",
+   "rewrite": "撰写了一份 NSF 基金的方法部分。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_intent"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops unpublished",
+   "output": "zh",
+   "anchors": [],
+   "original": "Analyzed unpublished RNA-seq data from 12 mice.",
+   "rewrite": "分析了 12 只小鼠的 RNA-seq 数据。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_negation"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops in-progress",
+   "output": "zh",
+   "anchors": [],
+   "original": "Maintained an in-progress dashboard of lab inventory.",
+   "rewrite": "维护了一个实验室库存仪表板。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH turns a planned study into an ongoing one",
+   "output": "zh",
+   "anchors": [],
+   "original": "Designed a planned EEG study with 20 participants.",
+   "rewrite": "设计了一项正在进行的、有 20 名参与者的 EEG 研究。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_intent"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN drops 初稿",
+   "output": "en",
+   "anchors": [],
+   "original": "撰写了论文初稿。",
+   "rewrite": "Wrote a paper.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_draft"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN drops 草稿",
+   "output": "en",
+   "anchors": [],
+   "original": "完成了实验方案草稿。",
+   "rewrite": "Completed the experiment protocol.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_draft"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN drops 开发中",
+   "output": "en",
+   "anchors": [],
+   "original": "智能温室监测系统开发中，负责传感器数据采集。",
+   "rewrite": "Developed a smart greenhouse monitoring system and collected sensor data.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN drops 预定",
+   "output": "en",
+   "anchors": [],
+   "original": "预定于 2026 年 5 月开展 30 人的睡眠研究。",
+   "rewrite": "Ran a 30-person sleep study in May 2026.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_intent"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN drops 测试中",
+   "output": "en",
+   "anchors": [],
+   "original": "校园导航 App 测试中，已招募 20 名测试用户。",
+   "rewrite": "Tested a campus navigation App and recruited 20 test users.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN drops 申请中",
+   "output": "en",
+   "anchors": [],
+   "original": "一项传感器专利申请中。",
+   "rewrite": "Applied for a sensor patent.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN drops 即将",
+   "output": "en",
+   "anchors": [],
+   "original": "论文即将发表于 CHI 2026。",
+   "rewrite": "Published a paper at CHI 2026.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN drops 将于",
+   "output": "en",
+   "anchors": [],
+   "original": "论文将于 2026 年发表。",
+   "rewrite": "Published the paper in 2026.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful EN to ZH keeps planned as 计划中",
+   "output": "zh",
+   "anchors": [],
+   "original": "Designed a planned EEG study with 20 participants.",
+   "rewrite": "设计了一项计划中的、有 20 名参与者的 EEG 研究。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful ZH to EN keeps 计划 as a planned study",
+   "output": "en",
+   "anchors": [],
+   "original": "计划开展一项 30 人的睡眠研究。",
+   "rewrite": "A planned 30-person sleep study.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful EN to ZH keeps plan to as 计划",
+   "output": "zh",
+   "anchors": [],
+   "original": "Plan to survey 50 users about sleep.",
+   "rewrite": "计划调查 50 名用户的睡眠情况。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful EN to ZH keeps draft",
+   "output": "zh",
+   "anchors": [],
+   "original": "Wrote a draft manuscript on sleep spindles.",
+   "rewrite": "撰写了一篇关于睡眠纺锤波的论文初稿。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful ZH to EN keeps 初稿",
+   "output": "en",
+   "anchors": [],
+   "original": "撰写了论文初稿。",
+   "rewrite": "Wrote a draft of the paper.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful ZH to EN keeps 开发中",
+   "output": "en",
+   "anchors": [],
+   "original": "智能温室监测系统开发中，负责传感器数据采集。",
+   "rewrite": "Smart greenhouse monitoring system (under development): responsible for collecting sensor data.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful ZH to EN keeps 预定",
+   "output": "en",
+   "anchors": [],
+   "original": "预定于 2026 年 5 月开展 30 人的睡眠研究。",
+   "rewrite": "A 30-person sleep study scheduled for May 2026.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful ZH to EN keeps 测试中",
+   "output": "en",
+   "anchors": [],
+   "original": "校园导航 App 测试中，已招募 20 名测试用户。",
+   "rewrite": "Campus navigation App currently in testing; recruited 20 test users.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful ZH to EN keeps 即将",
+   "output": "en",
+   "anchors": [],
+   "original": "论文即将发表于 CHI 2026。",
+   "rewrite": "Upcoming publication at CHI 2026.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful ZH to EN keeps 将于",
+   "output": "en",
+   "anchors": [],
+   "original": "论文将于 2026 年发表。",
+   "rewrite": "The paper will be published in 2026.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful EN to ZH keeps in-progress",
+   "output": "zh",
+   "anchors": [],
+   "original": "Maintained an in-progress dashboard of lab inventory.",
+   "rewrite": "维护了一个开发中的实验室库存仪表板。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful EN to ZH keeps unpublished",
+   "output": "zh",
+   "anchors": [],
+   "original": "Analyzed unpublished RNA-seq data from 12 mice.",
+   "rewrite": "分析了 12 只小鼠未发表的 RNA-seq 数据。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful ZH to EN of a future poster",
+   "output": "en",
+   "anchors": [],
+   "original": "将于 SfN 2026 年会展示一张海报。",
+   "rewrite": "Will present a poster at SfN 2026.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "zh relabel drops 开发中",
+   "anchors": [
+    "参与智能温室环境监测系统开发"
+   ],
+   "original": "智能温室监测系统开发中，负责传感器数据采集。",
+   "rewrite": "智能温室环境监测系统开发，负责传感器数据采集。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "环境监测系统开发",
+     "source": "监测系统开发中",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "监测系统开发中",
+     "to": "环境监测系统开发"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "zh relabel drops 分析中",
+   "anchors": [
+    "问卷统计数据分析"
+   ],
+   "original": "睡眠问卷数据分析中，已清洗 200 份问卷。",
+   "rewrite": "睡眠问卷统计数据分析，已清洗 200 份问卷。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "统计数据分析",
+     "source": "数据分析中",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "数据分析中",
+     "to": "统计数据分析"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "zh relabel drops 整理中",
+   "anchors": [
+    "实验数据记录整理"
+   ],
+   "original": "实验记录整理中，已录入 30 份。",
+   "rewrite": "实验数据记录整理，已录入 30 份。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "数据记录整理",
+     "source": "记录整理中",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "记录整理中",
+     "to": "数据记录整理"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "zh relabel drops 采集中",
+   "anchors": [
+    "脑电信号数据采集"
+   ],
+   "original": "脑电数据采集中，已招募 12 名被试。",
+   "rewrite": "脑电信号数据采集，已招募 12 名被试。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "信号数据采集",
+     "source": "数据采集中",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "数据采集中",
+     "to": "信号数据采集"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "zh relabel drops 即将",
+   "anchors": [
+    "脑电数据"
+   ],
+   "original": "编写了即将采集的脑电记录的命名规则。",
+   "rewrite": "编写了脑电数据的命名规则。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "脑电数据",
+     "source": "即将采集的脑电记录",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "即将采集的脑电记录",
+     "to": "脑电数据"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "zh relabel keeps 开发中",
+   "anchors": [
+    "参与智能温室环境监测系统开发"
+   ],
+   "original": "智能温室监测系统开发中，负责传感器数据采集。",
+   "rewrite": "智能温室环境监测系统开发中，负责传感器数据采集。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "环境监测系统开发",
+     "source": "监测系统开发中",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "监测系统开发中",
+     "to": "环境监测系统开发中"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops work-in-progress",
+   "anchors": [
+    "Python toolkit"
+   ],
+   "original": "Wrote documentation for a work-in-progress Python package for EEG.",
+   "rewrite": "Wrote documentation for a Python toolkit for EEG.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Python toolkit",
+     "source": "work-in-progress Python package",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "work-in-progress Python package",
+     "to": "Python toolkit"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops in-progress",
+   "anchors": [
+    "Python toolkit"
+   ],
+   "original": "Wrote documentation for an in-progress Python package for EEG preprocessing.",
+   "rewrite": "Wrote documentation for a Python toolkit for EEG preprocessing.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Python toolkit",
+     "source": "documentation for an in-progress Python package",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "documentation for an in-progress Python package",
+     "to": "documentation for a Python toolkit"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops prototype",
+   "anchors": [
+    "soft robotic gripper"
+   ],
+   "original": "Built a prototype soft gripper for fruit picking.",
+   "rewrite": "Built a soft robotic gripper for fruit picking.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "soft robotic gripper",
+     "source": "prototype soft gripper",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "prototype soft gripper",
+     "to": "soft robotic gripper"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops simulated",
+   "anchors": [
+    "EEG recordings"
+   ],
+   "original": "Trained a classifier on simulated EEG signals.",
+   "rewrite": "Trained a classifier on EEG recordings.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "EEG recordings",
+     "source": "simulated EEG signals",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "simulated EEG signals",
+     "to": "EEG recordings"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops mock",
+   "anchors": [
+    "clinical trial datasets"
+   ],
+   "original": "Analyzed mock clinical trial data in R.",
+   "rewrite": "Analyzed clinical trial datasets in R.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "clinical trial datasets",
+     "source": "mock clinical trial data",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "mock clinical trial data",
+     "to": "clinical trial datasets"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops preliminary",
+   "anchors": [
+    "experimental results"
+   ],
+   "original": "Presented preliminary results on zebrafish fin regeneration.",
+   "rewrite": "Presented experimental results on zebrafish fin regeneration.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "experimental results",
+     "source": "preliminary results",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "preliminary results",
+     "to": "experimental results"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops WIP",
+   "anchors": [
+    "data-cleaning documentation guide"
+   ],
+   "original": "Shared a WIP data-cleaning guide with the lab.",
+   "rewrite": "Shared a data-cleaning documentation guide with the lab.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "data-cleaning documentation guide",
+     "source": "WIP data-cleaning guide",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "WIP data-cleaning guide",
+     "to": "data-cleaning documentation guide"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful EN to ZH keeps unfinished",
+   "output": "zh",
+   "anchors": [],
+   "original": "Built an unfinished prototype of a soil sensor.",
+   "rewrite": "制作了一个未完成的土壤传感器原型。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful EN to ZH keeps unsubmitted",
+   "output": "zh",
+   "anchors": [],
+   "original": "Proofread an unsubmitted manuscript on soil nitrogen.",
+   "rewrite": "校对了一篇关于土壤氮素的未投稿论文。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful EN to ZH keeps to appear",
+   "output": "zh",
+   "anchors": [],
+   "original": "Paper to appear at CHI 2026.",
+   "rewrite": "论文即将在 CHI 2026 发表。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful EN to ZH keeps in press",
+   "output": "zh",
+   "anchors": [],
+   "original": "Book chapter in press (Springer, 2026).",
+   "rewrite": "书籍章节即将出版（Springer，2026）。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful EN to ZH keeps underway",
+   "output": "zh",
+   "anchors": [],
+   "original": "Campus air-quality survey underway; recruited 40 volunteers.",
+   "rewrite": "校园空气质量调查进行中，已招募 40 名志愿者。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful EN to ZH keeps under construction",
+   "output": "zh",
+   "anchors": [],
+   "original": "Weather station under construction; wired 3 sensors.",
+   "rewrite": "气象站搭建中，已接好 3 个传感器。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful ZH to EN: 在测试中 is a place, not a status",
+   "output": "en",
+   "anchors": [],
+   "original": "在测试中，发现并修复了 3 个缺陷。",
+   "rewrite": "During testing, found and fixed 3 bugs.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful ZH to EN: 分析中 inside a clause is a place",
+   "output": "en",
+   "anchors": [],
+   "original": "数据分析中发现了 2 个异常值。",
+   "rewrite": "Found 2 outliers in the data analysis.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful EN to ZH: the proposed model is not a plan",
+   "output": "zh",
+   "anchors": [],
+   "original": "Evaluated the proposed model on 3 datasets.",
+   "rewrite": "在 3 个数据集上评估了所提出的模型。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful EN to ZH: planned the event is a finished action",
+   "output": "zh",
+   "anchors": [],
+   "original": "Planned the lab's outreach event for 200 students.",
+   "rewrite": "为 200 名学生策划了实验室的外展活动。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful EN to ZH keeps tentative",
+   "output": "zh",
+   "anchors": [],
+   "original": "Drafted a tentative schedule for 8 lab meetings.",
+   "rewrite": "起草了 8 次组会的暂定时间表。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful ZH to EN: 预定了 books a room",
+   "output": "en",
+   "anchors": [],
+   "original": "预定了 3 间会议室。",
+   "rewrite": "Booked 3 meeting rooms.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful EN to ZH keeps scheduled to",
+   "output": "zh",
+   "anchors": [],
+   "original": "Scheduled to run 30 participant sessions in May 2026.",
+   "rewrite": "预定于 2026 年 5 月进行 30 场被试实验。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful EN to ZH keeps a draft as 草案",
+   "output": "zh",
+   "anchors": [],
+   "original": "Wrote a draft of the club's budget proposal.",
+   "rewrite": "撰写了社团预算提案的草案。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops pilot",
+   "anchors": [
+    "sleep deprivation study"
+   ],
+   "original": "Recruited 12 participants for a pilot sleep study.",
+   "rewrite": "Recruited 12 participants for a sleep deprivation study.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "sleep deprivation study",
+     "source": "pilot sleep study",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "pilot sleep study",
+     "to": "sleep deprivation study"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops synthetic",
+   "anchors": [
+    "electronic health records"
+   ],
+   "original": "Trained a classifier on synthetic patient records.",
+   "rewrite": "Trained a classifier on electronic health records.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "electronic health records",
+     "source": "synthetic patient records",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "synthetic patient records",
+     "to": "electronic health records"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "zh relabel drops 原型",
+   "anchors": [
+    "软体机器人夹爪"
+   ],
+   "original": "搭建了一个软体夹爪原型。",
+   "rewrite": "搭建了一个软体机器人夹爪。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "软体机器人夹爪",
+     "source": "软体夹爪原型",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "软体夹爪原型",
+     "to": "软体机器人夹爪"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "zh relabel drops 仿真",
+   "anchors": [
+    "脑电数据"
+   ],
+   "original": "分析了仿真脑电信号。",
+   "rewrite": "分析了脑电数据。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "脑电数据",
+     "source": "仿真脑电信号",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "仿真脑电信号",
+     "to": "脑电数据"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "zh relabel drops 初步",
+   "anchors": [
+    "实验结果"
+   ],
+   "original": "汇报了斑马鱼鳍再生的初步结果。",
+   "rewrite": "汇报了斑马鱼鳍再生的实验结果。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "实验结果",
+     "source": "初步结果",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "初步结果",
+     "to": "实验结果"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
   }
  ]
 }

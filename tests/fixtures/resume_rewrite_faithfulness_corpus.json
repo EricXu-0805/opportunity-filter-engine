@@ -820,6 +820,101 @@
    "original": "Ran co-culture assays of T cells and tumor cells.",
    "rewrite": "进行了 T 细胞与肿瘤细胞的共培养实验。",
    "kind": "EN to ZH: co-culture is a method, not shared credit"
+  },
+  {
+   "original": "Designed a planned EEG study with 20 participants.",
+   "rewrite": "设计了一项计划中的、有 20 名参与者的 EEG 研究。",
+   "kind": "EN to ZH: a planned study is 计划中的"
+  },
+  {
+   "original": "计划开展一项 30 人的睡眠研究。",
+   "rewrite": "A planned 30-person sleep study.",
+   "kind": "ZH to EN: 计划 as a planned study"
+  },
+  {
+   "original": "Plan to survey 50 users about sleep.",
+   "rewrite": "计划调查 50 名用户的睡眠情况。",
+   "kind": "EN to ZH: plan to is 计划"
+  },
+  {
+   "original": "Wrote a draft manuscript on sleep spindles.",
+   "rewrite": "撰写了一篇关于睡眠纺锤波的论文初稿。",
+   "kind": "EN to ZH: a draft is 初稿"
+  },
+  {
+   "original": "撰写了论文初稿。",
+   "rewrite": "Wrote a draft of the paper.",
+   "kind": "ZH to EN: 初稿 is a draft"
+  },
+  {
+   "original": "智能温室监测系统开发中，负责传感器数据采集。",
+   "rewrite": "Smart greenhouse monitoring system (under development): responsible for collecting sensor data.",
+   "kind": "ZH to EN: 开发中 is under development"
+  },
+  {
+   "original": "预定于 2026 年 5 月开展 30 人的睡眠研究。",
+   "rewrite": "A 30-person sleep study scheduled for May 2026.",
+   "kind": "ZH to EN: 预定于 is scheduled for"
+  },
+  {
+   "original": "校园导航 App 测试中，已招募 20 名测试用户。",
+   "rewrite": "Campus navigation App currently in testing; recruited 20 test users.",
+   "kind": "ZH to EN: 测试中 is in testing"
+  },
+  {
+   "original": "论文即将发表于 CHI 2026。",
+   "rewrite": "Upcoming publication at CHI 2026.",
+   "kind": "ZH to EN: 即将发表 is an upcoming publication"
+  },
+  {
+   "original": "论文将于 2026 年发表。",
+   "rewrite": "The paper will be published in 2026.",
+   "kind": "ZH to EN: 将于 is will"
+  },
+  {
+   "original": "Maintained an in-progress dashboard of lab inventory.",
+   "rewrite": "维护了一个开发中的实验室库存仪表板。",
+   "kind": "EN to ZH: in-progress is 开发中的, not a build"
+  },
+  {
+   "original": "Analyzed unpublished RNA-seq data from 12 mice.",
+   "rewrite": "分析了 12 只小鼠未发表的 RNA-seq 数据。",
+   "kind": "EN to ZH: unpublished is 未发表"
+  },
+  {
+   "original": "将于 SfN 2026 年会展示一张海报。",
+   "rewrite": "Will present a poster at SfN 2026.",
+   "kind": "ZH to EN: 将于 is will"
+  },
+  {
+   "original": "Built an unfinished prototype of a soil sensor.",
+   "rewrite": "制作了一个未完成的土壤传感器原型。",
+   "kind": "EN to ZH: unfinished is 未完成"
+  },
+  {
+   "original": "Paper to appear at CHI 2026.",
+   "rewrite": "论文即将在 CHI 2026 发表。",
+   "kind": "EN to ZH: to appear is 即将发表"
+  },
+  {
+   "original": "Weather station under construction; wired 3 sensors.",
+   "rewrite": "气象站搭建中，已接好 3 个传感器。",
+   "kind": "EN to ZH: under construction is 搭建中"
+  },
+  {
+   "original": "在测试中，发现并修复了 3 个缺陷。",
+   "rewrite": "During testing, found and fixed 3 bugs.",
+   "kind": "ZH to EN: 在测试中 is a place"
+  },
+  {
+   "original": "Evaluated the proposed model on 3 datasets.",
+   "rewrite": "在 3 个数据集上评估了所提出的模型。",
+   "kind": "EN to ZH: the proposed model is not a plan"
+  },
+  {
+   "original": "预定了 3 间会议室。",
+   "rewrite": "Booked 3 meeting rooms.",
+   "kind": "ZH to EN: 预定了 books"
   }
  ],
  "unfaithful": [
@@ -1886,6 +1981,230 @@
    "kind": "translation drops the co of coauthored",
    "caught": "contract",
    "case": "EN to ZH drops the co of coauthored"
+  },
+  {
+   "original": "Wrote a draft manuscript on sleep spindles.",
+   "rewrite": "撰写了一篇关于睡眠纺锤波的论文。",
+   "kind": "translation drops draft",
+   "caught": "contract",
+   "case": "EN to ZH drops draft"
+  },
+  {
+   "original": "Designed a planned EEG study with 20 participants.",
+   "rewrite": "设计了一项有 20 名参与者的 EEG 研究。",
+   "kind": "translation drops planned",
+   "caught": "contract",
+   "case": "EN to ZH drops planned"
+  },
+  {
+   "original": "Drafted the consent form for a planned EEG study on sleep.",
+   "rewrite": "起草了一项睡眠 EEG 研究的知情同意书。",
+   "kind": "translation drops planned",
+   "caught": "contract",
+   "case": "EN to ZH drops planned from the consent form line"
+  },
+  {
+   "original": "Wrote the methods section of a proposed NSF grant.",
+   "rewrite": "撰写了一份 NSF 基金的方法部分。",
+   "kind": "translation drops proposed from a grant",
+   "caught": "contract",
+   "case": "EN to ZH drops proposed from a grant"
+  },
+  {
+   "original": "Analyzed unpublished RNA-seq data from 12 mice.",
+   "rewrite": "分析了 12 只小鼠的 RNA-seq 数据。",
+   "kind": "translation drops unpublished",
+   "caught": "contract",
+   "case": "EN to ZH drops unpublished"
+  },
+  {
+   "original": "Maintained an in-progress dashboard of lab inventory.",
+   "rewrite": "维护了一个实验室库存仪表板。",
+   "kind": "translation drops in-progress",
+   "caught": "contract",
+   "case": "EN to ZH drops in-progress"
+  },
+  {
+   "original": "Designed a planned EEG study with 20 participants.",
+   "rewrite": "设计了一项正在进行的、有 20 名参与者的 EEG 研究。",
+   "kind": "translation turns a planned study into an ongoing one",
+   "caught": "contract",
+   "case": "EN to ZH turns a planned study into an ongoing one"
+  },
+  {
+   "original": "撰写了论文初稿。",
+   "rewrite": "Wrote a paper.",
+   "kind": "translation drops 初稿",
+   "caught": "contract",
+   "case": "ZH to EN drops 初稿"
+  },
+  {
+   "original": "完成了实验方案草稿。",
+   "rewrite": "Completed the experiment protocol.",
+   "kind": "translation drops 草稿",
+   "caught": "contract",
+   "case": "ZH to EN drops 草稿"
+  },
+  {
+   "original": "智能温室监测系统开发中，负责传感器数据采集。",
+   "rewrite": "Developed a smart greenhouse monitoring system and collected sensor data.",
+   "kind": "translation states 开发中 as finished",
+   "caught": "contract",
+   "case": "ZH to EN drops 开发中"
+  },
+  {
+   "original": "预定于 2026 年 5 月开展 30 人的睡眠研究。",
+   "rewrite": "Ran a 30-person sleep study in May 2026.",
+   "kind": "translation states a scheduled study as run",
+   "caught": "contract",
+   "case": "ZH to EN drops 预定"
+  },
+  {
+   "original": "校园导航 App 测试中，已招募 20 名测试用户。",
+   "rewrite": "Tested a campus navigation App and recruited 20 test users.",
+   "kind": "translation states 测试中 as finished",
+   "caught": "contract",
+   "case": "ZH to EN drops 测试中"
+  },
+  {
+   "original": "一项传感器专利申请中。",
+   "rewrite": "Applied for a sensor patent.",
+   "kind": "translation drops 申请中",
+   "caught": "contract",
+   "case": "ZH to EN drops 申请中"
+  },
+  {
+   "original": "论文即将发表于 CHI 2026。",
+   "rewrite": "Published a paper at CHI 2026.",
+   "kind": "translation states 即将发表 as published",
+   "caught": "contract",
+   "case": "ZH to EN drops 即将"
+  },
+  {
+   "original": "论文将于 2026 年发表。",
+   "rewrite": "Published the paper in 2026.",
+   "kind": "translation states 将于 as published",
+   "caught": "contract",
+   "case": "ZH to EN drops 将于"
+  },
+  {
+   "original": "智能温室监测系统开发中，负责传感器数据采集。",
+   "rewrite": "智能温室环境监测系统开发，负责传感器数据采集。",
+   "kind": "relabel drops 开发中",
+   "caught": "contract",
+   "case": "zh relabel drops 开发中"
+  },
+  {
+   "original": "睡眠问卷数据分析中，已清洗 200 份问卷。",
+   "rewrite": "睡眠问卷统计数据分析，已清洗 200 份问卷。",
+   "kind": "relabel drops 分析中",
+   "caught": "contract",
+   "case": "zh relabel drops 分析中"
+  },
+  {
+   "original": "实验记录整理中，已录入 30 份。",
+   "rewrite": "实验数据记录整理，已录入 30 份。",
+   "kind": "relabel drops 整理中",
+   "caught": "contract",
+   "case": "zh relabel drops 整理中"
+  },
+  {
+   "original": "脑电数据采集中，已招募 12 名被试。",
+   "rewrite": "脑电信号数据采集，已招募 12 名被试。",
+   "kind": "relabel drops 采集中",
+   "caught": "contract",
+   "case": "zh relabel drops 采集中"
+  },
+  {
+   "original": "编写了即将采集的脑电记录的命名规则。",
+   "rewrite": "编写了脑电数据的命名规则。",
+   "kind": "relabel drops 即将",
+   "caught": "contract",
+   "case": "zh relabel drops 即将"
+  },
+  {
+   "original": "Wrote documentation for a work-in-progress Python package for EEG.",
+   "rewrite": "Wrote documentation for a Python toolkit for EEG.",
+   "kind": "relabel drops work-in-progress",
+   "caught": "contract",
+   "case": "relabel drops work-in-progress"
+  },
+  {
+   "original": "Wrote documentation for an in-progress Python package for EEG preprocessing.",
+   "rewrite": "Wrote documentation for a Python toolkit for EEG preprocessing.",
+   "kind": "relabel drops in-progress",
+   "caught": "contract",
+   "case": "relabel drops in-progress"
+  },
+  {
+   "original": "Built a prototype soft gripper for fruit picking.",
+   "rewrite": "Built a soft robotic gripper for fruit picking.",
+   "kind": "relabel drops prototype",
+   "caught": "contract",
+   "case": "relabel drops prototype"
+  },
+  {
+   "original": "Trained a classifier on simulated EEG signals.",
+   "rewrite": "Trained a classifier on EEG recordings.",
+   "kind": "relabel turns simulated signals into recordings",
+   "caught": "contract",
+   "case": "relabel drops simulated"
+  },
+  {
+   "original": "Analyzed mock clinical trial data in R.",
+   "rewrite": "Analyzed clinical trial datasets in R.",
+   "kind": "relabel drops mock",
+   "caught": "contract",
+   "case": "relabel drops mock"
+  },
+  {
+   "original": "Presented preliminary results on zebrafish fin regeneration.",
+   "rewrite": "Presented experimental results on zebrafish fin regeneration.",
+   "kind": "relabel drops preliminary",
+   "caught": "contract",
+   "case": "relabel drops preliminary"
+  },
+  {
+   "original": "Shared a WIP data-cleaning guide with the lab.",
+   "rewrite": "Shared a data-cleaning documentation guide with the lab.",
+   "kind": "relabel drops WIP",
+   "caught": "contract",
+   "case": "relabel drops WIP"
+  },
+  {
+   "original": "Recruited 12 participants for a pilot sleep study.",
+   "rewrite": "Recruited 12 participants for a sleep deprivation study.",
+   "kind": "relabel drops pilot",
+   "caught": "contract",
+   "case": "relabel drops pilot"
+  },
+  {
+   "original": "Trained a classifier on synthetic patient records.",
+   "rewrite": "Trained a classifier on electronic health records.",
+   "kind": "relabel turns synthetic records into health records",
+   "caught": "contract",
+   "case": "relabel drops synthetic"
+  },
+  {
+   "original": "搭建了一个软体夹爪原型。",
+   "rewrite": "搭建了一个软体机器人夹爪。",
+   "kind": "relabel drops 原型",
+   "caught": "contract",
+   "case": "zh relabel drops 原型"
+  },
+  {
+   "original": "分析了仿真脑电信号。",
+   "rewrite": "分析了脑电数据。",
+   "kind": "relabel turns simulated signals into data",
+   "caught": "contract",
+   "case": "zh relabel drops 仿真"
+  },
+  {
+   "original": "汇报了斑马鱼鳍再生的初步结果。",
+   "rewrite": "汇报了斑马鱼鳍再生的实验结果。",
+   "kind": "relabel drops 初步",
+   "caught": "contract",
+   "case": "zh relabel drops 初步"
   }
  ]
 }
