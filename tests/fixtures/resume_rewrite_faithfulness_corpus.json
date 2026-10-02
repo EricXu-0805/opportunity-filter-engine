@@ -1350,6 +1350,36 @@
    "original": "Drafted the lab report and carefully revised it.",
    "rewrite": "起草了实验报告并仔细修订。",
    "kind": "EN to ZH: and carefully revised it"
+  },
+  {
+   "original": "Developing a course-planning app this semester.",
+   "rewrite": "本学期正在开发一款选课应用。",
+   "kind": "EN to ZH: progressive line after the time word 本学期"
+  },
+  {
+   "original": "Building a weather station for the campus garden.",
+   "rewrite": "目前我正在为校园花园搭建气象站。",
+   "kind": "EN to ZH: progressive line after 目前我"
+  },
+  {
+   "original": "Developing a smart greenhouse monitoring system.",
+   "rewrite": "智能温室监测系统（开发中）。",
+   "kind": "EN to ZH: progressive line as a bracketed 开发中"
+  },
+  {
+   "original": "将会员信息整理成电子表格。",
+   "rewrite": "Organized member information into a spreadsheet.",
+   "kind": "ZH to EN: 将 marks the object 会员信息"
+  },
+  {
+   "original": "在联合利华实习，分析了 3 个品牌的销售数据。",
+   "rewrite": "Interned at Unilever and analyzed sales data for 3 brands.",
+   "kind": "ZH to EN: 联合利华 is a company"
+  },
+  {
+   "original": "在北京联合大学完成了本科学业。",
+   "rewrite": "Completed my undergraduate studies at Beijing Union University.",
+   "kind": "ZH to EN: 北京联合大学 is a school"
   }
  ],
  "unfaithful": [
@@ -3553,6 +3583,13 @@
    "kind": "translation drops her edited version",
    "caught": "contract",
    "case": "EN to ZH drops her edited version"
+  },
+  {
+   "original": "联合开发了一个校园二手交易小程序。",
+   "rewrite": "Developed a campus second-hand trading mini-program.",
+   "kind": "translation drops 联合 before a verb",
+   "caught": "contract",
+   "case": "ZH to EN drops 联合 before a verb"
   }
  ]
 }

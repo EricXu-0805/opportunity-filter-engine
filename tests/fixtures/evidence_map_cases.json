@@ -8812,6 +8812,139 @@
     null,
     null
    ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN drops 联合 before a verb",
+   "output": "en",
+   "anchors": [],
+   "original": "联合开发了一个校园二手交易小程序。",
+   "rewrite": "Developed a campus second-hand trading mini-program.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_team"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps a progressive line after 本学期",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing a course-planning app this semester.",
+   "rewrite": "本学期正在开发一款选课应用。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps a progressive line after 目前我",
+   "output": "zh",
+   "anchors": [],
+   "original": "Building a weather station for the campus garden.",
+   "rewrite": "目前我正在为校园花园搭建气象站。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps a bracketed 开发中",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing a smart greenhouse monitoring system.",
+   "rewrite": "智能温室监测系统（开发中）。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN keeps 将会员 as an object",
+   "output": "en",
+   "anchors": [],
+   "original": "将会员信息整理成电子表格。",
+   "rewrite": "Organized member information into a spreadsheet.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN keeps 联合利华 as a company",
+   "output": "en",
+   "anchors": [],
+   "original": "在联合利华实习，分析了 3 个品牌的销售数据。",
+   "rewrite": "Interned at Unilever and analyzed sales data for 3 brands.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN keeps 北京联合大学 as a school",
+   "output": "en",
+   "anchors": [],
+   "original": "在北京联合大学完成了本科学业。",
+   "rewrite": "Completed my undergraduate studies at Beijing Union University.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
   }
  ]
 }

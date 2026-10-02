@@ -851,9 +851,11 @@ def _has_done(text: str, *, wide: bool = False) -> bool:
         return True
     return wide and any(not _ZH_NOT_YET.search(text, 0, match.start()) for match in _ZH_DONE_MORE.finditer(text))
 # A Chinese line's first clause, and 正在 or 目前 on its leading verb: only a subject
-# or a time word may stand before it (目前正在为实验室开发 ..., 目前每周辅导 ...).
+# or a time word may stand before it (目前正在为实验室开发 ..., 本学期正在, 目前我正在).
 _ZH_FIRST_CLAUSE = re.compile(r"[^，,。；;：:！？!?]*")
-_ZH_LEAD_PROGRESSIVE = re.compile(r"\s*(?:本人|我)?(?:(?:目前|现在|也)?正在|目前)")
+_ZH_LEAD_PROGRESSIVE = re.compile(
+    r"\s*(?:(?:本人|我们|我|本学期|这学期|今年(?:暑假|寒假|夏天)?|暑假(?:期间)?|寒假(?:期间)?|最近|近期|目前|现在|现|也)\s*)*"
+    r"(?:正在|目前)")
 # Chinese clauses, and their parts: 开发了网站并撰写了综述 states two things done.
 _ZH_CLAUSE_BREAK = re.compile(r"[，,。；;：:！？!?]")
 _ZH_PART_BREAK = re.compile(_ZH_CLAUSE_BREAK.pattern + "|、|并")
@@ -944,7 +946,7 @@ def _leading_clause(chinese: str) -> str:
     for clause in _ZH_CLAUSE_BREAK.split(chinese):
         lead = _ZH_LEAD_PROGRESSIVE.match(clause)
         rest = (clause[lead.end():] if lead else clause).strip()
-        if rest and not any(match.end() == len(rest) for match in _UNDERWAY_ACTION.finditer(rest)):
+        if rest and not any(match.end() == len(rest.rstrip(")）")) for match in _UNDERWAY_ACTION.finditer(rest)):
             return clause
     return ""
 
@@ -953,11 +955,12 @@ def _lead_spans(chinese: str) -> list[tuple[int, int]]:
     """Where a Chinese line marks its leading verb as under way.
 
     正在 or 目前 counts when only a subject or a time word stands before it in the
-    first clause; a verb + 中 counts when it ends that clause (系统开发中，负责 ...).
+    first clause; a verb + 中 counts when it ends that clause, bracketed or not
+    (系统开发中，负责 ..., 预约系统（开发中）).
     """
     first = _ZH_FIRST_CLAUSE.match(chinese).group(0)
     spans = [lead.span()] if (lead := _ZH_LEAD_PROGRESSIVE.match(first)) else []
-    end = len(first.rstrip())
+    end = len(first.rstrip().rstrip(")）"))
     return spans + [match.span() for match in _UNDERWAY_ACTION.finditer(first) if match.end() == end]
 
 

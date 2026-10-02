@@ -89,8 +89,9 @@ _ZH_UNDERWAY_VERBS = (
 _ZH_PROGRESSIVE = ("".join(rf"(?<![在到入][^，,。；;：:、！？!?]{{{n}}})" for n in range(5))
                    + rf"(?:{_ZH_UNDERWAY_VERBS})中(?=$|[，,。；;：:、！？!?)）\s]|的)")
 # Chinese for work still to come, which a translation pairs with FUTURE_EN: 将在, 将会
-# and 将要 say "will"; in 将在线问卷, 将会议记录, 将要点 and 将要求, 将 marks the object.
-FUTURE_ZH = re.compile(r"预计|即将|将于|将在(?!线)|将会(?!议)|将要(?!点|求)")
+# and 将要 say "will"; in 将在线问卷, 将会议记录, 将会员信息, 将要点, 将要求 and 将要素, 将
+# marks the object.
+FUTURE_ZH = re.compile(r"预计|即将|将于|将在(?!线)|将会(?!议|员)|将要(?!点|求|素)")
 FUTURE_EN = re.compile(r"\b(?:will|upcoming|forthcoming|to\s+appear|in\s+press|expected|anticipated)\b", re.I)
 # Chinese for work under way or still to come; with the intent words below it is
 # what status_upgraded reads. A translation pairs these with UNFINISHED and the
@@ -434,13 +435,14 @@ _SETTING_LEAD = re.compile(r"^(?:(?:for|in|during|at|within)\s+(?:(?:a|an|the)\s
 LEADERSHIP = ("lead", "own", "independent")
 # Credit shared through a co- word: "co-authored", "co-developed", "coauthored", 合著,
 # 合写, 联合. Bench words name a method, not a co-author: co-culture, co-expression,
-# co-IP; 联合国 and 联合会 are bodies.
+# co-IP; 联合国 and 联合会 are bodies, 联合利华 a company, 北京联合大学 a school and
+# 联合培养 a joint degree programme.
 CO_CREDIT = re.compile(
     r"\bco-(?!(?:op|ops|cultur\w*|express\w*|occur\w*|locali[sz]\w*|immunoprecipitat\w*|ip|transfect\w*"
     r"|factors?|polymer\w*|crystal\w*|infect\w*|morbid\w*|evol\w*|receptors?|requisites?|ordinat\w*|operat\w*"
     r"|varian\w*|registr\w*|efficien\w*|linear\w*|enzymes?|solvents?|treat\w*|incubat\w*|inject\w*|hous\w*"
     r"|precipitat\w*|stimulat\w*|administ\w*|integrat\w*|planar|axial|valen\w*|dominan\w*|activat\w*)\b)[a-z]"
-    r"|\bco(?:author|found|wr[io]t|writ)\w*|合著|合写|联合(?![国会])", re.I)
+    r"|\bco(?:author|found|wr[io]t|writ)\w*|合著|合写|联合(?![国会]|利华|大学|培养)", re.I)
 # Shared credit said with an adverb ("wrote a report jointly") or a co- word. Only
 # the claim locks read it; TEAM itself, and so claim_upgrade_detected, is unchanged.
 _SHARED_CREDIT = re.compile(r"\b(?:jointly|collectively|cooperatively)\b|" + CO_CREDIT.pattern, re.I)

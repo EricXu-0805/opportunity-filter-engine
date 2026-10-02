@@ -368,6 +368,21 @@ class TestLeadingClause:
     def test_the_leading_verb_is_in_the_first_clause_that_is_more_than_a_lead_marker(self, chinese, leading):
         assert em._leading_clause(chinese) == leading
 
+    @pytest.mark.parametrize("chinese", ["预约系统（开发中），撰写了文档", "预约系统(开发中)，撰写了文档"])
+    def test_a_bracketed_verb_and_中_marks_the_work_not_the_verb(self, chinese):
+        assert em._leading_clause(chinese) == "撰写了文档"
+        assert em._lead_spans(chinese)
+
+    @pytest.mark.parametrize("prefix", ["本人", "我们", "我", "本学期", "这学期", "今年", "今年暑假", "今年寒假", "今年夏天",
+                                        "暑假", "暑假期间", "寒假", "寒假期间", "最近", "近期", "目前", "现在", "现", "也",
+                                        "目前我", "本学期我们"])
+    def test_a_subject_or_a_time_word_may_stand_before_正在(self, prefix):
+        assert em._lead_spans(f"{prefix}正在开发网站") == [(0, len(prefix) + 2)]
+
+    @pytest.mark.parametrize("chinese", ["为实验室正在开发网站", "网站正在开发", "上学期开发了网站"])
+    def test_other_words_before_正在_make_no_lead(self, chinese):
+        assert em._lead_spans(chinese) == []
+
     @pytest.mark.parametrize(("chinese", "parts"), [
         ("开发了网站并撰写了一篇综述", 2), ("开发了网站、撰写了综述", 2), ("开发了网站，撰写了综述", 2),
         ("开发了网站；已撰写综述", 2), ("设计并测试了登录页面", 1), ("已撰写了一篇综述", 1), ("正在开发网站", 0)])
@@ -439,7 +454,7 @@ class TestLemma:
     @pytest.mark.parametrize(("text", "will"), [
         ("论文将于 5 月发表", True), ("将在 SfN 上展示海报", True), ("将会提交论文", True), ("将要发表论文", True),
         ("将在线问卷录入系统", False), ("将会议记录整理成表", False), ("将要点整理成表", False), ("将要求整理成表", False),
-        ("将数据录入系统", False)])
+        ("将数据录入系统", False), ("将会员信息整理成表", False), ("将要素分析结果写成报告", False)])
     def test_a_will_is_content_and_an_object_marker_is_not(self, text, will):
         assert ("将" in em.tokens(text)) is will
 
