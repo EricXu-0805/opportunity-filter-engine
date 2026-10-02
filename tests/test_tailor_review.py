@@ -951,3 +951,40 @@ def test_the_locale_chooses_the_output_language_and_the_profile_stays_direction(
     assert "所有改写一律用简体中文" in tailor._SYSTEM_PROMPT_ZH
     assert "它们只提供方向，绝不是证据" in tailor._SYSTEM_PROMPT_ZH
     assert "SINGLE LINE." in tailor._BULLET_SYSTEM_PROMPT_EN and "SINGLE LINE." not in tailor._SYSTEM_PROMPT_EN
+
+
+class TestClaimLocksReadALongSourceOnce:
+    """A 6,000-character source with hundreds of status words or years took 0.4-1 s
+    per rewrite in claim_upgrade_findings; the third review measured 7 s of one
+    request's event-loop turn for 12 such sources. Each clause now reads its noun
+    heads and verbs once, and each text its year neighbourhoods once."""
+
+    def test_status_words_read_their_clauses_noun_heads_once(self, monkeypatch):
+        from backend.lib import target_resume_ai_grounding as grounding
+
+        calls = []
+        real = grounding._noun_head
+        monkeypatch.setattr(grounding, "_noun_head", lambda text: calls.append(text) or real(text))
+        bindings = grounding._qualifier_bindings("Posted preprints on sleep spindles " + "preprints " * 300)
+        assert sum(family == "status_preprint" for family, _ in bindings) == 301
+        assert len(calls) <= 2
+
+    def test_years_are_read_once_per_text(self, monkeypatch):
+        from backend.lib import target_resume_ai_grounding as grounding
+
+        calls = []
+        real = grounding._year_contexts
+        monkeypatch.setattr(grounding, "_year_contexts", lambda text: calls.append(text) or real(text))
+        source = "Tutored students in 2023 and graded exams in 2024 for CS 225; " * 100
+        assert grounding.identifier_numbers(source, source) == {"2023", "2024", "225"}
+        assert len(calls) == 2
+
+    def test_since_reads_its_clauses_verbs_once(self, monkeypatch):
+        from backend.lib import target_resume_ai_grounding as grounding
+
+        calls = []
+        real = grounding._verbs
+        monkeypatch.setattr(grounding, "_verbs", lambda clause: calls.append(clause) or real(clause))
+        bindings = grounding._duration_bindings("Tutored students since 2024 " + "since 2024 " * 200)
+        assert len(bindings) == 201 and {verb for _, verb in bindings} == {"tutor"}
+        assert len(calls) == 2

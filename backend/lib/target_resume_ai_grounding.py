@@ -6,6 +6,7 @@ manual review rather than silently upgrading attribution or publication status.
 """
 from __future__ import annotations
 
+import bisect
 import re
 
 from backend.lib.email_experience_attribution import (
@@ -425,6 +426,9 @@ def _team_relative(clause, start):
     return bool(_TEAM_RELATIVE.search(clause[max(0, start - 60):start]))
 
 
+_OBJECT_WINDOW = 300
+
+
 def _action_objects(clause, after=0, before=None, team_relative=False):
     """(action family, object words) for each ACTIONS verb in ``clause``, EN or ZH.
 
@@ -436,7 +440,8 @@ def _action_objects(clause, after=0, before=None, team_relative=False):
             if (match.start() < after or (before is not None and match.start() >= before)
                     or _team_relative(clause, match.start()) != team_relative):
                 continue
-            rest = re.sub(r"^\s*(?:了|过)?", "", clause[match.end():])
+            # An object ends long before this; reading the clause's whole rest per verb was quadratic.
+            rest = re.sub(r"^\s*(?:了|过)?", "", clause[match.end():match.end() + _OBJECT_WINDOW])
             words = re.sub(r"\b(?:a|an|the|its|their)\b", " ", _OBJECT_END.split(rest, maxsplit=1)[0].lower())
             if words.split():
                 pairs.add((name, " ".join(words.split())))
@@ -575,15 +580,15 @@ _YEAR = re.compile(r"(?<![\d.])((?:19|20)\d{2})(?![\d.%])")
 _CONTEXT_WORD = re.compile(r"[a-z0-9]+(?:\.[0-9]+)?|%", re.I)
 
 
-def _year_contexts(text, value):
+def _year_contexts(text):
+    """{word: its two-word neighbourhoods on each side}, read in one pass over ``text``."""
     words = [word.casefold() for word in _CONTEXT_WORD.findall(text)]
-    found = set()
+    found: dict[str, set] = {}
     for i, word in enumerate(words):
-        if word == value:
-            if i >= 2:
-                found.add(("L", *words[i - 2:i]))
-            if i + 2 < len(words):
-                found.add(("R", *words[i + 1:i + 3]))
+        if i >= 2:
+            found.setdefault(word, set()).add(("L", *words[i - 2:i]))
+        if i + 2 < len(words):
+            found.setdefault(word, set()).add(("R", *words[i + 1:i + 3]))
     return found
 
 
@@ -596,12 +601,13 @@ def identifier_numbers(proposed, original):
     "lab in 2025; rig in 2024") is still a moved number.
     """
     found = set()
-    for match in _COURSE_CODE.finditer(original):
-        if re.search(r"\b" + re.escape(match[1]) + r"\s?" + match[2] + r"\b", proposed):
-            found.add(match[2])
-    for match in _YEAR.finditer(original):
-        if _year_contexts(original, match[1]) & _year_contexts(proposed, match[1]):
-            found.add(match[1])
+    for code, number in {(match[1], match[2]) for match in _COURSE_CODE.finditer(original)}:
+        if re.search(r"\b" + re.escape(code) + r"\s?" + number + r"\b", proposed):
+            found.add(number)
+    years = {match[1] for match in _YEAR.finditer(original)}
+    if years:
+        before, after = _year_contexts(original), _year_contexts(proposed)
+        found |= {year for year in years if before.get(year, set()) & after.get(year, set())}
     return found
 
 
@@ -870,48 +876,84 @@ _NOT_HEAD = frozenset({"a", "an", "the", "its", "their", "his", "her", "my", "ou
                        "another", "one", "two", "three", "not", "yet", "also"})
 _ZH_LEAD = re.compile(r"^(?:了|过|的|另有|还有|有|另|已经|已|一(?:篇|个|份|项|部|本)|[篇个份项部本])+")
 _ZH_TAIL = re.compile(r"(?:了|过|的|已经|已|正在|在|中)+$")
+# Any status word of _STATUS_CLASSES, matched whole.
+_STATUS_WORDS = re.compile("|".join(f"(?:{pattern})" for pattern in _STATUS_CLASSES.values()), re.I)
+_CJK_RUN_AT = re.compile(r"[\u4e00-\u9fff]*")
+_CJK_RUN_END = re.compile(r"[\u4e00-\u9fff]*$")
+# The Chinese run a status reads is bounded, so a long run costs the same as a short one.
+_ZH_WINDOW = 24
+
+
+class _Verbs:
+    """(position, verb) pairs in order, searchable by position.
+
+    A qualifier reads the verb before or after it; with a few hundred
+    qualifiers in a 6,000-character source, a scan per qualifier was
+    quadratic.
+    """
+
+    def __init__(self, pairs):
+        self.pairs = pairs
+        self.positions = [position for position, _ in pairs]
+
+    def before(self, position):
+        """The last verb that starts before ``position``, or None."""
+        index = bisect.bisect_left(self.positions, position)
+        return self.pairs[index - 1][1] if index else None
+
+    def at_or_after(self, position):
+        """The first verb that starts at or after ``position``, or None."""
+        index = bisect.bisect_left(self.positions, position)
+        return self.pairs[index][1] if index < len(self.pairs) else None
 
 
 def _action_target(verbs, match, sentence_verbs, offset, *, co_action=False):
     """The action a qualifier belongs to: the verb before it in its clause, else the next one in its sentence.
 
     With ``co_action``, "collaborated with" or "worked with" hands shared credit
-    on to the verb that follows.
+    on to the verb that follows. ``verbs`` and ``sentence_verbs`` are _Verbs.
     """
-    before = [verb for position, verb in verbs if position < match.start()]
-    if before and not (co_action and before[-1] in _CO_ACTIONS):
-        return before[-1]
-    after = [verb for position, verb in sentence_verbs if position >= offset + match.end()]
-    if after:
-        return after[0]
-    earlier = [verb for position, verb in sentence_verbs if position < offset + match.start()]
-    return earlier[-1] if earlier else None
+    before = verbs.before(match.start())
+    if before is not None and not (co_action and before in _CO_ACTIONS):
+        return before
+    after = sentence_verbs.at_or_after(offset + match.end())
+    return after if after is not None else sentence_verbs.before(offset + match.start())
 
 
 def _noun_head(text):
     words = [word.casefold() for word in _WORD.findall(_NOUN_END.split(text, maxsplit=1)[0])]
-    words = [word for word in words if word not in _NOT_HEAD and not any(
-        re.fullmatch(pattern, word, re.I) for pattern in _STATUS_CLASSES.values())]
+    words = [word for word in words if word not in _NOT_HEAD and not _STATUS_WORDS.fullmatch(word)]
     if not words:
         return None
     head = words[-1]
     return head[:-1] if len(head) > 3 and head.endswith("s") else head
 
 
-def _status_target(clause, match, verbs):
-    """The work a publication status describes: the object of its clause's first verb, else its first noun."""
+def _status_target(clause, match, verbs, heads):
+    """The work a publication status describes: the object of its clause's first verb, else its first noun.
+
+    An English status reads one of two noun heads per clause, kept in ``heads``.
+    """
     if _CJK.search(match.group(0)):
-        after = _ZH_LEAD.sub("", re.match(r"[\u4e00-\u9fff]*", clause[match.end():]).group(0))
+        after = _ZH_LEAD.sub("", _CJK_RUN_AT.match(clause, match.end(), match.end() + _ZH_WINDOW).group(0))
         if after:
             return after[:4]
-        before = re.search(r"[\u4e00-\u9fff]*$", clause[:match.start()]).group(0)
+        before = _CJK_RUN_END.search(clause[max(0, match.start() - _ZH_WINDOW):match.start()]).group(0)
         return _ZH_LEAD.sub("", _ZH_TAIL.sub("", before))[-4:] or None
-    first = next((position for position, verb in verbs if position <= match.start()), None)
-    if first is None:
-        return _noun_head(_CLAUSE_LEAD.sub("", clause))
-    verb = _WORD.match(clause, first)
-    # "Paper submitted to CHI 2026": nothing after the verb names the work.
-    return _noun_head(clause[verb.end() if verb else first:]) or _noun_head(clause[:first])
+    first = verbs.positions[0] if verbs.positions and verbs.positions[0] <= match.start() else None
+    if first not in heads:
+        if first is None:
+            heads[first] = _noun_head(_CLAUSE_LEAD.sub("", clause))
+        else:
+            verb = _WORD.match(clause, first)
+            # "Paper submitted to CHI 2026": nothing after the verb names the work.
+            heads[first] = _noun_head(clause[verb.end() if verb else first:]) or _noun_head(clause[:first])
+    return heads[first]
+
+
+def _sentence_verbs(sentence, pieces):
+    return _Verbs([(clause_start + position, verb) for clause_start, clause_end in pieces
+                   for position, verb in _verbs(sentence[clause_start:clause_end])])
 
 
 def _qualifier_bindings(text):
@@ -919,26 +961,23 @@ def _qualifier_bindings(text):
     for sentence_start, sentence_end in _pieces(text, _SENTENCE_BREAK):
         sentence = text[sentence_start:sentence_end]
         pieces = _pieces(sentence, _CLAUSE_BREAK)
-        sentence_verbs = [(clause_start + position, verb) for clause_start, clause_end in pieces
-                          for position, verb in _verbs(sentence[clause_start:clause_end])]
+        sentence_verbs = _sentence_verbs(sentence, pieces)
         for clause_start, clause_end in pieces:
             clause = sentence[clause_start:clause_end]
-            verbs = _verbs(clause)
+            verbs, heads = _Verbs(_verbs(clause)), {}
             for family, (pattern, binds) in _QUALIFIERS.items():
                 for match in pattern.finditer(clause):
                     if binds == "previous":
-                        before = [verb for position, verb in verbs if position < match.start()]
-                        target = before[-1] if before else None
+                        target = verbs.before(match.start())
                     elif binds == "next":
                         token = _NEXT_TOKEN.search(clause, match.end())
                         target = token.group(0).casefold() if token else None
                     elif binds == "action":
                         target = _action_target(verbs, match, sentence_verbs, clause_start, co_action=True)
                     elif binds == "object":
-                        target = _status_target(clause, match, verbs)
+                        target = _status_target(clause, match, verbs, heads)
                     else:
-                        after = [verb for position, verb in verbs if position >= match.end()]
-                        target = after[0] if after else None
+                        target = verbs.at_or_after(match.end())
                     found.append((family, target))
     return sorted(found, key=str)
 
@@ -952,14 +991,15 @@ def _duration_bindings(text):
     for sentence_start, sentence_end in _pieces(text, _SENTENCE_BREAK):
         sentence = text[sentence_start:sentence_end]
         pieces = _pieces(sentence, _CLAUSE_BREAK)
-        sentence_verbs = [(clause_start + position, verb) for clause_start, clause_end in pieces
-                          for position, verb in _verbs(sentence[clause_start:clause_end])]
+        sentence_verbs = _sentence_verbs(sentence, pieces)
         for clause_start, clause_end in pieces:
             clause = sentence[clause_start:clause_end]
+            verbs = None
             for match in _DURATION.finditer(clause):
+                verbs = verbs or _Verbs(_verbs(clause))
                 token = _NEXT_TOKEN.search(clause, match.end())
                 key = (match.group(0).casefold(), token.group(0).casefold() if token else None)
-                found.append((key, _action_target(_verbs(clause), match, sentence_verbs, clause_start)))
+                found.append((key, _action_target(verbs, match, sentence_verbs, clause_start)))
     return found
 
 

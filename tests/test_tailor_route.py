@@ -652,6 +652,47 @@ class TestInputCaps:
         assert body["tailored_bullets"][0]["text"] == "actual content"
 
 
+class TestSourceBullets:
+    """After "Use kept as new originals" each bullet travels with its source.
+
+    source_bullets[i] is bullet i's only evidence; original_bullets[i] is its
+    current wording, which the model rewrites and the student keeps when the
+    rewrite is refused. The sources of one request are capped as a whole,
+    like the 12 x 500 characters of the bullets themselves.
+    """
+    SOURCE = "Cleaned 212 survey responses in R and built 3 charts."
+    CURRENT = "Built 3 charts and cleaned 212 survey responses in R."
+    OTHER = "Tutored 30 students in CS 124."
+
+    @staticmethod
+    def _post(profile, opp_id, bullets, sources):
+        return client.post("/api/tailor", json={"profile": profile, "opportunity_id": opp_id,
+                                                "original_bullets": bullets, "source_bullets": sources})
+
+    @pytest.mark.parametrize("sources", [
+        ["one source"],                                   # fewer sources than bullets
+        ["one source", "two", "three"],                   # more
+        ["x" * 3001, "y" * 3000],                         # 6,001 characters in all
+        ["x" * 6001, "y"],                                # one source over the cap
+    ])
+    def test_sources_that_do_not_fit_are_refused_before_any_work(self, java_profile, real_opp_id, monkeypatch,
+                                                                 sources):
+        monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: pytest.fail("no model call"))
+        resp = self._post(java_profile, real_opp_id, ["first bullet", "second bullet"], sources)
+        assert resp.status_code == 422
+        detail = resp.json()["detail"]
+        assert (detail["code"], detail["field"], detail["max_source_characters"]) == (
+            "TAILOR_INPUT_TOO_LARGE", "source_bullets", 6000)
+        assert "6000" in detail["message"]
+
+    def test_sources_of_exactly_the_cap_are_accepted(self, java_profile, real_opp_id, monkeypatch):
+        for k in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
+            monkeypatch.delenv(k, raising=False)
+        resp = self._post(java_profile, real_opp_id, ["first bullet", "second bullet"], ["x" * 3000, "y" * 3000])
+        assert resp.status_code == 200
+        assert [b["source_evidence"] for b in resp.json()["tailored_bullets"]] == ["x" * 3000, "y" * 3000]
+
+
 class TestSourceIndex:
     """R71-E: every TailoredBullet carries the matching original index."""
 

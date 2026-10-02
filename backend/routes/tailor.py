@@ -116,6 +116,10 @@ _MAX_BULLET_CHARACTERS = 500
 # One bullet's source is evidence shown whole, so it is bounded by the size of
 # one confirmed experience entry rather than by the résumé.
 _MAX_BULLET_SOURCE_CHARACTERS = 6000
+# All of one request's source_bullets together: as much as the 12 x 500
+# characters of its bullets. Every source is read by the claim locks and sent
+# to the review, so the total bounds both.
+_MAX_SOURCE_TOTAL_CHARACTERS = _DEFAULT_BULLETS_PER_REQUEST * _MAX_BULLET_CHARACTERS
 
 
 # Bumped whenever tailoring logic changes materially — stamped on every
@@ -775,13 +779,13 @@ async def tailor_resume(request: TailorRequest) -> TailorResponse:
         })
     sources = request.source_bullets
     if sources is not None and (len(sources) != len(request.original_bullets)
-                                or any(len(s) > _MAX_BULLET_SOURCE_CHARACTERS for s in sources)):
+                                or sum(len(source) for source in sources) > _MAX_SOURCE_TOTAL_CHARACTERS):
         raise prework_refusal(422, {
             "code": "TAILOR_INPUT_TOO_LARGE",
-            "message": (f"Send one source of up to {_MAX_BULLET_SOURCE_CHARACTERS} characters for each bullet. "
+            "message": (f"Send one source for each bullet, up to {_MAX_SOURCE_TOTAL_CHARACTERS} characters in all. "
                         "Nothing was shortened or dropped."),
             "field": "source_bullets",
-            "max_characters_per_bullet_source": _MAX_BULLET_SOURCE_CHARACTERS,
+            "max_source_characters": _MAX_SOURCE_TOTAL_CHARACTERS,
             "retryable": False,
         })
     resolved = release_visible_opportunity_by_id(load_opportunities_by_id(), request.opportunity_id)
