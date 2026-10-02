@@ -161,6 +161,21 @@ class TestSpanWords:
         assert not em._has(em._FAMILIES["span"], "引用最多的论文")
 
 
+class TestDraft:
+    @pytest.mark.parametrize("text", [
+        "Draft weekly newsletters.", "Write and draft memos.", "Edit or draft memos.", "I draft memos.",
+        "We draft memos.", "Will draft memos.", "Help draft memos.", "Helps draft memos.", "Helped draft memos.",
+        "Helping draft memos.", "Also draft memos.", "Currently draft memos.", "Volunteered to draft memos.",
+        "Edited memos; draft agendas."])
+    def test_the_verb_draft_is_no_status(self, text):
+        assert not em._DRAFT.search(text)
+
+    @pytest.mark.parametrize("text", ["Wrote a draft manuscript.", "Wrote draft manuscripts.", "Wrote two drafts.",
+                                      "Methods section (draft).", "Wrote a first-draft outline.", "撰写了论文初稿。"])
+    def test_a_draft_thing_is_a_status(self, text):
+        assert em._DRAFT.search(text)
+
+
 class TestLemma:
     def test_every_form_of_every_resume_verb_shares_one_lemma(self):
         bases = sorted({base for base, _ in RESUME_VERB_FORMS.values()})

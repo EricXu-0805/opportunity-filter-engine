@@ -57,8 +57,9 @@ _GERUND_POSITION = re.compile(
 # "wiring the logger and designing the battery": a gerund joined to a guarded one is guarded too.
 _GERUND_AND = re.compile(r"^[^,，;；]*?\b(?:and|or)\s+(?P<word>[a-z]+ing)\b", re.I)
 # Hoped-for, planned or tried work. Dropping the word turns it into work done.
-# 拟 plans (拟于, 拟招募), but 模拟 simulates, 拟合 fits and 拟定 draws up a plan.
-_ZH_PLAN = r"(?<![模虚草比])拟(?!合|人|稿|定(?!于|在))"
+# 拟 plans (拟于, 拟招募), but 模拟 simulates, 拟合 fits, 拟定 draws up a plan and 拟南芥
+# is Arabidopsis.
+_ZH_PLAN = r"(?<![模虚草比])拟(?!合|人|稿|南芥|定(?!于|在))"
 INTENT = re.compile(
     r"\b(?:aim(?:s|ed|ing)?|hop(?:e|es|ed|ing)|plan(?:s|ned|ning)?|tr(?:y|ies|ied|ying)|attempt(?:s|ed|ing)?"
     r"|intend(?:s|ed|ing)?|want(?:s|ed|ing)?|seek(?:s|ing)?|sought|looking|eager|applying|would\s+like)\s+to\b"
@@ -90,7 +91,9 @@ _ZH_PROGRESSIVE = ("".join(rf"(?<![在到入][^，,。；;：:、！？!?]{{{n}}
 # Chinese for work under way or still to come; with the intent words below it is
 # what status_upgraded reads. A translation pairs these with UNFINISHED and the
 # intent words with INTENT.
-UNDERWAY_ZH = re.compile(r"正在|撰写中|准备中|进行中|筹备中|在投|待发表|目前|尚未|未完成|未发表|预计|即将|将于|" + _ZH_PROGRESSIVE)
+# 将在, 将会 and 将要 say "will"; in 将在线问卷, 将会议记录, 将要点 and 将要求, 将 marks the object.
+UNDERWAY_ZH = re.compile(r"正在|撰写中|准备中|进行中|筹备中|在投|待发表|目前|尚未|未完成|未发表|预计|即将|将于|将在(?!线)|将会(?!议)"
+                         r"|将要(?!点|求)|" + _ZH_PROGRESSIVE)
 UNFINISHED_ZH = re.compile(UNDERWAY_ZH.pattern + r"|计划|打算|希望|" + _ZH_PLAN + r"|想要")
 
 # Résumé verbs and their forms. Inflection only, not synonyms: every form maps
@@ -395,14 +398,15 @@ _OBJECT_TAIL = frozenset({"in", "for", "on", "with", "without", "during", "at", 
 _OBJECT_BREAK = re.compile(r"(?<!\d)[,，]|[,，](?!\d)|[;；:：()（）\[\]]")
 _SETTING_LEAD = re.compile(r"^(?:(?:for|in|during|at|within)\s+(?:(?:a|an|the)\s+)?|[在为于])")
 LEADERSHIP = ("lead", "own", "independent")
-# Credit shared through a co- word: "co-authored", "co-developed", "coauthored".
-# Bench words name a method, not a co-author: co-culture, co-expression, co-IP.
+# Credit shared through a co- word: "co-authored", "co-developed", "coauthored", 合著,
+# 合写, 联合. Bench words name a method, not a co-author: co-culture, co-expression,
+# co-IP; 联合国 and 联合会 are bodies.
 CO_CREDIT = re.compile(
     r"\bco-(?!(?:op|ops|cultur\w*|express\w*|occur\w*|locali[sz]\w*|immunoprecipitat\w*|ip|transfect\w*"
     r"|factors?|polymer\w*|crystal\w*|infect\w*|morbid\w*|evol\w*|receptors?|requisites?|ordinat\w*|operat\w*"
     r"|varian\w*|registr\w*|efficien\w*|linear\w*|enzymes?|solvents?|treat\w*|incubat\w*|inject\w*|hous\w*"
     r"|precipitat\w*|stimulat\w*|administ\w*|integrat\w*|planar|axial|valen\w*|dominan\w*|activat\w*)\b)[a-z]"
-    r"|\bco(?:author|found|wr[io]t|writ)\w*", re.I)
+    r"|\bco(?:author|found|wr[io]t|writ)\w*|合著|合写|联合(?![国会])", re.I)
 # Shared credit said with an adverb ("wrote a report jointly") or a co- word. Only
 # the claim locks read it; TEAM itself, and so claim_upgrade_detected, is unchanged.
 _SHARED_CREDIT = re.compile(r"\b(?:jointly|collectively|cooperatively)\b|" + CO_CREDIT.pattern, re.I)

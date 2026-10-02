@@ -1035,6 +1035,101 @@
    "original": "Recruited about sixteen participants for the pilot.",
    "rewrite": "为预实验招募了约十六名参与者。",
    "kind": "EN to ZH: about sixteen as 约十六"
+  },
+  {
+   "original": "Will present a poster on sleep spindles at SfN 2026.",
+   "rewrite": "将在 SfN 2026 上展示关于睡眠纺锤波的海报。",
+   "kind": "EN to ZH: will as 将在"
+  },
+  {
+   "original": "Will present a poster on sleep spindles at SfN 2026.",
+   "rewrite": "将会在 SfN 2026 上展示关于睡眠纺锤波的海报。",
+   "kind": "EN to ZH: will as 将会"
+  },
+  {
+   "original": "Will present a poster at SfN 2026.",
+   "rewrite": "将要在 SfN 2026 上展示一张海报。",
+   "kind": "EN to ZH: will as 将要"
+  },
+  {
+   "original": "将在 SfN 2026 上展示关于睡眠纺锤波的海报。",
+   "rewrite": "Will present a poster on sleep spindles at SfN 2026.",
+   "kind": "ZH to EN: 将在 as will"
+  },
+  {
+   "original": "Imported the online survey data into R.",
+   "rewrite": "将在线问卷数据导入 R。",
+   "kind": "EN to ZH: 将在线 is no future"
+  },
+  {
+   "original": "Organized the meeting minutes into a document.",
+   "rewrite": "将会议记录整理成一份文档。",
+   "kind": "EN to ZH: 将会议 is no future"
+  },
+  {
+   "original": "Organized the key points into slides.",
+   "rewrite": "将要点整理成幻灯片。",
+   "kind": "EN to ZH: 将要点 is no future"
+  },
+  {
+   "original": "Organized the requirements into a checklist.",
+   "rewrite": "将要求整理成一份清单。",
+   "kind": "EN to ZH: 将要求 is no future"
+  },
+  {
+   "original": "Co-authored a review of soil microbiome studies.",
+   "rewrite": "合著了一篇土壤微生物组研究综述。",
+   "kind": "EN to ZH: co-authored as 合著"
+  },
+  {
+   "original": "Co-founded the campus robotics club.",
+   "rewrite": "联合创办了校园机器人社。",
+   "kind": "EN to ZH: co-founded as 联合创办"
+  },
+  {
+   "original": "Co-wrote a review of soil microbiome studies.",
+   "rewrite": "合写了一篇土壤微生物组研究综述。",
+   "kind": "EN to ZH: co-wrote as 合写"
+  },
+  {
+   "original": "合著了一篇土壤微生物组研究综述。",
+   "rewrite": "Co-authored a review of soil microbiome studies.",
+   "kind": "ZH to EN: 合著 as co-authored"
+  },
+  {
+   "original": "Translated 3 reports for a United Nations office.",
+   "rewrite": "为联合国办事处翻译了 3 份报告。",
+   "kind": "EN to ZH: 联合国 is no shared credit"
+  },
+  {
+   "original": "Translated 3 newsletters for the student union.",
+   "rewrite": "为学生联合会翻译了 3 期通讯。",
+   "kind": "EN to ZH: 联合会 is no shared credit"
+  },
+  {
+   "original": "Draft weekly newsletters for the robotics club.",
+   "rewrite": "为机器人社撰写每周简报。",
+   "kind": "EN to ZH: draft as a verb"
+  },
+  {
+   "original": "Helped draft the club's budget proposal.",
+   "rewrite": "协助起草了社团的预算提案。",
+   "kind": "EN to ZH: helped draft as a verb"
+  },
+  {
+   "original": "Volunteered to draft the club's budget proposal.",
+   "rewrite": "主动起草了社团的预算提案。",
+   "kind": "EN to ZH: to draft as a verb"
+  },
+  {
+   "original": "Grew 50 Arabidopsis plants for a drought study.",
+   "rewrite": "为一项干旱研究培养了 50 株拟南芥。",
+   "kind": "EN to ZH: Arabidopsis as 拟南芥"
+  },
+  {
+   "original": "为一项干旱研究培养了 50 株拟南芥。",
+   "rewrite": "Grew 50 Arabidopsis plants for a drought study.",
+   "kind": "ZH to EN: 拟南芥 as Arabidopsis"
   }
  ],
  "unfaithful": [
@@ -2640,6 +2735,41 @@
    "kind": "translation drops about before a factor",
    "caught": "contract",
    "case": "EN to ZH drops about before a factor"
+  },
+  {
+   "original": "Wrote draft manuscripts on sleep spindles.",
+   "rewrite": "撰写了关于睡眠纺锤波的论文。",
+   "kind": "translation drops the noun draft",
+   "caught": "contract",
+   "case": "EN to ZH drops the noun draft after a verb"
+  },
+  {
+   "original": "Co-wrote a review of soil microbiome studies.",
+   "rewrite": "撰写了一篇土壤微生物组研究综述。",
+   "kind": "translation drops co-wrote",
+   "caught": "contract",
+   "case": "EN to ZH drops co-wrote"
+  },
+  {
+   "original": "合写了一篇土壤微生物组研究综述。",
+   "rewrite": "Wrote a review of soil microbiome studies.",
+   "kind": "translation drops 合写",
+   "caught": "contract",
+   "case": "ZH to EN drops 合写"
+  },
+  {
+   "original": "将在 SfN 2026 上展示关于睡眠纺锤波的海报。",
+   "rewrite": "Presented a poster on sleep spindles at SfN 2026.",
+   "kind": "translation drops 将在",
+   "caught": "contract",
+   "case": "ZH to EN drops 将在"
+  },
+  {
+   "original": "Methods section of a sleep paper (draft).",
+   "rewrite": "睡眠论文的方法部分。",
+   "kind": "translation drops a bracketed draft",
+   "caught": "contract",
+   "case": "EN to ZH drops a bracketed draft"
   }
  ]
 }

@@ -589,10 +589,14 @@ _LIMIT = re.compile(r"\b(?:only|just)\b|只|仅", re.I)
 _STATUS_WORD = re.compile(
     r"\b(?:planned|proposed|prospective|scheduled|tentative|intended|draft|unpublished|unfinished|incomplete"
     r"|preliminary|pilot|prototypes?|mock|simulated|synthetic)\b|初稿|草稿|预定|初步|原型|仿真", re.I)
-# For translations: a draft (初稿, 草稿); the "un-" words a Chinese line writes with
-# 未, a negation there (未完成, 未发表); and the publication statuses PUBLICATION
-# leaves out, which Chinese writes with 发表 or 出版 (未发表, 即将出版).
-_DRAFT = re.compile(r"\bdrafts?\b|初稿|草稿|草案", re.I)
+# For translations: a draft (初稿, 草稿), as a thing ("a draft manuscript", "wrote two
+# drafts"), not the verb ("Draft weekly newsletters", "helped draft", "to draft"); the
+# "un-" words a Chinese line writes with 未, a negation there (未完成, 未发表); and the
+# publication statuses PUBLICATION leaves out, which Chinese writes with 发表 or 出版
+# (未发表, 即将出版).
+_DRAFT = re.compile(r"(?:(?<=[(\[-])|(?<=[\w'’-]\s)(?<!\bto\s)(?<!\band\s)(?<!\bor\s)(?<!\bI\s)(?<!\bwe\s)"
+                    r"(?<!\bwill\s)(?<!\bhelp\s)(?<!\bhelps\s)(?<!\bhelped\s)(?<!\bhelping\s)(?<!\balso\s)"
+                    r"(?<!\bcurrently\s))\bdrafts?\b|初稿|草稿|草案", re.I)
 _UN_DONE = re.compile(r"\bun(?:published|submitted|finished)\b", re.I)
 _UNPUBLISHED = re.compile(r"\bun(?:published|submitted)\b|\bto\s+appear\b|\bin\s+press\b", re.I)
 _TEAM_ZH_EXTRA = re.compile(r"组员|队友|同学|室友|搭档|伙伴|朋友|一起|课题组|项目组|(?:\d+|[一二三四五六七八九十两])\s*人", re.I)

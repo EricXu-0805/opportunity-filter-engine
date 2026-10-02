@@ -5778,6 +5778,462 @@
     null,
     null
    ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps will as 将在",
+   "output": "zh",
+   "anchors": [],
+   "original": "Will present a poster on sleep spindles at SfN 2026.",
+   "rewrite": "将在 SfN 2026 上展示关于睡眠纺锤波的海报。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps will as 将会",
+   "output": "zh",
+   "anchors": [],
+   "original": "Will present a poster on sleep spindles at SfN 2026.",
+   "rewrite": "将会在 SfN 2026 上展示关于睡眠纺锤波的海报。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps will as 将要",
+   "output": "zh",
+   "anchors": [],
+   "original": "Will present a poster at SfN 2026.",
+   "rewrite": "将要在 SfN 2026 上展示一张海报。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN keeps 将在 as will",
+   "output": "en",
+   "anchors": [],
+   "original": "将在 SfN 2026 上展示关于睡眠纺锤波的海报。",
+   "rewrite": "Will present a poster on sleep spindles at SfN 2026.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps 将 before 在线 as an object marker",
+   "output": "zh",
+   "anchors": [],
+   "original": "Imported the online survey data into R.",
+   "rewrite": "将在线问卷数据导入 R。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps 将 before 会议 as an object marker",
+   "output": "zh",
+   "anchors": [],
+   "original": "Organized the meeting minutes into a document.",
+   "rewrite": "将会议记录整理成一份文档。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps 将 before 要点 as an object marker",
+   "output": "zh",
+   "anchors": [],
+   "original": "Organized the key points into slides.",
+   "rewrite": "将要点整理成幻灯片。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps 将 before 要求 as an object marker",
+   "output": "zh",
+   "anchors": [],
+   "original": "Organized the requirements into a checklist.",
+   "rewrite": "将要求整理成一份清单。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps co-authored as 合著",
+   "output": "zh",
+   "anchors": [],
+   "original": "Co-authored a review of soil microbiome studies.",
+   "rewrite": "合著了一篇土壤微生物组研究综述。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps co-founded as 联合",
+   "output": "zh",
+   "anchors": [],
+   "original": "Co-founded the campus robotics club.",
+   "rewrite": "联合创办了校园机器人社。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps co-wrote as 合写",
+   "output": "zh",
+   "anchors": [],
+   "original": "Co-wrote a review of soil microbiome studies.",
+   "rewrite": "合写了一篇土壤微生物组研究综述。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN keeps 合著 as co-authored",
+   "output": "en",
+   "anchors": [],
+   "original": "合著了一篇土壤微生物组研究综述。",
+   "rewrite": "Co-authored a review of soil microbiome studies.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps the United Nations as 联合国",
+   "output": "zh",
+   "anchors": [],
+   "original": "Translated 3 reports for a United Nations office.",
+   "rewrite": "为联合国办事处翻译了 3 份报告。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps a student union as 联合会",
+   "output": "zh",
+   "anchors": [],
+   "original": "Translated 3 newsletters for the student union.",
+   "rewrite": "为学生联合会翻译了 3 期通讯。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps draft as a present-tense verb",
+   "output": "zh",
+   "anchors": [],
+   "original": "Draft weekly newsletters for the robotics club.",
+   "rewrite": "为机器人社撰写每周简报。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps helped draft as a verb",
+   "output": "zh",
+   "anchors": [],
+   "original": "Helped draft the club's budget proposal.",
+   "rewrite": "协助起草了社团的预算提案。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps draft after to as a verb",
+   "output": "zh",
+   "anchors": [],
+   "original": "Volunteered to draft the club's budget proposal.",
+   "rewrite": "主动起草了社团的预算提案。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps Arabidopsis as 拟南芥",
+   "output": "zh",
+   "anchors": [],
+   "original": "Grew 50 Arabidopsis plants for a drought study.",
+   "rewrite": "为一项干旱研究培养了 50 株拟南芥。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN keeps 拟南芥 as Arabidopsis",
+   "output": "en",
+   "anchors": [],
+   "original": "为一项干旱研究培养了 50 株拟南芥。",
+   "rewrite": "Grew 50 Arabidopsis plants for a drought study.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops the noun draft after a verb",
+   "output": "zh",
+   "anchors": [],
+   "original": "Wrote draft manuscripts on sleep spindles.",
+   "rewrite": "撰写了关于睡眠纺锤波的论文。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_draft"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops co-wrote",
+   "output": "zh",
+   "anchors": [],
+   "original": "Co-wrote a review of soil microbiome studies.",
+   "rewrite": "撰写了一篇土壤微生物组研究综述。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_team"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN drops 合写",
+   "output": "en",
+   "anchors": [],
+   "original": "合写了一篇土壤微生物组研究综述。",
+   "rewrite": "Wrote a review of soil microbiome studies.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_team"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN drops 将在",
+   "output": "en",
+   "anchors": [],
+   "original": "将在 SfN 2026 上展示关于睡眠纺锤波的海报。",
+   "rewrite": "Presented a poster on sleep spindles at SfN 2026.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops a bracketed draft",
+   "output": "zh",
+   "anchors": [],
+   "original": "Methods section of a sleep paper (draft).",
+   "rewrite": "睡眠论文的方法部分。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_draft"
+   ]
   }
  ]
 }
