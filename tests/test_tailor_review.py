@@ -1052,6 +1052,146 @@ class TestClaimLocksReadALongSourceOnce:
         assert grounding.identifier_numbers("In 2024 built the lab; in 2025 built the rig.", original) == {"2024"}
 
 
+def _repeat_to(unit, size):
+    text = (unit * (size // len(unit) + 1))[:size]
+    return text.rsplit(" ", 1)[0]
+
+
+# (evidence of up to 6,000 characters, a bullet of up to 500, the bullet's verb_first rewrite)
+CAP_SHAPES = {
+    "denials": (_repeat_to("led y. never led z. ", 5999), "Responsible for leading y. " + _repeat_to("led y. ", 470),
+                "Led y. " + _repeat_to("led y. ", 470)),
+    "space run": ("Built a" + " " * 5950 + "website for the lab and tested it.",
+                  "Responsible for building a website for the lab.", "Built a website for the lab."),
+    "developed with my team": (_repeat_to("developed ", 3000) + " " + _repeat_to("with my team ", 2990),
+                               "Responsible for developing " + _repeat_to("developed ", 460),
+                               "Developed " + _repeat_to("developed ", 460)),
+}
+
+
+def _verb_first_model(monkeypatch, rewrite, calls):
+    accept = _review_all(True)
+
+    def model(messages, **kwargs):
+        if messages[0]["content"].startswith("FAITHFULNESS REVIEW"):
+            calls.append("review")
+            return accept(json.loads(messages[1]["content"]))
+        calls.append("generate")
+        units = json.loads(messages[1]["content"].split("DATA (JSON):\n", 1)[1])["units"]
+        return json.dumps({"bullets": [{"unit_id": unit["unit_id"], "links": [], "decision": "rewrite",
+                                        "ops": [{"op": "verb_first"}], "text": rewrite, "keep_reason": None}
+                                       for unit in units]})
+
+    monkeypatch.setattr(tailor, "chat_completion", model)
+    monkeypatch.setattr(em, "chat_completion", model)
+    monkeypatch.setattr(tailor, "_snapshot_anchors", lambda source, snapshot: [_anchor("t1", "research on y")])
+
+
+class TestTheParserIsReadOnce:
+    """The claim locks parse each text once and read each claim against the original's facts once."""
+
+    def test_each_text_is_parsed_once(self, monkeypatch):
+        from backend.lib import target_resume_ai_grounding as grounding
+
+        calls = []
+        real = grounding._facts
+        monkeypatch.setattr(grounding, "_facts", lambda text, **kwargs: calls.append(text) or real(text, **kwargs))
+        grounding._source_facts.cache_clear()
+        grounding._claim_facts.cache_clear()
+        original, proposed = "Built a parser in 2031 and tested it.", "Tested a parser, built in 2031."
+        claim_upgrade_findings(proposed, original)
+        assert sorted(calls) == sorted([original, proposed])
+
+    @pytest.mark.parametrize("case", CORPUS["faithful"] + CORPUS["unfaithful"], ids=lambda case: case["rewrite"])
+    def test_unsupported_claims_are_the_parsers(self, case):
+        from backend.lib import email_experience_attribution as attribution
+        from backend.lib import target_resume_ai_grounding as grounding
+
+        for proposed, original in ((case["rewrite"], case["original"]), (case["original"], case["rewrite"])):
+            expected = attribution._unsupported_claims(proposed, [original], True, None)
+            found = grounding._unsupported(grounding._claim_facts(proposed), grounding._source_facts(original))
+            assert found == expected
+
+    @pytest.mark.parametrize(("original", "denials"), [
+        ("Led y. Never led z. " * 3, False), ("Led y. Never led y. Led y.", True)])
+    def test_a_denial_is_read_once_per_claim(self, original, denials):
+        from backend.lib import target_resume_ai_grounding as grounding
+
+        assert ("denied_action_asserted" in claim_upgrade_findings("Led y.", original)[0]) is denials
+        assert bool(grounding._unsupported(grounding._claim_facts("Led y."), grounding._source_facts(original))) is denials
+
+    def test_a_line_with_more_distinct_facts_than_the_cap_is_kept(self):
+        from backend.lib import target_resume_ai_grounding as grounding
+
+        cap = grounding.MAX_PARSED_FACTS
+        within = " ".join(f"Built parser {i}." for i in range(cap))
+        beyond = " ".join(f"Built parser {i}." for i in range(cap + 1))
+        assert "too_many_claims" not in claim_upgrade_findings(within + " Done.", within)[0]
+        assert "too_many_claims" in claim_upgrade_findings(beyond + " Done.", beyond)[0]
+        assert "too_many_claims" in claim_upgrade_findings("Built parser 1.", beyond)[0]
+        assert "too_many_claims" in claim_upgrade_findings(beyond, "Built parser 1.")[0]
+
+
+class TestRequestsAtTheCap:
+    """A guest request with 6,000 characters of evidence is checked in well under a second, off the event loop.
+
+    On 31f09460 the denials shape held /api/tailor for 55 s, and /api/tailor/status
+    answered 61 s apart meanwhile: the checks ran on the event loop and read the
+    attribution parser three times, every claim against every fact and denial.
+    """
+
+    @pytest.mark.parametrize("shape", list(CAP_SHAPES))
+    @pytest.mark.parametrize("path", ["/api/tailor", "/api/tailor/bullet"])
+    def test_a_request_at_the_cap_answers_in_well_under_a_second_of_checks(self, endpoint, monkeypatch, path, shape):
+        import time
+
+        client, opportunity_id = endpoint
+        evidence, current, rewrite = CAP_SHAPES[shape]
+        calls: list[str] = []
+        _verb_first_model(monkeypatch, rewrite, calls)
+        payload = {"profile": PROFILE, "opportunity_id": opportunity_id, "locale": "en"}
+        if path.endswith("/bullet"):
+            payload.update(base_text=evidence, current_text=current)
+        else:
+            payload.update(original_bullets=[current], source_bullets=[evidence])
+        started = time.perf_counter()
+        response = client.post(path, json=payload)
+        assert response.status_code == 200, response.text
+        assert time.perf_counter() - started < 3
+        assert calls[0] == "generate" and len(calls) <= 2
+
+    def test_the_event_loop_answers_while_a_request_at_the_cap_is_checked(self, endpoint, monkeypatch):
+        import asyncio
+        import time
+
+        import httpx
+
+        _, opportunity_id = endpoint
+        evidence, current, rewrite = CAP_SHAPES["denials"]
+        calls: list[str] = []
+        _verb_first_model(monkeypatch, rewrite, calls)
+        payload = {"profile": PROFILE, "opportunity_id": opportunity_id, "locale": "en",
+                   "original_bullets": [current], "source_bullets": [evidence]}
+
+        async def main():
+            transport = httpx.ASGITransport(app=app)
+            async with httpx.AsyncClient(transport=transport, base_url="http://test", timeout=120) as client:
+                heavy = asyncio.create_task(client.post("/api/tailor", json=payload))
+                gaps, last = [], time.perf_counter()
+                while True:
+                    await client.get("/api/tailor/status")
+                    now = time.perf_counter()
+                    gaps.append(now - last)
+                    if heavy.done():
+                        return heavy.result().status_code, gaps
+                    await asyncio.sleep(0.01)
+                    last = time.perf_counter()
+
+        status, gaps = asyncio.run(main())
+        assert status == 200 and calls[0] == "generate"
+        assert max(gaps) < 0.5
+
+
 class TestSharedCreditWords:
     @pytest.mark.parametrize("word", [
         "co-authored", "co-developed", "coauthored", "cofounded", "co-wrote", "cowrote", "合著", "合写", "联合创办",

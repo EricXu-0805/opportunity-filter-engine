@@ -191,7 +191,11 @@ class TestLinesAreReadInLinearTime:
         ("_marks_own_part glued", em._marks_own_part, "a我" * 30000),
         ("identifier_numbers", lambda text: grounding.identifier_numbers(text, text), COURSE_CODES),
         ("_setting_added", lambda text: em._setting_added("实验室 lab project", text), "在实验室" * 15000),
-        ("_setting_added en", lambda text: em._setting_added("lab project", text), "for a project " * 4300)]])
+        ("_setting_added en", lambda text: em._setting_added("lab project", text), "for a project " * 4300),
+        ("_guarded_gerunds", grounding._guarded_gerunds, "helped building " * 4000),
+        ("_core_lengths", lambda text: grounding._core_lengths(tuple(text.split())), "x " + "daily " * 10000),
+        ("_same_object", lambda text: grounding._same_object(
+            tuple(text.split()), grounding._Readings([tuple(text.split()[1:]) + ("z",)])), "y supporting " * 5000)]])
     def test_a_long_run_is_read_in_linear_time(self, name, read, text):
         started = time.perf_counter()
         read(text)
@@ -237,6 +241,114 @@ class TestLinesAreReadInLinearTime:
         em._check_translation(em.Unit("b1", line, line), other)
         em._check_translation(em.Unit("b1", other, other), line)
         assert time.perf_counter() - started < 1, unit
+
+
+def _repeat(unit, size):
+    """``unit`` repeated to ``size`` characters, cut at a space."""
+    text = (unit * (size // len(unit) + 1))[:size]
+    return text.rsplit(" ", 1)[0] if " " in text else text
+
+
+DISTINCT_DENIALS = " ".join(f"led y{i} a{i}. never led z{i}." for i in range(300))[:6000]
+
+
+class TestClaimLocksAtTheCap:
+    """A 6,000-character evidence, the most a request may send, and a long rewrite are read in well under a second.
+
+    On 31f09460 these took 3 to 90 s or never finished: the attribution parser was
+    read three times per rewrite, every claim against every source fact and, for
+    each of those, every denial; a run of spaces inside an object made its object
+    and coordinator patterns try every split of the run; prepositional phrases
+    before a subject made the context-prefix pattern try every way to cut them; and
+    each "helped building" read the rest of its clause.
+    """
+
+    @pytest.mark.parametrize(("proposed", "original"), [
+        pytest.param(_repeat("Led y. ", 620), _repeat("led y. never led z. ", 6000), id="never led"),
+        pytest.param(_repeat("Led y. ", 620), _repeat("led y. did not lead z. ", 6000), id="did not lead"),
+        pytest.param(_repeat("Led y. ", 620), _repeat("led y. not led z. ", 6000), id="not led"),
+        pytest.param(" ".join(f"Led y{i}." for i in range(90)), DISTINCT_DENIALS, id="distinct denials"),
+        pytest.param(_repeat("led y. ", 620), _repeat("led y. ", 6000), id="led y"),
+        pytest.param("Built a website for the lab.", "Built a" + " " * 5950 + "website for the lab and tested it.",
+                     id="space run"),
+        pytest.param("Built a website for the lab.", "Built a" + " \t" * 2975 + "website for the lab and tested it.",
+                     id="mixed run"),
+        pytest.param(_repeat("developed ", 3000) + " x", _repeat("developed ", 3000) + " " + _repeat("with my team ", 3000),
+                     id="developed with my team"),
+        pytest.param(_repeat("helped building ", 6000)[:-3] + "x", _repeat("helped building ", 6000), id="helped building"),
+        pytest.param("I built y.", "in a " * 40 + ", x I built y.", id="phrases before a subject"),
+        pytest.param(_repeat("Built x daily ", 3000), _repeat("Built x daily ", 6000), id="adverbial objects"),
+        pytest.param("Built " + _repeat("y supporting ", 3000), "Built " + _repeat("y supporting ", 6000) + " z",
+                     id="participle heads"),
+    ])
+    def test_a_pair_at_the_cap_is_read_in_well_under_a_second(self, proposed, original):
+        started = time.perf_counter()
+        grounding.claim_upgrade_findings(proposed, original)
+        grounding.claim_upgrade_findings(original, proposed)
+        assert time.perf_counter() - started < 1
+
+    @pytest.mark.parametrize("size", [750, 3000, 6000])
+    def test_a_full_target_line_at_the_cap_is_gated_in_well_under_a_second(self, size):
+        body = _repeat("led y. not led z. ", size - 30)
+        original, rewrite = "Responsible for leading y. " + body, "Led y. " + body
+        unit = em.Unit("e1", original, original, keyed=True)
+        row = {"unit_id": "e1", "links": [], "decision": "rewrite", "ops": [{"op": "verb_first"}], "text": rewrite,
+               "keep_reason": None}
+        started = time.perf_counter()
+        outcome = em.check_rewrite(unit, row, anchors_for(["x y"]), output_language="en")
+        assert outcome.status == "pending"
+        em.gate(outcome, unit)
+        assert time.perf_counter() - started < 1
+
+
+class TestOneReadingOfEachFact:
+    """The per-claim checks read each source fact once, with the answers the per-shortening reading gave."""
+
+    @pytest.mark.parametrize(("clause", "families"), [
+        ("helped building x and designing y", {"build", "design"}), ("helped building x, and designing y", {"build"}),
+        ("helped building x and y and designing z", {"build", "design"}), ("designing x or reviewing y", {"design", "review"}),
+        ("x and designing y", set()), ("helped building x; and designing y", {"build"}),
+        ("responsible for leading x and managing y, developing z", {"lead", "build"})])
+    def test_a_gerund_joined_to_a_guarded_one_is_guarded_until_a_comma(self, clause, families):
+        assert grounding._guarded_gerunds(clause) == families
+
+    def test_joined_gerunds_are_followed_once(self):
+        started = time.perf_counter()
+        assert grounding._guarded_gerunds("helped building " * 2000 + "and designing " * 2000) == {"build", "design"}
+        assert time.perf_counter() - started < 1
+
+    @pytest.mark.parametrize(("core", "lengths"), [
+        (("python", "scripts", "daily"), {2, 3}), (("x", "last", "summer"), {1, 3}), (("x", "last"), {2}),
+        (("x", "daily", "last", "week"), {1, 2, 4}), (("daily",), {1}), ((), {0}), (("x", "y", "daily", "z"), {4})])
+    def test_an_object_is_read_whole_or_without_its_closing_when_or_how(self, core, lengths):
+        assert grounding._core_lengths(core) == lengths
+
+    @pytest.mark.parametrize(("claim", "source", "same"), [
+        (("web", "app"), ("web", "application"), True), (("ap",), ("application",), False),
+        (("application",), ("app",), True), (("cnn",), ("convolutional", "neural", "network"), True),
+        (("convolutional", "neural", "network"), ("cnn",), True), (("sensor", "rig"), ("rig", "supporting", "tests"), True),
+        (("dashboard",), ("website",), False), (("rig",), ("sensor", "rig", "daily"), True)])
+    def test_a_head_is_named_spelled_out_or_abbreviated(self, claim, source, same):
+        assert grounding._same_object(claim, grounding._Readings([source])) is same
+
+    @pytest.mark.parametrize(("original", "moved"), [
+        ("Built a parser for 30 users.", False), ("Built a parser for 30 users. Tested 40 builds.", True)])
+    def test_a_number_moves_only_when_the_original_states_it_elsewhere(self, original, moved):
+        # A number the original never states is the grounding check's, not a moved quantity.
+        assert ("quantity_moved" in grounding.claim_upgrade_findings("Built a parser for 40 users.", original)[0]) is moved
+
+    @pytest.mark.parametrize(("proposed", "original"), [
+        ("Built an ML model.", "Built an ML model with Python. Did not build an ML model with MATLAB."),
+        ("Built an ML model.", "Built an ML model with Python. Did not build an ML model."),
+        ("Trained an ML model.", "Trained an ML model with MATLAB during coursework. Did not train an ML model with Python."),
+        ("Built a parser.", "Project Alpha: built a parser. Project Beta: did not build a parser."),
+        ("Built a parser, which reached 90% accuracy.", "Built a parser. Reached 90% accuracy."),
+        ("Did not build a parser.", "Did not build a parser. Built a lexer.")])
+    def test_unsupported_claims_are_the_parsers_on_scopes_tools_and_trailing_results(self, proposed, original):
+        from backend.lib.email_experience_attribution import _unsupported_claims
+
+        found = grounding._unsupported(grounding._claim_facts(proposed), grounding._source_facts(original))
+        assert found == _unsupported_claims(proposed, [original], True, None)
 
 
 class TestSpanWords:

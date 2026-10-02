@@ -7,14 +7,19 @@ manual review rather than silently upgrading attribution or publication status.
 from __future__ import annotations
 
 import bisect
+import functools
 import re
 
 from backend.lib.email_experience_attribution import (
     _TEAM_CONTEXT,
     _facts,
+    _objects_contradicted,
     _objects_overlap,
+    _objects_supported,
+    _qualifiers_supported,
+    _same_actor,
     _tokens,
-    _unsupported_claims,
+    _tool_omission_supported,
     experience_attribution_violations,
 )
 
@@ -54,8 +59,10 @@ _GERUND_POSITION = re.compile(
     r"(?:(?:also|currently|still|personally|independently|jointly|actively)\s+)?(?P<word>[a-z]+ing)\b"
     # "building on prior protocols" draws on earlier work; it builds nothing.
     r"(?!(?<=building)\s+(?:on|upon)\b)", re.I)
-# "wiring the logger and designing the battery": a gerund joined to a guarded one is guarded too.
-_GERUND_AND = re.compile(r"^[^,，;；]*?\b(?:and|or)\s+(?P<word>[a-z]+ing)\b", re.I)
+# "wiring the logger and designing the battery": a gerund joined to a guarded one is guarded too,
+# when no comma or semicolon stands between them.
+_GERUND_AND = re.compile(r"\b(?:and|or)\s+(?P<word>[a-z]+ing)\b", re.I)
+_GERUND_STOP = re.compile(r"[,，;；]")
 # Hoped-for, planned or tried work. Dropping the word turns it into work done.
 # 拟 plans (拟于, 拟招募), but 模拟 simulates, 拟合 fits, 拟定 draws up a plan and 拟南芥
 # is Arabidopsis.
@@ -293,19 +300,31 @@ def clauses(text):
     return [part.strip() for part in re.split(boundaries, text, flags=re.I) if part.strip()]
 
 
+@functools.lru_cache(maxsize=1024)
 def _guarded_gerunds(clause):
-    """Action families of the gerunds that are this clause's own action."""
-    found, text = set(), clause.strip()
+    """Action families of the gerunds that are this clause's own action.
+
+    A guarded gerund's "and"/"or" chain runs to the next join while no comma or
+    semicolon comes first. The joins and stops are found once, and a join is
+    followed once: a chain that reaches one already taken adds nothing new.
+    """
+    words, text = [], clause.strip()
+    joins = list(_GERUND_AND.finditer(text))
+    starts = [join.start() for join in joins]
+    stops = [stop.start() for stop in _GERUND_STOP.finditer(text)]
+    taken = set()
     for match in _GERUND_POSITION.finditer(text):
-        words, rest = [match["word"]], text[match.end():]
-        while more := _GERUND_AND.match(rest):
-            words.append(more["word"])
-            rest = rest[more.end():]
-        for word in words:
-            for name, pattern in ACTION_GERUNDS.items():
-                if re.fullmatch(pattern, word, re.I):
-                    found.add(name)
-    return found
+        words.append(match["word"])
+        position = match.end()
+        while (index := bisect.bisect_left(starts, position)) < len(joins) and index not in taken:
+            stop = bisect.bisect_left(stops, position)
+            if stop < len(stops) and stops[stop] < starts[index]:
+                break
+            taken.add(index)
+            words.append(joins[index]["word"])
+            position = joins[index].end()
+    return frozenset(name for word in words for name, pattern in ACTION_GERUNDS.items()
+                     if re.fullmatch(pattern, word, re.I))
 
 
 def personal_actions(text, gerunds=False):
@@ -513,6 +532,7 @@ def _moved_claims(proposed, original):
     return found
 
 
+@functools.lru_cache(maxsize=4096)
 def _object_core(fact):
     """The object noun phrase before its first comma, bracket or tail word."""
     objects, limit = fact.objects, len(fact.objects)
@@ -533,9 +553,12 @@ def _object_core(fact):
     return tuple(core)
 
 
+def _head_word(word):
+    return word[:-1] if len(word) > 3 and word.endswith("s") else word
+
+
 def _object_head(core):
-    head = core[-1] if core else ""
-    return head[:-1] if len(head) > 3 and head.endswith("s") else head
+    return _head_word(core[-1]) if core else ""
 
 
 def _participle(token):
@@ -544,25 +567,7 @@ def _participle(token):
 
 def _heads(core):
     # Without its comma, "a sensor rig supporting 4 experiments" may end at "rig".
-    return {_object_head(core)} | {_object_head(core[:i]) for i in range(1, len(core)) if _participle(core[i])}
-
-
-def _abbreviates(core, other):
-    head = _object_head(core)
-    return len(head) >= 2 and head.isalpha() and "".join(token[0] for token in other).endswith(head)
-
-
-def _same_object(core, cores):
-    """A head the source names, spells out ("app"/"application") or abbreviates ("CNN")."""
-    for other in cores:
-        for head in _heads(core):
-            for source_head in _heads(other):
-                short, long = sorted((head, source_head), key=len)
-                if head == source_head or (len(short) >= 3 and long.startswith(short)):
-                    return True
-        if _abbreviates(core, other) or _abbreviates(other, core):
-            return True
-    return False
+    return {_object_head(core)} | {_head_word(core[i - 1]) for i in range(1, len(core)) if _participle(core[i])}
 
 
 # Words after an object that say when or how, not what: "a report independently",
@@ -584,33 +589,79 @@ def _manner_adverb(word):
             and not word.endswith(("assembly", "supply", "family")))
 
 
-def _adverbial(words):
-    i = 0
-    while i < len(words):
-        if words[i] in _TIME_LEAD and i + 1 < len(words):
-            i += 2
-        elif words[i] in _ADVERBIAL:
-            i += 1
+def _core_lengths(core):
+    """The lengths at which ``core`` names the object: all of it and, where the rest only
+    says when or how, the part before that ("python scripts daily" -> "python scripts").
+
+    Read from the end once: the rest from i says when or how when it is a time word and
+    the word after it ("last summer") or an adverbial word, followed by more of the same.
+    """
+    ends = [False] * len(core) + [True]
+    for i in range(len(core) - 1, -1, -1):
+        if core[i] in _TIME_LEAD and i + 1 < len(core):
+            ends[i] = ends[i + 2]
         else:
-            return False
-    return True
+            ends[i] = core[i] in _ADVERBIAL and ends[i + 1]
+    return {len(core)} | {i for i in range(1, len(core)) if ends[i]}
 
 
-def _source_cores(core):
-    """``core`` and, if it ends by saying when or how, the object alone ("python scripts daily")."""
-    return {core} | {core[:i] for i in range(1, len(core)) if _adverbial(core[i:])}
+class _Readings:
+    """The objects that the source facts of one action and actor name, read once per pair.
+
+    A fact names its object core, or the core without a closing when or how
+    (_core_lengths). A claim is compared with each fact once, against these
+    lengths, rather than with every shortened copy of every core.
+    """
+
+    def __init__(self, cores):
+        self.items = [(core, frozenset(lengths), max(lengths)) for core in cores for lengths in [_core_lengths(core)]]
+        self.initials = [("".join(token[0] for token in core), lengths) for core, lengths, _ in self.items]
+        heads, abbreviations = set(), set()
+        for core, lengths, longest in self.items:
+            ends = {"" if i == 0 else _head_word(core[i - 1]) for i in lengths}
+            abbreviations |= {head for head in ends if len(head) >= 2 and head.isalpha()}
+            heads |= ends | {_head_word(core[i - 1]) for i in range(1, longest) if _participle(core[i])}
+        self.heads, self.ordered, self.abbreviations = heads, sorted(heads), abbreviations
+        self.sizes = sorted({len(head) for head in heads if len(head) >= 3})
+
+    def related(self, head):
+        """Whether a source head is ``head``, or one of the two begins the other and has 3+ letters."""
+        if head in self.heads:
+            return True
+        if len(head) >= 3:
+            index = bisect.bisect_left(self.ordered, head)
+            if index < len(self.ordered) and self.ordered[index].startswith(head):
+                return True
+        return any(head[:size] in self.heads for size in self.sizes if size < len(head))
+
+    def abbreviate(self, head):
+        """Whether the initials of some object a source fact names end in ``head`` ("CNN")."""
+        return any(i >= len(head) and initials[i - len(head):i] == head
+                   for initials, lengths in self.initials for i in lengths)
 
 
-def _head_dropped(core, cores):
+def _same_object(core, readings):
+    """A head the source names, spells out ("app"/"application") or abbreviates ("CNN")."""
+    if any(readings.related(head) for head in _heads(core)):
+        return True
+    head = _object_head(core)
+    if len(head) >= 2 and head.isalpha() and readings.abbreviate(head):
+        return True
+    initials = "".join(token[0] for token in core)
+    return any(initials.endswith(other) for other in readings.abbreviations)
+
+
+def _head_dropped(core, readings):
     """"a web app mockup" -> "a web app" is "hard": the shortened object ends before the source's head.
 
     A dropped tail of unlisted manner adverbs ("500 images carefully") is
     "soft", for the review; an "-ly" noun ("a PCB assembly") is a head noun.
     """
-    if not core or core in cores:
+    size = len(core)
+    if not core or any(size in lengths and other[:size] == core for other, lengths, _ in readings.items):
         return None
-    tails = [other[len(core):] for other in cores
-             if len(other) > len(core) and other[:len(core)] == core and not _participle(other[len(core)])]
+    tails = [other[size:longest] for other, _, longest in readings.items
+             if longest > size and other[:size] == core and not _participle(other[size])]
     if not tails:
         return None
     if all(_manner_adverb(word) for tail in tails for word in tail):
@@ -652,39 +703,124 @@ def identifier_numbers(proposed, original):
     return found
 
 
-def _moved_numbers(claim, sources, head, identifiers):
-    numbers = {token for token in claim.objects if token[0].isdigit()} - identifiers
-    placed = [fact for fact in sources if fact.action == claim.action and _object_head(_object_core(fact)) == head]
-    return bool(placed and numbers & {token for fact in sources for token in fact.objects} - {
-        token for fact in placed for token in fact.objects})
+# The most distinct facts either text of a pair may give the attribution parser. A résumé
+# line has a handful; a pair with more is kept as written (too_many_claims), so a pair
+# costs at most this many claims, each read against this many facts.
+MAX_PARSED_FACTS = 64
 
 
-def _parsed_claim_findings(proposed, original):
-    """(hard, soft) findings among EN claims the attribution parser reads but cannot support.
+@functools.lru_cache(maxsize=256)
+def _source_facts(text):
+    """The attribution parser's facts of an original, each distinct one once."""
+    return tuple(dict.fromkeys(_facts(text, entry=0, source=True, allow_subjectless_claims=True)))
+
+
+@functools.lru_cache(maxsize=256)
+def _claim_facts(text):
+    """The attribution parser's claims in a rewrite, in order."""
+    return tuple(_facts(text, entry=-1, source=False, allow_subjectless_claims=True))
+
+
+def _scopes_meet(denial, fact):
+    return ((denial.entry == fact.entry or not denial.scope or denial.scope == fact.scope)
+            and (not denial.scope or not fact.scope or denial.scope == fact.scope))
+
+
+def _supported(claim, facts, denials):
+    """Whether one candidate fact supports ``claim`` and no denial of it contradicts that fact."""
+    overlapping = None
+    for fact in facts:
+        if not (_same_actor(fact, claim) and _qualifiers_supported(fact, claim)
+                and (not claim.scope or fact.scope == claim.scope)
+                and (not claim.scope or claim.scope[0] != "$activity_unknown_name"
+                     or " ".join(fact.clause.casefold().split()) == " ".join(claim.clause.casefold().split()))
+                and _objects_supported(fact, claim, True)):
+            continue
+        if _tool_omission_supported(fact, claim):
+            contradicted = any(_scopes_meet(denial, fact) and _objects_contradicted(fact, claim, denial, True)
+                               for denial in denials)
+        else:
+            # Without a tool's omission a denial contradicts the claim whatever fact supports it.
+            if overlapping is None:
+                overlapping = [denial for denial in denials if _objects_overlap(claim, denial, True)]
+            contradicted = any(_scopes_meet(denial, fact) for denial in overlapping)
+        if not contradicted:
+            return True
+    return False
+
+
+def _unsupported(claims, sources):
+    """The claims no source fact supports, as the parser's _unsupported_claims finds them for one original.
+
+    With one original and no activity aliases every fact is entry 0, so a claim is
+    supported when one candidate fact of its action is not contradicted by a denial
+    of its actor and action. Each distinct claim is read once, and its denials are
+    compared with it once rather than once for each candidate fact.
+    """
+    candidates, denials = {}, {}
+    for fact in sources:
+        candidates.setdefault((fact.action, fact.negative), []).append(fact)
+        if fact.negative:
+            denials.setdefault((fact.actor, fact.action), []).append(fact)
+    verdicts = {}
+
+    def supported(claim):
+        if claim not in verdicts:
+            verdicts[claim] = _supported(claim, candidates.get((claim.action, claim.negative), ()),
+                                         () if claim.negative else denials.get((claim.actor, claim.action), ()))
+        return verdicts[claim]
+
+    unsupported = []
+    for claim in claims:
+        if supported(claim):
+            continue
+        if claim.split:
+            # A trailing result must come from the fact that supports its own action.
+            head, *tails = claim.split
+            if supported(head) and all(supported(tail) for tail in tails):
+                continue
+        unsupported.append(claim)
+    return unsupported
+
+
+def _claim_reading(proposed, original):
+    """(hard, soft, unsupported claims) from the attribution parser's reading of a pair.
 
     The parser names actor, action, polarity and ordered object for both texts,
     so a claim whose object the original denies, gives to the team, attaches a
     number to or names differently is a changed fact, not a paraphrase. A claim
-    the parser cannot relate to any source fact stays with the review.
+    the parser cannot relate to any source fact stays with the review. Each text
+    is parsed once, and the source facts are grouped once for all claims.
     """
-    sources = _facts(original, entry=0, source=True, allow_subjectless_claims=True)
+    sources, claims = _source_facts(original), _claim_facts(proposed)
+    if len(sources) > MAX_PARSED_FACTS or len(set(claims)) > MAX_PARSED_FACTS:
+        return ["too_many_claims"], [], []
     identifiers = identifier_numbers(proposed, original)
+    groups = {}
+    for fact in sources:
+        if not fact.negative:
+            groups.setdefault((fact.action, fact.actor), []).append(_object_core(fact))
+    readings = {key: _Readings(cores) for key, cores in groups.items()}
     found, soft = [], []
     # The parser accepts a shortened object as dropped detail; dropping the
     # head noun ("a web app mockup" -> "a web app") names a different thing.
-    for claim in _facts(proposed, entry=-1, source=False, allow_subjectless_claims=True):
-        cores = {variant for fact in sources
-                 if fact.action == claim.action and fact.actor == claim.actor and not fact.negative
-                 for variant in _source_cores(_object_core(fact))}
-        dropped = None if claim.negative else _head_dropped(_object_core(claim), cores)
+    for claim in claims:
+        group = readings.get((claim.action, claim.actor))
+        dropped = None if claim.negative or group is None else _head_dropped(_object_core(claim), group)
         if dropped == "hard":
             found.append("object_changed")
         elif dropped == "soft":
             soft.append("object_shortened")
-    for claim in _unsupported_claims(proposed, [original], True, None):
+    unsupported = _unsupported(claims, sources)
+    by_action, placed = {}, {}
+    for fact in sources:
+        by_action.setdefault(fact.action, []).append(fact)
+        placed.setdefault((fact.action, _object_head(_object_core(fact))), set()).update(fact.objects)
+    stated = {token for fact in sources for token in fact.objects}
+    for claim in unsupported:
         if claim.negative:
             continue
-        same = [fact for fact in sources if fact.action == claim.action and _objects_overlap(claim, fact, True)]
+        same = [fact for fact in by_action.get(claim.action, ()) if _objects_overlap(claim, fact, True)]
         if any(fact.negative for fact in same):
             found.append("denied_action_asserted")
         if claim.actor == "personal" and not {"team", "help"} & set(claim.qualifiers) and any(
@@ -692,19 +828,30 @@ def _parsed_claim_findings(proposed, original):
                 for fact in same):
             found.append("team_result_claimed")
         core = _object_core(claim)
-        head = _object_head(core)
         # "X that reached Y" is checked part by part, each against its own action.
-        parts = claim.split or (claim,)
-        if any(_moved_numbers(part, sources, _object_head(_object_core(part)) if claim.split else head, identifiers)
-               for part in parts):
+        parts = [(part, _object_head(_object_core(part))) for part in claim.split] or [(claim, _object_head(core))]
+        if any(_moved_numbers(part, head, identifiers, stated, placed) for part, head in parts):
             found.append("quantity_moved")
-        cores = {variant for fact in sources
-                 if fact.action == claim.action and fact.actor == claim.actor and not fact.negative
-                 for variant in _source_cores(_object_core(fact))}
+        group = readings.get((claim.action, claim.actor))
         # A spelled-out or abbreviated head is a paraphrase for the review.
-        if cores and not _same_object(core, cores):
+        if group is not None and not _same_object(core, group):
             found.append("object_changed")
-    return found, soft
+    return found, soft, unsupported
+
+
+def _moved_numbers(claim, head, identifiers, stated, placed):
+    """A number of ``claim`` that the original states, but not on a fact of its action and head."""
+    own = placed.get((claim.action, head))
+    if own is None:
+        return False
+    numbers = {token for token in claim.objects if token[0].isdigit()} - identifiers
+    return any(number in stated and number not in own for number in numbers)
+
+
+def _parsed_claim_findings(proposed, original):
+    """(hard, soft) findings among EN claims the attribution parser reads but cannot support; see _claim_reading."""
+    hard, soft, _ = _claim_reading(proposed, original)
+    return hard, soft
 
 
 def _setting_in(setting, original_normal):
@@ -1172,13 +1319,14 @@ def claim_upgrade_findings(proposed, original):
             hard.append("actor_changed")
         if qualifier_moved(proposed, original):
             hard.append("qualifier_moved")
-    parsed_hard, soft = _parsed_claim_findings(proposed, original)
+    parsed_hard, soft, unsupported = _claim_reading(proposed, original)
     hard.extend(dict.fromkeys(_moved_claims(proposed, original) + parsed_hard))
     proposed_normal = normalized(proposed)
     if any((NEGATION.search(clause) or TEAM.search(clause) or PUBLICATION.search(clause))
            and normalized(clause) not in proposed_normal for clause in clauses(original)):
         soft.append("locked_clause_reworded")
-    if experience_attribution_violations(proposed, [original], allow_subjectless_claims=True):
+    # experience_attribution_violations, from the same reading.
+    if unsupported:
         soft.append("attribution_unverified")
     if not soft:
         soft.append("wording_changed")
