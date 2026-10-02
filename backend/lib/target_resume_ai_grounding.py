@@ -373,9 +373,17 @@ _OBJECT_TAIL = frozenset({"in", "for", "on", "with", "without", "during", "at", 
 _OBJECT_BREAK = re.compile(r"(?<!\d)[,，]|[,，](?!\d)|[;；:：()（）\[\]]")
 _SETTING_LEAD = re.compile(r"^(?:(?:for|in|during|at|within)\s+(?:(?:a|an|the)\s+)?|[在为于])")
 LEADERSHIP = ("lead", "own", "independent")
-# Shared credit said with an adverb ("wrote a report jointly"). Only the claim
-# locks read it; TEAM itself, and so claim_upgrade_detected, is unchanged.
-_SHARED_CREDIT = re.compile(r"\b(?:jointly|collectively|cooperatively)\b", re.I)
+# Credit shared through a co- word: "co-authored", "co-developed", "coauthored".
+# Bench words name a method, not a co-author: co-culture, co-expression, co-IP.
+CO_CREDIT = re.compile(
+    r"\bco-(?!(?:op|ops|cultur\w*|express\w*|occur\w*|locali[sz]\w*|immunoprecipitat\w*|ip|transfect\w*"
+    r"|factors?|polymer\w*|crystal\w*|infect\w*|morbid\w*|evol\w*|receptors?|requisites?|ordinat\w*|operat\w*"
+    r"|varian\w*|registr\w*|efficien\w*|linear\w*|enzymes?|solvents?|treat\w*|incubat\w*|inject\w*|hous\w*"
+    r"|precipitat\w*|stimulat\w*|administ\w*|integrat\w*|planar|axial|valen\w*|dominan\w*|activat\w*)\b)[a-z]"
+    r"|\bco(?:author|found|wr[io]t|writ)\w*", re.I)
+# Shared credit said with an adverb ("wrote a report jointly") or a co- word. Only
+# the claim locks read it; TEAM itself, and so claim_upgrade_detected, is unchanged.
+_SHARED_CREDIT = re.compile(r"\b(?:jointly|collectively|cooperatively)\b|" + CO_CREDIT.pattern, re.I)
 
 
 def _team_marked(text):

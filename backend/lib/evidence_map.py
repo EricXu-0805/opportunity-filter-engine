@@ -23,6 +23,7 @@ from backend.lib.grounding import _TECH_TERMS, LENIENT_PROSE_NUMERIC, validate_n
 from backend.lib.llm import chat_completion, model_for
 from backend.lib.target_resume_ai_grounding import (
     ACTIONS,
+    CO_CREDIT,
     DENIAL,
     HELP,
     INTENT,
@@ -569,11 +570,12 @@ _RELEVANCE_WORD = re.compile(
     r"\b(?:applying|demonstrating|showcasing|highlighting|relevant|relevance|contributing|experience|skills?"
     r"|expertise|proficien\w*)\b|体现|展现|展示|积累|锻炼|提升|培养|相关", re.I)
 _LOCK_WORD = [TEAM, HELP, NEGATION, DENIAL, PUBLICATION, INTENT, UNFINISHED, UNFINISHED_ZH, _STATUS_WORD, _SPAN, _SOLO,
-              _LIMIT, _OTHER_PERSON, _TEAM_ZH_EXTRA, _TEAM_EN_EXTRA, _PERSONAL_MARKER]
+              _LIMIT, _OTHER_PERSON, _TEAM_ZH_EXTRA, _TEAM_EN_EXTRA, CO_CREDIT, _PERSONAL_MARKER]
 # Families a translation must carry across in both directions.
 _FAMILIES = {
-    "team": [TEAM, _TEAM_ZH_EXTRA, _TEAM_EN_EXTRA], "help": [HELP], "limit": [_LIMIT], "negation": [NEGATION, DENIAL],
-    "solo": [_SOLO], "span": [_SPAN], "intent": [INTENT], "unfinished": [UNFINISHED, UNFINISHED_ZH],
+    "team": [TEAM, _TEAM_ZH_EXTRA, _TEAM_EN_EXTRA, CO_CREDIT], "help": [HELP], "limit": [_LIMIT],
+    "negation": [NEGATION, DENIAL], "solo": [_SOLO], "span": [_SPAN], "intent": [INTENT],
+    "unfinished": [UNFINISHED, UNFINISHED_ZH],
     "publication": [PUBLICATION], "other_person": [_OTHER_PERSON],
 }
 

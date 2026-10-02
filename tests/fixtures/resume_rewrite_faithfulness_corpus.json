@@ -805,6 +805,21 @@
    "original": "Fitted a regression model to 200 survey responses.",
    "rewrite": "用 200 份问卷回复拟合了一个回归模型。",
    "kind": "EN to ZH: fitted is 拟合"
+  },
+  {
+   "original": "Co-developed a sentiment classifier for tweets.",
+   "rewrite": "共同开发了一个推文情感分类器。",
+   "kind": "EN to ZH: co-developed is 共同开发"
+  },
+  {
+   "original": "共同开发了一个推文情感分类器。",
+   "rewrite": "Co-developed a sentiment classifier for tweets.",
+   "kind": "ZH to EN: 共同开发 is co-developed"
+  },
+  {
+   "original": "Ran co-culture assays of T cells and tumor cells.",
+   "rewrite": "进行了 T 细胞与肿瘤细胞的共培养实验。",
+   "kind": "EN to ZH: co-culture is a method, not shared credit"
   }
  ],
  "unfaithful": [
@@ -1836,6 +1851,41 @@
    "kind": "translation drops the tutorial it was based on",
    "caught": "contract",
    "case": "ZH to EN drops 参考 as a source"
+  },
+  {
+   "original": "Co-authored a review of soil microbiome studies.",
+   "rewrite": "Authored a review article on soil microbiome studies.",
+   "kind": "relabel drops co-, the shared credit",
+   "caught": "contract",
+   "case": "relabel drops the co- of co-authored"
+  },
+  {
+   "original": "Co-developed a sentiment classifier for tweets.",
+   "rewrite": "Developed a sentiment analysis model for tweets.",
+   "kind": "relabel drops co-, the shared credit",
+   "caught": "contract",
+   "case": "relabel drops the co- of co-developed"
+  },
+  {
+   "original": "Analyzed co-recorded EEG recordings in MATLAB.",
+   "rewrite": "Analyzed EEG data in MATLAB.",
+   "kind": "relabel drops co-recorded",
+   "caught": "contract",
+   "case": "relabel drops co-recorded"
+  },
+  {
+   "original": "Co-developed a sentiment classifier for tweets.",
+   "rewrite": "开发了一个推文情感分类器。",
+   "kind": "translation drops co-, the shared credit",
+   "caught": "contract",
+   "case": "EN to ZH drops the co- of co-developed"
+  },
+  {
+   "original": "Coauthored a review of soil microbiome studies.",
+   "rewrite": "撰写了一篇土壤微生物组研究的综述。",
+   "kind": "translation drops the co of coauthored",
+   "caught": "contract",
+   "case": "EN to ZH drops the co of coauthored"
   }
  ]
 }

@@ -2618,6 +2618,256 @@
     "beyond_allowed_edit",
     "translation_other_person"
    ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops the co- of co-authored",
+   "anchors": [
+    "Authored a review article on soil microbiome"
+   ],
+   "original": "Co-authored a review of soil microbiome studies.",
+   "rewrite": "Authored a review article on soil microbiome studies.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Authored a review article on soil",
+     "source": "Co-authored a review of soil",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "Co-authored a review of soil",
+     "to": "Authored a review article on soil"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops the co- of co-developed",
+   "anchors": [
+    "Students developed a sentiment analysis model"
+   ],
+   "original": "Co-developed a sentiment classifier for tweets.",
+   "rewrite": "Developed a sentiment analysis model for tweets.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "developed a sentiment analysis model",
+     "source": "Co-developed a sentiment classifier",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "Co-developed a sentiment classifier",
+     "to": "Developed a sentiment analysis model"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops co-recorded",
+   "anchors": [
+    "EEG data"
+   ],
+   "original": "Analyzed co-recorded EEG recordings in MATLAB.",
+   "rewrite": "Analyzed EEG data in MATLAB.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "EEG data",
+     "source": "co-recorded EEG recordings",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "co-recorded EEG recordings",
+     "to": "EEG data"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel inside a co-developed line keeps the co-",
+   "anchors": [
+    "sentiment analysis model"
+   ],
+   "original": "Co-developed a sentiment classifier for tweets.",
+   "rewrite": "Co-developed a sentiment analysis model for tweets.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "sentiment analysis model",
+     "source": "sentiment classifier",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "sentiment classifier",
+     "to": "sentiment analysis model"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops the co- of co-developed",
+   "output": "zh",
+   "anchors": [],
+   "original": "Co-developed a sentiment classifier for tweets.",
+   "rewrite": "开发了一个推文情感分类器。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_team"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful EN to ZH of co-developed as 共同开发",
+   "output": "zh",
+   "anchors": [],
+   "original": "Co-developed a sentiment classifier for tweets.",
+   "rewrite": "共同开发了一个推文情感分类器。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful ZH to EN of 共同开发 as co-developed",
+   "output": "en",
+   "anchors": [],
+   "original": "共同开发了一个推文情感分类器。",
+   "rewrite": "Co-developed a sentiment classifier for tweets.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful EN to ZH of a co-culture assay",
+   "output": "zh",
+   "anchors": [],
+   "original": "Ran co-culture assays of T cells and tumor cells.",
+   "rewrite": "进行了 T 细胞与肿瘤细胞的共培养实验。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops the co of coauthored",
+   "anchors": [
+    "Authored a review article on soil microbiome"
+   ],
+   "original": "Coauthored a review of soil microbiome studies.",
+   "rewrite": "Authored a review article on soil microbiome studies.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Authored a review article on soil",
+     "source": "Coauthored a review of soil",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "Coauthored a review of soil",
+     "to": "Authored a review article on soil"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops the co of coauthored",
+   "output": "zh",
+   "anchors": [],
+   "original": "Coauthored a review of soil microbiome studies.",
+   "rewrite": "撰写了一篇土壤微生物组研究的综述。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_team"
+   ]
   }
  ]
 }
