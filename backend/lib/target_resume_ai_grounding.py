@@ -258,29 +258,23 @@ def status_upgraded(proposed, original):
     of the original's unfinished or intent words is gone from a Chinese
     rewrite ("正在开发" -> "开发了"), even beside another one. A kept "(in
     preparation)" does not make a finished verb faithful.
-
-    The clause leads and the past-as-base verbs are read only in an English
-    original: in 加入 Reading Group 后 or 在 Ling 教授指导下 the first Latin word
-    of a Chinese clause names something, it leads no work under way.
     """
     # As many such words stay, of each kind: 论文将于 5 月发表，目前正在准备答辩 keeps its 将于
     # beside 目前, while 目前在做 may say 正在制作.
     if _CJK.search(proposed) and any(len(pattern.findall(proposed)) < len(pattern.findall(original))
                                      for pattern in (FUTURE_ZH, UNDERWAY_ZH, UNFINISHED_ZH)):
         return True
-    english = language(original) == "en"
-    if english and _unknown_lead_finished(proposed, original):
+    if _unknown_lead_finished(proposed, original):
         return True
     if not (UNFINISHED.search(original) or INTENT.search(original)
-            or english and any(_progressive_clause(clause) for clause in clauses(original))):
+            or any(_progressive_clause(clause) for clause in clauses(original))):
         return False
     uses = _verb_uses(original)
     past = {base for base, kind in uses if kind == "past"}
     other = {base for base, kind in uses if kind != "past"}
     # "Setting up a server" -> "set up a server": a verb that is its own past, which the
     # original has only under way, states the work done.
-    under_way = _PAST_AS_BASE & (
-        {base for base, kind in uses if kind == "ing"} - {base for base, kind in uses if kind != "ing"}) if english else set()
+    under_way = _PAST_AS_BASE & ({base for base, kind in uses if kind == "ing"} - {base for base, kind in uses if kind != "ing"})
     return any(base in other - past if kind == "past" else kind == "base" and base in under_way
                for base, kind in _verb_uses(proposed))
 
