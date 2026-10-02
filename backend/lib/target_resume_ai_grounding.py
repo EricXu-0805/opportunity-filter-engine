@@ -281,12 +281,14 @@ def clauses(text):
     # explicit contrast: "not accepted, but later accepted" is two claims.
     # Keep this a bounded EN/ZH rule, not a general semantic parser. Splitting
     # also permits truthful "did not lead, but reviewed" clauses to reorder.
+    # A boundary's leading space starts where a run of spaces starts, so a long run
+    # is read once, not once from each of its characters.
     boundaries = (
         r"(?<!\d)\.(?!\d)|[!?;。！？；\n]+"
-        r"|[，,]?\s*\b(?:but|however|nevertheless)\b\s*[,，]?\s*"
+        r"|(?:[，,]|(?<!\s)|(?!\s))\s*\b(?:but|however|nevertheless)\b\s*[,，]?\s*"
         # A bare 'yet' can be temporal ('not yet accepted'), not a contrast.
         r"|[，,]\s*\byet\b\s*[,，]?\s*"
-        r"|[，,]?\s*(?:但是|但|然而|不过|卻|却)\s*[,，]?\s*"
+        r"|(?:[，,]|(?<!\s)|(?!\s))\s*(?:但是|但|然而|不过|卻|却)\s*[,，]?\s*"
     )
     return [part.strip() for part in re.split(boundaries, text, flags=re.I) if part.strip()]
 
@@ -373,8 +375,8 @@ HELP = re.compile(r"\b(?:help|helped|helping|helps|assist|assisted|assisting|ass
 RELEVANCE_PADDING = re.compile(
     r"[,，;；]\s*(?:thereby\s+|while\s+)?"
     r"(?:applying|demonstrating|showcasing|highlighting|(?:directly\s+)?relevant\s+to|contributing\s+to"
-    r"|(?:building|gaining|developing|strengthening)\b[^,;.]*\b(?:experience|skills?|expertise)\b)"
-    r"|[，,]\s*(?:体现|展现|展示)了?|[，,]\s*(?:积累|锻炼|提升)了?[^，,。；;]*(?:经验|能力|技能)|为[^，,。；;]*奠定",
+    r"|(?:building|gaining|developing|strengthening)\b[^,;.，；]*\b(?:experience|skills?|expertise)\b)"
+    r"|[，,]\s*(?:体现|展现|展示)了?|[，,]\s*(?:积累|锻炼|提升)了?[^，,。；;]*(?:经验|能力|技能)|为[^，,。；;为]*奠定",
     re.I)
 
 
@@ -385,9 +387,9 @@ RELEVANCE_PADDING = re.compile(
 APPENDED_RELEVANCE = re.compile(
     r"[,，;；]\s*(?:thereby\s+|while\s+)?(?P<word>supporting|enabling|strengthening|building|developing|gaining"
     r"|highlighting|reflecting|(?:directly\s+)?relevant\s+to|applicable\s+to|useful\s+for)\b"
-    r"|(?:[,，;；]\s*|\s+)(?P<focus>with\s+a\s+focus\s+on)\b"
+    r"|(?:[,，;；]\s*|(?<!\s)\s+)(?P<focus>with\s+a\s+focus\s+on)\b"
     r"|[，,；;]\s*(?P<zh>培养|提升|锻炼)"
-    r"|[，,；;]?\s*(?P<base>为[^，,。；;]*打下[^，,。；;]*基础)"
+    r"|(?:[，,；;]|(?<![\s，,；;]))\s*(?P<base>为(?:(?!打下)[^，,。；;为])*打下[^，,。；;为]*基础)"
     r"|[，,；;]\s*(?P<related>与[^，,。；;]*相关)",
     re.I)
 # Self-assessed quality is not something the original says the student did.
@@ -425,7 +427,7 @@ DENIAL = re.compile(
     r"|(?<!得)不(?:曾|会|能|是|" + _ZH_DENIAL_ADVERB + r"{0,3}(?:参与|接受|录用|发表|" + _ZH_ACTIONS + r"))", re.I)
 _TEAM_OWNER = re.compile(r"\b(?:my|our)\s+(?:team|teammates?|group|colleagues?)\b", re.I)
 _OBJECT_END = re.compile(
-    r"\s+(?:and|then|while|as|in|for|with|using|on|at|during|to)\b|[,，、;；。.!?！？:：]|并|和|及|以及", re.I)
+    r"(?<!\s)\s+(?:and|then|while|as|in|for|with|using|on|at|during|to)\b|[,，、;；。.!?！？:：]|并|和|及|以及", re.I)
 _OBJECT_TAIL = frozenset({"in", "for", "on", "with", "without", "during", "at", "as", "of", "using", "via", "by",
                           "from", "to", "across", "into", "within", "through", "under", "and", "reaching",
                           "achieving", "not", "no", "never", "did", "which", "that", "including", "except"})
@@ -641,10 +643,8 @@ def identifier_numbers(proposed, original):
     quantity. A year that changes neighbours ("lab in 2024; rig in 2025" ->
     "lab in 2025; rig in 2024") is still a moved number.
     """
-    found = set()
-    for code, number in {(match[1], match[2]) for match in _COURSE_CODE.finditer(original)}:
-        if re.search(r"\b" + re.escape(code) + r"\s?" + number + r"\b", proposed):
-            found.add(number)
+    codes = {(match[1], match[2]) for match in _COURSE_CODE.finditer(proposed)}
+    found = {number for code, number in {(match[1], match[2]) for match in _COURSE_CODE.finditer(original)} & codes}
     years = {match[1] for match in _YEAR.finditer(original)}
     if years:
         before, after = _year_contexts(original), _year_contexts(proposed)
@@ -758,8 +758,9 @@ def language(text):
 # student.
 _ABBREVIATION = r"(?<!\bdr)(?<!\bprof)(?<!\bmr)(?<!\bms)(?<!\bmrs)(?<!\bst)(?<!\be\.g)(?<!\bi\.e)(?<!\betc)(?<!\bvs)(?<!\bno)"
 _SENTENCE_BREAK = re.compile(_ABBREVIATION + r"(?<!\d)\.(?!\d)|[;!?。；！？\n]", re.I)
-_CLAUSE_BREAK = re.compile(r"[,，:：]|\s+(?=(?:and|but|then|that|which|who|whom|where|while|whereas)\b)|(?=并且|并|而且|而)", re.I)
-_CLAUSE_LEAD = re.compile(r"^(?:\s|[(（]|(?:and|but|then|that|which|who|whom|where|while|whereas)\b|并且|并|而且|而|且)+", re.I)
+_CLAUSE_BREAK = re.compile(r"[,，:：]|(?<!\s)\s+(?=(?:and|but|then|that|which|who|whom|where|while|whereas)\b)|(?=并且|并|而且|而)",
+                           re.I)
+_CLAUSE_LEAD = re.compile(r"^(?:\s|[(（]|(?:and|but|then|that|which|who|whom|where|while|whereas)\b|并|而|且)+", re.I)
 _PERSONAL_SUBJECT = re.compile(r"I\b|(?i:my\s+(?:part|role|contribution|job|task|work)s?\b|personally\b)|本人|我(?!们)")
 _OTHER_SUBJECT = re.compile(
     r"(?:(?:my|the|a|an|our|his|her|their|two|three|four|several|\d+)\s+)?(?:(?:graduate|grad|phd|doctoral|senior"
@@ -915,7 +916,7 @@ _CO_ACTIONS = frozenset({"collaborate", "work"})
 _NOUN_END = re.compile(_OBJECT_END.pattern + r"|[(（]", re.I)
 _NOT_HEAD = frozenset({"a", "an", "the", "its", "their", "his", "her", "my", "our", "this", "that", "these", "those",
                        "another", "one", "two", "three", "not", "yet", "also"})
-_ZH_LEAD = re.compile(r"^(?:了|过|的|另有|还有|有|另|已经|已|一(?:篇|个|份|项|部|本)|[篇个份项部本])+")
+_ZH_LEAD = re.compile(r"^(?:了|过|的|还有|有|另|已经|已|一(?:篇|个|份|项|部|本)|[篇个份项部本])+")
 _ZH_TAIL = re.compile(r"(?:了|过|的|已经|已|正在|在|中)+$")
 # Any status word of _STATUS_CLASSES, matched whole.
 _STATUS_WORDS = re.compile("|".join(f"(?:{pattern})" for pattern in _STATUS_CLASSES.values()), re.I)

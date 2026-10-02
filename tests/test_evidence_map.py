@@ -154,6 +154,83 @@ class TestRunsAreReadOnce:
         assert time.perf_counter() - started < 1, name
 
 
+COURSE_CODES = " ".join(f"{chr(65 + i % 26)}{chr(65 + i // 26 % 26)} {10 + i % 90}" for i in range(10000))
+
+
+class TestLinesAreReadInLinearTime:
+    """A run of spaces, of 为 or 为打下, of personal markers or of settings is read once.
+
+    Each of these started a scan at every character of the run, or read the rest of
+    the line once per marker or setting: 0.04 to 1.4 s at 6,000 characters, and
+    15 s for 为打下 through _check_translation. Every check reads a whole line on
+    the server's event loop.
+    """
+
+    @pytest.mark.parametrize(("name", "read", "text"), [pytest.param(*case, id=case[0]) for case in [
+        ("_PHRASE_END", lambda text: em._PHRASE_END.search(text), "a" + " " * 60000 + "b"),
+        ("_LIST_ITEM", lambda text: em._LIST_ITEM.findall(text), " " * 60000 + "x"),
+        ("_FACULTY_TAIL", lambda text: em._FACULTY_TAIL.search(text), " " * 60000 + "x"),
+        ("strip_json_fence", em.strip_json_fence, "```x" + " " * 60000 + "y"),
+        ("_TRANSLATED_RELEVANCE", lambda text: em._has(em._TRANSLATED_RELEVANCE, text), "为打下" * 20000),
+        ("RELEVANCE_PADDING 为", lambda text: grounding.RELEVANCE_PADDING.findall(text), "为" * 60000),
+        ("RELEVANCE_PADDING building", lambda text: grounding.RELEVANCE_PADDING.findall(text), "，building" * 6000),
+        ("APPENDED_RELEVANCE spaces", lambda text: grounding.APPENDED_RELEVANCE.findall(text), " " * 60000 + "x"),
+        ("APPENDED_RELEVANCE 为打下", lambda text: grounding.APPENDED_RELEVANCE.findall(text), "为打下" * 20000),
+        ("_CLAUSE_BREAK", lambda text: grounding._CLAUSE_BREAK.findall(text), " " * 60000 + "x"),
+        ("_NOUN_END", lambda text: grounding._NOUN_END.split(text, maxsplit=1), " " * 60000 + "x"),
+        ("clauses", grounding.clauses, " " * 60000 + "x"),
+        ("_marks_own_part", em._marks_own_part, "I " * 30000),
+        ("_marks_own_part glued", em._marks_own_part, "a我" * 30000),
+        ("identifier_numbers", lambda text: grounding.identifier_numbers(text, text), COURSE_CODES),
+        ("_setting_added", lambda text: em._setting_added("实验室 lab project", text), "在实验室" * 15000),
+        ("_setting_added en", lambda text: em._setting_added("lab project", text), "for a project " * 4300)]])
+    def test_a_long_run_is_read_in_linear_time(self, name, read, text):
+        started = time.perf_counter()
+        read(text)
+        assert time.perf_counter() - started < 1, name
+
+    @pytest.mark.parametrize(("text", "marks"), [
+        ("Built a rover with two teammates; I designed the mount.", True),
+        ("As part of a four-person team, I helped design the mount.", False),
+        ("With my team, I built the rover.", False),
+        ("With my team, I built the rover; I wrote its tests.", True),
+        ("With my teammates and my group, I built the rover.", True),
+        ("I designed the mount with my team.", False),
+        ("和 teammates我负责建模，我写了报告，我做了测试。", True),
+        ("我负责建模，和 teammates一起，我写了报告。", True),
+        ("我负责建模，我写了报告，和 teammates一起。", False), ("With my team, 我负责建模。", False)])
+    def test_the_last_two_markers_and_a_glued_我_decide_the_students_part(self, text, marks):
+        assert em._marks_own_part(text) is marks
+
+    @pytest.mark.parametrize(("source", "text", "added"), [
+        ("Built a website.", "Built a website for the lab, then tested it.", True),
+        ("Built a website in the lab.", "Built a website for the lab, then tested it in a course.", True),
+        ("Built a website in the lab for a course.", "Built a website for the lab, then tested it in a course.", False),
+        ("Analyzed data.", "Analyzed data for the research group's project.", True),
+        ("Analyzed data for the project.", "Analyzed data for the research group's project, and wrote a report.", False),
+        ("Built a website for a course.", "Built a website for the lab, in a course.", True),
+        ("Studied soil.", "在实验室研究土壤。", True), ("在实验室研究土壤。", "Studied soil in the lab.", False),
+        ("在实验室研究土壤", "Studied soil in the lab", False)])
+    def test_a_setting_reads_every_noun_of_its_own_phrase(self, source, text, added):
+        assert em._setting_added(source, text) is added
+
+    @pytest.mark.parametrize(("proposed", "numbers"), [
+        ("Built a parser for CS 225 and CS 446.", {"225", "446"}), ("Built a parser for CS225.", {"225"}),
+        ("Built a parser for XCS 225.", set()), ("Built a parser for CS 2250.", set()), ("Built a parser for CS  225.", set())])
+    def test_a_course_number_stays_named_by_its_code(self, proposed, numbers):
+        assert grounding.identifier_numbers(proposed, "Built a parser for CS 225 and CS 446.") == numbers
+
+    @pytest.mark.parametrize("unit", [" ", "为打下", "为", "在实验室", "I ", "a我"], ids=repr)
+    def test_a_line_at_the_cap_is_checked_in_well_under_a_second(self, unit):
+        line = (unit * 6000)[:6000]
+        other = ("Built a website. " * 400)[:6000] if em.language(line) == "zh" else ("开发了网站，" * 1000)[:6000]
+        started = time.perf_counter()
+        grounding.claim_upgrade_findings(line[:-1] + "x", line)
+        em._check_translation(em.Unit("b1", line, line), other)
+        em._check_translation(em.Unit("b1", other, other), line)
+        assert time.perf_counter() - started < 1, unit
+
+
 class TestSpanWords:
     @pytest.mark.parametrize("quantity", [
         "thirteen", "fourteen", "sixteen", "seventeen", "eighteen", "nineteen", "twice", "double", "triple", "half",

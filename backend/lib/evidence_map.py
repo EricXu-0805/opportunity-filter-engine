@@ -11,6 +11,7 @@ review decides what they let through, and the student decides what to use.
 """
 from __future__ import annotations
 
+import bisect
 import json
 import logging
 import re
@@ -22,6 +23,8 @@ from backend.lib.blocking import BlockingWorkTimeout, run_blocking
 from backend.lib.grounding import _TECH_TERMS, LENIENT_PROSE_NUMERIC, validate_no_fabrication
 from backend.lib.llm import chat_completion, model_for
 from backend.lib.target_resume_ai_grounding import (
+    _SHARED_CREDIT,
+    _TEAM_CONTEXT,
     _UNDERWAY_ACTION,
     ACTIONS,
     CO_CREDIT,
@@ -119,12 +122,12 @@ _FACULTY_HEAD = re.compile(r"^Faculty research profile for ")
 _AREAS_LEAD = re.compile(r"\bResearch areas:\s*")
 # The trailing sentences src/evidence.py:_faculty_profile_summary appends.
 _FACULTY_TAIL = re.compile(
-    r"\s*(?:Contact this faculty member to ask whether undergraduate research opportunities are currently available\."
+    r"(?:(?<!\s)\s*)?(?:Contact this faculty member to ask whether undergraduate research opportunities are currently available\."
     r"|The source profile states that this faculty contact is not currently accepting undergraduate students or "
     r"researchers\.|The source profile reports that this faculty member is not currently conducting active "
     r"research\.)\s*$")
 _SENTENCE_END = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\"“(])|(?<=[。！？；;])\s*|\n+")
-_LIST_ITEM = re.compile(r"\s*;\s*")
+_LIST_ITEM = re.compile(r"(?:(?<!\s)|(?!\s))\s*;\s*")
 _CLAUSE = re.compile(r",\s+|，")
 _EDGE = " \t\r\n,;:，；、.。"
 _URL_OR_EMAIL = re.compile(r"https?://\S+|www\.\S+|(?<![\w.+-])[\w.+-]+@[\w-]+(?:\.[\w-]+)+", re.I)
@@ -683,6 +686,12 @@ _TEAM_HEADER = re.compile(
     r"[^;；。.!?,，:：]*[,，:：]", re.I)
 
 
+# 我 or 本人 right after a letter or digit, and the team and help words _team_or_help reads.
+_GLUED_MARKER = re.compile(r"(?<=[A-Za-z0-9])(?:本人|我(?!们))")
+_GLUED_WINDOW = 100
+_SHARED_OR_HELP = (TEAM, _TEAM_CONTEXT, _SHARED_CREDIT, HELP, _TEAM_ZH_EXTRA, _TEAM_EN_EXTRA)
+
+
 def _marks_own_part(text: str) -> bool:
     """Whether a personal marker separates the student's part from a shared one.
 
@@ -691,12 +700,19 @@ def _marks_own_part(text: str) -> bool:
     friend; I wrote Y" and "our team built X; I wrote Y" mark Y as the
     student's own.
     """
-    for marker in _PERSONAL_MARKER.finditer(text):
-        # "with my lab partner; I wrote Y": "my" belongs to the partner, "I" marks Y.
-        before = text[:marker.start()].strip()
-        if _team_or_help(before) and not _TEAM_HEADER.fullmatch(before):
-            return True
-    return False
+    # "with my lab partner; I wrote Y": "my" belongs to the partner, "I" marks Y. Shared
+    # work or help named before one marker is named before every later one, and only one
+    # marker can follow nothing but a team heading, so the last two markers decide the
+    # line, read once each. A 我 glued to the English word before it ("team我") reads that
+    # word whole, as no later marker's text does, so it is also read on the text just
+    # before it.
+    starts = [marker.start() for marker in _PERSONAL_MARKER.finditer(text)]
+    befores = [text[:start].strip() for start in starts[-2:]]
+    shared = [_team_or_help(before) for before in befores]
+    if shared and shared[-1] and (len(shared) == 2 and shared[0] or not _TEAM_HEADER.fullmatch(befores[-1])):
+        return True
+    return any(pattern.search(text, max(0, glued.start() - _GLUED_WINDOW), glued.start())
+               for glued in _GLUED_MARKER.finditer(text) for pattern in _SHARED_OR_HELP)
 
 
 def _has(patterns: list[re.Pattern], text: str) -> bool:
@@ -769,7 +785,8 @@ _SETTING_CONCEPTS = (
     re.compile(r"\b(?:competitions?|hackathons?|contests?)\b|比赛|竞赛", re.I),
 )
 _TRANSLATED_RELEVANCE = [RELEVANCE_PADDING, re.compile(
-    r"\b(?:relevant|applicable|useful)\s+(?:to|for)\b|\bwith\s+a\s+focus\s+on\b|为[^，,。；;]*打下[^，,。；;]*基础", re.I)]
+    r"\b(?:relevant|applicable|useful)\s+(?:to|for)\b|\bwith\s+a\s+focus\s+on\b"
+    r"|为(?:(?!打下)[^，,。；;为])*打下[^，,。；;为]*基础", re.I)]
 # A degree abbreviation an English line uses for a Chinese title it translates.
 _TRANSLATED_DEGREES = {"博士": ("phd", "ph.d"), "硕士": ("msc", "m.sc")}
 
@@ -785,7 +802,7 @@ def _latin_words(text: str) -> set[str]:
     return {word.rstrip(".-").casefold() for word in re.findall(r"[A-Za-z][A-Za-z0-9+#.-]*", text)}
 
 
-_PHRASE_END = re.compile(r"[,，.。;；:：()（）]|\s+(?:and|but|while|with|using|to)\b", re.I)
+_PHRASE_END = re.compile(r"[,，.。;；:：()（）]|(?<!\s)\s+(?:and|but|while|with|using|to)\b", re.I)
 
 
 def _setting_added(source: str, text: str) -> bool:
@@ -794,11 +811,17 @@ def _setting_added(source: str, text: str) -> bool:
     The setting runs to the end of its phrase: in "for the research group's
     project" the noun is "project", not the "research" that SETTING stops at.
     """
+    # Each text is read once: where its phrases end, where each concept stands in it, and
+    # which concepts the source names. A concept is in a phrase when one of its matches
+    # starts at the setting and ends by the phrase's end.
+    ends = [match.start() for match in _PHRASE_END.finditer(text)]
+    places = [[match.span() for match in concept.finditer(text)] for concept in _SETTING_CONCEPTS]
+    named = [bool(concept.search(source)) for concept in _SETTING_CONCEPTS]
     for match in SETTING.finditer(text):
-        end = _PHRASE_END.search(text, match.end())
-        phrase = text[match.start():end.start() if end else len(text)]
-        concepts = [concept for concept in _SETTING_CONCEPTS if concept.search(phrase)]
-        if not any(concept.search(source) for concept in concepts):
+        index = bisect.bisect_left(ends, match.end())
+        end = ends[index] if index < len(ends) else len(text)
+        if not any(named[i] for i, spans in enumerate(places)
+                   if (k := bisect.bisect_left(spans, (match.start(),))) < len(spans) and spans[k][1] <= end):
             return True
     return False
 
@@ -1368,7 +1391,7 @@ def strip_json_fence(raw: str) -> str:
     cleaned = raw.strip()
     if cleaned.startswith("```"):
         cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
-        cleaned = re.sub(r"\s*```\s*$", "", cleaned)
+        cleaned = re.sub(r"(?<!\s)\s*```\s*$", "", cleaned)
     return cleaned
 
 
