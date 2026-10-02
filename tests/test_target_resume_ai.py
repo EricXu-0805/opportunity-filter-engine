@@ -284,6 +284,40 @@ def test_an_unaccepted_rewrite_keeps_its_advice_or_stays_retryable(endpoint, mon
         assert receipt["suggestion"] is None
 
 
+def test_the_checks_run_on_a_worker_thread(endpoint, monkeypatch):
+    import threading
+
+    client, doc, _, _ = endpoint
+    accept_all(monkeypatch)
+    data = output(doc)
+    data["units"][1].update(decision="rewrite", keep_reason=None, ops=[{"op": "personal_first"}], text=OWN_PART_FIRST)
+    monkeypatch.setattr(engine, "chat_completion", lambda *args, **kwargs: json.dumps(data))
+    threads = []
+    for name in ("parse_output", "finalize"):
+        real = getattr(route, name)
+        monkeypatch.setattr(route, name, lambda *args, real=real, **kwargs: threads.append(
+            threading.current_thread().name) or real(*args, **kwargs))
+    body = client.post(PATH, json=payload(doc)).json()
+    assert body["receipts"][1]["status"] == "suggested"
+    assert len(threads) == 2 and all(name.startswith("ofe-blocking-ai") for name in threads)
+
+
+@pytest.mark.parametrize("late", ["parse_output", "finalize"])
+def test_checks_that_run_out_of_time_leave_the_units_retryable(endpoint, monkeypatch, late):
+    import time
+
+    client, doc, _, _ = endpoint
+    accept_all(monkeypatch)
+    data = output(doc)
+    data["units"][1].update(decision="rewrite", keep_reason=None, ops=[{"op": "personal_first"}], text=OWN_PART_FIRST)
+    monkeypatch.setattr(engine, "chat_completion", lambda *args, **kwargs: json.dumps(data))
+    monkeypatch.setattr(route, "CHECK_TIMEOUT_SECONDS", 0.05)
+    real = getattr(route, late)
+    monkeypatch.setattr(route, late, lambda *args, **kwargs: time.sleep(0.3) or real(*args, **kwargs))
+    receipt = client.post(PATH, json=payload(doc)).json()["receipts"][1]
+    assert (receipt["status"], receipt["reason_code"], receipt["suggestion"]) == ("skipped", "rewrite_unchecked", None)
+
+
 def test_high_priority_without_a_verified_link_is_normal(endpoint, monkeypatch):
     client, doc, _, _ = endpoint
     data = output(doc)

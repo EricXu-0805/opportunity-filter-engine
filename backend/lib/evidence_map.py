@@ -67,6 +67,9 @@ GENERATION_DEADLINE_SECONDS = 40.0
 REVIEW_MARGIN_SECONDS = 5.0
 MIN_REVIEW_SECONDS = 5.0
 REVIEW_TIMEOUT_SECONDS = 45.0
+# The contract and the claim locks of one request take well under a second at the input
+# caps; they run on a worker, and past this the originals are kept unchecked.
+CHECK_TIMEOUT_SECONDS = 10.0
 
 SUBSTANTIVE_OPS = frozenset({"lead_with", "relabel", "verb_first", "personal_first"})
 # "trim" is not offered: the calibration found the review accepts a trim that

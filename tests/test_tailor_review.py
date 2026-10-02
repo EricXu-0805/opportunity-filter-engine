@@ -787,7 +787,9 @@ def _clocked(monkeypatch, seconds_per_call: float) -> list[float]:
 
     async def advancing(fn, *args, timeout_seconds, **kwargs):
         result = await real_run_blocking(fn, *args, timeout_seconds=timeout_seconds, **kwargs)
-        clock["now"] += seconds_per_call
+        # The provider calls spend the request's time; the checks on a worker take none here.
+        if fn not in (tailor._checked_outcomes, tailor._alternatives):
+            clock["now"] += seconds_per_call
         return result
 
     async def reviewing(fn, *args, timeout_seconds, **kwargs):
@@ -1190,6 +1192,37 @@ class TestRequestsAtTheCap:
         status, gaps = asyncio.run(main())
         assert status == 200 and calls[0] == "generate"
         assert max(gaps) < 0.5
+
+    def test_the_checks_run_on_a_worker_thread(self, endpoint, monkeypatch):
+        import threading
+
+        client, opportunity_id = endpoint
+        evidence, current, rewrite = CAP_SHAPES["space run"]
+        _verb_first_model(monkeypatch, rewrite, [])
+        threads = []
+        real_gate, real_without_terms = em.gate, tailor.without_terms
+        monkeypatch.setattr(tailor, "gate", lambda outcome, unit: threads.append(
+            ("gate", threading.current_thread().name)) or real_gate(outcome, unit))
+        monkeypatch.setattr(tailor, "without_terms", lambda *args: threads.append(
+            ("without_terms", threading.current_thread().name)) or real_without_terms(*args))
+        response = client.post("/api/tailor", json={"profile": PROFILE, "opportunity_id": opportunity_id,
+                                                    "locale": "en", "original_bullets": [current]})
+        assert response.json()["tailored_bullets"][0]["status"] == "rewritten"
+        assert [step for step, _ in threads] == ["gate", "without_terms"]
+        assert all(name.startswith("ofe-blocking-ai") for _, name in threads)
+
+    def test_checks_that_run_out_of_time_keep_the_originals(self, endpoint, monkeypatch):
+        client, opportunity_id = endpoint
+        evidence, current, rewrite = CAP_SHAPES["space run"]
+        calls: list[str] = []
+        _verb_first_model(monkeypatch, rewrite, calls)
+        monkeypatch.setattr(tailor, "CHECK_TIMEOUT_SECONDS", 0.001)
+        monkeypatch.setattr(tailor, "check_rewrite", lambda *args, **kwargs: __import__("time").sleep(0.2))
+        response = client.post("/api/tailor", json={"profile": PROFILE, "opportunity_id": opportunity_id,
+                                                    "locale": "en", "original_bullets": [current]})
+        row = response.json()["tailored_bullets"][0]
+        assert (row["status"], row["reason_code"], row["text"]) == ("kept", "review_unavailable", current)
+        assert calls == ["generate"]
 
 
 class TestSharedCreditWords:

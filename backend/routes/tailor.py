@@ -44,6 +44,7 @@ from backend.data_loader import load_opportunities_by_id
 from backend.lib import llm_budget
 from backend.lib.blocking import SINGLE_LLM_TIMEOUT_SECONDS, BlockingWorkTimeout, run_blocking
 from backend.lib.evidence_map import (
+    CHECK_TIMEOUT_SECONDS,
     GENERATION_DEADLINE_SECONDS,
     ROW_FORMAT,
     SYSTEM_PROMPT_CORE,
@@ -427,6 +428,35 @@ async def _evidence_rewrite(
     if rows is None:
         return {unit.unit_id: Outcome(unit.unit_id, "kept", "model_unavailable") for unit in units}, False
     by_id = {anchor.id: anchor for anchor in anchors}
+    # The contract and the claim locks read text the student sent; they run on a
+    # worker, and a check that runs out of time keeps every original unchecked.
+    try:
+        outcomes = await run_blocking(_checked_outcomes, units, rows, by_id, locale,
+                                      timeout_seconds=CHECK_TIMEOUT_SECONDS)
+    except BlockingWorkTimeout:
+        logger.warning("tailor: the checks ran out of time; keeping the originals")
+        return {unit.unit_id: Outcome(unit.unit_id, "kept", "review_unavailable") for unit in units}, True
+    pending = [unit for unit in units if outcomes[unit.unit_id].status == "pending"]
+    verdicts = await review_rewrites(
+        [ReviewPair(unit.evidence, outcomes[unit.unit_id].text,
+                    _reviewed_links(outcomes[unit.unit_id], rows[unit.unit_id])) for unit in pending], started)
+    accepted = [unit for unit, verdict in zip(pending, verdicts, strict=True) if verdict == "accepted"]
+    try:
+        alternatives = await run_blocking(_alternatives, accepted, outcomes, rows, timeout_seconds=CHECK_TIMEOUT_SECONDS)
+    except BlockingWorkTimeout:
+        alternatives = {}
+    for unit, verdict in zip(pending, verdicts, strict=True):
+        outcome = outcomes[unit.unit_id]
+        if verdict == "accepted":
+            outcomes[unit.unit_id] = replace(outcome, status="rewritten", alternative=alternatives.get(unit.unit_id))
+        else:
+            outcomes[unit.unit_id] = replace(
+                outcome, status="kept", code="review_rejected" if verdict == "rejected" else "review_unavailable")
+    return outcomes, True
+
+
+def _checked_outcomes(units: list[Unit], rows: dict, by_id: dict[str, Anchor], locale: str) -> dict[str, Outcome]:
+    """Each unit's row through the contract and, if it passes, the claim locks."""
     outcomes: dict[str, Outcome] = {}
     for unit in units:
         row = rows.get(unit.unit_id)
@@ -438,19 +468,12 @@ async def _evidence_rewrite(
         elif outcome.status == "pending":
             outcome = gate(outcome, unit)
         outcomes[unit.unit_id] = outcome
-    pending = [unit for unit in units if outcomes[unit.unit_id].status == "pending"]
-    verdicts = await review_rewrites(
-        [ReviewPair(unit.evidence, outcomes[unit.unit_id].text,
-                    _reviewed_links(outcomes[unit.unit_id], rows[unit.unit_id])) for unit in pending], started)
-    for unit, verdict in zip(pending, verdicts, strict=True):
-        outcome = outcomes[unit.unit_id]
-        if verdict == "accepted":
-            outcomes[unit.unit_id] = replace(outcome, status="rewritten",
-                                             alternative=without_terms(outcome, unit, rows[unit.unit_id]["ops"]))
-        else:
-            outcomes[unit.unit_id] = replace(
-                outcome, status="kept", code="review_rejected" if verdict == "rejected" else "review_unavailable")
-    return outcomes, True
+    return outcomes
+
+
+def _alternatives(units: list[Unit], outcomes: dict[str, Outcome], rows: dict) -> dict[str, str | None]:
+    """Each accepted rewrite with the posting's terms taken back out, when that passes too."""
+    return {unit.unit_id: without_terms(outcomes[unit.unit_id], unit, rows[unit.unit_id]["ops"]) for unit in units}
 
 
 def _outcome_warnings(prefix: str, outcome: Outcome) -> list[str]:

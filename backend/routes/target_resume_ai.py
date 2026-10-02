@@ -11,11 +11,18 @@ from starlette.responses import JSONResponse
 from backend.data_loader import load_opportunities_by_id
 from backend.lib import target_resume_plan
 from backend.lib.blocking import BlockingWorkOverloaded, BlockingWorkTimeout, run_blocking
-from backend.lib.evidence_map import GENERATION_DEADLINE_SECONDS, review_rewrites, review_window, target_anchors
+from backend.lib.evidence_map import (
+    CHECK_TIMEOUT_SECONDS,
+    GENERATION_DEADLINE_SECONDS,
+    review_rewrites,
+    review_window,
+    target_anchors,
+)
 from backend.lib.llm import is_configured
 from backend.lib.release_scope import release_visible_opportunity_by_id
 from backend.lib.target_actionability import assert_target_actionable
 from backend.lib.target_resume_ai import (
+    REVIEW_UNCHECKED,
     batch_preflight,
     dispatch,
     finalize,
@@ -104,12 +111,22 @@ async def full_target_suggestions(request: FullTargetRequest):
         except Exception:  # No provider or payload text is returned or logged.
             reason, calls, raw = "invalid_model_response", 1, None
         if raw:
-            results, pending = parse_output(raw, processable, anchors, request.locale)
+            # The contract and the claim locks run on a worker; past their deadline every
+            # unit stays as written, retryable.
+            try:
+                results, pending = await run_blocking(parse_output, raw, processable, anchors, request.locale,
+                                                      timeout_seconds=CHECK_TIMEOUT_SECONDS)
+            except BlockingWorkTimeout:
+                results, pending = [receipt(unit, REVIEW_UNCHECKED) for unit in processable], []
             if pending:
                 # The review is a second logical call when there is still time to make it.
                 calls += review_window(started) is not None
                 verdicts = await review_rewrites(review_pairs(pending), started)
-                results += finalize(pending, verdicts, request.locale)
+                try:
+                    results += await run_blocking(finalize, pending, verdicts, request.locale,
+                                                  timeout_seconds=CHECK_TIMEOUT_SECONDS)
+                except BlockingWorkTimeout:
+                    results += [receipt(item.unit, REVIEW_UNCHECKED) for item in pending]
         else:
             results = [receipt(unit, reason or "model_unavailable") for unit in processable]
     by_id = {row["unit_id"]: row for row in results}
