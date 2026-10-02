@@ -18,8 +18,8 @@
 // coursework line, an item that opens with a measure, and a program's name
 // after "check in" (each item's wording was chosen so its last line nearly
 // fills the 7in column in Chromium's Helvetica and STHeiti). Chromium embeds
-// a font subset per size, so each file keeps its bold text at one size, and
-// the Chinese page draws on a small set of characters.
+// a font subset per size, so the layouts and no-period files print their bold
+// text at one size, and the Chinese page draws on a small set of characters.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
