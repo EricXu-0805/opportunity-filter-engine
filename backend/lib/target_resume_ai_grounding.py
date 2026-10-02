@@ -147,6 +147,8 @@ _IRREGULAR_VERBS = {
     "win": ("won",), "write": ("wrote", "written"),
 }
 _DOUBLED_IRREGULAR = {"begin", "cut", "forget", "get", "put", "run", "set", "win"}
+# Verbs whose past is spelled like the base (cut, put, read, set); the forms table reads that spelling as the base.
+_PAST_AS_BASE = frozenset(base for base, past in _IRREGULAR_VERBS.items() if base in past)
 
 
 def _third_person(base):
@@ -263,7 +265,11 @@ def status_upgraded(proposed, original):
     uses = _verb_uses(original)
     past = {base for base, kind in uses if kind == "past"}
     other = {base for base, kind in uses if kind != "past"}
-    return any(kind == "past" and base in other - past for base, kind in _verb_uses(proposed))
+    # "Setting up a server" -> "set up a server": a verb that is its own past, which the
+    # original has only under way, states the work done.
+    under_way = _PAST_AS_BASE & ({base for base, kind in uses if kind == "ing"} - {base for base, kind in uses if kind != "ing"})
+    return any(base in other - past if kind == "past" else kind == "base" and base in under_way
+               for base, kind in _verb_uses(proposed))
 
 
 def normalized(text):

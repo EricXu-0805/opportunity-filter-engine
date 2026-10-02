@@ -10030,6 +10030,151 @@
     "beyond_allowed_edit",
     "translation_team"
    ]
+  },
+  {
+   "group": "status",
+   "label": "lead_with finishes Setting up as set up",
+   "anchors": [
+    "robotics lab"
+   ],
+   "original": "Setting up a Raspberry Pi server for the robotics lab.",
+   "rewrite": "Robotics lab: set up a Raspberry Pi server.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "robotics lab",
+     "source": "robotics lab",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "rewrite_rejected",
+    "locks"
+   ]
+  },
+  {
+   "group": "status",
+   "label": "lead_with finishes Reading as read",
+   "anchors": [
+    "literature review"
+   ],
+   "original": "Reading 30 papers on sleep and memory for a literature review.",
+   "rewrite": "Literature review: read 30 papers on sleep and memory.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "literature review",
+     "source": "literature review",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "rewrite_rejected",
+    "locks"
+   ]
+  },
+  {
+   "group": "status",
+   "label": "lead_with finishes Cutting as cut",
+   "anchors": [
+    "imaging study"
+   ],
+   "original": "Cutting 12 brain slices per week for the imaging study.",
+   "rewrite": "Imaging study: cut 12 brain slices per week.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "imaging study",
+     "source": "imaging study",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "rewrite_rejected",
+    "locks"
+   ]
+  },
+  {
+   "group": "status",
+   "label": "lead_with finishes Putting together as put together",
+   "anchors": [
+    "chemistry lab"
+   ],
+   "original": "Putting together a safety manual for the chemistry lab.",
+   "rewrite": "Chemistry lab: put together a safety manual.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "chemistry lab",
+     "source": "chemistry lab",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "rewrite_rejected",
+    "locks"
+   ]
+  },
+  {
+   "group": "status",
+   "label": "lead_with keeps Setting up under way",
+   "anchors": [
+    "robotics lab"
+   ],
+   "original": "Setting up a Raspberry Pi server for the robotics lab.",
+   "rewrite": "Robotics lab: setting up a Raspberry Pi server.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "robotics lab",
+     "source": "robotics lab",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
   }
  ]
 }

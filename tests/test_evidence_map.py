@@ -410,6 +410,17 @@ class TestUnknownVerbs:
         assert not em._progressive_led(f"{word} R, cleaned 212 survey responses.")
 
 
+class TestOwnPastVerbs:
+    @pytest.mark.parametrize(("original", "proposed", "upgraded"), [
+        ("Setting up a server for the lab.", "Lab: set up a server.", True),
+        ("Reading 30 papers for a review.", "Review: read 30 papers.", True),
+        ("Setting up a server for the lab.", "Lab: setting up a server.", False),
+        ("Read 20 papers last fall; now reading 10 more.", "Now reading 10 more; read 20 papers last fall.", False),
+        ("Volunteering at a food bank, sorting donations.", "Food bank volunteer: sorting donations.", False)])
+    def test_a_verb_that_is_its_own_past_finishes_work_under_way(self, original, proposed, upgraded):
+        assert grounding.status_upgraded(proposed, original) is upgraded
+
+
 class TestLeadingClause:
     @pytest.mark.parametrize(("chinese", "leading"), [
         ("目前，开发了网站；撰写了综述。", "开发了网站"), ("目前:开发了网站", "开发了网站"),

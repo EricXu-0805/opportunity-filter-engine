@@ -1540,6 +1540,11 @@
    "original": "Swimming instructor at the ARC since May 2025, teaching 40 children a week.",
    "rewrite": "Taught 40 children a week as swimming instructor at the ARC since May 2025.",
    "kind": "verb_first after a role noun that ends in -ing"
+  },
+  {
+   "original": "Setting up a Raspberry Pi server for the robotics lab.",
+   "rewrite": "Robotics lab: setting up a Raspberry Pi server.",
+   "kind": "reorder keeps set under way"
   }
  ],
  "unfaithful": [
@@ -3883,6 +3888,26 @@
    "kind": "ZH to EN: an -ing noun leads a finished headline",
    "caught": "contract",
    "case": "ZH to EN turns 正在校对 into a Proofreading headline"
+  },
+  {
+   "original": "Setting up a Raspberry Pi server for the robotics lab.",
+   "rewrite": "Robotics lab: set up a Raspberry Pi server.",
+   "kind": "a reorder writes set, put, cut or read, its own past, for work under way"
+  },
+  {
+   "original": "Reading 30 papers on sleep and memory for a literature review.",
+   "rewrite": "Literature review: read 30 papers on sleep and memory.",
+   "kind": "a reorder writes set, put, cut or read, its own past, for work under way"
+  },
+  {
+   "original": "Cutting 12 brain slices per week for the imaging study.",
+   "rewrite": "Imaging study: cut 12 brain slices per week.",
+   "kind": "a reorder writes set, put, cut or read, its own past, for work under way"
+  },
+  {
+   "original": "Putting together a safety manual for the chemistry lab.",
+   "rewrite": "Chemistry lab: put together a safety manual.",
+   "kind": "a reorder writes set, put, cut or read, its own past, for work under way"
   }
  ]
 }
