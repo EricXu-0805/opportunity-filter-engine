@@ -6424,6 +6424,139 @@
     null,
     null
    ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH launches a site whose release is only expected",
+   "output": "zh",
+   "anchors": [],
+   "original": "Lab website under development; release expected next month.",
+   "rewrite": "实验室网站目前已上线。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH launches a site whose homepage is only planned",
+   "output": "zh",
+   "anchors": [],
+   "original": "Lab website under development; homepage planned.",
+   "rewrite": "实验室网站目前已上线。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH submits a manuscript whose submission is expected",
+   "output": "zh",
+   "anchors": [],
+   "original": "Manuscript on sleep spindles in preparation; submission expected Dec 2026.",
+   "rewrite": "关于睡眠纺锤波的论文撰写中，已于 2026 年 12 月投稿。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH completes a station whose completion is expected",
+   "output": "zh",
+   "anchors": [],
+   "original": "Weather station under construction; completion expected this spring.",
+   "rewrite": "气象站搭建中，已于今年春季完工。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN keeps an expected submission beside a manuscript in preparation",
+   "output": "en",
+   "anchors": [],
+   "original": "关于睡眠纺锤波的论文撰写中，预计 2026 年 12 月投稿。",
+   "rewrite": "Manuscript on sleep spindles in preparation; submission expected Dec 2026.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps a posted preprint beside a paper under review",
+   "output": "zh",
+   "anchors": [],
+   "original": "Paper under review at CHI 2026; preprint posted on arXiv.",
+   "rewrite": "论文正在 CHI 2026 审稿中；预印本已发布在 arXiv 上。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN patents a design the Chinese has under way",
+   "output": "en",
+   "anchors": [],
+   "original": "正在开发一种土壤传感器。",
+   "rewrite": "Developing a soil sensor; method patented.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
   }
  ]
 }

@@ -182,6 +182,25 @@ class TestFinishedClause:
     def test_a_clause_opens_with_a_finished_verb(self, text, finished):
         assert em._finished_clause(text) is finished
 
+    @pytest.mark.parametrize("word", ["expected", "anticipated", "planned", "proposed", "scheduled", "intended",
+                                      "unfinished", "unpublished", "unsubmitted"])
+    def test_a_status_word_is_no_finished_headline_or_verb(self, word):
+        for wide in (False, True):
+            assert not em._finished_clause(f"Lab site under development; completion {word} next month.", wide=wide)
+            # A known verb opening a clause is read as before: "Planned the outreach event" is finished.
+            opening = em._finished_clause(f"Lab site under development; {word} next month.", wide=wide)
+            assert opening is bool(em.verb_use(word))
+
+    @pytest.mark.parametrize("word", ["delayed", "postponed", "requested", "needed", "mailed"])
+    def test_a_headline_licenses_a_done_mark_only_with_a_known_verb(self, word):
+        text = f"Lab site under development; completion {word} next month."
+        assert not em._finished_clause(text)
+        assert em._finished_clause(text, wide=True)
+
+    @pytest.mark.parametrize("word", ["approved", "archived", "awarded", "funded", "granted", "posted", "released"])
+    def test_a_listed_finished_event_is_a_headline(self, word):
+        assert em._finished_clause(f"Paper under review; preprint {word} on arXiv.")
+
 
 class TestAnotherPersonsRevision:
     @pytest.mark.parametrize("text", [

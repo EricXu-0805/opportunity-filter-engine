@@ -805,19 +805,37 @@ def _progressive_led(text: str) -> bool:
     return bool(use) and use[1] == "ing" and use[0] not in _PROGRESSIVE_METHODS
 
 
-def _finished_verb(words: list[str]) -> bool:
+def _names_status(word: str) -> bool:
+    """A word that names a status, never a finished action: expected, planned, unpublished."""
+    return any(pattern.fullmatch(word) for pattern in (UNFINISHED, _STATUS_WORD, _UN_DONE))
+
+
+# Finished events a headline states that the résumé verb list leaves out: "Preprint posted on arXiv".
+_HEADLINE_PAST = frozenset({"posted", "released", "approved", "funded", "awarded", "granted", "archived"})
+
+
+def _finished_verb(words: list[str], *, headline: bool = False, wide: bool = False) -> bool:
     """Whether ``words`` open with a past verb ("graded", "wired") that states a finished action.
 
     A participle with its agent ("used by 5 lab members"), a plan ("planned to")
-    or a state ("interested in") does not.
+    or a state ("interested in") does not, nor does a status word that ends in
+    -ed ("expected next month"). After a headline's noun the verb must be a
+    known past form that names no status: "Paper accepted at CHI", not
+    "completion expected" or "homepage planned". ``wide`` reads any other -ed
+    verb there too ("completion delayed"), for the rule a finished clause triggers.
     """
-    use = verb_use(words[0])
+    word, after = words[0], words[1:2]
+    if after in (["by"], ["to"]) or headline and _names_status(word):
+        return False
+    use = verb_use(word)
     if use:
-        return use[1] == "past" and words[1:2] not in (["by"], ["to"])
-    return len(words[0]) > 4 and words[0].endswith("ed") and words[1:2] not in (["by"], ["to"], ["in"])
+        return use[1] == "past"
+    if headline and not wide:
+        return word in _HEADLINE_PAST
+    return len(word) > 4 and word.endswith("ed") and after != ["in"] and not _names_status(word)
 
 
-def _finished_clause(text: str) -> bool:
+def _finished_clause(text: str, *, wide: bool = False) -> bool:
     """Whether a clause of an English line opens with a finished verb: "...; graded 40 exams".
 
     A headline counts too, its noun before the verb: "Paper accepted at CHI 2026".
@@ -827,7 +845,7 @@ def _finished_clause(text: str) -> bool:
         while words and (words[0] in _EN_CLAUSE_LEAD or words[0].endswith("ly")):
             words.pop(0)
         if words and (_finished_verb(words) or len(words) > 1 and words[0] not in _FUNCTION_EN
-                      and not verb_use(words[0]) and _finished_verb(words[1:])):
+                      and not verb_use(words[0]) and _finished_verb(words[1:], headline=True, wide=wide)):
             return True
     return False
 
@@ -869,7 +887,7 @@ def _finished_in_translation(english: str, chinese: str, *, chinese_source: bool
     if chinese_source:
         underway = "正在" in chinese or any(not chinese.startswith("的", match.end())
                                            for match in _UNDERWAY_ACTION.finditer(chinese))
-        return bool(underway and finished and not done)
+        return bool(underway and _finished_clause(english, wide=True) and not done)
     return bool(done and not finished and (UNFINISHED.search(english) or INTENT.search(english)
                                            or PLANNED.search(english)))
 

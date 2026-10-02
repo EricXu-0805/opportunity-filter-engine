@@ -1175,6 +1175,16 @@
    "original": "Learning about users' sleep habits.",
    "rewrite": "正在了解用户的睡眠习惯。",
    "kind": "EN to ZH: progressive line with 了解, whose 了 is no aspect"
+  },
+  {
+   "original": "关于睡眠纺锤波的论文撰写中，预计 2026 年 12 月投稿。",
+   "rewrite": "Manuscript on sleep spindles in preparation; submission expected Dec 2026.",
+   "kind": "ZH to EN: manuscript in preparation, submission expected"
+  },
+  {
+   "original": "Paper under review at CHI 2026; preprint posted on arXiv.",
+   "rewrite": "论文正在 CHI 2026 审稿中；预印本已发布在 arXiv 上。",
+   "kind": "EN to ZH: paper under review beside a posted preprint"
   }
  ],
  "unfaithful": [
@@ -2822,6 +2832,41 @@
    "kind": "translation launches a page the Chinese has under way",
    "caught": "contract",
    "case": "ZH to EN launches a page under 正在"
+  },
+  {
+   "original": "Lab website under development; release expected next month.",
+   "rewrite": "实验室网站目前已上线。",
+   "kind": "translation finishes work beside an expected release",
+   "caught": "contract",
+   "case": "EN to ZH launches a site whose release is only expected"
+  },
+  {
+   "original": "Lab website under development; homepage planned.",
+   "rewrite": "实验室网站目前已上线。",
+   "kind": "translation finishes work beside a planned homepage",
+   "caught": "contract",
+   "case": "EN to ZH launches a site whose homepage is only planned"
+  },
+  {
+   "original": "Manuscript on sleep spindles in preparation; submission expected Dec 2026.",
+   "rewrite": "关于睡眠纺锤波的论文撰写中，已于 2026 年 12 月投稿。",
+   "kind": "translation submits a manuscript whose submission is expected",
+   "caught": "contract",
+   "case": "EN to ZH submits a manuscript whose submission is expected"
+  },
+  {
+   "original": "Weather station under construction; completion expected this spring.",
+   "rewrite": "气象站搭建中，已于今年春季完工。",
+   "kind": "translation completes a station whose completion is expected",
+   "caught": "contract",
+   "case": "EN to ZH completes a station whose completion is expected"
+  },
+  {
+   "original": "正在开发一种土壤传感器。",
+   "rewrite": "Developing a soil sensor; method patented.",
+   "kind": "translation adds a finished headline the Chinese line has under way",
+   "caught": "contract",
+   "case": "ZH to EN patents a design the Chinese has under way"
   }
  ]
 }
