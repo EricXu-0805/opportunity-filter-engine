@@ -1483,6 +1483,13 @@ def refresh_all(
         # run; successes stop being re-scraped, so the budget window advances
         # through the backlog run over run.
         #
+        # The pass also stops at the run deadline. It starts only after the
+        # sources, so on a day they spend the whole budget (the first week of
+        # the month, when OFE_ENRICH_PROFILES follows every profile link) its
+        # ~45 minutes used to run past the job's hard timeout and the run
+        # published nothing: 09-01, 09-02, 09-04, 09-05, 09-07 and 10-01 2026
+        # all entered this pass at 10:09-10:26 UTC and were killed at 11:04.
+        #
         # Sharded runs scope the pool to the shard's schools (school fallback
         # mirrors pi_enricher._school_domains: fresh records aren't stamped
         # until apply_school_audience later in this block) and pass save=False:
@@ -1497,18 +1504,21 @@ def refresh_all(
             ]
         else:
             pi_pool = all_opps
-        pi_stats = enrich_pi(pi_pool, save=not sharded, max_scrapes=1000)
+        pi_stats = enrich_pi(pi_pool, save=not sharded, max_scrapes=1000,
+                             deadline=deadline)
         summary["sources"]["pi_enricher"] = {
             "scraped": pi_stats["scraped"],
             "enriched": pi_stats["enriched"],
             "already_had": pi_stats["already_has_email"],
             "skipped_budget": pi_stats["skipped_budget"],
+            "skipped_deadline": pi_stats.get("skipped_deadline", 0),
             "skipped_tombstoned": pi_stats.get("skipped_tombstoned", 0),
             "status": "ok",
         }
         logger.info(
             f"PI enricher: {pi_stats['enriched']} new emails found "
-            f"({pi_stats['skipped_budget']} left for next run by the scrape budget)")
+            f"({pi_stats['skipped_budget']} left for next run by the scrape budget, "
+            f"{pi_stats.get('skipped_deadline', 0)} by the run deadline)")
 
         # Final deterministic collapse of ucb_* joint-appointment duplicates.
         # pi_enricher above (and _carry_forward_enrichment at merge time) can

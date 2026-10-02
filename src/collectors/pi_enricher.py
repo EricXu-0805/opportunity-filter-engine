@@ -381,10 +381,13 @@ def _is_ucb_program_record(opp: dict) -> bool:
 
 
 def enrich_opportunities(opps: list[dict], save: bool = False,
-                         max_scrapes: int | None = None) -> dict:
+                         max_scrapes: int | None = None,
+                         deadline: float | None = None) -> dict:
+    """``deadline`` is a ``time.monotonic()`` instant after which no page is
+    fetched; the pages it leaves wait for the next run, like ``max_scrapes``."""
     stats = {"total": len(opps), "already_has_email": 0, "enriched": 0,
              "scraped": 0, "inferred_pi": 0, "failed": 0, "skipped_budget": 0,
-             "skipped_program": 0, "skipped_tombstoned": 0}
+             "skipped_deadline": 0, "skipped_program": 0, "skipped_tombstoned": 0}
 
     for i, opp in enumerate(opps):
         if opp.get("contact_email"):
@@ -424,6 +427,8 @@ def enrich_opportunities(opps: list[dict], save: bool = False,
 
         if scrapeable and max_scrapes is not None and stats["scraped"] >= max_scrapes:
             stats["skipped_budget"] += 1
+        elif scrapeable and deadline is not None and time.monotonic() >= deadline:
+            stats["skipped_deadline"] += 1
         elif scrapeable:
             soup = _fetch_soup(url)
             stats["scraped"] += 1
