@@ -19,7 +19,7 @@ vi.mock('pdfjs-dist', () => ({
 }));
 
 import { parseResumePDF } from './pdf-parser';
-import { MAX_RESUME_TEXT_CHARACTERS, wrapEvidence } from './resume-input';
+import { MAX_RESUME_TEXT_CHARACTERS, weakWrapEvidence, wrapEvidence } from './resume-input';
 
 type MockPdf = {
   numPages: number;
@@ -1265,15 +1265,57 @@ describe('positioned text items', () => {
     ]);
   });
 
+  it('carries a line that ends in a preposition on into a number only where the page shows that the number did not fit', async () => {
+    // "refer to" and "worked with" can end an item, and the next item can
+    // open with a count or a measure ("12 students mentored…"). After such a
+    // word a number is a weak hint: another line must show where the column
+    // ends, and the number must not have fitted even without the slack that
+    // words which cannot end a line get. Here no line shows the edge.
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('Research Assistant, Biomechanics Lab, Jun 2025 - Aug 2025', 50, 280, 736, { hasEOL: true }),
+      at('Calibrated the motion capture cameras and wrote the setup guide that the staff of the gait lab refer to', 50, 480, 724, { hasEOL: true }),
+      at('12 students mentored through their first research projects', 50, 260, 712, { hasEOL: true }),
+      at('Wrote unit tests for the parser', 50, 160, 700),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      'Research Assistant, Biomechanics Lab, Jun 2025 - Aug 2025',
+      'Calibrated the motion capture cameras and wrote the setup guide that the staff of the gait lab refer to',
+      '12 students mentored through their first research projects',
+      'Wrote unit tests for the parser',
+    ]);
+    // The role row's right-aligned date shows the edge. "40%" would have
+    // fitted after "worked with", which ends 18pt short of it; after "by",
+    // at the edge, it goes on.
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('Research Assistant, Plant Phenomics Lab', 50, 180, 736), at('Jun 2025 - Aug 2025', 460, 90, 736, { hasEOL: true }),
+      at('Co-wrote the imaging protocol and the analysis notebooks with the two graduate students I worked with', 50, 482, 724, { hasEOL: true }),
+      at('40% faster nightly builds after moving the test suite to parallel runners', 50, 330, 712, { hasEOL: true }),
+      at('Rewrote the nightly image preprocessing job of the crop classifier and cut the runtime of each run by', 50, 500, 700, { hasEOL: true }),
+      at('40% after caching resized tiles', 50, 140, 688),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      'Research Assistant, Plant Phenomics Lab\tJun 2025 - Aug 2025',
+      'Co-wrote the imaging protocol and the analysis notebooks with the two graduate students I worked with',
+      '40% faster nightly builds after moving the test suite to parallel runners',
+      'Rewrote the nightly image preprocessing job of the crop classifier and cut the runtime of each run by 40% after caching resized tiles',
+    ]);
+  });
+
   it('takes a number after the words that take one, and a measure after a semicolon', () => {
-    for (const word of ['by', 'to', 'from', 'over', 'under', 'at', 'with', 'about', 'around', 'nearly', 'almost',
-      'approximately', 'roughly', 'reaching', 'reached', 'GPA']) {
+    for (const word of ['about', 'around', 'nearly', 'almost', 'approximately', 'roughly', 'reaching', 'reached', 'GPA']) {
       expect(wrapEvidence(`Cut the runtime of the nightly job ${word}`, '40% after caching resized tiles')).toBe(true);
       expect(wrapEvidence(`Cut the runtime of the nightly job ${word}`, '12 students in the course')).toBe(true);
+    }
+    // A preposition among those words can also end an item ("…the staff of
+    // the gait lab refer to"), so a number after it is only a weak hint.
+    for (const word of ['by', 'to', 'from', 'over', 'under', 'at', 'with']) {
+      expect(wrapEvidence(`Cut the runtime of the nightly job ${word}`, '40% after caching resized tiles')).toBe(false);
+      expect(weakWrapEvidence(`Cut the runtime of the nightly job ${word}`, '40% after caching resized tiles', false)).toBe(true);
     }
     // "rely on", "log in", "signed up for" can end an item; a year opens a row.
     for (const word of ['on', 'in', 'for', 'into', 'across', 'week', 'gpa']) {
       expect(wrapEvidence(`Cut the runtime of the nightly job ${word}`, '40% after caching resized tiles')).toBe(false);
+      expect(weakWrapEvidence(`Cut the runtime of the nightly job ${word}`, '40% after caching resized tiles', false)).toBe(false);
     }
     expect(wrapEvidence('Presented the poster to', '2025 Undergraduate Research Symposium judges')).toBe(false);
     expect(wrapEvidence('Labeled 3,000 tweets;', '78% accuracy vs 71% baseline')).toBe(true);

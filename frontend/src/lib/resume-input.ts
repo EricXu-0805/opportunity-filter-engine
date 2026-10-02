@@ -115,9 +115,11 @@ const PARTICLE = /(?:^|\s)(?:to|for|in|on|with|by|at|from|over|under|into|across
 const CONTINUES_BEFORE = /^(?:\p{Ll}(?![\p{L}\p{N}]*\p{Lu})|[&()%])/u;
 // A number opens an item as often as it goes on one ("12 students
 // mentored…", "40% faster builds…", "3.92/4.00 GPA, Dean's List"). It goes
-// on a line that ends in a word that takes a number ("cut its runtime by" /
-// "40%", "about" / "12,000", "GPA" / "3.7/4.0"), and a measure goes on
-// after ";" ("3,000 tweets;" / "78% accuracy"). A year is a date of its own.
+// on a line that ends in a word that takes a number ("about" / "12,000",
+// "GPA" / "3.7/4.0"), and a measure goes on after ";" ("3,000 tweets;" /
+// "78% accuracy"). A year is a date of its own. The prepositions among these
+// words can also end an item ("…that the staff of the gait lab refer to"),
+// so a number after one is only a weak hint ("cut its runtime by" / "40%").
 const NUMBER_START = /^(?!(?:19|20)\d{2}\b)\d+(?:[,.]\d+)*(?:\/\d+(?:[,.]\d+)*)?%?(?=[\s,)]|$)/u;
 const MEASURE_START = /^(?!(?:19|20)\d{2}\b)(?:\d+(?:[,.]\d+)+(?:\/\d+(?:[,.]\d+)*)?%?|\d+%)(?=[\s)]|$)/u;
 const TAKES_NUMBER = /(?:^|\s)(?:by|to|from|over|under|at|with|about|around|nearly|almost|approximately|roughly|reaching|reached|GPA)$/u;
@@ -169,14 +171,15 @@ function openBracket(line: string): boolean {
 
 /** The words at the break say the line goes on: the line before cannot end
  *  an item, the next line cannot open one, a number follows a word that
- *  takes one, or the break falls inside a bracket or a date range. A list
- *  cut after a comma and a name says nothing: the row of names under it is
- *  as likely an organization ("Caterpillar Inc., Peoria") or an honors line
- *  ("Dean's List, James Scholar") as the rest of the list. */
+ *  takes one and cannot end an item, or the break falls inside a bracket or
+ *  a date range. A list cut after a comma and a name says nothing: the row
+ *  of names under it is as likely an organization ("Caterpillar Inc.,
+ *  Peoria") or an honors line ("Dean's List, James Scholar") as the rest of
+ *  the list. */
 export function wrapEvidence(before: string, after: string): boolean {
   return CONTINUES_AFTER.test(before) || CONTINUES_BEFORE.test(after) || openBracket(before)
-    || (NUMBER_START.test(after) && TAKES_NUMBER.test(before)) || (MEASURE_START.test(after) && before.endsWith(';'))
-    || (DASH_CONTINUATION.test(after) && YEAR_END.test(before));
+    || (NUMBER_START.test(after) && TAKES_NUMBER.test(before) && !PARTICLE.test(before))
+    || (MEASURE_START.test(after) && before.endsWith(';')) || (DASH_CONTINUATION.test(after) && YEAR_END.test(before));
 }
 
 /** A first word that is a name in itself, not one that opens an item: an
@@ -189,14 +192,15 @@ function nameStart(after: string): boolean {
 
 /** Hints too weak to carry a line on by themselves, so the page's geometry
  *  must agree without slack. A lone word or CJK character that cannot stand
- *  as a line of its own ("GPU.", "钟"). A preposition that could also end
- *  the item, before a name and lowercase words ("ImageNet and a held-out
- *  split", not "IBM Research", "Research Intern, …" or "Mentored…"). In a
- *  glyph item on a page whose glyph items end with a full stop, a next line
- *  that ends the sentence and opens with an acronym or a model number ("AUC
- *  on a held-out split.", not "PantryPal is a tracker…", which may describe
- *  a project of its own), or after a preposition, with any word but an
- *  article ("A web app…"). None of them carries a line on into a role row. */
+ *  as a line of its own ("GPU.", "钟"). A number after a preposition that
+ *  takes one ("by" / "40%"). A preposition that could also end the item,
+ *  before a name and lowercase words ("ImageNet and a held-out split", not
+ *  "IBM Research", "Research Intern, …" or "Mentored…"). In a glyph item on
+ *  a page whose glyph items end with a full stop, a next line that ends the
+ *  sentence and opens with an acronym or a model number ("AUC on a held-out
+ *  split.", not "PantryPal is a tracker…", which may describe a project of
+ *  its own), or after a preposition, with any word but an article ("A web
+ *  app…"). None of them carries a line on into a role row. */
 export function weakWrapEvidence(before: string, after: string, periodItem: boolean): boolean {
   const ends = periodItem && SENTENCE_END.test(after) && !ROW.test(after);
   const characters = Array.from(after);
@@ -204,6 +208,7 @@ export function weakWrapEvidence(before: string, after: string, periodItem: bool
   if (CJK.test(characters[0]) || CJK.test(Array.from(before).pop()!)) return ends || characters.length === 1;
   if (roleRow(after)) return false;
   if (!/\s/u.test(after) && SENTENCE_END.test(after)) return true;
+  if (NUMBER_START.test(after) && TAKES_NUMBER.test(before)) return true;
   if (nameStart(after)) return (ends && !/\p{Ll}/u.test(firstWord(after))) || (PARTICLE.test(before) && /\s\p{Ll}/u.test(after));
   return ends && PARTICLE.test(before) && !ARTICLE.test(after);
 }
