@@ -666,7 +666,7 @@ _LOCK_WORD = [TEAM, HELP, NEGATION, DENIAL, _UN_DONE, PUBLICATION, INTENT, UNFIN
 # still to come (UNFINISHED, UNDERWAY_ZH: 开发中, 即将), still to come on its own
 # (FUTURE: "will", 即将, so 即将发表 beside 目前 keeps its own word) and a draft.
 _FAMILIES = {
-    "team": [TEAM, _TEAM_ZH_EXTRA, _TEAM_EN_EXTRA, _TEAM_OTHERS, CO_CREDIT], "help": [HELP], "limit": [_LIMIT],
+    "team": [TEAM, _TEAM_ZH_EXTRA, _TEAM_EN_EXTRA, CO_CREDIT], "help": [HELP], "limit": [_LIMIT],
     "negation": [NEGATION, DENIAL, _UN_DONE], "solo": [_SOLO], "span": [_SPAN], "intent": [INTENT, PLANNED],
     "unfinished": [UNFINISHED, UNDERWAY_ZH], "future": [FUTURE_EN, FUTURE_ZH], "draft": [_DRAFT],
     "publication": [PUBLICATION, _UNPUBLISHED],

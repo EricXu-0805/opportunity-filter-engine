@@ -7695,9 +7695,9 @@
     }
    ],
    "expected": [
-    "kept",
-    "beyond_allowed_edit",
-    "translation_team"
+    "pending",
+    null,
+    null
    ]
   },
   {
@@ -7714,9 +7714,9 @@
     }
    ],
    "expected": [
-    "kept",
-    "beyond_allowed_edit",
-    "translation_team"
+    "pending",
+    null,
+    null
    ]
   },
   {
@@ -7835,7 +7835,7 @@
   },
   {
    "group": "translate",
-   "label": "EN to ZH keeps three other students",
+   "label": "EN to ZH loses three other students as 另外三名同学: no English team word",
    "output": "zh",
    "anchors": [],
    "original": "Designed a survey with three other students.",
@@ -7847,14 +7847,14 @@
     }
    ],
    "expected": [
-    "pending",
-    null,
-    null
+    "kept",
+    "beyond_allowed_edit",
+    "translation_team"
    ]
   },
   {
    "group": "translate",
-   "label": "EN to ZH keeps two other volunteers",
+   "label": "EN to ZH loses two other volunteers as 另外两名志愿者: no English team word",
    "output": "zh",
    "anchors": [],
    "original": "Sorted 500 cans of food alongside two other volunteers.",
@@ -7866,9 +7866,9 @@
     }
    ],
    "expected": [
-    "pending",
-    null,
-    null
+    "kept",
+    "beyond_allowed_edit",
+    "translation_team"
    ]
   },
   {
@@ -10010,6 +10010,25 @@
     "pending",
     null,
     null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH with another student as 与另一名同学一起 is kept, never refused as a fabrication",
+   "output": "zh",
+   "anchors": [],
+   "original": "Designed a survey with another student.",
+   "rewrite": "与另一名同学一起设计了一份问卷。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_team"
    ]
   }
  ]

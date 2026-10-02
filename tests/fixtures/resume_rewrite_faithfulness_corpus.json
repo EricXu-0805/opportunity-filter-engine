@@ -3485,15 +3485,13 @@
    "original": "Designed an online survey on sleep with three other students (PSYC 238).",
    "rewrite": "设计了一份关于睡眠的在线问卷（PSYC 238）。",
    "kind": "translation drops three other students",
-   "caught": "contract",
-   "case": "EN to ZH drops three other students"
+   "caught": "review"
   },
   {
    "original": "Sorted 500 cans of food alongside two other volunteers.",
    "rewrite": "分拣了 500 罐食物。",
    "kind": "translation drops two other volunteers",
-   "caught": "contract",
-   "case": "EN to ZH drops two other volunteers"
+   "caught": "review"
   },
   {
    "original": "参与了 40 份水样的 qPCR 检测。",

@@ -333,9 +333,14 @@ class TestTeamAndShare:
         "Built it with others.",
         *(f"与{other}三名{noun}一起" for other in ("另外", "另一", "其他", "其余")
           for noun in ("学生", "同学", "志愿者", "实习生", "成员", "研究员", "同事", "队员"))])
-    def test_other_collaborators_are_a_team(self, text):
+    def test_other_collaborators_are_a_relabel_lock_word(self, text):
         assert em._TEAM_OTHERS.search(text)
-        assert em._has(em._FAMILIES["team"], text)
+        assert em._TEAM_OTHERS in em._LOCK_WORD
+
+    def test_other_collaborators_are_no_translation_team_word(self):
+        # As a team word, "with another student" passed the contract beside 与另一名同学一起,
+        # and the claim locks, which read no 一起, refused that faithful translation as a fabrication.
+        assert not em._has(em._FAMILIES["team"], "Designed a survey with another student.")
 
     @pytest.mark.parametrize("text", ["Tutored 30 students in calculus.", "Held office hours with 30 students.",
                                       "Trained 5 colleagues in Excel.", "Met with members of the public.",
