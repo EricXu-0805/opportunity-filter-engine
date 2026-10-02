@@ -173,7 +173,10 @@ def test_snapshot_is_public_and_fully_detached_before_the_first_await(corpus, mo
     original = deepcopy(record)
     seen = []
     monkeypatch.setattr(tailor, "is_configured", lambda: True)
-    async def held_work(_fn, _profile, used_target, _bullets, **_kwargs):
+    async def held_work(fn, *args, **_kwargs):
+        if fn in (tailor._checked_outcomes, tailor._alternatives):
+            return fn(*args)
+        _profile, used_target, _bullets = args
         record["description_clean"] = "Changed while request is in flight"
         record["eligibility"]["skills_required"].append("Rust")
         record["metadata"]["confidence_score"] = 0.1

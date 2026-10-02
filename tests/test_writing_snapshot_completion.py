@@ -210,6 +210,7 @@ def test_every_legacy_resume_fallback_and_success_is_stamped(path, mode, monkeyp
     async def work(fn, *args, **kwargs):
         if mode == 'worker-timeout': raise tailor.BlockingWorkTimeout()
         if mode == 'invalid-output': return None
+        if fn in (tailor._checked_outcomes, tailor._alternatives): return fn(*args)
         text = 'Deployed Kubernetes services' if mode == 'rejected' else TEXT
         if fn is tailor._ai_renovation_plan:
             return {'order': ['s'], 'sections': {'s': [('b', 'foreground')]}}
