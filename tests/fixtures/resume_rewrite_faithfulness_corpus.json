@@ -1545,6 +1545,76 @@
    "original": "Setting up a Raspberry Pi server for the robotics lab.",
    "rewrite": "Robotics lab: setting up a Raspberry Pi server.",
    "kind": "reorder keeps set under way"
+  },
+  {
+   "original": "在 Ling 教授的实验室带领 3 名本科生标注了 500 张图像。",
+   "rewrite": "Led 3 undergraduates in labeling 500 images in Prof. Ling's lab.",
+   "kind": "translation of a Chinese line naming a Latin-script word that ends in -ing (Ling, Reading, Setting, Sampling)"
+  },
+  {
+   "original": "在 Ling 教授指导下带领 3 名本科生标注了 500 张图像。",
+   "rewrite": "Under Prof. Ling's guidance, led 3 undergraduates in labeling 500 images.",
+   "kind": "translation of a Chinese line naming a Latin-script word that ends in -ing (Ling, Reading, Setting, Sampling)"
+  },
+  {
+   "original": "Ling 实验室本科研究助理；带领 3 名本科生标注了 500 张图像。",
+   "rewrite": "Undergraduate research assistant in the Ling Lab; led 3 undergraduates in labeling 500 images.",
+   "kind": "translation of a Chinese line naming a Latin-script word that ends in -ing (Ling, Reading, Setting, Sampling)"
+  },
+  {
+   "original": "担任 Ling 教授的研究助理，带领 4 名同学整理了 300 份问卷。",
+   "rewrite": "As Prof. Ling's research assistant, led 4 classmates in organizing 300 questionnaires.",
+   "kind": "translation of a Chinese line naming a Latin-script word that ends in -ing (Ling, Reading, Setting, Sampling)"
+  },
+  {
+   "original": "在 Ling 实验室带领一个 3 人小组完成了眼动实验。",
+   "rewrite": "Led a 3-person team in the Ling Lab through an eye-tracking study.",
+   "kind": "translation of a Chinese line naming a Latin-script word that ends in -ing (Ling, Reading, Setting, Sampling)"
+  },
+  {
+   "original": "在 Ling 教授的实验室负责并带领了 2 次组会。",
+   "rewrite": "Led 2 group meetings in Prof. Ling's lab.",
+   "kind": "translation of a Chinese line naming a Latin-script word that ends in -ing (Ling, Reading, Setting, Sampling)"
+  },
+  {
+   "original": "加入 Reading Group 后每周阅读 2 篇论文。",
+   "rewrite": "After joining the Reading Group, read 2 papers each week.",
+   "kind": "translation of a Chinese line naming a Latin-script word that ends in -ing (Ling, Reading, Setting, Sampling)"
+  },
+  {
+   "original": "在 Reading 大学交换期间阅读了 20 篇关于睡眠的论文。",
+   "rewrite": "During an exchange at the University of Reading, read 20 papers on sleep.",
+   "kind": "translation of a Chinese line naming a Latin-script word that ends in -ing (Ling, Reading, Setting, Sampling)"
+  },
+  {
+   "original": "在 Reading Club 中带读了 12 本书。",
+   "rewrite": "Read 12 books with the Reading Club.",
+   "kind": "translation of a Chinese line naming a Latin-script word that ends in -ing (Ling, Reading, Setting, Sampling)"
+  },
+  {
+   "original": "在 Setting 模块中设置了 3 个参数。",
+   "rewrite": "Set 3 parameters in the Setting module.",
+   "kind": "translation of a Chinese line naming a Latin-script word that ends in -ing (Ling, Reading, Setting, Sampling)"
+  },
+  {
+   "original": "用 Clustering 方法对 300 名用户进行了分群。",
+   "rewrite": "Clustered 300 users with a clustering method.",
+   "kind": "translation of a Chinese line naming a Latin-script word that ends in -ing (Ling, Reading, Setting, Sampling)"
+  },
+  {
+   "original": "使用 Sampling 方法采集了 200 份样本。",
+   "rewrite": "Sampled 200 specimens with a sampling method.",
+   "kind": "translation of a Chinese line naming a Latin-script word that ends in -ing (Ling, Reading, Setting, Sampling)"
+  },
+  {
+   "original": "利用 Profiling 工具分析了程序性能，优化了 3 个热点函数。",
+   "rewrite": "Profiled the program with a profiling tool and optimized 3 hot functions.",
+   "kind": "translation of a Chinese line naming a Latin-script word that ends in -ing (Ling, Reading, Setting, Sampling)"
+  },
+  {
+   "original": "在 Building 4 实验室搭建了 3 台测试平台。",
+   "rewrite": "Built 3 test rigs in the Building 4 lab.",
+   "kind": "translation of a Chinese line naming a Latin-script word that ends in -ing (Ling, Reading, Setting, Sampling)"
   }
  ],
  "unfaithful": [

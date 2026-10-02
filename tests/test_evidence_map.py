@@ -618,6 +618,28 @@ class TestOwnPastVerbs:
         assert grounding.status_upgraded(proposed, original) is upgraded
 
 
+class TestEnglishLeadsOnly:
+    """status_upgraded reads clause leads, -ing words it does not know and set/put/cut/read in an English original."""
+
+    @pytest.mark.parametrize(("original", "proposed"), [
+        ("加入 Reading Group 后每周阅读 2 篇论文。", "After joining the Reading Group, read 2 papers each week."),
+        ("在 Setting 模块中设置了 3 个参数。", "Set 3 parameters in the Setting module."),
+        ("在 Ling 教授指导下带领 3 名本科生标注了 500 张图像。", "Under Prof. Ling's guidance, led 3 undergraduates in labeling 500 images."),
+        ("使用 Sampling 方法采集了 200 份样本。", "Sampled 200 specimens with a sampling method."),
+        ("在 Building 4 实验室搭建了 3 台测试平台。", "Built 3 test rigs in the Building 4 lab."),
+        ("计划在 Reading Club 中带读 12 本书。", "Plan to read 12 books with the Reading Club.")])
+    def test_a_latin_word_in_a_chinese_line_leads_no_work_under_way(self, original, proposed):
+        assert not grounding.status_upgraded(proposed, original)
+
+    @pytest.mark.parametrize(("original", "proposed"), [
+        ("Setting up a server at 北京大学.", "At 北京大学: set up a server."),
+        ("Wiring 3 soil sensors at 清华大学.", "At 清华大学: wired 3 soil sensors."),
+        ("Developing a website at 北京大学.", "At 北京大学: developed a website."),
+        ("计划 develop 一个网站。", "Developed a website.")])
+    def test_an_english_line_naming_a_chinese_place_is_still_read(self, original, proposed):
+        assert grounding.status_upgraded(proposed, original)
+
+
 class TestLeadingClause:
     @pytest.mark.parametrize(("chinese", "leading"), [
         ("目前，开发了网站；撰写了综述。", "开发了网站"), ("目前:开发了网站", "开发了网站"),
