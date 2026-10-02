@@ -5300,6 +5300,44 @@
     null,
     null
    ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN finishes 开发中 after a long 在 phrase",
+   "output": "en",
+   "anchors": [],
+   "original": "在王老师指导下智能温室系统开发中。",
+   "rewrite": "Developed a smart greenhouse system under Prof. Wang's guidance.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN keeps a short 在 … 中 place",
+   "output": "en",
+   "anchors": [],
+   "original": "在网站项目开发中，用 Python 编写了 3 个脚本。",
+   "rewrite": "During the website project's development, wrote 3 scripts in Python.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
   }
  ]
 }

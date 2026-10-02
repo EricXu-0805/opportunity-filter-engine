@@ -1000,6 +1000,11 @@
    "original": "Developing a website and tested the login page.",
    "rewrite": "正在开发网站，并测试了登录页面。",
    "kind": "EN to ZH: finished clause after and"
+  },
+  {
+   "original": "在网站项目开发中，用 Python 编写了 3 个脚本。",
+   "rewrite": "During the website project's development, wrote 3 scripts in Python.",
+   "kind": "ZH to EN: 在 … 中 with four characters between is a place"
   }
  ],
  "unfaithful": [
@@ -2500,6 +2505,13 @@
    "kind": "translation starts hoped-for work",
    "caught": "contract",
    "case": "EN to ZH starts hoped-for work beside an interest"
+  },
+  {
+   "original": "在王老师指导下智能温室系统开发中。",
+   "rewrite": "Developed a smart greenhouse system under Prof. Wang's guidance.",
+   "kind": "translation finishes 开发中 that a long 在 phrase precedes",
+   "caught": "contract",
+   "case": "ZH to EN finishes 开发中 after a long 在 phrase"
   }
  ]
 }

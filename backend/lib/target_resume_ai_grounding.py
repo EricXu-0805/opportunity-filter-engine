@@ -79,12 +79,13 @@ UNFINISHED = re.compile(
     r"|to\s+appear|in\s+press|underway|will|unpublished|unfinished|expected|anticipated"
     r"|under\s+(?:review|revision|development|construction)|drafting)\b", re.I)
 # A Chinese action verb + 中 is work under way when it ends its clause or describes
-# a thing (系统开发中, 开发中的系统); after 在, 到 or 入 it is a place (在研究中发现).
+# a thing (系统开发中, 开发中的系统); within four characters after 在, 到 or 入 it is a
+# place (在研究中发现, 在项目开发中). 在王老师指导下智能温室系统开发中 is still under way.
 _ZH_UNDERWAY_VERBS = (
     "开发|测试|分析|研究|整理|采集|申请|审核|审稿|评审|撰写|准备|进行|筹备|设计|调试|搭建|建设|修改|修订|编写|实施|推进"
     "|招募|收集|处理|训练|优化|验证|调研|构建|部署|迭代|改进|完善|制作|编辑|翻译|录入|标注|统计|计算|筹建|筹划|策划|起草"
     "|实验|试验|研发|研制|孵化|运营|维护|升级|评估|审查|审批|投稿|提交|拍摄|剪辑|录制|复现|重构")
-_ZH_PROGRESSIVE = ("".join(rf"(?<![在到入][^，,。；;：:、！？!?]{{{n}}})" for n in range(15))
+_ZH_PROGRESSIVE = ("".join(rf"(?<![在到入][^，,。；;：:、！？!?]{{{n}}})" for n in range(5))
                    + rf"(?:{_ZH_UNDERWAY_VERBS})中(?=$|[，,。；;：:、！？!?)）\s]|的)")
 # Chinese for work under way or still to come; with the intent words below it is
 # what status_upgraded reads. A translation pairs these with UNFINISHED and the

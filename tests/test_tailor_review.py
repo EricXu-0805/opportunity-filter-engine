@@ -455,6 +455,8 @@ class TestLockChangesForEvidenceMappedRewrites:
         ("Will present a poster on sleep spindles at SfN 2026.", "Presented a poster on sleep spindles at SfN 2026."),
         ("智能温室监测系统开发中，负责传感器数据采集。", "开发了智能温室监测系统，负责传感器数据采集。"),
         ("论文即将发表于 CHI 2026。", "论文已发表于 CHI 2026。"),
+        # 在 a dozen characters back opens no place: the verb + 中 is still under way.
+        ("在王老师指导下智能温室系统开发中。", "在王老师指导下开发了智能温室系统。"),
     ])
     def test_unfinished_work_stated_as_finished_is_hard(self, original, proposed):
         assert "status_upgraded" in claim_upgrade_findings(proposed, original)[0]
