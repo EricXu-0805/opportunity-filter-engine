@@ -563,18 +563,23 @@ _OTHER_PERSON = re.compile(
     r"|\b(?:revised|rewrote|rewritten|edited)\s+by\b"
     r"|导师|老师|师兄|师姐|博士生|博士后|硕士生|研究生|技术员|工程师|助教|教授|参考(?!文献|资料|书目)|基于|医生|护士",
     re.I)
-# A hedge always qualifies ("roughly segmented", "nearly finished"). A word that is
-# also a preposition does only before a quantity: "about 40 samples", "over a
-# year", not "a talk about a campus program" or "under development". 约 estimates
-# (约 200 份), but 预约 schedules; 起 starts a span (2024 年起), but 起草 drafts and
-# 发起 launches.
-_QUANTITY = (r"(?=\s+(?:[$€£¥~≈]?\d|(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen"
-             r"|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|half|dozens?|hundreds|thousands"
-             r"|all|every|each)\b|(?:a|an)\s+(?:few|couple|dozen|hundred|thousand|year|month|week|day|hour|minute"
-             r"|semester|term|summer|decade|half|third|quarter)\b))")
+# In a translation a hedge always qualifies ("roughly segmented", "nearly finished").
+# A word that is also a preposition does only before a quantity: "about 40 samples",
+# "about twice as fast", "under several dozen", "over many years", "up to an order of
+# magnitude", "over a year", not "a talk about a campus program", "a talk about many
+# species", "under development" or "about double-blind trials". 约 estimates (约 200
+# 份), but 预约 schedules; 起 starts a span (2024 年起), but 起草 drafts and 发起
+# launches; 最多 is "up to", but 最多的 "the most".
+_QUANTITY = (r"(?=\s+(?:[$€£¥~≈]?\d|(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen"
+             r"|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty"
+             r"|ninety|hundreds?|thousands?|millions?|billions?|dozens?|tens|half|twice|all|every|each)\b"
+             r"|(?:double|triple)\b(?!-)|(?:several|many|multiple|numerous)\s+(?:dozens?|hundreds?|thousands?"
+             r"|millions?|years?|months?|weeks?|days?|hours?|semesters?|terms?|summers?|decades?|times)\b"
+             r"|(?:a|an)\s+(?:few|couple|dozen|hundred|thousand|million|billion|year|month|week|day|hour|minute"
+             r"|semester|term|summer|decade|half|third|quarter|order\s+of|factor\s+of)\b))")
 _SPAN = re.compile(r"\b(?:about|around|over|under|more\s+than|less\s+than|up\s+to)" + _QUANTITY
                    + r"|\b(?:approximately|roughly|nearly|almost|at\s+least|at\s+most|since|until|per)\b"
-                   r"|(?<![预制节简邀相契合公条])约(?![定会束谈请见稿])|将近|超过|至少|左右"
+                   r"|(?<![预制节简邀相契合公条])约(?![定会束谈请见稿])|将近|超过|至少|左右|最多(?!的)|至多|多达|高达|不到"
                    r"|(?<![一发引提拿想兴崛缘])起(?![来草源始点因诉步飞初])|以来|至今", re.I)
 _SOLO = re.compile(r"\b(?:alone|independently|solely|single-handedly|by\s+myself|on\s+my\s+own)\b|独立|独自|单独", re.I)
 _LIMIT = re.compile(r"\b(?:only|just)\b|只|仅", re.I)
@@ -605,8 +610,13 @@ _RELEVANCE_WORD = re.compile(
     r"|expertise|proficien\w*)\b|体现|展现|展示|积累|锻炼|提升|培养|相关", re.I)
 # A relabel keeps "revised" and "edited" in any use: "the revised proposal" names a version.
 _REVISION_WORD = re.compile(r"\b(?:revised|rewrote|rewritten|edited)\b", re.I)
-_LOCK_WORD = [TEAM, HELP, NEGATION, DENIAL, PUBLICATION, INTENT, UNFINISHED, UNFINISHED_ZH, _STATUS_WORD, _SPAN, _SOLO,
-              _LIMIT, _OTHER_PERSON, _REVISION_WORD, _TEAM_ZH_EXTRA, _TEAM_EN_EXTRA, CO_CREDIT, _PERSONAL_MARKER]
+# ... and every English approximation or span word in any use, as ab4ebfd9 did: a
+# relabel renames a thing, so it has no reason to drop "about" or "less than".
+_SPAN_WORD = re.compile(r"\b(?:about|approximately|roughly|nearly|almost|around|over|under|more\s+than|less\s+than"
+                        r"|at\s+least|at\s+most|up\s+to|since|until|per)\b", re.I)
+_LOCK_WORD = [TEAM, HELP, NEGATION, DENIAL, PUBLICATION, INTENT, UNFINISHED, UNFINISHED_ZH, _STATUS_WORD, _SPAN,
+              _SPAN_WORD, _SOLO, _LIMIT, _OTHER_PERSON, _REVISION_WORD, _TEAM_ZH_EXTRA, _TEAM_EN_EXTRA, CO_CREDIT,
+              _PERSONAL_MARKER]
 # Families a translation must carry across in both directions. A work's status is
 # three of them: planned or hoped for (INTENT, PLANNED: 计划, 预定), under way or
 # still to come (UNFINISHED, UNDERWAY_ZH: 开发中, 即将) and a draft.

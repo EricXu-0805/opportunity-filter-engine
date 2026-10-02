@@ -5471,6 +5471,313 @@
     null,
     null
    ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops less than before nineteen",
+   "anchors": [
+    "PCR assays"
+   ],
+   "original": "Ran less than nineteen PCR reactions for the genotyping study.",
+   "rewrite": "Ran nineteen PCR assays for the genotyping study.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "PCR assays",
+     "source": "less than nineteen PCR reactions",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "less than nineteen PCR reactions",
+     "to": "nineteen PCR assays"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops about before sixteen",
+   "anchors": [
+    "sixteen subjects"
+   ],
+   "original": "Recruited about sixteen participants for the sleep study.",
+   "rewrite": "Recruited sixteen subjects for the sleep study.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "sixteen subjects",
+     "source": "Recruited about sixteen participants",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "Recruited about sixteen participants",
+     "to": "Recruited sixteen subjects"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops under before several dozen",
+   "anchors": [
+    "dozen respondents"
+   ],
+   "original": "Surveyed under several dozen students for the club.",
+   "rewrite": "Surveyed several dozen respondents for the club.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "dozen respondents",
+     "source": "Surveyed under several dozen students",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "Surveyed under several dozen students",
+     "to": "Surveyed several dozen respondents"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops about as a preposition",
+   "anchors": [
+    "sleep spindle talk"
+   ],
+   "original": "Gave a talk about sleep spindles to the lab.",
+   "rewrite": "Gave a sleep spindle talk to the lab.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "sleep spindle talk",
+     "source": "talk about sleep spindles",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "talk about sleep spindles",
+     "to": "sleep spindle talk"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel keeps about before sixteen",
+   "anchors": [
+    "sixteen subjects"
+   ],
+   "original": "Recruited about sixteen participants for the sleep study.",
+   "rewrite": "Recruited about sixteen subjects for the sleep study.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "sixteen subjects",
+     "source": "Recruited about sixteen participants",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "Recruited about sixteen participants",
+     "to": "Recruited about sixteen subjects"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops up to before an order of magnitude",
+   "output": "zh",
+   "anchors": [],
+   "original": "Cut query latency by up to an order of magnitude.",
+   "rewrite": "将查询延迟降低了一个数量级。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_span"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops about before twice",
+   "output": "zh",
+   "anchors": [],
+   "original": "Made the parser about twice as fast.",
+   "rewrite": "使解析器的速度提高了一倍。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_span"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops about before sixteen",
+   "output": "zh",
+   "anchors": [],
+   "original": "Recruited about sixteen participants for the pilot.",
+   "rewrite": "为预实验招募了十六名参与者。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_span"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops under before several dozen",
+   "output": "zh",
+   "anchors": [],
+   "original": "Surveyed under several dozen students.",
+   "rewrite": "调查了几十名学生。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_span"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops over before many months",
+   "output": "zh",
+   "anchors": [],
+   "original": "Tested water samples from the campus pond over many months.",
+   "rewrite": "检测了校园池塘的水样。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_span"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops about before a factor",
+   "output": "zh",
+   "anchors": [],
+   "original": "Sped up the parser by about a factor of 3.",
+   "rewrite": "将解析器的速度提高了 3 倍。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_span"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps about before twice",
+   "output": "zh",
+   "anchors": [],
+   "original": "Made the parser about twice as fast.",
+   "rewrite": "使解析器的速度提高了大约一倍。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps about before sixteen",
+   "output": "zh",
+   "anchors": [],
+   "original": "Recruited about sixteen participants for the pilot.",
+   "rewrite": "为预实验招募了约十六名参与者。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
   }
  ]
 }

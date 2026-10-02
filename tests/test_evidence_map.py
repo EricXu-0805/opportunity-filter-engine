@@ -138,6 +138,29 @@ class TestLockWordsScanLinearly:
         assert time.perf_counter() - started < 1
 
 
+class TestSpanWords:
+    @pytest.mark.parametrize("quantity", [
+        "thirteen", "fourteen", "sixteen", "seventeen", "eighteen", "nineteen", "twice", "double", "triple", "half",
+        "several dozen", "many years", "multiple weeks", "numerous times", "hundreds", "thousand", "millions",
+        "billion", "tens", "dozens", "a million", "a billion", "an order of", "a factor of"])
+    def test_a_preposition_before_a_quantity_is_a_span_in_a_translation(self, quantity):
+        assert em._has(em._FAMILIES["span"], f"Cut the error by up to {quantity} times.")
+        assert em._has(em._FAMILIES["span"], f"Made it about {quantity} as fast.")
+
+    @pytest.mark.parametrize("text", [
+        "Gave a talk about sleep.", "Studied plants under drought.", "Read over the protocol.",
+        "Gave a talk about many species of birds.", "Read papers about multiple sclerosis.",
+        "Summarized papers about double-blind trials.", "Wrote a review about triple-negative breast cancer."])
+    def test_a_relabel_keeps_a_span_word_in_any_use(self, text):
+        assert not em._has(em._FAMILIES["span"], text)
+        assert any(pattern.search(text) for pattern in em._LOCK_WORD)
+
+    @pytest.mark.parametrize("text", ["最多降低了一个数量级", "至多 3 次", "多达 40 名", "高达 90%", "不到一周"])
+    def test_chinese_up_to_and_less_than_are_spans(self, text):
+        assert em._has(em._FAMILIES["span"], text)
+        assert not em._has(em._FAMILIES["span"], "引用最多的论文")
+
+
 class TestLemma:
     def test_every_form_of_every_resume_verb_shares_one_lemma(self):
         bases = sorted({base for base, _ in RESUME_VERB_FORMS.values()})

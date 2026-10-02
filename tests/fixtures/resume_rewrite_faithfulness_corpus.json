@@ -1020,6 +1020,21 @@
    "original": "Submitted the revised proposal to the committee.",
    "rewrite": "向委员会提交了修改后的提案。",
    "kind": "EN to ZH: a revised version, not a reviser"
+  },
+  {
+   "original": "Recruited about sixteen participants for the sleep study.",
+   "rewrite": "Recruited about sixteen subjects for the sleep study.",
+   "kind": "relabel keeps about before sixteen"
+  },
+  {
+   "original": "Made the parser about twice as fast.",
+   "rewrite": "使解析器的速度提高了大约一倍。",
+   "kind": "EN to ZH: about twice as 大约一倍"
+  },
+  {
+   "original": "Recruited about sixteen participants for the pilot.",
+   "rewrite": "为预实验招募了约十六名参与者。",
+   "kind": "EN to ZH: about sixteen as 约十六"
   }
  ],
  "unfaithful": [
@@ -2555,6 +2570,76 @@
    "kind": "translation drops a revision shared with another person",
    "caught": "contract",
    "case": "EN to ZH drops a revision two people made"
+  },
+  {
+   "original": "Ran less than nineteen PCR reactions for the genotyping study.",
+   "rewrite": "Ran nineteen PCR assays for the genotyping study.",
+   "kind": "relabel drops less than",
+   "caught": "contract",
+   "case": "relabel drops less than before nineteen"
+  },
+  {
+   "original": "Recruited about sixteen participants for the sleep study.",
+   "rewrite": "Recruited sixteen subjects for the sleep study.",
+   "kind": "relabel drops about",
+   "caught": "contract",
+   "case": "relabel drops about before sixteen"
+  },
+  {
+   "original": "Surveyed under several dozen students for the club.",
+   "rewrite": "Surveyed several dozen respondents for the club.",
+   "kind": "relabel drops under",
+   "caught": "contract",
+   "case": "relabel drops under before several dozen"
+  },
+  {
+   "original": "Gave a talk about sleep spindles to the lab.",
+   "rewrite": "Gave a sleep spindle talk to the lab.",
+   "kind": "relabel drops about in any use",
+   "caught": "contract",
+   "case": "relabel drops about as a preposition"
+  },
+  {
+   "original": "Cut query latency by up to an order of magnitude.",
+   "rewrite": "将查询延迟降低了一个数量级。",
+   "kind": "translation drops up to before an order of magnitude",
+   "caught": "contract",
+   "case": "EN to ZH drops up to before an order of magnitude"
+  },
+  {
+   "original": "Made the parser about twice as fast.",
+   "rewrite": "使解析器的速度提高了一倍。",
+   "kind": "translation drops about before twice",
+   "caught": "contract",
+   "case": "EN to ZH drops about before twice"
+  },
+  {
+   "original": "Recruited about sixteen participants for the pilot.",
+   "rewrite": "为预实验招募了十六名参与者。",
+   "kind": "translation drops about before sixteen",
+   "caught": "contract",
+   "case": "EN to ZH drops about before sixteen"
+  },
+  {
+   "original": "Surveyed under several dozen students.",
+   "rewrite": "调查了几十名学生。",
+   "kind": "translation drops under before several dozen",
+   "caught": "contract",
+   "case": "EN to ZH drops under before several dozen"
+  },
+  {
+   "original": "Tested water samples from the campus pond over many months.",
+   "rewrite": "检测了校园池塘的水样。",
+   "kind": "translation drops over before many months",
+   "caught": "contract",
+   "case": "EN to ZH drops over before many months"
+  },
+  {
+   "original": "Sped up the parser by about a factor of 3.",
+   "rewrite": "将解析器的速度提高了 3 倍。",
+   "kind": "translation drops about before a factor",
+   "caught": "contract",
+   "case": "EN to ZH drops about before a factor"
   }
  ]
 }
