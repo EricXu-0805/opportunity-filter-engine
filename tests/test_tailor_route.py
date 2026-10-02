@@ -692,6 +692,55 @@ class TestSourceBullets:
         assert resp.status_code == 200
         assert [b["source_evidence"] for b in resp.json()["tailored_bullets"]] == ["x" * 3000, "y" * 3000]
 
+    def test_the_source_is_the_evidence_and_the_bullet_is_the_wording(self, python_profile, real_opp_id,
+                                                                     monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        anchor = evidence_map.Anchor("t1", {"field": "description", "requirement_index": None, "start": 0,
+                                            "end": 31, "quote": "Cleaned survey responses with R"})
+        monkeypatch.setattr(tailor_module, "_snapshot_anchors", lambda source, snapshot: [anchor])
+        rewrite = "Cleaned 212 survey responses in R and built 3 charts."
+        captured, reviewed = {}, []
+
+        def fake_chat(messages, **kwargs):
+            captured["units"] = json.loads(messages[1]["content"].split("DATA (JSON):\n", 1)[1])["units"]
+            captured["system"] = messages[0]["content"]
+            link = {"id": "L1", "anchor": "t1", "term": "Cleaned survey responses", "source": "Cleaned 212 survey responses",
+                    "relation": "same"}
+            return em_reply(em_row("b1", rewrite, ops=[{"op": "lead_with", "link": "L1"}], links=[link]),
+                            em_row("b2"))
+
+        def review(pairs, deadline=None):
+            reviewed.extend((pair.original, pair.rewrite) for pair in pairs)
+            for pair in pairs:
+                for link in pair.links:
+                    link.entailed = True
+            return ["accepted"] * len(pairs)
+
+        monkeypatch.setattr(tailor_module, "chat_completion", fake_chat)
+        monkeypatch.setattr(evidence_map, "ai_review", review)
+        resp = self._post(python_profile, real_opp_id, [self.CURRENT, self.OTHER], [self.SOURCE, self.OTHER])
+        assert resp.status_code == 200, resp.text
+        # The model sees the source as the original and the bullet as its current wording.
+        assert captured["units"] == [{"unit_id": "b1", "original": self.SOURCE, "current": self.CURRENT},
+                                     {"unit_id": "b2", "original": self.OTHER}]
+        assert 'may also carry "current"' in captured["system"]
+        # The review judges the rewrite against the source, never against reviewed wording.
+        assert reviewed == [(self.SOURCE, rewrite)]
+        first, second = resp.json()["tailored_bullets"]
+        assert (first["status"], first["text"], first["source_evidence"]) == ("rewritten", rewrite, self.SOURCE)
+        assert (second["status"], second["text"], second["source_evidence"]) == ("kept", self.OTHER, self.OTHER)
+
+    def test_a_refused_rewrite_keeps_the_current_wording_not_the_source(self, python_profile, real_opp_id,
+                                                                        monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        anchor = evidence_map.Anchor("t1", {"field": "description", "requirement_index": None, "start": 0,
+                                            "end": 31, "quote": "Cleaned survey responses with R"})
+        monkeypatch.setattr(tailor_module, "_snapshot_anchors", lambda source, snapshot: [anchor])
+        monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: em_reply(em_row("b1")))
+        resp = self._post(python_profile, real_opp_id, [self.CURRENT], [self.SOURCE])
+        [bullet] = resp.json()["tailored_bullets"]
+        assert (bullet["status"], bullet["text"], bullet["source_evidence"]) == ("kept", self.CURRENT, self.SOURCE)
+
 
 class TestSourceIndex:
     """R71-E: every TailoredBullet carries the matching original index."""

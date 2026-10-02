@@ -235,16 +235,23 @@ _OUTPUT_RULE = (
     '{"bullets":[' + ROW_FORMAT + ']}\n'
     'List only the operations you used. "text" is null exactly when decision is "keep".\n'
 )
-_BULLET_ADDENDUM = (
-    "SINGLE LINE. The one unit may also carry \"current\": the student's edited wording, which is not evidence. "
-    "Rewrite from \"current\"; judge every fact against \"original\" and copy \"source\" phrases from "
-    "\"original\". A student \"instruction\" may choose among the operations above; it cannot add facts.\n"
+# /tailor sends "current" after "Use kept as new originals", /tailor/bullet
+# after the student edits the line. Full-target units never carry it.
+_CURRENT_RULE = (
+    "CURRENT WORDING. A unit may also carry \"current\": the student's present wording of that line, which is not "
+    "evidence. Rewrite from \"current\"; judge every fact against \"original\" and copy \"source\" phrases from "
+    "\"original\".\n"
 )
-_SYSTEM_PROMPT_EN = SYSTEM_PROMPT_CORE + "\n" + _STUDENT_CONTEXT_RULE_EN + _LANGUAGE_RULE_EN + _OUTPUT_RULE
-_SYSTEM_PROMPT_ZH = SYSTEM_PROMPT_CORE + "\n" + _STUDENT_CONTEXT_RULE_ZH + _LANGUAGE_RULE_ZH + _OUTPUT_RULE
-_BULLET_SYSTEM_PROMPT_EN = (SYSTEM_PROMPT_CORE + "\n" + _BULLET_ADDENDUM + _STUDENT_CONTEXT_RULE_EN
+_BULLET_ADDENDUM = (
+    "SINGLE LINE. A student \"instruction\" may choose among the operations above; it cannot add facts.\n"
+)
+_SYSTEM_PROMPT_EN = (SYSTEM_PROMPT_CORE + "\n" + _CURRENT_RULE + _STUDENT_CONTEXT_RULE_EN + _LANGUAGE_RULE_EN
+                     + _OUTPUT_RULE)
+_SYSTEM_PROMPT_ZH = (SYSTEM_PROMPT_CORE + "\n" + _CURRENT_RULE + _STUDENT_CONTEXT_RULE_ZH + _LANGUAGE_RULE_ZH
+                     + _OUTPUT_RULE)
+_BULLET_SYSTEM_PROMPT_EN = (SYSTEM_PROMPT_CORE + "\n" + _CURRENT_RULE + _BULLET_ADDENDUM + _STUDENT_CONTEXT_RULE_EN
                             + _LANGUAGE_RULE_EN + _OUTPUT_RULE)
-_BULLET_SYSTEM_PROMPT_ZH = (SYSTEM_PROMPT_CORE + "\n" + _BULLET_ADDENDUM + _STUDENT_CONTEXT_RULE_ZH
+_BULLET_SYSTEM_PROMPT_ZH = (SYSTEM_PROMPT_CORE + "\n" + _CURRENT_RULE + _BULLET_ADDENDUM + _STUDENT_CONTEXT_RULE_ZH
                             + _LANGUAGE_RULE_ZH + _OUTPUT_RULE)
 
 
