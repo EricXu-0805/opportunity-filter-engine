@@ -855,9 +855,11 @@ def _has_done(text: str, *, wide: bool = False) -> bool:
     return wide and any(not _ZH_NOT_YET.search(text, 0, match.start()) for match in _ZH_DONE_MORE.finditer(text))
 # A Chinese line's first clause, and 正在 or 目前 on its leading verb: only a subject
 # or a time word may stand before it (目前正在为实验室开发 ..., 本学期正在, 目前我正在).
+# No word of the run is two others joined (今年暑假 is 今年 + 暑假), so a run of them
+# has one reading and is read once.
 _ZH_FIRST_CLAUSE = re.compile(r"[^，,。；;：:！？!?]*")
 _ZH_LEAD_PROGRESSIVE = re.compile(
-    r"\s*(?:(?:本人|我们|我|本学期|这学期|今年(?:暑假|寒假|夏天)?|暑假(?:期间)?|寒假(?:期间)?|最近|近期|目前|现在|现|也)\s*)*"
+    r"\s*(?:(?:本人|我们|我|本学期|这学期|今年(?:夏天)?|暑假(?:期间)?|寒假(?:期间)?|最近|近期|目前|现在|现|也)\s*)*"
     r"(?:正在|目前)")
 # Chinese clauses, and their parts: 开发了网站并撰写了综述 states two things done.
 _ZH_CLAUSE_BREAK = re.compile(r"[，,。；;：:！？!?]")

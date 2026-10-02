@@ -447,6 +447,18 @@ class TestLeadingClause:
     def test_other_words_before_正在_make_no_lead(self, chinese):
         assert em._lead_spans(chinese) == []
 
+    @pytest.mark.parametrize("word", ["今年暑假", "今年寒假"])
+    def test_a_run_of_time_words_is_read_once(self, word):
+        # Read as one time word and as 今年 + 暑假, each repeat doubled the work:
+        # 22 repeats took 0.7 s, and the server checks a bullet on its only event loop.
+        chinese = word * 60 + "在为实验室开发网站。"
+        started = time.perf_counter()
+        em._ZH_LEAD_PROGRESSIVE.match(word * 60 + "x")
+        assert time.perf_counter() - started < 1
+        started = time.perf_counter()
+        em._check_translation(em.Unit("b1", chinese, chinese), "Developing a website for the lab this summer.")
+        assert time.perf_counter() - started < 1
+
     @pytest.mark.parametrize(("chinese", "parts"), [
         ("开发了网站并撰写了一篇综述", 2), ("开发了网站、撰写了综述", 2), ("开发了网站，撰写了综述", 2),
         ("开发了网站；已撰写综述", 2), ("设计并测试了登录页面", 1), ("已撰写了一篇综述", 1), ("正在开发网站", 0)])
