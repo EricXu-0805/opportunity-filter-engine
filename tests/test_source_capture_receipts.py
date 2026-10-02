@@ -203,3 +203,54 @@ def test_unparsed_qualifier_cannot_be_dropped_after_a_supported_requirement():
     result = capture("<h2>Eligibility</h2><p>Minimum GPA: 3.0.</p><div>Exceptions may be considered.</div>")
     assert result["status"] == "unsupported"
     assert SOURCE_KEY not in capture_metadata(result)
+
+
+# The capture reads a page in time linear in its size. It used to walk up from
+# each heading, paragraph and list through every tag above it, read each nested
+# one's text again, and build a reparsed copy of the page whose leftovers it
+# removed one by one, each removal searching its parent's children. Each page
+# took the seconds shown with the old capture (one run each).
+@pytest.mark.parametrize("body", [
+    pytest.param("<h2>Lab</h2><p>We study soil.</p>" + "<h1>" * 4000 + "x", id="4000-nested-h1-7.0s"),
+    pytest.param("<h2>Lab</h2><p>We study soil.</p>" + "<ul>" * 4000 + "x", id="4000-nested-ul-6.3s"),
+    pytest.param("<h2>Lab</h2><p>We study soil.</p><template>" + "<p>" * 4000 + "x", id="4000-nested-p-10.4s"),
+    pytest.param("<h2>Lab</h2><p>We study soil.</p>" + "<nav>x</nav><span>y</span>" * 20_000,
+                 id="20000-navs-among-text-3.9s"),
+    # Every heading inside another holds its text: 1,000 characters each here.
+    # The crawlers parse pages without the URL reader's depth limit. The old
+    # capture took 7.0 s at 4,000 headings, four times longer per doubling.
+    pytest.param("<h2>Lab</h2><p>We study soil.</p>" + "<h2>" * 40_000 + "word " * 199 + "word",
+                 id="40000-nested-h2-around-1000-characters"),
+])
+def test_deep_or_crowded_page_is_captured_in_linear_time(body):
+    with _deadline(2):
+        result = capture(body)
+    assert result["status"] in ("empty", "captured")
+
+
+def test_page_bs4_could_not_serialize_is_still_captured():
+    # The capture used to serialize the page to reparse it. bs4 compares tags
+    # whole whenever serialization closes one, recursing through matching
+    # children: 250 of these nested blocks raised RecursionError, and
+    # /api/import-url answered 500 on a page the reader had read.
+    with _deadline(2):
+        result = capture("<h2>Lab</h2><p>We study soil.</p>" + "<div><b>x</b>" * 300 + "<i>y</i></div>" * 300)
+    assert result["status"] == "empty"
+
+
+# Text outside every heading, paragraph and list is weighed as it read from a
+# reparsed copy of the page: strings with nothing between them run together,
+# and only tags inside the captured part decide which strings count.
+@pytest.mark.parametrize("html,reason", [
+    pytest.param("<main><h2>Lab</h2><p>We study soil.</p>e</x>mail the lab</main>", "unparsed_relevant_content",
+                 id="word-split-by-a-stray-end-tag"),
+    pytest.param("<main><h2>Lab</h2><p>We study soil.</p>e<!-- -->mail the lab</main>", None,
+                 id="word-split-by-a-comment"),
+    pytest.param("<template><main><p>We study soil.</p>Contact the lab.</main></template>", "unparsed_relevant_content",
+                 id="part-inside-a-template"),
+    pytest.param("<main><h2>Lab</h2><p>We study soil.</p><ruby>x<rt>Email us</rt></ruby></main>", None,
+                 id="ruby-text"),
+])
+def test_text_outside_sections_is_weighed_as_before(html, reason):
+    result = capture_from_html(html, source_url=URL, checked_at=STAMP)
+    assert result.get("reason") == reason

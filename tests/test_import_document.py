@@ -1,11 +1,23 @@
 """Offline, source-preserving HTML reader contract."""
+import random
 import signal
+import tracemalloc
 from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
+from bs4 import BeautifulSoup, Tag
 
-from src.collectors.import_document import ImportDocumentError, extract_import_document
+from src.collectors.import_document import (
+    MAX_DEPTH,
+    MAX_NODES,
+    MAX_PARSE_EVENTS,
+    MAX_TAG_ATTRIBUTES,
+    MAX_TEXT_CHARS,
+    ImportDocumentError,
+    extract_import_document,
+    parse_import_html,
+)
 
 
 def page(body, head=''):
@@ -670,3 +682,197 @@ def test_blocked_title_rule_reads_a_long_punctuation_run_in_linear_time(where, m
     with _deadline(2):
         text = extract_import_document(html)['text']
     assert 'The Soil Microbiology Lab seeks an undergraduate research assistant for spring 2027.' in text
+
+
+# A page is read in time linear in its size and depth. The old reader walked
+# up through every tag above each <h1>, input, div, section and form it
+# weighed, read each nested heading's text again and recursed down the page;
+# bs4 searched a list of the void tags it had closed on every end tag, and the
+# charset in a <meta> in quadratic time. Each page below, 16 KB to 267 KB,
+# took the seconds shown with the old reader (one run each on a laptop).
+@pytest.mark.parametrize(('html', 'refused'), [
+    pytest.param(page(SOIL_POSTING.format('') + '<h1>' * 4000 + 'x'), True, id='4000-nested-h1-4.2s'),
+    pytest.param(page(SOIL_POSTING.format('') + '<div>' * 4000 + 'x'), True, id='4000-nested-div-3.0s'),
+    pytest.param(page(SOIL_POSTING.format('') + '<div>' * 500 + '<div></div>' * 20_000), False,
+                 id='boxes-500-deep-4.0s'),
+    pytest.param(page(SOIL_POSTING.format('') + '<div hidden>' + '<div>' * 500 + '<div></div>' * 24_000 + '</div>'),
+                 False, id='hidden-boxes-500-deep-4.2s'),
+    pytest.param(page(SOIL_POSTING.format('') + '<div>' * 500 + '<h1>Lab news</h1>' * 14_000), False,
+                 id='headings-500-deep-2.5s'),
+    pytest.param(page(SOIL_POSTING.format('') + '<br>' * 29_000 + '</p>' * 29_000), False, id='void-then-end-tags-3.2s'),
+    pytest.param(page(SOIL_POSTING.format(''), '<meta http-equiv="Content-Type" content="' + '\n' * 100_000 + '">'),
+                 False, id='meta-charset-line-breaks-6.0s'),
+])
+def test_deep_or_crowded_page_reads_in_linear_time(html, refused):
+    with _deadline(2):
+        if refused:
+            with pytest.raises(ImportDocumentError) as raised:
+                extract_import_document(html)
+        else:
+            text = extract_import_document(html)['text']
+    if refused:
+        assert raised.value.reason == 'too_large'
+    else:
+        assert 'The Soil Microbiology Lab seeks an undergraduate research assistant' in text
+
+
+def _flat_page(nodes):
+    # One <p>, its text, then empty <i> tags: exactly ``nodes`` parsed nodes.
+    return '<p>Undergraduate research position.</p>' + '<i></i>' * (nodes - 2)
+
+
+def _deep_page(depth):
+    return '<div>' * depth + 'Undergraduate research position.'
+
+
+def _end_tag_page(events):
+    # A start tag, its text and its end tag, then end tags of no open tag:
+    # exactly ``events`` pieces handed over by html.parser.
+    return '<p>Undergraduate research position.</p>' + '</x>' * (events - 3)
+
+
+def _attribute_page(attributes):
+    return '<p>Undergraduate research position.</p><div ' + 'a ' * attributes + '>x</div>'
+
+
+# A page past a limit is refused whole, as too large; a page right at it reads.
+# A nested page reads up to the depth limit: the old reader's recursion gave up
+# 329 tags deep and called the page invalid.
+@pytest.mark.parametrize(('at_limit', 'past_limit', 'kept'), [
+    pytest.param(_flat_page(MAX_NODES), _flat_page(MAX_NODES + 1), 'Undergraduate research position.', id='nodes'),
+    pytest.param(_deep_page(MAX_DEPTH), _deep_page(MAX_DEPTH + 1), 'Undergraduate research position.', id='depth'),
+    pytest.param('a' * MAX_TEXT_CHARS, 'a' * (MAX_TEXT_CHARS + 1), 'a' * MAX_TEXT_CHARS, id='text'),
+    pytest.param(_end_tag_page(MAX_PARSE_EVENTS), _end_tag_page(MAX_PARSE_EVENTS + 1),
+                 'Undergraduate research position.', id='parse-events'),
+    pytest.param(_attribute_page(MAX_TAG_ATTRIBUTES), _attribute_page(MAX_TAG_ATTRIBUTES + 1),
+                 'Undergraduate research position.\nx', id='tag-attributes'),
+])
+def test_page_at_a_limit_reads_and_one_past_it_is_too_large(at_limit, past_limit, kept):
+    with _deadline(5):
+        assert extract_import_document(at_limit)['text'] == kept
+        with pytest.raises(ImportDocumentError) as raised:
+            extract_import_document(past_limit)
+    assert raised.value.reason == 'too_large'
+
+
+# An ordered list's numbers can be thousands of digits long, and each item
+# repeats its number: the old reader built 1.2 million characters of text from
+# this 7 KB list, and two billion at the fetch limit. The text limit refuses it.
+def test_list_numbers_cannot_build_more_text_than_the_limit():
+    html = page('<ol start="' + '9' * 4000 + '">' + '<li>x</li>' * 300 + '</ol>')
+    with _deadline(2), pytest.raises(ImportDocumentError) as raised:
+        extract_import_document(html)
+    assert raised.value.reason == 'too_large'
+
+
+# Each visible <h1> is weighed as a title, and a nested <h1> holds the text of
+# every heading inside it, so all heading text together is held to the limit:
+# 500 nested headings around 600,000 characters would be 300 million characters
+# of titles from a 600 KB page. One heading that long still reads.
+def test_nested_headings_cannot_build_more_title_text_than_the_limit():
+    with _deadline(2), pytest.raises(ImportDocumentError) as raised:
+        extract_import_document(page('<h1>' * 500 + 'a' * 600_000))
+    assert raised.value.reason == 'too_large'
+    assert extract_import_document(page('<h1>' + 'a' * 600_000))['text'] == 'a' * 600_000
+
+
+# Tables inside list items and cells, lists inside lists, hidden cells and loose
+# text in a row read as the old recursive reader read them.
+@pytest.mark.parametrize(('html', 'expected'), [
+    ('<table><tr><td>a<table><tr><td>b</td><td> c </td></tr></table>d</td><td>e</td></tr></table>', 'a b c d\te'),
+    ('<table><tr><td><ul><li>One</li><li>Two</li></ul></td><td><p>Three</p><p>Four</p></td></tr></table>',
+     '- One - Two\tThree Four'),
+    ('<ul><li><table><tr><td></td><td>June 1</td><td></td></tr></table></li><li>  <p>Spaced</p>  </li></ul>',
+     '- June 1\n- Spaced'),
+    ('<ul><li><table><tr><td>a</td></tr><tr><td></td><td>b</td></tr></table></li></ul>', '- a\n\tb'),
+    ('<ol start="3"><li><ol><li>Nested</li></ol></li><li><br>Broken<br></li></ol>', '3. 1. Nested\n4. Broken'),
+    ('<table><tr><td hidden>Secret</td><td>Shown</td><th>Head<br>line</th></tr><tr>Loose<td>cell</td></tr></table>',
+     '\tShown\tHead line\ncell'),
+    ('<div><li>Item <b>bold</b>\t</li>tail</div>', '- Item bold\ntail'),
+])
+def test_tables_and_lists_inside_each_other_read_as_before(html, expected):
+    assert extract_import_document(html)['text'] == expected
+
+
+def _tree(soup):
+    """Each node of a parsed page in document order, with its links given as positions in that order."""
+    nodes, stack = [], [soup]
+    while stack:
+        node = stack.pop()
+        nodes.append(node)
+        if isinstance(node, Tag):
+            stack.extend(reversed(node.contents))
+    position = {id(node): index for index, node in enumerate(nodes)}
+
+    def at(node):
+        return None if node is None else position[id(node)]
+    return [('document' if node is soup else type(node).__name__, node.name if isinstance(node, Tag) else str(node),
+             dict(node.attrs) if isinstance(node, Tag) else None, at(node.parent), at(node.next_element),
+             at(node.previous_element), at(node.next_sibling), at(node.previous_sibling)) for node in nodes]
+
+
+_MARKUP = ['text', ' after a child ', '\n', 'a&amp;b', '&#65;', '<br>', '</br>', '<br/>', '<hr>', '<img src="x">',
+           '<input type="text">', '<!-- note -->', '<![CDATA[data]]>', '<?pi?>', '<!DOCTYPE html>', '<p>', '</p>',
+           '<div>', '</div>', '<b>', '</b>', '<li>', '</li>', '<td>', '<tr>', '</table>', '<table>', '<pre>', '</pre>',
+           '<template>', '</template>', '<script>x</script>', '<title>t</title>', '<textarea>a<b>c</textarea>',
+           '<meta http-equiv="Content-Type" content="text/html;\n charset=utf-8">', '<meta charset="utf-8">']
+
+
+# The reader's parser drops three bs4 costs: a list of closed void tags searched
+# on every end tag, a walk up through every open tag after each text run, and a
+# charset search in <meta> content. The tree it builds is bs4's html.parser tree,
+# node for node and link for link.
+def test_bounded_parse_builds_the_tree_bs4_html_parser_builds():
+    rng = random.Random(20261002)
+    pages = [IMUNIFY_WEBSHIELD, ANUBIS_BOTSTOPPER, SOIL_POSTING.format(''),
+             (Path(__file__).parent / 'fixtures' / 'bowdoin_eos_roster.html').read_text(encoding='utf-8'),
+             page(SOIL_POSTING.format('') + '<br>' * 50 + '</p>' * 50)]
+    pages += [''.join(rng.choice(_MARKUP) for _ in range(rng.randint(1, 80))) for _ in range(400)]
+    for html in pages:
+        assert _tree(parse_import_html(html)) == _tree(BeautifulSoup(html, 'html.parser'))
+
+
+# bs4 walks up through every open tag after each text run that follows a child
+# (``BeautifulSoup._linkage_fixer``): a page nested 2,000 deep with 20,000 such
+# runs took 1.3 s to parse instead of 0.15 s. While html.parser builds a page
+# in order the walk finds nothing to relink, and the reader's parser skips it.
+def test_bounded_parse_skips_bs4s_walk_up_through_open_tags(monkeypatch):
+    walks = []
+    monkeypatch.setattr(BeautifulSoup, '_linkage_fixer', lambda self, tag: walks.append(tag))
+    html = page(SOIL_POSTING.format('<div><b>bold</b> text after a child</div>'))
+    BeautifulSoup(html, 'html.parser')
+    assert walks
+    walks.clear()
+    parse_import_html(html)
+    assert walks == []
+
+
+# html.parser reads each '<' or '&' that opens nothing as a text piece of its
+# own, about 0.6 microseconds each: 5 MB of either took 3.2 s to parse here,
+# and the old import parsed every page five times.
+@pytest.mark.parametrize('html', [
+    pytest.param(page('<p>' + '<' * 5_000_000 + '</p>'), id='5-million-lt'),
+    pytest.param(page('<p>' + '&' * 5_000_000 + '</p>'), id='5-million-amp'),
+])
+def test_parser_work_is_held_to_its_limit(html):
+    with _deadline(2), pytest.raises(ImportDocumentError) as raised:
+        extract_import_document(html)
+    assert raised.value.reason == 'too_large'
+
+
+# html.parser finds where a tag ends with one regular expression whose memory
+# grows by about 320 bytes for each attribute it passes: one 5 MB tag of 'a '
+# took 806 MB there, on a server with 2 GB. The attributes are counted first,
+# one at a time, and the tag is refused at the limit.
+@pytest.mark.parametrize('tag', ['div', '/div'])
+def test_a_tag_with_too_many_attributes_is_refused_before_html_parser_walks_them(tag):
+    html = page('<p>Undergraduate research position.</p><' + tag + ' ' + 'a ' * 2_500_000 + '>x</div>')
+    tracemalloc.start()
+    try:
+        with _deadline(2), pytest.raises(ImportDocumentError) as raised:
+            extract_import_document(html)
+        peak = tracemalloc.get_traced_memory()[1]
+    finally:
+        tracemalloc.stop()
+    assert raised.value.reason == 'too_large'
+    assert peak < 32_000_000
