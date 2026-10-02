@@ -65,7 +65,7 @@ def test_refresh_targets_configured_departments(monkeypatch, tmp_path):
                               "keywords": ["physics"]}]))
     seen = {}
 
-    def fake_enrich(records, departments, fetch=None):
+    def fake_enrich(records, departments, fetch=None, deadline=None, order_key=""):
         seen["departments"] = departments
         return []  # nothing enriched -> no merge/write path
 
@@ -91,3 +91,57 @@ def test_enrich_only_touches_broad_only_in_target_depts():
     assert out[0]["pi_name"] == "Robert Knox"
     assert out[0]["keywords"] == ["Estrus", "Gilts", "Sows"]
     assert out[0]["research_areas"] == "Estrus; Gilts; Sows"
+
+
+def _broad(name: str) -> dict:
+    return {"id": name, "pi_name": name, "department": "Department of Physics",
+            "keywords": ["physics"]}
+
+
+def test_enrich_stops_at_the_deadline():
+    """7,045 broad-only faculty on 2026-10-01 at ~1s each: the pass cannot
+    finish inside the refresh job, so it stops at its budget."""
+    asked: list[str] = []
+    out = e.enrich([_broad("Ada Lovelace"), _broad("Alan Turing")],
+                   {"Department of Physics"}, deadline=0.0,
+                   fetch=lambda slug: asked.append(slug) or None)
+    assert out == []
+    assert asked == []
+
+
+def test_enrich_takes_targets_in_a_new_order_each_month():
+    """A page that 404s leaves its record broad, so a fixed order would spend
+    every month's budget on the same unresolvable names."""
+    names = [f"{first} {last}" for first in ("Ada", "Alan", "Grace", "Edsger")
+             for last in ("Lovelace", "Turing", "Hopper")]
+
+    def order(key):
+        asked: list[str] = []
+        e.enrich([_broad(n) for n in names], {"Department of Physics"},
+                 order_key=key, fetch=lambda slug: asked.append(slug) or None)
+        return asked
+
+    assert order("2026-10") == order("2026-10")
+    assert order("2026-10") != order("2026-11")
+    assert sorted(order("2026-10")) == sorted(order("2026-11"))
+
+
+def test_refresh_passes_its_budget_and_the_month(monkeypatch, tmp_path):
+    import json
+    import time
+
+    p = tmp_path / "opps.json"
+    p.write_text(json.dumps([_broad("Ada Lovelace")]))
+    seen = {}
+
+    def fake_enrich(records, departments, fetch=None, deadline=None, order_key=""):
+        seen.update(deadline=deadline, order_key=order_key)
+        return []
+
+    monkeypatch.setattr(e, "enrich", fake_enrich)
+    e.refresh(str(p), time_budget_minutes=30)
+    assert time.monotonic() + 29 * 60 < seen["deadline"] <= time.monotonic() + 30 * 60
+    assert len(seen["order_key"]) == 7 and seen["order_key"][4] == "-"
+
+    e.refresh(str(p))
+    assert seen["deadline"] is None

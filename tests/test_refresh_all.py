@@ -231,7 +231,7 @@ def _stub_with_processed_file(monkeypatch, tmp_path, seeded):
     monkeypatch.setattr(refresh_all, "PROCESSED_FILE", processed)
     monkeypatch.setattr(
         refresh_all, "enrich_pi",
-        lambda opps, save=True, max_scrapes=None: {
+        lambda opps, save=True, max_scrapes=None, deadline=None: {
             "scraped": 0, "enriched": 0, "already_has_email": 0, "skipped_budget": 0})
     monkeypatch.setattr(refresh_all, "_null_shared_admin_emails", lambda opps: 0)
     return processed
@@ -934,7 +934,7 @@ def test_run_summary_reports_tombstoned_contacts_the_enricher_skipped(monkeypatc
     _stub_with_processed_file(monkeypatch, tmp_path, _shard_seeds())
     monkeypatch.setattr(
         refresh_all, "enrich_pi",
-        lambda opps, save=True, max_scrapes=None: {
+        lambda opps, save=True, max_scrapes=None, deadline=None: {
             "scraped": 0, "enriched": 0, "already_has_email": 0, "skipped_budget": 0,
             "skipped_tombstoned": 3})
     monkeypatch.setattr(refresh_all, "fetch_faculty",
@@ -952,7 +952,7 @@ def test_pi_enrichment_pool_scoped_to_shard_and_never_truncates(monkeypatch, tmp
     _stub_with_processed_file(monkeypatch, tmp_path, seeds)
     captured = {}
 
-    def fake_enrich(opps, save=True, max_scrapes=None):
+    def fake_enrich(opps, save=True, max_scrapes=None, deadline=None):
         captured["sources"] = {o["source"] for o in opps}
         captured["size"] = len(opps)
         captured["save"] = save
@@ -969,6 +969,35 @@ def test_pi_enrichment_pool_scoped_to_shard_and_never_truncates(monkeypatch, tmp
     refresh_all.refresh_all(deep=True)
     assert captured["size"] == len(seeds)
     assert captured["save"] is True
+
+
+def test_pi_enrichment_stops_at_the_run_deadline(monkeypatch, tmp_path):
+    """The PI pass starts after the sources and must stop where they stop.
+
+    It used to fetch up to 1,000 pages (~45 min) whatever the clock said, so
+    on the days the sources spent the whole budget the job hit its hard
+    timeout inside this pass and published nothing (2026-10-01, and five of
+    the first seven September runs).
+    """
+    _stub_with_processed_file(monkeypatch, tmp_path, _shard_seeds())
+    captured = {}
+
+    def fake_enrich(opps, save=True, max_scrapes=None, deadline=None):
+        captured["deadline"] = deadline
+        return {"scraped": 0, "enriched": 0, "already_has_email": 0,
+                "skipped_budget": 0, "skipped_deadline": 4}
+
+    monkeypatch.setattr(refresh_all, "enrich_pi", fake_enrich)
+    monkeypatch.setattr(refresh_all, "fetch_faculty",
+                        lambda *a, **k: [{"id": f"f{i}"} for i in range(2)])
+
+    before = refresh_all.time.monotonic()
+    summary = refresh_all.refresh_all(deep=True, schools={"uiuc"}, time_budget_minutes=60)
+    assert before + 59 * 60 < captured["deadline"] <= refresh_all.time.monotonic() + 60 * 60
+    assert summary["sources"]["pi_enricher"]["skipped_deadline"] == 4
+
+    refresh_all.refresh_all(deep=True, schools={"uiuc"})
+    assert captured["deadline"] is None
 
 
 def test_post_merge_pass_stamps_school_audience(monkeypatch, tmp_path):

@@ -110,6 +110,30 @@ def test_enrich_respects_scrape_budget(monkeypatch):
     assert stats["skipped_budget"] == 1
 
 
+def test_enrich_fetches_nothing_after_the_deadline(monkeypatch):
+    """The pass runs after every source, so the deadline is often gone by the
+    time it starts; on 2026-10-01 it fetched past it until the job was killed."""
+    fetched = _stub_page(monkeypatch, "<p>no email here</p>")
+    opps = [
+        _fac("uw_faculty", "https://ece.uw.edu/people/a"),
+        _fac("uw_faculty", "https://ece.uw.edu/people/b"),
+    ]
+    stats = enrich_opportunities(opps, max_scrapes=1000, deadline=0.0)
+    assert fetched == []
+    assert stats["scraped"] == 0
+    assert stats["skipped_deadline"] == 2
+
+
+def test_enrich_fetches_normally_before_the_deadline(monkeypatch):
+    import time
+
+    fetched = _stub_page(monkeypatch, "<p>no email here</p>")
+    opps = [_fac("uw_faculty", "https://ece.uw.edu/people/a")]
+    stats = enrich_opportunities(opps, deadline=time.monotonic() + 3600)
+    assert len(fetched) == 1
+    assert stats["skipped_deadline"] == 0
+
+
 def test_profile_fetch_completes_the_incommon_chain(monkeypatch):
     """Georgia Tech's department sites omit their InCommon intermediate.
 

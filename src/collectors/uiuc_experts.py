@@ -21,10 +21,12 @@ the weekly faculty scrape re-fetches the same person with only the broad field.
 """
 from __future__ import annotations
 
+import hashlib
 import logging
 import re
 import time
 import unicodedata
+from datetime import UTC, datetime
 
 import requests
 from bs4 import BeautifulSoup
@@ -122,16 +124,28 @@ def _fetch(slug: str) -> BeautifulSoup | None:
     return BeautifulSoup(r.text, "html.parser")
 
 
-def enrich(records: list[dict], departments: set[str], fetch=None) -> list[dict]:
+def enrich(records: list[dict], departments: set[str], fetch=None,
+           deadline: float | None = None, order_key: str = "") -> list[dict]:
     """For each broad-field-only faculty record in ``departments``, return an
     enriched copy (same identity, Experts concepts as keywords). Records that
     don't resolve/verify are skipped — they stay honestly broad. The copies merge
     back through ``merge_into_processed`` where the keyword-richer dedup replaces
-    the broad originals and rebuilds their titles."""
+    the broad originals and rebuilds their titles.
+
+    ``deadline`` (a ``time.monotonic()`` instant) stops the pass early. Pages
+    that 404 leave their record broad, so a fixed order would spend every
+    month's budget on the same unresolvable names; ``order_key`` shuffles the
+    targets deterministically per key (refresh passes the month)."""
     targets = [o for o in records
                if o.get("department") in departments and not _faculty_specific_keywords(o)]
+    if order_key:
+        targets.sort(key=lambda o: hashlib.sha256(
+            f"{order_key}:{o.get('id') or o.get('pi_name') or ''}".encode()).hexdigest())
     out: list[dict] = []
     for i, o in enumerate(targets):
+        if deadline is not None and time.monotonic() >= deadline:
+            logger.info(f"Illinois Experts: time budget spent after {i}/{len(targets)} faculty")
+            break
         concepts = experts_concepts(o.get("pi_name") or "", fetch=fetch)
         if concepts:
             rec = dict(o)
@@ -144,7 +158,8 @@ def enrich(records: list[dict], departments: set[str], fetch=None) -> list[dict]
     return out
 
 
-def refresh(path: str = "data/processed/opportunities.json") -> int:
+def refresh(path: str = "data/processed/opportunities.json",
+            time_budget_minutes: float | None = None) -> int:
     """Monthly/on-demand pass: enrich every broad-field-only faculty record in
     :data:`TARGET_DEPARTMENTS` from Illinois Experts and write the corpus back.
     Idempotent — already-specific records are skipped, and the keyword-richer
@@ -155,8 +170,11 @@ def refresh(path: str = "data/processed/opportunities.json") -> int:
     from ..normalizers.school_audience import apply_school_audience
     from .uiuc_faculty import merge_into_processed
 
+    deadline = (time.monotonic() + time_budget_minutes * 60
+                if time_budget_minutes is not None else None)
     corpus = json.load(open(path))
-    enriched = enrich(corpus, set(TARGET_DEPARTMENTS))
+    enriched = enrich(corpus, set(TARGET_DEPARTMENTS), deadline=deadline,
+                      order_key=datetime.now(UTC).strftime("%Y-%m"))
     if enriched:
         merge_into_processed(enriched, path)
         corpus = json.load(open(path))
@@ -172,7 +190,10 @@ if __name__ == "__main__":
     import sys
 
     if "--refresh" in sys.argv:
-        refresh()
+        budget = None
+        if "--time-budget-minutes" in sys.argv:
+            budget = float(sys.argv[sys.argv.index("--time-budget-minutes") + 1])
+        refresh(time_budget_minutes=budget)
     else:
         for name in [a for a in sys.argv[1:] if not a.startswith("-")] or ["Klara Nahrstedt"]:
             print(f"{name}: {experts_concepts(name)}")
