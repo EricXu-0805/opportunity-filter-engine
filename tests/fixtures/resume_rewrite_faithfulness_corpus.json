@@ -1140,6 +1140,41 @@
    "original": "Lab website under development; homepage launched.",
    "rewrite": "实验室网站开发中，主页已上线。",
    "kind": "EN to ZH: a launched page beside work under development"
+  },
+  {
+   "original": "Developing a Flask dashboard for the lab.",
+   "rewrite": "我正在为实验室开发一个 Flask 仪表板。",
+   "kind": "EN to ZH: progressive line after 我"
+  },
+  {
+   "original": "Developing a Flask dashboard for the lab.",
+   "rewrite": "本人正在为实验室开发一个 Flask 仪表板。",
+   "kind": "EN to ZH: progressive line after 本人"
+  },
+  {
+   "original": "Developing a Flask dashboard for the lab.",
+   "rewrite": "现在正在为实验室开发一个 Flask 仪表板。",
+   "kind": "EN to ZH: progressive line as 现在正在"
+  },
+  {
+   "original": "Also developing a Flask dashboard for the lab.",
+   "rewrite": "也正在为实验室开发一个 Flask 仪表板。",
+   "kind": "EN to ZH: also-led progressive line as 也正在"
+  },
+  {
+   "original": "Developing a survey to study sleep.",
+   "rewrite": "正在开发一份问卷，为了研究睡眠。",
+   "kind": "EN to ZH: progressive line with 为了, whose 了 is no aspect"
+  },
+  {
+   "original": "Developing the website; besides the backend, responsible for testing.",
+   "rewrite": "正在开发网站，除了后端还负责测试。",
+   "kind": "EN to ZH: progressive line with 除了, whose 了 is no aspect"
+  },
+  {
+   "original": "Learning about users' sleep habits.",
+   "rewrite": "正在了解用户的睡眠习惯。",
+   "kind": "EN to ZH: progressive line with 了解, whose 了 is no aspect"
   }
  ],
  "unfaithful": [

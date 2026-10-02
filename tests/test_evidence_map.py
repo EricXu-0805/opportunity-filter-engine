@@ -141,15 +141,18 @@ class TestLockWordsScanLinearly:
 class TestSpanWords:
     @pytest.mark.parametrize("quantity", [
         "thirteen", "fourteen", "sixteen", "seventeen", "eighteen", "nineteen", "twice", "double", "triple", "half",
-        "several dozen", "many years", "multiple weeks", "numerous times", "hundreds", "thousand", "millions",
-        "billion", "tens", "dozens", "a million", "a billion", "an order of", "a factor of"])
+        "several dozen", "many years", "multiple weeks", "numerous times", "several hundred", "many thousands",
+        "several millions", "many months", "several days", "many hours", "several semesters", "many terms",
+        "several summers", "many decades", "hundreds", "thousand", "millions", "billion", "tens", "dozens",
+        "a million", "a billion", "an order of", "a factor of"])
     def test_a_preposition_before_a_quantity_is_a_span_in_a_translation(self, quantity):
         assert em._has(em._FAMILIES["span"], f"Cut the error by up to {quantity} times.")
         assert em._has(em._FAMILIES["span"], f"Made it about {quantity} as fast.")
 
     @pytest.mark.parametrize("text", [
         "Gave a talk about sleep.", "Studied plants under drought.", "Read over the protocol.",
-        "Gave a talk about many species of birds.", "Read papers about multiple sclerosis.",
+        "Walked around the campus.", "Read more than the abstract.", "Read less than the full paper.",
+        "Covered up to the third chapter.", "Gave a talk about many species of birds.", "Read papers about multiple sclerosis.",
         "Summarized papers about double-blind trials.", "Wrote a review about triple-negative breast cancer."])
     def test_a_relabel_keeps_a_span_word_in_any_use(self, text):
         assert not em._has(em._FAMILIES["span"], text)
@@ -168,9 +171,34 @@ class TestFinishedClause:
         ("Lab website under development; homepage launched.", True), ("Wired 3 sensors.", True),
         ("Developing a dashboard, used by 5 lab members.", False), ("Planned to survey 50 users.", False),
         ("Interested in robotics.", False), ("Dashboard under development; in planned studies.", False),
-        ("Developing a website for the lab.", False), ("Developing automated pipelines for the lab.", False)])
+        ("Developing a website for the lab.", False), ("Developing automated pipelines for the lab.", False),
+        ("Developing a parser but tested it.", True), ("Developing a parser then tested it.", True),
+        ("Developing a parser; also tested it.", True), ("Developing a parser; later tested it.", True),
+        ("Developing a parser, which I tested.", True), ("Developing a parser; that we tested.", True),
+        ("Mentoring students, who tested the app.", True), ("Developing a parser; we tested it.", True),
+        ("Developing a parser; have tested it.", True), ("Developing a parser; has tested it.", True),
+        ("Developing a parser; had tested it.", True), ("Developing a parser; later we tested it.", True),
+        ("Developing a parser; we have tested it.", True), ("Developing a dashboard; need more data.", False)])
     def test_a_clause_opens_with_a_finished_verb(self, text, finished):
         assert em._finished_clause(text) is finished
+
+
+class TestAnotherPersonsRevision:
+    @pytest.mark.parametrize("text", [
+        "Submitted a revised plan.", "Submitted an edited volume.", "Submitted the revised plan.",
+        "Submitted this revised plan.", "Submitted these revised plans.", "Submitted those revised plans.",
+        "Submitted my revised plan.", "Submitted our revised plan.", "Submitted its revised plan.",
+        "Submitted their revised plan.", "Submitted his revised plan.", "Submitted her revised plan.",
+        "Drafted the plan or revised it.", "Drafted the plan and also revised it.", "Drafted the plan and revised it.",
+        "I revised the plan.", "Revised the plan."])
+    def test_the_students_own_revision_or_a_version_is_no_one_elses_part(self, text):
+        assert not em._OTHER_PERSON.search(text)
+
+    @pytest.mark.parametrize("text", [
+        "Drafted it; Sam revised it.", "Drafted it; Sam then revised it.", "Drafted it; Sam also revised it.",
+        "Drafted a plan that I revised.", "Drafted it; Sam and I revised it.", "Wrote it, edited by Sam."])
+    def test_a_revision_after_another_word_is_another_persons_part(self, text):
+        assert em._OTHER_PERSON.search(text)
 
 
 class TestDraft:

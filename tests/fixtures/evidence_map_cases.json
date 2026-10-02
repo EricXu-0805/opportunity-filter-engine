@@ -6291,6 +6291,139 @@
     "beyond_allowed_edit",
     "translation_unfinished"
    ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps a progressive line after the subject 我",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing a Flask dashboard for the lab.",
+   "rewrite": "我正在为实验室开发一个 Flask 仪表板。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps a progressive line after the subject 本人",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing a Flask dashboard for the lab.",
+   "rewrite": "本人正在为实验室开发一个 Flask 仪表板。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps a progressive line as 现在正在",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing a Flask dashboard for the lab.",
+   "rewrite": "现在正在为实验室开发一个 Flask 仪表板。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps an also-led progressive line as 也正在",
+   "output": "zh",
+   "anchors": [],
+   "original": "Also developing a Flask dashboard for the lab.",
+   "rewrite": "也正在为实验室开发一个 Flask 仪表板。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps a progressive line beside 为了",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing a survey to study sleep.",
+   "rewrite": "正在开发一份问卷，为了研究睡眠。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps a progressive line beside 除了",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing the website; besides the backend, responsible for testing.",
+   "rewrite": "正在开发网站，除了后端还负责测试。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps a progressive line as 正在了解",
+   "output": "zh",
+   "anchors": [],
+   "original": "Learning about users' sleep habits.",
+   "rewrite": "正在了解用户的睡眠习惯。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
   }
  ]
 }

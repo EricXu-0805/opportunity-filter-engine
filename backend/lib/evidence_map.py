@@ -557,9 +557,10 @@ _OTHER_PERSON = re.compile(
     # A revision is someone else's part ("; Sam revised it", "which was later revised",
     # "edited by the lab manager") unless it opens the student's own clause: "Revised
     # the safety manual", "Drafted the report and revised it", "I edited". "The
-    # revised proposal" names a version.
+    # revised proposal" names a version. Each skipped word is no candidate itself,
+    # so a line is read in linear time.
     r"|(?<![\w'’-])(?!(?:and|or|also|I|a|an|the|this|these|those|my|our|its|their|his|her)\b)[\w'’-]+\s+"
-    r"(?:(?:then|also|I|and\s+I)\s+){0,3}(?:revised|rewrote|rewritten|edited)\b"
+    r"(?:(?:also|I|and\s+I)\s+)*(?:revised|rewrote|rewritten|edited)\b"
     r"|\b(?:revised|rewrote|rewritten|edited)\s+by\b"
     r"|导师|老师|师兄|师姐|博士生|博士后|硕士生|研究生|技术员|工程师|助教|教授|参考(?!文献|资料|书目)|基于|医生|护士",
     re.I)
@@ -614,10 +615,9 @@ _RELEVANCE_WORD = re.compile(
     r"|expertise|proficien\w*)\b|体现|展现|展示|积累|锻炼|提升|培养|相关", re.I)
 # A relabel keeps "revised" and "edited" in any use: "the revised proposal" names a version.
 _REVISION_WORD = re.compile(r"\b(?:revised|rewrote|rewritten|edited)\b", re.I)
-# ... and every English approximation or span word in any use, as ab4ebfd9 did: a
-# relabel renames a thing, so it has no reason to drop "about" or "less than".
-_SPAN_WORD = re.compile(r"\b(?:about|approximately|roughly|nearly|almost|around|over|under|more\s+than|less\s+than"
-                        r"|at\s+least|at\s+most|up\s+to|since|until|per)\b", re.I)
+# ... and the English span words _SPAN reads only before a quantity, in any use, as
+# ab4ebfd9 did: a relabel renames a thing, so it has no reason to drop "about".
+_SPAN_WORD = re.compile(r"\b(?:about|around|over|under|more\s+than|less\s+than|up\s+to)\b", re.I)
 _LOCK_WORD = [TEAM, HELP, NEGATION, DENIAL, PUBLICATION, INTENT, UNFINISHED, UNFINISHED_ZH, _STATUS_WORD, _SPAN,
               _SPAN_WORD, _SOLO, _LIMIT, _OTHER_PERSON, _REVISION_WORD, _TEAM_ZH_EXTRA, _TEAM_EN_EXTRA, CO_CREDIT,
               _PERSONAL_MARKER]
@@ -790,7 +790,7 @@ _ZH_DONE = re.compile(r"(?<![为除])了(?!解)|已(?!在)|(?<!正在)(?<!未)�
 # A Chinese line's first clause, and 正在 or 目前 on its leading verb: only a subject
 # or a time word may stand before it (目前正在为实验室开发 ..., 目前每周辅导 ...).
 _ZH_FIRST_CLAUSE = re.compile(r"[^，,。；;：:！？!?]*")
-_ZH_LEAD_PROGRESSIVE = re.compile(r"\s*(?:本人|我)?(?:(?:目前|现在|当前|仍|还|也)*正在|目前)")
+_ZH_LEAD_PROGRESSIVE = re.compile(r"\s*(?:本人|我)?(?:(?:目前|现在|也)?正在|目前)")
 # An English clause, and the words that may open it before its verb (as may an -ly adverb).
 _EN_CLAUSE_BREAK = re.compile(r"[;:,.()]|\s(?=(?:and|but|then)\s)", re.I)
 _EN_CLAUSE_LEAD = frozenset({"and", "but", "then", "also", "later", "which", "that", "who", "i", "we", "have", "has",
