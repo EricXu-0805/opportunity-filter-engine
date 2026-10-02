@@ -197,8 +197,11 @@ _BLOCKED_PAGE_TITLE = re.compile(
     # "Human verification: a psychology study", is not one of them.
     r'(?:one moment,? please|making sure you(?:\'|’)?re not a bot|robot challenge screen|'
     r'pardon our interruption|access to this page has been denied|(?:human|bot) verification|'
-    r'vercel security checkpoint|ddos-guard|checking your browser(?: before (?:accessing|continuing|proceeding)\b.*)?)'
-    r'[.!…]*)$',
+    r'vercel security checkpoint|ddos-guard|checking your browser)[.!…]*|'
+    # DDoS-Guard and older Cloudflare checks name the site after these words.
+    # The open tail ends the alternative: a run two quantifiers could share
+    # was retried at every split, quadratic in the title's length.
+    r'checking your browser before (?:accessing|continuing|proceeding)\b.*)$',
     re.I,
 )
 

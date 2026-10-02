@@ -222,3 +222,19 @@ def test_a_run_of_loading_words_does_not_hold_the_import_route(importer, monkeyp
     assert time.perf_counter() - started < 2
     assert result.status_code == 200, result.text
     assert result.json()['opportunity']['description_raw'].startswith('loading loading, ')
+
+
+def test_a_long_punctuation_title_does_not_hold_the_import_route(importer, monkeypatch):
+    # The reader and the contact capture each match the <title> whole against
+    # the blocked-title rule. A run of '!' after "checking your browser before
+    # proceeding", then a newline, made each match retry every split of the run.
+    client, calls = importer
+    html = ('<html><head><title>Checking your browser before proceeding' + '!' * 30_000 + '\nThe lab</title></head>'
+            '<body><main><h1>Undergraduate Research Assistant</h1><p>The Soil Microbiology Lab seeks an undergraduate '
+            'research assistant for spring 2027.</p></main></body></html>')
+    monkeypatch.setattr(url_parser.requests, 'get', lambda *a, **k: response(html))
+    started = time.perf_counter()
+    result = client.post('/api/import-url', json={'url': URL})
+    assert time.perf_counter() - started < 2
+    assert result.status_code == 200, result.text
+    assert 'The Soil Microbiology Lab seeks' in result.json()['opportunity']['description_raw']

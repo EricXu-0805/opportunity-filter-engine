@@ -584,3 +584,21 @@ def test_loading_line_rule_reads_a_long_run_of_loading_words_in_linear_time(html
     with _deadline(2):
         text = extract_import_document(html)['text']
     assert text.startswith('loading loading')
+
+
+# The blocked-title rule matches the <title> and each visible <h1> whole. After
+# "checking your browser before proceeding" it let two quantifiers share a run
+# of '.', '!' or '…', and a title that failed at a newline after the run was
+# retried at every split of it: 32,000 characters took 2.1 s, and each doubling
+# took four times longer. Such a title is not a bot check; the posting imports.
+@pytest.mark.parametrize('mark', ['.', '!', '…'])
+@pytest.mark.parametrize('where', ['title', 'h1'])
+def test_blocked_title_rule_reads_a_long_punctuation_run_in_linear_time(where, mark):
+    heading = 'Checking your browser before proceeding' + mark * 50_000 + '\nThe lab'
+    if where == 'title':
+        html = page(SOIL_POSTING.format(''), f'<title>{heading}</title>')
+    else:
+        html = page(SOIL_POSTING.format(f'<h1>{heading}</h1>'))
+    with _deadline(2):
+        text = extract_import_document(html)['text']
+    assert 'The Soil Microbiology Lab seeks an undergraduate research assistant for spring 2027.' in text
