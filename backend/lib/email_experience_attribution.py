@@ -51,37 +51,28 @@ _SENTENCES = re.compile(r'(?<!\d)\.(?!\d)|[!?;\n]+')
 # Resume sentences may end in a course number or metric. A following digit
 # keeps a decimal point intact, including .25; email retains its legacy splitter.
 _RESUME_SENTENCES = re.compile(r'\.(?!\d)|[!?;\n]+')
-# A pattern that may open with a run of spaces starts only where the run starts
-# (?<!\s): the leftmost match is the same, and a long run is read once rather than
-# once from each of its characters.
-_RESUME_EXPLICIT_BOUNDARY = re.compile(r'(?<!\s)\s*[,:]\s*(?=' + _SUBJECT_PATTERN + r')', re.I)
+_RESUME_EXPLICIT_BOUNDARY = re.compile(r'\s*[,:]\s*(?=' + _SUBJECT_PATTERN + r')', re.I)
 _COORDINATED = re.compile(
-    r'(?<!\s)\s*(?:,\s*)?\b(?:and|but|whereas|while|then|however)\s+'
+    r'\s*(?:,\s*)?\b(?:and|but|whereas|while|then|however)\s+'
     r'(?=' + _SUBJECT_PATTERN + r'|(?:(?:did|have|not|never|only|personally|successfully|independently|solely|helped|help|assisted)\s+){0,5}' + _VERB_PATTERN + r'\b|(?:would|will|hope|want|plan)\b)', re.I,
 )
 _RESUME_COORDINATED = re.compile(_COORDINATED.pattern.replace(_VERB_PATTERN, _RESUME_VERB_PATTERN), re.I)
 _LABEL = re.compile(r'^(my role|task|method|outcome basis|outcome)\s*:\s*', re.I)
 _PROJECT_LABEL = re.compile(r'^((?:project|study|experiment)\s+[^:;.!?\n]{1,80})\s*:\s*', re.I)
 _PROJECT_PREFIX = re.compile(r'^(?:in|for|on|during)\s+((?:the\s+)?(?:project|study|experiment)\s+[^,;:.!?\n]{1,80}),\s*', re.I)
-_PROJECT_SUFFIX = re.compile(r'(?<!\s)\s+(?:in|for|on|during)\s+((?:the\s+)?(?:project|study|experiment)\s+[\w -]{1,80})\s*$', re.I)
+_PROJECT_SUFFIX = re.compile(r'\s+(?:in|for|on|during)\s+((?:the\s+)?(?:project|study|experiment)\s+[\w -]{1,80})\s*$', re.I)
 _CONDITIONAL = re.compile(r'\b(?:if|unless|whether|would|could|might|hope to|plan to|want to)\b', re.I)
-_CONDITIONAL_END = re.compile(r'\b(?:if|unless|whether|would|could|might|hope to|plan to|want to)$', re.I)
 _AUXILIARY = re.compile(r"^(?:have|has|had|did|do|does)\s+", re.I)
 _NEGATION = re.compile(r'^(?:not|never)\s+', re.I)
 _MODIFIER = re.compile(r'^(personally|successfully|only|independently|solely|alone|single-handedly|helped|help|assisted)\s+(?:to\s+)?', re.I)
-# "\s*,?\s+" with no comma tried every split of a run of spaces between its two runs.
-_OBJECT_NEGATION = re.compile(r'(?<!\s)(?:\s*,\s+|\s+)\b(?:but\s+not|not|rather\s+than|instead\s+of)\s+', re.I)
+_OBJECT_NEGATION = re.compile(r'\s*,?\s+\b(?:but\s+not|not|rather\s+than|instead\s+of)\s+', re.I)
 _TOKEN = re.compile(r'[+-]?\d+(?:\.\d+)?|[a-z][a-z0-9_+#]*|%', re.I)
 _TEAM_PREFIX = re.compile(r'^(?:working\s+)?with\s+(?:my|our|the)\s+team,?$', re.I)
 # "In PSYC 238, as part of a four-person team, I helped design ..." states its
 # setting before the subject. Only prepositional settings qualify; a reported
 # or conditional prefix ("My advisor said I ...", "If I ...") never does.
-# One or more phrases, each a preposition and words up to a comma. Every comma
-# starts the next phrase, so a prefix has one reading; "(?:<preposition>\s+[^,]+,?\s*)+"
-# tried every way to cut "in a in a in a ..., x" into phrases (1.4 s for 14 of them).
-_CONTEXT_PREPOSITION = r'(?:at|in|for|on|during|within|through|while|with|as\s+part\s+of|as\s+a\s+member\s+of)'
 _CONTEXT_PREFIX = re.compile(
-    _CONTEXT_PREPOSITION + r'\s[^,]+(?:,\s*' + _CONTEXT_PREPOSITION + r'\s[^,]+)*(?:,\s*)?', re.I)
+    r'(?:(?:at|in|for|on|during|within|through|while|with|as\s+part\s+of|as\s+a\s+member\s+of)\s+[^,]+,?\s*)+', re.I)
 # Collaboration, wherever it sits in the clause, qualifies the whole fact. It is
 # not an object detail a shortened claim may drop. "for my team" is a
 # beneficiary, not a collaborator, and stays an ordinary object phrase.
@@ -93,25 +84,7 @@ _TEAM_CONTEXT = re.compile(
     r'|(?:with|as\s+(?:part\s+of\s+)?|as\s+a\s+member\s+of\s+)(?:a|an|my|our|the)\s+(?:[\w-]+\s+){0,3}(?:team|group)'
     r'|in\s+a\s+(?:[\w-]+\s+){0,2}(?:team|group)(?:\s+of\s+\w+)?'
     r'|collaboratively|in\s+collaboration\s+with\s+[^,;.!?]+)\b', re.I)
-_CARE_WORD = re.compile(r'\b(not|never|without|only|hardly|barely|rarely)\b', re.I)
-_CAREFULLY_END = re.compile(r'\bcarefully\s*$', re.I)
-
-
-def _care_qualifier(objects: str) -> str | None:
-    """The first limiting word in the sentence of a closing "carefully" ("never carefully"), or None.
-
-    The same answer as searching for a limiting word followed, within its
-    sentence, by "carefully" at the end; that pattern read the rest of the line
-    from every limiting word.
-    """
-    end = _CAREFULLY_END.search(objects)
-    if not end:
-        return None
-    start = max(objects.rfind(mark, 0, end.start()) for mark in '.!?;\n') + 1
-    word = _CARE_WORD.search(objects, start)
-    return word[1] if word else None
-
-
+_CARE_QUALIFIER = re.compile(r'\b(not|never|without|only|hardly|barely|rarely)\b[^.!?;\n]*\bcarefully\s*$', re.I)
 _BOUND = re.compile(r'\b(?:at\s+(?:most|least)|or\s+(?:less|more)|roughly|approximately|about|up\s+to|more\s+than|less\s+than)\b', re.I)
 _UNITS = {'samples': 'sample', 'records': 'record', 'users': 'user', 'participants': 'participant',
           'patients': 'patient', 'models': 'model', 'tests': 'test', 'papers': 'paper',
@@ -155,19 +128,6 @@ class _Fact:
     split: tuple = ()
 
 
-def _conditional_before(clause: str, start: int, before: str, conditional, lead: int) -> bool:
-    """_CONDITIONAL.search(before), where ``before`` is clause[:start] stripped.
-
-    ``conditional`` is the clause's first conditional match and ``lead`` its
-    leading whitespace. A conditional word before the subject is in ``before``;
-    so is one glued to the subject ("ifI"), which the clause gives no word
-    boundary but ``before`` ends with.
-    """
-    end = lead + len(before)
-    return (conditional is not None and conditional.end() <= end
-            or end == start and _CONDITIONAL_END.search(clause, max(0, end - 10), end) is not None)
-
-
 def _participle(lemma: str) -> str:
     if lemma in {'win', 'debug'}:
         return lemma + lemma[-1] + 'ing'
@@ -177,7 +137,7 @@ def _participle(lemma: str) -> str:
 _PARTICIPLES = {_participle(lemma): lemma for lemma in _FORMS}
 _PAST = {form: lemma for lemma, forms in _FORMS.items() for form in forms[1:]}
 _TRAILING = re.compile(
-    r'(?:,|(?<!\s))\s+(?:that|which)\s+(' + '|'.join(sorted(_PAST, key=len, reverse=True)) + r')\b'
+    r',?\s+(?:that|which)\s+(' + '|'.join(sorted(_PAST, key=len, reverse=True)) + r')\b'
     r'|,\s+(' + '|'.join(sorted(_PARTICIPLES, key=len, reverse=True)) + r')\b'
     r'|,\s+(?:which|where)\b', re.I,
 )
@@ -284,15 +244,12 @@ def _facts(text: str, *, entry: int, source: bool, allow_subjectless_claims: boo
                 actor = carried
             # A contextual "with my team" is not the subject of "I built".
             # Select the subject that actually has a recognized action.
-            # The clause's first conditional word is found once, not once per subject.
-            conditional, lead = _CONDITIONAL.search(clause), len(clause) - len(clause.lstrip())
             for subject in (() if parsed else _SUBJECT.finditer(clause)):
                 candidate = _action(clause[subject.end():].lstrip(), allow_subjectless_claims)
                 if not candidate:
                     continue
                 before = clause[:subject.start()].strip()
-                if _conditional_before(clause, subject.start(), before, conditional, lead) or (
-                        source and before and not _TEAM_PREFIX.fullmatch(before)
+                if _CONDITIONAL.search(before) or (source and before and not _TEAM_PREFIX.fullmatch(before)
                         and not _CONTEXT_PREFIX.fullmatch(before)
                         and not (activity_aliases is not None and (
                             _without_activity_suffix("fact " + before, activity_aliases) == "fact"
@@ -348,8 +305,8 @@ def _object_facts(objects: str, lemma: str, qualifiers: list[str], actor: str, n
     # must not erase a local restriction, including "never carefully"
     # or "without working carefully". A nearby retained source sentence
     # cannot certify a new unrestricted positive assertion.
-    if allow_subjectless_claims and (manner := _care_qualifier(objects)):
-        qualifiers.append(manner.casefold() + '_carefully')
+    if allow_subjectless_claims and (manner := _CARE_QUALIFIER.search(objects)):
+        qualifiers.append(manner[1].casefold() + '_carefully')
     # "I tested the parser, not the model" cannot support "tested model".
     negated_object = _OBJECT_NEGATION.search(objects)
     tail = objects[negated_object.end():] if negated_object else None
@@ -358,7 +315,7 @@ def _object_facts(objects: str, lemma: str, qualifiers: list[str], actor: str, n
     if _BOUND.search(objects):
         qualifiers.append('bounded_quantity')
     tokens = _tokens(objects)
-    if allow_subjectless_claims and len(tokens) > 1 and re.search(r'(?:^|\s)carefully$', objects, re.I) and _care_qualifier(objects) is None:
+    if allow_subjectless_claims and len(tokens) > 1 and re.search(r'(?:^|\s)carefully$', objects, re.I) and not _CARE_QUALIFIER.search(objects):
         tokens = tokens[:-1]
     marks = tuple(sorted(set(qualifiers)))
     main = _Fact(actor, lemma, tokens, local_scope, negative, marks, entry, clause) if tokens else None
