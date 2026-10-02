@@ -658,8 +658,11 @@ class TestContract:
         unit = em.Unit("b1", case["original"], case["original"])
         row = {"unit_id": "b1", "links": case["links"], "decision": "rewrite", "ops": case["ops"],
                "text": case["rewrite"], "keep_reason": None}
-        outcome = em.check_rewrite(unit, row, anchors,
-                                   output_language=case.get("output") or em.language(case["original"]))
+        outcome = em.check_rewrite(unit, row, anchors, output_language=em.language(case["original"]))
+        if em.language(case["rewrite"]) != em.language(case["original"]):
+            # w14.1: a rewrite stays in its original's language, so no translation map is offered any more.
+            assert (outcome.status, outcome.code) == ("kept", "beyond_allowed_edit"), outcome
+            return
         if outcome.status == "pending":
             outcome = em.gate(outcome, unit)
         status, code, detail = case["expected"]

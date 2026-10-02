@@ -285,8 +285,7 @@ function validateReceipt(prepared: PreparedTargetResumeAi, unit: TargetResumeAiU
   } else {
     rewriteText(suggestion.proposed_text);
     if (!experience || value.status !== 'suggested' || !ops.length
-      || ((ops.includes('lead_with') || ops.includes('relabel')) && !links.some(link => link.relation === 'same'))
-      || (ops.includes('translate') && ops.length !== 1)) fail('invalid_response');
+      || ((ops.includes('lead_with') || ops.includes('relabel')) && !links.some(link => link.relation === 'same'))) fail('invalid_response');
     if (suggestion.alternative_text !== null) {
       rewriteText(suggestion.alternative_text);
       text(suggestion.alternative_reason);

@@ -18,7 +18,7 @@ from fastapi.testclient import TestClient
 
 from backend import data_loader
 from backend.lib import evidence_map as em
-from backend.lib import llm, llm_budget
+from backend.lib import llm, llm_budget, target_resume_ai
 from backend.lib.blocking import BlockingWorkTimeout
 from backend.lib.release_scope import opportunity_visible_in_release
 from backend.lib.target_resume_ai_grounding import (
@@ -26,9 +26,11 @@ from backend.lib.target_resume_ai_grounding import (
     claim_upgrade_findings,
     supported_claim_upgrade_detected,
 )
+from backend.lib.target_resume_ai_validation import units_for
 from backend.main import app
 from backend.routes import tailor
 from src.evidence import is_actionable_target
+from tests import test_target_resume_ai as full_target
 
 PATHS = ("/api/tailor", "/api/tailor/renovate", "/api/tailor/bullet")
 PROFILE = {
@@ -177,18 +179,17 @@ def _relabels(original, rewrite, source_anchor, term_anchor):
     return out
 
 
-def declared_row(unit_id, original, rewrite, anchors, locale):
+def declared_row(unit_id, original, rewrite, anchors):
     """The evidence-map row a model would return: operations that pass the contract, when any do.
 
     ``anchors`` must hold the original (t<2k-1>) and the rewrite (t<2k>) as
-    anchor texts, so every phrase of either can be a literal term.
+    anchor texts, so every phrase of either can be a literal term. A rewrite
+    in another language than its original passes none; the row keeps the first.
     """
     ids = {anchor.text: anchor.id for anchor in anchors.values()}
     source_anchor = ids.get(original, next(iter(ids.values())))
     term_anchor = ids.get(rewrite, source_anchor)
     base = {"unit_id": unit_id, "decision": "rewrite", "text": rewrite, "keep_reason": None}
-    if em.language(original) != em.language(rewrite):
-        return {**base, "links": [], "ops": [{"op": "translate"}]}
     leads = _lead_links(original, rewrite, source_anchor)
     candidates = [([], [{"op": op}]) for op in ("verb_first", "personal_first")]
     candidates += [([link], [{"op": "lead_with", "link": "L1"}, *extra]) for link in leads
@@ -200,7 +201,7 @@ def declared_row(unit_id, original, rewrite, anchors, locale):
     unit = em.Unit(unit_id, original, original)
     for links, ops in candidates:
         row = {**base, "links": links, "ops": ops}
-        if em.check_rewrite(unit, row, anchors, output_language=locale).status == "pending":
+        if em.check_rewrite(unit, row, anchors, output_language=em.language(original)).status == "pending":
             return row
     links, ops = candidates[0]
     return {**base, "links": links, "ops": ops}
@@ -242,7 +243,7 @@ def run(endpoint, monkeypatch, path, pairs, review, *, locale=None):
             return json.dumps({"sections": [{"id": "s1", "bullets": [
                 {"id": f"b{i}", "action": "foreground"} for i in range(len(pairs))]}]})
         units = json.loads(messages[1]["content"].split("DATA (JSON):\n", 1)[1])["units"]
-        return json.dumps({"bullets": [declared_row(unit["unit_id"], unit["original"], rewrite, by_id, locale)
+        return json.dumps({"bullets": [declared_row(unit["unit_id"], unit["original"], rewrite, by_id)
                                        for unit, (_, rewrite) in zip(units, pairs, strict=True)]})
 
     monkeypatch.setattr(tailor, "chat_completion", model)
@@ -661,6 +662,122 @@ class TestFaithfulnessCorpus:
         assert bool(DENIAL.search(text)) is denial
 
 
+CROSS_LANGUAGE = [case for side in ("faithful", "unfaithful") for case in CORPUS[side]
+                  if em.language(case["original"]) != em.language(case["rewrite"])]
+
+
+def _contract_details(monkeypatch) -> list[str | None]:
+    """The contract's detail for every row a route checks; routes log it at most, never send it."""
+    details = []
+
+    def check(*args, **kwargs):
+        outcome = em.check_rewrite(*args, **kwargs)
+        details.append(outcome.detail)
+        return outcome
+
+    monkeypatch.setattr(tailor, "check_rewrite", check)
+    monkeypatch.setattr(target_resume_ai, "check_rewrite", check)
+    return details
+
+
+def _full_target(monkeypatch, original, rewrite, *, locale=None, op="verb_first"):
+    """Full target with ``original`` as its experience line and a model that writes ``rewrite`` for it.
+
+    The UI locale is the rewrite's language unless given. Returns the line's receipt and the review calls.
+    """
+    doc = full_target.make_doc(original)
+    target = doc["target_snapshot"]
+    opp = {"id": "target", "title": target["title"], "organization": target["organization"],
+           "source_url": target["source_url"], "description_clean": target["description"],
+           "eligibility": {"skills_required": target["requirements"]}, "source_type": "campus_program",
+           "opportunity_type": "research", "metadata": {"is_active": True}}
+    monkeypatch.setattr(full_target.route, "load_opportunities_by_id", lambda: {"target": opp})
+    monkeypatch.setattr(full_target.route, "is_configured", lambda: True)
+    monkeypatch.setattr(target_resume_ai.llm_budget, "exhausted", lambda: False)
+    units = units_for(doc)[0]
+    line = next(unit["unit_id"] for unit in units if unit["evidence"]["kind"] == "experience")
+    rows = [full_target.row(unit["unit_id"], text=rewrite, ops=[{"op": op}]) if unit["unit_id"] == line
+            else full_target.row(unit["unit_id"]) for unit in units]
+    monkeypatch.setattr(target_resume_ai, "chat_completion", lambda *args, **kwargs: json.dumps({"units": rows}))
+    reviews = []
+    monkeypatch.setattr(em, "ai_review", lambda pairs, deadline=None: reviews.append(pairs) or ["accepted"] * len(pairs))
+    response = TestClient(app).post(full_target.PATH, json={**full_target.payload(doc),
+                                                             "locale": locale or em.language(rewrite)})
+    assert response.status_code == 200, response.text
+    return next(receipt for receipt in response.json()["receipts"] if receipt["unit_id"] == line), reviews
+
+
+@pytest.mark.parametrize("case", CROSS_LANGUAGE, ids=lambda case: case["rewrite"])
+def test_a_rewrite_in_another_language_than_its_original_is_kept_unreviewed(endpoint, monkeypatch, case):
+    """w14.1: each bullet is rewritten only in its own language, whatever the UI locale.
+
+    The corpus's translations, faithful or not, under the UI locale that used
+    to ask for them: every route keeps the line as written before any review.
+    """
+    details = _contract_details(monkeypatch)
+    pair = (case["original"], case["rewrite"])
+    for path in PATHS:
+        body, reviews = run(endpoint, monkeypatch, path, [pair], _review_all(True))
+        assert (outcomes(path, body), reviews) == ([(None, "beyond_allowed_edit")], []), path
+    receipt, reviews = _full_target(monkeypatch, *pair)
+    assert (receipt["status"], receipt["reason_code"], receipt["suggestion"]["proposed_text"], reviews) == (
+        "unchanged", "beyond_allowed_edit", None, [])
+    assert [detail for detail in details if detail != "model_keep"] == ["wrong_language"] * 4
+
+
+OWN_PART_FIRST = [("Built a rover with two teammates; I designed the mount.",
+                   "I designed the mount. Built a rover with two teammates."),
+                  ("团队开发了解析器。本人开发了测试。", "本人开发了测试。团队开发了解析器。")]
+
+
+@pytest.mark.parametrize("locale", ["en", "zh"])
+@pytest.mark.parametrize("pair", OWN_PART_FIRST, ids=["en", "zh"])
+def test_the_ui_locale_picks_no_rewrite_language(endpoint, monkeypatch, locale, pair):
+    """An English line is rewritten in English and a Chinese one in Chinese under either UI locale."""
+    for path in PATHS:
+        body, reviews = run(endpoint, monkeypatch, path, [pair], _review_all(True), locale=locale)
+        assert (outcomes(path, body), len(reviews)) == ([(pair[1], None)], 1), path
+    receipt, reviews = _full_target(monkeypatch, *pair, locale=locale, op="personal_first")
+    assert (receipt["status"], receipt["suggestion"]["proposed_text"], len(reviews)) == ("suggested", pair[1], 1)
+
+
+# A w14.0 translation the student kept with "Use kept as new originals": its source is still Chinese.
+SOURCE_ZH, CURRENT_EN = "负责为实验室搭建网站。", "Responsible for building a website for the lab."
+
+
+@pytest.mark.parametrize("path", ["/api/tailor", "/api/tailor/bullet"])
+@pytest.mark.parametrize("locale", ["en", "zh"])
+@pytest.mark.parametrize("rewrite", ["Built a website for the lab.", "为实验室搭建网站。"])
+def test_wording_in_another_language_than_its_source_is_kept_unreviewed(endpoint, monkeypatch, path, locale,
+                                                                          rewrite):
+    """Neither language may rewrite it: Chinese would translate the wording back, and English
+    would be judged against the Chinese source. w14.0 showed the English verb_first rewrite."""
+    client, opportunity_id = endpoint
+    anchors = [_anchor("t1", SOURCE_ZH), _anchor("t2", CURRENT_EN)]
+    monkeypatch.setattr(tailor, "_snapshot_anchors", lambda source, snapshot: anchors)
+    reviews = []
+
+    def model(messages, **kwargs):
+        if messages[0]["content"].startswith("FAITHFULNESS REVIEW"):
+            reviews.append(json.loads(messages[1]["content"]))
+            return _review_all(True)(reviews[-1])
+        [unit] = json.loads(messages[1]["content"].split("DATA (JSON):\n", 1)[1])["units"]
+        assert (unit["original"], unit["current"]) == (SOURCE_ZH, CURRENT_EN)
+        return json.dumps({"bullets": [{"unit_id": unit["unit_id"], "links": [], "decision": "rewrite",
+                                        "ops": [{"op": "verb_first"}], "text": rewrite, "keep_reason": None}]})
+
+    monkeypatch.setattr(tailor, "chat_completion", model)
+    monkeypatch.setattr(em, "chat_completion", model)
+    payload = {"profile": PROFILE, "opportunity_id": opportunity_id, "locale": locale}
+    if path == "/api/tailor":
+        payload.update(original_bullets=[CURRENT_EN], source_bullets=[SOURCE_ZH])
+    else:
+        payload.update(base_text=SOURCE_ZH, current_text=CURRENT_EN)
+    response = client.post(path, json=payload)
+    assert response.status_code == 200, response.text
+    assert (outcomes(path, response.json()), reviews) == ([(None, "beyond_allowed_edit")], [])
+
+
 # Rewrites the contract admits: a lead_with reorder and a verb-first role line.
 UNFLAGGED = ("Analyzed 88 samples with PyTorch and wrote the fluids lab report.",
              "Wrote the fluids lab report and analyzed 88 samples with PyTorch.")
@@ -957,10 +1074,17 @@ def test_every_rewrite_prompt_carries_the_evidence_map_rules(prompt):
     assert "trim" not in prompt.replace("tighten", "")
 
 
-def test_the_locale_chooses_the_output_language_and_the_profile_stays_direction():
-    assert "Write every rewrite in English." in tailor._SYSTEM_PROMPT_EN
+def test_each_rewrite_keeps_its_own_language_and_the_profile_stays_direction():
+    for prompt in (tailor._SYSTEM_PROMPT_EN, tailor._BULLET_SYSTEM_PROMPT_EN):
+        assert "Write each rewrite in the language of its own original" in prompt
+        assert "Never translate a line." in prompt and "translate" not in prompt.replace("Never translate", "")
+    for prompt in (tailor._SYSTEM_PROMPT_ZH, tailor._BULLET_SYSTEM_PROMPT_ZH):
+        assert "每条改写都用它自己原文的语言" in prompt and "绝不翻译" in prompt
+        assert "translate" not in prompt
+    full = target_resume_ai.SYSTEM_PROMPT
+    assert "Write each rewrite in the language of its own original, whatever the locale" in full
+    assert "translate" not in full.replace("Never translate", "")
     assert "direction only, never evidence" in tailor._SYSTEM_PROMPT_EN
-    assert "所有改写一律用简体中文" in tailor._SYSTEM_PROMPT_ZH
     assert "它们只提供方向，绝不是证据" in tailor._SYSTEM_PROMPT_ZH
     assert "SINGLE LINE." in tailor._BULLET_SYSTEM_PROMPT_EN and "SINGLE LINE." not in tailor._SYSTEM_PROMPT_EN
 

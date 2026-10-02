@@ -252,7 +252,7 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
   const opLabel = (op: TargetResumeAiOp) => ({
     lead_with: copy('Leads with the matching part', '相关内容放在最前'), relabel: copy('Uses the opportunity’s term', '改用机会中的术语'),
     verb_first: copy('Starts with your own verb', '以你原有的动词开头'), personal_first: copy('Puts your own part first', '先写你本人负责的部分'),
-    tighten: copy('Drops a repeated word', '删去重复的词'), translate: copy('Translated', '已翻译'),
+    tighten: copy('Drops a repeated word', '删去重复的词'),
   })[op];
   const kept = review?.receipts.filter((item) => item.status === 'unchanged') ?? [];
   const canContinue = !!run && (review?.coverage.pending || review?.receipts.some((item) => item.status === 'skipped' && !permanent.has(item.reason_code ?? '')));

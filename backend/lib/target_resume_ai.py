@@ -19,7 +19,7 @@ from backend.lib.evidence_map import (
     without_terms,
 )
 from backend.lib.llm import chat_completion, model_for
-from backend.lib.target_resume_ai_grounding import SOURCE_CHECK_VERSION
+from backend.lib.target_resume_ai_grounding import SOURCE_CHECK_VERSION, language
 from backend.lib.target_resume_ai_schema import (
     MAX_DIRECTION_CHARACTERS,
     MAX_EXPERIENCE_CHARACTERS,
@@ -50,7 +50,7 @@ FULL_TARGET_ADDENDUM = """FULL RESUME. The JSON also holds "locale", "criteria" 
 - "priority": "high", "normal" or "low" for how much this unit matters to this opportunity; "high" needs at least one link.
 - "reason": one category as described above.
 Fact units are protected: decision "keep", ops [], text null, keep_reason "no_link" or "already_aligned"; their links are shown to the student as advice. support_sources, when present, are other lines of the same activity that the student confirmed. Together with one of the operations above, a rewrite may add a support line's clauses word for word, every number, tool and qualifier staying with its own action; the length limit then counts the original and those lines together.
-OUTPUT LANGUAGE. Write every rewrite in the requested locale's language (en: English, zh: Simplified Chinese). A unit whose original is in the other language may only be translated: decision "rewrite" with ops [{"op": "translate"}] and no other operation, a faithful translation under every fact rule, with tool, dataset and course names kept as written.
+OUTPUT LANGUAGE. Write each rewrite in the language of its own original, whatever the locale: an English line stays English and a Chinese line stays Chinese. Never translate a line.
 OUTPUT: one JSON object, no markdown fences, nothing after it, one entry per unit:
 {"units":[""" + ROW_FORMAT[:-1] + ""","priority":"high|normal|low","reason":"<category>"}]}
 List only the operations you used. "text" is null exactly when decision is "keep"."""
@@ -307,7 +307,9 @@ def parse_output(raw, selected, anchors, locale="en"):
             results.append(receipt(unit, "invalid_model_response"))
             continue
         em_unit = _em_unit(unit)
-        outcome = check_rewrite(em_unit, row, by_id, output_language=locale, extra_keys=ROW_EXTRA_KEYS)
+        # The locale picks only the language of the server's reasons; a rewrite keeps its original's.
+        outcome = check_rewrite(em_unit, row, by_id, output_language=language(unit["original"]),
+                                extra_keys=ROW_EXTRA_KEYS)
         if outcome.status == "invalid":
             results.append(receipt(unit, "invalid_model_response"))
             continue

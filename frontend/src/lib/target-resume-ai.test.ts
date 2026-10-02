@@ -201,7 +201,7 @@ describe('strict receipts and target quotation', () => {
     ['unknown operation', (r: TargetResumeAiResponse) => { (exp(r).suggestion!.ops as string[]).push('trim'); }],
     ['repeated operation', (r: TargetResumeAiResponse) => { exp(r).suggestion!.ops.push('lead_with'); }],
     ['lead_with without a same link', (r: TargetResumeAiResponse) => { const s = exp(r).suggestion!; Object.assign(s, { links: [], target_evidence: [] }); }],
-    ['translation with another move', (r: TargetResumeAiResponse) => { exp(r).suggestion!.ops = ['translate', 'lead_with']; }],
+    ['a translate operation, which the server no longer writes', (r: TargetResumeAiResponse) => { Object.assign(exp(r).suggestion!, { ops: ['translate'] }); }],
     ['alternative without a relabel', (r: TargetResumeAiResponse) => { Object.assign(exp(r).suggestion!, { alternative_text: 'Built a parser.', alternative_reason: 'Leads with the matching part.' }); }],
     ['alternative equal to the rewrite', (r: TargetResumeAiResponse) => { const s = exp(r).suggestion!; Object.assign(s, { ops: ['relabel'], alternative_text: s.proposed_text, alternative_reason: 'Leads with the matching part.' }); }],
     ['alternative without its own reason', (r: TargetResumeAiResponse) => { Object.assign(exp(r).suggestion!, { ops: ['relabel', 'lead_with'], alternative_text: 'Built a parser, in Python, with the team.' }); }],

@@ -672,7 +672,7 @@ export interface EmailVariantsResponse {
  * next to its source for side-by-side comparison even when some
  * bullets were dropped by the anti-fabrication validator.
  */
-export type RewriteOp = 'lead_with' | 'relabel' | 'verb_first' | 'personal_first' | 'tighten' | 'translate';
+export type RewriteOp = 'lead_with' | 'relabel' | 'verb_first' | 'personal_first' | 'tighten';
 /**
  * Mirrors `backend.schemas.EvidenceLink`: a phrase of the student's line tied
  * to a literal quote of the opportunity, both with server offsets. `entailed`

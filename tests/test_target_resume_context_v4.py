@@ -209,8 +209,8 @@ def test_official_research_is_not_student_experience_but_own_source_can_support_
     original = 'Using NumPy, I studied Python sensors.' if supported and path.endswith('suggestions') else (
         'I studied Python sensors using NumPy.' if supported else 'I wrote parser tests using Python.')
     doc = document(opp, original)
-    # The UI locale picks the output language; an English line is adapted in English.
-    response = submit(client, path, doc, 'en'); assert response.status_code == 200
+    # An English line is adapted in English, whatever the UI locale.
+    response = submit(client, path, doc); assert response.status_code == 200
     result = response.json()
     if path.endswith('suggestions'):
         rows = [row for row in result['receipts'] if row['evidence']['kind'] == 'experience']

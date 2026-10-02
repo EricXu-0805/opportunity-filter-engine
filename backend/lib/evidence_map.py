@@ -73,8 +73,9 @@ CHECK_TIMEOUT_SECONDS = 10.0
 SUBSTANTIVE_OPS = frozenset({"lead_with", "relabel", "verb_first", "personal_first"})
 # "trim" is not offered: the calibration found the review accepts a trim that
 # drops another person's part ("which my advisor revised") in about 1 of 21
-# verdicts, and "broader" relabels in 1 of 3 (yeast -> S. cerevisiae).
-OPS = SUBSTANTIVE_OPS | {"tighten", "translate"}
+# verdicts, and "broader" relabels in 1 of 3 (yeast -> S. cerevisiae). Nor is
+# "translate": every rewrite stays in its own original's language.
+OPS = SUBSTANTIVE_OPS | {"tighten"}
 KEEP_REASONS = ("no_link", "already_aligned")
 ROW_KEYS = ("unit_id", "links", "decision", "ops", "text", "keep_reason")
 
@@ -113,7 +114,7 @@ FACT RULES. A rewrite that breaks one is discarded and the student keeps the ori
 ROW_FORMAT = (
     '{"unit_id":"...","links":[{"id":"L1","anchor":"t3","term":"...","source":"...","relation":"same|broader"}],'
     '"decision":"rewrite|keep","ops":[{"op":"lead_with","link":"L1"},{"op":"relabel","link":"L1","from":"...",'
-    '"to":"..."},{"op":"verb_first"},{"op":"personal_first"},{"op":"tighten"},{"op":"translate"}],'
+    '"to":"..."},{"op":"verb_first"},{"op":"personal_first"},{"op":"tighten"}],'
     '"text":"<the rewrite>" or null,"keep_reason":"no_link" or "already_aligned" or null}'
 )
 

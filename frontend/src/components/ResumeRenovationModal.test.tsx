@@ -59,6 +59,7 @@ function ResumeRenovationModal(props: React.ComponentProps<typeof ActualResumeRe
 import { advanceOwnerEpoch, captureOwnerToken, isLocalOwnerReady, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import type { Opportunity, ProfileData, RenovationDoc } from '@/lib/types';
 import { hashString } from '@/lib/match-utils';
+import { translate } from '@/i18n/translate';
 import type { RenovationSaveResult } from '@/lib/supabase';
 
 function saveReceipt(...args: unknown[]): RenovationSaveResult {
@@ -1810,6 +1811,17 @@ describe('evidence-mapped renovation (w14.0)', () => {
     // The tailored wording stays one rollback away.
     fireEvent.click(screen.getAllByText('renovate.rollback')[0]);
     await waitFor(() => expect(screen.getByText(fullText('Built a fault-tolerant data pipeline for ML workloads'))).toBeInTheDocument());
+  });
+  it('opens a saved doc whose rewrite names translate, an op the server no longer writes', async () => {
+    const doc = makeCurrentDoc();
+    Object.assign(doc.sections[0].bullets[0].variants[0], { ops: ['translate'], links: [] });
+    mockLoadRenovation.mockResolvedValue(savedDoc(doc));
+    renderModal();
+    expect(await screen.findByText('renovate.restored')).toBeInTheDocument();
+    expect(screen.getByText(fullText('Built a fault-tolerant data pipeline for ML workloads'))).toBeInTheDocument();
+    expect(screen.getByText('tailor.ops.translate')).toBeInTheDocument();
+    // Its chip keeps a label in both dictionaries, never a raw key.
+    expect([translate('en', 'tailor.ops.translate'), translate('zh', 'tailor.ops.translate')]).toEqual(['Translated', '已翻译']);
   });
   it('says why a foregrounded bullet stayed as written', async () => {
     const doc = makeCurrentDoc();

@@ -75,7 +75,8 @@ def model_unit(unit, reason=ATTACK, proposed=None, links=None, doc=None):
     em_unit = ai._em_unit(unit)
     by_id = {anchor.id: anchor for anchor in anchors(doc)}
     return next((candidate for candidate in rows if em.check_rewrite(
-        em_unit, candidate, by_id, output_language='en', extra_keys=ai.ROW_EXTRA_KEYS).status == 'pending'), rows[0])
+        em_unit, candidate, by_id, output_language=em.language(unit['original']),
+        extra_keys=ai.ROW_EXTRA_KEYS).status == 'pending'), rows[0])
 
 
 def outcome(doc, selected, row):
@@ -169,8 +170,6 @@ def test_invalid_support_is_rejected(mutation):
      'I built ingestion pipelines using Rust and executed 5 integration checks.'),
     (['I analyzed sensor recordings with MATLAB.', 'I ran 8 sensor checks.'],
      'I analyzed sensor recordings using MATLAB and executed 8 sensor checks.'),
-    (['团队完成了模型。本人没有训练模型。', '本人整理了12条记录。'],
-     '团队完成了模型。本人没有训练模型。本人整理了12条记录。'),
 ])
 def test_a_merge_with_no_allowed_move_or_a_new_verb_is_kept_with_its_sources(originals, proposed):
     """v5 suggested these merges. v6 offers no bare merge and no new verb ("ran" for "executed"),
@@ -181,6 +180,19 @@ def test_a_merge_with_no_allowed_move_or_a_new_verb_is_kept_with_its_sources(ori
     refused(result[0])
     assert result[0]['reason_code'] == 'beyond_allowed_edit'
     assert [q['quote'] for q in result[0]['suggestion']['source_evidence']] == originals
+
+
+def test_a_chinese_merge_declared_personal_first_goes_to_the_review():
+    """personal_first asks only that the line's first clause share two words with the student's own
+    part, and a Chinese word is one character: 团队完成了模型 shares 模 and 型 with 本人没有训练模型. So
+    this word-for-word merge of two confirmed lines, which moves nothing, is left to the review. A Chinese
+    UI did the same under w14.0; an English one kept it only because the line was not in English."""
+    originals = ['团队完成了模型。本人没有训练模型。', '本人整理了12条记录。']
+    doc = document(originals=originals)
+    _, _, selected, _ = ai.prepare_batch(request(doc, group(doc)), doc)
+    row = model_unit(selected[0], reason='transferable_experience', proposed=''.join(originals), doc=doc)
+    _, pending = outcome(doc, selected, row)
+    assert [item.outcome.ops for item in pending] == [['personal_first']]
 
 
 @pytest.mark.parametrize('originals,proposed', [

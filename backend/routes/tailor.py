@@ -11,8 +11,8 @@ evidence-mapped pipeline in ``backend/lib/evidence_map.py``:
     quotable text gets no model call.
   - One generation call maps each bullet to anchor terms and keeps it or
     rewrites it with declared operations only. The student's profile rides
-    along as direction, never as evidence; the UI locale picks the output
-    language.
+    along as direction, never as evidence. Each bullet is rewritten in its own
+    language; the UI locale picks only the language of the instructions.
   - The server verifies each link and operation and a closed vocabulary, runs
     the EN/ZH claim locks, then sends every surviving rewrite, with its links,
     to one fail-closed faithfulness review.
@@ -76,6 +76,7 @@ from backend.lib.resume_input import (
     resume_chunks,
 )
 from backend.lib.target_actionability import assert_target_actionable, prework_refusal
+from backend.lib.target_resume_ai_grounding import language
 from backend.lib.writing_target import prepare_writing_snapshot
 from backend.schemas import (
     BulletOptimizeRequest,
@@ -127,7 +128,7 @@ _MAX_SOURCE_TOTAL_CHARACTERS = _DEFAULT_BULLETS_PER_REQUEST * _MAX_BULLET_CHARAC
 # response with the target echo so a client can pair a suggestion set to the
 # exact target + code that produced it (W13; mirrors the W12 cold-email
 # provenance contract).
-TAILOR_PIPELINE_VERSION = "w14.0"
+TAILOR_PIPELINE_VERSION = "w14.1"
 
 TAILOR_PROMPT_MAX_CHARACTERS = 120_000
 # The renovation plan is ID-only and must leave the rewrite and its review
@@ -202,9 +203,9 @@ def _build_evidence_corpus(
     return " ".join(parts).lower()
 
 # The shared evidence-map instructions (backend/lib/evidence_map.py) plus the
-# student's profile as direction, the output language the UI locale chose, and
-# this route's output format. One prompt per locale: the student context rule
-# and the language rule are written in the student's language.
+# student's profile as direction, the rule that a rewrite keeps its own line's
+# language, and this route's output format. One prompt per UI locale: the
+# student context rule and the language rule are written in that language.
 _STUDENT_CONTEXT_RULE_EN = (
     "STUDENT CONTEXT. The user message may open with the student's name, year and major, skills with a "
     "self-reported proficiency level (beginner / experienced / expert), coursework and research interests. They are "
@@ -221,15 +222,11 @@ _STUDENT_CONTEXT_RULE_ZH = (
     "beginner 的技能绝不能写成精通或熟练掌握，也不要自己添加任何水平限定语。\n"
 )
 _LANGUAGE_RULE_EN = (
-    "OUTPUT LANGUAGE. Write every rewrite in English. A unit whose original is not in English may only be "
-    "translated into English: decision \"rewrite\" with ops [{\"op\": \"translate\"}] and no other operation, a "
-    "faithful translation under every fact rule, with tool, dataset and course names kept as written. Still list "
-    "its links.\n"
+    "OUTPUT LANGUAGE. Write each rewrite in the language of its own original: an English line stays English and a "
+    "Chinese line stays Chinese. Never translate a line.\n"
 )
 _LANGUAGE_RULE_ZH = (
-    "输出语言：所有改写一律用简体中文。原文不是中文的条目只能翻译成中文：decision 为 \"rewrite\"，ops 只能是 "
-    "[{\"op\": \"translate\"}]，不得使用其他操作；译文必须遵守全部事实规则，英文工具、数据集和课程名称保持原样。"
-    "仍需列出它的 links。\n"
+    "输出语言：每条改写都用它自己原文的语言，英文原文仍写英文，中文原文仍写中文；绝不翻译任何一条。\n"
 )
 _OUTPUT_RULE = (
     "OUTPUT: one JSON object, no markdown fences, nothing after it, one entry per unit in input order:\n"
@@ -257,7 +254,7 @@ _BULLET_SYSTEM_PROMPT_ZH = (SYSTEM_PROMPT_CORE + "\n" + _CURRENT_RULE + _BULLET_
 
 
 def _system_prompt_for(locale: str, *, single: bool = False) -> str:
-    """The locale's prompt: it chooses the output language. Anything not 'zh' is EN."""
+    """The UI locale's prompt: the language of the instructions, not of the rewrites. Anything not 'zh' is EN."""
     if single:
         return _BULLET_SYSTEM_PROMPT_ZH if locale == "zh" else _BULLET_SYSTEM_PROMPT_EN
     return _SYSTEM_PROMPT_ZH if locale == "zh" else _SYSTEM_PROMPT_EN
@@ -431,8 +428,7 @@ async def _evidence_rewrite(
     # The contract and the claim locks read text the student sent; they run on a
     # worker, and a check that runs out of time keeps every original unchecked.
     try:
-        outcomes = await run_blocking(_checked_outcomes, units, rows, by_id, locale,
-                                      timeout_seconds=CHECK_TIMEOUT_SECONDS)
+        outcomes = await run_blocking(_checked_outcomes, units, rows, by_id, timeout_seconds=CHECK_TIMEOUT_SECONDS)
     except BlockingWorkTimeout:
         logger.warning("tailor: the checks ran out of time; keeping the originals")
         return {unit.unit_id: Outcome(unit.unit_id, "kept", "review_unavailable") for unit in units}, True
@@ -455,12 +451,15 @@ async def _evidence_rewrite(
     return outcomes, True
 
 
-def _checked_outcomes(units: list[Unit], rows: dict, by_id: dict[str, Anchor], locale: str) -> dict[str, Outcome]:
-    """Each unit's row through the contract and, if it passes, the claim locks."""
+def _checked_outcomes(units: list[Unit], rows: dict, by_id: dict[str, Anchor]) -> dict[str, Outcome]:
+    """Each unit's row through the contract and, if it passes, the claim locks.
+
+    A rewrite must be in the language of the unit's own original, whatever the UI locale.
+    """
     outcomes: dict[str, Outcome] = {}
     for unit in units:
         row = rows.get(unit.unit_id)
-        outcome = (check_rewrite(unit, row, by_id, output_language=locale) if row is not None
+        outcome = (check_rewrite(unit, row, by_id, output_language=language(unit.evidence)) if row is not None
                    else Outcome(unit.unit_id, "invalid", detail="missing_row"))
         if outcome.status == "invalid":
             logger.info("tailor: unusable row for %s (%s)", unit.unit_id, outcome.detail)

@@ -14,7 +14,7 @@ export const FULL_TARGET_AI_MAX_PROMPT_CHARACTERS = 60_000;
 /** Direction longer than this is refused by name; it is never clipped. */
 export const FULL_TARGET_AI_MAX_INTERESTS_CHARACTERS = 8_000;
 /** Server instruction length; the batch planner counts it toward every prompt. */
-export const FULL_TARGET_AI_SYSTEM_PROMPT_CHARACTERS = 8_373;
+export const FULL_TARGET_AI_SYSTEM_PROMPT_CHARACTERS = 8_181;
 /** The server cuts at most this many anchors from the target for one prompt. */
 export const FULL_TARGET_AI_MAX_ANCHORS = 48;
 
@@ -31,7 +31,7 @@ export type TargetResumeAiSkipCode =
   | 'model_unavailable' | 'invalid_model_response' | 'missing_result'
   | 'budget_exhausted' | 'timeout' | 'rewrite_unchecked';
 export type TargetResumeAiReasonCode = TargetResumeAiKeepCode | TargetResumeAiSkipCode;
-export const TARGET_RESUME_AI_OPS = ['lead_with', 'relabel', 'verb_first', 'personal_first', 'tighten', 'translate'] as const;
+export const TARGET_RESUME_AI_OPS = ['lead_with', 'relabel', 'verb_first', 'personal_first', 'tighten'] as const;
 export type TargetResumeAiOp = typeof TARGET_RESUME_AI_OPS[number];
 export interface TargetResumeLegacyEvidence {
   field: 'description' | 'requirement';

@@ -1160,7 +1160,8 @@ export async function validateEmailDraft(subject: string, body: string, profile:
  * found) and network failures. Mirrors the cold-email "always returns
  * usable" contract.
  *
- * `locale` (R71-D) selects the output language. Backend normalizes
+ * `locale` (R71-D) selects the language of the model's instructions; each
+ * rewrite stays in its own bullet's language (w14.1). Backend normalizes
  * region tags ('zh-CN' / 'zh_TW' / 'zh') to 'zh', and any unknown
  * value falls back to 'en' rather than 422-ing — so we can safely
  * pass `useT().locale` through without sanitization.

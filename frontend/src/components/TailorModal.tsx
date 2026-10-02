@@ -306,9 +306,10 @@ export default function TailorModal({
   targetKey,
 }: TailorModalProps) {
   // R71-D: `locale` flows from the i18n context all the way down to the
-  // backend so the LLM returns bullets in the user's current display
-  // language. The backend tolerates unknown / region-tagged values by
-  // falling back to 'en', so we can pipe `useT().locale` through raw.
+  // backend, which writes its instructions in the user's display language;
+  // each rewrite stays in its own bullet's language (w14.1). The backend
+  // tolerates unknown / region-tagged values by falling back to 'en', so
+  // we can pipe `useT().locale` through raw.
   const { t, locale } = useT();
   const currentOwner = useSyncExternalStore(subscribeOwner, ownerSnapshot, () => 'server');
   const [ownerLifetime, setOwnerLifetime] = useState({ open: isOpen, key: currentOwner, retired: false });

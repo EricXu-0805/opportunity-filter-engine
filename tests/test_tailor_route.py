@@ -832,7 +832,7 @@ class TestSourceIndex:
 
 
 class TestLocale:
-    """R71-D: caller-declared output locale selects the system prompt."""
+    """R71-D: the caller's UI locale selects the system prompt's language; each rewrite keeps its bullet's (w14.1)."""
 
     def test_default_locale_is_en(
         self, python_profile, real_opp_id, monkeypatch,
@@ -857,9 +857,9 @@ class TestLocale:
             },
         )
         assert resp.status_code == 200
-        # The EN prompt asks for English rewrites; the ZH language rule is absent.
-        assert "Write every rewrite in English." in captured["system"]
-        assert "所有改写一律用简体中文" not in captured["system"]
+        # The EN prompt says each rewrite keeps its original's language; the ZH rule is absent.
+        assert "Write each rewrite in the language of its own original" in captured["system"]
+        assert "每条改写都用它自己原文的语言" not in captured["system"]
 
     def test_locale_zh_uses_chinese_prompt(
         self, python_profile, real_opp_id, monkeypatch,
@@ -887,9 +887,9 @@ class TestLocale:
             },
         )
         assert resp.status_code == 200
-        # The UI locale chooses the output language: Chinese here, not English.
-        assert "所有改写一律用简体中文" in captured["system"]
-        assert "Write every rewrite in English." not in captured["system"]
+        # The UI locale chooses the instructions' language; the rule keeps this English bullet in English.
+        assert "每条改写都用它自己原文的语言，英文原文仍写英文" in captured["system"]
+        assert "Write each rewrite in the language of its own original" not in captured["system"]
         body = resp.json()
         # A reply without evidence-map rows keeps the student's own bullet.
         assert body["method"] == "ai"
@@ -920,7 +920,7 @@ class TestLocale:
             },
         )
         assert resp.status_code == 200
-        assert "所有改写一律用简体中文" in captured["system"]
+        assert "每条改写都用它自己原文的语言" in captured["system"]
 
     def test_unknown_locale_falls_back_to_en(
         self, python_profile, real_opp_id, monkeypatch,
@@ -947,7 +947,7 @@ class TestLocale:
         )
         assert resp.status_code == 200
         # 'fr' is not 'zh', so we fall to the EN prompt — no 422.
-        assert "Write every rewrite in English." in captured["system"]
+        assert "Write each rewrite in the language of its own original" in captured["system"]
 
 
 class TestSkillLevelThreading:

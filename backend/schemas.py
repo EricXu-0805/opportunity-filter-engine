@@ -826,9 +826,10 @@ class TailorRequest(BaseModel):
         default=None, strict=True, min_length=68, max_length=68,
         pattern=r"^wt1:[0-9a-f]{64}$",
     )
-    # R71-D: caller-declared output language. Defaults to "en" so existing
+    # R71-D: the caller's UI language. Defaults to "en" so existing
     # clients (R71-B/C) keep their current behavior. The route uses this
-    # to pick between the EN and ZH system prompts; everything else (the
+    # only to pick between the EN and ZH system prompts (w14.1: each
+    # rewrite stays in its own bullet's language); everything else (the
     # anti-fabrication validator, the evidence corpus, the bullet
     # limits) is locale-agnostic by design — the ASCII hard-claim
     # regex still catches Python / PyTorch / Kubernetes regardless of

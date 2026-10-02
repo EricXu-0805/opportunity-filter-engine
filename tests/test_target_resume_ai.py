@@ -31,8 +31,7 @@ def fact(ident, value):
     return {"id": ident, "revision": 1, "status": "confirmed", "value": value, "source": {"kind": "manual"}}
 
 
-def make_doc():
-    raw = "Built a Python robot with a team of 3. I did not lead the project."
+def make_doc(raw="Built a Python robot with a team of 3. I did not lead the project."):
     signature = hashlib.sha256(raw.encode()).hexdigest()
     entries = [{"id": "exp", "revision": 1, "status": "confirmed", "text": raw,
                 "source": {"kind": "resume", "signature": signature, "quote": raw, "start": 0, "end": len(raw)}}]

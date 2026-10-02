@@ -59,7 +59,7 @@ def write(endpoint, monkeypatch, path, original, proposed, *, other=None, curren
                 {"id": f"b{i}", "action": "foreground"} for i in range(len(originals))]}]})
         units = json.loads(messages[1]["content"].split("DATA (JSON):\n", 1)[1])["units"]
         rows = [review_tests.declared_row(units[0]["unit_id"], units[0].get("current", units[0]["original"]),
-                                          proposed, by_id, locale)]
+                                          proposed, by_id)]
         rows += [{"unit_id": unit["unit_id"], "links": [], "decision": "keep", "ops": [], "text": None,
                   "keep_reason": "no_link"} for unit in units[1:]]
         return json.dumps({"bullets": rows})
