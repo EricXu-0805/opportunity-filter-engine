@@ -56,17 +56,20 @@ _GERUND_POSITION = re.compile(
 # "wiring the logger and designing the battery": a gerund joined to a guarded one is guarded too.
 _GERUND_AND = re.compile(r"^[^,，;；]*?\b(?:and|or)\s+(?P<word>[a-z]+ing)\b", re.I)
 # Hoped-for, planned or tried work. Dropping the word turns it into work done.
+# 拟 plans (拟于, 拟招募), but 模拟 simulates, 拟合 fits and 拟定 draws up a plan.
+_ZH_PLAN = r"(?<![模虚草比])拟(?!合|人|稿|定(?!于|在))"
 INTENT = re.compile(
     r"\b(?:aim(?:s|ed|ing)?|hop(?:e|es|ed|ing)|plan(?:s|ned|ning)?|tr(?:y|ies|ied|ying)|attempt(?:s|ed|ing)?"
     r"|intend(?:s|ed|ing)?|want(?:s|ed|ing)?|seek(?:s|ing)?|sought|looking|eager|applying|would\s+like)\s+to\b"
     r"|\binterest(?:ed)?\s+in\b|\bgoal\s+(?:is|was)\s+to\b"
-    r"|希望|计划|打算|拟|想要|有意|期望|期待|感兴趣|志在", re.I)
+    r"|希望|计划|打算|" + _ZH_PLAN + r"|想要|有意|期望|期待|感兴趣|志在", re.I)
 # Work the original says is unfinished. A past-tense verb for it, or a Chinese
 # rewrite without any such word, states it finished.
 UNFINISHED = re.compile(
     r"\b(?:in\s+preparation|in\s+progress|ongoing|on-going|currently|not\s+yet|pending|forthcoming|upcoming"
     r"|expected|anticipated|under\s+(?:review|revision|development)|drafting)\b", re.I)
-UNFINISHED_ZH = re.compile(r"正在|撰写中|准备中|进行中|筹备中|在投|待发表|目前|尚未|未完成|计划|打算|希望|拟|预计|想要")
+UNFINISHED_ZH = re.compile(r"正在|撰写中|准备中|进行中|筹备中|在投|待发表|目前|尚未|未完成|计划|打算|希望|" + _ZH_PLAN
+                           + r"|预计|想要")
 
 # Résumé verbs and their forms. Inflection only, not synonyms: every form maps
 # back to one base, so "writing", "wrote" and "writes" are the same verb.
@@ -959,6 +962,17 @@ def _leadership(text, name):
     return bool(re.search(ACTIONS[name], text, re.I)) or any(name in _guarded_gerunds(clause) for clause in clauses(text))
 
 
+# A count word is not a limit: "12 只小鼠" is twelve mice. NEGATION reads 只 as
+# "only", so "Dissected 12 mice" would drop a negation and the clause's own
+# actions would count as denied. NEGATION is also the selection plan's, so the
+# claim locks below read both texts with the count word written as 个.
+_COUNT_ZHI = re.compile(r"(?<=[\d一二三四五六七八九十两几数多每])(\s?)只")
+
+
+def claim_text(text):
+    return _COUNT_ZHI.sub(r"\1个", text)
+
+
 def claim_upgrade_findings(proposed, original):
     """Split the single-bullet claim locks into (hard, soft) findings.
 
@@ -975,6 +989,7 @@ def claim_upgrade_findings(proposed, original):
     """
     if normalized(proposed) == normalized(original):
         return [], []
+    proposed, original = claim_text(proposed), claim_text(original)
     hard = []
     if _team_marked(original) and not _team_marked(proposed):
         hard.append("team_qualifier_dropped")

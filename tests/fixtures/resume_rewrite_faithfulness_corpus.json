@@ -755,6 +755,56 @@
    "original": "Collaborated with two classmates to build a weather station and wrote its data logger in Python.",
    "rewrite": "Wrote the data logger in Python and, with two classmates, built a weather station.",
    "kind": "reordered; the team kept on its action"
+  },
+  {
+   "original": "解剖了 12 只小鼠并记录了体重。",
+   "rewrite": "Dissected 12 mice and recorded their body weight.",
+   "kind": "ZH to EN: 只 counts the mice"
+  },
+  {
+   "original": "Dissected 12 mice and recorded their body weight.",
+   "rewrite": "解剖了 12 只小鼠并记录了体重。",
+   "kind": "EN to ZH: 只 counts the mice"
+  },
+  {
+   "original": "起草了实验方案。",
+   "rewrite": "Drafted the experiment protocol.",
+   "kind": "ZH to EN: 起草 drafts"
+  },
+  {
+   "original": "Drafted the experiment protocol.",
+   "rewrite": "起草了实验方案。",
+   "kind": "EN to ZH: drafted is 起草"
+  },
+  {
+   "original": "发起了一项校园睡眠调查。",
+   "rewrite": "Launched a campus sleep survey.",
+   "kind": "ZH to EN: 发起 launches"
+  },
+  {
+   "original": "整理了论文初稿的参考文献。",
+   "rewrite": "Organized the references for the paper draft.",
+   "kind": "ZH to EN: 参考文献 are references"
+  },
+  {
+   "original": "预约了 30 名被试。",
+   "rewrite": "Scheduled 30 participants.",
+   "kind": "ZH to EN: 预约 schedules"
+  },
+  {
+   "original": "Designed a survey about sleep habits for 50 students.",
+   "rewrite": "为 50 名学生设计了一份关于睡眠习惯的问卷。",
+   "kind": "EN to ZH: about as a preposition"
+  },
+  {
+   "original": "用 Python 模拟了 100 次电路运行。",
+   "rewrite": "Simulated 100 circuit runs in Python.",
+   "kind": "ZH to EN: 模拟 simulates"
+  },
+  {
+   "original": "Fitted a regression model to 200 survey responses.",
+   "rewrite": "用 200 份问卷回复拟合了一个回归模型。",
+   "kind": "EN to ZH: fitted is 拟合"
   }
  ],
  "unfaithful": [
@@ -1758,6 +1808,34 @@
    "kind": "relabel drops a draft status",
    "caught": "contract",
    "case": "zh relabel inside its source still keeps 初稿"
+  },
+  {
+   "original": "Tested about 40 water samples with qPCR.",
+   "rewrite": "用 qPCR 检测了 40 份水样。",
+   "kind": "translation drops about on a count",
+   "caught": "contract",
+   "case": "EN to ZH drops about on a count"
+  },
+  {
+   "original": "检测了约 40 份水样。",
+   "rewrite": "Tested 40 water samples.",
+   "kind": "translation drops 约",
+   "caught": "contract",
+   "case": "ZH to EN drops 约 on a count"
+  },
+  {
+   "original": "2024 年起负责小鼠饲养。",
+   "rewrite": "Responsible for mouse husbandry in 2024.",
+   "kind": "translation turns since 2024 into in 2024",
+   "caught": "contract",
+   "case": "ZH to EN turns 2024 年起 into in 2024"
+  },
+  {
+   "original": "参考开源教程搭建了数据管道。",
+   "rewrite": "Built the data pipeline.",
+   "kind": "translation drops the tutorial it was based on",
+   "caught": "contract",
+   "case": "ZH to EN drops 参考 as a source"
   }
  ]
 }

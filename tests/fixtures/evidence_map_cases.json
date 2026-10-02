@@ -2352,6 +2352,272 @@
     null,
     null
    ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful ZH to EN counts 12 mice",
+   "output": "en",
+   "anchors": [],
+   "original": "解剖了 12 只小鼠并记录了体重。",
+   "rewrite": "Dissected 12 mice and recorded their body weight.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful EN to ZH counts 12 mice",
+   "output": "zh",
+   "anchors": [],
+   "original": "Dissected 12 mice and recorded their body weight.",
+   "rewrite": "解剖了 12 只小鼠并记录了体重。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful ZH to EN of 起草",
+   "output": "en",
+   "anchors": [],
+   "original": "起草了实验方案。",
+   "rewrite": "Drafted the experiment protocol.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful EN to ZH of drafted",
+   "output": "zh",
+   "anchors": [],
+   "original": "Drafted the experiment protocol.",
+   "rewrite": "起草了实验方案。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful ZH to EN of 发起",
+   "output": "en",
+   "anchors": [],
+   "original": "发起了一项校园睡眠调查。",
+   "rewrite": "Launched a campus sleep survey.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful ZH to EN of 参考文献",
+   "output": "en",
+   "anchors": [],
+   "original": "整理了论文初稿的参考文献。",
+   "rewrite": "Organized the references for the paper draft.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful ZH to EN of 预约",
+   "output": "en",
+   "anchors": [],
+   "original": "预约了 30 名被试。",
+   "rewrite": "Scheduled 30 participants.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful EN to ZH with about as a preposition",
+   "output": "zh",
+   "anchors": [],
+   "original": "Designed a survey about sleep habits for 50 students.",
+   "rewrite": "为 50 名学生设计了一份关于睡眠习惯的问卷。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful ZH to EN of 模拟",
+   "output": "en",
+   "anchors": [],
+   "original": "用 Python 模拟了 100 次电路运行。",
+   "rewrite": "Simulated 100 circuit runs in Python.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful EN to ZH of fitted",
+   "output": "zh",
+   "anchors": [],
+   "original": "Fitted a regression model to 200 survey responses.",
+   "rewrite": "用 200 份问卷回复拟合了一个回归模型。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops about on a count",
+   "output": "zh",
+   "anchors": [],
+   "original": "Tested about 40 water samples with qPCR.",
+   "rewrite": "用 qPCR 检测了 40 份水样。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_span"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN drops 约 on a count",
+   "output": "en",
+   "anchors": [],
+   "original": "检测了约 40 份水样。",
+   "rewrite": "Tested 40 water samples.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_span"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN turns 2024 年起 into in 2024",
+   "output": "en",
+   "anchors": [],
+   "original": "2024 年起负责小鼠饲养。",
+   "rewrite": "Responsible for mouse husbandry in 2024.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_span"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN drops 参考 as a source",
+   "output": "en",
+   "anchors": [],
+   "original": "参考开源教程搭建了数据管道。",
+   "rewrite": "Built the data pipeline.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_other_person"
+   ]
   }
  ]
 }

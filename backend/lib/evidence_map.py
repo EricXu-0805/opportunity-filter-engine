@@ -36,6 +36,7 @@ from backend.lib.target_resume_ai_grounding import (
     UNFINISHED_ZH,
     _parsed_claim_findings,
     _team_marked,
+    claim_text,
     claim_upgrade_findings,
     language,
     supported_claim_upgrade_detected,
@@ -535,10 +536,18 @@ _OTHER_PERSON = re.compile(
     r"|instructors?|technicians?|engineers?|(?:teaching|course)\s+assistants?"
     r"|(?:graduate|grad|phd|ph\.d\.?|doctoral|master'?s)\s+students?|nurses?|doctors?|physicians?|surgeons?"
     r"|therapists?|pharmacists?|adapted|starter|template|revised|rewrote|edited|based\s+on)\b"
-    r"|导师|老师|师兄|师姐|博士生|博士后|硕士生|研究生|技术员|工程师|助教|教授|参考|基于|医生|护士",
+    r"|导师|老师|师兄|师姐|博士生|博士后|硕士生|研究生|技术员|工程师|助教|教授|参考(?!文献|资料|书目)|基于|医生|护士",
     re.I)
+# An approximation qualifies a quantity: "about 40 samples", "over a year", not "a
+# survey about sleep" or "under development". 约 estimates (约 200 份), but 预约
+# schedules; 起 starts a span (2024 年起), but 起草 drafts and 发起 launches.
+_QUANTITY = (r"(?=\s+(?:[$€£¥~≈]?\d|(?:a|an|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen"
+             r"|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|half|dozens?|hundreds|thousands"
+             r"|all|every|each)\b))")
 _SPAN = re.compile(r"\b(?:about|approximately|roughly|nearly|almost|around|over|under|more\s+than|less\s+than"
-                   r"|at\s+least|at\s+most|up\s+to|since|until|per)\b|约|大约|将近|超过|至少|左右|(?<!一)起(?!来)|以来|至今", re.I)
+                   r"|at\s+least|at\s+most|up\s+to)" + _QUANTITY + r"|\b(?:since|until|per)\b"
+                   r"|(?<![预制节简邀相契合公条])约(?![定会束谈请见稿])|将近|超过|至少|左右"
+                   r"|(?<![一发引提拿想兴崛缘])起(?![来草源始点因诉步飞初])|以来|至今", re.I)
 _SOLO = re.compile(r"\b(?:alone|independently|solely|single-handedly|by\s+myself|on\s+my\s+own)\b|独立|独自|单独", re.I)
 _LIMIT = re.compile(r"\b(?:only|just)\b|只|仅", re.I)
 # The status a word gives a thing ("a planned study", "a draft manuscript"). INTENT
@@ -735,8 +744,10 @@ def _check_translation(unit: Unit, text: str) -> str | None:
         translated = {word for title, words in _TRANSLATED_DEGREES.items() if title in text for word in words}
         if kept - text_latin - translated:
             return "translation_names"
+    # Read as the claim locks read them: "12 只小鼠" counts mice, it limits nothing.
+    counted_source, counted_text = claim_text(source), claim_text(text)
     for name, patterns in _FAMILIES.items():
-        if _has(patterns, source) != _has(patterns, text):
+        if _has(patterns, counted_source) != _has(patterns, counted_text):
             return f"translation_{name}"
     # The claim locks compare these words within one language; across two,
     # a translation may not bring in a setting, a quality or a relevance claim.
