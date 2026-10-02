@@ -72,8 +72,9 @@ def test_heading_that_only_begins_with_a_bot_check_name_is_still_read(title):
 # The whole stock heading, with the site name some checks print after it and
 # the punctuation they end in, is a bot check.
 @pytest.mark.parametrize("title", [
-    "Checking your browser", "Checking your browser...", "Checking your browser before accessing example.edu",
-    "Checking your browser before proceeding.", "Checking your browser before continuing to example.edu…!",
+    "Checking your browser", "Checking your browser...", "Checking your browser before accessing",
+    "Checking your browser before accessing example.edu", "Checking your browser before proceeding.",
+    "Checking your browser before continuing to example.edu…!",
     "Human Verification", "Bot verification!", "DDoS-Guard", "Sign in - Example University", "Access denied!!",
 ])
 def test_whole_bot_check_heading_is_an_access_page(title):

@@ -340,10 +340,13 @@ IMUNIFY_WEBSHIELD = (
                  id='cloudflare-untitled'),
     pytest.param(page('<h1>Checking your browser before accessing example.edu</h1>', '<title>DDoS-Guard</title>'),
                  id='ddos-guard'),
-    # The heading that names the site refuses on its own, explanation and all.
+    # The heading refuses on its own, explanation and all, with or without the site name after it.
     pytest.param(page('<h1>Checking your browser before accessing example.edu.</h1><p>This process is automatic. Your '
                       'browser will redirect to your requested content shortly.</p><p>Please allow up to 5 seconds…</p>'),
                  id='checking-your-browser-before-accessing'),
+    pytest.param(page('<h1>Checking your browser before accessing</h1><p>This process is automatic. Your browser will '
+                      'redirect to your requested content shortly.</p><p>Please allow up to 5 seconds…</p>'),
+                 id='checking-your-browser-before-accessing-no-site'),
     pytest.param(page('<p>Verifying you are human. This may take a few seconds.</p>',
                       '<title>Human Verification</title>'), id='human-verification'),
     # A captcha box and a button under the stock title: nothing else to read.
@@ -521,6 +524,14 @@ def test_an_empty_challenge_box_is_still_a_bot_check():
     pytest.param('<main><h1>Checking your browser</h1><p>The research application portal works in current Chrome, '
                  'Firefox and Safari. Undergraduates apply by March 1, 2027.</p></main>', '',
                  'Undergraduates apply by March 1, 2027.', id='checking-your-browser-heading'),
+    # The punctuation these titles end in on a check page (Imunify360's "One
+    # moment, please...") keeps them a gate, not an outright refusal.
+    pytest.param(SOIL_POSTING.format(''), '<title>One moment, please...</title>', 'Soil Microbiology Lab',
+                 id='one-moment-title-ellipsis'),
+    pytest.param(SOIL_POSTING.format(''), '<title>Human Verification.</title>', 'Soil Microbiology Lab',
+                 id='human-verification-title-period'),
+    pytest.param(SOIL_POSTING.format(''), '<title>Checking your browser...</title>', 'Soil Microbiology Lab',
+                 id='checking-your-browser-title-ellipsis'),
 ])
 def test_bot_check_words_in_a_postings_title_do_not_refuse_it(body, head, kept):
     assert kept in extract_import_document(page(body, head))['text']
