@@ -6234,6 +6234,63 @@
     "beyond_allowed_edit",
     "translation_draft"
    ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps an accepted paper that is to appear",
+   "output": "zh",
+   "anchors": [],
+   "original": "Paper accepted at CHI 2026; to appear in April 2026.",
+   "rewrite": "论文已被 CHI 2026 录用，将于 2026 年 4 月发表。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps a launched page beside work under development",
+   "output": "zh",
+   "anchors": [],
+   "original": "Lab website under development; homepage launched.",
+   "rewrite": "实验室网站开发中，主页已上线。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN launches a page under 正在",
+   "output": "en",
+   "anchors": [],
+   "original": "正在开发实验室网站。",
+   "rewrite": "Developing the lab website; homepage launched.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
   }
  ]
 }

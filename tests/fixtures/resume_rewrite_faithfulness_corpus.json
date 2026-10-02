@@ -1130,6 +1130,16 @@
    "original": "为一项干旱研究培养了 50 株拟南芥。",
    "rewrite": "Grew 50 Arabidopsis plants for a drought study.",
    "kind": "ZH to EN: 拟南芥 as Arabidopsis"
+  },
+  {
+   "original": "Paper accepted at CHI 2026; to appear in April 2026.",
+   "rewrite": "论文已被 CHI 2026 录用，将于 2026 年 4 月发表。",
+   "kind": "EN to ZH: an accepted paper to appear"
+  },
+  {
+   "original": "Lab website under development; homepage launched.",
+   "rewrite": "实验室网站开发中，主页已上线。",
+   "kind": "EN to ZH: a launched page beside work under development"
   }
  ],
  "unfaithful": [
@@ -2770,6 +2780,13 @@
    "kind": "translation drops a bracketed draft",
    "caught": "contract",
    "case": "EN to ZH drops a bracketed draft"
+  },
+  {
+   "original": "正在开发实验室网站。",
+   "rewrite": "Developing the lab website; homepage launched.",
+   "kind": "translation launches a page the Chinese has under way",
+   "caught": "contract",
+   "case": "ZH to EN launches a page under 正在"
   }
  ]
 }

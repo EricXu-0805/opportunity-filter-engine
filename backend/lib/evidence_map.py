@@ -818,12 +818,16 @@ def _finished_verb(words: list[str]) -> bool:
 
 
 def _finished_clause(text: str) -> bool:
-    """Whether a clause of an English line opens with a finished verb: "...; graded 40 exams"."""
+    """Whether a clause of an English line opens with a finished verb: "...; graded 40 exams".
+
+    A headline counts too, its noun before the verb: "Paper accepted at CHI 2026".
+    """
     for clause in _EN_CLAUSE_BREAK.split(text):
         words = [word.casefold() for word in re.findall(r"[A-Za-z]+(?:-[A-Za-z]+)*", clause)]
         while words and (words[0] in _EN_CLAUSE_LEAD or words[0].endswith("ly")):
             words.pop(0)
-        if words and _finished_verb(words):
+        if words and (_finished_verb(words) or len(words) > 1 and words[0] not in _FUNCTION_EN
+                      and not verb_use(words[0]) and _finished_verb(words[1:])):
             return True
     return False
 

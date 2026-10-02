@@ -161,6 +161,18 @@ class TestSpanWords:
         assert not em._has(em._FAMILIES["span"], "引用最多的论文")
 
 
+class TestFinishedClause:
+    @pytest.mark.parametrize(("text", "finished"), [
+        ("Tutoring 30 students; graded 40 exams.", True), ("Developing a parser and tested it.", True),
+        ("Developing a website; carefully tested the login page.", True), ("Paper accepted at CHI 2026.", True),
+        ("Lab website under development; homepage launched.", True), ("Wired 3 sensors.", True),
+        ("Developing a dashboard, used by 5 lab members.", False), ("Planned to survey 50 users.", False),
+        ("Interested in robotics.", False), ("Dashboard under development; in planned studies.", False),
+        ("Developing a website for the lab.", False), ("Developing automated pipelines for the lab.", False)])
+    def test_a_clause_opens_with_a_finished_verb(self, text, finished):
+        assert em._finished_clause(text) is finished
+
+
 class TestDraft:
     @pytest.mark.parametrize("text", [
         "Draft weekly newsletters.", "Write and draft memos.", "Edit or draft memos.", "I draft memos.",
