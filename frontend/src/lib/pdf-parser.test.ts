@@ -776,11 +776,13 @@ describe('positioned text items', () => {
       'HONORS',
       "- Dean's List for five semesters.",
     ]);
-    // Nor do role rows dated without a separator.
+    // Nor do role rows dated without a separator. (The second item's wrap
+    // after "the" shows where the column ends.)
     mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
-      at('Research Intern, Biomechanics Lab, Summer 2025', 50, 220, 724, { hasEOL: true }),
-      at('- Wrote a calibration script.', 50, 130, 712, { hasEOL: true }),
-      at('- Tested the script on twenty recordings.', 50, 190, 700, { hasEOL: true }),
+      at('Research Intern, Biomechanics Lab, Summer 2025', 50, 220, 736, { hasEOL: true }),
+      at('- Wrote a calibration script.', 50, 130, 724, { hasEOL: true }),
+      at('- Tested the script on twenty recordings from the gait lab and compared each one with the', 50, 500, 712, { hasEOL: true }),
+      at('reference system.', 50, 80, 700, { hasEOL: true }),
       at('Teaching Assistant, Statistics Department, 2024', 50, 230, 688, { hasEOL: true }),
       at('- Trained a baseline that reached 0.87', 50, 500, 676, { hasEOL: true }),
       at('AUC on a held-out split.', 50, 110, 664),
@@ -788,7 +790,7 @@ describe('positioned text items', () => {
     expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
       'Research Intern, Biomechanics Lab, Summer 2025',
       '- Wrote a calibration script.',
-      '- Tested the script on twenty recordings.',
+      '- Tested the script on twenty recordings from the gait lab and compared each one with the reference system.',
       'Teaching Assistant, Statistics Department, 2024',
       '- Trained a baseline that reached 0.87 AUC on a held-out split.',
     ]);
@@ -1205,6 +1207,58 @@ describe('positioned text items', () => {
     expect(wrapEvidence('Labeled 3,000 tweets', '78% accuracy vs 71% baseline')).toBe(false);
   });
 
+  it('lets a weak hint join a line only where the page shows where its column ends', async () => {
+    // In a column where no line wraps, the longest line only looks full: the
+    // edge may lie further right. A role row's right-aligned date, a line
+    // that the words carry on, or a line that ends exactly where this one
+    // does (justified text) shows the edge.
+    const page = (...others: unknown[]) => pdfOf([
+      ...others,
+      at('Kept the build scripts and the release checklist that two other teams now rely on', 50, 400, 712, { hasEOL: true }),
+      at('NVIDIA Jetson boards in the robotics lab', 50, 170, 700, { hasEOL: true }),
+      at('Wrote unit tests for the parser', 50, 160, 688),
+    ]);
+    const kept = ['Kept the build scripts and the release checklist that two other teams now rely on',
+      'NVIDIA Jetson boards in the robotics lab'];
+    const joined = [kept.join(' ')];
+    const cases: Array<[unknown[], string[], string[]]> = [
+      [[], [], kept],
+      [[at('Mentored three students in the robotics club', 50, 396, 724, { hasEOL: true })],
+        ['Mentored three students in the robotics club'], kept],
+      [[at('Mentored three students in the robotics club', 50, 400.2, 724, { hasEOL: true })],
+        ['Mentored three students in the robotics club'], joined],
+      // The same line printed twice says nothing about the edge.
+      [[at('Kept the build scripts and the release checklist that two other teams now rely on', 50, 400, 724, { hasEOL: true })],
+        ['Kept the build scripts and the release checklist that two other teams now rely on'], kept],
+      [[at('Research Intern, Robotics Lab', 50, 140, 724), at('Jun 2025 - Aug 2025', 360, 90, 724, { hasEOL: true })],
+        ['Research Intern, Robotics Lab\tJun 2025 - Aug 2025'], joined],
+      [[at('Ported the lab inventory spreadsheet to a small web app and', 50, 380, 736, { hasEOL: true }),
+        at('trained the staff to use it', 50, 120, 724, { hasEOL: true })],
+      ['Ported the lab inventory spreadsheet to a small web app and trained the staff to use it'], joined],
+    ];
+    for (const [others, head, lines] of cases) {
+      mockGetDocument.mockReturnValue({ promise: Promise.resolve(page(...others)) });
+      expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([...head, ...lines, 'Wrote unit tests for the parser']);
+    }
+    // A line that only a weak hint joins does not show the edge to others:
+    // the second item ends 2pt short of the two justified lines above.
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('Mentored three students in the robotics club and reviewed their weekly notes', 50, 400, 736, { hasEOL: true }),
+      at('Wrote unit tests for the parser', 50, 160, 724, { hasEOL: true }),
+      at('Built the badge scanner that the volunteers at the food pantry use whenever they check in', 50, 398, 712, { hasEOL: true }),
+      at('GitHub Actions workflow for the team repository', 50, 200, 700, { hasEOL: true }),
+      at('Kept the build scripts and the release checklist that two other teams now rely on', 50, 400, 688, { hasEOL: true }),
+      at('NVIDIA Jetson boards in the robotics lab', 50, 170, 676),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      'Mentored three students in the robotics club and reviewed their weekly notes',
+      'Wrote unit tests for the parser',
+      'Built the badge scanner that the volunteers at the food pantry use whenever they check in',
+      'GitHub Actions workflow for the team repository',
+      joined[0],
+    ]);
+  });
+
   it('keeps a space between runs painted out of order on one line', async () => {
     // A right-floated date printed before its title: PDF.js jumps back on
     // the same baseline without a line end.
@@ -1313,13 +1367,16 @@ describe('positioned CJK text', () => {
     mockGetDocument.mockReturnValue({ promise: Promise.resolve({
       numPages: 1, destroy: async () => {},
       getPage: async () => ({ cleanup: () => {}, getTextContent: async () => ({ items: [
-        // The first item shows that this list ends its items with 。.
-        run('- 维护实验室网站。', 50, 90, 714, 'f1', true),
+        // The first item shows that this list ends its items with 。, and
+        // its wrap after "，" shows where the column ends.
+        run('- 维护实验室网站并整理每周组会的实验记录，', 50, 500, 728, 'f1', true),
+        run('撰写组会报告。', 50, 70, 714, 'f1', true),
         run('- 基于深度学习的医学影像', 50, 120, 700, 'f1'), run('分割系统：使⽤', 170, 380, 700, 'f2', true),
         run('模型复现', 50, 40, 686, 'f3'), run('⽂档。', 90, 30, 686, 'f2'),
       ] as never }) }),
     } as MockPdf) });
-    expect((await parseResumePDF(fakeFile())).raw_text).toBe('- 维护实验室网站。\n- 基于深度学习的医学影像分割系统：使用模型复现文档。');
+    expect((await parseResumePDF(fakeFile())).raw_text)
+      .toBe('- 维护实验室网站并整理每周组会的实验记录，撰写组会报告。\n- 基于深度学习的医学影像分割系统：使用模型复现文档。');
   });
 
   it('keeps Chinese items that end without 。 apart, under a glyph or none', async () => {
