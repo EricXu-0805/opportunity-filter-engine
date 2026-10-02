@@ -925,6 +925,21 @@
    "original": "Revised the lab's safety manual for new members.",
    "rewrite": "为新成员修订了实验室的安全手册。",
    "kind": "EN to ZH: the student's own revision"
+  },
+  {
+   "original": "Developing a Flask dashboard for the lab's sample inventory.",
+   "rewrite": "正在为实验室的样本库存开发一个 Flask 仪表板。",
+   "kind": "EN to ZH: a progressive line stays under way"
+  },
+  {
+   "original": "正在为实验室的样本库存开发一个 Flask 仪表板。",
+   "rewrite": "Developing a Flask dashboard for the lab's sample inventory.",
+   "kind": "ZH to EN: 正在 as a progressive line"
+  },
+  {
+   "original": "Using Python, cleaned 200 survey responses.",
+   "rewrite": "用 Python 清洗了 200 份问卷回复。",
+   "kind": "EN to ZH: Using opens a method, not work under way"
   }
  ],
  "unfaithful": [
@@ -2257,6 +2272,20 @@
    "kind": "relabel drops a revised version",
    "caught": "contract",
    "case": "relabel drops a revised version"
+  },
+  {
+   "original": "Developing a Flask dashboard for the lab's sample inventory.",
+   "rewrite": "为实验室的样本库存开发了一个 Flask 仪表板。",
+   "kind": "translation states a progressive line finished",
+   "caught": "contract",
+   "case": "EN to ZH states a progressive line finished"
+  },
+  {
+   "original": "Building a weather station with an Arduino.",
+   "rewrite": "已用 Arduino 搭建一个气象站。",
+   "kind": "translation states a progressive build finished",
+   "caught": "contract",
+   "case": "EN to ZH states a progressive build finished with 已"
   }
  ]
 }

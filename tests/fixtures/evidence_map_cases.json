@@ -4540,6 +4540,120 @@
     "beyond_allowed_edit",
     "relabel_drops_protected"
    ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH states a progressive line finished",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing a Flask dashboard for the lab's sample inventory.",
+   "rewrite": "为实验室的样本库存开发了一个 Flask 仪表板。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH states a progressive build finished with 已",
+   "output": "zh",
+   "anchors": [],
+   "original": "Building a weather station with an Arduino.",
+   "rewrite": "已用 Arduino 搭建一个气象站。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful EN to ZH keeps a progressive line under way",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing a Flask dashboard for the lab's sample inventory.",
+   "rewrite": "正在为实验室的样本库存开发一个 Flask 仪表板。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful ZH to EN of 正在 as a progressive line",
+   "output": "en",
+   "anchors": [],
+   "original": "正在为实验室的样本库存开发一个 Flask 仪表板。",
+   "rewrite": "Developing a Flask dashboard for the lab's sample inventory.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful EN to ZH of an ongoing duty",
+   "output": "zh",
+   "anchors": [],
+   "original": "Tutoring 5 first-year students in calculus every week.",
+   "rewrite": "每周为 5 名大一学生辅导微积分。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful EN to ZH of a line that opens with Using",
+   "output": "zh",
+   "anchors": [],
+   "original": "Using Python, cleaned 200 survey responses.",
+   "rewrite": "用 Python 清洗了 200 份问卷回复。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
   }
  ]
 }

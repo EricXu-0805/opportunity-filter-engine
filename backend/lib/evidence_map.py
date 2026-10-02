@@ -760,6 +760,22 @@ def _relabel_swap_refusal(source: str, target: str) -> str | None:
     return None
 
 
+# "Developing a dashboard": work under way with no status word, said by a leading
+# progressive verb ("Using Python, ..." and "Applying ..." name a method).
+_PROGRESSIVE_LEAD_SKIP = frozenset({"currently", "still", "now", "also", "actively", "jointly"})
+_PROGRESSIVE_METHODS = frozenset({"use", "apply"})
+# Chinese that states work done: 开发了, 已搭建, 完成.
+_ZH_DONE = re.compile(r"了|已(?!在)|完成")
+
+
+def _progressive_led(text: str) -> bool:
+    words = [word.casefold() for word in re.findall(r"[A-Za-z]+(?:-[A-Za-z]+)*", text)]
+    while words and words[0] in _PROGRESSIVE_LEAD_SKIP:
+        words.pop(0)
+    use = verb_use(words[0]) if words and not _CJK.match(text.strip()[:1]) else None
+    return bool(use) and use[1] == "ing" and use[0] not in _PROGRESSIVE_METHODS
+
+
 def _check_translation(unit: Unit, text: str) -> str | None:
     """Why a translation fails the checks that work across languages, or None."""
     source = unit.current
@@ -780,9 +796,16 @@ def _check_translation(unit: Unit, text: str) -> str | None:
             return "translation_names"
     # Read as the claim locks read them: "12 只小鼠" counts mice, it limits nothing.
     counted_source, counted_text = claim_text(source), claim_text(text)
+    english, chinese = (source, text) if language(source) == "en" else (text, source)
     for name, patterns in _FAMILIES.items():
         if _has(patterns, counted_source) != _has(patterns, counted_text):
+            # 正在开发 may be "Developing ...", which has no status word of its own.
+            if name == "unfinished" and _progressive_led(english) and not _has(patterns, english):
+                continue
             return f"translation_{name}"
+    # ... but "Developing ..." may not become 开发了 or 已开发.
+    if _progressive_led(english) and _ZH_DONE.search(chinese) and not UNDERWAY_ZH.search(chinese):
+        return "translation_unfinished"
     # The claim locks compare these words within one language; across two,
     # a translation may not bring in a setting, a quality or a relevance claim.
     if _setting_added(source, text):
