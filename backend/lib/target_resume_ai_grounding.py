@@ -762,12 +762,13 @@ _CLAUSE_BREAK = re.compile(r"[,，:：]|(?<!\s)\s+(?=(?:and|but|then|that|which|
                            re.I)
 _CLAUSE_LEAD = re.compile(r"^(?:\s|[(（]|(?:and|but|then|that|which|who|whom|where|while|whereas)\b|并|而|且)+", re.I)
 _PERSONAL_SUBJECT = re.compile(r"I\b|(?i:my\s+(?:part|role|contribution|job|task|work)s?\b|personally\b)|本人|我(?!们)")
+# A subject or an agent is read only where it stands, at the start of its text.
 _OTHER_SUBJECT = re.compile(
-    r"(?:(?:my|the|a|an|our|his|her|their|two|three|four|several|\d+)\s+)?(?:(?:graduate|grad|phd|doctoral|senior"
+    r"\A(?:(?:(?:my|the|a|an|our|his|her|their|two|three|four|several|\d+)\s+)?(?:(?:graduate|grad|phd|doctoral|senior"
     r"|lab|research|attending|head)\s+)?(?:advisors?|advisers?|supervisors?|mentors?|pis?|professors?|prof\b\.?"
     r"|dr\b\.?|postdocs?|tas?|nurses?|doctors?|physicians?|surgeons?|veterinarians?|therapists?|pharmacists?"
     r"|operators?|staff|clinicians?|technicians?|instructors?|teachers?|he|she|they)\b"
-    r"|导师|博士生|研究生|老师|医生|护士|药师|技术员|他们|他|她|对方|合作者|师兄|师姐|主治医生", re.I)
+    r"|导师|博士生|研究生|老师|医生|护士|药师|技术员|他们|他|她|对方|合作者|师兄|师姐|主治医生)", re.I)
 _TEAM_SUBJECT = re.compile(
     r"(?:we|our|us|together\s+with|my\s+(?:team|group|lab|club|teammates?|classmates?|lab\s*mates?))\b"
     r"|the\s+(?:team|group|club)\b|团队|小组|我们|组员|课题组|项目组|研究组|大家", re.I)
@@ -819,8 +820,8 @@ def _verbs(clause):
 
 # "supervised by a postdoc", "trained by graduate students": the agent did it.
 _STUDENT_AGENT = re.compile(
-    r"(?:(?:a|an|the|my|our|two|three|several|\d+)\s+)?(?:graduate|grad|phd|doctoral|senior|older)\s+students?\b", re.I)
-_BY = re.compile(r"\s+by\s+", re.I)
+    r"\A(?:(?:a|an|the|my|our|two|three|several|\d+)\s+)?(?:graduate|grad|phd|doctoral|senior|older)\s+students?\b", re.I)
+_BY = re.compile(r"(?<!\s)\s+by\s+", re.I)
 
 
 def _passive_agent(clause, position):
@@ -921,7 +922,7 @@ _ZH_TAIL = re.compile(r"(?:了|过|的|已经|已|正在|在|中)+$")
 # Any status word of _STATUS_CLASSES, matched whole.
 _STATUS_WORDS = re.compile("|".join(f"(?:{pattern})" for pattern in _STATUS_CLASSES.values()), re.I)
 _CJK_RUN_AT = re.compile(r"[\u4e00-\u9fff]*")
-_CJK_RUN_END = re.compile(r"[\u4e00-\u9fff]*$")
+_CJK_RUN_END = re.compile(r"(?<![\u4e00-\u9fff])[\u4e00-\u9fff]*$")
 # The Chinese run a status reads is bounded, so a long run costs the same as a short one.
 _ZH_WINDOW = 24
 

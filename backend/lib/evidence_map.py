@@ -682,7 +682,7 @@ def _team_or_help(text: str) -> bool:
 
 
 _TEAM_HEADER = re.compile(
-    r"(?:as\s+(?:part|a\s+member)\s+of|as\s+an?|on\s+an?|in\s+an?|with|together\s+with|alongside|within|作为|身为|与)"
+    r"\A(?:as\s+(?:part|a\s+member)\s+of|as\s+an?|on\s+an?|in\s+an?|with|together\s+with|alongside|within|作为|身为|与)"
     r"[^;；。.!?,，:：]*[,，:：]", re.I)
 
 
@@ -857,10 +857,10 @@ _ZH_DONE = re.compile(r"(?<![为除])了(?!解)|已(?!在)|(?<!正在)(?<!未)�
 # A Chinese line's first clause, and 正在 or 目前 on its leading verb: only a subject
 # or a time word may stand before it (目前正在为实验室开发 ..., 本学期正在, 目前我正在).
 # No word of the run is two others joined (今年暑假 is 今年 + 暑假), so a run of them
-# has one reading and is read once.
+# has one reading and is read once; it is read only at the start of a clause.
 _ZH_FIRST_CLAUSE = re.compile(r"[^，,。；;：:！？!?]*")
 _ZH_LEAD_PROGRESSIVE = re.compile(
-    r"\s*(?:(?:本人|我们|我|本学期|这学期|今年(?:夏天)?|暑假(?:期间)?|寒假(?:期间)?|最近|近期|目前|现在|现|也)\s*)*"
+    r"\A\s*(?:(?:本人|我们|我|本学期|这学期|今年(?:夏天)?|暑假(?:期间)?|寒假(?:期间)?|最近|近期|目前|现在|现|也)\s*)*"
     r"(?:正在|目前)")
 # Chinese clauses, and their parts: 开发了网站并撰写了综述 states two things done.
 _ZH_CLAUSE_BREAK = re.compile(r"[，,。；;：:！？!?]")
