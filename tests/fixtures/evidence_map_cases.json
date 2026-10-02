@@ -8377,7 +8377,7 @@
   },
   {
    "group": "translate",
-   "label": "ZH to EN keeps 找不到 as no span",
+   "label": "ZH to EN reads 找不到 as a span, losing a faithful translation",
    "output": "en",
    "anchors": [],
    "original": "解决了实验数据找不到的问题。",
@@ -8389,9 +8389,9 @@
     }
    ],
    "expected": [
-    "pending",
-    null,
-    null
+    "kept",
+    "beyond_allowed_edit",
+    "translation_span"
    ]
   },
   {
@@ -9462,6 +9462,82 @@
     "pending",
     null,
     null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN drops 用不到 before a number",
+   "output": "en",
+   "anchors": [],
+   "original": "用不到 100 行代码实现了一个解析器。",
+   "rewrite": "Implemented a parser in 100 lines of code.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_span"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN drops 用不到 before a duration",
+   "output": "en",
+   "anchors": [],
+   "original": "用不到一周时间搭建了实验室网站。",
+   "rewrite": "Built the lab website in a week.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_span"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN drops the 达不到 bound",
+   "output": "en",
+   "anchors": [],
+   "original": "模型在测试集上的准确率达不到 90%。",
+   "rewrite": "The model reached 90% accuracy on the test set.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_span"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN drops 找不到",
+   "output": "en",
+   "anchors": [],
+   "original": "找不到公开数据集，自行采集了 200 条样本。",
+   "rewrite": "Found a public dataset and collected 200 samples.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_span"
    ]
   }
  ]

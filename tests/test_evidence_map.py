@@ -258,13 +258,18 @@ class TestBoundsAndApproximations:
         assert em._has(em._FAMILIES["span"], text)
 
     @pytest.mark.parametrize("text", [
-        *(f"{verb}不到数据" for verb in "找做想看达得用等买收见听"), "得票最多的人",
+        "得票最多的人",
         *(f"得票最多{mark}" for mark in ("。", "，", ",", "；", ";", "）", ")", "")), "附近 3 家医院", "最近 3 年",
         "近五年的数据", "近三年来", "近两年内", "近 10 个月间", "近 3 年来的", "近两个月的", "近三周的", "近十天的",
         "近 5 日的", "近两个季度的", "近两学期的", "近期参加了比赛", "靠近校园的实验室", "其余 3 人", "Analyzed some data.",
         "Estimated the cost of the trip.", "Recruited fewer participants than expected."])
     def test_a_verb_a_superlative_or_a_recent_past_is_no_span(self, text):
         assert not em._has(em._FAMILIES["span"], text)
+
+    @pytest.mark.parametrize("verb", "找做想看达得用等买收见听")
+    def test_不到_after_a_verb_is_still_a_span(self, verb):
+        # 用不到 100 行 bounds a number and 找不到 or 达不到 denies; only the span family reads them.
+        assert em._has(em._FAMILIES["span"], f"{verb}不到数据")
 
     @pytest.mark.parametrize("text", [
         "Recruited fewer than expected.", "Ran as many as needed.", "Used as much as needed.", "Needed as few as possible.",

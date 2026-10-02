@@ -3730,6 +3730,34 @@
    "kind": "relabel drops untested",
    "caught": "contract",
    "case": "relabel drops untested"
+  },
+  {
+   "original": "用不到 100 行代码实现了一个解析器。",
+   "rewrite": "Implemented a parser in 100 lines of code.",
+   "kind": "ZH to EN: 用不到 (in fewer than) dropped",
+   "caught": "contract",
+   "case": "ZH to EN drops 用不到 before a number"
+  },
+  {
+   "original": "用不到一周时间搭建了实验室网站。",
+   "rewrite": "Built the lab website in a week.",
+   "kind": "ZH to EN: 用不到 (in under) dropped",
+   "caught": "contract",
+   "case": "ZH to EN drops 用不到 before a duration"
+  },
+  {
+   "original": "模型在测试集上的准确率达不到 90%。",
+   "rewrite": "The model reached 90% accuracy on the test set.",
+   "kind": "ZH to EN: 达不到 (fell short of) dropped",
+   "caught": "contract",
+   "case": "ZH to EN drops the 达不到 bound"
+  },
+  {
+   "original": "找不到公开数据集，自行采集了 200 条样本。",
+   "rewrite": "Found a public dataset and collected 200 samples.",
+   "kind": "ZH to EN: 找不到 (could not find) dropped",
+   "caught": "contract",
+   "case": "ZH to EN drops 找不到"
   }
  ]
 }
