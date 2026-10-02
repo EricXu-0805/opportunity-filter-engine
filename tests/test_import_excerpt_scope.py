@@ -125,3 +125,19 @@ def test_page_text_the_model_did_not_receive_keeps_the_excerpt_label(monkeypatch
     _fetched(monkeypatch, '<html><head><title>Soil lab</title></head><body>' + body + '</body></html>')
     result = url_parser.parse_url_llm(URL)
     assert result.extra_fields['ai_input_scope'] == 'source_excerpt'
+
+
+def test_excerpt_skips_the_same_tags_at_any_depth_and_leaves_the_shared_page_whole():
+    # The reader, the contact capture and the excerpt read one parsed page now,
+    # so the excerpt skips script, style, noscript, header, footer and nav
+    # instead of removing them from it. Its text is the old excerpt's.
+    from src.collectors.import_document import parse_import_html
+
+    soup = parse_import_html(
+        '<html><head><title>Lab</title><style>p{}</style></head><body><header><p>Site <nav>menu</nav></p></header>'
+        '<main><p>Keep <b>this</b> text.</p><div><noscript>Enable JS</noscript><span>and <script>x()</script>this'
+        '</span></div><nav><ul><li>Home</li></ul></nav><template><p>Template text</p></template><p>e</x>mail</p>'
+        '<![CDATA[cdata words]]><!-- comment --></main><footer>Contact us</footer></body></html>')
+    page = str(soup)
+    assert url_parser._strip_to_text(soup) == 'Lab Keep this text. and this e mail cdata words'
+    assert str(soup) == page

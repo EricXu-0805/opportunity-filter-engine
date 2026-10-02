@@ -27,6 +27,7 @@ from src.collectors.url_parser import (
     is_safe_url,
     parse_url_llm,
 )
+from tests.test_import_document import _deadline
 
 client = TestClient(app)
 
@@ -155,6 +156,28 @@ class TestParseLlmJson:
     def test_handles_multiline_json(self):
         text = '{\n  "title": "X",\n  "paid": "yes"\n}'
         assert _parse_llm_json(text) == {"title": "X", "paid": "yes"}
+
+    def test_strips_closing_fence_after_spaces(self):
+        assert _parse_llm_json('```json\n{"title": "X"}\n \u2003```') == {"title": "X"}
+
+    # A page can steer what the model replies, so the reply is read in linear
+    # time. The fence strip retried every split of a long run of spaces, and the
+    # {...} search scanned to the end from every '{': the old parser took 3.7 s
+    # and 4.1 s on these replies, four times longer per doubling.
+    @pytest.mark.parametrize("reply", [
+        pytest.param('```json\n{"title": "X"}' + " " * 80_000 + "x", id="80000-spaces-after-fenced-json"),
+        pytest.param("{" * 160_000, id="160000-open-braces"),
+    ])
+    def test_long_reply_is_parsed_in_linear_time(self, reply):
+        with _deadline(2):
+            result = _parse_llm_json(reply)
+        assert result == ({"title": "X"} if reply.startswith("```") else None)
+
+    def test_deeply_nested_reply_is_unparseable_not_an_error(self):
+        # json.loads raises RecursionError past about 1,000 levels; the route
+        # answered 500 instead of keeping the page's own draft.
+        assert _parse_llm_json("[" * 5000) is None
+        assert _parse_llm_json('{"title": ' + "[" * 5000 + "]" * 5000 + "}") is None
 
 
 # ---------- _merge_llm_into_base ----------

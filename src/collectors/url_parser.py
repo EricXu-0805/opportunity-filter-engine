@@ -31,16 +31,19 @@ from typing import Optional
 from urllib.parse import urljoin, urlparse
 
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, CData, NavigableString, Tag
 
 from ..contact_instructions import capture_from_html, capture_metadata, same_source_page
 from .base import RawOpportunity
-from .import_document import extract_import_document
+from .import_document import extract_import_document, read_import_document
 
 logger = logging.getLogger(__name__)
 
 PAGE_FETCH_TIMEOUT_S = 15
 LLM_BODY_EXCERPT_CHARS = 4000
+# The title and description hints the model gets beside the excerpt. A page's
+# metadata is otherwise unbounded, and the whole of it went into the prompt.
+LLM_HINT_CHARS = 2000
 LLM_MAX_TOKENS = 700
 
 # Hard cap on a fetched body. The timeout bounds one slow connection but not a
@@ -69,7 +72,10 @@ def parse_url(
         resp = _safe_fetch(url)
         return _parse_fetched_page(url, resp) if resp is not None else None
 
-    document = extract_import_document(html, content_type=content_type)
+    return _page_opportunity(url, extract_import_document(html, content_type=content_type))
+
+
+def _page_opportunity(url: str, document: dict) -> RawOpportunity:
     domain = urlparse(url).netloc
     organization = _domain_to_org(domain)
     deadline = _extract_deadline(document["text"])
@@ -100,13 +106,13 @@ def parse_url(
     )
 
 
-def _legacy_model_hints(html: str) -> tuple[str, str]:
+def _legacy_model_hints(soup: BeautifulSoup) -> tuple[str, str]:
     """Keep the existing model payload separate from locally saved full text.
 
-    Preserve the previous metadata/body hint and title exactly. Full-source
-    model processing is a separate pending change, not enabled by source saving.
+    Preserve the previous metadata/body hint and title exactly, up to
+    LLM_HINT_CHARS each. Full-source model processing is a separate pending
+    change, not enabled by source saving.
     """
-    soup = BeautifulSoup(html, "html.parser")
     title = ""
     og_title = soup.find("meta", property="og:title")
     if og_title:
@@ -123,8 +129,8 @@ def _legacy_model_hints(html: str) -> tuple[str, str]:
     else:
         main = soup.find("main") or soup.find("article") or soup.find("body")
         if main:
-            description = main.get_text(separator=" ", strip=True)[:2000]
-    return title or "Untitled Opportunity", description
+            description = main.get_text(separator=" ", strip=True)
+    return (title or "Untitled Opportunity")[:LLM_HINT_CHARS], description[:LLM_HINT_CHARS]
 
 
 
@@ -137,6 +143,11 @@ class UrlImportSourceError(ValueError):
 
 
 def _parse_fetched_page(url: str, response: requests.Response) -> RawOpportunity:
+    return _read_fetched_page(url, response)[0]
+
+
+def _read_fetched_page(url: str, response: requests.Response) -> tuple[RawOpportunity, BeautifulSoup]:
+    """The saved draft and the parsed page, which the reader and the capture share."""
     final_url = getattr(response, "url", None)
     if not isinstance(final_url, str) or not final_url:
         raise UrlImportSourceError("unverified_response")
@@ -144,18 +155,18 @@ def _parse_fetched_page(url: str, response: requests.Response) -> RawOpportunity
         # Do not offer the other page's title/body as a draft under the old URL.
         # The user can explicitly import the destination when it is intended.
         raise UrlImportSourceError("redirect_mismatch")
-    base = parse_url(
-        url, html=response.text, content_type=response.headers.get("Content-Type"),
-    )
+    document, soup = read_import_document(response.text, content_type=response.headers.get("Content-Type"))
+    base = _page_opportunity(url, document)
     capture = capture_from_html(
-        response.text,
+        soup,
         source_url=final_url,
         requested_source_url=url,
         record_source_url=url,
         checked_at=getattr(response, "_ofe_checked_at", None),
     )
     base.extra_fields.update(capture_metadata(capture))
-    return base
+    return base, soup
+
 
 def is_safe_url(url: str) -> tuple[bool, str]:
     """SSRF guard for user-supplied URLs.
@@ -303,10 +314,10 @@ def parse_url_llm(url: str) -> Optional[RawOpportunity]:
     response = _safe_fetch(url)
     if response is None:
         return None
-    base = _parse_fetched_page(url, response)
+    base, soup = _read_fetched_page(url, response)
 
-    body_excerpt = _strip_to_text(response.text)[:LLM_BODY_EXCERPT_CHARS]
-    title_hint, description_hint = _legacy_model_hints(response.text)
+    body_excerpt = _strip_to_text(soup, limit=LLM_BODY_EXCERPT_CHARS)[:LLM_BODY_EXCERPT_CHARS]
+    title_hint, description_hint = _legacy_model_hints(soup)
     enriched = _run_llm_extraction(
         base,
         body_excerpt=body_excerpt,
@@ -484,29 +495,28 @@ def _build_extraction_messages(
     ]
 
 
-_JSON_OBJECT_RE = re.compile(r"\{.*\}", re.DOTALL)
-
-
 def _parse_llm_json(text: str) -> Optional[dict]:
     """Forgiving JSON extraction.
 
     The LLM sometimes wraps JSON in ```json fences or prefaces with an
     apology despite the system prompt. Strip common wrappers, then fall
-    back to a greedy {...} regex on the first failure.
+    back to the span from the first '{' to the last '}' on the first failure.
+    Every step is linear in the reply: a page can steer what the model writes.
     """
     cleaned = text.strip()
     if cleaned.startswith("```"):
         cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
-        cleaned = re.sub(r"\s*```$", "", cleaned)
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3].rstrip()
     try:
         loaded = json.loads(cleaned)
-    except json.JSONDecodeError:
-        match = _JSON_OBJECT_RE.search(text)
-        if match is None:
+    except (json.JSONDecodeError, RecursionError):
+        start, end = text.find("{"), text.rfind("}")
+        if start < 0 or end < start:
             return None
         try:
-            loaded = json.loads(match.group(0))
-        except json.JSONDecodeError:
+            loaded = json.loads(text[start:end + 1])
+        except (json.JSONDecodeError, RecursionError):
             return None
     return loaded if isinstance(loaded, dict) else None
 
@@ -617,11 +627,34 @@ def _replace(opp: RawOpportunity, **kwargs) -> RawOpportunity:
     return replace(opp, **kwargs)
 
 
-def _strip_to_text(html: str) -> str:
-    soup = BeautifulSoup(html, "html.parser")
-    for tag in soup(["script", "style", "noscript", "header", "footer", "nav"]):
-        tag.decompose()
-    return soup.get_text(separator=" ", strip=True)
+_EXCERPT_SKIP = frozenset({"script", "style", "noscript", "header", "footer", "nav"})
+
+
+def _strip_to_text(soup: BeautifulSoup, *, limit: Optional[int] = None) -> str:
+    """The page's text outside scripts, styles, no-script notices, headers,
+    footers and navigation, as get_text(" ", strip=True) joins it.
+
+    Reads the parsed page in one pass without changing it, and stops once the
+    text is longer than ``limit``.
+    """
+    pieces: list[str] = []
+    length = 0
+    frames = [iter(soup.contents)]
+    while frames:
+        node = next(frames[-1], None)
+        if node is None:
+            frames.pop()
+        elif isinstance(node, Tag):
+            if node.name not in _EXCERPT_SKIP:
+                frames.append(iter(node.contents))
+        elif type(node) in (NavigableString, CData):
+            text = node.strip()
+            if text:
+                pieces.append(text)
+                length += len(text) + 1
+                if limit is not None and length > limit:
+                    break
+    return " ".join(pieces)
 
 
 def _domain_to_org(domain: str) -> Optional[str]:
