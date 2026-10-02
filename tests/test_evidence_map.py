@@ -217,6 +217,49 @@ class TestFinishedClause:
         assert em._finished_clause(f"Paper under review; preprint {word} on arXiv.")
 
 
+class TestTeamAndShare:
+    @pytest.mark.parametrize("text", [
+        *(f"Designed it with three other {noun}." for noun in (
+            "students", "interns", "volunteers", "members", "researchers", "undergrads", "undergraduates",
+            "participants", "tutors", "employees")),
+        "Designed it with another student.", "Sorted cans alongside two other volunteers.",
+        "Cleaned data with fellow interns.", "Built it with my fellow lab members.", "Wrote it among other researchers.",
+        "Built it together with other undergraduates.", "Built it with several other students.",
+        "Built it with four other students.", "Built it with 12 other students.", "Built it with the others.",
+        "Built it with colleagues.", "Built it with peers.", "Built it with co-workers.", "Built it with coworkers.",
+        "Built it with others.",
+        *(f"与{other}三名{noun}一起" for other in ("另外", "另一", "其他", "其余")
+          for noun in ("学生", "同学", "志愿者", "实习生", "成员", "研究员", "同事", "队员"))])
+    def test_other_collaborators_are_a_team(self, text):
+        assert em._TEAM_OTHERS.search(text)
+        assert em._has(em._FAMILIES["team"], text)
+
+    @pytest.mark.parametrize("text", ["Tutored 30 students in calculus.", "Held office hours with 30 students.",
+                                      "Trained 5 colleagues in Excel.", "Met with members of the public.",
+                                      "为其他学院开发了网站"])
+    def test_people_the_work_serves_are_no_team(self, text):
+        assert not em._TEAM_OTHERS.search(text)
+
+    @pytest.mark.parametrize("text", [
+        "Participated in the analysis.", "Participating in a study.", "Participation in a study.",
+        "Contributed to the design.", "Contributing to a review.", "Made contributions to the code.",
+        "Core contributor to the library.", "Involved in collecting data.", "Involvement in a project.",
+        "Took part in testing.", "Take part in testing.", "Takes part in testing.", "Taking part in testing."])
+    def test_a_share_of_the_work_is_an_english_participation_word(self, text):
+        assert em._PARTICIPATION_EN.search(text)
+
+    @pytest.mark.parametrize(("chinese", "shares"), [
+        ("参与了数据分析", True), ("为项目贡献了代码", True), ("招募了 40 名参与者", False), ("参加了 iGEM 比赛", False),
+        ("为参与者准备了问卷", False),
+        ("开展一项有 50 名被试参与的实验", False), ("两位同学参与了测试", False), ("组织了一场有五十名学生参与的比赛", False)])
+    def test_a_chinese_share_of_the_work_is_taken_by_the_student(self, chinese, shares):
+        assert em._shares_work(chinese) is shares
+        assert em._PARTICIPATION_ZH.search(chinese) or not shares
+
+    def test_participants_are_people_not_a_share(self):
+        assert not em._PARTICIPATION_EN.search("Recruited 40 participants.")
+
+
 class TestDoneMarks:
     @pytest.mark.parametrize("text", [
         "开发过网站", "曾为实验室开发网站", "开发出网站", "网站开发完毕", "建成网站", "网站上线", "网站投入使用", "网站交付",

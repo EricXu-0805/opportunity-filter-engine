@@ -611,6 +611,25 @@ _TEAM_EN_EXTRA = re.compile(
     r"\b(?:research|lab|project|study|student|my|our)\s+groups?\b|\bgroup\s*(?:mates?|members?)\b"
     r"|\b(?:classmates?|lab\s*mates?|teammates?|partners?|friends?|roommates?|together|jointly|collectively"
     r"|cooperatively)\b|\b(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)-person\b", re.I)
+# Collaborators named by "other", "another" or "fellow" ("with three other students",
+# "alongside two other volunteers", "with fellow interns"), colleagues, and others.
+_TEAM_OTHERS = re.compile(
+    r"\b(?:with|alongside|among)\s+(?:[\w-]+\s+)?(?:(?:other|another|fellow)\s+(?:[\w-]+\s+)?(?:students?|interns?"
+    r"|volunteers?|members?|researchers?|undergrad(?:uate)?s?|participants?|tutors?|employees?)|colleagues?|peers?"
+    r"|co-?workers?|others)\b"
+    r"|(?:另外|另一|其他|其余)[^，,。；;]{0,4}?(?:学生|同学|志愿者|实习生|成员|研究员|同事|队员)", re.I)
+# A share of someone else's work: "participated in", "contributed to", 参与, 贡献. 参加 (took
+# part in, attended) carries the English word but needs none; 参与者 and "participants"
+# name people, and in 有 50 名被试参与的实验 the 50 take part, not the student.
+_PARTICIPATION_EN = re.compile(r"\b(?:participat\w*|contribut\w*|involved\s+in|involvement|t(?:ake|akes|aking|ook)"
+                               r"\s+part)\b", re.I)
+_PARTICIPATION_ZH = re.compile(r"参与|参加|贡献")
+_SHARE_ZH = re.compile(r"(?:\d+|[一二两三四五六七八九十百千]+)\s*(?:名|位|个|人)[^，,。；;参]{0,4}参与|(参与)(?!者)|(贡献)")
+
+
+def _shares_work(chinese: str) -> bool:
+    """Whether a Chinese line says the student took a share of someone else's work."""
+    return any(match.group(1) or match.group(2) for match in _SHARE_ZH.finditer(chinese))
 _ACTION_WORDS = re.compile("|".join(ACTIONS.values()), re.I)
 _SETTING_NOUN = re.compile(
     r"\b(?:projects?|study|studies|lab|laboratory|coursework|course|class|internship|competition|hackathon|program"
@@ -624,14 +643,14 @@ _REVISION_WORD = re.compile(r"\b(?:revised|rewrote|rewritten|edited)\b", re.I)
 # ab4ebfd9 did: a relabel renames a thing, so it has no reason to drop "about".
 _SPAN_WORD = re.compile(r"\b(?:about|around|over|under|more\s+than|less\s+than|up\s+to)\b", re.I)
 _LOCK_WORD = [TEAM, HELP, NEGATION, DENIAL, PUBLICATION, INTENT, UNFINISHED, UNFINISHED_ZH, _STATUS_WORD, _SPAN,
-              _SPAN_WORD, _SOLO, _LIMIT, _OTHER_PERSON, _REVISION_WORD, _TEAM_ZH_EXTRA, _TEAM_EN_EXTRA, CO_CREDIT,
-              _PERSONAL_MARKER]
+              _SPAN_WORD, _SOLO, _LIMIT, _OTHER_PERSON, _REVISION_WORD, _TEAM_ZH_EXTRA, _TEAM_EN_EXTRA, _TEAM_OTHERS,
+              CO_CREDIT, _PARTICIPATION_EN, _PARTICIPATION_ZH, _PERSONAL_MARKER]
 # Families a translation must carry across in both directions. A work's status is
 # four of them: planned or hoped for (INTENT, PLANNED: 计划, 预定), under way or
 # still to come (UNFINISHED, UNDERWAY_ZH: 开发中, 即将), still to come on its own
 # (FUTURE: "will", 即将, so 即将发表 beside 目前 keeps its own word) and a draft.
 _FAMILIES = {
-    "team": [TEAM, _TEAM_ZH_EXTRA, _TEAM_EN_EXTRA, CO_CREDIT], "help": [HELP], "limit": [_LIMIT],
+    "team": [TEAM, _TEAM_ZH_EXTRA, _TEAM_EN_EXTRA, _TEAM_OTHERS, CO_CREDIT], "help": [HELP], "limit": [_LIMIT],
     "negation": [NEGATION, DENIAL, _UN_DONE], "solo": [_SOLO], "span": [_SPAN], "intent": [INTENT, PLANNED],
     "unfinished": [UNFINISHED, UNDERWAY_ZH], "future": [FUTURE_EN, FUTURE_ZH], "draft": [_DRAFT],
     "publication": [PUBLICATION, _UNPUBLISHED],
@@ -984,6 +1003,10 @@ def _check_translation(unit: Unit, text: str) -> str | None:
                     and _only_on_lead(chinese)):
                 continue
             return f"translation_{name}"
+    # A share of someone else's work stays one: 参与了 … 检测 is not "Ran ... tests".
+    if (_PARTICIPATION_EN.search(english) and not _PARTICIPATION_ZH.search(chinese)
+            or _shares_work(chinese) and not _PARTICIPATION_EN.search(english)):
+        return "translation_participation"
     if _finished_in_translation(english, chinese, chinese_source=language(source) == "zh"):
         return "translation_unfinished"
     # The claim locks compare these words within one language; across two,

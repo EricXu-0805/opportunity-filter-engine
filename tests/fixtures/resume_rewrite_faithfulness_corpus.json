@@ -1265,6 +1265,41 @@
    "original": "Upcoming talk at the 2026 campus symposium; currently drafting slides.",
    "rewrite": "即将在 2026 年校园研讨会上作报告；目前正在准备幻灯片。",
    "kind": "EN to ZH: upcoming as 即将 beside currently"
+  },
+  {
+   "original": "Designed a survey with three other students.",
+   "rewrite": "与另外三名同学共同设计了一份问卷。",
+   "kind": "EN to ZH: three other students as 另外三名同学共同"
+  },
+  {
+   "original": "Sorted 500 cans of food alongside two other volunteers.",
+   "rewrite": "与另外两名志愿者一起分拣了 500 罐食物。",
+   "kind": "EN to ZH: two other volunteers as 另外两名志愿者一起"
+  },
+  {
+   "original": "参与了 40 份水样的 qPCR 检测。",
+   "rewrite": "Participated in qPCR testing of 40 water samples.",
+   "kind": "ZH to EN: 参与 as participated in"
+  },
+  {
+   "original": "Took part in the 2025 iGEM competition.",
+   "rewrite": "参加了 2025 年 iGEM 比赛。",
+   "kind": "EN to ZH: took part in as 参加"
+  },
+  {
+   "original": "Contributed to the design of a soil sensor.",
+   "rewrite": "参与了土壤传感器的设计。",
+   "kind": "EN to ZH: contributed to as 参与"
+  },
+  {
+   "original": "计划于明年春季开展一项有 50 名被试参与的 EEG 实验。",
+   "rewrite": "Plan to run an EEG study with 50 participants next spring.",
+   "kind": "ZH to EN: 50 subjects take part, not the student"
+  },
+  {
+   "original": "Contributed code to the lab's open-source toolkit.",
+   "rewrite": "为实验室的开源工具包贡献了代码。",
+   "kind": "EN to ZH: contributed as 贡献"
   }
  ],
  "unfaithful": [
@@ -3223,6 +3258,90 @@
    "kind": "reorder drops 将在 beside 目前",
    "caught": "contract",
    "case": "ZH lead_with drops 将在 beside 目前"
+  },
+  {
+   "original": "Designed an online survey on sleep with three other students (PSYC 238).",
+   "rewrite": "设计了一份关于睡眠的在线问卷（PSYC 238）。",
+   "kind": "translation drops three other students",
+   "caught": "contract",
+   "case": "EN to ZH drops three other students"
+  },
+  {
+   "original": "Sorted 500 cans of food alongside two other volunteers.",
+   "rewrite": "分拣了 500 罐食物。",
+   "kind": "translation drops two other volunteers",
+   "caught": "contract",
+   "case": "EN to ZH drops two other volunteers"
+  },
+  {
+   "original": "参与了 40 份水样的 qPCR 检测。",
+   "rewrite": "Ran qPCR tests on 40 water samples.",
+   "kind": "translation drops 参与",
+   "caught": "contract",
+   "case": "ZH to EN drops 参与"
+  },
+  {
+   "original": "参与了脑电数据的分析。",
+   "rewrite": "Analyzed the EEG data.",
+   "kind": "translation drops 参与 before an analysis",
+   "caught": "contract",
+   "case": "ZH to EN drops 参与 before an analysis"
+  },
+  {
+   "original": "Participated in the analysis of 40 water samples.",
+   "rewrite": "分析了 40 份水样。",
+   "kind": "translation drops participated in",
+   "caught": "contract",
+   "case": "EN to ZH drops participated in"
+  },
+  {
+   "original": "Contributed to the design of a soil sensor.",
+   "rewrite": "设计了一个土壤传感器。",
+   "kind": "translation drops contributed to",
+   "caught": "contract",
+   "case": "EN to ZH drops contributed to"
+  },
+  {
+   "original": "Involved in collecting 200 survey responses.",
+   "rewrite": "收集了 200 份问卷回复。",
+   "kind": "translation drops involved in",
+   "caught": "contract",
+   "case": "EN to ZH drops involved in"
+  },
+  {
+   "original": "Took part in testing 40 water samples for lead.",
+   "rewrite": "检测了 40 份水样的铅含量。",
+   "kind": "translation drops took part in",
+   "caught": "contract",
+   "case": "EN to ZH drops took part in"
+  },
+  {
+   "original": "Designed a sleep survey with three other students for PSYC 238.",
+   "rewrite": "Designed a sleep questionnaire for PSYC 238.",
+   "kind": "relabel drops three other students",
+   "caught": "contract",
+   "case": "relabel drops three other students"
+  },
+  {
+   "original": "Cleaned the sales dataset with fellow interns in Excel.",
+   "rewrite": "Cleaned the sales data records in Excel.",
+   "kind": "relabel drops fellow interns",
+   "caught": "contract",
+   "case": "relabel drops fellow interns"
+  },
+  {
+   "original": "Participated in the analysis of EEG data.",
+   "rewrite": "Analysis of EEG recordings.",
+   "kind": "relabel drops participated in",
+   "caught": "contract",
+   "case": "relabel drops participated in"
+  },
+  {
+   "original": "参与了脑电数据分析。",
+   "rewrite": "脑电信号分析。",
+   "kind": "ZH relabel drops 参与",
+   "caught": "contract",
+   "case": "ZH relabel drops 参与"
   }
  ]
 }
