@@ -609,7 +609,9 @@ describe('real résumé PDFs keep every word and bullet intact', () => {
     // line's first word "could not have fitted" on any of them: "• " items
     // followed by same-font rows, a title, a project row and a sentence;
     // list items that end in ", SQL", ", IL", "C++", ";" or ", Node.js";
-    // and Chinese items with no final 。, under a glyph or none.
+    // Chinese items with no final 。, under a glyph or none; organization
+    // and honors rows after a list; items that open with a measure; and a
+    // program's name after "check in".
     const pages = JSON.parse(readFileSync(join(FIXTURES, 'boundaries.json'), 'utf8')) as Array<{ lines: Array<[string, string]> }>;
     expect((await parseFixture('resume-boundaries.pdf')).split('\n'))
       .toEqual(pages.flatMap((page) => page.lines.map(([, text]) => text)));

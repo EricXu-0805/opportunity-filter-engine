@@ -13,9 +13,13 @@
 // with no 。 before a two-character title, a lone organization, title or
 // project name, a role or award row after a "Tools: …" list, the next role or
 // item after "rely on" or "log in", a description sentence after an item
-// that lacks its full stop, and an item that opens with a count (each item's
-// wording was chosen so its last line nearly fills the 7in column in
-// Chromium's Helvetica and STHeiti).
+// that lacks its full stop, an item that opens with a count, an
+// organization row after a "Tools:" or "Skills:" list, an honors row after a
+// coursework line, an item that opens with a measure, and a program's name
+// after "check in" (each item's wording was chosen so its last line nearly
+// fills the 7in column in Chromium's Helvetica and STHeiti). Chromium embeds
+// a font subset per size, so each file keeps its bold text at one size, and
+// the Chinese page draws on a small set of characters.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -57,7 +61,7 @@ const fixtures = {
       body{font-family:Helvetica,Arial,sans-serif;font-size:10pt;line-height:1.3;margin:0}
       .page{display:flex;gap:18pt;break-after:page}
       aside{width:150pt;flex:none} .narrow{width:110pt} main{flex:1}
-      h1{font-size:15pt;margin:0 0 4pt} h2{font-size:10.5pt;text-transform:uppercase;margin:10pt 0 3pt}
+      h1{font-size:10pt;margin:0 0 4pt} h2{font-size:10pt;text-transform:uppercase;margin:10pt 0 3pt}
       p{margin:0 0 3pt} .tight p,.tight li,.tight h2{margin:0} ul{margin:0 0 4pt;padding-left:12pt}
       .row{display:flex;justify-content:space-between;font-weight:bold}
       .sub{display:flex;justify-content:space-between;font-style:italic}
@@ -119,8 +123,8 @@ const fixtures = {
   'resume-noperiod.pdf': {
     body: `<style>
       body{font-family:Helvetica,Arial,sans-serif;font-size:10.5pt;line-height:1.3;margin:0}
-      h1{font-size:18pt;margin:0} .contact{margin:2pt 0 8pt} .page{break-after:page}
-      h2{font-size:11pt;text-transform:uppercase;border-bottom:1px solid #999;margin:8pt 0 4pt}
+      h1{font-size:10.5pt;margin:0} .contact{margin:2pt 0 8pt} .page{break-after:page}
+      h2{font-size:10.5pt;text-transform:uppercase;border-bottom:1px solid #999;margin:8pt 0 4pt}
       .row{display:flex;justify-content:space-between;font-weight:bold;margin-top:4pt}
       ul{margin:1pt 0 0;padding-left:14pt} li,p{margin:0}
     </style>
