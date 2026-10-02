@@ -552,7 +552,11 @@ _OTHER_PERSON = re.compile(
     r"\b(?:advisors?|advisers?|supervisors?|mentors?|PIs?|professors?|prof|dr|postdocs?|postdoctoral|TAs?|staff"
     r"|instructors?|technicians?|engineers?|(?:teaching|course)\s+assistants?"
     r"|(?:graduate|grad|phd|ph\.d\.?|doctoral|master'?s)\s+students?|nurses?|doctors?|physicians?|surgeons?"
-    r"|therapists?|pharmacists?|adapted|starter|template|revised|rewrote|edited|based\s+on)\b"
+    r"|therapists?|pharmacists?|adapted|starter|template|based\s+on)\b"
+    # Someone else's revision ("which was later revised", "edited by the lab
+    # manager"), not the student's own ("Revised the safety manual").
+    r"|\b(?:which|that|who|later|was|were|been|has|had|then)\s+(?:[\w'’]+\s+){0,2}?(?:revised|rewrote|rewritten|edited)\b"
+    r"|\b(?:revised|rewritten|edited)\s+by\b"
     r"|导师|老师|师兄|师姐|博士生|博士后|硕士生|研究生|技术员|工程师|助教|教授|参考(?!文献|资料|书目)|基于|医生|护士",
     re.I)
 # An approximation qualifies a quantity: "about 40 samples", "over a year", not "a

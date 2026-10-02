@@ -915,6 +915,16 @@
    "original": "预定了 3 间会议室。",
    "rewrite": "Booked 3 meeting rooms.",
    "kind": "ZH to EN: 预定了 books"
+  },
+  {
+   "original": "Edited 12 issues of the club newsletter.",
+   "rewrite": "编辑了 12 期社团通讯。",
+   "kind": "EN to ZH: the student's own edit is not another person's part"
+  },
+  {
+   "original": "Revised the lab's safety manual for new members.",
+   "rewrite": "为新成员修订了实验室的安全手册。",
+   "kind": "EN to ZH: the student's own revision"
   }
  ],
  "unfaithful": [
@@ -2212,6 +2222,20 @@
    "kind": "own part folded after a capitalised My",
    "caught": "contract",
    "case": "own part folded after a sentence that starts with My"
+  },
+  {
+   "original": "Drafted the methods section, which was later revised.",
+   "rewrite": "撰写了方法部分。",
+   "kind": "translation drops a revision someone else made",
+   "caught": "contract",
+   "case": "EN to ZH drops a revision someone else made"
+  },
+  {
+   "original": "Wrote the outreach blog post, edited by the lab manager.",
+   "rewrite": "撰写了外展博客文章。",
+   "kind": "translation drops an edit by someone else",
+   "caught": "contract",
+   "case": "EN to ZH drops an edit by someone else"
   }
  ]
 }

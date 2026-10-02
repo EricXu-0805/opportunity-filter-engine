@@ -4364,6 +4364,101 @@
     "beyond_allowed_edit",
     "relabel_span_missing"
    ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful EN to ZH of the student's own edit",
+   "output": "zh",
+   "anchors": [],
+   "original": "Edited 12 issues of the club newsletter.",
+   "rewrite": "编辑了 12 期社团通讯。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful EN to ZH of the student's own revision",
+   "output": "zh",
+   "anchors": [],
+   "original": "Revised the lab's safety manual for new members.",
+   "rewrite": "为新成员修订了实验室的安全手册。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful EN to ZH keeps unsubmitted after a revision",
+   "output": "zh",
+   "anchors": [],
+   "original": "Revised an unsubmitted manuscript on soil nitrogen.",
+   "rewrite": "修改了一篇关于土壤氮素的未投稿论文。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops a revision someone else made",
+   "output": "zh",
+   "anchors": [],
+   "original": "Drafted the methods section, which was later revised.",
+   "rewrite": "撰写了方法部分。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_other_person"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops an edit by someone else",
+   "output": "zh",
+   "anchors": [],
+   "original": "Wrote the outreach blog post, edited by the lab manager.",
+   "rewrite": "撰写了外展博客文章。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_other_person"
+   ]
   }
  ]
 }
