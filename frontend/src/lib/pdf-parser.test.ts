@@ -1259,6 +1259,47 @@ describe('positioned text items', () => {
     ]);
   });
 
+  it('carries a line that ends in a preposition on into a name only when lowercase words follow it', async () => {
+    // "GitHub Campus Expert Program" and "IBM Research" are rows of names: an
+    // organization or a program under the item, not the rest of its sentence.
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('- Built the badge scanner that the volunteers at the food pantry use whenever they check in', 50, 500, 724, { hasEOL: true }),
+      at('GitHub Campus Expert Program', 50, 130, 712, { hasEOL: true }),
+      at('- Kept the shuttle schedule and the route maps that the dispatch coordinators and drivers rely on', 50, 500, 700, { hasEOL: true }),
+      at('IBM Research', 50, 60, 688, { hasEOL: true }),
+      at('- Trained a ResNet-18 baseline on chest X-rays from the hospital and then evaluated it on', 50, 500, 676, { hasEOL: true }),
+      at('NIH ChestX-ray14 and a held-out split', 50, 180, 664),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      '- Built the badge scanner that the volunteers at the food pantry use whenever they check in',
+      'GitHub Campus Expert Program',
+      '- Kept the shuttle schedule and the route maps that the dispatch coordinators and drivers rely on',
+      'IBM Research',
+      '- Trained a ResNet-18 baseline on chest X-rays from the hospital and then evaluated it on NIH ChestX-ray14 and a held-out split',
+    ]);
+  });
+
+  it('reads a full stop as the end of a glyph item after an acronym or a model number, not after a product name', async () => {
+    // On a page whose glyph items end with a full stop, "AUC on a held-out
+    // split." finishes the item that lacks one; "PantryPal is an inventory
+    // tracker…" is a description of its own that opens with the product.
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('- Wrote unit tests for the parser.', 50, 160, 736, { hasEOL: true }),
+      at('- Added a nightly job that checks the backups.', 50, 220, 724, { hasEOL: true }),
+      at('- Mapped bike lane gaps around campus with QGIS and presented the map to the facilities office', 50, 500, 712, { hasEOL: true }),
+      at('PantryPal is an inventory tracker for the campus food pantry.', 50, 290, 700, { hasEOL: true }),
+      at('- Trained a convolutional baseline on chest X-rays from the hospital and reached a test score of 0.87', 50, 500, 688, { hasEOL: true }),
+      at('AUC on a held-out split.', 50, 110, 676),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      '- Wrote unit tests for the parser.',
+      '- Added a nightly job that checks the backups.',
+      '- Mapped bike lane gaps around campus with QGIS and presented the map to the facilities office',
+      'PantryPal is an inventory tracker for the campus food pantry.',
+      '- Trained a convolutional baseline on chest X-rays from the hospital and reached a test score of 0.87 AUC on a held-out split.',
+    ]);
+  });
+
   it('keeps a space between runs painted out of order on one line', async () => {
     // A right-floated date printed before its title: PDF.js jumps back on
     // the same baseline without a line end.

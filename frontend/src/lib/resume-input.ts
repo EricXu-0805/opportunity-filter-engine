@@ -190,11 +190,13 @@ function nameStart(after: string): boolean {
 /** Hints too weak to carry a line on by themselves, so the page's geometry
  *  must agree without slack. A lone word or CJK character that cannot stand
  *  as a line of its own ("GPU.", "钟"). A preposition that could also end
- *  the item, before a name rather than an ordinary word ("ImageNet", not
- *  "Research Intern, …" or "Mentored…"). In a glyph item on a page whose
- *  glyph items end with a full stop, a next line that ends the sentence and
- *  opens with a name, or after a preposition, with any word but an article
- *  ("A web app…"). None of them carries a line on into a role row. */
+ *  the item, before a name and lowercase words ("ImageNet and a held-out
+ *  split", not "IBM Research", "Research Intern, …" or "Mentored…"). In a
+ *  glyph item on a page whose glyph items end with a full stop, a next line
+ *  that ends the sentence and opens with an acronym or a model number ("AUC
+ *  on a held-out split.", not "PantryPal is a tracker…", which may describe
+ *  a project of its own), or after a preposition, with any word but an
+ *  article ("A web app…"). None of them carries a line on into a role row. */
 export function weakWrapEvidence(before: string, after: string, periodItem: boolean): boolean {
   const ends = periodItem && SENTENCE_END.test(after) && !ROW.test(after);
   const characters = Array.from(after);
@@ -202,7 +204,7 @@ export function weakWrapEvidence(before: string, after: string, periodItem: bool
   if (CJK.test(characters[0]) || CJK.test(Array.from(before).pop()!)) return ends || characters.length === 1;
   if (roleRow(after)) return false;
   if (!/\s/u.test(after) && SENTENCE_END.test(after)) return true;
-  if (nameStart(after)) return ends || (PARTICLE.test(before) && /\p{Ll}/u.test(after));
+  if (nameStart(after)) return (ends && !/\p{Ll}/u.test(firstWord(after))) || (PARTICLE.test(before) && /\s\p{Ll}/u.test(after));
   return ends && PARTICLE.test(before) && !ARTICLE.test(after);
 }
 
