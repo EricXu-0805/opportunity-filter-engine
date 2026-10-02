@@ -991,3 +991,67 @@ class TestClaimLocksReadALongSourceOnce:
         bindings = grounding._duration_bindings("Tutored students since 2024 " + "since 2024 " * 200)
         assert len(bindings) == 201 and {verb for _, verb in bindings} == {"tutor"}
         assert len(calls) == 2
+
+    def test_an_object_is_read_past_its_first_twenty_characters(self):
+        from backend.lib import target_resume_ai_grounding as grounding
+
+        # The bounded window must still reach the end of a long object: the team's
+        # pipeline and the student's dashboard differ only after 40 characters.
+        original = ("Our team built the multilingual sentiment classification pipeline; I built the multilingual "
+                    "sentiment classification dashboard.")
+        assert grounding._moved_claims("I built the multilingual sentiment classification pipeline.", original) == [
+            "team_result_claimed"]
+        denied = ("I built the multilingual sentiment classification pipeline. I did not build the multilingual "
+                  "sentiment classification dashboard.")
+        assert grounding._moved_claims("I built the multilingual sentiment classification dashboard.", denied) == [
+            "denied_action_asserted"]
+
+    def test_a_chinese_status_reads_more_than_three_characters_of_its_work(self):
+        from backend.lib import target_resume_ai_grounding as grounding
+
+        original = "投稿了一篇期刊论文，发表了一篇会议论文。"
+        assert grounding._qualifier_bindings(original) == [
+            ("status_published", "会议论文"), ("status_submitted", "期刊论文")]
+        assert claim_upgrade_findings("投稿了一篇会议论文，发表了一篇期刊论文。", original)[0] == ["qualifier_moved"]
+
+    def test_a_qualifier_reads_only_a_verb_that_starts_before_it(self):
+        from backend.lib import target_resume_ai_grounding as grounding
+
+        verbs = grounding._Verbs([(0, "build"), (10, "test")])
+        assert (verbs.before(10), verbs.at_or_after(10)) == ("build", "test")
+        assert (verbs.before(0), verbs.at_or_after(11)) == (None, None)
+
+    def test_a_year_that_changes_neighbours_is_a_moved_number(self):
+        from backend.lib import target_resume_ai_grounding as grounding
+
+        original = "Built the lab in 2024; built the rig in 2025."
+        swapped = "Built the lab in 2025; built the rig in 2024."
+        assert grounding.identifier_numbers(swapped, original) == set()
+        assert claim_upgrade_findings(swapped, original)[0] == ["quantity_moved"]
+        assert grounding.identifier_numbers("In 2024 built the lab; in 2025 built the rig.", original) == {"2024"}
+
+
+class TestSharedCreditWords:
+    @pytest.mark.parametrize("word", [
+        "co-authored", "co-developed", "coauthored", "cofounded", "co-wrote", "cowrote", "合著", "合写", "联合创办"])
+    def test_a_co_word_is_shared_credit(self, word):
+        from backend.lib.target_resume_ai_grounding import CO_CREDIT
+
+        assert CO_CREDIT.search(word)
+
+    @pytest.mark.parametrize("word", [
+        "co-op", "co-ops", "co-culture", "co-expression", "co-occurrence", "co-localization",
+        "co-immunoprecipitation", "co-IP", "co-transfection", "co-factor", "co-polymer", "co-crystal",
+        "co-infection", "co-morbidity", "co-evolution", "co-receptor", "co-requisite", "co-ordinated", "co-operative",
+        "co-variance", "co-registration", "co-efficient", "co-linear", "co-enzyme", "co-solvent", "co-treatment",
+        "co-incubation", "co-injection", "co-housed", "co-precipitation", "co-stimulation", "co-administered",
+        "co-integration", "co-planar", "co-axial", "co-valent", "co-dominant", "co-activator", "联合国", "联合会"])
+    def test_a_bench_word_or_a_body_is_no_shared_credit(self, word):
+        from backend.lib.target_resume_ai_grounding import CO_CREDIT
+
+        assert not CO_CREDIT.search(word)
+
+    def test_dropping_a_co_op_drops_no_shared_credit(self):
+        hard = claim_upgrade_findings("Wrote 30 test plans at John Deere.",
+                                      "Wrote 30 test plans during a co-op at John Deere.")[0]
+        assert "team_qualifier_dropped" not in hard
