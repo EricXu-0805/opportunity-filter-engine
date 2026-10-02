@@ -3,6 +3,7 @@ import json
 
 import pytest
 
+from backend.lib import email_experience_attribution as ea
 from backend.lib.email_experience_attribution import experience_attribution_violations as check
 
 TEAM = 'My role: I wrote parser tests. Outcome: My team built a Python parser. I did not build the parser.'
@@ -651,3 +652,82 @@ def test_a_prepositional_context_before_the_subject_is_not_a_reason_to_drop_the_
 @pytest.mark.parametrize('source', ['My advisor said I should build a Python parser.', 'If I built a Python parser, I could test it.'])
 def test_a_reported_or_conditional_prefix_still_supports_nothing(source):
     assert check('I built a Python parser.', [source])
+
+
+# Main's patterns before they were made to read a line once; the oracle for the ones that replace them.
+_ORIGINAL_PATTERNS = {
+    "_CONTEXT_PREFIX": (r'(?:(?:at|in|for|on|during|within|through|while|with|as\s+part\s+of|as\s+a\s+member\s+of)\s+'
+                        r'[^,]+,?\s*)+'),
+    "_OBJECT_NEGATION": r'\s*,?\s+\b(?:but\s+not|not|rather\s+than|instead\s+of)\s+',
+    "_PROJECT_SUFFIX": r'\s+(?:in|for|on|during)\s+((?:the\s+)?(?:project|study|experiment)\s+[\w -]{1,80})\s*$',
+    "_CARE_QUALIFIER": r'\b(not|never|without|only|hardly|barely|rarely)\b[^.!?;\n]*\bcarefully\s*$',
+}
+_PATTERN_SAMPLES = [
+    "in a lab, x", "in a in a in a, x", "within the lab", "with my team, at the lab, ", "as part of a team, as a "
+    "member of the club,", "in a,, x", " in a", "into the lab", "in  a  ,  with  b", "as  part  of x", "IN A, AT B",
+    "the parser, not the model", "the parser , not the model", "x   not  y", "x,not y", "x , but  not y", "a rather than b",
+    "x instead  of y", "not y", "data in the project alpha", "data for the study beta  ", "x in project", "x  in  the  "
+    "experiment 2", "never carefully", "only x carefully", "not x. y carefully", "x carefully", "not; carefully",
+    "rarely  carefully  ", "notcarefully", "without notes carefully", "Only X Carefully"]
+
+
+def _same_search(pattern, original, text):
+    a, b = pattern.search(text), original.search(text)
+    return (a and (a.span(), a.groups())) == (b and (b.span(), b.groups()))
+
+
+class TestParserPatternsReadALineOnce:
+    """Each pattern starts where a run of spaces starts and has one reading of a prefix.
+
+    "\\s*,?\\s+" tried every split of a run, the context prefix every way to cut
+    "in a in a ..." into phrases (exponential: 1.4 s for 14 phrases), and the
+    closing "carefully" read the rest of the line from every limiting word.
+    """
+
+    @pytest.mark.parametrize(("name", "read", "text"), [pytest.param(*case, id=case[0]) for case in [
+        ("_CONTEXT_PREFIX", lambda text: ea._CONTEXT_PREFIX.fullmatch(text), "in a " * 40 + ", x"),
+        ("_CONTEXT_PREFIX long", lambda text: ea._CONTEXT_PREFIX.fullmatch(text), "in a, " * 10000 + "x"),
+        ("_OBJECT_NEGATION", lambda text: ea._OBJECT_NEGATION.search(text), "x" + " " * 60000 + "y"),
+        ("_OBJECT_NEGATION comma", lambda text: ea._OBJECT_NEGATION.search(text), "x" + " ," * 30000 + "y"),
+        ("_PROJECT_SUFFIX", lambda text: ea._PROJECT_SUFFIX.search(text), "x" + " " * 60000 + "y"),
+        ("_RESUME_COORDINATED", lambda text: ea._RESUME_COORDINATED.split(text), "x" + " " * 60000 + "y"),
+        ("_RESUME_EXPLICIT_BOUNDARY", lambda text: ea._RESUME_EXPLICIT_BOUNDARY.split(text), "x" + " " * 60000 + "y"),
+        ("_TRAILING", lambda text: list(ea._TRAILING.finditer(text)), "x" + " " * 60000 + "y"),
+        ("_care_qualifier", lambda text: ea._care_qualifier(text), "only " * 12000 + "carefully x"),
+        ("_facts carefully", lambda text: ea._facts(text, entry=0, source=True, allow_subjectless_claims=True),
+         "Built x " + "only " * 12000 + "carefully x."),
+        ("_facts subjects", lambda text: ea._facts(text, entry=0, source=True, allow_subjectless_claims=True),
+         "x " + "we built y " * 5500),
+        ("_facts object run", lambda text: ea._facts(text, entry=0, source=True, allow_subjectless_claims=True),
+         "Built a" + " " * 60000 + "website and tested it.")]])
+    def test_a_long_line_is_read_in_linear_time(self, name, read, text):
+        import time
+
+        started = time.perf_counter()
+        read(text)
+        assert time.perf_counter() - started < 1, name
+
+    @pytest.mark.parametrize("text", _PATTERN_SAMPLES)
+    def test_each_pattern_reads_a_line_as_the_original_did(self, text):
+        import re
+
+        original = {name: re.compile(pattern, re.I) for name, pattern in _ORIGINAL_PATTERNS.items()}
+        assert bool(ea._CONTEXT_PREFIX.fullmatch(text)) == bool(original["_CONTEXT_PREFIX"].fullmatch(text))
+        assert _same_search(ea._OBJECT_NEGATION, original["_OBJECT_NEGATION"], text)
+        assert _same_search(ea._PROJECT_SUFFIX, original["_PROJECT_SUFFIX"], text)
+        care = original["_CARE_QUALIFIER"].search(text)
+        assert ea._care_qualifier(text) == (care[1] if care else None)
+
+    @pytest.mark.parametrize("clause", ["if I built x", "ifI built x", "x unlesswe built y", "hope toI built x",
+                                        "whether we built x", "we built x if I built y", "in a, I built x",
+                                        "x we built y if z", "in a, we built y unless I built z"])
+    def test_a_conditional_before_the_subject_is_read_as_before(self, clause):
+        import re
+
+        conditional = re.compile(r'\b(?:if|unless|whether|would|could|might|hope to|plan to|want to)\b', re.I)
+        match = ea._CONDITIONAL.search(clause)
+        lead = len(clause) - len(clause.lstrip())
+        for subject in ea._SUBJECT.finditer(clause):
+            before = clause[:subject.start()].strip()
+            assert ea._conditional_before(clause, subject.start(), before, match, lead) == bool(
+                conditional.search(before))
