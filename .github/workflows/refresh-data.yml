@@ -73,11 +73,12 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    # The refresh step stops scraping at its 260-minute budget, but the run
-    # is not done then: the PR step waits for the data PR's CI (31-38 min in
-    # September 2026), and on the first Monday of the month the Experts pass
-    # adds up to 30. At 300 that tail had about 5 minutes, so every run that
-    # spent its budget was cancelled. GitHub allows 360.
+    # The refresh step stops scraping at its source budget (below), but the
+    # run is not done then: the PR step waits for the data PR's CI, 20-37 min
+    # on most days and up to 67 when main moved and the PR was replayed
+    # (2026-09-20), and on the first Monday of the month the Experts pass adds
+    # up to 30. At 300 that tail did not fit, so every run that spent its
+    # budget was cancelled. GitHub allows 360.
     timeout-minutes: 350
     permissions:
       contents: write
@@ -205,8 +206,12 @@ jobs:
               echo "Enabling per-profile enrichment (OFE_ENRICH_PROFILES=1)"
               export OFE_ENRICH_PROFILES=1
             fi
-            # 260-minute source budget under the job's 350-minute hard timeout:
-            # once spent, refresh_all stops STARTING sources (they report
+            # Source budget under the job's 350-minute hard timeout: 240
+            # minutes, or 210 on a run that also does the Experts pass (it
+            # mirrors that step's condition below). Either way the worst run
+            # (budget + 2 + Experts + a 67-minute replayed PR wait + 4 of setup
+            # and offline passes) ends near minute 313. Once spent, refresh_all
+            # stops STARTING sources (they report
             # deferred_deadline) and the faculty_graph engine cuts the source
             # already mid-flight at the deadline (partial harvest, reported
             # partial_deadline — stale retirement skips both) so completed
@@ -214,7 +219,12 @@ jobs:
             # cap mid-source and published nothing, losing even the 4.5h of
             # ucsd work that had finished. The PI/contact pass after the
             # sources stops at the same deadline.
-            python -m src.collectors.refresh_all --time-budget-minutes 260 $ARGS
+            BUDGET=240
+            if { [[ -z "$SHARD" ]] || [[ ",$SHARD," == *",uiuc,"* ]]; } \
+               && [ "$(date -u +%d)" -le 07 ]; then
+              BUDGET=210
+            fi
+            python -m src.collectors.refresh_all --time-budget-minutes "$BUDGET" $ARGS
           else
             echo "Running QUICK refresh (shard: ${SHARD:-full})"
             python -m src.collectors.refresh_all --no-deep $ARGS

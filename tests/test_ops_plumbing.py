@@ -259,17 +259,35 @@ class TestWorkflowWiring:
     def test_refresh_job_timeout_leaves_room_after_the_scrape_budget(self):
         """The scrape budget is not the end of the run.
 
-        After it come the Experts pass (first Monday of the month) and the PR
-        step, which waits for the data PR's CI: 31-38 minutes in September
-        2026. With a 260-minute budget under a 300-minute timeout every run
-        that spent its budget was cancelled before publishing.
+        After it come the Experts pass (first week, uiuc runs) and the PR step,
+        which waits for the data PR's CI: 20-37 minutes on most September 2026
+        days and 67 when main moved and the PR was replayed (2026-09-20). With
+        a 260-minute budget under a 300-minute timeout every run that spent its
+        budget was cancelled before publishing, and at 350 a first-Monday run
+        with a replayed PR would still have needed 363.
         """
         import re
 
         job = next(iter(self._workflow("refresh-data.yml")["jobs"].values()))
         run = "\n".join(str(s.get("run", "")) for s in job["steps"])
-        scrape = int(re.search(r"refresh_all --time-budget-minutes (\d+)", run).group(1))
+        assert 'refresh_all --time-budget-minutes "$BUDGET"' in run
+        budgets = [int(b) for b in re.findall(r"BUDGET=(\d+)", run)]
+        default, with_experts = budgets[0], min(budgets)
         experts = int(re.search(r"uiuc_experts --refresh --time-budget-minutes (\d+)", run).group(1))
-        setup, data_pr_ci = 5, 45
-        assert job["timeout-minutes"] >= scrape + experts + data_pr_ci + setup
+        # margin: CI grows with the suite (Backend went from 23 to 30 minutes
+        # in September 2026), and the PR wait grows with it.
+        overrun, setup, data_pr_wait, margin = 2, 5, 70, 30
+        tail = setup + data_pr_wait + margin + overrun
+        assert job["timeout-minutes"] >= default + tail
+        assert job["timeout-minutes"] >= with_experts + experts + tail
         assert job["timeout-minutes"] <= 360, "GitHub-hosted jobs stop at 6 hours"
+
+    def test_refresh_budget_shrinks_exactly_when_the_experts_pass_runs(self):
+        """The smaller budget must cover every run that does the Experts pass."""
+        job = next(iter(self._workflow("refresh-data.yml")["jobs"].values()))
+        steps = {s.get("name", ""): str(s.get("run", "")) for s in job["steps"]}
+        refresh = steps["Run data refresh"]
+        experts = next(v for k, v in steps.items() if k.startswith("Monthly Illinois Experts"))
+        assert '",$SHARD," != *",uiuc,"*' in experts and '[ "$(date -u +%d)" -le 07 ]' in experts
+        assert '[[ -z "$SHARD" ]] || [[ ",$SHARD," == *",uiuc,"* ]]' in refresh
+        assert '[ "$(date -u +%d)" -le 07 ]' in refresh.split("BUDGET=240", 1)[1]
