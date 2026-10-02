@@ -648,11 +648,12 @@ _MONTH_BEFORE_NUMBER = re.compile(rf"\b({_MONTH})\b\.?(?=,?\s*\d)")
 _MONTH_AFTER_NUMBER = re.compile(rf"(?<=\d)(\s+)({_MONTH})\b")
 # A translation may name only a setting whose noun the other line has: lab,
 # project, course, study, internship, company or competition, in either language.
+# A 课题组 is a research group, so it names research as well as a project.
 _SETTING_CONCEPTS = (
     re.compile(r"\b(?:labs?|laborator(?:y|ies))\b|实验室", re.I),
     re.compile(r"\b(?:projects?|programs?)\b|项目|课题", re.I),
     re.compile(r"\b(?:courses?|coursework|class(?:es)?)\b|课程|课堂", re.I),
-    re.compile(r"\b(?:stud(?:y|ies)|research)\b|研究(?!生|员|助理)|实验(?!室)", re.I),
+    re.compile(r"\b(?:stud(?:y|ies)|research)\b|研究(?!生|员|助理)|实验(?!室)|课题组", re.I),
     re.compile(r"\binternships?\b|实习", re.I),
     re.compile(r"\bcompan(?:y|ies)\b|公司|企业", re.I),
     re.compile(r"\b(?:competitions?|hackathons?|contests?)\b|比赛|竞赛", re.I),

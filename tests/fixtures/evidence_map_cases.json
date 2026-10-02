@@ -1925,6 +1925,44 @@
   },
   {
    "group": "translate",
+   "label": "faithful ZH to EN: a 课题组 alone is the research group",
+   "output": "en",
+   "anchors": [],
+   "original": "在课题组整理了 200 份问卷。",
+   "rewrite": "Organized 200 questionnaires in the research group.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "faithful EN to ZH: the research group is a 课题组",
+   "output": "zh",
+   "anchors": [],
+   "original": "Organized 200 questionnaires in the research group.",
+   "rewrite": "在课题组整理了 200 份问卷。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
    "label": "faithful EN to ZH of a line ending in a tool name",
    "output": "zh",
    "anchors": [],
