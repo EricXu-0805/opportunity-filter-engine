@@ -148,14 +148,15 @@ const PLACE_LINE = new RegExp(String.raw`^(?:[\p{L} ]{2,20}:\s*)?${RESUME_PLACE}
  *  the first line, then the contact and place lines right below it. Any
  *  other line ends it, so a heading the title list does not know cannot hide
  *  the lines under it. A text with no heading has no header block. A first
- *  line that names a role ("Research Assistant") is the name only when
- *  contact details or a place follow it: a text can open with its main
+ *  line with a role word ("Research Assistant", "Michael Fellows") is the
+ *  name only when contact details or a place follow within two lines, a
+ *  headline being the most that sits between: a text can open with its main
  *  column's first role. */
 function headerRows(lines: readonly string[]): number {
   const rows = lines.map((line) => line.trim()).filter(Boolean);
   if (!rows.some((row) => resumeSectionHeading(row) !== null)) return 0;
   const name = RESUME_PERSON.test(rows[0]) && (!RESUME_ROLE.test(rows[0])
-    || (rows.length > 1 && (resumeContactLine(rows[1]) || PLACE_LINE.test(rows[1]))));
+    || rows.slice(1, 3).some((row) => resumeContactLine(row) || PLACE_LINE.test(row)));
   let count = 0;
   while (count < rows.length && (resumeContactLine(rows[count]) || PLACE_LINE.test(rows[count]) || (count === 0 && name))) count += 1;
   return count;

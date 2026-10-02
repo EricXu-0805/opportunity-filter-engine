@@ -237,6 +237,17 @@ describe('local proposals and confirmed eligibility', () => {
       const raw = ['Jordan Chair', below, 'EXPERIENCE', 'Research Assistant', '- Built a baseline.'].join('\n');
       expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual(['Research Assistant', '- Built a baseline.']);
     }
+    // A headline can sit between the name and the contact line; a contact
+    // line further down says nothing about the first line.
+    const headline = ['Michael Fellows', 'Software Engineering Student', 'michael.fellows@example.com | (217) 555-0142',
+      'EXPERIENCE', 'Research Assistant, Health Imaging Lab', '- Built a baseline.'];
+    expect((await createResumeCandidates(headline.join('\n'))).map((entry) => entry.text)).toEqual([
+      'Software Engineering Student', 'Research Assistant, Health Imaging Lab', '- Built a baseline.',
+    ]);
+    const later = ['Research Assistant', 'Health Imaging Lab', '- Built a baseline.', 'jordan.lee@example.com', 'EDUCATION', 'University of Illinois'];
+    expect((await createResumeCandidates(later.join('\n'))).map((entry) => entry.text)).toEqual([
+      'Research Assistant', 'Health Imaging Lab', '- Built a baseline.', 'University of Illinois',
+    ]);
   });
   it('reads a labelled place line as part of the header block', async () => {
     const raw = ['Jordan Lee', 'Location: Champaign, IL', 'jordan.lee@example.com', 'EXPERIENCE', 'Research Assistant'].join('\n');
