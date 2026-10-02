@@ -1380,6 +1380,16 @@
    "original": "在北京联合大学完成了本科学业。",
    "rewrite": "Completed my undergraduate studies at Beijing Union University.",
    "kind": "ZH to EN: 北京联合大学 is a school"
+  },
+  {
+   "original": "Co-located 12 sensors with the weather station.",
+   "rewrite": "将 12 个传感器与气象站放在同一位置。",
+   "kind": "EN to ZH: co-located is no shared credit"
+  },
+  {
+   "original": "正在开发一个推荐系统，采用协同过滤算法。",
+   "rewrite": "Developing a recommender system using collaborative filtering.",
+   "kind": "ZH to EN: 协同过滤 is collaborative filtering"
   }
  ],
  "unfaithful": [
@@ -3590,6 +3600,90 @@
    "kind": "translation drops 联合 before a verb",
    "caught": "contract",
    "case": "ZH to EN drops 联合 before a verb"
+  },
+  {
+   "original": "在学长指导下搭建了 3 个传感器节点。",
+   "rewrite": "Built 3 sensor nodes.",
+   "kind": "translation drops 学长",
+   "caught": "contract",
+   "case": "ZH to EN drops 学长"
+  },
+  {
+   "original": "在主管指导下整理了 500 条客户数据。",
+   "rewrite": "Organized 500 customer records.",
+   "kind": "translation drops 主管",
+   "caught": "contract",
+   "case": "ZH to EN drops 主管"
+  },
+  {
+   "original": "Built a prototype soil sensor; accuracy untested.",
+   "rewrite": "制作了一个土壤传感器原型，精度已测试。",
+   "kind": "translation drops untested",
+   "caught": "contract",
+   "case": "EN to ZH drops untested"
+  },
+  {
+   "original": "Drafted the report, reviewed by the lab manager.",
+   "rewrite": "起草了报告。",
+   "kind": "translation drops reviewed by",
+   "caught": "contract",
+   "case": "EN to ZH drops reviewed by"
+  },
+  {
+   "original": "Drafted the manual; Sam reviewed and revised it.",
+   "rewrite": "起草了手册。",
+   "kind": "translation drops Sam reviewed and revised it",
+   "caught": "contract",
+   "case": "EN to ZH drops Sam reviewed and revised"
+  },
+  {
+   "original": "Drafted the manual; a senior student corrected it.",
+   "rewrite": "起草了手册。",
+   "kind": "translation drops a senior student corrected it",
+   "caught": "contract",
+   "case": "EN to ZH drops a senior student corrected"
+  },
+  {
+   "original": "正在为实验室开发网站。",
+   "rewrite": "Currently developing a website for the lab; it went live in March.",
+   "kind": "translation says work under 正在 went live",
+   "caught": "contract",
+   "case": "ZH to EN says work under 正在 went live"
+  },
+  {
+   "original": "Developing a website for the lab.",
+   "rewrite": "实验室网站开发结束。",
+   "kind": "translation finishes a progressive line with 结束",
+   "caught": "contract",
+   "case": "EN to ZH finishes a progressive line with 结束"
+  },
+  {
+   "original": "Surveyed upwards of 200 students.",
+   "rewrite": "调查了 200 名学生。",
+   "kind": "translation drops upwards of",
+   "caught": "contract",
+   "case": "EN to ZH drops upwards of"
+  },
+  {
+   "original": "Surveyed close to 200 students.",
+   "rewrite": "调查了 200 名学生。",
+   "kind": "translation drops close to",
+   "caught": "contract",
+   "case": "EN to ZH drops close to"
+  },
+  {
+   "original": "调查了上百名学生。",
+   "rewrite": "Surveyed a hundred students.",
+   "kind": "translation drops 上百",
+   "caught": "contract",
+   "case": "ZH to EN drops 上百"
+  },
+  {
+   "original": "Built the backend for a campus dining app in development.",
+   "rewrite": "Built the backend for a campus food-service app.",
+   "kind": "relabel drops in development",
+   "caught": "contract",
+   "case": "relabel drops in development"
   }
  ]
 }

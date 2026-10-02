@@ -1068,7 +1068,7 @@ class TestSharedCreditWords:
         "co-variance", "co-registration", "co-efficient", "co-linear", "co-enzyme", "co-solvent", "co-treatment",
         "co-incubation", "co-injection", "co-housed", "co-precipitation", "co-stimulation", "co-administered",
         "co-integration", "co-planar", "co-axial", "co-valent", "co-dominant", "co-activator", "联合国", "联合会",
-        "联合利华", "北京联合大学", "联合培养"])
+        "联合利华", "北京联合大学", "联合培养", "联合实验室", "联合航空", "co-located", "co-location"])
     def test_a_bench_word_or_a_body_is_no_shared_credit(self, word):
         from backend.lib.target_resume_ai_grounding import CO_CREDIT
 

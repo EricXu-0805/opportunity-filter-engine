@@ -559,10 +559,12 @@ _FIRST_CLAUSE = re.compile(r"[;；,，。.(（:：]")
 _REVISION_ADVERBS = ("carefully|thoroughly|personally|independently|jointly|extensively|substantially|heavily|fully"
                      "|completely|partially|partly|lightly|briefly|closely|rigorously|meticulously|iteratively"
                      "|repeatedly|manually|critically|collaboratively")
+# Another person's revision or check of the student's work: "; Sam revised it", "reviewed by the lab manager".
+_REVISION_VERB = r"(?:revised|rewrote|rewritten|edited|reviewed|corrected|proofread)\b"
 _OTHER_PERSON = re.compile(
     r"\b(?:advisors?|advisers?|supervisors?|mentors?|PIs?|professors?|prof|dr|postdocs?|postdoctoral|TAs?|staff"
     r"|instructors?|technicians?|engineers?|(?:teaching|course)\s+assistants?"
-    r"|(?:graduate|grad|phd|ph\.d\.?|doctoral|master'?s)\s+students?|nurses?|doctors?|physicians?|surgeons?"
+    r"|(?:graduate|grad|phd|ph\.d\.?|doctoral|master'?s|senior)\s+students?|nurses?|doctors?|physicians?|surgeons?"
     r"|therapists?|pharmacists?|adapted|starter|template|based\s+on)\b"
     # A revision is someone else's part ("; Sam revised it", "which was later revised",
     # "their revised version", "; Sam, a senior student, revised it", "edited by the
@@ -571,11 +573,10 @@ _OTHER_PERSON = re.compile(
     # it", "I edited". "The revised proposal" and "my revised plan" name a version.
     # Each skipped word is no candidate itself, so a line is read in linear time.
     r"|(?<![\w'’-])(?!(?:and|or|also|I|we|a|an|the|this|these|those|my|our|" + _REVISION_ADVERBS + r")\b)[\w'’-]+\s+"
-    r"(?:(?:also|I|and\s+I|we|" + _REVISION_ADVERBS + r")\s+)*(?:revised|rewrote|rewritten|edited)\b"
-    r"|(?<![\w'’-])[\w'’-]+\s*,\s*(?:a|an|the|my|our|his|her|their)\s+[^,;.]+?,\s*(?:(?:also|" + _REVISION_ADVERBS
-    + r")\s+)*(?:revised|rewrote|rewritten|edited)\b"
-    r"|\b(?:revised|rewrote|rewritten|edited)\s+by\b"
-    r"|导师|老师|师兄|师姐|博士生|博士后|硕士生|研究生|技术员|工程师|助教|教授|参考(?!文献|资料|书目)|基于|医生|护士",
+    r"(?:(?:also|I|and\s+I|we|" + _REVISION_ADVERBS + r")\s+)*" + _REVISION_VERB
+    + r"|(?<![\w'’-])[\w'’-]+\s*,\s*(?:a|an|the|my|our|his|her|their)\s+[^,;.]+?,\s*(?:(?:also|" + _REVISION_ADVERBS
+    + r")\s+)*" + _REVISION_VERB + r"|\b" + _REVISION_VERB + r"\s+by\b"
+    r"|导师|老师|师兄|师姐|学长|学姐|主管|博士生|博士后|硕士生|研究生|技术员|工程师|助教|教授|参考(?!文献|资料|书目)|基于|医生|护士",
     re.I)
 # In a translation a hedge always qualifies ("roughly segmented", "nearly finished").
 # A word that is also a preposition does only before a quantity: "about 40 samples",
@@ -594,13 +595,14 @@ _QUANTITY = (r"(?=\s+(?:[$€£¥~≈]?\d|(?:one|two|three|four|five|six|seven|e
              r"|millions?|years?|months?|weeks?|days?|hours?|semesters?|terms?|summers?|decades?|times)\b"
              r"|(?:a|an)\s+(?:few|couple|dozen|hundred|thousand|million|billion|year|month|week|day|hour|minute"
              r"|semester|term|summer|decade|half|third|quarter|order\s+of|factor\s+of)\b))")
-_SPAN = re.compile(r"\b(?:about|around|over|under|more\s+than|less\s+than|fewer\s+than|up\s+to|some"
+_SPAN = re.compile(r"\b(?:about|around|over|under|more\s+than|less\s+than|fewer\s+than|up\s+to|upwards\s+of"
+                   r"|close\s+to|some"
                    r"|as\s+(?:many|much|few|little|high|low)\s+as)" + _QUANTITY
                    + r"|\bestimated" + _QUANTITY
                    + r"|\b(?:approximately|roughly|nearly|almost|at\s+least|at\s+most|since|until|per|or\s+so)\b"
                    r"|(?<=\d)-odd\b|[~≈<>≤≥]\s?(?=\d)|(?<=[\d%])\+"
                    r"|(?<![预制节简邀相契合公条])约(?![定会束谈请见稿])|将近|超过|至少|左右|最多(?![的。，,；;）)]|$)|至多|多达"
-                   r"|高达|(?<![找做想看达得用等买收见听])不到|(?<![附最])近(?=\s*(?:\d|[一二两三四五六七八九十百千万几半]))"
+                   r"|高达|上(?=[千万]|百(?!度))|(?<![找做想看达得用等买收见听])不到|(?<![附最])近(?=\s*(?:\d|[一二两三四五六七八九十百千万几半]))"
                    r"(?!\s*(?:\d+|[一二两三四五六七八九十百千万几半]+)\s*个?(?:年|月|周|天|日|季度|学期)[的来内间])"
                    r"|(?<=\d)\s*[余多]|(?<=[十百千万])[余多]|(?:\d[\d.,]*|[十百千万])\s*[^\s\d，,。；;]{0,2}?\s*以[上下]"
                    r"|(?<![一发引提拿想兴崛缘])起(?![来草源始点因诉步飞初])|以来|至今", re.I)
@@ -620,9 +622,9 @@ _STATUS_WORD = re.compile(
 _DRAFT = re.compile(r"(?:(?<=[(\[-])|(?<=[\w'’-]\s)(?<!\bto\s)(?<!\band\s)(?<!\bor\s)(?<!\bI\s)(?<!\bwe\s)"
                     r"(?<!\bwill\s)(?<!\bhelp\s)(?<!\bhelps\s)(?<!\bhelped\s)(?<!\bhelping\s)(?<!\balso\s)"
                     r"(?<!\bcurrently\s))\bdrafts?\b|初稿|草稿|草案", re.I)
-_UN_DONE = re.compile(r"\bun(?:published|submitted|finished)\b", re.I)
+_UN_DONE = re.compile(r"\bun(?:published|submitted|finished|tested|verified|validated|reviewed)\b", re.I)
 _UNPUBLISHED = re.compile(r"\bun(?:published|submitted)\b|\bto\s+appear\b|\bin\s+press\b", re.I)
-_TEAM_ZH_EXTRA = re.compile(r"组员|队友|同学|室友|搭档|伙伴|朋友|一起|课题组|项目组|(?:\d+|[一二三四五六七八九十两])\s*人", re.I)
+_TEAM_ZH_EXTRA = re.compile(r"组员|队友|同学|室友|搭档|伙伴|朋友|一起|协同|课题组|项目组|(?:\d+|[一二三四五六七八九十两])\s*人", re.I)
 # English shared-work words the TEAM lock leaves out; each has a Chinese pair above or in TEAM.
 _TEAM_EN_EXTRA = re.compile(
     r"\b(?:research|lab|project|study|student|my|our)\s+groups?\b|\bgroup\s*(?:mates?|members?)\b"
@@ -659,7 +661,8 @@ _REVISION_WORD = re.compile(r"\b(?:revised|rewrote|rewritten|edited)\b", re.I)
 # ... and the English span words _SPAN reads only before a quantity, in any use, as
 # ab4ebfd9 did: a relabel renames a thing, so it has no reason to drop "about". "Some"
 # is the exception: "some data" may become "EEG recordings".
-_SPAN_WORD = re.compile(r"\b(?:about|around|over|under|more\s+than|less\s+than|fewer\s+than|up\s+to"
+_SPAN_WORD = re.compile(r"\b(?:about|around|over|under|more\s+than|less\s+than|fewer\s+than|up\s+to|upwards\s+of"
+                        r"|close\s+to"
                         r"|as\s+(?:many|much|few|little|high|low)\s+as)\b", re.I)
 _LOCK_WORD = [TEAM, HELP, NEGATION, DENIAL, PUBLICATION, INTENT, UNFINISHED, UNFINISHED_ZH, _STATUS_WORD, _SPAN,
               _SPAN_WORD, _SOLO, _LIMIT, _OTHER_PERSON, _REVISION_WORD, _TEAM_ZH_EXTRA, _TEAM_EN_EXTRA, _TEAM_OTHERS,
@@ -841,7 +844,7 @@ _ZH_DONE_MORE = re.compile(
     r"(?<![经通不超难错跳越太])过(?![程滤去度敏期量渡于多少来年往半夜节])|曾(?![老教博同先女医总])"
     rf"|(?<!能)(?<!可以)(?:{_ZH_UNDERWAY_VERBS}|做|写|建|搭|造|编|画|拍|跑|修|装)"
     r"(?:出(?![版现席差发口生门国境台租])|成(?![员果绩本像为立熟长分型])|好(?![的奇评友处感转像])|完(?![善整全美备]))"
-    r"|完毕|竣工|完工|落成|定稿|上线(?!前)|投入使用|交付")
+    r"|完毕|竣工|完工|落成|定稿|结束(?![后前时])|上线(?!前)|投入使用|交付")
 _ZH_NOT_YET = re.compile(r"预计|即将|将于|将在|将会|将要|计划|打算|准备|拟|希望|未|没|待")
 
 
@@ -864,8 +867,8 @@ _ZH_PART_BREAK = re.compile(_ZH_CLAUSE_BREAK.pattern + "|、|并")
 # finished English clause triggers reads it.
 _FINISHED_STATE = re.compile(
     r"\b(?:is|are|was|were|(?:has|have|had)\s+been|now|already)\s+(?:(?:now|already|fully|successfully)\s+)?"
-    r"(?:complete|completed|finished|done|live|online|launched|deployed|published|released|in\s+use|operational)\b",
-    re.I)
+    r"(?:complete|completed|finished|done|live|online|launched|deployed|published|released|in\s+use|operational)\b"
+    r"|\b(?:went|gone)\s+(?:live|online)\b", re.I)
 # An English clause, and the words that may open it before its verb (as may an -ly adverb).
 _EN_CLAUSE_BREAK = re.compile(r"[;:,.()]|\s(?=(?:and|but|then)\s)", re.I)
 _EN_CLAUSE_LEAD = frozenset({"and", "but", "then", "also", "later", "which", "that", "who", "i", "we", "have", "has",

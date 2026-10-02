@@ -180,6 +180,55 @@ class TestStatusStillToCome:
         assert em._has(em._FAMILIES["unfinished"], text)
 
 
+class TestMoreListedShapes:
+    def test_in_development_is_work_under_way_but_development_of_is_not(self):
+        assert em.UNFINISHED.search("Built the backend for a campus dining app in development.")
+        assert not em.UNFINISHED.search("Gained experience in development of ML models.")
+
+    @pytest.mark.parametrize("word", ["unpublished", "unsubmitted", "unfinished", "untested", "unverified",
+                                      "unvalidated", "unreviewed"])
+    def test_an_un_done_word_is_a_negation_and_no_finished_verb(self, word):
+        assert em._has(em._FAMILIES["negation"], f"Built a sensor; accuracy {word}.")
+        assert not em._finished_clause(f"Sensor under construction; {word} for months.", wide=True)
+
+    @pytest.mark.parametrize("text", [
+        "在学长指导下搭建了节点", "在学姐指导下搭建了节点", "在主管指导下整理了数据", "Supervised by a senior student.",
+        "Drafted it; a senior student corrected it.", "Drafted it; Sam reviewed it.", "Drafted it; Sam proofread it.",
+        "Drafted it, reviewed by the lab manager.", "Drafted it, corrected by Sam.", "Drafted it, proofread by Sam.",
+        "Drafted it; Sam, a senior student, reviewed it."])
+    def test_another_persons_review_or_correction_is_their_part(self, text):
+        assert em._OTHER_PERSON.search(text)
+
+    @pytest.mark.parametrize("text", ["Reviewed 30 papers for the club.", "Corrected 40 exams.",
+                                      "Drafted the report and proofread it.", "Published a peer-reviewed paper."])
+    def test_the_students_own_review_is_no_one_elses_part(self, text):
+        assert not em._OTHER_PERSON.search(text)
+
+    @pytest.mark.parametrize("text", ["It went live in March.", "It went online in March.", "It has gone live.",
+                                      "It has gone online."])
+    def test_going_live_is_a_finished_state(self, text):
+        assert em._FINISHED_STATE.search(text)
+
+    @pytest.mark.parametrize(("text", "done"), [("实验室网站开发结束", True), ("项目结束后继续维护", False),
+                                                ("项目结束前提交报告", False), ("项目结束时提交报告", False)])
+    def test_结束_is_done_unless_it_names_a_time(self, text, done):
+        assert em._has_done(text, wide=True) is done
+
+    @pytest.mark.parametrize(("text", "span"), [
+        ("Surveyed upwards of 200 students.", True), ("Surveyed close to 200 students.", True),
+        ("Lives close to the lab.", False), ("调查了上百名学生", True), ("调查了上千名学生", True), ("调查了上万名学生", True),
+        ("上百度搜索资料", False)])
+    def test_upwards_of_close_to_and_上百_are_spans(self, text, span):
+        assert em._has(em._FAMILIES["span"], text) is span
+
+    @pytest.mark.parametrize("text", ["Lives upwards of the river.", "Lives close to the lab."])
+    def test_a_relabel_keeps_upwards_of_and_close_to_in_any_use(self, text):
+        assert em._SPAN_WORD.search(text)
+
+    def test_协同_is_shared_work(self):
+        assert em._has(em._FAMILIES["team"], "与组员协同完成了测试")
+
+
 class TestBoundsAndApproximations:
     @pytest.mark.parametrize(("text", "token"), [
         ("~300 images", "~300"), ("~ 300 images", "~300"), ("≈300 images", "≈300"), (">90% accuracy", ">90%"),

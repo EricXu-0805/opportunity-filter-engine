@@ -8945,6 +8945,284 @@
     null,
     null
    ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN drops 学长",
+   "output": "en",
+   "anchors": [],
+   "original": "在学长指导下搭建了 3 个传感器节点。",
+   "rewrite": "Built 3 sensor nodes.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_other_person"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN drops 主管",
+   "output": "en",
+   "anchors": [],
+   "original": "在主管指导下整理了 500 条客户数据。",
+   "rewrite": "Organized 500 customer records.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_other_person"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops untested",
+   "output": "zh",
+   "anchors": [],
+   "original": "Built a prototype soil sensor; accuracy untested.",
+   "rewrite": "制作了一个土壤传感器原型，精度已测试。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_negation"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops reviewed by",
+   "output": "zh",
+   "anchors": [],
+   "original": "Drafted the report, reviewed by the lab manager.",
+   "rewrite": "起草了报告。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_other_person"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops Sam reviewed and revised",
+   "output": "zh",
+   "anchors": [],
+   "original": "Drafted the manual; Sam reviewed and revised it.",
+   "rewrite": "起草了手册。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_other_person"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops a senior student corrected",
+   "output": "zh",
+   "anchors": [],
+   "original": "Drafted the manual; a senior student corrected it.",
+   "rewrite": "起草了手册。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_other_person"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN says work under 正在 went live",
+   "output": "en",
+   "anchors": [],
+   "original": "正在为实验室开发网站。",
+   "rewrite": "Currently developing a website for the lab; it went live in March.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH finishes a progressive line with 结束",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing a website for the lab.",
+   "rewrite": "实验室网站开发结束。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops upwards of",
+   "output": "zh",
+   "anchors": [],
+   "original": "Surveyed upwards of 200 students.",
+   "rewrite": "调查了 200 名学生。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_span"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops close to",
+   "output": "zh",
+   "anchors": [],
+   "original": "Surveyed close to 200 students.",
+   "rewrite": "调查了 200 名学生。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_span"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN drops 上百",
+   "output": "en",
+   "anchors": [],
+   "original": "调查了上百名学生。",
+   "rewrite": "Surveyed a hundred students.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_span"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps co-located as no credit",
+   "output": "zh",
+   "anchors": [],
+   "original": "Co-located 12 sensors with the weather station.",
+   "rewrite": "将 12 个传感器与气象站放在同一位置。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "ZH to EN keeps 协同过滤 as collaborative filtering",
+   "output": "en",
+   "anchors": [],
+   "original": "正在开发一个推荐系统，采用协同过滤算法。",
+   "rewrite": "Developing a recommender system using collaborative filtering.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "relabel",
+   "label": "relabel drops in development",
+   "anchors": [
+    "food-service app"
+   ],
+   "original": "Built the backend for a campus dining app in development.",
+   "rewrite": "Built the backend for a campus food-service app.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "food-service app",
+     "source": "campus dining app in development",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "campus dining app in development",
+     "to": "campus food-service app"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
   }
  ]
 }

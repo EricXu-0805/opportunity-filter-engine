@@ -78,7 +78,7 @@ PLANNED = re.compile(
 UNFINISHED = re.compile(
     r"\b(?:in\s+preparation|in[\s-]+progress|wip|ongoing|on-going|currently|not\s+yet|pending|forthcoming|upcoming"
     r"|to\s+appear|in\s+press|underway|will|unpublished|unfinished|expected|anticipated"
-    r"|under\s+(?:review|revision|development|construction)|drafting)\b", re.I)
+    r"|under\s+(?:review|revision|development|construction)|in\s+development(?!\s+of)|drafting)\b", re.I)
 # A Chinese action verb + 中 is work under way when it ends its clause or describes
 # a thing (系统开发中, 开发中的系统); within four characters after 在, 到 or 入 it is a
 # place (在研究中发现, 在项目开发中). 在王老师指导下智能温室系统开发中 is still under way.
@@ -435,14 +435,14 @@ _SETTING_LEAD = re.compile(r"^(?:(?:for|in|during|at|within)\s+(?:(?:a|an|the)\s
 LEADERSHIP = ("lead", "own", "independent")
 # Credit shared through a co- word: "co-authored", "co-developed", "coauthored", 合著,
 # 合写, 联合. Bench words name a method, not a co-author: co-culture, co-expression,
-# co-IP; 联合国 and 联合会 are bodies, 联合利华 a company, 北京联合大学 a school and
-# 联合培养 a joint degree programme.
+# co-IP, co-located; 联合国, 联合会 and 联合实验室 are bodies, 联合利华 and 联合航空
+# companies, 北京联合大学 a school and 联合培养 a joint degree programme.
 CO_CREDIT = re.compile(
-    r"\bco-(?!(?:op|ops|cultur\w*|express\w*|occur\w*|locali[sz]\w*|immunoprecipitat\w*|ip|transfect\w*"
+    r"\bco-(?!(?:op|ops|cultur\w*|express\w*|occur\w*|locali[sz]\w*|locat\w*|immunoprecipitat\w*|ip|transfect\w*"
     r"|factors?|polymer\w*|crystal\w*|infect\w*|morbid\w*|evol\w*|receptors?|requisites?|ordinat\w*|operat\w*"
     r"|varian\w*|registr\w*|efficien\w*|linear\w*|enzymes?|solvents?|treat\w*|incubat\w*|inject\w*|hous\w*"
     r"|precipitat\w*|stimulat\w*|administ\w*|integrat\w*|planar|axial|valen\w*|dominan\w*|activat\w*)\b)[a-z]"
-    r"|\bco(?:author|found|wr[io]t|writ)\w*|合著|合写|联合(?![国会]|利华|大学|培养)", re.I)
+    r"|\bco(?:author|found|wr[io]t|writ)\w*|合著|合写|联合(?![国会]|利华|大学|培养|实验室|航空)", re.I)
 # Shared credit said with an adverb ("wrote a report jointly") or a co- word. Only
 # the claim locks read it; TEAM itself, and so claim_upgrade_detected, is unchanged.
 _SHARED_CREDIT = re.compile(r"\b(?:jointly|collectively|cooperatively)\b|" + CO_CREDIT.pattern, re.I)
