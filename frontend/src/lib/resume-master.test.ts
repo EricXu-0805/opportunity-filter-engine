@@ -455,7 +455,9 @@ describe('résumé master candidates proposed from the résumé text', () => {
       'Built dashboards with Python, SQL', 'Presented weekly progress updates to the PI and two graduate mentors',
       'Python, SQL, Tableau',
       'Teaching Assistant, CS 225 Data Structures', 'Graded weekly assignments for 180 students',
-      'Grader - Aug 2023 - May 2024', 'Checked weekly problem sets for two sections'].join('\n');
+      'Grader - Aug 2023 - May 2024', 'Checked weekly problem sets for two sections',
+      // A point in Title Case is longer than a row of names.
+      'Volunteer Tutor For Two Middle School Math Classes Each Week'].join('\n');
     expect(values(proposeResumeMaster(null, raw, await sourceDigest(raw))).activities).toEqual([
       { kind: 'research', title: 'Research Assistant', organization: 'Health Imaging Lab', start: 'Jan 2026', end: 'Present' },
       { kind: 'employment', title: 'Teaching Assistant', organization: 'CS 225 Data Structures' },

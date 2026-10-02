@@ -728,6 +728,79 @@ describe('positioned text items', () => {
     ]);
   });
 
+  it('reads glyph items as ending with a full stop only where more item ends have one than not, rows aside', async () => {
+    // One item with a full stop and one without say nothing either way, and
+    // neither do project rows that end with one. The role row's date shows
+    // where the column ends.
+    const page = (...lines: unknown[]) => pdfOf([
+      at('Research Intern, Robotics Lab', 50, 140, 760), at('Jun 2025 - Aug 2025', 460, 90, 760, { hasEOL: true }),
+      ...lines,
+      at('- Trained a convolutional baseline on chest X-rays from the hospital and reached a test score of 0.87', 50, 500, 712, { hasEOL: true }),
+      at('AUC on a held-out split.', 50, 110, 700),
+    ]);
+    const tail = ['- Trained a convolutional baseline on chest X-rays from the hospital and reached a test score of 0.87',
+      'AUC on a held-out split.'];
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(page(
+      at('- Wrote unit tests for the parser.', 50, 160, 748, { hasEOL: true }),
+      at('- Added a nightly job that checks the backups', 50, 220, 736, { hasEOL: true }),
+    )) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      'Research Intern, Robotics Lab\tJun 2025 - Aug 2025', '- Wrote unit tests for the parser.', '- Added a nightly job that checks the backups', ...tail,
+    ]);
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(page(
+      at('Campus Bus Tracker - React and Flask web app.', 50, 210, 748, { hasEOL: true }),
+      at('- Built the backend in Flask', 50, 140, 736, { hasEOL: true }),
+      at('Soil Moisture Logger - custom PCB and firmware.', 50, 220, 724, { hasEOL: true }),
+    )) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      'Research Intern, Robotics Lab\tJun 2025 - Aug 2025', 'Campus Bus Tracker - React and Flask web app.', '- Built the backend in Flask',
+      'Soil Moisture Logger - custom PCB and firmware.', ...tail,
+    ]);
+  });
+
+  it('keeps reading a glyph item as one past the lines joined to it', async () => {
+    // The third line belongs to the glyph item through the second, so on a
+    // page whose glyph items end with a full stop it may finish it.
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('- Wrote unit tests for the parser.', 50, 160, 736, { hasEOL: true }),
+      at('- Added a nightly job that checks the backups.', 50, 220, 724, { hasEOL: true }),
+      at('- Trained a convolutional baseline on chest X-rays from the hospital archive and evaluated it with the', 50, 500, 712, { hasEOL: true }),
+      at('held-out split of the hospital data, where it reached a test score of 0.87 and a sensitivity of 0.81', 50, 500, 700, { hasEOL: true }),
+      at('AUC on the held-out split.', 50, 120, 688),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      '- Wrote unit tests for the parser.',
+      '- Added a nightly job that checks the backups.',
+      '- Trained a convolutional baseline on chest X-rays from the hospital archive and evaluated it with the held-out split of the hospital data, where it reached a test score of 0.87 and a sensitivity of 0.81 AUC on the held-out split.',
+    ]);
+  });
+
+  it('carries a line that ends in a colon on into the next', async () => {
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('Built a dashboard for the county health department and the city transit office with three tools:', 50, 500, 712, { hasEOL: true }),
+      at('Python, SQL, Tableau', 50, 90, 700, { hasEOL: true }),
+      at('Mentored three students', 50, 110, 688),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      'Built a dashboard for the county health department and the city transit office with three tools: Python, SQL, Tableau',
+      'Mentored three students',
+    ]);
+  });
+
+  it('keeps a short line in a narrow column apart even where an indent brings its end near the edge', async () => {
+    // A sidebar line that wraps runs most of the column's width; a short
+    // indented entry that ends near the edge is a list entry of its own.
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('Machine learning with PyTorch and', 40, 150, 748, { hasEOL: true }),
+      at('scikit-learn on lab data', 40, 100, 736, { hasEOL: true }),
+      at('Data cleaning with', 52, 100, 724, { hasEOL: true }),
+      at('pandas', 52, 30, 712),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      'Machine learning with PyTorch and scikit-learn on lab data', 'Data cleaning with', 'pandas',
+    ]);
+  });
+
   it('reads a full stop on the next line as the end of a glyph item only where glyph items end with one', async () => {
     // One-line items here end with a full stop, so a capitalized line that
     // ends one finishes the item before it, unless it is a row of its own.

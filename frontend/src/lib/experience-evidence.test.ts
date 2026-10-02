@@ -238,6 +238,10 @@ describe('local proposals and confirmed eligibility', () => {
       expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual(['Research Assistant', '- Built a baseline.']);
     }
   });
+  it('reads a labelled place line as part of the header block', async () => {
+    const raw = ['Jordan Lee', 'Location: Champaign, IL', 'jordan.lee@example.com', 'EXPERIENCE', 'Research Assistant'].join('\n');
+    expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual(['Research Assistant']);
+  });
   it('treats a first line in capitals as the name, not as the heading that ends the header block', async () => {
     const raw = ['PRIYA NATARAJAN', 'Champaign, IL', 'priya.natarajan.test@example.com', 'SKILLS', 'SQL', 'MATLAB'].join('\n');
     expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual(['SQL', 'MATLAB']);
@@ -291,7 +295,7 @@ describe('local proposals and confirmed eligibility', () => {
     expect(storedWraps(['- Tools: Python, MATLAB, NumPy, SolidWorks, LabVIEW, COMSOL, Arduino, ImageJ, Excel, Power',
       'BI, Tableau, Excel'])).toEqual([false, false]);
     // A row with a column gap is a row of its own, even after a word that goes on.
-    expect(storedWraps(['- Calibrated the motion capture system and wrote the setup guide for new lab staff with',
+    expect(storedWraps(['- Calibrated the motion capture system and wrote the setup guide for new lab staff and',
       'Python\tSpring 2025'])).toEqual([false, false]);
     // A Chinese character is as wide as two Latin ones.
     expect(storedWraps([
