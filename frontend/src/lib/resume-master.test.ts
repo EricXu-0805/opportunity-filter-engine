@@ -340,6 +340,24 @@ describe('résumé master candidates proposed from the résumé text', () => {
     skills: master.skills.map((skill) => skill.value),
   });
 
+  it('reads a token of tens of thousands of characters with no address in it in linear time', async () => {
+    // The contact and place patterns scanned such a token once per start: up
+    // to 5 s on these before their parts were bounded, about 30 ms after.
+    const read = async (raw: string, limit: number) => {
+      const signature = await sourceDigest(raw);
+      const started = performance.now();
+      const master = proposeResumeMaster(null, raw, signature);
+      expect(performance.now() - started).toBeLessThan(limit);
+      expect(master.basics.name?.value).toBe('Jordan Lee');
+    };
+    for (const token of ['a.'.repeat(29_500), 'A'.repeat(59_000), 'a-'.repeat(29_500), '1'.repeat(59_000),
+      `a@${'a'.repeat(58_998)}`, 'www.'.repeat(14_750)]) {
+      await read(`Jordan Lee\nEXPERIENCE\n- Built a parser\n${token}`, 1_000);
+    }
+    // A place after " - " on an education row: 0.5 s before, under 10 ms after.
+    await read(`Jordan Lee\nEDUCATION\nx${' - A'.repeat(14_740)}`, 250);
+  });
+
   it('offers every contact, education, role, date and skill fact of the persona as an exact, unconfirmed quote', async () => {
     const signature = await sourceDigest(persona);
     const master = proposeResumeMaster(null, persona, signature);

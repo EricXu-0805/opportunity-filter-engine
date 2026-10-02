@@ -67,11 +67,16 @@ export function resumeSectionHeading(line: string): ResumeSectionKind | null {
   return null;
 }
 
-export const RESUME_EMAIL = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/u;
+// What may run from any start is bounded: an address's local part (64
+// characters at most), a host name's first label (63) and its number of
+// labels, and a place's name. A long run of letters, dots, hyphens or digits
+// with no "@", known ending or comma is then read in linear time, not
+// rescanned from every start.
+export const RESUME_EMAIL = /[\w.+-]{1,64}@[\w-]+(?:\.[\w-]+)+/u;
 export const RESUME_PHONE = /(?:\+\d{1,3}[\s.-]?)?(?:\(\d{2,4}\)|\d{2,4})[\s.-]?\d{3,4}[\s.-]?\d{3,4}/u;
-export const RESUME_URL = /(?:https?:\/\/|www\.)\S+|\b[\w-]+(?:\.[\w-]+)*\.(?:com|org|net|edu|io|dev|ai|me|co)(?:\/\S*)?/iu;
+export const RESUME_URL = /(?:https?:\/\/|www\.)\S+|\b[\w-]{1,63}(?:\.[\w-]+){0,8}\.(?:com|org|net|edu|io|dev|ai|me|co)(?:\/\S*)?/iu;
 /** A place as a résumé prints it: "Champaign, IL", "Shanghai, China". */
-export const RESUME_PLACE = String.raw`[\p{Lu}][\p{L}.' -]*,\s*(?:[A-Z]{2}|USA|China|Canada|United States|United Kingdom|UK|India|Japan|Korea|South Korea|Singapore|Germany|France|Hong Kong|Taiwan|Australia)`;
+export const RESUME_PLACE = String.raw`[\p{Lu}][\p{L}.' -]{0,40},\s*(?:[A-Z]{2}|USA|China|Canada|United States|United Kingdom|UK|India|Japan|Korea|South Korea|Singapore|Germany|France|Hong Kong|Taiwan|Australia)`;
 /** A name as the first line of a résumé prints it: two to five capitalized
  *  words, or two to four Chinese characters. */
 export const RESUME_PERSON = /^(?:[\p{Lu}][\p{L}.'’-]*)(?:\s+[\p{Lu}][\p{L}.'’-]*){1,4}$|^\p{Script=Han}{2,4}$/u;

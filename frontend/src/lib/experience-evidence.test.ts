@@ -371,4 +371,14 @@ describe('local proposals and confirmed eligibility', () => {
     const raw = ['Built a robot', 'wrote a report', 'Led a team'].join('\n');
     expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual(['Built a robot', 'wrote a report', 'Led a team']);
   });
+  it('reads a token of tens of thousands of characters with no address in it in linear time', async () => {
+    // The contact and place patterns scanned such a token once per start: up
+    // to 8 s on these before their parts were bounded, about 50 ms after.
+    for (const token of ['a.'.repeat(29_500), 'A'.repeat(59_000), 'a-'.repeat(29_500), '1'.repeat(59_000),
+      `a@${'a'.repeat(58_998)}`, 'www.'.repeat(14_750)]) {
+      const started = performance.now();
+      await createResumeCandidates(`Jordan Lee\nEXPERIENCE\n- Built a parser\n${token}`);
+      expect(performance.now() - started).toBeLessThan(1_000);
+    }
+  });
 });
