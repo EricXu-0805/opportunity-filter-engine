@@ -255,3 +255,21 @@ class TestWorkflowWiring:
         )
         assert out.returncode != 0
         assert "no isolated refresh batch" in out.stderr
+
+    def test_refresh_job_timeout_leaves_room_after_the_scrape_budget(self):
+        """The scrape budget is not the end of the run.
+
+        After it come the Experts pass (first Monday of the month) and the PR
+        step, which waits for the data PR's CI: 31-38 minutes in September
+        2026. With a 260-minute budget under a 300-minute timeout every run
+        that spent its budget was cancelled before publishing.
+        """
+        import re
+
+        job = next(iter(self._workflow("refresh-data.yml")["jobs"].values()))
+        run = "\n".join(str(s.get("run", "")) for s in job["steps"])
+        scrape = int(re.search(r"refresh_all --time-budget-minutes (\d+)", run).group(1))
+        experts = int(re.search(r"uiuc_experts --refresh --time-budget-minutes (\d+)", run).group(1))
+        setup, data_pr_ci = 5, 45
+        assert job["timeout-minutes"] >= scrape + experts + data_pr_ci + setup
+        assert job["timeout-minutes"] <= 360, "GitHub-hosted jobs stop at 6 hours"

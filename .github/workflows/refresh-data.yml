@@ -73,10 +73,12 @@ concurrency:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    # Shards are budgeted far under this (worst day ~3h: Monday uiuc in the
-    # first week of the month); 300 is headroom, and a full manual refresh
-    # (empty schools input) still fits.
-    timeout-minutes: 300
+    # The refresh step stops scraping at its 260-minute budget, but the run
+    # is not done then: the PR step waits for the data PR's CI (31-38 min in
+    # September 2026), and on the first Monday of the month the Experts pass
+    # adds up to 30. At 300 that tail had about 5 minutes, so every run that
+    # spent its budget was cancelled. GitHub allows 360.
+    timeout-minutes: 350
     permissions:
       contents: write
 
@@ -203,14 +205,15 @@ jobs:
               echo "Enabling per-profile enrichment (OFE_ENRICH_PROFILES=1)"
               export OFE_ENRICH_PROFILES=1
             fi
-            # 260-minute source budget under the job's 300-minute hard timeout:
+            # 260-minute source budget under the job's 350-minute hard timeout:
             # once spent, refresh_all stops STARTING sources (they report
             # deferred_deadline) and the faculty_graph engine cuts the source
             # already mid-flight at the deadline (partial harvest, reported
             # partial_deadline — stale retirement skips both) so completed
             # schools still merge and publish. The 2026-08-07 run hit the hard
             # cap mid-source and published nothing, losing even the 4.5h of
-            # ucsd work that had finished.
+            # ucsd work that had finished. The PI/contact pass after the
+            # sources stops at the same deadline.
             python -m src.collectors.refresh_all --time-budget-minutes 260 $ARGS
           else
             echo "Running QUICK refresh (shard: ${SHARD:-full})"
@@ -223,7 +226,9 @@ jobs:
         # the weekly broad re-scrape re-fetches the same faculty. uiuc = Monday,
         # so this fires on the first Monday of the month (same cadence as when
         # every deep run was a Monday full run). Folds into the data-refresh PR
-        # below. Polite: ~1s/person, only the broad-only faculty.
+        # below. Polite: ~1s/person, only the broad-only faculty. There were
+        # 7,045 of those on 2026-10-01, 2-4 hours of fetching, so each pass
+        # gets 30 minutes and takes them in a different order every month.
         if: steps.mode.outputs.deep == 'true'
         run: |
           SHARD="${{ steps.shard.outputs.shard }}"
@@ -231,7 +236,7 @@ jobs:
             echo "Shard '$SHARD' does not include uiuc — skipping Experts pass"
           elif [ "$(date -u +%d)" -le 07 ]; then
             echo "First week of the month — running Illinois Experts enrichment"
-            python -m src.collectors.uiuc_experts --refresh
+            python -m src.collectors.uiuc_experts --refresh --time-budget-minutes 30
           else
             echo "Not the first week of the month — skipping Experts pass"
           fi
