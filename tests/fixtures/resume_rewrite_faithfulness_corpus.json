@@ -2205,6 +2205,13 @@
    "kind": "relabel drops 初步",
    "caught": "contract",
    "case": "zh relabel drops 初步"
+  },
+  {
+   "original": "Built the website with a friend. My part was writing the backend in Flask.",
+   "rewrite": "Wrote the backend in Flask and built the website with a friend.",
+   "kind": "own part folded after a capitalised My",
+   "caught": "contract",
+   "case": "own part folded after a sentence that starts with My"
   }
  ]
 }

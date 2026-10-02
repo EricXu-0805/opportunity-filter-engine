@@ -4224,6 +4224,84 @@
     "beyond_allowed_edit",
     "relabel_drops_protected"
    ]
+  },
+  {
+   "group": "fold",
+   "label": "own part folded after a sentence that starts with My",
+   "anchors": [
+    "Backend development in Flask"
+   ],
+   "original": "Built the website with a friend. My part was writing the backend in Flask.",
+   "rewrite": "Wrote the backend in Flask and built the website with a friend.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Backend",
+     "source": "backend in Flask",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "personal_marker_dropped"
+   ]
+  },
+  {
+   "group": "fold",
+   "label": "own part first after a sentence that starts with My",
+   "anchors": [
+    "Backend development in Flask"
+   ],
+   "original": "Built the website with a friend. My part was writing the backend in Flask.",
+   "rewrite": "My part was writing the backend in Flask. Built the website with a friend.",
+   "links": [],
+   "ops": [
+    {
+     "op": "personal_first"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "marker",
+   "label": "lead_with adds a sentence-initial My",
+   "anchors": [
+    "data pipeline"
+   ],
+   "original": "As part of a four-person team, built the data pipeline.",
+   "rewrite": "My data pipeline was built as part of a four-person team.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "data pipeline",
+     "source": "data pipeline",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "personal_marker_added"
+   ]
   }
  ]
 }

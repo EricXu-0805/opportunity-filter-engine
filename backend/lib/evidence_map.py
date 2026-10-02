@@ -333,7 +333,9 @@ _FUNCTION_EN = frozenset(
 # "已撰写" and a dropped 本人 must be visible to the vocabulary checks.
 _FUNCTION_ZH = frozenset("的了并在为与和及于对将把被由等其该以从向所之也都且或而地得个这那但却")
 _TOKEN = re.compile(r"[一-鿿]|\d+(?:[.,]\d+)*%?|[A-Za-z]+(?:'[a-z]+)?")
-_PERSONAL_MARKER = re.compile(r"\b(?:I|me|my|mine|myself)\b|本人|我(?!们)")
+# "I" exactly; "my", "me", "mine" and "myself" also open a sentence ("My part was").
+# All-caps "ME" and "MY" are abbreviations (ME 270), not the student.
+_PERSONAL_MARKER = re.compile(r"\bI\b|\b[Mm](?:e|y|ine|yself)\b|本人|我(?!们)")
 
 
 def _undouble(stem: str) -> str:
@@ -532,7 +534,7 @@ class Outcome:
 _WEAK_OPENER = re.compile(
     r"^\s*(?:responsible\s+for|in\s+charge\s+of|worked(?:\s+(?:on|in|at|as|with|for))?|served\s+as)\b|^\s*(?:负责|担任)",
     re.I)
-_PERSONAL_PART = re.compile(r"(?:\bI\b|\bmy\s+part\s+was\b|本人|我(?!们))\s*(?:只|only\s+)?([^;；。.]+)")
+_PERSONAL_PART = re.compile(r"(?:\bI\b|\b[Mm]y\s+part\s+was\b|本人|我(?!们))\s*(?:只|only\s+)?([^;；。.]+)")
 _FIRST_CLAUSE = re.compile(r"[;；,，。.(（:：]")
 _OTHER_PERSON = re.compile(
     r"\b(?:advisors?|advisers?|supervisors?|mentors?|PIs?|professors?|prof|dr|postdocs?|postdoctoral|TAs?|staff"
