@@ -1,6 +1,6 @@
 import type { ExperienceEntry } from './types';
 import {
-  BULLET_LINE, MAX_RESUME_TEXT_CHARACTERS, RESUME_PERSON, RESUME_PLACE, resumeContactLine, resumeSectionHeading,
+  BULLET_LINE, MAX_RESUME_TEXT_CHARACTERS, RESUME_PERSON, RESUME_PLACE, RESUME_ROLE, resumeContactLine, resumeSectionHeading,
   resumeTextCharacters, storedWraps,
 } from './resume-input';
 
@@ -147,13 +147,17 @@ const PLACE_LINE = new RegExp(String.raw`^(?:[\p{L} ]{2,20}:\s*)?${RESUME_PLACE}
 /** How many of the first non-blank lines form the header block: the name on
  *  the first line, then the contact and place lines right below it. Any
  *  other line ends it, so a heading the title list does not know cannot hide
- *  the lines under it. A text with no heading has no header block. */
+ *  the lines under it. A text with no heading has no header block. A first
+ *  line that names a role ("Research Assistant") is the name only when
+ *  contact details or a place follow it: a text can open with its main
+ *  column's first role. */
 function headerRows(lines: readonly string[]): number {
   const rows = lines.map((line) => line.trim()).filter(Boolean);
   if (!rows.some((row) => resumeSectionHeading(row) !== null)) return 0;
+  const name = RESUME_PERSON.test(rows[0]) && (!RESUME_ROLE.test(rows[0])
+    || (rows.length > 1 && (resumeContactLine(rows[1]) || PLACE_LINE.test(rows[1]))));
   let count = 0;
-  while (count < rows.length && (resumeContactLine(rows[count]) || PLACE_LINE.test(rows[count])
-    || (count === 0 && RESUME_PERSON.test(rows[count])))) count += 1;
+  while (count < rows.length && (resumeContactLine(rows[count]) || PLACE_LINE.test(rows[count]) || (count === 0 && name))) count += 1;
   return count;
 }
 

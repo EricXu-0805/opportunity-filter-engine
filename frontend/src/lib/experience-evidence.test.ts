@@ -227,6 +227,17 @@ describe('local proposals and confirmed eligibility', () => {
       `Outreach\n${role[0]}\n${role[1]}`, role[2], 'EDUCATION\nUniversity of Illinois',
     ]);
   });
+  it('reads a first line that names a role as the name only when contact details or a place follow it', async () => {
+    // A layout that prints the main column first opens with a role.
+    const role = ['Research Assistant', 'Health Imaging Lab', '- Built a baseline.', 'EDUCATION', 'University of Illinois'];
+    expect((await createResumeCandidates(role.join('\n'))).map((entry) => entry.text)).toEqual([
+      'Research Assistant', 'Health Imaging Lab', '- Built a baseline.', 'University of Illinois',
+    ]);
+    for (const below of ['jordan.chair@example.com', 'Champaign, IL']) {
+      const raw = ['Jordan Chair', below, 'EXPERIENCE', 'Research Assistant', '- Built a baseline.'].join('\n');
+      expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual(['Research Assistant', '- Built a baseline.']);
+    }
+  });
   it('treats a first line in capitals as the name, not as the heading that ends the header block', async () => {
     const raw = ['PRIYA NATARAJAN', 'Champaign, IL', 'priya.natarajan.test@example.com', 'SKILLS', 'SQL', 'MATLAB'].join('\n');
     expect((await createResumeCandidates(raw)).map((entry) => entry.text)).toEqual(['SQL', 'MATLAB']);
