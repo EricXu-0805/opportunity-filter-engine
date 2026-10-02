@@ -6557,6 +6557,272 @@
     "beyond_allowed_edit",
     "translation_unfinished"
    ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH finishes a progressive line after a lone 目前 and a comma",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing a website; wrote a review.",
+   "rewrite": "目前，开发了网站；撰写了综述。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH finishes a progressive line after a lone 目前 and a colon",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing a website; wrote a review.",
+   "rewrite": "目前：开发了网站；撰写了综述。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH finishes a progressive line after 本人目前 and a comma",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing a website; wrote a review.",
+   "rewrite": "本人目前，开发了网站，撰写了综述。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH finishes a progressive line after 项目进行中",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing a website for the lab; wrote a review.",
+   "rewrite": "项目进行中，为实验室开发了网站；撰写了一篇综述。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH moves the done mark to the verb after a lone 目前",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing a website; wrote a review.",
+   "rewrite": "目前，开发了网站；撰写综述。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH moves the done mark to the verb after 项目进行中",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing a website for the lab; wrote a review.",
+   "rewrite": "项目进行中，为实验室开发了网站；撰写综述。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH moves the done mark to the verb after 正在进行中",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing a website; wrote a review.",
+   "rewrite": "正在进行中：开发了网站；撰写综述。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH marks more parts done than the English finishes",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing a website for the lab; wrote a review.",
+   "rewrite": "目前在实验室，开发了网站并撰写了一篇综述。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH marks two parts done beside one launched homepage",
+   "output": "zh",
+   "anchors": [],
+   "original": "Lab website under development; homepage launched.",
+   "rewrite": "实验室网站开发中，后台已完成，主页已上线。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps a verb + 中 lead before a duty",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing the system; responsible for the backend.",
+   "rewrite": "系统开发中，负责后端。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps two finished duties beside a progressive line",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing a website; wrote a review and graded 40 exams.",
+   "rewrite": "正在开发网站；撰写了一篇综述，批改了 40 份试卷。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps one done mark over two finished verbs",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing a website; designed and tested the login page.",
+   "rewrite": "正在开发网站；设计并测试了登录页面。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps two finished headlines beside work under development",
+   "output": "zh",
+   "anchors": [],
+   "original": "Lab website under development; homepage launched and backend tested.",
+   "rewrite": "实验室网站开发中，主页已上线，后台已测试。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH moves the done mark to the verb after 目前正在开发中",
+   "output": "zh",
+   "anchors": [],
+   "original": "Developing a website for the lab; wrote a review.",
+   "rewrite": "目前正在开发中，为实验室开发了网站；撰写综述。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_unfinished"
+   ]
   }
  ]
 }

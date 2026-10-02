@@ -202,6 +202,23 @@ class TestFinishedClause:
         assert em._finished_clause(f"Paper under review; preprint {word} on arXiv.")
 
 
+class TestLeadingClause:
+    @pytest.mark.parametrize(("chinese", "leading"), [
+        ("目前，开发了网站；撰写了综述。", "开发了网站"), ("目前:开发了网站", "开发了网站"),
+        ("本人目前：开发了网站", "开发了网站"), ("我目前,开发了网站", "开发了网站"),
+        ("项目进行中，为实验室开发了网站", "为实验室开发了网站"), ("目前正在开发中，开发了网站", "开发了网站"),
+        ("正在为实验室开发网站，撰写了综述", "正在为实验室开发网站"), ("系统开发中；负责后端", "负责后端"),
+        ("目前在实验室，开发了网站", "目前在实验室"), ("目前", "")])
+    def test_the_leading_verb_is_in_the_first_clause_that_is_more_than_a_lead_marker(self, chinese, leading):
+        assert em._leading_clause(chinese) == leading
+
+    @pytest.mark.parametrize(("chinese", "parts"), [
+        ("开发了网站并撰写了一篇综述", 2), ("开发了网站、撰写了综述", 2), ("开发了网站，撰写了综述", 2),
+        ("开发了网站；已撰写综述", 2), ("设计并测试了登录页面", 1), ("已撰写了一篇综述", 1), ("正在开发网站", 0)])
+    def test_each_part_with_its_own_done_mark_counts_once(self, chinese, parts):
+        assert em._done_parts(chinese) == parts
+
+
 class TestAnotherPersonsRevision:
     @pytest.mark.parametrize("text", [
         "Submitted a revised plan.", "Submitted an edited volume.", "Submitted the revised plan.",

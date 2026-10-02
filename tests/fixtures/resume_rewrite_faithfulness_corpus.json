@@ -1185,6 +1185,26 @@
    "original": "Paper under review at CHI 2026; preprint posted on arXiv.",
    "rewrite": "论文正在 CHI 2026 审稿中；预印本已发布在 arXiv 上。",
    "kind": "EN to ZH: paper under review beside a posted preprint"
+  },
+  {
+   "original": "Developing the system; responsible for the backend.",
+   "rewrite": "系统开发中，负责后端。",
+   "kind": "EN to ZH: verb + 中 lead before a duty"
+  },
+  {
+   "original": "Developing a website; wrote a review and graded 40 exams.",
+   "rewrite": "正在开发网站；撰写了一篇综述，批改了 40 份试卷。",
+   "kind": "EN to ZH: two finished duties beside a progressive line"
+  },
+  {
+   "original": "Developing a website; designed and tested the login page.",
+   "rewrite": "正在开发网站；设计并测试了登录页面。",
+   "kind": "EN to ZH: one done mark over two finished verbs"
+  },
+  {
+   "original": "Lab website under development; homepage launched and backend tested.",
+   "rewrite": "实验室网站开发中，主页已上线，后台已测试。",
+   "kind": "EN to ZH: two finished headlines beside work under development"
   }
  ],
  "unfaithful": [
@@ -2867,6 +2887,76 @@
    "kind": "translation adds a finished headline the Chinese line has under way",
    "caught": "contract",
    "case": "ZH to EN patents a design the Chinese has under way"
+  },
+  {
+   "original": "Developing a website; wrote a review.",
+   "rewrite": "目前，开发了网站；撰写了综述。",
+   "kind": "translation finishes a progressive line after a lone 目前 and a comma",
+   "caught": "contract",
+   "case": "EN to ZH finishes a progressive line after a lone 目前 and a comma"
+  },
+  {
+   "original": "Developing a website; wrote a review.",
+   "rewrite": "目前：开发了网站；撰写了综述。",
+   "kind": "translation finishes a progressive line after a lone 目前 and a colon",
+   "caught": "contract",
+   "case": "EN to ZH finishes a progressive line after a lone 目前 and a colon"
+  },
+  {
+   "original": "Developing a website; wrote a review.",
+   "rewrite": "本人目前，开发了网站，撰写了综述。",
+   "kind": "translation finishes a progressive line after 本人目前 and a comma",
+   "caught": "contract",
+   "case": "EN to ZH finishes a progressive line after 本人目前 and a comma"
+  },
+  {
+   "original": "Developing a website for the lab; wrote a review.",
+   "rewrite": "项目进行中，为实验室开发了网站；撰写了一篇综述。",
+   "kind": "translation finishes a progressive line after 项目进行中",
+   "caught": "contract",
+   "case": "EN to ZH finishes a progressive line after 项目进行中"
+  },
+  {
+   "original": "Developing a website; wrote a review.",
+   "rewrite": "目前，开发了网站；撰写综述。",
+   "kind": "translation moves the done mark to the verb after a lone 目前",
+   "caught": "contract",
+   "case": "EN to ZH moves the done mark to the verb after a lone 目前"
+  },
+  {
+   "original": "Developing a website for the lab; wrote a review.",
+   "rewrite": "项目进行中，为实验室开发了网站；撰写综述。",
+   "kind": "translation moves the done mark to the verb after 项目进行中",
+   "caught": "contract",
+   "case": "EN to ZH moves the done mark to the verb after 项目进行中"
+  },
+  {
+   "original": "Developing a website; wrote a review.",
+   "rewrite": "正在进行中：开发了网站；撰写综述。",
+   "kind": "translation moves the done mark to the verb after 正在进行中",
+   "caught": "contract",
+   "case": "EN to ZH moves the done mark to the verb after 正在进行中"
+  },
+  {
+   "original": "Developing a website for the lab; wrote a review.",
+   "rewrite": "目前在实验室，开发了网站并撰写了一篇综述。",
+   "kind": "translation marks two parts done beside one finished clause",
+   "caught": "contract",
+   "case": "EN to ZH marks more parts done than the English finishes"
+  },
+  {
+   "original": "Lab website under development; homepage launched.",
+   "rewrite": "实验室网站开发中，后台已完成，主页已上线。",
+   "kind": "translation marks two parts done beside one finished headline",
+   "caught": "contract",
+   "case": "EN to ZH marks two parts done beside one launched homepage"
+  },
+  {
+   "original": "Developing a website for the lab; wrote a review.",
+   "rewrite": "目前正在开发中，为实验室开发了网站；撰写综述。",
+   "kind": "translation moves the done mark to the verb after 目前正在开发中",
+   "caught": "contract",
+   "case": "EN to ZH moves the done mark to the verb after 目前正在开发中"
   }
  ]
 }

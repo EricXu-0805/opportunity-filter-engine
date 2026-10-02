@@ -791,6 +791,9 @@ _ZH_DONE = re.compile(r"(?<![为除])了(?!解)|已(?!在)|(?<!正在)(?<!未)�
 # or a time word may stand before it (目前正在为实验室开发 ..., 目前每周辅导 ...).
 _ZH_FIRST_CLAUSE = re.compile(r"[^，,。；;：:！？!?]*")
 _ZH_LEAD_PROGRESSIVE = re.compile(r"\s*(?:本人|我)?(?:(?:目前|现在|也)?正在|目前)")
+# Chinese clauses, and their parts: 开发了网站并撰写了综述 states two things done.
+_ZH_CLAUSE_BREAK = re.compile(r"[，,。；;：:！？!?]")
+_ZH_PART_BREAK = re.compile(_ZH_CLAUSE_BREAK.pattern + "|、|并")
 # An English clause, and the words that may open it before its verb (as may an -ly adverb).
 _EN_CLAUSE_BREAK = re.compile(r"[;:,.()]|\s(?=(?:and|but|then)\s)", re.I)
 _EN_CLAUSE_LEAD = frozenset({"and", "but", "then", "also", "later", "which", "that", "who", "i", "we", "have", "has",
@@ -835,19 +838,43 @@ def _finished_verb(words: list[str], *, headline: bool = False, wide: bool = Fal
     return len(word) > 4 and word.endswith("ed") and after != ["in"] and not _names_status(word)
 
 
-def _finished_clause(text: str, *, wide: bool = False) -> bool:
-    """Whether a clause of an English line opens with a finished verb: "...; graded 40 exams".
+def _finished_clauses(text: str, *, wide: bool = False) -> int:
+    """How many clauses of an English line open with a finished verb: "...; graded 40 exams".
 
     A headline counts too, its noun before the verb: "Paper accepted at CHI 2026".
     """
+    count = 0
     for clause in _EN_CLAUSE_BREAK.split(text):
         words = [word.casefold() for word in re.findall(r"[A-Za-z]+(?:-[A-Za-z]+)*", clause)]
         while words and (words[0] in _EN_CLAUSE_LEAD or words[0].endswith("ly")):
             words.pop(0)
         if words and (_finished_verb(words) or len(words) > 1 and words[0] not in _FUNCTION_EN
                       and not verb_use(words[0]) and _finished_verb(words[1:], headline=True, wide=wide)):
-            return True
-    return False
+            count += 1
+    return count
+
+
+def _finished_clause(text: str, *, wide: bool = False) -> bool:
+    return _finished_clauses(text, wide=wide) > 0
+
+
+def _done_parts(chinese: str) -> int:
+    """How many parts of a Chinese line carry their own done mark (了, 已, 完成)."""
+    return sum(1 for part in _ZH_PART_BREAK.split(chinese) if _ZH_DONE.search(part))
+
+
+def _leading_clause(chinese: str) -> str:
+    """The Chinese clause that holds the leading verb: the first that is more than a lead marker.
+
+    目前，开发了网站, 本人目前：开发了网站 and 项目进行中，开发了网站 hold it in their
+    second clause; a lone 目前 or a noun with a verb + 中 marks the work, not the verb.
+    """
+    for clause in _ZH_CLAUSE_BREAK.split(chinese):
+        lead = _ZH_LEAD_PROGRESSIVE.match(clause)
+        rest = (clause[lead.end():] if lead else clause).strip()
+        if rest and not any(match.end() == len(rest) for match in _UNDERWAY_ACTION.finditer(rest)):
+            return clause
+    return ""
 
 
 def _lead_spans(chinese: str) -> list[tuple[int, int]]:
@@ -872,24 +899,25 @@ def _only_on_lead(chinese: str) -> bool:
 def _finished_in_translation(english: str, chinese: str, *, chinese_source: bool) -> bool:
     """Whether a translation states done what the other line has under way or planned.
 
-    "Developing ..." never becomes 开发了 or 已开发; a done mark elsewhere in its
-    Chinese needs a finished English clause and 正在, 目前 or a verb + 中 on the
-    Chinese leading verb.
-    English work under way or planned ("under development", "plan to") becomes
-    了, 已 or 完成 only beside a finished English clause; and 正在 or a verb + 中
-    in a Chinese line is finished in English ("...; tested it") only where the
-    Chinese marks something done too.
+    "Developing ..." never becomes 开发了 or 已开发, nor 目前，开发了: the clause that
+    holds the Chinese leading verb carries no done mark. A done mark elsewhere
+    needs 正在, 目前 or a verb + 中 on the leading verb, and no more Chinese parts
+    carry one than English clauses open with a finished verb.
+    English work under way or planned ("under development", "plan to") takes
+    了, 已 or 完成 only in as many parts as it has finished clauses; and 正在 or a
+    verb + 中 in a Chinese line is finished in English ("...; tested it") only
+    where the Chinese marks something done too.
     """
-    finished, done = _finished_clause(english), _ZH_DONE.search(chinese)
-    if _progressive_led(english) and (_ZH_DONE.search(_ZH_FIRST_CLAUSE.match(chinese).group(0))
-                                      or done and not (finished and _lead_spans(chinese))):
+    finished, done = _finished_clauses(english), _done_parts(chinese)
+    if _progressive_led(english) and (_ZH_DONE.search(_leading_clause(chinese))
+                                      or done and (done > finished or not _lead_spans(chinese))):
         return True
     if chinese_source:
         underway = "正在" in chinese or any(not chinese.startswith("的", match.end())
                                            for match in _UNDERWAY_ACTION.finditer(chinese))
         return bool(underway and _finished_clause(english, wide=True) and not done)
-    return bool(done and not finished and (UNFINISHED.search(english) or INTENT.search(english)
-                                           or PLANNED.search(english)))
+    return bool(done > finished and (UNFINISHED.search(english) or INTENT.search(english)
+                                     or PLANNED.search(english)))
 
 
 def _check_translation(unit: Unit, text: str) -> str | None:
