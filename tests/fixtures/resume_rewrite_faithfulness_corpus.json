@@ -1335,6 +1335,21 @@
    "original": "Annotated ~300 images for the gesture dataset.",
    "rewrite": "Gesture dataset: annotated ~300 images.",
    "kind": "reorder keeps a tilde with its number"
+  },
+  {
+   "original": "Carefully revised the lab's safety manual.",
+   "rewrite": "仔细修订了实验室的安全手册。",
+   "kind": "EN to ZH: the student's own revision after an adverb"
+  },
+  {
+   "original": "We revised the survey after the pilot.",
+   "rewrite": "我们在预调查后修订了问卷。",
+   "kind": "EN to ZH: a revision after we"
+  },
+  {
+   "original": "Drafted the lab report and carefully revised it.",
+   "rewrite": "起草了实验报告并仔细修订。",
+   "kind": "EN to ZH: and carefully revised it"
   }
  ],
  "unfaithful": [
@@ -3517,6 +3532,27 @@
    "kind": "ZH relabel drops 近",
    "caught": "contract",
    "case": "ZH relabel drops 近"
+  },
+  {
+   "original": "Wrote the first draft of the grant proposal; their revised version was funded.",
+   "rewrite": "撰写了基金申请书的初稿，申请书获得资助。",
+   "kind": "translation drops their revised version",
+   "caught": "contract",
+   "case": "EN to ZH drops their revised version"
+  },
+  {
+   "original": "Drafted the lab report; Sam, a senior student, revised it.",
+   "rewrite": "撰写了实验报告。",
+   "kind": "translation drops a revision after an appositive",
+   "caught": "contract",
+   "case": "EN to ZH drops a revision after an appositive"
+  },
+  {
+   "original": "Wrote the first draft of the newsletter; her edited version went out to 300 members.",
+   "rewrite": "撰写了社团通讯的初稿，发给了 300 名成员。",
+   "kind": "translation drops her edited version",
+   "caught": "contract",
+   "case": "EN to ZH drops her edited version"
   }
  ]
 }

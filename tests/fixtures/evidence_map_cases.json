@@ -8698,6 +8698,120 @@
     "beyond_allowed_edit",
     "relabel_drops_protected"
    ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops their revised version",
+   "output": "zh",
+   "anchors": [],
+   "original": "Wrote the first draft of the grant proposal; their revised version was funded.",
+   "rewrite": "撰写了基金申请书的初稿，申请书获得资助。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_other_person"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops a revision after an appositive",
+   "output": "zh",
+   "anchors": [],
+   "original": "Drafted the lab report; Sam, a senior student, revised it.",
+   "rewrite": "撰写了实验报告。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_other_person"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH drops her edited version",
+   "output": "zh",
+   "anchors": [],
+   "original": "Wrote the first draft of the newsletter; her edited version went out to 300 members.",
+   "rewrite": "撰写了社团通讯的初稿，发给了 300 名成员。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "translation_other_person"
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps the student's own careful revision",
+   "output": "zh",
+   "anchors": [],
+   "original": "Carefully revised the lab's safety manual.",
+   "rewrite": "仔细修订了实验室的安全手册。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps a revision after we",
+   "output": "zh",
+   "anchors": [],
+   "original": "We revised the survey after the pilot.",
+   "rewrite": "我们在预调查后修订了问卷。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "translate",
+   "label": "EN to ZH keeps an own revision after and carefully",
+   "output": "zh",
+   "anchors": [],
+   "original": "Drafted the lab report and carefully revised it.",
+   "rewrite": "起草了实验报告并仔细修订。",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
   }
  ]
 }

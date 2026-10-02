@@ -130,7 +130,8 @@ class TestSpans:
 
 
 class TestLockWordsScanLinearly:
-    @pytest.mark.parametrize("text", ["a-" * 30000, "then " * 12000 + "x"])
+    @pytest.mark.parametrize("text", ["a-" * 30000, "then " * 12000 + "x", "carefully " * 6000 + "x",
+                                      "x, a " + "b" * 60000, "x, a b, " * 6000])
     def test_another_persons_revision_is_read_in_linear_time(self, text):
         # Starting the word anywhere inside "a-a-a-..." or repeating "then" without
         # a bound took about 6 s here; the anchored scan takes ~0.02 s.
@@ -374,20 +375,34 @@ class TestLeadingClause:
         assert em._done_parts(chinese) == parts
 
 
+REVISION_ADVERBS = ("carefully", "thoroughly", "personally", "independently", "jointly", "extensively", "substantially",
+                    "heavily", "fully", "completely", "partially", "partly", "lightly", "briefly", "closely", "rigorously",
+                    "meticulously", "iteratively", "repeatedly", "manually", "critically", "collaboratively")
+
+
 class TestAnotherPersonsRevision:
     @pytest.mark.parametrize("text", [
         "Submitted a revised plan.", "Submitted an edited volume.", "Submitted the revised plan.",
         "Submitted this revised plan.", "Submitted these revised plans.", "Submitted those revised plans.",
-        "Submitted my revised plan.", "Submitted our revised plan.", "Submitted its revised plan.",
-        "Submitted their revised plan.", "Submitted his revised plan.", "Submitted her revised plan.",
+        "Submitted my revised plan.", "Submitted our revised plan.",
         "Drafted the plan or revised it.", "Drafted the plan and also revised it.", "Drafted the plan and revised it.",
-        "I revised the plan.", "Revised the plan."])
+        "I revised the plan.", "Revised the plan.", "We revised the plan.",
+        *(f"{adverb.capitalize()} revised the plan." for adverb in REVISION_ADVERBS),
+        *(f"Drafted the plan and {adverb} edited it." for adverb in REVISION_ADVERBS),
+        "Wrote the proposal, my first grant, and revised it."])
     def test_the_students_own_revision_or_a_version_is_no_one_elses_part(self, text):
         assert not em._OTHER_PERSON.search(text)
 
     @pytest.mark.parametrize("text", [
         "Drafted it; Sam revised it.", "Drafted it; Sam then revised it.", "Drafted it; Sam also revised it.",
-        "Drafted a plan that I revised.", "Drafted it; Sam and I revised it.", "Wrote it, edited by Sam."])
+        "Drafted a plan that I revised.", "Drafted it; Sam and I revised it.", "Wrote it, edited by Sam.",
+        "Submitted its revised plan.", "Submitted their revised plan.", "Submitted his revised plan.",
+        "Submitted her revised plan.", "Drafted it, which we revised.",
+        *(f"Drafted it; Sam {adverb} revised it." for adverb in REVISION_ADVERBS),
+        *(f"Drafted it; Sam, {det} senior student, revised it." for det in ("a", "the", "my", "our", "his", "her",
+                                                                            "their")),
+        "Drafted it; Sam, an editor, revised it.", "Drafted it; Sam, a senior student, also revised it.",
+        "Drafted it; Sam, a senior student, carefully revised it."])
     def test_a_revision_after_another_word_is_another_persons_part(self, text):
         assert em._OTHER_PERSON.search(text)
 

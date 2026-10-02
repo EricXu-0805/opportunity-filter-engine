@@ -555,18 +555,25 @@ _WEAK_OPENER = re.compile(
     re.I)
 _PERSONAL_PART = re.compile(r"(?:\bI\b|\b[Mm]y\s+part\s+was\b|本人|我(?!们))\s*(?:只|only\s+)?([^;；。.]+)")
 _FIRST_CLAUSE = re.compile(r"[;；,，。.(（:：]")
+# How the student's own revision may be said before its verb: "Carefully revised the manual".
+_REVISION_ADVERBS = ("carefully|thoroughly|personally|independently|jointly|extensively|substantially|heavily|fully"
+                     "|completely|partially|partly|lightly|briefly|closely|rigorously|meticulously|iteratively"
+                     "|repeatedly|manually|critically|collaboratively")
 _OTHER_PERSON = re.compile(
     r"\b(?:advisors?|advisers?|supervisors?|mentors?|PIs?|professors?|prof|dr|postdocs?|postdoctoral|TAs?|staff"
     r"|instructors?|technicians?|engineers?|(?:teaching|course)\s+assistants?"
     r"|(?:graduate|grad|phd|ph\.d\.?|doctoral|master'?s)\s+students?|nurses?|doctors?|physicians?|surgeons?"
     r"|therapists?|pharmacists?|adapted|starter|template|based\s+on)\b"
     # A revision is someone else's part ("; Sam revised it", "which was later revised",
-    # "edited by the lab manager") unless it opens the student's own clause: "Revised
-    # the safety manual", "Drafted the report and revised it", "I edited". "The
-    # revised proposal" names a version. Each skipped word is no candidate itself,
-    # so a line is read in linear time.
-    r"|(?<![\w'’-])(?!(?:and|or|also|I|a|an|the|this|these|those|my|our|its|their|his|her)\b)[\w'’-]+\s+"
-    r"(?:(?:also|I|and\s+I)\s+)*(?:revised|rewrote|rewritten|edited)\b"
+    # "their revised version", "; Sam, a senior student, revised it", "edited by the
+    # lab manager") unless it opens the student's own clause: "Revised the safety
+    # manual", "Carefully revised it", "We revised it", "Drafted the report and revised
+    # it", "I edited". "The revised proposal" and "my revised plan" name a version.
+    # Each skipped word is no candidate itself, so a line is read in linear time.
+    r"|(?<![\w'’-])(?!(?:and|or|also|I|we|a|an|the|this|these|those|my|our|" + _REVISION_ADVERBS + r")\b)[\w'’-]+\s+"
+    r"(?:(?:also|I|and\s+I|we|" + _REVISION_ADVERBS + r")\s+)*(?:revised|rewrote|rewritten|edited)\b"
+    r"|(?<![\w'’-])[\w'’-]+\s*,\s*(?:a|an|the|my|our|his|her|their)\s+[^,;.]+?,\s*(?:(?:also|" + _REVISION_ADVERBS
+    + r")\s+)*(?:revised|rewrote|rewritten|edited)\b"
     r"|\b(?:revised|rewrote|rewritten|edited)\s+by\b"
     r"|导师|老师|师兄|师姐|博士生|博士后|硕士生|研究生|技术员|工程师|助教|教授|参考(?!文献|资料|书目)|基于|医生|护士",
     re.I)
