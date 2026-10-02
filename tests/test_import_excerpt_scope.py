@@ -84,23 +84,32 @@ def test_pasted_text_within_the_excerpt_is_labelled_as_sent_in_full(monkeypatch)
     assert result.extra_fields['ai_input_scope'] == 'full_source'
 
 
-def test_pasted_text_beyond_the_excerpt_stays_an_excerpt(monkeypatch):
+# A repeated paste has no word past the cut that the model did not see, but
+# the model saw fewer of them than the student saved.
+@pytest.mark.parametrize('tail', [pytest.param(TAIL, id='unique-tail'), pytest.param('', id='repeated-text')])
+def test_pasted_text_beyond_the_excerpt_stays_an_excerpt(monkeypatch, tail):
     calls = []
     _model_that_answers(monkeypatch, calls)
-    text = 'Undergraduate research assistant wanted. ' * 200 + TAIL
+    text = 'Undergraduate research assistant wanted. ' * 200 + tail
+    assert len(text) > url_parser.LLM_BODY_EXCERPT_CHARS
     result = url_parser.parse_text_llm(text)
     assert TAIL not in calls[0][1]['content']
     assert result.extra_fields['ai_input_scope'] == 'source_excerpt'
 
 
-def test_short_page_whose_every_saved_word_reached_the_model_is_labelled_full(monkeypatch):
+@pytest.mark.parametrize(('items', 'saved'), [
+    pytest.param('<ol><li>CV</li><li>Transcript</li></ol>', '1. CV\n2. Transcript', id='numbered-list'),
+    # A list can count from below zero, and "-2. " is the reader's marker too.
+    pytest.param('<ol start="-2"><li>CV</li><li>Transcript</li></ol>', '-2. CV\n-1. Transcript', id='negative-start'),
+])
+def test_short_page_whose_every_saved_word_reached_the_model_is_labelled_full(monkeypatch, items, saved):
     calls = []
     _model_that_answers(monkeypatch, calls)
     _fetched(monkeypatch, '<html><head><title>Soil lab</title></head><body><main><h1>Soil lab</h1>'
-                          '<p>Undergraduates may apply by <b>June 1</b>.</p><ol><li>CV</li><li>Transcript</li></ol>'
+                          '<p>Undergraduates may apply by <b>June 1</b>.</p>' + items +
                           '<table><tr><td>Hours</td><td>10 per week</td></tr></table></main></body></html>')
     result = url_parser.parse_url_llm(URL)
-    assert result.description_raw == 'Soil lab\nUndergraduates may apply by June 1.\n1. CV\n2. Transcript\nHours\t10 per week'
+    assert result.description_raw == f'Soil lab\nUndergraduates may apply by June 1.\n{saved}\nHours\t10 per week'
     assert result.extra_fields['ai_input_scope'] == 'full_source'
 
 

@@ -76,6 +76,8 @@ def test_heading_that_only_begins_with_a_bot_check_name_is_still_read(title):
     "Checking your browser before accessing example.edu", "Checking your browser before proceeding.",
     "Checking your browser before continuing to example.edu…!",
     "Human Verification", "Bot verification!", "DDoS-Guard", "Sign in - Example University", "Access denied!!",
+    "One moment, please…", "One moment please", "Verify you are a human", "Making sure you’re not a bot",
+    "Robot Challenge Screen",
 ])
 def test_whole_bot_check_heading_is_an_access_page(title):
     result = capture("<h1>" + title + "</h1><p>We study robotics.</p>")

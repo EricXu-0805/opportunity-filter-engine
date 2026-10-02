@@ -365,8 +365,28 @@ IMUNIFY_WEBSHIELD = (
     pytest.param(page('<p>Robot Challenge Screen</p>', '<title>Robot Challenge Screen</title>'
                       '<meta http-equiv="refresh" content="0;/.well-known/sgcaptcha/?r=%2Fprogram">'),
                  id='siteground'),
+    # One check sentence under the site's own title, with nothing else to read:
+    # PerimeterX's on one line and two Cloudflare wordings.
+    pytest.param(page('<div id="px-captcha"></div><p>Press &amp; Hold to confirm you are a human (and not a bot).</p>',
+                      '<title>example.edu</title>'), id='perimeterx-site-title'),
+    pytest.param(page('<h1>example.edu</h1><p>Checking if the site connection is secure</p>',
+                      '<title>example.edu</title>'), id='cloudflare-connection-site-title'),
+    pytest.param(page('<h1>example.edu</h1><p>Please stand by, while we are checking your browser...</p>',
+                      '<title>example.edu</title>'), id='cloudflare-stand-by-site-title'),
 ])
 def test_bot_verification_interstitial_is_an_access_page_not_a_posting(html):
+    with pytest.raises(ImportDocumentError) as raised:
+        extract_import_document(html, content_type='text/html')
+    assert raised.value.reason == 'access_page'
+
+
+# The check sentences that contract "you are", with either apostrophe, alone
+# under the site's own title.
+@pytest.mark.parametrize('sentence', [
+    "Making sure you're not a bot!", 'Making sure you’re not a bot!', "Verifying you're human.", 'Verifying you’re human.',
+])
+def test_a_contracted_check_sentence_alone_under_the_site_title_is_an_access_page(sentence):
+    html = page(f'<h1>example.edu</h1><p>{sentence}</p><p id="status">Loading...</p>', '<title>example.edu</title>')
     with pytest.raises(ImportDocumentError) as raised:
         extract_import_document(html, content_type='text/html')
     assert raised.value.reason == 'access_page'
@@ -398,6 +418,9 @@ def test_anubis_check_under_the_site_title_with_its_explanation_is_an_access_pag
     pytest.param('', '<div id="cf-challenge-running"></div>', id='cloudflare-legacy-running'),
     pytest.param('<meta http-equiv="refresh" content="0;/.well-known/sgcaptcha/?r=%2Fprogram">', '',
                  id='siteground-refresh'),
+    # The vendor's path counts in a form's action as it does in a script or a refresh.
+    pytest.param('', '<form method="get" action="/.within.website/x/cmd/anubis/api/pass-challenge">'
+                 '<input type="hidden" name="response" value="1"></form>', id='anubis-form-action'),
 ])
 def test_vendor_challenge_markup_refuses_the_page_however_much_it_explains(head, body):
     title = '<title>Nicholas Institute for Energy, Environment &amp; Sustainability</title>'
@@ -491,6 +514,14 @@ def test_markup_a_site_can_carry_for_itself_does_not_refuse_its_page(source, mar
     assert all(line in marked.splitlines() for line in plain.splitlines())
 
 
+# A site behind Anubis can name its path in a policy on every page. Only a
+# refresh meta sends the browser to the check.
+def test_a_meta_that_names_a_check_path_without_redirecting_does_not_refuse_the_page():
+    policy = ('<meta http-equiv="Content-Security-Policy" '
+              'content="script-src \'self\' https://example.edu/.within.website/x/cmd/anubis/">')
+    assert 'Soil Microbiology Lab' in extract_import_document(page(SOIL_POSTING.format(''), policy))['text']
+
+
 def test_an_empty_challenge_box_is_still_a_bot_check():
     with pytest.raises(ImportDocumentError) as raised:
         extract_import_document(page('<div id="challenge-running"></div>'))
@@ -525,11 +556,18 @@ def test_an_empty_challenge_box_is_still_a_bot_check():
                  'Firefox and Safari. Undergraduates apply by March 1, 2027.</p></main>', '',
                  'Undergraduates apply by March 1, 2027.', id='checking-your-browser-heading'),
     # The punctuation these titles end in on a check page (Imunify360's "One
-    # moment, please...") keeps them a gate, not an outright refusal.
+    # moment, please..."), and a missing comma, keep them a gate, not an
+    # outright refusal.
     pytest.param(SOIL_POSTING.format(''), '<title>One moment, please...</title>', 'Soil Microbiology Lab',
                  id='one-moment-title-ellipsis'),
+    pytest.param(SOIL_POSTING.format(''), '<title>One moment, please…</title>', 'Soil Microbiology Lab',
+                 id='one-moment-title-ellipsis-character'),
+    pytest.param(SOIL_POSTING.format(''), '<title>One moment please</title>', 'Soil Microbiology Lab',
+                 id='one-moment-title-no-comma'),
     pytest.param(SOIL_POSTING.format(''), '<title>Human Verification.</title>', 'Soil Microbiology Lab',
                  id='human-verification-title-period'),
+    pytest.param(SOIL_POSTING.format(''), '<title>Human Verification!</title>', 'Soil Microbiology Lab',
+                 id='human-verification-title-exclamation'),
     pytest.param(SOIL_POSTING.format(''), '<title>Checking your browser...</title>', 'Soil Microbiology Lab',
                  id='checking-your-browser-title-ellipsis'),
 ])
