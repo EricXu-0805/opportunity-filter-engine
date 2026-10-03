@@ -15,6 +15,7 @@ import json
 import logging
 import re
 import time
+import unicodedata
 from collections import Counter
 from dataclasses import dataclass, field, replace
 
@@ -1153,8 +1154,9 @@ REVIEW_SYSTEM_PROMPT = (
     "Give 'links' one entry per link of its pair, and [] when the pair has none.\n"
 )
 
-# A rule number the reviewer tagged on one of its own listed changes ("[2]").
-_BROKEN_RULE_TAG = re.compile(r"\[\s*(?:rule\s*)?[1-5]\b", re.IGNORECASE)
+# A rule number the reviewer tagged on one of its own listed changes ("[2]", "【2】", "[规则2]"),
+# read after NFKC so the full-width "［２］" counts too.
+_BROKEN_RULE_TAG = re.compile(r"[\[【]\s*(?:rule\s*|规则\s*)?[1-5]\b", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -1221,7 +1223,7 @@ def ai_review(pairs: list[ReviewPair], *, deadline: float | None = None) -> list
                   and {mark["id"] for mark in marks} == declared and len(marks) == len(declared)
                   and all(mark["entailed"] is True for mark in marks))
         faithful = (verdict.get("faithful") is True and linked
-                    and not _BROKEN_RULE_TAG.search(str(verdict.get("changes") or "")))
+                    and not _BROKEN_RULE_TAG.search(unicodedata.normalize("NFKC", str(verdict.get("changes") or ""))))
         seen[index] = seen.get(index, True) and faithful
         if faithful:
             entailed.setdefault(index, set()).update(declared)

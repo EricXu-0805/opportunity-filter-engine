@@ -434,3 +434,28 @@ def test_full_width_punctuation_keeps_a_chinese_rewrite_chinese_and_reviewed(opp
     assert len(reviews) == 1 and offered(path, body) == [[]]
     body, reviews = post_tailor(opportunity, monkeypatch, path, [(original, row)], ACCEPT_ALL, anchors=[ANY_ANCHOR])
     assert offered(path, body) == [[rewrite]] and em.language(rewrite) == em.language(original) == "zh"
+
+
+# ------------------------------------------------------- a verdict that contradicts itself
+
+# A non-empty "problem" beside faithful=true and "[ok]" tags is not read as a rejection: that shape goes to the
+# review's calibration set (docs/resume_writing_quality_contract.md, "Frozen lists"), not into a parsing rule.
+@pytest.mark.parametrize(("changes", "problem"), [
+    ("dropped 约 [3]", ""), ("dropped 约 【3】", ""), ("dropped 约 ［３］", ""), ("dropped 约 [３]", ""),
+    ("删除了“约”［规则3］", ""), ("dropped 约 [rule 3]", ""),
+])
+def test_a_faithful_verdict_that_names_a_broken_rule_is_not_accepted(monkeypatch, changes, problem):
+    """ASCII "[3]" beside faithful=true rejects; so does the same tag in full-width form or 【】 brackets."""
+    reply = json.dumps({"verdicts": [{"index": 1, "changes": changes, "faithful": True, "links": [],
+                                      "problem": problem}]}, ensure_ascii=False)
+    monkeypatch.setattr(em, "chat_completion", lambda messages, **kwargs: reply)
+    monkeypatch.setattr(em, "model_for", lambda *args: {})
+    assert em.ai_review([em.ReviewPair("约 200 份问卷，本人只负责录入。", "录入了 200 份问卷。")]) == ["rejected"]
+
+
+def test_a_faithful_verdict_with_ok_tags_and_numbers_is_accepted(monkeypatch):
+    reply = json.dumps({"verdicts": [{"index": 1, "changes": "reordered 200 份 [ok]; 【ok】 kept 约", "faithful": True,
+                                      "links": [], "problem": ""}]}, ensure_ascii=False)
+    monkeypatch.setattr(em, "chat_completion", lambda messages, **kwargs: reply)
+    monkeypatch.setattr(em, "model_for", lambda *args: {})
+    assert em.ai_review([em.ReviewPair("约 200 份问卷，本人只负责录入。", "本人只负责录入约 200 份问卷。")]) == ["accepted"]
