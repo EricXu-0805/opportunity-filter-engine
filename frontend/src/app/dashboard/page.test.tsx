@@ -799,12 +799,12 @@ describe('DashboardPage — a reminder is only "due" if it will actually be sent
     expect(screen.queryByText('dashboard.reminders.pending {"count":1}')).toBeNull();
   });
 
-  it('a rejected row on a live listing counts as needing review, never as due', async () => {
+  it.each(['rejected', 'replied', 'interviewing'] as const)('a row marked %s on a live listing counts as needing review, never as due', async (status) => {
     // Actionable target, undeliverable status: the cron's query selects
-    // contacted/applied/replied/interviewing and nothing else.
+    // contacted/applied and nothing else.
     mockGetFavorites.mockResolvedValue(new Set());
     mockGetInteractionsFull.mockResolvedValue(new Map([
-      ['opp-a', { type: 'rejected', remind_at: isoDateIn(0) }],
+      ['opp-a', { type: status, remind_at: isoDateIn(0) }],
     ]));
     mockGetShortlistOpportunities.mockResolvedValue(shortlist([
       {

@@ -155,7 +155,7 @@ describe('formatReminderLabel', () => {
 // The one predicate four surfaces share — the tracker board, the detail
 // panel's date editor, the detail page's automatic suggestion, and the
 // dashboard's due list. It copies the reminders cron's own two filters:
-//   interaction_type in (contacted, applied, replied, interviewing)
+//   interaction_type in (contacted, applied)
 //   AND the target is release-visible and still actionable
 // A copy that drifts produces a control that accepts the click, stores the
 // date, and then nothing arrives.
@@ -183,10 +183,21 @@ describe('canDeliverReminder', () => {
     return { source_type: 'campus_program', record_kind: 'listing', target_truth: truth };
   }
 
-  it.each(['contacted', 'applied', 'replied', 'interviewing'] as const)(
+  it.each(['contacted', 'applied'] as const)(
     'a live listing in %s is deliverable',
     (status) => {
       expect(canDeliverReminder(LIVE_LISTING as never, status)).toBe(true);
+    },
+  );
+
+  it.each(['replied', 'interviewing'] as const)(
+    'a live target in %s is not — a reply ends follow-up reminders',
+    (status) => {
+      // A follow-up reminder chases an answer. Once the student has one, the
+      // cron's "follow up" nudge is wrong, and a reminder the student set
+      // while waiting must stop rather than arrive mid-interview.
+      expect(canDeliverReminder(LIVE_LISTING as never, status)).toBe(false);
+      expect(canDeliverReminder(LIVE_FACULTY as never, status)).toBe(false);
     },
   );
 

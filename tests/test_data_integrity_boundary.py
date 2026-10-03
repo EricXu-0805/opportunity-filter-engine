@@ -6,6 +6,7 @@ Backend halves of the W14 invariants:
     bookkeeping failure        -> loud counter, retry next cron (never silent)
     one row's failure          -> never aborts the rest of the batch
     'contacted' (W12)          -> its reminders fire like any other status
+    'replied'/'interviewing'   -> a recorded reply stops reminders (M49)
     anonymous purchases        -> survive a Flow B account merge (SQL pinned
                                   live by supabase/tests/flow_b_merge_test.sql
                                   scenario 8 in the Migrations CI job; the
@@ -17,8 +18,10 @@ retention, save honesty) are pinned by the frontend suites.
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
+import pytest
 from fastapi.testclient import TestClient
 
 from backend.main import app
@@ -49,6 +52,17 @@ def _set_push_env(monkeypatch):
     monkeypatch.setenv("VAPID_SUBJECT", "mailto:ops@example.com")
     monkeypatch.delenv("RESEND_API_KEY", raising=False)
     monkeypatch.delenv("RESEND_FROM_EMAIL", raising=False)
+
+
+def _postgrest_in(rows, params, column):
+    """The rows PostgREST returns for ``column=in.(a,b)``. Applying the route's
+    own filter is what lets a test see a row the query excludes go unsent."""
+    spec = (params or {}).get(column)
+    if spec is None:
+        return rows
+    assert spec.startswith("in.(") and spec.endswith(")"), spec
+    allowed = set(spec[len("in.("):-1].split(","))
+    return [row for row in rows if row.get(column) in allowed]
 
 
 def _install_stubs(monkeypatch, *, interactions, subscriptions, gets=None,
@@ -108,7 +122,9 @@ def _install_stubs(monkeypatch, *, interactions, subscriptions, gets=None,
                 return _Resp({"email": account_email})
             if "push_subscriptions" in url:
                 return _Resp(subscriptions)
-            return _Resp(interactions)
+            return _Resp(_postgrest_in(
+                interactions, kwargs.get("params"), "interaction_type",
+            ))
 
         async def patch(self, url, **kwargs):
             if patches is not None:
@@ -160,8 +176,7 @@ class TestContactedReminders:
         _install_stubs(monkeypatch, interactions=[], subscriptions=[], gets=gets)
         assert _run().status_code == 200
         due_get = next(g for g in gets if "interactions" in g["url"])
-        assert due_get["params"]["interaction_type"] == \
-            "in.(contacted,applied,replied,interviewing)"
+        assert due_get["params"]["interaction_type"] == "in.(contacted,applied)"
 
     def test_contacted_row_is_delivered_and_cleared(self, monkeypatch):
         _set_push_env(monkeypatch)
@@ -172,6 +187,81 @@ class TestContactedReminders:
         assert body["sent"] == 1
         clear = [p for p in patches if "interactions" in p["url"]]
         assert clear and clear[0]["json"] == {"remind_at": None}
+
+
+# ---------------------------------------------------------------------------
+# A recorded reply stops follow-up reminders (M49)
+# ---------------------------------------------------------------------------
+
+class TestRemindersStopAfterAReply:
+    """The reminder says "follow up". Once the student has marked a reply or
+    an interview, a date they set while waiting must stop firing; it stays on
+    their tracker as their own record, which the frontend marks as not sent."""
+
+    def _due_on_both_channels(self, monkeypatch, status):
+        """dev-1 is reachable by push, dev-2 only by the email fallback."""
+        _set_push_env(monkeypatch)
+        monkeypatch.setenv("RESEND_API_KEY", "fake")
+        monkeypatch.setenv("RESEND_FROM_EMAIL", "from@example.com")
+        pushes: list = []
+        emails: list = []
+        patches: list = []
+
+        async def _record_email(**kwargs):
+            emails.append(kwargs)
+
+        _install_stubs(
+            monkeypatch,
+            interactions=[{**_DUE, "interaction_type": status},
+                          {**_DUE2, "interaction_type": status}],
+            subscriptions=[_SUB],
+            patches=patches,
+            webpush_impl=lambda **kwargs: pushes.append(kwargs),
+            # Per status: the recipient quota is process-wide state.
+            account_email=f"{status}-reminder@example.com",
+            send_impl=_record_email,
+        )
+        return _run().json(), pushes, emails, patches
+
+    @pytest.mark.parametrize("status", ["replied", "interviewing"])
+    def test_a_due_reminder_after_a_reply_sends_nothing(self, monkeypatch, status):
+        body, pushes, emails, patches = self._due_on_both_channels(monkeypatch, status)
+        assert body["due"] == 0
+        assert body["sent"] == 0
+        assert pushes == []
+        assert emails == []
+        assert patches == []  # remind_at is left as the student set it
+
+    @pytest.mark.parametrize("status", ["contacted", "applied"])
+    def test_the_same_setup_still_awaiting_an_answer_fires(self, monkeypatch, status):
+        # Control for the test above: identical rows and channels, so a
+        # silent run there comes from the status filter and nothing else.
+        body, pushes, emails, _patches = self._due_on_both_channels(monkeypatch, status)
+        assert (body["due"], body["sent"], body["emailed"]) == (2, 1, 1)
+        assert len(pushes) == 1
+        assert len(emails) == 1
+
+    def test_the_frontend_offers_reminders_for_the_same_statuses(self, monkeypatch):
+        # frontend/src/lib/reminders.ts copies this filter so the tracker, the
+        # detail page, the dashboard and the cold-email chips only offer a
+        # reminder the cron will send. A copy that drifts is a control that
+        # accepts a date and then never fires — or fires after a reply.
+        _set_push_env(monkeypatch)
+        gets: list = []
+        _install_stubs(monkeypatch, interactions=[], subscriptions=[], gets=gets)
+        assert _run().status_code == 200
+        due_get = next(g for g in gets if "interactions" in g["url"])
+        cron = set(due_get["params"]["interaction_type"][len("in.("):-1].split(","))
+
+        source = (_REPO / "frontend/src/lib/reminders.ts").read_text()
+        declared = re.search(
+            r"REMINDABLE_STATUSES\b[^=]*=\s*new Set<InteractionType>\(\[(.*?)\]\)",
+            source, re.S,
+        )
+        assert declared, "REMINDABLE_STATUSES declaration not found"
+        frontend = set(re.findall(r"'([a-z_]+)'", declared.group(1)))
+
+        assert frontend == cron == {"contacted", "applied"}
 
 
 # ---------------------------------------------------------------------------

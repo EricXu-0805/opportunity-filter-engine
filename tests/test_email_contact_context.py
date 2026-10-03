@@ -243,8 +243,8 @@ def test_ai_can_use_confirmed_contact_context_without_declaring_a_real_delivery(
     out = result(post(client, path, context, engine="ai"), path)
     assert out["method"] == ("llm" if path == "refine" else "ai"), out
     assert out.get("fallback_reason") is None
-    # Existing trusted-greeting normalization uses a single line break.
-    assert body.replace("Dear Pat Lee,\n\n", "Dear Pat Lee,\n", 1) == out["body"]
+    # Trusted-greeting normalization keeps the blank line after the greeting.
+    assert body == out["body"]
     assert captured
     assert all("CONTACT CONTEXT" in messages[1]["content"] for messages in captured)
     assert all("NOT student competence evidence" in messages[1]["content"] for messages in captured)
@@ -527,4 +527,7 @@ def test_labelled_prior_contact_claims_are_flagged(sentence):
 @pytest.mark.parametrize("sentence", _CONTACT_SENTENCES["first_contact"])
 def test_labelled_first_contact_sentences_are_not_flagged(sentence):
     from backend.lib.email_contact_context import contact_claim_violations, contact_context_parts
-    assert contact_claim_violations(sentence, contact_context_parts(FIRST)) == []
+    # Not contact history, but it offers 12 hours a week that no availability confirmed.
+    unconfirmed_hours = "so I could work up to 12 hours a week in a lab" in sentence
+    expected = ["unsupported time commitment"] if unconfirmed_hours else []
+    assert contact_claim_violations(sentence, contact_context_parts(FIRST)) == expected
