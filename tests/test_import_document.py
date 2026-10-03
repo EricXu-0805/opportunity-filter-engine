@@ -9,6 +9,8 @@ import pytest
 from bs4 import BeautifulSoup, Tag
 
 from src.collectors.import_document import (
+    _CHECK_TITLE,
+    _SIGN_IN_TITLE,
     MAX_DEPTH,
     MAX_NODES,
     MAX_PARSE_EVENTS,
@@ -18,6 +20,7 @@ from src.collectors.import_document import (
     extract_import_document,
     parse_import_html,
 )
+from src.contact_instructions import _BLOCKED_PAGE_TITLE
 
 
 def page(body, head=''):
@@ -640,13 +643,24 @@ def test_an_empty_challenge_box_is_still_a_bot_check():
                  id='human-verification-title-exclamation'),
     pytest.param(SOIL_POSTING.format(''), '<title>Checking your browser...</title>', 'Soil Microbiology Lab',
                  id='checking-your-browser-title-ellipsis'),
+    # The long check heading followed by words that name no site is a help
+    # page's heading too, and refuses only a page with nothing else to read.
+    pytest.param('<main><h1>Checking your browser before continuing to the application form</h1><p>The research '
+                 'application portal works in current Chrome, Firefox and Safari. Undergraduates apply by March 1, '
+                 '2027.</p></main>', '', 'Undergraduates apply by March 1, 2027.', id='long-check-heading-help-page'),
+    # Form text counts against a check title and a captcha note: ASP.NET wraps
+    # the whole page in one form.
+    pytest.param('<form method="post" action="./Posting.aspx?id=12" id="form1">' + SOIL_POSTING.format(
+        '<p>Please verify you are human before submitting.</p>') + '</form>', '<title>One moment, please</title>',
+                 'Soil Microbiology Lab', id='one-moment-title-page-wide-form'),
 ])
 def test_bot_check_words_in_a_postings_title_do_not_refuse_it(body, head, kept):
     assert kept in extract_import_document(page(body, head))['text']
 
 
 # A check under one of the titles above, explaining itself in a sentence or two
-# Cloudflare, AWS WAF and bot-protection plugins print. Main imported all six.
+# Cloudflare, AWS WAF and bot-protection plugins print. Main imported all but
+# the long heading's check, which it refused by the heading alone.
 CHECK_EXPLANATION = ('<p>This process is automatic. Your browser will redirect to your requested content shortly.</p>'
                      '<p>Please allow up to 5 seconds…</p>')
 
@@ -660,12 +674,46 @@ CHECK_EXPLANATION = ('<p>This process is automatic. Your browser will redirect t
                  id='bot-verification'),
     pytest.param('<p>This process is automatic. Your browser will redirect to your requested content shortly.</p>',
                  '<title>One moment, please...</title>', id='one-moment-please'),
+    pytest.param('<h1>Checking your browser before continuing to the application form</h1><p>We are checking that you '
+                 'are not a robot. Please wait a moment.</p>', '', id='long-check-heading'),
     pytest.param('<p>Sorry, you have been blocked</p>', '<title>One moment, please</title>', id='blocked-note'),
 ])
 def test_a_check_under_a_title_a_posting_can_carry_is_an_access_page(body, head):
     with pytest.raises(ImportDocumentError) as raised:
         extract_import_document(page(body, head))
     assert raised.value.reason == 'access_page'
+
+
+# Which whole titles are blocked (_BLOCKED_PAGE_TITLE, shared with the contact
+# capture), and which of those an ordinary page can carry: a sign-in title,
+# a wall only with nothing else readable, and a check title, one bot-check
+# signal among the others. Any other blocked title refuses the page outright.
+@pytest.mark.parametrize(('title', 'blocked', 'kind'), [
+    # End punctuation and a separator with the site's name, both at once.
+    ('Attention Required! | Cloudflare', True, None),
+    ('Access denied!! | Example University', True, None),
+    ('Page not found… – Example University', True, None),
+    ('Attention Required!', True, None),
+    ('Attention required - Cloudflare', True, None),
+    ('Sign in! | Example Portal', True, 'sign-in'),
+    ('Log in… – Example University', True, 'sign-in'),
+    ('Human Verification', True, 'check'),
+    ('One moment, please...', True, 'check'),
+    ('Checking your browser', True, 'check'),
+    # The long check heading names the site, or nothing, on a check page.
+    ('Checking your browser before accessing', True, None),
+    ('Checking your browser before accessing example.edu.', True, None),
+    ('Checking your browser before continuing to example.edu…!', True, None),
+    ('Checking your browser before accessing the website.', True, None),
+    ('Checking your browser before continuing to the application form', True, 'check'),
+    ('Checking your browser before continuing to Handshake', True, 'check'),
+    ('Checking your browser before proceedings begin', False, None),
+    ('Human verification: a psychology study', False, None),
+])
+def test_title_rules_tell_outright_titles_from_titles_a_page_can_carry(title, blocked, kind):
+    assert bool(_BLOCKED_PAGE_TITLE.fullmatch(title)) is blocked
+    assert bool(_SIGN_IN_TITLE.fullmatch(title)) is (kind == 'sign-in')
+    assert bool(_CHECK_TITLE.fullmatch(title)) is (kind == 'check')
 
 
 # Sentences an ordinary sparse posting can hold. Bot checks print different
@@ -684,6 +732,45 @@ SPARSE = '<main><h1>Summer REU 2027</h1><ul><li>Stipend $6,000</li><li>10 weeks<
 def test_ordinary_sentences_on_a_sparse_posting_are_not_a_bot_check(note):
     text = extract_import_document(page(SPARSE.format(note)))['text']
     assert '- Stipend $6,000' in text
+
+
+# A sparse posting whose list or table is too short to be source shows one
+# captcha note, check footer or check title. A check shows nothing else: one
+# signal does not refuse a page that has more to read. Main refused all eight.
+@pytest.mark.parametrize(('body', 'head', 'kept'), [
+    pytest.param(SPARSE.format('<p>Please verify you are human.</p>'), '', '- 10 weeks', id='verify-note'),
+    pytest.param(SPARSE.format('<form action="/apply"><p>Please verify you are human.</p><button>Apply</button></form>'),
+                 '', '- 10 weeks', id='verify-note-in-apply-form'),
+    pytest.param(LAB_TABLE.format('<p>Please verify you are human.</p>'), '', 'Optics\t$15', id='table-verify-note'),
+    pytest.param(SPARSE.format('<p>Confirm you are human:</p><input name="answer">'), '', '- 10 weeks',
+                 id='confirm-question'),
+    pytest.param(SPARSE.format('<p>Checking your browser settings may help.</p>'), '', '- 10 weeks',
+                 id='browser-settings-tip'),
+    pytest.param(SPARSE.format('') + '<footer><p>DDoS protection by Cloudflare</p></footer>', '', '- 10 weeks',
+                 id='ddos-protection-footer'),
+    pytest.param('<form method="post" action="./Posting.aspx?id=12" id="form1"><div id="content">'
+                 + SPARSE.format('<p>Please verify you are human before submitting.</p><div class="g-recaptcha"></div>')
+                 + '</div></form>', '', '- 10 weeks', id='sharepoint-form-recaptcha-note'),
+    pytest.param(SPARSE.format(''), '<title>One moment, please</title>', '- 10 weeks', id='one-moment-title'),
+])
+def test_one_check_signal_beside_a_sparse_posting_does_not_refuse_it(body, head, kept):
+    assert kept in extract_import_document(page(body, head))['text'].splitlines()
+
+
+# Two check signals refuse a page with no independent source, short text and all.
+@pytest.mark.parametrize(('body', 'head'), [
+    pytest.param(SPARSE.format('<p>Please verify you are human.</p>'), '<title>Human Verification</title>',
+                 id='check-title-and-sentence'),
+    pytest.param(SPARSE.format('<p>Please verify you are human.</p><p>This process is automatic.</p>'), '',
+                 id='two-check-sentences'),
+    pytest.param(SPARSE.format('<p>Please verify you are human.</p>'
+                               '<iframe src="https://geo.captcha-delivery.com/captcha/?x=1"></iframe>'), '',
+                 id='check-sentence-and-frame'),
+])
+def test_two_check_signals_refuse_a_page_with_no_independent_source(body, head):
+    with pytest.raises(ImportDocumentError) as raised:
+        extract_import_document(page(body, head))
+    assert raised.value.reason == 'access_page'
 
 
 # A script page whose only text is a loading line is a page its scripts have
@@ -768,18 +855,28 @@ def test_blocked_title_rule_reads_a_long_punctuation_run_in_linear_time(where, m
     assert 'The Soil Microbiology Lab seeks an undergraduate research assistant for spring 2027.' in text
 
 
-# The title rules take a run of end punctuation and spaces before a separator.
-# Each heading below fails the rules only at its end, so a rule that retried
-# the ways to split its run would take time quadratic in it; these take
-# milliseconds.
+# The title rules take a run of end punctuation and spaces before a separator,
+# and an address after the long check heading. Each heading below fails the
+# rules only at its end, so a rule that retried the ways to split its run
+# would take time quadratic in it; these take milliseconds.
 @pytest.mark.parametrize('heading', [
     pytest.param('Attention required' + '!' * 50_000 + ' |\nThe lab', id='marks-before-a-separator'),
     pytest.param('Sign in' + '! ' * 25_000 + '\nThe lab', id='marks-and-spaces'),
+    pytest.param('Checking your browser before accessing ' + 'a.' * 25_000 + '!\nThe lab', id='dotted-address'),
+    pytest.param('Checking your browser before accessing ' + ('a' * 50 + '.') * 1_000 + '!x', id='long-address-labels'),
 ])
 def test_title_rules_read_a_long_heading_in_linear_time(heading):
     with _deadline(2):
         text = extract_import_document(page(SOIL_POSTING.format(f'<h1>{heading}</h1>')))['text']
     assert 'The Soil Microbiology Lab seeks an undergraduate research assistant for spring 2027.' in text
+
+
+# Under a check title each short line is weighed until one is not what a check
+# prints. 2,500 loading lines are read in hundredths of a second.
+def test_short_lines_under_a_check_title_are_weighed_in_linear_time():
+    with _deadline(2), pytest.raises(ImportDocumentError) as raised:
+        extract_import_document(page('<p>Loading...</p>' * 2_500, '<title>One moment, please</title>'))
+    assert raised.value.reason == 'access_page'
 
 
 # A page is read in time linear in its size and depth. The old reader walked

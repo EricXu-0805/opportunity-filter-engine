@@ -81,12 +81,20 @@ _LOADING_SHELL = re.compile(
     r'(?:this|it) (?:may|might|can|could) take (?:a few|several|a couple of) (?:seconds|moments))[.…!,]*\s*)+$',
     re.I,
 )
-# Titles an ordinary page can carry too: a sign-in page, a courtesy line, or a
-# stock check name a real posting may have as its title. They are a wall only
-# when nothing else on the page is readable.
-_GATE_TITLE = re.compile(
-    r'^(?:sign[ -]?in|log[ -]?in)(?:[.!…]*\s*[-|:–—].*|[.!…]+)?$|'
-    r'^(?:one moment,? please|(?:human|bot) verification|checking your browser)[.!…]*$', re.I,
+# Blocked titles an ordinary page can carry too (_BLOCKED_PAGE_TITLE). A
+# sign-in title is a wall only when nothing else on the page is readable.
+_SIGN_IN_TITLE = re.compile(r'^(?:sign[ -]?in|log[ -]?in)(?:[.!…]*\s*[-|:–—].*|[.!…]+)?$', re.I)
+# A courtesy line, a stock check name, and the long check heading when the
+# words after it name no site ("... before continuing to the application form")
+# are check titles a real posting can carry. Each is one bot-check signal
+# among the others (see _CHALLENGE_TEXT). The long heading with nothing, an
+# address or "the website" after it is DDoS-Guard's or Cloudflare's, and it
+# refuses the page outright.
+_CHECK_TITLE = re.compile(
+    r'^(?:(?:one moment,? please|(?:human|bot) verification|checking your browser)[.!…]*|'
+    r'checking your browser before (?:accessing|continuing|proceeding)\b'
+    r'(?!(?: (?:to )?(?:[\w-]+(?:\.[\w-]+)+|(?:the|this) (?:web)?site))?[.!…]*$).*)$',
+    re.I,
 )
 _GATE_TEXT = re.compile(
     r'\b(?:sign[ -]?in|log[ -]?in|password|username|verify you are human|checking your browser|'
@@ -95,8 +103,9 @@ _GATE_TEXT = re.compile(
 # A site can answer our server's address with a bot check while the same URL
 # opens normally for the student. Checks print these sentences and footer
 # lines and load these scripts and frames, but an ordinary page can carry them
-# too, so they refuse only a page with nothing else to read. Words may be split
-# by any whitespace: PerimeterX breaks its sentence with <br>.
+# too, so they refuse only a page with nothing else to read (see
+# read_import_document). Words may be split by any whitespace: PerimeterX
+# breaks its sentence with <br>.
 _CHALLENGE_TEXT = re.compile(
     r'\b(?:(?:your|the|this)\s+(?:request|browser|connection)\s+is\s+being\s+(?:verified|checked)|'
     r'(?:verif(?:y|ying|ies)|checking|confirm(?:ing)?|making\s+sure)\s+(?:that\s+)?you(?:\s+are|\'re|’re)\s+'
@@ -524,6 +533,17 @@ def _has_independent_source(root: Tag, *, forms: bool = False) -> bool:
     return False
 
 
+def _has_other_text(root: Tag) -> bool:
+    """Whether root shows anything a bot check does not, however short.
+
+    A sparse posting's list items and table cells are too short to be
+    independent source but are not what a check prints; its heading, buttons,
+    check sentences, loading lines and footer ids are. Form text counts.
+    """
+    return any(any(map(str.isalnum, sentence)) and not _discounted(sentence)
+               for sentence in _sentences(root, forms=True))
+
+
 def _address(tag: Tag) -> str:
     if tag.name == 'meta':
         return str(tag.get('content', '')) if str(tag.get('http-equiv', '')).lower() == 'refresh' else ''
@@ -587,10 +607,13 @@ def read_import_document(html: str, *, content_type: str | None = None) -> tuple
         if soup.title is not None:
             titles.append(soup.title.get_text(' ', strip=True))
         blocked = [value for value in titles if _BLOCKED_PAGE_TITLE.fullmatch(value)]
+        sign_in = [value for value in blocked if _SIGN_IN_TITLE.fullmatch(value)]
+        check_title = [value for value in blocked if _CHECK_TITLE.fullmatch(value)]
         # Denial/challenge titles and challenge markup are not job content. A
-        # sign-in or courtesy title, a password form or a visible challenge box
-        # is only a wall when no independent source remains.
-        if any(not _GATE_TITLE.fullmatch(value) for value in blocked) or _is_challenge_page(soup):
+        # sign-in title, a password form or a visible challenge box is only a
+        # wall when no independent source remains; a check title a posting can
+        # carry is weighed with the other check signals below.
+        if len(sign_in) + len(check_title) < len(blocked) or _is_challenge_page(soup):
             raise ImportDocumentError('access_page')
         independent: dict[bool, bool] = {}
 
@@ -599,12 +622,17 @@ def read_import_document(html: str, *, content_type: str | None = None) -> tuple
                 independent[forms] = _has_independent_source(root, forms=forms)
             return independent[forms]
 
-        if (blocked or gate_box) and not has_independent_source():
+        if (sign_in or gate_box) and not has_independent_source():
             raise ImportDocumentError('access_page')
         text = _render_text(root)
+        # Bot-check signals: a check title, check scripts or frames, and each
+        # check sentence or footer line, two at most. Any refuses a page with
+        # no independent source when nothing else is left to read; one beside
+        # a sparse posting's short list or table does not, two do.
+        signals = (bool(check_title) + _has_challenge_machinery(soup)
+                   + len(list(islice(_CHALLENGE_TEXT.finditer(text), 2))))
         if _ACCESS_SHELL.fullmatch(text) or (
-                (_has_challenge_machinery(soup) or _CHALLENGE_TEXT.search(text))
-                and not has_independent_source(forms=True)):
+                signals and not has_independent_source(forms=True) and (signals > 1 or not _has_other_text(root))):
             raise ImportDocumentError('access_page')
         # Scripts in the head fill a page as surely as scripts in its body.
         if soup.find('script') is not None and _LOADING_SHELL.fullmatch(text):
