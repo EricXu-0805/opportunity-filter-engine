@@ -1,4 +1,4 @@
-"""Round-3 display paths for acceptance criteria (1) and (3) of fix/tailor-review.
+"""Round-3 display paths for acceptance criteria (1), (2) and (3) of fix/tailor-review.
 
 Provider-free, through the helpers of tests/test_rewrite_display_paths.py: the
 generation call, the renovation plan and the faithfulness review are stubbed at
