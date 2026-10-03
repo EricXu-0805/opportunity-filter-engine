@@ -838,6 +838,46 @@ class TestReview:
         monkeypatch.setattr(em, "chat_completion", lambda *_a, **_k: raw)
         assert em.ai_review([em.ReviewPair("o", "r")]) == ["rejected"]
 
+    # Round-3 review (criterion 1): a verdict list applied by index let a verdict written for one
+    # pair accept another. Each verdict now has to sit at its pair's place with its pair's number.
+    @staticmethod
+    def _verdict(index, faithful=True, link=None):
+        link = link if link is not None else f"L{index}"
+        return {"index": index, "changes": "[ok]" if faithful else "dropped the qualifier", "faithful": faithful,
+                "links": [{"id": link, "entailed": True}], "problem": "" if faithful else "qualifier"}
+
+    @pytest.mark.parametrize("verdicts", [
+        # Pair 1 skipped, pair 2's verdict numbered 1.
+        [("v", 1, True, "L1")],
+        # Pair 2's verdict numbered 1, then pair 1's numbered 2: a swap no index tells from misnumbering.
+        [("v", 2, True, "L2"), ("v", 1, False, "L1")],
+        # Two verdicts for pair 1, none for pair 2.
+        [("v", 1, True, "L1"), ("v", 1, True, "L1")],
+        # One verdict too many.
+        [("v", 1, True, "L1"), ("v", 2, True, "L2"), ("v", 3, True, "L1")],
+        # The right length, one entry not an object.
+        [("v", 1, True, "L1"), "pair 2 is faithful"],
+        # The right length, numbered from 0.
+        [("v", 0, True, "L1"), ("v", 1, True, "L2")],
+        # The right length, an index written as a string.
+        [("v", 1, True, "L1"), ("s", "2", True, "L2")],
+    ], ids=["skipped-and-renumbered", "swapped", "duplicate", "extra", "not-an-object", "zero-based", "string-index"])
+    def test_a_verdict_list_not_tied_to_its_pairs_rejects_every_pair(self, monkeypatch, verdicts):
+        built = [entry if isinstance(entry, str) else self._verdict(*entry[1:]) for entry in verdicts]
+        monkeypatch.setattr(em, "chat_completion", lambda *_a, **_k: _reply(built))
+        links = (_link("L1"), _link("L2"))
+        pairs = [em.ReviewPair("o1", "r1", (links[0],)), em.ReviewPair("o2", "r2", (links[1],))]
+        assert em.ai_review(pairs) == ["rejected", "rejected"]
+        assert [link.entailed for link in links] == [False, False]
+
+    def test_a_complete_list_in_pair_order_judges_each_pair_on_its_own(self, monkeypatch):
+        verdicts = [self._verdict(1, faithful=False), self._verdict(2)]
+        monkeypatch.setattr(em, "chat_completion", lambda *_a, **_k: _reply(verdicts))
+        links = (_link("L1"), _link("L2"))
+        pairs = [em.ReviewPair("o1", "r1", (links[0],)), em.ReviewPair("o2", "r2", (links[1],))]
+        assert em.ai_review(pairs) == ["rejected", "accepted"]
+        assert [link.entailed for link in links] == [False, True]
+
     def test_no_answer_is_unavailable_not_rejected(self, monkeypatch):
         monkeypatch.setattr(em, "chat_completion", lambda *_a, **_k: None)
         assert em.ai_review([em.ReviewPair("o", "r")]) is None

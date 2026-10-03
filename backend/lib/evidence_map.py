@@ -1272,10 +1272,18 @@ def ai_review(pairs: list[ReviewPair], *, deadline: float | None = None) -> list
     """One review call for every pair a request needs: "accepted" or "rejected" each.
 
     None means no answer arrived (no provider response, a timeout at the
-    provider). Fails closed otherwise: invalid JSON, a missing,
-    duplicate-conflicting or non-boolean verdict, faithful=true beside a change
-    the reviewer itself tagged with a broken rule, or any declared link not
-    marked entailed=true rejects that pair (or the whole batch).
+    provider). Fails closed otherwise: a non-boolean verdict, faithful=true
+    beside a change the reviewer itself tagged with a broken rule, or any
+    declared link not marked entailed=true rejects that pair.
+
+    A verdict counts only when it is tied to its pair beyond doubt. The prompt
+    asks for exactly one verdict per pair; the payload numbers the pairs 1..n
+    in order. Invalid JSON, or a list that is shorter or longer than the pairs,
+    or whose n-th entry is not an object with "index" n, cannot say which pair
+    each verdict judged: a reviewer that skipped pair 1 and numbered pair 2's
+    verdict 1, or wrote two verdicts for one pair, would otherwise have a pair
+    accepted on another pair's judgement. Such an answer rejects every pair of
+    the batch, so each of its lines stays as written.
     """
     payload = review_payload(pairs)
     raw = chat_completion(
@@ -1293,17 +1301,13 @@ def ai_review(pairs: list[ReviewPair], *, deadline: float | None = None) -> list
     except (ValueError, TypeError, RecursionError):
         return rejected
     verdicts = parsed.get("verdicts") if isinstance(parsed, dict) else None
-    if not isinstance(verdicts, list):
+    if (not isinstance(verdicts, list) or len(verdicts) != len(pairs)
+            or any(not isinstance(verdict, dict) or type(verdict.get("index")) is not int or verdict["index"] != position
+                   for position, verdict in enumerate(verdicts, start=1))):
         return rejected
-    seen: dict[int, bool] = {}
-    entailed: dict[int, set[str]] = {}
-    for verdict in verdicts:
-        if not isinstance(verdict, dict):
-            continue
-        index = verdict.get("index")
-        if isinstance(index, bool) or not isinstance(index, int) or not 1 <= index <= len(pairs):
-            continue
-        declared = {link.id for link in pairs[index - 1].links}
+    out = []
+    for pair, verdict in zip(pairs, verdicts, strict=True):
+        declared = {link.id for link in pair.links}
         marks = verdict.get("links", [] if not declared else None)
         linked = (isinstance(marks, list) and all(isinstance(mark, dict) and set(mark) == {"id", "entailed"}
                                                   and isinstance(mark["id"], str) for mark in marks)
@@ -1311,14 +1315,11 @@ def ai_review(pairs: list[ReviewPair], *, deadline: float | None = None) -> list
                   and all(mark["entailed"] is True for mark in marks))
         faithful = (verdict.get("faithful") is True and linked
                     and not _BROKEN_RULE_TAG.search(unicodedata.normalize("NFKC", str(verdict.get("changes") or ""))))
-        seen[index] = seen.get(index, True) and faithful
         if faithful:
-            entailed.setdefault(index, set()).update(declared)
-    for index, ok in seen.items():
-        if ok:
-            for link in pairs[index - 1].links:
-                link.entailed = link.id in entailed.get(index, set())
-    return ["accepted" if seen.get(i) else "rejected" for i in range(1, len(pairs) + 1)]
+            for link in pair.links:
+                link.entailed = True
+        out.append("accepted" if faithful else "rejected")
+    return out
 
 
 def review_window(started: float) -> float | None:

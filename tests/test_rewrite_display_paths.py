@@ -327,12 +327,17 @@ TWO_ANCHORS = ["Write the fluids lab report every week."]
 
 @pytest.mark.parametrize("path", ["/api/tailor", "/api/tailor/renovate"])
 @pytest.mark.parametrize(("review", "expected"), [
-    # Only the first pair answered: the second keeps its original.
+    # Only one verdict for two pairs: nothing ties it to pair 1 rather than to a renumbered pair 2,
+    # so both keep their originals (round-3 review).
     (json.dumps({"verdicts": [{"index": 1, "faithful": True, "links": [{"id": "L1", "entailed": True}]}]}),
-     [True, False]),
-    # Answered out of order: each verdict counts for its own index.
+     [False, False]),
+    # Out of pair order: a swap reads the same as two misnumbered verdicts, so both keep their originals.
     (json.dumps({"verdicts": [{"index": 2, "faithful": True, "links": []},
                               {"index": 1, "faithful": False, "links": [{"id": "L1", "entailed": True}]}]}),
+     [False, False]),
+    # Complete and in pair order: each verdict counts for its own pair.
+    (json.dumps({"verdicts": [{"index": 1, "faithful": False, "links": [{"id": "L1", "entailed": True}]},
+                              {"index": 2, "faithful": True, "links": []}]}),
      [False, True]),
     # An index as a string, a non-boolean faithful, a list instead of an object: all fail closed.
     (json.dumps({"verdicts": [{"index": "1", "faithful": True, "links": [{"id": "L1", "entailed": True}]},
