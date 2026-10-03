@@ -131,3 +131,19 @@ def test_a_line_with_a_greek_symbol_still_reaches_the_review(opportunity, monkey
     shown, seen = run(opportunity, monkeypatch, path, original, _rewrite(rewrite, [{"op": "verb_first"}]),
                       "We measure brain tissue in mouse models.")
     assert rewrite in seen and shown == [rewrite], (shown, seen)
+
+
+# ------------------------------------------------------------------ criterion (3): pronouns
+# tokens() drops first-person markers and personal_markers() counts them in any script, so an English
+# line that already holds Chinese could have its "I" written as 我 or 本人: the rewrite passed the
+# contract and the locks and was shown after an accepting review.
+PRONOUN_LINE = "Responsible for writing Python scripts for 数据清洗; I also tested them."
+
+
+@pytest.mark.parametrize("path", ALL_PATHS)
+@pytest.mark.parametrize("marker", ["我", "本人"])
+def test_an_english_lines_i_written_in_chinese_is_kept_before_the_review(opportunity, monkeypatch, path, marker):  # noqa: F811
+    rewrite = f"Wrote Python scripts for 数据清洗; {marker} also tested them."
+    shown, seen = run(opportunity, monkeypatch, path, PRONOUN_LINE, _rewrite(rewrite, [{"op": "verb_first"}]),
+                      "We clean survey data with Python scripts.")
+    assert (shown, seen) == ([], set())

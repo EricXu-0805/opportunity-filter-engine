@@ -865,6 +865,13 @@ def _non_latin_frame(text: str) -> bool:
     return bool(_CJK.search(text)) or bool(_script_letters(text))
 
 
+def _marker_scripts(text: str) -> tuple[int, int]:
+    """The line's first-person markers (_PERSONAL_MARKER): how many are English (I, my, me) and how many CJK (我, 本人)."""
+    markers = _PERSONAL_MARKER.findall(text or "")
+    cjk = sum(bool(_CJK.search(marker)) for marker in markers)
+    return len(markers) - cjk, cjk
+
+
 def _other_script(unit: Unit, text: str, ops_raw: list[dict]) -> bool:
     """Whether a rewrite writes part of its line in another script than the line does.
 
@@ -882,6 +889,10 @@ def _other_script(unit: Unit, text: str, ops_raw: list[dict]) -> bool:
     An accented Latin letter or a Greek letter used as a symbol (_script_letters) is
     no other language: "Müller", "β-amyloid", "TNF-α" and "5 µm" are English words,
     and a rewrite may restructure the line around them as around any other.
+
+    tokens() drops first-person markers and the counts keep their number, not their
+    script, so they cannot see "I" written as 我 or 本人 either: an English line that
+    gains a Chinese marker, or a Chinese line an English one, has changed language.
     """
     current, view = _letters_view(unit.current), _letters_view(text)
     known = set(current).union(*(_letters_view(source) for _, source in unit.sources))
@@ -893,6 +904,10 @@ def _other_script(unit: Unit, text: str, ops_raw: list[dict]) -> bool:
     written = " ".join(op["to"] for op in ops_raw if op.get("op") == "relabel" and isinstance(op.get("to"), str))
     if (_non_latin_frame(current)
             and _function_words(text) - _function_words(unit.current) - _function_words(written)):
+        return True
+    (english_before, cjk_before), (english_after, cjk_after) = _marker_scripts(unit.current), _marker_scripts(text)
+    other_script_markers = (cjk_after > cjk_before) if language(unit.current) == "en" else (english_after > english_before)
+    if other_script_markers:
         return True
     return bool(language(unit.current) == "en" and _CJK.search(unit.current) and _function_characters(text)
                 - _function_characters(unit.current) - _function_characters(written))

@@ -783,6 +783,29 @@ class TestLettersTheTokensCannotRead:
         outcome = em.check_rewrite(unit, _row(rewrite, links, ops), anchors, output_language=em.language(original))
         assert outcome.status == "pending", outcome
 
+    # Round-3 re-measure (criterion 3): tokens() drops first-person markers and personal_markers()
+    # counts them in any script, so an English line that already holds Chinese could have its "I"
+    # written as 我 or 本人 and reach the review.
+    PRONOUN_LINE = "Responsible for writing Python scripts for 数据清洗; I also tested them."
+
+    @pytest.mark.parametrize("rewrite", [
+        "Wrote Python scripts for 数据清洗; 我 also tested them.",
+        "Wrote Python scripts for 数据清洗; 本人 also tested them.",
+        "Wrote Python scripts for 数据清洗; also tested them 我.",
+    ])
+    def test_an_english_lines_i_written_in_chinese_is_another_language(self, rewrite):
+        unit = em.Unit("b1", self.PRONOUN_LINE, self.PRONOUN_LINE)
+        outcome = em.check_rewrite(unit, _row(rewrite, [], [{"op": "verb_first"}]), anchors_for(["Python scripts."]),
+                                   output_language=em.language(self.PRONOUN_LINE))
+        assert (outcome.status, outcome.detail) == ("kept", "wrong_language")
+
+    def test_an_english_line_that_keeps_its_i_still_reaches_the_locks(self):
+        unit = em.Unit("b1", self.PRONOUN_LINE, self.PRONOUN_LINE)
+        outcome = em.check_rewrite(unit, _row("Wrote Python scripts for 数据清洗; I also tested them.", [],
+                                              [{"op": "verb_first"}]), anchors_for(["Python scripts."]),
+                                   output_language=em.language(self.PRONOUN_LINE))
+        assert outcome.status == "pending", outcome
+
     @pytest.mark.parametrize(("text", "symbols"), [
         ("β-amyloid, TNF-α, IL-1β and Aβ42", {"β": 3, "α": 1}),
         ("α = 0.05 and 5 \u00b5m", {"α": 1, "μ": 1}),
