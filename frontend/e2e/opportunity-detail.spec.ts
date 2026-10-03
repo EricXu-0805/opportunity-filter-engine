@@ -13,8 +13,10 @@ const KNOWN_ID = 'uiuc-siebel-ugresearch';
 // segment percent-encoded; the page encoded it again, the API was asked for
 // '%2520', and the body said "Opportunity not found" under the record's own
 // tab title. Scraped rows, not seeds: a professor who leaves stays as an
-// inactive row that still resolves by id, but a re-keyed id would vanish, and
-// recordTitle() reports that as a missing fixture rather than as this bug.
+// inactive row that still resolves by id, but a re-keyed id would vanish.
+// Pinned by test_e2e_escaped_detail_fixtures_present (backend DQ) so a data PR
+// that drops one fails there; recordTitle() reports it here as a missing
+// fixture rather than as this bug. Update both if these change.
 const ESCAPED_IDS = ['faculty-social work-e62c849b', 'faculty-art & design-ba84594d'];
 
 async function recordTitle(request: APIRequestContext, id: string): Promise<string> {

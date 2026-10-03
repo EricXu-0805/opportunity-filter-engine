@@ -1001,6 +1001,34 @@ class TestSchoolAudience:
             f"second id in frontend/e2e/concierge-request.spec.ts."
         )
 
+    def test_e2e_escaped_detail_fixtures_present(self):
+        """opportunity-detail.spec.ts opens two detail pages whose ids a URL
+        path must escape, one with a space and one with an '&', to prove such
+        a page shows its record and not "Opportunity not found". No seed has
+        an id like that, so both are scraped faculty rows, and ids in these
+        families do get re-keyed: 5 of the 215 'carle medicine' / 'art &
+        design' / 'social work' ids present on 2026-07-14 were gone by
+        2026-10-02. Pinned here for the same reason as the fixtures above.
+        Keep in sync with ESCAPED_IDS in that spec."""
+        by_id = {o.get("id"): o for o in _load_data()}
+        for e2e_fixture_id in (
+            "faculty-social work-e62c849b",
+            "faculty-art & design-ba84594d",
+        ):
+            fx = by_id.get(e2e_fixture_id)
+            assert fx is not None, (
+                f"E2E escaped-id fixture {e2e_fixture_id!r} is gone from the "
+                f"corpus — opportunity-detail.spec.ts opens its detail page "
+                f"and share card and will fail. Pick another corpus id with a "
+                f"space (or a space and an '&') and update ESCAPED_IDS in "
+                f"frontend/e2e/opportunity-detail.spec.ts and this test."
+            )
+            assert (fx.get("title") or "").strip(), (
+                f"E2E escaped-id fixture {e2e_fixture_id!r} has an empty "
+                f"title; opportunity-detail.spec.ts asserts the page's h1 and "
+                f"tab title against it."
+            )
+
     def test_no_works_list_stamped_across_many_faculty(self):
         """The url-keyed works store once stamped ONE person's papers onto all
         430 JHU faculty sharing a directory URL (2026-07 audit). Co-authors can
