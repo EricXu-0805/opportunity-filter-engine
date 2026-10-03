@@ -1,10 +1,32 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { PUBLIC_RELEASE_CACHE_VERSION } from '../src/lib/release-scope';
 
 // uiuc-siebel-ugresearch: hand-curated umbrella seed — survives refreshes, unlike
 // scraped ids (hash of name/url) or the fabricated prototype record this replaced.
 // Pinned by test_e2e_detail_fixture_present (backend DQ) so a data PR that drops
 // it fails fast there, not with a 404-cascade here. Update both if this changes.
 const KNOWN_ID = 'uiuc-siebel-ugresearch';
+
+// Corpus ids a URL path has to escape. On 2026-10-02, 217 of 140,840 ids had
+// a space, 81 of them an '&' too ('faculty-carle medicine-…' 90, 'faculty-art
+// & design-…' 81, 'faculty-social work-…' 46). The page component gets that
+// segment percent-encoded; the page encoded it again, the API was asked for
+// '%2520', and the body said "Opportunity not found" under the record's own
+// tab title. Scraped rows, not seeds: a professor who leaves stays as an
+// inactive row that still resolves by id, but a re-keyed id would vanish, and
+// recordTitle() reports that as a missing fixture rather than as this bug.
+const ESCAPED_IDS = ['faculty-social work-e62c849b', 'faculty-art & design-ba84594d'];
+
+async function recordTitle(request: APIRequestContext, id: string): Promise<string> {
+  const response = await request.get(
+    `/api/opportunities/${encodeURIComponent(id)}?_release_scope=${encodeURIComponent(PUBLIC_RELEASE_CACHE_VERSION)}`,
+  );
+  expect(response.status(), `E2E fixture ${id} no longer resolves; pick another corpus id with a space or '&'`)
+    .toBe(200);
+  const { title } = await response.json() as { title?: unknown };
+  expect(typeof title === 'string' && title.trim().length > 0, `${id} has no title to assert`).toBe(true);
+  return title as string;
+}
 
 async function goToResults(page: Page) {
   await page.goto('/');
@@ -126,6 +148,39 @@ test.describe('Opportunity detail page', () => {
     await page.goto(`/opportunities/${KNOWN_ID}`);
     const backLink = page.getByRole('link', { name: /Back to matches/i });
     await expect(backLink).toHaveAttribute('href', '/results');
+  });
+});
+
+test.describe('Detail pages whose id has to be escaped in the URL', () => {
+  for (const id of ESCAPED_IDS) {
+    test(`${id} opens its record, not "Opportunity not found"`, async ({ page, request }) => {
+      const title = await recordTitle(request, id);
+
+      const response = await page.goto(`/opportunities/${encodeURIComponent(id)}`);
+      expect(response?.status()).toBe(200);
+
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText(title);
+      await expect(page).toHaveTitle(new RegExp(escapeRegExp(title)));
+      await expect(page.getByRole('link', { name: /Back to matches/i })).toBeVisible();
+      await expect(page.getByRole('heading', { name: /Opportunity not found/i })).toHaveCount(0);
+    });
+  }
+
+  test('their share cards are the records, not the not-found card', async ({ request }) => {
+    // Every image here answers 200, so status alone cannot tell a record card
+    // from the fallback. The fallback is the same bytes for any unknown id,
+    // which is what makes "differs from it" a real check.
+    const fallback = await (await request.get('/api/og/opportunity/u1-missing-fixture-a')).body();
+    const fallbackAgain = await (await request.get('/api/og/opportunity/u1-missing-fixture-b')).body();
+    expect(fallbackAgain.equals(fallback)).toBe(true);
+
+    for (const id of ESCAPED_IDS) {
+      await recordTitle(request, id);
+      const card = await request.get(`/api/og/opportunity/${encodeURIComponent(id)}`);
+      expect(card.status()).toBe(200);
+      expect(card.headers()['content-type']).toContain('image/png');
+      expect((await card.body()).equals(fallback), `${id} rendered the not-found card`).toBe(false);
+    }
   });
 });
 
