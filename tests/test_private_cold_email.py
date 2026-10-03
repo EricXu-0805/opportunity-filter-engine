@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 from backend.lib import private_target_resolution as resolution
 from backend.routes import private_import_targets as private_route
-from tests.experience_fixtures import confirmed_experience
+from tests.experience_fixtures import confirmed_experience, resume_line_experience
 from tests.test_private_import_targets import ID, OTHER, OWNER, app, raw_record
 from tests.test_private_import_targets import storage as storage_fixture
 
@@ -278,6 +278,24 @@ def test_template_omits_whole_oversized_experience_with_receipt_not_a_fragment(s
     assert value['experience_usage']['selected'] == []
     assert 'experience_template_budget_omission' in value['experience_usage']['notices']
     assert '🙂' not in value['variants'][0]['body']
+
+
+ROLE_LINE = 'Undergraduate Research Assistant, Health Imaging Lab (UIUC) - Jan 2026 - Present'
+BULLET = '- Trained a classifier on 12,000 chest radiographs.'
+
+
+@pytest.mark.parametrize('printed,quoted', [(ROLE_LINE + '\n' + BULLET, BULLET), (ROLE_LINE, None)],
+                         ids=['role-line-then-bullet', 'role-line-alone'])
+def test_template_quotes_the_bullet_under_a_role_line_never_the_role_line(storage, printed, quoted):
+    # This template quotes the first usable entry in input order, and a PDF
+    # import lists the role line above its bullets.
+    response = post(body(experience_evidence=resume_line_experience(printed)))
+    assert response.status_code == 200, response.text
+    value = response.json()
+    rendered = value['variants'][0]['body']
+    assert 'Health Imaging Lab' not in rendered and (quoted is None or quoted in rendered)
+    assert [item['excerpt'] for item in value['experience_usage']['selected']] == ([quoted] if quoted else [])
+    assert value['experience_usage']['eligible_count'] == printed.count('\n') + 1
 
 
 def test_template_keeps_full_accepted_identity_title_and_availability(storage):

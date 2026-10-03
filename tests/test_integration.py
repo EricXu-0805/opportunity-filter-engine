@@ -608,6 +608,159 @@ class TestLabTypeDetection:
         assert _detect_lab_type(faculty("Telemedicine and Digital Health Program",
                                         ["mobile app development", "python"])) == "dry"
 
+    @staticmethod
+    def _professor(department, keywords, areas="", works=(), *, matched_topics=False):
+        metadata = {"research_areas_raw": areas, "publication_attribution_status": "verified_author_id",
+                    "recent_works": [{"title": title} for title in works]}
+        if matched_topics:
+            metadata["inferred_fields"] = {"keywords": "derived:openalex_topics"}
+        return {"source_type": "faculty_research", "title": "Research with Prof. X",
+                "department": department, "lab_or_program": "", "keywords": keywords,
+                "metadata": metadata, "eligibility": {"skills_required": []}}
+
+    def test_insect_plant_pathogen_and_bacterial_benches_are_wet(self):
+        # No vocabulary entry named these fields, so 327 entomology, plant
+        # pathology and bacteriology records in the 2026-10-02 corpus were Dry
+        # Lab (317, nearly all by the no-signal default), Humanities or no
+        # claim. Byte-real fields of faculty-ucr-entomology-0fd0dec8,
+        # faculty-wisc-plpath-26613348, faculty-wisc-bact-190a6bac,
+        # faculty-uw-genome-53576047, faculty-ncsu-hs-e52bf5b5 and
+        # faculty-psu-ag-1649d63f (the last two through their verified papers).
+        professor = self._professor
+        assert _detect_lab_type(professor("Department of Entomology", [
+            "Insect pathology and microbial control with emphasis on viral and bacterial pathogens of medically "
+            "or agriculturally important insects. Not taking students at this time"])) == "wet"
+        assert _detect_lab_type(professor("Department of Plant Pathology", [
+            "plant pathogenic bacteria", "tropical plant pathology", "bacterial wilt disease",
+            "plant-microbe interactions", "bacterial virulence genes"])) == "wet"
+        assert _detect_lab_type(professor("Department of Bacteriology", [
+            "insect microbiomes", "mosquito-gut microbiota interactions", "vector-borne disease",
+            "mosquito colonization dynamics", "microbial community assembly"])) == "wet"
+        assert _detect_lab_type(professor("Department of Genome Sciences", ["bacterial pathogenesis"],
+                                          "bacterial pathogenesis")) == "wet"
+        assert _detect_lab_type(professor("Department of Horticultural Science", [], works=[
+            "Recent progress in maize lethal necrosis disease: From pathogens to integrated pest management",
+            "Plant Virus-Based Nanoparticles for the Delivery of Agronomic Compounds as a Suspension Concentrate",
+            "Pharmacokinetics and Efficacy of doxorubicin-loaded Plant Virus Nanoparticles in Preclinical Models "
+            "of Cancer"])) == "wet"
+        assert _detect_lab_type(professor("College of Agricultural Sciences", [], works=[
+            "Evaluation of the Central Effects of Systemic Lentiviral-Mediated Leptin Delivery in "
+            "Streptozotocin-Induced Diabetic Rats",
+            "Development, validation, and utilization of a novel antibody specific to the type III chicken "
+            "gonadotropin-releasing hormone receptor",
+            "Gonadotropin-inhibitory hormone receptor signaling and its impact on reproduction in chickens"])) == "wet"
+
+    def test_naming_a_virus_bacterium_antibody_or_insect_is_no_bench(self):
+        # Measured on the 2026-10-02 corpus and left out of the vocabulary:
+        # "virus", "viral", "bacteria", "antibody", "monoclonal" and "insect"
+        # each also moved records that are not benches to Wet Lab. Byte-real
+        # fields of records they moved: a marketing professor of virality
+        # (faculty-upenn-mktg-d18e9e5f), a finance professor named Viral
+        # (faculty-nyu-stern-ace37b11), an astronomer who built the VIRUS
+        # spectrograph (faculty-utexas-astro-bf6e4e77), a biostatistician and
+        # a heart-failure nurse researcher whose matched OpenAlex topics name
+        # bacteria and antibodies (faculty-jhu-bsph-525479bd,
+        # faculty-usf-nurs-4077d9af, whose own page lists heart failure,
+        # palliative care and quality of life), a malaria serosurveillance
+        # epidemiologist (faculty-usf-coph-a308367a) and a medical and soft
+        # robotics group that studies insect flight (faculty-neu-mie-87aff2cf).
+        professor = self._professor
+        assert _detect_lab_type(professor("Marketing Department (Wharton)", [
+            "Digital Marketing", "Influence", "Word of Mouth", "Natural Language Processing",
+            "Viral Marketing"])) is None
+        acharya = professor("Leonard N. Stern School of Business", [
+            "Regulation of banks and financial institutions", "Sovereign debt and international finance",
+            "Corporate finance", "Credit risk and valuation of corporate debt"])
+        acharya["title"] = "Viral V. Acharya"
+        assert _detect_lab_type(acharya) is None
+        assert _detect_lab_type(professor("Department of Astronomy", ["Cosmology or Space"], "Cosmology or Space", [
+            "The HETDEX Instrumentation: Hobby–Eberly Telescope Wide-field Upgrade and VIRUS",
+            "Completion and performance of the Hobby-Eberly Telescope wide field upgrade",
+            "VIRUS: status and performance of the massively replicated fiber integral field spectrograph for the "
+            "upgraded Hobby-Eberly Telescope"])) == "dry"
+        assert _detect_lab_type(professor("Bloomberg School of Public Health", [
+            "vibrio bacteria research", "escherichia coli research", "lipid membrane structure and behavior",
+            "antibiotic resistance in bacteria", "immune response and inflammation"], works=[
+            "Unified Calibration and Spatial Mapping of Fine Particulate Matter Data From Multiple Low‐Cost Air "
+            "Pollution Sensor Networks in Baltimore, Maryland",
+            "Source apportionment of air pollution burden using geometric non-negative matrix factorization and "
+            "high-throughput multi-pollutant air sensor data in Curtis Bay, Baltimore, USA"],
+            matched_topics=True)) == "dry"
+        assert _detect_lab_type(professor("College of Nursing", [
+            "monoclonal and polyclonal antibodies", "cell adhesion molecules", "glycosylation and glycoproteins",
+            "lymphoma diagnosis and treatment", "cardiac pacing and defibrillation"], works=[
+            "All-inclusive hearts: bridging gaps in heart failure treatment",
+            "Safety and Clinical Outcomes of a Complete “Minimalist” Left Atrial Appendage Occlusion Pathway",
+            "E-38 | Safety, Feasibility and Clinical Outcomes of a Comprehensive Minimalist Protocol for Left "
+            "Atrial Appendage Closure"], matched_topics=True)) is None
+        assert _detect_lab_type(professor("College of Public Health", [
+            "malaria research and control", "mosquito-borne diseases and control", "parasites and host interactions",
+            "parasitic diseases research and treatment", "global maternal and child health"], works=[
+            "Malaria antibody responses augment surveillance in low-transmission settings in the Upper River "
+            "Region, the Gambia",
+            "Evidence-based decision making for malaria elimination applying the Freedom From Infection "
+            "statistical framework in five malaria eliminating countries: an observational study",
+            "Guidance for conducting and evaluating serological surveys to assess interruption of yaws "
+            "transmission in the context of an eradication target"], matched_topics=True)) == "dry"
+        robotics = ["Human-safe robots", "medical robotics", "soft robotics and soft material manufacturing", "MEMS",
+                    "microrobotics", "bio-inspired design", "flapping aerodynamics and insect flight"]
+        whitney = professor("Department of Mechanical and Industrial Engineering", robotics, ", ".join(robotics))
+        whitney["title"] = ("Prof. John “Peter” Whitney — MIE (Human-safe robots, medical robotics, soft robotics "
+                            "and soft material manufacturing)")
+        assert _detect_lab_type(whitney) == "dry"
+
+    def test_remodeling_is_tissue_biology_not_a_model(self):
+        # "modeling" matched inside "chromatin remodeling", so a gynecologic
+        # pathologist's one dry signal was a word for chromatin biology
+        # (byte-real fields of faculty-jhu-bsph-e15c0ba0). Without it the
+        # field the work serves is all that is left, which makes no claim.
+        assert _detect_lab_type(self._professor("Bloomberg School of Public Health", [
+            "ovarian cancer diagnosis and treatment", "endometrial and cervical cancer treatments",
+            "chromatin remodeling and cancer", "reproductive system and pregnancy", "gestational trophoblastic disease",
+        ], works=[
+            "Macrophages and neutrophils in ovarian cancer microenvironment",
+            "Somatic Cancer Driver Mutation Analysis in Endometriosis with Tumor-Like Presentations",
+            "Minimizing and quantifying uncertainty in AI-informed decisions: Applications in medicine",
+        ], matched_topics=True)) is None
+
+    def test_finite_elements_and_image_segmentation_are_computational(self):
+        # Two computational groups in Biomedical Engineering stayed Dry Lab
+        # only through the "modeling" inside "remodeling" (faculty-yale-beng-
+        # cfeb6bbb, faculty-yale-beng-99b0efd6): the words for their own
+        # methods had no vocabulary entry. Byte-real fields of those two and
+        # of faculty-tamu-ocen-e2360499 (Humanities before) and
+        # faculty-jhu-som-78239da1 (Wet Lab before).
+        professor = self._professor
+        assert _detect_lab_type(professor("Department of Biomedical Engineering", [
+            "cardiovascular function and risk factors", "elasticity and material modeling",
+            "model reduction and neural networks", "cardiac valve diseases and treatments",
+            "coronary interventions and diagnostics"], works=[
+            "svMultiPhysics: a finite element-based solver for cardiovascular simulations",
+            "Influence of Coronary Plaque Morphology on Local Mechanical States and Associated In-Stent Restenosis",
+            "Establishing a Mechanical Homeostatic State in the Cardiac System to study Growth and Remodeling of "
+            "the Myocardial Tissue"], matched_topics=True)) == "dry"
+        assert _detect_lab_type(professor("Department of Biomedical Engineering", [
+            "medical image segmentation", "radiomics and machine learning in medical imaging",
+            "cardiac valve diseases and treatments"], works=[
+            "Learning robust and task-invariant functional representation from fMRI through Siamese "
+            "self-supervised learning",
+            "Abstract 4373120: Assessment of Adverse Left Ventricular Remodeling Following Ischemia Reperfusion "
+            "Injury with SPECT Imaging Agent Targeting Fibroblast Activation Protein",
+            "PET Head Motion Estimation Using Supervised Deep Learning With Attention"], matched_topics=True)) == "dry"
+        assert _detect_lab_type(professor("Department of Ocean Engineering", [
+            "Solid and structural mechanics", "Fracture and fatigue", "Plasticity modeling",
+            "Finite element analysis", "Material testing and specimen design",
+            "Structural integrity and safety assessment"])) == "dry"
+        assert _detect_lab_type(professor("School of Medicine", [
+            "advanced radiotherapy", "radiomics and machine learning in medical imaging",
+            "prostate cancer diagnosis and treatment", "medical image segmentation"], works=[
+            "Image-guided brachytherapy for locally advanced cervical cancer: clinical outcomes and fistula risk "
+            "in stage IVA disease",
+            "ID #183 Preoperative prediction of cerebellar mutism syndrome using deep learning on "
+            "multi-institutional MRI data",
+            "Prospective operational feasibility, safety, and workflow of magnetic resonance-guided tracking "
+            "technology for interstitial gynecologic brachytherapy"], matched_topics=True)) == "dry"
+
     def test_wet_wins_over_dry_buzzword(self):
         """A wet-lab posting that mentions Python for analysis should
         not be misrouted to dry. Wet-lab signals (cell culture, microscopy)

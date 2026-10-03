@@ -152,13 +152,20 @@ export function TrackerCard({
       <div className="mt-2 flex flex-wrap items-center gap-1.5 text-xs">
         {remindAt ? (
           <>
+            {/* "Follow up — due" in red claims the reminder is live. On a row
+                the cron skips, most often one just marked replied or
+                interviewing, it sat beside "this reminder will not be sent".
+                The date stays (it is the student's own record); the wording
+                and colour go neutral, as in the detail panel. */}
             <span
-              className={`inline-flex items-center gap-1 font-medium ${
-                isReminderDue(remindAt) ? 'text-red-600' : 'text-amber-600'
+              className={`inline-flex items-center gap-1 ${
+                !canSetReminder
+                  ? 'text-gray-400'
+                  : isReminderDue(remindAt) ? 'font-medium text-red-600' : 'font-medium text-amber-600'
               }`}
             >
               <BellRing className="h-3 w-3" />
-              {isReminderDue(remindAt) ? t('tracker.followUpDue') : t('tracker.remindOn')} {remindAt}
+              {canSetReminder && isReminderDue(remindAt) ? t('tracker.followUpDue') : t('tracker.remindOn')} {remindAt}
             </span>
             <button
               type="button"
