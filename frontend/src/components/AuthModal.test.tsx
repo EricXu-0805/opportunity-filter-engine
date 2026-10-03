@@ -29,6 +29,13 @@ vi.mock('@/lib/supabase', () => ({
   signOutOfAccount: () => mockSignOut(),
 }));
 
+const mockReleasePush = vi.fn();
+const mockDropPush = vi.fn();
+vi.mock('@/lib/push', () => ({
+  releasePushForSignOut: () => mockReleasePush(),
+  dropBrowserPushSubscription: () => mockDropPush(),
+}));
+
 vi.mock('@/i18n/client', () => ({
   useT: () => ({
     locale: 'en',
@@ -551,6 +558,9 @@ describe('AuthModal — signout-confirm phase', () => {
   beforeEach(() => {
     mockGetAuthState.mockResolvedValue(PERMANENT);
     modalState = { open: true, phase: 'signout-confirm' };
+    mockReleasePush.mockResolvedValue(true);
+    mockDropPush.mockResolvedValue(undefined);
+    sessionStorage.clear();
   });
 
   it('shows both safety reassurance lines', async () => {
@@ -570,7 +580,7 @@ describe('AuthModal — signout-confirm phase', () => {
   });
 
   it('confirm calls signOut + closes the modal', async () => {
-    mockSignOut.mockResolvedValue('new-anon-uid');
+    mockSignOut.mockResolvedValue(true);
     render(<AuthModal />);
     await waitFor(() => screen.getByText('auth.modal.signOutConfirm.confirm'));
     screen.getByText('auth.modal.signOutConfirm.confirm').click();
@@ -581,14 +591,111 @@ describe('AuthModal — signout-confirm phase', () => {
   });
 
   it('sets the just-signed-out flag on confirm', async () => {
-    mockSignOut.mockResolvedValue('new-anon-uid');
-    sessionStorage.clear();
+    mockSignOut.mockResolvedValue(true);
     render(<AuthModal />);
     await waitFor(() => screen.getByText('auth.modal.signOutConfirm.confirm'));
     screen.getByText('auth.modal.signOutConfirm.confirm').click();
     await waitFor(() => {
       expect(sessionStorage.getItem('ofe_just_signed_out')).toBe('1');
     });
+  });
+
+  // supabase-js keeps the account session when the logout request fails.
+  // The modal used to close and set the just-signed-out flag anyway, with
+  // the account still signed in on the device.
+  it('a failed sign-out keeps the signed-in modal open, says so, and retries in place', async () => {
+    mockSignOut.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    render(<AuthModal />);
+    fireEvent.click(await screen.findByText('auth.modal.signOutConfirm.confirm'));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('common.error');
+    expect(closeModalMock).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem('ofe_just_signed_out')).toBeNull();
+    expect(screen.getByText('auth.modal.signOutConfirm.title:eric@illinois.edu')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('common.tryAgain'));
+    await waitFor(() => expect(closeModalMock).toHaveBeenCalled());
+    expect(sessionStorage.getItem('ofe_just_signed_out')).toBe('1');
+    expect(mockSignOut).toHaveBeenCalledTimes(2);
+  });
+
+  it('treats a sign-out that throws as failed and leaves the button usable', async () => {
+    mockSignOut.mockRejectedValueOnce(new Error('re-anon failed'));
+    render(<AuthModal />);
+    fireEvent.click(await screen.findByText('auth.modal.signOutConfirm.confirm'));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('common.error');
+    expect(screen.getByText('common.tryAgain')).not.toBeDisabled();
+    expect(closeModalMock).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem('ofe_just_signed_out')).toBeNull();
+  });
+
+  it.each([
+    ['Cancel', (view: ReturnType<typeof render>) => {
+      fireEvent.click(screen.getByText('common.cancel'));
+      view.rerender(<AuthModal />);
+    }],
+    ['closing the modal', (view: ReturnType<typeof render>) => {
+      modalState = { ...modalState, open: false };
+      view.rerender(<AuthModal />);
+    }],
+  ])('does not carry a failed sign-out\'s message past %s', async (_name, leave) => {
+    mockSignOut.mockResolvedValue(false);
+    const view = render(<AuthModal />);
+    fireEvent.click(await screen.findByText('auth.modal.signOutConfirm.confirm'));
+    await screen.findByRole('alert');
+    leave(view);
+    modalState = { open: true, phase: 'signout-confirm' };
+    view.rerender(<AuthModal />);
+    expect(await screen.findByText('auth.modal.signOutConfirm.confirm')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('runs one sign-out at a time', async () => {
+    let finish!: (ok: boolean) => void;
+    mockSignOut.mockReturnValueOnce(new Promise<boolean>((resolve) => { finish = resolve; }));
+    render(<AuthModal />);
+    const confirm = await screen.findByText('auth.modal.signOutConfirm.confirm');
+    fireEvent.click(confirm);
+    fireEvent.click(confirm);
+    await waitFor(() => expect(mockSignOut).toHaveBeenCalledTimes(1));
+    expect(confirm).toBeDisabled();
+    await act(async () => finish(true));
+    expect(mockSignOut).toHaveBeenCalledTimes(1);
+    expect(closeModalMock).toHaveBeenCalledTimes(1);
+  });
+
+  // Only the outgoing account's own session can delete its push row, so the
+  // release has to run before the sign-out ends that session.
+  it('releases this browser\'s push row while the account session still exists', async () => {
+    const order: string[] = [];
+    mockReleasePush.mockImplementation(async () => { order.push('release'); return true; });
+    mockSignOut.mockImplementation(async () => { order.push('signOut'); return true; });
+    render(<AuthModal />);
+    fireEvent.click(await screen.findByText('auth.modal.signOutConfirm.confirm'));
+    await waitFor(() => expect(closeModalMock).toHaveBeenCalled());
+    expect(order).toEqual(['release', 'signOut']);
+    expect(mockDropPush).not.toHaveBeenCalled();
+  });
+
+  it('kills the browser endpoint when the row outlived the session that could delete it', async () => {
+    const order: string[] = [];
+    mockReleasePush.mockImplementation(async () => { order.push('release'); return false; });
+    mockSignOut.mockImplementation(async () => { order.push('signOut'); return true; });
+    mockDropPush.mockImplementation(async () => { order.push('drop'); });
+    render(<AuthModal />);
+    fireEvent.click(await screen.findByText('auth.modal.signOutConfirm.confirm'));
+    await waitFor(() => expect(closeModalMock).toHaveBeenCalled());
+    expect(order).toEqual(['release', 'signOut', 'drop']);
+  });
+
+  it('leaves the endpoint working when the sign-out failed: the account still uses it', async () => {
+    mockReleasePush.mockResolvedValue(false);
+    mockSignOut.mockResolvedValue(false);
+    render(<AuthModal />);
+    fireEvent.click(await screen.findByText('auth.modal.signOutConfirm.confirm'));
+    await screen.findByRole('alert');
+    expect(mockDropPush).not.toHaveBeenCalled();
   });
 });
 
