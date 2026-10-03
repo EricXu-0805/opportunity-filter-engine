@@ -33,6 +33,7 @@ const {
   mockSignInWithOAuth,
   mockLinkIdentity,
   mockSignOut,
+  mockSignInAnonymously,
 } = vi.hoisted(() => {
   process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key';
@@ -43,6 +44,7 @@ const {
     mockSignInWithOAuth: vi.fn(),
     mockLinkIdentity: vi.fn(),
     mockSignOut: vi.fn(),
+    mockSignInAnonymously: vi.fn(),
   };
 });
 
@@ -55,10 +57,7 @@ vi.mock('@supabase/supabase-js', () => ({
       signInWithOAuth: mockSignInWithOAuth,
       linkIdentity: mockLinkIdentity,
       signOut: mockSignOut,
-      signInAnonymously: vi.fn().mockResolvedValue({
-        data: { user: { id: 'new-anon-uid' } },
-        error: null,
-      }),
+      signInAnonymously: mockSignInAnonymously,
       onAuthStateChange: vi.fn(() => ({
         data: { subscription: { unsubscribe: vi.fn() } },
       })),
@@ -519,20 +518,156 @@ describe('signInExistingOAuth — forced sign-in-to-existing path', () => {
   });
 });
 
+// What supabase-js does with this browser's session when the logout request
+// itself fails. Pinned against the real library, with only the network faked,
+// because signOutOfAccount's verdict rests on it: on these failures the
+// account session is still stored, so a re-anon afterwards reads the old
+// account back instead of creating a guest.
+describe('supabase-js 2.105.4 signOut({ scope: "local" }) against a failing logout request', () => {
+  const STORAGE_KEY = 'ofe_auth_signout_characterization';
+
+  async function signOutAgainst(logout: () => Promise<Response>) {
+    const { createClient: realCreateClient } = await vi.importActual<typeof import('@supabase/supabase-js')>('@supabase/supabase-js');
+    const session = {
+      access_token: 'header.payload.signature',
+      refresh_token: 'refresh-token',
+      token_type: 'bearer',
+      expires_in: 3600,
+      expires_at: Math.floor(Date.now() / 1000) + 3600,
+      user: { id: 'perm-uid', aud: 'authenticated', role: 'authenticated', email: 'eric@illinois.edu', is_anonymous: false },
+    };
+    const store = new Map<string, string>([[STORAGE_KEY, JSON.stringify(session)]]);
+    const requests: string[] = [];
+    vi.stubGlobal('BroadcastChannel', undefined);
+    try {
+      const client = realCreateClient('https://test.supabase.co', 'test-anon-key', {
+        auth: {
+          storageKey: STORAGE_KEY,
+          storage: {
+            getItem: (key: string) => store.get(key) ?? null,
+            setItem: (key: string, value: string) => { store.set(key, value); },
+            removeItem: (key: string) => { store.delete(key); },
+          },
+          persistSession: true,
+          autoRefreshToken: false,
+          detectSessionInUrl: false,
+        },
+        global: {
+          fetch: async (input: RequestInfo | URL) => {
+            const url = String(input);
+            requests.push(url);
+            if (url.includes('/auth/v1/logout')) return logout();
+            throw new Error(`unexpected request ${url}`);
+          },
+        },
+      });
+      const { error } = await client.auth.signOut({ scope: 'local' });
+      const { data } = await client.auth.getSession();
+      return { error, sessionUser: data.session?.user.id ?? null, stored: store.has(STORAGE_KEY), requests };
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  }
+
+  const json = (status: number) => () => Promise.resolve(new Response(JSON.stringify({ msg: `status ${status}` }), {
+    status,
+    headers: { 'content-type': 'application/json' },
+  }));
+
+  it.each([
+    ['a network failure', () => Promise.reject(new TypeError('Failed to fetch')), 'AuthRetryableFetchError', 0],
+    ['a 503', json(503), 'AuthRetryableFetchError', 503],
+    ['a 500', json(500), 'AuthApiError', 500],
+  ])('keeps the account session in storage on %s and returns the error', async (_name, logout, errorName, status) => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const out = await signOutAgainst(logout);
+    expect(out.requests).toEqual(['https://test.supabase.co/auth/v1/logout?scope=local']);
+    expect(out.error).toMatchObject({ name: errorName, status });
+    expect(out.stored).toBe(true);
+    expect(out.sessionUser).toBe('perm-uid');
+  });
+
+  it.each([401, 403, 404])('drops the session and returns no error on a %s (the server no longer has it)', async (status) => {
+    const out = await signOutAgainst(json(status));
+    expect(out.error).toBeNull();
+    expect(out.stored).toBe(false);
+    expect(out.sessionUser).toBeNull();
+  });
+});
+
 describe('signOutOfAccount', () => {
   beforeEach(() => {
     mockGetSession.mockReset();
     mockSignOut.mockReset();
+    mockSignInAnonymously.mockReset().mockResolvedValue({
+      data: { user: { id: 'new-anon-uid' } },
+      error: null,
+    });
+    localStorage.clear();
+    sessionStorage.clear();
   });
+
+  function stashPendingFlows() {
+    localStorage.setItem(
+      STORAGE_KEYS.MERGE_GRANT,
+      JSON.stringify({ token: 'grant-token', minted_at: Date.now() }),
+    );
+    sessionStorage.setItem(STORAGE_KEYS.OAUTH_LINK_PROVIDER, 'google');
+  }
 
   it('signs out with scope:"local" — other devices keep their sessions — then re-anons', async () => {
     mockSignOut.mockResolvedValueOnce({ error: null });
     mockGetSession.mockResolvedValueOnce(noSession());
 
-    const newId = await signOutOfAccount();
+    await expect(signOutOfAccount()).resolves.toBe(true);
 
     expect(mockSignOut).toHaveBeenCalledWith({ scope: 'local' });
-    expect(newId).toBe('new-anon-uid');
+    expect(mockSignInAnonymously).toHaveBeenCalledTimes(1);
+  });
+
+  // The failures supabase-js answers by keeping the account session stored
+  // (pinned above). A re-anon after one of them reads that session straight
+  // back, so "signed out" would be reported for an account still here.
+  it.each([
+    ['a network failure', { name: 'AuthRetryableFetchError', status: 0, message: 'Failed to fetch' }],
+    ['a 503', { name: 'AuthRetryableFetchError', status: 503, message: 'Service Unavailable' }],
+    ['a 500', { name: 'AuthApiError', status: 500, message: 'Internal Server Error' }],
+  ])('reports failure on %s, makes no guest session and keeps the pending sign-in flows', async (_name, error) => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    stashPendingFlows();
+    mockSignOut.mockResolvedValueOnce({ error });
+    mockGetSession.mockResolvedValue(permanentSession());
+
+    await expect(signOutOfAccount()).resolves.toBe(false);
+
+    expect(mockGetSession).not.toHaveBeenCalled();
+    expect(mockSignInAnonymously).not.toHaveBeenCalled();
+    expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).not.toBeNull();
+    expect(sessionStorage.getItem(STORAGE_KEYS.OAUTH_LINK_PROVIDER)).toBe('google');
+  });
+
+  it('reports failure when the sign-out call itself throws, touching nothing else', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    stashPendingFlows();
+    mockSignOut.mockRejectedValueOnce(new Error('Acquiring an exclusive Navigator LockManager lock timed out'));
+
+    await expect(signOutOfAccount()).resolves.toBe(false);
+
+    expect(mockSignInAnonymously).not.toHaveBeenCalled();
+    expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).not.toBeNull();
+    expect(sessionStorage.getItem(STORAGE_KEYS.OAUTH_LINK_PROVIDER)).toBe('google');
+  });
+
+  it.each([401, 403, 404])('treats a %s as signed out: the server no longer has the session', async (status) => {
+    stashPendingFlows();
+    mockSignOut.mockResolvedValueOnce({ error: { name: 'AuthApiError', status, message: 'invalid JWT' } });
+    mockGetSession.mockResolvedValueOnce(noSession());
+
+    await expect(signOutOfAccount()).resolves.toBe(true);
+
+    expect(mockSignInAnonymously).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBeNull();
+    expect(sessionStorage.getItem(STORAGE_KEYS.OAUTH_LINK_PROVIDER)).toBeNull();
   });
 
   it('drops a stashed Flow B merge grant — signing out abandons the pending merge (W14)', async () => {

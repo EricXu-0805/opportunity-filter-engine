@@ -8,10 +8,20 @@ from __future__ import annotations
 
 import re
 
-from backend.lib.email_experience_attribution import experience_attribution_violations
+from backend.lib.email_experience_attribution import (
+    collapse_whitespace,
+    experience_attribution_violations,
+)
 
 # Bump independently of the wire/pipeline version when source checks change.
-SOURCE_CHECK_VERSION = "target-resume-source-checks-v3"
+SOURCE_CHECK_VERSION = "target-resume-source-checks-v4"
+
+# Ordinary entries stay below this ceiling: at 6000 characters, English bullets
+# give about 80 clauses, Chinese prose about 130 and very short Chinese
+# sentences about 330. A long list of short items separated by '；' or ';' can
+# pass it. Past the ceiling the check fails closed (an upgrade is reported), so
+# the caller keeps the original.
+_MAX_CLAUSES = 400
 
 NEGATION = re.compile(r"\b(?:not|never|no|without|only)\b|\b\w+n['’]t\b|没有|并非|尚未|从未|未经|仅|只|未|不(?:曾|会|能|是|负责|主导|带领|独立|领导|参与|承担|完成|接受|录用|发表)", re.I)
 TEAM = re.compile(r"\b(?:team|teammates?|we|our|collaborat\w*)\b|团队|小组|我们|共同|协作|合作", re.I)
@@ -50,9 +60,9 @@ def clauses(text):
     return [part.strip() for part in re.split(boundaries, text, flags=re.I) if part.strip()]
 
 
-def personal_actions(text):
+def personal_actions(text, clause_list=None):
     found = set()
-    for clause in clauses(text):
+    for clause in (clauses(text) if clause_list is None else clause_list):
         if NEGATION.search(clause) or (TEAM.search(clause) and not PERSONAL.search(clause)):
             continue
         # Résumé fragments with no subject are personal claims too.
@@ -62,24 +72,30 @@ def personal_actions(text):
     return found
 
 
-def publication_stages(text):
-    return {name for clause in clauses(text) if not NEGATION.search(clause)
+def publication_stages(text, clause_list=None):
+    return {name for clause in (clauses(text) if clause_list is None else clause_list) if not NEGATION.search(clause)
             for name, pattern in STAGES.items() if re.search(pattern, clause, re.I)}
 
 
 def claim_upgrade_detected(proposed, original):
+    proposed, original = collapse_whitespace(proposed), collapse_whitespace(original)
     if normalized(proposed) == normalized(original):
         return False
     proposed_normal = normalized(proposed)
+    proposed_clauses, original_clauses = clauses(proposed), clauses(original)
+    # Fail closed when either side is past the clause ceiling: an unverifiable
+    # rewrite keeps the original rather than being approved unchecked.
+    if len(proposed_clauses) > _MAX_CLAUSES or len(original_clauses) > _MAX_CLAUSES:
+        return True
     # Retain precise qualifiers/attribution, not merely one negation word
     # somewhere else in the new text. This intentionally rejects some valid
     # paraphrases; the original remains available for the student's review.
-    for clause in clauses(original):
+    for clause in original_clauses:
         if (NEGATION.search(clause) or TEAM.search(clause) or PUBLICATION.search(clause)) and normalized(clause) not in proposed_normal:
             return True
-    if personal_actions(proposed) - personal_actions(original):
+    if personal_actions(proposed, proposed_clauses) - personal_actions(original, original_clauses):
         return True
-    if publication_stages(proposed) - publication_stages(original):
+    if publication_stages(proposed, proposed_clauses) - publication_stages(original, original_clauses):
         return True
     # Compare only this original entry. A shared keyword or number in another
     # project, the target, or editable wording cannot establish who did what.
@@ -97,14 +113,21 @@ def supported_claim_upgrade_detected(proposed, originals):
     """
     if len(originals) == 1:
         return claim_upgrade_detected(proposed, originals[0])
+    proposed = collapse_whitespace(proposed)
+    originals = [collapse_whitespace(original) for original in originals]
     proposed_normal = normalized(proposed)
-    for original in originals:
-        for clause in clauses(original):
+    proposed_clauses = clauses(proposed)
+    original_clauses = [clauses(original) for original in originals]
+    # Fail closed when any side is past the clause ceiling (see claim_upgrade_detected).
+    if len(proposed_clauses) > _MAX_CLAUSES or any(len(parts) > _MAX_CLAUSES for parts in original_clauses):
+        return True
+    for parts in original_clauses:
+        for clause in parts:
             if (NEGATION.search(clause) or TEAM.search(clause) or PUBLICATION.search(clause)) and normalized(clause) not in proposed_normal:
                 return True
-    if personal_actions(proposed) - set().union(*(personal_actions(original) for original in originals)):
+    if personal_actions(proposed, proposed_clauses) - set().union(*(personal_actions(o, parts) for o, parts in zip(originals, original_clauses, strict=True))):
         return True
-    if publication_stages(proposed) - set().union(*(publication_stages(original) for original in originals)):
+    if publication_stages(proposed, proposed_clauses) - set().union(*(publication_stages(o, parts) for o, parts in zip(originals, original_clauses, strict=True))):
         return True
     # The structural path proves only the closed surface forms below, preserving
     # the complete actor/action/object/quantity text for each separate clause.
@@ -166,9 +189,11 @@ def supported_surface_forms(proposed, originals):
                     objects = f'{rest} using {first}'
                 # with/using are equivalent only in the explicit trailing-method
                 # slot. Complete object text and every quantity remain unchanged.
-                for tool in tools:
-                    if objects.endswith(' with ' + tool):
-                        objects = objects[:-len(' with ' + tool)] + ' using ' + tool
+                # A tool has no space, so only the text after the last ' with '
+                # can name it.
+                head, separator, tool = objects.rpartition(' with ')
+                if separator and tool in tools:
+                    objects = head + ' using ' + tool
                 values.append((action, actor, objects))
         return values
 
@@ -176,8 +201,8 @@ def supported_surface_forms(proposed, originals):
     for source in originals:
         for action, actor, objects in forms(source):
             permitted.add((action, actor, objects))
-            for tool in tools:
-                if action != 'exact' and objects.endswith(' using ' + tool):
-                    permitted.add((action, actor, objects[:-len(' using ' + tool)]))
+            head, separator, tool = objects.rpartition(' using ')
+            if action != 'exact' and separator and tool in tools:
+                permitted.add((action, actor, head))
     proposed_forms = forms(proposed)
     return bool(proposed_forms) and all(item in permitted for item in proposed_forms)

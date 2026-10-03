@@ -1105,18 +1105,39 @@ function mapAuthError(raw: string, code?: string): SignInOutcome {
 }
 
 /**
+ * 401/403/404 from the logout call: the server no longer has this session,
+ * and supabase-js drops the local copy on exactly these.
+ */
+function signOutFoundSessionGone(error: { status?: number }): boolean {
+  return error.status === 401 || error.status === 403 || error.status === 404;
+}
+
+/**
  * Sign out and immediately re-establish an anonymous session so the
  * rest of the app keeps working (saveProfile / favorites / etc. all
  * assume `ensureAnonSession` will succeed). Without the re-anon, the
  * user would be on a "no session" state until they reload.
  *
- * Returns the new device id (anon uid) or null on failure.
+ * Resolves false when the sign-out did not happen. supabase-js keeps the
+ * account session stored when the logout request itself fails (a network
+ * error, a 5xx), so nothing else is touched then: a re-anon would only read
+ * that account back, and the pending sign-in stashes still belong to it.
  */
-export async function signOutOfAccount(): Promise<string | null> {
+export async function signOutOfAccount(): Promise<boolean> {
   // scope:'local' — signing out THIS device must not revoke the account's
   // sessions on every other device (the default 'global' does).
-  const { error } = await supabase.auth.signOut({ scope: 'local' });
-  if (error) console.warn('[ofe] signOut failed:', error.message);
+  let error: { status?: number; message: string } | null;
+  try {
+    ({ error } = await supabase.auth.signOut({ scope: 'local' }));
+  } catch (thrown) {
+    // A throw (a lock timeout, say) comes before supabase-js removes anything.
+    console.warn('[ofe] signOut failed:', thrown);
+    return false;
+  }
+  if (error && !signOutFoundSessionGone(error)) {
+    console.warn('[ofe] signOut failed:', error.message);
+    return false;
+  }
   clearOAuthLinkProvider(); // don't let a stale link-provider stash cross sessions
   // W14: signing out abandons any pending Flow B merge — drop the stashed
   // grant BEFORE the re-anon so it can't defer identity-owner's clear below
@@ -1125,7 +1146,8 @@ export async function signOutOfAccount(): Promise<string | null> {
   // W6: no bespoke clear here — the re-anon below lands in ensureAnonSession's
   // owner sync, where the fresh anon uid differs from the marker and the
   // signed-out account's local data is cleared.
-  return ensureAnonSession();
+  await ensureAnonSession();
+  return true;
 }
 
 /**

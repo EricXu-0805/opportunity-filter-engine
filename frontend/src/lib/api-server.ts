@@ -66,6 +66,25 @@ export type OpportunityDetailOutcome =
   | { status: 'not-found' }
   | { status: 'unavailable' };
 
+/**
+ * The record id behind a page's `[id]` segment.
+ *
+ * Next 16 hands a page component `encodeURIComponent(segment)`, while
+ * generateMetadata and route handlers get the decoded segment. The fetchers
+ * below encode once more, so 'faculty-art & design-…' reached the API as
+ * 'faculty-art%2520%2526%2520design-…' and an existing record rendered as not
+ * found. On /private-imports/[id] every 'private-import:…' id arrived with its
+ * ':' as '%3A' and failed the client's id check. Decode once; a string that is
+ * not a valid escape sequence is kept.
+ */
+export function decodeRouteId(raw: string): string {
+  try {
+    return decodeURIComponent(raw);
+  } catch {
+    return raw;
+  }
+}
+
 export async function fetchOpportunityDetail(id: string): Promise<OpportunityDetailOutcome> {
   const base = serverApiBase();
   const url = releaseScopedUrl(
