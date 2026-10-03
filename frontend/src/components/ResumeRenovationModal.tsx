@@ -875,7 +875,7 @@ export default function ResumeRenovationModal({
     for (const s of doc.sections) {
       // A section with no bullets has nothing to paste under its heading.
       if (s.bullets.length === 0) continue;
-      lines.push(shownHeading(s, profileSnapshot.resume_text ?? '').toUpperCase());
+      lines.push(shownHeading(s, profileSnapshot.resume_text ?? '', doc.sections).toUpperCase());
       // "demote" is defined for the model as "kept but de-emphasized (placed
       // lower)", and the chip a student reads says "De-emphasized". This used
       // to drop those bullets, so clicking "Copy renovated résumé" silently
@@ -1006,7 +1006,7 @@ export default function ResumeRenovationModal({
           {phase === 'doc' && <div className="px-4 pt-3"><button type="button" className="text-sm text-indigo-700 underline" onClick={() => { const scope = scopeRef.current; if (isCurrentScope(scope)) setHistoryOwner(owner => owner ? null : scope.owner); }}>{locale === 'zh' ? '历史版本' : 'Version history'}</button></div>}
           {saveState.status === 'conflict' && saveState.current && <section role="alert" data-testid="renovation-save-conflict" className="mx-4 mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 space-y-3">
             <p>{locale === 'zh' ? '其他设备已保存了新版本。你的本地改动已保留，请比较后选择。' : 'Another device saved a newer version. Your local edits are kept. Compare the saved draft before choosing.'}</p>
-            <details><summary>{locale === 'zh' ? '查看已保存版本' : 'View saved version'}</summary><pre className="max-h-60 overflow-auto whitespace-pre-wrap break-words text-sm" data-testid="renovation-conflict-preview">{(saveState.current.doc as unknown as RenovationDoc).sections.map(s => [shownHeading(s, profileSnapshot.resume_text ?? ''), ...s.bullets.map(bulletCurrentText)].join('\n')).join('\n\n')}</pre></details>
+            <details><summary>{locale === 'zh' ? '查看已保存版本' : 'View saved version'}</summary><pre className="max-h-60 overflow-auto whitespace-pre-wrap break-words text-sm" data-testid="renovation-conflict-preview">{(saveState.current.doc as unknown as RenovationDoc).sections.map((s, _, saved) => [shownHeading(s, profileSnapshot.resume_text ?? '', saved), ...s.bullets.map(bulletCurrentText)].join('\n')).join('\n\n')}</pre></details>
             <div className="flex flex-wrap gap-3">
               <button type="button" disabled={!!editingId} className="text-sm underline disabled:text-gray-400" onClick={() => adoptSaved(saveState.current!)}>{locale === 'zh' ? '使用已保存版本' : 'Use saved version'}</button>
               <button type="button" disabled={!!editingId} className="text-sm underline disabled:text-gray-400" onClick={() => {
@@ -1109,7 +1109,7 @@ export default function ResumeRenovationModal({
               {doc.sections.map((section: RenovatedSection) => (
                 <section key={section.id}>
                   <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                    {shownHeading(section, profileSnapshot.resume_text ?? '')}
+                    {shownHeading(section, profileSnapshot.resume_text ?? '', doc.sections)}
                   </h3>
                   <ul className="space-y-2.5">
                     {section.bullets.map((b) => {

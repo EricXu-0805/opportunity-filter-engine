@@ -85,6 +85,12 @@ const KIND_HEADING: Record<string, keyof typeof STANDARD_HEADINGS.en> = {
   experience: 'activities', projects: 'activities', research: 'activities', leadership: 'activities',
 };
 const headingKey = (value: string) => value.normalize('NFKC').replace(/\s+/gu, ' ').trim().toLowerCase().replace(/[\s:]+$/u, '');
+// A row's text as backend _resume_rows reads it: NFKC, its spaces collapsed.
+const rowText = (value: string) => value.normalize('NFKC').replace(/\s+/gu, ' ').trim();
+// A row that opens with a bullet glyph or a number (backend _LINE_GLYPH), and an inline glyph (_INLINE_GLYPH).
+const LINE_GLYPH = /^(?:[•\-*–—+▪●◦·]|\d+[.)])\s+/u;
+const INLINE_GLYPH = /\s*[•▪●◦]\s*/u;
+const LINE_END = /[\s.;,:。；，：!?！？]+$/u;
 
 /** "zh" when Chinese carries the text, as backend language() reads it. */
 function textLanguage(text: string): 'en' | 'zh' {
@@ -95,15 +101,60 @@ function textLanguage(text: string): 'en' | 'zh' {
   return (runs >= 2 || leading) && han >= (text.match(/[A-Za-z]+/gu)?.length ?? 0) ? 'zh' : 'en';
 }
 
+/** A row of its own (backend _own_row): a row in capitals, or a short heading in title case. */
+function ownRow(line: string): boolean {
+  const letters = Array.from(line).filter((character) => /\p{L}/u.test(character));
+  if (letters.filter((character) => character !== character.toLowerCase()).length >= 2
+      && !letters.some((character) => character !== character.toUpperCase())) return true;
+  const bare = line.replace(/:+$/u, '');
+  const words = bare.split(/\s+/u).filter((word) => word && word !== '&' && word !== '/');
+  return words.length > 0 && words.length <= 4 && line.length <= 40 && /^[A-Za-z &/'-]*$/u.test(bare)
+    && /^[A-Z]/u.test(words[0]) && /^[A-Z]/u.test(words[words.length - 1])
+    && words.every((word) => /^[A-Z]/u.test(word) || word.length <= 3);
+}
+
+/** The résumé row a section's line starts on: a row (after its glyph), or a piece after an
+ * inline glyph, that is the line or opens it. A glyph row is preferred over another row that only
+ * opens it. -1 when no row does. */
+function lineRow(rows: string[], line: string): number {
+  const key = headingKey(line).replace(LINE_END, '');
+  if (key.length < 4) return -1;
+  let fallback = -1;
+  for (let index = 0; index < rows.length; index++) {
+    const pieces = rows[index].replace(LINE_GLYPH, '').split(INLINE_GLYPH).map((piece) => headingKey(piece).replace(LINE_END, ''));
+    for (const piece of pieces) {
+      if (piece.length < 4 || !key.startsWith(piece)) continue;
+      if (piece === key || LINE_GLYPH.test(rows[index]) || INLINE_GLYPH.test(rows[index])) return index;
+      if (fallback < 0) fallback = index;
+    }
+  }
+  return fallback;
+}
+
 /** The heading a renovated section shows and copies. The model wrote each section's heading and
  * nothing reviewed it; on main /tailor/structure returned it as written, and docs saved then hold
- * it. It is shown only as the student wrote it: a whole row of the résumé, in the résumé's own
- * spelling. Any other heading shows as the standard name of the section's kind, in the language
- * of its lines (of the résumé when it has none). */
-export function shownHeading(section: Pick<RenovatedSection, 'heading' | 'kind' | 'bullets'>, resumeText: string): string {
+ * it. It is shown only as the student wrote it, by the rule backend _section_heading applies: the
+ * heading row nearest above the section's first line, with no row in capitals or a short title-case
+ * heading (_own_row), and no row another section of the doc is headed by, in between; never a glyph
+ * row; in the résumé's own spelling. Any other heading shows as the standard name of the section's
+ * kind, in the language of its lines (of the résumé when it has none). ``sections`` are the doc's
+ * sections, whose headings stop the search as backend ``named`` does. */
+export function shownHeading(
+  section: Pick<RenovatedSection, 'heading' | 'kind' | 'bullets'>,
+  resumeText: string,
+  sections: readonly Pick<RenovatedSection, 'heading'>[] = [section],
+): string {
   const key = headingKey(section.heading ?? '');
-  const row = key ? resumeText.split(/\r?\n/u).find((line) => headingKey(line) === key) : undefined;
-  if (row !== undefined) return row.trim().replace(/[\s:：]+$/u, '');
+  const named = new Set(sections.map((other) => headingKey(other.heading ?? '')).filter(Boolean));
+  const raw = resumeText.split(/\r?\n/u).map((line) => line.trim()).filter((line) => rowText(line));
+  const rows = raw.map(rowText);
+  // The section's first line in the résumé: the earliest row any of its lines starts on.
+  const starts = key ? section.bullets.map((bullet) => lineRow(rows, bullet.base_text)).filter((row) => row >= 0) : [];
+  const first = starts.length ? Math.min(...starts) : -1;
+  for (let index = first - 1; first > 0 && index >= 0; index--) {
+    if (headingKey(rows[index]) === key && !LINE_GLYPH.test(rows[index])) return raw[index].replace(/[\s:：]+$/u, '');
+    if (named.has(headingKey(rows[index])) || ownRow(rows[index])) break;
+  }
   const lines = section.bullets.map((bullet) => bullet.base_text).join(' ');
   return STANDARD_HEADINGS[textLanguage(lines || resumeText)][KIND_HEADING[section.kind] ?? 'other'];
 }

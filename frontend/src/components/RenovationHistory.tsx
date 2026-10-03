@@ -11,7 +11,8 @@ import type { RenovationDoc } from '@/lib/types';
 // opening or restoring the version does (reviewedRenovation). A legacy_doc version is only read here.
 // Its section headings show as the student wrote them, or as standard names (shownHeading).
 function textOf(doc: Record<string, unknown>, resumeText: string) {
-  return (doc as unknown as RenovationDoc).sections.map(s => [shownHeading(s, resumeText), ...s.bullets.map(shownText)].join('\n')).join('\n\n');
+  const sections = (doc as unknown as RenovationDoc).sections;
+  return sections.map(s => [shownHeading(s, resumeText, sections), ...s.bullets.map(shownText)].join('\n')).join('\n\n');
 }
 
 export default function RenovationHistory({ opportunityId, owner, locale, resumeText = '', disabled, onRestore, onClose }: {
