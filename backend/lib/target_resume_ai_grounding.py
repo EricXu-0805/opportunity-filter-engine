@@ -60,10 +60,11 @@ INTENT = re.compile(
     r"|希望|计划|打算|" + _ZH_PLAN + r"|想要|有意|期望|期待|感兴趣|志在", re.I)
 # A planned or scheduled thing, where INTENT needs "to": "a planned EEG study",
 # "a proposed NSF grant", "a study scheduled for May", 预定于 5 月. "Planned the
-# outreach event" and "the proposed model" state no status.
+# outreach event" and "the proposed model" state no status, nor does "the
+# scheduled maintenance", routine work done to a schedule.
 PLANNED = re.compile(
     r"\b(?:a|an|the|this|that|these|those|my|our|their|its|his|her|one|two|three|four|five|several|\d+)\s+"
-    r"(?:planned|scheduled|proposed(?=\s+(?:[\w-]+\s+){0,2}?(?:grants?|stud(?:y|ies)|projects?"
+    r"(?:planned|proposed(?=\s+(?:[\w-]+\s+){0,2}?(?:grants?|stud(?:y|ies)|projects?"
     r"|experiments?|research|trials?|surveys?|fieldwork)\b))\b"
     r"|\b(?:planned|scheduled)\s+(?:for|to)\b|\btentative(?:ly)?\b|预定(?!了)|暂定", re.I)
 # Work the original says is unfinished. A past-tense verb for it, or a Chinese
@@ -555,7 +556,7 @@ _CLAUSE_LEAD = re.compile(r"^(?:\s|[(（]|(?:and|but|then|that|which|who|whom|wh
 _PERSONAL_SUBJECT = re.compile(r"I\b|(?i:my\s+(?:part|role|contribution|job|task|work)s?\b|personally\b)|本人|我(?!们)")
 # A subject or an agent is read only where it stands, at the start of its text.
 _OTHER_SUBJECT = re.compile(
-    r"\A(?:(?:(?:my|the|a|an|our|his|her|their|two|three|four|several|\d+)\s+)?(?:(?:graduate|grad|phd|doctoral|senior"
+    r"\A(?:(?P<determiner>(?:my|the|a|an|our|his|her|their|two|three|four|several|\d+)\s+)?(?:(?:graduate|grad|phd|doctoral|senior"
     r"|lab|research|attending|head)\s+)?(?:advisors?|advisers?|supervisors?|mentors?|pis?|professors?|prof\b\.?"
     r"|dr\b\.?|postdocs?|tas?|nurses?|doctors?|physicians?|surgeons?|veterinarians?|therapists?|pharmacists?"
     r"|operators?|staff|clinicians?|technicians?|instructors?|teachers?|he|she|they)\b"
@@ -629,11 +630,32 @@ def _passive_agent(clause, position):
     return "T" if _TEAM_SUBJECT.match(agent) else None
 
 
+def _names_another_doer(lead, other):
+    """Whether an _OTHER_SUBJECT match that opens ``lead`` is someone else doing the clause's work.
+
+    A bare role noun opening a résumé line is the student's own title: "TA for CS 124,
+    holding office hours", "Research technician in the Smith Lab", 研究生期间负责. It is
+    another person with a determiner ("The nurse, with my help, recorded"), as an
+    abbreviated title ("Dr. Lee"), or when its own verb follows it directly, past a name
+    or an adverb ("Lab technician ran the assays", "Professor Lee designed", 导师负责).
+    """
+    rest = lead[other.end():]
+    if other["determiner"] or rest.startswith("."):
+        return True
+    if _CJK.match(other.group(0)):
+        return bool(_ZH_VERBS.match(rest.lstrip()))
+    words = _WORD.findall(rest)
+    while words and words[0][0].isupper():
+        words.pop(0)
+    return (verb_use(_lead_word(" ".join(words))) or ("", ""))[1] in ("past", "s")
+
+
 def _subject(clause):
     lead = _CLAUSE_LEAD.sub("", clause)
     if _PERSONAL_SUBJECT.match(lead):
         return "P"
-    if _OTHER_SUBJECT.match(lead):
+    other = _OTHER_SUBJECT.match(lead)
+    if other and _names_another_doer(lead, other):
         return "O"
     if _TEAM_SUBJECT.match(lead):
         return "T"

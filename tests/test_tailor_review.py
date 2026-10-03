@@ -26,7 +26,7 @@ from backend.lib.target_resume_ai_grounding import (
     claim_upgrade_findings,
     supported_claim_upgrade_detected,
 )
-from backend.lib.target_resume_ai_validation import units_for
+from backend.lib.target_resume_ai_validation import fingerprint, units_for
 from backend.main import app
 from backend.routes import tailor
 from src.evidence import is_actionable_target
@@ -683,12 +683,19 @@ def _contract_details(monkeypatch) -> list[str | None]:
     return details
 
 
-def _full_target(monkeypatch, original, rewrite, *, locale=None, op="verb_first"):
+def _full_target(monkeypatch, original, rewrite, *, locale=None, op="verb_first", links=(), description=None):
     """Full target with ``original`` as its experience line and a model that writes ``rewrite`` for it.
 
-    The UI locale is the rewrite's language unless given. Returns the line's receipt and the review calls.
+    The UI locale is the rewrite's language unless given. ``op`` may cite ``links``, which quote
+    ``description`` when it replaces the target's. Returns the line's receipt and the review calls.
     """
     doc = full_target.make_doc(original)
+    if description is not None:
+        target = full_target.route.authoritative_target({
+            "id": "target", "title": "Research", "organization": "Example Lab", "source_url": "https://example.edu/lab",
+            "description_clean": description, "eligibility": {"skills_required": ["Python"]},
+            "source_type": "campus_program", "opportunity_type": "research", "metadata": {"is_active": True}})
+        doc["target_snapshot"], doc["base"]["target_signature"] = target, fingerprint(target)
     target = doc["target_snapshot"]
     opp = {"id": "target", "title": target["title"], "organization": target["organization"],
            "source_url": target["source_url"], "description_clean": target["description"],
@@ -699,7 +706,8 @@ def _full_target(monkeypatch, original, rewrite, *, locale=None, op="verb_first"
     monkeypatch.setattr(target_resume_ai.llm_budget, "exhausted", lambda: False)
     units = units_for(doc)[0]
     line = next(unit["unit_id"] for unit in units if unit["evidence"]["kind"] == "experience")
-    rows = [full_target.row(unit["unit_id"], text=rewrite, ops=[{"op": op}]) if unit["unit_id"] == line
+    ops = [{"op": op, "link": links[0]["id"]}] if links else [{"op": op}]
+    rows = [full_target.row(unit["unit_id"], text=rewrite, ops=ops, links=links) if unit["unit_id"] == line
             else full_target.row(unit["unit_id"]) for unit in units]
     monkeypatch.setattr(target_resume_ai, "chat_completion", lambda *args, **kwargs: json.dumps({"units": rows}))
     reviews = []
@@ -742,6 +750,73 @@ def test_the_ui_locale_picks_no_rewrite_language(endpoint, monkeypatch, locale, 
         assert (outcomes(path, body), len(reviews)) == ([(pair[1], None)], 1), path
     receipt, reviews = _full_target(monkeypatch, *pair, locale=locale, op="personal_first")
     assert (receipt["status"], receipt["suggestion"]["proposed_text"], len(reviews)) == ("suggested", pair[1], 1)
+
+
+# A role noun that opens the line is the student's own title, and "the scheduled
+# maintenance" is routine work: main showed these, and the locks refused them as fabrication.
+ROLE_LINES = [
+    ("Lab technician intern, performing the scheduled maintenance of -80 freezers.",
+     "Performed scheduled maintenance of -80 freezers as lab technician intern."),
+    ("TA for CS 124, holding weekly office hours for 40 students.",
+     "Held weekly office hours for 40 students as TA for CS 124."),
+    ("Research technician in the Smith Lab, genotyping mice with PCR.",
+     "Genotyped mice with PCR as research technician in the Smith Lab."),
+    ("Teacher assistant at Leal Elementary, grading math homework for 25 students.",
+     "Graded math homework for 25 students as teacher assistant at Leal Elementary."),
+    ("Responsible for the scheduled cleaning of the fume hoods each Friday.",
+     "Cleaned the fume hoods each Friday on schedule."),
+    ("Nurse aide at Carle Hospital, recording vital signs for 20 patients per shift.",
+     "Recorded vital signs for 20 patients per shift as nurse aide at Carle Hospital."),
+    ("Operator of the lab's SEM, imaging 50 samples for the group.",
+     "Imaged 50 samples for the group as operator of the lab's SEM."),
+    ("Lab instructor for CHEM 102, teaching two sections of 24 students.",
+     "Taught two sections of 24 students as lab instructor for CHEM 102."),
+    ("TA in the Neural Engineering Lab, grading 60 lab reports per week.",
+     "Graded 60 lab reports per week as TA in the Neural Engineering Lab."),
+    ("Staff assistant at McKinley Health Center, scheduling 30 appointments a day.",
+     "Scheduled 30 appointments a day as staff assistant at McKinley Health Center."),
+    ("Therapist aide at Carle Rehab, setting up equipment for 15 sessions per week.",
+     "Set up equipment for 15 sessions per week as therapist aide at Carle Rehab."),
+    ("Head TA for ECE 120, running the weekly staff meeting for 20 TAs.",
+     "Ran the weekly staff meeting for 20 TAs as head TA for ECE 120."),
+    ("研究生期间负责搭建实验平台，完成 3 组对照实验。", "负责搭建实验平台，完成 3 组对照实验（研究生期间）。"),
+]
+LAB_PLATFORM = {"id": "L1", "anchor": "t1", "term": "负责搭建实验平台", "source": "负责搭建实验平台", "relation": "same"}
+
+
+@pytest.mark.parametrize("pair", ROLE_LINES, ids=lambda pair: pair[1])
+def test_a_role_heading_names_no_other_doer(endpoint, monkeypatch, pair):
+    """Each route shows the rewrite after one review, as main showed it without one."""
+    assert gate_findings(*pair) == []
+    for path in PATHS:
+        body, reviews = run(endpoint, monkeypatch, path, [pair], _review_all(True))
+        assert (outcomes(path, body), len(reviews)) == ([(pair[1], None)], 1), path
+    if em.language(pair[0]) == "zh":
+        receipt, reviews = _full_target(monkeypatch, *pair, op="lead_with", links=[LAB_PLATFORM],
+                                        description=pair[0])
+    else:
+        receipt, reviews = _full_target(monkeypatch, *pair)
+    assert (receipt["status"], receipt["suggestion"]["proposed_text"], len(reviews)) == ("suggested", pair[1], 1)
+
+
+@pytest.mark.parametrize(("original", "rewrite"), [
+    ("The postdoc in our lab ran the assays; I analyzed the data.",
+     "Ran the assays with the postdoc in our lab; I analyzed the data."),
+    ("The nurse, with my help, recorded vital signs for 20 patients.",
+     "With my help, recorded vital signs for 20 patients for the nurse."),
+    ("Dr. Lee designed the study; I recruited 30 participants.",
+     "Designed the study with Dr. Lee; recruited 30 participants."),
+    ("Professor Lee designed the study; I recruited 30 participants.",
+     "Designed the study with Professor Lee; recruited 30 participants."),
+    ("Lab technician ran the assays; I analyzed the data.", "Ran the assays as lab technician; analyzed the data."),
+    ("He also wrote the grant; I edited it.", "Also wrote the grant; edited it."),
+    ("Supervisor: Dr. Lee, who designed the protocol; I ran it.",
+     "Designed the protocol with supervisor Dr. Lee; ran it."),
+    ("导师设计了实验方案，本人完成了数据录入。", "设计了实验方案（导师），完成了数据录入。"),
+])
+def test_another_persons_action_still_cannot_become_the_students(original, rewrite):
+    """A determiner, a title or a verb right after the role noun names someone else as the doer."""
+    assert "actor_changed" in gate_findings(original, rewrite)
 
 
 # A w14.0 translation the student kept with "Use kept as new originals": its source is still Chinese.
