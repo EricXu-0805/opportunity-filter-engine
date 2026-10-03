@@ -504,7 +504,7 @@ class TestVerifiedVerdict:
     @pytest.mark.parametrize("problem, reason", [
         ("unknown_author", f"OpenAlex answered {_AUTHOR} with no author"),
         ("merged_author", f"OpenAlex answered {_AUTHOR} with A5000999"),
-        ("no_works", "kept none of the 0 recent work(s)"),
+        ("no_works", f"OpenAlex returned no works for {_AUTHOR}"),
         ("gate_keeps_none", "kept none of the 1 recent work(s)"),
         ("identity_revoked", "apply_works did not stamp"),
     ])
@@ -533,6 +533,55 @@ class TestVerifiedVerdict:
         assert reason in capsys.readouterr().err
         assert (_sha256(ledger), disk.writes, disk.shards) == (before, [], snapshot)
         assert _waiting(ledger) == ["amb-1", "amb-2", "nr-1"]
+
+    @pytest.mark.parametrize("works, advice", [
+        ({}, "retry"),
+        ({_AUTHOR: [_raw("Geochemistry Again", 2026, "Chemistry")]}, "record --removed"),
+    ], ids=["none_returned", "gate_keeps_none"])
+    def test_only_works_the_gate_rejected_suggest_removed(self, queue, monkeypatch, openalex, capsys,
+                                                          works, advice):
+        """`_get` gives up after four failed attempts by returning {} without
+        setting `_warned_429`, and `works_for_authors` then answers {}. An
+        author OpenAlex counts 120 works for has works, so an empty answer is
+        a failed request. Suggesting --removed there would turn a network error
+        into the unit's one and final verdict."""
+        disk, ledger = queue
+        openalex["works"] = works
+
+        assert _review(monkeypatch, disk, ledger, "amb-1", "--verified", _AUTHOR,
+                       "--reviewer", "eric", "--save") == 2
+
+        err = capsys.readouterr().err
+        assert advice in err
+        assert ("--removed" in err) == (advice == "record --removed")
+
+    @pytest.mark.parametrize("where, reason", [
+        ("author", "(the OpenAlex budget is exhausted)"),
+        ("works", "the OpenAlex budget ran out while fetching the works"),
+    ])
+    def test_refuses_when_the_budget_runs_out(self, queue, monkeypatch, openalex, capsys, where, reason):
+        """`_get` sets `_warned_429` on the second 429 and returns {}. During
+        the works fetch that can follow a page that did arrive, so a list that
+        is not empty can still be cut short, and it must not land."""
+        from src.collectors import openalex_enrich as oa
+
+        disk, ledger = queue
+        call = oa._get if where == "author" else oa.works_for_authors
+
+        def exhausted(*args, **kwargs):
+            answer = call(*args, **kwargs) if where == "works" else {}
+            oa._warned_429 = True
+            return answer
+
+        monkeypatch.setattr(oa, "_get" if where == "author" else "works_for_authors", exhausted)
+        before = _sha256(ledger)
+        snapshot = copy.deepcopy(disk.shards)
+
+        assert _review(monkeypatch, disk, ledger, "amb-1", "--verified", _AUTHOR,
+                       "--reviewer", "eric", "--save") == 2
+
+        assert reason in capsys.readouterr().err
+        assert (_sha256(ledger), disk.writes, disk.shards) == (before, [], snapshot)
 
     def test_refuses_an_author_who_cannot_be_this_professor(self, queue, monkeypatch, openalex, capsys):
         """A mistyped id names a stranger, and `verified` is the one verdict

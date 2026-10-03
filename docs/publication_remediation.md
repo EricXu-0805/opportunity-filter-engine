@@ -263,13 +263,18 @@ A verdict lands through the same paths the automation uses:
   requests, an author lookup and one `/works` page, made before the shards are
   read and also in a dry run. The current gate picks among them from the
   author's own fields, as in `harvest_works_by_roster`, and `apply_works` stamps
-  the survivors on the whole corpus. The command refuses, and writes nothing,
-  when OpenAlex has no such author or answers with the author it was merged
-  into (name that one), when the author's surname is not the professor's (pass
-  `--allow-name-mismatch` when that is known), when the gate keeps none of the
-  works (then the verdict is `--removed`), when stamping would change any other
-  record (exit 3: another professor already holds that author id), or when the
-  record does not come out verified by that author at the current gate.
+  the survivors on the whole corpus. The command refuses, and writes nothing:
+  * when OpenAlex has no such author, or answers with the author it was merged
+    into (name that one);
+  * when the budget runs out, or the works request comes back empty, which is
+    what a failed request looks like (retry);
+  * when the author's surname is not the professor's (pass
+    `--allow-name-mismatch` when that is known);
+  * when the gate keeps none of the works (then the verdict is `--removed`);
+  * when stamping would change any other record (exit 3: another professor
+    already holds that author id);
+  * when the record does not come out verified by that author at the current
+    gate.
 * `--removed` is `apply_disposition`'s retraction. The record keeps no papers
   and no author id; its `publication_remediation` block takes the disposition
   `removed` and a `review` entry, and keeps the totals the automated step

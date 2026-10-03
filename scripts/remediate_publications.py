@@ -692,6 +692,12 @@ def _fetch_author(author_id: str) -> tuple[dict, list[dict]]:
     raw = oa.works_for_authors([author_id]).get(author_id) or []
     if oa._warned_429:
         raise _Refusal("the OpenAlex budget ran out while fetching the works")
+    # `_get` answers {} after four failed attempts too, without the 429 flag,
+    # and an author record that counts works has some. An empty list is a
+    # failed request, not evidence that none of the papers is theirs.
+    if not raw:
+        raise _Refusal(f"OpenAlex returned no works for {author_id}, whose author record counts "
+                       f"{author['works']}; a failed request looks like this, so retry")
     return author, raw
 
 
