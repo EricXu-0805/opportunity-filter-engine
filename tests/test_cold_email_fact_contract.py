@@ -479,6 +479,8 @@ def test_the_reviser_is_told_to_drop_an_unstated_commitment(email_client, monkey
 @pytest.mark.parametrize("unit", [
     "I can volunteer ", "I would be happy to take a ", "I can I would we could I'd ",
     "I can complete a a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a ", "I can volunteer 10 hours a week for credit, ",
+    "I am happy, a b c d e f g h i j k l m n o p, to volunteer ", "(volunteer, for credit, or paid) ",
+    "I would work the the the the unpaid ", "I have some free time over the next two weeks for a short call ",
 ])
 def test_the_commitment_checks_stay_bounded_at_the_edit_limit(unit):
     # The local refine path runs these on the event loop for a 5000-character body.
@@ -500,3 +502,135 @@ def test_the_formal_quick_edit_never_swaps_in_a_commitment(email_client, monkeyp
     assert out["method"] == "local" and "formal" in out["applied"], out
     assert "committed" not in out["body"]
     assert "I learn new material quickly." in out["body"]
+
+
+# Review of D31: the time check read a meeting window as time offered, the
+# commitment check read research topics as offers, and the clause stopped at
+# the first comma, so "paid or unpaid" after one went through.
+MEETING_WINDOW = "I am interested in hypersonics. I am available to meet any time in the next two weeks."
+TOPIC = "I am eager to tackle technical challenges in hypersonics."
+ASIDE_OFFER = "I would gladly contribute in any capacity, paid or unpaid."
+
+
+@pytest.mark.parametrize("endpoint", ["/cold-email", "/cold-email/refine"])
+@pytest.mark.parametrize("claim", [MEETING_WINDOW, TOPIC])
+def test_a_meeting_window_or_a_research_topic_is_not_an_offer(email_client, monkeypatch, endpoint, claim):
+    out = request_email(email_client, monkeypatch, endpoint, claim)
+    assert out["method"] == ("ai" if endpoint == "/cold-email" else "llm"), out
+    assert claim in out["body"]
+
+
+def test_a_quick_edit_keeps_the_students_own_research_topic(email_client, monkeypatch):
+    monkeypatch.setattr(ce, "is_configured", lambda: False)
+    response = email_client.post("/api/cold-email/refine", json={
+        "profile": PROFILE, "opportunity_id": OPP["id"], "experience_evidence": confirmed_experience([]),
+        "current_body": draft(f"{TOPIC} I am a fast learner."), "instruction": "make it more formal",
+    })
+    assert response.status_code == 200, response.text
+    out = response.json()
+    assert out["method"] == "local" and "fallback_reason" not in out, out
+    assert TOPIC in out["body"]
+
+
+@pytest.mark.parametrize("endpoint", ["/cold-email", "/cold-email/refine"])
+def test_an_offer_after_a_comma_is_still_an_offer(email_client, monkeypatch, endpoint):
+    out = request_email(email_client, monkeypatch, endpoint, ASIDE_OFFER, current=draft(ASIDE_OFFER))
+    assert out["fallback_reason"] == "fabrication"
+    assert "unpaid" not in out["body"]
+
+
+@pytest.mark.parametrize("sentence", [
+    "I am available to meet any time in the next two weeks.",
+    "I am free to talk any day during the next two weeks.",
+    "My schedule is open for a call during the next two weeks.",
+    "I have some free time over the next two weeks for a short call.",
+    "I can start within the next two weeks.",
+    "I would welcome a conversation in the coming two weeks.",
+])
+def test_a_meeting_window_offers_no_time(sentence):
+    assert contact_claim_violations(sentence, contact_context_parts(None)) == []
+
+
+@pytest.mark.parametrize("sentence", [
+    "I am eager to tackle technical challenges in robotics.",
+    "I am happy to take on technical challenges.",
+    "I would love to help solve technical challenges in your simulator.",
+    "I would love to contribute to your work on unpaid care labor.",
+    "I would like to help measure unpaid labor in households.",
+    "I would like to research what motivates people to volunteer.",
+    "I would be glad to help recruit participants to volunteer for your studies.",
+    "I would like to help study how small businesses receive credit.",
+    "I would be glad to help model demand for credit in rural markets.",
+    "I would love to help complete a life-cycle assessment of battery materials.",
+    "I would love to help build automated feedback for programming exercises.",
+    "I would be glad to contribute to your clinical trial projects.",
+])
+def test_a_research_topic_is_not_an_offer(sentence):
+    assert contact_claim_violations(sentence, contact_context_parts(None)) == []
+
+
+@pytest.mark.parametrize(("sentence", "finding"), [
+    (ASIDE_OFFER, "unsupported commitment"),
+    ("I would be happy to contribute, even on a volunteer basis.", "unsupported commitment"),
+    ("I would also be happy, if helpful, to complete a short coding exercise.", "unsupported commitment"),
+    ("I would be grateful for any opportunity, paid or unpaid, to contribute to your lab.", "unsupported commitment"),
+    ("I am open to any arrangement (volunteer, for credit, or paid).", "unsupported commitment"),
+    ("I'd also be happy, of course, to volunteer.", "unsupported commitment"),
+    ("I'd be glad to help, even if the position is unpaid.", "unsupported commitment"),
+    ("I can commit, if helpful, 10 hours per week.", "unsupported time commitment"),
+])
+def test_an_aside_does_not_end_the_offer(sentence, finding):
+    assert contact_claim_violations(sentence, contact_context_parts(None)) == [finding]
+
+
+@pytest.mark.parametrize("sentence", [
+    # A relative or wh-word starts another clause with its own subject.
+    "I would love to join your lab, where students can volunteer on weekends.",
+    "I would love to join your lab where students can volunteer on weekends.",
+    "I would like to learn how students earn course credit in your lab.",
+    "I would like to know if the position is paid or unpaid.",
+    # So does a comma before a conjunction with a subject.
+    "I would love to participate, and the program offers it for course credit.",
+    # A parenthesis that opens with a figure describes the program.
+    "I would love to join your summer program (10 weeks, June to August).",
+    # More than eight words from the offer.
+    "I would love to hear more about the outreach events your undergraduate students organize on a volunteer basis.",
+    "I would be glad to help with the data your group has collected over the last several semesters.",
+])
+def test_an_offer_ends_where_another_clause_begins_or_eight_words_on(sentence):
+    assert contact_claim_violations(sentence, contact_context_parts(None)) == []
+
+
+@pytest.mark.parametrize(("stated", "claim", "accepted"), [
+    # The UI invites a terse answer; it names the kind in the student's own words.
+    ("Volunteering is fine with me.", "I am happy to volunteer.", True),
+    ("Volunteer or course credit both work for me.", "I would be glad to work for course credit.", True),
+    ("No pay needed; credit is fine.", "I would be glad to work for course credit.", True),
+    ("每周可以投入10小时，可以先做志愿者。", "I am happy to volunteer.", True),
+    ("A short coding test is fine.", "I would be glad to complete a coding challenge.", True),
+    ("I don't mind volunteering.", "I am happy to volunteer.", True),
+    ("I don't need to be paid.", "I would be glad to work for course credit.", True),
+    ("可以换学分。", "I would be glad to work for course credit.", True),
+    # A course load or a class test is not the kind.
+    ("I'm taking 18 credits this semester, so 8 hours a week.", "I would be glad to work for course credit.", False),
+    ("这学期修18个学分。", "I would be glad to work for course credit.", False),
+    ("I have a test on Friday, so Tue/Thu only.", "I would be glad to complete a coding challenge.", False),
+    # A clause that turns the kind down does not name it.
+    ("I cannot volunteer; I need a paid position.", "I am happy to volunteer.", False),
+    ("Paid positions only, no volunteering.", "I am happy to volunteer.", False),
+    ("I'd rather not take a test.", "I would be glad to complete a coding challenge.", False),
+    ("不能做志愿者。", "I am happy to volunteer.", False),
+])
+def test_a_terse_availability_names_the_kind_it_mentions(stated, claim, accepted):
+    parts = contact_context_parts(availability(stated))
+    findings = contact_claim_violations(f"{stated} {claim}", parts)
+    assert findings == ([] if accepted else ["unsupported commitment"])
+
+
+@pytest.mark.parametrize("endpoint", ["/cold-email", "/cold-email/refine"])
+def test_a_restated_terse_availability_stays_usable(email_client, monkeypatch, endpoint):
+    stated = "Volunteering is fine with me."
+    claim = f"{stated} I am happy to volunteer in the lab."
+    out = request_email(email_client, monkeypatch, endpoint, claim, context=availability(stated))
+    assert out["method"] == ("ai" if endpoint == "/cold-email" else "llm"), out
+    assert claim in out["body"]

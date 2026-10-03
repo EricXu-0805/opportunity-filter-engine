@@ -407,8 +407,11 @@ _TIME_RATED = re.compile(
 # needs a space before its unit.
 _TIME_DURATION = re.compile(
     _TIME_SPAN + r"\s+(?:(?:full|entire|whole)\s+)?(?P<unit>weeks?|semesters?|terms?|quarters?)\b", re.I)
-# "in two weeks", "two semesters ago": a point in time, not time offered.
-_TIME_POINT_BEFORE = re.compile(r"\b(?:in|within|after|before|by|every|each|until|till)\s+$", re.I)
+# "in two weeks", "within the next two weeks", "two semesters ago": a point in
+# time or a deadline, not time offered.
+_TIME_POINT_BEFORE = re.compile(
+    r"\b(?:(?:in|within|after|before|by|until|till)(?:\s+the)?(?:\s+(?:next|coming|following|upcoming|first|last|past))?"
+    r"|every|each)\s+$", re.I)
 _TIME_POINT_AFTER = re.compile(r"\s*(?:ago|earlier|later|before|after|from\s+now|prior)\b", re.I)
 _TIME_OFFER = re.compile(
     r"\b(?:i|we)(?:\s+(?:\w+\s+)?"
@@ -426,7 +429,31 @@ _TIME_COMMIT_VERB = re.compile(
     r"work(?:ing)?|serve|intern|assist|help|spend|be\s+(?:available|free|involved))\b", re.I)
 _TIME_HAVE_CUE = re.compile(
     r"\b(?:available|free|open|spare|to\s+(?:dedicate|devote|commit|contribute|spend|give|offer|work|put))\b", re.I)
+# "available to meet any time during the next two weeks", "free time over the
+# next two weeks for a short call": the window for a conversation, not time
+# offered to the lab.
+_TIME_MEETING = re.compile(
+    r"\b(?:meet(?:ing)?|talk|chat|speak|call|conversation|discuss(?:ion)?|connect|interview|zoom|phone)\b", re.I)
 _TIME_SENTENCE_BREAK = re.compile(r"[!?\n]+|\.(?!\d)")
+# An offer's clause runs on through an aside (", if helpful,", ", paid or
+# unpaid,", "(volunteer, for credit, or paid)") and ends at ";", at a relative
+# or wh-word ("which runs for 10 weeks", "what motivates people to
+# volunteer", "to know if the position is unpaid"), at a comma before a
+# conjunction with its own subject (", and the program offers credit") or a
+# subordinating word, or at a parenthesis that opens with a figure ("(10 weeks)").
+_CLAUSE_BREAK = re.compile(
+    r";|\((?=\s*\d)|\b(?:which|who|whom|whose|where|whereas|although|though|because|since|what|how|why|whether)\b"
+    r"|\b(?:know|ask|wonder|wondering|see|check|learn|understand|confirm|clarify)\s+if\b"
+    r"|[,(]\s*(?:(?:and|but|so|yet|or)\s+(?:i|we|you|he|she|they|it|there|this|that|these|those|the|my|your|our|"
+    r"his|her|its|their)\b|(?:when|while|unless|until|once|as(?!\s+(?:an?|well)\b))\b)", re.I)
+_OFFER_WORDS = 8
+
+
+def _clause_end(sentence: str, start: int) -> int:
+    """Where the clause that begins at ``start`` ends, at most 240 characters on."""
+    limit = min(len(sentence), start + 240)
+    match = _CLAUSE_BREAK.search(sentence, start, limit)
+    return match.start() if match else limit
 
 
 def _time_key(match: re.Match) -> str:
@@ -442,33 +469,37 @@ def _time_key(match: re.Match) -> str:
     return f"{span}{plus} {unit}" + (f"/{rate}" if rate else "")
 
 
-def _time_quantities(text: str) -> list[tuple[int, str, bool]]:
-    """(start, key, is_duration) for each amount of time named in ``text``."""
-    found = [(match.start(), _time_key(match), False) for match in _TIME_RATED.finditer(text)]
+def _time_quantities(text: str) -> list[tuple[int, int, str, bool]]:
+    """(start, end, key, is_duration) for each amount of time named in ``text``."""
+    found = [(match.start(), match.end(), _time_key(match), False) for match in _TIME_RATED.finditer(text)]
     masked = _TIME_RATED.sub(lambda match: " " * len(match.group()), text)
     for match in _TIME_DURATION.finditer(masked):
-        before = _TIME_POINT_BEFORE.search(masked, max(0, match.start() - 40), match.start())
+        before = _TIME_POINT_BEFORE.search(masked, max(0, match.start() - 60), match.start())
         if not (before or _TIME_POINT_AFTER.match(masked, match.end())):
-            found.append((match.start(), _time_key(match), True))
+            found.append((match.start(), match.end(), _time_key(match), True))
     return sorted(found)
 
 
 def _offered_time(sentence: str) -> list[str]:
-    """Keys of the time a first-person offer commits within the same clause, at most eight words on."""
+    """Keys of the time a first-person offer commits within its clause, at most eight words on."""
     quantities = _time_quantities(sentence)
     if not quantities:
         return []
-    starts = [start for start, _key, _duration in quantities]
+    starts = [start for start, _end, _key, _duration in quantities]
     offered = []
     for head in _TIME_OFFER.finditer(sentence):
-        clause = re.split(r"[,;()]", sentence[head.end():head.end() + 240], maxsplit=1)[0]
-        if head["have"] and not _TIME_HAVE_CUE.search(clause):
+        clause_end = _clause_end(sentence, head.end())
+        if head["have"] and not _TIME_HAVE_CUE.search(sentence, head.end(), clause_end):
             continue
-        for start, key, duration in quantities[bisect_left(starts, head.end()):]:
-            if start >= head.end() + len(clause) or len(sentence[head.end():start].split()) > 8:
+        for start, end, key, duration in quantities[bisect_left(starts, head.end()):]:
+            if start >= clause_end or len(sentence[head.end():start].split()) > _OFFER_WORDS:
                 break
             if duration and not (head["available"] or head["have"]) and not _TIME_COMMIT_VERB.search(
                     sentence, head.end(), start):
+                continue
+            # The meeting cue may follow the window: "... over the next two weeks for a short call".
+            after = " ".join(sentence[end:clause_end].split()[:4])
+            if duration and (_TIME_MEETING.search(sentence, head.end(), end) or _TIME_MEETING.search(after)):
                 continue
             offered.append(key)
     return offered
@@ -477,45 +508,112 @@ def _offered_time(sentence: str) -> list[str]:
 # Terms other than time that the student offers in their own voice: to work
 # unpaid, as a volunteer or for credit, or to take a test or trial task. Only
 # the confirmed availability sentence may state one; another offer must be of a
-# kind it names. The target's own terms ("your unpaid position", "the coding
-# challenge") and the student's past ("my volunteer work", "I have
-# volunteered") are not offers. Bounded English shapes, as for time.
+# kind it names. Each shape is an offer, not a topic: "happy to volunteer", not
+# "what motivates people to volunteer"; "complete a coding exercise", not
+# "feedback for programming exercises" or "tackle technical challenges"; "an
+# unpaid position" or "paid or unpaid", not "unpaid care labor". The target's
+# own terms ("the unpaid position", "the coding challenge") and the student's
+# past ("my volunteer work", "I have volunteered") are not offers either.
+# Bounded English shapes, as for time.
+_OFFER_ADVERBS = r"(?:(?:initially|first|also|gladly|happily|even|just|certainly|definitely)\s+){0,2}"
 _COMMITMENT_KINDS = (
     ("unpaid work", re.compile(
-        r"\b(?:to|by|as\s+an?|an?|can|could|will|would|might|may|shall|['’]d|['’]ll)\s+"
-        r"(?:(?:initially|first|also|gladly|happily|even|just)\s+){0,2}volunteer(?:ing)?\b"
-        r"|\bunpaid\b|\bwithout\s+(?:any\s+)?(?:pay|payment|compensation|a\s+stipend|funding|salary)\b"
-        r"|\b(?:for|earn|receive)\s+(?:(?:course|academic|research)\s+)?credit\b|\bfor\s+free\b", re.I)),
+        r"\b(?:able|happy|glad|willing|open|eager|ready|prepared|love|like|want|wish|hope|plan|intend|offer|"
+        r"available|free|delighted|pleased|keen|interested|start|begin|continue|be)(?:\s*,[^,;.]{1,40},)?\s+to\s+"
+        + _OFFER_ADVERBS + r"volunteer(?:ing)?\b"
+        r"|\b(?:can|could|will|would|might|may|shall|['’]d|['’]ll)\s+" + _OFFER_ADVERBS + r"volunteer\b"
+        r"|\b(?:start|begin|consider|try)\s+volunteering\b"
+        r"|\b(?:as|become)\s+an?\s+(?:[\w-]+\s+)?volunteer\b"
+        r"|\b(?:on|in)\s+an?\s+(?:volunteer|voluntary|unpaid)\s+(?:basis|capacity)\b"
+        r"|\b(?:an?|any)\s+(?:[\w-]+\s+)?(?:volunteer|unpaid)\s+(?:[\w-]+\s+)?"
+        r"(?:position|role|internship|assistantship|opportunity|placement|post|job)s?\b"
+        r"|\bpaid\s+or\s+unpaid\b|\bunpaid\s+or\s+paid\b"
+        r"|\b(?:if|though|whether)\s+(?:it\s+(?:is|was|were|would\s+be)\s+|(?:the\s+)?(?:[\w-]+\s+)?(?:is|was|were)\s+)?"
+        r"unpaid\b"
+        r"|\b(?:work|contribute|help|serve|intern|start|join|participate|assist|stay|remain|be)\s+(?:[\w-]+\s+){0,3}?"
+        r"(?<!the\s)(?<!your\s)(?<!this\s)(?<!its\s)(?<!their\s)unpaid\b(?![\s-]+(?:care|labou?r|work|domestic|household|caregiv))"
+        r"|\bwithout\s+(?:any\s+)?(?:pay|payment|compensation|a\s+stipend|funding|salary)\b"
+        r"|\b(?:work|help|contribute|volunteer|assist|intern|do\s+(?:it|this|that|so))\s+(?:[\w-]+\s+){0,3}?for\s+free\b"
+        r"|\b(?:for|earn|earning|receive|receiving|get|toward|towards)\s+"
+        r"(?:course|academic|research|class|independent[-\s]study|university|college|degree)\s+credits?\b"
+        # Bare "for credit", but not "apply for credit" or "demand for credit risk models".
+        r"|(?<!apply\s)(?<!applying\s)(?<!applied\s)(?<!qualify\s)(?<!qualified\s)(?<!eligible\s)(?<!demand\s)"
+        r"(?<!approved\s)(?<!need\s)(?<!application\s)(?<!applications\s)\bfor\s+credit\b"
+        r"(?!\s+(?:cards?|risk|scor\w*|ratings?|unions?|lines?|default\w*|decisions?|histor\w*|reports?|checks?|"
+        r"access|markets?|allocation|constraints?))", re.I)),
     ("a test or trial task", re.compile(
-        r"\b(?:coding|programming|technical)\s+(?:challenges?|assessments?|tests?|exercises?|interviews?|screens?)\b"
+        r"\b(?:complet(?:e|ing)|tak(?:e|ing)|do(?:ing)?|undergo(?:ing)?|sit|attempt(?:ing)?|try(?:ing)?|"
+        r"submit(?:ting)?|work\s+through|welcome|open\s+to|amenable\s+to)\s+"
+        r"(?:(?:a|an|any|some)\s+)?(?:(?:short|brief|quick|small|online|written|sample|practice|timed|initial)\s+)?"
+        r"(?:coding|programming|technical)\s+"
+        r"(?:challenges?|assessments?|tests?|exercises?|interviews?|screens?|screenings?|tasks?)\b"
+        r"|\b(?:complet(?:e|ing)|tak(?:e|ing)|do(?:ing)?|undergo(?:ing)?|sit|attempt(?:ing)?)\s+(?:a|an|any)\s+"
+        r"(?:(?:short|brief|quick|small|online|written|skills?|aptitude|placement|screening|entrance|qualifying|"
+        r"competency|proficiency|safety)\s+){0,2}(?:tests?|assessments?)(?![\w-])(?!\s+of\b)"
         r"|\btake[-\s]home\s+(?:assignments?|tasks?|tests?|projects?|exercises?|challenges?)\b"
-        r"|\btrial\s+(?:tasks?|periods?|projects?|assignments?|basis)\b"
-        r"|\b(?:complete|take|do|undergo|sit|attempt)\s+(?:a|an|any)\s+(?:[\w-]+\s+)?(?:tests?|assessments?)(?![\w-])",
+        r"|(?<!clinical\s)\btrial\s+(?:tasks?|periods?|projects?|assignments?|basis)\b",
         re.I)),
 )
 # A bare term after "your"/"the" names the target's own terms, not an offer.
-_COMMITMENT_BARE_TERM = re.compile(r"(?:unpaid|coding|programming|technical|take[-\s]home|trial)\b", re.I)
+_COMMITMENT_BARE_TERM = re.compile(r"(?:unpaid|take[-\s]home|trial)\b", re.I)
 _COMMITMENT_TARGET_TERM = re.compile(r"\b(?:your|the|this|that|its|their)\s+(?:[\w-]+\s+)?$", re.I)
+# What the confirmed availability names is the student's own word, so a terse
+# mention names its kind ("Volunteering is fine with me.", "credit is fine",
+# "可以先做志愿者") unless the same clause turns it down ("I cannot volunteer").
+# A course load ("18 credits") or a class test ("a test on Friday") is not one.
+_STATED_KINDS = (
+    ("unpaid work", re.compile(
+        r"volunteer|unpaid|\bno\s+pay\b|without\s+pay|\bfor\s+free\b|pro\s+bono"
+        r"|\b(?:for|course|academic|research|independent[-\s]study|earn|earning|receive|get)\s+credits?\b"
+        r"|\bcredits?\s+(?:is|are|would\s+be|works?)\b"
+        r"|\b(?:don['’]t|do\s+not)\s+need\s+(?:to\s+be\s+paid|pay|payment|compensation|a\s+stipend)\b"
+        r"|\b(?:pay|payment|compensation|a\s+stipend|salary)\s+(?:is\s+not|isn['’]t)\s+(?:required|necessary|needed)\b"
+        r"|志愿|义务|无偿|不要报酬|不需要报酬|不拿报酬|不要工资|不需要工资|不拿工资"
+        r"|(?:换|拿|算|计|获得|得到)学分|学分(?:也|就|即)?(?:可以|行|好)", re.I)),
+    ("a test or trial task", re.compile(
+        r"\b(?:coding|programming|technical|skills?)\s+(?:challenges?|exercises?|interviews?|tasks?|tests?|assessments?)\b"
+        r"|\b(?:tests?|assessments?)\s+(?:is|are|would\s+be)\s+(?:fine|ok|okay|good|possible)\b"
+        r"|take[-\s]home|\btrial\s+(?:tasks?|periods?|projects?|basis|week)\b|笔试|试做|编程题|编程测试|技术测试|试用期",
+        re.I)),
+)
+# "I don't mind volunteering" and "pay is not needed" consent; they turn nothing down.
+_STATED_CONSENT = re.compile(
+    r"\b(?:do|does|did|would|wo)n['’]t\s+mind\b|\bno\s+problem\b|\bnot\s+a\s+problem\b"
+    r"|\b(?:pay|payment|compensation|a\s+stipend|salary)\s+(?:is\s+not|isn['’]t)\s+(?:required|necessary|needed)\b"
+    r"|\b(?:don['’]t|do\s+not)\s+need\s+(?:to\s+be\s+paid|pay|payment|compensation|a\s+stipend)\b", re.I)
+_STATED_REFUSAL = re.compile(
+    r"\b(?:not|never|cannot|unable|rather\s+not|no\s+longer)\b|n['’]t\b"
+    r"|\bno\s+(?:volunteer|unpaid|credit|tests?|assessments?|trial)"
+    r"|不能|不可以|无法|没法|不行|不方便|不考虑|不接受|不愿意|不想", re.I)
 
 
 def _commitment_kinds(text: str) -> set[str]:
     return {kind for kind, pattern in _COMMITMENT_KINDS if pattern.search(text)}
 
 
+def _stated_commitment_kinds(availability: str) -> set[str]:
+    """Kinds the confirmed availability names in a clause that does not turn them down."""
+    return {
+        kind
+        for clause in re.split(r"[,;.!?\n，；。！？、]", availability)
+        if not _STATED_REFUSAL.search(_STATED_CONSENT.sub(" ", clause))
+        for kind, pattern in _STATED_KINDS if pattern.search(clause)
+    }
+
+
 def _offered_commitments(sentence: str) -> list[str]:
-    """Kinds of term a first-person offer commits to within the same clause, at most eight words on."""
+    """Kinds of term a first-person offer commits to within its clause, at most eight words on."""
     if not _commitment_kinds(sentence):
         return []
     offered = []
     for head in _TIME_OFFER.finditer(sentence):
-        clause = re.split(r"[,;()]", sentence[head.end():head.end() + 240], maxsplit=1)[0]
-        if head["have"] and not _TIME_HAVE_CUE.search(clause):
+        window_end = _clause_end(sentence, head.end())
+        if head["have"] and not _TIME_HAVE_CUE.search(sentence, head.end(), window_end):
             continue
-        # From the head's start: in "I can volunteer" the modal is the head.
-        window_end = head.end() + len(clause)
         for kind, pattern in _COMMITMENT_KINDS:
+            # From the head's start: in "I can volunteer" the modal is the head.
             for term in pattern.finditer(sentence, head.start(), window_end):
-                if len(sentence[head.end():max(term.start(), head.end())].split()) > 8:
+                if len(sentence[head.end():max(term.start(), head.end())].split()) > _OFFER_WORDS:
                     break
                 if _COMMITMENT_BARE_TERM.match(term.group()) and _COMMITMENT_TARGET_TERM.search(
                         sentence, max(0, term.start() - 40), term.start()):
@@ -544,10 +642,11 @@ def contact_claim_violations(text: str, parts: dict) -> list[str]:
         remaining = remaining.replace(sentence, "")
     if any(_claims_prior_contact(sentence) for sentence in _SENTENCE.findall(remaining)):
         findings.append("unsupported contact history claim")
-    stated = {key for _start, key, _duration in _time_quantities(parts.get("contact_availability") or "")}
+    availability = parts.get("contact_availability") or ""
+    stated = {key for _start, _end, key, _duration in _time_quantities(availability)}
     if any(key not in stated for sentence in _TIME_SENTENCE_BREAK.split(remaining) for key in _offered_time(sentence)):
         findings.append("unsupported time commitment")
-    stated_kinds = _commitment_kinds(parts.get("contact_availability") or "")
+    stated_kinds = _stated_commitment_kinds(availability)
     if any(kind not in stated_kinds for sentence in _TIME_SENTENCE_BREAK.split(remaining)
            for kind in _offered_commitments(sentence)):
         findings.append("unsupported commitment")
