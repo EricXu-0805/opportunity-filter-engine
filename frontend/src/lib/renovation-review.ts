@@ -1,4 +1,4 @@
-import type { RenovatedSection, RenovatedVariant, RenovationDoc } from './types';
+import type { RenovatedBullet, RenovatedSection, RenovatedVariant, RenovationDoc } from './types';
 
 /**
  * Which renovation wording may be shown as a bullet's current text.
@@ -24,8 +24,27 @@ export function isReviewedVariant(variant: RenovatedVariant, baseText: string): 
     && !(variant.ops as string[]).includes('translate') && CJK.test(variant.text) === CJK.test(baseText);
 }
 
+/** The text a bullet shows, copies and sends as its current wording: its current variant when a
+ * review accepted it or the student wrote it, else the bullet's own text. Every view of a saved
+ * doc reads it: the editor, copy-all, the history preview and the save-conflict preview. */
+export function shownText(bullet: RenovatedBullet): string {
+  const variant = bullet.current >= 0 ? bullet.variants[bullet.current] : undefined;
+  return variant && isReviewedVariant(variant, bullet.base_text) ? variant.text : bullet.base_text;
+}
+
+/** The variant one step back (-1) or forward (+1) shows: the nearest one a review accepted or the
+ * student wrote, or -1 (the bullet's own text) going back. null when there is no such step. An
+ * unreviewed variant stays in the stored history but is never stepped onto. */
+export function reviewedStep(bullet: RenovatedBullet, direction: 1 | -1): number | null {
+  const from = Math.min(bullet.current, bullet.variants.length);
+  for (let index = from + direction; index >= 0 && index < bullet.variants.length; index += direction) {
+    if (isReviewedVariant(bullet.variants[index], bullet.base_text)) return index;
+  }
+  return direction < 0 && from >= 0 ? -1 : null;
+}
+
 /** A saved doc as it may open: a bullet whose current variant no review accepted opens at its own
- * text, and the variant stays in its rollback history, marked as not reviewed. */
+ * text, and the variant stays in its stored history, where no step reaches it (reviewedStep). */
 export function reviewedRenovation(doc: RenovationDoc): RenovationDoc {
   return {
     ...doc,

@@ -28,7 +28,7 @@ import ProfileRefreshBanner, { profileRefreshReady } from './ProfileRefreshBanne
 import { structureResume, renovateResume, optimizeBullet } from '@/lib/api';
 import ResumeProcessingNotice from './ResumeProcessingNotice';
 import RewriteWhy, { keptExplanation } from './RewriteWhy';
-import { isReviewedRules, isReviewedVariant, reviewedRenovation, reviewedSections } from '@/lib/renovation-review';
+import { isReviewedRules, isReviewedVariant, reviewedRenovation, reviewedSections, reviewedStep, shownText } from '@/lib/renovation-review';
 import { saveRenovation, loadRenovation, type RenovationPayload, type StoredRenovation } from '@/lib/supabase';
 import { RenovationSaveQueue, type RenovationQueueState } from '@/lib/renovation-save-queue';
 import RenovationHistory from './RenovationHistory';
@@ -187,13 +187,9 @@ function pickRenovationWarnings(warnings: string[], t: Replier): string[] {
   return tooLong;
 }
 
-/** The text a bullet currently shows: its selected variant, or the base. */
-function bulletCurrentText(b: RenovatedBullet): string {
-  if (b.current >= 0 && b.current < b.variants.length) {
-    return b.variants[b.current].text;
-  }
-  return b.base_text;
-}
+/** The text a bullet currently shows: its selected variant if a review accepted it or the student
+ * wrote it, or the base. It is also what copy-all exports and re-optimize sends. */
+const bulletCurrentText = shownText;
 
 function DiffLine({
   original,
@@ -730,16 +726,18 @@ export default function ResumeRenovationModal({
     [persist, baseSections, isCurrentScope, setCurrentDoc],
   );
 
+  // A step lands only on wording a review accepted or the student wrote: an unreviewed variant
+  // restored from an older save stays in the stored history, out of reach.
   function handleRollback(b: RenovatedBullet) {
-    if (b.current < 0) return;
+    if (reviewedStep(b, -1) === null) return;
     markUserEdit();
-    updateBullet(b.id, (cur) => ({ ...cur, current: cur.current - 1 }));
+    updateBullet(b.id, (cur) => ({ ...cur, current: reviewedStep(cur, -1) ?? cur.current }));
   }
 
   function handleRollForward(b: RenovatedBullet) {
-    if (b.current >= b.variants.length - 1) return;
+    if (reviewedStep(b, 1) === null) return;
     markUserEdit();
-    updateBullet(b.id, (cur) => ({ ...cur, current: cur.current + 1 }));
+    updateBullet(b.id, (cur) => ({ ...cur, current: reviewedStep(cur, 1) ?? cur.current }));
   }
 
   // The shown rewrite without the posting's terms becomes the next variant; rollback returns to it.
@@ -1116,7 +1114,8 @@ export default function ResumeRenovationModal({
                   <ul className="space-y-2.5">
                     {section.bullets.map((b) => {
                       const current = bulletCurrentText(b);
-                      const showingVariant = b.current >= 0 ? b.variants[b.current] : null;
+                      const selected = b.current >= 0 ? b.variants[b.current] : undefined;
+                      const showingVariant = selected && isReviewedVariant(selected, b.base_text) ? selected : null;
                       const sourceKey = showingVariant?.source ?? 'base';
                       const isEditing = editingId === b.id;
                       const isOptimizing = optimizingId === b.id;
@@ -1156,14 +1155,14 @@ export default function ResumeRenovationModal({
                                 <button
                                   type="button"
                                   onClick={() => handleRollback(b)}
-                                  disabled={b.current < 0}
+                                  disabled={reviewedStep(b, -1) === null}
                                   className="inline-flex items-center gap-1 text-[10.5px] font-medium px-1.5 py-0.5 rounded-md text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-400 transition-colors"
                                   aria-label={t('renovate.rollbackAria')}
                                 >
                                   <RotateCcw className="w-3 h-3" aria-hidden="true" />
                                   {t('renovate.rollback')}
                                 </button>
-                                {b.current < b.variants.length - 1 && (
+                                {reviewedStep(b, 1) !== null && (
                                   <button
                                     type="button"
                                     onClick={() => handleRollForward(b)}
@@ -1242,11 +1241,6 @@ export default function ResumeRenovationModal({
                             </p>
                           )}
 
-                          {showingVariant && !isEditing && !isReviewedVariant(showingVariant, b.base_text) && (
-                            <p className="mt-1.5 text-[11.5px] text-amber-700" data-testid="renovation-not-reviewed">
-                              {t('renovate.notReviewed')}
-                            </p>
-                          )}
                           {showingVariant && !isEditing && (
                             <RewriteWhy links={showingVariant.links} ops={showingVariant.ops} t={t} />
                           )}
