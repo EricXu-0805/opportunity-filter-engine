@@ -600,9 +600,23 @@ def _row_join(before: str, after: str) -> str:
 
 
 def _own_row(line: str) -> bool:
-    """A row in capitals: a heading, a name, a school or a role row, never the rest of a sentence."""
+    """A row of its own, never the rest of a sentence: a row in capitals (a heading, a name, a
+    school, a role row), or a short heading in title case ("Projects", "Honors and Awards").
+
+    A title-case heading has one to four words of Latin letters and no digit or mark but a
+    final colon. Its first and last words open with a capital, and so does every other word
+    but a joining word of up to three letters. A wrapped status has lowercase words or a
+    number ("Under review at ICRA", "Expected May 2026"), and CJK text has no case, so
+    neither reads as one.
+    """
     letters = [ch for ch in line if ch.isalpha()]
-    return sum(ch.isupper() for ch in letters) >= 2 and not any(ch.islower() for ch in letters)
+    if sum(ch.isupper() for ch in letters) >= 2 and not any(ch.islower() for ch in letters):
+        return True
+    words = [word for word in line.rstrip(":").split() if word not in ("&", "/")]
+    return (0 < len(words) <= 4 and len(line) <= 40
+            and all(ch.isascii() and (ch.isalpha() or ch in " &/'-") for ch in line.rstrip(":"))
+            and words[0][:1].isupper() and words[-1][:1].isupper()
+            and all(word[:1].isupper() or len(word) <= 3 for word in words))
 
 
 def _resume_rows(resume_text: str) -> list[tuple[str, str, bool]]:

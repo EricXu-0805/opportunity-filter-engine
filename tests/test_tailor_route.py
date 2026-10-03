@@ -430,6 +430,13 @@ class TestBulletGrounding:
     def test_a_whole_wrapped_glyph_bullet_is_grounded(self, line):
         assert tailor_module._bullet_grounded(line, self.WRAPPED)
 
+    def test_a_title_case_heading_ends_the_glyph_bullet_above_it(self):
+        resume = ("Experience\n• Ran 40 soil moisture trials for the campus farm\n"
+                  "Honors and Awards\n• Received the Dean's research grant\n")
+        assert tailor_module._bullet_grounded("Ran 40 soil moisture trials for the campus farm", resume)
+        assert tailor_module._heuristic_bullets(resume) == ["Ran 40 soil moisture trials for the campus farm",
+                                                            "Received the Dean's research grant"]
+
     def test_the_heuristic_keeps_each_wrapped_glyph_bullet_whole(self):
         assert tailor_module._heuristic_bullets(self.WRAPPED, limit=1000) == [
             "Co-authored a paper on soil moisture sensing for the campus farm Under review at the ICRA 2026 workshop",
