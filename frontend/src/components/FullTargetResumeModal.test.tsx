@@ -812,6 +812,19 @@ describe('saved operation records', () => {
     expect(record.events.map(item => item.kind)).toEqual(['ai_rewrite', 'manual']);
     expect(record.events[0].changes[0].check?.version).toBe('target-resume-source-checks-v1'); expect(record.events[1].changes[0].check).toBeNull();
   });
+  it.each([['full-target-v5', true], ['full-target-v2', true], ['full-target-v6', false]] as const)(
+    'says whether a saved line an AI step wrote under %s was fact-checked (flagged: %s)', async (pipeline, flagged) => {
+      // Round-2 review (criteria 1 and 3): wording applied from a pre-v6 suggestion had no faithfulness review.
+      const p = profile(), doc = await docFor(p), edit = await checkedEdit(doc);
+      edit.action.annotations![0].check!.pipeline_version = pipeline;
+      storage.load.mockResolvedValue(recordLoaded(edit.next, appendTargetResumeProvenance(null, doc, edit.next, edit.action)!));
+      renderModal(p); await screen.findByRole('textbox', { name: 'Edit Experience detail' });
+      expect(screen.queryByTestId('target-line-unreviewed') !== null).toBe(flagged);
+      if (!flagged) return;
+      fireEvent.click(screen.getByRole('button', { name: 'Restore original Experience detail' }));
+      expect(screen.getByRole('textbox', { name: 'Edit Experience detail' })).toHaveValue(experienceLine(doc).text);
+      expect(screen.queryByTestId('target-line-unreviewed')).toBeNull();
+    });
   it('keeps submitted and later manual records apart while saving', async () => {
     const p = profile(), doc = await docFor(p); storage.load.mockResolvedValue(loaded(doc)); renderModal(p); await screen.findByRole('textbox', { name: 'Edit Full name' });
     editName('Submitted name'); const pending = deferred<TargetResumeSaveResult>(); storage.save.mockReturnValueOnce(pending.promise); fireEvent.click(screen.getByRole('button', { name: 'Save target draft' }));

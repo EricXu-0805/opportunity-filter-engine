@@ -401,6 +401,11 @@ export default function TailorModal({
   const currentBinding = bindingState?.key === bindingKey ? bindingState.binding : null;
   const draftStale = rulesNeedReview || draftStatus === 'stale';
   const needsReview = rulesNeedReview || draftStatus === 'stale' || draftStatus === 'unknown';
+  // Before w14, "Use kept as new originals" saved rewrites no faithfulness review had seen, written
+  // in the UI language, as the draft (version 2, no line sources). Such a draft says so before the
+  // student confirms its lines as their own evidence.
+  const legacyRewrites = !!record && record.origin.kind === 'reviewed_output'
+    && !hasRuleVersion(record.origin.binding?.pipeline_version);
   const [loading, setLoading] = useState(false);
   const [resp, setResp] = useState<TailorResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -1122,9 +1127,15 @@ export default function TailorModal({
               {limitIssue && <p role="alert" data-testid="tailor-limit-issue" className="mb-2 text-xs text-amber-800">{limitIssue}</p>}
               {record && needsReview && (
                 <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900" data-testid="tailor-draft-review">
-                  <p>{t(draftStale ? 'tailor.draftChanged' : 'tailor.draftUnknown')}</p>
+                  {legacyRewrites
+                    ? <p data-testid="tailor-draft-legacy">{t('tailor.draftLegacyRewrites')}</p>
+                    : <p>{t(draftStale ? 'tailor.draftChanged' : 'tailor.draftUnknown')}</p>}
                   <button type="button" onClick={requestReview} disabled={reviewing || loading || extracting || action.busy || !canRequest}
                     className="mt-2 font-semibold underline underline-offset-2 disabled:opacity-50">{t('tailor.reviewDraft')}</button>
+                  {legacyRewrites && profile.resume_text && (
+                    <button type="button" onClick={requestExtraction} disabled={reviewing || loading || extracting || action.busy || !canRequest}
+                      className="mt-2 ml-3 font-semibold underline underline-offset-2 disabled:opacity-50">{t('tailor.useResumeLines')}</button>
+                  )}
                 </div>
               )}
               {(!pipelineVersion || (pipelineVersion && !currentBinding)) && <p className="mb-2 text-xs text-gray-500">{t(rulesUnavailable ? 'tailor.rulesUnavailable' : 'tailor.rulesChecking')}</p>}
