@@ -1081,7 +1081,7 @@ describe('positioned text items', () => {
     ]);
   });
 
-  it('joins a line that hangs under the text of the glyph item above it, whatever its first word', async () => {
+  it('joins a line that hangs under the text of the glyph item above it, whatever its first word, unless a label opens it', async () => {
     // The next item would open at the glyph, so a line that hangs under the
     // item's text goes on with it where the line above ran out of room.
     // No word here carries the line on, and nothing shows where the column
@@ -1114,6 +1114,15 @@ describe('positioned text items', () => {
       '• Campus Bus Tracker',
       'React and Flask web app used by 200 students',
     ]);
+    // A label opens a row of its own under the item's text, as anywhere else.
+    for (const row of ['Tools: PyTorch, NumPy, Weights & Biases', 'Advisor: Prof. Jane Doe']) {
+      mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+        ...item(9, full, 491).slice(0, 2),
+        at(row, 59, 200, 724, { hasEOL: true }),
+        at('•', 50, 4, 712), at('Wrote unit tests for the parser', 59, 150, 712),
+      ])) });
+      expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([`• ${full}`, row, '• Wrote unit tests for the parser']);
+    }
   });
 
   it('measures the next line\'s first word by its glyphs, so a wide word did not fit where an average one would have', async () => {

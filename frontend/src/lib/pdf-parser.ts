@@ -94,9 +94,11 @@ function trimCourse(s: string): string {
   return s.replace(/^[ .\t]+/, '').replace(/[ .\t]+$/, '');
 }
 
+// A label that opens a row of its own ("Honors: Dean's List", "Tools: PyTorch").
+const LABEL_ROW = /^[^,:：]{1,40}(?::\s|：)/u;
 // A row under a coursework list that starts something of its own: a label
-// ("Honors: Dean's List") or an honor ("Dean's List, James Scholar").
-const NOT_COURSEWORK = /^[^,:：]{1,40}(?::\s|：)|\b(?:dean['’]?s list|scholars?|scholarships?|honou?rs?|awards?|prizes?|fellowships?|medal(?:ist)?|cum laude|finalist|winner|recipient)\b/iu;
+// or an honor ("Dean's List, James Scholar").
+const NOT_COURSEWORK = new RegExp(String.raw`${LABEL_ROW.source}|\b(?:dean['’]?s list|scholars?|scholarships?|honou?rs?|awards?|prizes?|fellowships?|medal(?:ist)?|cum laude|finalist|winner|recipient)\b`, 'iu');
 
 /** Course codes anywhere, and named courses on a labeled coursework line.
  *  The text keeps a list cut inside a name ("…, Data" / "Structures and
@@ -347,7 +349,8 @@ function cjkAwardRow(before: string, after: string): boolean {
  *  only the words that settle it by themselves carry a line on. A line that
  *  hangs under the text of the glyph item above it (`hangs`) goes on with
  *  that item whatever its words, and needs no edge: the next item would
- *  open at the glyph. */
+ *  open at the glyph. A label still opens a row of its own there ("Tools:
+ *  PyTorch, NumPy"), which only the words at the break carry on. */
 function wrapSeparator(
   shapes: Array<LineShape | null>, index: number, texts: string[], pitch: Map<number, number>, periodItem: boolean,
   column: (index: number) => Column, edges: readonly boolean[] | null, hangs: readonly boolean[],
@@ -357,7 +360,7 @@ function wrapSeparator(
   const before = texts[index - 1].trim();
   const after = texts[index].trim();
   if (!prev || !next || !sameParagraph(shapes, index, texts, pitch)) return null;
-  const evidence = hangs[index] || wrapEvidence(before, after);
+  const evidence = (hangs[index] && !LABEL_ROW.test(after)) || wrapEvidence(before, after);
   const unsure = !hangs[index] && (evidence ? lowercaseOpening(before, after)
     : !!edges && weakWrapEvidence(before, after, periodItem) && !cjkAwardRow(before, after));
   if (!evidence && !unsure) return null;
