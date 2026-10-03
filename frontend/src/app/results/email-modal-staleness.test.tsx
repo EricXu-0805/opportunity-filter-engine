@@ -164,10 +164,11 @@ vi.mock('@/components/ResumeWorkspaceModal', () => ({
 
 const captured = vi.hoisted(() => ({
   draft: null as null | ((id: string) => void), resume: null as null | ((id: string) => void),
+  draftReady: undefined as boolean | undefined,
 }));
 vi.mock('./MatchList', () => ({
-  MatchList: (props: { onDraftEmail: (id: string) => void; onOpenResume: (id: string) => void }) => {
-    captured.draft = props.onDraftEmail; captured.resume = props.onOpenResume;
+  MatchList: (props: { onDraftEmail: (id: string) => void; onOpenResume: (id: string) => void; draftEmailReady: boolean }) => {
+    captured.draft = props.onDraftEmail; captured.resume = props.onOpenResume; captured.draftReady = props.draftEmailReady;
     return <div data-testid="mock-match-list" />;
   },
 }));
@@ -270,7 +271,7 @@ beforeEach(async () => {
   vi.clearAllMocks();
   modalHistory.real = false; profileFeed.replace.mockReset();
   window.history.replaceState({ __NA: true }, '', '/results');
-  captured.draft = null; captured.resume = null;
+  captured.draft = null; captured.resume = null; captured.draftReady = undefined;
   feed.current = null; feed.loading = false; feed.error = null; feed.holdValidation = false;
   profileFeed.current = undefined; profileFeed.present = true;
   ownerFeed.uid = 'owner-1'; ownerFeed.generation = 1; ownerFeed.ready = true;
@@ -453,6 +454,48 @@ describe('Results pre-action target binding', () => {
     expect(screen.getByTestId('editor-profile')).toHaveTextContent('machine learning');
     feed.holdValidation = false; view.rerender(<ResultsPage />);
     expect(screen.getByRole('button', { name: 'Generate' })).toBeEnabled();
+  });
+});
+
+// The cards' Draft Email used to stay live while openWritingSession was still
+// refusing, so a click in that window opened nothing and was simply lost. The
+// list is now told whether a click would open a draft, from the same checks.
+describe('Results offers Draft Email only when a click opens a draft', () => {
+  it.each(['owner unready', 'match page not validated'] as const)('%s: the cards are told not ready, and a click opens nothing', async (mode) => {
+    feed.current = response([result('a', ACTIONABLE_TRUTH)]);
+    if (mode === 'owner unready') ownerFeed.ready = false;
+    else feed.holdValidation = true;
+    await mountResults();
+    // The list is on screen with its rows: this is the window a student can click in.
+    expect(screen.getByTestId('mock-match-list')).toBeInTheDocument();
+    expect(captured.draftReady).toBe(false);
+    act(() => captured.draft!('a'));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('turns ready together with the page, and the click then opens the draft', async () => {
+    feed.current = response([result('a', ACTIONABLE_TRUTH)]);
+    ownerFeed.ready = false;
+    const { view, ResultsPage } = await mountResults();
+    expect(captured.draftReady).toBe(false);
+    ownerFeed.ready = true;
+    view.rerender(<ResultsPage />);
+    await waitFor(() => expect(captured.draftReady).toBe(true));
+    act(() => captured.draft!('a'));
+    expect(await screen.findByTestId('cold-email-modal')).toBeInTheDocument();
+  });
+
+  it('withdraws readiness when a new profile has not yet validated a match page', async () => {
+    feed.current = response([result('a', ACTIONABLE_TRUTH)]);
+    const { view, ResultsPage } = await mountResults();
+    await waitFor(() => expect(captured.draftReady).toBe(true));
+    feed.holdValidation = true;
+    profileFeed.current = { ...TEST_PROFILE, major: 'Physics' } as ProfileData;
+    view.rerender(<ResultsPage />);
+    // The old rows are still present and loading is false, but a click would be refused.
+    expect(captured.draftReady).toBe(false);
+    act(() => captured.draft!('a'));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });
 

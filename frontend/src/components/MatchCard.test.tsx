@@ -551,9 +551,48 @@ describe('MatchCard', () => {
   describe('draft email action', () => {
     it('calls onDraftEmail with the opportunity id when clicked', () => {
       const handler = vi.fn();
-      render(<MatchCard match={makeMatch({ id: 'opp-abc' })} onDraftEmail={handler} />);
+      render(<MatchCard match={makeMatch({ id: 'opp-abc' })} onDraftEmail={handler} draftEmailReady />);
       fireEvent.click(screen.getByText('card.draftEmail'));
       expect(handler).toHaveBeenCalledWith('opp-abc');
+    });
+
+    // Results drops a Draft Email click until the page can open a draft (its
+    // owner read answered, the result view validated). The button used to stay
+    // live through that window, so an early click did nothing at all; Tailor
+    // and Renovate on the same card were already disabled for it.
+    it('is disabled and busy until a draft can open (including the unspecified default), with its label unchanged', () => {
+      const handler = vi.fn();
+      const { rerender } = render(
+        <MatchCard match={makeMatch()} profile={PROFILE} onDraftEmail={handler} ownerReady />,
+      );
+      let button = screen.getByRole('button', { name: 'card.draftEmail' });
+      expect(button).toBeDisabled();
+      expect(button).toHaveAttribute('aria-busy', 'true');
+      fireEvent.click(button);
+
+      rerender(
+        <MatchCard match={makeMatch()} profile={PROFILE} onDraftEmail={handler} ownerReady draftEmailReady={false} />,
+      );
+      button = screen.getByRole('button', { name: 'card.draftEmail' });
+      expect(button).toBeDisabled();
+      expect(button).toHaveAttribute('aria-busy', 'true');
+      fireEvent.click(button);
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('is enabled once a draft can open, and the click reaches the page', () => {
+      const handler = vi.fn();
+      const onView = vi.fn();
+      render(
+        <MatchCard match={makeMatch({ id: 'opp-ready' })} profile={PROFILE} onDraftEmail={handler}
+          onViewOpportunity={onView} ownerReady draftEmailReady />,
+      );
+      const button = screen.getByRole('button', { name: 'card.draftEmail' });
+      expect(button).toBeEnabled();
+      expect(button).toHaveAttribute('aria-busy', 'false');
+      fireEvent.click(button);
+      expect(handler).toHaveBeenCalledWith('opp-ready');
+      expect(onView).toHaveBeenCalledWith('opp-ready');
     });
   });
 
@@ -647,7 +686,7 @@ describe('MatchCard', () => {
           application_url: 'https://faculty.example/prof',
         },
       });
-      render(<MatchCard match={match} onDraftEmail={handler} />);
+      render(<MatchCard match={match} onDraftEmail={handler} draftEmailReady />);
       fireEvent.click(screen.getByText('card.draftEmail'));
       expect(handler).toHaveBeenCalledWith('fac-1');
     });
@@ -674,7 +713,7 @@ describe('MatchCard', () => {
         source_type: 'faculty_research',
         faculty_availability_status: 'research_inactive',
       });
-      render(<MatchCard match={match} onDraftEmail={handler} />);
+      render(<MatchCard match={match} onDraftEmail={handler} draftEmailReady />);
 
       expect(screen.getByText('card.facultyResearchInactive')).toBeInTheDocument();
       fireEvent.click(screen.getByText('card.draftEmail'));
