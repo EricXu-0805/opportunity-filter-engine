@@ -752,6 +752,28 @@ def test_the_ui_locale_picks_no_rewrite_language(endpoint, monkeypatch, locale, 
     assert (receipt["status"], receipt["suggestion"]["proposed_text"], len(reviews)) == ("suggested", pair[1], 1)
 
 
+# Chinese-framed lines whose English words outnumber their Chinese characters: language() reads them
+# as English, but a rewrite that drops the Chinese has translated the line's frame.
+CODE_MIXED = [("负责 data cleaning, feature engineering, model training 和 deployment",
+               "Cleaned data, feature engineering, model training and deployment"),
+              ("担任 teaching assistant for CS 101 和 CS 225, grading homework 和 hosting office hours",
+               "Teaching assistant for CS 101 and CS 225, grading homework and hosting office hours")]
+
+
+@pytest.mark.parametrize("locale", ["en", "zh"])
+@pytest.mark.parametrize("pair", CODE_MIXED, ids=["负责", "担任"])
+def test_a_rewrite_without_its_lines_chinese_is_kept_unreviewed(endpoint, monkeypatch, locale, pair):
+    assert em.language(pair[0]) == em.language(pair[1]) == "en"
+    details = _contract_details(monkeypatch)
+    for path in PATHS:
+        body, reviews = run(endpoint, monkeypatch, path, [pair], _review_all(True), locale=locale)
+        assert (outcomes(path, body), reviews) == ([(None, "beyond_allowed_edit")], []), path
+    receipt, reviews = _full_target(monkeypatch, *pair, locale=locale)
+    assert (receipt["status"], receipt["reason_code"], receipt["suggestion"]["proposed_text"], reviews) == (
+        "unchanged", "beyond_allowed_edit", None, [])
+    assert [detail for detail in details if detail != "model_keep"] == ["wrong_language"] * 4
+
+
 # A role noun that opens the line is the student's own title, and "the scheduled
 # maintenance" is routine work: main showed these, and the locks refused them as fabrication.
 ROLE_LINES = [

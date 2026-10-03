@@ -784,7 +784,10 @@ def check_rewrite(unit: Unit, row: object, anchors: dict[str, Anchor], *, output
     names = [op["op"] for op in ops_raw]
     if any(name not in OPS for name in names):
         return _keep(unit, "beyond_allowed_edit", "unknown_op", links=links)
-    if language(text) != output_language or language(unit.current) != output_language:
+    # The script decides too: "负责 data cleaning 和 deployment" counts as English by its words,
+    # but a rewrite without its Chinese has translated the frame.
+    if (language(text) != output_language or language(unit.current) != output_language
+            or len({bool(_CJK.search(value)) for value in (text, unit.current, unit.evidence)}) > 1):
         return _keep(unit, "beyond_allowed_edit", "wrong_language", links=links)
     return _check_same_language(unit, text, links, ops_raw)
 
