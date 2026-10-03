@@ -15,7 +15,16 @@ export default function PushToggle() {
   // a token captured then is the null sentinel and every write is refused.
   // The dashboard's own data load establishes the identity; this only watches.
   const [ownerReady, setOwnerReady] = useState(isLocalOwnerReadyNow);
-  useEffect(() => onLocalOwnerStateChange(() => setOwnerReady(isLocalOwnerReadyNow())), []);
+  // The status describes an account, not the browser: its subscription
+  // outlives a sign-out, the account's row behind it does not. Every owner
+  // transition moves the epoch, so the status is re-read for each one.
+  const [ownerEpoch, setOwnerEpoch] = useState(() => captureOwnerToken().epoch);
+  useEffect(() => onLocalOwnerStateChange(() => {
+    setOwnerReady(isLocalOwnerReadyNow());
+    setOwnerEpoch(captureOwnerToken().epoch);
+  }), []);
+  // The epoch a change failed under; the message is that account's alone.
+  const [failedEpoch, setFailedEpoch] = useState<number | null>(null);
   // The server's own key, not a build-time copy of it. The private half that
   // signs every push lives on the backend, so a subscription minted against
   // any other key is accepted by the browser and then never delivered to —
@@ -30,9 +39,17 @@ export default function PushToggle() {
       setStatus('unsupported');
       return;
     }
-    getPushStatus().then(setStatus).catch(() => setStatus('default'));
     getVapidPublicKey().then(setVapidKey).catch(() => setVapidKey(null));
   }, []);
+
+  useEffect(() => {
+    if (!isPushSupported()) return;
+    const token = captureOwnerToken();
+    getPushStatus().then(
+      (next) => { if (isTokenOwnerStillCurrent(token)) setStatus(next); },
+      () => { if (isTokenOwnerStillCurrent(token)) setStatus('default'); },
+    );
+  }, [ownerEpoch]);
 
   if (status === 'loading' || status === 'unsupported' || status === 'denied') {
     return null;
@@ -47,6 +64,7 @@ export default function PushToggle() {
     // account when it closes. The endpoint is bound to whoever clicked.
     const token = captureOwnerToken();
     setBusy(true);
+    setFailedEpoch(null);
     try {
       if (subscribed) {
         await unsubscribeFromPush(token);
@@ -58,10 +76,15 @@ export default function PushToggle() {
         setStatus(ok ? 'subscribed' : 'default');
       }
     } catch (err) {
-      if (!(err instanceof OwnerMismatchError)) throw err;
+      // A refusal after a switch paints nothing.
+      if (!isTokenOwnerStillCurrent(token)) return;
       // A refusal for the same account reads as "not subscribed" rather than
-      // a silent no-op; a refusal after a switch paints nothing.
-      if (isTokenOwnerStillCurrent(token)) setStatus('default');
+      // a silent no-op.
+      if (err instanceof OwnerMismatchError) setStatus('default');
+      // Anything else left the subscription as it was (unsubscribe rejects
+      // only while reminders can still arrive), so the toggle keeps its
+      // state and says the change failed.
+      else setFailedEpoch(token.epoch);
     } finally {
       // A busy flag carries no account data; it is reset either way.
       setBusy(false);
@@ -69,19 +92,24 @@ export default function PushToggle() {
   }
 
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      disabled={busy || !ownerReady}
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-40 ${
-        subscribed
-          ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
-          : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
-      }`}
-      aria-pressed={subscribed}
-    >
-      {subscribed ? <Bell className="w-3 h-3" aria-hidden="true" /> : <BellOff className="w-3 h-3" aria-hidden="true" />}
-      <span>{subscribed ? t('dashboard.push.on') : t('dashboard.push.enable')}</span>
-    </button>
+    <span className="flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
+      {failedEpoch === ownerEpoch && (
+        <span role="alert" className="text-[11px] text-red-600">{t('common.error')}</span>
+      )}
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={busy || !ownerReady}
+        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-40 ${
+          subscribed
+            ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+            : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300'
+        }`}
+        aria-pressed={subscribed}
+      >
+        {subscribed ? <Bell className="w-3 h-3" aria-hidden="true" /> : <BellOff className="w-3 h-3" aria-hidden="true" />}
+        <span>{subscribed ? t('dashboard.push.on') : t('dashboard.push.enable')}</span>
+      </button>
+    </span>
   );
 }
