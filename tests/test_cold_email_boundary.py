@@ -407,6 +407,39 @@ class TestServedGreetingKeepsItsBlankLine:
         assert out["method"] == ("ai" if endpoint == "/cold-email" else "llm"), out
         assert out["body"] == f"Dear Pat Lee,\n\n{self.REST}"
 
+    @pytest.mark.parametrize("endpoint", ["/cold-email", "/cold-email/refine"])
+    @pytest.mark.parametrize("gap", ["\n\n\n\n", "\n \n\t\n", "\n\n  \n\n"])
+    def test_a_run_of_blank_lines_between_paragraphs_is_served_as_one(self, client, monkeypatch, endpoint, gap):
+        body = f"Dear Pat Lee,\n\nI am interested in hypersonics.{gap}I study Computer Science at UIUC.\n\nBest regards,\nEric"
+        self._serve(monkeypatch, endpoint, body)
+        out = self._post(client, endpoint)
+        assert out["method"] == ("ai" if endpoint == "/cold-email" else "llm"), out
+        assert out["body"] == "Dear Pat Lee,\n\nI am interested in hypersonics.\n\nI study Computer Science at UIUC.\n\nBest regards,\nEric"
+
+    @pytest.mark.parametrize("endpoint", ["/cold-email", "/cold-email/refine"])
+    def test_a_confirmed_availability_keeps_its_own_blank_lines(self, client, monkeypatch, endpoint):
+        stated = "Mondays after 2pm.\n\n\nFridays any time."
+        body = f"Dear Pat Lee,\n\nI am interested in hypersonics.\n\n\n{stated}\n\n\nBest regards,\nEric"
+        self._serve(monkeypatch, endpoint, body)
+        out = self._post(client, endpoint, contact_context={
+            "version": 1, "purpose": "first_contact", "availability": {"text": stated, "confirmed": True}})
+        assert out["method"] == ("ai" if endpoint == "/cold-email" else "llm"), out
+        assert out["body"] == f"Dear Pat Lee,\n\nI am interested in hypersonics.\n\n{stated}\n\nBest regards,\nEric"
+
+    def _serve(self, monkeypatch, endpoint, body):
+        reply = f"Subject: Research inquiry\n\n{body}" if endpoint == "/cold-email" else body
+        monkeypatch.setattr(ce, "chat_completion", lambda *_a, **_k: reply)
+
+    def _post(self, client, endpoint, **extra):
+        payload = {"engine": "ai"} if endpoint == "/cold-email" else {
+            "current_body": f"Dear Pat Lee,\n\n{self.REST}", "instruction": "make it warmer"}
+        response = client.post(f"/api{endpoint}", json={
+            "profile": self.PROFILE, "opportunity_id": self.OPP["id"],
+            "experience_evidence": confirmed_experience([]), **payload, **extra,
+        })
+        assert response.status_code == 200, response.text
+        return response.json()
+
     def test_the_shorter_quick_edit_leaves_one_blank_line_where_it_drops_a_paragraph(self, client, monkeypatch):
         monkeypatch.setattr(ce, "is_configured", lambda: False)
         current = ("Dear Pat Lee,\n\nI am interested in hypersonics.\n\nI am a fast learner.\n\n"
@@ -434,3 +467,20 @@ class TestServedGreetingKeepsItsBlankLine:
 ])
 def test_a_dropped_filler_line_takes_its_blank_line_with_it(body, expected):
     assert ce._local_refine(body, "make it shorter")["body"] == expected
+
+
+@pytest.mark.parametrize(("body", "expected"), [
+    ("A.\n\n\nB.", "A.\n\nB."),
+    ("A.\n \n\t\nB.", "A.\n\nB."),
+    ("A.\r\n\r\nB.\r\nC.", "A.\n\nB.\nC."),
+    ("A.\nB.\n\nC.", "A.\nB.\n\nC."),
+    ("A.\n  indented", "A.\n  indented"),
+])
+def test_served_paragraphs_are_one_blank_line_apart(body, expected):
+    assert ce._one_blank_line_between_paragraphs(body, {}) == expected
+
+
+def test_a_multi_line_confirmed_sentence_keeps_its_spacing():
+    stated = "Mondays.\n \n\nFridays."
+    body = f"A.\n\n\n{stated}\n\n\nB."
+    assert ce._one_blank_line_between_paragraphs(body, {"contact_availability": stated}) == f"A.\n\n{stated}\n\nB."

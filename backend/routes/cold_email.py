@@ -891,6 +891,32 @@ def _enforce_brief_greeting(email_text: str | None, prof_brief: str) -> str | No
     return rendered
 
 
+_CONFIRMED_CONTACT_KEYS = ("contact_opening", "contact_reply_line", "contact_availability", "contact_paper_reading")
+_BLANK_LINE_RUN = re.compile(r"\n[^\S\n]*\n(?:[^\S\n]*\n)*")
+
+
+def _one_blank_line_between_paragraphs(body: str, parts: dict) -> str:
+    """Serve a model-written run of blank or whitespace-only lines as one empty line.
+
+    A confirmed contact sentence must reach the draft byte for byte, so a
+    multi-line confirmed availability keeps its own spacing.
+    """
+    def tidy(segment: str) -> str:
+        return _BLANK_LINE_RUN.sub("\n\n", segment.replace("\r\n", "\n"))
+
+    kept = [sentence for sentence in (parts.get(key) or "" for key in _CONFIRMED_CONTACT_KEYS)
+            if "\n" in sentence or "\r" in sentence]
+    spans = sorted((match.start(), match.end()) for sentence in kept
+                   for match in re.finditer(re.escape(sentence), body))
+    pieces, position = [], 0
+    for start, end in spans:
+        if start < position:
+            continue
+        pieces += [tidy(body[position:start]), body[start:end]]
+        position = end
+    return "".join([*pieces, tidy(body[position:])])
+
+
 def _base_rules(
     is_grad: bool,
     has_target_data: bool = True,
@@ -2238,6 +2264,7 @@ def _run_engine(
                 logger.exception("cold-email: pipeline crashed; using template")
                 ai_text = None
             ai_subject, ai_body = _extract_subject_and_body(ai_text) if ai_text else ("", "")
+            ai_body = _one_blank_line_between_paragraphs(ai_body, parts)
             if not ai_subject or not ai_body:
                 fallback_reason = "unavailable" if not ai_text else "invalid_output"
             else:
@@ -2889,6 +2916,7 @@ async def _refine_email_snapshot(request: EmailRefineRequest, opp: dict):
                 context,
                 fallback_reason="fabrication",
             )
+    edited = _one_blank_line_between_paragraphs(edited, context["parts"] if context is not None else {})
     corpus = context["corpus"] if context is not None else ""
     fabricated, borrowed = _email_grounding_findings(
         edited, context["parts"] if context is not None else {},
