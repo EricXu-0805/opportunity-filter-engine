@@ -6,6 +6,7 @@ paths cause at the body limits; these tests pin the behaviour that keeps it unde
 from __future__ import annotations
 
 import asyncio
+import json
 
 import pytest
 from fastapi.testclient import TestClient
@@ -20,6 +21,9 @@ from tests import test_target_resume_plan as plan_tests
 from tests.test_target_resume_plan import endpoint  # noqa: F401
 
 HEAVY = [[]] * (request_body.MAX_JSON_CONTAINERS + 1)
+# Containers in chains 99 deep: at the container bound with few commas (a list of siblings needs one per item).
+CHAINS = [json.loads("[" * 98 + "0" + "]" * 98)] * ((request_body.MAX_JSON_CONTAINERS - 200) // 99)
+ITEMS = [0] * (request_body.MAX_JSON_SEPARATORS + 1)
 
 
 def on_the_event_loop() -> bool:
@@ -67,11 +71,25 @@ def test_a_container_heavy_full_target_request_is_refused_unparsed_and_private(p
     assert "no-store" in response.headers["cache-control"]
 
 
-def test_a_body_at_the_bound_is_parsed_and_answered_as_before(parsed):
-    padding = [[]] * (request_body.MAX_JSON_CONTAINERS - 10)
+@pytest.mark.parametrize("padding", [CHAINS, [0] * (request_body.MAX_JSON_SEPARATORS - 20)],
+                         ids=["containers-at-the-bound", "items-at-the-bound"])
+def test_a_body_at_the_bound_is_parsed_and_answered_as_before(parsed, padding):
     response = TestClient(app).post("/api/tailor", json={**TAILOR, "original_bullets": ["Built a robot."],
                                                         "padding": padding})
     assert response.status_code == 404 and parsed == ["/api/tailor"]
+
+
+@pytest.mark.parametrize(("path", "body"), [
+    ("/api/tailor", {**TAILOR, "original_bullets": ["Built a robot."], "padding": ITEMS}),
+    ("/api/tailor/full-target/suggestions", {**FULL, "selected_unit_ids": ["line-1"],
+                                             "draft": {"kind": "full_resume", "junk": ITEMS}}),
+    ("/api/tailor/full-target/selection-plan", {**FULL, "options": {"target_pages": 1},
+                                                "draft": {"kind": "full_resume", "junk": ITEMS}}),
+], ids=["tailor", "full-target", "selection-plan"])
+def test_an_item_heavy_body_is_refused_unparsed(parsed, path, body):
+    """Four 2 MiB bodies of ints sent at once held the loop 0.30-0.39 s (round-2 review, criterion 4)."""
+    response = TestClient(app).post(path, json=body)
+    assert response.status_code == 422 and parsed == []
 
 
 @pytest.mark.parametrize(("path", "extra"), [

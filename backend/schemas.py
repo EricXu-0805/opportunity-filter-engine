@@ -64,8 +64,13 @@ def _profile_error(field: str, *, actual: int | None = None,
     raise PydanticCustomError("profile_input_invalid", "Profile input is invalid.", {"field": field})
 
 
+# A lone surrogate, found by the regex engine's C loop: a per-character generator over a
+# profile at its limits (17 x 60,000 characters) took about 50 ms on the event loop per request.
+_SURROGATE = re.compile("[\ud800-\udfff]")
+
+
 def _profile_text(value: object, field: str, limit: int) -> None:
-    if not isinstance(value, str) or any(0xD800 <= ord(c) <= 0xDFFF for c in value):
+    if not isinstance(value, str) or _SURROGATE.search(value):
         _profile_error(field)
     if len(value) > limit:
         _profile_error(field, actual=len(value), limit=limit)
@@ -138,7 +143,7 @@ class ProfileRequest(BaseModel):
                 elif isinstance(item, dict):
                     _profile_text(item.get("name", ""), "profile.hard_skills.name", PROFILE_SKILL_TEXT_LIMIT)
                     _profile_text(item.get("level", "beginner"), "profile.hard_skills.level", PROFILE_SKILL_TEXT_LIMIT)
-                    if isinstance(item.get("source"), str) and any(0xD800 <= ord(c) <= 0xDFFF for c in item["source"]):
+                    if isinstance(item.get("source"), str) and _SURROGATE.search(item["source"]):
                         _profile_error("profile.hard_skills.source")
                 else:
                     _profile_error("profile.hard_skills")

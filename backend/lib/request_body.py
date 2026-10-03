@@ -12,6 +12,16 @@ cost. ``bytes.count`` reads it from the raw body in about a millisecond; bracket
 inside strings count too, which only makes the bound stricter. A full-target draft
 of 100 entries and 20 units holds about 600 containers, so the bound is far above
 any real request.
+
+Items cost too: a 2 MiB list of ints holds four containers, but json.loads and
+the validation after it build a million items, 80-120 ms per body, and four such
+bodies sent at once held the loop 0.30-0.39 s (scripts/worst_inputs_lag.py
+--concurrent 4). Every item after the first in a list or object follows a comma,
+so the comma count bounds them, commas inside strings included. A full-target
+draft of 100 entries holds a few thousand, a 60,000-character résumé of English
+prose about 1,200 (one in every 50 characters); the bound is 50,000. With it the
+worst body four requests send at once holds the loop about 0.15 s (50,000
+one-key objects), and the container bound is reached only by nesting.
 """
 from __future__ import annotations
 
@@ -20,12 +30,14 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.routing import APIRoute
 
 MAX_JSON_CONTAINERS = 100_000
+MAX_JSON_SEPARATORS = 50_000
 
 
 async def refuse_container_heavy_body(request: Request) -> None:
-    """Raise the RequestValidationError each route already answers when the body holds too many containers."""
+    """Raise the RequestValidationError each route already answers when the body holds too many containers
+    or too many items (commas)."""
     body = await request.body()
-    if body.count(b"[") + body.count(b"{") > MAX_JSON_CONTAINERS:
+    if body.count(b"[") + body.count(b"{") > MAX_JSON_CONTAINERS or body.count(b",") > MAX_JSON_SEPARATORS:
         raise RequestValidationError([{"type": "too_long", "loc": ("body",), "msg": "Request input is invalid.",
                                        "input": None}])
 
