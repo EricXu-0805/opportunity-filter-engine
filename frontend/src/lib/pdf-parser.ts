@@ -232,8 +232,14 @@ function positioned(item: PdfTextItem): Run | null {
 function glyphWidth(text: string): number {
   let width = 0;
   for (const character of text) {
-    const code = character.normalize('NFD').codePointAt(0)!;
-    width += code >= 32 && code <= 126 ? ASCII_WIDTHS[code - 32] : FULL_WIDTH.test(character) ? 1000 : 556;
+    const code = character.codePointAt(0)!;
+    if (code >= 32 && code <= 126) width += ASCII_WIDTHS[code - 32];
+    else if (FULL_WIDTH.test(character)) width += 1000;
+    else {
+      // Decomposed only here, where an accented letter needs its base letter.
+      const base = character.normalize('NFD').codePointAt(0)!;
+      width += base >= 32 && base <= 126 ? ASCII_WIDTHS[base - 32] : 556;
+    }
   }
   return width;
 }
@@ -381,9 +387,16 @@ function ranOutOfRoom(prev: LineShape, next: LineShape, after: string, { left, r
   if (right - left < NARROW * prev.size && (!prev.wrappable || prev.right - prev.left < 0.75 * (right - left))) return false;
   const room = right - prev.right;
   const width = next.right - next.left;
-  const space = characterShare ? SPACE * next.size : width * glyphWidth(' ') / glyphWidth(after);
-  const word = characterShare ? width * Array.from(firstWord(after)).length / Array.from(after).length
-    : width * glyphWidth(firstWord(after)) / glyphWidth(after);
+  let space: number;
+  let word: number;
+  if (characterShare) {
+    space = SPACE * next.size;
+    word = width * Array.from(firstWord(after)).length / Array.from(after).length;
+  } else {
+    const glyphs = glyphWidth(after);
+    space = width * glyphWidth(' ') / glyphs;
+    word = width * glyphWidth(firstWord(after)) / glyphs;
+  }
   return space + word > room || (generous && space + word * SLACK > room);
 }
 
@@ -397,8 +410,8 @@ function possibleWrap(
 ): boolean {
   const prev = shapes[index - 1];
   const next = shapes[index];
-  return !!prev && !!next && sameParagraph(shapes, index, texts, pitch) && edgeShown(shapes, index - 1, texts, edges)
-    && ranOutOfRoom(prev, next, texts[index].trim(), column(index - 1), false, false);
+  return !!prev && !!next && sameParagraph(shapes, index, texts, pitch)
+    && ranOutOfRoom(prev, next, texts[index].trim(), column(index - 1), false, false) && edgeShown(shapes, index - 1, texts, edges);
 }
 
 /** Page text in PDF.js reading order. Runs are spaced by their geometry, so a
