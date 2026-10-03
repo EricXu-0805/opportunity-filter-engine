@@ -2,22 +2,26 @@
 """Canonical weekly refresh rotation and manual-shard validation.
 
 The workflow delegates all shard selection to this module so collector
-registration and the weekly schedule cannot silently drift apart.
+registration and the weekly schedule cannot silently drift apart. It also
+decides whether a refresh run may start beside another one.
+
+The workflow runs ``--overlap`` before it checks the repository out, from a
+copy of this file alone, so nothing here imports from the repository at load
+time.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
-
-from src.normalizers.school_audience import SOURCE_DEFAULTS  # noqa: E402
-from src.school_scope import is_supported  # noqa: E402
 
 NATIONAL_SHARD = "national"
 _SLUG_RE = re.compile(r"[a-z0-9-]{1,64}")
@@ -80,6 +84,9 @@ def registered_school_slugs() -> frozenset[str]:
     rotation fails loudly here rather than leaving a shard that scrapes a
     school nobody is served.
     """
+    from src.normalizers.school_audience import SOURCE_DEFAULTS
+    from src.school_scope import is_supported
+
     return frozenset(
         school for school, _ in SOURCE_DEFAULTS.values()
         if school and is_supported(school)
@@ -134,6 +141,7 @@ def scheduled_shard(utc_weekday: int, *, isolated: bool = False) -> str:
 
 def normalize_requested_shard(raw: str, *, allow_full: bool = False) -> str:
     """Validate an untrusted workflow_dispatch value and return it unchanged."""
+    from src.school_scope import is_supported
 
     if raw == "":
         if allow_full:
@@ -274,11 +282,153 @@ def target_shards(shard: str) -> tuple[str, ...]:
     return tuple(normalized.split(","))
 
 
+# Scheduled and manual refreshes sit in separate concurrency groups (see
+# refresh-data.yml), so GitHub does not keep them apart; the workflow's first
+# step asks overlap_decision() instead. Production wins: a scheduled run
+# cancels a manual one already in progress, and a manual run defers to any.
+PRODUCTION_EVENT = "schedule"
+_REFRESH_BRANCH = re.compile(r"auto/refresh-data-([0-9]+)(?:-r[0-9]+)?")
+
+
+@dataclass(frozen=True)
+class OverlapDecision:
+    action: str  # "proceed", "defer" or "cancel"
+    cancel: tuple[int, ...] = ()
+    level: str = "info"  # how the workflow reports message: info, warning or error
+    message: str = ""
+
+
+def _runs_in_progress(payload) -> list[tuple[int, str]] | None:
+    """(id, event) of each in-progress run in a workflow-runs API response.
+
+    None when the payload is not one: a failed request leaves nothing to read,
+    or an error body.
+    """
+    if not isinstance(payload, dict) or not isinstance(payload.get("workflow_runs"), list):
+        return None
+    runs = set()
+    for run in payload["workflow_runs"]:
+        if not isinstance(run, dict):
+            return None
+        run_id, event, status = run.get("id"), run.get("event"), run.get("status")
+        if type(run_id) is not int or not isinstance(event, str) or not isinstance(status, str):
+            return None
+        # A queued run has not started; it asks for itself when it does.
+        if status == "in_progress":
+            runs.add((run_id, event))
+    return sorted(runs)
+
+
+def overlap_decision(event_name: str, run_id: int, payload) -> OverlapDecision:
+    """Whether refresh run ``run_id`` may start beside the runs in ``payload``.
+
+    ``payload`` is the response of the workflow's runs?status=in_progress
+    request, or None when that request failed. Two refreshes must not mutate
+    the corpus at once, and a scheduled run's daily shard must not wait on a
+    manual recovery: a scheduled run cancels every other in-progress run that
+    is not scheduled, and a manual run defers to any. A failed request defers a
+    manual run and lets a scheduled one through, as a broken API should not
+    cost a day of the rotation.
+    """
+    runs = _runs_in_progress(payload)
+    production = event_name == PRODUCTION_EVENT
+    if runs is None:
+        if production:
+            return OverlapDecision(
+                "proceed", level="warning",
+                message="Could not list the refresh runs in progress; the scheduled "
+                        "refresh proceeds without checking for a manual one.",
+            )
+        return OverlapDecision(
+            "defer", level="error",
+            message="Could not list the refresh runs in progress, so this manual "
+                    "dispatch cannot tell that none is running. Re-dispatch it.",
+        )
+    others = [(other, event) for other, event in runs if other != run_id]
+    if not others:
+        return OverlapDecision("proceed", message="No other refresh in progress; proceeding.")
+    if not production:
+        ids = ", ".join(str(other) for other, _ in others)
+        return OverlapDecision(
+            "defer", level="error",
+            message=f"A refresh run is already in progress ({ids}). This manual dispatch "
+                    "is deferring rather than racing the corpus; re-dispatch once it finishes.",
+        )
+    manual = tuple(other for other, event in others if event != PRODUCTION_EVENT)
+    scheduled = ", ".join(str(other) for other, event in others if event == PRODUCTION_EVENT)
+    # The schedule's own concurrency group queues scheduled runs, so another
+    # one in progress bypassed that group. It is left running.
+    beside = (f"Scheduled run(s) {scheduled} are in progress outside their "
+              "concurrency group and are left running.") if scheduled else ""
+    if manual:
+        ids = ", ".join(str(other) for other in manual)
+        return OverlapDecision(
+            "cancel", cancel=manual, level="warning",
+            message=f"Production wins: cancelling manual refresh run(s) {ids} before "
+                    f"this scheduled refresh starts. {beside}".rstrip(),
+        )
+    return OverlapDecision("proceed", level="warning", message=beside)
+
+
+def superseded_refresh_prs(prs: list, run_id: int) -> list[int]:
+    """Open data-refresh PRs that runs older than ``run_id`` left behind.
+
+    ``prs`` is ``gh pr list --json number,headRefName`` output. A refresh
+    closes these before opening its own PR. It used to close every open
+    auto/refresh-data-* PR, newer runs' included; a branch names the run that
+    opened it, and a run's id grows with the time it was created.
+    """
+    if not isinstance(prs, list):
+        raise ValueError("expected a list of pull requests")
+    stale = []
+    for pr in prs:
+        match = _REFRESH_BRANCH.fullmatch(str(pr.get("headRefName", "")))
+        if match and int(match.group(1)) < run_id:
+            stale.append(int(pr["number"]))
+    return sorted(stale)
+
+
+def _annotate(level: str, message: str) -> None:
+    """Print message to stderr, as a workflow annotation when it is one."""
+    if level in ("warning", "error"):
+        message = message.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+        message = f"::{level}::{message}"
+    print(message, file=sys.stderr)
+
+
+def _overlap_cli(event_name: str, run_id: int, runs_path: str) -> int:
+    try:
+        payload = json.loads(Path(runs_path).read_text())
+    except (OSError, ValueError):
+        payload = None
+    decision = overlap_decision(event_name, run_id, payload)
+    if decision.message:
+        _annotate(decision.level, decision.message)
+    print(" ".join([decision.action, *(str(other) for other in decision.cancel)]))
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--day", type=int, help="UTC weekday (1=Monday, 7=Sunday)")
     group.add_argument("--schools", help="Untrusted manual shard input")
+    group.add_argument(
+        "--overlap",
+        action="store_true",
+        help="Print proceed, defer or 'cancel <run ids>' for this run (needs --event, --run-id, --runs)",
+    )
+    group.add_argument(
+        "--superseded-prs",
+        action="store_true",
+        help="Print the open refresh PRs older runs left, from gh pr list JSON on stdin (needs --run-id)",
+    )
+    parser.add_argument("--event", help="This run's github.event_name")
+    parser.add_argument("--run-id", type=int, help="This run's github.run_id")
+    parser.add_argument(
+        "--runs",
+        help="File holding the in-progress workflow-runs API response; empty or unreadable means the request failed",
+    )
     parser.add_argument(
         "--allow-full",
         action="store_true",
@@ -305,6 +455,21 @@ def main() -> int:
         help="Require a bounded canonical publication unit for --schools",
     )
     args = parser.parse_args()
+
+    if args.overlap:
+        if not args.event or args.run_id is None or args.runs is None:
+            parser.error("--overlap needs --event, --run-id and --runs")
+        return _overlap_cli(args.event, args.run_id, args.runs)
+    if args.superseded_prs:
+        if args.run_id is None:
+            parser.error("--superseded-prs needs --run-id")
+        try:
+            stale = superseded_refresh_prs(json.load(sys.stdin), args.run_id)
+        except (ValueError, TypeError, KeyError, AttributeError) as exc:
+            parser.error(f"unreadable pull request list: {exc}")
+        for number in stale:
+            print(number)
+        return 0
 
     try:
         if args.day is not None:

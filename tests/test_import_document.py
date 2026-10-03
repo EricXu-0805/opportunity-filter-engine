@@ -1,6 +1,9 @@
 """Offline, source-preserving HTML reader contract."""
+import gc
+import math
 import random
 import signal
+import time
 import tracemalloc
 from contextlib import contextmanager
 from pathlib import Path
@@ -849,16 +852,73 @@ def test_loading_words_beside_source_are_not_a_loading_page(body, kept):
 
 @contextmanager
 def _deadline(seconds):
-    """Fail a runaway scan instead of hanging the suite: re checks signals while it matches."""
+    """Fail a runaway scan instead of hanging the suite: re checks signals while it matches.
+
+    The cyclic collector waits until the block ends, as timeit holds it off. A
+    full collection walks every object alive in the process: with the corpus
+    other tests load still alive, one took 0.3 s here and landed inside every
+    second read of a crowded page.
+    """
     def expire(signum, frame):
         raise TimeoutError(f'still reading after {seconds} s')
     previous = signal.signal(signal.SIGALRM, expire)
+    collecting = gc.isenabled()
+    gc.disable()
     signal.setitimer(signal.ITIMER_REAL, seconds)
     try:
         yield
     finally:
         signal.setitimer(signal.ITIMER_REAL, 0)
         signal.signal(signal.SIGALRM, previous)
+        if collecting:
+            gc.enable()
+
+
+def _growth(read, small, large):
+    """How many times longer read(large) takes than read(small).
+
+    A fixed time limit fails a slow runner: data PR #1019 failed CI on a page a
+    laptop read in 0.2 s, past a 2-second limit. The ratio does not depend on
+    the runner's speed. Each input is timed three times, in turn, in this
+    process's CPU time over at least 50 ms a time, and the quickest of each is
+    compared: time spent waiting for a busy CPU does not count, and one slow
+    timing is outvoted. On four times the input a reader linear in it takes
+    about four times longer, a quadratic one sixteen.
+    """
+    def seconds_per_read(text):
+        reads, started = 0, time.process_time()
+        while True:
+            read(text)
+            reads += 1
+            elapsed = time.process_time() - started
+            if elapsed >= 0.05:
+                return elapsed / reads
+    with _deadline(60):
+        small_best = large_best = math.inf
+        for _ in range(3):
+            small_best = min(small_best, seconds_per_read(small))
+            large_best = min(large_best, seconds_per_read(large))
+    return large_best / small_best
+
+
+def test_the_timer_holds_the_collector_off_and_restores_it():
+    assert gc.isenabled()
+    with _deadline(5):
+        assert not gc.isenabled()
+    assert gc.isenabled()
+
+
+# The linear-time tests below pass whenever _growth answers under their bound,
+# so a _growth that could not see a quadratic read would pass them all.
+def test_growth_tells_a_quadratic_read_from_a_linear_one():
+    def linear(text):
+        return text.count('a')
+
+    def quadratic(text):
+        return sum(text.count('a', start) for start in range(0, len(text), 64))
+    small, large = 'a' * 16_000, 'a' * 64_000
+    assert _growth(linear, small, large) < 8
+    assert _growth(quadratic, small, large) > 8
 
 
 # The loading-line rule reads the whole text of a script page and each sentence
@@ -926,31 +986,38 @@ def test_short_lines_under_a_check_title_are_weighed_in_linear_time():
 # weighed, read each nested heading's text again and recursed down the page;
 # bs4 searched a list of the void tags it had closed on every end tag, and the
 # charset in a <meta> in quadratic time. Each page below, 16 KB to 267 KB,
-# took the seconds shown with the old reader (one run each on a laptop).
-@pytest.mark.parametrize(('html', 'refused'), [
-    pytest.param(page(SOIL_POSTING.format('') + '<h1>' * 4000 + 'x'), True, id='4000-nested-h1-4.2s'),
-    pytest.param(page(SOIL_POSTING.format('') + '<div>' * 4000 + 'x'), True, id='4000-nested-div-3.0s'),
-    pytest.param(page(SOIL_POSTING.format('') + '<div>' * 500 + '<div></div>' * 20_000), False,
+# took the seconds shown with the old reader (one run each on a laptop). Each
+# is timed against the same page a quarter of its size, its depth and its count
+# both quartered: a CI runner read four of these pages in 0.7 to 1.3 s, too
+# close to a fixed 2-second limit.
+@pytest.mark.parametrize(('build', 'size', 'refused'), [
+    pytest.param(lambda n: page(SOIL_POSTING.format('') + '<h1>' * n + 'x'), 4000, True, id='4000-nested-h1-4.2s'),
+    pytest.param(lambda n: page(SOIL_POSTING.format('') + '<div>' * n + 'x'), 4000, True, id='4000-nested-div-3.0s'),
+    pytest.param(lambda n: page(SOIL_POSTING.format('') + '<div>' * (n // 40) + '<div></div>' * n), 20_000, False,
                  id='boxes-500-deep-4.0s'),
-    pytest.param(page(SOIL_POSTING.format('') + '<div hidden>' + '<div>' * 500 + '<div></div>' * 24_000 + '</div>'),
-                 False, id='hidden-boxes-500-deep-4.2s'),
-    pytest.param(page(SOIL_POSTING.format('') + '<div>' * 500 + '<h1>Lab news</h1>' * 14_000), False,
-                 id='headings-500-deep-2.5s'),
-    pytest.param(page(SOIL_POSTING.format('') + '<br>' * 29_000 + '</p>' * 29_000), False, id='void-then-end-tags-3.2s'),
-    pytest.param(page(SOIL_POSTING.format(''), '<meta http-equiv="Content-Type" content="' + '\n' * 100_000 + '">'),
-                 False, id='meta-charset-line-breaks-6.0s'),
+    pytest.param(lambda n: page(SOIL_POSTING.format('') + '<div hidden>' + '<div>' * (n // 48) + '<div></div>' * n
+                                + '</div>'), 24_000, False, id='hidden-boxes-500-deep-4.2s'),
+    pytest.param(lambda n: page(SOIL_POSTING.format('') + '<div>' * (n // 28) + '<h1>Lab news</h1>' * n), 14_000,
+                 False, id='headings-500-deep-2.5s'),
+    pytest.param(lambda n: page(SOIL_POSTING.format('') + '<br>' * n + '</p>' * n), 29_000, False,
+                 id='void-then-end-tags-3.2s'),
+    pytest.param(lambda n: page(SOIL_POSTING.format(''), '<meta http-equiv="Content-Type" content="' + '\n' * n + '">'),
+                 100_000, False, id='meta-charset-line-breaks-6.0s'),
 ])
-def test_deep_or_crowded_page_reads_in_linear_time(html, refused):
-    with _deadline(2):
+def test_deep_or_crowded_page_reads_in_linear_time(build, size, refused):
+    def read(html):
+        try:
+            return extract_import_document(html)['text']
+        except ImportDocumentError as error:
+            return error.reason
+    small, large = build(size // 4), build(size)
+    for html in (small, large):
         if refused:
-            with pytest.raises(ImportDocumentError) as raised:
-                extract_import_document(html)
+            assert read(html) == 'too_large'
         else:
-            text = extract_import_document(html)['text']
-    if refused:
-        assert raised.value.reason == 'too_large'
-    else:
-        assert 'The Soil Microbiology Lab seeks an undergraduate research assistant' in text
+            assert 'The Soil Microbiology Lab seeks an undergraduate research assistant' in read(html)
+    growth = _growth(read, small, large)
+    assert growth < 8, f'four times the page took {growth:.1f} times as long'
 
 
 def _flat_page(nodes):
@@ -985,7 +1052,9 @@ def _attribute_page(attributes):
                  'Undergraduate research position.\nx', id='tag-attributes'),
 ])
 def test_page_at_a_limit_reads_and_one_past_it_is_too_large(at_limit, past_limit, kept):
-    with _deadline(5):
+    # A CI runner took up to 2.8 s on the nodes and parse-events pairs, so the
+    # limit only stops a runaway.
+    with _deadline(30):
         assert extract_import_document(at_limit)['text'] == kept
         with pytest.raises(ImportDocumentError) as raised:
             extract_import_document(past_limit)
@@ -1086,15 +1155,20 @@ def test_bounded_parse_skips_bs4s_walk_up_through_open_tags(monkeypatch):
 
 # html.parser reads each '<' or '&' that opens nothing as a text piece of its
 # own, about 0.6 microseconds each: 5 MB of either took 3.2 s to parse here,
-# and the old import parsed every page five times.
-@pytest.mark.parametrize('html', [
-    pytest.param(page('<p>' + '<' * 5_000_000 + '</p>'), id='5-million-lt'),
-    pytest.param(page('<p>' + '&' * 5_000_000 + '</p>'), id='5-million-amp'),
-])
-def test_parser_work_is_held_to_its_limit(html):
-    with _deadline(2), pytest.raises(ImportDocumentError) as raised:
-        extract_import_document(html)
-    assert raised.value.reason == 'too_large'
+# and the old import parsed every page five times. The reader stops at its
+# parse-event limit, so 5 MB costs it what 1.25 MB does; parsed whole, it
+# would cost four times as much. A CI runner took up to 1.8 s on 5 MB.
+@pytest.mark.parametrize('mark', [pytest.param('<', id='5-million-lt'), pytest.param('&', id='5-million-amp')])
+def test_parser_work_is_held_to_its_limit(mark):
+    def refuse(html):
+        try:
+            extract_import_document(html)
+        except ImportDocumentError as error:
+            return error.reason
+    small, large = (page('<p>' + mark * size + '</p>') for size in (1_250_000, 5_000_000))
+    assert refuse(small) == refuse(large) == 'too_large'
+    growth = _growth(refuse, small, large)
+    assert growth < 2, f'four times the markup took {growth:.1f} times as long'
 
 
 # html.parser finds where a tag ends with one regular expression whose memory

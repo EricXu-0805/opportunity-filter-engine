@@ -14,7 +14,7 @@ from src.contact_instructions import (
     same_source_page,
     source_from_html,
 )
-from tests.test_import_document import _deadline
+from tests.test_import_document import _deadline, _growth
 
 URL = "https://program.example.edu/research"
 STAMP = "2026-09-28T12:00:00Z"
@@ -210,25 +210,32 @@ def test_unparsed_qualifier_cannot_be_dropped_after_a_supported_requirement():
 # each heading, paragraph and list through every tag above it, read each nested
 # one's text again, and build a reparsed copy of the page whose leftovers it
 # removed one by one, each removal searching its parent's children. Each page
-# took the seconds shown with the old capture (one run each).
-@pytest.mark.parametrize("body", [
-    pytest.param("<h2>Lab</h2><p>We study soil.</p>" + "<h1>" * 4000 + "x", id="4000-nested-h1-7.0s"),
-    pytest.param("<h2>Lab</h2><p>We study soil.</p>" + "<ul>" * 4000 + "x", id="4000-nested-ul-6.3s"),
-    pytest.param("<h2>Lab</h2><p>We study soil.</p><template>" + "<p>" * 4000 + "x", id="4000-nested-p-10.4s"),
-    pytest.param("<h2>Lab</h2><p>We study soil.</p>" + "<nav>x</nav><span>y</span>" * 20_000,
+# took the seconds shown with the old capture (one run each). Each is timed
+# against the same page a quarter of its size: 40,000 nested headings took
+# 0.2 s on a laptop and over 2 s on a CI runner, which failed data PR #1019
+# on a fixed 2-second limit.
+@pytest.mark.parametrize("build,size", [
+    pytest.param(lambda n: "<h2>Lab</h2><p>We study soil.</p>" + "<h1>" * n + "x", 4000, id="4000-nested-h1-7.0s"),
+    pytest.param(lambda n: "<h2>Lab</h2><p>We study soil.</p>" + "<ul>" * n + "x", 4000, id="4000-nested-ul-6.3s"),
+    pytest.param(lambda n: "<h2>Lab</h2><p>We study soil.</p><template>" + "<p>" * n + "x", 4000,
+                 id="4000-nested-p-10.4s"),
+    pytest.param(lambda n: "<h2>Lab</h2><p>We study soil.</p>" + "<nav>x</nav><span>y</span>" * n, 20_000,
                  id="20000-navs-among-text-3.9s"),
     # Every heading inside another holds its text: 1,000 characters each here.
     # The crawlers parse pages without the URL reader's depth limit. The old
-    # capture took 7.0 s at 4,000 headings, four times longer per doubling.
-    # 40,000 took 0.2 s locally but over 2 s on a CI runner, so 10,000 keeps
-    # the margin; the old capture would still take about 44 s.
-    pytest.param("<h2>Lab</h2><p>We study soil.</p>" + "<h2>" * 10_000 + "word " * 199 + "word",
+    # capture took 7.0 s at 4,000 headings, four times longer per doubling,
+    # so about 44 s at 10,000.
+    pytest.param(lambda n: "<h2>Lab</h2><p>We study soil.</p>" + "<h2>" * n + "word " * 199 + "word", 10_000,
                  id="10000-nested-h2-around-1000-characters"),
 ])
-def test_deep_or_crowded_page_is_captured_in_linear_time(body):
-    with _deadline(2):
-        result = capture(body)
-    assert result["status"] in ("empty", "captured")
+def test_deep_or_crowded_page_is_captured_in_linear_time(build, size):
+    def status(body):
+        return capture(body)["status"]
+    small, large = build(size // 4), build(size)
+    assert status(small) in ("empty", "captured")
+    assert status(large) in ("empty", "captured")
+    growth = _growth(status, small, large)
+    assert growth < 8, f"four times the page took {growth:.1f} times as long"
 
 
 def test_page_bs4_could_not_serialize_is_still_captured():
