@@ -28,6 +28,7 @@ import ProfileRefreshBanner, { profileRefreshReady } from './ProfileRefreshBanne
 import { structureResume, renovateResume, optimizeBullet } from '@/lib/api';
 import ResumeProcessingNotice from './ResumeProcessingNotice';
 import RewriteWhy, { keptExplanation } from './RewriteWhy';
+import { isReviewedRules, isReviewedVariant, reviewedRenovation, reviewedSections } from '@/lib/renovation-review';
 import { saveRenovation, loadRenovation, type RenovationPayload, type StoredRenovation } from '@/lib/supabase';
 import { RenovationSaveQueue, type RenovationQueueState } from '@/lib/renovation-save-queue';
 import RenovationHistory from './RenovationHistory';
@@ -501,8 +502,9 @@ export default function ResumeRenovationModal({
         if (stored) scope.material = { base_snapshot: stored.base_snapshot, method: stored.method, warnings: stored.warnings };
         const storedDoc = stored?.doc as unknown as RenovationDoc | undefined;
         if (storedDoc && Array.isArray(storedDoc.sections) && storedDoc.sections.length > 0) {
-          // Keep the original source signature, including after source removal.
-          setCurrentDoc(storedDoc);
+          // Keep the original source signature, including after source removal. Wording no
+          // review accepted (saved before w14, or in another language) does not open as current.
+          setCurrentDoc(reviewedRenovation(storedDoc));
           setBaseSections(
             Array.isArray((stored?.base_snapshot as { sections?: ResumeSectionInput[] })?.sections)
               ? (stored!.base_snapshot as { sections: ResumeSectionInput[] }).sections
@@ -591,7 +593,7 @@ export default function ResumeRenovationModal({
     setCopied(false);
     scope.queue?.resolveConflict();
     scope.material = { base_snapshot: current.base_snapshot, method: current.method, warnings: current.warnings };
-    setCurrentDoc(current.doc as unknown as RenovationDoc);
+    setCurrentDoc(reviewedRenovation(current.doc as unknown as RenovationDoc));
     setBaseSections(Array.isArray(current.base_snapshot.sections) ? current.base_snapshot.sections as ResumeSectionInput[] : []);
     setRestoredFromSave(true);
     setHistoryOwner(null);
@@ -609,7 +611,7 @@ export default function ResumeRenovationModal({
     setActionChanged(false);
     setCopied(false);
     scope.material = { base_snapshot: payload.base_snapshot, method: payload.method, warnings: payload.warnings };
-    const restored = payload.doc as unknown as RenovationDoc;
+    const restored = reviewedRenovation(payload.doc as unknown as RenovationDoc);
     const sections = Array.isArray(payload.base_snapshot.sections) ? payload.base_snapshot.sections as ResumeSectionInput[] : [];
     setCurrentDoc(restored);
     setBaseSections(sections);
@@ -684,7 +686,7 @@ export default function ResumeRenovationModal({
         resume_sig: resumeSignature,
         ...(signature ? { profile_sig: signature } : {}),
         target_sig: targetSignature,
-        sections: renovated.sections,
+        sections: reviewedSections(renovated.sections, renovated.pipeline_version),
         method: renovated.method,
         warnings: [...new Set([...(structured.warnings ?? []), ...renovated.warnings])],
         processing: structured.processing,
@@ -748,7 +750,8 @@ export default function ResumeRenovationModal({
     updateBullet(b.id, (cur) => ({
       ...cur,
       variants: [...cur.variants, { source: shown.source, text: shown.alternative!, source_evidence: shown.source_evidence,
-        ops: (shown.ops ?? []).filter((op) => op !== 'relabel'), links: shown.links ?? [], alternative: null }],
+        ops: (shown.ops ?? []).filter((op) => op !== 'relabel'), links: shown.links ?? [], alternative: null,
+        ...(shown.reviewed ? { reviewed: shown.reviewed } : {}) }],
       current: cur.variants.length,
     }));
   }
@@ -797,19 +800,20 @@ export default function ResumeRenovationModal({
         setTargetVersionIssue('unavailable');
         return;
       }
-      if (resp.changed && resp.text.trim()) {
+      // Only a reviewed rewrite becomes a variant; an older backend's unreviewed one is kept out.
+      if (resp.status === 'rewritten' && resp.changed && resp.text.trim()) {
         updateBullet(b.id, (cur) => ({
           ...cur,
           variants: [
             ...cur.variants,
-            { source: 'ai', text: resp.text, source_evidence: resp.source_evidence,
-              ...(resp.status ? { ops: resp.ops ?? [], links: resp.links ?? [], alternative: resp.alternative ?? null } : {}) },
+            { source: 'ai', text: resp.text, source_evidence: resp.source_evidence, ops: resp.ops ?? [], links: resp.links ?? [],
+              alternative: resp.alternative ?? null, ...(isReviewedRules(resp.pipeline_version) ? { reviewed: resp.pipeline_version } : {}) },
           ],
           current: cur.variants.length,
         }));
       } else {
         // Backend declined (validation or no improvement) — honest no-op, with the reason when it gave one.
-        const kept = keptExplanation(resp.reason_code, t);
+        const kept = keptExplanation(resp.changed && resp.status !== 'rewritten' ? 'review_unavailable' : resp.reason_code, t);
         setBulletNotices((prev) => ({ ...prev, [b.id]: kept ? `${kept.label} — ${kept.reason}` : t('renovate.bulletUnchanged') }));
       }
     } catch (err) {
@@ -1238,6 +1242,11 @@ export default function ResumeRenovationModal({
                             </p>
                           )}
 
+                          {showingVariant && !isEditing && !isReviewedVariant(showingVariant, b.base_text) && (
+                            <p className="mt-1.5 text-[11.5px] text-amber-700" data-testid="renovation-not-reviewed">
+                              {t('renovate.notReviewed')}
+                            </p>
+                          )}
                           {showingVariant && !isEditing && (
                             <RewriteWhy links={showingVariant.links} ops={showingVariant.ops} t={t} />
                           )}

@@ -67,8 +67,21 @@ function loadSavedDraft(owner: OwnerToken, ownerId: string | null, opportunity: 
   return decoded.status === 'stored' || decoded.status === 'legacy'
     ? { status: 'found', draft: decoded.draft } : { status: 'invalid' };
 }
+// Rewrites go through the faithfulness review from w14 on. An older backend (main during a
+// deploy: Vercel ships the browser first, Render can hold the backend for days) shows
+// unreviewed rewrites, so its rules count as unavailable here.
+const REVIEWED_RULES = /^w(\d+)(?:\.\d+)*$/;
 const hasRuleVersion = (value: unknown): value is string =>
-  typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(value);
+  typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(value)
+  && Number(REVIEWED_RULES.exec(value)?.[1] ?? 0) >= 14;
+/** Only a reviewed rewrite is shown: any other bullet comes back as the student's own submitted line. */
+const reviewedBullets = (data: TailorResponse, submitted: string[]): TailorResponse => ({
+  ...data,
+  tailored_bullets: data.tailored_bullets.map((b) => b.status === 'rewritten' ? b : {
+    ...b, text: submitted[b.source_index] ?? b.text, status: 'kept' as const,
+    reason_code: b.status === 'kept' ? b.reason_code : 'review_unavailable', ops: [], alternative: null,
+  }),
+});
 const hasReceipt = (data: { pipeline_version?: string | null; generated_at?: string | null }, binding: TailorDraftBinding) =>
   data.pipeline_version === binding.pipeline_version && typeof data.generated_at === 'string' && Number.isFinite(Date.parse(data.generated_at));
 
@@ -812,7 +825,7 @@ export default function TailorModal({
       setSubmittedBullets(bullets);
       setRejected(new Set()); setEdits({}); setPlain(new Set()); setEditingIdx(null);
       setSourceChanged(false);
-      setResp(data);
+      setResp(reviewedBullets(data, bullets));
     } catch (err) {
       if (!stillCurrent()) return;
       if (err && typeof err === 'object' && 'code' in err && err.code === 'WRITING_TARGET_CHANGED') {

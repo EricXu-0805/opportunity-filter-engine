@@ -775,6 +775,9 @@ export interface RenovatedVariant {
   ops?: RewriteOp[];
   links?: EvidenceLink[];
   alternative?: string | null;
+  /** The tailor rules (w14+) whose faithfulness review accepted this rewrite; absent on a
+   * student's edit and on wording saved before the review existed. */
+  reviewed?: string;
 }
 
 export type RenovationAction = 'foreground' | 'keep' | 'demote';
@@ -803,12 +806,16 @@ export interface RenovateResponse {
   sections: RenovatedSection[];
   method: 'ai' | 'fallback';
   warnings: string[];
+  /** The tailor rules the server ran (w14+ reviews every rewrite). */
+  pipeline_version?: string | null;
 }
 
 export interface BulletOptimizeResponse {
   /** Server receipt for the exact public target used by this writing action. */
   opportunity_id?: string | null;
   target_version?: string | null;
+  /** The tailor rules the server ran (w14+ reviews every rewrite). */
+  pipeline_version?: string | null;
   text: string;
   source_evidence: string;
   changed: boolean;

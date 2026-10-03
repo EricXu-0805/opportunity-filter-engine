@@ -31,8 +31,14 @@ vi.mock('@/lib/api', () => ({
   structureResume: (...args: unknown[]) => mockStructureResume(...args),
   // These older tests exercise editing/provenance, using a known valid server
   // receipt. Raw missing/wrong receipts live in the separate target-version suite.
-  renovateResume: async (...args: unknown[]) => ({ opportunity_id: args[1], target_version: (args[3] as { expectedTargetVersion?: string })?.expectedTargetVersion, ...await mockRenovateResume(...args) }),
-  optimizeBullet: async (...args: unknown[]) => ({ opportunity_id: args[1], target_version: (args[4] as { expectedTargetVersion?: string })?.expectedTargetVersion, ...await mockOptimizeBullet(...args) }),
+  // Fixtures written before w14 stand for a reviewing backend: its rules version, and for an
+  // accepted re-optimization its status and ops. A test of an older backend states its own.
+  renovateResume: async (...args: unknown[]) => ({ opportunity_id: args[1], target_version: (args[3] as { expectedTargetVersion?: string })?.expectedTargetVersion, pipeline_version: 'w14.1', ...await mockRenovateResume(...args) }),
+  optimizeBullet: async (...args: unknown[]) => {
+    const result = await mockOptimizeBullet(...args);
+    const reviewed = result && typeof result === 'object' && result.changed && !('status' in result) ? { status: 'rewritten', ops: ['verb_first'] } : {};
+    return { opportunity_id: args[1], target_version: (args[4] as { expectedTargetVersion?: string })?.expectedTargetVersion, pipeline_version: 'w14.1', ...reviewed, ...result };
+  },
 }));
 
 const mockSaveRenovation = vi.fn();
@@ -104,6 +110,8 @@ function makeDoc(overrides: Partial<RenovationDoc> = {}): RenovationDoc {
                 source: 'macro',
                 text: 'Built a fault-tolerant data pipeline for ML workloads',
                 source_evidence: 'Built a data pipeline',
+                ops: ['lead_with'],
+                reviewed: 'w14.1',
               },
             ],
             current: 0,
@@ -1812,13 +1820,17 @@ describe('evidence-mapped renovation (w14.0)', () => {
     fireEvent.click(screen.getAllByText('renovate.rollback')[0]);
     await waitFor(() => expect(screen.getByText(fullText('Built a fault-tolerant data pipeline for ML workloads'))).toBeInTheDocument());
   });
-  it('opens a saved doc whose rewrite names translate, an op the server no longer writes', async () => {
+  it('opens a saved doc whose rewrite names translate at the bullet\'s own text, the rewrite kept as not reviewed', async () => {
     const doc = makeCurrentDoc();
     Object.assign(doc.sections[0].bullets[0].variants[0], { ops: ['translate'], links: [] });
     mockLoadRenovation.mockResolvedValue(savedDoc(doc));
     renderModal();
     expect(await screen.findByText('renovate.restored')).toBeInTheDocument();
+    expect(screen.queryByText(fullText('Built a fault-tolerant data pipeline for ML workloads'))).toBeNull();
+    expect(screen.getByText(fullText('Built a data pipeline'))).toBeInTheDocument();
+    fireEvent.click(screen.getAllByText('renovate.rollForward')[0]);
     expect(screen.getByText(fullText('Built a fault-tolerant data pipeline for ML workloads'))).toBeInTheDocument();
+    expect(screen.getByTestId('renovation-not-reviewed')).toHaveTextContent('renovate.notReviewed');
     expect(screen.getByText('tailor.ops.translate')).toBeInTheDocument();
     // Its chip keeps a label in both dictionaries, never a raw key.
     expect([translate('en', 'tailor.ops.translate'), translate('zh', 'tailor.ops.translate')]).toEqual(['Translated', '已翻译']);
@@ -1838,5 +1850,45 @@ describe('evidence-mapped renovation (w14.0)', () => {
     await clickOptimize();
     expect(await screen.findByText('tailor.keptYourWording — tailor.keep.review_rejected')).toBeInTheDocument();
     expect(screen.queryByText('renovate.source.ai')).toBeNull();
+  });
+
+  // ---- round 1: restored or returned wording no review accepted (criteria 1 and 3) ----
+  it('does not show a saved pre-review variant written in another language than its bullet', async () => {
+    // main (w13.6) wrote every rewrite in the UI language with no review: an English bullet saved with a Chinese variant.
+    const doc = makeCurrentDoc();
+    Object.assign(doc.sections[0].bullets[0], { base_text: 'Built a data pipeline', current: 0,
+      variants: [{ source: 'macro', text: '搭建了面向机器学习任务的容错数据管道', source_evidence: 'Built a data pipeline' }] });
+    mockLoadRenovation.mockResolvedValue(savedDoc(doc));
+    renderModal();
+    expect(await screen.findByText('renovate.restored')).toBeInTheDocument();
+    expect(screen.queryAllByText(fullText('搭建了面向机器学习任务的容错数据管道'))).toHaveLength(0);
+  });
+  it('does not open a reviewed-looking variant whose script differs from its bullet', async () => {
+    const doc = makeCurrentDoc();
+    Object.assign(doc.sections[0].bullets[0].variants[0], { text: '搭建了容错数据管道' });
+    mockLoadRenovation.mockResolvedValue(savedDoc(doc));
+    renderModal();
+    expect(await screen.findByText('renovate.restored')).toBeInTheDocument();
+    expect(screen.queryAllByText(fullText('搭建了容错数据管道'))).toHaveLength(0);
+    expect(screen.getByText(fullText('Built a data pipeline'))).toBeInTheDocument();
+  });
+  it('keeps a pre-review backend\'s renovation at each bullet\'s own text', async () => {
+    mockStructureResume.mockResolvedValue(structuredResume);
+    mockRenovateResume.mockResolvedValue({ ...makeDoc(), pipeline_version: 'w13.6' });
+    renderModal();
+    fireEvent.click(await screen.findByText('renovate.start'));
+    await waitFor(() => expect(mockRenovateResume).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByText(fullText('Built a data pipeline'))).toBeInTheDocument());
+    expect(screen.queryAllByText(fullText('Built a fault-tolerant data pipeline for ML workloads'))).toHaveLength(0);
+  });
+  it('adds no variant for a re-optimization the response does not mark as rewritten', async () => {
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeCurrentDoc()));
+    mockOptimizeBullet.mockResolvedValue({ text: 'Engineered a resilient ETL pipeline', source_evidence: 'Built a data pipeline',
+      changed: true, warnings: [], status: undefined, pipeline_version: 'w13.6' });
+    renderModal();
+    await clickOptimize();
+    await waitFor(() => expect(mockOptimizeBullet).toHaveBeenCalledOnce());
+    await waitFor(() => expect(screen.getByText('tailor.keptYourWording — tailor.keep.review_unavailable')).toBeInTheDocument());
+    expect(screen.queryAllByText(fullText('Engineered a resilient ETL pipeline'))).toHaveLength(0);
   });
 });

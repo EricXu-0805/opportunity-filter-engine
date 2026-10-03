@@ -35,15 +35,22 @@ vi.mock('@/lib/api', () => ({
     const result = await mockTailorResume(...args);
     // Normal old fixtures get the actual wire receipt. Explicit malformed
     // target/version fields stay malformed so isolation tests remain meaningful.
-    return result && typeof result === 'object'
-      ? { opportunity_id: args[1], target_version: (args[3] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion, pipeline_version: 'w13.3', generated_at: '2026-09-25T12:00:00+00:00', ...result }
+    // A fixture bullet written before w14 stands for a reviewed rewrite, or, echoing
+    // 'original', for a line kept as written: the modal shows only status "rewritten"
+    // (TailorModal.unreviewed.test.tsx covers a bullet without one).
+    const statused = result && typeof result === 'object' && Array.isArray((result as { tailored_bullets?: unknown }).tailored_bullets)
+      ? { ...result, tailored_bullets: (result as { tailored_bullets: Record<string, unknown>[] }).tailored_bullets.map((b) => b && typeof b === 'object' && b.status === undefined
+        ? { ...b, status: b.source_evidence === 'original' ? 'kept' : 'rewritten' } : b) }
       : result;
+    return statused && typeof statused === 'object'
+      ? { opportunity_id: args[1], target_version: (args[3] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion, pipeline_version: 'w14.1', generated_at: '2026-09-25T12:00:00+00:00', ...statused }
+      : statused;
   },
   getTailorStatus: (...args: unknown[]) => mockGetTailorStatus(...args),
   extractResumeBullets: async (...args: unknown[]) => {
     const result = await mockExtractResumeBullets(...args);
     return result && typeof result === 'object'
-      ? { pipeline_version: 'w13.3', generated_at: '2026-09-25T12:00:00+00:00', ...result }
+      ? { pipeline_version: 'w14.1', generated_at: '2026-09-25T12:00:00+00:00', ...result }
       : result;
   },
 }));
@@ -134,7 +141,7 @@ beforeEach(async () => {
     // R71-G: default the status probe to "AI available" so the
     // unavailable banner stays hidden and pre-existing assertions are
     // untouched. Tests that exercise the banner override this.
-    mockGetTailorStatus.mockResolvedValue({ ai_available: true, pipeline_version: 'w13.3' });
+    mockGetTailorStatus.mockResolvedValue({ ai_available: true, pipeline_version: 'w14.1' });
   });
 
 describe('TailorModal', () => {
@@ -302,7 +309,7 @@ describe('TailorModal', () => {
       expect.objectContaining({ major: 'CS' }),
       'opp-123',
       ['Worked on Python projects in CS 225'],
-      expect.objectContaining({ locale: 'en', expectedPipelineVersion: 'w13.3', expectedTargetVersion: `wt1:${'a'.repeat(64)}` }),
+      expect.objectContaining({ locale: 'en', expectedPipelineVersion: 'w14.1', expectedTargetVersion: `wt1:${'a'.repeat(64)}` }),
     );
 
     await waitFor(() => {
@@ -650,7 +657,7 @@ describe('TailorModal', () => {
   });
 
   it('R71-G: shows the AI-unavailable banner when status probe returns false', async () => {
-    mockGetTailorStatus.mockResolvedValue({ ai_available: false, pipeline_version: 'w13.3' });
+    mockGetTailorStatus.mockResolvedValue({ ai_available: false, pipeline_version: 'w14.1' });
 
     render(<TailorModal {...baseProps} profile={makeProfile()} />);
 
@@ -660,7 +667,7 @@ describe('TailorModal', () => {
   });
 
   it('R71-G: hides the AI-unavailable banner when AI is configured', async () => {
-    mockGetTailorStatus.mockResolvedValue({ ai_available: true, pipeline_version: 'w13.3' });
+    mockGetTailorStatus.mockResolvedValue({ ai_available: true, pipeline_version: 'w14.1' });
 
     render(<TailorModal {...baseProps} profile={makeProfile()} />);
 
@@ -696,7 +703,7 @@ describe('TailorModal', () => {
     expect(screen.getByText('tailor.ops.verb_first')).toBeTruthy();
   });
 
-  it('R71-G: no coverage line when every submitted bullet comes back', async () => {
+  it('R71-G: every reviewed result carries the coverage line, rewrites and kept lines counted', async () => {
     mockTailorResume.mockResolvedValueOnce({
       method: 'ai',
       warnings: [],
@@ -713,7 +720,7 @@ describe('TailorModal', () => {
     fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
 
     await waitFor(() => expect(screen.getByText('tailor.methodAi')).toBeTruthy());
-    expect(screen.queryByText(/^tailor\.coverage/)).toBeNull();
+    expect(screen.getByText(/^tailor\.coverage/)).toBeTruthy();
   });
 
   it('R71-G: smart-extract button is hidden when the profile has no resume text', () => {
@@ -909,7 +916,7 @@ describe('TailorModal', () => {
       expect.any(Object),
       'opp-123',
       ['first bullet', 'second bullet', 'third bullet'],
-      expect.objectContaining({ locale: 'en', expectedPipelineVersion: 'w13.3', expectedTargetVersion: `wt1:${'a'.repeat(64)}` }),
+      expect.objectContaining({ locale: 'en', expectedPipelineVersion: 'w14.1', expectedTargetVersion: `wt1:${'a'.repeat(64)}` }),
     );
   });
 
@@ -2235,7 +2242,7 @@ describe('W13 target isolation + draft staleness', () => {
     window.localStorage.setItem(
       DRAFT_KEY,
       encodeDraft(createDraft(OWNER, 'opp-123', 'old bullet draft', 'manual',
-        await createBinding(makeProfile({ resume_text: 'old resume source' }), publicTarget(), 'w13.3'))),
+        await createBinding(makeProfile({ resume_text: 'old resume source' }), publicTarget(), 'w14.1'))),
     );
     render(<TailorModal {...baseProps} profile={makeProfile({ resume_text: 'a brand new resume text' })} />);
     expect(await screen.findByTestId('tailor-stale-draft')).toBeTruthy();
@@ -2267,7 +2274,7 @@ describe('resume processing disclosure', () => {
     fireEvent.click(screen.getByRole('button', { name: /tailor.extractFromResume/ }));
     await waitFor(() => expect(screen.getByText('resume.processingCoverage:1|2|1')).toBeInTheDocument());
     expect(screen.getByText('resume.processingSelectionLimited')).toBeInTheDocument();
-    expect(mockExtractResumeBullets).toHaveBeenCalledWith(profile.resume_text, { expectedPipelineVersion: 'w13.3' });
+    expect(mockExtractResumeBullets).toHaveBeenCalledWith(profile.resume_text, { expectedPipelineVersion: 'w14.1' });
   });
 
   it('keeps the current draft and shows failure when a long extraction is rejected', async () => {
