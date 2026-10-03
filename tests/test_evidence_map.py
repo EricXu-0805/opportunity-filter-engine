@@ -622,6 +622,81 @@ class TestGate:
         assert em.without_terms(outcome, unit, row["ops"]) is None
 
 
+def _row(text, links, ops):
+    return {"unit_id": "b1", "decision": "rewrite", "text": text, "keep_reason": None,
+            "links": [dict(zip(("id", "anchor", "term", "source"), link), relation="same") for link in links],
+            "ops": ops}
+
+
+class TestTrapsTheContractKeeps:
+    """Same-language traps a row passed the contract with on 6ed0396 (scripts/trap_review_reach.py's
+    exhaustive search, round 1); each is now kept before the claim locks and the review."""
+
+    @pytest.mark.parametrize(("original", "row", "detail"), [
+        # A lock word split across two relabels: 初步 lies in neither "from".
+        ("汇报了斑马鱼鳍再生的初步结果。", _row("汇报了斑马鱼鳍再生的实验结果。", [("L1", "t2", "生的实", "生的初"),
+                                                                ("L2", "t2", "验结果", "步结果")],
+                                    [{"op": "relabel", "link": "L1", "from": "生的初", "to": "生的实"},
+                                     {"op": "relabel", "link": "L2", "from": "步结果", "to": "验结果"},
+                                     {"op": "tighten"}]), "relabel_line_lock_count"),
+        ("Cleaned the sales dataset with fellow interns in Excel.",
+         _row("Cleaned the sales data records in Excel.", [("L1", "t2", "sales data", "sales dataset with fellow"),
+                                                           ("L2", "t2", "records in Excel", "interns in Excel")],
+              [{"op": "relabel", "link": "L1", "from": "sales dataset with fellow", "to": "sales data"},
+               {"op": "relabel", "link": "L2", "from": "interns in Excel", "to": "records in Excel"},
+               {"op": "tighten"}]), "relabel_line_lock_count"),
+        # A limit word outside any relabel: "just" is a function word, so no add/drop check sees it.
+        ("Analyzed EEG recordings from 20 participants in a sleep study.",
+         _row("Analyzed just EEG data from 20 participants in a sleep study.",
+              [("L1", "t2", "EEG data", "Analyzed EEG recordings")],
+              [{"op": "relabel", "link": "L1", "from": "Analyzed EEG recordings", "to": "EEG data"},
+               {"op": "tighten"}]), "relabel_line_lock_count"),
+        # Two numbers swap actions through a lead_with on the moved number.
+        ("I improved parser throughput by 45% and reduced parser latency by 12%.",
+         _row("I improved parser throughput by 12% and reduced parser latency by 45%.", [("L1", "t1", "12%", "12%")],
+              [{"op": "lead_with", "link": "L1"}]), "number_moved"),
+        ("Improved parser throughput by 45% and reduced parser latency by 12%.",
+         _row("Improved parser throughput by 12% and reduced parser latency by 45%.", [("L1", "t1", "12%", "12%")],
+              [{"op": "lead_with", "link": "L1"}]), "number_moved"),
+        # Added Chinese read as words: 公司 is a setting.
+        ("本人开发了解析器。", _row("本人开发了解析器，已部署到公司生产系统。",
+                            [("L1", "t2", "析器，已部署到公司生产系统", "了解析器")],
+                            [{"op": "relabel", "link": "L1", "from": "了解析器", "to": "了解析器，已部署到公司生产系统"},
+                             {"op": "tighten"}]), "relabel_setting"),
+        # 本人 dropped after a clause of shared work, through lead_with instead of personal_first.
+        ("与两名同学合作搭建了气象站，本人单独编写了数据采集程序。",
+         _row("单独编写了数据采集程序并与两名同学合作搭建了气象站。", [("L1", "t1", "了数据", "了数据")],
+              [{"op": "lead_with", "link": "L1"}]), "personal_marker_dropped"),
+    ], ids=["初步-split", "fellow-interns-split", "just-outside", "number-swap-I", "number-swap", "公司-setting",
+            "本人-after-shared-action"])
+    def test_the_trap_is_kept_before_the_review(self, original, row, detail):
+        anchors = anchors_for(list(dict.fromkeys([original, row["text"]])))
+        unit = em.Unit("b1", original, original)
+        outcome = em.check_rewrite(unit, row, anchors, output_language=em.language(original))
+        assert (outcome.status, outcome.detail) == ("kept", detail)
+
+    @pytest.mark.parametrize(("original", "rewrite", "ops", "links"), [
+        # A number fronted with its own phrase opens its clause: left alone.
+        ("Presented a poster on sleep and memory at the 2025 undergraduate symposium.",
+         "At the 2025 undergraduate symposium, presented a poster on sleep and memory.",
+         [{"op": "lead_with", "link": "L1"}], [("L1", "t2", "2025 undergraduate symposium", "2025 undergraduate symposium")]),
+        # A number that keeps its word moves with it.
+        ("Cleaned survey data in R and analyzed 120 EEG recordings in MATLAB.",
+         "Analyzed 120 EEG recordings in MATLAB and cleaned survey data in R.",
+         [{"op": "lead_with", "link": "L1"}], [("L1", "t2", "120 EEG recordings", "analyzed 120 EEG recordings")]),
+        # One relabel that renames a thing keeps every lock word over the line.
+        ("Analyzed about 120 EEG recordings from a pilot study in MATLAB.",
+         "Analyzed about 120 EEG data from a pilot study in MATLAB.",
+         [{"op": "relabel", "link": "L1", "from": "EEG recordings", "to": "EEG data"}],
+         [("L1", "t2", "EEG data", "EEG recordings")]),
+    ], ids=["fronted-year", "number-with-its-word", "relabel-keeps-locks"])
+    def test_a_faithful_reorder_or_relabel_still_reaches_the_locks(self, original, rewrite, ops, links):
+        anchors = anchors_for([original, rewrite])
+        unit = em.Unit("b1", original, original)
+        outcome = em.check_rewrite(unit, _row(rewrite, links, ops), anchors, output_language="en")
+        assert outcome.status == "pending", outcome
+
+
 class TestSupport:
     """Lines of the same activity the student confirmed may lend their own clauses, word for word."""
     ORIGINAL = "My team built a Python parser; I wrote parser tests."

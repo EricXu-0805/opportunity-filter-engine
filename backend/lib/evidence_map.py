@@ -870,9 +870,13 @@ def _check_same_language(unit: Unit, text: str, links: list[Link], ops_raw: list
                 return _keep(unit, "beyond_allowed_edit", "relabel_redundant", links=links)
             if set(added) & set(evidence):
                 return _keep(unit, "beyond_allowed_edit", "relabel_word_elsewhere", links=links)
-            added_text = " ".join(word for word in re.findall(r"[A-Za-z0-9+#.-]+|[一-鿿]", target)
-                                  if lemma(word) in added or word in added)
-            refusal = _relabel_refusal(added_text, list(added), unit, link.term)
+            pieces = [(word, lemma(word) in added or word in added)
+                      for word in re.findall(r"[A-Za-z0-9+#.-]+|[一-鿿]", target)]
+            added_text = " ".join(word for word, new_word in pieces if new_word)
+            # Added Chinese is read character by character and as the words its adjacent
+            # characters form: 公司 in "已部署到公司生产系统" is a setting.
+            refusal = (_relabel_refusal(added_text, list(added), unit, link.term)
+                       or _relabel_refusal(_joined_added_text(pieces), list(added), unit, link.term))
             if refusal:
                 return _keep(unit, "beyond_allowed_edit", refusal, links=links)
             allowed_add += Counter(tokens(target))
@@ -927,13 +931,69 @@ def _check_same_language(unit: Unit, text: str, links: list[Link], ops_raw: list
         return _keep(unit, "beyond_allowed_edit", "personal_marker_added", links=links)
     # After a shared part, "I" and 本人 mark the student's own part. Only
     # personal_first, which moves that part to the front, may drop one.
-    if (personal_markers(text) < personal_markers(unit.current) and _marks_own_part(unit.current)
-            and "personal_first" not in names):
+    if (personal_markers(text) < personal_markers(unit.current) and "personal_first" not in names
+            and (_marks_own_part(unit.current) or _after_shared_action(unit.current))):
         return _keep(unit, "beyond_allowed_edit", "personal_marker_dropped", links=links)
     # A confirmed support line may lend its clauses, so it counts toward the length.
     if len(text) > 1.25 * (len(unit.current) + sum(len(source) + 1 for _, source in unit.support)) + 12:
         return _keep(unit, "beyond_allowed_edit", "too_long", links=links)
+    # Each relabel's swap keeps every lock word, and so does the line as a whole: a lock word
+    # split across two relabels (初步 in 生的初 -> 生的实 and 步结果 -> 验结果), or a function
+    # word left outside any (just), is in neither swap.
+    if relabels and not unit.support and any(
+            len(pattern.findall(unit.current)) != len(pattern.findall(text))
+            for pattern in _LOCK_WORD if pattern is not _PERSONAL_MARKER):
+        return _keep(unit, "beyond_allowed_edit", "relabel_line_lock_count", links=links)
+    if _number_moved(unit.current, text, relabels):
+        return _keep(unit, "beyond_allowed_edit", "number_moved", links=links)
     return Outcome(unit.unit_id, "pending", text=text, links=links, ops=list(dict.fromkeys(names)), relabels=relabels)
+
+
+def _joined_added_text(pieces: list[tuple[str, bool]]) -> str:
+    """The added words of a relabel's "to", with adjacent added CJK characters joined into one word."""
+    out, previous_cjk = [], False
+    for word, new_word in pieces:
+        cjk = new_word and bool(_CJK.match(word))
+        out.append(word if cjk and previous_cjk else " " + (word if new_word else ""))
+        previous_cjk = cjk
+    return " ".join("".join(out).split())
+
+
+def _after_shared_action(text: str) -> bool:
+    """Whether the last personal marker follows a clause of shared work rather than a team heading.
+
+    _marks_own_part reads "与两名同学合作，" as a heading; one that names an action
+    ("与两名同学合作搭建了气象站，本人单独编写了…") is shared work, and the student's
+    part after it is marked by 本人.
+    """
+    starts = [marker.start() for marker in _PERSONAL_MARKER.finditer(text)]
+    if not starts:
+        return False
+    before = text[:starts[-1]].strip()
+    return bool(_TEAM_HEADER.fullmatch(before) and _team_or_help(before) and _ACTION_WORDS.search(before))
+
+
+def _number_moved(current: str, text: str, relabels: list[tuple[str, str]]) -> bool:
+    """Whether a number left both content words beside it in the line, relabels undone.
+
+    "by 45% and ... by 12%" -> "by 12% and ... by 45%" moves each number to the
+    other's action. A number that opens its clause in the rewrite was fronted with
+    its own phrase ("In 2025, presented ...") and is left alone.
+    """
+    if relabels:
+        text = reverse_relabels(text, relabels)
+        if text is None:
+            return False
+    before = tokens(current)
+    known, pairs = set(before), set(zip([None, *before], [*before, None], strict=True))
+    for clause in _FIRST_CLAUSE.split(text):
+        padded = [None, *tokens(clause), None]
+        for i in range(2, len(padded) - 1):
+            token = padded[i]
+            if (_NUMBER.search(token) and token in known
+                    and (padded[i - 1], token) not in pairs and (token, padded[i + 1]) not in pairs):
+                return True
+    return False
 
 
 # ------------------------------------------------------------------------ gate
