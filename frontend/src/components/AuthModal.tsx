@@ -54,6 +54,7 @@ import {
   type OAuthProvider,
   type SignInOutcome,
 } from '@/lib/supabase';
+import { dropBrowserPushSubscription, releasePushForSignOut } from '@/lib/push';
 import { detectSchoolFromEmail } from '@/lib/schools';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
@@ -304,11 +305,20 @@ export default function AuthModal() {
     setSigningOut(true);
     setSignOutFailed(false);
     try {
+      // A push row can only be deleted by its own account's session, so it
+      // goes while that session still exists.
+      const pushReleased = await releasePushForSignOut();
       if (!(await signOutOfAccount())) {
         // supabase-js keeps the account session when the logout request
         // fails, so the modal stays on that account and says it failed.
         setSignOutFailed(true);
         return;
+      }
+      // The row outlived the session that could delete it. Only a dead
+      // endpoint keeps that account's reminders off this browser now.
+      if (!pushReleased) {
+        await dropBrowserPushSubscription()
+          .catch((err) => console.warn('[ofe] push endpoint survived sign-out:', err));
       }
       // Tell GuestBanner this was a deliberate sign-out (not first-visit
       // anon) so it shows the post-signout reassurance.
