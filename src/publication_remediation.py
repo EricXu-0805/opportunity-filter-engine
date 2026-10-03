@@ -464,9 +464,16 @@ class Ledger:
     prove nothing across the restart it exists to survive.
     """
 
-    def __init__(self, path: Path | str = LEDGER_PATH):
+    def __init__(self, path: Path | str = LEDGER_PATH, *, dry_run: bool = False):
         self.path = Path(path)
         self._worker = f"{socket.gethostname()}:{os.getpid()}"
+        # A dry run decides everything a real run would and writes none of it.
+        # The ledger is a committed file, so an event a dry run appended was a
+        # diff in the repository and a STARTED that made the real run after it
+        # read as a retry. Held here instead, and replayed after the file by
+        # every read, so the run's own later checks see what it staged.
+        self.dry_run = dry_run
+        self.staged: list[dict] = []
 
     # -- reading -----------------------------------------------------------
 
@@ -478,19 +485,19 @@ class Ledger:
         line has no meaning, and refusing to read the whole ledger because of
         it would turn one lost event into a total outage of the audit trail.
         """
-        if not self.path.exists():
-            return
-        with self.path.open("r", encoding="utf-8") as fh:
-            for line in fh:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    event = json.loads(line)
-                except ValueError:
-                    continue
-                if isinstance(event, dict) and event.get("idempotency_key"):
-                    yield event
+        if self.path.exists():
+            with self.path.open("r", encoding="utf-8") as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        event = json.loads(line)
+                    except ValueError:
+                        continue
+                    if isinstance(event, dict) and event.get("idempotency_key"):
+                        yield event
+        yield from self.staged
 
     def index(self) -> dict[str, dict]:
         """Latest state per idempotency key, plus the attempt count.
@@ -567,7 +574,11 @@ class Ledger:
             "at": _now(),
         }
         event.update({k: v for k, v in fields.items() if v is not None})
-        self._append_line(json.dumps(event, ensure_ascii=False, sort_keys=True))
+        line = json.dumps(event, ensure_ascii=False, sort_keys=True)
+        if self.dry_run:
+            self.staged.append(json.loads(line))
+        else:
+            self._append_line(line)
         return event
 
     def _append_line(self, line: str) -> None:
@@ -604,31 +615,39 @@ class Ledger:
         """
         import fcntl
 
+        if self.dry_run:
+            if self.is_complete(unit["idempotency_key"]):
+                return False
+            self.staged.append(self._started_event(unit))
+            return True
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.path.open("a", encoding="utf-8") as fh:
             fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
             try:
                 if self.is_complete(unit["idempotency_key"]):
                     return False
-                event = {
-                    "remediation_id": unit.get("professor_id"),
-                    "professor_id": unit.get("professor_id"),
-                    "person_key": unit.get("person_key"),
-                    "school": unit.get("school"),
-                    "from_gate_version": unit.get("old_gate_version"),
-                    "to_gate_version": unit.get("to_gate_version", CURRENT_WORKS_GATE),
-                    "idempotency_key": unit["idempotency_key"],
-                    "status": STARTED,
-                    "worker": self._worker,
-                    "at": _now(),
-                    "started_at": _now(),
-                }
+                event = self._started_event(unit)
                 fh.write(json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n")
                 fh.flush()
                 os.fsync(fh.fileno())
                 return True
             finally:
                 fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+
+    def _started_event(self, unit: dict) -> dict:
+        return {
+            "remediation_id": unit.get("professor_id"),
+            "professor_id": unit.get("professor_id"),
+            "person_key": unit.get("person_key"),
+            "school": unit.get("school"),
+            "from_gate_version": unit.get("old_gate_version"),
+            "to_gate_version": unit.get("to_gate_version", CURRENT_WORKS_GATE),
+            "idempotency_key": unit["idempotency_key"],
+            "status": STARTED,
+            "worker": self._worker,
+            "at": _now(),
+            "started_at": _now(),
+        }
 
     def reconcile(self, unit: dict, record: dict) -> bool:
         """Close a unit whose mutation landed but whose ledger entry did not.

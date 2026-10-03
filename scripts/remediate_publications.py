@@ -181,7 +181,7 @@ def cmd_audit(args: argparse.Namespace) -> int:
 
 def cmd_invalidate(args: argparse.Namespace) -> int:
     shards = load_shards()
-    ledger = Ledger(Path(args.ledger))
+    ledger = Ledger(Path(args.ledger), dry_run=not args.save)
 
     touched: set[str] = set()
     queued = 0
@@ -217,7 +217,8 @@ def cmd_invalidate(args: argparse.Namespace) -> int:
     print(f"withdrawn     : {withdrawn_relationships} relationship(s)")
     print(f"shards touched: {len(touched)} ({', '.join(sorted(touched)) or '-'})")
     if not args.save:
-        print("\n(dry run — pass --save to write the shards)")
+        print(f"\n(dry run — pass --save to write the shards and the "
+              f"{len(ledger.staged)} ledger event(s) held back)")
         return 0
     written = save_shards(shards, touched)
     print(f"wrote {len(written)} shard file(s)")
@@ -359,7 +360,7 @@ def cmd_apply(args: argparse.Namespace) -> int:
         return 2
 
     shards = load_shards()
-    ledger = Ledger(Path(args.ledger))
+    ledger = Ledger(Path(args.ledger), dry_run=not args.save)
     index = ledger.index()
 
     # 1. Choose the units. Only schools the harvest really reached, only units
@@ -451,7 +452,8 @@ def cmd_apply(args: argparse.Namespace) -> int:
     #    built to prevent. A crash here instead leaves records that
     #    `reconcile` closes on the next run.
     if not args.save:
-        print("\n(dry run — no shard written, no ledger settlement)")
+        print(f"\n(dry run — no shard and none of the {len(ledger.staged)} "
+              f"ledger event(s) written)")
         print(json.dumps(dispositions, indent=2, sort_keys=True))
         return 0
     written = save_shards(shards, touched_shards)

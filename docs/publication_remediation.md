@@ -96,6 +96,10 @@ Steps 3 and 4 are per school and safe to repeat. Step 2 is safe to repeat at
 any time and is *also* run by every data refresh (below), so it is not something
 anyone has to remember.
 
+Without `--save`, `invalidate` and `apply` write nothing: not the shards and not
+the ledger. The ledger is a committed file, so the events a dry run would have
+appended are held in memory, counted in its last line, and dropped.
+
 Step 4 exits 2 without touching anything when the manifest's `works_gate` is
 not `CURRENT_WORKS_GATE`. `apply_works` stamps everything it lands at the
 current gate, so a harvest made before a gate bump has to be made again.
