@@ -863,7 +863,15 @@ class TailorRequest(BaseModel):
         # the /tailor route as a refusal that names it: slicing here used to
         # rewrite the first 500 characters of the first 12 bullets and say
         # nothing about the rest.
-        return [str(b) for b in v if str(b).strip()]
+        lines = [str(b) for b in v]
+        # A row's source_index counts the lines kept here, and the client pairs each row
+        # with its own submitted line by that index. str.strip() empties a line of
+        # U+001C-U+001F or U+0085 that String.prototype.trim() keeps, so dropping such a
+        # line would pair every later card with the line above it: it is refused instead.
+        if any(not line.strip() and any(character in "\x1c\x1d\x1e\x1f\x85" for character in line)
+               for line in lines):
+            raise ValueError("a bullet holds only separator control characters (U+001C-U+001F, U+0085)")
+        return [line for line in lines if line.strip()]
 
     @field_validator("locale")
     @classmethod

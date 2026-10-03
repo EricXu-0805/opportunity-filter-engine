@@ -160,14 +160,30 @@ function extractBulletLines(resumeText: string | undefined, limit = 12): string[
   return out;
 }
 
+// Python's str.strip() also removes U+001C-U+001F and U+0085, which String.prototype.trim()
+// keeps. The server drops a line its strip() empties and numbers the rest (source_index), so
+// a line blank to the server but not to trim() would pair every later card with the line
+// above it: trim both sets.
+const isEdgeSpace = (character: string) => {
+  const code = character.charCodeAt(0);
+  return /\s/.test(character) || (code >= 0x1c && code <= 0x1f) || code === 0x85;
+};
+function trimLine(line: string): string {
+  let start = 0;
+  let end = line.length;
+  while (start < end && isEdgeSpace(line[start])) start += 1;
+  while (end > start && isEdgeSpace(line[end - 1])) end -= 1;
+  return line.slice(start, end);
+}
+
 function parseBullets(text: string): string[] {
   return text
     .split(/\r?\n/)
-    .map((l) => l.trim())
+    .map(trimLine)
     .map((l) => {
       // Tolerate user pasting raw "• " or "- " prefixes — strip them.
       const m = l.match(BULLET_PREFIX_RE);
-      return m ? m[2].trim() : l;
+      return m ? trimLine(m[2]) : l;
     })
     .filter((l) => l.length > 0);
 }

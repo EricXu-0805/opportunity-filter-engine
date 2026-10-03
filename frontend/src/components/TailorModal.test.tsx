@@ -1054,6 +1054,21 @@ describe('TailorModal', () => {
       expect(mockTailorResume.mock.calls[0][2]).toEqual(['A short bullet', emoji]);
     });
 
+    it('sends no line the server drops as blank, so each card keeps its own submitted line', async () => {
+      // str.strip() empties a line of U+001F or U+0085 that String.prototype.trim() keeps. The
+      // server drops it and numbers the rest (source_index): sent, it would pair the third card
+      // with this line.
+      mockTailorResume.mockResolvedValueOnce({ method: 'ai', warnings: [], tailored_bullets: [] } satisfies TailorResponse);
+      render(<TailorModal {...baseProps} profile={makeProfile()} />);
+      const textarea = screen.getByPlaceholderText('tailor.bulletsPlaceholder');
+      fireEvent.change(textarea, { target: { value:
+        'Tutored 12 students in calculus each week.\n\x1f\n \x85 \nBuilt a weather station with two classmates.\x1e' } });
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+      await waitFor(() => expect(mockTailorResume).toHaveBeenCalledTimes(1));
+      expect(mockTailorResume.mock.calls[0][2]).toEqual(
+        ['Tutored 12 students in calculus each week.', 'Built a weather station with two classmates.']);
+    });
+
     it('shows the limit for an over-long bullet that smart-extract kept whole', async () => {
       const long = `Ran the lab protocol ${'step '.repeat(120)}`.trim();
       mockExtractResumeBullets.mockResolvedValueOnce({ method: 'ai', bullets: ['A short bullet', long], warnings: ['bullet_exceeds_tailor_limit'] });
