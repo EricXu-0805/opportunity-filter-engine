@@ -37,6 +37,7 @@ from src.publication_trust import (
     verified_recent_works,
     works_are_verified,
 )
+from src.research_context import SCHOOL_INST
 
 _spec = importlib.util.spec_from_file_location(
     "remediate_publications_review",
@@ -310,8 +311,12 @@ _AUTHOR_RECORD = {
 
 
 def _raw(title, year, field):
+    """A /works result as works_for_authors selects it, authorships
+    included: the author's own authorship places them at the record's school."""
     return {"display_name": title, "publication_year": year,
-            "primary_topic": {"field": {"display_name": field}}}
+            "primary_topic": {"field": {"display_name": field}},
+            "authorships": [{"author": {"id": f"https://openalex.org/{_AUTHOR}"},
+                             "institutions": [{"id": f"https://openalex.org/{SCHOOL_INST['uiuc']}"}]}]}
 
 
 _AUTHOR_WORKS = [
