@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import re
 
+import pytest
+
 from src.collectors.uiuc_faculty import (
     DEPARTMENTS,
     _carry_forward_enrichment,
@@ -469,6 +471,139 @@ def test_carry_forward_keeps_the_gate_and_the_author_id_with_the_works():
     _carry_forward_enrichment(existing, incoming2)
     assert "works_gate" not in incoming2["metadata"]
     assert "publication_author_id" not in incoming2["metadata"]
+
+
+# The two shapes the publication remediation leaves on a record, as the corpus
+# holds them: a professor whose trust was withdrawn and who still holds the
+# candidate papers, and one the re-harvest settled with nothing citable.
+_WITHDRAWN_BLOCK = {
+    "from_gate": 1, "to_gate": 3,
+    "withdrawn_at": "2026-09-30T17:35:43.549131+00:00",
+    "prior_status": "verified_author_id", "prior_author_id": None,
+}
+_AMBIGUOUS_BLOCK = {
+    **_WITHDRAWN_BLOCK,
+    "disposition": "ambiguous",
+    "resolved_at": "2026-10-01T02:41:31.958499+00:00",
+    "relationships_removed": 3, "keywords_invalidated": True,
+}
+
+
+def _withdrawn_metadata() -> dict:
+    return {
+        "recent_works": [{"title": "A Stranger's Paper", "year": 2025}],
+        "publication_attribution_status": "pending_remediation",
+        "publication_remediation": dict(_WITHDRAWN_BLOCK),
+    }
+
+
+def _settled_metadata() -> dict:
+    return {"works_gate": 3, "publication_remediation": dict(_AMBIGUOUS_BLOCK)}
+
+
+def test_carry_forward_keeps_the_remediation_block_with_the_withdrawn_works():
+    """``publication_remediation`` describes the withdrawn works and travels with
+    them, like the attribution stamps do.
+
+    Regression: the 2026-10-02 refresh (#1021) re-scraped columbia, miami and
+    ucsc and dropped the block from all 5 withdrawn professors there while
+    carrying their papers and their pending status, so the from/to-gate trail
+    survived only in the ledger.
+    """
+    existing = {"pi_name": "A B", "department": "Physics", "metadata": _withdrawn_metadata()}
+    incoming = {"pi_name": "A B", "department": "Physics"}
+    _carry_forward_enrichment(existing, incoming)
+    md = incoming["metadata"]
+    assert md["publication_remediation"] == _WITHDRAWN_BLOCK
+    assert md["publication_attribution_status"] == "pending_remediation"
+
+    # A fresh scrape with its own works keeps none of it: the block would then
+    # describe a withdrawal of works the record no longer holds.
+    incoming2 = {"pi_name": "A B", "department": "Physics",
+                 "metadata": {"recent_works": [{"title": "New Paper", "year": 2026}]}}
+    _carry_forward_enrichment(existing, incoming2)
+    assert "publication_remediation" not in incoming2["metadata"]
+
+
+def test_carry_forward_keeps_a_settled_remediation_verdict_that_left_no_works():
+    """A record the re-harvest settled as ambiguous, removed, unknown or
+    needs_review holds no works, so the works carry never runs for it, and a
+    re-scrape used to erase the verdict: the 33 ambiguous LAC records would
+    then exist as ambiguous only in the ledger."""
+    existing = {"pi_name": "A B", "department": "Physics", "metadata": _settled_metadata()}
+    incoming = {"pi_name": "A B", "department": "Physics"}
+    _carry_forward_enrichment(existing, incoming)
+    assert incoming["metadata"]["publication_remediation"] == _AMBIGUOUS_BLOCK
+
+    # Fail closed, as for the stamps: never onto a record that brings works of
+    # its own, never over a block of its own...
+    incoming2 = {"pi_name": "A B", "department": "Physics",
+                 "metadata": {"recent_works": [{"title": "New Paper", "year": 2026}]}}
+    _carry_forward_enrichment(existing, incoming2)
+    assert "publication_remediation" not in incoming2["metadata"]
+    own = {"disposition": "removed", "resolved_at": "2026-10-05T00:00:00+00:00"}
+    incoming3 = {"pi_name": "A B", "department": "Physics",
+                 "metadata": {"publication_remediation": dict(own)}}
+    _carry_forward_enrichment(existing, incoming3)
+    assert incoming3["metadata"]["publication_remediation"] == own
+
+    # ...and a withdrawal block (no verdict) never travels without the works it
+    # withdrew: it would claim a pending re-judgement the record cannot have.
+    orphan = {"pi_name": "A B", "department": "Physics",
+              "metadata": {"publication_remediation": dict(_WITHDRAWN_BLOCK)}}
+    incoming4 = {"pi_name": "A B", "department": "Physics"}
+    _carry_forward_enrichment(orphan, incoming4)
+    assert "publication_remediation" not in (incoming4.get("metadata") or {})
+
+    # Committed data is a boundary: a malformed block is not carried and does
+    # not stop the merge.
+    malformed = {"pi_name": "A B", "department": "Physics",
+                 "metadata": {"publication_remediation": "ambiguous"}}
+    incoming5 = {"pi_name": "A B", "department": "Physics"}
+    _carry_forward_enrichment(malformed, incoming5)
+    assert "publication_remediation" not in (incoming5.get("metadata") or {})
+
+
+@pytest.mark.parametrize("state", ["withdrawn", "ambiguous"])
+@pytest.mark.parametrize("collector", ["faculty_graph", "uiuc_faculty", "ucb_common"])
+def test_every_faculty_upsert_keeps_the_remediation_block(tmp_path, monkeypatch, collector, state):
+    """The same, through each collector's real merge into temporary storage: the
+    directory re-scrape produces the record again with none of the remediation
+    metadata, and the merged corpus keeps the block — and still fails closed."""
+    import copy
+    import json
+
+    from src.collectors import faculty_graph, ucb_common, uiuc_faculty
+    from src.publication_trust import verified_recent_works
+
+    fresh = normalize_faculty(
+        {"name": "Jane Smith", "title": "Professor",
+         "url": "https://ece.illinois.edu/about/directory/faculty/jsmith",
+         "research_areas": "machine learning, computer vision"},
+        DEPARTMENTS["ece"],
+    )
+    prior = copy.deepcopy(fresh)
+    remediation = _withdrawn_metadata() if state == "withdrawn" else _settled_metadata()
+    prior["metadata"].update(remediation)
+    path = tmp_path / "opportunities.json"
+    path.write_text(json.dumps([prior]), encoding="utf-8")
+    monkeypatch.setattr(ucb_common, "PROCESSED_FILE", path)
+
+    if collector == "uiuc_faculty":
+        uiuc_faculty.merge_into_processed([fresh], filepath=str(path))
+    else:
+        (faculty_graph if collector == "faculty_graph" else ucb_common).merge_into_processed([fresh])
+
+    saved = json.loads(path.read_text(encoding="utf-8"))
+    assert len(saved) == 1
+    md = saved[0]["metadata"]
+    assert md["publication_remediation"] == remediation["publication_remediation"]
+    assert verified_recent_works(saved[0]) == []
+    if state == "withdrawn":
+        assert md["publication_attribution_status"] == "pending_remediation"
+        assert md["recent_works"] == remediation["recent_works"]
+    else:
+        assert "recent_works" not in md
 
 
 def test_carry_forward_keeps_the_inference_stamp_with_the_keywords():
