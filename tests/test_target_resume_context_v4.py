@@ -100,7 +100,7 @@ def test_both_routes_use_available_exact_unicode_quotes_without_applying(endpoin
     state['quote'] = {**QUOTE, 'field': field, 'start': start, 'end': end, 'quote': quote}
     state['link'] = dict(LINK, anchor_text='实验室😀研究' if field == 'lab_heading' else SENTENCE, term=quote)
     response = submit(client, path, doc); assert response.status_code == 200, response.text
-    assert response.json()['method'] == 'ai' and response.json()['check_version'] == 'target-resume-source-checks-v4'
+    assert response.json()['method'] == 'ai' and response.json()['check_version'] == 'target-resume-source-checks-v5'
     assert len(state['calls']) == 1 and doc == before
     prompt = json.loads(state['calls'][0][1]['content'])
     if path.endswith('selection-plan'):
