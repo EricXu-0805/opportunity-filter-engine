@@ -569,18 +569,60 @@ def _normalized_extraction_text(value: str) -> str:
     return re.sub(r"\s+", " ", unicodedata.normalize("NFKC", value)).strip().casefold()
 
 
+_LINE_GLYPH = re.compile(r"(?:[•\-*–—+▪●◦·]|\d+[.)])\s+")
+_INLINE_GLYPH = re.compile(r"\s*[•▪●◦]\s*")
+_LINE_END_MARKS = " .;,:。；，：!?！？"
+_SENTENCE_END_MARKS = (".", ";", ":", "。", "；", "：", "!", "?", "！", "？")
+
+
+def _extraction_lines(resume_text: str) -> tuple[str, set[int], set[int]]:
+    """The résumé as _normalized_extraction_text reads it, with where a bullet may start and end.
+
+    A bullet starts at a line's start or after its bullet glyph, and ends at the
+    line's end, with or without its final mark. A line that opens in lower case
+    after a line with no closing mark continues it (a wrapped line), so neither
+    joint is a boundary. An inline glyph ("... • ...") separates two bullets.
+    """
+    lines = [re.sub(r"\s+", " ", unicodedata.normalize("NFKC", raw)).strip() for raw in resume_text.splitlines()]
+    lines = [line for line in lines if line]
+    continues = [index > 0 and line[:1].islower() and not lines[index - 1].endswith(_SENTENCE_END_MARKS)
+                 and not _LINE_GLYPH.match(line) for index, line in enumerate(lines)]
+    pieces, starts, ends, offset = [], set(), set(), 0
+    for index, line in enumerate(lines):
+        folded = line.casefold()
+        if not continues[index]:
+            starts.add(offset)
+            glyph = _LINE_GLYPH.match(folded)
+            if glyph:
+                starts.add(offset + glyph.end())
+        if index + 1 == len(lines) or not continues[index + 1]:
+            ends.update({offset + len(folded), offset + len(folded.rstrip(_LINE_END_MARKS))})
+        for match in _INLINE_GLYPH.finditer(folded):
+            ends.add(offset + len(folded[:match.start()].rstrip(_LINE_END_MARKS)))
+            starts.add(offset + match.end())
+        pieces.append(folded)
+        offset += len(folded) + 1
+    return " ".join(pieces), starts, ends
+
+
 def _bullet_grounded(bullet: str, resume_text: str) -> bool:
-    """True only when an extracted bullet is contiguous resume text.
+    """True only when an extracted bullet is a whole résumé line, or wrapped lines, verbatim.
 
     Structure extraction is not a rewriting step. The previous 60% ASCII
     token-overlap rule let the model copy most of a line and append a
     fabricated tool or metric. NFKC + collapsed whitespace tolerates
     presentation-only differences while retaining the verbatim, contiguous
-    trust boundary for every language (CJK bullets included).
+    trust boundary for every language (CJK bullets included). The bullet must
+    also start and end where a line or bullet does: any contiguous cut let the
+    model drop the student's qualifier ("Planned to survey 50 farmers ..." came
+    back as "survey 50 farmers ..."), and the cut became the evidence every
+    later rewrite was reviewed against.
     """
     candidate = _normalized_extraction_text(bullet)
-    source = _normalized_extraction_text(resume_text)
-    return len(candidate) >= 4 and candidate in source
+    if len(candidate) < 4:
+        return False
+    text, starts, ends = _extraction_lines(resume_text)
+    return any(text.startswith(candidate, start) and start + len(candidate) in ends for start in starts)
 
 
 def _ai_extract_bullets(resume_text: str) -> list[str] | None:
@@ -619,14 +661,13 @@ def _ai_extract_bullets(resume_text: str) -> list[str] | None:
     if not isinstance(items, list):
         return None
 
-    resume_lower = resume_text.lower()
     out: list[str] = []
     seen: set[str] = set()
     for item in items:
         text = str(item).strip()
         if len(text) < 10:
             continue
-        if not _bullet_grounded(text, resume_lower):
+        if not _bullet_grounded(text, resume_text):
             continue
         key = text.lower()
         if key in seen:
@@ -1039,7 +1080,6 @@ def _ai_structure_resume(resume_text: str, *, locale: str = "en") -> list[Resume
     if not isinstance(parsed, dict) or not isinstance(parsed.get("sections"), list):
         return None
 
-    resume_lower = resume_text.lower()
     sections: list[ResumeSection] = []
     for si, sec in enumerate(parsed["sections"], 1):
         if not isinstance(sec, dict):
@@ -1054,7 +1094,7 @@ def _ai_structure_resume(resume_text: str, *, locale: str = "en") -> list[Resume
         bullets: list[ResumeBullet] = []
         for bi, b in enumerate(raw_bullets, 1):
             text = str(b).strip()
-            if len(text) < 10 or not _bullet_grounded(text, resume_lower):
+            if len(text) < 10 or not _bullet_grounded(text, resume_text):
                 continue
             bullets.append(ResumeBullet(id=f"s{si}b{bi}", text=text))
         # Keep a section even if bullet-less only when it's a labelled skills

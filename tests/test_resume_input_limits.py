@@ -106,7 +106,8 @@ def test_ai_sees_the_tail_and_never_gets_an_unbounded_prompt(endpoint, monkeypat
 def test_one_failed_chunk_uses_local_tail_with_explicit_mixed_status(monkeypatch):
     first = "Built the first laboratory experiment"
     last = "Built the final laboratory experiment"
-    text = first + "\n" + "x" * 7_970 + "\n• " + last
+    # Upper-case filler: a line that opens in lower case after one with no closing mark wraps it.
+    text = first + "\n" + "X" * 7_970 + "\n• " + last
     monkeypatch.setattr(tailor, "is_configured", lambda: True)
     monkeypatch.setattr(tailor, "chat_completion", lambda messages, **_kw:
                         json.dumps({"bullets": [first]}) if first in messages[1]["content"] else None)
@@ -234,7 +235,7 @@ def test_each_chunk_and_provider_retry_uses_the_existing_attempt_counter(monkeyp
         if len(calls) == 1:
             raise RuntimeError("one controlled retry")
         return types.SimpleNamespace(choices=[types.SimpleNamespace(
-            message=types.SimpleNamespace(content=json.dumps({"bullets": ["x" * 20]})),
+            message=types.SimpleNamespace(content=json.dumps({"bullets": ["x" * 20 + " lab line"]})),
         )])
 
     def sdk(**kwargs):
@@ -249,7 +250,9 @@ def test_each_chunk_and_provider_retry_uses_the_existing_attempt_counter(monkeyp
     monkeypatch.setattr(llm.llm_budget, "spend", lambda calls=1: spends.append(calls))
     monkeypatch.setattr(tailor, "is_configured", lambda: True)
     monkeypatch.setattr(tailor, "chat_completion", llm.chat_completion)
-    body = client.post("/api/tailor/extract-bullets", json={"resume_text": "x" * 60_000}).json()
+    # Whole bullet lines, so each chunk's answer is a line of that chunk (_bullet_grounded).
+    resume = ("• " + "x" * 20 + " lab line\n") * (60_000 // 32)
+    body = client.post("/api/tailor/extract-bullets", json={"resume_text": resume}).json()
     assert body["processing"]["ai_chunks"] == 8
     assert len(calls) == sum(spends) == 9  # eight chunks plus one provider retry
     assert all(options["max_retries"] == 0 for options in sdk_options)

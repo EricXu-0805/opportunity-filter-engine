@@ -305,12 +305,13 @@ class TestBulletGrounding:
     """Extraction is documented as VERBATIM, so grounding is contiguous
     containment (NFKC + collapsed whitespace), not token overlap. The old 60%
     token-overlap rule let the model copy most of a line and append a
-    fabricated tool or metric."""
+    fabricated tool or metric. The bullet must also start and end where a
+    résumé line or bullet does: a cut can drop the student's qualifier."""
 
     RESUME = (
         "Designed a thermal sensor in Java and validated it against ME 270 "
         "data\nPresented results at the undergraduate symposium"
-    ).lower()
+    )
 
     def test_verbatim_line_is_grounded(self):
         assert tailor_module._bullet_grounded(
@@ -345,10 +346,45 @@ class TestBulletGrounding:
             self.RESUME,
         )
 
-    def test_cjk_bullet_still_grounded_by_containment(self):
-        resume = "负责设计热传感器并完成 ME 270 数据验证"
-        assert tailor_module._bullet_grounded("设计热传感器", resume)
+    def test_cjk_bullet_is_grounded_as_its_whole_line(self):
+        resume = "负责设计热传感器并完成 ME 270 数据验证\n协助博士生设计热传感器的外壳。"
+        assert tailor_module._bullet_grounded("负责设计热传感器并完成 ME 270 数据验证", resume)
+        assert tailor_module._bullet_grounded("协助博士生设计热传感器的外壳", resume)
+        assert not tailor_module._bullet_grounded("设计热传感器", resume)
+        assert not tailor_module._bullet_grounded("设计热传感器的外壳。", resume)   # drops 协助博士生
         assert not tailor_module._bullet_grounded("部署 Kubernetes 集群", resume)
+
+    @pytest.mark.parametrize("cut", [
+        "survey 50 farmers about irrigation practices",          # drops "Planned to"
+        "lead the robotics team build",                          # drops "Did not" and the student's own part
+        "Did not lead the robotics team build",                  # drops "; I wired the sensors"
+        "Built a dashboard for the lab",                         # the wrapped line's "that was never deployed" dropped
+        "that was never deployed",                               # a wrapped line on its own
+    ])
+    def test_a_cut_inside_a_line_is_not_grounded(self, cut):
+        resume = ("EXPERIENCE\n"
+                  "• Planned to survey 50 farmers about irrigation practices\n"
+                  "• Did not lead the robotics team build; I wired the sensors\n"
+                  "• Built a dashboard for the lab\n"
+                  "  that was never deployed.\n")
+        assert not tailor_module._bullet_grounded(cut, resume)
+
+    @pytest.mark.parametrize("line", [
+        "Planned to survey 50 farmers about irrigation practices",
+        "• Planned to survey 50 farmers about irrigation practices",
+        "Did not lead the robotics team build; I wired the sensors",
+        "Built a dashboard for the lab that was never deployed",         # wrapped lines joined, final mark dropped
+        "Built a dashboard for the lab that was never deployed.",
+        "Wrote the methods section",                                     # after an inline glyph
+    ])
+    def test_a_whole_line_bullet_or_wrapped_bullet_is_grounded(self, line):
+        resume = ("EXPERIENCE\n"
+                  "• Planned to survey 50 farmers about irrigation practices\n"
+                  "• Did not lead the robotics team build; I wired the sensors\n"
+                  "• Built a dashboard for the lab\n"
+                  "  that was never deployed.\n"
+                  "Research Assistant • Wrote the methods section\n")
+        assert tailor_module._bullet_grounded(line, resume)
 
     def test_paraphrase_is_rejected(self):
         assert not tailor_module._bullet_grounded(
