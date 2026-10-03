@@ -72,3 +72,38 @@ export function reviewedSections(sections: RenovatedSection[], rules: unknown): 
     }),
   }));
 }
+
+// The names /tailor/structure gives a section the student did not head in the résumé: the closed
+// set the full-target export prints (backend/lib/target_resume_export.py HEADINGS), in the
+// language of the section's lines. Research, projects and leadership print as activities.
+const STANDARD_HEADINGS = {
+  en: { education: 'Education', activities: 'Experience', skills: 'Skills', other: 'Additional information' },
+  zh: { education: '教育经历', activities: '项目与经历', skills: '技能', other: '其他信息' },
+} as const;
+const KIND_HEADING: Record<string, keyof typeof STANDARD_HEADINGS.en> = {
+  education: 'education', skills: 'skills', other: 'other',
+  experience: 'activities', projects: 'activities', research: 'activities', leadership: 'activities',
+};
+const headingKey = (value: string) => value.normalize('NFKC').replace(/\s+/gu, ' ').trim().toLowerCase().replace(/[\s:]+$/u, '');
+
+/** "zh" when Chinese carries the text, as backend language() reads it. */
+function textLanguage(text: string): 'en' | 'zh' {
+  const han = text.match(/[\u4e00-\u9fff]/gu)?.length ?? 0;
+  if (!han) return 'en';
+  const runs = text.match(/[\u4e00-\u9fff]+/gu)?.length ?? 0;
+  const leading = /^[^A-Za-z\u4e00-\u9fff]*[\u4e00-\u9fff]/u.test(text);
+  return (runs >= 2 || leading) && han >= (text.match(/[A-Za-z]+/gu)?.length ?? 0) ? 'zh' : 'en';
+}
+
+/** The heading a renovated section shows and copies. The model wrote each section's heading and
+ * nothing reviewed it; on main /tailor/structure returned it as written, and docs saved then hold
+ * it. It is shown only as the student wrote it: a whole row of the résumé, in the résumé's own
+ * spelling. Any other heading shows as the standard name of the section's kind, in the language
+ * of its lines (of the résumé when it has none). */
+export function shownHeading(section: Pick<RenovatedSection, 'heading' | 'kind' | 'bullets'>, resumeText: string): string {
+  const key = headingKey(section.heading ?? '');
+  const row = key ? resumeText.split(/\r?\n/u).find((line) => headingKey(line) === key) : undefined;
+  if (row !== undefined) return row.trim().replace(/[\s:：]+$/u, '');
+  const lines = section.bullets.map((bullet) => bullet.base_text).join(' ');
+  return STANDARD_HEADINGS[textLanguage(lines || resumeText)][KIND_HEADING[section.kind] ?? 'other'];
+}

@@ -31,6 +31,7 @@ import os
 import re
 import time
 import unicodedata
+from bisect import bisect_right
 from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import replace
@@ -79,6 +80,7 @@ from backend.lib.resume_input import (
 )
 from backend.lib.target_actionability import assert_target_actionable, prework_refusal
 from backend.lib.target_resume_ai_grounding import language
+from backend.lib.target_resume_export import HEADINGS as _EXPORT_HEADINGS
 from backend.lib.writing_target import prepare_writing_snapshot
 from backend.schemas import (
     BulletOptimizeRequest,
@@ -633,8 +635,8 @@ def _resume_rows(resume_text: str) -> list[tuple[str, str, bool]]:
     with no closing mark. On its own that says nothing: "Presented results ..." under
     "Designed a thermal sensor ... data" is an item of its own, and "计划于 2025 年投稿" under
     "• 搭建传感器网络并整理数据" finishes it. Inside a glyph item, the glyph marks where the next
-    item starts, so such a row goes on with the item unless a blank row or a row in capitals
-    (a heading, a role row) sets it apart: a bullet then never ends at its first physical row
+    item starts, so such a row goes on with the item unless a blank row or a row of its own
+    (_own_row: a heading, a role row in capitals) sets it apart: a bullet then never ends at its first physical row
     while the rest of it may hold its status. Where no glyph marks the items, every such row
     is a line of its own, as the student wrote it.
     """
@@ -668,21 +670,23 @@ def _extraction_text(value: str) -> str:
     return _CJK_SPACE.sub("", _normalized_extraction_text(value))
 
 
-def _extraction_lines(resume_text: str) -> tuple[str, set[int], set[int]]:
+def _extraction_layout(resume_text: str) -> tuple[str, set[int], set[int], list[int], list[tuple[str, str, bool]]]:
     """The résumé as _extraction_text reads it, with where a bullet may start and end.
 
     A bullet starts where a row opens an item (``_resume_rows``), or after its bullet
     glyph, and ends at the end of the last row of its item, with or without its final
     mark. A wrapped row is joined to the row above (with no space inside CJK text), so
     neither joint is a boundary. An inline glyph ("... • ...") separates two bullets.
+    Also returned: where each row starts in the text, and the rows themselves.
     """
     rows = _resume_rows(resume_text)
-    text, starts, ends = "", set(), set()
+    text, starts, ends, offsets = "", set(), set(), []
     for index, (_, line, opens) in enumerate(rows):
         folded = _CJK_SPACE.sub("", line).casefold()
         if text:
             text += " " if opens else _row_join(text, folded)
         offset = len(text)
+        offsets.append(offset)
         if opens:
             starts.add(offset)
             glyph = _LINE_GLYPH.match(folded)
@@ -694,7 +698,24 @@ def _extraction_lines(resume_text: str) -> tuple[str, set[int], set[int]]:
             ends.add(offset + len(folded[:match.start()].rstrip(_LINE_END_MARKS)))
             starts.add(offset + match.end())
         text += folded
+    return text, starts, ends, offsets, rows
+
+
+def _extraction_lines(resume_text: str) -> tuple[str, set[int], set[int]]:
+    """The résumé as _extraction_text reads it, with where a bullet may start and end (_extraction_layout)."""
+    text, starts, ends, _, _ = _extraction_layout(resume_text)
     return text, starts, ends
+
+
+def _bullet_row(bullet: str, layout) -> int | None:
+    """The row a grounded bullet starts on, or None when the bullet is not a whole résumé line."""
+    text, starts, ends, offsets, _ = layout
+    candidate = _extraction_text(bullet)
+    if len(candidate) < 4:
+        return None
+    start = min((start for start in starts if text.startswith(candidate, start) and start + len(candidate) in ends),
+                default=None)
+    return None if start is None else bisect_right(offsets, start) - 1
 
 
 def _bullet_grounded(bullet: str, resume_text: str) -> bool:
@@ -710,11 +731,7 @@ def _bullet_grounded(bullet: str, resume_text: str) -> bool:
     back as "survey 50 farmers ..."), and the cut became the evidence every
     later rewrite was reviewed against.
     """
-    candidate = _extraction_text(bullet)
-    if len(candidate) < 4:
-        return False
-    text, starts, ends = _extraction_lines(resume_text)
-    return any(text.startswith(candidate, start) and start + len(candidate) in ends for start in starts)
+    return _bullet_row(bullet, _extraction_layout(resume_text)) is not None
 
 
 def _ai_extract_bullets(resume_text: str) -> list[str] | None:
@@ -1122,15 +1139,54 @@ _VALID_KINDS = (
 )
 
 
+# A section the student did not head in the résumé is shown under the standard name of its kind,
+# in its lines' language: the closed set the full-target export prints (target_resume_export.HEADINGS).
+# Research, projects and leadership print under the export's activities heading; none claims more.
+_KIND_HEADING = {"education": "education", "skills": "skills", "other": "other", "experience": "activities",
+                 "projects": "activities", "research": "activities", "leadership": "activities"}
+
+
+def _standard_heading(kind: str, lines: list[str], resume_text: str) -> str:
+    """The standard name of ``kind`` in the language of its lines (of the résumé when it has none)."""
+    return _EXPORT_HEADINGS[language(" ".join(lines) or resume_text)][_KIND_HEADING.get(kind, "other")]
+
+
+def _heading_key(value: str) -> str:
+    return _extraction_text(value).rstrip(" :")
+
+
+def _section_heading(heading: str, kind: str, lines: list[str], resume_text: str, layout, named: set[str]) -> str:
+    """The student's own heading row for a model-structured section, or the standard name of its kind.
+
+    The model writes each section's "heading" itself, and nothing reviews it: it can name a
+    status the lines do not have ("Publications"), or come back in another language than
+    the résumé. It is kept only as the row the student wrote: a whole résumé row equal to
+    it, the nearest heading above the section's first line, with no row the model named as
+    another heading, and no row in capitals, in between. The text shown is the student's
+    row, not the model's spelling of it.
+    """
+    key = _heading_key(heading)
+    rows = layout[4]
+    first = min((row for row in (_bullet_row(line, layout) for line in lines) if row is not None), default=None)
+    if key and first is not None:
+        for index in range(first - 1, -1, -1):
+            raw, line, _ = rows[index]
+            if _heading_key(line) == key and not _LINE_GLYPH.match(line):
+                return raw.rstrip(" :：")
+            if _heading_key(line) in named or _own_row(line):
+                break
+    return _standard_heading(kind, lines, resume_text)
+
+
 def _heuristic_structure(resume_text: str) -> list[ResumeSection]:
-    """No-LLM fallback: all glyph bullets under a single Experience section.
+    """No-LLM fallback: all glyph bullets under a single section, named in their language.
 
     Uncapped here for the same reason as extraction: the merge applies the tree
     limits and says when it had to."""
     bullets = _heuristic_bullets(resume_text, limit=1000)
     if not bullets:
         return []
-    return [_uncapped_section("s1", "Experience", "experience",
+    return [_uncapped_section("s1", _standard_heading("experience", bullets, resume_text), "experience",
                               [ResumeBullet(id=f"s1b{i}", text=b) for i, b in enumerate(bullets, 1)])]
 
 
@@ -1173,6 +1229,8 @@ def _ai_structure_resume(resume_text: str, *, locale: str = "en") -> list[Resume
         return None
 
     sections: list[ResumeSection] = []
+    layout = _extraction_layout(resume_text)
+    named = {_heading_key(str(sec.get("heading", ""))) for sec in parsed["sections"] if isinstance(sec, dict)} - {""}
     for si, sec in enumerate(parsed["sections"], 1):
         if not isinstance(sec, dict):
             continue
@@ -1186,13 +1244,15 @@ def _ai_structure_resume(resume_text: str, *, locale: str = "en") -> list[Resume
         bullets: list[ResumeBullet] = []
         for bi, b in enumerate(raw_bullets, 1):
             text = str(b).strip()
-            if len(text) < 10 or not _bullet_grounded(text, resume_text):
+            if len(text) < 10 or _bullet_row(text, layout) is None:
                 continue
             bullets.append(ResumeBullet(id=f"s{si}b{bi}", text=text))
         # Keep a section even if bullet-less only when it's a labelled skills
         # section; otherwise an empty section is noise.
         if bullets or (heading and kind == "skills"):
-            sections.append(_uncapped_section(f"s{si}", heading or "Section", kind, bullets))
+            lines = [bullet.text for bullet in bullets]
+            sections.append(_uncapped_section(
+                f"s{si}", _section_heading(heading, kind, lines, resume_text, layout, named), kind, bullets))
     return sections or None
 
 

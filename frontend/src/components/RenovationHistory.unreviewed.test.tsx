@@ -22,7 +22,7 @@ const REVIEWED = 'Helped build a data pipeline in Python for the lab';
 
 afterEach(() => { cleanup(); vi.resetAllMocks(); });
 
-async function preview(kind: 'complete' | 'legacy_doc', variant: Record<string, unknown>) {
+async function preview(kind: 'complete' | 'legacy_doc', variant: Record<string, unknown>, resumeText?: string) {
   const summary = { id: ID, created_at: '2026-09-01T00:00:00Z', revision: kind === 'complete' ? 3 : null,
     snapshot_kind: kind, source_revision: null, source_updated_at: null };
   api.list.mockResolvedValue({ items: [summary], next_cursor: null });
@@ -30,7 +30,7 @@ async function preview(kind: 'complete' | 'legacy_doc', variant: Record<string, 
     payload: { doc: { sections: [{ id: 's1', heading: 'Research', kind: 'research', bullets: [
       { id: 'b1', base_text: BASE, variants: [variant], current: 0, action: 'foreground' }] }] },
     base_snapshot: kind === 'complete' ? { sections: [] } : null, method: 'ai', warnings: kind === 'complete' ? [] : null } });
-  render(<RenovationHistory opportunityId="opp" owner={{ uid: 'o' } as never} locale="en" disabled={false}
+  render(<RenovationHistory opportunityId="opp" owner={{ uid: 'o' } as never} locale="en" disabled={false} resumeText={resumeText}
     onRestore={vi.fn()} onClose={vi.fn()} />);
   fireEvent.click(await screen.findByRole('button', { name: /Version 3|Imported version/ }));
   return screen.findByTestId('renovation-history-preview');
@@ -47,5 +47,19 @@ describe.each(['complete', 'legacy_doc'] as const)('a %s history version', (kind
     const shown = await preview(kind, { source: 'macro', text: REVIEWED, source_evidence: BASE, ops: ['lead_with'],
       reviewed: 'w14.1' });
     await waitFor(() => expect(shown.textContent).toContain(REVIEWED));
+  });
+});
+
+describe('a history version\'s section heading (round-3 re-measure, criterion 1)', () => {
+  it('previews a heading the model wrote as the standard name of its kind', async () => {
+    const shown = await preview('complete', { source: 'user', text: BASE, source_evidence: BASE }, `• ${BASE}`);
+    await waitFor(() => expect(shown.textContent).toContain(BASE));
+    expect(shown.textContent!.split('\n')[0]).toBe('Experience');
+  });
+
+  it('previews the student\'s own heading row as they wrote it', async () => {
+    const shown = await preview('complete', { source: 'user', text: BASE, source_evidence: BASE }, `RESEARCH\n• ${BASE}`);
+    await waitFor(() => expect(shown.textContent).toContain(BASE));
+    expect(shown.textContent!.split('\n')[0]).toBe('RESEARCH');
   });
 });

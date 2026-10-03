@@ -147,3 +147,69 @@ def test_an_english_lines_i_written_in_chinese_is_kept_before_the_review(opportu
     shown, seen = run(opportunity, monkeypatch, path, PRONOUN_LINE, _rewrite(rewrite, [{"op": "verb_first"}]),
                       "We clean survey data with Python scripts.")
     assert (shown, seen) == ([], set())
+
+
+# ------------------------------------------------------------------ criterion (1): section headings
+# /tailor/structure returned each section's "heading" as the model wrote it, with no grounding and no
+# review; renovation shows it and "Copy" pastes it into the résumé. It could claim a status the lines
+# do not have ("Publications") or come back in another language than the résumé.
+HEADED_RESUME = ("WORK EXPERIENCE\n"
+                 "• Ran 40 soil moisture trials for the campus farm\n"
+                 "• Wrote the field report for the extension office\n"
+                 "PUBLICATIONS\n"
+                 "• Drafted a paper on drip irrigation (not submitted)\n")
+ZH_RESUME = ("科研经历\n"
+             "• 在校园农场完成 40 次土壤湿度试验\n"
+             "• 为推广办公室撰写实地报告\n")
+
+
+def _structured(monkeypatch, resume, sections):
+    from fastapi.testclient import TestClient
+
+    from backend.main import app
+    from backend.routes import tailor
+
+    monkeypatch.setattr(tailor, "chat_completion", lambda *a, **k: json.dumps({"sections": sections}))
+    monkeypatch.setattr(tailor, "is_configured", lambda: True)
+    body = TestClient(app).post("/api/tailor/structure", json={"resume_text": resume, "locale": "en"}).json()
+    return [(section["heading"], [bullet["text"] for bullet in section["bullets"]]) for section in body["sections"]]
+
+
+EXPERIENCE_LINES = ["Ran 40 soil moisture trials for the campus farm", "Wrote the field report for the extension office"]
+
+
+@pytest.mark.parametrize("heading", [
+    "Publications",                 # a status the lines do not have, in no row of the résumé
+    "PUBLICATIONS",                 # a row of the résumé, but the heading of another section
+    "Field Research Experience",    # model-written wording
+    "科研经历",                      # another language than the résumé
+])
+def test_a_model_written_heading_is_not_shown(monkeypatch, heading):
+    sections = _structured(monkeypatch, HEADED_RESUME, [
+        {"heading": heading, "kind": "research", "bullets": EXPERIENCE_LINES},
+        {"heading": "PUBLICATIONS", "kind": "other", "bullets": ["Drafted a paper on drip irrigation (not submitted)"]}])
+    assert sections[0] == ("Experience", EXPERIENCE_LINES)
+    assert sections[1] == ("PUBLICATIONS", ["Drafted a paper on drip irrigation (not submitted)"])
+
+
+def test_the_students_own_heading_is_shown_as_they_wrote_it(monkeypatch):
+    sections = _structured(monkeypatch, HEADED_RESUME, [
+        {"heading": "Work Experience:", "kind": "experience", "bullets": EXPERIENCE_LINES}])
+    assert sections == [("WORK EXPERIENCE", EXPERIENCE_LINES)]
+
+
+@pytest.mark.parametrize("heading", ["Research Experience", "Experience", ""])
+def test_a_chinese_resumes_heading_stays_chinese(monkeypatch, heading):
+    lines = ["在校园农场完成 40 次土壤湿度试验", "为推广办公室撰写实地报告"]
+    sections = _structured(monkeypatch, ZH_RESUME, [{"heading": heading, "kind": "research", "bullets": lines}])
+    assert sections == [("项目与经历", lines)]
+    assert _structured(monkeypatch, ZH_RESUME, [{"heading": "科研经历", "kind": "research", "bullets": lines}]) == [
+        ("科研经历", lines)]
+
+
+def test_the_local_structure_names_a_chinese_section_in_chinese(monkeypatch):
+    from backend.routes import tailor
+
+    monkeypatch.setattr(tailor, "chat_completion", lambda *a, **k: None)
+    sections = _structured(monkeypatch, ZH_RESUME, [])
+    assert sections == [("项目与经历", ["在校园农场完成 40 次土壤湿度试验", "为推广办公室撰写实地报告"])]

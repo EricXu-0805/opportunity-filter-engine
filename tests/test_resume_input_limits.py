@@ -383,9 +383,11 @@ def test_ai_extraction_reports_chunk_bullets_past_the_review_limit(monkeypatch):
 
 
 def test_ai_structure_reports_sections_past_the_tree_limit(monkeypatch):
-    text = _glyph_resume(16)
-    lines = [line.removeprefix("• ") for line in text.splitlines()]
-    sections = [{"heading": f"Group {i}", "kind": "research", "bullets": [line]} for i, line in enumerate(lines)]
+    lines = [line.removeprefix("• ") for line in _glyph_resume(16).splitlines()]
+    # Each section under a heading the student wrote: a heading the résumé does not hold is not shown,
+    # and sections under one standard name merge.
+    text = "\n".join(f"Group {chr(65 + i)}\n• {line}" for i, line in enumerate(lines))
+    sections = [{"heading": f"Group {chr(65 + i)}", "kind": "research", "bullets": [line]} for i, line in enumerate(lines)]
     monkeypatch.setattr(tailor, "is_configured", lambda: True)
     monkeypatch.setattr(tailor, "chat_completion", lambda *_a, **_k: json.dumps({"sections": sections}))
     body = client.post("/api/tailor/structure", json={"resume_text": text}).json()
