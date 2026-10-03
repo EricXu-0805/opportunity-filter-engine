@@ -3105,10 +3105,21 @@ def _local_refine(body: str, instruction: str) -> dict:
             edited = pattern.sub(repl, edited)
         fillers = op.get("drop_fillers")
         if fillers:
-            edited = "\n".join(
-                line for line in edited.split("\n")
-                if not any(f in line.lower() for f in fillers)
-            )
+            kept: list[str] = []
+            dropped = False
+            for line in edited.split("\n"):
+                if any(f in line.lower() for f in fillers):
+                    dropped = True
+                    continue
+                # A dropped paragraph takes its blank line with it, so the
+                # draft never gains a doubled, leading or trailing blank line.
+                if dropped and not line.strip() and (not kept or not kept[-1].strip()):
+                    continue
+                kept.append(line)
+                dropped = False
+            if dropped and kept and not kept[-1].strip():
+                kept.pop()
+            edited = "\n".join(kept)
         applied.append(name)
 
     return {"body": edited, "method": "local", "applied": applied}

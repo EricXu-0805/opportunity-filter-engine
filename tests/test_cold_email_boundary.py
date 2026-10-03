@@ -350,13 +350,15 @@ class TestTheAlignmentSentenceUsesTheSameGate:
 
 
 # ---------------------------------------------------------------------------
-# Served AI drafts keep the blank line after the trusted greeting (U11)
+# Served drafts keep one blank line between greeting and paragraphs (U11)
 # ---------------------------------------------------------------------------
 
 class TestServedGreetingKeepsItsBlankLine:
     """_enforce_brief_greeting dropped the blank body lines after the greeting
     and re-joined without one, so every AI draft and AI edit reached the
-    student as "Dear …,\\nI am…" whatever the model wrote."""
+    student as "Dear …,\\nI am…" whatever the model wrote. The shorter quick
+    edit dropped a filler paragraph but kept the blank lines on both sides of
+    it, so the served draft gained a doubled blank line."""
 
     OPP = {
         "id": "greeting-format", "source_type": "campus_program",
@@ -404,3 +406,31 @@ class TestServedGreetingKeepsItsBlankLine:
         out = response.json()
         assert out["method"] == ("ai" if endpoint == "/cold-email" else "llm"), out
         assert out["body"] == f"Dear Pat Lee,\n\n{self.REST}"
+
+    def test_the_shorter_quick_edit_leaves_one_blank_line_where_it_drops_a_paragraph(self, client, monkeypatch):
+        monkeypatch.setattr(ce, "is_configured", lambda: False)
+        current = ("Dear Pat Lee,\n\nI am interested in hypersonics.\n\nI am a fast learner.\n\n"
+                   "Would you have 15 minutes for a conversation?\n\nBest regards,\nEric")
+        response = client.post("/api/cold-email/refine", json={
+            "profile": self.PROFILE, "opportunity_id": self.OPP["id"],
+            "experience_evidence": confirmed_experience([]),
+            "current_body": current, "instruction": "make it shorter",
+        })
+        assert response.status_code == 200, response.text
+        out = response.json()
+        assert out["method"] == "local" and out["applied"] == ["concise"], out
+        assert out["body"] == f"Dear Pat Lee,\n\n{self.REST}"
+
+
+@pytest.mark.parametrize(("body", "expected"), [
+    ("Intro.\n\nI am a fast learner.\n\nAsk?", "Intro.\n\nAsk?"),
+    ("Intro.\n\nI am a fast learner.\nI am eager to pick up skills.\n\nAsk?", "Intro.\n\nAsk?"),
+    ("I am a fast learner.\n\nAsk?", "Ask?"),
+    ("Intro.\n\nI am a fast learner.", "Intro."),
+    ("Intro.\nI am a fast learner.\nAsk?", "Intro.\nAsk?"),
+    ("Intro.\nI am a fast learner.\n\nAsk?", "Intro.\n\nAsk?"),
+    # The student's own spacing away from a dropped line is not the edit's to change.
+    ("Intro.\n\n\nMiddle.\n\nI am a fast learner.\n\nAsk?", "Intro.\n\n\nMiddle.\n\nAsk?"),
+])
+def test_a_dropped_filler_line_takes_its_blank_line_with_it(body, expected):
+    assert ce._local_refine(body, "make it shorter")["body"] == expected
