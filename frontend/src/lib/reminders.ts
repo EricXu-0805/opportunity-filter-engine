@@ -5,12 +5,12 @@ import type { Opportunity } from './types';
 /**
  * Whether the reminders cron would actually send for this row.
  *
- * Copied from that job's own two filters, and kept in one place because four
+ * Copied from that job's own two filters, and kept in one place because three
  * surfaces offer to create or reschedule a reminder — the tracker board, the
- * detail panel's date editor, the detail page's automatic suggestion, and the
- * cold-email follow-up chips — and a copy that drifts produces the worst
- * possible outcome: a control that accepts the click, stores the date, and
- * then nothing ever arrives. The student stops watching for the thing itself.
+ * detail panel's date editor, and the cold-email follow-up chips — and a copy
+ * that drifts produces the worst possible outcome: a control that accepts the
+ * click, stores the date, and then nothing ever arrives. The student stops
+ * watching for the thing itself.
  *
  *   1. `interaction_type=in.(contacted,applied)`
  *   2. the target is release-visible AND still actionable

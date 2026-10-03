@@ -154,8 +154,8 @@ describe('formatReminderLabel', () => {
 });
 
 // The one predicate four surfaces share — the tracker board, the detail
-// panel's date editor, the detail page's automatic suggestion, and the
-// dashboard's due list. It copies the reminders cron's own two filters:
+// panel's date editor, the cold-email follow-up chips, and the dashboard's
+// due list. It copies the reminders cron's own two filters:
 //   interaction_type in (contacted, applied)
 //   AND the target is release-visible and still actionable
 // A copy that drifts produces a control that accepts the click, stores the

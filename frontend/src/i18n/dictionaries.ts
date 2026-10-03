@@ -3526,13 +3526,6 @@ export const en = {
         moreError: 'Could not load older records. The records above are still available.',
         retryMore: 'Retry older records',
       },
-      suggestions: {
-        followUpAfterReply: 'Got a reply — set a follow-up reminder for {date}?',
-        thankYouAfterInterview: 'Interviewing — set a thank-you reminder for {date}?',
-        useButton: 'Use {date}',
-        dismissButton: 'Not now',
-        saveError: "Couldn't save that reminder — try again.",
-      },
     },
     attachments: {
       label: 'Attachments',
@@ -8683,13 +8676,6 @@ export const zh = {
         loadingMore: '正在读取更早的记录…',
         moreError: '未能读取更早的记录，已显示的记录仍可查看。',
         retryMore: '重试读取更早的记录',
-      },
-      suggestions: {
-        followUpAfterReply: '收到回复 —— 要在 {date} 设个跟进提醒吗?',
-        thankYouAfterInterview: '面试中 —— 要在 {date} 设个感谢信提醒吗?',
-        useButton: '使用 {date}',
-        dismissButton: '暂不',
-        saveError: '提醒保存失败 —— 请重试。',
       },
     },
     attachments: {
