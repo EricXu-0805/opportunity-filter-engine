@@ -35,9 +35,9 @@ CPU was a separate cause. The claim locks also ran main's attribution parser, wh
 
 ## Frozen lists
 
-- The lock lists are frozen: every pattern and word table that the claim locks (`target_resume_ai_grounding.py`) and the contract's checks (`evidence_map.py`) read. `tests/test_lock_lists_frozen.py` pins each family's entry count, so adding or dropping an alternative, a listed character or a whole family fails it. A word swapped for another, or an exception that adds no alternative, keeps the count, so a lock's diff still needs reading.
+- The lock lists are frozen: every pattern and word table that the claim locks (`target_resume_ai_grounding.py`) and the contract's checks (`evidence_map.py`) read. `tests/test_lock_lists_frozen.py` pins each family's entry count, so adding or dropping an alternative, a listed character or a whole family fails it, and a digest of each family's content (a pattern's text and flags, a table's sorted items), so a word swapped for another, which keeps the count, fails it too. Logic that reads a family is not pinned, so a lock's diff still needs reading; the actor lock holds no inline pattern.
 - A same-language shape a reviewer finds goes to the review's calibration set and to the PR's limits, not into a list.
-- A lock changes only to remove a measured faithful refusal or a CPU path. The commit carries the measurement and updates the pinned count.
+- A lock changes only to remove a measured faithful refusal or a CPU path. The commit carries the measurement and updates the pinned count and digest.
 - The review prompt changes only together with a new run of the 170-pair calibration (85 traps and 85 faithful pairs, 3 samples each), and the commit carries its result. The same test pins the prompt's digest; that prompt calibrated at 0/255 trap accepts and 17/255 faithful rejects.
 
 The sections below describe the w13.5 evidence rules; where they differ from the w14.1 list (rejection behaviour, `source_evidence`), the w14.1 list applies.

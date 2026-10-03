@@ -6,7 +6,8 @@ is an alternative of a "|" or a listed character of a "[...]" class, exceptions 
 lookarounds included; in a word list it is a word; in a table it is an item, plus the
 entries of the patterns the item holds (a family a table holds by name counts once, as
 itself). Adding or dropping an alternative, a listed character or a whole family fails here;
-a swapped word, or an exception that adds no alternative, keeps the count.
+a swapped word, or an exception that adds no alternative, keeps the count but fails the
+family's content digest.
 
 A shape a reviewer finds goes to the review's calibration set and to the PR's limits,
 not into a list. A family changes only to remove a measured faithful refusal or a CPU
@@ -52,6 +53,51 @@ FROZEN = {
         "_PARTICIPATION_EN": 9, "_PARTICIPATION_ZH": 3, "_ACTION_WORDS": 54, "_SETTING_NOUN": 28,
         "_RELEVANCE_WORD": 20, "_REVISION_WORD": 4, "_SPAN_WORD": 17, "_LOCK_WORD": 23, "_TEAM_HEADER": 17,
         "_GLUED_MARKER": 2, "_SHARED_OR_HELP": 6, "_NUMBER": 2,
+    },
+}
+# A digest of each family's content (a pattern's text and flags, a table's sorted items), so a
+# word swapped for another, which keeps the count, fails too (round-1 review).
+DIGESTS = {
+    grounding: {
+        "_TEAM_CONTEXT": "e9a6d3ec4b9b1e34", "NEGATION": "c055590eabc5448d", "TEAM": "cfb95bd81aca118f",
+        "PUBLICATION": "1a305fe07f77a654", "PERSONAL": "f0d688737102813f", "ACTIONS": "3d5950163464d1ba",
+        "STAGES": "33c577200a21cf93", "ACTION_GERUNDS": "f993265f96f99c5d", "_GERUND_POSITION": "96b3cd3afd01beb6",
+        "_GERUND_AND": "f4d42340acf35252", "INTENT": "799def839162e321", "PLANNED": "bea38aecf05bf942",
+        "UNFINISHED": "0ae90ad8b1d24d7f", "FUTURE_ZH": "7c59976a514cdce8", "UNDERWAY_ZH": "fd4eedfd90973865",
+        "UNFINISHED_ZH": "65511bb03e2dcfb2", "_REGULAR_VERBS": "a8f598b775349716",
+        "_DOUBLING_VERBS": "4f3ad31ebfd7dcad", "_L_VERBS": "671287d71a74a75e",
+        "_IRREGULAR_VERBS": "74db93c91008141b", "_DOUBLED_IRREGULAR": "fc5274fc546b0607",
+        "_PAST_AS_BASE": "02266a46d685a2d2", "RESUME_VERB_FORMS": "a8dddd6152b88c36", "_WORD": "59b51c776b295048",
+        "_STATED_ACTIONS": "9ac43c86190f1dde", "HELP": "c2a62793f1cd620d", "RELEVANCE_PADDING": "683e45076039ffca",
+        "APPENDED_RELEVANCE": "b900d55ab53ac3e1", "QUALITY": "24f98e50cde6d2f9", "SETTING": "cce423bb8da9b004",
+        "_CJK": "14e864997b281abc", "DENIAL": "fc000dd36017bdb7", "_TEAM_OWNER": "618c15df352b4d68",
+        "_OBJECT_END": "c4db215fd6822e12", "_SETTING_LEAD": "7237725057227170", "LEADERSHIP": "8e852145490f22ec",
+        "CO_CREDIT": "610d7875aaf21c43", "_SHARED_CREDIT": "67bf195981cb8b61", "_TEAM_RELATIVE": "963b49e98ea9a653",
+        "_CJK_RUN": "9cff32701a55e1be", "_LATIN_WORD": "d7364fe3d0fbf497", "_SENTENCE_BREAK": "46d17538cf2289e5",
+        "_CLAUSE_BREAK": "01a2704ddea790fc", "_CLAUSE_LEAD": "f3230dfaad8bb45b",
+        "_PERSONAL_SUBJECT": "c4e14409a46dc040", "_OTHER_SUBJECT": "60abef7002c0433b",
+        "_TEAM_SUBJECT": "e04444fabb875fb7", "_ZH_VERBS": "d62b3e7c85cf1d85", "_BASE_VERB_CUE": "c99847546044197b",
+        "_STUDENT_AGENT": "b4d091a452444b73", "_BY": "08b05086097e8b39", "_TEAM_WITH": "d22813c74ee52e02",
+        "_STATUS_CLASSES": "220eeec4930d91df", "_QUALIFIERS": "72b7fa1083171b2b", "_NEXT_TOKEN": "30db7f34c9df912b",
+        "_CO_ACTIONS": "d957d96c73eca8fc", "_NOUN_END": "2c530c946606c68f", "_NOT_HEAD": "0d62b916f3b98af8",
+        "_ZH_LEAD": "8d11d59ad5b618c4", "_ZH_TAIL": "fc2bec33184d7439", "_STATUS_WORDS": "7ae6011e5d8a26c8",
+        "_CJK_RUN_AT": "9fac157674f770cf", "_CJK_RUN_END": "df9dd699c559ff7f", "_DURATION": "3166d76ae534b011",
+        "_COUNT_ZHI": "5b19b0c290b92bd9", "_UNDERWAY_ACTION": "8feda0b6e06038d2", "_IN_PRESS": "7a4acf5e3d1ec46c",
+        "_SURFACE_VERBS": "9b0d58e4c8f6e9b2", "_SURFACE_ACTOR": "7a8e288b6f4eac03",
+    },
+    em: {
+        "_FUNCTION_EN": "dbcf048d96838790", "_FUNCTION_ZH": "daed8b60630697af", "_TOKEN": "e6c1b8f798197471",
+        "_PERSONAL_MARKER": "3f6079687b01b3c0", "_WEAK_OPENER": "ea2db8a56c63d6ad",
+        "_PERSONAL_PART": "bedcd1c3668c9a72", "_FIRST_CLAUSE": "0c30d42662bfb404",
+        "_OTHER_PERSON": "5fecc335cf8c38fa", "_SPAN": "2087edf7d5b6ef21", "_SOLO": "7d637d0a3c3eb9b3",
+        "_LIMIT": "df25edde50a10205", "_STATUS_WORD": "020534c4bffed1be", "_UN_DONE": "db830d3a9717532e",
+        "_TEAM_ZH_EXTRA": "309255905ceabd03", "_TEAM_EN_EXTRA": "69ca4664f59d6e11",
+        "_TEAM_OTHERS": "5dd9f899c31482ff", "_PARTICIPATION_EN": "fd5c4f72ee953463",
+        "_PARTICIPATION_ZH": "d27f17f84e476e2c", "_ACTION_WORDS": "4131735b82d02295",
+        "_SETTING_NOUN": "5303b755edb01c9b", "_RELEVANCE_WORD": "48d3e15ecea64374",
+        "_REVISION_WORD": "a0f75795243c0ae9", "_SPAN_WORD": "af4ffb60fda003b1", "_LOCK_WORD": "05ff46e6a070fe66",
+        "_TEAM_HEADER": "5c869539e21ce259", "_GLUED_MARKER": "0a8725756b703a5f",
+        "_SHARED_OR_HELP": "4f51ac0e9ded4177", "_NUMBER": "bf0c76a8cf8a2fcd",
     },
 }
 # evidence_map's own patterns and tables that no lock reads: the anchor cuts and term
@@ -129,6 +175,26 @@ def test_each_lock_family_keeps_its_entry_count(module, name):
         f"{module.__name__}.{name} has {count} entries, pinned at {pinned}. The lock lists are frozen: change a "
         "family only to remove a measured faithful refusal or a CPU path, and update this count in the same commit "
         "(docs/resume_writing_quality_contract.md, 'Frozen lists').")
+
+
+def digest(value) -> str:
+    if isinstance(value, re.Pattern):
+        text = f"{value.pattern}\0{value.flags}"
+    elif isinstance(value, dict):
+        text = repr(sorted((repr(key), digest(item)) for key, item in value.items()))
+    elif isinstance(value, set | frozenset | tuple | list):
+        text = repr(sorted(digest(item) for item in value))
+    else:
+        text = repr(value)
+    return hashlib.sha256(text.encode()).hexdigest()[:16]
+
+
+@pytest.mark.parametrize(("module", "name"), [(module, name) for module, pins in FROZEN.items() for name in pins],
+                         ids=lambda value: value if isinstance(value, str) else value.__name__.rsplit(".", 1)[-1])
+def test_each_lock_family_keeps_its_content(module, name):
+    assert digest(getattr(module, name)) == DIGESTS[module][name], (
+        f"{module.__name__}.{name} changed. A swapped word keeps the count but not the content: change a family only "
+        "to remove a measured faithful refusal or a CPU path, and update this digest and the count in the same commit.")
 
 
 @pytest.mark.parametrize("module", list(FROZEN), ids=lambda module: module.__name__.rsplit(".", 1)[-1])
