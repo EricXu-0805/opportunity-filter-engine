@@ -259,13 +259,13 @@ python3 scripts/remediate_publications.py review <professor-id> \
 
 A verdict lands through the same paths the automation uses:
 
-* `--verified AUTHOR_ID` buys that author's recent works (two OpenAlex
-  requests, an author lookup and one `/works` page, also in a dry run). The
-  current gate picks among them from the author's own fields, as in
-  `harvest_works_by_roster`, and `apply_works` stamps the survivors on the whole
-  corpus. The command refuses, and writes nothing, when OpenAlex has no such
-  author or answers with the author it was merged into (name that one), when
-  the author's surname is not the professor's (pass
+* `--verified AUTHOR_ID` buys that author's recent works: two OpenAlex
+  requests, an author lookup and one `/works` page, made before the shards are
+  read and also in a dry run. The current gate picks among them from the
+  author's own fields, as in `harvest_works_by_roster`, and `apply_works` stamps
+  the survivors on the whole corpus. The command refuses, and writes nothing,
+  when OpenAlex has no such author or answers with the author it was merged
+  into (name that one), when the author's surname is not the professor's (pass
   `--allow-name-mismatch` when that is known), when the gate keeps none of the
   works (then the verdict is `--removed`), when stamping would change any other
   record (exit 3: another professor already holds that author id), or when the
@@ -275,14 +275,21 @@ A verdict lands through the same paths the automation uses:
   `removed` and a `review` entry, and keeps the totals the automated step
   removed.
 
-The shard is written first and the verdict second, the order `apply` uses, and
-both happen under the ledger lock. The verdict is a `reviewed` event naming the reviewer, the
-result it replaced (`review_of`) and, for `verified`, the author. It is the one
-event `Ledger.index()` accepts after a unit settled, and only for a unit whose
-result is `ambiguous` or `needs_review`: a second verdict is refused by the
-command, ignored by the index, and counted by `duplicate_count`, so `report`
-fails if one ever lands. The reviewer string and the note go into the committed
-ledger, so use a handle and keep notes free of personal data.
+Only a first look at the ledger and those requests happen outside the ledger
+lock. Under it the command checks again that the unit still awaits a verdict,
+reads the shards, lands the verdict, writes the shard and then appends the
+verdict, the order `apply` uses. A verdict rewrites its whole shard, so reading
+the shard under the lock is what stops two reviewers on one school from writing
+each other's verdict out of the corpus. `apply --save` writes its shards
+outside the lock: do not run it while verdicts are being recorded.
+
+The verdict is a `reviewed` event naming the reviewer, the result it replaced
+(`review_of`) and, for `verified`, the author. It is the one event
+`Ledger.index()` accepts after a unit settled, and only for a unit whose result
+is `ambiguous` or `needs_review`: a second verdict is refused by the command,
+ignored by the index, and counted by `duplicate_count`, so `report` fails if
+one ever lands. The reviewer string and the note go into the committed ledger,
+so use a handle and keep notes free of personal data.
 
 When the last unit has a verdict the queue is empty, and the next ops scan
 records a recovery on the `manual_review:publication_attribution` incident. It

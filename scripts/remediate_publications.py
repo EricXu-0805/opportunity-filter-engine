@@ -508,6 +508,15 @@ def _refuse(reason: str, rc: int = 2) -> int:
     return rc
 
 
+class _Refusal(Exception):
+    """A verdict that cannot land. Raised, rather than returned, from under the
+    ledger lock, so the lock is released and the event is never written."""
+
+    def __init__(self, reason: str, rc: int = 2):
+        super().__init__(reason)
+        self.rc = rc
+
+
 def cmd_review(args: argparse.Namespace) -> int:
     """List the units waiting for a person, or record one person's verdict.
 
@@ -604,44 +613,53 @@ def _decide_review(args: argparse.Namespace) -> int:
         keys = ", ".join(sorted(e["idempotency_key"] for e in waiting))
         return _refuse(f"{args.unit} names {len(waiting)} units; pass one of {keys}")
     entry = waiting[0]
-
-    shards = load_shards()
-    found = [(slug, r) for slug, records in shards.items() for r in records
-             if r.get("id") == entry.get("professor_id")]
-    if len(found) != 1:
-        return _refuse(f"{entry.get('professor_id')} is {len(found)} records in the shards; "
-                       "a verdict lands on exactly one")
-    slug, record = found[0]
-    before = _paper_state(record)
-
+    verdict = DISPOSITION_VERIFIED if author_id else DISPOSITION_REMOVED
+    fetched: tuple = ()
     if author_id:
-        rc = _land_verified(shards, record, author_id,
-                            allow_name_mismatch=args.allow_name_mismatch)
-        if rc:
-            return rc
-        verdict = DISPOSITION_VERIFIED
-    else:
-        _land_removed(record, entry, reviewer)
-        verdict = DISPOSITION_REMOVED
-    after = _paper_state(record)
-    print(json.dumps({
-        "unit": entry["idempotency_key"],
-        "pi_name": record.get("pi_name"),
-        "review_of": entry.get("result"),
-        "verdict": verdict,
-        "reviewer": reviewer,
-        "author_id": author_id,
-        "before": before,
-        "after": after,
-    }, indent=2, ensure_ascii=False))
+        # Before the lock is taken, so a slow OpenAlex holds up nobody else's verdict.
+        try:
+            fetched = _fetch_author(author_id)
+        except _Refusal as refusal:
+            return _refuse(str(refusal), refusal.rc)
 
-    # Corpus first, then the ledger, as in `apply`; both under the ledger lock
-    # so a verdict the ledger refuses never reaches the corpus.
-    event = ledger.record_review(
-        entry, verdict, reviewer=reviewer, author_id=author_id, note=args.note,
-        relationships_after=len(after["papers"]),
-        commit=(lambda: save_shards(shards, {slug})) if args.save else None,
-    )
+    def land() -> int:
+        # Runs under the ledger lock. Each run rewrites a whole shard, so the
+        # shards are read here rather than before the lock: read earlier, a
+        # verdict another reviewer landed on the same shard in between would
+        # be written back over and lost from the corpus while the ledger kept it.
+        shards = load_shards()
+        found = [(slug, r) for slug, records in shards.items() for r in records
+                 if r.get("id") == entry.get("professor_id")]
+        if len(found) != 1:
+            raise _Refusal(f"{entry.get('professor_id')} is {len(found)} records in the shards; "
+                           "a verdict lands on exactly one")
+        slug, record = found[0]
+        before = _paper_state(record)
+        if author_id:
+            _land_verified(shards, record, author_id, *fetched,
+                           allow_name_mismatch=args.allow_name_mismatch)
+        else:
+            _land_removed(record, entry, reviewer)
+        after = _paper_state(record)
+        print(json.dumps({
+            "unit": entry["idempotency_key"],
+            "pi_name": record.get("pi_name"),
+            "review_of": entry.get("result"),
+            "verdict": verdict,
+            "reviewer": reviewer,
+            "author_id": author_id,
+            "before": before,
+            "after": after,
+        }, indent=2, ensure_ascii=False))
+        if args.save:
+            save_shards(shards, {slug})
+        return len(after["papers"])
+
+    try:
+        event = ledger.record_review(entry, verdict, reviewer=reviewer, author_id=author_id,
+                                     note=args.note, land=land)
+    except _Refusal as refusal:
+        return _refuse(str(refusal), refusal.rc)
     if event is None:
         return _refuse(f"{entry['idempotency_key']} took another verdict while this one "
                        "was prepared")
@@ -659,11 +677,9 @@ def _same_surname(professor: str, author: str) -> bool:
     return bool(mine and theirs and mine[0] == theirs[0])
 
 
-def _land_verified(shards: dict[str, list[dict]], record: dict, author_id: str, *,
-                   allow_name_mismatch: bool) -> int:
-    """Stamp the named author's papers the way a harvest would have, had the
-    roster been able to resolve them: the author's own fields decide which of
-    their recent works qualify, and ``apply_works`` writes them."""
+def _fetch_author(author_id: str) -> tuple[dict, list[dict]]:
+    """The named author and their recent works: the two requests a `verified`
+    verdict makes, whatever the gate later keeps."""
     from src.collectors import openalex_enrich as oa
 
     found = oa._get({"select": oa._ROSTER_SELECT}, url=f"{oa._API}/{author_id}")
@@ -671,20 +687,30 @@ def _land_verified(shards: dict[str, list[dict]], record: dict, author_id: str, 
     answered = str(found.get("id") or "").rsplit("/", 1)[-1]
     if answered != author_id:
         budget = " (the OpenAlex budget is exhausted)" if oa._warned_429 else ""
-        return _refuse(f"OpenAlex answered {author_id} with {answered or 'no author'}{budget}")
+        raise _Refusal(f"OpenAlex answered {author_id} with {answered or 'no author'}{budget}")
     author = oa._roster_author(found)
+    raw = oa.works_for_authors([author_id]).get(author_id) or []
+    if oa._warned_429:
+        raise _Refusal("the OpenAlex budget ran out while fetching the works")
+    return author, raw
+
+
+def _land_verified(shards: dict[str, list[dict]], record: dict, author_id: str,
+                   author: dict, raw: list[dict], *, allow_name_mismatch: bool) -> None:
+    """Stamp the named author's papers the way a harvest would have, had the
+    roster been able to resolve them: the author's own fields decide which of
+    their recent works qualify, and ``apply_works`` writes them."""
+    from src.collectors import openalex_enrich as oa
+
     # `verified` is the one verdict that restores trust, and a mistyped id
     # names a stranger.
     if not allow_name_mismatch and not _same_surname(record.get("pi_name"), author["name"]):
-        return _refuse(f"{author_id} is {author['name']!r}, whose surname is not "
+        raise _Refusal(f"{author_id} is {author['name']!r}, whose surname is not "
                        f"{record.get('pi_name')!r}'s; pass --allow-name-mismatch if that is known")
-    raw = oa.works_for_authors([author_id]).get(author_id) or []
-    if oa._warned_429:
-        return _refuse("the OpenAlex budget ran out while fetching the works")
     works = oa._usable_works(raw, record.get("department", ""),
                              author_fields=oa._author_own_fields(author))
     if not works:
-        return _refuse(f"the current gate kept none of the {len(raw)} recent work(s) OpenAlex "
+        raise _Refusal(f"the current gate kept none of the {len(raw)} recent work(s) OpenAlex "
                        f"returned for {author_id}; if none is theirs, record --removed")
 
     corpus = all_records(shards)
@@ -692,15 +718,14 @@ def _land_verified(shards: dict[str, list[dict]], record: dict, author_id: str, 
     oa.apply_works(corpus, {person_key(record): {"author_id": author_id, "works": works}})
     stray = [r for r in corpus if r is not record and before[id(r)] != _trust_fingerprint(r)]
     if stray:
-        return _refuse(f"stamping {author_id} also changed {len(stray)} other record(s) "
+        raise _Refusal(f"stamping {author_id} also changed {len(stray)} other record(s) "
                        f"(first: {stray[0].get('id')}): another professor holds that author",
                        rc=3)
     md = record.get("metadata") or {}
     if not (works_are_verified(record) and record_works_gate(record) >= CURRENT_WORKS_GATE
             and md.get("publication_author_id") == author_id):
-        return _refuse(f"apply_works did not stamp {record.get('id')} verified by {author_id}")
+        raise _Refusal(f"apply_works did not stamp {record.get('id')} verified by {author_id}")
     apply_disposition(record, DISPOSITION_VERIFIED)
-    return 0
 
 
 def _land_removed(record: dict, entry: dict, reviewer: str) -> None:

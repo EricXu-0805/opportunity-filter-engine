@@ -751,20 +751,20 @@ class Ledger:
 
     def record_review(self, entry: dict, verdict: str, *, reviewer: str,
                       author_id: str | None = None, note: str | None = None,
-                      relationships_after: int = 0,
-                      commit: Callable[[], None] | None = None) -> dict | None:
+                      land: Callable[[], int] | None = None) -> dict | None:
         """Write a person's verdict on a unit waiting for one. Returns the
         event, or None when the unit no longer awaits review.
 
-        ``entry`` is the unit's ``index()`` entry. The check and the write
-        happen under the ledger lock, so two reviewers cannot both see an open
-        unit and both decide it. ``commit`` runs inside that window, after the
-        check and before the write: the caller writes the corpus there, so the
-        corpus lands first, as in ``apply``, and a verdict the ledger refuses
-        never reaches the corpus.
+        ``entry`` is the unit's ``index()`` entry. The check, ``land`` and the
+        write happen in one hold of the ledger lock, so two reviewers can
+        neither both decide one unit nor overwrite each other's corpus write.
+        ``land`` brings the corpus into line with the verdict and returns how
+        many papers the record cites afterwards. It reads the shards inside the
+        lock, so a verdict another reviewer landed a moment earlier is in what
+        it writes back, and it writes them before the event, the order
+        ``apply`` uses. If it raises, nothing is written.
         """
         key = entry["idempotency_key"]
-        at = _now()
         event = {
             "remediation_id": entry.get("professor_id"),
             "professor_id": entry.get("professor_id"),
@@ -778,19 +778,24 @@ class Ledger:
             "reviewer": (reviewer or "").strip(),
             "reviewed_author_id": author_id,
             "note": note,
-            "relationships_after": relationships_after,
-            "completed_at": at,
             "worker": self._worker,
-            "at": at,
         }
         event = {k: v for k, v in event.items() if v is not None}
         if not _is_review_verdict(event):
             raise ValueError(f"not a review verdict: {verdict!r} by {reviewer!r}")
-        if self.dry_run:
+
+        def decide() -> dict | None:
             if not awaits_review(self.index().get(key)):
                 return None
-            self.staged.append(event)
+            event["relationships_after"] = land() if land is not None else 0
+            event["completed_at"] = event["at"] = _now()
             return event
+
+        if self.dry_run:
+            decided = decide()
+            if decided is not None:
+                self.staged.append(decided)
+            return decided
 
         import fcntl
 
@@ -798,14 +803,12 @@ class Ledger:
         with self.path.open("a", encoding="utf-8") as fh:
             fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
             try:
-                if not awaits_review(self.index().get(key)):
-                    return None
-                if commit is not None:
-                    commit()
-                fh.write(json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n")
-                fh.flush()
-                os.fsync(fh.fileno())
-                return event
+                decided = decide()
+                if decided is not None:
+                    fh.write(json.dumps(decided, ensure_ascii=False, sort_keys=True) + "\n")
+                    fh.flush()
+                    os.fsync(fh.fileno())
+                return decided
             finally:
                 fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
 

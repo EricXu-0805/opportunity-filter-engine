@@ -82,6 +82,21 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _ledger_locked(path: Path) -> bool:
+    """Whether anyone holds the ledger's flock. Probes without blocking: a
+    blocking flock on a lock this process already holds through another open
+    file waits forever, so a test that took one would hang instead of fail."""
+    import fcntl
+
+    with open(path, "a", encoding="utf-8") as fh:
+        try:
+            fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return True
+        fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+        return False
+
+
 def _run(monkeypatch, shards, *argv):
     """The real CLI over in-memory shards. Returns (rc, the shard sets saved)."""
     written: list[list[str]] = []
@@ -652,6 +667,98 @@ class TestOneVerdictPerUnit:
         # ...and showed what --save would land.
         out = capsys.readouterr().out
         assert "Subspace Imaging with Learned Priors" in out
+
+
+class TestTwoReviewersAtOnce:
+    """Two verdicts on two units in one shard. Each run rewrites the whole
+    shard, so a run that read it before the other one wrote would put the
+    other verdict's record back the way it was: the ledger would say B decided
+    and the corpus would say nobody did, and the unit could not be reviewed
+    again."""
+
+    # Bob's run takes the lock, so each test first checks Alice does not hold
+    # it: an implementation that held it there would deadlock the test.
+
+    @staticmethod
+    def _both_landed(disk, ledger, verdicts):
+        index = Ledger(ledger).index()
+        for rid, (verdict, reviewer) in verdicts.items():
+            entry = index[f"{rid}@gate{CURRENT_WORKS_GATE}"]
+            assert (entry["status"], entry["result"], entry["reviewer"]) == (REVIEWED, verdict, reviewer)
+            record = disk.record(rid)
+            if verdict == DISPOSITION_VERIFIED:
+                assert works_are_verified(record)
+            else:
+                block = record["metadata"]["publication_remediation"]
+                assert (block["disposition"], (block.get("review") or {}).get("reviewer")) == (
+                    verdict, reviewer)
+
+    def test_a_verdict_that_lands_before_the_lock_is_kept(self, queue, monkeypatch):
+        disk, ledger = queue
+        record_review = Ledger.record_review
+        interleaved = []
+
+        def bob_first(self, *args, **kwargs):
+            if not interleaved:
+                interleaved.append(True)
+                assert not _ledger_locked(ledger), "alice took the ledger lock before record_review"
+                assert _review(monkeypatch, disk, ledger, "nr-1", "--removed",
+                               "--reviewer", "bob", "--save") == 0
+            return record_review(self, *args, **kwargs)
+
+        monkeypatch.setattr(Ledger, "record_review", bob_first)
+        assert _review(monkeypatch, disk, ledger, "amb-2", "--removed",
+                       "--reviewer", "alice", "--save") == 0
+
+        self._both_landed(disk, ledger, {"amb-2": (DISPOSITION_REMOVED, "alice"),
+                                         "nr-1": (DISPOSITION_REMOVED, "bob")})
+        assert _waiting(ledger) == ["amb-1"]
+
+    def test_a_verdict_that_lands_during_the_openalex_requests_is_kept(
+            self, queue, monkeypatch, openalex):
+        from src.collectors import openalex_enrich as oa
+
+        disk, ledger = queue
+        fetch = oa.works_for_authors
+
+        def bob_meanwhile(author_ids, **kwargs):
+            assert not _ledger_locked(ledger), "alice asked OpenAlex under the ledger lock"
+            assert _review(monkeypatch, disk, ledger, "nr-1", "--removed",
+                           "--reviewer", "bob", "--save") == 0
+            return fetch(author_ids, **kwargs)
+
+        monkeypatch.setattr(oa, "works_for_authors", bob_meanwhile)
+        assert _review(monkeypatch, disk, ledger, "amb-1", "--verified", _AUTHOR,
+                       "--reviewer", "alice", "--save") == 0
+
+        self._both_landed(disk, ledger, {"amb-1": (DISPOSITION_VERIFIED, "alice"),
+                                         "nr-1": (DISPOSITION_REMOVED, "bob")})
+        assert _waiting(ledger) == ["amb-2"]
+
+    @pytest.mark.parametrize("verdict", [["amb-2", "--removed"], ["amb-1", "--verified", _AUTHOR]],
+                             ids=["removed", "verified"])
+    def test_the_shards_are_read_and_written_under_the_ledger_lock(
+            self, queue, monkeypatch, openalex, verdict):
+        """What makes the two cases above hold between processes: the read,
+        the write and the verdict sit inside one hold of the ledger's flock,
+        and no OpenAlex request is made while it is held."""
+        from src.collectors import openalex_enrich as oa
+
+        disk, ledger = queue
+        seen: list[tuple[str, bool]] = []
+
+        def watched(name, call):
+            return lambda *args, **kwargs: seen.append((name, _ledger_locked(ledger))) or call(*args, **kwargs)
+
+        monkeypatch.setattr(disk, "load", watched("load", disk.load))
+        monkeypatch.setattr(disk, "save", watched("save", disk.save))
+        monkeypatch.setattr(oa, "_get", watched("openalex", oa._get))
+        monkeypatch.setattr(oa, "works_for_authors", watched("openalex", oa.works_for_authors))
+
+        assert _review(monkeypatch, disk, ledger, *verdict, "--reviewer", "eric", "--save") == 0
+
+        requests = [("openalex", False)] * 2 if "--verified" in verdict else []
+        assert seen == [*requests, ("load", True), ("save", True)]
 
 
 class TestAfterTheQueueIsSettled:
