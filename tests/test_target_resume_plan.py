@@ -189,69 +189,29 @@ def test_any_invalid_structure_or_quote_invalidates_the_whole_plan(endpoint, kin
     assert len(endpoint.calls) == 1 and len(body["manifest"]) == 2
 
 
-@pytest.mark.parametrize("original,proposed", [
-    ("My team built a parser. I wrote parser tests. Additional context for length.", "Built a parser. My team built a parser. I wrote parser tests."),
-    ("I improved throughput by 45% and reduced latency by 12%. Additional context for length.", "Improved throughput by 12% and reduced latency by 45%."),
-    ("I built a parser. I did not build a compiler. Additional context for length.", "Built a compiler. I did not build a compiler."),
-    ("My team implemented Python ML projects for CS 225. I wrote tests. Additional context for length.",
-     "Implemented Python ML projects in CS 225. My team implemented Python ML projects for CS 225."),
-    ("I analyzed measurement uncertainty, never carefully. Additional context for length.",
-     "Analyzed measurement uncertainty carefully."),
-    # Shared credit is not a licence for a new action: this gate has no review behind it.
+@pytest.mark.parametrize("original,proposed,locale", [
+    # Shorter and faithful: still not shown, because no review checks the plan's wording.
+    (ORIGINAL, "I wrote parser tests.", "en"),
+    # Another language than its line, under a Chinese UI: main showed these.
+    (ORIGINAL, "用 Python 编写了解析器测试。", "zh"),
+    ("Helped design an online survey on sleep and memory and cleaned the 212 responses in R.",
+     "设计了睡眠与记忆在线问卷，并用 R 清洗了 212 份回答。", "zh"),
+    # Credit upgrades.
+    ("My team built a parser. I wrote parser tests. Additional context for length.",
+     "Built a parser. My team built a parser. I wrote parser tests.", "en"),
     ("Helped two classmates sort and scan 120 paper survey forms for the PSYC 238 sleep study.",
-     "Jointly designed the PSYC 238 sleep study survey with two classmates."),
-    ("Proofread the methods section of a lab manuscript and formatted its 4 figures.",
-     "Collectively reviewed the lab manuscript and formatted its 4 figures."),
+     "Jointly designed the PSYC 238 sleep study survey with two classmates.", "en"),
 ])
-def test_compression_reuses_b43_attribution_guard_without_discarding_valid_plan(endpoint, original, proposed):
-    assert len(proposed) < len(original)
+def test_the_plan_shows_no_compress_wording_and_stays_complete(endpoint, original, proposed, locale):
+    """Every line a student is shown passes the faithfulness review, and the plan has none:
+    its compress advice stays, its proposed wording never reaches the response."""
     doc = endpoint.doc([original])
     endpoint.rewrites = {"exp-0": proposed}
-    result = completed(endpoint, endpoint.submit(doc), doc)
-    assert result["items"][0]["rewrites"] == [{"unit_id": doc["document"]["sections"][1]["blocks"][0]["lines"][-1]["id"],
-        "status": "skipped", "reason_code": "ungrounded_rewrite", "proposed_text": None}]
-    assert result["items"][0]["reason"] and result["items"][0]["action"] == "compress"
-
-
-def test_same_block_other_line_and_manual_wording_cannot_supply_missing_claim(endpoint):
-    doc = endpoint.doc(["I wrote parser tests using Python.", "I built a Python parser using NumPy."])
-    master = doc["base_snapshot"]["resume_master"]
-    master["activities"][0]["details"].extend(master["activities"].pop()["details"])
-    doc["document"] = confirmed_document(doc["base_snapshot"], doc["base"]["source_signature"])
-    for section in doc["document"]["sections"]:
-        section["included"] = True
-        for block in section["blocks"]:
-            block["included"] = True
-            for line in block["lines"]:
-                line.update(text=line["original"], included=True)
-    line = doc["document"]["sections"][1]["blocks"][0]["lines"][1]
-    line["text"] = "I built a Python parser using NumPy with my own manual additions."
-    endpoint.rewrites = {"exp-0": "I built a Python parser.", "exp-1": "Built a Python parser."}
-    result = completed(endpoint, endpoint.submit(doc), doc)
-    assert [row["status"] for row in result["items"][0]["rewrites"]] == ["skipped", "suggested"]
-    assert result["items"][0]["rewrites"][0]["reason_code"] == "ungrounded_rewrite"
-
-
-@pytest.mark.parametrize("original,current,proposed,reason", [
-    (ORIGINAL, ORIGINAL, "I wrote parser tests.", None),
-    (ORIGINAL, "Tests.", "I wrote parser tests.", "not_shorter"),
-    (ORIGINAL, ORIGINAL, ORIGINAL, "not_shorter"),
-    ("I wrote tests🧪", "I wrote tests🧪", "I wrote tests.", "not_shorter"),
-    ("My team built a parser. I wrote tests. Additional context for length.",
-     "My team built a parser. I wrote tests. Additional context for length.",
-     "My team built a parser. I wrote tests.", None),
-    (ORIGINAL, ORIGINAL + " Extra manual text.", ORIGINAL + " More.", "not_shorter"),
-    ("Built Python ML models during coursework.", "Built Python ML models during coursework.", "Built ML models during coursework.", None),
-])
-def test_rewrite_requires_strictly_less_than_original_and_current_codepoints(endpoint, original, current, proposed, reason):
-    doc = endpoint.doc([original])
-    doc["document"]["sections"][1]["blocks"][0]["lines"][-1]["text"] = current
-    endpoint.rewrites = {"exp-0": proposed}
-    body = completed(endpoint, endpoint.submit(doc), doc)
-    row = body["items"][0]["rewrites"][0]
-    assert row["reason_code"] == reason
-    assert row["status"] == ("skipped" if reason else "suggested")
-    assert row["proposed_text"] == (None if reason else proposed)
+    response = endpoint.client.post(PATH, json={**payload(doc), "locale": locale})
+    result = completed(endpoint, response, doc)
+    assert result["items"][0]["action"] == "compress" and result["items"][0]["rewrites"] == []
+    assert proposed not in response.text
+    assert "Return rewrites: [] for every item" in endpoint.calls[0][0][0]["content"]
 
 
 @pytest.mark.parametrize("kind", ["context_too_large", "target_too_large", "no_plan_items", "model_unavailable"])

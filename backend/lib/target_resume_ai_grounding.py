@@ -314,11 +314,11 @@ def personal_actions(text, gerunds=False):
     return found
 
 
-# The gates with no review behind them (the selection plan's compress rewrites,
-# a multi-source merge) read actions as source-checks-v3 did. "Jointly", "with
-# two classmates", "a team that built" and a "design team" noun never hide an
-# action there; personal_actions reads that wider team context only because
-# every rewrite claim_upgrade_findings passes still goes to the review.
+# The multi-source check (supported_claim_upgrade_detected) reads actions as
+# source-checks-v3 did. "Jointly", "with two classmates", "a team that built" and
+# a "design team" noun never hide an action there; personal_actions reads that
+# wider team context only because every rewrite claim_upgrade_findings passes
+# still goes to the review.
 _STATED_ACTIONS = {**ACTIONS, "design": r"\b(?:designed|design)\b|设计"}
 
 

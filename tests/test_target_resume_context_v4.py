@@ -218,9 +218,8 @@ def test_official_research_is_not_student_experience_but_own_source_can_support_
         if not supported:
             assert all(row['reason_code'] == 'beyond_allowed_edit' and row['suggestion']['proposed_text'] is None for row in rows)
         return
-    rows = [row for item in result['items'] for row in item['rewrites']]
-    assert rows and all(row['status'] == ('suggested' if supported else 'skipped') for row in rows)
-    if not supported: assert all(row['reason_code'] == 'ungrounded_rewrite' for row in rows)
+    # The plan shows no wording, supported or not: no review checks it.
+    assert all(item['rewrites'] == [] for item in result['items']) and state['replacement'] not in response.text
 
 
 @pytest.mark.parametrize('path', PATHS)

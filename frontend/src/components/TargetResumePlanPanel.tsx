@@ -233,7 +233,7 @@ export default function TargetResumePlanPanel({ supportGroups, draft, profile, p
           {block.lines.some(line => !line.included) && <p className="mt-2 text-xs text-gray-600">{copy('Hidden fields stay hidden. This choice does not change field selections.', '未选用的字段保持不选用，此安排不改变字段选择。')}</p>}
           <label className="mt-3 flex items-start gap-2 text-sm"><input type="checkbox" aria-label={`Use content choice: ${item.block_id}`} checked={selections.has(item.block_id)} disabled={!ready || working || !!action.error}
             onChange={event => setSelections(old => toggle(old, item.block_id, event.target.checked))} />{!block.included && item.action !== 'omit' ? copy('Re-include this block using this choice', '采用此安排，重新选用内容块') : copy('Use this content choice', '采用这项选材安排')}</label>
-          {item.action === 'compress' && <p className="mt-2 text-xs text-gray-600">{copy('Shorter wording is optional below. Selecting the content choice alone keeps the current text.', '短稿需在下方另行确认。只采用选材安排会保留当前表述。')}</p>}
+          {item.action === 'compress' && item.rewrites.length > 0 && <p className="mt-2 text-xs text-gray-600">{copy('Shorter wording is optional below. Selecting the content choice alone keeps the current text.', '短稿需在下方另行确认。只采用选材安排会保留当前表述。')}</p>}
           {item.rewrites.map(rewrite => <div key={rewrite.unit_id} className="mt-3 rounded-lg border p-3" data-plan-rewrite-id={rewrite.unit_id}>
             {rewrite.status === 'suggested' ? <>
               <h5 className="text-sm font-medium">{rewrite.source_evidence ? copy('Combined wording — check the facts', '合并表述：请核对事实') : copy('Shorter wording — check the facts', '短稿：请核对事实')}</h5>

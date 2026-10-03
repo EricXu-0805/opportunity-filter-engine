@@ -105,6 +105,15 @@ describe('whole draft content planning', () => {
     expect(screen.getByText(code === 'not_shorter' ? 'The candidate was not shorter. Current wording is kept.' : 'The candidate failed source checks. Current wording is kept.')).toBeVisible();
     select('project-one'); apply(); expect(project(vi.mocked(p.onApply).mock.calls[0][1]).lines).toEqual(project(p.draft).lines);
   });
+  it('shows a compress choice that carries no wording without promising shorter wording below', async () => {
+    mocked.generate.mockImplementation(async payload => { const value = await response(payload); for (const item of value.items) item.rewrites = []; return value; });
+    const p = props(); render(<TargetResumePlanPanel {...p} />); await generate(); await reviewReady();
+    const card = document.querySelector('[data-plan-block-id="project-one"]') as HTMLElement;
+    expect(within(card).getByText(/Suggestion：Shorten/)).toBeVisible();
+    expect(within(card).queryByText(/Shorter wording is optional below/)).toBeNull();
+    expect(screen.queryByRole('checkbox', { name: 'Use shorter wording: line-6' })).toBeNull();
+    select('project-one'); apply(); expect(project(vi.mocked(p.onApply).mock.calls[0][1]).lines).toEqual(project(p.draft).lines);
+  });
   it.each(['missing block', 'false quote'] as const)('rejects an invalid whole plan (%s) instead of showing partial advice', async defect => {
     mocked.generate.mockImplementation(async payload => { const value = await response(payload); if (defect === 'missing block') value.items.pop(); else value.items[0].source_evidence[0].quote = 'FABRICATED'; return value; });
     const p = props(); render(<TargetResumePlanPanel {...p} />); await generate(); expect(await screen.findByRole('alert')).toHaveTextContent('could not be verified');

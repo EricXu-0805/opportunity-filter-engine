@@ -9,7 +9,7 @@ tests hold every unit to BUDGET_SECONDS of process time and every request to a s
 event-loop heartbeat. The units are adversarial lines at the cap (repeated denials, a run
 of spaces, repeated verbs, years, status and qualifier words, commas, Chinese status marks)
 and two ordinary ones; the requests are the shapes the fifth review sent through
-/api/tailor and full target.
+/api/tailor and full target, and the selection plan's compress proposals.
 """
 from __future__ import annotations
 
@@ -19,10 +19,14 @@ import time
 
 import httpx
 import pytest
+from fastapi.testclient import TestClient
 
 from backend.lib import evidence_map as em
 from backend.lib import target_resume_ai as engine
+from backend.lib.target_resume_ai_schema import MAX_EXPERIENCE_CHARACTERS
 from backend.main import app
+from backend.routes import target_resume_ai as full_target_route
+from tests import test_target_resume_plan as plan_tests
 from tests.test_tailor_review import CAP_SHAPES, PROFILE, _repeat_to, _verb_first_model, endpoint  # noqa: F401
 from tests.test_target_resume_ai import PATH as FULL_TARGET_PATH
 from tests.test_target_resume_ai import accept_all, payload, row
@@ -224,4 +228,34 @@ def test_the_event_loop_answers_while_full_target_checks_a_line_at_the_cap(full_
     assert response.status_code == 200, response.text
     [receipt] = response.json()["receipts"]
     assert (receipt["status"], receipt["suggestion"]["proposed_text"]) == ("suggested", rewrite), receipt
+    assert max(gaps) <= HEARTBEAT_SECONDS, max(gaps)
+
+
+PLAN_SHAPES = {
+    "negated facts": lambda lead: (lead + _repeat_to("led y. not led z. ", MAX_EXPERIENCE_CHARACTERS - len(lead)),
+                                   lambda original: "Led y. " + original[len(lead):]),
+    "space run": lambda lead: ("Built a" + " " * (MAX_EXPERIENCE_CHARACTERS - 45) + "website for the lab and tested it.",
+                               lambda original: "Built a website for the lab and tested it."),
+}
+
+
+@pytest.mark.parametrize("shape", list(PLAN_SHAPES))
+def test_the_event_loop_answers_while_the_selection_plan_reads_a_proposal_at_the_cap(monkeypatch, shape):
+    """main's gate read a compress proposal inline, for seconds at 3,000 characters; the plan now shows none."""
+    original, rewrite = PLAN_SHAPES[shape]("Responsible for leading y. ")
+    opportunity = {"id": "plan-target", "title": "Research Tools", "organization": "Example Lab",
+                   "source_url": "https://example.edu/lab", "description_clean": "Research Python parsers.",
+                   "eligibility": {"skills_required": ["Python"]}, "source_type": "campus_program",
+                   "opportunity_type": "research", "metadata": {"is_active": True}}
+    plan = plan_tests.Endpoint(TestClient(app), opportunity)
+    monkeypatch.setattr(full_target_route, "load_opportunities_by_id", lambda: {opportunity["id"]: opportunity})
+    monkeypatch.setattr(full_target_route, "is_configured", lambda: True)
+    monkeypatch.setattr(engine.llm_budget, "exhausted", lambda: False)
+    monkeypatch.setattr(engine, "chat_completion", plan.model)
+    doc = plan.doc([original])
+    plan.rewrites = {"exp-0": rewrite(original)}
+    response, gaps = asyncio.run(_heartbeat(lambda client: client.post(plan_tests.PATH, json=plan_tests.payload(doc))))
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert result["complete"] and [item["rewrites"] for item in result["items"]] == [[]], result
     assert max(gaps) <= HEARTBEAT_SECONDS, max(gaps)

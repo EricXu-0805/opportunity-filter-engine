@@ -294,21 +294,18 @@ def test_target_and_interest_cannot_become_student_skills():
     refused(result[0])
 
 
-def test_grouped_plan_rewrite_uses_combined_length_and_preserves_sources():
+def test_grouped_plan_merge_is_not_shown_and_the_group_is_echoed():
     doc = document(); req = request(doc, group(doc), planning=True)
     blocks, manifest, scope = plan.prepare_plan(req, doc)
     line = next(line for line in blocks[0]['lines'] if line['evidence']['id'] == 'exp-0')
     proposed = 'I wrote Python parser tests and ran 12 parser test cases.'
-    assert len(proposed) > len(ORIGINAL) and len(proposed) < len(ORIGINAL) + len(SUPPORT)
     source_quote = {'unit_id': line['unit_id'], 'start': 0, 'end': len(ORIGINAL), 'quote': ORIGINAL}
     row = {'section_id': blocks[0]['section_id'], 'block_id': blocks[0]['block_id'], 'action': 'compress',
            'reason': 'space_tradeoff', 'target_evidence': [QUOTE], 'source_evidence': [source_quote],
            'rewrites': [{'unit_id': line['unit_id'], 'proposed_text': proposed}]}
     items, error = plan.parse_plan_output(json.dumps({'items': [row]}), blocks, doc['target_snapshot'], 'zh')
-    assert error is None
-    rewrite = items[0]['rewrites'][0]
-    assert rewrite['status'] == 'suggested' and rewrite['proposed_text'] == proposed
-    assert [q['quote'] for q in rewrite['source_evidence']] == [ORIGINAL, SUPPORT]
+    # No review checks the plan's wording, so a merged line is not shown.
+    assert error is None and items[0]['rewrites'] == []
     assert items[0]['reason'].startswith('建议压缩')
     assert plan.plan_response(req, doc, manifest, scope, items, None, 1)['support_groups'] == group(doc)
 
@@ -359,9 +356,12 @@ def test_real_route_support_direction_receipts_and_untrusted_reason(monkeypatch,
     result = response.json()
     assert result['support_groups'] == group(doc) and len(calls) == 1 and doc == before
     assert ATTACK not in response.text
-    row = result['items'][0]['rewrites'][0] if planning else result['receipts'][0]['suggestion']
-    assert row['proposed_text'] == proposed
-    assert [q['quote'] for q in row['source_evidence']] == originals
+    if planning:  # the plan shows no wording; the suggestions' merge passed the review
+        assert result['items'][0]['rewrites'] == [] and proposed not in response.text
+    else:
+        row = result['receipts'][0]['suggestion']
+        assert row['proposed_text'] == proposed
+        assert [q['quote'] for q in row['source_evidence']] == originals
     assert result['pipeline_version'] == ('full-target-plan-v4' if planning else 'full-target-v6')
     assert result['logical_calls'] == 1 + (not planning)  # the suggestions' review is a second call
     assert 'private' in response.headers['cache-control']
@@ -439,8 +439,6 @@ def test_routes_refuse_unrecognized_multi_source_metric_transfer(monkeypatch, pl
     assert response.status_code == 200 and len(calls) == 1
     result = response.json()
     if planning:
-        row = result['items'][0]['rewrites'][0]
-        assert row['status'] == 'skipped' and row['reason_code'] == 'ungrounded_rewrite', result
-        assert row['proposed_text'] is None
+        assert result['items'][0]['rewrites'] == [] and proposed not in response.text, result
     else:
         refused(result['receipts'][0])

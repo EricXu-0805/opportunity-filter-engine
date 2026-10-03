@@ -237,7 +237,7 @@ def test_target_research_cannot_become_student_accomplishment(endpoint, path):
         assert experience['status'] == 'unchanged' and experience['reason_code'] == 'beyond_allowed_edit'
         assert experience['suggestion']['proposed_text'] is None
     else:
-        assert any(rewrite['reason_code'] == 'ungrounded_rewrite' for item in result['items'] for rewrite in item['rewrites'])
+        assert all(item['rewrites'] == [] for item in result['items']) and state['replacement'] not in response.text
     assert len(state['calls']) == 1
 
 
