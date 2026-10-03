@@ -19,18 +19,38 @@ export function isPushSupported(): boolean {
     && 'Notification' in window;
 }
 
+async function browserSubscription(): Promise<PushSubscription | null> {
+  const reg = await navigator.serviceWorker.getRegistration('/sw.js');
+  return reg ? reg.pushManager.getSubscription() : null;
+}
+
+/**
+ * 'subscribed' means the CURRENT identity gets reminders here: the browser
+ * holds a subscription and this identity owns a push_subscriptions row for
+ * its endpoint. The browser subscription alone outlives sign-out and account
+ * switches, so on its own it says nothing about who is being notified.
+ * Rejects when the row cannot be read.
+ */
 export async function getPushStatus(): Promise<PushStatus> {
   if (!isPushSupported()) return 'unsupported';
   if (Notification.permission === 'denied') return 'denied';
+  let sub: PushSubscription | null;
   try {
-    const reg = await navigator.serviceWorker.getRegistration('/sw.js');
-    if (!reg) return Notification.permission === 'granted' ? 'default' : 'default';
-    const sub = await reg.pushManager.getSubscription();
-    if (sub) return 'subscribed';
-    return Notification.permission === 'granted' ? 'default' : 'default';
+    sub = await browserSubscription();
   } catch {
     return 'default';
   }
+  if (!sub) return 'default';
+  const deviceId = await getDeviceId();
+  if (!deviceId) return 'default';
+  const { data, error } = await supabase
+    .from('push_subscriptions')
+    .select('endpoint')
+    .eq('device_id', deviceId)
+    .eq('endpoint', sub.endpoint)
+    .maybeSingle();
+  if (error) throw new Error(`push status unreadable: ${error.message}`);
+  return data ? 'subscribed' : 'default';
 }
 
 export async function subscribeToPush(vapidPublicKey: string, token: OwnerToken): Promise<boolean> {
@@ -79,31 +99,70 @@ export async function subscribeToPush(vapidPublicKey: string, token: OwnerToken)
   return true;
 }
 
+async function deletePushRow(uid: string, endpoint: string): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('push_subscriptions')
+      .delete()
+      .eq('device_id', uid)
+      .eq('endpoint', endpoint);
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Resolves once this account's reminders can no longer reach this browser:
+ * its row is gone (nothing is sent) or the endpoint is dead (nothing
+ * arrives). Rejects when neither happened, so the toggle keeps reading "on".
+ */
 export async function unsubscribeFromPush(token: OwnerToken): Promise<void> {
   if (!isPushSupported()) return;
-  try {
-    const reg = await navigator.serviceWorker.getRegistration('/sw.js');
-    if (!reg) return;
-    const sub = await reg.pushManager.getSubscription();
-    if (!sub) return;
-    const endpoint = sub.endpoint;
-    // Decide ownership BEFORE dropping the browser-level subscription: a
-    // refusal after it would leave a dead endpoint with its row still live
-    // for the reminders cron and the toggle still reading "on".
-    const deviceId = await getDeviceId();
-    if (deviceId && !isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
-    await sub.unsubscribe();
-    if (deviceId) {
-      await supabase
-        .from('push_subscriptions')
-        .delete()
-        .eq('device_id', deviceId)
-        .eq('endpoint', endpoint);
-    }
-  } catch (err) {
-    // A refused write is not "unsubscribed": the browser is another account
-    // now, and the caller must not paint the old one's result.
-    if (err instanceof OwnerMismatchError) throw err;
-    /* everything else stays best-effort */
+  const sub = await browserSubscription();
+  if (!sub) return;
+  // Decide ownership before anything changes: a refused write is not
+  // "unsubscribed", and the browser may be another account by now.
+  const deviceId = await getDeviceId();
+  if (deviceId && !isOwnerTokenValid(token, deviceId)) throw new OwnerMismatchError();
+  // The row goes first. While it exists the reminders cron keeps sending to
+  // the endpoint, and a send to an endpoint the browser already dropped is
+  // counted as a failed delivery.
+  const rowGone = !deviceId || await deletePushRow(deviceId, sub.endpoint);
+  const endpointDead = await sub.unsubscribe().catch(() => false);
+  if (!rowGone && !endpointDead) {
+    throw new Error('push unsubscribe failed: the row and the browser subscription both remain');
   }
+}
+
+/**
+ * Deletes this browser's push row for the account about to sign out. It has
+ * to run before the sign-out: only that account's own session can delete the
+ * row (RLS: device_id = auth.uid()). Resolves false when such a row may be
+ * left behind; the caller then kills the endpoint once the sign-out is done.
+ */
+export async function releasePushForSignOut(): Promise<boolean> {
+  if (!isPushSupported()) return true;
+  try {
+    const sub = await browserSubscription();
+    if (!sub) return true;
+    // The session being signed out, read as it is: getDeviceId would mint a
+    // guest session if there were none.
+    const { data: { session } } = await supabase.auth.getSession();
+    const uid = session?.user?.id;
+    return uid ? await deletePushRow(uid, sub.endpoint) : false;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Kills this browser's push endpoint. For a row that outlived the session
+ * able to delete it: the cron keeps sending to that row, and only a dead
+ * endpoint stops the reminders arriving here.
+ */
+export async function dropBrowserPushSubscription(): Promise<void> {
+  if (!isPushSupported()) return;
+  const sub = await browserSubscription();
+  if (sub && !(await sub.unsubscribe())) throw new Error('the browser kept its push subscription');
 }
