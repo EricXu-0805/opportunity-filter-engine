@@ -1,7 +1,7 @@
 import type { ResumeParseResponse } from './types';
 import {
   BULLET_LINE, firstWord, glyphItemsEndWithStop, glyphLine, lineBreakText, lowercaseOpening, MAX_RESUME_TEXT_CHARACTERS,
-  resumeTextCharacters, weakWrapEvidence, wrapEvidence, wrapJoin,
+  RESUME_ROLE, resumeTextCharacters, weakWrapEvidence, wrapEvidence, wrapJoin,
 } from './resume-input';
 import { createPdfResourceLoaders, PDF_CMAP_URL, PDF_STANDARD_FONT_URL } from './pdf-resources';
 
@@ -94,7 +94,18 @@ function trimCourse(s: string): string {
   return s.replace(/^[ .\t]+/, '').replace(/[ .\t]+$/, '');
 }
 
-function extractCoursework(text: string): string[] {
+// A row under a coursework list that starts something of its own: a label
+// ("Honors: Dean's List") or an honor ("Dean's List, James Scholar").
+const NOT_COURSEWORK = /^[^,:：]{1,40}(?::\s|：)|\b(?:dean['’]?s list|scholars?|scholarships?|honou?rs?|awards?|prizes?|fellowships?|medal(?:ist)?|cum laude|finalist|winner|recipient)\b/iu;
+
+/** Course codes anywhere, and named courses on a labeled coursework line.
+ *  The text keeps a list cut inside a name ("…, Data" / "Structures and
+ *  Algorithms, …") on two lines, since the row under a list is as often an
+ *  organization or an honor. A coursework label says what the list is, so
+ *  the list goes on across a break the page marks as a possible wrap
+ *  (`possibleWraps`, offsets of line breaks in `text`) unless the next line
+ *  is a row of its own. */
+function extractCoursework(text: string, possibleWraps: ReadonlySet<number> = new Set()): string[] {
   const courses: string[] = [];
   for (const m of text.matchAll(COURSE_PATTERN)) {
     // A number in the calendar band is a venue or a date ("CVPR 2026",
@@ -107,10 +118,20 @@ function extractCoursework(text: string): string[] {
     if (NOT_A_DEPARTMENT.has(m[1].toUpperCase())) continue;
     courses.push(`${m[1]} ${m[2]}`);
   }
-  for (const line of text.split('\n')) {
-    const label = COURSEWORK_LABEL.exec(line);
+  const lines = text.split('\n');
+  let end = -1;
+  for (let index = 0; index < lines.length; index++) {
+    end += lines[index].length + 1;
+    const label = COURSEWORK_LABEL.exec(lines[index]);
     if (!label) continue;
-    for (const item of label[1].split(/[;,]/)) {
+    let list = label[1];
+    while (possibleWraps.has(end) && index + 1 < lines.length
+      && !NOT_COURSEWORK.test(lines[index + 1]) && !RESUME_ROLE.test(lines[index + 1])) {
+      index += 1;
+      end += lines[index].length + 1;
+      list += wrapJoin(list, lines[index]) + lines[index];
+    }
+    for (const item of list.split(/[;,]/)) {
       const name = trimCourse(item);
       if (name && /[A-Za-z]/.test(name) && name.length >= 3 && name.length <= 40) {
         courses.push(name);
@@ -335,36 +356,59 @@ function wrapSeparator(
     : !!edges && weakWrapEvidence(before, after, periodItem) && !cjkAwardRow(before, after));
   if (!evidence && !unsure) return null;
   if (unsure && (!edges || !edgeShown(shapes, index - 1, texts, edges))) return null;
-  // PDF.js measures runs, not glyphs, so the next line's first word and the
-  // space before it take their glyphs' share of the line's measured width.
-  // The weak hints that hold on any page keep the characters' share, which
-  // under-measures digits and capitals: measured by its glyphs, a number or
-  // a name after a preposition that can also end an item ("…we presented
-  // at" / "12 students…") would join more items that end within a word of
-  // the edge. (For a lone word the two shares are the same.) Where the text
-  // itself says it goes on, a generous estimate decides; otherwise the plain
-  // one must.
-  const { left, right } = column(index - 1);
+  // A narrow column of short items ("Python" / "SolidWorks") is a list, not
+  // a paragraph, unless the text itself says it goes on.
+  const area = column(index - 1);
+  if (area.right - area.left < NARROW * prev.size && !evidence) return null;
+  // The weak hints that hold on any page keep the characters' share (see
+  // ranOutOfRoom): measured by its glyphs, a number or a name after a
+  // preposition that can also end an item ("…we presented at" / "12
+  // students…") would join more items that end within a word of the edge.
+  // For a lone word the two shares are the same.
+  const characterShare = !evidence && weakWrapEvidence(before, after, false);
+  return ranOutOfRoom(prev, next, after, area, evidence, characterShare) ? wrapJoin(before, after) : null;
+}
+
+/** Whether the line before ran out of room: the next line's first word and
+ *  the space before it could not have fitted before the column's edge.
+ *  PDF.js measures runs, not glyphs, so they take their glyphs' share of the
+ *  next line's measured width, or with `characterShare` their characters'
+ *  share, which under-measures digits and capitals. Where the text itself
+ *  says it goes on (`generous`), a generous estimate decides; otherwise the
+ *  plain one must. In a narrow column, a line that wraps runs most of its
+ *  width. */
+function ranOutOfRoom(prev: LineShape, next: LineShape, after: string, { left, right }: Column, generous: boolean, characterShare: boolean): boolean {
+  if (right - left < NARROW * prev.size && (!prev.wrappable || prev.right - prev.left < 0.75 * (right - left))) return false;
   const room = right - prev.right;
   const width = next.right - next.left;
-  const characterShare = !evidence && weakWrapEvidence(before, after, false);
   const space = characterShare ? SPACE * next.size : width * glyphWidth(' ') / glyphWidth(after);
   const word = characterShare ? width * Array.from(firstWord(after)).length / Array.from(after).length
     : width * glyphWidth(firstWord(after)) / glyphWidth(after);
-  if (right - left < NARROW * prev.size) {
-    // A narrow column of short items ("Python" / "SolidWorks") is a list, not
-    // a paragraph, unless the text itself says it goes on.
-    if (!prev.wrappable || prev.right - prev.left < 0.75 * (right - left) || !evidence || space + word * SLACK <= room) return null;
-  } else if (space + word <= room && !(evidence && space + word * SLACK > room)) return null;
-  return wrapJoin(before, after);
+  return space + word > room || (generous && space + word * SLACK > room);
+}
+
+/** A break that no hint joined where the page would have let one: the next
+ *  line goes on in the same paragraph, the page shows where the column
+ *  ends, and the line before ran out of room. A labeled list is its own
+ *  hint (see extractCoursework). */
+function possibleWrap(
+  shapes: Array<LineShape | null>, index: number, texts: string[], pitch: Map<number, number>,
+  column: (index: number) => Column, edges: readonly boolean[],
+): boolean {
+  const prev = shapes[index - 1];
+  const next = shapes[index];
+  return !!prev && !!next && sameParagraph(shapes, index, texts, pitch) && edgeShown(shapes, index - 1, texts, edges)
+    && ranOutOfRoom(prev, next, texts[index].trim(), column(index - 1), false, false);
 }
 
 /** Page text in PDF.js reading order. Runs are spaced by their geometry, so a
  *  word printed as several glyph runs ("Classi" "fi" "er") stays one word, and
  *  a line that only wraps is joined back into its paragraph. Items without a
  *  usable position keep the positionless rules: a space between items, a
- *  newline at every PDF.js line end. This does not reorder multi-column text. */
-function pageText(items: readonly unknown[]): string {
+ *  newline at every PDF.js line end. This does not reorder multi-column text.
+ *  `possibleWraps` holds the offsets of the line breaks left in the text
+ *  that the page would have let a hint join (see possibleWrap). */
+function pageText(items: readonly unknown[]): { text: string; possibleWraps: number[] } {
   let text = '';
   const breaks: number[] = [];
   const lines: VisualLine[] = [];
@@ -430,14 +474,18 @@ function pageText(items: readonly unknown[]): string {
     || (index + 1 < texts.length && wrapSeparator(shapes, index + 1, texts, pitch, false, column, null, hangs) !== null)));
   let out = texts[0];
   let bulletItem = glyph[0];
+  const possibleWraps: number[] = [];
   for (let index = 1; index < texts.length; index++) {
     const separator = wrapSeparator(shapes, index, texts, pitch, bulletItem && periodItems, column, edges, hangs);
     // A joined line stays in the item it continues; any other line opens one.
-    if (separator === null) bulletItem = glyph[index];
+    if (separator === null) {
+      bulletItem = glyph[index];
+      if (possibleWrap(shapes, index, texts, pitch, column, edges)) possibleWraps.push(out.length);
+    }
     out += separator ?? '\n';
     out += texts[index];
   }
-  return out;
+  return { text: out, possibleWraps };
 }
 
 function resourceFailure(): ResumeParseResponse {
@@ -470,6 +518,8 @@ export async function parseResumePDF(file: File): Promise<ResumeParseResponse> {
   }).promise;
 
   const textParts: string[] = [];
+  const possibleWraps = new Set<number>();
+  let offset = 0;
   const pagesWithoutText: number[] = [];
   let characterCount = 0;
   try {
@@ -479,7 +529,7 @@ export async function parseResumePDF(file: File): Promise<ResumeParseResponse> {
         const content = await page.getTextContent();
         if (resources.hasFailure()) return resourceFailure();
         // PDF.js includes marked-content objects without str.
-        const text = pageText(content.items);
+        const { text, possibleWraps: wraps } = pageText(content.items);
         characterCount += resumeTextCharacters(text) + (i > 1 ? 1 : 0);
         if (characterCount > MAX_RESUME_TEXT_CHARACTERS) {
           return {
@@ -489,6 +539,8 @@ export async function parseResumePDF(file: File): Promise<ResumeParseResponse> {
           };
         }
         if (!text.trim()) pagesWithoutText.push(i);
+        for (const at of wraps) possibleWraps.add(offset + at);
+        offset += text.length + 1;
         textParts.push(text);
       } finally {
         page.cleanup();
@@ -515,7 +567,7 @@ export async function parseResumePDF(file: File): Promise<ResumeParseResponse> {
   }
 
   const hits = extractSkills(rawText);
-  const coursework = extractCoursework(rawText);
+  const coursework = extractCoursework(rawText, possibleWraps);
   const interests = extractResearchInterests(rawText);
 
   return {

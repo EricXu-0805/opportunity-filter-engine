@@ -503,7 +503,7 @@ describe('real résumé PDFs keep every word and bullet intact', () => {
     pdfjs = await import(/* @vite-ignore */ library) as typeof import('pdfjs-dist');
   });
 
-  async function parseFixture(name: string) {
+  async function readFixture(name: string) {
     const bytes = readFileSync(join(FIXTURES, name));
     mockGetDocument.mockImplementation((options) => pdfjs.getDocument({
       data: new Uint8Array(options.data), cMapUrl: `${PDFJS}/cmaps/`, cMapPacked: true,
@@ -514,8 +514,9 @@ describe('real résumé PDFs keep every word and bullet intact', () => {
     Object.defineProperty(file, 'arrayBuffer', { value: async () => buffer.slice(0) });
     const result = await parseResumePDF(file);
     expect(result.success).toBe(true);
-    return result.raw_text;
+    return result;
   }
+  const parseFixture = async (name: string) => (await readFixture(name)).raw_text;
 
   // One file per stranger-walk report. Each wraps different lines: after
   // "baseline," and "(MATH" (CE-2), before "AUC", "& Statistics", "maps;" and
@@ -542,7 +543,11 @@ describe('real résumé PDFs keep every word and bullet intact', () => {
 
   it('keeps sidebar and main columns, graphic list bullets, right-aligned rows and one-item lists apart', async () => {
     // A right-aligned date or location is separated by a tab, not a space.
-    expect((await parseFixture('resume-layouts.pdf')).split('\n')).toEqual([
+    const layouts = await readFixture('resume-layouts.pdf');
+    // The sidebar's coursework list is cut inside "Biomedical Imaging"; its
+    // label says the list goes on.
+    expect(layouts.extracted_coursework).toEqual(['Biomedical Imaging', 'Differential Equations', 'Fluid Mechanics', 'Signals and Systems']);
+    expect(layouts.raw_text.split('\n')).toEqual([
       'Priya Natarajan',
       'priya.natarajan.test@example.com',
       '(217) 555-0142',
@@ -613,8 +618,10 @@ describe('real résumé PDFs keep every word and bullet intact', () => {
     // and honors rows after a list; items that open with a measure; and a
     // program's name after "check in".
     const pages = JSON.parse(readFileSync(join(FIXTURES, 'boundaries.json'), 'utf8')) as Array<{ lines: Array<[string, string]> }>;
-    expect((await parseFixture('resume-boundaries.pdf')).split('\n'))
-      .toEqual(pages.flatMap((page) => page.lines.map(([, text]) => text)));
+    const boundaries = await readFixture('resume-boundaries.pdf');
+    expect(boundaries.raw_text.split('\n')).toEqual(pages.flatMap((page) => page.lines.map(([, text]) => text)));
+    // The honors row right under the coursework list is not read as courses.
+    expect(boundaries.extracted_coursework).toEqual(['Algorithms', 'Computer Vision', 'Database Systems', 'Linear Algebra', 'Operating Systems']);
   });
 });
 
@@ -945,6 +952,39 @@ describe('positioned text items', () => {
       'BI, Tableau, Excel',
       'Relevant coursework: Introduction to Computer Science, Data',
       'Structures and Algorithms, Discrete Mathematics',
+    ]);
+  });
+
+  it('reads a coursework list across a wrap inside a course name', async () => {
+    // The text keeps "…, Data" / "Structures and Algorithms, …" apart: the
+    // row under a list is as often an organization or an honors line. Inside
+    // a labeled coursework list, the list says the line goes on where the
+    // page would let a hint join it: the same paragraph, an edge the page
+    // shows (the degree row's date), and no room left for the next word. A
+    // label, an honor or a role under the list is a row of its own, and a
+    // list that ends short of the edge ends there.
+    const parse = async (line: string, lineWidth: number, next: string) => {
+      mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+        at('B.S. in Computer Science', 50, 120, 748), at('Aug 2024 - May 2028', 460, 90, 748, { hasEOL: true }),
+        at(line, 50, lineWidth, 736, { hasEOL: true }),
+        at(next, 50, 210, 724),
+      ])) });
+      return parseResumePDF(fakeFile());
+    };
+    const line = 'Relevant coursework: Introduction to Computer Science, Data';
+    const result = await parse(line, 497, 'Structures and Algorithms, Discrete Mathematics');
+    expect(result.raw_text.split('\n').slice(1)).toEqual([line, 'Structures and Algorithms, Discrete Mathematics']);
+    expect(result.extracted_coursework).toEqual(['Data Structures and Algorithms', 'Discrete Mathematics', 'Introduction to Computer Science']);
+    for (const row of ["Dean's List, James Scholar", 'Honors: Dean’s List (4 semesters)', 'Teaching Assistant, Statistics Department']) {
+      expect((await parse(line, 497, row)).extracted_coursework).toEqual(['Data', 'Introduction to Computer Science']);
+    }
+    expect((await parse(line, 300, 'Structures and Algorithms, Discrete Mathematics')).extracted_coursework)
+      .toEqual(['Data', 'Introduction to Computer Science']);
+    const walk = await parse('Relevant coursework: Data Structures (CS 225), Computer Architecture (CS 233), Linear', 497,
+      'Algebra (MATH 257), Probability & Statistics (STAT 400).');
+    expect(walk.extracted_coursework).toEqual([
+      'CS 225', 'CS 233', 'Computer Architecture (CS 233)', 'Data Structures (CS 225)', 'Linear Algebra (MATH 257)',
+      'MATH 257', 'Probability & Statistics (STAT 400)', 'STAT 400',
     ]);
   });
 
