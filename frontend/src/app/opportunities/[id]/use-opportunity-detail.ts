@@ -546,9 +546,10 @@ export function useOpportunityDetail(opp: DetailTarget): UseOpportunityDetailRes
         // Gated at generation, not just at display. This suggestion is a
         // one-click "Use this date" that writes a reminder directly — the
         // fastest path in the product to a reminder that will never be
-        // delivered, because a replied/interviewing status on a closed
-        // listing is exactly the transition it fires on. Offering it and
-        // hiding the panel underneath would still leave the banner.
+        // delivered. Today the policy fires only on replied/interviewing,
+        // which the cron no longer sends for on any target (M49), so this
+        // always yields null; the gate keeps a future policy from offering a
+        // date on a status or target the cron skips.
         // `latestOppRef`, not the captured `opp`: this runs after an await,
         // and the record may have been replaced under the same id while the
         // write was in flight. The status change itself still lands — that is
