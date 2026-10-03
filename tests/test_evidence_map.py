@@ -624,7 +624,7 @@ class TestGate:
 
 def _row(text, links, ops):
     return {"unit_id": "b1", "decision": "rewrite", "text": text, "keep_reason": None,
-            "links": [dict(zip(("id", "anchor", "term", "source"), link), relation="same") for link in links],
+            "links": [dict(zip(("id", "anchor", "term", "source"), link, strict=True), relation="same") for link in links],
             "ops": ops}
 
 
