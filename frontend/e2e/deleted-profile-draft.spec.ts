@@ -211,6 +211,14 @@ async function verifyAbsentAfterExit(page: Page, surface: Surface, owner: Owner)
     await expect(page.getByRole('button', { name: 'Draft email', exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Renovate Resume', exact: true })).toHaveCount(0);
   }
+  // Leave that page before arming the read below: it can still have its own
+  // profile read in flight (Results has client-redirected to a home page that
+  // reads on mount). Answering after the waiter is armed but before `/`
+  // commits, that read would be taken as the fresh page's, and its body is
+  // gone once its document is replaced (getResponseBody: "No resource with
+  // given identifier found"). Replacing the document first cancels it, so the
+  // only profile read left to answer is the fresh home page's own.
+  await page.goto('/robots.txt');
   const read = page.waitForResponse(response => profileRead(response.url()) && response.status() === 200);
   await page.goto('/');
   expect(await (await read).json()).toEqual([]);
