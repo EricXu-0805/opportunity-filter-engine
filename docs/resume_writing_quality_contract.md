@@ -16,7 +16,26 @@ Scope: `/api/tailor`, `/api/tailor/renovate`, and `/api/tailor/bullet`. This sup
 - The selection plan's compress rewrites have no review behind them, so their gate keeps the source-checks-v3 reading of actions: team credit never hides a new action there. That gate is main's and reads none of the status rules above: it passes "Planning to recruit 30 participants" -> "Recruited 30 sleep-study participants" as main does.
 - The student's profile, confirmed skills and interests stay in the prompt as direction, never evidence. After "Use kept as new originals", `source_bullets` carries each line's evidence so reviewed wording never becomes evidence; the saved draft keeps those sources across a reload.
 
-The sections below describe the w13.5 evidence rules; where they differ from the list above (rejection behaviour, `source_evidence`), the list above applies.
+## Why each line stays in its own language
+
+w14.0 let a rewrite translate its line into the UI language, and it checked translations with the same closed word lists that guard same-language rewrites. Its review rounds did not converge: blockers and majors per review ran 4, 1, 1, 3, 4 and 8 (`recount.py`). A root-cause analysis of the branch as it stood on 2026-10-02 (its scripts are outside the repository) found translation to be the main cause:
+
+- Over 2,182 corpus and reviewer-probe pairs, translations were 179 of the 180 faithful lines the locks refused as fabrication, and 211 of the 255 traps only the review stopped (`recount.py`).
+- All 29 behavioural findings of the last four reviews involved a translation, including all 12 blockers and majors (`recount.py`).
+- 18 of the 21 patterns the translation families read were the same objects the relabel checks and the same-language claim locks read, so each translation fix moved other results (`shared_families.py`). Across the rounds the translation contract grew from 28 to 162 logic lines, while the same-language contract went from 196 to 220 (`subsystems.py`).
+
+The same-language checks held: their claim locks stopped 22 of the 35 same-language corpus traps that pass the contract and refused no faithful corpus or probe line (`recount.py`). So a rewrite stays in its line's language. If students turn out to need translation, it comes back as a separate, labelled step with its own calibrated review, never inside a rewrite.
+
+CPU was a separate cause. The claim locks also ran main's attribution parser, which pairs every claim with every fact: one 6,000-character Tailor source took 69.8 s and one full-target line 237.5 s (`cpu_probe.py`). Deleting that reading changed none of the 690 corpus outcomes (`parser_ablation.py`), so the locks no longer read it.
+
+## Frozen lists
+
+- The lock lists are frozen: every pattern and word table that the claim locks (`target_resume_ai_grounding.py`) and the contract's checks (`evidence_map.py`) read. `tests/test_lock_lists_frozen.py` pins each family's entry count, so a new word, exception or family fails it.
+- A same-language shape a reviewer finds goes to the review's calibration set and to the PR's limits, not into a list.
+- A lock changes only to remove a measured faithful refusal or a CPU path. The commit carries the measurement and updates the pinned count.
+- The review prompt changes only together with a new run of the 170-pair calibration (85 traps and 85 faithful pairs, 3 samples each), and the commit carries its result. The same test pins the prompt's digest; that prompt calibrated at 0/255 trap accepts and 17/255 faithful rejects.
+
+The sections below describe the w13.5 evidence rules; where they differ from the w14.1 list (rejection behaviour, `source_evidence`), the w14.1 list applies.
 
 ## What changed
 
