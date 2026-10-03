@@ -385,7 +385,7 @@ describe('TrackerCard — a reminder is only offered where one would be delivere
 
   function renderCard(
     opportunity: Record<string, unknown>,
-    status: 'contacted' | 'applied' | 'rejected',
+    status: 'contacted' | 'applied' | 'replied' | 'interviewing' | 'rejected',
     onSetReminder = () => {},
   ) {
     return render(
@@ -452,6 +452,45 @@ describe('TrackerCard — a reminder is only offered where one would be delivere
     expect(screen.getByText('tracker.reminderWontSend')).toBeInTheDocument();
     expect(screen.queryByText('tracker.reminderUnavailable')).toBeNull();
     for (const key of PRESETS) expect(screen.queryByText(key)).toBeNull();
+
+    fireEvent.click(screen.getByLabelText('tracker.clearReminder'));
+    expect(onSetReminder).toHaveBeenCalledWith('o1', null);
+  });
+
+  // A date in the past: the state in which a deliverable reminder reads as
+  // "follow up — due". Marking a reply is the usual way a row gets here with
+  // a date still stored, since the cron stops at a reply and no longer clears
+  // the date by sending it.
+  const PAST = '2020-01-01';
+
+  it('a due reminder the cron will send reads as due', () => {
+    // The control for the test below: same date, a status the cron selects.
+    renderCard(liveListing({ remindAt: PAST }), 'applied');
+    const label = screen.getByText(new RegExp(PAST));
+    expect(label.textContent).toBe(`tracker.followUpDue ${PAST}`);
+    expect(label.className).toContain('text-red-600');
+    expect(screen.queryByText('tracker.reminderWontSend')).toBeNull();
+  });
+
+  it.each([
+    ['replied', liveListing({ remindAt: PAST })],
+    ['interviewing', liveFaculty({ remindAt: PAST })],
+    ['rejected', liveListing({ remindAt: PAST })],
+    ['applied', deadListing(CLOSED_TRUTH, { remindAt: PAST })],
+  ] as const)('a past date on an undeliverable %s row is shown as a plain date, never as due', (status, opportunity) => {
+    // "Follow up — due" in red next to "this reminder will not be sent" is
+    // the card contradicting itself, and after a reply it is also the wrong
+    // advice. The date stays — it is the student's own record — in the
+    // neutral wording and colour the detail panel already uses for it.
+    const onSetReminder = vi.fn();
+    renderCard(opportunity, status, onSetReminder);
+    const label = screen.getByText(new RegExp(PAST));
+    expect(label.textContent).toBe(`tracker.remindOn ${PAST}`);
+    expect(label.className).toContain('text-gray-400');
+    expect(label.className).not.toContain('text-red-600');
+    expect(label.className).not.toContain('text-amber-600');
+    expect(screen.queryByText(/tracker\.followUpDue/)).toBeNull();
+    expect(screen.getByText('tracker.reminderWontSend')).toBeInTheDocument();
 
     fireEvent.click(screen.getByLabelText('tracker.clearReminder'));
     expect(onSetReminder).toHaveBeenCalledWith('o1', null);

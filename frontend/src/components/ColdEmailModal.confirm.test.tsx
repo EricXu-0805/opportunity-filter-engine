@@ -872,9 +872,9 @@ describe('ColdEmailModal — a follow-up reminder is only offered where one woul
   }
 
   // The migration creates 'contacted'; the RPC is an upsert that PRESERVES
-  // whatever status the row already had, so all three of these can come back
+  // whatever status the row already had, so either of these can come back
   // from a perfectly real send.
-  it.each(['contacted', 'applied', 'replied', 'interviewing'])(
+  it.each(['contacted', 'applied'])(
     'a %s row on a live listing gets the prompt, and a chip writes the reminder',
     async (status) => {
       await confirmWith(LIVE_LISTING_TARGET, status);
@@ -901,6 +901,10 @@ describe('ColdEmailModal — a follow-up reminder is only offered where one woul
     // where their outreach went, and for 'dismissed' the answer is nowhere.
     ['a rejected row', LIVE_LISTING_TARGET, 'rejected', 'coldEmail.confirmedKeptStatus'],
     ['a dismissed row', LIVE_LISTING_TARGET, 'dismissed', 'coldEmail.confirmedKeptDismissed'],
+    // A reply is already recorded, so the cron no longer sends follow-ups
+    // for this row: offering the chips would store a date that never fires.
+    ['a replied row', LIVE_LISTING_TARGET, 'replied', 'coldEmail.reminderUnavailable'],
+    ['an interviewing row', LIVE_LISTING_TARGET, 'interviewing', 'coldEmail.reminderUnavailable'],
     ['a closed target', CLOSED_TARGET, 'contacted', 'coldEmail.reminderUnavailable'],
     ['no provable target', undefined, 'contacted', 'coldEmail.reminderUnavailable'],
   ])('%s gets no reminder UI at all and writes nothing', async (_label, target, status, message) => {
