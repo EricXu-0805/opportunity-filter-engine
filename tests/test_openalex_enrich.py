@@ -494,9 +494,25 @@ class _Resp200:
         return self._payload
 
 
-def _work(title, year, field="Engineering"):
+_SCHOOL = "I1"
+
+
+def _authorship(author="A1", institutions=(_SCHOOL,), raw=(), lineage=None):
+    """One authorship as OpenAlex lists it; ``lineage`` maps an institution to
+    its ancestors (the institution itself is always first, as OpenAlex has it)."""
+    lineage = lineage or {}
+    return {"author": {"id": f"https://openalex.org/{author}"},
+            "institutions": [{"id": f"https://openalex.org/{i}",
+                              "lineage": [f"https://openalex.org/{x}"
+                                          for x in (i, *lineage.get(i, ()))]}
+                             for i in institutions],
+            "raw_affiliation_strings": list(raw)}
+
+
+def _work(title, year, field="Engineering", author="A1", institutions=(_SCHOOL,)):
     return {"display_name": title, "publication_year": year,
-            "primary_topic": {"field": {"display_name": field}}}
+            "primary_topic": {"field": {"display_name": field}},
+            "authorships": [_authorship(author, institutions)]}
 
 
 def test_author_recent_works_fetch(monkeypatch):
@@ -505,19 +521,21 @@ def test_author_recent_works_fetch(monkeypatch):
     def _fake_get(url, params=None, headers=None, timeout=None):
         seen["url"], seen["params"] = url, params
         return _Resp200({"results": [
-            _work("Soft  Robotic\nGrippers for Fruit Harvesting", 2026),
-            _work("No Year Paper", None),
-            _work("T" * 500, 2025),
-            _work("Fourth Paper Beyond Cap", 2024),
+            _work("Soft  Robotic\nGrippers for Fruit Harvesting", 2026, author="A123"),
+            _work("No Year Paper", None, author="A123"),
+            _work("T" * 500, 2025, author="A123"),
+            _work("Fourth Paper Beyond Cap", 2024, author="A123"),
         ]})
 
     monkeypatch.setattr(oa.requests, "get", _fake_get)
-    works = oa.author_recent_works("https://openalex.org/A123", "Mechanical Engineering")
+    works = oa.author_recent_works("https://openalex.org/A123", "Mechanical Engineering",
+                                   inst_id=_SCHOOL)
     assert seen["url"] == oa._WORKS_API
     assert seen["params"]["filter"] == "author.id:https://openalex.org/A123"
     assert seen["params"]["sort"] == "publication_date:desc"
     assert seen["params"]["per-page"] == oa._WORKS_FETCH
-    assert seen["params"]["select"] == "display_name,publication_year,primary_topic"
+    # authorships: the affiliation check reads this author's own entry
+    assert seen["params"]["select"] == "display_name,publication_year,primary_topic,authorships"
     # whitespace collapsed, yearless dropped, titles capped at 200, max 3 kept
     assert works[0] == {"title": "Soft Robotic Grippers for Fruit Harvesting", "year": 2026}
     assert len(works[1]["title"]) == 200
@@ -536,7 +554,7 @@ def test_author_recent_works_drops_wrong_field_conflation(monkeypatch):
         _work("Dense Passage Retrieval for Open-Domain QA", 2025, field="Computer Science"),
         _work("Evaluating Large Language Models", 2024, field="Computer Science"),
     ]}))
-    works = oa.author_recent_works("A1", "Department of Computer Science")
+    works = oa.author_recent_works("A1", "Department of Computer Science", inst_id=_SCHOOL)
     assert [w["title"] for w in works] == [
         "Dense Passage Retrieval for Open-Domain QA",
         "Evaluating Large Language Models",
@@ -575,14 +593,15 @@ def test_the_authors_own_fields_outrank_the_department_family(monkeypatch):
     assert "Computer Science" in oa._dept_fields(dept)
     assert "Medicine" not in oa._dept_fields(dept)
 
-    assert [w["title"] for w in oa.author_recent_works("A1", dept)] == [
+    assert [w["title"] for w in oa.author_recent_works("A1", dept, inst_id=_SCHOOL)] == [
         "SearchAuditor: Auditing Long-Horizon Search Agents",
         "Spectral-Spatial Networks for Geochemical Anomalies",
         "Crafter: Editable Scientific Figure Generation",
     ]
     assert [
         w["title"] for w in
-        oa.author_recent_works("A1", dept, author_fields=["Medicine", "Medicine", "Engineering"])
+        oa.author_recent_works("A1", dept, author_fields=["Medicine", "Medicine", "Engineering"],
+                               inst_id=_SCHOOL)
     ] == ["Subspace Imaging for High-Resolution MR Spectroscopy"]
 
 
@@ -592,7 +611,7 @@ def test_author_recent_works_ungated_dept_keeps_all(monkeypatch):
     monkeypatch.setattr(oa.requests, "get", lambda *a, **k: _Resp200({"results": [
         _work("An Interdisciplinary Study", 2026, field="Medicine"),
     ]}))
-    assert oa.author_recent_works("A1", "Zzz Unit") == [
+    assert oa.author_recent_works("A1", "Zzz Unit", inst_id=_SCHOOL) == [
         {"title": "An Interdisciplinary Study", "year": 2026}]
 
 
@@ -602,7 +621,7 @@ def test_author_recent_works_dedups_preprint_published_pairs(monkeypatch):
         _work("same  paper twice", 2026),
         _work("A Different Paper", 2025),
     ]}))
-    works = oa.author_recent_works("A1", "Electrical Engineering")
+    works = oa.author_recent_works("A1", "Electrical Engineering", inst_id=_SCHOOL)
     assert [w["title"] for w in works] == ["Same Paper Twice", "A Different Paper"]
 
 
@@ -1704,7 +1723,8 @@ def test_a_book_s_front_matter_is_not_a_recent_publication():
         _work("Mapping Refuge: Feminist Cartographies of Displacement", 2024,
               field="Social Sciences"),
     ]
-    out = oa._usable_works(raw, "Department of Geography and the Environment")
+    out = oa._usable_works(raw, "Department of Geography and the Environment",
+                           author_id="A1", inst_id=_SCHOOL)
     assert [w["title"] for w in out] == [
         "Mapping Refuge: Feminist Cartographies of Displacement"]
 
@@ -1743,3 +1763,365 @@ def test_apply_drops_front_matter_a_previous_gate_already_stored():
     assert "recent_works" not in opp["metadata"]
     assert "publication_attribution_status" not in opp["metadata"]
     assert opp["metadata"]["works_gate"] == oa._WORKS_GATE
+
+
+# --- the per-paper affiliation check ----------------------------------------
+#
+# Production, 2026-09-30: UIUC's Hua Li (A5113920217, verified at gate 3) was
+# listing a GE HealthCare engineer's diffusion-MRI paper and a Nanjing control
+# theorist's paper as her own, and a student's cold email opened with the
+# first. The author id was the right one; OpenAlex had merged other Hua Lis
+# into it. Each of those papers names its author's real employer on the Hua Li
+# authorship, which no gate read.
+
+_GE = "I4210137050"
+
+
+def test_only_papers_that_place_the_author_at_the_school_are_cited():
+    raw = [
+        _work("Engineering clinical translation of OGSE diffusion MRI", 2026,
+              institutions=(_GE,)),
+        _work("A Paper Written At The School", 2025),
+        _work("A Paper From The College Of Medicine", 2025, institutions=("I77",)),
+    ]
+    # The college is its own OpenAlex institution, under the school.
+    raw[2]["authorships"] = [_authorship("A1", ("I77",), lineage={"I77": (_SCHOOL,)})]
+    out = oa._usable_works(raw, "Bioengineering", author_id="A1", inst_id=_SCHOOL)
+    assert [w["title"] for w in out] == [
+        "A Paper Written At The School", "A Paper From The College Of Medicine"]
+
+
+def test_the_school_is_read_off_this_author_s_entry_not_the_paper_s():
+    # A co-author at the school says nothing about who THIS author is.
+    work = _work("Someone Else's Paper", 2026, institutions=(_GE,))
+    work["authorships"].append(_authorship("A2", (_SCHOOL,)))
+    assert oa._paper_affiliation(work, "A1", _SCHOOL) == "elsewhere"
+    assert oa._usable_works([work], "", author_id="A1", inst_id=_SCHOOL) == []
+    # ...and a paper this author is not on at all is not theirs either: a
+    # per-person fetch can hand back a big collaboration whose authorship list
+    # OpenAlex truncated before reaching them.
+    assert oa._paper_affiliation(work, "A9", _SCHOOL) == "not_an_author"
+    assert oa._usable_works([work], "", author_id="A9", inst_id=_SCHOOL) == []
+
+
+def test_lineage_runs_down_from_the_school_never_up_from_it():
+    # OpenAlex files "University of Illinois System" as its own institution with
+    # no relation to the Urbana campus, and campuses list themselves only. A
+    # system names three campuses, so it cannot place anyone at one of them.
+    system = _work("A Paper Signed By The System", 2026, institutions=("I2801919071",))
+    assert oa._paper_affiliation(system, "A1", _SCHOOL) == "elsewhere"
+
+
+def test_an_authorship_with_no_institution_follows_the_measured_rule():
+    # 67 of 592 sampled papers list nothing at all; read by hand, 64 were the
+    # professor's own (chapters, reviews, abstracts, preprints) and 1 was a
+    # namesake's. A raw string OpenAlex could not resolve is a stated
+    # affiliation that is not the school, and the two clearest namesakes in
+    # the sample looked like this.
+    nothing = _work("Erecting Real Men", 2026, institutions=())
+    blank = _work("A Chapter With A Blank Affiliation", 2026, institutions=())
+    blank["authorships"][0]["raw_affiliation_strings"] = ["  "]
+    stated = _work("Engineering clinical translation of OGSE diffusion MRI", 2025,
+                   institutions=())
+    stated["authorships"][0]["raw_affiliation_strings"] = [
+        "Application Engineering GE HealthCare  Waukesha Wisconsin USA"]
+
+    assert oa._paper_affiliation(nothing, "A1", _SCHOOL) == "unlisted"
+    assert oa._paper_affiliation(blank, "A1", _SCHOOL) == "unlisted"
+    assert oa._paper_affiliation(stated, "A1", _SCHOOL) == "unresolved"
+    out = oa._usable_works([nothing, blank, stated], "", author_id="A1", inst_id=_SCHOOL)
+    assert [w["title"] for w in out] == ["Erecting Real Men", "A Chapter With A Blank Affiliation"]
+
+
+def test_a_preprint_listing_nothing_cannot_outvote_its_journal_version():
+    # Same title, two works. The journal version names another employer, so
+    # the affiliation-less preprint ahead of it in date order is not evidence
+    # enough to cite the paper; a version AT the school still wins.
+    preprint = _work("Vanadium Redox Flow Batteries", 2026, institutions=())
+    journal = _work("Vanadium Redox Flow Batteries", 2025, institutions=(_GE,))
+    assert oa._usable_works([preprint, journal], "", author_id="A1", inst_id=_SCHOOL) == []
+
+    ours = _work("Vanadium Redox Flow Batteries", 2025)
+    assert oa._usable_works([preprint, journal, ours], "", author_id="A1",
+                            inst_id=_SCHOOL) == [
+        {"title": "Vanadium Redox Flow Batteries", "year": 2026}]
+
+
+def test_the_roster_harvest_cites_only_the_school_s_papers(monkeypatch, tmp_path):
+    opp = {"id": "faculty-bioe-1", "school": "uiuc", "source_type": "faculty_research",
+           "pi_name": "Hua Li", "url": "https://x.edu/hua-li",
+           "department": "Bioengineering"}
+    monkeypatch.setattr(oa, "SCHOOL_INST", {"uiuc": _SCHOOL})
+    monkeypatch.setattr(oa, "_warned_429", False)
+    (tmp_path / "uiuc.json").write_text(json.dumps({
+        "complete": True, "expected": 1,
+        "authors": [{"id": "https://openalex.org/A5113920217", "name": "Hua Li",
+                     "works": 54, "topics": ["medical imaging"],
+                     "fields": ["Medicine", "Computer Science", "Engineering"]}]}))
+    aid = "A5113920217"
+    monkeypatch.setattr(oa, "works_for_authors", lambda ids, **kw: {aid: [
+        _work("Dynamic Reinforcement Learning Control for Fractional-Order Neural Networks",
+              2026, field="Computer Science", author=aid, institutions=("I41198531",)),
+        _work("Engineering clinical translation of OGSE diffusion MRI", 2025,
+              field="Medicine", author=aid, institutions=(_GE,)),
+        _work("Proton Arc Therapy Planning", 2025, field="Medicine", author=aid),
+    ]})
+    mapping, _ = oa.harvest_works_by_roster([opp], schools=["uiuc"], roster_dir=str(tmp_path))
+    assert mapping[oa._person_key(opp)] == {
+        "author_id": aid, "works": [{"title": "Proton Arc Therapy Planning", "year": 2025}]}
+
+
+# --- recheck-works: the papers verified records already hold -------------------
+
+def _held(rid, author, titles, school="uiuc"):
+    return {"id": rid, "school": school, "source_type": "faculty_research",
+            "pi_name": f"Person {rid}", "url": f"https://x.edu/{rid}",
+            "metadata": {"recent_works": [{"title": t, "year": 2025} for t in titles],
+                         "publication_attribution_status": oa.ATTRIBUTION_VERIFIED,
+                         "publication_author_id": f"https://openalex.org/{author}",
+                         "works_gate": oa._WORKS_GATE}}
+
+
+def _page(works, count=None):
+    return {"results": works, "meta": {"count": len(works) if count is None else count}}
+
+
+def _reader(pages, calls, remaining=900):
+    """Serve ``pages`` in order, recording each request's params."""
+    def read(params, *, url):
+        assert url == oa._WORKS_API
+        calls.append(params)
+        page = pages[len(calls) - 1]
+        if isinstance(page, str):
+            return None, page, {"remaining": remaining}
+        return page, None, {"remaining": remaining}
+    return read
+
+
+def test_recheck_removes_only_the_papers_that_fail(monkeypatch):
+    monkeypatch.setattr(oa, "SCHOOL_INST", {"uiuc": _SCHOOL})
+    rec = _held("f1", "A1", ["Ours", "A Namesake's", "A Chapter"])
+    calls = []
+    read = _reader([_page([
+        _work("Ours", 2025),
+        _work("A Namesake's", 2025, institutions=(_GE,)),
+        _work("A Chapter", 2025, institutions=()),
+        _work("Something Newer We Do Not Hold", 2026),
+    ])], calls)
+    result = oa.recheck_works([rec], max_requests=5, read=read)
+    out = result["outcomes"]["f1"]
+    assert out["status"] == "checked"
+    assert [(p["title"], p["verdict"]) for p in out["removed"]] == [("A Namesake's", "elsewhere")]
+    assert [p["title"] for p in out["kept_unlisted"]] == ["A Chapter"]
+    assert calls[0]["filter"] == "author.id:A1"
+    assert "authorships" in calls[0]["select"]
+
+    assert oa.apply_recheck([rec], result["outcomes"]) == 1
+    # Removed, never added or reordered, and the record stays verified.
+    assert [w["title"] for w in rec["metadata"]["recent_works"]] == ["Ours", "A Chapter"]
+    assert works_are_verified(rec)
+
+
+def test_a_record_left_with_nothing_is_retracted(monkeypatch):
+    monkeypatch.setattr(oa, "SCHOOL_INST", {"uiuc": _SCHOOL})
+    rec = _held("f1", "A1", ["A Namesake's"])
+    read = _reader([_page([_work("A Namesake's", 2025, institutions=(_GE,))])], [])
+    result = oa.recheck_works([rec], max_requests=5, read=read)
+    assert oa.apply_recheck([rec], result["outcomes"]) == 1
+    md = rec["metadata"]
+    assert "recent_works" not in md and "publication_author_id" not in md
+    assert not works_are_verified(rec)
+    assert md["works_gate"] == oa._WORKS_GATE
+
+
+def test_a_paper_the_recheck_cannot_find_keeps_its_place(monkeypatch):
+    # Every work OpenAlex lists for the author was read and the title is not
+    # among them. Not finding it is not a verdict on its affiliation.
+    monkeypatch.setattr(oa, "SCHOOL_INST", {"uiuc": _SCHOOL})
+    rec = _held("f1", "A1", ["Ours", "Moved To Another Author Id"])
+    read = _reader([_page([_work("Ours", 2025)])], [])
+    out = oa.recheck_works([rec], max_requests=5, read=read)["outcomes"]["f1"]
+    assert out["status"] == "partial" and out["search"] == "exhausted"
+    assert [p["title"] for p in out["unfound"]] == ["Moved To Another Author Id"]
+    assert out["after"] == out["before"]
+
+
+def test_recheck_rounds_narrow_the_filter_and_page_deeper_only_when_stuck(monkeypatch):
+    monkeypatch.setattr(oa, "SCHOOL_INST", {"uiuc": _SCHOOL})
+    monkeypatch.setattr(oa, "_RECHECK_PAGE_SIZE", 2)
+    prolific = _held("f1", "A1", ["A1 Newest"])
+    quiet = _held("f2", "A2", ["A2 Paper"])
+    calls = []
+    read = _reader([
+        _page([_work("A1 Newest", 2026, author="A1"), _work("A1 Older", 2026, author="A1")],
+              count=9),
+        # A1 is settled and leaves the filter: page 1 again, for A2 alone,
+        _page([_work("A2 Other", 2026, author="A2"), _work("A2 Other 2", 2026, author="A2")],
+              count=5),
+        # ...and with nobody settled by that page, the same filter one page on.
+        _page([_work("A2 Paper", 2025, author="A2")], count=5),
+    ], calls)
+    result = oa.recheck_works([prolific, quiet], max_requests=10, read=read)
+    assert [(c["filter"], c["page"]) for c in calls] == [
+        ("author.id:A1|A2", 1), ("author.id:A2", 1), ("author.id:A2", 2)]
+    assert {o["search"] for o in result["outcomes"].values()} == {"located"}
+
+
+def test_a_batch_that_never_finds_a_title_stops_at_its_page_cap(monkeypatch):
+    monkeypatch.setattr(oa, "SCHOOL_INST", {"uiuc": _SCHOOL})
+    monkeypatch.setattr(oa, "_RECHECK_PAGE_SIZE", 1)
+    monkeypatch.setattr(oa, "_RECHECK_BATCH_PAGES", 2)
+    rec = _held("f1", "A1", ["Deep In The List"])
+    calls = []
+    read = _reader([_page([_work("Other", 2026)], count=50)] * 3, calls)
+    out = oa.recheck_works([rec], max_requests=10, read=read)["outcomes"]["f1"]
+    assert len(calls) == 2
+    assert out["search"] == "page_cap" and out["after"] == out["before"]
+
+
+def _26_authors():
+    return [_held(f"f{i}", f"A{i}", [f"Paper {i}"]) for i in range(26)]
+
+
+def _page_for(records):
+    return _page([_work(r["metadata"]["recent_works"][0]["title"], 2025,
+                        author=r["metadata"]["publication_author_id"].rsplit("/", 1)[-1])
+                  for r in records])
+
+
+def test_recheck_stops_when_remaining_credits_fall_below_the_floor(monkeypatch):
+    monkeypatch.setattr(oa, "SCHOOL_INST", {"uiuc": _SCHOOL})
+    records = _26_authors()
+    calls = []
+    read = _reader([_page_for(records[:25]), _page_for(records[25:])], calls, remaining=99)
+    result = oa.recheck_works(records, max_requests=10, min_remaining=100, read=read)
+    assert len(calls) == 1, "x-ratelimit-remaining is read before the next page"
+    assert result["stopped"] == "remaining_below_floor"
+    last = result["outcomes"]["f25"]
+    assert last["status"] == "not_run" and last["reason"] == "remaining_below_floor"
+    assert all(result["outcomes"][f"f{i}"]["status"] == "checked" for i in range(25))
+
+
+def test_recheck_stops_on_a_429_and_at_its_request_ceiling(monkeypatch):
+    monkeypatch.setattr(oa, "SCHOOL_INST", {"uiuc": _SCHOOL})
+    records = _26_authors()
+    calls = []
+    result = oa.recheck_works(records, max_requests=10,
+                              read=_reader(["rate_limited", _page([])], calls))
+    assert len(calls) == 1 and result["stopped"] == "rate_limited"
+    assert {o["status"] for o in result["outcomes"].values()} == {"not_run"}
+
+    calls = []
+    result = oa.recheck_works(records, max_requests=0, read=_reader([], calls))
+    assert calls == [] and result["stopped"] == "max_requests"
+
+
+def test_a_failed_recheck_leaves_the_record_untouched(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(oa, "SCHOOL_INST", {"uiuc": _SCHOOL})
+    corpus = tmp_path / "opportunities.json"
+    corpus.write_text(json.dumps([_held("f1", "A1", ["A Namesake's"])]))
+    before = corpus.read_bytes()
+    monkeypatch.setattr(oa, "research_http_read", _reader(["server_error"], []))
+    assert oa._recheck_cli(["--input", str(corpus), "--max-requests", "5", "--apply"]) == 0
+    assert corpus.read_bytes() == before
+    assert "not run: f1 (server_error)" in capsys.readouterr().out
+
+
+def test_recheck_dry_run_writes_nothing(monkeypatch, tmp_path):
+    import hashlib
+
+    monkeypatch.setattr(oa, "SCHOOL_INST", {"uiuc": _SCHOOL})
+    monkeypatch.setattr(oa, "_load_dotenv", lambda: None)
+    corpus = tmp_path / "opportunities.json"
+    corpus.write_text(json.dumps([_held("f1", "A1", ["A Namesake's"])]))
+    digest = hashlib.sha256(corpus.read_bytes()).hexdigest()
+    page = _page([_work("A Namesake's", 2025, institutions=(_GE,))])
+    for flags in ([], ["--dry-run"]):
+        monkeypatch.setattr(oa, "research_http_read", _reader([page], []))
+        assert oa._cli(["recheck-works", "--input", str(corpus), "--max-requests", "5",
+                        *flags]) == 0
+        assert hashlib.sha256(corpus.read_bytes()).hexdigest() == digest
+        assert sorted(p.name for p in tmp_path.iterdir()) == ["opportunities.json"]
+
+    # The same run with --apply does write: the dry run was not a no-op by accident.
+    monkeypatch.setattr(oa, "research_http_read", _reader([page], []))
+    assert oa._cli(["recheck-works", "--input", str(corpus), "--max-requests", "5",
+                    "--apply"]) == 0
+    assert json.loads(corpus.read_text())[0]["metadata"].get("recent_works") is None
+
+
+def test_recheck_prints_its_cost_before_the_first_request(monkeypatch, tmp_path):
+    monkeypatch.setattr(oa, "SCHOOL_INST", {"uiuc": _SCHOOL})
+    corpus = tmp_path / "opportunities.json"
+    corpus.write_text(json.dumps(_26_authors()))
+    events = []
+    monkeypatch.setattr(oa, "print", lambda *a, **k: events.append(("print", " ".join(map(str, a)))),
+                        raising=False)
+    read = _reader([_page([])] * 2, [])
+    monkeypatch.setattr(oa, "research_http_read",
+                        lambda params, *, url: events.append(("request", params)) or read(params, url=url))
+    assert oa._recheck_cli(["--input", str(corpus), "--max-requests", "5"]) == 0
+    assert events[0][0] == "print"
+    assert "26 records, 26 authors, 2 batch(es)" in events[0][1]
+    assert f"2 to {2 * oa._RECHECK_BATCH_PAGES} requests" in events[0][1]
+    assert any(kind == "request" for kind, _ in events)
+
+
+def test_apply_recheck_leaves_a_record_that_changed_since_it_was_judged(monkeypatch):
+    monkeypatch.setattr(oa, "SCHOOL_INST", {"uiuc": _SCHOOL})
+    rec = _held("f1", "A1", ["Ours", "A Namesake's"])
+    read = _reader([_page([_work("Ours", 2025), _work("A Namesake's", 2025, institutions=(_GE,))])], [])
+    outcomes = oa.recheck_works([rec], max_requests=5, read=read)["outcomes"]
+    rec["metadata"]["recent_works"] = [{"title": "A Fresh Harvest", "year": 2026}]
+    assert oa.apply_recheck([rec], outcomes) == 0
+    assert rec["metadata"]["recent_works"] == [{"title": "A Fresh Harvest", "year": 2026}]
+
+
+def test_recheck_targets_only_records_verified_through_an_author_id(monkeypatch):
+    monkeypatch.setattr(oa, "SCHOOL_INST", {"uiuc": _SCHOOL, "jhu": "I2"})
+    verified = _held("f1", "A1", ["P"])
+    other_school = _held("f2", "A2", ["P"], school="jhu")
+    name_matched = _held("f3", "A3", ["P"])
+    name_matched["metadata"]["publication_attribution_status"] = oa.ATTRIBUTION_NAME_MATCH
+    snapshot = _held("f4", "A4", ["P"])
+    snapshot["metadata"]["research_snapshot"] = {}
+    assert [o["id"] for o in oa.recheck_targets(
+        [verified, other_school, name_matched, snapshot])] == ["f1", "f2"]
+    assert [o["id"] for o in oa.recheck_targets(
+        [verified, other_school], schools=["jhu"])] == ["f2"]
+
+
+def test_a_list_read_to_its_last_work_is_not_asked_for_again(monkeypatch):
+    # Two works, both on the first page: the next page would be empty and
+    # still cost a credit.
+    monkeypatch.setattr(oa, "SCHOOL_INST", {"uiuc": _SCHOOL})
+    monkeypatch.setattr(oa, "_RECHECK_PAGE_SIZE", 2)
+    rec = _held("f1", "A1", ["Not Listed Any More"])
+    calls = []
+    read = _reader([_page([_work("One", 2026), _work("Two", 2025)], count=2), _page([])], calls)
+    out = oa.recheck_works([rec], max_requests=5, read=read)["outcomes"]["f1"]
+    assert len(calls) == 1 and out["search"] == "exhausted"
+
+
+def test_a_malformed_page_is_a_failed_recheck_not_an_empty_one(monkeypatch):
+    # No error string, but no usable answer either: the record is reported as
+    # not run rather than judged against nothing.
+    monkeypatch.setattr(oa, "SCHOOL_INST", {"uiuc": _SCHOOL})
+    rec = _held("f1", "A1", ["Ours"])
+    read = _reader([{"results": "not a list", "meta": {}}], [])
+    out = oa.recheck_works([rec], max_requests=5, read=read)["outcomes"]["f1"]
+    assert (out["status"], out["reason"]) == ("not_run", "invalid_response")
+
+
+def test_the_per_person_harvest_checks_the_record_s_own_school(monkeypatch):
+    opp = {"pi_name": "A Match", "school": "uw", "url": "https://x.edu/a",
+           "source_type": "faculty_research", "department": "Mechanical Engineering"}
+    monkeypatch.setattr(oa, "SCHOOL_INST", {"uw": _SCHOOL})
+    monkeypatch.setattr(oa, "_match_author",
+                        lambda name, inst, dept="": {"id": "https://openalex.org/A1"})
+    monkeypatch.setattr(oa.requests, "get", lambda *a, **k: _Resp200({"results": [
+        _work("A Namesake's Paper", 2026, institutions=(_GE,)),
+        _work("Their Own Paper", 2025),
+    ]}))
+    mapping = oa.harvest_works([opp], throttle=0)
+    assert mapping[oa._person_key(opp)]["works"] == [{"title": "Their Own Paper", "year": 2025}]

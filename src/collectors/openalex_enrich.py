@@ -47,6 +47,18 @@ to a request:
     python -m src.collectors.openalex_enrich works-roster jhu,cincinnati \
         --roster-dir data/openalex_rosters --out works.json
     python -m src.collectors.openalex_enrich apply-works works.json
+
+Every works path keeps a paper only when the author's own authorship on it
+places them at the school (``_paper_affiliation``). ``recheck-works`` applies
+that check to the papers verified records already hold: it re-fetches them,
+prints its credit estimate before the first request, stops at
+``--max-requests`` or when x-ratelimit-remaining drops below
+``--min-remaining``, and writes nothing unless given ``--apply``:
+
+    python -m src.collectors.openalex_enrich recheck-works --schools uiuc \
+        --max-requests 200 --report recheck-uiuc.json
+    python -m src.collectors.openalex_enrich recheck-works --schools uiuc \
+        --max-requests 200 --apply
 """
 from __future__ import annotations
 
@@ -647,11 +659,103 @@ def _author_own_fields(author: dict | None) -> set[str]:
     }
 
 
+def _own_authorship(work: dict, author_id: str) -> dict | None:
+    """This author's authorship on the work, or None when they are not on it.
+
+    Only this entry says where THEY were when they wrote it. The work's other
+    authors' institutions say nothing about who this author is.
+    """
+    for a in work.get("authorships") or []:
+        if not isinstance(a, dict):
+            continue
+        if str((a.get("author") or {}).get("id") or "").rsplit("/", 1)[-1] == author_id:
+            return a
+    return None
+
+
+def _paper_affiliation(work: dict, author_id: str, inst_id: str) -> str:
+    """Where this author's own authorship on the paper places them.
+
+    ``school``         an institution on it is the record's school, or sits
+                       under it (the school is in that institution's lineage,
+                       so a campus's institute or law school counts).
+    ``elsewhere``      it lists institutions and none of them is the school.
+    ``unresolved``     it lists none, but carries a raw affiliation string
+                       OpenAlex could not resolve to any institution.
+    ``unlisted``       it lists nothing at all.
+    ``not_an_author``  the author is not among the work's authorships.
+
+    The author id alone cannot answer this. OpenAlex merges same-name people
+    into one author entity, and UIUC's Hua Li (A5113920217, 54 works across
+    about 25 institutions) was holding a GE HealthCare engineer's diffusion-MRI
+    paper and a Nanjing control theorist's paper beside her own. Both were
+    stamped verified and one opened a student's cold email. On each of those
+    papers the Hua Li authorship names its own employer, which is the evidence
+    the field gate never looked at.
+    """
+    own = _own_authorship(work, author_id)
+    if own is None:
+        return "not_an_author"
+    institutions = [i for i in own.get("institutions") or [] if isinstance(i, dict)]
+    if not institutions:
+        raw = [s for s in own.get("raw_affiliation_strings") or [] if isinstance(s, str) and s.strip()]
+        return "unresolved" if raw else "unlisted"
+    for inst in institutions:
+        ids = {str(inst.get("id") or "").rsplit("/", 1)[-1]}
+        ids |= {str(x or "").rsplit("/", 1)[-1] for x in inst.get("lineage") or []}
+        if inst_id in ids:
+            return "school"
+    return "elsewhere"
+
+
+def _strongest_affiliation(verdicts) -> str:
+    """One paper's verdict across its versions (a preprint and its journal
+    version share a title). Evidence for the school wins; evidence against it
+    beats a version that lists nothing, so an affiliation-less preprint cannot
+    outvote the journal version that names another employer."""
+    for verdict in ("school", "elsewhere", "unresolved", "unlisted"):
+        if verdict in verdicts:
+            return verdict
+    return "not_an_author"
+
+
+def _work_title_key(work: dict) -> str:
+    """The key a stored title was written under (see ``_usable_works``)."""
+    return _title_key(re.sub(r"\s+", " ", str(work.get("display_name") or "")).strip()[:_TITLE_CAP])
+
+
+def _affiliation_admits(verdict: str) -> bool:
+    """Whether a paper with this verdict may be cited as the professor's.
+
+    ``unlisted`` is admitted on measurement, not by default. On a 200-author
+    sample of verified records (2026-10-02), 67 of 592 stored papers had an
+    authorship with no institution and no affiliation string, and OpenAlex
+    listed no institution for ANY author on most of them: book chapters,
+    reviews, conference abstracts, preprints. Read by hand, 64 were the
+    professor's own, 2 were unclear and 1 was a namesake's peer-review
+    "Author response" document. Dropping them would have cost one paper in
+    nine to remove that one.
+
+    ``unresolved`` is not admitted. A stated affiliation that resolves to no
+    institution is not evidence of the school, and the two clearest namesakes
+    in that sample were exactly this: "Application Engineering GE HealthCare"
+    on Hua Li's diffusion-MRI paper, and a Qingdao institute on a Syracuse
+    professor's radar paper. 7 papers had one.
+    """
+    return verdict in ("school", "unlisted")
+
+
 def _usable_works(raw: list[dict], dept: str = "",
                   max_works: int = _MAX_WORKS,
-                  author_fields: list[str] | set[str] | None = None) -> list[dict]:
+                  author_fields: list[str] | set[str] | None = None,
+                  *, author_id: str, inst_id: str) -> list[dict]:
     """The citable subset of one author's works, newest first: title + year
     only, title capped at ``_TITLE_CAP`` chars (corpus lives in a 2GB backend).
+
+    A paper is kept only when this author's own authorship on it places them
+    at the record's school (``_paper_affiliation``, ``_affiliation_admits``).
+    That is the per-paper identity check; the field gate below is a coarser
+    proxy that predates it.
 
     OpenAlex author-name disambiguation conflates distinct same-name people
     under one author id, and the recency sort surfaces the mis-attributed
@@ -668,9 +772,15 @@ def _usable_works(raw: list[dict], dept: str = "",
     papers, filed under Medicine, which ECE does not map to, were dropped.
     """
     allowed = set(author_fields) if author_fields else _dept_fields(dept)
+    aid = str(author_id or "").rsplit("/", 1)[-1]
+    verdicts: dict[str, set[str]] = {}
+    for w in raw:
+        verdicts.setdefault(_work_title_key(w), set()).add(_paper_affiliation(w, aid, inst_id))
     out: list[dict] = []
     seen: set[str] = set()
     for w in raw:
+        if not _affiliation_admits(_strongest_affiliation(verdicts[_work_title_key(w)])):
+            continue
         if allowed is not None:
             field = ((w.get("primary_topic") or {}).get("field") or {}).get("display_name", "")
             if field not in allowed:
@@ -689,15 +799,17 @@ def _usable_works(raw: list[dict], dept: str = "",
 
 
 def author_recent_works(author_id: str, dept: str = "", max_works: int = _MAX_WORKS,
-                        author_fields: list[str] | set[str] | None = None) -> list[dict]:
+                        author_fields: list[str] | set[str] | None = None,
+                        *, inst_id: str) -> list[dict]:
     """``_usable_works`` for one author, bought one request per person."""
     j = _get({
         "filter": f"author.id:{author_id}",
         "sort": "publication_date:desc",
         "per-page": _WORKS_FETCH,
-        "select": "display_name,publication_year,primary_topic",
+        "select": "display_name,publication_year,primary_topic,authorships",
     }, url=_WORKS_API)
-    return _usable_works(j.get("results") or [], dept, max_works, author_fields)
+    return _usable_works(j.get("results") or [], dept, max_works, author_fields,
+                         author_id=author_id, inst_id=inst_id)
 
 
 def works_for_authors(author_ids: list[str], *, want: int = _MAX_WORKS,
@@ -1386,6 +1498,7 @@ def harvest_works_by_roster(
         if progress:
             print(f"{slug}: {len(people)} targets, {len(resolved)} authors resolved "
                   f"({-(-len(resolved) // _WORKS_BATCH)} requests)", flush=True)
+        affiliations: collections.Counter = collections.Counter()
         for i in range(0, len(resolved), _WORKS_BATCH):
             batch = resolved[i:i + _WORKS_BATCH]
             raw = works_for_authors([aid for _, aid, _, _ in batch])
@@ -1405,7 +1518,10 @@ def harvest_works_by_roster(
             # would clear their records below.
             batch_answered = bool(raw)
             for key, aid, dept, own_fields in batch:
-                works = _usable_works(raw.get(aid) or [], dept, author_fields=own_fields)
+                affiliations.update(_paper_affiliation(w, aid, SCHOOL_INST[slug])
+                                    for w in raw.get(aid) or [])
+                works = _usable_works(raw.get(aid) or [], dept, author_fields=own_fields,
+                                      author_id=aid, inst_id=SCHOOL_INST[slug])
                 if works:
                     mapping[key] = {"author_id": aid, "works": works}
                 elif batch_answered:
@@ -1422,6 +1538,11 @@ def harvest_works_by_roster(
             if progress:
                 print(f"  {slug}: {min(i + _WORKS_BATCH, len(resolved))}/{len(resolved)} "
                       f"-> {len(mapping)} with papers", flush=True)
+        if progress and affiliations:
+            # "unlisted" papers pass with no affiliation evidence at all
+            # (_affiliation_admits); the count is how much of a run leans on that.
+            print(f"  {slug}: fetched papers by the author's listed affiliation: "
+                  + ", ".join(f"{k} {v}" for k, v in sorted(affiliations.items())), flush=True)
     return mapping, reasons
 
 
@@ -1491,7 +1612,8 @@ def harvest_works(
         dept = o.get("department", "")
         best = _match_author(o["pi_name"], SCHOOL_INST[o["school"]], dept)
         time.sleep(throttle)
-        works = (author_recent_works(best["id"], dept, author_fields=_author_own_fields(best))
+        works = (author_recent_works(best["id"], dept, author_fields=_author_own_fields(best),
+                                     inst_id=SCHOOL_INST[o["school"]])
                  if best and best.get("id") else [])
         if best and best.get("id"):
             time.sleep(throttle)
@@ -2308,13 +2430,352 @@ def _apply_research_cli(argv: list[str]) -> int:
     return 0
 
 
+# --- re-checking the papers a verified record already holds -----------------
+#
+# The per-paper affiliation check binds future harvests only. A record stamped
+# verified at the current gate is never a works target again, and what it
+# stores is a title and a year, nothing the check can be run against. So its
+# papers are fetched again and judged where they stand. CURRENT_WORKS_GATE
+# stays put (tests on in-flight branches pin it), which is why this is an
+# explicit command over the stamped population rather than a gate bump that
+# would withdraw every record's trust first.
+
+_RECHECK_SELECT = "id,display_name,publication_year,primary_topic,authorships"
+_RECHECK_PAGE_SIZE = 200
+# Requests one batch of _WORKS_BATCH authors may spend finding its stored
+# papers before the rest are reported as not found.
+_RECHECK_BATCH_PAGES = 6
+_RECHECK_MIN_REMAINING = 100
+
+
+class _RecheckBudget:
+    """The run's request accounting, consulted before every request."""
+
+    def __init__(self, max_requests: int, min_remaining: int):
+        self.max_requests = max_requests
+        self.min_remaining = min_remaining
+        self.requests = 0
+        self.first_remaining: float | None = None
+        self.remaining: float | None = None
+        self.stopped: str | None = None
+
+    def allows(self) -> bool:
+        if self.stopped is None and self.requests >= self.max_requests:
+            self.stopped = "max_requests"
+        # x-ratelimit-remaining from the previous page. An absent header is no
+        # reading at all; the 429 below still stops the run.
+        if (self.stopped is None and self.remaining is not None
+                and self.remaining < self.min_remaining):
+            self.stopped = "remaining_below_floor"
+        return self.stopped is None
+
+    def spent(self, error: str | None, telemetry: dict) -> None:
+        self.requests += 1
+        self.remaining = telemetry.get("remaining")
+        if self.first_remaining is None:
+            self.first_remaining = self.remaining
+        if error == "rate_limited":
+            self.stopped = "rate_limited"
+
+
+def _recheck_batch(wanted: dict[str, set[str]], *, read, budget: _RecheckBudget) -> dict[str, dict]:
+    """Find each author's stored papers among the works OpenAlex lists for them.
+
+    ``wanted`` maps an author id to the title keys its records hold. Per
+    author, returns the works routed to them and how the search ended:
+    ``located`` (every title found), ``exhausted`` (every work listed for them
+    was read and a title is still missing), ``page_cap`` (stopped looking),
+    ``failed`` (a request failed) or ``not_run`` (the budget stopped first).
+
+    Rounds work as in ``works_for_authors``: authors whose titles are all found
+    leave the filter and page 1 is asked again, so a prolific author stops
+    crowding out the rest. Only when a full page settles nobody does it page
+    deeper into the same filter.
+    """
+    out = {aid: {"works": [], "status": "not_run", "reason": None} for aid in wanted}
+    unfound = {aid: set(keys) for aid, keys in wanted.items()}
+    pending = set(wanted)
+    page = spent = 0
+    while pending:
+        if spent >= _RECHECK_BATCH_PAGES:
+            for aid in pending:
+                out[aid]["status"] = "page_cap"
+            break
+        if not budget.allows():
+            for aid in pending:
+                out[aid]["reason"] = budget.stopped
+            break
+        page += 1
+        data, error, telemetry = read({
+            "filter": "author.id:" + "|".join(sorted(pending)),
+            "sort": "publication_date:desc",
+            "per_page": _RECHECK_PAGE_SIZE,
+            "page": page,
+            "select": _RECHECK_SELECT,
+        }, url=_WORKS_API)
+        budget.spent(error, telemetry or {})
+        spent += 1
+        results = data.get("results") if isinstance(data, dict) else None
+        meta = data.get("meta") if isinstance(data, dict) else None
+        count = meta.get("count") if isinstance(meta, dict) else None
+        if (error or not isinstance(results, list) or not isinstance(count, int)
+                or any(not isinstance(w, dict) for w in results)):
+            for aid in pending:
+                out[aid].update(status="failed", reason=error or "invalid_response")
+            break
+        for w in results:
+            key = _work_title_key(w)
+            for a in w.get("authorships") or []:
+                if not isinstance(a, dict):
+                    continue
+                aid = str((a.get("author") or {}).get("id") or "").rsplit("/", 1)[-1]
+                if aid in pending:
+                    out[aid]["works"].append(w)
+                    unfound[aid].discard(key)
+        if page * _RECHECK_PAGE_SIZE >= count:
+            for aid in pending:
+                out[aid]["status"] = "exhausted" if unfound[aid] else "located"
+            break
+        served = {aid for aid in pending if not unfound[aid]}
+        for aid in served:
+            out[aid]["status"] = "located"
+        if served:
+            pending -= served
+            page = 0
+    return out
+
+
+def _recheck_record(record: dict, found: dict) -> dict:
+    """What the per-paper affiliation check says about each paper this record holds.
+
+    A paper is removed only on evidence: it was found, and no version of it
+    (a preprint and its journal version share a title) is admitted. A paper
+    that could not be found keeps its place and is reported, because not
+    finding it is not a verdict. Nothing is added or reordered.
+    """
+    md = record.get("metadata") or {}
+    aid = str(md.get("publication_author_id") or "").rsplit("/", 1)[-1]
+    inst = SCHOOL_INST[record["school"]]
+    before = list(md.get("recent_works") or [])
+    outcome = {
+        "id": record.get("id"), "pi_name": record.get("pi_name"),
+        "school": record.get("school"), "author_id": aid,
+        "status": "not_run", "search": found["status"], "reason": found["reason"],
+        "before": before, "after": before,
+        "removed": [], "kept_unlisted": [], "unfound": [],
+    }
+    if found["status"] in ("failed", "not_run"):
+        return outcome
+    versions: dict[str, list[dict]] = {}
+    for w in found["works"]:
+        versions.setdefault(_work_title_key(w), []).append(w)
+    kept: list[dict] = []
+    for paper in before:
+        candidates = versions.get(_title_key(str(paper.get("title") or "")))
+        if not candidates:
+            outcome["unfound"].append(paper)
+            kept.append(paper)
+            continue
+        verdict = _strongest_affiliation({_paper_affiliation(w, aid, inst) for w in candidates})
+        if verdict == "school":
+            kept.append(paper)
+        elif _affiliation_admits(verdict):
+            outcome["kept_unlisted"].append(paper)
+            kept.append(paper)
+        else:
+            own = [_own_authorship(w, aid) or {} for w in candidates]
+            outcome["removed"].append({
+                **paper,
+                "verdict": verdict,
+                "institutions": sorted({
+                    i.get("display_name") or i.get("id") or ""
+                    for a in own for i in a.get("institutions") or [] if isinstance(i, dict)}),
+                "raw_affiliations": sorted({
+                    s for a in own for s in a.get("raw_affiliation_strings") or [] if isinstance(s, str)}),
+                "work_ids": [w.get("id") for w in candidates],
+            })
+    outcome["after"] = kept
+    outcome["status"] = "partial" if outcome["unfound"] else "checked"
+    return outcome
+
+
+def recheck_targets(opps: list[dict], *, schools: list[str] | None = None) -> list[dict]:
+    """Faculty whose papers are stamped verified through an author id."""
+    out = []
+    for o in opps:
+        md = o.get("metadata") or {}
+        if not _is_faculty(o) or not works_are_verified(o):
+            continue
+        if o.get("school") not in SCHOOL_INST or (schools and o.get("school") not in schools):
+            continue
+        # A research snapshot's works were validated on their own path and the
+        # title list mirrors them; apply_works leaves such records alone too.
+        if "research_snapshot" in md:
+            continue
+        if not (o.get("id") and md.get("publication_author_id") and md.get("recent_works")):
+            continue
+        out.append(o)
+    return out
+
+
+def recheck_works(targets: list[dict], *, max_requests: int,
+                  min_remaining: int = _RECHECK_MIN_REMAINING, read=None) -> dict:
+    """Judge every stored paper of ``targets`` against its re-fetched authorship.
+
+    Pure with respect to the records: returns ``{"outcomes": {id: outcome},
+    "requests", "first_remaining", "remaining", "stopped"}`` and leaves the
+    corpus alone. ``apply_recheck`` writes the outcomes.
+    """
+    read = research_http_read if read is None else read
+    wanted: dict[str, set[str]] = {}
+    for record in targets:
+        aid = str(record["metadata"]["publication_author_id"]).rsplit("/", 1)[-1]
+        wanted.setdefault(aid, set()).update(
+            _title_key(str(w.get("title") or "")) for w in record["metadata"]["recent_works"])
+    budget = _RecheckBudget(max_requests, min_remaining)
+    found: dict[str, dict] = {}
+    authors = list(wanted)
+    for i in range(0, len(authors), _WORKS_BATCH):
+        batch = {aid: wanted[aid] for aid in authors[i:i + _WORKS_BATCH]}
+        found.update(_recheck_batch(batch, read=read, budget=budget))
+    outcomes = {}
+    for record in targets:
+        aid = str(record["metadata"]["publication_author_id"]).rsplit("/", 1)[-1]
+        outcomes[record["id"]] = _recheck_record(record, found[aid])
+    return {"outcomes": outcomes, "requests": budget.requests,
+            "first_remaining": budget.first_remaining, "remaining": budget.remaining,
+            "stopped": budget.stopped}
+
+
+def apply_recheck(opps: list[dict], outcomes: dict[str, dict]) -> int:
+    """Write each judged record's surviving papers; returns records changed.
+
+    A record whose papers changed since they were judged is left alone. One the
+    run could not judge carries ``after == before`` and is left alone too.
+    """
+    n = 0
+    for record in opps:
+        out = outcomes.get(record.get("id"))
+        if out is None:
+            continue
+        md = record.get("metadata") or {}
+        if (md.get("recent_works") or []) != out["before"] or out["after"] == out["before"]:
+            continue
+        if out["after"]:
+            md["recent_works"] = out["after"]
+        else:
+            # Nothing left to cite: the same retraction apply_works makes when
+            # the gate rejects every paper.
+            md.pop("recent_works", None)
+            md.pop("publication_attribution_status", None)
+            md.pop("publication_author_id", None)
+            md["works_gate"] = _WORKS_GATE
+        n += 1
+    return n
+
+
+def _recheck_cli(argv: list[str]) -> int:
+    """Dry run unless --apply; the estimate is printed before any request."""
+    import argparse
+    import tempfile
+    from pathlib import Path
+
+    parser = argparse.ArgumentParser(
+        prog="openalex_enrich recheck-works",
+        description="Re-fetch the papers of records stamped verified_author_id and "
+                    "remove the ones whose authorship does not list the school.")
+    parser.add_argument("--input", default=str(PROCESSED_FILE))
+    parser.add_argument("--schools")
+    parser.add_argument("--ids-file", help="only these record ids, one per line")
+    parser.add_argument("--limit", type=int)
+    parser.add_argument("--max-requests", type=int, required=True,
+                        help="hard ceiling on OpenAlex requests (1 credit each)")
+    parser.add_argument("--min-remaining", type=int, default=_RECHECK_MIN_REMAINING,
+                        help="stop when x-ratelimit-remaining falls below this")
+    parser.add_argument("--report", help="write every record's outcome here (new file)")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--dry-run", action="store_true", help="the default: write nothing")
+    mode.add_argument("--apply", action="store_true", help="write the corpus")
+    args = parser.parse_args(argv)
+    if args.max_requests < 0:
+        parser.error("--max-requests must be 0 or more")
+    if args.report and Path(args.report).exists():
+        parser.error("--report already exists; choose a new file")
+
+    source = Path(args.input)
+    records = json.loads(source.read_text(encoding="utf-8"))
+    schools = args.schools.split(",") if args.schools else None
+    targets = recheck_targets(records, schools=schools)
+    if args.ids_file:
+        ids = {line.strip() for line in Path(args.ids_file).read_text().splitlines() if line.strip()}
+        targets = [t for t in targets if t["id"] in ids]
+        missing = len(ids - {t["id"] for t in targets})
+        if missing:
+            print(f"recheck-works: {missing} listed id(s) are not verified faculty records here")
+    if args.limit is not None:
+        targets = targets[:args.limit]
+    n_authors = len({str(t["metadata"]["publication_author_id"]).rsplit("/", 1)[-1]
+                     for t in targets})
+    batches = -(-n_authors // _WORKS_BATCH)
+    print(f"recheck-works: {len(targets)} records, {n_authors} authors, {batches} "
+          f"batch(es) of up to {_WORKS_BATCH}. Estimated cost: {batches} to "
+          f"{batches * _RECHECK_BATCH_PAGES} requests at 1 credit each; this run "
+          f"stops at {args.max_requests} or when x-ratelimit-remaining < "
+          f"{args.min_remaining}.", flush=True)
+
+    result = recheck_works(targets, max_requests=args.max_requests,
+                           min_remaining=args.min_remaining)
+    outcomes = result["outcomes"]
+    by_status = collections.Counter(o["status"] for o in outcomes.values())
+    verdicts = collections.Counter(p["verdict"] for o in outcomes.values() for p in o["removed"])
+    held = sum(len(o["before"]) for o in outcomes.values() if o["status"] != "not_run")
+    removed = sum(len(o["removed"]) for o in outcomes.values())
+    print(f"records: {by_status.get('checked', 0)} checked, {by_status.get('partial', 0)} "
+          f"with a paper not found, {by_status.get('not_run', 0)} not run"
+          + (f" ({result['stopped']})" if result["stopped"] else ""))
+    print(f"papers: {held} held by judged records, {removed} removed "
+          f"({', '.join(f'{k} {v}' for k, v in sorted(verdicts.items())) or 'none'}), "
+          f"{sum(len(o['kept_unlisted']) for o in outcomes.values())} kept with no "
+          f"affiliation listed, {sum(len(o['unfound']) for o in outcomes.values())} not found")
+    print(f"records losing a paper: {sum(1 for o in outcomes.values() if o['removed'])}; "
+          f"losing all: {sum(1 for o in outcomes.values() if o['removed'] and not o['after'])}")
+    print(f"requests: {result['requests']}; x-ratelimit-remaining: "
+          f"{result['first_remaining']} -> {result['remaining']}")
+    for o in outcomes.values():
+        if o["status"] == "not_run":
+            print(f"  not run: {o['id']} ({o['reason'] or o['search']})")
+    if args.report:
+        with Path(args.report).open("x", encoding="utf-8") as f:
+            json.dump({**result, "outcomes": list(outcomes.values())}, f,
+                      ensure_ascii=False, indent=2)
+        print(f"report -> {args.report}")
+    if not args.apply:
+        print("dry run: corpus not written")
+        return 0
+    changed = apply_recheck(records, outcomes)
+    if not changed:
+        print("applied: no record changed; corpus not written")
+        return 0
+    with tempfile.NamedTemporaryFile("w", dir=source.parent, prefix=".recheck-",
+                                     delete=False, encoding="utf-8") as f:
+        json.dump(records, f, ensure_ascii=False, indent=2)
+        temp = f.name
+    os.replace(temp, source)
+    print(f"applied: {changed} record(s) changed -> {source}; "
+          f"`python scripts/shard_corpus.py split` writes the shards")
+    return 0
+
+
 def _cli(argv: list[str]) -> int:
     _load_dotenv()
     if not argv or argv[0] not in ("harvest", "roster", "apply", "works",
-                                   "works-roster", "apply-works", "refresh-research", "apply-research"):
+                                   "works-roster", "apply-works", "refresh-research", "apply-research",
+                                   "recheck-works"):
         print(__doc__)
         return 2
     mode, rest = argv[0], argv[1:]
+    if mode == "recheck-works":
+        return _recheck_cli(rest)
     if mode == "refresh-research":
         return _research_cli(rest)
     if mode == "apply-research":
