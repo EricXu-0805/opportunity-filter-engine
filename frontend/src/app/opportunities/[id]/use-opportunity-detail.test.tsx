@@ -27,10 +27,14 @@ vi.mock('@/lib/supabase', () => ({
 vi.mock('@/lib/analytics', () => ({ track: mocks.track }));
 
 // The real policy suggests a reminder only after a reply or an interview, and
-// those statuses no longer get reminders (M49), so on its own it never shows
-// one. The tests of the suggestion's state machine — mutual exclusion,
-// retries, withdrawal — switch this on to drive it through a status that
-// still gets reminders.
+// those statuses no longer get reminders (M49), so in production the hook
+// never shows a suggestion; the M49 suite below pins that. The banner, its
+// save path and their state machine are still code that would run under a
+// policy that suggests for a status the cron sends, so the tests of that
+// machinery (mutual exclusion, retries, withdrawal, the posture gate) switch
+// this stub on. It is hypothetical: the real policy never returns a
+// suggestion for contacted or applied, and no test that turns it on is
+// describing what a student sees today.
 const suggestionPolicy = vi.hoisted(() => ({ stubbed: false }));
 vi.mock('@/lib/status-suggestions', async (importOriginal) => {
   const real = await importOriginal<typeof import('@/lib/status-suggestions')>();
@@ -53,6 +57,8 @@ vi.mock('@/lib/status-suggestions', async (importOriginal) => {
 // here since nothing asserts on specific uid/epoch values, only on whether
 // a token was passed through and on real OwnerMismatchError instances).
 import { OwnerMismatchError, advanceOwnerEpoch, syncLocalIdentityOwner } from '@/lib/identity-owner';
+import { REMINDABLE_STATUSES } from '@/lib/reminders';
+import type { InteractionType } from '@/lib/supabase';
 import { useOpportunityDetail, type SaveDetailsResult } from './use-opportunity-detail';
 
 type AuthCb = (state: { session: unknown; user: { id: string } | null; isAnonymous: boolean; email: string | null }) => void;
@@ -778,21 +784,78 @@ const LIVE_LISTING_TARGET = {
   },
 } as const;
 
+// The two shapes reminders are set on, both live: the cron would send for
+// either while the student is still waiting for an answer.
+const LIVE_FACULTY_TARGET = {
+  id: 'opp-1',
+  title: 'Prof. Rivera',
+  source_type: 'faculty_research',
+  record_kind: 'faculty_contact',
+  target_truth: {
+    listing_state: 'unknown', reference_only: false, actionable: true,
+    accepting_state: 'unknown', reason_code: null,
+    verified_at: null, expires_at: null,
+  },
+} as const;
+
 describe('useOpportunityDetail — a recorded reply offers no reminder (M49)', () => {
-  it.each(['replied', 'interviewing'] as const)(
-    'moving a live listing to %s suggests nothing — the cron no longer sends there',
-    async (status) => {
-      mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'applied' });
+  it.each([
+    ['live listing', 'applied', 'replied', LIVE_LISTING_TARGET],
+    ['live listing', 'applied', 'interviewing', LIVE_LISTING_TARGET],
+    ['live faculty contact', 'contacted', 'replied', LIVE_FACULTY_TARGET],
+    ['live faculty contact', 'contacted', 'interviewing', LIVE_FACULTY_TARGET],
+  ] as const)(
+    'a %s moved from %s to %s gets no suggestion, and a date sent through saveDetails is not written',
+    async (_label, from, to, target) => {
+      mocks.getInteractionDetail.mockResolvedValueOnce({ type: from });
       mocks.trackInteraction.mockResolvedValueOnce(undefined);
 
-      const { result } = renderHook(() => useOpportunityDetail(LIVE_LISTING_TARGET));
-      await waitFor(() => expect(result.current.interaction).toBe('applied'));
-      await act(async () => { await result.current.handleTrack(status); });
+      const { result } = renderHook(() => useOpportunityDetail(target));
+      await waitFor(() => expect(result.current.interaction).toBe(from));
+      await act(async () => { await result.current.handleTrack(to); });
 
-      expect(result.current.interaction).toBe(status);
+      expect(result.current.interaction).toBe(to);
+      // The real policy fires on exactly this transition, and the cron no
+      // longer sends for the status it lands on.
       expect(result.current.suggestion).toBeNull();
+
+      // The detail panel's own write path: the date is stripped, the notes in
+      // the same patch still travel, and clearing a date stays allowed.
+      await act(async () => {
+        await result.current.saveDetails({ notes: 'they replied', remind_at: '2030-01-08' });
+      });
+      expect(mocks.updateInteractionDetails)
+        .toHaveBeenCalledWith('opp-1', { notes: 'they replied' }, expect.anything());
+      mocks.updateInteractionDetails.mockClear();
+      await act(async () => { await result.current.saveDetails({ remind_at: null }); });
+      expect(mocks.updateInteractionDetails)
+        .toHaveBeenCalledWith('opp-1', { remind_at: null }, expect.anything());
     },
   );
+
+  it('the real policy suggests only for statuses the cron does not send, so no transition shows a banner', async () => {
+    // What makes the stubbed suites below hypothetical. If the policy starts
+    // suggesting for a status the cron sends, the banner is reachable again:
+    // this fails, and those suites should move to the real policy.
+    const { suggestReminderForStatusChange } = await vi.importActual<
+      typeof import('@/lib/status-suggestions')
+    >('@/lib/status-suggestions');
+    const statuses: Record<InteractionType, true> = {
+      contacted: true, applied: true, replied: true,
+      interviewing: true, rejected: true, dismissed: true,
+    };
+    const all = Object.keys(statuses) as InteractionType[];
+    const suggestedFor = new Set<InteractionType>();
+    for (const from of [null, ...all]) {
+      for (const to of all) {
+        if (suggestReminderForStatusChange(from, to)) suggestedFor.add(to);
+      }
+    }
+    expect([...suggestedFor].sort()).toEqual(['interviewing', 'replied']);
+    for (const to of suggestedFor) {
+      expect(REMINDABLE_STATUSES.has(to)).toBe(false);
+    }
+  });
 });
 
 describe('useOpportunityDetail — status/suggestion mutual exclusion (same account, no cross-identity switch involved)', () => {
@@ -1227,24 +1290,15 @@ describe('useOpportunityDetail — saveDetails is the last gate before a reminde
     await waitFor(() => expect(result.current.suggestion).toBeNull());
   });
 
-  it('a live faculty contact keeps its suggestion — the cron sends for exactly that', async () => {
-    // The positive control. A gate written as "listing" rather than
-    // "actionable" would have removed reminders from their main use.
-    const FACULTY_TARGET = {
-      id: 'opp-1',
-      title: 'Prof. Rivera',
-      source_type: 'faculty_research',
-      record_kind: 'faculty_contact',
-      target_truth: {
-        listing_state: 'unknown', reference_only: false, actionable: true,
-        accepting_state: 'unknown', reason_code: null,
-        verified_at: null, expires_at: null,
-      },
-    } as const;
+  it('the generation gate reads posture, not record kind: a live faculty contact passes it (stubbed policy)', async () => {
+    // The positive control for the gate itself. A gate written as "listing"
+    // rather than "actionable" would refuse the shape most reminders are set
+    // on. Hypothetical policy (see suggestionPolicy): the real one suggests
+    // nothing for a faculty contact either, as the M49 suite shows.
     suggestionPolicy.stubbed = true;
     mocks.trackInteraction.mockResolvedValueOnce(undefined);
 
-    const { result } = renderHook(() => useOpportunityDetail(FACULTY_TARGET));
+    const { result } = renderHook(() => useOpportunityDetail(LIVE_FACULTY_TARGET));
     await waitFor(() => expect(result.current.ownerReady).toBe(true));
     await waitFor(() => expect(result.current.interactionLoading).toBe(false));
     await act(async () => { await result.current.handleTrack('contacted'); });
