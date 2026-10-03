@@ -97,7 +97,7 @@ def test_available_exact_codepoint_quotes_survive_both_real_routes(endpoint, pat
     response = submit(client, path, doc)
     assert response.status_code == 200, response.text
     assert response.json()['method'] == 'ai'
-    assert response.json()['check_version'] == 'target-resume-source-checks-v3'
+    assert response.json()['check_version'] == 'target-resume-source-checks-v4'
     assert len(state['calls']) == 1 and doc == before
     prompt = json.loads(state['calls'][0][1]['content'])
     assert prompt['target']['research'] == doc['target_snapshot']['research']
