@@ -677,7 +677,20 @@ class TestAfterTheQueueIsSettled:
         assert report["by_status"] == {VERIFIED_COMPLETE: 1, REVIEWED: 3}
         assert report["completed"] == 4
 
-    def test_the_trust_verifier_finds_no_leak(self, queue, monkeypatch, openalex, tmp_path, capsys):
+    # The verifier's surfaces that read the records a verdict changes. Its exit
+    # code and total also count two source scans no verdict can touch:
+    # `resume_tailoring` reads backend/routes/tailor.py and `client_match_cache`
+    # reads frontend/src/lib/match-cache.ts. Those files have their own tests,
+    # and an edit to either must not fail this one.
+    _VERDICT_SURFACES = (
+        "professor_trusted_publications", "professor_api_payload", "match_card",
+        "ask_ai_and_cold_email_works_block", "publication_derived_keywords",
+        "embedding_search_document", "match_score_and_rule_reasons",
+        "match_reason_rerank_context", "cold_email_brief",
+    )
+
+    def test_the_trust_verifier_finds_no_leak_in_the_settled_records(
+            self, queue, monkeypatch, openalex, tmp_path, capsys):
         disk, ledger = queue
         self._settle_all(monkeypatch, disk, ledger)
         spec = importlib.util.spec_from_file_location(
@@ -692,11 +705,17 @@ class TestAfterTheQueueIsSettled:
         monkeypatch.setattr(vpt, "LEDGER_PATH", ledger)
         capsys.readouterr()
 
-        rc = vpt.main(["--sample", "10"])
+        vpt.main(["--sample", "10"])
 
         report = json.loads(capsys.readouterr().out)
-        assert rc == 0
-        assert report["downstream_unverified_leaks"] == 0
+        surfaces = report["surfaces"]
+        assert {name: surfaces[name]["leaks"] for name in self._VERDICT_SURFACES} == dict.fromkeys(
+            self._VERDICT_SURFACES, 0)
+        ids = {r["id"] for records in disk.shards.values() for r in records}
+        assert [f for f in report["findings"] if f["record_id"] in ids] == []
+        # No record holds a paper it may not cite, and the keyword scan read all four.
+        assert report["leak_candidates"] == 0
+        assert surfaces["publication_derived_keywords"]["scanned"] == 4
         assert report["trusted_records"] == 2
         assert report["ledger"]["by_result"] == {
             DISPOSITION_VERIFIED: 2, DISPOSITION_REMOVED: 2}
