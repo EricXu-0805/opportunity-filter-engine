@@ -648,7 +648,9 @@ class TestFaithfulnessCorpus:
         assert finding in claim_upgrade_findings(proposed, original)[0]
         assert finding in gate_findings(original, proposed)
 
-    def test_a_dropped_manner_adverb_goes_to_the_review(self):
+    def test_a_dropped_manner_adverb_passes_the_locks(self):
+        # The claim locks only: the contract keeps this pair as written under every row (no move
+        # drops an adverb; scripts/faithful_keeps_any_row.py lists it).
         assert claim_upgrade_findings("Tested the code.", "Tested the code thoroughly.") == ([], ["wording_changed"])
         assert gate_findings("Tested the code thoroughly.", "Tested the code.") == []
 

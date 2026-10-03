@@ -83,7 +83,7 @@ FAITHFUL_TEST_SOURCES = [
 ]
 # Faithful pairs a test spells out in its body rather than in a parametrize list.
 FAITHFUL_TEST_INLINE = [
-    ("tests/test_tailor_review.py::TestFaithfulnessCorpus::test_a_dropped_manner_adverb_goes_to_the_review",
+    ("tests/test_tailor_review.py::TestFaithfulnessCorpus::test_a_dropped_manner_adverb_passes_the_locks",
      "Tested the code thoroughly.", "Tested the code."),
     ("tests/test_tailor_review.py::TestFindingsSplit::test_padding_the_original_already_states_is_not_new",
      "Cleaned 212 survey responses in R, applying the lab's exclusion rules.",
