@@ -20,6 +20,7 @@ vi.mock('@/components/ApplicationHistory', () => ({ default: ({ opportunityId }:
 import { getPrivateImportTarget, getResolvedPrivateImportTarget, type PrivateResolvedTarget, PrivateTargetError } from '@/lib/private-import-target-api';
 import { setupOwner, owner as setOwner, OTHER, deferred } from '@/lib/application-material.test-utils';
 import PrivateImportDetail from './PrivateImportDetail';
+import PrivateImportPage from './page';
 const id = 'private-import:cccccccc-cccc-4ccc-8ccc-cccccccccccc';
 const raw = vi.mocked(getPrivateImportTarget); const resolved = vi.mocked(getResolvedPrivateImportTarget);
 const source = { target_version: 'pit1:' + '1'.repeat(64), detail: { title: 'Private test title', organization: 'Private Lab', description_raw: 'GPA < 3.0 and score > 80. END',
@@ -85,4 +86,13 @@ it('refuses an application write when the target changed or cannot be read, keep
   resolved.mockRejectedValueOnce(new PrivateTargetError('changed'));
   fireEvent.click(screen.getByRole('button', { name: 'Check target' })); await screen.findByText('Target check false');
   expect(screen.getByText('Private test title')).toBeInTheDocument();
+});
+
+it('opens the import named by the route segment, which Next hands the page percent-encoded', async () => {
+  // Every import id has a ':'. The page passed '%3A' on, the id check refused it before any
+  // request, and every import page said it could not be loaded.
+  render(await PrivateImportPage({ params: Promise.resolve({ id: encodeURIComponent(id) }) }));
+  await screen.findByText('Private test title');
+  expect(raw).toHaveBeenCalledOnce(); expect(raw.mock.calls[0][0]).toBe(id); expect(resolved.mock.calls[0][0]).toBe(id);
+  expect(screen.getByText('Contact history ' + id)).toBeInTheDocument();
 });
