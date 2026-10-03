@@ -285,13 +285,18 @@ def clauses(text):
 
 
 def _guarded_gerunds(clause):
-    """Action families of the gerunds that are this clause's own action."""
-    found, text = set(), clause.strip()
+    """Action families of the gerunds that are this clause's own action.
+
+    A chain of "and"/"or" gerunds is followed once: where a later guarded gerund's
+    chain reaches a word an earlier chain already took, the rest is already read.
+    """
+    found, text, taken = set(), clause.strip(), set()
     for match in _GERUND_POSITION.finditer(text):
-        words, rest = [match["word"]], text[match.end():]
-        while more := _GERUND_AND.match(rest):
+        words, end = [match["word"]], match.end()
+        while (more := _GERUND_AND.match(text[end:])) and end + more.start("word") not in taken:
+            taken.add(end + more.start("word"))
             words.append(more["word"])
-            rest = rest[more.end():]
+            end += more.end()
         for word in words:
             for name, pattern in ACTION_GERUNDS.items():
                 if re.fullmatch(pattern, word, re.I):

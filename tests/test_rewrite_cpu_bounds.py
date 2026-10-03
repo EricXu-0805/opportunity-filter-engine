@@ -7,9 +7,9 @@ gone. The checks now run on a worker with a deadline, but a regex holds the GIL 
 runs and a timed-out worker keeps running, so the bound has to come from the code: these
 tests hold every unit to BUDGET_SECONDS of process time and every request to a short
 event-loop heartbeat. The units are adversarial lines at the cap (repeated denials, a run
-of spaces, repeated verbs, years, status and qualifier words, commas, Chinese status marks)
-and two ordinary ones; the requests are the shapes the fifth review sent through
-/api/tailor and full target, and the selection plan's compress proposals.
+of spaces, repeated verbs, a gerund chain, years, status and qualifier words, commas,
+Chinese status marks) and two ordinary ones; the requests are the shapes the fifth review
+sent through /api/tailor and full target, and the selection plan's compress proposals.
 """
 from __future__ import annotations
 
@@ -88,6 +88,14 @@ def _realistic(mode):
         "Research assistant in the Cognitive Aging Lab since Fall 2025, scheduling", "Scheduled", 1)
 
 
+def _gerund_chain(mode):
+    """A chain of "or" gerunds after "helped", which every guarded gerund once walked to its end."""
+    evidence = _fit("helped aing or bing ", CAP)
+    if mode == "tailor":
+        return evidence, "Helped aing or bing.", "Helped bing or aing."
+    return evidence, evidence, "Bing or aing, helped. " + evidence[:CAP - 22]
+
+
 PUBLICATION = ("Xu G., Lee S. (2025). Sleep spindles and memory consolidation in older adults. Preprint, submitted to "
                "Journal of Neuroscience; under review. ")
 
@@ -99,6 +107,7 @@ SHAPES = {
     "space run in an object": _space_run,
     "helped building": lambda mode: (_fit("helped building ", CAP), "Helped building a robot.",
                                      "Helped building a robot."),
+    "gerund chain": _gerund_chain,
     "developed, then with my team": _developed_then_team,
     "years": lambda mode: (_fit("2024 ", CAP), "Built a parser in 2024.", "In 2024, built a parser."),
     "status words": lambda mode: (_fit("preprints ", CAP), "Posted two preprints.", "Two preprints posted."),
