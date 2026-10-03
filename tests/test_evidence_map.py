@@ -751,6 +751,49 @@ class TestLettersTheTokensCannotRead:
         assert outcome.status == "pending", outcome
 
 
+    # Round-3 re-measure (criterion 2b): 33fc0db's rules kept these faithful English rewrites as
+    # wrong_language. A Greek letter used as a symbol, the micro sign and an accented Latin letter are
+    # English words' letters, not another language; the rewrites go on to the locks and the review.
+    @pytest.mark.parametrize(("original", "rewrite", "ops", "links"), [
+        ("Research assistant in the Lee Lab, measuring β-amyloid levels in 40 mouse brains.",
+         "Measured β-amyloid levels in 40 mouse brains as a research assistant in the Lee Lab.",
+         [{"op": "verb_first"}], []),
+        ("Research assistant in the Lee Lab, measuring TNF-α levels in 40 mouse brains.",
+         "Measured TNF-α levels in 40 mouse brains as a research assistant in the Lee Lab.",
+         [{"op": "verb_first"}], []),
+        ("Research assistant in the Lee Lab, measuring α and β waves in 40 EEG recordings.",
+         "Measured α and β waves in 40 EEG recordings as a research assistant in the Lee Lab.",
+         [{"op": "verb_first"}], []),
+        # The micro sign, kept, and written as the Greek mu it stands for.
+        ("Research assistant in the Lee Lab, imaging 5 \u00b5m sections of 40 mouse brains.",
+         "Imaged 5 \u00b5m sections of 40 mouse brains as a research assistant in the Lee Lab.",
+         [{"op": "verb_first"}], []),
+        ("Research assistant in the Lee Lab, imaging 5 \u00b5m sections of 40 mouse brains.",
+         "Imaged 5 \u03bcm sections of 40 mouse brains as a research assistant in the Lee Lab.",
+         [{"op": "verb_first"}], []),
+        # A relabel to the posting's unaccented term: "résumé" holds a repeated accented letter.
+        ("Built a résumé parser in Python for the career center.",
+         "Built a resume parser in Python for the career center.",
+         [{"op": "relabel", "link": "L1", "from": "résumé parser", "to": "resume parser"}],
+         [("L1", "t1", "resume parser", "résumé parser")]),
+    ], ids=["beta-amyloid", "tnf-alpha", "alpha-beta-waves", "micro-sign", "micro-as-mu", "accented-relabel"])
+    def test_a_greek_symbol_micro_sign_or_accent_is_no_other_language(self, original, rewrite, ops, links):
+        anchors = anchors_for(["Experience building a resume parser in Python is required."])
+        unit = em.Unit("b1", original, original)
+        outcome = em.check_rewrite(unit, _row(rewrite, links, ops), anchors, output_language=em.language(original))
+        assert outcome.status == "pending", outcome
+
+    @pytest.mark.parametrize(("text", "symbols"), [
+        ("β-amyloid, TNF-α, IL-1β and Aβ42", {"β": 3, "α": 1}),
+        ("α = 0.05 and 5 \u00b5m", {"α": 1, "μ": 1}),
+        ("β淀粉样蛋白", {"β": 1}),
+        ("Ανάλυση δεδομένων", {}),
+        ("αβ T cells", {}),
+    ])
+    def test_which_greek_letters_are_symbols(self, text, symbols):
+        assert dict(em._greek_symbols(text)) == symbols
+
+
 class TestSupport:
     """Lines of the same activity the student confirmed may lend their own clauses, word for word."""
     ORIGINAL = "My team built a Python parser; I wrote parser tests."

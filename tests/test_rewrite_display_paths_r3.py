@@ -15,11 +15,14 @@ import json
 import pytest
 
 from tests.test_rewrite_display_paths import (
+    ALL_PATHS,
     TWO,
     TWO_ANCHORS,
+    _rewrite,
     offered,
     opportunity,  # noqa: F401  (pytest fixture)
     post_tailor,
+    run,
 )
 
 # ------------------------------------------------------------------ criterion (1): the verdict list
@@ -106,3 +109,25 @@ def test_the_first_row_of_a_wrapped_bullet_is_not_returned(monkeypatch, path):
 @pytest.mark.parametrize("path", ["/api/tailor/extract-bullets", "/api/tailor/structure"])
 def test_a_whole_wrapped_bullet_is_returned(monkeypatch, path):
     assert _extracted(monkeypatch, path, WRAPPED_WHOLE) == WRAPPED_WHOLE
+
+
+# ------------------------------------------------------------------ criterion (2b): symbols are English
+# 33fc0db's rules kept faithful rewrites of English lines holding a Greek letter, the micro sign or an
+# accented Latin letter as wrong_language, before the review; main sends them to the review.
+SYMBOL_LINES = {
+    "beta-amyloid": ("Research assistant in the Lee Lab, measuring β-amyloid levels in 40 mouse brains.",
+                     "Measured β-amyloid levels in 40 mouse brains as a research assistant in the Lee Lab."),
+    "micro-sign": ("Research assistant in the Lee Lab, imaging 5 \u00b5m sections of 40 mouse brains.",
+                   "Imaged 5 \u00b5m sections of 40 mouse brains as a research assistant in the Lee Lab."),
+    "alpha-symbol": ("Research assistant in the Lee Lab, measuring α and β waves in 40 EEG recordings.",
+                     "Measured α and β waves in 40 EEG recordings as a research assistant in the Lee Lab."),
+}
+
+
+@pytest.mark.parametrize("path", ALL_PATHS)
+@pytest.mark.parametrize("name", list(SYMBOL_LINES))
+def test_a_line_with_a_greek_symbol_still_reaches_the_review(opportunity, monkeypatch, path, name):  # noqa: F811
+    original, rewrite = SYMBOL_LINES[name]
+    shown, seen = run(opportunity, monkeypatch, path, original, _rewrite(rewrite, [{"op": "verb_first"}]),
+                      "We measure brain tissue in mouse models.")
+    assert rewrite in seen and shown == [rewrite], (shown, seen)
