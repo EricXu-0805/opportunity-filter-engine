@@ -850,6 +850,16 @@ def test_a_role_heading_names_no_other_doer(endpoint, monkeypatch, pair):
 
 
 @pytest.mark.parametrize(("original", "rewrite"), [
+    ("TA supervised by Prof. Lee, grading 40 exams a week.", "Graded 40 exams a week as TA supervised by Prof. Lee."),
+    ("Technician trained in PCR, genotyping mice.", "Genotyped mice as technician trained in PCR."),
+    ("TA — holds weekly office hours for 40 students.", "Holds weekly office hours for 40 students as TA."),
+])
+def test_a_participle_or_a_dash_after_a_role_noun_still_heads_the_line(original, rewrite):
+    """Main shows these; the actor lock refused them on d850d2a0."""
+    assert gate_findings(original, rewrite) == []
+
+
+@pytest.mark.parametrize(("original", "rewrite"), [
     ("The postdoc in our lab ran the assays; I analyzed the data.",
      "Ran the assays with the postdoc in our lab; I analyzed the data."),
     ("The nurse, with my help, recorded vital signs for 20 patients.",
@@ -858,6 +868,8 @@ def test_a_role_heading_names_no_other_doer(endpoint, monkeypatch, pair):
      "Designed the study with Dr. Lee; recruited 30 participants."),
     ("Professor Lee designed the study; I recruited 30 participants.",
      "Designed the study with Professor Lee; recruited 30 participants."),
+    ("Professor O'Brien designed the study; I recruited 30 participants.",
+     "Designed the study with Professor O'Brien; recruited 30 participants."),
     ("Lab technician ran the assays; I analyzed the data.", "Ran the assays as lab technician; analyzed the data."),
     ("He also wrote the grant; I edited it.", "Also wrote the grant; edited it."),
     ("Supervisor: Dr. Lee, who designed the protocol; I ran it.",

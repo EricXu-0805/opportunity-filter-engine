@@ -642,17 +642,26 @@ def _names_another_doer(lead, other):
     holding office hours", "Research technician in the Smith Lab", 研究生期间负责. It is
     another person with a determiner ("The nurse, with my help, recorded"), as an
     abbreviated title ("Dr. Lee"), or when its own verb follows it directly, past a name
-    or an adverb ("Lab technician ran the assays", "Professor Lee designed", 导师负责).
+    or an adverb ("Lab technician ran the assays", "Professor Lee designed", 导师负责). A
+    verb after a dash or a bracket follows a heading ("TA — holds office hours"), and a
+    past form followed by "by" or a preposition describes the title: "TA supervised by
+    Prof. Lee", "Technician trained in PCR".
     """
     rest = lead[other.end():]
     if other["determiner"] or rest.startswith("."):
         return True
     if _CJK.match(other.group(0)):
         return bool(_ZH_VERBS.match(rest.lstrip()))
-    words = _WORD.findall(rest)
-    while words and words[0][0].isupper():
-        words.pop(0)
-    return (verb_use(_lead_word(" ".join(words))) or ("", ""))[1] in ("past", "s")
+    for word in _WORD.finditer(rest):
+        if word[0][0].isupper() or not _lead_word(word[0]):
+            continue
+        between = re.sub(r"[\w'’.]+(?:-[\w'’.]+)*", "", rest[:word.start()])
+        if between.strip() or (verb_use(word[0]) or ("", ""))[1] not in ("past", "s"):
+            return False
+        after = rest[word.end():]
+        following = _WORD.match(after.lstrip())
+        return not (_BY.match(after) or following and re.match(_NOT_PREPOSITION, following[0], re.I) is None)
+    return False
 
 
 def _subject(clause):
