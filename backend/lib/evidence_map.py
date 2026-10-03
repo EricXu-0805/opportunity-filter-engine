@@ -807,22 +807,45 @@ def _function_characters(text: str) -> Counter:
     return Counter(character for character in text if character in _FUNCTION_ZH)
 
 
+def _unread_letters(text: str) -> Counter:
+    """The letters language() and tokens() cannot read: neither ASCII nor a CJK ideograph."""
+    return Counter(character for character in text
+                   if character.isalpha() and not character.isascii() and not _CJK.match(character))
+
+
+def _non_latin_frame(text: str) -> bool:
+    """Whether a line is written at least in part in a script other than Latin.
+
+    CJK ideographs, Hangul, kana, Cyrillic, Greek, Arabic, Hebrew, Thai or Devanagari
+    carry a frame of their own; an accented Latin letter ("Café Lab") does not.
+    """
+    return bool(_CJK.search(text)) or any(not unicodedata.name(character, "").startswith("LATIN ")
+                                          for character in _unread_letters(text))
+
+
 def _other_script(unit: Unit, text: str, ops_raw: list[dict]) -> bool:
     """Whether a rewrite writes part of its line in another script than the line does.
 
     language() and the token contract read only ASCII letters and CJK ideographs,
     so they cannot see a letter of any other script: katakana, Hangul, Cyrillic or
     full-width Latin is another language unless the line already uses that letter.
-    Nor do they see function words, so "负责 A 和 B" -> "负责 B and A" translates the
-    line's 和: a line with Chinese gains no English function word, and an English
-    line gains no Chinese function character, beyond what a relabel's "to" holds.
+    For the same reason they cannot see such a letter go: "Python 데이터 파이프라인" ->
+    "Python data pipeline" translates the line's Korean, so every letter they cannot
+    read keeps its count in the rewrite. Nor do they see function words, so
+    "负责 A 和 B" -> "负责 B and A" translates the line's 和, and "Python 및 SQL" ->
+    "SQL and Python" its 및: a line written in part in a non-Latin script gains no
+    English function word, and an English line with Chinese gains no Chinese
+    function character, beyond what a relabel's "to" holds.
     """
     known = set(unit.current).union(*(source for _, source in unit.sources))
     if any(character.isalpha() and not character.isascii() and not _CJK.match(character) and character not in known
            for character in text):
         return True
+    if _unread_letters(unit.current) - _unread_letters(text):
+        return True
     written = " ".join(op["to"] for op in ops_raw if op.get("op") == "relabel" and isinstance(op.get("to"), str))
-    if _CJK.search(unit.current) and _function_words(text) - _function_words(unit.current) - _function_words(written):
+    if (_non_latin_frame(unit.current)
+            and _function_words(text) - _function_words(unit.current) - _function_words(written)):
         return True
     return bool(language(unit.current) == "en" and _CJK.search(unit.current) and _function_characters(text)
                 - _function_characters(unit.current) - _function_characters(written))
@@ -851,9 +874,11 @@ def _check_same_language(unit: Unit, text: str, links: list[Link], ops_raw: list
             if (set(op) != {"op", "link", "from", "to"} or not isinstance(source, str) or not isinstance(target, str)
                     or source_span(unit.current, source) is None or written_span(text, target) is None):
                 return _keep(unit, "beyond_allowed_edit", "relabel_span_missing", links=links)
-            # A relabel renames within one script: "脑电 signal" -> "brain signal" translates the line's Chinese.
+            # A relabel renames within one script: "脑电 signal" -> "brain signal" translates the line's Chinese,
+            # and "데이터 파이프라인" -> "data pipeline" its Korean.
             if (language(link.term) != language(unit.current) or _CJK.search(link.term) and not _CJK.search(source)
-                    or bool(_CJK.search(source)) != bool(_CJK.search(target))):
+                    or bool(_CJK.search(source)) != bool(_CJK.search(target))
+                    or bool(_unread_letters(source)) != bool(_unread_letters(target))):
                 return _keep(unit, "beyond_allowed_edit", "relabel_cross_language", links=links)
             # "from" renames what the link's source names, nothing next to it.
             if source_span(link.source, source) is None:

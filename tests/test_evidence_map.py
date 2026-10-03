@@ -697,6 +697,60 @@ class TestTrapsTheContractKeeps:
         assert outcome.status == "pending", outcome
 
 
+class TestLettersTheTokensCannotRead:
+    """language() and tokens() read only ASCII letters and CJK ideographs (round-2 review, criterion 3).
+
+    scripts/other_script_probe.py counts the shapes over eight scripts: 8/8, 8/8 and 8/8 reached the
+    review before; 0/8 each now.
+    """
+
+    SQL = [("L1", "t1", "SQL", "SQL")]
+
+    @pytest.mark.parametrize(("original", "rewrite", "ops", "links"), [
+        # A relabel out of the line's own script: its Korean letters are gone.
+        ("Python 데이터 파이프라인 구축 및 유지보수 담당", "Python data pipeline 구축 및 유지보수 담당",
+         [{"op": "relabel", "link": "L1", "from": "Python 데이터 파이프라인", "to": "Python data pipeline"}],
+         [("L1", "t1", "Python data pipeline", "Python 데이터 파이프라인")]),
+        # The line's own conjunction written in English.
+        ("Python и SQL для обработки данных", "SQL and Python для обработки данных",
+         [{"op": "lead_with", "link": "L1"}], SQL),
+        # Every letter kept, English glue added.
+        ("データ ぶんせき: Python, SQL", "SQL and Python: データ ぶんせき", [{"op": "lead_with", "link": "L1"}], SQL),
+        ("Ανάλυση δεδομένων: Python, SQL", "SQL and Python: Ανάλυση δεδομένων", [{"op": "lead_with", "link": "L1"}], SQL),
+    ], ids=["hangul-relabel", "cyrillic-conjunction", "kana-glue", "greek-glue"])
+    def test_a_rewrite_that_translates_another_scripts_words_is_kept(self, original, rewrite, ops, links):
+        anchors = anchors_for(["Experience building a Python data pipeline with SQL is required."])
+        unit = em.Unit("b1", original, original)
+        outcome = em.check_rewrite(unit, _row(rewrite, links, ops), anchors, output_language=em.language(original))
+        assert (outcome.status, outcome.code, outcome.detail) == ("kept", "beyond_allowed_edit", "wrong_language")
+
+    def test_a_relabel_renames_within_the_script_of_its_from(self):
+        # without_terms re-checks a line with _check_same_language alone: the relabel itself is refused there.
+        original = "Python 데이터 파이프라인 구축 및 유지보수 담당"
+        anchors = anchors_for(["Experience building a Python data pipeline is required."])
+        unit = em.Unit("b1", original, original)
+        links = em.verify_links([{"id": "L1", "anchor": "t1", "term": "Python data pipeline",
+                                  "source": "Python 데이터 파이프라인", "relation": "same"}], unit.sources, anchors)
+        ops = [{"op": "relabel", "link": "L1", "from": "Python 데이터 파이프라인", "to": "Python data pipeline"}]
+        outcome = em._check_same_language(unit, "Python data pipeline 구축 및 유지보수 담당", links, ops)
+        assert (outcome.status, outcome.detail) == ("kept", "relabel_cross_language")
+
+    @pytest.mark.parametrize(("original", "rewrite", "ops", "links"), [
+        # A reorder in the line's own words.
+        ("Python 및 SQL 데이터 정리 담당", "SQL 및 Python 데이터 정리 담당", [{"op": "lead_with", "link": "L1"}],
+         [("L1", "t1", "SQL", "SQL")]),
+        # An accented Latin letter is no frame of its own: the English line may gain "as" and "a".
+        ("Research assistant in the Café Lab, analyzing Python simulation data for CS 225.",
+         "Analyzed Python simulation data for CS 225 as a research assistant in the Café Lab.",
+         [{"op": "verb_first"}], []),
+    ], ids=["hangul-reorder", "accent-in-an-english-line"])
+    def test_a_rewrite_in_the_lines_own_words_still_reaches_the_locks(self, original, rewrite, ops, links):
+        anchors = anchors_for(["Experience with SQL is required."])
+        unit = em.Unit("b1", original, original)
+        outcome = em.check_rewrite(unit, _row(rewrite, links, ops), anchors, output_language=em.language(original))
+        assert outcome.status == "pending", outcome
+
+
 class TestSupport:
     """Lines of the same activity the student confirmed may lend their own clauses, word for word."""
     ORIGINAL = "My team built a Python parser; I wrote parser tests."
