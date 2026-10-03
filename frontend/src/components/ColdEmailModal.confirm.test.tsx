@@ -1090,8 +1090,7 @@ describe('a follow-up reminder the page can see', () => {
     // The chips write remind_at straight to the row and the modal told nobody.
     // The tracker panel on the same page seeds its date field from
     // interactionDetail.remind_at, so it rendered empty for a reminder just
-    // set — and the status-change suggestion, which fires only when remind_at
-    // is unset, then offered to set one and overwrote it on a single click.
+    // set.
     const seen: string[] = [];
     await becomeOwner('u1');
     renderModal('opp-A', liveListingTarget('opp-A'), undefined, (d) => seen.push(d));

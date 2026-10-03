@@ -114,14 +114,9 @@ export default function OpportunityDetail({
     setTailorOpen,
     renovationOpen,
     setRenovationOpen,
-    suggestion,
-    suggestionSaving,
-    suggestionError,
     handleStar,
     handleTrack,
     saveDetails,
-    handleUseSuggestion,
-    handleDismissSuggestion,
     handleShare,
   } = useOpportunityDetail(opp);
 
@@ -227,16 +222,11 @@ export default function OpportunityDetail({
               // keyed like TrackerPanel so it cannot outlive the account.
               key={identityGeneration}
               interaction={interaction}
-              suggestion={suggestion}
               statusSaving={statusSaving}
               statusError={statusError}
               interactionUnready={!ownerReady || interactionLoading || interactionError}
               onTrack={handleTrack}
               onRetryTrack={retryTrack}
-              onUseSuggestion={handleUseSuggestion}
-              onDismissSuggestion={handleDismissSuggestion}
-              suggestionSaving={suggestionSaving}
-              suggestionError={suggestionError}
               t={t}
             />
             <ApplicationRecordForm
