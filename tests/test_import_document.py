@@ -179,9 +179,10 @@ def test_account_heading_does_not_make_a_password_wall_readable():
     assert raised.value.reason == 'access_page'
 
 
-def test_login_title_can_coexist_with_real_readable_source():
+@pytest.mark.parametrize('title', ['Sign in', 'Sign in! | Example Portal', 'Log in… – Example University'])
+def test_login_title_can_coexist_with_real_readable_source(title):
     text = extract_import_document(page('<h1>Sign in</h1><p>Undergraduates may apply. Deadline June 1.</p>'
-                                        '<form><input type="password"></form>', '<title>Sign in</title>'))['text']
+                                        '<form><input type="password"></form>', f'<title>{title}</title>'))['text']
     assert 'Undergraduates may apply. Deadline June 1.' in text
 
 
@@ -213,6 +214,22 @@ def test_login_instruction_in_same_paragraph_keeps_real_conditions():
     html = page('<h1>Research internship</h1><p>Applications close June 1. Log in to apply.</p>'
                 '<form><input type="password"></form>')
     assert 'Applications close June 1. Log in to apply.' in extract_import_document(html)['text']
+
+
+# A gate or check line after a <br> is weighed alone too: it must not take the
+# posting line before it down with it. Reading a check sentence across a <br>
+# (the perimeterx-line-break cases below) must not join these lines.
+@pytest.mark.parametrize(('body', 'head'), [
+    pytest.param('<p>Undergraduate research assistant wanted<br>Log in with your NetID to apply</p>'
+                 '<form><input type="password"></form>', '', id='password-form'),
+    pytest.param('<p>Undergraduate research assistant wanted<br>Sign in to view the application</p>',
+                 '<title>Sign in</title>', id='sign-in-title'),
+    pytest.param('<main><h1>REU</h1><p>Undergraduate research assistant wanted<br>Please verify you are human</p>'
+                 '</main>', '', id='check-sentence'),
+])
+def test_a_gate_line_after_a_line_break_keeps_the_posting_line_before_it(body, head):
+    text = extract_import_document(page(body, head))['text']
+    assert 'Undergraduate research assistant wanted\n' in text
 
 
 def test_javascript_skill_requirement_is_not_a_dynamic_page_wall():
@@ -288,6 +305,17 @@ IMUNIFY_WEBSHIELD = (
     '<input type="hidden" id="wsidchk" name="wsidchk"/></form>'
     '<script>(function(){var wsidchk=1;})();</script></body></html>'
 )
+CLOUDFLARE_ATTENTION = '<title>Attention Required! | Cloudflare</title>'
+PX_BOX = '<div id="px-captcha"></div>'
+PX_SENTENCE = '<p>Press &amp; Hold to confirm you are a human (and not a bot).</p>'
+PX_BROKEN = '<p>Press &amp; Hold to confirm you are<br>a human (and not a bot).</p>'
+PX_REFERENCE = '<p>Reference ID 5b0f8a10-1234-11ef-9c1a-7a6f1f1c0000</p>'
+CLOUDFLARE_CHALLENGE = ('<div class="main-content"><h1 class="zone-name-title h1">example.edu</h1><p>Verify you are human '
+                        'by completing the action below.</p><div id="turnstile-wrapper"></div><div class="core-msg">'
+                        'example.edu needs to review the security of your connection before proceeding.</div></div>')
+CLOUDFLARE_RAY_ID = '<div class="footer"><div class="ray-id">Ray ID: <code>8c9e4f0b6d1a2e3f</code></div></div>'
+CLOUDFLARE_CREDIT = ('<div class="footer"><div id="footer-text">Performance &amp; security by '
+                     '<a href="https://www.cloudflare.com">Cloudflare</a></div></div>')
 
 
 @pytest.mark.parametrize('html', [
@@ -385,6 +413,36 @@ IMUNIFY_WEBSHIELD = (
                       '<title>example.edu</title>'), id='cloudflare-connection-site-title'),
     pytest.param(page('<h1>example.edu</h1><p>Please stand by, while we are checking your browser...</p>',
                       '<title>example.edu</title>'), id='cloudflare-stand-by-site-title'),
+    # Cloudflare's block and captcha pages, titled with end punctuation and a
+    # separator both. The title rule took one or the other.
+    pytest.param(page('<h1>Sorry, you have been blocked</h1><h2>You are unable to access example.edu</h2><h2>Why have I '
+                      'been blocked?</h2><p>This website is using a security service to protect itself from online '
+                      'attacks.</p>', CLOUDFLARE_ATTENTION), id='cloudflare-block-page'),
+    pytest.param(page('<h1>One more step</h1><h2>Please complete the security check to access example.edu</h2><p>'
+                      'Completing the CAPTCHA proves you are a human and gives you temporary access to the web '
+                      'property.</p>', CLOUDFLARE_ATTENTION), id='cloudflare-captcha-page'),
+    # PerimeterX under the site's title, its sentence broken by <br> or followed
+    # by its reference id, whose hexadecimal letters made a source sentence.
+    pytest.param(page(PX_BOX + PX_SENTENCE + PX_REFERENCE, '<title>example.edu</title>'), id='perimeterx-reference-id'),
+    pytest.param(page(PX_BOX + PX_BROKEN, '<title>example.edu</title>'), id='perimeterx-line-break'),
+    pytest.param(page(PX_BOX + PX_BROKEN + PX_REFERENCE, '<title>example.edu</title>'),
+                 id='perimeterx-line-break-reference-id'),
+    # Cloudflare's challenge without its title: its footer's Ray ID and credit
+    # are not source.
+    pytest.param(page(CLOUDFLARE_CHALLENGE + CLOUDFLARE_RAY_ID), id='cloudflare-untitled-ray-id'),
+    pytest.param(page(CLOUDFLARE_CHALLENGE + CLOUDFLARE_RAY_ID + CLOUDFLARE_CREDIT), id='cloudflare-untitled-footer'),
+    pytest.param(page(CLOUDFLARE_CHALLENGE + CLOUDFLARE_CREDIT, '<title>example.edu</title>'),
+                 id='cloudflare-credit-site-title'),
+    pytest.param(page('<h1>One more step</h1><h2>Please complete the security check to access example.edu</h2><p>'
+                      'Completing the CAPTCHA proves you are a human and gives you temporary access to the web '
+                      'property.</p>'), id='cloudflare-captcha-page-untitled'),
+    # Cloudflare's 2025 wording, under the site's title.
+    pytest.param(page('<h1>example.edu</h1><p>Performing security verification</p><div id="turnstile"></div><p>This '
+                      'website uses a security service to protect against malicious bots. This page is displayed while '
+                      'the website verifies you are not a bot.</p>', '<title>example.edu</title>'),
+                 id='cloudflare-2025-site-title'),
+    # An animated ellipsis has nothing to read in it.
+    pytest.param(page('<p>Please wait while your request is being verified</p><p>...</p>'), id='verification-and-dots'),
 ])
 def test_bot_verification_interstitial_is_an_access_page_not_a_posting(html):
     with pytest.raises(ImportDocumentError) as raised:
@@ -587,6 +645,29 @@ def test_bot_check_words_in_a_postings_title_do_not_refuse_it(body, head, kept):
     assert kept in extract_import_document(page(body, head))['text']
 
 
+# A check under one of the titles above, explaining itself in a sentence or two
+# Cloudflare, AWS WAF and bot-protection plugins print. Main imported all six.
+CHECK_EXPLANATION = ('<p>This process is automatic. Your browser will redirect to your requested content shortly.</p>'
+                     '<p>Please allow up to 5 seconds…</p>')
+
+
+@pytest.mark.parametrize(('body', 'head'), [
+    pytest.param('<h1>Checking your browser</h1>' + CHECK_EXPLANATION, '', id='checking-your-browser-heading'),
+    pytest.param(CHECK_EXPLANATION, '<title>Checking your browser...</title>', id='checking-your-browser-title'),
+    pytest.param('<p>Please complete the security check to access the website.</p><div class="h-captcha"></div>',
+                 '<title>Human Verification</title>', id='human-verification'),
+    pytest.param('<p>We are checking that you are not a robot. Please wait a moment.</p>', '<title>Bot Verification</title>',
+                 id='bot-verification'),
+    pytest.param('<p>This process is automatic. Your browser will redirect to your requested content shortly.</p>',
+                 '<title>One moment, please...</title>', id='one-moment-please'),
+    pytest.param('<p>Sorry, you have been blocked</p>', '<title>One moment, please</title>', id='blocked-note'),
+])
+def test_a_check_under_a_title_a_posting_can_carry_is_an_access_page(body, head):
+    with pytest.raises(ImportDocumentError) as raised:
+        extract_import_document(page(body, head))
+    assert raised.value.reason == 'access_page'
+
+
 # Sentences an ordinary sparse posting can hold. Bot checks print different
 # ones (PerimeterX "confirm you are a human", Imunify360 "is being verified",
 # Imperva's incident ID), and main imports these pages.
@@ -616,6 +697,9 @@ def test_ordinary_sentences_on_a_sparse_posting_are_not_a_bot_check(note):
                       '<script src="/app.js"></script>'), id='two-lines'),
     pytest.param(page('<div id="app"><p>Loading jobs. This may take a few seconds.</p></div>'
                       '<script src="/app.js"></script>'), id='single-period'),
+    # Checks print "Please wait a moment" too; it is a loading line, not source.
+    pytest.param(page('<div id="app"><p>Loading interface...</p><p>Please wait a moment.</p></div>'
+                      '<script src="/app.js"></script>'), id='loading-ellipsis-and-wait-a-moment'),
 ])
 def test_script_page_with_only_a_loading_line_needs_javascript(html):
     with pytest.raises(ImportDocumentError) as raised:
@@ -681,6 +765,20 @@ def test_blocked_title_rule_reads_a_long_punctuation_run_in_linear_time(where, m
         html = page(SOIL_POSTING.format(f'<h1>{heading}</h1>'))
     with _deadline(2):
         text = extract_import_document(html)['text']
+    assert 'The Soil Microbiology Lab seeks an undergraduate research assistant for spring 2027.' in text
+
+
+# The title rules take a run of end punctuation and spaces before a separator.
+# Each heading below fails the rules only at its end, so a rule that retried
+# the ways to split its run would take time quadratic in it; these take
+# milliseconds.
+@pytest.mark.parametrize('heading', [
+    pytest.param('Attention required' + '!' * 50_000 + ' |\nThe lab', id='marks-before-a-separator'),
+    pytest.param('Sign in' + '! ' * 25_000 + '\nThe lab', id='marks-and-spaces'),
+])
+def test_title_rules_read_a_long_heading_in_linear_time(heading):
+    with _deadline(2):
+        text = extract_import_document(page(SOIL_POSTING.format(f'<h1>{heading}</h1>')))['text']
     assert 'The Soil Microbiology Lab seeks an undergraduate research assistant for spring 2027.' in text
 
 

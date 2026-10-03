@@ -77,7 +77,7 @@ _ACCESS_SHELL = re.compile(
 # Each line is matched atomically. A run of "loading" words splits into lines
 # many ways, and retrying every split took exponential time on page text.
 _LOADING_SHELL = re.compile(
-    r'^(?>(?:loading(?:(?: [\w-]+){1,3}(?:\.+|…|,))?|please wait|'
+    r'^(?>(?:loading(?:(?: [\w-]+){1,3}(?:\.+|…|,))?|please wait(?: a (?:moment|second|few seconds))?|'
     r'(?:this|it) (?:may|might|can|could) take (?:a few|several|a couple of) (?:seconds|moments))[.…!,]*\s*)+$',
     re.I,
 )
@@ -85,7 +85,7 @@ _LOADING_SHELL = re.compile(
 # stock check name a real posting may have as its title. They are a wall only
 # when nothing else on the page is readable.
 _GATE_TITLE = re.compile(
-    r'^(?:sign[ -]?in|log[ -]?in)(?:[.!…]+|\s*[-|:–—].*)?$|'
+    r'^(?:sign[ -]?in|log[ -]?in)(?:[.!…]*\s*[-|:–—].*|[.!…]+)?$|'
     r'^(?:one moment,? please|(?:human|bot) verification|checking your browser)[.!…]*$', re.I,
 )
 _GATE_TEXT = re.compile(
@@ -93,17 +93,25 @@ _GATE_TEXT = re.compile(
     r'cookies?|copyright|privacy policy|terms of (?:use|service)|all rights reserved)\b', re.I,
 )
 # A site can answer our server's address with a bot check while the same URL
-# opens normally for the student. Checks print these sentences and load these
-# scripts and frames, but an ordinary page can carry them too, so they refuse
-# only a page with nothing else to read.
+# opens normally for the student. Checks print these sentences and footer
+# lines and load these scripts and frames, but an ordinary page can carry them
+# too, so they refuse only a page with nothing else to read. Words may be split
+# by any whitespace: PerimeterX breaks its sentence with <br>.
 _CHALLENGE_TEXT = re.compile(
-    r'\b(?:(?:your|the|this) (?:request|browser|connection) is being (?:verified|checked)|'
-    r'verif(?:y|ying) (?:that )?you(?: are|\'re|’re) (?:a )?(?:human|not a (?:ro)?bot)|'
-    r'confirm you are (?:a )?human|making sure you(?: are|\'re|’re) not a (?:ro)?bot|'
-    r'checking (?:your browser|if the site connection is secure)|'
-    r'needs to review the security of your connection|performing security verification|'
-    r'(?:incapsula|imperva) incident|'
-    r'protected by anubis|ddos protection by|enable js and disable any ad ?blocker)\b',
+    r'\b(?:(?:your|the|this)\s+(?:request|browser|connection)\s+is\s+being\s+(?:verified|checked)|'
+    r'(?:verif(?:y|ying|ies)|checking|confirm(?:ing)?|making\s+sure)\s+(?:that\s+)?you(?:\s+are|\'re|’re)\s+'
+    r'(?:a\s+)?(?:human|not\s+a\s+(?:ro)?bot)|'
+    r'checking\s+(?:your\s+browser|if\s+the\s+site\s+connection\s+is\s+secure)|'
+    r'needs\s+to\s+review\s+the\s+security\s+of\s+your\s+connection|performing\s+security\s+verification|'
+    r'(?:incapsula|imperva)\s+incident|'
+    r'protected\s+by\s+anubis|ddos\s+protection\s+by|enable\s+js\s+and\s+disable\s+any\s+ad\s?blocker|'
+    # Cloudflare's older check and captcha pages, its block page and its 2025 check.
+    r'this\s+process\s+is\s+automatic|your\s+browser\s+will\s+redirect\s+to\s+your\s+requested\s+content|'
+    r'please\s+allow\s+up\s+to\s+\d+\s+seconds|complete\s+the\s+security\s+check|proves\s+you\s+are\s+(?:a\s+)?human|'
+    r'(?:uses|is\s+using)\s+a\s+security\s+service\s+to\s+protect|you\s+have\s+been\s+blocked|'
+    # Footer lines: Cloudflare's Ray ID and credit, PerimeterX's reference id.
+    r'ray\s+id:?\s*[0-9a-f]{16}|performance\s+(?:&|and)\s+security\s+by\s+cloudflare|'
+    r'reference\s+id:?\s*[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})\b',
     re.I,
 )
 # Cloudflare's challenge-platform script is left out: Cloudflare adds it to
@@ -478,6 +486,29 @@ def _clean_text(text: str) -> str:
     return '\n'.join(re.sub(r' *\t *', '\t', line) for line in lines if line)
 
 
+def _one_line(check: re.Match) -> str:
+    return check.group().replace('\n', ' ')
+
+
+def _sentences(root: Tag, *, forms: bool):
+    """The sentences of root's text that the wall rules weigh, chrome left out.
+
+    Login instructions can share a paragraph with a real deadline, so each
+    sentence is weighed alone; a gate phrase must not discard adjacent facts.
+    Only a bot-check sentence (_CHALLENGE_TEXT) is read across lines: PerimeterX
+    breaks its sentence over two with <br>, and both halves are the check.
+    """
+    text = _CHALLENGE_TEXT.sub(_one_line, _render_text(root, _CHROME if forms else _CHROME_AND_FORMS))
+    for line in text.splitlines():
+        yield from _SENTENCE_BREAK.split(line)
+
+
+def _discounted(sentence: str) -> bool:
+    """A sentence a wall prints: a blocked title, a sign-in, script, bot-check or loading line."""
+    return bool(_BLOCKED_PAGE_TITLE.fullmatch(sentence) or _JS_WALL.search(sentence) or _GATE_TEXT.search(sentence)
+                or _CHALLENGE_TEXT.search(sentence) or _LOADING_SHELL.fullmatch(sentence))
+
+
 def _has_independent_source(root: Tag, *, forms: bool = False) -> bool:
     """A login form can coexist with source prose; do not reject that page.
 
@@ -485,17 +516,10 @@ def _has_independent_source(root: Tag, *, forms: bool = False) -> bool:
     inside forms (``forms``): ASP.NET and SharePoint wrap the whole page,
     posting included, in one form.
     """
-    for line in _render_text(root, _CHROME if forms else _CHROME_AND_FORMS).splitlines():
-        # Login instructions can share a paragraph with a real deadline. Assess
-        # sentences separately; a gate phrase must not discard adjacent facts.
-        for sentence in _SENTENCE_BREAK.split(line):
-            # Letters are counted first, in C and stopping at 12, so a page of
-            # short sentences is not matched against every rule.
-            if len(list(islice(filter(str.isalpha, sentence), 12))) < 12:
-                continue
-            if (_BLOCKED_PAGE_TITLE.fullmatch(sentence) or _JS_WALL.search(sentence) or _GATE_TEXT.search(sentence)
-                    or _CHALLENGE_TEXT.search(sentence) or _LOADING_SHELL.fullmatch(sentence)):
-                continue
+    for sentence in _sentences(root, forms=forms):
+        # Letters are counted first, in C and stopping at 12, so a page of
+        # short sentences is not matched against every rule.
+        if len(list(islice(filter(str.isalpha, sentence), 12))) == 12 and not _discounted(sentence):
             return True
     return False
 
