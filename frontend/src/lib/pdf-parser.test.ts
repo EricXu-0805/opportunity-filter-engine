@@ -1076,6 +1076,30 @@ describe('positioned text items', () => {
     ]);
   });
 
+  it('measures the next line\'s first word by its glyphs, so a wide word did not fit where an average one would have', async () => {
+    // The role row's date shows that the column ends at 550. "AUC" takes a
+    // fifth of its line's width, not the eighth its three characters would
+    // take at the line's average width, so it could not have fitted in the
+    // 20pt left after "0.87". Nor could "memo", two of whose four letters
+    // are an "m", in the 34pt left after "two-page".
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('Undergraduate Research Assistant, Health Imaging Lab', 50, 250, 748), at('Jan 2026 - Present', 465, 85, 748, { hasEOL: true }),
+      at('- Wrote unit tests for the parser.', 50, 160, 736, { hasEOL: true }),
+      at('- Added a nightly job that checks the backups.', 50, 220, 724, { hasEOL: true }),
+      at('- Built a PyTorch pipeline that trains a ResNet-18 baseline on chest X-ray images, reaching 0.87', 50, 480, 712, { hasEOL: true }),
+      at('AUC on a held-out split.', 50, 110, 700, { hasEOL: true }),
+      at('- Surveyed 300 commuters about late buses and summarized their answers in a two-page', 50, 466, 688, { hasEOL: true }),
+      at('memo for the city.', 50, 92, 676),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      'Undergraduate Research Assistant, Health Imaging Lab\tJan 2026 - Present',
+      '- Wrote unit tests for the parser.',
+      '- Added a nightly job that checks the backups.',
+      '- Built a PyTorch pipeline that trains a ResNet-18 baseline on chest X-ray images, reaching 0.87 AUC on a held-out split.',
+      '- Surveyed 300 commuters about late buses and summarized their answers in a two-page memo for the city.',
+    ]);
+  });
+
   it('carries a line that ends in a preposition on only into a name that cannot open an item', async () => {
     // "rely on", "signed up for" and "log in" end their items; the role row
     // or item after them opens with an ordinary word. A name such as "NIH

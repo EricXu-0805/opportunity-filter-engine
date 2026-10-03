@@ -165,7 +165,7 @@ const TAB_GAP = 1.5;
 const ALIGN = 1;
 const COLUMN = 2;
 const NARROW = 20;
-const SLACK = 1.3;
+const SLACK = 1.1;
 const JUSTIFIED = 0.05;
 // A right-aligned field ends within about a word of its column's edge; a
 // label column's gap can leave its row far short of it.
@@ -180,6 +180,19 @@ const KANGXI_RADICAL = /[\u2f00-\u2fd5]/gu;
 const CJK_TEXT = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
 // A Chinese line that names an award ("获得校级优秀学生奖学金。").
 const CJK_AWARD = /奖|称号|荣誉/u;
+// Helvetica's advance widths, in thousandths of an em, for the printable
+// ASCII characters from space to "~". Fonts differ more in scale than in
+// proportion, so these share a line's measured width among its characters:
+// a capital or an "m" takes more of it than an "i" or a "t".
+const ASCII_WIDTHS = [
+  278, 278, 355, 556, 556, 889, 667, 191, 333, 333, 389, 584, 278, 333, 278, 278,
+  556, 556, 556, 556, 556, 556, 556, 556, 556, 556, 278, 278, 584, 584, 584, 556,
+  1015, 667, 667, 722, 722, 667, 611, 778, 722, 278, 500, 667, 556, 833, 722, 778,
+  667, 778, 722, 667, 611, 722, 667, 944, 667, 667, 611, 278, 278, 278, 469, 556,
+  333, 556, 556, 500, 556, 556, 278, 556, 556, 222, 222, 500, 222, 833, 556, 556,
+  556, 556, 333, 500, 278, 556, 500, 722, 500, 500, 500, 334, 260, 334, 584,
+];
+const FULL_WIDTH = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\u3000-\u303f\uff00-\uffef]/u;
 
 /** Where an item sits, for horizontal left-to-right text only. Rotated,
  *  vertical or right-to-left runs keep the positionless joining rules. */
@@ -190,6 +203,18 @@ function positioned(item: PdfTextItem): Run | null {
   if (!(a > 0) || Math.abs(b) > 1e-6 || Math.abs(c) > 1e-6 || !Number.isFinite(x) || !Number.isFinite(y)) return null;
   const size = item.height || Math.abs(t[3] as number);
   return size > 0 ? { x, y, width: item.width, size, font: item.fontName, str: item.str } : null;
+}
+
+/** A text's width by Helvetica's proportions, in thousandths of an em. An
+ *  accented letter takes its base letter's width, a CJK or full-width
+ *  character an em, any other character a digit's width. */
+function glyphWidth(text: string): number {
+  let width = 0;
+  for (const character of text) {
+    const code = character.normalize('NFD').codePointAt(0)!;
+    width += code >= 32 && code <= 126 ? ASCII_WIDTHS[code - 32] : FULL_WIDTH.test(character) ? 1000 : 556;
+  }
+  return width;
 }
 
 function median(values: number[]): number {
@@ -310,13 +335,22 @@ function wrapSeparator(
     : !!edges && weakWrapEvidence(before, after, periodItem) && !cjkAwardRow(before, after));
   if (!evidence && !unsure) return null;
   if (unsure && (!edges || !edgeShown(shapes, index - 1, texts, edges))) return null;
-  // Glyph widths are unknown, so the first word's width is estimated from
-  // the next line's average character width. Where the text itself says it
-  // goes on, a generous estimate decides; otherwise the plain one must.
+  // PDF.js measures runs, not glyphs, so the next line's first word and the
+  // space before it take their glyphs' share of the line's measured width.
+  // The weak hints that hold on any page keep the characters' share, which
+  // under-measures digits and capitals: measured by its glyphs, a number or
+  // a name after a preposition that can also end an item ("…we presented
+  // at" / "12 students…") would join more items that end within a word of
+  // the edge. (For a lone word the two shares are the same.) Where the text
+  // itself says it goes on, a generous estimate decides; otherwise the plain
+  // one must.
   const { left, right } = column(index - 1);
   const room = right - prev.right;
-  const space = SPACE * next.size;
-  const word = Array.from(firstWord(after)).length * (next.right - next.left) / Array.from(after).length;
+  const width = next.right - next.left;
+  const characterShare = !evidence && weakWrapEvidence(before, after, false);
+  const space = characterShare ? SPACE * next.size : width * glyphWidth(' ') / glyphWidth(after);
+  const word = characterShare ? width * Array.from(firstWord(after)).length / Array.from(after).length
+    : width * glyphWidth(firstWord(after)) / glyphWidth(after);
   if (right - left < NARROW * prev.size) {
     // A narrow column of short items ("Python" / "SolidWorks") is a list, not
     // a paragraph, unless the text itself says it goes on.
