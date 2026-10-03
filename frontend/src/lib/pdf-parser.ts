@@ -292,9 +292,10 @@ function cjkAwardRow(before: string, after: string): boolean {
  *  that ends a sentence may finish that item. A weak hint, and a next line
  *  whose lowercase words could open an item of their own, also need the page
  *  to show where the column ends (`edges`, see edgeShown); without `edges`,
- *  only the words that settle it by themselves carry a line on. A lowercase
- *  line that hangs under the text of the glyph item above it (`hangs`) needs
- *  no edge: the next item would open at the glyph. */
+ *  only the words that settle it by themselves carry a line on. A line that
+ *  hangs under the text of the glyph item above it (`hangs`) goes on with
+ *  that item whatever its words, and needs no edge: the next item would
+ *  open at the glyph. */
 function wrapSeparator(
   shapes: Array<LineShape | null>, index: number, texts: string[], pitch: Map<number, number>, periodItem: boolean,
   column: (index: number) => Column, edges: readonly boolean[] | null, hangs: readonly boolean[],
@@ -304,9 +305,9 @@ function wrapSeparator(
   const before = texts[index - 1].trim();
   const after = texts[index].trim();
   if (!prev || !next || !sameParagraph(shapes, index, texts, pitch)) return null;
-  const evidence = wrapEvidence(before, after);
-  const unsure = evidence ? lowercaseOpening(before, after) && !hangs[index]
-    : !!edges && weakWrapEvidence(before, after, periodItem) && !cjkAwardRow(before, after);
+  const evidence = hangs[index] || wrapEvidence(before, after);
+  const unsure = !hangs[index] && (evidence ? lowercaseOpening(before, after)
+    : !!edges && weakWrapEvidence(before, after, periodItem) && !cjkAwardRow(before, after));
   if (!evidence && !unsure) return null;
   if (unsure && (!edges || !edgeShown(shapes, index - 1, texts, edges))) return null;
   // Glyph widths are unknown, so the first word's width is estimated from

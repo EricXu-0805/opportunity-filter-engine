@@ -1041,6 +1041,41 @@ describe('positioned text items', () => {
     ]);
   });
 
+  it('joins a line that hangs under the text of the glyph item above it, whatever its first word', async () => {
+    // The next item would open at the glyph, so a line that hangs under the
+    // item's text goes on with it where the line above ran out of room.
+    // No word here carries the line on, and nothing shows where the column
+    // ends. A line at the glyph does not hang, and a short glyph line did
+    // not run out of room.
+    const item = (indent: number, first: string, firstWidth: number) => [
+      at('•', 50, 4, 736), at(first, 59, firstWidth, 736, { hasEOL: true }),
+      at('Foundation Hospital and wrote up the results for the lab', 50 + indent, 260, 724, { hasEOL: true }),
+      at('•', 50, 4, 712), at('Wrote unit tests for the parser', 59, 150, 712),
+    ];
+    const full = 'Compared three saliency methods for the clinical team at Carle';
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf(item(9, full, 491))) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      `• ${full} Foundation Hospital and wrote up the results for the lab`,
+      '• Wrote unit tests for the parser',
+    ]);
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf(item(0, full, 491))) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      `• ${full}`,
+      'Foundation Hospital and wrote up the results for the lab',
+      '• Wrote unit tests for the parser',
+    ]);
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      ...item(9, full, 491).slice(0, 3),
+      at('•', 50, 4, 712), at('Campus Bus Tracker', 59, 90, 712, { hasEOL: true }),
+      at('React and Flask web app used by 200 students', 59, 210, 700),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      `• ${full} Foundation Hospital and wrote up the results for the lab`,
+      '• Campus Bus Tracker',
+      'React and Flask web app used by 200 students',
+    ]);
+  });
+
   it('carries a line that ends in a preposition on only into a name that cannot open an item', async () => {
     // "rely on", "signed up for" and "log in" end their items; the role row
     // or item after them opens with an ordinary word. A name such as "NIH
