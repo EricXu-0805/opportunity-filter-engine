@@ -1,6 +1,6 @@
 # Email draft condition checks
 
-The source rules and receipt are defined in [email_target_conditions.md](email_target_conditions.md). This document covers the actual email consumers in pipeline `w12.19`.
+The source rules and receipt are defined in [email_target_conditions.md](email_target_conditions.md). This document covers the actual email consumers in pipeline `w12.20`.
 
 - Generation, stream completion, variants, full refinement and selection refinement return the current `target_conditions` receipt with `target_version`. The email routes read the central public projection; they do not reconstruct source evidence from fields removed by projection.
 - Every model stage receives the same complete target-condition receipt. Only usable source terms enter target vocabulary. They never become student experience, personal eligibility or evidence of an attached file. Recorded legacy skills and application URLs are labeled as recorded data.
