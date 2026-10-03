@@ -54,8 +54,10 @@ async function open(page: Page) {
   await expect(page.locator('#tailor-bullets-input')).toBeEditable();
 }
 const generate = (page: Page) => page.getByRole('button', { name: /^(Tailor with AI|Re-tailor)$/ });
+// The browser sends bullets only under rules that run the faithfulness review (w14 on); any
+// other version counts as unavailable. Each fixture version below is one such rules version.
 async function models(page: Page) {
-  const state = { version: 'w13.3', rejectNext: false, rejectTargetNext: false, targetChanged: false, requests: [] as ModelRequest[], statusReads: 0 };
+  const state = { version: 'w14.1', rejectNext: false, rejectTargetNext: false, targetChanged: false, requests: [] as ModelRequest[], statusReads: 0 };
   await page.route('**/api/tailor**', async route => {
     const path = pathOf(route.request().url());
     if (path === '/api/tailor/status') { state.statusReads += 1; await route.fulfill({ json: { ai_available: true, pipeline_version: state.version } }); return; }
@@ -66,13 +68,15 @@ async function models(page: Page) {
       await route.fulfill({ status: 409, json: { detail: { code: 'WRITING_TARGET_CHANGED', message: 'The opportunity changed.', retryable: false } } }); return;
     }
     if (state.rejectNext) {
-      state.rejectNext = false; state.version = 'w13.4-fixture';
+      state.rejectNext = false; state.version = 'w14.3';
       await route.fulfill({ status: 409, json: { detail: { code: 'TAILOR_PIPELINE_CHANGED', message: 'Tailoring rules changed. Check again before continuing.', retryable: false, pipeline_version: state.version } } }); return;
     }
     expect(body.expected_pipeline_version).toBe(state.version);
     if (path === '/api/tailor') await route.fulfill({ json: { opportunity_id: TARGET, target_version: body.expected_target_version, method: 'ai', warnings: [],
       pipeline_version: state.version, generated_at: new Date().toISOString(),
-      tailored_bullets: body.original_bullets!.map((text, source_index) => ({ text, source_evidence: text, source_index })) } });
+      // A reviewed response: each line comes back as written, with the reason it was kept.
+      tailored_bullets: body.original_bullets!.map((text, source_index) => ({ text, source_evidence: text, source_index,
+        status: 'kept', reason_code: 'already_aligned', ops: [], links: [], alternative: null })) } });
     else if (path === '/api/tailor/extract-bullets') await route.fulfill({ json: { bullets: [BULLET], method: 'heuristic', warnings: [],
       pipeline_version: state.version, generated_at: new Date().toISOString() } });
     else await route.fulfill({ status: 503, json: { error: 'Unexpected synthetic model endpoint' } });
@@ -169,7 +173,7 @@ test.describe('Saved Tailor draft provenance', () => {
     const owner = await account();
     try {
       await seed(page, owner); const state = await models(page), writesSeen = writes(page); const initial = await establish(page, owner, state);
-      await page.getByRole('button', { name: 'Close tailor panel', exact: true }).click(); state.version = 'w13.3-next-fixture';
+      await page.getByRole('button', { name: 'Close tailor panel', exact: true }).click(); state.version = 'w14.2';
       await open(page); await blocked(page, state, 1, STALE); await review(page);
       expect((await saved(page, owner))!.value.review?.binding.pipeline_version).toBe(state.version);
       state.rejectNext = true; await generate(page).click();
@@ -177,7 +181,7 @@ test.describe('Saved Tailor draft provenance', () => {
       await expect(page.locator('#tailor-bullets-input')).toHaveValue(BULLET);
       await blocked(page, state, 2, STALE); // fresh status may run, but no automatic POST at the new version
       await review(page); await generate(page).click(); await expect.poll(() => state.requests.length).toBe(3);
-      expect(state.requests.at(-1)?.expected_pipeline_version).toBe('w13.4-fixture');
+      expect(state.requests.at(-1)?.expected_pipeline_version).toBe('w14.3');
       expect((await saved(page, owner))!.value.origin).toEqual(initial.value.origin); expect(writesSeen).toEqual([]);
     } finally { await owner.http.dispose(); }
   });
@@ -235,6 +239,19 @@ test.describe('Saved Tailor draft provenance', () => {
       await review(page); await generate(page).click(); await expect.poll(() => state.requests.length).toBe(3);
       expect(state.requests[2]).toMatchObject({ original_bullets: [MANUAL], expected_target_version: nextVersion });
       expect((await saved(page, owner))!.value.origin).toEqual(initial.value.origin); expect(writesSeen).toEqual([]);
+    } finally { await owner.http.dispose(); }
+  });
+
+  test('pre-review rules send no bullets and keep the typed draft', async ({ page }) => {
+    const owner = await account();
+    try {
+      // A backend from before the review (w13) would show rewrites no review saw: its rules count as unavailable.
+      await seed(page, owner); const state = await models(page), writesSeen = writes(page); state.version = 'w13.3';
+      await open(page); await page.locator('#tailor-bullets-input').fill(MANUAL);
+      await generate(page).click();
+      await expect(page.getByText('Draft sources could not be checked. Your text is kept. Try again before tailoring.', { exact: true }).first()).toBeVisible();
+      await expect(generate(page)).toBeEnabled(); expect(state.statusReads).toBeGreaterThan(0); expect(state.requests).toEqual([]);
+      await expect(page.locator('#tailor-bullets-input')).toHaveValue(MANUAL); expect(writesSeen).toEqual([]);
     } finally { await owner.http.dispose(); }
   });
 
