@@ -23,6 +23,7 @@ from src.publication_remediation import (
     NEEDS_REVIEW,
     QUEUED,
     REVIEWED,
+    STARTED,
     VERIFIED_COMPLETE,
     Ledger,
     awaits_review,
@@ -965,6 +966,30 @@ class TestOnlyAReviewReopensASettledUnit:
         assert (after["status"], after["result"]) == (VERIFIED_COMPLETE, DISPOSITION_AMBIGUOUS)
         with pytest.raises(ValueError):
             ledger.record_review(entry, event["result"], reviewer=event.get("reviewer", ""))
+
+    @pytest.mark.parametrize("claimed", [False, True], ids=["queued", "started"])
+    @pytest.mark.parametrize("event", [
+        {"result": DISPOSITION_REMOVED},
+        {"result": DISPOSITION_REMOVED, "reviewer": "eric"},
+    ], ids=["malformed", "well_formed"])
+    def test_a_review_event_before_the_unit_settles_changes_nothing(self, tmp_path, event, claimed):
+        """Before `apply` settles a unit there is nothing to review. A review
+        event that reaches the file then (by hand: record_review refuses it)
+        must not settle the unit, or the re-harvest would skip a professor
+        nobody decided about."""
+        ledger = Ledger(tmp_path / "ledger.jsonl")
+        record = faculty("early")
+        invalidate_record(record)
+        unit = unit_for(record)
+        ledger.append(unit, QUEUED, paper_ids=unit["paper_ids"])
+        if claimed:
+            assert ledger.claim(unit)
+        ledger.append(unit, REVIEWED, **event)
+
+        entry = ledger.index()[unit["idempotency_key"]]
+        assert (entry["status"], entry["result"]) == (STARTED if claimed else QUEUED, None)
+        assert not ledger.is_complete(unit["idempotency_key"])
+        assert ledger.claim(unit)
 
     def test_a_review_of_a_unit_nobody_queued_for_review_is_ignored(self, tmp_path):
         ledger = Ledger(tmp_path / "ledger.jsonl")
