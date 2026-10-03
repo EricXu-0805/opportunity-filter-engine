@@ -825,6 +825,25 @@ describe('saved operation records', () => {
       expect(screen.getByRole('textbox', { name: 'Edit Experience detail' })).toHaveValue(experienceLine(doc).text);
       expect(screen.queryByTestId('target-line-unreviewed')).toBeNull();
     });
+  it.each([['no saved record', false], ['a record for other lines only', true]] as const)(
+    'flags a changed line with %s as possibly written before review', async (_name, otherRecord) => {
+      // Round-3 re-measure (criterion 1): a legacy draft's changed line with no change record was not flagged.
+      const p = profile(), doc = await docFor(p), edit = await checkedEdit(doc);
+      const named = withName(edit.next, 'Alex Wang');
+      const provenance = otherRecord ? appendTargetResumeProvenance(null, edit.next, named, { kind: 'manual' })! : null;
+      storage.load.mockResolvedValue(recordLoaded(otherRecord ? named : edit.next, provenance));
+      renderModal(p); await screen.findByRole('textbox', { name: 'Edit Experience detail' });
+      expect(screen.getAllByTestId('target-line-unreviewed')).toHaveLength(1);
+      expect(screen.getByTestId('target-line-unreviewed')).toHaveTextContent(/no change record says who wrote this wording/);
+      fireEvent.click(screen.getByRole('button', { name: 'Restore original Experience detail' }));
+      expect(screen.getByRole('textbox', { name: 'Edit Experience detail' })).toHaveValue(experienceLine(doc).text);
+      expect(screen.queryByTestId('target-line-unreviewed')).toBeNull();
+    });
+  it('does not flag an unchanged line that has no change record', async () => {
+    const p = profile(), doc = await docFor(p); storage.load.mockResolvedValue(recordLoaded(doc, null));
+    renderModal(p); await screen.findByRole('textbox', { name: 'Edit Experience detail' });
+    expect(screen.queryByTestId('target-line-unreviewed')).toBeNull();
+  });
   it('keeps submitted and later manual records apart while saving', async () => {
     const p = profile(), doc = await docFor(p); storage.load.mockResolvedValue(loaded(doc)); renderModal(p); await screen.findByRole('textbox', { name: 'Edit Full name' });
     editName('Submitted name'); const pending = deferred<TargetResumeSaveResult>(); storage.save.mockReturnValueOnce(pending.promise); fireEvent.click(screen.getByRole('button', { name: 'Save target draft' }));

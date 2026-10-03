@@ -646,8 +646,12 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
                   const record = lineRecords.get(line.id);
                   // Wording an AI step wrote before full-target-v6 (an earlier suggestion or a plan
                   // compression) had no faithfulness review; the student applied it, so it stays, said so.
-                  const unreviewedAi = !!record && record.kind !== 'manual' && line.text !== line.original
-                    && record.change.check?.pipeline_version !== FULL_TARGET_AI_VERSION;
+                  // A changed line with no record at all (a draft saved before change records, or one
+                  // whose record could not be kept) may hold such wording too, and nothing says it does not.
+                  const changed = line.text !== line.original;
+                  const unrecorded = changed && !record;
+                  const unreviewedAi = unrecorded || (!!record && record.kind !== 'manual' && changed
+                    && record.change.check?.pipeline_version !== FULL_TARGET_AI_VERSION);
                   return <div key={line.id} className="mt-3 min-w-0 rounded-xl border bg-white p-3">
                     <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={line.included} onChange={(event) => edit((next) => { next.document.sections[sectionIndex].blocks[blockIndex].lines[lineIndex].included = event.target.checked; })} />{copy('Include field', '选用字段')}: {label(line)}</label>
                     <div className="mt-3 grid min-w-0 gap-3 md:grid-cols-2">
@@ -659,7 +663,9 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
                     {record && <p className="mt-2 text-xs text-gray-600">{recordKind(record.kind, 'text')}. {record.kind === 'manual'
                       ? copy('Earlier AI checks do not cover this manual wording.', '之前的 AI 检查不适用于当前手改表述。')
                       : record.change.check ? copy('This rewrite and its sources are recorded.', '已记录本次改写及依据。') : copy('The source check for this wording is unknown.', '此表述的来源核查情况未知。')}</p>}
-                    {unreviewedAi && <p className="mt-2 text-xs text-amber-800" data-testid="target-line-unreviewed">{copy('Not fact-checked: an earlier version of the AI wrote this before rewrites were reviewed. Compare it with the confirmed original, or restore the original.', '未经事实核对：这是改写尚未经过核对时由旧版 AI 写出的表述。请对照已确认原文，或恢复原文。')}</p>}
+                    {unreviewedAi && <p className="mt-2 text-xs text-amber-800" data-testid="target-line-unreviewed">{unrecorded
+                      ? copy('Not fact-checked: no change record says who wrote this wording. It may hold wording an earlier version of the AI wrote before rewrites were reviewed. Compare it with the confirmed original, or restore the original.', '未经事实核对：没有修改记录说明这段表述由谁写出，其中可能有改写尚未经过核对时由旧版 AI 写出的表述。请对照已确认原文，或恢复原文。')
+                      : copy('Not fact-checked: an earlier version of the AI wrote this before rewrites were reviewed. Compare it with the confirmed original, or restore the original.', '未经事实核对：这是改写尚未经过核对时由旧版 AI 写出的表述。请对照已确认原文，或恢复原文。')}</p>}
                     <button type="button" className={`${button} mt-2`} disabled={!canEdit || line.text === line.original} aria-label={`${copy('Restore original', '恢复原文')} ${label(line)}`}
                       onClick={() => edit((next) => { next.document.sections[sectionIndex].blocks[blockIndex].lines[lineIndex].text = line.original; })}>{copy('Restore original', '恢复原文')}</button>
                   </div>;
