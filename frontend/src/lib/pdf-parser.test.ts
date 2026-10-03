@@ -1714,6 +1714,42 @@ describe('positioned CJK text', () => {
       .toBe('- 维护实验室网站并整理每周组会的实验记录，撰写组会报告。\n- 基于深度学习的医学影像分割系统：使用模型复现文档。');
   });
 
+  it('keeps a Chinese award line apart from an item above it that lacks its 。', async () => {
+    // On a page whose items end with 。, a line that ends with 。 can finish
+    // an item that lacks one. Chinese has no capitals to tell the rest of an
+    // item from a line of its own, but an award line names its award, and no
+    // hint carries a line on into an award row. The wrap after "，" shows
+    // where the column ends.
+    const run = (str: string, y: number, width = 500, hasEOL = true) => ({
+      str, width, height: 10, transform: [10, 0, 0, 10, 50, y], fontName: 'f1', dir: 'ltr', hasEOL,
+    });
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve({
+      numPages: 1, destroy: async () => {},
+      getPage: async () => ({ cleanup: () => {}, getTextContent: async () => ({ items: [
+        run('• 维护实验室网站。', 748, 90),
+        run('• 整理实验数据。', 736, 80),
+        run('• 参与医学影像标注项目，按照临床医生制定的规范标注四千张胸部影像，', 724),
+        run('并复核标注质量。', 712, 80),
+        run('• 负责后端接口设计与数据库建模，使用 Flask 与 PostgreSQL 实现用户、商品与订单模块并编写部署', 700),
+        run('文档。', 688, 30),
+        run('• 负责后端接口设计与数据库建模，使用 Flask 与 PostgreSQL 实现用户、商品与订单模块并编写部署文档', 676),
+        run('获得校级优秀学生奖学金。', 664, 120),
+        run('• 在暑期实习中重写夜间数据处理任务，把运行时间从四十分钟降到九分钟，维护代码仓库', 652),
+        run('获得优秀毕业设计称号。', 640, 110, false),
+      ] as never }) }),
+    } as MockPdf) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      '• 维护实验室网站。',
+      '• 整理实验数据。',
+      '• 参与医学影像标注项目，按照临床医生制定的规范标注四千张胸部影像，并复核标注质量。',
+      '• 负责后端接口设计与数据库建模，使用 Flask 与 PostgreSQL 实现用户、商品与订单模块并编写部署文档。',
+      '• 负责后端接口设计与数据库建模，使用 Flask 与 PostgreSQL 实现用户、商品与订单模块并编写部署文档',
+      '获得校级优秀学生奖学金。',
+      '• 在暑期实习中重写夜间数据处理任务，把运行时间从四十分钟降到九分钟，维护代码仓库',
+      '获得优秀毕业设计称号。',
+    ]);
+  });
+
   it('keeps Chinese items that end without 。 apart, under a glyph or none', async () => {
     // Chinese wraps between any two characters and has no capitals, so a
     // line that fills the column says nothing about where the next one

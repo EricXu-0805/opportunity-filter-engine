@@ -177,6 +177,9 @@ const WRAPPABLE = /\S\s+\S|[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}
 // Fonts that map CJK glyphs to Kangxi radicals instead of the ideographs
 // ("使⽤" for "使用") print correctly but extract as different characters.
 const KANGXI_RADICAL = /[\u2f00-\u2fd5]/gu;
+const CJK_TEXT = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
+// A Chinese line that names an award ("获得校级优秀学生奖学金。").
+const CJK_AWARD = /奖|称号|荣誉/u;
 
 /** Where an item sits, for horizontal left-to-right text only. Rotated,
  *  vertical or right-to-left runs keep the positionless joining rules. */
@@ -272,6 +275,14 @@ function edgeShown(shapes: Array<LineShape | null>, index: number, texts: string
     && (edges[at] || (Math.abs(other.right - line.right) <= JUSTIFIED * line.size && texts[at].trim() !== text && ++aligned > 1)));
 }
 
+/** A Chinese line that names an award, at a break in Chinese text. Chinese
+ *  has no capitals to tell the rest of an item from a line of its own, so
+ *  the weak hints there do not check for role or award rows as English ones
+ *  do; an award line names its award, and no hint carries a line into it. */
+function cjkAwardRow(before: string, after: string): boolean {
+  return CJK_AWARD.test(after) && (CJK_TEXT.test(Array.from(after)[0]) || CJK_TEXT.test(Array.from(before).pop()!));
+}
+
 /** The separator for a visual line break that is only a wrap, or null for a
  *  real one. A wrap continues the same paragraph, the words at the break
  *  carry the line on (resume-input.ts), and the previous line stops where the
@@ -294,7 +305,8 @@ function wrapSeparator(
   const after = texts[index].trim();
   if (!prev || !next || !sameParagraph(shapes, index, texts, pitch)) return null;
   const evidence = wrapEvidence(before, after);
-  const unsure = evidence ? lowercaseOpening(before, after) && !hangs[index] : !!edges && weakWrapEvidence(before, after, periodItem);
+  const unsure = evidence ? lowercaseOpening(before, after) && !hangs[index]
+    : !!edges && weakWrapEvidence(before, after, periodItem) && !cjkAwardRow(before, after);
   if (!evidence && !unsure) return null;
   if (unsure && (!edges || !edgeShown(shapes, index - 1, texts, edges))) return null;
   // Glyph widths are unknown, so the first word's width is estimated from
