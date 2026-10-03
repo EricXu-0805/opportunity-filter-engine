@@ -25,15 +25,15 @@ w14.0 let a rewrite translate its line into the UI language, and it checked tran
 
 - Over 2,182 corpus and reviewer-probe pairs, translations were 179 of the 180 faithful lines the locks refused as fabrication, and 211 of the 255 traps only the review stopped (`recount.py`).
 - All 29 behavioural findings of the last four reviews involved a translation, including all 12 blockers and majors (`recount.py`).
-- 18 of the 21 patterns the translation families read were the same objects the relabel checks and the same-language claim locks read, so each translation fix moved other results (`shared_families.py`). Across the rounds the translation contract grew from 28 to 162 logic lines, while the same-language contract went from 196 to 220 (`subsystems.py`).
+- 18 of the 21 patterns the translation families read were the same objects that the relabel checks or the same-language claim locks read, so each translation fix moved other results (`shared_families.py`). Across the rounds the translation contract grew from 28 to 162 logic lines, while the same-language contract went from 196 to 220 (`subsystems.py`).
 
-The same-language checks held: their claim locks stopped 22 of the 35 same-language corpus traps that pass the contract and refused no faithful corpus or probe line (`recount.py`). So a rewrite stays in its line's language. If students turn out to need translation, it comes back as a separate, labelled step with its own calibrated review, never inside a rewrite.
+The same-language checks held: their claim locks stopped 22 of the 35 same-language corpus traps that pass the contract and refused no faithful corpus line (`recount.py`); of the reviewers' probes they refused one faithful line, the lab-technician line, which the role-noun reading above now passes. So a rewrite stays in its line's language. If students turn out to need translation, it comes back as a separate, labelled step with its own calibrated review, never inside a rewrite.
 
 CPU was a separate cause. The claim locks also ran main's attribution parser, which pairs every claim with every fact: one 6,000-character Tailor source took 69.8 s and one full-target line 237.5 s (`cpu_probe.py`). Deleting that reading changed none of the 690 corpus outcomes (`parser_ablation.py`), so the locks no longer read it.
 
 ## Frozen lists
 
-- The lock lists are frozen: every pattern and word table that the claim locks (`target_resume_ai_grounding.py`) and the contract's checks (`evidence_map.py`) read. `tests/test_lock_lists_frozen.py` pins each family's entry count, so a new word, exception or family fails it.
+- The lock lists are frozen: every pattern and word table that the claim locks (`target_resume_ai_grounding.py`) and the contract's checks (`evidence_map.py`) read. `tests/test_lock_lists_frozen.py` pins each family's entry count, so adding or dropping an alternative, a listed character or a whole family fails it. A word swapped for another, or an exception that adds no alternative, keeps the count, so a lock's diff still needs reading.
 - A same-language shape a reviewer finds goes to the review's calibration set and to the PR's limits, not into a list.
 - A lock changes only to remove a measured faithful refusal or a CPU path. The commit carries the measurement and updates the pinned count.
 - The review prompt changes only together with a new run of the 170-pair calibration (85 traps and 85 faithful pairs, 3 samples each), and the commit carries its result. The same test pins the prompt's digest; that prompt calibrated at 0/255 trap accepts and 17/255 faithful rejects.

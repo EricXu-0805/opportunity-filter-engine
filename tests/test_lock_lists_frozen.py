@@ -5,7 +5,8 @@ Every family the claim locks (target_resume_ai_grounding.py) and the contract's 
 is an alternative of a "|" or a listed character of a "[...]" class, exceptions and
 lookarounds included; in a word list it is a word; in a table it is an item, plus the
 entries of the patterns the item holds (a family a table holds by name counts once, as
-itself). Adding a word, an exception or a whole family fails here.
+itself). Adding or dropping an alternative, a listed character or a whole family fails here;
+a swapped word, or an exception that adds no alternative, keeps the count.
 
 A shape a reviewer finds goes to the review's calibration set and to the PR's limits,
 not into a list. A family changes only to remove a measured faithful refusal or a CPU
