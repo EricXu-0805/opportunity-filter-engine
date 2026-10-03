@@ -26,6 +26,28 @@ vi.mock('@/lib/supabase', () => ({
 
 vi.mock('@/lib/analytics', () => ({ track: mocks.track }));
 
+// The real policy suggests a reminder only after a reply or an interview, and
+// those statuses no longer get reminders (M49), so on its own it never shows
+// one. The tests of the suggestion's state machine — mutual exclusion,
+// retries, withdrawal — switch this on to drive it through a status that
+// still gets reminders.
+const suggestionPolicy = vi.hoisted(() => ({ stubbed: false }));
+vi.mock('@/lib/status-suggestions', async (importOriginal) => {
+  const real = await importOriginal<typeof import('@/lib/status-suggestions')>();
+  return {
+    ...real,
+    suggestReminderForStatusChange: (
+      ...args: Parameters<typeof real.suggestReminderForStatusChange>
+    ): ReturnType<typeof real.suggestReminderForStatusChange> => {
+      if (!suggestionPolicy.stubbed) return real.suggestReminderForStatusChange(...args);
+      const [from, to] = args;
+      return from !== to && (to === 'contacted' || to === 'applied')
+        ? { date: '2030-01-08', reason: 'follow_up_after_reply', daysAhead: 7 }
+        : null;
+    },
+  };
+});
+
 // identity-owner is NOT mocked: captureOwnerToken/OwnerMismatchError are the
 // real primitives (module-singleton state, harmless to share across tests
 // here since nothing asserts on specific uid/epoch values, only on whether
@@ -37,6 +59,7 @@ type AuthCb = (state: { session: unknown; user: { id: string } | null; isAnonymo
 let authChangeCallback: AuthCb | null = null;
 
 beforeEach(() => {
+  suggestionPolicy.stubbed = false;
   mocks.getFavorites.mockReset();
   mocks.toggleFavorite.mockReset();
   mocks.trackInteraction.mockReset();
@@ -755,19 +778,37 @@ const LIVE_LISTING_TARGET = {
   },
 } as const;
 
+describe('useOpportunityDetail — a recorded reply offers no reminder (M49)', () => {
+  it.each(['replied', 'interviewing'] as const)(
+    'moving a live listing to %s suggests nothing — the cron no longer sends there',
+    async (status) => {
+      mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'applied' });
+      mocks.trackInteraction.mockResolvedValueOnce(undefined);
+
+      const { result } = renderHook(() => useOpportunityDetail(LIVE_LISTING_TARGET));
+      await waitFor(() => expect(result.current.interaction).toBe('applied'));
+      await act(async () => { await result.current.handleTrack(status); });
+
+      expect(result.current.interaction).toBe(status);
+      expect(result.current.suggestion).toBeNull();
+    },
+  );
+});
+
 describe('useOpportunityDetail — status/suggestion mutual exclusion (same account, no cross-identity switch involved)', () => {
   it('a status change that produces NO suggestion for its own transition explicitly clears a suggestion left over from an EARLIER status change', async () => {
-    mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'applied' });
+    suggestionPolicy.stubbed = true;
+    mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'contacted' });
     mocks.trackInteraction.mockResolvedValue(undefined);
 
     const { result } = renderHook(() => useOpportunityDetail(LIVE_LISTING_TARGET));
-    await waitFor(() => expect(result.current.interaction).toBe('applied'));
+    await waitFor(() => expect(result.current.interaction).toBe('contacted'));
 
-    // applied -> interviewing produces a thank-you suggestion.
-    await act(async () => { await result.current.handleTrack('interviewing'); });
+    // contacted -> applied produces a suggestion.
+    await act(async () => { await result.current.handleTrack('applied'); });
     await waitFor(() => expect(result.current.suggestion).not.toBeNull());
 
-    // interviewing -> rejected produces NO suggestion for this specific
+    // applied -> rejected produces NO suggestion for this specific
     // transition — the leftover suggestion from the PREVIOUS change must
     // not still be showing.
     await act(async () => { await result.current.handleTrack('rejected'); });
@@ -775,12 +816,13 @@ describe('useOpportunityDetail — status/suggestion mutual exclusion (same acco
   });
 
   it('performStatusChange is blocked while a suggestion-accept save is in flight, and handleUseSuggestion is blocked while a status write is in flight — bidirectional', async () => {
-    mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'applied' });
+    suggestionPolicy.stubbed = true;
+    mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'contacted' });
     mocks.trackInteraction.mockResolvedValueOnce(undefined);
 
     const { result } = renderHook(() => useOpportunityDetail(LIVE_LISTING_TARGET));
-    await waitFor(() => expect(result.current.interaction).toBe('applied'));
-    await act(async () => { await result.current.handleTrack('interviewing'); });
+    await waitFor(() => expect(result.current.interaction).toBe('contacted'));
+    await act(async () => { await result.current.handleTrack('applied'); });
     await waitFor(() => expect(result.current.suggestion).not.toBeNull());
 
     // Direction 1: a suggestion-accept save in flight blocks a status change.
@@ -788,17 +830,18 @@ describe('useOpportunityDetail — status/suggestion mutual exclusion (same acco
     act(() => { void result.current.handleUseSuggestion(); });
     expect(result.current.suggestionSaving).toBe(true);
     act(() => { void result.current.handleTrack('rejected'); }); // must be a no-op
-    expect(mocks.trackInteraction).toHaveBeenCalledTimes(1); // only the original 'interviewing' call — 'rejected' never fired
+    expect(mocks.trackInteraction).toHaveBeenCalledTimes(1); // only the original 'applied' call — 'rejected' never fired
     expect(result.current.statusSaving).toBe(false);
   });
 
   it('direction 2: a status write in flight blocks handleUseSuggestion, even with a real, currently-present suggestion', async () => {
-    mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'applied' });
-    mocks.trackInteraction.mockResolvedValueOnce(undefined); // 'interviewing' commits, producing a suggestion
+    suggestionPolicy.stubbed = true;
+    mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'contacted' });
+    mocks.trackInteraction.mockResolvedValueOnce(undefined); // 'applied' commits, producing a suggestion
 
     const { result } = renderHook(() => useOpportunityDetail(LIVE_LISTING_TARGET));
-    await waitFor(() => expect(result.current.interaction).toBe('applied'));
-    await act(async () => { await result.current.handleTrack('interviewing'); });
+    await waitFor(() => expect(result.current.interaction).toBe('contacted'));
+    await act(async () => { await result.current.handleTrack('applied'); });
     await waitFor(() => expect(result.current.suggestion).not.toBeNull());
     const suggestionBefore = result.current.suggestion;
 
@@ -839,15 +882,16 @@ describe('useOpportunityDetail — identityGeneration keys the caller\'s remount
 
 describe('useOpportunityDetail — handleUseSuggestion: suggestion stays visible until COMMITTED', () => {
   it('a genuine failure keeps the suggestion visible with suggestionError, and does not clear it', async () => {
-    mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'applied' });
+    suggestionPolicy.stubbed = true;
+    mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'contacted' });
     mocks.updateInteractionDetails.mockRejectedValueOnce(new Error('boom'));
 
     const { result } = renderHook(() => useOpportunityDetail(LIVE_LISTING_TARGET));
-    await waitFor(() => expect(result.current.interaction).toBe('applied'));
+    await waitFor(() => expect(result.current.interaction).toBe('contacted'));
 
     // Trigger a status change that produces a suggestion.
     mocks.trackInteraction.mockResolvedValueOnce(undefined);
-    await act(async () => { await result.current.handleTrack('interviewing'); });
+    await act(async () => { await result.current.handleTrack('applied'); });
     await waitFor(() => expect(result.current.suggestion).not.toBeNull());
 
     await act(async () => { await result.current.handleUseSuggestion(); });
@@ -863,15 +907,16 @@ describe('useOpportunityDetail — handleUseSuggestion: suggestion stays visible
   });
 
   it('an abandoned result (precondition/generation moved on) also does not show a false success, but quietly clears the now-stale suggestion', async () => {
-    mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'applied' });
+    suggestionPolicy.stubbed = true;
+    mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'contacted' });
     mocks.trackInteraction.mockResolvedValueOnce(undefined);
 
     const { result, rerender } = renderHook(
       ({ opp }) => useOpportunityDetail(opp),
       { initialProps: { opp: LIVE_LISTING_TARGET as { id: string; title: string } } },
     );
-    await waitFor(() => expect(result.current.interaction).toBe('applied'));
-    await act(async () => { await result.current.handleTrack('interviewing'); });
+    await waitFor(() => expect(result.current.interaction).toBe('contacted'));
+    await act(async () => { await result.current.handleTrack('applied'); });
     await waitFor(() => expect(result.current.suggestion).not.toBeNull());
 
     // updateInteractionDetails hangs; a real target switch below bumps
@@ -909,12 +954,13 @@ describe('useOpportunityDetail — handleUseSuggestion: suggestion stays visible
   });
 
   it('U1\'s stale suggestion-save completion never touches suggestionSaving/suggestionError for U2\'s OWN, separately-started, still-pending attempt', async () => {
-    mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'applied' });
+    suggestionPolicy.stubbed = true;
+    mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'contacted' });
     mocks.trackInteraction.mockResolvedValueOnce(undefined);
 
     const { result } = renderHook(() => useOpportunityDetail(LIVE_LISTING_TARGET));
-    await waitFor(() => expect(result.current.interaction).toBe('applied'));
-    await act(async () => { await result.current.handleTrack('interviewing'); });
+    await waitFor(() => expect(result.current.interaction).toBe('contacted'));
+    await act(async () => { await result.current.handleTrack('applied'); });
     await waitFor(() => expect(result.current.suggestion).not.toBeNull());
 
     // U1's suggestion save starts and hangs.
@@ -928,15 +974,15 @@ describe('useOpportunityDetail — handleUseSuggestion: suggestion stays visible
     // component instance is REUSED (not remounted) across it, since this
     // hook only remounts per opp.id, not per identity.
     mocks.getFavorites.mockResolvedValueOnce(new Set());
-    mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'applied' });
+    mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'contacted' });
     mocks.trackInteraction.mockResolvedValueOnce(undefined);
     await act(async () => { authChangeCallback?.({ session: {}, user: { id: 'u2' }, isAnonymous: false, email: null }); });
-    await waitFor(() => expect(result.current.interaction).toBe('applied')); // U2's OWN hydration landed
+    await waitFor(() => expect(result.current.interaction).toBe('contacted')); // U2's OWN hydration landed
     expect(result.current.suggestionSaving).toBe(false); // hydrate() reset it for U2
 
     // U2 produces and starts accepting its OWN suggestion — genuinely
     // in-flight, not just idle — before U1's stale completion ever lands.
-    await act(async () => { await result.current.handleTrack('interviewing'); });
+    await act(async () => { await result.current.handleTrack('applied'); });
     await waitFor(() => expect(result.current.suggestion).not.toBeNull());
     let resolveU2: (() => void) | undefined;
     mocks.updateInteractionDetails.mockImplementationOnce(() => new Promise<void>((res) => { resolveU2 = res; }));
@@ -1044,15 +1090,16 @@ describe('useOpportunityDetail — saveDetails is pessimistic: no fake "Saved"',
   });
 
   it('handleUseSuggestion never produces an unhandled rejection when saveDetails fails', async () => {
-    mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'applied' });
+    suggestionPolicy.stubbed = true;
+    mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'contacted' });
     mocks.updateInteractionDetails.mockRejectedValueOnce(new Error('boom'));
 
     const { result } = renderHook(() => useOpportunityDetail(LIVE_LISTING_TARGET));
-    await waitFor(() => expect(result.current.interaction).toBe('applied'));
+    await waitFor(() => expect(result.current.interaction).toBe('contacted'));
 
     // Manufacture a suggestion the same way handleTrack does, then accept it.
     mocks.trackInteraction.mockResolvedValueOnce(undefined);
-    await act(async () => { await result.current.handleTrack('replied'); });
+    await act(async () => { await result.current.handleTrack('applied'); });
     // Asserted, not guarded. This used to sit behind `if (suggestion)`, and
     // on a target with no truth there is never a suggestion — so the body
     // never ran and the test passed by doing nothing at all.
@@ -1117,15 +1164,16 @@ describe('useOpportunityDetail — saveDetails is the last gate before a reminde
   it('a visible suggestion is withdrawn the moment the target stops being deliverable, and never comes back', async () => {
     // The banner IS the claim — "set a reminder for this date". Leaving it up
     // and refusing on click is the same false capability, one click later.
-    mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'applied' });
+    suggestionPolicy.stubbed = true;
+    mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'contacted' });
     mocks.trackInteraction.mockResolvedValueOnce(undefined);
 
     const { result, rerender } = renderHook(
       ({ opp }) => useOpportunityDetail(opp),
       { initialProps: { opp: LIVE_LISTING_TARGET as { id: string; title: string } } },
     );
-    await waitFor(() => expect(result.current.interaction).toBe('applied'));
-    await act(async () => { await result.current.handleTrack('interviewing'); });
+    await waitFor(() => expect(result.current.interaction).toBe('contacted'));
+    await act(async () => { await result.current.handleTrack('applied'); });
     await waitFor(() => expect(result.current.suggestion).not.toBeNull());
 
     // Same id, same status — only the truth changed underneath.
@@ -1150,7 +1198,8 @@ describe('useOpportunityDetail — saveDetails is the last gate before a reminde
     // when the click happened, and the boolean withdrawal effect will not
     // re-run for a suggestion created after it already settled — so the
     // banner would appear with nothing left to take it away.
-    mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'applied' });
+    suggestionPolicy.stubbed = true;
+    mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'contacted' });
     let resolveTrack: (() => void) | undefined;
     mocks.trackInteraction.mockImplementationOnce(
       () => new Promise<void>((res) => { resolveTrack = res; }),
@@ -1160,10 +1209,10 @@ describe('useOpportunityDetail — saveDetails is the last gate before a reminde
       ({ opp }) => useOpportunityDetail(opp),
       { initialProps: { opp: LIVE_LISTING_TARGET as { id: string; title: string } } },
     );
-    await waitFor(() => expect(result.current.interaction).toBe('applied'));
+    await waitFor(() => expect(result.current.interaction).toBe('contacted'));
 
     let trackPromise!: Promise<void>;
-    act(() => { trackPromise = result.current.handleTrack('interviewing'); });
+    act(() => { trackPromise = result.current.handleTrack('applied'); });
 
     // Same id, new truth — while the write is still out.
     rerender({ opp: CLOSED_TARGET as { id: string; title: string } });
@@ -1171,7 +1220,7 @@ describe('useOpportunityDetail — saveDetails is the last gate before a reminde
 
     expect(result.current.suggestion).toBeNull();
     // The status change itself still landed — that was the student's action.
-    expect(result.current.interaction).toBe('interviewing');
+    expect(result.current.interaction).toBe('applied');
 
     // And going live again does not resurrect it.
     rerender({ opp: LIVE_LISTING_TARGET as { id: string; title: string } });
@@ -1192,12 +1241,13 @@ describe('useOpportunityDetail — saveDetails is the last gate before a reminde
         verified_at: null, expires_at: null,
       },
     } as const;
-    mocks.getInteractionDetail.mockResolvedValueOnce({ type: 'contacted' });
+    suggestionPolicy.stubbed = true;
     mocks.trackInteraction.mockResolvedValueOnce(undefined);
 
     const { result } = renderHook(() => useOpportunityDetail(FACULTY_TARGET));
-    await waitFor(() => expect(result.current.interaction).toBe('contacted'));
-    await act(async () => { await result.current.handleTrack('replied'); });
+    await waitFor(() => expect(result.current.ownerReady).toBe(true));
+    await waitFor(() => expect(result.current.interactionLoading).toBe(false));
+    await act(async () => { await result.current.handleTrack('contacted'); });
 
     await waitFor(() => expect(result.current.suggestion).not.toBeNull());
   });
