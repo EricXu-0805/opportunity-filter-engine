@@ -494,3 +494,42 @@ def test_a_faithful_verdict_with_ok_tags_and_numbers_is_accepted(monkeypatch):
     monkeypatch.setattr(em, "chat_completion", lambda messages, **kwargs: reply)
     monkeypatch.setattr(em, "model_for", lambda *args: {})
     assert em.ai_review([em.ReviewPair("约 200 份问卷，本人只负责录入。", "本人只负责录入约 200 份问卷。")]) == ["accepted"]
+
+
+# ------------------------------------------------------- a model answer nested past the recursion limit
+
+DEEP = "[" * 2000
+
+
+@pytest.mark.parametrize("path", TAILOR_PATHS)
+def test_an_answer_nested_past_the_recursion_limit_keeps_the_originals(opportunity, monkeypatch, path):
+    """json.loads raises RecursionError, not ValueError, and the routes answered 500 (round-1 CPU review)."""
+    body, reviews = post_tailor(opportunity, monkeypatch, path, [(PLAIN_ORIGINAL, PLAIN_ROW)],
+                                lambda payload: '{"verdicts":' + DEEP, anchors=[SWAPPED_ANCHOR])
+    assert offered(path, body) == [[]]
+    original_model = tailor.chat_completion
+
+    def deep_generation(messages, **kwargs):
+        if messages[0]["content"].startswith("FAITHFULNESS REVIEW") or "REORGANIZE" in messages[0]["content"]:
+            return original_model(messages, **kwargs)
+        return '{"bullets":' + DEEP
+    monkeypatch.setattr(tailor, "chat_completion", deep_generation)
+    payload = {"profile": PROFILE, "opportunity_id": opportunity, "locale": "en"}
+    if path.endswith("/renovate"):
+        payload["sections"] = [{"id": "s1", "heading": "Projects", "kind": "projects",
+                                "bullets": [{"id": "b0", "text": PLAIN_ORIGINAL}]}]
+    elif path.endswith("/bullet"):
+        payload.update(base_text=PLAIN_ORIGINAL, current_text=PLAIN_ORIGINAL)
+    else:
+        payload["original_bullets"] = [PLAIN_ORIGINAL]
+    response = TestClient(app).post(path, json=payload)
+    assert response.status_code == 200 and offered(path, response.json()) == [[]]
+
+
+def test_a_full_target_answer_nested_past_the_recursion_limit_is_an_invalid_response(monkeypatch):
+    receipt, reviews = post_full_target(monkeypatch, PLAIN_ORIGINAL, PLAIN_ROW, '{"verdicts":' + DEEP,
+                                        description=SWAPPED_ANCHOR)
+    assert (receipt["status"], receipt["reason_code"]) == ("unchanged", "review_rejected")
+    units = units_for(full_target.make_doc(PLAIN_ORIGINAL))[0]
+    receipts, pending = target_resume_ai.parse_output('{"units":' + DEEP, units, [])
+    assert pending == [] and {receipt["reason_code"] for receipt in receipts} == {"invalid_model_response"}

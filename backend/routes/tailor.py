@@ -611,7 +611,7 @@ def _ai_extract_bullets(resume_text: str) -> list[str] | None:
 
     try:
         parsed: Any = json.loads(cleaned)
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, RecursionError):
         return None
     if not isinstance(parsed, dict):
         return None
@@ -1034,7 +1034,7 @@ def _ai_structure_resume(resume_text: str, *, locale: str = "en") -> list[Resume
         return None
     try:
         parsed: Any = json.loads(strip_json_fence(raw))
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, RecursionError):
         return None
     if not isinstance(parsed, dict) or not isinstance(parsed.get("sections"), list):
         return None
@@ -1200,7 +1200,7 @@ def _ai_renovation_plan(
         return None
     try:
         parsed: Any = json.loads(strip_json_fence(raw))
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, RecursionError):
         return None
     if not isinstance(parsed, dict) or not isinstance(parsed.get("sections"), list):
         return None

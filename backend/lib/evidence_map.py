@@ -484,7 +484,7 @@ def _last_envelope(raw: str, key: str) -> object | None:
     for match in re.finditer(r"\{", raw):
         try:
             value, _ = decoder.raw_decode(raw, match.start())
-        except ValueError:
+        except (ValueError, RecursionError):
             continue
         if isinstance(value, dict) and set(value) == {key}:
             found = value
@@ -501,7 +501,7 @@ def parse_rows(raw: str, expected_ids: set[str], *, key: str) -> dict[str, objec
         return None
     try:
         parsed = json.loads(strip_json_fence(raw))
-    except ValueError:
+    except (ValueError, RecursionError):  # nesting past the recursion limit is invalid JSON too
         parsed = _last_envelope(raw, key)
     if not isinstance(parsed, dict) or set(parsed) != {key} or not isinstance(parsed[key], list):
         return None
@@ -1265,7 +1265,7 @@ def ai_review(pairs: list[ReviewPair], *, deadline: float | None = None) -> list
     rejected = ["rejected"] * len(pairs)
     try:
         parsed = json.loads(strip_json_fence(raw))
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, RecursionError):
         return rejected
     verdicts = parsed.get("verdicts") if isinstance(parsed, dict) else None
     if not isinstance(verdicts, list):
