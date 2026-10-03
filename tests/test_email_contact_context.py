@@ -527,4 +527,7 @@ def test_labelled_prior_contact_claims_are_flagged(sentence):
 @pytest.mark.parametrize("sentence", _CONTACT_SENTENCES["first_contact"])
 def test_labelled_first_contact_sentences_are_not_flagged(sentence):
     from backend.lib.email_contact_context import contact_claim_violations, contact_context_parts
-    assert contact_claim_violations(sentence, contact_context_parts(FIRST)) == []
+    # Not contact history, but it offers 12 hours a week that no availability confirmed.
+    unconfirmed_hours = "so I could work up to 12 hours a week in a lab" in sentence
+    expected = ["unsupported time commitment"] if unconfirmed_hours else []
+    assert contact_claim_violations(sentence, contact_context_parts(FIRST)) == expected

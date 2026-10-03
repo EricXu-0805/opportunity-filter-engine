@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from bisect import bisect_left
 from copy import deepcopy
 
 from backend.lib.public_projection import redact_embedded_emails
@@ -386,11 +387,99 @@ def _claims_prior_contact(sentence: str) -> bool:
     return False
 
 
+# Time the student offers in their own voice: hours or days per week or day, or
+# a number of weeks or semesters. Only the confirmed availability sentence may
+# state one; another offer must repeat its quantities. Bounded English shapes:
+# an offer by reference ("I can commit to that") is not read.
+_TIME_WORDS = {"a": "1", "an": "1", "one": "1", "two": "2", "three": "3", "four": "4", "five": "5",
+               "six": "6", "seven": "7", "eight": "8", "nine": "9", "ten": "10", "eleven": "11",
+               "twelve": "12", "fifteen": "15", "twenty": "20", "thirty": "30", "forty": "40",
+               "few": "few", "several": "several"}
+_TIME_NUMBER = (r"(?:(?<![\w.])\d+(?:\.\d+)?|\bcouple(?:\s+of)?\b|\b(?:"
+                + "|".join(sorted(_TIME_WORDS, key=len, reverse=True)) + r")\b)")
+_TIME_SPAN = (r"(?P<least>\b(?:at\s+least|more\s+than|over|a\s+minimum\s+of|upwards\s+of)\s+)?"
+              rf"(?P<lo>{_TIME_NUMBER})(?:\s*(?:-|–|—|to|or)\s*(?P<hi>{_TIME_NUMBER}))?(?P<plus>\s*\+|\s+or\s+more)?")
+_TIME_RATED = re.compile(
+    _TIME_SPAN + r"\s*(?:(?:full|free|spare|extra|additional)\s+)?"
+    r"(?P<unit>hours?|hrs?|h|days?|afternoons?|mornings?|evenings?)\b(?:\s+[\w'’-]+){0,3}?"
+    r"(?:(?:\s*/\s*|\s+(?:per|a|an|each|every)\s+)(?P<rate>week|wk|day)|\s+(?P<adverb>weekly|daily))\b", re.I)
+# "10-week program" names the program's length, not an offer, so a duration
+# needs a space before its unit.
+_TIME_DURATION = re.compile(
+    _TIME_SPAN + r"\s+(?:(?:full|entire|whole)\s+)?(?P<unit>weeks?|semesters?|terms?|quarters?)\b", re.I)
+# "in two weeks", "two semesters ago": a point in time, not time offered.
+_TIME_POINT_BEFORE = re.compile(r"\b(?:in|within|after|before|by|every|each|until|till)\s+$", re.I)
+_TIME_POINT_AFTER = re.compile(r"\s*(?:ago|earlier|later|before|after|from\s+now|prior)\b", re.I)
+_TIME_OFFER = re.compile(
+    r"\b(?:i|we)(?:\s+(?:\w+\s+)?"
+    r"(?:can|could|will|would|shall|should|might|may|(?:plan|intend|expect|hope|aim|want|wish|offer)\s+to|"
+    r"look\s+forward\s+to)|['’](?:ll|d)"
+    r"|(?:\s+am|\s+are|['’]m|['’]re)\s+(?:\w+\s+)?(?:able|happy|glad|willing|prepared|ready|planning|hoping|"
+    r"looking|eager|open)\s+to)\b"
+    r"|(?P<available>\b(?:i|we)(?:\s+am|\s+are|['’]m|['’]re)\s+(?:\w+\s+){0,2}?(?:available|free|committed)\b"
+    r"|\bmy\s+(?:\w+\s+)?(?:availability|schedule)\b)"
+    r"|(?P<have>\b(?:i|we)\s+(?:have|['’]ve\s+got)\b)", re.I)
+# After "I can/will/would": "stay for two semesters" offers time, "graduate in
+# two semesters" or "have completed four semesters" does not.
+_TIME_COMMIT_VERB = re.compile(
+    r"\b(?:commit(?:ting)?|dedicate|devote|contribute|stay|remain|continue|volunteer|participate|join|"
+    r"work(?:ing)?|serve|intern|assist|help|spend|be\s+(?:available|free|involved))\b", re.I)
+_TIME_HAVE_CUE = re.compile(
+    r"\b(?:available|free|open|spare|to\s+(?:dedicate|devote|commit|contribute|spend|give|offer|work|put))\b", re.I)
+_TIME_SENTENCE_BREAK = re.compile(r"[!?\n]+|\.(?!\d)")
+
+
+def _time_key(match: re.Match) -> str:
+    def number(value: str) -> str:
+        value = value.lower().split()[0]
+        return _TIME_WORDS.get(value, value)
+    span = number(match["lo"]) + (f"-{number(match['hi'])}" if match["hi"] else "")
+    plus = "+" if match["least"] or match["plus"] else ""
+    unit = match["unit"].lower().rstrip("s")
+    unit = "hour" if unit in ("h", "hr") else unit
+    rate = (match.groupdict().get("rate") or match.groupdict().get("adverb") or "").lower()
+    rate = {"wk": "week", "weekly": "week", "daily": "day"}.get(rate, rate)
+    return f"{span}{plus} {unit}" + (f"/{rate}" if rate else "")
+
+
+def _time_quantities(text: str) -> list[tuple[int, str, bool]]:
+    """(start, key, is_duration) for each amount of time named in ``text``."""
+    found = [(match.start(), _time_key(match), False) for match in _TIME_RATED.finditer(text)]
+    masked = _TIME_RATED.sub(lambda match: " " * len(match.group()), text)
+    for match in _TIME_DURATION.finditer(masked):
+        before = _TIME_POINT_BEFORE.search(masked, max(0, match.start() - 40), match.start())
+        if not (before or _TIME_POINT_AFTER.match(masked, match.end())):
+            found.append((match.start(), _time_key(match), True))
+    return sorted(found)
+
+
+def _offered_time(sentence: str) -> list[str]:
+    """Keys of the time a first-person offer commits within the same clause, at most eight words on."""
+    quantities = _time_quantities(sentence)
+    if not quantities:
+        return []
+    starts = [start for start, _key, _duration in quantities]
+    offered = []
+    for head in _TIME_OFFER.finditer(sentence):
+        clause = re.split(r"[,;()]", sentence[head.end():head.end() + 240], maxsplit=1)[0]
+        if head["have"] and not _TIME_HAVE_CUE.search(clause):
+            continue
+        for start, key, duration in quantities[bisect_left(starts, head.end()):]:
+            if start >= head.end() + len(clause) or len(sentence[head.end():start].split()) > 8:
+                break
+            if duration and not (head["available"] or head["have"]) and not _TIME_COMMIT_VERB.search(
+                    sentence, head.end(), start):
+                continue
+            offered.append(key)
+    return offered
+
+
 def contact_claim_violations(text: str, parts: dict) -> list[str]:
     """Only the exact attested opening may authorize recognized contact claims.
 
     Removing a fixed sentence here exempts it only from contact-pattern checks,
     never from the independent student competence/numeric/attachment checks.
+    Any other offer of time must repeat the confirmed availability's quantities.
     """
     findings = []
     remaining = text
@@ -403,6 +492,9 @@ def contact_claim_violations(text: str, parts: dict) -> list[str]:
         remaining = remaining.replace(sentence, "")
     if any(_claims_prior_contact(sentence) for sentence in _SENTENCE.findall(remaining)):
         findings.append("unsupported contact history claim")
+    stated = {key for _start, key, _duration in _time_quantities(parts.get("contact_availability") or "")}
+    if any(key not in stated for sentence in _TIME_SENTENCE_BREAK.split(remaining) for key in _offered_time(sentence)):
+        findings.append("unsupported time commitment")
     return findings
 
 
