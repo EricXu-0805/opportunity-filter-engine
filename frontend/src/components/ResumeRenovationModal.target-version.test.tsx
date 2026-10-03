@@ -50,7 +50,9 @@ beforeEach(async () => {
     doc: value, base_snapshot, method, warnings, owner_id: owner.uid, opportunity_id, revision: revision + 1, updated_at: '2026-09-25T00:01:00Z' } }));
   mocks.list.mockResolvedValue({ items: [], next_cursor: null }); mocks.read.mockResolvedValue(null);
   mocks.structure.mockResolvedValue(structured); mocks.renovate.mockResolvedValue(receipt());
-  mocks.optimize.mockResolvedValue({ opportunity_id: target.id, target_version: VERSION, text: 'Accepted rewrite', changed: true, source_evidence: 'Built a data pipeline', warnings: [] });
+  // A reviewed rewrite (w14): only status "rewritten" becomes a variant.
+  mocks.optimize.mockResolvedValue({ opportunity_id: target.id, target_version: VERSION, text: 'Accepted rewrite', changed: true, source_evidence: 'Built a data pipeline', warnings: [],
+    status: 'rewritten', ops: ['lead_with'], links: [], pipeline_version: 'w14.1' });
 });
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 

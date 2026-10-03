@@ -18,16 +18,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from backend.lib.evidence_map import Anchor, verify_links
 from backend.lib.grounding import (
     LENIENT_PROSE,
     LENIENT_PROSE_NUMERIC,
     validate_no_fabrication,
 )
-from backend.routes.tailor import (
-    TAILOR_PIPELINE_VERSION,
-    _build_evidence_corpus,
-    _verify_evidence,
-)
+from backend.routes.tailor import TAILOR_PIPELINE_VERSION
 
 _REPO = Path(__file__).resolve().parents[1]
 
@@ -88,41 +85,37 @@ class TestNumericGrounding:
 
 
 # ---------------------------------------------------------------------------
-# Evidence quotes: shown only when they exist in the student's material
+# Evidence quotes: shown only when they exist in the student's own bullet
 # ---------------------------------------------------------------------------
 
 class TestEvidenceVerification:
-    def _corpus(self):
-        profile = {
-            "major": "Computer Science", "school": "UIUC", "college": "",
-            "hard_skills": [{"name": "Python", "level": "experienced"}],
-            "coursework": ["CS 225"],
-        }
-        return _build_evidence_corpus(profile, ["Built a data pipeline in Python"])
+    """A link's student-side quote is a literal span of that bullet, found by
+    the server; the model's word is never taken for it. Profile fields are not
+    quotable at all."""
 
-    def test_real_quote_is_kept(self):
-        corpus = self._corpus()
-        assert _verify_evidence("Built a data pipeline", corpus)
+    BULLET = "Built a data pipeline in Python for CS 225"
+    ANCHORS = {"t1": Anchor("t1", {"field": "description", "requirement_index": None, "start": 0, "end": 27,
+                                   "quote": "Data pipelines and Kubernetes"})}
 
-    def test_composite_citation_of_real_facts_is_kept(self):
-        corpus = self._corpus()
-        assert _verify_evidence("Python (experienced); CS 225", corpus)
+    def _quote(self, source):
+        links = verify_links([{"id": "L1", "anchor": "t1", "term": "Data pipelines", "source": source,
+                               "relation": "same"}], [(None, self.BULLET)], self.ANCHORS)
+        return links[0].source_evidence["quote"] if links else ""
+
+    def test_real_quote_is_kept_with_server_offsets(self):
+        assert self._quote("data pipeline") == "data pipeline"
 
     def test_fabricated_quote_is_blanked(self):
-        corpus = self._corpus()
-        assert _verify_evidence("Deployed production AWS pipelines", corpus) == ""
+        assert self._quote("Deployed production AWS pipelines") == ""
 
-    def test_composite_with_one_invented_fragment_is_blanked(self):
-        corpus = self._corpus()
-        assert _verify_evidence("CS 225; Kubernetes certification", corpus) == ""
+    def test_composite_of_real_facts_is_not_a_quote(self):
+        assert self._quote("Python; CS 225") == ""
 
-    def test_empty_evidence_stays_empty(self):
-        assert _verify_evidence("", self._corpus()) == ""
+    def test_profile_skill_is_not_a_quote(self):
+        assert self._quote("Python (experienced)") == ""
 
     def test_word_order_matters(self):
-        # Evidence is a contiguous quote, not a bag of words.
-        corpus = self._corpus()
-        assert _verify_evidence("pipeline data a Built", corpus) == ""
+        assert self._quote("pipeline data a Built") == ""
 
 
 # ---------------------------------------------------------------------------
@@ -208,15 +201,23 @@ class TestAGuessedSkillListIsNotCalledARequirement:
         assert "Python" in line
 
     def test_every_prompt_builder_uses_the_helper(self):
-        """Three builders duplicated the same two lines; a fourth copy would
-        reintroduce this silently."""
+        """The renovation plan is the one prompt that still prints the list; a
+        second copy would reintroduce the mislabel silently."""
         import inspect
 
         from backend.routes import tailor
 
         source = inspect.getsource(tailor)
         assert source.count('f"- Required skills: {required}\\n"') == 0
-        assert source.count("_skills_line(opp, required)") == 3
+        assert source.count("_skills_line(opp, required)") == 1
+
+    def test_a_tagger_written_list_is_never_an_anchor(self):
+        """The rewrite prompts quote only anchors, and a guessed list is not one."""
+        from backend.routes.tailor import _snapshot_anchors
+
+        stated, guessed = self._opp(False), self._opp(True)
+        assert [a.text for a in _snapshot_anchors(stated, stated)] == ["Python"]
+        assert _snapshot_anchors(guessed, guessed) == []
 
 
 class TestKeywordsProvenanceReachesThePrompt:
@@ -258,4 +259,14 @@ class TestKeywordsProvenanceReachesThePrompt:
 
         source = inspect.getsource(tailor)
         assert source.count('f"- Keywords: {keywords}\\n"') == 0
-        assert source.count("_keywords_line(opp, keywords)") == 3
+        assert source.count("_keywords_line(opp, keywords)") == 1
+
+    def test_keywords_never_reach_a_rewrite_prompt(self, monkeypatch):
+        """Keywords, stated or inferred, are not quotable target text."""
+        from backend.routes import tailor
+
+        captured = []
+        monkeypatch.setattr(tailor, "chat_completion", lambda messages, **kwargs: captured.append(messages))
+        opp = self._opp(True)
+        tailor._ai_tailor_bullets({}, opp, ["Mapped fault lines."], anchors=tailor._snapshot_anchors(opp, opp))
+        assert "earthquake and tectonic" not in captured[0][1]["content"]

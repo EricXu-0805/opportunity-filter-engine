@@ -1,0 +1,3932 @@
+{
+ "_about": "Declared evidence maps for backend/lib/evidence_map.check_rewrite. Anchors are description snippets t1..tN (an empty string only holds a place). 'expected' is [status, code, detail prefix] after the contract and, for a pending rewrite, the claim locks. Seeded from the design prototype's 27 cases; broader and cross-language relabels and trim are disabled by the calibration, so those now keep.",
+ "cases": [
+  {
+   "group": "churn",
+   "label": "cap_tr4 ', reaching' declared tighten",
+   "anchors": [],
+   "original": "Built a PyTorch image classifier for chest X-ray triage in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "rewrite": "Built a PyTorch image classifier for chest X-ray triage in a CS 446 course project, reaching 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "links": [],
+   "ops": [
+    {
+     "op": "tighten"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "no_substantive_op"
+   ]
+  },
+  {
+   "group": "churn",
+   "label": "cap_tr4 'Served as' declared verb_first",
+   "anchors": [],
+   "original": "Undergraduate course assistant for CS 124 (Spring 2026), holding weekly office hours for about 40 students.",
+   "rewrite": "Served as undergraduate course assistant for CS 124 (Spring 2026), holding weekly office hours for about 40 students.",
+   "links": [],
+   "ops": [
+    {
+     "op": "verb_first"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "verb_first_new_verb"
+   ]
+  },
+  {
+   "group": "churn",
+   "label": "cap_tr4 drop I declared tighten",
+   "anchors": [],
+   "original": "As part of a four-person team in PSYC 238, I helped design an online survey on sleep and memory and cleaned the 212 responses in R.",
+   "rewrite": "As part of a four-person team in PSYC 238, helped design an online survey on sleep and memory and cleaned the 212 responses in R.",
+   "links": [],
+   "ops": [
+    {
+     "op": "tighten"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "no_substantive_op"
+   ]
+  },
+  {
+   "group": "churn",
+   "label": "cap_tr4 rover->robot declared relabel (AHS 'Robot')",
+   "anchors": [
+    "Robotics",
+    "Robot",
+    "Ergonomics",
+    "Aging",
+    "Age-related Differences",
+    "Human Factors",
+    "Aging in Place",
+    "Visual Search"
+   ],
+   "original": "Built the drivetrain for the Illini Robotics club rover in 2025 with two teammates; I designed the motor mount in SolidWorks.",
+   "rewrite": "Built the drivetrain for the Illini Robotics club robot in 2025 with two teammates, and designed the motor mount in SolidWorks.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t2",
+     "term": "Robot",
+     "source": "club rover",
+     "relation": "broader"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "club rover",
+     "to": "club robot"
+    },
+    {
+     "op": "tighten"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_not_same"
+   ]
+  },
+  {
+   "group": "churn",
+   "label": "undeclared purpose 'for aging research'",
+   "anchors": [
+    "The Brooks lab is looking for an undergraduate research assistant who is interested in gaining experience in physiology and genomics",
+    "Work in the lab is aimed at understanding how photosynthesis and nitrogen metabolism are coordinated and how these processes will respond to climate change",
+    "Duties will include growing plants, helping carry out experiments, analyzing data, and assisting with general laboratory maintenance",
+    "Specific techniques that are used in the lab are RNA/DNA extractions, PCR, cloning, and measuring nitrogen and photosynthetic traits by various techniques",
+    "This is a paid research experience, and is ongoing",
+    "For more information, including how to apply, please see full blog posting",
+    "PCR"
+   ],
+   "original": "Worked 10 hours per week in a yeast genetics lab since January 2026, running PCR genotyping and maintaining strain stocks.",
+   "rewrite": "Ran PCR genotyping for aging research and maintained strain stocks in a yeast genetics lab, 10 hours per week since January 2026.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t7",
+     "term": "PCR",
+     "source": "PCR genotyping",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    },
+    {
+     "op": "verb_first"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "added:aging,research"
+   ]
+  },
+  {
+   "group": "churn",
+   "label": "borrowed number sentence",
+   "anchors": [],
+   "original": "Built a Python robot with a team of 3. I did not lead the project.",
+   "rewrite": "Built a Python robot with a team of 3. I did not lead the project. The robot weighed 3 kg.",
+   "links": [],
+   "ops": [
+    {
+     "op": "tighten"
+    },
+    {
+     "op": "trim"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "unknown_op"
+   ]
+  },
+  {
+   "group": "ideal",
+   "label": "cs-ml B1 x bioe: deep learning modifier",
+   "anchors": [
+    "Image-guided adaptive radiation therapy",
+    "Functional image-based tumor response assessment and predication",
+    "Task-based medical imaging quality assessment",
+    "Medical imaging and image analysis for diagnosis and radiation therapy",
+    "Deep learning for clinical decision-making",
+    "Bioimaging at Multi-Scale"
+   ],
+   "original": "Built a PyTorch image classifier for chest X-ray triage in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "rewrite": "Built a PyTorch deep learning image classifier for chest X-ray triage in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t5",
+     "term": "Deep learning",
+     "source": "PyTorch image classifier",
+     "relation": "broader"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "PyTorch image classifier",
+     "to": "PyTorch deep learning image classifier"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_not_same"
+   ]
+  },
+  {
+   "group": "ideal",
+   "label": "cs-ml B1 x rice: computer vision classifier",
+   "anchors": [
+    "His research interests include Medical Image Computing, Deep Learning, Computer Vision, Machine Learning, Data Mining, and Heuristic Optimization Algorithms",
+    "He has also been involved in curriculum design and has taught a diverse range of courses at different levels"
+   ],
+   "original": "Built a PyTorch image classifier for chest X-ray triage in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "rewrite": "Built a PyTorch computer vision classifier for chest X-ray triage in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Computer Vision",
+     "source": "image classifier",
+     "relation": "broader"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "image classifier",
+     "to": "computer vision classifier"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_not_same"
+   ]
+  },
+  {
+   "group": "ideal",
+   "label": "cs-ml B1 x rice: computer vision MODEL (head swap)",
+   "anchors": [
+    "His research interests include Medical Image Computing, Deep Learning, Computer Vision, Machine Learning, Data Mining, and Heuristic Optimization Algorithms",
+    "He has also been involved in curriculum design and has taught a diverse range of courses at different levels"
+   ],
+   "original": "Built a PyTorch image classifier for chest X-ray triage in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "rewrite": "Built a PyTorch computer vision model for chest X-ray triage in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Computer Vision",
+     "source": "image classifier",
+     "relation": "broader"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "image classifier",
+     "to": "computer vision model"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_not_same"
+   ]
+  },
+  {
+   "group": "ideal",
+   "label": "cs-ml B2 verb first (no link)",
+   "anchors": [],
+   "original": "Undergraduate course assistant for CS 124 (Spring 2026), holding weekly office hours for about 40 students.",
+   "rewrite": "Held weekly office hours for about 40 students as undergraduate course assistant for CS 124 (Spring 2026).",
+   "links": [],
+   "ops": [
+    {
+     "op": "verb_first"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "ideal",
+   "label": "bio x brooks: verb first + lead with PCR",
+   "anchors": [
+    "The Brooks lab is looking for an undergraduate research assistant who is interested in gaining experience in physiology and genomics",
+    "Work in the lab is aimed at understanding how photosynthesis and nitrogen metabolism are coordinated and how these processes will respond to climate change",
+    "Duties will include growing plants, helping carry out experiments, analyzing data, and assisting with general laboratory maintenance",
+    "Specific techniques that are used in the lab are RNA/DNA extractions, PCR, cloning, and measuring nitrogen and photosynthetic traits by various techniques",
+    "This is a paid research experience, and is ongoing",
+    "For more information, including how to apply, please see full blog posting",
+    "PCR"
+   ],
+   "original": "Worked 10 hours per week in a yeast genetics lab since January 2026, running PCR genotyping and maintaining strain stocks.",
+   "rewrite": "Ran PCR genotyping and maintained strain stocks in a yeast genetics lab, 10 hours per week since January 2026.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t7",
+     "term": "PCR",
+     "source": "PCR genotyping",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "verb_first"
+    },
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "ideal",
+   "label": "bio x gatech: verb first only",
+   "anchors": [
+    "Yeast genetics and molecular biology",
+    "chaperones and protein misfolding",
+    "amyloid and prion diseases",
+    "epigenetics and protein-based inheritance"
+   ],
+   "original": "Worked 10 hours per week in a yeast genetics lab since January 2026, running PCR genotyping and maintaining strain stocks.",
+   "rewrite": "Ran PCR genotyping and maintained strain stocks in a yeast genetics lab, 10 hours per week since January 2026.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Yeast genetics",
+     "source": "yeast genetics lab",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "verb_first"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "ideal",
+   "label": "psych B1 x Fabiani: lead with survey topic",
+   "anchors": [
+    "Monica Fabiani's",
+    "research interests are in the cognitive neuroscience of human memory and aging",
+    "as well as in the development of tools for the non-invasive mapping of human brain function",
+    "As is typical of the cognitive neuroscience approach"
+   ],
+   "original": "As part of a four-person team in PSYC 238, I helped design an online survey on sleep and memory and cleaned the 212 responses in R.",
+   "rewrite": "Helped design an online survey on sleep and memory as part of a four-person team in PSYC 238 and cleaned the 212 responses in R.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t2",
+     "term": "memory",
+     "source": "sleep and memory",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    },
+    {
+     "op": "tighten"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "ideal",
+   "label": "psych B2 verb first",
+   "anchors": [],
+   "original": "Research assistant in the Cognitive Aging Lab since Fall 2025, scheduling participants and scoring cognitive tests.",
+   "rewrite": "Scheduled participants and scored cognitive tests as a research assistant in the Cognitive Aging Lab since Fall 2025.",
+   "links": [],
+   "ops": [
+    {
+     "op": "verb_first"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "ideal",
+   "label": "mech x ramezani: personal first + lead with design",
+   "anchors": [
+    "Mobility in contested environments where existing systems face the risk of complete immobilization",
+    "Robot design",
+    "modeling",
+    "closed-loop feedback control",
+    "Bio-inspired robot locomotion"
+   ],
+   "original": "Built the drivetrain for the Illini Robotics club rover in 2025 with two teammates; I designed the motor mount in SolidWorks.",
+   "rewrite": "Designed the motor mount in SolidWorks and, with two teammates, built the drivetrain for the Illini Robotics club rover in 2025.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t2",
+     "term": "Robot design",
+     "source": "designed the motor mount",
+     "relation": "broader"
+    }
+   ],
+   "ops": [
+    {
+     "op": "personal_first"
+    },
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "lead_with_not_same"
+   ]
+  },
+  {
+   "group": "ideal",
+   "label": "stat x medeiros: machine learning modifier",
+   "anchors": [
+    "Econometrics",
+    "statistical learning theory",
+    "machine learning",
+    "artificial intelligence",
+    "My area of research is econometrics"
+   ],
+   "original": "Built a gradient-boosting model in Python that placed in the top 8% of a 2025 Kaggle competition on credit default prediction.",
+   "rewrite": "Built a gradient-boosting machine learning model in Python that placed in the top 8% of a 2025 Kaggle competition on credit default prediction.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t3",
+     "term": "machine learning",
+     "source": "gradient-boosting model",
+     "relation": "broader"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "gradient-boosting model",
+     "to": "gradient-boosting machine learning model"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_not_same"
+   ]
+  },
+  {
+   "group": "ideal",
+   "label": "stat x piramuthu: credit scoring modifier",
+   "anchors": [
+    "Artificial Intelligence",
+    "Big Data",
+    "Blockchain",
+    "Carbon Footprint",
+    "Cold (Food Supply) Chains",
+    "Computer Integrated Manufacturing",
+    "CRM",
+    "Cryptography",
+    "Data Science",
+    "Database Management",
+    "eCommerce",
+    "Financial Credit Scoring",
+    "Healthcare",
+    "IoT",
+    "Machine Learning/Data Mining",
+    "RFID",
+    "Simulation",
+    "Supply Chain Management"
+   ],
+   "original": "Built a gradient-boosting model in Python that placed in the top 8% of a 2025 Kaggle competition on credit default prediction.",
+   "rewrite": "Built a gradient-boosting credit scoring model in Python that placed in the top 8% of a 2025 Kaggle competition on credit default prediction.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t12",
+     "term": "Credit Scoring",
+     "source": "credit default prediction",
+     "relation": "broader"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "gradient-boosting model",
+     "to": "gradient-boosting credit scoring model"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_not_same"
+   ]
+  },
+  {
+   "group": "ideal",
+   "label": "zh-2 x nguyen: 自来水->饮用水 (translated term) + lead",
+   "anchors": [
+    "Pathogens and biofilms in drinking water distribution system",
+    "Environmental surveillance of pathogens",
+    "Water and Food Safety",
+    "Undergraduate Research Opportunities",
+    "I currently advise 10 undergrad students doing research on pathogen removal",
+    "Environmental Engineering and Science"
+   ],
+   "original": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "rewrite": "协助博士生用 qPCR 检测饮用水样本中的军团菌（2025 年 9 月起在环境微生物实验室担任本科研究助理，每周约 8 小时）；未参与引物设计和数据分析。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "drinking water",
+     "source": "自来水",
+     "relation": "broader"
+    },
+    {
+     "id": "L2",
+     "anchor": "t2",
+     "term": "pathogens",
+     "source": "军团菌",
+     "relation": "broader"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "自来水",
+     "to": "饮用水"
+    },
+    {
+     "op": "lead_with",
+     "link": "L2"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_not_same"
+   ]
+  },
+  {
+   "group": "ideal",
+   "label": "T3 x schoetz: electrochemical modifier",
+   "anchors": [
+    "Energy Storage, Electrochemistry, The research in our group focuses on engineering electrochemical interfaces",
+    "the regions where electronic and ionic charge meet. These interfaces govern the behavior of nearly all electrochemical technologies, from batteries, sensors"
+   ],
+   "original": "Helped three lab mates run cyclic voltammetry on 30 electrolyte samples in Summer 2025; the graduate mentor did the data analysis.",
+   "rewrite": "Helped three lab mates run electrochemical cyclic voltammetry on 30 electrolyte samples in Summer 2025; the graduate mentor did the data analysis.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "electrochemical",
+     "source": "cyclic voltammetry",
+     "relation": "broader"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "cyclic voltammetry",
+     "to": "electrochemical cyclic voltammetry"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_not_same"
+   ]
+  },
+  {
+   "group": "ideal",
+   "label": "T2 personal first (my part was wiring)",
+   "anchors": [],
+   "original": "On a five-person CHBE 421 design team, built a benchtop vanadium redox flow battery that reached 72% round-trip efficiency; my part was wiring the data logger and keeping the test log.",
+   "rewrite": "Wired the data logger and kept the test log for a five-person CHBE 421 design team that built a benchtop vanadium redox flow battery reaching 72% round-trip efficiency.",
+   "links": [],
+   "ops": [
+    {
+     "op": "personal_first"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "ideal",
+   "label": "CS trim with permission (drop 'validation split')",
+   "anchors": [
+    "Image-guided adaptive radiation therapy",
+    "Functional image-based tumor response assessment and predication",
+    "Task-based medical imaging quality assessment",
+    "Medical imaging and image analysis for diagnosis and radiation therapy",
+    "Deep learning for clinical decision-making",
+    "Bioimaging at Multi-Scale"
+   ],
+   "original": "Built a PyTorch image classifier for chest X-ray triage in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "rewrite": "Built a PyTorch image classifier for chest X-ray triage in a CS 446 course project; reached 0.87 AUC on NIH ChestX-ray14.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t4",
+     "term": "image analysis",
+     "source": "image classifier",
+     "relation": "broader"
+    }
+   ],
+   "ops": [
+    {
+     "op": "trim"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "unknown_op"
+   ]
+  },
+  {
+   "group": "trap",
+   "label": "bio x rochester: yeast -> Saccharomyces cerevisiae",
+   "anchors": [
+    "Molecular biology and genetics",
+    "Mutagenesis and repair of the mitochondrial genome of Saccharomyces cerevisiae"
+   ],
+   "original": "Worked 10 hours per week in a yeast genetics lab since January 2026, running PCR genotyping and maintaining strain stocks.",
+   "rewrite": "Worked 10 hours per week in a Saccharomyces cerevisiae genetics lab since January 2026, running PCR genotyping and maintaining strain stocks.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t2",
+     "term": "Saccharomyces cerevisiae",
+     "source": "yeast",
+     "relation": "broader"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "yeast",
+     "to": "Saccharomyces cerevisiae"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_not_same"
+   ]
+  },
+  {
+   "group": "trap",
+   "label": "cs-ml B2 x rice: office hours -> curriculum design",
+   "anchors": [
+    "His research interests include Medical Image Computing, Deep Learning, Computer Vision, Machine Learning, Data Mining, and Heuristic Optimization Algorithms",
+    "He has also been involved in curriculum design and has taught a diverse range of courses at different levels"
+   ],
+   "original": "Undergraduate course assistant for CS 124 (Spring 2026), holding weekly office hours for about 40 students.",
+   "rewrite": "Undergraduate course assistant for CS 124 (Spring 2026), supporting curriculum design for about 40 students.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t2",
+     "term": "curriculum design",
+     "source": "holding weekly office hours",
+     "relation": "broader"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "holding weekly office hours",
+     "to": "supporting curriculum design"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_not_same"
+   ]
+  },
+  {
+   "group": "trap",
+   "label": "psych B1 x nusbaum: -> memory consolidation",
+   "anchors": [
+    "Wisdom",
+    "language use",
+    "attention",
+    "learning",
+    "memory consolidation and sleep",
+    "working memory",
+    "understanding",
+    "affect",
+    "categorization",
+    "cognitive neuropharmocology",
+    "cognitive engineering and human factors"
+   ],
+   "original": "As part of a four-person team in PSYC 238, I helped design an online survey on sleep and memory and cleaned the 212 responses in R.",
+   "rewrite": "As part of a four-person team in PSYC 238, I helped design an online survey on memory consolidation and sleep and cleaned the 212 responses in R.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t5",
+     "term": "memory consolidation and sleep",
+     "source": "sleep and memory",
+     "relation": "broader"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "sleep and memory",
+     "to": "memory consolidation and sleep"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_not_same"
+   ]
+  },
+  {
+   "group": "trap",
+   "label": "stat x zheng: -> causal representation learning",
+   "anchors": [
+    "My research seeks to unveil and leverage the hidden world of observational data",
+    "aiming to uncover the truthful process underlying the data and thus go beyond the ceiling of correlation fitting",
+    "I develop foundations for, causal representation learning, tackling open problems in"
+   ],
+   "original": "Built a gradient-boosting model in Python that placed in the top 8% of a 2025 Kaggle competition on credit default prediction.",
+   "rewrite": "Built a gradient-boosting causal representation learning model in Python that placed in the top 8% of a 2025 Kaggle competition on credit default prediction.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t3",
+     "term": "causal representation learning",
+     "source": "gradient-boosting model",
+     "relation": "broader"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "gradient-boosting model",
+     "to": "gradient-boosting causal representation learning model"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_not_same"
+   ]
+  },
+  {
+   "group": "trap",
+   "label": "zh-2 x nguyen: 检测 -> 监测 (surveillance)",
+   "anchors": [
+    "Pathogens and biofilms in drinking water distribution system",
+    "Environmental surveillance of pathogens",
+    "Water and Food Safety",
+    "Undergraduate Research Opportunities",
+    "I currently advise 10 undergrad students doing research on pathogen removal",
+    "Environmental Engineering and Science"
+   ],
+   "original": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "rewrite": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 监测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t2",
+     "term": "surveillance",
+     "source": "检测",
+     "relation": "broader"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "检测",
+     "to": "监测"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_not_same"
+   ]
+  },
+  {
+   "group": "trap",
+   "label": "EN original rewritten in Chinese",
+   "anchors": [],
+   "original": "Research assistant in the Cognitive Aging Lab since Fall 2025, scheduling participants and scoring cognitive tests.",
+   "rewrite": "自 2025 年秋季起在认知老化实验室担任研究助理，安排被试并为认知测试评分。",
+   "links": [],
+   "ops": [
+    {
+     "op": "verb_first"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "wrong_language"
+   ]
+  },
+  {
+   "group": "same",
+   "label": "a same term's missing word added",
+   "anchors": [
+    "Survey data dashboards for public health"
+   ],
+   "original": "Built a survey dashboard in R for the campus food pantry.",
+   "rewrite": "Built a survey data dashboard in R for the campus food pantry.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Survey data dashboards",
+     "source": "survey dashboard",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "survey dashboard",
+     "to": "survey data dashboard"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "filter",
+   "label": "relabel adds a setting word",
+   "anchors": [
+    "Survey research methods"
+   ],
+   "original": "Cleaned 212 survey responses in R.",
+   "rewrite": "Cleaned 212 survey research responses in R.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Survey research",
+     "source": "survey responses",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "survey responses",
+     "to": "survey research responses"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_setting"
+   ]
+  },
+  {
+   "group": "filter",
+   "label": "relabel adds a quality word",
+   "anchors": [
+    "Robust statistics for sensor data"
+   ],
+   "original": "Computed summary statistics for 30 sensor logs.",
+   "rewrite": "Computed robust summary statistics for 30 sensor logs.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Robust statistics",
+     "source": "summary statistics",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "summary statistics",
+     "to": "robust summary statistics"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_quality"
+   ]
+  },
+  {
+   "group": "filter",
+   "label": "relabel adds a team word",
+   "anchors": [
+    "Team science in soil ecology"
+   ],
+   "original": "Sampled soil cores for a science fair project.",
+   "rewrite": "Sampled soil cores for a team science fair project.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Team science",
+     "source": "science fair",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "science fair",
+     "to": "team science fair"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_lock_word"
+   ]
+  },
+  {
+   "group": "filter",
+   "label": "relabel adds a concrete tool",
+   "anchors": [
+    "PCR genotyping of mutant lines"
+   ],
+   "original": "Ran genotyping on 40 mutant fly lines.",
+   "rewrite": "Ran PCR genotyping on 40 mutant fly lines.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "PCR genotyping",
+     "source": "genotyping",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "genotyping",
+     "to": "PCR genotyping"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_new_concrete"
+   ]
+  },
+  {
+   "group": "fold",
+   "label": "own part folded by dropping I",
+   "anchors": [
+    "Motor mount design"
+   ],
+   "original": "Built the drivetrain with two teammates; I designed the motor mount.",
+   "rewrite": "Designed the motor mount; built the drivetrain with two teammates.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Motor mount",
+     "source": "motor mount",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "personal_marker_dropped"
+   ]
+  },
+  {
+   "group": "fold",
+   "label": "own part first is declared",
+   "anchors": [
+    "Motor mount design"
+   ],
+   "original": "Built the drivetrain with two teammates; I designed the motor mount.",
+   "rewrite": "Designed the motor mount; built the drivetrain with two teammates.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Motor mount",
+     "source": "motor mount",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "personal_first"
+    },
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "cosmetic",
+   "label": "tense only",
+   "anchors": [],
+   "original": "Analyze EEG data in MATLAB.",
+   "rewrite": "Analyzed EEG data in MATLAB.",
+   "links": [],
+   "ops": [
+    {
+     "op": "verb_first"
+    }
+   ],
+   "expected": [
+    "kept",
+    "cosmetic_only",
+    "same_words"
+   ]
+  },
+  {
+   "group": "shape",
+   "label": "same-language line marked translate",
+   "anchors": [],
+   "original": "Tutored 30 students in circuits lab each week.",
+   "rewrite": "Tutored 30 students each week in circuits lab.",
+   "links": [],
+   "ops": [
+    {
+     "op": "translate"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "unknown_op"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel from drops the advisor's part",
+   "anchors": [
+    "Writing funding proposals for NIH grants"
+   ],
+   "original": "Drafted the methods section of a grant proposal, which my advisor later rewrote.",
+   "rewrite": "Drafted the methods section of a funding proposal.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "funding proposals",
+     "source": "grant proposal",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "grant proposal, which my advisor later rewrote",
+     "to": "funding proposal"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_outside_source"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel from drops over",
+   "anchors": [
+    "Process tissue specimens for histology and imaging"
+   ],
+   "original": "Processed over 200 tissue samples for histology.",
+   "rewrite": "Processed 200 tissue specimens for histology.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "tissue specimens",
+     "source": "tissue samples",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "Processed over 200 tissue samples",
+     "to": "Processed 200 tissue specimens"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_outside_source"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel from drops about",
+   "anchors": [
+    "Analyze EEG data from sleep studies"
+   ],
+   "original": "Annotated about 40 hours of EEG recordings from a sleep study.",
+   "rewrite": "Annotated 40 hours of EEG data from a sleep study.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "EEG data",
+     "source": "EEG recordings",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "Annotated about 40 hours of EEG recordings",
+     "to": "Annotated 40 hours of EEG data"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_outside_source"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel from turns since into in",
+   "anchors": [
+    "Zebrafish husbandry and colony management"
+   ],
+   "original": "Maintained the lab's zebrafish colony since March 2025 with two other undergraduates.",
+   "rewrite": "Maintained the lab's zebrafish husbandry in March 2025 with two other undergraduates.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "zebrafish husbandry",
+     "source": "zebrafish colony",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "zebrafish colony since March 2025",
+     "to": "zebrafish husbandry in March 2025"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_outside_source"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel inside its source still keeps since",
+   "anchors": [
+    "Zebrafish husbandry and colony management"
+   ],
+   "original": "Maintained the lab's zebrafish colony since March 2025 with two other undergraduates.",
+   "rewrite": "Maintained the lab's zebrafish husbandry in March 2025 with two other undergraduates.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "zebrafish husbandry",
+     "source": "zebrafish colony since March 2025",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "zebrafish colony since March 2025",
+     "to": "zebrafish husbandry in March 2025"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel inside its source still keeps its number",
+   "anchors": [
+    "Analyze EEG data from sleep studies"
+   ],
+   "original": "Cleaned EEG recordings from 20 participants for a sleep study.",
+   "rewrite": "Cleaned EEG data for a sleep study.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "EEG data",
+     "source": "EEG recordings from 20 participants",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "EEG recordings from 20 participants",
+     "to": "EEG data"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel from drops the TA's starter code",
+   "anchors": [
+    "Train convolutional image classifiers on medical images"
+   ],
+   "original": "Trained an image classifier from starter code provided by the TA in CS 444.",
+   "rewrite": "Trained a convolutional image classifier in CS 444.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "convolutional image classifiers",
+     "source": "image classifier",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "image classifier from starter code provided by the TA",
+     "to": "convolutional image classifier"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_outside_source"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel from drops based on my PI's scripts",
+   "anchors": [
+    "Develop reproducible data pipelines in Python"
+   ],
+   "original": "Built a Python data pipeline based on my PI's earlier MATLAB scripts.",
+   "rewrite": "Built a reproducible Python data pipeline.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "reproducible data pipelines",
+     "source": "data pipeline",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "Python data pipeline based on my PI's earlier MATLAB scripts",
+     "to": "reproducible Python data pipeline"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_outside_source"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel inside its source still keeps adapted from",
+   "anchors": [
+    "Develop reproducible data pipelines in Python"
+   ],
+   "original": "Ran a data pipeline adapted from lab scripts to clean 300 survey files.",
+   "rewrite": "Ran a reproducible data pipeline to clean 300 survey files.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "reproducible data pipelines",
+     "source": "data pipeline adapted from lab scripts",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "data pipeline adapted from lab scripts",
+     "to": "reproducible data pipeline"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel from drops in preparation",
+   "anchors": [
+    "Battery electrolyte additives for lithium metal anodes"
+   ],
+   "original": "Co-authoring a manuscript on electrolyte additives (in preparation).",
+   "rewrite": "Co-authoring a manuscript on battery electrolyte additives.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Battery electrolyte additives",
+     "source": "electrolyte additives",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "manuscript on electrolyte additives (in preparation)",
+     "to": "manuscript on battery electrolyte additives"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_outside_source"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "zh relabel from drops 基于导师",
+   "anchors": [
+    "深度学习分类模型的训练与评估"
+   ],
+   "original": "基于导师提供的代码训练了分类模型，并整理了实验记录。",
+   "rewrite": "训练了深度学习分类模型，并整理了实验记录。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "深度学习分类模型",
+     "source": "分类模型",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "基于导师提供的代码训练了分类模型",
+     "to": "训练了深度学习分类模型"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_outside_source"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "zh relabel from drops 约",
+   "anchors": [
+    "问卷调查数据的整理与分析"
+   ],
+   "original": "整理了约200份问卷数据并录入数据库。",
+   "rewrite": "整理了200份问卷调查数据并录入数据库。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "问卷调查数据",
+     "source": "问卷数据",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "约200份问卷数据",
+     "to": "200份问卷调查数据"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_outside_source"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "zh relabel inside its source still keeps 约",
+   "anchors": [
+    "问卷调查数据的整理与分析"
+   ],
+   "original": "整理了约200份问卷数据并录入数据库。",
+   "rewrite": "整理了200份问卷调查数据并录入数据库。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "问卷调查数据",
+     "source": "约200份问卷数据",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "约200份问卷数据",
+     "to": "200份问卷调查数据"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "zh relabel from drops 参与师兄的",
+   "anchors": [
+    "小鼠行为学实验与数据分析"
+   ],
+   "original": "参与师兄的小鼠行为实验，记录了旷场实验数据。",
+   "rewrite": "小鼠行为学实验，记录了旷场实验数据。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "小鼠行为学实验",
+     "source": "小鼠行为实验",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "参与师兄的小鼠行为实验",
+     "to": "小鼠行为学实验"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_outside_source"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel adds my",
+   "anchors": [
+    "Analyze EEG data from sleep studies"
+   ],
+   "original": "Analyzed EEG recordings from 20 participants in a sleep study.",
+   "rewrite": "Analyzed my EEG data from 20 participants in a sleep study.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "EEG data",
+     "source": "EEG recordings",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "EEG recordings",
+     "to": "my EEG data"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_personal_marker"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel adds just",
+   "anchors": [
+    "Analyze EEG data from sleep studies"
+   ],
+   "original": "Analyzed EEG recordings from 20 participants in a sleep study.",
+   "rewrite": "Analyzed just EEG data from 20 participants in a sleep study.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "EEG data",
+     "source": "EEG recordings",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "EEG recordings",
+     "to": "just EEG data"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_lock_word"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "a same relabel inside its source is still allowed",
+   "anchors": [
+    "Analyze EEG data from sleep studies"
+   ],
+   "original": "Analyzed EEG recordings from 20 participants in a sleep study.",
+   "rewrite": "Analyzed EEG data from 20 participants in a sleep study.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "EEG data",
+     "source": "EEG recordings",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "EEG recordings",
+     "to": "EEG data"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel inside its source still keeps planned",
+   "anchors": [
+    "EEG experiment on sleep and memory"
+   ],
+   "original": "Drafted the consent form for a planned EEG study on sleep.",
+   "rewrite": "Drafted the consent form for an EEG experiment on sleep.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "EEG experiment",
+     "source": "planned EEG study",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "planned EEG study",
+     "to": "EEG experiment"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel inside its source still keeps draft",
+   "anchors": [
+    "Soil microbiomes and nutrient cycling"
+   ],
+   "original": "Formatted the references of a draft manuscript on soil microbes.",
+   "rewrite": "Formatted the references of a manuscript on soil microbiomes.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "soil microbiomes",
+     "source": "draft manuscript on soil microbes",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "draft manuscript on soil microbes",
+     "to": "manuscript on soil microbiomes"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "zh relabel inside its source still keeps 初稿",
+   "anchors": [
+    "学术论文写作"
+   ],
+   "original": "整理了论文初稿的参考文献。",
+   "rewrite": "整理了学术论文的参考文献。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "学术论文",
+     "source": "论文初稿",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "论文初稿",
+     "to": "学术论文"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel keeps planned on the renamed study",
+   "anchors": [
+    "EEG experiment on sleep and memory"
+   ],
+   "original": "Drafted the consent form for a planned EEG study on sleep.",
+   "rewrite": "Drafted the consent form for a planned EEG experiment on sleep.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "EEG experiment",
+     "source": "planned EEG study",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "planned EEG study",
+     "to": "planned EEG experiment"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "marker",
+   "label": "zh lead_with adds 本人 to a team action",
+   "anchors": [
+    "浊度测定方法"
+   ],
+   "original": "与组员一起采集了水样并测定了浊度。",
+   "rewrite": "测定了浊度，本人采集了水样，与组员一起。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "浊度测定",
+     "source": "浊度",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "personal_marker_added"
+   ]
+  },
+  {
+   "group": "marker",
+   "label": "lead_with adds my to a setting",
+   "anchors": [
+    "Sleep study"
+   ],
+   "original": "Analyzed EEG recordings for a sleep study.",
+   "rewrite": "For my sleep study, analyzed EEG recordings.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Sleep study",
+     "source": "sleep study",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "personal_marker_added"
+   ]
+  },
+  {
+   "group": "fold",
+   "label": "own part folded after shared work with a friend",
+   "anchors": [
+    "Backend development in Flask"
+   ],
+   "original": "Built the website with a friend; I wrote the backend in Flask.",
+   "rewrite": "Wrote the backend in Flask and built the website with a friend.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Backend",
+     "source": "backend in Flask",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "personal_marker_dropped"
+   ]
+  },
+  {
+   "group": "fold",
+   "label": "own part folded after shared work with my lab partner",
+   "anchors": [
+    "Error analysis of titration data"
+   ],
+   "original": "Ran titrations with my lab partner; I wrote the error analysis.",
+   "rewrite": "Wrote the error analysis and ran titrations with my lab partner.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "error analysis",
+     "source": "error analysis",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "personal_marker_dropped"
+   ]
+  },
+  {
+   "group": "fold",
+   "label": "own part first after shared work with a friend",
+   "anchors": [
+    "Backend development in Flask"
+   ],
+   "original": "Built the website with a friend; I wrote the backend in Flask.",
+   "rewrite": "I wrote the backend in Flask. Built the website with a friend.",
+   "links": [],
+   "ops": [
+    {
+     "op": "personal_first"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops the co- of co-authored",
+   "anchors": [
+    "Authored a review article on soil microbiome"
+   ],
+   "original": "Co-authored a review of soil microbiome studies.",
+   "rewrite": "Authored a review article on soil microbiome studies.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Authored a review article on soil",
+     "source": "Co-authored a review of soil",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "Co-authored a review of soil",
+     "to": "Authored a review article on soil"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops the co- of co-developed",
+   "anchors": [
+    "Students developed a sentiment analysis model"
+   ],
+   "original": "Co-developed a sentiment classifier for tweets.",
+   "rewrite": "Developed a sentiment analysis model for tweets.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "developed a sentiment analysis model",
+     "source": "Co-developed a sentiment classifier",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "Co-developed a sentiment classifier",
+     "to": "Developed a sentiment analysis model"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops co-recorded",
+   "anchors": [
+    "EEG data"
+   ],
+   "original": "Analyzed co-recorded EEG recordings in MATLAB.",
+   "rewrite": "Analyzed EEG data in MATLAB.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "EEG data",
+     "source": "co-recorded EEG recordings",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "co-recorded EEG recordings",
+     "to": "EEG data"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel inside a co-developed line keeps the co-",
+   "anchors": [
+    "sentiment analysis model"
+   ],
+   "original": "Co-developed a sentiment classifier for tweets.",
+   "rewrite": "Co-developed a sentiment analysis model for tweets.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "sentiment analysis model",
+     "source": "sentiment classifier",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "sentiment classifier",
+     "to": "sentiment analysis model"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops the co of coauthored",
+   "anchors": [
+    "Authored a review article on soil microbiome"
+   ],
+   "original": "Coauthored a review of soil microbiome studies.",
+   "rewrite": "Authored a review article on soil microbiome studies.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Authored a review article on soil",
+     "source": "Coauthored a review of soil",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "Coauthored a review of soil",
+     "to": "Authored a review article on soil"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "zh relabel drops 开发中",
+   "anchors": [
+    "参与智能温室环境监测系统开发"
+   ],
+   "original": "智能温室监测系统开发中，负责传感器数据采集。",
+   "rewrite": "智能温室环境监测系统开发，负责传感器数据采集。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "环境监测系统开发",
+     "source": "监测系统开发中",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "监测系统开发中",
+     "to": "环境监测系统开发"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "zh relabel drops 分析中",
+   "anchors": [
+    "问卷统计数据分析"
+   ],
+   "original": "睡眠问卷数据分析中，已清洗 200 份问卷。",
+   "rewrite": "睡眠问卷统计数据分析，已清洗 200 份问卷。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "统计数据分析",
+     "source": "数据分析中",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "数据分析中",
+     "to": "统计数据分析"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "zh relabel drops 整理中",
+   "anchors": [
+    "实验数据记录整理"
+   ],
+   "original": "实验记录整理中，已录入 30 份。",
+   "rewrite": "实验数据记录整理，已录入 30 份。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "数据记录整理",
+     "source": "记录整理中",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "记录整理中",
+     "to": "数据记录整理"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "zh relabel drops 采集中",
+   "anchors": [
+    "脑电信号数据采集"
+   ],
+   "original": "脑电数据采集中，已招募 12 名被试。",
+   "rewrite": "脑电信号数据采集，已招募 12 名被试。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "信号数据采集",
+     "source": "数据采集中",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "数据采集中",
+     "to": "信号数据采集"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "zh relabel drops 即将",
+   "anchors": [
+    "脑电数据"
+   ],
+   "original": "编写了即将采集的脑电记录的命名规则。",
+   "rewrite": "编写了脑电数据的命名规则。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "脑电数据",
+     "source": "即将采集的脑电记录",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "即将采集的脑电记录",
+     "to": "脑电数据"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "zh relabel keeps 开发中",
+   "anchors": [
+    "参与智能温室环境监测系统开发"
+   ],
+   "original": "智能温室监测系统开发中，负责传感器数据采集。",
+   "rewrite": "智能温室环境监测系统开发中，负责传感器数据采集。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "环境监测系统开发",
+     "source": "监测系统开发中",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "监测系统开发中",
+     "to": "环境监测系统开发中"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops work-in-progress",
+   "anchors": [
+    "Python toolkit"
+   ],
+   "original": "Wrote documentation for a work-in-progress Python package for EEG.",
+   "rewrite": "Wrote documentation for a Python toolkit for EEG.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Python toolkit",
+     "source": "work-in-progress Python package",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "work-in-progress Python package",
+     "to": "Python toolkit"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops in-progress",
+   "anchors": [
+    "Python toolkit"
+   ],
+   "original": "Wrote documentation for an in-progress Python package for EEG preprocessing.",
+   "rewrite": "Wrote documentation for a Python toolkit for EEG preprocessing.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Python toolkit",
+     "source": "documentation for an in-progress Python package",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "documentation for an in-progress Python package",
+     "to": "documentation for a Python toolkit"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops prototype",
+   "anchors": [
+    "soft robotic gripper"
+   ],
+   "original": "Built a prototype soft gripper for fruit picking.",
+   "rewrite": "Built a soft robotic gripper for fruit picking.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "soft robotic gripper",
+     "source": "prototype soft gripper",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "prototype soft gripper",
+     "to": "soft robotic gripper"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops simulated",
+   "anchors": [
+    "EEG recordings"
+   ],
+   "original": "Trained a classifier on simulated EEG signals.",
+   "rewrite": "Trained a classifier on EEG recordings.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "EEG recordings",
+     "source": "simulated EEG signals",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "simulated EEG signals",
+     "to": "EEG recordings"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops mock",
+   "anchors": [
+    "clinical trial datasets"
+   ],
+   "original": "Analyzed mock clinical trial data in R.",
+   "rewrite": "Analyzed clinical trial datasets in R.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "clinical trial datasets",
+     "source": "mock clinical trial data",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "mock clinical trial data",
+     "to": "clinical trial datasets"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops preliminary",
+   "anchors": [
+    "experimental results"
+   ],
+   "original": "Presented preliminary results on zebrafish fin regeneration.",
+   "rewrite": "Presented experimental results on zebrafish fin regeneration.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "experimental results",
+     "source": "preliminary results",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "preliminary results",
+     "to": "experimental results"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops WIP",
+   "anchors": [
+    "data-cleaning documentation guide"
+   ],
+   "original": "Shared a WIP data-cleaning guide with the lab.",
+   "rewrite": "Shared a data-cleaning documentation guide with the lab.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "data-cleaning documentation guide",
+     "source": "WIP data-cleaning guide",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "WIP data-cleaning guide",
+     "to": "data-cleaning documentation guide"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops pilot",
+   "anchors": [
+    "sleep deprivation study"
+   ],
+   "original": "Recruited 12 participants for a pilot sleep study.",
+   "rewrite": "Recruited 12 participants for a sleep deprivation study.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "sleep deprivation study",
+     "source": "pilot sleep study",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "pilot sleep study",
+     "to": "sleep deprivation study"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops synthetic",
+   "anchors": [
+    "electronic health records"
+   ],
+   "original": "Trained a classifier on synthetic patient records.",
+   "rewrite": "Trained a classifier on electronic health records.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "electronic health records",
+     "source": "synthetic patient records",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "synthetic patient records",
+     "to": "electronic health records"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "zh relabel drops 原型",
+   "anchors": [
+    "软体机器人夹爪"
+   ],
+   "original": "搭建了一个软体夹爪原型。",
+   "rewrite": "搭建了一个软体机器人夹爪。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "软体机器人夹爪",
+     "source": "软体夹爪原型",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "软体夹爪原型",
+     "to": "软体机器人夹爪"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "zh relabel drops 仿真",
+   "anchors": [
+    "脑电数据"
+   ],
+   "original": "分析了仿真脑电信号。",
+   "rewrite": "分析了脑电数据。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "脑电数据",
+     "source": "仿真脑电信号",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "仿真脑电信号",
+     "to": "脑电数据"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "zh relabel drops 初步",
+   "anchors": [
+    "实验结果"
+   ],
+   "original": "汇报了斑马鱼鳍再生的初步结果。",
+   "rewrite": "汇报了斑马鱼鳍再生的实验结果。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "实验结果",
+     "source": "初步结果",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "初步结果",
+     "to": "实验结果"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "fold",
+   "label": "own part folded after a sentence that starts with My",
+   "anchors": [
+    "Backend development in Flask"
+   ],
+   "original": "Built the website with a friend. My part was writing the backend in Flask.",
+   "rewrite": "Wrote the backend in Flask and built the website with a friend.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Backend",
+     "source": "backend in Flask",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "personal_marker_dropped"
+   ]
+  },
+  {
+   "group": "fold",
+   "label": "own part first after a sentence that starts with My",
+   "anchors": [
+    "Backend development in Flask"
+   ],
+   "original": "Built the website with a friend. My part was writing the backend in Flask.",
+   "rewrite": "My part was writing the backend in Flask. Built the website with a friend.",
+   "links": [],
+   "ops": [
+    {
+     "op": "personal_first"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "marker",
+   "label": "lead_with adds a sentence-initial My",
+   "anchors": [
+    "data pipeline"
+   ],
+   "original": "As part of a four-person team, built the data pipeline.",
+   "rewrite": "My data pipeline was built as part of a four-person team.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "data pipeline",
+     "source": "data pipeline",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "personal_marker_added"
+   ]
+  },
+  {
+   "group": "same",
+   "label": "relabel after a longer word that starts with its term",
+   "anchors": [
+    "EEG data"
+   ],
+   "original": "Built an EEG database and analyzed EEG recordings from 20 infants.",
+   "rewrite": "Built an EEG database and analyzed EEG data from 20 infants.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "EEG data",
+     "source": "EEG recordings",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "EEG recordings",
+     "to": "EEG data"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "same",
+   "label": "relabel whose to is only inside a longer word",
+   "anchors": [
+    "EEG data"
+   ],
+   "original": "Built an EEG database and analyzed EEG recordings from 20 infants.",
+   "rewrite": "Built an EEG database and analyzed EEG datasets from 20 infants.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "EEG data",
+     "source": "EEG recordings",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "EEG recordings",
+     "to": "EEG data"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_span_missing"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops roughly before a word",
+   "anchors": [
+    "MRI segmentations"
+   ],
+   "original": "Labeled roughly segmented MRI scans for the lab.",
+   "rewrite": "Labeled MRI segmentations for the lab.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "MRI segmentations",
+     "source": "roughly segmented MRI scans",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "roughly segmented MRI scans",
+     "to": "MRI segmentations"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops a revised version",
+   "anchors": [
+    "funding proposal"
+   ],
+   "original": "Proofread the revised grant proposal for the lab.",
+   "rewrite": "Proofread the funding proposal for the lab.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "funding proposal",
+     "source": "revised grant proposal",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "revised grant proposal",
+     "to": "funding proposal"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops less than before nineteen",
+   "anchors": [
+    "PCR assays"
+   ],
+   "original": "Ran less than nineteen PCR reactions for the genotyping study.",
+   "rewrite": "Ran nineteen PCR assays for the genotyping study.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "PCR assays",
+     "source": "less than nineteen PCR reactions",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "less than nineteen PCR reactions",
+     "to": "nineteen PCR assays"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops about before sixteen",
+   "anchors": [
+    "sixteen subjects"
+   ],
+   "original": "Recruited about sixteen participants for the sleep study.",
+   "rewrite": "Recruited sixteen subjects for the sleep study.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "sixteen subjects",
+     "source": "Recruited about sixteen participants",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "Recruited about sixteen participants",
+     "to": "Recruited sixteen subjects"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops under before several dozen",
+   "anchors": [
+    "dozen respondents"
+   ],
+   "original": "Surveyed under several dozen students for the club.",
+   "rewrite": "Surveyed several dozen respondents for the club.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "dozen respondents",
+     "source": "Surveyed under several dozen students",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "Surveyed under several dozen students",
+     "to": "Surveyed several dozen respondents"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel drops about as a preposition",
+   "anchors": [
+    "sleep spindle talk"
+   ],
+   "original": "Gave a talk about sleep spindles to the lab.",
+   "rewrite": "Gave a sleep spindle talk to the lab.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "sleep spindle talk",
+     "source": "talk about sleep spindles",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "talk about sleep spindles",
+     "to": "sleep spindle talk"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel_from",
+   "label": "relabel keeps about before sixteen",
+   "anchors": [
+    "sixteen subjects"
+   ],
+   "original": "Recruited about sixteen participants for the sleep study.",
+   "rewrite": "Recruited about sixteen subjects for the sleep study.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "sixteen subjects",
+     "source": "Recruited about sixteen participants",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "Recruited about sixteen participants",
+     "to": "Recruited about sixteen subjects"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "status",
+   "label": "lead_with finishes a line led by Fine-tuning",
+   "anchors": [
+    "sentiment analysis"
+   ],
+   "original": "Fine-tuning a BERT model on 5,000 tweets for sentiment analysis.",
+   "rewrite": "Sentiment analysis: fine-tuned a BERT model on 5,000 tweets.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "sentiment analysis",
+     "source": "sentiment analysis",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "rewrite_rejected",
+    "locks"
+   ]
+  },
+  {
+   "group": "status",
+   "label": "lead_with finishes a line led by Wiring",
+   "anchors": [
+    "campus garden"
+   ],
+   "original": "Wiring 3 soil sensors to an Arduino logger for the campus garden.",
+   "rewrite": "Campus garden: wired 3 soil sensors to an Arduino logger.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "campus garden",
+     "source": "campus garden",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "rewrite_rejected",
+    "locks"
+   ]
+  },
+  {
+   "group": "status",
+   "label": "ZH lead_with drops 将于 beside 目前正在",
+   "anchors": [
+    "目前正在准备答辩"
+   ],
+   "original": "论文将于 5 月发表，目前正在准备答辩。",
+   "rewrite": "目前正在准备答辩，论文于 5 月发表。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "目前正在准备答辩",
+     "source": "目前正在准备答辩",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "dropped:将"
+   ]
+  },
+  {
+   "group": "status",
+   "label": "ZH lead_with drops 将在 beside 目前",
+   "anchors": [
+    "目前在准备摘要"
+   ],
+   "original": "将在 SfN 2026 上展示海报，目前在准备摘要。",
+   "rewrite": "目前在准备摘要，在 SfN 2026 上展示海报。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "目前在准备摘要",
+     "source": "目前在准备摘要",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "dropped:将"
+   ]
+  },
+  {
+   "group": "relabel",
+   "label": "relabel drops three other students",
+   "anchors": [
+    "sleep questionnaire"
+   ],
+   "original": "Designed a sleep survey with three other students for PSYC 238.",
+   "rewrite": "Designed a sleep questionnaire for PSYC 238.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "sleep questionnaire",
+     "source": "sleep survey with three other students",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "sleep survey with three other students",
+     "to": "sleep questionnaire"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel",
+   "label": "relabel drops fellow interns",
+   "anchors": [
+    "sales data records"
+   ],
+   "original": "Cleaned the sales dataset with fellow interns in Excel.",
+   "rewrite": "Cleaned the sales data records in Excel.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "sales data records",
+     "source": "sales dataset with fellow interns",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "sales dataset with fellow interns",
+     "to": "sales data records"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel",
+   "label": "relabel drops participated in",
+   "anchors": [
+    "EEG recordings"
+   ],
+   "original": "Participated in the analysis of EEG data.",
+   "rewrite": "Analysis of EEG recordings.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "EEG recordings",
+     "source": "Participated in the analysis of EEG data",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "Participated in the analysis of EEG data",
+     "to": "Analysis of EEG recordings"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel",
+   "label": "ZH relabel drops 参与",
+   "anchors": [
+    "脑电信号分析"
+   ],
+   "original": "参与了脑电数据分析。",
+   "rewrite": "脑电信号分析。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "脑电信号分析",
+     "source": "参与了脑电数据分析",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "参与了脑电数据分析",
+     "to": "脑电信号分析"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "span",
+   "label": "lead_with adds a plus to a number",
+   "anchors": [
+    "sleep study"
+   ],
+   "original": "Recruited 40 participants for the sleep study.",
+   "rewrite": "Sleep study: recruited 40+ participants.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "sleep study",
+     "source": "sleep study",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "added:"
+   ]
+  },
+  {
+   "group": "span",
+   "label": "lead_with adds a greater-than sign",
+   "anchors": [
+    "test set"
+   ],
+   "original": "Trained a classifier that reached 90% accuracy on the test set.",
+   "rewrite": "Test set: trained a classifier that reached >90% accuracy.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "test set",
+     "source": "test set",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "added:"
+   ]
+  },
+  {
+   "group": "span",
+   "label": "lead_with adds a less-than sign",
+   "anchors": [
+    "lab dashboard"
+   ],
+   "original": "Reduced query latency to 50 ms for the lab dashboard.",
+   "rewrite": "Lab dashboard: reduced query latency to <50 ms.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "lab dashboard",
+     "source": "lab dashboard",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "added:"
+   ]
+  },
+  {
+   "group": "span",
+   "label": "lead_with drops a tilde",
+   "anchors": [
+    "gesture dataset"
+   ],
+   "original": "Annotated ~300 images for the gesture dataset.",
+   "rewrite": "Gesture dataset: annotated 300 images.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "gesture dataset",
+     "source": "gesture dataset",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "added:"
+   ]
+  },
+  {
+   "group": "span",
+   "label": "lead_with drops an at-least sign",
+   "anchors": [
+    "campus weather station"
+   ],
+   "original": "Kept sensor uptime ≥99% for the campus weather station.",
+   "rewrite": "Campus weather station: kept sensor uptime 99%.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "campus weather station",
+     "source": "campus weather station",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "added:"
+   ]
+  },
+  {
+   "group": "span",
+   "label": "lead_with keeps a tilde with its number",
+   "anchors": [
+    "gesture dataset"
+   ],
+   "original": "Annotated ~300 images for the gesture dataset.",
+   "rewrite": "Gesture dataset: annotated ~300 images.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "gesture dataset",
+     "source": "gesture dataset",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "relabel",
+   "label": "relabel drops fewer than",
+   "anchors": [
+    "image samples"
+   ],
+   "original": "Labeled fewer than 300 images for the gesture dataset.",
+   "rewrite": "Labeled 300 image samples for the gesture dataset.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "image samples",
+     "source": "fewer than 300 images",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "fewer than 300 images",
+     "to": "300 image samples"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel",
+   "label": "relabel drops a tilde",
+   "anchors": [
+    "image samples"
+   ],
+   "original": "Annotated ~300 images for the gesture dataset.",
+   "rewrite": "Annotated 300 image samples for the gesture dataset.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "image samples",
+     "source": "~300 images",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "~300 images",
+     "to": "300 image samples"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel",
+   "label": "ZH relabel drops 近",
+   "anchors": [
+    "水体样本"
+   ],
+   "original": "检测了近 40 份水样本。",
+   "rewrite": "检测了 40 份水体样本。",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "水体样本",
+     "source": "近 40 份水样本",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "近 40 份水样本",
+     "to": "40 份水体样本"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "relabel",
+   "label": "relabel drops in development",
+   "anchors": [
+    "food-service app"
+   ],
+   "original": "Built the backend for a campus dining app in development.",
+   "rewrite": "Built the backend for a campus food-service app.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "food-service app",
+     "source": "campus dining app in development",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "campus dining app in development",
+     "to": "campus food-service app"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "relabel",
+   "label": "relabel drops untested",
+   "anchors": [
+    "EEG data"
+   ],
+   "original": "Analyzed untested EEG recordings in MATLAB.",
+   "rewrite": "Analyzed EEG data in MATLAB.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "EEG data",
+     "source": "untested EEG recordings",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "untested EEG recordings",
+     "to": "EEG data"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_drops_protected"
+   ]
+  },
+  {
+   "group": "status",
+   "label": "verb_first after a Visiting role",
+   "anchors": [],
+   "original": "Visiting student at Peking University in Summer 2025, analyzing 30 EEG recordings.",
+   "rewrite": "Analyzed 30 EEG recordings as visiting student at Peking University in Summer 2025.",
+   "links": [],
+   "ops": [
+    {
+     "op": "verb_first"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "status",
+   "label": "verb_first after a Fundraising role",
+   "anchors": [],
+   "original": "Fundraising chair for CSSA since Fall 2025, organizing 3 charity galas.",
+   "rewrite": "Organized 3 charity galas as fundraising chair for CSSA since Fall 2025.",
+   "links": [],
+   "ops": [
+    {
+     "op": "verb_first"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "status",
+   "label": "verb_first after a Swimming role",
+   "anchors": [],
+   "original": "Swimming instructor at the ARC since May 2025, teaching 40 children a week.",
+   "rewrite": "Taught 40 children a week as swimming instructor at the ARC since May 2025.",
+   "links": [],
+   "ops": [
+    {
+     "op": "verb_first"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "status",
+   "label": "lead_with finishes Setting up as set up",
+   "anchors": [
+    "robotics lab"
+   ],
+   "original": "Setting up a Raspberry Pi server for the robotics lab.",
+   "rewrite": "Robotics lab: set up a Raspberry Pi server.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "robotics lab",
+     "source": "robotics lab",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "rewrite_rejected",
+    "locks"
+   ]
+  },
+  {
+   "group": "status",
+   "label": "lead_with finishes Reading as read",
+   "anchors": [
+    "literature review"
+   ],
+   "original": "Reading 30 papers on sleep and memory for a literature review.",
+   "rewrite": "Literature review: read 30 papers on sleep and memory.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "literature review",
+     "source": "literature review",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "rewrite_rejected",
+    "locks"
+   ]
+  },
+  {
+   "group": "status",
+   "label": "lead_with finishes Cutting as cut",
+   "anchors": [
+    "imaging study"
+   ],
+   "original": "Cutting 12 brain slices per week for the imaging study.",
+   "rewrite": "Imaging study: cut 12 brain slices per week.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "imaging study",
+     "source": "imaging study",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "rewrite_rejected",
+    "locks"
+   ]
+  },
+  {
+   "group": "status",
+   "label": "lead_with finishes Putting together as put together",
+   "anchors": [
+    "chemistry lab"
+   ],
+   "original": "Putting together a safety manual for the chemistry lab.",
+   "rewrite": "Chemistry lab: put together a safety manual.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "chemistry lab",
+     "source": "chemistry lab",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "rewrite_rejected",
+    "locks"
+   ]
+  },
+  {
+   "group": "status",
+   "label": "lead_with keeps Setting up under way",
+   "anchors": [
+    "robotics lab"
+   ],
+   "original": "Setting up a Raspberry Pi server for the robotics lab.",
+   "rewrite": "Robotics lab: setting up a Raspberry Pi server.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "robotics lab",
+     "source": "robotics lab",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "pending",
+    null,
+    null
+   ]
+  },
+  {
+   "group": "trap",
+   "label": "relabel to a dropped head noun: Python ML exercises -> Python ML",
+   "anchors": [
+    "Python ML"
+   ],
+   "original": "Implemented Python ML exercises in CS 225",
+   "rewrite": "Implemented Python ML in CS 225",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Python ML",
+     "source": "Python ML exercises",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "Python ML exercises",
+     "to": "Python ML"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_redundant"
+   ]
+  },
+  {
+   "group": "trap",
+   "label": "relabel to a dropped head noun: web app mockup -> web app",
+   "anchors": [
+    "web app"
+   ],
+   "original": "Built a web app mockup.",
+   "rewrite": "Built a web app.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "web app",
+     "source": "web app mockup",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "web app mockup",
+     "to": "web app"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_redundant"
+   ]
+  },
+  {
+   "group": "trap",
+   "label": "relabel to a dropped head noun: parser test -> parser",
+   "anchors": [
+    "parser"
+   ],
+   "original": "Wrote a parser test.",
+   "rewrite": "Wrote a parser.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "parser",
+     "source": "parser test",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "parser test",
+     "to": "parser"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_redundant"
+   ]
+  },
+  {
+   "group": "trap",
+   "label": "relabel to a dropped head noun: Python daily reports -> Python",
+   "anchors": [
+    "Python"
+   ],
+   "original": "Wrote Python daily reports.",
+   "rewrite": "Wrote Python.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Python",
+     "source": "Python daily reports",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "Python daily reports",
+     "to": "Python"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_redundant"
+   ]
+  },
+  {
+   "group": "trap",
+   "label": "relabel to a dropped head noun: PCB assembly -> PCB",
+   "anchors": [
+    "PCB"
+   ],
+   "original": "Built a PCB assembly.",
+   "rewrite": "Built a PCB.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "PCB",
+     "source": "PCB assembly",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "PCB assembly",
+     "to": "PCB"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_redundant"
+   ]
+  },
+  {
+   "group": "trap",
+   "label": "lead_with that swaps two numbers",
+   "anchors": [
+    "parser throughput"
+   ],
+   "original": "I improved parser throughput by 45% and reduced parser latency by 12%.",
+   "rewrite": "I improved parser throughput by 12% and reduced parser latency by 45%.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "parser throughput",
+     "source": "parser throughput",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "lead_with_not_leading"
+   ]
+  },
+  {
+   "group": "trap",
+   "label": "relabel motor mount -> robot mechanism, no shared word",
+   "anchors": [
+    "robot mechanism design"
+   ],
+   "original": "Built the drivetrain for the Illini Robotics club rover in 2025 with two teammates; I designed the motor mount in SolidWorks.",
+   "rewrite": "Built the drivetrain for the Illini Robotics club rover in 2025 with two teammates; I designed the robot mechanism in SolidWorks.",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "robot mechanism",
+     "source": "motor mount",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "motor mount",
+     "to": "robot mechanism"
+    }
+   ],
+   "expected": [
+    "kept",
+    "beyond_allowed_edit",
+    "relabel_not_same"
+   ]
+  }
+ ]
+}

@@ -26,12 +26,43 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from backend import data_loader
+from backend.lib import evidence_map
 from backend.lib.release_scope import opportunity_visible_in_release
 from backend.main import app
 from backend.routes import tailor as tailor_module
 from src.evidence import is_actionable_target
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def _faithful_review(monkeypatch):
+    """Every changed rewrite now goes to the faithfulness review, which
+    tests/test_tailor_review.py covers. These fakes answer every model call with
+    one rewrite reply, so the review verdict is given here: faithful, with every
+    declared link entailed."""
+    def accept(pairs, deadline=None):
+        for pair in pairs:
+            for link in pair.links:
+                link.entailed = True
+        return ["accepted"] * len(pairs)
+
+    monkeypatch.setattr(evidence_map, "ai_review", accept)
+
+
+def em_row(unit_id, text=None, *, ops=(), links=(), keep_reason="no_link"):
+    """One evidence-map row as the model returns it."""
+    return {"unit_id": unit_id, "links": list(links), "decision": "rewrite" if text else "keep",
+            "ops": list(ops), "text": text, "keep_reason": None if text else keep_reason}
+
+
+def em_reply(*rows):
+    return json.dumps({"bullets": list(rows)})
+
+
+# A role-noun opener rewritten verb first: the plainest change the contract admits.
+RA = "Research assistant in the Fluids Lab, analyzing Python simulation data for CS 225."
+RA_VERB_FIRST = "Analyzed Python simulation data for CS 225 as a research assistant in the Fluids Lab."
 
 
 @pytest.fixture
@@ -205,6 +236,9 @@ class TestExtractBullets:
             "EDUCATION\n"
             "• Built a thermal sensor in Java for the ME 270 capstone\n"
             "- Wrote a 12-page final lab report on heat transfer\n"
+            # A lowercase row right under a glyph row with no closing mark wraps that bullet
+            # (_resume_rows); under a heading it is a row of its own.
+            "OTHER\n"
             "not a bullet line at all\n"
         )
         resp = client.post("/api/tailor/extract-bullets", json={"resume_text": resume})
@@ -274,12 +308,13 @@ class TestBulletGrounding:
     """Extraction is documented as VERBATIM, so grounding is contiguous
     containment (NFKC + collapsed whitespace), not token overlap. The old 60%
     token-overlap rule let the model copy most of a line and append a
-    fabricated tool or metric."""
+    fabricated tool or metric. The bullet must also start and end where a
+    résumé line or bullet does: a cut can drop the student's qualifier."""
 
     RESUME = (
         "Designed a thermal sensor in Java and validated it against ME 270 "
         "data\nPresented results at the undergraduate symposium"
-    ).lower()
+    )
 
     def test_verbatim_line_is_grounded(self):
         assert tailor_module._bullet_grounded(
@@ -314,10 +349,103 @@ class TestBulletGrounding:
             self.RESUME,
         )
 
-    def test_cjk_bullet_still_grounded_by_containment(self):
-        resume = "负责设计热传感器并完成 ME 270 数据验证"
-        assert tailor_module._bullet_grounded("设计热传感器", resume)
+    def test_cjk_bullet_is_grounded_as_its_whole_line(self):
+        resume = "负责设计热传感器并完成 ME 270 数据验证\n协助博士生设计热传感器的外壳。"
+        assert tailor_module._bullet_grounded("负责设计热传感器并完成 ME 270 数据验证", resume)
+        assert tailor_module._bullet_grounded("协助博士生设计热传感器的外壳", resume)
+        assert not tailor_module._bullet_grounded("设计热传感器", resume)
+        assert not tailor_module._bullet_grounded("设计热传感器的外壳。", resume)   # drops 协助博士生
         assert not tailor_module._bullet_grounded("部署 Kubernetes 集群", resume)
+
+    @pytest.mark.parametrize("cut", [
+        "survey 50 farmers about irrigation practices",          # drops "Planned to"
+        "lead the robotics team build",                          # drops "Did not" and the student's own part
+        "Did not lead the robotics team build",                  # drops "; I wired the sensors"
+        "Built a dashboard for the lab",                         # the wrapped line's "that was never deployed" dropped
+        "that was never deployed",                               # a wrapped line on its own
+    ])
+    def test_a_cut_inside_a_line_is_not_grounded(self, cut):
+        resume = ("EXPERIENCE\n"
+                  "• Planned to survey 50 farmers about irrigation practices\n"
+                  "• Did not lead the robotics team build; I wired the sensors\n"
+                  "• Built a dashboard for the lab\n"
+                  "  that was never deployed.\n")
+        assert not tailor_module._bullet_grounded(cut, resume)
+
+    @pytest.mark.parametrize("line", [
+        "Planned to survey 50 farmers about irrigation practices",
+        "• Planned to survey 50 farmers about irrigation practices",
+        "Did not lead the robotics team build; I wired the sensors",
+        "Built a dashboard for the lab that was never deployed",         # wrapped lines joined, final mark dropped
+        "Built a dashboard for the lab that was never deployed.",
+        "Wrote the methods section",                                     # after an inline glyph
+    ])
+    def test_a_whole_line_bullet_or_wrapped_bullet_is_grounded(self, line):
+        resume = ("EXPERIENCE\n"
+                  "• Planned to survey 50 farmers about irrigation practices\n"
+                  "• Did not lead the robotics team build; I wired the sensors\n"
+                  "• Built a dashboard for the lab\n"
+                  "  that was never deployed.\n"
+                  "Research Assistant • Wrote the methods section\n")
+        assert tailor_module._bullet_grounded(line, resume)
+
+    # Round-3 review (criterion 1): a row that opens with a capital, a digit, a CJK character or
+    # "(" was read as a line of its own, so the first physical row of a wrapped glyph bullet was
+    # accepted and the rest of the student's line (often its status) was dropped.
+    WRAPPED = ("EXPERIENCE\n"
+               "• Co-authored a paper on soil moisture sensing for the campus farm\n"
+               "Under review at the ICRA 2026 workshop\n"
+               "• Wrote a grant proposal for the robotics club\n"
+               "(in preparation, not yet submitted)\n"
+               "• Surveyed farmers about irrigation schedules in\n"
+               "12 villages; the analysis is planned for spring\n"
+               "• 搭建了校园农场的土壤湿度传感器网络并整理数据\n"
+               "计划于 2026 年投稿\n"
+               "• Built a weather station with two classmates.\n"
+               "PROJECTS\n"
+               "• Analyzed 88 samples with PyTorch\n"
+               "\n"
+               "Teaching Assistant, CS 225\n")
+
+    @pytest.mark.parametrize("cut", [
+        "Co-authored a paper on soil moisture sensing for the campus farm",    # capital: "Under review"
+        "Wrote a grant proposal for the robotics club",                         # "(in preparation ...)"
+        "Surveyed farmers about irrigation schedules in",                       # digit: "12 villages ..."
+        "搭建了校园农场的土壤湿度传感器网络并整理数据",                              # CJK: "计划于 2026 年投稿"
+        "Under review at the ICRA 2026 workshop",                               # a continuation on its own
+        "计划于 2026 年投稿",
+    ])
+    def test_the_first_row_of_a_wrapped_glyph_bullet_is_not_grounded(self, cut):
+        assert not tailor_module._bullet_grounded(cut, self.WRAPPED)
+
+    @pytest.mark.parametrize("line", [
+        "Co-authored a paper on soil moisture sensing for the campus farm Under review at the ICRA 2026 workshop",
+        "Wrote a grant proposal for the robotics club (in preparation, not yet submitted)",
+        "Surveyed farmers about irrigation schedules in 12 villages; the analysis is planned for spring",
+        "搭建了校园农场的土壤湿度传感器网络并整理数据计划于 2026 年投稿",       # a CJK wrap joins with no space
+        "搭建了校园农场的土壤湿度传感器网络并整理数据 计划于 2026 年投稿",
+        "Built a weather station with two classmates.",                         # a closing mark ends the item
+        "Analyzed 88 samples with PyTorch",                                      # a heading row or a blank row
+    ])
+    def test_a_whole_wrapped_glyph_bullet_is_grounded(self, line):
+        assert tailor_module._bullet_grounded(line, self.WRAPPED)
+
+    def test_a_title_case_heading_ends_the_glyph_bullet_above_it(self):
+        resume = ("Experience\n• Ran 40 soil moisture trials for the campus farm\n"
+                  "Honors and Awards\n• Received the Dean's research grant\n")
+        assert tailor_module._bullet_grounded("Ran 40 soil moisture trials for the campus farm", resume)
+        assert tailor_module._heuristic_bullets(resume) == ["Ran 40 soil moisture trials for the campus farm",
+                                                            "Received the Dean's research grant"]
+
+    def test_the_heuristic_keeps_each_wrapped_glyph_bullet_whole(self):
+        assert tailor_module._heuristic_bullets(self.WRAPPED, limit=1000) == [
+            "Co-authored a paper on soil moisture sensing for the campus farm Under review at the ICRA 2026 workshop",
+            "Wrote a grant proposal for the robotics club (in preparation, not yet submitted)",
+            "Surveyed farmers about irrigation schedules in 12 villages; the analysis is planned for spring",
+            "搭建了校园农场的土壤湿度传感器网络并整理数据计划于 2026 年投稿",
+            "Built a weather station with two classmates.",
+            "Analyzed 88 samples with PyTorch",
+        ]
 
     def test_paraphrase_is_rejected(self):
         assert not tailor_module._bullet_grounded(
@@ -334,29 +462,12 @@ class TestAntiFabrication:
     ):
         """Java-only profile + LLM that hallucinates Python expertise.
 
-        Expected: every bullet is flagged, method degrades to 'fallback',
-        and the warnings array names the fabricated tokens. The user sees
-        their originals, not the fabricated rewrite.
+        Expected: the bullet comes back as the student wrote it, with the
+        reason, and no fabricated word reaches the response.
         """
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
-        fake = json.dumps({
-            "bullets": [
-                {
-                    "text": (
-                        "Built scalable ML pipelines using PyTorch and "
-                        "deployed Kubernetes clusters for distributed training."
-                    ),
-                    "source_evidence": "fabricated",
-                },
-                {
-                    "text": (
-                        "Authored peer-reviewed paper on transformer "
-                        "architectures published at NeurIPS."
-                    ),
-                    "source_evidence": "fabricated",
-                },
-            ],
-        })
+        fake = em_reply(em_row("b1", "Built scalable ML pipelines using PyTorch and deployed Kubernetes clusters "
+                                     "for distributed training.", ops=[{"op": "verb_first"}]))
         monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: fake)
 
         resp = client.post(
@@ -369,74 +480,57 @@ class TestAntiFabrication:
         )
         assert resp.status_code == 200
         body = resp.json()
-        # All AI bullets rejected -> degrade to passthrough.
-        assert body["method"] == "fallback"
-        assert any("rejected_fabrication" in w for w in body["warnings"])
-        # The user gets their own bullet back, not the fabricated one.
-        assert any("Java" in b["text"] for b in body["tailored_bullets"])
-        # Pytorch / kubernetes should not have leaked through.
-        joined = " ".join(b["text"] for b in body["tailored_bullets"]).lower()
-        assert "pytorch" not in joined
-        assert "kubernetes" not in joined
+        [bullet] = body["tailored_bullets"]
+        assert bullet["status"] == "kept" and bullet["text"] == "Designed a thermal sensor in Java"
+        assert bullet["reason_code"] in ("beyond_allowed_edit", "rewrite_rejected")
+        joined = json.dumps(body).lower()
+        assert "pytorch" not in joined and "kubernetes" not in joined
 
     def test_valid_tailored_passes_through(
         self, python_profile, real_opp_id, monkeypatch,
     ):
         """The current original establishes the work and its quoted evidence."""
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
-        fake = json.dumps({
-            "bullets": [
-                {
-                    "text": (
-                        "Implemented machine learning projects in Python "
-                        "for CS 225."
-                    ),
-                    "source_evidence": "machine learning projects in Python for CS 225",
-                },
-            ],
-        })
+        fake = em_reply(em_row("b1", RA_VERB_FIRST, ops=[{"op": "verb_first"}]))
         monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: fake)
 
         resp = client.post(
             "/api/tailor",
-            json={
-                "profile": python_profile,
-                "opportunity_id": real_opp_id,
-                "original_bullets": ["Implemented machine learning projects in Python for CS 225"],
-            },
+            json={"profile": python_profile, "opportunity_id": real_opp_id, "original_bullets": [RA]},
         )
         assert resp.status_code == 200
         body = resp.json()
         assert body["method"] == "ai"
-        assert len(body["tailored_bullets"]) == 1
-        # source_evidence is preserved on accepted bullets.
-        assert body["tailored_bullets"][0]["source_evidence"]
+        [bullet] = body["tailored_bullets"]
+        assert (bullet["status"], bullet["text"], bullet["ops"]) == ("rewritten", RA_VERB_FIRST, ["verb_first"])
+        # The evidence shown is the student's own bullet.
+        assert bullet["source_evidence"] == RA
 
     def test_generic_prose_is_not_flagged_as_fabrication(
         self, python_profile, real_opp_id, monkeypatch,
     ):
-        """Regression: ordinary verbs and abstract nouns must pass.
+        """Ordinary verbs and abstract nouns are not fabricated vocabulary.
 
         Under STRICT, words like 'demonstrating', 'foundational',
         'understanding', 'applying' were treated as fabricated because they
-        were absent from the English filler allowlist, so every grounded
-        draft degraded to the passthrough fallback (method='fallback') and
-        the tailor feature produced nothing. LENIENT_PROSE flags only
-        concreteness-signal tokens, so this grounded rewrite is accepted.
+        were absent from the English filler allowlist. LENIENT_PROSE flags only
+        concreteness-signal tokens, so none of these words is a fabrication.
+
+        Words the original never used still cannot enter a rewrite: the
+        evidence map's closed vocabulary keeps both drafts below, and the
+        appended ", demonstrating ..." clause is a relevance claim besides.
         """
+        from backend.lib.grounding import LENIENT_PROSE_NUMERIC, validate_no_fabrication
+
+        original = "Worked on Python projects in CS 225"
+        padded = ("Applied Python during CS 225 coursework, "
+                  "demonstrating foundational understanding while "
+                  "identifying and analyzing trends.")
+        plain = "Applied foundational Python understanding across CS 225 projects."
+        assert validate_no_fabrication(padded, original, policy=LENIENT_PROSE_NUMERIC) == (True, [])
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
-        fake = json.dumps({
-            "bullets": [
-                {
-                    "text": (
-                        "Applied Python during CS 225 coursework, "
-                        "demonstrating foundational understanding while "
-                        "identifying and analyzing trends."
-                    ),
-                    "source_evidence": "Python (experienced); CS 225",
-                },
-            ],
-        })
+        fake = em_reply(em_row("b1", padded, ops=[{"op": "verb_first"}]),
+                        em_row("b2", plain, ops=[{"op": "verb_first"}]))
         monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: fake)
 
         resp = client.post(
@@ -444,29 +538,24 @@ class TestAntiFabrication:
             json={
                 "profile": python_profile,
                 "opportunity_id": real_opp_id,
-                "original_bullets": ["Worked on Python projects in CS 225"],
+                "original_bullets": [original, original],
             },
         )
         assert resp.status_code == 200
         body = resp.json()
         assert body["method"] == "ai"
-        assert body["warnings"] == []
+        assert [(b["status"], b["text"]) for b in body["tailored_bullets"]] == [("kept", original)] * 2
+        assert {b["reason_code"] for b in body["tailored_bullets"]} == {"beyond_allowed_edit"}
 
     def test_fabrication_lowercase_tool_when_profile_lacks_it(
         self, java_profile, real_opp_id, monkeypatch,
     ):
         """TAILOR-1: an all-lowercase tool (langchain/pinecone) the student
-        never listed carries no case/digit signal but is still rejected via the
-        pinned taxonomy — it must not slip onto the resume."""
+        never listed carries no case/digit signal but is still refused — it
+        must not slip onto the resume."""
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
-        fake = json.dumps({
-            "bullets": [
-                {
-                    "text": "Built RAG pipelines with langchain over a pinecone vector store.",
-                    "source_evidence": "fabricated",
-                },
-            ],
-        })
+        fake = em_reply(em_row("b1", "Built RAG pipelines with langchain over a pinecone vector store.",
+                               ops=[{"op": "verb_first"}]))
         monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: fake)
         resp = client.post(
             "/api/tailor",
@@ -478,7 +567,6 @@ class TestAntiFabrication:
         )
         assert resp.status_code == 200
         body = resp.json()
-        assert body["method"] == "fallback"
         joined = " ".join(b["text"] for b in body["tailored_bullets"]).lower()
         assert "langchain" not in joined and "pinecone" not in joined
 
@@ -661,6 +749,96 @@ class TestInputCaps:
         assert body["tailored_bullets"][0]["text"] == "actual content"
 
 
+class TestSourceBullets:
+    """After "Use kept as new originals" each bullet travels with its source.
+
+    source_bullets[i] is bullet i's only evidence; original_bullets[i] is its
+    current wording, which the model rewrites and the student keeps when the
+    rewrite is refused. The sources of one request are capped as a whole,
+    like the 12 x 500 characters of the bullets themselves.
+    """
+    SOURCE = "Cleaned 212 survey responses in R and built 3 charts."
+    CURRENT = "Built 3 charts and cleaned 212 survey responses in R."
+    OTHER = "Tutored 30 students in CS 124."
+
+    @staticmethod
+    def _post(profile, opp_id, bullets, sources):
+        return client.post("/api/tailor", json={"profile": profile, "opportunity_id": opp_id,
+                                                "original_bullets": bullets, "source_bullets": sources})
+
+    @pytest.mark.parametrize("sources", [
+        ["one source"],                                   # fewer sources than bullets
+        ["one source", "two", "three"],                   # more
+        ["x" * 3001, "y" * 3000],                         # 6,001 characters in all
+        ["x" * 6001, "y"],                                # one source over the cap
+    ])
+    def test_sources_that_do_not_fit_are_refused_before_any_work(self, java_profile, real_opp_id, monkeypatch,
+                                                                 sources):
+        monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: pytest.fail("no model call"))
+        resp = self._post(java_profile, real_opp_id, ["first bullet", "second bullet"], sources)
+        assert resp.status_code == 422
+        detail = resp.json()["detail"]
+        assert (detail["code"], detail["field"], detail["max_source_characters"]) == (
+            "TAILOR_INPUT_TOO_LARGE", "source_bullets", 6000)
+        assert "6000" in detail["message"]
+
+    def test_sources_of_exactly_the_cap_are_accepted(self, java_profile, real_opp_id, monkeypatch):
+        for k in ("OPENAI_API_KEY", "GEMINI_API_KEY", "OPENROUTER_API_KEY"):
+            monkeypatch.delenv(k, raising=False)
+        resp = self._post(java_profile, real_opp_id, ["first bullet", "second bullet"], ["x" * 3000, "y" * 3000])
+        assert resp.status_code == 200
+        assert [b["source_evidence"] for b in resp.json()["tailored_bullets"]] == ["x" * 3000, "y" * 3000]
+
+    def test_the_source_is_the_evidence_and_the_bullet_is_the_wording(self, python_profile, real_opp_id,
+                                                                     monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        anchor = evidence_map.Anchor("t1", {"field": "description", "requirement_index": None, "start": 0,
+                                            "end": 31, "quote": "Cleaned survey responses with R"})
+        monkeypatch.setattr(tailor_module, "_snapshot_anchors", lambda source, snapshot: [anchor])
+        rewrite = "Cleaned 212 survey responses in R and built 3 charts."
+        captured, reviewed = {}, []
+
+        def fake_chat(messages, **kwargs):
+            captured["units"] = json.loads(messages[1]["content"].split("DATA (JSON):\n", 1)[1])["units"]
+            captured["system"] = messages[0]["content"]
+            link = {"id": "L1", "anchor": "t1", "term": "Cleaned survey responses", "source": "Cleaned 212 survey responses",
+                    "relation": "same"}
+            return em_reply(em_row("b1", rewrite, ops=[{"op": "lead_with", "link": "L1"}], links=[link]),
+                            em_row("b2"))
+
+        def review(pairs, deadline=None):
+            reviewed.extend((pair.original, pair.rewrite) for pair in pairs)
+            for pair in pairs:
+                for link in pair.links:
+                    link.entailed = True
+            return ["accepted"] * len(pairs)
+
+        monkeypatch.setattr(tailor_module, "chat_completion", fake_chat)
+        monkeypatch.setattr(evidence_map, "ai_review", review)
+        resp = self._post(python_profile, real_opp_id, [self.CURRENT, self.OTHER], [self.SOURCE, self.OTHER])
+        assert resp.status_code == 200, resp.text
+        # The model sees the source as the original and the bullet as its current wording.
+        assert captured["units"] == [{"unit_id": "b1", "original": self.SOURCE, "current": self.CURRENT},
+                                     {"unit_id": "b2", "original": self.OTHER}]
+        assert 'may also carry "current"' in captured["system"]
+        # The review judges the rewrite against the source, never against reviewed wording.
+        assert reviewed == [(self.SOURCE, rewrite)]
+        first, second = resp.json()["tailored_bullets"]
+        assert (first["status"], first["text"], first["source_evidence"]) == ("rewritten", rewrite, self.SOURCE)
+        assert (second["status"], second["text"], second["source_evidence"]) == ("kept", self.OTHER, self.OTHER)
+
+    def test_a_refused_rewrite_keeps_the_current_wording_not_the_source(self, python_profile, real_opp_id,
+                                                                        monkeypatch):
+        monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
+        anchor = evidence_map.Anchor("t1", {"field": "description", "requirement_index": None, "start": 0,
+                                            "end": 31, "quote": "Cleaned survey responses with R"})
+        monkeypatch.setattr(tailor_module, "_snapshot_anchors", lambda source, snapshot: [anchor])
+        monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: em_reply(em_row("b1")))
+        resp = self._post(python_profile, real_opp_id, [self.CURRENT], [self.SOURCE])
+        [bullet] = resp.json()["tailored_bullets"]
+        assert (bullet["status"], bullet["text"], bullet["source_evidence"]) == ("kept", self.CURRENT, self.SOURCE)
+
+
 class TestSourceIndex:
     """R71-E: every TailoredBullet carries the matching original index."""
 
@@ -751,7 +929,7 @@ class TestSourceIndex:
 
 
 class TestLocale:
-    """R71-D: caller-declared output locale selects the system prompt."""
+    """R71-D: the caller's UI locale selects the system prompt's language; each rewrite keeps its bullet's (w14.1)."""
 
     def test_default_locale_is_en(
         self, python_profile, real_opp_id, monkeypatch,
@@ -776,9 +954,9 @@ class TestLocale:
             },
         )
         assert resp.status_code == 200
-        # EN prompt has the English "STRICT RULES:" header verbatim.
-        assert "STRICT RULES:" in captured["system"]
-        assert "严格规则" not in captured["system"]
+        # The EN prompt says each rewrite keeps its original's language; the ZH rule is absent.
+        assert "Write each rewrite in the language of its own original" in captured["system"]
+        assert "每条改写都用它自己原文的语言" not in captured["system"]
 
     def test_locale_zh_uses_chinese_prompt(
         self, python_profile, real_opp_id, monkeypatch,
@@ -806,14 +984,14 @@ class TestLocale:
             },
         )
         assert resp.status_code == 200
-        # ZH prompt has the Chinese rules header; EN header must NOT be there.
-        assert "严格规则" in captured["system"]
-        assert "STRICT RULES:" not in captured["system"]
+        # The UI locale chooses the instructions' language; the rule keeps this English bullet in English.
+        assert "每条改写都用它自己原文的语言，英文原文仍写英文" in captured["system"]
+        assert "Write each rewrite in the language of its own original" not in captured["system"]
         body = resp.json()
-        # Chinese body still passes the ASCII validator — there are no
-        # fabricated ASCII tokens (Python and CS appear in the corpus).
+        # A reply without evidence-map rows keeps the student's own bullet.
         assert body["method"] == "ai"
-        assert "Python" in body["tailored_bullets"][0]["text"]
+        assert body["tailored_bullets"][0]["text"] == "Implemented machine learning projects in Python for CS 225"
+        assert body["tailored_bullets"][0]["reason_code"] == "model_unavailable"
 
     def test_locale_zh_cn_normalized_to_zh(
         self, python_profile, real_opp_id, monkeypatch,
@@ -839,7 +1017,7 @@ class TestLocale:
             },
         )
         assert resp.status_code == 200
-        assert "严格规则" in captured["system"]
+        assert "每条改写都用它自己原文的语言" in captured["system"]
 
     def test_unknown_locale_falls_back_to_en(
         self, python_profile, real_opp_id, monkeypatch,
@@ -866,7 +1044,7 @@ class TestLocale:
         )
         assert resp.status_code == 200
         # 'fr' is not 'zh', so we fall to the EN prompt — no 422.
-        assert "STRICT RULES:" in captured["system"]
+        assert "Write each rewrite in the language of its own original" in captured["system"]
 
 
 class TestSkillLevelThreading:
@@ -1083,7 +1261,7 @@ class TestUnitHelpers:
         assert "cs" not in claims
 
     def test_validator_flags_unlisted_skill(self):
-        from backend.routes.tailor import _validate_no_fabrication
+        from backend.lib.grounding import validate_no_fabrication as _validate_no_fabrication
         passed, fab = _validate_no_fabrication(
             "Built pipelines with Python and PyTorch.",
             evidence_corpus="java sensors thermodynamics mechanical engineering",
@@ -1093,7 +1271,7 @@ class TestUnitHelpers:
         assert "pytorch" in fab
 
     def test_validator_accepts_when_evidence_present(self):
-        from backend.routes.tailor import _validate_no_fabrication
+        from backend.lib.grounding import validate_no_fabrication as _validate_no_fabrication
         passed, fab = _validate_no_fabrication(
             "Built Python projects using PyTorch frameworks.",
             evidence_corpus="python pytorch projects machine learning",
@@ -1103,7 +1281,7 @@ class TestUnitHelpers:
 
     def test_validator_allows_opp_vocabulary_in_corpus(self):
         """The opp's own description tokens are in the corpus by design."""
-        from backend.routes.tailor import _validate_no_fabrication
+        from backend.lib.grounding import validate_no_fabrication as _validate_no_fabrication
         # 'compiler' isn't in profile, but opp description mentions it.
         passed, fab = _validate_no_fabrication(
             "Wrote compiler passes in Python during coursework",
@@ -1134,31 +1312,22 @@ class TestUnitHelpers:
 
 
 class TestEachRewriteStaysWithItsOwnBullet:
-    """Positional pairing is the only link between a rewrite and the bullet it
-    rewrote. The renovation path passes preserve_slots for exactly this reason;
-    /api/tailor did not, so one empty item from the model slid every later
-    rewrite one slot left and the modal showed each rewrite beside somebody
-    else's original."""
+    """A rewrite is paired to its bullet by unit id, never by position. Every
+    submitted bullet comes back once, in order: a rewrite, or the bullet as
+    written with the reason."""
 
-    def test_an_empty_item_does_not_shift_the_later_rewrites(
+    def test_rows_out_of_order_or_missing_stay_with_their_own_bullets(
         self, monkeypatch, java_profile, real_opp_id,
     ):
         monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
-        originals = [
-            "Tutored 30 students in circuits lab each week",
-            "Led the robotics club fundraising drive",
-            "Wrote MATLAB analysis for EEG recordings",
-        ]
-        fake = json.dumps({
-            "bullets": [
-                {"text": "Tutored 30 students in circuits lab weekly",
-                 "source_evidence": originals[0]},
-                # The model returns the slot but leaves it empty.
-                {"text": "", "source_evidence": ""},
-                {"text": "Wrote MATLAB analysis of EEG recordings",
-                 "source_evidence": originals[2]},
-            ],
-        })
+        originals = ["Tutored 30 students in circuits lab each week", RA,
+                     "Wrote MATLAB analysis for EEG recordings"]
+        fake = em_reply(
+            em_row("b2", RA_VERB_FIRST, ops=[{"op": "verb_first"}]),
+            em_row("b3"),
+            # b1 is missing; an unknown id and a second b3 row are ignored.
+            em_row("b9", "Tutored 30 students weekly.", ops=[{"op": "verb_first"}]),
+        )
         monkeypatch.setattr(tailor_module, "chat_completion", lambda *a, **k: fake)
 
         resp = client.post("/api/tailor", json={
@@ -1167,11 +1336,10 @@ class TestEachRewriteStaysWithItsOwnBullet:
             "original_bullets": originals,
         })
         assert resp.status_code == 200
-        pairs = {b["source_index"]: b["text"] for b in resp.json()["tailored_bullets"]}
-        # Slot 1 was empty and is simply absent — slot 2 keeps its own index.
-        assert 1 not in pairs
-        assert "circuits lab" in pairs[0]
-        assert "EEG" in pairs[2]
+        rows = resp.json()["tailored_bullets"]
+        assert [(row["source_index"], row["status"], row["reason_code"]) for row in rows] == [
+            (0, "kept", "model_unavailable"), (1, "rewritten", None), (2, "kept", "no_link")]
+        assert [row["text"] for row in rows] == [originals[0], RA_VERB_FIRST, originals[2]]
 
 
 class TestEveryBulletTheStudentSubmittedIsSent:
@@ -1201,3 +1369,27 @@ class TestEveryBulletTheStudentSubmittedIsSent:
         assert resp.status_code == 200
         assert "experiment number 12" in seen["prompt"]
         assert len(resp.json()["tailored_bullets"]) == 12
+
+
+@pytest.mark.parametrize("field", ["original_bullets", "source_bullets"])
+@pytest.mark.parametrize("junk", [0, [], {}], ids=["ints", "empty lists", "empty dicts"])
+def test_a_body_of_wrongly_typed_bullets_is_one_short_error(field, junk):
+    """Round 1, criterion (4): 524,287 wrongly typed items in a 1 MiB body made 524,287 validation errors and a
+    36 MB 422, built and encoded on the event loop (4-7 s; scripts/request_parse_lag.py). The list's length is
+    checked first now, and a 422 names at most its first 20 errors."""
+    items = [junk] * 300_000
+    body = {"profile": {"name": "Sample Student"}, "opportunity_id": "any", field: items}
+    if field == "source_bullets":
+        body["original_bullets"] = ["Built a robot."]
+    response = TestClient(app).post("/api/tailor", json=body)
+    assert response.status_code == 422
+    assert 1 <= len(response.json()["detail"]) <= 20 and len(response.content) < 4096
+
+
+def test_two_hundred_bullets_still_get_the_named_refusal(real_opp_id):
+    """The schema bound sits far above the route's own limit, which still refuses by name."""
+    response = TestClient(app).post("/api/tailor", json={
+        "profile": {"name": "Sample Student"}, "opportunity_id": real_opp_id,
+        "original_bullets": [f"Built robot number {i}." for i in range(200)]})
+    assert response.status_code == 422
+    assert "TAILOR_INPUT_TOO_LARGE" in response.text

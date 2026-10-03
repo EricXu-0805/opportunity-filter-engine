@@ -27,6 +27,8 @@ import { writingTargetVersion } from '@/lib/writing-target-version';
 import ProfileRefreshBanner, { profileRefreshReady } from './ProfileRefreshBanner';
 import { structureResume, renovateResume, optimizeBullet } from '@/lib/api';
 import ResumeProcessingNotice from './ResumeProcessingNotice';
+import RewriteWhy, { keptExplanation } from './RewriteWhy';
+import { isReviewedRules, isReviewedVariant, reviewedRenovation, reviewedSections, reviewedStep, shownHeading, shownText } from '@/lib/renovation-review';
 import { saveRenovation, loadRenovation, type RenovationPayload, type StoredRenovation } from '@/lib/supabase';
 import { RenovationSaveQueue, type RenovationQueueState } from '@/lib/renovation-save-queue';
 import RenovationHistory from './RenovationHistory';
@@ -185,13 +187,9 @@ function pickRenovationWarnings(warnings: string[], t: Replier): string[] {
   return tooLong;
 }
 
-/** The text a bullet currently shows: its selected variant, or the base. */
-function bulletCurrentText(b: RenovatedBullet): string {
-  if (b.current >= 0 && b.current < b.variants.length) {
-    return b.variants[b.current].text;
-  }
-  return b.base_text;
-}
+/** The text a bullet currently shows: its selected variant if a review accepted it or the student
+ * wrote it, or the base. It is also what copy-all exports and re-optimize sends. */
+const bulletCurrentText = shownText;
 
 function DiffLine({
   original,
@@ -500,8 +498,9 @@ export default function ResumeRenovationModal({
         if (stored) scope.material = { base_snapshot: stored.base_snapshot, method: stored.method, warnings: stored.warnings };
         const storedDoc = stored?.doc as unknown as RenovationDoc | undefined;
         if (storedDoc && Array.isArray(storedDoc.sections) && storedDoc.sections.length > 0) {
-          // Keep the original source signature, including after source removal.
-          setCurrentDoc(storedDoc);
+          // Keep the original source signature, including after source removal. Wording no
+          // review accepted (saved before w14, or in another language) does not open as current.
+          setCurrentDoc(reviewedRenovation(storedDoc));
           setBaseSections(
             Array.isArray((stored?.base_snapshot as { sections?: ResumeSectionInput[] })?.sections)
               ? (stored!.base_snapshot as { sections: ResumeSectionInput[] }).sections
@@ -590,7 +589,7 @@ export default function ResumeRenovationModal({
     setCopied(false);
     scope.queue?.resolveConflict();
     scope.material = { base_snapshot: current.base_snapshot, method: current.method, warnings: current.warnings };
-    setCurrentDoc(current.doc as unknown as RenovationDoc);
+    setCurrentDoc(reviewedRenovation(current.doc as unknown as RenovationDoc));
     setBaseSections(Array.isArray(current.base_snapshot.sections) ? current.base_snapshot.sections as ResumeSectionInput[] : []);
     setRestoredFromSave(true);
     setHistoryOwner(null);
@@ -608,7 +607,7 @@ export default function ResumeRenovationModal({
     setActionChanged(false);
     setCopied(false);
     scope.material = { base_snapshot: payload.base_snapshot, method: payload.method, warnings: payload.warnings };
-    const restored = payload.doc as unknown as RenovationDoc;
+    const restored = reviewedRenovation(payload.doc as unknown as RenovationDoc);
     const sections = Array.isArray(payload.base_snapshot.sections) ? payload.base_snapshot.sections as ResumeSectionInput[] : [];
     setCurrentDoc(restored);
     setBaseSections(sections);
@@ -683,7 +682,7 @@ export default function ResumeRenovationModal({
         resume_sig: resumeSignature,
         ...(signature ? { profile_sig: signature } : {}),
         target_sig: targetSignature,
-        sections: renovated.sections,
+        sections: reviewedSections(renovated.sections, renovated.pipeline_version),
         method: renovated.method,
         warnings: [...new Set([...(structured.warnings ?? []), ...renovated.warnings])],
         processing: structured.processing,
@@ -727,16 +726,32 @@ export default function ResumeRenovationModal({
     [persist, baseSections, isCurrentScope, setCurrentDoc],
   );
 
+  // A step lands only on wording a review accepted or the student wrote: an unreviewed variant
+  // restored from an older save stays in the stored history, out of reach.
   function handleRollback(b: RenovatedBullet) {
-    if (b.current < 0) return;
+    if (reviewedStep(b, -1) === null) return;
     markUserEdit();
-    updateBullet(b.id, (cur) => ({ ...cur, current: cur.current - 1 }));
+    updateBullet(b.id, (cur) => ({ ...cur, current: reviewedStep(cur, -1) ?? cur.current }));
   }
 
   function handleRollForward(b: RenovatedBullet) {
-    if (b.current >= b.variants.length - 1) return;
+    if (reviewedStep(b, 1) === null) return;
     markUserEdit();
-    updateBullet(b.id, (cur) => ({ ...cur, current: cur.current + 1 }));
+    updateBullet(b.id, (cur) => ({ ...cur, current: reviewedStep(cur, 1) ?? cur.current }));
+  }
+
+  // The shown rewrite without the posting's terms becomes the next variant; rollback returns to it.
+  function applyWithoutTerms(b: RenovatedBullet) {
+    const shown = b.current >= 0 ? b.variants[b.current] : null;
+    if (!shown?.alternative) return;
+    markUserEdit();
+    updateBullet(b.id, (cur) => ({
+      ...cur,
+      variants: [...cur.variants, { source: shown.source, text: shown.alternative!, source_evidence: shown.source_evidence,
+        ops: (shown.ops ?? []).filter((op) => op !== 'relabel'), links: shown.links ?? [], alternative: null,
+        ...(shown.reviewed ? { reviewed: shown.reviewed } : {}) }],
+      current: cur.variants.length,
+    }));
   }
 
   function startEdit(b: RenovatedBullet) {
@@ -783,18 +798,21 @@ export default function ResumeRenovationModal({
         setTargetVersionIssue('unavailable');
         return;
       }
-      if (resp.changed && resp.text.trim()) {
+      // Only a reviewed rewrite becomes a variant; an older backend's unreviewed one is kept out.
+      if (resp.status === 'rewritten' && resp.changed && resp.text.trim()) {
         updateBullet(b.id, (cur) => ({
           ...cur,
           variants: [
             ...cur.variants,
-            { source: 'ai', text: resp.text, source_evidence: resp.source_evidence },
+            { source: 'ai', text: resp.text, source_evidence: resp.source_evidence, ops: resp.ops ?? [], links: resp.links ?? [],
+              alternative: resp.alternative ?? null, ...(isReviewedRules(resp.pipeline_version) ? { reviewed: resp.pipeline_version } : {}) },
           ],
           current: cur.variants.length,
         }));
       } else {
-        // Backend declined (validation or no improvement) — honest no-op.
-        setBulletNotices((prev) => ({ ...prev, [b.id]: t('renovate.bulletUnchanged') }));
+        // Backend declined (validation or no improvement) — honest no-op, with the reason when it gave one.
+        const kept = keptExplanation(resp.changed && resp.status !== 'rewritten' ? 'review_unavailable' : resp.reason_code, t);
+        setBulletNotices((prev) => ({ ...prev, [b.id]: kept ? `${kept.label} — ${kept.reason}` : t('renovate.bulletUnchanged') }));
       }
     } catch (err) {
       if (!current() || !isSameBullet()) return;
@@ -857,7 +875,7 @@ export default function ResumeRenovationModal({
     for (const s of doc.sections) {
       // A section with no bullets has nothing to paste under its heading.
       if (s.bullets.length === 0) continue;
-      if (s.heading) lines.push(s.heading.toUpperCase());
+      lines.push(shownHeading(s, profileSnapshot.resume_text ?? '', doc.sections).toUpperCase());
       // "demote" is defined for the model as "kept but de-emphasized (placed
       // lower)", and the chip a student reads says "De-emphasized". This used
       // to drop those bullets, so clicking "Copy renovated résumé" silently
@@ -988,7 +1006,7 @@ export default function ResumeRenovationModal({
           {phase === 'doc' && <div className="px-4 pt-3"><button type="button" className="text-sm text-indigo-700 underline" onClick={() => { const scope = scopeRef.current; if (isCurrentScope(scope)) setHistoryOwner(owner => owner ? null : scope.owner); }}>{locale === 'zh' ? '历史版本' : 'Version history'}</button></div>}
           {saveState.status === 'conflict' && saveState.current && <section role="alert" data-testid="renovation-save-conflict" className="mx-4 mt-3 rounded-lg border border-amber-300 bg-amber-50 p-3 space-y-3">
             <p>{locale === 'zh' ? '其他设备已保存了新版本。你的本地改动已保留，请比较后选择。' : 'Another device saved a newer version. Your local edits are kept. Compare the saved draft before choosing.'}</p>
-            <details><summary>{locale === 'zh' ? '查看已保存版本' : 'View saved version'}</summary><pre className="max-h-60 overflow-auto whitespace-pre-wrap break-words text-sm" data-testid="renovation-conflict-preview">{(saveState.current.doc as unknown as RenovationDoc).sections.map(s => [s.heading, ...s.bullets.map(bulletCurrentText)].join('\n')).join('\n\n')}</pre></details>
+            <details><summary>{locale === 'zh' ? '查看已保存版本' : 'View saved version'}</summary><pre className="max-h-60 overflow-auto whitespace-pre-wrap break-words text-sm" data-testid="renovation-conflict-preview">{(saveState.current.doc as unknown as RenovationDoc).sections.map((s, _, saved) => [shownHeading(s, profileSnapshot.resume_text ?? '', saved), ...s.bullets.map(bulletCurrentText)].join('\n')).join('\n\n')}</pre></details>
             <div className="flex flex-wrap gap-3">
               <button type="button" disabled={!!editingId} className="text-sm underline disabled:text-gray-400" onClick={() => adoptSaved(saveState.current!)}>{locale === 'zh' ? '使用已保存版本' : 'Use saved version'}</button>
               <button type="button" disabled={!!editingId} className="text-sm underline disabled:text-gray-400" onClick={() => {
@@ -998,7 +1016,7 @@ export default function ResumeRenovationModal({
             </div>
           </section>}
           {saveState.status === 'missing' && <p role="alert" className="mx-4 mt-3 rounded-lg bg-amber-50 p-3 text-sm">{locale === 'zh' ? '已保存稿已被移除。请先复制本地内容，再重新打开。当前编辑不会自动重新建稿。' : 'The saved draft was removed. Copy your local text before reopening. These edits will not recreate it automatically.'}</p>}
-          {historyOwner && <RenovationHistory opportunityId={opportunityId} owner={historyOwner} locale={locale} disabled={!!editingId || saving || saveFailed || phase !== 'doc'} onRestore={restoreHistory} onClose={() => setHistoryOwner(null)} />}
+          {historyOwner && <RenovationHistory opportunityId={opportunityId} owner={historyOwner} locale={locale} resumeText={profileSnapshot.resume_text ?? ''} disabled={!!editingId || saving || saveFailed || phase !== 'doc'} onRestore={restoreHistory} onClose={() => setHistoryOwner(null)} />}
 
           {phase !== 'restoring' && (hasResume || doc?.processing) && (
             <div className="px-4 sm:px-6 pt-4">
@@ -1091,12 +1109,13 @@ export default function ResumeRenovationModal({
               {doc.sections.map((section: RenovatedSection) => (
                 <section key={section.id}>
                   <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                    {section.heading || section.kind}
+                    {shownHeading(section, profileSnapshot.resume_text ?? '', doc.sections)}
                   </h3>
                   <ul className="space-y-2.5">
                     {section.bullets.map((b) => {
                       const current = bulletCurrentText(b);
-                      const showingVariant = b.current >= 0 ? b.variants[b.current] : null;
+                      const selected = b.current >= 0 ? b.variants[b.current] : undefined;
+                      const showingVariant = selected && isReviewedVariant(selected, b.base_text) ? selected : null;
                       const sourceKey = showingVariant?.source ?? 'base';
                       const isEditing = editingId === b.id;
                       const isOptimizing = optimizingId === b.id;
@@ -1136,14 +1155,14 @@ export default function ResumeRenovationModal({
                                 <button
                                   type="button"
                                   onClick={() => handleRollback(b)}
-                                  disabled={b.current < 0}
+                                  disabled={reviewedStep(b, -1) === null}
                                   className="inline-flex items-center gap-1 text-[10.5px] font-medium px-1.5 py-0.5 rounded-md text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-400 transition-colors"
                                   aria-label={t('renovate.rollbackAria')}
                                 >
                                   <RotateCcw className="w-3 h-3" aria-hidden="true" />
                                   {t('renovate.rollback')}
                                 </button>
-                                {b.current < b.variants.length - 1 && (
+                                {reviewedStep(b, 1) !== null && (
                                   <button
                                     type="button"
                                     onClick={() => handleRollForward(b)}
@@ -1222,6 +1241,23 @@ export default function ResumeRenovationModal({
                             </p>
                           )}
 
+                          {showingVariant && !isEditing && (
+                            <RewriteWhy links={showingVariant.links} ops={showingVariant.ops} t={t} />
+                          )}
+                          {showingVariant?.alternative && showingVariant.alternative !== current && !isEditing && (
+                            <button
+                              type="button"
+                              onClick={() => applyWithoutTerms(b)}
+                              className="mt-1.5 text-[11px] font-medium text-indigo-600 underline underline-offset-2 hover:text-indigo-700"
+                            >
+                              {t('tailor.useWithoutTerms')}
+                            </button>
+                          )}
+                          {!showingVariant && b.note && !isEditing && keptExplanation(b.note, t) && (
+                            <p className="mt-1.5 text-[11.5px] text-gray-500" data-testid="renovation-kept-note">
+                              {keptExplanation(b.note, t)!.label} — {keptExplanation(b.note, t)!.reason}
+                            </p>
+                          )}
                           {showingVariant?.source_evidence && !isEditing && (
                             <p className="mt-1.5 text-[11.5px] text-gray-500 italic">
                               <span className="font-medium not-italic uppercase tracking-wider text-[10px] text-gray-400">

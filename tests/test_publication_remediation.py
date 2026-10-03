@@ -717,16 +717,35 @@ class TestDownstreamFailsClosed:
         invalidate_record(record)
         assert _format_recent_works(record) == ""
 
-    def test_cannot_influence_resume_tailoring(self):
-        """26. The tailor prompt is built from profile + target text and never
-        reads publications at all; assert the absence rather than assume it."""
+    def test_cannot_influence_resume_tailoring(self, monkeypatch):
+        """26. Tailor may quote a professor's paper title as target text, and
+        reads publications only through the trust gate: the same record's
+        titles are quotable while it is verified and nowhere in the anchors or
+        the prompt once trust is withdrawn."""
         import inspect
 
         from backend.routes import tailor
 
+        captured: list = []
+        monkeypatch.setattr(tailor, "chat_completion", lambda messages, **kwargs: captured.append(messages))
+        profile = {"name": "A Student", "year": "sophomore", "major": "ECE", "hard_skills": [], "coursework": []}
+
+        def tailor_input(record):
+            captured.clear()
+            anchors = tailor._snapshot_anchors(record, record)
+            tailor._ai_tailor_bullets(profile, record, ["Built a Python EEG parser"], anchors=anchors)
+            return [anchor.text for anchor in anchors], json.dumps(captured, ensure_ascii=False)
+
+        record = faculty()
+        titles, _ = tailor_input(record)
+        assert _WORKS[0]["title"] in titles
+        assert invalidate_record(record)
+        titles, prompt = tailor_input(record)
+        assert not any("SearchAuditor" in title for title in titles)
+        assert "SearchAuditor" not in prompt
         source = inspect.getsource(tailor)
-        assert "recent_works" not in source
         assert "publication_attribution_status" not in source
+        assert source.count("recent_works") == source.count("verified_recent_works")
 
     def test_cannot_enter_a_cold_email(self):
         """27. The claim this whole effort exists to stop.

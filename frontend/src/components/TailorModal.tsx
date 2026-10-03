@@ -23,7 +23,8 @@ import { useProfileAction } from '@/lib/use-profile-action';
 import type { ProfileRefreshState } from '@/lib/use-profile-refresh';
 import type { WritingTargetState } from '@/lib/use-writing-target';
 import { captureOwnerToken, isOwnerTokenValid, onLocalOwnerStateChange, readUserScopedEntry, writeUserScopedRaw, type OwnerToken } from '@/lib/identity-owner';
-import { createBinding, createDraft, editDraft as editTailorDraft, reviewDraft, compareDraft, decodeDraft, encodeDraft, type TailorDraftV2, type TailorDraftBinding } from '@/lib/tailor-draft';
+import { createBinding, createDraft, draftLineSources, editDraft as editTailorDraft, reviewDraft, compareDraft, decodeDraft, encodeDraft, type TailorDraft, type TailorDraftBinding } from '@/lib/tailor-draft';
+import RewriteWhy, { keptExplanation } from './RewriteWhy';
 
 function subscribeOwner(changed: () => void): () => void {
   const unsubscribe = onLocalOwnerStateChange(changed);
@@ -48,7 +49,7 @@ function draftStorageKey(owner: string, opportunity: string): string {
   return `${STORAGE_KEYS.TAILOR_DRAFT_PREFIX}${owner}:${opportunity}`;
 }
 function loadSavedDraft(owner: OwnerToken, ownerId: string | null, opportunity: string):
-  { status: 'found'; draft: TailorDraftV2 } | { status: 'absent' | 'unavailable' | 'invalid' } {
+  { status: 'found'; draft: TailorDraft } | { status: 'absent' | 'unavailable' | 'invalid' } {
   if (!ownerId || owner.uid !== ownerId || !isOwnerTokenValid(owner, ownerId)) return { status: 'unavailable' };
   const key = draftStorageKey(ownerId, opportunity);
   const entry = readUserScopedEntry(key);
@@ -63,11 +64,24 @@ function loadSavedDraft(owner: OwnerToken, ownerId: string | null, opportunity: 
   if (!isOwnerTokenValid(owner, ownerId)) return { status: 'unavailable' };
   if (raw === null) return { status: 'absent' };
   const decoded = decodeDraft(raw, ownerId, opportunity);
-  return decoded.status === 'v2' || decoded.status === 'legacy'
+  return decoded.status === 'stored' || decoded.status === 'legacy'
     ? { status: 'found', draft: decoded.draft } : { status: 'invalid' };
 }
+// Rewrites go through the faithfulness review from w14 on. An older backend (main during a
+// deploy: Vercel ships the browser first, Render can hold the backend for days) shows
+// unreviewed rewrites, so its rules count as unavailable here.
+const REVIEWED_RULES = /^w(\d+)(?:\.\d+)*$/;
 const hasRuleVersion = (value: unknown): value is string =>
-  typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(value);
+  typeof value === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$/.test(value)
+  && Number(REVIEWED_RULES.exec(value)?.[1] ?? 0) >= 14;
+/** Only a reviewed rewrite is shown: any other bullet comes back as the student's own submitted line. */
+const reviewedBullets = (data: TailorResponse, submitted: string[]): TailorResponse => ({
+  ...data,
+  tailored_bullets: data.tailored_bullets.map((b) => b.status === 'rewritten' ? b : {
+    ...b, text: submitted[b.source_index] ?? b.text, status: 'kept' as const,
+    reason_code: b.status === 'kept' ? b.reason_code : 'review_unavailable', ops: [], alternative: null,
+  }),
+});
 const hasReceipt = (data: { pipeline_version?: string | null; generated_at?: string | null }, binding: TailorDraftBinding) =>
   data.pipeline_version === binding.pipeline_version && typeof data.generated_at === 'string' && Number.isFinite(Date.parse(data.generated_at));
 
@@ -146,14 +160,30 @@ function extractBulletLines(resumeText: string | undefined, limit = 12): string[
   return out;
 }
 
+// Python's str.strip() also removes U+001C-U+001F and U+0085, which String.prototype.trim()
+// keeps. The server drops a line its strip() empties and numbers the rest (source_index), so
+// a line blank to the server but not to trim() would pair every later card with the line
+// above it: trim both sets.
+const isEdgeSpace = (character: string) => {
+  const code = character.charCodeAt(0);
+  return /\s/.test(character) || (code >= 0x1c && code <= 0x1f) || code === 0x85;
+};
+function trimLine(line: string): string {
+  let start = 0;
+  let end = line.length;
+  while (start < end && isEdgeSpace(line[start])) start += 1;
+  while (end > start && isEdgeSpace(line[end - 1])) end -= 1;
+  return line.slice(start, end);
+}
+
 function parseBullets(text: string): string[] {
   return text
     .split(/\r?\n/)
-    .map((l) => l.trim())
+    .map(trimLine)
     .map((l) => {
       // Tolerate user pasting raw "• " or "- " prefixes — strip them.
       const m = l.match(BULLET_PREFIX_RE);
-      return m ? m[2].trim() : l;
+      return m ? trimLine(m[2]) : l;
     })
     .filter((l) => l.length > 0);
 }
@@ -229,6 +259,12 @@ function pickWarningMessage(warnings: string[], t: Replier): string | null {
   if (warnings.includes('llm_failed_or_invalid_json')) {
     return t('tailor.warnings.llmFailed');
   }
+  if (warnings.includes('target_has_no_text')) {
+    return t('tailor.warnings.targetHasNoText');
+  }
+  if (warnings.some((w) => w.startsWith('bullet_') && w.endsWith('review_unavailable'))) {
+    return t('tailor.warnings.reviewUnavailable');
+  }
   if (warnings.includes('no_bullets_provided')) {
     return t('tailor.warnings.noBullets');
   }
@@ -299,9 +335,10 @@ export default function TailorModal({
   targetKey,
 }: TailorModalProps) {
   // R71-D: `locale` flows from the i18n context all the way down to the
-  // backend so the LLM returns bullets in the user's current display
-  // language. The backend tolerates unknown / region-tagged values by
-  // falling back to 'en', so we can pipe `useT().locale` through raw.
+  // backend, which writes its instructions in the user's display language;
+  // each rewrite stays in its own bullet's language (w14.1). The backend
+  // tolerates unknown / region-tagged values by falling back to 'en', so
+  // we can pipe `useT().locale` through raw.
   const { t, locale } = useT();
   const currentOwner = useSyncExternalStore(subscribeOwner, ownerSnapshot, () => 'server');
   const [ownerLifetime, setOwnerLifetime] = useState({ open: isOpen, key: currentOwner, retired: false });
@@ -320,7 +357,7 @@ export default function TailorModal({
   const [userEditRevision, setUserEditRevision] = useState(0);
   const [sourceChanged, setSourceChanged] = useState(false);
   const [pipelineVersion, setPipelineVersion] = useState<string | null>(null);
-  const [record, setRecord] = useState<TailorDraftV2 | null>(null);
+  const [record, setRecord] = useState<TailorDraft | null>(null);
   const draft = record?.text ?? '';
   const limitIssue = useMemo(() => tailorLimitIssue(parseBullets(draft), t), [draft, t]);
   const [draftStatus, setDraftStatus] = useState<'checking' | 'current' | 'stale' | 'unknown'>('checking');
@@ -364,6 +401,11 @@ export default function TailorModal({
   const currentBinding = bindingState?.key === bindingKey ? bindingState.binding : null;
   const draftStale = rulesNeedReview || draftStatus === 'stale';
   const needsReview = rulesNeedReview || draftStatus === 'stale' || draftStatus === 'unknown';
+  // Before w14, "Use kept as new originals" saved rewrites no faithfulness review had seen, written
+  // in the UI language, as the draft (version 2, no line sources). Such a draft says so before the
+  // student confirms its lines as their own evidence.
+  const legacyRewrites = !!record && record.origin.kind === 'reviewed_output'
+    && !hasRuleVersion(record.origin.binding?.pipeline_version);
   const [loading, setLoading] = useState(false);
   const [resp, setResp] = useState<TailorResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -392,6 +434,8 @@ export default function TailorModal({
   // a prior round's decisions don't bleed into the next tailor.
   const [rejected, setRejected] = useState<Set<number>>(new Set());
   const [edits, setEdits] = useState<Record<number, string>>({});
+  // Rewrites the student chose to use without the posting's terms.
+  const [plain, setPlain] = useState<Set<number>>(new Set());
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState('');
 
@@ -533,10 +577,10 @@ export default function TailorModal({
     setSourceChanged(false); outputBindingRef.current = null;
     setResp(null); setError(null); setCopied(false); setCopiedBulletIdx(null);
     setLoading(false); setExtracting(false); setReviewing(false); setExtractionResult(null); setExtractionError(false);
-    setSubmittedBullets([]); setRejected(new Set()); setEdits({}); setEditingIdx(null); setEditDraft('');
+    setSubmittedBullets([]); setRejected(new Set()); setEdits({}); setPlain(new Set()); setEditingIdx(null); setEditDraft('');
   }, [isOpen, retired, heuristicPrefill, opportunityId, ownerScopeKey, profileFingerprint, targetFingerprint, targetReady, targetChecking, targetRefresh]);
 
-  const persistRecord = useCallback((value: TailorDraftV2) => {
+  const persistRecord = useCallback((value: TailorDraft) => {
     const owner = draftOwnerRef.current;
     if (!isOpen || !isOpenRef.current || retired || !profileAvailable || storageRead !== 'ready' || !owner
       || value.owner_id !== ownerScopeKey || value.opportunity_id !== opportunityId || owner.uid !== ownerScopeKey) return;
@@ -555,7 +599,7 @@ export default function TailorModal({
     // the first verified full target only; later target changes stay stale.
     if (fresh && fresh.target === null && fresh.profile === profileFingerprint) fresh.target = targetFingerprint;
   }, [profileFingerprint, targetFingerprint]);
-  const bindFresh = useCallback((value: TailorDraftV2, binding: TailorDraftBinding): TailorDraftV2 => {
+  const bindFresh = useCallback((value: TailorDraft, binding: TailorDraftBinding): TailorDraft => {
     const fresh = freshDraftRef.current;
     return fresh && fresh.profile === profileFingerprint && fresh.target === targetFingerprint && value.origin.binding === null
       && value.owner_id === ownerScopeKey && value.opportunity_id === opportunityId
@@ -789,7 +833,10 @@ export default function TailorModal({
       setDraftStatus(status);
       if (bound !== record) setRecord(bound);
       if (status !== 'current' || rulesNeedReview) return;
-      const data = await tailorResume(profile, ctx.opportunityId, bullets, { locale, expectedPipelineVersion: binding.pipeline_version, expectedTargetVersion });
+      // A promoted line's evidence is still the student's own bullet it came from.
+      const sources = draftLineSources(bound, bullets);
+      const data = await tailorResume(profile, ctx.opportunityId, bullets, { locale, expectedPipelineVersion: binding.pipeline_version, expectedTargetVersion,
+        ...(sources.some((source, i) => source !== bullets[i]) ? { sourceBullets: sources } : {}) });
       if (!stillCurrent()) return; // superseded — N1's result must never appear as N2's
       // W13: a response the backend stamped for a DIFFERENT target than the
       // one this call was made for is dropped outright.
@@ -797,9 +844,9 @@ export default function TailorModal({
       if (data.target_version !== expectedTargetVersion) throw new Error(t('tailor.targetVersionUnavailable'));
       outputBindingRef.current = binding;
       setSubmittedBullets(bullets);
-      setRejected(new Set()); setEdits({}); setEditingIdx(null);
+      setRejected(new Set()); setEdits({}); setPlain(new Set()); setEditingIdx(null);
       setSourceChanged(false);
-      setResp(data);
+      setResp(reviewedBullets(data, bullets));
     } catch (err) {
       if (!stillCurrent()) return;
       if (err && typeof err === 'object' && 'code' in err && err.code === 'WRITING_TARGET_CHANGED') {
@@ -818,19 +865,22 @@ export default function TailorModal({
   }
 
   // R73: a bullet's effective text = the user's inline edit if present,
-  // else the model's rewrite. The kept set excludes rejected indices.
+  // else the rewrite (without the posting's terms when the student chose
+  // that). The kept set excludes rejected indices.
   const effectiveText = useCallback(
-    (i: number, fallback: string) => edits[i] ?? fallback,
-    [edits],
+    (i: number, b: TailoredBullet) => edits[i] ?? (plain.has(i) && b.alternative ? b.alternative : b.text),
+    [edits, plain],
   );
 
-  const keptTexts = useCallback((): string[] => {
+  // Each kept line with its evidence: the bullet the server checked it against.
+  const keptLines = useCallback((): { text: string; source: string }[] => {
     if (!resp) return [];
     return resp.tailored_bullets
-      .map((b, i) => ({ i, text: effectiveText(i, b.text) }))
+      .map((b, i) => ({ i, text: effectiveText(i, b), source: b.status && b.source_evidence ? b.source_evidence : submittedBullets[b.source_index] ?? '' }))
       .filter(({ i }) => !rejected.has(i))
-      .map(({ text }) => text);
-  }, [resp, rejected, effectiveText]);
+      .map(({ text, source }) => ({ text, source: source || text }));
+  }, [resp, rejected, effectiveText, submittedBullets]);
+  const keptTexts = useCallback(() => keptLines().map(({ text }) => text), [keptLines]);
 
   function toggleReject(i: number) {
     markUserEdit();
@@ -847,6 +897,16 @@ export default function TailorModal({
     markUserEdit();
     setEditingIdx(i);
     setEditDraft(current);
+  }
+
+  function togglePlain(i: number) {
+    markUserEdit();
+    setPlain((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
   }
 
   function saveEdit(i: number) {
@@ -870,12 +930,14 @@ export default function TailorModal({
   // user can iterate without retyping. Clearing the result resets the right
   // panel to the empty prompt and flips the CTA back to "Tailor with AI".
   function handleUseAsOriginals() {
-    const kept = keptTexts();
+    const kept = keptLines();
     if (kept.length === 0) return;
-    const next = kept.join('\n');
-    let promoted: TailorDraftV2;
-    try { promoted = createDraft(ownerScopeKey ?? 'unresolved', opportunityId, next, 'reviewed_output', outputBindingRef.current); }
-    catch { setInputRejected(true); return; }
+    const next = kept.map(({ text }) => text).join('\n');
+    let promoted: TailorDraft;
+    try {
+      promoted = createDraft(ownerScopeKey ?? 'unresolved', opportunityId, next, 'reviewed_output', outputBindingRef.current, undefined,
+        kept.map(({ text, source }) => ({ line: text, source })));
+    } catch { setInputRejected(true); return; }
     markUserEdit(); setInputRejected(false);
     freshDraftRef.current = null;
     setRecord(promoted);
@@ -890,6 +952,7 @@ export default function TailorModal({
     setSubmittedBullets([]);
     setRejected(new Set());
     setEdits({});
+    setPlain(new Set());
     setEditingIdx(null);
     setError(null);
     setCopied(false);
@@ -948,6 +1011,9 @@ export default function TailorModal({
   const warningMessage = resp ? pickWarningMessage(resp.warnings, t) : null;
   const isFallback = resp?.method === 'fallback';
   const hasResults = resp !== null && resp.tailored_bullets.length > 0;
+  // w14.0 returns every bullet with a status; older responses dropped refused ones.
+  const statused = hasResults && resp.tailored_bullets.every((b) => b.status !== undefined);
+  const rewrittenCount = resp?.tailored_bullets.filter((b) => b.status === 'rewritten').length ?? 0;
   // R73: review is offered only on a genuine AI rewrite (fallback echoes the
   // user's own originals — nothing to accept/reject there).
   const reviewable = resp?.method === 'ai' && hasResults;
@@ -1061,9 +1127,15 @@ export default function TailorModal({
               {limitIssue && <p role="alert" data-testid="tailor-limit-issue" className="mb-2 text-xs text-amber-800">{limitIssue}</p>}
               {record && needsReview && (
                 <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900" data-testid="tailor-draft-review">
-                  <p>{t(draftStale ? 'tailor.draftChanged' : 'tailor.draftUnknown')}</p>
+                  {legacyRewrites
+                    ? <p data-testid="tailor-draft-legacy">{t('tailor.draftLegacyRewrites')}</p>
+                    : <p>{t(draftStale ? 'tailor.draftChanged' : 'tailor.draftUnknown')}</p>}
                   <button type="button" onClick={requestReview} disabled={reviewing || loading || extracting || action.busy || !canRequest}
                     className="mt-2 font-semibold underline underline-offset-2 disabled:opacity-50">{t('tailor.reviewDraft')}</button>
+                  {legacyRewrites && profile.resume_text && (
+                    <button type="button" onClick={requestExtraction} disabled={reviewing || loading || extracting || action.busy || !canRequest}
+                      className="mt-2 ml-3 font-semibold underline underline-offset-2 disabled:opacity-50">{t('tailor.useResumeLines')}</button>
+                  )}
                 </div>
               )}
               {(!pipelineVersion || (pipelineVersion && !currentBinding)) && <p className="mb-2 text-xs text-gray-500">{t(rulesUnavailable ? 'tailor.rulesUnavailable' : 'tailor.rulesChecking')}</p>}
@@ -1101,7 +1173,7 @@ export default function TailorModal({
                 value={draft}
                 onChange={(e) => {
                   if (!record) return;
-                  let next: TailorDraftV2;
+                  let next: TailorDraft;
                   try { next = editTailorDraft(record, e.target.value); }
                   catch { setInputRejected(true); return; }
                   markUserEdit(); setInputRejected(false); setRecord(next);
@@ -1204,19 +1276,13 @@ export default function TailorModal({
                 </p>
               )}
 
-              {/* R71-G: partial-result coverage. When the anti-fabrication
-                  validator drops some (not all) bullets, method stays "ai"
-                  but fewer cards render — this line makes the gap explicit
-                  instead of leaving the user wondering where a bullet went. */}
-              {!loading && !error && resp?.method === 'ai' && hasResults &&
-                resp.tailored_bullets.length < submittedBullets.length && (
-                  <p className="text-xs text-amber-700 px-1">
-                    {t('tailor.coverage', {
-                      n: resp.tailored_bullets.length,
-                      total: submittedBullets.length,
-                    })}
-                  </p>
-                )}
+              {/* Coverage: every bullet comes back, either with a reviewed
+                  rewrite or as written with its reason. */}
+              {!loading && !error && resp?.method === 'ai' && statused && (
+                <p className="text-xs text-gray-600 px-1">
+                  {t('tailor.coverage', { n: rewrittenCount, kept: resp.tailored_bullets.length - rewrittenCount })}
+                </p>
+              )}
 
               {/* R73: one-line nudge that this is a review surface — edit or
                   reject any bullet before copying. */}
@@ -1235,18 +1301,20 @@ export default function TailorModal({
                     // always safe; the `??` is a defensive belt-and-
                     // suspenders for stale snapshots.
                     const original = submittedBullets[b.source_index] ?? '';
-                    const isFallbackBullet = b.source_evidence === 'original';
+                    // A kept bullet is shown as written, with the reason.
+                    const isFallbackBullet = b.status === 'kept' || b.source_evidence === 'original';
+                    const kept = b.status === 'kept' ? keptExplanation(b.reason_code, t) : null;
                     // R73: render the effective text — the user's inline edit
                     // wins over the model's rewrite.
-                    const current = effectiveText(i, b.text);
+                    const current = effectiveText(i, b);
                     const isEdited = edits[i] !== undefined;
                     const isRejected = rejected.has(i);
                     const isEditing = editingIdx === i;
                     const sameAsOriginal =
                       isFallbackBullet || original.trim() === current.trim();
-                    // Review controls only on a real AI rewrite, never on a
+                    // Review controls on every line of an AI result, never on a
                     // fallback echo of the user's own originals.
-                    const canReview = reviewable && !isFallbackBullet;
+                    const canReview = reviewable && (b.status === 'kept' || !isFallbackBullet);
 
                     return (
                       <li
@@ -1385,7 +1453,30 @@ export default function TailorModal({
                             </p>
                           )}
 
-                          {b.source_evidence && !isEditing && (
+                          {kept && !isEditing && (
+                            <p className="mt-2 text-[11.5px]" data-testid="tailor-kept-reason">
+                              <span className={`font-semibold uppercase tracking-wide text-[9.5px] px-1.5 py-px rounded ${kept.neutral ? 'bg-gray-100 text-gray-600' : 'bg-amber-50 text-amber-700'}`}>
+                                {kept.label}
+                              </span>{' '}
+                              <span className="text-gray-500">{kept.reason}</span>
+                            </p>
+                          )}
+                          {b.status === 'rewritten' && !isEditing && (
+                            <>
+                              <RewriteWhy links={b.links} t={t}
+                                ops={plain.has(i) && b.alternative ? (b.ops ?? []).filter((op) => op !== 'relabel') : b.ops} />
+                              {b.alternative && !isEdited && !isRejected && (
+                                <button
+                                  type="button"
+                                  onClick={() => togglePlain(i)}
+                                  className="mt-1.5 text-[11px] font-medium text-indigo-600 underline underline-offset-2 hover:text-indigo-700"
+                                >
+                                  {plain.has(i) ? t('tailor.useWithTerms') : t('tailor.useWithoutTerms')}
+                                </button>
+                              )}
+                            </>
+                          )}
+                          {b.source_evidence && !isEditing && (b.status === undefined || b.source_evidence !== original) && !kept && (
                             <p className="mt-2 text-[11.5px] text-gray-500 italic">
                               <span className="font-medium not-italic uppercase tracking-wider text-[10px] text-gray-400">
                                 {t('tailor.sourceLabel')}:

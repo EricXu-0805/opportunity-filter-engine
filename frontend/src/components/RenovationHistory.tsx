@@ -3,14 +3,20 @@
 import { useEffect, useRef, useState } from 'react';
 import { listRenovationVersions, readRenovationVersion, type RenovationPayload, type RenovationVersion, type RenovationVersionPage } from '@/lib/supabase';
 import { isOwnerTokenValid, type OwnerToken } from '@/lib/identity-owner';
+import { shownHeading, shownText } from '@/lib/renovation-review';
 import type { RenovationDoc } from '@/lib/types';
 
-function textOf(doc: Record<string, unknown>) {
-  return (doc as unknown as RenovationDoc).sections.map(s => [s.heading || s.kind, ...s.bullets.map(b => b.current >= 0 ? b.variants[b.current].text : b.base_text)].join('\n')).join('\n\n');
+// A version saved before the faithfulness review (w13.x) can hold an unreviewed, other-language
+// rewrite as a bullet's current wording; the preview shows that bullet's own text instead, as
+// opening or restoring the version does (reviewedRenovation). A legacy_doc version is only read here.
+// Its section headings show as the student wrote them, or as standard names (shownHeading).
+function textOf(doc: Record<string, unknown>, resumeText: string) {
+  const sections = (doc as unknown as RenovationDoc).sections;
+  return sections.map(s => [shownHeading(s, resumeText, sections), ...s.bullets.map(shownText)].join('\n')).join('\n\n');
 }
 
-export default function RenovationHistory({ opportunityId, owner, locale, disabled, onRestore, onClose }: {
-  opportunityId: string; owner: OwnerToken; locale: string; disabled: boolean;
+export default function RenovationHistory({ opportunityId, owner, locale, resumeText = '', disabled, onRestore, onClose }: {
+  opportunityId: string; owner: OwnerToken; locale: string; resumeText?: string; disabled: boolean;
   onRestore: (payload: RenovationPayload) => void; onClose: () => void;
 }) {
   const zh = locale === 'zh';
@@ -60,7 +66,7 @@ export default function RenovationHistory({ opportunityId, owner, locale, disabl
     {page.next_cursor && <button type="button" disabled={busy} onClick={() => void load(true)} className="text-sm underline">{zh ? '更多历史' : 'More versions'}</button>}
     {selected && <div className="space-y-2 border-t pt-3">
       <p className="text-sm">{complete ? (zh ? '恢复会保存为新版本。当前稿与原历史都会保留。' : 'Restoring saves a new version. The current saved draft and earlier history stay in history.') : (zh ? '这份旧历史没有保存原始简历，只能查看；不能用当前来源补齐后恢复。' : 'This older version has no saved source résumé. You can read it, but it cannot be restored with the current source.')}</p>
-      <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-gray-50 p-3 text-sm" data-testid="renovation-history-preview">{textOf(selected.payload.doc)}</pre>
+      <pre className="max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-gray-50 p-3 text-sm" data-testid="renovation-history-preview">{textOf(selected.payload.doc, resumeText)}</pre>
       {complete && <button type="button" disabled={disabled || busy} className="text-sm font-semibold text-indigo-700 underline disabled:text-gray-400" onClick={() => onRestore(selected.payload as RenovationPayload)}>{zh ? '恢复为新版本' : 'Restore as new version'}</button>}
       {disabled && complete && <p className="text-sm text-amber-700">{zh ? '请先完成当前编辑或处理保存问题。' : 'Finish the current edit or resolve the save issue first.'}</p>}
     </div>}

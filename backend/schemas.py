@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 from datetime import date
-from typing import Literal, Union
+from typing import Any, Literal, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic_core import PydanticCustomError
@@ -64,8 +64,13 @@ def _profile_error(field: str, *, actual: int | None = None,
     raise PydanticCustomError("profile_input_invalid", "Profile input is invalid.", {"field": field})
 
 
+# A lone surrogate, found by the regex engine's C loop: a per-character generator over a
+# profile at its limits (17 x 60,000 characters) took about 50 ms on the event loop per request.
+_SURROGATE = re.compile("[\ud800-\udfff]")
+
+
 def _profile_text(value: object, field: str, limit: int) -> None:
-    if not isinstance(value, str) or any(0xD800 <= ord(c) <= 0xDFFF for c in value):
+    if not isinstance(value, str) or _SURROGATE.search(value):
         _profile_error(field)
     if len(value) > limit:
         _profile_error(field, actual=len(value), limit=limit)
@@ -138,7 +143,7 @@ class ProfileRequest(BaseModel):
                 elif isinstance(item, dict):
                     _profile_text(item.get("name", ""), "profile.hard_skills.name", PROFILE_SKILL_TEXT_LIMIT)
                     _profile_text(item.get("level", "beginner"), "profile.hard_skills.level", PROFILE_SKILL_TEXT_LIMIT)
-                    if isinstance(item.get("source"), str) and any(0xD800 <= ord(c) <= 0xDFFF for c in item["source"]):
+                    if isinstance(item.get("source"), str) and _SURROGATE.search(item["source"]):
                         _profile_error("profile.hard_skills.source")
                 else:
                     _profile_error("profile.hard_skills")
@@ -810,10 +815,19 @@ class RoadmapResponse(BaseModel):
     targets_without_skill_evidence: int = Field(default=0, ge=0)
 
 
+# A /tailor request's lists are bounded before their items are validated: pydantic
+# checks a list's length first and reports one error, where 524,287 wrongly typed
+# items in a 1 MiB body made 524,287 errors and a 36 MB 422 on the event loop (4-7 s).
+# The bound sits far above what the route accepts, which still refuses by name
+# (renovation bounds its raw sections and bullets in reject_oversized_payload).
+MAX_REQUEST_BULLETS = 200
+
+
 class TailorRequest(BaseModel):
     profile: ProfileRequest
     opportunity_id: str
-    original_bullets: list[str] = Field(default_factory=list)
+    # Blank layout lines are dropped below; past 12 bullets the route refuses by name.
+    original_bullets: list[str] = Field(default_factory=list, max_length=MAX_REQUEST_BULLETS)
     # Optional for older clients. A supplied code version is an exact pre-work
     # condition, not a claim that user-provided bullets are confirmed evidence.
     expected_pipeline_version: str | None = Field(
@@ -826,15 +840,26 @@ class TailorRequest(BaseModel):
         default=None, strict=True, min_length=68, max_length=68,
         pattern=r"^wt1:[0-9a-f]{64}$",
     )
-    # R71-D: caller-declared output language. Defaults to "en" so existing
+    # R71-D: the caller's UI language. Defaults to "en" so existing
     # clients (R71-B/C) keep their current behavior. The route uses this
-    # to pick between the EN and ZH system prompts; everything else (the
+    # only to pick between the EN and ZH system prompts (w14.1: each
+    # rewrite stays in its own bullet's language); everything else (the
     # anti-fabrication validator, the evidence corpus, the bullet
     # limits) is locale-agnostic by design — the ASCII hard-claim
     # regex still catches Python / PyTorch / Kubernetes regardless of
     # whether the LLM output is English or Chinese, which is the
     # high-priority fabrication risk we care about.
     locale: str = "en"
+    # Optional. When present, source_bullets[i] is the only evidence for bullet
+    # i and original_bullets[i] is just its current wording. The modal sends it
+    # after "Use kept as new originals", so accepted AI text never becomes
+    # the next request's evidence.
+    source_bullets: list[str] | None = Field(default=None, max_length=MAX_REQUEST_BULLETS)
+
+    @field_validator("source_bullets")
+    @classmethod
+    def stringify_sources(cls, v: list | None) -> list[str] | None:
+        return None if v is None else [str(source) for source in v]
 
     @field_validator("original_bullets")
     @classmethod
@@ -843,7 +868,15 @@ class TailorRequest(BaseModel):
         # the /tailor route as a refusal that names it: slicing here used to
         # rewrite the first 500 characters of the first 12 bullets and say
         # nothing about the rest.
-        return [str(b) for b in v if str(b).strip()]
+        lines = [str(b) for b in v]
+        # A row's source_index counts the lines kept here, and the client pairs each row
+        # with its own submitted line by that index. str.strip() empties a line of
+        # U+001C-U+001F or U+0085 that String.prototype.trim() keeps, so dropping such a
+        # line would pair every later card with the line above it: it is refused instead.
+        if any(not line.strip() and any(character in "\x1c\x1d\x1e\x1f\x85" for character in line)
+               for line in lines):
+            raise ValueError("a bullet holds only separator control characters (U+001C-U+001F, U+0085)")
+        return [line for line in lines if line.strip()]
 
     @field_validator("locale")
     @classmethod
@@ -854,6 +887,20 @@ class TailorRequest(BaseModel):
         # ``"fr"`` doesn't 422 here.
         primary = (v or "").lower().split("-")[0].split("_")[0]
         return "zh" if primary == "zh" else "en"
+
+
+class EvidenceLink(BaseModel):
+    """A résumé phrase tied to a literal target quote, both with server offsets.
+
+    ``entailed`` is true only when the faithfulness review confirmed that the
+    phrase names the quoted thing; otherwise the quote is related text only.
+    """
+    id: str
+    relation: Literal["same", "broader"]
+    entailed: bool = False
+    target_evidence: dict[str, Any]
+    source_evidence: dict[str, Any]
+    written_as: str | None = None
 
 
 class TailoredBullet(BaseModel):
@@ -873,6 +920,14 @@ class TailoredBullet(BaseModel):
     #   - Fallback path: equals the bullet's index in original_bullets
     #     verbatim, since fallback is positional passthrough.
     source_index: int = 0
+    # w14.0: every submitted bullet comes back once, in order. "rewritten" is a
+    # reviewed rewrite; "kept" is the bullet as written with reason_code.
+    status: Literal["rewritten", "kept"] = "kept"
+    reason_code: str | None = None
+    ops: list[str] = Field(default_factory=list)
+    links: list[EvidenceLink] = Field(default_factory=list)
+    # The rewrite with the posting's terms taken back out, when that passes too.
+    alternative: str | None = None
 
 
 class TailorStatusResponse(BaseModel):
@@ -1077,6 +1132,9 @@ class RenovatedVariant(BaseModel):
     source: str  # "macro" | "ai" | "user"
     text: str
     source_evidence: str = ""
+    ops: list[str] = Field(default_factory=list)
+    links: list[EvidenceLink] = Field(default_factory=list)
+    alternative: str | None = None
 
 
 class RenovatedBullet(BaseModel):
@@ -1086,6 +1144,8 @@ class RenovatedBullet(BaseModel):
     # Index into ``variants``; -1 == show base_text. Rollback moves this back.
     current: int = -1
     action: str = "keep"                           # "foreground" | "keep" | "demote"
+    # Why a foregrounded bullet stayed as written (a TailoredBullet reason_code).
+    note: str | None = None
 
 
 class RenovatedSection(BaseModel):
@@ -1136,6 +1196,11 @@ class BulletOptimizeResponse(BaseModel):
     source_evidence: str = ""
     changed: bool = False
     warnings: list[str] = Field(default_factory=list)
+    status: Literal["rewritten", "kept"] = "kept"
+    reason_code: str | None = None
+    ops: list[str] = Field(default_factory=list)
+    links: list[EvidenceLink] = Field(default_factory=list)
+    alternative: str | None = None
     # W13 target binding + provenance (mirrors the W12 cold-email stamps):
     # which target this suggestion set was generated for, when, and by what
     # pipeline — the client pairs suggestions to targets by the echo instead
