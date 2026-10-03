@@ -474,12 +474,64 @@ def _offered_time(sentence: str) -> list[str]:
     return offered
 
 
+# Terms other than time that the student offers in their own voice: to work
+# unpaid, as a volunteer or for credit, or to take a test or trial task. Only
+# the confirmed availability sentence may state one; another offer must be of a
+# kind it names. The target's own terms ("your unpaid position", "the coding
+# challenge") and the student's past ("my volunteer work", "I have
+# volunteered") are not offers. Bounded English shapes, as for time.
+_COMMITMENT_KINDS = (
+    ("unpaid work", re.compile(
+        r"\b(?:to|by|as\s+an?|an?|can|could|will|would|might|may|shall|['’]d|['’]ll)\s+"
+        r"(?:(?:initially|first|also|gladly|happily|even|just)\s+){0,2}volunteer(?:ing)?\b"
+        r"|\bunpaid\b|\bwithout\s+(?:any\s+)?(?:pay|payment|compensation|a\s+stipend|funding|salary)\b"
+        r"|\b(?:for|earn|receive)\s+(?:(?:course|academic|research)\s+)?credit\b|\bfor\s+free\b", re.I)),
+    ("a test or trial task", re.compile(
+        r"\b(?:coding|programming|technical)\s+(?:challenges?|assessments?|tests?|exercises?|interviews?|screens?)\b"
+        r"|\btake[-\s]home\s+(?:assignments?|tasks?|tests?|projects?|exercises?|challenges?)\b"
+        r"|\btrial\s+(?:tasks?|periods?|projects?|assignments?|basis)\b"
+        r"|\b(?:complete|take|do|undergo|sit|attempt)\s+(?:a|an|any)\s+(?:[\w-]+\s+)?(?:tests?|assessments?)(?![\w-])",
+        re.I)),
+)
+# A bare term after "your"/"the" names the target's own terms, not an offer.
+_COMMITMENT_BARE_TERM = re.compile(r"(?:unpaid|coding|programming|technical|take[-\s]home|trial)\b", re.I)
+_COMMITMENT_TARGET_TERM = re.compile(r"\b(?:your|the|this|that|its|their)\s+(?:[\w-]+\s+)?$", re.I)
+
+
+def _commitment_kinds(text: str) -> set[str]:
+    return {kind for kind, pattern in _COMMITMENT_KINDS if pattern.search(text)}
+
+
+def _offered_commitments(sentence: str) -> list[str]:
+    """Kinds of term a first-person offer commits to within the same clause, at most eight words on."""
+    if not _commitment_kinds(sentence):
+        return []
+    offered = []
+    for head in _TIME_OFFER.finditer(sentence):
+        clause = re.split(r"[,;()]", sentence[head.end():head.end() + 240], maxsplit=1)[0]
+        if head["have"] and not _TIME_HAVE_CUE.search(clause):
+            continue
+        # From the head's start: in "I can volunteer" the modal is the head.
+        window_end = head.end() + len(clause)
+        for kind, pattern in _COMMITMENT_KINDS:
+            for term in pattern.finditer(sentence, head.start(), window_end):
+                if len(sentence[head.end():max(term.start(), head.end())].split()) > 8:
+                    break
+                if _COMMITMENT_BARE_TERM.match(term.group()) and _COMMITMENT_TARGET_TERM.search(
+                        sentence, max(0, term.start() - 40), term.start()):
+                    continue
+                offered.append(kind)
+                break
+    return offered
+
+
 def contact_claim_violations(text: str, parts: dict) -> list[str]:
     """Only the exact attested opening may authorize recognized contact claims.
 
     Removing a fixed sentence here exempts it only from contact-pattern checks,
     never from the independent student competence/numeric/attachment checks.
-    Any other offer of time must repeat the confirmed availability's quantities.
+    Any other offer of time must repeat the confirmed availability's quantities,
+    and any other offer of unpaid work or a test must be of a kind it names.
     """
     findings = []
     remaining = text
@@ -495,6 +547,10 @@ def contact_claim_violations(text: str, parts: dict) -> list[str]:
     stated = {key for _start, key, _duration in _time_quantities(parts.get("contact_availability") or "")}
     if any(key not in stated for sentence in _TIME_SENTENCE_BREAK.split(remaining) for key in _offered_time(sentence)):
         findings.append("unsupported time commitment")
+    stated_kinds = _commitment_kinds(parts.get("contact_availability") or "")
+    if any(kind not in stated_kinds for sentence in _TIME_SENTENCE_BREAK.split(remaining)
+           for kind in _offered_commitments(sentence)):
+        findings.append("unsupported commitment")
     return findings
 
 

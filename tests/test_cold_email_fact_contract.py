@@ -1,6 +1,7 @@
 """The same student facts must constrain initial emails and later edits."""
 
 import re
+import time
 
 import pytest
 from fastapi import FastAPI
@@ -358,3 +359,131 @@ def test_the_reviser_is_told_to_drop_an_unstated_time_commitment(email_client, m
     assert response.json()["method"] == "ai"
     assert "hours per week" not in response.json()["body"]
     assert any("unsupported time commitment" in request for request in revise_requests)
+
+
+# D31, the rest: the wet-lab prompt invited an undergraduate's "willingness to
+# volunteer initially" and the dry-lab prompt "to complete a technical
+# assessment or coding challenge", and no gate read either offer, so a student
+# who never offered unpaid work or a test was committed to one in their voice.
+VOLUNTEER = "I would be happy to volunteer in the lab initially."
+CHALLENGE = "I would be glad to complete a coding challenge."
+
+
+@pytest.mark.parametrize("endpoint", ["/cold-email", "/cold-email/refine"])
+@pytest.mark.parametrize("claim", [VOLUNTEER, CHALLENGE, "I am willing to work for course credit."])
+def test_an_unstated_commitment_is_not_a_student_fact(email_client, monkeypatch, endpoint, claim):
+    out = request_email(email_client, monkeypatch, endpoint, claim, current=draft(claim))
+    assert out["fallback_reason"] == "fabrication"
+    assert claim not in out["body"]
+
+
+@pytest.mark.parametrize("endpoint", ["/cold-email", "/cold-email/refine"])
+def test_a_commitment_the_stated_availability_names_stays_usable(email_client, monkeypatch, endpoint):
+    stated = "I am open to volunteering in the lab during the semester."
+    claim = f"{stated} {VOLUNTEER}"
+    out = request_email(email_client, monkeypatch, endpoint, claim, context=availability(stated))
+    assert out["method"] == ("ai" if endpoint == "/cold-email" else "llm"), out
+    assert claim in out["body"]
+
+
+@pytest.mark.parametrize("sentence", [
+    VOLUNTEER,
+    CHALLENGE,
+    "I can volunteer.",
+    "I'd also gladly volunteer in the lab.",
+    "I'm happy to start as a volunteer.",
+    "I am available to volunteer on weekends.",
+    "I would be open to an unpaid position.",
+    "I can work without pay this summer.",
+    "I am glad to help for free.",
+    "I am willing to work for course credit.",
+    "I could earn course credit through CHEM 499.",
+    "I am happy to complete a technical assessment.",
+    "If helpful, I can complete a short coding exercise.",
+    "I could take a short test on lab safety.",
+    "I am happy to do a take-home assignment.",
+    "I would be open to starting on a trial basis.",
+])
+def test_an_offered_commitment_needs_the_stated_availability(sentence):
+    assert contact_claim_violations(sentence, contact_context_parts(None)) == ["unsupported commitment"]
+
+
+@pytest.mark.parametrize("sentence", [
+    "I have volunteered at a free clinic since 2024.",
+    "I volunteered as a tutor last year.",
+    "I would like to continue my volunteer work at the hospital.",
+    "I would love to join your summer volunteer program.",
+    "I would like to be considered for the unpaid position.",
+    "I understand the position is unpaid.",
+    "The program offers course credit, and I would love to participate.",
+    "I would be glad to complete the coding challenge in the posting.",
+    "I would love to learn about your research on volunteer computing.",
+    "I would like to study volunteer motivation in nonprofits.",
+    "I would like to learn how your lab tests catalysts.",
+    "I can help design a test suite for the simulator.",
+    "I will take a test-driven approach.",
+    "I would like to help run clinical trials.",
+    "I would like to learn more about your trial design.",
+    "I would be glad to share my coding project.",
+    "I took a technical writing course.",
+])
+def test_words_that_offer_no_commitment_pass(sentence):
+    assert contact_claim_violations(sentence, contact_context_parts(None)) == []
+
+
+@pytest.mark.parametrize(("stated", "claim", "accepted"), [
+    ("I am open to volunteering.", "I can volunteer on Fridays.", True),
+    ("I can work for course credit.", "I would be open to an unpaid position.", True),
+    ("I am happy to complete a coding challenge.", "I could take a short test first.", True),
+    ("I am open to volunteering.", CHALLENGE, False),
+    ("I am happy to complete a coding challenge.", VOLUNTEER, False),
+    ("I can contribute 6 hours per week.", VOLUNTEER, False),
+])
+def test_another_commitment_must_be_of_a_kind_the_availability_names(stated, claim, accepted):
+    parts = contact_context_parts(availability(stated))
+    findings = contact_claim_violations(f"{stated} {claim}", parts)
+    assert findings == ([] if accepted else ["unsupported commitment"])
+
+
+@pytest.mark.parametrize("lab_type", ["wet", "dry", "humanities", None])
+@pytest.mark.parametrize("is_faculty", [False, True])
+def test_no_lab_tone_invites_unpaid_work_or_a_test(lab_type, is_faculty):
+    tone = ce._lab_type_tone(lab_type, is_faculty=is_faculty)
+    assert "volunteer initially" not in tone
+    assert "technical assessment or coding challenge" not in tone
+    assert "acceptable to offer" not in tone
+
+
+def test_the_reviser_is_told_to_drop_an_unstated_commitment(email_client, monkeypatch):
+    monkeypatch.setenv("OFE_COLD_EMAIL_NDRAFT", "1")
+    monkeypatch.setenv("OFE_COLD_EMAIL_CRITIQUE", "0")
+    revise_requests = []
+
+    def provider(messages, **_kwargs):
+        if "revising a student's cold email" in messages[0]["content"]:
+            revise_requests.append(messages[1]["content"])
+            return f"Subject: Research inquiry\n\n{draft('I am interested in hypersonics.')}"
+        return f"Subject: Research inquiry\n\n{draft(VOLUNTEER)}"
+
+    monkeypatch.setattr(ce, "chat_completion", provider)
+    response = email_client.post("/api/cold-email", json={
+        "profile": PROFILE, "opportunity_id": OPP["id"], "engine": "ai",
+        "experience_evidence": confirmed_experience([]),
+    })
+    assert response.status_code == 200, response.text
+    assert response.json()["method"] == "ai"
+    assert "volunteer" not in response.json()["body"]
+    assert any("unsupported commitment" in request for request in revise_requests)
+
+
+@pytest.mark.parametrize("unit", [
+    "I can volunteer ", "I would be happy to take a ", "I can I would we could I'd ",
+    "I can complete a a-a-a-a-a-a-a-a-a-a-a-a-a-a-a-a ", "I can volunteer 10 hours a week for credit, ",
+])
+def test_the_commitment_checks_stay_bounded_at_the_edit_limit(unit):
+    # The local refine path runs these on the event loop for a 5000-character body.
+    text = (unit * (5000 // len(unit) + 1))[:5000]
+    began = time.perf_counter()
+    contact_claim_violations(text, contact_context_parts(None))
+    assert time.perf_counter() - began < 1.0
+

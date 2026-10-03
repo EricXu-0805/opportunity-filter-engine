@@ -507,7 +507,8 @@ _EVIDENCE_CONNECTION_RULES = (
     "- Use the server's CONTACT CONTEXT purpose to choose first-contact, referral "
     "or follow-up structure. Put a confirmed reading sentence near the research "
     "interest, before the request; do not repeat the paper title elsewhere. Do not "
-    "promise flexible scheduling or hours unless the contact context confirms it. "
+    "promise flexible scheduling, hours, unpaid or volunteer work, or a test or "
+    "trial task unless the contact context confirms it. "
     "Refer to the stated work unless an actual lab is specified. "
     "Follow-up overrides the first-contact introduction: "
     "continue the conversation briefly. Preserve each server-rendered Confirmed "
@@ -924,7 +925,7 @@ def _base_rules(
 
 
 # Lab-type tone suffixes (technique emphasis + length), appended after the
-# level-aware base. Level-neutral: the wet-lab volunteer note is explicitly gated
+# level-aware base. Level-neutral: the wet-lab mentoring note is explicitly gated
 # to undergraduates so it never contradicts the graduate body's peer framing.
 _LAB_TYPE_TONE = {
     "wet": (
@@ -936,7 +937,9 @@ _LAB_TYPE_TONE = {
         "- Mention a time commitment only as the sender's stated availability "
         "gives it; never offer hours, weeks or semesters they did not state.\n"
         "- For an UNDERGRADUATE only, it is acceptable to mention willingness "
-        "to volunteer initially or to be mentored by a graduate student.\n"
+        "to be mentored by a graduate student.\n"
+        "- Never offer to volunteer or work unpaid unless the sender's stated "
+        "availability says so.\n"
         "- Do NOT lead with a GitHub link. Wet PIs care about bench "
         "literacy and reliability."
     ),
@@ -949,9 +952,7 @@ _LAB_TYPE_TONE = {
         "- Reference a specific recent project or paper from the lab if "
         "any keyword is concrete enough.\n"
         "- If the sender shared a GitHub URL, include it in the body "
-        "exactly once, naturally — never as a bare 'see my GitHub'.\n"
-        "- It is acceptable to offer to complete a technical assessment "
-        "or coding challenge."
+        "exactly once, naturally — never as a bare 'see my GitHub'."
     ),
     "humanities": (
         "\n\nHumanities / Social-Science tone (Psychology, Sociology, "
