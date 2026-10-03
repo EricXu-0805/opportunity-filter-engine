@@ -769,6 +769,8 @@ _CJK_RUN_AT = re.compile(r"[\u4e00-\u9fff]*")
 _CJK_RUN_END = re.compile(r"(?<![\u4e00-\u9fff])[\u4e00-\u9fff]*$")
 # The Chinese run a status reads is bounded, so a long run costs the same as a short one.
 _ZH_WINDOW = 24
+# Likewise the English noun phrase an attributive status reads ("an ongoing survey of 40 sites").
+_ATTRIBUTE_WINDOW = 80
 
 
 class _Verbs:
@@ -816,8 +818,30 @@ def _noun_head(text):
     return head[:-1] if len(head) > 3 and head.endswith("s") else head
 
 
+def _attributive_head(clause, match):
+    """The noun an English status word stands before as an attribute, or None.
+
+    "an ongoing survey of 40 sites", "Ongoing survey of ...": the status opens its
+    clause or follows a determiner, and the next word starts right after spaces. Its
+    noun head is read in a bounded window, so a long clause costs the same.
+    """
+    position = match.start()
+    while position and clause[position - 1].isspace():
+        position -= 1
+    # A determiner is at most 7 letters; a longer word cut by the window never equals one.
+    if position and clause[max(0, position - 12):position].rsplit(None, 1)[-1].casefold() not in _NOT_HEAD:
+        return None
+    start = match.end()
+    while start < len(clause) and clause[start] in " \t":
+        start += 1
+    if start == match.end() or start >= len(clause) or not (clause[start].isascii() and clause[start].isalpha()):
+        return None
+    return _noun_head(clause[start:start + _ATTRIBUTE_WINDOW])
+
+
 def _status_target(clause, match, verbs, heads):
-    """The work a publication status describes: the object of its clause's first verb, else its first noun.
+    """The work a publication status describes: the noun it stands before as an attribute, else the
+    object of its clause's first verb, else its first noun.
 
     An English status reads one of two noun heads per clause, kept in ``heads``.
     """
@@ -827,6 +851,9 @@ def _status_target(clause, match, verbs, heads):
             return after[:4]
         before = _CJK_RUN_END.search(clause[max(0, match.start() - _ZH_WINDOW):match.start()]).group(0)
         return _ZH_LEAD.sub("", _ZH_TAIL.sub("", before))[-4:] or None
+    attribute = _attributive_head(clause, match)
+    if attribute:
+        return attribute
     first = verbs.positions[0] if verbs.positions and verbs.positions[0] <= match.start() else None
     if first not in heads:
         if first is None:

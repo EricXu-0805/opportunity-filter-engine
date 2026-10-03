@@ -1385,3 +1385,59 @@ class TestSharedCreditWords:
         hard = claim_upgrade_findings("Wrote 30 test plans at John Deere.",
                                       "Wrote 30 test plans during a co-op at John Deere.")[0]
         assert "team_qualifier_dropped" not in hard
+
+
+class TestAStatusBindsToTheNounItStandsBefore:
+    """Round 1, criterion (2): main shows this faithful reorder; the locks refused it on every route.
+
+    _status_target bound "ongoing" to the object of the rewrite's first verb ("3 wetlands") rather
+    than to the noun it stands before ("survey of 40 sites"), so the claim locks said qualifier_moved.
+    """
+    ORIGINAL = "Ongoing survey of 40 sites, including 3 wetlands."
+    REWRITE = "Included 3 wetlands in an ongoing survey of 40 sites."
+    DESCRIPTION = "Field ecology lab: undergraduates survey 3 wetlands each summer."
+    LINK = {"id": "L1", "anchor": "t1", "term": "3 wetlands", "source": "3 wetlands", "relation": "same"}
+
+    def test_the_locks_find_nothing(self):
+        assert claim_upgrade_findings(self.REWRITE, self.ORIGINAL)[0] == []
+        # A status moved onto another noun is still moved.
+        assert "qualifier_moved" in claim_upgrade_findings(
+            "Surveyed 40 sites and ran an ongoing survey of 3 wetlands.",
+            "Ran an ongoing survey of 40 sites and surveyed 3 wetlands.")[0]
+
+    @pytest.mark.parametrize("path", PATHS)
+    def test_each_tailor_route_sends_it_to_the_review(self, endpoint, monkeypatch, path):
+        client, opportunity_id = endpoint
+        monkeypatch.setattr(tailor, "_snapshot_anchors", lambda source, snapshot: [_anchor("t1", self.DESCRIPTION)])
+        reviews = []
+
+        def model(messages, **kwargs):
+            system = messages[0]["content"]
+            if system.startswith("FAITHFULNESS REVIEW"):
+                reviews.append(json.loads(messages[1]["content"]))
+                return _review_all(True)(reviews[-1])
+            if "REORGANIZE" in system:
+                return json.dumps({"sections": [{"id": "s1", "bullets": [{"id": "b0", "action": "foreground"}]}]})
+            [unit] = json.loads(messages[1]["content"].split("DATA (JSON):\n", 1)[1])["units"]
+            return json.dumps({"bullets": [{"unit_id": unit["unit_id"], "links": [self.LINK], "decision": "rewrite",
+                                            "ops": [{"op": "lead_with", "link": "L1"}], "text": self.REWRITE,
+                                            "keep_reason": None}]})
+
+        monkeypatch.setattr(tailor, "chat_completion", model)
+        monkeypatch.setattr(em, "chat_completion", model)
+        payload = {"profile": PROFILE, "opportunity_id": opportunity_id, "locale": "en"}
+        if path.endswith("/renovate"):
+            payload["sections"] = [{"id": "s1", "heading": "Projects", "kind": "projects",
+                                    "bullets": [{"id": "b0", "text": self.ORIGINAL}]}]
+        elif path.endswith("/bullet"):
+            payload.update(base_text=self.ORIGINAL, current_text=self.ORIGINAL)
+        else:
+            payload["original_bullets"] = [self.ORIGINAL]
+        body = client.post(path, json=payload).json()
+        assert (len(reviews), accepted_texts(path, body)) == (1, [self.REWRITE])
+
+    def test_full_target_sends_it_to_the_review(self, monkeypatch):
+        receipt, reviews = _full_target(monkeypatch, self.ORIGINAL, self.REWRITE, op="lead_with", links=[self.LINK],
+                                        description=self.DESCRIPTION)
+        assert (receipt["status"], receipt["suggestion"]["proposed_text"], len(reviews)) == (
+            "suggested", self.REWRITE, 1)
