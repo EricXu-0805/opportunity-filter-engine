@@ -23,7 +23,8 @@ import type { TargetResumeAiEvidence, TargetResumeAiRequest, TargetResumeAiRespo
 const KNOWN_ID = 'uiuc-siebel-ugresearch';
 
 const OWN_WORDS = 'Built a Python script that parsed 3,000 rows of lab sensor data';
-const REWRITTEN = 'Processed 3,000 rows of lab sensor data in Python, charting daily trends';
+// A rewrite that keeps the line's facts: it adds no claim the student did not write.
+const REWRITTEN = 'Parsed 3,000 rows of lab sensor data with a Python script I built';
 
 const PROFILE = {
   name: 'Alex Chen',
@@ -42,11 +43,13 @@ const PROFILE = {
   ].join('\n'),
 };
 
-/** Answer /api/tailor/renovate as a model that foregrounded the first bullet
- *  and left the second alone, echoing the section ids /tailor/structure just
- *  produced. Returns the bullet the stub rewrote so assertions cannot drift
- *  from what the server was told. */
-async function stubRenovate(page: Page) {
+/** Answer /api/tailor/renovate as a server whose model foregrounded the first
+ *  bullet and left the second alone, echoing the section ids /tailor/structure
+ *  just produced. By default the answer is a reviewed one (w14 rules, a
+ *  declared move): the browser shows renovation wording only from such a
+ *  response. `reviewed: false` answers as a pre-review (w13) server does, with
+ *  no rules stamp and no declared move. */
+async function stubRenovate(page: Page, { reviewed = true } = {}) {
   await page.route('**/api/tailor/renovate', async (route: Route) => {
     const body = route.request().postDataJSON() as {
       opportunity_id: string; expected_target_version: string;
@@ -62,7 +65,7 @@ async function stubRenovate(page: Page) {
         base_text: bullet.text,
         action: index === 0 ? 'foreground' : 'keep',
         variants: index === 0
-          ? [{ source: 'macro', text: REWRITTEN, source_evidence: OWN_WORDS }]
+          ? [{ source: 'macro', text: REWRITTEN, source_evidence: OWN_WORDS, ...(reviewed ? { ops: ['lead_with'], links: [], alternative: null } : {}) }]
           : [],
         current: index === 0 ? 0 : -1,
       })),
@@ -72,6 +75,7 @@ async function stubRenovate(page: Page) {
       contentType: 'application/json',
       body: JSON.stringify({
         sections, method: 'ai', warnings: [], opportunity_id: body.opportunity_id, target_version: body.expected_target_version,
+        ...(reviewed ? { pipeline_version: 'w14.1', generated_at: new Date().toISOString() } : {}),
       }),
     });
   });
@@ -201,6 +205,23 @@ test.describe('Résumé renovation (real browser)', () => {
     expect(thirdReceipt.current.payload.doc.sections.flatMap((section: { bullets: Array<{ base_text: string }> }) => section.bullets)
       .some((bullet: { base_text: string }) => bullet.base_text === OWN_WORDS)).toBe(true);
     expect(renovationRequests).toBe(1);
+  });
+
+  test('wording no review saw is never shown or saved; the student\'s own sentence stays', async ({ page }) => {
+    await stubRenovate(page, { reviewed: false });
+    await openRenovation(page);
+    const saved = page.waitForResponse(response => new URL(response.url()).pathname === '/rest/v1/rpc/save_renovation_cas');
+    await page.getByRole('button', { name: 'Renovate with AI' }).click();
+    const payload = (await saved).request().postDataJSON().p_payload;
+    await expect(page.getByRole('dialog').getByText('Saved', { exact: true })).toBeVisible();
+    await expect(page.getByText(OWN_WORDS, { exact: true })).toBeVisible();
+    await expect(page.getByTestId('renovation-kept-note')).toHaveCount(1);
+    await expect(page.getByTestId('renovation-kept-note')).toContainText('Kept your wording');
+    await expect(page.getByText(REWRITTEN)).toHaveCount(0);
+    expect(JSON.stringify(payload)).not.toContain(REWRITTEN);
+    // No step reaches the unreviewed wording: there is nothing to roll back from or forward to.
+    for (const rollback of await page.getByRole('button', { name: 'Roll back to the previous version of this bullet', exact: true }).all()) await expect(rollback).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Move forward to the next version of this bullet', exact: true })).toHaveCount(0);
   });
 
   test('cancelled exits retain unsaved bullet edits before an explicit switch', async ({ page }) => {
