@@ -48,17 +48,25 @@ to a request:
         --roster-dir data/openalex_rosters --out works.json
     python -m src.collectors.openalex_enrich apply-works works.json
 
-Every works path keeps a paper only when the author's own authorship on it
-places them at the school (``_paper_affiliation``). ``recheck-works`` applies
-that check to the papers verified records already hold: it re-fetches them,
-prints its credit estimate before the first request, stops at
-``--max-requests`` or when x-ratelimit-remaining drops below
-``--min-remaining``, and writes nothing unless given ``--apply``:
+Both works harvests (``works`` and ``works-roster``, through ``_usable_works``)
+keep a paper only when the author's own authorship on it places them at the
+school, or names no affiliation at all, which on a measured sample was mostly
+their own work (``_affiliation_admits``). The research-snapshot path
+(``refresh-research``) does not run this check yet.
 
+``recheck-works`` runs the check over the papers verified records already
+hold. It prints its credit estimate before the first request, stops at
+``--max-requests`` or when x-ratelimit-remaining drops below
+``--min-remaining``, and writes only a report. ``apply-recheck`` writes a
+reviewed report into the corpus and makes no request. Start from a work file
+assembled from the current main, because ``split`` rewrites each touched
+school's shard from whatever the work file holds:
+
+    python scripts/shard_corpus.py assemble --force
     python -m src.collectors.openalex_enrich recheck-works --schools uiuc \
         --max-requests 200 --report recheck-uiuc.json
-    python -m src.collectors.openalex_enrich recheck-works --schools uiuc \
-        --max-requests 200 --apply
+    python -m src.collectors.openalex_enrich apply-recheck recheck-uiuc.json
+    python scripts/shard_corpus.py split --only-shards uiuc
 """
 from __future__ import annotations
 
@@ -101,6 +109,7 @@ from ..research_context import (
     normalized_source_url,
     validate_research_snapshot,
 )
+from .atomic_json import atomic_write_json
 from .ucb_common import PROCESSED_FILE
 
 logger = logging.getLogger(__name__)
@@ -712,16 +721,38 @@ def _strongest_affiliation(verdicts) -> str:
     """One paper's verdict across its versions (a preprint and its journal
     version share a title). Evidence for the school wins; evidence against it
     beats a version that lists nothing, so an affiliation-less preprint cannot
-    outvote the journal version that names another employer."""
+    outvote the journal version that names another employer.
+
+    That last rule has a measured cost. It decided 2 papers in the 200-author
+    sample, and both were the professor's own from a previous post: a version
+    naming WPI, and one naming Princeton, each beside a copy listing nothing.
+    It caught no namesake there."""
     for verdict in ("school", "elsewhere", "unresolved", "unlisted"):
         if verdict in verdicts:
             return verdict
     return "not_an_author"
 
 
-def _work_title_key(work: dict) -> str:
-    """The key a stored title was written under (see ``_usable_works``)."""
-    return _title_key(re.sub(r"\s+", " ", str(work.get("display_name") or "")).strip()[:_TITLE_CAP])
+def _version_key(title: str) -> str:
+    """The key that groups one paper's versions: a preprint and its journal
+    version share a title up to case, punctuation and accents.
+
+    ``_title_key`` keeps only a-z and 0-9, which is fine for deduplicating
+    English titles and wrong for grouping. Every Cyrillic, Korean or Chinese
+    title keys to "" there (or to the Latin acronym inside it, "ct"), so all
+    of one author's such papers fell into one group with one verdict: a single
+    school-placed paper vouched for a namesake's, and a single paper from
+    elsewhere took the professor's own with it. Letters of every script are
+    kept here; the title is capped first, exactly as ``_usable_works`` stores
+    it, so a stored title and the work it came from key alike.
+    """
+    folded = unicodedata.normalize("NFKD", re.sub(r"\s+", " ", title).strip()[:_TITLE_CAP])
+    folded = "".join(c for c in folded if not unicodedata.combining(c)).casefold()
+    return " ".join(re.findall(r"[^\W_]+", folded))
+
+
+def _work_version_key(work: dict) -> str:
+    return _version_key(str(work.get("display_name") or ""))
 
 
 def _affiliation_admits(verdict: str) -> bool:
@@ -736,11 +767,17 @@ def _affiliation_admits(verdict: str) -> bool:
     "Author response" document. Dropping them would have cost one paper in
     nine to remove that one.
 
-    ``unresolved`` is not admitted. A stated affiliation that resolves to no
-    institution is not evidence of the school, and the two clearest namesakes
-    in that sample were exactly this: "Application Engineering GE HealthCare"
-    on Hua Li's diffusion-MRI paper, and a Qingdao institute on a Syracuse
-    professor's radar paper. 7 papers had one.
+    ``unresolved`` is not admitted, and that costs the professor's own papers
+    too. 7 sampled papers had only an unresolved string. 2 were namesakes':
+    "Application Engineering GE HealthCare" on Hua Li's diffusion-MRI paper,
+    the paper that opened a student's cold email, and a Qingdao institute on a
+    Syracuse professor's radar paper. 4 were the professor's own: an
+    editorial signed "Associate Professor of Finance", a clipped "Divisions of
+    Pediatric Neurosurgery and", a previous veterinary practice, and the
+    school itself misspelled ("The Pennsylvania University, University
+    Park"). 1 was unclear. A stated affiliation that resolves to nothing is
+    not evidence of the school; matching the school's name inside the string
+    would have recovered none of the 4, the misspelled one included.
     """
     return verdict in ("school", "unlisted")
 
@@ -753,9 +790,10 @@ def _usable_works(raw: list[dict], dept: str = "",
     only, title capped at ``_TITLE_CAP`` chars (corpus lives in a 2GB backend).
 
     A paper is kept only when this author's own authorship on it places them
-    at the record's school (``_paper_affiliation``, ``_affiliation_admits``).
-    That is the per-paper identity check; the field gate below is a coarser
-    proxy that predates it.
+    at the record's school, or lists no affiliation at all
+    (``_paper_affiliation``; ``_affiliation_admits`` says why the second is
+    admitted). That is the per-paper identity check; the field gate below is a
+    coarser proxy that predates it.
 
     OpenAlex author-name disambiguation conflates distinct same-name people
     under one author id, and the recency sort surfaces the mis-attributed
@@ -775,11 +813,11 @@ def _usable_works(raw: list[dict], dept: str = "",
     aid = str(author_id or "").rsplit("/", 1)[-1]
     verdicts: dict[str, set[str]] = {}
     for w in raw:
-        verdicts.setdefault(_work_title_key(w), set()).add(_paper_affiliation(w, aid, inst_id))
+        verdicts.setdefault(_work_version_key(w), set()).add(_paper_affiliation(w, aid, inst_id))
     out: list[dict] = []
     seen: set[str] = set()
     for w in raw:
-        if not _affiliation_admits(_strongest_affiliation(verdicts[_work_title_key(w)])):
+        if not _affiliation_admits(_strongest_affiliation(verdicts[_work_version_key(w)])):
             continue
         if allowed is not None:
             field = ((w.get("primary_topic") or {}).get("field") or {}).get("display_name", "")
@@ -2439,11 +2477,17 @@ def _apply_research_cli(argv: list[str]) -> int:
 # stays put (tests on in-flight branches pin it), which is why this is an
 # explicit command over the stamped population rather than a gate bump that
 # would withdraw every record's trust first.
+#
+# Judging and writing are two commands, as refresh-research and apply-research
+# are. recheck-works spends the credits and writes its outcomes to a report,
+# never to the corpus; apply-recheck writes a reviewed report and makes no
+# request. What lands is then exactly what was reviewed, and the credits are
+# spent once, not again on a second fetch that could answer differently.
 
 _RECHECK_SELECT = "id,display_name,publication_year,primary_topic,authorships"
 _RECHECK_PAGE_SIZE = 200
-# Requests one batch of _WORKS_BATCH authors may spend finding its stored
-# papers before the rest are reported as not found.
+# Requests one batch of authors may spend finding its stored papers before the
+# rest are reported as not found.
 _RECHECK_BATCH_PAGES = 6
 _RECHECK_MIN_REMAINING = 100
 
@@ -2478,14 +2522,16 @@ class _RecheckBudget:
             self.stopped = "rate_limited"
 
 
-def _recheck_batch(wanted: dict[str, set[str]], *, read, budget: _RecheckBudget) -> dict[str, dict]:
+def _recheck_batch(wanted: dict[str, set[str]], *, read, budget: _RecheckBudget,
+                   page_size: int = _RECHECK_PAGE_SIZE) -> dict[str, dict]:
     """Find each author's stored papers among the works OpenAlex lists for them.
 
-    ``wanted`` maps an author id to the title keys its records hold. Per
-    author, returns the works routed to them and how the search ended:
-    ``located`` (every title found), ``exhausted`` (every work listed for them
-    was read and a title is still missing), ``page_cap`` (stopped looking),
-    ``failed`` (a request failed) or ``not_run`` (the budget stopped first).
+    ``wanted`` maps an author id to the version keys of the titles its records
+    hold. Per author, returns the works routed to them and how the search
+    ended: ``located`` (every title found), ``exhausted`` (every work listed
+    for them was read and a title is still missing), ``page_cap`` (stopped
+    looking), ``failed`` (a request failed) or ``not_run`` (the budget stopped
+    first).
 
     Rounds work as in ``works_for_authors``: authors whose titles are all found
     leave the filter and page 1 is asked again, so a prolific author stops
@@ -2509,7 +2555,7 @@ def _recheck_batch(wanted: dict[str, set[str]], *, read, budget: _RecheckBudget)
         data, error, telemetry = read({
             "filter": "author.id:" + "|".join(sorted(pending)),
             "sort": "publication_date:desc",
-            "per_page": _RECHECK_PAGE_SIZE,
+            "per_page": page_size,
             "page": page,
             "select": _RECHECK_SELECT,
         }, url=_WORKS_API)
@@ -2524,7 +2570,7 @@ def _recheck_batch(wanted: dict[str, set[str]], *, read, budget: _RecheckBudget)
                 out[aid].update(status="failed", reason=error or "invalid_response")
             break
         for w in results:
-            key = _work_title_key(w)
+            key = _work_version_key(w)
             for a in w.get("authorships") or []:
                 if not isinstance(a, dict):
                     continue
@@ -2532,7 +2578,7 @@ def _recheck_batch(wanted: dict[str, set[str]], *, read, budget: _RecheckBudget)
                 if aid in pending:
                     out[aid]["works"].append(w)
                     unfound[aid].discard(key)
-        if page * _RECHECK_PAGE_SIZE >= count:
+        if page * page_size >= count:
             for aid in pending:
                 out[aid]["status"] = "exhausted" if unfound[aid] else "located"
             break
@@ -2568,10 +2614,10 @@ def _recheck_record(record: dict, found: dict) -> dict:
         return outcome
     versions: dict[str, list[dict]] = {}
     for w in found["works"]:
-        versions.setdefault(_work_title_key(w), []).append(w)
+        versions.setdefault(_work_version_key(w), []).append(w)
     kept: list[dict] = []
     for paper in before:
-        candidates = versions.get(_title_key(str(paper.get("title") or "")))
+        candidates = versions.get(_version_key(str(paper.get("title") or "")))
         if not candidates:
             outcome["unfound"].append(paper)
             kept.append(paper)
@@ -2619,7 +2665,8 @@ def recheck_targets(opps: list[dict], *, schools: list[str] | None = None) -> li
 
 
 def recheck_works(targets: list[dict], *, max_requests: int,
-                  min_remaining: int = _RECHECK_MIN_REMAINING, read=None) -> dict:
+                  min_remaining: int = _RECHECK_MIN_REMAINING, read=None,
+                  batch_size: int = _WORKS_BATCH, page_size: int = _RECHECK_PAGE_SIZE) -> dict:
     """Judge every stored paper of ``targets`` against its re-fetched authorship.
 
     Pure with respect to the records: returns ``{"outcomes": {id: outcome},
@@ -2631,13 +2678,13 @@ def recheck_works(targets: list[dict], *, max_requests: int,
     for record in targets:
         aid = str(record["metadata"]["publication_author_id"]).rsplit("/", 1)[-1]
         wanted.setdefault(aid, set()).update(
-            _title_key(str(w.get("title") or "")) for w in record["metadata"]["recent_works"])
+            _version_key(str(w.get("title") or "")) for w in record["metadata"]["recent_works"])
     budget = _RecheckBudget(max_requests, min_remaining)
     found: dict[str, dict] = {}
     authors = list(wanted)
-    for i in range(0, len(authors), _WORKS_BATCH):
-        batch = {aid: wanted[aid] for aid in authors[i:i + _WORKS_BATCH]}
-        found.update(_recheck_batch(batch, read=read, budget=budget))
+    for i in range(0, len(authors), batch_size):
+        batch = {aid: wanted[aid] for aid in authors[i:i + batch_size]}
+        found.update(_recheck_batch(batch, read=read, budget=budget, page_size=page_size))
     outcomes = {}
     for record in targets:
         aid = str(record["metadata"]["publication_author_id"]).rsplit("/", 1)[-1]
@@ -2647,19 +2694,27 @@ def recheck_works(targets: list[dict], *, max_requests: int,
             "stopped": budget.stopped}
 
 
-def apply_recheck(opps: list[dict], outcomes: dict[str, dict]) -> int:
-    """Write each judged record's surviving papers; returns records changed.
+def apply_recheck(opps: list[dict], outcomes: dict[str, dict]) -> dict[str, list[str]]:
+    """Write each judged record's surviving papers.
 
-    A record whose papers changed since they were judged is left alone. One the
-    run could not judge carries ``after == before`` and is left alone too.
+    Returns the ids it ``changed`` (``retracted`` among them: left with nothing
+    to cite) and the ids it left alone as ``stale``: the outcome would change
+    the record, but the record no longer holds the papers that were judged, or
+    is gone. An outcome the run could not judge carries ``after == before``
+    and changes nothing.
     """
-    n = 0
+    result: dict[str, list[str]] = {"changed": [], "retracted": [], "stale": []}
+    wanted = {rid for rid, out in outcomes.items() if out["after"] != out["before"]}
+    present: set[str] = set()
     for record in opps:
-        out = outcomes.get(record.get("id"))
-        if out is None:
+        rid = record.get("id")
+        if rid not in wanted:
             continue
+        present.add(rid)
+        out = outcomes[rid]
         md = record.get("metadata") or {}
-        if (md.get("recent_works") or []) != out["before"] or out["after"] == out["before"]:
+        if (md.get("recent_works") or []) != out["before"]:
+            result["stale"].append(rid)
             continue
         if out["after"]:
             md["recent_works"] = out["after"]
@@ -2670,20 +2725,49 @@ def apply_recheck(opps: list[dict], outcomes: dict[str, dict]) -> int:
             md.pop("publication_attribution_status", None)
             md.pop("publication_author_id", None)
             md["works_gate"] = _WORKS_GATE
-        n += 1
-    return n
+            result["retracted"].append(rid)
+        result["changed"].append(rid)
+    result["stale"].extend(sorted(wanted - present))
+    return result
+
+
+def _recheck_report_outcomes(report) -> dict[str, dict]:
+    """A recheck-works report's outcomes by record id, checked as input.
+
+    apply-recheck writes what the report says, and a report is a file a person
+    reviews and may edit: put a paper back into ``after`` to keep it, or delete
+    a record's outcome to leave the record alone. It may never add a paper or
+    reorder them, so an ``after`` that is not ``before`` with papers taken out
+    refuses the whole report, as does anything that is not a report.
+    """
+    outcomes = report.get("outcomes") if isinstance(report, dict) else None
+    if not isinstance(outcomes, list):
+        raise ValueError("not a recheck-works report")
+    by_id: dict[str, dict] = {}
+    for out in outcomes:
+        if not (isinstance(out, dict) and isinstance(out.get("id"), str)
+                and isinstance(out.get("before"), list) and isinstance(out.get("after"), list)):
+            raise ValueError("an outcome lacks its id, before or after")
+        if out["id"] in by_id:
+            raise ValueError(f"two outcomes for {out['id']}")
+        remaining = iter(out["before"])
+        if not all(any(paper == held for held in remaining) for paper in out["after"]):
+            raise ValueError(f"the outcome for {out['id']} adds or reorders a paper")
+        by_id[out["id"]] = out
+    return by_id
 
 
 def _recheck_cli(argv: list[str]) -> int:
-    """Dry run unless --apply; the estimate is printed before any request."""
+    """Judge and report. The estimate is printed before any request, and the
+    corpus is never written: ``apply-recheck`` writes a reviewed report."""
     import argparse
-    import tempfile
     from pathlib import Path
 
     parser = argparse.ArgumentParser(
         prog="openalex_enrich recheck-works",
-        description="Re-fetch the papers of records stamped verified_author_id and "
-                    "remove the ones whose authorship does not list the school.")
+        description="Re-fetch the papers of records stamped verified_author_id and report "
+                    "the ones whose authorship does not place the author at the school. "
+                    "Writes only the report; apply-recheck writes it into the corpus.")
     parser.add_argument("--input", default=str(PROCESSED_FILE))
     parser.add_argument("--schools")
     parser.add_argument("--ids-file", help="only these record ids, one per line")
@@ -2692,15 +2776,25 @@ def _recheck_cli(argv: list[str]) -> int:
                         help="hard ceiling on OpenAlex requests (1 credit each)")
     parser.add_argument("--min-remaining", type=int, default=_RECHECK_MIN_REMAINING,
                         help="stop when x-ratelimit-remaining falls below this")
-    parser.add_argument("--report", help="write every record's outcome here (new file)")
-    mode = parser.add_mutually_exclusive_group()
-    mode.add_argument("--dry-run", action="store_true", help="the default: write nothing")
-    mode.add_argument("--apply", action="store_true", help="write the corpus")
+    parser.add_argument("--batch-size", type=int, default=_WORKS_BATCH,
+                        help=f"authors per request, 1 to {_WORKS_BATCH}")
+    parser.add_argument("--page-size", type=int, default=_RECHECK_PAGE_SIZE,
+                        help=f"works per page, 1 to {_RECHECK_PAGE_SIZE}. A page over the "
+                             "transport's 8 MiB cap fails as invalid_response and its authors "
+                             "are reported as not run; rerun those ids with smaller sizes")
+    parser.add_argument("--report", required=True,
+                        help="new file for every record's outcome; apply-recheck reads it")
     args = parser.parse_args(argv)
     if args.max_requests < 0:
         parser.error("--max-requests must be 0 or more")
-    if args.report and Path(args.report).exists():
-        parser.error("--report already exists; choose a new file")
+    if not 1 <= args.batch_size <= _WORKS_BATCH:
+        parser.error(f"--batch-size must be 1 to {_WORKS_BATCH}")
+    if not 1 <= args.page_size <= _RECHECK_PAGE_SIZE:
+        parser.error(f"--page-size must be 1 to {_RECHECK_PAGE_SIZE}")
+    report = Path(args.report)
+    # Checked before a credit is spent: the outcomes of a paid run land here.
+    if report.exists() or not report.parent.is_dir():
+        parser.error("--report must name a new file in an existing directory")
 
     source = Path(args.input)
     records = json.loads(source.read_text(encoding="utf-8"))
@@ -2716,15 +2810,16 @@ def _recheck_cli(argv: list[str]) -> int:
         targets = targets[:args.limit]
     n_authors = len({str(t["metadata"]["publication_author_id"]).rsplit("/", 1)[-1]
                      for t in targets})
-    batches = -(-n_authors // _WORKS_BATCH)
+    batches = -(-n_authors // args.batch_size)
     print(f"recheck-works: {len(targets)} records, {n_authors} authors, {batches} "
-          f"batch(es) of up to {_WORKS_BATCH}. Estimated cost: {batches} to "
+          f"batch(es) of up to {args.batch_size}. Estimated cost: {batches} to "
           f"{batches * _RECHECK_BATCH_PAGES} requests at 1 credit each; this run "
           f"stops at {args.max_requests} or when x-ratelimit-remaining < "
           f"{args.min_remaining}.", flush=True)
 
     result = recheck_works(targets, max_requests=args.max_requests,
-                           min_remaining=args.min_remaining)
+                           min_remaining=args.min_remaining,
+                           batch_size=args.batch_size, page_size=args.page_size)
     outcomes = result["outcomes"]
     by_status = collections.Counter(o["status"] for o in outcomes.values())
     verdicts = collections.Counter(p["verdict"] for o in outcomes.values() for p in o["removed"])
@@ -2744,25 +2839,49 @@ def _recheck_cli(argv: list[str]) -> int:
     for o in outcomes.values():
         if o["status"] == "not_run":
             print(f"  not run: {o['id']} ({o['reason'] or o['search']})")
-    if args.report:
-        with Path(args.report).open("x", encoding="utf-8") as f:
-            json.dump({**result, "outcomes": list(outcomes.values())}, f,
-                      ensure_ascii=False, indent=2)
-        print(f"report -> {args.report}")
-    if not args.apply:
-        print("dry run: corpus not written")
-        return 0
-    changed = apply_recheck(records, outcomes)
-    if not changed:
+    with report.open("x", encoding="utf-8") as f:
+        json.dump({**result, "outcomes": list(outcomes.values())}, f, ensure_ascii=False, indent=2)
+    print(f"report -> {report}; corpus not written. Review it, then write exactly these "
+          f"outcomes, with no further request: python -m src.collectors.openalex_enrich "
+          f"apply-recheck {report} --input {source}")
+    return 0
+
+
+def _apply_recheck_cli(argv: list[str]) -> int:
+    """Write a reviewed recheck-works report into the corpus. No request."""
+    import argparse
+    from pathlib import Path
+
+    parser = argparse.ArgumentParser(
+        prog="openalex_enrich apply-recheck",
+        description="Remove the papers a reviewed recheck-works report removes. Run it on "
+                    "a work file just assembled from the current main "
+                    "(scripts/shard_corpus.py assemble --force): split rewrites each "
+                    "touched school's shard from whatever the work file holds.")
+    parser.add_argument("report")
+    parser.add_argument("--input", default=str(PROCESSED_FILE))
+    args = parser.parse_args(argv)
+    try:
+        outcomes = _recheck_report_outcomes(json.loads(Path(args.report).read_text(encoding="utf-8")))
+    except (OSError, ValueError) as error:
+        parser.error(f"{args.report}: {error}")
+
+    source = Path(args.input)
+    records = json.loads(source.read_text(encoding="utf-8"))
+    result = apply_recheck(records, outcomes)
+    stale = result["stale"]
+    if stale:
+        print(f"{len(stale)} record(s) changed or gone since the report was written, left alone: "
+              + ", ".join(stale[:20]) + (f" and {len(stale) - 20} more" if len(stale) > 20 else ""))
+    if not result["changed"]:
         print("applied: no record changed; corpus not written")
         return 0
-    with tempfile.NamedTemporaryFile("w", dir=source.parent, prefix=".recheck-",
-                                     delete=False, encoding="utf-8") as f:
-        json.dump(records, f, ensure_ascii=False, indent=2)
-        temp = f.name
-    os.replace(temp, source)
-    print(f"applied: {changed} record(s) changed -> {source}; "
-          f"`python scripts/shard_corpus.py split` writes the shards")
+    atomic_write_json(source, records, indent=None, separators=(",", ":"))
+    changed = set(result["changed"])
+    schools = sorted({r["school"] for r in records if r.get("id") in changed})
+    print(f"applied: {len(changed)} record(s) changed, {len(result['retracted'])} of them left "
+          f"with no paper and retracted -> {source}")
+    print(f"publish: python scripts/shard_corpus.py split --only-shards {','.join(schools)}")
     return 0
 
 
@@ -2770,12 +2889,14 @@ def _cli(argv: list[str]) -> int:
     _load_dotenv()
     if not argv or argv[0] not in ("harvest", "roster", "apply", "works",
                                    "works-roster", "apply-works", "refresh-research", "apply-research",
-                                   "recheck-works"):
+                                   "recheck-works", "apply-recheck"):
         print(__doc__)
         return 2
     mode, rest = argv[0], argv[1:]
     if mode == "recheck-works":
         return _recheck_cli(rest)
+    if mode == "apply-recheck":
+        return _apply_recheck_cli(rest)
     if mode == "refresh-research":
         return _research_cli(rest)
     if mode == "apply-research":

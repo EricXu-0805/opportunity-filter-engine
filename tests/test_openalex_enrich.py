@@ -6,6 +6,9 @@ field-consistency gate (wrong-person rejection), topic cleaning, and updates-onl
 apply.
 """
 import json
+import stat
+
+import pytest
 
 from src.collectors import openalex_enrich as oa
 from src.publication_trust import verified_recent_works, works_are_verified
@@ -1804,6 +1807,15 @@ def test_the_school_is_read_off_this_author_s_entry_not_the_paper_s():
     assert oa._usable_works([work], "", author_id="A9", inst_id=_SCHOOL) == []
 
 
+def test_an_author_id_is_matched_whole_not_as_a_prefix():
+    # A12 at the school is somebody else; A1's own entry names GE.
+    work = _work("A Shared Paper", 2026, author="A12")
+    work["authorships"].append(_authorship("A1", (_GE,)))
+    assert oa._paper_affiliation(work, "A1", _SCHOOL) == "elsewhere"
+    assert oa._paper_affiliation(_work("Their Paper", 2026, author="A12"), "A1",
+                                 _SCHOOL) == "not_an_author"
+
+
 def test_lineage_runs_down_from_the_school_never_up_from_it():
     # OpenAlex files "University of Illinois System" as its own institution with
     # no relation to the Urbana campus, and campuses list themselves only. A
@@ -1838,13 +1850,33 @@ def test_a_preprint_listing_nothing_cannot_outvote_its_journal_version():
     # the affiliation-less preprint ahead of it in date order is not evidence
     # enough to cite the paper; a version AT the school still wins.
     preprint = _work("Vanadium Redox Flow Batteries", 2026, institutions=())
-    journal = _work("Vanadium Redox Flow Batteries", 2025, institutions=(_GE,))
+    journal = _work("Vanadium redox-flow batteries.", 2025, institutions=(_GE,))
     assert oa._usable_works([preprint, journal], "", author_id="A1", inst_id=_SCHOOL) == []
 
     ours = _work("Vanadium Redox Flow Batteries", 2025)
     assert oa._usable_works([preprint, journal, ours], "", author_id="A1",
                             inst_id=_SCHOOL) == [
         {"title": "Vanadium Redox Flow Batteries", "year": 2026}]
+
+
+def test_titles_in_other_scripts_are_judged_one_paper_at_a_time():
+    # _title_key keeps only a-z and 0-9, so each of these pairs keyed alike
+    # ("" and "ct") and was judged as one paper: the school-placed one let the
+    # namesake's through, and the GE one took the professor's chapter with it.
+    namesake = _work("우울증 간호사의 직무 스트레스", 2026, institutions=(_GE,))
+    ours = _work("Структура и динамика сетей", 2025)
+    assert oa._title_key(namesake["display_name"]) == oa._title_key(ours["display_name"]) == ""
+    assert oa._usable_works([namesake, ours], "", author_id="A1", inst_id=_SCHOOL) == [
+        {"title": "Структура и динамика сетей", "year": 2025}]
+
+    chapter = _work("基于CT的肺结节检测", 2026, institutions=())
+    other = _work("CT图像分割方法", 2025, institutions=(_GE,))
+    assert oa._title_key(chapter["display_name"]) == oa._title_key(other["display_name"]) == "ct"
+    assert oa._usable_works([chapter, other], "", author_id="A1", inst_id=_SCHOOL) == [
+        {"title": "基于CT的肺结节检测", "year": 2026}]
+    # Versions of one paper still group across case, punctuation and accents.
+    assert oa._version_key("Évaluation  des Réseaux: Étude") == oa._version_key(
+        "evaluation des reseaux etude")
 
 
 def test_the_roster_harvest_cites_only_the_school_s_papers(monkeypatch, tmp_path):
@@ -1916,7 +1948,8 @@ def test_recheck_removes_only_the_papers_that_fail(monkeypatch):
     assert calls[0]["filter"] == "author.id:A1"
     assert "authorships" in calls[0]["select"]
 
-    assert oa.apply_recheck([rec], result["outcomes"]) == 1
+    assert oa.apply_recheck([rec], result["outcomes"]) == {
+        "changed": ["f1"], "retracted": [], "stale": []}
     # Removed, never added or reordered, and the record stays verified.
     assert [w["title"] for w in rec["metadata"]["recent_works"]] == ["Ours", "A Chapter"]
     assert works_are_verified(rec)
@@ -1927,7 +1960,8 @@ def test_a_record_left_with_nothing_is_retracted(monkeypatch):
     rec = _held("f1", "A1", ["A Namesake's"])
     read = _reader([_page([_work("A Namesake's", 2025, institutions=(_GE,))])], [])
     result = oa.recheck_works([rec], max_requests=5, read=read)
-    assert oa.apply_recheck([rec], result["outcomes"]) == 1
+    assert oa.apply_recheck([rec], result["outcomes"]) == {
+        "changed": ["f1"], "retracted": ["f1"], "stale": []}
     md = rec["metadata"]
     assert "recent_works" not in md and "publication_author_id" not in md
     assert not works_are_verified(rec)
@@ -1946,9 +1980,55 @@ def test_a_paper_the_recheck_cannot_find_keeps_its_place(monkeypatch):
     assert out["after"] == out["before"]
 
 
+def test_recheck_judges_a_title_across_all_its_versions(monkeypatch):
+    # 27 of the sampled stored papers have versions that disagree.
+    monkeypatch.setattr(oa, "SCHOOL_INST", {"uiuc": _SCHOOL})
+    rec = _held("f1", "A1", ["Kept By Its Preprint", "Removed By Its Journal Version"])
+    read = _reader([_page([
+        _work("Kept By Its Preprint", 2026, institutions=(_GE,)),
+        _work("Kept By Its Preprint", 2025),
+        _work("Removed By Its Journal Version", 2026, institutions=(_GE,)),
+        _work("Removed By Its Journal Version", 2025, institutions=()),
+    ])], [])
+    out = oa.recheck_works([rec], max_requests=5, read=read)["outcomes"]["f1"]
+    assert [p["title"] for p in out["after"]] == ["Kept By Its Preprint"]
+    assert [(p["title"], p["verdict"]) for p in out["removed"]] == [
+        ("Removed By Its Journal Version", "elsewhere")]
+
+
+def test_recheck_judges_each_record_against_its_own_school(monkeypatch):
+    monkeypatch.setattr(oa, "SCHOOL_INST", {"uiuc": _SCHOOL, "jhu": "I2"})
+    illinois = _held("f1", "A1", ["Written At Illinois", "Written At Hopkins"])
+    hopkins = _held("f2", "A2", ["Also Written At Hopkins", "Also Written At Illinois"], school="jhu")
+    read = _reader([_page([
+        _work("Written At Illinois", 2025), _work("Written At Hopkins", 2025, institutions=("I2",)),
+        _work("Also Written At Hopkins", 2025, author="A2", institutions=("I2",)),
+        _work("Also Written At Illinois", 2025, author="A2"),
+    ])], [])
+    outcomes = oa.recheck_works([illinois, hopkins], max_requests=5, read=read)["outcomes"]
+    assert [p["title"] for p in outcomes["f1"]["removed"]] == ["Written At Hopkins"]
+    assert [p["title"] for p in outcomes["f2"]["removed"]] == ["Also Written At Illinois"]
+
+
+def test_recheck_judges_each_non_latin_title_on_its_own(monkeypatch):
+    # Both titles key to "" under _title_key, which made one school-placed
+    # version vouch for both stored papers.
+    monkeypatch.setattr(oa, "SCHOOL_INST", {"uiuc": _SCHOOL})
+    rec = _held("f1", "A1", ["우울증 간호사의 직무 스트레스", "Структура и динамика сетей"])
+    calls = []
+    read = _reader([_page([
+        _work("우울증 간호사의 직무 스트레스", 2025, institutions=(_GE,)),
+        _work("Структура и динамика сетей", 2025),
+    ], count=500)], calls)
+    out = oa.recheck_works([rec], max_requests=5, read=read)["outcomes"]["f1"]
+    assert [p["title"] for p in out["removed"]] == ["우울증 간호사의 직무 스트레스"]
+    assert [p["title"] for p in out["after"]] == ["Структура и динамика сетей"]
+    # Both found on the first of three pages, so the search stops there.
+    assert len(calls) == 1 and out["search"] == "located"
+
+
 def test_recheck_rounds_narrow_the_filter_and_page_deeper_only_when_stuck(monkeypatch):
     monkeypatch.setattr(oa, "SCHOOL_INST", {"uiuc": _SCHOOL})
-    monkeypatch.setattr(oa, "_RECHECK_PAGE_SIZE", 2)
     prolific = _held("f1", "A1", ["A1 Newest"])
     quiet = _held("f2", "A2", ["A2 Paper"])
     calls = []
@@ -1961,7 +2041,7 @@ def test_recheck_rounds_narrow_the_filter_and_page_deeper_only_when_stuck(monkey
         # ...and with nobody settled by that page, the same filter one page on.
         _page([_work("A2 Paper", 2025, author="A2")], count=5),
     ], calls)
-    result = oa.recheck_works([prolific, quiet], max_requests=10, read=read)
+    result = oa.recheck_works([prolific, quiet], max_requests=10, read=read, page_size=2)
     assert [(c["filter"], c["page"]) for c in calls] == [
         ("author.id:A1|A2", 1), ("author.id:A2", 1), ("author.id:A2", 2)]
     assert {o["search"] for o in result["outcomes"].values()} == {"located"}
@@ -1969,12 +2049,11 @@ def test_recheck_rounds_narrow_the_filter_and_page_deeper_only_when_stuck(monkey
 
 def test_a_batch_that_never_finds_a_title_stops_at_its_page_cap(monkeypatch):
     monkeypatch.setattr(oa, "SCHOOL_INST", {"uiuc": _SCHOOL})
-    monkeypatch.setattr(oa, "_RECHECK_PAGE_SIZE", 1)
     monkeypatch.setattr(oa, "_RECHECK_BATCH_PAGES", 2)
     rec = _held("f1", "A1", ["Deep In The List"])
     calls = []
     read = _reader([_page([_work("Other", 2026)], count=50)] * 3, calls)
-    out = oa.recheck_works([rec], max_requests=10, read=read)["outcomes"]["f1"]
+    out = oa.recheck_works([rec], max_requests=10, read=read, page_size=1)["outcomes"]["f1"]
     assert len(calls) == 2
     assert out["search"] == "page_cap" and out["after"] == out["before"]
 
@@ -2001,6 +2080,12 @@ def test_recheck_stops_when_remaining_credits_fall_below_the_floor(monkeypatch):
     assert last["status"] == "not_run" and last["reason"] == "remaining_below_floor"
     assert all(result["outcomes"][f"f{i}"]["status"] == "checked" for i in range(25))
 
+    # Exactly at the floor is not below it.
+    calls = []
+    read = _reader([_page_for(records[:25]), _page_for(records[25:])], calls, remaining=100)
+    result = oa.recheck_works(records, max_requests=10, min_remaining=100, read=read)
+    assert len(calls) == 2 and result["stopped"] is None
+
 
 def test_recheck_stops_on_a_429_and_at_its_request_ceiling(monkeypatch):
     monkeypatch.setattr(oa, "SCHOOL_INST", {"uiuc": _SCHOOL})
@@ -2016,38 +2101,208 @@ def test_recheck_stops_on_a_429_and_at_its_request_ceiling(monkeypatch):
     assert calls == [] and result["stopped"] == "max_requests"
 
 
+def _no_request(*args, **kwargs):
+    raise AssertionError("apply-recheck asked OpenAlex")
+
+
+def _recheck_report(monkeypatch, tmp_path, records, page):
+    """Run recheck-works over ``records`` answered by ``page``; return the
+    corpus path, its bytes and the report path."""
+    corpus = tmp_path / "opportunities.json"
+    corpus.write_text(json.dumps(records))
+    report = tmp_path / "recheck.json"
+    monkeypatch.setattr(oa, "research_http_read", _reader([page], []))
+    assert oa._recheck_cli(["--input", str(corpus), "--max-requests", "5",
+                            "--report", str(report)]) == 0
+    monkeypatch.setattr(oa, "research_http_read", _no_request)
+    monkeypatch.setattr(oa.requests, "get", _no_request)
+    return corpus, corpus.read_bytes(), report
+
+
 def test_a_failed_recheck_leaves_the_record_untouched(monkeypatch, tmp_path, capsys):
     monkeypatch.setattr(oa, "SCHOOL_INST", {"uiuc": _SCHOOL})
-    corpus = tmp_path / "opportunities.json"
-    corpus.write_text(json.dumps([_held("f1", "A1", ["A Namesake's"])]))
-    before = corpus.read_bytes()
-    monkeypatch.setattr(oa, "research_http_read", _reader(["server_error"], []))
-    assert oa._recheck_cli(["--input", str(corpus), "--max-requests", "5", "--apply"]) == 0
-    assert corpus.read_bytes() == before
+    corpus, before, report = _recheck_report(
+        monkeypatch, tmp_path, [_held("f1", "A1", ["A Namesake's"])], "server_error")
     assert "not run: f1 (server_error)" in capsys.readouterr().out
+    assert oa._apply_recheck_cli([str(report), "--input", str(corpus)]) == 0
+    assert corpus.read_bytes() == before
+    assert "corpus not written" in capsys.readouterr().out
 
 
-def test_recheck_dry_run_writes_nothing(monkeypatch, tmp_path):
-    import hashlib
-
+def test_recheck_works_writes_its_report_and_never_the_corpus(monkeypatch, tmp_path, capsys):
     monkeypatch.setattr(oa, "SCHOOL_INST", {"uiuc": _SCHOOL})
     monkeypatch.setattr(oa, "_load_dotenv", lambda: None)
     corpus = tmp_path / "opportunities.json"
-    corpus.write_text(json.dumps([_held("f1", "A1", ["A Namesake's"])]))
-    digest = hashlib.sha256(corpus.read_bytes()).hexdigest()
-    page = _page([_work("A Namesake's", 2025, institutions=(_GE,))])
-    for flags in ([], ["--dry-run"]):
-        monkeypatch.setattr(oa, "research_http_read", _reader([page], []))
-        assert oa._cli(["recheck-works", "--input", str(corpus), "--max-requests", "5",
-                        *flags]) == 0
-        assert hashlib.sha256(corpus.read_bytes()).hexdigest() == digest
-        assert sorted(p.name for p in tmp_path.iterdir()) == ["opportunities.json"]
-
-    # The same run with --apply does write: the dry run was not a no-op by accident.
-    monkeypatch.setattr(oa, "research_http_read", _reader([page], []))
+    corpus.write_text(json.dumps([_held("f1", "A1", ["Ours", "A Namesake's"])]))
+    before = corpus.read_bytes()
+    report = tmp_path / "recheck.json"
+    monkeypatch.setattr(oa, "research_http_read", _reader([_page([
+        _work("Ours", 2025), _work("A Namesake's", 2025, institutions=(_GE,))])], []))
     assert oa._cli(["recheck-works", "--input", str(corpus), "--max-requests", "5",
-                    "--apply"]) == 0
-    assert json.loads(corpus.read_text())[0]["metadata"].get("recent_works") is None
+                    "--report", str(report)]) == 0
+    assert corpus.read_bytes() == before
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["opportunities.json", "recheck.json"]
+    assert [p["title"] for p in json.loads(report.read_text())["outcomes"][0]["removed"]] == [
+        "A Namesake's"]
+    assert f"apply-recheck {report} --input {corpus}" in capsys.readouterr().out
+
+
+def test_apply_recheck_writes_the_reviewed_report_without_asking_again(monkeypatch, tmp_path, capsys):
+    # The report is what was reviewed, so it is what gets written. A second
+    # fetch would cost the credits again and could answer differently: 5 of
+    # 597 sampled papers had already left the author id since harvest.
+    monkeypatch.setattr(oa, "SCHOOL_INST", {"uiuc": _SCHOOL})
+    monkeypatch.setattr(oa, "_load_dotenv", lambda: None)
+    corpus, _, report = _recheck_report(monkeypatch, tmp_path, [
+        _held("f1", "A1", ["Ours", "A Namesake's"]), _held("f2", "A2", ["Theirs"])], _page([
+            _work("Ours", 2025), _work("A Namesake's", 2025, institutions=(_GE,)),
+            _work("Theirs", 2025, author="A2")]))
+    capsys.readouterr()
+    assert oa._cli(["apply-recheck", str(report), "--input", str(corpus)]) == 0
+    held = {r["id"]: [w["title"] for w in r["metadata"]["recent_works"]]
+            for r in json.loads(corpus.read_text())}
+    assert held == {"f1": ["Ours"], "f2": ["Theirs"]}
+    assert "split --only-shards uiuc" in capsys.readouterr().out
+
+    # Applied twice, the second finds every record already changed and writes nothing.
+    written = corpus.read_bytes()
+    assert oa._cli(["apply-recheck", str(report), "--input", str(corpus)]) == 0
+    assert corpus.read_bytes() == written
+    assert "1 record(s) changed or gone since the report was written, left alone: f1" in (
+        capsys.readouterr().out)
+
+
+def test_a_report_may_only_remove_papers(monkeypatch, tmp_path):
+    monkeypatch.setattr(oa, "SCHOOL_INST", {"uiuc": _SCHOOL})
+    corpus, before, report = _recheck_report(
+        monkeypatch, tmp_path, [_held("f1", "A1", ["Ours", "Namesake One", "Namesake Two"])], _page([
+            _work("Ours", 2025), _work("Namesake One", 2025, institutions=(_GE,)),
+            _work("Namesake Two", 2025, institutions=(_GE,))]))
+    reviewed = json.loads(report.read_text())
+    ours, one, two = reviewed["outcomes"][0]["before"]
+    assert reviewed["outcomes"][0]["after"] == [ours]
+
+    def apply(after):
+        edited = tmp_path / f"edited-{len(list(tmp_path.iterdir()))}.json"
+        outcome = {**reviewed["outcomes"][0], "after": after}
+        edited.write_text(json.dumps({**reviewed, "outcomes": [outcome]}))
+        return oa._apply_recheck_cli([str(edited), "--input", str(corpus)])
+
+    # Added, reordered, or not a report at all: refused whole, nothing written.
+    for after in ([ours, {"title": "A Paper Nobody Judged", "year": 2026}], [two, ours]):
+        with pytest.raises(SystemExit):
+            apply(after)
+        assert corpus.read_bytes() == before
+    outcome = reviewed["outcomes"][0]
+    for broken in ({**reviewed, "outcomes": [outcome, {**outcome, "after": [ours, two]}]},
+                   {**reviewed, "outcomes": [{k: v for k, v in outcome.items() if k != "after"}]},
+                   [outcome]):
+        path = tmp_path / f"broken-{len(list(tmp_path.iterdir()))}.json"
+        path.write_text(json.dumps(broken))
+        with pytest.raises(SystemExit):
+            oa._apply_recheck_cli([str(path), "--input", str(corpus)])
+        assert corpus.read_bytes() == before
+    # A reviewer who disagrees with a removal keeps the paper by putting it back.
+    assert apply([ours, two]) == 0
+    assert json.loads(corpus.read_text())[0]["metadata"]["recent_works"] == [ours, two]
+
+
+def test_apply_recheck_replaces_the_corpus_atomically(monkeypatch, tmp_path):
+    monkeypatch.setattr(oa, "SCHOOL_INST", {"uiuc": _SCHOOL})
+    corpus, before, report = _recheck_report(
+        monkeypatch, tmp_path, [_held("f1", "A1", ["Ours", "A Namesake's"])], _page([
+            _work("Ours", 2025), _work("A Namesake's", 2025, institutions=(_GE,))]))
+    corpus.chmod(0o640)
+
+    def disk_full(*args, **kwargs):
+        raise OSError("No space left on device")
+
+    # A write that fails part-way leaves the corpus as it was and no temp file
+    # behind (data/processed/ is not gitignored beyond the corpus itself).
+    with monkeypatch.context() as m:
+        m.setattr(json, "dump", disk_full)
+        with pytest.raises(OSError):
+            oa._apply_recheck_cli([str(report), "--input", str(corpus)])
+    assert corpus.read_bytes() == before
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["opportunities.json", "recheck.json"]
+
+    assert oa._apply_recheck_cli([str(report), "--input", str(corpus)]) == 0
+    assert stat.S_IMODE(corpus.stat().st_mode) == 0o640
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["opportunities.json", "recheck.json"]
+
+
+def _serve_held_papers(calls, remaining=900):
+    """Answer any author filter with each listed author An's "Paper n", at the school."""
+    def read(params, *, url):
+        calls.append(params)
+        authors = params["filter"].removeprefix("author.id:").split("|")
+        return (_page([_work(f"Paper {a[1:]}", 2025, author=a) for a in authors]), None,
+                {"remaining": remaining})
+    return read
+
+
+def test_recheck_cli_selects_records_and_keeps_its_limits(monkeypatch, tmp_path, capsys):
+    monkeypatch.setattr(oa, "SCHOOL_INST", {"uiuc": _SCHOOL})
+    corpus = tmp_path / "opportunities.json"
+    corpus.write_text(json.dumps([_held(f"f{i}", f"A{i}", [f"Paper {i}"]) for i in range(6)]))
+    ids = tmp_path / "ids.txt"
+    ids.write_text("f2\nf3\n\nf4\nnot-a-record\n")
+    calls = []
+    monkeypatch.setattr(oa, "research_http_read", _serve_held_papers(calls, remaining=50))
+    report = tmp_path / "recheck.json"
+    args = ["--input", str(corpus), "--ids-file", str(ids), "--limit", "2", "--batch-size", "1",
+            "--min-remaining", "10", "--max-requests", "5", "--report", str(report)]
+    assert oa._recheck_cli(args) == 0
+    # The listed records cut to the limit, one author a request, and 50
+    # remaining is above this run's floor of 10.
+    assert [c["filter"] for c in calls] == ["author.id:A2", "author.id:A3"]
+    assert [o["id"] for o in json.loads(report.read_text())["outcomes"]] == ["f2", "f3"]
+    assert "1 listed id(s) are not verified faculty records here" in capsys.readouterr().out
+
+    # A report is never overwritten, and that is settled before a credit is spent.
+    calls.clear()
+    with pytest.raises(SystemExit):
+        oa._recheck_cli(args)
+    assert calls == []
+
+
+def test_recheck_cli_refuses_impossible_limits_before_any_request(monkeypatch, tmp_path):
+    monkeypatch.setattr(oa, "SCHOOL_INST", {"uiuc": _SCHOOL})
+    corpus = tmp_path / "opportunities.json"
+    corpus.write_text(json.dumps([_held("f1", "A1", ["Paper 1"])]))
+    calls = []
+    monkeypatch.setattr(oa, "research_http_read", _serve_held_papers(calls))
+    report = str(tmp_path / "recheck.json")
+    for bad in (["--max-requests", "-1"],
+                ["--max-requests", "5", "--page-size", "0"],
+                ["--max-requests", "5", "--page-size", str(oa._RECHECK_PAGE_SIZE + 1)],
+                ["--max-requests", "5", "--batch-size", "0"],
+                ["--max-requests", "5", "--batch-size", str(oa._WORKS_BATCH + 1)],
+                ["--max-requests", "5", "--report", ""],
+                ["--max-requests", "5", "--report", str(tmp_path / "no-such-dir" / "r.json")]):
+        with pytest.raises(SystemExit):
+            oa._recheck_cli(["--input", str(corpus), "--report", report, *bad])
+    with pytest.raises(SystemExit):  # the outcomes of a paid run always land somewhere
+        oa._recheck_cli(["--input", str(corpus), "--max-requests", "5"])
+    assert calls == []
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["opportunities.json"]
+
+
+def test_a_batch_too_large_for_one_response_can_be_rerun_smaller(monkeypatch, tmp_path, capsys):
+    # research_http_read refuses a response over 8 MiB. A work listing
+    # OpenAlex's maximum of 100 authorships took 35-142 KB in the sample, so a
+    # 200-work page of big collaborations is 7-28 MB and its 25 authors are
+    # reported as not run; fewer authors and fewer works a page get through.
+    monkeypatch.setattr(oa, "SCHOOL_INST", {"uiuc": _SCHOOL})
+    corpus = tmp_path / "opportunities.json"
+    corpus.write_text(json.dumps([_held(f"f{i}", f"A{i}", [f"Paper {i}"]) for i in range(3)]))
+    calls = []
+    monkeypatch.setattr(oa, "research_http_read", _serve_held_papers(calls))
+    assert oa._recheck_cli(["--input", str(corpus), "--max-requests", "5", "--batch-size", "2",
+                            "--page-size", "50", "--report", str(tmp_path / "recheck.json")]) == 0
+    assert [(c["filter"], c["per_page"]) for c in calls] == [
+        ("author.id:A0|A1", 50), ("author.id:A2", 50)]
+    assert "3 records, 3 authors, 2 batch(es) of up to 2" in capsys.readouterr().out
 
 
 def test_recheck_prints_its_cost_before_the_first_request(monkeypatch, tmp_path):
@@ -2060,7 +2315,8 @@ def test_recheck_prints_its_cost_before_the_first_request(monkeypatch, tmp_path)
     read = _reader([_page([])] * 2, [])
     monkeypatch.setattr(oa, "research_http_read",
                         lambda params, *, url: events.append(("request", params)) or read(params, url=url))
-    assert oa._recheck_cli(["--input", str(corpus), "--max-requests", "5"]) == 0
+    assert oa._recheck_cli(["--input", str(corpus), "--max-requests", "5",
+                            "--report", str(tmp_path / "recheck.json")]) == 0
     assert events[0][0] == "print"
     assert "26 records, 26 authors, 2 batch(es)" in events[0][1]
     assert f"2 to {2 * oa._RECHECK_BATCH_PAGES} requests" in events[0][1]
@@ -2073,7 +2329,9 @@ def test_apply_recheck_leaves_a_record_that_changed_since_it_was_judged(monkeypa
     read = _reader([_page([_work("Ours", 2025), _work("A Namesake's", 2025, institutions=(_GE,))])], [])
     outcomes = oa.recheck_works([rec], max_requests=5, read=read)["outcomes"]
     rec["metadata"]["recent_works"] = [{"title": "A Fresh Harvest", "year": 2026}]
-    assert oa.apply_recheck([rec], outcomes) == 0
+    assert oa.apply_recheck([rec], outcomes) == {"changed": [], "retracted": [], "stale": ["f1"]}
+    # A record that is gone is reported the same way, not skipped in silence.
+    assert oa.apply_recheck([], outcomes)["stale"] == ["f1"]
     assert rec["metadata"]["recent_works"] == [{"title": "A Fresh Harvest", "year": 2026}]
 
 
@@ -2085,8 +2343,9 @@ def test_recheck_targets_only_records_verified_through_an_author_id(monkeypatch)
     name_matched["metadata"]["publication_attribution_status"] = oa.ATTRIBUTION_NAME_MATCH
     snapshot = _held("f4", "A4", ["P"])
     snapshot["metadata"]["research_snapshot"] = {}
+    no_institution = _held("f5", "A5", ["P"], school="a-school-openalex-does-not-know")
     assert [o["id"] for o in oa.recheck_targets(
-        [verified, other_school, name_matched, snapshot])] == ["f1", "f2"]
+        [verified, other_school, name_matched, snapshot, no_institution])] == ["f1", "f2"]
     assert [o["id"] for o in oa.recheck_targets(
         [verified, other_school], schools=["jhu"])] == ["f2"]
 
@@ -2095,11 +2354,10 @@ def test_a_list_read_to_its_last_work_is_not_asked_for_again(monkeypatch):
     # Two works, both on the first page: the next page would be empty and
     # still cost a credit.
     monkeypatch.setattr(oa, "SCHOOL_INST", {"uiuc": _SCHOOL})
-    monkeypatch.setattr(oa, "_RECHECK_PAGE_SIZE", 2)
     rec = _held("f1", "A1", ["Not Listed Any More"])
     calls = []
     read = _reader([_page([_work("One", 2026), _work("Two", 2025)], count=2), _page([])], calls)
-    out = oa.recheck_works([rec], max_requests=5, read=read)["outcomes"]["f1"]
+    out = oa.recheck_works([rec], max_requests=5, read=read, page_size=2)["outcomes"]["f1"]
     assert len(calls) == 1 and out["search"] == "exhausted"
 
 
@@ -2108,9 +2366,11 @@ def test_a_malformed_page_is_a_failed_recheck_not_an_empty_one(monkeypatch):
     # not run rather than judged against nothing.
     monkeypatch.setattr(oa, "SCHOOL_INST", {"uiuc": _SCHOOL})
     rec = _held("f1", "A1", ["Ours"])
-    read = _reader([{"results": "not a list", "meta": {}}], [])
-    out = oa.recheck_works([rec], max_requests=5, read=read)["outcomes"]["f1"]
-    assert (out["status"], out["reason"]) == ("not_run", "invalid_response")
+    for page in ({"results": None, "meta": {"count": 1}},
+                 {"results": [_work("Ours", 2025)], "meta": {}},
+                 {"results": [_work("Ours", 2025), "not a work"], "meta": {"count": 2}}):
+        out = oa.recheck_works([rec], max_requests=5, read=_reader([page], []))["outcomes"]["f1"]
+        assert (out["status"], out["reason"]) == ("not_run", "invalid_response")
 
 
 def test_the_per_person_harvest_checks_the_record_s_own_school(monkeypatch):
