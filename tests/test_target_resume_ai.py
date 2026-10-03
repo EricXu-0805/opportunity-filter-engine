@@ -298,7 +298,22 @@ def test_the_checks_run_on_a_worker_thread(endpoint, monkeypatch):
             threading.current_thread().name) or real(*args, **kwargs))
     body = client.post(PATH, json=payload(doc)).json()
     assert body["receipts"][1]["status"] == "suggested"
-    assert len(threads) == 2 and all(name.startswith("ofe-blocking-ai") for name in threads)
+    # On the single request lane (backend.lib.blocking.run_request_work), not the provider pool.
+    assert len(threads) == 2 and all(name.startswith("ofe-request-work") for name in threads)
+
+
+def test_the_target_check_and_the_prompt_run_on_the_request_lane(endpoint, monkeypatch):
+    # Round 3 (criterion 4): at ten requests at once they ran on the event loop, one after another.
+    import threading
+
+    client, doc, _, _ = endpoint
+    threads = []
+    for name in ("authoritative_target", "target_anchors", "batch_preflight"):
+        real = getattr(route, name)
+        monkeypatch.setattr(route, name, lambda *args, real=real, **kwargs: threads.append(
+            threading.current_thread().name) or real(*args, **kwargs))
+    assert client.post(PATH, json=payload(doc)).status_code == 200
+    assert len(threads) == 3 and all(name.startswith("ofe-request-work") for name in threads)
 
 
 @pytest.mark.parametrize("late", ["parse_output", "finalize"])

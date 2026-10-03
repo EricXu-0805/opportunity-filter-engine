@@ -120,3 +120,97 @@ def test_the_plan_answer_is_parsed_on_a_thread(endpoint, monkeypatch):  # noqa: 
     monkeypatch.setattr(plan, "parse_plan_output", parse)
     plan_tests.completed(endpoint, endpoint.submit(endpoint.doc()), endpoint.doc())
     assert threads == [False]
+
+
+# ------------------------------------------------------------------ round 3: ten requests at once
+# Ten requests is one client's limit for /api/tailor* (backend/main.py RATE_LIMITS). The full-target
+# routes parsed and validated each body on the event loop, built its prompt there, and prepared the
+# draft on asyncio's default pool, where up to eight such threads asked for the GIL at once: the loop
+# stalled 0.28-0.60 s (scripts/worst_inputs_lag.py and scripts/rewrite_route_lag.py --concurrent 10).
+
+
+def _concurrent_posts(path, body, count=10):
+    import httpx
+
+    async def send():
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://probe") as client:
+            return await asyncio.gather(*(client.post(path, json=body) for _ in range(count)))
+    return asyncio.run(send())
+
+
+@pytest.mark.parametrize(("path", "extra"), [
+    ("/api/tailor/full-target/suggestions", {"selected_unit_ids": ["line-1"]}),
+    ("/api/tailor/full-target/selection-plan", {"options": {"target_pages": 1}}),
+])
+def test_ten_full_target_requests_prepare_one_at_a_time_off_the_loop(monkeypatch, path, extra):
+    import threading
+    import time
+
+    lock, state = threading.Lock(), {"running": 0, "most": 0, "loop": [], "threads": set()}
+
+    def validate(value):
+        with lock:
+            state["running"] += 1
+            state["most"] = max(state["most"], state["running"])
+        state["loop"].append(on_the_event_loop())
+        state["threads"].add(threading.current_thread().name)
+        time.sleep(0.02)
+        with lock:
+            state["running"] -= 1
+        raise InvalidTargetResume("invalid_document")
+
+    monkeypatch.setattr(route, "validate_document", validate)
+    responses = _concurrent_posts(path, {**FULL, **extra, "draft": {"kind": "full_resume"}})
+    assert [response.status_code for response in responses] == [422] * 10
+    assert state["loop"] == [False] * 10
+    assert state["most"] == 1 and all(name.startswith("ofe-request-work") for name in state["threads"])
+
+
+def test_the_body_is_parsed_off_the_loop(monkeypatch):
+    seen = []
+    real_loads = route.json.loads
+
+    class Json:
+        @staticmethod
+        def loads(body):
+            seen.append(("parse", on_the_event_loop()))
+            return real_loads(body)
+
+    def validate(value):
+        seen.append(("validate", on_the_event_loop()))
+        raise InvalidTargetResume("invalid_document")
+
+    monkeypatch.setattr(route, "json", Json)
+    monkeypatch.setattr(route, "validate_document", validate)
+    for path, extra in (("/api/tailor/full-target/suggestions", {"selected_unit_ids": ["line-1"]}),
+                        ("/api/tailor/full-target/selection-plan", {"options": {"target_pages": 1}})):
+        response = TestClient(app).post(path, json={**FULL, **extra, "draft": {"kind": "full_resume"}})
+        assert response.status_code == 422
+    assert seen == [("parse", False), ("validate", False)] * 2
+
+
+def test_the_plan_prompt_is_built_off_the_loop(endpoint, monkeypatch):  # noqa: F811
+    threads, real = [], plan.plan_preflight
+
+    def preflight(*args, **kwargs):
+        threads.append(on_the_event_loop())
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(plan, "plan_preflight", preflight)
+    plan_tests.completed(endpoint, endpoint.submit(endpoint.doc()), endpoint.doc())
+    assert threads == [False]
+
+
+def test_a_heavy_full_target_body_is_refused_before_the_lane_parses_it(monkeypatch):
+    class Json:
+        @staticmethod
+        def loads(body):
+            raise AssertionError("parsed a body over the bounds")
+
+    monkeypatch.setattr(route, "json", Json)
+    for path, extra in (("/api/tailor/full-target/suggestions", {"selected_unit_ids": ["line-1"]}),
+                        ("/api/tailor/full-target/selection-plan", {"options": {"target_pages": 1}})):
+        for junk in (HEAVY, ITEMS):
+            response = TestClient(app).post(path, json={**FULL, **extra, "draft": {"kind": "full_resume", "junk": junk}})
+            assert (response.status_code, response.json()) == (422, {"detail": {"code": "invalid_request"}})

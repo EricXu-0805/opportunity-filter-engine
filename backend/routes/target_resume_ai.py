@@ -1,16 +1,19 @@
 """Full-target suggestions: no persistence, whole-unit batches and exact receipts."""
 from __future__ import annotations
 
-import asyncio
+import email.message
+import json
 import time
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.routing import APIRoute
+from pydantic import ValidationError
 from starlette.responses import JSONResponse
 
 from backend.data_loader import load_opportunities_by_id
 from backend.lib import target_resume_plan
-from backend.lib.blocking import BlockingWorkOverloaded, BlockingWorkTimeout, run_blocking
+from backend.lib.blocking import BlockingWorkOverloaded, BlockingWorkTimeout, run_blocking, run_request_work
 from backend.lib.evidence_map import (
     CHECK_TIMEOUT_SECONDS,
     GENERATION_DEADLINE_SECONDS,
@@ -20,7 +23,7 @@ from backend.lib.evidence_map import (
 )
 from backend.lib.llm import is_configured
 from backend.lib.release_scope import release_visible_opportunity_by_id
-from backend.lib.request_body import BoundedJSONRoute
+from backend.lib.request_body import check_body_bounds
 from backend.lib.target_actionability import assert_target_actionable
 from backend.lib.target_resume_ai import (
     REVIEW_UNCHECKED,
@@ -43,8 +46,10 @@ from backend.routes.opportunities import _redact
 PRIVATE = {"Cache-Control": "private, no-store", "Pragma": "no-cache"}
 
 
-class PrivateValidationRoute(BoundedJSONRoute):
-    """A container-heavy body is refused before it is parsed (BoundedJSONRoute); every refusal stays private."""
+class PrivateValidationRoute(APIRoute):
+    """Every refusal stays private. Each route reads its raw body and parses it on the request lane
+    (_parsed), where a container- or item-heavy body is refused before it is parsed, as
+    BoundedJSONRoute refuses it on the event loop for the other writing routes."""
 
     def get_route_handler(self):
         original = super().get_route_handler()
@@ -77,13 +82,38 @@ def _validated(request, prepare):
     return doc, prepare(request, doc)
 
 
-@router.post("/tailor/full-target/suggestions")
-async def full_target_suggestions(request: FullTargetRequest):
-    started = time.monotonic()
+def _parsed(body: bytes, content_type: str | None, model):
+    """The body as FastAPI would parse and validate it for ``model``, on the request lane.
+
+    First the container and item bounds (check_body_bounds), which read the whole body: three
+    counts of a 2 MiB body take about 4 ms, and ten such requests at once made 40 ms of one
+    event-loop turn. Then, as FastAPI does with a strict content type: only an application/json (or +json) body is
+    read as JSON; anything else, an empty body included, is a validation error. Invalid JSON
+    is a validation error; a body the parser cannot hold (nested past its recursion limit) is
+    the 400 FastAPI answers.
+    """
+    check_body_bounds(body)
+    message = email.message.Message()
+    message["content-type"] = content_type or ""
+    subtype = message.get_content_subtype()
+    if not body or not content_type or message.get_content_maintype() != "application" or not (
+            subtype == "json" or subtype.endswith("+json")):
+        raise RequestValidationError([{"type": "missing", "loc": ("body",), "msg": "Field required", "input": None}])
     try:
-        doc, (units, protected, selected, processable) = await asyncio.to_thread(_validated, request, prepare_batch)
-    except (InvalidTargetResume, TypeError, KeyError, ValueError, RecursionError):
-        raise HTTPException(422, detail={"code": "invalid_full_target_request"}) from None
+        data = json.loads(body)
+    except ValueError:
+        raise RequestValidationError([{"type": "json_invalid", "loc": ("body",), "msg": "JSON decode error",
+                                       "input": {}}]) from None
+    except RecursionError:
+        raise HTTPException(status_code=400, detail="There was an error parsing the body") from None
+    try:
+        return model.model_validate(data)
+    except ValidationError as exc:
+        raise RequestValidationError(exc.errors(include_url=False, include_context=False, include_input=False)) from None
+
+
+def _current_target(doc):
+    """The release-visible opportunity the draft names, checked against the draft's target snapshot."""
     opp = release_visible_opportunity_by_id(load_opportunities_by_id(), doc["opportunity_id"])
     if opp is None:
         raise HTTPException(404, detail={"code": "target_not_found"})
@@ -94,11 +124,31 @@ async def full_target_suggestions(request: FullTargetRequest):
             raise HTTPException(409, detail={"code": "target_changed"})
     except (InvalidTargetResume, InvalidTargetContext, TypeError, KeyError, ValueError):
         raise HTTPException(409, detail={"code": "target_changed"}) from None
+    return opp
+
+
+def _prepare_suggestions(body: bytes, content_type: str | None):
+    """Everything a suggestions request does before the provider call, on the request lane:
+    parsing, validation, the target check, the anchors and the prompt."""
+    request = _parsed(body, content_type, FullTargetRequest)
+    try:
+        doc, (units, protected, selected, processable) = _validated(request, prepare_batch)
+    except (InvalidTargetResume, TypeError, KeyError, ValueError, RecursionError):
+        raise HTTPException(422, detail={"code": "invalid_full_target_request"}) from None
+    opp = _current_target(doc)
     # A faculty description's "Research areas:" counts only as the authoritative
     # record's own words; the v4 snapshot cannot tell them from keywords.
     areas = (opp.get("metadata") or {}).get("research_areas_raw")
     anchors = target_anchors(doc["target_snapshot"], research_areas=areas if isinstance(areas, str) else None)
     messages, reason = batch_preflight(doc, processable, request.locale, anchors)
+    return request, doc, units, protected, selected, processable, anchors, messages, reason
+
+
+@router.post("/tailor/full-target/suggestions")
+async def full_target_suggestions(http_request: Request):
+    started = time.monotonic()
+    request, doc, units, protected, selected, processable, anchors, messages, reason = await run_request_work(
+        _prepare_suggestions, await http_request.body(), http_request.headers.get("content-type"))
     calls = 0
     if not reason and not is_configured():
         reason = "model_unavailable"
@@ -119,11 +169,11 @@ async def full_target_suggestions(request: FullTargetRequest):
         except Exception:  # No provider or payload text is returned or logged.
             reason, calls, raw = "invalid_model_response", 1, None
         if raw:
-            # The contract and the claim locks run on a worker; past their deadline every
-            # unit stays as written, retryable.
+            # The contract and the claim locks run on the request lane; past their deadline
+            # every unit stays as written, retryable.
             try:
-                results, pending = await run_blocking(parse_output, raw, processable, anchors, request.locale,
-                                                      timeout_seconds=CHECK_TIMEOUT_SECONDS)
+                results, pending = await run_request_work(parse_output, raw, processable, anchors, request.locale,
+                                                          timeout_seconds=CHECK_TIMEOUT_SECONDS)
             except BlockingWorkTimeout:
                 results, pending = [receipt(unit, REVIEW_UNCHECKED) for unit in processable], []
             if pending:
@@ -131,8 +181,8 @@ async def full_target_suggestions(request: FullTargetRequest):
                 calls += review_window(started) is not None
                 verdicts = await review_rewrites(review_pairs(pending), started)
                 try:
-                    results += await run_blocking(finalize, pending, verdicts, request.locale,
-                                                  timeout_seconds=CHECK_TIMEOUT_SECONDS)
+                    results += await run_request_work(finalize, pending, verdicts, request.locale,
+                                                      timeout_seconds=CHECK_TIMEOUT_SECONDS)
                 except BlockingWorkTimeout:
                     results += [receipt(item.unit, REVIEW_UNCHECKED) for item in pending]
         else:
@@ -142,23 +192,22 @@ async def full_target_suggestions(request: FullTargetRequest):
     return response_envelope(request, doc, units, protected, receipts, calls)
 
 
-@router.post("/tailor/full-target/selection-plan")
-async def full_target_selection_plan(request: FullTargetPlanRequest):
+def _prepare_plan(body: bytes, content_type: str | None):
+    """Everything a selection-plan request does before the provider call, on the request lane."""
+    request = _parsed(body, content_type, FullTargetPlanRequest)
     try:
-        doc, (blocks, manifest, scope) = await asyncio.to_thread(_validated, request, target_resume_plan.prepare_plan)
+        doc, (blocks, manifest, scope) = _validated(request, target_resume_plan.prepare_plan)
     except (InvalidTargetResume, TypeError, KeyError, ValueError, RecursionError):
         raise HTTPException(422, detail={"code": "invalid_full_target_plan_request"}) from None
-    opp = release_visible_opportunity_by_id(load_opportunities_by_id(), doc["opportunity_id"])
-    if opp is None:
-        raise HTTPException(404, detail={"code": "target_not_found"})
-    assert_target_actionable(opp)
-    try:
-        current = authoritative_target(opp)
-        if fingerprint(current) != doc["base"]["target_signature"] or canonical(current) != canonical(doc["target_snapshot"]):
-            raise HTTPException(409, detail={"code": "target_changed"})
-    except (InvalidTargetResume, InvalidTargetContext, TypeError, KeyError, ValueError):
-        raise HTTPException(409, detail={"code": "target_changed"}) from None
+    _current_target(doc)
     messages, reason = target_resume_plan.plan_preflight(doc, blocks, scope, request.options.model_dump(), request.locale)
+    return request, doc, blocks, manifest, scope, messages, reason
+
+
+@router.post("/tailor/full-target/selection-plan")
+async def full_target_selection_plan(http_request: Request):
+    request, doc, blocks, manifest, scope, messages, reason = await run_request_work(
+        _prepare_plan, await http_request.body(), http_request.headers.get("content-type"))
     calls, items = 0, []
     if not reason and not is_configured():
         reason = "model_unavailable"
@@ -172,9 +221,9 @@ async def full_target_selection_plan(request: FullTargetPlanRequest):
         except Exception:  # Provider/payload text must not enter responses/logs.
             raw, reason, calls = None, "invalid_model_response", 1
         if raw:
-            # A plan answer quotes source text; anchoring each quote runs on a thread.
-            items, reason = await asyncio.to_thread(target_resume_plan.parse_plan_output, raw, blocks,
-                                                    doc["target_snapshot"], request.locale)
+            # A plan answer quotes source text; anchoring each quote runs on the request lane.
+            items, reason = await run_request_work(target_resume_plan.parse_plan_output, raw, blocks,
+                                                   doc["target_snapshot"], request.locale)
         elif not reason:
             reason = "model_unavailable"
     return target_resume_plan.plan_response(request, doc, manifest, scope, items, reason, calls)

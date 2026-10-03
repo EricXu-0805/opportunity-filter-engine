@@ -33,13 +33,21 @@ MAX_JSON_CONTAINERS = 100_000
 MAX_JSON_SEPARATORS = 50_000
 
 
-async def refuse_container_heavy_body(request: Request) -> None:
+def check_body_bounds(body: bytes) -> None:
     """Raise the RequestValidationError each route already answers when the body holds too many containers
     or too many items (commas)."""
-    body = await request.body()
     if body.count(b"[") + body.count(b"{") > MAX_JSON_CONTAINERS or body.count(b",") > MAX_JSON_SEPARATORS:
         raise RequestValidationError([{"type": "too_long", "loc": ("body",), "msg": "Request input is invalid.",
                                        "input": None}])
+
+
+async def refuse_container_heavy_body(request: Request) -> None:
+    """check_body_bounds on the request's body, on the event loop, before FastAPI parses it.
+
+    The three counts read the whole body: about 4 ms for 2 MiB. The full-target routes, whose
+    bodies reach 2 MiB, run them on their request lane instead (routes/target_resume_ai.py).
+    """
+    check_body_bounds(await request.body())
 
 
 class BoundedJSONRoute(APIRoute):

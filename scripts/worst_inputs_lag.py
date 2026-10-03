@@ -21,7 +21,11 @@ Round 2 added --concurrent (identical requests sent at once: four 2 MiB bodies o
 loop 0.30-0.39 s at --concurrent 4 on 99241b5) and the bodies at the comma bound
 (backend.lib.request_body.MAX_JSON_SEPARATORS), the most items a body may now hold.
 
-Run from the repository root:  python scripts/worst_inputs_lag.py [--threshold 0.25] [--only TEXT] [--concurrent N]
+Round 3 moved the full-target and selection-plan parsing, validation and prompt building onto one
+request lane (backend.lib.blocking.run_request_work); --concurrent takes a list (1,4,10) and prints
+the worst stall per route at each level.
+
+Run from the repository root:  python scripts/worst_inputs_lag.py [--threshold 0.25] [--only TEXT] [--concurrent 1,4,10]
 """
 from __future__ import annotations
 
@@ -183,39 +187,58 @@ async def probe(path: str, content: bytes, concurrent: int = 1):
         return response, lag[0], max(gaps, default=0.0)
 
 
+def levels(value: str) -> list[int]:
+    """--concurrent: one number, or a comma-separated list measured one after the other (1,4,10)."""
+    out = [int(part) for part in value.split(",") if part.strip()]
+    if not out or min(out) < 1:
+        raise argparse.ArgumentTypeError("--concurrent takes positive numbers, e.g. 1,4,10")
+    return out
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--threshold", type=float, default=0.25)
     parser.add_argument("--only", default="")
-    parser.add_argument("--concurrent", type=int, default=1, help="identical requests sent at once")
+    parser.add_argument("--concurrent", type=levels, default=[1],
+                        help="identical requests sent at once; a list such as 1,4,10 measures each in turn")
     args = parser.parse_args()
     main_module.feature_enabled = lambda feature: True
     release_scope.feature_enabled = lambda feature: True
     tailor.load_opportunities_by_id = full_route.load_opportunities_by_id = lambda: {}
     gc.collect()
     gc.freeze()
-    over = worst = 0
-    worst_name = ""
-    for name, path, body in cases():
-        if args.only and args.only not in name:
-            continue
-        content = body if isinstance(body, bytes) else json.dumps(body, separators=(",", ":")).encode()
-        containers = content.count(b"[") + content.count(b"{")
-        best = None
-        for _ in range(3):
-            result = asyncio.run(probe(path, content, args.concurrent))
-            best = result if best is None or result[1] < best[1] else best
-            if best[1] <= args.threshold:
-                break
-        response, lag, gap = best
-        flag = "OVER" if lag > args.threshold else "ok  "
-        over += lag > args.threshold
-        if lag > worst:
-            worst, worst_name = lag, name
-        print(f"{flag} {lag * 1000:8.1f} ms lag {gap * 1000:8.1f} ms gap {len(content) / 1024:6.0f} KiB "
-              f"{containers:7d} containers  {response.status_code} {len(response.content):6d} B  {name}", flush=True)
-    print(f"\nover {args.threshold:.2f} s: {over}; worst {worst * 1000:.1f} ms ({worst_name})")
-    return 1 if over else 0
+    rows = []
+    for concurrent in args.concurrent:
+        for name, path, body in cases():
+            if args.only and args.only not in name:
+                continue
+            content = body if isinstance(body, bytes) else json.dumps(body, separators=(",", ":")).encode()
+            containers = content.count(b"[") + content.count(b"{")
+            best = None
+            for _ in range(3):
+                result = asyncio.run(probe(path, content, concurrent))
+                best = result if best is None or result[1] < best[1] else best
+                if best[1] <= args.threshold:
+                    break
+            response, lag, gap = best
+            rows.append((concurrent, path, lag, name))
+            flag = "OVER" if lag > args.threshold else "ok  "
+            print(f"{flag} {lag * 1000:8.1f} ms lag {gap * 1000:8.1f} ms gap {len(content) / 1024:6.0f} KiB "
+                  f"{containers:7d} containers  {response.status_code} {len(response.content):6d} B  x{concurrent}  {name}",
+                  flush=True)
+    status = 0
+    for concurrent in args.concurrent:
+        level = [row for row in rows if row[0] == concurrent]
+        print(f"\nworst per route at {concurrent} concurrent (longest stall):")
+        for path in sorted({row[1] for row in level}):
+            _, _, lag, name = max((row for row in level if row[1] == path), key=lambda row: row[2])
+            print(f"{lag * 1000:8.1f} ms lag  {path}  ({name})")
+        over = sum(row[2] > args.threshold for row in level)
+        worst = max(level, key=lambda row: row[2], default=None)
+        status |= bool(over)
+        print(f"over {args.threshold:.2f} s at {concurrent} concurrent: {over}; "
+              + (f"worst {worst[2] * 1000:.1f} ms ({worst[3]})" if worst else "no cases"))
+    return status
 
 
 if __name__ == "__main__":

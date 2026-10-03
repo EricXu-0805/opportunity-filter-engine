@@ -16,7 +16,11 @@ a 500-character bullet on a 6,000-character base_text and a 300-character instru
 /renovate; 8 experience lines (6,000 characters together) and 12 fact lines (16,000 with them)
 of 20 selected units, 100 entries in the draft, and a 2 MiB draft for full target.
 
-Run from the repository root:  python scripts/rewrite_route_lag.py [--threshold 0.25] [--only TEXT] [--concurrent N]
+Run from the repository root:
+    python scripts/rewrite_route_lag.py [--threshold 0.25] [--only TEXT] [--concurrent 1,4,10] [--no-fills]
+--concurrent sends that many identical requests at once; a comma-separated list measures every
+case at each level in turn and prints the worst stall per route for each. Ten at once is one
+client's limit for /api/tailor* (backend/main.py RATE_LIMITS: "/api/tailor": (10, 60)).
 Deterministic inputs; timings vary with load, so a case over the threshold is re-run (up to
 three times) and reported with its best run.
 """
@@ -357,11 +361,20 @@ def summary(response: httpx.Response) -> str:
     return f"{response.status_code}"
 
 
+def levels(value: str) -> list[int]:
+    """--concurrent: one number, or a comma-separated list measured one after the other (1,4,10)."""
+    out = [int(part) for part in value.split(",") if part.strip()]
+    if not out or min(out) < 1:
+        raise argparse.ArgumentTypeError("--concurrent takes positive numbers, e.g. 1,4,10")
+    return out
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--threshold", type=float, default=0.25)
     parser.add_argument("--only", default="")
-    parser.add_argument("--concurrent", type=int, default=1)
+    parser.add_argument("--concurrent", type=levels, default=[1],
+                        help="identical requests sent at once; a list such as 1,4,10 measures each in turn")
     parser.add_argument("--no-fills", action="store_true", help="only the parsing and validation cases")
     args = parser.parse_args()
     install_stubs()
@@ -371,33 +384,37 @@ def main() -> int:
     cases = list(validation_cases())
     if not args.no_fills:
         cases += list(tailor_cases(TAILOR_FILLS))
+    cases = [case for case in cases if not args.only or args.only in case[0]]
     results = []
-    for name, path, body in cases:
-        if args.only and args.only not in name:
-            continue
-        content = json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode()
-        best = None
-        for _ in range(3):
-            result = asyncio.run(_probe(path, content, args.concurrent))
-            best = result if best is None or result[1] < best[1] else best
-            if best[1] <= args.threshold and best[2] <= args.threshold:
-                break
-        response, lag, gap, wall = best
-        results.append((lag, gap, wall, name, summary(response), len(content)))
-        print(f"{lag * 1000:8.1f} ms lag {gap * 1000:8.1f} ms status gap {wall:7.2f} s wall {len(content) / 1024:8.0f} KiB"
-              f"  {name}  -> {summary(response)}", flush=True)
-    results.sort(reverse=True)
-    print("\nworst per route (longest stall):")
-    seen = set()
-    for lag, gap, _wall, name, outcome, _size in results:
-        route = name.split(" ")[0]
-        if route not in seen:
-            seen.add(route)
-            print(f"{lag * 1000:8.1f} ms lag {gap * 1000:8.1f} ms gap  {name} -> {outcome}")
-    over = [row for row in results if row[0] > args.threshold or row[1] > args.threshold]
-    print(f"\ncases: {len(results)}; over {args.threshold:.2f} s: {len(over)}")
-    for lag, gap, _wall, name, outcome, _size in over:
-        print(f"  OVER {lag:.3f} s lag {gap:.3f} s gap  {name} -> {outcome}")
+    for concurrent in args.concurrent:
+        for name, path, body in cases:
+            content = json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode()
+            best = None
+            for _ in range(3):
+                result = asyncio.run(_probe(path, content, concurrent))
+                best = result if best is None or result[1] < best[1] else best
+                if best[1] <= args.threshold and best[2] <= args.threshold:
+                    break
+            response, lag, gap, wall = best
+            results.append((concurrent, lag, gap, wall, name, summary(response), len(content)))
+            print(f"x{concurrent:<3} {lag * 1000:8.1f} ms lag {gap * 1000:8.1f} ms status gap {wall:7.2f} s wall "
+                  f"{len(content) / 1024:8.0f} KiB  {name}  -> {summary(response)}", flush=True)
+    for concurrent in args.concurrent:
+        print(f"\nworst per route at {concurrent} concurrent (longest stall):")
+        seen = set()
+        for _, lag, gap, _wall, name, outcome, _size in sorted(
+                (row for row in results if row[0] == concurrent), key=lambda row: row[1], reverse=True):
+            route = name.split(" ")[0]
+            if route not in seen:
+                seen.add(route)
+                print(f"{lag * 1000:8.1f} ms lag {gap * 1000:8.1f} ms gap  {name} -> {outcome}")
+    over = [row for row in results if row[1] > args.threshold or row[2] > args.threshold]
+    print(f"\ncases: {len(cases)} at each of {len(args.concurrent)} levels ({','.join(map(str, args.concurrent))} "
+          f"concurrent); over {args.threshold:.2f} s: {len(over)}")
+    for concurrent in args.concurrent:
+        print(f"  at {concurrent} concurrent: {sum(row[0] == concurrent for row in over)} over")
+    for concurrent, lag, gap, _wall, name, outcome, _size in over:
+        print(f"  OVER x{concurrent} {lag:.3f} s lag {gap:.3f} s gap  {name} -> {outcome}")
     return 1 if over else 0
 
 

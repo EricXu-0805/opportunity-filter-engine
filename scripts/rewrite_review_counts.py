@@ -10,17 +10,19 @@ summary lines under the criterion each one serves, prefixed by the script:
   (3) scripts/other_script_probe.py;
   (4) scripts/rewrite_route_lag.py (worst stall per route), scripts/request_parse_lag.py,
       scripts/worst_inputs_lag.py and scripts/rewrite_check_lag.py (the slow one,
-      about 4 minutes; --skip-slow leaves it out); --concurrent N sends N identical
-      requests at once in the two route scripts;
+      about 4 minutes; --skip-slow leaves it out); --concurrent 1,4,10 (the default)
+      sends 1, then 4, then 10 identical requests at once in the two route scripts, ten
+      being one client's limit for /api/tailor* (backend/main.py RATE_LIMITS);
   (5) scripts/trap_review_reach.py.
 
 Criterion (1)'s evidence is tests, not a count: tests/test_rewrite_display_paths.py,
-tests/test_rewrite_display_paths_r2.py and the frontend tests they name.
+tests/test_rewrite_display_paths_r2.py, tests/test_rewrite_display_paths_r3.py and the
+frontend tests they name.
 
 Run from the repository root:
 
     git worktree add ../main-checkout origin/main
-    python scripts/rewrite_review_counts.py --main-root ../main-checkout [--skip-timing] [--skip-slow] [--concurrent N]
+    python scripts/rewrite_review_counts.py --main-root ../main-checkout [--skip-timing] [--skip-slow] [--concurrent 1,4,10]
 
 Timings vary with load: check the load average (uptime) and re-run on a quiet
 machine before reading a timing as a failure.
@@ -71,7 +73,8 @@ def main() -> int:
     parser.add_argument("--main-root", help="a checkout of origin/main, for criterion (2)'s comparison")
     parser.add_argument("--skip-timing", action="store_true", help="leave out criterion (4)'s timing scripts")
     parser.add_argument("--skip-slow", action="store_true", help="leave out scripts/rewrite_check_lag.py")
-    parser.add_argument("--concurrent", type=int, default=1, help="identical requests sent at once (route scripts)")
+    parser.add_argument("--concurrent", default="1,4,10",
+                        help="identical requests sent at once by the route scripts, one level after another")
     args = parser.parse_args()
 
     print("criterion (2): faithful rewrites judged fabricated; new refusals relative to main")
@@ -91,7 +94,7 @@ def main() -> int:
 
     if not args.skip_timing:
         print(f"criterion (4): event-loop stalls at the input caps (concurrent requests: {args.concurrent})")
-        concurrent = ["--concurrent", str(args.concurrent)]
+        concurrent = ["--concurrent", args.concurrent]
         lines = run("rewrite_route_lag.py", *concurrent)
         start = next((i for i, line in enumerate(lines) if line.startswith("worst per route")), len(lines))
         show("rewrite_route_lag.py", lines[start:])
