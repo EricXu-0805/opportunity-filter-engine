@@ -1,7 +1,7 @@
 import type { ResumeParseResponse } from './types';
 import {
-  BULLET_LINE, firstWord, glyphItemsEndWithStop, glyphLine, lineBreakText, lowercaseOpening, MAX_RESUME_TEXT_CHARACTERS,
-  RESUME_ROLE, resumeTextCharacters, weakWrapEvidence, wrapEvidence, wrapJoin,
+  BULLET_LINE, firstWord, glyphItemsEndWithStop, glyphLine, hangingRest, lineBreakText, lowercaseOpening,
+  MAX_RESUME_TEXT_CHARACTERS, RESUME_ROLE, resumeTextCharacters, weakWrapEvidence, wrapEvidence, wrapJoin,
 } from './resume-input';
 import { createPdfResourceLoaders, PDF_CMAP_URL, PDF_STANDARD_FONT_URL } from './pdf-resources';
 
@@ -96,8 +96,8 @@ function trimCourse(s: string): string {
 
 // A label that opens a row of its own ("Honors: Dean's List", "Tools: PyTorch").
 const LABEL_ROW = /^[^,:：]{1,40}(?::\s|：)/u;
-// A row under a coursework list that starts something of its own: a label
-// or an honor ("Dean's List, James Scholar").
+// A row under a coursework list or under an item's text that starts
+// something of its own: a label or an honor ("Dean's List, James Scholar").
 const NOT_COURSEWORK = new RegExp(String.raw`${LABEL_ROW.source}|\b(?:dean['’]?s list|scholars?|scholarships?|honou?rs?|awards?|prizes?|fellowships?|medal(?:ist)?|cum laude|finalist|winner|recipient)\b`, 'iu');
 
 /** Course codes anywhere, and named courses on a labeled coursework line.
@@ -346,11 +346,13 @@ function cjkAwardRow(before: string, after: string): boolean {
  *  that ends a sentence may finish that item. A weak hint, and a next line
  *  whose lowercase words could open an item of their own, also need the page
  *  to show where the column ends (`edges`, see edgeShown); without `edges`,
- *  only the words that settle it by themselves carry a line on. A line that
- *  hangs under the text of the glyph item above it (`hangs`) goes on with
- *  that item whatever its words, and needs no edge: the next item would
- *  open at the glyph. A label still opens a row of its own there ("Tools:
- *  PyTorch, NumPy"), which only the words at the break carry on. */
+ *  only the words that settle it by themselves carry a line on. A lowercase
+ *  line that hangs under the text of the glyph item above it (`hangs`)
+ *  needs no edge: the next item would open at the glyph. Any other line
+ *  that hangs there is a weak hint where it reads as the rest of the item
+ *  (see hangingRest): a date, a role, an honor or a label hangs under an
+ *  item's text as often as its last line does, and a line that is only the
+ *  widest in its column always seems to have run out of room. */
 function wrapSeparator(
   shapes: Array<LineShape | null>, index: number, texts: string[], pitch: Map<number, number>, periodItem: boolean,
   column: (index: number) => Column, edges: readonly boolean[] | null, hangs: readonly boolean[],
@@ -360,9 +362,10 @@ function wrapSeparator(
   const before = texts[index - 1].trim();
   const after = texts[index].trim();
   if (!prev || !next || !sameParagraph(shapes, index, texts, pitch)) return null;
-  const evidence = (hangs[index] && !LABEL_ROW.test(after)) || wrapEvidence(before, after);
-  const unsure = !hangs[index] && (evidence ? lowercaseOpening(before, after)
-    : !!edges && weakWrapEvidence(before, after, periodItem) && !cjkAwardRow(before, after));
+  const evidence = wrapEvidence(before, after);
+  const hanging = hangs[index] && hangingRest(before, after) && !NOT_COURSEWORK.test(after);
+  const unsure = evidence ? lowercaseOpening(before, after) && !hangs[index]
+    : !!edges && (hanging || weakWrapEvidence(before, after, periodItem)) && !cjkAwardRow(before, after);
   if (!evidence && !unsure) return null;
   if (unsure && (!edges || !edgeShown(shapes, index - 1, texts, edges))) return null;
   // A narrow column of short items ("Python" / "SolidWorks") is a list, not
