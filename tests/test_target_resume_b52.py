@@ -195,6 +195,66 @@ def test_a_chinese_merge_declared_personal_first_goes_to_the_review():
     assert [item.outcome.ops for item in pending] == [['personal_first']]
 
 
+# The student's own part first, word for word, with a confirmed support line of the same
+# activity in the other language that the rewrite takes nothing from.
+ZH_SUPPORT = '与导师一起组织了 40 场访谈；本人负责转录。'
+OWN_PART_FIRST = [
+    ('Built the drivetrain with two teammates; I designed the motor mount.',
+     'Designed the motor mount; built the drivetrain with two teammates.'),
+    ('Built the website with a friend; I wrote the backend in Flask.',
+     'I wrote the backend in Flask. Built the website with a friend.'),
+    ('Built the website with a friend. My part was writing the backend in Flask.',
+     'My part was writing the backend in Flask. Built the website with a friend.'),
+]
+
+
+@pytest.mark.parametrize('original,proposed', OWN_PART_FIRST, ids=lambda value: value[:30])
+def test_a_support_line_the_rewrite_does_not_use_binds_none_of_its_qualifiers(monkeypatch, original, proposed):
+    """与导师一起 stays on 组织 in its own line; it asks nothing of a reordered English line."""
+    from fastapi.testclient import TestClient
+
+    from backend.main import app
+    from backend.routes import target_resume_ai as route
+    from tests.test_target_resume_ai import row
+
+    doc = document(originals=[original, ZH_SUPPORT]); req = request(doc, group(doc))
+    line = group(doc)[0]['unit_id']
+    monkeypatch.setattr(route, 'load_opportunities_by_id', lambda: {OPP['id']: OPP})
+    monkeypatch.setattr(route, 'is_configured', lambda: True)
+    monkeypatch.setattr(ai.llm_budget, 'exhausted', lambda: False)
+    monkeypatch.setattr(ai, 'chat_completion', lambda *args, **kwargs: json.dumps(
+        {'units': [row(line, text=proposed, ops=[{'op': 'personal_first'}], priority='normal')]}))
+    reviews = []
+    monkeypatch.setattr(em, 'ai_review', lambda pairs, deadline=None: reviews.append(pairs) or ['accepted'] * len(pairs))
+    response = TestClient(app).post('/api/tailor/full-target/suggestions', json=req.model_dump(exclude_none=True))
+    assert response.status_code == 200, response.text
+    [receipt] = response.json()['receipts']
+    assert (receipt['status'], receipt['suggestion']['proposed_text'], len(reviews)) == ('suggested', proposed, 1)
+
+
+@pytest.mark.parametrize('support', [ZH_SUPPORT, '为 30 名本科生组织了为期 12 周的睡眠研究读书会，撰写每周总结，用 Excel 记录出勤，并汇报了两篇关于记忆巩固的论文。'])
+@pytest.mark.parametrize('original,proposed', [
+    # The team's action given to the student by a reorder: the actor lock.
+    ("Reviewed the lab's protocol documents. Our team built a sample tracker.",
+     "Our team built a sample tracker. Reviewed the lab's protocol documents."),
+    # The student's own part joined to the shared credit: personal_first keeps it a clause of its own.
+    ('Built the website with a friend; I wrote the backend in Flask.',
+     'Wrote the backend in Flask and built the website with a friend.'),
+    ('Ran titrations with my lab partner; I wrote the error analysis.',
+     'Wrote the error analysis and ran titrations with my lab partner.'),
+])
+def test_a_support_line_in_another_language_lets_no_trap_through(original, proposed, support):
+    from tests.test_tailor_review import _anchor, declared_row
+
+    anchors = {anchor.id: anchor for anchor in (_anchor('t1', original), _anchor('t2', proposed))}
+    unit = em.Unit('b1', original, original, support=(('b2', support),), keyed=True)
+    outcome_ = em.check_rewrite(unit, declared_row('b1', original, proposed, anchors), anchors,
+                                output_language=em.language(original))
+    if outcome_.status == 'pending':
+        outcome_ = em.gate(outcome_, unit)
+    assert outcome_.status == 'kept', outcome_
+
+
 @pytest.mark.parametrize('originals,proposed', [
     (['I tested 12 parser cases.', 'I collected 45 samples.'], 'I tested 45 parser cases.'),
     (['I ran 12 parser cases.', 'I ran 8 sensor checks.'], 'I ran 8 parser cases.'),

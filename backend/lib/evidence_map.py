@@ -38,8 +38,10 @@ from backend.lib.target_resume_ai_grounding import (
     UNFINISHED,
     UNFINISHED_ZH,
     _team_marked,
+    claim_text,
     claim_upgrade_findings,
     language,
+    qualifier_moved,
     supported_claim_upgrade_detected,
     verb_use,
 )
@@ -925,11 +927,26 @@ def grounding_findings(text: str, corpus: str) -> list[str]:
     return fabricated
 
 
+def _carried_support(text: str, unit: Unit) -> list[str]:
+    """The confirmed support lines a rewrite takes words from: words it adds to the unit's own original."""
+    added = set(tokens(text)) - set(tokens(unit.evidence))
+    return [source for _, source in unit.support if added & set(tokens(source))]
+
+
 def gate(outcome: Outcome, unit: Unit) -> Outcome:
-    """Run the claim locks on a pending rewrite. A hard finding keeps the original."""
+    """Run the claim locks on a pending rewrite. A hard finding keeps the original.
+
+    A qualifier stays on its action within its own source: a support line the
+    rewrite takes no words from binds none of its qualifiers to it, so "与导师一起组织了
+    40 场访谈" asks nothing of a reordered "Built the website with a friend; I wrote ...".
+    """
     corpus = "\n".join(text for _, text in unit.sources)
     fabricated = grounding_findings(outcome.text, corpus)
     hard = rewrite_findings(outcome.text, corpus, outcome.relabels)
+    if "qualifier_moved" in hard and unit.support:
+        own = "\n".join([unit.evidence, *_carried_support(outcome.text, unit)])
+        if not qualifier_moved(claim_text(outcome.text), claim_text(own)):
+            hard.remove("qualifier_moved")
     if unit.support and supported_claim_upgrade_detected(outcome.text, [text for _, text in unit.sources]):
         hard.append("supported_claim_changed")
     if not fabricated and not hard:
