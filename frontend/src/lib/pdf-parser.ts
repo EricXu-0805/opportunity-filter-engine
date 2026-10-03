@@ -321,12 +321,11 @@ function columnOf(shapes: Array<LineShape | null>, line: LineShape): Column {
  *  as justified lines do; one such line can be a coincidence of ragged
  *  text. Otherwise this line may only be the longest of lines that never
  *  wrap, not a full one. */
-function edgeShown(shapes: Array<LineShape | null>, index: number, texts: string[], edges: readonly boolean[]): boolean {
+function edgeShown(shapes: Array<LineShape | null>, index: number, trimmed: readonly string[], edges: readonly boolean[]): boolean {
   const line = shapes[index]!;
-  const text = texts[index].trim();
   let aligned = 0;
   return shapes.some((other, at) => !!other && sameColumn(other, line) && (other.wrappable || other.tabular)
-    && (edges[at] || (Math.abs(other.right - line.right) <= JUSTIFIED * line.size && texts[at].trim() !== text && ++aligned > 1)));
+    && (edges[at] || (Math.abs(other.right - line.right) <= JUSTIFIED * line.size && trimmed[at] !== trimmed[index] && ++aligned > 1)));
 }
 
 /** A Chinese line that names an award, at a break in Chinese text. Chinese
@@ -345,7 +344,7 @@ function cjkAwardRow(before: string, after: string): boolean {
  *  number, on a page whose glyph items end with a full stop, so a next line
  *  that ends a sentence may finish that item. A weak hint, and a next line
  *  whose lowercase words could open an item of their own, also need the page
- *  to show where the column ends (`edges`, see edgeShown); without `edges`,
+ *  to show where the column ends (`shown`, see edgeShown); without `shown`,
  *  only the words that settle it by themselves carry a line on. A lowercase
  *  line that hangs under the text of the glyph item above it (`hangs`)
  *  needs no edge: the next item would open at the glyph. Any other line
@@ -355,7 +354,7 @@ function cjkAwardRow(before: string, after: string): boolean {
  *  widest in its column always seems to have run out of room. */
 function wrapSeparator(
   shapes: Array<LineShape | null>, index: number, texts: string[], pitch: Map<number, number>, periodItem: boolean,
-  column: (index: number) => Column, edges: readonly boolean[] | null, hangs: readonly boolean[],
+  column: (index: number) => Column, shown: ((index: number) => boolean) | null, hangs: readonly boolean[],
 ): string | null {
   const prev = shapes[index - 1];
   const next = shapes[index];
@@ -365,9 +364,9 @@ function wrapSeparator(
   const evidence = wrapEvidence(before, after);
   const hanging = hangs[index] && hangingRest(before, after) && !NOT_COURSEWORK.test(after);
   const unsure = evidence ? lowercaseOpening(before, after) && !hangs[index]
-    : !!edges && (hanging || weakWrapEvidence(before, after, periodItem)) && !cjkAwardRow(before, after);
+    : !!shown && (hanging || weakWrapEvidence(before, after, periodItem)) && !cjkAwardRow(before, after);
   if (!evidence && !unsure) return null;
-  if (unsure && (!edges || !edgeShown(shapes, index - 1, texts, edges))) return null;
+  if (unsure && (!shown || !shown(index - 1))) return null;
   // A narrow column of short items ("Python" / "SolidWorks") is a list, not
   // a paragraph, unless the text itself says it goes on.
   const area = column(index - 1);
@@ -407,17 +406,17 @@ function ranOutOfRoom(prev: LineShape, next: LineShape, after: string, { left, r
 }
 
 /** A break that no hint joined where the page would have let one: the next
- *  line goes on in the same paragraph, the page shows where the column
- *  ends, and the line before ran out of room. A labeled list is its own
+ *  line goes on in the same paragraph, the line before ran out of room, and
+ *  the page shows where the column ends (`shown`). A labeled list is its own
  *  hint (see extractCoursework). */
 function possibleWrap(
   shapes: Array<LineShape | null>, index: number, texts: string[], pitch: Map<number, number>,
-  column: (index: number) => Column, edges: readonly boolean[],
+  column: (index: number) => Column, shown: (index: number) => boolean,
 ): boolean {
   const prev = shapes[index - 1];
   const next = shapes[index];
   return !!prev && !!next && sameParagraph(shapes, index, texts, pitch)
-    && ranOutOfRoom(prev, next, texts[index].trim(), column(index - 1), false, false) && edgeShown(shapes, index - 1, texts, edges);
+    && ranOutOfRoom(prev, next, texts[index].trim(), column(index - 1), false, false) && shown(index - 1);
 }
 
 /** Page text in PDF.js reading order. Runs are spaced by their geometry, so a
@@ -425,8 +424,9 @@ function possibleWrap(
  *  a line that only wraps is joined back into its paragraph. Items without a
  *  usable position keep the positionless rules: a space between items, a
  *  newline at every PDF.js line end. This does not reorder multi-column text.
- *  `possibleWraps` holds the offsets of the line breaks left in the text
- *  that the page would have let a hint join (see possibleWrap). */
+ *  `possibleWraps` holds the offsets of the line breaks left in a labeled
+ *  coursework list that the page would have let a hint join (see
+ *  possibleWrap). */
 function pageText(items: readonly unknown[]): { text: string; possibleWraps: number[] } {
   let text = '';
   const breaks: number[] = [];
@@ -491,15 +491,26 @@ function pageText(items: readonly unknown[]): { text: string; possibleWraps: num
   const column = (index: number) => (columns[index] ??= columnOf(shapes, shapes[index]!));
   const edges = shapes.map((shape, index) => !!shape && ((shape.tabular && column(index).right - shape.right <= REACH * shape.size)
     || (index + 1 < texts.length && wrapSeparator(shapes, index + 1, texts, pitch, false, column, null, hangs) !== null)));
+  // Whether the page shows where a line's column ends, looked up once per line.
+  const trimmed = texts.map((text) => text.trim());
+  const edgeFound: boolean[] = [];
+  const shown = (index: number) => (edgeFound[index] ??= edgeShown(shapes, index, trimmed, edges));
   let out = texts[0];
+  let start = 0;
   let bulletItem = glyph[0];
+  // Only a labeled coursework list reads across a break that no hint joined
+  // (see extractCoursework), so only the break after a line that holds such
+  // a label, or after a line the list may go on to, is checked.
+  let list = false;
   const possibleWraps: number[] = [];
   for (let index = 1; index < texts.length; index++) {
-    const separator = wrapSeparator(shapes, index, texts, pitch, bulletItem && periodItems, column, edges, hangs);
+    const separator = wrapSeparator(shapes, index, texts, pitch, bulletItem && periodItems, column, shown, hangs);
     // A joined line stays in the item it continues; any other line opens one.
     if (separator === null) {
       bulletItem = glyph[index];
-      if (possibleWrap(shapes, index, texts, pitch, column, edges)) possibleWraps.push(out.length);
+      list = (list || COURSEWORK_LABEL.test(out.slice(start))) && possibleWrap(shapes, index, texts, pitch, column, shown);
+      if (list) possibleWraps.push(out.length);
+      start = out.length + 1;
     }
     out += separator ?? '\n';
     out += texts[index];
