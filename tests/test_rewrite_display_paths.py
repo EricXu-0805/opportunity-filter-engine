@@ -277,6 +277,44 @@ def test_the_version_without_the_terms_is_reviewed_with_its_own_links_unwritten(
     assert offered(path, body) == [[rewrite, alternative]]
 
 
+# ------------------------------------------------------------------ criterion (3)
+
+@pytest.mark.parametrize("path", ALL_PATHS)
+@pytest.mark.parametrize("script", list(OTHER_SCRIPT_TAILS))
+def test_a_rewrite_with_words_in_another_script_is_kept(opportunity, monkeypatch, path, script):
+    rewrite = VERB_FIRST_REWRITE + OTHER_SCRIPT_TAILS[script]
+    shown, _ = run(opportunity, monkeypatch, path, VERB_FIRST_ORIGINAL, _rewrite(rewrite, [{"op": "verb_first"}]),
+                   ANY_ANCHOR)
+    assert rewrite not in shown
+
+
+@pytest.mark.parametrize("path", ALL_PATHS)
+@pytest.mark.parametrize(("original", "row", "anchor"), [
+    (MIXED_ORIGINAL, MIXED_ROW, MIXED_ANCHOR), (CONJUNCTION_ORIGINAL, CONJUNCTION_ROW, CONJUNCTION_ANCHOR)],
+    ids=["脑电->brain", "和->and"])
+def test_a_rewrite_that_translates_part_of_its_line_is_kept(opportunity, monkeypatch, path, original, row, anchor):
+    assert em.language(original) == em.language(row["text"]) == "en"
+    shown, _ = run(opportunity, monkeypatch, path, original, row, anchor, locale="zh")
+    assert row["text"] not in shown
+
+
+@pytest.mark.parametrize("path", TAILOR_PATHS)
+@pytest.mark.parametrize(("original", "rewrite", "op"), [
+    # A Chinese reorder may add 并 beside an English tool name: the line's frame stays Chinese.
+    ("用 Python 清洗了 212 份问卷，训练了 3 个模型。", "训练了 3 个模型，并用 Python 清洗了 212 份问卷。", "lead_with"),
+    # A letter of another script the line already uses stays.
+    ("Research assistant in the Café Lab, analyzing Python simulation data for CS 225.",
+     "Analyzed Python simulation data for CS 225 as a research assistant in the Café Lab.", "verb_first"),
+], ids=["zh-reorder-adds-并", "accent-already-there"])
+def test_a_rewrite_in_its_own_script_still_goes_to_the_review(opportunity, monkeypatch, path, original, rewrite, op):
+    links = [{"id": "L1", "anchor": "t1", "term": "3 个模型", "source": "3 个模型", "relation": "same"}]
+    row = _rewrite(rewrite, [{"op": op, "link": "L1"}] if op == "lead_with" else [{"op": op}],
+                   links if op == "lead_with" else [])
+    body, reviews = post_tailor(opportunity, monkeypatch, path, [(original, row)], ACCEPT_ALL,
+                                anchors=["我们训练了 3 个模型。" if op == "lead_with" else ANY_ANCHOR])
+    assert len(reviews) == 1 and offered(path, body) == [[rewrite]]
+
+
 # ------------------------------------------------- fallbacks that hold (regression guards)
 
 TWO = [("Analyzed 88 samples with PyTorch and wrote the fluids lab report.",
