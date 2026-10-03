@@ -503,7 +503,7 @@ def _tailored(index: int, unit: Unit, outcome: Outcome) -> TailoredBullet:
         status="rewritten" if rewritten else "kept",
         reason_code=None if rewritten else outcome.code,
         ops=outcome.ops if rewritten else [],
-        links=[link.public() for link in outcome.links],
+        links=[link.public(shown=rewritten) for link in outcome.links],
         alternative=outcome.alternative if rewritten else None,
     )
 
@@ -1451,7 +1451,7 @@ async def _optimize_bullet_snapshot(
     stamps = {"opportunity_id": request.opportunity_id,
               "generated_at": datetime.now(UTC).replace(tzinfo=None).isoformat(),
               "pipeline_version": TAILOR_PIPELINE_VERSION}
-    links = [link.public() for link in outcome.links]
+    links = [link.public(shown=outcome.status == "rewritten") for link in outcome.links]
     if outcome.status == "rewritten":
         return BulletOptimizeResponse(
             text=outcome.text, source_evidence=original, changed=outcome.text != current, warnings=[],

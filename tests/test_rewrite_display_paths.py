@@ -400,6 +400,41 @@ def test_a_renovation_with_a_shared_bullet_id_is_refused_before_any_model_call(o
     assert (response.status_code, calls) == (422, [])
 
 
+# ------------------------------------------------------- kept lines carry no rewrite wording
+
+@pytest.mark.parametrize("path", ALL_PATHS)
+def test_a_rejected_rewrite_leaves_no_wording_in_the_response(opportunity, monkeypatch, path):
+    if path == "full-target":
+        body, reviews = post_full_target(monkeypatch, PLAIN_ORIGINAL, PLAIN_ROW, review_by(lambda pair: False),
+                                         description=SWAPPED_ANCHOR)
+        assert reviews and body["status"] == "unchanged" and offered(path, body) == [[]]
+        links = body["suggestion"]["links"]
+    else:
+        body, reviews = post_tailor(opportunity, monkeypatch, path, [(PLAIN_ORIGINAL, PLAIN_ROW)],
+                                    review_by(lambda pair: False), anchors=[SWAPPED_ANCHOR])
+        assert reviews and offered(path, body) == [[]]
+        if path.endswith("/renovate"):
+            links = [link for section in body["sections"] for bullet in section["bullets"]
+                     for variant in bullet["variants"] for link in variant["links"]]
+        else:
+            links = body["tailored_bullets"][0]["links"] if path == "/api/tailor" else body["links"]
+    assert links or path.endswith("/renovate")
+    # The posting's term itself stays as advice (target_evidence); only the refused wording goes.
+    assert [link["written_as"] for link in links if link["written_as"]] == []
+
+
+@pytest.mark.parametrize("path", ["/api/tailor", "/api/tailor/bullet", "full-target"])
+def test_an_accepted_rewrite_still_says_how_it_wrote_the_term(opportunity, monkeypatch, path):
+    if path == "full-target":
+        body, _ = post_full_target(monkeypatch, PLAIN_ORIGINAL, PLAIN_ROW, ACCEPT_ALL, description=SWAPPED_ANCHOR)
+        links = body["suggestion"]["links"]
+    else:
+        body, _ = post_tailor(opportunity, monkeypatch, path, [(PLAIN_ORIGINAL, PLAIN_ROW)], ACCEPT_ALL,
+                              anchors=[SWAPPED_ANCHOR])
+        links = body["tailored_bullets"][0]["links"] if path == "/api/tailor" else body["links"]
+    assert [link["written_as"] for link in links] == ["Python code"]
+
+
 # ------------------------------------------------------- more fallbacks that hold
 
 @pytest.mark.parametrize(("review", "status", "code"), [

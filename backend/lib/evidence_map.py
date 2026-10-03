@@ -430,10 +430,12 @@ class Link:
     written_as: str | None = None
     entailed: bool = False
 
-    def public(self) -> dict:
+    def public(self, *, shown: bool = True) -> dict:
+        """The link as the clients receive it. ``shown`` is False for a line kept as written:
+        a refused or unreviewed relabel's wording is then no part of the response."""
         return {"id": self.id, "relation": self.relation, "entailed": self.entailed,
                 "target_evidence": dict(self.target_evidence), "source_evidence": dict(self.source_evidence),
-                "written_as": self.written_as}
+                "written_as": self.written_as if shown else None}
 
 
 def verify_links(raw: object, sources: list[tuple[str | None, str]], anchors: dict[str, Anchor]) -> list[Link]:

@@ -261,7 +261,8 @@ def _em_unit(unit):
 
 
 def _suggestion(unit, outcome, priority, category, locale, *, proposed=None, keep_code=None, alternative=None):
-    links = [link.public() for link in outcome.links]
+    # Only a reviewed rewrite carries a relabel's wording; advice and kept lines carry none.
+    links = [link.public(shown=proposed is not None) for link in outcome.links]
     targets = list({canonical(link["target_evidence"]): link["target_evidence"] for link in links}.values())
     sources = [link["source_evidence"] for link in links] or complete_source_quotes(unit)
     ops = outcome.ops if proposed is not None else []
