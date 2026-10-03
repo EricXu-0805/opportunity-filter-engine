@@ -70,6 +70,7 @@ from backend.lib.prompt_safety import sanitize_field as _sanitize_field
 from backend.lib.public_opportunity_detail import project_public_detail, writing_target_version
 from backend.lib.publication_attribution import verified_recent_works
 from backend.lib.release_scope import release_visible_opportunity_by_id
+from backend.lib.request_body import BoundedJSONRoute
 from backend.lib.resume_input import (
     RESUME_AI_CHUNK_CHARACTERS,
     RESUME_AI_CONCURRENCY,
@@ -105,7 +106,8 @@ from src.student_evidence import claimable_skill_level
 
 logger = logging.getLogger("ofe.tailor")
 
-router = APIRouter()
+# Up to 1 MiB of JSON per writing request: a container-heavy body is refused before it is parsed.
+router = APIRouter(route_class=BoundedJSONRoute)
 
 _DEFAULT_OPP_TOKEN_BUDGET = 1200
 # Every layer above this accepts 12: the modal prefills 12

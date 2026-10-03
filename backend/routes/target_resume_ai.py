@@ -1,11 +1,11 @@
 """Full-target suggestions: no persistence, whole-unit batches and exact receipts."""
 from __future__ import annotations
 
+import asyncio
 import time
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.routing import APIRoute
 from starlette.responses import JSONResponse
 
 from backend.data_loader import load_opportunities_by_id
@@ -20,6 +20,7 @@ from backend.lib.evidence_map import (
 )
 from backend.lib.llm import is_configured
 from backend.lib.release_scope import release_visible_opportunity_by_id
+from backend.lib.request_body import BoundedJSONRoute
 from backend.lib.target_actionability import assert_target_actionable
 from backend.lib.target_resume_ai import (
     REVIEW_UNCHECKED,
@@ -42,7 +43,9 @@ from backend.routes.opportunities import _redact
 PRIVATE = {"Cache-Control": "private, no-store", "Pragma": "no-cache"}
 
 
-class PrivateValidationRoute(APIRoute):
+class PrivateValidationRoute(BoundedJSONRoute):
+    """A container-heavy body is refused before it is parsed (BoundedJSONRoute); every refusal stays private."""
+
     def get_route_handler(self):
         original = super().get_route_handler()
 
@@ -66,14 +69,19 @@ def authoritative_target(opp):
     return public_target_context(_redact(opp))
 
 
+def _validated(request, prepare):
+    """The draft checked and prepared, on a thread: a 2 MiB draft's walk and copy take up to 2 s."""
+    doc = validate_document(request.draft)
+    if doc["target_snapshot"].get("context_version") != 4:
+        raise HTTPException(409, detail={"code": "legacy_target_context"})
+    return doc, prepare(request, doc)
+
+
 @router.post("/tailor/full-target/suggestions")
 async def full_target_suggestions(request: FullTargetRequest):
     started = time.monotonic()
     try:
-        doc = validate_document(request.draft)
-        if doc["target_snapshot"].get("context_version") != 4:
-            raise HTTPException(409, detail={"code": "legacy_target_context"})
-        units, protected, selected, processable = prepare_batch(request, doc)
+        doc, (units, protected, selected, processable) = await asyncio.to_thread(_validated, request, prepare_batch)
     except (InvalidTargetResume, TypeError, KeyError, ValueError, RecursionError):
         raise HTTPException(422, detail={"code": "invalid_full_target_request"}) from None
     opp = release_visible_opportunity_by_id(load_opportunities_by_id(), doc["opportunity_id"])
@@ -137,10 +145,7 @@ async def full_target_suggestions(request: FullTargetRequest):
 @router.post("/tailor/full-target/selection-plan")
 async def full_target_selection_plan(request: FullTargetPlanRequest):
     try:
-        doc = validate_document(request.draft)
-        if doc["target_snapshot"].get("context_version") != 4:
-            raise HTTPException(409, detail={"code": "legacy_target_context"})
-        blocks, manifest, scope = target_resume_plan.prepare_plan(request, doc)
+        doc, (blocks, manifest, scope) = await asyncio.to_thread(_validated, request, target_resume_plan.prepare_plan)
     except (InvalidTargetResume, TypeError, KeyError, ValueError, RecursionError):
         raise HTTPException(422, detail={"code": "invalid_full_target_plan_request"}) from None
     opp = release_visible_opportunity_by_id(load_opportunities_by_id(), doc["opportunity_id"])
@@ -167,7 +172,9 @@ async def full_target_selection_plan(request: FullTargetPlanRequest):
         except Exception:  # Provider/payload text must not enter responses/logs.
             raw, reason, calls = None, "invalid_model_response", 1
         if raw:
-            items, reason = target_resume_plan.parse_plan_output(raw, blocks, doc["target_snapshot"], request.locale)
+            # A plan answer quotes source text; anchoring each quote runs on a thread.
+            items, reason = await asyncio.to_thread(target_resume_plan.parse_plan_output, raw, blocks,
+                                                    doc["target_snapshot"], request.locale)
         elif not reason:
             reason = "model_unavailable"
     return target_resume_plan.plan_response(request, doc, manifest, scope, items, reason, calls)
