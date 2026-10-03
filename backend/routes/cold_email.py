@@ -507,7 +507,8 @@ _EVIDENCE_CONNECTION_RULES = (
     "- Use the server's CONTACT CONTEXT purpose to choose first-contact, referral "
     "or follow-up structure. Put a confirmed reading sentence near the research "
     "interest, before the request; do not repeat the paper title elsewhere. Do not "
-    "promise flexible scheduling or hours unless the contact context confirms it. "
+    "promise flexible scheduling, hours, unpaid or volunteer work, or a test or "
+    "trial task unless the contact context confirms it. "
     "Refer to the stated work unless an actual lab is specified. "
     "Follow-up overrides the first-contact introduction: "
     "continue the conversation briefly. Preserve each server-rendered Confirmed "
@@ -879,6 +880,7 @@ def _enforce_brief_greeting(email_text: str | None, prof_brief: str) -> str | No
         head
         + ([""] if head else [])
         + [greeting]
+        + ([""] if body_lines else [])
         + body_lines
     )
     trusted_count = sum(
@@ -887,6 +889,32 @@ def _enforce_brief_greeting(email_text: str | None, prof_brief: str) -> str | No
     if trusted_count != 1:
         return None
     return rendered
+
+
+_CONFIRMED_CONTACT_KEYS = ("contact_opening", "contact_reply_line", "contact_availability", "contact_paper_reading")
+_BLANK_LINE_RUN = re.compile(r"\n[^\S\n]*\n(?:[^\S\n]*\n)*")
+
+
+def _one_blank_line_between_paragraphs(body: str, parts: dict) -> str:
+    """Serve a model-written run of blank or whitespace-only lines as one empty line.
+
+    A confirmed contact sentence must reach the draft byte for byte, so a
+    multi-line confirmed availability keeps its own spacing.
+    """
+    def tidy(segment: str) -> str:
+        return _BLANK_LINE_RUN.sub("\n\n", segment.replace("\r\n", "\n"))
+
+    kept = [sentence for sentence in (parts.get(key) or "" for key in _CONFIRMED_CONTACT_KEYS)
+            if "\n" in sentence or "\r" in sentence]
+    spans = sorted((match.start(), match.end()) for sentence in kept
+                   for match in re.finditer(re.escape(sentence), body))
+    pieces, position = [], 0
+    for start, end in spans:
+        if start < position:
+            continue
+        pieces += [tidy(body[position:start]), body[start:end]]
+        position = end
+    return "".join([*pieces, tidy(body[position:])])
 
 
 def _base_rules(
@@ -923,7 +951,7 @@ def _base_rules(
 
 
 # Lab-type tone suffixes (technique emphasis + length), appended after the
-# level-aware base. Level-neutral: the wet-lab volunteer note is explicitly gated
+# level-aware base. Level-neutral: the wet-lab mentoring note is explicitly gated
 # to undergraduates so it never contradicts the graduate body's peer framing.
 _LAB_TYPE_TONE = {
     "wet": (
@@ -932,10 +960,12 @@ _LAB_TYPE_TONE = {
         "- Highlight relevant lab techniques first (PCR, cell culture, "
         "microscopy, sterile technique, etc.) over generic coding skills.\n"
         "- Mention completed lab coursework BY NAME if any was provided.\n"
-        "- Acknowledge time commitment realistically — wet labs expect "
-        "10-15+ hours per week. Use the sender's stated availability.\n"
+        "- Mention a time commitment only as the sender's stated availability "
+        "gives it; never offer hours, weeks or semesters they did not state.\n"
         "- For an UNDERGRADUATE only, it is acceptable to mention willingness "
-        "to volunteer initially or to be mentored by a graduate student.\n"
+        "to be mentored by a graduate student.\n"
+        "- Never offer to volunteer or work unpaid unless the sender's stated "
+        "availability says so.\n"
         "- Do NOT lead with a GitHub link. Wet PIs care about bench "
         "literacy and reliability."
     ),
@@ -948,9 +978,7 @@ _LAB_TYPE_TONE = {
         "- Reference a specific recent project or paper from the lab if "
         "any keyword is concrete enough.\n"
         "- If the sender shared a GitHub URL, include it in the body "
-        "exactly once, naturally — never as a bare 'see my GitHub'.\n"
-        "- It is acceptable to offer to complete a technical assessment "
-        "or coding challenge."
+        "exactly once, naturally — never as a bare 'see my GitHub'."
     ),
     "humanities": (
         "\n\nHumanities / Social-Science tone (Psychology, Sociology, "
@@ -1944,7 +1972,7 @@ async def generate_email(
 # Bumped whenever generation logic changes materially — stamped on every
 # response so a cached client draft is traceable to the code that made it
 # (W12 draft provenance; the corpus side is covered by corpus_version()).
-COLD_EMAIL_PIPELINE_VERSION = "w12.19"
+COLD_EMAIL_PIPELINE_VERSION = "w12.20"
 
 # Claims about the professor's research made when the record carries NO
 # research signal at all. The vocabulary-level fabrication gate can't see a
@@ -2236,6 +2264,7 @@ def _run_engine(
                 logger.exception("cold-email: pipeline crashed; using template")
                 ai_text = None
             ai_subject, ai_body = _extract_subject_and_body(ai_text) if ai_text else ("", "")
+            ai_body = _one_blank_line_between_paragraphs(ai_body, parts)
             if not ai_subject or not ai_body:
                 fallback_reason = "unavailable" if not ai_text else "invalid_output"
             else:
@@ -2887,6 +2916,7 @@ async def _refine_email_snapshot(request: EmailRefineRequest, opp: dict):
                 context,
                 fallback_reason="fabrication",
             )
+    edited = _one_blank_line_between_paragraphs(edited, context["parts"] if context is not None else {})
     corpus = context["corpus"] if context is not None else ""
     fabricated, borrowed = _email_grounding_findings(
         edited, context["parts"] if context is not None else {},
@@ -3103,10 +3133,21 @@ def _local_refine(body: str, instruction: str) -> dict:
             edited = pattern.sub(repl, edited)
         fillers = op.get("drop_fillers")
         if fillers:
-            edited = "\n".join(
-                line for line in edited.split("\n")
-                if not any(f in line.lower() for f in fillers)
-            )
+            kept: list[str] = []
+            dropped = False
+            for line in edited.split("\n"):
+                if any(f in line.lower() for f in fillers):
+                    dropped = True
+                    continue
+                # A dropped paragraph takes its blank line with it, so the
+                # draft never gains a doubled, leading or trailing blank line.
+                if dropped and not line.strip() and (not kept or not kept[-1].strip()):
+                    continue
+                kept.append(line)
+                dropped = False
+            if dropped and kept and not kept[-1].strip():
+                kept.pop()
+            edited = "\n".join(kept)
         applied.append(name)
 
     return {"body": edited, "method": "local", "applied": applied}

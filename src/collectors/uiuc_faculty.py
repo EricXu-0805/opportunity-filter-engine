@@ -1331,12 +1331,30 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
         # works_gate says which gate chose them. Dropping works_gate on a
         # re-scrape silently ages a current record back to the oldest gate,
         # which puts it back in the re-harvest queue and makes the version
-        # stamp mean nothing a week after it is written.
+        # stamp mean nothing a week after it is written. publication_remediation
+        # says which gate's trust in them was withdrawn, and when; the
+        # 2026-10-02 refresh kept the pending status of all 5 withdrawn
+        # professors it re-scraped and dropped that trail.
         prior = (existing.get("metadata") or {})
         for f in ("publication_attribution_status", "publication_author_id",
-                  "works_gate"):
+                  "works_gate", "publication_remediation"):
             if prior.get(f) is not None:
                 md[f] = prior[f]
+    # A remediation verdict that left the record nothing citable (ambiguous,
+    # removed, unknown, needs_review) describes the ABSENCE of works, so there
+    # are none for it to travel with and the carry above never runs. It carries
+    # while it still describes the incoming record: one with no works and no
+    # remediation block of its own. A block without a verdict is a withdrawal
+    # and stays with the works it withdrew.
+    verdict = prior_metadata.get("publication_remediation")
+    incoming_metadata = incoming.get("metadata") or {}
+    if (
+        isinstance(verdict, dict)
+        and verdict.get("disposition")
+        and not incoming_metadata.get("recent_works")
+        and "publication_remediation" not in incoming_metadata
+    ):
+        incoming.setdefault("metadata", {})["publication_remediation"] = verdict
 
     # research_areas_raw is carried the same unconditional way, and for the
     # same reason: a listing-only re-scrape never reaches the detail page that

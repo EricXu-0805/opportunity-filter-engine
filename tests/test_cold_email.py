@@ -1450,7 +1450,7 @@ class TestColdEmailPipeline:
         monkeypatch.setenv("OFE_COLD_EMAIL_NDRAFT", "1")
 
         monkeypatch.setenv("OFE_COLD_EMAIL_CRITIQUE", "0")
-        draft = ("Subject: Vision fit\n\nDear Professor Jane Doe,\nYour computer vision "
+        draft = ("Subject: Vision fit\n\nDear Professor Jane Doe,\n\nYour computer vision "
                  "work fits my Python background. I am a fast learner.\nBest,\nEric")
         worse = ("Subject: Vision fit\n\nDear Professor Jane Doe,\nI am a passionate, "
                  "dedicated fast learner drawn to your computer vision work."
@@ -1501,9 +1501,9 @@ class TestNDraftJudgeTier:
     _opp = TestColdEmailPipeline._opp
 
     # Both grounded AND professor-referencing → deterministic score 0.
-    _CLEAN_A = ("Subject: Vision fit\n\nDear Professor Jane Doe,\nYour computer vision "
+    _CLEAN_A = ("Subject: Vision fit\n\nDear Professor Jane Doe,\n\nYour computer vision "
                 "work fits my Python background.\nBest,\nEric")
-    _CLEAN_B = ("Subject: Medical imaging\n\nDear Professor Jane Doe,\nYour medical "
+    _CLEAN_B = ("Subject: Medical imaging\n\nDear Professor Jane Doe,\n\nYour medical "
                 "imaging research maps to my Python projects.\nBest,\nEric")
 
     @staticmethod

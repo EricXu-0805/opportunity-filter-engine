@@ -54,7 +54,7 @@ import json
 import os
 import socket
 import tempfile
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -95,12 +95,16 @@ MUTATION_COMMITTED = "mutation_committed"
 VERIFIED_COMPLETE = "verified_complete"
 FAILED = "failed"
 NEEDS_REVIEW = "needs_review"
+# A person's verdict on a unit the automation left to them. Written only by
+# ``Ledger.record_review`` (the `review` command), after the unit settled.
+REVIEWED = "reviewed"
 
 # Terminal states: a unit in one of these is never re-processed for the same
 # target gate. NEEDS_REVIEW is terminal for the *automated* pipeline and open
 # for a human — the relationship stays untrusted either way, which is why it is
-# safe to stop asking about it.
-_TERMINAL = frozenset({VERIFIED_COMPLETE, NEEDS_REVIEW})
+# safe to stop asking about it. REVIEWED closes it for the human as well.
+_AUTOMATED_TERMINAL = frozenset({VERIFIED_COMPLETE, NEEDS_REVIEW})
+_TERMINAL = _AUTOMATED_TERMINAL | {REVIEWED}
 
 # Dispositions — what the current gate decided about the relationship.
 DISPOSITION_VERIFIED = "verified"      # re-attributed; trust restored
@@ -114,6 +118,31 @@ DISPOSITION_NEEDS_REVIEW = "needs_review"  # routed to a human
 # return again is verified by the *new* stamp it earns, never by having been
 # there before.
 _RESTORING = frozenset({DISPOSITION_VERIFIED})
+
+# The results a person is asked to settle, and the verdicts they can give.
+_AWAITING_REVIEW = frozenset({DISPOSITION_AMBIGUOUS, DISPOSITION_NEEDS_REVIEW})
+REVIEW_VERDICTS = frozenset({DISPOSITION_VERIFIED, DISPOSITION_REMOVED})
+
+
+def awaits_review(entry: dict | None) -> bool:
+    """Whether a ledger unit is waiting for a person's verdict.
+
+    The one definition the manual-review queue, ``Ledger.index`` and the
+    `review` command share. A reviewed unit's result is the verdict, so it no
+    longer qualifies, which is what makes a second verdict impossible.
+    """
+    return (entry or {}).get("result") in _AWAITING_REVIEW
+
+
+def _is_review_verdict(event: dict) -> bool:
+    """A review event the ledger accepts: a verdict, who gave it, and for a
+    verified one the OpenAlex author the papers were stamped from."""
+    return (
+        event.get("status") == REVIEWED
+        and event.get("result") in REVIEW_VERDICTS
+        and bool(str(event.get("reviewer") or "").strip())
+        and (event.get("result") != DISPOSITION_VERIFIED or bool(event.get("reviewed_author_id")))
+    )
 
 
 def _now() -> str:
@@ -464,9 +493,16 @@ class Ledger:
     prove nothing across the restart it exists to survive.
     """
 
-    def __init__(self, path: Path | str = LEDGER_PATH):
+    def __init__(self, path: Path | str = LEDGER_PATH, *, dry_run: bool = False):
         self.path = Path(path)
         self._worker = f"{socket.gethostname()}:{os.getpid()}"
+        # A dry run decides everything a real run would and writes none of it.
+        # The ledger is a committed file, so an event a dry run appended was a
+        # diff in the repository and a STARTED that made the real run after it
+        # read as a retry. Held here instead, and replayed after the file by
+        # every read, so the run's own later checks see what it staged.
+        self.dry_run = dry_run
+        self.staged: list[dict] = []
 
     # -- reading -----------------------------------------------------------
 
@@ -478,19 +514,19 @@ class Ledger:
         line has no meaning, and refusing to read the whole ledger because of
         it would turn one lost event into a total outage of the audit trail.
         """
-        if not self.path.exists():
-            return
-        with self.path.open("r", encoding="utf-8") as fh:
-            for line in fh:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    event = json.loads(line)
-                except ValueError:
-                    continue
-                if isinstance(event, dict) and event.get("idempotency_key"):
-                    yield event
+        if self.path.exists():
+            with self.path.open("r", encoding="utf-8") as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        event = json.loads(line)
+                    except ValueError:
+                        continue
+                    if isinstance(event, dict) and event.get("idempotency_key"):
+                        yield event
+        yield from self.staged
 
     def index(self) -> dict[str, dict]:
         """Latest state per idempotency key, plus the attempt count.
@@ -516,6 +552,20 @@ class Ledger:
             )
             if e.get("status") == STARTED:
                 cur["attempt_count"] += 1
+            # The one exception to the rule below. A unit the automation
+            # settled as ambiguous or needs_review waits for a person, and
+            # their verdict is the only event that may change it after it
+            # settled: once, and only as a well-formed verdict. Every other
+            # event is still held off by the terminal state.
+            if e.get("status") == REVIEWED:
+                if awaits_review(cur) and _is_review_verdict(e):
+                    cur["status"] = REVIEWED
+                    for field in ("result", "review_of", "reviewer", "reviewed_author_id",
+                                  "note", "relationships_after", "completed_at"):
+                        if e.get(field) is not None:
+                            cur[field] = e[field]
+                cur["history"].append(REVIEWED)
+                continue
             # A terminal state is sticky: once a unit is complete, a later
             # stray event (a slow duplicate worker, a replayed job) must not
             # reopen it — that would be exactly the duplicate this ledger
@@ -567,7 +617,11 @@ class Ledger:
             "at": _now(),
         }
         event.update({k: v for k, v in fields.items() if v is not None})
-        self._append_line(json.dumps(event, ensure_ascii=False, sort_keys=True))
+        line = json.dumps(event, ensure_ascii=False, sort_keys=True)
+        if self.dry_run:
+            self.staged.append(json.loads(line))
+        else:
+            self._append_line(line)
         return event
 
     def _append_line(self, line: str) -> None:
@@ -604,31 +658,39 @@ class Ledger:
         """
         import fcntl
 
+        if self.dry_run:
+            if self.is_complete(unit["idempotency_key"]):
+                return False
+            self.staged.append(self._started_event(unit))
+            return True
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.path.open("a", encoding="utf-8") as fh:
             fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
             try:
                 if self.is_complete(unit["idempotency_key"]):
                     return False
-                event = {
-                    "remediation_id": unit.get("professor_id"),
-                    "professor_id": unit.get("professor_id"),
-                    "person_key": unit.get("person_key"),
-                    "school": unit.get("school"),
-                    "from_gate_version": unit.get("old_gate_version"),
-                    "to_gate_version": unit.get("to_gate_version", CURRENT_WORKS_GATE),
-                    "idempotency_key": unit["idempotency_key"],
-                    "status": STARTED,
-                    "worker": self._worker,
-                    "at": _now(),
-                    "started_at": _now(),
-                }
+                event = self._started_event(unit)
                 fh.write(json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n")
                 fh.flush()
                 os.fsync(fh.fileno())
                 return True
             finally:
                 fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+
+    def _started_event(self, unit: dict) -> dict:
+        return {
+            "remediation_id": unit.get("professor_id"),
+            "professor_id": unit.get("professor_id"),
+            "person_key": unit.get("person_key"),
+            "school": unit.get("school"),
+            "from_gate_version": unit.get("old_gate_version"),
+            "to_gate_version": unit.get("to_gate_version", CURRENT_WORKS_GATE),
+            "idempotency_key": unit["idempotency_key"],
+            "status": STARTED,
+            "worker": self._worker,
+            "at": _now(),
+            "started_at": _now(),
+        }
 
     def reconcile(self, unit: dict, record: dict) -> bool:
         """Close a unit whose mutation landed but whose ledger entry did not.
@@ -687,6 +749,69 @@ class Ledger:
         """
         return self.append(unit, FAILED, error=str(error)[:500])
 
+    def record_review(self, entry: dict, verdict: str, *, reviewer: str,
+                      author_id: str | None = None, note: str | None = None,
+                      land: Callable[[], int] | None = None) -> dict | None:
+        """Write a person's verdict on a unit waiting for one. Returns the
+        event, or None when the unit no longer awaits review.
+
+        ``entry`` is the unit's ``index()`` entry. The check, ``land`` and the
+        write happen in one hold of the ledger lock, so two reviewers can
+        neither both decide one unit nor overwrite each other's corpus write.
+        ``land`` brings the corpus into line with the verdict and returns how
+        many papers the record cites afterwards. It reads the shards inside the
+        lock, so a verdict another reviewer landed a moment earlier is in what
+        it writes back, and it writes them before the event, the order
+        ``apply`` uses. If it raises, nothing is written.
+        """
+        key = entry["idempotency_key"]
+        event = {
+            "remediation_id": entry.get("professor_id"),
+            "professor_id": entry.get("professor_id"),
+            "school": entry.get("school"),
+            "from_gate_version": entry.get("from_gate_version"),
+            "to_gate_version": entry.get("to_gate_version"),
+            "idempotency_key": key,
+            "status": REVIEWED,
+            "result": verdict,
+            "review_of": entry.get("result"),
+            "reviewer": (reviewer or "").strip(),
+            "reviewed_author_id": author_id,
+            "note": note,
+            "worker": self._worker,
+        }
+        event = {k: v for k, v in event.items() if v is not None}
+        if not _is_review_verdict(event):
+            raise ValueError(f"not a review verdict: {verdict!r} by {reviewer!r}")
+
+        def decide() -> dict | None:
+            if not awaits_review(self.index().get(key)):
+                return None
+            event["relationships_after"] = land() if land is not None else 0
+            event["completed_at"] = event["at"] = _now()
+            return event
+
+        if self.dry_run:
+            decided = decide()
+            if decided is not None:
+                self.staged.append(decided)
+            return decided
+
+        import fcntl
+
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self.path.open("a", encoding="utf-8") as fh:
+            fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
+            try:
+                decided = decide()
+                if decided is not None:
+                    fh.write(json.dumps(decided, ensure_ascii=False, sort_keys=True) + "\n")
+                    fh.flush()
+                    os.fsync(fh.fileno())
+                return decided
+            finally:
+                fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+
     # -- reporting ---------------------------------------------------------
 
     def report(self) -> dict:
@@ -732,12 +857,19 @@ class Ledger:
         reached terminal. This is the number that has to be zero, and computing
         it from the raw event stream (rather than from the deduplicating index)
         is what makes it able to be non-zero at all.
+
+        A person's verdict on a unit the automation settled as ambiguous or
+        needs_review is not a second remediation of it; a second verdict is.
+        The two are counted apart for that reason.
         """
         seen: dict[str, int] = {}
+        reviews: dict[str, int] = {}
         for e in self.events():
-            if e.get("status") in _TERMINAL:
+            if e.get("status") in _AUTOMATED_TERMINAL:
                 seen[e["idempotency_key"]] = seen.get(e["idempotency_key"], 0) + 1
-        return sum(n - 1 for n in seen.values() if n > 1)
+            elif e.get("status") == REVIEWED:
+                reviews[e["idempotency_key"]] = reviews.get(e["idempotency_key"], 0) + 1
+        return sum(n - 1 for counts in (seen, reviews) for n in counts.values() if n > 1)
 
     def manual_review_queue(self) -> list[dict]:
         """Units a human has to settle, with the evidence to settle them.
@@ -748,7 +880,7 @@ class Ledger:
         """
         out = []
         for entry in self.index().values():
-            if entry.get("result") not in (DISPOSITION_AMBIGUOUS, DISPOSITION_NEEDS_REVIEW):
+            if not awaits_review(entry):
                 continue
             out.append(
                 {
