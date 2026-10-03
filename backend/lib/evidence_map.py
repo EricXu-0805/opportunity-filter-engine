@@ -24,6 +24,7 @@ from backend.lib.llm import chat_completion, model_for
 from backend.lib.target_resume_ai_grounding import (
     _SHARED_CREDIT,
     _TEAM_CONTEXT,
+    _TEAM_WITH,
     ACTIONS,
     CO_CREDIT,
     DENIAL,
@@ -870,6 +871,11 @@ def _check_same_language(unit: Unit, text: str, links: list[Link], ops_raw: list
             first_clause = _FIRST_CLAUSE.split(text, maxsplit=1)[0]
             if len(set(tokens(match.group(1))) & set(tokens(first_clause))) < 2:
                 return _keep(unit, "beyond_allowed_edit", "personal_first_not_first", links=links)
+            # The student's part comes first as its own clause. Joined to the shared part's
+            # credit ("Wrote the backend and built the website with a friend") it reads as
+            # shared; a team named as its own doer ("for a charger our team designed") does not.
+            if _TEAM_WITH.search(first_clause) and not _TEAM_WITH.search(match.group(1)):
+                return _keep(unit, "beyond_allowed_edit", "personal_first_joined", links=links)
     if len(relabels) > MAX_RELABELS:
         return _keep(unit, "beyond_allowed_edit", "too_many_relabels", links=links)
     added = Counter(rewrite) - (Counter(current) | Counter(evidence)) - allowed_add

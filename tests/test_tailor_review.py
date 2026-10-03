@@ -752,6 +752,34 @@ def test_the_ui_locale_picks_no_rewrite_language(endpoint, monkeypatch, locale, 
     assert (receipt["status"], receipt["suggestion"]["proposed_text"], len(reviews)) == ("suggested", pair[1], 1)
 
 
+CHBE = ("On a five-person CHBE 421 design team, built a benchtop vanadium redox flow battery that reached 72% "
+        "round-trip efficiency; my part was wiring the data logger and keeping the test log.")
+
+
+@pytest.mark.parametrize(("original", "rewrite", "kept"), [
+    # The student's own part joined to the shared part's credit reads as shared.
+    ("Built the website with a friend; I wrote the backend in Flask.",
+     "Wrote the backend in Flask and built the website with a friend.", True),
+    ("Ran titrations with my lab partner; I wrote the error analysis.",
+     "Wrote the error analysis and ran titrations with my lab partner.", True),
+    ("Built the website with a friend. My part was writing the backend in Flask.",
+     "Wrote the backend in Flask and built the website with a friend.", True),
+    ("与两名同学合作搭建了气象站，本人单独编写了数据采集程序。", "单独编写了数据采集程序并与两名同学合作搭建了气象站。", True),
+    # A team named as the doer of its own action is not shared credit (corpus F64, F102).
+    (CHBE, "Wired the data logger and kept the test log for a five-person CHBE 421 design team that built a "
+           "benchtop vanadium redox flow battery reaching 72% round-trip efficiency.", False),
+    ("Our four-person team designed a solar-powered bike charger; I built the voltage regulator.",
+     "Built the voltage regulator for a solar-powered bike charger that our four-person team designed.", False),
+    ("Built the website with a friend; I wrote the backend in Flask.",
+     "I wrote the backend in Flask. Built the website with a friend.", False),
+])
+def test_personal_first_keeps_the_students_part_a_clause_of_its_own(original, rewrite, kept):
+    unit = em.Unit("u1", original, original)
+    row = {"unit_id": "u1", "decision": "rewrite", "text": rewrite, "ops": [{"op": "personal_first"}]}
+    outcome = em.check_rewrite(unit, row, {}, output_language=em.language(original))
+    assert (outcome.status, outcome.detail) == (("kept", "personal_first_joined") if kept else ("pending", None))
+
+
 # Chinese-framed lines whose English words outnumber their Chinese characters: language() reads them
 # as English, but a rewrite that drops the Chinese has translated the line's frame.
 CODE_MIXED = [("负责 data cleaning, feature engineering, model training 和 deployment",
