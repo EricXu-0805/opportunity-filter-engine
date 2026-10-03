@@ -810,10 +810,19 @@ class RoadmapResponse(BaseModel):
     targets_without_skill_evidence: int = Field(default=0, ge=0)
 
 
+# A /tailor request's lists are bounded before their items are validated: pydantic
+# checks a list's length first and reports one error, where 524,287 wrongly typed
+# items in a 1 MiB body made 524,287 errors and a 36 MB 422 on the event loop (4-7 s).
+# The bound sits far above what the route accepts, which still refuses by name
+# (renovation bounds its raw sections and bullets in reject_oversized_payload).
+MAX_REQUEST_BULLETS = 200
+
+
 class TailorRequest(BaseModel):
     profile: ProfileRequest
     opportunity_id: str
-    original_bullets: list[str] = Field(default_factory=list)
+    # Blank layout lines are dropped below; past 12 bullets the route refuses by name.
+    original_bullets: list[str] = Field(default_factory=list, max_length=MAX_REQUEST_BULLETS)
     # Optional for older clients. A supplied code version is an exact pre-work
     # condition, not a claim that user-provided bullets are confirmed evidence.
     expected_pipeline_version: str | None = Field(
@@ -840,7 +849,7 @@ class TailorRequest(BaseModel):
     # i and original_bullets[i] is just its current wording. The modal sends it
     # after "Use kept as new originals", so accepted AI text never becomes
     # the next request's evidence.
-    source_bullets: list[str] | None = None
+    source_bullets: list[str] | None = Field(default=None, max_length=MAX_REQUEST_BULLETS)
 
     @field_validator("source_bullets")
     @classmethod

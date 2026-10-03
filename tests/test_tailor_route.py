@@ -1272,3 +1272,27 @@ class TestEveryBulletTheStudentSubmittedIsSent:
         assert resp.status_code == 200
         assert "experiment number 12" in seen["prompt"]
         assert len(resp.json()["tailored_bullets"]) == 12
+
+
+@pytest.mark.parametrize("field", ["original_bullets", "source_bullets"])
+@pytest.mark.parametrize("junk", [0, [], {}], ids=["ints", "empty lists", "empty dicts"])
+def test_a_body_of_wrongly_typed_bullets_is_one_short_error(field, junk):
+    """Round 1, criterion (4): 524,287 wrongly typed items in a 1 MiB body made 524,287 validation errors and a
+    36 MB 422, built and encoded on the event loop (4-7 s; scripts/request_parse_lag.py). The list's length is
+    checked first now, and a 422 names at most its first 20 errors."""
+    items = [junk] * 300_000
+    body = {"profile": {"name": "Sample Student"}, "opportunity_id": "any", field: items}
+    if field == "source_bullets":
+        body["original_bullets"] = ["Built a robot."]
+    response = TestClient(app).post("/api/tailor", json=body)
+    assert response.status_code == 422
+    assert 1 <= len(response.json()["detail"]) <= 20 and len(response.content) < 4096
+
+
+def test_two_hundred_bullets_still_get_the_named_refusal(real_opp_id):
+    """The schema bound sits far above the route's own limit, which still refuses by name."""
+    response = TestClient(app).post("/api/tailor", json={
+        "profile": {"name": "Sample Student"}, "opportunity_id": real_opp_id,
+        "original_bullets": [f"Built robot number {i}." for i in range(200)]})
+    assert response.status_code == 422
+    assert "TAILOR_INPUT_TOO_LARGE" in response.text

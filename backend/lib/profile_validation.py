@@ -41,9 +41,14 @@ def safe_profile_validation_detail(exc: RequestValidationError, *, profile_root:
     return None
 
 
+# A 422 names its first errors; a list of thousands says no more and costs its
+# encoding on the event loop.
+MAX_VALIDATION_ERRORS = 20
+
+
 def safe_validation_errors(exc: RequestValidationError) -> list[dict]:
     """Keep standard error categories without reflecting values or unknown keys."""
     return [{"type": error.get("type", "value_error"),
              "loc": [part for part in error.get("loc", ())[:1]
                      if part in {"body", "query", "path", "header", "cookie"}],
-             "msg": "Request input is invalid."} for error in exc.errors()]
+             "msg": "Request input is invalid."} for error in exc.errors()[:MAX_VALIDATION_ERRORS]]
