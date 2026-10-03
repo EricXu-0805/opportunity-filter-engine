@@ -236,6 +236,9 @@ class TestExtractBullets:
             "EDUCATION\n"
             "• Built a thermal sensor in Java for the ME 270 capstone\n"
             "- Wrote a 12-page final lab report on heat transfer\n"
+            # A lowercase row right under a glyph row with no closing mark wraps that bullet
+            # (_resume_rows); under a heading it is a row of its own.
+            "OTHER\n"
             "not a bullet line at all\n"
         )
         resp = client.post("/api/tailor/extract-bullets", json={"resume_text": resume})
@@ -385,6 +388,57 @@ class TestBulletGrounding:
                   "  that was never deployed.\n"
                   "Research Assistant • Wrote the methods section\n")
         assert tailor_module._bullet_grounded(line, resume)
+
+    # Round-3 review (criterion 1): a row that opens with a capital, a digit, a CJK character or
+    # "(" was read as a line of its own, so the first physical row of a wrapped glyph bullet was
+    # accepted and the rest of the student's line (often its status) was dropped.
+    WRAPPED = ("EXPERIENCE\n"
+               "• Co-authored a paper on soil moisture sensing for the campus farm\n"
+               "Under review at the ICRA 2026 workshop\n"
+               "• Wrote a grant proposal for the robotics club\n"
+               "(in preparation, not yet submitted)\n"
+               "• Surveyed farmers about irrigation schedules in\n"
+               "12 villages; the analysis is planned for spring\n"
+               "• 搭建了校园农场的土壤湿度传感器网络并整理数据\n"
+               "计划于 2026 年投稿\n"
+               "• Built a weather station with two classmates.\n"
+               "PROJECTS\n"
+               "• Analyzed 88 samples with PyTorch\n"
+               "\n"
+               "Teaching Assistant, CS 225\n")
+
+    @pytest.mark.parametrize("cut", [
+        "Co-authored a paper on soil moisture sensing for the campus farm",    # capital: "Under review"
+        "Wrote a grant proposal for the robotics club",                         # "(in preparation ...)"
+        "Surveyed farmers about irrigation schedules in",                       # digit: "12 villages ..."
+        "搭建了校园农场的土壤湿度传感器网络并整理数据",                              # CJK: "计划于 2026 年投稿"
+        "Under review at the ICRA 2026 workshop",                               # a continuation on its own
+        "计划于 2026 年投稿",
+    ])
+    def test_the_first_row_of_a_wrapped_glyph_bullet_is_not_grounded(self, cut):
+        assert not tailor_module._bullet_grounded(cut, self.WRAPPED)
+
+    @pytest.mark.parametrize("line", [
+        "Co-authored a paper on soil moisture sensing for the campus farm Under review at the ICRA 2026 workshop",
+        "Wrote a grant proposal for the robotics club (in preparation, not yet submitted)",
+        "Surveyed farmers about irrigation schedules in 12 villages; the analysis is planned for spring",
+        "搭建了校园农场的土壤湿度传感器网络并整理数据计划于 2026 年投稿",       # a CJK wrap joins with no space
+        "搭建了校园农场的土壤湿度传感器网络并整理数据 计划于 2026 年投稿",
+        "Built a weather station with two classmates.",                         # a closing mark ends the item
+        "Analyzed 88 samples with PyTorch",                                      # a heading row or a blank row
+    ])
+    def test_a_whole_wrapped_glyph_bullet_is_grounded(self, line):
+        assert tailor_module._bullet_grounded(line, self.WRAPPED)
+
+    def test_the_heuristic_keeps_each_wrapped_glyph_bullet_whole(self):
+        assert tailor_module._heuristic_bullets(self.WRAPPED, limit=1000) == [
+            "Co-authored a paper on soil moisture sensing for the campus farm Under review at the ICRA 2026 workshop",
+            "Wrote a grant proposal for the robotics club (in preparation, not yet submitted)",
+            "Surveyed farmers about irrigation schedules in 12 villages; the analysis is planned for spring",
+            "搭建了校园农场的土壤湿度传感器网络并整理数据计划于 2026 年投稿",
+            "Built a weather station with two classmates.",
+            "Analyzed 88 samples with PyTorch",
+        ]
 
     def test_paraphrase_is_rejected(self):
         assert not tailor_module._bullet_grounded(

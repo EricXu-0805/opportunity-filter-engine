@@ -542,20 +542,28 @@ _EXTRACT_SYSTEM_PROMPT = (
 
 
 def _heuristic_bullets(resume_text: str, *, limit: int = 12) -> list[str]:
-    """Pull bullet-glyph lines from raw resume text (no LLM).
+    """Pull bullet-glyph items from raw resume text (no LLM).
 
     Mirrors the frontend ``extractBulletLines`` so the offline / no-provider
-    path returns the same prefill the client computes locally.
+    path returns a prefill like the one the client computes locally. A glyph
+    row's wrapped rows (``_resume_rows``) are joined back to it: the first
+    physical row alone could drop the rest of the student's line, such as a
+    "(in preparation)" or "计划于…" status on the row below.
     """
     out: list[str] = []
-    for raw in resume_text.splitlines():
-        m = _BULLET_PREFIX_RE.match(raw)
-        if m:
-            cleaned = m.group(1).strip()
-            if len(cleaned) >= 10:
-                out.append(cleaned)
-        if len(out) >= limit:
-            break
+    bullet: str | None = None
+    for raw, _, opens in [*_resume_rows(resume_text), ("", "", True)]:
+        if opens and bullet is not None:
+            if len(bullet) >= 10:
+                out.append(bullet)
+            bullet = None
+            if len(out) >= limit:
+                break
+        if opens:
+            m = _BULLET_PREFIX_RE.match(raw)
+            bullet = m.group(1).strip() if m else None
+        elif bullet is not None:
+            bullet += _row_join(bullet, raw) + raw
     return out
 
 
@@ -573,36 +581,106 @@ _LINE_GLYPH = re.compile(r"(?:[•\-*–—+▪●◦·]|\d+[.)])\s+")
 _INLINE_GLYPH = re.compile(r"\s*[•▪●◦]\s*")
 _LINE_END_MARKS = " .;,:。；，：!?！？"
 _SENTENCE_END_MARKS = (".", ";", ":", "。", "；", "：", "!", "?", "！", "？")
+# A row that cannot end an item: a word broken at its hyphen, a comma, "&", "/" or an
+# opening bracket, or a spaced dash or "+" (resume-input.ts CONTINUES_AFTER, its characters).
+_CARRIES_ON = re.compile(r"(?:\w[-\u2010\u2011]|[,&/(\[（，、《「『]|\s[-–—+])$")
+# A row that cannot open an item: "&", "%" or a bracket (resume-input.ts CONTINUES_BEFORE).
+_OPENS_ON = re.compile(r"^[&%()\[\]（）]")
+# CJK text and its punctuation wrap with no space at the break.
+_CJK_TEXT = "\u2e80-\u9fff\uac00-\ud7af\uf900-\ufaff\uff00-\uffef"
+_CJK_SPACE = re.compile(f"(?<=[{_CJK_TEXT}])\\s+(?=[{_CJK_TEXT}])")
+_CJK_EDGE = re.compile(f"[{_CJK_TEXT}]")
+
+
+def _row_join(before: str, after: str) -> str:
+    """What joins a wrapped row to the one before: nothing inside a hyphen-broken word or CJK text."""
+    if re.search(r"\w[-\u2010\u2011]$", before) and after[:1].isalnum():
+        return ""
+    return "" if _CJK_EDGE.fullmatch(before[-1:]) and _CJK_EDGE.fullmatch(after[:1]) else " "
+
+
+def _own_row(line: str) -> bool:
+    """A row in capitals: a heading, a name, a school or a role row, never the rest of a sentence."""
+    letters = [ch for ch in line if ch.isalpha()]
+    return sum(ch.isupper() for ch in letters) >= 2 and not any(ch.islower() for ch in letters)
+
+
+def _resume_rows(resume_text: str) -> list[tuple[str, str, bool]]:
+    """Each non-blank row: as written (stripped), as _normalized_extraction_text reads it with case
+    kept, and whether it opens an item. A row that does not open one wraps the item above.
+
+    A row with a bullet glyph, or beside a column gap (a tab), opens an item. Otherwise the
+    row continues the one above when their words say so: the row above cannot end an item
+    (it ends in a comma, an opening bracket, a broken word; or it leaves a bracket open), or
+    this row cannot open one ("&", "%", a bracket: "(in preparation)"), or it opens in lower
+    case after a row with no closing mark. A row after a closing mark opens an item.
+
+    What is left is a row that opens with a capital, a digit or a CJK character after a row
+    with no closing mark. On its own that says nothing: "Presented results ..." under
+    "Designed a thermal sensor ... data" is an item of its own, and "计划于 2025 年投稿" under
+    "• 搭建传感器网络并整理数据" finishes it. Inside a glyph item, the glyph marks where the next
+    item starts, so such a row goes on with the item unless a blank row or a row in capitals
+    (a heading, a role row) sets it apart: a bullet then never ends at its first physical row
+    while the rest of it may hold its status. Where no glyph marks the items, every such row
+    is a line of its own, as the student wrote it.
+    """
+    rows: list[tuple[str, str, bool]] = []
+    previous, previous_tab, glyph_item, after_blank = "", False, False, False
+    for raw in resume_text.splitlines():
+        line = re.sub(r"\s+", " ", unicodedata.normalize("NFKC", raw)).strip()
+        if not line:
+            after_blank = True
+            continue
+        glyph, tab = bool(_LINE_GLYPH.match(line)), "\t" in raw
+        if not rows or glyph or tab or previous_tab:
+            opens = True
+        elif (_OPENS_ON.match(line) or _CARRIES_ON.search(previous)
+              or previous.count("(") > previous.count(")")):
+            opens = False
+        elif previous.endswith(_SENTENCE_END_MARKS):
+            opens = True
+        elif line[:1].islower():
+            opens = False
+        else:
+            opens = after_blank or not glyph_item or _own_row(line)
+        glyph_item = glyph if opens else glyph_item
+        rows.append((raw.strip(), line, opens))
+        previous, previous_tab, after_blank = line, tab, False
+    return rows
+
+
+def _extraction_text(value: str) -> str:
+    """_normalized_extraction_text without the spaces between CJK characters, which a wrap or a model drops."""
+    return _CJK_SPACE.sub("", _normalized_extraction_text(value))
 
 
 def _extraction_lines(resume_text: str) -> tuple[str, set[int], set[int]]:
-    """The résumé as _normalized_extraction_text reads it, with where a bullet may start and end.
+    """The résumé as _extraction_text reads it, with where a bullet may start and end.
 
-    A bullet starts at a line's start or after its bullet glyph, and ends at the
-    line's end, with or without its final mark. A line that opens in lower case
-    after a line with no closing mark continues it (a wrapped line), so neither
-    joint is a boundary. An inline glyph ("... • ...") separates two bullets.
+    A bullet starts where a row opens an item (``_resume_rows``), or after its bullet
+    glyph, and ends at the end of the last row of its item, with or without its final
+    mark. A wrapped row is joined to the row above (with no space inside CJK text), so
+    neither joint is a boundary. An inline glyph ("... • ...") separates two bullets.
     """
-    lines = [re.sub(r"\s+", " ", unicodedata.normalize("NFKC", raw)).strip() for raw in resume_text.splitlines()]
-    lines = [line for line in lines if line]
-    continues = [index > 0 and line[:1].islower() and not lines[index - 1].endswith(_SENTENCE_END_MARKS)
-                 and not _LINE_GLYPH.match(line) for index, line in enumerate(lines)]
-    pieces, starts, ends, offset = [], set(), set(), 0
-    for index, line in enumerate(lines):
-        folded = line.casefold()
-        if not continues[index]:
+    rows = _resume_rows(resume_text)
+    text, starts, ends = "", set(), set()
+    for index, (_, line, opens) in enumerate(rows):
+        folded = _CJK_SPACE.sub("", line).casefold()
+        if text:
+            text += " " if opens else _row_join(text, folded)
+        offset = len(text)
+        if opens:
             starts.add(offset)
             glyph = _LINE_GLYPH.match(folded)
             if glyph:
                 starts.add(offset + glyph.end())
-        if index + 1 == len(lines) or not continues[index + 1]:
+        if index + 1 == len(rows) or rows[index + 1][2]:
             ends.update({offset + len(folded), offset + len(folded.rstrip(_LINE_END_MARKS))})
         for match in _INLINE_GLYPH.finditer(folded):
             ends.add(offset + len(folded[:match.start()].rstrip(_LINE_END_MARKS)))
             starts.add(offset + match.end())
-        pieces.append(folded)
-        offset += len(folded) + 1
-    return " ".join(pieces), starts, ends
+        text += folded
+    return text, starts, ends
 
 
 def _bullet_grounded(bullet: str, resume_text: str) -> bool:
@@ -618,7 +696,7 @@ def _bullet_grounded(bullet: str, resume_text: str) -> bool:
     back as "survey 50 farmers ..."), and the cut became the evidence every
     later rewrite was reviewed against.
     """
-    candidate = _normalized_extraction_text(bullet)
+    candidate = _extraction_text(bullet)
     if len(candidate) < 4:
         return False
     text, starts, ends = _extraction_lines(resume_text)
