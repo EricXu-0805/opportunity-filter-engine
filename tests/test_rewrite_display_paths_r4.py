@@ -128,3 +128,38 @@ def test_a_status_row_in_any_shape_stays_with_its_bullet(monkeypatch, path, name
     resume, cut = SHAPED_WRAPS[name]
     assert cut not in _extracted(monkeypatch, path, "EXPERIENCE\n" + resume + "• Cleaned 200 survey responses\n",
                                  [cut, "Cleaned 200 survey responses"])
+
+
+# ------------------------------------------------------------------ criterion (4): the local extraction off the loop
+# Both routes ran the local extraction of every chunk the model did not answer on the event loop, and
+# grounded each model line against a layout built again for that line. a2e3c4e's row reading made both
+# dearer: on a3f0424 ten 60,000-character requests at once held the loop 640 ms with no model and
+# 2,283 ms with a model answering 60 lines (scripts/extract_route_lag.py --concurrent 10 [--model]).
+@pytest.mark.parametrize(("path", "local"), [("/api/tailor/extract-bullets", "_heuristic_bullets"),
+                                             ("/api/tailor/structure", "_heuristic_structure")])
+def test_the_local_extraction_runs_on_the_request_lane(monkeypatch, path, local):
+    import threading
+    threads = []
+    original = getattr(tailor, local)
+
+    def recorded(*args, **kwargs):
+        threads.append(threading.current_thread().name)
+        return original(*args, **kwargs)
+    monkeypatch.setattr(tailor, local, recorded)
+    monkeypatch.setattr(tailor, "is_configured", lambda: False)
+    body = {"resume_text": "EXPERIENCE\n• Cleaned 212 survey responses in R\n", "locale": "en"}
+    if path.endswith("extract-bullets"):
+        body["expected_pipeline_version"] = tailor.TAILOR_PIPELINE_VERSION
+    assert TestClient(app).post(path, json=body).status_code == 200
+    assert threads and all(name.startswith("ofe-request-work") for name in threads), threads
+
+
+def test_the_model_lines_of_a_chunk_are_grounded_against_one_layout(monkeypatch):
+    calls = []
+    original = tailor._extraction_layout
+    monkeypatch.setattr(tailor, "_extraction_layout", lambda text: calls.append(1) or original(text))
+    lines = [f"Cleaned {count} survey responses in R" for count in range(100, 110)]
+    monkeypatch.setattr(tailor, "chat_completion", lambda *a, **k: json.dumps({"bullets": lines}))
+    resume = "EXPERIENCE\n" + "".join(f"• {line}\n" for line in lines)
+    assert tailor._ai_extract_bullets(resume) == lines
+    assert len(calls) == 1

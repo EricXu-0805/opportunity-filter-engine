@@ -44,7 +44,7 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from backend.data_loader import load_opportunities_by_id
 from backend.lib import evidence_map as _em
 from backend.lib import llm_budget
-from backend.lib.blocking import SINGLE_LLM_TIMEOUT_SECONDS, BlockingWorkTimeout, run_blocking
+from backend.lib.blocking import SINGLE_LLM_TIMEOUT_SECONDS, BlockingWorkTimeout, run_blocking, run_request_work
 from backend.lib.evidence_map import (
     CHECK_TIMEOUT_SECONDS,
     GENERATION_DEADLINE_SECONDS,
@@ -869,11 +869,12 @@ def _ai_extract_bullets(resume_text: str) -> list[str] | None:
 
     out: list[str] = []
     seen: set[str] = set()
+    layout = _extraction_layout(resume_text)
     for item in items:
         text = str(item).strip()
         if len(text) < 10:
             continue
-        if not _bullet_grounded(text, resume_text):
+        if _bullet_row(text, layout) is None:
             continue
         key = text.lower()
         if key in seen:
@@ -960,6 +961,24 @@ async def _process_resume_chunks(
     return results, coverage
 
 
+def _with_local_extraction(results: list, text: str, local: Callable, **kwargs) -> list:
+    """Each chunk's model result, or ``local``'s extraction of the chunk where the model gave none."""
+    return [result or local(chunk, **kwargs) for result, (_, _, chunk) in zip(results, resume_chunks(text), strict=True)]
+
+
+async def _local_groups(results: list, text: str, local: Callable, **kwargs) -> list:
+    """_with_local_extraction, on the request lane when a chunk needs the local extraction.
+
+    Reading the rows of a 60,000-character résumé (_resume_rows) takes up to about 90 ms of
+    CPU. On the event loop, ten such requests at once (one client's /api/tailor* limit) held it
+    0.8-1.0 s; on the lane (backend.lib.blocking.run_request_work) the loop shares the GIL with
+    one thread and the requests queue there instead.
+    """
+    if all(results):
+        return list(results)
+    return await run_request_work(_with_local_extraction, results, text, local, **kwargs)
+
+
 def _dispatch_reserver(http_request: Request) -> Callable[[], bool]:
     """The rate limiter's per-dispatch reservation for this request.
 
@@ -1017,8 +1036,7 @@ async def extract_bullets(request: ExtractBulletsRequest, http_request: Request)
     results, coverage = await _process_resume_chunks(
         text, _ai_extract_bullets, reserve_dispatch=_dispatch_reserver(http_request),
     )
-    groups = [result or _heuristic_bullets(chunk, limit=1000)
-              for result, (_, _, chunk) in zip(results, resume_chunks(text), strict=True)]
+    groups = await _local_groups(results, text, _heuristic_bullets, limit=1000)
     bullets, limited = _select_bullets_across_chunks(groups)
     warnings = _processing_warnings(coverage)
     if limited:
@@ -1411,8 +1429,7 @@ async def structure_resume(request: StructureResumeRequest, http_request: Reques
     results, coverage = await _process_resume_chunks(
         text, _ai_structure_resume, reserve_dispatch=_dispatch_reserver(http_request), locale=request.locale,
     )
-    groups = [result or _heuristic_structure(chunk)
-              for result, (_, _, chunk) in zip(results, resume_chunks(text), strict=True)]
+    groups = await _local_groups(results, text, _heuristic_structure)
     sections, limited = _merge_structure_chunks(groups)
     warnings = _processing_warnings(coverage)
     if limited:
