@@ -799,12 +799,13 @@ describe('DashboardPage — a reminder is only "due" if it will actually be sent
     expect(screen.queryByText('dashboard.reminders.pending {"count":1}')).toBeNull();
   });
 
-  it.each(['rejected', 'replied', 'interviewing'] as const)('a row marked %s on a live listing counts as needing review, never as due', async (status) => {
+  it('a row marked rejected on a live listing counts as needing review, never as due', async () => {
     // Actionable target, undeliverable status: the cron's query selects
-    // contacted/applied and nothing else.
+    // contacted/applied and nothing else. Replied and interviewing are also
+    // outside it, but their dates are not reviewed here: see the next suite.
     mockGetFavorites.mockResolvedValue(new Set());
     mockGetInteractionsFull.mockResolvedValue(new Map([
-      ['opp-a', { type: status, remind_at: isoDateIn(0) }],
+      ['opp-a', { type: 'rejected', remind_at: isoDateIn(0) }],
     ]));
     mockGetShortlistOpportunities.mockResolvedValue(shortlist([
       {
@@ -821,6 +822,111 @@ describe('DashboardPage — a reminder is only "due" if it will actually be sent
     // And not swallowed by "No reminders set" — the student has one, it just
     // is not going to fire.
     expect(screen.queryByText('dashboard.reminders.emptyTitle')).toBeNull();
+  });
+});
+
+describe('DashboardPage — a date kept after a reply is the student\'s record, not a reminder', () => {
+  const CLOSED_TRUTH = {
+    listing_state: 'closed', reference_only: false, actionable: false,
+    accepting_state: 'not_accepting', reason_code: 'listing_closed',
+    verified_at: null, expires_at: null,
+  };
+
+  /** The row in the tracked-opportunities section. A deliverable reminder
+   *  links to the same page from the reminders list, but only the tracker row
+   *  carries a status pill. */
+  function trackerRow(id: string): HTMLElement {
+    const rows = Array.from(
+      document.querySelectorAll<HTMLElement>(`a[href="/opportunities/${id}"]`),
+    ).filter((a) => /tracker\.status\./.test(a.textContent ?? ''));
+    expect(rows).toHaveLength(1);
+    return rows[0];
+  }
+
+  const hasBell = (row: HTMLElement) =>
+    within(row).queryByLabelText('dashboard.trackerSection.hasReminder') !== null;
+
+  it.each([
+    ['replied', 'a live listing', liveListing],
+    ['replied', 'a live faculty contact', liveFaculty],
+    ['interviewing', 'a live listing', liveListing],
+    ['interviewing', 'a live faculty contact', liveFaculty],
+  ] as const)('a row marked %s on %s, with a stored date, is not counted as needing review and has no reminder bell', async (status, _label, shape) => {
+    // The cron stops at a reply (M49) and leaves the date on the row. There is
+    // nothing to review: the date will not send, and that is intended.
+    mockGetFavorites.mockResolvedValue(new Set());
+    mockGetInteractionsFull.mockResolvedValue(new Map([
+      ['opp-a', { type: status, notes: 'they wrote back', remind_at: isoDateIn(0) }],
+    ]));
+    mockGetShortlistOpportunities.mockResolvedValue(shortlist([
+      shape({ id: 'opp-a', title: 'Answered Lab' }),
+    ]));
+
+    render(<DashboardPage />);
+
+    await waitFor(() => expect(screen.getByText('Answered Lab')).toBeInTheDocument());
+    expect(screen.queryByTestId('dashboard-reminders-needs-review')).toBeNull();
+    expect(screen.queryByText('dashboard.reminders.today')).toBeNull();
+    // With nothing deliverable and nothing to review, the reminders section
+    // has no reminder to show.
+    expect(screen.getByText('dashboard.reminders.emptyTitle')).toBeInTheDocument();
+    // The row itself stays, notes marker included; only the bell goes.
+    const row = trackerRow('opp-a');
+    expect(within(row).getByText(`tracker.status.${status}`)).toBeInTheDocument();
+    expect(within(row).getByLabelText('dashboard.trackerSection.hasNotes')).toBeInTheDocument();
+    expect(hasBell(row)).toBe(false);
+  });
+
+  it.each(['replied', 'interviewing'] as const)('a row marked %s is left out of the count when the title lookup fails too', async (status) => {
+    // The catch path counts every stored date as needing review, because no
+    // target's posture is known. The status is still known, and it alone
+    // settles a replied or interviewing row.
+    mockGetFavorites.mockResolvedValue(new Set());
+    mockGetInteractionsFull.mockResolvedValue(new Map([
+      ['opp-a', { type: status, remind_at: isoDateIn(0) }],
+    ]));
+    mockGetShortlistOpportunities.mockRejectedValue(new Error('batch endpoint down'));
+
+    render(<DashboardPage />);
+
+    await waitFor(() => expect(screen.getByText('dashboard.reminders.emptyTitle')).toBeInTheDocument());
+    expect(screen.queryByTestId('dashboard-reminders-needs-review')).toBeNull();
+    expect(hasBell(trackerRow('opp-a'))).toBe(false);
+  });
+
+  it('counts and marks rejected and closed rows as before, beside replied and interviewing rows that it does not', async () => {
+    // The owner's decision covers replied and interviewing only. A rejected
+    // row and a row on a closed listing keep their place in the note and
+    // their bell; a deliverable row keeps both its due line and its bell.
+    mockGetFavorites.mockResolvedValue(new Set());
+    mockGetInteractionsFull.mockResolvedValue(new Map([
+      ['opp-replied', { type: 'replied', remind_at: isoDateIn(0) }],
+      ['opp-interviewing', { type: 'interviewing', remind_at: isoDateIn(0) }],
+      ['opp-rejected', { type: 'rejected', remind_at: isoDateIn(0) }],
+      ['opp-closed', { type: 'applied', remind_at: isoDateIn(0) }],
+      ['opp-live', { type: 'contacted', remind_at: isoDateIn(1) }],
+    ]));
+    mockGetShortlistOpportunities.mockResolvedValue(shortlist([
+      liveListing({ id: 'opp-replied', title: 'Replied Lab' }),
+      liveFaculty({ id: 'opp-interviewing', title: 'Interviewing Lab' }),
+      liveListing({ id: 'opp-rejected', title: 'Rejected Lab' }),
+      liveListing({ id: 'opp-closed', title: 'Closed Lab', target_truth: { ...CLOSED_TRUTH } }),
+      liveFaculty({ id: 'opp-live', title: 'Live Lab' }),
+    ]));
+
+    render(<DashboardPage />);
+
+    await waitFor(() =>
+      expect(screen.getByText('dashboard.reminders.tomorrow')).toBeInTheDocument());
+    expect(screen.getByText('dashboard.reminders.pending {"count":1}')).toBeInTheDocument();
+    expect(screen.getByTestId('dashboard-reminders-needs-review'))
+      .toHaveTextContent('dashboard.reminders.needsReview {"count":2}');
+
+    expect(hasBell(trackerRow('opp-replied'))).toBe(false);
+    expect(hasBell(trackerRow('opp-interviewing'))).toBe(false);
+    expect(hasBell(trackerRow('opp-rejected'))).toBe(true);
+    expect(hasBell(trackerRow('opp-closed'))).toBe(true);
+    expect(hasBell(trackerRow('opp-live'))).toBe(true);
   });
 });
 

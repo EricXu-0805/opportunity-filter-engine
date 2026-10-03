@@ -37,6 +37,19 @@ export function canDeliverReminder(
   return targetPosture(target) === 'actionable';
 }
 
+/**
+ * Whether a date stored on a row in this status is the student's own record
+ * rather than a reminder. A recorded reply or interview ends follow-up
+ * reminders on purpose (see REMINDABLE_STATUSES), and the cron leaves the date
+ * on the row, so there is nothing to review: the dashboard neither counts it
+ * among reminders that need review nor marks the row as having one. A
+ * rejected row, or a row on a closed target, is not covered: its date still
+ * counts as needing review.
+ */
+export function isReplyRecorded(status: string | undefined): boolean {
+  return status === 'replied' || status === 'interviewing';
+}
+
 export type ReminderStatus = 'overdue' | 'today' | 'tomorrow' | 'this_week' | 'upcoming' | null;
 
 export interface ReminderInfo {

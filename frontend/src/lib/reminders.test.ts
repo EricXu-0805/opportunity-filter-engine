@@ -5,6 +5,7 @@ import {
   daysUntilReminder,
   collectReminders,
   formatReminderLabel,
+  isReplyRecorded,
 } from './reminders';
 import type { InteractionRecord } from './supabase';
 
@@ -256,4 +257,21 @@ describe('canDeliverReminder', () => {
     expect(canDeliverReminder(undefined, 'applied')).toBe(false);
     expect(canDeliverReminder(LIVE_LISTING as never, undefined)).toBe(false);
   });
+});
+
+// The dashboard's rule for a date the cron stopped sending after a reply: it
+// is neither counted as needing review nor marked with a bell. The owner
+// decided this for replied and interviewing only; a rejected row's date
+// still needs review.
+describe('isReplyRecorded', () => {
+  it.each(['replied', 'interviewing'] as const)('%s is a recorded reply', (status) => {
+    expect(isReplyRecorded(status)).toBe(true);
+  });
+
+  it.each(['contacted', 'applied', 'rejected', 'dismissed', undefined] as const)(
+    '%s is not',
+    (status) => {
+      expect(isReplyRecorded(status)).toBe(false);
+    },
+  );
 });
