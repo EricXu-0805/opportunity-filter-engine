@@ -1,4 +1,4 @@
-"""Round-3 re-verification (3b) for acceptance criterion (1) of fix/tailor-review.
+"""Round-3 re-verification (3b) for acceptance criteria (1), (3) and (4) of fix/tailor-review.
 
 Provider-free: the extraction, structure, generation and review calls are stubbed at
 ``chat_completion``. Each test was written as a probe of a gap or a regression the
@@ -16,6 +16,12 @@ from fastapi.testclient import TestClient
 
 from backend.main import app
 from backend.routes import tailor
+from tests.test_rewrite_display_paths import (
+    ALL_PATHS,
+    _rewrite,
+    opportunity,  # noqa: F401  (pytest fixture)
+    run,
+)
 
 EXTRACT_PATHS = ["/api/tailor/extract-bullets", "/api/tailor/structure"]
 
@@ -163,3 +169,35 @@ def test_the_model_lines_of_a_chunk_are_grounded_against_one_layout(monkeypatch)
     resume = "EXPERIENCE\n" + "".join(f"• {line}\n" for line in lines)
     assert tailor._ai_extract_bullets(resume) == lines
     assert len(calls) == 1
+
+
+# ------------------------------------------------------------------ criterion (3): an accented phrase relabeled
+# 3a6f715 stopped counting accented Latin letters as a script of their own, so the relabel same-script
+# check no longer saw "pipeline de données" -> "data pipeline": a French line's phrase written in
+# English reached the review and was shown.
+LATIN_RELABELS = {
+    "french": ("Développé un pipeline de données en Python pour 40 capteurs.",
+               "Développé un data pipeline en Python pour 40 capteurs.", "pipeline de données", "data pipeline",
+               "Build a data pipeline in Python."),
+}
+
+
+@pytest.mark.parametrize("path", ALL_PATHS)
+@pytest.mark.parametrize("name", list(LATIN_RELABELS))
+def test_an_accented_phrase_relabeled_into_english_is_kept(opportunity, monkeypatch, path, name):  # noqa: F811
+    original, rewrite, source, term, anchor = LATIN_RELABELS[name]
+    row = _rewrite(rewrite, [{"op": "relabel", "link": "L1", "from": source, "to": term}],
+                   [{"id": "L1", "anchor": "t1", "term": term, "source": source, "relation": "same"}])
+    shown, seen = run(opportunity, monkeypatch, path, original, row, anchor)
+    assert rewrite not in seen and rewrite not in shown, (shown, seen)
+
+
+@pytest.mark.parametrize(("source", "target", "kept"), [
+    ("pipeline de données", "data pipeline", True),        # French written in English
+    ("data pipeline", "pipeline de données", True),        # English written in French
+    ("résumé parser", "resume parser", False),             # the same word without its accents
+    ("Café Lab survey", "Café Lab questionnaire", False),  # the accented word stays
+])
+def test_a_relabel_keeps_each_accented_word_accents_aside(source, target, kept):
+    from backend.lib import evidence_map as em
+    assert em._accents_kept(source, target) is not kept

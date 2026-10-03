@@ -855,6 +855,30 @@ def _script_letters(text: str) -> Counter:
                     if not unicodedata.name(letter, "").startswith("LATIN ")})
 
 
+def _accent_words(text: str) -> tuple[set[str], set[str]]:
+    """A text's words written with an accented Latin letter, and all its words: each with its accents
+    folded away and its case folded ("Données" -> "donnees", "résumé" -> "resume")."""
+    words = [(word, "".join(character for character in unicodedata.normalize("NFKD", word)
+                            if not unicodedata.combining(character)).casefold())
+             for word in re.findall(r"\w+", _letters_view(text))]
+    accented = {folded for word, folded in words
+                if any(not character.isascii() and unicodedata.name(character, "").startswith("LATIN ")
+                       for character in word)}
+    return accented, {folded for _, folded in words}
+
+
+def _accents_kept(source: str, target: str) -> bool:
+    """Whether a relabel keeps every accented word on either side, accents aside.
+
+    _script_letters does not count an accented Latin letter as a script of its own, so it
+    cannot tell "résumé" -> "resume" (the same word) from "pipeline de données" -> "data
+    pipeline" (French written in English). An accented word of "from" stays in "to", and an
+    accented word of "to" was in "from", each read with its accents folded away.
+    """
+    (source_accented, source_words), (target_accented, target_words) = _accent_words(source), _accent_words(target)
+    return not (source_accented - target_words or target_accented - source_words)
+
+
 def _non_latin_frame(text: str) -> bool:
     """Whether a line is written at least in part in a script other than Latin.
 
@@ -937,10 +961,12 @@ def _check_same_language(unit: Unit, text: str, links: list[Link], ops_raw: list
                     or source_span(unit.current, source) is None or written_span(text, target) is None):
                 return _keep(unit, "beyond_allowed_edit", "relabel_span_missing", links=links)
             # A relabel renames within one script: "脑电 signal" -> "brain signal" translates the line's Chinese,
-            # and "데이터 파이프라인" -> "data pipeline" its Korean.
+            # "데이터 파이프라인" -> "data pipeline" its Korean, and "pipeline de données" -> "data pipeline"
+            # its French (_accents_kept).
             if (language(link.term) != language(unit.current) or _CJK.search(link.term) and not _CJK.search(source)
                     or bool(_CJK.search(source)) != bool(_CJK.search(target))
-                    or bool(_script_letters(source)) != bool(_script_letters(target))):
+                    or bool(_script_letters(source)) != bool(_script_letters(target))
+                    or not _accents_kept(source, target)):
                 return _keep(unit, "beyond_allowed_edit", "relabel_cross_language", links=links)
             # "from" renames what the link's source names, nothing next to it.
             if source_span(link.source, source) is None:
