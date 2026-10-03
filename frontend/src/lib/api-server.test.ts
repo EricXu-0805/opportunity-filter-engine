@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { PUBLIC_RELEASE_CACHE_VERSION } from './release-scope';
 import {
+  decodeRouteId,
   fetchOpportunityServer,
   fetchSimilarServer,
   fetchOpportunityIdsServer,
@@ -346,6 +347,71 @@ describe('fetchOpportunityDetail (detail-page classification)', () => {
     expect(await fetchOpportunityServer('opp-1')).toEqual({ id: 'opp-1', title: 'Test' });
     fetchMock.mockResolvedValue(badResponse(404));
     expect(await fetchOpportunityServer('missing')).toBeNull();
+  });
+});
+
+// 217 corpus ids carry a space, 81 of them an '&' as well. The detail page
+// component receives them percent-encoded, and encoding again asked the API
+// for '%2520'.
+describe('decodeRouteId (the detail page segment as Next hands it over)', () => {
+  it('leaves a plain id unchanged', () => {
+    expect(decodeRouteId('faculty-bioe-0a0f56df')).toBe('faculty-bioe-0a0f56df');
+  });
+
+  it('decodes an encoded space', () => {
+    expect(decodeRouteId('faculty-social%20work-e62c849b')).toBe('faculty-social work-e62c849b');
+  });
+
+  it('decodes an encoded ampersand', () => {
+    expect(decodeRouteId('faculty-art%20%26%20design-ba84594d'))
+      .toBe('faculty-art & design-ba84594d');
+  });
+
+  it('decodes exactly once: an encoded percent stays a literal percent', () => {
+    expect(decodeRouteId('lab-50%25-time')).toBe('lab-50%-time');
+    expect(decodeRouteId('lab-%2520-x')).toBe('lab-%20-x');
+  });
+
+  it('keeps an id whose literal % is not an escape', () => {
+    expect(decodeRouteId('top-10%-lab')).toBe('top-10%-lab');
+  });
+
+  it('keeps the raw id on a malformed escape', () => {
+    expect(decodeRouteId('lab-%E0%A4%A')).toBe('lab-%E0%A4%A');
+    expect(decodeRouteId('lab-%C3%28')).toBe('lab-%C3%28');
+  });
+});
+
+describe('fetchOpportunityDetail with an id that needs escaping', () => {
+  beforeEach(() => {
+    vi.stubEnv('BACKEND_URL', 'https://api.test');
+  });
+
+  const scope = `_release_scope=${encodeURIComponent(PUBLIC_RELEASE_CACHE_VERSION)}`;
+
+  it('requests a decoded id with a space as %20 exactly once, never %2520', async () => {
+    fetchMock.mockResolvedValue(okJson({ id: 'faculty-social work-e62c849b', title: 'Steven Anderson' }));
+
+    const result = await fetchOpportunityDetail('faculty-social work-e62c849b');
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const url = fetchMock.mock.calls[0][0] as string;
+    expect(url).toBe(`https://api.test/api/opportunities/faculty-social%20work-e62c849b?${scope}`);
+    expect(url).not.toContain('%25');
+    expect(result).toEqual({
+      status: 'ok',
+      opportunity: { id: 'faculty-social work-e62c849b', title: 'Steven Anderson' },
+    });
+  });
+
+  it('a page segment decoded once reaches the API with one layer of escapes and matches the record id', async () => {
+    fetchMock.mockResolvedValue(okJson({ id: 'faculty-art & design-ba84594d', title: 'Carlos Aguiar' }));
+
+    const result = await fetchOpportunityDetail(decodeRouteId('faculty-art%20%26%20design-ba84594d'));
+
+    const url = fetchMock.mock.calls[0][0] as string;
+    expect(url).toBe(`https://api.test/api/opportunities/faculty-art%20%26%20design-ba84594d?${scope}`);
+    expect(result).toMatchObject({ status: 'ok' });
   });
 });
 
