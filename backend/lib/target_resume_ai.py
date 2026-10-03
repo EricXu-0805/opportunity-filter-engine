@@ -12,6 +12,7 @@ from backend.lib.evidence_map import (
     Outcome,
     ReviewPair,
     Unit,
+    alternative_pair,
     anchor_payload,
     check_rewrite,
     gate,
@@ -249,6 +250,8 @@ class Pending:
     priority: str
     category: str
     ops_raw: list
+    # The wording without the posting's terms: a candidate the review checks as a pair of its own.
+    alternative: str | None = None
 
 
 def _em_unit(unit):
@@ -318,26 +321,43 @@ def parse_output(raw, selected, anchors, locale="en"):
         if outcome.status == "pending":
             outcome = gate(outcome, em_unit)
         if outcome.status == "pending":
-            pending.append(Pending(unit, em_unit, outcome, priority, row["reason"], row["ops"]))
+            pending.append(Pending(unit, em_unit, outcome, priority, row["reason"], row["ops"],
+                                   without_terms(outcome, em_unit, row["ops"])))
         else:
             results.append(_advice(unit, outcome, priority, row["reason"], locale))
     return results, pending
 
 
+def _review_original(item):
+    support = "".join(f"\nConfirmed source for the same activity: {source['original']}"
+                      for source in item.unit.get("support_sources", []))
+    return item.unit["original"] + support
+
+
 def review_pairs(pending):
-    """The review sees the unit original plus every confirmed support line of the same activity."""
+    """The review sees the unit original plus every confirmed support line of the same activity.
+
+    One pair per rewrite, in order, then one per wording without the posting's
+    terms, in the same order: that wording is offered only when its own pair is accepted.
+    """
     pairs = []
     for item in pending:
-        support = "".join(f"\nConfirmed source for the same activity: {source['original']}"
-                          for source in item.unit.get("support_sources", []))
         used = {op.get("link") for op in item.ops_raw if op.get("op") in ("lead_with", "relabel")}
-        pairs.append(ReviewPair(item.unit["original"] + support, item.outcome.text,
+        pairs.append(ReviewPair(_review_original(item), item.outcome.text,
                                 tuple(link for link in item.outcome.links if link.id in used)))
-    return pairs
+    return pairs + [alternative_pair(_review_original(item), item.outcome, item.ops_raw, item.alternative)
+                    for item in pending if item.alternative]
 
 
 def finalize(pending, verdicts, locale="en"):
-    """Receipts for reviewed rewrites. An unchecked one stays retryable."""
+    """Receipts for reviewed rewrites. An unchecked one stays retryable.
+
+    ``verdicts`` answers review_pairs(pending) in its order; a wording without
+    the posting's terms that has no accepted verdict of its own is not offered.
+    """
+    offered = [item for item in pending if item.alternative]
+    alternative_verdicts = dict(zip(map(id, offered), verdicts[len(pending):], strict=False))
+    verdicts = verdicts[:len(pending)]
     results = []
     for item, verdict in zip(pending, verdicts, strict=True):
         unit, outcome = item.unit, item.outcome
@@ -350,7 +370,7 @@ def finalize(pending, verdicts, locale="en"):
             results.append(_advice(unit, replace(outcome, status="kept", code="no_change"), item.priority,
                                    item.category, locale))
         else:
-            alternative = without_terms(outcome, item.em_unit, item.ops_raw)
+            alternative = item.alternative if alternative_verdicts.get(id(item)) == "accepted" else None
             results.append(receipt(unit, suggestion=_suggestion(unit, outcome, item.priority, item.category, locale,
                                                                 proposed=outcome.text, alternative=alternative)))
     return results

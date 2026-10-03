@@ -53,6 +53,7 @@ from backend.lib.evidence_map import (
     Outcome,
     ReviewPair,
     Unit,
+    alternative_pair,
     anchor_payload,
     check_rewrite,
     gate,
@@ -433,18 +434,25 @@ async def _evidence_rewrite(
         logger.warning("tailor: the checks ran out of time; keeping the originals")
         return {unit.unit_id: Outcome(unit.unit_id, "kept", "review_unavailable") for unit in units}, True
     pending = [unit for unit in units if outcomes[unit.unit_id].status == "pending"]
-    verdicts = await review_rewrites(
-        [ReviewPair(unit.evidence, outcomes[unit.unit_id].text,
-                    _reviewed_links(outcomes[unit.unit_id], rows[unit.unit_id])) for unit in pending], started)
-    accepted = [unit for unit, verdict in zip(pending, verdicts, strict=True) if verdict == "accepted"]
+    # The wording without the posting's terms is a line the student may be shown too,
+    # so it goes to the same review as a pair of its own, after the rewrites.
     try:
-        alternatives = await run_blocking(_alternatives, accepted, outcomes, rows, timeout_seconds=CHECK_TIMEOUT_SECONDS)
+        alternatives = await run_blocking(_alternatives, pending, outcomes, rows, timeout_seconds=CHECK_TIMEOUT_SECONDS)
     except BlockingWorkTimeout:
         alternatives = {}
-    for unit, verdict in zip(pending, verdicts, strict=True):
+    offered = [unit for unit in pending if alternatives.get(unit.unit_id)]
+    verdicts = await review_rewrites(
+        [ReviewPair(unit.evidence, outcomes[unit.unit_id].text,
+                    _reviewed_links(outcomes[unit.unit_id], rows[unit.unit_id])) for unit in pending]
+        + [alternative_pair(unit.evidence, outcomes[unit.unit_id], rows[unit.unit_id]["ops"],
+                            alternatives[unit.unit_id]) for unit in offered], started)
+    alternative_verdicts = dict(zip((unit.unit_id for unit in offered), verdicts[len(pending):], strict=True))
+    for unit, verdict in zip(pending, verdicts[:len(pending)], strict=True):
         outcome = outcomes[unit.unit_id]
         if verdict == "accepted":
-            outcomes[unit.unit_id] = replace(outcome, status="rewritten", alternative=alternatives.get(unit.unit_id))
+            reviewed = alternative_verdicts.get(unit.unit_id) == "accepted"
+            outcomes[unit.unit_id] = replace(outcome, status="rewritten",
+                                             alternative=alternatives[unit.unit_id] if reviewed else None)
         else:
             outcomes[unit.unit_id] = replace(
                 outcome, status="kept", code="review_rejected" if verdict == "rejected" else "review_unavailable")
@@ -471,7 +479,7 @@ def _checked_outcomes(units: list[Unit], rows: dict, by_id: dict[str, Anchor]) -
 
 
 def _alternatives(units: list[Unit], outcomes: dict[str, Outcome], rows: dict) -> dict[str, str | None]:
-    """Each accepted rewrite with the posting's terms taken back out, when that passes too."""
+    """Each pending rewrite with the posting's terms taken back out, when that passes too: a candidate for the review."""
     return {unit.unit_id: without_terms(outcomes[unit.unit_id], unit, rows[unit.unit_id]["ops"]) for unit in units}
 
 

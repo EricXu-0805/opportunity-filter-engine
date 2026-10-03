@@ -571,6 +571,25 @@ class TestGate:
         assert outcome.status == "pending", outcome
         assert em.without_terms(outcome, unit, ops) == "Built an EEG database and analyzed EEG recordings from 20 infants."
 
+    def test_two_relabels_to_one_term_offer_no_version_without_the_terms(self):
+        """Undone in list order, each source would go back in the other's place: notebooks cleaned the data."""
+        anchors = anchors_for(["Experience writing Python code is required."])
+        original = "Responsible for writing Python scripts for data cleaning and Python notebooks for plotting."
+        unit = em.Unit("b1", original, original)
+        ops = [{"op": "relabel", "link": "L2", "from": "Python notebooks", "to": "Python code"},
+               {"op": "relabel", "link": "L1", "from": "Python scripts", "to": "Python code"}, {"op": "verb_first"}]
+        row = {"unit_id": "b1", "decision": "rewrite", "ops": ops, "keep_reason": None, "links": [
+            {"id": "L1", "anchor": "t1", "term": "Python code", "source": "Python scripts", "relation": "same"},
+            {"id": "L2", "anchor": "t1", "term": "Python code", "source": "Python notebooks", "relation": "same"}],
+               "text": "Wrote Python code for data cleaning and Python code for plotting."}
+        outcome = em.gate(em.check_rewrite(unit, row, anchors, output_language="en"), unit)
+        assert outcome.status == "pending", outcome
+        assert em.without_terms(outcome, unit, ops) is None
+        # Each "to" standing once is undone in its own place, whatever the list order.
+        assert em._undo_relabels("Wrote Python code for data cleaning and R notebooks for plotting.",
+                                 [("Python notebooks", "R notebooks"), ("Python scripts", "Python code")]) == (
+            "Wrote Python scripts for data cleaning and Python notebooks for plotting.")
+
     def test_a_denial_and_a_team_result_come_from_the_text_as_written(self):
         original = "I built a Python parser. I did not build the compiler."
         assert "denied_action_asserted" in em.rewrite_findings(

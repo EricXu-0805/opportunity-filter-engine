@@ -955,15 +955,40 @@ def gate(outcome: Outcome, unit: Unit) -> Outcome:
                    findings=[*fabricated, *dict.fromkeys(hard)])
 
 
+def _undo_relabels(text: str, relabels: list[tuple[str, str]]) -> str | None:
+    """Each declared relabel undone where its "to" stands, or None when that place is not certain.
+
+    Each "to" must stand exactly once in the text as whole words, and no two may
+    overlap. Two relabels to one term ("Python scripts" and "Python notebooks",
+    both "Python code") cannot say which source goes back where, so undoing them
+    in list order could swap the student's words.
+    """
+    spans = []
+    for source, target in relabels:
+        found = [match.span() for match in re.finditer(re.escape(target), text, re.I)
+                 if target and not _cuts_word(text, *match.span())]
+        if len(found) != 1:
+            return None
+        spans.append((*found[0], source))
+    spans.sort()
+    if any(earlier[1] > later[0] for earlier, later in zip(spans, spans[1:], strict=False)):
+        return None
+    for start, end, source in reversed(spans):
+        text = text[:start] + source + text[end:]
+    return text
+
+
 def without_terms(outcome: Outcome, unit: Unit, ops_raw: list[dict]) -> str | None:
     """The rewrite with every posting term taken back out, when that still passes.
 
     It is the student's own words in the rewrite's order: the relabels undone,
-    everything else unchanged, checked again by the contract and the locks.
+    everything else unchanged, checked again by the contract and the locks. It
+    is only a candidate: it goes to the review as a pair of its own
+    (alternative_pair) and is offered only when that exact text is accepted.
     """
     if not outcome.relabels:
         return None
-    text = reverse_relabels(outcome.text, outcome.relabels)
+    text = _undo_relabels(outcome.text, outcome.relabels)
     if text is None:
         return None
     remaining = [op for op in ops_raw if op.get("op") != "relabel"]
@@ -971,6 +996,18 @@ def without_terms(outcome: Outcome, unit: Unit, ops_raw: list[dict]) -> str | No
     if checked.status != "pending":
         return None
     return text if gate(checked, unit).status == "pending" else None
+
+
+def alternative_pair(original: str, outcome: Outcome, ops_raw: list[dict], text: str) -> ReviewPair:
+    """The review pair for the wording without the posting's terms.
+
+    It carries the links the remaining operations use, unwritten: the relabels
+    are undone, so no term is in the line. They are copies, so the verdict on
+    this pair marks nothing on the rewrite's own links.
+    """
+    used = {op.get("link") for op in ops_raw if op.get("op") == "lead_with"}
+    return ReviewPair(original, text, tuple(replace(link, written_as=None, entailed=False)
+                                            for link in outcome.links if link.id in used))
 
 
 # ---------------------------------------------------------------------- review
