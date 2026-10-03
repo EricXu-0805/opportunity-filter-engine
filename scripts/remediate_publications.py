@@ -714,7 +714,8 @@ def _land_verified(shards: dict[str, list[dict]], record: dict, author_id: str,
         raise _Refusal(f"{author_id} is {author['name']!r}, whose surname is not "
                        f"{record.get('pi_name')!r}'s; pass --allow-name-mismatch if that is known")
     works = oa._usable_works(raw, record.get("department", ""),
-                             author_fields=oa._author_own_fields(author))
+                             author_fields=oa._author_own_fields(author),
+                             author_id=author_id, inst_id=oa.SCHOOL_INST[record["school"]])
     if not works:
         raise _Refusal(f"the current gate kept none of the {len(raw)} recent work(s) OpenAlex "
                        f"returned for {author_id}; if none is theirs, record --removed")
