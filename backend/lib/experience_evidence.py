@@ -47,7 +47,8 @@ _ROLE_LINE_LOWERCASE = frozenset((
 ).split())
 
 
-def _names_no_action(text: str) -> bool:
+def names_no_action(text: str) -> bool:
+    """A role or heading line, which no template quotes as the student's work."""
     return all(word != word.lower() or word in _ROLE_LINE_LOWERCASE for word in _LINE_WORD.findall(text))
 
 
@@ -245,6 +246,6 @@ def select_experience(
     template = next((_receipt(entry, contexts) for entry in ranked
                      if len(entry.text) <= TEMPLATE_CHARACTER_BUDGET
                      and resume_bullet_relevance(parts, entry.text) >= 2
-                     and not _names_no_action(entry.text)), None)
+                     and not names_no_action(entry.text)), None)
     return ExperienceSelection(eligible, selected, template, excluded, bool(legacy_bullets), contexts, context_notices,
                                evidence.resume_text if evidence is not None else "")
