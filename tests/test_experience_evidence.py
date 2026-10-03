@@ -336,6 +336,57 @@ def test_wrapped_lines_assigned_to_different_activities_stay_apart():
     assert XRAY_BULLET not in excerpts
 
 
+ROLE_LINE = "Undergraduate Research Assistant, Health Imaging Lab (UIUC) - Jan 2026 - Present"
+RADIOGRAPH_BULLET = "- Trained a classifier on 12,000 chest radiographs."
+IMAGING = dict(OPP, id="imaging-test", title="Health imaging research",
+               keywords=["health imaging", "chest radiograph analysis"],
+               description_raw="Research on health imaging and chest radiograph analysis.")
+
+
+def template_pick(printed):
+    return select_experience(ExperienceEvidence.model_validate(resume_line_experience(printed)),
+                             _common_parts(PROFILE, IMAGING)).template
+
+
+def test_the_template_quotes_the_bullet_under_a_role_line_not_the_role_line():
+    # Walked 2026-09-30 (CE-2b): the role line ranked first and became the
+    # email's work paragraph. A title, a lab and dates say nothing the
+    # student did; the bullet under them does. Both share two words with
+    # this target.
+    assert template_pick(ROLE_LINE + "\n" + RADIOGRAPH_BULLET)["excerpt"] == RADIOGRAPH_BULLET
+
+
+@pytest.mark.parametrize("line", [
+    ROLE_LINE,
+    "Research assistant, Health Imaging Lab, Jan 2026 - present",
+    "Research Assistant at the Health Imaging Lab, 2025-2026",
+    "Health Imaging Lab | Research Assistant | 2025-2026",
+    "HEALTH IMAGING RESEARCH",
+])
+def test_a_role_or_heading_line_is_never_the_template_example(line):
+    assert template_pick(line) is None
+
+
+def test_a_line_that_says_what_was_done_is_still_quoted():
+    assert template_pick("Built a dashboard for the Health Imaging Lab.")["excerpt"] == (
+        "Built a dashboard for the Health Imaging Lab.")
+
+
+@pytest.mark.parametrize("endpoint", ["", "stream", "variants"])
+@pytest.mark.parametrize("printed, quoted", [(ROLE_LINE, None), (ROLE_LINE + "\n" + RADIOGRAPH_BULLET, RADIOGRAPH_BULLET)],
+                         ids=["role-line-alone", "role-line-then-bullet"])
+def test_every_template_route_prints_the_bullet_and_never_the_role_line(client, monkeypatch, endpoint, printed, quoted):
+    # A role line alone leaves the template without a work paragraph.
+    monkeypatch.setattr(ce, "load_opportunities_by_id", lambda: {IMAGING["id"]: IMAGING})
+    payload = {"profile": PROFILE, "opportunity_id": IMAGING["id"],
+               "experience_evidence": resume_line_experience(printed)}
+    out = response_body(client.post("/api/cold-email" + (f"/{endpoint}" if endpoint else ""), json=payload), endpoint)
+    bodies = [variant["body"] for variant in out["variants"]] if endpoint == "variants" else [out["body"]]
+    assert all("Health Imaging Lab" not in body and (quoted is None or quoted in body) for body in bodies)
+    assert out["experience_usage"]["eligible_count"] == printed.count("\n") + 1
+    assert [item["excerpt"] for item in out["experience_usage"]["selected"]] == ([quoted] if quoted else [])
+
+
 @pytest.mark.parametrize("path", ["", "variants", "refine"])
 def test_neutral_final_recovery_receipt_does_not_claim_unused_experiences(client, monkeypatch, path):
     monkeypatch.setattr(ce, "generate_cold_email", lambda *_a, **_k: "")

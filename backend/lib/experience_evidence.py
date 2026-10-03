@@ -27,6 +27,29 @@ TEMPLATE_CHARACTER_BUDGET = 220
 # is never a continuation.
 _WRAP = re.compile(r"(?<=[^\s.!?])[ \t]*\r?\n[ \t]*(?=[a-z]|\d(?!\d*[.)]\s))")
 
+# A role or heading line ("Undergraduate Research Assistant, Health Imaging Lab
+# (UIUC) - Jan 2026 - Present") names a title, a place and dates but nothing
+# the student did, and the template printed it as the email's one example of
+# their work (walked 2026-09-30). Such a line is written in capitals: its only
+# lowercase words join the others, date it or name the role ("Teaching
+# assistant, CS 225, Fall 2025 - present"). A line that says what was done has
+# other lowercase words. A word without case (Chinese) is read as such a word,
+# since this rule cannot tell. The line stays a confirmed fact for the AI brief
+# and every check; it is only never the template's one quoted example.
+_LINE_WORD = re.compile(r"[^\W\d_]+(?:['’][^\W\d_]+)*")
+_ROLE_LINE_LOWERCASE = frozenset((
+    "a an and as at by for from in of on or the to via with "
+    "present current now spring summer fall autumn winter "
+    # the role words frontend/src/lib/resume-input.ts (RESUME_ROLE) reads in a role row
+    "intern assistant engineer researcher developer analyst manager lead leader fellow tutor consultant "
+    "scientist coordinator director president officer volunteer member designer associate specialist "
+    "technician founder chair captain mentor instructor grader programmer trainee editor writer"
+).split())
+
+
+def _names_no_action(text: str) -> bool:
+    return all(word != word.lower() or word in _ROLE_LINE_LOWERCASE for word in _LINE_WORD.findall(text))
+
 
 def _within_budget(entries: list[ExperienceEntry], contexts: dict | None = None) -> list[dict]:
     """Select whole entries; a fragment can lose a factual qualifier."""
@@ -221,6 +244,7 @@ def select_experience(
     selected = _within_budget(ranked, contexts)
     template = next((_receipt(entry, contexts) for entry in ranked
                      if len(entry.text) <= TEMPLATE_CHARACTER_BUDGET
-                     and resume_bullet_relevance(parts, entry.text) >= 2), None)
+                     and resume_bullet_relevance(parts, entry.text) >= 2
+                     and not _names_no_action(entry.text)), None)
     return ExperienceSelection(eligible, selected, template, excluded, bool(legacy_bullets), contexts, context_notices,
                                evidence.resume_text if evidence is not None else "")
