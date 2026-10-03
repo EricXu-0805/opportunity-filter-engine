@@ -669,16 +669,36 @@ def _names_another_doer(lead, other):
         return True
     if _CJK.match(other.group(0)):
         return bool(_ZH_VERBS.match(rest.lstrip()))
+    # A pronoun or a plural role noun is never the student's own title ("They analyze the
+    # samples", "Technicians run the assays"): the title reading is for one role noun, as
+    # source-checks-v4 read every match. So is a role noun followed by nothing but a name,
+    # whose verb stands in a later clause ("Professor Lee, who leads the lab, designed").
+    noun = other.group(0).rsplit(None, 1)[-1].casefold()
+    if noun in ("he", "she", "they") or noun.endswith("s"):
+        return True
+    names = rest.split()
+    if names and all(name.istitle() for name in names):
+        return True
+    named = False
     for word in _WORD.finditer(rest):
         if word[0][0].isupper() or not _lead_word(word[0]):
+            named = named or word[0][0].isupper()
             continue
-        between = re.sub(r"[\w'’.]+(?:-[\w'’.]+)*", "", rest[:word.start()])
-        if between.strip() or (verb_use(word[0]) or ("", ""))[1] not in ("past", "s"):
+        if not _bare_words(rest[:word.start()]) or (verb_use(word[0]) or ("", ""))[1] not in ("past", "s"):
             return False
+        # A past form right after the role noun, followed by "by" or a preposition, describes the
+        # title ("Technician trained in PCR"); after a name it is that person's action
+        # ("Professor Lee presented at the conference").
         after = rest[word.end():]
         following = _WORD.match(after.lstrip())
-        return not (_BY.match(after) or following and re.match(_NOT_PREPOSITION, following[0], re.I) is None)
+        return named or not (_BY.match(after) or following and re.match(_NOT_PREPOSITION, following[0], re.I) is None)
     return False
+
+
+def _bare_words(text):
+    """Whether ``text`` holds only words (letters, digits, "_", "'", "’", ".", inner hyphens) and spaces."""
+    return all(part and all(character.isalnum() or character in "_'’." for character in part)
+               for token in text.split() for part in token.split("-"))
 
 
 def _subject(clause):

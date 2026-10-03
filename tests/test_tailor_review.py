@@ -855,7 +855,7 @@ def test_a_role_heading_names_no_other_doer(endpoint, monkeypatch, pair):
     ("TA — holds weekly office hours for 40 students.", "Holds weekly office hours for 40 students as TA."),
 ])
 def test_a_participle_or_a_dash_after_a_role_noun_still_heads_the_line(original, rewrite):
-    """Main shows these; the actor lock refused them on d850d2a0."""
+    """Main shows these; the actor lock refused them at the freeze (0cbb78c)."""
     assert gate_findings(original, rewrite) == []
 
 
@@ -875,6 +875,20 @@ def test_a_participle_or_a_dash_after_a_role_noun_still_heads_the_line(original,
     ("Supervisor: Dr. Lee, who designed the protocol; I ran it.",
      "Designed the protocol with supervisor Dr. Lee; ran it."),
     ("导师设计了实验方案，本人完成了数据录入。", "设计了实验方案（导师），完成了数据录入。"),
+    # Round 1: the title reading let these through, though the freeze (0cbb78c) refused them.
+    # A pronoun is never a title; a role noun followed only by a name has its verb in a later clause;
+    # a past form with a preposition after a name is that person's action.
+    ("They analyze the samples; I prepare the slides.", "Analyze the samples and prepare the slides."),
+    ("He then wrote the grant; I edited it.", "Wrote the grant; edited it."),
+    ("Professor Lee then designed the study; I recruited 30 participants.",
+     "Designed the study and recruited 30 participants."),
+    ("Professor Lee, who leads the lab, designed the study; I recruited 30 participants.",
+     "Designed the study; recruited 30 participants."),
+    ("Professor Lee, PI of the lab, designed the study; I recruited 30 participants.",
+     "Designed the study; recruited 30 participants."),
+    ("Supervisor Lee, an expert in EEG, designed the study; I recruited 30 participants.",
+     "Designed the study; recruited 30 participants."),
+    ("Professor Lee presented at the conference; I made the slides.", "Presented at the conference; made the slides."),
 ])
 def test_another_persons_action_still_cannot_become_the_students(original, rewrite):
     """A determiner, a title or a verb right after the role noun names someone else as the doer."""
