@@ -180,6 +180,8 @@ export default function AuthModal() {
   const [email, setEmail] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [outcome, setOutcome] = useState<SignInOutcome | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
+  const [signOutFailed, setSignOutFailed] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   // Reset transient state on close. Phase / email persist across same-
@@ -193,6 +195,7 @@ export default function AuthModal() {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- legitimate reset on close
       setSubmitting(false);
       setOutcome(null);
+      setSignOutFailed(false);
     } else if (resolved === 'signin') {
       // Defer to next tick so the autofocus actually happens after the
       // backdrop fades in — focusing during the same frame causes jsdom
@@ -298,14 +301,27 @@ export default function AuthModal() {
   }, [lastProvider, submitting]);
 
   const confirmSignOut = useCallback(async () => {
-    await signOutOfAccount();
-    // Tell GuestBanner this was a deliberate sign-out (not first-visit
-    // anon) so it shows the post-signout reassurance.
+    setSigningOut(true);
+    setSignOutFailed(false);
     try {
-      sessionStorage.setItem(STORAGE_KEYS.JUST_SIGNED_OUT, '1');
-      sessionStorage.removeItem(STORAGE_KEYS.GUEST_BANNER_DISMISSED);
-    } catch { /* private mode */ }
-    closeModal();
+      if (!(await signOutOfAccount())) {
+        // supabase-js keeps the account session when the logout request
+        // fails, so the modal stays on that account and says it failed.
+        setSignOutFailed(true);
+        return;
+      }
+      // Tell GuestBanner this was a deliberate sign-out (not first-visit
+      // anon) so it shows the post-signout reassurance.
+      try {
+        sessionStorage.setItem(STORAGE_KEYS.JUST_SIGNED_OUT, '1');
+        sessionStorage.removeItem(STORAGE_KEYS.GUEST_BANNER_DISMISSED);
+      } catch { /* private mode */ }
+      closeModal();
+    } catch {
+      setSignOutFailed(true);
+    } finally {
+      setSigningOut(false);
+    }
   }, [closeModal]);
 
   if (!open) return null;
@@ -649,10 +665,16 @@ export default function AuthModal() {
               {t('auth.modal.signOutConfirm.bodyGuest')}
             </p>
 
+            {signOutFailed && (
+              <p role="alert" className="mb-4 text-[12px] text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                {t('common.error')}
+              </p>
+            )}
+
             <div className="flex items-center justify-end gap-2">
               <button
                 type="button"
-                onClick={() => setPhase('account')}
+                onClick={() => { setSignOutFailed(false); setPhase('account'); }}
                 className="px-4 py-1.5 text-[13px] font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
               >
                 {t('common.cancel')}
@@ -660,9 +682,10 @@ export default function AuthModal() {
               <button
                 type="button"
                 onClick={confirmSignOut}
-                className="px-4 py-1.5 text-[13px] font-medium text-white bg-gray-900 hover:bg-black rounded-lg transition-colors"
+                disabled={signingOut}
+                className="px-4 py-1.5 text-[13px] font-medium text-white bg-gray-900 hover:bg-black rounded-lg disabled:opacity-60 transition-colors"
               >
-                {t('auth.modal.signOutConfirm.confirm')}
+                {signOutFailed ? t('common.tryAgain') : t('auth.modal.signOutConfirm.confirm')}
               </button>
             </div>
           </>
