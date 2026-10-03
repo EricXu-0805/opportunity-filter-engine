@@ -100,6 +100,15 @@ _WET_LAB_KEYWORDS = frozenset({
     "gel electrophoresis", "pipetting", "sterile technique",
     # bench work that read wet only through "medical"/"medicine" beside it
     "drug delivery", "biomaterial", "nanomedicine", "regenerative medicine",
+    # benches named for what they study. No entry named these fields, so 327
+    # entomology, plant pathology and bacteriology records were Dry Lab (317,
+    # nearly all by the no-signal default), Humanities or no claim (corpus of
+    # 2026-10-02). The agent alone ("virus", "viral", "bacteria", "antibody",
+    # "monoclonal", "insect") was measured and left out: it also names what
+    # epidemiologists, clinicians, roboticists and marketers of "virality"
+    # study, and moved them to Wet Lab.
+    "entomology", "plant pathology", "bacteriology", "bacterial pathogenesis",
+    "plant virus", "lentiviral",
 })
 
 _DRY_LAB_KEYWORDS = frozenset({
@@ -120,12 +129,13 @@ _DRY_LAB_KEYWORDS = frozenset({
     "human-computer interaction", "hci",
     "medical imaging", "computational imaging", "image processing", "image analysis",
     "image reconstruction", "signal processing", "inverse problems", "compressed sensing",
+    "image segmentation",
     # techniques / tools
     "python", "pytorch", "tensorflow", "jax", "scikit-learn", "pandas",
     "numpy", "kubernetes", "docker", "aws", "gcp", "azure",
     "javascript", "typescript", "react", "node", "rust", "golang",
     "c++", "cuda", "github", "git", "linux", "command-line", "shell",
-    "algorithm", "data structure", "simulation", "modeling",
+    "algorithm", "data structure", "simulation", "modeling", "finite element",
 })
 
 # Where research is applied, not how it is done: "medical imaging" and "deep
@@ -184,15 +194,17 @@ _HUMANITIES_KEYWORDS = frozenset({
 
 _SHORT_ENTRY_PATTERNS: dict[str, re.Pattern[str]] = {}
 
+# Entries read by a pattern of their own. "bio" keeps prefix rights
+# ("biophysics") but must not fire mid-word; "modeling" must not fire inside
+# "remodeling", which is chromatin, bone or cardiac tissue biology.
+_OWN_PATTERN_ENTRIES = {"bio": r"(?<!\w)bio", "modeling": r"(?<!re)modeling"}
+
 
 def _entry_pattern(kw: str) -> re.Pattern[str]:
     if kw not in _SHORT_ENTRY_PATTERNS:
-        if kw == "bio":
-            _SHORT_ENTRY_PATTERNS[kw] = re.compile(r"(?<!\w)bio")
-        else:
-            _SHORT_ENTRY_PATTERNS[kw] = re.compile(
-                r"(?<!\w)" + re.escape(kw) + r"(?!\w)"
-            )
+        _SHORT_ENTRY_PATTERNS[kw] = re.compile(
+            _OWN_PATTERN_ENTRIES.get(kw) or r"(?<!\w)" + re.escape(kw) + r"(?!\w)"
+        )
     return _SHORT_ENTRY_PATTERNS[kw]
 
 
@@ -229,7 +241,7 @@ def _detect_lab_type(opportunity: dict) -> LabType | None:
         # is nesting-heavy) and routed theory groups to bench-technique
         # guidance (faculty-ece-817eb026, observed live 2026-08-07).
         for kw in sorted(vocab, key=lambda k: (-len(k), k)):
-            if len(kw) <= 4 or kw in whole_words:
+            if len(kw) <= 4 or kw in whole_words or kw in _OWN_PATTERN_ENTRIES:
                 # Short entries only count as standalone words: bare
                 # substrings turn person/school names into phantom signals —
                 # "law" and "aws" both live inside "Lawson", "irb" inside
