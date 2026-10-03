@@ -96,6 +96,10 @@ Steps 3 and 4 are per school and safe to repeat. Step 2 is safe to repeat at
 any time and is *also* run by every data refresh (below), so it is not something
 anyone has to remember.
 
+Without `--save`, `invalidate` and `apply` write nothing: not the shards and not
+the ledger. The ledger is a committed file, so the events a dry run would have
+appended are held in memory, counted in its last line, and dropped.
+
 Step 4 exits 2 without touching anything when the manifest's `works_gate` is
 not `CURRENT_WORKS_GATE`. `apply_works` stamps everything it lands at the
 current gate, so a harvest made before a gate bump has to be made again.
@@ -157,6 +161,7 @@ attribution has changed nothing a reader can see.
 | `mutation_committed` | the professor record was written |
 | `verified_complete` | the written state was checked against the verdict — **terminal** |
 | `needs_review` | routed to a human — **terminal for automation** |
+| `reviewed` | a person's verdict on an `ambiguous` or `needs_review` unit — **terminal** |
 | `failed` | **not terminal**; the unit stays in the population |
 
 | result | effect on the relationship |
@@ -228,8 +233,74 @@ there, instead of serving gate-1 papers until a refresh withdraws them again.
 remains withdrawn it files a `data_drift` incident (a remediation nobody
 finishes is indistinguishable, from outside, from one nobody started), and any
 unsettled attribution becomes one rolled-up `manual_review` incident carrying
-the evidence. Only an approved verified review outcome may restore trust — the
-review queue never writes to the corpus.
+the evidence. Only an approved verified review outcome may restore trust: the
+queue itself never writes to the corpus, and the `review` command below is the
+one way a person's verdict reaches it.
+
+## Settling the manual-review queue
+
+`apply` settles a unit `ambiguous` when the roster cannot say who the professor
+is, and `needs_review` when its answer proves nothing (a name-matched list, or
+papers `apply_works` would not stamp). Either way the candidate papers are
+removed, nothing may be cited, and the unit waits in the queue until a person
+decides.
+
+```bash
+# What is waiting, with the evidence: name, department, profile URL, and the
+# papers the retired gate had given them (from the unit's queued event).
+python3 scripts/remediate_publications.py review
+
+# One verdict per unit. Without --save it prints the result and writes nothing.
+python3 scripts/remediate_publications.py review <professor-id> \
+    --verified A5012345678 --reviewer <handle> [--note "..."] --save
+python3 scripts/remediate_publications.py review <professor-id> \
+    --removed --reviewer <handle> [--note "..."] --save
+```
+
+A verdict lands through the same paths the automation uses:
+
+* `--verified AUTHOR_ID` buys that author's recent works: two OpenAlex
+  requests, an author lookup and one `/works` page, made before the shards are
+  read and also in a dry run. The current gate picks among them from the
+  author's own fields, as in `harvest_works_by_roster`, and `apply_works` stamps
+  the survivors on the whole corpus. The command refuses, and writes nothing:
+  * when OpenAlex has no such author, or answers with the author it was merged
+    into (name that one);
+  * when the budget runs out, or the works request comes back empty, which is
+    what a failed request looks like (retry);
+  * when the author's surname is not the professor's (pass
+    `--allow-name-mismatch` when that is known);
+  * when the gate keeps none of the works (then the verdict is `--removed`);
+  * when stamping would change any other record (exit 3: another professor
+    already holds that author id);
+  * when the record does not come out verified by that author at the current
+    gate.
+* `--removed` is `apply_disposition`'s retraction. The record keeps no papers
+  and no author id; its `publication_remediation` block takes the disposition
+  `removed` and a `review` entry naming the reviewer, and keeps the totals the
+  automated step removed.
+
+Only a first look at the ledger and those requests happen outside the ledger
+lock. Under it the command checks again that the unit still awaits a verdict,
+reads the shards, lands the verdict, writes the shard and then appends the
+verdict, the order `apply` uses. A verdict rewrites its whole shard, so reading
+the shard under the lock is what stops two reviewers on one school from writing
+each other's verdict out of the corpus. `apply --save` writes its shards
+outside the lock: do not run it while verdicts are being recorded.
+
+The verdict is a `reviewed` event naming the reviewer, the result it replaced
+(`review_of`) and, for `verified`, the author. It is the one event
+`Ledger.index()` accepts after a unit settled, and only for a unit whose result
+is `ambiguous` or `needs_review`: a second verdict is refused by the command,
+ignored by the index, and counted by `duplicate_count`, so `report` fails if
+one ever lands. The reviewer string goes into the committed ledger and, for
+`--removed`, into the record's `publication_remediation.review` entry in the
+committed shard. The note goes into the ledger. Use a handle, and keep notes
+free of personal data.
+
+When the last unit has a verdict the queue is empty, and the next ops scan
+records a recovery on the `manual_review:publication_attribution` incident. It
+does not auto-resolve it: a person confirms the close in the ops queue.
 
 ## Verifying
 
