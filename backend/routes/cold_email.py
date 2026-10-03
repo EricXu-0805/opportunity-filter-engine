@@ -879,6 +879,7 @@ def _enforce_brief_greeting(email_text: str | None, prof_brief: str) -> str | No
         head
         + ([""] if head else [])
         + [greeting]
+        + ([""] if body_lines else [])
         + body_lines
     )
     trusted_count = sum(

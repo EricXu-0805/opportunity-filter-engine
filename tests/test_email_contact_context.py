@@ -243,8 +243,8 @@ def test_ai_can_use_confirmed_contact_context_without_declaring_a_real_delivery(
     out = result(post(client, path, context, engine="ai"), path)
     assert out["method"] == ("llm" if path == "refine" else "ai"), out
     assert out.get("fallback_reason") is None
-    # Existing trusted-greeting normalization uses a single line break.
-    assert body.replace("Dear Pat Lee,\n\n", "Dear Pat Lee,\n", 1) == out["body"]
+    # Trusted-greeting normalization keeps the blank line after the greeting.
+    assert body == out["body"]
     assert captured
     assert all("CONTACT CONTEXT" in messages[1]["content"] for messages in captured)
     assert all("NOT student competence evidence" in messages[1]["content"] for messages in captured)

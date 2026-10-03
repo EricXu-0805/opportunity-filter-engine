@@ -17,9 +17,14 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
 _REPO = Path(__file__).resolve().parents[1]
 
 from backend.lib.contact_visibility import contact_email_status, verified_send_target
+from backend.routes import cold_email as ce
 from backend.routes.cold_email import (
     COLD_EMAIL_PIPELINE_VERSION,
     _source_freshness,
@@ -27,6 +32,7 @@ from backend.routes.cold_email import (
 )
 from backend.routes.responsiveness import CONTACT_STATUSES, REPLIED_STATUSES
 from src.evidence import is_unit_mailbox_email
+from tests.experience_fixtures import confirmed_experience
 
 
 def _faculty(email: str, *, active: bool = True, source: str | None = None,
@@ -341,3 +347,60 @@ class TestTheAlignmentSentenceUsesTheSameGate:
         assert _infer_research_topic(
             self._faculty("Psycholinguistics and cognitive neuroscience of language")
         ) == "Psycholinguistics and cognitive neuroscience of language"
+
+
+# ---------------------------------------------------------------------------
+# Served AI drafts keep the blank line after the trusted greeting (U11)
+# ---------------------------------------------------------------------------
+
+class TestServedGreetingKeepsItsBlankLine:
+    """_enforce_brief_greeting dropped the blank body lines after the greeting
+    and re-joined without one, so every AI draft and AI edit reached the
+    student as "Dear …,\\nI am…" whatever the model wrote."""
+
+    OPP = {
+        "id": "greeting-format", "source_type": "campus_program",
+        "opportunity_type": "research", "title": "Research Program",
+        "pi_name": "Pat Lee", "organization": "Test University",
+        "department": "Engineering", "keywords": ["hypersonics"],
+        "description_raw": "Hypersonics research.",
+        "eligibility": {}, "application": {}, "metadata": {"is_active": True},
+    }
+    PROFILE = {"name": "Eric", "school": "UIUC", "year": "sophomore", "major": "Computer Science",
+               "research_interests_text": "hypersonics"}
+    REST = "I am interested in hypersonics.\n\nWould you have 15 minutes for a conversation?\n\nBest regards,\nEric"
+
+    @pytest.fixture
+    def client(self, monkeypatch):
+        app = FastAPI()
+        app.include_router(ce.router, prefix="/api")
+        monkeypatch.setattr(ce, "load_opportunities_by_id", lambda: {self.OPP["id"]: self.OPP})
+        monkeypatch.setattr(ce, "is_configured", lambda: True)
+        monkeypatch.setenv("OFE_COLD_EMAIL_NDRAFT", "1")
+        monkeypatch.setenv("OFE_COLD_EMAIL_CRITIQUE", "0")
+        return TestClient(app)
+
+    @pytest.mark.parametrize("endpoint", ["/cold-email", "/cold-email/refine"])
+    @pytest.mark.parametrize("opening", [
+        "Dear Pat Lee,\n\n",
+        "Dear Pat Lee,\n",
+        "Dear Pat Lee, ",
+        "Dear Pat Lee,\n\n\n\n",
+        "Dear Professor Lee,\n\n",
+    ])
+    def test_one_blank_line_follows_the_greeting(self, client, monkeypatch, endpoint, opening):
+        body = opening + self.REST
+        if endpoint == "/cold-email":
+            monkeypatch.setattr(ce, "chat_completion", lambda *_a, **_k: f"Subject: Research inquiry\n\n{body}")
+            payload = {"engine": "ai"}
+        else:
+            monkeypatch.setattr(ce, "chat_completion", lambda *_a, **_k: body)
+            payload = {"current_body": f"Dear Pat Lee,\n\n{self.REST}", "instruction": "make it warmer"}
+        response = client.post(f"/api{endpoint}", json={
+            "profile": self.PROFILE, "opportunity_id": self.OPP["id"],
+            "experience_evidence": confirmed_experience([]), **payload,
+        })
+        assert response.status_code == 200, response.text
+        out = response.json()
+        assert out["method"] == ("ai" if endpoint == "/cold-email" else "llm"), out
+        assert out["body"] == f"Dear Pat Lee,\n\n{self.REST}"
