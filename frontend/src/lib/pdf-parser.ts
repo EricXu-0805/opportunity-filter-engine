@@ -260,14 +260,16 @@ function columnOf(shapes: Array<LineShape | null>, line: LineShape): Column {
 
 /** Whether another line shows where this line's column ends: a row whose
  *  right-aligned field reaches the edge or a line that the words carry on
- *  (`edges`), or a different line that ends exactly where this one does, as
- *  justified lines do. Otherwise this line may only be the longest of lines
- *  that never wrap, not a full one. */
+ *  (`edges`), or two different lines that end exactly where this one does,
+ *  as justified lines do; one such line can be a coincidence of ragged
+ *  text. Otherwise this line may only be the longest of lines that never
+ *  wrap, not a full one. */
 function edgeShown(shapes: Array<LineShape | null>, index: number, texts: string[], edges: readonly boolean[]): boolean {
   const line = shapes[index]!;
   const text = texts[index].trim();
+  let aligned = 0;
   return shapes.some((other, at) => !!other && sameColumn(other, line) && (other.wrappable || other.tabular)
-    && (edges[at] || (Math.abs(other.right - line.right) <= JUSTIFIED * line.size && texts[at].trim() !== text)));
+    && (edges[at] || (Math.abs(other.right - line.right) <= JUSTIFIED * line.size && texts[at].trim() !== text && ++aligned > 1)));
 }
 
 /** The separator for a visual line break that is only a wrap, or null for a
