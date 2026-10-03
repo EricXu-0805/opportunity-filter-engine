@@ -201,3 +201,14 @@ def test_an_accented_phrase_relabeled_into_english_is_kept(opportunity, monkeypa
 def test_a_relabel_keeps_each_accented_word_accents_aside(source, target, kept):
     from backend.lib import evidence_map as em
     assert em._accents_kept(source, target) is not kept
+
+
+# ------------------------------------------------------------------ the full-target routes' parse errors
+# d378ee4 parsed the full-target body on the request lane and caught every ValueError as invalid
+# JSON, so a body that is not UTF-8 got 422 where FastAPI answers 400.
+@pytest.mark.parametrize("path", ["/api/tailor/full-target/suggestions", "/api/tailor/full-target/selection-plan"])
+def test_a_body_that_is_not_utf8_gets_fastapis_400(monkeypatch, path):
+    monkeypatch.setenv("OFE_DISABLE_RATE_LIMIT", "1")
+    response = TestClient(app).post(path, content=b'{"version":"\xff"}', headers={"content-type": "application/json"})
+    assert (response.status_code, response.json()) == (400, {"detail": "There was an error parsing the body"})
+    assert response.headers["cache-control"].startswith("private, no-store")

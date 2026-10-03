@@ -89,8 +89,9 @@ def _parsed(body: bytes, content_type: str | None, model):
     counts of a 2 MiB body take about 4 ms, and ten such requests at once made 40 ms of one
     event-loop turn. Then, as FastAPI does with a strict content type: only an application/json (or +json) body is
     read as JSON; anything else, an empty body included, is a validation error. Invalid JSON
-    is a validation error; a body the parser cannot hold (nested past its recursion limit) is
-    the 400 FastAPI answers.
+    (json.JSONDecodeError) is a validation error; any other failure to parse, such as a body
+    that is not UTF-8 or one nested past the parser's recursion limit, is the 400 FastAPI
+    answers (fastapi.routing catches JSONDecodeError for 422 and every other exception for 400).
     """
     check_body_bounds(body)
     message = email.message.Message()
@@ -101,10 +102,10 @@ def _parsed(body: bytes, content_type: str | None, model):
         raise RequestValidationError([{"type": "missing", "loc": ("body",), "msg": "Field required", "input": None}])
     try:
         data = json.loads(body)
-    except ValueError:
+    except json.JSONDecodeError:
         raise RequestValidationError([{"type": "json_invalid", "loc": ("body",), "msg": "JSON decode error",
                                        "input": {}}]) from None
-    except RecursionError:
+    except Exception:  # noqa: BLE001 — FastAPI answers 400 to any other parse failure (bad UTF-8, recursion)
         raise HTTPException(status_code=400, detail="There was an error parsing the body") from None
     try:
         return model.model_validate(data)
