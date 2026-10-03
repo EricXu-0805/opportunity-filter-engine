@@ -422,7 +422,7 @@ def test_real_route_support_direction_receipts_and_untrusted_reason(monkeypatch,
         row = result['receipts'][0]['suggestion']
         assert row['proposed_text'] == proposed
         assert [q['quote'] for q in row['source_evidence']] == originals
-    assert result['pipeline_version'] == ('full-target-plan-v4' if planning else 'full-target-v6')
+    assert result['pipeline_version'] == ('full-target-plan-v5' if planning else 'full-target-v6')
     assert result['logical_calls'] == 1 + (not planning)  # the suggestions' review is a second call
     assert 'private' in response.headers['cache-control']
 

@@ -34,7 +34,7 @@ async function make(texts = ['Built a Python parser with tests.', 'Analyzed 1000
 }
 const prepare = async (draft?: TargetResumeV1, target_pages: 1 | 2 = 1) => unwrap(await prepareTargetResumePlan(draft ?? await make(), { target_pages }));
 function response(prepared: PreparedTargetResumePlan): TargetResumePlanResponse {
-  return { version: 1, pipeline_version: 'full-target-plan-v4', request_id: 'request', document_id: prepared.draft.id,
+  return { version: 1, pipeline_version: 'full-target-plan-v5', request_id: 'request', document_id: prepared.draft.id,
     opportunity_id: prepared.draft.opportunity_id, document_signature: prepared.document_signature, base: clone(prepared.draft.base),
     options: clone(prepared.options), manifest: clone(prepared.manifest), scope: clone(prepared.scope), method: 'ai', complete: true,
     reason_code: null, logical_calls: 1, provider_attempts_upper_bound: 2,
@@ -226,13 +226,15 @@ describe('strict complete plan receipts', () => {
     const prepared = await prepare(); const { result } = compressed(prepared); mutate(prepared, result);
     expect(validateTargetResumePlanResponse(prepared, request(result), result)).toEqual({ ok: false, code: 'invalid_response' });
   });
-  it('compares compression with the shorter manual current text as well as original', async () => {
+  it('refuses a compress item that carries any wording, suggested or skipped (v5 proposes none)', async () => {
     const draft = await make(); lines(draft).find(line => line.evidence.kind === 'experience')!.text = 'Parser';
     const prepared = await prepare(draft); const { result, item } = compressed(prepared);
-    expect(validateTargetResumePlanResponse(prepared, request(result), result).ok).toBe(false);
+    expect(validateTargetResumePlanResponse(prepared, request(result), result)).toEqual({ ok: false, code: 'invalid_response' });
     item.rewrites[0] = { unit_id: item.rewrites[0].unit_id, status: 'skipped', reason_code: 'not_shorter', proposed_text: null };
+    expect(validateTargetResumePlanResponse(prepared, request(result), result)).toEqual({ ok: false, code: 'invalid_response' });
+    item.rewrites = [];
     expect(validateTargetResumePlanResponse(prepared, request(result), result).ok).toBe(true);
-    expect(applyTargetResumePlan(prepared, draft, result, selection(prepared, [], [item.rewrites[0].unit_id]))).toEqual({ ok: false, code: 'invalid_selection' });
+    expect(applyTargetResumePlan(prepared, draft, result, selection(prepared, [], [lines(draft)[0].id]))).toEqual({ ok: false, code: 'invalid_selection' });
   });
 });
 
@@ -250,27 +252,16 @@ describe('explicit independent choices and stale-plan fences', () => {
     const restored = unwrap(applyTargetResumePlan(next, omitted, keep, selection(next, [item.block_id])));
     expect(restored).toEqual(before); // Hidden parent and hidden child remain untouched.
   });
-  it('selection does not rewrite, and a rewrite does not select its hidden block', async () => {
+  it('a content choice changes no text, and no wording can be applied', async () => {
     const draft = await make(); const block = blocks(draft).find(block => block.id === 'block-exp-0')!; block.included = false;
-    const prepared = await prepare(draft); const { result, item, line } = compressed(prepared);
+    const prepared = await prepare(draft); const result = response(prepared);
+    const line = lines(prepared.draft).find(line => line.evidence.kind === 'experience')!;
+    const item = result.items.find(item => prepared.manifest.find(row => row.block_id === item.block_id)!.line_ids.includes(line.id))!;
+    item.action = 'compress';
     const selectedOnly = unwrap(applyTargetResumePlan(prepared, draft, result, selection(prepared, [item.block_id])));
     expect(blocks(selectedOnly).find(block => block.id === item.block_id)!.included).toBe(true);
     expect(lines(selectedOnly)).toEqual(lines(draft));
-    const rewrittenOnly = unwrap(applyTargetResumePlan(prepared, draft, result, selection(prepared, [], [line.id])));
-    expect(blocks(rewrittenOnly).find(block => block.id === item.block_id)!.included).toBe(false);
-    expect(lines(rewrittenOnly).find(row => row.id === line.id)!.text).toBe('Built a Python parser.');
-    expect(rewrittenOnly.base_snapshot).toEqual(draft.base_snapshot); expect(validateTargetResume(rewrittenOnly).ok).toBe(true);
-    expect(applyTargetResumePlan(prepared, rewrittenOnly, result, selection(prepared, [item.block_id]))).toEqual({ ok: false, code: 'stale_document' });
-  });
-  it('keeps identical wording in two experiences separate when accepting only one rewrite', async () => {
-    const draft = await make(['Built a Python parser with tests.', 'Built a Python parser with tests.']);
-    const prepared = await prepare(draft); const { result, line } = compressed(prepared);
-    const selected = unwrap(applyTargetResumePlan(prepared, draft, result, selection(prepared, [], [line.id])));
-    const experiences = lines(selected).filter(row => row.evidence.kind === 'experience');
-    expect(experiences.map(row => [row.evidence.id, row.text])).toEqual([
-      ['exp-0', 'Built a Python parser.'], ['exp-1', 'Built a Python parser with tests.'],
-    ]);
-    expect(experiences.every(row => row.original === 'Built a Python parser with tests.')).toBe(true);
+    expect(applyTargetResumePlan(prepared, draft, result, selection(prepared, [], [line.id]))).toEqual({ ok: false, code: 'invalid_selection' });
   });
   it('changes neither section/block order nor unchosen block states', async () => {
     const draft = await make(); draft.document.sections.reverse();
@@ -298,10 +289,11 @@ describe('explicit independent choices and stale-plan fences', () => {
     expect(draft).toEqual(before);
   });
   it('revalidates every receipt before applying and refuses page-goal change, empty or duplicate selections', async () => {
-    const prepared = await prepare(); const { result, item, line } = compressed(prepared); const base = selection(prepared, [item.block_id], [line.id]);
+    const prepared = await prepare(); const result = response(prepared); const item = result.items[0]; item.action = 'compress';
+    const line = lines(prepared.draft)[0]; const base = selection(prepared, [item.block_id]);
     const changedGoal = clone(base); changedGoal.options.target_pages = 2;
     expect(applyTargetResumePlan(prepared, prepared.draft, result, changedGoal)).toEqual({ ok: false, code: 'stale_context' });
-    for (const invalid of [selection(prepared), selection(prepared, [item.block_id, item.block_id]), selection(prepared, [], [line.id, line.id]), selection(prepared, ['master']), selection(prepared, [], ['unknown'])]) {
+    for (const invalid of [selection(prepared), selection(prepared, [item.block_id, item.block_id]), selection(prepared, [], [line.id, line.id]), selection(prepared, [], [line.id]), selection(prepared, ['master']), selection(prepared, [], ['unknown'])]) {
       expect(applyTargetResumePlan(prepared, prepared.draft, result, invalid)).toEqual({ ok: false, code: 'invalid_selection' });
     }
     result.items.at(-1)!.source_evidence[0].quote = 'Changed after initial validation';

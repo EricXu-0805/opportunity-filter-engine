@@ -378,7 +378,7 @@ def finalize(pending, verdicts, locale="en"):
 
 
 def plan_dispatch(messages):
-    """The selection plan's call (full-target-plan-v4): one whole-document plan keeps its full output budget."""
+    """The selection plan's call (full-target-plan-v5): one whole-document plan keeps its full output budget."""
     if llm_budget.exhausted():
         return None, "budget_exhausted", 0
     raw = chat_completion(messages, max_tokens=12000, temperature=0.2, reasoning_effort="low", safe_error_logging=True,

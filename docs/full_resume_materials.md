@@ -37,6 +37,6 @@
 
 - 理由类别包括方法、研究方向、可迁移经历、必要背景、篇幅取舍、较低关联和需人工对照。
 - 系统说明建议动作及其考虑点，并显示经过范围与偏移校验的原文。未知旧式理由转为原文对照，不自由复述学生成就；有效改写和逐项建议继续保留。
-- 建议版本 `full-target-v6`，选材版本 `full-target-plan-v4`，来源检查版本 `target-resume-source-checks-v5`。
+- 建议版本 `full-target-v6`，选材版本 `full-target-plan-v5`，来源检查版本 `target-resume-source-checks-v5`。
 - v6 建议：服务端从目标描述、要求、可用论文标题和官网段落切出编号引文（criteria 不切）；模型只能把原句词语连到引文，并声明改动（lead_with、relabel、verb_first、personal_first、tighten）。每条改写只用它原句的语言，不翻译；界面语言只决定服务端写的理由用中文还是英文。改写先过合同与事实锁，再过一次忠实度复核；未通过的经历行以 `unchanged` 保留原文并给出原因，复核未完成的是可重试的 `skipped/rewrite_unchecked`，目标没有可引用文字时为 `skipped/target_has_no_text`。支持组的补充句只能随上述改动逐字加入，长度上限按“原句+补充”计。
 - 这些规则不验证经历实际发生、不证明语义匹配正确，也不覆盖任意改写。模型质量、当前云端资料和实际保存/恢复需各自证据。

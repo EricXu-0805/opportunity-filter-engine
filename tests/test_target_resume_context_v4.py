@@ -22,7 +22,7 @@ GOLDEN = json.loads((Path(__file__).parent / 'fixtures/target-resume-context-v4-
 PATHS = ['/api/tailor/full-target/suggestions', '/api/tailor/full-target/selection-plan']
 QUOTE = {'field': 'lab_heading', 'page_index': 0, 'section_index': 0, 'start': 0, 'end': 6, 'quote': '实验室😀研究'}
 # The suggestions route (full-target-v6) links to server-cut anchors; the mock finds one by its text.
-# The selection plan (full-target-plan-v4) still quotes target fields by offset (QUOTE).
+# The selection plan (full-target-plan-v5) still quotes target fields by offset (QUOTE).
 LINK = {'anchor_text': '实验室😀研究', 'term': '实验室😀研究', 'source': 'Python', 'relation': 'broader'}
 SENTENCE = 'We study Python sensors. 实验室方法😀仅用于相关性'
 

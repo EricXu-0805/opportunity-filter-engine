@@ -22,7 +22,7 @@ PATHS = ['/api/tailor/full-target/suggestions', '/api/tailor/full-target/selecti
 NOW = datetime(2026, 9, 26, 18, tzinfo=UTC)
 PAPER = {'field': 'paper_title', 'paper_index': 0, 'start': 0, 'end': 6, 'quote': '机器人😀研究'}
 # The suggestions route (full-target-v6) links to server-cut anchors; the mock finds one by its text.
-# The selection plan (full-target-plan-v4) still quotes target fields by offset (PAPER).
+# The selection plan (full-target-plan-v5) still quotes target fields by offset (PAPER).
 LINK = {'anchor_text': '机器人😀研究', 'term': '机器人😀研究', 'source': 'Python', 'relation': 'broader'}
 
 

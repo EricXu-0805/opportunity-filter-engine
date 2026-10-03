@@ -84,7 +84,7 @@ def endpoint(monkeypatch):
 def completed(endpoint, response, doc):
     assert response.status_code == 200, response.text
     result = response.json()
-    assert result["pipeline_version"] == "full-target-plan-v4"
+    assert result["pipeline_version"] == "full-target-plan-v5"
     assert result["complete"] is True and result["method"] == "ai" and result["reason_code"] is None
     assert result["logical_calls"] == 1 and result["provider_attempts_upper_bound"] == 2
     assert result["document_signature"] == fingerprint(doc) and result["base"] == doc["base"]
