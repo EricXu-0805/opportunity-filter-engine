@@ -352,8 +352,8 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
     """Invoked by an external scheduler (Vercel Cron / GitHub Actions).
 
     Scans push_subscriptions joined with interactions.remind_at where
-    remind_at <= today and status in
-    ('contacted','applied','replied','interviewing'),
+    remind_at <= today and status in ('contacted','applied') — a recorded
+    reply or interview ends follow-up reminders —
     sends a Web Push notification to each matching subscription. Falls back
     to a reminder email when the device has no working push subscription and
     the push outcome is KNOWN to be a non-delivery (an ambiguous outcome is
@@ -429,8 +429,13 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
                 "remind_at": f"lte.{today}",
                 # 'contacted' joined the status set in W12 (cold-email
                 # confirm-sent + follow-up chips write it) — its reminders
-                # must fire like any other.
-                "interaction_type": "in.(contacted,applied,replied,interviewing)",
+                # must fire like any other. 'replied' and 'interviewing' left
+                # it (M49): the reminder says "follow up", and once a reply is
+                # recorded a date set while waiting must stop firing. The row
+                # keeps that date; the tracker marks it as not sent.
+                # REMINDABLE_STATUSES in frontend/src/lib/reminders.ts copies
+                # this set.
+                "interaction_type": "in.(contacted,applied)",
             },
             headers=headers,
         )

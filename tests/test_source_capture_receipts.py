@@ -48,7 +48,7 @@ def test_capture_keeps_full_quote_and_source_time_independent_of_attempt_metadat
 
 
 @pytest.mark.parametrize("title", [
-    "Sign in", "Log In", "Access denied", "Attention required",
+    "Sign in", "Log In", "Access denied", "Attention required", "Attention Required! | Cloudflare",
     "Just a moment...", "Page not found", "404", "Service unavailable",
     "One moment, please...", "Making sure you're not a bot!", "Pardon Our Interruption",
 ])
@@ -76,6 +76,7 @@ def test_heading_that_only_begins_with_a_bot_check_name_is_still_read(title):
     "Checking your browser before accessing example.edu", "Checking your browser before proceeding.",
     "Checking your browser before continuing to example.edu…!",
     "Human Verification", "Bot verification!", "DDoS-Guard", "Sign in - Example University", "Access denied!!",
+    "Access denied!! | Example University", "Sign in! | Example Portal",
     "One moment, please…", "One moment please", "Verify you are a human", "Making sure you’re not a bot",
     "Robot Challenge Screen",
 ])

@@ -13,7 +13,7 @@ from datetime import UTC, datetime
 from backend.lib.email_claims import unsupported_action_claims
 from backend.lib.email_contact_context import contact_context_receipt
 from backend.lib.email_target_conditions import target_condition_claim_violations
-from backend.lib.experience_evidence import select_experience
+from backend.lib.experience_evidence import names_no_action, select_experience
 from backend.lib.private_email_schema import PrivateEmailRequest, PrivateEmailValidationRequest
 from backend.lib.private_import_targets_schema import PrivateTargetError
 
@@ -74,6 +74,10 @@ def template_variants(data: PrivateEmailRequest, context: dict) -> dict:
         candidate = start + '\n\n' + original + ending
         if not _fits(subject, candidate):
             skipped_size = True
+            continue
+        # A role or heading line names no work; the bullet under it does. It is
+        # read last, so every notice above stays what it was for that entry.
+        if names_no_action(original):
             continue
         body, quoted = candidate, [material]
         break

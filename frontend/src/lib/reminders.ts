@@ -12,14 +12,16 @@ import type { Opportunity } from './types';
  * possible outcome: a control that accepts the click, stores the date, and
  * then nothing ever arrives. The student stops watching for the thing itself.
  *
- *   1. `interaction_type=in.(contacted,applied,replied,interviewing)`
+ *   1. `interaction_type=in.(contacted,applied)`
  *   2. the target is release-visible AND still actionable
  *
- * The second is checked here through `targetPosture`, which is this client's
- * reading of the same truth envelope the cron reads server-side.
+ * The first leaves out 'replied' and 'interviewing' on purpose: a reminder is
+ * a nudge to follow up, and a recorded reply ends that. The second is checked
+ * here through `targetPosture`, which is this client's reading of the same
+ * truth envelope the cron reads server-side.
  */
 export const REMINDABLE_STATUSES: ReadonlySet<InteractionType> = new Set<InteractionType>([
-  'contacted', 'applied', 'replied', 'interviewing',
+  'contacted', 'applied',
 ]);
 
 type ReminderTarget = Pick<Opportunity, 'target_truth' | 'source_type'> & {

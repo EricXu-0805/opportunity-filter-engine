@@ -85,7 +85,7 @@ def test_both_routes_use_available_exact_unicode_quotes_without_applying(endpoin
     assert doc['target_snapshot']['lab']['status'] == 'available'
     state['quote'] = {**QUOTE, 'field': field, 'start': start, 'end': end, 'quote': quote}
     response = submit(client, path, doc); assert response.status_code == 200, response.text
-    assert response.json()['method'] == 'ai' and response.json()['check_version'] == 'target-resume-source-checks-v3'
+    assert response.json()['method'] == 'ai' and response.json()['check_version'] == 'target-resume-source-checks-v4'
     assert len(state['calls']) == 1 and doc == before
     prompt = json.loads(state['calls'][0][1]['content']); assert prompt['target']['lab'] == doc['target_snapshot']['lab']
     assert 'lab_heading' in state['calls'][0][0]['content'] and 'section_index' in state['calls'][0][0]['content']

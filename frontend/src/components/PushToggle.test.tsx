@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 vi.mock('@/i18n/client', () => ({ useT: () => ({ t: (k: string) => k }) }));
 
@@ -20,7 +20,7 @@ vi.mock('@/lib/api', () => ({
 }));
 
 import PushToggle from './PushToggle';
-import { advanceOwnerEpoch, isLocalOwnerReady, syncLocalIdentityOwner } from '@/lib/identity-owner';
+import { advanceOwnerEpoch, isLocalOwnerReady, OwnerMismatchError, syncLocalIdentityOwner } from '@/lib/identity-owner';
 
 const SERVER_KEY = 'BServerKeyThatMatchesThePrivateOneSigningPushes';
 
@@ -128,5 +128,99 @@ describe('the control is bound to an account', () => {
 
     expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'false');
     expect(screen.getByRole('button')).not.toBeDisabled();
+  });
+
+  // The status is a fact about an account: the browser subscription survives
+  // a sign-out, the account's row behind it does not.
+  it('re-reads the status for each account the browser changes to', async () => {
+    getPushStatus.mockResolvedValueOnce('subscribed').mockResolvedValue('default');
+    render(<PushToggle />);
+    await waitFor(() => expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'true'));
+
+    await claimOwner(U2);
+
+    await waitFor(() => expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'false'));
+    expect(getPushStatus).toHaveBeenCalledTimes(2);
+  });
+
+  it('a refusal that lands after a switch paints nothing over the next account', async () => {
+    let refuse: (err: Error) => void = () => {};
+    subscribeToPush.mockImplementationOnce(() => new Promise((_resolve, reject) => { refuse = reject; }));
+    getPushStatus.mockResolvedValueOnce('default').mockResolvedValue('subscribed');
+    render(<PushToggle />);
+    const button = await screen.findByRole('button');
+    await waitFor(() => expect(button).not.toBeDisabled());
+    fireEvent.click(button);
+    await waitFor(() => expect(subscribeToPush).toHaveBeenCalled());
+
+    await claimOwner(U2);
+    await waitFor(() => expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'true'));
+    await act(async () => refuse(new OwnerMismatchError()));
+
+    expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('does not paint a status read that started under the previous account', async () => {
+    let finishFirstRead: (status: string) => void = () => {};
+    getPushStatus
+      .mockImplementationOnce(() => new Promise((resolve) => { finishFirstRead = resolve; }))
+      .mockResolvedValue('default');
+    render(<PushToggle />);
+    await waitFor(() => expect(getPushStatus).toHaveBeenCalledTimes(1));
+
+    await claimOwner(U2);
+    await waitFor(() => expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'false'));
+    await act(async () => finishFirstRead('subscribed'));
+
+    expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'false');
+  });
+});
+
+describe('a failed change is reported, not painted as done', () => {
+  async function renderReady(status: 'subscribed' | 'default') {
+    getPushStatus.mockResolvedValue(status);
+    render(<PushToggle />);
+    const button = await screen.findByRole('button');
+    await waitFor(() => expect(button).not.toBeDisabled());
+    await waitFor(() => expect(button).toHaveAttribute('aria-pressed', String(status === 'subscribed')));
+    return button;
+  }
+
+  it('keeps "on" and says so when unsubscribing fails, and a retry can still succeed', async () => {
+    unsubscribeFromPush.mockRejectedValueOnce(new Error('push unsubscribe failed')).mockResolvedValueOnce(undefined);
+    const button = await renderReady('subscribed');
+
+    fireEvent.click(button);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('common.error');
+    expect(button).toHaveAttribute('aria-pressed', 'true');
+    expect(button).not.toBeDisabled();
+
+    fireEvent.click(button);
+
+    await waitFor(() => expect(button).toHaveAttribute('aria-pressed', 'false'));
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('says so when subscribing throws, and stays off', async () => {
+    subscribeToPush.mockRejectedValueOnce(new Error('push service unavailable'));
+    const button = await renderReady('default');
+
+    fireEvent.click(button);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('common.error');
+    expect(button).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('does not show one account\'s failure to the next', async () => {
+    unsubscribeFromPush.mockRejectedValueOnce(new Error('push unsubscribe failed'));
+    const button = await renderReady('subscribed');
+    fireEvent.click(button);
+    await screen.findByRole('alert');
+
+    await claimOwner(U2);
+
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
   });
 });

@@ -5,7 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SimilarOpportunity } from '@/lib/api-server';
 
 const api = vi.hoisted(() => ({ detail: vi.fn(), similar: vi.fn() }));
-vi.mock('@/lib/api-server', () => ({ fetchOpportunityDetail: api.detail, fetchSimilarServer: api.similar }));
+vi.mock('@/lib/api-server', async (importOriginal) => ({
+  decodeRouteId: (await importOriginal<typeof import('@/lib/api-server')>()).decodeRouteId,
+  fetchOpportunityDetail: api.detail,
+  fetchSimilarServer: api.similar,
+}));
 vi.mock('next/navigation', () => ({ notFound: () => { throw new Error('REAL_NOT_FOUND'); } }));
 vi.mock('./OpportunityDetail', () => ({ default: ({ opp, similarContent }: { opp: { title: string }; similarContent?: ReactNode }) =>
   <main><a href="/results">Back to matches</a><h1>{opp.title}</h1><p>Primary content</p>{similarContent}<footer>Source footer</footer></main> }));
@@ -81,5 +85,25 @@ describe('the primary detail does not await optional recommendations', () => {
     const output = stream(await OpportunityPage({ params: Promise.resolve({ id: 'A' }) }));
     expect(await output.end).toContain('Opportunity temporarily unavailable');
     expect(api.similar).not.toHaveBeenCalled();
+  });
+});
+
+describe('the page asks the API for the record its percent-encoded segment names', () => {
+  // Next 16.3 hands the page component encodeURIComponent(segment), so the
+  // 217 corpus ids with a space or '&' arrive escaped. The stub answers like
+  // the backend: only the record id itself resolves.
+  it.each([
+    'faculty-social work-e62c849b',
+    'faculty-art & design-ba84594d',
+  ])('renders %s instead of a false not-found', async (id) => {
+    api.detail.mockImplementation(async (requested: string) => (requested === id
+      ? { status: 'ok', opportunity: { id, title: `Record ${id}` } }
+      : { status: 'not-found' }));
+    api.similar.mockResolvedValue([]);
+    const output = stream(await OpportunityPage({ params: Promise.resolve({ id: encodeURIComponent(id) }) }));
+    expect(await output.end).toContain(`<h1>Record ${id.replace('&', '&amp;')}</h1>`);
+    expect(api.detail).toHaveBeenCalledTimes(1);
+    expect(api.detail).toHaveBeenCalledWith(id);
+    expect(api.similar).toHaveBeenCalledWith(id, 5);
   });
 });

@@ -418,6 +418,7 @@ class ExperienceEvidence(BaseModel):
             validate_master(self.resume_master)
         if len({entry.id for entry in self.entries}) != len(self.entries):
             raise ValueError("duplicate experience entry id")
+        # The attribution check runs on the event loop and its cost relies on this total.
         if sum(len(entry.text) for entry in self.entries) > 60000:
             raise ValueError("experience text exceeds 60000 characters")
         if sum(len(entry.source.quote) for entry in self.entries

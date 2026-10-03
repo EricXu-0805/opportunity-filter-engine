@@ -28,6 +28,13 @@ This is the driver that closes the gap for the records already in the corpus.
     # 5. Prove it.
     python3 scripts/remediate_publications.py report
 
+    # 6. Settle what step 4 left to a person, one verdict per unit.
+    python3 scripts/remediate_publications.py review
+    python3 scripts/remediate_publications.py review <professor-id> \
+        --verified A5012345678 --reviewer <handle> --save    # or --removed
+
+Without --save, steps 2, 4 and 6 write nothing, the ledger included.
+
 WHY THE STEPS ARE SEPARATE, AND WHY 2 COMES BEFORE 3
 
 Step 3 needs a third party, a budget and hours. If trust were withdrawn
@@ -51,6 +58,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -61,15 +69,20 @@ from src.collectors.atomic_json import atomic_write_json  # noqa: E402
 from src.evidence import inferred_method  # noqa: E402
 from src.publication_remediation import (  # noqa: E402
     DERIVED_KEYWORDS,
+    DISPOSITION_REMOVED,
+    DISPOSITION_VERIFIED,
     HARVEST_SUCCEEDED,
     LEDGER_PATH,
     QUEUED,
+    REVIEWED,
     Ledger,
     apply_disposition,
+    awaits_review,
     disposition_for,
     invalidate_derived_keywords,
     invalidate_population,
     pending_population,
+    person_key,
     population_summary,
     remediation_population,
     unit_for,
@@ -78,6 +91,8 @@ from src.publication_remediation import (  # noqa: E402
 from src.publication_trust import (  # noqa: E402
     CURRENT_WORKS_GATE,
     is_pending_remediation,
+    record_works_gate,
+    works_are_verified,
 )
 
 SHARDS_DIR = PROJECT_ROOT / "data" / "processed" / "shards"
@@ -181,7 +196,7 @@ def cmd_audit(args: argparse.Namespace) -> int:
 
 def cmd_invalidate(args: argparse.Namespace) -> int:
     shards = load_shards()
-    ledger = Ledger(Path(args.ledger))
+    ledger = Ledger(Path(args.ledger), dry_run=not args.save)
 
     touched: set[str] = set()
     queued = 0
@@ -217,7 +232,8 @@ def cmd_invalidate(args: argparse.Namespace) -> int:
     print(f"withdrawn     : {withdrawn_relationships} relationship(s)")
     print(f"shards touched: {len(touched)} ({', '.join(sorted(touched)) or '-'})")
     if not args.save:
-        print("\n(dry run — pass --save to write the shards)")
+        print(f"\n(dry run — pass --save to write the shards and the "
+              f"{len(ledger.staged)} ledger event(s) held back)")
         return 0
     written = save_shards(shards, touched)
     print(f"wrote {len(written)} shard file(s)")
@@ -359,7 +375,7 @@ def cmd_apply(args: argparse.Namespace) -> int:
         return 2
 
     shards = load_shards()
-    ledger = Ledger(Path(args.ledger))
+    ledger = Ledger(Path(args.ledger), dry_run=not args.save)
     index = ledger.index()
 
     # 1. Choose the units. Only schools the harvest really reached, only units
@@ -451,7 +467,8 @@ def cmd_apply(args: argparse.Namespace) -> int:
     #    built to prevent. A crash here instead leaves records that
     #    `reconcile` closes on the next run.
     if not args.save:
-        print("\n(dry run — no shard written, no ledger settlement)")
+        print(f"\n(dry run — no shard and none of the {len(ledger.staged)} "
+              f"ledger event(s) written)")
         print(json.dumps(dispositions, indent=2, sort_keys=True))
         return 0
     written = save_shards(shards, touched_shards)
@@ -477,6 +494,265 @@ def cmd_apply(args: argparse.Namespace) -> int:
 
     print(json.dumps(dispositions, indent=2, sort_keys=True))
     return 0
+
+
+# ---------------------------------------------------------------------------
+# review
+# ---------------------------------------------------------------------------
+
+_OPENALEX_AUTHOR_ID = re.compile(r"^A\d+$")
+
+
+def _refuse(reason: str, rc: int = 2) -> int:
+    print(f"refusing: {reason}; nothing written", file=sys.stderr)
+    return rc
+
+
+class _Refusal(Exception):
+    """A verdict that cannot land. Raised, rather than returned, from under the
+    ledger lock, so the lock is released and the event is never written."""
+
+    def __init__(self, reason: str, rc: int = 2):
+        super().__init__(reason)
+        self.rc = rc
+
+
+def cmd_review(args: argparse.Namespace) -> int:
+    """List the units waiting for a person, or record one person's verdict.
+
+    ``apply`` settles a unit `ambiguous` when the roster cannot say who the
+    professor is and `needs_review` when its answer proves nothing. Either way
+    the candidate papers are gone and nothing may be cited until someone
+    decides. A verdict lands through the paths the automation uses: `verified`
+    buys the named author's recent works, lets the current gate choose among
+    them and has ``apply_works`` stamp them; `removed` is
+    ``apply_disposition``'s retraction. The ledger then records it as the one
+    event a settled unit still accepts.
+    """
+    if args.unit is None:
+        if args.verified is not None or args.removed:
+            return _refuse("name the unit the verdict is for")
+        return _list_review_queue(args)
+    return _decide_review(args)
+
+
+def _list_review_queue(args: argparse.Namespace) -> int:
+    ledger = Ledger(Path(args.ledger))
+    waiting = {key: e for key, e in ledger.index().items() if awaits_review(e)}
+    # The papers the retired gate gave each professor. The question a reviewer
+    # answers is whether those were theirs, and after the retraction this
+    # QUEUED event is the only place they are still written down.
+    candidates = {
+        e["idempotency_key"]: e["paper_ids"]
+        for e in ledger.events()
+        if e["idempotency_key"] in waiting and e.get("status") == QUEUED and e.get("paper_ids")
+    }
+    ids = {e.get("professor_id") for e in waiting.values()}
+    records = {r.get("id"): r for r in all_records(load_shards()) if r.get("id") in ids}
+    units = []
+    for key in sorted(waiting):
+        entry = waiting[key]
+        record = records.get(entry.get("professor_id")) or {}
+        block = (record.get("metadata") or {}).get("publication_remediation") or {}
+        units.append({
+            "unit": key,
+            "professor_id": entry.get("professor_id"),
+            "reason": entry.get("result"),
+            "school": entry.get("school"),
+            "pi_name": record.get("pi_name"),
+            "department": record.get("department"),
+            "url": record.get("url") or record.get("source_url"),
+            "in_corpus": bool(record),
+            "prior_author_id": block.get("prior_author_id"),
+            "candidate_papers": candidates.get(key, []),
+        })
+    print(json.dumps({"awaiting_review": len(units), "units": units},
+                     indent=2, ensure_ascii=False))
+    return 0
+
+
+def _paper_state(record: dict) -> dict:
+    md = record.get("metadata") or {}
+    return {
+        "attribution_status": md.get("publication_attribution_status"),
+        "author_id": md.get("publication_author_id"),
+        "works_gate": md.get("works_gate"),
+        "papers": [f"{w.get('title')} ({w.get('year')})" for w in md.get("recent_works") or []],
+    }
+
+
+def _decide_review(args: argparse.Namespace) -> int:
+    if (args.verified is not None) == args.removed:
+        return _refuse("pass exactly one verdict: --verified AUTHOR_ID or --removed")
+    reviewer = (args.reviewer or "").strip()
+    if not reviewer:
+        return _refuse("--reviewer is required: a verdict records who made it")
+    author_id = None
+    if args.verified is not None:
+        # OpenAlex shows an author as https://openalex.org/A5012345678.
+        author_id = args.verified.strip().rsplit("/", 1)[-1]
+        if not _OPENALEX_AUTHOR_ID.match(author_id):
+            return _refuse(f"{args.verified!r} is not an OpenAlex author id (A and digits)")
+
+    ledger = Ledger(Path(args.ledger), dry_run=not args.save)
+    named = [e for e in ledger.index().values()
+             if args.unit in (e["idempotency_key"], e.get("professor_id"))]
+    waiting = [e for e in named if awaits_review(e)]
+    if not waiting:
+        decided = [e for e in named if e.get("status") == REVIEWED]
+        if decided:
+            e = decided[0]
+            return _refuse(f"{e['idempotency_key']} already has a verdict ({e.get('result')} "
+                           f"by {e.get('reviewer')} at {e.get('completed_at')}); a unit takes one")
+        if named:
+            e = named[0]
+            return _refuse(f"{args.unit} is not awaiting review "
+                           f"(status {e.get('status')}, result {e.get('result')})")
+        return _refuse(f"the ledger has no unit {args.unit}")
+    if len(waiting) > 1:
+        keys = ", ".join(sorted(e["idempotency_key"] for e in waiting))
+        return _refuse(f"{args.unit} names {len(waiting)} units; pass one of {keys}")
+    entry = waiting[0]
+    verdict = DISPOSITION_VERIFIED if author_id else DISPOSITION_REMOVED
+    fetched: tuple = ()
+    if author_id:
+        # Before the lock is taken, so a slow OpenAlex holds up nobody else's verdict.
+        try:
+            fetched = _fetch_author(author_id)
+        except _Refusal as refusal:
+            return _refuse(str(refusal), refusal.rc)
+
+    def land() -> int:
+        # Runs under the ledger lock. Each run rewrites a whole shard, so the
+        # shards are read here rather than before the lock: read earlier, a
+        # verdict another reviewer landed on the same shard in between would
+        # be written back over and lost from the corpus while the ledger kept it.
+        shards = load_shards()
+        found = [(slug, r) for slug, records in shards.items() for r in records
+                 if r.get("id") == entry.get("professor_id")]
+        if len(found) != 1:
+            raise _Refusal(f"{entry.get('professor_id')} is {len(found)} records in the shards; "
+                           "a verdict lands on exactly one")
+        slug, record = found[0]
+        before = _paper_state(record)
+        if author_id:
+            _land_verified(shards, record, author_id, *fetched,
+                           allow_name_mismatch=args.allow_name_mismatch)
+        else:
+            _land_removed(record, entry, reviewer)
+        after = _paper_state(record)
+        print(json.dumps({
+            "unit": entry["idempotency_key"],
+            "pi_name": record.get("pi_name"),
+            "review_of": entry.get("result"),
+            "verdict": verdict,
+            "reviewer": reviewer,
+            "author_id": author_id,
+            "before": before,
+            "after": after,
+        }, indent=2, ensure_ascii=False))
+        if args.save:
+            save_shards(shards, {slug})
+        return len(after["papers"])
+
+    try:
+        event = ledger.record_review(entry, verdict, reviewer=reviewer, author_id=author_id,
+                                     note=args.note, land=land)
+    except _Refusal as refusal:
+        return _refuse(str(refusal), refusal.rc)
+    if event is None:
+        return _refuse(f"{entry['idempotency_key']} took another verdict while this one "
+                       "was prepared")
+    if not args.save:
+        print("\n(dry run — pass --save to write the shard and the verdict)")
+        return 0
+    print(f"recorded {verdict} for {entry['idempotency_key']}", file=sys.stderr)
+    return 0
+
+
+def _same_surname(professor: str, author: str) -> bool:
+    from src.collectors.openalex_enrich import _match_name_key
+
+    mine, theirs = _match_name_key(professor or ""), _match_name_key(author or "")
+    return bool(mine and theirs and mine[0] == theirs[0])
+
+
+def _fetch_author(author_id: str) -> tuple[dict, list[dict]]:
+    """The named author and their recent works: the two requests a `verified`
+    verdict makes, whatever the gate later keeps."""
+    from src.collectors import openalex_enrich as oa
+
+    found = oa._get({"select": oa._ROSTER_SELECT}, url=f"{oa._API}/{author_id}")
+    # A merged author answers with the id it was merged into: name that one.
+    answered = str(found.get("id") or "").rsplit("/", 1)[-1]
+    if answered != author_id:
+        budget = " (the OpenAlex budget is exhausted)" if oa._warned_429 else ""
+        raise _Refusal(f"OpenAlex answered {author_id} with {answered or 'no author'}{budget}")
+    author = oa._roster_author(found)
+    raw = oa.works_for_authors([author_id]).get(author_id) or []
+    if oa._warned_429:
+        raise _Refusal("the OpenAlex budget ran out while fetching the works")
+    # `_get` answers {} after four failed attempts too, without the 429 flag,
+    # and an author record that counts works has some. An empty list is a
+    # failed request, not evidence that none of the papers is theirs.
+    if not raw:
+        raise _Refusal(f"OpenAlex returned no works for {author_id}, whose author record counts "
+                       f"{author['works']}; a failed request looks like this, so retry")
+    return author, raw
+
+
+def _land_verified(shards: dict[str, list[dict]], record: dict, author_id: str,
+                   author: dict, raw: list[dict], *, allow_name_mismatch: bool) -> None:
+    """Stamp the named author's papers the way a harvest would have, had the
+    roster been able to resolve them: the author's own fields decide which of
+    their recent works qualify, and ``apply_works`` writes them."""
+    from src.collectors import openalex_enrich as oa
+
+    # `verified` is the one verdict that restores trust, and a mistyped id
+    # names a stranger.
+    if not allow_name_mismatch and not _same_surname(record.get("pi_name"), author["name"]):
+        raise _Refusal(f"{author_id} is {author['name']!r}, whose surname is not "
+                       f"{record.get('pi_name')!r}'s; pass --allow-name-mismatch if that is known")
+    works = oa._usable_works(raw, record.get("department", ""),
+                             author_fields=oa._author_own_fields(author),
+                             author_id=author_id, inst_id=oa.SCHOOL_INST[record["school"]])
+    if not works:
+        raise _Refusal(f"the current gate kept none of the {len(raw)} recent work(s) OpenAlex "
+                       f"returned for {author_id}; if none is theirs, record --removed")
+
+    corpus = all_records(shards)
+    before = {id(r): _trust_fingerprint(r) for r in corpus}
+    oa.apply_works(corpus, {person_key(record): {"author_id": author_id, "works": works}})
+    stray = [r for r in corpus if r is not record and before[id(r)] != _trust_fingerprint(r)]
+    if stray:
+        raise _Refusal(f"stamping {author_id} also changed {len(stray)} other record(s) "
+                       f"(first: {stray[0].get('id')}): another professor holds that author",
+                       rc=3)
+    md = record.get("metadata") or {}
+    if not (works_are_verified(record) and record_works_gate(record) >= CURRENT_WORKS_GATE
+            and md.get("publication_author_id") == author_id):
+        raise _Refusal(f"apply_works did not stamp {record.get('id')} verified by {author_id}")
+    apply_disposition(record, DISPOSITION_VERIFIED)
+
+
+def _land_removed(record: dict, entry: dict, reviewer: str) -> None:
+    prior = dict((record.get("metadata") or {}).get("publication_remediation") or {})
+    outcome = apply_disposition(record, DISPOSITION_REMOVED)
+    block = record["metadata"]["publication_remediation"]
+    # apply_disposition counts what this step removed, which for a unit the
+    # automation already emptied is nothing. The record keeps the totals.
+    block["relationships_removed"] = (
+        (prior.get("relationships_removed") or 0) + outcome["relationships_removed"]
+    )
+    block["keywords_invalidated"] = (
+        bool(prior.get("keywords_invalidated")) or outcome["keywords_invalidated"]
+    )
+    block["review"] = {
+        "verdict": DISPOSITION_REMOVED,
+        "review_of": entry.get("result"),
+        "reviewer": reviewer,
+        "reviewed_at": block["resolved_at"],
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -543,6 +819,22 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--manifest", default="/tmp/remediation_manifest.json")
     p.add_argument("--save", action="store_true")
     p.set_defaults(func=cmd_apply)
+
+    p = sub.add_parser("review",
+                       help="list the units awaiting a person's verdict, or record one")
+    p.add_argument("unit", nargs="?", help="a professor id or unit key from the list")
+    p.add_argument("--verified", metavar="AUTHOR_ID",
+                   help="the OpenAlex author these papers belong to")
+    p.add_argument("--removed", action="store_true",
+                   help="no paper may be cited for this professor")
+    p.add_argument("--reviewer",
+                   help="who decided; written to the committed ledger and, for --removed, "
+                        "the record's shard")
+    p.add_argument("--note")
+    p.add_argument("--allow-name-mismatch", action="store_true",
+                   help="accept an author whose surname differs from the professor's")
+    p.add_argument("--save", action="store_true")
+    p.set_defaults(func=cmd_review)
 
     p = sub.add_parser("report", help="ledger + corpus proof")
     p.add_argument("--out")

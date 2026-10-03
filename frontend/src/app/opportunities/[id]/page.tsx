@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { fetchOpportunityDetail } from '@/lib/api-server';
+import { decodeRouteId, fetchOpportunityDetail } from '@/lib/api-server';
 import { PUBLIC_RELEASE_CACHE_VERSION } from '@/lib/release-scope';
 import OpportunityDetail from './OpportunityDetail';
 import SimilarOpportunitiesSection from './SimilarOpportunitiesSection';
@@ -114,7 +114,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function OpportunityPage({ params }: PageProps) {
-  const { id } = await params;
+  // Unlike generateMetadata above, the page component receives the segment
+  // still percent-encoded.
+  const id = decodeRouteId((await params).id);
   // Resolve the primary outcome before mounting optional recommendations.
   // Their own Suspense boundary must not delay the title, actions or return link.
   const result = await fetchOpportunityDetail(id);
