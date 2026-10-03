@@ -8,10 +8,10 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
-from backend.lib.experience_evidence import select_experience
+from backend.lib.experience_evidence import names_no_action, select_experience
 from backend.routes import cold_email as ce
 from backend.schemas import ColdEmailRequest, ExperienceEvidence
-from src.recommender.cold_email import _common_parts
+from src.recommender.cold_email import _common_parts, resume_bullet_relevance
 from tests.experience_fixtures import confirmed_experience, resume_line_experience
 
 PROFILE = {"name": "Audit Student", "school": "UIUC", "year": "sophomore",
@@ -175,7 +175,7 @@ def test_every_public_route_uses_confirmed_current_evidence_and_returns_receipt(
     assert out["experience_usage"]["eligible_count"] == 1
     assert len(out["experience_usage"]["selected"]) == 1
     assert out["experience_usage"]["selected"][0]["excerpt"] == RELEVANT
-    assert out["pipeline_version"] == "w12.19"
+    assert out["pipeline_version"] == "w12.20"
     if endpoint == "variants":
         assert all(v["experience_usage"]["selected"] == out["experience_usage"]["selected"] for v in out["variants"])
 
@@ -334,6 +334,104 @@ def test_wrapped_lines_assigned_to_different_activities_stay_apart():
     excerpts = [item["excerpt"] for item in selected(evidence).materials()]
     assert head["text"] in excerpts and tail["text"] in excerpts
     assert XRAY_BULLET not in excerpts
+
+
+ROLE_LINE = "Undergraduate Research Assistant, Health Imaging Lab (UIUC) - Jan 2026 - Present"
+RADIOGRAPH_BULLET = "- Trained a classifier on 12,000 chest radiographs."
+IMAGING = dict(OPP, id="imaging-test", title="Health imaging research",
+               keywords=["health imaging", "chest radiograph analysis"],
+               description_raw="Research on health imaging and chest radiograph analysis.")
+
+
+def template_selection(printed):
+    return select_experience(ExperienceEvidence.model_validate(resume_line_experience(printed)),
+                             _common_parts(PROFILE, IMAGING))
+
+
+def template_pick(printed):
+    return template_selection(printed).template
+
+
+def test_the_template_quotes_the_bullet_under_a_role_line_not_the_role_line():
+    # Walked 2026-09-30 (CE-2b): the role line ranked first and became the
+    # email's work paragraph. A title, a lab and dates say nothing the
+    # student did; the bullet under them does. Both share two words with
+    # this target.
+    assert template_pick(ROLE_LINE + "\n" + RADIOGRAPH_BULLET)["excerpt"] == RADIOGRAPH_BULLET
+
+
+@pytest.mark.parametrize("line", [
+    ROLE_LINE,
+    "Research assistant, Health Imaging Lab, Jan 2026 - present",
+    "Research Assistant at the Health Imaging Lab, 2025-2026",
+    "Health Imaging Lab | Research Assistant | 2025-2026",
+    "HEALTH IMAGING RESEARCH",
+    # An annotation names no work either.
+    "Research Assistant, Health Imaging Lab (remote), Jan 2026 - Present",
+    "Undergraduate Research Assistant (part-time), Health Imaging Lab, Jan 2026 - Present",
+    "Research Assistant, Health Imaging Lab, Jan 2026 to date",
+    "Research Assistant, Health Imaging Lab, Jan. 2026 – Dec. 2026, under Prof. Smith",
+    # A word without case decides nothing; the cased words still make a role row.
+    "Research Assistant, Health Imaging Lab (健康影像实验室), Jan 2026 - Present",
+    "本科研究助理, Health Imaging Lab (UIUC), 2026.01 - Present",
+])
+def test_a_role_or_heading_line_is_never_the_template_example(line):
+    selection = template_selection(line)
+    assert resume_bullet_relevance(_common_parts(PROFILE, IMAGING), line) >= 2
+    assert selection.template is None
+    # It stays a confirmed fact the AI brief reads.
+    assert [item["excerpt"] for item in selection.selected] == [line]
+
+
+@pytest.mark.parametrize("line", [
+    "Built a dashboard for the Health Imaging Lab.",
+    # Short bullets whose other words are names, quoted on main as well.
+    "Built a Chest Radiograph Viewer for the Health Imaging Lab",
+    "Developed U-Net Model for Chest X-Ray Segmentation in Health Imaging",
+    # A role row that goes on to say what was done.
+    "Research Assistant, Health Imaging Lab: trained a classifier on chest radiographs",
+    # The cased words are a name inside a Chinese sentence.
+    "在 Health Imaging Lab 训练了胸片分类模型",
+])
+def test_a_line_that_says_what_was_done_is_still_quoted(line):
+    assert template_pick(line)["excerpt"] == line
+
+
+@pytest.mark.parametrize("line, role", [
+    ("Trained a CNN on CheXpert", False),
+    ("Published in IEEE TMI", False),
+    ("Presented at ISBI 2026", False),
+    ("Trained a classifier on chest radiographs (Jan 2026 - Mar 2026)", False),
+    ("基于 CNN 的胸片分类模型", False),
+    # No cased word but the dates: this rule cannot read the line, so it never skips it.
+    ("本科研究助理，健康影像实验室，2026.01 - 2026.06", False),
+    ("2025.09 - Present 在健康影像实验室训练了胸片分类模型", False),
+    ("研究助理 Research Assistant 健康影像实验室 Health Imaging Lab, Jan 2026 - Present", True),
+    ("Teaching assistant, CS 225, Fall 2025 - present", True),
+    ("Research Assistant, Health Imaging Lab", True),
+    ("Health Imaging Lab | Research Assistant", True),
+    ("Health Imaging Lab, Sept. 2025 – May 2026", True),
+    ("Undergraduate Research Assistant (paid summer position), Health Imaging Lab, Summer 2025", True),
+    # Two lowercase words that do not join, date or name the role say what was done.
+    ("Research Assistant, Health Imaging Lab, labeled radiographs", False),
+])
+def test_a_line_is_a_role_line_only_on_a_role_a_date_range_or_capitals(line, role):
+    assert names_no_action(line) is role
+
+
+@pytest.mark.parametrize("endpoint", ["", "stream", "variants"])
+@pytest.mark.parametrize("printed, quoted", [(ROLE_LINE, None), (ROLE_LINE + "\n" + RADIOGRAPH_BULLET, RADIOGRAPH_BULLET)],
+                         ids=["role-line-alone", "role-line-then-bullet"])
+def test_every_template_route_prints_the_bullet_and_never_the_role_line(client, monkeypatch, endpoint, printed, quoted):
+    # A role line alone leaves the template without a work paragraph.
+    monkeypatch.setattr(ce, "load_opportunities_by_id", lambda: {IMAGING["id"]: IMAGING})
+    payload = {"profile": PROFILE, "opportunity_id": IMAGING["id"],
+               "experience_evidence": resume_line_experience(printed)}
+    out = response_body(client.post("/api/cold-email" + (f"/{endpoint}" if endpoint else ""), json=payload), endpoint)
+    bodies = [variant["body"] for variant in out["variants"]] if endpoint == "variants" else [out["body"]]
+    assert all("Health Imaging Lab" not in body and (quoted is None or quoted in body) for body in bodies)
+    assert out["experience_usage"]["eligible_count"] == printed.count("\n") + 1
+    assert [item["excerpt"] for item in out["experience_usage"]["selected"]] == ([quoted] if quoted else [])
 
 
 @pytest.mark.parametrize("path", ["", "variants", "refine"])

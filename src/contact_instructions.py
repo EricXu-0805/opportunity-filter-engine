@@ -190,7 +190,9 @@ def capture_from_sections(sections, *, source_url: str, record_source_url: str |
 _BLOCKED_PAGE_TITLE = re.compile(
     r'^(?:(?:sign[ -]?in|log[ -]?in|access denied|permission denied|forbidden|'
     r'just a moment|attention required|verify (?:you are|that you are) (?:a )?human|'
-    r'page not found|404(?: error)?|service unavailable)(?:[.!…]+|\s*[-|:–—].*)?|'
+    # These may end in punctuation, in a separator and the site's name, or in
+    # both, as Cloudflare's block page does: "Attention Required! | Cloudflare".
+    r'page not found|404(?: error)?|service unavailable)(?:[.!…]*\s*[-|:–—].*|[.!…]+)?|'
     # Bot-check interstitials served in place of the page, by their whole
     # title: Imunify360, Anubis, SiteGround, Imperva/Distil, PerimeterX, AWS WAF,
     # Vercel, DDoS-Guard. A title that only begins with these words, such as
