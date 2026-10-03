@@ -54,7 +54,7 @@ import json
 import os
 import socket
 import tempfile
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -95,12 +95,16 @@ MUTATION_COMMITTED = "mutation_committed"
 VERIFIED_COMPLETE = "verified_complete"
 FAILED = "failed"
 NEEDS_REVIEW = "needs_review"
+# A person's verdict on a unit the automation left to them. Written only by
+# ``Ledger.record_review`` (the `review` command), after the unit settled.
+REVIEWED = "reviewed"
 
 # Terminal states: a unit in one of these is never re-processed for the same
 # target gate. NEEDS_REVIEW is terminal for the *automated* pipeline and open
 # for a human — the relationship stays untrusted either way, which is why it is
-# safe to stop asking about it.
-_TERMINAL = frozenset({VERIFIED_COMPLETE, NEEDS_REVIEW})
+# safe to stop asking about it. REVIEWED closes it for the human as well.
+_AUTOMATED_TERMINAL = frozenset({VERIFIED_COMPLETE, NEEDS_REVIEW})
+_TERMINAL = _AUTOMATED_TERMINAL | {REVIEWED}
 
 # Dispositions — what the current gate decided about the relationship.
 DISPOSITION_VERIFIED = "verified"      # re-attributed; trust restored
@@ -114,6 +118,31 @@ DISPOSITION_NEEDS_REVIEW = "needs_review"  # routed to a human
 # return again is verified by the *new* stamp it earns, never by having been
 # there before.
 _RESTORING = frozenset({DISPOSITION_VERIFIED})
+
+# The results a person is asked to settle, and the verdicts they can give.
+_AWAITING_REVIEW = frozenset({DISPOSITION_AMBIGUOUS, DISPOSITION_NEEDS_REVIEW})
+REVIEW_VERDICTS = frozenset({DISPOSITION_VERIFIED, DISPOSITION_REMOVED})
+
+
+def awaits_review(entry: dict | None) -> bool:
+    """Whether a ledger unit is waiting for a person's verdict.
+
+    The one definition the manual-review queue, ``Ledger.index`` and the
+    `review` command share. A reviewed unit's result is the verdict, so it no
+    longer qualifies, which is what makes a second verdict impossible.
+    """
+    return (entry or {}).get("result") in _AWAITING_REVIEW
+
+
+def _is_review_verdict(event: dict) -> bool:
+    """A review event the ledger accepts: a verdict, who gave it, and for a
+    verified one the OpenAlex author the papers were stamped from."""
+    return (
+        event.get("status") == REVIEWED
+        and event.get("result") in REVIEW_VERDICTS
+        and bool(str(event.get("reviewer") or "").strip())
+        and (event.get("result") != DISPOSITION_VERIFIED or bool(event.get("reviewed_author_id")))
+    )
 
 
 def _now() -> str:
@@ -523,6 +552,20 @@ class Ledger:
             )
             if e.get("status") == STARTED:
                 cur["attempt_count"] += 1
+            # The one exception to the rule below. A unit the automation
+            # settled as ambiguous or needs_review waits for a person, and
+            # their verdict is the only event that may change it after it
+            # settled: once, and only as a well-formed verdict. Every other
+            # event is still held off by the terminal state.
+            if e.get("status") == REVIEWED:
+                if awaits_review(cur) and _is_review_verdict(e):
+                    cur["status"] = REVIEWED
+                    for field in ("result", "review_of", "reviewer", "reviewed_author_id",
+                                  "note", "relationships_after", "completed_at"):
+                        if e.get(field) is not None:
+                            cur[field] = e[field]
+                cur["history"].append(REVIEWED)
+                continue
             # A terminal state is sticky: once a unit is complete, a later
             # stray event (a slow duplicate worker, a replayed job) must not
             # reopen it — that would be exactly the duplicate this ledger
@@ -706,6 +749,66 @@ class Ledger:
         """
         return self.append(unit, FAILED, error=str(error)[:500])
 
+    def record_review(self, entry: dict, verdict: str, *, reviewer: str,
+                      author_id: str | None = None, note: str | None = None,
+                      relationships_after: int = 0,
+                      commit: Callable[[], None] | None = None) -> dict | None:
+        """Write a person's verdict on a unit waiting for one. Returns the
+        event, or None when the unit no longer awaits review.
+
+        ``entry`` is the unit's ``index()`` entry. The check and the write
+        happen under the ledger lock, so two reviewers cannot both see an open
+        unit and both decide it. ``commit`` runs inside that window, after the
+        check and before the write: the caller writes the corpus there, so the
+        corpus lands first, as in ``apply``, and a verdict the ledger refuses
+        never reaches the corpus.
+        """
+        key = entry["idempotency_key"]
+        at = _now()
+        event = {
+            "remediation_id": entry.get("professor_id"),
+            "professor_id": entry.get("professor_id"),
+            "school": entry.get("school"),
+            "from_gate_version": entry.get("from_gate_version"),
+            "to_gate_version": entry.get("to_gate_version"),
+            "idempotency_key": key,
+            "status": REVIEWED,
+            "result": verdict,
+            "review_of": entry.get("result"),
+            "reviewer": (reviewer or "").strip(),
+            "reviewed_author_id": author_id,
+            "note": note,
+            "relationships_after": relationships_after,
+            "completed_at": at,
+            "worker": self._worker,
+            "at": at,
+        }
+        event = {k: v for k, v in event.items() if v is not None}
+        if not _is_review_verdict(event):
+            raise ValueError(f"not a review verdict: {verdict!r} by {reviewer!r}")
+        if self.dry_run:
+            if not awaits_review(self.index().get(key)):
+                return None
+            self.staged.append(event)
+            return event
+
+        import fcntl
+
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self.path.open("a", encoding="utf-8") as fh:
+            fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
+            try:
+                if not awaits_review(self.index().get(key)):
+                    return None
+                if commit is not None:
+                    commit()
+                fh.write(json.dumps(event, ensure_ascii=False, sort_keys=True) + "\n")
+                fh.flush()
+                os.fsync(fh.fileno())
+                return event
+            finally:
+                fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+
     # -- reporting ---------------------------------------------------------
 
     def report(self) -> dict:
@@ -751,12 +854,19 @@ class Ledger:
         reached terminal. This is the number that has to be zero, and computing
         it from the raw event stream (rather than from the deduplicating index)
         is what makes it able to be non-zero at all.
+
+        A person's verdict on a unit the automation settled as ambiguous or
+        needs_review is not a second remediation of it; a second verdict is.
+        The two are counted apart for that reason.
         """
         seen: dict[str, int] = {}
+        reviews: dict[str, int] = {}
         for e in self.events():
-            if e.get("status") in _TERMINAL:
+            if e.get("status") in _AUTOMATED_TERMINAL:
                 seen[e["idempotency_key"]] = seen.get(e["idempotency_key"], 0) + 1
-        return sum(n - 1 for n in seen.values() if n > 1)
+            elif e.get("status") == REVIEWED:
+                reviews[e["idempotency_key"]] = reviews.get(e["idempotency_key"], 0) + 1
+        return sum(n - 1 for counts in (seen, reviews) for n in counts.values() if n > 1)
 
     def manual_review_queue(self) -> list[dict]:
         """Units a human has to settle, with the evidence to settle them.
@@ -767,7 +877,7 @@ class Ledger:
         """
         out = []
         for entry in self.index().values():
-            if entry.get("result") not in (DISPOSITION_AMBIGUOUS, DISPOSITION_NEEDS_REVIEW):
+            if not awaits_review(entry):
                 continue
             out.append(
                 {
