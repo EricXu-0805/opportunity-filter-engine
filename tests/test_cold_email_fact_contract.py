@@ -487,3 +487,16 @@ def test_the_commitment_checks_stay_bounded_at_the_edit_limit(unit):
     contact_claim_violations(text, contact_context_parts(None))
     assert time.perf_counter() - began < 1.0
 
+
+def test_the_formal_quick_edit_never_swaps_in_a_commitment(email_client, monkeypatch):
+    monkeypatch.setattr(ce, "is_configured", lambda: False)
+    current = draft("I am interested in hypersonics. I am a fast learner.")
+    response = email_client.post("/api/cold-email/refine", json={
+        "profile": PROFILE, "opportunity_id": OPP["id"], "experience_evidence": confirmed_experience([]),
+        "current_body": current, "instruction": "make it more formal",
+    })
+    assert response.status_code == 200, response.text
+    out = response.json()
+    assert out["method"] == "local" and "formal" in out["applied"], out
+    assert "committed" not in out["body"]
+    assert "I learn new material quickly." in out["body"]
