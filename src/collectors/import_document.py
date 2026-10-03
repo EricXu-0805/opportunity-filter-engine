@@ -49,6 +49,9 @@ _UNRENDERED = (Comment, Declaration, Doctype, ProcessingInstruction)
 _SPACE_RUN = re.compile(r'\s+')
 _SURROGATE = re.compile('[\ud800-\udfff]')
 _SENTENCE_BREAK = re.compile(r'(?<=[.!?])\s+|(?<=[;。！？；])\s*')
+# The markers _render_text writes before a list item's text (an <ol> counts down to
+# negative numbers when reversed).
+_LIST_MARKER = re.compile(r'(?:-|-?\d+\.) ')
 # A tag's name and the attributes after it, as html.parser's locatetagend reads them.
 _TAG_NAME = re.compile(r'[a-zA-Z][^\t\n\r\f />]*[\t\n\r\f /]*')
 _TAG_ATTRIBUTE = re.compile(
@@ -103,9 +106,8 @@ _GATE_TEXT = re.compile(
 # A site can answer our server's address with a bot check while the same URL
 # opens normally for the student. Checks print these sentences and footer
 # lines and load these scripts and frames, but an ordinary page can carry them
-# too, so they refuse only a page with nothing else to read (see
-# read_import_document). Words may be split by any whitespace: PerimeterX
-# breaks its sentence with <br>.
+# too, so each is one bot-check signal, weighed in read_import_document. Words
+# may be split by any whitespace: PerimeterX breaks its sentence with <br>.
 _CHALLENGE_TEXT = re.compile(
     r'\b(?:(?:your|the|this)\s+(?:request|browser|connection)\s+is\s+being\s+(?:verified|checked)|'
     r'(?:verif(?:y|ying|ies)|checking|confirm(?:ing)?|making\s+sure)\s+(?:that\s+)?you(?:\s+are|\'re|’re)\s+'
@@ -499,17 +501,16 @@ def _one_line(check: re.Match) -> str:
     return check.group().replace('\n', ' ')
 
 
-def _sentences(root: Tag, *, forms: bool):
-    """The sentences of root's text that the wall rules weigh, chrome left out.
+def _lines(root: Tag, *, forms: bool) -> list[str]:
+    """The lines of root's text that the wall rules weigh, chrome left out.
 
-    Login instructions can share a paragraph with a real deadline, so each
-    sentence is weighed alone; a gate phrase must not discard adjacent facts.
-    Only a bot-check sentence (_CHALLENGE_TEXT) is read across lines: PerimeterX
-    breaks its sentence over two with <br>, and both halves are the check.
+    A login form's own text is not source. The bot-check rules count text
+    inside forms (``forms``): ASP.NET and SharePoint wrap the whole page,
+    posting included, in one form. Only a bot-check sentence (_CHALLENGE_TEXT)
+    is read across lines: PerimeterX breaks its sentence over two with <br>,
+    and both halves are the check.
     """
-    text = _CHALLENGE_TEXT.sub(_one_line, _render_text(root, _CHROME if forms else _CHROME_AND_FORMS))
-    for line in text.splitlines():
-        yield from _SENTENCE_BREAK.split(line)
+    return _CHALLENGE_TEXT.sub(_one_line, _render_text(root, _CHROME if forms else _CHROME_AND_FORMS)).splitlines()
 
 
 def _discounted(sentence: str) -> bool:
@@ -518,30 +519,45 @@ def _discounted(sentence: str) -> bool:
                 or _CHALLENGE_TEXT.search(sentence) or _LOADING_SHELL.fullmatch(sentence))
 
 
-def _has_independent_source(root: Tag, *, forms: bool = False) -> bool:
+def _has_independent_source(lines: list[str]) -> bool:
     """A login form can coexist with source prose; do not reject that page.
 
-    A login form's own text is not source. The bot-check rules count text
-    inside forms (``forms``): ASP.NET and SharePoint wrap the whole page,
-    posting included, in one form.
+    Login instructions can share a paragraph with a real deadline, so each
+    sentence of the page's lines (_lines) is weighed alone; a gate phrase must
+    not discard adjacent facts.
     """
-    for sentence in _sentences(root, forms=forms):
-        # Letters are counted first, in C and stopping at 12, so a page of
-        # short sentences is not matched against every rule.
-        if len(list(islice(filter(str.isalpha, sentence), 12))) == 12 and not _discounted(sentence):
-            return True
+    for line in lines:
+        for sentence in _SENTENCE_BREAK.split(line):
+            # Letters are counted first, in C and stopping at 12, so a page of
+            # short sentences is not matched against every rule.
+            if len(list(islice(filter(str.isalpha, sentence), 12))) == 12 and not _discounted(sentence):
+                return True
     return False
 
 
-def _has_other_text(root: Tag) -> bool:
-    """Whether root shows anything a bot check does not, however short.
+def _shows_what_a_check_does_not(text: str) -> bool:
+    return any(any(map(str.isalnum, sentence)) and not _discounted(sentence)
+               for sentence in _SENTENCE_BREAK.split(text))
+
+
+def _shows_a_list_or_table(lines: list[str]) -> bool:
+    """Whether the page's lines (_lines) hold a list item, or a table row of
+    two cells or more, that a bot check does not print.
 
     A sparse posting's list items and table cells are too short to be
-    independent source but are not what a check prints; its heading, buttons,
-    check sentences, loading lines and footer ids are. Form text counts.
+    independent source, and a check prints neither. Any other short line, such
+    as the site's name, an IP address, a countdown or an error code, is what a
+    check prints beside its sentence, so it is not weighed; nor are headings,
+    buttons, check sentences, loading lines and footer ids.
     """
-    return any(any(map(str.isalnum, sentence)) and not _discounted(sentence)
-               for sentence in _sentences(root, forms=True))
+    for line in lines:
+        if '\t' in line:
+            # A layout table puts the site's logo cell beside one line of text.
+            if sum(map(_shows_what_a_check_does_not, line.split('\t'))) >= 2:
+                return True
+        elif (marker := _LIST_MARKER.match(line)) and _shows_what_a_check_does_not(line[marker.end():]):
+            return True
+    return False
 
 
 def _address(tag: Tag) -> str:
@@ -615,24 +631,32 @@ def read_import_document(html: str, *, content_type: str | None = None) -> tuple
         # carry is weighed with the other check signals below.
         if len(sign_in) + len(check_title) < len(blocked) or _is_challenge_page(soup):
             raise ImportDocumentError('access_page')
+        lines: dict[bool, list[str]] = {}
         independent: dict[bool, bool] = {}
+
+        def page_lines(forms: bool) -> list[str]:
+            if forms not in lines:
+                lines[forms] = _lines(root, forms=forms)
+            return lines[forms]
 
         def has_independent_source(*, forms: bool = False) -> bool:
             if forms not in independent:
-                independent[forms] = _has_independent_source(root, forms=forms)
+                independent[forms] = _has_independent_source(page_lines(forms))
             return independent[forms]
 
         if (sign_in or gate_box) and not has_independent_source():
             raise ImportDocumentError('access_page')
         text = _render_text(root)
         # Bot-check signals: a check title, check scripts or frames, and each
-        # check sentence or footer line, two at most. Any refuses a page with
-        # no independent source when nothing else is left to read; one beside
-        # a sparse posting's short list or table does not, two do.
+        # check sentence or footer line, two at most. On a page with no
+        # independent source two refuse it, and one does unless the page shows
+        # a sparse posting's list or table. A lone short line beside a check,
+        # such as the site's name, is not a list.
         signals = (bool(check_title) + _has_challenge_machinery(soup)
                    + len(list(islice(_CHALLENGE_TEXT.finditer(text), 2))))
         if _ACCESS_SHELL.fullmatch(text) or (
-                signals and not has_independent_source(forms=True) and (signals > 1 or not _has_other_text(root))):
+                signals and not has_independent_source(forms=True)
+                and (signals > 1 or not _shows_a_list_or_table(page_lines(True)))):
             raise ImportDocumentError('access_page')
         # Scripts in the head fill a page as surely as scripts in its body.
         if soup.find('script') is not None and _LOADING_SHELL.fullmatch(text):

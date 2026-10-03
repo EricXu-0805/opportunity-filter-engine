@@ -773,6 +773,48 @@ def test_two_check_signals_refuse_a_page_with_no_independent_source(body, head):
     assert raised.value.reason == 'access_page'
 
 
+# One check signal beside a lone short line a check prints: the site's name,
+# an IP address, a countdown or an error code. Only a list item or a table row
+# of two cells is a sparse posting's text, so each is still a check, as on main.
+@pytest.mark.parametrize(('body', 'head'), [
+    pytest.param('<p>Please wait while your request is being verified...</p><p>example.edu</p>', '',
+                 id='imunify-sentence-and-domain'),
+    pytest.param('<p>example.edu</p><p>Please wait...</p>', '<title>One moment, please...</title>',
+                 id='one-moment-title-and-domain'),
+    pytest.param('<p>example.edu</p><p>Verifying you are human. This may take a few seconds.</p>',
+                 '<title>example.edu</title>', id='cloudflare-sentence-domain-paragraph'),
+    pytest.param(PX_BOX + PX_SENTENCE + '<p>example.edu</p>', '<title>example.edu</title>',
+                 id='perimeterx-sentence-and-domain'),
+    pytest.param('<div class="h-captcha"></div><p>IP: 203.0.113.5</p>', '<title>Human Verification</title>',
+                 id='human-verification-title-and-ip'),
+    pytest.param('<iframe src="https://geo.captcha-delivery.com/captcha/?x=1"></iframe><p>example.edu</p>', '',
+                 id='datadome-frame-and-domain'),
+    pytest.param('<p>Please wait while your request is being verified...</p><p>5</p>', '', id='countdown-digit'),
+    pytest.param('<p>Verifying you are human.</p><p>Error 1020</p>', '', id='error-code'),
+    # A layout table's logo cell beside the check line is not a table of data,
+    # and a list of check and loading lines is not a posting's list.
+    pytest.param('<table><tr><td><img src="/logo.png" alt=""></td><td>example.edu</td></tr></table>'
+                 '<p>Verifying you are human.</p>', '', id='layout-table-domain'),
+    pytest.param('<ul><li>Please wait...</li><li>Verifying you are human.</li></ul>', '<title>example.edu</title>',
+                 id='list-of-check-lines'),
+])
+def test_one_check_signal_beside_a_lone_short_line_is_an_access_page(body, head):
+    with pytest.raises(ImportDocumentError) as raised:
+        extract_import_document(page(body, head))
+    assert raised.value.reason == 'access_page'
+
+
+# An ordered list, numbered down when reversed, is a sparse posting's list too.
+@pytest.mark.parametrize(('items', 'kept'), [
+    pytest.param('<ol><li>Stipend $6,000</li><li>10 weeks</li></ol>', '2. 10 weeks', id='ordered'),
+    pytest.param('<ol reversed start="0"><li>Stipend $6,000</li><li>10 weeks</li></ol>', '-1. 10 weeks',
+                 id='reversed-below-zero'),
+])
+def test_one_check_signal_beside_a_sparse_ordered_list_does_not_refuse_it(items, kept):
+    html = page(f'<main><h1>Summer REU 2027</h1>{items}<p>Please verify you are human.</p></main>')
+    assert kept in extract_import_document(html)['text'].splitlines()
+
+
 # A script page whose only text is a loading line is a page its scripts have
 # yet to fill, not a bot check, so the student hears that it needs JavaScript.
 @pytest.mark.parametrize('html', [
