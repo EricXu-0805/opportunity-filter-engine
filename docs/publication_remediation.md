@@ -277,8 +277,8 @@ A verdict lands through the same paths the automation uses:
     gate.
 * `--removed` is `apply_disposition`'s retraction. The record keeps no papers
   and no author id; its `publication_remediation` block takes the disposition
-  `removed` and a `review` entry, and keeps the totals the automated step
-  removed.
+  `removed` and a `review` entry naming the reviewer, and keeps the totals the
+  automated step removed.
 
 Only a first look at the ledger and those requests happen outside the ledger
 lock. Under it the command checks again that the unit still awaits a verdict,
@@ -293,8 +293,10 @@ The verdict is a `reviewed` event naming the reviewer, the result it replaced
 `Ledger.index()` accepts after a unit settled, and only for a unit whose result
 is `ambiguous` or `needs_review`: a second verdict is refused by the command,
 ignored by the index, and counted by `duplicate_count`, so `report` fails if
-one ever lands. The reviewer string and the note go into the committed ledger,
-so use a handle and keep notes free of personal data.
+one ever lands. The reviewer string goes into the committed ledger and, for
+`--removed`, into the record's `publication_remediation.review` entry in the
+committed shard. The note goes into the ledger. Use a handle, and keep notes
+free of personal data.
 
 When the last unit has a verdict the queue is empty, and the next ops scan
 records a recovery on the `manual_review:publication_attribution` incident. It

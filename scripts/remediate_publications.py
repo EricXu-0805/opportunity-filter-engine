@@ -826,7 +826,9 @@ def main(argv: list[str] | None = None) -> int:
                    help="the OpenAlex author these papers belong to")
     p.add_argument("--removed", action="store_true",
                    help="no paper may be cited for this professor")
-    p.add_argument("--reviewer", help="who decided; written to the committed ledger")
+    p.add_argument("--reviewer",
+                   help="who decided; written to the committed ledger and, for --removed, "
+                        "the record's shard")
     p.add_argument("--note")
     p.add_argument("--allow-name-mismatch", action="store_true",
                    help="accept an author whose surname differs from the professor's")
