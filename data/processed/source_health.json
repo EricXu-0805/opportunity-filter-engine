@@ -198,8 +198,8 @@
       "last_publish_record_count": 1006
     },
     "national": {
-      "last_publish_at": "2026-09-06T19:01:45.084679+00:00",
-      "last_publish_record_count": 7202
+      "last_publish_at": "2026-10-04T11:48:45.534145+00:00",
+      "last_publish_record_count": 8996
     },
     "ncsu": {
       "last_publish_at": "2026-09-10T04:43:43.202759+00:00",
@@ -2616,14 +2616,14 @@
       "status": "success_nonzero"
     },
     "nsf_reu": {
-      "baseline_count": 159,
+      "baseline_count": 160,
       "bootstrapped_from": "corpus_last_seen_at",
       "consecutive_failures": 0,
-      "current_count": 135,
+      "current_count": 129,
       "failure_reason": null,
-      "last_attempt_at": "2026-09-06T06:33:36.916204+00:00",
-      "last_good_count": 135,
-      "last_success_at": "2026-09-06T06:33:36.916204+00:00",
+      "last_attempt_at": "2026-10-04T11:45:21.581280+00:00",
+      "last_good_count": 129,
+      "last_success_at": "2026-10-04T11:45:21.581280+00:00",
       "school": "national",
       "status": "success_nonzero"
     },
@@ -2820,14 +2820,14 @@
       "status": "success_nonzero"
     },
     "simplify_internships": {
-      "baseline_count": 3015,
+      "baseline_count": 3722,
       "bootstrapped_from": "corpus_last_seen_at",
       "consecutive_failures": 0,
-      "current_count": 3015,
+      "current_count": 3722,
       "failure_reason": null,
-      "last_attempt_at": "2026-09-06T06:33:36.916204+00:00",
-      "last_good_count": 3015,
-      "last_success_at": "2026-09-06T06:33:36.916204+00:00",
+      "last_attempt_at": "2026-10-04T11:45:21.581280+00:00",
+      "last_good_count": 3722,
+      "last_success_at": "2026-10-04T11:45:21.581280+00:00",
       "school": "national",
       "status": "success_nonzero"
     },
@@ -3900,16 +3900,16 @@
       "status": "success_nonzero"
     },
     "uiuc_sro": {
-      "baseline_count": 279,
+      "baseline_count": 280,
       "bootstrapped_from": "corpus_last_seen_at",
-      "consecutive_failures": 0,
-      "current_count": 278,
-      "failure_reason": null,
-      "last_attempt_at": "2026-09-06T06:33:36.916204+00:00",
+      "consecutive_failures": 1,
+      "current_count": 279,
+      "failure_reason": "Source check incomplete: list_pages_failed, list_incomplete, condition_capture_unsupported, list_errors, detail_errors",
+      "last_attempt_at": "2026-10-04T11:45:21.581280+00:00",
       "last_good_count": 278,
       "last_success_at": "2026-09-06T06:33:36.916204+00:00",
       "school": "national",
-      "status": "success_nonzero"
+      "status": "failed"
     },
     "uiuc_urap": {
       "baseline_count": 1,

@@ -489,9 +489,9 @@
     },
     "ucsb": {
       "listing_count": 264,
-      "faculty_contact_count": 838,
+      "faculty_contact_count": 857,
       "unreviewed_count": 0,
-      "total_count": 1102
+      "total_count": 1121
     },
     "ucsc": {
       "listing_count": 3,
@@ -692,5 +692,5 @@
       "total_count": 1258
     }
   },
-  "national_count": 3515
+  "national_count": 4225
 }
