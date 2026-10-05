@@ -15,9 +15,9 @@
     },
     "asu": {
       "listing_count": 6,
-      "faculty_contact_count": 2482,
+      "faculty_contact_count": 2435,
       "unreviewed_count": 0,
-      "total_count": 2488
+      "total_count": 2441
     },
     "barnard": {
       "listing_count": 6,
@@ -32,10 +32,10 @@
       "total_count": 183
     },
     "bc": {
-      "listing_count": 3,
+      "listing_count": 5,
       "faculty_contact_count": 839,
       "unreviewed_count": 0,
-      "total_count": 842
+      "total_count": 844
     },
     "boulder": {
       "listing_count": 9,
@@ -69,9 +69,9 @@
     },
     "buffalo": {
       "listing_count": 5,
-      "faculty_contact_count": 844,
+      "faculty_contact_count": 827,
       "unreviewed_count": 0,
-      "total_count": 849
+      "total_count": 832
     },
     "caltech": {
       "listing_count": 14,
@@ -183,9 +183,9 @@
     },
     "fsu": {
       "listing_count": 3,
-      "faculty_contact_count": 659,
+      "faculty_contact_count": 670,
       "unreviewed_count": 0,
-      "total_count": 662
+      "total_count": 673
     },
     "gatech": {
       "listing_count": 18,
@@ -297,9 +297,9 @@
     },
     "ncsu": {
       "listing_count": 5,
-      "faculty_contact_count": 2306,
+      "faculty_contact_count": 2308,
       "unreviewed_count": 0,
-      "total_count": 2311
+      "total_count": 2313
     },
     "nd": {
       "listing_count": 7,
@@ -393,9 +393,9 @@
     },
     "rutgers": {
       "listing_count": 7,
-      "faculty_contact_count": 2047,
+      "faculty_contact_count": 2032,
       "unreviewed_count": 0,
-      "total_count": 2054
+      "total_count": 2039
     },
     "sbu": {
       "listing_count": 6,
@@ -483,9 +483,9 @@
     },
     "ucr": {
       "listing_count": 5,
-      "faculty_contact_count": 1153,
+      "faculty_contact_count": 1164,
       "unreviewed_count": 0,
-      "total_count": 1158
+      "total_count": 1169
     },
     "ucsb": {
       "listing_count": 264,
@@ -531,9 +531,9 @@
     },
     "uiuc": {
       "listing_count": 19,
-      "faculty_contact_count": 3268,
+      "faculty_contact_count": 3278,
       "unreviewed_count": 0,
-      "total_count": 3287
+      "total_count": 3297
     },
     "uky": {
       "listing_count": 3,
