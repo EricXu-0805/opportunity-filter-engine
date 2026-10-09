@@ -67,17 +67,23 @@ function SavedSearchesPanel({
   const {
     savedSearches,
     digests,
+    loadError,
+    retryLoad,
     handleRemove,
     handleApplyOptimisticClear,
     handleDigestSave,
   } = useSavedSearches(t);
 
-  if (selectionMode || (savedSearches.length === 0 && !hasOpportunities)) return null;
+  // A failed read is not "nothing saved": it stays on screen even when there
+  // are no favorites to sit beside.
+  if (selectionMode || (savedSearches.length === 0 && !hasOpportunities && !loadError)) return null;
 
   return (
     <SavedSearchesSection
       savedSearches={savedSearches}
       digests={digests}
+      loadError={loadError}
+      onRetry={() => { void retryLoad(); }}
       onApplyOptimisticClear={handleApplyOptimisticClear}
       onRemove={handleRemove}
       onDigestSave={handleDigestSave}

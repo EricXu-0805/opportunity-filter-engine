@@ -23,7 +23,8 @@ import type { TargetResumeAiEvidence, TargetResumeAiRequest, TargetResumeAiRespo
 const KNOWN_ID = 'uiuc-siebel-ugresearch';
 
 const OWN_WORDS = 'Built a Python script that parsed 3,000 rows of lab sensor data';
-const REWRITTEN = 'Processed 3,000 rows of lab sensor data in Python, charting daily trends';
+// A rewrite that keeps the line's facts: it adds no claim the student did not write.
+const REWRITTEN = 'Parsed 3,000 rows of lab sensor data with a Python script I built';
 
 const PROFILE = {
   name: 'Alex Chen',
@@ -42,11 +43,13 @@ const PROFILE = {
   ].join('\n'),
 };
 
-/** Answer /api/tailor/renovate as a model that foregrounded the first bullet
- *  and left the second alone, echoing the section ids /tailor/structure just
- *  produced. Returns the bullet the stub rewrote so assertions cannot drift
- *  from what the server was told. */
-async function stubRenovate(page: Page) {
+/** Answer /api/tailor/renovate as a server whose model foregrounded the first
+ *  bullet and left the second alone, echoing the section ids /tailor/structure
+ *  just produced. By default the answer is a reviewed one (w14 rules, a
+ *  declared move): the browser shows renovation wording only from such a
+ *  response. `reviewed: false` answers as a pre-review (w13) server does, with
+ *  no rules stamp and no declared move. */
+async function stubRenovate(page: Page, { reviewed = true } = {}) {
   await page.route('**/api/tailor/renovate', async (route: Route) => {
     const body = route.request().postDataJSON() as {
       opportunity_id: string; expected_target_version: string;
@@ -62,7 +65,7 @@ async function stubRenovate(page: Page) {
         base_text: bullet.text,
         action: index === 0 ? 'foreground' : 'keep',
         variants: index === 0
-          ? [{ source: 'macro', text: REWRITTEN, source_evidence: OWN_WORDS }]
+          ? [{ source: 'macro', text: REWRITTEN, source_evidence: OWN_WORDS, ...(reviewed ? { ops: ['lead_with'], links: [], alternative: null } : {}) }]
           : [],
         current: index === 0 ? 0 : -1,
       })),
@@ -72,6 +75,7 @@ async function stubRenovate(page: Page) {
       contentType: 'application/json',
       body: JSON.stringify({
         sections, method: 'ai', warnings: [], opportunity_id: body.opportunity_id, target_version: body.expected_target_version,
+        ...(reviewed ? { pipeline_version: 'w14.1', generated_at: new Date().toISOString() } : {}),
       }),
     });
   });
@@ -201,6 +205,23 @@ test.describe('Résumé renovation (real browser)', () => {
     expect(thirdReceipt.current.payload.doc.sections.flatMap((section: { bullets: Array<{ base_text: string }> }) => section.bullets)
       .some((bullet: { base_text: string }) => bullet.base_text === OWN_WORDS)).toBe(true);
     expect(renovationRequests).toBe(1);
+  });
+
+  test('wording no review saw is never shown or saved; the student\'s own sentence stays', async ({ page }) => {
+    await stubRenovate(page, { reviewed: false });
+    await openRenovation(page);
+    const saved = page.waitForResponse(response => new URL(response.url()).pathname === '/rest/v1/rpc/save_renovation_cas');
+    await page.getByRole('button', { name: 'Renovate with AI' }).click();
+    const payload = (await saved).request().postDataJSON().p_payload;
+    await expect(page.getByRole('dialog').getByText('Saved', { exact: true })).toBeVisible();
+    await expect(page.getByText(OWN_WORDS, { exact: true })).toBeVisible();
+    await expect(page.getByTestId('renovation-kept-note')).toHaveCount(1);
+    await expect(page.getByTestId('renovation-kept-note')).toContainText('Kept your wording');
+    await expect(page.getByText(REWRITTEN)).toHaveCount(0);
+    expect(JSON.stringify(payload)).not.toContain(REWRITTEN);
+    // No step reaches the unreviewed wording: there is nothing to roll back from or forward to.
+    for (const rollback of await page.getByRole('button', { name: 'Roll back to the previous version of this bullet', exact: true }).all()) await expect(rollback).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Move forward to the next version of this bullet', exact: true })).toHaveCount(0);
   });
 
   test('cancelled exits retain unsaved bullet edits before an explicit switch', async ({ page }) => {
@@ -530,22 +551,29 @@ test.describe('Complete target résumé', () => {
     const units = aiUnits(request.draft);
     const selected = new Set(request.selected_unit_ids);
     return {
-      ...(request.support_groups === undefined ? {} : {support_groups:request.support_groups}), version: 1, pipeline_version: 'full-target-v5', request_id: request.request_id,
+      ...(request.support_groups === undefined ? {} : {support_groups:request.support_groups}), version: 1, pipeline_version: 'full-target-v6', request_id: request.request_id,
       document_id: request.draft.id, opportunity_id: request.draft.opportunity_id,
       document_signature: request.document_signature, base: structuredClone(request.draft.base),
       manifest: { unit_ids: units.map(unit => unit.line.id),
         protected_unit_count: draftLines(request.draft).filter(unit => unit.section.kind === 'basics').length },
-      method: 'ai', logical_calls: 1, provider_attempts_upper_bound: 2,
-      receipts: units.filter(unit => selected.has(unit.line.id)).map(({ section, block, line }) => ({
-        unit_id: line.id, section_id: section.id, block_id: block.id,
-        evidence: { ...line.evidence }, before_text: line.text,
-        status: structureOnly && line.evidence.kind === 'experience' ? 'unchanged' : 'suggested',
-        reason_code: structureOnly && line.evidence.kind === 'experience' ? 'no_change' : null,
-        suggestion: { priority: section.kind === 'other' ? 'high' : block.id === 'project-2' ? 'normal' : 'low',
-          reason: 'Review this complete item alongside the quoted target requirement.',
-          target_evidence: [targetEvidence(request.draft)],
-          proposed_text: !structureOnly && line.evidence.kind === 'experience' ? `${line.text}\nReviewed wording.` : null },
-      })),
+      method: 'ai', logical_calls: structureOnly ? 1 : 2, provider_attempts_upper_bound: structureOnly ? 2 : 4,
+      receipts: units.filter(unit => selected.has(unit.line.id)).map(({ section, block, line }) => {
+        // The whole line linked to the quoted requirement: advice, never a claimed match.
+        const target = targetEvidence(request.draft);
+        const links = line.original.trim() ? [{ id: 'L1', relation: 'broader' as const, entailed: false, target_evidence: target,
+          source_evidence: { unit_id: line.id, start: 0, end: Array.from(line.original).length, quote: line.original }, written_as: null }] : [];
+        const rewritten = !structureOnly && line.evidence.kind === 'experience';
+        return {
+          unit_id: line.id, section_id: section.id, block_id: block.id,
+          evidence: { ...line.evidence }, before_text: line.text,
+          status: structureOnly && line.evidence.kind === 'experience' ? 'unchanged' as const : 'suggested' as const,
+          reason_code: structureOnly && line.evidence.kind === 'experience' ? 'no_safe_change' as const : null,
+          suggestion: { priority: section.kind === 'other' && links.length ? 'high' as const : block.id === 'project-2' ? 'normal' as const : 'low' as const,
+            reason: 'Review this complete item alongside the quoted target requirement.',
+            target_evidence: links.map(link => link.target_evidence), links, ops: rewritten ? ['verb_first' as const] : [],
+            proposed_text: rewritten ? `${line.text}\nReviewed wording.` : null, alternative_text: null },
+        };
+      }),
     };
   }
   async function captureAi(page: Page, answer: (request: TargetResumeAiRequest, index: number, route: Route) => Promise<void>) {

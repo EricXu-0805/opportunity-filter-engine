@@ -1,0 +1,3803 @@
+{
+ "_about": "Single-bullet résumé rewrites for claim_upgrade_findings. A rewrite in another language than its original, faithful or not, is never shown: the contract keeps the original before the locks and the review on every route (w14.1), so the lock rules below read only same-language pairs. 'faithful' rewrites say nothing the original does not; none may carry a hard finding, and each is accepted on a faithful review verdict. 'unfaithful' ones change who did what, a denial, leadership, the setting, the object or a number, or add a relevance, quality or other new claim; none may be accepted without the review. Each is rejected by a hard finding before any review, unless its 'caught' is 'review': those carry no hard finding, so the claim locks alone do not stop them (the contract keeps most of them first on every route; scripts/trap_review_reach.py counts the ones that reach the review); 'contract': the closed-vocabulary contract keeps the original before the locks for the declared map that tests/fixtures/evidence_map_cases.json holds under the label in 'case' (another declared row may still pass it; the same script counts those); or 'language': the rewrite is in another language than its original.",
+ "faithful": [
+  {
+   "original": "I built a Python parser for the course project.",
+   "rewrite": "Built a Python parser for the course project.",
+   "kind": "dropped I"
+  },
+  {
+   "original": "I analyzed 120 EEG recordings in MATLAB.",
+   "rewrite": "Analyzed 120 EEG recordings in MATLAB.",
+   "kind": "dropped I"
+  },
+  {
+   "original": "I designed the motor mount in SolidWorks.",
+   "rewrite": "Designed the motor mount in SolidWorks.",
+   "kind": "dropped I"
+  },
+  {
+   "original": "Ran experiments in the Smith Lab.",
+   "rewrite": "Ran experiments at the Smith Lab.",
+   "kind": "preposition swap"
+  },
+  {
+   "original": "Wrote unit tests for a class project.",
+   "rewrite": "Wrote unit tests in a class project.",
+   "kind": "preposition swap"
+  },
+  {
+   "original": "Collected soil samples in the field course.",
+   "rewrite": "Collected soil samples during the field course.",
+   "kind": "preposition swap"
+  },
+  {
+   "original": "Collected 300 water samples during the summer internship.",
+   "rewrite": "Collected 300 water samples in the summer internship.",
+   "kind": "preposition swap"
+  },
+  {
+   "original": "Built a web app for the club.",
+   "rewrite": "Built a web application for the club.",
+   "kind": "abbreviation expanded"
+  },
+  {
+   "original": "Wrote docs for the parser.",
+   "rewrite": "Wrote documentation for the parser.",
+   "kind": "abbreviation expanded"
+  },
+  {
+   "original": "Implemented a CNN in PyTorch.",
+   "rewrite": "Implemented a convolutional neural network in PyTorch.",
+   "kind": "abbreviation expanded"
+  },
+  {
+   "original": "Built a GUI for the lab microscope.",
+   "rewrite": "Built a graphical user interface for the lab microscope.",
+   "kind": "abbreviation expanded"
+  },
+  {
+   "original": "Trained an ML model on 5,000 images.",
+   "rewrite": "Trained a machine learning model on 5,000 images.",
+   "kind": "abbreviation expanded"
+  },
+  {
+   "original": "Built the lab stats pipeline in R.",
+   "rewrite": "Built the lab statistics pipeline in R.",
+   "kind": "abbreviation expanded"
+  },
+  {
+   "original": "Implemented an LSTM model in PyTorch.",
+   "rewrite": "Implemented a long short-term memory model in PyTorch.",
+   "kind": "abbreviation expanded"
+  },
+  {
+   "original": "Built a dashboard; not deployed to production.",
+   "rewrite": "Built a dashboard (not deployed to production).",
+   "kind": "punctuation"
+  },
+  {
+   "original": "Built a prototype with no external funding.",
+   "rewrite": "Built a prototype without external funding.",
+   "kind": "without"
+  },
+  {
+   "original": "Analyzed survey data: 212 responses in R.",
+   "rewrite": "Analyzed survey data (212 responses) in R.",
+   "kind": "punctuation"
+  },
+  {
+   "original": "Built a Flask API; I did not write the frontend.",
+   "rewrite": "Built a Flask API (did not write the frontend).",
+   "kind": "punctuation"
+  },
+  {
+   "original": "Paper submitted to CHI 2026, not yet accepted.",
+   "rewrite": "Paper submitted to CHI 2026; not yet accepted.",
+   "kind": "punctuation"
+  },
+  {
+   "original": "Tested 3 sensor boards, recording failures.",
+   "rewrite": "Tested 3 sensor boards and recorded failures.",
+   "kind": "tense change"
+  },
+  {
+   "original": "Analyze EEG data in MATLAB.",
+   "rewrite": "Analyzed EEG data in MATLAB.",
+   "kind": "tense change"
+  },
+  {
+   "original": "Analyzed EEG data in MATLAB.",
+   "rewrite": "Analysed EEG data in MATLAB.",
+   "kind": "spelling"
+  },
+  {
+   "original": "Cleaned survey data in R and wrote the codebook.",
+   "rewrite": "Wrote the codebook and cleaned survey data in R.",
+   "kind": "reordered clauses"
+  },
+  {
+   "original": "Presented a poster at the undergraduate research symposium in 2025.",
+   "rewrite": "In 2025, presented a poster at the undergraduate research symposium.",
+   "kind": "reordered clauses"
+  },
+  {
+   "original": "Did not lead the project; I wrote the data loader.",
+   "rewrite": "Wrote the data loader; did not lead the project.",
+   "kind": "reordered clauses"
+  },
+  {
+   "original": "Helped design an online survey as part of a four-person team.",
+   "rewrite": "As part of a four-person team, helped design an online survey.",
+   "kind": "reordered clauses"
+  },
+  {
+   "original": "Reviewed 40 papers on sleep and memory.",
+   "rewrite": "Reviewed 40 papers on memory and sleep.",
+   "kind": "reordered objects"
+  },
+  {
+   "original": "Used Python to analyze 120 EEG recordings.",
+   "rewrite": "Analyzed 120 EEG recordings using Python.",
+   "kind": "reordered method"
+  },
+  {
+   "original": "Built the drivetrain with two teammates.",
+   "rewrite": "Built the drivetrain as part of a three-person team.",
+   "kind": "team size restated"
+  },
+  {
+   "original": "Built the Illini Robotics rover drivetrain with two teammates.",
+   "rewrite": "As part of a three-person team, built the Illini Robotics rover drivetrain.",
+   "kind": "team size restated"
+  },
+  {
+   "original": "Collaborated with two teammates to build a robot arm.",
+   "rewrite": "Built a robot arm in collaboration with two teammates.",
+   "kind": "team restated"
+  },
+  {
+   "original": "Built a sentiment classifier with 91% accuracy.",
+   "rewrite": "Built a sentiment classifier achieving 91% accuracy.",
+   "kind": "reworded result"
+  },
+  {
+   "original": "Tutored 15 students in calculus.",
+   "rewrite": "Tutored 15 students in calculus each week.",
+   "kind": "detail kept"
+  },
+  {
+   "original": "Organized weekly reading group meetings.",
+   "rewrite": "Organized the weekly reading-group meetings.",
+   "kind": "hyphenation"
+  },
+  {
+   "original": "Programmed an Arduino to log temperature every 10 minutes.",
+   "rewrite": "Programmed an Arduino to log the temperature every 10 minutes.",
+   "kind": "article"
+  },
+  {
+   "original": "我用 Python 分析了脑电数据。",
+   "rewrite": "用 Python 分析了脑电数据。",
+   "kind": "dropped 我"
+  },
+  {
+   "original": "本人开发了测试脚本。",
+   "rewrite": "开发了测试脚本。",
+   "kind": "dropped 本人"
+  },
+  {
+   "original": "在张老师实验室整理了实验记录。",
+   "rewrite": "于张老师实验室整理了实验记录。",
+   "kind": "preposition swap"
+  },
+  {
+   "original": "团队开发了解析器。本人开发了测试。",
+   "rewrite": "本人开发了测试。团队开发了解析器。",
+   "kind": "reordered clauses"
+  },
+  {
+   "original": "本人开发了解析器，并不断改进。",
+   "rewrite": "本人开发了解析器并不断改进。",
+   "kind": "punctuation"
+  },
+  {
+   "original": "与两名队友共同搭建了机器人底盘。",
+   "rewrite": "作为三人小组成员，共同搭建了机器人底盘。",
+   "kind": "team size restated"
+  },
+  {
+   "original": "论文已投稿，尚未录用。",
+   "rewrite": "论文已投稿；尚未录用。",
+   "kind": "punctuation"
+  },
+  {
+   "original": "我没有主导项目，但负责了数据清洗。",
+   "rewrite": "负责了数据清洗，但没有主导项目。",
+   "kind": "reordered clauses"
+  },
+  {
+   "original": "在 CS 225 课程中实现了哈希表。",
+   "rewrite": "在 CS 225 课程里实现了哈希表。",
+   "kind": "reworded setting"
+  },
+  {
+   "original": "本人设计了三种不同的实验条件。",
+   "rewrite": "设计了三种不同的实验条件。",
+   "kind": "dropped 本人; 不同 is not a denial"
+  },
+  {
+   "original": "团队开发了解析器。本人开发了不少测试用例。",
+   "rewrite": "本人开发了不少测试用例。团队开发了解析器。",
+   "kind": "不少 is not a denial"
+  },
+  {
+   "original": "Wrote a report independently.",
+   "rewrite": "Wrote a report.",
+   "kind": "dropped trailing adverb"
+  },
+  {
+   "original": "Wrote Python scripts daily.",
+   "rewrite": "Wrote Python scripts.",
+   "kind": "dropped trailing adverb"
+  },
+  {
+   "original": "Built a dashboard last summer.",
+   "rewrite": "Built a dashboard.",
+   "kind": "dropped time phrase"
+  },
+  {
+   "original": "Built a website alone.",
+   "rewrite": "Built a website.",
+   "kind": "dropped trailing adverb"
+  },
+  {
+   "original": "Maintained the lab server remotely.",
+   "rewrite": "Maintained the lab server.",
+   "kind": "dropped trailing adverb"
+  },
+  {
+   "original": "我开发了测试，不再负责部署。",
+   "rewrite": "开发了测试，不再负责部署。",
+   "kind": "dropped 我; denial kept"
+  },
+  {
+   "original": "本人开发了解析器，不断完善测试。",
+   "rewrite": "开发了解析器，不断完善测试。",
+   "kind": "dropped 本人; 不断 before an action verb is not a denial"
+  },
+  {
+   "original": "Built a web app quickly for the club.",
+   "rewrite": "Built a web app for the club.",
+   "kind": "dropped trailing adverb before a setting"
+  },
+  {
+   "original": "针对不稳定的开发环境，本人搭建了测试框架。",
+   "rewrite": "本人搭建了测试框架，用于不稳定的开发环境。",
+   "kind": "reordered; 不稳定的 is not a denial"
+  },
+  {
+   "original": "Labeled 500 images carefully.",
+   "rewrite": "Labeled 500 images.",
+   "kind": "dropped trailing adverb"
+  },
+  {
+   "original": "Answered lab emails promptly.",
+   "rewrite": "Answered lab emails.",
+   "kind": "dropped trailing adverb"
+  },
+  {
+   "original": "Calibrated the sensors manually.",
+   "rewrite": "Calibrated the sensors.",
+   "kind": "dropped trailing adverb"
+  },
+  {
+   "original": "Ran simulations overnight.",
+   "rewrite": "Ran simulations.",
+   "kind": "dropped trailing adverb"
+  },
+  {
+   "original": "Cleaned the survey data weekly.",
+   "rewrite": "Cleaned the survey data.",
+   "kind": "dropped trailing adverb"
+  },
+  {
+   "original": "Tested the code thoroughly.",
+   "rewrite": "Tested the code.",
+   "kind": "dropped trailing adverb"
+  },
+  {
+   "original": "本人不到一周开发了解析器。",
+   "rewrite": "本人在不到一周内开发了解析器。",
+   "kind": "不到一周 (in under a week) is not a denial"
+  },
+  {
+   "original": "毫不犹豫地承担了数据清洗。",
+   "rewrite": "承担了数据清洗。",
+   "kind": "dropped 毫不犹豫地; not a denial"
+  },
+  {
+   "original": "针对不足搭建了测试框架。",
+   "rewrite": "搭建了测试框架。",
+   "kind": "dropped 针对不足; not a denial"
+  },
+  {
+   "original": "On a five-person CHBE 421 design team, built a benchtop vanadium redox flow battery that reached 72% round-trip efficiency; my part was wiring the data logger and keeping the test log.",
+   "rewrite": "Wired the data logger and kept the test log for a five-person CHBE 421 design team that built a benchtop vanadium redox flow battery reaching 72% round-trip efficiency.",
+   "kind": "reordered; qualifiers kept on their actions"
+  },
+  {
+   "original": "Engineers Without Borders 校园分会饮用水项目组成员（共 6 人）：团队为一所乡村小学设计并安装了一套慢砂过滤装置；本人只负责材料采购和预算记录。",
+   "rewrite": "Engineers Without Borders 校园分会饮用水项目组成员（共 6 人）：本人只负责材料采购和预算记录；团队为一所乡村小学设计并安装了一套慢砂过滤装置。",
+   "kind": "reordered; qualifiers kept on their actions"
+  },
+  {
+   "original": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "rewrite": "协助博士生用 qPCR 检测自来水样本中的军团菌（2025 年 9 月起在环境微生物实验室担任本科研究助理，每周约 8 小时）；未参与引物设计和数据分析。",
+   "kind": "reordered; qualifiers kept on their actions"
+  },
+  {
+   "original": "Worked 10 hours per week in a yeast genetics lab since January 2026, running PCR genotyping and maintaining strain stocks.",
+   "rewrite": "Ran PCR genotyping and maintained strain stocks in a yeast genetics lab, 10 hours per week since January 2026.",
+   "kind": "reordered; qualifiers kept on their actions"
+  },
+  {
+   "original": "CEE 350 课程项目（4 人小组）：与组员一起采集校园 12 个雨水口的径流水样，本人负责浊度和 pH 测定，并用 Excel 整理了 48 组数据。",
+   "rewrite": "CEE 350 课程项目（4 人小组）：本人负责浊度和 pH 测定，并用 Excel 整理了 48 组数据；与组员一起采集了校园 12 个雨水口的径流水样。",
+   "kind": "reordered; qualifiers kept on their actions"
+  },
+  {
+   "original": "Presented our team's flow-battery poster with two teammates at the 2026 Illinois Undergraduate Research Symposium.",
+   "rewrite": "With two teammates, presented our team's flow-battery poster at the 2026 Illinois Undergraduate Research Symposium.",
+   "kind": "reordered; qualifiers kept on their actions"
+  },
+  {
+   "original": "Helped three lab mates run cyclic voltammetry on 30 electrolyte samples in Summer 2025; the graduate mentor did the data analysis.",
+   "rewrite": "In Summer 2025, helped three lab mates run cyclic voltammetry on 30 electrolyte samples; the graduate mentor did the data analysis.",
+   "kind": "reordered; qualifiers kept on their actions"
+  },
+  {
+   "original": "Co-authoring a manuscript on electrolyte additives for aqueous zinc-ion batteries with a PhD mentor and two other undergraduates (in preparation, not yet published); I assembled and cycled the coin cells.",
+   "rewrite": "Assembled and cycled the coin cells; co-authoring a manuscript on electrolyte additives for aqueous zinc-ion batteries with a PhD mentor and two other undergraduates (in preparation, not yet published).",
+   "kind": "reordered; qualifiers kept on their actions"
+  },
+  {
+   "original": "As part of a four-person team in PSYC 238, I helped design an online survey on sleep and memory and cleaned the 212 responses in R.",
+   "rewrite": "Helped design an online survey on sleep and memory and cleaned the 212 responses in R as part of a four-person team in PSYC 238.",
+   "kind": "reordered; qualifiers kept on their actions"
+  },
+  {
+   "original": "Built the drivetrain for the Illini Robotics club rover in 2025 with two teammates; I designed the motor mount in SolidWorks.",
+   "rewrite": "With two teammates, built the drivetrain for the Illini Robotics club rover in 2025; I designed the motor mount in SolidWorks.",
+   "kind": "reordered; qualifiers kept on their actions"
+  },
+  {
+   "original": "Undergraduate course assistant for CS 124 (Spring 2026), holding weekly office hours for about 40 students.",
+   "rewrite": "Held weekly office hours for about 40 students as undergraduate course assistant for CS 124 (Spring 2026).",
+   "kind": "verb first"
+  },
+  {
+   "original": "Research assistant in the Cognitive Aging Lab since Fall 2025, scheduling participants and scoring cognitive tests.",
+   "rewrite": "Scheduled participants and scored cognitive tests as a research assistant in the Cognitive Aging Lab since Fall 2025.",
+   "kind": "verb first"
+  },
+  {
+   "original": "Undergraduate researcher in the Brooks Lab (Summer 2025), measuring leaf nitrogen content.",
+   "rewrite": "Measured leaf nitrogen content as an undergraduate researcher in the Brooks Lab (Summer 2025).",
+   "kind": "verb first"
+  },
+  {
+   "original": "Volunteer at the Champaign County Humane Society (2024–2025), walking dogs and cleaning kennels weekly.",
+   "rewrite": "Walked dogs and cleaned kennels weekly as a volunteer at the Champaign County Humane Society (2024–2025).",
+   "kind": "verb first"
+  },
+  {
+   "original": "Member of the Illini Solar Car electrical team (2025), soldering battery-pack connections.",
+   "rewrite": "Soldered battery-pack connections as a member of the Illini Solar Car electrical team (2025).",
+   "kind": "verb first"
+  },
+  {
+   "original": "Built a PyTorch image classifier for chest X-ray triage in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "rewrite": "Built a PyTorch computer vision classifier for chest X-ray triage in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "kind": "same-referent term"
+  },
+  {
+   "original": "Built the drivetrain for the Illini Robotics club rover in 2025 with two teammates; I designed the motor mount in SolidWorks.",
+   "rewrite": "Built the drivetrain for the Illini Robotics club robot in 2025 with two teammates; I designed the motor mount in SolidWorks.",
+   "kind": "same-referent term"
+  },
+  {
+   "original": "Built a PyTorch image classifier for chest X-ray triage in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "rewrite": "Built a PyTorch image classifier for chest radiograph triage in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "kind": "same-referent term"
+  },
+  {
+   "original": "Research assistant in the Cognitive Aging Lab since Fall 2025, scheduling participants and scoring cognitive tests.",
+   "rewrite": "Research assistant in the Cognitive Aging Lab since Fall 2025, scheduling participants and scoring cognitive assessments.",
+   "kind": "same-referent term"
+  },
+  {
+   "original": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "rewrite": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测饮用水样本中的军团菌；未参与引物设计和数据分析。",
+   "kind": "same-referent term"
+  },
+  {
+   "original": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "rewrite": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌（Legionella）；未参与引物设计和数据分析。",
+   "kind": "same-referent term"
+  },
+  {
+   "original": "我用 Python 分析了脑电数据。",
+   "rewrite": "用 Python 分析了 EEG 数据。",
+   "kind": "same-referent term"
+  },
+  {
+   "original": "CEE 350 课程项目（4 人小组）：与组员一起采集校园 12 个雨水口的径流水样，本人负责浊度和 pH 测定，并用 Excel 整理了 48 组数据。",
+   "rewrite": "CEE 350 课程项目（4 人小组）：与组员一起采集校园 12 个雨水口的雨水径流水样，本人负责浊度和 pH 测定，并用 Excel 整理了 48 组数据。",
+   "kind": "same-referent term"
+  },
+  {
+   "original": "As part of a four-person team in PSYC 238, I helped design an online survey on sleep and memory and cleaned the 212 responses in R.",
+   "rewrite": "As part of a four-person team in PSYC 238, helped design an online survey on sleep and memory and cleaned the 212 responses in R.",
+   "kind": "benign edit"
+  },
+  {
+   "original": "Built a PyTorch image classifier for chest X-ray triage in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "rewrite": "Built a PyTorch image classifier for chest X-ray triage in a CS 446 course project, reaching 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "kind": "benign edit"
+  },
+  {
+   "original": "Undergraduate course assistant for CS 124 (Spring 2026), holding weekly office hours for about 40 students.",
+   "rewrite": "Served as undergraduate course assistant for CS 124 (Spring 2026), holding weekly office hours for about 40 students.",
+   "kind": "benign edit"
+  },
+  {
+   "original": "Co-authoring a manuscript on electrolyte additives for aqueous zinc-ion batteries with a PhD mentor and two other undergraduates (in preparation, not yet published); I assembled and cycled the coin cells.",
+   "rewrite": "Co-authoring a manuscript on electrolyte additives for aqueous zinc-ion batteries with a PhD mentor and two other undergraduates (in preparation, not yet published); assembled and cycled the coin cells.",
+   "kind": "status or credit limit kept"
+  },
+  {
+   "original": "Currently building a Flask dashboard for the lab's sample inventory.",
+   "rewrite": "Building a Flask dashboard for the lab's sample inventory.",
+   "kind": "status or credit limit kept"
+  },
+  {
+   "original": "Hoping to build a robot arm for the club next semester.",
+   "rewrite": "Hoping to build the club a robot arm next semester.",
+   "kind": "status or credit limit kept"
+  },
+  {
+   "original": "Drafted the methods section of a grant proposal, which my advisor later rewrote.",
+   "rewrite": "Drafted the methods section of a grant proposal; my advisor later rewrote it.",
+   "kind": "status or credit limit kept"
+  },
+  {
+   "original": "Observed surgeons at Carle Hospital, operating on pediatric patients.",
+   "rewrite": "Observed surgeons operating on pediatric patients at Carle Hospital.",
+   "kind": "status or credit limit kept"
+  },
+  {
+   "original": "Built a web scraper for course listings, adapted from an open-source tutorial.",
+   "rewrite": "Adapted an open-source tutorial to build a web scraper for course listings.",
+   "kind": "status or credit limit kept"
+  },
+  {
+   "original": "计划下学期用 Python 复现该论文的实验。",
+   "rewrite": "计划下学期用 Python 复现这篇论文的实验。",
+   "kind": "status or credit limit kept"
+  },
+  {
+   "original": "Research assistant in the Cognitive Aging Lab since Fall 2025, scheduling participants and scoring cognitive tests.",
+   "rewrite": "自 2025 年秋季起在认知老化实验室担任研究助理，安排被试并为认知测试评分。",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "Undergraduate course assistant for CS 124 (Spring 2026), holding weekly office hours for about 40 students.",
+   "rewrite": "CS 124 本科课程助教（2026 年春季），每周为约 40 名学生提供答疑。",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "CEE 350 课程项目（4 人小组）：与组员一起采集校园 12 个雨水口的径流水样，本人负责浊度和 pH 测定，并用 Excel 整理了 48 组数据。",
+   "rewrite": "CEE 350 course project (4-person group): collected runoff samples from 12 campus storm drains together with teammates; I was responsible for turbidity and pH measurements and organized 48 sets of data in Excel.",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "Helped the TA grade weekly quizzes and wrote the answer keys.",
+   "rewrite": "Wrote the answer keys and helped the TA grade weekly quizzes.",
+   "kind": "reordered; qualifiers kept on their actions"
+  },
+  {
+   "original": "与两名同学合作搭建了气象站，本人单独编写了数据采集程序。",
+   "rewrite": "本人单独编写了数据采集程序，并与两名同学合作搭建了气象站。",
+   "kind": "reordered; qualifiers kept on their actions"
+  },
+  {
+   "original": "Our four-person team designed a solar-powered bike charger; I built the voltage regulator.",
+   "rewrite": "Built the voltage regulator for a solar-powered bike charger that our four-person team designed.",
+   "kind": "reordered; qualifiers kept on their actions"
+  },
+  {
+   "original": "Toured the Fermilab accelerator with a physics club, watching operators calibrate the beamline.",
+   "rewrite": "Watched operators calibrate the beamline while touring the Fermilab accelerator with a physics club.",
+   "kind": "reordered; qualifiers kept on their actions"
+  },
+  {
+   "original": "Drafting a review article on microplastics in freshwater with Dr. Ortiz (not yet submitted).",
+   "rewrite": "With Dr. Ortiz, drafting a review article on microplastics in freshwater (not yet submitted).",
+   "kind": "status or credit limit kept"
+  },
+  {
+   "original": "目前在做一个基于 Arduino 的土壤湿度监测装置。",
+   "rewrite": "正在制作一个基于 Arduino 的土壤湿度监测装置。",
+   "kind": "status or credit limit kept"
+  },
+  {
+   "original": "Coded a Python bot that posts club meeting reminders on Discord.",
+   "rewrite": "Wrote a Python bot that posts club meeting reminders on Discord.",
+   "kind": "same-referent term"
+  },
+  {
+   "original": "Programmed a drone to follow a GPS route in the robotics club.",
+   "rewrite": "Programmed an unmanned aerial vehicle to follow a GPS route in the robotics club.",
+   "kind": "same-referent term"
+  },
+  {
+   "original": "Measured water hardness in 20 household samples by titration.",
+   "rewrite": "Measured water hardness in 20 household samples using titration.",
+   "kind": "benign edit"
+  },
+  {
+   "original": "用 GIS 绘制了校园树木分布图。",
+   "rewrite": "用地理信息系统（GIS）绘制了校园树木分布图。",
+   "kind": "same-referent term"
+  },
+  {
+   "original": "Assisted a nurse in recording vital signs for 30 patients.",
+   "rewrite": "Helped a nurse record vital signs for 30 patients.",
+   "kind": "benign edit"
+  },
+  {
+   "original": "Reviewed roughly 50 papers on bird migration.",
+   "rewrite": "Reviewed about 50 papers on bird migration.",
+   "kind": "status or credit limit kept"
+  },
+  {
+   "original": "Lab assistant for CHEM 102 (Fall 2025), preparing reagents for 6 lab sections.",
+   "rewrite": "Prepared reagents for 6 lab sections as a CHEM 102 lab assistant (Fall 2025).",
+   "kind": "verb first"
+  },
+  {
+   "original": "用 Python 爬取并清洗了 2 万条微博数据。",
+   "rewrite": "用 Python 爬取并清洗了 2 万条社交媒体（微博）数据。",
+   "kind": "same-referent term"
+  },
+  {
+   "original": "打算用 MATLAB 分析这批心电数据。",
+   "rewrite": "打算用 MATLAB 分析这批 ECG 数据。",
+   "kind": "status or credit limit kept"
+  },
+  {
+   "original": "Intern at a Champaign accounting firm (Summer 2025), reconciling 40 client bank statements.",
+   "rewrite": "Reconciled 40 client bank statements as an intern at a Champaign accounting firm (Summer 2025).",
+   "kind": "verb first"
+  },
+  {
+   "original": "Planning to test the app with 10 classmates in October.",
+   "rewrite": "Plan to test the app with 10 classmates in October.",
+   "kind": "status or credit limit kept"
+  },
+  {
+   "original": "Assisted a nurse in recording vital signs for 30 patients.",
+   "rewrite": "协助护士为 30 名患者记录生命体征。",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "参与了校园雨水花园的设计。",
+   "rewrite": "Took part in designing a campus rain garden.",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "社团项目组成员（共 8 人）：团队为社区图书馆设计并搭建了一个借阅小程序；本人只负责测试。",
+   "rewrite": "Member of an 8-person club project team: the team designed and built a lending mini-program for the community library; I only did the testing.",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "Member of a 5-person team: our team designed a campus bike-share app; I only made the logo.",
+   "rewrite": "Only made the logo for a campus bike-share app that our 5-person team designed.",
+   "kind": "reordered; qualifiers kept on their actions"
+  },
+  {
+   "original": "Built a PyTorch image classifier for chest X-ray triage in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "rewrite": "Reached 0.87 AUC on the NIH ChestX-ray14 validation split with a PyTorch image classifier for chest X-ray triage built in a CS 446 course project.",
+   "kind": "result-first reorder"
+  },
+  {
+   "original": "Built a PyTorch image classifier for chest X-ray triage in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "rewrite": "Built a PyTorch chest X-ray triage classifier (CS 446 course project) that reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "kind": "course parenthesized"
+  },
+  {
+   "original": "Built the drivetrain for the Illini Robotics club rover in 2025 with two teammates; I designed the motor mount in SolidWorks.",
+   "rewrite": "Designed the motor mount in SolidWorks and, with two teammates, built the drivetrain for the Illini Robotics club rover in 2025.",
+   "kind": "personal part first"
+  },
+  {
+   "original": "Responsible for building the lab's data pipeline in Python.",
+   "rewrite": "Built the lab's data pipeline in Python.",
+   "kind": "Responsible for -> verb"
+  },
+  {
+   "original": "In charge of designing the club's poster templates in Canva.",
+   "rewrite": "Designed the club's poster templates in Canva.",
+   "kind": "verb first from gerund"
+  },
+  {
+   "original": "2025年秋季起在认知老化实验室担任研究助理，负责安排被试并为认知测验评分。",
+   "rewrite": "为认知测验评分并安排被试（认知老化实验室研究助理，2025年秋季起）。",
+   "kind": "zh reorder with 为…评分"
+  },
+  {
+   "original": "Research assistant in the Fluids Lab, analyzing Python simulation data for CS 225.",
+   "rewrite": "Analyzed Python simulation data for CS 225 as a research assistant in the Fluids Lab.",
+   "kind": "verb first; 'research assistant' is a role, not a setting"
+  },
+  {
+   "original": "On a five-person CHBE 421 design team, built a benchtop vanadium redox flow battery that reached 72% round-trip efficiency; my part was wiring the data logger and keeping the test log.",
+   "rewrite": "My part was wiring the data logger and keeping the test log, on a five-person CHBE 421 design team that built a benchtop vanadium redox flow battery that reached 72% round-trip efficiency.",
+   "kind": "own part first, the team's result in a relative clause (real model, 2026-09-30)"
+  },
+  {
+   "original": "On a five-person CHBE 421 design team, built a benchtop vanadium redox flow battery that reached 72% round-trip efficiency; my part was wiring the data logger and keeping the test log.",
+   "rewrite": "My part was wiring the data logger and keeping the test log. On a five-person CHBE 421 design team, built a benchtop vanadium redox flow battery that reached 72% round-trip efficiency.",
+   "kind": "own part first, team part as its own sentence"
+  },
+  {
+   "original": "Research assistant in the Cognitive Aging Lab since Fall 2025, scheduling participants and scoring cognitive tests.",
+   "rewrite": "Scheduling participants and scoring cognitive tests as research assistant in the Cognitive Aging Lab since Fall 2025.",
+   "kind": "verb first, role kept after the action, ongoing form kept"
+  },
+  {
+   "original": "在实验室整理了实验记录。",
+   "rewrite": "Organized experiment records in the lab.",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "在一家公司实习期间整理了 500 条客户数据。",
+   "rewrite": "Organized 500 customer records during an internship at a company.",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "在 CS 225 课程中用 C++ 实现了哈希表。",
+   "rewrite": "Implemented a hash table in C++ in the CS 225 course.",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "成功搭建了一台 3D 打印机。",
+   "rewrite": "Successfully built a 3D printer.",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "每周约 8 小时在环境微生物实验室协助研究生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "rewrite": "About 8 hours per week in an environmental microbiology lab, helping a graduate student test tap water samples for Legionella with qPCR; did not take part in primer design or data analysis.",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "rewrite": "Since September 2025, undergraduate research assistant in an environmental microbiology lab (about 8 hours per week), helping a PhD student test tap water samples for Legionella with qPCR; did not take part in primer design or data analysis.",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "为课题组的项目用 Python 分析了脑电数据。",
+   "rewrite": "Analyzed EEG data in Python for the research group's project.",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "Helped a graduate student test about 40 water samples with qPCR.",
+   "rewrite": "协助一名研究生用 qPCR 检测了约 40 份水样。",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "Assisted a technician in calibrating 12 pH meters in March 2024.",
+   "rewrite": "2024 年 3 月协助技术员校准了 12 台 pH 计。",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "Organized experiment records in the lab.",
+   "rewrite": "在实验室整理了实验记录。",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "Helped a PhD student test about 40 water samples with qPCR.",
+   "rewrite": "协助一名博士生用 qPCR 检测了约 40 份水样。",
+   "kind": "faithful translation"
+  },
+  {
+   "original": "Co-wrote a conference paper on soft robots (accepted) and a journal manuscript on grippers (in preparation).",
+   "rewrite": "Co-wrote a journal manuscript on grippers (in preparation) and a conference paper on soft robots (accepted).",
+   "kind": "reordered; each status kept on its work"
+  },
+  {
+   "original": "Submitted a poster on EEG artifacts to the 2025 SfN meeting and drafted a paper on sleep spindles (not yet submitted).",
+   "rewrite": "Drafted a paper on sleep spindles (not yet submitted) and submitted a poster on EEG artifacts to the 2025 SfN meeting.",
+   "kind": "reordered; each status kept on its work"
+  },
+  {
+   "original": "发表了一篇会议论文，另有一篇期刊论文撰写中。",
+   "rewrite": "另有一篇期刊论文撰写中；发表了一篇会议论文。",
+   "kind": "reordered; each status kept on its work"
+  },
+  {
+   "original": "会议论文已录用，期刊论文撰写中。",
+   "rewrite": "期刊论文撰写中，会议论文已录用。",
+   "kind": "reordered; each status kept on its work"
+  },
+  {
+   "original": "Tutored 30 students weekly since 2024 and graded exams in 2023.",
+   "rewrite": "Graded exams in 2023 and tutored 30 students weekly since 2024.",
+   "kind": "reordered; each duration kept on its action"
+  },
+  {
+   "original": "与组员一起搭建了小车底盘，编写了电机控制程序。",
+   "rewrite": "编写了电机控制程序，与组员一起搭建了小车底盘。",
+   "kind": "reordered; the team kept on its action"
+  },
+  {
+   "original": "Jointly designed the survey and analyzed the results.",
+   "rewrite": "Analyzed the results and jointly designed the survey.",
+   "kind": "reordered; the team kept on its action"
+  },
+  {
+   "original": "Built the rover chassis with two teammates and wrote the motor control code.",
+   "rewrite": "Wrote the motor control code and built the rover chassis with two teammates.",
+   "kind": "reordered; the team kept on its action"
+  },
+  {
+   "original": "Collaborated with two classmates to build a weather station and wrote its data logger in Python.",
+   "rewrite": "Wrote the data logger in Python and, with two classmates, built a weather station.",
+   "kind": "reordered; the team kept on its action"
+  },
+  {
+   "original": "解剖了 12 只小鼠并记录了体重。",
+   "rewrite": "Dissected 12 mice and recorded their body weight.",
+   "kind": "ZH to EN: 只 counts the mice"
+  },
+  {
+   "original": "Dissected 12 mice and recorded their body weight.",
+   "rewrite": "解剖了 12 只小鼠并记录了体重。",
+   "kind": "EN to ZH: 只 counts the mice"
+  },
+  {
+   "original": "起草了实验方案。",
+   "rewrite": "Drafted the experiment protocol.",
+   "kind": "ZH to EN: 起草 drafts"
+  },
+  {
+   "original": "Drafted the experiment protocol.",
+   "rewrite": "起草了实验方案。",
+   "kind": "EN to ZH: drafted is 起草"
+  },
+  {
+   "original": "发起了一项校园睡眠调查。",
+   "rewrite": "Launched a campus sleep survey.",
+   "kind": "ZH to EN: 发起 launches"
+  },
+  {
+   "original": "整理了论文初稿的参考文献。",
+   "rewrite": "Organized the references for the paper draft.",
+   "kind": "ZH to EN: 参考文献 are references"
+  },
+  {
+   "original": "预约了 30 名被试。",
+   "rewrite": "Scheduled 30 participants.",
+   "kind": "ZH to EN: 预约 schedules"
+  },
+  {
+   "original": "Designed a survey about sleep habits for 50 students.",
+   "rewrite": "为 50 名学生设计了一份关于睡眠习惯的问卷。",
+   "kind": "EN to ZH: about as a preposition"
+  },
+  {
+   "original": "用 Python 模拟了 100 次电路运行。",
+   "rewrite": "Simulated 100 circuit runs in Python.",
+   "kind": "ZH to EN: 模拟 simulates"
+  },
+  {
+   "original": "Fitted a regression model to 200 survey responses.",
+   "rewrite": "用 200 份问卷回复拟合了一个回归模型。",
+   "kind": "EN to ZH: fitted is 拟合"
+  },
+  {
+   "original": "Co-developed a sentiment classifier for tweets.",
+   "rewrite": "共同开发了一个推文情感分类器。",
+   "kind": "EN to ZH: co-developed is 共同开发"
+  },
+  {
+   "original": "共同开发了一个推文情感分类器。",
+   "rewrite": "Co-developed a sentiment classifier for tweets.",
+   "kind": "ZH to EN: 共同开发 is co-developed"
+  },
+  {
+   "original": "Ran co-culture assays of T cells and tumor cells.",
+   "rewrite": "进行了 T 细胞与肿瘤细胞的共培养实验。",
+   "kind": "EN to ZH: co-culture is a method, not shared credit"
+  },
+  {
+   "original": "Designed a planned EEG study with 20 participants.",
+   "rewrite": "设计了一项计划中的、有 20 名参与者的 EEG 研究。",
+   "kind": "EN to ZH: a planned study is 计划中的"
+  },
+  {
+   "original": "计划开展一项 30 人的睡眠研究。",
+   "rewrite": "A planned 30-person sleep study.",
+   "kind": "ZH to EN: 计划 as a planned study"
+  },
+  {
+   "original": "Plan to survey 50 users about sleep.",
+   "rewrite": "计划调查 50 名用户的睡眠情况。",
+   "kind": "EN to ZH: plan to is 计划"
+  },
+  {
+   "original": "Wrote a draft manuscript on sleep spindles.",
+   "rewrite": "撰写了一篇关于睡眠纺锤波的论文初稿。",
+   "kind": "EN to ZH: a draft is 初稿"
+  },
+  {
+   "original": "撰写了论文初稿。",
+   "rewrite": "Wrote a draft of the paper.",
+   "kind": "ZH to EN: 初稿 is a draft"
+  },
+  {
+   "original": "智能温室监测系统开发中，负责传感器数据采集。",
+   "rewrite": "Smart greenhouse monitoring system (under development): responsible for collecting sensor data.",
+   "kind": "ZH to EN: 开发中 is under development"
+  },
+  {
+   "original": "预定于 2026 年 5 月开展 30 人的睡眠研究。",
+   "rewrite": "A 30-person sleep study scheduled for May 2026.",
+   "kind": "ZH to EN: 预定于 is scheduled for"
+  },
+  {
+   "original": "校园导航 App 测试中，已招募 20 名测试用户。",
+   "rewrite": "Campus navigation App currently in testing; recruited 20 test users.",
+   "kind": "ZH to EN: 测试中 is in testing"
+  },
+  {
+   "original": "论文即将发表于 CHI 2026。",
+   "rewrite": "Upcoming publication at CHI 2026.",
+   "kind": "ZH to EN: 即将发表 is an upcoming publication"
+  },
+  {
+   "original": "论文将于 2026 年发表。",
+   "rewrite": "The paper will be published in 2026.",
+   "kind": "ZH to EN: 将于 is will"
+  },
+  {
+   "original": "Maintained an in-progress dashboard of lab inventory.",
+   "rewrite": "维护了一个开发中的实验室库存仪表板。",
+   "kind": "EN to ZH: in-progress is 开发中的, not a build"
+  },
+  {
+   "original": "Analyzed unpublished RNA-seq data from 12 mice.",
+   "rewrite": "分析了 12 只小鼠未发表的 RNA-seq 数据。",
+   "kind": "EN to ZH: unpublished is 未发表"
+  },
+  {
+   "original": "将于 SfN 2026 年会展示一张海报。",
+   "rewrite": "Will present a poster at SfN 2026.",
+   "kind": "ZH to EN: 将于 is will"
+  },
+  {
+   "original": "Built an unfinished prototype of a soil sensor.",
+   "rewrite": "制作了一个未完成的土壤传感器原型。",
+   "kind": "EN to ZH: unfinished is 未完成"
+  },
+  {
+   "original": "Paper to appear at CHI 2026.",
+   "rewrite": "论文即将在 CHI 2026 发表。",
+   "kind": "EN to ZH: to appear is 即将发表"
+  },
+  {
+   "original": "Weather station under construction; wired 3 sensors.",
+   "rewrite": "气象站搭建中，已接好 3 个传感器。",
+   "kind": "EN to ZH: under construction is 搭建中"
+  },
+  {
+   "original": "在测试中，发现并修复了 3 个缺陷。",
+   "rewrite": "During testing, found and fixed 3 bugs.",
+   "kind": "ZH to EN: 在测试中 is a place"
+  },
+  {
+   "original": "Evaluated the proposed model on 3 datasets.",
+   "rewrite": "在 3 个数据集上评估了所提出的模型。",
+   "kind": "EN to ZH: the proposed model is not a plan"
+  },
+  {
+   "original": "预定了 3 间会议室。",
+   "rewrite": "Booked 3 meeting rooms.",
+   "kind": "ZH to EN: 预定了 books"
+  },
+  {
+   "original": "Edited 12 issues of the club newsletter.",
+   "rewrite": "编辑了 12 期社团通讯。",
+   "kind": "EN to ZH: the student's own edit is not another person's part"
+  },
+  {
+   "original": "Revised the lab's safety manual for new members.",
+   "rewrite": "为新成员修订了实验室的安全手册。",
+   "kind": "EN to ZH: the student's own revision"
+  },
+  {
+   "original": "Developing a Flask dashboard for the lab's sample inventory.",
+   "rewrite": "正在为实验室的样本库存开发一个 Flask 仪表板。",
+   "kind": "EN to ZH: a progressive line stays under way"
+  },
+  {
+   "original": "正在为实验室的样本库存开发一个 Flask 仪表板。",
+   "rewrite": "Developing a Flask dashboard for the lab's sample inventory.",
+   "kind": "ZH to EN: 正在 as a progressive line"
+  },
+  {
+   "original": "Using Python, cleaned 200 survey responses.",
+   "rewrite": "用 Python 清洗了 200 份问卷回复。",
+   "kind": "EN to ZH: Using opens a method, not work under way"
+  },
+  {
+   "original": "Gave a talk about a campus recycling program.",
+   "rewrite": "做了一个关于校园回收项目的报告。",
+   "kind": "EN to ZH: about a as a preposition"
+  },
+  {
+   "original": "Developing a website; wrote a review.",
+   "rewrite": "正在开发网站；撰写了一篇综述。",
+   "kind": "EN to ZH: progressive first clause, finished second clause"
+  },
+  {
+   "original": "正在开发实验室网站，已完成登录模块。",
+   "rewrite": "Developing the lab website; completed the login module.",
+   "kind": "ZH to EN: 正在 first clause, finished second clause"
+  },
+  {
+   "original": "Developing a Flask dashboard for the lab's sample inventory.",
+   "rewrite": "目前正在为实验室的样本库存开发一个 Flask 仪表板。",
+   "kind": "EN to ZH: progressive line as 目前正在"
+  },
+  {
+   "original": "Building an unfinished prototype of a soil sensor.",
+   "rewrite": "正在制作一个未完成的土壤传感器原型。",
+   "kind": "EN to ZH: progressive line with 未完成, which states nothing done"
+  },
+  {
+   "original": "Developing a survey to understand sleep habits.",
+   "rewrite": "正在为了解睡眠习惯开发一份问卷。",
+   "kind": "EN to ZH: progressive line with 为了解, whose 了 is no aspect"
+  },
+  {
+   "original": "维护一个开发中的实验室库存仪表板。",
+   "rewrite": "Maintained an in-progress dashboard of lab inventory.",
+   "kind": "ZH to EN: an in-development thing, a finished verb"
+  },
+  {
+   "original": "Writing a thesis on sleep and memory.",
+   "rewrite": "关于睡眠与记忆的论文撰写中。",
+   "kind": "EN to ZH: progressive line as a verb + 中"
+  },
+  {
+   "original": "Tutoring high school students in math.",
+   "rewrite": "目前辅导高中生数学。",
+   "kind": "EN to ZH: progressive line as 目前"
+  },
+  {
+   "original": "Developing a mobile app for the campus library.",
+   "rewrite": "正在完成校园图书馆手机应用的开发。",
+   "kind": "EN to ZH: progressive line as 正在完成"
+  },
+  {
+   "original": "Developing a website; carefully tested the login page.",
+   "rewrite": "正在开发网站；仔细测试了登录页面。",
+   "kind": "EN to ZH: finished clause after an adverb"
+  },
+  {
+   "original": "Developing a website and tested the login page.",
+   "rewrite": "正在开发网站，并测试了登录页面。",
+   "kind": "EN to ZH: finished clause after and"
+  },
+  {
+   "original": "在网站项目开发中，用 Python 编写了 3 个脚本。",
+   "rewrite": "During the website project's development, wrote 3 scripts in Python.",
+   "kind": "ZH to EN: 在 … 中 with four characters between is a place"
+  },
+  {
+   "original": "Drafted the report and revised it after feedback.",
+   "rewrite": "起草了报告，并根据反馈进行了修改。",
+   "kind": "EN to ZH: the student's own revision after and"
+  },
+  {
+   "original": "I edited 12 issues of the club newsletter.",
+   "rewrite": "我编辑了 12 期社团通讯。",
+   "kind": "EN to ZH: the student's own edit after I"
+  },
+  {
+   "original": "Submitted the revised proposal to the committee.",
+   "rewrite": "向委员会提交了修改后的提案。",
+   "kind": "EN to ZH: a revised version, not a reviser"
+  },
+  {
+   "original": "Recruited about sixteen participants for the sleep study.",
+   "rewrite": "Recruited about sixteen subjects for the sleep study.",
+   "kind": "relabel keeps about before sixteen"
+  },
+  {
+   "original": "Made the parser about twice as fast.",
+   "rewrite": "使解析器的速度提高了大约一倍。",
+   "kind": "EN to ZH: about twice as 大约一倍"
+  },
+  {
+   "original": "Recruited about sixteen participants for the pilot.",
+   "rewrite": "为预实验招募了约十六名参与者。",
+   "kind": "EN to ZH: about sixteen as 约十六"
+  },
+  {
+   "original": "Will present a poster on sleep spindles at SfN 2026.",
+   "rewrite": "将在 SfN 2026 上展示关于睡眠纺锤波的海报。",
+   "kind": "EN to ZH: will as 将在"
+  },
+  {
+   "original": "Will present a poster on sleep spindles at SfN 2026.",
+   "rewrite": "将会在 SfN 2026 上展示关于睡眠纺锤波的海报。",
+   "kind": "EN to ZH: will as 将会"
+  },
+  {
+   "original": "Will present a poster at SfN 2026.",
+   "rewrite": "将要在 SfN 2026 上展示一张海报。",
+   "kind": "EN to ZH: will as 将要"
+  },
+  {
+   "original": "将在 SfN 2026 上展示关于睡眠纺锤波的海报。",
+   "rewrite": "Will present a poster on sleep spindles at SfN 2026.",
+   "kind": "ZH to EN: 将在 as will"
+  },
+  {
+   "original": "Imported the online survey data into R.",
+   "rewrite": "将在线问卷数据导入 R。",
+   "kind": "EN to ZH: 将在线 is no future"
+  },
+  {
+   "original": "Organized the meeting minutes into a document.",
+   "rewrite": "将会议记录整理成一份文档。",
+   "kind": "EN to ZH: 将会议 is no future"
+  },
+  {
+   "original": "Organized the key points into slides.",
+   "rewrite": "将要点整理成幻灯片。",
+   "kind": "EN to ZH: 将要点 is no future"
+  },
+  {
+   "original": "Organized the requirements into a checklist.",
+   "rewrite": "将要求整理成一份清单。",
+   "kind": "EN to ZH: 将要求 is no future"
+  },
+  {
+   "original": "Co-authored a review of soil microbiome studies.",
+   "rewrite": "合著了一篇土壤微生物组研究综述。",
+   "kind": "EN to ZH: co-authored as 合著"
+  },
+  {
+   "original": "Co-founded the campus robotics club.",
+   "rewrite": "联合创办了校园机器人社。",
+   "kind": "EN to ZH: co-founded as 联合创办"
+  },
+  {
+   "original": "Co-wrote a review of soil microbiome studies.",
+   "rewrite": "合写了一篇土壤微生物组研究综述。",
+   "kind": "EN to ZH: co-wrote as 合写"
+  },
+  {
+   "original": "合著了一篇土壤微生物组研究综述。",
+   "rewrite": "Co-authored a review of soil microbiome studies.",
+   "kind": "ZH to EN: 合著 as co-authored"
+  },
+  {
+   "original": "Translated 3 reports for a United Nations office.",
+   "rewrite": "为联合国办事处翻译了 3 份报告。",
+   "kind": "EN to ZH: 联合国 is no shared credit"
+  },
+  {
+   "original": "Translated 3 newsletters for the student union.",
+   "rewrite": "为学生联合会翻译了 3 期通讯。",
+   "kind": "EN to ZH: 联合会 is no shared credit"
+  },
+  {
+   "original": "Draft weekly newsletters for the robotics club.",
+   "rewrite": "为机器人社撰写每周简报。",
+   "kind": "EN to ZH: draft as a verb"
+  },
+  {
+   "original": "Helped draft the club's budget proposal.",
+   "rewrite": "协助起草了社团的预算提案。",
+   "kind": "EN to ZH: helped draft as a verb"
+  },
+  {
+   "original": "Volunteered to draft the club's budget proposal.",
+   "rewrite": "主动起草了社团的预算提案。",
+   "kind": "EN to ZH: to draft as a verb"
+  },
+  {
+   "original": "Grew 50 Arabidopsis plants for a drought study.",
+   "rewrite": "为一项干旱研究培养了 50 株拟南芥。",
+   "kind": "EN to ZH: Arabidopsis as 拟南芥"
+  },
+  {
+   "original": "为一项干旱研究培养了 50 株拟南芥。",
+   "rewrite": "Grew 50 Arabidopsis plants for a drought study.",
+   "kind": "ZH to EN: 拟南芥 as Arabidopsis"
+  },
+  {
+   "original": "Paper accepted at CHI 2026; to appear in April 2026.",
+   "rewrite": "论文已被 CHI 2026 录用，将于 2026 年 4 月发表。",
+   "kind": "EN to ZH: an accepted paper to appear"
+  },
+  {
+   "original": "Lab website under development; homepage launched.",
+   "rewrite": "实验室网站开发中，主页已上线。",
+   "kind": "EN to ZH: a launched page beside work under development"
+  },
+  {
+   "original": "Developing a Flask dashboard for the lab.",
+   "rewrite": "我正在为实验室开发一个 Flask 仪表板。",
+   "kind": "EN to ZH: progressive line after 我"
+  },
+  {
+   "original": "Developing a Flask dashboard for the lab.",
+   "rewrite": "本人正在为实验室开发一个 Flask 仪表板。",
+   "kind": "EN to ZH: progressive line after 本人"
+  },
+  {
+   "original": "Developing a Flask dashboard for the lab.",
+   "rewrite": "现在正在为实验室开发一个 Flask 仪表板。",
+   "kind": "EN to ZH: progressive line as 现在正在"
+  },
+  {
+   "original": "Also developing a Flask dashboard for the lab.",
+   "rewrite": "也正在为实验室开发一个 Flask 仪表板。",
+   "kind": "EN to ZH: also-led progressive line as 也正在"
+  },
+  {
+   "original": "Developing a survey to study sleep.",
+   "rewrite": "正在开发一份问卷，为了研究睡眠。",
+   "kind": "EN to ZH: progressive line with 为了, whose 了 is no aspect"
+  },
+  {
+   "original": "Developing the website; besides the backend, responsible for testing.",
+   "rewrite": "正在开发网站，除了后端还负责测试。",
+   "kind": "EN to ZH: progressive line with 除了, whose 了 is no aspect"
+  },
+  {
+   "original": "Learning about users' sleep habits.",
+   "rewrite": "正在了解用户的睡眠习惯。",
+   "kind": "EN to ZH: progressive line with 了解, whose 了 is no aspect"
+  },
+  {
+   "original": "关于睡眠纺锤波的论文撰写中，预计 2026 年 12 月投稿。",
+   "rewrite": "Manuscript on sleep spindles in preparation; submission expected Dec 2026.",
+   "kind": "ZH to EN: manuscript in preparation, submission expected"
+  },
+  {
+   "original": "Paper under review at CHI 2026; preprint posted on arXiv.",
+   "rewrite": "论文正在 CHI 2026 审稿中；预印本已发布在 arXiv 上。",
+   "kind": "EN to ZH: paper under review beside a posted preprint"
+  },
+  {
+   "original": "Developing the system; responsible for the backend.",
+   "rewrite": "系统开发中，负责后端。",
+   "kind": "EN to ZH: verb + 中 lead before a duty"
+  },
+  {
+   "original": "Developing a website; wrote a review and graded 40 exams.",
+   "rewrite": "正在开发网站；撰写了一篇综述，批改了 40 份试卷。",
+   "kind": "EN to ZH: two finished duties beside a progressive line"
+  },
+  {
+   "original": "Developing a website; designed and tested the login page.",
+   "rewrite": "正在开发网站；设计并测试了登录页面。",
+   "kind": "EN to ZH: one done mark over two finished verbs"
+  },
+  {
+   "original": "Lab website under development; homepage launched and backend tested.",
+   "rewrite": "实验室网站开发中，主页已上线，后台已测试。",
+   "kind": "EN to ZH: two finished headlines beside work under development"
+  },
+  {
+   "original": "Fine-tuning a BERT model on 5,000 tweets for sentiment analysis.",
+   "rewrite": "正在为情感分析在 5,000 条推文上微调一个 BERT 模型。",
+   "kind": "EN to ZH: a line led by an unlisted verb, kept under way"
+  },
+  {
+   "original": "Leveraging PyTorch, trained a CNN on 2,000 chest images.",
+   "rewrite": "利用 PyTorch 在 2,000 张胸部图像上训练了一个 CNN。",
+   "kind": "EN to ZH: a method led by Leveraging, then a finished verb"
+  },
+  {
+   "original": "Morning shift volunteer at the food bank; sorted 500 cans.",
+   "rewrite": "食物银行早班志愿者；分拣了 500 罐食品。",
+   "kind": "EN to ZH: a line led by the noun Morning"
+  },
+  {
+   "original": "Developing a website; launch expected next month.",
+   "rewrite": "正在开发网站，预计下月上线。",
+   "kind": "EN to ZH: a launch that is only expected, 预计下月上线"
+  },
+  {
+   "original": "Developing a data-filtering module for the lab.",
+   "rewrite": "正在为实验室开发数据过滤模块。",
+   "kind": "EN to ZH: 过滤 in a progressive line"
+  },
+  {
+   "original": "Analyzing research results for the lab.",
+   "rewrite": "正在为实验室分析研究成果。",
+   "kind": "EN to ZH: 研究成果 in a progressive line"
+  },
+  {
+   "original": "Lab website under development; not yet launched.",
+   "rewrite": "实验室网站开发中，尚未上线。",
+   "kind": "EN to ZH: a site not yet launched"
+  },
+  {
+   "original": "Developing a tool that can identify key genes.",
+   "rewrite": "正在开发一个能分析出关键基因的工具。",
+   "kind": "EN to ZH: 能分析出 in a progressive line"
+  },
+  {
+   "original": "Testing the parser through unit tests.",
+   "rewrite": "正在通过单元测试测试解析器。",
+   "kind": "EN to ZH: 通过 in a progressive line"
+  },
+  {
+   "original": "论文将于下月发表，目前在修改终稿。",
+   "rewrite": "Paper will be published next month; currently revising the final version.",
+   "kind": "ZH to EN: 将于 as will beside 目前"
+  },
+  {
+   "original": "预计 2026 年 6 月完成毕业论文，目前在分析数据。",
+   "rewrite": "Thesis expected in June 2026; currently analyzing the data.",
+   "kind": "ZH to EN: 预计 as expected beside 目前"
+  },
+  {
+   "original": "Upcoming talk at the 2026 campus symposium; currently drafting slides.",
+   "rewrite": "即将在 2026 年校园研讨会上作报告；目前正在准备幻灯片。",
+   "kind": "EN to ZH: upcoming as 即将 beside currently"
+  },
+  {
+   "original": "Designed a survey with three other students.",
+   "rewrite": "与另外三名同学共同设计了一份问卷。",
+   "kind": "EN to ZH: three other students as 另外三名同学共同"
+  },
+  {
+   "original": "Sorted 500 cans of food alongside two other volunteers.",
+   "rewrite": "与另外两名志愿者一起分拣了 500 罐食物。",
+   "kind": "EN to ZH: two other volunteers as 另外两名志愿者一起"
+  },
+  {
+   "original": "参与了 40 份水样的 qPCR 检测。",
+   "rewrite": "Participated in qPCR testing of 40 water samples.",
+   "kind": "ZH to EN: 参与 as participated in"
+  },
+  {
+   "original": "Took part in the 2025 iGEM competition.",
+   "rewrite": "参加了 2025 年 iGEM 比赛。",
+   "kind": "EN to ZH: took part in as 参加"
+  },
+  {
+   "original": "Contributed to the design of a soil sensor.",
+   "rewrite": "参与了土壤传感器的设计。",
+   "kind": "EN to ZH: contributed to as 参与"
+  },
+  {
+   "original": "计划于明年春季开展一项有 50 名被试参与的 EEG 实验。",
+   "rewrite": "Plan to run an EEG study with 50 participants next spring.",
+   "kind": "ZH to EN: 50 subjects take part, not the student"
+  },
+  {
+   "original": "Contributed code to the lab's open-source toolkit.",
+   "rewrite": "为实验室的开源工具包贡献了代码。",
+   "kind": "EN to ZH: contributed as 贡献"
+  },
+  {
+   "original": "Tested nearly 40 water samples with qPCR.",
+   "rewrite": "用 qPCR 检测了近 40 份水样。",
+   "kind": "EN to ZH: nearly as 近"
+  },
+  {
+   "original": "Recruited fewer than 20 participants.",
+   "rewrite": "招募了不到 20 名参与者。",
+   "kind": "EN to ZH: fewer than as 不到"
+  },
+  {
+   "original": "活动吸引了多达 200 名学生参加。",
+   "rewrite": "The event drew as many as 200 students.",
+   "kind": "ZH to EN: 多达 as as many as"
+  },
+  {
+   "original": "解决了实验数据找不到的问题。",
+   "rewrite": "Solved the problem of missing experimental data.",
+   "kind": "ZH to EN: 找不到 is a verb, not under"
+  },
+  {
+   "original": "在社团竞选中得票最多，当选为主席。",
+   "rewrite": "Won the most votes in the club election and was elected president.",
+   "kind": "ZH to EN: 得票最多 is a superlative"
+  },
+  {
+   "original": "收集并整理了近五年的城市空气质量数据。",
+   "rewrite": "Collected and organized city air quality data from the past five years.",
+   "kind": "ZH to EN: 近五年的 is the recent past"
+  },
+  {
+   "original": "Annotated ~300 images for the gesture dataset.",
+   "rewrite": "Gesture dataset: annotated ~300 images.",
+   "kind": "reorder keeps a tilde with its number"
+  },
+  {
+   "original": "Carefully revised the lab's safety manual.",
+   "rewrite": "仔细修订了实验室的安全手册。",
+   "kind": "EN to ZH: the student's own revision after an adverb"
+  },
+  {
+   "original": "We revised the survey after the pilot.",
+   "rewrite": "我们在预调查后修订了问卷。",
+   "kind": "EN to ZH: a revision after we"
+  },
+  {
+   "original": "Drafted the lab report and carefully revised it.",
+   "rewrite": "起草了实验报告并仔细修订。",
+   "kind": "EN to ZH: and carefully revised it"
+  },
+  {
+   "original": "Developing a course-planning app this semester.",
+   "rewrite": "本学期正在开发一款选课应用。",
+   "kind": "EN to ZH: progressive line after the time word 本学期"
+  },
+  {
+   "original": "Building a weather station for the campus garden.",
+   "rewrite": "目前我正在为校园花园搭建气象站。",
+   "kind": "EN to ZH: progressive line after 目前我"
+  },
+  {
+   "original": "Developing a smart greenhouse monitoring system.",
+   "rewrite": "智能温室监测系统（开发中）。",
+   "kind": "EN to ZH: progressive line as a bracketed 开发中"
+  },
+  {
+   "original": "将会员信息整理成电子表格。",
+   "rewrite": "Organized member information into a spreadsheet.",
+   "kind": "ZH to EN: 将 marks the object 会员信息"
+  },
+  {
+   "original": "在联合利华实习，分析了 3 个品牌的销售数据。",
+   "rewrite": "Interned at Unilever and analyzed sales data for 3 brands.",
+   "kind": "ZH to EN: 联合利华 is a company"
+  },
+  {
+   "original": "在北京联合大学完成了本科学业。",
+   "rewrite": "Completed my undergraduate studies at Beijing Union University.",
+   "kind": "ZH to EN: 北京联合大学 is a school"
+  },
+  {
+   "original": "Co-located 12 sensors with the weather station.",
+   "rewrite": "将 12 个传感器与气象站放在同一位置。",
+   "kind": "EN to ZH: co-located is no shared credit"
+  },
+  {
+   "original": "正在开发一个推荐系统，采用协同过滤算法。",
+   "rewrite": "Developing a recommender system using collaborative filtering.",
+   "kind": "ZH to EN: 协同过滤 is collaborative filtering"
+  },
+  {
+   "original": "Analyzing the damage caused by the 2023 floods in Hebei.",
+   "rewrite": "正在分析 2023 年河北洪水造成的损失。",
+   "kind": "EN to ZH: 造成 causes, it finishes nothing"
+  },
+  {
+   "original": "正在分析 2023 年河北洪水造成的损失。",
+   "rewrite": "Analyzing the damage caused by the 2023 floods in Hebei.",
+   "kind": "ZH to EN: 造成 causes, it finishes nothing"
+  },
+  {
+   "original": "Developing an app for online and offline tutoring.",
+   "rewrite": "正在开发一款支持线上线下辅导的应用。",
+   "kind": "EN to ZH: 线上线下 is online and offline, not 上线"
+  },
+  {
+   "original": "Building a continuous delivery pipeline for the club's website.",
+   "rewrite": "正在为社团网站搭建持续交付流水线。",
+   "kind": "EN to ZH: 持续交付 names a pipeline"
+  },
+  {
+   "original": "Interviewing 10 students who once studied abroad.",
+   "rewrite": "正在采访 10 名曾经出国留学的学生。",
+   "kind": "EN to ZH: 曾 is the students' past, not the work's"
+  },
+  {
+   "original": "Writing a review of methods for mapping urban built-up areas.",
+   "rewrite": "正在撰写一篇关于城市建成区制图方法的综述。",
+   "kind": "EN to ZH: 建成区 is a built-up area"
+  },
+  {
+   "original": "Designing the robot as a modular platform.",
+   "rewrite": "正在把机器人设计成一个模块化平台。",
+   "kind": "EN to ZH: 设计成 is design as"
+  },
+  {
+   "original": "Testing the drug candidates the lab developed last year.",
+   "rewrite": "正在测试实验室去年研发出的候选药物。",
+   "kind": "EN to ZH: the lab's earlier work, inside a 的 clause"
+  },
+  {
+   "original": "Preparing for the end-of-semester showcase.",
+   "rewrite": "正在为学期结束的成果展做准备。",
+   "kind": "EN to ZH: 学期结束的 is end-of-semester"
+  },
+  {
+   "original": "正在分析 2022 年发布的 ChatGPT 的用户评论。",
+   "rewrite": "Analyzing user reviews of ChatGPT, which was released in 2022.",
+   "kind": "ZH to EN: another thing's release"
+  },
+  {
+   "original": "正在维护 3 个全天候在线的气象站。",
+   "rewrite": "Maintaining 3 weather stations that are online around the clock.",
+   "kind": "ZH to EN: the stations' state"
+  },
+  {
+   "original": "Estimated 3 regression models of housing prices.",
+   "rewrite": "估计了 3 个房价回归模型。",
+   "kind": "EN to ZH: Estimated is the verb, no estimate of a number"
+  },
+  {
+   "original": "估计了 3 个房价回归模型。",
+   "rewrite": "Estimated 3 regression models of housing prices.",
+   "kind": "ZH to EN: 估计了 is the verb"
+  },
+  {
+   "original": "Ran fewer than 10 pilot sessions before the main study.",
+   "rewrite": "在正式研究前进行了少于 10 次预实验。",
+   "kind": "EN to ZH: fewer than is 少于"
+  },
+  {
+   "original": "Kept the false-alarm rate below 2% across 500 test cases.",
+   "rewrite": "在 500 个测试用例中将误报率控制在 2% 以下。",
+   "kind": "EN to ZH: below 2% is 2% 以下"
+  },
+  {
+   "original": "连续 4 个学期 GPA 保持在 3.8 以上。",
+   "rewrite": "Maintained a GPA above 3.8 for 4 semesters.",
+   "kind": "ZH to EN: 3.8 以上 is above 3.8"
+  },
+  {
+   "original": "用 GPT-4 多模态模型为 500 张图片生成了描述。",
+   "rewrite": "Used GPT-4 multimodal models to caption 500 images.",
+   "kind": "ZH to EN: 多 after a model's digit is multi-"
+  },
+  {
+   "original": "Trained YOLOv8 multi-object trackers on 3 datasets.",
+   "rewrite": "在 3 个数据集上训练了 YOLOv8 多目标跟踪器。",
+   "kind": "EN to ZH: multi-object is 多目标"
+  },
+  {
+   "original": "检索了近十年发表的 120 篇论文。",
+   "rewrite": "Searched 120 papers published in the last ten years.",
+   "kind": "ZH to EN: 近十年 is the last ten years"
+  },
+  {
+   "original": "在靠近 3 号楼的花园里安装了传感器。",
+   "rewrite": "Installed sensors in the garden near Building 3.",
+   "kind": "ZH to EN: 靠近 is near"
+  },
+  {
+   "original": "Cut the error rate to as low as 2%.",
+   "rewrite": "将错误率降低至 2%。",
+   "kind": "EN to ZH: as low as 2% is 降低至 2%"
+  },
+  {
+   "original": "Visiting student at Peking University, Summer 2025: analyzed 30 EEG recordings.",
+   "rewrite": "2025 年夏季北京大学访问学生：分析了 30 份 EEG 记录。",
+   "kind": "EN to ZH: Visiting student is a role"
+  },
+  {
+   "original": "2025 年夏季北京大学访问学生：分析了 30 份 EEG 记录。",
+   "rewrite": "Visiting student at Peking University, Summer 2025: analyzed 30 EEG recordings.",
+   "kind": "ZH to EN: Visiting student is a role"
+  },
+  {
+   "original": "Founding member of the UIUC AI Safety Club: organized 6 reading groups.",
+   "rewrite": "UIUC AI 安全社团创始成员：组织了 6 次读书会。",
+   "kind": "EN to ZH: Founding member is a role"
+  },
+  {
+   "original": "Peking University summer research program: analyzed 30 EEG recordings.",
+   "rewrite": "北京大学暑期科研项目：分析了 30 份 EEG 记录。",
+   "kind": "EN to ZH: Peking is a place"
+  },
+  {
+   "original": "Boeing summer intern: designed a test fixture for 3 actuators.",
+   "rewrite": "Boeing 暑期实习生：为 3 个执行器设计了一个测试夹具。",
+   "kind": "EN to ZH: Boeing is a company"
+  },
+  {
+   "original": "Starting in Fall 2025, tutored 15 students in calculus.",
+   "rewrite": "从 2025 年秋季开始，辅导了 15 名学生学习微积分。",
+   "kind": "EN to ZH: Starting in is a time"
+  },
+  {
+   "original": "Visiting student at Peking University in Summer 2025, analyzing 30 EEG recordings.",
+   "rewrite": "Analyzed 30 EEG recordings as visiting student at Peking University in Summer 2025.",
+   "kind": "verb_first after a role noun that ends in -ing"
+  },
+  {
+   "original": "Fundraising chair for CSSA since Fall 2025, organizing 3 charity galas.",
+   "rewrite": "Organized 3 charity galas as fundraising chair for CSSA since Fall 2025.",
+   "kind": "verb_first after a role noun that ends in -ing"
+  },
+  {
+   "original": "Swimming instructor at the ARC since May 2025, teaching 40 children a week.",
+   "rewrite": "Taught 40 children a week as swimming instructor at the ARC since May 2025.",
+   "kind": "verb_first after a role noun that ends in -ing"
+  },
+  {
+   "original": "Setting up a Raspberry Pi server for the robotics lab.",
+   "rewrite": "Robotics lab: setting up a Raspberry Pi server.",
+   "kind": "reorder keeps set under way"
+  }
+ ],
+ "unfaithful": [
+  {
+   "original": "My team built a Python parser. I wrote parser tests.",
+   "rewrite": "Built a Python parser and wrote parser tests.",
+   "kind": "team to solo"
+  },
+  {
+   "original": "Our team trained a model reaching 90% accuracy.",
+   "rewrite": "Trained a model reaching 90% accuracy.",
+   "kind": "team to solo"
+  },
+  {
+   "original": "My team built a Python parser. I wrote parser tests.",
+   "rewrite": "I built a Python parser and wrote parser tests. My team built a Python parser.",
+   "kind": "team to solo"
+  },
+  {
+   "original": "团队开发了解析器。本人开发了测试。",
+   "rewrite": "本人开发了解析器和测试，不断改进。团队开发了解析器。",
+   "kind": "team to solo behind 不断"
+  },
+  {
+   "original": "团队开发了解析器。本人开发了测试。",
+   "rewrite": "本人开发了解析器和测试。团队开发了解析器。",
+   "kind": "team to solo"
+  },
+  {
+   "original": "团队开发了解析器。本人开发了测试。",
+   "rewrite": "本人开发了解析器和不同的测试。团队开发了解析器。",
+   "kind": "team to solo behind 不同"
+  },
+  {
+   "original": "Built the drivetrain with two teammates.",
+   "rewrite": "Independently built the drivetrain.",
+   "kind": "team to solo"
+  },
+  {
+   "original": "作为四人小组成员，本人协助设计问卷。",
+   "rewrite": "本人设计问卷。",
+   "kind": "team to solo"
+  },
+  {
+   "original": "I did not run the statistics; I cleaned the data.",
+   "rewrite": "Ran the statistics and cleaned the data.",
+   "kind": "denied to affirmed"
+  },
+  {
+   "original": "I built a Python parser. I did not build the compiler.",
+   "rewrite": "I built a compiler. I did not build the compiler.",
+   "kind": "denied to affirmed"
+  },
+  {
+   "original": "我主导了测试。我没有主导项目。",
+   "rewrite": "我主导了项目。我没有主导项目。",
+   "kind": "denied to affirmed"
+  },
+  {
+   "original": "我主导了测试。我没有主导项目。",
+   "rewrite": "我主导了项目，不断推进。我没有主导项目。",
+   "kind": "denied to affirmed behind 不断"
+  },
+  {
+   "original": "我没有开发解析器，但开发了测试。",
+   "rewrite": "我开发了解析器，但没有开发测试。",
+   "kind": "denied to affirmed"
+  },
+  {
+   "original": "Paper submitted to CHI 2026, not yet accepted.",
+   "rewrite": "Paper accepted at CHI 2026.",
+   "kind": "denied to affirmed"
+  },
+  {
+   "original": "论文已投稿，尚未录用。",
+   "rewrite": "论文已录用。",
+   "kind": "denied to affirmed"
+  },
+  {
+   "original": "As part of a four-person team, I helped design the survey.",
+   "rewrite": "As part of a four-person team, led the design of the survey.",
+   "kind": "new lead"
+  },
+  {
+   "original": "Helped organize the reading group.",
+   "rewrite": "Led the reading group.",
+   "kind": "new lead"
+  },
+  {
+   "original": "作为四人小组成员，本人协助设计问卷。",
+   "rewrite": "作为四人小组成员，负责设计问卷。",
+   "kind": "new own"
+  },
+  {
+   "original": "Wrote the data loader.",
+   "rewrite": "Owned the data pipeline, writing the data loader.",
+   "kind": "new own"
+  },
+  {
+   "original": "Implemented machine learning experiments in Python",
+   "rewrite": "Built machine learning models in Python for a research project",
+   "kind": "new setting"
+  },
+  {
+   "original": "用 Python 分析了脑电数据。",
+   "rewrite": "为课题组的项目用 Python 分析了脑电数据。",
+   "kind": "new setting"
+  },
+  {
+   "original": "Implemented a hash table in C++.",
+   "rewrite": "Implemented a hash table in C++ during CS 225 coursework.",
+   "kind": "new setting"
+  },
+  {
+   "original": "Ran experiments in the Smith Lab.",
+   "rewrite": "Ran experiments in the Smith Lab for a research project.",
+   "kind": "new setting"
+  },
+  {
+   "original": "Wrote unit tests for the parser.",
+   "rewrite": "Wrote unit tests for the parser during a summer internship.",
+   "kind": "new setting"
+  },
+  {
+   "original": "Ran experiments in the Smith Lab.",
+   "rewrite": "Ran experiments in the Jones Lab.",
+   "kind": "different setting"
+  },
+  {
+   "original": "Implemented Python ML exercises in CS 225",
+   "rewrite": "Implemented Python ML in CS 225",
+   "kind": "dropped head noun",
+   "caught": "contract",
+   "case": "relabel to a dropped head noun: Python ML exercises -> Python ML"
+  },
+  {
+   "original": "Built a web app mockup.",
+   "rewrite": "Built a web app.",
+   "kind": "dropped head noun",
+   "caught": "contract",
+   "case": "relabel to a dropped head noun: web app mockup -> web app"
+  },
+  {
+   "original": "Wrote a parser test.",
+   "rewrite": "Wrote a parser.",
+   "kind": "dropped head noun",
+   "caught": "contract",
+   "case": "relabel to a dropped head noun: parser test -> parser"
+  },
+  {
+   "original": "I improved parser throughput by 45% and reduced parser latency by 12%.",
+   "rewrite": "I improved parser throughput by 12% and reduced parser latency by 45%.",
+   "kind": "number moved",
+   "caught": "contract",
+   "case": "lead_with that swaps two numbers"
+  },
+  {
+   "original": "Cleaned 212 survey responses in R.",
+   "rewrite": "Cleaned 250 survey responses in R.",
+   "kind": "new number"
+  },
+  {
+   "original": "Tested 3 sensor boards.",
+   "rewrite": "Tested 3 sensor boards across 5 prototypes.",
+   "kind": "new number"
+  },
+  {
+   "original": "Cleaned 212 survey responses in R.",
+   "rewrite": "Cleaned 212 survey responses in R, applying computational modeling.",
+   "kind": "appended relevance clause"
+  },
+  {
+   "original": "Cleaned 212 survey responses in R.",
+   "rewrite": "Cleaned 212 survey responses in R, supporting human factors research.",
+   "kind": "appended relevance clause"
+  },
+  {
+   "original": "清洗了212份问卷数据。",
+   "rewrite": "清洗了212份问卷数据，培养了严谨态度。",
+   "kind": "appended relevance clause"
+  },
+  {
+   "original": "Wrote documentation for a class project",
+   "rewrite": "Wrote clear documentation for a class project",
+   "kind": "quality claim"
+  },
+  {
+   "original": "我开发了测试，不牵头项目。",
+   "rewrite": "我开发了测试，牵头项目。",
+   "kind": "denied to affirmed (不牵头)"
+  },
+  {
+   "original": "我开发了测试，不直接开发解析器。",
+   "rewrite": "我开发了测试，开发了解析器。",
+   "kind": "denied to affirmed (不直接开发)"
+  },
+  {
+   "original": "我编写了测试，不再负责部署。",
+   "rewrite": "我编写了测试，负责部署。",
+   "kind": "denied to affirmed (不再负责)"
+  },
+  {
+   "original": "我编写了测试，不亲自设计实验。",
+   "rewrite": "我编写了测试，设计了实验。",
+   "kind": "denied to affirmed (不亲自设计)"
+  },
+  {
+   "original": "我开发了测试，不再直接负责部署。",
+   "rewrite": "我开发了测试，负责部署。",
+   "kind": "denied to affirmed (不再直接负责)"
+  },
+  {
+   "original": "Wrote Python daily reports.",
+   "rewrite": "Wrote Python.",
+   "kind": "dropped head noun",
+   "caught": "contract",
+   "case": "relabel to a dropped head noun: Python daily reports -> Python"
+  },
+  {
+   "original": "我编写了测试，不太参与开发。",
+   "rewrite": "我编写了测试，参与开发。",
+   "kind": "denied to affirmed (不太参与)"
+  },
+  {
+   "original": "我编写了测试，不再参与项目。",
+   "rewrite": "我编写了测试，参与项目。",
+   "kind": "denied to affirmed (不再参与)"
+  },
+  {
+   "original": "团队开发了解析器。本人开发了测试。",
+   "rewrite": "本人不到一周开发了解析器和测试。团队开发了解析器。",
+   "kind": "team to solo behind 不到"
+  },
+  {
+   "original": "团队开发了解析器。本人开发了测试。",
+   "rewrite": "本人用不到两周开发了解析器和测试。团队开发了解析器。",
+   "kind": "team to solo behind 用不到"
+  },
+  {
+   "original": "团队设计了实验。本人设计了问卷。",
+   "rewrite": "本人毫不犹豫地设计了实验和问卷。团队设计了实验。",
+   "kind": "team to solo behind 毫不犹豫"
+  },
+  {
+   "original": "团队搭建了平台。本人搭建了测试环境。",
+   "rewrite": "本人针对不足搭建了平台和测试环境。团队搭建了平台。",
+   "kind": "team to solo behind 针对不足"
+  },
+  {
+   "original": "团队检查了代码。本人检查了文档。",
+   "rewrite": "本人不定期检查了代码和文档。团队检查了代码。",
+   "kind": "team to solo behind 不定期"
+  },
+  {
+   "original": "本人未参与论文撰写。",
+   "rewrite": "本人不到一周参与了论文撰写。",
+   "kind": "denied to affirmed behind 不到"
+  },
+  {
+   "original": "Wrote a report jointly.",
+   "rewrite": "Wrote a report.",
+   "kind": "dropped shared credit (jointly)"
+  },
+  {
+   "original": "Analyzed the survey data collectively.",
+   "rewrite": "Analyzed the survey data.",
+   "kind": "dropped shared credit (collectively)"
+  },
+  {
+   "original": "Built a PCB assembly.",
+   "rewrite": "Built a PCB.",
+   "kind": "dropped head noun (-ly noun)",
+   "caught": "contract",
+   "case": "relabel to a dropped head noun: PCB assembly -> PCB"
+  },
+  {
+   "original": "Analyzed EEG data in MATLAB.",
+   "rewrite": "Analyzed EEG data in MATLAB to study sleep disorders.",
+   "kind": "new purpose",
+   "caught": "review"
+  },
+  {
+   "original": "本人开发了解析器。",
+   "rewrite": "本人开发了解析器，已部署到公司生产系统。",
+   "kind": "new deployment claim",
+   "caught": "review"
+  },
+  {
+   "original": "本人整理了实验记录。",
+   "rewrite": "本人整理并分析了实验记录。",
+   "kind": "new action",
+   "caught": "review"
+  },
+  {
+   "original": "As part of a four-person team in PSYC 238, I helped design an online survey on sleep and memory and cleaned the 212 responses in R.",
+   "rewrite": "Designed an online survey on sleep and memory as part of a four-person team in PSYC 238 and helped clean the 212 responses in R.",
+   "kind": "qualifier moved to another action"
+  },
+  {
+   "original": "Helped a graduate student write the grant proposal and designed the lab website.",
+   "rewrite": "Wrote the grant proposal and helped a graduate student design the lab website.",
+   "kind": "qualifier moved to another action"
+  },
+  {
+   "original": "With two teammates, built the rover chassis; wrote the control code alone.",
+   "rewrite": "Built the rover chassis alone; wrote the control code with two teammates.",
+   "kind": "qualifier moved to another action"
+  },
+  {
+   "original": "Cleaned the survey data in R and made the figures in Excel.",
+   "rewrite": "Cleaned the survey data in Excel and made the figures in R.",
+   "kind": "qualifier moved to another action",
+   "caught": "review"
+  },
+  {
+   "original": "协助博士生设计了实验方案，本人独立完成了数据录入。",
+   "rewrite": "本人独立设计了实验方案，协助博士生完成了数据录入。",
+   "kind": "qualifier moved to another action"
+  },
+  {
+   "original": "Built the drivetrain for the Illini Robotics club rover in 2025 with two teammates; I designed the motor mount in SolidWorks.",
+   "rewrite": "Built the drivetrain for the Illini Robotics club rover in 2025 with two teammates, and designed the motor mount in SolidWorks.",
+   "kind": "own part folded into the team's",
+   "caught": "review"
+  },
+  {
+   "original": "Built the drivetrain for the Illini Robotics club rover in 2025 with two teammates; I designed the motor mount in SolidWorks.",
+   "rewrite": "With two teammates, built the drivetrain for the Illini Robotics club rover in 2025 and designed the motor mount in SolidWorks.",
+   "kind": "own part folded into the team's",
+   "caught": "review"
+  },
+  {
+   "original": "On a five-person CHBE 421 design team, built a benchtop vanadium redox flow battery that reached 72% round-trip efficiency; my part was wiring the data logger and keeping the test log.",
+   "rewrite": "On a five-person CHBE 421 design team, built a benchtop vanadium redox flow battery that reached 72% round-trip efficiency, wiring the data logger and keeping the test log.",
+   "kind": "'my part was' dropped: the team's result reads as the student's",
+   "caught": "review"
+  },
+  {
+   "original": "CEE 350 课程项目（4 人小组）：与组员一起采集校园 12 个雨水口的径流水样，本人负责浊度和 pH 测定，并用 Excel 整理了 48 组数据。",
+   "rewrite": "CEE 350 课程项目（4 人小组）：与组员一起采集校园 12 个雨水口的径流水样、测定浊度和 pH，并用 Excel 整理了 48 组数据。",
+   "kind": "own part folded into the team's",
+   "caught": "review"
+  },
+  {
+   "original": "Our team of four built a line-following robot; I wrote the PID controller.",
+   "rewrite": "As part of a team of four, built a line-following robot and wrote the PID controller.",
+   "kind": "own part folded into the team's"
+  },
+  {
+   "original": "Observed surgeons at Carle Hospital, operating on pediatric patients.",
+   "rewrite": "Operated on pediatric patients; observed surgeons at Carle Hospital.",
+   "kind": "another person's action given to the student",
+   "caught": "review"
+  },
+  {
+   "original": "Shadowed a physical therapist at Carle, treating stroke patients.",
+   "rewrite": "Treated stroke patients while shadowing a physical therapist at Carle.",
+   "kind": "another person's action given to the student",
+   "caught": "review"
+  },
+  {
+   "original": "Assisted a graduate student running mass spectrometry experiments.",
+   "rewrite": "Ran mass spectrometry experiments, assisting a graduate student.",
+   "kind": "another person's action given to the student"
+  },
+  {
+   "original": "Volunteered at a free clinic, where nurses administered flu vaccines to 300 patients.",
+   "rewrite": "Administered flu vaccines to 300 patients while volunteering at a free clinic.",
+   "kind": "another person's action given to the student"
+  },
+  {
+   "original": "跟随主治医生观摩了为儿童患者实施的手术。",
+   "rewrite": "为儿童患者实施了手术，并跟随主治医生观摩。",
+   "kind": "another person's action given to the student",
+   "caught": "review"
+  },
+  {
+   "original": "Drafted the methods section of a grant proposal, which my advisor later rewrote.",
+   "rewrite": "Drafted the methods section of a grant proposal.",
+   "kind": "credit limit dropped",
+   "caught": "review"
+  },
+  {
+   "original": "Wrote a Python script to automate data entry, starting from a template my TA provided.",
+   "rewrite": "Wrote a Python script to automate data entry.",
+   "kind": "credit limit dropped",
+   "caught": "review"
+  },
+  {
+   "original": "Built a web scraper for course listings, adapted from an open-source tutorial.",
+   "rewrite": "Built a web scraper for course listings.",
+   "kind": "credit limit dropped",
+   "caught": "review"
+  },
+  {
+   "original": "基于师兄的代码框架，编写了数据预处理脚本。",
+   "rewrite": "编写了数据预处理脚本。",
+   "kind": "credit limit dropped",
+   "caught": "review"
+  },
+  {
+   "original": "Designed the survey questions, which Prof. Lee revised before launch.",
+   "rewrite": "Designed the survey questions.",
+   "kind": "credit limit dropped",
+   "caught": "review"
+  },
+  {
+   "original": "Co-authoring a manuscript on electrolyte additives with a PhD mentor (in preparation, not yet published).",
+   "rewrite": "Co-authored a manuscript on electrolyte additives with a PhD mentor (in preparation, not yet published).",
+   "kind": "ongoing to finished"
+  },
+  {
+   "original": "Currently building a Flask dashboard for the lab's sample inventory.",
+   "rewrite": "Built a Flask dashboard for the lab's sample inventory.",
+   "kind": "ongoing to finished"
+  },
+  {
+   "original": "Training a CNN on 5,000 labeled leaf images (in progress).",
+   "rewrite": "Trained a CNN on 5,000 labeled leaf images.",
+   "kind": "ongoing to finished"
+  },
+  {
+   "original": "正在开发一个课程选课小程序。",
+   "rewrite": "开发了一个课程选课小程序。",
+   "kind": "ongoing to finished"
+  },
+  {
+   "original": "毕业论文撰写中，研究校园雨水径流的浊度变化。",
+   "rewrite": "撰写了毕业论文，研究校园雨水径流的浊度变化。",
+   "kind": "ongoing to finished"
+  },
+  {
+   "original": "Hoping to build a robot arm for the club next semester.",
+   "rewrite": "Built a robot arm for the club.",
+   "kind": "intent to done"
+  },
+  {
+   "original": "Interested in building autonomous robots.",
+   "rewrite": "Built autonomous robots.",
+   "kind": "intent to done"
+  },
+  {
+   "original": "Plan to analyze the sleep survey data in R this fall.",
+   "rewrite": "Analyzed the sleep survey data in R.",
+   "kind": "intent to done"
+  },
+  {
+   "original": "计划下学期用 Python 复现该论文的实验。",
+   "rewrite": "用 Python 复现了该论文的实验。",
+   "kind": "intent to done"
+  },
+  {
+   "original": "Learning ROS to program the club rover's navigation.",
+   "rewrite": "Programmed the club rover's navigation in ROS.",
+   "kind": "intent to done"
+  },
+  {
+   "original": "希望参与机器人社团的机械臂设计。",
+   "rewrite": "参与了机器人社团的机械臂设计。",
+   "kind": "intent to done"
+  },
+  {
+   "original": "Worked 10 hours per week in a yeast genetics lab since January 2026, running PCR genotyping and maintaining strain stocks.",
+   "rewrite": "Worked 10 hours per week in a Saccharomyces cerevisiae genetics lab since January 2026, running PCR genotyping and maintaining strain stocks.",
+   "kind": "relabel to a narrower or different thing"
+  },
+  {
+   "original": "As part of a four-person team in PSYC 238, I helped design an online survey on sleep and memory and cleaned the 212 responses in R.",
+   "rewrite": "As part of a four-person team in PSYC 238, I helped design an online survey on memory consolidation and sleep and cleaned the 212 responses in R.",
+   "kind": "relabel to a narrower or different thing",
+   "caught": "review"
+  },
+  {
+   "original": "Built a gradient-boosting model in Python that placed in the top 8% of a 2025 Kaggle competition on credit default prediction.",
+   "rewrite": "Built a gradient-boosting causal representation learning model in Python that placed in the top 8% of a 2025 Kaggle competition on credit default prediction.",
+   "kind": "relabel to a narrower or different thing",
+   "caught": "review"
+  },
+  {
+   "original": "Undergraduate course assistant for CS 124 (Spring 2026), holding weekly office hours for about 40 students.",
+   "rewrite": "Undergraduate course assistant for CS 124 (Spring 2026), supporting curriculum design for about 40 students.",
+   "kind": "relabel to a narrower or different thing"
+  },
+  {
+   "original": "Built the drivetrain for the Illini Robotics club rover in 2025 with two teammates; I designed the motor mount in SolidWorks.",
+   "rewrite": "Built the drivetrain for the Illini Robotics club agricultural robot in 2025 with two teammates; I designed the motor mount in SolidWorks.",
+   "kind": "relabel to a narrower or different thing",
+   "caught": "review"
+  },
+  {
+   "original": "Built a PyTorch image classifier for chest X-ray triage in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "rewrite": "Built a PyTorch image classifier for chest X-ray diagnosis in a CS 446 course project; reached 0.87 AUC on the NIH ChestX-ray14 validation split.",
+   "kind": "relabel to a narrower or different thing",
+   "caught": "review"
+  },
+  {
+   "original": "Worked 10 hours per week in a yeast genetics lab since January 2026, running PCR genotyping and maintaining strain stocks.",
+   "rewrite": "Worked 10 hours per week in a yeast genetics lab since January 2026, running RNA/DNA extractions and maintaining strain stocks.",
+   "kind": "relabel to a narrower or different thing",
+   "caught": "review"
+  },
+  {
+   "original": "Built the drivetrain for the Illini Robotics club rover in 2025 with two teammates; I designed the motor mount in SolidWorks.",
+   "rewrite": "Built the drivetrain for the Illini Robotics club rover in 2025 with two teammates; I designed the robot mechanism in SolidWorks.",
+   "kind": "relabel to a narrower or different thing",
+   "caught": "contract",
+   "case": "relabel motor mount -> robot mechanism, no shared word"
+  },
+  {
+   "original": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "rewrite": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 监测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "kind": "cross-language relabel or translation changes the claim"
+  },
+  {
+   "original": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "rewrite": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测饮用水管网生物膜样本中的军团菌；未参与引物设计和数据分析。",
+   "kind": "cross-language relabel or translation changes the claim",
+   "caught": "review"
+  },
+  {
+   "original": "CEE 350 课程项目（4 人小组）：与组员一起采集校园 12 个雨水口的径流水样，本人负责浊度和 pH 测定，并用 Excel 整理了 48 组数据。",
+   "rewrite": "CEE 350 课程项目（4 人小组）：与组员一起采集校园 12 个雨水口的地下水样，本人负责浊度和 pH 测定，并用 Excel 整理了 48 组数据。",
+   "kind": "cross-language relabel or translation changes the claim",
+   "caught": "review"
+  },
+  {
+   "original": "Engineers Without Borders 校园分会饮用水项目组成员（共 6 人）：团队为一所乡村小学设计并安装了一套慢砂过滤装置；本人只负责材料采购和预算记录。",
+   "rewrite": "Engineers Without Borders 校园分会饮用水项目组成员（共 6 人）：团队为一所乡村小学设计并安装了一套慢砂过滤消毒装置；本人只负责材料采购和预算记录。",
+   "kind": "cross-language relabel or translation changes the claim",
+   "caught": "review"
+  },
+  {
+   "original": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "rewrite": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 开展 pathogen surveillance，检测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "kind": "cross-language relabel or translation changes the claim"
+  },
+  {
+   "original": "Helped three lab mates run cyclic voltammetry on 30 electrolyte samples in Summer 2025; the graduate mentor did the data analysis.",
+   "rewrite": "2025 年夏季带领三名实验室同学对 30 个电解液样品进行了循环伏安测试；数据分析由研究生导师完成。",
+   "kind": "cross-language relabel or translation changes the claim",
+   "caught": "language"
+  },
+  {
+   "original": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "rewrite": "Since September 2025, undergraduate research assistant in an environmental microbiology lab (about 8 hours per week), using qPCR to detect Legionella in tap-water samples; did not take part in primer design or data analysis.",
+   "kind": "cross-language relabel or translation changes the claim",
+   "caught": "language"
+  },
+  {
+   "original": "Did not write the parser and did not run the benchmarks; only documented the results.",
+   "rewrite": "Did not write the parser; ran the benchmarks and documented the results.",
+   "kind": "one of two denials dropped"
+  },
+  {
+   "original": "Processed over 200 tissue samples.",
+   "rewrite": "Processed 200 tissue samples.",
+   "kind": "approximation dropped",
+   "caught": "review"
+  },
+  {
+   "original": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "rewrite": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "kind": "approximation dropped",
+   "caught": "review"
+  },
+  {
+   "original": "Undergraduate course assistant for CS 124 (Spring 2026), holding weekly office hours for about 40 students.",
+   "rewrite": "Undergraduate course assistant for CS 124 (Spring 2026), holding weekly office hours for 40 students.",
+   "kind": "approximation dropped",
+   "caught": "review"
+  },
+  {
+   "original": "Built the drivetrain for the Illini Robotics club rover in 2025 with two teammates; I designed the motor mount in SolidWorks.",
+   "rewrite": "Built the drivetrain for the Illini Robotics club robot in 2025 with two teammates, and designed the motor mount in SolidWorks.",
+   "kind": "own part folded into the team's",
+   "caught": "review"
+  },
+  {
+   "original": "Our team is building a data pipeline; I wrote the tests.",
+   "rewrite": "Building a data pipeline and wrote the tests.",
+   "kind": "team to solo"
+  },
+  {
+   "original": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测自来水样本中的军团菌；未参与引物设计和数据分析。",
+   "rewrite": "2025 年 9 月起在环境微生物实验室担任本科研究助理（每周约 8 小时），协助博士生用 qPCR 检测饮用水管网生物膜监测样本中的军团菌；未参与引物设计和数据分析。",
+   "kind": "cross-language relabel or translation changes the claim",
+   "caught": "review"
+  },
+  {
+   "original": "Undergraduate course assistant for CS 124 (Spring 2026), holding weekly office hours for about 40 students.",
+   "rewrite": "CS 124 本科课程助教（2026 年春季），每周为约 40 名学生授课。",
+   "kind": "cross-language relabel or translation changes the claim",
+   "caught": "language"
+  },
+  {
+   "original": "Engineers Without Borders 校园分会饮用水项目组成员（共 6 人）：团队为一所乡村小学设计并安装了一套慢砂过滤装置；本人只负责材料采购和预算记录。",
+   "rewrite": "Member of the six-person drinking-water project team of the campus Engineers Without Borders chapter: designed and installed a slow sand filter for a rural primary school; only handled materials purchasing and budget records.",
+   "kind": "cross-language relabel or translation changes the claim",
+   "caught": "language"
+  },
+  {
+   "original": "CEE 350 课程项目（4 人小组）：与组员一起采集校园 12 个雨水口的径流水样，本人负责浊度和 pH 测定，并用 Excel 整理了 48 组数据。",
+   "rewrite": "CEE 350 course project (4-person group): collected runoff samples from 12 campus storm drains, measured turbidity and pH, and organized 48 sets of data in Excel.",
+   "kind": "cross-language relabel or translation changes the claim",
+   "caught": "language"
+  },
+  {
+   "original": "Built a Python robot with a team of 3. I did not lead the project.",
+   "rewrite": "Built a Python robot with a team of 3. I did not lead the project. The robot weighed 3 kg.",
+   "kind": "new claim",
+   "caught": "review"
+  },
+  {
+   "original": "Worked 10 hours per week in a yeast genetics lab since January 2026, running PCR genotyping and maintaining strain stocks.",
+   "rewrite": "Ran PCR genotyping for aging research and maintained strain stocks in a yeast genetics lab, 10 hours per week since January 2026.",
+   "kind": "new claim"
+  },
+  {
+   "original": "Worked in the Beckman building on sensor calibration.",
+   "rewrite": "Built a sensor calibration rig in the Beckman building.",
+   "kind": "new claim"
+  },
+  {
+   "original": "Worked 10 hours per week in a yeast genetics lab since January 2026, running PCR genotyping and maintaining strain stocks.",
+   "rewrite": "Worked 10 hours per week in a yeast genetics lab in January 2026, running PCR genotyping and maintaining strain stocks.",
+   "kind": "duration changed (since -> in)"
+  },
+  {
+   "original": "Helped the TA grade weekly quizzes and wrote the answer keys.",
+   "rewrite": "Graded weekly quizzes and helped the TA write the answer keys.",
+   "kind": "qualifier moved to another action"
+  },
+  {
+   "original": "与两名同学合作搭建了气象站，本人单独编写了数据采集程序。",
+   "rewrite": "本人单独搭建了气象站，与两名同学合作编写了数据采集程序。",
+   "kind": "qualifier moved to another action"
+  },
+  {
+   "original": "Our four-person team designed a solar-powered bike charger; I built the voltage regulator.",
+   "rewrite": "With a four-person team, designed a solar-powered bike charger and built the voltage regulator.",
+   "kind": "own part folded into the team's"
+  },
+  {
+   "original": "小组（共 5 人）完成了校园噪声地图；本人负责 3 个测点的录音。",
+   "rewrite": "与小组（共 5 人）一起完成了校园噪声地图和 3 个测点的录音。",
+   "kind": "own part folded into the team's"
+  },
+  {
+   "original": "Toured the Fermilab accelerator with a physics club, watching operators calibrate the beamline.",
+   "rewrite": "Calibrated the Fermilab beamline; toured the accelerator with a physics club.",
+   "kind": "another person's action given to the student",
+   "caught": "review"
+  },
+  {
+   "original": "在药房见习，观察药师为 50 名患者调配处方。",
+   "rewrite": "为 50 名患者调配处方（药房见习）。",
+   "kind": "another person's action given to the student",
+   "caught": "review"
+  },
+  {
+   "original": "Wrote the lab's inventory app, extending a codebase a previous student started.",
+   "rewrite": "Wrote the lab's inventory app.",
+   "kind": "credit limit dropped",
+   "caught": "review"
+  },
+  {
+   "original": "参考开源项目，完成了微信小程序的前端页面。",
+   "rewrite": "完成了微信小程序的前端页面。",
+   "kind": "credit limit dropped",
+   "caught": "review"
+  },
+  {
+   "original": "Drafting a review article on microplastics in freshwater with Dr. Ortiz (not yet submitted).",
+   "rewrite": "Drafted a review article on microplastics in freshwater with Dr. Ortiz (not yet submitted).",
+   "kind": "ongoing to finished"
+  },
+  {
+   "original": "目前在做一个基于 Arduino 的土壤湿度监测装置。",
+   "rewrite": "做了一个基于 Arduino 的土壤湿度监测装置。",
+   "kind": "ongoing to finished"
+  },
+  {
+   "original": "Applying to run a pilot study on study-app usage next semester.",
+   "rewrite": "Ran a pilot study on study-app usage.",
+   "kind": "intent to done"
+  },
+  {
+   "original": "打算用 MATLAB 分析这批心电数据。",
+   "rewrite": "用 MATLAB 分析了这批心电数据。",
+   "kind": "intent to done"
+  },
+  {
+   "original": "Stained tissue sections for a histology course.",
+   "rewrite": "Stained brain tissue sections for a histology course.",
+   "kind": "relabel to a narrower or different thing",
+   "caught": "review"
+  },
+  {
+   "original": "Programmed a drone to follow a GPS route in the robotics club.",
+   "rewrite": "Programmed a drone swarm to follow a GPS route in the robotics club.",
+   "kind": "relabel to a narrower or different thing",
+   "caught": "review"
+  },
+  {
+   "original": "Measured water hardness in 20 household samples by titration.",
+   "rewrite": "Measured heavy-metal contamination in 20 household samples by titration.",
+   "kind": "relabel to a narrower or different thing",
+   "caught": "review"
+  },
+  {
+   "original": "用 GIS 绘制了校园树木分布图。",
+   "rewrite": "用 GIS 绘制了校园城市森林碳汇分布图。",
+   "kind": "cross-language relabel or translation changes the claim",
+   "caught": "review"
+  },
+  {
+   "original": "Assisted a nurse in recording vital signs for 30 patients.",
+   "rewrite": "为 30 名患者记录并分析了生命体征。",
+   "kind": "cross-language relabel or translation changes the claim",
+   "caught": "language"
+  },
+  {
+   "original": "Reviewed roughly 50 papers on bird migration.",
+   "rewrite": "Reviewed 50 papers on bird migration.",
+   "kind": "approximation dropped",
+   "caught": "review"
+  },
+  {
+   "original": "参与了校园雨水花园的设计。",
+   "rewrite": "Led the design of a campus rain garden.",
+   "kind": "cross-language relabel or translation changes the claim",
+   "caught": "language"
+  },
+  {
+   "original": "参与了校园雨水花园的设计。",
+   "rewrite": "Designed a campus rain garden.",
+   "kind": "cross-language relabel or translation changes the claim",
+   "caught": "language"
+  },
+  {
+   "original": "社团项目组成员（共 8 人）：团队为社区图书馆设计并搭建了一个借阅小程序；本人只负责测试。",
+   "rewrite": "Member of an 8-person club project team: designed and built a lending mini-program for the community library; only did the testing.",
+   "kind": "cross-language relabel or translation changes the claim",
+   "caught": "language"
+  },
+  {
+   "original": "Member of a 5-person team: our team designed a campus bike-share app; I only made the logo.",
+   "rewrite": "Member of a 5-person team: designed a campus bike-share app; only made the logo.",
+   "kind": "team's action left without its doer"
+  },
+  {
+   "original": "Worked in the Beckman building, testing circuit boards.",
+   "rewrite": "Built circuit boards in the Beckman building.",
+   "kind": "verb-position guard: 'building' is a noun, not a build"
+  },
+  {
+   "original": "Participated in building the club rover.",
+   "rewrite": "Built the club rover.",
+   "kind": "verb-position guard: a participation is not a build"
+  },
+  {
+   "original": "My team built a Python parser.",
+   "rewrite": "I built a Python parser.",
+   "kind": "team result as personal behind 'my team'"
+  },
+  {
+   "original": "Cleaned 212 survey responses in R.",
+   "rewrite": "Cleaned 212 survey responses in R for aging research.",
+   "kind": "purpose added (research setting)"
+  },
+  {
+   "original": "用 Python 清洗了问卷数据。",
+   "rewrite": "熟练使用 Python 清洗了问卷数据。",
+   "kind": "proficiency claim"
+  },
+  {
+   "original": "Used Python to clean survey data.",
+   "rewrite": "Used advanced Python to clean survey data.",
+   "kind": "proficiency claim"
+  },
+  {
+   "original": "Reviewed the lab's protocol documents. Our team built a sample tracker.",
+   "rewrite": "Our team built a sample tracker. Reviewed the lab's protocol documents.",
+   "kind": "reorder hands the student's action to the team"
+  },
+  {
+   "original": "Helped plan the club fair and made the posters.",
+   "rewrite": "Planned the club fair and helped make the posters.",
+   "kind": "qualifier moved to another action"
+  },
+  {
+   "original": "My team built a Python parser; I wrote parser tests.",
+   "rewrite": "I built a Python parser on a team that wrote parser tests.",
+   "kind": "the student's and the team's actions swapped around a relative clause"
+  },
+  {
+   "original": "On a five-person design team, built a benchtop flow battery; my part was wiring the data logger.",
+   "rewrite": "My part was wiring the data logger and designing the battery, on a five-person design team that built a benchtop flow battery.",
+   "kind": "new own part beside a team relative clause"
+  },
+  {
+   "original": "Drafted the methods section of a grant proposal, which my advisor later rewrote.",
+   "rewrite": "Drafted the methods section of a funding proposal.",
+   "kind": "relabel drops another person's part",
+   "caught": "contract",
+   "case": "relabel from drops the advisor's part"
+  },
+  {
+   "original": "Processed over 200 tissue samples for histology.",
+   "rewrite": "Processed 200 tissue specimens for histology.",
+   "kind": "relabel drops an approximation",
+   "caught": "contract",
+   "case": "relabel from drops over"
+  },
+  {
+   "original": "Annotated about 40 hours of EEG recordings from a sleep study.",
+   "rewrite": "Annotated 40 hours of EEG data from a sleep study.",
+   "kind": "relabel drops an approximation",
+   "caught": "contract",
+   "case": "relabel from drops about"
+  },
+  {
+   "original": "Maintained the lab's zebrafish colony since March 2025 with two other undergraduates.",
+   "rewrite": "Maintained the lab's zebrafish husbandry in March 2025 with two other undergraduates.",
+   "kind": "relabel changes a duration (since -> in)",
+   "caught": "contract",
+   "case": "relabel from turns since into in"
+  },
+  {
+   "original": "Cleaned EEG recordings from 20 participants for a sleep study.",
+   "rewrite": "Cleaned EEG data for a sleep study.",
+   "kind": "relabel drops a number",
+   "caught": "contract",
+   "case": "relabel inside its source still keeps its number"
+  },
+  {
+   "original": "Trained an image classifier from starter code provided by the TA in CS 444.",
+   "rewrite": "Trained a convolutional image classifier in CS 444.",
+   "kind": "relabel drops another person's part",
+   "caught": "contract",
+   "case": "relabel from drops the TA's starter code"
+  },
+  {
+   "original": "Built a Python data pipeline based on my PI's earlier MATLAB scripts.",
+   "rewrite": "Built a reproducible Python data pipeline.",
+   "kind": "relabel drops another person's part",
+   "caught": "contract",
+   "case": "relabel from drops based on my PI's scripts"
+  },
+  {
+   "original": "Ran a data pipeline adapted from lab scripts to clean 300 survey files.",
+   "rewrite": "Ran a reproducible data pipeline to clean 300 survey files.",
+   "kind": "relabel drops another person's part",
+   "caught": "contract",
+   "case": "relabel inside its source still keeps adapted from"
+  },
+  {
+   "original": "Co-authoring a manuscript on electrolyte additives (in preparation).",
+   "rewrite": "Co-authoring a manuscript on battery electrolyte additives.",
+   "kind": "relabel drops a status",
+   "caught": "contract",
+   "case": "relabel from drops in preparation"
+  },
+  {
+   "original": "基于导师提供的代码训练了分类模型，并整理了实验记录。",
+   "rewrite": "训练了深度学习分类模型，并整理了实验记录。",
+   "kind": "relabel drops another person's part",
+   "caught": "contract",
+   "case": "zh relabel from drops 基于导师"
+  },
+  {
+   "original": "整理了约200份问卷数据并录入数据库。",
+   "rewrite": "整理了200份问卷调查数据并录入数据库。",
+   "kind": "relabel drops an approximation",
+   "caught": "contract",
+   "case": "zh relabel from drops 约"
+  },
+  {
+   "original": "参与师兄的小鼠行为实验，记录了旷场实验数据。",
+   "rewrite": "小鼠行为学实验，记录了旷场实验数据。",
+   "kind": "relabel drops another person's part",
+   "caught": "contract",
+   "case": "zh relabel from drops 参与师兄的"
+  },
+  {
+   "original": "Analyzed EEG recordings from 20 participants in a sleep study.",
+   "rewrite": "Analyzed my EEG data from 20 participants in a sleep study.",
+   "kind": "relabel adds a personal marker",
+   "caught": "contract",
+   "case": "relabel adds my"
+  },
+  {
+   "original": "Analyzed EEG recordings from 20 participants in a sleep study.",
+   "rewrite": "Analyzed just EEG data from 20 participants in a sleep study.",
+   "kind": "relabel adds a limit",
+   "caught": "contract",
+   "case": "relabel adds just"
+  },
+  {
+   "original": "与组员一起采集了水样并测定了浊度。",
+   "rewrite": "测定了浊度，本人采集了水样，与组员一起。",
+   "kind": "personal marker added to a team action",
+   "caught": "contract",
+   "case": "zh lead_with adds 本人 to a team action"
+  },
+  {
+   "original": "Analyzed EEG recordings for a sleep study.",
+   "rewrite": "For my sleep study, analyzed EEG recordings.",
+   "kind": "personal marker added",
+   "caught": "contract",
+   "case": "lead_with adds my to a setting"
+  },
+  {
+   "original": "为课题组的项目用 Python 分析了脑电数据。",
+   "rewrite": "Analyzed EEG data in Python for the project.",
+   "kind": "translation drops the team",
+   "caught": "language"
+  },
+  {
+   "original": "Helped a graduate student test about 40 water samples with qPCR",
+   "rewrite": "在饮用水研究课题中协助研究生用 qPCR 检测约 40 份水样。",
+   "kind": "translation adds a setting",
+   "caught": "language"
+  },
+  {
+   "original": "Helped a graduate student test about 40 water samples with qPCR",
+   "rewrite": "协助研究生用 qPCR 高效、严谨地检测约 40 份水样。",
+   "kind": "translation adds a quality claim",
+   "caught": "language"
+  },
+  {
+   "original": "用 Python 清洗了 200 份问卷数据。",
+   "rewrite": "Cleaned 200 survey responses in Python for a sleep study.",
+   "kind": "translation adds a setting",
+   "caught": "language"
+  },
+  {
+   "original": "整理了实验记录。",
+   "rewrite": "Thoroughly organized experiment records.",
+   "kind": "translation adds a quality claim",
+   "caught": "language"
+  },
+  {
+   "original": "用 Python 清洗了 200 份问卷数据并画了 3 张图。",
+   "rewrite": "Cleaned 200 survey responses in Python and drew 3 charts, relevant to data visualization.",
+   "kind": "translation appends relevance",
+   "caught": "language"
+  },
+  {
+   "original": "Co-wrote a conference paper on soft robots (accepted) and a journal manuscript on grippers (in preparation).",
+   "rewrite": "Co-wrote a journal manuscript on grippers (accepted) and a conference paper on soft robots (in preparation).",
+   "kind": "publication status moved to another work"
+  },
+  {
+   "original": "Submitted a poster on EEG artifacts to the 2025 SfN meeting and drafted a paper on sleep spindles (not yet submitted).",
+   "rewrite": "Drafted a paper on sleep spindles and submitted a poster on EEG artifacts to the 2025 SfN meeting (not yet submitted).",
+   "kind": "publication status moved to another work"
+  },
+  {
+   "original": "发表了一篇会议论文，另有一篇期刊论文撰写中。",
+   "rewrite": "期刊论文发表了一篇，另有一篇会议论文撰写中。",
+   "kind": "publication status moved to another work"
+  },
+  {
+   "original": "会议论文已录用，期刊论文撰写中。",
+   "rewrite": "期刊论文已录用，会议论文撰写中。",
+   "kind": "publication status moved to another work"
+  },
+  {
+   "original": "Tutored 30 students weekly since 2024 and graded exams in 2023.",
+   "rewrite": "Graded exams weekly since 2024 and tutored 30 students in 2023.",
+   "kind": "duration moved to another action"
+  },
+  {
+   "original": "与组员一起搭建了小车底盘，编写了电机控制程序。",
+   "rewrite": "与组员一起编写了电机控制程序，搭建了小车底盘。",
+   "kind": "team qualifier moved to another action"
+  },
+  {
+   "original": "Jointly designed the survey and analyzed the results.",
+   "rewrite": "Designed the survey and jointly analyzed the results.",
+   "kind": "team qualifier moved to another action"
+  },
+  {
+   "original": "Built the website with a friend; I wrote the backend in Flask.",
+   "rewrite": "Wrote the backend in Flask and built the website with a friend.",
+   "kind": "own part folded into the shared work",
+   "caught": "contract",
+   "case": "own part folded after shared work with a friend"
+  },
+  {
+   "original": "Ran titrations with my lab partner; I wrote the error analysis.",
+   "rewrite": "Wrote the error analysis and ran titrations with my lab partner.",
+   "kind": "own part folded into the shared work",
+   "caught": "contract",
+   "case": "own part folded after shared work with my lab partner"
+  },
+  {
+   "original": "Drafted the consent form for a planned EEG study on sleep.",
+   "rewrite": "Drafted the consent form for an EEG experiment on sleep.",
+   "kind": "relabel drops a planned status",
+   "caught": "contract",
+   "case": "relabel inside its source still keeps planned"
+  },
+  {
+   "original": "Formatted the references of a draft manuscript on soil microbes.",
+   "rewrite": "Formatted the references of a manuscript on soil microbiomes.",
+   "kind": "relabel drops a draft status",
+   "caught": "contract",
+   "case": "relabel inside its source still keeps draft"
+  },
+  {
+   "original": "整理了论文初稿的参考文献。",
+   "rewrite": "整理了学术论文的参考文献。",
+   "kind": "relabel drops a draft status",
+   "caught": "contract",
+   "case": "zh relabel inside its source still keeps 初稿"
+  },
+  {
+   "original": "Tested about 40 water samples with qPCR.",
+   "rewrite": "用 qPCR 检测了 40 份水样。",
+   "kind": "translation drops about on a count",
+   "caught": "language"
+  },
+  {
+   "original": "检测了约 40 份水样。",
+   "rewrite": "Tested 40 water samples.",
+   "kind": "translation drops 约",
+   "caught": "language"
+  },
+  {
+   "original": "2024 年起负责小鼠饲养。",
+   "rewrite": "Responsible for mouse husbandry in 2024.",
+   "kind": "translation turns since 2024 into in 2024",
+   "caught": "language"
+  },
+  {
+   "original": "参考开源教程搭建了数据管道。",
+   "rewrite": "Built the data pipeline.",
+   "kind": "translation drops the tutorial it was based on",
+   "caught": "language"
+  },
+  {
+   "original": "Co-authored a review of soil microbiome studies.",
+   "rewrite": "Authored a review article on soil microbiome studies.",
+   "kind": "relabel drops co-, the shared credit",
+   "caught": "contract",
+   "case": "relabel drops the co- of co-authored"
+  },
+  {
+   "original": "Co-developed a sentiment classifier for tweets.",
+   "rewrite": "Developed a sentiment analysis model for tweets.",
+   "kind": "relabel drops co-, the shared credit",
+   "caught": "contract",
+   "case": "relabel drops the co- of co-developed"
+  },
+  {
+   "original": "Analyzed co-recorded EEG recordings in MATLAB.",
+   "rewrite": "Analyzed EEG data in MATLAB.",
+   "kind": "relabel drops co-recorded",
+   "caught": "contract",
+   "case": "relabel drops co-recorded"
+  },
+  {
+   "original": "Co-developed a sentiment classifier for tweets.",
+   "rewrite": "开发了一个推文情感分类器。",
+   "kind": "translation drops co-, the shared credit",
+   "caught": "language"
+  },
+  {
+   "original": "Coauthored a review of soil microbiome studies.",
+   "rewrite": "撰写了一篇土壤微生物组研究的综述。",
+   "kind": "translation drops the co of coauthored",
+   "caught": "language"
+  },
+  {
+   "original": "Wrote a draft manuscript on sleep spindles.",
+   "rewrite": "撰写了一篇关于睡眠纺锤波的论文。",
+   "kind": "translation drops draft",
+   "caught": "language"
+  },
+  {
+   "original": "Designed a planned EEG study with 20 participants.",
+   "rewrite": "设计了一项有 20 名参与者的 EEG 研究。",
+   "kind": "translation drops planned",
+   "caught": "language"
+  },
+  {
+   "original": "Drafted the consent form for a planned EEG study on sleep.",
+   "rewrite": "起草了一项睡眠 EEG 研究的知情同意书。",
+   "kind": "translation drops planned",
+   "caught": "language"
+  },
+  {
+   "original": "Wrote the methods section of a proposed NSF grant.",
+   "rewrite": "撰写了一份 NSF 基金的方法部分。",
+   "kind": "translation drops proposed from a grant",
+   "caught": "language"
+  },
+  {
+   "original": "Analyzed unpublished RNA-seq data from 12 mice.",
+   "rewrite": "分析了 12 只小鼠的 RNA-seq 数据。",
+   "kind": "translation drops unpublished",
+   "caught": "language"
+  },
+  {
+   "original": "Maintained an in-progress dashboard of lab inventory.",
+   "rewrite": "维护了一个实验室库存仪表板。",
+   "kind": "translation drops in-progress",
+   "caught": "language"
+  },
+  {
+   "original": "Designed a planned EEG study with 20 participants.",
+   "rewrite": "设计了一项正在进行的、有 20 名参与者的 EEG 研究。",
+   "kind": "translation turns a planned study into an ongoing one",
+   "caught": "language"
+  },
+  {
+   "original": "撰写了论文初稿。",
+   "rewrite": "Wrote a paper.",
+   "kind": "translation drops 初稿",
+   "caught": "language"
+  },
+  {
+   "original": "完成了实验方案草稿。",
+   "rewrite": "Completed the experiment protocol.",
+   "kind": "translation drops 草稿",
+   "caught": "language"
+  },
+  {
+   "original": "智能温室监测系统开发中，负责传感器数据采集。",
+   "rewrite": "Developed a smart greenhouse monitoring system and collected sensor data.",
+   "kind": "translation states 开发中 as finished",
+   "caught": "language"
+  },
+  {
+   "original": "预定于 2026 年 5 月开展 30 人的睡眠研究。",
+   "rewrite": "Ran a 30-person sleep study in May 2026.",
+   "kind": "translation states a scheduled study as run",
+   "caught": "language"
+  },
+  {
+   "original": "校园导航 App 测试中，已招募 20 名测试用户。",
+   "rewrite": "Tested a campus navigation App and recruited 20 test users.",
+   "kind": "translation states 测试中 as finished",
+   "caught": "language"
+  },
+  {
+   "original": "一项传感器专利申请中。",
+   "rewrite": "Applied for a sensor patent.",
+   "kind": "translation drops 申请中",
+   "caught": "language"
+  },
+  {
+   "original": "论文即将发表于 CHI 2026。",
+   "rewrite": "Published a paper at CHI 2026.",
+   "kind": "translation states 即将发表 as published",
+   "caught": "language"
+  },
+  {
+   "original": "论文将于 2026 年发表。",
+   "rewrite": "Published the paper in 2026.",
+   "kind": "translation states 将于 as published",
+   "caught": "language"
+  },
+  {
+   "original": "智能温室监测系统开发中，负责传感器数据采集。",
+   "rewrite": "智能温室环境监测系统开发，负责传感器数据采集。",
+   "kind": "relabel drops 开发中",
+   "caught": "contract",
+   "case": "zh relabel drops 开发中"
+  },
+  {
+   "original": "睡眠问卷数据分析中，已清洗 200 份问卷。",
+   "rewrite": "睡眠问卷统计数据分析，已清洗 200 份问卷。",
+   "kind": "relabel drops 分析中",
+   "caught": "contract",
+   "case": "zh relabel drops 分析中"
+  },
+  {
+   "original": "实验记录整理中，已录入 30 份。",
+   "rewrite": "实验数据记录整理，已录入 30 份。",
+   "kind": "relabel drops 整理中",
+   "caught": "contract",
+   "case": "zh relabel drops 整理中"
+  },
+  {
+   "original": "脑电数据采集中，已招募 12 名被试。",
+   "rewrite": "脑电信号数据采集，已招募 12 名被试。",
+   "kind": "relabel drops 采集中",
+   "caught": "contract",
+   "case": "zh relabel drops 采集中"
+  },
+  {
+   "original": "编写了即将采集的脑电记录的命名规则。",
+   "rewrite": "编写了脑电数据的命名规则。",
+   "kind": "relabel drops 即将",
+   "caught": "contract",
+   "case": "zh relabel drops 即将"
+  },
+  {
+   "original": "Wrote documentation for a work-in-progress Python package for EEG.",
+   "rewrite": "Wrote documentation for a Python toolkit for EEG.",
+   "kind": "relabel drops work-in-progress",
+   "caught": "contract",
+   "case": "relabel drops work-in-progress"
+  },
+  {
+   "original": "Wrote documentation for an in-progress Python package for EEG preprocessing.",
+   "rewrite": "Wrote documentation for a Python toolkit for EEG preprocessing.",
+   "kind": "relabel drops in-progress",
+   "caught": "contract",
+   "case": "relabel drops in-progress"
+  },
+  {
+   "original": "Built a prototype soft gripper for fruit picking.",
+   "rewrite": "Built a soft robotic gripper for fruit picking.",
+   "kind": "relabel drops prototype",
+   "caught": "contract",
+   "case": "relabel drops prototype"
+  },
+  {
+   "original": "Trained a classifier on simulated EEG signals.",
+   "rewrite": "Trained a classifier on EEG recordings.",
+   "kind": "relabel turns simulated signals into recordings",
+   "caught": "contract",
+   "case": "relabel drops simulated"
+  },
+  {
+   "original": "Analyzed mock clinical trial data in R.",
+   "rewrite": "Analyzed clinical trial datasets in R.",
+   "kind": "relabel drops mock",
+   "caught": "contract",
+   "case": "relabel drops mock"
+  },
+  {
+   "original": "Presented preliminary results on zebrafish fin regeneration.",
+   "rewrite": "Presented experimental results on zebrafish fin regeneration.",
+   "kind": "relabel drops preliminary",
+   "caught": "contract",
+   "case": "relabel drops preliminary"
+  },
+  {
+   "original": "Shared a WIP data-cleaning guide with the lab.",
+   "rewrite": "Shared a data-cleaning documentation guide with the lab.",
+   "kind": "relabel drops WIP",
+   "caught": "contract",
+   "case": "relabel drops WIP"
+  },
+  {
+   "original": "Recruited 12 participants for a pilot sleep study.",
+   "rewrite": "Recruited 12 participants for a sleep deprivation study.",
+   "kind": "relabel drops pilot",
+   "caught": "contract",
+   "case": "relabel drops pilot"
+  },
+  {
+   "original": "Trained a classifier on synthetic patient records.",
+   "rewrite": "Trained a classifier on electronic health records.",
+   "kind": "relabel turns synthetic records into health records",
+   "caught": "contract",
+   "case": "relabel drops synthetic"
+  },
+  {
+   "original": "搭建了一个软体夹爪原型。",
+   "rewrite": "搭建了一个软体机器人夹爪。",
+   "kind": "relabel drops 原型",
+   "caught": "contract",
+   "case": "zh relabel drops 原型"
+  },
+  {
+   "original": "分析了仿真脑电信号。",
+   "rewrite": "分析了脑电数据。",
+   "kind": "relabel turns simulated signals into data",
+   "caught": "contract",
+   "case": "zh relabel drops 仿真"
+  },
+  {
+   "original": "汇报了斑马鱼鳍再生的初步结果。",
+   "rewrite": "汇报了斑马鱼鳍再生的实验结果。",
+   "kind": "relabel drops 初步",
+   "caught": "contract",
+   "case": "zh relabel drops 初步"
+  },
+  {
+   "original": "Built the website with a friend. My part was writing the backend in Flask.",
+   "rewrite": "Wrote the backend in Flask and built the website with a friend.",
+   "kind": "own part folded after a capitalised My",
+   "caught": "contract",
+   "case": "own part folded after a sentence that starts with My"
+  },
+  {
+   "original": "Drafted the methods section, which was later revised.",
+   "rewrite": "撰写了方法部分。",
+   "kind": "translation drops a revision someone else made",
+   "caught": "language"
+  },
+  {
+   "original": "Wrote the outreach blog post, edited by the lab manager.",
+   "rewrite": "撰写了外展博客文章。",
+   "kind": "translation drops an edit by someone else",
+   "caught": "language"
+  },
+  {
+   "original": "Labeled roughly segmented MRI scans for the lab.",
+   "rewrite": "Labeled MRI segmentations for the lab.",
+   "kind": "relabel drops roughly",
+   "caught": "contract",
+   "case": "relabel drops roughly before a word"
+  },
+  {
+   "original": "Labeled roughly segmented MRI scans.",
+   "rewrite": "标注了分割好的 MRI 扫描图。",
+   "kind": "translation drops roughly",
+   "caught": "language"
+  },
+  {
+   "original": "Proofread the revised grant proposal for the lab.",
+   "rewrite": "Proofread the funding proposal for the lab.",
+   "kind": "relabel drops a revised version",
+   "caught": "contract",
+   "case": "relabel drops a revised version"
+  },
+  {
+   "original": "Developing a Flask dashboard for the lab's sample inventory.",
+   "rewrite": "为实验室的样本库存开发了一个 Flask 仪表板。",
+   "kind": "translation states a progressive line finished",
+   "caught": "language"
+  },
+  {
+   "original": "Building a weather station with an Arduino.",
+   "rewrite": "已用 Arduino 搭建一个气象站。",
+   "kind": "translation states a progressive build finished",
+   "caught": "language"
+  },
+  {
+   "original": "Tested water samples from the campus pond over a year.",
+   "rewrite": "检测了校园池塘的水样。",
+   "kind": "translation drops over a year",
+   "caught": "language"
+  },
+  {
+   "original": "Developing a Flask dashboard for the lab's sample inventory, used by 5 lab members.",
+   "rewrite": "为实验室的样本库存开发了一个 Flask 仪表板，目前有 5 名实验室成员使用。",
+   "kind": "translation finishes a progressive build beside 目前",
+   "caught": "language"
+  },
+  {
+   "original": "Developing a website for the lab.",
+   "rewrite": "为实验室开发了网站，目前已上线。",
+   "kind": "translation finishes a progressive build beside 目前已上线",
+   "caught": "language"
+  },
+  {
+   "original": "Building a weather station with an Arduino for the campus garden.",
+   "rewrite": "用 Arduino 为校园花园搭建了一个气象站，预计明年扩建。",
+   "kind": "translation finishes a progressive build beside 预计",
+   "caught": "language"
+  },
+  {
+   "original": "Developing a website; wrote a review.",
+   "rewrite": "开发了网站；正在撰写综述。",
+   "kind": "translation moves under way from one work to the other",
+   "caught": "language"
+  },
+  {
+   "original": "Developing a Flask dashboard for the lab's sample inventory and its user guide.",
+   "rewrite": "已为实验室的样本库存开发 Flask 仪表板，正在编写其使用指南。",
+   "kind": "translation finishes a progressive build with 已 beside 正在",
+   "caught": "language"
+  },
+  {
+   "original": "Developing a Flask dashboard for the lab's sample inventory.",
+   "rewrite": "为实验室的样本库存开发了一个 Flask 仪表板，目前已投入使用。",
+   "kind": "translation finishes a progressive build beside 目前已投入使用",
+   "caught": "language"
+  },
+  {
+   "original": "Currently developing a Flask dashboard for the lab.",
+   "rewrite": "目前为实验室开发了一个 Flask 仪表板。",
+   "kind": "translation finishes a currently-led progressive build",
+   "caught": "language"
+  },
+  {
+   "original": "Also developing a Flask dashboard for the lab.",
+   "rewrite": "还为实验室开发了一个 Flask 仪表板。",
+   "kind": "translation finishes an also-led progressive build",
+   "caught": "language"
+  },
+  {
+   "original": "Lab website under development.",
+   "rewrite": "实验室网站目前已上线。",
+   "kind": "translation finishes work under development beside 目前",
+   "caught": "language"
+  },
+  {
+   "original": "正在开发并测试实验室网站。",
+   "rewrite": "Developing the lab website; tested it.",
+   "kind": "translation finishes a verb 正在 governs",
+   "caught": "language"
+  },
+  {
+   "original": "正在开发 Flask 仪表板并编写使用指南。",
+   "rewrite": "Developing a Flask dashboard; wrote its user guide.",
+   "kind": "translation finishes the second verb 正在 governs",
+   "caught": "language"
+  },
+  {
+   "original": "正在开发并测试实验室网站。",
+   "rewrite": "Currently developing the lab website; tested it.",
+   "kind": "translation finishes a verb 正在 governs beside Currently",
+   "caught": "language"
+  },
+  {
+   "original": "Developing a website; wrote a review.",
+   "rewrite": "目前开发了网站；撰写了综述。",
+   "kind": "translation finishes a progressive build in a clause led by 目前",
+   "caught": "language"
+  },
+  {
+   "original": "Developing a website for the lab.",
+   "rewrite": "目前为实验室开发网站，已上线。",
+   "kind": "translation finishes a progressive build beside a done mark",
+   "caught": "language"
+  },
+  {
+   "original": "Developing a website; wrote a review.",
+   "rewrite": "撰写综述；开发了网站。",
+   "kind": "translation swaps under way and finished between two works",
+   "caught": "language"
+  },
+  {
+   "original": "Developing a website for the lab.",
+   "rewrite": "为实验室开发网站，预计明年上线。",
+   "kind": "translation adds an expected status to a progressive line",
+   "caught": "language"
+  },
+  {
+   "original": "Testing the lab dashboard.",
+   "rewrite": "测试开发中的实验室仪表板。",
+   "kind": "translation adds an in-development status to a thing",
+   "caught": "language"
+  },
+  {
+   "original": "Planned to survey 50 users in May 2026.",
+   "rewrite": "计划于 2026 年 5 月调查了 50 名用户。",
+   "kind": "translation finishes planned-to work",
+   "caught": "language"
+  },
+  {
+   "original": "A planned sleep study with 30 participants.",
+   "rewrite": "一项有 30 名参与者的计划中的睡眠研究已开展。",
+   "kind": "translation finishes a planned study",
+   "caught": "language"
+  },
+  {
+   "original": "Lab website under development, used by 5 lab members.",
+   "rewrite": "实验室网站目前已上线，已有 5 名实验室成员使用。",
+   "kind": "translation finishes work under development beside a participle with its agent",
+   "caught": "language"
+  },
+  {
+   "original": "Interested in robotics; hoping to build a rover.",
+   "rewrite": "对机器人感兴趣，已开始制作漫游车。",
+   "kind": "translation starts hoped-for work",
+   "caught": "language"
+  },
+  {
+   "original": "在王老师指导下智能温室系统开发中。",
+   "rewrite": "Developed a smart greenhouse system under Prof. Wang's guidance.",
+   "kind": "translation finishes 开发中 that a long 在 phrase precedes",
+   "caught": "language"
+  },
+  {
+   "original": "Drafted the lab report; Sam revised it.",
+   "rewrite": "撰写了实验报告。",
+   "kind": "translation drops another person's revision",
+   "caught": "language"
+  },
+  {
+   "original": "Wrote the club newsletter, and Sam edited it.",
+   "rewrite": "撰写了社团通讯。",
+   "kind": "translation drops another person's edit",
+   "caught": "language"
+  },
+  {
+   "original": "Built the parser; Priya rewrote the tokenizer.",
+   "rewrite": "编写了解析器。",
+   "kind": "translation drops another person's rewrite",
+   "caught": "language"
+  },
+  {
+   "original": "Drafted the proposal, which Sam and I revised.",
+   "rewrite": "起草了提案。",
+   "kind": "translation drops a revision shared with another person",
+   "caught": "language"
+  },
+  {
+   "original": "Ran less than nineteen PCR reactions for the genotyping study.",
+   "rewrite": "Ran nineteen PCR assays for the genotyping study.",
+   "kind": "relabel drops less than",
+   "caught": "contract",
+   "case": "relabel drops less than before nineteen"
+  },
+  {
+   "original": "Recruited about sixteen participants for the sleep study.",
+   "rewrite": "Recruited sixteen subjects for the sleep study.",
+   "kind": "relabel drops about",
+   "caught": "contract",
+   "case": "relabel drops about before sixteen"
+  },
+  {
+   "original": "Surveyed under several dozen students for the club.",
+   "rewrite": "Surveyed several dozen respondents for the club.",
+   "kind": "relabel drops under",
+   "caught": "contract",
+   "case": "relabel drops under before several dozen"
+  },
+  {
+   "original": "Gave a talk about sleep spindles to the lab.",
+   "rewrite": "Gave a sleep spindle talk to the lab.",
+   "kind": "relabel drops about in any use",
+   "caught": "contract",
+   "case": "relabel drops about as a preposition"
+  },
+  {
+   "original": "Cut query latency by up to an order of magnitude.",
+   "rewrite": "将查询延迟降低了一个数量级。",
+   "kind": "translation drops up to before an order of magnitude",
+   "caught": "language"
+  },
+  {
+   "original": "Made the parser about twice as fast.",
+   "rewrite": "使解析器的速度提高了一倍。",
+   "kind": "translation drops about before twice",
+   "caught": "language"
+  },
+  {
+   "original": "Recruited about sixteen participants for the pilot.",
+   "rewrite": "为预实验招募了十六名参与者。",
+   "kind": "translation drops about before sixteen",
+   "caught": "language"
+  },
+  {
+   "original": "Surveyed under several dozen students.",
+   "rewrite": "调查了几十名学生。",
+   "kind": "translation drops under before several dozen",
+   "caught": "language"
+  },
+  {
+   "original": "Tested water samples from the campus pond over many months.",
+   "rewrite": "检测了校园池塘的水样。",
+   "kind": "translation drops over before many months",
+   "caught": "language"
+  },
+  {
+   "original": "Sped up the parser by about a factor of 3.",
+   "rewrite": "将解析器的速度提高了 3 倍。",
+   "kind": "translation drops about before a factor",
+   "caught": "language"
+  },
+  {
+   "original": "Wrote draft manuscripts on sleep spindles.",
+   "rewrite": "撰写了关于睡眠纺锤波的论文。",
+   "kind": "translation drops the noun draft",
+   "caught": "language"
+  },
+  {
+   "original": "Co-wrote a review of soil microbiome studies.",
+   "rewrite": "撰写了一篇土壤微生物组研究综述。",
+   "kind": "translation drops co-wrote",
+   "caught": "language"
+  },
+  {
+   "original": "合写了一篇土壤微生物组研究综述。",
+   "rewrite": "Wrote a review of soil microbiome studies.",
+   "kind": "translation drops 合写",
+   "caught": "language"
+  },
+  {
+   "original": "将在 SfN 2026 上展示关于睡眠纺锤波的海报。",
+   "rewrite": "Presented a poster on sleep spindles at SfN 2026.",
+   "kind": "translation drops 将在",
+   "caught": "language"
+  },
+  {
+   "original": "Methods section of a sleep paper (draft).",
+   "rewrite": "睡眠论文的方法部分。",
+   "kind": "translation drops a bracketed draft",
+   "caught": "language"
+  },
+  {
+   "original": "正在开发实验室网站。",
+   "rewrite": "Developing the lab website; homepage launched.",
+   "kind": "translation launches a page the Chinese has under way",
+   "caught": "language"
+  },
+  {
+   "original": "Lab website under development; release expected next month.",
+   "rewrite": "实验室网站目前已上线。",
+   "kind": "translation finishes work beside an expected release",
+   "caught": "language"
+  },
+  {
+   "original": "Lab website under development; homepage planned.",
+   "rewrite": "实验室网站目前已上线。",
+   "kind": "translation finishes work beside a planned homepage",
+   "caught": "language"
+  },
+  {
+   "original": "Manuscript on sleep spindles in preparation; submission expected Dec 2026.",
+   "rewrite": "关于睡眠纺锤波的论文撰写中，已于 2026 年 12 月投稿。",
+   "kind": "translation submits a manuscript whose submission is expected",
+   "caught": "language"
+  },
+  {
+   "original": "Weather station under construction; completion expected this spring.",
+   "rewrite": "气象站搭建中，已于今年春季完工。",
+   "kind": "translation completes a station whose completion is expected",
+   "caught": "language"
+  },
+  {
+   "original": "正在开发一种土壤传感器。",
+   "rewrite": "Developing a soil sensor; method patented.",
+   "kind": "translation adds a finished headline the Chinese line has under way",
+   "caught": "language"
+  },
+  {
+   "original": "Developing a website; wrote a review.",
+   "rewrite": "目前，开发了网站；撰写了综述。",
+   "kind": "translation finishes a progressive line after a lone 目前 and a comma",
+   "caught": "language"
+  },
+  {
+   "original": "Developing a website; wrote a review.",
+   "rewrite": "目前：开发了网站；撰写了综述。",
+   "kind": "translation finishes a progressive line after a lone 目前 and a colon",
+   "caught": "language"
+  },
+  {
+   "original": "Developing a website; wrote a review.",
+   "rewrite": "本人目前，开发了网站，撰写了综述。",
+   "kind": "translation finishes a progressive line after 本人目前 and a comma",
+   "caught": "language"
+  },
+  {
+   "original": "Developing a website for the lab; wrote a review.",
+   "rewrite": "项目进行中，为实验室开发了网站；撰写了一篇综述。",
+   "kind": "translation finishes a progressive line after 项目进行中",
+   "caught": "language"
+  },
+  {
+   "original": "Developing a website; wrote a review.",
+   "rewrite": "目前，开发了网站；撰写综述。",
+   "kind": "translation moves the done mark to the verb after a lone 目前",
+   "caught": "language"
+  },
+  {
+   "original": "Developing a website for the lab; wrote a review.",
+   "rewrite": "项目进行中，为实验室开发了网站；撰写综述。",
+   "kind": "translation moves the done mark to the verb after 项目进行中",
+   "caught": "language"
+  },
+  {
+   "original": "Developing a website; wrote a review.",
+   "rewrite": "正在进行中：开发了网站；撰写综述。",
+   "kind": "translation moves the done mark to the verb after 正在进行中",
+   "caught": "language"
+  },
+  {
+   "original": "Developing a website for the lab; wrote a review.",
+   "rewrite": "目前在实验室，开发了网站并撰写了一篇综述。",
+   "kind": "translation marks two parts done beside one finished clause",
+   "caught": "language"
+  },
+  {
+   "original": "Lab website under development; homepage launched.",
+   "rewrite": "实验室网站开发中，后台已完成，主页已上线。",
+   "kind": "translation marks two parts done beside one finished headline",
+   "caught": "language"
+  },
+  {
+   "original": "Developing a website for the lab; wrote a review.",
+   "rewrite": "目前正在开发中，为实验室开发了网站；撰写综述。",
+   "kind": "translation moves the done mark to the verb after 目前正在开发中",
+   "caught": "language"
+  },
+  {
+   "original": "Fine-tuning a BERT model on 5,000 tweets for sentiment analysis.",
+   "rewrite": "为情感分析在 5,000 条推文上微调了一个 BERT 模型。",
+   "kind": "translation finishes a progressive line led by a verb the list does not know (Fine-tuning)",
+   "caught": "language"
+  },
+  {
+   "original": "Scraping 2,000 job postings for a labor-market study.",
+   "rewrite": "为劳动力市场研究爬取了 2,000 条招聘信息。",
+   "kind": "translation finishes a progressive line led by a verb the list does not know (Scraping)",
+   "caught": "language"
+  },
+  {
+   "original": "Wiring 3 soil sensors to an Arduino logger for the campus garden.",
+   "rewrite": "为校园花园将 3 个土壤传感器连接到了 Arduino 记录器。",
+   "kind": "translation finishes a progressive line led by a verb the list does not know (Wiring)",
+   "caught": "language"
+  },
+  {
+   "original": "Proofreading a 40-page grant proposal for the lab.",
+   "rewrite": "为实验室校对了一份 40 页的基金申请书。",
+   "kind": "translation finishes a progressive line led by a verb the list does not know (Proofreading)",
+   "caught": "language"
+  },
+  {
+   "original": "Fine-tuning a BERT model on 5,000 tweets for sentiment analysis.",
+   "rewrite": "Sentiment analysis: fine-tuned a BERT model on 5,000 tweets.",
+   "kind": "reorder finishes a line led by a verb the list does not know"
+  },
+  {
+   "original": "Wiring 3 soil sensors to an Arduino logger for the campus garden.",
+   "rewrite": "Campus garden: wired 3 soil sensors to an Arduino logger.",
+   "kind": "reorder finishes a line led by a verb the list does not know"
+  },
+  {
+   "original": "Developing a Flask dashboard for the lab.",
+   "rewrite": "为实验室开发过一个 Flask 仪表板。",
+   "kind": "translation finishes a progressive line with 过",
+   "caught": "language"
+  },
+  {
+   "original": "Developing a Flask dashboard for the lab.",
+   "rewrite": "曾为实验室开发一个 Flask 仪表板。",
+   "kind": "translation finishes a progressive line with 曾",
+   "caught": "language"
+  },
+  {
+   "original": "Developing a Flask dashboard for the lab.",
+   "rewrite": "为实验室开发出一个 Flask 仪表板。",
+   "kind": "translation finishes a progressive line with a result verb",
+   "caught": "language"
+  },
+  {
+   "original": "Developing a Flask dashboard for the lab.",
+   "rewrite": "为实验室的 Flask 仪表板开发完毕。",
+   "kind": "translation finishes a progressive line with 完毕",
+   "caught": "language"
+  },
+  {
+   "original": "Building a weather station for the campus garden.",
+   "rewrite": "为校园花园建成一个气象站。",
+   "kind": "translation finishes a progressive line with 建成",
+   "caught": "language"
+  },
+  {
+   "original": "Developing a website for the lab.",
+   "rewrite": "为实验室开发网站并正式上线。",
+   "kind": "translation finishes a progressive line with 上线",
+   "caught": "language"
+  },
+  {
+   "original": "Developing a website for the lab.",
+   "rewrite": "为实验室开发的网站投入使用。",
+   "kind": "translation finishes a progressive line with 投入使用",
+   "caught": "language"
+  },
+  {
+   "original": "Developing a website for the lab.",
+   "rewrite": "为实验室开发好网站。",
+   "kind": "translation finishes a progressive line with 好",
+   "caught": "language"
+  },
+  {
+   "original": "Writing my senior thesis.",
+   "rewrite": "毕业论文定稿。",
+   "kind": "translation finishes a thesis under way with 定稿",
+   "caught": "language"
+  },
+  {
+   "original": "正在撰写毕业论文。",
+   "rewrite": "Writing my senior thesis; it is now complete.",
+   "kind": "translation calls work under 正在 now complete",
+   "caught": "language"
+  },
+  {
+   "original": "正在为实验室开发网站。",
+   "rewrite": "Developing a website for the lab, which was launched in March.",
+   "kind": "translation calls work under 正在 launched in a relative clause",
+   "caught": "language"
+  },
+  {
+   "original": "正在为实验室开发网站。",
+   "rewrite": "Developing a website for the lab; already online.",
+   "kind": "translation calls work under 正在 already online",
+   "caught": "language"
+  },
+  {
+   "original": "Developing a website; wrote a review.",
+   "rewrite": "目前开发好网站；撰写综述。",
+   "kind": "translation moves a 好 done mark onto the leading verb",
+   "caught": "language"
+  },
+  {
+   "original": "Developing a website for the lab.",
+   "rewrite": "正在为实验室开发网站，主页上线。",
+   "kind": "translation launches a homepage beside a progressive line",
+   "caught": "language"
+  },
+  {
+   "original": "Lab website under development; release expected next month.",
+   "rewrite": "实验室网站目前已上线，预计下月正式发布。",
+   "kind": "translation finishes work beside an expected release it keeps",
+   "caught": "language"
+  },
+  {
+   "original": "Manuscript on sleep spindles in preparation; submission expected Dec 2026.",
+   "rewrite": "关于睡眠纺锤波的论文已完成，预计 2026 年 12 月投稿。",
+   "kind": "translation finishes a manuscript beside an expected submission it keeps",
+   "caught": "language"
+  },
+  {
+   "original": "即将在 SfN 2026 上展示关于睡眠纺锤波的海报，目前在准备摘要。",
+   "rewrite": "Presented a poster on sleep spindles at SfN 2026; currently preparing the abstract.",
+   "kind": "translation drops a status word still to come beside another one (即将)",
+   "caught": "language"
+  },
+  {
+   "original": "论文将于下月发表，目前在修改终稿。",
+   "rewrite": "Published the paper; currently revising the final version.",
+   "kind": "translation drops a status word still to come beside another one (将于)",
+   "caught": "language"
+  },
+  {
+   "original": "预计 2026 年 6 月完成毕业论文，目前在分析数据。",
+   "rewrite": "Completed the thesis in June 2026; currently analyzing the data.",
+   "kind": "translation drops a status word still to come beside another one (预计)",
+   "caught": "language"
+  },
+  {
+   "original": "将在校园科技节上展示气象站，目前在调试传感器。",
+   "rewrite": "Showcased the weather station at the campus tech fair; currently debugging the sensors.",
+   "kind": "translation drops a status word still to come beside another one (将在)",
+   "caught": "language"
+  },
+  {
+   "original": "论文即将发表，第二篇仍在撰写。",
+   "rewrite": "Published a paper; a second one is in progress.",
+   "kind": "translation drops a status word still to come beside another one (即将 beside 仍在)",
+   "caught": "language"
+  },
+  {
+   "original": "Will present a poster at SfN 2026; currently preparing the abstract.",
+   "rewrite": "在 SfN 2026 上展示海报；目前正在准备摘要。",
+   "kind": "translation drops a status word still to come beside another one (will)",
+   "caught": "language"
+  },
+  {
+   "original": "论文将于 5 月发表，目前正在准备答辩。",
+   "rewrite": "目前正在准备答辩，论文于 5 月发表。",
+   "kind": "reorder drops 将于 beside 目前正在",
+   "caught": "contract",
+   "case": "ZH lead_with drops 将于 beside 目前正在"
+  },
+  {
+   "original": "将在 SfN 2026 上展示海报，目前在准备摘要。",
+   "rewrite": "目前在准备摘要，在 SfN 2026 上展示海报。",
+   "kind": "reorder drops 将在 beside 目前",
+   "caught": "contract",
+   "case": "ZH lead_with drops 将在 beside 目前"
+  },
+  {
+   "original": "Designed an online survey on sleep with three other students (PSYC 238).",
+   "rewrite": "设计了一份关于睡眠的在线问卷（PSYC 238）。",
+   "kind": "translation drops three other students",
+   "caught": "language"
+  },
+  {
+   "original": "Sorted 500 cans of food alongside two other volunteers.",
+   "rewrite": "分拣了 500 罐食物。",
+   "kind": "translation drops two other volunteers",
+   "caught": "language"
+  },
+  {
+   "original": "参与了 40 份水样的 qPCR 检测。",
+   "rewrite": "Ran qPCR tests on 40 water samples.",
+   "kind": "translation drops 参与",
+   "caught": "language"
+  },
+  {
+   "original": "参与了脑电数据的分析。",
+   "rewrite": "Analyzed the EEG data.",
+   "kind": "translation drops 参与 before an analysis",
+   "caught": "language"
+  },
+  {
+   "original": "Participated in the analysis of 40 water samples.",
+   "rewrite": "分析了 40 份水样。",
+   "kind": "translation drops participated in",
+   "caught": "language"
+  },
+  {
+   "original": "Contributed to the design of a soil sensor.",
+   "rewrite": "设计了一个土壤传感器。",
+   "kind": "translation drops contributed to",
+   "caught": "language"
+  },
+  {
+   "original": "Involved in collecting 200 survey responses.",
+   "rewrite": "收集了 200 份问卷回复。",
+   "kind": "translation drops involved in",
+   "caught": "language"
+  },
+  {
+   "original": "Took part in testing 40 water samples for lead.",
+   "rewrite": "检测了 40 份水样的铅含量。",
+   "kind": "translation drops took part in",
+   "caught": "language"
+  },
+  {
+   "original": "Designed a sleep survey with three other students for PSYC 238.",
+   "rewrite": "Designed a sleep questionnaire for PSYC 238.",
+   "kind": "relabel drops three other students",
+   "caught": "contract",
+   "case": "relabel drops three other students"
+  },
+  {
+   "original": "Cleaned the sales dataset with fellow interns in Excel.",
+   "rewrite": "Cleaned the sales data records in Excel.",
+   "kind": "relabel drops fellow interns",
+   "caught": "contract",
+   "case": "relabel drops fellow interns"
+  },
+  {
+   "original": "Participated in the analysis of EEG data.",
+   "rewrite": "Analysis of EEG recordings.",
+   "kind": "relabel drops participated in",
+   "caught": "contract",
+   "case": "relabel drops participated in"
+  },
+  {
+   "original": "参与了脑电数据分析。",
+   "rewrite": "脑电信号分析。",
+   "kind": "ZH relabel drops 参与",
+   "caught": "contract",
+   "case": "ZH relabel drops 参与"
+  },
+  {
+   "original": "协助研究生检测了近 40 份水样。",
+   "rewrite": "Helped a graduate student test 40 water samples.",
+   "kind": "translation drops 近 before a number",
+   "caught": "language"
+  },
+  {
+   "original": "Recruited 40 participants for the sleep study.",
+   "rewrite": "为睡眠研究招募了 40 余名参与者。",
+   "kind": "translation adds 余 after a number",
+   "caught": "language"
+  },
+  {
+   "original": "Recruited 40 participants for the sleep study.",
+   "rewrite": "为睡眠研究招募了 40 多名参与者。",
+   "kind": "translation adds 多 after a number",
+   "caught": "language"
+  },
+  {
+   "original": "Annotated ~300 images for the gesture dataset.",
+   "rewrite": "为手势数据集标注了 300 张图像。",
+   "kind": "translation drops a tilde",
+   "caught": "language"
+  },
+  {
+   "original": "Labeled fewer than 300 images for the gesture dataset.",
+   "rewrite": "为手势数据集标注了 300 张图像。",
+   "kind": "translation drops fewer than",
+   "caught": "language"
+  },
+  {
+   "original": "访谈了 30 余位农民。",
+   "rewrite": "Interviewed 30 farmers.",
+   "kind": "translation drops 余",
+   "caught": "language"
+  },
+  {
+   "original": "Tested 40 or so water samples with qPCR.",
+   "rewrite": "用 qPCR 检测了 40 份水样。",
+   "kind": "translation drops or so",
+   "caught": "language"
+  },
+  {
+   "original": "Interviewed some 30 farmers about irrigation.",
+   "rewrite": "就灌溉问题访谈了 30 位农民。",
+   "kind": "translation drops some before a number",
+   "caught": "language"
+  },
+  {
+   "original": "Reached 90% accuracy on the test set.",
+   "rewrite": "在测试集上的准确率达到 90% 以上。",
+   "kind": "translation adds 以上",
+   "caught": "language"
+  },
+  {
+   "original": "Reached an estimated 2,000 readers with the club newsletter.",
+   "rewrite": "社团通讯覆盖了 2,000 名读者。",
+   "kind": "translation drops an estimated",
+   "caught": "language"
+  },
+  {
+   "original": "Surveyed 200-odd students.",
+   "rewrite": "调查了 200 名学生。",
+   "kind": "translation drops -odd",
+   "caught": "language"
+  },
+  {
+   "original": "Surveyed 200+ students.",
+   "rewrite": "调查了 200 名学生。",
+   "kind": "translation drops a trailing plus",
+   "caught": "language"
+  },
+  {
+   "original": "Recruited 40 participants for the sleep study.",
+   "rewrite": "Sleep study: recruited 40+ participants.",
+   "kind": "lead_with adds a plus to a number",
+   "caught": "contract",
+   "case": "lead_with adds a plus to a number"
+  },
+  {
+   "original": "Trained a classifier that reached 90% accuracy on the test set.",
+   "rewrite": "Test set: trained a classifier that reached >90% accuracy.",
+   "kind": "lead_with adds a greater-than sign",
+   "caught": "contract",
+   "case": "lead_with adds a greater-than sign"
+  },
+  {
+   "original": "Reduced query latency to 50 ms for the lab dashboard.",
+   "rewrite": "Lab dashboard: reduced query latency to <50 ms.",
+   "kind": "lead_with adds a less-than sign",
+   "caught": "contract",
+   "case": "lead_with adds a less-than sign"
+  },
+  {
+   "original": "Annotated ~300 images for the gesture dataset.",
+   "rewrite": "Gesture dataset: annotated 300 images.",
+   "kind": "lead_with drops a tilde",
+   "caught": "contract",
+   "case": "lead_with drops a tilde"
+  },
+  {
+   "original": "Kept sensor uptime ≥99% for the campus weather station.",
+   "rewrite": "Campus weather station: kept sensor uptime 99%.",
+   "kind": "lead_with drops an at-least sign",
+   "caught": "contract",
+   "case": "lead_with drops an at-least sign"
+  },
+  {
+   "original": "Labeled fewer than 300 images for the gesture dataset.",
+   "rewrite": "Labeled 300 image samples for the gesture dataset.",
+   "kind": "relabel drops fewer than",
+   "caught": "contract",
+   "case": "relabel drops fewer than"
+  },
+  {
+   "original": "Annotated ~300 images for the gesture dataset.",
+   "rewrite": "Annotated 300 image samples for the gesture dataset.",
+   "kind": "relabel drops a tilde",
+   "caught": "contract",
+   "case": "relabel drops a tilde"
+  },
+  {
+   "original": "检测了近 40 份水样本。",
+   "rewrite": "检测了 40 份水体样本。",
+   "kind": "ZH relabel drops 近",
+   "caught": "review"
+  },
+  {
+   "original": "Wrote the first draft of the grant proposal; their revised version was funded.",
+   "rewrite": "撰写了基金申请书的初稿，申请书获得资助。",
+   "kind": "translation drops their revised version",
+   "caught": "language"
+  },
+  {
+   "original": "Drafted the lab report; Sam, a senior student, revised it.",
+   "rewrite": "撰写了实验报告。",
+   "kind": "translation drops a revision after an appositive",
+   "caught": "language"
+  },
+  {
+   "original": "Wrote the first draft of the newsletter; her edited version went out to 300 members.",
+   "rewrite": "撰写了社团通讯的初稿，发给了 300 名成员。",
+   "kind": "translation drops her edited version",
+   "caught": "language"
+  },
+  {
+   "original": "联合开发了一个校园二手交易小程序。",
+   "rewrite": "Developed a campus second-hand trading mini-program.",
+   "kind": "translation drops 联合 before a verb",
+   "caught": "language"
+  },
+  {
+   "original": "在学长指导下搭建了 3 个传感器节点。",
+   "rewrite": "Built 3 sensor nodes.",
+   "kind": "translation drops 学长",
+   "caught": "language"
+  },
+  {
+   "original": "在主管指导下整理了 500 条客户数据。",
+   "rewrite": "Organized 500 customer records.",
+   "kind": "translation drops 主管",
+   "caught": "language"
+  },
+  {
+   "original": "Built a prototype soil sensor; accuracy untested.",
+   "rewrite": "制作了一个土壤传感器原型，精度已测试。",
+   "kind": "translation drops untested",
+   "caught": "language"
+  },
+  {
+   "original": "Drafted the report, reviewed by the lab manager.",
+   "rewrite": "起草了报告。",
+   "kind": "translation drops reviewed by",
+   "caught": "language"
+  },
+  {
+   "original": "Drafted the manual; Sam reviewed and revised it.",
+   "rewrite": "起草了手册。",
+   "kind": "translation drops Sam reviewed and revised it",
+   "caught": "language"
+  },
+  {
+   "original": "Drafted the manual; a senior student corrected it.",
+   "rewrite": "起草了手册。",
+   "kind": "translation drops a senior student corrected it",
+   "caught": "language"
+  },
+  {
+   "original": "正在为实验室开发网站。",
+   "rewrite": "Currently developing a website for the lab; it went live in March.",
+   "kind": "translation says work under 正在 went live",
+   "caught": "language"
+  },
+  {
+   "original": "Developing a website for the lab.",
+   "rewrite": "实验室网站开发结束。",
+   "kind": "translation finishes a progressive line with 结束",
+   "caught": "language"
+  },
+  {
+   "original": "Surveyed upwards of 200 students.",
+   "rewrite": "调查了 200 名学生。",
+   "kind": "translation drops upwards of",
+   "caught": "language"
+  },
+  {
+   "original": "Surveyed close to 200 students.",
+   "rewrite": "调查了 200 名学生。",
+   "kind": "translation drops close to",
+   "caught": "language"
+  },
+  {
+   "original": "调查了上百名学生。",
+   "rewrite": "Surveyed a hundred students.",
+   "kind": "translation drops 上百",
+   "caught": "language"
+  },
+  {
+   "original": "Built the backend for a campus dining app in development.",
+   "rewrite": "Built the backend for a campus food-service app.",
+   "kind": "relabel drops in development",
+   "caught": "contract",
+   "case": "relabel drops in development"
+  },
+  {
+   "original": "Analyzed untested EEG recordings in MATLAB.",
+   "rewrite": "Analyzed EEG data in MATLAB.",
+   "kind": "relabel drops untested",
+   "caught": "contract",
+   "case": "relabel drops untested"
+  },
+  {
+   "original": "用不到 100 行代码实现了一个解析器。",
+   "rewrite": "Implemented a parser in 100 lines of code.",
+   "kind": "ZH to EN: 用不到 (in fewer than) dropped",
+   "caught": "language"
+  },
+  {
+   "original": "用不到一周时间搭建了实验室网站。",
+   "rewrite": "Built the lab website in a week.",
+   "kind": "ZH to EN: 用不到 (in under) dropped",
+   "caught": "language"
+  },
+  {
+   "original": "模型在测试集上的准确率达不到 90%。",
+   "rewrite": "The model reached 90% accuracy on the test set.",
+   "kind": "ZH to EN: 达不到 (fell short of) dropped",
+   "caught": "language"
+  },
+  {
+   "original": "找不到公开数据集，自行采集了 200 条样本。",
+   "rewrite": "Found a public dataset and collected 200 samples.",
+   "kind": "ZH to EN: 找不到 (could not find) dropped",
+   "caught": "language"
+  },
+  {
+   "original": "目前正在为食物银行筹备一场募捐活动。",
+   "rewrite": "Fundraising event for the food pantry organized.",
+   "kind": "ZH to EN: an -ing noun leads a finished headline",
+   "caught": "language"
+  },
+  {
+   "original": "目前担任食物银行的募捐委员会主席。",
+   "rewrite": "Fundraising committee chair at the food pantry.",
+   "kind": "ZH to EN: 目前 dropped beside an -ing noun",
+   "caught": "language"
+  },
+  {
+   "original": "正在为社团的机器人项目发起众筹。",
+   "rewrite": "Crowdfunding campaign for the club's robot project launched.",
+   "kind": "ZH to EN: an -ing noun leads a finished headline",
+   "caught": "language"
+  },
+  {
+   "original": "正在为实验室撰写网站文案。",
+   "rewrite": "Copywriting for the lab website finished.",
+   "kind": "ZH to EN: an -ing noun leads a finished headline",
+   "caught": "language"
+  },
+  {
+   "original": "正在为社团搭建直播设备。",
+   "rewrite": "Livestreaming setup for the club built.",
+   "kind": "ZH to EN: an -ing noun leads a finished headline",
+   "caught": "language"
+  },
+  {
+   "original": "正在校对实验室手册。",
+   "rewrite": "Proofreading of the lab manual completed.",
+   "kind": "ZH to EN: an -ing noun leads a finished headline",
+   "caught": "language"
+  },
+  {
+   "original": "Setting up a Raspberry Pi server for the robotics lab.",
+   "rewrite": "Robotics lab: set up a Raspberry Pi server.",
+   "kind": "a reorder writes set, put, cut or read, its own past, for work under way"
+  },
+  {
+   "original": "Reading 30 papers on sleep and memory for a literature review.",
+   "rewrite": "Literature review: read 30 papers on sleep and memory.",
+   "kind": "a reorder writes set, put, cut or read, its own past, for work under way"
+  },
+  {
+   "original": "Cutting 12 brain slices per week for the imaging study.",
+   "rewrite": "Imaging study: cut 12 brain slices per week.",
+   "kind": "a reorder writes set, put, cut or read, its own past, for work under way"
+  },
+  {
+   "original": "Putting together a safety manual for the chemistry lab.",
+   "rewrite": "Chemistry lab: put together a safety manual.",
+   "kind": "a reorder writes set, put, cut or read, its own past, for work under way"
+  }
+ ]
+}

@@ -22,8 +22,8 @@ const target: Opportunity = { id: OPP, title: 'Sensor research', organization: '
   eligibility: { preferred_year: [], majors: [], skills_required: ['Python'], international_friendly: 'unknown', citizenship_required: null },
   application: { application_effort: 'unknown', requires_resume: 'yes', contact_method: 'email' },
   metadata: { is_active: true, confidence_score: 1 } };
-const goodResponse: TailorResponse = { opportunity_id: OPP, pipeline_version: 'w13.3', target_version: `wt1:${'a'.repeat(64)}`, generated_at: '2026-09-25T12:00:00+00:00',
-  method: 'ai', warnings: [], tailored_bullets: [{ text: 'Retained model output', source_evidence: 'Original complete sensor project', source_index: 0 }] };
+const goodResponse: TailorResponse = { opportunity_id: OPP, pipeline_version: 'w14.1', target_version: `wt1:${'a'.repeat(64)}`, generated_at: '2026-09-25T12:00:00+00:00',
+  method: 'ai', warnings: [], tailored_bullets: [{ text: 'Retained model output', source_evidence: 'Original complete sensor project', source_index: 0, status: 'rewritten' }] };
 const base = { target, isOpen: true, onClose: vi.fn(), profile, opportunityId: OPP, opportunityTitle: target.title,
   ownerReady: true, ownerScopeKey: OWNER };
 const input = () => screen.getByPlaceholderText('tailor.bulletsPlaceholder');
@@ -32,7 +32,7 @@ const type = (value: string) => fireEvent.change(input(), { target: { value } })
 function raw(): string | null { const entry = readUserScopedEntry(KEY); return entry.status === 'present' ? entry.value : null; }
 function saved() {
   const decoded = decodeDraft(raw() ?? '', OWNER, OPP);
-  if (decoded.status !== 'v2') throw new Error('Expected a v2 draft in the confirmed owner namespace');
+  if (decoded.status !== 'stored') throw new Error('Expected a stored draft in the confirmed owner namespace');
   return decoded.draft;
 }
 function seed(value: string) { expect(writeUserScopedRaw(KEY, value, captureOwnerToken())).toBe(true); }
@@ -41,9 +41,9 @@ async function ready() { await waitFor(() => expect(screen.queryByText('tailor.r
 beforeEach(async () => {
   vi.resetAllMocks(); vi.stubGlobal('crypto', webcrypto); localStorage.clear();
   advanceOwnerEpoch(null); advanceOwnerEpoch(OWNER); await syncLocalIdentityOwner(OWNER);
-  api.status.mockResolvedValue({ ai_available: true, pipeline_version: 'w13.3' });
+  api.status.mockResolvedValue({ ai_available: true, pipeline_version: 'w14.1' });
   api.tailor.mockResolvedValue(goodResponse);
-  api.extract.mockResolvedValue({ method: 'ai', bullets: ['Fresh extraction'], warnings: [], pipeline_version: 'w13.3', generated_at: '2026-09-25T12:00:00+00:00' });
+  api.extract.mockResolvedValue({ method: 'ai', bullets: ['Fresh extraction'], warnings: [], pipeline_version: 'w14.1', generated_at: '2026-09-25T12:00:00+00:00' });
 });
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
@@ -62,7 +62,7 @@ describe('Tailor local draft provenance', () => {
     fireEvent.click(generate());
     await waitFor(() => expect(api.tailor).toHaveBeenCalled());
     expect(api.tailor).toHaveBeenCalledExactlyOnceWith(profile, OPP,
-      ['Manual text entered while the full opportunity is loading'], { locale: 'en', expectedPipelineVersion: 'w13.3', expectedTargetVersion: `wt1:${'a'.repeat(64)}` });
+      ['Manual text entered while the full opportunity is loading'], { locale: 'en', expectedPipelineVersion: 'w14.1', expectedTargetVersion: `wt1:${'a'.repeat(64)}` });
     await waitFor(() => expect(screen.getByRole('button', { name: 'tailor.useAsOriginals' })).toBeInTheDocument());
     const changed = { ...target, eligibility: { ...target.eligibility, skills_required: ['Python', 'R'] } };
     view.rerender(<TailorModal {...base} target={changed} targetChecking={false} targetReady />);
@@ -98,7 +98,7 @@ describe('Tailor local draft provenance', () => {
     expect(saved().origin.binding).toBeNull();
   });
   it('a draft read error is not absence and never licenses prefill or an automatic overwrite', async () => {
-    const old = encodeDraft(createDraft(OWNER, OPP, 'Unread saved human text', 'manual', await createBinding(profile, target, 'w13.3')));
+    const old = encodeDraft(createDraft(OWNER, OPP, 'Unread saved human text', 'manual', await createBinding(profile, target, 'w14.1')));
     seed(old);
     const get = window.localStorage.getItem.bind(window.localStorage);
     vi.spyOn(window.localStorage, 'getItem').mockImplementation(function (key) {
@@ -136,7 +136,7 @@ describe('Tailor local draft provenance', () => {
     expect(saved().text).toBe('  Human edit\n完整尾项 🧪  ');
   });
   it('clear writes an intentional empty draft, so reopening does not resurrect the résumé heuristic', async () => {
-    seed(encodeDraft(createDraft(OWNER, OPP, 'Old draft', 'manual', await createBinding(profile, target, 'w13.3'))));
+    seed(encodeDraft(createDraft(OWNER, OPP, 'Old draft', 'manual', await createBinding(profile, target, 'w14.1'))));
     const view = render(<TailorModal {...base} />); await ready();
     fireEvent.click(screen.getByRole('button', { name: 'tailor.clearDraftAria' })); await settle();
     expect(input()).toHaveValue(''); expect(saved().text).toBe('');
@@ -144,7 +144,7 @@ describe('Tailor local draft provenance', () => {
     expect(input()).toHaveValue(''); expect(saved().text).toBe(''); expect(generate()).toBeDisabled();
   });
   it('reopening reads another tab’s latest same-target value without the old closure writing over it', async () => {
-    const binding = await createBinding(profile, target, 'w13.3');
+    const binding = await createBinding(profile, target, 'w14.1');
     seed(encodeDraft(createDraft(OWNER, OPP, 'First tab draft', 'manual', binding)));
     const view = render(<TailorModal {...base} />); await ready();
     const external = encodeDraft(createDraft(OWNER, OPP, 'Other tab latest draft', 'manual', binding)); seed(external);
@@ -189,7 +189,7 @@ describe('Tailor local draft provenance', () => {
     expect(api.tailor).toHaveBeenCalledOnce(); expect(api.extract).not.toHaveBeenCalled();
   });
   it('Use as originals preserves the output’s earlier binding after the profile changes', async () => {
-    const initialBinding = await createBinding(profile, target, 'w13.3');
+    const initialBinding = await createBinding(profile, target, 'w14.1');
     const view = render(<TailorModal {...base} />); await ready();
     fireEvent.click(generate()); await waitFor(() => expect(screen.getByRole('button', { name: 'tailor.useAsOriginals' })).toBeInTheDocument());
     const nextProfile = { ...profile, skills: [{ name: 'Python', level: 'experienced' as const }], resume_text: '' };
@@ -197,13 +197,13 @@ describe('Tailor local draft provenance', () => {
     fireEvent.click(screen.getByRole('button', { name: 'tailor.useAsOriginals' })); await settle();
     expect(input()).toHaveValue('Retained model output');
     expect(saved().origin).toEqual({ kind: 'reviewed_output', binding: initialBinding }); expect(saved().review).toBeNull();
-    expect(await compareDraft(saved(), await createBinding(nextProfile, target, 'w13.3'))).toBe('stale');
+    expect(await compareDraft(saved(), await createBinding(nextProfile, target, 'w14.1'))).toBe('stale');
     expect(screen.getByTestId('tailor-draft-review')).toBeInTheDocument(); fireEvent.click(generate()); await settle();
     expect(api.tailor).toHaveBeenCalledOnce();
   });
   it.each(['unknown', 'stale'] as const)('%s text needs explicit exact-text review again after another edit', async kind => {
     if (kind === 'unknown') seed('Legacy unknown source');
-    else seed(encodeDraft(createDraft(OWNER, OPP, 'Old source draft', 'manual', await createBinding({ ...profile, coursework: ['Old course'] }, target, 'w13.3'))));
+    else seed(encodeDraft(createDraft(OWNER, OPP, 'Old source draft', 'manual', await createBinding({ ...profile, coursework: ['Old course'] }, target, 'w14.1'))));
     render(<TailorModal {...base} />); await ready();
     const origin = saved().origin; // the displayed legacy value may have been safely encoded, never rebound
     expect(screen.getByTestId('tailor-draft-review')).toBeInTheDocument();
@@ -216,7 +216,7 @@ describe('Tailor local draft provenance', () => {
     fireEvent.click(generate()); await settle(); expect(api.tailor).not.toHaveBeenCalled();
   });
   it.each([
-    ['missing version', { pipeline_version: undefined }], ['wrong version', { pipeline_version: 'w13.1' }],
+    ['missing version', { pipeline_version: undefined }], ['wrong version', { pipeline_version: 'w14.0' }],
     ['missing timestamp', { generated_at: undefined }], ['wrong target', { opportunity_id: 'another-target' }],
   ] as const)('rejects a tailoring response with %s while preserving input and stored provenance', async (_case, change) => {
     api.tailor.mockResolvedValue({ ...goodResponse, ...change });
@@ -225,8 +225,8 @@ describe('Tailor local draft provenance', () => {
     expect(screen.queryByRole('button', { name: 'tailor.useAsOriginals' })).not.toBeInTheDocument();
     expect(input()).toHaveValue('Original complete sensor project'); expect(raw()).toBe(old);
   });
-  it.each([{ pipeline_version: undefined }, { pipeline_version: 'w13.1' }, { generated_at: 'not-a-date' }])('rejects unverified extraction metadata without replacing manual text', async change => {
-    api.extract.mockResolvedValue({ method: 'ai', bullets: ['Unverified extraction'], pipeline_version: 'w13.3', generated_at: '2026-09-25T12:00:00+00:00', ...change });
+  it.each([{ pipeline_version: undefined }, { pipeline_version: 'w14.0' }, { generated_at: 'not-a-date' }])('rejects unverified extraction metadata without replacing manual text', async change => {
+    api.extract.mockResolvedValue({ method: 'ai', bullets: ['Unverified extraction'], pipeline_version: 'w14.1', generated_at: '2026-09-25T12:00:00+00:00', ...change });
     render(<TailorModal {...base} />); await ready(); type('Keep my manual draft'); await settle(); const old = raw();
     fireEvent.click(screen.getByRole('button', { name: 'tailor.extractFromResume' }));
     await waitFor(() => expect(screen.getByText('resume.extractionFailed')).toBeInTheDocument());

@@ -775,6 +775,15 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
         # A source quote changed by privacy/URL projection cannot keep its source
         # hash. Preserve the raw private snapshot; do not re-sign edited text.
         projected["research_context"] = {"version": 1, "status": "unavailable", "snapshot": None}
+    summary = prepared.get("faculty_profile_summary")
+    if summary is not None and (
+        projected.get("faculty_profile_summary") != summary
+        or projected.get("description_clean") != prepared.get("description_clean")
+    ):
+        # The fields are the description in parts, and the client renders them
+        # in its place. Once the privacy boundary has changed either, they
+        # would say what it withheld, so the client gets the description alone.
+        projected["faculty_profile_summary"] = None
     raw_metadata = canonical_record.get("metadata") or {}
     if isinstance(raw_metadata, dict) and "research_snapshot" in raw_metadata and (
         research["status"] != "available" or research_changed

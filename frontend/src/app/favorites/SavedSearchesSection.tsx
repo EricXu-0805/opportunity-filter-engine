@@ -22,6 +22,8 @@ export interface SavedSearchesSectionProps {
   /** W14: the list failed to load — render an inline error note instead of
    *  the empty hint (the user's saved searches still exist server-side). */
   loadError?: boolean;
+  /** Re-run the failed read. */
+  onRetry?: () => void;
   onApplyOptimisticClear: (id: string) => void;
   onRemove: (search: SavedSearch) => void;
   onDigestSave: (id: string, digest: SavedSearchDigest) => Promise<boolean>;
@@ -114,6 +116,7 @@ export function SavedSearchesSection({
   savedSearches,
   digests,
   loadError = false,
+  onRetry,
   onApplyOptimisticClear,
   onRemove,
   onDigestSave,
@@ -150,6 +153,15 @@ export function SavedSearchesSection({
           <p className="text-[13px] text-red-700">
             {t('favorites.savedSearches.loadError')}
           </p>
+          {onRetry && (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="mt-2 text-[13px] font-semibold text-indigo-700"
+            >
+              {t('common.retry')}
+            </button>
+          )}
         </div>
       ) : savedSearches.length === 0 ? (
         <div className="text-center py-6 px-4 rounded-xl bg-gray-50/80 border border-dashed border-gray-200">

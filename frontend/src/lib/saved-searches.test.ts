@@ -24,6 +24,8 @@ import {
   type SavedSearchFilters,
 } from './saved-searches';
 import { advanceOwnerEpoch, captureOwnerToken, isLocalOwnerReady, OwnerMismatchError, syncLocalIdentityOwner, type OwnerToken } from './identity-owner';
+import { buildResultsUrl, readInitialFiltersFromUrl } from '@/app/results/use-results-url';
+import type { SortKey, Tab } from '@/app/results/types';
 // identity-owner is real here (only ./supabase is mocked): claim an owner the
 // way the app does, and hand each write the token that owner would capture.
 async function claimOwner(uid: string): Promise<void> {
@@ -151,10 +153,20 @@ describe('listSavedSearches', () => {
     expect(mockFrom).not.toHaveBeenCalled();
   });
 
-  it('returns [] when the query errors', async () => {
+  it('rejects when the read fails, so the page can say so and offer a retry', async () => {
+    // [] here rendered "save one from results" over searches that still
+    // exist, and the section's W14 load-error note could never appear.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     mockFrom.mockReturnValue(makeQuery({ data: null, error: { message: 'boom' } }));
-    const result = await listSavedSearches();
-    expect(result).toEqual([]);
+    await expect(listSavedSearches()).rejects.toThrow('boom');
+    warn.mockRestore();
+  });
+
+  it('a failed read does not zero the header badge count, it fails the read', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockFrom.mockReturnValue(makeQuery({ data: null, error: { message: 'boom' } }));
+    await expect(getTotalNewMatchCount()).rejects.toThrow('boom');
+    warn.mockRestore();
   });
 
   it('returns [] gracefully when the table does not exist yet (pre-migration)', async () => {
@@ -788,5 +800,77 @@ describe('setSavedSearchDigest', () => {
     mockFrom.mockReturnValue(makeQuery({ data: null, error: { message: 'boom' } }));
     expect(await setSavedSearchDigest('uuid-1', { email: 'a@b.co', optIn: true })).toBe(false);
     warn.mockRestore();
+  });
+});
+
+// M50: "save and restore the search's full conditions". Saving stores what the
+// results page holds; opening the saved search from /favorites goes through
+// savedSearchToUrl and comes back through the page's own URL reader. Every
+// condition must make that trip unchanged — and the link must be the very URL
+// the page itself would have written for the same state, which is the sync
+// contract both files' comments describe but nothing checked.
+describe('a saved search restores every condition it was saved with', () => {
+  const TABS: Tab[] = ['high_priority', 'all', 'good_match', 'reach', 'starred'];
+  const SORTS: SortKey[] = ['score', 'deadline', 'newest'];
+  const DEADLINES = ['', 'rolling', '7', '14', '30', 'passed'] as const;
+
+  function states() {
+    const out: Array<{ query: string; filters: Required<SavedSearchFilters>; sort_by: SortKey; tab: Tab }> = [];
+    TABS.forEach((tab, ti) => SORTS.forEach((sort_by, si) => DEADLINES.forEach((deadline, di) => {
+      const n = ti + si + di;
+      out.push({
+        query: n % 2 ? 'machine learning & robotics' : '',
+        tab,
+        sort_by,
+        filters: {
+          paid: (['', 'yes', 'no'] as const)[n % 3],
+          intl: (['', 'yes', 'no'] as const)[(n + 1) % 3],
+          source: n % 4 ? 'uiuc_faculty' : '',
+          onCampus: (['', 'yes', 'no'] as const)[(n + 2) % 3],
+          deadline,
+          minScore: (n % 5) * 20,
+          scope: (['', 'campus', 'open'] as const)[n % 3],
+        },
+      });
+    })));
+    return out;
+  }
+
+  it('comes back through the results page reader exactly as saved', () => {
+    for (const saved of states()) {
+      const url = savedSearchToUrl(saved);
+      const restored = readInitialFiltersFromUrl(new URLSearchParams(url.split('?')[1] ?? ''));
+      expect(restored, url).toEqual({
+        activeTab: saved.tab,
+        searchQuery: saved.query,
+        filters: saved.filters,
+        sortBy: saved.sort_by,
+      });
+    }
+  });
+
+  it('is the same URL the results page writes for that state', () => {
+    for (const saved of states()) {
+      expect(savedSearchToUrl(saved)).toBe(buildResultsUrl({
+        activeTab: saved.tab,
+        debouncedQuery: saved.query,
+        filters: saved.filters,
+        sortBy: saved.sort_by,
+        semanticRerank: false,
+        semanticSettled: false,
+      }));
+    }
+  });
+
+  it('a row saved before the scope facet existed restores to every scope', () => {
+    const legacy = {
+      query: '', tab: 'all', sort_by: 'score' as const,
+      filters: { paid: 'yes' as const, intl: '' as const, source: '', onCampus: '' as const, deadline: '' as const, minScore: 0 },
+    };
+    const restored = readInitialFiltersFromUrl(
+      new URLSearchParams(savedSearchToUrl(legacy).split('?')[1] ?? ''),
+    );
+    expect(restored.filters.scope).toBe('');
+    expect(restored.filters.paid).toBe('yes');
   });
 });

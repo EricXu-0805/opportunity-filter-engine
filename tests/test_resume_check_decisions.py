@@ -3,6 +3,9 @@
 The original/rewrite pairs in ``resume_check_decisions.json`` are decided
 exactly as recorded there, both as given and with their spacing changed
 (doubled, no-break or ideographic spaces, tabs, indented lines, CRLF line ends).
+The bullet_passed and bullet_findings columns record the /tailor validator that
+evidence-mapped rewrites (backend/lib/evidence_map.py) replaced, so only the
+four claim-check columns after them are compared.
 """
 
 from __future__ import annotations
@@ -14,19 +17,15 @@ import pytest
 
 from backend.lib import email_experience_attribution as ea
 from backend.lib import target_resume_ai_grounding as grounding
-from backend.routes.tailor import _validate_bullet_rewrite
 
 RECORDED = json.loads((Path(__file__).parent / "fixtures" / "resume_check_decisions.json").read_text(encoding="utf-8"))
-# Each row: original, rewrite, then the decisions _decisions returns.
+# Each row: original, rewrite, the two /tailor columns, then the decisions _decisions returns.
 ROWS = RECORDED["rows"]
 SECOND_ENTRY = "Wrote unit tests for the parser."
 
 
 def _decisions(original: str, rewrite: str) -> list:
-    passed, findings = _validate_bullet_rewrite(rewrite, original)
     return [
-        passed,
-        sorted(findings),
         grounding.claim_upgrade_detected(rewrite, original),
         grounding.supported_claim_upgrade_detected(rewrite, [original, SECOND_ENTRY]),
         ea.experience_attribution_violations(rewrite, [original]),
@@ -55,14 +54,14 @@ def test_record_holds_both_outcomes():
     assert len(ROWS) > 600
     assert RECORDED["columns"][:2] == ["original", "rewrite"] and all(len(row) == 8 for row in ROWS)
     # Both outcomes are present, so agreement below is not vacuous.
-    assert {row[2] for row in ROWS} == {True, False}
     assert {row[4] for row in ROWS} == {True, False}
+    assert {bool(row[6]) for row in ROWS} == {True, False}
 
 
 @pytest.mark.parametrize("spacing", SPACINGS)
 def test_decisions_match_the_record(spacing):
     change = SPACINGS[spacing]
-    differing = [index for index, (original, rewrite, *recorded) in enumerate(ROWS)
+    differing = [index for index, (original, rewrite, _passed, _findings, *recorded) in enumerate(ROWS)
                  if _decisions(change(original), change(rewrite)) != recorded]
     assert differing == []
 

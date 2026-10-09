@@ -86,6 +86,29 @@ def test_the_release_table_is_exactly_what_was_accepted():
     assert {f for f, v in RELEASE_SCOPE.items() if not v} == UNACCEPTED_FEATURES
 
 
+def test_the_frontend_declares_the_same_flags_with_the_same_values():
+    """One release table, written twice, compared by name AND value (M66).
+
+    frontend/src/lib/release-scope.ts decides which controls a student sees;
+    this module decides which doors answer. Flipping one without the other is
+    a button whose route 404s, or a route nobody gated in the UI — and the
+    release gate compared only the names until 2026-10, so either flip passed.
+    Read with the gate's own parser so the two checks cannot disagree.
+    """
+    import importlib.util
+
+    root = Path(__file__).resolve().parents[1]
+    spec = importlib.util.spec_from_file_location(
+        "release_gate", root / "scripts" / "release_gate.py")
+    gate = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gate)
+
+    frontend = gate.parse_frontend_scope(
+        (root / "frontend" / "src" / "lib" / "release-scope.ts").read_text(encoding="utf-8"))
+    assert frontend is not None, "the frontend RELEASE_SCOPE table must stay literal booleans"
+    assert frontend == dict(RELEASE_SCOPE)
+
+
 def test_unaccepted_server_features_fail_closed(monkeypatch):
     """A runtime variable can disable an accepted feature, never promote one."""
     monkeypatch.setenv("OFE_PAYMENTS_ENABLED", "true")

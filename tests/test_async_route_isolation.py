@@ -453,7 +453,7 @@ def test_tailor_renovate_does_not_block_live(monkeypatch, profile, opportunity_i
 def test_tailor_bullet_does_not_block_live(monkeypatch, profile, opportunity_id):
     fake, gate = _gated(lambda *_args, **_kwargs: None)
     monkeypatch.setattr(tailor, "is_configured", lambda: True)
-    monkeypatch.setattr(tailor, "_ai_optimize_bullet", fake)
+    monkeypatch.setattr(tailor, "_ai_tailor_bullets", fake)
     response = _run_probe(
         "/api/tailor/bullet",
         {

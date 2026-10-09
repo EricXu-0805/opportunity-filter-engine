@@ -84,6 +84,11 @@ function hasContent(draft: FeedbackDraft): boolean {
   return Boolean(draft.message.trim() || draft.email.trim() || draft.subject.trim());
 }
 
+function sameContent(a: FeedbackDraft, b: FeedbackDraft): boolean {
+  return a.message === b.message && a.email === b.email
+    && a.category === b.category && a.subject === b.subject;
+}
+
 // What the send race resolves to. 'timeout' is contributed only by the local
 // timer leg — submitFeedback never returns it — so the two legs stay
 // distinguishable while sharing the `ok` discriminant.
@@ -267,8 +272,13 @@ export default function FeedbackWidget() {
     setTicket({ id: result.id, duplicate: result.reason === 'duplicate' });
     setStatus('done');
     // Confirmed insert — and only now — the local copy goes away and the next
-    // message gets a fresh token.
-    setDraft(EMPTY_DRAFT);
+    // message gets a fresh token. Only what was SENT goes: the form stays
+    // editable while the request is out, and anything typed since is a new
+    // message. It keeps its text and gets its own token, or its send would
+    // collide with this ticket and be dropped as a duplicate.
+    setDraft((current) => (
+      sameContent(current, draft) ? EMPTY_DRAFT : { ...current, clientToken: mintClientToken() }
+    ));
   }, [draft, patch, status, owner, setDraft]);
 
   const copyReference = useCallback(async () => {

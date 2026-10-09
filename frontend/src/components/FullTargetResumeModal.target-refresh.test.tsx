@@ -45,15 +45,15 @@ const rewrite = 'Reviewed robot trials; did not lead the team.';
 async function response(payload: TargetResumeAiRequest): Promise<TargetResumeAiResponse> {
   const result = await prepareTargetResumeAI(payload.draft); if (!result.ok) throw new Error(result.code);
   const prepared = result.value;
-  return { ...(payload.support_groups === undefined ? {} : {support_groups:payload.support_groups}), version: 1, pipeline_version: 'full-target-v5', request_id: payload.request_id, document_id: payload.draft.id,
+  return { ...(payload.support_groups === undefined ? {} : {support_groups:payload.support_groups}), version: 1, pipeline_version: 'full-target-v6', request_id: payload.request_id, document_id: payload.draft.id,
     opportunity_id: payload.draft.opportunity_id, document_signature: payload.document_signature, base: clone(payload.draft.base),
     manifest: { unit_ids: prepared.units.map((unit) => unit.unit_id), protected_unit_count: prepared.protected_unit_count },
-    method: 'ai', logical_calls: 1, provider_attempts_upper_bound: 2,
+    method: 'ai', logical_calls: 2, provider_attempts_upper_bound: 4,
     receipts: prepared.units.filter((unit) => payload.selected_unit_ids.includes(unit.unit_id)).map((unit) => ({
       unit_id: unit.unit_id, section_id: unit.section_id, block_id: unit.block_id, evidence: clone(unit.evidence), before_text: unit.before_text,
-      status: unit.evidence.kind === 'experience' ? 'suggested' : 'unchanged', reason_code: unit.evidence.kind === 'experience' ? null : 'no_change',
-      suggestion: { priority: 'normal', reason: 'The opportunity mentions Python.', target_evidence: [{ field: 'requirement', requirement_index: 0, start: 0, end: 6, quote: 'Python' }],
-        proposed_text: unit.evidence.kind === 'experience' ? rewrite : null },
+      status: 'suggested', reason_code: null,
+      suggestion: { priority: 'normal', reason: 'The opportunity mentions Python.', target_evidence: [], links: [],
+        ops: unit.evidence.kind === 'experience' ? ['verb_first'] : [], proposed_text: unit.evidence.kind === 'experience' ? rewrite : null, alternative_text: null },
     })) };
 }
 async function setup() {
