@@ -515,34 +515,8 @@ describe('W13 save truthfulness + staleness', () => {
     fireEvent.click(screen.getByText('renovate.copyAll'));
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
     const copied = writeText.mock.calls[0][0] as string;
-    // "Projects" is no row of this résumé, so the standard name of its kind is copied (round 3).
-    expect(copied.startsWith('EXPERIENCE\n')).toBe(true);
+    expect(copied.startsWith('PROJECTS\n')).toBe(true);
     expect(copied).not.toContain('SKILLS');
-  });
-  it.each([
-    // Round-3 re-measure (criterion 1): /tailor/structure returned the model's heading as written,
-    // and docs saved then hold it. It was shown and pasted into the résumé.
-    ['a status the lines do not have', 'Publications', '• Built a data pipeline\n• Led a robotics club project', 'Experience'],
-    ['another language than the résumé', '科研经历', '• Built a data pipeline\n• Led a robotics club project', 'Experience'],
-    ['part of the student\'s heading row', 'Projects', 'SELECTED PROJECTS\n• Built a data pipeline\n• Led a robotics club project', 'Experience'],
-    ['the student\'s own heading row', 'Selected Projects', 'SELECTED PROJECTS\n• Built a data pipeline\n• Led a robotics club project', 'SELECTED PROJECTS'],
-  ])('shows and copies a heading that is %s only as the student wrote it (%s)', async (_name, heading, resume, shown) => {
-    const writeText = vi.fn().mockResolvedValue(undefined);
-    Object.assign(navigator, { clipboard: { writeText } });
-    const doc = makeDoc(); doc.sections[0].heading = heading;
-    mockLoadRenovation.mockResolvedValue({
-      doc: doc as unknown as Record<string, unknown>, base_snapshot: { sections: [] }, method: 'ai', warnings: [],
-      updated_at: '2026-09-25T00:00:00Z', revision: 1, owner_id: 'renovation-owner-a', opportunity_id: 'opp-1',
-    });
-    renderModal(makeProfile({ resume_text: resume }));
-    await waitFor(() => expect(screen.getByText('renovate.copyAll')).toBeInTheDocument());
-    expect(screen.getByRole('heading', { level: 3, name: shown })).toBeInTheDocument();
-    if (shown.toUpperCase() !== heading.toUpperCase()) expect(screen.queryByText(heading)).toBeNull();
-    fireEvent.click(screen.getByText('renovate.copyAll'));
-    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
-    const copied = writeText.mock.calls[0][0] as string;
-    expect(copied.startsWith(`${shown.toUpperCase()}\n`)).toBe(true);
-    if (shown.toUpperCase() !== heading.toUpperCase()) expect(copied).not.toContain(heading.toUpperCase());
   });
 
 });
@@ -1763,9 +1737,7 @@ describe('M42 revisioned bullet drafts and history', () => {
   });
 
   it('shows the adopted saved version when it is chosen while a rerun is in flight', async () => {
-    // Neither heading is a row of the résumé, so each shows as the standard name of its kind (round 3):
-    // the kinds tell the two docs apart.
-    const remote = { ...savedDoc(makeDoc({ sections: [{ id: 'remote', kind: 'education', heading: 'REMOTE SAVED', bullets: [] }] })), revision: 8 };
+    const remote = { ...savedDoc(makeDoc({ sections: [{ id: 'remote', kind: 'projects', heading: 'REMOTE SAVED', bullets: [] }] })), revision: 8 };
     const pending = deferred<RenovationDoc>();
     mockLoadRenovation.mockResolvedValue(savedDoc()); mockSaveRenovation.mockResolvedValue({ status: 'conflict', current: remote });
     mockStructureResume.mockResolvedValue(structuredResume); mockRenovateResume.mockReturnValue(pending.promise);
@@ -1775,9 +1747,9 @@ describe('M42 revisioned bullet drafts and history', () => {
     fireEvent.click(screen.getByText('renovate.rerun'));
     await waitFor(() => expect(mockRenovateResume).toHaveBeenCalledTimes(1));
     fireEvent.click(screen.getByText('Use saved version'));
-    await act(async () => { pending.resolve(makeDoc({ sections: [{ id: 'late', kind: 'skills', heading: 'LATE RESULT', bullets: [] }] })); });
-    expect(screen.getByRole('heading', { level: 3, name: 'Education' })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { level: 3, name: 'Skills' })).toBeNull();
+    await act(async () => { pending.resolve(makeDoc({ sections: [{ id: 'late', kind: 'projects', heading: 'LATE RESULT', bullets: [] }] })); });
+    expect(screen.getByText('REMOTE SAVED')).toBeInTheDocument();
+    expect(screen.queryByText('LATE RESULT')).toBeNull();
     expect(screen.getByText('renovate.copyAll')).toBeInTheDocument();
     confirm.mockRestore();
   });

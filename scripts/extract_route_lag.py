@@ -1,9 +1,9 @@
 """Event-loop stall of /api/tailor/extract-bullets and /api/tailor/structure on 60,000-character résumés.
 
-Both routes read a résumé's rows (backend.routes.tailor._resume_rows) for the local extraction of
-every chunk the model did not answer, and for the grounding of every line the model returned. The
-shapes below make every row one whose reading costs the most: rows under a glyph bullet that open
-with a capital, a digit or a CJK character after a row with no closing mark.
+Both routes run origin/main's extraction (round 4): the local fallback (_heuristic_bullets) reads every
+row of each chunk the model did not answer on the event loop, and _bullet_grounded normalizes the chunk
+again for every line the model returned, on a provider worker. The shapes below are the row shapes the
+earlier row reader (rounds 3 to 3d) found dearest; they also give the fallback a row per line.
 
 Each request goes through backend.main.app over httpx.ASGITransport; the garbage collector is
 frozen as backend.main._warmup freezes it. While the requests run, the event loop wakes every
@@ -42,8 +42,8 @@ CASES = {
     "CJK rows under a glyph": "• 用\n" + "数据清洗并完成了分析工作内容\n" * 4000,
     "status rows": "• Built a dashboard for the lab\nUnder review at the ICRA 2026 workshop not yet submitted\n" * 700,
     "glyph rows": "• Built a dashboard for the lab with R\n" * 1500,
-    # Round 3d: rows the entry-row rule reads and refuses, soft rows with a status at the end of their
-    # item (_item_cuts), camel-case rows, marks before every row, and Word's "o" and list numbers.
+    # Round 3d's shapes: entry-shaped status rows, soft rows with a status last, camel-case rows, marks
+    # before every row, and Word's "o" and list numbers.
     "entry-shaped status rows": "• Ab\n" + "Team of 4, Fall 2024 | Under Review at ICRA (Draft)\n" * 1100,
     "soft rows, status last": "• Ab\n" + "Machine learning for sleep staging xx\n" * 1550 + "Under review\n",
     "camel-case rows": "• Ab\n" + "iGEM Team of 4, Fall 2024 abcd\n" * 1900,

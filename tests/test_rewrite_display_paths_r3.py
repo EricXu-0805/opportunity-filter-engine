@@ -5,6 +5,10 @@ generation call, the renovation plan and the faithfulness review are stubbed at
 ``chat_completion``. Each test was written as a probe of a gap the round-3
 re-measure reported, failed on 1e15a8e, and now pins the fix.
 
+Round 4 moved extraction back to origin/main's and removed this file's extraction
+probes; their résumés are cases of tests/fixtures/extraction_differential_cases.json,
+which tests/test_extraction_matches_main.py runs against main.
+
 Run from the repository root:
     python -m pytest tests/test_rewrite_display_paths_r3.py -q
 """
@@ -63,54 +67,6 @@ def test_a_complete_list_in_pair_order_still_shows_the_accepted_rewrite(opportun
     assert [bool(texts) for texts in offered(path, body)] == [False, True]
 
 
-# ------------------------------------------------------------------ criterion (1): wrapped bullets
-# _extraction_lines read a row that opens with a capital, a digit, a CJK character or "(" as a line
-# of its own, so a model answer holding only the first physical row of a wrapped glyph bullet was
-# returned as the student's bullet, and its status on the next row was lost from the evidence.
-WRAPPED_RESUME = ("EXPERIENCE\n"
-                  "• Co-authored a paper on soil moisture sensing for the campus farm\n"
-                  "Under review at the ICRA 2026 workshop\n"
-                  "• Wrote a grant proposal for the robotics club\n"
-                  "(in preparation, not yet submitted)\n"
-                  "• 搭建了校园农场的土壤湿度传感器网络并整理数据\n"
-                  "计划于 2026 年投稿\n")
-WRAPPED_CUTS = ["Co-authored a paper on soil moisture sensing for the campus farm",
-                "Wrote a grant proposal for the robotics club", "搭建了校园农场的土壤湿度传感器网络并整理数据"]
-WRAPPED_WHOLE = ["Co-authored a paper on soil moisture sensing for the campus farm Under review at the ICRA 2026 workshop",
-                 "Wrote a grant proposal for the robotics club (in preparation, not yet submitted)",
-                 "搭建了校园农场的土壤湿度传感器网络并整理数据计划于 2026 年投稿"]
-
-
-def _extracted(monkeypatch, path, answer):
-    from fastapi.testclient import TestClient
-
-    from backend.main import app
-    from backend.routes import tailor
-
-    def model(messages, **kwargs):
-        if "Structure it now" in messages[1]["content"]:
-            return json.dumps({"sections": [{"heading": "EXPERIENCE", "kind": "experience", "bullets": answer}]})
-        return json.dumps({"bullets": answer})
-    monkeypatch.setattr(tailor, "chat_completion", model)
-    monkeypatch.setattr(tailor, "is_configured", lambda: True)
-    body = TestClient(app).post(path, json={"resume_text": WRAPPED_RESUME, "locale": "en"}).json()
-    return body["bullets"] if path.endswith("extract-bullets") else [
-        bullet["text"] for section in body["sections"] for bullet in section["bullets"]]
-
-
-@pytest.mark.parametrize("path", ["/api/tailor/extract-bullets", "/api/tailor/structure"])
-def test_the_first_row_of_a_wrapped_bullet_is_not_returned(monkeypatch, path):
-    lines = _extracted(monkeypatch, path, WRAPPED_CUTS)
-    assert not set(lines) & set(WRAPPED_CUTS), lines
-    # No grounded line in the answer: the glyph heuristic answers, with each item whole.
-    assert lines == WRAPPED_WHOLE
-
-
-@pytest.mark.parametrize("path", ["/api/tailor/extract-bullets", "/api/tailor/structure"])
-def test_a_whole_wrapped_bullet_is_returned(monkeypatch, path):
-    assert _extracted(monkeypatch, path, WRAPPED_WHOLE) == WRAPPED_WHOLE
-
-
 # ------------------------------------------------------------------ criterion (2b): symbols are English
 # 33fc0db's rules kept faithful rewrites of English lines holding a Greek letter, the micro sign or an
 # accented Latin letter as wrong_language, before the review; main sends them to the review.
@@ -147,69 +103,3 @@ def test_an_english_lines_i_written_in_chinese_is_kept_before_the_review(opportu
     shown, seen = run(opportunity, monkeypatch, path, PRONOUN_LINE, _rewrite(rewrite, [{"op": "verb_first"}]),
                       "We clean survey data with Python scripts.")
     assert (shown, seen) == ([], set())
-
-
-# ------------------------------------------------------------------ criterion (1): section headings
-# /tailor/structure returned each section's "heading" as the model wrote it, with no grounding and no
-# review; renovation shows it and "Copy" pastes it into the résumé. It could claim a status the lines
-# do not have ("Publications") or come back in another language than the résumé.
-HEADED_RESUME = ("WORK EXPERIENCE\n"
-                 "• Ran 40 soil moisture trials for the campus farm\n"
-                 "• Wrote the field report for the extension office\n"
-                 "PUBLICATIONS\n"
-                 "• Drafted a paper on drip irrigation (not submitted)\n")
-ZH_RESUME = ("科研经历\n"
-             "• 在校园农场完成 40 次土壤湿度试验\n"
-             "• 为推广办公室撰写实地报告\n")
-
-
-def _structured(monkeypatch, resume, sections):
-    from fastapi.testclient import TestClient
-
-    from backend.main import app
-    from backend.routes import tailor
-
-    monkeypatch.setattr(tailor, "chat_completion", lambda *a, **k: json.dumps({"sections": sections}))
-    monkeypatch.setattr(tailor, "is_configured", lambda: True)
-    body = TestClient(app).post("/api/tailor/structure", json={"resume_text": resume, "locale": "en"}).json()
-    return [(section["heading"], [bullet["text"] for bullet in section["bullets"]]) for section in body["sections"]]
-
-
-EXPERIENCE_LINES = ["Ran 40 soil moisture trials for the campus farm", "Wrote the field report for the extension office"]
-
-
-@pytest.mark.parametrize("heading", [
-    "Publications",                 # a status the lines do not have, in no row of the résumé
-    "PUBLICATIONS",                 # a row of the résumé, but the heading of another section
-    "Field Research Experience",    # model-written wording
-    "科研经历",                      # another language than the résumé
-])
-def test_a_model_written_heading_is_not_shown(monkeypatch, heading):
-    sections = _structured(monkeypatch, HEADED_RESUME, [
-        {"heading": heading, "kind": "research", "bullets": EXPERIENCE_LINES},
-        {"heading": "PUBLICATIONS", "kind": "other", "bullets": ["Drafted a paper on drip irrigation (not submitted)"]}])
-    assert sections[0] == ("Experience", EXPERIENCE_LINES)
-    assert sections[1] == ("PUBLICATIONS", ["Drafted a paper on drip irrigation (not submitted)"])
-
-
-def test_the_students_own_heading_is_shown_as_they_wrote_it(monkeypatch):
-    sections = _structured(monkeypatch, HEADED_RESUME, [
-        {"heading": "Work Experience:", "kind": "experience", "bullets": EXPERIENCE_LINES}])
-    assert sections == [("WORK EXPERIENCE", EXPERIENCE_LINES)]
-
-
-@pytest.mark.parametrize("heading", ["Research Experience", "Experience", ""])
-def test_a_chinese_resumes_heading_stays_chinese(monkeypatch, heading):
-    lines = ["在校园农场完成 40 次土壤湿度试验", "为推广办公室撰写实地报告"]
-    sections = _structured(monkeypatch, ZH_RESUME, [{"heading": heading, "kind": "research", "bullets": lines}])
-    assert sections == [("项目与经历", lines)]
-    assert _structured(monkeypatch, ZH_RESUME, [{"heading": "科研经历", "kind": "research", "bullets": lines}]) == [
-        ("科研经历", lines)]
-
-
-def test_the_local_structure_names_a_chinese_section_in_chinese(monkeypatch):
-    from backend.routes import tailor
-
-    monkeypatch.setattr(tailor, "chat_completion", lambda *a, **k: None)
-    sections = _structured(monkeypatch, ZH_RESUME, [])
-    assert sections == [("项目与经历", ["在校园农场完成 40 次土壤湿度试验", "为推广办公室撰写实地报告"])]

@@ -5,6 +5,10 @@ review are stubbed at ``chat_completion`` through the helpers of
 tests/test_rewrite_display_paths.py. Written by the round-2 review as probes;
 the gaps they found are fixed, and each test now pins the fix.
 
+Round 4 moved extraction back to origin/main's and removed this file's extraction
+probes; their résumés are cases of tests/fixtures/extraction_differential_cases.json,
+which tests/test_extraction_matches_main.py runs against main.
+
 Run from the repository root:
     python -m pytest tests/test_rewrite_display_paths_r2.py -q
 """
@@ -292,42 +296,3 @@ def test_each_rewrite_needs_its_own_accepted_verdict(opportunity, monkeypatch): 
                                 review_by(lambda pair: pair["rewrite"] == "Wrote Python code for plotting."),
                                 anchors=[ONE_ANCHOR])
     assert [bool(texts) for texts in offered("/api/tailor", body)] == [False, True]
-
-
-# ------------------------------------------------------------------ criterion (1): model-written "originals"
-# /tailor/extract-bullets and /tailor/structure return model-written lines. A contiguous-substring
-# check let a cut drop a leading qualifier off the student's line; the cut was shown as the
-# student's own bullet and, on /tailor/renovate, became base_text, the evidence the faithfulness
-# review judges against. A line now has to start and end where a résumé line or bullet does.
-RESUME = ("EXPERIENCE\n"
-          "• Planned to survey 50 farmers about irrigation practices\n"
-          "• Did not lead the robotics team build; I wired the sensors\n")
-CUT = ["survey 50 farmers about irrigation practices", "lead the robotics team build"]
-WHOLE = ["Planned to survey 50 farmers about irrigation practices",
-         "Did not lead the robotics team build; I wired the sensors"]
-
-
-def _extracted(monkeypatch, path, answer):
-    def model(messages, **kwargs):
-        if "Structure it now" in messages[1]["content"]:
-            return json.dumps({"sections": [{"heading": "Experience", "kind": "experience", "bullets": answer}]})
-        return json.dumps({"bullets": answer})
-    monkeypatch.setattr(tailor, "chat_completion", model)
-    body = TestClient(app).post(path, json={"resume_text": RESUME, "locale": "en"}).json()
-    lines = body["bullets"] if path.endswith("extract-bullets") else [
-        bullet["text"] for section in body["sections"] for bullet in section["bullets"]]
-    return lines, body
-
-
-@pytest.mark.parametrize("path", ["/api/tailor/extract-bullets", "/api/tailor/structure"])
-def test_an_extracted_line_cannot_drop_the_students_qualifier(opportunity, monkeypatch, path):  # noqa: F811
-    lines, body = _extracted(monkeypatch, path, CUT)
-    assert not set(lines) & set(CUT), body
-    # The model's answer held no grounded line, so the glyph heuristic answers instead: whole lines.
-    assert set(lines) <= set(WHOLE), body
-
-
-@pytest.mark.parametrize("path", ["/api/tailor/extract-bullets", "/api/tailor/structure"])
-def test_an_extracted_whole_line_is_still_returned(opportunity, monkeypatch, path):  # noqa: F811
-    lines, body = _extracted(monkeypatch, path, WHOLE)
-    assert lines == WHOLE, body

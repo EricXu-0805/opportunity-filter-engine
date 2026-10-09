@@ -31,7 +31,6 @@ import os
 import re
 import time
 import unicodedata
-from bisect import bisect_right
 from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import replace
@@ -42,9 +41,8 @@ import httpx
 from fastapi import APIRouter, Header, HTTPException, Request
 
 from backend.data_loader import load_opportunities_by_id
-from backend.lib import evidence_map as _em
 from backend.lib import llm_budget
-from backend.lib.blocking import SINGLE_LLM_TIMEOUT_SECONDS, BlockingWorkTimeout, run_blocking, run_request_work
+from backend.lib.blocking import SINGLE_LLM_TIMEOUT_SECONDS, BlockingWorkTimeout, run_blocking
 from backend.lib.evidence_map import (
     CHECK_TIMEOUT_SECONDS,
     GENERATION_DEADLINE_SECONDS,
@@ -65,7 +63,6 @@ from backend.lib.evidence_map import (
     strip_json_fence,
     without_terms,
 )
-from backend.lib.experience_evidence import _DATE, _DATE_RANGE, _ROLE_FIELD_SEPARATOR, _ROLE_WORD, names_no_action
 from backend.lib.llm import chat_completion, is_configured, model_for
 from backend.lib.metering import metering_enabled, record_usage
 from backend.lib.prompt_budget import check_prompt_size
@@ -81,24 +78,7 @@ from backend.lib.resume_input import (
     resume_chunks,
 )
 from backend.lib.target_actionability import assert_target_actionable, prework_refusal
-from backend.lib.target_resume_ai_grounding import (
-    _NOT_HEAD,
-    _OBJECT_END,
-    CO_CREDIT,
-    DENIAL,
-    FUTURE_ZH,
-    HELP,
-    INTENT,
-    NEGATION,
-    PLANNED,
-    PUBLICATION,
-    TEAM,
-    UNDERWAY_ZH,
-    UNFINISHED,
-    UNFINISHED_ZH,
-    language,
-)
-from backend.lib.target_resume_export import HEADINGS as _EXPORT_HEADINGS
+from backend.lib.target_resume_ai_grounding import language
 from backend.lib.writing_target import prepare_writing_snapshot
 from backend.schemas import (
     BulletOptimizeRequest,
@@ -539,12 +519,10 @@ def _kept_response(units: list[Unit], code: str, warnings: list[str]) -> TailorR
     )
 
 
-# The bullet glyphs and list numbers the frontend reads (resume-input.ts BULLET_LINE: the
-# private-use characters are the Symbol/Wingdings bullets of Word-made PDFs), and "+", so the
-# no-LLM fallback path produces the prefill the client would compute on its own.
-_GLYPH = (r"(?:[•\-*\u2013\u2014+▪●◦·‣∙■►➢✓◆\uf0b7\uf0a7\uf076\uf0d8\uf0fc]"
-          r"|\(?\d{1,2}[.)]|\d+[.)])")
-_BULLET_PREFIX_RE = re.compile(rf"^\s*{_GLYPH}\s+(.+)$")
+# Same bullet-glyph heuristic the frontend uses (•, -, *, –, —, +, or a
+# numbered "1." / "1)" prefix) — kept in sync so the no-LLM fallback path
+# produces the same prefill the client would compute on its own.
+_BULLET_PREFIX_RE = re.compile(r"^\s*(?:[•\-*\u2013\u2014+]|\d+[.)])\s+(.+)$")
 
 _EXTRACT_SYSTEM_PROMPT = (
     "You extract resume bullet points from a student's raw resume text.\n"
@@ -564,32 +542,20 @@ _EXTRACT_SYSTEM_PROMPT = (
 
 
 def _heuristic_bullets(resume_text: str, *, limit: int = 12) -> list[str]:
-    """Pull bullet-glyph items from raw resume text (no LLM).
+    """Pull bullet-glyph lines from raw resume text (no LLM).
 
     Mirrors the frontend ``extractBulletLines`` so the offline / no-provider
-    path returns a prefill like the one the client computes locally. A glyph
-    row's wrapped rows (``_resume_rows``) are joined back to it: the first
-    physical row alone could drop the rest of the student's line, such as a
-    "(in preparation)" or "计划于…" status on the row below. The item ends at
-    its first soft row where a cut may (``_item_cuts``), as main ends it at
-    its glyph row: "2023-2024" under it is not glued to it.
+    path returns the same prefill the client computes locally.
     """
     out: list[str] = []
-    bullet: str | None = None
-    rows = _resume_rows(resume_text)
-    above, _ = _item_cuts(rows)
-    for index, (raw, _, opens, _) in enumerate([*rows, ("", "", True, False)]):
-        if (opens or index in above) and bullet is not None:
-            if len(bullet) >= 10:
-                out.append(bullet)
-            bullet = None
-            if len(out) >= limit:
-                break
-        if opens:
-            m = _BULLET_PREFIX_RE.match(raw)
-            bullet = m.group(1).strip() if m else None
-        elif bullet is not None:
-            bullet += _row_join(bullet, raw) + raw
+    for raw in resume_text.splitlines():
+        m = _BULLET_PREFIX_RE.match(raw)
+        if m:
+            cleaned = m.group(1).strip()
+            if len(cleaned) >= 10:
+                out.append(cleaned)
+        if len(out) >= limit:
+            break
     return out
 
 
@@ -603,457 +569,18 @@ def _normalized_extraction_text(value: str) -> str:
     return re.sub(r"\s+", " ", unicodedata.normalize("NFKC", value)).strip().casefold()
 
 
-_LINE_GLYPH = re.compile(rf"{_GLYPH}\s+")
-# What else may stand before an item's first word, with or without a space: a list number ("1、",
-# "(1)", "a)", "1.Built"), the "o" Word prints for a second-level bullet, or a run of marks ("-Built",
-# "※ ", "> ", "★"). A run with a sign in it is not read before a number it may sign ("~40", ">90%"),
-# nor is anything with no space before a digit ("1.5x").
-_LEAD_MARKS = re.compile(r"(?:\(\d{1,2}\)|\(?\d{1,2}[.)、]|\(?[a-z]\)|[a-z]\.(?=\s)|o(?=\s)|[^\w\s]+)\s*")
-_SIGNS = frozenset("~≈<>≤≥±+=−-")
-_INLINE_GLYPH = re.compile(r"\s*[•▪●◦]\s*")
-_LINE_END_MARKS = " .;,:。；，：!?！？"
-_SENTENCE_END_MARKS = (".", ";", ":", "。", "；", "：", "!", "?", "！", "？")
-# A row that cannot end an item: a word broken at its hyphen, a comma, "&", "/" or an
-# opening bracket, or a spaced dash or "+" (resume-input.ts CONTINUES_AFTER, its characters).
-_CARRIES_ON = re.compile(r"(?:\w[-\u2010\u2011]|[,&/(\[（，、《「『]|\s[-–—+])$")
-# A row that cannot open an item: "&", "%" or a bracket (resume-input.ts CONTINUES_BEFORE).
-_OPENS_ON = re.compile(r"^[&%()\[\]（）]")
-# CJK text and its punctuation wrap with no space at the break.
-_CJK_TEXT = "\u2e80-\u9fff\uac00-\ud7af\uf900-\ufaff\uff00-\uffef"
-_CJK_SPACE = re.compile(f"(?<=[{_CJK_TEXT}])\\s+(?=[{_CJK_TEXT}])")
-_CJK_EDGE = re.compile(f"[{_CJK_TEXT}]")
-# A list number the frontend does not read as a glyph, opening a row ("(1)Built", "1、搭建", "a) Built",
-# "a. Built"), or the "o" of Word's second-level bullet before a capital or a CJK letter.
-_LIST_NUMBER = re.compile(r"(?:\(\d{1,2}\)|\(?\d{1,2}[.)、]|\(?[A-Za-z]\))(?:\s+|(?=[^\W\d_]))|[A-Za-z]\.\s+"
-                          f"|o\\s+(?=[A-Z{_CJK_TEXT}])")
-
-
-def _row_join(before: str, after: str) -> str:
-    """What joins a wrapped row to the one before: nothing inside a hyphen-broken word or CJK text."""
-    if re.search(r"\w[-\u2010\u2011]$", before) and after[:1].isalnum():
-        return ""
-    return "" if _CJK_EDGE.fullmatch(before[-1:]) and _CJK_EDGE.fullmatch(after[:1]) else " "
-
-
-def _caps_row(line: str) -> bool:
-    """A row in capitals: a heading, a name, a school or a role row ("EXPERIENCE", "SMITH LAB")."""
-    letters = [ch for ch in line if ch.isalpha()]
-    return sum(ch.isupper() for ch in letters) >= 2 and not any(ch.islower() for ch in letters)
-
-
-def _own_row(line: str) -> bool:
-    """A row of its own, never the rest of a sentence: a row in capitals (a heading, a name, a
-    school, a role row), or a short heading in title case ("Projects", "Honors and Awards").
-
-    A title-case heading has one to four words of Latin letters and no digit or mark but a
-    final colon. Its first and last words open with a capital, and so does every other word
-    but a joining word of up to three letters. A wrapped status has lowercase words or a
-    number ("Under review at ICRA", "Expected May 2026"), and CJK text has no case, so
-    neither reads as one.
-    """
-    if _caps_row(line):
-        return True
-    words = [word for word in line.rstrip(":").split() if word not in ("&", "/")]
-    return (0 < len(words) <= 4 and len(line) <= 40
-            and all(ch.isascii() and (ch.isalpha() or ch in " &/'-") for ch in line.rstrip(":"))
-            and words[0][:1].isupper() and words[-1][:1].isupper()
-            and all(word[:1].isupper() or len(word) <= 3 for word in words))
-
-
-# What a row under a glyph bullet can say about the claim above it, as the claim locks read it:
-# a status ("Under review", "Draft", "计划于 2026 年投稿") or a negation ("Not yet submitted")
-# (_ITEM_STATUSES), and a share of the work ("Team of 4", "与两名研究生合作"). These are the locks'
-# own families (target_resume_ai_grounding, evidence_map._LOCK_WORD), read here as they are; none is extended.
-_ITEM_STATUSES = (NEGATION, DENIAL, PUBLICATION, INTENT, PLANNED, UNFINISHED, UNFINISHED_ZH, FUTURE_ZH, UNDERWAY_ZH,
-                  _em._STATUS_WORD, _em._UN_DONE)
-_ITEM_QUALIFIERS = (*_ITEM_STATUSES, TEAM, HELP, CO_CREDIT, _em._TEAM_EN_EXTRA, _em._TEAM_ZH_EXTRA, _em._TEAM_OTHERS,
-                    _em._PARTICIPATION_EN, _em._PARTICIPATION_ZH)
-# A label and what it lists ("Technical Skills: Python, R, SQL", "技能：Python"; NFKC reads "：" as ":").
-_LABEL_ROW = re.compile(r"([^,:]{1,40}):(?!\d)")
-# A CJK row that ends with its dates ("研究助理 2025年1月至今", "心理系 助教 2024年8月至12月").
-_CJK_DATES_END = re.compile(r"(?:19|20)\d{2}\s*年(?:\s*\d{1,2}\s*月)?"
-                            r"(?:\s*[-–—~至到]\s*(?:(?:19|20)\d{2}\s*年)?(?:\s*\d{1,2}\s*月)?|至今)?$")
-_CJK_LETTERS = r"\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uac00-\ud7af"
-_CJK_LETTER = re.compile(f"[{_CJK_LETTERS}]")
-# A heading in CJK letters alone ("项目经历", "助教经历"): no digit, mark or space.
-_CJK_HEADING = re.compile(f"[{_CJK_LETTERS}]{{2,8}}")
-# Such a heading followed by its English name ("教育背景 Education", "项目经历 | Projects", and
-# "科研经历(Research)" as NFKC reads "科研经历（Research）").
-_BILINGUAL_HEADING = re.compile(f"([{_CJK_LETTERS}]{{2,8}})" r" ?(?:[|/] ?)?\(?([A-Za-z][A-Za-z &/'-]*?)\)?")
-_LATIN_WORD = re.compile(r"[A-Za-z][A-Za-z'’.-]*")
-# Where an entry row's name ends: a bracket, a comma, "|", a label's colon, a tab, a spaced dash or
-# " at " (as the role rows' fields part), or a space between two CJK letters ("北京大学 物理学院").
-_ENTRY_BREAK = re.compile(r"\s*[(,|\t]\s*|\s*:(?!\d)\s*|\s[–—-]\s|\s(?:at|@)\s"
-                          f"|(?<=[{_CJK_LETTERS}])\\s+(?=[{_CJK_LETTERS}])")
-# A date as the role rows read one ("May 2026", "Fall 2024", "2024.09"), which names no item.
-_DATE_WORD = re.compile(rf"(?<![\w./]){_DATE}(?!\w)", re.IGNORECASE)
-# A row's classification reads at most this much of it: a heading, a role row or a label is short.
-_ROW_SHAPE_CHARACTERS = 240
-
-
-def _title_row(line: str) -> bool:
-    """A title and its details ("Campus Food Pantry Dashboard, Spring 2024", "Dean's List, Fall 2023",
-    "Teaching Assistant, PSYC 100"): no Latin word of four letters or more in lower case."""
-    words = _LATIN_WORD.findall(line)
-    return bool(words) and line[:1].isupper() and not any(len(word) >= 4 and word[:1].islower() for word in words)
-
-
-def _dangling(previous: str) -> bool:
-    """The row above ends where no item can: on a determiner ("at the", "not yet"), on a word that
-    leads into what follows ("using", "with", "and"), or on 并/和/及. These are the claim locks'
-    own _NOT_HEAD and _OBJECT_END words."""
-    word = previous.rsplit(None, 1)[-1].casefold() if previous else ""
-    last = previous[-1:]
-    return (word in _NOT_HEAD or bool(_OBJECT_END.fullmatch(" " + word))
-            or bool(_CJK_EDGE.fullmatch(last) and _OBJECT_END.fullmatch(last)))
-
-
-def _bilingual_heading(line: str) -> re.Match | None:
-    """A heading of 2-8 CJK letters and its English name, a short title-case heading (_own_row)."""
-    match = _BILINGUAL_HEADING.fullmatch(line)
-    return match if match and _own_row(match.group(2)) else None
-
-
-def _covered(line: str, families) -> list[bool]:
-    """Which characters of ``line`` a word of ``families`` covers."""
-    covered = [False] * len(line)
-    for pattern in families:
-        for match in pattern.finditer(line):
-            covered[match.start():match.end()] = [True] * (match.end() - match.start())
-    return covered
-
-
-def _names_its_items(line: str) -> bool:
-    """Whether a heading-shaped row names something besides a status: a word before its first
-    joining word ("Projects" in "Team Projects", "Research" in "Research in Progress",
-    "Collaborations"), or two CJK letters in a row (论文 in 论文发表, 项目 in 团队项目), that no
-    status or negation word (_ITEM_STATUSES) covers. A row that states only a status ("Under
-    Review", "Submitted to Nature", "尚未投稿") names nothing of its own.
-    """
-    covered = _covered(line, _ITEM_STATUSES)
-    if _CJK_HEADING.fullmatch(line):
-        return any(not (covered[index] or covered[index + 1]) for index in range(len(line) - 1))
-    for word in _LATIN_WORD.finditer(line):
-        if word.group(0).casefold() in _em._FUNCTION_EN:
-            return False
-        if not all(covered[word.start():word.end()]):
-            return True
-    return False
-
-
-def _names_an_entry(name: str) -> bool:
-    """Whether an entry row's name names something besides the status, share, negation and date
-    words in it (_ITEM_QUALIFIERS, _DATE_WORD): a Latin word before its first joining word, under
-    a name that opens with a capital ("Robotics" in "Robotics Team", "iGEM" in "iGEM Team"), or
-    two CJK letters in a row, under a name that does not open with a joining character (智能 in
-    智能机器人团队; 与两名研究生合作 opens with 与)."""
-    name = name.strip()
-    covered = _covered(name, (*_ITEM_QUALIFIERS, _DATE_WORD))
-    if _CJK_LETTER.match(name):
-        return name[0] not in _em._FUNCTION_ZH and any(
-            _CJK_LETTER.match(name[index]) and _CJK_LETTER.match(name[index + 1])
-            and not (covered[index] or covered[index + 1]) for index in range(len(name) - 1))
-    if not (name[:1].isupper() or name[1:2].isupper()):
-        return False
-    for word in _LATIN_WORD.finditer(name):
-        if word.group(0).casefold() in _em._FUNCTION_EN:
-            return False
-        if not all(covered[word.start():word.end()]):
-            return True
-    return False
-
-
-def _entry_row(line: str) -> bool:
-    """An entry's title row with its details, whose name names its item besides any status, share,
-    negation or date word in it (_names_an_entry): "Robotics Team, UIUC", "Autonomous Rover (Ongoing) |
-    ROS, Python", "iGEM Team (2024)", "Group Project: Course Scheduler", "智能机器人团队，清华大学",
-    "智能温室项目（进行中）". The name is the row up to its first field break (_ENTRY_BREAK); after a
-    label's colon, what the label names must name its item too or be a date ("Expected Graduation:
-    May 2027"), so neither "Status: Under Review" nor "Under Review: NeurIPS 2025" is one. The row
-    reads as a title: no lower-case Latin word of four letters or more but a joining word ("with",
-    "from"; evidence_map._FUNCTION_EN).
-
-    "Team of 4, Fall 2024", "Under Review at ICRA", "Ongoing, Jan 2025 - Present" and "计划于 2026 年投稿"
-    name nothing of their own and stay with the bullet above. A name that holds only a common noun
-    besides its status ("Paper (Under Review)", "论文，在投") reads as an entry: no word list may tell
-    it from "Autonomous Rover (Ongoing)".
-    """
-    if any(word.islower() and len(word) > 3 and word.casefold() not in _em._FUNCTION_EN
-           for word in _LATIN_WORD.findall(line)):
-        return False
-    first = _ENTRY_BREAK.search(line)
-    if first is None or first.start() == 0 or first.end() == len(line):
-        return False
-    if first.group(0).strip() == ":":
-        rest = line[first.end():]
-        after = _ENTRY_BREAK.search(rest)
-        value = rest[:after.start()] if after and after.start() else rest
-        if not (_names_an_entry(value) or _DATE_WORD.fullmatch(value) or _DATE_RANGE.fullmatch(value)):
-            return False
-    return _names_an_entry(line[:first.start()])
-
-
-def _heading_in_sentence_case(previous: str, line: str) -> bool:
-    """Whether a row may be a heading in sentence case ("Research experience", "Honors and awards:",
-    "Team projects"): shaped as a title-case heading (_own_row) but for the case of its later
-    words, not opening with a joining word, under a row that can end an item (_dangling), and
-    carrying no word the claim locks keep (_ITEM_QUALIFIERS) or, as a title-case heading may,
-    naming something besides a status (_names_its_items). Its words cannot tell it from the
-    wrapped last row of the bullet above ("Extension office", "Manuscript in preparation");
-    _resume_rows decides by the row below it.
-    """
-    if len(line) > 40 or not line[:1].isupper():
-        return False
-    words = [word for word in line.rstrip(":").split() if word not in ("&", "/")]
-    return (0 < len(words) <= 4 and all(ch.isascii() and (ch.isalpha() or ch in " &/'-") for ch in line.rstrip(":"))
-            and words[0].casefold() not in _em._FUNCTION_EN and not _dangling(previous)
-            and (not any(pattern.search(line) for pattern in _ITEM_QUALIFIERS) or _names_its_items(line)))
-
-
-def _row_of_its_own(previous: str, line: str) -> bool:
-    """Inside a glyph item, whether a row that opens with a capital, a digit or a CJK character,
-    under a row with no closing mark, starts a row of its own rather than going on with the item.
-
-    It goes on with the item when the row above cannot end one (_dangling), when it opens with
-    a joining word ("With Two Graduate Students"; evidence_map._FUNCTION_EN), or when it carries
-    a word the claim locks keep (_ITEM_QUALIFIERS): a status, a share of the work or a negation
-    on the row under a bullet is the rest of that bullet, whatever its shape ("Under Review",
-    "In progress, Jan 2025 - Present"). The exceptions are a row in capitals, a role row (a
-    title-case row that names a role in one of its first two fields and does not open with a
-    joining word: "Team Lead, Robotics Club", "Member, Solar Car Team"), which start the next
-    entry, a heading (a short title-case heading, _own_row, or 2-8 CJK letters alone) that
-    names its items besides any status (_names_its_items: "Team Projects", "Accepted Papers",
-    "Research in Progress", 论文发表, 团队项目), or such CJK letters and their English name that
-    both do ("团队项目 Team Projects"; _bilingual_heading), which starts the next section, and an
-    entry's title row whose name names its item besides any such word (_entry_row: "Robotics Team,
-    UIUC", "Autonomous Rover (Ongoing) | ROS, Python", "智能机器人团队，清华大学", and CJK fields apart
-    by spaces, "北京大学 物理学院"), which starts the next entry.
-
-    Otherwise it starts a row of its own only when it is shaped as one: a heading (_own_row, CJK
-    letters alone, or with their English name: "教育背景 Education"), a title and its details
-    (_title_row), a label ("Technical Skills: ..."), a role or date row as
-    experience_evidence.names_no_action reads it, a date range alone ("2023-2024", "2024.09 -
-    2025.06"), or a CJK row that ends with its dates ("研究助理 2025年1月至今"). Any other row goes on with the item; _item_cuts says where a
-    bullet may still end above it.
-    """
-    if _dangling(previous) or len(line) > _ROW_SHAPE_CHARACTERS:
-        return False
-    first = line.split(None, 1)[0].casefold()
-    if _caps_row(line) or (_title_row(line) and first not in _em._FUNCTION_EN
-                           and any(_ROLE_WORD.search(field) for field in _ROLE_FIELD_SEPARATOR.split(line)[:2])):
-        return True
-    if first in _em._FUNCTION_EN:
-        return False
-    bilingual = _bilingual_heading(line)
-    if ((_own_row(line) or _CJK_HEADING.fullmatch(line)) and _names_its_items(line)
-            or bilingual and all(_names_its_items(part) for part in bilingual.groups())
-            or not _BILINGUAL_HEADING.fullmatch(line) and _entry_row(line)):
-        return True
-    if any(pattern.search(line) for pattern in _ITEM_QUALIFIERS):
-        return False
-    label = _LABEL_ROW.match(line)
-    return (_own_row(line) or _title_row(line) or bool(_CJK_HEADING.fullmatch(line)) or bool(bilingual)
-            or bool(label and all(word[:1].isupper() or _CJK_EDGE.match(word[:1]) for word in label.group(1).split()))
-            or names_no_action(line) or bool(_DATE_RANGE.fullmatch(line))
-            or bool(_CJK_EDGE.match(line) and (_DATE_RANGE.search(line) or _CJK_DATES_END.search(line))))
-
-
-def _resume_rows(resume_text: str) -> list[tuple[str, str, bool, bool]]:
-    """Each non-blank row: as written (stripped), as _normalized_extraction_text reads it with case
-    kept, whether it opens an item, and whether it goes on with one only by default (soft). A row
-    that does not open one wraps the item above.
-
-    A row with a bullet glyph or a list number ("(1)", "1、", "a)", "①"), or beside a column gap
-    (a tab), opens an item; the tab or spaces right after a leading glyph ("•\tBuilt ...", as
-    Word's plain-text copy writes a list item) are the glyph's own gap, not a column gap.
-    Otherwise the row continues the one above when their words say so: the row above cannot end
-    an item (it ends in a comma, an opening bracket, a broken word; or it leaves a bracket open),
-    or this row cannot open one ("&", "%", a bracket: "(in preparation)"), or it opens in lower
-    case after a row with no closing mark (but for an entry row with a word such as "iGEM" first:
-    _entry_row). A row after a closing mark opens an item.
-
-    What is left is a row that opens with a capital, a digit or a CJK character after a row
-    with no closing mark. On its own that says nothing: "Presented results ..." under
-    "Designed a thermal sensor ... data" is an item of its own, and "计划于 2025 年投稿" under
-    "• 搭建传感器网络并整理数据" finishes it. Where no glyph marks the items, every such row
-    is a line of its own, as the student wrote it. Inside a glyph item, the glyph marks where
-    the next item starts, so such a row goes on with the item unless a blank row sets it
-    apart or it is a row of its own (_row_of_its_own: a heading, a role or title row, a
-    label; a row carrying a status, a share of the work or a negation only in capitals, as a
-    role row, or as a heading or an entry row that names its items besides a status). Such a row
-    that goes on with the item only because nothing shapes it as a row of its own, under a row
-    that can end an item (_dangling) and not opening with a joining word ("With Two Graduate
-    Students"; evidence_map._FUNCTION_EN), is soft: "2023-2024", "Machine learning for sleep staging"
-    and "Under review" may each be the rest of the bullet or the next entry, and _item_cuts reads
-    the cut above it by what the rows the cut leaves out say.
-
-    A heading in sentence case ("Research experience", "Team projects") reads like the wrapped
-    last row of the bullet above it (_heading_in_sentence_case). It starts a row of its own when
-    the row below it starts one anyway (or it is the last row): the item it would end then holds
-    nothing after it, so a bullet cut above it leaves out only this row, which states no status
-    alone ("Under review" stays with the bullet).
-    """
-    rows: list[tuple[str, str, bool, bool]] = []
-    headings: list[int] = []
-    previous, previous_tab, glyph_item, after_blank = "", False, False, False
-    for raw in resume_text.splitlines():
-        written = unicodedata.normalize("NFKC", raw).strip()
-        line = re.sub(r"\s+", " ", written)
-        if not line:
-            after_blank = True
-            continue
-        lead = _LINE_GLYPH.match(written) or _LIST_NUMBER.match(written)
-        circled = not raw.strip()[:1].isascii() and unicodedata.category(raw.strip()[:1]) == "No"
-        glyph, tab = bool(lead) or circled, "\t" in written[lead.end() if lead else 0:]
-        soft = False
-        if not rows or glyph or tab or previous_tab:
-            opens = True
-        elif (_OPENS_ON.match(line) or _CARRIES_ON.search(previous)
-              or previous.count("(") > previous.count(")")):
-            opens = False
-        elif previous.endswith(_SENTENCE_END_MARKS):
-            opens = True
-        elif line[:1].islower() and not (line[1:2].isupper() and len(line) <= _ROW_SHAPE_CHARACTERS
-                                         and _entry_row(line)):
-            opens = False
-        else:
-            opens = after_blank or not glyph_item or _row_of_its_own(previous, line)
-            soft = not (opens or _dangling(previous) or line.split(None, 1)[0].casefold() in _em._FUNCTION_EN)
-            if not opens and _heading_in_sentence_case(previous, line):
-                headings.append(len(rows))
-        glyph_item = glyph if opens else glyph_item
-        rows.append((raw.strip(), line, opens, soft))
-        previous, previous_tab, after_blank = line, tab, False
-    # The row below was read with this one going on with the glyph item; it opens either way.
-    for index in reversed(headings):
-        if index + 1 == len(rows) or rows[index + 1][2]:
-            rows[index] = (rows[index][0], rows[index][1], True, False)
-    return rows
-
-
-def _item_cuts(rows: list[tuple[str, str, bool, bool]]) -> tuple[set[int], set[int]]:
-    """The soft rows (_resume_rows) above which a bullet may also end, and at which one may also
-    start. A bullet may end above one when the rows of the item it leaves out carry no word the
-    claim locks keep (_ITEM_QUALIFIERS), and start at one when no row of the item does: a status
-    or a share on the rows it keeps would then be cut from the claim above it ("计划于 2026 年投稿"
-    alone). Main accepts every contiguous cut; this refuses only one that parts a status, a share
-    of the work or a negation from its claim.
-
-    "• Ran 40 overnight sleep sessions" over "2023-2024", "Machine learning for sleep staging" or
-    "北京大学 物理学院" may end at its own row, as may the wrapped "• Collaborated with researchers
-    from Stanford" over "University on a sleep study". It may not over "Under Review" or
-    "Team of 4", nor over "Extension office" above "(under review at ICRA)".
-    """
-    above: set[int] = set()
-    at: set[int] = set()
-    index = 0
-    while index < len(rows):
-        end = index + 1
-        while end < len(rows) and not rows[end][2]:
-            end += 1
-        soft = [row for row in range(index + 1, end) if rows[row][3]]
-        if soft:
-            free = True
-            for row in range(end - 1, index - 1, -1):
-                free = free and not any(pattern.search(rows[row][1]) for pattern in _ITEM_QUALIFIERS)
-                if free and rows[row][3]:
-                    above.add(row)
-            if free:
-                at.update(soft)
-        index = end
-    return above, at
-
-
-def _lead_ends(raw: str, folded: str) -> list[int]:
-    """Where an item's first word may start in a row, as _extraction_layout folds it: after its
-    glyph (_LINE_GLYPH), a list number, an "o" or a run of marks (_LEAD_MARKS), and after a
-    circled number ("①", which NFKC reads as "1"), each with what follows it ("• 1. Built")."""
-    ends: list[int] = []
-    at = 0
-    if raw[:1] and not raw[0].isascii() and unicodedata.category(raw[0]) == "No":
-        at = len(unicodedata.normalize("NFKC", raw[0]).casefold())
-        at += len(folded[at:]) - len(folded[at:].lstrip(" "))
-        ends.append(at)
-    for _ in range(3):
-        match = _LINE_GLYPH.match(folded, at) or _LEAD_MARKS.match(folded, at)
-        if match is None or match.end() == at or match.end() >= len(folded):
-            break
-        lead, following = match.group(0), folded[match.end()]
-        if following.isdigit() and (lead == lead.rstrip() or _SIGNS.intersection(lead)):
-            break
-        at = match.end()
-        ends.append(at)
-    return ends
-
-
-def _extraction_text(value: str) -> str:
-    """_normalized_extraction_text without the spaces between CJK characters, which a wrap or a model drops."""
-    return _CJK_SPACE.sub("", _normalized_extraction_text(value))
-
-
-def _extraction_layout(resume_text: str) -> tuple[str, set[int], set[int], list[int], list[tuple[str, str, bool]]]:
-    """The résumé as _extraction_text reads it, with where a bullet may start and end.
-
-    A bullet starts where a row opens an item (``_resume_rows``), or after its bullet
-    glyph, list number or marks (_lead_ends), and ends at the end of the last row of its
-    item, with or without its final mark. Inside an item it may also start at, or end
-    above, a soft row where the cut parts no status, share or negation from its claim
-    (_item_cuts). A wrapped row is joined to the row above (with no space inside CJK
-    text), so neither joint is a boundary. An inline glyph ("... • ...") separates two bullets.
-    Also returned: where each row starts in the text, and the rows themselves.
-    """
-    rows = _resume_rows(resume_text)
-    above, at = _item_cuts(rows)
-    text, starts, ends, offsets = "", set(), set(), []
-    for index, (raw, line, opens, _) in enumerate(rows):
-        folded = _CJK_SPACE.sub("", line).casefold()
-        if text:
-            text += " " if opens else _row_join(text, folded)
-        offset = len(text)
-        offsets.append(offset)
-        if opens or index in at:
-            starts.add(offset)
-            starts.update(offset + end for end in _lead_ends(raw, folded))
-        if index + 1 == len(rows) or rows[index + 1][2] or index + 1 in above:
-            ends.update({offset + len(folded), offset + len(folded.rstrip(_LINE_END_MARKS))})
-        for match in _INLINE_GLYPH.finditer(folded):
-            ends.add(offset + len(folded[:match.start()].rstrip(_LINE_END_MARKS)))
-            starts.add(offset + match.end())
-        text += folded
-    return text, starts, ends, offsets, rows
-
-
-def _extraction_lines(resume_text: str) -> tuple[str, set[int], set[int]]:
-    """The résumé as _extraction_text reads it, with where a bullet may start and end (_extraction_layout)."""
-    text, starts, ends, _, _ = _extraction_layout(resume_text)
-    return text, starts, ends
-
-
-def _bullet_row(bullet: str, layout) -> int | None:
-    """The row a grounded bullet starts on, or None when the bullet is not a whole résumé line."""
-    text, starts, ends, offsets, _ = layout
-    candidate = _extraction_text(bullet)
-    if len(candidate) < 4:
-        return None
-    start = min((start for start in starts if text.startswith(candidate, start) and start + len(candidate) in ends),
-                default=None)
-    return None if start is None else bisect_right(offsets, start) - 1
-
-
 def _bullet_grounded(bullet: str, resume_text: str) -> bool:
-    """True only when an extracted bullet is a whole résumé line, or wrapped lines, verbatim.
+    """True only when an extracted bullet is contiguous resume text.
 
     Structure extraction is not a rewriting step. The previous 60% ASCII
     token-overlap rule let the model copy most of a line and append a
     fabricated tool or metric. NFKC + collapsed whitespace tolerates
     presentation-only differences while retaining the verbatim, contiguous
-    trust boundary for every language (CJK bullets included). The bullet must
-    also start and end where a line or bullet does: any contiguous cut let the
-    model drop the student's qualifier ("Planned to survey 50 farmers ..." came
-    back as "survey 50 farmers ..."), and the cut became the evidence every
-    later rewrite was reviewed against.
+    trust boundary for every language (CJK bullets included).
     """
-    return _bullet_row(bullet, _extraction_layout(resume_text)) is not None
+    candidate = _normalized_extraction_text(bullet)
+    source = _normalized_extraction_text(resume_text)
+    return len(candidate) >= 4 and candidate in source
 
 
 def _ai_extract_bullets(resume_text: str) -> list[str] | None:
@@ -1084,7 +611,7 @@ def _ai_extract_bullets(resume_text: str) -> list[str] | None:
 
     try:
         parsed: Any = json.loads(cleaned)
-    except (ValueError, TypeError, RecursionError):
+    except (ValueError, TypeError):
         return None
     if not isinstance(parsed, dict):
         return None
@@ -1092,14 +619,14 @@ def _ai_extract_bullets(resume_text: str) -> list[str] | None:
     if not isinstance(items, list):
         return None
 
+    resume_lower = resume_text.lower()
     out: list[str] = []
     seen: set[str] = set()
-    layout = _extraction_layout(resume_text)
     for item in items:
         text = str(item).strip()
         if len(text) < 10:
             continue
-        if _bullet_row(text, layout) is None:
+        if not _bullet_grounded(text, resume_lower):
             continue
         key = text.lower()
         if key in seen:
@@ -1186,24 +713,6 @@ async def _process_resume_chunks(
     return results, coverage
 
 
-def _with_local_extraction(results: list, text: str, local: Callable, **kwargs) -> list:
-    """Each chunk's model result, or ``local``'s extraction of the chunk where the model gave none."""
-    return [result or local(chunk, **kwargs) for result, (_, _, chunk) in zip(results, resume_chunks(text), strict=True)]
-
-
-async def _local_groups(results: list, text: str, local: Callable, **kwargs) -> list:
-    """_with_local_extraction, on the request lane when a chunk needs the local extraction.
-
-    Reading the rows of a 60,000-character résumé (_resume_rows) takes up to about 90 ms of
-    CPU. On the event loop, ten such requests at once (one client's /api/tailor* limit) held it
-    0.8-1.0 s; on the lane (backend.lib.blocking.run_request_work) the loop shares the GIL with
-    one thread and the requests queue there instead.
-    """
-    if all(results):
-        return list(results)
-    return await run_request_work(_with_local_extraction, results, text, local, **kwargs)
-
-
 def _dispatch_reserver(http_request: Request) -> Callable[[], bool]:
     """The rate limiter's per-dispatch reservation for this request.
 
@@ -1261,7 +770,8 @@ async def extract_bullets(request: ExtractBulletsRequest, http_request: Request)
     results, coverage = await _process_resume_chunks(
         text, _ai_extract_bullets, reserve_dispatch=_dispatch_reserver(http_request),
     )
-    groups = await _local_groups(results, text, _heuristic_bullets, limit=1000)
+    groups = [result or _heuristic_bullets(chunk, limit=1000)
+              for result, (_, _, chunk) in zip(results, resume_chunks(text), strict=True)]
     bullets, limited = _select_bullets_across_chunks(groups)
     warnings = _processing_warnings(coverage)
     if limited:
@@ -1479,54 +989,15 @@ _VALID_KINDS = (
 )
 
 
-# A section the student did not head in the résumé is shown under the standard name of its kind,
-# in its lines' language: the closed set the full-target export prints (target_resume_export.HEADINGS).
-# Research, projects and leadership print under the export's activities heading; none claims more.
-_KIND_HEADING = {"education": "education", "skills": "skills", "other": "other", "experience": "activities",
-                 "projects": "activities", "research": "activities", "leadership": "activities"}
-
-
-def _standard_heading(kind: str, lines: list[str], resume_text: str) -> str:
-    """The standard name of ``kind`` in the language of its lines (of the résumé when it has none)."""
-    return _EXPORT_HEADINGS[language(" ".join(lines) or resume_text)][_KIND_HEADING.get(kind, "other")]
-
-
-def _heading_key(value: str) -> str:
-    return _extraction_text(value).rstrip(" :")
-
-
-def _section_heading(heading: str, kind: str, lines: list[str], resume_text: str, layout, named: set[str]) -> str:
-    """The student's own heading row for a model-structured section, or the standard name of its kind.
-
-    The model writes each section's "heading" itself, and nothing reviews it: it can name a
-    status the lines do not have ("Publications"), or come back in another language than
-    the résumé. It is kept only as the row the student wrote: a whole résumé row equal to
-    it, the nearest heading above the section's first line, with no row the model named as
-    another heading, and no row in capitals, in between. The text shown is the student's
-    row, not the model's spelling of it.
-    """
-    key = _heading_key(heading)
-    rows = layout[4]
-    first = min((row for row in (_bullet_row(line, layout) for line in lines) if row is not None), default=None)
-    if key and first is not None:
-        for index in range(first - 1, -1, -1):
-            raw, line = rows[index][:2]
-            if _heading_key(line) == key and not _LINE_GLYPH.match(line):
-                return raw.rstrip(" :：")
-            if _heading_key(line) in named or _own_row(line):
-                break
-    return _standard_heading(kind, lines, resume_text)
-
-
 def _heuristic_structure(resume_text: str) -> list[ResumeSection]:
-    """No-LLM fallback: all glyph bullets under a single section, named in their language.
+    """No-LLM fallback: all glyph bullets under a single Experience section.
 
     Uncapped here for the same reason as extraction: the merge applies the tree
     limits and says when it had to."""
     bullets = _heuristic_bullets(resume_text, limit=1000)
     if not bullets:
         return []
-    return [_uncapped_section("s1", _standard_heading("experience", bullets, resume_text), "experience",
+    return [_uncapped_section("s1", "Experience", "experience",
                               [ResumeBullet(id=f"s1b{i}", text=b) for i, b in enumerate(bullets, 1)])]
 
 
@@ -1563,14 +1034,13 @@ def _ai_structure_resume(resume_text: str, *, locale: str = "en") -> list[Resume
         return None
     try:
         parsed: Any = json.loads(strip_json_fence(raw))
-    except (ValueError, TypeError, RecursionError):
+    except (ValueError, TypeError):
         return None
     if not isinstance(parsed, dict) or not isinstance(parsed.get("sections"), list):
         return None
 
+    resume_lower = resume_text.lower()
     sections: list[ResumeSection] = []
-    layout = _extraction_layout(resume_text)
-    named = {_heading_key(str(sec.get("heading", ""))) for sec in parsed["sections"] if isinstance(sec, dict)} - {""}
     for si, sec in enumerate(parsed["sections"], 1):
         if not isinstance(sec, dict):
             continue
@@ -1584,15 +1054,13 @@ def _ai_structure_resume(resume_text: str, *, locale: str = "en") -> list[Resume
         bullets: list[ResumeBullet] = []
         for bi, b in enumerate(raw_bullets, 1):
             text = str(b).strip()
-            if len(text) < 10 or _bullet_row(text, layout) is None:
+            if len(text) < 10 or not _bullet_grounded(text, resume_lower):
                 continue
             bullets.append(ResumeBullet(id=f"s{si}b{bi}", text=text))
         # Keep a section even if bullet-less only when it's a labelled skills
         # section; otherwise an empty section is noise.
         if bullets or (heading and kind == "skills"):
-            lines = [bullet.text for bullet in bullets]
-            sections.append(_uncapped_section(
-                f"s{si}", _section_heading(heading, kind, lines, resume_text, layout, named), kind, bullets))
+            sections.append(_uncapped_section(f"s{si}", heading or "Section", kind, bullets))
     return sections or None
 
 
@@ -1654,7 +1122,8 @@ async def structure_resume(request: StructureResumeRequest, http_request: Reques
     results, coverage = await _process_resume_chunks(
         text, _ai_structure_resume, reserve_dispatch=_dispatch_reserver(http_request), locale=request.locale,
     )
-    groups = await _local_groups(results, text, _heuristic_structure)
+    groups = [result or _heuristic_structure(chunk)
+              for result, (_, _, chunk) in zip(results, resume_chunks(text), strict=True)]
     sections, limited = _merge_structure_chunks(groups)
     warnings = _processing_warnings(coverage)
     if limited:
