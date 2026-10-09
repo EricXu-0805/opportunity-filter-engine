@@ -21,7 +21,7 @@ const deferred = <T,>() => { let resolve!: (value: T) => void; const promise = n
 const shorter = 'I did not lead the team.';
 async function response(payload: TargetResumePlanRequest): Promise<TargetResumePlanResponse> {
   const p = await prepareTargetResumePlan(payload.draft, payload.options); if (!p.ok) throw new Error(p.code);
-  return { ...(payload.support_groups === undefined ? {} : {support_groups:payload.support_groups}), version: 1, pipeline_version: 'full-target-plan-v4', request_id: payload.request_id, document_id: payload.draft.id,
+  return { ...(payload.support_groups === undefined ? {} : {support_groups:payload.support_groups}), version: 1, pipeline_version: 'full-target-plan-v5', request_id: payload.request_id, document_id: payload.draft.id,
     opportunity_id: payload.draft.opportunity_id, document_signature: payload.document_signature, base: clone(payload.draft.base), options: payload.options,
     manifest: p.value.manifest, scope: p.value.scope, method: 'ai', complete: true, reason_code: null, logical_calls: 1, provider_attempts_upper_bound: 2,
     items: p.value.manifest.map(item => {
@@ -31,7 +31,7 @@ async function response(payload: TargetResumePlanRequest): Promise<TargetResumeP
         reason: 'The opportunity mentions Python; review the cited source before choosing.',
         target_evidence: [{ field: 'requirement', requirement_index: 0, start: 0, end: 6, quote: 'Python' }],
         source_evidence: [{ unit_id: source.id, start: 0, end: Array.from(source.original).length, quote: source.original }],
-        rewrites: block.lines.filter(line => line.evidence.kind === 'experience').map(line => ({ unit_id: line.id, status: 'suggested', reason_code: null, proposed_text: shorter })),
+        rewrites: [],
       };
     }) };
 }
@@ -42,7 +42,6 @@ function props(): TargetResumePlanPanelProps {
 const generate = async () => { fireEvent.click(screen.getByRole('button', { name: 'Generate content plan' })); await waitFor(() => expect(mocked.generate).toHaveBeenCalled()); };
 const reviewReady = () => screen.findByText('All 5 content blocks in this draft were reviewed. Nothing has been applied.');
 const select = (id: string) => fireEvent.click(screen.getByRole('checkbox', { name: `Use content choice: ${id}` }));
-const selectRewrite = () => fireEvent.click(screen.getByRole('checkbox', { name: 'Use shorter wording: line-6' }));
 const apply = () => fireEvent.click(screen.getByRole('button', { name: 'Apply selected content choices' }));
 const project = (doc: TargetResumeV1) => doc.document.sections.find(section => section.id === 'activities')!.blocks[0];
 beforeEach(async () => {
@@ -55,7 +54,7 @@ describe('whole draft content planning', () => {
   it('shows a complete unselected plan, original/current wording, citations and honest length/scope labels', async () => {
     const p = props(), before = JSON.stringify(p.draft); render(<TargetResumePlanPanel {...p} />); await generate(); await reviewReady();
     expect(mocked.generate.mock.calls[0][0].draft).toEqual(p.draft);
-    expect(screen.getAllByRole('checkbox')).toHaveLength(6);
+    expect(screen.getAllByRole('checkbox')).toHaveLength(5);
     for (const control of screen.getAllByRole('checkbox')) expect(control).not.toBeChecked();
     expect(screen.getByRole('button', { name: 'Apply selected content choices' })).toBeDisabled();
     expect(screen.getByTestId('plan-current-length')).toHaveTextContent(String(measureTargetResumeLength(p.draft)));
@@ -81,28 +80,42 @@ describe('whole draft content planning', () => {
     expect(next.document.sections[0]).toEqual(p.draft.document.sections[0]);
     expect(screen.getByTestId('plan-preview-length')).toHaveTextContent(String(measureTargetResumeLength(next)));
   });
-  it('allows shorter wording independently without selecting its hidden block, section or fields', async () => {
+  it('refuses a plan that carries wording, as a pre-review server sends it, and shows none of it', async () => {
+    // full-target-plan-v4 servers (main) send shorter wording that no faithfulness review checked.
+    mocked.generate.mockImplementation(async payload => {
+      const value = await response(payload) as unknown as { pipeline_version: string; items: TargetResumePlanResponse['items'] };
+      value.items.find(item => item.block_id === 'project-one')!.rewrites = [{ unit_id: 'line-6', status: 'suggested', reason_code: null, proposed_text: shorter }];
+      return value as unknown as TargetResumePlanResponse;
+    });
+    const p = props(); render(<TargetResumePlanPanel {...p} />); await generate();
+    expect(await screen.findByRole('alert')).toHaveTextContent('could not be verified');
+    expect(screen.queryByText(shorter)).toBeNull(); expect(screen.queryByRole('checkbox')).toBeNull(); expect(p.onApply).not.toHaveBeenCalled();
+  });
+  it('refuses a plan stamped with the pre-review version', async () => {
+    mocked.generate.mockImplementation(async payload => ({ ...await response(payload), pipeline_version: 'full-target-plan-v4' }) as unknown as TargetResumePlanResponse);
+    const p = props(); render(<TargetResumePlanPanel {...p} />); await generate();
+    expect(await screen.findByRole('alert')).toHaveTextContent('could not be verified'); expect(screen.queryByRole('checkbox')).toBeNull();
+  });
+  it('keeps a hidden block, section and fields hidden while showing why', async () => {
     const p = props(); const section = p.draft.document.sections.find(section => section.id === 'activities')!;
     section.included = false; section.blocks[0].included = false; section.blocks[0].lines[1].included = false;
     render(<TargetResumePlanPanel {...p} />); await generate(); await reviewReady();
     expect(screen.getByText(/Selecting its block does not restore the section/)).toBeVisible();
     expect(screen.getByText(/Hidden fields stay hidden/)).toBeVisible();
     expect(screen.getByText('Re-include this block using this choice')).toBeVisible();
-    selectRewrite(); apply(); const next = vi.mocked(p.onApply).mock.calls[0][1];
-    expect(project(next).lines[1].text).toBe(shorter); expect(project(next).lines[1].original).toBe(project(p.draft).lines[1].original);
-    expect(project(next).included).toBe(false); expect(project(next).lines[1].included).toBe(false);
-    expect(next.document.sections.find(section => section.id === 'activities')!.included).toBe(false);
+    expect(screen.getByText(/The plan proposes no new wording/)).toBeVisible();
   });
   it('re-includes only a selected hidden block and does not silently shorten its wording', async () => {
     const p = props(); project(p.draft).included = false; render(<TargetResumePlanPanel {...p} />); await generate(); await reviewReady();
     select('project-one'); apply(); const next = vi.mocked(p.onApply).mock.calls[0][1];
     expect(project(next).included).toBe(true); expect(project(next).lines).toEqual(project(p.draft).lines);
   });
-  it.each(['ungrounded_rewrite', 'not_shorter'] as const)('keeps a %s compression unavailable without disabling the separate content choice', async code => {
-    mocked.generate.mockImplementation(async payload => { const value = await response(payload); value.items.find(item => item.block_id === 'project-one')!.rewrites[0] = { unit_id: 'line-6', status: 'skipped', reason_code: code, proposed_text: null }; return value; });
+  it('shows a compress choice that carries no wording without promising shorter wording below', async () => {
     const p = props(); render(<TargetResumePlanPanel {...p} />); await generate(); await reviewReady();
+    const card = document.querySelector('[data-plan-block-id="project-one"]') as HTMLElement;
+    expect(within(card).getByText(/Suggestion：Shorten/)).toBeVisible();
+    expect(within(card).queryByText(/Shorter wording is optional below/)).toBeNull();
     expect(screen.queryByRole('checkbox', { name: 'Use shorter wording: line-6' })).toBeNull();
-    expect(screen.getByText(code === 'not_shorter' ? 'The candidate was not shorter. Current wording is kept.' : 'The candidate failed source checks. Current wording is kept.')).toBeVisible();
     select('project-one'); apply(); expect(project(vi.mocked(p.onApply).mock.calls[0][1]).lines).toEqual(project(p.draft).lines);
   });
   it.each(['missing block', 'false quote'] as const)('rejects an invalid whole plan (%s) instead of showing partial advice', async defect => {
@@ -123,7 +136,7 @@ describe('whole draft content planning', () => {
     expect(screen.getByText(/old plan was cleared/)).toBeVisible();
   });
   it('clears already reviewed choices after a source change and tolerates a replacement document with different IDs', async () => {
-    const p = props(); const view = render(<TargetResumePlanPanel {...p} />); await generate(); await reviewReady(); selectRewrite();
+    const p = props(); const view = render(<TargetResumePlanPanel {...p} />); await generate(); await reviewReady(); select('publication-one');
     const next = clone(p.draft); next.document.sections = next.document.sections.filter(section => section.kind === 'basics');
     view.rerender(<TargetResumePlanPanel {...p} draft={next} contextKey="replacement" />);
     expect(screen.queryByRole('checkbox')).toBeNull(); expect(p.onDirtyChange).toHaveBeenLastCalledWith(false); expect(p.onApply).not.toHaveBeenCalled();
@@ -139,10 +152,10 @@ describe('whole draft content planning', () => {
     expect(p.onDirtyChange).toHaveBeenLastCalledWith(false);
   });
   it('keeps verified advice and explicit choices through a temporary readiness pause', async () => {
-    const p = props(); const view = render(<TargetResumePlanPanel {...p} />); await generate(); await reviewReady(); selectRewrite();
+    const p = props(); const view = render(<TargetResumePlanPanel {...p} />); await generate(); await reviewReady(); select('publication-one');
     view.rerender(<TargetResumePlanPanel {...p} enabled={false} readiness="waiting" />);
-    expect(screen.getByRole('checkbox', { name: 'Use shorter wording: line-6' })).toBeChecked();
-    expect(screen.getByRole('checkbox', { name: 'Use shorter wording: line-6' })).toBeDisabled();
+    expect(screen.getByRole('checkbox', { name: 'Use content choice: publication-one' })).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: 'Use content choice: publication-one' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Apply selected content choices' })).toBeDisabled();
     view.rerender(<TargetResumePlanPanel {...p} />);
     expect(screen.getByRole('button', { name: 'Apply selected content choices' })).toBeEnabled(); expect(mocked.generate).toHaveBeenCalledTimes(1);
@@ -156,14 +169,13 @@ describe('whole draft content planning', () => {
   });
   it.each([['target_changed', 409], ['target_not_found', 404], ['TARGET_NOT_ACTIONABLE', 409], ['legacy_target_context', 409]] as const)('retires an earlier selected plan after authority rejection %s', async (code, status) => {
     const p = props(), original = JSON.stringify(p.draft); const view = render(<TargetResumePlanPanel {...p} />);
-    await generate(); await reviewReady(); select('publication-one'); selectRewrite();
+    await generate(); await reviewReady(); select('publication-one'); select('project-one');
     expect(screen.getByRole('button', { name: 'Apply selected content choices' })).toBeEnabled();
     mocked.generate.mockRejectedValueOnce(new ApiError(status, code, 'PRIVATE PROVIDER MESSAGE', false));
     fireEvent.click(screen.getByRole('button', { name: 'Generate content plan' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(code === 'target_changed' ? 'The opportunity changed.' : code === 'legacy_target_context' ? 'This older draft lacks complete opportunity requirements.' : code === 'TARGET_NOT_ACTIONABLE' ? 'This opportunity is currently unavailable for résumé planning.' : 'This opportunity is unavailable');
     expect(p.onAuthorityRefusal).toHaveBeenCalledWith(code);
     expect(screen.queryByRole('checkbox', { name: /Use content choice:/ })).toBeNull();
-    expect(screen.queryByRole('checkbox', { name: /Use shorter wording:/ })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Apply selected content choices' })).toBeNull();
     view.rerender(<TargetResumePlanPanel {...p} enabled={false} readiness="waiting" />); view.rerender(<TargetResumePlanPanel {...p} />);
     expect(screen.queryByRole('button', { name: 'Apply selected content choices' })).toBeNull();
@@ -171,11 +183,11 @@ describe('whole draft content planning', () => {
     expect(screen.queryByText('PRIVATE PROVIDER MESSAGE')).toBeNull(); expect(mocked.generate).toHaveBeenCalledTimes(2);
   });
   it.each([['budget_exhausted', 429], ['REQUEST_TIMEOUT', 504]] as const)('preserves the current draft, earlier plan and choices when regeneration returns %s', async (code, status) => {
-    const p = props(); render(<TargetResumePlanPanel {...p} />); await generate(); await reviewReady(); selectRewrite();
+    const p = props(); render(<TargetResumePlanPanel {...p} />); await generate(); await reviewReady(); select('publication-one');
     mocked.generate.mockRejectedValueOnce(new ApiError(status, code, 'PRIVATE PROVIDER MESSAGE', false));
     fireEvent.click(screen.getByRole('button', { name: 'Generate content plan' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(code === 'budget_exhausted' ? 'allowance is used up' : 'did not finish in time');
-    expect(screen.getByRole('checkbox', { name: 'Use shorter wording: line-6' })).toBeChecked(); expect(p.onAuthorityRefusal).not.toHaveBeenCalled();
+    expect(screen.getByRole('checkbox', { name: 'Use content choice: publication-one' })).toBeChecked(); expect(p.onAuthorityRefusal).not.toHaveBeenCalled();
     expect(screen.queryByText('PRIVATE PROVIDER MESSAGE')).toBeNull(); expect(p.onApply).not.toHaveBeenCalled(); expect(mocked.generate).toHaveBeenCalledTimes(2);
   });
   it('cancels a queued generation when the page target changes during live profile verification', async () => {
@@ -231,19 +243,18 @@ describe('whole draft content planning', () => {
 
 
 describe('accepted content-plan operation records', () => {
-  it('records only selected omission and compression, with a check only for rewritten text', async () => {
+  it('records only the selected omission, with no check, since the plan changes no text', async () => {
     mocked.generate.mockImplementation(async payload => ({ ...await response(payload), check_version: 'target-resume-source-checks-v1' }));
     const p = props(); render(<TargetResumePlanPanel {...p} />); await generate(); await reviewReady();
-    expect(p.onApply).not.toHaveBeenCalled(); select('publication-one'); selectRewrite(); apply();
+    expect(p.onApply).not.toHaveBeenCalled(); select('publication-one'); select('project-one'); apply();
     const [, next, action] = vi.mocked(p.onApply).mock.calls[0];
     const records = appendTargetResumeProvenance(null, p.draft, next, action)!;
     expect(records.events).toHaveLength(1); expect(records.events[0].kind).toBe('plan');
-    const changes = records.events[0].changes; expect(changes).toHaveLength(2);
-    const inclusion = changes.find(item => item.field === 'included')!, text = changes.find(item => item.field === 'text')!;
-    expect(inclusion.block_id).toBe('publication-one'); expect(inclusion.check).toBeNull(); expect(inclusion.after).toBe(false);
-    expect(text.line_id).toBe('line-6'); expect(text.after).toBe(shorter); expect(text.check?.version).toBe('target-resume-source-checks-v1');
-    expect(text.reason).toContain('mentions Python'); expect(text.target_evidence[0].quote).toBe('Python'); expect(text.source_evidence).not.toHaveLength(0);
-    expect(changes.some(item => item.block_id === 'education-one')).toBe(false);
+    const changes = records.events[0].changes; expect(changes).toHaveLength(1);
+    expect(changes[0].field).toBe('included'); expect(changes[0].block_id).toBe('publication-one');
+    expect(changes[0].check).toBeNull(); expect(changes[0].after).toBe(false);
+    expect(changes[0].reason).toContain('mentions Python'); expect(changes[0].target_evidence[0].quote).toBe('Python');
+    expect(project(next).lines).toEqual(project(p.draft).lines);
   });
   it('does not create a record for an accepted choice that changes nothing', async () => {
     const p = props(); render(<TargetResumePlanPanel {...p} />); await generate(); await reviewReady(); select('project-one'); apply();
@@ -253,13 +264,13 @@ describe('accepted content-plan operation records', () => {
 });
 
 
-it('records both reviewed sources when applying a combined plan rewrite and discards earlier choices when sources change',async()=>{
+it('sends confirmed support groups but refuses a combined plan rewrite, which no review checked',async()=>{
   const originalProps=props();const profile=clone(originalProps.profile);profile.experience_entries!.push({id:'same-project-support',revision:1,status:'confirmed',text:'I wrote Python tests for the parser and documented each failing case.',source:{kind:'manual'}});profile.resume_master!.activities[0].details.push({id:'same-project-support',revision:1});
   const draft=await createTargetResume(profile,originalProps.draft.target_snapshot,'plan-support-draft');const block=project(draft),experiences=block.lines.filter(line=>line.evidence.kind==='experience');const groups=[{unit_id:experiences[0].id,support_unit_ids:[experiences[1].id],confirmed:true as const}];
   const p={...originalProps,profile,draft,supportGroups:groups,currentContext:{profile_signature:draft.base.profile_signature,source_signature:draft.base.source_signature,target_signature:draft.base.target_signature}};
-  mocked.generate.mockImplementation(async(payload:TargetResumePlanRequest)=>{const result=await response(payload);for(const item of result.items)for(const rewrite of item.rewrites){const group=payload.support_groups?.find(group=>group.unit_id===rewrite.unit_id);if(group)rewrite.source_evidence=targetResumeSupportEvidence(payload.draft,group);}return result;});
-  const view=render(<TargetResumePlanPanel {...p}/>);await generate();await screen.findByRole('checkbox',{name:`Use shorter wording: ${groups[0].unit_id}`});expect(mocked.generate.mock.calls[0][0].support_groups).toEqual(groups);
-  view.rerender(<TargetResumePlanPanel {...p} supportGroups={[]}/>);expect(screen.queryByRole('checkbox',{name:`Use shorter wording: ${groups[0].unit_id}`})).toBeNull();expect(p.onApply).not.toHaveBeenCalled();
-  view.rerender(<TargetResumePlanPanel {...p}/>);await generate();fireEvent.click(await screen.findByRole('checkbox',{name:`Use shorter wording: ${groups[0].unit_id}`}));apply();expect(p.onApply).toHaveBeenCalledTimes(1);
-  const [,next,action]=vi.mocked(p.onApply).mock.calls[0];expect(action.annotations![0].source_evidence).toEqual(targetResumeSupportEvidence(draft,groups[0]));const stored=appendTargetResumeProvenance(null,draft,next,action);expect(stored!.events[0].changes[0].source_evidence).toHaveLength(2);
+  const view=render(<TargetResumePlanPanel {...p}/>);await generate();await screen.findByRole('checkbox',{name:'Use content choice: project-one'});expect(mocked.generate.mock.calls[0][0].support_groups).toEqual(groups);
+  view.rerender(<TargetResumePlanPanel {...p} supportGroups={[]}/>);expect(screen.queryByRole('checkbox',{name:'Use content choice: project-one'})).toBeNull();expect(p.onApply).not.toHaveBeenCalled();
+  mocked.generate.mockImplementation(async(payload:TargetResumePlanRequest)=>{const result=await response(payload);const group=payload.support_groups![0];result.items.find(item=>item.block_id==='project-one')!.rewrites=[{unit_id:group.unit_id,status:'suggested',reason_code:null,proposed_text:'I wrote parser tests.',source_evidence:targetResumeSupportEvidence(payload.draft,group)}];return result;});
+  view.rerender(<TargetResumePlanPanel {...p}/>);await generate();expect(await screen.findByRole('alert')).toHaveTextContent('could not be verified');
+  expect(screen.queryByText('I wrote parser tests.')).toBeNull();expect(p.onApply).not.toHaveBeenCalled();
 });

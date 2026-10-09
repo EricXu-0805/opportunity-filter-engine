@@ -1160,7 +1160,8 @@ export async function validateEmailDraft(subject: string, body: string, profile:
  * found) and network failures. Mirrors the cold-email "always returns
  * usable" contract.
  *
- * `locale` (R71-D) selects the output language. Backend normalizes
+ * `locale` (R71-D) selects the language of the model's instructions; each
+ * rewrite stays in its own bullet's language (w14.1). Backend normalizes
  * region tags ('zh-CN' / 'zh_TW' / 'zh') to 'zh', and any unknown
  * value falls back to 'en' rather than 422-ing — so we can safely
  * pass `useT().locale` through without sanitization.
@@ -1169,7 +1170,7 @@ export async function tailorResume(
   profile: ProfileData,
   opportunityId: string,
   originalBullets: string[],
-  options: { locale?: string; expectedPipelineVersion?: string; expectedTargetVersion?: string } = {},
+  options: { locale?: string; expectedPipelineVersion?: string; expectedTargetVersion?: string; sourceBullets?: string[] } = {},
 ): Promise<TailorResponse> {
   void track('ai_feature_used', { feature: 'tailor' });
   const body: Record<string, unknown> = {
@@ -1177,6 +1178,8 @@ export async function tailorResume(
     opportunity_id: opportunityId,
     original_bullets: originalBullets,
   };
+  // sourceBullets[i] is bullet i's evidence when its text is reviewed wording.
+  if (options.sourceBullets) body.source_bullets = options.sourceBullets;
   if (options.locale) body.locale = options.locale;
   if (options.expectedPipelineVersion) body.expected_pipeline_version = options.expectedPipelineVersion;
   if (options.expectedTargetVersion !== undefined) body.expected_target_version = options.expectedTargetVersion;

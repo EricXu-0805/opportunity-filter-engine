@@ -312,6 +312,49 @@ class TestAmbiguousPushOutcome:
         assert body["ambiguous"] == 0
 
 
+# ── 1b. a target whose stated deadline passed is not reminded about ─────────
+
+
+def _serve_dated_target(monkeypatch, **fields) -> None:
+    monkeypatch.setattr(push_mod, "load_opportunities_by_id", lambda: {
+        "opp-42": {
+            "id": "opp-42",
+            "source_type": "campus_program",
+            "opportunity_type": "research",
+            "metadata": {"is_active": True},
+            **fields,
+        },
+    })
+
+
+class TestReminderDeadlineTruth:
+    def test_a_passed_stated_deadline_sends_nothing_and_keeps_the_row(self, monkeypatch):
+        _set_push_env(monkeypatch)
+        dispatch: list = []
+        emails: list = []
+        patches: list = []
+        _install_reminder_io(monkeypatch, dispatch=dispatch, emails=emails, patches=patches)
+        _serve_dated_target(monkeypatch, deadline="2024-01-15")
+
+        body = _run_reminders().json()
+
+        assert (body["due"], body["skipped"], body["sent"], body["emailed"]) == (1, 1, 0, 0)
+        assert dispatch == [] and emails == []
+        assert [p for p in patches if "interactions" in p["url"]] == []
+
+    def test_an_estimated_deadline_in_the_past_still_reminds(self, monkeypatch):
+        _set_push_env(monkeypatch, resend=False)
+        dispatch: list = []
+        _install_reminder_io(monkeypatch, dispatch=dispatch)
+        _serve_dated_target(monkeypatch, deadline="2024-01-15", deadline_is_estimate=True)
+
+        body = _run_reminders().json()
+
+        assert body["skipped"] == 0
+        (call,) = dispatch
+        assert call["headers"]["Topic"] == derive_push_topic("reminder-opp-42")
+
+
 # ── 2. Web Push protocol idempotency (RFC 8030 Topic + TTL) ─────────────────
 
 
@@ -506,7 +549,9 @@ _OPP_A = {
     "source_type": "campus_lab",
     "title": "Vision Lab RA",
     "organization": "UIUC ECE",
-    "deadline": "2026-07-01",
+    # Far future: a stated deadline that passes closes the listing, and a
+    # closed listing never reaches a digest.
+    "deadline": "2099-07-01",
     "metadata": {"is_active": True},
 }
 _SID = "11111111-2222-3333-4444-555555555555"

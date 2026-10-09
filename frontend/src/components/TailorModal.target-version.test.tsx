@@ -24,9 +24,9 @@ function withVersion(version: unknown): Opportunity {
   if (version === undefined) delete copy.writing_target_version; else copy.writing_target_version = version;
   return copy as unknown as Opportunity;
 }
-const response = (version: unknown = A, text = 'Verified target suggestion') => ({ opportunity_id: ID, pipeline_version: 'w13.3',
+const response = (version: unknown = A, text = 'Verified target suggestion') => ({ opportunity_id: ID, pipeline_version: 'w14.1',
   generated_at: '2026-09-25T12:00:00Z', target_version: version, method: 'ai', warnings: [],
-  tailored_bullets: [{ text, source_evidence: 'My original sensor work', source_index: 0 }] });
+  tailored_bullets: [{ text, source_evidence: 'My original sensor work', source_index: 0, status: 'rewritten' }] });
 const base = { isOpen: true, onClose: vi.fn(), profile, target, opportunityId: ID, opportunityTitle: target.title, ownerReady: true, ownerScopeKey: OWNER };
 const input = () => screen.getByPlaceholderText('tailor.bulletsPlaceholder');
 const generate = () => screen.getByRole('button', { name: /^tailor\.(generate|regenerate)$/ });
@@ -38,8 +38,8 @@ function pending<T>() { let resolve!: (value: T) => void; const promise = new Pr
 beforeEach(async () => {
   vi.resetAllMocks(); Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: copied } }); vi.stubGlobal('crypto', webcrypto); localStorage.clear();
   advanceOwnerEpoch(null); advanceOwnerEpoch(OWNER); await syncLocalIdentityOwner(OWNER);
-  api.status.mockResolvedValue({ ai_available: true, pipeline_version: 'w13.3' }); api.tailor.mockResolvedValue(response());
-  api.extract.mockResolvedValue({ method: 'ai', bullets: ['Fresh source extraction'], pipeline_version: 'w13.3', generated_at: '2026-09-25T12:00:00Z' });
+  api.status.mockResolvedValue({ ai_available: true, pipeline_version: 'w14.1' }); api.tailor.mockResolvedValue(response());
+  api.extract.mockResolvedValue({ method: 'ai', bullets: ['Fresh source extraction'], pipeline_version: 'w14.1', generated_at: '2026-09-25T12:00:00Z' });
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); if (clipboardDescriptor) Object.defineProperty(navigator, 'clipboard', clipboardDescriptor); else Reflect.deleteProperty(navigator, 'clipboard'); });
 
@@ -50,7 +50,7 @@ describe('Tailor authoritative target version', () => {
     // argument diff instead of a polling timeout.
     await waitFor(() => expect(api.tailor).toHaveBeenCalled());
     expect(api.tailor).toHaveBeenCalledExactlyOnceWith(profile, ID, ['My original sensor work'],
-      { locale: 'en', expectedPipelineVersion: 'w13.3', expectedTargetVersion: A });
+      { locale: 'en', expectedPipelineVersion: 'w14.1', expectedTargetVersion: A });
     await waitFor(() => expect(screen.getAllByText(fullText('Verified target suggestion')).length).toBeGreaterThan(0));
   });
   it.each([undefined, '', `wt1:${'A'.repeat(64)}`, ` ${A}`])('does not generate without a valid server target token (%s)', async version => {
@@ -110,7 +110,7 @@ describe('Tailor authoritative target version', () => {
     render(<TailorModal {...base} target={withVersion(undefined)} />); await ready();
     fireEvent.click(screen.getByRole('button', { name: 'tailor.extractFromResume' }));
     await waitFor(() => expect(api.extract).toHaveBeenCalled());
-    expect(api.extract).toHaveBeenCalledExactlyOnceWith(profile.resume_text, { expectedPipelineVersion: 'w13.3' });
+    expect(api.extract).toHaveBeenCalledExactlyOnceWith(profile.resume_text, { expectedPipelineVersion: 'w14.1' });
     await waitFor(() => expect(input()).toHaveValue('Fresh source extraction')); expect(api.tailor).not.toHaveBeenCalled();
   });
 });

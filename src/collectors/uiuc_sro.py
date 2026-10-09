@@ -36,6 +36,7 @@ from ..contact_instructions import (
 )
 from ..evidence import INFERRED_FIELDS_KEY
 from .base import BaseCollector, RawOpportunity
+from .import_document import ImportDocumentError, parse_import_html
 
 logger = logging.getLogger(__name__)
 
@@ -133,11 +134,19 @@ class UIUCSROCollector(BaseCollector):
 
     @staticmethod
     def _capture_detail_html(html: str, **binding) -> dict:
-        """Adapt raw Drupal labels/items; never infer headings from field names."""
-        result = capture_from_html(html, **binding)
+        """Adapt raw Drupal labels/items; never infer headings from field names.
+
+        The page is parsed once, within the import reader's limits, and a page
+        past them is a failed check. The capture only reads the parsed page,
+        so the field fallback below takes it apart in place.
+        """
+        try:
+            soup = parse_import_html(html)
+        except ImportDocumentError as error:
+            return capture_failure(**binding, reason=error.reason)
+        result = capture_from_html(soup, **binding)
         if result.get("reason") not in {"unparsed_relevant_content", "no_supported_content"}:
             return result
-        soup = BeautifulSoup(html, "html.parser")
         body = soup.find("main") or soup.find("article") or soup.find("body")
         if body is None:
             return result
@@ -229,7 +238,7 @@ class UIUCSROCollector(BaseCollector):
 
     def _parse_detail_page(self, html: str) -> dict:
         """Parse a detail page and extract structured fields."""
-        soup = BeautifulSoup(html, "html.parser")
+        soup = parse_import_html(html)
         detail = {}
 
         # Full description - look for the main content area

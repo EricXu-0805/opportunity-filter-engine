@@ -840,15 +840,15 @@ class TestAfterTheQueueIsSettled:
         assert report["completed"] == 4
 
     # The verifier's surfaces that read the records a verdict changes. Its exit
-    # code and total also count two source scans no verdict can touch:
-    # `resume_tailoring` reads backend/routes/tailor.py and `client_match_cache`
-    # reads frontend/src/lib/match-cache.ts. Those files have their own tests,
-    # and an edit to either must not fail this one.
+    # code and total also count a source scan no verdict can touch:
+    # `client_match_cache` reads frontend/src/lib/match-cache.ts, which has its
+    # own tests, and an edit to it must not fail this one. `resume_tailoring`
+    # also runs every candidate through Tailor's anchors, so it is read here.
     _VERDICT_SURFACES = (
         "professor_trusted_publications", "professor_api_payload", "match_card",
         "ask_ai_and_cold_email_works_block", "publication_derived_keywords",
         "embedding_search_document", "match_score_and_rule_reasons",
-        "match_reason_rerank_context", "cold_email_brief",
+        "match_reason_rerank_context", "cold_email_brief", "resume_tailoring",
     )
 
     def test_the_trust_verifier_finds_no_leak_in_the_settled_records(

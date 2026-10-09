@@ -42,9 +42,13 @@ outcome for a release that has not yet gathered its infrastructure evidence.
 from __future__ import annotations
 
 import argparse
+import ast
 import json
+import re
 import subprocess
 import sys
+import urllib.request
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -115,6 +119,10 @@ _EVIDENCE_MAX_AGE_DAYS: dict[str, float] = {
     "backup": 7.0,
     "open_incidents": 3.0,
     "provider_readiness": 3.0,
+    # Which commit is serving changes on every merge, several times a day, so
+    # a recorded observation can be behind well inside this window. The
+    # release-gate workflow reads both deploys live instead.
+    "release_record": 1.0,
 }
 
 CORPUS_MIN_RECORDS = 1000
@@ -141,6 +149,7 @@ _OWNERS: dict[str, str] = {
     "truthfulness": "data pipeline owner",
     "open_incidents": "ops on-call",
     "flag_parity": "backend owner",
+    "release_record": "release operator",
     "provider_readiness": "release operator",
     "restore_drill": "infrastructure owner (Supabase project owner)",
     "backup": "infrastructure owner (Supabase project owner)",
@@ -171,6 +180,8 @@ _ACTIONS: dict[str, str] = {
     "open_incidents": "resolve or explicitly triage the open ops_incidents rows",
     "flag_parity": "align backend/lib/release_scope.py with "
                    "frontend/src/lib/release-scope.ts",
+    "release_record": "deploy the candidate to both Render and Vercel, then re-run "
+                      "with --backend-url and --frontend-url (docs/RELEASE.md §2)",
     "provider_readiness": "GET /api/ready with X-Admin-Token and record "
                           "reported.providers as provider_readiness evidence",
     "restore_drill": "perform the drill in docs/DISASTER_RECOVERY.md §2 and record it "
@@ -1213,34 +1224,298 @@ def check_open_incidents(evidence: dict | None) -> dict:
                  rollup)
 
 
+# ---------------------------------------------------------------------------
+# Release-scope tables, read as data
+#
+# Read from source text rather than imported, so the table at ANOTHER commit —
+# the one a host is actually serving — can be read without importing that
+# commit's code. Both readers return None instead of a partial table: a flag
+# whose value cannot be read is a flag whose parity cannot be claimed.
+# ---------------------------------------------------------------------------
+
+BACKEND_SCOPE_PATH = "backend/lib/release_scope.py"
+FRONTEND_SCOPE_PATH = "frontend/src/lib/release-scope.ts"
+
+_FRONTEND_TABLE_RE = re.compile(
+    r"export\s+const\s+RELEASE_SCOPE\s*=\s*Object\.freeze\(\s*\{(?P<body>[^{}]*)\}"
+    r"\s*(?:as\s+const\s*)?\)")
+_FRONTEND_ENTRY_RE = re.compile(r"\s*([A-Za-z_$][\w$]*)\s*:\s*(true|false)\s*(?:,|$)")
+_JS_COMMENT_RE = re.compile(r"/\*.*?\*/|//[^\n]*", re.S)
+
+
+def parse_backend_scope(text: str) -> dict[str, bool] | None:
+    """``RELEASE_SCOPE`` from backend/lib/release_scope.py source, or None."""
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return None
+    for node in tree.body:
+        targets = (node.targets if isinstance(node, ast.Assign)
+                   else [node.target] if isinstance(node, ast.AnnAssign) else [])
+        if not any(isinstance(t, ast.Name) and t.id == "RELEASE_SCOPE" for t in targets):
+            continue
+        value = node.value
+        # MappingProxyType({...}) — the table is the call's only argument.
+        if isinstance(value, ast.Call) and len(value.args) == 1:
+            value = value.args[0]
+        try:
+            table = ast.literal_eval(value)
+        except (ValueError, TypeError, SyntaxError):
+            return None
+        if (isinstance(table, dict) and table
+                and all(isinstance(k, str) and type(v) is bool for k, v in table.items())):
+            return table
+        return None
+    return None
+
+
+def _snake(name: str) -> str:
+    return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
+
+
+def parse_frontend_scope(text: str) -> dict[str, bool] | None:
+    """``RELEASE_SCOPE`` from frontend/src/lib/release-scope.ts, snake_cased, or None.
+
+    Only the frozen table is read, and every entry in it must be a literal
+    ``true``/``false``: anything else left over after the entries are taken
+    out makes the whole table unreadable rather than silently shorter.
+    """
+    match = _FRONTEND_TABLE_RE.search(_JS_COMMENT_RE.sub("", text))
+    if not match:
+        return None
+    body = match.group("body")
+    table: dict[str, bool] = {}
+    for entry in _FRONTEND_ENTRY_RE.finditer(body):
+        table[_snake(entry.group(1))] = entry.group(2) == "true"
+    if not table or _FRONTEND_ENTRY_RE.sub("", body).strip():
+        return None
+    return table
+
+
+def compare_scopes(backend: dict[str, bool], frontend: dict[str, bool]) -> dict:
+    """Name and value differences between the two tables."""
+    shared = sorted(set(backend) & set(frontend))
+    return {
+        "backend_only": sorted(set(backend) - set(frontend)),
+        "frontend_only": sorted(set(frontend) - set(backend)),
+        "value_mismatch": {name: {"backend": backend[name], "frontend": frontend[name]}
+                           for name in shared if backend[name] != frontend[name]},
+    }
+
+
+def _describe_scope_diff(diff: dict) -> str:
+    parts = [f"{name} backend={v['backend']} frontend={v['frontend']}"
+             for name, v in diff["value_mismatch"].items()]
+    if diff["backend_only"]:
+        parts.append(f"backend-only: {', '.join(diff['backend_only'])}")
+    if diff["frontend_only"]:
+        # Frontend-only flags mean a surface with no server-side gate.
+        parts.append("frontend-only (ungated server-side): "
+                     + ", ".join(diff["frontend_only"]))
+    return "; ".join(parts)
+
+
+def _read_at(rev: str | None, path: str) -> str | None:
+    """A file from the working tree (``rev`` None) or from commit ``rev``."""
+    if rev is None:
+        target = _REPO / path
+        return target.read_text(encoding="utf-8") if target.exists() else None
+    return _git("show", f"{rev}:{path}")
+
+
+def release_scope_at(rev: str | None) -> dict:
+    """Both release-scope tables at ``rev`` (None = the working tree)."""
+    be_text = _read_at(rev, BACKEND_SCOPE_PATH)
+    fe_text = _read_at(rev, FRONTEND_SCOPE_PATH)
+    return {"backend": parse_backend_scope(be_text) if be_text else None,
+            "frontend": parse_frontend_scope(fe_text) if fe_text else None}
+
+
 def check_flag_parity() -> dict:
-    """Backend and frontend release-scope flags must not drift apart."""
-    be = _REPO / "backend" / "lib" / "release_scope.py"
-    fe = _REPO / "frontend" / "src" / "lib" / "release-scope.ts"
-    if not be.exists() or not fe.exists():
+    """Backend and frontend release-scope tables must agree in name AND value.
+
+    Until 2026-10 this compared names only, so a flag opened on one side and
+    left closed on the other read as "11 flags aligned" — the shortcut M65
+    names ("只比开关名称"). Open in the frontend only, students see a control
+    whose server door returns 404; open in the backend only, a door is
+    reachable with no control in front of it.
+    """
+    if not (_REPO / BACKEND_SCOPE_PATH).exists() or not (_REPO / FRONTEND_SCOPE_PATH).exists():
         return _gate("flag_parity", UNVERIFIED, "release-scope module missing",
                      reason="evidence_absent")
-    import re  # noqa: PLC0415
+    tables = release_scope_at(None)
+    be, fe = tables["backend"], tables["frontend"]
+    if be is None or fe is None:
+        unreadable = [side for side, table in tables.items() if table is None]
+        return _gate("flag_parity", UNVERIFIED,
+                     f"could not read the {' and '.join(unreadable)} flag table as "
+                     "literal booleans", tables, reason="evidence_unreadable")
+    diff = compare_scopes(be, fe)
+    if diff["backend_only"] or diff["frontend_only"] or diff["value_mismatch"]:
+        return _gate("flag_parity", FAIL, f"flag drift — {_describe_scope_diff(diff)}",
+                     {**diff, **tables}, reason="flag_drift")
+    return _gate("flag_parity", PASS, f"{len(be)} flags aligned in name and value",
+                 tables)
 
-    be_keys = set(re.findall(r'"([a-z0-9_]+)"\s*:\s*(?:True|False)', be.read_text()))
-    fe_keys = {
-        re.sub(r"(?<!^)(?=[A-Z])", "_", k).lower()
-        for k in re.findall(r"^\s*([a-zA-Z0-9]+)\s*:\s*(?:true|false)",
-                            fe.read_text(), re.MULTILINE)
+
+# ---------------------------------------------------------------------------
+# The release record (M65): which backend answers, which frontend renders, the
+# corpus each was built with, and the flags each enforces — tied to the
+# candidate in one place, and failing when any of them disagree.
+#
+# Both deploys announce their commit on public, unauthenticated surfaces:
+# `/api/health` -> release_sha (backend/lib/build_info.py, RENDER_GIT_COMMIT)
+# and `data-release-sha` on every page (frontend/src/lib/build-info.ts,
+# VERCEL_GIT_COMMIT_SHA). Everything else in the record is derived from those
+# two commits, because a deploy is a build of one commit's tree:
+#
+# * data — Render's build is `pip install`, nothing else, and data_loader reads
+#   data/processed/shards when there is no opportunities.json, which is
+#   gitignored, so the corpus a backend serves is the shards in its commit. The
+#   frontend's coverage numbers are frontend/src/lib/school-stats.json, which
+#   the refresh workflow commits together with the shards. The "data version"
+#   is therefore the last commit that touched the shards at that commit.
+# * flags — each side enforces the table in its own commit.
+# ---------------------------------------------------------------------------
+
+_SHA_FULL_RE = re.compile(r"^[0-9a-f]{40}$")
+_RELEASE_SHA_ATTR_RE = re.compile(r'data-release-sha="([^"]*)"')
+_SHARDS_PATH = "data/processed/shards"
+_OBSERVE_TIMEOUT_SECONDS = 60  # a cold Render instance takes most of a minute
+_OBSERVE_MAX_BYTES = 4 * 1024 * 1024
+
+
+def commit_exists(rev: str) -> bool:
+    return _git("cat-file", "-e", f"{rev}^{{commit}}") is not None
+
+
+def data_version_at(rev: str) -> dict | None:
+    """The corpus a build of ``rev`` carries: last shard commit + shard tree."""
+    tree = _git("rev-parse", f"{rev}:{_SHARDS_PATH}")
+    if not tree:
+        return None
+    commit = _git("log", "-1", "--format=%H", rev, "--", _SHARDS_PATH)
+    return {"shard_commit": commit or None, "shards_tree": tree}
+
+
+def _http_get(url: str) -> str:
+    request = urllib.request.Request(url, headers={"User-Agent": "ofe-release-gate"})
+    with urllib.request.urlopen(request, timeout=_OBSERVE_TIMEOUT_SECONDS) as response:  # noqa: S310 — operator-supplied https URL
+        return response.read(_OBSERVE_MAX_BYTES).decode("utf-8", "replace")
+
+
+def observe_deployment(backend_url: str | None, frontend_url: str | None, *,
+                       fetch: Callable[[str], str] | None = None) -> dict:
+    """Read which commit each deploy says it is serving, right now.
+
+    Errors are recorded by type only: the URLs come from workflow secrets and
+    the ledger is published from a public repository, so neither the URL nor
+    an exception message that might quote it goes into the record.
+    """
+    fetch = fetch or _http_get
+    observed: dict = {"observed_at": _now_iso(), "backend_sha": None,
+                      "frontend_sha": None,
+                      "backend_source": "GET /api/health -> release_sha",
+                      "frontend_source": "GET / -> <html data-release-sha>"}
+    if backend_url:
+        try:
+            payload = json.loads(fetch(backend_url.rstrip("/") + "/api/health"))
+            sha = payload.get("release_sha") if isinstance(payload, dict) else None
+            observed["backend_sha"] = sha if isinstance(sha, str) else None
+        except Exception as exc:  # noqa: BLE001 — any failure is "not observed"
+            observed["backend_error"] = type(exc).__name__
+    if frontend_url:
+        try:
+            match = _RELEASE_SHA_ATTR_RE.search(fetch(frontend_url.rstrip("/") + "/"))
+            observed["frontend_sha"] = match.group(1) if match else None
+        except Exception as exc:  # noqa: BLE001
+            observed["frontend_error"] = type(exc).__name__
+    return observed
+
+
+def _deployed_side(sha: str, scope_key: str) -> dict:
+    side: dict = {"deployed_sha": sha, "in_repository": False,
+                  "data_version": None, "release_scope": None}
+    if commit_exists(sha):
+        side["in_repository"] = True
+        side["data_version"] = data_version_at(sha)
+        side["release_scope"] = release_scope_at(sha)[scope_key]
+    return side
+
+
+def check_release_record(sha: str | None, evidence: dict | None) -> dict:
+    """The deployed backend, the deployed frontend and the candidate must agree.
+
+    Agreement means the same commit on both hosts, the same data version on
+    both sides, and one flag table — compared by name and value — between what
+    the backend enforces and what the frontend shows.
+    """
+    if not evidence:
+        return _gate("release_record", UNVERIFIED,
+                     "no deployment observation: run with --backend-url and "
+                     "--frontend-url, or record deployment.backend_sha / "
+                     "deployment.frontend_sha", reason="evidence_absent")
+    stale = _stale_evidence("release_record", evidence)
+    if stale is not None:
+        return stale
+    backend_sha = str(evidence.get("backend_sha") or "").lower()
+    frontend_sha = str(evidence.get("frontend_sha") or "").lower()
+    unnamed = [side for side, value in (("backend", backend_sha), ("frontend", frontend_sha))
+               if not _SHA_FULL_RE.match(value)]
+    if unnamed:
+        return _gate("release_record", UNVERIFIED,
+                     f"the {' and '.join(unnamed)} deploy did not report a full commit "
+                     "SHA, so what it serves cannot be tied to the candidate",
+                     evidence, reason="evidence_incomplete")
+
+    record: dict = {
+        "observed_at": evidence.get("observed_at"),
+        "candidate": {"sha": sha,
+                      "data_version": data_version_at(sha) if sha else None,
+                      "release_scope": release_scope_at(sha) if sha else None},
+        "backend": _deployed_side(backend_sha, "backend"),
+        "frontend": _deployed_side(frontend_sha, "frontend"),
     }
-    if not be_keys or not fe_keys:
-        return _gate("flag_parity", UNVERIFIED, "could not parse flag tables",
-                     reason="evidence_unreadable")
-    only_be = sorted(be_keys - fe_keys)
-    only_fe = sorted(fe_keys - be_keys)
-    if only_be or only_fe:
-        # Frontend-only flags mean a surface with no server-side gate.
-        return _gate("flag_parity", FAIL,
-                     f"flag drift — backend-only: {only_be or 'none'}, "
-                     f"frontend-only (ungated server-side): {only_fe or 'none'}",
-                     {"backend_only": only_be, "frontend_only": only_fe},
-                     reason="flag_drift")
-    return _gate("flag_parity", PASS, f"{len(be_keys)} flags aligned")
+    # (reason, sentence) in the order a reader should act on them: a host on
+    # the wrong commit explains any data or flag difference that follows.
+    found: list[tuple[str, str]] = []
+    for side in ("backend", "frontend"):
+        deployed = record[side]["deployed_sha"]
+        if not record[side]["in_repository"]:
+            found.append(("sha_mismatch", f"{side} serves {deployed[:8]}, a commit not "
+                                          "in this repository"))
+        elif sha and deployed != sha.lower():
+            found.append(("sha_mismatch",
+                          f"{side} serves {deployed[:8]}, candidate is {sha[:8]}"))
+
+    data = {"candidate": record["candidate"]["data_version"],
+            "backend": record["backend"]["data_version"],
+            "frontend": record["frontend"]["data_version"]}
+    commits = {where: dv.get("shard_commit") for where, dv in data.items() if dv}
+    if len(set(commits.values())) > 1:
+        found.append(("data_mismatch", "data versions differ — shard commit "
+                      + ", ".join(f"{where} {value[:8] if value else 'unknown'}"
+                                  for where, value in commits.items())))
+
+    be_flags = record["backend"]["release_scope"]
+    fe_flags = record["frontend"]["release_scope"]
+    if be_flags is not None and fe_flags is not None:
+        diff = compare_scopes(be_flags, fe_flags)
+        if diff["backend_only"] or diff["frontend_only"] or diff["value_mismatch"]:
+            found.append(("flag_drift", "deployed flag tables differ — "
+                          + _describe_scope_diff(diff)))
+    elif record["backend"]["in_repository"] and record["frontend"]["in_repository"]:
+        found.append(("flag_unreadable", "a deployed flag table could not be read"))
+
+    record["disagreements"] = [sentence for _, sentence in found]
+    if found:
+        return _gate("release_record", FAIL, "; ".join(record["disagreements"]), record,
+                     reason=found[0][0])
+    shard = (data["candidate"] or data["backend"] or {}).get("shard_commit") or "unknown"
+    return _gate("release_record", PASS,
+                 f"backend and frontend both serve {backend_sha[:8]} with shard commit "
+                 f"{shard[:8]} and {len(be_flags or {})} flags aligned in name and value",
+                 record)
 
 
 def required_providers(scope: dict[str, bool] | None) -> tuple[list[str], list[str]]:
@@ -1441,6 +1716,7 @@ def build_ledger(sha: str | None, evidence: dict, *, min_records: int,
         check_truthfulness(),
         check_open_incidents(evidence.get("open_incidents")),
         check_flag_parity(),
+        check_release_record(sha, evidence.get("deployment")),
         check_providers(evidence.get("provider_readiness"), scope),
         check_restore_drill(migrations),
         *check_ci_evidence(evidence.get("ci"), sha),
@@ -1468,6 +1744,7 @@ def build_ledger(sha: str | None, evidence: dict, *, min_records: int,
     fresh_ev = _reported("tracking_freshness")
     drill_gate = _find("restore_drill")
     drill_ev = drill_gate.get("evidence") or {}
+    record_gate = _find("release_record")
 
     return {
         "release_sha": sha,
@@ -1475,6 +1752,12 @@ def build_ledger(sha: str | None, evidence: dict, *, min_records: int,
         "gate_version": "release-gate-v2",
         "candidate": candidate_identity(sha),
         "feature_flag_states": scope if scope is not None else "UNKNOWN",
+        # Backend SHA, frontend SHA, data version and both flag tables as
+        # observed, or null when nobody looked (the release_record gate then
+        # says UNVERIFIED and blocks).
+        "release_record": (record_gate.get("evidence")
+                           if isinstance(record_gate.get("evidence"), dict)
+                           and "candidate" in record_gate["evidence"] else None),
         "gates": gates,
         "summary": {
             "passed": sum(1 for g in gates if g["status"] == PASS),
@@ -1541,6 +1824,12 @@ def main() -> int:
                          "ledger here instead of data/releases/CURRENT.json — the "
                          "ledger for a candidate is generated after it, so CI "
                          "reads it from the default branch")
+    ap.add_argument("--backend-url",
+                    help="observe the deployed backend: GET <url>/api/health -> "
+                         "release_sha (overrides any `deployment` evidence)")
+    ap.add_argument("--frontend-url",
+                    help="observe the deployed frontend: GET <url>/ -> "
+                         "data-release-sha (overrides any `deployment` evidence)")
     ap.add_argument("--drill-dir", type=Path,
                     help="read restore-drill records from here instead of "
                          "data/releases/drills (the drill for a candidate is "
@@ -1566,6 +1855,13 @@ def main() -> int:
         except json.JSONDecodeError as exc:
             print(f"::error::evidence file {path} is not valid JSON: {exc}")
             return 1
+
+    if args.backend_url or args.frontend_url:
+        # A reading taken now beats one somebody wrote down earlier.
+        evidence["deployment"] = observe_deployment(args.backend_url, args.frontend_url)
+        observed = evidence["deployment"]
+        print(f"observed deployment: backend={observed.get('backend_sha') or observed.get('backend_error') or 'none'} "
+              f"frontend={observed.get('frontend_sha') or observed.get('frontend_error') or 'none'}")
 
     ledger = build_ledger(args.release_sha, evidence, min_records=args.min_records,
                           refreshing=args.update_current)

@@ -347,3 +347,81 @@ class TestCompleteTextRequirement:
         monkeypatch.setattr(llm.time, "sleep", lambda *_: pytest.fail("Empty output must not retry"))
         assert llm.chat_completion([{"role": "user", "content": "edit"}], require_complete=True) is None
         assert len(calls) == 1
+
+
+class TestDeadlineAwareCompletion:
+    """A route that owns a wall-clock budget passes it down. Each attempt's HTTP
+    timeout is cut to what is left, and a second (billed) attempt is not started
+    with under 10 s left: run_blocking cannot stop a running thread, so a late
+    retry would only spend money into the next stage's time."""
+
+    def _clocked(self, monkeypatch, now=100.0):
+        clock = {"now": now}
+        monkeypatch.setattr(llm.time, "monotonic", lambda: clock["now"])
+        monkeypatch.setattr(llm.time, "sleep", lambda seconds: clock.__setitem__("now", clock["now"] + seconds))
+        return clock
+
+    def _recording(self, monkeypatch, create):
+        import openai
+
+        timeouts: list[float] = []
+
+        class _Recording(_FakeOpenAI):
+            def __init__(self, **kwargs):
+                timeouts.append(kwargs["timeout"])
+                super().__init__(**kwargs)
+
+        _use_provider(monkeypatch, "OPENAI_API_KEY")
+        monkeypatch.setattr(openai, "OpenAI", _Recording)
+        monkeypatch.setattr(_FakeCompletions, "create", staticmethod(create))
+        return timeouts
+
+    def test_request_timeout_replaces_the_default_per_attempt_timeout(self, monkeypatch):
+        timeouts = self._recording(monkeypatch, lambda **_: _FakeResp("ok"))
+        assert llm.chat_completion([{"role": "user", "content": "hi"}], request_timeout=33.0) == "ok"
+        assert timeouts == [33.0]
+
+    def test_an_attempt_never_outlives_the_deadline(self, monkeypatch):
+        clock = self._clocked(monkeypatch)
+        timeouts = self._recording(monkeypatch, lambda **_: _FakeResp("ok"))
+        assert llm.chat_completion([{"role": "user", "content": "hi"}], request_timeout=40.0,
+                                   deadline=clock["now"] + 12.5) == "ok"
+        assert timeouts == [pytest.approx(12.5)]
+
+    def test_no_second_attempt_with_under_ten_seconds_left(self, monkeypatch):
+        clock = self._clocked(monkeypatch)
+        spends = []
+        monkeypatch.setattr(llm.llm_budget, "spend", lambda: spends.append(True))
+
+        def create(**_kwargs):
+            clock["now"] += 15.0
+            raise TimeoutError("provider timed out")
+
+        timeouts = self._recording(monkeypatch, create)
+        assert llm.chat_completion([{"role": "user", "content": "hi"}], request_timeout=40.0,
+                                   deadline=clock["now"] + 24.0) is None
+        assert timeouts == [pytest.approx(24.0)] and len(spends) == 1
+
+    def test_a_retry_still_happens_with_time_to_spare(self, monkeypatch):
+        clock = self._clocked(monkeypatch)
+        attempts = []
+
+        def create(**_kwargs):
+            attempts.append(clock["now"])
+            clock["now"] += 5.0
+            if len(attempts) == 1:
+                raise TimeoutError("provider timed out")
+            return _FakeResp("second")
+
+        timeouts = self._recording(monkeypatch, create)
+        assert llm.chat_completion([{"role": "user", "content": "hi"}], request_timeout=20.0,
+                                   deadline=clock["now"] + 40.0) == "second"
+        assert timeouts == [pytest.approx(20.0), pytest.approx(20.0)]
+
+    def test_a_passed_deadline_spends_nothing(self, monkeypatch):
+        clock = self._clocked(monkeypatch)
+        spends = []
+        monkeypatch.setattr(llm.llm_budget, "spend", lambda: spends.append(True))
+        timeouts = self._recording(monkeypatch, lambda **_: pytest.fail("no attempt after the deadline"))
+        assert llm.chat_completion([{"role": "user", "content": "hi"}], deadline=clock["now"] - 0.1) is None
+        assert timeouts == [] and spends == []

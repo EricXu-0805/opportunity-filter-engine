@@ -650,6 +650,28 @@ describe('OpportunityDetail — a faculty profile described in the UI language',
       'detail.facultyProfile.headFull:Ada Lovelace|Bioengineering|Example University '
       + 'detail.facultyProfile.researchAreas:Computational imaging detail.facultyProfile.askAvailability');
   });
+
+  it('says the server\'s structured fields even when its English sentence changed', () => {
+    const faculty: Record<string, unknown> = {
+      id: 'faculty-bioe-2', title: 'Ada Lovelace', pi_name: 'Ada Lovelace',
+      department: 'Bioengineering', organization: null,
+      source_type: 'faculty_research', record_kind: 'faculty_contact',
+      description_raw: 'Ada Lovelace works in Bioengineering on computational imaging. Ask about openings.',
+      faculty_profile_summary: {
+        version: 1, name: 'Ada Lovelace', department: 'Bioengineering', organization: null,
+        research_areas: 'Computational imaging', availability: 'not_accepting_undergraduates',
+      },
+      target_truth: {
+        listing_state: 'unknown', reference_only: false, actionable: true,
+        accepting_state: 'unknown', reason_code: null,
+        verified_at: null, expires_at: null,
+      },
+    };
+    render(<OpportunityDetail opp={faculty as never} />);
+    expect(screen.getByTestId('section-description')).toHaveAttribute('data-description',
+      'detail.facultyProfile.headDepartment:Ada Lovelace|Bioengineering| '
+      + 'detail.facultyProfile.researchAreas:Computational imaging detail.facultyProfile.notAccepting');
+  });
 });
 
 describe('detail return link before private hydration', () => {

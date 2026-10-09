@@ -118,7 +118,8 @@ async function installWriting(page: Page) {
   const requests: WritingRequest[] = [];
   for (const pattern of ['**/api/tailor**', '**/api/cold-email**', '**/api/resume/**']) await page.route(pattern, async route => {
     const path = new URL(route.request().url()).pathname;
-    if (path === '/api/tailor/status') { await route.fulfill({ json: { ai_available: true, pipeline_version: 'w13.4' } }); return; }
+    // Rules that run the faithfulness review (w14 on): the browser sends bullets under no others.
+    if (path === '/api/tailor/status') { await route.fulfill({ json: { ai_available: true, pipeline_version: 'w14.1' } }); return; }
     const body = route.request().postDataJSON() as Omit<WritingRequest, 'path'>;
     requests.push({ ...body, path });
     if (path === '/api/cold-email/variants' || path === '/api/cold-email/stream') {
@@ -129,8 +130,9 @@ async function installWriting(page: Page) {
       if (path.endsWith('/variants')) await route.fulfill({ json: { ...draft, variants: [{ id: 'checked', label: 'Checked template', ...draft }] } });
       else await route.fulfill({ contentType: 'text/event-stream', body: `data: ${JSON.stringify({ stage: 'done', ...draft })}\n\n` });
     } else if (path === '/api/tailor') {
-      await route.fulfill({ json: { opportunity_id: TARGET, target_version: body.expected_target_version, method: 'ai', warnings: [], pipeline_version: 'w13.4', generated_at: new Date().toISOString(),
-        tailored_bullets: body.original_bullets!.map((text, index) => ({ text, source_evidence: text, source_index: index })) } });
+      await route.fulfill({ json: { opportunity_id: TARGET, target_version: body.expected_target_version, method: 'ai', warnings: [], pipeline_version: 'w14.1', generated_at: new Date().toISOString(),
+        tailored_bullets: body.original_bullets!.map((text, index) => ({ text, source_evidence: text, source_index: index,
+          status: 'kept', reason_code: 'already_aligned', ops: [], links: [], alternative: null })) } });
     } else if (path === '/api/tailor/structure') {
       const bullets = body.resume_text!.split('\n').filter(line => line.startsWith('- ')).map((line, index) => ({ id: `bullet-${index}`, text: line.slice(2) }));
       await route.fulfill({ json: { sections: [{ id: 'section', heading: 'Experience', kind: 'experience', bullets }], method: 'heuristic', warnings: [] } });

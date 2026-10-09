@@ -819,6 +819,10 @@ def test_public_opportunity_counts_separate_faculty_contacts(monkeypatch):
             school="uiuc",
             source="uiuc_program",
             source_type="campus_program",
+            # The faculty fixture's deadline is neutralized away on a profile;
+            # on a listing it is a stated date, and once passed it closes the
+            # listing this test counts.
+            deadline="2099-12-01",
             metadata={"is_active": True},
         ),
     }

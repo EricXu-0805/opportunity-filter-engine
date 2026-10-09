@@ -34,7 +34,6 @@ export default function TargetResumePlanPanel({ supportGroups, draft, profile, p
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<'stale' | 'applied' | 'cancelled' | null>(null);
   const [selections, setSelections] = useState<Set<string>>(new Set());
-  const [rewrites, setRewrites] = useState<Set<string>>(new Set());
   const state = useRef({ binding, enabled, owner });
   const reviewRef = useRef(review);
   const operation = useRef<{ generation: number; controller: AbortController | null; busy: boolean }>({ generation: 0, controller: null, busy: false });
@@ -52,7 +51,7 @@ export default function TargetResumePlanPanel({ supportGroups, draft, profile, p
     setBusy(false);
     // A temporary readiness check can retain only the identical verified plan.
     if (!changed && profileAvailable) return;
-    setReview(null); reviewRef.current = null; setSelections(new Set()); setRewrites(new Set()); setError(null);
+    setReview(null); reviewRef.current = null; setSelections(new Set()); setError(null);
     setNotice(appliedKey.current === draftKey ? 'applied' : hadWork ? 'stale' : null); appliedKey.current = null;
   }, [binding, draftKey, enabled, owner, profileAvailable]);
   useEffect(() => {
@@ -60,7 +59,7 @@ export default function TargetResumePlanPanel({ supportGroups, draft, profile, p
     const unsubscribe = onLocalOwnerStateChange(() => {
       if (isOwnerTokenValid(state.current.owner, state.current.owner.uid)) return;
       request.generation += 1; request.controller?.abort(); request.busy = false;
-      setBusy(false); setReview(null); reviewRef.current = null; setSelections(new Set()); setRewrites(new Set()); setNotice(null); setError(null);
+      setBusy(false); setReview(null); reviewRef.current = null; setSelections(new Set()); setNotice(null); setError(null);
     });
     return () => {
       request.generation += 1; request.controller?.abort(); request.busy = false;
@@ -107,13 +106,13 @@ export default function TargetResumePlanPanel({ supportGroups, draft, profile, p
       if (!checked.ok) { setError(checked.code); return; }
       if (checked.value.method !== 'ai' || !checked.value.complete) { setError(checked.value.reason_code ?? 'invalid_response'); return; }
       const next = { prepared: prepared.value, response: checked.value };
-      setReview(next); reviewRef.current = next; setSelections(new Set()); setRewrites(new Set());
+      setReview(next); reviewRef.current = next; setSelections(new Set());
     } catch (caught) {
       if (!live(generation, expected)) return;
       if (caught instanceof ApiError && authorityRefusals.has(caught.code)) {
         // A server refusal invalidates the authority behind the earlier plan,
         // even when the caller's cached target and document are unchanged.
-        reviewRef.current = null; setReview(null); setSelections(new Set()); setRewrites(new Set()); appliedKey.current = null;
+        reviewRef.current = null; setReview(null); setSelections(new Set()); appliedKey.current = null;
         setError(caught.code); onAuthorityRefusal?.(caught.code);
       } else setError(caught instanceof ApiError && caught.status === 429 ? 'budget_exhausted'
         : caught instanceof ApiError && (caught.code === 'REQUEST_TIMEOUT' || caught.status === 504) ? 'timeout'
@@ -131,8 +130,8 @@ export default function TargetResumePlanPanel({ supportGroups, draft, profile, p
     action.cancel(); operation.current.generation += 1; operation.current.controller?.abort(); operation.current.busy = false;
     setBusy(false); setNotice('cancelled');
   };
-  const hasSelection = selections.size > 0 || rewrites.size > 0;
-  const options = currentContext ? { selection_block_ids: [...selections], rewrite_unit_ids: [...rewrites], current_context: currentContext, options: { target_pages: pages }, ...(supportGroups === undefined ? {} : {support_groups:supportGroups}) } : null;
+  const hasSelection = selections.size > 0;
+  const options = currentContext ? { selection_block_ids: [...selections], rewrite_unit_ids: [], current_context: currentContext, options: { target_pages: pages }, ...(supportGroups === undefined ? {} : {support_groups:supportGroups}) } : null;
   const preview = review && ready && !working && !action.error && hasSelection && options
     ? applyTargetResumePlan(review.prepared, draft, review.response, options) : null;
   const apply = () => {
@@ -140,21 +139,11 @@ export default function TargetResumePlanPanel({ supportGroups, draft, profile, p
     const result = applyTargetResumePlan(review.prepared, draft, review.response, options);
     if (!result.ok) { setError(result.code); return; }
     appliedKey.current = JSON.stringify(result.value);
-    if (appliedKey.current === draftKey) { setNotice('applied'); setReview(null); reviewRef.current = null; setSelections(new Set()); setRewrites(new Set()); }
+    if (appliedKey.current === draftKey) { setNotice('applied'); setReview(null); reviewRef.current = null; setSelections(new Set()); }
     const annotations: TargetResumeProvenanceAnnotation[] = [];
     for (const item of review.response.items) {
       if (selections.has(item.block_id)) annotations.push({ section_id: item.section_id, block_id: item.block_id, line_id: null,
         field: 'included', reason: item.reason, target_evidence: item.target_evidence, source_evidence: item.source_evidence, check: null });
-      for (const rewrite of item.rewrites) {
-        if (!rewrites.has(rewrite.unit_id) || rewrite.status !== 'suggested') continue;
-        const line = review.prepared.draft.document.sections.find(section => section.id === item.section_id)?.blocks
-          .find(block => block.id === item.block_id)?.lines.find(line => line.id === rewrite.unit_id);
-        if (!line) { setError('invalid_response'); return; }
-        annotations.push({ section_id: item.section_id, block_id: item.block_id, line_id: line.id, field: 'text',
-          reason: item.reason, target_evidence: item.target_evidence, source_evidence: rewrite.source_evidence ?? item.source_evidence,
-          check: review.response.check_version ? { version: review.response.check_version, pipeline_version: review.response.pipeline_version,
-            request_id: review.response.request_id, document_signature: review.response.document_signature, original: line.original, evidence: line.evidence } : null });
-      }
     }
     onApply(review.prepared.canonical_draft, result.value, { kind: 'plan', annotations });
   };
@@ -173,7 +162,7 @@ export default function TargetResumePlanPanel({ supportGroups, draft, profile, p
   </section>;
   return <section aria-label={copy('Résumé content plan', '简历选材')} className="my-5 min-w-0 rounded-xl border border-indigo-200 p-4">
     <h3 className="font-semibold">{copy('Résumé content plan', '简历选材')}</h3>
-    <p className="mt-1 text-sm text-gray-600">{copy('Review what to keep, shorten or leave out of this draft. Content choices and shorter wording need separate approval. Reasons for applied changes are saved with the draft. Unapplied advice stays only in this workspace.', '核对本稿哪些内容保留、压缩或暂不选用。选材安排与短稿分开确认；已应用修改的理由随文稿保存；未应用建议仅在当前工作区保留。')}</p>
+    <p className="mt-1 text-sm text-gray-600">{copy('Review what to keep, shorten or leave out of this draft. The plan proposes no new wording: shorten a block in the editor, or ask for reviewed suggestions. Reasons for applied changes are saved with the draft. Unapplied advice stays only in this workspace.', '核对本稿哪些内容保留、压缩或暂不选用。选材安排不提供新表述：压缩请在编辑器中修改，或另行生成经核对的建议。已应用修改的理由随文稿保存；未应用建议仅在当前工作区保留。')}</p>
     <div className="mt-3 flex flex-wrap items-center gap-3">
       <label className="text-sm">{copy('Length target', '篇幅目标')}<select aria-label={copy('Length target', '篇幅目标')} className={`${button} ml-2`} value={pages} disabled={!isOwnerTokenValid(owner, owner.uid)}
         onChange={event => setPages(event.target.value === '2' ? 2 : 1)}><option value="1">{copy('1 page', '1 页')}</option><option value="2">{copy('2 pages', '2 页')}</option></select></label>
@@ -184,7 +173,7 @@ export default function TargetResumePlanPanel({ supportGroups, draft, profile, p
     <div className="mt-3 flex flex-wrap gap-2">
       <button type="button" className={button} disabled={!ready || working} onClick={() => action.request('generate')}>{copy('Generate content plan', '生成选材建议')}</button>
       {working && <button type="button" className={button} onClick={cancel}>{copy('Cancel planning', '停止选材')}</button>}
-      {review && <button type="button" className={button} disabled={working} onClick={() => { setReview(null); reviewRef.current = null; setSelections(new Set()); setRewrites(new Set()); setError(null); setNotice(null); }}>{copy('Dismiss this plan', '放弃本次安排')}</button>}
+      {review && <button type="button" className={button} disabled={working} onClick={() => { setReview(null); reviewRef.current = null; setSelections(new Set()); setError(null); setNotice(null); }}>{copy('Dismiss this plan', '放弃本次安排')}</button>}
     </div>
     {action.busy && <p role="status" className="mt-2 text-sm">{copy('Checking current materials before planning…', '选材前正在核对最新资料…')}</p>}
     {busy && <p role="status" className="mt-2 text-sm">{copy('Reviewing every content block in this draft…', '正在核对本稿全部内容块…')}</p>}
@@ -233,16 +222,6 @@ export default function TargetResumePlanPanel({ supportGroups, draft, profile, p
           {block.lines.some(line => !line.included) && <p className="mt-2 text-xs text-gray-600">{copy('Hidden fields stay hidden. This choice does not change field selections.', '未选用的字段保持不选用，此安排不改变字段选择。')}</p>}
           <label className="mt-3 flex items-start gap-2 text-sm"><input type="checkbox" aria-label={`Use content choice: ${item.block_id}`} checked={selections.has(item.block_id)} disabled={!ready || working || !!action.error}
             onChange={event => setSelections(old => toggle(old, item.block_id, event.target.checked))} />{!block.included && item.action !== 'omit' ? copy('Re-include this block using this choice', '采用此安排，重新选用内容块') : copy('Use this content choice', '采用这项选材安排')}</label>
-          {item.action === 'compress' && <p className="mt-2 text-xs text-gray-600">{copy('Shorter wording is optional below. Selecting the content choice alone keeps the current text.', '短稿需在下方另行确认。只采用选材安排会保留当前表述。')}</p>}
-          {item.rewrites.map(rewrite => <div key={rewrite.unit_id} className="mt-3 rounded-lg border p-3" data-plan-rewrite-id={rewrite.unit_id}>
-            {rewrite.status === 'suggested' ? <>
-              <h5 className="text-sm font-medium">{rewrite.source_evidence ? copy('Combined wording — check the facts', '合并表述：请核对事实') : copy('Shorter wording — check the facts', '短稿：请核对事实')}</h5>
-              <p className="mt-2 whitespace-pre-wrap break-words text-sm">{rewrite.proposed_text}</p>
-              <label className="mt-2 flex items-start gap-2 text-sm"><input type="checkbox" aria-label={`Use shorter wording: ${rewrite.unit_id}`} checked={rewrites.has(rewrite.unit_id)} disabled={!ready || working || !!action.error}
-                onChange={event => setRewrites(old => toggle(old, rewrite.unit_id, event.target.checked))} />{rewrite.source_evidence ? copy('Use this combined wording', '采用这条合并表述') : copy('Use this shorter wording only', '采用这条短稿')}</label>
-              <p className="mt-1 text-xs text-gray-500">{copy('This changes wording only; it does not select a hidden block, section or field.', '仅修改表述，不会重新选用隐藏的内容块、章节或字段。')}</p>
-            </> : <p className="text-sm text-amber-800">{rewrite.reason_code === 'not_shorter' ? copy('The candidate was not shorter. Current wording is kept.', '候选表述没有更短，保留当前稿。') : copy('The candidate failed source checks. Current wording is kept.', '候选短稿未通过来源核对，保留当前稿。')}</p>}
-          </div>)}
         </article>;
       })}
       <p className="mt-4 text-sm" data-testid="plan-preview-length">{copy(`Preview selected text: ${measureTargetResumeLength(preview?.ok ? preview.value : draft)} characters`, `预览选用正文：${measureTargetResumeLength(preview?.ok ? preview.value : draft)} 字符`)}</p>

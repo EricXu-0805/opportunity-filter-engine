@@ -49,7 +49,9 @@ CASES: list[tuple[str, dict]] = [
             "remote_option": "unknown",
             "paid": "stipend",
             "compensation_details": "$5,000",
-            "deadline": "2027-02-01",
+            # Far future: a stated deadline that has passed closes the listing,
+            # and this case is the open one.
+            "deadline": "2099-02-01",
             "keywords": ["biology", "undergraduate research"],
             "eligibility": {
                 "preferred_year": ["sophomore", "junior"],

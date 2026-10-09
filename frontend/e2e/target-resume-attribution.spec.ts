@@ -95,11 +95,17 @@ function checkedReply(request: TargetResumeAiRequest): TargetResumeAiResponse {
   return { ...(request.support_groups === undefined ? {} : {support_groups:request.support_groups}), version: 1, check_version: 'target-resume-source-checks-v2', pipeline_version: FULL_TARGET_AI_VERSION, request_id: request.request_id, document_id: request.draft.id,
     opportunity_id: TARGET, document_signature: request.document_signature, base: structuredClone(request.draft.base),
     manifest: { unit_ids: units.map(unit => unit.line.id), protected_unit_count: lines(request.draft).filter(unit => unit.section.kind === 'basics').length },
-    method: 'partial', logical_calls: 1, provider_attempts_upper_bound: 2,
+    method: 'ai', logical_calls: 2, provider_attempts_upper_bound: 4,
     receipts: selected.map(({ section, block, line }) => {
       const common = { unit_id: line.id, section_id: section.id, block_id: block.id, evidence: { ...line.evidence }, before_text: line.text };
-      if (line.evidence.id === 'team-role') return { ...common, status: 'skipped', reason_code: 'ungrounded_rewrite', suggestion: null };
-      return { ...common, status: 'suggested', reason_code: null, suggestion: { priority: 'normal', reason: 'Preserve the stated role while clarifying the wording.', target_evidence: [targetEvidence(request.draft)], proposed_text: PROPOSED[line.evidence.id] ?? null } };
+      const target = targetEvidence(request.draft);
+      const links = [{ id: 'L1', relation: 'broader' as const, entailed: false, target_evidence: target,
+        source_evidence: { unit_id: line.id, start: 0, end: Array.from(line.original).length, quote: line.original }, written_as: null }];
+      const advice = { priority: 'normal' as const, reason: 'Preserve the stated role while clarifying the wording.', target_evidence: [target], links, alternative_text: null };
+      // The claim locks refuse the team-role rewrite: the line is kept as written, with its advice.
+      if (line.evidence.id === 'team-role') return { ...common, status: 'unchanged', reason_code: 'rewrite_rejected', suggestion: { ...advice, ops: [], proposed_text: null } };
+      const proposed = PROPOSED[line.evidence.id] ?? null;
+      return { ...common, status: 'suggested', reason_code: null, suggestion: { ...advice, ops: proposed === null ? [] : ['verb_first'], proposed_text: proposed } };
     }),
   };
 }
@@ -356,10 +362,11 @@ for (const mode of ['single', 'all-valid'] as const) test(`${mode} acceptance ex
     const request = f.audit.suggestions[0]; expect(request.draft).toEqual(baseline);
     const team = lines(baseline).find(({ line }) => line.evidence.id === 'team-role')!.line;
     const valid = lines(baseline).filter(({ line }) => Object.hasOwn(PROPOSED, line.evidence.id)).map(({ line }) => line);
-    await expect(aiPanel(page)).toContainText(f.copy('The proposed wording failed the source checks. Your wording is kept.', '建议未通过来源核对，保留现有表述。'));
+    await expect(aiPanel(page)).toContainText(f.copy('Kept your wording: the suggestion did not pass the fact check.', '保留你的表述：建议未通过事实核对。'));
     await expect(aiPanel(page).getByRole('checkbox', { name: `Use rewrite: ${team.id}`, exact: true })).toHaveCount(0);
     await expect(aiPanel(page).getByRole('article', { name: `AI rewrite ${team.id}`, exact: true })).toHaveCount(0);
-    await expect(aiPanel(page).getByRole('checkbox', { name: f.copy('Use suggested section and block order', '使用建议的章节与内容块顺序'), exact: true })).toBeDisabled();
+    // A refused rewrite still leaves the line reviewed (kept as written), so ordering is available.
+    await expect(aiPanel(page).getByRole('checkbox', { name: f.copy('Use suggested section and block order', '使用建议的章节与内容块顺序'), exact: true })).toBeEnabled();
     await expect(f.editor(team.id)).toHaveValue(ORIGINAL['team-role']);
     const chosen = mode === 'single' ? valid.slice(0, 1) : valid;
     for (const line of chosen) await aiPanel(page).getByRole('checkbox', { name: `Use rewrite: ${line.id}`, exact: true }).check();

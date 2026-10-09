@@ -113,7 +113,7 @@ class TestThreeStates:
         assert fields["eligibility"]["explicit"]["majors"] == ["Biology", "Chemistry"]
         assert fields["eligibility"]["explicit"]["international_students"] == "yes"
         assert fields["funding"]["explicit"] == {"paid": "stipend", "compensation": "$5,000"}
-        assert fields["timing"]["explicit"]["deadline"] == "2027-02-01"
+        assert fields["timing"]["explicit"]["deadline"] == "2099-02-01"
 
     def test_inferred_field_is_labeled_inferred_with_a_basis(self):
         fields = _fields(_CASES["stamped_listing"])

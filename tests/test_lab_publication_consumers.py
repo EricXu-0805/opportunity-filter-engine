@@ -185,13 +185,22 @@ def test_applied_source_reaches_both_resume_provider_prompts_with_exact_quotes(f
     quote = {'field':'lab_text','page_index':0,'section_index':0,'start':0,'end':6,'quote':'Causal'}
     def model(messages, **kwargs):
         calls.append(deepcopy(messages)); data=json.loads(messages[1]['content'])
-        if 'units' in data:
-            return json.dumps({'units':[{'unit_id':u['unit_id'],'priority':'high','reason':'Relevant source topic.', 'target_evidence':[quote], 'proposed_text':None} for u in data['units']]})
+        if 'units' in data:  # full-target-v6 links to a server-cut anchor
+            anchor = next(a for a in data['anchors'] if a['from'] == 'lab_text' and a['text'].startswith('Causal'))
+            link = {'id':'L1','anchor':anchor['id'],'term':'Causal','source':'Python','relation':'broader'}
+            return json.dumps({'units':[{'unit_id':u['unit_id'],'priority':'high','reason':'topic_relevance','links':[link],
+                                         'decision':'keep','ops':[],'text':None,'keep_reason':'no_link'} for u in data['units']]})
         return json.dumps({'items':[{'section_id':b['section_id'],'block_id':b['block_id'],'action':'keep','reason':'Relevant source topic.', 'target_evidence':[quote], 'source_evidence':[{'unit_id':b['lines'][0]['unit_id'],'start':0,'end':len(b['lines'][0]['original']),'quote':b['lines'][0]['original']}], 'rewrites':[]} for b in data['blocks']]})
     monkeypatch.setattr(resume_ai,'chat_completion',model)
     original=deepcopy(doc); response=submit(flow['client'],path,doc)
     assert response.status_code==200,response.text
     assert response.json()['method']=='ai' and len(calls)==1
     prompt=json.loads(calls[0][1]['content'])
-    assert prompt['target']['lab']==project_public_detail(target)['lab_context']
+    if path.endswith('selection-plan'):
+        assert prompt['target']['lab']==project_public_detail(target)['lab_context']
+    else:
+        lab = project_public_detail(target)['lab_context']['snapshot']['pages'][0]['sections'][0]['text']
+        assert any(a['from']=='lab_text' and a['text'] in lab for a in prompt['anchors'])
+        receipt = next(r for r in response.json()['receipts'] if r['evidence']['kind']=='experience')
+        assert receipt['suggestion']['target_evidence']==[quote]
     assert doc==original
