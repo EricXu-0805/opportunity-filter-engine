@@ -67,6 +67,11 @@ export interface MatchCardProps {
   match: MatchResult;
   profile?: ProfileData | null;
   onDraftEmail: (opportunityId: string) => void;
+  /** True only while the page would open a draft for a Draft Email click (see
+   *  writingEntryReady in results/page.tsx). Until then the button is disabled
+   *  and busy, like Tailor/Renovate before ownerReady, rather than live but
+   *  ignored. Defaults to false (fail-closed) when omitted. */
+  draftEmailReady?: boolean;
   /** Results owns the persistent editor; other callers may retain the local fallback. */
   onOpenResume?: (opportunityId: string) => void;
   isFavorited?: boolean;
@@ -187,7 +192,7 @@ const URGENCY_BORDER: Record<string, string> = {
   passed: 'before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-gray-300 before:rounded-l-2xl',
 };
 
-export default function MatchCard({ detailHref, isViewed, onViewOpportunity, match, profile, onDraftEmail, onOpenResume, isFavorited, onToggleFavorite, favoritePending, favSaveError, onRetryFavSave, interaction, onTrackInteraction, trackPending, trackSaveError, onRetryTrackSave, ownerReady = false, ownerScopeKey = null, isNew, feedbackVerdict, onFeedback, position }: MatchCardProps) {
+export default function MatchCard({ detailHref, isViewed, onViewOpportunity, match, profile, onDraftEmail, draftEmailReady = false, onOpenResume, isFavorited, onToggleFavorite, favoritePending, favSaveError, onRetryFavSave, interaction, onTrackInteraction, trackPending, trackSaveError, onRetryTrackSave, ownerReady = false, ownerScopeKey = null, isNew, feedbackVerdict, onFeedback, position }: MatchCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [gaps, setGaps] = useState<GapAnalysis | null>(null);
   const [gapLoading, setGapLoading] = useState(false);
@@ -507,8 +512,10 @@ export default function MatchCard({ detailHref, isViewed, onViewOpportunity, mat
           {posture === 'actionable' && !facultyUnavailable && (
             <button
               type="button"
-              onClick={() => { if (posture === 'actionable') { onViewOpportunity?.(opp.id); onDraftEmail(opp.id); } }}
-              className={`inline-flex items-center gap-2 px-4 py-2 text-[13px] font-semibold rounded-xl transition-all duration-200 ${
+              onClick={() => { if (draftEmailReady && posture === 'actionable') { onViewOpportunity?.(opp.id); onDraftEmail(opp.id); } }}
+              disabled={!draftEmailReady}
+              aria-busy={!draftEmailReady}
+              className={`inline-flex items-center gap-2 px-4 py-2 text-[13px] font-semibold rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-wait ${
                 emailIsPrimary
                   ? 'text-white bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 shadow-sm hover:shadow px-5 py-2.5'
                   : 'text-gray-600 bg-black/[0.04] hover:bg-black/[0.08]'
