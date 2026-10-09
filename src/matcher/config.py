@@ -301,7 +301,12 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # cover. Two UIUC stems stop reaching other fields' departments ("civil" inside
 # "civilizations", "comparative" in comparative literature). The stems are a
 # table, not a hashed knob, so only the base can retire the old lists.
-_MATCHER_VERSION_BASE = "18"
+# 19: a deadline the source stated closes the listing two UTC days after it
+# passes. `target_truth` returns listing_closed, and hard_exclusion reads the
+# truth first, so the record leaves the ranked universe instead of staying with
+# the x0.7 haircut. Like 7 and 8, this is a truth change the fingerprint cannot
+# see.
+_MATCHER_VERSION_BASE = "19"
 
 
 def _matcher_fingerprint() -> str:

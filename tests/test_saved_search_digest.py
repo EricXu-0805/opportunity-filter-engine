@@ -41,9 +41,10 @@ AUTH = {"Authorization": "Bearer cron-ok"}
 # unreviewed one is no longer actionable — a digest fixture without one would
 # be testing the 26-row exception while claiming to test the happy path. One
 # of each confirmed kind, so the renderer's kind-specific copy is exercised
-# rather than assumed.
+# rather than assumed. Dated far ahead: a stated deadline that has passed
+# closes the listing, and a closed listing is never mailed.
 _OPP_A = {"id": "opp-a", "title": "Vision Lab RA", "organization": "UIUC ECE",
-          "source_type": "campus_program", "deadline": "2026-07-01"}
+          "source_type": "campus_program", "deadline": "2099-07-01"}
 _OPP_B = {"id": "opp-b", "title": "NLP Internship", "organization": "Acme AI",
           "source_type": "campus_program", "deadline": ""}
 
@@ -191,7 +192,7 @@ class TestDigestCronSend:
                     "title": "Real REU",
                     "organization": "Test University",
                     "source_type": "campus_program",
-                    "deadline": "2027-02-01",
+                    "deadline": "2099-02-01",
                 },
             ],
             "https://example.test/unsubscribe",
@@ -203,7 +204,7 @@ class TestDigestCronSend:
             assert "current opening not confirmed" in body
             assert "2099-12-31" not in body
             assert "Opportunity listing" in body
-            assert "2027-02-01" in body
+            assert "2099-02-01" in body
 
     def test_happy_path_sends_one_email_and_stamps_sent_at(self, monkeypatch):
         _set_digest_env(monkeypatch)
@@ -343,7 +344,7 @@ class TestDigestTextIsNeverMailedRaw:
     CLEAN = {
         "title": "Fellowships programme",
         "organization": "Undergraduate Research Office",
-        "deadline": "2026-07-01",
+        "deadline": "2099-07-01",
     }
 
     @pytest.mark.parametrize("field", ["title", "organization", "deadline"])
@@ -426,7 +427,7 @@ class TestDigestTextIsNeverMailedRaw:
         assert "NLP Internship" in body
         assert "Acme AI" in body
         # _OPP_A carries a real date; it renders as one.
-        assert "due 2026-07-01" in body
+        assert "due 2099-07-01" in body
 
 
 class TestTheQueueStopsCarryingDeadTargets:
@@ -1125,7 +1126,7 @@ class TestTheDigestSendsWhatTheSiteWouldShow:
     def _campus_opp(opportunity_id: str, school: str) -> dict:
         return {
             "id": opportunity_id, "title": f"{school} lab", "organization": school,
-            "source_type": "campus_program", "deadline": "2026-07-01",
+            "source_type": "campus_program", "deadline": "2099-07-01",
             "school": school, "audience": "campus_only",
         }
 

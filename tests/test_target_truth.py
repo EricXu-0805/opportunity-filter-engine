@@ -17,8 +17,10 @@ from __future__ import annotations
 import hashlib
 import json
 from copy import deepcopy
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from urllib.parse import quote
+from zoneinfo import ZoneInfo
 
 import pytest
 from fastapi.testclient import TestClient
@@ -46,6 +48,7 @@ _EXPECTED_EVIDENCE_KEYS = frozenset({
     "faculty_not_accepting_undergraduates_stated",
     "faculty_research_inactive_stated",
 })
+from src import evidence
 from src.evidence import record_kind, target_truth
 
 SHARDS_DIR = Path(__file__).resolve().parent.parent / "data" / "processed" / "shards"
@@ -170,6 +173,174 @@ class TestInactiveIsItsOwnReason:
         )
         assert truth.actionable is False
         assert truth.accepting_state != "accepting"
+
+
+_TODAY = date(2026, 10, 9)
+
+
+def _dated_listing(deadline, **overrides) -> dict:
+    record = {
+        "id": "dated-listing",
+        "source": "uiuc_sro",
+        "source_type": "campus_program",
+        "title": "Summer research program",
+        "deadline": deadline,
+        "metadata": {"is_active": True},
+    }
+    record.update(overrides)
+    return record
+
+
+@pytest.fixture
+def calendar(monkeypatch):
+    monkeypatch.setattr(evidence, "_today", lambda: _TODAY)
+    return _TODAY
+
+
+class TestAPassedStatedDeadlineClosesTheListing:
+    """M05: a deadline the source stated, now behind us, is a closure.
+
+    Before this the ranker multiplied such a listing by 0.7 and wrote "verify
+    if still accepting", while the truth still called it actionable — so a
+    reminder fired, and Tailor and Cold Email drafted for an application
+    window the source itself had dated shut.
+    """
+
+    def test_a_deadline_two_days_gone_is_a_closed_listing(self, calendar):
+        deadline = (calendar - timedelta(days=2)).isoformat()
+        truth = target_truth(_dated_listing(deadline))
+        assert truth.actionable is False
+        assert truth.reason_code == "listing_closed"
+        assert truth.listing_state == "closed"
+        assert truth.accepting_state == "not_accepting"
+        assert truth.reference_only is False
+        assert (truth.evidence_source, truth.evidence_key, truth.evidence_value) == (
+            "deadline", "deadline", deadline,
+        )
+
+    @pytest.mark.parametrize("days", [-1, 0, 1, 30], ids=["day-after", "deadline-day", "tomorrow", "next-month"])
+    def test_the_deadline_day_and_the_day_after_stay_open(self, calendar, days):
+        """The source wrote a date in its own time zone; the server runs on UTC.
+
+        Anywhere on Earth a date D ends by D+1 12:00 UTC, so only from UTC D+2
+        has it passed for everyone. A student in Chicago drafting at 8 pm on
+        the deadline day is already on the next UTC date.
+        """
+        truth = target_truth(_dated_listing((calendar + timedelta(days=days)).isoformat()))
+        assert truth.actionable is True
+        assert truth.reason_code is None
+
+    def test_a_timestamped_deadline_is_read_by_its_date(self, calendar):
+        truth = target_truth(_dated_listing("2024-01-15T23:59:00"))
+        assert truth.reason_code == "listing_closed"
+        assert truth.evidence_value == "2024-01-15T23:59:00"
+
+    def test_an_estimated_deadline_closes_nothing(self, calendar):
+        truth = target_truth(_dated_listing("2024-01-15", deadline_is_estimate=True))
+        assert truth.actionable is True
+        assert truth.reason_code is None
+
+    def test_an_inferred_deadline_closes_nothing(self, calendar):
+        record = _dated_listing("2024-01-15")
+        record["metadata"]["inferred_fields"] = {"deadline": "estimate:award_start_date"}
+        assert target_truth(record).actionable is True
+
+    @pytest.mark.parametrize("deadline", [None, "", "Rolling", "TBD", "2024-13-45", 20240115, ["2024-01-15"]])
+    def test_a_deadline_that_is_not_a_date_states_nothing(self, calendar, deadline):
+        truth = target_truth(_dated_listing(deadline))
+        assert truth.actionable is True
+
+    def test_a_faculty_profile_has_no_application_deadline(self, calendar):
+        record = _dated_listing("2024-01-15", source_type="faculty_research")
+        assert target_truth(record).actionable is True
+
+    def test_an_unreviewed_kind_is_not_called_a_closed_listing(self, calendar):
+        """We never confirmed it was a listing, so no listing of it closed."""
+        record = _dated_listing("2024-01-15")
+        record.pop("source_type")
+        assert target_truth(record).reason_code == "record_kind_unverified"
+
+    def test_a_stated_status_keeps_its_own_evidence(self, calendar):
+        record = _dated_listing("2024-01-15", metadata={"listing_status": "closed", "is_active": True})
+        truth = target_truth(record)
+        assert truth.reason_code == "listing_closed"
+        assert truth.evidence_key == "listing_status"
+
+    def test_the_deadline_outranks_inactive_so_a_refresh_cannot_blur_it(self, calendar):
+        """Same rule as a stated status: deactivating the row on the next
+        refresh must not turn "the deadline passed" into "no longer active"."""
+        truth = target_truth(_dated_listing("2024-01-15", metadata={"is_active": False}))
+        assert truth.reason_code == "listing_closed"
+        assert truth.evidence_key == "deadline"
+
+    def test_a_reference_marker_keeps_its_own_reason(self, calendar):
+        """The source said the row is reference material, which already
+        explains why its date is behind us. Read off the calendar instead, the
+        page would call a published reference a listing that closed."""
+        record = _dated_listing("2024-01-15", metadata={"is_active": True, "reference_only": True})
+        truth = target_truth(record)
+        assert truth.reason_code == "reference_only"
+        assert truth.reference_only is True
+        assert truth.evidence_key == "reference_only"
+
+    def test_the_calendar_is_the_utc_date_not_the_host_date(self, monkeypatch):
+        """02:00 UTC on 10 October is 21:00 on 9 October in Chicago. The grace
+        day is counted from the UTC date, so a host on local time would keep a
+        listing open a day longer than the rule says."""
+        instant = datetime(2026, 10, 10, 2, 0, tzinfo=UTC)
+        host_zone = ZoneInfo("America/Chicago")
+
+        class _Clock(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return instant.astimezone(tz) if tz else instant.astimezone(host_zone).replace(tzinfo=None)
+
+        class _HostDate(date):
+            @classmethod
+            def today(cls):
+                return instant.astimezone(host_zone).date()
+
+        monkeypatch.setattr(evidence, "datetime", _Clock)
+        monkeypatch.setattr(evidence, "date", _HostDate)
+        assert evidence._today() == date(2026, 10, 10)
+        # 8 October is two UTC days back, so closed; by the host date it is one.
+        assert target_truth(_dated_listing("2026-10-08")).reason_code == "listing_closed"
+        assert target_truth(_dated_listing("2026-10-09")).actionable is True
+
+    def test_the_public_envelope_is_the_closed_listing_shape_clients_accept(self, calendar):
+        """frontend/src/lib/target-truth.ts accepts `listing_closed` only with
+        listing_state closed and accepting_state not_accepting; any other
+        pairing parses as unknown and suspends the page."""
+        envelope = public_target_truth(_dated_listing("2024-01-15"))
+        assert envelope == {
+            "listing_state": "closed",
+            "reference_only": False,
+            "actionable": False,
+            "accepting_state": "not_accepting",
+            "reason_code": "listing_closed",
+            "verified_at": None,
+            "expires_at": None,
+        }
+
+    def test_the_real_clock_closes_a_long_past_deadline(self):
+        assert target_truth(_dated_listing("2024-01-15")).reason_code == "listing_closed"
+
+    @pytest.mark.parametrize("record", [
+        _dated_listing("2024-01-15"),
+        _dated_listing("2099-01-15"),
+        _dated_listing("2024-01-15T09:00:00"),
+        _dated_listing("2024-01-15", deadline_is_estimate=True),
+        _dated_listing("2024-01-15", metadata={"inferred_fields": {"deadline": "rule:x"}}),
+        _dated_listing("Rolling"),
+        _dated_listing(None),
+        _dated_listing("2024-01-15", source_type="faculty_research"),
+    ], ids=["past", "future", "timestamp", "estimate", "inferred", "prose", "none", "faculty"])
+    def test_it_reads_the_same_deadline_the_ranker_scores(self, record):
+        """Two readings of "the source stated a deadline" would let the card
+        say one thing and the action guard another."""
+        from src.matcher.ranker import _stated_deadline_date
+
+        assert evidence.stated_listing_deadline(record) == _stated_deadline_date(record)
 
 
 class TestReferenceOnlyIsASeparateDimension:
