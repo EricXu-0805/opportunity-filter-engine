@@ -74,7 +74,8 @@ jobs:
           # the body: `errors` is a list of RPC failures that left a real
           # problem unrecorded. curl -sf cannot see those; the checker reads
           # that list and fails the step. A missing-Supabase-env run reports
-          # status=skipped, which the checker correctly treats as not a failure.
+          # status=skipped and names the variables under `missing`, which the
+          # checker also fails: production needs them (docs/RELEASE.md §6).
           curl -sfSL -X POST \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             "${{ secrets.BACKEND_URL }}/api/cron/ops-scan" \

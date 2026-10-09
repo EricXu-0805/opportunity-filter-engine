@@ -34,6 +34,7 @@ from backend.lib import contact_visibility
 from backend.main import app
 from backend.routes import responsiveness as resp_mod
 from backend.schemas import ProfileRequest
+from src import evidence as evidence_module
 from src.matcher import ranker
 from src.matcher.config import MATCHER_VERSION
 from tests.test_responsiveness import (
@@ -440,6 +441,39 @@ class TestExplainServesTheListConclusion:
         assert detail["retryable"] is False
         assert gap_text in detail["message"].lower()
 
+    @pytest.mark.parametrize("estimate", [False, True], ids=["stated", "estimated"])
+    def test_a_listing_whose_stated_deadline_passed_leaves_the_universe(
+        self, snapshot_env, monkeypatch, estimate,
+    ):
+        """M05. The ranker used to multiply this record by 0.7 and keep it in
+        the list with "verify if still accepting"; the source dated the window
+        shut, so it leaves the Match universe and explain refuses it with the
+        closure. An estimated deadline is our guess, and changes nothing."""
+        dated = _opp("dated-2024", deadline="2024-01-15", deadline_is_estimate=estimate)
+        corpus = snapshot_env["corpus"] + [dated]
+        by_id = {o["id"]: o for o in corpus}
+        ranker.register_corpus(corpus)
+        monkeypatch.setattr(
+            m_module,
+            "load_opportunities_generation",
+            lambda: (corpus, f"dated-fixture-{estimate}"),
+        )
+        monkeypatch.setattr(m_module, "load_opportunities_by_id", lambda: by_id)
+        m_module._match_snapshots.clear()
+
+        listing = client.post("/api/matches", json=_profile()).json()
+        response = client.post("/api/matches/dated-2024/explain", json=_profile())
+
+        listed = "dated-2024" in {r["opportunity_id"] for r in listing["results"]}
+        if estimate:
+            assert listed
+            assert response.status_code == 200, response.text
+            return
+        assert not listed
+        assert response.status_code == 409
+        detail = response.json()["detail"]
+        assert (detail["code"], detail["reason"]) == ("TARGET_NOT_ACTIONABLE", "listing_closed")
+
     def test_matcher_version_served_and_stable(self, snapshot_env):
         listing = client.post("/api/matches", json=_profile()).json()
         assert listing["matcher_version"] == MATCHER_VERSION
@@ -832,15 +866,17 @@ class TestSnapshotPagination:
                 paid="no",
                 on_campus=False,
                 contact_email="",
-                # A stated, long-past deadline: the record is dead, not merely
-                # weak. Before the small-universe thresholds were fixed this
-                # fixture scored 42.9 and fell into low_fit only because a
-                # 15-record universe collapsed good/reach up to the 70 high
-                # cutoff — the same cliff that hid a 69 there. With the flat
-                # floors restored, 42.9 is a reach by the product's own
-                # constants; the passed-deadline penalty (x0.7) makes this the
-                # unambiguous low_fit the test needs.
-                deadline="2024-01-15",
+                # A program that already started, long ago. Before the
+                # small-universe thresholds were fixed this fixture scored 42.9
+                # and fell into low_fit only because a 15-record universe
+                # collapsed good/reach up to the 70 high cutoff — the same
+                # cliff that hid a 69 there. With the flat floors restored,
+                # 42.9 is a reach by the product's own constants; the
+                # started-program penalty (x0.7) makes this the unambiguous
+                # low_fit the test needs. Not a stated past deadline: that now
+                # closes the listing, and a closed listing is refused, not
+                # explained as weak (see the deadline test above).
+                start_date="2024-01-15",
                 keywords=["medieval history"],
                 description_raw="Archive cataloging.",
                 description_clean="Archive cataloging.",
@@ -1244,6 +1280,9 @@ class TestServerMatchView:
 
         monkeypatch.setattr(m_module, "date", _Calendar)
         monkeypatch.setattr(ranker, "date", _Calendar)
+        # The truth reads the same calendar: on the real one 09-30 is long
+        # gone, the record would be closed on both days, and nothing would move.
+        monkeypatch.setattr(evidence_module, "_today", lambda: calendar["today"])
         corpus = sorted(
             [*snapshot_env["corpus"], _opp("due-sep-30", deadline=yesterday.isoformat())],
             key=lambda record: record["id"],

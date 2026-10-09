@@ -20,13 +20,17 @@ from bs4 import BeautifulSoup
 
 from scripts.shard_corpus import assemble, load_shards, split
 from src.collectors import campus_graph as cg
+from src.collectors.import_document import MAX_DEPTH, MAX_NODES
 from src.collectors.schools import SCHOOL_CONFIGS
 from src.collectors.schools.boulder import SCHOOL as BOULDER
 from src.collectors.schools.princeton import SCHOOL as PRINCETON
 from src.collectors.schools.uci import SCHOOL as UCI
 from src.collectors.schools.ucsb import SCHOOL as UCSB
 from src.collectors.schools.ucsd import SCHOOL as UCSD
+from src.contact_instructions import CAPTURE_KEY
 from src.normalizers.school_audience import SOURCE_DEFAULTS, VALID_AUDIENCES
+from tests.test_faculty_graph import fake_chromium
+from tests.test_import_document import CROWDED_MARKUP, _growth, crawled_page
 
 
 def _observed(soup, url):
@@ -1273,3 +1277,75 @@ def test_crawl_domain_boundary_keeps_the_bare_root_and_rejects_other_schools():
     assert cg._same_site("https://research.princeton.edu/program", "https://princeton.edu/research")
     # bu.edu is a string suffix of cbu.edu, a different university.
     assert not cg._same_site("https://www.bu.edu/urop/", "https://www.cbu.edu/research/")
+
+
+# ── configured pages are parsed within the import reader's limits ───────────
+# campus_graph parsed each fetched page with plain bs4, outside the limits #1018
+# gave URL import: on 2026-10-09 a seed page of 30,000 <br> then 30,000 </p>
+# held one crawl 3.2 s of CPU, a <meta> content of 100,000 line breaks 5.4 s,
+# and 2.4 MB opening with '<meta ' 3.6 s, each time quadratic in the markup.
+
+_PAGE_A, _PAGE_B = "https://example.edu/summer", "https://example.edu/fellows"
+_TWO_SEEDS = {
+    "school_slug": "example", "organization": "Example University", "location": "Example",
+    "emit": {"campus": ("example_research_programs", "example", "campus")},
+    "sources": [{"source_name": "example_programs", "source_type": cg.PROGRAM, "emit": "campus",
+                 "crawl": cg.STATIC, "crawl_depth": 1, "seeds": [_PAGE_A, _PAGE_B],
+                 "programs": [cg.program("summer", "Summer research program", _PAGE_A, "Curated description"),
+                              cg.program("fellows", "Research fellows program", _PAGE_B, "Curated description")]}],
+}
+
+
+class _Fetched:
+    def __init__(self, url, html):
+        self.url, self.content = url, html.encode()
+
+    def raise_for_status(self):
+        pass
+
+
+def _serve(monkeypatch, pages):
+    import requests
+    monkeypatch.setattr(requests, "get", lambda url, **_: _Fetched(url, pages[url]))
+
+
+@pytest.mark.parametrize(("where", "build", "size"), CROWDED_MARKUP)
+def test_a_crowded_configured_page_is_crawled_in_linear_time(monkeypatch, where, build, size):
+    pages = {_PAGE_B: crawled_page("body", "")}
+    _serve(monkeypatch, pages)
+
+    def crawl(html):
+        pages[_PAGE_A] = html
+        records, _evidence = cg.fetch_and_normalize_with_evidence(_TWO_SEEDS, deep=True)
+        return [record["metadata"][CAPTURE_KEY]["status"] for record in records]
+    small, large = (crawled_page(where, build(count)) for count in (size // 4, size))
+    assert crawl(small) == crawl(large) == ["captured", "captured"]
+    growth = _growth(crawl, small, large)
+    assert growth < 8, f"four times the markup took {growth:.1f} times as long"
+
+
+@pytest.mark.parametrize("markup", [
+    pytest.param("<div>" * (MAX_DEPTH + 1) + "x", id="too-deep"),
+    pytest.param("<i></i>" * MAX_NODES, id="too-many-nodes"),
+])
+def test_a_configured_page_past_the_limits_fails_that_page_alone(monkeypatch, markup):
+    _serve(monkeypatch, {_PAGE_A: crawled_page("body", markup), _PAGE_B: crawled_page("body", "")})
+    records, evidence = cg.fetch_and_normalize_with_evidence(_TWO_SEEDS, deep=True)
+    captures = {record["url"]: record["metadata"][CAPTURE_KEY] for record in records}
+    assert (captures[_PAGE_A]["status"], captures[_PAGE_A]["reason"]) == ("failed", "too_large")
+    assert captures[_PAGE_B]["status"] == "captured"
+    assert evidence["crawl_errors"] == [f"example_programs: seed fetch failed: {_PAGE_A}"]
+    assert (evidence["seed_pages_loaded"], evidence["seed_pages_failed"]) == (1, 1)
+
+
+def test_a_rendered_page_past_the_limits_fails_that_page_alone(monkeypatch):
+    rendered = {_PAGE_A: crawled_page("body", "<div>" * (MAX_DEPTH + 1) + "x"), _PAGE_B: crawled_page("body", "")}
+    fake_chromium(monkeypatch, rendered)
+    school = {**_TWO_SEEDS, "sources": [{**_TWO_SEEDS["sources"][0], "render": True}]}
+    records, evidence = cg.fetch_and_normalize_with_evidence(school, deep=True)
+    captures = {record["url"]: record["metadata"][CAPTURE_KEY] for record in records}
+    assert (captures[_PAGE_A]["status"], captures[_PAGE_A]["reason"]) == ("failed", "too_large")
+    assert captures[_PAGE_B]["status"] == "captured"
+    assert evidence["crawl_errors"] == [f"example_programs: seed fetch failed: {_PAGE_A}"]
+    assert len(rendered["calls"]) == 2, "a page past the limits is not rendered again"
+

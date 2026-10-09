@@ -13,7 +13,9 @@ from itertools import combinations, permutations
 
 import pytest
 
+from src import evidence as evidence_module
 from src.matcher import ranker
+from src.matcher.config import MATCHER_VERSION
 
 RELEASE_CONTRACT_TESTS = True
 
@@ -122,6 +124,7 @@ class TestDeadlineEvidenceControlsEveryScoringClaim:
                 return cls(2026, 3, 1)
 
         monkeypatch.setattr(ranker, "date", FixedDate)
+        monkeypatch.setattr(evidence_module, "_today", lambda: FixedDate(2026, 3, 1))
 
     @pytest.mark.parametrize("marker", ["estimate_flag", "inferred_stamp", "both"])
     @pytest.mark.parametrize("days", [-30, 3, 30])
@@ -144,7 +147,7 @@ class TestDeadlineEvidenceControlsEveryScoringClaim:
         assert not any(step.startswith("Apply before deadline:") for step in result.next_steps)
         assert ranker._seasonal_multiplier(derived, today=ranker.date.today()) == 1.0
 
-    def test_stated_past_deadline_still_penalizes_and_explains_without_hard_exclusion(self):
+    def test_stated_past_deadline_still_penalizes_and_explains(self):
         dateless = _opp()
         expired = _opp(deadline="2026-02-01T12:00:00Z")
         base = ranker.rank_opportunity(_profile(), dateless)
@@ -152,7 +155,21 @@ class TestDeadlineEvidenceControlsEveryScoringClaim:
         assert result.final_score == pytest.approx(base.final_score * 0.7, abs=0.1)
         assert any("Deadline has passed" in gap for gap in result.reasons_gap)
         assert "opportunity.deadline" not in result.unknowns
-        assert ranker.hard_exclusion(expired, ranker._filter_context(_profile())) is None
+
+    def test_a_stated_deadline_two_days_past_is_a_hard_exclusion(self):
+        """M05, a deliberate contract change: this used to assert `None` — the
+        record stayed in the universe with only the x0.7 haircut. A deadline
+        the source stated now closes the listing in target truth, and
+        hard_exclusion reads the truth first. The day after the deadline is
+        still inside the time-zone grace and is only penalized; an estimate
+        never excludes."""
+        ctx = ranker._filter_context(_profile())
+        assert ranker.hard_exclusion(_opp(deadline="2026-02-27"), ctx) == "listing_closed"
+        assert ranker.hard_exclusion(_opp(deadline="2026-02-28"), ctx) is None
+        assert ranker.hard_exclusion(_opp(deadline="2026-02-01", deadline_is_estimate=True), ctx) is None
+        # The fingerprint hashes knobs and cannot see a truth change, so the
+        # base had to move with it or cached rankings keep the closed listings.
+        assert int(MATCHER_VERSION.split(".")[0]) >= 19
 
     def test_stated_future_deadline_keeps_urgency_and_seasonal_lift(self):
         listing = _opp(opportunity_type="summer_program", deadline="2026-03-04T12:00:00Z")

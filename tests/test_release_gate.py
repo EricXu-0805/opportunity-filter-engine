@@ -6,10 +6,16 @@ flip to PASS by presenting evidence bound to the frozen release SHA.
 """
 from __future__ import annotations
 
+import ast
 import importlib.util
+import io
 import json
+import re
+import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+
+import pytest
 
 _REPO = Path(__file__).resolve().parents[1]
 _spec = importlib.util.spec_from_file_location(
@@ -19,6 +25,11 @@ _spec.loader.exec_module(gate)
 
 SHA_A = "a" * 40
 SHA_B = "b" * 40
+SHA_C = "c" * 40
+
+_FLAGS = {"match_ai_refine": False, "cross_school_matching": True}
+_DATA_A = {"shard_commit": "d" * 40, "shards_tree": "1" * 40}
+_DATA_B = {"shard_commit": "e" * 40, "shards_tree": "2" * 40}
 
 
 def _find(ledger: dict, name: str) -> dict:
@@ -46,6 +57,8 @@ def _all_external_pass(sha: str) -> dict:
             "Backend (lint + pytest)", "Frontend (typecheck + build)",
             "Migrations (Flow B merge + CLI replay)", "E2E (Playwright)")],
     }
+    ev["deployment"] = {"observed_at": _now_iso(), "backend_sha": sha,
+                        "frontend_sha": sha}
     ev["open_incidents"] = {"observed_at": _now_iso(),
                             "rollup": {"open_total": 0, "truncated": False}}
     ev["provider_readiness"] = {
@@ -101,6 +114,13 @@ def _stub_repo_gates(monkeypatch, sha: str, *, drill: dict | None = None) -> Non
                         lambda: gate._gate("truthfulness", gate.PASS, "stub"))
     monkeypatch.setattr(gate, "check_flag_parity",
                         lambda: gate._gate("flag_parity", gate.PASS, "stub"))
+    # The release record reads two files and a data version at each deployed
+    # commit; with subprocess stubbed above those reads would see the sha
+    # string, so they are answered with one aligned commit's state instead.
+    monkeypatch.setattr(gate, "commit_exists", lambda rev: True)
+    monkeypatch.setattr(gate, "release_scope_at",
+                        lambda rev: {"backend": dict(_FLAGS), "frontend": dict(_FLAGS)})
+    monkeypatch.setattr(gate, "data_version_at", lambda rev: dict(_DATA_A))
     monkeypatch.setattr(gate, "check_ledger_currency",
                         lambda s, **kw: gate._gate("ledger_currency", gate.PASS, "stub"))
     monkeypatch.setattr(gate, "load_latest_drill",
@@ -415,13 +435,277 @@ class TestIncidentGate:
         assert got["status"] == gate.UNVERIFIED
 
 
+_BE_SCOPE = '''
+from types import MappingProxyType
+RELEASE_SCOPE = MappingProxyType(
+    {
+        # Closed until its acceptance PR: "comment": True,
+        "match_ai_refine": False,
+        "cross_school_matching": True,
+    }
+)
+_PROVIDER_FEATURES = {"azure": "microsoft_school_auth"}
+'''
+
+_FE_SCOPE = '''
+export const RELEASE_SCOPE = Object.freeze({
+  // Closed until its acceptance PR. notAFlag: true,
+  matchAiRefine: false,
+  /* block comment: alsoNotAFlag: false */
+  crossSchoolMatching: true,
+} as const);
+
+export function normalize(profile) {
+  return { ...profile, includeCrossSchool: false };
+}
+'''
+
+
+def _write_scope(tmp_path, monkeypatch, *, be: str = _BE_SCOPE,
+                 fe: str = _FE_SCOPE) -> None:
+    (tmp_path / "backend" / "lib").mkdir(parents=True)
+    (tmp_path / "frontend" / "src" / "lib").mkdir(parents=True)
+    (tmp_path / "backend" / "lib" / "release_scope.py").write_text(be)
+    (tmp_path / "frontend" / "src" / "lib" / "release-scope.ts").write_text(fe)
+    monkeypatch.setattr(gate, "_REPO", tmp_path)
+
+
 class TestFlagParity:
-    def test_current_repo_state_is_evaluated(self):
-        # Frontend-only flags mean a surface with no server-side gate.
+    """Names AND values. M65 names comparing only flag names as the shortcut
+    a release check may not take: a flag open on one side and closed on the
+    other is a control with no server-side door, or a door with no control."""
+
+    def test_the_committed_tables_agree(self):
         got = gate.check_flag_parity()
-        assert got["status"] in (gate.PASS, gate.FAIL, gate.UNVERIFIED)
-        if got["status"] == gate.FAIL:
-            assert "frontend-only" in got["detail"]
+        assert got["status"] == gate.PASS, got["detail"]
+        assert got["evidence"]["backend"] == got["evidence"]["frontend"]
+
+    def test_aligned_tables_pass(self, tmp_path, monkeypatch):
+        _write_scope(tmp_path, monkeypatch)
+        got = gate.check_flag_parity()
+        assert got["status"] == gate.PASS, got["detail"]
+        assert got["evidence"]["backend"] == _FLAGS
+
+    def test_a_flag_open_on_one_side_only_fails(self, tmp_path, monkeypatch):
+        _write_scope(tmp_path, monkeypatch,
+                     fe=_FE_SCOPE.replace("matchAiRefine: false", "matchAiRefine: true"))
+        got = gate.check_flag_parity()
+        assert got["status"] == gate.FAIL
+        assert got["reason"] == "flag_drift"
+        assert got["evidence"]["value_mismatch"] == {
+            "match_ai_refine": {"backend": False, "frontend": True}}
+        assert "match_ai_refine" in got["detail"]
+
+    def test_a_flag_declared_on_one_side_only_fails(self, tmp_path, monkeypatch):
+        _write_scope(tmp_path, monkeypatch,
+                     be=_BE_SCOPE.replace('"cross_school_matching": True,',
+                                          '"cross_school_matching": True,\n'
+                                          '        "payments": False,'))
+        got = gate.check_flag_parity()
+        assert got["status"] == gate.FAIL
+        assert got["evidence"]["backend_only"] == ["payments"]
+
+    def test_text_outside_the_tables_is_not_read_as_a_flag(self, tmp_path, monkeypatch):
+        _write_scope(tmp_path, monkeypatch)
+        tables = gate.release_scope_at(None)
+        assert tables == {"backend": _FLAGS, "frontend": _FLAGS}
+
+    def test_a_value_that_is_not_a_literal_cannot_be_verified(self, tmp_path, monkeypatch):
+        # A computed flag could be either value at runtime; reading it as
+        # absent would let a real drift through as "aligned".
+        _write_scope(tmp_path, monkeypatch,
+                     fe=_FE_SCOPE.replace("crossSchoolMatching: true",
+                                          "crossSchoolMatching: ENABLE_CROSS"))
+        got = gate.check_flag_parity()
+        assert got["status"] == gate.UNVERIFIED
+        assert got["reason"] == "evidence_unreadable"
+
+    def test_a_backend_value_that_is_not_a_boolean_cannot_be_verified(
+            self, tmp_path, monkeypatch):
+        # 1 == True in Python, so an int would compare "equal" to the frontend's
+        # true while feature_enabled reads it with its own truthiness.
+        _write_scope(tmp_path, monkeypatch,
+                     be=_BE_SCOPE.replace('"cross_school_matching": True',
+                                          '"cross_school_matching": 1'))
+        assert gate.check_flag_parity()["status"] == gate.UNVERIFIED
+
+    def test_a_missing_table_cannot_be_verified(self, tmp_path, monkeypatch):
+        _write_scope(tmp_path, monkeypatch)
+        (tmp_path / "frontend" / "src" / "lib" / "release-scope.ts").unlink()
+        assert gate.check_flag_parity()["status"] == gate.UNVERIFIED
+
+
+# ---------------------------------------------------------------------------
+# One release record: the backend that answers, the frontend that renders, the
+# corpus each was built with, and the flags each enforces, against the
+# candidate (M65). Before this, nothing compared the deployed frontend's SHA
+# with anything (O7: production backend 83940c19 on 10-02, frontend unread).
+# ---------------------------------------------------------------------------
+
+def _deployment(backend: str | None = SHA_A, frontend: str | None = SHA_A,
+                **extra) -> dict:
+    return {"observed_at": _now_iso(), "backend_sha": backend,
+            "frontend_sha": frontend, **extra}
+
+
+def _repo_state(monkeypatch, *, data: dict | None = None,
+                scopes: dict | None = None, known: set | None = None) -> None:
+    """Per-commit answers for the readers the release record uses."""
+    data = data or {}
+    scopes = scopes or {}
+    monkeypatch.setattr(gate, "commit_exists",
+                        lambda rev: rev in (known or {SHA_A, SHA_B, SHA_C}))
+    monkeypatch.setattr(gate, "data_version_at",
+                        lambda rev: dict(data.get(rev, _DATA_A)))
+    monkeypatch.setattr(
+        gate, "release_scope_at",
+        lambda rev: scopes.get(rev, {"backend": dict(_FLAGS), "frontend": dict(_FLAGS)}))
+
+
+class TestReleaseRecord:
+    def test_no_observation_is_unverified_not_pass(self, monkeypatch):
+        _repo_state(monkeypatch)
+        got = gate.check_release_record(SHA_A, None)
+        assert got["status"] == gate.UNVERIFIED
+        assert got["reason"] == "evidence_absent"
+
+    def test_everything_at_the_candidate_passes(self, monkeypatch):
+        _repo_state(monkeypatch)
+        got = gate.check_release_record(SHA_A, _deployment())
+        assert got["status"] == gate.PASS, got["detail"]
+        record = got["evidence"]
+        assert record["backend"]["deployed_sha"] == SHA_A
+        assert record["frontend"]["deployed_sha"] == SHA_A
+        assert record["candidate"]["data_version"] == _DATA_A
+        assert record["candidate"]["release_scope"] == {"backend": _FLAGS,
+                                                        "frontend": _FLAGS}
+        assert record["disagreements"] == []
+
+    def test_a_backend_on_another_commit_fails(self, monkeypatch):
+        _repo_state(monkeypatch)
+        got = gate.check_release_record(SHA_A, _deployment(backend=SHA_B))
+        assert got["status"] == gate.FAIL
+        assert got["reason"] == "sha_mismatch"
+        assert any("backend" in d and SHA_B[:8] in d
+                   for d in got["evidence"]["disagreements"])
+
+    def test_a_frontend_on_another_commit_fails(self, monkeypatch):
+        # Vercel deploys without waiting for checks while Render waits for
+        # every one (docs/RELEASE.md §3): this is the drift that happens.
+        _repo_state(monkeypatch)
+        got = gate.check_release_record(SHA_A, _deployment(frontend=SHA_B))
+        assert got["status"] == gate.FAIL
+        assert any("frontend" in d for d in got["evidence"]["disagreements"])
+
+    def test_the_data_each_side_was_built_with_is_compared(self, monkeypatch):
+        _repo_state(monkeypatch, data={SHA_B: _DATA_B})
+        got = gate.check_release_record(SHA_A, _deployment(backend=SHA_B))
+        assert got["status"] == gate.FAIL
+        data_lines = [d for d in got["evidence"]["disagreements"] if "data" in d]
+        assert data_lines and _DATA_B["shard_commit"][:8] in data_lines[0]
+        assert got["evidence"]["backend"]["data_version"] == _DATA_B
+
+    def test_same_data_is_not_reported_as_a_data_disagreement(self, monkeypatch):
+        # A code-only commit between the two leaves the corpus identical; the
+        # record should say the code differs, not invent a data drift.
+        _repo_state(monkeypatch)
+        got = gate.check_release_record(SHA_A, _deployment(frontend=SHA_B))
+        assert not [d for d in got["evidence"]["disagreements"] if "data" in d]
+
+    def test_deployed_flag_tables_that_disagree_fail(self, monkeypatch):
+        opened = dict(_FLAGS, match_ai_refine=True)
+        _repo_state(monkeypatch, scopes={
+            SHA_B: {"backend": dict(_FLAGS), "frontend": opened}})
+        got = gate.check_release_record(SHA_A, _deployment(frontend=SHA_B))
+        flag_lines = [d for d in got["evidence"]["disagreements"] if "flag" in d]
+        assert flag_lines and "match_ai_refine" in flag_lines[0]
+        assert got["evidence"]["frontend"]["release_scope"] == opened
+
+    def test_flags_are_compared_even_when_both_shas_match(self, monkeypatch):
+        # The candidate's own two tables disagreeing is a release-record
+        # failure too, not only a flag_parity one: the record is the one
+        # place that says what the deployed pair enforces.
+        _repo_state(monkeypatch, scopes={
+            SHA_A: {"backend": dict(_FLAGS),
+                    "frontend": dict(_FLAGS, cross_school_matching=False)}})
+        got = gate.check_release_record(SHA_A, _deployment())
+        assert got["status"] == gate.FAIL
+        assert got["reason"] == "flag_drift"
+
+    def test_an_unreadable_deployed_flag_table_does_not_pass(self, monkeypatch):
+        # Both commits are in the repo, but one side's table could not be read
+        # as data (release_scope_at answers None for it): no comparison was
+        # made, so the record cannot say the flags are aligned.
+        _repo_state(monkeypatch, scopes={
+            SHA_A: {"backend": dict(_FLAGS), "frontend": None}})
+        got = gate.check_release_record(SHA_A, _deployment())
+        assert got["status"] != gate.PASS
+        assert got["reason"] == "flag_unreadable"
+
+    def test_a_deploy_that_does_not_name_its_commit_is_unverified(self, monkeypatch):
+        # /api/health reports null when RENDER_GIT_COMMIT is unset, and the
+        # page says data-release-sha="unknown": no identity, so no record.
+        _repo_state(monkeypatch)
+        for backend, frontend in ((None, SHA_A), (SHA_A, "unknown"), (SHA_A[:7], SHA_A)):
+            got = gate.check_release_record(SHA_A, _deployment(backend, frontend))
+            assert got["status"] == gate.UNVERIFIED, (backend, frontend)
+            assert got["reason"] == "evidence_incomplete"
+
+    def test_a_deployed_commit_this_repo_does_not_have_fails(self, monkeypatch):
+        _repo_state(monkeypatch, known={SHA_A})
+        got = gate.check_release_record(SHA_A, _deployment(backend=SHA_C))
+        assert got["status"] == gate.FAIL
+        assert got["evidence"]["backend"]["data_version"] is None
+        assert any("not in this repository" in d
+                   for d in got["evidence"]["disagreements"])
+
+    def test_an_old_observation_is_stale(self, monkeypatch):
+        _repo_state(monkeypatch)
+        old = (datetime.now(UTC) - timedelta(days=2)).isoformat()
+        got = gate.check_release_record(SHA_A, _deployment(observed_at=old))
+        assert got["status"] == gate.FAIL
+        assert got["reason"] == "evidence_stale"
+
+    def test_the_ledger_carries_the_record_and_it_blocks(self, monkeypatch):
+        _stub_repo_gates(monkeypatch, SHA_A)
+        evidence = _all_external_pass(SHA_A)
+        evidence["deployment"] = _deployment(frontend=SHA_B)
+        ledger = gate.build_ledger(SHA_A, evidence, min_records=1)
+        assert ledger["release_record"]["frontend"]["deployed_sha"] == SHA_B
+        assert ledger["final_decision"] == "NO-GO"
+        assert [b["check"] for b in ledger["blockers"]] == ["release_record"]
+
+
+class TestObserveDeployment:
+    _HTML = ('<!DOCTYPE html><html data-dpl-id="dpl_x" lang="en" '
+             f'data-release-sha="{SHA_B}"><head></head></html>')
+
+    def test_reads_health_and_the_page_attribute(self):
+        pages = {"https://api.example/api/health": json.dumps({"release_sha": SHA_A}),
+                 "https://app.example/": self._HTML}
+        got = gate.observe_deployment("https://api.example/", "https://app.example",
+                                      fetch=pages.__getitem__)
+        assert got["backend_sha"] == SHA_A
+        assert got["frontend_sha"] == SHA_B
+        assert gate._parse_stamp(got["observed_at"]) is not None
+
+    def test_a_failed_read_is_recorded_not_raised(self):
+        def fetch(url):
+            raise TimeoutError("timed out")
+        got = gate.observe_deployment("https://api.example", "https://app.example",
+                                      fetch=fetch)
+        assert got["backend_sha"] is None and got["frontend_sha"] is None
+        assert got["backend_error"] == "TimeoutError"
+        # The error names the failure, never the URL: the ledger is uploaded
+        # from a public repository and BACKEND_URL is a workflow secret.
+        assert "api.example" not in json.dumps(got)
+
+    def test_a_page_without_the_attribute_reports_no_sha(self):
+        pages = {"https://api.example/api/health": "{}",
+                 "https://app.example/": "<html></html>"}
+        got = gate.observe_deployment("https://api.example", "https://app.example",
+                                      fetch=pages.__getitem__)
+        assert got["backend_sha"] is None and got["frontend_sha"] is None
 
 
 # ---------------------------------------------------------------------------
@@ -1300,3 +1584,510 @@ class TestPartialPublishDoesNotFakeFreshness:
         ledger = gate.build_ledger(SHA_A, _all_external_pass(SHA_A), min_records=1)
         assert ledger["final_decision"] == "NO-GO"
         assert ledger["summary"]["failed"] >= 1
+
+
+# ---------------------------------------------------------------------------
+# Migration parity (M66): committed supabase/migrations against an export of
+# production's supabase_migrations.schema_migrations. The script never
+# connects to anything; running its SQL against production waits on owner Q4.
+# Production records the same migration three ways, all seen there: a CLI
+# version equal to the file prefix, a hosted timestamp alias for 012-014
+# (MIGRATION_REPAIR.md), and an MCP apply_migration timestamp with the name
+# passed at apply time (024 onwards) — which is why it reconciles by name.
+# ---------------------------------------------------------------------------
+
+_mp_spec = importlib.util.spec_from_file_location(
+    "check_migration_parity", _REPO / "scripts" / "check_migration_parity.py")
+parity = importlib.util.module_from_spec(_mp_spec)
+# dataclasses resolve string annotations through sys.modules.
+sys.modules[_mp_spec.name] = parity
+_mp_spec.loader.exec_module(parity)
+
+_MIGRATIONS = {
+    "001_core_profiles_favorites.sql": "create table profiles ();\n",
+    "012_match_feedback.sql": "create table match_feedback ();\n",
+    "0181_oauth_merge_secret.sql": "create table oauth_merge ();\n",
+    "20260924181610_target_resume_cas.sql": "create function target_resume_cas();\n",
+}
+
+
+def _md5(text: str) -> str:
+    import hashlib
+    return hashlib.md5(text.encode()).hexdigest()
+
+
+def _applied_rows() -> list[dict]:
+    return [
+        {"version": "001", "name": None},
+        {"version": "20260611111920", "name": "match_feedback"},
+        {"version": "20260814101500", "name": "0181_oauth_merge_secret"},
+        {"version": "20260930112700", "name": "target_resume_cas",
+         "statements_md5": _md5(_MIGRATIONS["20260924181610_target_resume_cas.sql"])},
+    ]
+
+
+def _migrations_dir(tmp_path) -> Path:
+    directory = tmp_path / "migrations"
+    directory.mkdir()
+    for name, body in _MIGRATIONS.items():
+        (directory / name).write_text(body)
+    return directory
+
+
+class TestMigrationParity:
+    def test_every_recording_style_reconciles(self, tmp_path):
+        report = parity.compare(parity.committed_migrations(_migrations_dir(tmp_path)),
+                                parity.applied_rows(_applied_rows()))
+        assert report["in_parity"] is True, report
+        assert report["missing"] == [] and report["extra"] == []
+        how = {m["file"]: m["matched_by"] for m in report["matched"]}
+        assert how["001_core_profiles_favorites.sql"] == "version"
+        assert how["012_match_feedback.sql"] == "name"
+        assert report["content"]["matching"] == ["20260924181610_target_resume_cas.sql"]
+
+    def test_a_committed_migration_production_never_ran_is_missing(self, tmp_path):
+        rows = [r for r in _applied_rows() if r["name"] != "target_resume_cas"]
+        report = parity.compare(parity.committed_migrations(_migrations_dir(tmp_path)),
+                                parity.applied_rows(rows))
+        assert report["in_parity"] is False
+        assert report["missing"] == ["20260924181610_target_resume_cas.sql"]
+
+    def test_a_migration_production_ran_that_the_repo_lacks_is_extra(self, tmp_path):
+        rows = _applied_rows() + [{"version": "20261001000000", "name": "hotfix_by_hand"}]
+        report = parity.compare(parity.committed_migrations(_migrations_dir(tmp_path)),
+                                parity.applied_rows(rows))
+        assert report["in_parity"] is False
+        assert report["extra"] == [{"version": "20261001000000", "name": "hotfix_by_hand"}]
+
+    def test_a_migration_recorded_twice_is_not_parity(self, tmp_path):
+        rows = _applied_rows() + [{"version": "012", "name": "match_feedback"}]
+        report = parity.compare(parity.committed_migrations(_migrations_dir(tmp_path)),
+                                parity.applied_rows(rows))
+        assert report["in_parity"] is False
+        assert report["duplicates"] == {"012_match_feedback.sql": 2}
+
+    def test_a_row_naming_two_committed_files_is_ambiguous(self, tmp_path):
+        # Both files are matched by their own version rows, so nothing is
+        # missing: only the name-only row, which fits either file, is drift.
+        directory = tmp_path / "migrations"
+        directory.mkdir()
+        for name in ("030_fix_policies.sql", "045_fix_policies.sql"):
+            (directory / name).write_text("select 1;\n")
+        rows = [{"version": "030", "name": None}, {"version": "045", "name": None},
+                {"version": "20261001000000", "name": "fix_policies"}]
+        report = parity.compare(parity.committed_migrations(directory),
+                                parity.applied_rows(rows))
+        assert report["missing"] == [] and report["extra"] == []
+        assert report["duplicates"] == {}
+        assert report["ambiguous"] == [{
+            "version": "20261001000000", "name": "fix_policies",
+            "files": ["030_fix_policies.sql", "045_fix_policies.sql"]}]
+        assert report["in_parity"] is False
+        export = tmp_path / "rows.json"
+        export.write_text(json.dumps(rows))
+        assert parity.main(["--applied", str(export),
+                            "--migrations-dir", str(directory)]) == 1
+
+    def test_different_bytes_are_reported_but_do_not_fail_by_default(self, tmp_path):
+        # 025-032 went in comment-stripped (memory 2026-09-30): same behaviour,
+        # different md5. Named, so a real transcription error is visible.
+        rows = _applied_rows()
+        rows[-1]["statements_md5"] = "0" * 32
+        committed = parity.committed_migrations(_migrations_dir(tmp_path))
+        report = parity.compare(committed, parity.applied_rows(rows))
+        assert report["in_parity"] is True
+        assert report["content"]["differs"] == ["20260924181610_target_resume_cas.sql"]
+        strict = parity.compare(committed, parity.applied_rows(rows), strict_content=True)
+        assert strict["in_parity"] is False
+
+    def test_reads_json_and_csv_exports(self, tmp_path):
+        as_json = tmp_path / "rows.json"
+        as_json.write_text(json.dumps({"rows": _applied_rows()}))
+        as_csv = tmp_path / "rows.csv"
+        as_csv.write_text("version,name,statements_md5\n001,,\n"
+                          "20260611111920,match_feedback,\n")
+        assert len(parity.load_export(as_json)) == 4
+        assert parity.load_export(as_csv)[0] == {"version": "001", "name": None,
+                                                 "statements_md5": None}
+
+    def test_cli_exit_codes(self, tmp_path):
+        import subprocess
+        directory = _migrations_dir(tmp_path)
+        good = tmp_path / "good.json"
+        good.write_text(json.dumps(_applied_rows()))
+        bad = tmp_path / "bad.json"
+        bad.write_text(json.dumps(_applied_rows()[:-1]))
+        broken = tmp_path / "broken.json"
+        broken.write_text("{not json")
+        script = str(_REPO / "scripts" / "check_migration_parity.py")
+
+        def run(path):
+            return subprocess.run([sys.executable, script, "--applied", str(path),
+                                   "--migrations-dir", str(directory)],
+                                  capture_output=True, text=True).returncode
+
+        assert (run(good), run(bad), run(broken)) == (0, 1, 2)
+
+    def test_the_query_it_prints_only_reads(self):
+        sql = parity.EXPORT_SQL.lower()
+        assert "supabase_migrations.schema_migrations" in sql
+        assert sql.lstrip().startswith(("--", "select"))
+        for verb in ("insert", "update", "delete", "drop", "alter", "truncate", "grant"):
+            assert f" {verb} " not in f" {sql} "
+
+    def test_the_committed_set_can_be_reconciled_by_name(self):
+        """Name matching is only safe while no two files share a name."""
+        committed = parity.committed_migrations(_REPO / "supabase" / "migrations")
+        assert len(committed) >= 49
+        names = [m.bare_name for m in committed]
+        assert len(names) == len(set(names)), "two migrations share a name"
+        assert all(m.prefix and m.bare_name for m in committed)
+
+
+# ---------------------------------------------------------------------------
+# Environment variables (M67): docs/RELEASE.md §6 is the inventory. The code
+# is scanned so the table cannot drift from it, and every backend variable
+# the table calls required is removed in turn to show it fails loudly.
+# ---------------------------------------------------------------------------
+
+_RELEASE_DOC = _REPO / "docs" / "RELEASE.md"
+
+
+def _documented_env() -> dict[str, dict[str, str]]:
+    """{section: {name: "required"|"optional"}} from RELEASE.md §6."""
+    text = _RELEASE_DOC.read_text(encoding="utf-8")
+    section = text.split("## 6. Environment variables", 1)[1].split("\n## ", 1)[0]
+    tables: dict[str, dict[str, str]] = {}
+    for block in section.split("\n### ")[1:]:
+        heading, _, body = block.partition("\n")
+        rows: dict[str, str] = {}
+        for line in body.splitlines():
+            cells = [c.strip() for c in line.strip().strip("|").split("|")]
+            if len(cells) < 3 or cells[0] in ("Variable", "---"):
+                continue
+            requirement = cells[1].split()[0]
+            assert requirement in ("required", "optional"), line
+            for name in re.findall(r"`([A-Z][A-Z0-9_]*\*?)`", cells[0]):
+                assert name not in rows, f"{name} listed twice under {heading}"
+                rows[name] = requirement
+        tables[heading.split(" (")[0].strip()] = rows
+    return tables
+
+
+def _is_environ(node: ast.AST) -> bool:
+    return ((isinstance(node, ast.Attribute) and node.attr == "environ")
+            or (isinstance(node, ast.Name) and node.id == "environ"))
+
+
+def _env_name_arg(node: ast.AST) -> ast.AST | None:
+    """The name argument of an environment read, or None if this is not one."""
+    if isinstance(node, ast.Subscript) and _is_environ(node.value):
+        return node.slice
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+        func = node.func
+        if ((func.attr in ("get", "setdefault", "pop") and _is_environ(func.value))
+                or func.attr == "getenv") and node.args:
+            return node.args[0]
+    return None
+
+
+def _scan_python_env() -> tuple[set[str], set[tuple[str, str]]]:
+    """(literal names read, (file, function) sites whose name is not literal).
+
+    A function whose first parameter is read as a variable name (directly, or
+    by looping over it) is a helper: `_env_float("OFE_W_ELIG", …)`,
+    `_required_env(["SUPABASE_URL", …])`. Literal arguments to helpers count
+    as reads; any other non-literal read is an indirect site.
+    """
+    files = [p for d in ("backend", "src") for p in sorted((_REPO / d).rglob("*.py"))]
+    trees = {p: ast.parse(p.read_text(encoding="utf-8")) for p in files}
+    helpers: dict[str, tuple[str, int]] = {}
+    for tree in trees.values():
+        for fn in ast.walk(tree):
+            if not isinstance(fn, ast.FunctionDef | ast.AsyncFunctionDef) or not fn.args.args:
+                continue
+            params = [a.arg for a in fn.args.args]
+            loops = {n.target.id: n.iter.id for n in ast.walk(fn)
+                     if isinstance(n, ast.For | ast.comprehension)
+                     and isinstance(n.iter, ast.Name) and n.iter.id in params
+                     and isinstance(n.target, ast.Name)}
+            for node in ast.walk(fn):
+                arg = _env_name_arg(node)
+                if isinstance(arg, ast.Name) and arg.id in params:
+                    helpers[fn.name] = ("one", params.index(arg.id))
+                elif isinstance(arg, ast.Name) and arg.id in loops:
+                    helpers[fn.name] = ("many", params.index(loops[arg.id]))
+
+    names: set[str] = set()
+    indirect: set[tuple[str, str]] = set()
+    for path, tree in trees.items():
+        rel = path.relative_to(_REPO).as_posix()
+        owner: dict[ast.AST, str] = {}
+        for fn in ast.walk(tree):
+            if isinstance(fn, ast.FunctionDef | ast.AsyncFunctionDef):
+                for node in ast.walk(fn):
+                    if node is not fn:
+                        owner[node] = fn.name  # walk is outer-first: innermost wins
+        for node in ast.walk(tree):
+            where = owner.get(node, "<module>")
+            arg = _env_name_arg(node)
+            if arg is None and isinstance(node, ast.Call):
+                func = node.func
+                called = (func.id if isinstance(func, ast.Name)
+                          else func.attr if isinstance(func, ast.Attribute) else None)
+                if called in helpers and len(node.args) > helpers[called][1]:
+                    mode, index = helpers[called]
+                    arg = node.args[index]
+                    if mode == "many" and isinstance(arg, ast.Tuple | ast.List):
+                        if all(isinstance(e, ast.Constant) for e in arg.elts):
+                            names.update(e.value for e in arg.elts)
+                            continue
+            if arg is None:
+                continue
+            if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+                names.add(arg.value)
+            elif where not in helpers:
+                indirect.add((rel, where))
+    return names, indirect
+
+
+def _indirect_env_names() -> dict[tuple[str, str], list[str]]:
+    """Where each non-literal read gets its names. A new indirect read fails
+    the inventory until it is added here, so the scan cannot silently stop
+    seeing a variable."""
+    from backend.lib import build_info, llm, release_scope
+
+    return {
+        ("backend/lib/build_info.py", "release_sha"): list(build_info.SHA_ENV_VARS),
+        ("backend/lib/llm.py", "_resolve"): [p[1] for p in llm._PROVIDERS],
+        ("backend/lib/llm.py", "model_for"): ["OFE_MODEL_*"],
+        ("backend/lib/release_scope.py", "feature_enabled"):
+            list(release_scope._RUNTIME_KILL_SWITCHES.values()),
+        # Not configuration: OS variables handed to a sandboxed subprocess,
+        # and two CLI loaders that copy backend/.env into os.environ.
+        ("backend/lib/material_archive.py", "validate_pdf"): [],
+        ("src/collectors/llm_enrich.py", "_load_dotenv"): [],
+        ("src/collectors/openalex_enrich.py", "_load_dotenv"): [],
+    }
+
+
+def _scan_frontend_env() -> set[str]:
+    root = _REPO / "frontend"
+    paths = [root / "next.config.js", *sorted((root / "scripts").glob("*.mjs"))]
+    paths += [p for p in sorted((root / "src").rglob("*"))
+              if p.suffix in (".ts", ".tsx", ".js", ".mjs")
+              and not re.search(r"\.(test|spec)\.", p.name) and "__fixtures__" not in p.parts]
+    found: set[str] = set()
+    for path in paths:
+        found.update(re.findall(r"process\.env\.([A-Z][A-Z0-9_]*)",
+                                path.read_text(encoding="utf-8")))
+    return found
+
+
+def _scan_workflow_env() -> set[str]:
+    found: set[str] = set()
+    for path in sorted((_REPO / ".github" / "workflows").glob("*.yml")):
+        found.update(re.findall(r"\b(?:secrets|vars)\.([A-Z][A-Z0-9_]*)",
+                                path.read_text(encoding="utf-8")))
+    return found
+
+
+class TestEnvironmentInventory:
+    def test_every_variable_the_python_code_reads_is_listed_and_no_other(self):
+        names, indirect = _scan_python_env()
+        sources = _indirect_env_names()
+        for site in indirect & set(sources):
+            names.update(sources[site])
+        unexplained = sorted(indirect - set(sources))
+        assert not unexplained, (
+            f"non-literal environment reads at {unexplained}: add where their "
+            "names come from to _indirect_env_names")
+        documented = _documented_env()
+        listed = {**documented["Backend"], **documented["Data refresh"]}
+        assert sorted(names - set(listed)) == [], "read in code, missing from RELEASE.md §6"
+        assert sorted(set(listed) - names) == [], "listed in RELEASE.md §6, read nowhere"
+
+    def test_every_indirect_source_still_exists(self):
+        _, indirect = _scan_python_env()
+        assert sorted(set(_indirect_env_names()) - indirect) == []
+
+    def test_every_variable_the_frontend_reads_is_listed_and_no_other(self):
+        listed = set(_documented_env()["Frontend"])
+        found = _scan_frontend_env()
+        assert sorted(found - listed) == [] and sorted(listed - found) == []
+
+    def test_every_workflow_secret_and_variable_is_listed_and_no_other(self):
+        listed = set(_documented_env()["GitHub Actions secrets and variables"])
+        found = _scan_workflow_env()
+        assert sorted(found - listed) == [] and sorted(listed - found) == []
+
+    def test_the_scan_sees_reads_through_helpers(self):
+        # Guards the scanner itself: these four are only ever read through a
+        # helper or a table, never as os.environ.get("…") at the call site.
+        names, _ = _scan_python_env()
+        assert {"OFE_W_ELIG", "OFE_BLOCKING_AI_MAX_WORKERS", "VAPID_SUBJECT",
+                "OFE_CORPUS_STALE_HOURS"} <= names
+
+
+# --- required backend variables fail loudly ---------------------------------
+
+_ccr_spec = importlib.util.spec_from_file_location(
+    "check_cron_response_for_release", _REPO / "scripts" / "check_cron_response.py")
+cron_checker = importlib.util.module_from_spec(_ccr_spec)
+_ccr_spec.loader.exec_module(cron_checker)
+
+_FULL_BACKEND_ENV = {
+    "CRON_SECRET": "cron-ok",
+    "ADMIN_TOKEN": "admin-ok",
+    # Never contacted: every probe below stops before its first request.
+    "SUPABASE_URL": "http://127.0.0.1:9",
+    "SUPABASE_SERVICE_ROLE_KEY": "service-role-placeholder",
+    "VAPID_PRIVATE_KEY": "vapid-private-placeholder",
+    "VAPID_PUBLIC_KEY": "vapid-public-placeholder",
+    "VAPID_SUBJECT": "mailto:ops@example.invalid",
+    "RESEND_API_KEY": "resend-placeholder",
+    "RESEND_FROM_EMAIL": "JoinALab <alerts@example.invalid>",
+    "RESTORE_LINK_SECRET": "unsubscribe-signing-placeholder",
+}
+_CRON = {"Authorization": "Bearer cron-ok"}
+_ZERO_UUID = "00000000-0000-0000-0000-000000000000"
+
+
+def _env_without(monkeypatch, name: str) -> None:
+    for key, value in _FULL_BACKEND_ENV.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.delenv(name, raising=False)
+    monkeypatch.delenv("NEXT_PUBLIC_VAPID_PUBLIC_KEY", raising=False)
+
+
+def _client():
+    from fastapi.testclient import TestClient
+
+    from backend.main import app
+    return app, TestClient(app)
+
+
+def _workflow_verdict(monkeypatch, body: dict) -> int:
+    """What the cron workflow's check_cron_response.py step does with a body."""
+    monkeypatch.setattr(cron_checker.sys, "stdin", io.StringIO(json.dumps(body)))
+    return cron_checker.main()
+
+
+def _routes(app, prefix: str) -> list[tuple[str, str]]:
+    out = []
+    for route in app.routes:
+        path = getattr(route, "path", "")
+        if path.startswith(prefix):
+            out += [(method, re.sub(r"\{[^}]+\}", _ZERO_UUID, path))
+                    for method in sorted(route.methods)]
+    return out
+
+
+def _cron_bodies_name_it(monkeypatch, name: str, paths: list[tuple[str, str]]) -> None:
+    _, client = _client()
+    for method, path in paths:
+        response = client.request(method, path, headers=_CRON)
+        assert response.status_code == 200, (path, response.text)
+        body = response.json()
+        assert body["status"] == "skipped" and name in body.get("missing", []), (path, body)
+        assert _workflow_verdict(monkeypatch, body) == 1, (path, body)
+
+
+def _probe_cron_secret(monkeypatch):
+    app, client = _client()
+    routes = _routes(app, "/api/cron/")
+    assert len(routes) >= 5
+    for method, path in routes:
+        response = client.request(method, path, json={"name": "release-probe"})
+        assert response.status_code == 503, (path, response.status_code)
+        assert "CRON_SECRET" in response.json()["detail"], path
+
+
+def _probe_admin_token(monkeypatch):
+    app, client = _client()
+    routes = _routes(app, "/api/admin/") + [("GET", "/api/ready")]
+    assert len(routes) >= 20
+    for method, path in routes:
+        response = client.request(method, path, json={},
+                                  headers={"X-Admin-Token": "anything"})
+        assert response.status_code == 503, (path, response.status_code)
+        assert "ADMIN_TOKEN" in response.json()["detail"], path
+
+
+def _probe_supabase(name: str):
+    def probe(monkeypatch):
+        _cron_bodies_name_it(monkeypatch, name, [
+            ("GET", "/api/cron/reminders"),
+            ("GET", "/api/cron/saved-searches/refresh"),
+            ("GET", "/api/cron/saved-searches/digest"),
+            ("POST", "/api/cron/ops-scan"),
+        ])
+        _, client = _client()
+        heartbeat = client.post("/api/cron/heartbeat", headers=_CRON,
+                                json={"name": "release-probe"})
+        assert heartbeat.status_code == 503 and name in heartbeat.json()["detail"]
+        incidents = client.get("/api/admin/ops/incidents",
+                               headers={"X-Admin-Token": "admin-ok"})
+        assert incidents.status_code == 503 and name in incidents.json()["detail"]
+    return probe
+
+
+def _probe_vapid(name: str):
+    def probe(monkeypatch):
+        _cron_bodies_name_it(monkeypatch, name, [("GET", "/api/cron/reminders")])
+        if name == "VAPID_PUBLIC_KEY":
+            _, client = _client()
+            assert client.get("/api/push/vapid-public-key").status_code == 503
+    return probe
+
+
+def _probe_digest(name: str):
+    def probe(monkeypatch):
+        _cron_bodies_name_it(monkeypatch, name, [("GET", "/api/cron/saved-searches/digest")])
+        if name == "RESTORE_LINK_SECRET":
+            _, client = _client()
+            response = client.get("/api/email/digest-unsubscribe",
+                                  params={"sid": _ZERO_UUID, "t": 0, "s": "0" * 32})
+            assert response.status_code == 503
+    return probe
+
+
+_FAIL_FAST_PROBES = {
+    "CRON_SECRET": _probe_cron_secret,
+    "ADMIN_TOKEN": _probe_admin_token,
+    "SUPABASE_URL": _probe_supabase("SUPABASE_URL"),
+    "SUPABASE_SERVICE_ROLE_KEY": _probe_supabase("SUPABASE_SERVICE_ROLE_KEY"),
+    "VAPID_PRIVATE_KEY": _probe_vapid("VAPID_PRIVATE_KEY"),
+    "VAPID_PUBLIC_KEY": _probe_vapid("VAPID_PUBLIC_KEY"),
+    "VAPID_SUBJECT": _probe_vapid("VAPID_SUBJECT"),
+    "RESEND_API_KEY": _probe_digest("RESEND_API_KEY"),
+    "RESEND_FROM_EMAIL": _probe_digest("RESEND_FROM_EMAIL"),
+    "RESTORE_LINK_SECRET": _probe_digest("RESTORE_LINK_SECRET"),
+}
+
+
+class TestRequiredEnvironmentFailsFast:
+    def test_every_required_backend_variable_has_a_probe(self):
+        required = {name for name, need in _documented_env()["Backend"].items()
+                    if need == "required"}
+        assert required == set(_FAIL_FAST_PROBES)
+
+    @pytest.mark.parametrize("name", sorted(_FAIL_FAST_PROBES))
+    def test_removing_it_fails_loudly(self, name, monkeypatch):
+        _env_without(monkeypatch, name)
+        _FAIL_FAST_PROBES[name](monkeypatch)
+
+    def test_a_skip_that_names_missing_configuration_fails_the_workflow(
+            self, monkeypatch):
+        """A cron that cannot run in production is not a deliberate no-op.
+
+        Every production cron answered "ok" on 10-08 and 10-09, so this changes
+        nothing today; it is what makes a variable that later disappears from
+        Render fail the next run instead of turning it green every day.
+        """
+        assert _workflow_verdict(monkeypatch, {
+            "status": "skipped", "reason": "push env not configured",
+            "missing": ["VAPID_SUBJECT"]}) == 1
+        # A skip that names no configuration is still the announced no-op.
+        assert _workflow_verdict(monkeypatch, {
+            "status": "skipped", "reason": "pywebpush not installed"}) == 0
