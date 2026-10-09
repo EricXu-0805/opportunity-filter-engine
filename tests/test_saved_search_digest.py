@@ -98,9 +98,10 @@ def _install_stubs(monkeypatch, *, rows, sends=None, patches=None,
 
         async def get(self, url, **kwargs):
             # The route reads the student's own profile to decide what its
-            # matcher would exclude for them. Unsupplied means "unreadable",
-            # which the route treats as "filter nothing" — so every test
-            # written before this behaviour existed still describes it.
+            # matcher would exclude for them. Unsupplied means "no profile
+            # row", which the route treats as "filter nothing" — so every test
+            # written before this behaviour existed still describes it. A read
+            # that fails is a different case: TestAnOpportunityIsNewOnce.
             if "/rest/v1/profiles" in url:
                 return _Resp(profiles or [])
             return _Resp(rows)
@@ -1190,8 +1191,8 @@ class TestTheDigestSendsWhatTheSiteWouldShow:
         cleanups = [p for p in patches if set(p["json"]) == {"new_match_ids"}]
         assert cleanups == [], "an absent record is unknown, not ineligible"
 
-    def test_an_unreadable_profile_filters_nothing(self, monkeypatch):
-        """A profile the cron cannot read must leave the digest exactly as it
+    def test_no_profile_row_filters_nothing(self, monkeypatch):
+        """A device with no profile row must leave the digest exactly as it
         was, rather than filtering on a guess."""
         mine = self._campus_opp("opp-mine", "jhu")
         theirs = self._campus_opp("opp-theirs", "ucb")
@@ -1463,7 +1464,12 @@ class _Nights:
         email_mod._recipient_sends.clear()
 
     def night(self, *, corpus=None):
-        """Run the workflow's two steps in order, then move the clock a day."""
+        """Run both crons in order, then move the clock a day.
+
+        The workflow skips the digest after a refresh that reports a failure
+        (check_cron_response.py fails that step). This runs it anyway, the
+        stricter case: a digest dispatched on its own must still be right.
+        """
         if corpus is not None:
             self.corpus = list(corpus)
         self.running = "refresh"
@@ -1585,6 +1591,8 @@ class TestAnOpportunityIsNewOnce:
         assert nights.row == before, "an unreadable profile must not advance the row"
         assert nights.refreshes[-1]["status"] == "partial"
         assert any("profile" in error for error in nights.refreshes[-1]["errors"])
+        # In production the workflow stops here and that night's digest does
+        # not run; run anyway, it must send nothing.
         assert nights.digests[-1]["status"] == "ok"
         assert nights.sends == []
 

@@ -7069,6 +7069,30 @@ class TestAdminFeedbackReply:
         assert r.status_code == 502
         assert "email was sent" not in r.json()["detail"]
 
+    def test_a_sent_email_whose_ticket_vanished_before_the_save_still_says_it_was_sent(
+        self, monkeypatch,
+    ):
+        # The other way the write fails: the row is deleted while the email is
+        # out, PostgREST matches nothing, and _patch_ticket raises its own 404.
+        # "Ticket not found" on its own would hide the email again.
+        fake, sent = self._deliverable(monkeypatch)
+
+        async def _send_then_delete(**kwargs):
+            sent.append(kwargs)
+            fake.ticket = None
+
+        from backend.routes import admin as admin_mod
+        monkeypatch.setattr(admin_mod, "_send_via_resend", _send_then_delete)
+        r = client.post(
+            f"/api/admin/feedback/{TICKET_ID}/reply",
+            json={"reply": "We shipped a fix.", "deliver": True},
+            headers=_auth(),
+        )
+        assert len(sent) == 1
+        assert r.status_code == 502
+        assert "email was sent" in r.json()["detail"]
+        assert fake.inserted_events == []
+
     def test_a_saved_and_emailed_reply_reports_a_failed_audit_write_on_its_own(
         self, monkeypatch,
     ):

@@ -292,14 +292,18 @@ describe('an edit made while a send is in flight', () => {
     expect(tokenOfCall(1)).not.toBe(tokenOfCall(0));
   });
 
-  it('keeps a category or subject changed mid-send too', async () => {
+  it.each([
+    ['category', 'feedback-category', 'data_issue'],
+    ['subject', 'feedback-subject', 'Wrong address on one card'],
+    ['email', 'feedback-email', 'student@example.edu'],
+  ] as const)('keeps the %s changed mid-send too', async (field, testId, value) => {
     const finish = holdSend();
     render(<FeedbackWidget />);
     openAndType('Wrong professor email');
     fireEvent.click(screen.getByTestId('feedback-send'));
-    fireEvent.change(screen.getByTestId('feedback-category'), { target: { value: 'data_issue' } });
+    fireEvent.change(screen.getByTestId(testId), { target: { value } });
     await act(async () => { finish({ ok: true, reason: 'created', id: TICKET_ID }); });
-    await waitFor(() => expect(storedDraft()?.category).toBe('data_issue'));
+    await waitFor(() => expect(storedDraft()?.[field]).toBe(value));
   });
 
   it('an untouched draft is still cleared by its own receipt', async () => {
