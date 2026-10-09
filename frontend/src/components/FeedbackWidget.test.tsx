@@ -252,6 +252,66 @@ describe('idempotency token', () => {
   });
 });
 
+// M55: "new edits made while a submit is in flight are not cleared by the
+// old receipt". The form stays editable while sending, and the success path
+// reset the whole draft — so whatever the student typed after pressing Send
+// was erased by the receipt for the text they had sent before it.
+describe('an edit made while a send is in flight', () => {
+  function holdSend() {
+    let resolve!: (result: unknown) => void;
+    mockSubmitFeedback.mockReturnValueOnce(new Promise((done) => { resolve = done; }));
+    return (result: unknown) => resolve(result);
+  }
+
+  it('survives the receipt for the earlier text, as a new message with a new token', async () => {
+    const finish = holdSend();
+    render(<FeedbackWidget />);
+    openAndType('The deadline filter hides rolling listings');
+    const sentToken = storedDraft()?.clientToken;
+    fireEvent.click(screen.getByTestId('feedback-send'));
+    fireEvent.change(screen.getByPlaceholderText('feedback.placeholder'), {
+      target: { value: 'The deadline filter hides rolling listings. Also on mobile.' },
+    });
+
+    await act(async () => { finish({ ok: true, reason: 'created', id: TICKET_ID }); });
+    expect(screen.getByTestId('feedback-thanks')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(storedDraft()?.message).toBe('The deadline filter hides rolling listings. Also on mobile.'),
+    );
+    // The old token now names a filed ticket. Reusing it would collapse the
+    // new text into that ticket as a "duplicate" and drop it.
+    expect(storedDraft()?.clientToken).toBeTruthy();
+    expect(storedDraft()?.clientToken).not.toBe(sentToken);
+
+    fireEvent.click(screen.getByText('feedback.close'));
+    fireEvent.click(screen.getByTestId('feedback-open'));
+    expect(screen.getByPlaceholderText('feedback.placeholder'))
+      .toHaveValue('The deadline filter hides rolling listings. Also on mobile.');
+    fireEvent.click(screen.getByTestId('feedback-send'));
+    await waitFor(() => expect(mockSubmitFeedback).toHaveBeenCalledTimes(2));
+    expect(tokenOfCall(1)).not.toBe(tokenOfCall(0));
+  });
+
+  it('keeps a category or subject changed mid-send too', async () => {
+    const finish = holdSend();
+    render(<FeedbackWidget />);
+    openAndType('Wrong professor email');
+    fireEvent.click(screen.getByTestId('feedback-send'));
+    fireEvent.change(screen.getByTestId('feedback-category'), { target: { value: 'data_issue' } });
+    await act(async () => { finish({ ok: true, reason: 'created', id: TICKET_ID }); });
+    await waitFor(() => expect(storedDraft()?.category).toBe('data_issue'));
+  });
+
+  it('an untouched draft is still cleared by its own receipt', async () => {
+    const finish = holdSend();
+    render(<FeedbackWidget />);
+    openAndType('Nothing else to add');
+    fireEvent.click(screen.getByTestId('feedback-send'));
+    await act(async () => { finish({ ok: true, reason: 'created', id: TICKET_ID }); });
+    await waitFor(() => expect(readUserScopedRaw(STORAGE_KEYS.FEEDBACK_DRAFT)).toBeNull());
+  });
+});
+
 describe('ticket reference', () => {
   it('shows the first 8 chars of the ticket UUID', async () => {
     render(<FeedbackWidget />);

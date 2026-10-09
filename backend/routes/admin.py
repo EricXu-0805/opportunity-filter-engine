@@ -1643,7 +1643,25 @@ async def reply_to_feedback_ticket(
                 "admin_reply_delivery": delivery,
                 "updated_at": now_iso,
             }
-            updated = await _patch_ticket(client, supabase_url, headers, ticket_id, updates)
+            try:
+                updated = await _patch_ticket(client, supabase_url, headers, ticket_id, updates)
+            except (httpx.HTTPError, HTTPException) as exc:
+                if delivery != "emailed":
+                    raise
+                # The student already has this email. A bare storage error
+                # reads as "nothing happened", and retrying with the box still
+                # ticked sends it again; say both outcomes, each on its own.
+                logger.error(
+                    "Admin reply for ticket %s was emailed but not saved: %s",
+                    ticket_id, type(exc).__name__,
+                )
+                raise HTTPException(
+                    status_code=502,
+                    detail=(
+                        "Reply not saved, but the email was sent to the submitter. "
+                        "Save it again with email unchecked."
+                    ),
+                ) from exc
             audit_error = await _log_events(
                 client, supabase_url, headers,
                 [_event_row(

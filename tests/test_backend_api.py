@@ -6427,13 +6427,16 @@ class FakeSupabase:
     inserts so tests can assert on what was persisted and what was logged.
     """
 
-    def __init__(self, ticket=None, events=None, event_status=201):
+    def __init__(self, ticket=None, events=None, event_status=201, patch_error=None):
         self.ticket = ticket
         self.events = events or []
         self.inserted_events = []
         self.patches = []
         self.gets = []
         self.event_status = event_status
+        # Raised by every PATCH: the ticket write failing after whatever
+        # the route did before it (a reply email, for one).
+        self.patch_error = patch_error
 
     def install(self, monkeypatch):
         from backend.routes import admin as admin_mod
@@ -6472,6 +6475,8 @@ class FakeSupabase:
 
             async def patch(self, url, params=None, headers=None, json=None):
                 outer.patches.append({"url": url, "params": params, "json": json})
+                if outer.patch_error is not None:
+                    raise outer.patch_error
                 if outer.ticket is None:
                     return _Resp([])
                 outer.ticket = {**outer.ticket, **(json or {})}
@@ -7003,6 +7008,82 @@ class TestAdminFeedbackReply:
         assert body["delivery"] == "stored"
         assert "not configured" in body["delivery_error"]
         assert fake.last_patch["admin_reply_delivery"] == "stored"
+
+    # M55: "check reply saved and notification result separately". Every test
+    # above saves the reply successfully, so the two outcomes only ever moved
+    # together. The email goes out BEFORE the ticket is written; when that
+    # write failed, the route answered "Supabase unreachable" and said nothing
+    # about the email the student had already received, so the operator's
+    # natural retry sent it twice.
+    def _deliverable(self, monkeypatch, **fake_kwargs):
+        _admin_env(monkeypatch)
+        monkeypatch.setenv("RESEND_API_KEY", "fake")
+        monkeypatch.setenv("RESEND_FROM_EMAIL", "from@example.com")
+        fake = FakeSupabase(ticket=_ticket(), **fake_kwargs).install(monkeypatch)
+        self._no_quota(monkeypatch)
+        sent = []
+
+        async def _send(**kwargs):
+            sent.append(kwargs)
+
+        from backend.routes import admin as admin_mod
+        monkeypatch.setattr(admin_mod, "_send_via_resend", _send)
+        return fake, sent
+
+    def test_a_sent_email_whose_reply_was_not_saved_says_both(self, monkeypatch):
+        import httpx
+
+        fake, sent = self._deliverable(
+            monkeypatch, patch_error=httpx.ConnectError("supabase down"),
+        )
+        r = client.post(
+            f"/api/admin/feedback/{TICKET_ID}/reply",
+            json={"reply": "We shipped a fix.", "deliver": True},
+            headers=_auth(),
+        )
+        assert len(sent) == 1
+        assert r.status_code == 502
+        detail = r.json()["detail"]
+        assert "not saved" in detail
+        assert "email was sent" in detail
+        # adminFetch shows the first 120 characters of a string detail.
+        assert len(detail) <= 120
+        # Nothing claims the ticket changed.
+        assert fake.ticket["admin_reply"] is None
+        assert fake.inserted_events == []
+
+    def test_a_failed_save_with_no_email_sent_stays_a_plain_storage_error(
+        self, monkeypatch,
+    ):
+        import httpx
+
+        fake, sent = self._deliverable(
+            monkeypatch, patch_error=httpx.ConnectError("supabase down"),
+        )
+        r = client.post(
+            f"/api/admin/feedback/{TICKET_ID}/reply",
+            json={"reply": "Internal note"},
+            headers=_auth(),
+        )
+        assert sent == []
+        assert r.status_code == 502
+        assert "email was sent" not in r.json()["detail"]
+
+    def test_a_saved_and_emailed_reply_reports_a_failed_audit_write_on_its_own(
+        self, monkeypatch,
+    ):
+        fake, sent = self._deliverable(monkeypatch, event_status=500)
+        r = client.post(
+            f"/api/admin/feedback/{TICKET_ID}/reply",
+            json={"reply": "We shipped a fix.", "deliver": True},
+            headers=_auth(),
+        )
+        assert r.status_code == 200
+        body = r.json()
+        assert len(sent) == 1
+        assert body["delivery"] == "emailed"
+        assert body["ticket"]["admin_reply"] == "We shipped a fix."
+        assert "audit log write failed" in body["audit_log_error"]
 
     def test_blank_reply_rejected(self, monkeypatch):
         _admin_env(monkeypatch)
