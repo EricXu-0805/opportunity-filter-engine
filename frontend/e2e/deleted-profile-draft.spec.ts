@@ -129,11 +129,11 @@ async function openDraft(page: Page, surface: Surface, editor: Editor): Promise<
   await page.goto(surface === 'Detail' ? `/opportunities/${TARGET}` : '/results?tab=all');
   const entry = surface === 'Detail' ? page : page.locator(`#match-card-${TARGET}`);
   const actionName = editor === 'email' ? (surface === 'Results' ? 'Draft Email' : 'Draft email') : 'Renovate Resume';
-  // Results paints the card before the page's owner is ready (that waits on
-  // its favorites read). Until then "Draft Email" is enabled but Results drops
-  // the click without opening anything; the same card's Renovate Resume is
-  // disabled for exactly that state, so wait for it before clicking either.
-  if (surface === 'Results') await expect(entry.getByRole('button', { name: 'Renovate Resume', exact: true })).toBeEnabled();
+  // Results paints the card before the page can open an editor (its owner
+  // waits on the favorites read). Draft Email stays disabled until the page
+  // can, so wait for it before clicking either. Renovate Resume only waits
+  // for the owner, and a click before the rest is ready opens nothing.
+  if (surface === 'Results') await expect(entry.getByRole('button', { name: 'Draft Email', exact: true })).toBeEnabled();
   await entry.getByRole('button', { name: actionName, exact: true }).click();
   if (editor === 'email') {
     const fields = page.getByTestId('cold-email-editor-fields');

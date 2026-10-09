@@ -660,14 +660,21 @@ function ResultsContent() {
     setShowDismissed(next);
   }, []);
 
+  // Every page-level check openWritingSession makes before it opens an editor.
+  // The cards disable Draft Email on this same value, so a click there is never
+  // live while it would be dropped. An open editor is not part of it: its
+  // dialog already covers the list.
+  const writingEntryReady = ownerReady && profileAvailable && !!profile
+    && writingViewCurrent && !loading && !error;
   const openWritingSession = useCallback((kind: WritingSession['kind'], opportunityId: string) => {
     // Do not retarget an existing editor behind its unsaved-changes guard.
-    if (writingOwnerCurrent || !ownerReady || !profileAvailable || !profile || !writingViewCurrent || loading || error) return;
+    // (`!profile` repeats a writingEntryReady check only to narrow the type.)
+    if (writingOwnerCurrent || !writingEntryReady || !profile) return;
     const match = data?.results.find((m) => m.opportunity.id === opportunityId);
     if (!match || targetPosture(match.opportunity) !== 'actionable') return;
     setWritingSession({ kind, opportunity: match.opportunity, profile,
       owner: captureOwnerToken(), ownerScopeKey, identityGeneration });
-  }, [writingOwnerCurrent, ownerReady, profileAvailable, profile, writingViewCurrent, loading, error, data, ownerScopeKey, identityGeneration]);
+  }, [writingOwnerCurrent, writingEntryReady, profile, data, ownerScopeKey, identityGeneration]);
   const openEmailModal = useCallback((id: string) => openWritingSession('email', id), [openWritingSession]);
   const openResumeModal = useCallback((id: string) => openWritingSession('resume', id), [openWritingSession]);
 
@@ -1104,6 +1111,7 @@ function ResultsContent() {
               trackSaveErrors={trackSaveErrors}
               interactionsUnready={interactionsLoading || interactionsError}
               feedback={feedback}
+              draftEmailReady={writingEntryReady}
               onDraftEmail={openEmailModal}
               onOpenResume={openResumeModal}
               onToggleFavorite={handleToggleFav}
