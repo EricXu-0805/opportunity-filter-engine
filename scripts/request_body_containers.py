@@ -1,13 +1,15 @@
-"""How many lists and objects, outside JSON strings, the largest legitimate body of each route holds.
+"""How many lists and objects, and commas, outside JSON strings, the largest legitimate body of each route holds.
 
-backend/lib/request_body.py refuses, before parsing, a body that holds more lists and objects
-outside its strings than its route's bound. This script prints each bound beside two readings
-of what a legitimate body holds:
+backend/lib/request_body.py refuses, before parsing, a body that holds more lists and objects, or
+more commas between items, outside its strings than its route's bounds. This script prints each
+bound beside two readings of what a legitimate body holds:
 
 - schema: the largest body the route's request schema accepts, built from its caps (every
   profile list at its item limit, 512 skills, 15 résumé sections with 100 bullets in all, a
   60,000-character résumé). Each body is sent to its route, which must parse and validate it
-  (404 for the stubbed-out target, 200 for an extraction route) rather than refuse it.
+  (404 for the stubbed-out target, 200 for an extraction route) rather than refuse it. Two more
+  bodies put close to the most commas their text fields allow inside strings: a full-target draft
+  whose résumé is 60,000 commas, and an /api/tailor profile of 159,000 commas.
 - tests: the most that any request the given test files send to the route holds, among the
   requests the bounds admitted. pytest runs in this process with a recorder around the bound.
 
@@ -43,10 +45,19 @@ BOUNDS = {
     "/api/tailor/structure": request_body.MAX_RESUME_JSON_CONTAINERS,
     **{path: request_body.MAX_FULL_TARGET_JSON_CONTAINERS for path in FULL_TARGET},
 }
+SEPARATOR_BOUNDS = {
+    **{path: request_body.MAX_JSON_SEPARATORS for path in BOUNDS},
+    "/api/tailor/extract-bullets": request_body.MAX_RESUME_JSON_SEPARATORS,
+    "/api/tailor/structure": request_body.MAX_RESUME_JSON_SEPARATORS,
+}
 
 
 def containers(body: bytes) -> int:
     return request_body.structural_containers(request_body._json_text(body))
+
+
+def separators(body: bytes) -> int:
+    return request_body.structural_separators(request_body._json_text(body))
 
 
 def largest_profile() -> dict:
@@ -78,7 +89,7 @@ def schema_bodies():
     yield "/api/tailor/structure", {"resume_text": resume, "locale": "en"}
 
 
-def largest_draft() -> dict:
+def largest_draft(raw: str = "Built a robot in Python. " * 400) -> dict:
     """A full-target draft at the master's caps (target_resume_ai_validation): 100 experience entries,
     300 activity records each citing one entry, 300 facts each a skill of its own, 300 unmapped
     ranges. Every record, fact and citation becomes a block or line of the document, each a list
@@ -88,7 +99,6 @@ def largest_draft() -> dict:
     from backend.lib.target_resume_ai_validation import confirmed_document, fingerprint
     from backend.routes import target_resume_ai as full_route
 
-    raw = "Built a robot in Python. " * 400
     signature = hashlib.sha256(raw.encode()).hexdigest()
     entries = [{"id": f"e{i}", "revision": 1, "status": "confirmed", "text": f"Built rig {i} in Python.",
                 "source": {"kind": "manual"}} for i in range(100)]
@@ -119,14 +129,14 @@ def largest_draft() -> dict:
     return doc
 
 
-def full_target_bodies():
+def full_target_bodies(doc: dict | None = None):
     """The largest draft in a suggestions request (eight experience units, as many as one call
     rewrites) and in a selection-plan request. Support groups, left out, add at most 49 lists and
     objects (24 groups, each with its list of ids)."""
     from backend.lib.target_resume_ai_schema import MAX_EXPERIENCE_UNITS
     from backend.lib.target_resume_ai_validation import fingerprint, units_for, validate_document
 
-    doc = largest_draft()
+    doc = doc or largest_draft()
     units = [unit["unit_id"] for unit in units_for(validate_document(doc))[0] if unit["role"] == "experience"]
     head = {"version": 1, "request_id": "request", "locale": "en", "draft": doc, "document_signature": fingerprint(doc)}
     yield FULL_TARGET[0], {**head, "selected_unit_ids": units[:MAX_EXPERIENCE_UNITS]}
@@ -145,12 +155,27 @@ def schema_readings() -> dict:
     tailor.load_opportunities_by_id = full_route.load_opportunities_by_id = lambda: {}
     tailor.is_configured = lambda: False
     client = TestClient(main_module.app)
-    out = {}
+    out, dense = {}, []
     for path, body in [*schema_bodies(), *full_target_bodies()]:
         content = json.dumps(body, ensure_ascii=False).encode()
         response = client.post(path, content=content, headers={"content-type": "application/json"})
-        out[path] = (containers(content), response.status_code)
-    return out
+        out[path] = (containers(content), separators(content), response.status_code)
+    for name, path, body in comma_dense_bodies():
+        content = json.dumps(body, ensure_ascii=False).encode()
+        response = client.post(path, content=content, headers={"content-type": "application/json"})
+        dense.append((name, path, content.count(b","), separators(content), response.status_code))
+    return out, dense
+
+
+def comma_dense_bodies():
+    """Legitimate bodies with the most commas their text fields allow, all inside strings."""
+    resume = "," * MAX_RESUME_TEXT_CHARACTERS
+    path, body = next(full_target_bodies(largest_draft(resume)))
+    yield "full-target draft, résumé of 60,000 commas", path, body
+    # A profile holds at most PROFILE_MAX_CHARACTERS (160,000) characters (backend/schemas.py); this one 159,000 commas.
+    profile = {"name": "Sample Student", "research_interests_text": resume, "desired_fields": [resume, "," * 39_000]}
+    yield "profile text of 159,000 commas", "/api/tailor", {
+        "opportunity_id": "no-such-target", "locale": "en", "profile": profile, "original_bullets": ["Built a robot."]}
 
 
 class Recorder:
@@ -223,14 +248,23 @@ def main() -> int:
         files = args.files or test_files()
         code = pytest.main(["-q", "-p", "no:cacheprovider", *files], plugins=[recorder])
         print(f"pytest exit code {int(code)} over {len(files)} files\n")
-    schema = schema_readings()
+    schema, dense = schema_readings()
+    print("lists and objects outside strings")
     print(f"{'route':42} {'bound':>7} {'schema':>7} {'status':>6} {'tests':>7} {'bodies':>7}  largest test body")
     for path, bound in BOUNDS.items():
-        holds, status = schema.get(path, ("-", "-"))
+        holds, _, status = schema.get(path, ("-", "-", "-"))
         admitted = [row for row in (recorder.seen[path] if recorder else []) if row[1]]
         most = max(admitted, default=None)
         tests = f"{most[0]:7d} {len(admitted):7d}  {most[2]}" if most else f"{'-':>7} {'-':>7}"
         print(f"{path:42} {bound:7d} {holds!s:>7} {status!s:>6} {tests}")
+    print("\ncommas outside strings")
+    print(f"{'route':42} {'bound':>7} {'schema':>7} {'status':>6}")
+    for path, bound in SEPARATOR_BOUNDS.items():
+        _, commas, status = schema.get(path, ("-", "-", "-"))
+        print(f"{path:42} {bound:7d} {commas!s:>7} {status!s:>6}")
+    print("\ncomma-dense legitimate bodies")
+    for name, path, raw, commas, status in dense:
+        print(f"{path:42} commas in the body {raw:7d}, outside strings {commas:6d}, status {status}  {name}")
     return 0
 
 

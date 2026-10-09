@@ -1,39 +1,23 @@
-"""Event-loop stall on the request bodies the round-1 CPU review named as worst, and on new shapes at the bounds.
+"""Event-loop stall on adversarial request bodies within every cap, one request at a time and several at once.
 
-The round-1 CPU review measured, on 6ed0396, these stalls before any worker ran:
-/api/tailor source_bullets of 524k ints 5,897 ms; original_bullets of ints 5,083 ms and of
-empty lists 4,471 ms; a full-target or selection-plan draft just under 2 MiB of nested lists
-2,253 ms, empty lists 1,425 ms, empty dicts 902 ms, ints 439 ms; 1 MiB of nested lists in an
-unknown field 166-321 ms. This script replays those bodies and adds shapes aimed at the
-round-1 bounds (100,000 lists and objects per body, 200 bullets per list, 20 errors per 422):
-dicts or small lists just under the container bound, a body nested past the parser's recursion
-limit, a profile at its text limits (scanned in Python before pydantic), and 422 error lists
-from fields the 200-item bound does not cover.
+The cases come in groups. R1 replays the bodies round 1's CPU review named as worst. NEW adds
+shapes aimed at round 1's bounds: bodies just under a bound, a body nested past the parser's
+recursion limit, a profile at its text limits, and 422 error lists from fields the 200-item bound
+does not cover. R5 adds the extraction routes' bodies at their own comma bound
+(backend.lib.request_body.MAX_RESUME_JSON_SEPARATORS) and résumés of commas, brackets and braces.
+R6 adds bodies of lists at, one over and past each route's container bound
+(MAX_JSON_CONTAINERS, MAX_RESUME_JSON_CONTAINERS, MAX_FULL_TARGET_JSON_CONTAINERS), and bodies whose
+brackets sit inside strings, which the count must read past. R7 counts commas outside strings too,
+and adds bodies of quotes past each route's comma or container bound, which the count splits at every
+quote, and the two legitimate bodies whose text is commas (scripts/request_body_containers.py).
 
 Each request goes through backend.main.app over httpx.ASGITransport. The corpus is stubbed
-out, so a body that passes validation ends in a 404 before any model work; the garbage
-collector is frozen as backend.main._warmup freezes it. While a request runs, the event loop
-wakes every millisecond (longest wake-up delay = longest stall) and a heartbeat asks
-/api/tailor/status (longest gap between answers). A case over the threshold is re-run up to
-three times and reported with its best run.
-
-Round 2 added --concurrent (identical requests sent at once: four 2 MiB bodies of ints held the
-loop 0.30-0.39 s at --concurrent 4 on 99241b5) and the bodies at the comma bound
-(backend.lib.request_body.MAX_JSON_SEPARATORS), the most items a body may now hold.
-
-Round 3 moved the full-target and selection-plan parsing, validation and prompt building onto one
-request lane (backend.lib.blocking.run_request_work); --concurrent takes a list (1,4,10) and prints
-the worst stall per route at each level.
-
-Round 5 gave /api/tailor/extract-bullets and /api/tailor/structure a comma bound of their own, a comma
-per résumé character (backend.lib.request_body.MAX_RESUME_JSON_SEPARATORS), so that they read every
-résumé origin/main reads; the R5 cases are those routes' bodies at that bound and résumés of commas.
-
-Round 6 gave each route its own bound on the lists and objects a body holds outside its strings
-(backend.lib.request_body.MAX_JSON_CONTAINERS, MAX_RESUME_JSON_CONTAINERS and
-MAX_FULL_TARGET_JSON_CONTAINERS). The R6 cases are bodies of lists nested in chains of several depths,
-at, one over and far past each route's bound, and bodies whose brackets sit inside strings, which the
-count must read past.
+out, so a body that passes validation ends in a 404 before any model work; startup objects are
+frozen as backend.main._warmup freezes them. While a request runs, the event loop wakes every
+millisecond (longest wake-up delay = longest stall) and a heartbeat asks /api/tailor/status
+(longest gap between answers). A case over the threshold is re-run up to three times and reported
+with its best run. --concurrent sends that many identical requests at once; a list (1,4,10)
+measures every case at each level in turn and prints the worst stall per route at each.
 
 Run from the repository root:  python scripts/worst_inputs_lag.py [--threshold 0.25] [--only TEXT] [--concurrent 1,4,10]
 """
@@ -112,59 +96,59 @@ def raw(name: str, path: str, body: bytes):
 
 def cases():
     # Round-1 worst bodies, replayed.
-    yield "R1 /api/tailor source_bullets: 1 MiB ints", "/api/tailor", {
+    yield "R1 /api/tailor source_bullets: ints", "/api/tailor", {
         **TAILOR, "original_bullets": ["Built a robot."], "source_bullets": fill("ints", ONE_MIB)}
-    yield "R1 /api/tailor original_bullets: 1 MiB ints", "/api/tailor", {
+    yield "R1 /api/tailor original_bullets: ints", "/api/tailor", {
         **TAILOR, "original_bullets": fill("ints", ONE_MIB)}
-    yield "R1 /api/tailor original_bullets: 1 MiB empty lists", "/api/tailor", {
+    yield "R1 /api/tailor original_bullets: empty lists", "/api/tailor", {
         **TAILOR, "original_bullets": fill("empty lists", ONE_MIB)}
     for kind in ("nested", "empty lists", "empty dicts", "ints"):
         draft = {"kind": "full_resume", "junk": fill(kind, DRAFT)}
-        yield f"R1 full-target draft: 2 MiB {kind}", "/api/tailor/full-target/suggestions", {
+        yield f"R1 full-target draft: {kind}", "/api/tailor/full-target/suggestions", {
             "version": 1, "request_id": "probe", "locale": "en", "draft": draft,
             "document_signature": SIGNATURE, "selected_unit_ids": ["line-1"]}
-        yield f"R1 selection-plan draft: 2 MiB {kind}", "/api/tailor/full-target/selection-plan", {
+        yield f"R1 selection-plan draft: {kind}", "/api/tailor/full-target/selection-plan", {
             "version": 1, "request_id": "probe", "locale": "en", "draft": draft,
             "document_signature": SIGNATURE, "options": {"target_pages": 1}}
-    yield "R1 /api/tailor unknown field: 1 MiB nested", "/api/tailor", {
+    yield "R1 /api/tailor unknown field: nested", "/api/tailor", {
         **TAILOR, "original_bullets": ["Built a robot."], "padding": fill("nested", ONE_MIB)}
 
     # New shapes at the round-1 bounds.
     for kind in ("dicts at the bound, then ints", "4-int lists at the bound", "1-key dicts at the bound",
                  "floats", "strings", "ints at the comma bound, then a string",
                  "strings at the comma bound, then a string"):
-        yield f"NEW /api/tailor unknown field: 1 MiB {kind}", "/api/tailor", {
+        yield f"NEW /api/tailor unknown field: {kind}", "/api/tailor", {
             **TAILOR, "original_bullets": ["Built a robot."], "padding": fill(kind, ONE_MIB)}
-        yield f"NEW /api/tailor/renovate unknown field: 1 MiB {kind}", "/api/tailor/renovate", {
+        yield f"NEW /api/tailor/renovate unknown field: {kind}", "/api/tailor/renovate", {
             **TAILOR, "sections": [], "padding": fill(kind, ONE_MIB)}
         draft = {"kind": "full_resume", "junk": fill(kind, DRAFT)}
-        yield f"NEW full-target draft: 2 MiB {kind}", "/api/tailor/full-target/suggestions", {
+        yield f"NEW full-target draft: {kind}", "/api/tailor/full-target/suggestions", {
             "version": 1, "request_id": "probe", "locale": "en", "draft": draft,
             "document_signature": SIGNATURE, "selected_unit_ids": ["line-1"]}
-        yield f"NEW selection-plan draft: 2 MiB {kind}", "/api/tailor/full-target/selection-plan", {
+        yield f"NEW selection-plan draft: {kind}", "/api/tailor/full-target/selection-plan", {
             "version": 1, "request_id": "probe", "locale": "en", "draft": draft,
             "document_signature": SIGNATURE, "options": {"target_pages": 1}}
     # A body nested past the parser's recursion limit, under the container bound.
     deep = b'{"profile":{"name":"S"},"opportunity_id":"probe-target","padding":' + b"[" * UNDER + b"]" * UNDER + b"}"
-    yield raw("NEW /api/tailor unknown field: nested 99,960 deep", "/api/tailor", deep)
+    yield raw("NEW /api/tailor unknown field: nested past the recursion limit", "/api/tailor", deep)
     deep_full = (b'{"version":1,"request_id":"p","locale":"en","document_signature":"' + SIGNATURE.encode()
                  + b'","selected_unit_ids":["line-1"],"draft":' + b"[" * UNDER + b"]" * UNDER + b"}")
-    yield raw("NEW full-target draft: nested 99,960 deep", "/api/tailor/full-target/suggestions", deep_full)
-    # Profile text at its limits: complete_profile_input scans each string for surrogates in Python.
+    yield raw("NEW full-target draft: nested past the recursion limit", "/api/tailor/full-target/suggestions", deep_full)
+    # Profile text at its limits.
     yield "NEW /api/tailor profile.desired_fields: 17 x 60,000 characters", "/api/tailor", {
         **TAILOR, "profile": {**PROFILE, "desired_fields": ["a" * 60_000] * 17}, "original_bullets": ["Built a robot."]}
-    yield "NEW /api/tailor profile.name: 1 MiB characters", "/api/tailor", {
+    yield "NEW /api/tailor profile.name: characters to the body limit", "/api/tailor", {
         **TAILOR, "profile": {**PROFILE, "name": "a" * (ONE_MIB - 200)}, "original_bullets": ["Built a robot."]}
     yield "NEW /api/tailor profile.coursework: 512 x 2,000 characters", "/api/tailor", {
         **TAILOR, "profile": {**PROFILE, "coursework": ["a" * 2_000] * 512}, "original_bullets": ["Built a robot."]}
     # Error lists from fields the 200-item bound does not name.
-    yield "NEW /api/tailor/renovate sections[0].bullets: 1 MiB ints", "/api/tailor/renovate", {
+    yield "NEW /api/tailor/renovate sections[0].bullets: ints", "/api/tailor/renovate", {
         **TAILOR, "sections": [{"id": "s1", "bullets": fill("ints", ONE_MIB)}]}
     yield "NEW /api/tailor/renovate sections: 15 x 1-key dicts, bullets of ids as ints", "/api/tailor/renovate", {
         **TAILOR, "sections": [{"id": 1, "heading": 1, "kind": 1, "bullets": [{"id": 1, "text": 1}] * 6}] * 15}
-    yield "NEW /api/tailor profile.hard_skills: 1 MiB ints", "/api/tailor", {
+    yield "NEW /api/tailor profile.hard_skills: ints", "/api/tailor", {
         **TAILOR, "profile": {**PROFILE, "hard_skills": fill("ints", ONE_MIB - 200)}, "original_bullets": ["x"]}
-    yield "NEW /api/tailor/bullet instruction: 1 MiB string", "/api/tailor/bullet", {
+    yield "NEW /api/tailor/bullet instruction: a string to the body limit", "/api/tailor/bullet", {
         **TAILOR, "current_text": "Built a robot.", "instruction": "a" * (ONE_MIB - 300)}
     yield "NEW full-target support_groups: 24 x 24 ids, then ints", "/api/tailor/full-target/suggestions", {
         "version": 1, "request_id": "probe", "locale": "en", "draft": {}, "document_signature": SIGNATURE,
@@ -185,6 +169,8 @@ def cases():
             yield f"R5 {path} resume_text: 60,000 {name}", path, {**extra, "resume_text": character * 60_000}
     # Round 6: each route's container bound, counted outside strings.
     yield from bound_cases()
+    # Round 7: commas counted outside strings.
+    yield from quote_cases()
 
 
 def chains(total: int, depth: int) -> bytes:
@@ -194,42 +180,59 @@ def chains(total: int, depth: int) -> bytes:
     return b"[" + b",".join(parts) + b"]"
 
 
-FAR = 100_000  # lists and objects far past every route's bound
+PAST = 100_000  # lists and objects past every route's bound
+
+
+_FULL_FRAME = (b'{"version":1,"request_id":"p","locale":"en","document_signature":"' + SIGNATURE.encode()
+        + b'","selected_unit_ids":["line-1"],"draft":{"kind":"full_resume","junk":%s}}')
+_PLAN_FRAME = (b'{"version":1,"request_id":"p","locale":"en","document_signature":"' + SIGNATURE.encode()
+        + b'","options":{"target_pages":1},"draft":{"kind":"full_resume","junk":%s}}')
+ROUTE_FRAMES = (
+    ("/api/tailor", b'{"profile":{"name":"S"},"opportunity_id":"probe-target","original_bullets":["x"],"padding":%s}',
+     MAX_JSON_CONTAINERS, MAX_JSON_SEPARATORS),
+    ("/api/tailor/bullet", b'{"profile":{"name":"S"},"opportunity_id":"probe-target","current_text":"x","padding":%s}',
+     MAX_JSON_CONTAINERS, MAX_JSON_SEPARATORS),
+    ("/api/tailor/renovate", b'{"profile":{"name":"S"},"opportunity_id":"probe-target","sections":[],"padding":%s}',
+     MAX_JSON_CONTAINERS, MAX_JSON_SEPARATORS),
+    ("/api/tailor/extract-bullets", b'{"resume_text":"x","padding":%s}', MAX_RESUME_JSON_CONTAINERS,
+     MAX_RESUME_JSON_SEPARATORS),
+    ("/api/tailor/structure", b'{"resume_text":"x","locale":"en","padding":%s}', MAX_RESUME_JSON_CONTAINERS,
+     MAX_RESUME_JSON_SEPARATORS),
+    ("/api/tailor/full-target/suggestions", _FULL_FRAME, MAX_FULL_TARGET_JSON_CONTAINERS, MAX_JSON_SEPARATORS),
+    ("/api/tailor/full-target/selection-plan", _PLAN_FRAME, MAX_FULL_TARGET_JSON_CONTAINERS, MAX_JSON_SEPARATORS),
+)
 
 
 def bound_cases():
-    full = (b'{"version":1,"request_id":"p","locale":"en","document_signature":"' + SIGNATURE.encode()
-            + b'","selected_unit_ids":["line-1"],"draft":{"kind":"full_resume","junk":%s}}')
-    plan = (b'{"version":1,"request_id":"p","locale":"en","document_signature":"' + SIGNATURE.encode()
-            + b'","options":{"target_pages":1},"draft":{"kind":"full_resume","junk":%s}}')
-    routes = (
-        ("/api/tailor", b'{"profile":{"name":"S"},"opportunity_id":"probe-target","original_bullets":["x"],"padding":%s}',
-         MAX_JSON_CONTAINERS, MAX_JSON_SEPARATORS),
-        ("/api/tailor/bullet", b'{"profile":{"name":"S"},"opportunity_id":"probe-target","current_text":"x","padding":%s}',
-         MAX_JSON_CONTAINERS, MAX_JSON_SEPARATORS),
-        ("/api/tailor/renovate", b'{"profile":{"name":"S"},"opportunity_id":"probe-target","sections":[],"padding":%s}',
-         MAX_JSON_CONTAINERS, MAX_JSON_SEPARATORS),
-        ("/api/tailor/extract-bullets", b'{"resume_text":"x","padding":%s}', MAX_RESUME_JSON_CONTAINERS,
-         MAX_RESUME_JSON_SEPARATORS),
-        ("/api/tailor/structure", b'{"resume_text":"x","locale":"en","padding":%s}', MAX_RESUME_JSON_CONTAINERS,
-         MAX_RESUME_JSON_SEPARATORS),
-        ("/api/tailor/full-target/suggestions", full, MAX_FULL_TARGET_JSON_CONTAINERS, MAX_JSON_SEPARATORS),
-        ("/api/tailor/full-target/selection-plan", plan, MAX_FULL_TARGET_JSON_CONTAINERS, MAX_JSON_SEPARATORS),
-    )
-    for path, frame, bound, separators in routes:
+    for path, frame, bound, separators in ROUTE_FRAMES:
         own = (frame % b"[]").count(b"[") + (frame % b"[]").count(b"{")  # the frame's own, the padding list included
-        levels = [(bound - own, "at its bound"), (bound - own + 1, "one over its bound"), (FAR - own, "far past its bound")]
-        for depth in (2, 50, 900):
+        levels = [(bound - own, "at its bound"), (bound - own + 1, "one over its bound"), (PAST - own, "past every bound")]
+        for shape, depth in enumerate((2, 50, 900), 1):
             for total, where in levels:
                 if depth > total or total // depth > separators - 50:
                     continue
-                yield raw(f"R6 {path} unknown field: lists {depth} deep, {where}", path, frame % chains(total, depth))
+                yield raw(f"R6 {path} unknown field: lists, shape {shape}, {where}", path, frame % chains(total, depth))
         cap = FULL_BODY if path.startswith("/api/tailor/full-target") else ONE_MIB
         count = min(separators - 40, (cap - 400) // 12)
-        yield raw(f"R6 {path} unknown field: {count:,} strings of brackets", path,
+        yield raw(f"R6 {path} unknown field: strings of brackets at the comma bound", path,
                   frame % ("[" + ",".join(['"[[[{{{[]"'] * count) + "]").encode())
         yield raw(f"R6 {path} unknown field: quoted brackets to the body limit, not JSON", path,
                   frame % (b'"[{' * ((cap - 400) // 3)))
+
+
+def quote_cases():
+    from scripts.request_body_containers import comma_dense_bodies
+
+    for path, frame, containers, separators in ROUTE_FRAMES:
+        room = (FULL_BODY if path.startswith("/api/tailor/full-target") else ONE_MIB) - 400
+        yield raw(f"R7 {path} unknown field: quotes, then commas past the bound", path,
+                  frame % (b'"' * (room - separators - 10) + b"," * (separators + 1)))
+        yield raw(f"R7 {path} unknown field: quotes, then brackets past the bound", path,
+                  frame % (b'"' * (room - containers - 10) + b"[" * (containers + 1)))
+        yield raw(f"R7 {path} unknown field: escaped quotes, then commas past the bound", path,
+                  frame % (b'\\"' * ((room - separators) // 2 - 10) + b"," * (separators + 1)))
+    for name, path, body in comma_dense_bodies():
+        yield f"R7 {path} legitimate: {name}", path, body
 
 
 async def probe(path: str, content: bytes, concurrent: int = 1):

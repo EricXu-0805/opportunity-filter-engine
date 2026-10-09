@@ -1,30 +1,17 @@
-"""Refuse a JSON request body with more containers than any valid request holds, before it is parsed.
+"""Refuse, before it is parsed, a JSON request body whose structure is larger than its route allows.
 
-Starlette parses a request's JSON with ``json.loads`` on the event loop, and a
-thread would not help: the C parser holds the GIL. Parsing itself is fast; what
-stalls the loop is the cyclic garbage collector, which runs again and again while
-a body of many tiny lists or objects is built. At the body limits the résumé-writing
-routes accept (1 MiB, and 2 MiB + 64 KiB for full target) such a body held the loop
-0.2-0.5 s before any validation ran (scripts/request_parse_lag.py).
-
-Only lists and objects are tracked by the collector, so their number bounds that
-cost. Each route has its own bound, set far above the largest body its legitimate
-requests hold (scripts/request_body_containers.py prints both), and counted outside
-JSON strings (structural_containers), so a bracket in a résumé's text costs nothing.
-
-Items cost too: a 2 MiB list of ints holds four containers, but json.loads and
-the validation after it build a million items, 80-120 ms per body, and four such
-bodies sent at once held the loop 0.30-0.39 s (scripts/worst_inputs_lag.py
---concurrent 4). Every item after the first in a list or object follows a comma,
-so the comma count bounds them, commas inside strings included. A full-target
-draft of 100 entries holds a few thousand, a 60,000-character résumé of English
-prose about 1,200 (one in every 50 characters); the bound is 50,000.
+Each route bounds two counts of a body, both read outside JSON strings: its lists and objects
+(structural_containers), and the commas between items (structural_separators), one before every
+item of a list or object but the first. Text inside strings counts for nothing, so a résumé or a
+profile may hold any brackets and commas its own limits allow. The bounds sit well above what the
+route's legitimate requests hold: scripts/request_body_containers.py builds the largest body each
+request schema accepts and prints both counts beside the bounds, and scripts/worst_inputs_lag.py
+measures bodies at and past them.
 
 /api/tailor/extract-bullets and /api/tailor/structure take one résumé of up to
-MAX_RESUME_TEXT_CHARACTERS, every character of which may be a comma or a bracket, and
-origin/main reads such a résumé whole (criterion E). Their routes (ResumeJSONRoute) allow as
-many commas as the résumé has characters, plus the few between the request's own fields; a
-résumé's brackets sit inside its string, which the container count skips.
+MAX_RESUME_TEXT_CHARACTERS, which origin/main reads whole (criterion E). Their route class
+(ResumeJSONRoute) has a container bound of its own and keeps the comma bound round 5 gave it (a comma
+per résumé character, plus 100), set when commas inside strings still counted.
 """
 from __future__ import annotations
 
@@ -43,6 +30,8 @@ from backend.lib.resume_input import MAX_RESUME_TEXT_CHARACTERS
 MAX_JSON_CONTAINERS = 10_000
 MAX_RESUME_JSON_CONTAINERS = 100
 MAX_FULL_TARGET_JSON_CONTAINERS = 20_000
+# Commas outside JSON strings. The same largest bodies hold at most 10,467 (the full-target draft),
+# 3,855 on the other writing routes and 1 on either extraction route.
 MAX_JSON_SEPARATORS = 50_000
 MAX_RESUME_JSON_SEPARATORS = MAX_RESUME_TEXT_CHARACTERS + 100
 
@@ -63,34 +52,47 @@ def _json_text(body: bytes) -> bytes | str:
         return ""
 
 
-def structural_containers(text: bytes | str) -> int:
-    """The '[' and '{' of a JSON text that json.loads reads as lists and objects.
+def _outside_strings(text: bytes | str) -> bytes | str:
+    """The pieces of a JSON text that lie outside its strings, joined.
 
     Escaped backslashes go first, then escaped quotes, so every quote left opens or
     closes a string; the pieces between them alternate outside and inside. For a body
-    json.loads rejects, the count agrees with it up to the first error, and nothing after
+    json.loads rejects, the pieces agree with it up to the first error, and nothing after
     that is built.
     """
-    quote, backslash, lists, objects = ('"', "\\", "[", "{") if isinstance(text, str) else (b'"', b"\\", b"[", b"{")
+    quote, backslash = ('"', "\\") if isinstance(text, str) else (b'"', b"\\")
     empty = text[:0]
     if backslash in text:
         text = text.replace(backslash + backslash, empty).replace(backslash + quote, empty)
-    outside = empty.join(text.split(quote)[::2])
+    return empty.join(text.split(quote)[::2])
+
+
+def structural_containers(text: bytes | str) -> int:
+    """The '[' and '{' of a JSON text that json.loads reads as lists and objects."""
+    lists, objects = ("[", "{") if isinstance(text, str) else (b"[", b"{")
+    outside = _outside_strings(text)
     return outside.count(lists) + outside.count(objects)
+
+
+def structural_separators(text: bytes | str) -> int:
+    """The ',' of a JSON text that json.loads reads between the items of a list or object."""
+    return _outside_strings(text).count("," if isinstance(text, str) else b",")
 
 
 def check_body_bounds(body: bytes, max_separators: int = MAX_JSON_SEPARATORS,
                       max_containers: int = MAX_JSON_CONTAINERS) -> None:
-    """Raise the RequestValidationError each route already answers when the body holds too many containers
-    or too many items (commas).
+    """Raise the RequestValidationError each route already answers when the body holds more lists
+    and objects, or more commas between items, than its route's bounds.
 
-    The counts read the whole body in C: a few milliseconds for 1 MiB. Only a body with more
-    brackets than its bound anywhere has its strings set aside before the count.
+    The counts read the whole body in C. Only a body with more brackets or commas than a bound
+    anywhere has its strings set aside before they are counted again.
     """
     text = _json_text(body)
     lists, objects, commas = (b"[", b"{", b",") if isinstance(text, bytes) else ("[", "{", ",")
-    if text.count(commas) > max_separators or (
-            text.count(lists) + text.count(objects) > max_containers and structural_containers(text) > max_containers):
+    if text.count(commas) <= max_separators and text.count(lists) + text.count(objects) <= max_containers:
+        return
+    outside = _outside_strings(text)
+    if outside.count(commas) > max_separators or outside.count(lists) + outside.count(objects) > max_containers:
         raise RequestValidationError([{"type": "too_long", "loc": ("body",), "msg": "Request input is invalid.",
                                        "input": None}])
 
@@ -106,7 +108,7 @@ async def refuse_container_heavy_body(request: Request, max_separators: int = MA
 
 
 class BoundedJSONRoute(APIRoute):
-    """An APIRoute that refuses a container-heavy JSON body before FastAPI parses it."""
+    """An APIRoute that refuses a JSON body past its structural bounds before FastAPI parses it."""
 
     max_separators = MAX_JSON_SEPARATORS
     max_containers = MAX_JSON_CONTAINERS
@@ -123,7 +125,7 @@ class BoundedJSONRoute(APIRoute):
 
 
 class ResumeJSONRoute(BoundedJSONRoute):
-    """BoundedJSONRoute for a route that reads one résumé: a comma may stand in each of its characters."""
+    """BoundedJSONRoute with the bounds of a route that reads one résumé."""
 
     max_separators = MAX_RESUME_JSON_SEPARATORS
     max_containers = MAX_RESUME_JSON_CONTAINERS

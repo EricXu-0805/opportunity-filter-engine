@@ -1,7 +1,7 @@
-"""What the writing routes run before any worker stays off the event loop or bounded (criterion 4, round 1).
+"""What the writing routes run before any worker is bounded or runs off the event loop (criterion 4).
 
-scripts/request_parse_lag.py and scripts/plan_output_lag.py measure the event-loop stall these
-paths cause at the body limits; these tests pin the behaviour that keeps it under 0.25 s.
+scripts/request_parse_lag.py, scripts/worst_inputs_lag.py and scripts/plan_output_lag.py measure
+these paths; these tests pin the behaviour they measure.
 """
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ from tests.test_target_resume_plan import endpoint  # noqa: F401
 
 HEAVY = [[]] * (request_body.MAX_JSON_CONTAINERS + 1)
 FULL_HEAVY = [[]] * (request_body.MAX_FULL_TARGET_JSON_CONTAINERS + 1)
-# Containers in chains 99 deep: at the container bound with few commas (a list of siblings needs one per item).
+# At the container bound, and well under the comma bound.
 CHAINS = [json.loads("[" * 98 + "0" + "]" * 98)] * ((request_body.MAX_JSON_CONTAINERS - 200) // 99)
 ITEMS = [0] * (request_body.MAX_JSON_SEPARATORS + 1)
 
@@ -90,7 +90,7 @@ def test_a_body_at_the_bound_is_parsed_and_answered_as_before(parsed, padding):
                                                 "draft": {"kind": "full_resume", "junk": ITEMS}}),
 ], ids=["tailor", "full-target", "selection-plan"])
 def test_an_item_heavy_body_is_refused_unparsed(parsed, path, body):
-    """Four 2 MiB bodies of ints sent at once held the loop 0.30-0.39 s (round-2 review, criterion 4)."""
+    """Round 2, criterion (4): a body past the comma bound is refused before it is parsed."""
     response = TestClient(app).post(path, json=body)
     assert response.status_code == 422 and parsed == []
 
@@ -120,7 +120,7 @@ def test_an_extraction_body_past_its_own_comma_bound_is_refused_unparsed(parsed,
     ("/api/tailor/full-target/selection-plan", {"options": {"target_pages": 1}}),
 ])
 def test_the_draft_is_validated_on_a_thread(monkeypatch, path, extra):
-    """A 2 MiB draft's canonical walk and deepcopy took up to 2.25 s on the event loop."""
+    """Round 1, criterion (4): the draft is validated off the event loop."""
     threads = []
 
     def validate(value):
@@ -133,7 +133,7 @@ def test_the_draft_is_validated_on_a_thread(monkeypatch, path, extra):
 
 
 def test_the_plan_answer_is_parsed_on_a_thread(endpoint, monkeypatch):  # noqa: F811
-    """Anchoring 600 one-character quotes in a 6,000-character line took 0.39 s on the event loop."""
+    """Round 1, criterion (4): the plan's answer is parsed off the event loop."""
     threads, real = [], plan.parse_plan_output
 
     def parse(*args, **kwargs):
@@ -147,9 +147,9 @@ def test_the_plan_answer_is_parsed_on_a_thread(endpoint, monkeypatch):  # noqa: 
 
 # ------------------------------------------------------------------ round 3: ten requests at once
 # Ten requests is one client's limit for /api/tailor* (backend/main.py RATE_LIMITS). The full-target
-# routes parsed and validated each body on the event loop, built its prompt there, and prepared the
-# draft on asyncio's default pool, where up to eight such threads asked for the GIL at once: the loop
-# stalled 0.28-0.60 s (scripts/worst_inputs_lag.py and scripts/rewrite_route_lag.py --concurrent 10).
+# routes parse, validate and prepare each body on one request lane, so the event loop shares the GIL
+# with one thread whatever the number of requests (scripts/worst_inputs_lag.py and
+# scripts/rewrite_route_lag.py --concurrent 10).
 
 
 def _concurrent_posts(path, body, count=10):
@@ -266,6 +266,13 @@ def holds(body) -> int:
     return request_body.structural_containers(json.dumps(body).encode())
 
 
+def separators(body) -> int:
+    return request_body.structural_separators(json.dumps(body).encode())
+
+
+PAST_EVERY_BOUND = 2 * request_body.MAX_FULL_TARGET_JSON_CONTAINERS
+
+
 @pytest.mark.parametrize(("path", "frame", "bound", "answer"), ROUTE_BOUNDS, ids=[row[0] for row in ROUTE_BOUNDS])
 def test_a_body_one_list_past_its_routes_bound_is_refused_unparsed(parsed, monkeypatch, path, frame, bound, answer):
     monkeypatch.setattr(tailor, "is_configured", lambda: False)
@@ -301,9 +308,10 @@ def test_a_full_target_body_past_its_bound_is_refused_before_the_lane_parses_it(
         assert response.status_code == 422 and seen == parsed_holds
 
 
-def test_each_route_reads_its_largest_valid_body_with_a_wide_margin_and_refuses_far_larger_ones(monkeypatch):
+def test_each_route_reads_its_largest_valid_body_with_a_wide_margin_and_refuses_one_past_every_bound(monkeypatch):
     """The largest body each request schema accepts (scripts/request_body_containers.py) is read and
-    answered as before, at most a quarter of its route's bound; 99,000 lists are refused everywhere."""
+    answered as before, at most a quarter of each of its route's bounds; a body past every route's
+    bound is refused on every route."""
     from scripts import request_body_containers as largest
 
     monkeypatch.setattr(tailor, "load_opportunities_by_id", lambda: {})
@@ -314,9 +322,10 @@ def test_each_route_reads_its_largest_valid_body_with_a_wide_margin_and_refuses_
     assert sorted(path for path, _ in bodies) == sorted(largest.BOUNDS)
     for path, body in bodies:
         assert holds(body) * 4 <= largest.BOUNDS[path], path
+        assert separators(body) * 4 <= largest.SEPARATOR_BOUNDS[path], path
         assert client.post(path, json=body).status_code in (200, 404), path
-        far = {**body, ("draft" if path in largest.FULL_TARGET else "padding"): chains(99_000)}
-        response = client.post(path, json=far)
+        past = {**body, ("draft" if path in largest.FULL_TARGET else "padding"): chains(PAST_EVERY_BOUND)}
+        response = client.post(path, json=past)
         detail = response.json()["detail"]
         assert response.status_code == 422, path
         assert detail == {"code": "invalid_request"} if path in largest.FULL_TARGET else detail[0]["type"] == "too_long"
@@ -344,6 +353,25 @@ def test_an_extraction_route_reads_a_resume_of_brackets_quotes_and_backslashes_w
     assert parsed == [path, path]
 
 
+def test_legitimate_bodies_whose_text_is_commas_are_read_whole(parsed, monkeypatch):
+    """Round 7: commas inside strings are not counted. A full-target draft whose résumé is 60,000 commas
+    and a profile of 159,000 commas hold more commas than MAX_JSON_SEPARATORS, all inside strings; their
+    routes parse and answer them as main does (404 for the stubbed-out target)."""
+    from scripts import request_body_containers as largest
+
+    monkeypatch.setattr(tailor, "load_opportunities_by_id", lambda: {})
+    monkeypatch.setattr(route, "load_opportunities_by_id", lambda: {})
+    client = TestClient(app)
+    bodies = list(largest.comma_dense_bodies())
+    assert len(bodies) == 2
+    for name, path, body in bodies:
+        content = json.dumps(body, ensure_ascii=False).encode()
+        assert content.count(b",") > request_body.MAX_JSON_SEPARATORS >= 4 * separators(body), name
+        response = client.post(path, content=content, headers={"content-type": "application/json"})
+        assert response.status_code == 404, name
+    assert parsed == ["/api/tailor"]
+
+
 def test_a_writing_route_reads_profile_text_of_brackets_whole(parsed):
     profile = {**TAILOR["profile"], "research_interests_text": '"[{' * 20_000}
     response = TestClient(app).post("/api/tailor", json={**TAILOR, "profile": profile,
@@ -369,7 +397,8 @@ def test_a_utf16_body_is_counted_as_json_reads_it(parsed, monkeypatch, path):
 ])
 def test_a_resume_of_commas_with_the_browsers_other_field_is_read_whole(parsed, monkeypatch, path, extra):
     """The browser sends the pipeline version (extraction) or the locale (structure) beside the résumé
-    (frontend/src/lib/api.ts), one comma more than the résumé holds: the bound's margin is for these."""
+    (frontend/src/lib/api.ts), one comma more than the résumé holds. Round 6's margin was for these;
+    since round 7 the résumé's commas sit inside its string and are not counted at all."""
     monkeypatch.setattr(tailor, "is_configured", lambda: False)
     body = {"resume_text": "," * MAX_RESUME_TEXT_CHARACTERS, **extra}
     assert json.dumps(body).count(",") == MAX_RESUME_TEXT_CHARACTERS + 1
@@ -398,6 +427,28 @@ def _containers(value) -> int:
     if isinstance(value, dict):
         return 1 + sum(_containers(item) for item in value.values())
     return 0
+
+
+def _separators(value) -> int:
+    if isinstance(value, list):
+        return max(len(value) - 1, 0) + sum(_separators(item) for item in value)
+    if isinstance(value, dict):
+        return max(len(value) - 1, 0) + sum(_separators(item) for item in value.values())
+    return 0
+
+
+def test_the_structural_comma_count_is_the_number_of_separators_json_reads():
+    import random
+
+    rng = random.Random(7)
+    for _ in range(2_000):
+        value = _values(rng)
+        expected = _separators(value)
+        for ensure_ascii in (True, False):
+            text = json.dumps(value, ensure_ascii=ensure_ascii)
+            assert request_body.structural_separators(text.encode()) == expected
+            for encoding in ("utf-16", "utf-16-be", "utf-32"):
+                assert request_body.structural_separators(request_body._json_text(text.encode(encoding))) == expected
 
 
 def test_the_structural_count_is_the_number_of_lists_and_objects_json_reads():
