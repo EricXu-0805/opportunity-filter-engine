@@ -18,6 +18,7 @@ const mockGetDataInventory = vi.fn();
 const mockRedeemMerge = vi.fn();
 const mockExchangeCodeForSession = vi.fn();
 const mockVerifyOtp = vi.fn();
+const mockRefreshSession = vi.fn();
 const mockOAuthExisting = vi.fn();
 const mockHydrateProfile = vi.fn();
 const replaceSpy = vi.fn();
@@ -32,6 +33,7 @@ vi.mock('@/lib/supabase', () => ({
     auth: {
       exchangeCodeForSession: (code: string) => mockExchangeCodeForSession(code),
       verifyOtp: (opts: { token_hash: string; type: string }) => mockVerifyOtp(opts),
+      refreshSession: () => mockRefreshSession(),
     },
   },
 }));
@@ -437,6 +439,73 @@ describe('CallbackPage — R68 idempotency guard', () => {
       expect(screen.getByText('auth.callback.errTitle')).toBeInTheDocument();
     });
     expect(screen.getByText('PKCE code verifier not found in storage')).toBeInTheDocument();
+  });
+
+  describe('an anonymous guest adding an email (in-place conversion)', () => {
+    // supabase-js updateUser({ email }) saves the session and drops the PKCE
+    // verifier it just created; GoTrue confirms the change when the link is
+    // opened, then redirects here with a code nobody can exchange.
+    const guest = { session: { user: { id: 'a' } }, user: { id: 'a' }, isAnonymous: true, email: null };
+    const converted = { session: { user: { id: 'a' } }, user: { id: 'a' }, isAnonymous: false, email: 'guest@illinois.edu' };
+    const verifierMissing = { error: { message: 'PKCE code verifier not found in storage' } };
+
+    it('finishes sign-in when a refresh shows this browser\'s own account is now permanent', async () => {
+      mockGetAuthState
+        .mockResolvedValueOnce(guest)
+        .mockResolvedValueOnce(guest)
+        .mockResolvedValueOnce(converted);
+      mockExchangeCodeForSession.mockResolvedValue(verifierMissing);
+      mockRefreshSession.mockResolvedValue({ data: { session: converted.session }, error: null });
+
+      render(<CallbackPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText('auth.callback.successTitle')).toBeInTheDocument();
+      });
+      expect(screen.getByText('auth.callback.signedInAs:guest@illinois.edu')).toBeInTheDocument();
+      expect(mockRefreshSession).toHaveBeenCalledTimes(1);
+      expect(markerUid()).toBe('a');
+    });
+
+    it('keeps the error when the refreshed session is still anonymous', async () => {
+      mockGetAuthState.mockResolvedValue(guest);
+      mockExchangeCodeForSession.mockResolvedValue(verifierMissing);
+      mockRefreshSession.mockResolvedValue({ data: { session: guest.session }, error: null });
+
+      render(<CallbackPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText('auth.callback.errTitle')).toBeInTheDocument();
+      });
+      expect(screen.getByText('PKCE code verifier not found in storage')).toBeInTheDocument();
+      expect(mockRefreshSession).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps the error when the refresh itself fails', async () => {
+      mockGetAuthState.mockResolvedValue(guest);
+      mockExchangeCodeForSession.mockResolvedValue(verifierMissing);
+      mockRefreshSession.mockResolvedValue({ data: { session: null }, error: { message: 'Invalid Refresh Token' } });
+
+      render(<CallbackPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText('auth.callback.errTitle')).toBeInTheDocument();
+      });
+      expect(screen.getByText('PKCE code verifier not found in storage')).toBeInTheDocument();
+      expect(mockGetAuthState).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not refresh when this browser has no session to refresh', async () => {
+      mockGetAuthState.mockResolvedValue({ session: null, user: null, isAnonymous: false, email: null });
+      mockExchangeCodeForSession.mockResolvedValue(verifierMissing);
+
+      render(<CallbackPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText('auth.callback.errTitle')).toBeInTheDocument();
+      });
+      expect(mockRefreshSession).not.toHaveBeenCalled();
+    });
   });
 
   it('takes the verifyOtp branch when token_hash + type are present (default email template)', async () => {

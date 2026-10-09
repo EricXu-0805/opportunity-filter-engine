@@ -258,7 +258,17 @@ function CallbackInner() {
         // between preflight and exchange. Re-check session state; if
         // we're now signed in, treat the exchange's stale-verifier
         // error as a no-op and show success.
-        const postCheck = await getAuthState();
+        let postCheck = await getAuthState();
+        // An anonymous guest adding an email can never complete the exchange:
+        // supabase-js updateUser({ email }) saves the session and with it drops
+        // the PKCE verifier it had just created. GoTrue has already confirmed
+        // the change by the time the link redirects here, so this browser's own
+        // account may be permanent now; only a refreshed session says so.
+        if (!cancelledRef.current && postCheck.user && postCheck.isAnonymous) {
+          const { error: refreshError } = await supabase.auth.refreshSession();
+          if (cancelledRef.current) return;
+          if (!refreshError) postCheck = await getAuthState();
+        }
         if (!cancelledRef.current && postCheck.user && !postCheck.isAnonymous) {
           await finishSignedIn(postCheck.email, postCheck.user.id);
           return;
