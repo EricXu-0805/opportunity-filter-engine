@@ -5,8 +5,8 @@ row of each chunk the model did not answer on the event loop, and _bullet_ground
 again for every line the model returned, on a provider worker. The shapes below are the row shapes the
 earlier row reader (rounds 3 to 3d) found dearest; they also give the fallback a row per line.
 
-Each request goes through backend.main.app over httpx.ASGITransport; the garbage collector is
-frozen as backend.main._warmup freezes it. While the requests run, the event loop wakes every
+Each request goes through backend.main.app over httpx.ASGITransport; startup objects are
+frozen as backend.main._warmup freezes them. While the requests run, the event loop wakes every
 millisecond (longest wake-up delay = longest stall). Each case runs twice and reports its best run.
 Without --model no provider is configured, so every chunk takes the local extraction; with --model
 a stub answers at once with 60 lines of the résumé's shape, so every chunk's answer is grounded.

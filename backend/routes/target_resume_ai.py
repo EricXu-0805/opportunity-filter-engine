@@ -48,8 +48,8 @@ PRIVATE = {"Cache-Control": "private, no-store", "Pragma": "no-cache"}
 
 class PrivateValidationRoute(APIRoute):
     """Every refusal stays private. Each route reads its raw body and parses it on the request lane
-    (_parsed), where a container- or item-heavy body is refused before it is parsed, as
-    BoundedJSONRoute refuses it on the event loop for the other writing routes."""
+    (_parsed), where a body past its structural bounds is refused before it is parsed, as
+    BoundedJSONRoute refuses it for the other writing routes."""
 
     def get_route_handler(self):
         original = super().get_route_handler()
@@ -75,7 +75,7 @@ def authoritative_target(opp):
 
 
 def _validated(request, prepare):
-    """The draft checked and prepared, on a thread: a 2 MiB draft's walk and copy take up to 2 s."""
+    """The draft checked and prepared, on the request lane."""
     doc = validate_document(request.draft)
     if doc["target_snapshot"].get("context_version") != 4:
         raise HTTPException(409, detail={"code": "legacy_target_context"})
@@ -85,10 +85,9 @@ def _validated(request, prepare):
 def _parsed(body: bytes, content_type: str | None, model):
     """The body as FastAPI would parse and validate it for ``model``, on the request lane.
 
-    First the container and item bounds (check_body_bounds), which read the whole body: three
-    counts of a 2 MiB body take about 4 ms, and ten such requests at once made 40 ms of one
-    event-loop turn. The body's lists and objects are counted outside its strings, against
-    MAX_FULL_TARGET_JSON_CONTAINERS. Then, as FastAPI does with a strict content type: only an application/json (or +json) body is
+    First the structural bounds (check_body_bounds): the body's lists and objects, against
+    MAX_FULL_TARGET_JSON_CONTAINERS, and the commas between its items, both counted outside its
+    strings. Then, as FastAPI does with a strict content type: only an application/json (or +json) body is
     read as JSON; anything else, an empty body included, is a validation error. Invalid JSON
     (json.JSONDecodeError) is a validation error; any other failure to parse, such as a body
     that is not UTF-8 or one nested past the parser's recursion limit, is the 400 FastAPI

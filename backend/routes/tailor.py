@@ -106,10 +106,10 @@ from src.student_evidence import claimable_skill_level
 
 logger = logging.getLogger("ofe.tailor")
 
-# Up to 1 MiB of JSON per writing request: a container-heavy body is refused before it is parsed.
+# A writing request's body past its structural bounds is refused before it is parsed.
 router = APIRouter(route_class=BoundedJSONRoute)
-# The two extraction routes read one résumé, which may hold a comma in each of its characters; main
-# parses such a résumé whole, and so do they (request_body.ResumeJSONRoute). Included in router below.
+# The two extraction routes read one résumé, which main parses whole whatever it holds, and so do
+# they (request_body.ResumeJSONRoute, with bounds of its own). Included in router below.
 resume_router = APIRouter(route_class=ResumeJSONRoute)
 
 _DEFAULT_OPP_TOKEN_BUDGET = 1200

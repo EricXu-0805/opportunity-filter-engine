@@ -1278,9 +1278,8 @@ class TestEveryBulletTheStudentSubmittedIsSent:
 @pytest.mark.parametrize("field", ["original_bullets", "source_bullets"])
 @pytest.mark.parametrize("junk", [0, [], {}], ids=["ints", "empty lists", "empty dicts"])
 def test_a_body_of_wrongly_typed_bullets_is_one_short_error(field, junk):
-    """Round 1, criterion (4): 524,287 wrongly typed items in a 1 MiB body made 524,287 validation errors and a
-    36 MB 422, built and encoded on the event loop (4-7 s; scripts/request_parse_lag.py). The list's length is
-    checked first now, and a 422 names at most its first 20 errors."""
+    """Round 1, criterion (4): the list's length is checked before its items, and a 422 names at most its
+    first 20 errors."""
     items = [junk] * 300_000
     body = {"profile": {"name": "Sample Student"}, "opportunity_id": "any", field: items}
     if field == "source_bullets":

@@ -64,8 +64,7 @@ def _profile_error(field: str, *, actual: int | None = None,
     raise PydanticCustomError("profile_input_invalid", "Profile input is invalid.", {"field": field})
 
 
-# A lone surrogate, found by the regex engine's C loop: a per-character generator over a
-# profile at its limits (17 x 60,000 characters) took about 50 ms on the event loop per request.
+# A lone surrogate, found by the regex engine's C loop rather than by a Python loop over every character.
 _SURROGATE = re.compile("[\ud800-\udfff]")
 
 
@@ -816,8 +815,7 @@ class RoadmapResponse(BaseModel):
 
 
 # A /tailor request's lists are bounded before their items are validated: pydantic
-# checks a list's length first and reports one error, where 524,287 wrongly typed
-# items in a 1 MiB body made 524,287 errors and a 36 MB 422 on the event loop (4-7 s).
+# checks a list's length first and reports one error, not one per item.
 # The bound sits far above what the route accepts, which still refuses by name
 # (renovation bounds its raw sections and bullets in reject_oversized_payload).
 MAX_REQUEST_BULLETS = 200

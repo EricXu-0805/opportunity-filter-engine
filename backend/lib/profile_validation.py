@@ -41,8 +41,7 @@ def safe_profile_validation_detail(exc: RequestValidationError, *, profile_root:
     return None
 
 
-# A 422 names its first errors; a list of thousands says no more and costs its
-# encoding on the event loop.
+# A 422 names its first errors; a longer list says no more.
 MAX_VALIDATION_ERRORS = 20
 
 

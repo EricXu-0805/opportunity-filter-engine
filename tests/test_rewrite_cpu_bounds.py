@@ -1,9 +1,7 @@
 """The contract and the claim locks read one unit at the 6,000-character cap in bounded time.
 
-The claim locks used to read main's attribution parser twice per rewrite, pairing every
-claim with every fact of the evidence, so a guest's 6,000 characters of negated facts or
-a run of spaces held a request, and the event loop with it, for minutes. That reading is
-gone. The checks now run on a worker with a deadline, but a regex holds the GIL while it
+The claim locks do not read main's attribution parser. The checks run on a worker with a
+deadline, but a regex holds the GIL while it
 runs and a timed-out worker keeps running, so the bound has to come from the code: these
 tests hold every unit to BUDGET_SECONDS of process time and every request to a short
 event-loop heartbeat. The units are adversarial lines at the cap (repeated denials, a run

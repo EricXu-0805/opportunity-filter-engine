@@ -112,15 +112,12 @@ async def run_blocking(
 
 
 # One lane for the CPU-bound request work of the routes that take the largest bodies: parsing and
-# validating a full-target draft (up to 2 MiB), checking it against its target and building its
-# prompt. That work holds the GIL. On a pool of N threads, ten such requests at once kept up to
-# eight threads asking for the GIL, and the event loop waited behind each of them in turn: at the
-# per-IP limit of ten /api/tailor* requests the loop stalled 0.28-0.60 s (scripts/worst_inputs_lag.py,
-# scripts/rewrite_route_lag.py --concurrent 10). On one thread, the loop shares the GIL with that
-# thread alone, so its longest wait is one request's longest C call, whatever the number of requests;
-# the requests queue on the lane instead. The contract and claim-lock checks of a full-target answer
-# run here too: on run_blocking's four workers they made four such threads again. Provider calls
-# never run here (run_blocking does those).
+# validating a full-target draft, checking it against its target and building its prompt. That work
+# holds the GIL. On one thread, the event loop shares the GIL with that thread alone, so its longest
+# wait is one request's longest C call, whatever the number of requests; the requests queue on the
+# lane instead (scripts/worst_inputs_lag.py and scripts/rewrite_route_lag.py measure it with
+# --concurrent). The contract and claim-lock checks of a full-target answer run here too, rather than
+# on run_blocking's workers. Provider calls never run here (run_blocking does those).
 _REQUEST_WORK_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ofe-request-work")
 
 

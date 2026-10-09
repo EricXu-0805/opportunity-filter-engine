@@ -1,13 +1,9 @@
 """Event-loop stall while the selection plan parses a model answer at its output budget.
 
-/api/tailor/full-target/selection-plan parses the model answer with parse_plan_output, on a
-thread since round 1 (it ran inline in the async route before). It re-anchors every quote the
-model gives by finding every occurrence of it in the named field, so its cost is (quotes) x
-(occurrences): 600 quotes took 394.5 ms on the event loop inline, and stall it about 11 ms now. The answer is capped by
-the plan call's 12,000 output tokens; a résumé line can steer what the model quotes. This
-script stubs the plan model to quote a one-character string many times from a
-6,000-character experience line (and once, validly, from the target), and prints the
-longest event-loop stall per quote count.
+/api/tailor/full-target/selection-plan parses the model answer with parse_plan_output on the
+request lane (backend.lib.blocking.run_request_work). This script stubs the plan model to answer
+with up to 600 quotes from one experience line, within the plan call's output budget, and prints
+the longest event-loop stall per quote count.
 
 Run from the repository root:  python scripts/plan_output_lag.py
 """

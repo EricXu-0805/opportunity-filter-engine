@@ -281,19 +281,19 @@ def _junk(kind: str, size: int):
 
 
 def validation_cases():
-    """Request shapes that stress what runs on the event loop before any worker: parsing and validation."""
+    """Request bodies at the byte limits, answered before any model call."""
     one_mib, two_mib = 1024 * 1024 - 2048, 2 * 1024 * 1024 + 64 * 1024 - 2048
     tailor_body = {"profile": PROFILE, "opportunity_id": OPPORTUNITY["id"], "locale": "en"}
-    yield "/api/tailor 1 MiB of blank bullets", "/api/tailor", {
+    yield "/api/tailor blank bullets", "/api/tailor", {
         **tailor_body, "original_bullets": [""] * (one_mib // 3)}
-    yield "/api/tailor 1 MiB of sources", "/api/tailor", {
+    yield "/api/tailor sources of ints", "/api/tailor", {
         **tailor_body, "original_bullets": ["Built a robot."], "source_bullets": [0] * (one_mib // 2)}
     for kind in ("nested", "empty lists", "flat ints"):
-        yield f"/api/tailor 1 MiB {kind} in an unknown field", "/api/tailor", {
+        yield f"/api/tailor {kind} in an unknown field", "/api/tailor", {
             **tailor_body, "original_bullets": ["Built a robot."], "padding": _junk(kind, one_mib)}
-        yield f"/api/tailor/bullet 1 MiB {kind} in an unknown field", "/api/tailor/bullet", {
+        yield f"/api/tailor/bullet {kind} in an unknown field", "/api/tailor/bullet", {
             **tailor_body, "current_text": "Built a robot.", "padding": _junk(kind, one_mib)}
-        yield f"/api/tailor/renovate 1 MiB {kind} in an unknown field", "/api/tailor/renovate", {
+        yield f"/api/tailor/renovate {kind} in an unknown field", "/api/tailor/renovate", {
             **tailor_body, "sections": [], "padding": _junk(kind, one_mib)}
     yield "/api/tailor/bullet 60,000-character current_text", "/api/tailor/bullet", {
         **tailor_body, "current_text": "a " * 30000, "base_text": "a " * 30000}
@@ -308,10 +308,10 @@ def validation_cases():
         full_doc([bullet("a ", 750) for _ in range(8)], [fit("a ", 833) for _ in range(12)], extra_entries=92))
     for kind in ("nested", "empty lists", "empty dicts", "flat ints"):
         junk = {"kind": "full_resume", "junk": _junk(kind, two_mib - 300)}
-        yield f"full-target 2 MiB junk draft ({kind})", "/api/tailor/full-target/suggestions", {
+        yield f"full-target junk draft ({kind})", "/api/tailor/full-target/suggestions", {
             "version": 1, "request_id": "probe", "locale": "en", "draft": junk,
             "document_signature": "v1:sha256:" + "0" * 64, "selected_unit_ids": ["line-1"]}
-        yield f"selection-plan 2 MiB junk draft ({kind})", "/api/tailor/full-target/selection-plan", {
+        yield f"selection-plan junk draft ({kind})", "/api/tailor/full-target/selection-plan", {
             "version": 1, "request_id": "probe", "locale": "en", "draft": junk,
             "document_signature": "v1:sha256:" + "0" * 64, "options": {"target_pages": 1}}
     yield "selection-plan 2 MiB draft (one line's text)", "/api/tailor/full-target/selection-plan", full_payload(

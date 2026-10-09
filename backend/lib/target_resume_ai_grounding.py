@@ -283,8 +283,7 @@ def clauses(text):
     # explicit contrast: "not accepted, but later accepted" is two claims.
     # Keep this a bounded EN/ZH rule, not a general semantic parser. Splitting
     # also permits truthful "did not lead, but reviewed" clauses to reorder.
-    # A boundary's leading space starts where a run of spaces starts, so a long run
-    # is read once, not once from each of its characters.
+    # Each boundary is read in time linear in the text (tests/test_rewrite_cpu_bounds.py).
     boundaries = (
         r"(?<!\d)\.(?!\d)|[!?;。！？；\n]+"
         r"|(?:[，,]|(?<!\s)|(?!\s))\s*\b(?:but|however|nevertheless)\b\s*[,，]?\s*"
@@ -1127,7 +1126,7 @@ def supported_surface_forms(proposed, originals):
         values = []
         for sentence in re.split(r'(?<!\d)\.(?!\d)|[!?;。！？；\n]+', value):
             actor = 'i'
-            # A run of spaces starts one split, not one per space.
+            # Linear in the sentence (tests/test_rewrite_cpu_bounds.py).
             for part in re.split(r'(?<!\s)\s+(?:and|then)\s+(?=(?:' + _SURFACE_ACTOR + r'\s+)?(?:' + _SURFACE_ACTION + r')\b)',
                                  sentence, flags=re.I):
                 clause = normalized(part).strip(' ,')
