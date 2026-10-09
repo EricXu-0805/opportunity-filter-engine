@@ -18,7 +18,7 @@ of 20 selected units, 100 entries in the draft, and a 2 MiB draft for full targe
 
 Run from the repository root:
     python scripts/rewrite_route_lag.py [--threshold 0.25] [--only TEXT] [--concurrent 1,4,10] [--no-fills]
-                                        [--switch-interval SECONDS]
+                                        [--switch-interval SECONDS] [--contract]
 --concurrent sends that many identical requests at once; a comma-separated list measures every
 case at each level in turn and prints the worst stall per route for each. Ten at once is one
 client's limit for /api/tailor* (backend/main.py RATE_LIMITS: "/api/tailor": (10, 60)).
@@ -29,6 +29,10 @@ three times) and reported with its best run.
 a thread may hold the GIL while another waits for it. The routes' checks run on worker threads
 (backend.lib.blocking); a status gap that shrinks with the interval while the stall does not
 is the event loop waiting for the GIL behind them.
+
+--contract times nothing: it prints what the contract (evidence_map.check_rewrite) makes of each fill's
+500-character /api/tailor bullet and its verb_first rewrite. A fill whose rewrite comes out "pending"
+reaches the claim locks, whose CPU the timed cases measure; a kept one stops before them.
 """
 from __future__ import annotations
 
@@ -40,6 +44,7 @@ import json
 import os
 import sys
 import time
+from collections import Counter
 from copy import deepcopy
 from pathlib import Path
 
@@ -67,8 +72,9 @@ OPPORTUNITY = {
 PROFILE = {"name": "Sample Student", "school": "UIUC", "year": "sophomore", "major": "Psychology",
            "hard_skills": [{"name": "R", "level": "experienced"}], "coursework": ["PSYC 238"],
            "research_interests_text": "human factors"}
-# "for" and "the": the English evidence round 4's default keep asks of a Latin-script line, so the
-# claim locks still read every English case (without it the contract keeps the line before them).
+# "for" and "the": the English evidence the default keep (rounds 4 and 5) asks of a line read as English,
+# so the claim locks still read the English cases (without it the contract keeps the line before them;
+# --contract prints which fills reach them).
 OPENER, ZH_OPENER = "Responsible for building the ", "负责"
 
 
@@ -369,6 +375,22 @@ def summary(response: httpx.Response) -> str:
     return f"{response.status_code}"
 
 
+def contract_outcomes(fills) -> int:
+    """--contract: each fill's 500-character /api/tailor bullet through the contract, as the stubbed generation rewrites it."""
+    outcomes = {}
+    for fill in fills:
+        line = bullet(fill, 500)
+        row = {"unit_id": "b1", "links": [], "decision": "rewrite", "ops": [{"op": "verb_first"}],
+               "text": verb_first(line), "keep_reason": None}
+        outcome = em.check_rewrite(em.Unit("b1", line, line), row, {}, output_language=em.language(line))
+        outcomes[fill] = outcome.status if outcome.status == "pending" else f"{outcome.status}:{outcome.detail}"
+        print(f"{fill!r:40} -> {outcomes[fill]}")
+    reach = sum(value == "pending" for value in outcomes.values())
+    print(f"\n{reach} of {len(outcomes)} fills reach the claim locks; the rest stop at "
+          f"{dict(Counter(value for value in outcomes.values() if value != 'pending'))}")
+    return 0
+
+
 def levels(value: str) -> list[int]:
     """--concurrent: one number, or a comma-separated list measured one after the other (1,4,10)."""
     out = [int(part) for part in value.split(",") if part.strip()]
@@ -386,7 +408,11 @@ def main() -> int:
     parser.add_argument("--no-fills", action="store_true", help="only the parsing and validation cases")
     parser.add_argument("--switch-interval", type=float, default=None,
                         help="sys.setswitchinterval for the run, in seconds (Python's default: 0.005)")
+    parser.add_argument("--contract", action="store_true",
+                        help="time nothing; print which fills' rewrites reach the claim locks")
     args = parser.parse_args()
+    if args.contract:
+        return contract_outcomes(TAILOR_FILLS)
     if args.switch_interval is not None:
         sys.setswitchinterval(args.switch_interval)
     install_stubs()
