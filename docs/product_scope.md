@@ -1,53 +1,83 @@
-# Product Scope — V1
+# Product Scope
 
-## One-sentence definition
+Checked against the code on 2026-10-09. The release tables in
+`backend/lib/release_scope.py` and `frontend/src/lib/release-scope.ts` decide
+what ships; `tests/test_docs_current.py` fails when the flag table below
+disagrees with either of them.
 
-A semi-automated opportunity filter for UIUC international undergrads that collects research and summer program listings, normalizes them, and ranks them by realistic fit — not just keyword match.
+## What JoinALab is
 
-## What V1 does
+JoinALab matches undergraduates to faculty labs, research programs and
+internships. It ranks every opportunity against the student's profile,
+explains the fit and the gaps, drafts the first email to the lab, and tracks
+the application afterwards.
 
-1. **Collects** opportunities from 3-5 stable public sources automatically, plus manual/URL entries
-2. **Normalizes** every opportunity into a consistent schema with international-student-aware tags
-3. **Matches** opportunities to a student profile using three-layer scoring (Eligibility × Readiness × Upside)
-4. **Explains** why each opportunity is recommended, what gaps exist, and what to do next
-5. **Presents** results in two buckets: "Best Matches Now" and "Worth Stretching For"
+It covers 115 universities. Their faculty directories and campus programs are
+re-scraped once a week, and the national sources (the SRO catalog, NSF REU
+sites, SimplifyJobs internships) every Sunday; `RUNBOOK.md` section 2 has the
+rotation. The 2026-10-08 refresh held 142,861 records, 7,161 of them inactive.
+`src/school_scope.py` lists the schools the product has dropped and why (UC
+Davis, since 2026-09-06).
 
-## What V1 does NOT do
+## What a student can do on the public site
 
-| Excluded feature | Why |
-|-----------------|-----|
-| Mass auto-apply | Ethical + legal risk, not validated yet |
-| LinkedIn scraping at scale | Anti-bot, ToS risk, high engineering cost |
-| Browser extension | Adds platform complexity before core is validated |
-| Nationwide university scraping | Scope creep — validate UIUC first |
-| Social/community features | Not core to the filter engine value |
-| Automated resume rewriting | Separate product problem |
-| Cold outreach to PIs without public posting | Mode A only — we only match visible opportunities |
+1. Build a profile on the home page: school, college, major, research
+   interests, skills, a résumé upload and a GitHub import.
+2. Get ranked results in three buckets (High Priority, Good Match, Reach),
+   each with why it fits and what is missing, and filter them. Results can
+   include other schools.
+3. Open an opportunity: the source evidence, the contact, a cold-email draft,
+   and a résumé tailored to that target.
+4. Save opportunities and searches. Saved searches send email digests.
+5. Track applications on `/tracker` and `/dashboard`, with deadlines and
+   reminders by Web Push or email.
+6. Import a posting by URL or pasted text as a private target.
+7. Ask JoinALab to handle one professor for them (the concierge request on the
+   opportunity page). A person does it by hand, and nothing is charged.
 
-## Mode A: public opportunity matching only
+## Release flags
 
-V1 operates in **Mode A**: the system only recommends opportunities that have a visible posting, application form, webpage, or explicit public description. We do not recommend "go email this professor who has no posting" in V1.
+Every flag below is a source-controlled boolean, written once in each table.
+Closed features keep their code and tests. Their pages call `notFound()`,
+their API routes answer 404 from `ReleaseScopeMiddleware` in
+`backend/main.py`, and fellowship records stay off every public surface.
 
-Rationale: this keeps data quality high and avoids the liability of directing students to contact faculty who haven't signaled they're looking for help.
+| Backend flag | Frontend flag | State | What it controls | Why it is closed |
+|---|---|---|---|---|
+| `cross_school_matching` | `crossSchoolMatching` | on | The "include other schools" control on `/results` and cross-school ranking | |
+| `resume_renovate` | `resumeRenovate` | on | Résumé renovation on the opportunity page and its `/api/tailor/*` and full-target export routes | |
+| `match_ai_refine` | `matchAiRefine` | off | The AI re-ranking pass on `/results` | When it was on, it changed the URL and badges but not the `/matches/view` ranking. It reopens only with server-side mode attestation and bounded paid concurrency. |
+| `compare` | `compare` | off | `/compare`, compare selection in favorites, `/api/matches/{id}/explain` | Outside the accepted MVP surface |
+| `fellowships` | `fellowships` | off | Fellowship records on every public surface, `/fellowships`, the Fellowship preference | Outside the accepted MVP surface |
+| `roadmap` | `roadmap` | off | `/roadmap`, the dashboard roadmap card, `/api/roadmap`, `/api/matches/{id}/gaps` | Outside the accepted MVP surface |
+| `ask_ai` | `askAi` | off | The Ask-AI chat on the opportunity page, `/api/opportunities/{id}/chat`, `/api/chat/models` | Outside the accepted MVP surface |
+| `professor_signals` | `professorSignals` | off | Professor follows and updates, the responsiveness bonus in ranking | Outside the accepted MVP surface |
+| `payments` | `payments` | off | Orders and the admin orders view, `/api/orders`, `/api/admin/orders` | Migration 026 dropped the orders RLS policies and revoked browser access, and the pricing module and payment QR images are not on `main` |
+| `microsoft_school_auth` | `microsoftSchoolAuth` | off | Microsoft sign-in; the backend also refuses sessions minted through the Azure provider | Azure publisher verification needs a verified legal entity, which does not exist yet |
+| `concierge_pay_qr` | `conciergePayQr` | off | The payment QR for the concierge channel | Needs a confirmed receiving account |
 
-## Target users (V1)
+How a flag changes:
 
-**Primary:** UIUC freshmen/sophomores, international students, ECE/CS/STAT/Data Science
+- A feature opens only in its own acceptance PR, which flips both tables and
+  updates `ACCEPTED_FEATURES` in `tests/test_release_scope.py` and this table.
+- An environment variable can switch an accepted feature off but never on.
+  Only `payments` has such a switch today: `OFE_PAYMENTS_ENABLED`.
+- `tests/conftest.py` forces every flag on, except in the five test modules
+  that set `RELEASE_CONTRACT_TESTS = True`, so a green suite says little about
+  the shipped flag state. `tests/test_release_scope.py` is the module that
+  tests the shipped table.
 
-**Initial deployment:** founder + 5-10 friends for testing and iteration
+## What JoinALab does not do
 
-**Growth path:** campus-wide tool → multi-university platform
-
-## V1 build philosophy
-
-- **80% data foundation / 20% demo polish**
-- Semi-automatic data pipeline (auto-scrape what we can, manually curate the rest)
-- Rule-based matching first, semantic/LLM matching in v2
-- SQLite acceptable for local dev, PostgreSQL for any deployment
-- Ship something usable in 4-6 weeks, not a perfect product in 6 months
+| Excluded | Why |
+|---|---|
+| Sending email or applications automatically | The student sends every cold email from their own mail client. A concierge request is handled by a person, by hand |
+| Collecting from behind a login | The scheduled refresh does not log in. A login-only list comes in as a hand export instead (CMU's research projects, `data/snapshots/cmu_uro_projects.json`) |
+| Getting around bot walls | A school behind a Cloudflare challenge is dropped rather than worked around (UC Davis) |
+| Serving fellowships, compare, roadmap or Ask AI | Built, but closed until each passes its own acceptance (table above) |
 
 ## Key differentiator
 
-Not collection. Not scraping. Not search.
-
-The differentiator is the **explanation layer**: telling students *why* an opportunity fits, *what* they're missing, and *what to do next*. This is what no existing tool provides for underclassmen.
+The explanation layer: telling students *why* an opportunity fits, *what*
+they are missing, and *what to do next*, with every claim traced to a source
+record.
