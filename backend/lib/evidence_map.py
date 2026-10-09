@@ -906,20 +906,26 @@ def _accents_kept(source: str, target: str, line: str = "") -> bool:
 
 
 def _english_line(line: str, renamed: list[str]) -> bool:
-    """Whether a Latin-script line carries positive English evidence outside the phrases a rewrite
-    renames (each relabel's "from"): two different English function words of three letters or more
-    (_FUNCTION_EN, read as it is), each a word of its own in ASCII letters.
+    """Whether a line language() reads as English carries positive English evidence outside the phrases
+    a rewrite renames (each relabel's "from"): two different English function words of three letters
+    or more (_FUNCTION_EN, read as it is), each a word of its own in ASCII letters.
 
-    language() reads every Latin-script line as English, so a rewrite could otherwise write a
-    nominal German, French, Dutch, Scandinavian, Italian, Spanish or Indonesian line in English:
-    a relabel ("Disene un sistema de control para 40 sensores." -> "Disene un control system ...")
-    or a reorder that adds English function words, which the tokens do not count. Of these words,
-    such lines can hold "via", "for" (Norwegian, Danish), "was" and "also" (German) or "was" and
-    "had" (Dutch); a line with two of them passes. Two-letter function words are words of other
-    languages too: "on" and "a" in French, "an" and "in" in German. Verb forms are no evidence
-    either: "Test", "Plan" and "Design" open German and Spanish lines. An English line without two
-    such words is kept as written, a lost suggestion ("Built a data pipeline in Python for 40
-    sensors." holds only "for").
+    language() reads every line without a Chinese frame as English, so a rewrite could otherwise write
+    a nominal German, French, Dutch, Scandinavian, Italian, Spanish or Indonesian line in English: a
+    relabel ("Disene un sistema de control para 40 sensores." -> "Disene un control system ...") or a
+    reorder that adds English function words, which the tokens do not count. Only the line's ASCII
+    words are read, so a name or a sign in another script (清华大学, МГУ, トヨタ, "4º", "2ª", "2ᵉ")
+    neither supplies the evidence nor spares the line from it.
+
+    What these lines share with English is no evidence. A word joined to another by a hyphen is part
+    of a compound, not a function word: "part-time" stands in Spanish, Italian, Indonesian and Swedish
+    lines. "via" is Latin, and each of these languages writes it ("informes de Tableau via Zoom").
+    Two-letter function words are words of other languages too: "on" and "a" in French, "an" and "in"
+    in German. Verb forms are no evidence either: "Test", "Plan" and "Design" open German and Spanish
+    lines. Other function words are words of some of these languages: "for" and "mine" (Danish,
+    Norwegian), "was" and "also" (German), "was" and "had" (Dutch), "but" and "part" (French): a line
+    that holds two of them passes, a known limit. An English line without two such words is kept as
+    written, a lost suggestion ("Built a data pipeline in Python for 40 sensors." holds only "for").
     """
     outside = line
     for phrase in renamed:
@@ -927,8 +933,9 @@ def _english_line(line: str, renamed: list[str]) -> bool:
         if span is None:
             return False
         outside = outside[:span[0]] + " " + outside[span[1]:]
-    words = {word.casefold() for word in re.findall(r"[^\W\d_]+", outside) if word.isascii() and len(word) >= 3}
-    return len(words & _FUNCTION_EN) >= 2
+    words = {word.casefold() for word in re.findall(r"[^\W\d_]+(?:[-\u2010\u2011][^\W\d_]+)*", outside)
+             if word.isascii() and word.isalpha() and len(word) >= 3}
+    return len(words & _FUNCTION_EN - {"via"}) >= 2
 
 
 def _setting_accent_changed(line: str, source: str, target: str) -> bool:
@@ -1127,8 +1134,9 @@ def _check_same_language(unit: Unit, text: str, links: list[Link], ops_raw: list
         return _keep(unit, "beyond_allowed_edit", "relabel_line_lock_count", links=links)
     if _number_moved(unit.current, text, relabels):
         return _keep(unit, "beyond_allowed_edit", "number_moved", links=links)
-    # Default keep: a Latin-script line is rewritten only where it shows itself English (_english_line).
-    if not _non_latin_frame(unit.current) and not _english_line(unit.current, [source for source, _ in relabels]):
+    # Default keep: a line read as English is rewritten only where it shows itself English (_english_line),
+    # whatever name or sign in another script it also holds.
+    if language(unit.current) == "en" and not _english_line(unit.current, [source for source, _ in relabels]):
         return _keep(unit, "beyond_allowed_edit", "english_unproven", links=links)
     return Outcome(unit.unit_id, "pending", text=text, links=links, ops=list(dict.fromkeys(names)), relabels=relabels)
 

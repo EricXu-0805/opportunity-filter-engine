@@ -735,20 +735,26 @@ class TestLettersTheTokensCannotRead:
         outcome = em._check_same_language(unit, "Python data pipeline 구축 및 유지보수 담당", links, ops)
         assert (outcome.status, outcome.detail) == ("kept", "relabel_cross_language")
 
-    @pytest.mark.parametrize(("original", "rewrite", "ops", "links"), [
-        # A reorder in the line's own words.
-        ("Python 및 SQL 데이터 정리 담당", "SQL 및 Python 데이터 정리 담당", [{"op": "lead_with", "link": "L1"}],
-         [("L1", "t1", "SQL", "SQL")]),
+    def test_a_rewrite_in_the_lines_own_words_still_reaches_the_locks(self):
         # An accented Latin letter is no frame of its own: the English line may gain "as" and "a".
-        ("Research assistant in the Café Lab, analyzing Python simulation data for CS 225.",
-         "Analyzed Python simulation data for CS 225 as a research assistant in the Café Lab.",
-         [{"op": "verb_first"}], []),
-    ], ids=["hangul-reorder", "accent-in-an-english-line"])
-    def test_a_rewrite_in_the_lines_own_words_still_reaches_the_locks(self, original, rewrite, ops, links):
+        original = "Research assistant in the Café Lab, analyzing Python simulation data for CS 225."
+        rewrite = "Analyzed Python simulation data for CS 225 as a research assistant in the Café Lab."
         anchors = anchors_for(["Experience with SQL is required."])
         unit = em.Unit("b1", original, original)
-        outcome = em.check_rewrite(unit, _row(rewrite, links, ops), anchors, output_language=em.language(original))
+        outcome = em.check_rewrite(unit, _row(rewrite, [], [{"op": "verb_first"}]), anchors,
+                                   output_language=em.language(original))
         assert outcome.status == "pending", outcome
+
+    def test_a_reorder_of_a_line_read_as_english_without_english_evidence_is_kept(self):
+        # language() reads a Hangul line as English, so round 5's default keep asks it for two English
+        # function words of three letters, as it asks a Spanish line that names 清华大学: the reorder in
+        # the line's own words is kept as written, a lost suggestion under (2b).
+        original, rewrite = "Python 및 SQL 데이터 정리 담당", "SQL 및 Python 데이터 정리 담당"
+        anchors = anchors_for(["Experience with SQL is required."])
+        unit = em.Unit("b1", original, original)
+        outcome = em.check_rewrite(unit, _row(rewrite, [("L1", "t1", "SQL", "SQL")], [{"op": "lead_with", "link": "L1"}]),
+                                   anchors, output_language=em.language(original))
+        assert (outcome.status, outcome.code, outcome.detail) == ("kept", "beyond_allowed_edit", "english_unproven")
 
 
     # Round-3 re-measure (criterion 2b): 33fc0db's rules kept these faithful English rewrites as

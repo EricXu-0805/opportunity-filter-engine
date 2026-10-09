@@ -286,10 +286,10 @@ def rejection_warnings(path, body) -> list[str]:
 
 
 def english_unproven(original: str, renamed=()) -> bool:
-    """Round 4's default keep: a Latin-script line without two English function words of three letters
-    outside the renamed phrases (evidence_map._english_line) is kept as written before the review, a
-    lost suggestion under the owner's reading (2b)."""
-    return not em._non_latin_frame(original) and not em._english_line(original, list(renamed))
+    """Round 4's default keep: a line language() reads as English without two English function words of
+    three letters outside the renamed phrases (evidence_map._english_line) is kept as written before the
+    review, a lost suggestion under the owner's reading (2b)."""
+    return em.language(original) == "en" and not em._english_line(original, list(renamed))
 
 
 def gate_findings(original, rewrite) -> list[str]:

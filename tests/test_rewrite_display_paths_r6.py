@@ -7,7 +7,7 @@ holds says so.
 
 Round 4 moved extraction back to origin/main's and removed this file's extraction
 probes; their résumés are cases of tests/fixtures/extraction_differential_cases.json,
-which tests/test_extraction_matches_main.py runs against main.
+which scripts/extraction_differential.py runs against main.
 
 Run from the repository root:
     python -m pytest tests/test_rewrite_display_paths_r6.py -q
@@ -223,14 +223,144 @@ def test_an_english_line_without_the_evidence_is_kept_as_written(opportunity, mo
     ("Plan de control para el laboratorio de suelos.", ["laboratorio de suelos"], False),  # a27e84d6's residual
     ("Insamling av data för 40 sensorer via appen.", [], False),                    # "för" is not "for"
     ("Opbouw van een database, het meten van 40 sensoren.", [], False),
+    # Round 5: what these lines share with English is no evidence. "via" is Latin; a word joined by a
+    # hyphen ("part-time") is part of a compound. Each of these read as English on e2ecc0a6.
+    ("Datainnsamling via sensorer for jordfuktighet i 40 felt.", [], False),        # Norwegian "for" only
+    ("Trabajo part-time con informes de Tableau via Zoom para 30 clientes.", [], False),
+    ("Creation de rapports Tableau via Zoom dans le but de suivre 30 clients.", [], False),  # French "but" only
+    ("Erstellung von Tableau Berichten via Zoom, also Kennzahlen fuer 30 Kunden.", [], False),  # German "also" only
+    ("Bouw van Tableau rapporten via Zoom; het project had 30 klanten.", [], False),  # Dutch "had" only
+    ("Ran surveys via Qualtrics for 40 students.", [], False),                      # an English line: "for" only
+    ("Ran the surveys via Qualtrics for 40 students.", [], True),
+    ("Worked part-time at the library for 2 years.", [], True),                     # "the", "for" stand alone
+    # Only ASCII words are read, whatever name or sign of another script the line holds.
+    ("Practicas en 清华大学: informes de Tableau para 30 clientes.", [], False),
+    ("Proyecto de 4º curso: sistema de control para 40 sensores.", [], False),
+    ("Research intern at 北京大学, built a pipeline for the lab.", [], True),
     # Residual: a line in another language that holds two of these words supplies the evidence.
-    pytest.param("Datainnsamling via sensorer for jordfuktighet i 40 felt.", [], False,
-                 marks=pytest.mark.xfail(strict=True, reason='Norwegian "for" and "via" are English function words')),
     pytest.param("Was ist ein Datenbankschema, also die Struktur der Messwerte.", [], False,
                  marks=pytest.mark.xfail(strict=True, reason='German "was" and "also" are English function words')),
+    pytest.param("Udvikling af et Python skript for mine kunder.", [], False,
+                 marks=pytest.mark.xfail(strict=True, reason='Danish "for" and "mine" are English function words')),
+    pytest.param("Was verantwoordelijk voor de meetpipeline; het project had 3 fasen.", [], False,
+                 marks=pytest.mark.xfail(strict=True, reason='Dutch "was" and "had" are English function words')),
+    pytest.param("Analyse des mesures à part, dans le but de suivre 40 parcelles.", [], False,
+                 marks=pytest.mark.xfail(strict=True, reason='French "part" and "but" are English function words')),
 ])
 def test_a_line_shows_itself_english_only_with_two_function_words_outside_the_renamed_phrases(line, renamed, english):
     assert em._english_line(line, renamed) is english
+
+
+# ------------------------------------------------------------------ criterion (3), round 5
+# The re-verification of e2ecc0a6 found three ways past the default keep, each shown on every route with
+# an accepting review (whose prompt accepts a faithful translation):
+#  * loanwords: "via" (Latin, in every listed language) and "part" of "part-time" counted as English
+#    function words, so a line with one more ("but", "also", "had", "for") read as English;
+#  * a name in another script: a Latin-script line holding one CJK, kana or Cyrillic letter skipped the
+#    default keep (_non_latin_frame), though language() reads it as English;
+#  * an ordinal sign: "º", "ª" and "ᵉ" are letters of no Latin name, so "4º curso" skipped it too.
+# Round 5 asks every line language() reads as English for the evidence, read on its ASCII words, and
+# counts neither "via" nor a hyphen-joined word. Each case below is shown on e2ecc0a6 and kept now.
+ROUND5_LINES = {  # name: (original, rewrite, (from, to), anchor)
+    "spanish part-time, via": ("Trabajo part-time con informes de Tableau via Zoom para 30 clientes.",
+                               "Trabajo part-time con Tableau reports via Zoom para 30 clientes.",
+                               ("informes de Tableau", "Tableau reports"), "Build Tableau reports."),
+    "french via, but": ("Creation de rapports Tableau via Zoom dans le but de suivre 30 clients.",
+                        "Creation de Tableau dashboards via Zoom dans le but de suivre 30 clients.",
+                        ("rapports Tableau", "Tableau dashboards"), "Build Tableau dashboards."),
+    "indonesian part-time, via": ("Bekerja part-time sebagai asisten lab via program kampus untuk 40 mahasiswa.",
+                                  "Bekerja part-time sebagai lab assistant via program kampus untuk 40 mahasiswa.",
+                                  ("asisten lab", "lab assistant"), "Work as a lab assistant."),
+    "german via, also": ("Erstellung von Tableau Berichten via Zoom, also Kennzahlen fuer 30 Kunden.",
+                         "Erstellung von Tableau dashboards via Zoom, also Kennzahlen fuer 30 Kunden.",
+                         ("Tableau Berichten", "Tableau dashboards"), "Build Tableau dashboards."),
+    "dutch via, had": ("Bouw van Tableau rapporten via Zoom; het project had 30 klanten.",
+                       "Bouw van Tableau dashboards via Zoom; het project had 30 klanten.",
+                       ("Tableau rapporten", "Tableau dashboards"), "Build Tableau dashboards."),
+    "swedish part-time, via": ("Deltid (part-time): Tableau rapporter via Zoom med 30 kunder.",
+                               "Deltid (part-time): Tableau dashboards via Zoom med 30 kunder.",
+                               ("Tableau rapporter", "Tableau dashboards"), "Build Tableau dashboards."),
+    "italian part-time, via": ("Lavoro part-time con report di Tableau via Zoom per 30 clienti.",
+                               "Lavoro part-time con Tableau dashboards via Zoom per 30 clienti.",
+                               ("report di Tableau", "Tableau dashboards"), "Build Tableau dashboards."),
+    "danish via, for": ("Udarbejdelse af Tableau rapporter via Zoom for 30 kunder.",
+                        "Udarbejdelse af Tableau dashboards via Zoom for 30 kunder.",
+                        ("Tableau rapporter", "Tableau dashboards"), "Build Tableau dashboards."),
+    "norwegian via, for": ("Utvikling av Tableau rapporter via Zoom for 30 kunder.",
+                           "Utvikling av Tableau dashboards via Zoom for 30 kunder.",
+                           ("Tableau rapporter", "Tableau dashboards"), "Build Tableau dashboards."),
+    "portuguese part-time, via": ("Estagio part-time com relatorios de Tableau via Zoom para 30 clientes.",
+                                  "Estagio part-time com Tableau reports via Zoom para 30 clientes.",
+                                  ("relatorios de Tableau", "Tableau reports"), "Build Tableau reports."),
+    "spanish naming 清华大学": ("Practicas en 清华大学: informes de Tableau para 30 clientes.",
+                            "Practicas en 清华大学: Tableau reports para 30 clientes.",
+                            ("informes de Tableau", "Tableau reports"), "Build Tableau reports."),
+    "french naming 北京大学": ("Stage au laboratoire de 北京大学 : rapports Tableau pour 30 clients.",
+                           "Stage au laboratoire de 北京大学 : Tableau reports pour 30 clients.",
+                           ("rapports Tableau", "Tableau reports"), "Build Tableau reports."),
+    "german naming トヨタ": ("Praktikum bei トヨタ: Erstellung von Tableau Berichten fuer 30 Kunden.",
+                          "Praktikum bei トヨタ: Erstellung von Tableau reports fuer 30 Kunden.",
+                          ("Tableau Berichten", "Tableau reports"), "Build Tableau reports."),
+    "spanish naming МГУ": ("Practicas en МГУ: informes de Tableau para 30 clientes.",
+                           "Practicas en МГУ: Tableau reports para 30 clientes.",
+                           ("informes de Tableau", "Tableau reports"), "Build Tableau reports."),
+    "spanish 4º curso": ("Proyecto de 4º curso: sistema de control para 40 sensores.",
+                         "Proyecto de 4º curso: control system para 40 sensores.",
+                         ("sistema de control", "control system"), "Build a control system for lab sensors."),
+    "spanish nº": ("Proyecto nº 3: sistema de control para 40 sensores del laboratorio.",
+                   "Proyecto nº 3: control system para 40 sensores del laboratorio.",
+                   ("sistema de control", "control system"), "Build a control system for lab sensors."),
+    "portuguese 2ª": ("Desenvolvi a 2ª versao do pipeline de dados para 40 sensores.",
+                      "Desenvolvi a 2ª versao do data pipeline para 40 sensores.",
+                      ("pipeline de dados", "data pipeline"), "Build a data pipeline in Python."),
+    "italian 1º anno": ("Progetto del 1º anno: pipeline di dati per 40 sensori.",
+                        "Progetto del 1º anno: data pipeline per 40 sensori.",
+                        ("pipeline di dati", "data pipeline"), "Build a data pipeline in Python."),
+    "french 2ᵉ année": ("Projet de 2ᵉ annee : pipeline de mesures pour 40 parcelles.",
+                        "Projet de 2ᵉ annee : measurement pipeline pour 40 parcelles.",
+                        ("pipeline de mesures", "measurement pipeline"),
+                        "Maintain the measurement pipeline for field plots."),
+}
+
+
+@pytest.mark.parametrize("path", ALL_PATHS)
+@pytest.mark.parametrize("name", list(ROUND5_LINES))
+def test_a_foreign_line_with_loanwords_a_name_or_a_sign_is_kept_as_written(
+        opportunity, monkeypatch, path, name):  # noqa: F811
+    original, rewrite, (source, term), anchor = ROUND5_LINES[name]
+    shown, seen = run(opportunity, monkeypatch, path, original, _relabel_row(rewrite, source, term), anchor)
+    assert (shown, seen) == ([], set())
+
+
+@pytest.mark.parametrize("name", list(ROUND5_LINES))
+def test_the_contract_keeps_such_a_line_as_english_unproven(name):
+    original, rewrite, (source, term), anchor = ROUND5_LINES[name]
+    anchors = {"t1": em.Anchor("t1", {"field": "description", "requirement_index": None, "start": 0,
+                                      "end": len(anchor), "quote": anchor})}
+    outcome = em.check_rewrite(em.Unit("b1", original, original), {"unit_id": "b1", **_relabel_row(rewrite, source, term)},
+                               anchors, output_language=em.language(original))
+    assert (outcome.status, outcome.code, outcome.detail) == ("kept", "beyond_allowed_edit", "english_unproven")
+
+
+# An English line that names a Chinese institution is asked for the same evidence: with it, its relabel
+# reaches the review on every route; without it, the line is kept as written (a lost suggestion; no
+# repository sample is such a line, scripts/english_evidence_keeps.py).
+ENGLISH_WITH_A_NAME = {
+    "with the evidence": ("Wrote Python scripts for the lab's 40 sensors at 北京大学.",
+                          "Wrote Python code for the lab's 40 sensors at 北京大学.",
+                          ("Python scripts", "Python code"), "Experience writing Python code is required.", True),
+    "without it": ("Wrote Python scripts at 北京大学 for 40 sensors.", "Wrote Python code at 北京大学 for 40 sensors.",
+                   ("Python scripts", "Python code"), "Experience writing Python code is required.", False),
+}
+
+
+@pytest.mark.parametrize("path", ALL_PATHS)
+@pytest.mark.parametrize("name", list(ENGLISH_WITH_A_NAME))
+def test_an_english_line_naming_a_chinese_institution_needs_the_same_evidence(
+        opportunity, monkeypatch, path, name):  # noqa: F811
+    original, rewrite, (source, term), anchor, reaches = ENGLISH_WITH_A_NAME[name]
+    shown, seen = run(opportunity, monkeypatch, path, original, _relabel_row(rewrite, source, term), anchor)
+    assert (rewrite in shown, rewrite in seen) == (reaches, reaches), (shown, seen)
 
 
 # Two cases the re-verification found no test for (a6979522 passes them): an accented word outside the
