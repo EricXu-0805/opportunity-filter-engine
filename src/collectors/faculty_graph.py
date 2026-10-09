@@ -65,7 +65,7 @@ from collections import Counter, defaultdict
 from contextlib import contextmanager
 from copy import deepcopy
 from datetime import UTC, datetime
-from urllib.parse import unquote, urljoin
+from urllib.parse import quote, unquote, urljoin
 
 from backend.lib.contact_visibility import carries_contact_evidence
 from src.normalizers.deactivate_stale_faculty import (
@@ -3117,6 +3117,15 @@ def _json_dir_records(dept: dict, cfg: dict, recs) -> list[dict]:
             # W11; 395 corpus records). Drop it so _normalize falls back to
             # the department directory_url, which IS the observed source.
             url_v = ""
+        if url_v and cfg.get("link_rewrite"):
+            # UF Health's Apollo feeds link every profile on an internal
+            # staging host; the public site serves the same slug. A link that
+            # doesn't fit the pattern is dropped rather than kept unreachable.
+            pattern, replacement = cfg["link_rewrite"]
+            m = re.fullmatch(pattern, url_v)
+            url_v = m.expand(replacement) if m else ""
+        if not url_v and cfg.get("link_template"):
+            url_v = _json_link_template(x, cfg["link_template"])
         research = ""
         keywords: list[str] = []
         for rf in ([cfg["research_field"]] if isinstance(cfg.get("research_field"), str)
@@ -3139,9 +3148,66 @@ def _json_dir_records(dept: dict, cfg: dict, recs) -> list[dict]:
                 research = str(_dig(x, rf) or "").strip()
                 if research:
                     break
+        department = ""
+        if cfg.get("department_field"):
+            department = _json_department(_dig(x, cfg["department_field"]),
+                                          cfg.get("department_units"))
         specs.append(faculty(name, title=title, url=url_v, email=email,
-                             research_areas=research, keywords=keywords))
+                             research_areas=research, keywords=keywords,
+                             department=department))
     return specs
+
+
+def _json_link_template(record: dict, template: str) -> str:
+    """Fill ``{dotted.path}`` placeholders from a feed record.
+
+    For feeds that carry a person's id but no absolute profile URL (UCR's
+    ``netId``, ASU's ``eid``). Any empty placeholder yields ``""`` so the record
+    falls back to the directory page instead of a URL shared by everyone
+    missing that id.
+    """
+    missing = False
+
+    def fill(m: re.Match) -> str:
+        nonlocal missing
+        value = _dig(record, m.group(1))
+        text = "" if value is None else str(value).strip()
+        if not text:
+            missing = True
+        return quote(text, safe="")
+
+    url = re.sub(r"\{([^{}]+)\}", fill, template)
+    return "" if missing else url
+
+
+def _json_department(raw, units: dict | None) -> str:
+    """A feed record's home department, or ``""`` for the config umbrella.
+
+    Without ``units`` the field passes through. With them, the value must name
+    one of the school's own departments (``names`` / ``aliases``) after the
+    school ``prefix`` and an optional rank modifier (``strip``), followed by
+    nothing or by what ``boundary`` allows (a division in parentheses, a second
+    appointment, page text the harvest ran into). Anything else — another
+    institution's appointment read off a biography, a centre, a fragment — is
+    not evidence of a department here, so it returns ``""``.
+    """
+    text = re.sub(r"\s+", " ", str(raw or "")).strip()
+    if units is None:
+        return text
+    prefix = units.get("prefix", "")
+    if prefix:
+        if not text.startswith(prefix):
+            return ""
+        text = text[len(prefix):]
+    if units.get("strip"):
+        text = re.sub(units["strip"], "", text, count=1)
+    names = {n: n for n in units.get("names", ())}
+    names.update(units.get("aliases", {}))
+    boundary = re.compile(units.get("boundary", r"\s*$"))
+    for name in sorted(names, key=len, reverse=True):
+        if text.startswith(name) and boundary.match(text[len(name):]):
+            return prefix + names[name]
+    return ""
 
 
 # ---------------------------------------------------------------------------
