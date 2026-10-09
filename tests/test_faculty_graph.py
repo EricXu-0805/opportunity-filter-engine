@@ -470,17 +470,27 @@ class TestScrapeLayer:
                              paginate={"param": "page", "start": 1, "max": 5})
         assert cov["partial_render_rows"] == 1
 
-    def test_pages_past_the_cap_are_left_to_the_config(self, monkeypatch):
-        # Only pages the walk is configured to reach are judged. Judging a
-        # linked page past ``max`` would withhold every unit whose site lists
-        # more pages than its cap, and how many do has not been measured.
+    def test_a_page_linked_past_the_cap_withholds_the_unit(self, monkeypatch):
+        # The walk stops at ``max``; a pager that links a page past it says the
+        # roster goes on (Harris's page 5 held Ryan Kellogg, retired while
+        # listed, when its max was 4).
         pages = {
             "https://x.edu/f": self._card("a", "Ann Alpha") + self._NAV.format(1),
             "https://x.edu/f?page=1": self._card("b", "Ben Beta") + self._NAV.format(2),
         }
         cov = self._coverage(monkeypatch, pages,
                              paginate={"param": "page", "start": 1, "max": 1})
-        assert cov["partial_render_rows"] == 0
+        assert cov["partial_render_rows"] == 1
+
+    def test_a_last_page_link_past_the_cap_withholds_the_unit(self, monkeypatch):
+        # Drupal's full pager names the last page on the first one.
+        pages = {"https://x.edu/f": (self._card("a", "Ann Alpha") + self._NAV.format(1)
+                                     + self._NAV.format(7)),
+                 "https://x.edu/f?page=1": self._card("b", "Ben Beta"),
+                 "https://x.edu/f?page=2": self._card("c", "Cy Gamma")}
+        cov = self._coverage(monkeypatch, pages,
+                             paginate={"param": "page", "start": 1, "max": 2})
+        assert cov["partial_render_rows"] == 1
 
     def test_a_pager_on_the_page_the_directory_redirects_to_counts(self, monkeypatch):
         # cs.cornell.edu/people/faculty lands on /directory, and its pager's

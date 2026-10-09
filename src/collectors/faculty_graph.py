@@ -994,8 +994,9 @@ def _new_coverage() -> dict:
         "duplicate_rows": 0,
         "identity_match_failures": 0,
         "parser_errors": 0,
-        # Also counts roster pages that did not load (blocked, timed out,
-        # rendered empty): the people listed on them were never seen.
+        # Also counts roster pages the walk did not read (blocked, timed out,
+        # rendered empty, past the walk's cap): the people listed on them were
+        # never seen.
         "partial_render_rows": 0,
     }
 
@@ -1529,10 +1530,11 @@ def _scrape_directory(dept: dict) -> list[dict]:
             #     an empty document after every retry;
             #   * a document with no text at all, or Cloudflare's shell;
             #   * a page without cards before a page with cards;
-            #   * a page within ``max`` that the roster's own pager links to
-            #     (on the configured directory or where it redirects) and that
-            #     showed no cards. This is what tells a plain fetch's None for
-            #     a 403 or a timeout from the 404 past the last page.
+            #   * a page that the roster's own pager links to (on the configured
+            #     directory or where it redirects) and that showed no cards.
+            #     This is what tells a plain fetch's None for a 403 or a timeout
+            #     from the 404 past the last page. A linked page past ``max``
+            #     means the walk stopped short of the roster.
             start, last = pag.get("start", 1), pag.get("max", 12)
             card_sel = sel.get("card", "")
             landed = getattr(soup, "_ofe_final_url", None) or base
@@ -1570,7 +1572,7 @@ def _scrape_directory(dept: dict) -> list[dict]:
                 people.extend(fresh)
             last_read = max(read, default=start - 1)
             not_read |= {pg for pg in walked if pg not in read and pg < last_read}
-            not_read |= {pg for pg in linked if start <= pg <= last and pg not in read}
+            not_read |= {pg for pg in linked if pg >= start and pg not in read}
             if not_read:
                 _cover("partial_render_rows", len(not_read))
                 logger.warning(

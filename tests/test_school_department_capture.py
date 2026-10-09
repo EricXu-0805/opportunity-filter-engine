@@ -607,6 +607,27 @@ class TestJhuBmeFollowUpFailure:
         assert active == ["Ada Example", "Bo Sample", "Cy Placeholder", "Fay Newcomer"]
 
 
+# --- rosters whose pager went past the walk's cap ----------------------------
+
+class TestPagerCaps:
+    """A walk that stops short of a roster's last page now withholds the unit,
+    so these four, whose live pagers linked pages past ``max``, would retire
+    nobody until their cap reaches the last page. Last pages read live on
+    2026-10-09; Harris and UTK Architecture had already retired a professor
+    listed on an unread page (Ryan Kellogg, Cary Staples)."""
+
+    @pytest.mark.parametrize("module, short, last_page", [
+        ("uchicago_faculty", "HARRIS", 11),
+        ("utk_faculty", "ARCH", 10),
+        ("mit_faculty", "HST", 7),
+        ("uva_faculty", "EDHD", 16),
+    ])
+    def test_the_walk_reaches_the_last_page(self, module, short, last_page):
+        import importlib
+        mod = importlib.import_module(f"src.collectors.schools.{module}")
+        assert _dept(mod, short)["scrape"]["paginate"]["max"] >= last_page
+
+
 # --- JHU: a School of Medicine seed twin of a roster professor ---------------
 
 def _som_row(n, name, title, appointment):
