@@ -301,7 +301,13 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # cover. Two UIUC stems stop reaching other fields' departments ("civil" inside
 # "civilizations", "comparative" in comparative literature). The stems are a
 # table, not a hashed knob, so only the base can retire the old lists.
-_MATCHER_VERSION_BASE = "18"
+# 20 (19 is the deadline closure, b877ded5 on main): match reasons stop
+# presenting a campus program spec's majors and class years as the program's
+# terms, and a configured or keyword-scanned SRO pay value no longer earns the
+# "Paid opportunity" / "Includes stipend" sentence. No score moves, but cached
+# explanations would keep the old sentences, and the fingerprint hashes knobs,
+# not sentences.
+_MATCHER_VERSION_BASE = "20"
 
 
 def _matcher_fingerprint() -> str:

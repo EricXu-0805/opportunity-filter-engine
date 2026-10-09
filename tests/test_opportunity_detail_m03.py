@@ -39,6 +39,7 @@ from src.evidence import (
     neutralize_unverified_faculty_claims,
     stamp_collector_templates,
 )
+from src.matcher.config import MATCHER_VERSION
 from src.matcher.ranker import _reason_priority, score_eligibility, score_upside
 from src.normalizers.normalizer import normalize
 
@@ -903,6 +904,9 @@ class TestCampusGraphContract:
         _, _, posting_gaps = score_eligibility(miss, posting)
         assert "Your major (Biology) is a direct match" in posting_fits
         assert posting_gaps == ["Typically targets junior, senior", "Prefers Biology"]
+        # Reasons are part of the matcher version, and the fingerprint cannot
+        # see a sentence change: cached explanations must not keep the old ones.
+        assert int(MATCHER_VERSION.split(".")[0]) >= 20
 
     def test_template_class_years_get_no_attribution(self):
         record = self._configured()
