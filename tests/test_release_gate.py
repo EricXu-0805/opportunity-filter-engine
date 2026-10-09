@@ -632,6 +632,16 @@ class TestReleaseRecord:
         assert got["status"] == gate.FAIL
         assert got["reason"] == "flag_drift"
 
+    def test_an_unreadable_deployed_flag_table_does_not_pass(self, monkeypatch):
+        # Both commits are in the repo, but one side's table could not be read
+        # as data (release_scope_at answers None for it): no comparison was
+        # made, so the record cannot say the flags are aligned.
+        _repo_state(monkeypatch, scopes={
+            SHA_A: {"backend": dict(_FLAGS), "frontend": None}})
+        got = gate.check_release_record(SHA_A, _deployment())
+        assert got["status"] != gate.PASS
+        assert got["reason"] == "flag_unreadable"
+
     def test_a_deploy_that_does_not_name_its_commit_is_unverified(self, monkeypatch):
         # /api/health reports null when RENDER_GIT_COMMIT is unset, and the
         # page says data-release-sha="unknown": no identity, so no record.
@@ -1655,6 +1665,28 @@ class TestMigrationParity:
                                 parity.applied_rows(rows))
         assert report["in_parity"] is False
         assert report["duplicates"] == {"012_match_feedback.sql": 2}
+
+    def test_a_row_naming_two_committed_files_is_ambiguous(self, tmp_path):
+        # Both files are matched by their own version rows, so nothing is
+        # missing: only the name-only row, which fits either file, is drift.
+        directory = tmp_path / "migrations"
+        directory.mkdir()
+        for name in ("030_fix_policies.sql", "045_fix_policies.sql"):
+            (directory / name).write_text("select 1;\n")
+        rows = [{"version": "030", "name": None}, {"version": "045", "name": None},
+                {"version": "20261001000000", "name": "fix_policies"}]
+        report = parity.compare(parity.committed_migrations(directory),
+                                parity.applied_rows(rows))
+        assert report["missing"] == [] and report["extra"] == []
+        assert report["duplicates"] == {}
+        assert report["ambiguous"] == [{
+            "version": "20261001000000", "name": "fix_policies",
+            "files": ["030_fix_policies.sql", "045_fix_policies.sql"]}]
+        assert report["in_parity"] is False
+        export = tmp_path / "rows.json"
+        export.write_text(json.dumps(rows))
+        assert parity.main(["--applied", str(export),
+                            "--migrations-dir", str(directory)]) == 1
 
     def test_different_bytes_are_reported_but_do_not_fail_by_default(self, tmp_path):
         # 025-032 went in comment-stripped (memory 2026-09-30): same behaviour,

@@ -119,7 +119,9 @@ _EVIDENCE_MAX_AGE_DAYS: dict[str, float] = {
     "backup": 7.0,
     "open_incidents": 3.0,
     "provider_readiness": 3.0,
-    # Which commit is serving changes on every merge, several times a day.
+    # Which commit is serving changes on every merge, several times a day, so
+    # a recorded observation can be behind well inside this window. The
+    # release-gate workflow reads both deploys live instead.
     "release_record": 1.0,
 }
 

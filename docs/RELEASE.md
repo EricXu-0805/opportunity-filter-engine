@@ -64,7 +64,10 @@ consulting.
 
 One record ties together what is actually serving: the backend's commit, the
 frontend's commit, the data each was built with, and the flags each enforces.
-The gate fails when any of them differ from the candidate or from each other.
+The gate fails when either deploy is on a commit other than the candidate, or
+when the two deploys' data versions or flag tables differ. Without
+`--release-sha` it does not compare the two deployed commits with each other;
+the `release_sha` gate already fails such a run.
 
 ```
 python scripts/release_gate.py --release-sha <40-hex> \
@@ -308,11 +311,16 @@ SHA and confirm the previously-passing gates still pass.
 
 ## 6. Environment variables
 
-Each table lists every variable that code reads. `tests/test_release_gate.py`
-scans the code and fails when a variable is read but missing here, or listed
-here but read nowhere. In the Required column, `required` means production
-loses a shipped capability without the variable. Each backend `required` row
-has a test that removes it and expects the failure named in its last column.
+Each table lists every variable read by the Python code in `backend/` and
+`src/`, by the frontend (`next.config.js`, `frontend/scripts/`, `frontend/src/`),
+and as `secrets.*`/`vars.*` by the workflows. `tests/test_release_gate.py` scans
+those and fails when a variable is read but missing here, or listed here but
+read nowhere. The operator tools in the top-level `scripts/` directory are not
+scanned or listed (for example `snapshot_reminder.py` reads `RESEND_FROM` and
+`OPERATOR_EMAIL`, and `restore_drill.py` reads `DRILL_*`). In the Required
+column, `required` means production loses a shipped capability without the
+variable. Each backend `required` row has a test that removes it and expects
+the failure named in its last column.
 
 ### Backend (Render web service)
 
@@ -371,4 +379,5 @@ has a test that removes it and expects the failure named in its last column.
 | `ADMIN_TOKEN`, `RESEND_API_KEY` | required | `daily-reminders.yml` fails its secrets step. |
 | `REFRESH_PAT` | required | `refresh-data.yml` cannot open its data PR and fails. |
 | `FRONTEND_URL` | optional | Alert emails lose their dashboard link. The release gate does not observe the frontend. |
-| `OPERATOR_EMAIL`, `RESEND_FROM_EMAIL` | optional | Alerts are printed to the job log instead of emailed. |
+| `OPERATOR_EMAIL` | optional | No alert or digest email is sent. The `daily-reminders.yml` alert step prints the alerts to the job log; the other alert steps log that they cannot alert and pass. `snapshot-reminder.yml` fails when a snapshot refresh is due. |
+| `RESEND_FROM_EMAIL` | optional | A repository variable (`vars.`), not a secret. Workflow emails are sent from Resend's test sender, `JoinALab <onboarding@resend.dev>`. |
