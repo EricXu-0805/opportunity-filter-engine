@@ -483,7 +483,18 @@ COLLEGE_DEPARTMENT_SIGNALS: dict[str, list[str]] = {
 # CMU's Language Technologies Institute, "international" and "global" reached
 # 247 faculty in language and literature departments, and "management" reached
 # 571 outside business schools, mostly in environmental science, recreation,
-# hospitality, construction and industrial engineering departments.
+# hospitality, construction and industrial engineering departments. The same
+# held for words a science shares with engineering: "environment" reached 2,222
+# faculty in civil, chemical and environmental engineering, "biolog" 702 in
+# chemical and biological engineering, "construction" 289 in civil engineering.
+# "ecology" reached the 85 faculty of human ecology and "patholog" the 232 of
+# plant pathology.
+_ECOLOGY = (
+    "ecology and", "ecology &", "ecology, evolution", "& ecology", "of ecology",
+    "wildlife ecology", "applied ecology", "community ecology",
+)
+_BIOLOGY = ("biology", "biological scien")
+_OCEAN = ("oceanograph", "oceanic", "oceans", "ocean scien", "ocean and")
 _FIELD_DEPARTMENT_STEMS: dict[str, tuple[str, ...]] = {
     "engineering": (
         "engineering", "computer scien", "computing", "electrical", "mechanical", "aerospace",
@@ -496,12 +507,12 @@ _FIELD_DEPARTMENT_STEMS: dict[str, tuple[str, ...]] = {
     "data_science": ("data scien", "statistic", "computer scien", "computing", "informatics"),
     "information": ("information", "informatics", "library"),
     "natural_sciences": (
-        "physics", "chemistr", "biolog", "mathematic", "statistic", "astronom", "neuroscien",
-        "geolog", "geoscien", "earth", "atmospheric", "ocean", "planetary", "genetic", "ecology",
+        "physics", "chemistr", *_BIOLOGY, "mathematic", "statistic", "astronom", "neuroscien",
+        "geolog", "geoscien", "earth", "atmospheric", *_OCEAN, "planetary", "genetic", *_ECOLOGY,
         "life scien", "biosci", "molecular sci",
     ),
     "life_sciences": (
-        "biolog", "genetic", "neuroscien", "physiolog", "life scien", "biosci", "ecology",
+        *_BIOLOGY, "genetic", "neuroscien", "physiolog", "life scien", "biosci", *_ECOLOGY,
         "biochemistr", "biophysic", "molecular sci",
     ),
     "chemistry": ("chemistr", "chemical"),
@@ -550,8 +561,8 @@ _FIELD_DEPARTMENT_STEMS: dict[str, tuple[str, ...]] = {
         "occupational therapy", "recreation",
     ),
     "medicine": (
-        "medicine", "medical", "patholog", "physiolog", "pharmacolog", "immunolog", "surgery",
-        "biomedical",
+        "medicine", "medical", "department of pathology", "physiolog", "pharmacolog",
+        "immunolog", "surgery", "biomedical",
     ),
     "pharmacy": ("pharmac",),
     "dentistry": ("dental",),
@@ -562,13 +573,18 @@ _FIELD_DEPARTMENT_STEMS: dict[str, tuple[str, ...]] = {
         "fisheries",
     ),
     "environment": (
-        "environment", "earth", "geolog", "geoscien", "geograph", "atmospheric", "ocean", "marine",
-        "climate", "sustainab", "ecology", "planetary", "forestry", "natural resources", "mineral",
+        "environmental scien", "environmental stud", "environmental affairs",
+        "environmental conservation", "environmental policy", "environmental social",
+        "environmental analysis", "environmental biolog", "environmental toxicolog",
+        "the environment", "earth", "geolog", "geoscien", "geograph", "atmospheric", *_OCEAN,
+        "marine", "climate", "sustainability", "sustainable biomaterials",
+        "sustainable development", *_ECOLOGY, "planetary", "forest", "natural resources",
         "wildlife", "fisheries", "meteorolog",
     ),
     "architecture_planning": (
-        "architecture", "planning", "urban", "landscape", "design", "construction",
-        "built environment", "preservation", "real estate",
+        "architecture", "planning", "urban studies", "urban planning", "landscape", "design",
+        "construction science", "construction management", "school of construction",
+        "building construction", "preservation", "real estate",
     ),
     "communication_media": (
         "journalism", "advertising", "media", "communication", "public relations", "broadcast",
@@ -1190,10 +1206,10 @@ def _college_names_department(college: str, dept_lower: str) -> bool:
     """Whether one of the college's stems names this department.
 
     Cached per pair because a ranking asks it of every row while the corpus has
-    2,268 distinct department strings, and a catalog college carries up to 75
+    2,268 distinct department strings, and a catalog college carries up to 87
     stems: one pass over the 142,861-row corpus for "College of Arts and
-    Sciences" took about 2 s uncached and 0.13 s cached. Only known college
-    names reach the cache, since the college is free text on the request.
+    Sciences" took 1.6 s uncached and 0.04 s cached. Only known college names
+    reach the cache, since the college is free text on the request.
 
     A one-word stem has to name a word of the department, not merely appear
     inside one. "art" is inside "department": matching it as a substring gave

@@ -3018,6 +3018,83 @@ class TestCollegeAffinityOutsideUiuc:
         assert self._affinity(policy, "Department of Global Languages and Cultures") == 0.0
         assert self._affinity(policy, "Keough School of Global Affairs") > 0.0
 
+    def test_a_science_college_does_not_reach_the_engineering_departments_its_words_name(self):
+        """One-word stems reached engineering departments that share a word with
+        the field. "environment" gave 33 agriculture, natural-resources and
+        environment colleges 2,222 faculty in civil, chemical and environmental
+        engineering. "biolog" gave arts-and-sciences and life-science colleges 702
+        in chemical and biological engineering, "ocean" 109 in ocean engineering,
+        "sustainab" 112 and "mineral" 59 in engineering schools."""
+        for college in ("College of Agriculture & Life Sciences", "College of the Environment",
+                        "Rausser College of Natural Resources"):
+            for dept in ("Department of Civil and Environmental Engineering",
+                         "School of Civil & Environmental Engineering",
+                         "Department of Chemical and Environmental Engineering",
+                         "Department of Chemical and Biological Engineering",
+                         "School of Sustainable Engineering and the Built Environment",
+                         "Department of Ocean Engineering",
+                         "Department of Mining and Minerals Engineering"):
+                assert self._affinity(college, dept) == 0.0, (college, dept)
+            for dept in ("Department of Environmental Sciences", "Department of Environmental Studies",
+                         "Nicholas School of the Environment", "Department of Environmental Conservation",
+                         "School of Environmental & Forest Sciences", "School of Sustainability",
+                         "Scripps Institution of Oceanography",
+                         "Department of Atmospheric and Oceanic Sciences"):
+                assert self._affinity(college, dept) > 0.0, (college, dept)
+        assert self._affinity("College of the Environment",
+                              "O'Neill School of Public and Environmental Affairs") > 0.0
+
+        sciences = "College of Arts and Sciences"
+        for dept in ("Department of Chemical and Biological Engineering",
+                     "Department of Biological Systems Engineering",
+                     "Kevin T. Crofton Department of Aerospace and Ocean Engineering"):
+            assert self._affinity(sciences, dept) == 0.0, dept
+        for dept in ("Department of Biological Sciences", "Department of Biology",
+                     "Department of Microbiology", "Department of Ocean Sciences",
+                     "Department of Oceanography"):
+            assert self._affinity(sciences, dept) > 0.0, dept
+        # An agriculture college keeps the agricultural engineering it shares.
+        assert self._affinity("College of Agriculture & Life Sciences",
+                              "Agricultural & Biological Engineering") > 0.0
+
+    def test_ecology_does_not_carry_a_science_college_into_human_ecology(self):
+        """"ecology" gave 96 natural-science, life-science and environment colleges
+        the 85 faculty of the colleges and departments of human ecology, which are
+        human development and consumer science."""
+        for college in ("College of Agriculture & Life Sciences", "College of Arts and Sciences",
+                        "College of the Environment"):
+            for dept in ("College of Human Ecology", "Department of Human Ecology", "Social Ecology"):
+                assert self._affinity(college, dept) == 0.0, (college, dept)
+            for dept in ("Department of Ecology and Evolutionary Biology",
+                         "Department of Ecology & Evolutionary Biology",
+                         "Department of Ecology, Evolution & Behavior", "Odum School of Ecology",
+                         "Department of Applied Ecology", "Population & Community Ecology",
+                         "Department of Organismal Biology & Ecology"):
+                assert self._affinity(college, dept) > 0.0, (college, dept)
+        assert self._affinity("College of the Environment",
+                              "Department of Forest & Wildlife Ecology") > 0.0
+        assert self._affinity("College of Human Ecology", "College of Human Ecology") > 0.0
+
+    def test_design_and_medicine_colleges_keep_to_their_own_departments(self):
+        """"construction" gave 29 architecture and planning colleges 289 faculty in
+        civil and construction engineering, "urban" 80 in civil and urban
+        engineering and "built environment" 78 in an engineering school, the only
+        department it named. "patholog" gave medical schools 232 faculty in plant
+        pathology."""
+        design = "College of Architecture, Planning and Landscape Architecture"
+        for dept in ("Department of Civil, Construction and Environmental Engineering",
+                     "Lyles School of Civil & Construction Engineering",
+                     "Department of Civil and Urban Engineering",
+                     "School of Sustainable Engineering and the Built Environment"):
+            assert self._affinity(design, dept) == 0.0, dept
+        for dept in ("Department of Construction Science", "Department of Construction Management",
+                     "Bowen School of Construction", "Department of Urban Studies and Planning",
+                     "Urban Planning"):
+            assert self._affinity(design, dept) > 0.0, dept
+        for dept in ("Department of Plant Pathology", "Department of Entomology and Plant Pathology"):
+            assert self._affinity("School of Medicine", dept) == 0.0, dept
+        assert self._affinity("School of Medicine", "Department of Pathology") > 0.0
+
     def test_only_a_known_college_reaches_the_department_cache(self):
         """The college is free text on the request; the cache must not grow
         with it."""
