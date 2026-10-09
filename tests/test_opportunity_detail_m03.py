@@ -813,6 +813,7 @@ class TestUiucSroContract:
         # windows from the description alone, joined with no field label in them
         (True, "no", "nts must be US citizens or permanent residents. Apply | must be US citizens or perm"),
         (True, "no", ""),  # the page had no keyword window at all: the description was scanned
+        (True, "no", "  "),  # blank is empty
     ])
     def test_legacy_record_degrades_without_a_rescrape(self, citizenship, intl, notes):
         # The shape every SRO row has on main: found on a list page, notes
@@ -835,7 +836,7 @@ class TestUiucSroContract:
         # A window note dates the row to before Compensation was read; an
         # empty one does not (the current collector writes it when the page
         # has no Citizenship Requirement field, and reads Compensation).
-        if notes:
+        if notes.strip():
             assert inferred_method(canonical, "paid") == SRO_SCANNED_PAY_METHOD
             assert fields["funding"]["inferred"]["paid"] == {"value": "yes", "basis": "text_scan"}
             assert payload["paid_attribution"] == "inferred"
@@ -862,6 +863,20 @@ class TestUiucSroContract:
         )
         _, canonical = _served(legacy)
         assert inferred_method(canonical, "paid") == method
+
+    @pytest.mark.parametrize("citizenship, intl, method", [
+        (True, "no", SRO_SCANNED_CITIZENSHIP_METHOD), (False, "yes", SRO_SCANNED_CITIZENSHIP_METHOD),
+        (None, "unknown", None),
+    ])
+    def test_legacy_scanned_citizenship_is_stamped_only_when_it_answers(self, citizenship, intl, method):
+        legacy = _listing(
+            id="sro-legacy", source="uiuc_sro", source_url=_SRO_LIST, url=_SRO_DETAIL,
+            eligibility={"citizenship_required": citizenship, "international_friendly": intl,
+                         "work_auth_notes": ""},
+        )
+        _, canonical = _served(legacy)
+        assert inferred_method(canonical, "eligibility.citizenship_required") == method
+        assert inferred_method(canonical, "eligibility.international_friendly") == method
 
 
 # --- campus_graph / ucb_campus ---------------------------------------------

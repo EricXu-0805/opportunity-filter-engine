@@ -264,8 +264,8 @@ def stamp_collector_templates(record: dict) -> dict:
     Idempotent, and never overrides an existing stamp: a field some other
     producer already accounted for keeps that producer's method. Only a value
     equal to the registered template (or, for a configured program or a
-    scanned SRO field, any value it can hold) is stamped — a future collector
-    that reads a real pay value off the page is left stated.
+    scanned SRO field, any answer other than unknown) is stamped — a future
+    collector that reads a real pay value off the page is left stated.
     """
     templates = _COLLECTOR_TEMPLATE_STAMPS.get(record.get("source") or "", {})
     matches = {path: (lambda value, template=template: value == template, method)
