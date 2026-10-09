@@ -599,12 +599,24 @@ CITIZENSHIP_METHOD = "rule:sro_citizenship_keywords"
 _ANTICIPATED_RE = re.compile(r"^\s*anticipated\b[\s:]*", re.IGNORECASE)
 
 
+_UNPAID_RE = re.compile(
+    r"\bunpaid\b|\bunfunded\b|\bvolunteer\b|\bno (?:compensation|pay|stipend|salary)\b"
+    r"|\bnot (?:paid|funded)\b|^\s*none\s*$",
+    re.IGNORECASE,
+)
+# Any other negation ("Stipend not provided", "No housing; $500 travel")
+# leaves what is and is not paid to a reader, and a keyword scan of the same
+# words would only read "stipend" back out of it.
+_PAY_NEGATION_RE = re.compile(r"\bno\b|\bnot\b|\bnone\b|\bwithout\b", re.IGNORECASE)
+
+
 def _paid_from_compensation(value: str) -> str:
     """yes/no/unknown from the page's own Compensation field."""
-    lower = value.lower()
-    if re.search(r"\bunpaid\b|\bvolunteer\b|\bno compensation\b", lower):
+    if _UNPAID_RE.search(value):
         return "no"
-    if re.search(r"\$\s?\d|\bpaid\b|\bstipends?\b|\bsalary\b|\bwages?\b|\bfunded\b", lower):
+    if _PAY_NEGATION_RE.search(value):
+        return "unknown"
+    if re.search(r"\$\s?\d|\bpaid\b|\bstipends?\b|\bsalary\b|\bwages?\b|\bfunded\b", value, re.IGNORECASE):
         return "yes"
     return "unknown"
 
@@ -680,7 +692,7 @@ def raw_to_normalized(raw: RawOpportunity) -> dict:
 
     compensation = extra.get("compensation", "")
     paid = _paid_from_compensation(compensation) if compensation else "unknown"
-    if paid == "unknown":
+    if paid == "unknown" and not _PAY_NEGATION_RE.search(compensation):
         paid = _detect_paid_status(extra.get("paid_info", "") + " " + desc)
         if paid != "unknown":
             stamps["paid"] = PAID_METHOD

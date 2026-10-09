@@ -644,6 +644,23 @@ class TestUiucSroContract:
         assert _where(fields["funding"], "compensation") == "unknown"
         assert payload["paid_attribution"] == "inferred"
 
+    @pytest.mark.parametrize("compensation, paid", [
+        ("Unpaid", "no"), ("No stipend", "no"), ("Not paid", "no"),
+        ("$7,000", "yes"), ("Paid Program", "yes"), ("Stipend not provided", None),
+    ])
+    def test_compensation_field_decides_pay(self, monkeypatch, compensation, paid):
+        # The description mentions a stipend: a keyword scan would say "yes"
+        # whatever the field says, so it must not run behind a field.
+        record = _sro_fetch(monkeypatch, _sro_detail_html(
+            compensation=compensation, body="<p>Participants receive a stipend.</p>",
+        ))
+        _, fields = _detail(record)
+        assert fields["funding"]["explicit"]["compensation"] == compensation
+        if paid is None:
+            assert _where(fields["funding"], "paid") == "unknown"
+        else:
+            assert fields["funding"]["explicit"]["paid"] == paid
+
     def test_list_row_anticipated_deadline_is_an_estimate(self):
         raw = RawOpportunity(
             source="uiuc_sro", source_url=_SRO_LIST, title="Example REU", description_raw="",
