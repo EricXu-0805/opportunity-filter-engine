@@ -174,16 +174,16 @@ def material_record(opp):
     opp['application']['requires_resume'] = 'yes'
     opp['metadata']['contact_instruction_sources'][0]['sections'] = [{
         'heading': 'Undergraduate applicants',
-        'text': 'Applicants must submit a resume. Minimum GPA: 3.5. Application deadline: 2027-03-15.',
+        'text': 'Applicants must submit a resume. Minimum GPA: 3.5. Application deadline: 2099-03-15.',
     }]
-    opp['deadline'] = '2027-03-15'
+    opp['deadline'] = '2099-03-15'
     return opp
 
 
 @pytest.mark.parametrize('path', ['', 'stream', 'refine', 'selection'])
 def test_exact_source_terms_remain_target_facts_not_student_credentials(writing_client, monkeypatch, path):  # noqa: F811
     client, opp = writing_client; material_record(opp)
-    claim = 'Applicants must submit a resume. The application deadline is 2027-03-15.'
+    claim = 'Applicants must submit a resume. The application deadline is 2099-03-15.'
     calls = []
     def provider(messages, **_kwargs):
         calls.append(deepcopy(messages))
@@ -227,7 +227,7 @@ def test_absent_conditions_do_not_create_generic_eligibility_checklist(writing_c
 
 
 @pytest.mark.parametrize('draft,evidence,issue', [
-    ('The application deadline is 2027-03-15 at 11:59 p.m. Pacific time.', [], 'unsupported_deadline_claim'),
+    ('The application deadline is 2099-03-15 at 11:59 p.m. Pacific time.', [], 'unsupported_deadline_claim'),
     ('I am a U.S. citizen.', ['I am not a U.S. citizen.'], 'unsupported_eligibility_claim'),
     ('I have a 3.8 GPA.', ['My teammate has a 3.8 GPA.'], 'unsupported_eligibility_claim'),
     ('我满足全部申请资格。', [], 'unsupported_eligibility_claim'),

@@ -13,16 +13,19 @@ sharing a non-null contact_email — so a config edit can't silently break them.
 from __future__ import annotations
 
 import re
+from datetime import UTC, datetime
 
 import pytest
 
 from src.collectors import faculty_graph as fg
+from src.collectors.import_document import MAX_DEPTH, parse_import_html
 from src.collectors.schools.umich_faculty import SCHOOL
 from src.collectors.ucb_common import _is_person_name
 from src.collectors.uiuc_faculty import _is_junk_keyword
 from src.evidence import FACULTY_MAJOR_LABELS_MARKER
 from src.normalizers.deactivate_stale_faculty import FACULTY_SOURCES
 from src.normalizers.school_audience import SOURCE_DEFAULTS
+from tests.test_import_document import CROWDED_MARKUP, _growth, crawled_page
 
 # --- Validator --------------------------------------------------------------
 
@@ -3584,3 +3587,162 @@ class TestResearchByLabel:
             "<h1>Ada Reyes</h1>"
             "<h3>Research Interests</h3><p>Education policy</p>"
         ) == ([], "Education policy")
+
+
+# --- Profile pages are parsed within the import reader's limits ---------------
+# A profile page reached capture_from_html parsed with plain bs4, from
+# fetch_soup or the renderer, and so did a condition-refresh response. On
+# 2026-10-09 a profile of 30,000 <br> then 30,000 </p> held the enrichment
+# 3.7 s of CPU and a <meta> content of 100,000 line breaks 5.4 s, each quadratic
+# in the markup; the condition refresh took the same. Listings stay unbounded:
+# a roster is one page and may hold more than a profile's limits.
+
+_PROFILE = "https://example.edu/people/jane-doe"
+
+
+class _Profile:
+    def __init__(self, html):
+        self.content, self.url, self.status_code = html.encode(), _PROFILE, 200
+        self._ofe_checked_at = datetime.now(UTC).isoformat()
+
+    def raise_for_status(self):
+        pass
+
+
+def fake_chromium(monkeypatch, pages):
+    """Playwright that serves ``pages`` by URL and records each navigation in pages['calls']."""
+    import sys
+    import types
+
+    calls = pages.setdefault("calls", [])
+
+    class Page:
+        def goto(self, url, **_):
+            calls.append(url)
+            self.url = url
+
+        def wait_for_timeout(self, _ms):
+            pass
+
+        def content(self):
+            return pages[self.url]
+
+    class Browser:
+        def new_context(self, **_):
+            return types.SimpleNamespace(new_page=Page)
+
+        def close(self):
+            pass
+
+    class Session:
+        chromium = types.SimpleNamespace(launch=lambda **_: Browser())
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+    sync_api = types.ModuleType("playwright.sync_api")
+    sync_api.sync_playwright = Session
+    playwright = types.ModuleType("playwright")
+    playwright.sync_api = sync_api
+    monkeypatch.setitem(sys.modules, "playwright", playwright)
+    monkeypatch.setitem(sys.modules, "playwright.sync_api", sync_api)
+
+
+@pytest.mark.parametrize(("where", "build", "size"), CROWDED_MARKUP)
+def test_a_crowded_profile_page_is_enriched_in_linear_time(monkeypatch, where, build, size):
+    import requests
+    page = {}
+    monkeypatch.setattr(requests.Session, "get", lambda self, url, **_: _Profile(page["html"]))
+
+    def enrich(html):
+        page["html"] = html
+        return fg._enrich_profile(_PROFILE, {}, expected_name="Jane Doe").contact_instruction_capture["status"]
+    small, large = (crawled_page(where, build(count)) for count in (size // 4, size))
+    assert enrich(small) == enrich(large) == "captured"
+    growth = _growth(enrich, small, large)
+    assert growth < 8, f"four times the markup took {growth:.1f} times as long"
+
+
+@pytest.mark.parametrize(("where", "build", "size"), CROWDED_MARKUP)
+def test_a_crowded_condition_response_is_captured_in_linear_time(where, build, size):
+    def capture(html):
+        return fg.capture_profile_condition_response(
+            _Profile(html), requested_url=_PROFILE, record_source_url=_PROFILE, expected_name="Jane Doe")["status"]
+    small, large = (crawled_page(where, build(count)) for count in (size // 4, size))
+    assert capture(small) == capture(large) == "captured"
+    growth = _growth(capture, small, large)
+    assert growth < 8, f"four times the markup took {growth:.1f} times as long"
+
+
+_TOO_DEEP = crawled_page("body", "<div>" * (MAX_DEPTH + 1) + "x")
+
+
+@pytest.mark.parametrize("enrich", [pytest.param({}, id="fetched"), pytest.param({"render": True}, id="rendered")])
+def test_a_profile_page_past_the_limits_fails_that_profile_alone(monkeypatch, enrich):
+    import requests
+    monkeypatch.setattr(requests.Session, "get", lambda self, url, **_: _Profile(_TOO_DEEP))
+    pages = {_PROFILE: _TOO_DEEP}
+    fake_chromium(monkeypatch, pages)
+    result = fg._enrich_profile(_PROFILE, enrich, expected_name="Jane Doe")
+    assert tuple(result) == ("", "", [], None, False)
+    capture = result.contact_instruction_capture
+    assert (capture["status"], capture["reason"], capture["source_url"]) == ("failed", "too_large", _PROFILE)
+    assert result.contact_instruction_sources == []
+    assert len(pages["calls"]) == (1 if enrich else 0), "a page past the limits is not rendered again"
+
+
+def test_a_condition_response_past_the_limits_is_a_failed_capture():
+    capture = fg.capture_profile_condition_response(
+        _Profile(_TOO_DEEP), requested_url=_PROFILE, record_source_url=_PROFILE, expected_name="Jane Doe")
+    assert (capture["status"], capture["reason"]) == ("failed", "too_large")
+
+
+def test_a_listing_is_still_parsed_past_a_profiles_limits(monkeypatch):
+    import requests
+
+    from src.collectors.ucb_common import fetch_soup
+    monkeypatch.setattr(requests.Session, "get", lambda self, url, **_: _Profile(_TOO_DEEP))
+    assert fetch_soup(_PROFILE).find("h1").get_text() == "Jane Doe"
+
+
+# The identity check read a profile's text without its nav, header and footer
+# by copying the whole page and decomposing them, twice per profile. bs4's copy
+# walks up through every open tag for each node it appends: 1.2 s of the 1.5 s
+# a profile 505 tags deep around 14,600 text runs took on 2026-10-09. Reading
+# the page's own strings, less those inside the chrome, reads the same text.
+def _page_text_by_copy(soup):
+    import copy
+    stripped = copy.copy(soup)
+    for element in stripped.select("nav, header, footer"):
+        element.decompose()
+    return re.sub(r"\s+", " ", stripped.get_text(" ", strip=True)).strip()
+
+
+_CHROME_PIECES = ["<nav>", "</nav>", "<header>", "</header>", "<footer>", "</footer>", "<NAV>", "<div>", "</div>",
+                  "<p>", "</p>", "<br>", "Jane", " Doe ", "Sign in", "\n", "<!-- note -->", "<script>x</script>",
+                  "<style>s</style>", "<template>t</template>", "<![CDATA[c]]>", "<ruby>R<rt>r</rt></ruby>"]
+
+
+def test_profile_text_without_chrome_reads_what_the_copy_read():
+    import random
+
+    from bs4 import BeautifulSoup
+
+    from src.collectors.ucb_common import _profile_page_text
+    rng = random.Random(20261009)
+    for _ in range(2_000):
+        html = "".join(rng.choice(_CHROME_PIECES) for _ in range(rng.randint(1, 60)))
+        for soup in (BeautifulSoup(html, "html.parser"), parse_import_html(html)):
+            assert _profile_page_text(soup) == _page_text_by_copy(soup), html
+
+
+def test_profile_text_without_chrome_is_read_in_linear_time():
+    from src.collectors.ucb_common import _profile_page_text
+    small, large = (parse_import_html(crawled_page("body", "<nav>" * (runs // 28) + "<b></b>x" * runs))
+                    for runs in (3_500, 14_000))
+    assert _profile_page_text(large) == _page_text_by_copy(large)
+    growth = _growth(_profile_page_text, small, large)
+    assert growth < 8, f"four times the page took {growth:.1f} times as long"

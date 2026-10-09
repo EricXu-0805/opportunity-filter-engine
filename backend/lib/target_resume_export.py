@@ -355,7 +355,8 @@ def render_pdf(projection, assets, deadline=None):
         firsts[index] = above(item, index) + PDF_STYLES[item.style][1]
         needs[index] = above(item, index) + height if item.keep or right else firsts[index]
         if item.keep and index + 1 < len(items):
-            needs[index] += below(item) + (needs[index + 1] if needs[index + 1] <= room else firsts[index + 1])
+            whole = needs[index] + below(item) + needs[index + 1]
+            needs[index] = whole if whole <= room else needs[index] + below(item) + firsts[index + 1]
 
     for index, (item, (text, right, width, _height)) in enumerate(zip(items, rows, strict=True)):
         check_deadline(deadline)
@@ -363,9 +364,10 @@ def render_pdf(projection, assets, deadline=None):
         pdf.set_font('ResumeSans', size=size)
         # Keep a heading or role row with the line after it: move it to the next
         # page when the rest of this one cannot hold what it needs and an empty
-        # page can.
-        if (item.keep or right) and pdf.get_y() > pdf.t_margin and pdf.will_page_break(needs[index] + PAGE_SLACK) \
-                and needs[index] <= room:
+        # page can. A row after one of those stays: that row's move already
+        # reserved it, or its first line when the two exceed a page.
+        if (item.keep or right) and not (index and items[index - 1].keep) and pdf.get_y() > pdf.t_margin \
+                and pdf.will_page_break(needs[index] + PAGE_SLACK) and needs[index] <= room:
             pdf.add_page()
         elif above(item, index):
             pdf.ln(above(item, index))
@@ -438,6 +440,11 @@ def docx_codepoints(paragraphs, assets, deadline=None) -> tuple[set[int], set[in
 
 
 LATIN = frozenset(filter(portable, range(0x20, 0x20AD)))
+# The start of the CT_Settings sequence (ECMA-376 Part 1, 17.15.1.78), through the font settings set here.
+SETTINGS_START = ('writeProtection', 'view', 'zoom', 'removePersonalInformation', 'removeDateAndTime',
+                  'doNotDisplayPageBoundaries', 'displayBackgroundShape', 'printPostScriptOverText',
+                  'printFractionalCharacterWidth', 'printFormsData', 'embedTrueTypeFonts', 'embedSystemFonts',
+                  'saveSubsetFonts')
 
 
 @lru_cache(maxsize=1)
@@ -534,7 +541,12 @@ def embed_docx_fonts(document, programs, deadline=None):
         node = settings.find(qn('w:' + tag))
         if node is None:
             node = OxmlElement('w:' + tag)
-            settings.append(node)
+            earlier = {qn('w:' + name) for name in SETTINGS_START[:SETTINGS_START.index(tag)]}
+            previous = [child for child in settings if child.tag in earlier]
+            if previous:
+                previous[-1].addnext(node)
+            else:
+                settings.insert(0, node)
         node.set(qn('w:val'), value)
 
 
@@ -567,6 +579,11 @@ def render_docx(projection, assets, deadline=None):
     normal.paragraph_format.space_after = Pt(3)
     normal.paragraph_format.line_spacing = 1.15
     normal.paragraph_format.widow_control = True
+    # Section titles use Heading 1, so the file has an outline to navigate. The template's
+    # Heading 1 is a 14 pt bold blue theme font; the titles keep the body font.
+    heading_style = document.styles['Heading 1']
+    heading_style.element.remove(heading_style.element.get_or_add_rPr())
+    heading_style.font.size = Pt(DOCX_SIZES['heading'])
     for key in ('author', 'last_modified_by', 'subject', 'comments', 'keywords', 'category', 'description'):
         if hasattr(document.core_properties, key):
             setattr(document.core_properties, key, '')
@@ -601,7 +618,7 @@ def render_docx(projection, assets, deadline=None):
 
     for item in paragraphs:
         check_deadline(deadline)
-        paragraph = document.add_paragraph()
+        paragraph = document.add_paragraph(style=heading_style if item.style == 'heading' else None)
         layout_format = paragraph.paragraph_format
         if item.style == 'heading':
             add_rule(paragraph)

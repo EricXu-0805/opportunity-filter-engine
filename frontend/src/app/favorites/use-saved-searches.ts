@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   listSavedSearchDigests,
   listSavedSearches,
@@ -19,6 +19,8 @@ export interface UseSavedSearchesResult {
   /** W14: true when the saved-searches list failed to load — the section
    *  renders an inline error note instead of silently vanishing. */
   loadError: boolean;
+  /** Ask for the list again after a failed read. */
+  retryLoad: () => Promise<void>;
   handleRemove: (search: SavedSearch) => Promise<void>;
   handleApplyOptimisticClear: (id: string) => void;
   handleDigestSave: (id: string, digest: SavedSearchDigest) => Promise<boolean>;
@@ -32,21 +34,33 @@ export function useSavedSearches(t: TFunc): UseSavedSearchesResult {
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
   const [digests, setDigests] = useState<Map<string, SavedSearchDigest> | null>(null);
   const [loadError, setLoadError] = useState(false);
+  // Only the newest read may land: a retry clicked while the first read is
+  // still out must not be overwritten by that read's late failure.
+  const readRef = useRef(0);
+
+  const loadList = useCallback(async (isCurrent: () => boolean) => {
+    try {
+      const data = await listSavedSearches();
+      if (isCurrent()) {
+        setSavedSearches(data);
+        setLoadError(false);
+      }
+    } catch {
+      // W14 truthful zero states: the user's saved searches exist but
+      // could not be fetched — flag it instead of rendering nothing.
+      if (isCurrent()) setLoadError(true);
+    }
+  }, []);
+
+  const retryLoad = useCallback(async () => {
+    const read = ++readRef.current;
+    await loadList(() => read === readRef.current);
+  }, [loadList]);
 
   useEffect(() => {
     let cancelled = false;
-    listSavedSearches()
-      .then((data) => {
-        if (!cancelled) {
-          setSavedSearches(data);
-          setLoadError(false);
-        }
-      })
-      .catch(() => {
-        // W14 truthful zero states: the user's saved searches exist but
-        // could not be fetched — flag it instead of rendering nothing.
-        if (!cancelled) setLoadError(true);
-      });
+    const read = ++readRef.current;
+    void loadList(() => !cancelled && read === readRef.current);
     listSavedSearchDigests()
       .then((data) => {
         if (!cancelled) setDigests(data);
@@ -58,7 +72,7 @@ export function useSavedSearches(t: TFunc): UseSavedSearchesResult {
         if (!cancelled) setDigests(null);
       });
     return () => { cancelled = true; };
-  }, []);
+  }, [loadList]);
 
   const handleDigestSave = useCallback(
     async (id: string, digest: SavedSearchDigest): Promise<boolean> => {
@@ -90,5 +104,5 @@ export function useSavedSearches(t: TFunc): UseSavedSearchesResult {
     );
   }, []);
 
-  return { savedSearches, digests, loadError, handleRemove, handleApplyOptimisticClear, handleDigestSave };
+  return { savedSearches, digests, loadError, retryLoad, handleRemove, handleApplyOptimisticClear, handleDigestSave };
 }

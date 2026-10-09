@@ -24,6 +24,7 @@ const ORIGINAL = {
   'readings-role': 'Compared instrument readings; I assisted and did not lead the project.',
   'calibration-role': 'Documented the final calibration procedure and recorded the instrument readings.',
 };
+// Shorter wording only a pre-review (full-target-plan-v4) server sends: v5 proposes none.
 const SHORTER = 'Documented the final calibration procedure.';
 const fact = (id: string, value: string): ResumeFact => ({ id, revision: 1, status: 'confirmed', value, source: { kind: 'manual' } });
 const compact = (text: string) => text.replace(/\s/gu, '');
@@ -73,7 +74,9 @@ function targetEvidence(draft: TargetResumeV1): TargetResumeAiEvidence {
   const quote = Array.from(draft.target_snapshot.requirements[index]);
   return { field: 'requirement', requirement_index: index, start: 0, end: Math.min(quote.length, 80), quote: quote.slice(0, 80).join('') };
 }
-function checkedReply(request: TargetResumePlanRequest): TargetResumePlanResponse {
+// A reviewed v5 plan carries content choices only: every item's rewrites are empty. With
+// `wording`, a compress item carries the shorter line a pre-review server sends, unreviewed.
+function checkedReply(request: TargetResumePlanRequest, wording = false): TargetResumePlanResponse {
   const blocks = request.draft.document.sections.filter(section => section.kind !== 'basics').flatMap(section => section.blocks.map(block => ({ section, block })));
   return { ...(request.support_groups === undefined ? {} : {support_groups:request.support_groups}), version: 1, check_version: 'target-resume-source-checks-v2', pipeline_version: TARGET_RESUME_PLAN_VERSION, request_id: request.request_id, document_id: request.draft.id,
     opportunity_id: TARGET, document_signature: request.document_signature, base: structuredClone(request.draft.base), options: { ...request.options },
@@ -88,7 +91,7 @@ function checkedReply(request: TargetResumePlanRequest): TargetResumePlanRespons
         reason: 'Synthetic selection advice for testing explicit choices; this is not an evaluation of model quality.',
         target_evidence: [targetEvidence(request.draft)],
         source_evidence: [{ unit_id: source.id, start: 0, end: Array.from(source.original).length, quote: source.original }],
-        rewrites: action !== 'compress' || !experience ? [] : [experience.evidence.id === 'team-role'
+        rewrites: !wording || action !== 'compress' || !experience ? [] : [experience.evidence.id === 'team-role'
           ? { unit_id: experience.id, status: 'skipped', reason_code: 'ungrounded_rewrite', proposed_text: null }
           : { unit_id: experience.id, status: 'suggested', reason_code: null, proposed_text: SHORTER }],
       };
@@ -96,7 +99,7 @@ function checkedReply(request: TargetResumePlanRequest): TargetResumePlanRespons
   };
 }
 async function setup(page: Page, info: TestInfo, denial?: { code: string; status: number }) {
-  const owner = await account(); const zh = info.project.name === 'mobile-chrome';
+  const owner = await account(); const zh = info.project.name === 'mobile-chrome'; const replies = { wording: false };
   const copy = (en: string, cn: string) => zh ? cn : en;
   if (zh) await page.setViewportSize({ width: 390, height: 844 });
   const audit = { external: [] as string[], pageErrors: [] as string[], consoleErrors: [] as string[], unexpectedWriting: [] as string[],
@@ -129,7 +132,7 @@ async function setup(page: Page, info: TestInfo, denial?: { code: string; status
     const request = route.request().postDataJSON() as TargetResumePlanRequest; audit.plans.push(request);
     expect(request.draft.opportunity_id).toBe(TARGET);
     if (denial && audit.plans.length === 2) return route.fulfill({ status: denial.status, json: { detail: { code: denial.code } } });
-    return route.fulfill({ json: checkedReply(request) });
+    return route.fulfill({ json: checkedReply(request, replies.wording) });
   });
   const modal = page.getByRole('dialog', { name: copy('Target résumé', '目标简历'), exact: true });
   const editor = (id: string) => modal.locator(`textarea[id$="-${id}"]`);
@@ -159,7 +162,7 @@ async function setup(page: Page, info: TestInfo, denial?: { code: string; status
       expect(write.body).toEqual({ device_id: owner.session.user.id, event: 'match_opened', props: { opportunity_id: TARGET } });
     }
   };
-  return { owner, zh, copy, audit, modal, editor, open, save, done };
+  return { owner, zh, copy, audit, replies, modal, editor, open, save, done };
 }
 async function downloadFile(page: Page, format: 'pdf' | 'docx', info: TestInfo, stem: string, zh: boolean) {
   const pending = page.waitForEvent('download');
@@ -289,7 +292,7 @@ async function expectFiles(page: Page, info: TestInfo, f: Awaited<ReturnType<typ
   await info.attach(`${stem}-extracted-content`, { body: JSON.stringify({ expected_texts: texts, pdf: pdf.text, docx: docx.text }, null, 2), contentType: 'application/json' });
 }
 
-for (const mode of ['selection-only', 'selection-and-compression'] as const) test(`${mode} preserves hidden content and separates shorter wording through history and export`, async ({ page }, info) => {
+test('content choices preserve hidden content and change no wording through history and export', async ({ page }, info) => {
   test.setTimeout(120_000);
   const f = await setup(page, info);
   const panel = planPanel(page, f.zh);
@@ -311,28 +314,28 @@ for (const mode of ['selection-only', 'selection-and-compression'] as const) tes
     await expect(panel.getByRole('button', { name: f.copy('Apply selected content choices', '应用所选安排'), exact: true })).toBeDisabled();
     for (const checkbox of await panel.getByRole('checkbox').all()) await expect(checkbox).not.toBeChecked();
     await expect(panel.locator(`[data-plan-block-id="${teamUnit.block.id}"]`)).toContainText(ORIGINAL['team-role']);
-    await expect(panel.getByRole('checkbox', { name: `Use shorter wording: ${teamUnit.line.id}`, exact: true })).toHaveCount(0);
-    await expect(panel).toContainText(f.copy('The candidate failed source checks. Current wording is kept.', '候选短稿未通过来源核对，保留当前稿。'));
+    // The plan proposes no wording (v5): no shorter or combined line is shown or offered.
+    await expect(panel.getByRole('checkbox', { name: /^Use shorter wording:/ })).toHaveCount(0);
+    await expect(panel).toContainText(f.copy('The plan proposes no new wording', '选材安排不提供新表述'));
+    await expect(panel).not.toContainText(SHORTER);
     await panel.getByText(f.copy('Materials outside this draft', '未进入本稿的材料'), { exact: true }).click();
     await expect(panel).toContainText(f.copy('Confirmed experiences outside this draft: 1', '未进入本稿的已确认经历：1'));
     await expect(panel).toContainText(f.copy('Pending experiences: 1', '待确认经历：1'));
     await panel.getByRole('checkbox', { name: `Use content choice: ${omitted.block.id}`, exact: true }).check();
     await panel.getByRole('checkbox', { name: `Use content choice: ${shortened.block.id}`, exact: true }).check();
-    if (mode === 'selection-and-compression') await panel.getByRole('checkbox', { name: `Use shorter wording: ${shortened.line.id}`, exact: true }).check();
     await panel.getByText(f.copy('Compare complete draft before applying', '应用前对比完整稿'), { exact: true }).click();
     const before = panel.getByRole('region', { name: f.copy('Before content choices', '选材前全文'), exact: true });
     const after = panel.getByRole('region', { name: f.copy('After selected content choices', '采用所选安排后全文'), exact: true });
     await expect(before).toContainText(ORIGINAL['readings-role']); await expect(after).not.toContainText(ORIGINAL['readings-role']);
     await expect(after).not.toContainText(ORIGINAL['team-role']);
     await expect(f.editor(shortened.line.id)).toHaveValue(shortened.line.text);
-    await expect(after).toContainText(mode === 'selection-only' ? shortened.line.text : SHORTER);
+    await expect(after).toContainText(shortened.line.text); await expect(after).not.toContainText(SHORTER);
     await after.scrollIntoViewIfNeeded(); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2)).toBe(true);
-    await page.screenshot({ path: info.outputPath(`selection-preview-${mode}-${f.zh ? 'zh' : 'en'}.png`), animations: 'disabled' });
+    await page.screenshot({ path: info.outputPath(`selection-preview-${f.zh ? 'zh' : 'en'}.png`), animations: 'disabled' });
     await panel.getByRole('button', { name: f.copy('Apply selected content choices', '应用所选安排'), exact: true }).click();
     const expected = structuredClone(baseline);
     for (const { block, line } of lines(expected)) {
       if (block.id === omitted.block.id) block.included = false;
-      if (mode === 'selection-and-compression' && line.id === shortened.line.id) line.text = SHORTER;
       await expect(f.editor(line.id)).toHaveValue(line.text);
     }
     const accepted = await f.save(2); expect(accepted).toEqual(expected);
@@ -341,11 +344,8 @@ for (const mode of ['selection-only', 'selection-and-compression'] as const) tes
     expect(appliedProvenance.events.some(event => event.kind === 'manual')).toBe(true);
     const appliedChanges = appliedProvenance.events.filter(event => event.kind === 'plan').flatMap(event => event.changes);
     expect(appliedChanges.some(change => change.field === 'included')).toBe(true);
-    expect(appliedChanges.filter(change => change.check !== null)).toHaveLength(mode === 'selection-and-compression' ? 1 : 0);
-    for (const change of appliedChanges.filter(change => change.check !== null)) {
-      expect(change.line_id).toBe(shortened.line.id);
-      expect(change.check!.version).toBe('target-resume-source-checks-v2');
-    }
+    // A content choice changes no text, so it records no check.
+    expect(appliedChanges.filter(change => change.field === 'text' || change.check !== null)).toEqual([]);
     expect(appliedChanges.some(change => change.line_id === teamUnit.line.id)).toBe(false);
 
     expect(accepted.base_snapshot).toEqual(baseline.base_snapshot);
@@ -366,7 +366,27 @@ for (const mode of ['selection-only', 'selection-and-compression'] as const) tes
     expect(stored.profile_data.resume_master).toEqual(f.owner.profile.resume_master);
     expect(stored.profile_data.experience_entries).toEqual(f.owner.profile.experience_entries);
     expect(stored.profile_data.resume_text).toBe(RAW_PRIVATE);
-    await exportPanel(page).scrollIntoViewIfNeeded(); await page.screenshot({ path: info.outputPath(`restored-export-${mode}-${f.zh ? 'zh' : 'en'}.png`), animations: 'disabled' });
+    await exportPanel(page).scrollIntoViewIfNeeded(); await page.screenshot({ path: info.outputPath(`restored-export-${f.zh ? 'zh' : 'en'}.png`), animations: 'disabled' });
+  } finally { await f.done(); }
+});
+
+test('a plan that carries wording, as a pre-review server sends it, is refused and none of it is shown', async ({ page }, info) => {
+  const f = await setup(page, info), panel = planPanel(page, f.zh);
+  try {
+    await f.open(); const baseline = await f.save(0);
+    f.replies.wording = true;
+    await panel.getByRole('button', { name: f.copy('Generate content plan', '生成选材建议'), exact: true }).click();
+    await expect(panel.getByRole('alert')).toHaveText(f.copy('The complete plan could not be verified. Your draft is unchanged.', '无法核对完整选材安排，文稿未变。'));
+    await expect(panel.locator('[data-plan-block-id]')).toHaveCount(0); await expect(panel.getByRole('checkbox')).toHaveCount(0);
+    await expect(f.modal).not.toContainText(SHORTER);
+    for (const { line } of lines(baseline)) await expect(f.editor(line.id)).toHaveValue(line.text);
+    // Asking again gets a reviewed plan, which still shows no wording.
+    f.replies.wording = false;
+    await panel.getByRole('button', { name: f.copy('Generate content plan', '生成选材建议'), exact: true }).click();
+    await expect(panel.locator('[data-plan-block-id]')).toHaveCount(4);
+    await expect(f.modal).not.toContainText(SHORTER);
+    expect(f.audit.plans).toHaveLength(2);
+    expect(f.audit.writes.filter(write => write.path === '/rest/v1/rpc/commit_target_resume_with_provenance_cas')).toHaveLength(1);
   } finally { await f.done(); }
 });
 
@@ -412,14 +432,17 @@ test('provenance stays paired through in-flight edits, two-window conflict and h
   try {
     await f.open(); const initial = await f.save(0);
     const unit = lines(initial).find(({ line }) => line.evidence.id === 'calibration-role')!;
+    const omitted = lines(initial).find(({ line }) => line.evidence.id === 'readings-role')!;
     await panel.getByRole('button', { name: f.copy('Generate content plan', '生成选材建议'), exact: true }).click();
-    await panel.getByRole('checkbox', { name: `Use shorter wording: ${unit.line.id}`, exact: true }).check();
+    await panel.getByRole('checkbox', { name: `Use content choice: ${omitted.block.id}`, exact: true }).check();
     await panel.getByRole('button', { name: f.copy('Apply selected content choices', '应用所选安排'), exact: true }).click();
     await f.save(1);
     const records = f.modal.locator('details').filter({ has: page.locator('summary').getByText(f.copy('Change records', '修改记录'), { exact: true }) });
     await records.locator('summary').click();
-    await expect(records).toContainText('target-resume-source-checks-v2');
+    await expect(records).toContainText(f.copy('Accepted content choice', '采用选材安排'));
     await expect(records).toContainText('Synthetic selection advice');
+    // A content choice changes no text, so no check is recorded for it.
+    await expect(records).not.toContainText('target-resume-source-checks-v');
     await records.scrollIntoViewIfNeeded();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2)).toBe(true);
     await records.screenshot({ path: info.outputPath(`provenance-accepted-${f.zh ? 'zh' : 'en'}.png`), animations: 'disabled' });
@@ -432,7 +455,7 @@ test('provenance stays paired through in-flight edits, two-window conflict and h
     await other.getByRole('button', { name: f.copy('Renovate Resume', '简历翻新'), exact: true }).click();
     const secondModal = other.getByRole('dialog', { name: f.copy('Target résumé', '目标简历'), exact: true });
     const secondEditor = secondModal.locator(`textarea[id$="-${unit.line.id}"]`);
-    await expect(secondEditor).toHaveValue(SHORTER);
+    await expect(secondEditor).toHaveValue(ORIGINAL['calibration-role']);
     await f.editor(unit.line.id).fill('Manual wording A.');
     let release!: () => void; let dispatched!: () => void;
     const held = new Promise<void>(resolve => { release = resolve; });
@@ -452,7 +475,7 @@ test('provenance stays paired through in-flight edits, two-window conflict and h
     const latestWrite = f.audit.writes.filter(write => write.path.endsWith('/commit_target_resume_with_provenance_cas')).at(-1)!;
     const recorded = latestWrite.body.p_provenance as { events: { kind: string; changes: { field: string; line_id: string; before: string; after: string; check: unknown }[] }[] };
     const latest = recorded.events.flatMap(event => event.changes.map(change => ({ kind: event.kind, ...change }))).filter(change => change.line_id === unit.line.id && change.field === 'text').at(-1)!;
-    expect(latest).toMatchObject({ kind: 'manual', before: SHORTER, after: 'Manual wording B.', check: null });
+    expect(latest).toMatchObject({ kind: 'manual', before: ORIGINAL['calibration-role'], after: 'Manual wording B.', check: null });
     await secondEditor.fill('Stale second-window wording.');
     const conflictPending = other.waitForResponse(response => new URL(response.url()).pathname === '/rest/v1/rpc/commit_target_resume_with_provenance_cas');
     await secondModal.getByRole('button', { name: f.copy('Save target draft', '保存目标文稿'), exact: true }).click();
@@ -461,23 +484,23 @@ test('provenance stays paired through in-flight edits, two-window conflict and h
     await expect(secondEditor).toHaveValue('Stale second-window wording.');
     await secondModal.getByRole('button', { name: f.copy('Discard local edits and load server version', '放弃本地编辑并载入服务器版本'), exact: true }).click();
     await expect(secondEditor).toHaveValue('Manual wording B.');
-    // Editing back to an earlier AI string remains a manual event.
-    await f.editor(unit.line.id).fill(SHORTER); await f.save(4);
+    // Editing back to the earlier wording remains a manual event.
+    await f.editor(unit.line.id).fill(ORIGINAL['calibration-role']); await f.save(4);
     const back = f.audit.writes.filter(write => write.path.endsWith('/commit_target_resume_with_provenance_cas')).at(-1)!.body.p_provenance as typeof recorded;
-    expect(back.events.at(-1)).toMatchObject({ kind: 'manual', changes: [{ field: 'text', before: SHORTER, after: SHORTER, check: null }] });
+    expect(back.events.at(-1)).toMatchObject({ kind: 'manual', changes: [{ field: 'text', before: ORIGINAL['calibration-role'], after: ORIGINAL['calibration-role'], check: null }] });
     await f.modal.locator('summary').filter({ hasText: f.copy('Version history', '版本历史') }).click();
     await f.modal.getByRole('button', { name: f.copy('Load latest 20 versions', '读取最近 20 个版本'), exact: true }).click();
     await f.modal.getByRole('button', { name: f.zh ? /^查看版本 2 ·/ : /^View version 2 ·/ }).click();
     await f.save(5, true);
     const restored = f.audit.writes.filter(write => write.path.endsWith('/commit_target_resume_with_provenance_cas')).at(-1)!.body.p_provenance as typeof recorded;
     expect(restored.events).toHaveLength(1); expect(restored.events[0].kind).toBe('plan');
-    expect(restored.events[0].changes[0].check).toMatchObject({ version: 'target-resume-source-checks-v2' });
+    expect(restored.events[0].changes).toEqual([expect.objectContaining({ field: 'included', block_id: omitted.block.id, line_id: null, before: true, after: false, check: null })]);
     expect(secondErrors).toEqual([]);
     await info.attach('provenance-conflict-and-restore', { body: JSON.stringify({ recorded, conflict, back, restored }, null, 2), contentType: 'application/json' });
     if (!await records.evaluate(node => (node as HTMLDetailsElement).open)) await records.locator('summary').click();
     await records.evaluate(node => node.scrollIntoView({ block: 'center' }));
-    await expect(records.getByText('Recorded check version: target-resume-source-checks-v2', { exact: true }).or(records.getByText('记录的检查版本: target-resume-source-checks-v2', { exact: true }))).toBeVisible();
-    await expect(records).toContainText('target-resume-source-checks-v2');
+    await expect(records.getByText(f.copy('Accepted content choice', '采用选材安排')).first()).toBeVisible();
+    await expect(records).not.toContainText('target-resume-source-checks-v');
     await expect(records).not.toContainText('Manual wording B.');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2)).toBe(true);
     await records.screenshot({ path: info.outputPath(`provenance-history-${f.zh ? 'zh' : 'en'}.png`), animations: 'disabled' });

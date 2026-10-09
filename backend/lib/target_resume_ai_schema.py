@@ -7,10 +7,12 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from backend.lib.target_resume_support_schema import ResumeSupportGroup
 
-PIPELINE_VERSION = "full-target-v5"
+PIPELINE_VERSION = "full-target-v6"
 MAX_DOCUMENT_BYTES = 2 * 1024 * 1024
 MAX_BODY_BYTES = MAX_DOCUMENT_BYTES + 64 * 1024
-MAX_UNITS = 24
+MAX_UNITS = 20
+# One generation call writes at most this many experience rewrites.
+MAX_EXPERIENCE_UNITS = 8
 MAX_ORIGINAL_CHARACTERS = 16000
 MAX_EXPERIENCE_CHARACTERS = 6000
 MAX_TARGET_CHARACTERS = 24000
