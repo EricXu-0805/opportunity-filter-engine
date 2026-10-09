@@ -21,6 +21,7 @@ const mockVerifyOtp = vi.fn();
 const mockRefreshSession = vi.fn();
 const mockOAuthExisting = vi.fn();
 const mockHydrateProfile = vi.fn();
+const mockForgetMergedGuestRevision = vi.fn();
 const replaceSpy = vi.fn();
 const searchRef = { current: '?code=stub-code' };
 
@@ -45,6 +46,7 @@ vi.mock('@/lib/supabase', () => ({
 // not hydrateProfile's) unaffected.
 vi.mock('@/lib/profile-sync', () => ({
   hydrateProfile: () => mockHydrateProfile(),
+  forgetMergedGuestRevision: (token: unknown) => mockForgetMergedGuestRevision(token),
 }));
 
 // Cache URLSearchParams + stable t so every render returns the SAME
@@ -106,6 +108,7 @@ beforeEach(async () => {
   mockGetDataInventory.mockResolvedValue(null);
   mockRedeemMerge.mockResolvedValue({ kind: 'none' });
   mockHydrateProfile.mockResolvedValue(undefined);
+  mockForgetMergedGuestRevision.mockResolvedValue(true);
   // identity-owner's module-level owner state is a singleton shared across
   // every test in this file (no per-test module reset) — force it back to
   // a known null baseline so a prior test's real uid transition can't leak
@@ -265,6 +268,62 @@ describe('CallbackPage — R68 idempotency guard', () => {
     });
     expect(markerUid()).toBe('p');
     expect(localStorage.getItem(STORAGE_KEYS.CUSTOM_IMPORTS)).toBe('[{"id":"custom-1"}]');
+  });
+
+  describe('the profile the merge kept', () => {
+    const signedIn = { session: { user: { id: 'p' } }, user: { id: 'p' }, isAnonymous: false, email: 'eric@illinois.edu' };
+    const merged = (profile: string) => ({
+      kind: 'success',
+      summary: { merged: true, favorites: 1, interactions: 0, savedSearches: 0, attachmentsNotMoved: 0, profile },
+    });
+
+    it.each(['kept_target_saved_other_as_version', 'kept_target'])(
+      'forgets the guest revision for the new account before re-reading when the account kept its own profile (%s)',
+      async (profile) => {
+        localStorage.setItem(STORAGE_KEYS.LOCAL_IDENTITY_OWNER, 'anon-uid');
+        mockGetAuthState.mockResolvedValue(signedIn);
+        mockRedeemMerge.mockResolvedValue(merged(profile));
+
+        render(<CallbackPage />);
+
+        await waitFor(() => {
+          expect(screen.getByText('auth.callback.successTitle')).toBeInTheDocument();
+        });
+        expect(mockForgetMergedGuestRevision).toHaveBeenCalledTimes(1);
+        expect(mockForgetMergedGuestRevision.mock.calls[0][0]).toMatchObject({ uid: 'p' });
+        expect(mockForgetMergedGuestRevision.mock.invocationCallOrder[0])
+          .toBeLessThan(mockHydrateProfile.mock.invocationCallOrder[0]);
+      },
+    );
+
+    it('keeps the revision when the account adopted this browser\'s row', async () => {
+      localStorage.setItem(STORAGE_KEYS.LOCAL_IDENTITY_OWNER, 'anon-uid');
+      mockGetAuthState.mockResolvedValue(signedIn);
+      mockRedeemMerge.mockResolvedValue(merged('adopted'));
+
+      render(<CallbackPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText('auth.callback.successTitle')).toBeInTheDocument();
+      });
+      expect(mockHydrateProfile).toHaveBeenCalledTimes(1);
+      expect(mockForgetMergedGuestRevision).not.toHaveBeenCalled();
+    });
+
+    it('keeps the revision when nothing was merged', async () => {
+      mockGetAuthState.mockResolvedValue(signedIn);
+      mockRedeemMerge.mockResolvedValue({
+        kind: 'success',
+        summary: { merged: false, favorites: 0, interactions: 0, savedSearches: 0, attachmentsNotMoved: 0 },
+      });
+
+      render(<CallbackPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText('auth.callback.successTitle')).toBeInTheDocument();
+      });
+      expect(mockForgetMergedGuestRevision).not.toHaveBeenCalled();
+    });
   });
 
   it('clears the previous identity\'s local data on a plain (non-merge) sign-in', async () => {

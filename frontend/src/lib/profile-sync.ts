@@ -2069,6 +2069,28 @@ export async function hydrateProfile(signal?: AbortSignal, observe?: ProfileRead
   }
 }
 
+/**
+ * Flow B, after a merge that KEPT the account's own profile row: the claim has
+ * just re-labelled this browser's guest envelope to that account, and its
+ * confirmed revision counted the guest row's saves, not this one's. When the
+ * two counters meet, writeEnvelope refuses the account's row as "one revision,
+ * two contents" and every hydrate keeps serving the guest's copy; when the
+ * guest's is higher, the account's row reads as stale. The confirmed baseline
+ * is dropped and an unsent working copy becomes base-unknown, so the next
+ * hydrate adopts the account's row and asks about real differences instead.
+ */
+export async function forgetMergedGuestRevision(token: OwnerToken): Promise<boolean> {
+  const locked = await withProfileLock(token, () => {
+    const stored = readProfileSyncEnvelopeStrict();
+    if (!stored.ok) return false;
+    const envelope = stored.value;
+    if (!envelope) return true;
+    const pending = envelope.pending ? { ...envelope.pending, legacy: true, baseRevision: 0 } : null;
+    return writeEnvelope({ v: 1, confirmed: null, pending, tombstone: envelope.tombstone ?? null }, token);
+  });
+  return locked.ok && locked.value;
+}
+
 async function hydrateLoadedProfile(
   loaded: LoadedProfile,
   token: OwnerToken,

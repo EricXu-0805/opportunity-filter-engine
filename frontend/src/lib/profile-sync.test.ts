@@ -36,6 +36,7 @@ import {
 } from './profile-journal';
 import {
   flushPendingProfileWrite,
+  forgetMergedGuestRevision,
   getDirtyProfileKeys,
   HOME_FORM_WRITER,
   hydrateProfile,
@@ -303,6 +304,66 @@ describe('hydrate', () => {
     const result = await flushPendingProfileWrite(captureOwnerToken());
     expect(commitMock).not.toHaveBeenCalled();
     expect(result.status).toBe('conflict');
+  });
+});
+
+describe('a merge that kept the account\'s own row', () => {
+  // Flow B: the claim re-labels this browser's guest envelope to the account
+  // it merged into. Its revisions counted the GUEST row's saves; the server
+  // kept the account's row, whose revision 1 is a different document.
+  const GUEST: ProfileData = { ...FULL, major: 'Physics', research_interests: 'guest draft' };
+  const ACCOUNT: ProfileData = { ...FULL, major: 'ECE', research_interests: 'account interests' };
+  const ACCOUNT_UID = 'sync-account';
+
+  async function claimInto(uid: string) {
+    advanceOwnerEpoch(uid);
+    expect(await syncLocalIdentityOwner(uid, { claim: true })).toBe(true);
+    return captureOwnerToken();
+  }
+
+  it('adopts the account row at the same revision number once the guest revision is forgotten', async () => {
+    loadProfileMock.mockResolvedValue(cloud(GUEST, 1));
+    await hydrateProfile();
+    const owner = await claimInto(ACCOUNT_UID);
+    expect(await forgetMergedGuestRevision(owner)).toBe(true);
+
+    loadProfileMock.mockResolvedValue(cloud(ACCOUNT, 1));
+    const h = await hydrateProfile();
+    expect(h.profile).toEqual(ACCOUNT);
+    expect(h.quarantineFailed).toBe(false);
+    expect(readProfileSyncEnvelope()?.confirmed).toEqual({ revision: 1, profile: ACCOUNT });
+    expect(rawMirror()).toEqual(ACCOUNT);
+  });
+
+  it('asks about an unsent guest edit instead of sending it against another row\'s base', async () => {
+    loadProfileMock.mockResolvedValue(cloud(GUEST, 1));
+    await hydrateProfile();
+    commitMock.mockResolvedValue({ status: 'transport-error', message: 'offline' });
+    const guest = captureOwnerToken();
+    // The guest's base for `grade` equals the account's value by coincidence,
+    // so a three-way merge would treat the account as untouched and send it.
+    recordProfileIntent({ ...GUEST, grade: 'Senior' }, ['grade'], guest);
+    await stageProfilePatch({ ...GUEST, grade: 'Senior' }, ['grade'], guest);
+    commitMock.mockReset();
+    const owner = await claimInto(ACCOUNT_UID);
+    expect(await forgetMergedGuestRevision(owner)).toBe(true);
+
+    loadProfileMock.mockResolvedValue(cloud(ACCOUNT, 1));
+    const h = await hydrateProfile();
+    expect(h.conflictKeys).toEqual(['grade']);
+    expect(h.profile?.grade, 'the unsent edit is still shown').toBe('Senior');
+    expect(readProfileSyncEnvelope()?.confirmed).toEqual({ revision: 1, profile: ACCOUNT });
+    expect(commitMock).not.toHaveBeenCalled();
+  });
+
+  it('touches nothing for an owner that is no longer current', async () => {
+    loadProfileMock.mockResolvedValue(cloud(GUEST, 1));
+    await hydrateProfile();
+    const stale = await claimInto(ACCOUNT_UID);
+    const envelope = localStorage.getItem(STORAGE_KEYS.PROFILE_SYNC);
+    advanceOwnerEpoch('someone-else');
+    expect(await forgetMergedGuestRevision(stale)).toBe(false);
+    expect(localStorage.getItem(STORAGE_KEYS.PROFILE_SYNC)).toBe(envelope);
   });
 });
 
