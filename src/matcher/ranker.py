@@ -1932,9 +1932,14 @@ def score_eligibility(
     required_skills_list = _bounded_skill_labels(elig.get("skills_required"))
     requirements_are_ours = is_inferred(opportunity, "eligibility.skills_required")
     stated_required_skills = [] if requirements_are_ours else required_skills_list
+    # An SRO row whose deadline is the database's "Anticipated" date was
+    # rolling only because that date did not parse. It keeps this boost until
+    # the owner decides whether an estimated deadline should: dropping it
+    # costs those rows about 2 points.
+    sro_estimate = opportunity.get("source") == "uiuc_sro" and opportunity.get("deadline_is_estimate") is True
     if (
         not stated_required_skills
-        and opportunity.get("is_rolling")
+        and (opportunity.get("is_rolling") or sro_estimate)
         and not faculty_contact_claims_unverified(opportunity)
     ):
         skill_score = 60.0

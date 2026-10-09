@@ -654,6 +654,26 @@ class TestUiucSroContract:
         assert fields["timing"]["inferred"]["deadline"]["basis"] == "estimate"
         assert fields["timing"]["explicit"]["application_window"] == "3/2/27 (anticipated)"
 
+    def test_an_anticipated_deadline_keeps_the_rolling_skill_boost(self):
+        # The cell used to fail to parse and R70-A then called the row rolling,
+        # which the ranker rewards with a neutral skill score when a posting
+        # lists no skills. The row is not rolling, but its score stays where it
+        # was until the owner decides; an NSF REU Site, whose deadline is also
+        # an estimate, never had the boost and does not gain it.
+        raw = RawOpportunity(
+            source="uiuc_sro", source_url=_SRO_LIST, title="Example REU", description_raw="",
+            url=_SRO_DETAIL, extra_fields={"research_area": "Natural Sciences", "timing": "Summer",
+                                           "deadline_raw": "Anticipated 3/2/27"},
+        )
+        record = sro.raw_to_normalized(raw)
+        assert record["is_rolling"] is False
+        profile = {"year": "junior", "major": "Physics", "hard_skills": ["Python"]}
+        nsf_like = dict(copy.deepcopy(record), source="nsf_reu")
+        rolling = dict(copy.deepcopy(record), deadline=None, deadline_is_estimate=False, is_rolling=True)
+        score = score_eligibility(profile, record)[0]
+        assert score == score_eligibility(profile, rolling)[0]
+        assert score_eligibility(profile, nsf_like)[0] < score
+
     def test_list_only_refresh_keeps_the_detail_facts(self, monkeypatch, tmp_path):
         before = _sro_fetch(monkeypatch, _sro_detail_html())
         incoming = _sro_fetch(monkeypatch, None, list_html=_sro_list_html(deadline=""))
