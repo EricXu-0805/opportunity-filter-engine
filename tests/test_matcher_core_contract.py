@@ -15,6 +15,7 @@ import pytest
 
 from src import evidence as evidence_module
 from src.matcher import ranker
+from src.matcher.config import MATCHER_VERSION
 
 RELEASE_CONTRACT_TESTS = True
 
@@ -166,6 +167,9 @@ class TestDeadlineEvidenceControlsEveryScoringClaim:
         assert ranker.hard_exclusion(_opp(deadline="2026-02-27"), ctx) == "listing_closed"
         assert ranker.hard_exclusion(_opp(deadline="2026-02-28"), ctx) is None
         assert ranker.hard_exclusion(_opp(deadline="2026-02-01", deadline_is_estimate=True), ctx) is None
+        # The fingerprint hashes knobs and cannot see a truth change, so the
+        # base had to move with it or cached rankings keep the closed listings.
+        assert int(MATCHER_VERSION.split(".")[0]) >= 19
 
     def test_stated_future_deadline_keeps_urgency_and_seasonal_lift(self):
         listing = _opp(opportunity_type="summer_program", deadline="2026-03-04T12:00:00Z")
