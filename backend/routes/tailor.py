@@ -703,18 +703,20 @@ def _names_its_items(line: str) -> bool:
 
 
 def _heading_in_sentence_case(previous: str, line: str) -> bool:
-    """Whether a row may be a heading in sentence case ("Research experience", "Honors and awards:"):
-    shaped as a title-case heading (_own_row) but for the case of its later words, not opening
-    with a joining word, carrying no word the claim locks keep (_ITEM_QUALIFIERS), under a row
-    that can end an item (_dangling). Its words cannot tell it from the wrapped last row of the
-    bullet above ("Extension office"); _resume_rows decides by the row below it.
+    """Whether a row may be a heading in sentence case ("Research experience", "Honors and awards:",
+    "Team projects"): shaped as a title-case heading (_own_row) but for the case of its later
+    words, not opening with a joining word, under a row that can end an item (_dangling), and
+    carrying no word the claim locks keep (_ITEM_QUALIFIERS) or, as a title-case heading may,
+    naming something besides a status (_names_its_items). Its words cannot tell it from the
+    wrapped last row of the bullet above ("Extension office", "Manuscript in preparation");
+    _resume_rows decides by the row below it.
     """
     if len(line) > 40 or not line[:1].isupper():
         return False
     words = [word for word in line.rstrip(":").split() if word not in ("&", "/")]
     return (0 < len(words) <= 4 and all(ch.isascii() and (ch.isalpha() or ch in " &/'-") for ch in line.rstrip(":"))
             and words[0].casefold() not in _em._FUNCTION_EN and not _dangling(previous)
-            and not any(pattern.search(line) for pattern in _ITEM_QUALIFIERS))
+            and (not any(pattern.search(line) for pattern in _ITEM_QUALIFIERS) or _names_its_items(line)))
 
 
 def _row_of_its_own(previous: str, line: str) -> bool:
@@ -780,10 +782,11 @@ def _resume_rows(resume_text: str) -> list[tuple[str, str, bool]]:
     label; a row carrying a status, a share of the work or a negation only in capitals, as a
     role row, or as a heading that names its items besides a status).
 
-    A heading in sentence case ("Research experience") reads like the wrapped last row of the
-    bullet above it (_heading_in_sentence_case). It starts a row of its own when the row below it
-    starts one anyway (or it is the last row): the item it would end then holds nothing after it,
-    and it carries no status, share or negation, so a bullet cut above it drops no qualifier.
+    A heading in sentence case ("Research experience", "Team projects") reads like the wrapped
+    last row of the bullet above it (_heading_in_sentence_case). It starts a row of its own when
+    the row below it starts one anyway (or it is the last row): the item it would end then holds
+    nothing after it, so a bullet cut above it leaves out only this row, which states no status
+    alone ("Under review" stays with the bullet).
     """
     rows: list[tuple[str, str, bool]] = []
     headings: list[int] = []

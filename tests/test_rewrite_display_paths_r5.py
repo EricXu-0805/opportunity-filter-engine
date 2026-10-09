@@ -79,7 +79,10 @@ def test_a_heading_shaped_status_row_stays_with_its_bullet(monkeypatch, path, ro
 # bullet was dropped on both routes and glued to the heading by the fallback. Main keeps them all.
 SENTENCE_CASE_HEADINGS = ["Research experience", "Technical skills", "Honors and awards", "Relevant coursework",
                           "Community service", "Selected publications", "Conference presentations",
-                          "Additional information", "Research interests:", "Study abroad"]
+                          "Additional information", "Research interests:", "Study abroad",
+                          # with a lock word, naming its items besides a status as the title-case ones above
+                          "Team projects", "Campus involvement", "Research in progress", "Accepted papers",
+                          "Manuscripts in preparation", "Leadership & involvement"]
 
 
 @pytest.mark.parametrize("path", EXTRACT_PATHS)
@@ -102,16 +105,18 @@ def test_a_heading_in_sentence_case_above_a_role_row_is_a_row_of_its_own():
 
 
 # The boundary, which db09a88 already holds: such a row stays with the bullet when the row below it
-# goes on with it, so the status there stays too, and so does a status row in sentence case.
+# goes on with it, so a status there or on it stays too, and a row that states only a status stays.
 SENTENCE_CASE_WRAPS = {
     "status in brackets below": ("• Co-wrote a soil sensing paper with the Champaign County\nExtension office\n"
                                  "(under review at ICRA)\n", "Co-wrote a soil sensing paper with the Champaign County"),
     "status in lower case below": ("• Co-wrote a soil sensing paper with the Champaign County\nExtension office\n"
                                    "under review at ICRA\n", "Co-wrote a soil sensing paper with the Champaign County"),
-    "status naming its item": ("• Co-wrote a soil sensing paper for the campus farm\nManuscript in preparation\n",
-                               "Co-wrote a soil sensing paper for the campus farm"),
-    "status naming the paper": ("• Co-wrote a soil sensing paper for the campus farm\nPaper under review\n",
-                                "Co-wrote a soil sensing paper for the campus farm"),
+    "status on it, more below": ("• Co-wrote a soil sensing paper for the campus farm\nManuscript in preparation\n"
+                                 "with two graduate students\n", "Co-wrote a soil sensing paper for the campus farm"),
+    "status alone": ("• Co-wrote a soil sensing paper for the campus farm\nUnder review\n",
+                     "Co-wrote a soil sensing paper for the campus farm"),
+    "unfinished alone": ("• Co-wrote a soil sensing paper for the campus farm\nIn preparation\n",
+                         "Co-wrote a soil sensing paper for the campus farm"),
 }
 
 
