@@ -190,6 +190,12 @@ class Recorder:
 
         request_body.refuse_container_heavy_body = refuse
         full_route._parsed = parsed
+        self.restore = lambda: (setattr(request_body, "refuse_container_heavy_body", real_refuse),
+                                setattr(full_route, "_parsed", real_parsed))
+
+    def pytest_unconfigure(self, config):
+        """Stop recording, so the schema readings that follow are not counted as the tests'."""
+        self.restore()
 
 
 # These two send bodies at or past the bounds on purpose.
