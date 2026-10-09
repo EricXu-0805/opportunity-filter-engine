@@ -32,6 +32,12 @@ function withLoaded(current: History | null, identity: string, events: ContactEv
   return [...events, ...current.events.filter(event => !ids.has(event.id))];
 }
 
+// Source versions are SHA-256 digests (the target's behind 'wt1:'). The first
+// 8 hex characters tell two records apart; the whole digest reads as noise.
+function shortVersion(version: string): string {
+  return /[0-9a-f]{64}/.exec(version)?.[0].slice(0, 8) ?? version;
+}
+
 function ownerSnapshot(): string {
   const token = captureOwnerToken();
   return JSON.stringify([token.uid, token.epoch, token.generation, isOwnerTokenValid(token, token.uid)]);
@@ -141,7 +147,7 @@ export default function ContactHistory({ opportunityId, refreshKey }: Props) {
               <summary className="min-h-9 cursor-pointer font-medium focus-visible:ring-2 focus-visible:ring-indigo-500">{label('materials')}</summary>
               <p>{label('materialsHint')}</p>
               {event.materialRefs.length > 0 ? <ul className="mt-2 space-y-1 break-words [overflow-wrap:anywhere]">{event.materialRefs.map((ref, index) => <li key={`${ref.kind}-${index}`}>
-                {label(`materialKinds.${ref.kind}`)}: <span className="font-mono">{ref.version}</span>
+                {label(`materialKinds.${ref.kind}`)}: <span className="font-mono">{shortVersion(ref.version)}</span>
               </li>)}</ul> : <p className="mt-2">{label('noMaterials')}</p>}
               <p className="mt-2 break-words [overflow-wrap:anywhere]">{label('eventId')}: <span className="font-mono">{event.id}</span></p>
             </details>

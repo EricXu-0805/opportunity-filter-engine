@@ -295,7 +295,13 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # Summer alone hid. Each type now takes its cutoffs from its own scores and only
 # the 20-place High Priority shortlist is shared, so snapshots, cursors and
 # cached lists cut from the mixed distribution must not survive.
-_MATCHER_VERSION_BASE = "17"
+# 18: college affinity covers every college the profile form offers. It knew
+# only UIUC's eleven names, so a student at any other school had no college
+# signal; the 447 other catalog colleges now map to the fields their majors
+# cover. Two UIUC stems stop reaching other fields' departments ("civil" inside
+# "civilizations", "comparative" in comparative literature). The stems are a
+# table, not a hashed knob, so only the base can retire the old lists.
+_MATCHER_VERSION_BASE = "18"
 
 
 def _matcher_fingerprint() -> str:

@@ -88,6 +88,28 @@ describe('ContactHistory — truthful saved snapshots', () => {
     for (const version of ['profile-v1', 'target-v1', 'context-v1', 'resume-v1']) expect(screen.getByText(version)).toBeInTheDocument();
   });
 
+  it('shows a SHA-256 source version as its kind and first 8 hex characters, never the whole digest', async () => {
+    const profile = '3f2a9c1b' + 'a'.repeat(56); const target = 'wt1:0d4e8f27' + 'b'.repeat(56); const context = '9e1c5a70' + 'c'.repeat(56);
+    mocks.getContactEvents.mockResolvedValue(page([event({ materialRefs: [
+      { kind: 'profile', version: profile }, { kind: 'target', version: target }, { kind: 'contact_context', version: context },
+    ] })]));
+    const { container } = render(<ContactHistory {...props} />);
+    await screen.findByText('Research question');
+    const sources = screen.getByTestId('contact-event-sources');
+    fireEvent.click(within(sources).getByText(label('materials')));
+    expect(Array.from(sources.querySelectorAll('li'), item => item.textContent))
+      .toEqual(['Profile: 3f2a9c1b', 'Opportunity: 0d4e8f27', 'Contact background: 9e1c5a70']);
+    expect(container.innerHTML).not.toMatch(/[0-9a-f]{64}/i);
+  });
+
+  it('shows a version that only contains a run of hex characters whole', async () => {
+    mocks.getContactEvents.mockResolvedValue(page([event({ materialRefs: [{ kind: 'profile', version: 'cafe1234-v2' }] })]));
+    render(<ContactHistory {...props} />);
+    await screen.findByText('Research question');
+    fireEvent.click(within(screen.getByTestId('contact-event-sources')).getByText(label('materials')));
+    expect(screen.getByText('cafe1234-v2')).toBeInTheDocument();
+  });
+
   it('shows absent material references and a missing subject explicitly', async () => {
     mocks.getContactEvents.mockResolvedValue(page([event({ subject: '', materialRefs: [] })]));
     render(<ContactHistory {...props} />);

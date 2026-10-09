@@ -884,6 +884,68 @@ class TestScrapeLayer:
         assert not any("1945" in k for k in kws)
 
 
+class TestRejectedCertificateHost:
+    """Listings and profile pages on a host whose certificate fails
+    verification cost one request for the run, not one per page (udel's 35
+    department listings on 2026-10-08, three attempts each)."""
+
+    @pytest.fixture(autouse=True)
+    def _clean_circuit(self):
+        from src.collectors import ucb_common
+        ucb_common.reset_certificate_circuit()
+        yield
+        ucb_common.reset_certificate_circuit()
+
+    @staticmethod
+    def _install(monkeypatch, host, calls):
+        from src.collectors import ucb_common
+        from tests.test_ucb_common import rejected_certificate
+
+        class FakeSession:
+            def __init__(self):
+                self.headers = {}
+                self.verify = True
+
+            def get(self, url, timeout=None):
+                calls.append(url)
+                assert url.split("/")[2] == host
+                raise rejected_certificate(url)
+
+        monkeypatch.setattr(ucb_common.requests, "Session", FakeSession)
+        monkeypatch.setattr(ucb_common.time, "sleep", lambda s: None)
+
+    def test_departments_on_a_rejected_host_cost_one_request(self, monkeypatch):
+        from src.collectors import ucb_common
+        calls: list[str] = []
+        self._install(monkeypatch, "www.udel.edu", calls)
+        depts = [{"short": f"D{i}", "scrape": {"url": f"https://www.udel.edu/d{i}/our-people/",
+                                               "selectors": {"card": "div.card"}}} for i in range(3)]
+
+        assert [fg._scrape_directory(dept) for dept in depts] == [[], [], []]
+
+        assert calls == [depts[0]["scrape"]["url"]]
+        assert ucb_common.rejected_certificate_report() == {"hosts": {"www.udel.edu": 2}, "skipped": 2}
+
+    def test_a_skipped_profile_records_the_failure_a_failed_fetch_records(self, monkeypatch):
+        """Condition-capture evidence counts failed profile checks, so a
+        skipped page must not read as never attempted."""
+        calls: list[str] = []
+        self._install(monkeypatch, "people.udel.edu", calls)
+        monkeypatch.setattr(fg, "_PROFILE_ENRICH", True)
+        people = [{"name": "Ada Lovelace", "url": "https://people.udel.edu/ada"},
+                  {"name": "Alan Turing", "url": "https://people.udel.edu/alan"}]
+
+        enriched = fg._apply_profile_enrich(people, {"research_selector": ".research"})
+
+        assert calls == ["https://people.udel.edu/ada"]
+        captures = [person["_contact_instruction_capture"] for person in enriched]
+        assert [(c["status"], c["reason"], c["record_source_url"]) for c in captures] == [
+            ("failed", "fetch_failed", "https://people.udel.edu/ada"),
+            ("failed", "fetch_failed", "https://people.udel.edu/alan"),
+        ]
+        assert all("_verification_scope" not in person for person in enriched)
+
+
 class TestCuratedKeywordHygiene:
     """Curated/taxonomy keyword lists get the same hygiene the derived branch
     already applies (regression: the 6 multi-school configs shipped trailing

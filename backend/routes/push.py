@@ -5,7 +5,7 @@ import hmac
 import json
 import logging
 import os
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 
 from fastapi import APIRouter, Header, HTTPException
 
@@ -347,6 +347,20 @@ async def _account_email(client, supabase_url: str, headers: dict, uid: str) -> 
         return None
 
 
+def _reminder_day() -> date:
+    """The calendar day the reminders cron sends for: the date at UTC-8.
+
+    The cron is scheduled for 23:00 UTC, the same date in every US time zone,
+    but since 2026-10-02 GitHub has started it between 01:38 and 02:48 UTC the
+    next day. Taken in UTC, the date there is already tomorrow, and those runs
+    sent the next day's reminders the evening before the date the student
+    picked. UTC-8 is Pacific standard time, the last continental-US zone to
+    reach a new date. In summer it trails Pacific time by an hour, so a
+    reminder can only be held back, never sent early.
+    """
+    return (datetime.now(UTC) - timedelta(hours=8)).date()
+
+
 @router.get("/cron/reminders")
 async def reminders_cron(authorization: str | None = Header(default=None)):
     """Invoked by an external scheduler (Vercel Cron / GitHub Actions).
@@ -397,7 +411,7 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
         "Authorization": f"Bearer {env['SUPABASE_SERVICE_ROLE_KEY']}",
         "Content-Type": "application/json",
     }
-    today = date.today().isoformat()
+    today = _reminder_day().isoformat()
     resend_key = os.environ.get("RESEND_API_KEY", "").strip()
     resend_from = os.environ.get("RESEND_FROM_EMAIL", "").strip()
 
