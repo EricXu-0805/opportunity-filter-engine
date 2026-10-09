@@ -21,6 +21,10 @@ Prints, by source and label, the pairs whose original language() reads as Englis
 review without the rule, and how many of them the rule keeps; then how many of those originals also
 hold a letter of another script (a CJK name, "4º"), which round 5 asks for the evidence too. --list
 prints each kept pair. Deterministic; provider-free.
+
+Round 6 adds a probe set that is not among the samples: tests/fixtures/code_switched_zh_probe.json,
+faithful rewrites of lines that mix Chinese and English and that language() reads as English. Its
+pairs run the same way, each with its own declared row, and are counted on a line of their own.
 """
 from __future__ import annotations
 
@@ -39,6 +43,16 @@ import measure_rewrite_refusals as refusals  # noqa: E402
 
 from backend.lib import evidence_map as em  # noqa: E402
 
+PROBE = ROOT / "tests" / "fixtures" / "code_switched_zh_probe.json"
+
+
+def probe_pairs() -> list[dict]:
+    import json
+
+    return [{"source": f"probe:{pair['label']}", "label": "faithful", "original": pair["original"],
+             "rewrite": pair["rewrite"], "rows": [{"links": pair["links"], "ops": pair["ops"], "anchors": pair["anchors"]}]}
+            for pair in json.loads(PROBE.read_text())["pairs"]]
+
 
 def reaches(pair: dict) -> bool:
     route = refusals.route_outcomes(pair["original"], pair["rewrite"], pair["rows"])
@@ -52,12 +66,13 @@ def main() -> int:
     args = parser.parse_args()
     pairs = [pair for pair in refusals.collect_pairs()
              if em.language(pair["original"]) == em.language(pair["rewrite"]) == "en"]
+    probe = probe_pairs()
     rule = em._english_line
-    for pair in pairs:
+    for pair in pairs + probe:
         pair["with_rule"] = reaches(pair)
     em._english_line = lambda line, renamed: True
     try:
-        for pair in pairs:
+        for pair in pairs + probe:
             pair["without_rule"] = reaches(pair)
     finally:
         em._english_line = rule
@@ -79,8 +94,14 @@ def main() -> int:
     other = [pair for pair in pairs if em._non_latin_frame(pair["original"])]
     print(f"of the pairs, originals that also hold a letter of another script: {len(other)}; "
           f"the rule keeps {sum(pair in kept for pair in other)} of them")
+    english = [pair for pair in probe if em.language(pair["original"]) == em.language(pair["rewrite"]) == "en"]
+    reach = [pair for pair in english if pair["without_rule"]]
+    probe_kept = [pair for pair in reach if not pair["with_rule"]]
+    print(f"code-switched Chinese probe ({PROBE.relative_to(ROOT)}): {len(probe)} faithful pairs, "
+          f"{len(english)} read as English; reach the review without the rule {len(reach)}; "
+          f"kept by the rule {len(probe_kept)}; still reach it {len(reach) - len(probe_kept)}")
     if args.list:
-        for pair in kept:
+        for pair in kept + probe_kept:
             print(f"  - [{pair['source']}] ({pair['label']}) {pair['original']!r}\n      -> {pair['rewrite']!r}")
     return 0
 
