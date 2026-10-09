@@ -701,6 +701,19 @@ class TestJhuMedicalSeedTwins:
         assert cy["keywords"] == ["tissue engineering", "biomaterials"]
         assert "Biomedical Engineering" in cy["metadata"]["_faculty_major_labels"]
 
+    def test_generic_seed_keywords_do_not_outweigh_the_roster_record(
+            self, monkeypatch, tmp_path):
+        # Only topical keywords count. "research" and "design" say nothing
+        # about the person, so the seed record holds no more topical keywords
+        # than the roster record, and the roster record keeps the person.
+        records = self._records(monkeypatch, tmp_path)
+        seed_bo = next(r for r in records if r["id"].startswith("faculty-jhu-som-")
+                       and r["pi_name"] == "Bo Sample")
+        seed_bo["keywords"] = ["research", "design"]
+        res = fg.collapse_same_person_faculty(records)
+        (bo,) = self._by_name(res["kept"])["bo sample"]
+        assert bo["id"].startswith("faculty-jhu-wse-bme-")
+
     def test_the_same_name_in_another_department_stays_two_people(
             self, monkeypatch, tmp_path):
         # SOM's John Miller (Medicine) and Whiting's John Miller (Applied
