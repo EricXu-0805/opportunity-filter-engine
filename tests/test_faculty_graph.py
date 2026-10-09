@@ -684,7 +684,8 @@ class TestScrapeLayer:
                      '<a href="/p/a">Ada Prof</a></h2><p class="title">Professor</p></div>')
         calls = {"paged": 0}
 
-        def fake_paginated(url, param="page", max_pages=12, card_sel="", timeout_ms=60000):
+        def fake_paginated(url, param="page", max_pages=12, card_sel="", timeout_ms=60000,
+                           **_kw):
             calls["paged"] += 1
             return BeautifulSoup(page_html, "html.parser")
 
@@ -700,6 +701,115 @@ class TestScrapeLayer:
         people = fg._scrape_directory(dept)
         assert calls["paged"] == 1
         assert any(p["name"] == "Ada Prof" for p in people)
+
+    # Michigan LSA's hash router: past the last page the grid is empty, and so
+    # is a page whose cards have not rendered yet. The roster's own "next" link
+    # (inactive on the last page) tells them apart.
+    @staticmethod
+    def _hash_router(monkeypatch, pages):
+        """Headless Chromium on a hash-router roster. ``pages[n]`` is page n's
+        card names, whether its "next" link is active, and how many waits its
+        cards take to render (default one)."""
+        import sys
+        import types
+        from urllib.parse import parse_qs, urlsplit
+
+        class Page:
+            def goto(self, url, **_kw):
+                self.pg = int(parse_qs(urlsplit(url).fragment).get("page", ["1"])[0])
+                self.waits = 0
+
+            def wait_for_timeout(self, _ms):
+                self.waits += 1
+
+            def _spec(self):
+                spec = pages.get(self.pg, {"cards": []})
+                return spec if self.waits >= spec.get("waits", 1) else {"cards": []}
+
+            def eval_on_selector_all(self, _sel, _js):
+                return [f'<div class="c"><a class="n" href="/p/{n}">{n}</a></div>'
+                        for n in self._spec()["cards"]]
+
+            def query_selector(self, _sel):
+                return object() if self._spec().get("next") else None
+
+        class Browser:
+            def new_context(self, **_kw):
+                return types.SimpleNamespace(new_page=Page)
+
+            def close(self):
+                pass
+
+        class Session:
+            chromium = types.SimpleNamespace(launch=lambda **_kw: Browser())
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_a):
+                return False
+
+        sync_api = types.ModuleType("playwright.sync_api")
+        sync_api.sync_playwright = Session
+        package = types.ModuleType("playwright")
+        package.sync_api = sync_api
+        monkeypatch.setitem(sys.modules, "playwright", package)
+        monkeypatch.setitem(sys.modules, "playwright.sync_api", sync_api)
+
+    def _hash_walk(self, monkeypatch, pages, max_pages=12, **paginate):
+        self._hash_router(monkeypatch, pages)
+        paginate = {"mode": "hash", "param": "page", "max": max_pages,
+                    "next": "a.next:not(.inactive)", **paginate}
+        cov = self._coverage(monkeypatch, {}, render=True, paginate=paginate)
+        dept = {"short": "X", "scrape": {
+            "url": "https://x.edu/f", "render": True, "paginate": paginate,
+            "selectors": {"card": "div.c", "name": ".n", "link": ".n"}}}
+        return cov, [p["name"] for p in fg._scrape_directory(dept)]
+
+    def test_a_hash_roster_read_to_its_last_page_keeps_the_unit(self, monkeypatch):
+        cov, names = self._hash_walk(monkeypatch, {
+            1: {"cards": ["Ann Alpha", "Ben Beta"], "next": True},
+            2: {"cards": ["Cy Gamma"], "next": False}})
+        assert names == ["Ann Alpha", "Ben Beta", "Cy Gamma"]
+        assert cov["partial_render_rows"] == 0
+
+    def test_a_hash_page_that_does_not_render_withholds_the_unit(self, monkeypatch):
+        cov, names = self._hash_walk(monkeypatch, {
+            1: {"cards": ["Ann Alpha", "Ben Beta"], "next": True},
+            2: {"cards": ["Cy Gamma"], "next": False, "waits": 99}})
+        assert names == ["Ann Alpha", "Ben Beta"]
+        assert cov["partial_render_rows"] == 1
+
+    def test_a_slow_hash_page_gets_a_second_look(self, monkeypatch):
+        cov, names = self._hash_walk(monkeypatch, {
+            1: {"cards": ["Ann Alpha", "Ben Beta"], "next": True},
+            2: {"cards": ["Cy Gamma"], "next": False, "waits": 2}})
+        assert names == ["Ann Alpha", "Ben Beta", "Cy Gamma"]
+        assert cov["partial_render_rows"] == 0
+
+    def test_a_hash_walk_stopped_by_its_cap_withholds_the_unit(self, monkeypatch):
+        cov, names = self._hash_walk(monkeypatch, {
+            1: {"cards": ["Ann Alpha"], "next": True},
+            2: {"cards": ["Ben Beta"], "next": True},
+            3: {"cards": ["Cy Gamma"], "next": False}}, max_pages=2)
+        assert names == ["Ann Alpha", "Ben Beta"]
+        assert cov["partial_render_rows"] == 1
+
+    def test_an_empty_first_hash_page_before_cards_withholds_the_unit(self, monkeypatch):
+        cov, names = self._hash_walk(monkeypatch, {
+            1: {"cards": ["Ann Alpha"], "next": True, "waits": 99},
+            2: {"cards": ["Ben Beta"], "next": False}})
+        assert names == ["Ben Beta"]
+        assert cov["partial_render_rows"] == 1
+
+    def test_a_hash_walk_with_no_next_selector_cannot_vouch_for_its_end(self, monkeypatch):
+        # Without the roster's "next" link the walk cannot tell its last page
+        # from a page that did not render, so the unit retires nobody.
+        cov, names = self._hash_walk(monkeypatch, {
+            1: {"cards": ["Ann Alpha"], "next": True},
+            2: {"cards": ["Ben Beta"], "next": False}}, next="")
+        assert names == ["Ann Alpha", "Ben Beta"]
+        assert cov["partial_render_rows"] == 1
 
     def test_research_join_fills_areas_from_aggregator_page(self, monkeypatch):
         """When research areas live only on one shared page (a "research

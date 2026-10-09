@@ -1354,7 +1354,8 @@ def _render_soup(url: str, timeout_ms: int = 60000,
 
 
 def _render_paginated_soup(url: str, param: str = "page", max_pages: int = 12,
-                          card_sel: str = "", timeout_ms: int = 60000):
+                          card_sel: str = "", timeout_ms: int = 60000,
+                          next_sel: str = ""):
     """Walk a client-side hash-router directory in ONE render session.
 
     Some AEM "people" grids (Michigan LSA — Chemistry, Psychology, Statistics,
@@ -1366,6 +1367,13 @@ def _render_paginated_soup(url: str, param: str = "page", max_pages: int = 12,
     page's ``card_sel`` outerHTML until a page surfaces nothing new or the cap is
     hit. Returns a soup of all pages' cards concatenated (parsed by the caller's
     normal selectors), or ``None`` where Playwright/Chromium is unavailable.
+
+    Past the last page the grid is empty, and so is a page whose cards have not
+    rendered yet. ``next_sel`` matches the roster's own "next page" control
+    while it is active; when the page before an empty one offered a next page,
+    or the cap stops a walk that still offers one, or an empty page comes before
+    one with cards, the soup carries ``_ofe_truncated`` so the unit retires
+    nobody that run. Without ``next_sel`` every walk counts as truncated.
     """
     if not card_sel:
         return None
@@ -1377,25 +1385,41 @@ def _render_paginated_soup(url: str, param: str = "page", max_pages: int = 12,
     except ImportError:
         return None
     parts: list[str] = []
+    truncated = missed = False
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
             try:
                 page = browser.new_context(user_agent=HEADERS["User-Agent"]).new_page()
                 seen: set[str] = set()
+
+                def fresh_cards() -> list[str]:
+                    cards = page.eval_on_selector_all(
+                        card_sel, "els => els.map(e => e.outerHTML)")
+                    return [c for c in cards if c not in seen]
+
+                more = False
                 for pg in range(1, max_pages + 1):
                     if _source_budget_spent():
                         break
                     target = url if pg == 1 else f"{url}#q=&alpha=&{param}={pg}"
                     page.goto(target, wait_until="domcontentloaded", timeout=timeout_ms)
                     page.wait_for_timeout(3500 if pg == 1 else 2500)
-                    cards = page.eval_on_selector_all(
-                        card_sel, "els => els.map(e => e.outerHTML)")
-                    fresh = [c for c in cards if c not in seen]
+                    fresh = fresh_cards()
+                    if not fresh and more:
+                        # The page before promised this one: give its grid one
+                        # more settle before calling it unrendered.
+                        page.wait_for_timeout(5000)
+                        fresh = fresh_cards()
                     if pg > 1 and not fresh:
+                        truncated = more
                         break
+                    missed = missed or not fresh
                     seen.update(fresh)
                     parts.extend(fresh)
+                    more = not next_sel or page.query_selector(next_sel) is not None
+                else:
+                    truncated = more
             finally:
                 browser.close()
     except Exception as e:  # noqa: BLE001 — degrade to None like fetch_soup
@@ -1403,7 +1427,9 @@ def _render_paginated_soup(url: str, param: str = "page", max_pages: int = 12,
         return None
     if not parts:
         return None
-    return BeautifulSoup("<div>" + "".join(parts) + "</div>", "html.parser")
+    soup = BeautifulSoup("<div>" + "".join(parts) + "</div>", "html.parser")
+    soup._ofe_truncated = truncated or missed
+    return soup
 
 
 def _scrape_directory(dept: dict) -> list[dict]:
@@ -1496,7 +1522,15 @@ def _scrape_directory(dept: dict) -> list[dict]:
         # every page inside one render session (below) instead of the fetch-per-URL
         # loop, which can't drive a same-document router.
         soup = _render_paginated_soup(base, pag.get("param", "page"),
-                                      pag.get("max", 12), sel.get("card", ""))
+                                      pag.get("max", 12), sel.get("card", ""),
+                                      next_sel=pag.get("next", ""))
+        if getattr(soup, "_ofe_truncated", False):
+            # Same rule as the fetch-per-URL walk below: a roster page the walk
+            # did not read withholds the unit's retirements for the run.
+            _cover("partial_render_rows")
+            logger.warning("faculty_graph: %s hash-router walk stopped before the "
+                           "roster's last page; the unit retires nobody this run",
+                           dept.get("short"))
     elif cfg.get("render"):
         # Wait for the card selector so a Cloudflare-walled dept retries past the
         # interstitial instead of parsing the challenge shell (empty result). A

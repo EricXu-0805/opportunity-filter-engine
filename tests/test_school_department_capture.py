@@ -634,6 +634,18 @@ class TestPagerCaps:
         mod = importlib.import_module(f"src.collectors.schools.{module}")
         assert _dept(mod, short)["scrape"]["paginate"]["max"] >= last_page
 
+    def test_michigan_lsa_names_its_next_link(self):
+        # The LSA grid's "next" link stays in the page and turns inactive on
+        # the last page (Statistics, 2026-10-09: 12 + 12 + 12 + 4 cards).
+        from bs4 import BeautifulSoup
+
+        from src.collectors.schools import umich_faculty
+        pager = ('<div class="lsa-pagination"><a class="previous themeText{0}" href="#">'
+                 'previous</a><a class="next themeText{1}" href="#page=2">next</a></div>')
+        sel = umich_faculty._LSA_PAGINATE["next"]
+        assert BeautifulSoup(pager.format(" inactive", ""), "html.parser").select(sel)
+        assert not BeautifulSoup(pager.format("", " inactive"), "html.parser").select(sel)
+
 
 # --- JHU: a School of Medicine seed twin of a roster professor ---------------
 
