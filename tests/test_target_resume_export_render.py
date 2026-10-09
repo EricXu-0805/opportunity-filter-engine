@@ -104,6 +104,26 @@ def test_short_docx_reads_as_a_compact_resume():
     assert len(document.paragraphs) == 19  # Was 37: one paragraph per field and per skill.
 
 
+@pytest.mark.parametrize('locale', ['en', 'zh'])
+def test_docx_section_titles_are_level_one_headings_that_look_unchanged(locale):
+    # They were Normal paragraphs: the file had no outline, and LibreOffice's PDF export of it no bookmarks.
+    from docx import Document
+    from docx.shared import Pt
+    value = resume_draft(locale)
+    value['sections'].append({'kind': 'other', 'heading': 'Awards', 'blocks': [
+        {'lines': [{'role': 'other', 'label': '', 'text': 'Dean’s List'}]}]})
+    document = Document(io.BytesIO(renderer.render_export(value, 'docx')))
+    titles = [renderer.HEADINGS[locale][kind] for kind in ('education', 'activities', 'skills')] + ['Awards']
+    styles = {paragraph.text: paragraph.style for paragraph in document.paragraphs}
+    assert [styles[title].name for title in titles] == ['Heading 1'] * 4
+    assert {style.name for text, style in styles.items() if text not in titles} == {'Normal'}
+    style = document.styles['Heading 1']
+    assert style.element.pPr.find(f'{{{W}}}outlineLvl').get(f'{{{W}}}val') == '0'
+    # The template's Heading 1 is a 14 pt bold blue theme font: the titles keep the body font and color at 12 pt.
+    assert [etree.QName(child).localname for child in style.element.rPr] == ['sz']
+    assert style.font.size == Pt(12)
+
+
 def contact_projection(contact, page_size='letter'):
     lines = [('name', '', 'Jordan Lee'), *contact]
     return {'version': 1, 'template': 'standard-v1', 'locale': 'en', 'page_size': page_size, 'sections': [

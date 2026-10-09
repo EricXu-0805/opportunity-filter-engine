@@ -577,6 +577,11 @@ def render_docx(projection, assets, deadline=None):
     normal.paragraph_format.space_after = Pt(3)
     normal.paragraph_format.line_spacing = 1.15
     normal.paragraph_format.widow_control = True
+    # Section titles use Heading 1, so the file has an outline to navigate. The template's
+    # Heading 1 is a 14 pt bold blue theme font; the titles keep the body font.
+    heading_style = document.styles['Heading 1']
+    heading_style.element.remove(heading_style.element.get_or_add_rPr())
+    heading_style.font.size = Pt(DOCX_SIZES['heading'])
     for key in ('author', 'last_modified_by', 'subject', 'comments', 'keywords', 'category', 'description'):
         if hasattr(document.core_properties, key):
             setattr(document.core_properties, key, '')
@@ -611,7 +616,7 @@ def render_docx(projection, assets, deadline=None):
 
     for item in paragraphs:
         check_deadline(deadline)
-        paragraph = document.add_paragraph()
+        paragraph = document.add_paragraph(style=heading_style if item.style == 'heading' else None)
         layout_format = paragraph.paragraph_format
         if item.style == 'heading':
             add_rule(paragraph)
