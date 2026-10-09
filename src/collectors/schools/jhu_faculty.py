@@ -84,6 +84,57 @@ def _wse(short: str, name: str, majors: list[str], url: str,
             "scrape": scrape}
 
 
+# School of Medicine departments, read off the seed's "School of Medicine — X"
+# (X is the appointment in the harvested title, "Assistant Professor of X").
+# Checked against the structured ``academic_appointment`` of 30 live profiles
+# (2026-10-09): "Professor of Clinical X" is a member of department X (8/8), and
+# "of Pediatric Surgery" / "of Cardiac Surgery" are divisions of Surgery (4/4).
+# "Dental and Oral Medicine" is a division of Otolaryngology (2/2) and is left
+# to the umbrella rather than guessed. The harvest cut each title at a length
+# limit, running some into the next profile heading ("… Find a Clinical Trial",
+# "… Additional Academic Titles") and some into biography prose about other
+# institutions ("of Surgery, Georgetown University"); only the headings are
+# accepted after a name, so the prose cases stay "School of Medicine".
+# Biophysics and Biophysical Chemistry (10 professors) is a department too, but
+# its name reads as Physics in the OpenAlex author gate (``openalex_enrich.
+# _DEPT_FIELDS``: "physic"), a family with no biomedical field at all, and the
+# research refresh rechecks every stored author against that family. It stays
+# under the umbrella, which the gate reads as medicine.
+_SOM_DEPARTMENTS = {
+    "prefix": "School of Medicine — ",
+    "strip": r"^Clinical\s+",
+    "names": [
+        "Anesthesiology and Critical Care Medicine", "Art as Applied to Medicine",
+        "Biomedical Engineering", "Cell Biology", "Dermatology", "Emergency Medicine",
+        "Functional Anatomy and Evolution", "Genetic Medicine",
+        "Gynecology and Obstetrics", "History of Medicine", "Medicine",
+        "Molecular and Comparative Pathobiology", "Molecular Biology and Genetics",
+        "Neurological Surgery", "Neurology", "Neuroscience", "Oncology",
+        "Ophthalmology", "Orthopaedic Surgery",
+        "Otolaryngology-Head and Neck Surgery", "Pathology", "Pediatrics",
+        "Physical Medicine and Rehabilitation",
+        "Physiology, Pharmacology and Therapeutics",
+        "Plastic and Reconstructive Surgery", "Psychiatry and Behavioral Sciences",
+        "Radiation Oncology and Molecular Radiation Sciences",
+        "Radiology and Radiological Science", "Surgery", "Urology",
+    ],
+    "aliases": {
+        # Truncated by the harvest's title cut.
+        "Anesthesiology and Critical Care":
+            "Anesthesiology and Critical Care Medicine",
+        "Radiation Oncology and Molecular Radiation":
+            "Radiation Oncology and Molecular Radiation Sciences",
+        "Radiation Oncology and Molecular":
+            "Radiation Oncology and Molecular Radiation Sciences",
+        "Pediatric Surgery": "Surgery",
+        "Cardiac Surgery": "Surgery",
+    },
+    "boundary": (r"\s*$|\s+(?:Additional|Find|Centers|LinkedIn|Lab Website"
+                 r"|Selected Publications|Recent|Honors|PubMed|Pure|X Profile"
+                 r"|Research Summary)\b"),
+}
+
+
 SCHOOL: dict = {
     "school_slug": "jhu",
     "source": "jhu_faculty",
@@ -268,7 +319,9 @@ SCHOOL: dict = {
         # each refresh). Each provider profile embeds the personal address in a
         # ``"provider_email":"…@jh.edu"`` JSON blob, re-harvested into the seed's
         # email field (2899/2905 emailed); specialty rides the title. See
-        # scripts/harvest for regeneration.
+        # scripts/harvest for regeneration. The seed's ``department`` is the
+        # appointment named in that title ("… Professor of Pediatrics") —
+        # see _SOM_DEPARTMENTS for how it becomes the record's department.
         {
             "short": "SOM", "name": "School of Medicine",
             "majors": ["Medicine", "Neuroscience", "Cell Biology", "Pharmacology",
@@ -279,6 +332,8 @@ SCHOOL: dict = {
                 "file": "data/faculty_seeds/jhu_som.json",
                 "name_fields": ["name"], "title_field": "title",
                 "email_field": "email", "link_field": "url",
+                "department_field": "department",
+                "department_units": _SOM_DEPARTMENTS,
             },
         },
         # --- School of Advanced International Studies (SAIS) ---

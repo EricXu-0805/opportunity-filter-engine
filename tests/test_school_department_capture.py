@@ -19,7 +19,11 @@ of the live pages and feeds (2026-10-09), with names and addresses replaced.
 
 from __future__ import annotations
 
+import json
+from collections import Counter
 from pathlib import Path
+
+import pytest
 
 from src.collectors import faculty_graph as fg
 
@@ -182,3 +186,120 @@ class TestJsonDirDepartment:
         # The unit stays the config short, so ids and the retirement ledger
         # do not move when the department label becomes finer.
         assert all(r["id"].startswith("faculty-x-som-") for r in recs)
+
+
+# --- the finer labels must not hand the author gate a wrong field family -----
+
+class TestDepartmentFieldFamily:
+    """openalex_enrich._dept_fields scans substrings in order, so a clinical
+    department named after "physical", "gynecology" or "reconstructive" fell
+    into Physics ("physic"), Ecology ("ecolog") or Economics ("econ") — and the
+    wrong-person gate then rejects the professor's real OpenAlex author. Under
+    the old umbrella ("School of Medicine") all of them read as medicine."""
+
+    @pytest.mark.parametrize("department", [
+        "School of Medicine — Physical Medicine and Rehabilitation",
+        "Feinberg School of Medicine — Physical Therapy and Human Movement Sciences",
+        "Department of Physical Therapy",
+        "School of Medicine — Gynecology and Obstetrics",
+        "Feinberg School of Medicine — Obstetrics and Gynecology",
+        "School of Medicine — Plastic and Reconstructive Surgery",
+    ])
+    def test_clinical_departments_keep_the_health_family(self, department):
+        from src.collectors.openalex_enrich import _HEALTH, _dept_fields
+        assert _dept_fields(department) == _HEALTH
+
+    @pytest.mark.parametrize("department, field", [
+        ("Department of Physics", "Physics and Astronomy"),
+        ("Department of Physics and Astronomy", "Physics and Astronomy"),
+        ("Department of Economics", "Economics, Econometrics and Finance"),
+        ("Department of Ecology and Evolutionary Biology",
+         "Agricultural and Biological Sciences"),
+    ])
+    def test_the_stems_they_collided_with_still_answer(self, department, field):
+        from src.collectors.openalex_enrich import _dept_fields
+        assert field in _dept_fields(department)
+
+    @pytest.mark.parametrize("module_name, units_attr", [
+        ("jhu_faculty", "_SOM_DEPARTMENTS"),
+        ("northwestern_faculty", "_FEINBERG_DEPARTMENTS"),
+    ])
+    def test_every_medical_department_keeps_a_biomedical_field(self, module_name, units_attr):
+        # The umbrella read as medicine; a finer label may narrow that family
+        # but must not leave it with no biomedical field at all ("Biophysics
+        # and Biophysical Chemistry" reads as Physics, so it is not listed).
+        import importlib
+
+        from src.collectors.openalex_enrich import _dept_fields
+        units = getattr(importlib.import_module(f"src.collectors.schools.{module_name}"),
+                        units_attr)
+        biomedical = {"Medicine", "Biochemistry, Genetics and Molecular Biology"}
+        labels = {units["prefix"] + n for n in units["names"]} | {
+            units["prefix"] + n for n in units["aliases"].values()}
+        assert not [label for label in sorted(labels)
+                    if not (_dept_fields(label) or set()) & biomedical]
+
+
+def _dept(module, short):
+    return next(d for d in module.SCHOOL["departments"] if d["short"] == short)
+
+
+def _fixture_json(name):
+    return json.loads((FIXTURES / name).read_text())
+
+
+# --- the two medical schools, on their committed seeds -----------------------
+
+class TestMedicalSchoolDepartments:
+    @pytest.mark.parametrize("module_name, short, umbrella, units_attr", [
+        ("jhu_faculty", "SOM", "School of Medicine", "_SOM_DEPARTMENTS"),
+        ("northwestern_faculty", "FEINBERG", "Feinberg School of Medicine",
+         "_FEINBERG_DEPARTMENTS"),
+    ])
+    def test_seed_lands_at_department_level(self, module_name, short, umbrella, units_attr):
+        import importlib
+        module = importlib.import_module(f"src.collectors.schools.{module_name}")
+        dept = _dept(module, short)
+        records = [r for r in (fg._normalize(module.SCHOOL, dept, p)
+                               for p in fg._fetch_json_dir(dept)) if r]
+        departments = Counter(r["department"] for r in records)
+        units = getattr(module, units_attr)
+        allowed = {units["prefix"] + n for n in units["names"]} | {
+            units["prefix"] + n for n in units["aliases"].values()} | {umbrella}
+        assert set(departments) <= allowed
+        # Before D23 every one of these records said only the school.
+        assert departments[umbrella] < 0.05 * len(records)
+        assert len(departments) > 20
+        assert all(r["id"].startswith(f"faculty-{module.SCHOOL['id_prefix']}-{short.lower()}-")
+                   for r in records)
+
+    def test_jhu_title_text_from_another_institution_stays_umbrella(self):
+        from src.collectors.schools import jhu_faculty
+        units = jhu_faculty._SOM_DEPARTMENTS
+        assert fg._json_department(
+            "School of Medicine — Surgery, Georgetown University", units) == ""
+        assert fg._json_department(
+            "School of Medicine — Clinical Anesthesiology and Critical Care", units
+        ) == "School of Medicine — Anesthesiology and Critical Care Medicine"
+        assert fg._json_department(
+            "School of Medicine — Pediatric Surgery", units) == "School of Medicine — Surgery"
+        assert fg._json_department(
+            "School of Medicine — Cardiac Surgery", units) == "School of Medicine — Surgery"
+        assert fg._json_department(
+            "School of Medicine — Biophysics and Biophysical Chemistry", units) == ""
+
+    def test_feinberg_first_appointment_wins_without_its_division(self):
+        from src.collectors.schools import northwestern_faculty
+        units = northwestern_faculty._FEINBERG_DEPARTMENTS
+        p = "Feinberg School of Medicine — "
+        assert fg._json_department(
+            p + "Medicine (General Internal Medicine) , Medica", units) == p + "Medicine"
+        assert fg._json_department(
+            p + "Pharmacology Research Associate Professor, We", units) == p + "Pharmacology"
+        assert fg._json_department(
+            p + "Neurology - Ken and Ruth Davee Department Pro", units) == p + "Neurology"
+        assert fg._json_department(
+            p + "Otolaryngology (Pediatric Otolaryngology", units
+        ) == p + "Otolaryngology - Head and Neck Surgery"
+        assert fg._json_department(
+            p + "Robert H. Lurie Comprehensive Cancer Center", units) == ""
