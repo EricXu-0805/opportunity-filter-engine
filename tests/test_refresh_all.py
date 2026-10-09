@@ -1373,6 +1373,43 @@ def test_listed_program_keys_reach_the_campus_merge_without_report_content(monke
     assert proof["listed_program_keys"] == listed
 
 
+def test_the_run_summary_counts_fetches_skipped_for_a_rejected_certificate(monkeypatch, tmp_path):
+    from src.collectors import ucb_common
+    from tests.test_ucb_common import rejected_certificate
+
+    _stub_with_processed_file(monkeypatch, tmp_path, [])
+
+    class FakeSession:
+        def __init__(self):
+            self.headers = {}
+            self.verify = True
+
+        def get(self, url, timeout=None):
+            raise rejected_certificate(url)
+
+    monkeypatch.setattr(ucb_common.requests, "Session", FakeSession)
+    monkeypatch.setattr(ucb_common.time, "sleep", lambda s: None)
+
+    def fetch_three_listings():
+        for i in range(3):
+            ucb_common.fetch_soup(f"https://www.udel.edu/d{i}/our-people/")
+        return []
+
+    monkeypatch.setattr(refresh_all, "fetch_ucb_urap", fetch_three_listings)
+    monkeypatch.setattr(refresh_all, "enrich_pi", lambda opps, save=True, max_scrapes=None, deadline=None: {
+        "scraped": 0, "enriched": 0, "already_has_email": 0, "skipped_budget": 0, "skipped_certificate": 5})
+    # Left from an earlier run in this process: a run counts only its own.
+    stale = "https://stale.example.edu/"
+    ucb_common.note_rejected_certificate(stale, rejected_certificate(stale))
+    try:
+        summary = refresh_all.refresh_all(deep=False, schools={"ucb"})
+    finally:
+        ucb_common.reset_certificate_circuit()
+
+    assert summary["rejected_certificates"] == {"hosts": {"www.udel.edu": 2}, "skipped": 2}
+    assert summary["sources"]["pi_enricher"]["skipped_certificate"] == 5
+
+
 def test_listed_program_keys_reach_the_ucb_campus_merge_without_report_content(monkeypatch, tmp_path):
     _stub_all_collectors(monkeypatch, tmp_path)
     listed = ["first_program", "second_program"]
