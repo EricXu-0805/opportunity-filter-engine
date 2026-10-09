@@ -236,7 +236,9 @@ for (const locale of ['en', 'zh'] as const) {
     await page.getByRole('button', { name: t.detail.draftEmail, exact: true }).click();
     await expect(page.getByTestId('cold-email-footer')).toBeVisible({ timeout: 20_000 });
     // The automatic AI draft has been tried and refused, so the scan sees the
-    // editor in the state it keeps, not mid-request.
+    // editor in the state it keeps, not mid-request. This wait assumes the
+    // editor starts that draft by itself; if the draft becomes opt-in, the
+    // wait has to change with it.
     await expect.poll(() => refused, { message: 'the editor\'s AI draft request was answered here' })
       .toContain('/api/cold-email/stream');
     // aria-modal hides the page behind it, so only the dialog is the editor.
