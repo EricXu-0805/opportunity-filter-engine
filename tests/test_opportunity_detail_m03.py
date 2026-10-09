@@ -38,7 +38,7 @@ from src.evidence import (
     neutralize_unverified_faculty_claims,
     stamp_collector_templates,
 )
-from src.matcher.ranker import score_eligibility, score_upside
+from src.matcher.ranker import _reason_priority, score_eligibility, score_upside
 from src.normalizers.normalizer import normalize
 
 _CASES = dict(CASES)
@@ -814,6 +814,30 @@ class TestCampusGraphContract:
         _, canonical = _served(self._configured())
         _, fits, _ = score_upside({}, canonical)
         assert "Includes stipend" not in fits
+
+    def test_match_reasons_do_not_call_configured_terms_the_programs(self):
+        # Configured majors and class years still score as stated (an owner
+        # decision); only the sentences stop presenting them as the program's.
+        _, canonical = _served(self._configured())
+        fit = {"year": "junior", "major": "Biology", "hard_skills": []}
+        miss = {"year": "freshman", "major": "History", "hard_skills": []}
+        _, fits, _ = score_eligibility(fit, canonical)
+        assert "Your major (Biology) may fit this program" in fits
+        assert "Your class year (junior) may fit this program" in fits
+        assert not any("direct match" in text or text.startswith("Accepts ") for text in fits)
+        # Same display tier as the sentences they replace.
+        assert {_reason_priority(text) for text in fits} == {6}
+        _, related, _ = score_eligibility(dict(fit, major="Chemistry"), canonical)
+        assert "Your major (Chemistry) may be related to this program" in related
+        _, _, gaps = score_eligibility(miss, canonical)
+        assert not any(text.startswith(("Prefers", "Typically targets")) for text in gaps)
+        posting = dict(copy.deepcopy(canonical), source="example_postings")
+        for profile in (fit, miss):
+            assert score_eligibility(profile, canonical)[0] == score_eligibility(profile, posting)[0]
+        _, posting_fits, _ = score_eligibility(fit, posting)
+        _, _, posting_gaps = score_eligibility(miss, posting)
+        assert "Your major (Biology) is a direct match" in posting_fits
+        assert posting_gaps == ["Typically targets junior, senior", "Prefers Biology"]
 
     def test_template_class_years_get_no_attribution(self):
         record = self._configured()
