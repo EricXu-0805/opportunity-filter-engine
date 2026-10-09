@@ -1,0 +1,554 @@
+{
+  "_comment": "One fixed corpus every count surface is checked against: home stats, school-picker coverage, the Match universe (tests/test_school_coverage.py) and the CSV export (frontend/src/lib/match-utils.test.ts). `served` is what the API sends for each release-visible record and `expected` is what every surface must report; the Python test recomputes both from `corpus`.",
+  "corpus": [
+    {
+      "id": "uiuc-listing-campus",
+      "title": "Research at uiuc",
+      "organization": "UIUC",
+      "source": "uiuc_program",
+      "source_type": "campus_program",
+      "audience": "campus",
+      "opportunity_type": "research",
+      "keywords": [
+        "machine learning"
+      ],
+      "is_rolling": true,
+      "url": "https://example.edu/uiuc-listing-campus",
+      "metadata": {
+        "is_active": true
+      },
+      "school": "uiuc"
+    },
+    {
+      "id": "uiuc-listing-open",
+      "title": "Internship at uiuc",
+      "organization": "UIUC",
+      "source": "handshake",
+      "source_type": "internship",
+      "audience": "open",
+      "opportunity_type": "internship",
+      "keywords": [
+        "machine learning"
+      ],
+      "is_rolling": true,
+      "url": "https://example.edu/uiuc-listing-open",
+      "metadata": {
+        "is_active": true
+      },
+      "school": "uiuc"
+    },
+    {
+      "id": "uiuc-faculty-1",
+      "title": "Prof. uiuc-faculty-1 — Computer Science",
+      "pi_name": "uiuc-faculty-1",
+      "organization": "UIUC",
+      "school": "uiuc",
+      "source": "uiuc_faculty",
+      "source_type": "faculty_research",
+      "opportunity_type": "research",
+      "keywords": [
+        "machine learning"
+      ],
+      "url": "https://example.edu/uiuc-faculty-1",
+      "metadata": {
+        "is_active": true
+      }
+    },
+    {
+      "id": "uiuc-faculty-2",
+      "title": "Prof. uiuc-faculty-2 — Computer Science",
+      "pi_name": "uiuc-faculty-2",
+      "organization": "UIUC",
+      "school": "uiuc",
+      "source": "uiuc_faculty",
+      "source_type": "faculty_research",
+      "opportunity_type": "research",
+      "keywords": [
+        "machine learning"
+      ],
+      "url": "https://example.edu/uiuc-faculty-2",
+      "metadata": {
+        "is_active": true
+      }
+    },
+    {
+      "id": "uiuc-faculty-3",
+      "title": "Prof. uiuc-faculty-3 — Computer Science",
+      "pi_name": "uiuc-faculty-3",
+      "organization": "UIUC",
+      "school": "uiuc",
+      "source": "uiuc_faculty",
+      "source_type": "faculty_research",
+      "opportunity_type": "research",
+      "keywords": [
+        "machine learning"
+      ],
+      "url": "https://example.edu/uiuc-faculty-3",
+      "metadata": {
+        "is_active": true
+      }
+    },
+    {
+      "id": "uiuc-listing-closed",
+      "title": "Research at uiuc",
+      "organization": "UIUC",
+      "source": "uiuc_lab",
+      "source_type": "campus_lab",
+      "audience": "campus",
+      "opportunity_type": "research",
+      "keywords": [
+        "machine learning"
+      ],
+      "is_rolling": true,
+      "url": "https://example.edu/uiuc-listing-closed",
+      "metadata": {
+        "is_active": true,
+        "listing_status": "closed"
+      },
+      "school": "uiuc"
+    },
+    {
+      "id": "uiuc-listing-inactive",
+      "title": "Research at uiuc",
+      "organization": "UIUC",
+      "source": "uiuc_program",
+      "source_type": "campus_program",
+      "audience": "campus",
+      "opportunity_type": "research",
+      "keywords": [
+        "machine learning"
+      ],
+      "is_rolling": true,
+      "url": "https://example.edu/uiuc-listing-inactive",
+      "metadata": {
+        "is_active": false
+      },
+      "school": "uiuc"
+    },
+    {
+      "id": "uiuc-faculty-declines",
+      "title": "Prof. uiuc-faculty-declines — Computer Science",
+      "pi_name": "uiuc-faculty-declines",
+      "organization": "UIUC",
+      "school": "uiuc",
+      "source": "uiuc_faculty",
+      "source_type": "faculty_research",
+      "opportunity_type": "research",
+      "keywords": [
+        "machine learning"
+      ],
+      "url": "https://example.edu/uiuc-faculty-declines",
+      "metadata": {
+        "is_active": true
+      },
+      "description_raw": "I am not currently accepting undergraduate students."
+    },
+    {
+      "id": "uiuc-unreviewed",
+      "title": "Research at uiuc",
+      "organization": "UIUC",
+      "source": "mystery",
+      "source_type": "mystery_feed",
+      "audience": "campus",
+      "opportunity_type": "research",
+      "keywords": [
+        "machine learning"
+      ],
+      "is_rolling": true,
+      "url": "https://example.edu/uiuc-unreviewed",
+      "metadata": {
+        "is_active": true
+      },
+      "school": "uiuc"
+    },
+    {
+      "id": "uiuc-fellowship",
+      "title": "Fellowship at uiuc",
+      "organization": "UIUC",
+      "source": "uiuc_program",
+      "source_type": "campus_program",
+      "audience": "campus",
+      "opportunity_type": "fellowship",
+      "keywords": [
+        "machine learning"
+      ],
+      "is_rolling": true,
+      "url": "https://example.edu/uiuc-fellowship",
+      "metadata": {
+        "is_active": true
+      },
+      "school": "uiuc"
+    },
+    {
+      "id": "ucb-listing-campus",
+      "title": "Research at ucb",
+      "organization": "UCB",
+      "source": "ucb_program",
+      "source_type": "ucb_program",
+      "audience": "campus",
+      "opportunity_type": "research",
+      "keywords": [
+        "machine learning"
+      ],
+      "is_rolling": true,
+      "url": "https://example.edu/ucb-listing-campus",
+      "metadata": {
+        "is_active": true
+      },
+      "school": "ucb"
+    },
+    {
+      "id": "ucb-listing-open",
+      "title": "Research at ucb",
+      "organization": "UCB",
+      "source": "ucb_reu",
+      "source_type": "external_reu",
+      "audience": "open",
+      "opportunity_type": "research",
+      "keywords": [
+        "machine learning"
+      ],
+      "is_rolling": true,
+      "url": "https://example.edu/ucb-listing-open",
+      "metadata": {
+        "is_active": true
+      },
+      "school": "ucb"
+    },
+    {
+      "id": "ucb-summer-open",
+      "title": "Summer Program at ucb",
+      "organization": "UCB",
+      "source": "ucb_reu",
+      "source_type": "external_reu",
+      "audience": "open",
+      "opportunity_type": "summer_program",
+      "keywords": [
+        "machine learning"
+      ],
+      "is_rolling": true,
+      "url": "https://example.edu/ucb-summer-open",
+      "metadata": {
+        "is_active": true
+      },
+      "school": "ucb"
+    },
+    {
+      "id": "ucb-faculty-1",
+      "title": "Prof. ucb-faculty-1 — Computer Science",
+      "pi_name": "ucb-faculty-1",
+      "organization": "UCB",
+      "school": "ucb",
+      "source": "ucb_faculty",
+      "source_type": "faculty_research",
+      "opportunity_type": "research",
+      "keywords": [
+        "machine learning"
+      ],
+      "url": "https://example.edu/ucb-faculty-1",
+      "metadata": {
+        "is_active": true
+      }
+    },
+    {
+      "id": "ucb-faculty-2",
+      "title": "Prof. ucb-faculty-2 — Computer Science",
+      "pi_name": "ucb-faculty-2",
+      "organization": "UCB",
+      "school": "ucb",
+      "source": "ucb_faculty",
+      "source_type": "faculty_research",
+      "opportunity_type": "research",
+      "keywords": [
+        "machine learning"
+      ],
+      "url": "https://example.edu/ucb-faculty-2",
+      "metadata": {
+        "is_active": true
+      }
+    },
+    {
+      "id": "national-reu",
+      "title": "Summer Program at national",
+      "organization": "NATIONAL",
+      "source": "nsf_reu",
+      "source_type": "external_reu",
+      "audience": "open",
+      "opportunity_type": "summer_program",
+      "keywords": [
+        "machine learning"
+      ],
+      "is_rolling": true,
+      "url": "https://example.edu/national-reu",
+      "metadata": {
+        "is_active": true
+      }
+    },
+    {
+      "id": "national-internship",
+      "title": "Internship at national",
+      "organization": "NATIONAL",
+      "source": "simplify_internships",
+      "source_type": "internship",
+      "audience": "open",
+      "opportunity_type": "internship",
+      "keywords": [
+        "machine learning"
+      ],
+      "is_rolling": true,
+      "url": "https://example.edu/national-internship",
+      "metadata": {
+        "is_active": true
+      }
+    }
+  ],
+  "served": [
+    {
+      "id": "uiuc-listing-campus",
+      "source_type": "campus_program",
+      "record_kind": "listing",
+      "target_truth": {
+        "listing_state": "unknown",
+        "reference_only": false,
+        "actionable": true,
+        "accepting_state": "unknown",
+        "reason_code": null,
+        "verified_at": null,
+        "expires_at": null
+      }
+    },
+    {
+      "id": "uiuc-listing-open",
+      "source_type": "internship",
+      "record_kind": "listing",
+      "target_truth": {
+        "listing_state": "unknown",
+        "reference_only": false,
+        "actionable": true,
+        "accepting_state": "unknown",
+        "reason_code": null,
+        "verified_at": null,
+        "expires_at": null
+      }
+    },
+    {
+      "id": "uiuc-faculty-1",
+      "source_type": "faculty_research",
+      "record_kind": "faculty_contact",
+      "target_truth": {
+        "listing_state": "unknown",
+        "reference_only": false,
+        "actionable": true,
+        "accepting_state": "unknown",
+        "reason_code": null,
+        "verified_at": null,
+        "expires_at": null
+      }
+    },
+    {
+      "id": "uiuc-faculty-2",
+      "source_type": "faculty_research",
+      "record_kind": "faculty_contact",
+      "target_truth": {
+        "listing_state": "unknown",
+        "reference_only": false,
+        "actionable": true,
+        "accepting_state": "unknown",
+        "reason_code": null,
+        "verified_at": null,
+        "expires_at": null
+      }
+    },
+    {
+      "id": "uiuc-faculty-3",
+      "source_type": "faculty_research",
+      "record_kind": "faculty_contact",
+      "target_truth": {
+        "listing_state": "unknown",
+        "reference_only": false,
+        "actionable": true,
+        "accepting_state": "unknown",
+        "reason_code": null,
+        "verified_at": null,
+        "expires_at": null
+      }
+    },
+    {
+      "id": "uiuc-listing-closed",
+      "source_type": "campus_lab",
+      "record_kind": "listing",
+      "target_truth": {
+        "listing_state": "closed",
+        "reference_only": false,
+        "actionable": false,
+        "accepting_state": "not_accepting",
+        "reason_code": "listing_closed",
+        "verified_at": null,
+        "expires_at": null
+      }
+    },
+    {
+      "id": "uiuc-listing-inactive",
+      "source_type": "campus_program",
+      "record_kind": "listing",
+      "target_truth": {
+        "listing_state": "unknown",
+        "reference_only": false,
+        "actionable": false,
+        "accepting_state": "unknown",
+        "reason_code": "inactive",
+        "verified_at": null,
+        "expires_at": null
+      }
+    },
+    {
+      "id": "uiuc-faculty-declines",
+      "source_type": "faculty_research",
+      "record_kind": "faculty_contact",
+      "target_truth": {
+        "listing_state": "unknown",
+        "reference_only": false,
+        "actionable": false,
+        "accepting_state": "not_accepting",
+        "reason_code": "faculty_not_accepting",
+        "verified_at": null,
+        "expires_at": null
+      }
+    },
+    {
+      "id": "uiuc-unreviewed",
+      "source_type": "mystery_feed",
+      "record_kind": "unknown",
+      "target_truth": {
+        "listing_state": "unknown",
+        "reference_only": false,
+        "actionable": false,
+        "accepting_state": "unknown",
+        "reason_code": "record_kind_unverified",
+        "verified_at": null,
+        "expires_at": null
+      }
+    },
+    {
+      "id": "ucb-listing-campus",
+      "source_type": "ucb_program",
+      "record_kind": "listing",
+      "target_truth": {
+        "listing_state": "unknown",
+        "reference_only": false,
+        "actionable": true,
+        "accepting_state": "unknown",
+        "reason_code": null,
+        "verified_at": null,
+        "expires_at": null
+      }
+    },
+    {
+      "id": "ucb-listing-open",
+      "source_type": "external_reu",
+      "record_kind": "listing",
+      "target_truth": {
+        "listing_state": "unknown",
+        "reference_only": false,
+        "actionable": true,
+        "accepting_state": "unknown",
+        "reason_code": null,
+        "verified_at": null,
+        "expires_at": null
+      }
+    },
+    {
+      "id": "ucb-summer-open",
+      "source_type": "external_reu",
+      "record_kind": "listing",
+      "target_truth": {
+        "listing_state": "unknown",
+        "reference_only": false,
+        "actionable": true,
+        "accepting_state": "unknown",
+        "reason_code": null,
+        "verified_at": null,
+        "expires_at": null
+      }
+    },
+    {
+      "id": "ucb-faculty-1",
+      "source_type": "faculty_research",
+      "record_kind": "faculty_contact",
+      "target_truth": {
+        "listing_state": "unknown",
+        "reference_only": false,
+        "actionable": true,
+        "accepting_state": "unknown",
+        "reason_code": null,
+        "verified_at": null,
+        "expires_at": null
+      }
+    },
+    {
+      "id": "ucb-faculty-2",
+      "source_type": "faculty_research",
+      "record_kind": "faculty_contact",
+      "target_truth": {
+        "listing_state": "unknown",
+        "reference_only": false,
+        "actionable": true,
+        "accepting_state": "unknown",
+        "reason_code": null,
+        "verified_at": null,
+        "expires_at": null
+      }
+    },
+    {
+      "id": "national-reu",
+      "source_type": "external_reu",
+      "record_kind": "listing",
+      "target_truth": {
+        "listing_state": "unknown",
+        "reference_only": false,
+        "actionable": true,
+        "accepting_state": "unknown",
+        "reason_code": null,
+        "verified_at": null,
+        "expires_at": null
+      }
+    },
+    {
+      "id": "national-internship",
+      "source_type": "internship",
+      "record_kind": "listing",
+      "target_truth": {
+        "listing_state": "unknown",
+        "reference_only": false,
+        "actionable": true,
+        "accepting_state": "unknown",
+        "reason_code": null,
+        "verified_at": null,
+        "expires_at": null
+      }
+    }
+  ],
+  "expected": {
+    "listing_total": 7,
+    "faculty_contact_total": 5,
+    "national_count": 2,
+    "schools": {
+      "ucb": {
+        "listing_count": 3,
+        "faculty_contact_count": 2,
+        "unreviewed_count": 0,
+        "total_count": 5
+      },
+      "uiuc": {
+        "listing_count": 2,
+        "faculty_contact_count": 3,
+        "unreviewed_count": 0,
+        "total_count": 5
+      }
+    },
+    "served_not_actionable": 4,
+    "home_school": "uiuc",
+    "match_universe_home_only": 8,
+    "match_universe_cross_school": 11
+  }
+}
