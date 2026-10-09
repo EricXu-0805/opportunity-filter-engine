@@ -109,6 +109,7 @@ def _install_reminder_io(
     account_email: str | None = "user@example.com",
     send_impl=None,
     today: str = "2026-08-01",
+    gets=None,
 ) -> None:
     """Stub the reminder cron's Supabase, Resend and dispatcher boundaries."""
     due_rows = [_DUE] if due is None else due
@@ -141,7 +142,9 @@ def _install_reminder_io(
         async def __aexit__(self, *_exc):
             return False
 
-        async def get(self, url, **_kwargs):
+        async def get(self, url, **kwargs):
+            if gets is not None:
+                gets.append({"url": url, **kwargs})
             if "/auth/v1/admin/users/" in url:
                 if account_email is None:
                     return _Resp({}, status_code=404)
@@ -187,15 +190,29 @@ def _install_reminder_io(
 
     monkeypatch.setattr(push_mod, "_send_via_resend", send_impl or _record_send)
 
-    # Freeze the cron's notion of "today" so the reminder idempotency key is
-    # reproducible (and cannot flake across a midnight boundary).
+    # Freeze the cron's clock at its scheduled 23:00 UTC on `today` so the
+    # reminder idempotency key is reproducible (and cannot flake across a
+    # midnight boundary).
+    _freeze_clock(monkeypatch, f"{today}T23:00:00+00:00")
+    email_mod._recipient_sends.clear()
+
+
+def _freeze_clock(monkeypatch, iso: str) -> None:
+    """Pin the cron's clock, and the server's date with it (UTC, as on Render)."""
+    now = datetime.fromisoformat(iso)
+
     class _FrozenDate(date):
         @classmethod
         def today(cls):
-            return date.fromisoformat(today)
+            return now.astimezone(UTC).date()
+
+    class _FrozenDatetime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return now.astimezone(tz) if tz else now.astimezone(UTC).replace(tzinfo=None)
 
     monkeypatch.setattr(push_mod, "date", _FrozenDate)
-    email_mod._recipient_sends.clear()
+    monkeypatch.setattr(push_mod, "datetime", _FrozenDatetime)
 
 
 def _run_reminders():
@@ -822,3 +839,45 @@ class TestDigestIncidents:
 
         assert _run_digest().json()["sent"] == 1
         assert rpcs == []  # nothing failed, nothing open to recover
+
+
+# ── 5. the reminder day survives a late start ──────────────────────────────
+
+
+class TestReminderDay:
+    # The cron is scheduled for 23:00 UTC, the same calendar date in every US
+    # time zone. Since 2026-10-02 GitHub has started it between 01:38 and
+    # 02:48 UTC the next day, where the UTC date is already tomorrow: those
+    # runs sent the next day's reminders the evening before the date the
+    # student picked.
+
+    @pytest.mark.parametrize(("now", "day"), [
+        ("2026-10-09T23:00:00+00:00", "2026-10-09"),  # on time
+        ("2026-10-10T02:48:00+00:00", "2026-10-09"),  # as late as the 10-08 run, which began 10-09 02:48
+        ("2026-10-10T07:59:00+00:00", "2026-10-09"),
+        ("2026-10-10T08:00:00+00:00", "2026-10-10"),  # midnight at UTC-8
+        ("2026-01-15T23:00:00+00:00", "2026-01-15"),  # standard time
+    ])
+    def test_the_reminder_day_is_the_date_at_utc_minus_8(self, monkeypatch, now, day):
+        _freeze_clock(monkeypatch, now)
+        assert push_mod._reminder_day() == date.fromisoformat(day)
+
+    def test_a_late_run_selects_only_what_was_due_on_its_scheduled_day(self, monkeypatch):
+        _set_push_env(monkeypatch)
+        gets: list = []
+        emails: list = []
+        _install_reminder_io(
+            monkeypatch, subscriptions=[], emails=emails, gets=gets, today="2026-10-09",
+        )
+        _freeze_clock(monkeypatch, "2026-10-10T02:48:00+00:00")
+
+        assert _run_reminders().status_code == 200
+
+        (query,) = (
+            g["params"] for g in gets
+            if g["url"].endswith("/rest/v1/interactions") and "remind_at" in g.get("params", {})
+        )
+        assert query["remind_at"] == "lte.2026-10-09"
+        assert emails[0]["idempotency_key"] == email_mod.build_idempotency_key(
+            "reminder", "dev-1", "opp-42", "2026-10-09",
+        )

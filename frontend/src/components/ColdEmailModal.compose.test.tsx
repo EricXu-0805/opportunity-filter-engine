@@ -97,6 +97,22 @@ describe('new composer source checks', () => {
     expect(screen.getByTestId('cold-email-compose-status')).toHaveTextContent('browser blocked');
     expect(view.profileCheck).not.toHaveBeenCalled(); expect(view.targetCheck).not.toHaveBeenCalled(); expect(api.recipient).not.toHaveBeenCalled(); expect(screen.queryByTestId('cold-email-confirm-sent')).toBeNull();
   });
+  // confirm_contact_event stores a subject of 1-1,000 characters, so a longer
+  // one must stop here: past this point the email opens and then cannot be recorded.
+  it('stops a 1,001-character subject before the mail app opens and keeps the text', async () => {
+    const view = await harness(); const subject = 'S'.repeat(1001);
+    fireEvent.change(screen.getByLabelText('coldEmail.subject'), { target: { value: subject } }); fireEvent.click(button());
+    await waitFor(() => expect(view.window.close).toHaveBeenCalledOnce()); expect(view.window.location.href).toBe('about:blank');
+    expect(screen.getByText(/Subject exceeds the checking limit \(1000 text units/)).toBeVisible();
+    expect(api.validate).not.toHaveBeenCalled(); expect(api.recipient).not.toHaveBeenCalled();
+    expect(screen.getByDisplayValue(subject)).toBeVisible(); expect(screen.queryByTestId('cold-email-confirm-sent')).toBeNull();
+  });
+  it('opens the mail app for a 1,000-character subject', async () => {
+    const view = await harness(); const subject = 'S'.repeat(1000);
+    fireEvent.change(screen.getByLabelText('coldEmail.subject'), { target: { value: subject } }); fireEvent.click(button());
+    await waitFor(() => expect(view.window.location.href).toContain(`subject=${subject}&`));
+    expect(view.window.close).not.toHaveBeenCalled(); expect(screen.getByTestId('cold-email-confirm-sent')).toBeVisible();
+  });
   it('keeps Copy available after source change but disables new external composition', async () => {
     const view = await harness(); view.rerender(<ColdEmailModal {...view.props} profile={{ ...profile, research_interests: 'new interests' }} />);
     expect(button()).toBeDisabled(); fireEvent.click(screen.getByTestId('copy-draft-only'));

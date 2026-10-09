@@ -325,7 +325,11 @@ from .ucb_classics_faculty import fetch_and_normalize as fetch_ucb_classics
 from .ucb_common import (
     _null_shared_contact_emails as _null_ucb_shared_contact_emails,
 )
-from .ucb_common import collapse_ucb_joint_appointments
+from .ucb_common import (
+    collapse_ucb_joint_appointments,
+    rejected_certificate_report,
+    reset_certificate_circuit,
+)
 from .ucb_common import merge_into_processed as merge_ucb_cee
 from .ucb_common import merge_into_processed as merge_ucb_chem
 from .ucb_common import merge_into_processed as merge_ucb_eecs
@@ -625,6 +629,8 @@ def refresh_all(
         if type(value) is not int or not 0 <= value <= 10000:
             raise ValueError(f"Invalid {name}.")
     sharded = national or schools is not None
+    # A certificate rejected in an earlier call is not this run's evidence.
+    reset_certificate_circuit()
 
     def selected(school: str | None) -> bool:
         if not sharded:
@@ -933,11 +939,15 @@ def refresh_all(
             campus_opps, campus_evidence = fetch_ucb_campus_with_evidence(
                 deep=deep
             )
+            # The listed program keys are a merge input, not report content.
+            campus_evidence = dict(campus_evidence)
+            listed_program_keys = campus_evidence.pop("listed_program_keys", None) or ()
             added, updated = merge_ucb_campus(
                 campus_opps,
                 complete_recursive_sources=set(
                     campus_evidence.get("complete_recursive_sources") or ()
                 ),
+                listed_program_keys=set(listed_program_keys),
             )
             summary["sources"]["ucb_campus"] = {
                 "fetched": len(campus_opps),
@@ -1513,6 +1523,7 @@ def refresh_all(
             "skipped_budget": pi_stats["skipped_budget"],
             "skipped_deadline": pi_stats.get("skipped_deadline", 0),
             "skipped_tombstoned": pi_stats.get("skipped_tombstoned", 0),
+            "skipped_certificate": pi_stats.get("skipped_certificate", 0),
             "status": "ok",
         }
         logger.info(
@@ -1960,6 +1971,9 @@ def refresh_all(
     else:
         summary["total_in_file"] = 0
 
+    # Hosts whose certificate failed verification this run, with the fetches
+    # skipped after the first failure (the PI pass's included).
+    summary["rejected_certificates"] = rejected_certificate_report()
     summary["release"] = evaluate_refresh_summary(
         summary,
         schools=schools,
