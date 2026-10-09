@@ -239,6 +239,53 @@ CASES: list[tuple[str, dict]] = [
         },
     ),
     (
+        # An SRO row read off its labelled detail page: sponsor, location,
+        # citizenship field, compensation and an anticipated deadline, found
+        # on the paginated list but stated on the detail page.
+        "sro_structured_listing",
+        {
+            "id": "contract-sro-1",
+            "source": "uiuc_sro",
+            "source_type": "summer_program",
+            "source_url": "https://researchops.web.illinois.edu/?page=3",
+            "url": "https://researchops.web.illinois.edu/opportunity/example-reu",
+            "title": "Example REU",
+            "organization": "Example State University",
+            "department": "",
+            "lab_or_program": "Example REU",
+            "location": "Springfield, IL",
+            "remote_option": "unknown",
+            "paid": "yes",
+            "compensation_details": "$7,000",
+            "deadline": "2027-03-15",
+            "deadline_is_estimate": True,
+            "is_rolling": False,
+            "duration": "Summer (10 weeks)",
+            "keywords": ["Natural Sciences", "Science & Technology"],
+            "eligibility": {
+                "preferred_year": ["freshman", "sophomore", "junior", "senior"],
+                "majors": ["Physics"],
+                "skills_required": [],
+                "skills_preferred": [],
+                "citizenship_required": True,
+                "international_friendly": "no",
+                "work_auth_notes": "US Citizen, National, or Permanent Resident required",
+            },
+            "application": {
+                "contact_method": "online",
+                "requires_resume": "unknown",
+                "application_effort": "medium",
+                "application_url": "https://reu.example.edu/",
+            },
+            "metadata": {
+                "is_active": True,
+                "last_verified": _SEEN,
+                "deadline_note": "3/15/27 (anticipated)",
+                "inferred_fields": {"eligibility.majors": "rule:research_area_bank"},
+            },
+        },
+    ),
+    (
         # A legacy row with almost nothing on it, and malformed sub-objects.
         "legacy_sparse",
         {

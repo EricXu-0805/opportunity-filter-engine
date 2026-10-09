@@ -24,6 +24,9 @@ from backend.main import app
 from backend.routes import opportunities as opportunities_module
 from backend.routes.opportunities import _redact
 from scripts.generate_detail_fields_contract import CASES, CONTRACT_PATH, render_contract
+from src.collectors import uiuc_sro as sro
+from src.collectors.base import RawOpportunity
+from src.contact_instructions import CAPTURE_KEY
 from src.evidence import (
     inferred_method,
     neutralize_unverified_faculty_claims,
@@ -447,3 +450,229 @@ class TestApiAndFrontendAgree:
     def test_committed_contract_matches_the_backend(self):
         # Regenerate with: python scripts/generate_detail_fields_contract.py
         assert CONTRACT_PATH.read_text(encoding="utf-8") == render_contract()
+
+
+# ---------------------------------------------------------------------------
+# Listing collectors wired to the contract: uiuc_sro
+# ---------------------------------------------------------------------------
+# The collector's own fetch and record builder, then the detail route. A
+# check of 20 live SRO detail pages on 2026-10-09 found every one a labelled
+# record (Sponsoring Institution, Location, Deadline, Duration, Compensation,
+# Citizenship Requirement) that main left unknown or read out of keyword
+# windows.
+
+
+def _detail(record: dict) -> tuple[dict, dict]:
+    payload, canonical = _served(record)
+    return payload, build_detail_fields(payload, canonical)["fields"]
+
+
+# --- uiuc_sro ---------------------------------------------------------------
+
+_SRO_LIST = "https://researchops.web.illinois.edu/?page=0"
+_SRO_DETAIL = "https://researchops.web.illinois.edu/opportunity/example-reu"
+_SRO_LINK = "https://reu.example.edu/"
+
+
+def _sro_field(name: str, label: str, *items: str, hidden: bool = False) -> str:
+    if hidden:
+        return (f'<div class="block"><div class="field field--name-field-{name} '
+                f'field--label-hidden field__item">{items[0]}</div></div>')
+    inner = "".join(f'<div class="field__item">{item}</div>' for item in items)
+    return (f'<div class="block"><div class="field field--name-field-{name} field--label-inline clearfix">'
+            f'<div class="field__label">{label}</div>{inner}</div></div>')
+
+
+def _sro_detail_html(*, citizenship="US Citizen, National, or Permanent Resident required",
+                     compensation="$7,000", deadline=("deadline-date", "3/15/27"), anticipated="Yes",
+                     body="<p>Students join a faculty lab for ten weeks.</p>",
+                     heading="<h3>Eligibility Requirements</h3>", hidden_link=_SRO_LINK, extra="") -> str:
+    link = f'<a href="{_SRO_LINK}">{_SRO_LINK}</a>'
+    first = [
+        _sro_field("link-to-opportunity", "Link to Opportunity", link),
+        _sro_field("contact-email", "Contact Email(s)", '<a href="mailto:reu@example.edu">reu@example.edu</a>'),
+    ]
+    second = [
+        _sro_field("link-to-opportunity", "", f'<a href="{hidden_link}">{hidden_link}</a>', hidden=True),
+        _sro_field("sponsoring-institution", "Sponsoring Institution", "Example State University"),
+        _sro_field("location", "Location", "Springfield, IL"),
+        _sro_field("timing", "Timing", "Summer"),
+        _sro_field(deadline[0], "Deadline", deadline[1]),
+        _sro_field("deadline-anticipated", "Anticipated Deadline?", anticipated) if anticipated else "",
+        _sro_field("research-area", "Research Area", "Natural Sciences", "Science &amp; Technology"),
+        _sro_field("duration", "Duration", "10 weeks"),
+        _sro_field("compensation", "Compensation", compensation) if compensation else "",
+        _sro_field("citizenship-requirement", "Citizenship Requirement", citizenship) if citizenship else "",
+    ]
+    footer = ('<div class="views-element-container"><div class="views-row"><em class="views-field '
+              'views-field-changed"><span class="views-label views-label-changed">This opportunity was '
+              'last updated on </span><span class="field-content"><time datetime="2026-03-15T19:16:46-05:00" '
+              'class="datetime">3/15/26</time></span></em></div></div>')
+    return (f'<html><head><title>Example REU | Undergraduate Research Opportunities</title></head><body><main>'
+            f'<article><h1>Example REU</h1><div class="field--name-body">{heading}{body}</div>'
+            f'{"".join(first)}<div class="layout__region--second">{"".join(second)}</div>{extra}</article>'
+            f'{footer}</main></body></html>')
+
+
+def _sro_list_html(deadline="Anticipated 3/2/27") -> str:
+    return (
+        '<html><body><table class="views-table"><tbody><tr>'
+        '<td class="views-field views-field-title"><strong><a href="/opportunity/example-reu">Example REU</a>'
+        '</strong><br>Students join a faculty lab.</td>'
+        '<td class="views-field views-field-field-research-area">Natural Sciences, Science &amp; Technology</td>'
+        '<td class="views-field views-field-field-timing">Summer</td>'
+        f'<td class="views-field views-field-field-deadline-anticipated views-field-nothing">{deadline}</td>'
+        '</tr></tbody></table></body></html>'
+    )
+
+
+def _sro_response(html: str, url: str):
+    class Response:
+        text = html
+        content = html.encode()
+
+        def raise_for_status(self):
+            return None
+
+    response = Response()
+    response.url = url
+    return response
+
+
+def _sro_fetch(monkeypatch, detail_html: str | None, *, list_html: str | None = None) -> dict:
+    """One list page, one detail page, through the collector's own fetch path."""
+    empty = '<html><body><table class="views-table"><tbody></tbody></table></body></html>'
+
+    def get(url, **kwargs):
+        if url.endswith("?page=0"):
+            return _sro_response(list_html or _sro_list_html(), url)
+        if "?page=" in url:
+            return _sro_response(empty, url)
+        if detail_html is None:
+            raise TimeoutError("detail page down")
+        return _sro_response(detail_html, url)
+
+    monkeypatch.setattr(sro.requests, "get", get)
+    monkeypatch.setattr(sro, "DEEP_SCRAPE_DELAY", 0)
+    monkeypatch.setattr(sro.UIUCSROCollector, "_rate_limit", lambda self: None)
+    records, _ = sro.fetch_and_normalize_with_evidence(deep=True)
+    assert len(records) == 1
+    return records[0]
+
+
+class TestUiucSroContract:
+    def test_detail_page_fields_are_read_as_the_page_states_them(self, monkeypatch):
+        record = _sro_fetch(monkeypatch, _sro_detail_html())
+        assert record["metadata"][CAPTURE_KEY]["status"] == "captured"
+        payload, fields = _detail(record)
+        assert fields["school"]["explicit"] == {"institution": "Example State University"}
+        assert fields["location"]["explicit"] == {"location": "Springfield, IL"}
+        assert "location_attribution" not in payload
+        assert fields["timing"]["inferred"]["deadline"] == {"value": "2027-03-15", "basis": "estimate"}
+        assert fields["timing"]["explicit"]["application_window"] == "3/15/27 (anticipated)"
+        assert fields["timing"]["explicit"]["duration"] == "Summer (10 weeks)"
+        assert fields["funding"]["explicit"] == {"paid": "yes", "compensation": "$7,000"}
+        elig = fields["eligibility"]
+        assert elig["explicit"]["citizenship"] == "required"
+        assert elig["explicit"]["work_authorization_notes"] == "US Citizen, National, or Permanent Resident required"
+        assert elig["inferred"]["international_students"] == {"value": "no", "basis": "derived_from_source"}
+        assert fields["research_content"]["explicit"]["research_areas"] == ["Natural Sciences", "Science & Technology"]
+        assert fields["application_method"]["explicit"]["application_url"] == _SRO_LINK
+        # Every fact is on the detail page; the list page it was found on
+        # moves as rows are added and states none of the detail fields.
+        checked = record["metadata"]["last_verified"]
+        assert checked
+        for name in ("school", "eligibility", "funding", "timing", "research_content"):
+            assert fields[name]["provenance"] == {"source_url": _SRO_DETAIL, "observed_at": checked}, name
+
+    def test_capture_accepts_the_structured_page(self):
+        result = sro.UIUCSROCollector._capture_detail_html(
+            _sro_detail_html(), source_url=_SRO_DETAIL, checked_at="2026-10-09T00:00:00+00:00",
+        )
+        assert result["status"] == "captured"
+        sections = result["sources"][0]["sections"]
+        assert any(s["heading"].endswith("Citizenship Requirement") for s in sections)
+
+    @pytest.mark.parametrize("variant", ["unlabelled_condition", "hidden_link_differs"])
+    def test_capture_still_refuses_what_it_cannot_place(self, variant):
+        html = (_sro_detail_html(extra="<div>Applicants must be U.S. citizens.</div>")
+                if variant == "unlabelled_condition"
+                else _sro_detail_html(hidden_link="https://other.example.edu/apply"))
+        result = sro.UIUCSROCollector._capture_detail_html(html, source_url=_SRO_DETAIL)
+        assert result["status"] == "unsupported"
+
+    def test_rolling_free_text_deadline(self, monkeypatch):
+        record = _sro_fetch(monkeypatch, _sro_detail_html(deadline=("deadline-free-text", "Rolling"), anticipated=""))
+        _, fields = _detail(record)
+        assert fields["timing"]["explicit"]["rolling"] is True
+        assert _where(fields["timing"], "deadline") == "unknown"
+
+    def test_no_requirement_beside_a_restriction_is_unknown(self, monkeypatch):
+        record = _sro_fetch(monkeypatch, _sro_detail_html(
+            citizenship="No Citizenship Requirements",
+            body="<p>Most program funding is restricted to U.S. citizens and permanent residents.</p>",
+        ))
+        _, fields = _detail(record)
+        assert _where(fields["eligibility"], "citizenship") == "unknown"
+        assert _where(fields["eligibility"], "international_students") == "unknown"
+        assert fields["eligibility"]["explicit"]["work_authorization_notes"] == "No Citizenship Requirements"
+
+    def test_no_requirement_is_stated_not_required(self, monkeypatch):
+        record = _sro_fetch(monkeypatch, _sro_detail_html(citizenship="No Citizenship Requirements"))
+        _, fields = _detail(record)
+        assert fields["eligibility"]["explicit"]["citizenship"] == "not_required"
+        assert fields["eligibility"]["inferred"]["international_students"]["value"] == "yes"
+
+    def test_pay_without_a_compensation_field_is_a_text_scan(self, monkeypatch):
+        record = _sro_fetch(monkeypatch, _sro_detail_html(
+            compensation="", body="<p>Participants receive a stipend and housing.</p>",
+        ))
+        payload, fields = _detail(record)
+        assert fields["funding"]["inferred"]["paid"] == {"value": "yes", "basis": "text_scan"}
+        assert _where(fields["funding"], "compensation") == "unknown"
+        assert payload["paid_attribution"] == "inferred"
+
+    def test_list_row_anticipated_deadline_is_an_estimate(self):
+        raw = RawOpportunity(
+            source="uiuc_sro", source_url=_SRO_LIST, title="Example REU", description_raw="",
+            url=_SRO_DETAIL, extra_fields={"research_area": "Natural Sciences", "timing": "Summer",
+                                           "deadline_raw": "Anticipated 3/2/27"},
+        )
+        record = sro.raw_to_normalized(raw)
+        assert record["deadline"] == "2027-03-02" and record["deadline_is_estimate"] is True
+        _, fields = _detail(record)
+        assert fields["timing"]["inferred"]["deadline"]["basis"] == "estimate"
+        assert fields["timing"]["explicit"]["application_window"] == "3/2/27 (anticipated)"
+
+    def test_list_only_refresh_keeps_the_detail_facts(self, monkeypatch, tmp_path):
+        before = _sro_fetch(monkeypatch, _sro_detail_html())
+        incoming = _sro_fetch(monkeypatch, None, list_html=_sro_list_html(deadline=""))
+        path = tmp_path / "records.json"
+        path.write_text(json.dumps([before]))
+        sro.merge_into_processed([incoming], str(path))
+        saved = json.loads(path.read_text())[0]
+        for key in ("organization", "location", "duration", "deadline", "deadline_is_estimate",
+                    "compensation_details", "eligibility", "application"):
+            assert saved[key] == before[key], key
+        assert saved["metadata"]["deadline_note"] == before["metadata"]["deadline_note"]
+        assert saved["metadata"]["last_verified"] == before["metadata"]["last_verified"]
+
+    def test_legacy_record_degrades_without_a_rescrape(self):
+        # The shape every SRO row has on main: found on a list page, notes
+        # assembled from keyword windows, pay and intl read by keyword scan.
+        legacy = _listing(
+            id="sro-legacy", source="uiuc_sro", source_type="summer_program",
+            source_url=_SRO_LIST, url=_SRO_DETAIL, organization="", location="",
+            keywords=["Natural Sciences"], duration="Summer",
+            eligibility={
+                "citizenship_required": False, "international_friendly": "yes",
+                "work_auth_notes": "weeks Compensation $7,000 Citizenship Requirement No Citize | Citizenship Re",
+            },
+        )
+        _, fields = _detail(legacy)
+        elig = fields["eligibility"]
+        assert elig["explicit"]["citizenship"] == "not_required"
+        assert elig["inferred"]["international_students"]["basis"] == "derived_from_source"
+        assert _where(elig, "work_authorization_notes") == "unknown"
+        assert fields["research_content"]["explicit"]["research_areas"] == ["Natural Sciences"]
+        assert fields["eligibility"]["provenance"]["source_url"] == _SRO_DETAIL

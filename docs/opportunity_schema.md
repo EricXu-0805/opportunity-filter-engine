@@ -112,7 +112,10 @@ Rules that never bend:
   opportunity location (`location_attribution: "institution"` on every public
   payload tells cards and headers not to print it);
 - inferred skills are reported as `mentioned`, never `required`;
-- `is_rolling` decides nothing — rolling needs a source `deadline_note`.
+- `is_rolling` decides nothing — rolling needs a source `deadline_note`;
+- an SRO row (`uiuc_sro`) links its detail page, not the paginated list it
+  was found on, and its labelled fields (Sponsoring Institution, Location,
+  Deadline, Duration, Compensation, Citizenship Requirement) are source.
 
 Collector constants are registered in `opportunity_detail.py`; Simplify's
 defaulted `paid` is additionally stamped `default:` at corpus load

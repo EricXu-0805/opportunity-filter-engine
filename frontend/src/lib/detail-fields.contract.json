@@ -669,20 +669,17 @@
             ]
           },
           "research_content": {
-            "explicit": {},
-            "inferred": {
-              "research_areas": {
-                "basis": "text_scan",
-                "value": [
-                  "chemistry"
-                ]
-              }
+            "explicit": {
+              "research_areas": [
+                "chemistry"
+              ]
             },
+            "inferred": {},
             "provenance": {
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://example.edu/sro/1"
             },
-            "state": "inferred",
+            "state": "source",
             "unknown": []
           },
           "school": {
@@ -877,6 +874,180 @@
       },
       "location_attribution": "institution",
       "name": "faculty_profile",
+      "paid_attribution": null
+    },
+    {
+      "detail_fields": {
+        "fields": {
+          "application_method": {
+            "explicit": {
+              "application_url": "https://reu.example.edu/"
+            },
+            "inferred": {
+              "contact_method": {
+                "basis": "collector_default",
+                "value": "online"
+              }
+            },
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://researchops.web.illinois.edu/opportunity/example-reu"
+            },
+            "state": "source",
+            "unknown": [
+              "requirements",
+              "effort"
+            ]
+          },
+          "department": {
+            "explicit": {},
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://researchops.web.illinois.edu/opportunity/example-reu"
+            },
+            "state": "unknown",
+            "unknown": [
+              "department"
+            ]
+          },
+          "eligibility": {
+            "explicit": {
+              "citizenship": "required",
+              "work_authorization_notes": "US Citizen, National, or Permanent Resident required"
+            },
+            "inferred": {
+              "international_students": {
+                "basis": "derived_from_source",
+                "value": "no"
+              },
+              "majors": {
+                "basis": "text_scan",
+                "value": [
+                  "Physics"
+                ]
+              }
+            },
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://researchops.web.illinois.edu/opportunity/example-reu"
+            },
+            "state": "source",
+            "unknown": [
+              "class_year",
+              "min_gpa"
+            ]
+          },
+          "funding": {
+            "explicit": {
+              "compensation": "$7,000",
+              "paid": "yes"
+            },
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://researchops.web.illinois.edu/opportunity/example-reu"
+            },
+            "state": "source",
+            "unknown": []
+          },
+          "location": {
+            "explicit": {
+              "location": "Springfield, IL"
+            },
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://researchops.web.illinois.edu/opportunity/example-reu"
+            },
+            "state": "source",
+            "unknown": [
+              "remote_option"
+            ]
+          },
+          "professor_or_lab": {
+            "explicit": {
+              "lab_or_program": "Example REU"
+            },
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://researchops.web.illinois.edu/opportunity/example-reu"
+            },
+            "state": "source",
+            "unknown": [
+              "principal_investigator",
+              "faculty_rank"
+            ]
+          },
+          "required_skills": {
+            "explicit": {},
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://researchops.web.illinois.edu/opportunity/example-reu"
+            },
+            "state": "unknown",
+            "unknown": [
+              "required",
+              "preferred",
+              "mentioned"
+            ]
+          },
+          "research_content": {
+            "explicit": {
+              "research_areas": [
+                "Natural Sciences",
+                "Science & Technology"
+              ]
+            },
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://researchops.web.illinois.edu/opportunity/example-reu"
+            },
+            "state": "source",
+            "unknown": []
+          },
+          "school": {
+            "explicit": {
+              "institution": "Example State University"
+            },
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://researchops.web.illinois.edu/opportunity/example-reu"
+            },
+            "state": "source",
+            "unknown": []
+          },
+          "timing": {
+            "explicit": {
+              "application_window": "3/15/27 (anticipated)",
+              "duration": "Summer (10 weeks)"
+            },
+            "inferred": {
+              "deadline": {
+                "basis": "estimate",
+                "value": "2027-03-15"
+              }
+            },
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://researchops.web.illinois.edu/opportunity/example-reu"
+            },
+            "state": "source",
+            "unknown": [
+              "rolling",
+              "start_date",
+              "posted_date"
+            ]
+          }
+        },
+        "version": "m03-v1"
+      },
+      "location_attribution": null,
+      "name": "sro_structured_listing",
       "paid_attribution": null
     },
     {

@@ -142,13 +142,30 @@ class UIUCSROCollector(BaseCollector):
         if body is None:
             return result
         sections = []
+        # A layout region repeats a field without its label. Only a copy that
+        # says exactly what a labelled field of the same name says is dropped;
+        # anything else stays in the page and keeps it unsupported.
+        for node in list(body.select("div.field--label-hidden")):
+            name = next((c for c in node.get("class", []) if c.startswith("field--name-field-")), None)
+            twin = body.select_one(f"div.{name}.field--label-inline .field__item") if name else None
+            if twin is not None and twin.get_text(" ", strip=True) == node.get_text(" ", strip=True):
+                node.decompose()
+        # "This opportunity was last updated on <date>": page bookkeeping.
+        for node in list(body.select(".views-field-changed")):
+            node.decompose()
         # These are fields already read by the detail parser, not new pages.
         for node in list(body.select(
             "div.field--name-field-eligibility, div.field--name-field-eligibility-requirements, "
             "div.field--name-field-requirements, div.field--name-field-deadline, "
             "div.field--name-field-deadline-anticipated, div.field--name-field-application-deadline, "
             "div.field--name-field-application-url, div.field--name-field-apply-url, "
-            "div.field--name-field-application-link"
+            "div.field--name-field-application-link, "
+            "div.field--name-field-link-to-opportunity.field--label-inline, "
+            "div.field--name-field-contact-email, div.field--name-field-sponsoring-institution, "
+            "div.field--name-field-location, div.field--name-field-timing, "
+            "div.field--name-field-deadline-date, div.field--name-field-deadline-free-text, "
+            "div.field--name-field-research-area, div.field--name-field-duration, "
+            "div.field--name-field-compensation, div.field--name-field-citizenship-requirement"
         )):
             label = node.select_one(".field__label, .field-label")
             if label is None or not label.get_text(" ", strip=True):
@@ -210,7 +227,9 @@ class UIUCSROCollector(BaseCollector):
                             opp.description_raw = detail["description"]
                         if detail.get("organization"):
                             opp.organization = detail["organization"]
-                        for key in ("eligibility_text", "application_url", "citizenship_info", "paid_info"):
+                        for key in ("eligibility_text", "application_url", "citizenship_info", "paid_info",
+                                    "location", "timing", "deadline_anticipated", "research_area",
+                                    "duration", "compensation", "citizenship", "program_url"):
                             if detail.get(key):
                                 opp.extra_fields[key] = detail[key]
                         if detail.get("deadline"):
@@ -274,10 +293,10 @@ class UIUCSROCollector(BaseCollector):
         if app_link:
             detail["application_url"] = app_link.get("href", "")
 
-        # Deadline from detail page
+        # Deadline from detail page. Not field-deadline-anticipated: that is
+        # the "Anticipated Deadline? Yes" flag, and it read as a deadline of "?Yes".
         deadline_field = soup.select_one(
             "div.field--name-field-deadline, "
-            "div.field--name-field-deadline-anticipated, "
             "div.field--name-field-application-deadline"
         )
         if deadline_field:
@@ -319,6 +338,16 @@ class UIUCSROCollector(BaseCollector):
                 paid_mentions.append(full_text[start:end].strip())
         if paid_mentions:
             detail["paid_info"] = " | ".join(paid_mentions)
+
+        # The database's labelled fields state each of these outright; they
+        # win over the scans above.
+        for key, names in _LABELLED_FIELDS.items():
+            value = next((v for v in (_field_value(soup, name) for name in names) if v), "")
+            if value:
+                detail[key] = value
+        link = soup.select_one("div.field--name-field-link-to-opportunity a[href]")
+        if link is not None and link["href"].startswith(("http://", "https://")):
+            detail["program_url"] = link["href"]
 
         return detail
 
@@ -415,6 +444,31 @@ class UIUCSROCollector(BaseCollector):
         except Exception as e:
             self.logger.error(f"Failed to parse row: {e}")
             return None
+
+
+#: Labelled fields on an SRO detail page (Drupal ``field--name-field-<name>``),
+#: by the key the parser stores them under; the first name with a value wins.
+_LABELLED_FIELDS = {
+    "organization": ("sponsoring-institution",),
+    "location": ("location",),
+    "timing": ("timing",),
+    "deadline": ("deadline-date", "deadline-free-text"),
+    "deadline_anticipated": ("deadline-anticipated",),
+    "research_area": ("research-area",),
+    "duration": ("duration",),
+    "compensation": ("compensation",),
+    "citizenship": ("citizenship-requirement",),
+}
+
+
+def _field_value(soup, name: str) -> str:
+    """The items of one labelled field, joined; '' when the page lacks it."""
+    node = (soup.select_one(f"div.field--name-field-{name}.field--label-inline")
+            or soup.select_one(f"div.field--name-field-{name}"))
+    if node is None:
+        return ""
+    items = [item.get_text(" ", strip=True) for item in node.select(".field__item")]
+    return ", ".join(item for item in items if item)
 
 
 def _detect_international_friendly(text: str) -> str:
@@ -535,20 +589,82 @@ def _research_area_to_majors(area: str) -> list[str]:
     return list(set(majors))
 
 
+#: How pay and citizenship are produced when the page has no field stating
+#: them, for ``stamp_inferred``: a keyword scan of the description.
+PAID_METHOD = "rule:sro_paid_keywords"
+CITIZENSHIP_METHOD = "rule:sro_citizenship_keywords"
+
+# The list's deadline cell reads "Anticipated 3/2/27"; the central normalizer
+# does not strip that label, so every list deadline came back unparseable.
+_ANTICIPATED_RE = re.compile(r"^\s*anticipated\b[\s:]*", re.IGNORECASE)
+
+
+def _paid_from_compensation(value: str) -> str:
+    """yes/no/unknown from the page's own Compensation field."""
+    lower = value.lower()
+    if re.search(r"\bunpaid\b|\bvolunteer\b|\bno compensation\b", lower):
+        return "no"
+    if re.search(r"\$\s?\d|\bpaid\b|\bstipends?\b|\bsalary\b|\bwages?\b|\bfunded\b", lower):
+        return "yes"
+    return "unknown"
+
+
+def _citizenship_from_field(value: str, description: str) -> tuple[Optional[bool], str]:
+    """(citizenship_required, international_friendly) from "Citizenship Requirement".
+
+    The field takes two values on the live database. "No Citizenship
+    Requirements" beside a description that restricts by citizenship — "most
+    program funding is restricted to U.S. citizens and permanent residents" —
+    is a conflict, and a conflict is unknown, not a welcome.
+    """
+    lower = value.lower()
+    if lower.startswith("no citizenship"):
+        if _detect_international_friendly(description) == "no":
+            return None, "unknown"
+        return False, "yes"
+    if "required" in lower and ("citizen" in lower or "resident" in lower):
+        return True, "no"
+    return None, "unknown"
+
+
 def raw_to_normalized(raw: RawOpportunity) -> dict:
-    """Convert a RawOpportunity from SRO into the normalized schema."""
+    """Convert a RawOpportunity from SRO into the normalized schema.
+
+    The detail page is a labelled record (Sponsoring Institution, Location,
+    Deadline, Duration, Compensation, Citizenship Requirement, Link to
+    Opportunity), so a deep-scraped row takes those values as the page states
+    them. Anything a keyword scan produced instead is stamped as inferred.
+    """
     desc = raw.description_raw or ""
     extra = raw.extra_fields
+    stamps: dict[str, str] = {}
 
-    # Use deep-scraped citizenship info if available, else fall back to description
-    citizenship_text = extra.get("citizenship_info", "") + " " + desc
-    intl = _detect_international_friendly(citizenship_text)
+    citizenship_field = extra.get("citizenship", "")
+    if citizenship_field:
+        citizenship_required, intl = _citizenship_from_field(citizenship_field, desc)
+        work_auth_notes = citizenship_field
+    else:
+        intl = _detect_international_friendly(extra.get("citizenship_info", "") + " " + desc)
+        # Tri-state (M03): an unknown intl answer is not "no requirement".
+        citizenship_required = True if intl == "no" else (False if intl == "yes" else None)
+        work_auth_notes = ""
+        if intl != "unknown":
+            stamps["eligibility.international_friendly"] = CITIZENSHIP_METHOD
+            stamps["eligibility.citizenship_required"] = CITIZENSHIP_METHOD
 
-    # Use deep-scraped deadline if available. _parse_deadline now returns
-    # both a normalized ISO string (or None) and a rolling flag, so the
-    # 3 historical "Rolling" string records correctly set is_rolling=True
-    # instead of getting silently dropped.
-    deadline, is_rolling = _parse_deadline(extra.get("deadline_raw", ""))
+    # The detail page's Deadline (or the list's "Anticipated 3/2/27" cell),
+    # with the page's "Anticipated Deadline?" flag deciding whether it is an
+    # estimate; the list label decides when the detail page was not read.
+    deadline_raw = extra.get("deadline_raw", "")
+    deadline_text = _ANTICIPATED_RE.sub("", deadline_raw).strip()
+    flag = str(extra.get("deadline_anticipated", "")).strip().lower()
+    anticipated = flag == "yes" if flag in {"yes", "no"} else bool(_ANTICIPATED_RE.match(deadline_raw))
+    deadline, is_rolling = _parse_deadline(deadline_text)
+    deadline_note = ""
+    if deadline and anticipated:
+        deadline_note = f"{deadline_text} (anticipated)"
+    elif is_rolling:
+        deadline_note = deadline_text
     # R70-A: SRO listings without a parseable deadline are aggregator-page
     # entries — default to rolling so the UI shows "Rolling" instead of
     # leaving the timing block blank (was 258 silent records).
@@ -557,17 +673,23 @@ def raw_to_normalized(raw: RawOpportunity) -> dict:
 
     research_area = extra.get("research_area", "")
     timing = extra.get("timing", "")
+    length = extra.get("duration", "")
     majors = _research_area_to_majors(research_area)
+    if majors:
+        stamps["eligibility.majors"] = MAJORS_METHOD
 
-    # Detect paid status from deep-scraped info or description
-    paid_text = extra.get("paid_info", "") + " " + desc
-    paid = _detect_paid_status(paid_text)
+    compensation = extra.get("compensation", "")
+    paid = _paid_from_compensation(compensation) if compensation else "unknown"
+    if paid == "unknown":
+        paid = _detect_paid_status(extra.get("paid_info", "") + " " + desc)
+        if paid != "unknown":
+            stamps["paid"] = PAID_METHOD
 
     # Use deep-scraped organization if available
     organization = raw.organization or ""
 
-    # Application URL from detail page
-    application_url = extra.get("application_url", raw.url)
+    # The program's own page, from the "Link to Opportunity" field.
+    application_url = extra.get("program_url") or extra.get("application_url", raw.url)
 
     # Eligibility text from detail page
     eligibility_text = extra.get("eligibility_text", desc[:300])
@@ -590,27 +712,27 @@ def raw_to_normalized(raw: RawOpportunity) -> dict:
         "lab_or_program": raw.title.strip(),
         "pi_name": None,
         "url": raw.url,
-        "location": "",
+        "location": extra.get("location", ""),
         "on_campus": False,
         "remote_option": "unknown",
         "opportunity_type": "summer_program",
         "paid": paid,
-        "compensation_details": _clean_compensation(extra.get("paid_info", "")),
+        "compensation_details": compensation,
         "deadline": deadline,
+        "deadline_is_estimate": bool(deadline and anticipated),
         "is_rolling": is_rolling,
         "posted_date": None,
         "start_date": None,
-        "duration": timing or "Summer",
+        "duration": f"{timing} ({length})" if timing and length else (timing or length or None),
         "eligibility": {
             "preferred_year": ["freshman", "sophomore", "junior", "senior"],
             "min_gpa": None,
             "majors": majors,
             "skills_required": [],
             "skills_preferred": [],
-            # Tri-state (M03): an unknown intl answer is not "no requirement".
-            "citizenship_required": True if intl == "no" else (False if intl == "yes" else None),
+            "citizenship_required": citizenship_required,
             "international_friendly": intl,
-            "work_auth_notes": extra.get("citizenship_info", ""),
+            "work_auth_notes": work_auth_notes,
             "eligibility_text_raw": eligibility_text[:500],
         },
         "application": {
@@ -636,7 +758,8 @@ def raw_to_normalized(raw: RawOpportunity) -> dict:
             "is_active": True,
             "manually_reviewed": False,
             "notes": "Auto-imported from UIUC SRO database" + (" (deep scraped)" if is_deep else ""),
-            **({INFERRED_FIELDS_KEY: {"eligibility.majors": MAJORS_METHOD}} if majors else {}),
+            **({"deadline_note": deadline_note} if deadline_note else {}),
+            **({INFERRED_FIELDS_KEY: stamps} if stamps else {}),
         },
     }
 
@@ -711,14 +834,22 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
             if opp["metadata"].get("detail_page_verified") is not True:
                 carried = [key for key in ("organization", "department", "lab_or_program", "pi_name",
                                            "contact_email", "eligibility", "application", "deadline",
-                                           "is_rolling", "paid", "compensation_details", "description_raw",
-                                           "description_clean") if key in prior]
+                                           "deadline_is_estimate", "is_rolling", "paid",
+                                           "compensation_details", "location", "duration",
+                                           "description_raw", "description_clean") if key in prior]
                 # The list row is itself a current deadline observation; only
                 # an absent one falls back to the prior detail-page value.
                 if opp.get("deadline") is not None:
-                    carried = [key for key in carried if key not in ("deadline", "is_rolling")]
+                    carried = [key for key in carried
+                               if key not in ("deadline", "deadline_is_estimate", "is_rolling")]
                 for key in carried:
                     opp[key] = deepcopy(prior[key])
+                if "deadline" in carried:
+                    # The note qualifies the deadline ("3/15/27 (anticipated)")
+                    # and travels with it.
+                    opp["metadata"].pop("deadline_note", None)
+                    if prior.get("metadata", {}).get("deadline_note"):
+                        opp["metadata"]["deadline_note"] = prior["metadata"]["deadline_note"]
                 _carry_inference_stamps(prior, opp, carried)
                 if "last_verified" in prior.get("metadata", {}):
                     opp["metadata"]["last_verified"] = prior["metadata"]["last_verified"]

@@ -147,7 +147,7 @@ STATE_UNKNOWN = "unknown"
 # `ucb_common`, `ucb_campus`, `ucsb_urca_projects`, `uiuc_faculty` — which is
 # where the institution is, not where the work happens. A remote internship
 # posted by a Berkeley lab is not in Berkeley.
-_LOCATION_FROM_POSTING = frozenset({"simplify_internships", "handshake", "manual"})
+_LOCATION_FROM_POSTING = frozenset({"simplify_internships", "handshake", "manual", "uiuc_sro"})
 # Collectors that parse a location when the page has one and fall back to the
 # campus otherwise. Only the fallback value is the template.
 _LOCATION_CAMPUS_FALLBACK = {
@@ -198,8 +198,24 @@ _REMOTE_TEMPLATES = {"nsf_reu": BASIS_PROGRAM_POLICY}  # "no": REU Sites are res
 _INTL_TEMPLATES = {
     "simplify_internships": BASIS_DERIVED,
     "nsf_reu": BASIS_PROGRAM_POLICY,
+    # Restated from the SRO page's own "Citizenship Requirement" field.
+    "uiuc_sro": BASIS_DERIVED,
 }
 _CITIZENSHIP_TEMPLATES = {"nsf_reu": BASIS_PROGRAM_POLICY}
+# Collectors that read citizenship off a labelled field, so a False is the
+# page's "No Citizenship Requirements" rather than a template.
+_CITIZENSHIP_FROM_FIELD = frozenset({"uiuc_sro"})
+# SRO work-authorization notes written before the collector read that field
+# were ±50-character keyword windows joined by " | ", or windows that start
+# mid-word and run the field's label into its value. Neither is a statement.
+_SRO_NOTE_WINDOW_RE = re.compile(r" \| |Citizenship Requirement (?:US|No)\b")
+
+# The SRO database states each record on its own detail page; the record's
+# `source_url` is the paginated list it was found on, which moves as rows are
+# added and states none of the eligibility, pay or timing fields.
+_DETAIL_PAGE_SOURCES = frozenset({"uiuc_sro"})
+# Keywords that are the source's own topic list: the SRO "Research Area".
+_KEYWORDS_FROM_SOURCE = frozenset({"uiuc_sro"})
 
 # Sources whose eligibility lists (majors, skills) are written by a person
 # reading the program page — the campus-graph program specs and manual rows.
@@ -373,7 +389,7 @@ def _professor_or_lab(payload: dict, canonical: dict) -> _Field:
     return field
 
 
-def _research_content(payload: dict, canonical: dict, kind: str) -> _Field:
+def _research_content(payload: dict, canonical: dict, kind: str, source: str) -> _Field:
     field = _Field("research_content")
     metadata = _dict(payload.get("metadata"))
     stated = _text(metadata.get("research_areas_raw"))
@@ -382,11 +398,11 @@ def _research_content(payload: dict, canonical: dict, kind: str) -> _Field:
         stated = _text(areas) if isinstance(areas, str) else (", ".join(_str_list(areas)) or None)
     keywords = _str_list(payload.get("keywords"))
     keyword_basis = _basis_for(canonical, "keywords")
-    if keyword_basis is None and kind != "faculty_contact":
-        # Listing keywords are ours on every collector: Simplify expands its
-        # category through a map, NSF and the normalizer run a keyword bank,
-        # campus_graph appends its own source_type. None is a topic list the
-        # program published.
+    if keyword_basis is None and kind != "faculty_contact" and source not in _KEYWORDS_FROM_SOURCE:
+        # Listing keywords are ours on every other collector: Simplify expands
+        # its category through a map, NSF and the normalizer run a keyword
+        # bank, campus_graph appends its own source_type. Only the SRO's
+        # "Research Area" field is a topic list the source published.
         keyword_basis = BASIS_TEXT_SCAN
     if stated:
         field.source("research_areas", stated)
@@ -432,16 +448,22 @@ def _eligibility(payload: dict, canonical: dict, source: str) -> _Field:
         intl_explicit = basis is None
 
     citizenship = elig.get("citizenship_required")
+    citizenship_basis = _basis_for(canonical, "eligibility.citizenship_required")
     if citizenship is True:
-        basis = _basis_for(canonical, "eligibility.citizenship_required") or _CITIZENSHIP_TEMPLATES.get(source)
+        basis = citizenship_basis or _CITIZENSHIP_TEMPLATES.get(source)
         field.put("citizenship", "required", basis)
-    elif citizenship is False and intl_explicit and intl == "yes":
-        # "Not required" is a positive claim. The only evidence any collector
-        # has for it is a stated welcome to international students; a bare
-        # False is the template most collectors write when the page is silent.
+    elif citizenship is False and citizenship_basis is None and (
+        (intl_explicit and intl == "yes") or source in _CITIZENSHIP_FROM_FIELD
+    ):
+        # "Not required" is a positive claim. The evidence for it is a stated
+        # welcome to international students or a citizenship field that says
+        # so; a bare False is the template most collectors write when the
+        # page is silent.
         field.source("citizenship", "not_required")
 
-    field.source("work_authorization_notes", _text(elig.get("work_auth_notes")))
+    notes = _text(elig.get("work_auth_notes"))
+    if not (source == "uiuc_sro" and notes and _SRO_NOTE_WINDOW_RE.search(notes)):
+        field.source("work_authorization_notes", notes)
     return field
 
 
@@ -587,25 +609,25 @@ def _application_method(payload: dict, source: str) -> _Field:
     return field
 
 
-def _provenance(payload: dict, *, observed_key: str | None = None) -> dict:
+def _provenance(payload: dict, source: str, *, observed_key: str | None = None) -> dict:
     """Where a field's value was read, and when we last saw it there.
 
-    ``observed_at`` prefers a field-specific stamp, then the collector's
-    ``last_seen_at`` (present on raw records), then the truth envelope's
-    ``verified_at`` — the loader drops ``last_seen_at`` from the served corpus
-    and the projector drops ``last_verified`` in favour of that envelope, so on
-    a production payload the envelope is the timestamp that survives. Never
-    synthesized: absent everywhere means null.
+    ``observed_at`` prefers a field-specific stamp, then the truth envelope's
+    ``verified_at`` — the last time the collector loaded the page and checked
+    it. Not ``last_seen_at``: that is the last run that listed the record,
+    whether or not its page loaded (the loader drops it from the served corpus
+    anyway). Never synthesized: absent everywhere means null.
     """
     metadata = _dict(payload.get("metadata"))
     truth = _dict(payload.get("target_truth"))
     observed = None
     if observed_key:
         observed = _date(metadata.get(observed_key))
-    observed = observed or _date(metadata.get("last_seen_at")) or _date(truth.get("verified_at"))
+    observed = observed or _date(truth.get("verified_at"))
+    first, second = ("url", "source_url") if source in _DETAIL_PAGE_SOURCES else ("source_url", "url")
     return {
-        "source_url": public_projection.safe_public_http_url(payload.get("source_url"))
-        or public_projection.safe_public_http_url(payload.get("url")),
+        "source_url": public_projection.safe_public_http_url(payload.get(first))
+        or public_projection.safe_public_http_url(payload.get(second)),
         "observed_at": observed,
     }
 
@@ -622,13 +644,13 @@ def build_detail_fields(payload: dict, canonical: dict) -> dict:
         raise TypeError("detail fields need a payload dict and its canonical record")
     source = str(canonical.get("source") or "")
     kind = record_kind(canonical)
-    base = _provenance(payload)
-    research_provenance = _provenance(payload, observed_key="research_areas_verified_at")
+    base = _provenance(payload, source)
+    research_provenance = _provenance(payload, source, observed_key="research_areas_verified_at")
     fields = (
         _school(payload),
         _department(payload, source),
         _professor_or_lab(payload, canonical),
-        _research_content(payload, canonical, kind),
+        _research_content(payload, canonical, kind, source),
         _eligibility(payload, canonical, source),
         _required_skills(payload, canonical, source),
         _timing(payload, canonical, source),
