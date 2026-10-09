@@ -14,7 +14,6 @@ import {
 import type { InteractionType, InteractionRecord } from '@/lib/supabase';
 import { captureOwnerToken, isOwnerTokenValid } from '@/lib/identity-owner';
 import { track } from '@/lib/analytics';
-import { suggestReminderForStatusChange, type ReminderSuggestion } from '@/lib/status-suggestions';
 import { canDeliverReminder } from '@/lib/reminders';
 import type { Opportunity } from '@/lib/types';
 
@@ -100,13 +99,6 @@ export interface UseOpportunityDetailResult {
   setTailorOpen: (v: boolean) => void;
   renovationOpen: boolean;
   setRenovationOpen: (v: boolean) => void;
-  suggestion: ReminderSuggestion | null;
-  /** True while handleUseSuggestion's own save is in flight. */
-  suggestionSaving: boolean;
-  /** True after handleUseSuggestion's save genuinely fails — the
-   *  suggestion stays visible (never cleared) so the user can retry the
-   *  SAME action; see handleUseSuggestion. */
-  suggestionError: boolean;
   handleStar: () => Promise<void>;
   handleTrack: (type: InteractionType) => Promise<void>;
   /** Resolves to a discriminated result — 'committed' only after the write
@@ -115,8 +107,6 @@ export interface UseOpportunityDetailResult {
    *  "Saved"). Rejects on a genuine failure for the current, still-
    *  applicable context so TrackerPanel can show an honest error + retry. */
   saveDetails: (patch: { notes?: string | null; remind_at?: string | null }) => Promise<SaveDetailsResult>;
-  handleUseSuggestion: () => Promise<void>;
-  handleDismissSuggestion: () => void;
   handleShare: () => Promise<void>;
 }
 
@@ -152,10 +142,10 @@ export interface UseOpportunityDetailResult {
  * given special silent treatment on its own.
  */
 // The truth fields are optional so the many callers/tests that pass only
-// { id, title } keep compiling — but they are declared, because this hook now
-// decides whether to OFFER a reminder, and that decision needs the same
+// { id, title } keep compiling — but they are declared, because saveDetails
+// decides whether a reminder may be written, and that decision needs the same
 // envelope every other surface reads. Absent fields resolve to a posture of
-// `unknown`, which is the fail-closed answer: no suggestion.
+// `unknown`, which is the fail-closed answer: no date is written.
 type DetailTarget = {
   id: string;
   title: string;
@@ -184,9 +174,6 @@ export function useOpportunityDetail(opp: DetailTarget): UseOpportunityDetailRes
   const [chatDrawerOpen, setChatDrawerOpen] = useState(false);
   const [tailorOpen, setTailorOpen] = useState(false);
   const [renovationOpen, setRenovationOpen] = useState(false);
-  const [suggestion, setSuggestion] = useState<ReminderSuggestion | null>(null);
-  const [suggestionSaving, setSuggestionSaving] = useState(false);
-  const [suggestionError, setSuggestionError] = useState(false);
   // Reactive mirror of generationRef.current, exposed so the CALLER can key
   // TrackerPanel by it (`${identityGeneration}:${opp.id}`) — relying on
   // interactionDetail merely passing through null between identities is not
@@ -221,28 +208,10 @@ export function useOpportunityDetail(opp: DetailTarget): UseOpportunityDetailRes
 
   const interaction = interactionDetail?.type;
 
-  // A suggestion already on screen when the target stops being deliverable —
-  // a listing closing under an open detail page, or the student marking the
-  // row rejected — has to go immediately, not wait to be refused on click.
-  // The banner IS the claim: it says "set a reminder for this date", and
-  // leaving it up while the handler quietly declines is the same false
-  // capability the gates elsewhere remove. One-way on purpose: it clears, and
-  // a target becoming deliverable again never resurrects it, because the
-  // status transition that produced it is long past.
-  // The latest target, readable after an await. `performStatusChange` fires a
-  // network call and only then decides whether to produce a suggestion — by
-  // which time a same-id rerender may have replaced the record with a closed
-  // one. The captured `opp` in that closure is the old truth, and the boolean
-  // effect below will not re-run for it, so the suggestion would appear with
-  // nothing left to withdraw it.
+  // The latest target, readable from a callback a child retained across a
+  // target switch (see noteActionConfirmed).
   const latestOppRef = useRef(opp);
   useLayoutEffect(() => { latestOppRef.current = opp; }, [opp]);
-
-  const reminderDeliverable = canDeliverReminder(opp, interaction);
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- withdrawing a claim the page is currently making; it must land in the same commit the posture changes, not on the next interaction
-    if (!reminderDeliverable) setSuggestion(null);
-  }, [reminderDeliverable]);
 
   // Analytics fires once per distinct opportunity — independent of the
   // hydration/auth lifecycle below so an account switch mid-view doesn't
@@ -296,7 +265,6 @@ export function useOpportunityDetail(opp: DetailTarget): UseOpportunityDetailRes
       interactionGenerationRef.current += 1;
       setStatusSaving(false); setStatusError(false);
       lastFailedTrackRef.current = null;
-      setSuggestion(null); setSuggestionSaving(false); setSuggestionError(false);
       setInteractionDetail(null);
     } else {
       setInteractionDetail(record);
@@ -308,8 +276,7 @@ export function useOpportunityDetail(opp: DetailTarget): UseOpportunityDetailRes
   // The cold-email follow-up chips write remind_at straight to the row, and the
   // confirm record they arrive after does not carry it. Left unmerged, the
   // tracker panel's date field rendered empty for a reminder the student had
-  // just set, and the status-change suggestion — which fires only when
-  // remind_at is unset — offered to set one and overwrote it on a single click.
+  // just set.
   const noteReminderSet = useCallback((date: string) => {
     // Only ever a patch onto a row that exists. The chips are reachable solely
     // after a confirmed send, so there is always an interaction here; a null
@@ -356,9 +323,6 @@ export function useOpportunityDetail(opp: DetailTarget): UseOpportunityDetailRes
     setStatusSaving(false);
     setStatusError(false);
     lastFailedTrackRef.current = null;
-    setSuggestion(null);
-    setSuggestionSaving(false);
-    setSuggestionError(false);
     setFavoriteSaveError(false);
     setFavoriteSaving(false);
     setFavoriteLoading(true);
@@ -430,7 +394,7 @@ export function useOpportunityDetail(opp: DetailTarget): UseOpportunityDetailRes
   }, [hydrate]);
 
   const retryFavoriteHydration = useCallback(() => {
-    // Favorite-only: does not touch interactionDetail, suggestion, or any
+    // Favorite-only: does not touch interactionDetail or any
     // modal/temp state — a user mid-edit on the Tracker panel must not lose
     // unsaved input just because they retried a failed favorite load.
     //
@@ -506,26 +470,17 @@ export function useOpportunityDetail(opp: DetailTarget): UseOpportunityDetailRes
     // whether a real status already exists — proceeding could upsert
     // 'applied' over a genuine replied/interviewing/... row the UI simply
     // failed to fetch. Wait for a confirmed read (including a confirmed
-    // null) before any status write is possible. suggestionSaving is also
-    // gated here — mutual exclusion with handleUseSuggestion (see there) —
-    // so a status change can never race a suggestion-accept save for the
-    // same interaction row.
-    if (!ownerReady || interactionLoading || interactionError || statusSaving || suggestionSaving) return;
+    // null) before any status write is possible.
+    if (!ownerReady || interactionLoading || interactionError || statusSaving) return;
     const interactionGeneration = interactionGenerationRef.current;
     const token = captureOwnerToken();
-    const prev = interaction;
     setStatusSaving(true);
     setStatusError(false);
-    // A new status action supersedes any stale suggestion-save failure from
-    // a previous status change — that suggestion may itself be about to be
-    // replaced or cleared below, and its retry banner must not linger.
-    setSuggestionError(false);
     try {
       if (op.kind === 'remove') {
         await removeInteraction(opp.id, token);
         if (interactionGenerationRef.current !== interactionGeneration) return;
         setInteractionDetail(null);
-        setSuggestion(null);
       } else {
         await trackInteraction(opp.id, op.type, token);
         if (interactionGenerationRef.current !== interactionGeneration) return;
@@ -538,29 +493,6 @@ export function useOpportunityDetail(opp: DetailTarget): UseOpportunityDetailRes
           // Changing a status does not confirm a send. Keep the contact
           // date from the saved row or an actual confirmation receipt.
         }));
-        // Always an explicit assignment, never a conditional no-op: a
-        // status change that produces NO suggestion (suggestReminderForStatusChange
-        // returns null for this transition) must CLEAR any suggestion left
-        // over from an earlier status change — leaving it untouched would
-        // show a suggestion banner for a transition that is no longer current.
-        // Gated at generation, not just at display. This suggestion is a
-        // one-click "Use this date" that writes a reminder directly — the
-        // fastest path in the product to a reminder that will never be
-        // delivered. Today the policy fires only on replied/interviewing,
-        // which the cron no longer sends for on any target (M49), so this
-        // always yields null; the gate keeps a future policy from offering a
-        // date on a status or target the cron skips.
-        // `latestOppRef`, not the captured `opp`: this runs after an await,
-        // and the record may have been replaced under the same id while the
-        // write was in flight. The status change itself still lands — that is
-        // the student's own action — but a suggestion built on a truth that
-        // is no longer current is a recommendation for a target that has
-        // already gone.
-        const next = interactionDetail?.remind_at
-          || !canDeliverReminder(latestOppRef.current, op.type)
-          ? null
-          : suggestReminderForStatusChange(prev ?? null, op.type);
-        setSuggestion(next ?? null);
       }
       lastFailedTrackRef.current = null;
     } catch {
@@ -572,9 +504,7 @@ export function useOpportunityDetail(opp: DetailTarget): UseOpportunityDetailRes
     } finally {
       if (interactionGenerationRef.current === interactionGeneration) setStatusSaving(false);
     }
-    // `opp` in full, not just its id: the suggestion gate reads its truth
-    // envelope, so a stale record here would decide against a stale posture.
-  }, [opp, interaction, interactionDetail, ownerReady, interactionLoading, interactionError, statusSaving, suggestionSaving]);
+  }, [opp.id, ownerReady, interactionLoading, interactionError, statusSaving]);
 
   const handleTrack = useCallback((type: InteractionType) => {
     // Re-selecting the active status clears it (untoggle semantics) —
@@ -598,10 +528,10 @@ export function useOpportunityDetail(opp: DetailTarget): UseOpportunityDetailRes
       // must never be written over.
       if (!interaction || !ownerReady || interactionLoading || interactionError) return { status: 'abandoned' };
       // The last gate before anything is persisted, checked at execution
-      // time. TrackerPanel hides its date input and the suggestion banner
-      // checks too, but this is the one function every reminder write on this
-      // page passes through — a retained handler, a future caller, or a race
-      // between the panel's debounce and a status change all arrive here.
+      // time. TrackerPanel hides its date input too, but this is the one
+      // function every reminder write on this page passes through — a
+      // retained handler, a future caller, or a race between the panel's
+      // debounce and a status change all arrive here.
       // Sanitized, not abandoned. A single patch can carry notes AND a date —
       // the panel's debounce assembles exactly that — and abandoning the whole
       // write would throw away notes the student typed because of a rule about
@@ -653,53 +583,6 @@ export function useOpportunityDetail(opp: DetailTarget): UseOpportunityDetailRes
     // otherwise be judged against the posture captured at mount.
     [opp, interaction, ownerReady, interactionLoading, interactionError],
   );
-
-  const handleUseSuggestion = useCallback(async () => {
-    // Mutual exclusion with performStatusChange (see there): a status
-    // change already in flight could itself be about to replace or clear
-    // this exact suggestion, so accepting it concurrently is never safe.
-    if (!suggestion || suggestionSaving || statusSaving) return;
-    // Re-checked at the write, not only where the banner is produced. The
-    // status can change under a visible suggestion (a second status write
-    // lands, or the student marks it rejected), and this is the one place a
-    // non-null reminder actually reaches the database from this page.
-    if (!canDeliverReminder(opp, interaction)) {
-      setSuggestion(null);
-      return;
-    }
-    const date = suggestion.date;
-    // Captured so a stale U1 completion landing after a U2 switch can never
-    // touch U2's own, separately-started suggestionSaving/suggestionError —
-    // this component instance is reused across an identity switch (it is
-    // NOT remounted by opp.id alone), so without this guard a slow U1
-    // attempt's finally{} would clobber a genuinely in-flight U2 attempt.
-    const interactionGeneration = interactionGenerationRef.current;
-    setSuggestionSaving(true);
-    setSuggestionError(false);
-    try {
-      const result = await saveDetails({ remind_at: date });
-      if (interactionGenerationRef.current !== interactionGeneration) return;
-      // Only clear the suggestion once the write has actually committed —
-      // an 'abandoned' result (precondition/generation moved on) means
-      // nothing was persisted, so the suggestion must stay actionable
-      // rather than silently vanish as if it had been applied.
-      if (result.status === 'committed') setSuggestion(null);
-    } catch {
-      // A genuine failure for the current context — keep the suggestion
-      // visible with a retry, never silently drop it (that would look like
-      // the reminder was set when it was not).
-      if (interactionGenerationRef.current !== interactionGeneration) return;
-      setSuggestionError(true);
-    } finally {
-      if (interactionGenerationRef.current === interactionGeneration) setSuggestionSaving(false);
-    }
-    // Same reason as performStatusChange: the write-time re-check reads both.
-  }, [suggestion, suggestionSaving, statusSaving, saveDetails, opp, interaction]);
-
-  const handleDismissSuggestion = useCallback(() => {
-    setSuggestion(null);
-    setSuggestionError(false);
-  }, []);
 
   const handleShare = useCallback(async () => {
     const generation = generationRef.current;
@@ -754,21 +637,9 @@ export function useOpportunityDetail(opp: DetailTarget): UseOpportunityDetailRes
     setTailorOpen,
     renovationOpen,
     setRenovationOpen,
-    // Gated at the boundary, synchronously. The state clear below is a
-    // passive effect, so on its own it leaves one painted frame in which a
-    // "Use this date" button is on screen for a target that just closed —
-    // exactly the window a fast click lives in. Masking it here means the
-    // banner is gone in the same render the posture changes; the state clear
-    // still runs, so a target becoming deliverable again never resurrects a
-    // suggestion whose triggering transition is long past.
-    suggestion: reminderDeliverable ? suggestion : null,
-    suggestionSaving,
-    suggestionError,
     handleStar,
     handleTrack,
     saveDetails,
-    handleUseSuggestion,
-    handleDismissSuggestion,
     handleShare,
   };
 }

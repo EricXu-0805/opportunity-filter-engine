@@ -5,8 +5,10 @@ import {
   daysUntilReminder,
   collectReminders,
   formatReminderLabel,
+  isReplyRecorded,
+  REMINDABLE_STATUSES,
 } from './reminders';
-import type { InteractionRecord } from './supabase';
+import type { InteractionRecord, InteractionType } from './supabase';
 
 const NOW = new Date('2026-04-17T10:00:00Z');
 
@@ -153,8 +155,8 @@ describe('formatReminderLabel', () => {
 });
 
 // The one predicate four surfaces share — the tracker board, the detail
-// panel's date editor, the detail page's automatic suggestion, and the
-// dashboard's due list. It copies the reminders cron's own two filters:
+// panel's date editor, the cold-email follow-up chips, and the dashboard's
+// due list. It copies the reminders cron's own two filters:
 //   interaction_type in (contacted, applied)
 //   AND the target is release-visible and still actionable
 // A copy that drifts produces a control that accepts the click, stores the
@@ -255,5 +257,31 @@ describe('canDeliverReminder', () => {
   it('no target and no status are both refused', () => {
     expect(canDeliverReminder(undefined, 'applied')).toBe(false);
     expect(canDeliverReminder(LIVE_LISTING as never, undefined)).toBe(false);
+  });
+});
+
+// The dashboard's rule for a date the cron stopped sending after a reply: it
+// is neither counted as needing review nor marked with a bell. The owner
+// decided this for replied and interviewing only; a rejected row's date
+// still needs review.
+describe('isReplyRecorded', () => {
+  it.each(['replied', 'interviewing'] as const)('%s is a recorded reply', (status) => {
+    expect(isReplyRecorded(status)).toBe(true);
+  });
+
+  it.each(['contacted', 'applied', 'rejected', 'dismissed', undefined] as const)(
+    '%s is not',
+    (status) => {
+      expect(isReplyRecorded(status)).toBe(false);
+    },
+  );
+
+  // A status in both sets would be hidden from review while the cron still
+  // sends for it.
+  const ALL_STATUSES: InteractionType[] = [
+    'contacted', 'applied', 'replied', 'rejected', 'interviewing', 'dismissed',
+  ];
+  it.each(ALL_STATUSES)('%s is never both a recorded reply and remindable', (status) => {
+    expect(isReplyRecorded(status) && REMINDABLE_STATUSES.has(status)).toBe(false);
   });
 });
