@@ -205,8 +205,9 @@ def test_official_research_is_not_student_experience_but_own_source_can_support_
         # lab's "We study Python sensors" as the student's work is not.
         state['link'] = dict(LINK, anchor_text=SENTENCE, term='Python sensors', source='Python sensors', relation='same')
         if supported:
-            state['replacement'] = 'Studied Python sensors using NumPy.'
-    original = 'Using NumPy, I studied Python sensors.' if supported and path.endswith('suggestions') else (
+            state['replacement'] = 'Studied Python sensors for the lab using NumPy.'
+    # "for" and "the": the English evidence round 4's default keep asks of the line.
+    original = 'Using NumPy, I studied Python sensors for the lab.' if supported and path.endswith('suggestions') else (
         'I studied Python sensors using NumPy.' if supported else 'I wrote parser tests using Python.')
     doc = document(opp, original)
     # An English line is adapted in English, whatever the UI locale.

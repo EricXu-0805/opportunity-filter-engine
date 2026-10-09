@@ -21,8 +21,9 @@ ATTACK = 'Your independently led CRISPR clinical trials and five first-author Na
 QUOTE = {'field': 'requirement', 'requirement_index': 0, 'start': 0, 'end': 6, 'quote': 'Python'}
 LINK = {'id': 'L1', 'anchor': 't2', 'term': 'Python', 'source': 'Python', 'relation': 'same'}
 # personal_first may carry a confirmed support clause, word for word, after the student's own part.
-TEAM_ORIGINAL = 'My team built a Python parser; I wrote parser tests.'
-MERGED = 'I wrote parser tests and ran 12 parser test cases; my team built a Python parser.'
+# "for" and "the": the English evidence round 4's default keep asks of the line, so the support checks run.
+TEAM_ORIGINAL = 'My team built a Python parser for the lab; I wrote parser tests.'
+MERGED = 'I wrote parser tests and ran 12 parser test cases; my team built a Python parser for the lab.'
 CANDIDATE_OPS = ([{'op': 'personal_first'}], [{'op': 'verb_first'}], [{'op': 'lead_with', 'link': 'L1'}])
 
 
