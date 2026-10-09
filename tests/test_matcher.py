@@ -2891,6 +2891,235 @@ class TestCollegeAffinityNeedsTheWholeWord:
         assert self._affinity("Grainger College of Engineering",
                               "Department of Computer Science") > 0.0
 
+    def test_a_stem_does_not_reach_another_field_through_a_longer_word(self):
+        """Grainger's "civil" is inside "civilizations": 78 faculty in
+        languages-and-civilizations departments and 10 in civil society studies
+        took the engineering bonus, and every civil engineering department it was
+        meant for already says "engineering". Veterinary Medicine's "comparative"
+        reached 435 faculty in comparative literature and other humanities
+        departments, against 107 in the comparative biosciences it was for."""
+        for dept in ("Department of East Asian Languages and Civilizations",
+                     "Department of Civil Society & Community Studies"):
+            assert self._affinity("Grainger College of Engineering", dept) == 0.0, dept
+        assert self._affinity("College of Veterinary Medicine",
+                              "Department of Comparative Literature") == 0.0
+        assert self._affinity("Grainger College of Engineering",
+                              "Department of Civil and Environmental Engineering") > 0.0
+        for dept in ("Department of Comparative Biosciences",
+                     "School of Animal and Comparative Biomedical Sciences",
+                     "Department of Comparative Pathobiology"):
+            assert self._affinity("College of Veterinary Medicine", dept) > 0.0, dept
+
+
+def _catalog_college_names() -> set[str]:
+    """Every college name the profile form can send: the keys of COLLEGE_MAJORS
+    in each school catalog the frontend ships (frontend/src/lib/catalogs/*.ts,
+    with UIUC's in frontend/src/lib/colleges.ts)."""
+    import glob
+    import re
+
+    root = os.path.join(os.path.dirname(__file__), "..", "frontend", "src", "lib")
+    paths = [
+        p for p in glob.glob(os.path.join(root, "catalogs", "*.ts"))
+        if not p.endswith((".test.ts", "index.ts"))
+    ] + [os.path.join(root, "colleges.ts")]
+    names: set[str] = set()
+    for path in paths:
+        with open(path, encoding="utf-8") as f:
+            body = re.search(r"COLLEGE_MAJORS[^=]*=\s*\{(.*?)\n\};", f.read(), re.S).group(1)
+        for quote, name in re.findall(r"^ {2}([\"'])((?:\\.|(?!\1).)*)\1\s*:\s*\[", body, re.M):
+            names.add(name.replace("\\" + quote, quote))
+    return names
+
+
+class TestCollegeAffinityOutsideUiuc:
+    """A student's college counts wherever the profile form offers it.
+
+    The table used to know only UIUC's eleven college names, so a student at any
+    of the other schools got no college signal at all: "Whiting School of
+    Engineering" scored 0 on every JHU engineering department. The lookup is by
+    name and never by home school, because the names repeat: "College of
+    Education" is a college at twelve schools and "College of Engineering" at
+    thirty.
+    """
+
+    # Offered by a catalog, but their majors share no field, so no department
+    # is theirs.
+    WITHOUT_A_FIELD = frozenset({
+        "College of Continuing & Professional Studies (CCAPS)",
+        "Division of General Studies (DGS)", "Independent Concentrations",
+        "Interdisciplinary Programs", "Interdisciplinary Studies", "Iovine and Young Academy",
+        "Metropolitan College",
+    })
+
+    @staticmethod
+    def _affinity(college: str, department: str, profile=None, opp=None) -> float:
+        return _college_affinity(
+            {"college": college, **(profile or {})},
+            {"id": "o1", "department": department, "keywords": [], **(opp or {})},
+        )
+
+    def test_a_jhu_engineering_student_gets_the_bonus_on_engineering_departments(self):
+        from src.matcher.config import COLLEGE_AFFINITY_MAX
+
+        for dept in ("Department of Electrical and Computer Engineering",
+                     "Department of Biomedical Engineering", "Department of Computer Science"):
+            assert self._affinity("Whiting School of Engineering", dept) == COLLEGE_AFFINITY_MAX, dept
+        for dept in ("Department of History", "School of Medicine", "Carey Business School"):
+            assert self._affinity("Whiting School of Engineering", dept) == 0.0, dept
+
+    def test_an_arts_and_sciences_college_covers_its_departments_and_no_others(self):
+        for dept in ("Department of History", "Department of Physics and Astronomy",
+                     "Department of Psychological and Brain Sciences", "The Writing Seminars"):
+            assert self._affinity("Krieger School of Arts and Sciences", dept) > 0.0, dept
+        for dept in ("Department of Electrical and Computer Engineering",
+                     "Bloomberg School of Public Health", "School of Medicine"):
+            assert self._affinity("Krieger School of Arts and Sciences", dept) == 0.0, dept
+        assert self._affinity("Bloomberg School of Public Health",
+                              "Bloomberg School of Public Health") > 0.0
+
+    def test_the_lookup_is_by_name_not_by_home_school(self):
+        """A JHU engineer looking across schools is still an engineer, and a
+        Michigan State education student shares UIUC's college name."""
+        assert self._affinity("Whiting School of Engineering", "Electrical & Computer Engineering",
+                              profile={"home_school": "jhu", "include_cross_school": True},
+                              opp={"school": "uiuc"}) > 0.0
+        assert self._affinity("College of Education", "College of Education",
+                              profile={"home_school": "msu"}, opp={"school": "msu"}) > 0.0
+
+    def test_a_name_uiuc_shares_keeps_the_stems_chosen_for_uiuc(self):
+        from src.matcher.ranker import COLLEGE_DEPARTMENT_SIGNALS
+
+        assert COLLEGE_DEPARTMENT_SIGNALS["College of Education"] == ["education", "curriculum"]
+        assert COLLEGE_DEPARTMENT_SIGNALS["School of Social Work"] == ["social work"]
+        assert self._affinity("Liberal Arts & Sciences (LAS)", "Department of Music") == 0.0
+        assert self._affinity("College of Fine & Applied Arts", "Department of Music") > 0.0
+
+    def test_a_broad_word_does_not_carry_a_college_into_another_field(self):
+        """"management" gave every business school 571 faculty outside business,
+        mostly in environmental science, recreation, hospitality, construction
+        and industrial engineering departments. "international" and "global" gave
+        social science and public policy colleges 247 in language and
+        literature departments."""
+        business = "Kelley School of Business"
+        for dept in ("Department of Rangeland, Wildlife and Fisheries Management",
+                     "Department of Parks, Recreation and Tourism Management",
+                     "Department of Construction Management"):
+            assert self._affinity(business, dept) == 0.0, dept
+        for dept in ("Yale School of Management", "Department of Management and Organization",
+                     "Department of Operations & Information Management"):
+            assert self._affinity(business, dept) > 0.0, dept
+
+        social = "College of Social & Behavioral Sciences"
+        assert self._affinity(social, "School of International Letters and Cultures") == 0.0
+        assert self._affinity(social, "Department of Political Science and International "
+                                      "Relations") > 0.0
+        policy = "School of Public Policy"
+        assert self._affinity(policy, "Department of Global Languages and Cultures") == 0.0
+        assert self._affinity(policy, "Keough School of Global Affairs") > 0.0
+
+    def test_a_science_college_does_not_reach_the_engineering_departments_its_words_name(self):
+        """One-word stems reached engineering departments that share a word with
+        the field. "environment" gave 33 agriculture, natural-resources and
+        environment colleges 2,222 faculty in civil, chemical and environmental
+        engineering. "biolog" gave arts-and-sciences and life-science colleges 702
+        in chemical and biological engineering, "ocean" 109 in ocean engineering,
+        "sustainab" 112 and "mineral" 59 in engineering schools."""
+        for college in ("College of Agriculture & Life Sciences", "College of the Environment",
+                        "Rausser College of Natural Resources"):
+            for dept in ("Department of Civil and Environmental Engineering",
+                         "School of Civil & Environmental Engineering",
+                         "Department of Chemical and Environmental Engineering",
+                         "Department of Chemical and Biological Engineering",
+                         "School of Sustainable Engineering and the Built Environment",
+                         "Department of Ocean Engineering",
+                         "Department of Mining and Minerals Engineering"):
+                assert self._affinity(college, dept) == 0.0, (college, dept)
+            for dept in ("Department of Environmental Sciences", "Department of Environmental Studies",
+                         "Nicholas School of the Environment", "Department of Environmental Conservation",
+                         "School of Environmental & Forest Sciences", "School of Sustainability",
+                         "Scripps Institution of Oceanography",
+                         "Department of Atmospheric and Oceanic Sciences"):
+                assert self._affinity(college, dept) > 0.0, (college, dept)
+        assert self._affinity("College of the Environment",
+                              "O'Neill School of Public and Environmental Affairs") > 0.0
+
+        sciences = "College of Arts and Sciences"
+        for dept in ("Department of Chemical and Biological Engineering",
+                     "Department of Biological Systems Engineering",
+                     "Kevin T. Crofton Department of Aerospace and Ocean Engineering"):
+            assert self._affinity(sciences, dept) == 0.0, dept
+        for dept in ("Department of Biological Sciences", "Department of Biology",
+                     "Department of Microbiology", "Department of Ocean Sciences",
+                     "Department of Oceanography"):
+            assert self._affinity(sciences, dept) > 0.0, dept
+        # An agriculture college keeps the engineering departments it shares.
+        for dept in ("Agricultural & Biological Engineering",
+                     "Department of Biological Systems Engineering",
+                     "Department of Biological & Environmental Engineering"):
+            assert self._affinity("College of Agriculture & Life Sciences", dept) > 0.0, dept
+
+    def test_ecology_does_not_carry_a_science_college_into_human_ecology(self):
+        """"ecology" gave 96 natural-science, life-science and environment colleges
+        the 85 faculty of the colleges and departments of human ecology, which are
+        human development and consumer science."""
+        for college in ("College of Agriculture & Life Sciences", "College of Arts and Sciences",
+                        "College of the Environment"):
+            for dept in ("College of Human Ecology", "Department of Human Ecology", "Social Ecology"):
+                assert self._affinity(college, dept) == 0.0, (college, dept)
+            for dept in ("Department of Ecology and Evolutionary Biology",
+                         "Department of Ecology & Evolutionary Biology",
+                         "Department of Ecology, Evolution & Behavior", "Odum School of Ecology",
+                         "Department of Applied Ecology", "Population & Community Ecology",
+                         "Department of Organismal Biology & Ecology"):
+                assert self._affinity(college, dept) > 0.0, (college, dept)
+        assert self._affinity("College of the Environment",
+                              "Department of Forest & Wildlife Ecology") > 0.0
+        assert self._affinity("College of Human Ecology", "College of Human Ecology") > 0.0
+
+    def test_design_and_medicine_colleges_keep_to_their_own_departments(self):
+        """"construction" gave 29 architecture and planning colleges 289 faculty in
+        civil and construction engineering, "urban" 80 in civil and urban
+        engineering and "built environment" 78 in an engineering school, the only
+        department it named. "patholog" gave medical schools 232 faculty in plant
+        pathology."""
+        design = "College of Architecture, Planning and Landscape Architecture"
+        for dept in ("Department of Civil, Construction and Environmental Engineering",
+                     "Lyles School of Civil & Construction Engineering",
+                     "Department of Civil and Urban Engineering",
+                     "School of Sustainable Engineering and the Built Environment"):
+            assert self._affinity(design, dept) == 0.0, dept
+        for dept in ("Department of Construction Science", "Department of Construction Management",
+                     "Bowen School of Construction", "Department of Urban Studies and Planning",
+                     "Urban Planning"):
+            assert self._affinity(design, dept) > 0.0, dept
+        for dept in ("Department of Plant Pathology", "Department of Entomology and Plant Pathology"):
+            assert self._affinity("School of Medicine", dept) == 0.0, dept
+        assert self._affinity("School of Medicine", "Department of Pathology") > 0.0
+
+    def test_only_a_known_college_reaches_the_department_cache(self):
+        """The college is free text on the request; the cache must not grow
+        with it."""
+        from src.matcher.ranker import _college_names_department
+
+        before = _college_names_department.cache_info().currsize
+        assert self._affinity("Some College Nobody Offers", "Department of Physics") == 0.0
+        assert _college_names_department.cache_info().currsize == before
+
+    def test_every_college_the_form_offers_has_fields_or_is_declared_without_one(self):
+        """A new school catalog has to say what its colleges cover, or its
+        students silently get no college signal - the gap this table had for
+        every school but UIUC."""
+        from src.matcher.ranker import _COLLEGE_FIELDS, COLLEGE_DEPARTMENT_SIGNALS
+
+        offered = _catalog_college_names()
+        assert len(offered) > 400  # the parser found the catalogs
+        unaccounted = offered - set(COLLEGE_DEPARTMENT_SIGNALS) - self.WITHOUT_A_FIELD
+        assert not unaccounted, sorted(unaccounted)
+        # And no entry names a college no catalog offers (a typo matches nobody).
+        assert not (set(_COLLEGE_FIELDS) | self.WITHOUT_A_FIELD) - offered
+        assert not self.WITHOUT_A_FIELD & set(COLLEGE_DEPARTMENT_SIGNALS)
+
 
 class TestCourseworkNamesAFieldNotASubstring:
     """A course code earns relevance by naming a field, not by sharing letters.

@@ -158,6 +158,62 @@ class TestTimestampSemantics:
         assert sh.freshness_of({}, NOW) == "unknown"
         assert sh.freshness_of({"last_success_at": "not-a-date"}, NOW) == "unknown"
 
+    def test_last_nonzero_survives_an_empty_but_successful_run(self):
+        """A declared-empty run is a success, so it moves last_success_at;
+        when the source last produced records (M63) is a separate answer."""
+        ledger = sh.empty_ledger()
+        self._healthy(ledger, source="ucb_urap_projects", when=NOW, n=12)
+        empty_at = NOW + timedelta(days=7)
+        row = sh.record_attempt(
+            ledger, source="ucb_urap_projects", school="ucb",
+            outcome=sh.VALID_ZERO, emitted=0, baseline=12, now=empty_at,
+        )
+        assert row["last_success_at"] == empty_at.isoformat()
+        assert row["last_nonzero_at"] == NOW.isoformat()
+        row = sh.record_attempt(
+            ledger, source="ucb_urap_projects", school="ucb",
+            outcome=sh.FAILED, emitted=None, baseline=12, now=empty_at + timedelta(days=7),
+        )
+        assert row["last_nonzero_at"] == NOW.isoformat()
+        recovered = empty_at + timedelta(days=14)
+        row = self._healthy(ledger, source="ucb_urap_projects", when=recovered, n=9)
+        assert row["last_nonzero_at"] == recovered.isoformat()
+        [shown] = sh.source_rows(ledger, recovered, eligible=frozenset())
+        assert shown["last_nonzero_at"] == recovered.isoformat()
+
+    def test_a_success_that_emitted_nothing_is_not_a_nonzero_run(self):
+        ledger = sh.empty_ledger()
+        row = sh.record_attempt(
+            ledger, source="colgate_faculty", school="colgate",
+            outcome=sh.SUCCESS_NONZERO, emitted=0, baseline=0, now=NOW,
+        )
+        assert row["last_nonzero_at"] is None
+
+    def test_a_row_recorded_before_the_field_answers_from_its_status(self):
+        """A healthy outcome stamps status and last_success_at together, so a
+        row whose latest outcome was a nonzero success already says when the
+        source last produced records. Any other older row does not know."""
+        earlier = (NOW - timedelta(days=30)).isoformat()
+        ledger = {"schema_version": sh.SCHEMA_VERSION, "shards": {}, "sources": {
+            "caltech_external_research": {"school": None, "status": sh.SUCCESS_NONZERO,
+                                          "last_attempt_at": earlier, "last_success_at": earlier},
+            "ucb_ling_faculty": {"school": "ucb", "status": sh.FAILED, "last_attempt_at": earlier,
+                                 "last_success_at": earlier},
+        }}
+        shown = {row["source"]: row for row in sh.source_rows(ledger, NOW, eligible=frozenset())}
+        assert shown["caltech_external_research"]["last_nonzero_at"] == earlier
+        assert shown["ucb_ling_faculty"]["last_nonzero_at"] is None
+        row = sh.record_attempt(
+            ledger, source="caltech_external_research", school=None,
+            outcome=sh.SUSPICIOUS_ZERO, emitted=0, baseline=14, now=NOW,
+        )
+        assert row["last_nonzero_at"] == earlier
+        row = sh.record_attempt(
+            ledger, source="ucb_ling_faculty", school="ucb",
+            outcome=sh.VALID_ZERO, emitted=0, baseline=0, now=NOW,
+        )
+        assert row["last_nonzero_at"] is None
+
 
 # -------------------------------------------------------- school aggregation --
 def _ledger_with(rows: dict[str, tuple[str, int, str]]) -> dict:

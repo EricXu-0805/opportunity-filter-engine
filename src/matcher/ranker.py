@@ -445,7 +445,7 @@ MAJOR_TOPIC_KEYWORDS: dict[str, list[str]] = {
 COLLEGE_DEPARTMENT_SIGNALS: dict[str, list[str]] = {
     "Grainger College of Engineering": [
         "engineering", "computer scien", "computing", "siebel", "electrical",
-        "mechanical", "aerospace", "bioengineering", "materials", "nuclear", "civil",
+        "mechanical", "aerospace", "bioengineering", "materials", "nuclear",
     ],
     "Liberal Arts & Sciences (LAS)": [
         "physics", "chemistr", "statistic", "mathematic", "molecular & cellular",
@@ -459,7 +459,7 @@ COLLEGE_DEPARTMENT_SIGNALS: dict[str, list[str]] = {
     ],
     "College of Veterinary Medicine": [
         "animal science", "molecular & cellular", "integrative biology",
-        "pathobiolog", "comparative", "veterinary",
+        "pathobiolog", "comparative bio", "veterinary",
     ],
     "School of Information Sciences (iSchool)": ["information science"],
     "Gies College of Business": ["econom", "business", "finance", "accountan"],
@@ -473,6 +473,656 @@ COLLEGE_DEPARTMENT_SIGNALS: dict[str, list[str]] = {
     ],
     "School of Social Work": ["social work"],
 }
+
+# The colleges every other school catalog offers (frontend/src/lib/catalogs/*.ts)
+# get their stems from the fields their departments cover. Each stem below is
+# matched like the UIUC ones and reaches at least one of the 2,268 distinct
+# department strings on the committed corpus. Stems that reached another field's
+# departments were dropped or narrowed: "family" is in five engineering
+# departments' donor names, "labor" is inside "laboratory", "language" reached
+# CMU's Language Technologies Institute, "international" and "global" reached
+# 247 faculty in language and literature departments, and "management" reached
+# 571 outside business schools, mostly in environmental science, recreation,
+# hospitality, construction and industrial engineering departments. The same
+# held for words a science shares with engineering: "environment" reached 2,222
+# faculty in civil, chemical and environmental engineering, "biolog" 702 in
+# chemical and biological engineering, "construction" 289 in civil engineering.
+# "ecology" reached the 85 faculty of human ecology and "patholog" the 232 of
+# plant pathology. An engineering department an agriculture college shares
+# (biological systems engineering at Nebraska, Virginia Tech and Wisconsin,
+# biological and environmental engineering at Cornell) is named outright.
+_ECOLOGY = (
+    "ecology and", "ecology &", "ecology, evolution", "& ecology", "of ecology",
+    "wildlife ecology", "applied ecology", "community ecology",
+)
+_BIOLOGY = ("biology", "biological scien")
+_OCEAN = ("oceanograph", "oceanic", "oceans", "ocean scien", "ocean and")
+_FIELD_DEPARTMENT_STEMS: dict[str, tuple[str, ...]] = {
+    "engineering": (
+        "engineering", "computer scien", "computing", "electrical", "mechanical", "aerospace",
+        "materials", "nuclear", "robotic",
+    ),
+    "computing": (
+        "computer scien", "computing", "informatics", "information scien", "data scien",
+        "cybersecurity", "software",
+    ),
+    "data_science": ("data scien", "statistic", "computer scien", "computing", "informatics"),
+    "information": ("information", "informatics", "library"),
+    "natural_sciences": (
+        "physics", "chemistr", *_BIOLOGY, "mathematic", "statistic", "astronom", "neuroscien",
+        "geolog", "geoscien", "earth", "atmospheric", *_OCEAN, "planetary", "genetic", *_ECOLOGY,
+        "life scien", "biosci", "molecular sci",
+    ),
+    "life_sciences": (
+        *_BIOLOGY, "genetic", "neuroscien", "physiolog", "life scien", "biosci", *_ECOLOGY,
+        "biochemistr", "biophysic", "molecular sci",
+    ),
+    "chemistry": ("chemistr", "chemical"),
+    "social_sciences": (
+        "econom", "psycholog", "sociolog", "anthropolog", "politic", "government", "linguistic",
+        "geograph", "international relations", "international affairs", "international studies",
+        "international politics", "international and", "cognitive scien", "communication",
+        "criminolog", "brain",
+    ),
+    "humanities": (
+        "english", "histor", "philosoph", "literatur", "languages", "language and literature",
+        "language, culture", "classic", "religio", "theolog", "writing", "rhetoric", "humanities",
+        "linguistic", "french", "spanish", "german", "italian", "romance", "slavic", "hispanic",
+        "portuguese", "east asian", "near eastern", "middle east", "africana", "african american",
+        "american studies", "judaic", "jewish", "cultures",
+    ),
+    "arts": (
+        "art", "music", "theatre", "theater", "dance", "film", "cinema", "drama", "visual",
+        "performing",
+    ),
+    "music": ("music",),
+    "theater_film": (
+        "theatre", "theater", "film", "cinema", "television", "drama", "dance", "performing",
+    ),
+    "dance": ("dance",),
+    "business": (
+        "business", "econom", "finance", "accountan", "accounting", "school of management",
+        "college of management", "department of management", "management department",
+        "management and organization", "operations management", "risk management",
+        "management information", "information management", "international management",
+        "marketing", "commerce", "entrepreneur", "supply chain", "real estate", "insurance",
+    ),
+    "education": ("education", "curriculum", "teaching"),
+    "human_development": (
+        "human development", "family stud", "family scien", "family and consumer",
+        "family dynamics", "human ecology", "consumer", "nutrition", "child",
+    ),
+    "nursing": ("nursing",),
+    "public_health": (
+        "public health", "epidemiolog", "biostatistic", "global health", "environmental health",
+        "health policy", "population health", "health behavior", "health promotion",
+    ),
+    "health_sciences": (
+        "health", "kinesiolog", "rehabilitation", "nutrition", "exercise", "speech", "hearing",
+        "communication disorders", "communication sciences", "physical therapy",
+        "occupational therapy", "recreation",
+    ),
+    "medicine": (
+        "medicine", "medical", "department of pathology", "physiolog", "pharmacolog",
+        "immunolog", "surgery", "biomedical",
+    ),
+    "pharmacy": ("pharmac",),
+    "dentistry": ("dental",),
+    "veterinary": ("veterinary", "animal", "pathobiolog", "comparative bio"),
+    "agriculture": (
+        "agricultur", "crop", "animal", "food", "plant", "soil", "horticultur", "agronom",
+        "entomolog", "forestry", "natural resources", "nutrition", "dairy", "poultry", "wildlife",
+        "fisheries", "biological systems engineering", "biological & environmental engineering",
+    ),
+    "environment": (
+        "environmental scien", "environmental stud", "environmental affairs",
+        "environmental conservation", "environmental policy", "environmental social",
+        "environmental analysis", "environmental biolog", "environmental toxicolog",
+        "the environment", "earth", "geolog", "geoscien", "geograph", "atmospheric", *_OCEAN,
+        "marine", "climate", "sustainability", "sustainable biomaterials",
+        "sustainable development", *_ECOLOGY, "planetary", "forest", "natural resources",
+        "wildlife", "fisheries", "meteorolog",
+    ),
+    "architecture_planning": (
+        "architecture", "planning", "urban studies", "urban planning", "landscape", "design",
+        "construction science", "construction management", "school of construction",
+        "building construction", "preservation", "real estate",
+    ),
+    "communication_media": (
+        "journalism", "advertising", "media", "communication", "public relations", "broadcast",
+        "film", "television",
+    ),
+    "social_work": ("social work", "social welfare"),
+    "law": ("law", "legal"),
+    "public_policy": (
+        "policy", "public affairs", "public administration", "public service", "government",
+        "politic", "international relations", "international affairs", "international studies",
+        "international politics", "international and", "global affairs", "global studies",
+        "global policy", "global development", "global integrative", "diplomacy",
+        "foreign service",
+    ),
+    "labor_relations": (
+        "labor relations", "labor and employment", "employment relations", "human resource",
+    ),
+    "hospitality": ("hospitality", "tourism"),
+    "criminology": ("criminolog", "criminal justice", "forensic"),
+    "gerontology": ("gerontolog", "longevity"),
+    "textiles": ("textile", "apparel", "fashion"),
+}
+
+# An arts-and-sciences college is the umbrella over these. Engineering, medicine,
+# business and the professional schools are the colleges it is not.
+_ARTS_AND_SCIENCES = ("arts", "humanities", "natural_sciences", "social_sciences")
+
+# Each catalog college outside UIUC, by the fields of the majors its catalog lists.
+# Keyed by name and never by home school: the names repeat ("College of
+# Engineering" is a college at 30 schools), and a JHU engineer browsing other
+# schools is still an engineer. A name UIUC shares ("College of Education",
+# "School of Social Work", "College of Veterinary Medicine") is not listed here,
+# so it keeps the stems chosen for UIUC above. Seven catalog colleges are not
+# listed either, because their majors share no field (continuing studies,
+# interdisciplinary programs): any stems there would only favour whatever field
+# they happened to name.
+_COLLEGE_FIELDS: dict[str, tuple[str, ...]] = {
+    "A. James Clark School of Engineering": ("engineering",),
+    "Alfred Lerner College of Business & Economics": ("business",),
+    "Annenberg School for Communication and Journalism": ("communication_media",),
+    "Arts": ("arts",),
+    "Arts & Humanities Collegiate Division": ("arts", "humanities"),
+    "Arts & Sciences": _ARTS_AND_SCIENCES,
+    "Arts Division": ("arts",),
+    "Arts and Humanities": ("arts", "humanities"),
+    "Baskin School of Engineering": ("engineering",),
+    "Bellini College of Artificial Intelligence, Cybersecurity and Computing": ("computing",),
+    "Bienen School of Music": ("music",),
+    "Biological Sciences Collegiate Division": ("life_sciences",),
+    "Blair School of Music": ("music",),
+    "Bloomberg School of Public Health": ("public_health",),
+    "Bourns College of Engineering": ("engineering",),
+    "Bouvé College of Health Sciences": ("health_sciences", "nursing", "pharmacy"),
+    "Bowers College of Computing and Information Science": (
+        "computing", "information", "data_science",
+    ),
+    "Brooks School of Public Policy": ("public_policy",),
+    "Bush School of Government and Public Service": ("public_policy",),
+    "C.T. Bauer College of Business": ("business",),
+    "Carey Business School": ("business",),
+    "Carl H. Lindner College of Business": ("business",),
+    "Carlson School of Management (CSOM)": ("business", "labor_relations"),
+    "Carroll School of Management": ("business",),
+    "Case School of Engineering": ("engineering",),
+    "Charles V. Schaefer, Jr. School of Engineering and Science": (
+        "engineering", "natural_sciences",
+    ),
+    "Charlie Dunlop School of Biological Sciences": ("life_sciences",),
+    "Claire Trevor School of the Arts": ("arts",),
+    "Cockrell School of Engineering": ("engineering",),
+    "College of Agricultural Sciences": ("agriculture",),
+    "College of Agricultural Sciences and Natural Resources": ("agriculture", "environment"),
+    "College of Agricultural and Environmental Sciences": ("agriculture", "environment"),
+    "College of Agricultural and Life Sciences": ("agriculture", "life_sciences"),
+    "College of Agriculture": ("agriculture",),
+    "College of Agriculture & Life Sciences": ("agriculture", "life_sciences", "environment"),
+    "College of Agriculture & Natural Resources": ("agriculture", "environment"),
+    "College of Agriculture and Life Sciences": ("agriculture", "life_sciences"),
+    "College of Agriculture and Natural Resources": ("agriculture", "environment"),
+    "College of Agriculture, Food and Environment": ("agriculture", "environment"),
+    "College of Agriculture, Forestry and Life Sciences": (
+        "agriculture", "life_sciences", "environment",
+    ),
+    "College of Agriculture, Health and Natural Resources": (
+        "agriculture", "environment", "health_sciences",
+    ),
+    "College of Agriculture, Life and Environmental Sciences": (
+        "agriculture", "life_sciences", "environment",
+    ),
+    "College of Architecture & Design": ("architecture_planning",),
+    "College of Architecture, Art, and Planning": ("architecture_planning", "arts"),
+    "College of Architecture, Arts and Humanities": ("architecture_planning", "arts", "humanities"),
+    "College of Architecture, Arts, and Design": ("architecture_planning", "arts"),
+    "College of Architecture, Planning and Landscape Architecture": ("architecture_planning",),
+    "College of Art & Design": ("arts", "architecture_planning"),
+    "College of Arts & Sciences": _ARTS_AND_SCIENCES,
+    "College of Arts and Architecture": ("arts", "architecture_planning"),
+    "College of Arts and Humanities": ("arts", "humanities"),
+    "College of Arts and Letters": ("arts", "humanities", "social_sciences"),
+    "College of Arts and Science": _ARTS_AND_SCIENCES,
+    "College of Arts and Sciences": _ARTS_AND_SCIENCES,
+    "College of Arts, Media and Design": ("arts", "communication_media", "architecture_planning"),
+    "College of Behavioral and Community Sciences": (
+        "social_sciences", "social_work", "criminology", "health_sciences",
+    ),
+    "College of Behavioral and Social Sciences": ("social_sciences", "criminology"),
+    "College of Behavioral, Social and Health Sciences": (
+        "social_sciences", "health_sciences", "nursing",
+    ),
+    "College of Biological Sciences": ("life_sciences",),
+    "College of Biological Sciences (CBS)": ("life_sciences",),
+    "College of Built Environments": ("architecture_planning",),
+    "College of Business": ("business",),
+    "College of Business Administration": ("business",),
+    "College of Chemistry": ("chemistry",),
+    "College of Communication": ("communication_media",),
+    "College of Communication & Information": ("communication_media", "information"),
+    "College of Communication Arts and Sciences": ("communication_media",),
+    "College of Communication and Information": ("communication_media", "information"),
+    "College of Communication, Media, Design and Information": (
+        "communication_media", "information", "architecture_planning",
+    ),
+    "College of Computer, Mathematical, and Natural Sciences": ("computing", "natural_sciences"),
+    "College of Computing": ("computing",),
+    "College of Computing & Informatics": ("computing", "information"),
+    "College of Computing, Data Science, and Society": ("computing", "data_science"),
+    "College of Creative Studies": ("natural_sciences", "arts", "humanities"),
+    "College of Criminology and Criminal Justice": ("criminology",),
+    "College of Dentistry": ("dentistry",),
+    "College of Design": ("arts", "architecture_planning"),
+    "College of Design (CDes)": ("arts", "architecture_planning", "textiles"),
+    "College of Design, Architecture, Art, and Planning": ("arts", "architecture_planning"),
+    "College of Design, Construction and Planning / Rinker School": ("architecture_planning",),
+    "College of Earth and Mineral Sciences": ("environment", "engineering"),
+    "College of Earth, Ocean and Environment": ("environment",),
+    "College of Earth, Ocean, and Atmospheric Sciences": ("environment",),
+    "College of Education & Human Development (CEHD)": (
+        "education", "human_development", "health_sciences",
+    ),
+    "College of Education and Human Ecology": ("education", "human_development"),
+    "College of Education, Criminal Justice, and Human Services": ("education", "criminology"),
+    "College of Education, Health & Human Sciences": (
+        "education", "health_sciences", "human_development",
+    ),
+    "College of Education, Health, and Human Sciences": (
+        "education", "health_sciences", "human_development",
+    ),
+    "College of Emerging and Collaborative Studies": ("data_science",),
+    "College of Engineering": ("engineering",),
+    "College of Engineering and Applied Science": ("engineering",),
+    "College of Engineering and Applied Sciences": ("engineering",),
+    "College of Engineering and Computer Science": ("engineering", "computing"),
+    "College of Engineering, Computing and Applied Sciences": ("engineering", "computing"),
+    "College of Environment and Design": ("architecture_planning", "environment"),
+    "College of Environmental Design": ("architecture_planning",),
+    "College of Family and Consumer Sciences": ("human_development", "textiles"),
+    "College of Fine Arts": ("arts",),
+    "College of Food, Agricultural & Natural Resource Sciences (CFANS)": (
+        "agriculture", "environment",
+    ),
+    "College of Food, Agricultural, and Environmental Sciences": ("agriculture", "environment"),
+    "College of Global Futures": ("environment",),
+    "College of Health": ("public_health",),
+    "College of Health Professions and Sciences": ("health_sciences",),
+    "College of Health Sciences": ("health_sciences", "nursing"),
+    "College of Health Solutions": ("health_sciences", "public_health"),
+    "College of Health and Human Development": (
+        "health_sciences", "human_development", "hospitality",
+    ),
+    "College of Health and Human Performance": ("health_sciences", "hospitality"),
+    "College of Health and Human Sciences": ("health_sciences", "human_development"),
+    "College of Human Ecology": ("human_development", "public_health", "textiles"),
+    "College of Humanities": ("humanities",),
+    "College of Humanities & Fine Arts": ("humanities", "arts"),
+    "College of Humanities & Social Sciences": ("humanities", "social_sciences"),
+    "College of Humanities and Social Sciences": ("humanities", "social_sciences"),
+    "College of Humanities, Arts, and Social Sciences": ("humanities", "arts", "social_sciences"),
+    "College of Information": ("information",),
+    "College of Information Science": ("information", "data_science"),
+    "College of Information Sciences and Technology": ("information", "computing"),
+    "College of Journalism and Communications": ("communication_media",),
+    "College of Journalism and Mass Communications": ("communication_media",),
+    "College of Letters & Science": _ARTS_AND_SCIENCES,
+    "College of Letters and Science": _ARTS_AND_SCIENCES,
+    "College of Liberal Arts": ("humanities", "social_sciences", "arts"),
+    "College of Liberal Arts (CLA)": ("humanities", "social_sciences", "arts"),
+    "College of Liberal Arts and Human Sciences": (
+        "humanities", "social_sciences", "human_development",
+    ),
+    "College of Liberal Arts and Sciences": _ARTS_AND_SCIENCES,
+    "College of Liberal Arts and Social Sciences": ("humanities", "social_sciences"),
+    "College of Literature, Science, and the Arts (LSA)": _ARTS_AND_SCIENCES,
+    "College of Medicine": ("medicine", "life_sciences"),
+    "College of Medicine — School of Health and Rehabilitation Sciences": (
+        "medicine", "health_sciences",
+    ),
+    "College of Music": ("music",),
+    "College of Natural Resources": ("environment",),
+    "College of Natural Resources and Environment": ("environment",),
+    "College of Natural Science": ("natural_sciences",),
+    "College of Natural Sciences": ("natural_sciences", "computing"),
+    "College of Natural Sciences and Mathematics": ("natural_sciences", "computing"),
+    "College of Natural and Agricultural Sciences": ("natural_sciences", "agriculture"),
+    "College of Nursing": ("nursing",),
+    "College of Nursing and Health Professions": ("nursing", "health_sciences"),
+    "College of Pharmacy": ("pharmacy",),
+    "College of Public Health": ("public_health",),
+    "College of Public Health and Health Professions": ("public_health", "health_sciences"),
+    "College of Science": ("natural_sciences",),
+    "College of Science & Engineering (CSE)": ("engineering", "natural_sciences"),
+    "College of Sciences": ("natural_sciences",),
+    "College of Social & Behavioral Sciences": ("social_sciences",),
+    "College of Social Science": ("social_sciences", "criminology"),
+    "College of Social Sciences and Humanities": ("social_sciences", "humanities"),
+    "College of Social Sciences and Public Policy": ("social_sciences", "public_policy"),
+    "College of Social Work": ("social_work",),
+    "College of Social and Behavioral Science": ("social_sciences",),
+    "College of Social and Behavioral Sciences": ("social_sciences", "humanities"),
+    "College of the Arts": ("arts",),
+    "College of the Coast & Environment": ("environment",),
+    "College of the Environment": ("environment",),
+    "College of the Liberal Arts": ("humanities", "social_sciences"),
+    "Columbia College": _ARTS_AND_SCIENCES,
+    "Connell School of Nursing": ("nursing",),
+    "Cullen College of Engineering": ("engineering",),
+    "D'Amore-McKim School of Business": ("business",),
+    "Daniel J. Evans School of Public Policy & Governance": ("public_policy",),
+    "David Eccles School of Business": ("business",),
+    "Dietrich College of Humanities and Social Sciences": (
+        "humanities", "social_sciences", "data_science",
+    ),
+    "Division of Arts": ("arts",),
+    "Division of Arts and Humanities": ("arts", "humanities"),
+    "Division of Biology and Biological Engineering": ("life_sciences",),
+    "Division of Chemistry and Chemical Engineering": ("chemistry",),
+    "Division of Engineering and Applied Science": ("engineering",),
+    "Division of Geological and Planetary Sciences": ("environment",),
+    "Division of Humanities": ("humanities",),
+    "Division of Interdisciplinary Studies": ("humanities",),
+    "Division of Natural Sciences and Engineering": ("natural_sciences", "engineering"),
+    "Division of Natural Sciences and Mathematics": ("natural_sciences",),
+    "Division of Physics, Mathematics and Astronomy": ("natural_sciences",),
+    "Division of Science and Mathematics": ("natural_sciences",),
+    "Division of Social Sciences": ("social_sciences",),
+    "Division of the Arts": ("arts",),
+    "Division of the Humanities and Social Sciences": ("humanities", "social_sciences"),
+    "Donald Bren School of Information and Computer Sciences": ("computing", "information"),
+    "Donald P. Bellisario College of Communications": ("communication_media",),
+    "Dornsife College of Letters, Arts and Sciences": _ARTS_AND_SCIENCES,
+    "E. J. Ourso College of Business": ("business",),
+    "Eastman School of Music": ("music",),
+    "Eberly College of Science": ("natural_sciences",),
+    "Edson College of Nursing and Health Innovation": ("nursing", "health_sciences"),
+    "Edward J. Bloustein School of Planning and Public Policy": (
+        "architecture_planning", "public_policy", "public_health",
+    ),
+    "Elaine Marieb College of Nursing": ("nursing",),
+    "Eli Broad College of Business": ("business",),
+    "Eller College of Management": ("business",),
+    "Emory College of Arts and Sciences": _ARTS_AND_SCIENCES,
+    "Erik Jonsson School of Engineering and Computer Science": ("engineering", "computing"),
+    "Ernest Mario School of Pharmacy": ("pharmacy",),
+    "FAMU-FSU College of Engineering": ("engineering",),
+    "Faculty of Computing & Data Sciences": ("computing", "data_science"),
+    "Fielding School of Public Health": ("public_health",),
+    "Fine Arts": ("arts",),
+    "Fisher College of Business": ("business",),
+    "Ford School of Public Policy": ("public_policy",),
+    "Frances Payne Bolton School of Nursing": ("nursing",),
+    "Frank Batten School of Leadership and Public Policy": ("public_policy",),
+    "Franklin College of Arts and Sciences": _ARTS_AND_SCIENCES,
+    "Frost School of Music": ("music",),
+    "Fu Foundation School of Engineering and Applied Science": ("engineering",),
+    "Gatton College of Business and Economics": ("business",),
+    "George R. Brown School of Engineering and Computing": ("engineering", "computing"),
+    "Gerald D. Hines College of Architecture and Design": ("architecture_planning",),
+    "Goizueta Business School": ("business",),
+    "Grady College of Journalism and Mass Communication": ("communication_media",),
+    "Haas School of Business": ("business",),
+    "Hajim School of Engineering & Applied Sciences": ("engineering",),
+    "Halıcıoğlu Data Science Institute": ("data_science",),
+    "Harry W. Bass Jr. School of Arts, Humanities, and Technology": ("arts", "humanities"),
+    "Haslam College of Business": ("business",),
+    "Heavener School of Business / Fisher School of Accounting": ("business",),
+    "Herb Alpert School of Music": ("music",),
+    "Herberger Institute for Design and the Arts": ("arts", "architecture_planning"),
+    "Herbert College of Agriculture": ("agriculture",),
+    "Herbert Wertheim College of Engineering": ("engineering",),
+    "Herbert Wertheim School of Public Health": ("public_health",),
+    "Hillier College of Architecture and Design": ("architecture_planning",),
+    "Hixson-Lied College of Fine and Performing Arts": ("arts",),
+    "Humanities": ("humanities",),
+    "Humanities and Arts": ("humanities", "arts"),
+    "Information School": ("information",),
+    "Ira A. Fulton Schools of Engineering": ("engineering",),
+    "Irma Lerma Rangel College of Pharmacy": ("pharmacy",),
+    "Isenberg School of Management": ("business", "hospitality"),
+    "Ivan Allen College of Liberal Arts": ("humanities", "social_sciences", "public_policy"),
+    "Ivy College of Business": ("business",),
+    "Jackson School of Geosciences": ("environment",),
+    "Jacobs School of Engineering": ("engineering",),
+    "Jacobs School of Music": ("music",),
+    "Joe C. Wen School of Nursing": ("nursing",),
+    "Joe C. Wen School of Population and Public Health": ("public_health",),
+    "John A. Paulson School of Engineering and Applied Sciences": ("engineering",),
+    "John Glenn College of Public Affairs": ("public_policy",),
+    "Jordan Hu College of Science and Liberal Arts": _ARTS_AND_SCIENCES,
+    "Kathrine G. McGovern College of the Arts": ("arts",),
+    "Kaufman School of Dance": ("dance",),
+    "Kelley School of Business": ("business",),
+    "Kenneth P. Dietrich School of Arts and Sciences": _ARTS_AND_SCIENCES,
+    "Keough School of Global Affairs": ("public_policy",),
+    "Khoury College of Computer Sciences": ("computing",),
+    "Krieger School of Arts and Sciences": _ARTS_AND_SCIENCES,
+    "Lally School of Management": ("business",),
+    "LeBow College of Business": ("business",),
+    "Leeds School of Business": ("business",),
+    "Leonard Davis School of Gerontology": ("gerontology", "human_development"),
+    "Leonard N. Stern School of Business": ("business",),
+    "Life & Medical Sciences": ("life_sciences", "medicine"),
+    "Luddy School of Informatics, Computing, and Engineering": (
+        "computing", "information", "engineering",
+    ),
+    "Luskin School of Public Affairs": ("public_policy",),
+    "Lynch School of Education and Human Development": ("education", "human_development"),
+    "Lyndon B. Johnson School of Public Affairs": ("public_policy",),
+    "Mann School of Pharmacy and Pharmaceutical Sciences": ("pharmacy",),
+    "Manning College of Information & Computer Sciences": ("computing", "information"),
+    "Manship School of Mass Communication": ("communication_media",),
+    "Marsal Family School of Education": ("education",),
+    "Marshall School of Business": ("business",),
+    "Martin J. Whitman School of Management": ("business",),
+    "Martin Tuchman School of Management": ("business",),
+    "Mary Frances Early College of Education": ("education", "health_sciences"),
+    "Mary Lou Fulton Teachers College": ("education",),
+    "Mason Gross School of the Arts": ("arts",),
+    "Mathematics and Natural Sciences": ("natural_sciences",),
+    "Maxwell School of Citizenship and Public Affairs": ("public_policy", "social_sciences"),
+    "Mays Business School": ("business",),
+    "McCormick School of Engineering and Applied Science": ("engineering",),
+    "McDonough School of Business": ("business",),
+    "McIntire School of Commerce": ("business",),
+    "McKelvey School of Engineering": ("engineering",),
+    "Medill School of Journalism": ("communication_media",),
+    "Mel and Enid Zuckerman College of Public Health": ("public_health",),
+    "Mellon College of Science": ("natural_sciences",),
+    "Mendoza College of Business": ("business",),
+    "Miami Herbert Business School": ("business",),
+    "Michael G. Foster School of Business": ("business",),
+    "Mitchell E. Daniels, Jr. School of Business": ("business",),
+    "Moody College of Communication": ("communication_media",),
+    "Morrissey College of Arts and Sciences": _ARTS_AND_SCIENCES,
+    "Muma College of Business": ("business",),
+    "Natalie L. Haslam College of Music": ("music",),
+    "Natural Sciences": ("natural_sciences",),
+    "Natural Sciences & Mathematics": ("natural_sciences",),
+    "Natural Sciences and Mathematics": ("natural_sciences",),
+    "Naveen Jindal School of Management": ("business",),
+    "Neag School of Education": ("education",),
+    "Nell Hodgson Woodruff School of Nursing": ("nursing",),
+    "Newark College of Engineering": ("engineering",),
+    "O'Neill School of Public and Environmental Affairs": ("public_policy", "environment"),
+    "Odum School of Ecology": ("environment",),
+    "Olin Business School": ("business",),
+    "P.C. Rossin College of Engineering and Applied Science": ("engineering",),
+    "Pamplin College of Business": ("business",),
+    "Pardee School of Global Studies": ("public_policy",),
+    "Peabody College of Education and Human Development": ("education", "human_development"),
+    "Peabody Institute": ("music",),
+    "Philip Merrill College of Journalism": ("communication_media",),
+    "Physical Sciences": ("natural_sciences",),
+    "Physical Sciences Collegiate Division": ("natural_sciences", "computing"),
+    "Physical and Biological Sciences": ("natural_sciences",),
+    "Poole College of Management": ("business",),
+    "Pratt School of Engineering": ("engineering",),
+    "Price School of Public Policy": ("public_policy", "architecture_planning"),
+    "Pritzker School of Law": ("law",),
+    "Purdue Polytechnic Institute": ("engineering", "computing"),
+    "Questrom School of Business": ("business",),
+    "Rausser College of Natural Resources": ("environment", "life_sciences"),
+    "Red McCombs School of Business": ("business",),
+    "Riccio College of Engineering": ("engineering",),
+    "Robert H. Smith School of Business": ("business",),
+    "Robert Mehrabian College of Engineering": ("engineering",),
+    "Rosen College of Hospitality Management": ("hospitality",),
+    "Rosenstiel School of Marine, Atmospheric, and Earth Science": ("environment",),
+    "Roski School of Art and Design": ("arts",),
+    "Ross School of Business": ("business",),
+    "Rutgers Business School-Newark and New Brunswick": ("business",),
+    "S.I. Newhouse School of Public Communications": ("communication_media",),
+    "SC Johnson College of Business": ("business", "hospitality"),
+    "Sam Fox School of Design & Visual Arts": ("arts", "architecture_planning"),
+    "Samueli School of Engineering": ("engineering",),
+    "Sargent College of Health & Rehabilitation Sciences": ("health_sciences",),
+    "Scheller College of Business": ("business",),
+    "School of Architecture": ("architecture_planning",),
+    "School of Architecture and Planning": ("architecture_planning",),
+    "School of Architecture, Planning and Preservation": ("architecture_planning",),
+    "School of Arts & Sciences": _ARTS_AND_SCIENCES,
+    "School of Arts and Humanities": ("arts", "humanities"),
+    "School of Arts and Sciences": _ARTS_AND_SCIENCES,
+    "School of Behavioral and Brain Sciences": ("social_sciences", "health_sciences"),
+    "School of Biological Sciences": ("life_sciences",),
+    "School of Business": ("business",),
+    "School of Cinematic Arts": ("theater_film",),
+    "School of Civic Leadership": ("public_policy",),
+    "School of Communication": ("communication_media", "theater_film"),
+    "School of Communication and Information": ("communication_media", "information"),
+    "School of Communication and Journalism": ("communication_media",),
+    "School of Computer Science": ("computing",),
+    "School of Computing and Information": ("computing", "information"),
+    "School of Data Science": ("data_science",),
+    "School of Dentistry": ("dentistry",),
+    "School of Dramatic Arts": ("theater_film",),
+    "School of Economic, Political and Policy Sciences": (
+        "social_sciences", "public_policy", "criminology",
+    ),
+    "School of Education": ("education",),
+    "School of Education and Human Development": (
+        "education", "human_development", "health_sciences",
+    ),
+    "School of Education and Information Studies": ("education", "information"),
+    "School of Education and Social Policy": ("education", "human_development", "public_policy"),
+    "School of Engineering": ("engineering",),
+    "School of Engineering and Applied Science": ("engineering",),
+    "School of Engineering and Applied Sciences": ("engineering",),
+    "School of Environmental and Biological Sciences": (
+        "environment", "life_sciences", "agriculture",
+    ),
+    "School of Fine Arts": ("arts",),
+    "School of General Studies": _ARTS_AND_SCIENCES,
+    "School of Health": ("public_health", "health_sciences"),
+    "School of Health Professions": ("health_sciences",),
+    "School of Health and Rehabilitation Sciences": ("health_sciences",),
+    "School of Hospitality Administration": ("hospitality",),
+    "School of Human Ecology": ("human_development", "textiles"),
+    "School of Humanities": ("humanities",),
+    "School of Humanities and Sciences": _ARTS_AND_SCIENCES,
+    "School of Humanities, Arts, and Social Sciences": ("humanities", "arts", "social_sciences"),
+    "School of Industrial and Labor Relations": ("labor_relations",),
+    "School of Information": ("information",),
+    "School of Kinesiology": ("health_sciences",),
+    "School of Management": ("business",),
+    "School of Management and Labor Relations": ("labor_relations", "business"),
+    "School of Marine and Atmospheric Sciences": ("environment",),
+    "School of Medicine": ("medicine",),
+    "School of Music, Theatre & Dance (SMTD)": ("music", "theater_film"),
+    "School of Natural Resources and Environment": ("environment",),
+    "School of Natural Sciences and Mathematics": ("natural_sciences",),
+    "School of Nursing": ("nursing",),
+    "School of Nursing and Health Studies": ("nursing", "health_sciences"),
+    "School of Performance, Visualization and Fine Arts": ("arts",),
+    "School of Pharmacy": ("pharmacy",),
+    "School of Pharmacy & Pharmaceutical Sciences": ("pharmacy",),
+    "School of Physical Sciences": ("natural_sciences",),
+    "School of Public Health": ("public_health",),
+    "School of Public Health & Health Sciences": ("public_health", "health_sciences"),
+    "School of Public Health and Health Professions": ("public_health", "health_sciences"),
+    "School of Public Health-Bloomington": ("public_health", "health_sciences"),
+    "School of Public Policy": ("public_policy",),
+    "School of Public and International Affairs": ("public_policy",),
+    "School of Science": ("natural_sciences",),
+    "School of Social Ecology": ("social_sciences", "criminology", "architecture_planning"),
+    "School of Social Sciences": ("social_sciences",),
+    "School of Social Welfare": ("social_work",),
+    "School of Systems and Enterprises": ("engineering",),
+    "School of Theater, Film and Television": ("theater_film",),
+    "School of Veterinary Medicine and Biomedical Sciences": ("veterinary", "medicine"),
+    "School of the Arts and Architecture": ("arts", "architecture_planning"),
+    "School of the Museum of Fine Arts": ("arts",),
+    "Schwarzman College of Computing": ("computing", "data_science"),
+    "Science and Mathematics": ("natural_sciences",),
+    "Sciences": ("natural_sciences",),
+    "Sciences and Mathematics": ("natural_sciences",),
+    "Scripps Institution of Oceanography": ("environment",),
+    "Shepherd School of Music": ("music",),
+    "Simon Business School": ("business",),
+    "Sloan School of Management": ("business",),
+    "Smeal College of Business": ("business",),
+    "Social Sciences": ("social_sciences",),
+    "Social Sciences Collegiate Division": ("social_sciences",),
+    "Social and Behavioral Sciences": ("social_sciences",),
+    "Stamps School of Art & Design": ("arts",),
+    "Stanford Doerr School of Sustainability": ("environment",),
+    "Steinhardt School of Culture, Education, and Human Development": (
+        "education", "human_development",
+    ),
+    "Steve Hicks School of Social Work": ("social_work",),
+    "Stockbridge School of Agriculture": ("agriculture",),
+    "Sue & Bill Gross School of Nursing": ("nursing",),
+    "Swanson School of Engineering": ("engineering",),
+    "Tandon School of Engineering": ("engineering",),
+    "Taubman College of Architecture & Urban Planning": ("architecture_planning",),
+    "Tepper School of Business": ("business",),
+    "Terry College of Business": ("business",),
+    "Thayer School of Engineering": ("engineering",),
+    "The Business School": ("business",),
+    "The College of Liberal Arts and Sciences": _ARTS_AND_SCIENCES,
+    "The Global School": ("public_policy",),
+    "The Henry Samueli School of Engineering": ("engineering",),
+    "The John and Marcia Price College of Engineering": ("engineering",),
+    "The Media School": ("communication_media",),
+    "The Paul Merage School of Business": ("business",),
+    "The Wharton School": ("business",),
+    "Thornton School of Music": ("music",),
+    "Tickle College of Engineering": ("engineering",),
+    "Tippie College of Business": ("business",),
+    "Trinity College of Arts and Sciences": _ARTS_AND_SCIENCES,
+    "University Studies": ("humanities",),
+    "Virani Undergraduate School of Business": ("business",),
+    "Viterbi School of Engineering": ("engineering",),
+    "W. P. Carey School of Business": ("business",),
+    "Walsh School of Foreign Service": ("public_policy",),
+    "Walter Cronkite School of Journalism and Mass Communication": ("communication_media",),
+    "Walter Scott, Jr. College of Engineering": ("engineering",),
+    "Warnell School of Forestry and Natural Resources": ("environment",),
+    "Warner College of Natural Resources": ("environment",),
+    "Watts College of Public Service and Community Solutions": (
+        "public_policy", "social_work", "criminology", "architecture_planning",
+    ),
+    "Weatherhead School of Management": ("business",),
+    "Weinberg College of Arts and Sciences": _ARTS_AND_SCIENCES,
+    "Westphal College of Media Arts & Design": ("arts", "communication_media"),
+    "Wheelock College of Education & Human Development": ("education", "human_development"),
+    "Whiting School of Engineering": ("engineering",),
+    "Wiess School of Natural Sciences": ("natural_sciences",),
+    "Wilbur O. and Ann Powers College of Business": ("business",),
+    "Williams School of Commerce, Economics, and Politics": ("business", "social_sciences"),
+    "Wilson College of Textiles": ("textiles",),
+    "Ying Wu College of Computing": ("computing", "information"),
+}
+
+COLLEGE_DEPARTMENT_SIGNALS.update(
+    (college, sorted({stem for field in fields for stem in _FIELD_DEPARTMENT_STEMS[field]}))
+    for college, fields in _COLLEGE_FIELDS.items()
+)
 
 
 def _profile_implicit_keywords(profile: dict) -> set[str]:
@@ -545,22 +1195,36 @@ def _college_affinity(profile: dict, opportunity: dict) -> float:
     matches the student's college. Missing department → 0.0 (never a penalty),
     so the ~46% of records without a department degrade gracefully."""
     college = (profile.get("college") or "").strip()
-    stems = COLLEGE_DEPARTMENT_SIGNALS.get(college)
-    if not stems:
+    if college not in COLLEGE_DEPARTMENT_SIGNALS:
         return 0.0
     st = _opp_static(opportunity)
     if not st.dept_lower:
         return 0.0
-    # A one-word stem has to name a word of the department, not merely appear
-    # inside one. "art" is inside "department": matching it as a substring gave
-    # a Fine & Applied Arts student the affinity bonus on 86,425 of the 129,328
-    # faculty records - two thirds of the corpus, headed by mathematics, English
-    # and psychology. Multi-word stems ("political science") are specific enough
-    # that plain containment cannot collide.
-    return COLLEGE_AFFINITY_MAX if any(
-        (stem in st.dept_lower) if " " in stem else _names_a_field(stem, st.dept_words)
-        for stem in stems
-    ) else 0.0
+    return COLLEGE_AFFINITY_MAX if _college_names_department(college, st.dept_lower) else 0.0
+
+
+@lru_cache(maxsize=8192)
+def _college_names_department(college: str, dept_lower: str) -> bool:
+    """Whether one of the college's stems names this department.
+
+    Cached per pair because a ranking asks it of every row while the corpus has
+    2,268 distinct department strings, and a catalog college carries up to 87
+    stems: one pass over the 142,861-row corpus for "College of Arts and
+    Sciences" took 1.6 s uncached and 0.04 s cached. Only known college names
+    reach the cache, since the college is free text on the request.
+
+    A one-word stem has to name a word of the department, not merely appear
+    inside one. "art" is inside "department": matching it as a substring gave
+    a Fine & Applied Arts student the affinity bonus on 86,425 of the 129,328
+    faculty records - two thirds of the corpus, headed by mathematics, English
+    and psychology. Multi-word stems ("political science") are specific enough
+    that plain containment cannot collide.
+    """
+    words = frozenset(_COURSE_WORD_RE.findall(dept_lower))
+    return any(
+        (stem in dept_lower) if " " in stem else _names_a_field(stem, words)
+        for stem in COLLEGE_DEPARTMENT_SIGNALS[college]
+    )
 
 
 def _home_school_affinity(profile: dict, opportunity: dict) -> float:
@@ -2143,7 +2807,6 @@ class _OppStatic:
     lab_label: str
     signal_text: str
     dept_lower: str
-    dept_words: frozenset[str]
     topic_candidates: tuple[tuple[str, str, frozenset[str]], ...]
     topic_has_specific: bool
     requires_grad: bool
@@ -2270,7 +2933,6 @@ def _build_opp_static(opp: dict) -> _OppStatic:
         lab_label=lab_label,
         signal_text=f" {signal_joined} " if signal_joined else "",
         dept_lower=dept_lower,
-        dept_words=frozenset(_COURSE_WORD_RE.findall(dept_lower)),
         topic_candidates=tuple(
             (
                 kw,

@@ -206,6 +206,20 @@ currently an automatic expiry gate; this patch does not introduce a new TTL poli
 - `/matches` pages slice one snapshot → repeated/overlapping page requests
   within the snapshot TTL are duplicate-free and omission-free by
   construction.
+- **Accepted: one 409 for a ranking in flight at server midnight.** The ranker
+  reads the server's calendar (`date.today()`; UTC on Render, so 00:00 UTC is
+  19:00 CDT / 18:00 CST) once per record, for deadline countdowns, passed
+  deadlines, program start dates, the season and contact stamps. A ranking
+  running across midnight reads both days, so its list can differ from the
+  lists ranked before and after, and its result-set id then matches no other
+  ranking. Its snapshot also records the earlier day (`_ranked_with`), so after
+  midnight no worker serves it. The next page request with its cursor gets
+  `409 MATCH_CURSOR_EXPIRED`, and the results page drops the cursor and reloads
+  page 1 once (`frontend/src/app/results/use-results-data.ts`). The window is
+  one ranking's duration, the recovery is automatic, and closing it would mean
+  passing the day `_ranked_with` read into every calendar read in the ranker.
+  A list whose rows change at midnight (a deadline passing) also refuses its
+  older cursors then; that is the designed fail-closed behaviour, not this case.
 - The corpus itself is deduplicated by id (first occurrence wins) and
   id-sorted at load (`backend/data_loader._canonicalize_corpus`), so
   `/opportunities` offset paging is deterministic across refreshes;
