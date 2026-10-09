@@ -150,6 +150,24 @@ def test_an_english_relabel_of_an_accented_word_goes_to_the_review(opportunity, 
     assert rewrite in seen and rewrite in shown and set(shown) <= seen, (shown, seen)
 
 
+# 0bacf74d read a French line whose words outside the phrase include "on" and "a" as English, so its
+# phrase relabeled into English reached the review on every route.
+FOREIGN_RELABELS = {
+    "french with on and a": ("On a construit un pipeline de données pour 40 capteurs.",
+                             "On a construit un data pipeline pour 40 capteurs.", "pipeline de données",
+                             "data pipeline", "Build a data pipeline in Python."),
+}
+
+
+@pytest.mark.parametrize("path", ALL_PATHS)
+@pytest.mark.parametrize("name", list(FOREIGN_RELABELS))
+def test_a_foreign_phrase_relabeled_into_english_is_kept_beside_two_letter_english_words(
+        opportunity, monkeypatch, path, name):  # noqa: F811
+    original, rewrite, source, term, anchor = FOREIGN_RELABELS[name]
+    shown, seen = run(opportunity, monkeypatch, path, original, _relabel_row(rewrite, source, term), anchor)
+    assert rewrite not in seen and rewrite not in shown, (shown, seen)
+
+
 # A setting's accented word written otherwise: the setting lock reads "at the Gomez lab" letter for letter
 # as a setting the line never named. On db09a88 the accent-only relabel passed the contract and every
 # route refused it with a fabrication warning (setting_added); main shows it. Now the contract keeps it
@@ -196,6 +214,12 @@ def test_a_settings_accented_word_written_otherwise_is_kept_not_refused(opportun
     ("pipeline de données", "data pipeline", "Développé un pipeline de données en Python pour 40 capteurs.", False),
     ("pipeline de données", "data pipeline", "Construit un pipeline de données pour 40 capteurs.", False),
     ("Datenbank für Messwerte", "measurement database", "Aufbau einer Datenbank für Messwerte in Python.", False),
+    # Only two-letter words English shares with French ("on", "a") or German ("an", "in"); 0bacf74d read
+    # both lines as English. An English line with only such words around the phrase is kept too.
+    ("pipeline de données", "data pipeline", "On a construit un pipeline de données pour 40 capteurs.", False),
+    ("Datenbank für Messwerte", "measurement database", "Aufbau einer Datenbank für Messwerte an der TU in Berlin.",
+     False),
+    ("café inventory", "coffee shop inventory", "Ran café inventory as a volunteer.", False),
     # "to" writes an accented word "from" lacks, in any line.
     ("coffee shop inventory", "café inventory", "Tracked coffee shop inventory in Excel for 12 weeks.", False),
 ])

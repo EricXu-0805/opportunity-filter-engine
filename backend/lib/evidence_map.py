@@ -870,15 +870,18 @@ def _accent_words(text: str) -> tuple[set[str], set[str]]:
 
 def _english_around(line: str, span: tuple[int, int]) -> bool:
     """Whether ``line`` is English around a relabel's "from" at ``span``: outside it, the line holds
-    no accented word and at least two different English function words (_FUNCTION_EN, read as it is).
+    no accented word and at least two different English function words (_FUNCTION_EN, read as it is),
+    one of them of three letters or more. Two-letter ones are words of other languages too: "on"
+    and "a" in French, "an" and "in" in German.
 
     "Tracked café inventory in Excel for 12 weeks." is English around "café inventory".
-    "Développé un pipeline de données en Python pour 40 capteurs." is not, and neither is
-    "Aufbau einer Datenbank für Messwerte in Python" around "Datenbank für Messwerte", whose
-    one word English also writes is "in".
+    "Développé un pipeline de données en Python pour 40 capteurs." is not, nor is "On a construit
+    un pipeline de données pour 40 capteurs.", nor "Aufbau einer Datenbank für Messwerte an der
+    TU in Berlin." around "Datenbank für Messwerte".
     """
     accented, words = _accent_words(line[:span[0]] + " " + line[span[1]:])
-    return not accented and len(words & _FUNCTION_EN) >= 2
+    function = words & _FUNCTION_EN
+    return not accented and len(function) >= 2 and any(len(word) >= 3 for word in function)
 
 
 def _accents_kept(source: str, target: str, line: str = "") -> bool:
