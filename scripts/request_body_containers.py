@@ -67,11 +67,26 @@ def separators(body: bytes) -> int:
     return request_body.structural_separators(request_body._json_text(body))
 
 
+def lane_body_model(route):
+    """The model of the JSON body a route's endpoint takes on the request lane
+    (request_body.json_body_on_lane), or None."""
+    pending = list(route.dependant.dependencies)
+    while pending:
+        dependency = pending.pop()
+        model = getattr(dependency.call, "json_body_model", None)
+        if model is not None:
+            return model
+        pending.extend(dependency.dependencies)
+    return None
+
+
 def json_routes(app=None) -> list[tuple[str, str, object]]:
     """(method, path, route) for every route of the app whose endpoint reads a JSON body.
 
     FastAPI parses one for a body parameter that is not a form; an endpoint that calls json() or
-    body() on its Request parses one itself. A multipart upload (request.form()) is not JSON.
+    body() on its Request parses one itself, and one that takes its body through
+    request_body.json_body_on_lane has it parsed on the request lane. A multipart upload
+    (request.form()) is not JSON.
     """
     from fastapi import params
     from fastapi.routing import APIRoute
@@ -83,7 +98,7 @@ def json_routes(app=None) -> list[tuple[str, str, object]]:
         if not isinstance(route, APIRoute):
             continue
         field = route.body_field
-        reads = field is not None and not isinstance(field.field_info, params.Form)
+        reads = (field is not None and not isinstance(field.field_info, params.Form)) or lane_body_model(route) is not None
         if not reads:
             names = [name for name, parameter in inspect.signature(route.endpoint).parameters.items()
                      if parameter.annotation in ("Request", "fastapi.Request") or getattr(
@@ -388,7 +403,7 @@ def request_model(route):
     if route.path in manual:
         return manual[route.path]
     from pydantic import TypeAdapter
-    return TypeAdapter(route.body_field.field_info.annotation)
+    return TypeAdapter(lane_body_model(route) or route.body_field.field_info.annotation)
 
 
 def validate(route, body) -> None:
@@ -428,6 +443,7 @@ def reading(app_module=None):
     """Requests reach the point where their body is parsed: release features on, no corpus, no
     configured provider, a caller already verified, no network. Yields the list of paths whose body
     was parsed; a parsed body is answered as invalid ([]), so no endpoint runs on it."""
+    from pydantic import TypeAdapter
     from starlette.requests import Request
 
     from backend import main as main_module
@@ -456,13 +472,20 @@ def reading(app_module=None):
             real_loads.loads(body)
             return []
 
+    real_lane, any_value = request_body.validated_json_body, TypeAdapter(object)
+
+    def on_lane(body, content_type, adapter):
+        parsed.append("request lane")
+        real_lane(body, content_type, any_value)
+        return real_lane(b"[]", "application/json", adapter)
+
     saved = [(main_module, "feature_enabled"), (release_scope, "feature_enabled"),
              (storage, "caller_verified_before_parsing"), (targets, "caller_verified_before_parsing"),
-             (full_route, "json"), (Request, "json")]
+             (full_route, "json"), (Request, "json"), (request_body, "validated_json_body")]
     old = [(owner, name, getattr(owner, name)) for owner, name in saved]
     main_module.feature_enabled = release_scope.feature_enabled = lambda feature: True
     storage.caller_verified_before_parsing = targets.caller_verified_before_parsing = verified
-    full_route.json, Request.json = Lane, recording
+    full_route.json, Request.json, request_body.validated_json_body = Lane, recording, on_lane
     try:
         yield parsed
     finally:

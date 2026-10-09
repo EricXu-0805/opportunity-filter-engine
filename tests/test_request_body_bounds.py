@@ -6,6 +6,7 @@ these paths; these tests pin the behaviour they measure.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 
 import pytest
@@ -462,6 +463,57 @@ def test_the_structural_count_is_the_number_of_lists_and_objects_json_reads():
                 assert request_body.structural_containers(request_body._json_text(text.encode(encoding))) == expected
 
 
+def test_a_json_body_is_refused_exactly_when_it_is_past_a_bound():
+    """Whatever its strings hold, a JSON body is refused when its lists and objects or its commas
+    between items outnumber the bounds, and only then, down to bounds small enough that the count of
+    its strings decides."""
+    import random
+
+    from fastapi.exceptions import RequestValidationError
+
+    rng = random.Random(5)
+    for _ in range(3_000):
+        value = _values(rng)
+        max_separators, max_containers = rng.randrange(8), rng.randrange(6)
+        past = _separators(value) > max_separators or _containers(value) > max_containers
+        for ensure_ascii in (True, False):
+            text = json.dumps(value, ensure_ascii=ensure_ascii)
+            for body in (text.encode(), text.encode("utf-16")):
+                try:
+                    request_body.check_body_bounds(body, max_separators, max_containers)
+                except RequestValidationError:
+                    refused = True
+                else:
+                    refused = False
+                assert refused == past, (text, max_separators, max_containers)
+
+
+def test_a_body_with_more_strings_than_its_bounds_hold_is_refused_before_its_strings_are_set_aside(monkeypatch):
+    """A body within both bounds holds at most 2 * (separators + containers) + 1 strings. One past a
+    bound anywhere has its strings set aside only when it holds no more than that."""
+    from fastapi.exceptions import RequestValidationError
+
+    seen, real = [], request_body._unescaped
+
+    class Counted(bytes):
+        def split(self, *args):
+            pieces = bytes.split(self, *args)
+            seen.append(len(pieces))
+            return pieces
+
+    monkeypatch.setattr(request_body, "_unescaped", lambda text: Counted(real(text)))
+    bounds = request_body.WRITING_BOUNDS
+    quotes = 2 * (2 * (bounds.separators + bounds.containers) + 1)
+    for body in (b'{"padding":' + b'"' * (quotes + 1) + b"," * (bounds.separators + 1) + b"}",
+                 b'{"padding":' + b'"' * (quotes + 1) + b"[" * (bounds.containers + 1) + b"}"):
+        with pytest.raises(RequestValidationError):
+            request_body.check_body_bounds(body, bounds.separators, bounds.containers)
+    assert seen == []
+    commas = json.dumps({"text": "," * (bounds.separators + 1)}).encode()
+    request_body.check_body_bounds(commas, bounds.separators, bounds.containers)
+    assert seen == [5]
+
+
 # ------------------------------------------------------------------ every route that reads a JSON body
 # scripts/request_body_containers.py finds them in the app (json_routes): a body parameter FastAPI
 # parses, or an endpoint that reads its Request's json() or body(). Each declares its bounds
@@ -473,9 +525,9 @@ ROUTE_IDS = [f"{method} {path}" for method, path, _ in JSON_ROUTES]
 def test_the_app_routes_that_read_a_json_body_are_found():
     found = {(method, path) for method, path, _ in JSON_ROUTES}
     assert len(found) >= 37
-    # A body parameter, a body read by the endpoint itself, and a body parsed on the request lane.
+    # A body parameter, a body read by the endpoint itself, and bodies parsed on the request lane.
     assert {("POST", "/api/matches"), ("DELETE", "/api/application-materials/{record_id}"),
-            ("POST", "/api/tailor/full-target/suggestions")} <= found
+            ("POST", "/api/tailor/full-target/suggestions"), ("PUT", "/api/private-import-targets/{target_id}")} <= found
     # A multipart upload and a route without a body are not JSON routes.
     assert ("POST", "/api/application-materials") not in found and ("GET", "/api/tailor/status") not in found
 
@@ -498,9 +550,13 @@ def test_a_json_route_without_bounds_is_found_by_the_check():
     async def reads_itself(request: Request):
         return await request.json()
 
+    @router.post("/on-the-lane")
+    async def on_the_lane(body=request_body.json_body_on_lane(_NewBody)):
+        return {}
+
     probe.include_router(router)
     routes = {path: route for _, path, route in largest.json_routes(probe)}
-    assert set(routes) == {"/unbounded", "/reads-itself"}
+    assert set(routes) == {"/unbounded", "/reads-itself", "/on-the-lane"}
     assert all(request_body.declared_bounds(route) is None for route in routes.values())
 
 
@@ -596,6 +652,151 @@ def test_a_body_past_the_default_body_limit_is_counted_on_the_request_lane(monke
         for sent in (body, large):
             largest.send(client, method, concrete, json.dumps(sent).encode())
     assert seen == [(False, True, False), (True, False, True)] and len(parsed) == 2
+
+
+# ------------------------------------------------------------------ bodies above the default body limit
+# A route whose body limit is above the default (backend.main.RequestBodyLimitMiddleware) reads and
+# validates its body on the request lane: through request_body.json_body_on_lane, or, on the two
+# full-target routes, in their own preparation there.
+LANE_ROUTES = [(method, path, json_route) for method, path, json_route in JSON_ROUTES
+               if largest.lane_body_model(json_route) is not None]
+
+
+LANE_PATHS = {
+    ("PUT", "/api/private-import-targets/{target_id}"),
+    ("POST", "/api/private-import-targets/{target_id}/cold-email/variants"),
+    ("POST", "/api/private-import-targets/{target_id}/cold-email/validate"),
+    ("POST", "/api/resume/full-target/export"),
+    ("POST", "/api/cold-email"), ("POST", "/api/cold-email/stream"), ("POST", "/api/cold-email/variants"),
+    ("POST", "/api/cold-email/refine"), ("POST", "/api/cold-email/validate"),
+}
+
+
+def test_the_routes_that_take_their_body_on_the_lane_are_found():
+    """The routes with the largest structured bodies read and validate them on the request lane
+    (request_body.json_body_on_lane), off the event loop: the four with a body limit above the
+    default, and the five public cold-email routes. The full-target routes read their body on the
+    lane in their own preparation, not here."""
+    assert {(method, path) for method, path, _ in LANE_ROUTES} == LANE_PATHS
+
+
+@pytest.mark.parametrize(("method", "path", "json_route"), JSON_ROUTES, ids=ROUTE_IDS)
+def test_no_route_parses_a_body_past_the_default_body_limit_on_the_event_loop(method, path, json_route):
+    """Each route either refuses such a body before reading it (413) or reads it on the request lane.
+    None parses a body over the default limit on the event loop."""
+    content = json.dumps({"padding": "a" * (request_body.LANE_BODY_BYTES + 1024)}).encode()
+    with largest.reading() as parsed:
+        response = largest.send(TestClient(app), method, _concrete()[method, path], content)
+    assert parsed in ([], ["request lane"], ["full-target lane"]), (method, path)
+    assert parsed or response.status_code == 413, (method, path)
+
+
+@pytest.mark.parametrize(("method", "path", "json_route"), LANE_ROUTES, ids=[f"{m} {p}" for m, p, _ in LANE_ROUTES])
+def test_a_lane_route_reads_its_body_on_the_lane_for_a_body_within_the_default_limit(method, path, json_route):
+    """A valid-sized body is read and validated on the request lane even when it fits the default
+    limit, so its json.loads never runs on the event loop."""
+    concrete, body = next((c, b) for m, p, c, b in largest.largest_bodies() if (m, p) == (method, path))
+    content = json.dumps(body).encode()
+    assert len(content) <= request_body.LANE_BODY_BYTES
+    with largest.reading() as parsed:
+        largest.send(TestClient(app), method, concrete, content)
+    assert parsed == ["request lane"], (method, path)
+
+
+def test_a_route_reads_and_validates_its_body_on_the_lane_off_the_event_loop(monkeypatch):
+    """Each lane route's largest valid body is read and validated off the loop, one at a time on the
+    request-work thread, and the export's signature is checked there too (never on the event loop)."""
+    import threading
+
+    from backend.lib.target_resume_export_schema import ExportRequest
+
+    seen, real_body, real_signature = [], request_body.validated_json_body, ExportRequest.verify_signature
+
+    def off_loop(name) -> bool:
+        return not on_the_event_loop() and threading.current_thread().name.startswith("ofe-request-work")
+
+    def body(*args):
+        where = off_loop("body")
+        result = real_body(*args)
+        seen.append(("body", type(result).__name__, where))
+        return result
+
+    def signature(self):
+        seen.append(("signature", off_loop("signature")))
+        return real_signature(self)
+
+    @contextlib.asynccontextmanager
+    async def verified(*args, **kwargs):
+        yield
+
+    from backend.lib import private_import_targets as storage
+    from backend.routes import private_import_targets as targets
+    from backend.routes import target_resume_export as export
+
+    monkeypatch.setattr(storage, "caller_verified_before_parsing", verified)
+    monkeypatch.setattr(targets, "caller_verified_before_parsing", verified)
+    monkeypatch.setattr(export, "render_export", lambda *args, **kwargs: b"%PDF-1.7")
+    monkeypatch.setattr(request_body, "validated_json_body", body)
+    monkeypatch.setattr(ExportRequest, "verify_signature", signature)
+    client = TestClient(app)
+    lane = {(m, p): largest.lane_body_model(r).__name__ for m, p, r in LANE_ROUTES}
+    for method, path, concrete, sent in largest.largest_bodies():
+        if (method, path) in lane:
+            client.request(method, concrete, content=json.dumps(sent).encode(),
+                           headers={"content-type": "application/json", "authorization": "Bearer reader"})
+    read = [row for row in seen if row[0] == "body"]
+    assert len(read) == len(lane)
+    assert all(where for _, _, where in read), read
+    assert {name for _, name, _ in read} == set(lane.values())
+    assert ("signature", True) in seen
+
+
+def _answers(model):
+    """A probe app that takes `model` as a body parameter (/parameter) and through
+    json_body_on_lane (/lane), answering every validation error in full."""
+    from fastapi import FastAPI
+    from fastapi.exceptions import RequestValidationError
+    from fastapi.responses import JSONResponse
+
+    probe = FastAPI()
+
+    @probe.exception_handler(RequestValidationError)
+    async def errors(request, exc):
+        return JSONResponse([[error["type"], list(error["loc"]), error["msg"], repr(error.get("input")),
+                              repr(error.get("ctx"))] for error in exc.errors()], status_code=422)
+
+    async def parameter(data):
+        return {"read": type(data).__name__}
+
+    async def lane(data=request_body.json_body_on_lane(model)):
+        return {"read": type(data).__name__}
+
+    parameter.__annotations__ = {"data": model}
+    probe.post("/parameter")(parameter)
+    probe.post("/lane")(lane)
+    return TestClient(probe, raise_server_exceptions=False)
+
+
+@pytest.mark.parametrize(("method", "path", "json_route"), LANE_ROUTES, ids=[f"{m} {p}" for m, p, _ in LANE_ROUTES])
+def test_a_body_taken_on_the_lane_is_read_and_refused_as_a_body_parameter_is(method, path, json_route):
+    model = largest.lane_body_model(json_route)
+    body = next(sent for m, p, _, sent in largest.largest_bodies() if (m, p) == (method, path))
+    valid = json.dumps(body).encode()
+    wrong = {key: [1] for key in body}
+    sends = [
+        (valid, "application/json"), (valid, "application/json; charset=utf-8"), (valid, "application/merge-patch+json"),
+        (valid, None), (valid, "text/plain"), (b"", "application/json"), (b"null", "application/json"),
+        (b"[]", "application/json"), (b'{"a":', "application/json"), (b'{"a":"\xff"}', "application/json"),
+        (b"[" * 5_000 + b"]" * 5_000, "application/json"), (json.dumps(body).encode("utf-16"), "application/json"),
+        (json.dumps({**body, "padding": 1}).encode(), "application/json"), (json.dumps(wrong).encode(), "application/json"),
+    ]
+    client = _answers(model)
+    for content, content_type in sends:
+        headers = {"content-type": content_type} if content_type else {}
+        expected = client.post("/parameter", content=content, headers=headers)
+        answered = client.post("/lane", content=content, headers=headers)
+        assert (answered.status_code, answered.json()) == (expected.status_code, expected.json()), (content[:40], content_type)
+    assert client.post("/lane", content=valid, headers={"content-type": "application/json"}).json() == {"read": model.__name__}
 
 
 def test_the_per_character_checks_read_every_code_point_as_before():

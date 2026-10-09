@@ -22,7 +22,7 @@ from backend.lib.private_email_schema import (
 )
 from backend.lib.private_import_targets_schema import PRIVATE, PrivateTargetError
 from backend.lib.profile_validation import safe_profile_validation_detail
-from backend.lib.request_body import DOCUMENT_BOUNDS, BoundedJSONRoute, json_body_bounds
+from backend.lib.request_body import DOCUMENT_BOUNDS, BoundedJSONRoute, json_body_bounds, json_body_on_lane
 
 
 class PrivateEmailRoute(BoundedJSONRoute):
@@ -74,7 +74,7 @@ async def _context(target_id: str, data: PrivateEmailRequest, request: Request) 
 
 @router.post('/{target_id}/cold-email/variants')
 @json_body_bounds(DOCUMENT_BOUNDS)
-async def variants(target_id: str, data: PrivateEmailRequest, request: Request):
+async def variants(target_id: str, request: Request, data: PrivateEmailRequest = json_body_on_lane(PrivateEmailRequest)):
     context = await _context(target_id, data, request)
     if context['contact_policy']['state'] == 'blocked':
         raise PrivateTargetError('private_email_contact_blocked', 409)
@@ -84,7 +84,8 @@ async def variants(target_id: str, data: PrivateEmailRequest, request: Request):
 
 @router.post('/{target_id}/cold-email/validate')
 @json_body_bounds(DOCUMENT_BOUNDS)
-async def validate(target_id: str, data: PrivateEmailValidationRequest, request: Request):
+async def validate(target_id: str, request: Request,
+                   data: PrivateEmailValidationRequest = json_body_on_lane(PrivateEmailValidationRequest)):
     context = await _context(target_id, data, request)
     response = PrivateEmailValidationResponse.model_validate(validate_manual(data, context))
     return JSONResponse(response.model_dump(mode='json'), headers=PRIVATE)

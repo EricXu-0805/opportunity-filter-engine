@@ -29,7 +29,13 @@ from backend.lib.private_import_targets_schema import (
     timestamp,
 )
 from backend.lib.private_target_resolution import project_private_target, resolve_private_import_target
-from backend.lib.request_body import SMALL_BOUNDS, WRITING_BOUNDS, BoundedJSONRoute, json_body_bounds
+from backend.lib.request_body import (
+    SMALL_BOUNDS,
+    WRITING_BOUNDS,
+    BoundedJSONRoute,
+    json_body_bounds,
+    json_body_on_lane,
+)
 
 TRACKER_BATCH_LIMIT = 100
 _TRACKER_BATCH_CONCURRENCY = 4
@@ -188,7 +194,7 @@ async def read_target(target_id: str, request: Request):
 
 @router.put("/{target_id}")
 @json_body_bounds(WRITING_BOUNDS)
-async def save_target(target_id: str, data: SaveRequest, request: Request):
+async def save_target(target_id: str, request: Request, data: SaveRequest = json_body_on_lane(SaveRequest)):
     identifier(target_id)
     if request.query_params:
         raise ValueError("Unexpected query")

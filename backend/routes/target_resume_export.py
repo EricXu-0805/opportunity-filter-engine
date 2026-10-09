@@ -7,8 +7,14 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from starlette.responses import JSONResponse, Response
 
-from backend.lib.blocking import LOCAL_WORK_TIMEOUT_SECONDS, BlockingWorkOverloaded, BlockingWorkTimeout, run_blocking
-from backend.lib.request_body import DOCUMENT_BOUNDS, BoundedJSONRoute, json_body_bounds
+from backend.lib.blocking import (
+    LOCAL_WORK_TIMEOUT_SECONDS,
+    BlockingWorkOverloaded,
+    BlockingWorkTimeout,
+    run_blocking,
+    run_request_work,
+)
+from backend.lib.request_body import DOCUMENT_BOUNDS, BoundedJSONRoute, json_body_bounds, json_body_on_lane
 from backend.lib.target_resume_export import render_export
 from backend.lib.target_resume_export_schema import MAX_FILE_BYTES, MIME, TEMPLATE, ExportError, ExportRequest
 
@@ -42,15 +48,21 @@ class ExportRoute(BoundedJSONRoute):
 router = APIRouter(route_class=ExportRoute)
 
 
+def _signed_projection(request: ExportRequest) -> dict:
+    """The projection to render, once its signature is checked (on the request lane)."""
+    request.verify_signature()
+    return request.projection.model_dump()
+
+
 @router.post('/resume/full-target/export')
 @json_body_bounds(DOCUMENT_BOUNDS)
-async def full_target_export(request: ExportRequest):
+async def full_target_export(request: ExportRequest = json_body_on_lane(ExportRequest)):
     try:
-        request.verify_signature()
+        projection = await run_request_work(_signed_projection, request)
         # The worker checks its own deadline, including queue wait, before the
         # outer bridge timeout. Cancelling a Future cannot kill a running thread.
         deadline = monotonic() + LOCAL_WORK_TIMEOUT_SECONDS - min(1.0, LOCAL_WORK_TIMEOUT_SECONDS / 10)
-        data = await run_blocking(render_export, request.projection.model_dump(), request.format,
+        data = await run_blocking(render_export, projection, request.format,
                                   deadline=deadline, timeout_seconds=LOCAL_WORK_TIMEOUT_SECONDS)
         if not data or len(data) > MAX_FILE_BYTES:
             raise ExportError('export_too_large')

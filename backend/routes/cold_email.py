@@ -75,7 +75,7 @@ from backend.lib.public_projection import (
     sanitize_public_urls,
 )
 from backend.lib.release_scope import release_visible_opportunity_by_id
-from backend.lib.request_body import DOCUMENT_BOUNDS, BoundedJSONRoute, json_body_bounds
+from backend.lib.request_body import DOCUMENT_BOUNDS, BoundedJSONRoute, json_body_bounds, json_body_on_lane
 from backend.lib.supabase_auth import authenticated_uid
 from backend.lib.writing_target import WritingTargetSnapshot, prepare_writing_snapshot
 from backend.schemas import (
@@ -1928,7 +1928,7 @@ def _bound_email_response(
 @router.post("/cold-email", response_model=ColdEmailResponse)
 @json_body_bounds(DOCUMENT_BOUNDS)
 async def generate_email(
-    request: ColdEmailRequest,
+    request: ColdEmailRequest = json_body_on_lane(ColdEmailRequest),
     authorization: str | None = Header(default=None),
 ):
     """Generate a cold email for a specific opportunity with mailto: link.
@@ -2382,7 +2382,7 @@ def _sse_frame(payload: dict) -> str:
 @router.post("/cold-email/stream")
 @json_body_bounds(DOCUMENT_BOUNDS)
 async def generate_email_stream(
-    request: ColdEmailRequest,
+    request: ColdEmailRequest = json_body_on_lane(ColdEmailRequest),
     authorization: str | None = Header(default=None),
 ):
     """SSE mirror of ``/cold-email``: emits ``{"stage": "drafting" |
@@ -2459,7 +2459,7 @@ async def generate_email_stream(
 @router.post("/cold-email/variants")
 @json_body_bounds(DOCUMENT_BOUNDS)
 async def generate_email_variants(
-    request: ColdEmailRequest,
+    request: ColdEmailRequest = json_body_on_lane(ColdEmailRequest),
     authorization: str | None = Header(default=None),
 ):
     pipeline_version = COLD_EMAIL_PIPELINE_VERSION
@@ -2784,7 +2784,7 @@ def _local_refine_fallback(
 
 @router.post("/cold-email/refine")
 @json_body_bounds(DOCUMENT_BOUNDS)
-async def refine_email(request: EmailRefineRequest):
+async def refine_email(request: EmailRefineRequest = json_body_on_lane(EmailRefineRequest)):
     pipeline_version = COLD_EMAIL_PIPELINE_VERSION
     target = _email_target(request)
     result = await _refine_email_snapshot(request, target.public)
@@ -2796,7 +2796,9 @@ async def refine_email(request: EmailRefineRequest):
 
 @router.post("/cold-email/validate", response_model=EmailDraftValidationResponse)
 @json_body_bounds(DOCUMENT_BOUNDS)
-async def validate_email_draft(request: EmailDraftValidationRequest) -> EmailDraftValidationResponse:
+async def validate_email_draft(
+    request: EmailDraftValidationRequest = json_body_on_lane(EmailDraftValidationRequest),
+) -> EmailDraftValidationResponse:
     """Check finite condition/attachment claims, never judge arbitrary manual prose.
 
     No provider, rewrite, delivery or persistence occurs. A passing result is
