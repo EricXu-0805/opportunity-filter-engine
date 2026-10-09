@@ -1,5 +1,5 @@
 {
-  "provenance": "Generated from src/evidence.py _faculty_profile_summary; tests/test_faculty_profile_summary_contract.py checks every server_text against it.",
+  "provenance": "Generated from src/evidence.py faculty_profile_summary_fields and _faculty_profile_summary; tests/test_faculty_profile_summary_contract.py checks every fields block and server_text against them.",
   "cases": [
     {
       "name": "name, department and organization, stated research areas",
@@ -11,6 +11,14 @@
         "metadata": {
           "research_areas_raw": "Computational imaging; medical imaging; signal processing"
         }
+      },
+      "fields": {
+        "version": 1,
+        "name": "Yoram Bresler",
+        "department": "Bioengineering",
+        "organization": "University of Illinois Urbana-Champaign",
+        "research_areas": "Computational imaging; medical imaging; signal processing",
+        "availability": "unknown"
       },
       "server_text": "Faculty research profile for Yoram Bresler in Bioengineering at University of Illinois Urbana-Champaign. Research areas: Computational imaging; medical imaging; signal processing Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
       "research_areas": "Computational imaging; medical imaging; signal processing"
@@ -31,6 +39,14 @@
           "faculty_availability_status": "not_accepting_undergraduates"
         }
       },
+      "fields": {
+        "version": 1,
+        "name": "Ada Lovelace",
+        "department": "Computer Science",
+        "organization": null,
+        "research_areas": "machine learning, robotics, vision",
+        "availability": "not_accepting_undergraduates"
+      },
       "server_text": "Faculty research profile for Ada Lovelace in Computer Science. Research areas: machine learning, robotics, vision The source profile states that this faculty contact is not currently accepting undergraduate students or researchers.",
       "research_areas": "machine learning, robotics, vision"
     },
@@ -44,6 +60,14 @@
           "faculty_availability_status": "research_inactive"
         }
       },
+      "fields": {
+        "version": 1,
+        "name": "Grace Hopper",
+        "department": null,
+        "organization": "Example University",
+        "research_areas": null,
+        "availability": "research_inactive"
+      },
       "server_text": "Faculty research profile for Grace Hopper at Example University. The source profile reports that this faculty member is not currently conducting active research.",
       "research_areas": null
     },
@@ -54,6 +78,14 @@
         "metadata": {
           "research_areas_raw": "Soil microbiology"
         }
+      },
+      "fields": {
+        "version": 1,
+        "name": null,
+        "department": null,
+        "organization": null,
+        "research_areas": "Soil microbiology",
+        "availability": "unknown"
       },
       "server_text": "Faculty research profile for this faculty member. Research areas: Soil microbiology Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
       "research_areas": "Soil microbiology"
@@ -69,6 +101,14 @@
           "research_areas_raw": "Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, "
         }
       },
+      "fields": {
+        "version": 1,
+        "name": "Jane Doe",
+        "department": "ECE",
+        "organization": "Example University",
+        "research_areas": "Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational",
+        "availability": "unknown"
+      },
       "server_text": "Faculty research profile for Jane Doe in ECE at Example University. Research areas: Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
       "research_areas": "Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational imaging, inverse problems, Computational"
     },
@@ -82,6 +122,14 @@
         "metadata": {
           "research_areas_raw": "Optics. Contact this faculty member to ask whether undergraduate research opportunities are currently available."
         }
+      },
+      "fields": {
+        "version": 1,
+        "name": "Pat Lee",
+        "department": "Physics",
+        "organization": "Example University",
+        "research_areas": "Optics. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
+        "availability": "unknown"
       },
       "server_text": "Faculty research profile for Pat Lee in Physics at Example University. Research areas: Optics. Contact this faculty member to ask whether undergraduate research opportunities are currently available. Contact this faculty member to ask whether undergraduate research opportunities are currently available.",
       "research_areas": "Optics. Contact this faculty member to ask whether undergraduate research opportunities are currently available."

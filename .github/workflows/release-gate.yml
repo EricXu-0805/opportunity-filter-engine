@@ -149,14 +149,26 @@ jobs:
 
       - name: Run the gate
         id: gate
+        # The release record (M65) reads which commit each deploy is serving
+        # from its public surface: /api/health on the backend and the
+        # data-release-sha attribute on the frontend. The URLs are the ones
+        # the cron workflows already use; an unset secret leaves that side
+        # unobserved, which the gate reports as UNVERIFIED.
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
         run: |
           set +e
+          observe=()
+          if [ -n "$BACKEND_URL" ]; then observe+=(--backend-url "$BACKEND_URL"); fi
+          if [ -n "$FRONTEND_URL" ]; then observe+=(--frontend-url "$FRONTEND_URL"); fi
           python scripts/release_gate.py \
             --release-sha "${{ steps.sha.outputs.sha }}" \
             --evidence /tmp/evidence.json \
             --evidence /tmp/operator-evidence.json \
             --drill-dir /tmp/drills \
             --ledger /tmp/CURRENT.json \
+            "${observe[@]}" \
             --out "data/releases/${{ steps.sha.outputs.sha }}.json" \
             | tee /tmp/gate.txt
           # PIPESTATUS[0], not $?. After a pipeline `$?` is the LAST command's

@@ -10,6 +10,7 @@ from itertools import islice
 
 from bs4 import BeautifulSoup, CData, Comment, Declaration, Doctype, NavigableString, ProcessingInstruction, Tag
 from bs4.builder._htmlparser import BeautifulSoupHTMLParser, HTMLParserTreeBuilder
+from bs4.dammit import EncodingDetector, UnicodeDammit, encoding_res
 
 from ..contact_instructions import _BLOCKED_PAGE_TITLE
 
@@ -138,6 +139,11 @@ _CHALLENGE_PAGE_IDS = {'cf-challenge-running', 'anubis_challenge', 'wsidchk-form
 _CHALLENGE_PAGE_SOURCE = re.compile(r'/\.within\.website/x/cmd/anubis/|/\.well-known/sgcaptcha\b', re.I)
 # Cloudflare's challenge form posts back with this token in its action.
 _CF_CHALLENGE_ACTION = re.compile(r'[?&]__cf_chl_')
+# bs4's own expressions for a declared encoding, and what starts and ends a <meta> charset.
+_XML_DECLARATION = encoding_res[bytes]['xml']
+_HTML_META = encoding_res[bytes]['html']
+_META_OPEN = re.compile(rb'<\s*meta', re.I)
+_CHARSET_VALUE_ENDS = (b' ', b'/', b';', b"'", b'"')
 
 
 class ImportDocumentError(ValueError):
@@ -269,9 +275,61 @@ class _Soup(BeautifulSoup):
         return
 
 
-def parse_import_html(html: str) -> BeautifulSoup:
-    """Parse a page the way html.parser does, refusing one past the limits as too_large."""
-    return _Soup(html, builder=_TreeBuilder())
+def _html_meta(markup: bytes, endpos: int) -> re.Match | None:
+    """What bs4's html_meta expression finds searched up to endpos, in time linear in endpos.
+
+    bs4 starts the expression at every '<meta' and runs it on to the next '>',
+    so a page opening with 4 MB of '<meta ' took 10.4 s to decode, quadratic in
+    the 5% of a page it searches. A '<meta' that finds no charset fails for
+    every later '<meta' before the same '>', which reaches only charset values
+    this one reached, so the search resumes after that '>'. Without a '>' the
+    value must end at one of the characters that end it, and the expression is
+    held to the last of them: past it every charset it tried scanned to endpos.
+    """
+    position = 0
+    while (start := _META_OPEN.search(markup, position, endpos)) is not None:
+        close = markup.find(b'>', start.end(), endpos)
+        if close == -1:
+            end = max(markup.rfind(mark, start.end(), endpos) for mark in _CHARSET_VALUE_ENDS) + 1
+            return _HTML_META.match(markup, start.start(), end) if end else None
+        found = _HTML_META.match(markup, start.start(), close + 1)
+        if found is not None:
+            return found
+        position = close + 1
+    return None
+
+
+def _declared_encoding(markup: bytes) -> str | None:
+    """EncodingDetector.find_declared_encoding(markup, is_html=True), with its <meta> search linear."""
+    found = _XML_DECLARATION.search(markup, endpos=1024)
+    if found is None:
+        found = _html_meta(markup, max(2048, int(len(markup) * 0.05)))
+    value = found.group(1) if found is not None else None
+    return value.decode('ascii', 'replace').lower() if value else None
+
+
+def _decode(markup: bytes) -> str:
+    """The text bs4 decodes from a page's bytes, trying the same encodings in the same order.
+
+    bs4 tries a byte-order mark, then the declared encoding, then a detected
+    one, then utf-8 and windows-1252. The declared encoding is found here and
+    handed to bs4 to try in its place; told the page is not HTML, bs4's own
+    detector reads only the XML declaration, not the <meta> charset again.
+    """
+    declared = _declared_encoding(EncodingDetector.strip_byte_order_mark(markup)[0])
+    text = UnicodeDammit(markup, user_encodings=[declared] if declared else None, is_html=False).unicode_markup
+    if text is None:
+        raise ImportDocumentError('invalid_html')
+    return text
+
+
+def parse_import_html(html: str | bytes) -> BeautifulSoup:
+    """Parse a page the way html.parser does, refusing one past the limits as too_large.
+
+    Bytes are decoded as bs4 decodes them, for crawlers that read a page's own
+    charset declaration.
+    """
+    return _Soup(_decode(html) if isinstance(html, bytes) else html, builder=_TreeBuilder())
 
 
 def _hidden(tag: Tag) -> bool:

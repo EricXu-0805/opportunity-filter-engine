@@ -51,6 +51,7 @@ from src.normalizers.ucb_dedup import dedupe_against_existing
 
 from .application_status import detect_application_status
 from .atomic_json import atomic_write_json
+from .import_document import ImportDocumentError, parse_import_html
 from .ucb_common import _readable_excerpt
 
 logger = logging.getLogger(__name__)
@@ -357,6 +358,9 @@ def _fetch(url: str, *, render: bool = False):
     ``scripts/refresh_rotation.browser_schools`` reads campus sources too — a
     render source in a shard whose install step skipped Chromium goes quiet
     with no signal, which is the failure the workflow's own comment describes.
+
+    Either way the page is parsed within the import reader's limits, and one
+    past them raises ImportDocumentError.
     """
     if render:
         from .faculty_graph import _render_soup
@@ -365,13 +369,12 @@ def _fetch(url: str, *, render: bool = False):
         # pages, not client-rendered card grids, and a source may walk up to
         # _MAX_PAGES_PER_SOURCE of them inside the refresh's 260-minute budget.
         # The four measured renders all returned well inside it.
-        soup = _render_soup(url, total_budget_s=60.0)
+        soup = _render_soup(url, total_budget_s=60.0, bounded=True)
         if soup is None:
             logger.warning("campus_graph: render fetch failed for %s", url)
         return soup
     try:
         import requests
-        from bs4 import BeautifulSoup
     except Exception as e:  # noqa: BLE001
         logger.warning("campus_graph: HTTP deps unavailable (%s); seed-only", e)
         return None
@@ -385,13 +388,15 @@ def _fetch(url: str, *, render: bool = False):
             verify=_ca_bundle(),
         )
         resp.raise_for_status()
-        soup = BeautifulSoup(resp.content, "html.parser")
+        soup = parse_import_html(resp.content)
         soup._ofe_fetch_metadata = {
             "requested_url": url,
             "final_url": getattr(resp, "url", None),
             "checked_at": datetime.now(UTC).isoformat(),
         }
         return soup
+    except ImportDocumentError:
+        raise
     except Exception as e:  # noqa: BLE001
         logger.warning("campus_graph: fetch failed for %s: %s", url, e)
         return None
@@ -536,9 +541,14 @@ def _crawl_source(school: dict, source: dict) -> tuple[dict, list[dict], dict]:
         if url in visited:
             continue
         visited.add(url)
-        soup = _fetch(url, render=render)
+        reason = "fetch_failed"
+        try:
+            soup = _fetch(url, render=render)
+        except ImportDocumentError as error:
+            # The page alone fails; the rest of the source is still crawled.
+            soup, reason = None, error.reason
         if soup is None:
-            captures[url] = capture_failure(source_url=url)
+            captures[url] = capture_failure(source_url=url, reason=reason)
             if url in seed_urls:
                 seed_page_errors.append(url)
             else:
