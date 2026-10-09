@@ -9,6 +9,7 @@ import requests
 from fastapi.testclient import TestClient
 
 from backend.lib import target_resume_ai as ai
+from backend.lib.evidence_map import term_span
 from backend.lib.public_opportunity_detail import project_public_detail, writing_target_version
 from backend.main import app
 from backend.routes import cold_email as email
@@ -79,12 +80,17 @@ def test_published_chain_and_tenth_section_reach_both_resume_providers(chain_flo
     doc = _document(['I wrote parser tests using Python.'], target); frozen = deepcopy(doc)
     text = doc['target_snapshot']['lab']['snapshot']['pages'][1]['sections'][9]['text']
     quote = {'field': 'lab_text', 'page_index': 1, 'section_index': 9, 'start': 0, 'end': len(text), 'quote': text}
-    calls = []
+    calls, linked = [], {}
     def model(messages, **kwargs):
         calls.append(deepcopy(messages)); data = json.loads(messages[1]['content'])
-        if 'units' in data:
-            return json.dumps({'units': [{'unit_id': u['unit_id'], 'priority': 'high', 'reason': 'Related official research topic.',
-                'target_evidence': [quote], 'proposed_text': None} for u in data['units']]})
+        if 'units' in data:  # full-target-v6 links a few words of a server-cut anchor from the tenth section
+            anchor = next(a for a in data['anchors'] if a['from'] == 'lab_text' and a['text'] in text)
+            words = anchor['text'].split()
+            linked['term'] = next(' '.join(words[i:i + n]) for n in range(min(6, len(words)), 0, -1)
+                                  for i in range(len(words) - n + 1) if term_span(anchor['text'], ' '.join(words[i:i + n])))
+            link = {'id': 'L1', 'anchor': anchor['id'], 'term': linked['term'], 'source': 'Python', 'relation': 'broader'}
+            return json.dumps({'units': [{'unit_id': u['unit_id'], 'priority': 'high', 'reason': 'topic_relevance', 'links': [link],
+                'decision': 'keep', 'ops': [], 'text': None, 'keep_reason': 'no_link'} for u in data['units']]})
         return json.dumps({'items': [{'section_id': b['section_id'], 'block_id': b['block_id'], 'action': 'keep',
             'reason': 'Related official research topic.', 'target_evidence': [quote],
             'source_evidence': [{'unit_id': b['lines'][0]['unit_id'], 'start': 0, 'end': len(b['lines'][0]['original']),
@@ -93,8 +99,13 @@ def test_published_chain_and_tenth_section_reach_both_resume_providers(chain_flo
     response = submit(chain_flow['client'], path, doc)
     assert response.status_code==200, response.text
     data=response.json(); assert data['method']=='ai' and len(calls)==1
-    assert json.loads(calls[0][1]['content'])['target']['lab']==public['lab_context']
-    assert '"page_index": 1' in json.dumps(data) and text in json.dumps(data)
+    if path.endswith('selection-plan'):
+        assert json.loads(calls[0][1]['content'])['target']['lab']==public['lab_context']
+        assert '"page_index": 1' in json.dumps(data) and text in json.dumps(data)
+    else:
+        prompt = json.loads(calls[0][1]['content'])
+        assert any(a['from'] == 'lab_text' and a['text'] in text for a in prompt['anchors'])
+        assert '"page_index": 1' in json.dumps(data) and linked['term'] in json.dumps(data) and linked['term'] in text
     assert doc==frozen and text not in json.dumps(doc['base_snapshot'])
 
 

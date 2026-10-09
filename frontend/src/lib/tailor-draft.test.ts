@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createHash, webcrypto } from 'node:crypto';
 import type { Opportunity, ProfileData, ResumeProcessingCoverage } from './types';
 import { isPublicDetail } from './public-target-shape';
-import { compareDraft, createBinding, createDraft, decodeDraft, editDraft, encodeDraft, reviewDraft,
+import { compareDraft, createBinding, createDraft, decodeDraft, draftLineSources, editDraft, encodeDraft, reviewDraft,
   TAILOR_DRAFT_RULE_VERSION, TailorDraftError, type TailorDraftBinding } from './tailor-draft';
 
 function profile(): ProfileData {
@@ -146,9 +146,32 @@ describe('immutable origin and exact-text review', () => {
       chunks: [{ start: 0, end: 10, method: 'ai' }, { start: 10, end: 20, method: 'heuristic', reason: 'deadline' }] };
     for (const value of ['', '   \n', '  中文 🧪\r\n'.repeat(10000) + 'FINAL TAIL']) {
       const item = createDraft('owner-a', 'opp-1', value, 'extract', binding(), coverage);
-      expect(decodeDraft(encodeDraft(item), 'owner-a', 'opp-1')).toEqual({ status: 'v2', draft: item });
+      expect(decodeDraft(encodeDraft(item), 'owner-a', 'opp-1')).toEqual({ status: 'stored', draft: item });
       expect(item.text).toBe(value); expect(editDraft(item, value + '!').processing).toEqual(coverage);
     }
+  });
+});
+
+describe('per-line sources after "Use kept as new originals"', () => {
+  const promoted = () => createDraft('owner-a', 'opp-1', 'Reviewed parser wording.\nMy own line.', 'reviewed_output', binding(), undefined,
+    [{ line: 'Reviewed parser wording.', source: 'Wrote parser tests.' }, { line: 'My own line.', source: 'My own line.' }]);
+  it('keeps each promoted line tied to its source through storage, and stores only lines that differ', () => {
+    const item = promoted();
+    expect(item.version).toBe(3); expect(item.sources).toEqual([{ line: 'Reviewed parser wording.', source: 'Wrote parser tests.' }]);
+    expect(decodeDraft(encodeDraft(item), 'owner-a', 'opp-1')).toEqual({ status: 'stored', draft: item });
+    expect(draftLineSources(item, ['My own line.', 'Reviewed parser wording.'])).toEqual(['My own line.', 'Wrote parser tests.']);
+  });
+  it('treats a line the student typed or edited since as their own words', () => {
+    const edited = editDraft(promoted(), 'Reviewed parser wording, edited.\nMy own line.');
+    expect(edited.sources).toEqual(promoted().sources);
+    expect(draftLineSources(edited, ['Reviewed parser wording, edited.', 'My own line.'])).toEqual(['Reviewed parser wording, edited.', 'My own line.']);
+    expect(createDraft('owner-a', 'opp-1', 'Typed.', 'manual', null)).not.toHaveProperty('sources');
+  });
+  it('reads a stored version 2 draft unchanged', () => {
+    const { sources: _none, ...rest } = draft();
+    const stored = { ...rest, version: 2 };
+    expect(decodeDraft(JSON.stringify(stored), 'owner-a', 'opp-1')).toEqual({ status: 'stored', draft: stored });
+    expect(draftLineSources(stored as ReturnType<typeof draft>, ['A line'])).toEqual(['A line']);
   });
 });
 
@@ -167,7 +190,9 @@ describe('legacy and strict local envelope decoding', () => {
     expect(decodeDraft(raw, 'owner-a', 'opp-2')).toEqual({ status: 'foreign' });
   });
   it.each([
-    { ...draft(), version: '2' }, { ...draft(), version: 3 }, { ...draft(), owner_id: '' }, { ...draft(), extra: true },
+    { ...draft(), version: '2' }, { ...draft(), version: 4 }, { ...draft(), owner_id: '' }, { ...draft(), extra: true },
+    { ...draft(), sources: [] }, { ...draft(), sources: [{ line: 'Same', source: 'Same' }] }, { ...draft(), sources: [{ line: 'Only a line' }] },
+    { ...draft(), sources: [{ line: 'Reviewed', source: ['coerced'] }] }, { ...draft(), version: 2, sources: [{ line: 'Reviewed', source: 'Own' }] },
     { ...draft(), text: ['coerced'] }, { ...draft(), origin: { kind: ['extract'], binding: binding() } },
     { ...draft(), origin: { kind: 'unknown', binding: binding() } },
     { ...draft(), origin: { kind: 'extract', binding: { ...binding(), profile_sig: ['a'.repeat(64)] } } },

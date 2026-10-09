@@ -16,6 +16,7 @@ tests never touch the network. The core invariants pinned here:
 from __future__ import annotations
 
 import os
+import re
 import sys
 import time
 from copy import deepcopy
@@ -40,9 +41,10 @@ AUTH = {"Authorization": "Bearer cron-ok"}
 # unreviewed one is no longer actionable — a digest fixture without one would
 # be testing the 26-row exception while claiming to test the happy path. One
 # of each confirmed kind, so the renderer's kind-specific copy is exercised
-# rather than assumed.
+# rather than assumed. Dated far ahead: a stated deadline that has passed
+# closes the listing, and a closed listing is never mailed.
 _OPP_A = {"id": "opp-a", "title": "Vision Lab RA", "organization": "UIUC ECE",
-          "source_type": "campus_program", "deadline": "2026-07-01"}
+          "source_type": "campus_program", "deadline": "2099-07-01"}
 _OPP_B = {"id": "opp-b", "title": "NLP Internship", "organization": "Acme AI",
           "source_type": "campus_program", "deadline": ""}
 
@@ -97,9 +99,10 @@ def _install_stubs(monkeypatch, *, rows, sends=None, patches=None,
 
         async def get(self, url, **kwargs):
             # The route reads the student's own profile to decide what its
-            # matcher would exclude for them. Unsupplied means "unreadable",
-            # which the route treats as "filter nothing" — so every test
-            # written before this behaviour existed still describes it.
+            # matcher would exclude for them. Unsupplied means "no profile
+            # row", which the route treats as "filter nothing" — so every test
+            # written before this behaviour existed still describes it. A read
+            # that fails is a different case: TestAnOpportunityIsNewOnce.
             if "/rest/v1/profiles" in url:
                 return _Resp(profiles or [])
             return _Resp(rows)
@@ -189,7 +192,7 @@ class TestDigestCronSend:
                     "title": "Real REU",
                     "organization": "Test University",
                     "source_type": "campus_program",
-                    "deadline": "2027-02-01",
+                    "deadline": "2099-02-01",
                 },
             ],
             "https://example.test/unsubscribe",
@@ -201,7 +204,7 @@ class TestDigestCronSend:
             assert "current opening not confirmed" in body
             assert "2099-12-31" not in body
             assert "Opportunity listing" in body
-            assert "2027-02-01" in body
+            assert "2099-02-01" in body
 
     def test_happy_path_sends_one_email_and_stamps_sent_at(self, monkeypatch):
         _set_digest_env(monkeypatch)
@@ -341,7 +344,7 @@ class TestDigestTextIsNeverMailedRaw:
     CLEAN = {
         "title": "Fellowships programme",
         "organization": "Undergraduate Research Office",
-        "deadline": "2026-07-01",
+        "deadline": "2099-07-01",
     }
 
     @pytest.mark.parametrize("field", ["title", "organization", "deadline"])
@@ -424,7 +427,7 @@ class TestDigestTextIsNeverMailedRaw:
         assert "NLP Internship" in body
         assert "Acme AI" in body
         # _OPP_A carries a real date; it renders as one.
-        assert "due 2026-07-01" in body
+        assert "due 2099-07-01" in body
 
 
 class TestTheQueueStopsCarryingDeadTargets:
@@ -1123,7 +1126,7 @@ class TestTheDigestSendsWhatTheSiteWouldShow:
     def _campus_opp(opportunity_id: str, school: str) -> dict:
         return {
             "id": opportunity_id, "title": f"{school} lab", "organization": school,
-            "source_type": "campus_program", "deadline": "2026-07-01",
+            "source_type": "campus_program", "deadline": "2099-07-01",
             "school": school, "audience": "campus_only",
         }
 
@@ -1189,8 +1192,8 @@ class TestTheDigestSendsWhatTheSiteWouldShow:
         cleanups = [p for p in patches if set(p["json"]) == {"new_match_ids"}]
         assert cleanups == [], "an absent record is unknown, not ineligible"
 
-    def test_an_unreadable_profile_filters_nothing(self, monkeypatch):
-        """A profile the cron cannot read must leave the digest exactly as it
+    def test_no_profile_row_filters_nothing(self, monkeypatch):
+        """A device with no profile row must leave the digest exactly as it
         was, rather than filtering on a guess."""
         mine = self._campus_opp("opp-mine", "jhu")
         theirs = self._campus_opp("opp-theirs", "ucb")
@@ -1356,3 +1359,287 @@ class TestStoredProfileEligibility:
         assert response.json()["processed"] == 1
         assert patches[0]["json"]["last_result_ids"] == ["research-open"]
         assert patches[0]["json"]["new_match_ids"] == ["research-open", "absent"]
+
+
+# ---------------------------------------------------------------------------
+# M50: across nights, an opportunity is "new" once
+# ---------------------------------------------------------------------------
+# Every test above runs one cron once against a row the test wrote. The
+# checklist's promise is about a sequence: refresh and digest, night after
+# night, sharing one row. These replay that sequence against a stateful row so
+# a regression that only shows on the SECOND night is visible.
+
+
+class _Nights:
+    """One saved search carried through both crons, one night at a time."""
+
+    DEVICE = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee"
+
+    def __init__(self, monkeypatch, *, corpus, profile=None, digest_opt_in=True):
+        _set_digest_env(monkeypatch)
+        self.row = {
+            "id": SID, "device_id": self.DEVICE, "name": "ML research",
+            "digest_email": "user@example.com", "digest_opt_in": digest_opt_in,
+            "digest_unsubscribed_at": None, "filters_json": {}, "query": "",
+            "last_result_ids": [], "new_match_ids": [], "last_run_at": None,
+            "last_digest_sent_at": None,
+        }
+        self.corpus = list(corpus)
+        self.profile = profile
+        # Which crons find the profiles table unreachable tonight.
+        self.profiles_unreadable_in: set[str] = set()
+        self.running = ""
+        self.send_error: Exception | None = None
+        self.sends: list[dict] = []
+        self.refreshes: list[dict] = []
+        self.digests: list[dict] = []
+        self.clock = datetime(2026, 10, 1, 23, 30, tzinfo=UTC)
+        self._install(monkeypatch)
+
+    def _install(self, monkeypatch):
+        import httpx
+
+        nights = self
+
+        class _Resp:
+            def __init__(self, data=None, status_code=200):
+                self._data = data
+                self.status_code = status_code
+                self.text = ""
+
+            def json(self):
+                return self._data
+
+            def raise_for_status(self):
+                return None
+
+        class _Client:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *exc):
+                return False
+
+            async def get(self, url, params=None, **kwargs):
+                params = params or {}
+                if "/rest/v1/profiles" in url:
+                    if nights.running in nights.profiles_unreadable_in:
+                        raise httpx.ConnectError("profiles unreachable")
+                    if nights.profile is None:
+                        return _Resp([])
+                    return _Resp([{"id": nights.DEVICE, "profile_data": nights.profile}])
+                if "/rest/v1/saved_searches" in url:
+                    if params.get("digest_opt_in") == "eq.true" and not nights.row["digest_opt_in"]:
+                        return _Resp([])
+                    return _Resp([deepcopy(nights.row)])
+                return _Resp([])
+
+            async def patch(self, url, params=None, json=None, **kwargs):
+                if "/rest/v1/saved_searches" in url and (params or {}).get("id") == f"eq.{nights.row['id']}":
+                    nights.row.update(deepcopy(json or {}))
+                return _Resp()
+
+            async def post(self, url, **kwargs):
+                return _Resp(status_code=201)
+
+        monkeypatch.setattr(httpx, "AsyncClient", _Client)
+
+        class _Clock(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return nights.clock
+
+        monkeypatch.setattr(ss_mod, "datetime", _Clock)
+
+        async def _send(**kwargs):
+            if nights.send_error is not None:
+                raise nights.send_error
+            nights.sends.append(kwargs)
+
+        monkeypatch.setattr(ss_mod, "_send_via_resend", _send)
+        monkeypatch.setattr(ss_mod, "load_opportunities", lambda: nights.corpus)
+        from backend.routes import email as email_mod
+        email_mod._recipient_sends.clear()
+
+    def night(self, *, corpus=None):
+        """Run both crons in order, then move the clock a day.
+
+        The workflow skips the digest after a refresh that reports a failure
+        (check_cron_response.py fails that step). This runs it anyway, the
+        stricter case: a digest dispatched on its own must still be right.
+        """
+        if corpus is not None:
+            self.corpus = list(corpus)
+        self.running = "refresh"
+        refresh = client.get("/api/cron/saved-searches/refresh", headers=AUTH)
+        assert refresh.status_code == 200
+        self.refreshes.append(refresh.json())
+        self.running = "digest"
+        digest = client.get("/api/cron/saved-searches/digest", headers=AUTH)
+        assert digest.status_code == 200
+        self.digests.append(digest.json())
+        self.clock += timedelta(days=1)
+        # The per-recipient quota is a rolling in-memory window; a real night
+        # is a fresh day for it.
+        from backend.routes import email as email_mod
+        email_mod._recipient_sends.clear()
+
+    def mailed(self) -> list[list[str]]:
+        """The opportunity ids each accepted digest listed, in send order."""
+        return [
+            re.findall(r"/opportunities/([A-Za-z0-9_-]+)", send["text"])
+            for send in self.sends
+        ]
+
+
+def _night_opp(opportunity_id: str, school: str | None = None) -> dict:
+    record = {
+        "id": opportunity_id, "title": f"Listing {opportunity_id}",
+        "organization": "Test University", "source_type": "campus_program",
+        "deadline": "",
+    }
+    if school is not None:
+        record["school"] = school
+    return record
+
+
+class TestAnOpportunityIsNewOnce:
+    def test_a_mailed_match_is_never_marked_new_again_on_a_stable_corpus(self, monkeypatch):
+        a, b = _night_opp("opp-a"), _night_opp("opp-b")
+        nights = _Nights(monkeypatch, corpus=[a])
+        nights.night()                      # 1: baseline, nothing new
+        nights.night(corpus=[a, b])         # 2: opp-b starts matching, mailed
+        assert nights.mailed() == [["opp-b"]]
+        for _ in range(9):                  # 3..11: well past the 7-day throttle
+            nights.night()
+            assert nights.row["new_match_ids"] == []
+        assert nights.mailed() == [["opp-b"]]
+
+    def test_a_match_seen_in_the_app_is_not_marked_new_the_next_day(self, monkeypatch):
+        a, b = _night_opp("opp-a"), _night_opp("opp-b")
+        nights = _Nights(monkeypatch, corpus=[a], digest_opt_in=False)
+        nights.night()
+        nights.night(corpus=[a, b])
+        assert nights.row["new_match_ids"] == ["opp-b"]
+        # markSavedSearchSeen: /results acked the hand-off from /favorites.
+        nights.row["new_match_ids"] = []
+        for _ in range(3):
+            nights.night()
+            assert nights.row["new_match_ids"] == []
+        assert nights.sends == []
+
+    def test_a_mailed_match_that_misses_one_corpus_load_is_not_new_when_it_returns(
+        self, monkeypatch,
+    ):
+        """A record that drops out of one load and comes back is the same record.
+
+        Across the last five committed versions of each of the 117 shards, 399
+        records were actionable, then absent from the next version, then
+        actionable again in the one after; 363 of those gaps were in
+        auto-refresh commits. The cron's queue already treats "absent tonight"
+        as unknown rather than ended, but the baseline did not: the returning
+        id was not in last_result_ids, so it was diffed as new and mailed a
+        second time a week later.
+        """
+        a, b = _night_opp("opp-a"), _night_opp("opp-b")
+        nights = _Nights(monkeypatch, corpus=[a])
+        nights.night()
+        nights.night(corpus=[a, b])
+        assert nights.mailed() == [["opp-b"]]
+        nights.night(corpus=[a])            # opp-b missing from this load only
+        nights.night(corpus=[a, b])         # and back
+        assert nights.row["new_match_ids"] == []
+        for _ in range(8):
+            nights.night()
+        assert nights.mailed() == [["opp-b"]]
+
+    def test_an_id_that_left_the_match_set_for_real_still_leaves_the_baseline(
+        self, monkeypatch,
+    ):
+        """Keeping absent ids must not keep known-dead ones: a listing the
+        corpus reports closed leaves the baseline exactly as before."""
+        a = _night_opp("opp-a")
+        closed = {**_night_opp("opp-b"), "metadata": {"is_active": False}}
+        nights = _Nights(monkeypatch, corpus=[a, _night_opp("opp-b")])
+        nights.night()
+        assert nights.row["last_result_ids"] == ["opp-a", "opp-b"]
+        nights.night(corpus=[a, closed])
+        assert nights.row["last_result_ids"] == ["opp-a"]
+
+    def test_an_unreadable_profile_does_not_mark_its_exclusions_new(self, monkeypatch):
+        """The profile read decides which records this student can never see.
+
+        When it failed, the refresh diffed the unfiltered universe against a
+        filtered baseline, so every profile-excluded record looked new; the
+        digest, whose own read fails in the same outage, then mailed them. The
+        next readable night pruned them, and the next failure marked them new
+        again. A failed read now skips the row: nothing is advanced, and the
+        next run retries it.
+        """
+        mine = _night_opp("opp-mine", school="jhu")
+        later = _night_opp("opp-later", school="jhu")
+        theirs = _night_opp("opp-theirs", school="ucb")
+        nights = _Nights(monkeypatch, corpus=[mine, theirs], profile={"home_school": "jhu"})
+        nights.night()
+        assert nights.row["last_result_ids"] == ["opp-mine"]
+        before = deepcopy(nights.row)
+
+        nights.profiles_unreadable_in = {"refresh", "digest"}
+        nights.night(corpus=[mine, theirs, later])
+        assert nights.row == before, "an unreadable profile must not advance the row"
+        assert nights.refreshes[-1]["status"] == "partial"
+        assert any("profile" in error for error in nights.refreshes[-1]["errors"])
+        # In production the workflow stops here and that night's digest does
+        # not run; run anyway, it must send nothing.
+        assert nights.digests[-1]["status"] == "ok"
+        assert nights.sends == []
+
+        # Retried on the next run, which can read it: the genuinely new jhu
+        # record is found, the other campus's never is.
+        nights.profiles_unreadable_in = set()
+        nights.night()
+        assert nights.mailed() == [["opp-later"]]
+        for _ in range(8):
+            nights.night()
+        assert nights.mailed() == [["opp-later"]]
+
+    def test_a_definitive_send_failure_mails_the_same_ids_once_the_next_night(
+        self, monkeypatch,
+    ):
+        from fastapi import HTTPException
+
+        a, b, c = _night_opp("opp-a"), _night_opp("opp-b"), _night_opp("opp-c")
+        nights = _Nights(monkeypatch, corpus=[a])
+        nights.night()
+        nights.send_error = HTTPException(status_code=422, detail="rejected")
+        nights.night(corpus=[a, b])
+        assert nights.sends == []
+        assert nights.row["new_match_ids"] == ["opp-b"]
+        assert nights.row["last_digest_sent_at"] is None
+
+        nights.send_error = None
+        nights.night(corpus=[a, b, c])
+        # Newest first, each id once: the retry is the first delivery of opp-b,
+        # not a second notice about it.
+        assert nights.mailed() == [["opp-c", "opp-b"]]
+        for _ in range(8):
+            nights.night()
+        assert nights.mailed() == [["opp-c", "opp-b"]]
+
+    def test_the_digest_still_sends_a_filtered_queue_when_only_its_read_fails(
+        self, monkeypatch,
+    ):
+        """The refresh filtered the queue with the profile it could read. A
+        digest that cannot read it sends that queue rather than holding it."""
+        mine = _night_opp("opp-mine", school="jhu")
+        later = _night_opp("opp-later", school="jhu")
+        theirs = _night_opp("opp-theirs", school="ucb")
+        nights = _Nights(monkeypatch, corpus=[mine, theirs], profile={"home_school": "jhu"})
+        nights.night()
+        nights.profiles_unreadable_in = {"digest"}
+        nights.night(corpus=[mine, theirs, later])
+        assert nights.digests[-1]["status"] == "ok"
+        assert nights.mailed() == [["opp-later"]]

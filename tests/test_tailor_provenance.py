@@ -86,15 +86,18 @@ def test_every_tailor_branch_stamps_actual_rules_and_target(expected, branch, mo
         body["original_bullets"] = []
     elif branch not in {"no-provider"}:
         monkeypatch.setattr(tailor, "is_configured", lambda: True)
-        result = ({"text": "Implemented PyTorch and Kubernetes", "source_evidence": ""}
-                  if branch == "rejected" else {"text": BULLET, "source_evidence": BULLET})
-        monkeypatch.setattr(tailor, "_ai_tailor_bullets", lambda *a, **kw: None if branch == "invalid-output" else [result])
+        text = "Implemented PyTorch and Kubernetes" if branch == "rejected" else None
+        row = {"unit_id": "b1", "links": [], "decision": "rewrite" if text else "keep",
+               "ops": [{"op": "verb_first"}] if text else [], "text": text, "keep_reason": None if text else "no_link"}
+        monkeypatch.setattr(tailor, "_ai_tailor_bullets",
+                            lambda *a, **kw: None if branch == "invalid-output" else {"b1": row})
     response = client.post("/api/tailor", json=body)
     assert response.status_code == 200
     data = response.json()
     assert_stamp(data, "current-version")
     assert data["opportunity_id"] == TARGET["id"]
-    assert data["method"] == ("ai" if branch == "ai" else "fallback")
+    assert data["method"] == ("ai" if branch in {"ai", "rejected"} else "fallback")
+    # Every submitted bullet comes back, as written unless a reviewed rewrite replaced it.
     assert [b["text"] for b in data["tailored_bullets"]] == ([] if branch == "empty" else [BULLET])
 
 
@@ -127,7 +130,7 @@ def test_async_processing_cannot_stamp_later_version(path, monkeypatch):
 
     def finish(*args, **kwargs):
         monkeypatch.setattr(tailor, "TAILOR_PIPELINE_VERSION", "changed-during-work")
-        return [{"text": BULLET, "source_evidence": BULLET}] if path == "/api/tailor" else [BULLET]
+        return {} if path == "/api/tailor" else [BULLET]
 
     monkeypatch.setattr(tailor, "_ai_tailor_bullets" if path == "/api/tailor" else "_ai_extract_bullets", finish)
     response = client.post(path, json=payload(path, before))

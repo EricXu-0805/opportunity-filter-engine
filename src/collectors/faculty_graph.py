@@ -84,6 +84,7 @@ from ..contact_instructions import (
     same_source_page,
 )
 from ..evidence import FACULTY_MAJOR_LABELS_MARKER, is_professor_rank
+from .import_document import ImportDocumentError, parse_import_html
 from .ucb_common import (
     _RETIRED_TITLE_RE,
     _is_person_name,
@@ -1217,7 +1218,7 @@ def _is_cf_interstitial(soup) -> bool:
 def _render_soup(url: str, timeout_ms: int = 60000,
                  wait_until: str = "domcontentloaded", settle_ms: int = 3500,
                  expect_selector: str | None = None,
-                 total_budget_s: float = 240.0):
+                 total_budget_s: float = 240.0, bounded: bool = False):
     """Fetch a URL through a headless-Chromium browser and return a BeautifulSoup.
 
     The escape hatch for directories a plain ``requests`` GET can't read: pages
@@ -1230,6 +1231,9 @@ def _render_soup(url: str, timeout_ms: int = 60000,
     Playwright is imported lazily so the module still imports where Playwright/
     Chromium isn't installed; there it returns ``None`` and the caller degrades
     to the curated layer, exactly like an unreachable ``fetch_soup``.
+
+    ``bounded`` parses the page within the import reader's limits; one past
+    them raises ImportDocumentError at once, without rendering it again.
     """
     try:
         from bs4 import BeautifulSoup
@@ -1281,7 +1285,9 @@ def _render_soup(url: str, timeout_ms: int = 60000,
                     observed_at = datetime.now(UTC).isoformat()
                 finally:
                     browser.close()
-            cand = BeautifulSoup(html, "html.parser") if html else None
+            cand = None
+            if html:
+                cand = parse_import_html(html) if bounded else BeautifulSoup(html, "html.parser")
             if cand is not None and not _is_cf_interstitial(cand) and (
                     not expect_selector or cand.select(expect_selector)):
                 cand._ofe_fetch_metadata = {"requested_url": url, "final_url": final_url, "checked_at": observed_at}
@@ -1292,6 +1298,8 @@ def _render_soup(url: str, timeout_ms: int = 60000,
                         "challenge shell or no '%s' cards); retrying",
                         url, attempt, expect_selector or "?")
             settle_ms = min(settle_ms + 4000, 14000)
+        except ImportDocumentError:
+            raise
         except Exception as e:  # noqa: BLE001 — degrade to None like fetch_soup
             logger.warning("faculty_graph: render fetch failed for %s (attempt %d): %s",
                            url, attempt, e)
@@ -2140,6 +2148,8 @@ def _enrich_profile(
             identity,
         )
         return result(("", research if verified else "", [], None, verified), reason="non_html_source", status="unsupported")
+    # The page's capture is kept, so it is parsed within the import reader's
+    # limits; a profile past them fails alone, as an unreachable one does.
     if enrich.get("render"):
         # Profile pages sit behind the same bot wall as the listing (Princeton
         # dept subdomains, umich) — a plain GET 403s, so route the per-profile
@@ -2149,7 +2159,10 @@ def _enrich_profile(
         # Anubis proof-of-work interstitial on nicholas.duke.edu) only clear once
         # the challenge JS finishes and reloads, which "networkidle" waits for but
         # the "domcontentloaded" default fires too early on.
-        soup = _render_soup(url, wait_until=enrich.get("render_wait", "domcontentloaded"))
+        try:
+            soup = _render_soup(url, wait_until=enrich.get("render_wait", "domcontentloaded"), bounded=True)
+        except ImportDocumentError as error:
+            return result(("", "", [], None, False), reason=error.reason)
     else:
         try:
             from .ucb_common import fetch_soup
@@ -2162,8 +2175,11 @@ def _enrich_profile(
         # can't balloon the pass into hours; a missed email just ships "lite".
         _t = enrich.get("timeout", 8)
         _r = enrich.get("max_retries", 1)
-        soup = (fetch_soup(url, ua=_ua, timeout=_t, max_retries=_r) if _ua
-                else fetch_soup(url, timeout=_t, max_retries=_r))
+        try:
+            soup = (fetch_soup(url, ua=_ua, timeout=_t, max_retries=_r, bounded=True) if _ua
+                    else fetch_soup(url, timeout=_t, max_retries=_r, bounded=True))
+        except ImportDocumentError as error:
+            return result(("", "", [], None, False), reason=error.reason)
     if soup is None:
         return result(("", "", [], None, False))
     body = re.sub(r"\s+", " ", soup.get_text(" ", strip=True))
@@ -2275,8 +2291,6 @@ def capture_profile_condition_response(response, *, requested_url: str,
     This pure adapter requires that actual page, fetch time and professor name
     remain bound before it can retain any condition source.
     """
-    from bs4 import BeautifulSoup
-
     from .ucb_common import profile_page_is_denial
 
     final = getattr(response, "url", None)
@@ -2295,12 +2309,14 @@ def capture_profile_condition_response(response, *, requested_url: str,
     if not same_source_page(requested_url, final):
         return capture_failure(**binding, reason="redirect_mismatch")
     try:
-        soup = BeautifulSoup(response.content, "html.parser")
+        soup = parse_import_html(response.content)
         if profile_page_is_denial(soup):
             return capture_failure(**binding, reason="access_page")
         if not profile_page_matches_person(soup, expected_name):
             return capture_failure(**binding, reason="identity_mismatch")
         return capture_from_html(soup, **binding)
+    except ImportDocumentError as error:
+        return capture_failure(**binding, reason=error.reason)
     except Exception:  # noqa: BLE001
         return capture_failure(**binding, reason="parse_failed")
 

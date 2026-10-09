@@ -154,14 +154,17 @@ def test_all_accepted_branches_stamp_actual_detached_target(branch, monkeypatch)
     if branch == "empty": request["original_bullets"] = []
     elif branch != "no-provider":
         monkeypatch.setattr(tailor, "is_configured", lambda: True)
-        text = "Implemented PyTorch and Kubernetes" if branch == "rejected" else BULLET
-        monkeypatch.setattr(tailor, "_ai_tailor_bullets", lambda *args, **kwargs: None if branch == "invalid-output" else [{"text": text, "source_evidence": BULLET}])
+        text = "Implemented PyTorch and Kubernetes" if branch == "rejected" else None
+        row = {"unit_id": "b1", "links": [], "decision": "rewrite" if text else "keep",
+               "ops": [{"op": "verb_first"}] if text else [], "text": text, "keep_reason": None if text else "no_link"}
+        monkeypatch.setattr(tailor, "_ai_tailor_bullets",
+                            lambda *args, **kwargs: None if branch == "invalid-output" else {"b1": row})
     response = client.post("/api/tailor", json=request)
     assert response.status_code == 200
     assert response.json()["target_version"] == observed
     assert response.json()["opportunity_id"] == "writing-target"
     assert response.json()["pipeline_version"] == tailor.TAILOR_PIPELINE_VERSION
-    assert response.json()["method"] == ("ai" if branch == "ai" else "fallback")
+    assert response.json()["method"] == ("ai" if branch in {"ai", "rejected"} else "fallback")
 
 
 def test_snapshot_is_public_and_fully_detached_before_the_first_await(corpus, monkeypatch):
@@ -170,12 +173,15 @@ def test_snapshot_is_public_and_fully_detached_before_the_first_await(corpus, mo
     original = deepcopy(record)
     seen = []
     monkeypatch.setattr(tailor, "is_configured", lambda: True)
-    async def held_work(_fn, _profile, used_target, _bullets, **_kwargs):
+    async def held_work(fn, *args, **_kwargs):
+        if fn in (tailor._checked_outcomes, tailor._alternatives):
+            return fn(*args)
+        _profile, used_target, _bullets = args
         record["description_clean"] = "Changed while request is in flight"
         record["eligibility"]["skills_required"].append("Rust")
         record["metadata"]["confidence_score"] = 0.1
         seen.append(deepcopy(used_target))
-        return [{"text": BULLET, "source_evidence": BULLET}]
+        return {}
     monkeypatch.setattr(tailor, "run_blocking", held_work)
     response = client.post("/api/tailor", json=body(public["writing_target_version"]))
     assert response.status_code == 200

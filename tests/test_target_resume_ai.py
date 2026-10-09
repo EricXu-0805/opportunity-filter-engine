@@ -11,7 +11,9 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+from backend.lib import evidence_map
 from backend.lib import target_resume_ai as engine
+from backend.lib.evidence_map import target_anchors
 from backend.lib.target_resume_ai_schema import MAX_DIRECTION_CHARACTERS, MAX_PROMPT_CHARACTERS, FullTargetRequest
 from backend.lib.target_resume_ai_validation import (
     confirmed_document,
@@ -29,8 +31,7 @@ def fact(ident, value):
     return {"id": ident, "revision": 1, "status": "confirmed", "value": value, "source": {"kind": "manual"}}
 
 
-def make_doc():
-    raw = "Built a Python robot with a team of 3. I did not lead the project."
+def make_doc(raw="Built a Python robot with a team of 3. I did not lead the project."):
     signature = hashlib.sha256(raw.encode()).hexdigest()
     entries = [{"id": "exp", "revision": 1, "status": "confirmed", "text": raw,
                 "source": {"kind": "resume", "signature": signature, "quote": raw, "start": 0, "end": len(raw)}}]
@@ -66,11 +67,37 @@ def payload(doc=None, ids=None):
             "selected_unit_ids": ids if ids is not None else [unit["unit_id"] for unit in units_for(doc)[0]]}
 
 
+def row(unit_id, *, priority="high", reason="method_relevance", links=(), text=None, ops=(), keep_reason="no_link"):
+    """One v6 evidence-map row: a keep, or with ``text`` a rewrite."""
+    return {"unit_id": unit_id, "priority": priority, "reason": reason, "links": list(links),
+            "decision": "rewrite" if text else "keep", "ops": list(ops), "text": text,
+            "keep_reason": None if text else keep_reason}
+
+
+# make_doc's target: t1 is the description sentence, t2 the "Python" requirement.
+PYTHON = {"id": "L1", "anchor": "t2", "term": "Python", "source": "Python", "relation": "same"}
+
+
 def output(doc, ids=None):
-    units = units_for(doc)[0]
-    return {"units": [{"unit_id": unit["unit_id"], "priority": "high", "reason": "Relevant to the stated Python work.",
-                       "target_evidence": [{"field": "requirement", "requirement_index": 0, "start": 0, "end": 6, "quote": "Python"}],
-                       "proposed_text": None} for unit in units if ids is None or unit["unit_id"] in ids]}
+    """Every requested unit kept, linked to the Python requirement where its original says Python."""
+    return {"units": [row(unit["unit_id"], links=[PYTHON] if "Python" in unit["original"] else [],
+                          keep_reason="already_aligned" if "Python" in unit["original"] else "no_link")
+                      for unit in units_for(doc)[0] if ids is None or unit["unit_id"] in ids]}
+
+
+def anchors_of(doc):
+    return target_anchors(doc["target_snapshot"])
+
+
+def accept_all(monkeypatch):
+    """A reviewer that accepts every pair and every link."""
+    def accept(pairs, deadline=None):
+        for pair in pairs:
+            for link in pair.links:
+                link.entailed = True
+        return ["accepted"] * len(pairs)
+
+    monkeypatch.setattr(evidence_map, "ai_review", accept)
 
 
 @pytest.fixture
@@ -112,11 +139,14 @@ def test_valid_batch_preserves_source_and_excludes_private_and_manual_text(endpo
     assert body["manifest"] == {"unit_ids": ["line-2", "line-3", "line-4"], "protected_unit_count": 1}
     assert body["logical_calls"] == 1 and body["provider_attempts_upper_bound"] == 2
     assert body["method"] == "ai" and len(body["receipts"]) == 3
+    assert body["pipeline_version"] == "full-target-v6"
+    assert [row["status"] for row in body["receipts"]] == ["suggested", "unchanged", "suggested"]
     assert "private" in response.headers["cache-control"] and "no-store" in response.headers["cache-control"]
     prompt = calls[0][0][1]["content"]
     assert "UNCONFIRMED" not in prompt and "Private Student" not in prompt
     assert doc["base_snapshot"]["experience_entries"][0]["text"] in prompt
-    assert calls[0][1]["max_tokens"] == 12000
+    # One experience and two fact lines: the output budget is sized to them.
+    assert calls[0][1]["max_tokens"] == 350 + 320 + 2 * 120 and calls[0][1]["require_complete"] is True
     assert doc == before
 
 
@@ -163,20 +193,19 @@ def test_changed_or_hidden_target_refused_before_model(endpoint):
     assert not calls
 
 
-# Keeps both sensitive clauses verbatim so the claim locks pass and only the
-# unsupported quantity can reject it; the same sentence with "3 kg" is accepted.
-UNSUPPORTED_NUMBER = "Built a Python robot with a team of 3. I did not lead the project. The robot weighed {} kg."
+EXPERIENCE = "Built a Python robot with a team of 3. I did not lead the project."
+OWN_PART_FIRST = "I did not lead the project. Built a Python robot with a team of 3."
 
 
-@pytest.mark.parametrize(("kind", "skipped"), [
-    ("unknown", {"line-2": "invalid_model_response", "line-3": "invalid_model_response", "line-4": "invalid_model_response"}),
-    ("duplicate", {"line-2": "invalid_model_response", "line-3": "invalid_model_response", "line-4": "invalid_model_response"}),
-    ("fact_rewrite", {"line-2": "invalid_model_response"}),
-    ("wrong_quote", {"line-2": "no_target_evidence"}),
-    ("cross_project_number", {"line-3": "ungrounded_rewrite"}),
-    ("missing", {"line-4": "missing_result"}),
+@pytest.mark.parametrize(("kind", "skipped", "unchanged"), [
+    ("unknown", {"line-2": "missing_result"}, {"line-3": "already_aligned"}),
+    ("duplicate", {"line-2": "missing_result"}, {"line-3": "already_aligned"}),
+    ("fact_rewrite", {"line-2": "invalid_model_response"}, {"line-3": "already_aligned"}),
+    ("bad_row", {"line-3": "invalid_model_response"}, {}),
+    ("borrowed_number", {}, {"line-3": "beyond_allowed_edit"}),
+    ("missing", {"line-4": "missing_result"}, {"line-3": "already_aligned"}),
 ])
-def test_model_output_failures_have_exact_receipts(endpoint, monkeypatch, kind, skipped):
+def test_model_output_failures_have_exact_receipts(endpoint, monkeypatch, kind, skipped, unchanged):
     client, doc, _, _ = endpoint
     data = output(doc)
     if kind == "unknown":
@@ -184,27 +213,182 @@ def test_model_output_failures_have_exact_receipts(endpoint, monkeypatch, kind, 
     elif kind == "duplicate":
         data["units"].append(data["units"][0])
     elif kind == "fact_rewrite":
-        data["units"][0]["proposed_text"] = "Invented fact"
-    elif kind == "wrong_quote":
-        data["units"][0]["target_evidence"][0]["quote"] = "Imagined"
-    elif kind == "cross_project_number":
-        data["units"][1]["proposed_text"] = UNSUPPORTED_NUMBER.format(999)
+        data["units"][0].update(decision="rewrite", text="Invented fact", keep_reason=None, ops=[{"op": "verb_first"}])
+    elif kind == "bad_row":
+        data["units"][1]["priority"] = "urgent"
+    elif kind == "borrowed_number":
+        data["units"][1].update(decision="rewrite", keep_reason=None, ops=[{"op": "personal_first"}],
+                                text=EXPERIENCE + " The robot weighed 999 kg.")
     else:
         data["units"].pop()
     monkeypatch.setattr(engine, "chat_completion", lambda *args, **kwargs: json.dumps(data))
     response = client.post(PATH, json=payload(doc)).json()
     assert [row["unit_id"] for row in response["receipts"]] == ["line-2", "line-3", "line-4"]
     assert {row["unit_id"]: row["reason_code"] for row in response["receipts"] if row["status"] == "skipped"} == skipped
-    assert response["method"] == ("unavailable" if len(skipped) == 3 else "partial")
+    assert {row["unit_id"]: row["reason_code"] for row in response["receipts"] if row["status"] == "unchanged"} == unchanged
+    assert all(row["suggestion"] is None for row in response["receipts"] if row["status"] == "skipped")
+    assert response["method"] == ("partial" if skipped else "ai")
 
 
-def test_supported_quantity_in_the_number_case_is_accepted(endpoint, monkeypatch):
-    client, doc, _, _ = endpoint
+def test_a_reviewed_rewrite_is_suggested_with_its_ops_and_reason(endpoint, monkeypatch):
+    client, doc, _, calls = endpoint
+    accept_all(monkeypatch)
     data = output(doc)
-    data["units"][1]["proposed_text"] = UNSUPPORTED_NUMBER.format(3)
+    data["units"][1].update(decision="rewrite", keep_reason=None, ops=[{"op": "personal_first"}], text=OWN_PART_FIRST)
+    monkeypatch.setattr(engine, "chat_completion", lambda *args, **kwargs: json.dumps(data))
+    body = client.post(PATH, json=payload(doc)).json()
+    receipt = body["receipts"][1]
+    assert receipt["status"] == "suggested" and receipt["reason_code"] is None
+    suggestion = receipt["suggestion"]
+    assert suggestion["proposed_text"] == OWN_PART_FIRST and suggestion["ops"] == ["personal_first"]
+    assert suggestion["alternative_text"] is None
+    assert "Puts your own part first." in suggestion["reason"]
+    # One generation call and one review call, each with its retry bound.
+    assert body["logical_calls"] == 2 and body["provider_attempts_upper_bound"] == 4
+
+
+@pytest.mark.parametrize(("locale", "relabel_line", "lead_line"), [
+    ("en", "Uses the opportunity's term.", "Leads with the matching part."), ("zh", "改用机会中的术语。", "把相关内容放在最前。"),
+])
+def test_the_rewrite_without_the_posting_terms_has_its_own_reason(locale, relabel_line, lead_line):
+    doc = make_doc()
+    unit = next(unit for unit in units_for(doc)[0] if unit["evidence"]["kind"] == "experience")
+    target = {"field": "requirement", "requirement_index": 0, "start": 0, "end": 6, "quote": "Python"}
+    source = {"unit_id": unit["unit_id"], "start": 8, "end": 14, "quote": "Python"}
+    link = evidence_map.Link("L1", "same", "Python", "Python", target, source, written_as="Python", entailed=True)
+    outcome = evidence_map.Outcome(unit["unit_id"], "pending", text="x", links=[link], ops=["relabel", "lead_with"])
+    suggestion = engine._suggestion(unit, outcome, "high", "method_relevance", locale, proposed="Tailored wording.",
+                                    alternative="Plain wording.")
+    assert relabel_line in suggestion["reason"] and lead_line in suggestion["reason"]
+    assert relabel_line not in suggestion["alternative_reason"] and lead_line in suggestion["alternative_reason"]
+    plain = engine._suggestion(unit, outcome, "high", "method_relevance", locale, proposed="Tailored wording.")
+    assert plain["alternative_text"] is None and "alternative_reason" not in plain
+
+
+@pytest.mark.parametrize(("verdict", "status", "code"), [
+    ("rejected", "unchanged", "review_rejected"), ("unavailable", "skipped", "rewrite_unchecked"),
+])
+def test_an_unaccepted_rewrite_keeps_its_advice_or_stays_retryable(endpoint, monkeypatch, verdict, status, code):
+    client, doc, _, _ = endpoint
+    monkeypatch.setattr(evidence_map, "ai_review", lambda pairs, deadline=None: None if verdict == "unavailable"
+                        else ["rejected"] * len(pairs))
+    data = output(doc)
+    data["units"][1].update(decision="rewrite", keep_reason=None, ops=[{"op": "personal_first"}], text=OWN_PART_FIRST)
     monkeypatch.setattr(engine, "chat_completion", lambda *args, **kwargs: json.dumps(data))
     receipt = client.post(PATH, json=payload(doc)).json()["receipts"][1]
-    assert receipt["status"] == "suggested" and receipt["suggestion"]["proposed_text"] == UNSUPPORTED_NUMBER.format(3)
+    assert (receipt["status"], receipt["reason_code"]) == (status, code)
+    if status == "unchanged":
+        assert receipt["suggestion"]["proposed_text"] is None and receipt["suggestion"]["priority"] == "high"
+    else:
+        assert receipt["suggestion"] is None
+
+
+def test_the_checks_run_on_a_worker_thread(endpoint, monkeypatch):
+    import threading
+
+    client, doc, _, _ = endpoint
+    accept_all(monkeypatch)
+    data = output(doc)
+    data["units"][1].update(decision="rewrite", keep_reason=None, ops=[{"op": "personal_first"}], text=OWN_PART_FIRST)
+    monkeypatch.setattr(engine, "chat_completion", lambda *args, **kwargs: json.dumps(data))
+    threads = []
+    for name in ("parse_output", "finalize"):
+        real = getattr(route, name)
+        monkeypatch.setattr(route, name, lambda *args, real=real, **kwargs: threads.append(
+            threading.current_thread().name) or real(*args, **kwargs))
+    body = client.post(PATH, json=payload(doc)).json()
+    assert body["receipts"][1]["status"] == "suggested"
+    # On the single request lane (backend.lib.blocking.run_request_work), not the provider pool.
+    assert len(threads) == 2 and all(name.startswith("ofe-request-work") for name in threads)
+
+
+def test_the_target_check_and_the_prompt_run_on_the_request_lane(endpoint, monkeypatch):
+    # Round 3 (criterion 4): at ten requests at once they ran on the event loop, one after another.
+    import threading
+
+    client, doc, _, _ = endpoint
+    threads = []
+    for name in ("authoritative_target", "target_anchors", "batch_preflight"):
+        real = getattr(route, name)
+        monkeypatch.setattr(route, name, lambda *args, real=real, **kwargs: threads.append(
+            threading.current_thread().name) or real(*args, **kwargs))
+    assert client.post(PATH, json=payload(doc)).status_code == 200
+    assert len(threads) == 3 and all(name.startswith("ofe-request-work") for name in threads)
+
+
+@pytest.mark.parametrize("late", ["parse_output", "finalize"])
+def test_checks_that_run_out_of_time_leave_the_units_retryable(endpoint, monkeypatch, late):
+    import time
+
+    client, doc, _, _ = endpoint
+    accept_all(monkeypatch)
+    data = output(doc)
+    data["units"][1].update(decision="rewrite", keep_reason=None, ops=[{"op": "personal_first"}], text=OWN_PART_FIRST)
+    monkeypatch.setattr(engine, "chat_completion", lambda *args, **kwargs: json.dumps(data))
+    monkeypatch.setattr(route, "CHECK_TIMEOUT_SECONDS", 0.05)
+    real = getattr(route, late)
+    monkeypatch.setattr(route, late, lambda *args, **kwargs: time.sleep(0.3) or real(*args, **kwargs))
+    receipt = client.post(PATH, json=payload(doc)).json()["receipts"][1]
+    assert (receipt["status"], receipt["reason_code"], receipt["suggestion"]) == ("skipped", "rewrite_unchecked", None)
+
+
+def test_high_priority_without_a_verified_link_is_normal(endpoint, monkeypatch):
+    client, doc, _, _ = endpoint
+    data = output(doc)
+    data["units"][2]["links"] = [{**PYTHON, "term": "Pyth"}]
+    monkeypatch.setattr(engine, "chat_completion", lambda *args, **kwargs: json.dumps(data))
+    receipt = client.post(PATH, json=payload(doc)).json()["receipts"][2]
+    assert receipt["suggestion"]["priority"] == "normal" and receipt["suggestion"]["links"] == []
+    assert receipt["suggestion"]["target_evidence"] == []
+
+
+def test_link_quotes_carry_server_offsets(endpoint):
+    client, doc, _, _ = endpoint
+    receipt = client.post(PATH, json=payload(doc)).json()["receipts"][2]
+    [link] = receipt["suggestion"]["links"]
+    assert link["target_evidence"] == {"field": "requirement", "requirement_index": 0, "start": 0, "end": 6,
+                                       "quote": "Python"}
+    assert link["source_evidence"] == {"unit_id": "line-4", "start": 0, "end": 6, "quote": "Python"}
+    assert link["entailed"] is False  # advice: never reviewed, shown as the opportunity's own words
+    assert receipt["suggestion"]["target_evidence"] == [link["target_evidence"]]
+
+
+def test_a_target_with_no_quotable_text_costs_no_call(endpoint):
+    client, doc, opp, calls = endpoint
+    opp["description_clean"] = ("Faculty research profile for Pat Lee in Physics at Example University. Research areas: "
+                                "robots, sensors, Python Contact this faculty member to ask whether undergraduate "
+                                "research opportunities are currently available.")
+    opp["eligibility"]["skills_required"] = []
+    doc["target_snapshot"] = route.authoritative_target(opp)
+    doc["base"]["target_signature"] = fingerprint(doc["target_snapshot"])
+    body = client.post(PATH, json=payload(doc)).json()
+    assert {row["reason_code"] for row in body["receipts"]} == {"target_has_no_text"}
+    assert body["logical_calls"] == 0 and body["method"] == "unavailable" and not calls
+    # The same list is quotable once the record states it as its own research areas.
+    opp["metadata"]["research_areas_raw"] = "robots, sensors, Python"
+    body = client.post(PATH, json=payload(doc)).json()
+    assert body["method"] == "ai" and len(calls) == 1
+
+
+def test_more_than_eight_experiences_in_one_request_are_refused(endpoint):
+    client, doc, _, calls = endpoint
+    entries = doc["base_snapshot"]["experience_entries"]
+    activity = doc["base_snapshot"]["resume_master"]["activities"][0]
+    for index in range(1, 9):
+        entries.append({"id": f"exp-{index}", "revision": 1, "status": "confirmed", "text": f"Built robot {index}.",
+                        "source": {"kind": "manual"}})
+        activity["details"].append({"id": f"exp-{index}", "revision": 1})
+    doc["document"] = confirmed_document(doc["base_snapshot"], doc["base"]["source_signature"])
+    for section in doc["document"]["sections"]:
+        section["included"] = True
+        for block in section["blocks"]:
+            block["included"] = True
+            for line in block["lines"]:
+                line.update(text=line["original"], included=True)
+    experiences = [unit["unit_id"] for unit in units_for(doc)[0] if unit["evidence"]["kind"] == "experience"]
+    assert len(experiences) == 9
+    assert client.post(PATH, json=payload(doc, experiences)).status_code == 422 and not calls
+    assert client.post(PATH, json=payload(doc, experiences[:8])).status_code == 200
 
 
 def test_target_quote_offsets_use_codepoints_and_require_literal_match():
@@ -290,27 +474,6 @@ def test_source_quotes_are_reanchored_inside_the_named_original_only():
     assert engine.valid_source_quotes([{**quote, "unit_id": "c"}], originals) is None
 
 
-def test_response_carries_reanchored_target_and_accepts_miscounted_source_spans(endpoint, monkeypatch):
-    client, doc, _, _ = endpoint
-    data = output(doc)
-    description = doc["target_snapshot"]["description"]
-    for row in data["units"]:
-        row["target_evidence"] = [{"field": "description", "requirement_index": None, "start": 95, "end": 154, "quote": "with Python."},
-                                  {"field": "requirement", "requirement_index": 0, "start": 3, "end": 9, "quote": "Python"}]
-    experience = next(unit for unit in units_for(doc)[0] if unit["evidence"]["kind"] == "experience")
-    row = next(row for row in data["units"] if row["unit_id"] == experience["unit_id"])
-    row["source_evidence"] = [{"unit_id": experience["unit_id"], "start": 40, "end": 70, "quote": "I did not lead the project."}]
-    monkeypatch.setattr(engine, "chat_completion", lambda *args, **kwargs: json.dumps(data, ensure_ascii=False))
-    body = client.post(PATH, json=payload(doc)).json()
-    assert body["method"] == "ai", body
-    start = description.index("with Python.")
-    for receipt in body["receipts"]:
-        assert receipt["suggestion"]["target_evidence"] == [
-            {"field": "description", "requirement_index": None, "start": start, "end": start + 12, "quote": "with Python."},
-            {"field": "requirement", "requirement_index": 0, "start": 0, "end": 6, "quote": "Python"}]
-        assert description[start:start + 12] == "with Python."
-
-
 def test_budget_rechecked_inside_worker_before_provider(endpoint, monkeypatch):
     client, doc, _, calls = endpoint
     monkeypatch.setattr(engine.llm_budget, "exhausted", lambda: True)
@@ -328,7 +491,7 @@ def test_complete_6000_character_experience_is_not_cut():
     request = FullTargetRequest(**payload(doc, [row["id"]]))
     checked = validate_document(doc)
     _, _, _, processable = engine.prepare_batch(request, checked)
-    messages, reason = engine.batch_preflight(checked, processable, "en")
+    messages, reason = engine.batch_preflight(checked, processable, "en", anchors_of(checked))
     assert reason is None and entry["text"] in messages[1]["content"]
 
 
@@ -362,8 +525,9 @@ def test_unknown_fields_rejected_by_complete_contract(endpoint):
 def test_model_receives_only_selected_units_not_every_experience(endpoint):
     client, doc, _, calls = endpoint
     response = client.post(PATH, json=payload(doc, ["line-4"]))
-    # Fake model returns unsolicited IDs; reject rather than attach them elsewhere.
-    assert response.status_code == 200 and response.json()["method"] == "unavailable"
+    # Fake model returns unsolicited IDs too; they are ignored, never attached elsewhere.
+    assert response.status_code == 200 and response.json()["method"] == "ai"
+    assert [row["unit_id"] for row in response.json()["receipts"]] == ["line-4"]
     prompt = calls[0][0][1]["content"]
     assert doc["base_snapshot"]["experience_entries"][0]["text"] not in prompt
 
@@ -384,10 +548,13 @@ def test_all_batches_cover_more_than_eight_whole_experiences(endpoint, monkeypat
             for row in block["lines"]:
                 row.update(text=row["original"], included=True)
     batches, current, size, experiences = [], [], 0, 0
+    by_kind = {unit["unit_id"]: unit["evidence"]["kind"] for unit in units_for(doc)[0]}
     for unit in units_for(doc)[0]:
         original_size = len(unit["original"])
         experience_size = original_size if unit["evidence"]["kind"] == "experience" else 0
-        if len(current) == 24 or size + original_size > 16000 or experiences + experience_size > 6000:
+        if (len(current) == 20 or size + original_size > 16000 or experiences + experience_size > 6000
+                or (experience_size and sum(1 for ident in current if ident.startswith("line-") and
+                                            by_kind.get(ident) == "experience") == 8)):
             batches.append(current)
             current, size, experiences = [], 0, 0
         current.append(unit["unit_id"])
@@ -467,8 +634,14 @@ def crowd_prompt(doc, opp, title, skill, interests="i" * 8000):
     doc["document"]["sections"][2]["blocks"][0]["lines"][0].update(original=skill, text=skill)
 
 
+# v6 sends anchors, not the whole target twice, so its fixed prompt is about
+# 28k characters; a lower cap reproduces a crowded request within the unit caps.
+CROWDED_PROMPT = 50000
+
+
 def test_combined_overflow_is_retryable_for_units_that_fit_alone(endpoint, monkeypatch):
     client, doc, opp, calls = endpoint
+    monkeypatch.setattr(engine, "MAX_PROMPT_CHARACTERS", CROWDED_PROMPT)
     crowd_prompt(doc, opp, "T" * 8000, "S" * 7000)
     body = client.post(PATH, json=payload(doc)).json()
     assert [row["reason_code"] for row in body["receipts"]] == ["batch_context_too_large"] * 3
@@ -484,8 +657,9 @@ def test_combined_overflow_is_retryable_for_units_that_fit_alone(endpoint, monke
         assert single["method"] == "ai" and single["logical_calls"] == 1, (ident, single["receipts"])
 
 
-def test_only_a_unit_too_large_on_its_own_is_permanently_skipped(endpoint):
+def test_only_a_unit_too_large_on_its_own_is_permanently_skipped(endpoint, monkeypatch):
     client, doc, opp, calls = endpoint
+    monkeypatch.setattr(engine, "MAX_PROMPT_CHARACTERS", CROWDED_PROMPT)
     crowd_prompt(doc, opp, "T" * 12500, "S" * 3000)
     body = client.post(PATH, json=payload(doc)).json()
     assert {row["unit_id"]: row["reason_code"] for row in body["receipts"]} == {
@@ -605,6 +779,15 @@ def test_complete_document_over_legacy_one_mib_is_admitted_without_truncation(en
     assert manual not in calls[0][0][1]["content"]
 
 
+def _parse_one(original, proposed, ops):
+    doc = make_doc()
+    unit = next(unit for unit in units_for(doc)[0] if unit["evidence"]["kind"] == "experience")
+    unit.update(original=original, before_text=original)
+    data = {"units": [row(unit["unit_id"], text=proposed, ops=ops)]}
+    locale = "zh" if evidence_map.language(proposed) == "zh" else "en"
+    return engine.parse_output(json.dumps(data), [unit], anchors_of(doc), locale)
+
+
 @pytest.mark.parametrize(("original", "proposed"), [
     ("I did not lead the team. I built a Python parser with my teammates.", "I led the team and built a Python parser."),
     ("Our team built a Python parser. I reviewed the documentation.", "I built the Python parser."),
@@ -616,32 +799,26 @@ def test_complete_document_over_legacy_one_mib_is_admitted_without_truncation(en
     ("I did not lead the project.", "I did not lead the project. I led the project."),
 ])
 def test_bounded_claim_locks_reject_negation_role_and_publication_upgrades(original, proposed):
-    doc = make_doc()
-    unit = next(unit for unit in units_for(doc)[0] if unit["evidence"]["kind"] == "experience")
-    unit.update(original=original, before_text=original)
-    data = output(doc, [unit["unit_id"]])
-    data["units"][0]["proposed_text"] = proposed
-    rows = engine.parse_output(json.dumps(data), [unit], doc["target_snapshot"])
-    assert rows[0]["status"] == "skipped" and rows[0]["reason_code"] == "ungrounded_rewrite"
+    for ops in ([{"op": "personal_first"}], [{"op": "verb_first"}]):
+        results, pending = _parse_one(original, proposed, ops)
+        assert pending == [] and results[0]["status"] == "unchanged"
+        assert results[0]["reason_code"] in ("beyond_allowed_edit", "rewrite_rejected")
+        assert results[0]["suggestion"]["proposed_text"] is None
 
 
-@pytest.mark.parametrize(("original", "proposed"), [
-    ("I did not lead the project. Reviewed documents.", "Reviewed documents. I did not lead the project."),
-    ("Our team built a Python parser. I reviewed the documentation.", "I reviewed the documentation. Our team built a Python parser."),
-    ("The project was submitted for review, not accepted.", "The project was submitted for review, not accepted."),
-    ("我没有主导团队。本人审阅文档。", "本人审阅文档。我没有主导团队。"),
-    ("团队开发了工具。本人负责审阅文档。", "本人负责审阅文档。团队开发了工具。"),
-    ("论文已投稿，尚未录用。", "论文已投稿，尚未录用。"),
+@pytest.mark.parametrize(("original", "proposed", "ops"), [
+    ("Our team built a Python parser for the lab. I reviewed the documentation.",
+     "I reviewed the documentation. Our team built a Python parser for the lab.", [{"op": "personal_first"}]),
+    ("团队开发了工具。本人负责审阅文档。", "本人负责审阅文档。团队开发了工具。", [{"op": "personal_first"}]),
+    ("The project was submitted for review, not accepted.", "The project was submitted for review, not accepted.",
+     [{"op": "verb_first"}]),
 ])
-def test_legal_preservation_of_sensitive_claims_still_allows_suggestions(original, proposed):
-    doc = make_doc()
-    unit = next(unit for unit in units_for(doc)[0] if unit["evidence"]["kind"] == "experience")
-    unit.update(original=original, before_text=original)
-    data = output(doc, [unit["unit_id"]])
-    data["units"][0]["proposed_text"] = proposed
-    rows = engine.parse_output(json.dumps(data), [unit], doc["target_snapshot"])
-    assert rows[0]["status"] in ("suggested", "unchanged")
-    assert rows[0]["suggestion"] is not None
+def test_legal_preservation_of_sensitive_claims_still_allows_suggestions(original, proposed, ops):
+    results, pending = _parse_one(original, proposed, ops)
+    # A faithful reorder goes to the review; the original itself is a cosmetic keep with its advice.
+    assert [item.outcome.text for item in pending] == [proposed] or (
+        results[0]["status"] == "unchanged" and results[0]["reason_code"] == "cosmetic_only"
+        and results[0]["suggestion"] is not None)
 
 
 def test_whole_block_context_is_sent_once_for_many_selected_lines():
@@ -650,7 +827,7 @@ def test_whole_block_context_is_sent_once_for_many_selected_lines():
     master = doc["base_snapshot"]["resume_master"]
     master["activities"][0]["title"]["value"] = title
     entries = [{"id": f"short-{i}", "revision": 1, "status": "confirmed", "text": "Built a small Python tool.",
-                "source": {"kind": "manual"}} for i in range(10)]
+                "source": {"kind": "manual"}} for i in range(8)]
     doc["base_snapshot"]["experience_entries"] = entries
     master["activities"][0]["details"] = [{"id": item["id"], "revision": 1} for item in entries]
     doc["document"] = confirmed_document(doc["base_snapshot"], doc["base"]["source_signature"])
@@ -663,13 +840,15 @@ def test_whole_block_context_is_sent_once_for_many_selected_lines():
     checked = validate_document(doc)
     selected = [unit["unit_id"] for unit in units_for(checked)[0] if unit["section_id"] == "activities"]
     _, _, _, processable = engine.prepare_batch(FullTargetRequest(**payload(checked, selected)), checked)
-    messages, reason = engine.batch_preflight(checked, processable, "en")
-    assert reason is None and len(processable) == 11
+    messages, reason = engine.batch_preflight(checked, processable, "en", anchors_of(checked))
+    assert reason is None and len(processable) == 9
     model_input = json.loads(messages[1]["content"])
     assert len(model_input["block_contexts"]) == 1
     assert model_input["block_contexts"][0]["fields"][0]["value"] == title
     assert all("block_context" not in unit for unit in model_input["units"])
-    assert len(model_input["units"]) == 11
+    assert len(model_input["units"]) == 9
+    # Criteria and the opportunity stay context; only the anchors are quotable.
+    assert set(model_input) == {"locale", "opportunity", "anchors", "criteria", "block_contexts", "units"}
     assert sum(len(message["content"]) for message in messages) < 60000
 
 
@@ -682,13 +861,13 @@ def test_source_check_version_is_negotiated_and_server_owned(endpoint, monkeypat
     request["include_check_version"] = True
     response = client.post(PATH, json=request)
     assert response.status_code == 200
-    assert response.json()["check_version"] == "target-resume-source-checks-v4"
+    assert response.json()["check_version"] == "target-resume-source-checks-v5"
     assert response.json()["pipeline_version"] != response.json()["check_version"]
     # Available rules do not turn skipped/failed work into a checked rewrite.
     monkeypatch.setattr(route, "is_configured", lambda: False)
     failed = client.post(PATH, json=request)
     assert failed.status_code == 200
-    assert failed.json()["check_version"] == "target-resume-source-checks-v4"
+    assert failed.json()["check_version"] == "target-resume-source-checks-v5"
     assert failed.json()["method"] == "unavailable"
     forged = {**request, "check_version": "target-resume-source-checks-v999"}
     assert client.post(PATH, json=forged).status_code == 422

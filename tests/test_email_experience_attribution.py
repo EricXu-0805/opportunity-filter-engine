@@ -307,17 +307,30 @@ def test_resume_neutral_suffix_cannot_remove_the_only_recognized_object():
 
 
 def _resume_parse_receipt(original, proposed):
-    from backend.lib.target_resume_ai import parse_output
+    """The full-target v6 receipt for one declared rewrite, with a reviewer that accepts."""
+    from backend.lib.evidence_map import target_anchors
+    from backend.lib.target_resume_ai import finalize, parse_output
 
     unit = {'unit_id': 'entry-1', 'section_id': 'activities', 'block_id': 'project-1',
             'evidence': {'kind': 'experience', 'id': 'experience-1', 'revision': 1},
             'original': original, 'before_text': original}
-    raw = json.dumps({'units': [{'unit_id': unit['unit_id'], 'priority': 'normal',
-                                 'reason': 'Synthetic attribution regression.',
-                                 'target_evidence': [{'field': 'requirement', 'requirement_index': 0,
-                                                      'start': 0, 'end': 6, 'quote': 'Python'}],
-                                 'proposed_text': proposed}]})
-    return parse_output(raw, [unit], {'description': '', 'requirements': ['Python']})[0]
+    raw = json.dumps({'units': [{'unit_id': unit['unit_id'], 'priority': 'normal', 'reason': 'method_relevance',
+                                 'links': [], 'decision': 'rewrite', 'ops': [{'op': 'personal_first'}],
+                                 'text': proposed, 'keep_reason': None}]})
+    results, pending = parse_output(raw, [unit], target_anchors({'description': '', 'requirements': ['Python']}))
+    return finalize(pending, ['accepted'] * len(pending))[0] if pending else results[0]
+
+
+def _refused(receipt, original):
+    """Never shown: the contract or a claim lock keeps the student's own line, with its advice."""
+    return (receipt['status'] == 'unchanged' and receipt['before_text'] == original
+            and receipt['reason_code'] in ('beyond_allowed_edit', 'rewrite_rejected')
+            and receipt['suggestion']['proposed_text'] is None)
+
+
+def _not_refused_as_fabrication(receipt):
+    """A faithful edit is reviewed and suggested, or kept as a move the contract does not offer."""
+    return receipt['status'] == 'suggested' or receipt['reason_code'] in ('beyond_allowed_edit', 'cosmetic_only')
 
 
 @pytest.mark.parametrize('modifier', ['not', 'never', 'without', 'only', 'never entirely', 'without working', 'hardly', 'barely', 'rarely'])
@@ -326,11 +339,9 @@ def test_reviewed_carefully_restrictions_survive_retained_original_and_direct_pa
     proposed = 'I analyzed measurement uncertainty carefully. ' + original
     assert check(proposed, [original], allow_subjectless_claims=True)
     assert check(original, [original], allow_subjectless_claims=True) == []
-    rejected = _resume_parse_receipt(original, proposed)
-    assert rejected['status'] == 'skipped' and rejected['reason_code'] == 'ungrounded_rewrite'
-    assert rejected['suggestion'] is None and rejected['before_text'] == original
+    assert _refused(_resume_parse_receipt(original, proposed), original)
     unchanged = _resume_parse_receipt(original, original)
-    assert unchanged['status'] == 'unchanged' and unchanged['reason_code'] == 'no_change'
+    assert unchanged['status'] == 'unchanged' and unchanged['reason_code'] == 'cosmetic_only'
     assert unchanged['suggestion']['proposed_text'] is None
 
 
@@ -339,9 +350,7 @@ def test_reviewed_sample_equivalence_can_omit_only_the_confirmed_tool(prefix):
     original = prefix + 'Analyzed measurements with PyTorch across 88 samples.'
     proposed = prefix + 'Analyzed 88 samples.'
     assert check(proposed, [original], allow_subjectless_claims=True) == []
-    accepted = _resume_parse_receipt(original, proposed)
-    assert accepted['status'] == 'suggested' and accepted['reason_code'] is None
-    assert accepted['suggestion']['proposed_text'] == proposed and accepted['before_text'] == original
+    assert _not_refused_as_fabrication(_resume_parse_receipt(original, proposed))
 
 
 @pytest.mark.parametrize('original,unsupported,supported', [
@@ -372,9 +381,7 @@ def test_reviewed_sample_shortening_preserves_count_unit_actor_scope_bound_and_d
 ])
 def test_reviewed_legacy_structures_preserve_full_object_tool_and_course(original, proposed):
     assert check(proposed, [original], allow_subjectless_claims=True) == []
-    receipt = _resume_parse_receipt(original, proposed)
-    assert receipt['status'] == 'suggested' and receipt['reason_code'] is None
-    assert receipt['suggestion']['proposed_text'] == proposed
+    assert _not_refused_as_fabrication(_resume_parse_receipt(original, proposed))
     # No new equivalence leaks into email mode, even for an explicit I-claim.
     assert check('I ' + proposed, [original])
 
@@ -461,9 +468,7 @@ def test_resume_numeric_sentence_boundary_cannot_hide_claim_behind_retained_sour
     proposed = prefix + claim_action + '. ' + original
     assert check(proposed, [original], allow_subjectless_claims=True)
     assert check(original, [original], allow_subjectless_claims=True) == []
-    receipt = _resume_parse_receipt(original, proposed)
-    assert receipt['status'] == 'skipped' and receipt['reason_code'] == 'ungrounded_rewrite'
-    assert receipt['suggestion'] is None and receipt['before_text'] == original
+    assert _refused(_resume_parse_receipt(original, proposed), original)
 
 
 @pytest.mark.parametrize('original,proposed', [
@@ -474,9 +479,7 @@ def test_resume_numeric_sentence_boundary_cannot_hide_claim_behind_retained_sour
 ])
 def test_resume_numeric_sentence_boundary_preserves_decimals_and_each_personal_action(original, proposed):
     assert check(proposed, [original], allow_subjectless_claims=True) == []
-    receipt = _resume_parse_receipt(original, proposed)
-    assert receipt['status'] == 'suggested' and receipt['reason_code'] is None
-    assert receipt['suggestion']['proposed_text'] == proposed
+    assert _not_refused_as_fabrication(_resume_parse_receipt(original, proposed))
 
 
 @pytest.mark.parametrize('original,proposed', [
@@ -487,8 +490,8 @@ def test_resume_numeric_sentence_boundary_preserves_decimals_and_each_personal_a
 ])
 def test_resume_approved_tool_omission_is_source_direction_only(original, proposed):
     assert check(proposed, [original], allow_subjectless_claims=True) == []
-    receipt = _resume_parse_receipt(original, proposed)
-    assert receipt['status'] == 'suggested' and receipt['suggestion']['proposed_text'] == proposed
+    # Dropping a tool is a trim, which no route offers; it is never refused as a fabrication.
+    assert _not_refused_as_fabrication(_resume_parse_receipt(original, proposed))
     # Removing a confirmed method is not permission to add that method to a
     # source that did not name it. Do not strip tools from both sides to match.
     assert check(original, [proposed], allow_subjectless_claims=True)
@@ -526,9 +529,7 @@ def test_resume_leading_fragment_is_not_hidden_by_later_explicit_subject(separat
                 if actor == 'team' else 'I did not implement Python machine learning projects for CS 225.')
     proposed = 'Implemented Python machine learning projects in CS 225' + separator + original
     assert check(proposed, [original], allow_subjectless_claims=True)
-    receipt = _resume_parse_receipt(original, proposed)
-    assert receipt['status'] == 'skipped' and receipt['reason_code'] == 'ungrounded_rewrite'
-    assert receipt['suggestion'] is None
+    assert _refused(_resume_parse_receipt(original, proposed), original)
 
 
 @pytest.mark.parametrize('proposed', [

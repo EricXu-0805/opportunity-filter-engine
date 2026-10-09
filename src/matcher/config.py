@@ -301,12 +301,16 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # cover. Two UIUC stems stop reaching other fields' departments ("civil" inside
 # "civilizations", "comparative" in comparative literature). The stems are a
 # table, not a hashed knob, so only the base can retire the old lists.
-# 20 (19 is the deadline closure, b877ded5 on main): match reasons stop
-# presenting a campus program spec's majors and class years as the program's
-# terms, and a configured or keyword-scanned SRO pay value no longer earns the
-# "Paid opportunity" / "Includes stipend" sentence. No score moves, but cached
-# explanations would keep the old sentences, and the fingerprint hashes knobs,
-# not sentences.
+# 19: a deadline the source stated closes the listing two UTC days after it
+# passes. `target_truth` returns listing_closed, and hard_exclusion reads the
+# truth first, so the record leaves the ranked universe instead of staying with
+# the x0.7 haircut. Like 7 and 8, this is a truth change the fingerprint cannot
+# see.
+# 20: match reasons stop presenting a campus program spec's majors and class
+# years as the program's terms, and a configured or keyword-scanned SRO pay
+# value no longer earns the "Paid opportunity" / "Includes stipend" sentence.
+# No score moves, but cached explanations would keep the old sentences, and the
+# fingerprint hashes knobs, not sentences.
 _MATCHER_VERSION_BASE = "20"
 
 

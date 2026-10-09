@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 import pytest
 from fastapi.testclient import TestClient
 
+from backend.lib import evidence_map
 from backend.lib import target_resume_ai as engine
 from backend.lib.target_resume_ai_validation import confirmed_document, fingerprint, units_for
 from backend.main import app
@@ -84,31 +85,53 @@ def _document(originals, opportunity):
             "document": document}
 
 
+# Moves the evidence-map contract admits, tried in order for each proposal.
+CANDIDATE_OPS = ([{"op": "personal_first"}], [{"op": "verb_first"}], [{"op": "personal_first"}, {"op": "verb_first"}])
+
+
 @dataclass
 class Endpoint:
     client: TestClient
     opportunity: dict
     calls: list = field(default_factory=list)
+    reviews: list = field(default_factory=list)
     proposed: dict = field(default_factory=dict)
     wrong_quote: bool = False
+    locale: str = "en"
+
+    def _row(self, unit, anchors):
+        """A v6 row: keep with a Python link, or the proposal with operations the contract admits when any do."""
+        term = "Pyth" if self.wrong_quote else "Python"
+        links = [{"id": "L1", "anchor": "t2", "term": term, "source": "Python", "relation": "same"}] \
+            if "Python" in unit["original"] else []
+        base = {"unit_id": unit["unit_id"], "priority": "high", "reason": "method_relevance", "links": links}
+        proposal = self.proposed.get(unit["unit_id"])
+        if proposal is None:
+            return {**base, "decision": "keep", "ops": [], "text": None, "keep_reason": "no_link"}
+        em_unit = evidence_map.Unit(unit["unit_id"], unit["original"], unit["original"], keyed=True)
+        rows = [{**base, "decision": "rewrite", "ops": ops, "text": proposal, "keep_reason": None}
+                for ops in CANDIDATE_OPS]
+        by_id = {anchor.id: anchor for anchor in anchors}
+        return next((row for row in rows if evidence_map.check_rewrite(
+            em_unit, row, by_id, output_language=self.locale, extra_keys=("priority", "reason")).status == "pending"),
+            rows[0])
 
     def model(self, messages, **kwargs):
         self.calls.append((deepcopy(messages), deepcopy(kwargs)))
         units = json.loads(messages[1]["content"])["units"]
-        quote = "Wrong!" if self.wrong_quote else "Python"
-        return json.dumps({"units": [
-            {"unit_id": unit["unit_id"], "priority": "high", "reason": "Relevant to the stated Python requirement.",
-             "target_evidence": [{"field": "requirement", "requirement_index": 0,
-                                  "start": 0, "end": 6, "quote": quote}],
-             "proposed_text": self.proposed.get(unit["unit_id"])} for unit in units
-        ]})
+        anchors = evidence_map.target_anchors(route.authoritative_target(self.opportunity))
+        return json.dumps({"units": [self._row(unit, anchors) for unit in units]})
+
+    def review(self, pairs, deadline=None):
+        self.reviews.append([(pair.original, pair.rewrite) for pair in pairs])
+        return ["accepted"] * len(pairs)
 
     def submit(self, doc, proposals, *, include_facts=False):
         units, _ = units_for(doc)
         selected = units if include_facts else [unit for unit in units if unit["evidence"]["kind"] == "experience"]
         self.proposed = {unit["unit_id"]: proposals.get(unit["evidence"]["id"]) for unit in selected}
         before = deepcopy(doc)
-        response = self.client.post(PATH, json={"version": 1, "request_id": "attribution-fixture", "locale": "en",
+        response = self.client.post(PATH, json={"version": 1, "request_id": "attribution-fixture", "locale": self.locale,
                                                "draft": doc, "document_signature": fingerprint(doc),
                                                "selected_unit_ids": [unit["unit_id"] for unit in selected]})
         assert doc == before
@@ -127,6 +150,7 @@ def endpoint(monkeypatch):
     monkeypatch.setattr(route, "is_configured", lambda: True)
     monkeypatch.setattr(engine.llm_budget, "exhausted", lambda: False)
     monkeypatch.setattr(engine, "chat_completion", result.model)
+    monkeypatch.setattr(evidence_map, "ai_review", result.review)
     return result
 
 
@@ -134,34 +158,57 @@ def _receipts(response, endpoint, doc):
     assert response.status_code == 200, response.text
     result = response.json()
     assert len(endpoint.calls) == 1  # One mocked dispatch, no automatic rejection retry.
-    assert result["logical_calls"] == 1
+    # One generation call, plus the review when a rewrite reached it.
+    assert result["logical_calls"] == 1 + bool(endpoint.reviews)
     assert result["document_signature"] == fingerprint(doc)
     assert result["base"] == doc["base"] and result["opportunity_id"] == doc["opportunity_id"]
     return result, {row["evidence"]["id"]: row for row in result["receipts"]}
 
 
-def _rejected(row, before_text):
-    assert row["status"] == "skipped", row
-    assert row["reason_code"] == "ungrounded_rewrite" and row["suggestion"] is None
-    assert row["before_text"] == before_text
+def _rejected(row, before_text, endpoint):
+    """Kept with its advice by the contract or a claim lock, never shown, never reviewed."""
+    assert row["status"] == "unchanged", row
+    assert row["reason_code"] in ("beyond_allowed_edit", "rewrite_rejected")
+    assert row["suggestion"]["proposed_text"] is None and row["before_text"] == before_text
+    assert all(before_text not in original for batch in endpoint.reviews for original, _ in batch)
 
 
 @pytest.mark.parametrize("original,proposed", BAD)
 def test_three_attribution_failures_are_refused_through_real_route(endpoint, original, proposed):
     doc = _document([original], endpoint.opportunity)
     result, rows = _receipts(endpoint.submit(doc, {"exp-0": proposed}), endpoint, doc)
-    _rejected(rows["exp-0"], original)
-    assert result["method"] == "unavailable"
+    _rejected(rows["exp-0"], original, endpoint)
+    assert result["method"] == "ai" and endpoint.reviews == []
 
 
 @pytest.mark.parametrize("original,proposed", GOOD)
 def test_supported_roles_fragments_and_number_formats_stay_usable(endpoint, original, proposed):
+    """A faithful edit is reviewed and suggested, or kept because the contract offers
+    no such move (a trim, a reformat); it is never refused as a fabrication."""
     doc = _document([original], endpoint.opportunity)
     result, rows = _receipts(endpoint.submit(doc, {"exp-0": proposed}), endpoint, doc)
     row = rows["exp-0"]
-    assert row["status"] == ("unchanged" if proposed == original else "suggested"), row
-    assert row["suggestion"]["proposed_text"] == (None if proposed == original else proposed)
+    if row["status"] == "suggested":
+        assert row["suggestion"]["proposed_text"] == proposed and endpoint.reviews == [[(original, proposed)]]
+    else:
+        assert row["status"] == "unchanged" and row["reason_code"] in ("beyond_allowed_edit", "cosmetic_only")
+        assert row["suggestion"]["proposed_text"] is None
     assert row["before_text"] == original and result["method"] == "ai"
+
+
+# GOOD[1] (TEAM) holds no two English function words of three letters, so round 4's default keep keeps it as
+# written; this English line holds "for" and "the".
+TEAM_FOR_THE_LAB = ("My team built a Python parser for the lab. I wrote parser tests.",
+                    "I wrote parser tests. My team built a Python parser for the lab.")
+
+
+@pytest.mark.parametrize("original,proposed,locale", [(*TEAM_FOR_THE_LAB, "en"), (*GOOD[8].values, "zh")])
+def test_an_own_part_first_reorder_is_reviewed_and_suggested(endpoint, original, proposed, locale):
+    """The output language follows the UI locale, so the Chinese reorder is asked for in Chinese."""
+    endpoint.locale = locale
+    doc = _document([original], endpoint.opportunity)
+    _, rows = _receipts(endpoint.submit(doc, {"exp-0": proposed}), endpoint, doc)
+    assert rows["exp-0"]["status"] == "suggested" and rows["exp-0"]["suggestion"]["ops"] == ["personal_first"]
 
 
 def test_mixed_batch_keeps_valid_suggestion_and_every_original_without_retry(endpoint):
@@ -177,10 +224,10 @@ def test_mixed_batch_keeps_valid_suggestion_and_every_original_without_retry(end
     result, rows = _receipts(endpoint.submit(doc, {"exp-0": TEAM_BAD, "exp-1": METRICS_BAD,
                                                   "exp-2": DENIAL_BAD, "exp-3": "I wrote parser tests."}), endpoint, doc)
     for index, expected in enumerate([manual, METRICS, DENIAL]):
-        _rejected(rows[f"exp-{index}"], expected)
-    assert rows["exp-3"]["status"] == "suggested"
-    assert rows["exp-3"]["suggestion"]["proposed_text"] == "I wrote parser tests."
-    assert result["method"] == "partial" and len(rows) == 4
+        _rejected(rows[f"exp-{index}"], expected, endpoint)
+    # Dropping "using Python" is a trim, which no route offers.
+    assert rows["exp-3"]["status"] == "unchanged" and rows["exp-3"]["reason_code"] == "beyond_allowed_edit"
+    assert result["method"] == "ai" and len(rows) == 4
     prompt = json.loads(endpoint.calls[0][0][1]["content"])
     assert [unit["original"] for unit in prompt["units"]] == originals
     assert manual not in endpoint.calls[0][0][1]["content"]
@@ -197,9 +244,9 @@ def test_mixed_batch_keeps_valid_suggestion_and_every_original_without_retry(end
 def test_other_selected_entries_cannot_authorize_this_units_claim(endpoint, first, second, borrowed):
     doc = _document([first, second], endpoint.opportunity)
     result, rows = _receipts(endpoint.submit(doc, {"exp-0": borrowed, "exp-1": second}), endpoint, doc)
-    _rejected(rows["exp-0"], first)
+    _rejected(rows["exp-0"], first, endpoint)
     assert rows["exp-1"]["status"] == "unchanged" and rows["exp-1"]["suggestion"] is not None
-    assert result["method"] == "partial"
+    assert result["method"] == "ai"
 
 
 def test_long_experience_tail_is_checked_without_truncating_the_original(endpoint):
@@ -208,7 +255,7 @@ def test_long_experience_tail_is_checked_without_truncating_the_original(endpoin
     assert 5000 < len(original) < 6000
     doc = _document([original], endpoint.opportunity)
     _, rows = _receipts(endpoint.submit(doc, {"exp-0": proposed}), endpoint, doc)
-    _rejected(rows["exp-0"], original)
+    _rejected(rows["exp-0"], original, endpoint)
     assert json.loads(endpoint.calls[0][0][1]["content"])["units"][0]["original"] == original
 
 
@@ -220,12 +267,13 @@ def test_different_target_texts_never_supply_personal_achievements(endpoint, tar
     endpoint.opportunity.update(id=target_id, description_clean=description)
     doc = _document([TEAM], endpoint.opportunity)
     _, rows = _receipts(endpoint.submit(doc, {"exp-0": TEAM_BAD}), endpoint, doc)
-    _rejected(rows["exp-0"], TEAM)
+    _rejected(rows["exp-0"], TEAM, endpoint)
 
 
 def test_protected_fact_rewrite_is_rejected_while_valid_experience_survives(endpoint):
-    doc = _document(["I wrote parser tests using Python."], endpoint.opportunity)
-    result, rows = _receipts(endpoint.submit(doc, {"title-0": "Invented supervisor title", "exp-0": "I wrote parser tests."},
+    doc = _document([TEAM_FOR_THE_LAB[0]], endpoint.opportunity)
+    result, rows = _receipts(endpoint.submit(doc, {"title-0": "Invented supervisor title",
+                                                  "exp-0": TEAM_FOR_THE_LAB[1]},
                                                   include_facts=True), endpoint, doc)
     assert rows["title-0"]["status"] == "skipped" and rows["title-0"]["reason_code"] == "invalid_model_response"
     assert rows["title-0"]["suggestion"] is None and rows["title-0"]["before_text"] == "Research project 0"
@@ -234,12 +282,13 @@ def test_protected_fact_rewrite_is_rejected_while_valid_experience_survives(endp
     assert "Fixture Student" not in endpoint.calls[0][0][1]["content"]
 
 
-def test_valid_attribution_still_requires_an_exact_target_quote(endpoint):
+def test_a_link_to_text_the_target_does_not_have_is_dropped(endpoint):
     doc = _document(["I wrote parser tests using Python."], endpoint.opportunity)
     endpoint.wrong_quote = True
-    _, rows = _receipts(endpoint.submit(doc, {"exp-0": "I wrote parser tests."}), endpoint, doc)
-    assert rows["exp-0"]["status"] == "skipped" and rows["exp-0"]["reason_code"] == "no_target_evidence"
-    assert rows["exp-0"]["suggestion"] is None
+    _, rows = _receipts(endpoint.submit(doc, {}), endpoint, doc)
+    suggestion = rows["exp-0"]["suggestion"]
+    assert suggestion["links"] == [] and suggestion["target_evidence"] == []
+    assert suggestion["priority"] == "normal"  # "high" needs a verified link
 
 
 def test_target_changed_before_request_is_refused_without_provider(endpoint):
