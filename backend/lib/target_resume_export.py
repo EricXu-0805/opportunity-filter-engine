@@ -438,6 +438,11 @@ def docx_codepoints(paragraphs, assets, deadline=None) -> tuple[set[int], set[in
 
 
 LATIN = frozenset(filter(portable, range(0x20, 0x20AD)))
+# The start of the CT_Settings sequence (ECMA-376 Part 1, 17.15.1.78), through the font settings set here.
+SETTINGS_START = ('writeProtection', 'view', 'zoom', 'removePersonalInformation', 'removeDateAndTime',
+                  'doNotDisplayPageBoundaries', 'displayBackgroundShape', 'printPostScriptOverText',
+                  'printFractionalCharacterWidth', 'printFormsData', 'embedTrueTypeFonts', 'embedSystemFonts',
+                  'saveSubsetFonts')
 
 
 @lru_cache(maxsize=1)
@@ -534,7 +539,12 @@ def embed_docx_fonts(document, programs, deadline=None):
         node = settings.find(qn('w:' + tag))
         if node is None:
             node = OxmlElement('w:' + tag)
-            settings.append(node)
+            earlier = {qn('w:' + name) for name in SETTINGS_START[:SETTINGS_START.index(tag)]}
+            previous = [child for child in settings if child.tag in earlier]
+            if previous:
+                previous[-1].addnext(node)
+            else:
+                settings.insert(0, node)
         node.set(qn('w:val'), value)
 
 

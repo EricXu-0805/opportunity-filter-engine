@@ -363,6 +363,57 @@ def test_docx_settings_have_word_save_only_the_font_subsets_it_uses(text, embeds
     assert values == ([('embedTrueTypeFonts', 'true'), ('saveSubsetFonts', 'true')] if embeds else [])
 
 
+# CT_Settings children in schema order (ECMA-376 Part 1, 17.15.1.78; python-docx keeps the same list).
+# Word's settings extensions (w14:docId, w14:defaultImageDpi, ...) follow all of them.
+SETTINGS_ORDER = '''writeProtection view zoom removePersonalInformation removeDateAndTime doNotDisplayPageBoundaries
+    displayBackgroundShape printPostScriptOverText printFractionalCharacterWidth printFormsData embedTrueTypeFonts
+    embedSystemFonts saveSubsetFonts saveFormsData mirrorMargins alignBordersAndEdges bordersDoNotSurroundHeader
+    bordersDoNotSurroundFooter gutterAtTop hideSpellingErrors hideGrammaticalErrors activeWritingStyle proofState
+    formsDesign attachedTemplate linkStyles stylePaneFormatFilter stylePaneSortMethod documentType mailMerge
+    revisionView trackRevisions doNotTrackMoves doNotTrackFormatting documentProtection autoFormatOverride
+    styleLockTheme styleLockQFSet defaultTabStop autoHyphenation consecutiveHyphenLimit hyphenationZone
+    doNotHyphenateCaps showEnvelope summaryLength clickAndTypeStyle defaultTableStyle evenAndOddHeaders
+    bookFoldRevPrinting bookFoldPrinting bookFoldPrintingSheets drawingGridHorizontalSpacing drawingGridVerticalSpacing
+    displayHorizontalDrawingGridEvery displayVerticalDrawingGridEvery doNotUseMarginsForDrawingGridOrigin
+    drawingGridHorizontalOrigin drawingGridVerticalOrigin doNotShadeFormData noPunctuationKerning
+    characterSpacingControl printTwoOnOne strictFirstAndLastChars noLineBreaksAfter noLineBreaksBefore
+    savePreviewPicture doNotValidateAgainstSchema saveInvalidXml ignoreMixedContent alwaysShowPlaceholderText
+    doNotDemarcateInvalidXml saveXmlDataOnly useXSLTWhenSaving saveThroughXslt showXMLTags alwaysMergeEmptyNamespace
+    updateFields hdrShapeDefaults footnotePr endnotePr compat docVars rsids mathPr attachedSchema themeFontLang
+    clrSchemeMapping doNotIncludeSubdocsInStats doNotAutoCompressPictures forceUpgrade captions readModeInkLockDown
+    smartTagType schemaLibrary shapeDefaults doNotEmbedSmartTags decimalSymbol listSeparator'''.split()
+SETTINGS_NAMESPACES = (W, 'http://schemas.openxmlformats.org/officeDocument/2006/math',
+                       'http://schemas.openxmlformats.org/schemaLibrary/2006/main')
+
+
+@pytest.mark.parametrize('text', ['张三 Student', 'Jane Doe 😀'])
+def test_docx_font_settings_sit_where_the_settings_schema_puts_them(text):
+    # Both were appended after w14:defaultImageDpi, past the end of the schema sequence.
+    settings = etree.fromstring(zipfile.ZipFile(io.BytesIO(renderer.render_export(sample(text), 'docx'))).read('word/settings.xml'))
+    names = [etree.QName(node) for node in settings]
+    order = [SETTINGS_ORDER.index(name.localname) if name.namespace in SETTINGS_NAMESPACES else len(SETTINGS_ORDER)
+             for name in names]
+    assert order == sorted(order), [name.localname for name in names]
+    assert {'zoom', 'embedTrueTypeFonts', 'saveSubsetFonts', 'defaultImageDpi'} <= {name.localname for name in names}
+
+
+@pytest.mark.parametrize('remove,add,expected', [
+    ((), ('embedSystemFonts',), ['zoom', 'embedTrueTypeFonts', 'embedSystemFonts', 'saveSubsetFonts', 'proofState']),
+    (('zoom',), (), ['embedTrueTypeFonts', 'saveSubsetFonts', 'proofState']),
+])
+def test_docx_font_settings_go_between_the_settings_around_them(remove, add, expected):
+    from docx import Document
+    from docx.oxml import OxmlElement
+    document = Document()
+    settings = document.settings.element
+    for name in remove:
+        settings.remove(settings.find(f'{{{W}}}{name}'))
+    for name in add:
+        settings.find(f'{{{W}}}proofState').addprevious(OxmlElement(f'w:{name}'))
+    renderer.embed_docx_fonts(document, [])
+    assert [etree.QName(node).localname for node in settings][:len(expected)] == expected
+
+
 COMMON_HANZI = '的一是了我不人在他有这个上们来到时大地为子中你说生国年着就那和要她出也得里后自以会家可下而过天去能对小多然于心学么之都好看起发当没成只如事把还用第样道想作种开美总从无情己面最女但现前些所同日手又行意动方期它头经长儿回位分爱老因很给名法间斯知世什两次使身者被高已亲其进此话常与活正感'
 
 
