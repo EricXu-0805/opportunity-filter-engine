@@ -86,6 +86,8 @@ sys.path.insert(0, str(PROJECT_ROOT))
 ISOLATION_ENV = {
     "OFE_DISABLE_RATE_LIMIT": "1",
     "OPENROUTER_API_KEY": "",
+    "OPENAI_API_KEY": "",
+    "GEMINI_API_KEY": "",
     "SUPABASE_URL": "",
     "SUPABASE_SERVICE_ROLE_KEY": "",
     "OFE_MATERIAL_ARCHIVE_ENABLED": "0",
