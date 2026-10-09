@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 from bs4 import BeautifulSoup, Tag
+from bs4.dammit import EncodingDetector
 
 from src.collectors.import_document import (
     _CHECK_TITLE,
@@ -20,6 +21,7 @@ from src.collectors.import_document import (
     MAX_TAG_ATTRIBUTES,
     MAX_TEXT_CHARS,
     ImportDocumentError,
+    _declared_encoding,
     extract_import_document,
     parse_import_html,
 )
@@ -908,6 +910,27 @@ def test_the_timer_holds_the_collector_off_and_restores_it():
     assert gc.isenabled()
 
 
+# Markup that bs4's parse or decode, or a crawler's read of the parsed page,
+# took time quadratic in, each inside the parser's limits at the size given:
+# (in the head or the body, build(size), size). The crawlers' tests read a
+# configured page holding each one, timed against the same page holding a
+# quarter of it.
+CROWDED_MARKUP = [
+    pytest.param('body', lambda n: '<br>' * n + '</p>' * n, 29_000, id='void-then-end-tags'),
+    pytest.param('head', lambda n: '<meta http-equiv="Content-Type" content="' + '\n' * n + '">', 100_000,
+                 id='meta-content-line-breaks'),
+    pytest.param('body', lambda n: '<div>' * (n // 28) + '<b></b>x' * n, 14_000, id='text-runs-500-deep'),
+    pytest.param('head', lambda n: '<meta x' + 'charset=' * n + '>', 128_000, id='charset-run'),
+]
+
+
+def crawled_page(where, markup):
+    """A configured page for Jane Doe that captures one condition, with markup in its head or body."""
+    head, body = (markup, '') if where == 'head' else ('', markup)
+    return (f'<html><head><title>Jane Doe</title>{head}</head><body><main><h1>Jane Doe</h1>'
+            f'<h2>Summer research</h2><p>Applicants need a minimum GPA of 3.0.</p>{body}</main></body></html>')
+
+
 # The linear-time tests below pass whenever _growth answers under their bound,
 # so a _growth that could not see a quadratic read would pass them all.
 def test_growth_tells_a_quadratic_read_from_a_linear_one():
@@ -1151,6 +1174,82 @@ def test_bounded_parse_skips_bs4s_walk_up_through_open_tags(monkeypatch):
     walks.clear()
     parse_import_html(html)
     assert walks == []
+
+
+# Crawlers hand the parser a page's bytes, as they handed them to bs4, which
+# reads a byte-order mark, then the encoding the page declares, then one it
+# detects. The parser decodes them the same way and builds the same tree.
+@pytest.mark.parametrize(('html', 'encoding'), [
+    pytest.param('<head><meta charset="iso-8859-1"></head><p>Björn Müller</p>', 'iso-8859-1', id='meta-charset'),
+    pytest.param('<head><meta http-equiv="Content-Type" content="text/html; charset=windows-1252"></head>'
+                 '<p>“Quoted” café</p>', 'windows-1252', id='meta-content-type'),
+    pytest.param('<?xml version="1.0" encoding="iso-8859-2"?><p>Łódź lab</p>', 'iso-8859-2', id='xml-declaration'),
+    pytest.param('<head><meta charset="shift_jis"></head><p>研究室の募集</p>', 'shift_jis', id='shift-jis'),
+    pytest.param('<p>Björn, no charset named</p>', 'utf-8', id='undeclared-utf-8'),
+    pytest.param('<p>Björn, no charset named</p>', 'iso-8859-1', id='undeclared-latin-1'),
+    pytest.param('<p>Byte-order mark: Ünïcode</p>', 'utf-16', id='utf-16-bom'),
+    pytest.param('<p>Byte-order mark: Ünïcode</p>', 'utf-8-sig', id='utf-8-bom'),
+    pytest.param('<head><meta charset="utf-8"></head><p>café declared wrong</p>', 'iso-8859-1',
+                 id='declared-wrong'),
+    pytest.param('<head><meta charset="windows-1251"></head><p>Björn Müller café</p>', 'iso-8859-1',
+                 id='declared-over-detected'),
+])
+@pytest.mark.filterwarnings('ignore::bs4.XMLParsedAsHTMLWarning')
+def test_bounded_parse_decodes_bytes_as_bs4_does(html, encoding):
+    data = html.encode(encoding)
+    assert _tree(parse_import_html(data)) == _tree(BeautifulSoup(data, 'html.parser'))
+
+
+_DECLARATION_PIECES = [b'<meta', b'< meta', b'<META', b'<\tmeta', b'meta', b'charset', b'CHARSET', b'=', b' = ', b' ',
+                       b'\n', b'\x0b', b'"', b"'", b';', b'/', b'>', b'<', b'utf-8', b'latin-1', b'x',
+                       b'content="text/html; ', b'<?xml version="1.0" encoding="iso-8859-2"?>', b'<?xml encoding=""?>']
+
+
+# bs4 searches the first 1,024 bytes for an XML declaration and the first 5%
+# (at least 2,048) for a <meta> charset; the parser finds the same declaration,
+# including at the edge of that window.
+def test_declared_encoding_is_the_one_bs4_finds():
+    rng = random.Random(20261009)
+    found = 0
+    for _ in range(20_000):
+        head = b''.join(rng.choice(_DECLARATION_PIECES) for _ in range(rng.randint(0, 30)))
+        if rng.random() < 0.5:
+            size = rng.choice([2_100, 60_000])
+            edge = max(2048, int(size * 0.05)) - rng.randint(0, 40)
+            head = head.ljust(edge, b'q') + b''.join(rng.choice(_DECLARATION_PIECES) for _ in range(20))
+            head = head.ljust(size, b'z')
+        expected = EncodingDetector.find_declared_encoding(head, is_html=True)
+        found += expected is not None
+        assert _declared_encoding(head) == expected, head
+    assert found > 500
+
+
+# bs4 starts its <meta> charset search at every '<meta' in the first 5% of the
+# bytes and runs it on to the next '>', and tries every 'charset=' it passes on
+# the way to the end of a value: a page opening with 1 MB of '<meta ' took 0.65 s
+# to decode and 4 MB 10.4 s; 1 MB of 'charset=' after one '<meta' took 1.2 s and
+# 4 MB 18.3 s. The parser finds the declaration in one pass. Each opening fills
+# the 5% bs4 searches, and is closed inside it or after it.
+@pytest.mark.parametrize(('opening', 'closed', 'kept'), [
+    pytest.param(b'<meta ', True, 'Lab', id='meta-run-closed'),
+    pytest.param(b'<meta ', False, 'too_large', id='meta-run-unclosed'),
+    pytest.param(b'charset=', False, 'Lab', id='charset-run-unclosed'),
+])
+def test_a_long_charset_search_decodes_in_linear_time(opening, closed, kept):
+    def read(data):
+        try:
+            return parse_import_html(data).p.get_text()
+        except ImportDocumentError as error:
+            return error.reason
+
+    def build(size):
+        searched = int(size * 0.05)
+        run = opening * ((searched - 100 if closed else size) // len(opening))
+        return (b'<html><head><meta x' + run + b'><body><p>Lab</p>').ljust(size) + b'</body></html>'
+    small, large = build(256_000), build(1_024_000)
+    assert read(small) == read(large) == kept
+    growth = _growth(read, small, large)
+    assert growth < 8, f'four times the opening took {growth:.1f} times as long'
 
 
 # html.parser reads each '<' or '&' that opens nothing as a text piece of its
