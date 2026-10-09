@@ -490,7 +490,9 @@ const rpcs = {
     return { status: 200, body: token };
   },
 
-  // supabase/migrations/034 (redeem_merge_grant, the current body): the
+  // redeem_merge_grant as 034 wrote it; the current body is
+  // supabase/migrations/20260925052636, which only adds the auth.users lock
+  // and moves the renovation merge, neither modelled here. Mirrored: the
   // email/secret binding, idempotent replay, both tombstone guards, and the
   // per-table rules for the tables this stub holds. The whole body — including
   // the notes salvage and the tables not modelled here (orders, renovations,

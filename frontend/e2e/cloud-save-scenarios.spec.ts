@@ -153,8 +153,12 @@ async function requestLink(page: Page, email: string) {
 /** Opens the mailed link in this browser and waits for /auth/callback to land
  *  back on Home signed in. */
 async function openLinkAndLand(page: Page, link: string, email: string) {
-  await page.goto(link);
-  await expect(page).toHaveURL(/\/auth\/callback\?code=/);
+  // Checked on the navigation response, not the live address: once supabase-js
+  // has exchanged a magic link's code it strips ?code= with replaceState, and
+  // whether that happens before a URL assertion runs is a race.
+  const landing = await page.goto(link);
+  expect(landing?.request().redirectedFrom()?.url()).toContain('/auth/v1/verify');
+  expect(landing?.url()).toMatch(/\/auth\/callback\?code=/);
   await expect(page.getByRole('heading', { name: "You're saved.", exact: true })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText(`Signed in as ${email}`, { exact: true })).toBeVisible();
   const callback = page.locator('main');
@@ -299,6 +303,57 @@ test.describe('M19 cloud save scenarios', () => {
         await expect(page.locator(`a[href="/opportunities/${id}"]`).first()).toBeVisible({ timeout: 15_000 });
       }
       await page.screenshot({ path: info.outputPath('merged-favorites.png') });
+    } finally {
+      await http.dispose();
+    }
+  });
+
+  test('a guest who opens the sign-in link in a new tab keeps the account profile, and the old tab writes nothing over it', async ({ page, context }) => {
+    const http = await apiRequest.newContext();
+    const email = mailbox('newtab');
+    const guest = {
+      name: 'Guest in the first tab 王', college: 'Grainger College of Engineering', major: 'Computer Science',
+      grade: 'Freshman', research_interests: 'Guest draft typed before signing in 王',
+    };
+    try {
+      const account = await seedAccount(http, email);
+      await englishOnly(page);
+      const receipts = recordCas(page);
+      await page.goto('/');
+      await waitForForm(page);
+      await fillForm(page, guest);
+      await expect(page.locator('#profile-save-status')).toHaveText('Profile saved', { timeout: 15_000 });
+      const { modal } = await requestLink(page, email);
+      const existing = modal.getByTestId('auth-modal-signin-existing');
+      await expect(existing).toBeVisible();
+      await existing.click();
+      await expect(modal.getByText('Check your inbox', { exact: true })).toBeVisible();
+      await modal.getByRole('button', { name: 'Done', exact: true }).click();
+      const writesBeforeLink = receipts.length;
+
+      // The student opens the mail in another tab; Home stays open behind it.
+      const mailTab = await context.newPage();
+      await englishOnly(mailTab);
+      const mailReceipts = recordCas(mailTab);
+      const redeemed = mailTab.waitForResponse((response) => path(response.url()) === '/rest/v1/rpc/redeem_merge_grant');
+      await openLinkAndLand(mailTab, await latestLink(http, email, 'magiclink'), email);
+      expect(await (await redeemed).json()).toMatchObject({
+        merged: true, summary: { profile: 'kept_target_saved_other_as_version' },
+      });
+      await waitForForm(mailTab);
+      await expectForm(mailTab, ACCOUNT_PROFILE);
+
+      // Back in the first tab: it follows the sign-in and stops presenting the
+      // guest's profile as this account's.
+      await page.bringToFront();
+      await expect(accountMenu(page)).toHaveAttribute('aria-label', `Your account, signed in as ${email}`, { timeout: 15_000 });
+      await expect(page.locator('#student_name')).not.toHaveValue(guest.name);
+      await page.reload();
+      await waitForForm(page);
+      await expectForm(page, ACCOUNT_PROFILE);
+      expect(receipts.slice(writesBeforeLink), 'the old tab never writes the guest profile into the account').toEqual([]);
+      expect(mailReceipts).toEqual([]);
+      expect(await profileRows(http, account.uid)).toMatchObject([{ revision: 1, profile_data: ACCOUNT_PROFILE }]);
     } finally {
       await http.dispose();
     }
