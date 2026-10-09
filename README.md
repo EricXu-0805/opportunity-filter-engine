@@ -112,7 +112,7 @@ pip install -r requirements.txt
 uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
 
-The backend reads the committed corpus shards in `data/processed/shards/` directly. Startup parses all of them before `/api/health` answers: on 2026-10-09 that took 22 seconds and left the process at 1.4 GB RSS on an Apple-silicon Mac.
+The backend reads the committed corpus shards in `data/processed/shards/` directly, unless `data/processed/opportunities.json` exists. The Tests block below creates that file with `assemble`, and from then on the backend reads it instead of the shards; after pulling new shards, rerun `python scripts/shard_corpus.py assemble --force` or the backend keeps serving the older corpus. Startup parses the corpus before `/api/health` answers: on 2026-10-09 that took 22 seconds and left the process at 1.4 GB RSS on an Apple-silicon Mac.
 
 ### Frontend
 ```bash
@@ -161,7 +161,7 @@ bash supabase/tests/run_supabase_cli_migration_test.sh
 Notes:
 - `tests/conftest.py` forces every release flag on, except in the five modules that set `RELEASE_CONTRACT_TESTS = True`. `tests/test_release_scope.py` is the one that tests the shipped flag table.
 - To run E2E beside another checkout, move its servers with `E2E_PORT`, `E2E_BACKEND_PORT`, `E2E_RESEARCH_PROXY_PORT` and `E2E_SUPABASE_PORT` (defaults 3100, 8100, 8101, 54321). The CLI migration replay takes `OFE_SUPABASE_CLI_TEST_PORT` (default 55436).
-- `tests/test_docs_current.py` fails when this README, `RUNBOOK.md` or `docs/product_scope.md` names a file that does not exist, or when the scope doc's flag table disagrees with the code.
+- `tests/test_docs_current.py` fails when this README, `RUNBOOK.md` or `docs/product_scope.md` names a missing file in backticks, after `python` or `bash` in a command, or as a link or image target, or names a missing `python -m` module. It also fails when the scope doc's flag table disagrees with the code. It does not check the project tree below.
 
 ## Project Structure
 

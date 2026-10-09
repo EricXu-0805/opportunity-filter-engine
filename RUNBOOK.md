@@ -115,7 +115,8 @@ applies all 49 into an empty database in that order.
    timestamp later than every existing file. Never use a three-digit name: a
    `035_` sorts before all the timestamp files, so a fresh replay would run it
    before 13 migrations it may depend on. `tests/test_docs_current.py` fails on
-   any new name that is not a 14-digit timestamp.
+   any new name that is not a 14-digit timestamp later than `20260930220000`,
+   the newest version when the check was written.
 2. Never edit or rename a migration that production has run. Write a new one
    that supersedes it; the chain is forward-only (`docs/RELEASE.md`,
    "Migration recovery").
