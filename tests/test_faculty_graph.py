@@ -17,12 +17,14 @@ import re
 import pytest
 
 from src.collectors import faculty_graph as fg
+from src.collectors.import_document import parse_import_html
 from src.collectors.schools.umich_faculty import SCHOOL
 from src.collectors.ucb_common import _is_person_name
 from src.collectors.uiuc_faculty import _is_junk_keyword
 from src.evidence import FACULTY_MAJOR_LABELS_MARKER
 from src.normalizers.deactivate_stale_faculty import FACULTY_SOURCES
 from src.normalizers.school_audience import SOURCE_DEFAULTS
+from tests.test_import_document import _growth, crawled_page
 
 # --- Validator --------------------------------------------------------------
 
@@ -3522,3 +3524,43 @@ class TestResearchByLabel:
             "<h1>Ada Reyes</h1>"
             "<h3>Research Interests</h3><p>Education policy</p>"
         ) == ([], "Education policy")
+
+
+# The identity check read a profile's text without its nav, header and footer
+# by copying the whole page and decomposing them, twice per profile. bs4's copy
+# walks up through every open tag for each node it appends: 1.2 s of the 1.5 s
+# a profile 505 tags deep around 14,600 text runs took on 2026-10-09. Reading
+# the page's own strings, less those inside the chrome, reads the same text.
+def _page_text_by_copy(soup):
+    import copy
+    stripped = copy.copy(soup)
+    for element in stripped.select("nav, header, footer"):
+        element.decompose()
+    return re.sub(r"\s+", " ", stripped.get_text(" ", strip=True)).strip()
+
+
+_CHROME_PIECES = ["<nav>", "</nav>", "<header>", "</header>", "<footer>", "</footer>", "<NAV>", "<div>", "</div>",
+                  "<p>", "</p>", "<br>", "Jane", " Doe ", "Sign in", "\n", "<!-- note -->", "<script>x</script>",
+                  "<style>s</style>", "<template>t</template>", "<![CDATA[c]]>", "<ruby>R<rt>r</rt></ruby>"]
+
+
+def test_profile_text_without_chrome_reads_what_the_copy_read():
+    import random
+
+    from bs4 import BeautifulSoup
+
+    from src.collectors.ucb_common import _profile_page_text
+    rng = random.Random(20261009)
+    for _ in range(2_000):
+        html = "".join(rng.choice(_CHROME_PIECES) for _ in range(rng.randint(1, 60)))
+        for soup in (BeautifulSoup(html, "html.parser"), parse_import_html(html)):
+            assert _profile_page_text(soup) == _page_text_by_copy(soup), html
+
+
+def test_profile_text_without_chrome_is_read_in_linear_time():
+    from src.collectors.ucb_common import _profile_page_text
+    small, large = (parse_import_html(crawled_page("body", "<nav>" * (runs // 28) + "<b></b>x" * runs))
+                    for runs in (3_500, 14_000))
+    assert _profile_page_text(large) == _page_text_by_copy(large)
+    growth = _growth(_profile_page_text, small, large)
+    assert growth < 8, f"four times the page took {growth:.1f} times as long"

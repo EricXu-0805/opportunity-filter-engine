@@ -29,7 +29,6 @@ both by visiting each profile page. Records with no email found ship "lite"
 
 from __future__ import annotations
 
-import copy
 import hashlib
 import json
 import logging
@@ -174,13 +173,17 @@ def _profile_page_text(soup: object) -> str:
     if soup is None:
         return ""
     try:
-        stripped = copy.copy(soup)
-        for element in stripped.select(_CHROME_SELECTOR):
-            element.decompose()
-        body = stripped.get_text(" ", strip=True)
+        # The strings get_text reads, less those inside the chrome. This read
+        # a copy with the chrome decomposed, and bs4's copy walks up through
+        # every open tag for each node it appends: quadratic in a deep page.
+        chrome: set[int] = set()
+        for element in soup.select(_CHROME_SELECTOR):
+            if id(element) not in chrome:
+                chrome.update(map(id, element.descendants))
+        body = " ".join(text for string in soup.strings if id(string) not in chrome and (text := string.strip()))
     except Exception:  # noqa: BLE001
-        # A soup that cannot be copied or queried still gets read whole: losing
-        # the chrome is an improvement, not a precondition.
+        # A soup that cannot be queried still gets read whole: losing the
+        # chrome is an improvement, not a precondition.
         try:
             body = soup.get_text(" ", strip=True)
         except Exception:  # noqa: BLE001
