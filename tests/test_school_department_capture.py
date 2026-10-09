@@ -427,3 +427,32 @@ class TestCardProfileLinks:
     def test_utah_cards_link_their_profiles(self, short, fixture, expected):
         from src.collectors.schools import utah_faculty
         assert _card_urls(utah_faculty, short, fixture) == expected
+
+
+# --- JHU Biomedical Engineering: the roster pages 30 at a time ---------------
+
+class TestJhuBmePagination:
+    def test_every_page_of_the_roster_is_read(self, monkeypatch):
+        from bs4 import BeautifulSoup
+
+        from src.collectors.schools import jhu_faculty
+        pages = {
+            "https://www.bme.jhu.edu/people/faculty/": "jhu_bme_page1.html",
+            "https://www.bme.jhu.edu/people/faculty/?pg=2": "jhu_bme_page2.html",
+            "https://www.bme.jhu.edu/people/faculty/?pg=3": "jhu_bme_page3.html",
+        }
+        requested = []
+
+        def render(url, **_kw):
+            requested.append(url)
+            name = pages.get(url)
+            html = (FIXTURES / name).read_text() if name else "<html><body></body></html>"
+            return BeautifulSoup(html, "html.parser")
+
+        monkeypatch.setattr(fg, "_render_soup", render)
+        people = fg._scrape_directory(_dept(jhu_faculty, "WSE-BME"))
+        assert [p["name"] for p in people] == [
+            "Ada Example, MD, MSE, PhD", "Bo Sample, PhD",
+            "Cy Placeholder, PhD", "Di Testcase, PhD"]
+        # One empty page past the roster ends the walk.
+        assert requested == [*pages, "https://www.bme.jhu.edu/people/faculty/?pg=4"]

@@ -209,14 +209,22 @@ SCHOOL: dict = {
              "https://engineering.jhu.edu/mechanical-engineering/faculty/"),
         # Biomedical Engineering runs its own ``.zn-*`` theme on a more aggressively
         # Cloudflare-walled subdomain (bme.jhu.edu) — a longer render settle lets the
-        # challenge clear before the first card check.
+        # challenge clear before the first card check. The roster pages 30 cards
+        # at a time (``?pg=2``, ``?pg=3``: 30 + 30 + 6 on 2026-10-09); reading
+        # page 1 alone kept 19 professors after the ladder and joint-appointment
+        # de-dup. /faculty/ redirects to /people/faculty/, so the pager follows
+        # the canonical path. ``max`` 4 is three follow-up renders (the empty
+        # pg=4 ends the walk) and room for 120 cards. A follow-up that Cloudflare
+        # blocks is retried within the render budget, then counts as an empty
+        # page: its people are not re-observed that run.
         {
             "short": "WSE-BME", "name": "Department of Biomedical Engineering",
             "majors": ["Biomedical Engineering"],
-            "directory_url": "https://www.bme.jhu.edu/faculty/",
+            "directory_url": "https://www.bme.jhu.edu/people/faculty/",
             "scrape": {
-                "url": "https://www.bme.jhu.edu/faculty/",
+                "url": "https://www.bme.jhu.edu/people/faculty/",
                 "render": True, "render_settle": 8000,
+                "paginate": {"param": "pg", "start": 2, "max": 4},
                 "selectors": {
                     "card": ".zn-faculty-profile", "name": "a.zn-faculty-link",
                     "link": "a.zn-faculty-link", "title": ".zn-position",
