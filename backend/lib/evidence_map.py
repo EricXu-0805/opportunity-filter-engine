@@ -922,10 +922,15 @@ def _english_line(line: str, renamed: list[str]) -> bool:
     lines. "via" is Latin, and each of these languages writes it ("informes de Tableau via Zoom").
     Two-letter function words are words of other languages too: "on" and "a" in French, "an" and "in"
     in German. Verb forms are no evidence either: "Test", "Plan" and "Design" open German and Spanish
-    lines. Other function words are words of some of these languages: "for" and "mine" (Danish,
-    Norwegian), "was" and "also" (German), "was" and "had" (Dutch), "but" and "part" (French): a line
-    that holds two of them passes, a known limit. An English line without two such words is kept as
-    written, a lost suggestion ("Built a data pipeline in Python for 40 sensors." holds only "for").
+    lines. Other function words are words of some of these languages: "for" and "mine" or "have"
+    (Danish, Norwegian), "was" and "also" (German), "was" and "had" (Dutch), "but" and "part" (French): a
+    line that holds two of them passes, a known limit. So does a line that quotes an English title or
+    names an English organization ("Habitat for Humanity", "Save the Children"), switches into English
+    for a phrase, spells a native word in ASCII ("for" for Swedish "för" beside "just", "These" for
+    French "Thèse" beside "but"), or writes "part time" with a space or an en dash, which joins nothing.
+    tests/test_rewrite_display_paths_r6.py pins each of these shapes as a strict xfail. An English line
+    without two such words is kept as written, a lost suggestion ("Built a data pipeline in Python for
+    40 sensors." holds only "for").
     """
     outside = line
     for phrase in renamed:

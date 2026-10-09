@@ -197,6 +197,33 @@ def test_an_english_line_without_the_evidence_is_kept_as_written(opportunity, mo
     assert (shown, seen) == ([], set())
 
 
+# Round 6: the rest of the residual, the shapes the rule admits by construction. Each holds two
+# different English function words outside its renamed phrase, as an English title or organization
+# name, code-switched English, an ASCII spelling of a native word ("for" for Swedish "för", "These"
+# for French "Thèse") or a native loanword pair, or "part" split from "time" by a space or an en dash,
+# which is no joiner. Excluding any of them would take a word list; each is pinned as a strict xfail.
+RESIDUAL_ENGLISH_LINES = [  # (line, renamed, reason)
+    ("TFG «Deep Learning for the Analysis of Traffic»: informes de Tableau para 30 clientes.", ["informes de Tableau"],
+     "an English title quoted in a Spanish line holds 'for' and 'the'"),
+    ("Voluntariado en Habitat for Humanity y Save the Children: informes de Tableau para 30 clientes.",
+     ["informes de Tableau"], "English organization names in a Spanish line hold 'for' and 'the'"),
+    ("Masterarbeit am Max Planck Institute for the Science of Light: Python Skript fuer 40 Proben.", ["Python Skript"],
+     "an English institute name in a German line holds 'for' and 'the'"),
+    ("Membuat laporan Tableau untuk 30 klien dan meeting with client for review mingguan.", ["laporan Tableau"],
+     "code-switched English in an Indonesian line holds 'with' and 'for'"),
+    ("Just nu: utveckling av Tableau rapporter for 30 kunder.", ["Tableau rapporter"],
+     "Swedish 'just' and 'för' written in ASCII are English function words"),
+    ("These de master : pipeline de capteurs dans le but de reduire 40 % des pannes.", ["pipeline de capteurs"],
+     "French 'thèse' written in ASCII and 'but' are English function words"),
+    ("Deltidsjobb (part time) med Tableau rapporter for 30 kunder.", ["Tableau rapporter"],
+     "'part time' with a space is two words, and 'for' is Swedish written in ASCII"),
+    ("Deltidsjobb (part\u2013time) med Tableau rapporter for 30 kunder.", ["Tableau rapporter"],
+     "an en dash joins no word, so 'part' counts beside 'for'"),
+    ("Ansvarlig for at have overblik over Tableau rapporter til 30 kunder.", ["Tableau rapporter"],
+     "Danish 'for' and 'have' are English function words"),
+]
+
+
 @pytest.mark.parametrize(("line", "renamed", "english"), [
     ("Independently built a data pipeline for the lab.", ["data pipeline"], True),
     ("Wired the sensors for the senior project.", ["senior project"], True),
@@ -237,6 +264,13 @@ def test_an_english_line_without_the_evidence_is_kept_as_written(opportunity, mo
     ("Practicas en 清华大学: informes de Tableau para 30 clientes.", [], False),
     ("Proyecto de 4º curso: sistema de control para 40 sensores.", [], False),
     ("Research intern at 北京大学, built a pipeline for the lab.", [], True),
+    # Round 6: the hyphen-joined "part-time" is one word with each joiner the rule names (-, U+2010,
+    # U+2011); split, its "part" would be the second function word each of these lines needs.
+    ("Emploi part-time dans le but de créer des rapports Tableau pour 30 clients.", [], False),
+    ("Deltid (part-time): Tableau rapporter for 30 kunder.", [], False),
+    ("Udvikling af Tableau rapporter for 30 kunder (part-time).", [], False),
+    ("Deltid (part\u2010time): Tableau rapporter for 30 kunder.", [], False),
+    ("Deltid (part\u2011time): Tableau rapporter for 30 kunder.", [], False),
     # Residual: a line in another language that holds two of these words supplies the evidence.
     pytest.param("Was ist ein Datenbankschema, also die Struktur der Messwerte.", [], False,
                  marks=pytest.mark.xfail(strict=True, reason='German "was" and "also" are English function words')),
@@ -246,6 +280,8 @@ def test_an_english_line_without_the_evidence_is_kept_as_written(opportunity, mo
                  marks=pytest.mark.xfail(strict=True, reason='Dutch "was" and "had" are English function words')),
     pytest.param("Analyse des mesures à part, dans le but de suivre 40 parcelles.", [], False,
                  marks=pytest.mark.xfail(strict=True, reason='French "part" and "but" are English function words')),
+    *[pytest.param(line, renamed, False, marks=pytest.mark.xfail(strict=True, reason=reason))
+      for line, renamed, reason in RESIDUAL_ENGLISH_LINES],
 ])
 def test_a_line_shows_itself_english_only_with_two_function_words_outside_the_renamed_phrases(line, renamed, english):
     assert em._english_line(line, renamed) is english
@@ -373,3 +409,76 @@ def test_an_english_line_naming_a_chinese_institution_needs_the_same_evidence(
 ])
 def test_an_accented_relabel_needs_an_english_line_with_no_other_accented_word(source, target, line, kept):
     assert em._accents_kept(source, target, line) is kept
+
+
+# ------------------------------------------------------------------ criterion (3), round 6
+# The re-verification of 895ffb95 found no test of the hyphen-joined word: every part-time line above
+# also held "via", which no longer counts either. These lines hold "part-time" and one other function
+# word only; each is kept on every route, and shown when "part-time" is split into two words.
+HYPHEN_LINES = {  # name: (original, rewrite, (from, to), anchor)
+    "danish part-time, for": ("Udvikling af Tableau rapporter for 30 kunder (part-time).",
+                              "Udvikling af Tableau dashboards for 30 kunder (part-time).",
+                              ("Tableau rapporter", "Tableau dashboards"), "Build Tableau dashboards."),
+    "norwegian part-time, for": ("Deltid (part-time): Tableau rapporter for 30 kunder.",
+                                 "Deltid (part-time): Tableau dashboards for 30 kunder.",
+                                 ("Tableau rapporter", "Tableau dashboards"), "Build Tableau dashboards."),
+    "norwegian part‐time (U+2010), for": ("Deltid (part‐time): Tableau rapporter for 30 kunder.",
+                                              "Deltid (part‐time): Tableau dashboards for 30 kunder.",
+                                              ("Tableau rapporter", "Tableau dashboards"), "Build Tableau dashboards."),
+}
+# The residual the rule admits by construction (RESIDUAL_ENGLISH_LINES above), one line of each shape
+# on every route: each reaches the review and, with an accepting review, is shown.
+RESIDUAL_ROUTE_LINES = {
+    "english title": ("TFG «Deep Learning for the Analysis of Traffic»: informes de Tableau para 30 clientes.",
+                      "TFG «Deep Learning for the Analysis of Traffic»: Tableau reports para 30 clientes.",
+                      ("informes de Tableau", "Tableau reports"), "Build Tableau reports."),
+    "english organization names": ("Voluntariado en Habitat for Humanity y Save the Children: informes de Tableau para 30 clientes.",
+                                   "Voluntariado en Habitat for Humanity y Save the Children: Tableau reports para 30 clientes.",
+                                   ("informes de Tableau", "Tableau reports"), "Build Tableau reports."),
+    "indonesian code-switching": ("Membuat laporan Tableau untuk 30 klien dan meeting with client for review mingguan.",
+                                  "Membuat Tableau reports untuk 30 klien dan meeting with client for review mingguan.",
+                                  ("laporan Tableau", "Tableau reports"), "Build Tableau reports."),
+    "swedish just, for": ("Just nu: utveckling av Tableau rapporter for 30 kunder.",
+                          "Just nu: utveckling av Tableau dashboards for 30 kunder.",
+                          ("Tableau rapporter", "Tableau dashboards"), "Build Tableau dashboards."),
+    "french these, but": ("These de master : pipeline de capteurs dans le but de reduire 40 % des pannes.",
+                          "These de master : sensor pipeline dans le but de reduire 40 % des pannes.",
+                          ("pipeline de capteurs", "sensor pipeline"), "Maintain the sensor pipeline."),
+    "part time with a space": ("Deltidsjobb (part time) med Tableau rapporter for 30 kunder.",
+                               "Deltidsjobb (part time) med Tableau dashboards for 30 kunder.",
+                               ("Tableau rapporter", "Tableau dashboards"), "Build Tableau dashboards."),
+    "part–time with an en dash": ("Deltidsjobb (part–time) med Tableau rapporter for 30 kunder.",
+                                       "Deltidsjobb (part–time) med Tableau dashboards for 30 kunder.",
+                                       ("Tableau rapporter", "Tableau dashboards"), "Build Tableau dashboards."),
+    "danish for, have": ("Ansvarlig for at have overblik over Tableau rapporter til 30 kunder.",
+                         "Ansvarlig for at have overblik over Tableau dashboards til 30 kunder.",
+                         ("Tableau rapporter", "Tableau dashboards"), "Build Tableau dashboards."),
+}
+
+
+@pytest.mark.parametrize("path", ALL_PATHS)
+@pytest.mark.parametrize("name", list(HYPHEN_LINES))
+def test_a_foreign_line_whose_part_time_is_hyphen_joined_is_kept_as_written(opportunity, monkeypatch, path, name):  # noqa: F811
+    original, rewrite, (source, term), anchor = HYPHEN_LINES[name]
+    shown, seen = run(opportunity, monkeypatch, path, original, _relabel_row(rewrite, source, term), anchor)
+    assert (shown, seen) == ([], set())
+
+
+@pytest.mark.parametrize("name", list(HYPHEN_LINES))
+def test_the_contract_keeps_a_hyphen_joined_line_as_english_unproven(name):
+    original, rewrite, (source, term), anchor = HYPHEN_LINES[name]
+    anchors = {"t1": em.Anchor("t1", {"field": "description", "requirement_index": None, "start": 0,
+                                      "end": len(anchor), "quote": anchor})}
+    outcome = em.check_rewrite(em.Unit("b1", original, original), {"unit_id": "b1", **_relabel_row(rewrite, source, term)},
+                               anchors, output_language=em.language(original))
+    assert (outcome.status, outcome.code, outcome.detail) == ("kept", "beyond_allowed_edit", "english_unproven")
+
+
+@pytest.mark.parametrize("path", ALL_PATHS)
+@pytest.mark.parametrize("name", [pytest.param(name, marks=pytest.mark.xfail(
+    strict=True, reason="the line holds two English function words outside the renamed phrase"))
+    for name in RESIDUAL_ROUTE_LINES])
+def test_a_residual_shape_is_kept_as_written(opportunity, monkeypatch, path, name):  # noqa: F811
+    original, rewrite, (source, term), anchor = RESIDUAL_ROUTE_LINES[name]
+    shown, seen = run(opportunity, monkeypatch, path, original, _relabel_row(rewrite, source, term), anchor)
+    assert (shown, seen) == ([], set())
