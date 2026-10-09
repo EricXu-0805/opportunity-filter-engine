@@ -7,7 +7,7 @@ already holds says so.
 
 Round 4 moved extraction back to origin/main's and removed this file's extraction
 probes; their résumés are cases of tests/fixtures/extraction_differential_cases.json,
-which tests/test_extraction_matches_main.py runs against main.
+which scripts/extraction_differential.py runs against main.
 
 Run from the repository root:
     python -m pytest tests/test_rewrite_display_paths_r5.py -q

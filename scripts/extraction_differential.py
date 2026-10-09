@@ -22,20 +22,29 @@ under an empty heading with an unknown kind, beside an empty skills section and 
 longer than one chunk (8,000 characters) runs once with a rate limiter that grants every later
 dispatch and once with one that refuses it.
 
+HTTP. The route functions skip what each module's router does before them: this tree's router refuses
+a body with more commas than its route class allows (backend.lib.request_body), main's parses every
+body. So each résumé also goes, as JSON, through each module's own router in an app of its own (no
+provider, and the chunk's rows as the reply), with the status and body compared; so do résumés of
+50,001, 59,985 and 60,000 commas, of 60,000 brackets, and one of 60,001 characters, which both refuse.
+
 Both modules import the same backend.lib and backend.schemas modules, so the harness also checks that
 what the extraction code calls has the same source here as at the ref: backend/lib/resume_input.py and
 backend/lib/llm_budget.py whole, run_blocking and BlockingWorkTimeout in backend/lib/blocking.py, and the
 request and response classes in backend/schemas.py.
 
 Frontend. The browser reads a résumé into lines in frontend/src/lib/resume-input.ts and
-frontend/src/lib/pdf-parser.ts, and TailorModal.tsx prefills its editor with extractBulletLines. The
-harness checks that their source is the same as at the ref, that the renovation views read a section's
+frontend/src/lib/pdf-parser.ts; TailorModal.tsx prefills its editor with extractBulletLines and splits
+the editor into the lines it sends with parseBullets. The harness checks that their source is the same
+as at the ref, that the renovation views read a section's
 heading with the same expressions as at the ref (``section.heading || section.kind`` and the like, and
 no call such as a heading rewrite), and that frontend/src/lib/renovation-review.ts reads no résumé text. A same source is a same output, so these are compared as source, not run.
 
-Run from the repository root (needs the ref, e.g. after ``git fetch origin main``):
+A pull-request check, not a test: once the branch is merged, main compared with itself proves nothing,
+and a later change to extraction is meant to differ. Run from the repository root (needs the ref, e.g.
+after ``git fetch origin main``; --ref 6e7530d is the merge base the branch was measured against):
 
-    python scripts/extraction_differential.py [--ref origin/main] [--cases <fixture>] [--list]
+    python scripts/extraction_differential.py [--ref origin/main] [--cases <fixture>] [--list] [--no-http]
 
 Prints the counts and one line per difference (all with --list, else the first 20); exits 1 when any
 comparison differs. Provider-free and deterministic.
@@ -58,6 +67,9 @@ from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+
+from fastapi import FastAPI  # noqa: E402
+from fastapi.testclient import TestClient  # noqa: E402
 
 from backend.lib import llm_budget  # noqa: E402
 from backend.routes import tailor as branch_tailor  # noqa: E402
@@ -130,17 +142,19 @@ def dependency_differences(ref: str) -> list[str]:
 
 
 def _tailor_modal_reader(source: str) -> str:
-    """BULLET_PREFIX_RE and extractBulletLines as TailorModal.tsx declares them."""
+    """BULLET_PREFIX_RE, extractBulletLines and parseBullets as TailorModal.tsx declares them."""
     prefix = re.search(r"^const BULLET_PREFIX_RE = .*$", source, re.M)
-    start = source.index("function extractBulletLines(")
-    end = source.index("\n}\n", start) + 3
-    return (prefix.group(0) if prefix else "") + "\n" + source[start:end]
+    functions = []
+    for name in ("extractBulletLines", "parseBullets"):
+        start = source.index(f"function {name}(")
+        functions.append(source[start:source.index("\n}\n", start) + 3])
+    return "\n".join([prefix.group(0) if prefix else "", *functions])
 
 
 def frontend_differences(ref: str) -> list[str]:
     out = [f"{path}: source differs" for path in FRONTEND_SAME_FILES if (ROOT / path).read_text() != git_show(ref, path)]
     if _tailor_modal_reader((ROOT / TAILOR_MODAL).read_text()) != _tailor_modal_reader(git_show(ref, TAILOR_MODAL)):
-        out.append(f"{TAILOR_MODAL}: BULLET_PREFIX_RE or extractBulletLines differs")
+        out.append(f"{TAILOR_MODAL}: BULLET_PREFIX_RE, extractBulletLines or parseBullets differs")
     for path in HEADING_VIEWS:
         mine, theirs = Counter(_HEADING_READ.findall((ROOT / path).read_text())), Counter(_HEADING_READ.findall(git_show(ref, path)))
         out += [f"{path}: reads a heading as {expression} {count - theirs[expression]} more times than the ref"
@@ -297,8 +311,53 @@ async def compare(ref_module, cases: list[dict]) -> tuple[Counter, list[str]]:
     return counts, differences
 
 
-def run(ref: str = "origin/main", cases_path: Path = CASES) -> dict:
-    """Every count and difference, for the script and for tests/test_extraction_matches_main.py."""
+HTTP_RESUMES = {
+    "50,001 commas": "Built a robot, " + "," * 50_001,
+    "a line, then 59,985 commas": "Built a robot.\n" + "," * 59_985,
+    "60,000 commas": "," * 60_000,
+    "60,000 brackets": "[" * 60_000,
+    "60,001 characters": "Built a robot.\n" * 4_000 + "x",
+}
+
+
+def compare_http(ref_module, cases: list[dict]) -> tuple[Counter, list[str]]:
+    """Each résumé, as JSON, through each module's own router: no provider, then the chunk's rows."""
+    clients = {}
+    for name, module in (("ref", ref_module), ("here", branch_tailor)):
+        app = FastAPI()
+        app.include_router(module.router, prefix="/api")
+        clients[name] = TestClient(app)
+    texts = [(case["id"], case["resume"]) for case in cases] + list(HTTP_RESUMES.items())
+    counts: Counter = Counter()
+    differences: list[str] = []
+    for ident, text in texts:
+        for name, configured, reply in (("no provider", False, None), ("rows", True, provider("rows", {}))):
+            for route, body in (("extract-bullets", {"resume_text": text}),
+                                ("structure", {"resume_text": text, "locale": "en"})):
+                answers = []
+                for side in ("ref", "here"):
+                    module = ref_module if side == "ref" else branch_tailor
+                    module.is_configured = lambda configured=configured: configured
+                    module.model_for = lambda *args, **kwargs: {}
+                    module.chat_completion = reply or (lambda *args, **kwargs: None)
+                    response = clients[side].post(f"/api/tailor/{route}", content=json.dumps(body, ensure_ascii=False),
+                                                  headers={"content-type": "application/json"})
+                    payload = response.json()
+                    if isinstance(payload, dict):
+                        payload = {key: value for key, value in payload.items() if key not in SKIP_FIELDS}
+                    answers.append((response.status_code, payload))
+                counts["http comparisons"] += 1
+                counts[f"http {answers[0][0]}"] += 1
+                if answers[0] != answers[1]:
+                    counts["http differences"] += 1
+                    differences.append(f"HTTP {ident!r} {route} [{name}]: ref {answers[0][0]} "
+                                       f"{json.dumps(answers[0][1], ensure_ascii=False)[:200]} | here {answers[1][0]} "
+                                       f"{json.dumps(answers[1][1], ensure_ascii=False)[:200]}")
+    return counts, differences
+
+
+def run(ref: str = "origin/main", cases_path: Path = CASES, http: bool = True) -> dict:
+    """Every count and difference."""
     cases = json.loads(cases_path.read_text())["cases"]
     ref_module = load_ref_tailor(ref)
     saved = {name: getattr(branch_tailor, name) for name in ("is_configured", "model_for", "chat_completion")}
@@ -306,6 +365,10 @@ def run(ref: str = "origin/main", cases_path: Path = CASES) -> dict:
     logging.disable(logging.CRITICAL)
     try:
         counts, differences = asyncio.run(compare(ref_module, cases))
+        if http:
+            http_counts, http_differences = compare_http(ref_module, cases)
+            counts.update(http_counts)
+            differences += http_differences
     finally:
         for name, value in saved.items():
             setattr(branch_tailor, name, value)
@@ -320,21 +383,27 @@ def main() -> int:
     parser.add_argument("--ref", default="origin/main", help="the git ref whose extraction is the standard")
     parser.add_argument("--cases", default=str(CASES), help="the fixture of résumés")
     parser.add_argument("--list", action="store_true", help="print every difference")
+    parser.add_argument("--no-http", action="store_true", help="skip the pass through each module's router")
     args = parser.parse_args()
-    result = run(args.ref, Path(args.cases))
+    result = run(args.ref, Path(args.cases), http=not args.no_http)
     counts = result["counts"]
     print(f"ref {args.ref} ({git_show_rev(args.ref)}): {counts['cases']} résumés "
           f"({', '.join(f'{group} {n}' for group, n in sorted(result['groups'].items()))})")
     print(f"backend comparisons: {counts['comparisons']} (extract {counts['extract comparisons']}, "
           f"structure {counts['structure comparisons']}; {counts['comparisons returning lines']} return lines); "
           f"differences: {counts['differences']}")
+    if counts["http comparisons"]:
+        statuses = ", ".join(f"{key.split()[1]} {value}" for key, value in sorted(counts.items())
+                             if key.startswith("http ") and key.split()[1].isdigit())
+        print(f"HTTP comparisons through each module's router: {counts['http comparisons']} (main's status: {statuses}); "
+              f"differences: {counts['http differences']}")
     print(f"shared backend modules that differ from the ref: {len(result['dependencies'])}")
     print(f"frontend résumé readers and heading views that differ from the ref: {len(result['frontend'])}")
     for line in (result["differences"] if args.list else result["differences"][:20]):
         print(f"  DIFF {line}")
     for line in result["dependencies"] + result["frontend"]:
         print(f"  DIFF {line}")
-    return 1 if counts["differences"] or result["dependencies"] or result["frontend"] else 0
+    return 1 if counts["differences"] or counts["http differences"] or result["dependencies"] or result["frontend"] else 0
 
 
 def git_show_rev(ref: str) -> str:
