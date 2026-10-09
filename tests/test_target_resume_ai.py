@@ -807,8 +807,8 @@ def test_bounded_claim_locks_reject_negation_role_and_publication_upgrades(origi
 
 
 @pytest.mark.parametrize(("original", "proposed", "ops"), [
-    ("Our team built a Python parser. I reviewed the documentation.",
-     "I reviewed the documentation. Our team built a Python parser.", [{"op": "personal_first"}]),
+    ("Our team built a Python parser for the lab. I reviewed the documentation.",
+     "I reviewed the documentation. Our team built a Python parser for the lab.", [{"op": "personal_first"}]),
     ("团队开发了工具。本人负责审阅文档。", "本人负责审阅文档。团队开发了工具。", [{"op": "personal_first"}]),
     ("The project was submitted for review, not accepted.", "The project was submitted for review, not accepted.",
      [{"op": "verb_first"}]),

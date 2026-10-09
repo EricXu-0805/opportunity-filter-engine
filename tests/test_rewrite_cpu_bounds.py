@@ -192,8 +192,8 @@ async def _heartbeat(send):
 
 ROUTE_SHAPES = {
     **CAP_SHAPES,
-    "repeated claims": (_repeat_to("led y. ", 5999), "Responsible for leading y. " + _repeat_to("led y. ", 470),
-                        "Led y. " + _repeat_to("led y. ", 470)),
+    "repeated claims": (_repeat_to("led y. ", 5999), "Responsible for leading the y. " + _repeat_to("led y. ", 470),
+                        "Led the y. " + _repeat_to("led y. ", 470)),
 }
 # What each request comes back with once its checks have run: kept by a lock, or shown after the review.
 ROUTE_OUTCOMES = {"denials": "rewrite_rejected", "space run": None, "developed with my team": "rewrite_rejected",
@@ -223,9 +223,9 @@ def test_the_event_loop_answers_while_tailor_checks_a_request_at_the_cap(endpoin
 
 def test_the_event_loop_answers_while_full_target_checks_a_line_at_the_cap(full_target_endpoint, monkeypatch):  # noqa: F811
     _, doc, _, _ = full_target_endpoint
-    lead = "Responsible for leading y. "
+    lead = "Responsible for leading the y. "  # "for" and "the": round 4's default keep lets the locks read it
     original = lead + _repeat_to("led y. not led z. ", CAP - len(lead))
-    rewrite = "Led y. " + original[len(lead):]
+    rewrite = "Led the y. " + original[len(lead):]
     doc["base_snapshot"]["experience_entries"][0].update(text=original, source={"kind": "manual"})
     line = doc["document"]["sections"][1]["blocks"][0]["lines"][1]
     line.update(original=original, text=original)

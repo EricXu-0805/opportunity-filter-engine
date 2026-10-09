@@ -285,6 +285,13 @@ def rejection_warnings(path, body) -> list[str]:
     return [w for w in body["warnings"] if "rejected_fabrication" in w]
 
 
+def english_unproven(original: str, renamed=()) -> bool:
+    """Round 4's default keep: a Latin-script line without two English function words of three letters
+    outside the renamed phrases (evidence_map._english_line) is kept as written before the review, a
+    lost suggestion under the owner's reading (2b)."""
+    return not em._non_latin_frame(original) and not em._english_line(original, list(renamed))
+
+
 def gate_findings(original, rewrite) -> list[str]:
     """What the evidence map's lock gate refuses: ungrounded tokens and hard claim findings."""
     return [*em.grounding_findings(rewrite, original), *em.rewrite_findings(rewrite, original, [])]
@@ -779,7 +786,10 @@ def test_personal_first_keeps_the_students_part_a_clause_of_its_own(original, re
     unit = em.Unit("u1", original, original)
     row = {"unit_id": "u1", "decision": "rewrite", "text": rewrite, "ops": [{"op": "personal_first"}]}
     outcome = em.check_rewrite(unit, row, {}, output_language=em.language(original))
-    assert (outcome.status, outcome.detail) == (("kept", "personal_first_joined") if kept else ("pending", None))
+    expected = ("kept", "personal_first_joined") if kept else ("pending", None)
+    if not kept and english_unproven(original):
+        expected = ("kept", "english_unproven")  # round 4's default keep: no two function words of three letters
+    assert (outcome.status, outcome.detail) == expected
 
 
 # Chinese-framed lines whose English words outnumber their Chinese characters: language() reads them
@@ -840,6 +850,15 @@ LAB_PLATFORM = {"id": "L1", "anchor": "t1", "term": "负责搭建实验平台", 
 def test_a_role_heading_names_no_other_doer(endpoint, monkeypatch, pair):
     """Each route shows the rewrite after one review, as main showed it without one."""
     assert gate_findings(*pair) == []
+    if english_unproven(pair[0]):
+        # The locks pass, but the line holds no two English function words of three letters: every route
+        # keeps it as written before the review (round 4's default keep), a lost suggestion.
+        for path in PATHS:
+            body, reviews = run(endpoint, monkeypatch, path, [pair], _review_all(True))
+            assert (outcomes(path, body), len(reviews)) == ([(None, "beyond_allowed_edit")], 0), path
+        receipt, reviews = _full_target(monkeypatch, *pair)
+        assert (receipt["status"], receipt["reason_code"], len(reviews)) == ("unchanged", "beyond_allowed_edit", 0)
+        return
     for path in PATHS:
         body, reviews = run(endpoint, monkeypatch, path, [pair], _review_all(True))
         assert (outcomes(path, body), len(reviews)) == ([(pair[1], None)], 1), path
@@ -1307,15 +1326,16 @@ def _repeat_to(unit, size):
     return text.rsplit(" ", 1)[0]
 
 
-# (evidence of up to 6,000 characters, a bullet of up to 500, the bullet's verb_first rewrite)
+# (evidence of up to 6,000 characters, a bullet of up to 500, the bullet's verb_first rewrite). Each bullet
+# holds "for" and "the", so round 4's default keep lets the locks read it.
 CAP_SHAPES = {
-    "denials": (_repeat_to("led y. never led z. ", 5999), "Responsible for leading y. " + _repeat_to("led y. ", 470),
-                "Led y. " + _repeat_to("led y. ", 470)),
+    "denials": (_repeat_to("led y. never led z. ", 5999), "Responsible for leading the y. " + _repeat_to("led y. ", 470),
+                "Led the y. " + _repeat_to("led y. ", 470)),
     "space run": ("Built a" + " " * 5950 + "website for the lab and tested it.",
                   "Responsible for building a website for the lab.", "Built a website for the lab."),
     "developed with my team": (_repeat_to("developed ", 3000) + " " + _repeat_to("with my team ", 2990),
-                               "Responsible for developing " + _repeat_to("developed ", 460),
-                               "Developed " + _repeat_to("developed ", 460)),
+                               "Responsible for developing the " + _repeat_to("developed ", 456),
+                               "Developed the " + _repeat_to("developed ", 456)),
 }
 
 
@@ -1409,8 +1429,9 @@ class TestAStatusBindsToTheNounItStandsBefore:
     _status_target bound "ongoing" to the object of the rewrite's first verb ("3 wetlands") rather
     than to the noun it stands before ("survey of 40 sites"), so the claim locks said qualifier_moved.
     """
-    ORIGINAL = "Ongoing survey of 40 sites, including 3 wetlands."
-    REWRITE = "Included 3 wetlands in an ongoing survey of 40 sites."
+    # "for" and "the": the English evidence round 4's default keep asks of the line.
+    ORIGINAL = "Ongoing survey of 40 sites for the county, including 3 wetlands."
+    REWRITE = "Included 3 wetlands in an ongoing survey of 40 sites for the county."
     DESCRIPTION = "Field ecology lab: undergraduates survey 3 wetlands each summer."
     LINK = {"id": "L1", "anchor": "t1", "term": "3 wetlands", "source": "3 wetlands", "relation": "same"}
 

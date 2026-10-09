@@ -74,12 +74,18 @@ _FAITHFUL_CHURN = {"cap_tr4 ', reaching' declared tighten", "cap_tr4 'Served as'
 _PENDING_TRAPS = {"ZH relabel drops 近"}
 
 
+def _reaches_review(case: dict) -> bool:
+    """Whether the fixture expects the case to reach the review, read without round 4's default keep
+    (expected_without_default_keep), so that rule moves no case between faithful and trap."""
+    return case.get("expected_without_default_keep", case["expected"])[0] == "pending"
+
+
 def _faithful_texts() -> set[tuple[str, str]]:
     """Pairs some fixture holds as faithful: a map that refuses one of them refuses a declaration, not the text."""
     texts = {(case["original"], case["rewrite"]) for case in CORPUS["faithful"]}
     texts |= {(case["original"], case["rewrite"]) for case in CASES
               if case["group"] in _FAITHFUL_GROUPS or case["label"] in _FAITHFUL_CHURN
-              or case["expected"][0] == "pending" and case["label"] not in _PENDING_TRAPS}
+              or _reaches_review(case) and case["label"] not in _PENDING_TRAPS}
     return texts
 
 
@@ -90,7 +96,7 @@ def case_traps() -> list[dict]:
             continue
         if (case["original"], case["rewrite"]) in faithful:
             continue
-        if case["expected"][0] == "pending" and case["label"] not in _PENDING_TRAPS:
+        if _reaches_review(case) and case["label"] not in _PENDING_TRAPS:
             continue
         if em.language(case["original"]) != em.language(case["rewrite"]):
             continue

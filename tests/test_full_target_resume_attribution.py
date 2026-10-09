@@ -196,7 +196,13 @@ def test_supported_roles_fragments_and_number_formats_stay_usable(endpoint, orig
     assert row["before_text"] == original and result["method"] == "ai"
 
 
-@pytest.mark.parametrize("original,proposed,locale", [(*GOOD[1].values, "en"), (*GOOD[8].values, "zh")])
+# GOOD[1] (TEAM) holds no two English function words of three letters, so round 4's default keep keeps it as
+# written; this English line holds "for" and "the".
+TEAM_FOR_THE_LAB = ("My team built a Python parser for the lab. I wrote parser tests.",
+                    "I wrote parser tests. My team built a Python parser for the lab.")
+
+
+@pytest.mark.parametrize("original,proposed,locale", [(*TEAM_FOR_THE_LAB, "en"), (*GOOD[8].values, "zh")])
 def test_an_own_part_first_reorder_is_reviewed_and_suggested(endpoint, original, proposed, locale):
     """The output language follows the UI locale, so the Chinese reorder is asked for in Chinese."""
     endpoint.locale = locale
@@ -265,9 +271,9 @@ def test_different_target_texts_never_supply_personal_achievements(endpoint, tar
 
 
 def test_protected_fact_rewrite_is_rejected_while_valid_experience_survives(endpoint):
-    doc = _document([TEAM], endpoint.opportunity)
+    doc = _document([TEAM_FOR_THE_LAB[0]], endpoint.opportunity)
     result, rows = _receipts(endpoint.submit(doc, {"title-0": "Invented supervisor title",
-                                                  "exp-0": "I wrote parser tests. My team built a Python parser."},
+                                                  "exp-0": TEAM_FOR_THE_LAB[1]},
                                                   include_facts=True), endpoint, doc)
     assert rows["title-0"]["status"] == "skipped" and rows["title-0"]["reason_code"] == "invalid_model_response"
     assert rows["title-0"]["suggestion"] is None and rows["title-0"]["before_text"] == "Research project 0"

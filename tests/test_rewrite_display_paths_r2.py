@@ -105,8 +105,9 @@ def test_a_reorder_that_keeps_a_non_cjk_line_in_its_own_words_still_goes_to_the_
 # ------------------------------------------------------------------ criterion (1): fallbacks
 # Every failure mode of the review falls back to the submitted line on every route.
 
-ONE = ("Responsible for writing Python scripts for data cleaning.",
-       _rewrite("Wrote Python code for data cleaning.",
+# The line holds "for" and "the", the English evidence the default keep asks for (round 4).
+ONE = ("Responsible for writing Python scripts for data cleaning in the lab.",
+       _rewrite("Wrote Python code for data cleaning in the lab.",
                 [{"op": "relabel", "link": "L1", "from": "Python scripts", "to": "Python code"}, {"op": "verb_first"}],
                 [{"id": "L1", "anchor": "t1", "term": "Python code", "source": "Python scripts", "relation": "same"}]))
 ONE_ANCHOR = "Experience writing Python code is required."
@@ -286,13 +287,13 @@ def test_other_language_rewrites_are_kept_before_the_review(opportunity, monkeyp
 
 def test_each_rewrite_needs_its_own_accepted_verdict(opportunity, monkeypatch):  # noqa: F811
     """Two rewrites, the reviewer accepts only the second: the first stays as written."""
-    two = [ONE, ("Responsible for writing Python scripts for plotting.",
-                 _rewrite("Wrote Python code for plotting.",
+    two = [ONE, ("Responsible for writing Python scripts for plotting the data.",
+                 _rewrite("Wrote Python code for plotting the data.",
                           [{"op": "relabel", "link": "L1", "from": "Python scripts", "to": "Python code"},
                            {"op": "verb_first"}],
                           [{"id": "L1", "anchor": "t1", "term": "Python code", "source": "Python scripts",
                             "relation": "same"}]))]
     body, reviews = post_tailor(opportunity, monkeypatch, "/api/tailor", two,
-                                review_by(lambda pair: pair["rewrite"] == "Wrote Python code for plotting."),
+                                review_by(lambda pair: pair["rewrite"] == "Wrote Python code for plotting the data."),
                                 anchors=[ONE_ANCHOR])
     assert [bool(texts) for texts in offered("/api/tailor", body)] == [False, True]

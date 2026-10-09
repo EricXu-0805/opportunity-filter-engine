@@ -163,6 +163,12 @@ def test_other_project_technology_and_number_cannot_be_transferred(endpoint, mon
 def test_local_evidence_and_truthful_reordering_still_work(endpoint, monkeypatch, path, original, proposed):
     result, calls = write(endpoint, monkeypatch, path, original, proposed)
     assert result["warnings"] == []
+    if review_tests.english_unproven(original):
+        # No two English function words of three letters: kept as written before the review (round 4's
+        # default keep), a lost suggestion under (2b).
+        assert not any(messages[0]["content"].startswith("FAITHFULNESS REVIEW") for messages in calls)
+        assert_rejected(path, result, original)
+        return
     # Changed text is shown only after the faithfulness review, even when no rule objects.
     assert any(messages[0]["content"].startswith("FAITHFULNESS REVIEW") for messages in calls)
     if path.endswith("/renovate"):

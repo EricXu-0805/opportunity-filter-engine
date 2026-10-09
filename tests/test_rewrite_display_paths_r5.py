@@ -31,9 +31,11 @@ from tests.test_rewrite_display_paths import (
 # 4bbdcb6 kept every relabel that leaves an accented word out of "to", so the relabel of an English
 # line's loanword or name ("café inventory" -> "coffee shop inventory", "Müller group" -> "Mueller
 # group") was kept before the review; a3f0424 reviewed and showed it, and main shows it. (A bare
-# "Müller" -> "Mueller" shares no word, so its link is "broader" and every version keeps it.)
+# "Müller" -> "Mueller" shares no word, so its link is "broader" and every version keeps it.) Each line
+# holds two English function words of three letters, which the default keep asks for (round 4).
 ENGLISH_RELABELS = {
-    "loanword": ("Tracked café inventory in Excel for 12 weeks.", "Tracked coffee shop inventory in Excel for 12 weeks.",
+    "loanword": ("Tracked café inventory in Excel for 12 weeks with the dining staff.",
+                 "Tracked coffee shop inventory in Excel for 12 weeks with the dining staff.",
                  "café inventory", "coffee shop inventory", "We track coffee shop inventory for campus dining."),
     "name": ("Co-wrote a sleep study protocol with the Müller group.",
              "Co-wrote a sleep study protocol with the Mueller group.", "Müller group", "Mueller group",

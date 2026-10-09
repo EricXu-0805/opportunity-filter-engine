@@ -95,7 +95,9 @@ FAITHFUL_TEST_INLINE = [
 ]
 # evidence_map_cases.json carries no faithful label: a case its fixture expects to reach the
 # review ("pending") is faithful unless named here, plus the kept cases named here whose
-# rewrite says nothing its original does not.
+# rewrite says nothing its original does not. A case that round 4's default keep keeps
+# (english_unproven) is labelled by its outcome without it (expected_without_default_keep),
+# so the rule moves no case between the labels.
 CASE_TRAPS_THAT_PASS = {"ZH relabel drops 近"}
 CASE_FAITHFUL_KEPT = {
     "cap_tr4 ', reaching' declared tighten", "cap_tr4 drop I declared tighten", "cap_tr4 'Served as' declared verb_first",
@@ -143,7 +145,7 @@ def collect_pairs():
     for case in json.loads(CASES.read_text())["cases"]:
         if case["label"] in CASE_TRAPS_THAT_PASS:
             label = "trap"
-        elif case["expected"][0] == "pending" or case["label"] in CASE_FAITHFUL_KEPT:
+        elif case.get("expected_without_default_keep", case["expected"])[0] == "pending" or case["label"] in CASE_FAITHFUL_KEPT:
             label = "faithful"
         elif case["group"] in CASE_TRAP_GROUPS:
             label = "trap"

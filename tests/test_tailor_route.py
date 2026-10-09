@@ -660,8 +660,9 @@ class TestSourceBullets:
     rewrite is refused. The sources of one request are capped as a whole,
     like the 12 x 500 characters of the bullets themselves.
     """
-    SOURCE = "Cleaned 212 survey responses in R and built 3 charts."
-    CURRENT = "Built 3 charts and cleaned 212 survey responses in R."
+    # "for" and "the": the English evidence round 4's default keep asks of the bullet.
+    SOURCE = "Cleaned 212 survey responses in R and built 3 charts for the lab."
+    CURRENT = "Built 3 charts for the lab and cleaned 212 survey responses in R."
     OTHER = "Tutored 30 students in CS 124."
 
     @staticmethod
@@ -698,7 +699,7 @@ class TestSourceBullets:
         anchor = evidence_map.Anchor("t1", {"field": "description", "requirement_index": None, "start": 0,
                                             "end": 31, "quote": "Cleaned survey responses with R"})
         monkeypatch.setattr(tailor_module, "_snapshot_anchors", lambda source, snapshot: [anchor])
-        rewrite = "Cleaned 212 survey responses in R and built 3 charts."
+        rewrite = "Cleaned 212 survey responses in R and built 3 charts for the lab."
         captured, reviewed = {}, []
 
         def fake_chat(messages, **kwargs):

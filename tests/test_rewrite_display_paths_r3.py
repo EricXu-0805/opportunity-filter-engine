@@ -69,12 +69,13 @@ def test_a_complete_list_in_pair_order_still_shows_the_accepted_rewrite(opportun
 
 # ------------------------------------------------------------------ criterion (2b): symbols are English
 # 33fc0db's rules kept faithful rewrites of English lines holding a Greek letter, the micro sign or an
-# accented Latin letter as wrong_language, before the review; main sends them to the review.
+# accented Latin letter as wrong_language, before the review; main sends them to the review. Each line
+# holds two English function words of three letters, which the default keep asks for (round 4).
 SYMBOL_LINES = {
-    "beta-amyloid": ("Research assistant in the Lee Lab, measuring β-amyloid levels in 40 mouse brains.",
-                     "Measured β-amyloid levels in 40 mouse brains as a research assistant in the Lee Lab."),
-    "micro-sign": ("Research assistant in the Lee Lab, imaging 5 \u00b5m sections of 40 mouse brains.",
-                   "Imaged 5 \u00b5m sections of 40 mouse brains as a research assistant in the Lee Lab."),
+    "beta-amyloid": ("Research assistant in the Lee Lab, measuring β-amyloid levels in 40 mouse brains for a study.",
+                     "Measured β-amyloid levels in 40 mouse brains for a study as a research assistant in the Lee Lab."),
+    "micro-sign": ("Research assistant in the Lee Lab, imaging 5 \u00b5m sections of 40 mouse brains for a study.",
+                   "Imaged 5 \u00b5m sections of 40 mouse brains for a study as a research assistant in the Lee Lab."),
     "alpha-symbol": ("Research assistant in the Lee Lab, measuring α and β waves in 40 EEG recordings.",
                      "Measured α and β waves in 40 EEG recordings as a research assistant in the Lee Lab."),
 }

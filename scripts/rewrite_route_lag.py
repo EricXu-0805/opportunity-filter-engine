@@ -67,7 +67,9 @@ OPPORTUNITY = {
 PROFILE = {"name": "Sample Student", "school": "UIUC", "year": "sophomore", "major": "Psychology",
            "hard_skills": [{"name": "R", "level": "experienced"}], "coursework": ["PSYC 238"],
            "research_interests_text": "human factors"}
-OPENER, ZH_OPENER = "Responsible for building ", "负责"
+# "for" and "the": the English evidence round 4's default keep asks of a Latin-script line, so the
+# claim locks still read every English case (without it the contract keeps the line before them).
+OPENER, ZH_OPENER = "Responsible for building the ", "负责"
 
 
 def fit(unit: str, size: int) -> str:
@@ -84,7 +86,7 @@ def bullet(unit: str, size: int) -> str:
 
 def verb_first(text: str) -> str:
     if text.startswith(OPENER):
-        return "Built " + text[len(OPENER):]
+        return "Built the " + text[len(OPENER):]
     if text.startswith(ZH_OPENER):
         return text[len(ZH_OPENER):]
     return text

@@ -53,9 +53,10 @@ SWAPPED_ROW = _rewrite(SWAPPED_REWRITE, [
     {"id": "L1", "anchor": "t1", "term": "Python code", "source": "Python scripts", "relation": "same"},
     {"id": "L2", "anchor": "t1", "term": "Python code", "source": "Python notebooks", "relation": "same"}])
 
-# One relabel plus verb_first: the plainest alternative, still never sent to the review.
-PLAIN_ORIGINAL = "Responsible for writing Python scripts for data cleaning."
-PLAIN_REWRITE = "Wrote Python code for data cleaning."
+# One relabel plus verb_first: the plainest alternative, still never sent to the review. The line holds
+# "for" and "the", the English evidence the default keep asks of a Latin-script line (round 4).
+PLAIN_ORIGINAL = "Responsible for writing Python scripts for data cleaning in the lab."
+PLAIN_REWRITE = "Wrote Python code for data cleaning in the lab."
 PLAIN_ROW = _rewrite(PLAIN_REWRITE, [{"op": "relabel", "link": "L1", "from": "Python scripts", "to": "Python code"},
                                      {"op": "verb_first"}],
                      [{"id": "L1", "anchor": "t1", "term": "Python code", "source": "Python scripts", "relation": "same"}])
@@ -244,7 +245,7 @@ def test_the_version_without_the_terms_never_swaps_the_students_words(opportunit
     assert SWAPPED_ALTERNATIVE not in shown
 
 
-PLAIN_ALTERNATIVE = "Wrote Python scripts for data cleaning."
+PLAIN_ALTERNATIVE = "Wrote Python scripts for data cleaning in the lab."
 
 
 @pytest.mark.parametrize("path", ALL_PATHS)

@@ -514,12 +514,12 @@ class TestContract:
 
     def test_a_row_may_leave_out_the_fields_its_decision_makes_null(self):
         anchors = anchors_for(["Python"])
-        unit = em.Unit("b1", "Wrote parser tests using Python.", "Wrote parser tests using Python.")
+        unit = em.Unit("b1", "Wrote parser tests for the lab using Python.", "Wrote parser tests for the lab using Python.")
         keep = {"unit_id": "b1", "decision": "keep"}
         assert em.check_rewrite(unit, keep, anchors, output_language="en").code == "no_link"
         rewrite = {"unit_id": "b1", "decision": "rewrite", "ops": [{"op": "lead_with", "link": "L1"}],
                    "links": [{"id": "L1", "anchor": "t1", "term": "Python", "source": "Python", "relation": "same"}],
-                   "text": "Using Python, wrote parser tests."}
+                   "text": "Using Python, wrote parser tests for the lab."}
         assert em.check_rewrite(unit, rewrite, anchors, output_language="en").status == "pending"
 
     def test_an_unchanged_rewrite_is_a_keep(self):
@@ -681,12 +681,12 @@ class TestTrapsTheContractKeeps:
          "At the 2025 undergraduate symposium, presented a poster on sleep and memory.",
          [{"op": "lead_with", "link": "L1"}], [("L1", "t2", "2025 undergraduate symposium", "2025 undergraduate symposium")]),
         # A number that keeps its word moves with it.
-        ("Cleaned survey data in R and analyzed 120 EEG recordings in MATLAB.",
-         "Analyzed 120 EEG recordings in MATLAB and cleaned survey data in R.",
+        ("Cleaned the survey data in R and analyzed 120 EEG recordings in MATLAB.",
+         "Analyzed 120 EEG recordings in MATLAB and cleaned the survey data in R.",
          [{"op": "lead_with", "link": "L1"}], [("L1", "t2", "120 EEG recordings", "analyzed 120 EEG recordings")]),
         # One relabel that renames a thing keeps every lock word over the line.
-        ("Analyzed about 120 EEG recordings from a pilot study in MATLAB.",
-         "Analyzed about 120 EEG data from a pilot study in MATLAB.",
+        ("Analyzed about 120 EEG recordings from the pilot study in MATLAB.",
+         "Analyzed about 120 EEG data from the pilot study in MATLAB.",
          [{"op": "relabel", "link": "L1", "from": "EEG recordings", "to": "EEG data"}],
          [("L1", "t2", "EEG data", "EEG recordings")]),
     ], ids=["fronted-year", "number-with-its-word", "relabel-keeps-locks"])
@@ -754,22 +754,23 @@ class TestLettersTheTokensCannotRead:
     # Round-3 re-measure (criterion 2b): 33fc0db's rules kept these faithful English rewrites as
     # wrong_language. A Greek letter used as a symbol, the micro sign and an accented Latin letter are
     # English words' letters, not another language; the rewrites go on to the locks and the review.
+    # Each line holds two English function words of three letters (round 4's default keep).
     @pytest.mark.parametrize(("original", "rewrite", "ops", "links"), [
-        ("Research assistant in the Lee Lab, measuring β-amyloid levels in 40 mouse brains.",
-         "Measured β-amyloid levels in 40 mouse brains as a research assistant in the Lee Lab.",
+        ("Research assistant in the Lee Lab, measuring β-amyloid levels in 40 mouse brains for a study.",
+         "Measured β-amyloid levels in 40 mouse brains for a study as a research assistant in the Lee Lab.",
          [{"op": "verb_first"}], []),
-        ("Research assistant in the Lee Lab, measuring TNF-α levels in 40 mouse brains.",
-         "Measured TNF-α levels in 40 mouse brains as a research assistant in the Lee Lab.",
+        ("Research assistant in the Lee Lab, measuring TNF-α levels in 40 mouse brains for a study.",
+         "Measured TNF-α levels in 40 mouse brains for a study as a research assistant in the Lee Lab.",
          [{"op": "verb_first"}], []),
         ("Research assistant in the Lee Lab, measuring α and β waves in 40 EEG recordings.",
          "Measured α and β waves in 40 EEG recordings as a research assistant in the Lee Lab.",
          [{"op": "verb_first"}], []),
         # The micro sign, kept, and written as the Greek mu it stands for.
-        ("Research assistant in the Lee Lab, imaging 5 \u00b5m sections of 40 mouse brains.",
-         "Imaged 5 \u00b5m sections of 40 mouse brains as a research assistant in the Lee Lab.",
+        ("Research assistant in the Lee Lab, imaging 5 \u00b5m sections of 40 mouse brains for a study.",
+         "Imaged 5 \u00b5m sections of 40 mouse brains for a study as a research assistant in the Lee Lab.",
          [{"op": "verb_first"}], []),
-        ("Research assistant in the Lee Lab, imaging 5 \u00b5m sections of 40 mouse brains.",
-         "Imaged 5 \u03bcm sections of 40 mouse brains as a research assistant in the Lee Lab.",
+        ("Research assistant in the Lee Lab, imaging 5 \u00b5m sections of 40 mouse brains for a study.",
+         "Imaged 5 \u03bcm sections of 40 mouse brains for a study as a research assistant in the Lee Lab.",
          [{"op": "verb_first"}], []),
         # A relabel to the posting's unaccented term: "résumé" holds a repeated accented letter.
         ("Built a résumé parser in Python for the career center.",
@@ -822,18 +823,24 @@ class TestSupport:
     ORIGINAL = "My team built a Python parser; I wrote parser tests."
     SUPPORT = "I ran 12 parser test cases."
 
-    def check(self, text, support=True, ops=("personal_first",)):
-        unit = em.Unit("b1", self.ORIGINAL, self.ORIGINAL, support=(("b2", self.SUPPORT),) if support else ())
+    def check(self, text, support=True, ops=("personal_first",), original=None):
+        original = original or self.ORIGINAL
+        unit = em.Unit("b1", original, original, support=(("b2", self.SUPPORT),) if support else ())
         row = {"unit_id": "b1", "links": [], "decision": "rewrite", "ops": [{"op": op} for op in ops],
                "text": text, "keep_reason": None}
         outcome = em.check_rewrite(unit, row, {}, output_language="en")
         return em.gate(outcome, unit) if outcome.status == "pending" else outcome
 
     def test_a_confirmed_clause_may_join_an_allowed_move_and_counts_toward_the_length(self):
-        merged = "I wrote parser tests and ran 12 parser test cases; my team built a Python parser."
-        assert len(merged) > 1.25 * len(self.ORIGINAL) + 12
-        assert self.check(merged).status == "pending"
-        assert self.check(merged, support=False).detail.startswith("added:")
+        # ORIGINAL holds no two English function words of three letters, so round 4's default keep keeps
+        # its merge; a line that holds them ("for", "the") is merged as before.
+        original = "My team built a Python parser for the lab; I wrote parser tests."
+        merged = "I wrote parser tests and ran 12 parser test cases; my team built a Python parser for the lab."
+        assert len(merged) > 1.25 * len(original) + 12
+        assert self.check(merged, original=original).status == "pending"
+        assert self.check(merged, support=False, original=original).detail.startswith("added:")
+        assert self.check("I wrote parser tests and ran 12 parser test cases; my team built a Python parser.").detail == (
+            "english_unproven")
 
     def test_a_merge_still_needs_an_allowed_move(self):
         merged = "My team built a Python parser; I wrote parser tests. I ran 12 parser test cases."
