@@ -246,6 +246,17 @@ export function weakWrapEvidence(before: string, after: string, periodItem: bool
   return ends && PARTICLE.test(before) && !ARTICLE.test(after);
 }
 
+/** A line under the text of a glyph item that reads as the rest of the
+ *  item, not a row of its own that hangs there too: not a label, a title
+ *  and its description, or a role or award row, and, where the text has
+ *  capitals, with a lowercase word that does not join the words of a name
+ *  ("Foundation Hospital and wrote up the results", not "Fall 2023 - Spring
+ *  2025", "GPA 3.9/4.0" or "Advisor Prof. Jane Doe"). */
+export function hangingRest(before: string, after: string): boolean {
+  if (ROW.test(after) || roleRow(after)) return false;
+  return CJK.test(Array.from(after)[0]) || CJK.test(Array.from(before).pop()!) || SENTENCE_WORD.test(after);
+}
+
 /** Whether glyph items end with a full stop, judged by the lines right before
  *  a glyph line: the end of the previous item, unless it is a heading or a
  *  row (a column gap, a title and its description, or a year with no full

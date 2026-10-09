@@ -129,6 +129,11 @@ async function openDraft(page: Page, surface: Surface, editor: Editor): Promise<
   await page.goto(surface === 'Detail' ? `/opportunities/${TARGET}` : '/results?tab=all');
   const entry = surface === 'Detail' ? page : page.locator(`#match-card-${TARGET}`);
   const actionName = editor === 'email' ? (surface === 'Results' ? 'Draft Email' : 'Draft email') : 'Renovate Resume';
+  // Results paints the card before the page's owner is ready (that waits on
+  // its favorites read). Until then "Draft Email" is enabled but Results drops
+  // the click without opening anything; the same card's Renovate Resume is
+  // disabled for exactly that state, so wait for it before clicking either.
+  if (surface === 'Results') await expect(entry.getByRole('button', { name: 'Renovate Resume', exact: true })).toBeEnabled();
   await entry.getByRole('button', { name: actionName, exact: true }).click();
   if (editor === 'email') {
     const fields = page.getByTestId('cold-email-editor-fields');
@@ -211,6 +216,14 @@ async function verifyAbsentAfterExit(page: Page, surface: Surface, owner: Owner)
     await expect(page.getByRole('button', { name: 'Draft email', exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Renovate Resume', exact: true })).toHaveCount(0);
   }
+  // Leave that page before arming the read below: it can still have its own
+  // profile read in flight (Results has client-redirected to a home page that
+  // reads on mount). Answering after the waiter is armed but before `/`
+  // commits, that read would be taken as the fresh page's, and its body is
+  // gone once its document is replaced (getResponseBody: "No resource with
+  // given identifier found"). Replacing the document first cancels it, so the
+  // only profile read left to answer is the fresh home page's own.
+  await page.goto('/robots.txt');
   const read = page.waitForResponse(response => profileRead(response.url()) && response.status() === 200);
   await page.goto('/');
   expect(await (await read).json()).toEqual([]);

@@ -299,10 +299,12 @@ def test_manual_dispatch_cannot_displace_scheduled_refresh():
         "scheduled and manual runs must not share a pending concurrency slot")
     assert wf["concurrency"]["cancel-in-progress"] is False
     steps = wf["jobs"]["refresh"]["steps"]
-    guard = next((s for s in steps if "Defer manual runs" in (s.get("name") or "")),
+    guard = next((s for s in steps if "overlapping" in (s.get("name") or "")),
                  None)
-    assert guard is not None, "manual runs need a mutual-exclusion guard"
-    assert guard["if"] == "github.event_name == 'workflow_dispatch'"
+    assert guard is not None, "refresh runs need a mutual-exclusion guard"
+    # Both events: a manual run defers, and a scheduled one cancels a manual
+    # run in progress (tests/test_refresh_rotation.py runs both).
+    assert "if" not in guard
     # The guard must run before anything mutates or costs a checkout.
     assert steps.index(guard) == 0
 

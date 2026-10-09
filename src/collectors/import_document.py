@@ -49,6 +49,9 @@ _UNRENDERED = (Comment, Declaration, Doctype, ProcessingInstruction)
 _SPACE_RUN = re.compile(r'\s+')
 _SURROGATE = re.compile('[\ud800-\udfff]')
 _SENTENCE_BREAK = re.compile(r'(?<=[.!?])\s+|(?<=[;。！？；])\s*')
+# The markers _render_text writes before a list item's text (an <ol> counts down to
+# negative numbers when reversed).
+_LIST_MARKER = re.compile(r'(?:-|-?\d+\.) ')
 # A tag's name and the attributes after it, as html.parser's locatetagend reads them.
 _TAG_NAME = re.compile(r'[a-zA-Z][^\t\n\r\f />]*[\t\n\r\f /]*')
 _TAG_ATTRIBUTE = re.compile(
@@ -77,33 +80,49 @@ _ACCESS_SHELL = re.compile(
 # Each line is matched atomically. A run of "loading" words splits into lines
 # many ways, and retrying every split took exponential time on page text.
 _LOADING_SHELL = re.compile(
-    r'^(?>(?:loading(?:(?: [\w-]+){1,3}(?:\.+|…|,))?|please wait|'
+    r'^(?>(?:loading(?:(?: [\w-]+){1,3}(?:\.+|…|,))?|please wait(?: a (?:moment|second|few seconds))?|'
     r'(?:this|it) (?:may|might|can|could) take (?:a few|several|a couple of) (?:seconds|moments))[.…!,]*\s*)+$',
     re.I,
 )
-# Titles an ordinary page can carry too: a sign-in page, a courtesy line, or a
-# stock check name a real posting may have as its title. They are a wall only
-# when nothing else on the page is readable.
-_GATE_TITLE = re.compile(
-    r'^(?:sign[ -]?in|log[ -]?in)(?:[.!…]+|\s*[-|:–—].*)?$|'
-    r'^(?:one moment,? please|(?:human|bot) verification|checking your browser)[.!…]*$', re.I,
+# Blocked titles an ordinary page can carry too (_BLOCKED_PAGE_TITLE). A
+# sign-in title is a wall only when nothing else on the page is readable.
+_SIGN_IN_TITLE = re.compile(r'^(?:sign[ -]?in|log[ -]?in)(?:[.!…]*\s*[-|:–—].*|[.!…]+)?$', re.I)
+# A courtesy line, a stock check name, and the long check heading when the
+# words after it name no site ("... before continuing to the application form")
+# are check titles a real posting can carry. Each is one bot-check signal
+# among the others (see _CHALLENGE_TEXT). The long heading with nothing, an
+# address or "the website" after it is DDoS-Guard's or Cloudflare's, and it
+# refuses the page outright.
+_CHECK_TITLE = re.compile(
+    r'^(?:(?:one moment,? please|(?:human|bot) verification|checking your browser)[.!…]*|'
+    r'checking your browser before (?:accessing|continuing|proceeding)\b'
+    r'(?!(?: (?:to )?(?:[\w-]+(?:\.[\w-]+)+|(?:the|this) (?:web)?site))?[.!…]*$).*)$',
+    re.I,
 )
 _GATE_TEXT = re.compile(
     r'\b(?:sign[ -]?in|log[ -]?in|password|username|verify you are human|checking your browser|'
     r'cookies?|copyright|privacy policy|terms of (?:use|service)|all rights reserved)\b', re.I,
 )
 # A site can answer our server's address with a bot check while the same URL
-# opens normally for the student. Checks print these sentences and load these
-# scripts and frames, but an ordinary page can carry them too, so they refuse
-# only a page with nothing else to read.
+# opens normally for the student. Checks print these sentences and footer
+# lines and load these scripts and frames, but an ordinary page can carry them
+# too, so each is one bot-check signal, weighed in read_import_document. Words
+# may be split by any whitespace: PerimeterX breaks its sentence with <br>.
 _CHALLENGE_TEXT = re.compile(
-    r'\b(?:(?:your|the|this) (?:request|browser|connection) is being (?:verified|checked)|'
-    r'verif(?:y|ying) (?:that )?you(?: are|\'re|’re) (?:a )?(?:human|not a (?:ro)?bot)|'
-    r'confirm you are (?:a )?human|making sure you(?: are|\'re|’re) not a (?:ro)?bot|'
-    r'checking (?:your browser|if the site connection is secure)|'
-    r'needs to review the security of your connection|performing security verification|'
-    r'(?:incapsula|imperva) incident|'
-    r'protected by anubis|ddos protection by|enable js and disable any ad ?blocker)\b',
+    r'\b(?:(?:your|the|this)\s+(?:request|browser|connection)\s+is\s+being\s+(?:verified|checked)|'
+    r'(?:verif(?:y|ying|ies)|checking|confirm(?:ing)?|making\s+sure)\s+(?:that\s+)?you(?:\s+are|\'re|’re)\s+'
+    r'(?:a\s+)?(?:human|not\s+a\s+(?:ro)?bot)|'
+    r'checking\s+(?:your\s+browser|if\s+the\s+site\s+connection\s+is\s+secure)|'
+    r'needs\s+to\s+review\s+the\s+security\s+of\s+your\s+connection|performing\s+security\s+verification|'
+    r'(?:incapsula|imperva)\s+incident|'
+    r'protected\s+by\s+anubis|ddos\s+protection\s+by|enable\s+js\s+and\s+disable\s+any\s+ad\s?blocker|'
+    # Cloudflare's older check and captcha pages, its block page and its 2025 check.
+    r'this\s+process\s+is\s+automatic|your\s+browser\s+will\s+redirect\s+to\s+your\s+requested\s+content|'
+    r'please\s+allow\s+up\s+to\s+\d+\s+seconds|complete\s+the\s+security\s+check|proves\s+you\s+are\s+(?:a\s+)?human|'
+    r'(?:uses|is\s+using)\s+a\s+security\s+service\s+to\s+protect|you\s+have\s+been\s+blocked|'
+    # Footer lines: Cloudflare's Ray ID and credit, PerimeterX's reference id.
+    r'ray\s+id:?\s*[0-9a-f]{16}|performance\s+(?:&|and)\s+security\s+by\s+cloudflare|'
+    r'reference\s+id:?\s*[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})\b',
     re.I,
 )
 # Cloudflare's challenge-platform script is left out: Cloudflare adds it to
@@ -478,24 +497,65 @@ def _clean_text(text: str) -> str:
     return '\n'.join(re.sub(r' *\t *', '\t', line) for line in lines if line)
 
 
-def _has_independent_source(root: Tag, *, forms: bool = False) -> bool:
-    """A login form can coexist with source prose; do not reject that page.
+def _one_line(check: re.Match) -> str:
+    return check.group().replace('\n', ' ')
+
+
+def _lines(root: Tag, *, forms: bool) -> list[str]:
+    """The lines of root's text that the wall rules weigh, chrome left out.
 
     A login form's own text is not source. The bot-check rules count text
     inside forms (``forms``): ASP.NET and SharePoint wrap the whole page,
-    posting included, in one form.
+    posting included, in one form. Only a bot-check sentence (_CHALLENGE_TEXT)
+    is read across lines: PerimeterX breaks its sentence over two with <br>,
+    and both halves are the check.
     """
-    for line in _render_text(root, _CHROME if forms else _CHROME_AND_FORMS).splitlines():
-        # Login instructions can share a paragraph with a real deadline. Assess
-        # sentences separately; a gate phrase must not discard adjacent facts.
+    return _CHALLENGE_TEXT.sub(_one_line, _render_text(root, _CHROME if forms else _CHROME_AND_FORMS)).splitlines()
+
+
+def _discounted(sentence: str) -> bool:
+    """A sentence a wall prints: a blocked title, a sign-in, script, bot-check or loading line."""
+    return bool(_BLOCKED_PAGE_TITLE.fullmatch(sentence) or _JS_WALL.search(sentence) or _GATE_TEXT.search(sentence)
+                or _CHALLENGE_TEXT.search(sentence) or _LOADING_SHELL.fullmatch(sentence))
+
+
+def _has_independent_source(lines: list[str]) -> bool:
+    """A login form can coexist with source prose; do not reject that page.
+
+    Login instructions can share a paragraph with a real deadline, so each
+    sentence of the page's lines (_lines) is weighed alone; a gate phrase must
+    not discard adjacent facts.
+    """
+    for line in lines:
         for sentence in _SENTENCE_BREAK.split(line):
             # Letters are counted first, in C and stopping at 12, so a page of
             # short sentences is not matched against every rule.
-            if len(list(islice(filter(str.isalpha, sentence), 12))) < 12:
-                continue
-            if (_BLOCKED_PAGE_TITLE.fullmatch(sentence) or _JS_WALL.search(sentence) or _GATE_TEXT.search(sentence)
-                    or _CHALLENGE_TEXT.search(sentence) or _LOADING_SHELL.fullmatch(sentence)):
-                continue
+            if len(list(islice(filter(str.isalpha, sentence), 12))) == 12 and not _discounted(sentence):
+                return True
+    return False
+
+
+def _shows_what_a_check_does_not(text: str) -> bool:
+    return any(any(map(str.isalnum, sentence)) and not _discounted(sentence)
+               for sentence in _SENTENCE_BREAK.split(text))
+
+
+def _shows_a_list_or_table(lines: list[str]) -> bool:
+    """Whether the page's lines (_lines) hold a list item, or a table row of
+    two cells or more, that a bot check does not print.
+
+    A sparse posting's list items and table cells are too short to be
+    independent source, and a check prints neither. Any other short line, such
+    as the site's name, an IP address, a countdown or an error code, is what a
+    check prints beside its sentence, so it is not weighed; nor are headings,
+    buttons, check sentences, loading lines and footer ids.
+    """
+    for line in lines:
+        if '\t' in line:
+            # A layout table puts the site's logo cell beside one line of text.
+            if sum(map(_shows_what_a_check_does_not, line.split('\t'))) >= 2:
+                return True
+        elif (marker := _LIST_MARKER.match(line)) and _shows_what_a_check_does_not(line[marker.end():]):
             return True
     return False
 
@@ -563,24 +623,40 @@ def read_import_document(html: str, *, content_type: str | None = None) -> tuple
         if soup.title is not None:
             titles.append(soup.title.get_text(' ', strip=True))
         blocked = [value for value in titles if _BLOCKED_PAGE_TITLE.fullmatch(value)]
+        sign_in = [value for value in blocked if _SIGN_IN_TITLE.fullmatch(value)]
+        check_title = [value for value in blocked if _CHECK_TITLE.fullmatch(value)]
         # Denial/challenge titles and challenge markup are not job content. A
-        # sign-in or courtesy title, a password form or a visible challenge box
-        # is only a wall when no independent source remains.
-        if any(not _GATE_TITLE.fullmatch(value) for value in blocked) or _is_challenge_page(soup):
+        # sign-in title, a password form or a visible challenge box is only a
+        # wall when no independent source remains; a check title a posting can
+        # carry is weighed with the other check signals below.
+        if len(sign_in) + len(check_title) < len(blocked) or _is_challenge_page(soup):
             raise ImportDocumentError('access_page')
+        lines: dict[bool, list[str]] = {}
         independent: dict[bool, bool] = {}
+
+        def page_lines(forms: bool) -> list[str]:
+            if forms not in lines:
+                lines[forms] = _lines(root, forms=forms)
+            return lines[forms]
 
         def has_independent_source(*, forms: bool = False) -> bool:
             if forms not in independent:
-                independent[forms] = _has_independent_source(root, forms=forms)
+                independent[forms] = _has_independent_source(page_lines(forms))
             return independent[forms]
 
-        if (blocked or gate_box) and not has_independent_source():
+        if (sign_in or gate_box) and not has_independent_source():
             raise ImportDocumentError('access_page')
         text = _render_text(root)
+        # Bot-check signals: a check title, check scripts or frames, and each
+        # check sentence or footer line, two at most. On a page with no
+        # independent source two refuse it, and one does unless the page shows
+        # a sparse posting's list or table. A lone short line beside a check,
+        # such as the site's name, is not a list.
+        signals = (bool(check_title) + _has_challenge_machinery(soup)
+                   + len(list(islice(_CHALLENGE_TEXT.finditer(text), 2))))
         if _ACCESS_SHELL.fullmatch(text) or (
-                (_has_challenge_machinery(soup) or _CHALLENGE_TEXT.search(text))
-                and not has_independent_source(forms=True)):
+                signals and not has_independent_source(forms=True)
+                and (signals > 1 or not _shows_a_list_or_table(page_lines(True)))):
             raise ImportDocumentError('access_page')
         # Scripts in the head fill a page as surely as scripts in its body.
         if soup.find('script') is not None and _LOADING_SHELL.fullmatch(text):

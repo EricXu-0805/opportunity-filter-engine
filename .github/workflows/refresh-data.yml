@@ -82,31 +82,81 @@ jobs:
     timeout-minutes: 350
     permissions:
       contents: write
+      # The overlap guard below cancels a manual run a scheduled one overtakes.
+      actions: write
 
     steps:
       # Corpus mutual exclusion, now that scheduled and manual runs no longer
       # share a concurrency group. Two refreshes must never mutate the corpus
-      # at once — the merge step closes any other open auto/refresh-data-* PR
-      # as superseded, so an overlap does not merely race, it destroys the
+      # at once — the merge step closes older runs' open auto/refresh-data-*
+      # PRs as superseded, so an overlap does not merely race, it destroys the
       # other run's scrape (2026-09-10: ~3h of day-6 scraping lost this way).
       #
-      # Production wins. A manual recovery dispatch defers; the scheduled
-      # refresh never yields to one. Deliberately checked BEFORE checkout so a
-      # deferral costs seconds, not a runner.
-      - name: Defer manual runs while a refresh is already running
-        if: github.event_name == 'workflow_dispatch'
+      # Production wins. A manual recovery dispatch defers to any refresh in
+      # progress; a scheduled refresh cancels a manual one and waits for it to
+      # stop. Only manual runs used to check, so on 2026-10-02 a cron that fired
+      # 5.5 h late ran for two hours beside a manual dispatch of the same
+      # shard. The decision is overlap_decision() in scripts/refresh_rotation.py,
+      # read through the API at this run's commit: the step runs BEFORE the
+      # checkout, so a deferral costs seconds, not the checkout's minute.
+      - name: Keep refresh runs from overlapping
         env:
           GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          RUN_ID: ${{ github.run_id }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
         run: |
-          set -euo pipefail
-          BUSY=$(gh api \
-            "repos/${{ github.repository }}/actions/workflows/refresh-data.yml/runs?status=in_progress&per_page=100" \
-            --jq "[.workflow_runs[] | select(.id != ${{ github.run_id }})] | length")
-          if [ "${BUSY:-0}" -gt 0 ]; then
-            echo "::error::A refresh run is already in progress ($BUSY). This manual dispatch is deferring rather than racing the corpus — re-dispatch once it finishes."
+          set -uo pipefail
+          GUARD="$RUNNER_TEMP/refresh_rotation.py"
+          RUNS="$RUNNER_TEMP/refresh-runs-in-progress.json"
+          # Without an answer, production proceeds and a manual run defers,
+          # as overlap_decision() does when the runs cannot be listed.
+          undecided() {
+            if [ "$EVENT" = schedule ]; then
+              echo "::warning::$1 The scheduled refresh proceeds."
+              exit 0
+            fi
+            echo "::error::$1 This manual dispatch defers; re-dispatch it."
             exit 1
+          }
+          gh api -H "Accept: application/vnd.github.raw+json" \
+            "repos/$REPO/contents/scripts/refresh_rotation.py?ref=$SHA" > "$GUARD" \
+            || undecided "Could not read scripts/refresh_rotation.py at $SHA."
+          # An empty file tells the guard the listing failed.
+          gh api "repos/$REPO/actions/workflows/refresh-data.yml/runs?status=in_progress&per_page=100" \
+            > "$RUNS" || : > "$RUNS"
+          DECISION=$(python3 "$GUARD" --overlap --event "$EVENT" --run-id "$RUN_ID" --runs "$RUNS") \
+            || undecided "The overlap guard failed."
+          read -r ACTION CANCEL <<< "$DECISION"
+          case "$ACTION" in
+            proceed) exit 0 ;;
+            defer) exit 1 ;;
+            cancel) ;;
+            *) undecided "The overlap guard answered '$DECISION'." ;;
+          esac
+          for ID in $CANCEL; do
+            gh api -X POST "repos/$REPO/actions/runs/$ID/cancel" > /dev/null \
+              || echo "::warning::Could not ask GitHub to cancel run $ID."
+          done
+          # A cancelled run still runs its alert step; wait until GitHub
+          # reports it completed, for up to 5 minutes.
+          WAITING="$CANCEL"
+          for _ in $(seq 1 30); do
+            STILL=""
+            for ID in $WAITING; do
+              STATUS=$(gh api "repos/$REPO/actions/runs/$ID" --jq .status) || STATUS=unknown
+              [ "$STATUS" = completed ] || STILL="$STILL $ID"
+            done
+            WAITING="$STILL"
+            [ -z "$WAITING" ] && break
+            sleep 10
+          done
+          if [ -n "$WAITING" ]; then
+            echo "::warning::Run(s)$WAITING still running after 5 minutes; the scheduled refresh proceeds."
+          else
+            echo "Cancelled run(s) $CANCEL stopped; proceeding."
           fi
-          echo "no other refresh in progress; proceeding"
 
       - uses: actions/checkout@v6
         with:
@@ -300,9 +350,11 @@ jobs:
           # An earlier run's PR can linger open when main moved between its
           # checks going green and its merge (how #637 sat stuck for days,
           # blocking the pipeline). This scrape supersedes its data either way:
-          # close leftovers before opening a fresh PR.
+          # close leftovers before opening a fresh PR. Only older runs' — a
+          # newer run's PR holds a newer scrape, and it used to be closed too.
           STALE=$(gh pr list --state open --json number,headRefName \
-            --jq '.[] | select(.headRefName | startswith("auto/refresh-data-")) | .number' || true)
+            | python3 scripts/refresh_rotation.py --superseded-prs --run-id "${{ github.run_id }}") \
+            || STALE=""
           for PR in $STALE; do
             echo "closing superseded refresh PR #$PR"
             gh pr close "$PR" --comment "Superseded by a newer data-refresh run." --delete-branch || true

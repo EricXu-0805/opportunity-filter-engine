@@ -67,8 +67,8 @@ def recommended_voice(lab_type: str | None) -> str:
 # substrings.
 _FORMAL_SUBS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"\bI would love\b", re.IGNORECASE), "I would greatly appreciate"),
-    (re.compile(r"\bI am a fast learner\b", re.IGNORECASE),
-     "I am committed to continuous professional development"),
+    # Restates the student's own claim; never swaps in a commitment they did not make.
+    (re.compile(r"\bI am a fast learner\b", re.IGNORECASE), "I learn new material quickly"),
     (re.compile(r"\bBest regards\b", re.IGNORECASE), "Respectfully"),
 ]
 _ENTHUSIASTIC_SUBS: list[tuple[re.Pattern[str], str]] = [
