@@ -23,10 +23,11 @@ longer than one chunk (8,000 characters) runs once with a rate limiter that gran
 dispatch and once with one that refuses it.
 
 HTTP. The route functions skip what each module's router does before them: this tree's router refuses
-a body with more commas than its route class allows (backend.lib.request_body), main's parses every
-body. So each résumé also goes, as JSON, through each module's own router in an app of its own (no
-provider, and the chunk's rows as the reply), with the status and body compared; so do résumés of
-50,001, 59,985 and 60,000 commas, of 60,000 brackets, and one of 60,001 characters, which both refuse.
+a body with more commas, or more lists and objects outside its strings, than its route class allows
+(backend.lib.request_body), main's parses every body. So each résumé also goes, as JSON, through each
+module's own router in an app of its own (no provider, and the chunk's rows as the reply), with the
+status and body compared; so do résumés of 50,001, 59,985 and 60,000 commas, of 60,000 brackets, of
+brackets, braces, quotes and backslashes mixed (round 6), and one of 60,001 characters, which both refuse.
 
 Both modules import the same backend.lib and backend.schemas modules, so the harness also checks that
 what the extraction code calls has the same source here as at the ref: backend/lib/resume_input.py and
@@ -316,6 +317,11 @@ HTTP_RESUMES = {
     "a line, then 59,985 commas": "Built a robot.\n" + "," * 59_985,
     "60,000 commas": "," * 60_000,
     "60,000 brackets": "[" * 60_000,
+    "60,000 braces": "{" * 60_000,
+    "30,000 quote-brackets": '"[' * 30_000,
+    "20,000 backslash-quote-braces": '\\"{' * 20_000,
+    "30,000 backslashes, then brackets and braces": "\\" * 30_000 + "[{" * 15_000,
+    "2,000 lines of quoted JSON": '{"a": ["b", {"c": "\\\\"}]}\n' * 2_000,
     "60,001 characters": "Built a robot.\n" * 4_000 + "x",
 }
 
