@@ -134,6 +134,7 @@ describe('MatchList — per-card save failure/retry: each card owns its own erro
         trackSaveErrors={new Set()}
         interactionsUnready={false}
         feedback={new Map()}
+        draftEmailReady
         onDraftEmail={() => {}}
         onToggleFavorite={() => {}}
         onTrackInteraction={() => {}}
@@ -177,6 +178,7 @@ describe('MatchList — per-card save failure/retry: each card owns its own erro
         trackSaveErrors={new Set()}
         interactionsUnready={false}
         feedback={new Map()}
+        draftEmailReady
         onDraftEmail={() => {}}
         onToggleFavorite={() => {}}
         onTrackInteraction={() => {}}
@@ -217,6 +219,7 @@ describe('MatchList — per-card save failure/retry: each card owns its own erro
         trackSaveErrors={new Set(['opp-a'])}
         interactionsUnready={false}
         feedback={new Map()}
+        draftEmailReady
         onDraftEmail={() => {}}
         onToggleFavorite={() => {}}
         onTrackInteraction={() => {}}
@@ -259,6 +262,7 @@ function baseListProps(overrides: Partial<Parameters<typeof MatchList>[0]> = {})
     trackSaveErrors: new Set<string>(),
     interactionsUnready: false,
     feedback: new Map(),
+    draftEmailReady: true,
     onDraftEmail: () => {},
     onToggleFavorite: () => {},
     onTrackInteraction: () => {},
@@ -297,6 +301,7 @@ const STABLE = {
   trackSaveErrors: new Set<string>(),
   interactionsUnready: false,
   feedback: new Map(),
+  draftEmailReady: true,
   onDraftEmail: () => {},
   onToggleFavorite: () => {},
   onTrackInteraction: () => {},
@@ -507,5 +512,27 @@ describe('MatchList persistent résumé opener', () => {
     expect(screen.getByRole('button', { name: 'card.renovateResume' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'card.renovateResume' }));
     expect(open).not.toHaveBeenCalled();
+  });
+});
+
+describe('MatchList Draft Email readiness', () => {
+  it('repaints the memoized card when the page becomes able to open a draft, so the early click is never live', () => {
+    const open = vi.fn();
+    const match = listingVariant({});
+    // Same match object and STABLE props throughout: only the readiness flips,
+    // so a comparator that ignores it would keep the disabled card on screen.
+    const { rerender } = render(
+      <MatchList {...STABLE} matches={[match]} onDraftEmail={open} draftEmailReady={false} />,
+    );
+    const early = screen.getByRole('button', { name: 'card.draftEmail' });
+    expect(early).toBeDisabled();
+    fireEvent.click(early);
+    expect(open).not.toHaveBeenCalled();
+
+    rerender(<MatchList {...STABLE} matches={[match]} onDraftEmail={open} draftEmailReady />);
+    const ready = screen.getByRole('button', { name: 'card.draftEmail' });
+    expect(ready).toBeEnabled();
+    fireEvent.click(ready);
+    expect(open).toHaveBeenCalledWith(match.opportunity.id);
   });
 });

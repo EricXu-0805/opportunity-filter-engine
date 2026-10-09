@@ -39,6 +39,7 @@ const MemoizedMatchCard = memo(MatchCard, (prev, next) => {
     prev.profile === next.profile &&
     prev.feedbackVerdict === next.feedbackVerdict &&
     prev.position === next.position &&
+    prev.draftEmailReady === next.draftEmailReady &&
     prev.onDraftEmail === next.onDraftEmail &&
     prev.onOpenResume === next.onOpenResume &&
     prev.onToggleFavorite === next.onToggleFavorite &&
@@ -89,6 +90,10 @@ export interface MatchListProps {
    *  Disables every status control until a confirmed read lands. */
   interactionsUnready: boolean;
   feedback: Map<string, MatchVerdict>;
+  /** True only while the page would open a draft for a Draft Email click —
+   *  see writingEntryReady in page.tsx. Each card disables the button until
+   *  then, so an early click is never silently dropped. */
+  draftEmailReady: boolean;
   onDraftEmail: (opportunityId: string) => void;
   onOpenResume?: (opportunityId: string) => void;
   onToggleFavorite: (opportunityId: string) => void;
@@ -123,6 +128,7 @@ export function MatchList({
   trackSaveErrors,
   interactionsUnready,
   feedback,
+  draftEmailReady,
   onDraftEmail,
   onOpenResume,
   onToggleFavorite,
@@ -183,6 +189,7 @@ export function MatchList({
                   isViewed={viewedIds?.has(match.opportunity.id)}
                   onViewOpportunity={onViewOpportunity}
                   profile={profile}
+                  draftEmailReady={draftEmailReady}
                   onDraftEmail={onDraftEmail}
                   onOpenResume={onOpenResume}
                   isFavorited={favs.has(match.opportunity.id)}
