@@ -205,9 +205,7 @@ interface ColdEmailModalProps {
   onContactConfirmed?: (record: InteractionRecord | null) => void;
   /** The follow-up chips write remind_at straight to the row. Without this the
    *  page that owns the tracker panel never learns, so its date field renders
-   *  empty and its status-change suggestion — gated on remind_at being unset —
-   *  offers to set a reminder that already exists, overwriting it on one
-   *  click. */
+   *  empty for a reminder that already exists. */
   onReminderSet?: (date: string) => void;
 }
 
