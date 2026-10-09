@@ -305,3 +305,70 @@ SHA and confirm the previously-passing gates still pass.
   sat at 94h against a 96h stale bound — pointing the instance probe at it
   would turn a late scraper into a total outage. Wiring it is a deliberate
   owner decision with that consequence understood.
+
+## 6. Environment variables
+
+Each table lists every variable that code reads. `tests/test_release_gate.py`
+scans the code and fails when a variable is read but missing here, or listed
+here but read nowhere. In the Required column, `required` means production
+loses a shipped capability without the variable. Each backend `required` row
+has a test that removes it and expects the failure named in its last column.
+
+### Backend (Render web service)
+
+| Variable | Required | When missing |
+|---|---|---|
+| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | required | Accounts, cloud save, reminders, saved searches and the incident queue stop. Signed-in requests are treated as signed out. Incident reads and the heartbeat answer 503 and name the variable. Each cron answers `{"status": "skipped", "missing": [...]}`, which fails the workflow's `check_cron_response.py` step. `/api/ready` reports `providers.supabase: missing` without gating. |
+| `CRON_SECRET` | required | Every `/api/cron/*` route answers 503 and names the variable. |
+| `ADMIN_TOKEN` | required | Every `/api/admin/*` route, and `/api/ready` with a token, answers 503 and names the variable. The release gate cannot collect `open_incidents` or `provider_readiness` without it. |
+| `VAPID_PRIVATE_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_SUBJECT` | required | The reminders cron sends nothing and lists the missing names, and its workflow step fails. `/api/push/vapid-public-key` answers 503 when no public key is set. |
+| `RESEND_API_KEY`, `RESEND_FROM_EMAIL` | required | The saved-search digest cron sends nothing and lists the missing names, and its workflow step fails. Reminders lose the email fallback and count the row as `no_channel`. |
+| `RESTORE_LINK_SECRET` | required | Digests cannot sign unsubscribe links. The digest cron sends nothing, lists the variable, and its step fails. The unsubscribe link answers 503. |
+| `OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `GEMINI_API_KEY` | optional | The first one set is the LLM provider. With none set, AI drafting falls back to templates and nothing reports the fallback (owner question Q44). The release gate's `provider_readiness` still requires an LLM provider. `OPENROUTER_API_KEY` also enables the per-task model table. |
+| `OFE_CHAT_MODELS`, `OFE_STRONG_MODEL`, `OFE_MODEL_*`, `OFE_LLM_RERANK_MODEL` | optional | The model defaults in `backend/lib/llm.py` and `src/matcher/config.py` apply. |
+| `OFE_GLOBAL_LLM_PER_MIN`, `OFE_GLOBAL_LLM_PER_DAY`, `OFE_GLOBAL_EMAIL_PER_HOUR`, `OFE_COLD_EMAIL_CRITIQUE`, `OFE_COLD_EMAIL_NDRAFT` | optional | Built-in budgets and draft settings apply. |
+| `OFE_BLOCKING_AI_MAX_WORKERS`, `OFE_BLOCKING_AI_MAX_PENDING`, `OFE_SINGLE_LLM_TIMEOUT_SECONDS`, `OFE_MULTI_LLM_TIMEOUT_SECONDS`, `OFE_LOCAL_WORK_TIMEOUT_SECONDS`, `OFE_MATCH_TIMEOUT_SECONDS`, `OFE_MATCH_SNAPSHOT_MAX`, `OFE_MATCH_SNAPSHOT_TTL`, `OFE_MAX_REQUEST_BODY_BYTES` | optional | Bounded defaults in `backend/lib/blocking.py`, `backend/routes/matches.py` and `backend/main.py` apply. An unparseable value falls back to the default. |
+| `OFE_TRUSTED_PROXY_HOPS` | optional | One proxy hop (Render's) is trusted for the client IP. |
+| `OFE_DISABLE_RATE_LIMIT` | optional | Rate limits apply. Set it only in local test runs, never in production. |
+| `OFE_MATERIAL_ARCHIVE_ENABLED` | optional | Defaults to on (`1`). The archive still needs the Supabase pair. |
+| `OFE_METERING_ENABLED` | optional | Usage metering stays off. |
+| `OFE_CORPUS_WARN_HOURS`, `OFE_CORPUS_STALE_HOURS` | optional | `/api/ready` and the admin health check use 72 h to warn and 96 h to call the corpus stale. |
+| `OFE_SOURCE_WARN_DAYS`, `OFE_SOURCE_STALE_DAYS` | optional | The defaults in `src/collectors/source_health.py` apply. |
+| `OFE_W_ELIG`, `OFE_W_READY`, `OFE_W_UPSIDE`, `OFE_BUCKET_HIGH`, `OFE_BUCKET_GOOD`, `OFE_BUCKET_REACH`, `OFE_HIGH_PRIORITY_TARGET`, `OFE_INTL_UNKNOWN`, `OFE_INTL_UNKNOWN_INTERNSHIP`, `OFE_COURSE_UNKNOWN`, `OFE_COURSE_PER`, `OFE_COURSE_MAX_COUNT`, `OFE_COURSE_RELEVANCE`, `OFE_COURSE_FOCUS_BONUS`, `OFE_INTEREST_BONUS_CAP`, `OFE_EMPTY_INTEREST_MAJOR_BONUS`, `OFE_INTEREST_BONUS_PER_HIT`, `OFE_DEADLINE_PENALTY`, `OFE_GRAD_LEVEL_PENALTY`, `OFE_TOPIC_UNKNOWN_PEN`, `OFE_TOPIC_MISMATCH_PEN`, `OFE_EXPLORE_MAJOR_FLOOR`, `OFE_EXPLORE_READINESS_DROP`, `OFE_STRETCH_K`, `OFE_STRETCH_MID`, `OFE_STRETCH_BLEND`, `OFE_SEMANTIC_TOPK`, `OFE_SEMANTIC_W`, `OFE_SEMANTIC_FALLBACK_CAP`, `OFE_SEASONAL_BOOST`, `OFE_SEASONAL_FACTOR`, `OFE_SEASONAL_MONTHS`, `OFE_SIM_SCALE_TFIDF`, `OFE_ELIG_MAJOR_W`, `OFE_IMPLICIT_MAJOR_PER_HIT`, `OFE_IMPLICIT_MAJOR_CEIL`, `OFE_COLLEGE_AFFINITY_MAX`, `OFE_HOME_SCHOOL_AFFINITY_MAX`, `OFE_RESPONSIVENESS_BONUS`, `OFE_THIN_INVENTORY_FLOOR`, `OFE_LLM_RERANK_TOPK`, `OFE_LLM_RERANK_W`, `OFE_LLM_RERANK_BATCH`, `OFE_LLM_RERANK_CACHE_MAX` | optional | Matcher tuning. The values in `src/matcher/config.py` apply. Most of them feed `_matcher_fingerprint()`, so an override shows up as a different `MATCHER_VERSION`. |
+| `OFE_PAYMENTS_ENABLED` | optional | The payments kill switch stays off. `payments` is closed in `release_scope.py` anyway. |
+| `FRONTEND_URL` | optional | Email links point at `https://joinalab.com`. |
+| `PUBLIC_BACKEND_URL`, `RENDER_EXTERNAL_URL` | optional | Unsubscribe links point at the production Render URL. Render sets `RENDER_EXTERNAL_URL` itself. |
+| `EMAIL_POSTAL_ADDRESS` | optional | Digests omit the postal-address footer line. |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | optional | Read only as a fallback for `VAPID_PUBLIC_KEY`. |
+| `GITHUB_TOKEN` | optional | GitHub profile imports use the unauthenticated limit of 60 requests per hour, shared by every student behind Render's egress IP. |
+| `SENTRY_DSN`, `SENTRY_ENVIRONMENT`, `SENTRY_RELEASE`, `SENTRY_TRACES_SAMPLE_RATE` | optional | Errors are not reported to Sentry. |
+| `RENDER_GIT_COMMIT`, `OFE_RELEASE_SHA`, `RENDER`, `OFE_ENVIRONMENT` | optional | `/api/health` reports `release_sha: null` and `environment: "unknown"`. The release record then cannot bind the backend (UNVERIFIED). Render sets `RENDER_GIT_COMMIT` and `RENDER` itself. |
+
+### Data refresh (GitHub Actions `refresh-data.yml` and the collector CLIs)
+
+| Variable | Required | When missing |
+|---|---|---|
+| `OFE_ENRICH_PROFILES` | optional | The per-profile enrichment pass is skipped. The workflow sets it in the first week of each month. |
+| `OPENALEX_API_KEY` | optional | OpenAlex calls go out without a key. No workflow sets it. |
+| `LLM_MODEL`, `OPENAI_BASE_URL` | optional | LLM tagging is used only when a provider key is set; otherwise the rule-based tagger runs. |
+
+### Frontend (Vercel build; `NEXT_PUBLIC_*` values are inlined at build time)
+
+| Variable | Required | When missing |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | required | The app runs local-only: no sign-in, no cloud save. It logs one console warning and the build does not fail. A production build that fails fast is not implemented yet. |
+| `NEXT_PUBLIC_AUTH_PROVIDERS` | required | No OAuth buttons render, so Google sign-in disappears. |
+| `NEXT_PUBLIC_SITE_URL` | required | Canonical, Open Graph and sitemap URLs name `opportunity-filter-engine.vercel.app`. On 10-08 production's canonical was `joinalab.com`. |
+| `NEXT_PUBLIC_AUTH_EMAIL_MODE` | optional | `dev-echo`: the magic-link form shows the test-sender warning. Set it to `live` to hide the warning. |
+| `NEXT_PUBLIC_API_URL`, `BACKEND_URL` | optional | Browser calls use `/api`, which the Next rewrite sends to the production Render URL (`127.0.0.1:8000` outside production). |
+| `VERCEL_GIT_COMMIT_SHA`, `OFE_RELEASE_SHA`, `VERCEL_ENV`, `OFE_ENVIRONMENT`, `NEXT_PUBLIC_RELEASE_SHA`, `NEXT_PUBLIC_RELEASE_ENV`, `NODE_ENV` | optional | The page says `data-release-sha="unknown"`, so the release record cannot bind the frontend. Vercel sets the first and third itself. |
+
+### GitHub Actions secrets and variables
+
+| Variable | Required | When missing |
+|---|---|---|
+| `BACKEND_URL`, `CRON_SECRET` | required | The cron workflows fail their "Require the secrets" step. The release gate does not observe the backend. |
+| `ADMIN_TOKEN`, `RESEND_API_KEY` | required | `daily-reminders.yml` fails its secrets step. |
+| `REFRESH_PAT` | required | `refresh-data.yml` cannot open its data PR and fails. |
+| `FRONTEND_URL` | optional | Alert emails lose their dashboard link. The release gate does not observe the frontend. |
+| `OPERATOR_EMAIL`, `RESEND_FROM_EMAIL` | optional | Alerts are printed to the job log instead of emailed. |

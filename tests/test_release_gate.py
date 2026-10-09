@@ -6,11 +6,16 @@ flip to PASS by presenting evidence bound to the frozen release SHA.
 """
 from __future__ import annotations
 
+import ast
 import importlib.util
+import io
 import json
+import re
 import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+
+import pytest
 
 _REPO = Path(__file__).resolve().parents[1]
 _spec = importlib.util.spec_from_file_location(
@@ -1705,3 +1710,352 @@ class TestMigrationParity:
         names = [m.bare_name for m in committed]
         assert len(names) == len(set(names)), "two migrations share a name"
         assert all(m.prefix and m.bare_name for m in committed)
+
+
+# ---------------------------------------------------------------------------
+# Environment variables (M67): docs/RELEASE.md §6 is the inventory. The code
+# is scanned so the table cannot drift from it, and every backend variable
+# the table calls required is removed in turn to show it fails loudly.
+# ---------------------------------------------------------------------------
+
+_RELEASE_DOC = _REPO / "docs" / "RELEASE.md"
+
+
+def _documented_env() -> dict[str, dict[str, str]]:
+    """{section: {name: "required"|"optional"}} from RELEASE.md §6."""
+    text = _RELEASE_DOC.read_text(encoding="utf-8")
+    section = text.split("## 6. Environment variables", 1)[1].split("\n## ", 1)[0]
+    tables: dict[str, dict[str, str]] = {}
+    for block in section.split("\n### ")[1:]:
+        heading, _, body = block.partition("\n")
+        rows: dict[str, str] = {}
+        for line in body.splitlines():
+            cells = [c.strip() for c in line.strip().strip("|").split("|")]
+            if len(cells) < 3 or cells[0] in ("Variable", "---"):
+                continue
+            requirement = cells[1].split()[0]
+            assert requirement in ("required", "optional"), line
+            for name in re.findall(r"`([A-Z][A-Z0-9_]*\*?)`", cells[0]):
+                assert name not in rows, f"{name} listed twice under {heading}"
+                rows[name] = requirement
+        tables[heading.split(" (")[0].strip()] = rows
+    return tables
+
+
+def _is_environ(node: ast.AST) -> bool:
+    return ((isinstance(node, ast.Attribute) and node.attr == "environ")
+            or (isinstance(node, ast.Name) and node.id == "environ"))
+
+
+def _env_name_arg(node: ast.AST) -> ast.AST | None:
+    """The name argument of an environment read, or None if this is not one."""
+    if isinstance(node, ast.Subscript) and _is_environ(node.value):
+        return node.slice
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+        func = node.func
+        if ((func.attr in ("get", "setdefault", "pop") and _is_environ(func.value))
+                or func.attr == "getenv") and node.args:
+            return node.args[0]
+    return None
+
+
+def _scan_python_env() -> tuple[set[str], set[tuple[str, str]]]:
+    """(literal names read, (file, function) sites whose name is not literal).
+
+    A function whose first parameter is read as a variable name (directly, or
+    by looping over it) is a helper: `_env_float("OFE_W_ELIG", …)`,
+    `_required_env(["SUPABASE_URL", …])`. Literal arguments to helpers count
+    as reads; any other non-literal read is an indirect site.
+    """
+    files = [p for d in ("backend", "src") for p in sorted((_REPO / d).rglob("*.py"))]
+    trees = {p: ast.parse(p.read_text(encoding="utf-8")) for p in files}
+    helpers: dict[str, tuple[str, int]] = {}
+    for tree in trees.values():
+        for fn in ast.walk(tree):
+            if not isinstance(fn, ast.FunctionDef | ast.AsyncFunctionDef) or not fn.args.args:
+                continue
+            params = [a.arg for a in fn.args.args]
+            loops = {n.target.id: n.iter.id for n in ast.walk(fn)
+                     if isinstance(n, ast.For | ast.comprehension)
+                     and isinstance(n.iter, ast.Name) and n.iter.id in params
+                     and isinstance(n.target, ast.Name)}
+            for node in ast.walk(fn):
+                arg = _env_name_arg(node)
+                if isinstance(arg, ast.Name) and arg.id in params:
+                    helpers[fn.name] = ("one", params.index(arg.id))
+                elif isinstance(arg, ast.Name) and arg.id in loops:
+                    helpers[fn.name] = ("many", params.index(loops[arg.id]))
+
+    names: set[str] = set()
+    indirect: set[tuple[str, str]] = set()
+    for path, tree in trees.items():
+        rel = path.relative_to(_REPO).as_posix()
+        owner: dict[ast.AST, str] = {}
+        for fn in ast.walk(tree):
+            if isinstance(fn, ast.FunctionDef | ast.AsyncFunctionDef):
+                for node in ast.walk(fn):
+                    if node is not fn:
+                        owner[node] = fn.name  # walk is outer-first: innermost wins
+        for node in ast.walk(tree):
+            where = owner.get(node, "<module>")
+            arg = _env_name_arg(node)
+            if arg is None and isinstance(node, ast.Call):
+                func = node.func
+                called = (func.id if isinstance(func, ast.Name)
+                          else func.attr if isinstance(func, ast.Attribute) else None)
+                if called in helpers and len(node.args) > helpers[called][1]:
+                    mode, index = helpers[called]
+                    arg = node.args[index]
+                    if mode == "many" and isinstance(arg, ast.Tuple | ast.List):
+                        if all(isinstance(e, ast.Constant) for e in arg.elts):
+                            names.update(e.value for e in arg.elts)
+                            continue
+            if arg is None:
+                continue
+            if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+                names.add(arg.value)
+            elif where not in helpers:
+                indirect.add((rel, where))
+    return names, indirect
+
+
+def _indirect_env_names() -> dict[tuple[str, str], list[str]]:
+    """Where each non-literal read gets its names. A new indirect read fails
+    the inventory until it is added here, so the scan cannot silently stop
+    seeing a variable."""
+    from backend.lib import build_info, llm, release_scope
+
+    return {
+        ("backend/lib/build_info.py", "release_sha"): list(build_info.SHA_ENV_VARS),
+        ("backend/lib/llm.py", "_resolve"): [p[1] for p in llm._PROVIDERS],
+        ("backend/lib/llm.py", "model_for"): ["OFE_MODEL_*"],
+        ("backend/lib/release_scope.py", "feature_enabled"):
+            list(release_scope._RUNTIME_KILL_SWITCHES.values()),
+        # Not configuration: OS variables handed to a sandboxed subprocess,
+        # and two CLI loaders that copy backend/.env into os.environ.
+        ("backend/lib/material_archive.py", "validate_pdf"): [],
+        ("src/collectors/llm_enrich.py", "_load_dotenv"): [],
+        ("src/collectors/openalex_enrich.py", "_load_dotenv"): [],
+    }
+
+
+def _scan_frontend_env() -> set[str]:
+    root = _REPO / "frontend"
+    paths = [root / "next.config.js", *sorted((root / "scripts").glob("*.mjs"))]
+    paths += [p for p in sorted((root / "src").rglob("*"))
+              if p.suffix in (".ts", ".tsx", ".js", ".mjs")
+              and not re.search(r"\.(test|spec)\.", p.name) and "__fixtures__" not in p.parts]
+    found: set[str] = set()
+    for path in paths:
+        found.update(re.findall(r"process\.env\.([A-Z][A-Z0-9_]*)",
+                                path.read_text(encoding="utf-8")))
+    return found
+
+
+def _scan_workflow_env() -> set[str]:
+    found: set[str] = set()
+    for path in sorted((_REPO / ".github" / "workflows").glob("*.yml")):
+        found.update(re.findall(r"\b(?:secrets|vars)\.([A-Z][A-Z0-9_]*)",
+                                path.read_text(encoding="utf-8")))
+    return found
+
+
+class TestEnvironmentInventory:
+    def test_every_variable_the_python_code_reads_is_listed_and_no_other(self):
+        names, indirect = _scan_python_env()
+        sources = _indirect_env_names()
+        for site in indirect & set(sources):
+            names.update(sources[site])
+        unexplained = sorted(indirect - set(sources))
+        assert not unexplained, (
+            f"non-literal environment reads at {unexplained}: add where their "
+            "names come from to _indirect_env_names")
+        documented = _documented_env()
+        listed = {**documented["Backend"], **documented["Data refresh"]}
+        assert sorted(names - set(listed)) == [], "read in code, missing from RELEASE.md §6"
+        assert sorted(set(listed) - names) == [], "listed in RELEASE.md §6, read nowhere"
+
+    def test_every_indirect_source_still_exists(self):
+        _, indirect = _scan_python_env()
+        assert sorted(set(_indirect_env_names()) - indirect) == []
+
+    def test_every_variable_the_frontend_reads_is_listed_and_no_other(self):
+        listed = set(_documented_env()["Frontend"])
+        found = _scan_frontend_env()
+        assert sorted(found - listed) == [] and sorted(listed - found) == []
+
+    def test_every_workflow_secret_and_variable_is_listed_and_no_other(self):
+        listed = set(_documented_env()["GitHub Actions secrets and variables"])
+        found = _scan_workflow_env()
+        assert sorted(found - listed) == [] and sorted(listed - found) == []
+
+    def test_the_scan_sees_reads_through_helpers(self):
+        # Guards the scanner itself: these four are only ever read through a
+        # helper or a table, never as os.environ.get("…") at the call site.
+        names, _ = _scan_python_env()
+        assert {"OFE_W_ELIG", "OFE_BLOCKING_AI_MAX_WORKERS", "VAPID_SUBJECT",
+                "OFE_CORPUS_STALE_HOURS"} <= names
+
+
+# --- required backend variables fail loudly ---------------------------------
+
+_ccr_spec = importlib.util.spec_from_file_location(
+    "check_cron_response_for_release", _REPO / "scripts" / "check_cron_response.py")
+cron_checker = importlib.util.module_from_spec(_ccr_spec)
+_ccr_spec.loader.exec_module(cron_checker)
+
+_FULL_BACKEND_ENV = {
+    "CRON_SECRET": "cron-ok",
+    "ADMIN_TOKEN": "admin-ok",
+    # Never contacted: every probe below stops before its first request.
+    "SUPABASE_URL": "http://127.0.0.1:9",
+    "SUPABASE_SERVICE_ROLE_KEY": "service-role-placeholder",
+    "VAPID_PRIVATE_KEY": "vapid-private-placeholder",
+    "VAPID_PUBLIC_KEY": "vapid-public-placeholder",
+    "VAPID_SUBJECT": "mailto:ops@example.invalid",
+    "RESEND_API_KEY": "resend-placeholder",
+    "RESEND_FROM_EMAIL": "JoinALab <alerts@example.invalid>",
+    "RESTORE_LINK_SECRET": "unsubscribe-signing-placeholder",
+}
+_CRON = {"Authorization": "Bearer cron-ok"}
+_ZERO_UUID = "00000000-0000-0000-0000-000000000000"
+
+
+def _env_without(monkeypatch, name: str) -> None:
+    for key, value in _FULL_BACKEND_ENV.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.delenv(name, raising=False)
+    monkeypatch.delenv("NEXT_PUBLIC_VAPID_PUBLIC_KEY", raising=False)
+
+
+def _client():
+    from fastapi.testclient import TestClient
+
+    from backend.main import app
+    return app, TestClient(app)
+
+
+def _workflow_verdict(monkeypatch, body: dict) -> int:
+    """What the cron workflow's check_cron_response.py step does with a body."""
+    monkeypatch.setattr(cron_checker.sys, "stdin", io.StringIO(json.dumps(body)))
+    return cron_checker.main()
+
+
+def _routes(app, prefix: str) -> list[tuple[str, str]]:
+    out = []
+    for route in app.routes:
+        path = getattr(route, "path", "")
+        if path.startswith(prefix):
+            out += [(method, re.sub(r"\{[^}]+\}", _ZERO_UUID, path))
+                    for method in sorted(route.methods)]
+    return out
+
+
+def _cron_bodies_name_it(monkeypatch, name: str, paths: list[tuple[str, str]]) -> None:
+    _, client = _client()
+    for method, path in paths:
+        response = client.request(method, path, headers=_CRON)
+        assert response.status_code == 200, (path, response.text)
+        body = response.json()
+        assert body["status"] == "skipped" and name in body.get("missing", []), (path, body)
+        assert _workflow_verdict(monkeypatch, body) == 1, (path, body)
+
+
+def _probe_cron_secret(monkeypatch):
+    app, client = _client()
+    routes = _routes(app, "/api/cron/")
+    assert len(routes) >= 5
+    for method, path in routes:
+        response = client.request(method, path, json={"name": "release-probe"})
+        assert response.status_code == 503, (path, response.status_code)
+        assert "CRON_SECRET" in response.json()["detail"], path
+
+
+def _probe_admin_token(monkeypatch):
+    app, client = _client()
+    routes = _routes(app, "/api/admin/") + [("GET", "/api/ready")]
+    assert len(routes) >= 20
+    for method, path in routes:
+        response = client.request(method, path, json={},
+                                  headers={"X-Admin-Token": "anything"})
+        assert response.status_code == 503, (path, response.status_code)
+        assert "ADMIN_TOKEN" in response.json()["detail"], path
+
+
+def _probe_supabase(name: str):
+    def probe(monkeypatch):
+        _cron_bodies_name_it(monkeypatch, name, [
+            ("GET", "/api/cron/reminders"),
+            ("GET", "/api/cron/saved-searches/refresh"),
+            ("GET", "/api/cron/saved-searches/digest"),
+            ("POST", "/api/cron/ops-scan"),
+        ])
+        _, client = _client()
+        heartbeat = client.post("/api/cron/heartbeat", headers=_CRON,
+                                json={"name": "release-probe"})
+        assert heartbeat.status_code == 503 and name in heartbeat.json()["detail"]
+        incidents = client.get("/api/admin/ops/incidents",
+                               headers={"X-Admin-Token": "admin-ok"})
+        assert incidents.status_code == 503 and name in incidents.json()["detail"]
+    return probe
+
+
+def _probe_vapid(name: str):
+    def probe(monkeypatch):
+        _cron_bodies_name_it(monkeypatch, name, [("GET", "/api/cron/reminders")])
+        if name == "VAPID_PUBLIC_KEY":
+            _, client = _client()
+            assert client.get("/api/push/vapid-public-key").status_code == 503
+    return probe
+
+
+def _probe_digest(name: str):
+    def probe(monkeypatch):
+        _cron_bodies_name_it(monkeypatch, name, [("GET", "/api/cron/saved-searches/digest")])
+        if name == "RESTORE_LINK_SECRET":
+            _, client = _client()
+            response = client.get("/api/email/digest-unsubscribe",
+                                  params={"sid": _ZERO_UUID, "t": 0, "s": "0" * 32})
+            assert response.status_code == 503
+    return probe
+
+
+_FAIL_FAST_PROBES = {
+    "CRON_SECRET": _probe_cron_secret,
+    "ADMIN_TOKEN": _probe_admin_token,
+    "SUPABASE_URL": _probe_supabase("SUPABASE_URL"),
+    "SUPABASE_SERVICE_ROLE_KEY": _probe_supabase("SUPABASE_SERVICE_ROLE_KEY"),
+    "VAPID_PRIVATE_KEY": _probe_vapid("VAPID_PRIVATE_KEY"),
+    "VAPID_PUBLIC_KEY": _probe_vapid("VAPID_PUBLIC_KEY"),
+    "VAPID_SUBJECT": _probe_vapid("VAPID_SUBJECT"),
+    "RESEND_API_KEY": _probe_digest("RESEND_API_KEY"),
+    "RESEND_FROM_EMAIL": _probe_digest("RESEND_FROM_EMAIL"),
+    "RESTORE_LINK_SECRET": _probe_digest("RESTORE_LINK_SECRET"),
+}
+
+
+class TestRequiredEnvironmentFailsFast:
+    def test_every_required_backend_variable_has_a_probe(self):
+        required = {name for name, need in _documented_env()["Backend"].items()
+                    if need == "required"}
+        assert required == set(_FAIL_FAST_PROBES)
+
+    @pytest.mark.parametrize("name", sorted(_FAIL_FAST_PROBES))
+    def test_removing_it_fails_loudly(self, name, monkeypatch):
+        _env_without(monkeypatch, name)
+        _FAIL_FAST_PROBES[name](monkeypatch)
+
+    def test_a_skip_that_names_missing_configuration_fails_the_workflow(
+            self, monkeypatch):
+        """A cron that cannot run in production is not a deliberate no-op.
+
+        Every production cron answered "ok" on 10-08 and 10-09, so this changes
+        nothing today; it is what makes a variable that later disappears from
+        Render fail the next run instead of turning it green every day.
+        """
+        assert _workflow_verdict(monkeypatch, {
+            "status": "skipped", "reason": "push env not configured",
+            "missing": ["VAPID_SUBJECT"]}) == 1
+        # A skip that names no configuration is still the announced no-op.
+        assert _workflow_verdict(monkeypatch, {
+            "status": "skipped", "reason": "pywebpush not installed"}) == 0

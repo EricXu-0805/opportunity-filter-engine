@@ -559,13 +559,16 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
     from_addr = os.environ.get("RESEND_FROM_EMAIL", "").strip()
     if not api_key or not from_addr:
         logger.info("digest cron: RESEND_API_KEY / RESEND_FROM_EMAIL unset — skipping sends")
-        return {"status": "skipped", "reason": "resend not configured"}
+        missing = [name for name, value in (("RESEND_API_KEY", api_key),
+                                            ("RESEND_FROM_EMAIL", from_addr)) if not value]
+        return {"status": "skipped", "reason": "resend not configured", "missing": missing}
 
     # An opt-in email without a working unsubscribe link is worse than no
     # email — refuse to send rather than degrade the link away.
     if not _restore_signing_secret():
         logger.info("digest cron: RESTORE_LINK_SECRET unset — cannot sign unsubscribe links")
-        return {"status": "skipped", "reason": "unsubscribe signing secret not configured"}
+        return {"status": "skipped", "reason": "unsubscribe signing secret not configured",
+                "missing": ["RESTORE_LINK_SECRET"]}
 
     try:
         import httpx
