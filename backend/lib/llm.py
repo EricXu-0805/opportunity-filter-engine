@@ -80,6 +80,9 @@ def _provider_log_scope(private: bool):
 _MAX_ATTEMPTS = 2
 _RETRY_BASE_DELAY_SECONDS = 0.5
 _REQUEST_TIMEOUT_SECONDS = 20.0
+# A second attempt that starts with less than this before the caller's
+# deadline cannot finish, but it is still billed.
+_MIN_RETRY_SECONDS = 10.0
 
 # (id, env_var, base_url, default_model). The id lets a caller target a
 # specific provider (e.g. the Ask-AI chat picker routes through "openrouter").
@@ -207,6 +210,9 @@ def strong_model() -> Optional[str]:
 #   * cold_email_review — the critique rubric + N-draft judge (judgment, not
 #     prose: which email would a professor answer, what reads templated).
 #   * tailor — constrained, anti-fabrication-validated bullet rewriting.
+#   * tailor_review — judges whether a tailored bullet the finite claim locks
+#     cannot prove (a reworded team clause, a moved setting) states only what
+#     its original says. Judgment, like cold_email_review; one call per action.
 #   * extract — background structured parsing (tailor's bullet extraction).
 # Each is env-overridable (OFE_MODEL_<TASK>) so a model retunes without a deploy
 # — e.g. OFE_MODEL_COLD_EMAIL=openai/gpt-5.6-terra or google/gemini-3.1-pro.
@@ -216,6 +222,7 @@ _TASK_MODEL_DEFAULTS: dict[str, str] = {
     # not exist in the catalog and 404s, silently degrading the review tier.
     "cold_email_review": "anthropic/claude-opus-4.8",
     "tailor": "anthropic/claude-sonnet-5.5",
+    "tailor_review": "anthropic/claude-opus-4.8",
     "extract": "anthropic/claude-sonnet-5.5",
 }
 
@@ -269,8 +276,15 @@ def chat_completion(
     provider_id: Optional[str] = None,
     safe_error_logging: bool = False,
     require_complete: bool = False,
+    request_timeout: Optional[float] = None,
+    deadline: Optional[float] = None,
 ) -> Optional[str]:
     """Single-turn chat completion against the first configured provider.
+
+    ``request_timeout`` replaces the default per-attempt HTTP timeout.
+    ``deadline`` is an absolute ``time.monotonic()`` value owned by the caller:
+    each attempt's timeout is cut to what is left of it, no attempt starts after
+    it, and a second attempt is not started with under 10 s left.
 
     ``model`` overrides the provider's default model (used by quality-sensitive
     callers via :func:`strong_model`); it must be a model the resolved provider
@@ -330,7 +344,15 @@ def chat_completion(
         call_kwargs["extra_body"] = extra_body
 
     last_error: Optional[Exception] = None
+    per_attempt = _REQUEST_TIMEOUT_SECONDS if request_timeout is None else request_timeout
     for attempt in range(1, _MAX_ATTEMPTS + 1):
+        if deadline is not None:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0 or (attempt > 1 and remaining < _MIN_RETRY_SECONDS):
+                break
+            client_kwargs["timeout"] = min(per_attempt, remaining)
+        else:
+            client_kwargs["timeout"] = per_attempt
         try:
             with _provider_log_scope(safe_error_logging):
                 client = openai.OpenAI(**client_kwargs)
@@ -348,6 +370,9 @@ def chat_completion(
             if attempt < _MAX_ATTEMPTS:
                 time.sleep(_RETRY_BASE_DELAY_SECONDS * attempt)
 
+    if last_error is None:
+        logger.warning("LLM chat_completion not attempted: the caller's deadline had passed")
+        return None
     if safe_error_logging:
         status = getattr(last_error, "status_code", None)
         logger.warning(

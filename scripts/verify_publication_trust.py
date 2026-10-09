@@ -117,6 +117,27 @@ def _load_records() -> list[dict]:
     return out
 
 
+def tailor_source_leaks(src: str) -> list[str]:
+    """The tailor module may read publication data only through verified_recent_works.
+
+    The same rule as tests/test_publication_remediation.py: every "recent_works"
+    in the source is part of "verified_recent_works", and the status is never read.
+    """
+    if src.count("recent_works") != src.count("verified_recent_works") or "publication_attribution_status" in src:
+        return ["tailor.py reads publication data outside verified_recent_works"]
+    return []
+
+
+def tailor_anchor_leaks(snapshot_anchors, candidates: list[dict]) -> list:
+    """Records whose unverified paper titles reach the anchors Tailor quotes."""
+    leaks = []
+    for r in candidates:
+        anchors = "\n".join(anchor.text for anchor in snapshot_anchors(r, r))
+        if any(t in anchors for t in _identifying_titles(r)):
+            leaks.append(r.get("id"))
+    return leaks
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -310,16 +331,15 @@ def main(argv: list[str] | None = None) -> int:
             leaks.append(r.get("id"))
     record_surface("cold_email_brief", len(sample), leaks, False)
 
-    # Résumé: the tailor module reads no publication data at all. Asserted
-    # against the source rather than a call, because the property worth keeping
-    # is that it never starts.
+    # Résumé: Tailor quotes paper titles as target anchors, and reads them only
+    # through verified_recent_works. The source scan fails on any other read of
+    # recent_works or of the status; every candidate then goes through the
+    # anchor builder /tailor, /tailor/renovate and /tailor/bullet share.
     from backend.routes import tailor as tailor_mod
 
     src = Path(tailor_mod.__file__).read_text(encoding="utf-8")
-    leaks = ["tailor.py reads publication data"] if (
-        "recent_works" in src or "publication_attribution_status" in src
-    ) else []
-    record_surface("resume_tailoring", 1, leaks, True)
+    leaks = tailor_source_leaks(src) + tailor_anchor_leaks(tailor_mod._snapshot_anchors, candidates)
+    record_surface("resume_tailoring", 1 + len(candidates), leaks, True)
 
     # ---- the report ---------------------------------------------------------
     ledger = Ledger(LEDGER_PATH)

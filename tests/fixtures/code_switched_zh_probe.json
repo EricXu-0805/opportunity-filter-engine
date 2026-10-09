@@ -1,0 +1,391 @@
+{
+ "_about": "Faithful same-language rewrites of résumé lines that mix Chinese and English, each of which language() reads as English (it holds more Latin words than CJK characters, or it opens in English and holds one run of CJK). A probe set for the (2b) cost of the default keep of criterion (3): scripts/english_evidence_keeps.py counts how many reach the review without the rule and how many the rule keeps. Not part of the samples scripts/measure_rewrite_refusals.py collects. Each row is a declared rewrite row: links, ops and the anchor texts (t1, t2, ...).",
+ "pairs": [
+  {
+   "label": "lead_with: model training",
+   "original": "负责 data cleaning, feature engineering, model training 和 deployment",
+   "rewrite": "负责 model training, data cleaning, feature engineering 和 deployment",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "model training",
+     "source": "model training",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "anchors": [
+    "Experience with model training is a plus."
+   ]
+  },
+  {
+   "label": "lead_with: RLHF data pipeline",
+   "original": "参与 LLM fine-tuning、RLHF data pipeline 和 evaluation benchmark 搭建",
+   "rewrite": "参与 RLHF data pipeline、LLM fine-tuning 和 evaluation benchmark 搭建",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "RLHF data pipeline",
+     "source": "RLHF data pipeline",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "anchors": [
+    "Build an RLHF data pipeline."
+   ]
+  },
+  {
+   "label": "relabel: Python scripts",
+   "original": "用 Python scripts 做 EEG data preprocessing 和 feature extraction",
+   "rewrite": "用 Python code 做 EEG data preprocessing 和 feature extraction",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Python code",
+     "source": "Python scripts",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "Python scripts",
+     "to": "Python code"
+    }
+   ],
+   "anchors": [
+    "Experience writing Python code is required."
+   ]
+  },
+  {
+   "label": "relabel: GAN model",
+   "original": "基于 PyTorch 实现 GAN model，用于 medical image segmentation 和 data augmentation",
+   "rewrite": "基于 PyTorch 实现 GAN network，用于 medical image segmentation 和 data augmentation",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "GAN network",
+     "source": "GAN model",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "GAN model",
+     "to": "GAN network"
+    }
+   ],
+   "anchors": [
+    "Train a GAN network on medical images."
+   ]
+  },
+  {
+   "label": "relabel: web app",
+   "original": "搭建 React + Node.js web app，支持 real-time chat 和 file upload",
+   "rewrite": "搭建 React + Node.js web application，支持 real-time chat 和 file upload",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "web application",
+     "source": "web app",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "web app",
+     "to": "web application"
+    }
+   ],
+   "anchors": [
+    "Build a web application in React."
+   ]
+  },
+  {
+   "label": "lead_with: TypeScript",
+   "original": "负责 front-end development，使用 React, TypeScript 和 Tailwind CSS",
+   "rewrite": "负责 front-end development，使用 TypeScript, React 和 Tailwind CSS",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "TypeScript",
+     "source": "TypeScript",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "anchors": [
+    "Strong TypeScript skills."
+   ]
+  },
+  {
+   "label": "relabel: ETL pipeline",
+   "original": "实习期间 build ETL pipeline for marketing data, 用 Airflow 做 scheduling",
+   "rewrite": "实习期间 build data pipeline for marketing data, 用 Airflow 做 scheduling",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "data pipeline",
+     "source": "ETL pipeline",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "ETL pipeline",
+     "to": "data pipeline"
+    }
+   ],
+   "anchors": [
+    "Maintain the data pipeline."
+   ]
+  },
+  {
+   "label": "lead_with: recommendation systems",
+   "original": "研究方向: graph neural networks, recommendation systems 和 contrastive learning",
+   "rewrite": "研究方向: recommendation systems, graph neural networks 和 contrastive learning",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "recommendation systems",
+     "source": "recommendation systems",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "anchors": [
+    "Research on recommendation systems."
+   ]
+  },
+  {
+   "label": "lead_with: conversion rate",
+   "original": "设计 A/B testing framework, 分析 user retention 和 conversion rate data",
+   "rewrite": "设计 A/B testing framework, 分析 conversion rate 和 user retention data",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "conversion rate",
+     "source": "conversion rate",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "anchors": [
+    "Analyze conversion rate data."
+   ]
+  },
+  {
+   "label": "relabel: dashboard latency",
+   "original": "用 Spark 处理 log data, 优化 SQL query performance 和 dashboard latency",
+   "rewrite": "用 Spark 处理 log data, 优化 SQL query performance 和 dashboard load time",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "dashboard load time",
+     "source": "dashboard latency",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "dashboard latency",
+     "to": "dashboard load time"
+    }
+   ],
+   "anchors": [
+    "Reduce dashboard load time."
+   ]
+  },
+  {
+   "label": "English line naming 清华大学, relabel",
+   "original": "Research intern at 清华大学 KEG lab, built Python scripts for graph mining",
+   "rewrite": "Research intern at 清华大学 KEG lab, built Python code for graph mining",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Python code",
+     "source": "Python scripts",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "Python scripts",
+     "to": "Python code"
+    }
+   ],
+   "anchors": [
+    "Experience writing Python code is required."
+   ]
+  },
+  {
+   "label": "English line naming 北京大学, relabel",
+   "original": "Summer research at 北京大学 on graph neural networks, wrote Python scripts",
+   "rewrite": "Summer research at 北京大学 on graph neural networks, wrote Python code",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "Python code",
+     "source": "Python scripts",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "Python scripts",
+     "to": "Python code"
+    }
+   ],
+   "anchors": [
+    "Experience writing Python code is required."
+   ]
+  },
+  {
+   "label": "with 'for' and 'the', relabel",
+   "original": "负责 data pipeline for the lab, 用 Python 做 cleaning 和 analysis",
+   "rewrite": "负责 ETL pipeline for the lab, 用 Python 做 cleaning 和 analysis",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "ETL pipeline",
+     "source": "data pipeline",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "data pipeline",
+     "to": "ETL pipeline"
+    }
+   ],
+   "anchors": [
+    "Maintain the ETL pipeline."
+   ]
+  },
+  {
+   "label": "English line naming 浙江大学, lead_with",
+   "original": "Teaching assistant for CS 225 at 浙江大学, graded homework and ran office hours",
+   "rewrite": "Teaching assistant for CS 225 at 浙江大学, ran office hours and graded homework",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "office hours",
+     "source": "office hours",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "anchors": [
+    "Hold office hours."
+   ]
+  },
+  {
+   "label": "lead_with: error analysis",
+   "original": "在 Microsoft Research 实习, 负责 speech recognition model 的 evaluation 和 error analysis",
+   "rewrite": "在 Microsoft Research 实习, 负责 speech recognition model 的 error analysis 和 evaluation",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "error analysis",
+     "source": "error analysis",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "lead_with",
+     "link": "L1"
+    }
+   ],
+   "anchors": [
+    "Perform error analysis on speech models."
+   ]
+  },
+  {
+   "label": "relabel: login module",
+   "original": "开发 iOS app 的 login module 和 push notification service",
+   "rewrite": "开发 iOS app 的 sign-in module 和 push notification service",
+   "links": [
+    {
+     "id": "L1",
+     "anchor": "t1",
+     "term": "sign-in module",
+     "source": "login module",
+     "relation": "same"
+    }
+   ],
+   "ops": [
+    {
+     "op": "relabel",
+     "link": "L1",
+     "from": "login module",
+     "to": "sign-in module"
+    }
+   ],
+   "anchors": [
+    "Build the sign-in module."
+   ]
+  }
+ ]
+}

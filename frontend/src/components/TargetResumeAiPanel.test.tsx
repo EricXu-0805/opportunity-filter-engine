@@ -8,7 +8,7 @@ import { prepareTargetResumeAI } from '@/lib/target-resume-ai';
 import { createTargetResume, type TargetResumeV1 } from '@/lib/target-resume';
 import type { ProfileActionReceipt } from '@/lib/use-profile-refresh';
 import { DEFAULT_PROFILE } from '@/app/home/types';
-import type { PreparedTargetResumeAi, TargetResumeAiRequest, TargetResumeAiResponse } from '@/lib/target-resume-ai-protocol';
+import type { PreparedTargetResumeAi, TargetResumeAiLink, TargetResumeAiRequest, TargetResumeAiResponse, TargetResumeAiUnit } from '@/lib/target-resume-ai-protocol';
 import { ApiError } from '@/lib/api';
 import TargetResumeAiPanel, { type TargetResumeAiPanelProps } from './TargetResumeAiPanel';
 const mocked = vi.hoisted(() => ({ generate: vi.fn(), locale: 'en' }));
@@ -18,18 +18,29 @@ const clone = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
 const deferred = <T,>() => { let resolve!: (value: T) => void; const promise = new Promise<T>((yes) => { resolve = yes; }); return { promise, resolve }; };
 let prepared: PreparedTargetResumeAi;
 const rewrite = 'I built a Python parser 😀 with my teammates. I did not lead the team.';
+const PYTHON = { field: 'requirement' as const, requirement_index: 0, start: 0, end: 6, quote: 'Python' };
+/** The unit's own "Python" linked to the requirement, with codepoint offsets. */
+function pythonLinks(unit: TargetResumeAiUnit, entailed: boolean): TargetResumeAiLink[] {
+  const at = unit.original.indexOf('Python');
+  if (at < 0) return [];
+  const start = Array.from(unit.original.slice(0, at)).length;
+  return [{ id: 'L1', relation: 'same', entailed, target_evidence: { ...PYTHON }, source_evidence: { unit_id: unit.unit_id, start, end: start + 6, quote: 'Python' }, written_as: null }];
+}
 function response(payload: TargetResumeAiRequest, structureOnly = false): TargetResumeAiResponse {
-  return { ...(payload.support_groups === undefined ? {} : {support_groups:payload.support_groups}), version: 1, pipeline_version: 'full-target-v5', request_id: payload.request_id, document_id: payload.draft.id,
+  return { ...(payload.support_groups === undefined ? {} : {support_groups:payload.support_groups}), version: 1, pipeline_version: 'full-target-v6', request_id: payload.request_id, document_id: payload.draft.id,
     opportunity_id: payload.draft.opportunity_id, document_signature: payload.document_signature, base: clone(payload.draft.base),
-    manifest: { unit_ids: prepared.units.map(unit => unit.unit_id), protected_unit_count: prepared.protected_unit_count }, method: 'ai', logical_calls: 1, provider_attempts_upper_bound: 2,
-    receipts: prepared.units.filter((unit) => payload.selected_unit_ids.includes(unit.unit_id)).map((unit) => ({
-      unit_id: unit.unit_id, section_id: unit.section_id, block_id: unit.block_id, evidence: clone(unit.evidence), before_text: unit.before_text,
-      status: unit.evidence.kind === 'experience' && !structureOnly ? 'suggested' : 'unchanged',
-      reason_code: unit.evidence.kind === 'experience' && !structureOnly ? null : 'no_change',
-      suggestion: { priority: structureOnly ? 'high' : 'normal', reason: 'The opportunity explicitly mentions Python.',
-        target_evidence: [{ field: 'requirement', requirement_index: 0, start: 0, end: 6, quote: 'Python' }],
-        proposed_text: unit.evidence.kind === 'experience' && !structureOnly ? rewrite : null },
-    })) };
+    manifest: { unit_ids: prepared.units.map(unit => unit.unit_id), protected_unit_count: prepared.protected_unit_count }, method: 'ai',
+    logical_calls: structureOnly ? 1 : 2, provider_attempts_upper_bound: structureOnly ? 2 : 4,
+    receipts: prepared.units.filter((unit) => payload.selected_unit_ids.includes(unit.unit_id)).map((unit) => {
+      const experience = unit.evidence.kind === 'experience';
+      const rewritten = experience && !structureOnly;
+      const links = pythonLinks(unit, rewritten);
+      return { unit_id: unit.unit_id, section_id: unit.section_id, block_id: unit.block_id, evidence: clone(unit.evidence), before_text: unit.before_text,
+        status: experience && structureOnly ? 'unchanged' : 'suggested', reason_code: experience && structureOnly ? 'already_aligned' : null,
+        suggestion: { priority: structureOnly ? 'low' : 'normal', reason: 'The opportunity explicitly mentions Python.',
+          target_evidence: links.map(link => link.target_evidence), links, ops: rewritten ? ['lead_with'] : [],
+          proposed_text: rewritten ? rewrite : null, alternative_text: null } };
+    }) };
 }
 function props(): TargetResumeAiPanelProps {
   const draft = clone(golden.draft) as TargetResumeV1;
@@ -95,7 +106,10 @@ describe('full résumé AI review workspace', () => {
     expect(screen.getByRole('button', { name: 'Generate AI suggestions' })).toBeDisabled();
   });
   it('rejects a response with a fabricated target quote without presenting it as advice', async () => {
-    mocked.generate.mockImplementation(async (payload: TargetResumeAiRequest) => { const result = response(payload); result.receipts[0].suggestion!.target_evidence[0].quote = 'Invented requirement'; return result; });
+    mocked.generate.mockImplementation(async (payload: TargetResumeAiRequest) => {
+      const result = response(payload); const linked = result.receipts.find(item => item.suggestion?.links.length)!.suggestion!;
+      linked.links[0].target_evidence.quote = 'Invented requirement'; linked.target_evidence[0].quote = 'Invented requirement'; return result;
+    });
     const p = props(); render(<TargetResumeAiPanel {...p} />); await generate(); expect(await screen.findByRole('alert')).toHaveTextContent('could not be verified');
     expect(screen.queryByText('Invented requirement')).toBeNull(); expect(p.onApply).not.toHaveBeenCalled();
   });
@@ -113,7 +127,7 @@ describe('AI action profile checks and partial coverage', () => {
     });
     const view = render(<TargetResumeAiPanel {...p} profileRefresh={{ status: 'ready', refresh, checkForAction: firstCheck }} />);
     await generate(); expect(await screen.findByRole('alert')).toHaveTextContent('allowance is used up');
-    const coverage = screen.getByText(/Reviewed 8 of 9 items/); expect(coverage).toBeVisible();
+    const coverage = screen.getByText(/0 rewrites · 8 advice-only · 0 no change · 0 pending · 1 unprocessed/); expect(coverage).toBeVisible();
     const wait = deferred<ProfileActionReceipt | null>(), checkForAction = vi.fn(() => wait.promise);
     view.rerender(<TargetResumeAiPanel {...p} profileRefresh={{ status: 'ready', refresh, checkForAction }} />);
     fireEvent.click(screen.getByRole('button', { name: 'Continue remaining suggestions' }));
@@ -124,7 +138,7 @@ describe('AI action profile checks and partial coverage', () => {
     view.rerender(<TargetResumeAiPanel {...p} profileRefresh={{ status: 'ready', refresh, checkForAction }} />);
     await reviewReady(); expect(mocked.generate).toHaveBeenCalledTimes(2);
     expect(mocked.generate.mock.calls[1][0].selected_unit_ids).toEqual([retriedUnit]);
-    expect(screen.getByText(/Reviewed 9 of 9 items/)).toBeVisible(); expect(p.onApply).not.toHaveBeenCalled();
+    expect(screen.getByText(/1 rewrites · 8 advice-only · 0 no change · 0 pending · 0 unprocessed/)).toBeVisible(); expect(p.onApply).not.toHaveBeenCalled();
   });
   it('aborts an in-flight batch on a read pause and rejects the late batch even after readiness returns', async () => {
     const p = props();
@@ -154,7 +168,7 @@ describe('AI action profile checks and partial coverage', () => {
     expect(screen.getByRole('button', { name: 'Apply selected suggestions' })).toBeEnabled();
     checkForAction.mockResolvedValue(null); fireEvent.click(screen.getByRole('button', { name: 'Generate AI suggestions' }));
     await screen.findByText(/Current profile could not be verified/);
-    expect(screen.getByText(/Reviewed 9 of 9 items/)).toBeVisible(); expect(screen.getByRole('button', { name: 'Apply selected suggestions' })).toBeDisabled(); expect(mocked.generate).toHaveBeenCalledTimes(1); expect(p.onApply).not.toHaveBeenCalled();
+    expect(screen.getByText(/0 pending · 0 unprocessed/)).toBeVisible(); expect(screen.getByRole('button', { name: 'Apply selected suggestions' })).toBeDisabled(); expect(mocked.generate).toHaveBeenCalledTimes(1); expect(p.onApply).not.toHaveBeenCalled();
   });
 });
 
@@ -169,7 +183,7 @@ describe('request size refusals', () => {
     mocked.generate.mockImplementation(async (payload: TargetResumeAiRequest) => payload.selected_unit_ids.length > 1
       ? refuse(payload, () => 'batch_context_too_large') : response(payload));
     const p = props(); render(<TargetResumeAiPanel {...p} />); await generate(); await reviewReady();
-    expect(screen.getByText(/Reviewed 9 of 9 items/)).toBeVisible(); expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByText(/0 pending · 0 unprocessed/)).toBeVisible(); expect(screen.queryByRole('alert')).toBeNull();
     const requested = mocked.generate.mock.calls.map(([payload]) => payload.selected_unit_ids as string[]);
     expect(requested[0]).toEqual(prepared.batches[0]); expect(requested).toHaveLength(2 * prepared.units.length - 1);
     expect(requested.filter(ids => ids.length === 1).flat().sort()).toEqual(prepared.units.map(unit => unit.unit_id).sort());
@@ -180,7 +194,7 @@ describe('request size refusals', () => {
       ? refuse(payload, id => id === tooLarge ? 'context_too_large' : 'batch_context_too_large')
       : payload.selected_unit_ids[0] === tooLarge ? refuse(payload, () => 'context_too_large') : response(payload));
     const p = props(); render(<TargetResumeAiPanel {...p} />); await generate();
-    expect(await screen.findByText(/Reviewed 8 of 9 items/)).toBeVisible();
+    expect(await screen.findByText(/7 advice-only · 0 no change · 0 pending · 1 unprocessed/)).toBeVisible();
     expect(screen.queryByRole('alert')).toBeNull(); expect(screen.getByText(/source context is too long/)).toBeVisible();
     expect(mocked.generate.mock.calls.some(([payload]) => payload.selected_unit_ids.length === 1 && payload.selected_unit_ids[0] === tooLarge)).toBe(false);
     expect(screen.queryByRole('button', { name: 'Continue remaining suggestions' })).toBeNull();
@@ -270,5 +284,66 @@ describe('accepted wording operation records', () => {
     expect(change.reason).toBe('The opportunity explicitly mentions Python.'); expect(change.source_evidence[0].quote).toBe(unit.original);
     expect(change.check?.version ?? null).toBe(checkVersion ?? null);
     if (checkVersion) expect(change.check).toMatchObject({ request_id: mocked.generate.mock.calls[0][0].request_id, original: unit.original, evidence: unit.evidence });
+  });
+});
+
+
+describe('evidence-mapped receipts (full-target-v6)', () => {
+  const experience = () => prepared.units.find(unit => unit.evidence.kind === 'experience')!;
+  const withExperience = (change: (receipt: TargetResumeAiResponse['receipts'][number], result: TargetResumeAiResponse) => void) =>
+    mocked.generate.mockImplementation(async (payload: TargetResumeAiRequest) => {
+      const result = response(payload); const item = result.receipts.find(receipt => receipt.unit_id === experience().unit_id);
+      if (item) change(item, result); return result;
+    });
+  it('lists a kept line with its reason and offers nothing to apply for it', async () => {
+    withExperience((item) => { Object.assign(item, { status: 'unchanged', reason_code: 'beyond_allowed_edit' }); Object.assign(item.suggestion!, { proposed_text: null, ops: [] }); item.suggestion!.links[0].entailed = false; });
+    const p = props(); render(<TargetResumeAiPanel {...p} />); await generate(); await reviewReady();
+    const kept = screen.getByRole('region', { name: 'Lines kept as written' });
+    expect(kept).toHaveTextContent('Kept your wording: the suggested edit went beyond the allowed changes.');
+    expect(screen.queryByRole('checkbox', { name: /Use rewrite:/ })).toBeNull();
+    expect(screen.getByText(/0 rewrites · 8 advice-only · 1 no change/)).toBeVisible();
+  });
+  it('shows what changed and applies the rewrite without the posting terms when the student asks', async () => {
+    const plain = 'I built a parser in Python 😀 with my teammates. I did not lead the team.';
+    const reason = "Higher-priority suggestion: Compare the stated methods with the target requirements.\nUses the opportunity's term.\nLeads with the matching part.";
+    const plainReason = 'Higher-priority suggestion: Compare the stated methods with the target requirements.\nLeads with the matching part.';
+    withExperience((item) => { Object.assign(item.suggestion!, { ops: ['relabel', 'lead_with'], reason, alternative_text: plain, alternative_reason: plainReason }); });
+    const p = props(); render(<TargetResumeAiPanel {...p} />); await generate(); await reviewReady();
+    const unit = experience();
+    const card = screen.getByRole('article', { name: `AI rewrite ${unit.unit_id}` });
+    expect(card).toHaveTextContent('Uses the opportunity’s term'); expect(card).toHaveTextContent('Leads with the matching part');
+    expect(card).toHaveTextContent("Uses the opportunity's term.");
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Use without the posting’s terms' }));
+    expect(card).toHaveTextContent(plain);
+    // The wording no longer uses the posting's term, so neither the chip nor the reason says it does.
+    expect(card).not.toHaveTextContent('Uses the opportunity’s term'); expect(card).not.toHaveTextContent("Uses the opportunity's term.");
+    expect(card).toHaveTextContent('Leads with the matching part');
+    fireEvent.click(screen.getByRole('checkbox', { name: `Use rewrite: ${unit.unit_id}` }));
+    fireEvent.click(screen.getByRole('button', { name: 'Apply selected suggestions' }));
+    const [, next, provenance] = vi.mocked(p.onApply).mock.calls[0];
+    expect(next.document.sections.flatMap(section => section.blocks.flatMap(block => block.lines)).find(line => line.id === unit.unit_id)!.text).toBe(plain);
+    expect(provenance!.annotations!.find(annotation => annotation.line_id === unit.unit_id)!.reason).toBe(plainReason);
+  });
+  it('stops on a target with no quotable text and names the cause once', async () => {
+    mocked.generate.mockImplementation(async (payload: TargetResumeAiRequest) => {
+      const result = response(payload);
+      for (const item of result.receipts) Object.assign(item, { status: 'skipped', reason_code: 'target_has_no_text', suggestion: null });
+      return { ...result, method: 'unavailable', logical_calls: 0, provider_attempts_upper_bound: 0 };
+    });
+    const p = props(); render(<TargetResumeAiPanel {...p} />); await generate();
+    expect(await screen.findByRole('alert')).toHaveTextContent('lists no research topics or requirements to adapt to');
+    expect(mocked.generate).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('button', { name: 'Continue remaining suggestions' })).toBeNull();
+  });
+  it('keeps a rewrite the review could not check retryable and sends only that line again', async () => {
+    mocked.generate.mockImplementationOnce(async (payload: TargetResumeAiRequest) => {
+      const result = response(payload); const item = result.receipts.find(receipt => receipt.unit_id === experience().unit_id)!;
+      Object.assign(item, { status: 'skipped', reason_code: 'rewrite_unchecked', suggestion: null }); return { ...result, method: 'partial' };
+    });
+    const p = props(); render(<TargetResumeAiPanel {...p} />); await generate();
+    expect(await screen.findByText(/The fact check did not finish for this line/)).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Continue remaining suggestions' })); await reviewReady();
+    expect(mocked.generate.mock.calls[1][0].selected_unit_ids).toEqual([experience().unit_id]);
+    expect(screen.getByRole('checkbox', { name: `Use rewrite: ${experience().unit_id}` })).toBeEnabled();
   });
 });

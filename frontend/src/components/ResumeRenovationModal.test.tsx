@@ -31,8 +31,14 @@ vi.mock('@/lib/api', () => ({
   structureResume: (...args: unknown[]) => mockStructureResume(...args),
   // These older tests exercise editing/provenance, using a known valid server
   // receipt. Raw missing/wrong receipts live in the separate target-version suite.
-  renovateResume: async (...args: unknown[]) => ({ opportunity_id: args[1], target_version: (args[3] as { expectedTargetVersion?: string })?.expectedTargetVersion, ...await mockRenovateResume(...args) }),
-  optimizeBullet: async (...args: unknown[]) => ({ opportunity_id: args[1], target_version: (args[4] as { expectedTargetVersion?: string })?.expectedTargetVersion, ...await mockOptimizeBullet(...args) }),
+  // Fixtures written before w14 stand for a reviewing backend: its rules version, and for an
+  // accepted re-optimization its status and ops. A test of an older backend states its own.
+  renovateResume: async (...args: unknown[]) => ({ opportunity_id: args[1], target_version: (args[3] as { expectedTargetVersion?: string })?.expectedTargetVersion, pipeline_version: 'w14.1', ...await mockRenovateResume(...args) }),
+  optimizeBullet: async (...args: unknown[]) => {
+    const result = await mockOptimizeBullet(...args);
+    const reviewed = result && typeof result === 'object' && result.changed && !('status' in result) ? { status: 'rewritten', ops: ['verb_first'] } : {};
+    return { opportunity_id: args[1], target_version: (args[4] as { expectedTargetVersion?: string })?.expectedTargetVersion, pipeline_version: 'w14.1', ...reviewed, ...result };
+  },
 }));
 
 const mockSaveRenovation = vi.fn();
@@ -59,6 +65,7 @@ function ResumeRenovationModal(props: React.ComponentProps<typeof ActualResumeRe
 import { advanceOwnerEpoch, captureOwnerToken, isLocalOwnerReady, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import type { Opportunity, ProfileData, RenovationDoc } from '@/lib/types';
 import { hashString } from '@/lib/match-utils';
+import { translate } from '@/i18n/translate';
 import type { RenovationSaveResult } from '@/lib/supabase';
 
 function saveReceipt(...args: unknown[]): RenovationSaveResult {
@@ -103,6 +110,8 @@ function makeDoc(overrides: Partial<RenovationDoc> = {}): RenovationDoc {
                 source: 'macro',
                 text: 'Built a fault-tolerant data pipeline for ML workloads',
                 source_evidence: 'Built a data pipeline',
+                ops: ['lead_with'],
+                reviewed: 'w14.1',
               },
             ],
             current: 0,
@@ -1793,4 +1802,145 @@ it('does not label a newer inline draft Saved when an earlier write finishes', a
   expect(screen.getByRole('textbox')).toHaveValue('Still typing; not submitted');
   expect(screen.queryByText('renovate.saved')).toBeNull();
   expect(mockSaveRenovation).toHaveBeenCalledOnce();
+});
+
+describe('evidence-mapped renovation (w14.0)', () => {
+  const link = { id: 'L1', relation: 'same' as const, entailed: true, written_as: null,
+    target_evidence: { field: 'description', start: 0, end: 13, quote: 'data pipeline' }, source_evidence: { start: 6, end: 19, quote: 'data pipeline' } };
+  it('shows what a rewrite changed and can take the posting terms back out', async () => {
+    const doc = makeCurrentDoc();
+    Object.assign(doc.sections[0].bullets[0].variants[0], { ops: ['relabel', 'lead_with'], links: [link], alternative: 'Built a data pipeline for ML workloads' });
+    mockLoadRenovation.mockResolvedValue(savedDoc(doc));
+    renderModal();
+    await waitFor(() => expect(screen.getByText('tailor.ops.relabel')).toBeInTheDocument());
+    expect(screen.getByText('tailor.whyMatch:data pipeline|data pipeline')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'tailor.useWithoutTerms' }));
+    await waitFor(() => expect(screen.getByText(fullText('Built a data pipeline for ML workloads'))).toBeInTheDocument());
+    // The tailored wording stays one rollback away.
+    fireEvent.click(screen.getAllByText('renovate.rollback')[0]);
+    await waitFor(() => expect(screen.getByText(fullText('Built a fault-tolerant data pipeline for ML workloads'))).toBeInTheDocument());
+  });
+  it('opens a saved doc whose rewrite names translate at the bullet\'s own text; no step or copy reaches the rewrite', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    const doc = makeCurrentDoc();
+    Object.assign(doc.sections[0].bullets[0].variants[0], { ops: ['translate'], links: [] });
+    mockLoadRenovation.mockResolvedValue(savedDoc(doc));
+    mockSaveRenovation.mockImplementation(async (_id: string, value: RenovationDoc) => ({ status: 'saved', current: { ...savedDoc(value), revision: 2 } }));
+    renderModal();
+    expect(await screen.findByText('renovate.restored')).toBeInTheDocument();
+    expect(screen.queryByText(fullText('Built a fault-tolerant data pipeline for ML workloads'))).toBeNull();
+    expect(screen.getByText(fullText('Built a data pipeline'))).toBeInTheDocument();
+    // The unreviewed variant stays in the stored history but is one click from nothing: no roll-forward,
+    // and copy-all exports the bullet's own text (round-2 review, criteria 1 and 3).
+    expect(screen.queryByText('renovate.rollForward')).toBeNull();
+    expect(screen.queryByText('tailor.ops.translate')).toBeNull();
+    fireEvent.click(screen.getByText('renovate.copyAll'));
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    expect(writeText.mock.calls[0][0]).toContain('• Built a data pipeline');
+    expect(writeText.mock.calls[0][0]).not.toContain('fault-tolerant');
+    // An edit keeps the variant in what is saved, behind the student's own wording.
+    editFirstBullet('Built a data pipeline in Python'); fireEvent.click(screen.getByText('renovate.save'));
+    await waitFor(() => expect(mockSaveRenovation).toHaveBeenCalled());
+    const saved = mockSaveRenovation.mock.calls.at(-1)![1] as RenovationDoc;
+    expect(saved.sections[0].bullets[0].variants.map((variant) => variant.text)).toEqual(
+      ['Built a fault-tolerant data pipeline for ML workloads', 'Built a data pipeline in Python']);
+    // Rolling back from the edit skips the unreviewed variant: the bullet's own text.
+    fireEvent.click(screen.getAllByText('renovate.rollback')[0]);
+    expect(screen.getByText(fullText('Built a data pipeline'))).toBeInTheDocument();
+    expect(screen.queryByText(fullText('Built a fault-tolerant data pipeline for ML workloads'))).toBeNull();
+    // Its chip keeps a label in both dictionaries, never a raw key.
+    expect([translate('en', 'tailor.ops.translate'), translate('zh', 'tailor.ops.translate')]).toEqual(['Translated', '已翻译']);
+  });
+  it('steps over an unreviewed variant between two reviewed ones', async () => {
+    const doc = makeCurrentDoc();
+    const reviewed = doc.sections[0].bullets[0].variants[0];
+    doc.sections[0].bullets[0].variants = [
+      reviewed,
+      { source: 'macro', text: '主导搭建了面向机器学习任务的容错数据管道', source_evidence: 'Built a data pipeline' },
+      { source: 'user', text: 'Built a data pipeline for ML workloads', source_evidence: '' },
+    ];
+    doc.sections[0].bullets[0].current = 0;
+    mockLoadRenovation.mockResolvedValue(savedDoc(doc));
+    renderModal();
+    await screen.findByText(fullText('Built a fault-tolerant data pipeline for ML workloads'));
+    fireEvent.click(screen.getAllByText('renovate.rollForward')[0]);
+    expect(screen.getByText(fullText('Built a data pipeline for ML workloads'))).toBeInTheDocument();
+    fireEvent.click(screen.getAllByText('renovate.rollback')[0]);
+    expect(screen.getByText(fullText('Built a fault-tolerant data pipeline for ML workloads'))).toBeInTheDocument();
+    expect(screen.queryByText(/主导搭建/)).toBeNull();
+  });
+  it('says why a foregrounded bullet stayed as written', async () => {
+    const doc = makeCurrentDoc();
+    Object.assign(doc.sections[0].bullets[0], { variants: [], current: -1, note: 'no_link' });
+    mockLoadRenovation.mockResolvedValue(savedDoc(doc));
+    renderModal();
+    expect(await screen.findByTestId('renovation-kept-note')).toHaveTextContent('tailor.keptNoChange — tailor.keep.no_link');
+  });
+  it('gives the reason when re-optimize keeps the wording', async () => {
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeCurrentDoc()));
+    mockOptimizeBullet.mockResolvedValue({ text: 'Built a fault-tolerant data pipeline for ML workloads', source_evidence: 'Built a data pipeline',
+      changed: false, warnings: ['rejected_fabrication: review'], status: 'kept', reason_code: 'review_rejected', ops: [], links: [], alternative: null });
+    renderModal();
+    await clickOptimize();
+    expect(await screen.findByText('tailor.keptYourWording — tailor.keep.review_rejected')).toBeInTheDocument();
+    expect(screen.queryByText('renovate.source.ai')).toBeNull();
+  });
+
+  // ---- round 1: restored or returned wording no review accepted (criteria 1 and 3) ----
+  it('does not show a saved pre-review variant written in another language than its bullet', async () => {
+    // main (w13.6) wrote every rewrite in the UI language with no review: an English bullet saved with a Chinese variant.
+    const doc = makeCurrentDoc();
+    Object.assign(doc.sections[0].bullets[0], { base_text: 'Built a data pipeline', current: 0,
+      variants: [{ source: 'macro', text: '搭建了面向机器学习任务的容错数据管道', source_evidence: 'Built a data pipeline' }] });
+    mockLoadRenovation.mockResolvedValue(savedDoc(doc));
+    renderModal();
+    expect(await screen.findByText('renovate.restored')).toBeInTheDocument();
+    expect(screen.queryAllByText(fullText('搭建了面向机器学习任务的容错数据管道'))).toHaveLength(0);
+  });
+  it('does not open a reviewed-looking variant whose script differs from its bullet', async () => {
+    const doc = makeCurrentDoc();
+    Object.assign(doc.sections[0].bullets[0].variants[0], { text: '搭建了容错数据管道' });
+    mockLoadRenovation.mockResolvedValue(savedDoc(doc));
+    renderModal();
+    expect(await screen.findByText('renovate.restored')).toBeInTheDocument();
+    expect(screen.queryAllByText(fullText('搭建了容错数据管道'))).toHaveLength(0);
+    expect(screen.getByText(fullText('Built a data pipeline'))).toBeInTheDocument();
+  });
+  it('keeps a pre-review backend\'s renovation at each bullet\'s own text', async () => {
+    mockStructureResume.mockResolvedValue(structuredResume);
+    mockRenovateResume.mockResolvedValue({ ...makeDoc(), pipeline_version: 'w13.6' });
+    renderModal();
+    fireEvent.click(await screen.findByText('renovate.start'));
+    await waitFor(() => expect(mockRenovateResume).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.getByText(fullText('Built a data pipeline'))).toBeInTheDocument());
+    expect(screen.queryAllByText(fullText('Built a fault-tolerant data pipeline for ML workloads'))).toHaveLength(0);
+  });
+  it('adds no variant for a re-optimization the response does not mark as rewritten', async () => {
+    mockLoadRenovation.mockResolvedValue(savedDoc(makeCurrentDoc()));
+    mockOptimizeBullet.mockResolvedValue({ text: 'Engineered a resilient ETL pipeline', source_evidence: 'Built a data pipeline',
+      changed: true, warnings: [], status: undefined, pipeline_version: 'w13.6' });
+    renderModal();
+    await clickOptimize();
+    await waitFor(() => expect(mockOptimizeBullet).toHaveBeenCalledOnce());
+    await waitFor(() => expect(screen.getByText('tailor.keptYourWording — tailor.keep.review_unavailable')).toBeInTheDocument());
+    expect(screen.queryAllByText(fullText('Engineered a resilient ETL pipeline'))).toHaveLength(0);
+  });
+});
+
+// Round-2 review (criteria 1 and 3): the conflict dialog's "View saved version" preview.
+describe('the conflict preview of a saved version', () => {
+  it('shows a bullet whose current variant no review accepted at its own text', async () => {
+    const remoteDoc = makeCurrentDoc();
+    Object.assign(remoteDoc.sections[0].bullets[0], { base_text: 'Built a data pipeline', current: 0,
+      variants: [{ source: 'macro', text: '主导搭建了面向机器学习任务的容错数据管道', source_evidence: 'Built a data pipeline' }] });
+    mockLoadRenovation.mockResolvedValue(savedDoc());
+    mockSaveRenovation.mockResolvedValueOnce({ status: 'conflict', current: { ...savedDoc(remoteDoc), revision: 9 } });
+    renderModal(); await screen.findByText('renovate.restored');
+    editFirstBullet('Keep this local draft'); fireEvent.click(screen.getByText('renovate.save'));
+    await screen.findByTestId('renovation-save-conflict');
+    const preview = screen.getByTestId('renovation-conflict-preview').textContent;
+    expect(preview).not.toContain('主导搭建了面向机器学习任务的容错数据管道');
+    expect(preview).toContain('Built a data pipeline');
+  });
 });
