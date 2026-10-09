@@ -11,7 +11,7 @@ import { en, zh } from '../src/i18n/dictionaries';
  * A finding fails the run when it is serious or critical and BASELINE does not
  * name it. Unnamed moderate and minor findings are annotated and never fail.
  * Every finding, named or not, is in the attached axe-<locale>.json. BASELINE
- * is what main had on 2026-10-09: a list of debts, not of acceptable things.
+ * is what was still open on 2026-10-09: a list of debts, not acceptable things.
  * An entry that a run no longer sees fails the run too, so it is deleted when
  * its fix lands; only entries marked mayBeAbsent are exempt.
  *
@@ -95,14 +95,6 @@ const BASELINE: readonly Known[] = [
     mayBeAbsent: `${ON_RESULT_CARDS} Not seen on 10-09: it shows only when a Reach card lands on the first page.`,
     name: 'amber-600: the yellow Badge (3.09:1 on a white card, 3.04:1 on the page tint) and the Reach score percentage '
       + '(3.18:1). Computed from Badge.tsx and ScoreBar.tsx.',
-  },
-  {
-    rule: 'definition-list', impact: 'serious', steps: ['detail'],
-    name: 'DetailFactsSection.tsx wraps each fact row\'s <dt> in an extra <div>, so none of the 10 fact lists holds a dt/dd group.',
-  },
-  {
-    rule: 'dlitem', impact: 'serious', steps: ['detail'],
-    name: 'Same rows as above: each of the 29 <dt> labels sits outside a dt/dd group.',
   },
   {
     rule: 'label', impact: 'critical', steps: ['home'], target: '#resume-upload',
