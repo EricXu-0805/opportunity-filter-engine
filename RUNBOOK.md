@@ -138,7 +138,11 @@ applies all 49 into an empty database in that order.
    production. Production's history records `012`, `013` and `014` under
    timestamp versions such as `20260611111920`, so match its ledger to the
    files by name, not by version string (`docs/RELEASE.md`, section 5, and
-   `supabase/MIGRATION_REPAIR.md`).
+   `supabase/MIGRATION_REPAIR.md`). `scripts/check_migration_parity.py` does
+   that match offline: `--print-sql` prints the read-only export query, and
+   `--applied <export>` reads its result back and exits 1 on drift, such as
+   a file production never ran or a row the repo does not have. Running the
+   query against production waits on the owner's OK.
 
 `supabase db push` with the pinned CLI 2.95.4 works only on an empty
 database. On 2026-10-09 a scratch database that had taken the full chain
@@ -152,8 +156,9 @@ after it.
 
 `docs/product_scope.md` lists every flag, its state and why each closed one
 is closed. A flag flips only in that feature's acceptance PR, which edits both
-`backend/lib/release_scope.py` and `frontend/src/lib/release-scope.ts`, the
-accepted set in `tests/test_release_scope.py`, and the table in
+`backend/lib/release_scope.py` and `frontend/src/lib/release-scope.ts`, moves
+the feature from `UNACCEPTED_FEATURES` to `ACCEPTED_FEATURES` in
+`tests/test_release_scope.py`, and updates the table in
 `docs/product_scope.md`.
 
 ## 6. Setting up a new environment
@@ -164,10 +169,12 @@ accepted set in `tests/test_release_scope.py`, and the table in
    under a "Saved locally only" banner. Then apply the migrations. Into an
    empty database `supabase db push` takes the whole chain, which is what the
    CI replay does (section 4).
-2. **Secrets.** The backend's go in the Render dashboard (`render.yaml` holds
-   only non-secret settings), the frontend's build variables in Vercel, and
-   the workflows' in GitHub repository secrets. Section 3 says where the
-   cron workflows name theirs.
+2. **Secrets.** `docs/RELEASE.md` section 6 lists every variable the
+   backend, the frontend build and the workflows read, whether production
+   needs it, and what breaks without it. The backend's go in the Render
+   dashboard (`render.yaml` holds only non-secret settings), the frontend's
+   build variables in Vercel, and the workflows' in GitHub repository
+   secrets. Section 3 says where the cron workflows name theirs.
 3. **Web Push.** Generate a VAPID keypair and set `VAPID_PRIVATE_KEY`,
    `VAPID_PUBLIC_KEY` and `VAPID_SUBJECT` on the backend. Keep the private key
    in a password manager.

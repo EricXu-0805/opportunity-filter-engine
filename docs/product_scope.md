@@ -45,7 +45,7 @@ their API routes answer 404 from `ReleaseScopeMiddleware` in
 | Backend flag | Frontend flag | State | What it controls | Why it is closed |
 |---|---|---|---|---|
 | `cross_school_matching` | `crossSchoolMatching` | on | The "include other schools" control on `/results` and cross-school ranking | |
-| `resume_renovate` | `resumeRenovate` | on | Résumé renovation on the opportunity page and its `/api/tailor/*` and full-target export routes | |
+| `resume_renovate` | `resumeRenovate` | on | Résumé renovation on the opportunity page and its routes: `/api/tailor/structure`, `/renovate`, `/bullet`, `/full-target/suggestions`, `/full-target/selection-plan` and `/api/resume/full-target/export`. Single-target tailoring (`/api/tailor`, `/api/tailor/extract-bullets`, `/api/tailor/status`) stays public either way | |
 | `match_ai_refine` | `matchAiRefine` | off | The AI re-ranking pass on `/results` | When it was on, it changed the URL and badges but not the `/matches/view` ranking. It reopens only with server-side mode attestation and bounded paid concurrency. |
 | `compare` | `compare` | off | `/compare`, compare selection in favorites, `/api/matches/{id}/explain` | Outside the accepted MVP surface |
 | `fellowships` | `fellowships` | off | Fellowship records on every public surface, `/fellowships`, the Fellowship preference | Outside the accepted MVP surface |
@@ -58,10 +58,12 @@ their API routes answer 404 from `ReleaseScopeMiddleware` in
 
 How a flag changes:
 
-- A feature opens only in its own acceptance PR, which flips both tables and
-  updates `ACCEPTED_FEATURES` in `tests/test_release_scope.py` and this table.
-- An environment variable can switch an accepted feature off but never on.
-  Only `payments` has such a switch today: `OFE_PAYMENTS_ENABLED`.
+- A feature opens only in its own acceptance PR, which flips both tables,
+  moves the feature from `UNACCEPTED_FEATURES` to `ACCEPTED_FEATURES` in
+  `tests/test_release_scope.py`, and updates this table.
+- No environment variable can open a closed feature. Only `payments` reads
+  one, `OFE_PAYMENTS_ENABLED`: even after `payments` is accepted, the feature
+  stays off until that variable is `1` or `true`.
 - `tests/conftest.py` forces every flag on, except in the five test modules
   that set `RELEASE_CONTRACT_TESTS = True`, so a green suite says little about
   the shipped flag state. `tests/test_release_scope.py` is the module that
