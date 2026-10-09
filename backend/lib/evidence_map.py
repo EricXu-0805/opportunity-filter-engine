@@ -26,6 +26,7 @@ from backend.lib.target_resume_ai_grounding import (
     _SHARED_CREDIT,
     _TEAM_CONTEXT,
     _TEAM_WITH,
+    _WORD,
     ACTIONS,
     CO_CREDIT,
     DENIAL,
@@ -39,6 +40,7 @@ from backend.lib.target_resume_ai_grounding import (
     TEAM,
     UNFINISHED,
     UNFINISHED_ZH,
+    _lead_word,
     _team_marked,
     claim_text,
     claim_upgrade_findings,
@@ -905,6 +907,34 @@ def _accents_kept(source: str, target: str, line: str = "") -> bool:
     return span is not None and _english_around(line, span)
 
 
+def _english_line(line: str, source: str, target: str) -> bool:
+    """Whether a line with no letter of another script reads as English around a relabel's "from".
+    Outside it, the line leads with a résumé verb form (verb_use, after _lead_word's adverbs) or a
+    word in "-ed" or "-ing" ("Wired", "Pipetting"), or holds two English function words of three
+    letters or more (_FUNCTION_EN, read as it is), or a résumé verb form beside another one or an
+    English function word; a verb form of "from" that "to" keeps counts too ("Programmed a drone"
+    -> "Programmed an unmanned aerial vehicle").
+
+    language() reads every Latin-script line as English, so without this a relabel could write a
+    phrase of a Spanish, French, German or Indonesian line in English: "Disene un sistema de
+    control para 40 sensores." -> "Disene un control system para 40 sensores." None of its words
+    outside the phrase is an English verb or function word. "Il a construit un pipeline de mesures
+    on the side." holds "a", "on" and "the", but only one of three letters, and no English verb.
+    """
+    span = source_span(line, source)
+    if span is None:
+        return False
+    outside = line[:span[0]] + " " + line[span[1]:]
+    lead = _lead_word(outside)
+    if verb_use(lead) or re.fullmatch(r"[a-z-]{2,}(?:ed|ing)", lead):
+        return True
+    function = _accent_words(outside)[1] & _FUNCTION_EN
+    kept = {word.casefold() for word in _WORD.findall(target)}
+    verbs = {word.casefold() for word in _WORD.findall(outside) if verb_use(word)}
+    verbs |= {word.casefold() for word in _WORD.findall(source) if word.casefold() in kept and verb_use(word)}
+    return bool(verbs) and len(verbs | function) >= 2 or sum(len(word) >= 3 for word in function) >= 2
+
+
 def _setting_accent_changed(line: str, source: str, target: str) -> bool:
     """Whether a relabel writes an accented word of a setting otherwise: "from" stands in a setting
     of the line (the claim locks' SETTING: "at the Gómez lab") and "to" lacks one of its accented
@@ -1034,6 +1064,10 @@ def _check_same_language(unit: Unit, text: str, links: list[Link], ops_raw: list
                        or _relabel_refusal(_joined_added_text(pieces), list(added), unit, link.term))
             if refusal:
                 return _keep(unit, "beyond_allowed_edit", refusal, links=links)
+            # In a Latin-script line a relabel renames only where the line is English around it
+            # (_english_line): "sistema de control" -> "control system" translates its Spanish.
+            if not _non_latin_frame(unit.current) and not _english_line(unit.current, source, target):
+                return _keep(unit, "beyond_allowed_edit", "relabel_cross_language", links=links)
             allowed_add += Counter(tokens(target))
             allowed_drop += Counter(tokens(source))
             relabels.append((source, target))
