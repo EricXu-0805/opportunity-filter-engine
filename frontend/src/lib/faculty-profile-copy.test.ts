@@ -60,6 +60,15 @@ describe('localizedFacultyDescription from the structured fields', () => {
     expect(localizedFacultyDescription(withFields(c), '   ', tIn('zh'))).toBeNull();
   });
 
+  it('shows a redacted description as served when the server withdrew the fields', () => {
+    // tests/test_faculty_profile_summary_contract.py: an address in the
+    // description sends `faculty_profile_summary: null` beside the placeholder.
+    const c = fixture.cases[0];
+    const withdrawn = { ...opp(c.record), faculty_profile_summary: null };
+    expect(localizedFacultyDescription(withdrawn, '[email redacted]', tIn('zh'))).toBeNull();
+    expect(localizedFacultyDescription(withdrawn, '[email redacted]', tIn('en'))).toBeNull();
+  });
+
   it('ignores the fields on anything that is not a faculty profile', () => {
     const c = fixture.cases[0];
     expect(localizedFacultyDescription({ ...withFields(c), source_type: 'campus_program' }, c.server_text, tIn('zh'))).toBeNull();

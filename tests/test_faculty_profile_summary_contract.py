@@ -15,11 +15,13 @@ from pathlib import Path
 import pytest
 
 from backend.lib.public_opportunity_detail import project_public_detail
+from backend.lib.public_projection import project_public_opportunity_payload
 from backend.routes.opportunities import _list_card
 from src.evidence import (
     FACULTY_PROFILE_CLOSINGS,
     _faculty_profile_summary,
     faculty_profile_summary_fields,
+    faculty_safe_public_record,
     render_faculty_profile_summary,
 )
 
@@ -98,3 +100,40 @@ def test_a_listing_carries_no_faculty_fields():
     }
     assert 'faculty_profile_summary' not in project_public_detail(listing)
     assert 'faculty_profile_summary' not in _list_card(listing)
+
+
+_EMAIL_IN_RESEARCH_AREAS = {
+    'source_type': 'faculty_research', 'pi_name': 'Jane Doe', 'department': 'Chemistry',
+    'organization': 'Example University',
+    'metadata': {'research_areas_raw': 'Catalysis; write to jdoe@example.edu'},
+}
+# No field holds an address, but the sentence's " at " joins two of them into one.
+_EMAIL_ACROSS_FIELDS = {
+    'source_type': 'faculty_research', 'pi_name': 'Jane Doe', 'department': 'jdoe',
+    'organization': 'example.edu', 'metadata': {'research_areas_raw': 'Catalysis'},
+}
+
+
+@pytest.mark.parametrize('record', [_EMAIL_IN_RESEARCH_AREAS, _EMAIL_ACROSS_FIELDS],
+                         ids=['in-research-areas', 'across-fields'])
+def test_a_redacted_description_withdraws_the_fields(record):
+    """The privacy boundary replaces a description holding an address with
+    "[email redacted]". The fields would have the client write the sentence
+    anyway: around the placeholder ("Research areas: [email redacted]") or, in
+    English, around the very address the server withheld. The server's verdict
+    on the description has to decide what the page shows."""
+    for payload in (project_public_detail(_served_record({'record': record})),
+                    _list_card(_served_record({'record': record}))):
+        assert payload['description_clean'] == '[email redacted]'
+        assert payload['faculty_profile_summary'] is None
+
+
+def test_a_redacted_field_withdraws_the_fields_even_beside_a_clean_description():
+    """The projector's own rule, for a caller-prepared payload: the fields
+    travel only as the boundary left them, or not at all."""
+    record = _served_record({'record': _EMAIL_IN_RESEARCH_AREAS})
+    payload = faculty_safe_public_record(deepcopy(record))
+    payload['description_clean'] = 'Faculty research profile for Jane Doe.'
+    projected = project_public_opportunity_payload(payload, record)
+    assert projected['description_clean'] == 'Faculty research profile for Jane Doe.'
+    assert projected['faculty_profile_summary'] is None
