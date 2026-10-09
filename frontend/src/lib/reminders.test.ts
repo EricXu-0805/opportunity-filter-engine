@@ -6,8 +6,9 @@ import {
   collectReminders,
   formatReminderLabel,
   isReplyRecorded,
+  REMINDABLE_STATUSES,
 } from './reminders';
-import type { InteractionRecord } from './supabase';
+import type { InteractionRecord, InteractionType } from './supabase';
 
 const NOW = new Date('2026-04-17T10:00:00Z');
 
@@ -274,4 +275,13 @@ describe('isReplyRecorded', () => {
       expect(isReplyRecorded(status)).toBe(false);
     },
   );
+
+  // A status in both sets would be hidden from review while the cron still
+  // sends for it.
+  const ALL_STATUSES: InteractionType[] = [
+    'contacted', 'applied', 'replied', 'rejected', 'interviewing', 'dismissed',
+  ];
+  it.each(ALL_STATUSES)('%s is never both a recorded reply and remindable', (status) => {
+    expect(isReplyRecorded(status) && REMINDABLE_STATUSES.has(status)).toBe(false);
+  });
 });
