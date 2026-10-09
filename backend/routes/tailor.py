@@ -659,6 +659,10 @@ _CJK_DATES_END = re.compile(r"(?:19|20)\d{2}\s*年(?:\s*\d{1,2}\s*月)?"
                             r"(?:\s*[-–—~至到]\s*(?:(?:19|20)\d{2}\s*年)?(?:\s*\d{1,2}\s*月)?|至今)?$")
 # A heading in CJK letters alone ("项目经历", "助教经历"): no digit, mark or space.
 _CJK_HEADING = re.compile(r"[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uac00-\ud7af]{2,8}")
+# Such a heading followed by its English name ("教育背景 Education", "项目经历 | Projects", and
+# "科研经历(Research)" as NFKC reads "科研经历（Research）").
+_BILINGUAL_HEADING = re.compile(r"([\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uac00-\ud7af]{2,8})"
+                                r" ?(?:[|/] ?)?\(?([A-Za-z][A-Za-z &/'-]*?)\)?")
 _LATIN_WORD = re.compile(r"[A-Za-z][A-Za-z'’.-]*")
 # A row's classification reads at most this much of it: a heading, a role row or a label is short.
 _ROW_SHAPE_CHARACTERS = 240
@@ -679,6 +683,12 @@ def _dangling(previous: str) -> bool:
     last = previous[-1:]
     return (word in _NOT_HEAD or bool(_OBJECT_END.fullmatch(" " + word))
             or bool(_CJK_EDGE.fullmatch(last) and _OBJECT_END.fullmatch(last)))
+
+
+def _bilingual_heading(line: str) -> re.Match | None:
+    """A heading of 2-8 CJK letters and its English name, a short title-case heading (_own_row)."""
+    match = _BILINGUAL_HEADING.fullmatch(line)
+    return match if match and _own_row(match.group(2)) else None
 
 
 def _names_its_items(line: str) -> bool:
@@ -732,10 +742,12 @@ def _row_of_its_own(previous: str, line: str) -> bool:
     joining word: "Team Lead, Robotics Club", "Member, Solar Car Team"), which start the next
     entry, and a heading (a short title-case heading, _own_row, or 2-8 CJK letters alone) that
     names its items besides any status (_names_its_items: "Team Projects", "Accepted Papers",
-    "Research in Progress", 论文发表, 团队项目), which starts the next section.
+    "Research in Progress", 论文发表, 团队项目), or such CJK letters and their English name that
+    both do ("团队项目 Team Projects"; _bilingual_heading), which starts the next section.
 
-    Otherwise it starts a row of its own only when it is shaped as one: a heading (_own_row, or
-    CJK letters alone), a title and its details (_title_row), a label ("Technical Skills: ..."),
+    Otherwise it starts a row of its own only when it is shaped as one: a heading (_own_row, CJK
+    letters alone, or with their English name: "教育背景 Education"), a title and its details
+    (_title_row), a label ("Technical Skills: ..."),
     a role or date row as experience_evidence.names_no_action reads it, or a CJK row that ends
     with its dates ("研究助理 2025年1月至今"). Any other row goes on
     with the item: a bullet never ends at its first physical row while the rest of it may
@@ -749,12 +761,14 @@ def _row_of_its_own(previous: str, line: str) -> bool:
         return True
     if first in _em._FUNCTION_EN:
         return False
-    if (_own_row(line) or _CJK_HEADING.fullmatch(line)) and _names_its_items(line):
+    bilingual = _bilingual_heading(line)
+    if ((_own_row(line) or _CJK_HEADING.fullmatch(line)) and _names_its_items(line)
+            or bilingual and all(_names_its_items(part) for part in bilingual.groups())):
         return True
     if any(pattern.search(line) for pattern in _ITEM_QUALIFIERS):
         return False
     label = _LABEL_ROW.match(line)
-    return (_own_row(line) or _title_row(line) or bool(_CJK_HEADING.fullmatch(line))
+    return (_own_row(line) or _title_row(line) or bool(_CJK_HEADING.fullmatch(line)) or bool(bilingual)
             or bool(label and all(word[:1].isupper() or _CJK_EDGE.match(word[:1]) for word in label.group(1).split()))
             or names_no_action(line) or bool(_CJK_EDGE.match(line) and (_DATE_RANGE.search(line)
                                                                          or _CJK_DATES_END.search(line))))

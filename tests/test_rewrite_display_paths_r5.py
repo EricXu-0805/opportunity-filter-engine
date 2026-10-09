@@ -128,6 +128,35 @@ def test_a_row_in_sentence_case_with_a_status_on_or_below_it_stays_with_its_bull
                                  [cut, "Cleaned 200 survey responses"])
 
 
+# ------------------------------------------------------------------ extraction: headings in both languages
+# Found the same way: a Chinese heading followed by its English name ("教育背景 Education") was neither
+# CJK letters alone nor a title-case heading, so it too read as the rest of the bullet above it.
+BILINGUAL_HEADINGS = ["教育背景 Education", "项目经历 | Projects", "科研经历（Research）", "获奖情况 Honors & Awards",
+                      "团队项目 Team Projects", "论文发表 Publications"]
+
+
+@pytest.mark.parametrize("path", EXTRACT_PATHS)
+@pytest.mark.parametrize("heading", BILINGUAL_HEADINGS)
+def test_the_bullet_above_a_heading_in_both_languages_is_kept(monkeypatch, path, heading):
+    resume, bullets = _headed(heading)
+    assert _extracted(monkeypatch, path, resume, bullets) == bullets
+
+
+@pytest.mark.parametrize("heading", BILINGUAL_HEADINGS)
+def test_the_local_extraction_glues_no_heading_in_both_languages_to_a_bullet(heading):
+    resume, bullets = _headed(heading)
+    assert tailor._heuristic_bullets(resume) == bullets
+
+
+# The boundary, which db09a88 already holds: a status in both languages stays with its bullet.
+@pytest.mark.parametrize("path", EXTRACT_PATHS)
+@pytest.mark.parametrize("row", ["尚未投稿 Under Review", "论文在投 Under Review"])
+def test_a_status_row_in_both_languages_stays_with_its_bullet(monkeypatch, path, row):
+    top, bullets = BULLETS["zh"]
+    resume = f"{top}\n• {bullets[0]}\n{row}\n• {bullets[2]}\n"
+    assert bullets[0] not in _extracted(monkeypatch, path, resume, [bullets[0], bullets[2]])
+
+
 # ------------------------------------------------------------------ criterion (2): an English relabel of an accented word
 # 4bbdcb6 kept every relabel that leaves an accented word out of "to", so the relabel of an English
 # line's loanword or name ("café inventory" -> "coffee shop inventory", "Müller group" -> "Mueller
