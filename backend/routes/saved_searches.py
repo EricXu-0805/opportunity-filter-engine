@@ -325,7 +325,7 @@ def _stored_profile_for_filters(profile: dict) -> dict | None:
 # can read the profile it needs with one keyed lookup and no new column.
 async def _ineligible_ids_by_device(
     client, supabase_url: str, headers: dict, corpus: list[dict], device_ids: list[str],
-) -> dict[str, set[str] | None]:
+) -> dict[str, set[str] | None] | None:
     """For each device, excluded corpus ids; None pauses an invalid selection.
 
     A POSITIVE set of known-ineligible ids, deliberately shaped like
@@ -334,10 +334,13 @@ async def _ineligible_ids_by_device(
     you". A negative test against the eligible set would empty a student's
     pending queue on any night a shard failed to load.
 
-    A profile that cannot be read yields an empty set — the digest then behaves
+    A device with no profile row yields an empty set — the digest then behaves
     exactly as it does today rather than filtering on a guess. An explicitly
     empty/invalid selection instead yields None: both crons preserve the queue
-    and skip it until the student chooses a type.
+    and skip it until the student chooses a type. A read that FAILED returns
+    None for the whole map, so each caller decides what an unknown exclusion
+    set means for it: the digest sends the queue it already has, the refresh
+    must not diff an unfiltered universe against a filtered baseline.
     """
     wanted = sorted({d for d in device_ids if d})
     if not wanted:
@@ -354,8 +357,8 @@ async def _ineligible_ids_by_device(
         resp.raise_for_status()
         rows = resp.json()
     except Exception as exc:  # noqa: BLE001 - a read failure must not stop the run
-        logger.warning("saved-search profiles unreadable, sending unfiltered: %s", exc)
-        return {}
+        logger.warning("saved-search profiles unreadable: %s", exc)
+        return None
 
     # Students share contexts — one school, cross-school off — so the corpus
     # sweep runs once per distinct context rather than once per row.
@@ -463,8 +466,27 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
             client, supabase_url, headers, corpus,
             [row.get("device_id") for row in rows],
         )
+        if ineligible_by_device is None:
+            # The baseline was written with each student's exclusions applied.
+            # Diffing tonight's unfiltered universe against it calls every
+            # excluded record new — and the next readable night prunes them,
+            # so each failed read re-announced the same records. Leave every
+            # row as it is; the next run retries the read.
+            return {
+                "status": "partial",
+                "processed": 0,
+                "new_matches": 0,
+                "errors": [
+                    "profiles unreadable: no saved search refreshed, "
+                    "so no profile-excluded record is marked new; retries next run"
+                ],
+                "timestamp": datetime.now(UTC).isoformat(),
+            }
 
         now_iso = datetime.now(UTC).isoformat()
+        # Every id tonight's load contains, live or not. Whatever the baseline
+        # holds outside it is unknown tonight, not gone.
+        corpus_ids = {opportunity["id"] for opportunity in corpus if opportunity.get("id")}
 
         for row in rows:
             try:
@@ -475,7 +497,8 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
                     continue
                 filters = row.get("filters_json") or {}
                 query = row.get("query") or ""
-                prior_ids = set(row.get("last_result_ids") or [])
+                prior_result_ids = row.get("last_result_ids") or []
+                prior_ids = set(prior_result_ids)
                 pending_ids = [
                     opportunity_id
                     for opportunity_id in (row.get("new_match_ids") or [])
@@ -511,9 +534,20 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
                     pending_ids + [oid for oid in new_ids if oid not in pending_set]
                 )[-NEW_MATCH_IDS_CAP:]
 
+                # The same rule the queue follows, applied to the baseline. An
+                # id this load does not contain keeps its place; otherwise the
+                # night it comes back it is diffed as new and announced again.
+                # Across the last five versions of every shard, 399 records were
+                # live, then missing for one version, then live again.
+                current_set = set(current_ids)
+                baseline = current_ids + [
+                    oid for oid in dict.fromkeys(prior_result_ids)
+                    if oid not in corpus_ids and oid not in current_set
+                ]
+
                 patch_body = {
                     "last_run_at": now_iso,
-                    "last_result_ids": current_ids,
+                    "last_result_ids": baseline,
                     "new_match_ids": accumulated,
                 }
                 patch_resp = await client.patch(
@@ -640,10 +674,12 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
             # One read of the live queue, and only when there is something to
             # send — a night with no opted-in rows costs nothing extra.
             await incidents.load_open_keys()
+            # Unreadable profiles: send the queue the refresh already filtered
+            # rather than filtering it again on a guess.
             ineligible_by_device = await _ineligible_ids_by_device(
                 client, supabase_url, headers, corpus,
                 [row.get("device_id") for row in rows],
-            )
+            ) or {}
 
         for row in rows:
             sid = str(row.get("id", "?"))
