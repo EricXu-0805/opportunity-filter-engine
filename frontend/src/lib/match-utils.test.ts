@@ -9,6 +9,7 @@ import {
   hashProfile,
 } from './match-utils';
 import type { MatchResult } from './types';
+import countFixture from './__fixtures__/count-reconciliation.json';
 
 const NOW = new Date('2026-04-16T10:00:00Z');
 
@@ -569,5 +570,78 @@ describe('hashProfile', () => {
   it('resume hashes on presence, not content', () => {
     expect(hashProfile({ ...base, resume_text: 'draft one' }))
       .toBe(hashProfile({ ...base, resume_text: 'draft two, edited' }));
+  });
+});
+
+// M02: the export is the fourth surface. tests/test_school_coverage.py checks
+// home stats, the school picker and the Match universe against this corpus and
+// proves `served` is what the API sends for it; here the CSV must sort the same
+// rows into the same kinds, so a listing the home page counts is exported as
+// an open listing and nothing it does not count is exported as one.
+describe('the CSV export counts the same records as the other surfaces', () => {
+  function exportedRows(): Array<Record<string, string>> {
+    const rows = countFixture.served.map((served) => makeMatch(
+      {
+        id: served.id,
+        title: served.id,
+        source_type: served.source_type,
+        record_kind: served.record_kind,
+        target_truth: served.target_truth,
+      } as Partial<MatchResult['opportunity']>,
+      { opportunity_id: served.id },
+    ));
+    // No field in this corpus carries a comma or a quote, so a plain split is
+    // exact here.
+    const unquote = (cell: string) => cell.replace(/^"|"$/g, '');
+    const [header, ...lines] = matchesToCSV(rows).split('\n');
+    const columns = header.split(',').map(unquote);
+    return lines.map((line) => Object.fromEntries(
+      line.split(',').map((cell, i) => [columns[i], unquote(cell)]),
+    ));
+  }
+
+  function exportedStatuses(): string[] {
+    return exportedRows().map((row) => row.Status);
+  }
+
+  it('labels exactly the counted listings and faculty contacts as such', () => {
+    const statuses = exportedStatuses();
+    const expected = countFixture.expected;
+    expect(statuses.filter((s) => s === 'Open listing')).toHaveLength(expected.listing_total);
+    expect(statuses.filter((s) => s === 'Faculty contact — opening not confirmed'))
+      .toHaveLength(expected.faculty_contact_total);
+    // Every other served row says why it is not counted, in its own words.
+    const rest = statuses.filter(
+      (s) => s !== 'Open listing' && s !== 'Faculty contact — opening not confirmed',
+    );
+    expect(rest).toHaveLength(expected.served_not_actionable);
+    expect(rest).not.toContain('Record type unconfirmed — check the source');
+    expect(rest).not.toContain('Status unverified — check the source');
+  });
+
+  it('agrees row by row with the server\'s own verdict', () => {
+    const statuses = exportedStatuses();
+    countFixture.served.forEach((served, i) => {
+      const counted = served.target_truth.actionable;
+      const label = served.record_kind === 'faculty_contact'
+        ? 'Faculty contact — opening not confirmed'
+        : 'Open listing';
+      if (counted) expect(statuses[i], served.id).toBe(label);
+      else expect(statuses[i], served.id).not.toBe(label);
+    });
+  });
+
+  it('gives a row the opening-shaped columns only when it is a counted listing', () => {
+    exportedRows().forEach((row, i) => {
+      const served = countFixture.served[i];
+      const countedListing = served.record_kind === 'listing' && served.target_truth.actionable;
+      if (countedListing) {
+        expect(row.Type, served.id).toBe('research');
+      } else {
+        expect(row.Type, served.id).toBe(served.record_kind);
+        expect(row.Paid, served.id).toBe('');
+        expect(row.Deadline, served.id).toBe('');
+      }
+    });
   });
 });

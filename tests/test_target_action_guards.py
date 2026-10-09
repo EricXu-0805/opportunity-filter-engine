@@ -77,6 +77,22 @@ def _faculty_record(description: str) -> dict:
     return record
 
 
+def _dated_listing(deadline: str, **overrides) -> dict:
+    """A reviewed, active campus listing carrying the source's own deadline."""
+    record = _record(is_active=True)
+    record.update(
+        source="uiuc_sro",
+        source_type="campus_program",
+        title="Summer research program",
+        url="https://example.edu/programs/summer",
+        source_url="https://example.edu/programs/summer",
+        application={"application_url": "https://example.edu/programs/summer/apply"},
+        deadline=deadline,
+        **overrides,
+    )
+    return record
+
+
 def _unreviewed_record() -> dict:
     """A live-looking record whose ``source_type`` nobody has classified."""
     record = _record(is_active=True)
@@ -97,6 +113,9 @@ NON_ACTIONABLE = {
     # Nobody has reviewed what this is. Every offer-shaped field is populated
     # and poisonous; the truth is the only thing that stops an action.
     "record_kind_unverified": _unreviewed_record(),
+    # Live, reviewed, stated open by nothing but its own dated deadline — and
+    # that date is long gone. Only the calendar stops this one.
+    "deadline_passed": _dated_listing("2024-01-15"),
 }
 SHAPES = list(NON_ACTIONABLE)
 
@@ -178,6 +197,7 @@ _EXPECTED_REASON = {
     "inactive": "inactive",
     "faculty_not_accepting": "faculty_not_accepting",
     "record_kind_unverified": "record_kind_unverified",
+    "deadline_passed": "listing_closed",
 }
 
 
@@ -469,3 +489,11 @@ def test_refine_without_a_target_is_rejected_before_any_lookup(
     assert lookups.calls == 0
     spent = {name: wire.calls for name, wire in tripwires.items() if wire.calls}
     assert not spent, f"refine/{missing!r} touched forbidden collaborators: {spent}"
+
+
+def test_a_past_estimated_deadline_does_not_refuse_the_action(served):
+    """Only the source's own date closes a listing. An estimate — NSF's award
+    start, a last-cycle guess — still lets the student ask."""
+    served(_dated_listing("2024-01-15", deadline_is_estimate=True))
+    response = client.post(f"/api/matches/{OPPORTUNITY_ID}/gaps", json=PROFILE)
+    assert response.status_code == 200, response.text

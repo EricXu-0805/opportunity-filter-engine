@@ -104,6 +104,26 @@ def test_short_docx_reads_as_a_compact_resume():
     assert len(document.paragraphs) == 19  # Was 37: one paragraph per field and per skill.
 
 
+@pytest.mark.parametrize('locale', ['en', 'zh'])
+def test_docx_section_titles_are_level_one_headings_that_look_unchanged(locale):
+    # They were Normal paragraphs: the file had no outline, and LibreOffice's PDF export of it no bookmarks.
+    from docx import Document
+    from docx.shared import Pt
+    value = resume_draft(locale)
+    value['sections'].append({'kind': 'other', 'heading': 'Awards', 'blocks': [
+        {'lines': [{'role': 'other', 'label': '', 'text': 'Dean’s List'}]}]})
+    document = Document(io.BytesIO(renderer.render_export(value, 'docx')))
+    titles = [renderer.HEADINGS[locale][kind] for kind in ('education', 'activities', 'skills')] + ['Awards']
+    styles = {paragraph.text: paragraph.style for paragraph in document.paragraphs}
+    assert [styles[title].name for title in titles] == ['Heading 1'] * 4
+    assert {style.name for text, style in styles.items() if text not in titles} == {'Normal'}
+    style = document.styles['Heading 1']
+    assert style.element.pPr.find(f'{{{W}}}outlineLvl').get(f'{{{W}}}val') == '0'
+    # The template's Heading 1 is a 14 pt bold blue theme font: the titles keep the body font and color at 12 pt.
+    assert [etree.QName(child).localname for child in style.element.rPr] == ['sz']
+    assert style.font.size == Pt(12)
+
+
 def contact_projection(contact, page_size='letter'):
     lines = [('name', '', 'Jordan Lee'), *contact]
     return {'version': 1, 'template': 'standard-v1', 'locale': 'en', 'page_size': page_size, 'sections': [
@@ -246,6 +266,25 @@ def test_pdf_heading_keeps_with_a_role_row_taller_than_a_page():
     assert pages[0][-1] == 'Filler line' and pages[1][:2] == ['Leadership', 'Title line 0'], pages
 
 
+# Filler (lines, paragraphs) and whether 'Leadership' then opens page 2. The heading with its gaps needs
+# 10.8 mm and a title line 5.3 mm.
+ROOM_LEFT = {'letter': [(1, 1, False), (38, 4, False), (39, 5, False), (39, 6, True)],  # most of a page, 22.2, 16.3, 15.7 mm
+             'a4': [(1, 1, False), (41, 7, False), (42, 8, False), (42, 9, True)]}  # most of a page, 22.1, 16.2, 15.6 mm
+
+
+# The role rows that fit an empty page alone (Letter 247.4 mm, A4 265.0 mm) but not under their heading.
+@pytest.mark.parametrize('page_size,title_lines,lines,paragraphs,moves', [
+    (page_size, count, *room) for page_size, counts in (('letter', (44, 45)), ('a4', (47, 48)))
+    for count in counts for room in ROOM_LEFT[page_size]])
+def test_pdf_heading_keeps_with_a_role_row_that_fits_a_page_only_without_it(page_size, title_lines, lines, paragraphs, moves):
+    # The role row moved to the next page by itself and left 'Leadership' at the end of a page: in 355 of
+    # 364 Letter renders with 44 or 45 title lines and 0 to 48 filler lines, and in 356 of 364 on A4 with 47 or 48.
+    title = '\n'.join(f'Title line {number}' for number in range(title_lines))
+    pages = pdf_pages(renderer.render_export(kept_rows(page_size, 'chain', lines, paragraphs, title=title), 'pdf'))
+    assert not [page for page in pages if page[-1] == 'Leadership'], pages
+    assert [index for index, page in enumerate(pages) if together(['Leadership', 'Title line 0'], page)] == [int(moves)], pages
+
+
 def pdf_reader(data):
     from pypdf import PdfReader
     return PdfReader(io.BytesIO(data), strict=True)
@@ -361,6 +400,57 @@ def test_docx_settings_have_word_save_only_the_font_subsets_it_uses(text, embeds
     values = [(etree.QName(node).localname, node.get(f'{{{W}}}val')) for node in settings
               if etree.QName(node).localname in ('embedTrueTypeFonts', 'embedSystemFonts', 'saveSubsetFonts')]
     assert values == ([('embedTrueTypeFonts', 'true'), ('saveSubsetFonts', 'true')] if embeds else [])
+
+
+# CT_Settings children in schema order (ECMA-376 Part 1, 17.15.1.78; python-docx keeps the same list).
+# Word's settings extensions (w14:docId, w14:defaultImageDpi, ...) follow all of them.
+SETTINGS_ORDER = '''writeProtection view zoom removePersonalInformation removeDateAndTime doNotDisplayPageBoundaries
+    displayBackgroundShape printPostScriptOverText printFractionalCharacterWidth printFormsData embedTrueTypeFonts
+    embedSystemFonts saveSubsetFonts saveFormsData mirrorMargins alignBordersAndEdges bordersDoNotSurroundHeader
+    bordersDoNotSurroundFooter gutterAtTop hideSpellingErrors hideGrammaticalErrors activeWritingStyle proofState
+    formsDesign attachedTemplate linkStyles stylePaneFormatFilter stylePaneSortMethod documentType mailMerge
+    revisionView trackRevisions doNotTrackMoves doNotTrackFormatting documentProtection autoFormatOverride
+    styleLockTheme styleLockQFSet defaultTabStop autoHyphenation consecutiveHyphenLimit hyphenationZone
+    doNotHyphenateCaps showEnvelope summaryLength clickAndTypeStyle defaultTableStyle evenAndOddHeaders
+    bookFoldRevPrinting bookFoldPrinting bookFoldPrintingSheets drawingGridHorizontalSpacing drawingGridVerticalSpacing
+    displayHorizontalDrawingGridEvery displayVerticalDrawingGridEvery doNotUseMarginsForDrawingGridOrigin
+    drawingGridHorizontalOrigin drawingGridVerticalOrigin doNotShadeFormData noPunctuationKerning
+    characterSpacingControl printTwoOnOne strictFirstAndLastChars noLineBreaksAfter noLineBreaksBefore
+    savePreviewPicture doNotValidateAgainstSchema saveInvalidXml ignoreMixedContent alwaysShowPlaceholderText
+    doNotDemarcateInvalidXml saveXmlDataOnly useXSLTWhenSaving saveThroughXslt showXMLTags alwaysMergeEmptyNamespace
+    updateFields hdrShapeDefaults footnotePr endnotePr compat docVars rsids mathPr attachedSchema themeFontLang
+    clrSchemeMapping doNotIncludeSubdocsInStats doNotAutoCompressPictures forceUpgrade captions readModeInkLockDown
+    smartTagType schemaLibrary shapeDefaults doNotEmbedSmartTags decimalSymbol listSeparator'''.split()
+SETTINGS_NAMESPACES = (W, 'http://schemas.openxmlformats.org/officeDocument/2006/math',
+                       'http://schemas.openxmlformats.org/schemaLibrary/2006/main')
+
+
+@pytest.mark.parametrize('text', ['张三 Student', 'Jane Doe 😀'])
+def test_docx_font_settings_sit_where_the_settings_schema_puts_them(text):
+    # Both were appended after w14:defaultImageDpi, past the end of the schema sequence.
+    settings = etree.fromstring(zipfile.ZipFile(io.BytesIO(renderer.render_export(sample(text), 'docx'))).read('word/settings.xml'))
+    names = [etree.QName(node) for node in settings]
+    order = [SETTINGS_ORDER.index(name.localname) if name.namespace in SETTINGS_NAMESPACES else len(SETTINGS_ORDER)
+             for name in names]
+    assert order == sorted(order), [name.localname for name in names]
+    assert {'zoom', 'embedTrueTypeFonts', 'saveSubsetFonts', 'defaultImageDpi'} <= {name.localname for name in names}
+
+
+@pytest.mark.parametrize('remove,add,expected', [
+    ((), ('embedSystemFonts',), ['zoom', 'embedTrueTypeFonts', 'embedSystemFonts', 'saveSubsetFonts', 'proofState']),
+    (('zoom',), (), ['embedTrueTypeFonts', 'saveSubsetFonts', 'proofState']),
+])
+def test_docx_font_settings_go_between_the_settings_around_them(remove, add, expected):
+    from docx import Document
+    from docx.oxml import OxmlElement
+    document = Document()
+    settings = document.settings.element
+    for name in remove:
+        settings.remove(settings.find(f'{{{W}}}{name}'))
+    for name in add:
+        settings.find(f'{{{W}}}proofState').addprevious(OxmlElement(f'w:{name}'))
+    renderer.embed_docx_fonts(document, [])
+    assert [etree.QName(node).localname for node in settings][:len(expected)] == expected
 
 
 COMMON_HANZI = '的一是了我不人在他有这个上们来到时大地为子中你说生国年着就那和要她出也得里后自以会家可下而过天去能对小多然于心学么之都好看起发当没成只如事把还用第样道想作种开美总从无情己面最女但现前些所同日手又行意动方期它头经长儿回位分爱老因很给名法间斯知世什两次使身者被高已亲其进此话常与活正感'

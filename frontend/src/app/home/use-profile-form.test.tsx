@@ -169,6 +169,7 @@ import {
   syncLocalIdentityOwner,
 } from '@/lib/identity-owner';
 import { DEFAULT_PROFILE } from './types';
+import { skillLevelIsTheStudentsOwn, skillNeedsConfirming } from '@/lib/skill-evidence';
 import type { LoadedProfile, ProfilePatchIntent, ProfilePatchOutcome } from '@/lib/supabase';
 import {
   resetProfileDirtyLedger,
@@ -964,6 +965,93 @@ describe('useProfileForm — resume seeds the interests box (PR5 ①)', () => {
     act(() => result.current.handleResumeParsed(RESUME('computer vision, machine learning')));
     act(() => result.current.handleResumeParsed(RESUME('robotics')));
     expect(result.current.profile.research_interests).toBe('computer vision, machine learning');
+  });
+});
+
+// M12: "skills are shown as candidates to confirm, with the source text; a
+// level needs its own evidence and is never inferred from a GitHub language
+// label or a keyword hit." Each import path had tests of its own plumbing;
+// none pinned the candidate contract across paths, re-imports and the
+// student's own choice.
+describe('useProfileForm — imported skills are candidates until the student sets them (M12)', () => {
+  async function readyForm() {
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    return result;
+  }
+  const LINE = 'Languages: Python (Advanced), Go (Expert)';
+  const resumeWith = (lines: Record<string, string>) => ({
+    ...RESUME('', Object.keys(lines)),
+    skill_evidence: Object.entries(lines).map(([skill, line]) => ({ skill, line })),
+  });
+  function githubReturns(skills: string[]) {
+    vi.mocked(parseGitHubProfile).mockReset();
+    vi.mocked(parseGitHubProfile).mockResolvedValue({
+      username: 'octocat', extracted_skills: skills, topics: [], repo_count: 12, top_repos: [],
+    });
+  }
+  async function importGitHub(result: Awaited<ReturnType<typeof readyForm>>) {
+    act(() => result.current.update('github_url', 'https://github.com/octocat'));
+    await act(async () => { await result.current.handleGitHubImport(); });
+  }
+
+  it('a resume skill arrives at beginner with its source and the line it was found on', async () => {
+    const result = await readyForm();
+    act(() => { result.current.handleResumeParsed(resumeWith({ Python: LINE, Go: LINE })); });
+    // "(Advanced)" and "(Expert)" are words on the page, not the student's
+    // answer to "how well do you know this".
+    expect(result.current.profile.skills).toEqual([
+      { name: 'Python', level: 'beginner', source: 'resume', evidence: LINE },
+      { name: 'Go', level: 'beginner', source: 'resume', evidence: LINE },
+    ]);
+    expect(result.current.profile.skills.some(skillLevelIsTheStudentsOwn)).toBe(false);
+    expect(result.current.profile.skills.every(skillNeedsConfirming)).toBe(true);
+  });
+
+  it('a GitHub language arrives at beginner with its source, never a level from the label', async () => {
+    githubReturns(['Python', 'Rust']);
+    const result = await readyForm();
+    await importGitHub(result);
+    expect(result.current.profile.skills).toEqual([
+      { name: 'Python', level: 'beginner', source: 'github' },
+      { name: 'Rust', level: 'beginner', source: 'github' },
+    ]);
+    expect(result.current.profile.skills.some(skillLevelIsTheStudentsOwn)).toBe(false);
+  });
+
+  it('stays a beginner candidate through later imports, and keeps the level the student sets', async () => {
+    githubReturns(['Python', 'Rust']);
+    const result = await readyForm();
+    act(() => { result.current.handleResumeParsed(resumeWith({ Python: LINE })); });
+    await importGitHub(result);
+    // The second source neither raises the first one nor replaces its quote.
+    expect(result.current.profile.skills).toEqual([
+      { name: 'Python', level: 'beginner', source: 'resume', evidence: LINE },
+      { name: 'Rust', level: 'beginner', source: 'github' },
+    ]);
+
+    // SkillTags.cycleLevel's write: choosing a level IS the confirmation.
+    act(() => result.current.update('skills', result.current.profile.skills.map(
+      (skill) => (skill.name === 'Python' ? { ...skill, level: 'experienced' as const, confirmed: true } : skill),
+    )));
+    act(() => { result.current.handleResumeParsed(resumeWith({ Python: 'Python' })); });
+    await importGitHub(result);
+
+    const python = result.current.profile.skills.find((skill) => skill.name === 'Python')!;
+    expect(python).toMatchObject({ level: 'experienced', confirmed: true });
+    expect(skillLevelIsTheStudentsOwn(python)).toBe(true);
+    const rust = result.current.profile.skills.find((skill) => skill.name === 'Rust')!;
+    expect(rust).toEqual({ name: 'Rust', level: 'beginner', source: 'github' });
+  });
+
+  it('an import never relabels a skill the student typed', async () => {
+    githubReturns(['Python']);
+    const result = await readyForm();
+    act(() => result.current.update('skills', [{ name: 'Python', level: 'expert' }]));
+    act(() => { result.current.handleResumeParsed(resumeWith({ Python: LINE })); });
+    await importGitHub(result);
+    expect(result.current.profile.skills).toEqual([{ name: 'Python', level: 'expert' }]);
+    expect(skillLevelIsTheStudentsOwn(result.current.profile.skills[0])).toBe(true);
   });
 });
 

@@ -29,7 +29,6 @@ both by visiting each profile page. Records with no email found ship "lite"
 
 from __future__ import annotations
 
-import copy
 import hashlib
 import json
 import logging
@@ -54,6 +53,7 @@ from backend.lib.contact_visibility import (
 
 from ..evidence import FACULTY_MAJOR_LABELS_MARKER, is_professor_rank
 from .atomic_json import atomic_write_json
+from .import_document import ImportDocumentError, parse_import_html
 
 logger = logging.getLogger(__name__)
 
@@ -175,13 +175,17 @@ def _profile_page_text(soup: object) -> str:
     if soup is None:
         return ""
     try:
-        stripped = copy.copy(soup)
-        for element in stripped.select(_CHROME_SELECTOR):
-            element.decompose()
-        body = stripped.get_text(" ", strip=True)
+        # The strings get_text reads, less those inside the chrome. This read
+        # a copy with the chrome decomposed, and bs4's copy walks up through
+        # every open tag for each node it appends: quadratic in a deep page.
+        chrome: set[int] = set()
+        for element in soup.select(_CHROME_SELECTOR):
+            if id(element) not in chrome:
+                chrome.update(map(id, element.descendants))
+        body = " ".join(text for string in soup.strings if id(string) not in chrome and (text := string.strip()))
     except Exception:  # noqa: BLE001
-        # A soup that cannot be copied or queried still gets read whole: losing
-        # the chrome is an improvement, not a precondition.
+        # A soup that cannot be queried still gets read whole: losing the
+        # chrome is an improvement, not a precondition.
         try:
             body = soup.get_text(" ", strip=True)
         except Exception:  # noqa: BLE001
@@ -746,7 +750,8 @@ def _mark_fetched_soup_observation(
 
 
 def fetch_soup(url: str, ua: str | None = None, insecure: bool = False,
-               timeout: int | None = None, max_retries: int | None = None) -> BeautifulSoup | None:
+               timeout: int | None = None, max_retries: int | None = None,
+               bounded: bool = False) -> BeautifulSoup | None:
     """Fetch a URL with browser-like headers, retrying transient failures.
 
     Retries connection resets / timeouts / 5xx responses with exponential
@@ -760,6 +765,9 @@ def fetch_soup(url: str, ua: str | None = None, insecure: bool = False,
     ``insecure`` skips TLS verification for hosts serving an incomplete
     certificate chain (cmsw.mit.edu omits its intermediate — browsers repair
     it via AIA fetching, requests cannot). Scrape-only, opt-in per source.
+
+    ``bounded`` parses within the import reader's limits, for a page whose
+    capture is kept; one past them raises ImportDocumentError instead of None.
     """
     host = (urlsplit(url).hostname or "").lower()
     if host in _rate_limited_hosts:
@@ -794,7 +802,7 @@ def fetch_soup(url: str, ua: str | None = None, insecure: bool = False,
             # Parse bytes, not resp.text: the EECS server omits a charset
             # header, so requests falls back to ISO-8859-1 and mangles UTF-8
             # names ("Björn" -> "BjÃ¶rn"). BeautifulSoup detects the encoding.
-            soup = BeautifulSoup(resp.content, "html.parser")
+            soup = parse_import_html(resp.content) if bounded else BeautifulSoup(resp.content, "html.parser")
             # Trusted contact evidence must cite the response that was actually
             # parsed, not the pre-redirect request URL. Keep this fetch-scoped
             # observation off the normalized record; reviewed parsers consume it
@@ -831,6 +839,8 @@ def fetch_soup(url: str, ua: str | None = None, insecure: bool = False,
                     return None
                 retry_after = _retry_after_seconds(e.response)
             last_err = e
+        except ImportDocumentError:
+            raise
         except Exception as e:  # noqa: BLE001 — unexpected; don't crash the run
             logger.warning(f"Failed to fetch {url}: {e}")
             return None

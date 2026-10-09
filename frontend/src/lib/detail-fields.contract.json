@@ -148,7 +148,7 @@
           "timing": {
             "explicit": {
               "application_window": "Applications reviewed on a rolling basis",
-              "deadline": "2027-02-01",
+              "deadline": "2099-02-01",
               "rolling": true
             },
             "inferred": {},
