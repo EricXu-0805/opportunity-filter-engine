@@ -3358,6 +3358,20 @@ _UMBRELLA_DEPTS: dict[str, frozenset[str]] = {
     "gatech": frozenset({"College of Computing"}),
 }
 
+# Schools whose medical faculty come from a harvested seed on another mail
+# domain than the department rosters, keyed by school_slug -> the seed's
+# department prefix. JHU's School of Medicine seed gives every professor an
+# @jh.edu address and a Hopkins Medicine profile; the Whiting rosters publish
+# @jhu.edu or @jhmi.edu and their own pages. A Biomedical Engineering professor
+# with a SOM appointment therefore arrives twice, and no email, URL or name pass
+# pairs the two. The seed names the appointment ("School of Medicine —
+# Biomedical Engineering"): that department and the same name are the evidence.
+# The name alone is not: SOM's John Miller (Medicine) and Whiting's John Miller
+# (Applied Mathematics and Statistics) carry different JHED ids.
+_MEDICAL_SEED_PREFIXES: dict[str, str] = {
+    "jhu": "School of Medicine — ",
+}
+
 
 # "Scott L. Delp, Ph.D." must normalize equal to "Scott L. Delp" — credential
 # suffixes made the same person on the same profile URL survive dedup twice.
@@ -3546,6 +3560,41 @@ def collapse_same_person_faculty(opps: list[dict]) -> dict:
             for o in group:
                 clear_contact_claim(o)
                 nulled_by_school[school] += 1
+
+    # A medical-seed record and a department roster record for one person
+    # (``_MEDICAL_SEED_PREFIXES``): same name, and the seed's appointment is
+    # the roster's department. The roster is the department's own page,
+    # re-observed every run with the address it publishes, so it keeps the
+    # person unless the seed record holds more research keywords. The survivor
+    # also takes the other record's major labels: the person is in both.
+    from .uiuc_faculty import _faculty_specific_keywords
+    seeds: dict[tuple, dict] = {}
+    rosters: dict[tuple, dict] = {}
+    for o in active:
+        prefix = _MEDICAL_SEED_PREFIXES.get(o.get("school"))
+        if not prefix or id(o) in remove:
+            continue
+        dept = (o.get("department") or "").strip()
+        nn = _norm_person_name(o.get("pi_name"))
+        if dept.startswith(prefix):
+            seeds[(o.get("school"), nn, dept[len(prefix):].casefold())] = o
+        elif dept.startswith("Department of "):
+            rosters[(o.get("school"), nn, dept[len("Department of "):].casefold())] = o
+    for key, seed in seeds.items():
+        roster = rosters.get(key)
+        if roster is None:
+            continue
+        survivor, loser = roster, seed
+        if len(_faculty_specific_keywords(seed)) > len(_faculty_specific_keywords(roster)):
+            survivor, loser = seed, roster
+        _merge_faculty_fields(survivor, loser)
+        labels = list((survivor.get("metadata") or {}).get(FACULTY_MAJOR_LABELS_MARKER) or [])
+        for label in (loser.get("metadata") or {}).get(FACULTY_MAJOR_LABELS_MARKER) or []:
+            if label not in labels:
+                labels.append(label)
+        survivor.setdefault("metadata", {})[FACULTY_MAJOR_LABELS_MARKER] = labels
+        remove.add(id(loser))
+        removed_by_school[key[0]] += 1
 
     by_name: dict[tuple[str, str], list[dict]] = defaultdict(list)
     for o in active:

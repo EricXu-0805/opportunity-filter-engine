@@ -456,3 +456,149 @@ class TestJhuBmePagination:
             "Cy Placeholder, PhD", "Di Testcase, PhD"]
         # One empty page past the roster ends the walk.
         assert requested == [*pages, "https://www.bme.jhu.edu/people/faculty/?pg=4"]
+
+
+# --- JHU: a School of Medicine seed twin of a roster professor ---------------
+
+def _som_row(n, name, title, appointment):
+    return {"name": name, "title": title, "email": f"som.person{n}@jh.edu",
+            "url": f"https://profiles.hopkinsmedicine.org/provider/som-person/{1000 + n}",
+            "department": "School of Medicine — " + appointment}
+
+
+class TestJhuMedicalSeedTwins:
+    """The SOM seed gives each professor an @jh.edu address and a Hopkins
+    Medicine profile; the BME roster publishes @jhu.edu and its own page. Read
+    in full, the roster's pages 2-3 held 13 professors already filed under the
+    School of Medicine, and no email, URL or name pass paired them, so each
+    would have been listed twice."""
+
+    _PAGES = {
+        "https://www.bme.jhu.edu/people/faculty/": "jhu_bme_page1.html",
+        "https://www.bme.jhu.edu/people/faculty/?pg=2": "jhu_bme_page2.html",
+        "https://www.bme.jhu.edu/people/faculty/?pg=3": "jhu_bme_page3.html",
+    }
+    _SEED = [
+        _som_row(1, "Bo Sample", "Professor of Biomedical Engineering",
+                 "Biomedical Engineering"),
+        # Page 2 of the roster; the seed carries the middle initial.
+        _som_row(2, "Cy C. Placeholder", "Associate Professor of Biomedical Engineering",
+                 "Biomedical Engineering"),
+        # Same name, but the seed names another appointment: not evidence.
+        _som_row(3, "Di Testcase", "Associate Professor of Ophthalmology",
+                 "Ophthalmology"),
+        # Biography text, so the seed record stays under the umbrella.
+        _som_row(4, "Ada Example", "Assistant Professor of Medicine at",
+                 "Medicine at Georgetown University"),
+        _som_row(5, "Eve Other", "Professor of Biomedical Engineering",
+                 "Biomedical Engineering"),
+    ]
+
+    def _records(self, monkeypatch, tmp_path, seed=_SEED):
+        from bs4 import BeautifulSoup
+
+        from src.collectors.schools import jhu_faculty
+
+        def render(url, **_kw):
+            name = self._PAGES.get(url)
+            html = (FIXTURES / name).read_text() if name else "<html><body></body></html>"
+            return BeautifulSoup(html, "html.parser")
+
+        monkeypatch.setattr(fg, "_render_soup", render)
+        seed_file = tmp_path / "jhu_som.json"
+        seed_file.write_text(json.dumps(seed))
+        bme, som = _dept(jhu_faculty, "WSE-BME"), _dept(jhu_faculty, "SOM")
+        som = {**som, "json_dir": {**som["json_dir"], "file": str(seed_file)}}
+        people = [(bme, p) for p in fg._scrape_directory(bme)]
+        people += [(som, p) for p in fg._fetch_json_dir(som)]
+        return [r for r in (fg._normalize(jhu_faculty.SCHOOL, d, p) for d, p in people) if r]
+
+    @staticmethod
+    def _by_name(records):
+        out: dict[str, list[dict]] = {}
+        for r in records:
+            out.setdefault(fg._norm_person_name(r["pi_name"]), []).append(r)
+        return out
+
+    def test_a_roster_professor_and_their_seed_twin_become_one_record(
+            self, monkeypatch, tmp_path):
+        res = fg.collapse_same_person_faculty(self._records(monkeypatch, tmp_path))
+        counts = {name: len(recs) for name, recs in self._by_name(res["kept"]).items()}
+        assert counts == {"bo sample": 1, "cy placeholder": 1, "di testcase": 2,
+                          "ada example": 2, "eve other": 1}
+        assert res["removed_by_school"] == {"jhu": 2}
+
+    def test_the_roster_record_survives_a_tie_and_takes_the_seed_majors(
+            self, monkeypatch, tmp_path):
+        from src.collectors.schools import jhu_faculty
+        res = fg.collapse_same_person_faculty(self._records(monkeypatch, tmp_path))
+        (bo,) = self._by_name(res["kept"])["bo sample"]
+        assert bo["id"].startswith("faculty-jhu-wse-bme-")
+        assert bo["department"] == "Department of Biomedical Engineering"
+        assert bo["contact_email"] == "bo.sample@jhu.edu"
+        assert bo["metadata"]["_faculty_major_labels"] == [
+            "Biomedical Engineering", *_dept(jhu_faculty, "SOM")["majors"]]
+
+    def test_a_keyword_richer_seed_record_survives_with_the_roster_major(
+            self, monkeypatch, tmp_path):
+        records = self._records(monkeypatch, tmp_path)
+        seed_cy = next(r for r in records if r["id"].startswith("faculty-jhu-som-")
+                       and r["pi_name"].startswith("Cy"))
+        seed_cy["keywords"] = ["tissue engineering", "biomaterials"]
+        res = fg.collapse_same_person_faculty(records)
+        (cy,) = self._by_name(res["kept"])["cy placeholder"]
+        assert cy is seed_cy
+        assert cy["contact_email"] == "som.person2@jh.edu"
+        assert cy["keywords"] == ["tissue engineering", "biomaterials"]
+        assert "Biomedical Engineering" in cy["metadata"]["_faculty_major_labels"]
+
+    def test_the_same_name_in_another_department_stays_two_people(
+            self, monkeypatch, tmp_path):
+        # SOM's John Miller (Medicine) and Whiting's John Miller (Applied
+        # Mathematics and Statistics) carry different JHED ids in the shard.
+        from src.collectors.schools import jhu_faculty
+        records = self._records(monkeypatch, tmp_path, seed=[
+            _som_row(6, "Gil Example", "Assistant Professor of Medicine", "Medicine")])
+        records.append(fg._normalize(jhu_faculty.SCHOOL, _dept(jhu_faculty, "WSE-AMS"), {
+            "name": "Gil Example", "title": "Professor of the Practice",
+            "email": "gil.example@jhu.edu",
+            "url": "https://engineering.jhu.edu/ams/faculty/gil-example/"}))
+        res = fg.collapse_same_person_faculty(records)
+        assert len(self._by_name(res["kept"])[fg._norm_person_name("Gil Example")]) == 2
+        assert res["removed_by_school"] == {}
+
+    def test_only_a_school_with_a_listed_medical_seed_is_paired(
+            self, monkeypatch, tmp_path):
+        records = self._records(monkeypatch, tmp_path)
+        for r in records:
+            r["school"] = "elsewhere"
+        res = fg.collapse_same_person_faculty(records)
+        assert len(self._by_name(res["kept"])["bo sample"]) == 2
+
+    def test_the_survivor_takes_the_address_it_lacked(self, monkeypatch, tmp_path):
+        records = self._records(monkeypatch, tmp_path)
+        roster_bo = next(r for r in records if r["id"].startswith("faculty-jhu-wse-bme-")
+                         and r["pi_name"] == "Bo Sample")
+        roster_bo["contact_email"] = None
+        res = fg.collapse_same_person_faculty(records)
+        (bo,) = self._by_name(res["kept"])["bo sample"]
+        assert bo is roster_bo
+        assert bo["contact_email"] == "som.person1@jh.edu"
+
+    def test_a_record_an_earlier_pass_removed_is_not_merged_into(
+            self, monkeypatch, tmp_path):
+        # A stale copy of the roster record at the same profile URL is folded
+        # into the live one first; the seed twin must join the live one.
+        from src.collectors.schools import jhu_faculty
+        records = self._records(monkeypatch, tmp_path)
+        roster_bo = next(r for r in records if r["id"].startswith("faculty-jhu-wse-bme-")
+                         and r["pi_name"] == "Bo Sample")
+        roster_bo["keywords"] = ["drug delivery"]
+        stale = json.loads(json.dumps(roster_bo))
+        stale["id"], stale["keywords"] = "faculty-jhu-wse-bme-00000000", []
+        records.append(stale)
+        res = fg.collapse_same_person_faculty(records)
+        (bo,) = self._by_name(res["kept"])["bo sample"]
+        assert bo is roster_bo
+        assert bo["metadata"]["_faculty_major_labels"] == [
+            "Biomedical Engineering", *_dept(jhu_faculty, "SOM")["majors"]]
