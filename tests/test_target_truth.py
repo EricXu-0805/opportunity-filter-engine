@@ -17,9 +17,10 @@ from __future__ import annotations
 import hashlib
 import json
 from copy import deepcopy
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from urllib.parse import quote
+from zoneinfo import ZoneInfo
 
 import pytest
 from fastapi.testclient import TestClient
@@ -271,6 +272,40 @@ class TestAPassedStatedDeadlineClosesTheListing:
         truth = target_truth(_dated_listing("2024-01-15", metadata={"is_active": False}))
         assert truth.reason_code == "listing_closed"
         assert truth.evidence_key == "deadline"
+
+    def test_a_reference_marker_keeps_its_own_reason(self, calendar):
+        """The source said the row is reference material, which already
+        explains why its date is behind us. Read off the calendar instead, the
+        page would call a published reference a listing that closed."""
+        record = _dated_listing("2024-01-15", metadata={"is_active": True, "reference_only": True})
+        truth = target_truth(record)
+        assert truth.reason_code == "reference_only"
+        assert truth.reference_only is True
+        assert truth.evidence_key == "reference_only"
+
+    def test_the_calendar_is_the_utc_date_not_the_host_date(self, monkeypatch):
+        """02:00 UTC on 10 October is 21:00 on 9 October in Chicago. The grace
+        day is counted from the UTC date, so a host on local time would keep a
+        listing open a day longer than the rule says."""
+        instant = datetime(2026, 10, 10, 2, 0, tzinfo=UTC)
+        host_zone = ZoneInfo("America/Chicago")
+
+        class _Clock(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return instant.astimezone(tz) if tz else instant.astimezone(host_zone).replace(tzinfo=None)
+
+        class _HostDate(date):
+            @classmethod
+            def today(cls):
+                return instant.astimezone(host_zone).date()
+
+        monkeypatch.setattr(evidence, "datetime", _Clock)
+        monkeypatch.setattr(evidence, "date", _HostDate)
+        assert evidence._today() == date(2026, 10, 10)
+        # 8 October is two UTC days back, so closed; by the host date it is one.
+        assert target_truth(_dated_listing("2026-10-08")).reason_code == "listing_closed"
+        assert target_truth(_dated_listing("2026-10-09")).actionable is True
 
     def test_the_public_envelope_is_the_closed_listing_shape_clients_accept(self, calendar):
         """frontend/src/lib/target-truth.ts accepts `listing_closed` only with
