@@ -664,6 +664,33 @@ class TestUiucSroContract:
         else:
             assert fields["funding"]["explicit"]["paid"] == paid
 
+    def test_a_compensation_value_without_pay_words_falls_back_to_the_description(self, monkeypatch):
+        # "Varies" says neither paid nor unpaid, so the description's stipend
+        # is read, and stamped as the keyword scan it is.
+        record = _sro_fetch(monkeypatch, _sro_detail_html(
+            compensation="Varies", body="<p>Participants receive a stipend.</p>",
+        ))
+        assert inferred_method(record, "paid") == sro.PAID_METHOD
+        payload, fields = _detail(record)
+        assert fields["funding"]["explicit"]["compensation"] == "Varies"
+        assert fields["funding"]["inferred"]["paid"] == {"value": "yes", "basis": "text_scan"}
+        assert payload["paid_attribution"] == "inferred"
+
+    @pytest.mark.parametrize("compensation", [
+        "Unpaid", "Unfunded", "Volunteer", "None", "No compensation", "No pay", "No stipend",
+        "No salary", "Not paid", "Not funded",
+    ])
+    def test_each_unpaid_wording_reads_no(self, compensation):
+        assert sro._paid_from_compensation(compensation) == "no"
+
+    @pytest.mark.parametrize("compensation", [
+        "Stipend: no", "Stipend: none", "Stipend not provided", "Housing, without stipend",
+    ])
+    def test_a_negated_pay_word_is_not_read_as_paid(self, compensation):
+        # Each value names a stipend only to deny it; whether that is "no" or
+        # unknown, it is not pay.
+        assert sro._paid_from_compensation(compensation) != "yes"
+
     def test_page_without_timing_or_duration_has_no_duration(self, monkeypatch):
         record = _sro_fetch(monkeypatch, _sro_detail_html(timing="", duration=""),
                             list_html=_sro_list_html(timing=""))
@@ -705,6 +732,21 @@ class TestUiucSroContract:
         _, fields = _detail(record)
         assert _where(fields["eligibility"], "citizenship") == "unknown"
         assert fields["eligibility"]["inferred"]["international_students"] == {"value": "yes", "basis": "text_scan"}
+
+    def test_a_firm_deadline_does_not_get_the_rolling_skill_boost(self):
+        # A deadline with no "Anticipated" label is the posting's own, so the
+        # row is not rolling and scores below a rolling posting that likewise
+        # lists no skills.
+        raw = RawOpportunity(
+            source="uiuc_sro", source_url=_SRO_LIST, title="Example REU", description_raw="",
+            url=_SRO_DETAIL, extra_fields={"research_area": "Natural Sciences", "timing": "Summer",
+                                           "deadline_raw": "3/2/27"},
+        )
+        firm = sro.raw_to_normalized(raw)
+        assert firm["deadline_is_estimate"] is False and firm["is_rolling"] is False
+        rolling = dict(copy.deepcopy(firm), deadline=None, is_rolling=True)
+        profile = {"year": "junior", "major": "Physics", "hard_skills": ["Python"]}
+        assert score_eligibility(profile, firm)[0] < score_eligibility(profile, rolling)[0]
 
     def test_list_row_anticipated_deadline_is_an_estimate(self):
         raw = RawOpportunity(
@@ -768,6 +810,8 @@ class TestUiucSroContract:
     @pytest.mark.parametrize("citizenship, intl, notes", [
         (False, "yes", "weeks Compensation $7,000 Citizenship Requirement No Citize | Citizenship Re"),
         (True, "no", "Citizenship Requirement US Citizen, National, or Permanent Re"),
+        # windows from the description alone, joined with no field label in them
+        (True, "no", "nts must be US citizens or permanent residents. Apply | must be US citizens or perm"),
         (True, "no", ""),  # the page had no keyword window at all: the description was scanned
     ])
     def test_legacy_record_degrades_without_a_rescrape(self, citizenship, intl, notes):
@@ -807,6 +851,17 @@ class TestUiucSroContract:
         assert _where(elig, "work_authorization_notes") == "unknown"
         assert fields["research_content"]["explicit"]["research_areas"] == ["Natural Sciences"]
         assert fields["eligibility"]["provenance"]["source_url"] == _SRO_DETAIL
+
+    @pytest.mark.parametrize("paid, method", [
+        ("stipend", SRO_SCANNED_PAY_METHOD), ("no", SRO_SCANNED_PAY_METHOD), ("unknown", None),
+    ])
+    def test_legacy_scanned_pay_is_stamped_whatever_it_says(self, paid, method):
+        legacy = _listing(
+            id="sro-legacy", source="uiuc_sro", source_url=_SRO_LIST, url=_SRO_DETAIL, paid=paid,
+            eligibility={"work_auth_notes": "Citizenship Requirement US Citizen, National, or Permanent Re"},
+        )
+        _, canonical = _served(legacy)
+        assert inferred_method(canonical, "paid") == method
 
 
 # --- campus_graph / ucb_campus ---------------------------------------------
