@@ -27,7 +27,12 @@ import { useCustomImportStorageState, type CustomImport } from '@/lib/custom-imp
 import { daysUntil, opportunityRecordKind } from '@/lib/match-utils';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { targetPosture } from '@/lib/target-truth';
-import { canDeliverReminder, collectReminders, type ReminderInfo } from '@/lib/reminders';
+import {
+  canDeliverReminder,
+  collectReminders,
+  isReplyRecorded,
+  type ReminderInfo,
+} from '@/lib/reminders';
 import { getFavorites, getInteractionsFull, onAuthChange } from '@/lib/supabase';
 import type { InteractionRecord, InteractionType } from '@/lib/supabase';
 
@@ -261,7 +266,11 @@ export default function DashboardPage() {
       }
       if (!fresh()) return;
 
-      const allReminders = collectReminders(interactions);
+      // A date kept on a replied or interviewing row will not send, by design,
+      // so it is neither due nor something to review. Filtered here, before
+      // both the lookup's success path and its catch count what is left.
+      const allReminders = collectReminders(interactions)
+        .filter((item) => !isReplyRecorded(item.type));
       // 'dismissed' is the hide-everywhere status: Tracker excludes it from
       // every column and collectReminders drops it. This section was the one
       // place it still appeared, rebuilt straight from the raw interactions
@@ -1129,7 +1138,10 @@ function TrackerContent({
                 {item.notes && (
                   <StickyNote className="h-3.5 w-3.5 text-gray-300" aria-label={t('dashboard.trackerSection.hasNotes')} />
                 )}
-                {item.remind_at && (
+                {/* No bell for a date kept after a reply: it is the student's
+                    own record and will not send. The tracker card still
+                    shows the date. */}
+                {item.remind_at && !isReplyRecorded(item.status) && (
                   <BellRing className="h-3.5 w-3.5 text-amber-400" aria-label={t('dashboard.trackerSection.hasReminder')} />
                 )}
                 <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${cfg.bg} ${cfg.color}`}>
