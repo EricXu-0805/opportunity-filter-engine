@@ -13,6 +13,7 @@ from urllib.parse import unquote, urlsplit
 from backend.lib import opportunity_detail
 from src.evidence import (
     inferred_method,
+    is_configured_program,
     is_read_off_the_page,
     record_kind,
     target_truth,
@@ -813,8 +814,9 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     # badge would only say we think the professor might be Volkswagen. The
     # cold-email builder already ignores it and addresses the Program
     # Coordinator instead; this gives every other reader of the wire the same
-    # protection.
-    if inferred_method(canonical_record, "pi_name"):
+    # protection. The same goes for a name pi_enricher scraped onto a campus
+    # program row, stamped or not (`pi_name_basis`).
+    if opportunity_detail.pi_name_basis(canonical_record):
         projected.pop("pi_name", None)
 
     # Same rule for required skills, which have it worse: 2,767 of the 6,349
@@ -831,8 +833,12 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     # stopped the matcher calling them a stated preference; the detail page
     # still printed them under "MAJORS", so the student read our keyword-bank
     # guess as the program's own eligibility terms.
+    # A campus program spec's majors are configuration too: none of 12 such
+    # lists checked against the live page on 2026-10-09 was stated there.
+    # Classified, not stamped — a stamp would move the major score.
+    configured = is_configured_program(canonical_record)
     majors_method = inferred_method(canonical_record, "eligibility.majors")
-    if majors_method and (projected.get("eligibility") or {}).get("majors"):
+    if (majors_method or configured) and (projected.get("eligibility") or {}).get("majors"):
         projected["majors_attribution"] = "inferred"
 
     # An eligibility restriction we read off the page, told to a student as the
@@ -857,7 +863,13 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
             value = restricted.get(field)
             if value in (None, "", [], {}) or value == "unknown":
                 continue
-            if is_read_off_the_page(canonical_record, f"eligibility.{field}"):
+            if is_read_off_the_page(canonical_record, f"eligibility.{field}") or (
+                # A configured program's class years, like its majors, are
+                # classified rather than stamped; its intl and citizenship
+                # values are stamped at load (`stamp_collector_templates`).
+                field == "preferred_year" and configured
+                and not opportunity_detail.class_years_are_template(value)
+            ):
                 projected[wire_key] = "inferred"
 
     # A green "Paid" badge on "in many cases, funding or a stipend" is a

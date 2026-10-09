@@ -37,40 +37,55 @@
             "unknown": []
           },
           "eligibility": {
-            "explicit": {
-              "citizenship": "not_required",
-              "class_year": [
-                "sophomore",
-                "junior"
-              ],
-              "international_students": "yes",
-              "majors": [
-                "Biology",
-                "Chemistry"
-              ]
+            "explicit": {},
+            "inferred": {
+              "class_year": {
+                "basis": "collector_default",
+                "value": [
+                  "sophomore",
+                  "junior"
+                ]
+              },
+              "international_students": {
+                "basis": "collector_default",
+                "value": "yes"
+              },
+              "majors": {
+                "basis": "collector_default",
+                "value": [
+                  "Biology",
+                  "Chemistry"
+                ]
+              }
             },
-            "inferred": {},
             "provenance": {
-              "observed_at": "2026-09-01T00:00:00",
+              "observed_at": null,
               "source_url": "https://example.edu/programs/surf"
             },
-            "state": "source",
+            "state": "inferred",
             "unknown": [
               "min_gpa",
+              "citizenship",
               "work_authorization_notes"
             ]
           },
           "funding": {
-            "explicit": {
-              "compensation": "$5,000",
-              "paid": "stipend"
+            "explicit": {},
+            "inferred": {
+              "compensation": {
+                "basis": "collector_default",
+                "value": "$5,000"
+              },
+              "paid": {
+                "basis": "collector_default",
+                "value": "stipend"
+              }
             },
-            "inferred": {},
             "provenance": {
-              "observed_at": "2026-09-01T00:00:00",
+              "observed_at": null,
               "source_url": "https://example.edu/programs/surf"
             },
-            "state": "source",
+            "state": "inferred",
             "unknown": []
           },
           "location": {
@@ -147,11 +162,18 @@
           },
           "timing": {
             "explicit": {
-              "application_window": "Applications reviewed on a rolling basis",
-              "deadline": "2027-02-01",
-              "rolling": true
+              "deadline": "2027-02-01"
             },
-            "inferred": {},
+            "inferred": {
+              "application_window": {
+                "basis": "collector_default",
+                "value": "Applications reviewed on a rolling basis"
+              },
+              "rolling": {
+                "basis": "collector_default",
+                "value": true
+              }
+            },
             "provenance": {
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://example.edu/programs/surf"
@@ -168,7 +190,7 @@
       },
       "location_attribution": "institution",
       "name": "curated_campus_program",
-      "paid_attribution": null
+      "paid_attribution": "inferred"
     },
     {
       "detail_fields": {
@@ -241,7 +263,7 @@
               }
             },
             "provenance": {
-              "observed_at": "2026-09-01T00:00:00",
+              "observed_at": null,
               "source_url": "https://jobs.example.com/123"
             },
             "state": "inferred",
@@ -429,7 +451,7 @@
               }
             },
             "provenance": {
-              "observed_at": "2026-09-01T00:00:00",
+              "observed_at": null,
               "source_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=1"
             },
             "state": "inferred",

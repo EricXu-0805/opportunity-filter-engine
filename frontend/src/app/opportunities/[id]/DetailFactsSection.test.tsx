@@ -22,11 +22,19 @@ function row(field: string, facet: string, state?: string) {
 
 describe('DetailFactsSection', () => {
   it('shows a source-confirmed field as "Source says"', () => {
+    renderCase('sro_structured_listing');
+    const citizenship = row('eligibility', 'citizenship', 'source');
+    expect(within(citizenship).getByText('detail.facts.state.source')).toBeInTheDocument();
+    expect(within(citizenship).getByText('detail.facts.values.citizenshipRequired')).toBeInTheDocument();
+    expect(within(row('funding', 'compensation', 'source')).getByText('$7,000')).toBeInTheDocument();
+  });
+
+  it('shows a configured campus program value as ours, not the source', () => {
     renderCase('curated_campus_program');
-    const majors = row('eligibility', 'majors', 'source');
-    expect(within(majors).getByText('detail.facts.state.source')).toBeInTheDocument();
+    const majors = row('eligibility', 'majors', 'inferred');
+    expect(within(majors).getByText('detail.facts.basis.collector_default')).toBeInTheDocument();
     expect(within(majors).getByText('Biology, Chemistry')).toBeInTheDocument();
-    expect(within(row('funding', 'paid', 'source')).getByText('detail.facts.values.paidStipend')).toBeInTheDocument();
+    expect(within(majors).queryByText('detail.facts.state.source')).not.toBeInTheDocument();
   });
 
   it('labels an inferred field "System inference" and says how we inferred it', () => {

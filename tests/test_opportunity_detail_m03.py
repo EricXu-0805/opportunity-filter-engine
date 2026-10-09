@@ -11,9 +11,11 @@ import copy
 import json
 
 import pytest
+from bs4 import BeautifulSoup
 from fastapi.testclient import TestClient
 
 from backend.lib.opportunity_detail import (
+    BASIS_COLLECTOR_DEFAULT,
     DETAIL_FIELD_NAMES,
     DETAIL_FIELDS_VERSION,
     FIELD_FACETS,
@@ -24,6 +26,8 @@ from backend.main import app
 from backend.routes import opportunities as opportunities_module
 from backend.routes.opportunities import _redact
 from scripts.generate_detail_fields_contract import CASES, CONTRACT_PATH, render_contract
+from src.collectors import campus_graph as cg
+from src.collectors import pi_enricher, ucb_campus, ucb_sources
 from src.collectors import uiuc_sro as sro
 from src.collectors.base import RawOpportunity
 from src.contact_instructions import CAPTURE_KEY
@@ -52,9 +56,12 @@ def _fields(record: dict) -> dict:
 
 
 def _listing(**overrides) -> dict:
+    # A posting collector no registry rule covers, so each test sees the
+    # generic listing rules. A campus program spec row (a `*_research_programs`
+    # source) is configuration; TestCampusGraphContract covers that shape.
     base = {
         "id": "m03-listing",
-        "source": "duke_research_programs",
+        "source": "example_postings",
         "source_type": "campus_program",
         "source_url": "https://example.edu/p",
         "url": "https://example.edu/p",
@@ -111,12 +118,14 @@ class TestEnvelope:
 
 class TestThreeStates:
     def test_source_confirmed_field_is_confirmed(self):
-        fields = _fields(_CASES["curated_campus_program"])
+        # A labelled SRO detail page. The configured campus program that used
+        # to stand here is collector configuration (TestCampusGraphContract).
+        fields = _fields(_CASES["sro_structured_listing"])
         assert fields["eligibility"]["state"] == "source"
-        assert fields["eligibility"]["explicit"]["majors"] == ["Biology", "Chemistry"]
-        assert fields["eligibility"]["explicit"]["international_students"] == "yes"
-        assert fields["funding"]["explicit"] == {"paid": "stipend", "compensation": "$5,000"}
-        assert fields["timing"]["explicit"]["deadline"] == "2027-02-01"
+        assert fields["eligibility"]["explicit"]["citizenship"] == "required"
+        assert fields["funding"]["explicit"] == {"paid": "yes", "compensation": "$7,000"}
+        assert fields["location"]["explicit"]["location"] == "Springfield, IL"
+        assert fields["timing"]["explicit"]["application_window"] == "3/15/27 (anticipated)"
 
     def test_inferred_field_is_labeled_inferred_with_a_basis(self):
         fields = _fields(_CASES["stamped_listing"])
@@ -453,13 +462,14 @@ class TestApiAndFrontendAgree:
 
 
 # ---------------------------------------------------------------------------
-# Listing collectors wired to the contract: uiuc_sro
+# Listing collectors wired to the contract (campus_graph, ucb_campus, uiuc_sro)
 # ---------------------------------------------------------------------------
-# The collector's own fetch and record builder, then the detail route. A
-# check of 20 live SRO detail pages on 2026-10-09 found every one a labelled
-# record (Sponsoring Institution, Location, Deadline, Duration, Compensation,
-# Citizenship Requirement) that main left unknown or read out of keyword
-# windows.
+# One contract test per collector: each runs the collector's own record
+# builder, then the detail route, and checks every facet it emits lands in the
+# state its page supports. The spot check behind these rules (20 live pages
+# per collector, 2026-10-09) found configured campus values stated on the page
+# for 10 of 33 facets and contradicted by it for 5, and every SRO detail field
+# either missed or read out of keyword windows.
 
 
 def _detail(record: dict) -> tuple[dict, dict]:
@@ -676,3 +686,158 @@ class TestUiucSroContract:
         assert _where(elig, "work_authorization_notes") == "unknown"
         assert fields["research_content"]["explicit"]["research_areas"] == ["Natural Sciences"]
         assert fields["eligibility"]["provenance"]["source_url"] == _SRO_DETAIL
+
+
+# --- campus_graph / ucb_campus ---------------------------------------------
+
+_SPEC_URL = "https://example.edu/surf"
+
+
+def _campus_school() -> dict:
+    spec = cg.program(
+        "surf", "Summer Research Fellowship", _SPEC_URL, "Ten weeks in a faculty lab.",
+        department="Biology", lab_or_program="SURF", paid="stipend", compensation="$5,000",
+        eligibility_majors=["Biology"], preferred_year=["junior", "senior"],
+        international_friendly="yes", deadline_note="Applications due March 1",
+        keywords=["cell biology"],
+    )
+    return {
+        "school_slug": "example", "organization": "Example University", "location": "Example, ST",
+        "emit": {"campus": ("example_research_programs", "example", "campus")},
+        "sources": [{
+            "source_name": "example_programs", "source_type": cg.PROGRAM, "emit": "campus",
+            "crawl": cg.STATIC, "seeds": [_SPEC_URL], "programs": [spec],
+        }],
+    }
+
+
+_CONFIGURED_FACETS = (
+    ("eligibility", "majors", ["Biology"]),
+    ("eligibility", "class_year", ["junior", "senior"]),
+    ("eligibility", "international_students", "yes"),
+    ("funding", "paid", "stipend"),
+    ("funding", "compensation", "$5,000"),
+    ("timing", "application_window", "Applications due March 1"),
+)
+
+
+class TestCampusGraphContract:
+    def _configured(self) -> dict:
+        school = _campus_school()
+        source = school["sources"][0]
+        return cg._normalize_program(school, source, source["programs"][0], seed_page_verified=True)
+
+    def _discovered(self) -> dict:
+        school = _campus_school()
+        return cg._normalize_discovered(
+            school, school["sources"][0], "Summer research openings", "https://example.edu/news/1", "Openings.",
+        )
+
+    def test_configured_values_are_ours_not_the_pages(self):
+        payload, fields = _detail(self._configured())
+        assert fields["school"]["explicit"] == {"institution": "Example University"}
+        assert fields["department"]["explicit"] == {"department": "Biology"}
+        assert fields["professor_or_lab"]["explicit"] == {"lab_or_program": "SURF"}
+        for field, facet, value in _CONFIGURED_FACETS:
+            assert fields[field]["inferred"][facet] == {"value": value, "basis": BASIS_COLLECTOR_DEFAULT}, facet
+            assert facet not in fields[field]["explicit"], facet
+        assert _where(fields["eligibility"], "citizenship") == "unknown"
+        assert _where(fields["location"], "location") == "unknown"
+
+    def test_badges_and_ranker_agree_with_the_detail_facts(self):
+        payload, _ = _detail(self._configured())
+        for key in ("paid_attribution", "international_attribution", "citizenship_attribution",
+                    "majors_attribution", "preferred_year_attribution"):
+            assert payload[key] == "inferred", key
+        _, canonical = _served(self._configured())
+        _, fits, _ = score_upside({}, canonical)
+        assert "Includes stipend" not in fits
+
+    def test_template_class_years_get_no_attribution(self):
+        record = self._configured()
+        record["eligibility"]["preferred_year"] = ["freshman", "sophomore", "junior", "senior"]
+        payload, fields = _detail(record)
+        assert _where(fields["eligibility"], "class_year") == "unknown"
+        assert "preferred_year_attribution" not in payload
+
+    def test_collector_constants_are_not_research_areas(self):
+        _, configured = _detail(self._configured())
+        assert configured["research_content"]["inferred"]["research_areas"]["value"] == ["cell biology"]
+        _, discovered = _detail(self._discovered())
+        assert configured["research_content"]["explicit"] == {}
+        assert discovered["research_content"]["state"] == "unknown"
+
+    def test_observed_at_only_where_something_was_read_off_the_page(self):
+        record = self._configured()
+        _, fields = _detail(record)
+        seen = record["metadata"]["last_verified"]
+        assert fields["school"]["provenance"] == {"source_url": _SPEC_URL, "observed_at": seen}
+        for name in ("eligibility", "funding"):
+            # Every facet is a configured value: the page was loaded, but
+            # nothing on it was read to produce these.
+            assert fields[name]["provenance"] == {"source_url": _SPEC_URL, "observed_at": None}, name
+
+    def test_discovered_lists_are_not_curated(self):
+        record = self._discovered()
+        record["eligibility"]["majors"] = ["Chemistry"]
+        _, fields = _detail(record)
+        assert fields["eligibility"]["inferred"]["majors"]["basis"] == "text_scan"
+
+    @pytest.mark.parametrize("kind", ["configured", "discovered"])
+    def test_page_scanned_name_is_not_a_principal_investigator(self, kind):
+        record = self._configured() if kind == "configured" else self._discovered()
+        record["pi_name"] = "Team ProjectsGroup Conference Travel"
+        payload, fields = _detail(record)
+        assert "pi_name" not in payload
+        assert _where(fields["professor_or_lab"], "principal_investigator") == "unknown"
+
+    def test_hand_entered_rows_stay_source(self):
+        fields = _fields(_listing(
+            source="manual", source_type="manual", paid="stipend",
+            eligibility={"majors": ["Biology"], "international_friendly": "yes"},
+        ))
+        assert fields["eligibility"]["explicit"]["majors"] == ["Biology"]
+        assert fields["funding"]["explicit"]["paid"] == "stipend"
+
+
+class TestUcbCampusContract:
+    def _source(self, emit=ucb_sources.EMIT_CAMPUS) -> dict:
+        program = ucb_sources._prog(
+            "bair", "Berkeley AI Research", "https://bair.example.edu/", "Undergraduate researchers.",
+            department="Electrical Engineering and Computer Sciences", lab_or_program="BAIR",
+            eligibility_majors=["Computer Science"], preferred_year=["junior", "senior"],
+            keywords=["machine learning"],
+        )
+        return {"source_name": "ucb_labs_hub", "source_type": ucb_sources.LAB, "emit": emit,
+                "programs": [program]}
+
+    def test_configured_values_are_ours_not_the_pages(self):
+        source = self._source()
+        record = ucb_campus._normalize_program(source, source["programs"][0], seed_page_verified=True)
+        payload, fields = _detail(record)
+        assert fields["department"]["explicit"] == {"department": "Electrical Engineering and Computer Sciences"}
+        assert fields["eligibility"]["inferred"]["majors"]["basis"] == BASIS_COLLECTOR_DEFAULT
+        assert fields["eligibility"]["inferred"]["class_year"]["basis"] == BASIS_COLLECTOR_DEFAULT
+        assert fields["eligibility"]["explicit"] == {}
+        assert fields["research_content"]["inferred"]["research_areas"]["value"] == ["machine learning"]
+
+    def test_discovered_department_is_the_first_programs_not_the_pages(self):
+        source = self._source()
+        record = ucb_campus._normalize_discovered(
+            source, "Jobs & Fellowships", "https://astro.example.edu/jobs", "Postdoc openings.",
+        )
+        assert record["department"] == "Electrical Engineering and Computer Sciences"
+        _, fields = _detail(record)
+        assert fields["department"]["inferred"]["department"]["basis"] == BASIS_COLLECTOR_DEFAULT
+        assert fields["research_content"]["state"] == "unknown"
+
+
+def test_pi_enricher_stamps_a_page_scanned_name(monkeypatch):
+    page = BeautifulSoup("<html><body><h3>Contact</h3><p>Ada Lovelace</p></body></html>", "html.parser")
+    monkeypatch.setattr(pi_enricher, "_fetch_soup", lambda url: page)
+    monkeypatch.setattr(pi_enricher, "DELAY", 0)
+    opp = {"id": "x", "source": "boulder_research_programs", "school": "boulder",
+           "url": "https://www.colorado.edu/urop", "lab_or_program": "", "metadata": {}}
+    pi_enricher.enrich_opportunities([opp])
+    assert opp["pi_name"] == "Ada Lovelace"
+    assert inferred_method(opp, "pi_name") == "rule:page_scan_name"

@@ -31,9 +31,9 @@ _SEEN = "2026-09-01T00:00:00"
 
 CASES: list[tuple[str, dict]] = [
     (
-        # A curated campus program: majors and class years a person read off
-        # the program page, an explicit intl welcome, a stated pay value, and
-        # the host school's city in `location`.
+        # A configured campus program (campus_graph spec): majors, class years,
+        # an intl welcome and a pay value typed into the collector config —
+        # ours, not the page's — beside the host school's city in `location`.
         "curated_campus_program",
         {
             "id": "contract-campus-1",

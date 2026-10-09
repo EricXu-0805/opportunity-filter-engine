@@ -201,25 +201,54 @@ _COLLECTOR_TEMPLATE_STAMPS: dict[str, dict[str, tuple[object, str]]] = {
     },
 }
 
+# Program specs in the campus_graph and ucb_campus configs. A person typed the
+# pay, international answer and citizenship rule into the config once, and
+# every refresh re-emits them without reading the page again. Checked against
+# 31 live program pages on 2026-10-09, 10 of 33 configured facets were stated
+# there and 5 were contradicted (a "stipend" that is a $500 expense grant;
+# "international students: yes" on a program for research abroad). Stamped
+# like the Simplify stipend; their majors and class years are classified for
+# display only, by the rule above.
+CAMPUS_PROGRAM_SUFFIXES = ("_research_programs", "_labs", "_external_research")
+_CONFIGURED_PROGRAM_STAMPS = {
+    "paid": lambda value: value in {"yes", "stipend", "no"},
+    "eligibility.international_friendly": lambda value: value in {"yes", "no"},
+    "eligibility.citizenship_required": lambda value: value is True or value is False,
+}
+CONFIGURED_PROGRAM_METHOD = "default:configured_program"
+
+
+def is_configured_program(record: dict) -> bool:
+    """A campus_graph / ucb_campus row built from a program spec in the
+    collector config, rather than a page the crawl discovered."""
+    source = record.get("source")
+    metadata = record.get("metadata")
+    return (isinstance(source, str) and source.endswith(CAMPUS_PROGRAM_SUFFIXES)
+            and not (isinstance(metadata, dict) and metadata.get("discovered")))
+
 
 def stamp_collector_templates(record: dict) -> dict:
     """Stamp registered collector constants as inferred, in place; return record.
 
     Idempotent, and never overrides an existing stamp: a field some other
     producer already accounted for keeps that producer's method. Only a value
-    equal to the registered template is stamped — a future collector that
-    reads a real pay value off the page is left stated.
+    equal to the registered template (or, for a configured program, any value
+    the spec can hold) is stamped — a future collector that reads a real pay
+    value off the page is left stated.
     """
-    templates = _COLLECTOR_TEMPLATE_STAMPS.get(record.get("source") or "")
-    if not templates:
-        return record
-    for path, (template, method) in templates.items():
+    templates = _COLLECTOR_TEMPLATE_STAMPS.get(record.get("source") or "", {})
+    matches = {path: (lambda value, template=template: value == template, method)
+               for path, (template, method) in templates.items()}
+    if is_configured_program(record):
+        matches.update({path: (test, CONFIGURED_PROGRAM_METHOD)
+                        for path, test in _CONFIGURED_PROGRAM_STAMPS.items()})
+    for path, (matches_template, method) in matches.items():
         if inferred_method(record, path) is not None:
             continue
         value: object = record
         for part in path.split("."):
             value = value.get(part) if isinstance(value, dict) else None
-        if value == template:
+        if matches_template(value):
             metadata = record.setdefault("metadata", {})
             if isinstance(metadata, dict):
                 stamp_inferred(metadata, path, method)
