@@ -7,7 +7,13 @@ from dataclasses import asdict
 import pytest
 
 from backend import data_loader
-from src.collectors.manual_importer import load_from_json, save_opportunities, validate_opportunity
+from src.collectors.manual_importer import (
+    create_opportunity,
+    load_from_csv,
+    load_from_json,
+    save_opportunities,
+    validate_opportunity,
+)
 from src.collectors.url_parser import _merge_llm_into_base, parse_url
 from src.import_source import import_source_from_raw, sanitize_import_source
 from src.normalizers.normalizer import normalize
@@ -187,13 +193,95 @@ def test_invalid_known_raw_import_fails_without_private_value_echo(key, value, t
 
 def test_old_flat_and_full_normalized_input_paths_remain(tmp_path):
     normalized = normalize(raw())
-    flat = {'title':'Manual opportunity','url':URL,'description':'Curator source text.'}
+    flat = {'title':'Manual opportunity','url':URL,'description':'Curator source text.','school':'national'}
     path = tmp_path / 'old-formats.json'
     path.write_text(json.dumps([flat, normalized]))
     restored = load_from_json(str(path))
     assert restored[0]['description_raw'] == flat['description']
     assert restored[0]['metadata']['manually_reviewed'] is True
     assert restored[1] == normalized
+
+
+def _flat(**extra):
+    return {'title': 'Summer research program', 'url': URL, 'description': 'Curator source text.', **extra}
+
+
+def _import_json(tmp_path, items):
+    path = tmp_path / 'manual.json'
+    path.write_text(json.dumps(items))
+    return load_from_json(str(path))
+
+
+def test_a_manual_entry_without_a_school_is_refused(tmp_path):
+    """create_opportunity wrote neither school nor audience, and
+    apply_school_audience files such a record as (None, 'unknown'): one
+    uiuc-* hand import then fails test_uiuc_manual_seeds_are_school_tagged
+    and holds back its school's shard."""
+    with pytest.raises(ValueError, match='names no school'):
+        _import_json(tmp_path, [_flat(id='uiuc-new-program')])
+    with pytest.raises(ValueError, match='names no school'):
+        create_opportunity(title='Summer research program', url=URL)
+
+
+def test_a_hosted_entry_is_tagged_and_keeps_its_tags_through_the_refresh(tmp_path):
+    from src.normalizers.school_audience import apply_school_audience
+
+    campus, recruiting = _import_json(tmp_path, [
+        _flat(id='uiuc-new-program', school=' UIUC '),
+        _flat(id='uiuc-new-reu', title='Physics REU', school='uiuc', audience='open'),
+    ])
+    assert (campus['school'], campus['audience']) == ('uiuc', 'campus')
+    assert (recruiting['school'], recruiting['audience']) == ('uiuc', 'open')
+    apply_school_audience([campus, recruiting])
+    assert (campus['school'], campus['audience']) == ('uiuc', 'campus')
+    assert (recruiting['school'], recruiting['audience']) == ('uiuc', 'open')
+
+
+def test_a_national_entry_is_named_as_national(tmp_path):
+    named, null = _import_json(tmp_path, [_flat(school='national'), _flat(title='Other program', school=None)])
+    assert (named['school'], named['audience']) == (None, 'open')
+    assert (null['school'], null['audience']) == (None, 'open')
+
+
+@pytest.mark.parametrize(('school', 'audience', 'message'), [
+    ('illinois', None, 'unknown school'),
+    ('', None, 'unknown school'),
+    ('uiuc', 'unknown', 'audience'),
+    ('national', 'campus', 'audience'),
+])
+def test_a_school_or_audience_the_corpus_cannot_publish_is_refused(tmp_path, school, audience, message):
+    item = _flat(school=school)
+    if audience is not None:
+        item['audience'] = audience
+    with pytest.raises(ValueError, match=message):
+        _import_json(tmp_path, [item])
+
+
+def test_a_full_schema_manual_record_needs_a_school_too(tmp_path):
+    """data/manual_entries/seed_v1.json has this shape and no school key:
+    importing it again would replace the nine tagged uiuc seeds with
+    untagged copies."""
+    record = create_opportunity(title='Summer research program', url=URL, school='uiuc', audience='open')
+    untagged = {key: value for key, value in record.items() if key not in ('school', 'audience')}
+    with pytest.raises(ValueError, match='names no school'):
+        _import_json(tmp_path, [untagged])
+    stated, derived = _import_json(tmp_path, [record, {**untagged, 'school': 'uiuc'}])
+    assert (stated['school'], stated['audience']) == ('uiuc', 'open')
+    assert (derived['school'], derived['audience']) == ('uiuc', 'campus')
+
+
+def test_a_csv_row_needs_a_school(tmp_path):
+    path = tmp_path / 'manual.csv'
+    path.write_text(f'title,url\nSummer research program,{URL}\n')
+    with pytest.raises(ValueError, match='names no school'):
+        load_from_csv(str(path))
+    path.write_text(f'title,url,school\nSummer research program,{URL},\n')
+    with pytest.raises(ValueError, match='names no school'):
+        load_from_csv(str(path))
+    path.write_text(f'title,url,school,audience\nSummer research program,{URL},uiuc,open\nNational program,{URL}/n,national,\n')
+    hosted, national = load_from_csv(str(path))
+    assert (hosted['school'], hosted['audience']) == ('uiuc', 'open')
+    assert (national['school'], national['audience']) == (None, 'open')
 
 
 def test_model_suggestions_are_not_source_requirements_even_after_roundtrip(tmp_path, temporary_loader):

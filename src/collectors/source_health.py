@@ -307,6 +307,18 @@ def save_ledger(ledger: dict, path: Path | None = None) -> None:
     atomic_write_json(target, ledger, sort_keys=True, indent=2)
 
 
+def _last_nonzero_at(row: dict) -> str | None:
+    """When the source last emitted records in a healthy run; None if unknown.
+
+    A row recorded before the field existed lacks it. If that row's latest
+    outcome was a nonzero success, its ``last_success_at`` was stamped by that
+    same run, so it is the answer; any other such row cannot know.
+    """
+    if "last_nonzero_at" in row:
+        return row["last_nonzero_at"]
+    return row.get("last_success_at") if row.get("status") == SUCCESS_NONZERO else None
+
+
 def record_attempt(
     ledger: dict,
     *,
@@ -327,6 +339,10 @@ def record_attempt(
       field every staleness answer is computed from, so an attempt that
       failed must not refresh it. Doing so is how a permanently broken
       source hides: it is attempted weekly forever.
+    * ``last_nonzero_at`` — advances only for a healthy run that emitted
+      records. A declared-empty success moves ``last_success_at`` and leaves
+      this alone, so a source that keeps succeeding with nothing stays
+      visible.
     * ``last_good_count`` — the last count actually achieved, kept across
       failures so a suspicious zero can be reported against what it lost.
 
@@ -334,6 +350,7 @@ def record_attempt(
     so repeated failure stays visible instead of looking like one bad day.
     """
     row = ledger.setdefault("sources", {}).setdefault(source, {})
+    row["last_nonzero_at"] = _last_nonzero_at(row)
     row["school"] = school
     row["last_attempt_at"] = _iso(now)
     row["status"] = outcome
@@ -348,6 +365,8 @@ def record_attempt(
         row["failure_reason"] = None
         if isinstance(emitted, int) and not isinstance(emitted, bool):
             row["last_good_count"] = emitted
+            if emitted > 0:
+                row["last_nonzero_at"] = _iso(now)
     else:
         row["consecutive_failures"] = int(row.get("consecutive_failures") or 0) + 1
         row["failure_reason"] = failure_reason
@@ -453,6 +472,7 @@ def source_rows(
             "source": source,
             "last_attempt_at": row.get("last_attempt_at"),
             "last_success_at": row.get("last_success_at"),
+            "last_nonzero_at": _last_nonzero_at(row),
             "last_publish_at": shard_row.get("last_publish_at"),
             "current_record_count": row.get("current_count"),
             "last_good_record_count": row.get("last_good_count"),

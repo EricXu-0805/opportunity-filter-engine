@@ -23,6 +23,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Optional
 
+from src.normalizers.school_audience import SOURCE_DEFAULTS
+
 logger = logging.getLogger(__name__)
 
 # Project root
@@ -34,6 +36,42 @@ MANUAL_DIR = DATA_DIR / "manual_entries"
 # Ensure directories exist
 PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 MANUAL_DIR.mkdir(parents=True, exist_ok=True)
+
+NATIONAL = "national"
+_UNSTATED = object()
+
+
+def _school_and_audience(title: object, school: object, audience: object) -> tuple[str | None, str]:
+    """The (school, audience) a hand entry publishes under, or ValueError.
+
+    ``school`` is the host school's slug, or ``"national"`` (None in JSON) for
+    a listing no school hosts. Leaving it out is refused: apply_school_audience
+    keeps a manual record's own pair and files one that states none as
+    (None, "unknown"), so a school-hosted entry leaks into every school's view
+    (#450) and fails test_uiuc_manual_seeds_are_school_tagged for its shard.
+    ``audience`` defaults to "campus" for a hosted entry and "open" for a
+    national one; a hosted program that recruits other schools' students
+    passes "open".
+    """
+    if school is _UNSTATED:
+        raise ValueError(
+            f"Manual opportunity {title!r} names no school: give its host "
+            f"school's slug, or {NATIONAL!r} for a listing no school hosts."
+        )
+    slug = school.strip().lower() if isinstance(school, str) else school
+    if slug is None or slug == NATIONAL:
+        slug, allowed = None, ("open", "unknown")
+    elif slug in {known for known, _audience in SOURCE_DEFAULTS.values() if known}:
+        allowed = ("campus", "open")
+    else:
+        raise ValueError(f"Manual opportunity {title!r} names an unknown school {school!r}.")
+    audience = allowed[0] if audience is None else audience
+    if audience not in allowed:
+        raise ValueError(
+            f"Manual opportunity {title!r} has audience {audience!r}; "
+            f"school {slug or NATIONAL!r} allows {', '.join(allowed)}."
+        )
+    return slug, audience
 
 
 def create_opportunity(
@@ -58,14 +96,18 @@ def create_opportunity(
     department: str = "",
     lab_or_program: str = "",
     pi_name: Optional[str] = None,
+    school: object = _UNSTATED,
+    audience: Optional[str] = None,
     **kwargs,
 ) -> dict:
     """
     Create a single opportunity record in the normalized schema.
-    This is the canonical way to add manual entries.
+    This is the canonical way to add manual entries. ``school`` is required;
+    see _school_and_audience.
     """
     from src.normalizers.enricher import enrich_opportunity
 
+    school, audience = _school_and_audience(title, school, audience)
     opp_id = kwargs.get("id") or f"manual-{uuid.uuid4().hex[:8]}"
     now = datetime.now(UTC).replace(tzinfo=None).isoformat()
 
@@ -118,6 +160,8 @@ def create_opportunity(
         "description_raw": description,
         "description_clean": description[:1500].strip(),
         "keywords": kwargs.get("keywords", []),
+        "school": school,
+        "audience": audience,
         "metadata": {
             "confidence_score": 0.90,  # Manual entries are high confidence
             "last_verified": now,
@@ -143,6 +187,9 @@ def load_from_json(filepath: str) -> list[dict]:
     for item in data:
         # If already in full schema format, use as-is
         if "eligibility" in item and isinstance(item["eligibility"], dict):
+            if item.get("source") == "manual":
+                item["school"], item["audience"] = _school_and_audience(
+                    item.get("title"), item.get("school", _UNSTATED), item.get("audience"))
             results.append(item)
         elif (
             isinstance(item, dict)
@@ -173,8 +220,10 @@ def load_from_json(filepath: str) -> list[dict]:
 def load_from_csv(filepath: str) -> list[dict]:
     """
     Load opportunities from a CSV file.
-    Expected columns: title, url, organization, opportunity_type, location,
-    paid, deadline, majors, skills_required, international_friendly, description
+    Expected columns: title, url, school, organization, opportunity_type,
+    location, paid, deadline, majors, skills_required, international_friendly,
+    description, and optionally audience. ``school`` is required per row (a
+    slug, or "national").
     List fields (majors, skills_required) use semicolons as delimiters.
     """
     results = []
@@ -206,6 +255,8 @@ def load_from_csv(filepath: str) -> list[dict]:
                 department=row.get("department", ""),
                 lab_or_program=row.get("lab_or_program", ""),
                 pi_name=row.get("pi_name") or None,
+                school=row.get("school") or _UNSTATED,
+                audience=row.get("audience") or None,
             )
             results.append(opp)
 
