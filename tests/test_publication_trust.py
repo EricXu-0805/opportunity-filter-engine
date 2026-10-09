@@ -9,6 +9,8 @@ paths, not just the centralized helper.
 """
 from __future__ import annotations
 
+import json
+
 from src.publication_trust import (
     NAME_MATCH,
     PENDING_REMEDIATION,
@@ -214,11 +216,10 @@ class TestColdEmailSurface:
 
 
 class TestResumeSurface:
-    def test_tailor_prompt_never_contains_paper_titles(self, monkeypatch):
-        # Resume tailoring reads no publication data by design; pin it so a
-        # future prompt change cannot quietly re-introduce paper titles —
-        # verified or not, papers are not resume-personalization evidence
-        # (they never describe the STUDENT's work).
+    def test_tailor_quotes_only_verified_titles_and_only_as_target_text(self, monkeypatch):
+        # A paper title can be target text a rewrite links to (the professor's
+        # own words), never evidence of the student's work. Only a verified
+        # author id admits it; every other status and legacy records never do.
         from backend.routes import tailor
 
         captured = {}
@@ -232,12 +233,45 @@ class TestResumeSurface:
                    "hard_skills": [{"name": "Python", "level": "expert"}],
                    "coursework": ["ECE 385"],
                    "research_interests_text": "brain-computer interfaces"}
-        for opp in (_opp(VERIFIED_AUTHOR_ID), _opp(NAME_MATCH), _opp()):
+        statuses = [(VERIFIED_AUTHOR_ID, True), ("__absent__", False), *((s, False) for s in UNVERIFIED_STATUSES)]
+        for status, admitted in statuses:
+            opp = _opp(status)
             captured.clear()
-            tailor._ai_tailor_bullets(profile, opp, ["Built a Python EEG parser"])
-            joined = " ".join(m["content"] for m in captured["messages"])
-            assert "NeuroFlow" not in joined
-            assert "Cortical Signal Denoising" not in joined
+            anchors = tailor._snapshot_anchors(opp, opp)
+            assert any(anchor.evidence["field"] == "paper_title" for anchor in anchors) is admitted
+            tailor._ai_tailor_bullets(profile, opp, ["Built a Python EEG parser"], anchors=anchors)
+            system, user = (m["content"] for m in captured["messages"])
+            assert ("NeuroFlow" in user) is admitted and "NeuroFlow" not in system
+            data = json.loads(user.split("DATA (JSON):\n", 1)[1])
+            # The student's only evidence is their own line.
+            assert data["units"] == [{"unit_id": "b1", "original": "Built a Python EEG parser"}]
+
+    def test_the_trust_verifier_checks_tailor_by_the_verified_read_and_its_anchors(self):
+        """scripts/verify_publication_trust.py exited 1 on this branch: its resume_tailoring scan flagged any
+        "recent_works", and tailor.py reads paper titles through verified_recent_works. It now applies the
+        rule test_publication_remediation applies to the source, and runs each candidate through the anchors."""
+        import importlib.util
+        import inspect
+        from pathlib import Path
+
+        from backend.routes import tailor
+
+        spec = importlib.util.spec_from_file_location(
+            "verify_publication_trust_tailor", Path(__file__).resolve().parents[1] / "scripts" / "verify_publication_trust.py")
+        vpt = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(vpt)
+        source = inspect.getsource(tailor)
+        assert "verified_recent_works" in source and vpt.tailor_source_leaks(source) == []
+        for mutant in (source + "\nraw = record['metadata']['recent_works']\n",
+                       source + "\nstatus = 'publication_attribution_status'\n"):
+            assert vpt.tailor_source_leaks(mutant) == ["tailor.py reads publication data outside verified_recent_works"]
+        records = [{**_opp(status), "id": f"r-{index}"} for index, status in enumerate(UNVERIFIED_STATUSES)]
+        assert vpt.tailor_anchor_leaks(tailor._snapshot_anchors, records) == []
+        # A tailor that quoted every recent work would leak each unverified record's titles.
+        def every_title(source_record, snapshot):
+            titles = [work["title"] for work in (source_record.get("metadata") or {}).get("recent_works") or []]
+            return tailor.opportunity_anchors("", [], paper_titles=titles)
+        assert vpt.tailor_anchor_leaks(every_title, records) == [record["id"] for record in records]
 
     def test_gap_analysis_ignores_publication_data(self):
         from src.recommender.resume_advisor import analyze_gaps

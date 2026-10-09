@@ -10,7 +10,7 @@ vi.mock('@/lib/api', () => ({ tailorResume: api.tailor, extractResumeBullets: ap
 import TailorModal from './TailorModal';
 const profile: ProfileData = { institution: 'UIUC', college: 'Engineering', major: 'CS', grade: 'Junior',
   is_international: false, research_interests: 'robots', skills: [], resume_text: 'Full saved résumé source' };
-const response: TailorResponse = { opportunity_id: 'target-one', target_version: `wt1:${'a'.repeat(64)}`, pipeline_version: 'w13.3', generated_at: '2026-09-25T12:00:00+00:00', method: 'ai', warnings: [], tailored_bullets: [{ text: 'Original model suggestion', source_evidence: 'supplied evidence', source_index: 0 }] };
+const response: TailorResponse = { opportunity_id: 'target-one', target_version: `wt1:${'a'.repeat(64)}`, pipeline_version: 'w14.1', generated_at: '2026-09-25T12:00:00+00:00', method: 'ai', warnings: [], tailored_bullets: [{ text: 'Original model suggestion', source_evidence: 'supplied evidence', source_index: 0, status: 'rewritten' }] };
 function publicTarget(id = 'target-one'): Opportunity {
   return { id, title: 'Target one', organization: 'UIUC', source_type: 'manual', record_kind: 'listing',
     writing_target_version: `wt1:${'a'.repeat(64)}`, opportunity_type: 'research', paid: 'unknown', location: 'Urbana', on_campus: true,
@@ -45,7 +45,7 @@ const textarea = () => screen.getByPlaceholderText('tailor.bulletsPlaceholder');
 const generate = () => screen.getByRole('button', { name: /^tailor\.(generate|regenerate)$/ });
 function type(text = 'My unchanged manual bullet') { fireEvent.change(textarea(), { target: { value: text } }); }
 beforeEach(async () => { vi.resetAllMocks(); localStorage.clear(); advanceOwnerEpoch(null); advanceOwnerEpoch('tailor-owner'); await syncLocalIdentityOwner('tailor-owner');
-  api.status.mockResolvedValue({ ai_available: true, pipeline_version: 'w13.3' }); api.tailor.mockResolvedValue(response); api.extract.mockResolvedValue({ method: 'ai', bullets: ['New extracted source'], pipeline_version: 'w13.3', generated_at: '2026-09-25T12:00:00+00:00' }); });
+  api.status.mockResolvedValue({ ai_available: true, pipeline_version: 'w14.1' }); api.tailor.mockResolvedValue(response); api.extract.mockResolvedValue({ method: 'ai', bullets: ['New extracted source'], pipeline_version: 'w14.1', generated_at: '2026-09-25T12:00:00+00:00' }); });
 afterEach(() => cleanup());
 
 describe('Tailor profile preflight', () => {
@@ -66,7 +66,7 @@ describe('Tailor profile preflight', () => {
     // Rule binding and draft comparison await native SHA work, which a fixed
     // number of Promise turns does not exhaust. Await the actual dispatch.
     await waitFor(() => expect(api.tailor).toHaveBeenCalled());
-    expect(api.tailor).toHaveBeenCalledExactlyOnceWith(fresh, 'target-one', ['My unchanged manual bullet'], { locale: 'en', expectedPipelineVersion: 'w13.3', expectedTargetVersion: `wt1:${'a'.repeat(64)}` });
+    expect(api.tailor).toHaveBeenCalledExactlyOnceWith(fresh, 'target-one', ['My unchanged manual bullet'], { locale: 'en', expectedPipelineVersion: 'w14.1', expectedTargetVersion: `wt1:${'a'.repeat(64)}` });
     expect(check).toHaveBeenCalledTimes(3); // initial action, explicit review, then generation
   });
   it('extracts the latest complete résumé only after its receipt is rendered', async () => {
@@ -74,7 +74,7 @@ describe('Tailor profile preflight', () => {
     const view = render(<TailorModal {...props} />); type(); fireEvent.click(screen.getByRole('button', { name: 'tailor.extractFromResume' })); await drain();
     expect(api.extract).not.toHaveBeenCalled(); const fresh = { ...profile, resume_text: '完整尾页🚀'.repeat(1000) };
     read.resolve(receipt(fresh)); await drain(); expect(api.extract).not.toHaveBeenCalled();
-    view.rerender(<TailorModal {...props} profile={fresh} />); await drain(); expect(api.extract).toHaveBeenCalledExactlyOnceWith(fresh.resume_text, { expectedPipelineVersion: 'w13.3' });
+    view.rerender(<TailorModal {...props} profile={fresh} />); await drain(); expect(api.extract).toHaveBeenCalledExactlyOnceWith(fresh.resume_text, { expectedPipelineVersion: 'w14.1' });
   });
   it.each(['null', 'rejected', 'deleted'] as const)('keeps manual text on %s read and allows a fresh retry', async (kind) => {
     const read = deferred<ProfileActionReceipt | null>(); const check = vi.fn().mockImplementationOnce(() => read.promise).mockResolvedValue(receipt());
@@ -188,7 +188,7 @@ describe('Tailor profile preflight', () => {
     render(<TailorModal {...base} profileRefresh={refresh(async () => receipt())} />); await drain();
     expect(textarea()).toHaveValue('Unknown old source'); type('An explicit manual edit'); await drain();
     const saved = JSON.parse(savedRaw(key)!);
-    expect(saved).toMatchObject({ version: 2, owner_id: 'tailor-owner', opportunity_id: 'target-one',
+    expect(saved).toMatchObject({ version: 3, owner_id: 'tailor-owner', opportunity_id: 'target-one',
       text: 'An explicit manual edit', origin: { kind: 'unknown', binding: null }, review: null });
     expect(api.tailor).not.toHaveBeenCalled();
   });

@@ -35,15 +35,22 @@ vi.mock('@/lib/api', () => ({
     const result = await mockTailorResume(...args);
     // Normal old fixtures get the actual wire receipt. Explicit malformed
     // target/version fields stay malformed so isolation tests remain meaningful.
-    return result && typeof result === 'object'
-      ? { opportunity_id: args[1], target_version: (args[3] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion, pipeline_version: 'w13.3', generated_at: '2026-09-25T12:00:00+00:00', ...result }
+    // A fixture bullet written before w14 stands for a reviewed rewrite, or, echoing
+    // 'original', for a line kept as written: the modal shows only status "rewritten"
+    // (TailorModal.unreviewed.test.tsx covers a bullet without one).
+    const statused = result && typeof result === 'object' && Array.isArray((result as { tailored_bullets?: unknown }).tailored_bullets)
+      ? { ...result, tailored_bullets: (result as { tailored_bullets: Record<string, unknown>[] }).tailored_bullets.map((b) => b && typeof b === 'object' && b.status === undefined
+        ? { ...b, status: b.source_evidence === 'original' ? 'kept' : 'rewritten' } : b) }
       : result;
+    return statused && typeof statused === 'object'
+      ? { opportunity_id: args[1], target_version: (args[3] as { expectedTargetVersion?: string } | undefined)?.expectedTargetVersion, pipeline_version: 'w14.1', generated_at: '2026-09-25T12:00:00+00:00', ...statused }
+      : statused;
   },
   getTailorStatus: (...args: unknown[]) => mockGetTailorStatus(...args),
   extractResumeBullets: async (...args: unknown[]) => {
     const result = await mockExtractResumeBullets(...args);
     return result && typeof result === 'object'
-      ? { pipeline_version: 'w13.3', generated_at: '2026-09-25T12:00:00+00:00', ...result }
+      ? { pipeline_version: 'w14.1', generated_at: '2026-09-25T12:00:00+00:00', ...result }
       : result;
   },
 }));
@@ -113,7 +120,7 @@ function storedValueText(raw: string | null): string | null {
   if (raw === null) return null;
   try {
     const parsed = JSON.parse(raw) as { version?: unknown; text?: unknown; t?: unknown };
-    if (parsed?.version === 2 && typeof parsed.text === 'string') return parsed.text;
+    if ((parsed?.version === 2 || parsed?.version === 3) && typeof parsed.text === 'string') return parsed.text;
     if (parsed && typeof parsed.t === 'string') return parsed.t;
   } catch { /* legacy */ }
   return raw;
@@ -134,7 +141,7 @@ beforeEach(async () => {
     // R71-G: default the status probe to "AI available" so the
     // unavailable banner stays hidden and pre-existing assertions are
     // untouched. Tests that exercise the banner override this.
-    mockGetTailorStatus.mockResolvedValue({ ai_available: true, pipeline_version: 'w13.3' });
+    mockGetTailorStatus.mockResolvedValue({ ai_available: true, pipeline_version: 'w14.1' });
   });
 
 describe('TailorModal', () => {
@@ -302,7 +309,7 @@ describe('TailorModal', () => {
       expect.objectContaining({ major: 'CS' }),
       'opp-123',
       ['Worked on Python projects in CS 225'],
-      expect.objectContaining({ locale: 'en', expectedPipelineVersion: 'w13.3', expectedTargetVersion: `wt1:${'a'.repeat(64)}` }),
+      expect.objectContaining({ locale: 'en', expectedPipelineVersion: 'w14.1', expectedTargetVersion: `wt1:${'a'.repeat(64)}` }),
     );
 
     await waitFor(() => {
@@ -650,7 +657,7 @@ describe('TailorModal', () => {
   });
 
   it('R71-G: shows the AI-unavailable banner when status probe returns false', async () => {
-    mockGetTailorStatus.mockResolvedValue({ ai_available: false, pipeline_version: 'w13.3' });
+    mockGetTailorStatus.mockResolvedValue({ ai_available: false, pipeline_version: 'w14.1' });
 
     render(<TailorModal {...baseProps} profile={makeProfile()} />);
 
@@ -660,7 +667,7 @@ describe('TailorModal', () => {
   });
 
   it('R71-G: hides the AI-unavailable banner when AI is configured', async () => {
-    mockGetTailorStatus.mockResolvedValue({ ai_available: true, pipeline_version: 'w13.3' });
+    mockGetTailorStatus.mockResolvedValue({ ai_available: true, pipeline_version: 'w14.1' });
 
     render(<TailorModal {...baseProps} profile={makeProfile()} />);
 
@@ -669,13 +676,16 @@ describe('TailorModal', () => {
     expect(screen.queryByText('tailor.aiUnavailableBanner')).toBeNull();
   });
 
-  it('R71-G: shows a coverage line when some bullets are dropped (partial AI result)', async () => {
-    // Submit 2 bullets but the backend (post anti-fabrication) returns 1.
+  it('R71-G: counts rewrites and kept bullets, and says why a bullet was kept', async () => {
+    // w14.0: every submitted bullet comes back; the refused one is kept as written.
     mockTailorResume.mockResolvedValueOnce({
       method: 'ai',
       warnings: ['bullet_1_rejected_fabrication: pytorch'],
       tailored_bullets: [
-        { text: 'Grounded rewrite kept', source_evidence: 'Python', source_index: 0 },
+        { text: 'Grounded rewrite kept', source_evidence: 'kept bullet', source_index: 0, status: 'rewritten', reason_code: null,
+          ops: ['verb_first'], links: [], alternative: null },
+        { text: 'dropped bullet', source_evidence: 'dropped bullet', source_index: 1, status: 'kept', reason_code: 'rewrite_rejected',
+          ops: [], links: [], alternative: null },
       ],
     } satisfies TailorResponse);
 
@@ -686,12 +696,14 @@ describe('TailorModal', () => {
     fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
 
     await waitFor(() => {
-      // t-mock renders vars as "key:n|total" → 1 rewritten of 2 submitted.
-      expect(screen.getByText('tailor.coverage:1|2')).toBeTruthy();
+      // t-mock renders vars as "key:n|kept" → 1 rewrite, 1 kept.
+      expect(screen.getByText('tailor.coverage:1|1')).toBeTruthy();
     });
+    expect(screen.getByTestId('tailor-kept-reason')).toHaveTextContent('tailor.keptYourWording tailor.keep.rewrite_rejected');
+    expect(screen.getByText('tailor.ops.verb_first')).toBeTruthy();
   });
 
-  it('R71-G: no coverage line when every submitted bullet comes back', async () => {
+  it('R71-G: every reviewed result carries the coverage line, rewrites and kept lines counted', async () => {
     mockTailorResume.mockResolvedValueOnce({
       method: 'ai',
       warnings: [],
@@ -708,7 +720,7 @@ describe('TailorModal', () => {
     fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
 
     await waitFor(() => expect(screen.getByText('tailor.methodAi')).toBeTruthy());
-    expect(screen.queryByText(/^tailor\.coverage/)).toBeNull();
+    expect(screen.getByText(/^tailor\.coverage/)).toBeTruthy();
   });
 
   it('R71-G: smart-extract button is hidden when the profile has no resume text', () => {
@@ -785,6 +797,78 @@ describe('TailorModal', () => {
     expect(screen.queryByRole('button', { name: /tailor\.useAsOriginals/ })).toBeNull();
   });
 
+  describe('evidence-mapped results (w14.0)', () => {
+    const link = (entailed: boolean) => ({ id: 'L1', relation: 'same' as const, entailed, written_as: null,
+      target_evidence: { field: 'requirement', start: 0, end: 3, quote: 'PCR' }, source_evidence: { start: 0, end: 14, quote: 'PCR genotyping' } });
+    const rewritten = (overrides: Partial<TailorResponse['tailored_bullets'][number]> = {}) => ({
+      text: 'Ran PCR genotyping on 40 mouse lines.', source_evidence: 'PCR genotyping on 40 mouse lines, run weekly.', source_index: 0,
+      status: 'rewritten' as const, reason_code: null, ops: ['lead_with' as const], links: [link(true)], alternative: null, ...overrides });
+    const generate = async (bullets: string, bulletsOut: TailorResponse['tailored_bullets']) => {
+      mockTailorResume.mockResolvedValueOnce({ method: 'ai', warnings: [], tailored_bullets: bulletsOut } satisfies TailorResponse);
+      fireEvent.change(screen.getByPlaceholderText('tailor.bulletsPlaceholder'), { target: { value: bullets } });
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.(generate|regenerate)/ }));
+      await waitFor(() => expect(screen.getByRole('button', { name: /tailor\.useAsOriginals/ })).toBeTruthy());
+    };
+
+    it('reads a link as a match only when the review confirmed it, else quotes the opportunity', async () => {
+      render(<TailorModal {...baseProps} profile={makeProfile()} />);
+      await generate('PCR genotyping on 40 mouse lines, run weekly.\nSecond line.', [
+        rewritten(),
+        rewritten({ text: 'Second line, reordered.', source_evidence: 'Second line.', source_index: 1, links: [link(false)], ops: ['verb_first'] }),
+      ]);
+      expect(screen.getByText('tailor.whyMatch:PCR|PCR genotyping')).toBeTruthy();
+      expect(screen.getByText('tailor.whyQuote:PCR')).toBeTruthy();
+      expect(screen.getByText('tailor.ops.lead_with')).toBeTruthy(); expect(screen.getByText('tailor.ops.verb_first')).toBeTruthy();
+    });
+
+    it('offers the rewrite without the posting terms and uses that choice everywhere', async () => {
+      const writeText = vi.fn().mockResolvedValue(undefined);
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+      render(<TailorModal {...baseProps} profile={makeProfile()} />);
+      await generate('PCR genotyping on 40 mouse lines, run weekly.', [
+        rewritten({ text: 'Ran PCR genotyping assays on 40 mouse lines.', ops: ['relabel', 'lead_with'], alternative: 'Ran PCR genotyping on 40 mouse lines.' }),
+      ]);
+      expect(screen.getByText('tailor.ops.relabel')).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: 'tailor.useWithoutTerms' }));
+      expect(screen.getByText(fullText('Ran PCR genotyping on 40 mouse lines.'))).toBeTruthy();
+      // Without the term the line no longer uses the opportunity's term.
+      expect(screen.queryByText('tailor.ops.relabel')).toBeNull(); expect(screen.getByText('tailor.ops.lead_with')).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.copyAll/ }));
+      await waitFor(() => expect(writeText).toHaveBeenCalledWith('• Ran PCR genotyping on 40 mouse lines.'));
+      fireEvent.click(screen.getByRole('button', { name: 'tailor.useWithTerms' }));
+      expect(screen.getByText(fullText('Ran PCR genotyping assays on 40 mouse lines.'))).toBeTruthy();
+      expect(screen.getByText('tailor.ops.relabel')).toBeTruthy();
+    });
+
+    it('keeps each promoted line tied to its evidence across a reload and sends it as source_bullets', async () => {
+      const view = render(<TailorModal {...baseProps} profile={makeProfile()} />);
+      await generate('PCR genotyping on 40 mouse lines, run weekly.\nMy own second line.', [
+        rewritten(),
+        { text: 'My own second line.', source_evidence: 'My own second line.', source_index: 1, status: 'kept', reason_code: 'no_link', ops: [], links: [], alternative: null },
+      ]);
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.useAsOriginals/ }));
+      expect(screen.getByPlaceholderText('tailor.bulletsPlaceholder')).toHaveValue('Ran PCR genotyping on 40 mouse lines.\nMy own second line.');
+      // Reopen: the saved draft still knows where the promoted line came from.
+      view.rerender(<TailorModal {...baseProps} isOpen={false} profile={makeProfile()} />);
+      view.rerender(<TailorModal {...baseProps} profile={makeProfile()} />);
+      await waitFor(() => expect(screen.getByPlaceholderText('tailor.bulletsPlaceholder')).toHaveValue('Ran PCR genotyping on 40 mouse lines.\nMy own second line.'));
+      mockTailorResume.mockResolvedValueOnce({ method: 'ai', warnings: [], tailored_bullets: [] } satisfies TailorResponse);
+      await waitFor(() => expect(screen.getByRole('button', { name: /tailor\.generate/ })).toBeEnabled());
+      fireEvent.click(screen.getByRole('button', { name: /tailor\.generate/ }));
+      await waitFor(() => expect(mockTailorResume).toHaveBeenCalledTimes(2));
+      const [, , bullets, options] = mockTailorResume.mock.calls[1] as [unknown, unknown, string[], { sourceBullets?: string[] }];
+      expect(bullets).toEqual(['Ran PCR genotyping on 40 mouse lines.', 'My own second line.']);
+      expect(options.sourceBullets).toEqual(['PCR genotyping on 40 mouse lines, run weekly.', 'My own second line.']);
+    });
+
+    it('sends no source_bullets for lines the student typed', async () => {
+      render(<TailorModal {...baseProps} profile={makeProfile()} />);
+      await generate('Typed line one.', [rewritten({ source_evidence: 'Typed line one.' })]);
+      const [, , , options] = mockTailorResume.mock.calls[0] as [unknown, unknown, string[], { sourceBullets?: string[] }];
+      expect(options).not.toHaveProperty('sourceBullets');
+    });
+  });
+
   it('R71-G: "use as new originals" is absent for fallback results', async () => {
     mockTailorResume.mockResolvedValueOnce({
       method: 'fallback',
@@ -832,7 +916,7 @@ describe('TailorModal', () => {
       expect.any(Object),
       'opp-123',
       ['first bullet', 'second bullet', 'third bullet'],
-      expect.objectContaining({ locale: 'en', expectedPipelineVersion: 'w13.3', expectedTargetVersion: `wt1:${'a'.repeat(64)}` }),
+      expect.objectContaining({ locale: 'en', expectedPipelineVersion: 'w14.1', expectedTargetVersion: `wt1:${'a'.repeat(64)}` }),
     );
   });
 
@@ -2158,7 +2242,7 @@ describe('W13 target isolation + draft staleness', () => {
     window.localStorage.setItem(
       DRAFT_KEY,
       encodeDraft(createDraft(OWNER, 'opp-123', 'old bullet draft', 'manual',
-        await createBinding(makeProfile({ resume_text: 'old resume source' }), publicTarget(), 'w13.3'))),
+        await createBinding(makeProfile({ resume_text: 'old resume source' }), publicTarget(), 'w14.1'))),
     );
     render(<TailorModal {...baseProps} profile={makeProfile({ resume_text: 'a brand new resume text' })} />);
     expect(await screen.findByTestId('tailor-stale-draft')).toBeTruthy();
@@ -2190,7 +2274,7 @@ describe('resume processing disclosure', () => {
     fireEvent.click(screen.getByRole('button', { name: /tailor.extractFromResume/ }));
     await waitFor(() => expect(screen.getByText('resume.processingCoverage:1|2|1')).toBeInTheDocument());
     expect(screen.getByText('resume.processingSelectionLimited')).toBeInTheDocument();
-    expect(mockExtractResumeBullets).toHaveBeenCalledWith(profile.resume_text, { expectedPipelineVersion: 'w13.3' });
+    expect(mockExtractResumeBullets).toHaveBeenCalledWith(profile.resume_text, { expectedPipelineVersion: 'w14.1' });
   });
 
   it('keeps the current draft and shows failure when a long extraction is rejected', async () => {

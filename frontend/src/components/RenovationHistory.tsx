@@ -3,10 +3,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { listRenovationVersions, readRenovationVersion, type RenovationPayload, type RenovationVersion, type RenovationVersionPage } from '@/lib/supabase';
 import { isOwnerTokenValid, type OwnerToken } from '@/lib/identity-owner';
+import { shownText } from '@/lib/renovation-review';
 import type { RenovationDoc } from '@/lib/types';
 
+// A version saved before the faithfulness review (w13.x) can hold an unreviewed, other-language
+// rewrite as a bullet's current wording; the preview shows that bullet's own text instead, as
+// opening or restoring the version does (reviewedRenovation). A legacy_doc version is only read here.
 function textOf(doc: Record<string, unknown>) {
-  return (doc as unknown as RenovationDoc).sections.map(s => [s.heading || s.kind, ...s.bullets.map(b => b.current >= 0 ? b.variants[b.current].text : b.base_text)].join('\n')).join('\n\n');
+  return (doc as unknown as RenovationDoc).sections.map(s => [s.heading || s.kind, ...s.bullets.map(shownText)].join('\n')).join('\n\n');
 }
 
 export default function RenovationHistory({ opportunityId, owner, locale, disabled, onRestore, onClose }: {

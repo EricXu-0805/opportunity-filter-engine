@@ -185,29 +185,12 @@ function validateItem(prepared: PreparedTargetResumePlan, manifest: TargetResume
     if (typeof item.unit_id !== 'string' || !lines.has(item.unit_id)) fail('invalid_response');
     quote(lines.get(item.unit_id)!.original, item);
   }
-  if (value.action !== 'compress' && value.rewrites.length) fail('invalid_response');
-  const seen = new Set<string>();
-  for (const item of value.rewrites) {
-    const group = object(item) ? prepared.support_groups?.find(group=>group.unit_id===item.unit_id) : undefined;
-    shape(item, ['unit_id', 'status', 'reason_code', 'proposed_text', ...(group ? ['source_evidence'] : [])]);
-    if (group && !same(item.source_evidence,targetResumeSupportEvidence(prepared.draft,group))) fail('invalid_response');
-    if (typeof item.unit_id !== 'string' || seen.has(item.unit_id)) fail('invalid_response');
-    seen.add(item.unit_id);
-    const line = lines.get(item.unit_id);
-    if (!line || line.evidence.kind !== 'experience') fail('invalid_response');
-    if (item.status === 'suggested') {
-      text(item.proposed_text);
-      const length = resumeTextCharacters(item.proposed_text);
-      const supportLength = group ? targetResumeSupportEvidence(prepared.draft, group).slice(1).reduce((total, source) => total + resumeTextCharacters(source.quote), 0) : 0;
-      if (item.reason_code !== null || !item.proposed_text.trim() || length > 6000
-        || length >= resumeTextCharacters(line.original) + supportLength || length >= resumeTextCharacters(line.text) + supportLength) fail('invalid_response');
-    } else if (item.status !== 'skipped' || !['ungrounded_rewrite', 'not_shorter'].includes(String(item.reason_code)) || item.proposed_text !== null) fail('invalid_response');
-  }
+  // v5 proposes no wording: an older server's unreviewed shorter or combined wording is never shown or applied.
+  if (value.rewrites.length) fail('invalid_response');
 }
 
 /** This verifies the wire contract and source locations, not semantic truth.
- * The server checks each compression against its own original; the user still
- * reviews both selection and text independently before applying. */
+ * The plan carries no wording (v5); the user reviews each content choice before applying. */
 export function validateTargetResumePlanResponse(prepared: PreparedTargetResumePlan,
   request: Pick<TargetResumePlanRequest, 'request_id' | 'options' | 'support_groups'>, response: unknown): TargetResumePlanResult<TargetResumePlanResponse> {
   try {
