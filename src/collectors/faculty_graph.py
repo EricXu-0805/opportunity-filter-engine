@@ -65,7 +65,7 @@ from collections import Counter, defaultdict
 from contextlib import contextmanager
 from copy import deepcopy
 from datetime import UTC, datetime
-from urllib.parse import quote, unquote, urljoin
+from urllib.parse import parse_qs, quote, unquote, urljoin, urlsplit
 
 from backend.lib.contact_visibility import carries_contact_evidence
 from src.normalizers.deactivate_stale_faculty import (
@@ -994,6 +994,8 @@ def _new_coverage() -> dict:
         "duplicate_rows": 0,
         "identity_match_failures": 0,
         "parser_errors": 0,
+        # Also counts roster pages that did not load (blocked, timed out,
+        # rendered empty): the people listed on them were never seen.
         "partial_render_rows": 0,
     }
 
@@ -1197,6 +1199,44 @@ def _paginated_url(base: str, page: int, param: str) -> str:
     head = head.rstrip("/")
     paged = f"{head}/{param}/{page}/"
     return f"{paged}{sep}{query}" if query else paged
+
+
+def _directory_root(url: str) -> tuple[str, str]:
+    parts = urlsplit(url)
+    return parts.netloc.lower(), parts.path.rstrip("/")
+
+
+def _pager_pages(soup, page_url: str, roots: set[tuple[str, str]], param: str,
+                 value_prefix: str = "", path_mode: bool = False) -> set[int]:
+    """Page numbers this roster page's own pager links to.
+
+    A link counts only when it points at the walk's own directory (a host and
+    path in ``roots``: the configured URL, and where it redirects) and carries
+    the walk's page parameter, so a news widget's pager on the same page
+    promises nothing. The walk needs this to tell a page that failed from the
+    end of the roster: ``fetch_soup`` returns None for the 404 past the last
+    page and for a 403 or a timeout alike, and a blocked page can come back as
+    the site with an empty list.
+    """
+    prefix = unquote(value_prefix)
+    pages: set[int] = set()
+    for a in soup.select("a[href]"):
+        try:
+            link = urlsplit(urljoin(page_url, a.get("href") or ""))
+        except ValueError:  # "http://[bad" — not a pager link, and not a reason to drop the roster
+            continue
+        host, path = link.netloc.lower(), link.path.rstrip("/")
+        if path_mode:
+            head, _, n = path.rpartition("/")
+            head, _, word = head.rpartition("/")
+            if word == param and n.isdigit() and (host, head) in roots:
+                pages.add(int(n))
+        elif (host, path) in roots:
+            for value in parse_qs(link.query).get(param, []):
+                n = value[len(prefix):] if value.startswith(prefix) else ""
+                if n.isdigit():
+                    pages.add(int(n))
+    return pages
 
 
 def _is_cf_interstitial(soup) -> bool:
@@ -1479,13 +1519,44 @@ def _scrape_directory(dept: dict) -> list[dict]:
             # failed fetch once, and require two barren pages in a row before
             # concluding the walk is actually over. Costs one extra request per
             # paginated department; buys back silently-missing faculty.
+            #
+            # The walk ending is not proof the roster ended, and the stale pass
+            # retires whoever the unit no longer lists. So a page that was not
+            # read withholds the unit's retirement authority for the run
+            # (``partial_render_rows``) instead of retiring the people on it:
+            #   * a render that came back None: a render returns a document for
+            #     any HTTP status, so None is Cloudflare's shell, a timeout or
+            #     an empty document after every retry;
+            #   * a document with no text at all, or Cloudflare's shell;
+            #   * a page without cards before a page with cards;
+            #   * a page within ``max`` that the roster's own pager links to
+            #     (on the configured directory or where it redirects) and that
+            #     showed no cards. This is what tells a plain fetch's None for
+            #     a 403 or a timeout from the 404 past the last page.
+            start, last = pag.get("start", 1), pag.get("max", 12)
+            card_sel = sel.get("card", "")
+            landed = getattr(soup, "_ofe_final_url", None) or base
+            roots = {_directory_root(base), _directory_root(landed)}
+            linked = _pager_pages(soup, landed, roots, param, vpre, path_mode)
+            walked: list[int] = []
+            read: set[int] = set()
+            not_read: set[int] = set()
             barren = 0
-            for pg in range(pag.get("start", 1), pag.get("max", 12) + 1):
+            for pg in range(start, last + 1):
                 if _source_budget_spent():
                     break
                 next_url = _paginated_url(base, pg, param) if path_mode else (
                     f"{base}{'&' if '?' in base else '?'}{param}={vpre}{pg}")
                 s2 = fetch(next_url) or fetch(next_url)
+                walked.append(pg)
+                if s2 is not None and s2.select(card_sel):
+                    read.add(pg)
+                    linked |= _pager_pages(
+                        s2, getattr(s2, "_ofe_final_url", None) or next_url,
+                        roots, param, vpre, path_mode)
+                elif (s2 is None and cfg.get("render")) or (s2 is not None and (
+                        _is_cf_interstitial(s2) or not s2.get_text(strip=True))):
+                    not_read.add(pg)
                 fresh = [] if s2 is None else [
                     p for p in _parse_cards(s2, sel, base, lf, flip, link_f, sf, ff)
                     if (p["name"], p["url"]) not in seen]
@@ -1497,6 +1568,14 @@ def _scrape_directory(dept: dict) -> list[dict]:
                 barren = 0
                 seen.update((p["name"], p["url"]) for p in fresh)
                 people.extend(fresh)
+            last_read = max(read, default=start - 1)
+            not_read |= {pg for pg in walked if pg not in read and pg < last_read}
+            not_read |= {pg for pg in linked if start <= pg <= last and pg not in read}
+            if not_read:
+                _cover("partial_render_rows", len(not_read))
+                logger.warning(
+                    "faculty_graph: %s roster page(s) %s were not read; the unit "
+                    "retires nobody this run", dept.get("short"), sorted(not_read))
         for _extra_url in cfg.get("extra_urls", []):
             # Sibling roster pages of the SAME department that share one theme —
             # rank-split med-school galleries, art-history + studio art, core +
@@ -1509,7 +1588,10 @@ def _scrape_directory(dept: dict) -> list[dict]:
                 import time
                 time.sleep(cfg["pre_delay"])
             _es = fetch(_extra_url) or fetch(_extra_url)
-            if _es is None:
+            if _es is None or _is_cf_interstitial(_es) or not _es.get_text(strip=True):
+                _cover("partial_render_rows")
+                logger.warning("faculty_graph: %s roster page %s was not read; the "
+                               "unit retires nobody this run", dept.get("short"), _extra_url)
                 continue
             _seen = {(p["name"], p["url"]) for p in people}
             people.extend(
@@ -1518,6 +1600,8 @@ def _scrape_directory(dept: dict) -> list[dict]:
         people = _apply_profile_enrich(people, cfg.get("profile_enrich"))
     except Exception as e:  # noqa: BLE001
         logger.warning("faculty_graph: scrape parse failed for %s: %s", dept.get("short"), e)
+        # Rows counted before the failure would read as a fully parsed roster.
+        _cover("parser_errors")
         return []
     return people
 

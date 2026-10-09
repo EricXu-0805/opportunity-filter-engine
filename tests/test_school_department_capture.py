@@ -431,6 +431,72 @@ class TestCardProfileLinks:
 
 # --- JHU Biomedical Engineering: the roster pages 30 at a time ---------------
 
+_BME = "https://www.bme.jhu.edu/people/faculty/"
+_BME_PAGES = {_BME: "jhu_bme_page1.html", f"{_BME}?pg=2": "jhu_bme_page2.html",
+              f"{_BME}?pg=3": "jhu_bme_page3.html"}
+# Past the end of the roster bme.jhu.edu still serves the site, with an empty
+# list (pg=4 on 2026-10-09: the page title and no cards).
+_BME_PAST_THE_END = (
+    "<html><head><title>Faculty - Johns Hopkins Biomedical Engineering</title></head>"
+    "<body><header>Johns Hopkins Biomedical Engineering</header>"
+    '<div class="zn-faculty-list"></div></body></html>')
+# What two of the 2026-10-09 probes of follow-up pages got back.
+_CLOUDFLARE_BLOCK = (
+    "<html><head><title>Attention Required! | Cloudflare</title></head>"
+    "<body><h1>Sorry, you have been blocked</h1></body></html>")
+
+
+def _bme_roster(url):
+    name = _BME_PAGES.get(url)
+    return (FIXTURES / name).read_text() if name else _BME_PAST_THE_END
+
+
+def _fake_chromium(monkeypatch, serve):
+    """Headless Chromium that loads ``serve(url)``: the page's HTML, or an
+    exception for the navigation to raise. ``_render_soup`` runs unchanged on
+    top of it, retries and Cloudflare check included."""
+    import sys
+    import types
+
+    class Page:
+        def goto(self, url, **_kw):
+            self.url, self._html = url, serve(url)
+            if isinstance(self._html, Exception):
+                raise self._html
+
+        def wait_for_timeout(self, _ms):
+            pass
+
+        def wait_for_selector(self, *_a, **_kw):
+            pass
+
+        def content(self):
+            return self._html
+
+    class Browser:
+        def new_context(self, **_kw):
+            return types.SimpleNamespace(new_page=Page)
+
+        def close(self):
+            pass
+
+    class Session:
+        chromium = types.SimpleNamespace(launch=lambda **_kw: Browser())
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_a):
+            return False
+
+    sync_api = types.ModuleType("playwright.sync_api")
+    sync_api.sync_playwright = Session
+    package = types.ModuleType("playwright")
+    package.sync_api = sync_api
+    monkeypatch.setitem(sys.modules, "playwright", package)
+    monkeypatch.setitem(sys.modules, "playwright.sync_api", sync_api)
+
+
 class TestJhuBmePagination:
     def test_every_page_of_the_roster_is_read(self, monkeypatch):
         from bs4 import BeautifulSoup
@@ -446,7 +512,7 @@ class TestJhuBmePagination:
         def render(url, **_kw):
             requested.append(url)
             name = pages.get(url)
-            html = (FIXTURES / name).read_text() if name else "<html><body></body></html>"
+            html = (FIXTURES / name).read_text() if name else _BME_PAST_THE_END
             return BeautifulSoup(html, "html.parser")
 
         monkeypatch.setattr(fg, "_render_soup", render)
@@ -456,6 +522,89 @@ class TestJhuBmePagination:
             "Cy Placeholder, PhD", "Di Testcase, PhD"]
         # One empty page past the roster ends the walk.
         assert requested == [*pages, "https://www.bme.jhu.edu/people/faculty/?pg=4"]
+
+
+# --- a follow-up page that does not load must not retire its professors -------
+
+class TestJhuBmeFollowUpFailure:
+    """The committed BME records were last seen on 2026-09-11 (the 2026-10-09
+    refresh rendered no BME cards), so at the next run that reads the roster
+    every one of them is past the 14-day grace window. If a follow-up page
+    then fails to load and the unit still counts as fully read, the stale pass
+    retires every professor listed on that page."""
+
+    @staticmethod
+    def _second_run(monkeypatch, served):
+        """Read every page once, age the records past the grace window, then run
+        again with ``served[pg]`` in place of page ``pg``."""
+        from datetime import date, timedelta
+
+        from src.collectors.schools import jhu_faculty
+        from src.normalizers.deactivate_stale_faculty import (
+            deactivate_stale_faculty,
+            finalize_unit_ledger,
+        )
+        school = {**jhu_faculty.SCHOOL, "departments": [_dept(jhu_faculty, "WSE-BME")]}
+        _fake_chromium(monkeypatch, _bme_roster)
+        corpus = fg.fetch_and_normalize(school, deep=True, unit_ledger={})
+        aged = (date.today() - timedelta(days=20)).isoformat() + "T00:00:00"
+        for rec in corpus:
+            rec["metadata"]["last_seen_at"] = aged
+        by_url = {f"{_BME}?pg={pg}": page for pg, page in served.items()}
+        _fake_chromium(monkeypatch, lambda u: by_url[u] if u in by_url else _bme_roster(u))
+        ledger: dict = {}
+        by_id = {r["id"]: r for r in corpus}
+        for rec in fg.fetch_and_normalize(school, deep=True, unit_ledger=ledger):
+            if rec["id"] in by_id:
+                by_id[rec["id"]].update(rec)
+            else:
+                corpus.append(rec)
+        finalize_unit_ledger(ledger, corpus, "jhu_faculty")
+        report = deactivate_stale_faculty(corpus, {"jhu_faculty": ledger}, held_sources=set())
+        active = sorted(r["pi_name"] for r in corpus
+                        if r["metadata"].get("is_active") is not False)
+        return ledger["wse-bme"], report, active
+
+    def test_the_first_run_reads_all_four_professors(self, monkeypatch):
+        from src.collectors.schools import jhu_faculty
+        _fake_chromium(monkeypatch, _bme_roster)
+        school = {**jhu_faculty.SCHOOL, "departments": [_dept(jhu_faculty, "WSE-BME")]}
+        names = [r["pi_name"] for r in fg.fetch_and_normalize(school, deep=True)]
+        assert names == ["Ada Example", "Bo Sample", "Cy Placeholder", "Di Testcase"]
+
+    @pytest.mark.parametrize("served", [
+        pytest.param({2: _CLOUDFLARE_BLOCK}, id="cloudflare-blocks-pg2"),
+        pytest.param({3: _CLOUDFLARE_BLOCK}, id="cloudflare-blocks-pg3"),
+        pytest.param({2: _CLOUDFLARE_BLOCK, 3: _CLOUDFLARE_BLOCK},
+                     id="cloudflare-blocks-pg2-and-pg3"),
+        pytest.param({2: TimeoutError("Timeout 60000ms exceeded")}, id="pg2-times-out"),
+        pytest.param({3: ""}, id="pg3-renders-an-empty-document"),
+        pytest.param({3: "<html><head></head><body></body></html>"}, id="pg3-renders-blank"),
+        # The site came back but the list did not; page 2's pager links pg=3.
+        pytest.param({3: _BME_PAST_THE_END}, id="linked-pg3-renders-no-cards"),
+    ])
+    def test_a_page_that_did_not_load_keeps_its_professors(self, monkeypatch, served):
+        entry, report, active = self._second_run(monkeypatch, served)
+        assert entry["retirement_authorized"] is False
+        assert entry["completeness_status"] == "partial"
+        assert entry["coverage"]["partial_render_rows"] == len(served)
+        assert report["newly_deactivated"] == 0
+        assert report["units_blocked_partial_fetch"] == 1
+        assert [w["reason"] for w in report["units_withheld"]] == [
+            "blocked_partial_render_rows"]
+        assert active == ["Ada Example", "Bo Sample", "Cy Placeholder", "Di Testcase"]
+
+    def test_a_professor_gone_from_a_fully_read_roster_is_retired(self, monkeypatch):
+        # The empty pg=4 past the end is not a failed page: a roster read in
+        # full keeps its authority, and someone it no longer lists is retired.
+        page3 = (FIXTURES / "jhu_bme_page3.html").read_text().replace(
+            "Di Testcase", "Fay Newcomer").replace("di-testcase", "fay-newcomer").replace(
+            "di.testcase", "fay.newcomer")
+        entry, report, active = self._second_run(monkeypatch, {3: page3})
+        assert entry["retirement_authorized"] is True
+        assert entry["coverage"]["partial_render_rows"] == 0
+        assert report["newly_deactivated"] == 1
+        assert active == ["Ada Example", "Bo Sample", "Cy Placeholder", "Fay Newcomer"]
 
 
 # --- JHU: a School of Medicine seed twin of a roster professor ---------------
@@ -501,7 +650,7 @@ class TestJhuMedicalSeedTwins:
 
         def render(url, **_kw):
             name = self._PAGES.get(url)
-            html = (FIXTURES / name).read_text() if name else "<html><body></body></html>"
+            html = (FIXTURES / name).read_text() if name else _BME_PAST_THE_END
             return BeautifulSoup(html, "html.parser")
 
         monkeypatch.setattr(fg, "_render_soup", render)

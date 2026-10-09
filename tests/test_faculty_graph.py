@@ -356,6 +356,179 @@ class TestScrapeLayer:
         names = [p["name"] for p in fg._scrape_directory(dept)]
         assert names == ["Ann Alpha", "Cy Gamma"]
 
+    # A page of the roster that was not read must withhold the unit's
+    # retirement authority: otherwise every professor listed on it is retired
+    # as "absent from the directory". These go through fetch_and_normalize to
+    # the unit ledger's coverage, which is what the stale pass judges.
+    _NAV = '<a href="?page={0}">{0}</a>'
+
+    @staticmethod
+    def _coverage(monkeypatch, pages, **scrape):
+        from bs4 import BeautifulSoup
+
+        def serve(url, **_kw):
+            page = pages.get(url)
+            return BeautifulSoup(page, "html.parser") if isinstance(page, str) else page
+
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup", serve)
+        monkeypatch.setattr(fg, "_render_soup", serve)
+        school = {"school_slug": "x", "source": "x_faculty", "organization": "X University",
+                  "id_prefix": "x", "location": "Somewhere",
+                  "departments": [{"short": "X", "name": "Department of X", "majors": [],
+                                   "directory_url": "https://x.edu/f",
+                                   "scrape": {"url": "https://x.edu/f",
+                                              "selectors": {"card": "div.c", "name": ".n",
+                                                            "link": ".n"},
+                                              **scrape}}]}
+        ledger: dict = {}
+        fg.fetch_and_normalize(school, deep=True, unit_ledger=ledger)
+        return ledger["x"]["coverage"]
+
+    @staticmethod
+    def _card(slug, name):
+        return f'<div class="c"><a class="n" href="/p/{slug}">{name}</a></div>'
+
+    def test_a_page_the_pager_links_that_does_not_load_withholds_the_unit(self, monkeypatch):
+        # fetch_soup returns None for a 403 or a timeout, the same as for the 404
+        # that ends some pagers. The roster's own pager link to page 1 tells them
+        # apart.
+        pages = {"https://x.edu/f": self._card("a", "Ann Alpha") + self._NAV.format(1)}
+        cov = self._coverage(monkeypatch, pages,
+                             paginate={"param": "page", "start": 1, "max": 5})
+        assert cov["partial_render_rows"] == 1
+
+    def test_a_missing_page_past_the_last_linked_one_ends_the_roster(self, monkeypatch):
+        pages = {
+            "https://x.edu/f": self._card("a", "Ann Alpha") + self._NAV.format(1),
+            "https://x.edu/f?page=1": self._card("b", "Ben Beta") + '<a href="?page=0">0</a>',
+        }
+        cov = self._coverage(monkeypatch, pages,
+                             paginate={"param": "page", "start": 1, "max": 5})
+        assert cov["partial_render_rows"] == 0
+        assert cov["raw_roster_rows"] == cov["parsed_faculty_rows"] == 2
+
+    def test_a_next_link_on_a_follow_up_page_counts(self, monkeypatch):
+        # A pager that shows only "next" names page 2 on page 1, not on the
+        # first page of the roster.
+        pages = {
+            "https://x.edu/f": self._card("a", "Ann Alpha") + self._NAV.format(1),
+            "https://x.edu/f?page=1": self._card("b", "Ben Beta") + self._NAV.format(2),
+        }
+        cov = self._coverage(monkeypatch, pages,
+                             paginate={"param": "page", "start": 1, "max": 5})
+        assert cov["partial_render_rows"] == 1
+
+    def test_a_malformed_link_does_not_cost_the_roster(self, monkeypatch):
+        # urljoin raises on "http://[bad"; the pager reading its links must
+        # not throw away the page's rows.
+        from bs4 import BeautifulSoup
+        page = self._card("a", "Ann Alpha") + '<a href="http://[bad">x</a>'
+        monkeypatch.setattr(
+            "src.collectors.ucb_common.fetch_soup",
+            lambda url, **_kw: BeautifulSoup(page, "html.parser") if url == "https://x.edu/f" else None)
+        dept = {"short": "X", "scrape": {
+            "url": "https://x.edu/f", "selectors": {"card": "div.c", "name": ".n", "link": ".n"},
+            "paginate": {"param": "page", "start": 1, "max": 5}}}
+        assert [p["name"] for p in fg._scrape_directory(dept)] == ["Ann Alpha"]
+
+    def test_another_listing_s_pager_on_the_page_is_not_the_roster_s(self, monkeypatch):
+        pages = {"https://x.edu/f": (self._card("a", "Ann Alpha")
+                                     + '<a href="/news?page=3">3</a>'
+                                     + '<a href="https://other.edu/f?page=3">3</a>')}
+        cov = self._coverage(monkeypatch, pages,
+                             paginate={"param": "page", "start": 1, "max": 5})
+        assert cov["partial_render_rows"] == 0
+
+    def test_an_empty_page_before_a_full_one_withholds_the_unit(self, monkeypatch):
+        pages = {
+            "https://x.edu/f": self._card("a", "Ann Alpha"),
+            "https://x.edu/f?page=1": "<html><title>Faculty</title><body><p>Faculty</p></body></html>",
+            "https://x.edu/f?page=2": self._card("c", "Cy Gamma"),
+        }
+        cov = self._coverage(monkeypatch, pages,
+                             paginate={"param": "page", "start": 1, "max": 5})
+        assert cov["partial_render_rows"] == 1
+
+    def test_a_render_that_comes_back_empty_handed_withholds_the_unit(self, monkeypatch):
+        # A render returns a document for any HTTP status, so None is a failure
+        # (Cloudflare's shell, a timeout) even on the last page and even with
+        # no pager on the roster. The page after it is the site past the end.
+        pages = {"https://x.edu/f": self._card("a", "Ann Alpha"),
+                 "https://x.edu/f?page=2": "<html><title>Faculty</title><body><p>Faculty</p></body></html>"}
+        cov = self._coverage(monkeypatch, pages, render=True,
+                             paginate={"param": "page", "start": 1, "max": 5})
+        assert cov["partial_render_rows"] == 1
+
+    @pytest.mark.parametrize("served", [
+        pytest.param("<html><head></head><body></body></html>", id="blank-document"),
+        pytest.param("<html><head><title>Just a moment...</title></head>"
+                     "<body><p>Checking your browser</p></body></html>", id="cloudflare-shell"),
+    ])
+    def test_a_last_page_that_is_not_the_site_withholds_the_unit(self, monkeypatch, served):
+        pages = {"https://x.edu/f": self._card("a", "Ann Alpha"), "https://x.edu/f?page=1": served}
+        cov = self._coverage(monkeypatch, pages,
+                             paginate={"param": "page", "start": 1, "max": 5})
+        assert cov["partial_render_rows"] == 1
+
+    def test_pages_past_the_cap_are_left_to_the_config(self, monkeypatch):
+        # Only pages the walk is configured to reach are judged. Judging a
+        # linked page past ``max`` would withhold every unit whose site lists
+        # more pages than its cap, and how many do has not been measured.
+        pages = {
+            "https://x.edu/f": self._card("a", "Ann Alpha") + self._NAV.format(1),
+            "https://x.edu/f?page=1": self._card("b", "Ben Beta") + self._NAV.format(2),
+        }
+        cov = self._coverage(monkeypatch, pages,
+                             paginate={"param": "page", "start": 1, "max": 1})
+        assert cov["partial_render_rows"] == 0
+
+    def test_a_pager_on_the_page_the_directory_redirects_to_counts(self, monkeypatch):
+        # cs.cornell.edu/people/faculty lands on /directory, and its pager's
+        # relative links resolve there, not under the configured path.
+        from bs4 import BeautifulSoup
+        landed = BeautifulSoup(self._card("a", "Ann Alpha") + self._NAV.format(1), "html.parser")
+        landed._ofe_final_url = "https://x.edu/directory"
+        cov = self._coverage(monkeypatch, {"https://x.edu/f": landed},
+                             paginate={"param": "page", "start": 1, "max": 5})
+        assert cov["partial_render_rows"] == 1
+
+    def test_a_prefixed_pager_value_counts(self, monkeypatch):
+        # Drupal's second view on a page pages as ?page=%2C1 ("page=,1").
+        pages = {"https://x.edu/f": self._card("a", "Ann Alpha") + '<a href="?page=%2C1">2</a>'}
+        cov = self._coverage(monkeypatch, pages,
+                             paginate={"param": "page", "value_prefix": "%2C",
+                                       "start": 1, "max": 5})
+        assert cov["partial_render_rows"] == 1
+
+    def test_path_pager_links_count_too(self, monkeypatch):
+        pages = {"https://x.edu/f": self._card("a", "Ann Alpha") + '<a href="/f/page/2/">2</a>'}
+        cov = self._coverage(monkeypatch, pages,
+                             paginate={"mode": "path", "param": "page", "start": 2, "max": 5})
+        assert cov["partial_render_rows"] == 1
+
+    def test_an_extra_roster_page_that_does_not_load_withholds_the_unit(self, monkeypatch):
+        pages = {"https://x.edu/f": self._card("a", "Ann Alpha")}
+        cov = self._coverage(monkeypatch, pages, extra_urls=["https://x.edu/assoc"])
+        assert cov["partial_render_rows"] == 1
+
+    def test_a_page_that_fails_to_parse_withholds_the_unit(self, monkeypatch):
+        # The scrape returns no rows, but page 1 was already counted as fully
+        # read; with curated people in the unit, it would keep its authority.
+        parse, calls = fg._parse_cards, []
+
+        def drifted_on_page_2(*a, **kw):
+            calls.append(a[2])
+            if len(calls) == 2:
+                raise ValueError("markup drift")
+            return parse(*a, **kw)
+
+        monkeypatch.setattr(fg, "_parse_cards", drifted_on_page_2)
+        pages = {"https://x.edu/f": self._card("a", "Ann Alpha"),
+                 "https://x.edu/f?page=1": self._card("b", "Ben Beta")}
+        cov = self._coverage(monkeypatch, pages,
+                             paginate={"param": "page", "start": 1, "max": 5})
+        assert cov["parser_errors"] == 1
+
     def test_profile_enrich_fills_research_from_profile_when_enabled(self, monkeypatch):
         """A listing that carries name/title only can be enriched per-profile: the
         gated pass follows each profile link and lifts a "<strong>Research Areas:

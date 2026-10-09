@@ -215,8 +215,9 @@ SCHOOL: dict = {
         # de-dup. /faculty/ redirects to /people/faculty/, so the pager follows
         # the canonical path. ``max`` 4 is three follow-up renders (the empty
         # pg=4 ends the walk) and room for 120 cards. A follow-up that Cloudflare
-        # blocks is retried within the render budget, then counts as an empty
-        # page: its people are not re-observed that run.
+        # blocks is retried within the render budget. If it still does not load,
+        # the unit loses its retirement authority for that run, so the people on
+        # that page are kept rather than retired (see the pager in faculty_graph).
         {
             "short": "WSE-BME", "name": "Department of Biomedical Engineering",
             "majors": ["Biomedical Engineering"],
