@@ -525,18 +525,36 @@ def faculty_safe_lab_or_program(record: dict) -> str:
     return lab_name
 
 
-def _faculty_profile_summary(record: dict) -> str:
-    """Build availability-neutral display prose from identity/research facts."""
-    name = str(record.get("pi_name") or "this faculty member").strip()
+# The sentence that closes a faculty description, keyed by the availability
+# the structured summary carries. frontend/src/lib/faculty-profile-copy.ts says
+# each one from the code, so a new key here needs a dictionary entry there.
+FACULTY_PROFILE_CLOSINGS: dict[str, str] = {
+    "not_accepting_undergraduates": (
+        "The source profile states that this faculty contact is not currently "
+        "accepting undergraduate students or researchers."
+    ),
+    "research_inactive": (
+        "The source profile reports that this faculty member is not currently "
+        "conducting active research."
+    ),
+    "unknown": (
+        "Contact this faculty member to ask whether undergraduate research "
+        "opportunities are currently available."
+    ),
+}
+
+
+def faculty_profile_summary_fields(record: dict) -> dict:
+    """The parts a faculty description is written from, sent beside it.
+
+    The client says the description in its UI language from these, and keeps
+    the research areas as the source gave them. Before this it had to
+    recognise the English sentence, so any rewording here silently left the
+    Chinese page in English. Absent parts are null, never "".
+    """
+    name = str(record.get("pi_name") or "").strip()
     department = str(record.get("department") or "").strip()
     organization = str(record.get("organization") or "").strip()
-    affiliation = ""
-    if department and organization:
-        affiliation = f" in {department} at {organization}"
-    elif department:
-        affiliation = f" in {department}"
-    elif organization:
-        affiliation = f" at {organization}"
 
     metadata = record.get("metadata") or {}
     research_areas = metadata.get("research_areas_raw")
@@ -546,27 +564,38 @@ def _faculty_profile_summary(record: dict) -> str:
             for value in (record.get("keywords") or [])[:6]
             if isinstance(value, str) and value.strip()
         )
+    availability = faculty_availability_status(record)
+    return {
+        "version": 1,
+        "name": name or None,
+        "department": department or None,
+        "organization": organization or None,
+        "research_areas": research_areas.strip()[:300] or None,
+        "availability": availability if availability in FACULTY_PROFILE_CLOSINGS else "unknown",
+    }
 
-    parts = [f"Faculty research profile for {name}{affiliation}."]
-    if research_areas:
-        parts.append(f"Research areas: {research_areas.strip()[:300]}")
-    availability_status = faculty_availability_status(record)
-    if availability_status == "not_accepting_undergraduates":
-        parts.append(
-            "The source profile states that this faculty contact is not currently "
-            "accepting undergraduate students or researchers."
-        )
-    elif availability_status == "research_inactive":
-        parts.append(
-            "The source profile reports that this faculty member is not currently "
-            "conducting active research."
-        )
-    else:
-        parts.append(
-            "Contact this faculty member to ask whether undergraduate research "
-            "opportunities are currently available."
-        )
+
+def render_faculty_profile_summary(fields: dict) -> str:
+    """The English description, written from the structured fields alone."""
+    department = fields["department"]
+    organization = fields["organization"]
+    affiliation = ""
+    if department and organization:
+        affiliation = f" in {department} at {organization}"
+    elif department:
+        affiliation = f" in {department}"
+    elif organization:
+        affiliation = f" at {organization}"
+    parts = [f"Faculty research profile for {fields['name'] or 'this faculty member'}{affiliation}."]
+    if fields["research_areas"]:
+        parts.append(f"Research areas: {fields['research_areas']}")
+    parts.append(FACULTY_PROFILE_CLOSINGS[fields["availability"]])
     return " ".join(parts)
+
+
+def _faculty_profile_summary(record: dict) -> str:
+    """Build availability-neutral display prose from identity/research facts."""
+    return render_faculty_profile_summary(faculty_profile_summary_fields(record))
 
 
 def neutralize_unverified_faculty_claims(record: dict) -> dict:
@@ -684,6 +713,9 @@ def faculty_safe_public_record(record: dict) -> dict:
         if isinstance(value, dict):
             safe[key] = dict(value)
     neutralize_unverified_faculty_claims(safe)
+    # Built per response rather than kept on the corpus row: ~127k faculty
+    # rows would each hold another dict for a field only the wire needs.
+    safe["faculty_profile_summary"] = faculty_profile_summary_fields(safe)
     # The source excerpt is useful only while canonicalizing a restriction.
     # Public payloads expose the compact provenance marker, never arbitrary
     # scraped eligibility prose that can contain stale opening claims.
