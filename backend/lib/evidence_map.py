@@ -35,6 +35,7 @@ from backend.lib.target_resume_ai_grounding import (
     NEGATION,
     PUBLICATION,
     QUALITY,
+    SETTING,
     TEAM,
     UNFINISHED,
     UNFINISHED_ZH,
@@ -867,16 +868,52 @@ def _accent_words(text: str) -> tuple[set[str], set[str]]:
     return accented, {folded for _, folded in words}
 
 
-def _accents_kept(source: str, target: str) -> bool:
+def _english_around(line: str, span: tuple[int, int]) -> bool:
+    """Whether ``line`` is English around a relabel's "from" at ``span``: outside it, the line holds
+    no accented word and at least two different English function words (_FUNCTION_EN, read as it is).
+
+    "Tracked café inventory in Excel for 12 weeks." is English around "café inventory".
+    "Développé un pipeline de données en Python pour 40 capteurs." is not, and neither is
+    "Aufbau einer Datenbank für Messwerte in Python" around "Datenbank für Messwerte", whose
+    one word English also writes is "in".
+    """
+    accented, words = _accent_words(line[:span[0]] + " " + line[span[1]:])
+    return not accented and len(words & _FUNCTION_EN) >= 2
+
+
+def _accents_kept(source: str, target: str, line: str = "") -> bool:
     """Whether a relabel keeps every accented word on either side, accents aside.
 
     _script_letters does not count an accented Latin letter as a script of its own, so it
     cannot tell "résumé" -> "resume" (the same word) from "pipeline de données" -> "data
     pipeline" (French written in English). An accented word of "from" stays in "to", and an
     accented word of "to" was in "from", each read with its accents folded away.
+
+    Where the relabel's ``line`` is English around "from" (_english_around), "from" may also
+    rename an accented loanword or name: "café inventory" -> "coffee shop inventory" and
+    "Müller group" -> "Mueller group" leave the line English, and the review judges the new words.
     """
     (source_accented, source_words), (target_accented, target_words) = _accent_words(source), _accent_words(target)
-    return not (source_accented - target_words or target_accented - source_words)
+    if target_accented - source_words:
+        return False
+    if not source_accented - target_words:
+        return True
+    span = source_span(line, source)
+    return span is not None and _english_around(line, span)
+
+
+def _setting_accent_changed(line: str, source: str, target: str) -> bool:
+    """Whether a relabel writes an accented word of a setting otherwise: "from" stands in a setting
+    of the line (the claim locks' SETTING: "at the Gómez lab") and "to" lacks one of its accented
+    words as written. The setting lock compares a setting letter for letter, so it would refuse
+    "at the Gomez lab" or "for the Mueller lab" as a setting the line never named.
+    """
+    accented = [word.casefold() for word in re.findall(r"\w+", _letters_view(source)) if _accent_words(word)[0]]
+    span = source_span(line, source) if accented else None
+    if span is None or not any(match.start() < span[1] and span[0] < match.end() for match in SETTING.finditer(line)):
+        return False
+    written = {word.casefold() for word in re.findall(r"\w+", _letters_view(target))}
+    return any(word not in written for word in accented)
 
 
 def _non_latin_frame(text: str) -> bool:
@@ -966,8 +1003,10 @@ def _check_same_language(unit: Unit, text: str, links: list[Link], ops_raw: list
             if (language(link.term) != language(unit.current) or _CJK.search(link.term) and not _CJK.search(source)
                     or bool(_CJK.search(source)) != bool(_CJK.search(target))
                     or bool(_script_letters(source)) != bool(_script_letters(target))
-                    or not _accents_kept(source, target)):
+                    or not _accents_kept(source, target, unit.current)):
                 return _keep(unit, "beyond_allowed_edit", "relabel_cross_language", links=links)
+            if _setting_accent_changed(unit.current, source, target):
+                return _keep(unit, "beyond_allowed_edit", "relabel_setting", links=links)
             # "from" renames what the link's source names, nothing next to it.
             if source_span(link.source, source) is None:
                 return _keep(unit, "beyond_allowed_edit", "relabel_outside_source", links=links)
