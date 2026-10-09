@@ -39,7 +39,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 
 # ---------------------------------------------------------------------------
 # 1. Observed vs synthesized (email provenance)
@@ -776,6 +776,40 @@ class TargetTruth:
     expires_at: str | None
 
 
+def stated_listing_deadline(record: dict) -> date | None:
+    """The application deadline a listing's source stated, or None.
+
+    The same evidence bar ``src.matcher.ranker._stated_deadline_date`` scores
+    by, so the card that says "Deadline has passed" and the guard that refuses
+    the action read one date: never an estimate, never an inference stamp,
+    never a faculty profile, and only on a record we know is a listing — on any
+    other kind a deadline is a term of an application nobody showed exists.
+    """
+    if record_kind(record) != "listing":
+        return None
+    if record.get("deadline_is_estimate") or is_inferred(record, "deadline"):
+        return None
+    deadline = record.get("deadline")
+    if not isinstance(deadline, str):
+        return None
+    try:
+        return date.fromisoformat(deadline[:10])
+    except ValueError:
+        return None
+
+
+def _today() -> date:
+    return datetime.now(UTC).date()
+
+
+# A source writes its deadline as a date in its own time zone, and the server
+# runs on UTC. Anywhere on Earth (UTC-12) date D ends at D+1 12:00 UTC, so D
+# has passed for everyone only from UTC D+2. Without the extra day a student in
+# Chicago drafting at 8 pm on the deadline day is refused: it is already the
+# next UTC date.
+_DEADLINE_GRACE = timedelta(days=1)
+
+
 def _listing_status(metadata: dict) -> tuple[str | None, str | None]:
     """The source-stated listing status and the key that decided it.
 
@@ -806,6 +840,11 @@ def target_truth(record: dict) -> TargetTruth:
     today's behaviour and reports ``unknown``: this contract exists to keep
     stated-closed listings out of action flows, not to retire the unstamped
     majority of the corpus.
+
+    The one input from outside the record is today's UTC date, which a stated
+    deadline is read against. The same record can turn non-actionable
+    overnight, so a cached answer is only as current as the day it was
+    computed on.
     """
     metadata = record.get("metadata") if isinstance(record, dict) else None
     if not isinstance(metadata, dict):
@@ -900,6 +939,21 @@ def target_truth(record: dict) -> TargetTruth:
             value="not_accepting_undergraduates",
             source="faculty_availability",
             listing="unknown",
+            accepting="not_accepting",
+        )
+    # The source dated its own application window, and the date is behind
+    # us: the same closure as a stated `closed` status, read off the calendar.
+    # Ahead of `inactive` for the reason a stated status is — the collector
+    # deactivates a past listing on a later refresh, and that must not blur
+    # "the deadline passed" into "no longer active".
+    deadline = stated_listing_deadline(record)
+    if deadline is not None and deadline + _DEADLINE_GRACE < _today():
+        return _truth(
+            "listing_closed",
+            key="deadline",
+            value=record["deadline"],
+            source="deadline",
+            listing="closed",
             accepting="not_accepting",
         )
     if metadata.get("is_active") is False:

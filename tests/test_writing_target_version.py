@@ -95,7 +95,7 @@ def test_same_id_public_changes_refuse_before_generation(change, corpus, monkeyp
     _rows, record = corpus
     if change == "description": record["description_clean"] = "A changed focus"
     elif change == "nested": record["eligibility"]["skills_required"].append("R")
-    elif change == "deadline": record["deadline"] = "2027-04-01"
+    elif change == "deadline": record["deadline"] = "2099-04-01"
     elif change == "new-field": record["new_public_terms"] = {"中文": ["尾项 🧪", None]}
     elif change == "array-order": record["eligibility"]["preferred_year"].reverse()
     else: record["remote_option"] = None
