@@ -32,6 +32,7 @@ from src.collectors import uiuc_sro as sro
 from src.collectors.base import RawOpportunity
 from src.contact_instructions import CAPTURE_KEY
 from src.evidence import (
+    CONFIGURED_PROGRAM_METHOD,
     SRO_SCANNED_CITIZENSHIP_METHOD,
     SRO_SCANNED_PAY_METHOD,
     inferred_method,
@@ -498,7 +499,8 @@ def _sro_field(name: str, label: str, *items: str, hidden: bool = False) -> str:
 def _sro_detail_html(*, citizenship="US Citizen, National, or Permanent Resident required",
                      compensation="$7,000", deadline=("deadline-date", "3/15/27"), anticipated="Yes",
                      body="<p>Students join a faculty lab for ten weeks.</p>",
-                     heading="<h3>Eligibility Requirements</h3>", hidden_link=_SRO_LINK, extra="") -> str:
+                     heading="<h3>Eligibility Requirements</h3>", hidden_link=_SRO_LINK, extra="",
+                     timing="Summer", duration="10 weeks") -> str:
     link = f'<a href="{_SRO_LINK}">{_SRO_LINK}</a>'
     first = [
         _sro_field("link-to-opportunity", "Link to Opportunity", link),
@@ -508,11 +510,11 @@ def _sro_detail_html(*, citizenship="US Citizen, National, or Permanent Resident
         _sro_field("link-to-opportunity", "", f'<a href="{hidden_link}">{hidden_link}</a>', hidden=True),
         _sro_field("sponsoring-institution", "Sponsoring Institution", "Example State University"),
         _sro_field("location", "Location", "Springfield, IL"),
-        _sro_field("timing", "Timing", "Summer"),
-        _sro_field(deadline[0], "Deadline", deadline[1]),
+        _sro_field("timing", "Timing", timing) if timing else "",
+        _sro_field(deadline[0], "Deadline", deadline[1]) if deadline else "",
         _sro_field("deadline-anticipated", "Anticipated Deadline?", anticipated) if anticipated else "",
         _sro_field("research-area", "Research Area", "Natural Sciences", "Science &amp; Technology"),
-        _sro_field("duration", "Duration", "10 weeks"),
+        _sro_field("duration", "Duration", duration) if duration else "",
         _sro_field("compensation", "Compensation", compensation) if compensation else "",
         _sro_field("citizenship-requirement", "Citizenship Requirement", citizenship) if citizenship else "",
     ]
@@ -526,13 +528,13 @@ def _sro_detail_html(*, citizenship="US Citizen, National, or Permanent Resident
             f'{footer}</main></body></html>')
 
 
-def _sro_list_html(deadline="Anticipated 3/2/27") -> str:
+def _sro_list_html(deadline="Anticipated 3/2/27", timing="Summer") -> str:
     return (
         '<html><body><table class="views-table"><tbody><tr>'
         '<td class="views-field views-field-title"><strong><a href="/opportunity/example-reu">Example REU</a>'
         '</strong><br>Students join a faculty lab.</td>'
         '<td class="views-field views-field-field-research-area">Natural Sciences, Science &amp; Technology</td>'
-        '<td class="views-field views-field-field-timing">Summer</td>'
+        f'<td class="views-field views-field-field-timing">{timing}</td>'
         f'<td class="views-field views-field-field-deadline-anticipated views-field-nothing">{deadline}</td>'
         '</tr></tbody></table></body></html>'
     )
@@ -661,6 +663,48 @@ class TestUiucSroContract:
         else:
             assert fields["funding"]["explicit"]["paid"] == paid
 
+    def test_page_without_timing_or_duration_has_no_duration(self, monkeypatch):
+        record = _sro_fetch(monkeypatch, _sro_detail_html(timing="", duration=""),
+                            list_html=_sro_list_html(timing=""))
+        assert record["duration"] is None
+        _, fields = _detail(record)
+        assert _where(fields["timing"], "duration") == "unknown"
+
+    def test_anticipated_flag_alone_is_not_a_deadline(self, monkeypatch):
+        # A page with the "Anticipated Deadline? Yes" flag and no date: the
+        # list row's "Anticipated 3/2/27" stands, not a deadline of "?Yes".
+        record = _sro_fetch(monkeypatch, _sro_detail_html(deadline=None))
+        assert record["deadline"] == "2027-03-02" and record["deadline_is_estimate"] is True
+        assert record["metadata"]["deadline_note"] == "3/2/27 (anticipated)"
+
+    def test_list_only_citizenship_scan_is_stamped(self):
+        raw = RawOpportunity(
+            source="uiuc_sro", source_url=_SRO_LIST, title="Example REU",
+            description_raw="Applicants must be U.S. citizens or permanent residents.",
+            url=_SRO_DETAIL, extra_fields={"research_area": "Natural Sciences", "timing": "Summer",
+                                           "deadline_raw": "Anticipated 3/2/27"},
+        )
+        record = sro.raw_to_normalized(raw)
+        assert record["eligibility"]["citizenship_required"] is True
+        for path in ("eligibility.international_friendly", "eligibility.citizenship_required"):
+            assert inferred_method(record, path) == sro.CITIZENSHIP_METHOD, path
+        payload, fields = _detail(record)
+        assert fields["eligibility"]["inferred"]["citizenship"] == {"value": "required", "basis": "text_scan"}
+        assert payload["citizenship_attribution"] == "inferred"
+
+    def test_scanned_welcome_is_not_a_stated_no_requirement(self):
+        raw = RawOpportunity(
+            source="uiuc_sro", source_url=_SRO_LIST, title="Example REU",
+            description_raw="This program is open to international applicants.",
+            url=_SRO_DETAIL, extra_fields={"research_area": "Natural Sciences", "timing": "Summer",
+                                           "deadline_raw": "Anticipated 3/2/27"},
+        )
+        record = sro.raw_to_normalized(raw)
+        assert record["eligibility"]["citizenship_required"] is False
+        _, fields = _detail(record)
+        assert _where(fields["eligibility"], "citizenship") == "unknown"
+        assert fields["eligibility"]["inferred"]["international_students"] == {"value": "yes", "basis": "text_scan"}
+
     def test_list_row_anticipated_deadline_is_an_estimate(self):
         raw = RawOpportunity(
             source="uiuc_sro", source_url=_SRO_LIST, title="Example REU", description_raw="",
@@ -705,6 +749,20 @@ class TestUiucSroContract:
             assert saved[key] == before[key], key
         assert saved["metadata"]["deadline_note"] == before["metadata"]["deadline_note"]
         assert saved["metadata"]["last_verified"] == before["metadata"]["last_verified"]
+
+    def test_list_only_refresh_takes_the_lists_anticipated_deadline(self, monkeypatch, tmp_path):
+        before = _sro_fetch(monkeypatch, _sro_detail_html(anticipated="No"))
+        assert before["deadline"] == "2027-03-15" and before["deadline_is_estimate"] is False
+        incoming = _sro_fetch(monkeypatch, None)
+        path = tmp_path / "records.json"
+        path.write_text(json.dumps([before]))
+        sro.merge_into_processed([incoming], str(path))
+        saved = json.loads(path.read_text())[0]
+        # The list row is the newer deadline observation, and its "Anticipated"
+        # label travels with it rather than the old page's "No".
+        assert saved["deadline"] == "2027-03-02"
+        assert saved["deadline_is_estimate"] is True
+        assert saved["metadata"]["deadline_note"] == "3/2/27 (anticipated)"
 
     @pytest.mark.parametrize("citizenship, intl, notes", [
         (False, "yes", "weeks Compensation $7,000 Citizenship Requirement No Citize | Citizenship Re"),
@@ -814,6 +872,13 @@ class TestCampusGraphContract:
         _, canonical = _served(self._configured())
         _, fits, _ = score_upside({}, canonical)
         assert "Includes stipend" not in fits
+
+    @pytest.mark.parametrize("paid", ["yes", "stipend", "no"])
+    def test_configured_pay_is_stamped_whatever_it_says(self, paid):
+        record = self._configured()
+        record["paid"] = paid
+        _, canonical = _served(record)
+        assert inferred_method(canonical, "paid") == CONFIGURED_PROGRAM_METHOD
 
     def test_match_reasons_do_not_call_configured_terms_the_programs(self):
         # Configured majors and class years still score as stated (an owner
