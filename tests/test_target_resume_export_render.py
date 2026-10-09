@@ -266,6 +266,25 @@ def test_pdf_heading_keeps_with_a_role_row_taller_than_a_page():
     assert pages[0][-1] == 'Filler line' and pages[1][:2] == ['Leadership', 'Title line 0'], pages
 
 
+# Filler (lines, paragraphs) and whether 'Leadership' then opens page 2. The heading with its gaps needs
+# 10.8 mm and a title line 5.3 mm.
+ROOM_LEFT = {'letter': [(1, 1, False), (38, 4, False), (39, 5, False), (39, 6, True)],  # most of a page, 22.2, 16.3, 15.7 mm
+             'a4': [(1, 1, False), (41, 7, False), (42, 8, False), (42, 9, True)]}  # most of a page, 22.1, 16.2, 15.6 mm
+
+
+# The role rows that fit an empty page alone (Letter 247.4 mm, A4 265.0 mm) but not under their heading.
+@pytest.mark.parametrize('page_size,title_lines,lines,paragraphs,moves', [
+    (page_size, count, *room) for page_size, counts in (('letter', (44, 45)), ('a4', (47, 48)))
+    for count in counts for room in ROOM_LEFT[page_size]])
+def test_pdf_heading_keeps_with_a_role_row_that_fits_a_page_only_without_it(page_size, title_lines, lines, paragraphs, moves):
+    # The role row moved to the next page by itself and left 'Leadership' at the end of a page: in 355 of
+    # 364 Letter renders with 44 or 45 title lines and 0 to 48 filler lines, and in 356 of 364 on A4 with 47 or 48.
+    title = '\n'.join(f'Title line {number}' for number in range(title_lines))
+    pages = pdf_pages(renderer.render_export(kept_rows(page_size, 'chain', lines, paragraphs, title=title), 'pdf'))
+    assert not [page for page in pages if page[-1] == 'Leadership'], pages
+    assert [index for index, page in enumerate(pages) if together(['Leadership', 'Title line 0'], page)] == [int(moves)], pages
+
+
 def pdf_reader(data):
     from pypdf import PdfReader
     return PdfReader(io.BytesIO(data), strict=True)

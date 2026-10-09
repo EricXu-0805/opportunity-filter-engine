@@ -355,7 +355,8 @@ def render_pdf(projection, assets, deadline=None):
         firsts[index] = above(item, index) + PDF_STYLES[item.style][1]
         needs[index] = above(item, index) + height if item.keep or right else firsts[index]
         if item.keep and index + 1 < len(items):
-            needs[index] += below(item) + (needs[index + 1] if needs[index + 1] <= room else firsts[index + 1])
+            whole = needs[index] + below(item) + needs[index + 1]
+            needs[index] = whole if whole <= room else needs[index] + below(item) + firsts[index + 1]
 
     for index, (item, (text, right, width, _height)) in enumerate(zip(items, rows, strict=True)):
         check_deadline(deadline)
@@ -363,9 +364,10 @@ def render_pdf(projection, assets, deadline=None):
         pdf.set_font('ResumeSans', size=size)
         # Keep a heading or role row with the line after it: move it to the next
         # page when the rest of this one cannot hold what it needs and an empty
-        # page can.
-        if (item.keep or right) and pdf.get_y() > pdf.t_margin and pdf.will_page_break(needs[index] + PAGE_SLACK) \
-                and needs[index] <= room:
+        # page can. A row after one of those stays: that row's move already
+        # reserved it, or its first line when the two exceed a page.
+        if (item.keep or right) and not (index and items[index - 1].keep) and pdf.get_y() > pdf.t_margin \
+                and pdf.will_page_break(needs[index] + PAGE_SLACK) and needs[index] <= room:
             pdf.add_page()
         elif above(item, index):
             pdf.ln(above(item, index))
