@@ -49,6 +49,7 @@ from src.normalizers.ucb_dedup import dedupe_against_existing
 from . import ucb_sources as reg
 from .application_status import detect_application_status
 from .atomic_json import atomic_write_json
+from .campus_graph import NO_LONGER_LISTED, _retired_as_unlisted
 from .ucb_common import _readable_excerpt
 
 logger = logging.getLogger(__name__)
@@ -606,6 +607,10 @@ def fetch_and_normalize_with_evidence(
             evidence["seed_records"] += 1
         records.extend(discovered)
         evidence["discovered_records"] += len(discovered)
+    # The key of every curated program, whichever bucket it emits to and
+    # whether or not its record survives the dedupe below: merge retires a
+    # stored program row only once its key is gone from the whole registry.
+    evidence["listed_program_keys"] = sorted(program["key"] for _source, program in reg.iter_programs())
 
     # Collapse within-batch duplicates (a discovered URL that matches a seed, a
     # lab listed under two sources, ...). Existing list is empty here so this is
@@ -621,17 +626,48 @@ def fetch_and_normalize(deep: bool = False) -> list[dict]:
     return records
 
 
+def _registry_program_row(opp: dict) -> bool:
+    """Whether ``opp`` is a stored row made from a curated registry program.
+
+    The id derives from (emitted source, program key), so it names the
+    registry as the owner even for an "open" row, whose ``school`` is None.
+    Discoveries carry no ``collector_key``, and other collectors mint other
+    ids, so neither matches.
+    """
+    metadata = opp.get("metadata")
+    if not isinstance(metadata, dict):
+        return False
+    key, source = metadata.get("collector_key"), opp.get("source")
+    return (
+        isinstance(key, str) and bool(key)
+        and isinstance(source, str) and bool(source)
+        and opp.get("id") == _hash_id(source, key)
+    )
+
+
 def merge_into_processed(
     new_opps: list[dict],
     *,
     complete_recursive_sources: set[str] | frozenset[str] = frozenset(),
+    listed_program_keys: set[str] | frozenset[str] = frozenset(),
 ) -> tuple[int, int]:
     """Upsert campus records into processed/opportunities.json.
 
     Upserts by id, and suppresses different-id near-duplicates (same canonical
     URL / normalized title) already in the corpus so re-runs never flood.
     Old verified discoveries are retired only for explicitly authorized,
-    completely crawled recursive sources; the default empty set holds them."""
+    completely crawled recursive sources; the default empty set holds them.
+
+    ``listed_program_keys`` holds the key of every curated program in the
+    registry. A stored active ucb program row whose key is missing from it was
+    dropped from the registry, and is retired as ``no_longer_listed``, never
+    deleted: campus_graph's rule for its schools. Listing goes by key, not
+    record id, because the id names the emit bucket and a program moving to
+    or from the open bucket would otherwise retire on one shard's schedule and
+    publish on another's. "Open" rows (school None) live in national.json,
+    which a ucb shard refresh never writes, so they are left alone. A retired
+    row whose program is listed again comes back. The empty default retires
+    nothing."""
     if not PROCESSED_FILE.exists():
         return (0, 0)
     if any(
@@ -655,8 +691,51 @@ def merge_into_processed(
             in complete_recursive_sources
         )
     }
-
-    new_opps, dropped = dedupe_against_existing(new_opps, existing)
+    retired_programs = 0
+    if listed_program_keys:
+        deactivated_on = datetime.now(UTC).date().isoformat()
+        for opp in existing:
+            if (
+                opp.get("school") != "ucb"
+                or not _registry_program_row(opp)
+                or opp["metadata"]["collector_key"] in listed_program_keys
+                or opp["metadata"].get("is_active") is False
+            ):
+                continue
+            opp["metadata"]["is_active"] = False
+            opp["metadata"]["deactivated_at"] = deactivated_on
+            opp["metadata"]["deactivation_reason"] = NO_LONGER_LISTED
+            retired_programs += 1
+    if retired_programs:
+        logger.info(
+            "ucb_campus: retired %d program record(s) no longer in the registry",
+            retired_programs,
+        )
+    # The registry's own rows retired as no longer listed keep no claim on
+    # their URL or title against incoming program records: held against them,
+    # a retired row would suppress whatever replaced it (a renamed key), and
+    # the program would vanish instead of moving. Every other row keeps its
+    # claim, and so do these against discoveries, which find a page rather
+    # than a replacement.
+    incoming_ids = {opp.get("id") for opp in new_opps}
+    released = [
+        row for row in existing
+        if row.get("id") not in incoming_ids
+        and _retired_as_unlisted(row)
+        and _registry_program_row(row)
+    ]
+    released_ids = {row.get("id") for row in released}
+    new_opps, dropped = dedupe_against_existing(
+        new_opps, [row for row in existing if row.get("id") not in released_ids])
+    if released:
+        # A discovery already stored is an upsert, never a near-duplicate.
+        stored_ids = {row.get("id") for row in existing}
+        found = [opp for opp in new_opps
+                 if opp["metadata"].get("discovered") and opp.get("id") not in stored_ids]
+        survivors, lost = dedupe_against_existing(found, released)
+        lost_ids = {opp.get("id") for opp in found} - {opp.get("id") for opp in survivors}
+        new_opps = [opp for opp in new_opps if opp.get("id") not in lost_ids]
+        dropped += lost
     if dropped:
         logger.info("ucb_campus: suppressed %d near-duplicate(s) vs corpus", dropped)
 
@@ -667,6 +746,12 @@ def merge_into_processed(
             existing_opp = index[opp["id"]]
             opp["metadata"]["first_seen_at"] = existing_opp.get(
                 "metadata", {}).get("first_seen_at", opp["metadata"]["first_seen_at"])
+            existing_metadata = existing_opp.get("metadata", {})
+            if _retired_as_unlisted(existing_opp):
+                # Listed again, which disproves the absence that retired it.
+                # Carry forward the state it was retired from, which was
+                # active; the retirement stamps leave with the old metadata.
+                existing_metadata = {**existing_metadata, "is_active": True}
             unverified_seed = (
                 not opp["metadata"].get("discovered")
                 and opp["metadata"].get("seed_page_verified") is not True
@@ -675,7 +760,6 @@ def merge_into_processed(
             if unverified_seed or ambiguous_status:
                 # A loaded page with no explicit status signal is not evidence
                 # that a previously closed opportunity reopened.
-                existing_metadata = existing_opp.get("metadata", {})
                 for key in ("status", "is_active"):
                     if key in existing_metadata:
                         opp["metadata"][key] = existing_metadata[key]

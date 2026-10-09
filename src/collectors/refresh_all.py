@@ -933,11 +933,15 @@ def refresh_all(
             campus_opps, campus_evidence = fetch_ucb_campus_with_evidence(
                 deep=deep
             )
+            # The listed program keys are a merge input, not report content.
+            campus_evidence = dict(campus_evidence)
+            listed_program_keys = campus_evidence.pop("listed_program_keys", None) or ()
             added, updated = merge_ucb_campus(
                 campus_opps,
                 complete_recursive_sources=set(
                     campus_evidence.get("complete_recursive_sources") or ()
                 ),
+                listed_program_keys=set(listed_program_keys),
             )
             summary["sources"]["ucb_campus"] = {
                 "fetched": len(campus_opps),

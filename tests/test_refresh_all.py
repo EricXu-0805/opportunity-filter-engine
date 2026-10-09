@@ -1373,6 +1373,49 @@ def test_listed_program_keys_reach_the_campus_merge_without_report_content(monke
     assert proof["listed_program_keys"] == listed
 
 
+def test_listed_program_keys_reach_the_ucb_campus_merge_without_report_content(monkeypatch, tmp_path):
+    _stub_all_collectors(monkeypatch, tmp_path)
+    listed = ["first_program", "second_program"]
+    proof = {"complete_recursive_sources": [], "listed_program_keys": listed}
+    monkeypatch.setattr(refresh_all, "fetch_ucb_campus_with_evidence", lambda *a, **k: ([], proof))
+    calls = []
+    monkeypatch.setattr(refresh_all, "merge_ucb_campus", lambda records, **kwargs: (calls.append(kwargs) or (0, 0)))
+
+    summary = refresh_all.refresh_all(deep=False, schools={"ucb"})
+
+    assert [call["listed_program_keys"] for call in calls] == [set(listed)]
+    assert "listed_program_keys" not in summary["sources"]["ucb_campus"]
+    assert proof["listed_program_keys"] == listed
+
+
+def test_a_ucb_refresh_retires_a_program_dropped_from_its_registry(monkeypatch, tmp_path):
+    from src.collectors import ucb_campus, ucb_sources
+
+    def program(key):
+        return ucb_sources._prog(key, f"{key.title()} Fellowship", f"https://example.berkeley.edu/{key}/", "Curated")
+
+    source = {"source_name": "ucb_fixture_programs", "source_type": ucb_sources.PROGRAM,
+              "emit": ucb_sources.EMIT_CAMPUS, "crawl": ucb_sources.STATIC, "crawl_depth": 1,
+              "update": ucb_sources.WEEKLY, "seeds": ["https://example.berkeley.edu/"],
+              "programs": [program("kept"), program("dropped")]}
+    processed = _stub_with_processed_file(monkeypatch, tmp_path, [])
+    monkeypatch.setattr(ucb_campus, "PROCESSED_FILE", processed)
+    monkeypatch.setattr(ucb_sources, "UCB_SOURCES", [source])
+    ucb_campus.merge_into_processed(ucb_campus.fetch_and_normalize())
+    source["programs"] = [program("kept")]
+    monkeypatch.setattr(refresh_all, "fetch_ucb_campus_with_evidence", ucb_campus.fetch_and_normalize_with_evidence)
+    monkeypatch.setattr(refresh_all, "merge_ucb_campus", ucb_campus.merge_into_processed)
+
+    summary = refresh_all.refresh_all(deep=False, schools={"ucb"})
+
+    assert summary["sources"]["ucb_campus"]["status"] == "ok"
+    stored = {row["metadata"]["collector_key"]: row["metadata"]
+              for row in json.loads(processed.read_text(encoding="utf-8"))}
+    assert stored["kept"]["is_active"] is True
+    assert stored["dropped"]["is_active"] is False
+    assert stored["dropped"]["deactivation_reason"] == "no_longer_listed"
+
+
 def test_a_campus_refresh_retires_dropped_programs_only_where_it_completed(monkeypatch, tmp_path):
     """Each school drops its "dropped" program. uw's refresh completes, duke's
     fetch fails and wisc is outside the shard, so only uw's row retires."""
