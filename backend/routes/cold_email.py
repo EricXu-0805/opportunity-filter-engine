@@ -15,7 +15,6 @@ from urllib.parse import quote
 from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import StreamingResponse
-from fastapi.routing import APIRoute
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 from pydantic_core import PydanticCustomError
 
@@ -26,6 +25,7 @@ from backend.lib.blocking import (
     SINGLE_LLM_TIMEOUT_SECONDS,
     BlockingWorkTimeout,
     run_blocking,
+    run_request_work,
 )
 from backend.lib.contact_visibility import contact_email_status
 from backend.lib.email_claims import skill_level_violations, unsupported_action_claims
@@ -75,6 +75,7 @@ from backend.lib.public_projection import (
     sanitize_public_urls,
 )
 from backend.lib.release_scope import release_visible_opportunity_by_id
+from backend.lib.request_body import DOCUMENT_BOUNDS, BoundedJSONRoute, json_body_bounds
 from backend.lib.supabase_auth import authenticated_uid
 from backend.lib.writing_target import WritingTargetSnapshot, prepare_writing_snapshot
 from backend.schemas import (
@@ -130,7 +131,7 @@ def _email_chat_completion(messages: list[dict], **kwargs) -> str | None:
     return chat_completion(messages, **kwargs)
 
 
-class _EmailValidationRoute(APIRoute):
+class _EmailValidationRoute(BoundedJSONRoute):
     """Return useful schema locations without echoing private resume inputs.
 
     FastAPI's default validation payload includes the rejected input and error
@@ -1925,6 +1926,7 @@ def _bound_email_response(
 
 
 @router.post("/cold-email", response_model=ColdEmailResponse)
+@json_body_bounds(DOCUMENT_BOUNDS)
 async def generate_email(
     request: ColdEmailRequest,
     authorization: str | None = Header(default=None),
@@ -1950,9 +1952,10 @@ async def generate_email(
     profile_dict = request.profile.model_dump()
     if request.engine != "ai":
         # The template path contains no provider I/O and should not wait behind
-        # a saturated AI pool.
-        return _bound_email_response(_run_engine(request, opp, profile_dict, authed),
-                                     request, target, pipeline_version, authed)
+        # a saturated AI pool. Its drafting and claim checks are CPU work, so they
+        # run on the request lane, off the event loop.
+        response = await run_request_work(_run_engine, request, opp, profile_dict, authed)
+        return _bound_email_response(response, request, target, pipeline_version, authed)
     try:
         response = await run_blocking(
             _run_engine,
@@ -1965,8 +1968,8 @@ async def generate_email(
         return _bound_email_response(response, request, target, pipeline_version, authed)
     except BlockingWorkTimeout:
         logger.warning("cold-email: generation timed out; using template")
-        return _bound_email_response(_template_after_timeout(request, opp, profile_dict, authed),
-                                     request, target, pipeline_version, authed)
+        response = await run_request_work(_template_after_timeout, request, opp, profile_dict, authed)
+        return _bound_email_response(response, request, target, pipeline_version, authed)
 
 
 # Bumped whenever generation logic changes materially — stamped on every
@@ -2367,11 +2370,17 @@ def _template_after_timeout(
     return response
 
 
+def _guard_variants(raw_variants: list[dict], parts: dict, opp: dict) -> list[tuple[str, str]]:
+    """Each variant's subject and body after the output guard (run on the request lane)."""
+    return [_guard_email_output(*_extract_subject_and_body(v["text"]), parts, opp)[:2] for v in raw_variants]
+
+
 def _sse_frame(payload: dict) -> str:
     return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
 
 @router.post("/cold-email/stream")
+@json_body_bounds(DOCUMENT_BOUNDS)
 async def generate_email_stream(
     request: ColdEmailRequest,
     authorization: str | None = Header(default=None),
@@ -2432,11 +2441,11 @@ async def generate_email_stream(
             return
         except BlockingWorkTimeout:
             logger.warning("cold-email stream: generation timed out; using template")
-            resp = _template_after_timeout(request, opp, profile_dict, authed)
+            resp = await run_request_work(_template_after_timeout, request, opp, profile_dict, authed)
         except Exception:
             # Unexpected provider/orchestration errors retain local recovery.
             logger.exception("cold-email stream: engine crashed; using template")
-            resp = _template_after_timeout(request, opp, profile_dict, authed)
+            resp = await run_request_work(_template_after_timeout, request, opp, profile_dict, authed)
         resp = _bound_email_response(resp, request, target, pipeline_version, authed)
         yield _sse_frame({"stage": "done", **resp.model_dump()})
 
@@ -2448,6 +2457,7 @@ async def generate_email_stream(
 
 
 @router.post("/cold-email/variants")
+@json_body_bounds(DOCUMENT_BOUNDS)
 async def generate_email_variants(
     request: ColdEmailRequest,
     authorization: str | None = Header(default=None),
@@ -2484,9 +2494,8 @@ async def generate_email_variants(
     )
 
     results = []
-    for v in raw_variants:
-        subject, body = _extract_subject_and_body(v["text"])
-        subject, body, _replaced = _guard_email_output(subject, body, parts, safe_opp)
+    guarded = await run_request_work(_guard_variants, raw_variants, parts, safe_opp)
+    for v, (subject, body) in zip(raw_variants, guarded, strict=True):
         results.append({
             "id": v["id"],
             "label": v["label"],
@@ -2774,6 +2783,7 @@ def _local_refine_fallback(
 
 
 @router.post("/cold-email/refine")
+@json_body_bounds(DOCUMENT_BOUNDS)
 async def refine_email(request: EmailRefineRequest):
     pipeline_version = COLD_EMAIL_PIPELINE_VERSION
     target = _email_target(request)
@@ -2785,6 +2795,7 @@ async def refine_email(request: EmailRefineRequest):
 
 
 @router.post("/cold-email/validate", response_model=EmailDraftValidationResponse)
+@json_body_bounds(DOCUMENT_BOUNDS)
 async def validate_email_draft(request: EmailDraftValidationRequest) -> EmailDraftValidationResponse:
     """Check finite condition/attachment claims, never judge arbitrary manual prose.
 
@@ -2847,7 +2858,8 @@ async def _refine_email_snapshot(request: EmailRefineRequest, opp: dict):
         # No professor-specific source evidence means there is nothing a paid
         # editor may safely personalize.  Do not call the provider; rebuild the
         # honest template and apply only deterministic tone operations.
-        return _local_refine_fallback(
+        return await run_request_work(
+            _local_refine_fallback,
             request,
             safe_body,
             context,
@@ -2856,7 +2868,7 @@ async def _refine_email_snapshot(request: EmailRefineRequest, opp: dict):
         )
 
     if not is_configured():
-        return _local_refine_fallback(request, safe_body, context)
+        return await run_request_work(_local_refine_fallback, request, safe_body, context)
 
     system = (
             "You are an email editor for a student writing cold emails to professors. "
@@ -2900,7 +2912,7 @@ async def _refine_email_snapshot(request: EmailRefineRequest, opp: dict):
         logger.warning("cold-email refine: model call timed out; using local edit")
         edited = None
     if edited is None:
-        return _local_refine_fallback(request, safe_body, context)
+        return await run_request_work(_local_refine_fallback, request, safe_body, context)
 
     edited = redact_embedded_emails(edited)
     if context is not None:
@@ -2910,7 +2922,8 @@ async def _refine_email_snapshot(request: EmailRefineRequest, opp: dict):
     if context is not None:
         edited = _enforce_brief_greeting(edited, context["prof_brief"])
         if edited is None:
-            return _local_refine_fallback(
+            return await run_request_work(
+                _local_refine_fallback,
                 request,
                 safe_body,
                 context,
@@ -2918,12 +2931,13 @@ async def _refine_email_snapshot(request: EmailRefineRequest, opp: dict):
             )
     edited = _one_blank_line_between_paragraphs(edited, context["parts"] if context is not None else {})
     corpus = context["corpus"] if context is not None else ""
-    fabricated, borrowed = _email_grounding_findings(
-        edited, context["parts"] if context is not None else {},
+    fabricated, borrowed = await run_request_work(
+        _email_grounding_findings, edited, context["parts"] if context is not None else {},
         context["safe_opp"] if context is not None else {}, corpus=corpus,
     )
     if fabricated or borrowed:
-        return _local_refine_fallback(
+        return await run_request_work(
+            _local_refine_fallback,
             request,
             safe_body,
             context,
@@ -3107,8 +3121,8 @@ async def _refine_selection_snapshot(request: EmailRefineRequest, opp: dict) -> 
     condition_issues = _email_condition_findings(f"{request.subject}\n{candidate}", context["parts"], context["safe_opp"])
     if condition_issues:
         return {**no_change("target_conditions"), "condition_issues": condition_issues}
-    if any(_email_grounding_findings(f"{request.subject}\n{candidate}", context["parts"],
-                                    context["safe_opp"], corpus=context["corpus"])):
+    if any(await run_request_work(_email_grounding_findings, f"{request.subject}\n{candidate}", context["parts"],
+                                  context["safe_opp"], corpus=context["corpus"])):
         return no_change("fabrication")
     return {"scope": "selection", "outcome": "proposal", "method": "llm",
             "proposal": {"start_utf16": request.selection.start_utf16,

@@ -70,7 +70,7 @@ from backend.lib.prompt_safety import sanitize_field as _sanitize_field
 from backend.lib.public_opportunity_detail import project_public_detail, writing_target_version
 from backend.lib.publication_attribution import verified_recent_works
 from backend.lib.release_scope import release_visible_opportunity_by_id
-from backend.lib.request_body import BoundedJSONRoute, ResumeJSONRoute
+from backend.lib.request_body import RESUME_BOUNDS, WRITING_BOUNDS, BoundedJSONRoute, json_body_bounds
 from backend.lib.resume_input import (
     RESUME_AI_CHUNK_CHARACTERS,
     RESUME_AI_CONCURRENCY,
@@ -106,11 +106,10 @@ from src.student_evidence import claimable_skill_level
 
 logger = logging.getLogger("ofe.tailor")
 
-# A writing request's body past its structural bounds is refused before it is parsed.
+# A request body past its endpoint's structural bounds is refused before it is parsed. The two
+# extraction routes read one résumé, which main parses whole whatever it holds, and so do they
+# (request_body.RESUME_BOUNDS).
 router = APIRouter(route_class=BoundedJSONRoute)
-# The two extraction routes read one résumé, which main parses whole whatever it holds, and so do
-# they (request_body.ResumeJSONRoute, with bounds of its own). Included in router below.
-resume_router = APIRouter(route_class=ResumeJSONRoute)
 
 _DEFAULT_OPP_TOKEN_BUDGET = 1200
 # Every layer above this accepts 12: the modal prefills 12
@@ -760,7 +759,8 @@ def _select_bullets_across_chunks(groups: list[list[str]], limit: int = 12) -> t
     return [bullet for _, _, bullet in sorted(selected)], len(seen) > len(selected)
 
 
-@resume_router.post("/tailor/extract-bullets", response_model=ExtractBulletsResponse)
+@router.post("/tailor/extract-bullets", response_model=ExtractBulletsResponse)
+@json_body_bounds(RESUME_BOUNDS)
 async def extract_bullets(request: ExtractBulletsRequest, http_request: Request) -> ExtractBulletsResponse:
     """Select reviewable bullets from every accepted part of the resume."""
     version = _require_pipeline_version(request.expected_pipeline_version)
@@ -805,6 +805,7 @@ async def tailor_status() -> TailorStatusResponse:
 
 
 @router.post("/tailor", response_model=TailorResponse)
+@json_body_bounds(WRITING_BOUNDS)
 async def tailor_resume(request: TailorRequest) -> TailorResponse:
     """Apply the optional rule precondition and stamp every accepted outcome."""
     started = time.monotonic()
@@ -1116,7 +1117,8 @@ def _merge_structure_chunks(groups: list[list[ResumeSection]]) -> tuple[list[Res
     return list(merged.values()), limited
 
 
-@resume_router.post("/tailor/structure", response_model=StructureResumeResponse)
+@router.post("/tailor/structure", response_model=StructureResumeResponse)
+@json_body_bounds(RESUME_BOUNDS)
 async def structure_resume(request: StructureResumeRequest, http_request: Request) -> StructureResumeResponse:
     """Build a bounded experience projection while retaining the full source."""
     text = request.resume_text or ""
@@ -1285,6 +1287,7 @@ def _assemble_renovation(
 
 
 @router.post("/tailor/renovate", response_model=RenovateResponse)
+@json_body_bounds(WRITING_BOUNDS)
 async def renovate_resume(
     request: RenovateRequest, authorization: str | None = Header(default=None),
 ) -> RenovateResponse:
@@ -1388,6 +1391,7 @@ async def _renovate_resume_snapshot(
 
 
 @router.post("/tailor/bullet", response_model=BulletOptimizeResponse)
+@json_body_bounds(WRITING_BOUNDS)
 async def optimize_bullet(
     request: BulletOptimizeRequest, authorization: str | None = Header(default=None),
 ) -> BulletOptimizeResponse:
@@ -1464,6 +1468,3 @@ async def _optimize_bullet_snapshot(
     warnings = _outcome_warnings("", outcome) if answered else ["llm_failed_or_invalid_json"]
     return BulletOptimizeResponse(text=current, source_evidence=original, changed=False, warnings=warnings,
                                   reason_code=outcome.code, links=links, **stamps)
-
-
-router.include_router(resume_router)

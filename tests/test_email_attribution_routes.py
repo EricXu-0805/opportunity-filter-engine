@@ -329,3 +329,60 @@ def test_unsafe_parallel_candidate_cannot_win_by_judge_choice(client, monkeypatc
     assert good in result["body"]
     assert bad not in result["body"]
     assert "judge" not in calls  # Different deterministic scores, no tie.
+
+
+# The drafting and claim checks are CPU work; they run on the request lane (blocking.run_request_work),
+# off the event loop, on every path that runs them.
+def _lane_spy(monkeypatch):
+    import asyncio
+    import threading
+
+    calls, real = [], ce.experience_attribution_violations
+
+    def spy(*args, **kwargs):
+        try:
+            asyncio.get_running_loop()
+            on_loop = True
+        except RuntimeError:
+            on_loop = False
+        calls.append((on_loop, threading.current_thread().name.split("_")[0]))
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(ce, "experience_attribution_violations", spy)
+    return calls
+
+
+SELECTED = draft("I am interested in Python parser research.")
+
+
+@pytest.mark.parametrize("path,payload,answer", [
+    pytest.param("", {"engine": "template"}, None, id="template-draft"),
+    pytest.param("/variants", {"engine": "template"}, None, id="variants"),
+    pytest.param("/refine", {"current_body": SELECTED, "instruction": "Make it more formal."}, None, id="local-refine"),
+    pytest.param("/refine", {"current_body": SELECTED, "instruction": "Make it clearer."}, SELECTED, id="edited-draft"),
+    pytest.param("/refine", {"current_body": SELECTED, "instruction": "Make it clearer.", "selection": {
+        "start_utf16": SELECTED.index("interested"), "end_utf16": SELECTED.index("interested") + 10,
+        "text": "interested"}}, json.dumps({"replacement": "very interested"}), id="selection-edit"),
+])
+def test_the_email_claim_checks_run_on_the_request_lane(client, monkeypatch, path, payload, answer):
+    calls = _lane_spy(monkeypatch)
+    monkeypatch.setattr(ce, "is_configured", lambda: answer is not None)
+    monkeypatch.setattr(ce, "chat_completion", lambda *_a, **_k: answer)
+    response = client.post("/api/cold-email" + path, json={
+        "profile": PROFILE, "opportunity_id": OPP["id"], "experience_evidence": confirmed_experience(PROJECTS),
+        **payload})
+    assert response.status_code == 200, response.text
+    assert calls and all(call == (False, "ofe-request-work") for call in calls), calls
+
+
+@pytest.mark.parametrize("endpoint", ["", "stream"])
+def test_the_template_after_a_model_timeout_is_checked_on_the_request_lane(client, monkeypatch, endpoint):
+    calls = _lane_spy(monkeypatch)
+
+    async def timed_out(*_args, **_kwargs):
+        raise ce.BlockingWorkTimeout("timed out")
+
+    monkeypatch.setattr(ce, "run_blocking", timed_out)
+    result = request(client, endpoint, PROJECTS)
+    assert result["fallback_reason"] == "unavailable"
+    assert calls and all(call == (False, "ofe-request-work") for call in calls), calls

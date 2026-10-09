@@ -52,6 +52,7 @@ from backend.lib.release_scope import (
     release_visible_opportunities,
     release_visible_opportunity_by_id,
 )
+from backend.lib.request_body import SMALL_BOUNDS, WRITING_BOUNDS, BoundedJSONRoute, json_body_bounds
 from backend.lib.school_coverage import (
     SCHOOL_COVERAGE_SCHEMA,
     coverage_payload,
@@ -74,7 +75,7 @@ from src.evidence import (
 )
 from src.tracking.professor_profiles import canonical_professor_id
 
-router = APIRouter()
+router = APIRouter(route_class=BoundedJSONRoute)
 logger = logging.getLogger("ofe.opportunities")
 
 CHAT_PROMPT_MAX_CHARACTERS = 120_000
@@ -312,6 +313,7 @@ async def opportunity_coverage() -> dict:
 
 
 @router.post("/opportunities/batch")
+@json_body_bounds(SMALL_BOUNDS)
 async def get_opportunities_batch(request: dict):
     """Return multiple opportunities by ID in a single request.
 
@@ -886,6 +888,7 @@ def _chat_sse_events(
 
 
 @router.post("/opportunities/{opportunity_id}/chat")
+@json_body_bounds(WRITING_BOUNDS)
 async def chat_with_opportunity(
     opportunity_id: str,
     body: ChatRequest,

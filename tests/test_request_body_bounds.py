@@ -10,6 +10,7 @@ import json
 
 import pytest
 from fastapi.testclient import TestClient
+from pydantic import BaseModel
 from starlette.requests import Request
 
 from backend.lib import request_body
@@ -19,6 +20,7 @@ from backend.lib.target_resume_ai_validation import InvalidTargetResume
 from backend.main import app
 from backend.routes import tailor
 from backend.routes import target_resume_ai as route
+from scripts import request_body_containers as largest
 from tests import test_target_resume_plan as plan_tests
 from tests.test_target_resume_plan import endpoint  # noqa: F401
 
@@ -308,27 +310,21 @@ def test_a_full_target_body_past_its_bound_is_refused_before_the_lane_parses_it(
         assert response.status_code == 422 and seen == parsed_holds
 
 
-def test_each_route_reads_its_largest_valid_body_with_a_wide_margin_and_refuses_one_past_every_bound(monkeypatch):
-    """The largest body each request schema accepts (scripts/request_body_containers.py) is read and
-    answered as before, at most a quarter of each of its route's bounds; a body past every route's
-    bound is refused on every route."""
+def test_each_route_refuses_a_body_past_every_bound(monkeypatch):
+    """A body past every route's bounds is refused on each of the seven writing routes, in the form of
+    that route's own validation errors."""
     from scripts import request_body_containers as largest
 
     monkeypatch.setattr(tailor, "load_opportunities_by_id", lambda: {})
     monkeypatch.setattr(route, "load_opportunities_by_id", lambda: {})
     monkeypatch.setattr(tailor, "is_configured", lambda: False)
     client = TestClient(app)
-    bodies = [*largest.schema_bodies(), *largest.full_target_bodies()]
-    assert sorted(path for path, _ in bodies) == sorted(largest.BOUNDS)
-    for path, body in bodies:
-        assert holds(body) * 4 <= largest.BOUNDS[path], path
-        assert separators(body) * 4 <= largest.SEPARATOR_BOUNDS[path], path
-        assert client.post(path, json=body).status_code in (200, 404), path
-        past = {**body, ("draft" if path in largest.FULL_TARGET else "padding"): chains(PAST_EVERY_BOUND)}
-        response = client.post(path, json=past)
-        detail = response.json()["detail"]
-        assert response.status_code == 422, path
-        assert detail == {"code": "invalid_request"} if path in largest.FULL_TARGET else detail[0]["type"] == "too_long"
+    for _, path, _, body in largest.tailor_bodies(largest.Pick()):
+        response = client.post(path, json={**body, "padding": chains(PAST_EVERY_BOUND)})
+        assert response.status_code == 422 and response.json()["detail"][0]["type"] == "too_long", path
+    for path, body in largest.full_target_bodies():
+        response = client.post(path, json={**body, "draft": chains(PAST_EVERY_BOUND)})
+        assert (response.status_code, response.json()) == (422, {"detail": {"code": "invalid_request"}}), path
 
 
 # Résumés of 60,000 characters whose brackets sit among quotes and backslashes, which JSON escapes.
@@ -353,23 +349,24 @@ def test_an_extraction_route_reads_a_resume_of_brackets_quotes_and_backslashes_w
     assert parsed == [path, path]
 
 
-def test_legitimate_bodies_whose_text_is_commas_are_read_whole(parsed, monkeypatch):
+def test_legitimate_bodies_whose_text_is_commas_are_read_whole():
     """Round 7: commas inside strings are not counted. A full-target draft whose résumé is 60,000 commas
-    and a profile of 159,000 commas hold more commas than MAX_JSON_SEPARATORS, all inside strings; their
-    routes parse and answer them as main does (404 for the stubbed-out target)."""
+    and a profile of 159,000 commas hold more commas than MAX_JSON_SEPARATORS, all inside strings; and
+    the browser sends every saved and dismissed id, which real ids fill the body limit with. Each
+    route reads them."""
     from scripts import request_body_containers as largest
 
-    monkeypatch.setattr(tailor, "load_opportunities_by_id", lambda: {})
-    monkeypatch.setattr(route, "load_opportunities_by_id", lambda: {})
     client = TestClient(app)
     bodies = list(largest.comma_dense_bodies())
-    assert len(bodies) == 2
-    for name, path, body in bodies:
-        content = json.dumps(body, ensure_ascii=False).encode()
-        assert content.count(b",") > request_body.MAX_JSON_SEPARATORS >= 4 * separators(body), name
-        response = client.post(path, content=content, headers={"content-type": "application/json"})
-        assert response.status_code == 404, name
-    assert parsed == ["/api/tailor"]
+    assert len(bodies) == 4
+    with largest.reading() as parsed:
+        for name, path, body in bodies:
+            content = json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode()
+            assert len(content) <= 1024 * 1024 or path in largest.FULL_TARGET, name
+            assert content.count(b",") > request_body.MAX_JSON_SEPARATORS, name
+            parsed.clear()
+            largest.send(client, "POST", path, content)
+            assert parsed in ([path], ["full-target lane"]), name
 
 
 def test_a_writing_route_reads_profile_text_of_brackets_whole(parsed):
@@ -463,3 +460,159 @@ def test_the_structural_count_is_the_number_of_lists_and_objects_json_reads():
             assert request_body.structural_containers(text.encode()) == expected
             for encoding in ("utf-16", "utf-16-be", "utf-32"):
                 assert request_body.structural_containers(request_body._json_text(text.encode(encoding))) == expected
+
+
+# ------------------------------------------------------------------ every route that reads a JSON body
+# scripts/request_body_containers.py finds them in the app (json_routes): a body parameter FastAPI
+# parses, or an endpoint that reads its Request's json() or body(). Each declares its bounds
+# (request_body.json_body_bounds) and refuses a body past them before it is parsed.
+JSON_ROUTES = largest.json_routes(app)
+ROUTE_IDS = [f"{method} {path}" for method, path, _ in JSON_ROUTES]
+
+
+def test_the_app_routes_that_read_a_json_body_are_found():
+    found = {(method, path) for method, path, _ in JSON_ROUTES}
+    assert len(found) >= 37
+    # A body parameter, a body read by the endpoint itself, and a body parsed on the request lane.
+    assert {("POST", "/api/matches"), ("DELETE", "/api/application-materials/{record_id}"),
+            ("POST", "/api/tailor/full-target/suggestions")} <= found
+    # A multipart upload and a route without a body are not JSON routes.
+    assert ("POST", "/api/application-materials") not in found and ("GET", "/api/tailor/status") not in found
+
+
+class _NewBody(BaseModel):
+    name: str
+
+
+def test_a_json_route_without_bounds_is_found_by_the_check():
+    """The check below fails for a new route that reads a JSON body and declares no bounds."""
+    from fastapi import APIRouter, FastAPI
+
+    probe, router = FastAPI(), APIRouter(route_class=request_body.BoundedJSONRoute)
+
+    @router.post("/unbounded")
+    async def unbounded(body: _NewBody):
+        return {}
+
+    @router.post("/reads-itself")
+    async def reads_itself(request: Request):
+        return await request.json()
+
+    probe.include_router(router)
+    routes = {path: route for _, path, route in largest.json_routes(probe)}
+    assert set(routes) == {"/unbounded", "/reads-itself"}
+    assert all(request_body.declared_bounds(route) is None for route in routes.values())
+
+
+@pytest.mark.parametrize(("method", "path", "json_route"), JSON_ROUTES, ids=ROUTE_IDS)
+def test_every_json_route_declares_bounds_its_route_enforces(method, path, json_route):
+    bounds = request_body.declared_bounds(json_route)
+    assert bounds is not None, f"{method} {path} reads a JSON body and declares no bounds (json_body_bounds)"
+    # The full-target routes enforce theirs on the request lane (_parsed); every other route's class does.
+    assert isinstance(json_route, request_body.BoundedJSONRoute) or path in largest.FULL_TARGET
+
+
+def _concrete():
+    return {(method, path): concrete for method, path, concrete, _ in largest.largest_bodies()}
+
+
+@pytest.mark.parametrize(("method", "path", "json_route"), JSON_ROUTES, ids=ROUTE_IDS)
+def test_every_json_route_reads_a_body_at_its_bounds_and_refuses_one_past_either_unparsed(method, path, json_route):
+    bounds = request_body.declared_bounds(json_route)
+    concrete = _concrete()[method, path]
+    client = TestClient(app)
+    with largest.reading() as parsed:
+        for at, over in ((chains(bounds.containers - 1), chains(bounds.containers)),
+                         ([0] * (bounds.separators + 1), [0] * (bounds.separators + 2))):
+            assert holds(at) <= bounds.containers and separators(at) <= bounds.separators
+            assert holds(over) > bounds.containers or separators(over) > bounds.separators
+            parsed.clear()
+            response = largest.send(client, method, concrete, json.dumps(over).encode())
+            assert response.status_code == 422 and parsed == [], (method, path)
+            largest.send(client, method, concrete, json.dumps(at).encode())
+            assert len(parsed) == 1, (method, path)
+
+
+def test_every_json_route_has_a_largest_body():
+    assert {(method, path) for method, path, *_ in largest.largest_bodies()} == {
+        (method, path) for method, path, _ in JSON_ROUTES}
+
+
+@pytest.mark.parametrize(("method", "path", "json_route"), JSON_ROUTES, ids=ROUTE_IDS)
+def test_every_json_route_reads_its_largest_valid_body_with_a_wide_margin(method, path, json_route):
+    """The largest body each request schema accepts is valid, holds at most a quarter of each of its
+    route's bounds, and its route reads it."""
+    bounds = request_body.declared_bounds(json_route)
+    concrete, body = next((c, b) for m, p, c, b in largest.largest_bodies() if (m, p) == (method, path))
+    largest.validate(json_route, body)
+    content = json.dumps(body, ensure_ascii=False).encode()
+    assert largest.containers(content) * 4 <= bounds.containers
+    assert largest.separators(content) * 4 <= bounds.separators
+    with largest.reading() as parsed:
+        largest.send(TestClient(app), method, concrete, content)
+    assert len(parsed) == 1
+
+
+def test_random_valid_bodies_are_read_on_every_json_route():
+    """Random valid bodies, with lists of random lengths within their caps and text made of the
+    characters a structural count must read past, are read on every route."""
+    import random
+
+    routes = {(method, path): json_route for method, path, json_route in JSON_ROUTES}
+    client = TestClient(app)
+    with largest.reading() as parsed:
+        for seed in range(4):
+            pick = largest.Pick(random.Random(seed))
+            for method, path, concrete, body in largest.largest_bodies(pick):
+                largest.validate(routes[method, path], body)
+                bounds = request_body.declared_bounds(routes[method, path])
+                for ensure_ascii in (True, False):
+                    content = json.dumps(body, ensure_ascii=ensure_ascii).encode()
+                    assert largest.containers(content) <= bounds.containers, (seed, method, path)
+                    assert largest.separators(content) <= bounds.separators, (seed, method, path)
+                    parsed.clear()
+                    largest.send(client, method, concrete, content)
+                    assert len(parsed) == 1, (seed, method, path)
+
+
+def test_a_body_past_the_default_body_limit_is_counted_on_the_request_lane(monkeypatch):
+    """Only the routes with a larger body limit accept such a body; it is counted off the event loop,
+    one at a time, and a smaller one on the loop."""
+    import threading
+
+    seen, real = [], request_body.check_body_bounds
+
+    def check(body, *args):
+        seen.append((len(body) > request_body.LANE_BODY_BYTES, on_the_event_loop(),
+                     threading.current_thread().name.startswith("ofe-request-work")))
+        return real(body, *args)
+
+    monkeypatch.setattr(request_body, "check_body_bounds", check)
+    method, path, concrete, body = next(row for row in largest.largest_bodies()
+                                        if row[:2] == ("PUT", "/api/private-import-targets/{target_id}"))
+    large = {**body, "opportunity": {**body["opportunity"], "description_raw": "Join the lab. " * 120_000}}
+    client = TestClient(app)
+    with largest.reading() as parsed:
+        for sent in (body, large):
+            largest.send(client, method, concrete, json.dumps(sent).encode())
+    assert seen == [(False, True, False), (True, False, True)] and len(parsed) == 2
+
+
+def test_the_per_character_checks_read_every_code_point_as_before():
+    """The private import's surrogate check and the export's XML check run in the regex engine; they
+    accept and refuse exactly the code points the per-character loops they replace did."""
+    from backend.lib import private_import_targets_schema as private
+    from backend.lib import target_resume_export_schema as export
+
+    def xml(point):
+        return point in (9, 10, 13) or 0x20 <= point <= 0xD7FF or 0xE000 <= point <= 0xFFFD or 0x10000 <= point <= 0x10FFFF
+
+    for point in range(0x110000):
+        character = chr(point)
+        assert (export._NOT_XML.search(character) is None) == xml(point), hex(point)
+        assert (private._SURROGATE.search(character) is not None) == (0xD800 <= point <= 0xDFFF), hex(point)
+    assert export.xml_text("Built a rig.\tIn 2026.\n") == "Built a rig.\tIn 2026.\n"
+    with pytest.raises(export.ExportError):
+        export.xml_text("Built a rig.\x0b")
+    with pytest.raises(ValueError):
+        private.opportunity({"source": "text_parser", "title": "Lab", "description_raw": "Join \ud800 us."})

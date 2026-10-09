@@ -36,6 +36,7 @@ from backend.lib.release_scope import (
     release_visible_opportunities,
     release_visible_opportunity_by_id,
 )
+from backend.lib.request_body import SMALL_BOUNDS, BoundedJSONRoute, json_body_bounds
 from backend.lib.supabase_auth import authenticated_identity
 from backend.lib.target_actionability import assert_target_actionable, prework_refusal
 from src.evidence import (
@@ -54,7 +55,7 @@ def _validate_email(value: str) -> str:
         raise ValueError("invalid email")
     return v
 
-router = APIRouter()
+router = APIRouter(route_class=BoundedJSONRoute)
 logger = logging.getLogger(__name__)
 
 RESEND_API_URL = "https://api.resend.com/emails"
@@ -954,6 +955,7 @@ def _resolve_all(items: list, lookup: dict, legacy_index: dict | None) -> list[d
 
 
 @router.post("/email/send-matches")
+@json_body_bounds(SMALL_BOUNDS)
 async def send_matches(
     req: SendMatchesRequest,
     authorization: str | None = Header(default=None),
@@ -1001,6 +1003,7 @@ async def send_matches(
 
 
 @router.post("/email/send-favorites")
+@json_body_bounds(SMALL_BOUNDS)
 async def send_favorites(
     req: SendFavoritesRequest,
     authorization: str | None = Header(default=None),

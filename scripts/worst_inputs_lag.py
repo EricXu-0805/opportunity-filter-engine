@@ -9,10 +9,15 @@ R6 adds bodies of lists at, one over and past each route's container bound
 (MAX_JSON_CONTAINERS, MAX_RESUME_JSON_CONTAINERS, MAX_FULL_TARGET_JSON_CONTAINERS), and bodies whose
 brackets sit inside strings, which the count must read past. R7 counts commas outside strings too,
 and adds bodies of quotes past each route's comma or container bound, which the count splits at every
-quote, and the two legitimate bodies whose text is commas (scripts/request_body_containers.py).
+quote, and the legitimate bodies whose text or id lists are commas (scripts/request_body_containers.py).
+ROUTES runs the R6 and R7 shapes and the NEW unknown-field shapes on every other route of the app that
+reads a JSON body (request_body_containers.json_routes), against that route's declared bounds and
+body limit, and sends every route its largest valid body, and a private import's save and an export
+at their body limits.
 
-Each request goes through backend.main.app over httpx.ASGITransport. The corpus is stubbed
-out, so a body that passes validation ends in a 404 before any model work; startup objects are
+Each request goes through backend.main.app over httpx.ASGITransport, as a caller whose credential
+is already verified. The corpus is stubbed out, so a body that passes validation ends in a 404, or
+in its route's refusal for a missing credential or service, before any model work; startup objects are
 frozen as backend.main._warmup freezes them. While a request runs, the event loop wakes every
 millisecond (longest wake-up delay = longest stall) and a heartbeat asks /api/tailor/status
 (longest gap between answers). A case over the threshold is re-run up to three times and reported
@@ -34,7 +39,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path.cwd()))
 os.environ.setdefault("OFE_DISABLE_RATE_LIMIT", "1")
-for key in ("OPENAI_API_KEY", "OPENROUTER_API_KEY", "DEEPSEEK_API_KEY", "ANTHROPIC_API_KEY"):
+for key in ("OPENAI_API_KEY", "OPENROUTER_API_KEY", "DEEPSEEK_API_KEY", "ANTHROPIC_API_KEY", "SUPABASE_URL",
+            "SUPABASE_SERVICE_ROLE_KEY"):
     os.environ.pop(key, None)
 
 import httpx  # noqa: E402
@@ -48,8 +54,6 @@ from backend.lib.request_body import (  # noqa: E402
     MAX_RESUME_JSON_CONTAINERS,
     MAX_RESUME_JSON_SEPARATORS,
 )
-from backend.routes import tailor  # noqa: E402
-from backend.routes import target_resume_ai as full_route  # noqa: E402
 
 ONE_MIB = 1024 * 1024 - 2048
 FULL_BODY = 2 * 1024 * 1024 + 64 * 1024 - 2048
@@ -171,6 +175,8 @@ def cases():
     yield from bound_cases()
     # Round 7: commas counted outside strings.
     yield from quote_cases()
+    # Every route that reads a JSON body.
+    yield from json_route_cases()
 
 
 def chains(total: int, depth: int) -> bytes:
@@ -235,7 +241,80 @@ def quote_cases():
         yield f"R7 {path} legitimate: {name}", path, body
 
 
-async def probe(path: str, content: bytes, concurrent: int = 1):
+def body_limit(method: str, path: str) -> int:
+    """The most a route reads (backend.main.RequestBodyLimitMiddleware, and the private-import screen)."""
+    from backend.lib import private_import_targets_schema as private
+    from backend.lib import target_resume_export_schema as export
+
+    if path.startswith("/api/private-import-targets"):
+        return private.MAX_BODY_BYTES if method == "PUT" or "/cold-email/" in path else (
+            private.MAX_BODY_BYTES - private.MAX_PAYLOAD_BYTES)
+    if path.startswith("/api/tailor/full-target"):
+        return FULL_BODY + 2048
+    return export.MAX_BODY_BYTES if path == "/api/resume/full-target/export" else ONE_MIB + 2048
+
+
+def json_route_cases():
+    from backend.lib.request_body import declared_bounds
+    from scripts import request_body_containers as largest
+
+    covered = {path for path, *_ in ROUTE_FRAMES}
+    routes = {(method, path): route for method, path, route in largest.json_routes(main_module.app)}
+    frame = b'{"padding":%s}'
+    own = 2  # the frame's object and the padding list
+    for method, template, path, body in largest.largest_bodies():
+        yield f"ROUTES {method} {template} legitimate: its largest valid body", path, body, method
+        if template in covered:
+            continue
+        bound, separators = declared_bounds(routes[method, template])
+        cap = body_limit(method, path) - 400
+        levels = [(bound - own, "at its bound"), (bound - own + 1, "one over its bound"), (PAST - own, "past every bound")]
+        for shape, depth in enumerate((2, 50, 900), 1):
+            for total, where in levels:
+                if depth > total or total // depth > separators - 50 or 2 * total > cap:
+                    continue
+                yield (f"ROUTES {method} {template} unknown field: lists, shape {shape}, {where}", path,
+                       frame % chains(total, depth), method)
+        count = min(separators - 40, (cap - 400) // 12)
+        yield (f"ROUTES {method} {template} unknown field: strings of brackets at the comma bound", path,
+               frame % ("[" + ",".join(['"[[[{{{[]"'] * count) + "]").encode(), method)
+        yield (f"ROUTES {method} {template} unknown field: quoted brackets to the body limit, not JSON", path,
+               frame % (b'"[{' * ((cap - 400) // 3)), method)
+        items = min(separators - 40, (cap - 400) // 2)
+        yield f"ROUTES {method} {template} unknown field: ints at the comma bound", path, {"padding": [0] * items}, method
+        yield (f"ROUTES {method} {template} unknown field: 1-key dicts at the bound", path,
+               {"padding": [{"k": 0}] * min(bound - 40, separators // 2 - 40, cap // 8)}, method)
+        yield (f"ROUTES {method} {template} unknown field: quotes, then commas past the bound", path,
+               frame % (b'"' * (cap - separators - 10) + b"," * (separators + 1)), method)
+        yield (f"ROUTES {method} {template} unknown field: quotes, then brackets past the bound", path,
+               frame % (b'"' * (cap - bound - 10) + b"[" * (bound + 1)), method)
+    yield from limit_bodies()
+
+
+def limit_bodies():
+    """Legitimate bodies at their body limits: a private import's save with its text, and an export
+    with its lines' text, each filling its route's limit."""
+    from backend.lib.target_resume_export_schema import export_signature
+    from scripts import request_body_containers as largest
+
+    bodies = {(method, template): (path, body) for method, template, path, body in largest.largest_bodies()}
+    path, body = bodies["PUT", "/api/private-import-targets/{target_id}"]
+    room = body_limit("PUT", path) - len(json.dumps(body).encode()) - 70_000
+    opportunity = {**body["opportunity"], "description_raw": "Join the lab. " * (5 * 1024 * 1024 // 14)}
+    opportunity["raw_html"] = "<p>Join.</p>" * ((room - len(opportunity["description_raw"])) // 12)
+    yield "ROUTES PUT private import legitimate: text to the body limit", path, {**body, "opportunity": opportunity}, "PUT"
+    path, body = bodies["POST", "/api/resume/full-target/export"]
+    projection = json.loads(json.dumps(body["projection"]))
+    per_line = (body_limit("POST", path) - len(json.dumps(body).encode()) - 70_000) // 600
+    for section in projection["sections"]:
+        for block in section["blocks"]:
+            for row in block["lines"]:
+                row["text"] = ("Built a rig. " * (per_line // 13 + 1))[:per_line]
+    yield "ROUTES POST export legitimate: text to the body limit", path, {
+        **body, "projection": projection, "export_signature": export_signature(projection)}
+
+
+async def probe(path: str, content: bytes, concurrent: int = 1, method: str = "POST"):
     transport = httpx.ASGITransport(app=main_module.app)
     async with httpx.AsyncClient(transport=transport, base_url="http://probe", timeout=300) as client:
         stop, lag, gaps = asyncio.Event(), [0.0], []
@@ -257,7 +336,8 @@ async def probe(path: str, content: bytes, concurrent: int = 1):
 
         tasks = [asyncio.create_task(wake()), asyncio.create_task(heartbeat())]
         await asyncio.sleep(0.02)
-        responses = await asyncio.gather(*(client.post(path, content=content, headers={"content-type": "application/json"})
+        headers = {"content-type": "application/json", "authorization": "Bearer probe"}
+        responses = await asyncio.gather(*(client.request(method, path, content=content, headers=headers)
                                            for _ in range(concurrent)))
         response = responses[0]
         stop.set()
@@ -273,6 +353,30 @@ def levels(value: str) -> list[int]:
     return out
 
 
+def stub_corpus_and_credentials() -> None:
+    """No corpus in any route module, and a private caller whose credential is already verified."""
+    import contextlib
+    import importlib
+    import pkgutil
+
+    from backend import routes
+    from backend.lib import private_import_targets as storage
+
+    for info in pkgutil.iter_modules(routes.__path__):
+        module = importlib.import_module(f"backend.routes.{info.name}")
+        for name, empty in (("load_opportunities_by_id", dict), ("load_opportunities", list),
+                            ("load_opportunities_generation", lambda: ([], "probe"))):
+            if hasattr(module, name):
+                setattr(module, name, empty)
+
+    @contextlib.asynccontextmanager
+    async def verified(*args, **kwargs):
+        yield
+
+    storage.caller_verified_before_parsing = verified
+    importlib.import_module("backend.routes.private_import_targets").caller_verified_before_parsing = verified
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--threshold", type=float, default=0.25)
@@ -282,24 +386,25 @@ def main() -> int:
     args = parser.parse_args()
     main_module.feature_enabled = lambda feature: True
     release_scope.feature_enabled = lambda feature: True
-    tailor.load_opportunities_by_id = full_route.load_opportunities_by_id = lambda: {}
+    stub_corpus_and_credentials()
     gc.collect()
     gc.freeze()
     rows = []
     for concurrent in args.concurrent:
-        for name, path, body in cases():
+        for case in cases():
+            name, path, body, method = (*case, "POST")[:4]
             if args.only and args.only not in name:
                 continue
             content = body if isinstance(body, bytes) else json.dumps(body, separators=(",", ":")).encode()
             containers = content.count(b"[") + content.count(b"{")
             best = None
             for _ in range(3):
-                result = asyncio.run(probe(path, content, concurrent))
+                result = asyncio.run(probe(path, content, concurrent, method))
                 best = result if best is None or result[1] < best[1] else best
                 if best[1] <= args.threshold:
                     break
             response, lag, gap = best
-            rows.append((concurrent, path, lag, name))
+            rows.append((concurrent, f"{method} {path}", lag, name))
             flag = "OVER" if lag > args.threshold else "ok  "
             print(f"{flag} {lag * 1000:8.1f} ms lag {gap * 1000:8.1f} ms gap {len(content) / 1024:6.0f} KiB "
                   f"{containers:7d} containers  {response.status_code} {len(response.content):6d} B  x{concurrent}  {name}",

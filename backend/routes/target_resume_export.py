@@ -5,10 +5,10 @@ from time import monotonic
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.routing import APIRoute
 from starlette.responses import JSONResponse, Response
 
 from backend.lib.blocking import LOCAL_WORK_TIMEOUT_SECONDS, BlockingWorkOverloaded, BlockingWorkTimeout, run_blocking
+from backend.lib.request_body import DOCUMENT_BOUNDS, BoundedJSONRoute, json_body_bounds
 from backend.lib.target_resume_export import render_export
 from backend.lib.target_resume_export_schema import MAX_FILE_BYTES, MIME, TEMPLATE, ExportError, ExportRequest
 
@@ -17,7 +17,7 @@ ERROR_STATUS = {'invalid_export_signature': 422, 'invalid_export_text': 422, 'em
                 'unsupported_glyph': 422, 'fonts_unavailable': 503, 'export_too_large': 413, 'export_timeout': 504}
 
 
-class ExportRoute(APIRoute):
+class ExportRoute(BoundedJSONRoute):
     def get_route_handler(self):
         original = super().get_route_handler()
 
@@ -43,6 +43,7 @@ router = APIRouter(route_class=ExportRoute)
 
 
 @router.post('/resume/full-target/export')
+@json_body_bounds(DOCUMENT_BOUNDS)
 async def full_target_export(request: ExportRequest):
     try:
         request.verify_signature()

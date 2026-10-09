@@ -27,11 +27,12 @@ from backend.lib.blocking import (
     BlockingWorkTimeout,
     run_blocking,
 )
+from backend.lib.request_body import SMALL_BOUNDS, BoundedJSONRoute, json_body_bounds
 from src.collectors.import_document import ImportDocumentError
 from src.collectors.url_parser import UrlImportSourceError, is_safe_url, parse_url_llm
 
 logger = logging.getLogger(__name__)
-router = APIRouter()
+router = APIRouter(route_class=BoundedJSONRoute)
 
 _SOURCE_ERRORS = {
     "invalid_html": "The page could not be read as HTML. Paste the complete opportunity text.",
@@ -68,6 +69,7 @@ class ImportUrlResponse(BaseModel):
 
 
 @router.post("/import-url", response_model=ImportUrlResponse)
+@json_body_bounds(SMALL_BOUNDS)
 async def import_url(req: ImportUrlRequest) -> ImportUrlResponse:
     ok, reason = is_safe_url(req.url)
     if not ok:

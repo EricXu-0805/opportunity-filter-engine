@@ -44,10 +44,11 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from pydantic import BaseModel
 
 from backend.lib.release_scope import feature_enabled
+from backend.lib.request_body import SMALL_BOUNDS, BoundedJSONRoute, json_body_bounds
 from backend.routes.admin import require_admin
 from backend.routes.push import _required_env
 
-router = APIRouter()
+router = APIRouter(route_class=BoundedJSONRoute)
 logger = logging.getLogger("ofe.ops")
 
 # --- enums, mirrored from 031_ops_incidents.sql ----------------------------
@@ -429,6 +430,7 @@ class IncidentPatch(BaseModel):
 
 
 @router.patch("/admin/ops/incidents/{incident_id}")
+@json_body_bounds(SMALL_BOUNDS)
 async def patch_incident(
     incident_id: str,
     body: IncidentPatch,
@@ -644,6 +646,7 @@ class RetryRequest(BaseModel):
 
 
 @router.post("/admin/ops/incidents/{incident_id}/retry")
+@json_body_bounds(SMALL_BOUNDS)
 async def retry_incident(
     incident_id: str,
     body: RetryRequest | None = None,
@@ -2020,6 +2023,7 @@ class HeartbeatIn(BaseModel):
 
 
 @router.post("/cron/heartbeat")
+@json_body_bounds(SMALL_BOUNDS)
 async def cron_heartbeat(body: HeartbeatIn, authorization: str | None = Header(default=None)):
     """A scheduled job proving it is still alive.
 

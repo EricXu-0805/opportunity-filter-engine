@@ -21,6 +21,7 @@ from pathlib import Path
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
+from backend.lib.request_body import SMALL_BOUNDS, BoundedJSONRoute, json_body_bounds
 from src.tracking.professor_profiles import (
     PROFESSOR_ID_PATTERN,
     TRACKING_SCHEMA_VERSION,
@@ -29,7 +30,7 @@ from src.tracking.professor_profiles import (
     validate_tracking_event_evidence,
 )
 
-router = APIRouter()
+router = APIRouter(route_class=BoundedJSONRoute)
 logger = logging.getLogger("ofe.professors")
 
 TRACKING_PATH = (
@@ -191,6 +192,7 @@ class ProfessorUpdatesRequest(BaseModel):
 
 
 @router.post("/professors/updates")
+@json_body_bounds(SMALL_BOUNDS)
 async def professor_updates(body: ProfessorUpdatesRequest):
     """Verified update events for the requested professor ids, newest first.
 

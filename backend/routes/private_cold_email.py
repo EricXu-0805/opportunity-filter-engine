@@ -7,7 +7,6 @@ the existing separate contact-ledger contract.
 import httpx
 from fastapi import APIRouter, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.routing import APIRoute
 from pydantic import ValidationError
 from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse
@@ -23,9 +22,10 @@ from backend.lib.private_email_schema import (
 )
 from backend.lib.private_import_targets_schema import PRIVATE, PrivateTargetError
 from backend.lib.profile_validation import safe_profile_validation_detail
+from backend.lib.request_body import DOCUMENT_BOUNDS, BoundedJSONRoute, json_body_bounds
 
 
-class PrivateEmailRoute(APIRoute):
+class PrivateEmailRoute(BoundedJSONRoute):
     def get_route_handler(self):
         original = super().get_route_handler()
 
@@ -73,6 +73,7 @@ async def _context(target_id: str, data: PrivateEmailRequest, request: Request) 
 
 
 @router.post('/{target_id}/cold-email/variants')
+@json_body_bounds(DOCUMENT_BOUNDS)
 async def variants(target_id: str, data: PrivateEmailRequest, request: Request):
     context = await _context(target_id, data, request)
     if context['contact_policy']['state'] == 'blocked':
@@ -82,6 +83,7 @@ async def variants(target_id: str, data: PrivateEmailRequest, request: Request):
 
 
 @router.post('/{target_id}/cold-email/validate')
+@json_body_bounds(DOCUMENT_BOUNDS)
 async def validate(target_id: str, data: PrivateEmailValidationRequest, request: Request):
     context = await _context(target_id, data, request)
     response = PrivateEmailValidationResponse.model_validate(validate_manual(data, context))

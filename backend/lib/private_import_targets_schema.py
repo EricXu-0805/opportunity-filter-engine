@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime
 from typing import Any
 from uuid import UUID
@@ -54,8 +55,12 @@ def encoded(value: Any) -> bytes:
         raise ValueError("Invalid JSON") from None
 
 
+# A lone surrogate, found by the regex engine's C loop rather than by a Python loop over every character.
+_SURROGATE = re.compile("[\ud800-\udfff]")
+
+
 def _depth(value: Any, depth: int = 0) -> None:
-    if isinstance(value, str) and ("\x00" in value or any(0xD800 <= ord(c) <= 0xDFFF for c in value)):
+    if isinstance(value, str) and ("\x00" in value or _SURROGATE.search(value)):
         raise ValueError("Invalid JSON text")
     if depth > 32:
         raise ValueError("Invalid JSON nesting")

@@ -23,11 +23,13 @@ class ExportError(ValueError):
     """Only stable public codes, never private text or underlying errors."""
 
 
+# A character XML 1.0 cannot hold, found by the regex engine's C loop rather than by a Python loop.
+_NOT_XML = re.compile('[^\t\n\r\x20-\ud7ff\ue000-\ufffd\U00010000-\U0010ffff]')
+
+
 def xml_text(value: str) -> str:
-    for char in value:
-        point = ord(char)
-        if not (point in (9, 10, 13) or 0x20 <= point <= 0xD7FF or 0xE000 <= point <= 0xFFFD or 0x10000 <= point <= 0x10FFFF):
-            raise ExportError('invalid_export_text')
+    if _NOT_XML.search(value):
+        raise ExportError('invalid_export_text')
     return value
 
 

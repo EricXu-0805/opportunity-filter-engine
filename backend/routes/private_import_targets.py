@@ -6,7 +6,6 @@ from contextlib import asynccontextmanager
 import httpx
 from fastapi import APIRouter, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.routing import APIRoute
 from pydantic import Field, ValidationError, field_validator
 from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse
@@ -30,6 +29,7 @@ from backend.lib.private_import_targets_schema import (
     timestamp,
 )
 from backend.lib.private_target_resolution import project_private_target, resolve_private_import_target
+from backend.lib.request_body import SMALL_BOUNDS, WRITING_BOUNDS, BoundedJSONRoute, json_body_bounds
 
 TRACKER_BATCH_LIMIT = 100
 _TRACKER_BATCH_CONCURRENCY = 4
@@ -62,7 +62,7 @@ async def _screen_body(request: Request) -> None:
         raise PrivateTargetError("private_target_auth_required", 401)
 
 
-class PrivateTargetRoute(APIRoute):
+class PrivateTargetRoute(BoundedJSONRoute):
     def get_route_handler(self):
         original = super().get_route_handler()
 
@@ -144,6 +144,7 @@ class TrackerBatchRequest(Scope):
 
 
 @router.post("/resolved")
+@json_body_bounds(SMALL_BOUNDS)
 async def read_resolved_targets(data: TrackerBatchRequest, request: Request):
     """Tracker identity for many owned targets in one rate-limited request.
 
@@ -186,6 +187,7 @@ async def read_target(target_id: str, request: Request):
 
 
 @router.put("/{target_id}")
+@json_body_bounds(WRITING_BOUNDS)
 async def save_target(target_id: str, data: SaveRequest, request: Request):
     identifier(target_id)
     if request.query_params:
@@ -196,6 +198,7 @@ async def save_target(target_id: str, data: SaveRequest, request: Request):
 
 
 @router.delete("/{target_id}")
+@json_body_bounds(SMALL_BOUNDS)
 async def delete_target(target_id: str, data: DeleteRequest, request: Request):
     identifier(target_id)
     if request.query_params:

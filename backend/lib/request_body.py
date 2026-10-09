@@ -3,24 +3,30 @@
 Each route bounds two counts of a body, both read outside JSON strings: its lists and objects
 (structural_containers), and the commas between items (structural_separators), one before every
 item of a list or object but the first. Text inside strings counts for nothing, so a résumé or a
-profile may hold any brackets and commas its own limits allow. The bounds sit well above what the
-route's legitimate requests hold: scripts/request_body_containers.py builds the largest body each
-request schema accepts and prints both counts beside the bounds, and scripts/worst_inputs_lag.py
-measures bodies at and past them.
+profile may hold any brackets and commas its own limits allow.
+
+Every endpoint that reads a JSON body declares its bounds (json_body_bounds), and its route class
+(BoundedJSONRoute, or the full-target routes' request lane) refuses a body past either before the
+body is parsed. The bounds sit well above what the route's legitimate requests hold:
+scripts/request_body_containers.py finds every route of the app that reads a JSON body, builds the
+largest body each request schema accepts and prints both counts beside the bounds, and
+scripts/worst_inputs_lag.py measures bodies at and past them.
 
 /api/tailor/extract-bullets and /api/tailor/structure take one résumé of up to
-MAX_RESUME_TEXT_CHARACTERS, which origin/main reads whole (criterion E). Their route class
-(ResumeJSONRoute) has a container bound of its own and keeps the comma bound round 5 gave it (a comma
-per résumé character, plus 100), set when commas inside strings still counted.
+MAX_RESUME_TEXT_CHARACTERS, which origin/main reads whole (criterion E). They have a container bound
+of their own and keep the comma bound round 5 gave them (a comma per résumé character, plus 100),
+set when commas inside strings still counted.
 """
 from __future__ import annotations
 
 import json
+from typing import NamedTuple
 
 from fastapi import Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.routing import APIRoute
 
+from backend.lib.blocking import run_request_work
 from backend.lib.resume_input import MAX_RESUME_TEXT_CHARACTERS
 
 # Lists and objects outside JSON strings, per route. The largest body each route's request schema
@@ -97,35 +103,76 @@ def check_body_bounds(body: bytes, max_separators: int = MAX_JSON_SEPARATORS,
                                        "input": None}])
 
 
+class JSONBodyBounds(NamedTuple):
+    """At most this many lists and objects, and commas between items, outside a body's strings."""
+
+    containers: int
+    separators: int
+
+
+# Each route's bounds are at least four times what the largest body its request schema accepts holds
+# (scripts/request_body_containers.py prints both for every JSON route). A profile and a few lists:
+# the matching, chat and writing routes, and a private import's save.
+WRITING_BOUNDS = JSONBodyBounds(MAX_JSON_CONTAINERS, MAX_JSON_SEPARATORS)
+# A résumé master, a full-target draft or an export projection: the cold-email routes and those two.
+DOCUMENT_BOUNDS = JSONBodyBounds(MAX_FULL_TARGET_JSON_CONTAINERS, MAX_JSON_SEPARATORS)
+# A profile and the ids of every saved or dismissed target. The schema keeps any number of ids, so
+# the comma bound sits above what real ids fill the body limit with.
+ID_LIST_BOUNDS = JSONBodyBounds(MAX_JSON_CONTAINERS, 100_000)
+RESUME_BOUNDS = JSONBodyBounds(MAX_RESUME_JSON_CONTAINERS, MAX_RESUME_JSON_SEPARATORS)
+# A few fields, at most 200 ids or 50 mailed items.
+SMALL_BOUNDS = JSONBodyBounds(1_000, 5_000)
+
+
+def json_body_bounds(bounds: JSONBodyBounds):
+    """Declare the structural bounds of an endpoint's JSON body (BoundedJSONRoute enforces them)."""
+    def declare(endpoint):
+        endpoint.json_body_bounds = bounds
+        return endpoint
+    return declare
+
+
+def declared_bounds(route: APIRoute) -> JSONBodyBounds | None:
+    """The bounds a route's endpoint declares, or None."""
+    return getattr(route.endpoint, "json_body_bounds", None)
+
+
+# A body larger than the default body limit (backend.main) is counted on the request lane.
+LANE_BODY_BYTES = 1024 * 1024
+
+
 async def refuse_container_heavy_body(request: Request, max_separators: int = MAX_JSON_SEPARATORS,
                                       max_containers: int = MAX_JSON_CONTAINERS) -> None:
-    """check_body_bounds on the request's body, on the event loop, before FastAPI parses it.
+    """check_body_bounds on the request's body, before FastAPI parses it.
 
-    The full-target routes, whose bodies reach 2 MiB, run it on their request lane instead
+    A body of up to LANE_BODY_BYTES is counted on the event loop. A larger one, which only the
+    routes with a larger body limit accept, is counted on the request lane
+    (blocking.run_request_work), where the full-target routes run their whole check
     (routes/target_resume_ai.py).
     """
-    check_body_bounds(await request.body(), max_separators, max_containers)
+    body = await request.body()
+    if len(body) > LANE_BODY_BYTES:
+        await run_request_work(check_body_bounds, body, max_separators, max_containers)
+    else:
+        check_body_bounds(body, max_separators, max_containers)
 
 
 class BoundedJSONRoute(APIRoute):
-    """An APIRoute that refuses a JSON body past its structural bounds before FastAPI parses it."""
+    """An APIRoute that refuses a JSON body past its endpoint's declared bounds before the body is parsed.
 
-    max_separators = MAX_JSON_SEPARATORS
-    max_containers = MAX_JSON_CONTAINERS
+    The check runs inside any handler a subclass wraps around this one, so a refusal takes the form
+    of that route's own validation errors. An endpoint that declares no bounds (one that takes no
+    JSON body, or a multipart upload) reads its body as an APIRoute does.
+    """
 
     def get_route_handler(self):
         original = super().get_route_handler()
-        max_separators, max_containers = self.max_separators, self.max_containers
+        bounds = declared_bounds(self)
+        if bounds is None:
+            return original
 
         async def handler(request: Request):
-            await refuse_container_heavy_body(request, max_separators, max_containers)
+            await refuse_container_heavy_body(request, bounds.separators, bounds.containers)
             return await original(request)
 
         return handler
-
-
-class ResumeJSONRoute(BoundedJSONRoute):
-    """BoundedJSONRoute with the bounds of a route that reads one résumé."""
-
-    max_separators = MAX_RESUME_JSON_SEPARATORS
-    max_containers = MAX_RESUME_JSON_CONTAINERS

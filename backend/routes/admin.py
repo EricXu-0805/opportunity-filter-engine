@@ -34,13 +34,14 @@ from backend.lib.corpus_freshness import (
     CORPUS_FRESHNESS_WARN_HOURS,
 )
 from backend.lib.corpus_freshness import corpus_last_updated_at as _opportunities_mtime
+from backend.lib.request_body import SMALL_BOUNDS, BoundedJSONRoute, json_body_bounds
 from backend.routes.email import _enforce_recipient_quota, _html_escape, _send_via_resend
 from backend.routes.push import _required_env
 from backend.routes.saved_searches import _parse_iso_ts
 from src.evidence import record_kind
 from src.matcher.feedback_learning import analyze_votes
 
-router = APIRouter()
+router = APIRouter(route_class=BoundedJSONRoute)
 logger = logging.getLogger(__name__)
 
 _PROCESSED_DIR = Path(__file__).resolve().parents[2] / "data" / "processed"
@@ -1425,6 +1426,7 @@ async def feedback_ticket_detail(
 
 
 @router.patch("/admin/feedback/{ticket_id}")
+@json_body_bounds(SMALL_BOUNDS)
 async def update_feedback_ticket(
     ticket_id: str,
     req: FeedbackPatchRequest,
@@ -1582,6 +1584,7 @@ async def update_feedback_ticket(
 
 
 @router.post("/admin/feedback/{ticket_id}/reply")
+@json_body_bounds(SMALL_BOUNDS)
 async def reply_to_feedback_ticket(
     ticket_id: str,
     req: FeedbackReplyRequest,

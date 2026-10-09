@@ -46,6 +46,7 @@ from backend.lib.release_scope import (
     release_visible_opportunities,
     release_visible_opportunity_by_id,
 )
+from backend.lib.request_body import ID_LIST_BOUNDS, WRITING_BOUNDS, BoundedJSONRoute, json_body_bounds
 from backend.lib.target_actionability import (
     actionable_opportunities,
     assert_target_actionable,
@@ -95,7 +96,7 @@ from src.matcher.ranker import (
 )
 from src.recommender.resume_advisor import analyze_gaps
 
-router = APIRouter()
+router = APIRouter(route_class=BoundedJSONRoute)
 
 _REDACTED_FIELDS = frozenset({"contact_email", "pi_email"})
 
@@ -1533,6 +1534,7 @@ def _ai_pass_allowed(request: Request, llm: bool) -> bool:
 
 
 @router.post("/matches", response_model=MatchesResponse)
+@json_body_bounds(WRITING_BOUNDS)
 async def get_matches(
     request: Request,
     profile: ProfileRequest,
@@ -1642,6 +1644,7 @@ async def get_matches(
 
 
 @router.post("/matches/view", response_model=MatchesResponse)
+@json_body_bounds(ID_LIST_BOUNDS)
 async def get_match_view(
     request: Request,
     body: MatchViewRequest,
@@ -1760,6 +1763,7 @@ async def get_match_view(
 
 
 @router.post("/matches/{opportunity_id}/gaps")
+@json_body_bounds(WRITING_BOUNDS)
 async def get_gap_analysis(opportunity_id: str, profile: ProfileRequest):
     if len(opportunity_id) > 100:
         raise HTTPException(status_code=400, detail="Invalid opportunity ID")
@@ -1897,6 +1901,7 @@ _EXCLUSION_GAP_TEXT = {
 
 
 @router.post("/matches/{opportunity_id}/explain")
+@json_body_bounds(WRITING_BOUNDS)
 async def get_match_explanation(
     request: Request,
     opportunity_id: str,
