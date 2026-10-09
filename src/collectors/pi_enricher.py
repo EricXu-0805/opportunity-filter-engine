@@ -21,7 +21,12 @@ from bs4 import BeautifulSoup
 from src.evidence import stamp_inferred
 from src.normalizers.school_audience import SOURCE_DEFAULTS
 
-from .ucb_common import _ca_bundle, _is_person_name
+from .ucb_common import (
+    _ca_bundle,
+    _is_person_name,
+    note_rejected_certificate,
+    skip_rejected_certificate,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -228,6 +233,7 @@ def _fetch_soup(url: str) -> BeautifulSoup | None:
         resp.raise_for_status()
         return BeautifulSoup(resp.text, "html.parser")
     except Exception as e:
+        note_rejected_certificate(url, e)
         logger.warning(f"Failed to fetch {url}: {e}")
         return None
 
@@ -387,7 +393,8 @@ def enrich_opportunities(opps: list[dict], save: bool = False,
     fetched; the pages it leaves wait for the next run, like ``max_scrapes``."""
     stats = {"total": len(opps), "already_has_email": 0, "enriched": 0,
              "scraped": 0, "inferred_pi": 0, "failed": 0, "skipped_budget": 0,
-             "skipped_deadline": 0, "skipped_program": 0, "skipped_tombstoned": 0}
+             "skipped_deadline": 0, "skipped_program": 0, "skipped_tombstoned": 0,
+             "skipped_certificate": 0}
 
     for i, opp in enumerate(opps):
         if opp.get("contact_email"):
@@ -429,6 +436,10 @@ def enrich_opportunities(opps: list[dict], save: bool = False,
             stats["skipped_budget"] += 1
         elif scrapeable and deadline is not None and time.monotonic() >= deadline:
             stats["skipped_deadline"] += 1
+        elif scrapeable and skip_rejected_certificate(url):
+            # Rejected again on every page of that host, after a handshake
+            # and DELAY, and it would spend a scrape-budget slot each time.
+            stats["skipped_certificate"] += 1
         elif scrapeable:
             soup = _fetch_soup(url)
             stats["scraped"] += 1

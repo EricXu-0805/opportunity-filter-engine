@@ -2875,6 +2875,33 @@ function renovationReadFailure(error: unknown, token: OwnerToken): Error {
   return error instanceof RenovationLoadError || error instanceof OwnerMismatchError || error instanceof OwnerNotReadyError
     ? error : new RenovationLoadError('read_failed');
 }
+// The target-résumé reads use the same 30 s (TARGET_RESUME_READ_TIMEOUT_MS).
+const RENOVATION_READ_TIMEOUT_MS = 30_000;
+type RenovationWait = <V>(value: PromiseLike<V>) => Promise<V>;
+/** One deadline covers identity and transport, so a read that never answers
+ * rejects into the caller's restore-error/Retry path instead of spinning. A
+ * late answer is observed but never resumes its caller. Read-only: a timeout
+ * says nothing about any save. Copied from target-resume-storage's readWithin. */
+async function renovationReadWithin<T>(origin: OwnerToken,
+  read: (signal: AbortSignal, wait: RenovationWait) => Promise<T>): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), RENOVATION_READ_TIMEOUT_MS);
+  const wait: RenovationWait = value => new Promise((resolve, reject) => {
+    const stop = () => reject(new RenovationLoadError('read_failed'));
+    if (controller.signal.aborted) { void Promise.resolve(value).catch(() => {}); stop(); return; }
+    controller.signal.addEventListener('abort', stop, { once: true });
+    Promise.resolve(value).then(result => { controller.signal.removeEventListener('abort', stop); resolve(result); },
+      error => { controller.signal.removeEventListener('abort', stop); reject(error); });
+  });
+  try { return await read(controller.signal, wait); }
+  catch (error) { throw renovationReadFailure(error, origin); }
+  finally { clearTimeout(timer); controller.abort(); }
+}
+function renovationCancellable<T>(query: T, signal: AbortSignal): T {
+  // PostgREST supports this; small test/legacy adapters may only be thenable.
+  const candidate = query as T & { abortSignal?: (signal: AbortSignal) => T };
+  return typeof candidate.abortSignal === 'function' ? candidate.abortSignal(signal) : query;
+}
 function renovationCurrent(value: unknown, opportunityId: string, token: OwnerToken): StoredRenovation {
   if (!renovationRecord(value) || !renovationKeys(value, ['owner_id', 'opportunity_id', 'revision', 'payload', 'updated_at'])
     || value.owner_id !== token.uid || value.opportunity_id !== opportunityId || !renovationPositive(value.revision)
@@ -2886,16 +2913,17 @@ function renovationCurrent(value: unknown, opportunityId: string, token: OwnerTo
 /** Only an explicit successful absent receipt permits creating a new draft. */
 export async function loadRenovation(opportunityId: string, token: OwnerToken = captureOwnerToken()): Promise<StoredRenovation | null> {
   const origin = { ...token };
-  try {
+  return renovationReadWithin(origin, async (signal, wait) => {
     if (!renovationTargetValid(opportunityId)) throw new RenovationLoadError('invalid_saved_data');
-    await renovationReady(origin);
-    const { data, error } = await supabase.rpc('read_renovation', { p_expected_owner: origin.uid, p_opportunity_id: opportunityId });
+    await wait(renovationReady(origin));
+    const { data, error } = await wait(renovationCancellable(
+      supabase.rpc('read_renovation', { p_expected_owner: origin.uid, p_opportunity_id: opportunityId }), signal));
     renovationOwner(origin);
     if (error) throw new RenovationLoadError('read_failed');
     if (renovationRecord(data) && data.status === 'absent' && renovationKeys(data, ['status'])) return null;
     if (!renovationRecord(data) || data.status !== 'found' || !renovationKeys(data, ['status', 'current'])) throw new RenovationLoadError('invalid_saved_data');
     return renovationCurrent(data.current, opportunityId, origin);
-  } catch (error) { throw renovationReadFailure(error, origin); }
+  });
 }
 
 function renovationCursor(value: unknown): RenovationHistoryCursor {
@@ -2923,14 +2951,14 @@ export async function listRenovationVersions(
   opportunityId: string, limit = 20, token: OwnerToken = captureOwnerToken(), cursor?: RenovationHistoryCursor,
 ): Promise<RenovationVersionPage> {
   const origin = { ...token };
-  try {
+  return renovationReadWithin(origin, async (signal, wait) => {
     if (!renovationTargetValid(opportunityId) || !Number.isInteger(limit) || limit < 1 || limit > 50) throw new RenovationLoadError('invalid_saved_data');
     const before = cursor === undefined ? null : renovationCursor(cursor);
-    await renovationReady(origin);
-    const { data, error } = await supabase.rpc('list_renovation_versions', {
+    await wait(renovationReady(origin));
+    const { data, error } = await wait(renovationCancellable(supabase.rpc('list_renovation_versions', {
       p_expected_owner: origin.uid, p_opportunity_id: opportunityId, p_limit: limit,
       p_before_created_at: before?.created_at ?? null, p_before_id: before?.id ?? null,
-    });
+    }), signal));
     renovationOwner(origin);
     if (error) throw new RenovationLoadError('read_failed');
     if (!renovationRecord(data) || !renovationKeys(data, ['items', 'next_cursor']) || !Array.isArray(data.items) || data.items.length > limit) throw new RenovationLoadError('invalid_saved_data');
@@ -2941,19 +2969,19 @@ export async function listRenovationVersions(
     const last = items.at(-1);
     if (next && (items.length !== limit || !last || next.id !== last.id || next.created_at !== last.created_at)) throw new RenovationLoadError('invalid_saved_data');
     return { items, next_cursor: next };
-  } catch (error) { throw renovationReadFailure(error, origin); }
+  });
 }
 
 export async function readRenovationVersion(
   opportunityId: string, versionId: string, token: OwnerToken = captureOwnerToken(),
 ): Promise<RenovationVersion | null> {
   const origin = { ...token };
-  try {
+  return renovationReadWithin(origin, async (signal, wait) => {
     if (!renovationTargetValid(opportunityId) || typeof versionId !== 'string' || !RENOVATION_UUID.test(versionId)) throw new RenovationLoadError('invalid_saved_data');
-    await renovationReady(origin);
-    const { data, error } = await supabase.rpc('get_renovation_version', {
+    await wait(renovationReady(origin));
+    const { data, error } = await wait(renovationCancellable(supabase.rpc('get_renovation_version', {
       p_expected_owner: origin.uid, p_opportunity_id: opportunityId, p_version_id: versionId,
-    });
+    }), signal));
     renovationOwner(origin);
     if (error) throw new RenovationLoadError('read_failed');
     if (renovationRecord(data) && data.status === 'absent' && renovationKeys(data, ['status'])) return null;
@@ -2972,7 +3000,7 @@ export async function readRenovationVersion(
       payload = { doc: legacy.doc, base_snapshot: null, method: null, warnings: null };
     }
     return { ...meta, owner_id: origin.uid!, opportunity_id: opportunityId, payload };
-  } catch (error) { throw renovationReadFailure(error, origin); }
+  });
 }
 
 // ── Professor follows + verified-update read cursors (W8) ─────────────────
