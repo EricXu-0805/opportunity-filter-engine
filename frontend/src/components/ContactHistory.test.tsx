@@ -102,6 +102,14 @@ describe('ContactHistory — truthful saved snapshots', () => {
     expect(container.innerHTML).not.toMatch(/[0-9a-f]{64}/i);
   });
 
+  it('shows a version that only contains a run of hex characters whole', async () => {
+    mocks.getContactEvents.mockResolvedValue(page([event({ materialRefs: [{ kind: 'profile', version: 'cafe1234-v2' }] })]));
+    render(<ContactHistory {...props} />);
+    await screen.findByText('Research question');
+    fireEvent.click(within(screen.getByTestId('contact-event-sources')).getByText(label('materials')));
+    expect(screen.getByText('cafe1234-v2')).toBeInTheDocument();
+  });
+
   it('shows absent material references and a missing subject explicitly', async () => {
     mocks.getContactEvents.mockResolvedValue(page([event({ subject: '', materialRefs: [] })]));
     render(<ContactHistory {...props} />);
