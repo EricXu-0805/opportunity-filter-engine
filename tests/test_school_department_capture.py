@@ -582,6 +582,13 @@ class TestJhuBmeFollowUpFailure:
         pytest.param({3: "<html><head></head><body></body></html>"}, id="pg3-renders-blank"),
         # The site came back but the list did not; page 2's pager links pg=3.
         pytest.param({3: _BME_PAST_THE_END}, id="linked-pg3-renders-no-cards"),
+        # The site, or a cache in front of it, answered with a page the walk
+        # had already read, so the people of the page it asked for went unseen.
+        pytest.param({2: (FIXTURES / "jhu_bme_page1.html").read_text(),
+                      3: (FIXTURES / "jhu_bme_page1.html").read_text()},
+                     id="pg2-and-pg3-serve-page-1"),
+        pytest.param({3: (FIXTURES / "jhu_bme_page2.html").read_text()},
+                     id="pg3-serves-page-2"),
     ])
     def test_a_page_that_did_not_load_keeps_its_professors(self, monkeypatch, served):
         entry, report, active = self._second_run(monkeypatch, served)

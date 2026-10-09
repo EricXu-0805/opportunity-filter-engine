@@ -995,8 +995,8 @@ def _new_coverage() -> dict:
         "identity_match_failures": 0,
         "parser_errors": 0,
         # Also counts roster pages the walk did not read (blocked, timed out,
-        # rendered empty, past the walk's cap): the people listed on them were
-        # never seen.
+        # rendered empty, served another page's cards, past the walk's cap):
+        # the people listed on them were never seen.
         "partial_render_rows": 0,
     }
 
@@ -1238,6 +1238,12 @@ def _pager_pages(soup, page_url: str, roots: set[tuple[str, str]], param: str,
                 if n.isdigit():
                     pages.add(int(n))
     return pages
+
+
+def _card_print(card) -> str:
+    """A roster card's text and links: equal on a page the site served twice."""
+    hrefs = [card.get("href") or "", *(a.get("href") or "" for a in card.select("a[href]"))]
+    return " ".join([*card.get_text(" ", strip=True).split(), *hrefs])
 
 
 def _is_cf_interstitial(soup) -> bool:
@@ -1529,17 +1535,22 @@ def _scrape_directory(dept: dict) -> list[dict]:
             #     any HTTP status, so None is Cloudflare's shell, a timeout or
             #     an empty document after every retry;
             #   * a document with no text at all, or Cloudflare's shell;
-            #   * a page without cards before a page with cards;
+            #   * a page that showed no new cards before a page that did;
             #   * a page that the roster's own pager links to (on the configured
-            #     directory or where it redirects) and that showed no cards.
+            #     directory or where it redirects) and that showed no new cards.
             #     This is what tells a plain fetch's None for a 403 or a timeout
             #     from the 404 past the last page. A linked page past ``max``
             #     means the walk stopped short of the roster.
+            # A page counts as showing cards only when some card is new: a page
+            # that repeats cards already read is the site ignoring the page
+            # parameter, or a cache answering with another page. Past the last
+            # page some sites serve their last page again; nothing links it.
             start, last = pag.get("start", 1), pag.get("max", 12)
             card_sel = sel.get("card", "")
             landed = getattr(soup, "_ofe_final_url", None) or base
             roots = {_directory_root(base), _directory_root(landed)}
             linked = _pager_pages(soup, landed, roots, param, vpre, path_mode)
+            shown = {_card_print(c) for c in soup.select(card_sel)}
             walked: list[int] = []
             read: set[int] = set()
             not_read: set[int] = set()
@@ -1551,8 +1562,10 @@ def _scrape_directory(dept: dict) -> list[dict]:
                     f"{base}{'&' if '?' in base else '?'}{param}={vpre}{pg}")
                 s2 = fetch(next_url) or fetch(next_url)
                 walked.append(pg)
-                if s2 is not None and s2.select(card_sel):
+                cards = [] if s2 is None else [_card_print(c) for c in s2.select(card_sel)]
+                if not shown.issuperset(cards):
                     read.add(pg)
+                    shown.update(cards)
                     linked |= _pager_pages(
                         s2, getattr(s2, "_ofe_final_url", None) or next_url,
                         roots, param, vpre, path_mode)

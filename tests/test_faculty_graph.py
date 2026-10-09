@@ -492,6 +492,64 @@ class TestScrapeLayer:
                              paginate={"param": "page", "start": 1, "max": 2})
         assert cov["partial_render_rows"] == 1
 
+    # A follow-up page that serves cards the walk already read (the site
+    # ignored the page parameter, or a cache answered with another page) did
+    # not show the people of the page it was asked for.
+    def test_a_linked_page_that_serves_an_earlier_page_withholds_the_unit(self, monkeypatch):
+        first = self._card("a", "Ann Alpha") + self._NAV.format(1) + self._NAV.format(2)
+        pages = {"https://x.edu/f": first,
+                 "https://x.edu/f?page=1": self._card("b", "Ben Beta") + self._NAV.format(2),
+                 "https://x.edu/f?page=2": first}
+        cov = self._coverage(monkeypatch, pages,
+                             paginate={"param": "page", "start": 1, "max": 5})
+        assert cov["partial_render_rows"] == 1
+
+    def test_a_repeated_page_before_a_new_one_withholds_the_unit(self, monkeypatch):
+        first = self._card("a", "Ann Alpha")
+        pages = {"https://x.edu/f": first, "https://x.edu/f?page=1": first,
+                 "https://x.edu/f?page=2": self._card("c", "Cy Gamma")}
+        cov = self._coverage(monkeypatch, pages,
+                             paginate={"param": "page", "start": 1, "max": 5})
+        assert cov["partial_render_rows"] == 1
+
+    def test_a_site_that_repeats_its_last_page_past_the_end_keeps_the_unit(self, monkeypatch):
+        # Stanford EE answers ?page=6 and ?page=7 with its last page (5) again,
+        # and that page's pager links itself as the current page.
+        last = self._card("b", "Ben Beta") + self._NAV.format(1) + '<a href="#top">top</a>'
+        pages = {"https://x.edu/f": self._card("a", "Ann Alpha") + self._NAV.format(1),
+                 "https://x.edu/f?page=1": last, "https://x.edu/f?page=2": last,
+                 "https://x.edu/f?page=3": last}
+        cov = self._coverage(monkeypatch, pages,
+                             paginate={"param": "page", "start": 1, "max": 5})
+        assert cov["partial_render_rows"] == 0
+
+    def test_a_site_that_ignores_the_page_parameter_off_its_pager_keeps_the_unit(self, monkeypatch):
+        # OSU Arts and Sciences lists the whole roster on one page and answers
+        # ?page=N with it again; the roster has no pager.
+        whole = self._card("a", "Ann Alpha") + self._card("b", "Ben Beta")
+        pages = {"https://x.edu/f": whole, "https://x.edu/f?page=1": whole,
+                 "https://x.edu/f?page=2": whole}
+        cov = self._coverage(monkeypatch, pages,
+                             paginate={"param": "page", "start": 1, "max": 4})
+        assert cov["partial_render_rows"] == 0
+
+    def test_a_page_of_new_cards_the_filters_drop_counts_as_read(self, monkeypatch):
+        # Pitt Chemistry's last two linked pages hold only staff: new cards that
+        # yield no faculty rows. The page was read; it is not a repeat.
+        staff = ('<div class="c"><a class="n" href="/p/{0}">{1}</a>'
+                 '<span class="t">Staff Assistant</span></div>')
+        pages = {"https://x.edu/f": (self._card("a", "Ann Alpha") + self._NAV.format(1)
+                                     + self._NAV.format(2)),
+                 "https://x.edu/f?page=1": staff.format("s1", "Sam Staff"),
+                 "https://x.edu/f?page=2": staff.format("s2", "Sue Staff")}
+        cov = self._coverage(monkeypatch, pages, ladder_filter={"drop": "(?i)staff"},
+                             selectors={"card": "div.c", "name": ".n", "link": ".n",
+                                        "title": ".t"},
+                             paginate={"param": "page", "start": 1, "max": 5})
+        assert cov["raw_roster_rows"] == 3
+        assert cov["parsed_faculty_rows"] == 1
+        assert cov["partial_render_rows"] == 0
+
     def test_a_pager_on_the_page_the_directory_redirects_to_counts(self, monkeypatch):
         # cs.cornell.edu/people/faculty lands on /directory, and its pager's
         # relative links resolve there, not under the configured path.
