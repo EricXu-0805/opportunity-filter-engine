@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { waitFor } from '@testing-library/react';
 
 const { mockFrom, mockGetSession, mockUpsert, mockVersionInsert, mockMaybeSingle, mockHistory, mockRpc } = vi.hoisted(() => {
@@ -15,7 +15,7 @@ vi.mock('@supabase/supabase-js', () => ({
   }),
 }));
 
-import { loadRenovation, listRenovationVersions, RenovationLoadError, saveRenovation } from './supabase';
+import { loadRenovation, listRenovationVersions, readRenovationVersion, RenovationLoadError, saveRenovation } from './supabase';
 import { advanceOwnerEpoch, captureOwnerToken, isLocalOwnerReady, syncLocalIdentityOwner } from './identity-owner';
 
 const A = 'renovation-anonymous-a';
@@ -247,5 +247,51 @@ describe('renovation restore outcomes', () => {
     reject(new Error('PRIVATE OLD OWNER CONTENT'));
     await assertion;
     expect(mockUpsert).not.toHaveBeenCalled();
+  });
+});
+
+// A read that never answers used to leave the restore spinner up for good;
+// the modal and the history panel already turn a rejection into Retry.
+describe('renovation read deadline', () => {
+  afterEach(() => { vi.useRealTimers(); });
+  function settles(promise: Promise<unknown>) {
+    const state = { done: false, value: undefined as unknown };
+    void promise.then(value => { state.value = value; }, (error: unknown) => { state.value = error; }).finally(() => { state.done = true; });
+    return state;
+  }
+  const reads = [
+    ['read_renovation', () => loadRenovation('opp-1')],
+    ['list_renovation_versions', () => listRenovationVersions('opp-1')],
+    ['get_renovation_version', () => readRenovationVersion('opp-1', '00000000-0000-4000-8000-000000000001')],
+  ] as const;
+  it.each(reads)('a hung %s RPC rejects at 30 s and cancels the request', async (name, read) => {
+    let signal: AbortSignal | undefined;
+    const hung = { then() {}, abortSignal(value: AbortSignal) { signal = value; return hung; } };
+    mockRpc.mockImplementation(() => hung);
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const outcome = settles(read());
+    await vi.advanceTimersByTimeAsync(29_999);
+    expect(mockRpc).toHaveBeenCalledWith(name, expect.objectContaining({ p_expected_owner: A, p_opportunity_id: 'opp-1' }));
+    expect(outcome.done).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(outcome.done).toBe(true);
+    expect(outcome.value).toBeInstanceOf(RenovationLoadError); expect(outcome.value).toMatchObject({ code: 'read_failed' });
+    expect(signal?.aborted).toBe(true);
+  });
+
+  it.each(reads)('%s: a hung session check falls inside the same deadline', async (_name, read) => {
+    mockGetSession.mockReturnValue(new Promise(() => {}));
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const outcome = settles(read());
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(outcome.done).toBe(true); expect(outcome.value).toMatchObject({ name: 'RenovationLoadError', code: 'read_failed' });
+    expect(mockRpc).not.toHaveBeenCalled();
+  });
+
+  it('a read that answers in time leaves no deadline behind', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const timers = vi.getTimerCount();
+    expect(await loadRenovation('opp-1')).toEqual(stored);
+    expect(vi.getTimerCount()).toBe(timers);
   });
 });

@@ -33,6 +33,7 @@ import hashlib
 import json
 import logging
 import re
+import ssl
 import time
 import unicodedata
 from datetime import UTC, datetime
@@ -627,6 +628,93 @@ def _reset_rate_limit_circuit() -> None:
     _rate_limited_hosts.clear()
 
 
+# Per-endpoint certificate circuit. A certificate the trust store rejects is
+# rejected again on every request to that host and port, yet each one still
+# cost a handshake, fetch_soup's retry backoff and the caller's politeness
+# delay: www.udel.edu's 35 department listings took 225 s of the 2026-10-08
+# refresh, and www.math.ucla.edu's 54 profiles took the PI pass 2 s each on
+# 2026-10-01. After the first rejection the endpoint's remaining https URLs
+# are skipped and counted for the run summary. Only a verification failure
+# opens it; a reset or an EOF during the handshake may pass on retry.
+# In-memory only, like the 429 circuit: one process is one refresh run.
+_rejected_certificates: dict[str, int] = {}
+
+
+def _tls_endpoint(url: object) -> str | None:
+    """``host`` (or ``host:port`` off 443) of an https URL, else None."""
+    if not isinstance(url, str):
+        return None
+    try:
+        parts = urlsplit(url)
+        port = parts.port
+    except ValueError:
+        return None
+    if parts.scheme.lower() != "https" or not parts.hostname:
+        return None
+    host = parts.hostname.lower()
+    return host if port in (None, 443) else f"{host}:{port}"
+
+
+def _certificate_rejected(error: BaseException) -> bool:
+    """Whether ``error`` is a certificate that failed verification.
+
+    requests nests the ssl error a few levels down: its SSLError holds a
+    MaxRetryError, whose ``reason`` is urllib3's SSLError, which holds the
+    ssl.SSLCertVerificationError.
+    """
+    seen: set[int] = set()
+    pending: list[object] = [error]
+    while pending:
+        current = pending.pop()
+        if not isinstance(current, BaseException) or id(current) in seen:
+            continue
+        seen.add(id(current))
+        if isinstance(current, ssl.SSLCertVerificationError):
+            return True
+        pending.extend((getattr(current, "reason", None), *current.args))
+    return False
+
+
+def note_rejected_certificate(url: str, error: BaseException) -> bool:
+    """Open the circuit when ``error`` is a rejected certificate; say whether.
+
+    The endpoint is the one the failing request went to, which after a
+    redirect is not ``url``'s.
+    """
+    if not _certificate_rejected(error):
+        return False
+    endpoint = _tls_endpoint(getattr(getattr(error, "request", None), "url", None)) or _tls_endpoint(url)
+    if endpoint and endpoint not in _rejected_certificates:
+        _rejected_certificates[endpoint] = 0
+        logger.warning(
+            f"{endpoint}: certificate rejected — skipping its remaining "
+            f"https URLs for this run"
+        )
+    return True
+
+
+def skip_rejected_certificate(url: str) -> bool:
+    """Whether ``url`` goes to an endpoint whose certificate this run already
+    rejected; each such skip is counted."""
+    endpoint = _tls_endpoint(url)
+    if endpoint not in _rejected_certificates:
+        return False
+    _rejected_certificates[endpoint] += 1
+    return True
+
+
+def rejected_certificate_report() -> dict:
+    """Endpoints whose certificate this run rejected, and the fetches skipped."""
+    return {
+        "hosts": dict(sorted(_rejected_certificates.items())),
+        "skipped": sum(_rejected_certificates.values()),
+    }
+
+
+def reset_certificate_circuit() -> None:
+    _rejected_certificates.clear()
+
+
 def _retry_after_seconds(resp) -> float | None:
     """Delay-seconds form of Retry-After, capped; None when absent/unusable
     (the HTTP-date form is rare on rate limiters and not worth parsing)."""
@@ -685,6 +773,9 @@ def fetch_soup(url: str, ua: str | None = None, insecure: bool = False,
     if host in _rate_limited_hosts:
         logger.info(f"Skipping {url}: rate-limit circuit open for {host}")
         return None
+    if not insecure and skip_rejected_certificate(url):
+        logger.info(f"Skipping {url}: its certificate was rejected earlier this run")
+        return None
     session = requests.Session()
     session.headers.update(HEADERS)
     if ua:
@@ -723,6 +814,10 @@ def fetch_soup(url: str, ua: str | None = None, insecure: bool = False,
             )
         except (requests.exceptions.ConnectionError,
                 requests.exceptions.Timeout) as e:
+            if note_rejected_certificate(url, e):
+                # Every retry would present the same certificate.
+                logger.warning(f"Failed to fetch {url}: {e}")
+                return None
             last_err = e
         except requests.exceptions.HTTPError as e:
             # Retry transient server errors and 429 rate-limits (a shared Varnish
