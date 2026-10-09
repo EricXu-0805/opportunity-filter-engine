@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import subprocess
 import sys
 from datetime import UTC, datetime, timedelta
@@ -189,6 +190,21 @@ class TestWorkflowWiring:
             # The checker is a repo file: the job must have a working copy.
             job = next(iter(self._workflow(name)["jobs"].values()))
             assert any("checkout" in str(s.get("uses", "")) for s in job["steps"]), name
+
+    def test_daily_digests_cover_a_run_as_late_as_the_dead_man_allows(self):
+        # Each digest reads "the last N hours". GitHub started this cron at
+        # 2026-10-01 23:10 UTC and then 2026-10-03 01:45 UTC, a 26.6 h gap,
+        # so a 25 h window skipped what arrived in between. The window must
+        # cover the period plus the grace migration 032 gives this job before
+        # it calls the job dead.
+        sql = (_REPO / "supabase/migrations/032_dead_man_switch.sql").read_text()
+        m = re.search(r"\('daily_reminders',\s*'[^']*',\s*(\d+),\s*(\d+),", sql)
+        assert m, "daily_reminders heartbeat row not found"
+        allowed_gap_hours = (int(m[1]) + int(m[2])) / 3600
+        text = (_REPO / ".github/workflows/daily-reminders.yml").read_text()
+        windows = [int(h) for h in re.findall(r"since_hours=(\d+)", text)]
+        assert len(windows) == 2, windows
+        assert all(h >= allowed_gap_hours for h in windows), (windows, allowed_gap_hours)
 
     def test_refresh_workflow_persists_the_history_ledger(self):
         text = (_REPO / ".github/workflows/refresh-data.yml").read_text()

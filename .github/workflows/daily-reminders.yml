@@ -117,6 +117,11 @@ jobs:
       - name: New-feedback digest
         # The feedback table is INSERT-only under RLS (operators read it via
         # the admin endpoint) — without this, feedback lands invisibly.
+        # Both digests look back 31h, not 24: GitHub starts this cron hours
+        # late (10-01 23:10 UTC, then 10-03 01:45 UTC), and a window shorter
+        # than the gap skips what arrived in it. 31h covers the period plus
+        # the 6h grace migration 032 allows. An item can show up in two
+        # digests in a row; none goes unreported.
         env:
           ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
@@ -129,10 +134,10 @@ jobs:
             exit 0
           fi
           BODY=$(curl -sf -H "X-Admin-Token: $ADMIN_TOKEN" \
-                 "${{ secrets.BACKEND_URL }}/api/admin/feedback?since_hours=25&limit=50") || exit 0
+                 "${{ secrets.BACKEND_URL }}/api/admin/feedback?since_hours=31&limit=50") || exit 0
           COUNT=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin).get('count', 0))")
           if [ "$COUNT" = "0" ]; then
-            echo "No new feedback in the last 25h"
+            echo "No new feedback in the last 31h"
             exit 0
           fi
           DIGEST=$(echo "$BODY" | python3 -c "
@@ -153,7 +158,7 @@ jobs:
           ")
           if [ -n "$ANALYSIS" ]; then DIGEST=$(printf '%s\n\n%s' "$DIGEST" "$ANALYSIS"); fi
           export DIGEST_BODY="$DIGEST" FB_COUNT="$COUNT" APP_URL="${{ secrets.FRONTEND_URL }}" MAIL_FROM="${{ vars.RESEND_FROM_EMAIL }}"
-          PAYLOAD=$(python3 -c 'import json,os; print(json.dumps({"from": os.environ.get("MAIL_FROM") or "JoinALab <onboarding@resend.dev>", "to": [os.environ["OPERATOR_EMAIL"]], "subject": "JoinALab: %s new user feedback" % os.environ["FB_COUNT"], "text": "New feedback in the last 25h:\n\n%s\n\nInbox: %s/admin" % (os.environ["DIGEST_BODY"], os.environ.get("APP_URL", ""))}))')
+          PAYLOAD=$(python3 -c 'import json,os; print(json.dumps({"from": os.environ.get("MAIL_FROM") or "JoinALab <onboarding@resend.dev>", "to": [os.environ["OPERATOR_EMAIL"]], "subject": "JoinALab: %s new user feedback" % os.environ["FB_COUNT"], "text": "New feedback in the last 31h:\n\n%s\n\nInbox: %s/admin" % (os.environ["DIGEST_BODY"], os.environ.get("APP_URL", ""))}))')
           curl -sf -X POST https://api.resend.com/emails \
             -H "Authorization: Bearer $RESEND_API_KEY" \
             -H "Content-Type: application/json" \
@@ -174,10 +179,10 @@ jobs:
             exit 0
           fi
           BODY=$(curl -sf -H "X-Admin-Token: $ADMIN_TOKEN" \
-                 "${{ secrets.BACKEND_URL }}/api/admin/orders?status=awaiting_confirm&since_hours=25&limit=50") || exit 0
+                 "${{ secrets.BACKEND_URL }}/api/admin/orders?status=awaiting_confirm&since_hours=31&limit=50") || exit 0
           COUNT=$(echo "$BODY" | python3 -c "import sys,json; print(json.load(sys.stdin).get('count', 0))")
           if [ "$COUNT" = "0" ]; then
-            echo "No new claimed orders in the last 25h"
+            echo "No new claimed orders in the last 31h"
             exit 0
           fi
           DIGEST=$(echo "$BODY" | python3 -c "
@@ -190,7 +195,7 @@ jobs:
           print('\\n'.join(lines))
           ")
           export DIGEST_BODY="$DIGEST" ORDER_COUNT="$COUNT" APP_URL="${{ secrets.FRONTEND_URL }}" MAIL_FROM="${{ vars.RESEND_FROM_EMAIL }}"
-          PAYLOAD=$(python3 -c 'import json,os; print(json.dumps({"from": os.environ.get("MAIL_FROM") or "JoinALab <onboarding@resend.dev>", "to": [os.environ["OPERATOR_EMAIL"]], "subject": "JoinALab: %s order(s) awaiting confirmation" % os.environ["ORDER_COUNT"], "text": "Orders claimed as paid in the last 25h:\n\n%s\n\nConfirm: %s/admin" % (os.environ["DIGEST_BODY"], os.environ.get("APP_URL", ""))}))')
+          PAYLOAD=$(python3 -c 'import json,os; print(json.dumps({"from": os.environ.get("MAIL_FROM") or "JoinALab <onboarding@resend.dev>", "to": [os.environ["OPERATOR_EMAIL"]], "subject": "JoinALab: %s order(s) awaiting confirmation" % os.environ["ORDER_COUNT"], "text": "Orders claimed as paid in the last 31h:\n\n%s\n\nConfirm: %s/admin" % (os.environ["DIGEST_BODY"], os.environ.get("APP_URL", ""))}))')
           curl -sf -X POST https://api.resend.com/emails \
             -H "Authorization: Bearer $RESEND_API_KEY" \
             -H "Content-Type: application/json" \
