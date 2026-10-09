@@ -914,12 +914,14 @@ def test_the_timer_holds_the_collector_off_and_restores_it():
 # took time quadratic in, each inside the parser's limits at the size given:
 # (in the head or the body, build(size), size). The crawlers' tests read a
 # configured page holding each one, timed against the same page holding a
-# quarter of it.
+# quarter of it. The deep runs sit in <div>s: nested <h1>s (the profile
+# identity checks) and nested <a>s (campus link scoring) are still read in time
+# quadratic in their depth, held only by the parser's limits.
 CROWDED_MARKUP = [
     pytest.param('body', lambda n: '<br>' * n + '</p>' * n, 29_000, id='void-then-end-tags'),
     pytest.param('head', lambda n: '<meta http-equiv="Content-Type" content="' + '\n' * n + '">', 100_000,
                  id='meta-content-line-breaks'),
-    pytest.param('body', lambda n: '<div>' * (n // 28) + '<b></b>x' * n, 14_000, id='text-runs-500-deep'),
+    pytest.param('body', lambda n: '<div>' * (n // 28) + '<b></b>x' * n, 14_000, id='text-runs-500-divs-deep'),
     pytest.param('head', lambda n: '<meta x' + 'charset=' * n + '>', 128_000, id='charset-run'),
 ]
 
