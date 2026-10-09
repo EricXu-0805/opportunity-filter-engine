@@ -1,7 +1,6 @@
 """Real endpoints save complete static source while model processing remains excerpt-only."""
 import json
 import socket
-import time
 from pathlib import Path
 
 import pytest
@@ -10,6 +9,7 @@ from fastapi.testclient import TestClient
 
 from backend.main import app
 from src.collectors import url_parser
+from tests.test_import_document import _deadline, _growth
 
 URL = 'https://example.edu/program?session=private-token-for-test'
 END = 'END OF COMPLETE SOURCE: SQL is preferred, not required.'
@@ -217,9 +217,8 @@ def test_a_run_of_loading_words_does_not_hold_the_import_route(importer, monkeyp
     html = ('<html><head><title>Posting</title><script src="/app.js"></script></head><body><p>'
             + 'loading loading, ' * 24 + 'x</p></body></html>')
     monkeypatch.setattr(url_parser.requests, 'get', lambda *a, **k: response(html))
-    started = time.perf_counter()
-    result = client.post('/api/import-url', json={'url': URL})
-    assert time.perf_counter() - started < 2
+    with _deadline(2):
+        result = client.post('/api/import-url', json={'url': URL})
     assert result.status_code == 200, result.text
     assert result.json()['opportunity']['description_raw'].startswith('loading loading, ')
 
@@ -233,9 +232,8 @@ def test_a_long_punctuation_title_does_not_hold_the_import_route(importer, monke
             '<body><main><h1>Undergraduate Research Assistant</h1><p>The Soil Microbiology Lab seeks an undergraduate '
             'research assistant for spring 2027.</p></main></body></html>')
     monkeypatch.setattr(url_parser.requests, 'get', lambda *a, **k: response(html))
-    started = time.perf_counter()
-    result = client.post('/api/import-url', json={'url': URL})
-    assert time.perf_counter() - started < 2
+    with _deadline(2):
+        result = client.post('/api/import-url', json={'url': URL})
     assert result.status_code == 200, result.text
     assert 'The Soil Microbiology Lab seeks' in result.json()['opportunity']['description_raw']
 
@@ -247,9 +245,8 @@ def test_a_page_past_the_reader_limits_is_refused_as_too_large_at_once(importer,
     html = ('<html><body><main><h1>Undergraduate Research Assistant</h1><p>The Soil Microbiology Lab seeks an '
             'undergraduate research assistant for spring 2027.</p>' + '<h1>' * 4000 + 'x</main></body></html>')
     monkeypatch.setattr(url_parser.requests, 'get', lambda *a, **k: response(html))
-    started = time.perf_counter()
-    result = client.post('/api/import-url', json={'url': URL})
-    assert time.perf_counter() - started < 2
+    with _deadline(2):
+        result = client.post('/api/import-url', json={'url': URL})
     assert result.status_code == 413
     detail = result.json()['detail']
     assert (detail['code'], detail['reason']) == ('import_input_too_large', 'too_large')
@@ -262,17 +259,27 @@ def test_a_page_crowded_with_navigation_does_not_hold_the_import_route(importer,
     # copy of the page one at a time, each removal searching its parent's
     # children: 14,000 of them, each followed by a <span>, took the old route
     # 3.9 s. The page is now parsed once and read without removing anything.
+    # A CI runner took up to 1.4 s on it, so the route is timed against the
+    # same page with a quarter of the navigation rather than against 2 s.
     client, calls = importer
-    html = ('<html><body><main><h1>Undergraduate Research Assistant</h1><p>The Soil Microbiology Lab seeks an '
-            'undergraduate research assistant for spring 2027.</p>' + '<nav></nav><span></span>' * 14_000
-            + '</main></body></html>')
-    monkeypatch.setattr(url_parser.requests, 'get', lambda *a, **k: response(html))
-    started = time.perf_counter()
-    result = client.post('/api/import-url', json={'url': URL})
-    assert time.perf_counter() - started < 2
-    assert result.status_code == 200, result.text
+    served = {}
+    monkeypatch.setattr(url_parser.requests, 'get', lambda *a, **k: response(served['html']))
+
+    def post(html):
+        served['html'] = html
+        result = client.post('/api/import-url', json={'url': URL})
+        assert result.status_code == 200, result.text
+        return result
+
+    def crowded(navs):
+        return ('<html><body><main><h1>Undergraduate Research Assistant</h1><p>The Soil Microbiology Lab seeks an '
+                'undergraduate research assistant for spring 2027.</p>' + '<nav></nav><span></span>' * navs
+                + '</main></body></html>')
+    result = post(crowded(14_000))
     assert 'The Soil Microbiology Lab seeks' in result.json()['opportunity']['description_raw']
     assert len(calls) == 1
+    growth = _growth(post, crowded(3_500), crowded(14_000))
+    assert growth < 8, f'four times the navigation took {growth:.1f} times as long'
 
 
 def test_page_metadata_cannot_widen_the_model_prompt(importer, monkeypatch):

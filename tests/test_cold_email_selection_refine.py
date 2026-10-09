@@ -350,7 +350,7 @@ def test_whole_body_schema_and_response_remain_compatible(environment, monkeypat
     monkeypatch.setattr(ce, "chat_completion", lambda *_a, **_k: body(NEW))
     response = request(environment, value)
     assert response.status_code == 200, response.text
-    assert response.json()["body"] == body(NEW).replace("Dear Pat Lee,\n\n", "Dear Pat Lee,\n", 1)
+    assert response.json()["body"] == body(NEW)
     assert response.json()["method"] == "llm"
     assert "scope" not in response.json() and "proposal" not in response.json()
     # B42: legacy shape/response stay compatible, but oversized text is now

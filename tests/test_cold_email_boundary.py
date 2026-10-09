@@ -17,9 +17,14 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
 _REPO = Path(__file__).resolve().parents[1]
 
 from backend.lib.contact_visibility import contact_email_status, verified_send_target
+from backend.routes import cold_email as ce
 from backend.routes.cold_email import (
     COLD_EMAIL_PIPELINE_VERSION,
     _source_freshness,
@@ -27,6 +32,7 @@ from backend.routes.cold_email import (
 )
 from backend.routes.responsiveness import CONTACT_STATUSES, REPLIED_STATUSES
 from src.evidence import is_unit_mailbox_email
+from tests.experience_fixtures import confirmed_experience
 
 
 def _faculty(email: str, *, active: bool = True, source: str | None = None,
@@ -341,3 +347,140 @@ class TestTheAlignmentSentenceUsesTheSameGate:
         assert _infer_research_topic(
             self._faculty("Psycholinguistics and cognitive neuroscience of language")
         ) == "Psycholinguistics and cognitive neuroscience of language"
+
+
+# ---------------------------------------------------------------------------
+# Served drafts keep one blank line between greeting and paragraphs (U11)
+# ---------------------------------------------------------------------------
+
+class TestServedGreetingKeepsItsBlankLine:
+    """_enforce_brief_greeting dropped the blank body lines after the greeting
+    and re-joined without one, so every AI draft and AI edit reached the
+    student as "Dear …,\\nI am…" whatever the model wrote. The shorter quick
+    edit dropped a filler paragraph but kept the blank lines on both sides of
+    it, so the served draft gained a doubled blank line."""
+
+    OPP = {
+        "id": "greeting-format", "source_type": "campus_program",
+        "opportunity_type": "research", "title": "Research Program",
+        "pi_name": "Pat Lee", "organization": "Test University",
+        "department": "Engineering", "keywords": ["hypersonics"],
+        "description_raw": "Hypersonics research.",
+        "eligibility": {}, "application": {}, "metadata": {"is_active": True},
+    }
+    PROFILE = {"name": "Eric", "school": "UIUC", "year": "sophomore", "major": "Computer Science",
+               "research_interests_text": "hypersonics"}
+    REST = "I am interested in hypersonics.\n\nWould you have 15 minutes for a conversation?\n\nBest regards,\nEric"
+
+    @pytest.fixture
+    def client(self, monkeypatch):
+        app = FastAPI()
+        app.include_router(ce.router, prefix="/api")
+        monkeypatch.setattr(ce, "load_opportunities_by_id", lambda: {self.OPP["id"]: self.OPP})
+        monkeypatch.setattr(ce, "is_configured", lambda: True)
+        monkeypatch.setenv("OFE_COLD_EMAIL_NDRAFT", "1")
+        monkeypatch.setenv("OFE_COLD_EMAIL_CRITIQUE", "0")
+        return TestClient(app)
+
+    @pytest.mark.parametrize("endpoint", ["/cold-email", "/cold-email/refine"])
+    @pytest.mark.parametrize("opening", [
+        "Dear Pat Lee,\n\n",
+        "Dear Pat Lee,\n",
+        "Dear Pat Lee, ",
+        "Dear Pat Lee,\n\n\n\n",
+        "Dear Professor Lee,\n\n",
+    ])
+    def test_one_blank_line_follows_the_greeting(self, client, monkeypatch, endpoint, opening):
+        body = opening + self.REST
+        if endpoint == "/cold-email":
+            monkeypatch.setattr(ce, "chat_completion", lambda *_a, **_k: f"Subject: Research inquiry\n\n{body}")
+            payload = {"engine": "ai"}
+        else:
+            monkeypatch.setattr(ce, "chat_completion", lambda *_a, **_k: body)
+            payload = {"current_body": f"Dear Pat Lee,\n\n{self.REST}", "instruction": "make it warmer"}
+        response = client.post(f"/api{endpoint}", json={
+            "profile": self.PROFILE, "opportunity_id": self.OPP["id"],
+            "experience_evidence": confirmed_experience([]), **payload,
+        })
+        assert response.status_code == 200, response.text
+        out = response.json()
+        assert out["method"] == ("ai" if endpoint == "/cold-email" else "llm"), out
+        assert out["body"] == f"Dear Pat Lee,\n\n{self.REST}"
+
+    @pytest.mark.parametrize("endpoint", ["/cold-email", "/cold-email/refine"])
+    @pytest.mark.parametrize("gap", ["\n\n\n\n", "\n \n\t\n", "\n\n  \n\n"])
+    def test_a_run_of_blank_lines_between_paragraphs_is_served_as_one(self, client, monkeypatch, endpoint, gap):
+        body = f"Dear Pat Lee,\n\nI am interested in hypersonics.{gap}I study Computer Science at UIUC.\n\nBest regards,\nEric"
+        self._serve(monkeypatch, endpoint, body)
+        out = self._post(client, endpoint)
+        assert out["method"] == ("ai" if endpoint == "/cold-email" else "llm"), out
+        assert out["body"] == "Dear Pat Lee,\n\nI am interested in hypersonics.\n\nI study Computer Science at UIUC.\n\nBest regards,\nEric"
+
+    @pytest.mark.parametrize("endpoint", ["/cold-email", "/cold-email/refine"])
+    def test_a_confirmed_availability_keeps_its_own_blank_lines(self, client, monkeypatch, endpoint):
+        stated = "Mondays after 2pm.\n\n\nFridays any time."
+        body = f"Dear Pat Lee,\n\nI am interested in hypersonics.\n\n\n{stated}\n\n\nBest regards,\nEric"
+        self._serve(monkeypatch, endpoint, body)
+        out = self._post(client, endpoint, contact_context={
+            "version": 1, "purpose": "first_contact", "availability": {"text": stated, "confirmed": True}})
+        assert out["method"] == ("ai" if endpoint == "/cold-email" else "llm"), out
+        assert out["body"] == f"Dear Pat Lee,\n\nI am interested in hypersonics.\n\n{stated}\n\nBest regards,\nEric"
+
+    def _serve(self, monkeypatch, endpoint, body):
+        reply = f"Subject: Research inquiry\n\n{body}" if endpoint == "/cold-email" else body
+        monkeypatch.setattr(ce, "chat_completion", lambda *_a, **_k: reply)
+
+    def _post(self, client, endpoint, **extra):
+        payload = {"engine": "ai"} if endpoint == "/cold-email" else {
+            "current_body": f"Dear Pat Lee,\n\n{self.REST}", "instruction": "make it warmer"}
+        response = client.post(f"/api{endpoint}", json={
+            "profile": self.PROFILE, "opportunity_id": self.OPP["id"],
+            "experience_evidence": confirmed_experience([]), **payload, **extra,
+        })
+        assert response.status_code == 200, response.text
+        return response.json()
+
+    def test_the_shorter_quick_edit_leaves_one_blank_line_where_it_drops_a_paragraph(self, client, monkeypatch):
+        monkeypatch.setattr(ce, "is_configured", lambda: False)
+        current = ("Dear Pat Lee,\n\nI am interested in hypersonics.\n\nI am a fast learner.\n\n"
+                   "Would you have 15 minutes for a conversation?\n\nBest regards,\nEric")
+        response = client.post("/api/cold-email/refine", json={
+            "profile": self.PROFILE, "opportunity_id": self.OPP["id"],
+            "experience_evidence": confirmed_experience([]),
+            "current_body": current, "instruction": "make it shorter",
+        })
+        assert response.status_code == 200, response.text
+        out = response.json()
+        assert out["method"] == "local" and out["applied"] == ["concise"], out
+        assert out["body"] == f"Dear Pat Lee,\n\n{self.REST}"
+
+
+@pytest.mark.parametrize(("body", "expected"), [
+    ("Intro.\n\nI am a fast learner.\n\nAsk?", "Intro.\n\nAsk?"),
+    ("Intro.\n\nI am a fast learner.\nI am eager to pick up skills.\n\nAsk?", "Intro.\n\nAsk?"),
+    ("I am a fast learner.\n\nAsk?", "Ask?"),
+    ("Intro.\n\nI am a fast learner.", "Intro."),
+    ("Intro.\nI am a fast learner.\nAsk?", "Intro.\nAsk?"),
+    ("Intro.\nI am a fast learner.\n\nAsk?", "Intro.\n\nAsk?"),
+    # The student's own spacing away from a dropped line is not the edit's to change.
+    ("Intro.\n\n\nMiddle.\n\nI am a fast learner.\n\nAsk?", "Intro.\n\n\nMiddle.\n\nAsk?"),
+])
+def test_a_dropped_filler_line_takes_its_blank_line_with_it(body, expected):
+    assert ce._local_refine(body, "make it shorter")["body"] == expected
+
+
+@pytest.mark.parametrize(("body", "expected"), [
+    ("A.\n\n\nB.", "A.\n\nB."),
+    ("A.\n \n\t\nB.", "A.\n\nB."),
+    ("A.\r\n\r\nB.\r\nC.", "A.\n\nB.\nC."),
+    ("A.\nB.\n\nC.", "A.\nB.\n\nC."),
+    ("A.\n  indented", "A.\n  indented"),
+])
+def test_served_paragraphs_are_one_blank_line_apart(body, expected):
+    assert ce._one_blank_line_between_paragraphs(body, {}) == expected
+
+
+def test_a_multi_line_confirmed_sentence_keeps_its_spacing():
+    stated = "Mondays.\n \n\nFridays."
+    body = f"A.\n\n\n{stated}\n\n\nB."
+    assert ce._one_blank_line_between_paragraphs(body, {"contact_availability": stated}) == f"A.\n\n{stated}\n\nB."

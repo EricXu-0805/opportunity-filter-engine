@@ -27,6 +27,55 @@ TEMPLATE_CHARACTER_BUDGET = 220
 # is never a continuation.
 _WRAP = re.compile(r"(?<=[^\s.!?])[ \t]*\r?\n[ \t]*(?=[a-z]|\d(?!\d*[.)]\s))")
 
+# A role or heading line ("Undergraduate Research Assistant, Health Imaging Lab
+# (UIUC) - Jan 2026 - Present") names a title, a place and dates but nothing
+# the student did, and the template printed it as the email's one example of
+# their work (walked 2026-09-30). Capitals alone cannot tell such a line from
+# a short bullet of names ("Trained a CNN on CheXpert"), so a line is read as
+# one only on evidence of its shape: a heading all in capitals, or a row that
+# names a role in one of its first two fields, as the role row of
+# frontend/src/lib/resume-input.ts reads it (RESUME_ROLE, RESUME_FIELD_SEPARATOR),
+# or that carries a date range. Even then a field with two lowercase words
+# that do not join, date or name the role says what was done ("Health Imaging
+# Lab: trained a classifier on chest radiographs"). One such word is an
+# annotation ("under Prof. Smith"), and so is anything in brackets ("(remote)").
+# A word without case (Chinese) says nothing either way, and a line with no
+# cased word is never read as a role line, since this rule cannot read it.
+# The line stays a confirmed fact for the AI brief and every check; it is only
+# never the template's one quoted example.
+_LINE_WORD = re.compile(r"[^\W\d_]+(?:['’-][^\W\d_]+)*")
+_RESUME_ROLES = (
+    "intern assistant engineer researcher developer analyst manager lead leader fellow tutor consultant "
+    "scientist coordinator director president officer volunteer member designer associate specialist "
+    "technician founder chair captain mentor instructor grader programmer trainee editor writer"
+).split()
+_ROLE_LINE_LOWERCASE = frozenset((
+    "a an and as at by for from in of on or the to via with "
+    "present current now spring summer fall autumn winter"
+).split() + _RESUME_ROLES)
+_ROLE_WORD = re.compile(r"\b(?:" + "|".join(_RESUME_ROLES) + r")s?\b", re.IGNORECASE)
+_ROLE_FIELD_SEPARATOR = re.compile(r"\t|\s[|–—]\s|\s-\s|,\s|\s(?:at|@)\s")
+_BRACKETED = re.compile(r"\([^()]*\)|（[^（）]*）")
+_DATE = (r"(?:(?:(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]{0,6}\.?|spring|summer|fall|autumn|winter)\s+"
+         r"|\d{1,2}/)?(?:19|20)\d{2}(?:[./]\d{1,2})?")
+_DATE_RANGE = re.compile(rf"(?<![\w./]){_DATE}\s*(?:[-–—~]|to)\s*(?:{_DATE}|present|current|now|date)(?!\w)",
+                         re.IGNORECASE)
+
+
+def names_no_action(text: str) -> bool:
+    """A role or heading line, which no template quotes as the student's work."""
+    words = _LINE_WORD.findall(text)
+    if words and all(word == word.upper() != word.lower() for word in words):
+        return True
+    rest = _DATE_RANGE.sub(" ", _BRACKETED.sub(" ", text))
+    if not any(word.lower() != word.upper() for word in _LINE_WORD.findall(rest)):
+        return False
+    fields = _ROLE_FIELD_SEPARATOR.split(rest)
+    if not (_DATE_RANGE.search(text) or any(_ROLE_WORD.search(field) for field in fields[:2])):
+        return False
+    return all(sum(word.islower() and word not in _ROLE_LINE_LOWERCASE for word in _LINE_WORD.findall(field)) < 2
+               for field in fields)
+
 
 def _within_budget(entries: list[ExperienceEntry], contexts: dict | None = None) -> list[dict]:
     """Select whole entries; a fragment can lose a factual qualifier."""
@@ -221,6 +270,7 @@ def select_experience(
     selected = _within_budget(ranked, contexts)
     template = next((_receipt(entry, contexts) for entry in ranked
                      if len(entry.text) <= TEMPLATE_CHARACTER_BUDGET
-                     and resume_bullet_relevance(parts, entry.text) >= 2), None)
+                     and resume_bullet_relevance(parts, entry.text) >= 2
+                     and not names_no_action(entry.text)), None)
     return ExperienceSelection(eligible, selected, template, excluded, bool(legacy_bullets), contexts, context_notices,
                                evidence.resume_text if evidence is not None else "")

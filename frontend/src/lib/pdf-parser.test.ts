@@ -503,7 +503,7 @@ describe('real résumé PDFs keep every word and bullet intact', () => {
     pdfjs = await import(/* @vite-ignore */ library) as typeof import('pdfjs-dist');
   });
 
-  async function parseFixture(name: string) {
+  async function readFixture(name: string) {
     const bytes = readFileSync(join(FIXTURES, name));
     mockGetDocument.mockImplementation((options) => pdfjs.getDocument({
       data: new Uint8Array(options.data), cMapUrl: `${PDFJS}/cmaps/`, cMapPacked: true,
@@ -514,8 +514,9 @@ describe('real résumé PDFs keep every word and bullet intact', () => {
     Object.defineProperty(file, 'arrayBuffer', { value: async () => buffer.slice(0) });
     const result = await parseResumePDF(file);
     expect(result.success).toBe(true);
-    return result.raw_text;
+    return result;
   }
+  const parseFixture = async (name: string) => (await readFixture(name)).raw_text;
 
   // One file per stranger-walk report. Each wraps different lines: after
   // "baseline," and "(MATH" (CE-2), before "AUC", "& Statistics", "maps;" and
@@ -542,7 +543,11 @@ describe('real résumé PDFs keep every word and bullet intact', () => {
 
   it('keeps sidebar and main columns, graphic list bullets, right-aligned rows and one-item lists apart', async () => {
     // A right-aligned date or location is separated by a tab, not a space.
-    expect((await parseFixture('resume-layouts.pdf')).split('\n')).toEqual([
+    const layouts = await readFixture('resume-layouts.pdf');
+    // The sidebar's coursework list is cut inside "Biomedical Imaging"; its
+    // label says the list goes on.
+    expect(layouts.extracted_coursework).toEqual(['Biomedical Imaging', 'Differential Equations', 'Fluid Mechanics', 'Signals and Systems']);
+    expect(layouts.raw_text.split('\n')).toEqual([
       'Priya Natarajan',
       'priya.natarajan.test@example.com',
       '(217) 555-0142',
@@ -613,8 +618,10 @@ describe('real résumé PDFs keep every word and bullet intact', () => {
     // and honors rows after a list; items that open with a measure; and a
     // program's name after "check in".
     const pages = JSON.parse(readFileSync(join(FIXTURES, 'boundaries.json'), 'utf8')) as Array<{ lines: Array<[string, string]> }>;
-    expect((await parseFixture('resume-boundaries.pdf')).split('\n'))
-      .toEqual(pages.flatMap((page) => page.lines.map(([, text]) => text)));
+    const boundaries = await readFixture('resume-boundaries.pdf');
+    expect(boundaries.raw_text.split('\n')).toEqual(pages.flatMap((page) => page.lines.map(([, text]) => text)));
+    // The honors row right under the coursework list is not read as courses.
+    expect(boundaries.extracted_coursework).toEqual(['Algorithms', 'Computer Vision', 'Database Systems', 'Linear Algebra', 'Operating Systems']);
   });
 });
 
@@ -807,7 +814,9 @@ describe('positioned text items', () => {
   it('reads a full stop on the next line as the end of a glyph item only where glyph items end with one', async () => {
     // One-line items here end with a full stop, so a capitalized line that
     // ends one finishes the item before it, unless it is a row of its own.
+    // The role row's right-aligned date shows where the column ends.
     mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('Research Intern, Robotics Lab', 50, 140, 724), at('Jun 2025 - Aug 2025', 460, 90, 724, { hasEOL: true }),
       at('- Wrote unit tests for the parser.', 50, 160, 712, { hasEOL: true }),
       at('- Trained a baseline that reached 0.87', 50, 500, 700, { hasEOL: true }),
       at('AUC on a held-out split.', 50, 110, 688, { hasEOL: true }),
@@ -815,6 +824,7 @@ describe('positioned text items', () => {
       at('Campus Bus Tracker - React and Flask web app used by 200 students.', 50, 300, 664),
     ])) });
     expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      'Research Intern, Robotics Lab\tJun 2025 - Aug 2025',
       '- Wrote unit tests for the parser.',
       '- Trained a baseline that reached 0.87 AUC on a held-out split.',
       '- Compared three saliency methods for the clinical team and the lab manager',
@@ -945,6 +955,81 @@ describe('positioned text items', () => {
     ]);
   });
 
+  it('reads a coursework list across a wrap inside a course name', async () => {
+    // The text keeps "…, Data" / "Structures and Algorithms, …" apart: the
+    // row under a list is as often an organization or an honors line. Inside
+    // a labeled coursework list, the list says the line goes on where the
+    // page would let a hint join it: the same paragraph, an edge the page
+    // shows (the degree row's date), and no room left for the next word. A
+    // label, an honor or a role under the list is a row of its own, and a
+    // list that ends short of the edge ends there.
+    const parse = async (line: string, lineWidth: number, next: string) => {
+      mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+        at('B.S. in Computer Science', 50, 120, 748), at('Aug 2024 - May 2028', 460, 90, 748, { hasEOL: true }),
+        at(line, 50, lineWidth, 736, { hasEOL: true }),
+        at(next, 50, 210, 724),
+      ])) });
+      return parseResumePDF(fakeFile());
+    };
+    const line = 'Relevant coursework: Introduction to Computer Science, Data';
+    const result = await parse(line, 497, 'Structures and Algorithms, Discrete Mathematics');
+    expect(result.raw_text.split('\n').slice(1)).toEqual([line, 'Structures and Algorithms, Discrete Mathematics']);
+    expect(result.extracted_coursework).toEqual(['Data Structures and Algorithms', 'Discrete Mathematics', 'Introduction to Computer Science']);
+    for (const row of ["Dean's List, James Scholar", 'Honors: Dean’s List (4 semesters)', 'Teaching Assistant, Statistics Department']) {
+      expect((await parse(line, 497, row)).extracted_coursework).toEqual(['Data', 'Introduction to Computer Science']);
+    }
+    expect((await parse(line, 300, 'Structures and Algorithms, Discrete Mathematics')).extracted_coursework)
+      .toEqual(['Data', 'Introduction to Computer Science']);
+    const walk = await parse('Relevant coursework: Data Structures (CS 225), Computer Architecture (CS 233), Linear', 497,
+      'Algebra (MATH 257), Probability & Statistics (STAT 400).');
+    expect(walk.extracted_coursework).toEqual([
+      'CS 225', 'CS 233', 'Computer Architecture (CS 233)', 'Data Structures (CS 225)', 'Linear Algebra (MATH 257)',
+      'MATH 257', 'Probability & Statistics (STAT 400)', 'STAT 400',
+    ]);
+  });
+
+  it('goes on with a coursework list only in the same paragraph, where the page shows the edge, across every wrap and on any page', async () => {
+    const degree = [at('B.S. in Computer Science', 50, 120, 748), at('Aug 2024 - May 2028', 460, 90, 748, { hasEOL: true })];
+    const line = 'Relevant coursework: Introduction to Computer Science, Data';
+    const rest = 'Structures and Algorithms, Discrete Mathematics';
+    const courses = async (pages: unknown[][]) => {
+      mockGetDocument.mockReturnValue({ promise: Promise.resolve({
+        numPages: pages.length, destroy: async () => {},
+        getPage: async (n: number) => ({ cleanup: () => {}, getTextContent: async () => ({ items: pages[n - 1] as never }) }),
+      } as MockPdf) });
+      return (await parseResumePDF(fakeFile())).extracted_coursework;
+    };
+    const cut = ['Data', 'Introduction to Computer Science'];
+    const whole = ['Data Structures and Algorithms', 'Discrete Mathematics', 'Introduction to Computer Science'];
+    expect(await courses([[...degree, at(line, 50, 497, 736, { hasEOL: true }), at(rest, 50, 210, 724)]])).toEqual(whole);
+    // Nothing shows where the column ends: the list line is only the widest.
+    expect(await courses([[at('B.S. in Computer Science', 50, 120, 748, { hasEOL: true }),
+      at(line, 50, 497, 736, { hasEOL: true }), at(rest, 50, 210, 724)]])).toEqual(cut);
+    // A paragraph gap or another font starts something else.
+    expect(await courses([[...degree, at(line, 50, 497, 736, { hasEOL: true }), at(rest, 50, 210, 714)]])).toEqual(cut);
+    expect(await courses([[...degree, at(line, 50, 497, 736, { hasEOL: true }), at(rest, 50, 210, 724, { fontName: 'f2' })]]))
+      .toEqual(cut);
+    // A list goes on across every wrap, from a label on a line that a wrap
+    // joined ("Probability &" / "Statistics, …").
+    expect(await courses([[
+      ...degree,
+      at('Relevant coursework: Machine Learning, Probability &', 50, 497, 736, { hasEOL: true }),
+      at('Statistics, Introduction to Computer Science, Data', 50, 497, 724, { hasEOL: true }),
+      at('Structures and Algorithms, Discrete Mathematics, Linear', 50, 497, 712, { hasEOL: true }),
+      at('Algebra, Operating Systems', 50, 150, 700),
+    ]])).toEqual([
+      'Data Structures and Algorithms', 'Discrete Mathematics', 'Introduction to Computer Science', 'Linear Algebra',
+      'Machine Learning', 'Operating Systems', 'Probability & Statistics',
+    ]);
+    // On a later page, where the page's offset in the text counts the
+    // newline between pages.
+    expect(await courses([
+      [at('Jordan Lee', 50, 60, 748, { hasEOL: true }), at('jordan.lee@example.com', 50, 120, 736)],
+      [at('Robotics club member', 50, 100, 760, { hasEOL: true })],
+      [...degree, at(line, 50, 497, 736, { hasEOL: true }), at(rest, 50, 210, 724)],
+    ])).toEqual(whole);
+  });
+
   it('keeps a line that opens with a mixed-case name, an ordinal or a model number apart', async () => {
     mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
       at('Ported a legacy spreadsheet of lab inventory into a searchable web page for four research groups', 50, 500, 712, { hasEOL: true }),
@@ -1036,6 +1121,114 @@ describe('positioned text items', () => {
       'Tools: Python, SQL, Airflow, dbt, Docker, Kubernetes, Terraform, AWS Lambda, Redshift, Looker',
       'Presented the findings to the city council, which approved the plan',
     ]);
+  });
+
+  it('joins a line that hangs under the text of the glyph item above it where it reads as the rest of the item and the page shows the edge', async () => {
+    // The next item would open at the glyph, so a line that hangs under the
+    // item's text and reads as the rest of a sentence goes on with it where
+    // the line above ran out of room. No word here carries the line on, so
+    // the page must show where the column ends: the role row's date does. A
+    // line at the glyph does not hang, and a short glyph line did not run
+    // out of room.
+    const role = [at('Research Intern, Robotics Lab', 50, 140, 748), at('Jun 2025 - Aug 2025', 460, 90, 748, { hasEOL: true })];
+    const full = 'Compared three saliency methods for the clinical team at Carle';
+    const item = (indent: number, row = 'Foundation Hospital and wrote up the results for the lab') => [
+      at('•', 50, 4, 736), at(full, 59, 491, 736, { hasEOL: true }),
+      at(row, 50 + indent, 260, 724, { hasEOL: true }),
+      at('•', 50, 4, 712), at('Wrote unit tests for the parser', 59, 150, 712),
+    ];
+    const read = async (items: unknown[]) => {
+      mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf(items)) });
+      return (await parseResumePDF(fakeFile())).raw_text.split('\n');
+    };
+    const roleRow = 'Research Intern, Robotics Lab\tJun 2025 - Aug 2025';
+    expect(await read([...role, ...item(9)])).toEqual([
+      roleRow, `• ${full} Foundation Hospital and wrote up the results for the lab`, '• Wrote unit tests for the parser',
+    ]);
+    expect(await read([...role, ...item(0)])).toEqual([
+      roleRow, `• ${full}`, 'Foundation Hospital and wrote up the results for the lab', '• Wrote unit tests for the parser',
+    ]);
+    expect(await read([
+      ...role, ...item(9).slice(0, 3),
+      at('•', 50, 4, 712), at('Campus Bus Tracker', 59, 90, 712, { hasEOL: true }),
+      at('React and Flask web app used by 200 students', 59, 210, 700),
+    ])).toEqual([
+      roleRow, `• ${full} Foundation Hospital and wrote up the results for the lab`,
+      '• Campus Bus Tracker', 'React and Flask web app used by 200 students',
+    ]);
+    // Where nothing shows the edge, the item line may only be the widest in
+    // its column: it always seems to have run out of room.
+    expect(await read(item(9))).toEqual([
+      `• ${full}`, 'Foundation Hospital and wrote up the results for the lab', '• Wrote unit tests for the parser',
+    ]);
+    // A date, a role, an honor, a label or a row of names and numbers hangs
+    // under an item's text as often as its last line does.
+    for (const row of [
+      'Fall 2023 - Spring 2025', 'Aug 2024 - May 2025', 'Winner, HackIllinois 2025', "Dean's List, Fall 2024",
+      "Dean's List for four semesters", 'Research Assistant, Health Imaging Lab', 'Teaching Assistant for the intro course',
+      'Tools - PyTorch, NumPy', 'Capstone - a parking app for the city', 'Tools: PyTorch, NumPy, Weights & Biases',
+      'Skills: data cleaning and statistical modeling', 'Advisor: Prof. Jane Doe', 'Advisor Prof. Jane Doe', 'GPA 3.9/4.0',
+    ]) {
+      expect(await read([...role, ...item(9, row)])).toEqual([roleRow, `• ${full}`, row, '• Wrote unit tests for the parser']);
+    }
+    // A glyph item that is only the widest line in its column neither takes
+    // in the row under it nor shows the edge to the lines above.
+    expect(await read([
+      at('Kept the build scripts and the release checklist that two other teams now rely on', 50, 398, 748, { hasEOL: true }),
+      at('NVIDIA Jetson boards in the robotics lab', 50, 170, 736, { hasEOL: true }),
+      at('Wrote unit tests for the parser', 50, 160, 724, { hasEOL: true }),
+      at('•', 50, 4, 712), at("Dean's List, Grainger College of Engineering, University of Illinois", 59, 391, 712, { hasEOL: true }),
+      at('Fall 2023 - Spring 2025', 59, 110, 700, { hasEOL: true }),
+      at('•', 50, 4, 688), at('James Scholar', 59, 60, 688),
+    ])).toEqual([
+      'Kept the build scripts and the release checklist that two other teams now rely on',
+      'NVIDIA Jetson boards in the robotics lab',
+      'Wrote unit tests for the parser',
+      "• Dean's List, Grainger College of Engineering, University of Illinois",
+      'Fall 2023 - Spring 2025',
+      '• James Scholar',
+    ]);
+  });
+
+  it('measures the next line\'s first word by its glyphs, so a wide word did not fit where an average one would have', async () => {
+    // The role row's date shows that the column ends at 550. "AUC" takes a
+    // fifth of its line's width, not the eighth its three characters would
+    // take at the line's average width, so it could not have fitted in the
+    // 20pt left after "0.87". Nor could "memo", two of whose four letters
+    // are an "m", in the 34pt left after "two-page".
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('Undergraduate Research Assistant, Health Imaging Lab', 50, 250, 748), at('Jan 2026 - Present', 465, 85, 748, { hasEOL: true }),
+      at('- Wrote unit tests for the parser.', 50, 160, 736, { hasEOL: true }),
+      at('- Added a nightly job that checks the backups.', 50, 220, 724, { hasEOL: true }),
+      at('- Built a PyTorch pipeline that trains a ResNet-18 baseline on chest X-ray images, reaching 0.87', 50, 480, 712, { hasEOL: true }),
+      at('AUC on a held-out split.', 50, 110, 700, { hasEOL: true }),
+      at('- Surveyed 300 commuters about late buses and summarized their answers in a two-page', 50, 466, 688, { hasEOL: true }),
+      at('memo for the city.', 50, 92, 676),
+    ])) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      'Undergraduate Research Assistant, Health Imaging Lab\tJan 2026 - Present',
+      '- Wrote unit tests for the parser.',
+      '- Added a nightly job that checks the backups.',
+      '- Built a PyTorch pipeline that trains a ResNet-18 baseline on chest X-ray images, reaching 0.87 AUC on a held-out split.',
+      '- Surveyed 300 commuters about late buses and summarized their answers in a two-page memo for the city.',
+    ]);
+  });
+
+  it('gives words that carry a line on a tenth of the first word as slack, not more', async () => {
+    // The role row's date shows that the column ends at 550. By its glyphs,
+    // "trained" and the space before it take 37.5pt of their 120pt line, so
+    // the line ending in "and" ran out of room within 41pt of the edge (a
+    // tenth of the word's 34.4pt as slack) and not at 44pt.
+    const item = '- Ported the lab inventory spreadsheet to a small web app and';
+    for (const [room, joined] of [[39, true], [44, false]] as const) {
+      mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+        at('Research Intern, Robotics Lab', 50, 140, 736), at('Jun 2025 - Aug 2025', 460, 90, 736, { hasEOL: true }),
+        at(item, 50, 500 - room, 724, { hasEOL: true }),
+        at('trained the staff to use it', 50, 120, 712),
+      ])) });
+      expect((await parseResumePDF(fakeFile())).raw_text.split('\n').slice(1))
+        .toEqual(joined ? [`${item} trained the staff to use it`] : [item, 'trained the staff to use it']);
+    }
   });
 
   it('carries a line that ends in a preposition on only into a name that cannot open an item', async () => {
@@ -1332,8 +1525,8 @@ describe('positioned text items', () => {
   it('lets a weak hint join a line only where the page shows where its column ends', async () => {
     // In a column where no line wraps, the longest line only looks full: the
     // edge may lie further right. A role row's right-aligned date, a line
-    // that the words carry on, or a line that ends exactly where this one
-    // does (justified text) shows the edge.
+    // that the words carry on, or two other lines that end exactly where
+    // this one does (justified text) show the edge.
     const page = (...others: unknown[]) => pdfOf([
       ...others,
       at('Kept the build scripts and the release checklist that two other teams now rely on', 50, 400, 712, { hasEOL: true }),
@@ -1347,8 +1540,12 @@ describe('positioned text items', () => {
       [[], [], kept],
       [[at('Mentored three students in the robotics club', 50, 396, 724, { hasEOL: true })],
         ['Mentored three students in the robotics club'], kept],
+      // One other line that ends there can be a coincidence of ragged text.
       [[at('Mentored three students in the robotics club', 50, 400.2, 724, { hasEOL: true })],
-        ['Mentored three students in the robotics club'], joined],
+        ['Mentored three students in the robotics club'], kept],
+      [[at('Organized the weekly reading group for new members', 50, 399.8, 736, { hasEOL: true }),
+        at('Mentored three students in the robotics club', 50, 400.2, 724, { hasEOL: true })],
+      ['Organized the weekly reading group for new members', 'Mentored three students in the robotics club'], joined],
       // The same line printed twice says nothing about the edge, and neither
       // does a line that cannot wrap (a long link).
       [[at('Kept the build scripts and the release checklist that two other teams now rely on', 50, 400, 724, { hasEOL: true })],
@@ -1386,8 +1583,9 @@ describe('positioned text items', () => {
       'Machine learning with PyTorch and scikit-learn on lab data', ...kept,
     ]);
     // A line that only a weak hint joins does not show the edge to others:
-    // the second item ends 2pt short of the two justified lines above.
+    // the second item ends 2pt short of the three justified lines.
     mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('Organized the weekly reading group and kept the shared notes for new members', 50, 400, 748, { hasEOL: true }),
       at('Mentored three students in the robotics club and reviewed their weekly notes', 50, 400, 736, { hasEOL: true }),
       at('Wrote unit tests for the parser', 50, 160, 724, { hasEOL: true }),
       at('Built the badge scanner that the volunteers at the food pantry use whenever they check in', 50, 398, 712, { hasEOL: true }),
@@ -1396,6 +1594,7 @@ describe('positioned text items', () => {
       at('NVIDIA Jetson boards in the robotics lab', 50, 170, 676),
     ])) });
     expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      'Organized the weekly reading group and kept the shared notes for new members',
       'Mentored three students in the robotics club and reviewed their weekly notes',
       'Wrote unit tests for the parser',
       'Built the badge scanner that the volunteers at the food pantry use whenever they check in',
@@ -1514,7 +1713,9 @@ describe('positioned text items', () => {
     // Department of Physics"); only another lowercase word reads as the rest
     // of a sentence ("NIH ChestX-ray14 and a held-out split").
     const item = '- Built the badge scanner that the volunteers at the food pantry use whenever they check in';
+    // The role row's right-aligned date shows where the column ends.
     const page = (row: string) => pdfOf([
+      at('Research Intern, Robotics Lab', 50, 140, 736), at('Jun 2025 - Aug 2025', 460, 90, 736, { hasEOL: true }),
       at('- Kept the shuttle schedule and the route maps that the dispatch coordinators and drivers rely on', 50, 500, 724, { hasEOL: true }),
       at(item, 50, 500, 712, { hasEOL: true }),
       at(row, 50, 160, 700),
@@ -1523,11 +1724,11 @@ describe('positioned text items', () => {
       'IEEE Robotics and Automation Society', 'NIH National Institute on Aging', 'REU Program in Applied Mathematics',
       'UNAM Facultad de Ciencias', 'UdelaR Universidad de la República']) {
       mockGetDocument.mockReturnValue({ promise: Promise.resolve(page(row)) });
-      expect((await parseResumePDF(fakeFile())).raw_text.split('\n').slice(1)).toEqual([item, row]);
+      expect((await parseResumePDF(fakeFile())).raw_text.split('\n').slice(2)).toEqual([item, row]);
     }
     for (const row of ['NIH ChestX-ray14 and a held-out split', 'NIH ChestX-ray14 labels', 'ImageNet and a held-out split']) {
       mockGetDocument.mockReturnValue({ promise: Promise.resolve(page(row)) });
-      expect((await parseResumePDF(fakeFile())).raw_text.split('\n').slice(1)).toEqual([`${item} ${row}`]);
+      expect((await parseResumePDF(fakeFile())).raw_text.split('\n').slice(2)).toEqual([`${item} ${row}`]);
     }
   });
 
@@ -1560,7 +1761,9 @@ describe('positioned text items', () => {
     // On a page whose glyph items end with a full stop, "AUC on a held-out
     // split." finishes the item that lacks one; "PantryPal is an inventory
     // tracker…" is a description of its own that opens with the product.
+    // The role row's right-aligned date shows where the column ends.
     mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('Research Intern, Robotics Lab', 50, 140, 748), at('Jun 2025 - Aug 2025', 460, 90, 748, { hasEOL: true }),
       at('- Wrote unit tests for the parser.', 50, 160, 736, { hasEOL: true }),
       at('- Added a nightly job that checks the backups.', 50, 220, 724, { hasEOL: true }),
       at('- Mapped bike lane gaps around campus with QGIS and presented the map to the facilities office', 50, 500, 712, { hasEOL: true }),
@@ -1569,6 +1772,7 @@ describe('positioned text items', () => {
       at('AUC on a held-out split.', 50, 110, 676),
     ])) });
     expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      'Research Intern, Robotics Lab\tJun 2025 - Aug 2025',
       '- Wrote unit tests for the parser.',
       '- Added a nightly job that checks the backups.',
       '- Mapped bike lane gaps around campus with QGIS and presented the map to the facilities office',
@@ -1616,13 +1820,16 @@ describe('positioned text items', () => {
   });
 
   it('keeps apart two lines that a paragraph gap separates', async () => {
+    // The role row's right-aligned date shows where the column ends.
     const full = 'the first paragraph wraps here and its words run to the edge';
     mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
+      at('Research Intern, Robotics Lab', 50, 140, 712), at('Jun 2025 - Aug 2025', 460, 90, 712, { hasEOL: true }),
       at(`Summary: ${full}`, 50, 500, 700, { hasEOL: true }),
       at(full, 50, 500, 688, { hasEOL: true }),
       at('and this line opens the next paragraph', 50, 180, 670),
     ])) });
     expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      'Research Intern, Robotics Lab\tJun 2025 - Aug 2025',
       `Summary: ${full} ${full}`,
       'and this line opens the next paragraph',
     ]);
@@ -1695,6 +1902,68 @@ describe('positioned CJK text', () => {
     } as MockPdf) });
     expect((await parseResumePDF(fakeFile())).raw_text)
       .toBe('- 维护实验室网站并整理每周组会的实验记录，撰写组会报告。\n- 基于深度学习的医学影像分割系统：使用模型复现文档。');
+  });
+
+  it('keeps a Chinese award line apart from an item above it that lacks its 。', async () => {
+    // On a page whose items end with 。, a line that ends with 。 can finish
+    // an item that lacks one. Chinese has no capitals to tell the rest of an
+    // item from a line of its own, but an award line names its award, and no
+    // hint carries a line on into an award row. The wrap after "，" shows
+    // where the column ends.
+    const run = (str: string, y: number, width = 500, hasEOL = true) => ({
+      str, width, height: 10, transform: [10, 0, 0, 10, 50, y], fontName: 'f1', dir: 'ltr', hasEOL,
+    });
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve({
+      numPages: 1, destroy: async () => {},
+      getPage: async () => ({ cleanup: () => {}, getTextContent: async () => ({ items: [
+        run('• 维护实验室网站。', 748, 90),
+        run('• 整理实验数据。', 736, 80),
+        run('• 参与医学影像标注项目，按照临床医生制定的规范标注四千张胸部影像，', 724),
+        run('并复核标注质量。', 712, 80),
+        run('• 负责后端接口设计与数据库建模，使用 Flask 与 PostgreSQL 实现用户、商品与订单模块并编写部署', 700),
+        run('文档。', 688, 30),
+        run('• 负责后端接口设计与数据库建模，使用 Flask 与 PostgreSQL 实现用户、商品与订单模块并编写部署文档', 676),
+        run('获得校级优秀学生奖学金。', 664, 120),
+        run('• 在暑期实习中重写夜间数据处理任务，把运行时间从四十分钟降到九分钟，维护代码仓库', 652),
+        run('获得优秀毕业设计称号。', 640, 110, false),
+      ] as never }) }),
+    } as MockPdf) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      '• 维护实验室网站。',
+      '• 整理实验数据。',
+      '• 参与医学影像标注项目，按照临床医生制定的规范标注四千张胸部影像，并复核标注质量。',
+      '• 负责后端接口设计与数据库建模，使用 Flask 与 PostgreSQL 实现用户、商品与订单模块并编写部署文档。',
+      '• 负责后端接口设计与数据库建模，使用 Flask 与 PostgreSQL 实现用户、商品与订单模块并编写部署文档',
+      '获得校级优秀学生奖学金。',
+      '• 在暑期实习中重写夜间数据处理任务，把运行时间从四十分钟降到九分钟，维护代码仓库',
+      '获得优秀毕业设计称号。',
+    ]);
+  });
+
+  it('keeps a Chinese award line apart from the glyph item it hangs under, and joins the rest of the item there', async () => {
+    // A line that hangs under an item's text goes on with it only as a weak
+    // hint does, so it does not carry the item on into an award line. The
+    // wrap after "，" shows where the column ends.
+    const at = (str: string, x: number, width: number, y: number) => ({
+      str, width, height: 10, transform: [10, 0, 0, 10, x, y], fontName: 'f1', dir: 'ltr', hasEOL: x > 50,
+    });
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve({
+      numPages: 1, destroy: async () => {},
+      getPage: async () => ({ cleanup: () => {}, getTextContent: async () => ({ items: [
+        at('•', 50, 4, 724), at('参与医学影像标注项目，按照临床医生制定的规范标注四千张胸部影像，', 59, 491, 724),
+        at('并复核标注质量。', 59, 80, 712),
+        at('•', 50, 4, 700), at('负责后端接口设计与数据库建模，使用 Flask 与 PostgreSQL 实现用户、商品与订单模块并编写部署文档', 59, 491, 700),
+        at('获得校级优秀学生奖学金。', 59, 120, 688),
+        at('•', 50, 4, 676), at('在暑期实习中重写夜间数据处理任务，把运行时间从四十分钟降到九分钟，维护代码仓库', 59, 491, 676),
+        { ...at('并在组会上汇报每周进展', 59, 110, 664), hasEOL: false },
+      ] as never }) }),
+    } as MockPdf) });
+    expect((await parseResumePDF(fakeFile())).raw_text.split('\n')).toEqual([
+      '• 参与医学影像标注项目，按照临床医生制定的规范标注四千张胸部影像，并复核标注质量。',
+      '• 负责后端接口设计与数据库建模，使用 Flask 与 PostgreSQL 实现用户、商品与订单模块并编写部署文档',
+      '获得校级优秀学生奖学金。',
+      '• 在暑期实习中重写夜间数据处理任务，把运行时间从四十分钟降到九分钟，维护代码仓库并在组会上汇报每周进展',
+    ]);
   });
 
   it('keeps Chinese items that end without 。 apart, under a glyph or none', async () => {
