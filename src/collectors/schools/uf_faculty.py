@@ -64,8 +64,7 @@ across seven markup families, verified live 2026-07-17:
 * Warrington College of Business: one admin-ajax JSON call returns all 441
   records with ``isFaculty``/``emeritus`` flags, title, business email
   (194/195 faculty) and ``researchTags``. The feed has NO absolute profile
-  URL (``linkName`` is a bare slug and json_dir has no URL template), so
-  records fall back to the human directory page.
+  URL; ``link_template`` builds ``/directory/<linkName>/`` from the bare slug.
 
 * UF Health "Apollo" colleges (Pharmacy, Nursing, PHHP, Vet Med): the
   ``/wp-json/ufhealth/directory/v1/profiles/search`` API pages at a hard
@@ -74,9 +73,12 @@ across seven markup families, verified live 2026-07-17:
   page each; overshoot returns ``profiles: []``, which is safe). The feeds
   include staff and grad assistants ("GRADUATE AST-R") — strict title gate.
   The feeds' ``link`` field points at internal staging hosts
-  (cop-main-a2-new.sites.medinfo.ufl.edu …), so it is NOT used; records
-  fall back to each college's public directory page. Cross-page duplicates
-  collapse via the engine's school-wide email dedupe.
+  (cop-main-a2-new.sites.medinfo.ufl.edu …); ``link_rewrite`` moves its
+  ``/profile/<slug>/`` path to the college's public host (see ``_apollo``).
+  Cross-page duplicates collapse via the engine's school-wide email dedupe.
+  PHHP's feed answered ``total: 0`` on 2026-10-09 — its directory page now
+  renders cards linking ``directory.ufhealth.org/<slug>`` — so PHHP keeps no
+  link rewrite until it is rewired.
   College of Education is the same shape: its own /faculty/query endpoint
   returns ``posts: null`` past the last page (an uncaught TypeError in
   json_dir), so COE is wired to the subsite's standard wp/v2/posts route
@@ -273,12 +275,23 @@ _GLY_ENRICH = {"research_re": r"Areas of Interest:?\s*([^.]{4,220})",
 
 # ---- UF Health Apollo colleges + Warrington/COE JSON feeds -----------------
 def _apollo(short: str, college: str, majors: list[str], host: str,
-            pages: int, directory_url: str) -> list[dict]:
+            pages: int, directory_url: str,
+            profile_base: str | None = None) -> list[dict]:
     """One json_dir entry per API page (the feed caps per_page at 100 and
     json_dir is single-call). Last page is empty headroom — overshoot returns
-    ``profiles: []``, which parses to zero records safely. The feed's ``link``
-    field points at internal staging hosts, so no link_field: records fall
-    back to the college's public directory page."""
+    ``profiles: []``, which parses to zero records safely.
+
+    The feed's ``link`` points at an internal staging host
+    (``http://cop-main-a2-new.sites.medinfo.ufl.edu/blog/profile/<slug>/``);
+    the public site serves the same ``/profile/<slug>/`` (checked 2026-10-09 on
+    pharmacy, nursing and vetmed: the page names the person, an unknown slug
+    404s), so ``link_rewrite`` moves it to ``profile_base``. Without one the
+    link is dropped and records fall back to the college directory page."""
+    link: dict = {"link_field": "__no_public_url_in_feed__"}
+    if profile_base:
+        link = {"link_field": "link",
+                "link_rewrite": [r"^https?://[^/]+(?:/blog)?/profile/([^/?#]+)/?$",
+                                 profile_base + r"/profile/\1/"]}
     return [
         {"short": short if n == 1 else f"{short}{n}", "name": college,
          "majors": majors, "directory_url": directory_url,
@@ -289,7 +302,7 @@ def _apollo(short: str, college: str, majors: list[str], host: str,
              "name_fields": ["full_name"],
              "title_field": "title",
              "email_field": "email",
-             "link_field": "__no_public_url_in_feed__",
+             **link,
              "ladder_filter": _LADDER,
          }}
         for n in range(1, pages + 1)
@@ -394,8 +407,9 @@ SCHOOL: dict = {
             ["Industrial and Systems Engineering"],
             "https://www.ise.ufl.edu/people/faculty/"),
         # ABE (IFAS TerminalFour): /people/faculty/ 403s — only /people/ works
-        # (staff mixed in, title-gated). Cards carry no profile links, only
-        # mailto — records point at the roster page.
+        # (staff mixed in, title-gated). A card's icon row links its
+        # /people/faculty/<slug>/ profile where one exists (41 of 67
+        # professors on 2026-10-09); the rest point at the roster page.
         {
             "short": "ABE", "name": "Agricultural & Biological Engineering",
             "majors": ["Agricultural and Biological Engineering",
@@ -407,7 +421,8 @@ SCHOOL: dict = {
                               # Some names carry ", P.E." (First Last format).
                               "name_strip": r"\s*,.*$",
                               "title": "p.card-text strong",
-                              "email": "a[href^='mailto:']"},
+                              "email": "a[href^='mailto:']",
+                              "link": "a[href*='/people/faculty/']"},
                 "ladder_filter": _LADDER,
             },
         },
@@ -570,9 +585,11 @@ SCHOOL: dict = {
                 "name_fields": ["FIRST_NAME_DISPLAY", "LAST_NAME_DISPLAY"],
                 "title_field": "title",
                 "email_field": "ufBusinessEmail",
-                # linkName is a bare slug and the feed has no absolute URL
-                # field — fall back to the directory page.
+                # linkName is a bare slug; the directory links each card to
+                # /directory/<linkName>/ (rendered 2026-10-09; an unknown slug
+                # 404s).
                 "link_field": "__no_public_url_in_feed__",
+                "link_template": "https://warrington.ufl.edu/directory/{linkName}/",
                 "research_field": "researchTags",
                 "field_filters": [
                     {"field": "isFaculty", "include": r"^1$"},
@@ -585,10 +602,12 @@ SCHOOL: dict = {
         *_apollo("COP", "College of Pharmacy",
                  ["Pharmaceutical Sciences", "Chemistry", "Biology"],
                  "pharmacy.ufl.edu", 5,
-                 "https://pharmacy.ufl.edu/the-college/faculty-staff/faculty-directory/"),
+                 "https://pharmacy.ufl.edu/the-college/faculty-staff/faculty-directory/",
+                 profile_base="https://pharmacy.ufl.edu"),
         *_apollo("NUR", "College of Nursing", ["Nursing"],
                  "nursing.ufl.edu", 3,
-                 "https://nursing.ufl.edu/faculty/faculty-directory/"),
+                 "https://nursing.ufl.edu/faculty/faculty-directory/",
+                 profile_base="https://nursing.ufl.edu"),
         *_apollo("PHHP", "College of Public Health & Health Professions",
                  ["Health Science", "Public Health",
                   "Communication Sciences and Disorders"],
@@ -597,7 +616,8 @@ SCHOOL: dict = {
         *_apollo("CVM", "College of Veterinary Medicine",
                  ["Animal Sciences", "Biology", "Microbiology and Cell Science"],
                  "vetmed.ufl.edu", 4,
-                 "https://www.vetmed.ufl.edu/about-the-college/directory/"),
+                 "https://www.vetmed.ufl.edu/about-the-college/directory/",
+                 profile_base="https://www.vetmed.ufl.edu"),
         # ---- College of the Arts (three school directories; the college-wide
         # /directory/ can't be paginated — see module docstring).
         *_arts("ART", "School of Art + Art History",

@@ -35,7 +35,9 @@ fan-out. ``research_interests.raw`` is HTML prose (not clean keywords), so it is
 deliberately NOT used. Faculty without an expertise list ship
 name+title+email+department (OpenAlex/LLM enrichment backfills topics later).
 Link: ``website.raw`` (a per-person homepage/lab site where the profile declares
-one — always an absolute http(s) URL); absent, the record falls back to its
+one — always an absolute http(s) URL); absent, the person's own iSearch profile,
+``search.asu.edu/profile/<eid>`` (the page Cronkite's cards link to; an unknown
+eid is a 404, checked 2026-10-09). Only a record with neither falls back to its
 department directory URL.
 
 Several "departments" here are ASU *schools* that house multiple degree
@@ -107,6 +109,7 @@ def _dept(short: str, name: str, majors: list[str], dept_ids: str,
             "title_field": "primary_title.raw",
             "email_field": "email_address.raw",
             "link_field": "website.raw",
+            "link_template": "https://search.asu.edu/profile/{eid.raw}",
             "status_field": "primary_empl_class.raw",
             "status_value": "Faculty",
             "research_field": ["expertise_areas.raw[]"],

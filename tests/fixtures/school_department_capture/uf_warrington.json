@@ -1,0 +1,22 @@
+[
+ {
+  "FIRST_NAME_DISPLAY": "Ada",
+  "LAST_NAME_DISPLAY": "Example",
+  "title": "Clinical Associate Professor",
+  "ufBusinessEmail": "Ada.Example@warrington.ufl.edu",
+  "linkName": "ada-example",
+  "isFaculty": 1,
+  "emeritus": 0,
+  "researchTags": null
+ },
+ {
+  "FIRST_NAME_DISPLAY": "Bo",
+  "LAST_NAME_DISPLAY": "Sample",
+  "title": "Adjunct Lecturer",
+  "ufBusinessEmail": "Bo.Sample@warrington.ufl.edu",
+  "linkName": "bo-sample",
+  "isFaculty": 1,
+  "emeritus": 0,
+  "researchTags": null
+ }
+]

@@ -303,3 +303,127 @@ class TestMedicalSchoolDepartments:
         ) == p + "Otolaryngology - Head and Neck Surgery"
         assert fg._json_department(
             p + "Robert H. Lurie Comprehensive Cancer Center", units) == ""
+
+
+# --- collector configs on saved feeds: per-person links ----------------------
+
+def _feed_urls(monkeypatch, module, short, fixture):
+    _feed(monkeypatch, _fixture_json(fixture))
+    return {p["name"]: p["url"] for p in fg._fetch_json_dir(_dept(module, short))}
+
+
+class TestFeedProfileLinks:
+    """Feeds that carry an id or slug, not a URL. Before D23 every one of these
+    records stored the department's directory page as its profile link."""
+
+    def test_ucr_profile_comes_from_the_net_id(self, monkeypatch):
+        from src.collectors.schools import ucr_faculty
+        assert _feed_urls(monkeypatch, ucr_faculty, "CS", "ucr_profile_api.json") == {
+            "Ada Example": "https://profiles.ucr.edu/app/home/profile/adaexam",
+            "Bo Sample": "",  # no netId: falls back to the directory page
+        }
+
+    def test_asu_prefers_the_declared_website_then_the_isearch_profile(self, monkeypatch):
+        from src.collectors.schools import asu_faculty
+        assert _feed_urls(monkeypatch, asu_faculty, "PHYS", "asu_isearch.json") == {
+            "Ada Example": "https://search.asu.edu/profile/1000001",
+            "Bo Sample": "https://bosample.example.org",
+        }
+
+    def test_uf_warrington_profile_comes_from_the_link_name(self, monkeypatch):
+        from src.collectors.schools import uf_faculty
+        assert _feed_urls(monkeypatch, uf_faculty, "WCB", "uf_warrington.json") == {
+            "Ada Example": "https://warrington.ufl.edu/directory/ada-example/",
+        }
+
+    @pytest.mark.parametrize("short, host", [
+        ("COP", "https://pharmacy.ufl.edu"),
+        ("NUR2", "https://nursing.ufl.edu"),
+        ("CVM3", "https://www.vetmed.ufl.edu"),
+    ])
+    def test_uf_apollo_staging_links_move_to_the_public_host(self, monkeypatch, short, host):
+        from src.collectors.schools import uf_faculty
+        urls = _feed_urls(monkeypatch, uf_faculty, short, "uf_apollo.json")
+        assert urls == {"Ada Example": f"{host}/profile/example-ada/",
+                        "Bo Sample": f"{host}/profile/sample-bo/"}
+
+    def test_uf_phhp_keeps_no_staging_link(self, monkeypatch):
+        from src.collectors.schools import uf_faculty
+        urls = _feed_urls(monkeypatch, uf_faculty, "PHHP", "uf_apollo.json")
+        assert set(urls.values()) == {""}
+
+    @pytest.mark.parametrize("short, base", [
+        ("ACCT", "https://tippie.uiowa.edu/people"),
+        ("EDUTL", "https://education.uiowa.edu/directory"),
+    ])
+    def test_uiowa_profile_comes_from_the_slug(self, monkeypatch, short, base):
+        from src.collectors.schools import uiowa_faculty
+        urls = _feed_urls(monkeypatch, uiowa_faculty, short, "uiowa_profiles.json")
+        # The emeritus row is gated out by personType.
+        assert urls == {"Ada Example": f"{base}/ada-example"}
+
+    def test_uiowa_record_never_carries_the_api_key(self, monkeypatch):
+        from src.collectors.schools import uiowa_faculty
+        dept = _dept(uiowa_faculty, "ACCT")
+        _feed(monkeypatch, _fixture_json("uiowa_profiles.json"))
+        school = uiowa_faculty.SCHOOL
+        recs = [fg._normalize(school, dept, p) for p in fg._fetch_json_dir(dept)]
+        assert recs and all("api-key" not in r["url"] for r in recs)
+
+    def test_utah_engineering_profile_comes_from_the_unid(self, monkeypatch):
+        from src.collectors.schools import utah_faculty
+        assert _feed_urls(monkeypatch, utah_faculty, "CHE", "utah_coe.json") == {
+            "Ada Example": "https://profiles.faculty.utah.edu/u0000001",
+            "Bo Sample": "",
+        }
+
+
+# --- collector configs on saved pages: per-person link selectors -------------
+
+def _card_urls(module, short, fixture):
+    from bs4 import BeautifulSoup
+    cfg = _dept(module, short)["scrape"]
+    soup = BeautifulSoup((FIXTURES / fixture).read_text(), "html.parser")
+    people = fg._parse_cards(soup, cfg["selectors"], cfg["url"],
+                             cfg.get("ladder_filter"), cfg.get("name_flip", False),
+                             cfg.get("link_filter"), cfg.get("section_filter"),
+                             cfg.get("field_filter"))
+    return [p["url"] for p in people]
+
+
+class TestCardProfileLinks:
+    def test_uiowa_h2_headline_links_its_profile(self):
+        from src.collectors.schools import uiowa_faculty
+        # Psychology/History/Sociology/Nursing render the headline as an h2.
+        assert _card_urls(uiowa_faculty, "PSYC", "uiowa_sitenow_h2.html") == [
+            "https://psychology.uiowa.edu/people/ada-example",
+            "https://psychology.uiowa.edu/people/bo-sample"]
+
+    def test_uf_abe_links_the_profile_where_the_card_has_one(self):
+        from src.collectors.schools import uf_faculty
+        assert _card_urls(uf_faculty, "ABE", "uf_abe.html") == [
+            "https://abe.ufl.edu/people/faculty/ada-example/",
+            "https://abe.ufl.edu/people/"]
+
+    @pytest.mark.parametrize("short, fixture, expected", [
+        ("MUSIC", "utah_music.html", [
+            "https://music.utah.edu/faculty/ada-Ada-example.php",
+            "https://profiles.faculty.utah.edu/u9000001"]),
+        ("CS", "utah_cs.html", [
+            "https://cs.utah.edu/~ada/", "https://www.cs.utah.edu/people/faculty/"]),
+        ("ECON", "utah_econ.html", [
+            "https://profiles.faculty.utah.edu/u9000002",
+            "https://faculty.utah.edu/u9000001-EXAMPLE_PERSON/research/index.hml"]),
+        ("MSE", "utah_mse.html", [
+            "https://faculty.utah.edu/u9000001-EXAMPLE_PERSON/research/index.hml",
+            "https://mse.utah.edu/faculty/"]),
+        ("CVEEN", "utah_cveen.html", [
+            "https://profiles.faculty.utah.edu/u9000001",
+            "https://profiles.faculty.utah.edu/u9000002"]),
+        ("PRT", "utah_prt.html", [
+            "https://profiles.faculty.utah.edu/u9000001",
+            "https://profiles.faculty.utah.edu/u9000002"]),
+    ])
+    def test_utah_cards_link_their_profiles(self, short, fixture, expected):
+        from src.collectors.schools import utah_faculty
+        assert _card_urls(utah_faculty, short, fixture) == expected
