@@ -47,7 +47,8 @@ TAILOR = {"profile": PROFILE, "opportunity_id": "probe-target", "locale": "en"}
 SIGNATURE = "v1:sha256:" + "0" * 64
 
 
-# backend.lib.request_body.MAX_JSON_CONTAINERS: a body with more lists and objects is refused unparsed.
+# Just under round 1's bound of 100,000 lists and objects. Since round 6 each route has a lower bound of
+# its own (backend.lib.request_body), so on this branch these bodies are refused unparsed.
 UNDER_THE_BOUND = 99_990
 
 

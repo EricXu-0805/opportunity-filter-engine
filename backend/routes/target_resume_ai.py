@@ -23,7 +23,7 @@ from backend.lib.evidence_map import (
 )
 from backend.lib.llm import is_configured
 from backend.lib.release_scope import release_visible_opportunity_by_id
-from backend.lib.request_body import check_body_bounds
+from backend.lib.request_body import MAX_FULL_TARGET_JSON_CONTAINERS, check_body_bounds
 from backend.lib.target_actionability import assert_target_actionable
 from backend.lib.target_resume_ai import (
     REVIEW_UNCHECKED,
@@ -87,13 +87,14 @@ def _parsed(body: bytes, content_type: str | None, model):
 
     First the container and item bounds (check_body_bounds), which read the whole body: three
     counts of a 2 MiB body take about 4 ms, and ten such requests at once made 40 ms of one
-    event-loop turn. Then, as FastAPI does with a strict content type: only an application/json (or +json) body is
+    event-loop turn. The body's lists and objects are counted outside its strings, against
+    MAX_FULL_TARGET_JSON_CONTAINERS. Then, as FastAPI does with a strict content type: only an application/json (or +json) body is
     read as JSON; anything else, an empty body included, is a validation error. Invalid JSON
     (json.JSONDecodeError) is a validation error; any other failure to parse, such as a body
     that is not UTF-8 or one nested past the parser's recursion limit, is the 400 FastAPI
     answers (fastapi.routing catches JSONDecodeError for 422 and every other exception for 400).
     """
-    check_body_bounds(body)
+    check_body_bounds(body, max_containers=MAX_FULL_TARGET_JSON_CONTAINERS)
     message = email.message.Message()
     message["content-type"] = content_type or ""
     subtype = message.get_content_subtype()

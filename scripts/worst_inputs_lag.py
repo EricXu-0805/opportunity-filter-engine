@@ -29,6 +29,12 @@ Round 5 gave /api/tailor/extract-bullets and /api/tailor/structure a comma bound
 per résumé character (backend.lib.request_body.MAX_RESUME_JSON_SEPARATORS), so that they read every
 résumé origin/main reads; the R5 cases are those routes' bodies at that bound and résumés of commas.
 
+Round 6 gave each route its own bound on the lists and objects a body holds outside its strings
+(backend.lib.request_body.MAX_JSON_CONTAINERS, MAX_RESUME_JSON_CONTAINERS and
+MAX_FULL_TARGET_JSON_CONTAINERS). The R6 cases are bodies of lists nested in chains of several depths,
+at, one over and far past each route's bound, and bodies whose brackets sit inside strings, which the
+count must read past.
+
 Run from the repository root:  python scripts/worst_inputs_lag.py [--threshold 0.25] [--only TEXT] [--concurrent 1,4,10]
 """
 from __future__ import annotations
@@ -51,7 +57,13 @@ import httpx  # noqa: E402
 
 from backend import main as main_module  # noqa: E402
 from backend.lib import release_scope  # noqa: E402
-from backend.lib.request_body import MAX_JSON_CONTAINERS, MAX_JSON_SEPARATORS, MAX_RESUME_JSON_SEPARATORS  # noqa: E402
+from backend.lib.request_body import (  # noqa: E402
+    MAX_FULL_TARGET_JSON_CONTAINERS,
+    MAX_JSON_CONTAINERS,
+    MAX_JSON_SEPARATORS,
+    MAX_RESUME_JSON_CONTAINERS,
+    MAX_RESUME_JSON_SEPARATORS,
+)
 from backend.routes import tailor  # noqa: E402
 from backend.routes import target_resume_ai as full_route  # noqa: E402
 
@@ -171,6 +183,53 @@ def cases():
         yield f"R5 {path} unknown field: {under:,} empty lists", path, {**body, "padding": [[]] * under}
         for character, name in ((",", "commas"), ("[", "brackets"), ("{", "braces")):
             yield f"R5 {path} resume_text: 60,000 {name}", path, {**extra, "resume_text": character * 60_000}
+    # Round 6: each route's container bound, counted outside strings.
+    yield from bound_cases()
+
+
+def chains(total: int, depth: int) -> bytes:
+    """A list of chains of lists nested `depth` deep (the last one shorter), `total` lists in all."""
+    parts = [b"[" * depth + b"]" * depth] * (total // depth) + ([b"[" * (total % depth) + b"]" * (total % depth)]
+                                                               if total % depth else [])
+    return b"[" + b",".join(parts) + b"]"
+
+
+FAR = 100_000  # lists and objects far past every route's bound
+
+
+def bound_cases():
+    full = (b'{"version":1,"request_id":"p","locale":"en","document_signature":"' + SIGNATURE.encode()
+            + b'","selected_unit_ids":["line-1"],"draft":{"kind":"full_resume","junk":%s}}')
+    plan = (b'{"version":1,"request_id":"p","locale":"en","document_signature":"' + SIGNATURE.encode()
+            + b'","options":{"target_pages":1},"draft":{"kind":"full_resume","junk":%s}}')
+    routes = (
+        ("/api/tailor", b'{"profile":{"name":"S"},"opportunity_id":"probe-target","original_bullets":["x"],"padding":%s}',
+         MAX_JSON_CONTAINERS, MAX_JSON_SEPARATORS),
+        ("/api/tailor/bullet", b'{"profile":{"name":"S"},"opportunity_id":"probe-target","current_text":"x","padding":%s}',
+         MAX_JSON_CONTAINERS, MAX_JSON_SEPARATORS),
+        ("/api/tailor/renovate", b'{"profile":{"name":"S"},"opportunity_id":"probe-target","sections":[],"padding":%s}',
+         MAX_JSON_CONTAINERS, MAX_JSON_SEPARATORS),
+        ("/api/tailor/extract-bullets", b'{"resume_text":"x","padding":%s}', MAX_RESUME_JSON_CONTAINERS,
+         MAX_RESUME_JSON_SEPARATORS),
+        ("/api/tailor/structure", b'{"resume_text":"x","locale":"en","padding":%s}', MAX_RESUME_JSON_CONTAINERS,
+         MAX_RESUME_JSON_SEPARATORS),
+        ("/api/tailor/full-target/suggestions", full, MAX_FULL_TARGET_JSON_CONTAINERS, MAX_JSON_SEPARATORS),
+        ("/api/tailor/full-target/selection-plan", plan, MAX_FULL_TARGET_JSON_CONTAINERS, MAX_JSON_SEPARATORS),
+    )
+    for path, frame, bound, separators in routes:
+        own = (frame % b"[]").count(b"[") + (frame % b"[]").count(b"{")  # the frame's own, the padding list included
+        levels = [(bound - own, "at its bound"), (bound - own + 1, "one over its bound"), (FAR - own, "far past its bound")]
+        for depth in (2, 50, 900):
+            for total, where in levels:
+                if depth > total or total // depth > separators - 50:
+                    continue
+                yield raw(f"R6 {path} unknown field: lists {depth} deep, {where}", path, frame % chains(total, depth))
+        cap = FULL_BODY if path.startswith("/api/tailor/full-target") else ONE_MIB
+        count = min(separators - 40, (cap - 400) // 12)
+        yield raw(f"R6 {path} unknown field: {count:,} strings of brackets", path,
+                  frame % ("[" + ",".join(['"[[[{{{[]"'] * count) + "]").encode())
+        yield raw(f"R6 {path} unknown field: quoted brackets to the body limit, not JSON", path,
+                  frame % (b'"[{' * ((cap - 400) // 3)))
 
 
 async def probe(path: str, content: bytes, concurrent: int = 1):
