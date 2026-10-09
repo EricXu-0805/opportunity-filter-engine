@@ -8,7 +8,8 @@ summary lines under the criterion each one serves, prefixed by the script:
       origin/main: main's checks run in a subprocess there) and
       scripts/faithful_keeps_any_row.py on its rows;
   (3) scripts/other_script_probe.py and scripts/english_evidence_keeps.py (what the default
-      keep of round 4 keeps as written);
+      keep of round 4 keeps as written, over the samples and, since round 6, over a probe of
+      lines that mix Chinese and English);
   (4) scripts/rewrite_route_lag.py (worst stall per route), scripts/request_parse_lag.py,
       scripts/worst_inputs_lag.py and scripts/rewrite_check_lag.py (the slow one,
       about 4 minutes; --skip-slow leaves it out); --concurrent 1,4,10 (the default)
@@ -93,7 +94,8 @@ def main() -> int:
     print("criterion (3): rewrites shown in another language than their line")
     show("other_script_probe.py", pick(run("other_script_probe.py"), "relabel out", "own conjunction", "English function"))
     show("english_evidence_keeps.py", pick(run("english_evidence_keeps.py"), "same-language pairs whose", "corpus ",
-                                           "all samples", "pairs the rule keeps"))
+                                           "all samples", "pairs the rule keeps", "of the pairs, originals",
+                                           "code-switched Chinese probe"))
 
     if not args.skip_timing:
         print(f"criterion (4): event-loop stalls at the input caps (concurrent requests: {args.concurrent})")
