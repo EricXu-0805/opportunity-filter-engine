@@ -73,6 +73,56 @@ def test_a_heading_shaped_status_row_stays_with_its_bullet(monkeypatch, path, ro
     assert bullets[0] not in _extracted(monkeypatch, path, resume, [bullets[0], bullets[2]])
 
 
+# ------------------------------------------------------------------ extraction: headings in sentence case
+# Found while fixing the above, by comparing with main: 64df166 also read a heading in sentence case
+# with no lock word ("Research experience") as the wrapped last row of the bullet above it, so that
+# bullet was dropped on both routes and glued to the heading by the fallback. Main keeps them all.
+SENTENCE_CASE_HEADINGS = ["Research experience", "Technical skills", "Honors and awards", "Relevant coursework",
+                          "Community service", "Selected publications", "Conference presentations",
+                          "Additional information", "Research interests:", "Study abroad"]
+
+
+@pytest.mark.parametrize("path", EXTRACT_PATHS)
+@pytest.mark.parametrize("heading", SENTENCE_CASE_HEADINGS)
+def test_the_bullet_above_a_heading_in_sentence_case_is_kept(monkeypatch, path, heading):
+    resume, bullets = _headed(heading)
+    assert _extracted(monkeypatch, path, resume, bullets) == bullets
+
+
+@pytest.mark.parametrize("heading", SENTENCE_CASE_HEADINGS)
+def test_the_local_extraction_glues_no_heading_in_sentence_case_to_a_bullet(heading):
+    resume, bullets = _headed(heading)
+    assert tailor._heuristic_bullets(resume) == bullets
+
+
+def test_a_heading_in_sentence_case_above_a_role_row_is_a_row_of_its_own():
+    resume = ("EXPERIENCE\n• Cleaned 212 survey responses in R\nResearch experience\n"
+              "Research Assistant, Sleep Lab, Jan 2025 - Present\n• Ran 40 overnight EEG sessions\n")
+    assert tailor._heuristic_bullets(resume) == ["Cleaned 212 survey responses in R", "Ran 40 overnight EEG sessions"]
+
+
+# The boundary, which db09a88 already holds: such a row stays with the bullet when the row below it
+# goes on with it, so the status there stays too, and so does a status row in sentence case.
+SENTENCE_CASE_WRAPS = {
+    "status in brackets below": ("• Co-wrote a soil sensing paper with the Champaign County\nExtension office\n"
+                                 "(under review at ICRA)\n", "Co-wrote a soil sensing paper with the Champaign County"),
+    "status in lower case below": ("• Co-wrote a soil sensing paper with the Champaign County\nExtension office\n"
+                                   "under review at ICRA\n", "Co-wrote a soil sensing paper with the Champaign County"),
+    "status naming its item": ("• Co-wrote a soil sensing paper for the campus farm\nManuscript in preparation\n",
+                               "Co-wrote a soil sensing paper for the campus farm"),
+    "status naming the paper": ("• Co-wrote a soil sensing paper for the campus farm\nPaper under review\n",
+                                "Co-wrote a soil sensing paper for the campus farm"),
+}
+
+
+@pytest.mark.parametrize("path", EXTRACT_PATHS)
+@pytest.mark.parametrize("name", list(SENTENCE_CASE_WRAPS))
+def test_a_row_in_sentence_case_with_a_status_on_or_below_it_stays_with_its_bullet(monkeypatch, path, name):
+    resume, cut = SENTENCE_CASE_WRAPS[name]
+    assert cut not in _extracted(monkeypatch, path, "EXPERIENCE\n" + resume + "• Cleaned 200 survey responses\n",
+                                 [cut, "Cleaned 200 survey responses"])
+
+
 # ------------------------------------------------------------------ criterion (2): an English relabel of an accented word
 # 4bbdcb6 kept every relabel that leaves an accented word out of "to", so the relabel of an English
 # line's loanword or name ("café inventory" -> "coffee shop inventory", "Müller group" -> "Mueller

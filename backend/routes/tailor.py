@@ -702,6 +702,21 @@ def _names_its_items(line: str) -> bool:
     return False
 
 
+def _heading_in_sentence_case(previous: str, line: str) -> bool:
+    """Whether a row may be a heading in sentence case ("Research experience", "Honors and awards:"):
+    shaped as a title-case heading (_own_row) but for the case of its later words, not opening
+    with a joining word, carrying no word the claim locks keep (_ITEM_QUALIFIERS), under a row
+    that can end an item (_dangling). Its words cannot tell it from the wrapped last row of the
+    bullet above ("Extension office"); _resume_rows decides by the row below it.
+    """
+    if len(line) > 40 or not line[:1].isupper():
+        return False
+    words = [word for word in line.rstrip(":").split() if word not in ("&", "/")]
+    return (0 < len(words) <= 4 and all(ch.isascii() and (ch.isalpha() or ch in " &/'-") for ch in line.rstrip(":"))
+            and words[0].casefold() not in _em._FUNCTION_EN and not _dangling(previous)
+            and not any(pattern.search(line) for pattern in _ITEM_QUALIFIERS))
+
+
 def _row_of_its_own(previous: str, line: str) -> bool:
     """Inside a glyph item, whether a row that opens with a capital, a digit or a CJK character,
     under a row with no closing mark, starts a row of its own rather than going on with the item.
@@ -764,8 +779,14 @@ def _resume_rows(resume_text: str) -> list[tuple[str, str, bool]]:
     apart or it is a row of its own (_row_of_its_own: a heading, a role or title row, a
     label; a row carrying a status, a share of the work or a negation only in capitals, as a
     role row, or as a heading that names its items besides a status).
+
+    A heading in sentence case ("Research experience") reads like the wrapped last row of the
+    bullet above it (_heading_in_sentence_case). It starts a row of its own when the row below it
+    starts one anyway (or it is the last row): the item it would end then holds nothing after it,
+    and it carries no status, share or negation, so a bullet cut above it drops no qualifier.
     """
     rows: list[tuple[str, str, bool]] = []
+    headings: list[int] = []
     previous, previous_tab, glyph_item, after_blank = "", False, False, False
     for raw in resume_text.splitlines():
         written = unicodedata.normalize("NFKC", raw).strip()
@@ -786,9 +807,15 @@ def _resume_rows(resume_text: str) -> list[tuple[str, str, bool]]:
             opens = False
         else:
             opens = after_blank or not glyph_item or _row_of_its_own(previous, line)
+            if not opens and _heading_in_sentence_case(previous, line):
+                headings.append(len(rows))
         glyph_item = glyph if opens else glyph_item
         rows.append((raw.strip(), line, opens))
         previous, previous_tab, after_blank = line, tab, False
+    # The row below was read with this one going on with the glyph item; it opens either way.
+    for index in reversed(headings):
+        if index + 1 == len(rows) or rows[index + 1][2]:
+            rows[index] = (rows[index][0], rows[index][1], True)
     return rows
 
 
