@@ -64,7 +64,13 @@ from collections.abc import Iterable
 # for `paid_basis`/`location_basis`, and a name import would fail on whichever
 # side of that cycle loads second.
 from backend.lib import public_projection
-from src.evidence import CAMPUS_PROGRAM_SUFFIXES, inferred_method, is_configured_program, record_kind
+from src.evidence import (
+    CAMPUS_PROGRAM_SUFFIXES,
+    SRO_NOTE_WINDOW_RE,
+    inferred_method,
+    is_configured_program,
+    record_kind,
+)
 
 DETAIL_FIELDS_VERSION = "m03-v1"
 
@@ -205,10 +211,6 @@ _CITIZENSHIP_TEMPLATES = {"nsf_reu": BASIS_PROGRAM_POLICY}
 # Collectors that read citizenship off a labelled field, so a False is the
 # page's "No Citizenship Requirements" rather than a template.
 _CITIZENSHIP_FROM_FIELD = frozenset({"uiuc_sro"})
-# SRO work-authorization notes written before the collector read that field
-# were ±50-character keyword windows joined by " | ", or windows that start
-# mid-word and run the field's label into its value. Neither is a statement.
-_SRO_NOTE_WINDOW_RE = re.compile(r" \| |Citizenship Requirement (?:US|No)\b")
 
 # The SRO database states each record on its own detail page; the record's
 # `source_url` is the paginated list it was found on, which moves as rows are
@@ -518,7 +520,9 @@ def _eligibility(payload: dict, canonical: dict, source: str) -> _Field:
         field.source("citizenship", "not_required")
 
     notes = _text(elig.get("work_auth_notes"))
-    if not (source == "uiuc_sro" and notes and _SRO_NOTE_WINDOW_RE.search(notes)):
+    # SRO notes written before the collector read the field are keyword
+    # windows (`SRO_NOTE_WINDOW_RE`), not a statement.
+    if not (source == "uiuc_sro" and notes and SRO_NOTE_WINDOW_RE.search(notes)):
         field.source("work_authorization_notes", notes)
     return field
 

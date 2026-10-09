@@ -227,14 +227,45 @@ def is_configured_program(record: dict) -> bool:
             and not (isinstance(metadata, dict) and metadata.get("discovered")))
 
 
+# SRO work-authorization notes written before the collector read the
+# "Citizenship Requirement" field were ±50-character keyword windows joined by
+# " | ", or one window that runs the field's label into its value. A row whose
+# note is one of those, or empty, got its citizenship rule and intl answer from
+# that keyword scan of the whole page: on the 2026-10-09 corpus 5 of 279 such
+# rows say "required" beside a field reading "No Citizenship Requirements". A
+# window note also dates the row to before the collector read Compensation, so
+# its pay came from the same kind of scan.
+SRO_NOTE_WINDOW_RE = re.compile(r" \| |Citizenship Requirement (?:US|No)\b")
+SRO_SCANNED_CITIZENSHIP_METHOD = "rule:sro_page_citizenship_keywords"
+SRO_SCANNED_PAY_METHOD = "rule:sro_page_paid_keywords"
+_SRO_SCANNED_CITIZENSHIP_STAMPS = {
+    "eligibility.international_friendly": (lambda value: value in {"yes", "no"}, SRO_SCANNED_CITIZENSHIP_METHOD),
+    "eligibility.citizenship_required": (lambda value: value is True or value is False,
+                                         SRO_SCANNED_CITIZENSHIP_METHOD),
+}
+_SRO_SCANNED_PAY_STAMPS = {"paid": (lambda value: value in {"yes", "stipend", "no"}, SRO_SCANNED_PAY_METHOD)}
+
+
+def _sro_scanned_fields(record: dict) -> dict:
+    """Stamp tests for the fields of a uiuc_sro row that a keyword scan wrote."""
+    if record.get("source") != "uiuc_sro":
+        return {}
+    eligibility = record.get("eligibility")
+    notes = eligibility.get("work_auth_notes") if isinstance(eligibility, dict) else None
+    notes = notes.strip() if isinstance(notes, str) else ""
+    if notes and not SRO_NOTE_WINDOW_RE.search(notes):
+        return {}  # the collector read the labelled fields
+    return {**_SRO_SCANNED_CITIZENSHIP_STAMPS, **(_SRO_SCANNED_PAY_STAMPS if notes else {})}
+
+
 def stamp_collector_templates(record: dict) -> dict:
     """Stamp registered collector constants as inferred, in place; return record.
 
     Idempotent, and never overrides an existing stamp: a field some other
     producer already accounted for keeps that producer's method. Only a value
-    equal to the registered template (or, for a configured program, any value
-    the spec can hold) is stamped — a future collector that reads a real pay
-    value off the page is left stated.
+    equal to the registered template (or, for a configured program or a
+    scanned SRO field, any value it can hold) is stamped — a future collector
+    that reads a real pay value off the page is left stated.
     """
     templates = _COLLECTOR_TEMPLATE_STAMPS.get(record.get("source") or "", {})
     matches = {path: (lambda value, template=template: value == template, method)
@@ -242,6 +273,7 @@ def stamp_collector_templates(record: dict) -> dict:
     if is_configured_program(record):
         matches.update({path: (test, CONFIGURED_PROGRAM_METHOD)
                         for path, test in _CONFIGURED_PROGRAM_STAMPS.items()})
+    matches.update(_sro_scanned_fields(record))
     for path, (matches_template, method) in matches.items():
         if inferred_method(record, path) is not None:
             continue

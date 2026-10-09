@@ -32,6 +32,8 @@ from src.collectors import uiuc_sro as sro
 from src.collectors.base import RawOpportunity
 from src.contact_instructions import CAPTURE_KEY
 from src.evidence import (
+    SRO_SCANNED_CITIZENSHIP_METHOD,
+    SRO_SCANNED_PAY_METHOD,
     inferred_method,
     neutralize_unverified_faculty_claims,
     stamp_collector_templates,
@@ -687,22 +689,45 @@ class TestUiucSroContract:
         assert saved["metadata"]["deadline_note"] == before["metadata"]["deadline_note"]
         assert saved["metadata"]["last_verified"] == before["metadata"]["last_verified"]
 
-    def test_legacy_record_degrades_without_a_rescrape(self):
+    @pytest.mark.parametrize("citizenship, intl, notes", [
+        (False, "yes", "weeks Compensation $7,000 Citizenship Requirement No Citize | Citizenship Re"),
+        (True, "no", "Citizenship Requirement US Citizen, National, or Permanent Re"),
+        (True, "no", ""),  # the page had no keyword window at all: the description was scanned
+    ])
+    def test_legacy_record_degrades_without_a_rescrape(self, citizenship, intl, notes):
         # The shape every SRO row has on main: found on a list page, notes
-        # assembled from keyword windows, pay and intl read by keyword scan.
+        # assembled from keyword windows, and the citizenship rule and intl
+        # answer read by a keyword scan of the whole page — 5 such rows say
+        # "required" beside a field reading "No Citizenship Requirements".
         legacy = _listing(
             id="sro-legacy", source="uiuc_sro", source_type="summer_program",
             source_url=_SRO_LIST, url=_SRO_DETAIL, organization="", location="",
-            keywords=["Natural Sciences"], duration="Summer",
+            keywords=["Natural Sciences"], duration="Summer", paid="yes",
             eligibility={
-                "citizenship_required": False, "international_friendly": "yes",
-                "work_auth_notes": "weeks Compensation $7,000 Citizenship Requirement No Citize | Citizenship Re",
+                "citizenship_required": citizenship, "international_friendly": intl,
+                "work_auth_notes": notes,
             },
         )
-        _, fields = _detail(legacy)
+        payload, fields = _detail(legacy)
+        _, canonical = _served(legacy)
+        for path in ("eligibility.international_friendly", "eligibility.citizenship_required"):
+            assert inferred_method(canonical, path) == SRO_SCANNED_CITIZENSHIP_METHOD, path
+        # A window note dates the row to before Compensation was read; an
+        # empty one does not (the current collector writes it when the page
+        # has no Citizenship Requirement field, and reads Compensation).
+        if notes:
+            assert inferred_method(canonical, "paid") == SRO_SCANNED_PAY_METHOD
+            assert fields["funding"]["inferred"]["paid"] == {"value": "yes", "basis": "text_scan"}
+            assert payload["paid_attribution"] == "inferred"
+        else:
+            assert inferred_method(canonical, "paid") is None
         elig = fields["eligibility"]
-        assert elig["explicit"]["citizenship"] == "not_required"
-        assert elig["inferred"]["international_students"]["basis"] == "derived_from_source"
+        assert elig["inferred"]["international_students"] == {"value": intl, "basis": "text_scan"}
+        if citizenship:
+            assert elig["inferred"]["citizenship"] == {"value": "required", "basis": "text_scan"}
+        else:
+            assert _where(elig, "citizenship") == "unknown"
+        assert payload["international_attribution"] == payload["citizenship_attribution"] == "inferred"
         assert _where(elig, "work_authorization_notes") == "unknown"
         assert fields["research_content"]["explicit"]["research_areas"] == ["Natural Sciences"]
         assert fields["eligibility"]["provenance"]["source_url"] == _SRO_DETAIL

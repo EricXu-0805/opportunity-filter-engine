@@ -122,7 +122,10 @@ Rules that never bend:
   `collector_default` or `program_policy` — nothing on the page produced it;
 - an SRO row (`uiuc_sro`) links its detail page, not the paginated list it
   was found on, and its labelled fields (Sponsoring Institution, Location,
-  Deadline, Duration, Compensation, Citizenship Requirement) are source.
+  Deadline, Duration, Compensation, Citizenship Requirement) are source; a
+  row written before the collector read those fields got its citizenship
+  rule, intl answer and pay from a keyword scan, and they are stamped
+  `rule:` at corpus load.
 
 Collector constants are registered in `opportunity_detail.py`; Simplify's
 defaulted `paid` and a configured program's `paid`, intl answer and
