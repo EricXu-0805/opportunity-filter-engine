@@ -1,4 +1,4 @@
-"""Section headings and status rows under a glyph bullet, as the extraction routes read them.
+"""Section headings, entry rows, bullet glyphs and status rows, as the extraction routes read them.
 
 The extraction routes (/api/tailor/extract-bullets, /api/tailor/structure) accept a model line only
 where a résumé item starts and ends, and the no-model fallback returns each item whole. A row under a
@@ -13,6 +13,16 @@ Placements: every heading below, in title case, in capitals, with a colon and in
 (English), or as written (Chinese), under each of a few bullets with no closing mark, between a
 bullet above and one below. A placement is kept when both routes, given a model that answers the
 student's three bullets, return exactly those three, and the fallback returns them too.
+
+Round 3d adds, read the same way:
+
+  * entry rows (an entry's title, organization, date, education, label or CJK field row, with and
+    without a status, share or negation word) between two bullets, and under a sentence-case
+    heading (ENTRY_ROWS, ORG_ROWS);
+  * résumés whose bullets open with each glyph or list number of GLYPHS: a bullet a route of main
+    returns that the branch's same route does not return as written is lost;
+  * status, share and negation rows in an entry row's shape (FIELD_STATUS_ROWS), whose cut above
+    is accepted or not, as for STATUS_ROWS.
 
 Run from the repository root, with checkouts beside it:
 
@@ -71,6 +81,70 @@ ZH_HEADINGS = [
     "未发表论文", "待发表论文", "已发表论文", "论文成果", "合作发表", "团队经历", "协助研究", "参与研究", "在研课题",
     "主持项目", "项目经历：", "论文发表（第一作者）", "科研经历 Research", "发表论文与会议报告", "专利与论文",
 ]
+# Entry rows between two bullets: the re-verification of a6979522's probes (title, org, date, education,
+# label and CJK field rows; with and without a lock word), and its organization rows.
+ENTRY_ROWS = [
+    "Autonomous Rover (Ongoing) | ROS, Python", "Campus Navigation App (In Progress)", "Senior Design Project — In Progress",
+    "Smart Greenhouse, Team Project, Spring 2025", "Group Project: Course Scheduler", "Course Scheduler | Team of 4 | Fall 2024",
+    "Honors Thesis, Expected May 2026", "Capstone Project (Team Lead), Spring 2026",
+    "Hackathon Project, HackIllinois 2025 (Team of 3)", "Undergraduate Thesis (Planned)", "Independent Study, Planned Fall 2026",
+    "Machine Learning Research (Ongoing)", "Robotics Club Member, 2024 – Present", "Volunteer, Champaign Food Bank, 2023 – Present",
+    "Smith Lab, University of Illinois, Jan 2025 – Present", "Software Engineering Intern (Incoming), Google, Summer 2026",
+    "Jan 2025 – Present", "Expected Graduation: May 2027", "B.S. in Computer Engineering, Expected May 2027",
+    "University of Illinois Urbana-Champaign, Expected May 2027", "Collaborative Research Project with Mayo Clinic",
+    "Joint Project with Department of Psychology", "Sleep Spindles and Memory, Under Review at SLEEP",
+    "Poster: Soil Moisture Sensing, Accepted at SenSys 2026", "Ongoing Research Project | Smith Lab",
+    "Group Research Project, PSYC 290", "Team Member, Solar Car Team", "Co-founder, Illini Market",
+    "Pending: NSF REU Application", "Student Researcher, Smith Lab (Remote) – Ongoing",
+    "Unpublished Thesis, Spring 2026", "Draft Paper on Sleep, 2026",
+    "Software Engineering Intern | Google | Summer 2024", "Google LLC — Mountain View, CA", "Teaching Assistant, CS 225",
+    "Dean's List", "Python, Java, C++, SQL", "Relevant coursework: Data Structures, Algorithms",
+    "Languages: English (native), Mandarin (fluent)", "HackIllinois 2025 — 2nd Place", "Food Pantry Dashboard",
+    "GPA: 3.9/4.0", "June 2024 - August 2024", "Summer 2024", "2023-2024", "Research Assistant at the Beckman Institute",
+    "Undergraduate researcher, Smith lab", "Software engineering intern, Google", "Treasurer, Chinese Students Association",
+    "Chinese American Association of Central Illinois", "Instructor: Prof. Smith", "Tools: Python, PyTorch",
+    "Mentor: Dr. Jane Doe", "Advisor: Prof. Lee", "Research Assistant – Smith Lab – Jan 2025 to May 2025",
+    "University of Illinois at Urbana-Champaign", "Bachelor of Science in Computer Engineering",
+    "RR Donnelley, Shanghai, China", "Institute of Physics, Chinese Academy of Sciences",
+    "Campus Food Pantry Dashboard, Spring 2024", "Illini Solar Car | Electrical Team | 2024", "Lead Developer, Open Reality",
+    "IEEE Student Branch", "Machine learning for sleep staging", "Sleep staging with deep learning (CS 446 final project)",
+    "Research experience", "Honors and awards", "Projects and research", "Work history",
+    "Awards: Dean's List, James Scholar", "Skills: Python, R, SQL", "Certifications: AWS Cloud Practitioner",
+    "Interests: piano, hiking", "References available upon request", "Personal Website: example.dev",
+    "Email: student@example.edu", "Phone: 555-0100", "Champaign, IL",
+    "Robotics Team, UIUC", "Smith Research Group, UIUC", "iGEM Team, University of Illinois", "iGEM Team (2024)",
+    "Illini Formula SAE Team, Champaign, IL", "Undergraduate Research Team, Smith Lab",
+    "Liu Lab Group, Department of Psychology", "Planned Parenthood of Illinois, Champaign", "Collaborative Robotics Lab, UIUC",
+    "Solar Car Team, UIUC — Electrical Lead", "NSF REU Program, Purdue University", "Illini Solar Car Team",
+    "智能温室项目（进行中）", "毕业设计（在研） 2025年9月至今", "团队项目：校园导航App", "合作项目 | 2025年3月-6月",
+    "论文：睡眠与记忆（在投）", "计划项目：无人机", "某某实验室 科研助理（拟加入）", "研究助理 2025年1月至今",
+    "北京大学 物理学院", "2024.09 - 2025.06", "中国科学院物理研究所 实习生 2026.06-2026.08", "伊利诺伊大学厄巴纳-香槟分校",
+    "计算机工程 学士", "校园导航App", "团队合作项目 2025年春", "国家大学生创新训练项目（在研）", "全国大学生数学建模竞赛 二等奖",
+    "技能：Python、C++", "语言：英语（流利）", "某某公司 软件工程实习生", "项目负责人", "参与者", "指导老师：张教授",
+    "智能机器人团队，清华大学", "北京大学合作项目组",
+]
+# A sentence-case heading, then the first row of the next entry (no glyph) above its bullet.
+SENTENCE_HEADINGS = ["Extracurricular activities", "Leadership and activities", "Campus involvement",
+                     "Research experience", "Team projects", "Activities"]
+ORG_ROWS = ["Illini Solar Car Team", "Robotics Team, UIUC", "iGEM Team (2024)", "Solar Car Team, UIUC — Electrical Lead",
+            "Sleep Lab, UIUC"]
+# Bullets that open with each glyph or list number: resume-input.ts BULLET_LINE and pdf-parser.ts
+# BULLET_GLYPH (U+F0B7 is Word's Symbol-font bullet as a PDF extracts it), then others.
+GLYPHS = ["• ", "•\t", "- ", "* ", "– ", "— ", "+ ", "1. ", "1) ", "\uf0b7\t", "\uf0b7 ", "\uf0a7 ", "\uf076 ", "\uf0d8 ",
+          "\uf0fc ", "‣ ", "∙ ", "■ ", "► ", "➢\t", "➢  ", "✓ ", "◆ ", "(1) ", "(1)\t", "1.\t",
+          "o\t", "o ", "-", "–", "•", "1.", "1)", "(1)", "1、", "（1）", "①", "① ", "※ ", "★ ", "☆ ", "√ ", "○ ", "> ", "a) ",
+          "a. ", "◇ ", "❖ ", "➤ ", "✔ ", "▶ ", "♦ ", "→ "]
+# Status, share and negation rows in an entry row's shape: a field break, a label or a bracket.
+FIELD_STATUS_ROWS = [
+    "Status: Under Review", "Status: under review", "Under Review: NeurIPS 2025", "Under Review, NeurIPS 2025",
+    "Under Review at ICRA, 2025", "Submitted to Nature, 2025", "Team of 4, Fall 2024", "Team of 4 | Fall 2024",
+    "Ongoing, Jan 2025 - Present", "In progress, Jan 2025 - Present", "With Two Graduate Students, Smith Lab",
+    "Planned Fall 2026, NSF REU", "Not Yet Submitted (Draft)", "Paper (Under Review)", "Paper Under Review, NeurIPS 2025",
+    "Paper Accepted at ICRA 2026",
+    "Manuscript (In Preparation)", "Draft Paper, 2026", "Second Author, Nature 2025", "Co-First Author, ICRA 2026",
+    "Joint Work, Smith Lab", "论文（在投）", "论文，在投", "论文在投 | Under Review", "与两名研究生合作，共同完成",
+    "计划于 2026 年投稿", "尚未投稿（草稿）", "团队合作，四人", "论文已投稿 Nature",
+]
 # Rows that finish the bullet above them: a status, a share of the work or a negation.
 STATUS_ROWS = [
     "Under Review", "In Preparation", "Work in Progress", "Manuscript in Preparation", "Paper Under Review",
@@ -119,13 +193,37 @@ for heading, bullet, lang in spec["headings"]:
     resume = f"{top}\n• {first}\n• {bullet}\n{heading}\n• {LAST[lang]}\n"
     kept = all(lines(path, resume, bullets) == bullets for path in PATHS) and tailor._heuristic_bullets(resume) == bullets
     headings[f"{heading} || {bullet}"] = kept
-statuses = {}
-for row, lang in spec["statuses"]:
-    cut = "搭建了校园农场的土壤湿度传感器网络" if lang == "zh" else "Co-authored a paper on soil moisture sensing for the farm"
-    last = "用 C 语言为社团编写了数据记录程序" if lang == "zh" else "Cleaned 200 survey responses"
-    resume = f"{TOP[lang][0]}\n• {cut}\n{row}\n• {last}\n"
-    statuses[row] = all(cut in lines(path, resume, [cut, last]) for path in PATHS)
-json.dump({"headings": headings, "statuses": statuses}, sys.stdout, ensure_ascii=False)
+def statuses_of(rows):
+    accepted = {}
+    for row, lang in rows:
+        cut = "搭建了校园农场的土壤湿度传感器网络" if lang == "zh" else "Co-authored a paper on soil moisture sensing for the farm"
+        last = "用 C 语言为社团编写了数据记录程序" if lang == "zh" else "Cleaned 200 survey responses"
+        resume = f"{TOP[lang][0]}\n• {cut}\n{row}\n• {last}\n"
+        accepted[row] = all(cut in lines(path, resume, [cut, last]) for path in PATHS)
+    return accepted
+
+
+def placed(resume, bullets):
+    return all(lines(path, resume, bullets) == bullets for path in PATHS) and tailor._heuristic_bullets(resume) == bullets
+
+
+entries = {}
+for row, bullet, lang in spec["entries"]:
+    top, first = TOP[lang]
+    entries[f"{row} || {bullet}"] = placed(f"{top}\n• {first}\n• {bullet}\n{row}\n• {LAST[lang]}\n", [first, bullet, LAST[lang]])
+for heading, row in spec["headed_entries"]:
+    top, first = TOP["en"]
+    bullets = [first, "Cleaned 212 survey responses in R", LAST["en"]]
+    entries[f"{heading} / {row}"] = placed(f"{top}\n• {bullets[0]}\n• {bullets[1]}\n{heading}\n{row}\n• {bullets[2]}\n", bullets)
+glyphs = {}
+for glyph, lang in spec["glyphs"]:
+    top, first = TOP[lang]
+    bullets = [first, *spec["glyph_bullets"][lang]]
+    resume = f"{top}\n" + "".join(f"{glyph}{bullet}\n" for bullet in bullets)
+    glyphs[f"{glyph!r} {lang}"] = {"routes": [lines(path, resume, bullets) for path in PATHS],
+                                   "fallback": tailor._heuristic_bullets(resume)}
+json.dump({"headings": headings, "statuses": statuses_of(spec["statuses"]), "entries": entries, "glyphs": glyphs,
+           "field_statuses": statuses_of(spec["field_statuses"])}, sys.stdout, ensure_ascii=False)
 """
 
 
@@ -141,7 +239,15 @@ def placements() -> list[tuple[str, str, str]]:
 
 def probe(root: Path) -> dict:
     spec = {"headings": placements(),
-            "statuses": [(row, "en" if row.isascii() else "zh") for row in STATUS_ROWS]}
+            "statuses": [(row, "en" if row.isascii() else "zh") for row in STATUS_ROWS],
+            "entries": [(row, bullet, "en" if row.isascii() else "zh") for row in ENTRY_ROWS
+                        for bullet in (["Designed a sensor rig for the team", "Cleaned 212 survey responses in R"]
+                                       if row.isascii() else ["为社团设计了一套传感器测试台", "清洗并分析了 200 份问卷数据"])],
+            "headed_entries": [(heading, row) for heading in SENTENCE_HEADINGS for row in ORG_ROWS],
+            "glyphs": [(glyph, lang) for glyph in GLYPHS for lang in ("en", "zh")],
+            "glyph_bullets": {"en": ["Designed a sensor rig for the team", "Wrote a data logger in C for the club"],
+                              "zh": ["为社团设计了一套传感器测试台", "用 C 语言为社团编写了数据记录程序"]},
+            "field_statuses": [(row, "en" if row.isascii() else "zh") for row in FIELD_STATUS_ROWS]}
     env = {**os.environ, "PYTHONPATH": str(root), "PYTHONWARNINGS": "ignore"}
     done = subprocess.run([sys.executable, "-c", PROBE], input=json.dumps(spec), capture_output=True, text=True,
                           cwd=root, env=env, check=True)
@@ -167,11 +273,34 @@ def main() -> int:
               f" ({len(headings)} headings)")
         cut = [row for row, accepted in result["statuses"].items() if accepted]
         print(f"{name}: status rows {len(result['statuses'])}, cut above accepted {len(cut)}")
+        entry_lost = [key for key, kept in result["entries"].items() if not kept and main_result["entries"][key]]
+        entry_rows = sorted({key.split(" || ")[0] for key in entry_lost})
+        print(f"{name}: entry rows {len(ENTRY_ROWS)} and headed entries {len(SENTENCE_HEADINGS) * len(ORG_ROWS)},"
+              f" placements {len(result['entries'])}, bullet lost or glued where main keeps it {len(entry_lost)}"
+              f" ({len(entry_rows)} rows)")
+        route_lost, fallback_lost = [], []
+        for key, got in result["glyphs"].items():
+            want = main_result["glyphs"][key]
+            if any(set(main_lines) - set(lines) for main_lines, lines in zip(want["routes"], got["routes"], strict=True)):
+                route_lost.append(key)
+            if set(want["fallback"]) - set(got["fallback"]):
+                fallback_lost.append(key)
+        print(f"{name}: glyph résumés {len(result['glyphs'])}, a bullet main returns lost: routes {len(route_lost)},"
+              f" fallback {len(fallback_lost)}")
+        field_cut = [row for row, accepted in result["field_statuses"].items() if accepted]
+        print(f"{name}: status rows in an entry row's shape {len(result['field_statuses'])},"
+              f" cut above accepted {len(field_cut)}")
         if args.list and name != "main":
             for heading in headings:
                 print(f"  heading, bullet lost or glued: {heading}")
             for row in cut:
                 print(f"  status row, cut above accepted: {row}")
+            for row in entry_rows:
+                print(f"  entry row, bullet lost or glued: {row}")
+            for key in sorted(set(route_lost) | set(fallback_lost)):
+                print(f"  glyph, bullet lost: {key}")
+            for row in field_cut:
+                print(f"  status row in an entry row's shape, cut above accepted: {row}")
     return 0
 
 

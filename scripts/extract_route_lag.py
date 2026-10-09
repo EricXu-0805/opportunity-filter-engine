@@ -42,6 +42,13 @@ CASES = {
     "CJK rows under a glyph": "• 用\n" + "数据清洗并完成了分析工作内容\n" * 4000,
     "status rows": "• Built a dashboard for the lab\nUnder review at the ICRA 2026 workshop not yet submitted\n" * 700,
     "glyph rows": "• Built a dashboard for the lab with R\n" * 1500,
+    # Round 3d: rows the entry-row rule reads and refuses, soft rows with a status at the end of their
+    # item (_item_cuts), camel-case rows, marks before every row, and Word's "o" and list numbers.
+    "entry-shaped status rows": "• Ab\n" + "Team of 4, Fall 2024 | Under Review at ICRA (Draft)\n" * 1100,
+    "soft rows, status last": "• Ab\n" + "Machine learning for sleep staging xx\n" * 1550 + "Under review\n",
+    "camel-case rows": "• Ab\n" + "iGEM Team of 4, Fall 2024 abcd\n" * 1900,
+    "marks before rows": "• Ab\n" + "※★√ Xx abcd efgh\n" * 3500,
+    "list numbers and o": "".join(f"({index % 99})Xx abcd efgh\no Yy abcd efgh\n" for index in range(2400)),
 }
 PATHS = ("/api/tailor/extract-bullets", "/api/tailor/structure")
 

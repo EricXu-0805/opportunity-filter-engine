@@ -18,11 +18,17 @@ of 20 selected units, 100 entries in the draft, and a 2 MiB draft for full targe
 
 Run from the repository root:
     python scripts/rewrite_route_lag.py [--threshold 0.25] [--only TEXT] [--concurrent 1,4,10] [--no-fills]
+                                        [--switch-interval SECONDS]
 --concurrent sends that many identical requests at once; a comma-separated list measures every
 case at each level in turn and prints the worst stall per route for each. Ten at once is one
 client's limit for /api/tailor* (backend/main.py RATE_LIMITS: "/api/tailor": (10, 60)).
 Deterministic inputs; timings vary with load, so a case over the threshold is re-run (up to
 three times) and reported with its best run.
+
+--switch-interval sets sys.setswitchinterval for the run (Python's default is 0.005 s): how long
+a thread may hold the GIL while another waits for it. The routes' checks run on worker threads
+(backend.lib.blocking); a status gap that shrinks with the interval while the stall does not
+is the event loop waiting for the GIL behind them.
 """
 from __future__ import annotations
 
@@ -376,7 +382,11 @@ def main() -> int:
     parser.add_argument("--concurrent", type=levels, default=[1],
                         help="identical requests sent at once; a list such as 1,4,10 measures each in turn")
     parser.add_argument("--no-fills", action="store_true", help="only the parsing and validation cases")
+    parser.add_argument("--switch-interval", type=float, default=None,
+                        help="sys.setswitchinterval for the run, in seconds (Python's default: 0.005)")
     args = parser.parse_args()
+    if args.switch_interval is not None:
+        sys.setswitchinterval(args.switch_interval)
     install_stubs()
     # Production freezes its startup objects out of the collector (backend.main._warmup).
     gc.collect()
