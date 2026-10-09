@@ -36,7 +36,8 @@ would say nothing about what is actually running). `/api/health` and
 | `freshness` | `professor_tracking.json` counts vs `FRESHNESS_MIN_PCT` | the gate itself |
 | `tracking_release_ready` | `professor_tracking.json` strict contract | the gate itself |
 | `truthfulness` | `data/audits/truthfulness_report.json` (GO + age ≤30d) | the gate itself |
-| `flag_parity` | backend vs frontend release-scope tables | the gate itself |
+| `flag_parity` | backend vs frontend release-scope tables, by name **and value** | the gate itself |
+| `release_record` | the SHA `/api/health` reports, the `data-release-sha` on the frontend's HTML, and — derived from those two commits — each side's data version (last shard commit) and flag table | the gate itself with `--backend-url`/`--frontend-url`, or an operator |
 | `restore_drill` | `data/releases/drills/<drill_id>.json` | an operator, via `scripts/restore_drill.py` |
 | `ci:*` (4 required checks) | `scripts/verify_refresh_pr.py`-shaped snapshot | CI, bound to the head SHA |
 | `open_incidents` | `GET /api/admin/ops/incidents?unresolved_only=true` → `rollup` (the gate counts `release_blocking_total`: every unresolved incident except a `manual_review:snapshot_refresh:*` reminder) | an operator with `ADMIN_TOKEN` |
@@ -58,6 +59,30 @@ the commit being deployed, while `check_worktree_clean` requires HEAD to equal
 the release SHA. Omit a gate's key rather than inventing one — an absent key
 reads as UNVERIFIED and blocks, which is the answer that keeps the gate worth
 consulting.
+
+### The release record
+
+One record ties together what is actually serving: the backend's commit, the
+frontend's commit, the data each was built with, and the flags each enforces.
+The gate fails when any of them differ from the candidate or from each other.
+
+```
+python scripts/release_gate.py --release-sha <40-hex> \
+    --backend-url https://<render host> --frontend-url https://<site> ...
+```
+
+The gate reads `GET /api/health` → `release_sha` and the `data-release-sha`
+attribute on `GET /`. Everything else is derived from those two commits,
+because a deploy builds one commit's tree. Render's build only runs
+`pip install`. `data_loader` reads `data/processed/shards` when no
+`opportunities.json` exists, and that file is gitignored. The frontend's
+coverage numbers (`school-stats.json`) are committed with the shards by the
+refresh workflow. So the data version is the last commit that touched the
+shards at that SHA. If either deploy reports no full SHA, the gate says
+`UNVERIFIED`. An observation older than one day is stale. The release-gate
+workflow passes the `BACKEND_URL`/`FRONTEND_URL` secrets the cron workflows
+already use. Without `--backend-url`/`--frontend-url`, an operator can record
+`{"deployment": {"observed_at", "backend_sha", "frontend_sha"}}` instead.
 
 `UNVERIFIED` is deliberately distinct from `FAIL`: both block, but the first
 means "we have no evidence either way" and the second means "we have evidence

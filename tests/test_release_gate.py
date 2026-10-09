@@ -19,6 +19,11 @@ _spec.loader.exec_module(gate)
 
 SHA_A = "a" * 40
 SHA_B = "b" * 40
+SHA_C = "c" * 40
+
+_FLAGS = {"match_ai_refine": False, "cross_school_matching": True}
+_DATA_A = {"shard_commit": "d" * 40, "shards_tree": "1" * 40}
+_DATA_B = {"shard_commit": "e" * 40, "shards_tree": "2" * 40}
 
 
 def _find(ledger: dict, name: str) -> dict:
@@ -46,6 +51,8 @@ def _all_external_pass(sha: str) -> dict:
             "Backend (lint + pytest)", "Frontend (typecheck + build)",
             "Migrations (Flow B merge + CLI replay)", "E2E (Playwright)")],
     }
+    ev["deployment"] = {"observed_at": _now_iso(), "backend_sha": sha,
+                        "frontend_sha": sha}
     ev["open_incidents"] = {"observed_at": _now_iso(),
                             "rollup": {"open_total": 0, "truncated": False}}
     ev["provider_readiness"] = {
@@ -101,6 +108,13 @@ def _stub_repo_gates(monkeypatch, sha: str, *, drill: dict | None = None) -> Non
                         lambda: gate._gate("truthfulness", gate.PASS, "stub"))
     monkeypatch.setattr(gate, "check_flag_parity",
                         lambda: gate._gate("flag_parity", gate.PASS, "stub"))
+    # The release record reads two files and a data version at each deployed
+    # commit; with subprocess stubbed above those reads would see the sha
+    # string, so they are answered with one aligned commit's state instead.
+    monkeypatch.setattr(gate, "commit_exists", lambda rev: True)
+    monkeypatch.setattr(gate, "release_scope_at",
+                        lambda rev: {"backend": dict(_FLAGS), "frontend": dict(_FLAGS)})
+    monkeypatch.setattr(gate, "data_version_at", lambda rev: dict(_DATA_A))
     monkeypatch.setattr(gate, "check_ledger_currency",
                         lambda s, **kw: gate._gate("ledger_currency", gate.PASS, "stub"))
     monkeypatch.setattr(gate, "load_latest_drill",
@@ -415,13 +429,267 @@ class TestIncidentGate:
         assert got["status"] == gate.UNVERIFIED
 
 
+_BE_SCOPE = '''
+from types import MappingProxyType
+RELEASE_SCOPE = MappingProxyType(
+    {
+        # Closed until its acceptance PR: "comment": True,
+        "match_ai_refine": False,
+        "cross_school_matching": True,
+    }
+)
+_PROVIDER_FEATURES = {"azure": "microsoft_school_auth"}
+'''
+
+_FE_SCOPE = '''
+export const RELEASE_SCOPE = Object.freeze({
+  // Closed until its acceptance PR. notAFlag: true,
+  matchAiRefine: false,
+  /* block comment: alsoNotAFlag: false */
+  crossSchoolMatching: true,
+} as const);
+
+export function normalize(profile) {
+  return { ...profile, includeCrossSchool: false };
+}
+'''
+
+
+def _write_scope(tmp_path, monkeypatch, *, be: str = _BE_SCOPE,
+                 fe: str = _FE_SCOPE) -> None:
+    (tmp_path / "backend" / "lib").mkdir(parents=True)
+    (tmp_path / "frontend" / "src" / "lib").mkdir(parents=True)
+    (tmp_path / "backend" / "lib" / "release_scope.py").write_text(be)
+    (tmp_path / "frontend" / "src" / "lib" / "release-scope.ts").write_text(fe)
+    monkeypatch.setattr(gate, "_REPO", tmp_path)
+
+
 class TestFlagParity:
-    def test_current_repo_state_is_evaluated(self):
-        # Frontend-only flags mean a surface with no server-side gate.
+    """Names AND values. M65 names comparing only flag names as the shortcut
+    a release check may not take: a flag open on one side and closed on the
+    other is a control with no server-side door, or a door with no control."""
+
+    def test_the_committed_tables_agree(self):
         got = gate.check_flag_parity()
-        assert got["status"] in (gate.PASS, gate.FAIL, gate.UNVERIFIED)
-        if got["status"] == gate.FAIL:
-            assert "frontend-only" in got["detail"]
+        assert got["status"] == gate.PASS, got["detail"]
+        assert got["evidence"]["backend"] == got["evidence"]["frontend"]
+
+    def test_aligned_tables_pass(self, tmp_path, monkeypatch):
+        _write_scope(tmp_path, monkeypatch)
+        got = gate.check_flag_parity()
+        assert got["status"] == gate.PASS, got["detail"]
+        assert got["evidence"]["backend"] == _FLAGS
+
+    def test_a_flag_open_on_one_side_only_fails(self, tmp_path, monkeypatch):
+        _write_scope(tmp_path, monkeypatch,
+                     fe=_FE_SCOPE.replace("matchAiRefine: false", "matchAiRefine: true"))
+        got = gate.check_flag_parity()
+        assert got["status"] == gate.FAIL
+        assert got["reason"] == "flag_drift"
+        assert got["evidence"]["value_mismatch"] == {
+            "match_ai_refine": {"backend": False, "frontend": True}}
+        assert "match_ai_refine" in got["detail"]
+
+    def test_a_flag_declared_on_one_side_only_fails(self, tmp_path, monkeypatch):
+        _write_scope(tmp_path, monkeypatch,
+                     be=_BE_SCOPE.replace('"cross_school_matching": True,',
+                                          '"cross_school_matching": True,\n'
+                                          '        "payments": False,'))
+        got = gate.check_flag_parity()
+        assert got["status"] == gate.FAIL
+        assert got["evidence"]["backend_only"] == ["payments"]
+
+    def test_text_outside_the_tables_is_not_read_as_a_flag(self, tmp_path, monkeypatch):
+        _write_scope(tmp_path, monkeypatch)
+        tables = gate.release_scope_at(None)
+        assert tables == {"backend": _FLAGS, "frontend": _FLAGS}
+
+    def test_a_value_that_is_not_a_literal_cannot_be_verified(self, tmp_path, monkeypatch):
+        # A computed flag could be either value at runtime; reading it as
+        # absent would let a real drift through as "aligned".
+        _write_scope(tmp_path, monkeypatch,
+                     fe=_FE_SCOPE.replace("crossSchoolMatching: true",
+                                          "crossSchoolMatching: ENABLE_CROSS"))
+        got = gate.check_flag_parity()
+        assert got["status"] == gate.UNVERIFIED
+        assert got["reason"] == "evidence_unreadable"
+
+    def test_a_backend_value_that_is_not_a_boolean_cannot_be_verified(
+            self, tmp_path, monkeypatch):
+        # 1 == True in Python, so an int would compare "equal" to the frontend's
+        # true while feature_enabled reads it with its own truthiness.
+        _write_scope(tmp_path, monkeypatch,
+                     be=_BE_SCOPE.replace('"cross_school_matching": True',
+                                          '"cross_school_matching": 1'))
+        assert gate.check_flag_parity()["status"] == gate.UNVERIFIED
+
+    def test_a_missing_table_cannot_be_verified(self, tmp_path, monkeypatch):
+        _write_scope(tmp_path, monkeypatch)
+        (tmp_path / "frontend" / "src" / "lib" / "release-scope.ts").unlink()
+        assert gate.check_flag_parity()["status"] == gate.UNVERIFIED
+
+
+# ---------------------------------------------------------------------------
+# One release record: the backend that answers, the frontend that renders, the
+# corpus each was built with, and the flags each enforces, against the
+# candidate (M65). Before this, nothing compared the deployed frontend's SHA
+# with anything (O7: production backend 83940c19 on 10-02, frontend unread).
+# ---------------------------------------------------------------------------
+
+def _deployment(backend: str | None = SHA_A, frontend: str | None = SHA_A,
+                **extra) -> dict:
+    return {"observed_at": _now_iso(), "backend_sha": backend,
+            "frontend_sha": frontend, **extra}
+
+
+def _repo_state(monkeypatch, *, data: dict | None = None,
+                scopes: dict | None = None, known: set | None = None) -> None:
+    """Per-commit answers for the readers the release record uses."""
+    data = data or {}
+    scopes = scopes or {}
+    monkeypatch.setattr(gate, "commit_exists",
+                        lambda rev: rev in (known or {SHA_A, SHA_B, SHA_C}))
+    monkeypatch.setattr(gate, "data_version_at",
+                        lambda rev: dict(data.get(rev, _DATA_A)))
+    monkeypatch.setattr(
+        gate, "release_scope_at",
+        lambda rev: scopes.get(rev, {"backend": dict(_FLAGS), "frontend": dict(_FLAGS)}))
+
+
+class TestReleaseRecord:
+    def test_no_observation_is_unverified_not_pass(self, monkeypatch):
+        _repo_state(monkeypatch)
+        got = gate.check_release_record(SHA_A, None)
+        assert got["status"] == gate.UNVERIFIED
+        assert got["reason"] == "evidence_absent"
+
+    def test_everything_at_the_candidate_passes(self, monkeypatch):
+        _repo_state(monkeypatch)
+        got = gate.check_release_record(SHA_A, _deployment())
+        assert got["status"] == gate.PASS, got["detail"]
+        record = got["evidence"]
+        assert record["backend"]["deployed_sha"] == SHA_A
+        assert record["frontend"]["deployed_sha"] == SHA_A
+        assert record["candidate"]["data_version"] == _DATA_A
+        assert record["candidate"]["release_scope"] == {"backend": _FLAGS,
+                                                        "frontend": _FLAGS}
+        assert record["disagreements"] == []
+
+    def test_a_backend_on_another_commit_fails(self, monkeypatch):
+        _repo_state(monkeypatch)
+        got = gate.check_release_record(SHA_A, _deployment(backend=SHA_B))
+        assert got["status"] == gate.FAIL
+        assert got["reason"] == "sha_mismatch"
+        assert any("backend" in d and SHA_B[:8] in d
+                   for d in got["evidence"]["disagreements"])
+
+    def test_a_frontend_on_another_commit_fails(self, monkeypatch):
+        # Vercel deploys without waiting for checks while Render waits for
+        # every one (docs/RELEASE.md §3): this is the drift that happens.
+        _repo_state(monkeypatch)
+        got = gate.check_release_record(SHA_A, _deployment(frontend=SHA_B))
+        assert got["status"] == gate.FAIL
+        assert any("frontend" in d for d in got["evidence"]["disagreements"])
+
+    def test_the_data_each_side_was_built_with_is_compared(self, monkeypatch):
+        _repo_state(monkeypatch, data={SHA_B: _DATA_B})
+        got = gate.check_release_record(SHA_A, _deployment(backend=SHA_B))
+        assert got["status"] == gate.FAIL
+        data_lines = [d for d in got["evidence"]["disagreements"] if "data" in d]
+        assert data_lines and _DATA_B["shard_commit"][:8] in data_lines[0]
+        assert got["evidence"]["backend"]["data_version"] == _DATA_B
+
+    def test_same_data_is_not_reported_as_a_data_disagreement(self, monkeypatch):
+        # A code-only commit between the two leaves the corpus identical; the
+        # record should say the code differs, not invent a data drift.
+        _repo_state(monkeypatch)
+        got = gate.check_release_record(SHA_A, _deployment(frontend=SHA_B))
+        assert not [d for d in got["evidence"]["disagreements"] if "data" in d]
+
+    def test_deployed_flag_tables_that_disagree_fail(self, monkeypatch):
+        opened = dict(_FLAGS, match_ai_refine=True)
+        _repo_state(monkeypatch, scopes={
+            SHA_B: {"backend": dict(_FLAGS), "frontend": opened}})
+        got = gate.check_release_record(SHA_A, _deployment(frontend=SHA_B))
+        flag_lines = [d for d in got["evidence"]["disagreements"] if "flag" in d]
+        assert flag_lines and "match_ai_refine" in flag_lines[0]
+        assert got["evidence"]["frontend"]["release_scope"] == opened
+
+    def test_flags_are_compared_even_when_both_shas_match(self, monkeypatch):
+        # The candidate's own two tables disagreeing is a release-record
+        # failure too, not only a flag_parity one: the record is the one
+        # place that says what the deployed pair enforces.
+        _repo_state(monkeypatch, scopes={
+            SHA_A: {"backend": dict(_FLAGS),
+                    "frontend": dict(_FLAGS, cross_school_matching=False)}})
+        got = gate.check_release_record(SHA_A, _deployment())
+        assert got["status"] == gate.FAIL
+        assert got["reason"] == "flag_drift"
+
+    def test_a_deploy_that_does_not_name_its_commit_is_unverified(self, monkeypatch):
+        # /api/health reports null when RENDER_GIT_COMMIT is unset, and the
+        # page says data-release-sha="unknown": no identity, so no record.
+        _repo_state(monkeypatch)
+        for backend, frontend in ((None, SHA_A), (SHA_A, "unknown"), (SHA_A[:7], SHA_A)):
+            got = gate.check_release_record(SHA_A, _deployment(backend, frontend))
+            assert got["status"] == gate.UNVERIFIED, (backend, frontend)
+            assert got["reason"] == "evidence_incomplete"
+
+    def test_a_deployed_commit_this_repo_does_not_have_fails(self, monkeypatch):
+        _repo_state(monkeypatch, known={SHA_A})
+        got = gate.check_release_record(SHA_A, _deployment(backend=SHA_C))
+        assert got["status"] == gate.FAIL
+        assert got["evidence"]["backend"]["data_version"] is None
+        assert any("not in this repository" in d
+                   for d in got["evidence"]["disagreements"])
+
+    def test_an_old_observation_is_stale(self, monkeypatch):
+        _repo_state(monkeypatch)
+        old = (datetime.now(UTC) - timedelta(days=2)).isoformat()
+        got = gate.check_release_record(SHA_A, _deployment(observed_at=old))
+        assert got["status"] == gate.FAIL
+        assert got["reason"] == "evidence_stale"
+
+    def test_the_ledger_carries_the_record_and_it_blocks(self, monkeypatch):
+        _stub_repo_gates(monkeypatch, SHA_A)
+        evidence = _all_external_pass(SHA_A)
+        evidence["deployment"] = _deployment(frontend=SHA_B)
+        ledger = gate.build_ledger(SHA_A, evidence, min_records=1)
+        assert ledger["release_record"]["frontend"]["deployed_sha"] == SHA_B
+        assert ledger["final_decision"] == "NO-GO"
+        assert [b["check"] for b in ledger["blockers"]] == ["release_record"]
+
+
+class TestObserveDeployment:
+    _HTML = ('<!DOCTYPE html><html data-dpl-id="dpl_x" lang="en" '
+             f'data-release-sha="{SHA_B}"><head></head></html>')
+
+    def test_reads_health_and_the_page_attribute(self):
+        pages = {"https://api.example/api/health": json.dumps({"release_sha": SHA_A}),
+                 "https://app.example/": self._HTML}
+        got = gate.observe_deployment("https://api.example/", "https://app.example",
+                                      fetch=pages.__getitem__)
+        assert got["backend_sha"] == SHA_A
+        assert got["frontend_sha"] == SHA_B
+        assert gate._parse_stamp(got["observed_at"]) is not None
+
+    def test_a_failed_read_is_recorded_not_raised(self):
+        def fetch(url):
+            raise TimeoutError("timed out")
+        got = gate.observe_deployment("https://api.example", "https://app.example",
+                                      fetch=fetch)
+        assert got["backend_sha"] is None and got["frontend_sha"] is None
+        assert got["backend_error"] == "TimeoutError"
+        # The error names the failure, never the URL: the ledger is uploaded
+        # from a public repository and BACKEND_URL is a workflow secret.
+        assert "api.example" not in json.dumps(got)
+
+    def test_a_page_without_the_attribute_reports_no_sha(self):
+        pages = {"https://api.example/api/health": "{}",
+                 "https://app.example/": "<html></html>"}
+        got = gate.observe_deployment("https://api.example", "https://app.example",
+                                      fetch=pages.__getitem__)
+        assert got["backend_sha"] is None and got["frontend_sha"] is None
 
 
 # ---------------------------------------------------------------------------
