@@ -488,7 +488,9 @@ COLLEGE_DEPARTMENT_SIGNALS: dict[str, list[str]] = {
 # faculty in civil, chemical and environmental engineering, "biolog" 702 in
 # chemical and biological engineering, "construction" 289 in civil engineering.
 # "ecology" reached the 85 faculty of human ecology and "patholog" the 232 of
-# plant pathology.
+# plant pathology. An engineering department an agriculture college shares
+# (biological systems engineering at Nebraska, Virginia Tech and Wisconsin,
+# biological and environmental engineering at Cornell) is named outright.
 _ECOLOGY = (
     "ecology and", "ecology &", "ecology, evolution", "& ecology", "of ecology",
     "wildlife ecology", "applied ecology", "community ecology",
@@ -570,7 +572,7 @@ _FIELD_DEPARTMENT_STEMS: dict[str, tuple[str, ...]] = {
     "agriculture": (
         "agricultur", "crop", "animal", "food", "plant", "soil", "horticultur", "agronom",
         "entomolog", "forestry", "natural resources", "nutrition", "dairy", "poultry", "wildlife",
-        "fisheries",
+        "fisheries", "biological systems engineering", "biological & environmental engineering",
     ),
     "environment": (
         "environmental scien", "environmental stud", "environmental affairs",

@@ -3053,9 +3053,11 @@ class TestCollegeAffinityOutsideUiuc:
                      "Department of Microbiology", "Department of Ocean Sciences",
                      "Department of Oceanography"):
             assert self._affinity(sciences, dept) > 0.0, dept
-        # An agriculture college keeps the agricultural engineering it shares.
-        assert self._affinity("College of Agriculture & Life Sciences",
-                              "Agricultural & Biological Engineering") > 0.0
+        # An agriculture college keeps the engineering departments it shares.
+        for dept in ("Agricultural & Biological Engineering",
+                     "Department of Biological Systems Engineering",
+                     "Department of Biological & Environmental Engineering"):
+            assert self._affinity("College of Agriculture & Life Sciences", dept) > 0.0, dept
 
     def test_ecology_does_not_carry_a_science_college_into_human_ecology(self):
         """"ecology" gave 96 natural-science, life-science and environment colleges
