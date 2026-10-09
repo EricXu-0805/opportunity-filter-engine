@@ -356,6 +356,111 @@ describe('a merge that kept the account\'s own row', () => {
     expect(commitMock).not.toHaveBeenCalled();
   });
 
+  it('asks about a guest edit that was recorded but never staged', async () => {
+    loadProfileMock.mockResolvedValue(cloud(GUEST, 1));
+    await hydrateProfile();
+    // The tab closed inside the autosave debounce: the edit is in the journal
+    // only, still carrying the guest row's base (same grade as the account's).
+    expect(recordProfileIntent({ ...GUEST, grade: 'Senior' }, ['grade'], captureOwnerToken())).toBe(true);
+    const owner = await claimInto(ACCOUNT_UID);
+    expect(await forgetMergedGuestRevision(owner)).toBe(true);
+
+    loadProfileMock.mockResolvedValue(cloud(ACCOUNT, 1));
+    const h = await hydrateProfile();
+    expect(h.conflictKeys).toEqual(['grade']);
+    expect(h.profile?.grade, 'the unsent edit is still shown').toBe('Senior');
+    expect((await flushPendingProfileWrite(owner)).status).toBe('conflict');
+    expect(commitMock, 'nothing is sent over the account row unasked').not.toHaveBeenCalled();
+
+    // And the question can be answered: keeping it sends against the account row.
+    commitMock.mockResolvedValueOnce(saved({ ...ACCOUNT, grade: 'Senior' }, 2));
+    const kept = await answerConflict(['grade'], 'local', owner, { ...ACCOUNT, grade: 'Senior' });
+    expect(kept.status).toBe('saved');
+    expect(commitMock.mock.calls.map(([intent]) => [intent.expectedRevision, intent.patch]))
+      .toEqual([[1, { grade: 'Senior' }]]);
+    expect(journalOps(), 'the saved answer settles the guest operation').toEqual([]);
+  });
+
+  it('asks about a recorded guest edit even when no envelope was ever written', async () => {
+    // Offline from the first keystroke: the journal holds the edit and
+    // nothing else does.
+    expect(recordProfileIntent({ ...GUEST, grade: 'Senior' }, ['grade'], captureOwnerToken(), {
+      observedBase: { profile: GUEST, revision: 1 },
+    })).toBe(true);
+    expect(readProfileSyncEnvelope()).toBeNull();
+    const owner = await claimInto(ACCOUNT_UID);
+    expect(await forgetMergedGuestRevision(owner)).toBe(true);
+
+    loadProfileMock.mockResolvedValue(cloud(ACCOUNT, 1));
+    const h = await hydrateProfile();
+    expect(h.conflictKeys).toEqual(['grade']);
+    expect((await flushPendingProfileWrite(owner)).status).toBe('conflict');
+    expect(commitMock).not.toHaveBeenCalled();
+  });
+
+  it('leaves a disagreement between two guest tabs as the question it already was', async () => {
+    loadProfileMock.mockResolvedValue(cloud(GUEST, 1));
+    await hydrateProfile();
+    expect(recordProfileIntent({ ...GUEST, grade: 'Senior' }, ['grade'], captureOwnerToken())).toBe(true);
+    startDocumentForTests('other');
+    resetProfileDirtyLedger();
+    expect(recordProfileIntent({ ...GUEST, grade: 'Sophomore' }, ['grade'], captureOwnerToken())).toBe(true);
+    const owner = await claimInto(ACCOUNT_UID);
+    expect(await forgetMergedGuestRevision(owner)).toBe(true);
+    expect(readProfileSyncEnvelope()?.pending ?? null, 'no value is picked for a disputed field').toBeNull();
+
+    loadProfileMock.mockResolvedValue(cloud(ACCOUNT, 1));
+    const h = await hydrateProfile();
+    expect(h.conflictKeys).toEqual(['grade']);
+    expect(h.conflicts[0].candidates.map((c) => c.value).sort()).toEqual(['Senior', 'Sophomore']);
+    expect(h.profile?.grade, 'neither tab wins while it is asked').toBe(ACCOUNT.grade);
+  });
+
+  it('keeps an unsent edit the journal never held alongside one it did', async () => {
+    // A working copy from before the journal: a raw mirror the guest row
+    // disagrees with, held as a base-unknown outbox entry with no operations.
+    writeUserScopedRaw(STORAGE_KEYS.PROFILE, JSON.stringify({ ...GUEST, major: 'Math' }), captureOwnerToken());
+    loadProfileMock.mockResolvedValue(cloud(GUEST, 1));
+    expect((await hydrateProfile()).conflictKeys).toEqual(['major']);
+    expect(recordProfileIntent({ ...GUEST, major: 'Math', grade: 'Senior' }, ['grade'], captureOwnerToken())).toBe(true);
+    const owner = await claimInto(ACCOUNT_UID);
+    expect(await forgetMergedGuestRevision(owner)).toBe(true);
+
+    loadProfileMock.mockResolvedValue(cloud(ACCOUNT, 1));
+    const h = await hydrateProfile();
+    expect([...h.conflictKeys].sort()).toEqual(['grade', 'major']);
+    expect(h.profile).toMatchObject({ major: 'Math', grade: 'Senior' });
+  });
+
+  it('refuses to forget while the journal cannot be read', async () => {
+    loadProfileMock.mockResolvedValue(cloud(GUEST, 1));
+    await hydrateProfile();
+    const owner = await claimInto(ACCOUNT_UID);
+    const envelope = localStorage.getItem(STORAGE_KEYS.PROFILE_SYNC);
+    localStorage.setItem(`${STORAGE_KEYS.PROFILE_JOURNAL_PREFIX}op_corrupt`, '{not json');
+    await expect(forgetMergedGuestRevision(owner)).resolves.toBe(false);
+    expect(localStorage.getItem(STORAGE_KEYS.PROFILE_SYNC)).toBe(envelope);
+  });
+
+  it('keeps a deletion fence the guest envelope carried', async () => {
+    loadProfileMock.mockResolvedValue(cloud(GUEST, 1));
+    await hydrateProfile();
+    loadProfileMock.mockResolvedValue(absent());
+    await hydrateProfile();
+    expect(readProfileSyncEnvelope()?.tombstone?.reason).toBe('deleted');
+    const owner = await claimInto(ACCOUNT_UID);
+    expect(await forgetMergedGuestRevision(owner)).toBe(true);
+    expect(readProfileSyncEnvelope()?.tombstone?.reason).toBe('deleted');
+  });
+
+  it('reports an unreadable envelope as not forgotten and leaves it alone', async () => {
+    const owner = await claimInto(ACCOUNT_UID);
+    expect(await forgetMergedGuestRevision(owner), 'nothing to forget').toBe(true);
+    writeUserScopedRaw(STORAGE_KEYS.PROFILE_SYNC, '{not json', owner);
+    expect(await forgetMergedGuestRevision(owner)).toBe(false);
+    expect(localStorage.getItem(STORAGE_KEYS.PROFILE_SYNC)).toBe('{not json');
+  });
+
   it('touches nothing for an owner that is no longer current', async () => {
     loadProfileMock.mockResolvedValue(cloud(GUEST, 1));
     await hydrateProfile();
