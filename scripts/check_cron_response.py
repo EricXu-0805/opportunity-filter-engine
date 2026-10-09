@@ -16,9 +16,15 @@ exit 0 on an empty body, on a non-JSON body (a proxy's HTML 502/503 page, a
 Render cold-start error page, an auth redirect), and on JSON that wasn't an
 object — i.e. exactly the responses that prove the cron did not run — so the
 workflow went green and nobody was alerted. A healthy cron returns a JSON
-object; anything else fails the step. The one benign case is an explicit
-`{"status": "skipped"}`, which the endpoints return when their env is not
-configured: that is a deliberate no-op, not a broken run.
+object; anything else fails the step.
+
+`{"status": "skipped"}` passes only when it names no missing configuration.
+The endpoints list the absent variables under `missing` when their env is
+not configured, and these workflows only ever call production, where every
+one of those variables is required (docs/RELEASE.md §6). Read as a
+deliberate no-op, a variable dropped from Render turned each later run green
+while no reminder or digest went out. Every production cron answered "ok" on
+2026-10-08 and 10-09, so this fails nothing that runs today.
 
 Usage:  curl ... | python3 scripts/check_cron_response.py
 """
@@ -47,6 +53,10 @@ def check(payload: dict) -> list[str]:
     errors = payload.get("errors")
     if isinstance(errors, list):
         problems.extend(str(e)[:200] for e in errors[:_MAX_ERRORS_SHOWN])
+    missing = payload.get("missing")
+    if isinstance(missing, list) and missing:
+        problems.append("missing backend configuration: "
+                        + ", ".join(str(name) for name in missing))
     return problems
 
 
@@ -68,12 +78,10 @@ def main() -> int:
               f"of the status/counter fields a healthy run reports: {raw[:200]!r}")
         return 1
 
-    # A skipped run (missing env) is not a failure.
-    if payload.get("status") == "skipped":
+    problems = check(payload)
+    if payload.get("status") == "skipped" and not problems:
         print(f"cron skipped: {payload.get('reason', 'unspecified')}")
         return 0
-
-    problems = check(payload)
     if problems:
         print("::error::cron reported failures: " + "; ".join(problems))
         return 1
