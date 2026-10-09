@@ -87,8 +87,13 @@ const KIND_HEADING: Record<string, keyof typeof STANDARD_HEADINGS.en> = {
 const headingKey = (value: string) => value.normalize('NFKC').replace(/\s+/gu, ' ').trim().toLowerCase().replace(/[\s:]+$/u, '');
 // A row's text as backend _resume_rows reads it: NFKC, its spaces collapsed.
 const rowText = (value: string) => value.normalize('NFKC').replace(/\s+/gu, ' ').trim();
-// A row that opens with a bullet glyph or a number (backend _LINE_GLYPH), and an inline glyph (_INLINE_GLYPH).
-const LINE_GLYPH = /^(?:[•\-*–—+▪●◦·]|\d+[.)])\s+/u;
+// A row that opens with a bullet glyph or a number (backend _LINE_GLYPH: resume-input.ts BULLET_LINE's
+// glyphs and "+"), and an inline glyph (_INLINE_GLYPH).
+const LINE_GLYPH = /^(?:[•\-*–—+▪●◦·‣∙■►➢✓◆\uf0b7\uf0a7\uf076\uf0d8\uf0fc]|\(?\d{1,2}[.)]|\d+[.)])\s+/u;
+// What else may stand before a line's first word (backend _LEAD_MARKS): a list number, Word's "o", or a
+// run of marks, with or without a space; never a sign before its number ("~40") or a digit run's inside ("1.5x").
+const LEAD_MARKS = /^(?:\(\d{1,2}\)|\(?\d{1,2}[.)、]|\(?[a-z]\)|[a-z]\.(?=\s)|o(?=\s)|[^\p{L}\p{N}_\s]+)\s*/iu;
+const SIGNS = /[~≈<>≤≥±+=−-]/u;
 const INLINE_GLYPH = /\s*[•▪●◦]\s*/u;
 const LINE_END = /[\s.;,:。；，：!?！？]+$/u;
 
@@ -113,18 +118,32 @@ function ownRow(line: string): boolean {
     && words.every((word) => /^[A-Z]/u.test(word) || word.length <= 3);
 }
 
-/** The résumé row a section's line starts on: a row (after its glyph), or a piece after an
- * inline glyph, that is the line or opens it. A glyph row is preferred over another row that only
- * opens it. -1 when no row does. */
-function lineRow(rows: string[], line: string): number {
+/** A row without what stands before its first word (backend _lead_ends): its glyph, list number,
+ * circled number ("①", which NFKC reads as "1") or marks, each with what follows it ("• 1. Built"). */
+function withoutLead(raw: string, row: string): string {
+  let rest = /^\p{No}/u.test(raw) && !/^[\x00-\x7f]/u.test(raw) ? row.slice(raw[0].normalize('NFKC').length).trimStart() : row;
+  for (let step = 0; step < 3; step++) {
+    const lead = (LINE_GLYPH.exec(rest) ?? LEAD_MARKS.exec(rest))?.[0] ?? '';
+    if (!lead || lead.length >= rest.length) break;
+    if (/\d/u.test(rest[lead.length]) && (lead === lead.trimEnd() || SIGNS.test(lead))) break;
+    rest = rest.slice(lead.length);
+  }
+  return rest;
+}
+
+/** The résumé row a section's line starts on: a row (after its glyph, list number or marks), or a
+ * piece after an inline glyph, that is the line or opens it. A glyph row is preferred over another
+ * row that only opens it. -1 when no row does. */
+function lineRow(raw: string[], rows: string[], line: string): number {
   const key = headingKey(line).replace(LINE_END, '');
   if (key.length < 4) return -1;
   let fallback = -1;
   for (let index = 0; index < rows.length; index++) {
-    const pieces = rows[index].replace(LINE_GLYPH, '').split(INLINE_GLYPH).map((piece) => headingKey(piece).replace(LINE_END, ''));
+    const bare = withoutLead(raw[index], rows[index]);
+    const pieces = bare.split(INLINE_GLYPH).map((piece) => headingKey(piece).replace(LINE_END, ''));
     for (const piece of pieces) {
       if (piece.length < 4 || !key.startsWith(piece)) continue;
-      if (piece === key || LINE_GLYPH.test(rows[index]) || INLINE_GLYPH.test(rows[index])) return index;
+      if (piece === key || bare !== rows[index] || INLINE_GLYPH.test(rows[index])) return index;
       if (fallback < 0) fallback = index;
     }
   }
@@ -149,7 +168,7 @@ export function shownHeading(
   const raw = resumeText.split(/\r?\n/u).map((line) => line.trim()).filter((line) => rowText(line));
   const rows = raw.map(rowText);
   // The section's first line in the résumé: the earliest row any of its lines starts on.
-  const starts = key ? section.bullets.map((bullet) => lineRow(rows, bullet.base_text)).filter((row) => row >= 0) : [];
+  const starts = key ? section.bullets.map((bullet) => lineRow(raw, rows, bullet.base_text)).filter((row) => row >= 0) : [];
   const first = starts.length ? Math.min(...starts) : -1;
   for (let index = first - 1; first > 0 && index >= 0; index--) {
     if (headingKey(rows[index]) === key && !LINE_GLYPH.test(rows[index])) return raw[index].replace(/[\s:：]+$/u, '');

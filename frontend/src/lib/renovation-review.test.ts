@@ -57,3 +57,18 @@ describe('shownHeading reads the nearest heading row above the section, as the b
       .toBe('PROJECTS');
   });
 });
+
+// Round-3 re-verification (3d): lineRow stripped only "•", "-", "*", "–", "—", "+", "▪", "●", "◦", "·" and
+// "1." from a row, so a section whose lines open with Word's U+F0B7 bullet, "■", "①", "1、" or "-Built"
+// found no row and showed the standard name; backend _section_heading reads them all (_lead_ends).
+describe('shownHeading reads a line after any glyph, list number or marks', () => {
+  it.each(['\uf0b7\t', '■ ', '➢ ', '(1) ', '①', '1、', '-', '※ ', 'o\t'])('finds the heading above a line after %j', (glyph) => {
+    const resume = `RESEARCH EXPERIENCE\n${glyph}Ran 40 soil moisture trials for the campus farm\n`;
+    expect(shownHeading(section('Research Experience', 'research', EN), resume)).toBe('RESEARCH EXPERIENCE');
+  });
+  it('does not read a sign before a number as a glyph', () => {
+    const resume = 'RESEARCH EXPERIENCE\n~40 soil moisture trials for the campus farm\n';
+    expect(shownHeading(section('Research Experience', 'research', ['40 soil moisture trials for the campus farm']), resume))
+      .toBe('Experience');
+  });
+});
