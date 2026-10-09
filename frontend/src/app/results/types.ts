@@ -19,7 +19,8 @@ export interface Filters {
   // Any source key present in the corpus ('' = all). Options are derived from
   // the actual match results (see sourceLabel + the FilterRail sourceOptions
   // prop) so newer sources like 'simplify_internships' aren't silently
-  // un-filterable; equality-matched in use-results-filters, so a plain string.
+  // un-filterable; equality-matched by the server's match view
+  // (backend/routes/matches.py), so a plain string.
   source: string;
   onCampus: '' | 'yes' | 'no';
   // 'rolling' exists because it is the only value this axis can offer most of
