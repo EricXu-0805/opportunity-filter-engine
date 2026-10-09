@@ -97,10 +97,6 @@ const BASELINE: readonly Known[] = [
       + '(3.18:1). Computed from Badge.tsx and ScoreBar.tsx.',
   },
   {
-    rule: 'label', impact: 'critical', steps: ['home'], target: '.h-2',
-    name: 'The search-emphasis range input in SearchFocusCard.tsx has no accessible name.',
-  },
-  {
     rule: 'definition-list', impact: 'serious', steps: ['detail'],
     name: 'DetailFactsSection.tsx wraps each fact row\'s <dt> in an extra <div>, so none of the 10 fact lists holds a dt/dd group.',
   },
@@ -221,6 +217,8 @@ for (const locale of ['en', 'zh'] as const) {
     await page.goto('/');
     const generate = page.getByRole('button', { name: t.home.actions.generate });
     await expect(generate).toBeVisible();
+    // Named by the card heading it sits under, so the spoken name is the visible one.
+    await expect(page.getByRole('slider', { name: t.home.cards.searchFocusTitle, exact: true })).toBeVisible();
     // The saved profile has loaded and the lazily imported résumé upload is in.
     await expect(page.getByTestId('hydration-note')).toHaveCount(0);
     await expect(page.locator('#resume-upload')).toBeAttached();
