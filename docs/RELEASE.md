@@ -293,7 +293,13 @@ SHA and confirm the previously-passing gates still pass.
   014) were applied with `supabase db push` and are recorded under timestamp
   versions (`20260611111920` etc.) rather than their numeric prefixes — a
   naming difference that a count of matching prefixes reports as a gap.
-  Reconcile by name, not by version string.
+  Reconcile by name, not by version string. `scripts/check_migration_parity.py`
+  does that reconciliation offline. `--print-sql` prints the read-only export
+  query. Its output goes back in through `--applied` (JSON or `psql --csv`).
+  The script reports files production never ran, rows the repo does not have,
+  and rows recorded twice, and exits 1 on any of them. It compares md5 where a
+  row holds one statement. Run the query against production only with the
+  owner's OK (backlog Q4); it has not been run against production yet.
 - **`/api/ready` is not wired to `render.yaml`'s `healthCheckPath`** on
   purpose. It gates on corpus freshness, and at the time of writing the corpus
   sat at 94h against a 96h stale bound — pointing the instance probe at it

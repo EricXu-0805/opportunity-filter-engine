@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import sys
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -1568,3 +1569,139 @@ class TestPartialPublishDoesNotFakeFreshness:
         ledger = gate.build_ledger(SHA_A, _all_external_pass(SHA_A), min_records=1)
         assert ledger["final_decision"] == "NO-GO"
         assert ledger["summary"]["failed"] >= 1
+
+
+# ---------------------------------------------------------------------------
+# Migration parity (M66): committed supabase/migrations against an export of
+# production's supabase_migrations.schema_migrations. The script never
+# connects to anything; running its SQL against production waits on owner Q4.
+# Production records the same migration three ways, all seen there: a CLI
+# version equal to the file prefix, a hosted timestamp alias for 012-014
+# (MIGRATION_REPAIR.md), and an MCP apply_migration timestamp with the name
+# passed at apply time (024 onwards) — which is why it reconciles by name.
+# ---------------------------------------------------------------------------
+
+_mp_spec = importlib.util.spec_from_file_location(
+    "check_migration_parity", _REPO / "scripts" / "check_migration_parity.py")
+parity = importlib.util.module_from_spec(_mp_spec)
+# dataclasses resolve string annotations through sys.modules.
+sys.modules[_mp_spec.name] = parity
+_mp_spec.loader.exec_module(parity)
+
+_MIGRATIONS = {
+    "001_core_profiles_favorites.sql": "create table profiles ();\n",
+    "012_match_feedback.sql": "create table match_feedback ();\n",
+    "0181_oauth_merge_secret.sql": "create table oauth_merge ();\n",
+    "20260924181610_target_resume_cas.sql": "create function target_resume_cas();\n",
+}
+
+
+def _md5(text: str) -> str:
+    import hashlib
+    return hashlib.md5(text.encode()).hexdigest()
+
+
+def _applied_rows() -> list[dict]:
+    return [
+        {"version": "001", "name": None},
+        {"version": "20260611111920", "name": "match_feedback"},
+        {"version": "20260814101500", "name": "0181_oauth_merge_secret"},
+        {"version": "20260930112700", "name": "target_resume_cas",
+         "statements_md5": _md5(_MIGRATIONS["20260924181610_target_resume_cas.sql"])},
+    ]
+
+
+def _migrations_dir(tmp_path) -> Path:
+    directory = tmp_path / "migrations"
+    directory.mkdir()
+    for name, body in _MIGRATIONS.items():
+        (directory / name).write_text(body)
+    return directory
+
+
+class TestMigrationParity:
+    def test_every_recording_style_reconciles(self, tmp_path):
+        report = parity.compare(parity.committed_migrations(_migrations_dir(tmp_path)),
+                                parity.applied_rows(_applied_rows()))
+        assert report["in_parity"] is True, report
+        assert report["missing"] == [] and report["extra"] == []
+        how = {m["file"]: m["matched_by"] for m in report["matched"]}
+        assert how["001_core_profiles_favorites.sql"] == "version"
+        assert how["012_match_feedback.sql"] == "name"
+        assert report["content"]["matching"] == ["20260924181610_target_resume_cas.sql"]
+
+    def test_a_committed_migration_production_never_ran_is_missing(self, tmp_path):
+        rows = [r for r in _applied_rows() if r["name"] != "target_resume_cas"]
+        report = parity.compare(parity.committed_migrations(_migrations_dir(tmp_path)),
+                                parity.applied_rows(rows))
+        assert report["in_parity"] is False
+        assert report["missing"] == ["20260924181610_target_resume_cas.sql"]
+
+    def test_a_migration_production_ran_that_the_repo_lacks_is_extra(self, tmp_path):
+        rows = _applied_rows() + [{"version": "20261001000000", "name": "hotfix_by_hand"}]
+        report = parity.compare(parity.committed_migrations(_migrations_dir(tmp_path)),
+                                parity.applied_rows(rows))
+        assert report["in_parity"] is False
+        assert report["extra"] == [{"version": "20261001000000", "name": "hotfix_by_hand"}]
+
+    def test_a_migration_recorded_twice_is_not_parity(self, tmp_path):
+        rows = _applied_rows() + [{"version": "012", "name": "match_feedback"}]
+        report = parity.compare(parity.committed_migrations(_migrations_dir(tmp_path)),
+                                parity.applied_rows(rows))
+        assert report["in_parity"] is False
+        assert report["duplicates"] == {"012_match_feedback.sql": 2}
+
+    def test_different_bytes_are_reported_but_do_not_fail_by_default(self, tmp_path):
+        # 025-032 went in comment-stripped (memory 2026-09-30): same behaviour,
+        # different md5. Named, so a real transcription error is visible.
+        rows = _applied_rows()
+        rows[-1]["statements_md5"] = "0" * 32
+        committed = parity.committed_migrations(_migrations_dir(tmp_path))
+        report = parity.compare(committed, parity.applied_rows(rows))
+        assert report["in_parity"] is True
+        assert report["content"]["differs"] == ["20260924181610_target_resume_cas.sql"]
+        strict = parity.compare(committed, parity.applied_rows(rows), strict_content=True)
+        assert strict["in_parity"] is False
+
+    def test_reads_json_and_csv_exports(self, tmp_path):
+        as_json = tmp_path / "rows.json"
+        as_json.write_text(json.dumps({"rows": _applied_rows()}))
+        as_csv = tmp_path / "rows.csv"
+        as_csv.write_text("version,name,statements_md5\n001,,\n"
+                          "20260611111920,match_feedback,\n")
+        assert len(parity.load_export(as_json)) == 4
+        assert parity.load_export(as_csv)[0] == {"version": "001", "name": None,
+                                                 "statements_md5": None}
+
+    def test_cli_exit_codes(self, tmp_path):
+        import subprocess
+        directory = _migrations_dir(tmp_path)
+        good = tmp_path / "good.json"
+        good.write_text(json.dumps(_applied_rows()))
+        bad = tmp_path / "bad.json"
+        bad.write_text(json.dumps(_applied_rows()[:-1]))
+        broken = tmp_path / "broken.json"
+        broken.write_text("{not json")
+        script = str(_REPO / "scripts" / "check_migration_parity.py")
+
+        def run(path):
+            return subprocess.run([sys.executable, script, "--applied", str(path),
+                                   "--migrations-dir", str(directory)],
+                                  capture_output=True, text=True).returncode
+
+        assert (run(good), run(bad), run(broken)) == (0, 1, 2)
+
+    def test_the_query_it_prints_only_reads(self):
+        sql = parity.EXPORT_SQL.lower()
+        assert "supabase_migrations.schema_migrations" in sql
+        assert sql.lstrip().startswith(("--", "select"))
+        for verb in ("insert", "update", "delete", "drop", "alter", "truncate", "grant"):
+            assert f" {verb} " not in f" {sql} "
+
+    def test_the_committed_set_can_be_reconciled_by_name(self):
+        """Name matching is only safe while no two files share a name."""
+        committed = parity.committed_migrations(_REPO / "supabase" / "migrations")
+        assert len(committed) >= 49
+        names = [m.bare_name for m in committed]
+        assert len(names) == len(set(names)), "two migrations share a name"
+        assert all(m.prefix and m.bare_name for m in committed)
