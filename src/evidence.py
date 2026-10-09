@@ -811,11 +811,13 @@ class TargetTruth:
 def stated_listing_deadline(record: dict) -> date | None:
     """The application deadline a listing's source stated, or None.
 
-    The same evidence bar ``src.matcher.ranker._stated_deadline_date`` scores
-    by, so the card that says "Deadline has passed" and the guard that refuses
-    the action read one date: never an estimate, never an inference stamp,
-    never a faculty profile, and only on a record we know is a listing — on any
-    other kind a deadline is a term of an application nobody showed exists.
+    The evidence bar ``src.matcher.ranker._stated_deadline_date`` scores by,
+    so the card that says "Deadline has passed" and the guard that refuses the
+    action read one date: never an estimate, never an inference stamp, never a
+    faculty profile. One step stricter than the ranker: only a record we know
+    is a listing has one. On a record of unknown kind a deadline is a term of
+    an application nobody showed exists, and target_truth refuses that record
+    anyway (record_kind_unverified, unless an earlier reason applies).
     """
     if record_kind(record) != "listing":
         return None
