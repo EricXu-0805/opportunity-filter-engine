@@ -125,12 +125,13 @@ export async function listSavedSearches(): Promise<SavedSearch[]> {
     .eq('device_id', deviceId)
     .order('updated_at', { ascending: false });
 
-  if (error || !data) {
-    if (error && !error.message?.toLowerCase().includes('does not exist')) {
-      console.warn('[ofe] listSavedSearches failed:', error.message);
-    }
-    return [];
+  if (error && !error.message?.toLowerCase().includes('does not exist')) {
+    // Thrown, not []: an empty list here reads as "you have no saved
+    // searches" while every one of them is still stored.
+    console.warn('[ofe] listSavedSearches failed:', error.message);
+    throw new Error(error.message);
   }
+  if (error || !data) return [];
 
   return projectVisibleNewMatchIds((data as SavedSearchRow[]).map(rowToSearch));
 }

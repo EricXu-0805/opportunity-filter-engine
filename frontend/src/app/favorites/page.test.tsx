@@ -20,7 +20,10 @@ vi.mock('next/navigation', () => ({
 
 const profileRefreshFeed = vi.hoisted(() => ({ status: 'ready' as import('@/lib/use-profile-refresh').ProfileRefreshState['status'] }));
 vi.mock('@/lib/use-profile-refresh', () => ({ useProfileRefresh: () => ({ status: profileRefreshFeed.status, refresh: async () => true, checkForAction: async () => null }) }));
-beforeEach(() => { profileRefreshFeed.status = 'ready'; customStorageFeed.state = { status: 'ready', entries: [] }; });
+beforeEach(() => {
+  profileRefreshFeed.status = 'ready'; customStorageFeed.state = { status: 'ready', entries: [] };
+  savedSearchesFeed.loadError = false; savedSearchesFeed.sectionProps = null;
+});
 
 const customStorageFeed = vi.hoisted(() => ({ state: { status: 'ready', entries: [] } as import('@/lib/custom-imports').CustomImportStorageState }));
 vi.mock('@/lib/custom-imports', () => ({
@@ -31,11 +34,23 @@ vi.mock('@/components/StorageStatusBanner', () => ({ default: () => null }));
 vi.mock('@/components/SaveFavoritesAnchor', () => ({ default: () => null }));
 vi.mock('./FavoritesEmptyState', () => ({ FavoritesEmptyState: () => <div data-testid="empty-favorites" /> }));
 vi.mock('./FavoritesHeader', () => ({ FavoritesHeader: () => null }));
-vi.mock('./SavedSearchesSection', () => ({ SavedSearchesSection: () => null }));
+const savedSearchesFeed = vi.hoisted(() => ({
+  loadError: false,
+  retryLoad: (() => Promise.resolve()) as () => Promise<void>,
+  sectionProps: null as null | Record<string, unknown>,
+}));
+vi.mock('./SavedSearchesSection', () => ({
+  SavedSearchesSection: (props: Record<string, unknown>) => {
+    savedSearchesFeed.sectionProps = props;
+    return null;
+  },
+}));
 vi.mock('./use-saved-searches', () => ({
   useSavedSearches: () => ({
     savedSearches: [],
     digests: null,
+    loadError: savedSearchesFeed.loadError,
+    retryLoad: savedSearchesFeed.retryLoad,
     handleRemove: async () => {},
     handleApplyOptimisticClear: () => {},
     handleDigestSave: async () => true,
@@ -405,4 +420,20 @@ it('does not call unavailable import storage an empty list or offer reset', () =
   expect(screen.getByText('import.storageFailed')).toBeInTheDocument();
   expect(screen.queryByTestId('empty-favorites')).toBeNull();
   expect(screen.queryByText('import.reviewReset')).toBeNull();
+});
+
+// M50: the hook and the section both knew how to report a failed read; the
+// page never passed it on, and hid the whole panel when the read failed for a
+// student with no favorites — the one case the error note exists for.
+it('shows a failed saved-search read with its retry, even with no favorites', () => {
+  setProfile();
+  const retryLoad = vi.fn(() => Promise.resolve());
+  savedSearchesFeed.loadError = true;
+  savedSearchesFeed.retryLoad = retryLoad;
+  mockHookState.current = baseHookResult({ serverOpportunities: [] });
+  render(<FavoritesPage />);
+  expect(savedSearchesFeed.sectionProps).not.toBeNull();
+  expect(savedSearchesFeed.sectionProps!.loadError).toBe(true);
+  (savedSearchesFeed.sectionProps!.onRetry as () => void)();
+  expect(retryLoad).toHaveBeenCalledTimes(1);
 });
