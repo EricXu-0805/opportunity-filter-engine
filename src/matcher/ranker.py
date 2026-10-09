@@ -445,7 +445,7 @@ MAJOR_TOPIC_KEYWORDS: dict[str, list[str]] = {
 COLLEGE_DEPARTMENT_SIGNALS: dict[str, list[str]] = {
     "Grainger College of Engineering": [
         "engineering", "computer scien", "computing", "siebel", "electrical",
-        "mechanical", "aerospace", "bioengineering", "materials", "nuclear", "civil",
+        "mechanical", "aerospace", "bioengineering", "materials", "nuclear",
     ],
     "Liberal Arts & Sciences (LAS)": [
         "physics", "chemistr", "statistic", "mathematic", "molecular & cellular",
@@ -459,7 +459,7 @@ COLLEGE_DEPARTMENT_SIGNALS: dict[str, list[str]] = {
     ],
     "College of Veterinary Medicine": [
         "animal science", "molecular & cellular", "integrative biology",
-        "pathobiolog", "comparative", "veterinary",
+        "pathobiolog", "comparative bio", "veterinary",
     ],
     "School of Information Sciences (iSchool)": ["information science"],
     "Gies College of Business": ["econom", "business", "finance", "accountan"],

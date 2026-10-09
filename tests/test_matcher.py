@@ -2891,6 +2891,25 @@ class TestCollegeAffinityNeedsTheWholeWord:
         assert self._affinity("Grainger College of Engineering",
                               "Department of Computer Science") > 0.0
 
+    def test_a_stem_does_not_reach_another_field_through_a_longer_word(self):
+        """Grainger's "civil" is inside "civilizations": 78 faculty in
+        languages-and-civilizations departments and 10 in civil society studies
+        took the engineering bonus, and every civil engineering department it was
+        meant for already says "engineering". Veterinary Medicine's "comparative"
+        reached 435 faculty in comparative literature and other humanities
+        departments, against 107 in the comparative biosciences it was for."""
+        for dept in ("Department of East Asian Languages and Civilizations",
+                     "Department of Civil Society & Community Studies"):
+            assert self._affinity("Grainger College of Engineering", dept) == 0.0, dept
+        assert self._affinity("College of Veterinary Medicine",
+                              "Department of Comparative Literature") == 0.0
+        assert self._affinity("Grainger College of Engineering",
+                              "Department of Civil and Environmental Engineering") > 0.0
+        for dept in ("Department of Comparative Biosciences",
+                     "School of Animal and Comparative Biomedical Sciences",
+                     "Department of Comparative Pathobiology"):
+            assert self._affinity("College of Veterinary Medicine", dept) > 0.0, dept
+
 
 class TestCourseworkNamesAFieldNotASubstring:
     """A course code earns relevance by naming a field, not by sharing letters.
