@@ -90,7 +90,7 @@ FIELD_CASES = [
     ('eligibility', 'skills_preferred', ['Linux']), ('eligibility', 'citizenship_required', False),
     ('eligibility', 'international_friendly', 'unknown'), ('eligibility', 'work_auth_notes', 'Needs source review 王'),
     ('eligibility', 'first_time_researchers', True),
-    ('timing', 'deadline', '2099-05-01'), ('timing', 'deadline_is_estimate', True),
+    ('timing', 'deadline', '2027-05-01'), ('timing', 'deadline_is_estimate', True),
     ('timing', 'is_rolling', True), ('timing', 'deadline_note', 'No closing date is stated.'),
     ('timing', 'start_date', '2027-06-01'), ('timing', 'posted_date', '2026-09-24'),
     ('timing', 'duration', '10 weeks'),
