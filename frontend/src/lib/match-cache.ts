@@ -83,8 +83,9 @@ const TTL_MS = 7 * 24 * 60 * 60 * 1000; // results older than this re-fetch (cor
 const MAX_RESULTS = 100;
 const DESC_CHARS = 200; // keep a snippet so the free-text search still matches bodies
 
-// Exactly the opportunity fields the results list, filters and sort read
-// (see MatchCard + use-results-filters/sort). Everything else — metadata,
+// The opportunity fields the results page reads from a cached page (MatchCard
+// and its helpers); filters and sort run in the server's match view
+// (backend/routes/matches.py). Everything else — metadata,
 // full descriptions, the bulky eligibility/application sub-objects — is dropped.
 // school + audience back the discovery-scope facet + MatchCard scope chip
 // (PR #191); omitting them strips scope metadata on every cache-hit return,

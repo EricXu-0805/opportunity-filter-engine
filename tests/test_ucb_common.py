@@ -349,6 +349,115 @@ class Test429Circuit:
         assert slept == [ucb_common._RETRY_BACKOFF]
 
 
+def rejected_certificate(url, reason=None):
+    """The exception requests raises when a host's certificate fails
+    verification, nested the way requests nests it (checked against a live
+    failure from www.udel.edu on 2026-10-08)."""
+    import ssl
+
+    import requests
+    import urllib3
+
+    reason = reason or ssl.SSLCertVerificationError(
+        1, "[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: "
+           "unable to get local issuer certificate (_ssl.c:1016)")
+    retry = urllib3.exceptions.MaxRetryError(None, url, urllib3.exceptions.SSLError(reason))
+    return requests.exceptions.SSLError(retry, request=requests.Request("GET", url).prepare())
+
+
+class TestCertificateCircuit:
+    """A certificate the trust store rejects is rejected on every request to
+    its host, so fetch_soup stops at the first rejection. On 2026-10-08,
+    www.udel.edu's 35 department listings each took three attempts and 225 s
+    in all."""
+
+    import pytest as _pytest
+
+    @_pytest.fixture(autouse=True)
+    def _clean_circuit(self):
+        from src.collectors import ucb_common
+        ucb_common.reset_certificate_circuit()
+        yield
+        ucb_common.reset_certificate_circuit()
+
+    def _install(self, monkeypatch, errors, calls):
+        """``errors`` maps a requested https host to the exception it raises."""
+        import requests
+
+        from src.collectors import ucb_common
+
+        class FakeSession:
+            def __init__(self):
+                self.headers = {}
+                self.verify = True
+
+            def get(self, url, timeout=None):
+                calls.append(url)
+                host = url.split("/")[2]
+                if url.startswith("https://") and host in errors and self.verify is not False:
+                    raise errors[host](url)
+                resp = requests.Response()
+                resp.status_code = 200
+                resp.url = url
+                resp._content = b"<html><body>ok</body></html>"
+                return resp
+
+        slept: list[float] = []
+        monkeypatch.setattr(ucb_common.requests, "Session", FakeSession)
+        monkeypatch.setattr(ucb_common.time, "sleep", lambda s: slept.append(s))
+        return slept
+
+    def test_one_rejection_skips_the_hosts_remaining_https_urls(self, monkeypatch):
+        from src.collectors import ucb_common
+        calls: list[str] = []
+        slept = self._install(monkeypatch, {"www.udel.edu": rejected_certificate}, calls)
+        urls = [f"https://www.udel.edu/departments/d{i}/our-people/" for i in range(35)]
+
+        assert [ucb_common.fetch_soup(url) for url in urls] == [None] * 35
+
+        assert calls == urls[:1]
+        assert slept == []
+        assert ucb_common.rejected_certificate_report() == {"hosts": {"www.udel.edu": 34}, "skipped": 34}
+        # Another host, a fetch that does not verify, and plain http still go out.
+        for url, kwargs in (("https://fine.udel.edu/x", {}), ("https://www.udel.edu/y", {"insecure": True}),
+                            ("http://www.udel.edu/z", {})):
+            assert ucb_common.fetch_soup(url, **kwargs) is not None
+            assert calls[-1] == url
+        assert ucb_common.rejected_certificate_report()["skipped"] == 34
+
+    def test_a_handshake_that_fails_another_way_is_retried_and_opens_nothing(self, monkeypatch):
+        import ssl
+
+        from src.collectors import ucb_common
+        calls: list[str] = []
+
+        def eof(url):
+            return rejected_certificate(url, reason=ssl.SSLEOFError(8, "EOF occurred in violation of protocol"))
+
+        self._install(monkeypatch, {"flaky.udel.edu": eof}, calls)
+
+        assert ucb_common.fetch_soup("https://flaky.udel.edu/x") is None
+        assert ucb_common.fetch_soup("https://flaky.udel.edu/y") is None
+
+        assert len(calls) == 2 * ucb_common._MAX_RETRIES
+        assert ucb_common.rejected_certificate_report() == {"hosts": {}, "skipped": 0}
+
+    def test_the_endpoint_that_rejected_is_the_redirect_target(self, monkeypatch):
+        """A page that redirects to a host with a bad certificate says nothing
+        about the certificate of the host it was requested from."""
+        from src.collectors import ucb_common
+        calls: list[str] = []
+        self._install(monkeypatch, {"vanity.udel.edu": lambda url: rejected_certificate(
+            "https://people.udel.edu:8443/x")}, calls)
+
+        assert ucb_common.fetch_soup("https://vanity.udel.edu/x") is None
+        assert ucb_common.fetch_soup("https://people.udel.edu:8443/y") is None
+        assert ucb_common.fetch_soup("https://people.udel.edu/z") is not None
+
+        assert calls == ["https://vanity.udel.edu/x", "https://people.udel.edu/z"]
+        assert ucb_common.rejected_certificate_report() == {"hosts": {"people.udel.edu:8443": 1}, "skipped": 1}
+
+
 # --- Open-Berkeley person-template fallbacks (W7a) ---------------------------
 
 class TestOpenBerkeleyTemplateFallback:

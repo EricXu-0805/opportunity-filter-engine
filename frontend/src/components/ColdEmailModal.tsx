@@ -205,9 +205,7 @@ interface ColdEmailModalProps {
   onContactConfirmed?: (record: InteractionRecord | null) => void;
   /** The follow-up chips write remind_at straight to the row. Without this the
    *  page that owns the tracker panel never learns, so its date field renders
-   *  empty and its status-change suggestion — gated on remind_at being unset —
-   *  offers to set a reminder that already exists, overwriting it on one
-   *  click. */
+   *  empty for a reminder that already exists. */
   onReminderSet?: (date: string) => void;
 }
 
@@ -2131,7 +2129,7 @@ export default function ColdEmailModal({
     }
     pending.phase = 'recipient';
     try {
-      const over = ([['current_body', body, 5000], ['subject', subject, 2000]] as const).find(([, value, limit]) => value.length > limit);
+      const over = ([['current_body', body, 5000], ['subject', subject, 1000]] as const).find(([, value, limit]) => value.length > limit);
       if (over) {
         setConditionCheck({ key: pending.key, issues: [], message: locale === 'zh'
           ? `${over[0] === 'subject' ? '主题' : '正文'}超过核对上限（${over[2]} 个文本单位，部分 emoji 占两个）。全文已保留，可缩短后重试或仅复制草稿。`

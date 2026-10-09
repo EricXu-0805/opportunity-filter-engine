@@ -134,6 +134,37 @@ def test_enrich_fetches_normally_before_the_deadline(monkeypatch):
     assert stats["skipped_deadline"] == 0
 
 
+def test_records_behind_a_rejected_certificate_skip_the_fetch_and_the_delay(monkeypatch):
+    """On 2026-10-01 this pass fetched 54 www.math.ucla.edu profiles whose
+    certificate failed verification, 2 s apart (DELAY follows every scrape),
+    and each took a slot of the 1,000-scrape budget."""
+    from src.collectors import ucb_common
+    from tests.test_ucb_common import rejected_certificate
+
+    calls: list[str] = []
+
+    def fake_get(url, **kwargs):
+        calls.append(url)
+        raise rejected_certificate(url)
+
+    slept: list[float] = []
+    monkeypatch.setattr(pi_enricher.requests, "get", fake_get)
+    monkeypatch.setattr(pi_enricher.time, "sleep", lambda s: slept.append(s))
+    opps = [_fac("ucla_faculty", f"https://www.math.ucla.edu/people/ladder/p{i}", school="ucla")
+            for i in range(5)]
+    ucb_common.reset_certificate_circuit()
+    try:
+        stats = enrich_opportunities(opps, max_scrapes=3)
+        report = ucb_common.rejected_certificate_report()
+    finally:
+        ucb_common.reset_certificate_circuit()
+
+    assert calls == [opps[0]["url"]]
+    assert slept == [pi_enricher.DELAY]
+    assert (stats["scraped"], stats["skipped_certificate"], stats["skipped_budget"]) == (1, 4, 0)
+    assert report == {"hosts": {"www.math.ucla.edu": 4}, "skipped": 4}
+
+
 def test_profile_fetch_completes_the_incommon_chain(monkeypatch):
     """Georgia Tech's department sites omit their InCommon intermediate.
 
