@@ -2131,7 +2131,7 @@ export default function ColdEmailModal({
     }
     pending.phase = 'recipient';
     try {
-      const over = ([['current_body', body, 5000], ['subject', subject, 2000]] as const).find(([, value, limit]) => value.length > limit);
+      const over = ([['current_body', body, 5000], ['subject', subject, 1000]] as const).find(([, value, limit]) => value.length > limit);
       if (over) {
         setConditionCheck({ key: pending.key, issues: [], message: locale === 'zh'
           ? `${over[0] === 'subject' ? '主题' : '正文'}超过核对上限（${over[2]} 个文本单位，部分 emoji 占两个）。全文已保留，可缩短后重试或仅复制草稿。`
