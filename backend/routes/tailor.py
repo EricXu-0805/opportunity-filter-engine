@@ -645,12 +645,13 @@ def _own_row(line: str) -> bool:
 
 
 # What a row under a glyph bullet can say about the claim above it, as the claim locks read it:
-# a status ("Under review", "Draft", "计划于 2026 年投稿"), a share of the work ("Team of 4",
-# "与两名研究生合作") or a negation ("Not yet submitted"). These are the locks' own families
-# (target_resume_ai_grounding, evidence_map._LOCK_WORD), read here as they are; none is extended.
-_ITEM_QUALIFIERS = (TEAM, HELP, NEGATION, DENIAL, PUBLICATION, INTENT, PLANNED, UNFINISHED, UNFINISHED_ZH, FUTURE_ZH,
-                    UNDERWAY_ZH, CO_CREDIT, _em._STATUS_WORD, _em._UN_DONE, _em._TEAM_EN_EXTRA, _em._TEAM_ZH_EXTRA,
-                    _em._TEAM_OTHERS, _em._PARTICIPATION_EN, _em._PARTICIPATION_ZH)
+# a status ("Under review", "Draft", "计划于 2026 年投稿") or a negation ("Not yet submitted")
+# (_ITEM_STATUSES), and a share of the work ("Team of 4", "与两名研究生合作"). These are the locks'
+# own families (target_resume_ai_grounding, evidence_map._LOCK_WORD), read here as they are; none is extended.
+_ITEM_STATUSES = (NEGATION, DENIAL, PUBLICATION, INTENT, PLANNED, UNFINISHED, UNFINISHED_ZH, FUTURE_ZH, UNDERWAY_ZH,
+                  _em._STATUS_WORD, _em._UN_DONE)
+_ITEM_QUALIFIERS = (*_ITEM_STATUSES, TEAM, HELP, CO_CREDIT, _em._TEAM_EN_EXTRA, _em._TEAM_ZH_EXTRA, _em._TEAM_OTHERS,
+                    _em._PARTICIPATION_EN, _em._PARTICIPATION_ZH)
 # A label and what it lists ("Technical Skills: Python, R, SQL", "技能：Python"; NFKC reads "：" as ":").
 _LABEL_ROW = re.compile(r"([^,:]{1,40}):(?!\d)")
 # A CJK row that ends with its dates ("研究助理 2025年1月至今", "心理系 助教 2024年8月至12月").
@@ -680,6 +681,27 @@ def _dangling(previous: str) -> bool:
             or bool(_CJK_EDGE.fullmatch(last) and _OBJECT_END.fullmatch(last)))
 
 
+def _names_its_items(line: str) -> bool:
+    """Whether a heading-shaped row names something besides a status: a word before its first
+    joining word ("Projects" in "Team Projects", "Research" in "Research in Progress",
+    "Collaborations"), or two CJK letters in a row (论文 in 论文发表, 项目 in 团队项目), that no
+    status or negation word (_ITEM_STATUSES) covers. A row that states only a status ("Under
+    Review", "Submitted to Nature", "尚未投稿") names nothing of its own.
+    """
+    covered = [False] * len(line)
+    for pattern in _ITEM_STATUSES:
+        for match in pattern.finditer(line):
+            covered[match.start():match.end()] = [True] * (match.end() - match.start())
+    if _CJK_HEADING.fullmatch(line):
+        return any(not (covered[index] or covered[index + 1]) for index in range(len(line) - 1))
+    for word in _LATIN_WORD.finditer(line):
+        if word.group(0).casefold() in _em._FUNCTION_EN:
+            return False
+        if not all(covered[word.start():word.end()]):
+            return True
+    return False
+
+
 def _row_of_its_own(previous: str, line: str) -> bool:
     """Inside a glyph item, whether a row that opens with a capital, a digit or a CJK character,
     under a row with no closing mark, starts a row of its own rather than going on with the item.
@@ -688,9 +710,12 @@ def _row_of_its_own(previous: str, line: str) -> bool:
     a joining word ("With Two Graduate Students"; evidence_map._FUNCTION_EN), or when it carries
     a word the claim locks keep (_ITEM_QUALIFIERS): a status, a share of the work or a negation
     on the row under a bullet is the rest of that bullet, whatever its shape ("Under Review",
-    "In progress, Jan 2025 - Present"). The exceptions are a row in capitals and a role row
-    (a title-case row that names a role in one of its first two fields and does not open with a
-    joining word: "Team Lead, Robotics Club", "Member, Solar Car Team"), which start the next entry.
+    "In progress, Jan 2025 - Present"). The exceptions are a row in capitals, a role row (a
+    title-case row that names a role in one of its first two fields and does not open with a
+    joining word: "Team Lead, Robotics Club", "Member, Solar Car Team"), which start the next
+    entry, and a heading (a short title-case heading, _own_row, or 2-8 CJK letters alone) that
+    names its items besides any status (_names_its_items: "Team Projects", "Accepted Papers",
+    "Research in Progress", 论文发表, 团队项目), which starts the next section.
 
     Otherwise it starts a row of its own only when it is shaped as one: a heading (_own_row, or
     CJK letters alone), a title and its details (_title_row), a label ("Technical Skills: ..."),
@@ -705,7 +730,11 @@ def _row_of_its_own(previous: str, line: str) -> bool:
     if _caps_row(line) or (_title_row(line) and first not in _em._FUNCTION_EN
                            and any(_ROLE_WORD.search(field) for field in _ROLE_FIELD_SEPARATOR.split(line)[:2])):
         return True
-    if first in _em._FUNCTION_EN or any(pattern.search(line) for pattern in _ITEM_QUALIFIERS):
+    if first in _em._FUNCTION_EN:
+        return False
+    if (_own_row(line) or _CJK_HEADING.fullmatch(line)) and _names_its_items(line):
+        return True
+    if any(pattern.search(line) for pattern in _ITEM_QUALIFIERS):
         return False
     label = _LABEL_ROW.match(line)
     return (_own_row(line) or _title_row(line) or bool(_CJK_HEADING.fullmatch(line))
@@ -733,7 +762,8 @@ def _resume_rows(resume_text: str) -> list[tuple[str, str, bool]]:
     is a line of its own, as the student wrote it. Inside a glyph item, the glyph marks where
     the next item starts, so such a row goes on with the item unless a blank row sets it
     apart or it is a row of its own (_row_of_its_own: a heading, a role or title row, a
-    label, and never a row carrying a status, a share of the work or a negation).
+    label; a row carrying a status, a share of the work or a negation only in capitals, as a
+    role row, or as a heading that names its items besides a status).
     """
     rows: list[tuple[str, str, bool]] = []
     previous, previous_tab, glyph_item, after_blank = "", False, False, False
