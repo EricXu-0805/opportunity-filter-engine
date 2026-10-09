@@ -545,3 +545,190 @@ class TestHttpSurface:
             headers={"Cookie": "session=someone-else"},
         ).json()
         assert anonymous == signed_in == other_session
+
+
+# --------------------------------------------------------------------------
+# M02: one corpus, four surfaces, the same counts
+# --------------------------------------------------------------------------
+# Home shows "N opportunities · M faculty contacts" (/opportunities/stats/
+# summary), the school picker shows each campus's coverage (/opportunities/
+# coverage + the static fallback's national pool), results count the Match
+# universe, and the CSV export labels each row's kind. Each surface had tests
+# of its own; none compared them. These read ONE committed corpus that the
+# frontend's CSV test reads too, so a definition that moves on one surface and
+# not another fails here.
+
+COUNT_FIXTURE_PATH = (
+    REPO_ROOT / "frontend" / "src" / "lib" / "__fixtures__" / "count-reconciliation.json"
+)
+
+
+@pytest.fixture(scope="module")
+def count_fixture() -> dict:
+    return json.loads(COUNT_FIXTURE_PATH.read_text())
+
+
+class TestEverySurfaceCountsTheSameRecords:
+    @staticmethod
+    def _home_stats(monkeypatch, corpus) -> dict:
+        monkeypatch.setattr(opportunity_routes, "load_opportunities", lambda: corpus)
+        return opportunity_routes._stats_summary()
+
+    def test_home_stats_and_the_school_picker_agree_kind_by_kind(self, monkeypatch, count_fixture):
+        from src.evidence import record_kind
+
+        corpus = count_fixture["corpus"]
+        expected = count_fixture["expected"]
+        stats = self._home_stats(monkeypatch, corpus)
+        picker = school_stats_payload(corpus)
+
+        assert stats["total"] == expected["listing_total"]
+        assert stats["faculty_contact_total"] == expected["faculty_contact_total"]
+        assert picker["schools"] == expected["schools"]
+        assert picker["national_count"] == expected["national_count"]
+
+        # The national pool is on no card, so the per-kind identity needs its
+        # split; in this corpus (as in production) it is listings only.
+        national = [r for r in corpus if not r.get("school")]
+        assert {record_kind(r) for r in national} == {"listing"}
+        assert stats["total"] == sum(
+            entry["listing_count"] for entry in picker["schools"].values()
+        ) + picker["national_count"]
+        assert stats["faculty_contact_total"] == sum(
+            entry["faculty_contact_count"] for entry in picker["schools"].values()
+        )
+
+    def test_the_served_kind_and_truth_are_what_the_export_test_reads(self, count_fixture):
+        """The CSV half lives in match-utils.test.ts and reads `served`. It is
+        only a cross-check if `served` is what the API actually sends."""
+        from backend.lib.public_projection import public_target_truth
+        from backend.lib.release_scope import opportunity_visible_in_release
+        from src.evidence import record_kind
+
+        served = [
+            {
+                "id": r["id"], "source_type": r["source_type"],
+                "record_kind": record_kind(r), "target_truth": public_target_truth(r),
+            }
+            for r in count_fixture["corpus"] if opportunity_visible_in_release(r)
+        ]
+        assert served == count_fixture["served"]
+        assert sum(1 for s in served if not s["target_truth"]["actionable"]) == (
+            count_fixture["expected"]["served_not_actionable"]
+        )
+
+    @pytest.fixture
+    def match_on_fixture(self, monkeypatch, count_fixture):
+        from backend.routes import matches
+        from src.matcher import ranker
+
+        corpus = count_fixture["corpus"]
+        state = (ranker._corpus_ref, ranker._corpus_rows, ranker._static_cache,
+                 ranker._sim_matrix, dict(ranker._kw_word_res))
+        ranker.register_corpus(corpus)
+        monkeypatch.setattr(matches, "load_opportunities_generation", lambda: (corpus, "count-fixture"))
+        monkeypatch.setattr(matches, "load_opportunities_by_id", lambda: {o["id"]: o for o in corpus})
+        monkeypatch.setattr(matches, "corpus_version", lambda: "count-fixture")
+        monkeypatch.setattr(matches, "_active_corpus_identity", None)
+        matches._match_snapshots.clear()
+
+        from fastapi.testclient import TestClient
+
+        from backend.main import app
+
+        client = TestClient(app)
+
+        def universe(include_cross_school: bool) -> dict:
+            profile = {
+                "year": "sophomore", "major": "Computer Science",
+                "home_school": count_fixture["expected"]["home_school"],
+                "seeking_type": ["research", "summer_program", "internship"],
+                "international_student": False,
+                "include_cross_school": include_cross_school,
+                # The default 25-point floor drops low scorers from the
+                # response entirely (counted nowhere); 0 makes total + low_fit
+                # the whole universe, which is what is being reconciled.
+                "preferences": {"min_match_threshold": 0},
+            }
+            response = client.post("/api/matches", params={"limit": 1}, json=profile)
+            assert response.status_code == 200, response.text
+            return response.json()
+
+        yield universe
+        matches._match_snapshots.clear()
+        with ranker.corpus_generation_lock:
+            (ranker._corpus_ref, ranker._corpus_rows, ranker._static_cache,
+             ranker._sim_matrix, old_keyword_res) = state
+            ranker._kw_word_res.clear()
+            ranker._kw_word_res.update(old_keyword_res)
+
+    def test_a_home_school_match_universe_is_that_schools_picker_count_plus_national(
+        self, match_on_fixture, count_fixture,
+    ):
+        """Plus one stated exception: another school's summer program that is
+        not campus-only, because those recruit nationally (hard_exclusion). On
+        the real corpus that term is 11 records for UIUC (7,533 = 3,297 +
+        4,225 + 11) and 8 for JHU."""
+        from src.evidence import is_actionable_target
+
+        expected = count_fixture["expected"]
+        home_school = expected["home_school"]
+        other_summer = sum(
+            1 for r in count_fixture["corpus"]
+            if r.get("school") not in (None, home_school)
+            and r.get("opportunity_type") == "summer_program"
+            and r.get("audience") != "campus" and is_actionable_target(r)
+        )
+        assert other_summer == 1
+        body = match_on_fixture(False)
+        home = expected["schools"][home_school]
+        assert body["total"] + body["low_fit"] == (
+            home["total_count"] + expected["national_count"] + other_summer
+        )
+        assert body["total"] + body["low_fit"] == expected["match_universe_home_only"]
+
+    def test_a_cross_school_universe_is_home_stats_less_other_campus_only_postings(
+        self, monkeypatch, match_on_fixture, count_fixture,
+    ):
+        """The one rule that keeps a counted record out of every student's
+        results but its own campus's: another school's campus-only posting."""
+        from src.evidence import is_actionable_target, record_kind
+
+        expected = count_fixture["expected"]
+        other_campus_only = sum(
+            1 for r in count_fixture["corpus"]
+            if r.get("school") not in (None, expected["home_school"])
+            and r.get("audience") == "campus" and record_kind(r) == "listing"
+            and is_actionable_target(r)
+        )
+        stats = self._home_stats(monkeypatch, count_fixture["corpus"])
+        body = match_on_fixture(True)
+        assert body["total"] + body["low_fit"] == (
+            stats["total"] + stats["faculty_contact_total"] - other_campus_only
+        )
+        assert body["total"] + body["low_fit"] == expected["match_universe_cross_school"]
+
+    def test_home_stats_and_the_picker_reconcile_on_the_real_corpus(self):
+        """The same identity on the committed corpus: on 10-09, 1,297 campus
+        listings + 4,225 national = 5,522 on the home page, and 129,757 faculty
+        contacts on both. The 26 records of unreviewed type are on neither."""
+        from backend.data_loader import load_opportunities
+        from backend.lib.release_scope import release_visible_opportunities
+        from backend.lib.target_actionability import actionable_opportunities
+        from src.evidence import record_kind
+
+        corpus = load_opportunities()
+        stats = opportunity_routes._stats_summary()
+        picker = school_stats_payload(corpus)
+        national = [
+            r for r in actionable_opportunities(release_visible_opportunities(corpus))
+            if not (isinstance(r.get("school"), str) and r["school"].strip())
+        ]
+        assert len(national) == picker["national_count"]
+        national_kinds = [record_kind(r) for r in national]
+        assert stats["total"] == sum(
+            entry["listing_count"] for entry in picker["schools"].values()
+        ) + national_kinds.count("listing")
+        assert stats["faculty_contact_total"] == sum(
+            entry["faculty_contact_count"] for entry in picker["schools"].values()
+        ) + national_kinds.count("faculty_contact")
