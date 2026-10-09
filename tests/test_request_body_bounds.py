@@ -14,8 +14,10 @@ from starlette.requests import Request
 
 from backend.lib import request_body
 from backend.lib import target_resume_plan as plan
+from backend.lib.resume_input import MAX_RESUME_TEXT_CHARACTERS
 from backend.lib.target_resume_ai_validation import InvalidTargetResume
 from backend.main import app
+from backend.routes import tailor
 from backend.routes import target_resume_ai as route
 from tests import test_target_resume_plan as plan_tests
 from tests.test_target_resume_plan import endpoint  # noqa: F401
@@ -89,6 +91,26 @@ def test_a_body_at_the_bound_is_parsed_and_answered_as_before(parsed, padding):
 def test_an_item_heavy_body_is_refused_unparsed(parsed, path, body):
     """Four 2 MiB bodies of ints sent at once held the loop 0.30-0.39 s (round-2 review, criterion 4)."""
     response = TestClient(app).post(path, json=body)
+    assert response.status_code == 422 and parsed == []
+
+
+# Round 5 (criterion E): an extraction route reads one résumé, which may hold a comma in each of its
+# 60,000 characters. origin/main reads such a résumé whole; the 50,000-comma bound refused it with 422.
+EXTRACTION_PATHS = ["/api/tailor/extract-bullets", "/api/tailor/structure"]
+
+
+@pytest.mark.parametrize("path", EXTRACTION_PATHS)
+def test_an_extraction_route_reads_a_resume_of_commas_whole(parsed, monkeypatch, path):
+    monkeypatch.setattr(tailor, "is_configured", lambda: False)
+    resume = "Built a robot, " + "," * (MAX_RESUME_TEXT_CHARACTERS - 15)
+    response = TestClient(app).post(path, json={"resume_text": resume})
+    assert response.status_code == 200 and parsed == [path]
+
+
+@pytest.mark.parametrize("path", EXTRACTION_PATHS)
+def test_an_extraction_body_past_its_own_comma_bound_is_refused_unparsed(parsed, path):
+    padding = [0] * (request_body.MAX_RESUME_JSON_SEPARATORS + 1)
+    response = TestClient(app).post(path, json={"resume_text": "Built a robot.", "padding": padding})
     assert response.status_code == 422 and parsed == []
 
 

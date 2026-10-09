@@ -25,6 +25,10 @@ Round 3 moved the full-target and selection-plan parsing, validation and prompt 
 request lane (backend.lib.blocking.run_request_work); --concurrent takes a list (1,4,10) and prints
 the worst stall per route at each level.
 
+Round 5 gave /api/tailor/extract-bullets and /api/tailor/structure a comma bound of their own, a comma
+per résumé character (backend.lib.request_body.MAX_RESUME_JSON_SEPARATORS), so that they read every
+résumé origin/main reads; the R5 cases are those routes' bodies at that bound and résumés of commas.
+
 Run from the repository root:  python scripts/worst_inputs_lag.py [--threshold 0.25] [--only TEXT] [--concurrent 1,4,10]
 """
 from __future__ import annotations
@@ -47,7 +51,7 @@ import httpx  # noqa: E402
 
 from backend import main as main_module  # noqa: E402
 from backend.lib import release_scope  # noqa: E402
-from backend.lib.request_body import MAX_JSON_CONTAINERS, MAX_JSON_SEPARATORS  # noqa: E402
+from backend.lib.request_body import MAX_JSON_CONTAINERS, MAX_JSON_SEPARATORS, MAX_RESUME_JSON_SEPARATORS  # noqa: E402
 from backend.routes import tailor  # noqa: E402
 from backend.routes import target_resume_ai as full_route  # noqa: E402
 
@@ -155,6 +159,18 @@ def cases():
         "selected_unit_ids": ["line-1"],
         "support_groups": [{"unit_id": "u", "support_unit_ids": fill("ints", (FULL_BODY - 400) // 24),
                             "confirmed": True}] * 24}
+    # Round 5: the extraction routes at their own comma bound, and résumés of commas and brackets.
+    under = MAX_RESUME_JSON_SEPARATORS - 40
+    for path, extra in (("/api/tailor/extract-bullets", {}), ("/api/tailor/structure", {"locale": "en"})):
+        body = {"resume_text": "Built a robot.", **extra}
+        yield f"R5 {path} unknown field: {under:,} 1-key dicts", path, {**body, "padding": [{"k": 0}] * under}
+        yield f"R5 {path} unknown field: {under:,} ints, then a string", path, {
+            **body, "padding": [[0] * under, "a" * (ONE_MIB - 2 * under - 200)]}
+        yield f"R5 {path} unknown field: {under:,} strings, then a string", path, {
+            **body, "padding": [[""] * under, "a" * (ONE_MIB - 3 * under - 200)]}
+        yield f"R5 {path} unknown field: {under:,} empty lists", path, {**body, "padding": [[]] * under}
+        for character, name in ((",", "commas"), ("[", "brackets"), ("{", "braces")):
+            yield f"R5 {path} resume_text: 60,000 {name}", path, {**extra, "resume_text": character * 60_000}
 
 
 async def probe(path: str, content: bytes, concurrent: int = 1):

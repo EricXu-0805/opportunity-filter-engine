@@ -70,7 +70,7 @@ from backend.lib.prompt_safety import sanitize_field as _sanitize_field
 from backend.lib.public_opportunity_detail import project_public_detail, writing_target_version
 from backend.lib.publication_attribution import verified_recent_works
 from backend.lib.release_scope import release_visible_opportunity_by_id
-from backend.lib.request_body import BoundedJSONRoute
+from backend.lib.request_body import BoundedJSONRoute, ResumeJSONRoute
 from backend.lib.resume_input import (
     RESUME_AI_CHUNK_CHARACTERS,
     RESUME_AI_CONCURRENCY,
@@ -108,6 +108,9 @@ logger = logging.getLogger("ofe.tailor")
 
 # Up to 1 MiB of JSON per writing request: a container-heavy body is refused before it is parsed.
 router = APIRouter(route_class=BoundedJSONRoute)
+# The two extraction routes read one résumé, which may hold a comma in each of its characters; main
+# parses such a résumé whole, and so do they (request_body.ResumeJSONRoute). Included in router below.
+resume_router = APIRouter(route_class=ResumeJSONRoute)
 
 _DEFAULT_OPP_TOKEN_BUDGET = 1200
 # Every layer above this accepts 12: the modal prefills 12
@@ -757,7 +760,7 @@ def _select_bullets_across_chunks(groups: list[list[str]], limit: int = 12) -> t
     return [bullet for _, _, bullet in sorted(selected)], len(seen) > len(selected)
 
 
-@router.post("/tailor/extract-bullets", response_model=ExtractBulletsResponse)
+@resume_router.post("/tailor/extract-bullets", response_model=ExtractBulletsResponse)
 async def extract_bullets(request: ExtractBulletsRequest, http_request: Request) -> ExtractBulletsResponse:
     """Select reviewable bullets from every accepted part of the resume."""
     version = _require_pipeline_version(request.expected_pipeline_version)
@@ -1113,7 +1116,7 @@ def _merge_structure_chunks(groups: list[list[ResumeSection]]) -> tuple[list[Res
     return list(merged.values()), limited
 
 
-@router.post("/tailor/structure", response_model=StructureResumeResponse)
+@resume_router.post("/tailor/structure", response_model=StructureResumeResponse)
 async def structure_resume(request: StructureResumeRequest, http_request: Request) -> StructureResumeResponse:
     """Build a bounded experience projection while retaining the full source."""
     text = request.resume_text or ""
@@ -1461,3 +1464,6 @@ async def _optimize_bullet_snapshot(
     warnings = _outcome_warnings("", outcome) if answered else ["llm_failed_or_invalid_json"]
     return BulletOptimizeResponse(text=current, source_evidence=original, changed=False, warnings=warnings,
                                   reason_code=outcome.code, links=links, **stamps)
+
+
+router.include_router(resume_router)
