@@ -8,7 +8,8 @@ class years, an intl answer and a deadline note that a person typed in once.
 carries. The detail page shows a value as the page's where that text states
 it, and as our inference where it does not. A value the text contradicts
 stays our inference too, and someone should read the page and fix the
-config: this lists those.
+config: this lists those. A value another producer wrote on such a row (a
+tagger's pay, the enricher's majors) is not the config's, and is left out.
 
 Usage:
     python3 scripts/configured_facts_report.py          # counts + contradicted values
@@ -72,7 +73,9 @@ def check_records(records: list[dict]) -> list[dict]:
     from backend.routes.opportunities import _redact
     from src.evidence import (
         CONFIGURED_FACT_PATHS,
+        CONFIGURED_PROGRAM_METHOD,
         configured_fact,
+        inferred_method,
         is_configured_program,
         neutralize_unverified_faculty_claims,
         stamp_collector_templates,
@@ -89,7 +92,7 @@ def check_records(records: list[dict]) -> list[dict]:
         fields = build_detail_fields(_redact(canonical), canonical)["fields"]
         for facet, path in CONFIGURED_FACT_PATHS.items():
             value = _value(canonical, path)
-            if not _is_set(facet, value):
+            if not _is_set(facet, value) or inferred_method(record, path) not in (None, CONFIGURED_PROGRAM_METHOD):
                 continue
             fact = configured_fact(canonical, facet)
             field = fields[_FIELD_OF[facet]]

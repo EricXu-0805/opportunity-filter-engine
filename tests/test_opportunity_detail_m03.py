@@ -1264,10 +1264,16 @@ def test_the_report_lists_the_values_the_page_text_contradicts(tmp_path, capsys)
                                          extra_desc="Research positions are unpaid.")
     stated = dict(cg._normalize_program(school, source, source["programs"][0], seed_page_verified=True,
                                         extra_desc="Fellows receive a $5,000 stipend."), id="stated-row")
+    # A tagger's pay on a configured row is not the config's value.
+    tagged = dict(cg._normalize_program(school, source, source["programs"][0], seed_page_verified=True,
+                                        extra_desc="Research positions are unpaid."), id="tagged-row")
+    tagged["metadata"]["inferred_fields"] = {"paid": "rule:llm_tagger"}
     corpus = tmp_path / "opportunities.json"
-    corpus.write_text(json.dumps([contradicted, stated, _listing()]), encoding="utf-8")
+    corpus.write_text(json.dumps([contradicted, stated, tagged, _listing()]), encoding="utf-8")
     rows = {(row["id"], row["facet"]): row for row in facts_report.check_records(json.loads(corpus.read_text()))}
-    assert {row_id for row_id, _ in rows} == {contradicted["id"], "stated-row"}
+    assert {row_id for row_id, _ in rows} == {contradicted["id"], "stated-row", "tagged-row"}
+    assert ("tagged-row", "paid") not in rows
+    assert ("tagged-row", "majors") in rows
     seen = contradicted["metadata"]["last_verified"]
     assert rows[contradicted["id"], "paid"] == {
         "id": contradicted["id"], "facet": "paid", "value": "stipend", "page_text": FACT_CONTRADICTED,
