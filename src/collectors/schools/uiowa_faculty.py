@@ -6,7 +6,8 @@ Two markup families, both live-verified 2026-07-24, cover the university:
   College of Engineering departments, and the College of Nursing. One card is a
   ``div.views-row`` wrapping ``div.card--layout-…card`` and carrying:
 
-  * an ``h3.headline`` whose ``a[href^='/people/']`` links to the profile and
+  * an ``h3.headline`` (``h2`` on some sites) whose ``a[href^='/people/']``
+    links to the profile and
     whose ``span.headline__heading`` holds the display name (often with a
     ", PhD" credential the engine's ``_strip_credentials`` trims);
   * a ``div.field--name-field-person-position`` block whose ``.field__items``
@@ -47,8 +48,9 @@ Two markup families, both live-verified 2026-07-24, cover the university:
   equality drops emeriti, adjuncts, staff and students — no title regex needed).
 
 Single source ("uiowa_faculty"); department rides each record, ids namespaced by
-department short-code. The API rosters carry no profile URL (email is the dedup
-key), so joint appointments across two cohorts dedup on the shared @uiowa.edu.
+department short-code. The API rosters carry no profile URL, only a ``slug`` the
+college site serves the profile under (see ``_api``); joint appointments across
+two cohorts dedup on the shared @uiowa.edu.
 
 Coverage (live-verified 2026-07-24): 25 departments across CLAS, Engineering,
 Tippie Business, Education and Nursing — every unit whose roster is real ladder/
@@ -81,7 +83,10 @@ from .. import faculty_graph
 _SEL = {
     "card": "div.views-row",
     "name": ".headline__heading",
-    "link": "h3.headline a",
+    # The headline is an h3 on most sites but an h2 on Psychology, History,
+    # Sociology and Nursing (2026-10-09), where an h3-only selector found no
+    # link and all 195 of their professors shared the directory URL.
+    "link": ".headline a",
     "email": ".field--name-field-person-email .field__item a",
     "title_re": (
         r"((?:Adjunct |Visiting |Clinical |Research |Distinguished |Assistant "
@@ -124,7 +129,7 @@ def _dept(short: str, name: str, majors: list[str], url: str,
 # ---- Campus "Directory Profiles" API (profiles.uiowa.edu) ----------------------
 # Each academic department is a ``cohort`` under its college's ``api-key``; the
 # roster fits one 200-row page. Gate on personType == FACULTY (drops emeriti /
-# adjuncts / staff / students). No profile URL in the feed — email is the key.
+# adjuncts / staff / students). The profile link is built from the person's slug.
 _TIPPIE_KEY = "ebab7021-4a40-45b5-83d5-26922855e68d"
 _TIPPIE_SITE = "https://tippie.uiowa.edu/people"
 _EDU_KEY = "0f7ad038-cfa6-406d-ab27-c572dc435d59"
@@ -135,9 +140,13 @@ def _api(short: str, name: str, majors: list[str], key: str, cohort: int,
          site_url: str) -> dict:
     """A department off the campus Directory Profiles REST service.
 
-    ``site_url`` is the human-facing college directory page — kept as the record
-    fallback URL (the API feed carries no per-person profile link) so the stored
-    record never exposes the ``api-key`` that only the fetch URL needs.
+    ``site_url`` is the human-facing college directory page. The feed carries
+    no profile URL but each person's ``slug``, and the college site serves the
+    profile at ``<site_url>/<slug>`` (Tippie ``/people/<slug>``, Education
+    ``/directory/<slug>``; checked 2026-10-09 — the page names the person, an
+    unknown slug 404s). A record without a slug falls back to ``site_url``, so
+    the stored record never exposes the ``api-key`` that only the fetch URL
+    needs.
     """
     api_url = (f"https://profiles.uiowa.edu/api/people?api-key={key}"
                f"&cohort={cohort}&query&page=0&size=200")
@@ -149,6 +158,7 @@ def _api(short: str, name: str, majors: list[str], key: str, cohort: int,
             "status_field": "personType", "status_value": "FACULTY",
             "name_fields": ["profileName"], "title_field": "directoryTitle",
             "email_field": "email",
+            "link_template": site_url + "/{slug}",
         },
     }
 

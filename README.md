@@ -1,6 +1,6 @@
 # JoinALab
 
-A personalized research, internship, and fellowship matching engine for university students. JoinALab collects thousands of opportunities — campus research databases, faculty directories, NSF REU programs, internship boards, and more — then ranks and explains each match against your profile.
+A personalized research and internship matching engine for university students. JoinALab collects opportunities — faculty directories and campus research programs at 115 universities, NSF REU sites, internship lists, and more (142,861 records in the 2026-10-08 refresh) — then ranks and explains each match against your profile.
 
 Not a job board. A decision engine that answers three questions:
 1. **Can I apply?** (Eligibility)
@@ -9,11 +9,19 @@ Not a job board. A decision engine that answers three questions:
 
 Matching is **field-aware**: your stated research interests lead the ranking, while your major and college steer it — so a veterinary student and a CS student searching the same words see different, field-appropriate labs.
 
-Built for the students each campus serves worst — including international students, who often can't tell what's realistic, what requires citizenship, or where to even start. It launched at the University of Illinois Urbana-Champaign and is rolling out to more campuses (UC Berkeley is live; others are queued).
+Built for the students each campus serves worst — including international students, who often can't tell what's realistic, what requires citizenship, or where to even start. It launched at the University of Illinois Urbana-Champaign and now covers 115 universities; `src/school_scope.py` records the schools it has dropped and why.
 
 **[Live](https://joinalab.com)** | **[API](https://opportunity-filter-engine-api.onrender.com/api/health)**
 
+## Scope, to-do list and docs
+
+- **What ships.** Several built features (compare, fellowships, the roadmap, Ask AI, payments) are switched off in the public release. `docs/product_scope.md` lists every release flag, its state, and why each closed one is closed.
+- **The to-do list.** Open work lives in one place: the owner's MVP checklist (the private "OE todolist" Google Doc, MVP tab, items M01–M70). Ask the owner for access. `docs/roadmap.md`, `docs/PROJECT_PLAN.md`, `docs/MASTER_PLAN.md` and `docs/future_features.md` are earlier plans, kept for history.
+- **Operations.** `RUNBOOK.md` covers the scheduled jobs, the weekly refresh rotation, migrations (including how to name a new one) and environment setup. `docs/RELEASE.md` covers releases and rollback. `docs/collector_sop.md` is the procedure for adding a school.
+
 ## Screenshots
+
+Captured 2026-06-26. The navigation in them still shows Fellowships and Roadmap, which the current release hides.
 
 ### Profile Builder
 Two-column form with college/major cascading dropdowns, a multi-domain skill picker (add your own), clickable research-interest suggestions, international-student filtering, resume upload with auto-skill extraction, and a research interest/experience balance slider.
@@ -30,8 +38,8 @@ One-click draft with a pre-filled subject line and body, personalized to your pr
 
 ![Cold Email Modal](docs/screenshots/03-cold-email.png)
 
-### Opportunity Dashboard
-Live stats across all scraped sources: total opportunities, paid positions, international-friendly count, breakdowns by type and source.
+### Dashboard
+Your saved count, upcoming deadlines, pending reminders and application tracker on one page, plus how long ago the opportunity data was refreshed. (The screenshot predates this layout: it still shows corpus-wide counts.)
 
 ![Dashboard](docs/screenshots/04-dashboard.png)
 
@@ -43,7 +51,7 @@ Every campus scatters opportunities across a dozen disconnected platforms with n
 |--------|------------|---------|------|
 | Research blogs / RSS | Faculty-posted research positions | Feeds exist but nobody parses them | ✅ Auto-parsed |
 | Summer research databases | Hundreds of external programs | Pages of unfiltered listings | ✅ Scraped + normalized |
-| Handshake | Jobs + some research | Login-gated, mixes everything together | ✅ Cookie-auth collector |
+| Handshake | Jobs + some research | Login-gated, mixes everything together | Cookie-auth collector exists; not in the scheduled refresh |
 | Department / faculty pages | Lab-specific openings | Scattered across 50+ sites per school | ✅ Faculty directories, multi-school |
 | External REUs | 500+ NSF-funded programs | Requires knowing where to look | ✅ Pulled from the NSF Awards API |
 | Research parks / internships | Hundreds of positions per year | Separate sites, not linked to research | ✅ Scraped |
@@ -59,8 +67,8 @@ International students have it worst: they can't tell what's realistic, what req
 | Database | Supabase (profiles, favorites, interactions, saved searches, attachments, version history) |
 | Data Collection | BeautifulSoup, feedparser, requests, NSF Awards API |
 | Matching | Field-aware three-layer scoring (eligibility × readiness × upside) — interests lead, major/college steer — + TF-IDF semantic similarity |
-| LLM | OpenRouter for cold-email refinement and the Ask-AI assistant |
-| Deploy | Vercel (frontend) + Render (backend), GitHub Actions (twice-weekly data refresh, daily saved-search refresh) |
+| LLM | OpenAI, Gemini or OpenRouter (`backend/lib/llm.py`) for cold-email drafting and résumé tailoring |
+| Deploy | Vercel (frontend) + Render (backend), GitHub Actions (daily data refresh that re-scrapes each school once a week, reminders, saved-search digests, ops scan) |
 
 ## Architecture
 
@@ -72,7 +80,7 @@ Data Sources (multi-school collectors: faculty directories, research DBs,
 Normalization Pipeline (raw text → structured fields → skill/keyword inference)
         │
         ▼
-Opportunity Database (5,400+ normalized records, auto-refreshed twice weekly)
+Opportunity corpus (one JSON shard per school; every school re-scraped weekly)
         │
         ▼
 Matching Engine (field-aware: eligibility × readiness × upside + TF-IDF semantic
@@ -83,93 +91,124 @@ Web Interface (Next.js + FastAPI + Supabase)
   ├── Profile form with resume parsing, GitHub import, auto-save
   ├── Ranked results with lab-specific explanations + filters
   ├── Cold email generator (multiple tones + LLM refinement)
-  ├── Compare (6-axis radar), favorites + saved searches (cross-device sync)
-  ├── Application tracker, dashboard, and a skill-gap roadmap
-  └── Manual import (paste a URL or a full posting → AI extraction)
+  ├── Résumé tailoring for one target
+  ├── Favorites + saved searches with email digests (cross-device sync)
+  ├── Application tracker and dashboard, with Web Push / email reminders
+  └── Private import (paste a URL or a full posting → AI extraction)
 ```
 
-Adding a school is a config + collector exercise: a school registry (`src/collectors/school_config.py`) plus a shared faculty-collector base let new campuses reuse the same normalization and matching pipeline.
+Adding a school is mostly configuration: config modules in `src/collectors/schools/` for the shared engines (`src/collectors/faculty_graph.py`, `src/collectors/campus_graph.py`), a `SOURCE_DEFAULTS` entry in `src/normalizers/school_audience.py`, and a slot in the weekly rotation (`scripts/refresh_rotation.py`). `docs/collector_sop.md` is the full procedure.
 
 ## Run Locally
 
 ### Prerequisites
-- Python 3.11+
-- Node.js 18+
+- Python 3.11 (CI's version)
+- Node.js 24 (CI's version; Next.js 16 needs 20.9 or newer)
 
 ### Backend
 ```bash
+python3.11 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn backend.main:app --host 127.0.0.1 --port 8000
 ```
 
+The backend reads the committed corpus shards in `data/processed/shards/` directly, unless `data/processed/opportunities.json` exists. The Tests block below creates that file with `assemble`, and from then on the backend reads it instead of the shards; after pulling new shards, rerun `python scripts/shard_corpus.py assemble --force` or the backend keeps serving the older corpus. Startup parses the corpus before `/api/health` answers: on 2026-10-09 that took 22 seconds and left the process at 1.4 GB RSS on an Apple-silicon Mac.
+
 ### Frontend
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
-Open http://localhost:3000. The frontend proxies API requests to the backend automatically.
+Open http://localhost:3000. `/api/*` is proxied to `BACKEND_URL`, which defaults to `http://127.0.0.1:8000` outside production.
 
 ### Tests
 
+These match the jobs in `.github/workflows/ci.yml`. Run them from the repository root; the block changes directory where it says `cd`.
+
 ```bash
-# Backend: pytest — unit + integration + API tests
-pytest tests/ -v
+# Backend lint (CI pins ruff 0.7.4)
+uvx ruff@0.7.4 check backend src tests
 
-# Frontend unit tests: vitest — 1,000+ tests over lib/ modules, components + helpers
+# Backend tests. Assemble the corpus work file first: the data-quality tests
+# read data/processed/opportunities.json, which is gitignored. assemble skips
+# when that file exists; add --force after pulling new shards.
+python scripts/shard_corpus.py assemble
+pytest tests/
+
+# Frontend typecheck, lint, unit tests (vitest) and production build
 cd frontend
+npx tsc --noEmit
+npm run lint
 npm test
+npm run build
 
-# Frontend E2E: playwright — real-browser specs, runs both servers
-# (some auto-skip in environments without NEXT_PUBLIC_SUPABASE_*)
-cd frontend
+# Frontend E2E (Playwright). The config starts a Supabase stub, the backend
+# (`python3 -m uvicorn`, so keep the backend virtualenv active), a fixture
+# proxy and `next dev` itself.
 npx playwright install chromium       # one-time browser download
-npm run test:e2e                      # headless
+npm run test:e2e -- --project=chromium
 npm run test:e2e:ui                   # watch/debug UI
+
+# Migrations: replay the whole chain into a throwaway local Postgres
+# (needs initdb/pg_ctl/psql on PATH; the second also needs Supabase CLI 2.95.4)
+cd ..
+bash supabase/tests/run_flow_b_test.sh
+bash supabase/tests/run_supabase_cli_migration_test.sh
 ```
 
-The backend and frontend-unit suites run automatically in CI on every push/PR
-(see `.github/workflows/ci.yml`).
+Notes:
+- `tests/conftest.py` forces every release flag on, except in the five modules that set `RELEASE_CONTRACT_TESTS = True`. `tests/test_release_scope.py` is the one that tests the shipped flag table.
+- To run E2E beside another checkout, move its servers with `E2E_PORT`, `E2E_BACKEND_PORT`, `E2E_RESEARCH_PROXY_PORT` and `E2E_SUPABASE_PORT` (defaults 3100, 8100, 8101, 54321). The CLI migration replay takes `OFE_SUPABASE_CLI_TEST_PORT` (default 55436).
+- `tests/test_docs_current.py` fails when this README, `RUNBOOK.md` or `docs/product_scope.md` names a missing file in backticks, after `python` or `bash` in a command, or as a link or image target, or names a missing `python -m` module. It also fails when the scope doc's flag table disagrees with the code. It does not check the project tree below.
 
 ## Project Structure
 
 ```
 opportunity-filter-engine/
 ├── backend/                  # FastAPI REST API
-│   ├── main.py               # App entry, CORS, routing
+│   ├── main.py               # App entry, CORS, routing, release-scope middleware
 │   ├── schemas.py            # Pydantic request/response models
+│   ├── lib/release_scope.py  # Server-side release flags
 │   └── routes/
 │       ├── matches.py        # POST /api/matches
 │       ├── opportunities.py  # GET /api/opportunities
 │       ├── cold_email.py     # POST /api/cold-email
-│       ├── resume.py         # POST /api/resume/upload
-│       └── saved_searches.py # POST /cron/saved-searches/refresh
+│       ├── tailor.py         # Résumé tailoring
+│       ├── push.py           # GET /api/cron/reminders, Web Push
+│       └── saved_searches.py # GET /api/cron/saved-searches/refresh and /digest
 ├── frontend/                 # Next.js 16 app
 │   ├── src/
-│   │   ├── app/              # Pages (home, results, favorites, compare, tracker, dashboard, roadmap, …)
+│   │   ├── app/              # Pages (home, results, opportunities/[id], favorites, tracker, dashboard, import, …)
 │   │   ├── components/       # MatchCard, ColdEmailModal, OnboardingIntro, etc.
-│   │   └── lib/              # API client, supabase wrapper, schools registry, types
+│   │   └── lib/              # API client, supabase wrapper, schools registry, release-scope.ts, types
 │   └── e2e/                  # Playwright specs
 ├── src/                      # Core Python engine
 │   ├── collectors/           # Source- and school-specific scrapers
-│   │   ├── school_config.py  # School registry (org, location, id prefixes)
-│   │   ├── faculty_base.py   # Shared faculty-collector base
+│   │   ├── refresh_all.py    # Refresh entry point (shards, deep mode, time budget)
+│   │   ├── faculty_graph.py  # Shared faculty-directory engine
+│   │   ├── campus_graph.py   # Shared campus-programs engine
+│   │   ├── schools/          # One config module per school for the two engines
 │   │   ├── uiuc_*.py         # UIUC: SRO, faculty dirs, OUR RSS, Research Park, …
 │   │   ├── ucb_*.py          # UC Berkeley faculty directories (EECS, Chem, BioE, …)
 │   │   ├── nsf_reu.py        # NSF REU Awards API
-│   │   └── handshake.py      # Handshake with cookie auth
+│   │   └── handshake.py      # Handshake with cookie auth (not in the scheduled refresh)
+│   ├── school_scope.py       # Schools the product has dropped, with the reason
 │   ├── matcher/              # Three-layer scoring + TF-IDF
 │   │   ├── ranker.py         # Eligibility × readiness × upside
 │   │   └── embeddings.py     # Semantic similarity (TF-IDF / embeddings)
 │   └── recommender/          # Cold email + resume gap advisor
+├── scripts/                  # refresh_rotation.py, shard_corpus.py, release_gate.py, …
 ├── supabase/
-│   └── migrations/           # SQL migrations (RLS, anon auth, saved searches, analytics, feedback, …)
+│   ├── migrations/           # SQL migrations (naming rules: RUNBOOK.md section 4)
+│   └── tests/                # Real-Postgres migration and RLS tests
 ├── data/
-│   ├── processed/            # 5,400+ normalized opportunities
+│   ├── processed/shards/     # The corpus: one minified JSON file per school, plus national.json
+│   ├── snapshots/            # Hand exports of login-only sources
 │   └── manual_entries/       # Hand-curated entries
-├── .github/workflows/        # CI + twice-weekly refresh + daily saved-search cron
-└── tests/                    # Integration tests
+├── .github/workflows/        # CI, daily refresh rotation, reminders, saved searches, ops scan, release gate
+└── tests/                    # pytest suite
 ```
 
 ## Author

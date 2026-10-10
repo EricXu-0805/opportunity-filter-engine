@@ -222,7 +222,8 @@ SCHOOL: dict = {
                "research_items": ".field--name-field-research-keywords .field__item"},
               # Joint Harvard-MIT institute: no rank text and no emails.
               ladder=None,
-              paginate={"param": "page", "start": 1, "max": 6}),
+              # ?page=7 was the last (13 cards) on 2026-10-09.
+              paginate={"param": "page", "start": 1, "max": 9}),
         # ---- SHASS ----------------------------------------------------------
         _dept("ANTH", "Anthropology Program", ["Anthropology"],
               "https://anthropology.mit.edu/people/faculty",

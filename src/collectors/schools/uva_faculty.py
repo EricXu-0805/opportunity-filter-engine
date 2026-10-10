@@ -484,7 +484,8 @@ SCHOOL: dict = {
                               "title": "ul.positions"},
                 "ladder_filter": {"require": r"professor|lecturer|instructor",
                                   "drop": r"emerit|adjunct|visiting"},
-                "paginate": {"param": "page", "start": 1, "max": 12},
+                # ?page=16 was the last (8 cards) on 2026-10-09.
+                "paginate": {"param": "page", "start": 1, "max": 19},
             },
         },
         # ---- College of Arts & Sciences: interdisciplinary programs --------

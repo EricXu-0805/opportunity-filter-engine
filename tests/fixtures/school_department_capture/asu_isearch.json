@@ -1,0 +1,64 @@
+{
+ "results": [
+  {
+   "display_name": {
+    "raw": "Ada Example"
+   },
+   "primary_title": {
+    "raw": [
+     "Professor"
+    ]
+   },
+   "email_address": {
+    "raw": "Ada.Example@asu.edu"
+   },
+   "website": {
+    "raw": null
+   },
+   "eid": {
+    "raw": "1000001"
+   },
+   "primary_empl_class": {
+    "raw": [
+     "Faculty"
+    ]
+   },
+   "expertise_areas": {
+    "raw": [
+     "High Energy Theory",
+     "Physics",
+     "Gravity"
+    ]
+   }
+  },
+  {
+   "display_name": {
+    "raw": "Bo Sample"
+   },
+   "primary_title": {
+    "raw": [
+     "Professor"
+    ]
+   },
+   "email_address": {
+    "raw": "Bo.Sample@asu.edu"
+   },
+   "website": {
+    "raw": "https://bosample.example.org"
+   },
+   "eid": {
+    "raw": "1000002"
+   },
+   "primary_empl_class": {
+    "raw": [
+     "Faculty"
+    ]
+   },
+   "expertise_areas": {
+    "raw": [
+     "Cosmology, Particle, and Astrophysics"
+    ]
+   }
+  }
+ ]
+}

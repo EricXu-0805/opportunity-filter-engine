@@ -40,6 +40,41 @@ describe('readDetailFields', () => {
     expect(fields.funding.observedAt).toBe('2026-09-01');
   });
 
+  it('reads the page\'s sentence for a source facet only', () => {
+    const quote = { text: 'Fellows receive a stipend.', source_url: 'https://example.edu/f', observed_at: '2026-09-02T12:00:00+00:00' };
+    const fields = readDetailFields(envelope({
+      funding: {
+        explicit: { paid: 'stipend', compensation: '$5,000' },
+        inferred: {},
+        quotes: { paid: quote, compensation: 'Fellows receive $5,000.' },
+      },
+      eligibility: {
+        explicit: { class_year: ['junior'] },
+        inferred: { majors: { value: ['Biology'], basis: 'collector_default' } },
+        quotes: {
+          majors: { text: 'Open to Biology majors.', source_url: null, observed_at: null },
+          class_year: { text: 'Open to juniors.', source_url: 'javascript:alert(1)', observed_at: 'yesterday' },
+        },
+      },
+    }))!;
+    const funding = Object.fromEntries(fields.funding.facets.map((f) => [f.facet, f.truth]));
+    expect(funding.paid).toEqual({
+      state: 'source',
+      value: 'stipend',
+      quote: { text: 'Fellows receive a stipend.', sourceUrl: 'https://example.edu/f', observedAt: '2026-09-02' },
+    });
+    // A malformed quote is dropped; the stated value stays.
+    expect(funding.compensation).toEqual({ state: 'source', value: '$5,000' });
+    // A quote beside an inference never turns it into the page's word.
+    const majors = fields.eligibility.facets.find((f) => f.facet === 'majors')!.truth;
+    expect(majors).toEqual({ state: 'inferred', value: ['Biology'], basis: 'collector_default' });
+    // An unsafe link or an unreadable date is dropped; the sentence stays.
+    const years = fields.eligibility.facets.find((f) => f.facet === 'class_year')!.truth;
+    expect(years).toEqual({
+      state: 'source', value: ['junior'], quote: { text: 'Open to juniors.', sourceUrl: null, observedAt: null },
+    });
+  });
+
   it('keeps a stated value and our derived one side by side', () => {
     const fields = readDetailFields(envelope({
       research_content: {

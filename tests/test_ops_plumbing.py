@@ -238,7 +238,7 @@ class TestWorkflowWiring:
         Runs the real CLI for all seven UTC weekdays plus the isolated batch
         and feeds each result to refresh_all's own validator — so a rotation
         edit that violates an engine rule (unknown slug, the ucd singleton)
-        fails here rather than at 06:00 UTC.
+        fails here rather than at 06:07 UTC.
         """
         import subprocess
         import sys

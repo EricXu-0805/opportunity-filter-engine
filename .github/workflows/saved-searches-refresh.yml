@@ -2,7 +2,7 @@ name: saved-searches-refresh
 
 on:
   schedule:
-    - cron: '30 23 * * *'   # 23:30 UTC = 6:30pm CDT / 5:30pm CST — evening; +30m off reminders so a user due both isn't double-buzzed at once
+    - cron: '41 23 * * *'   # 23:41 UTC = 6:41pm CDT / 5:41pm CST — evening; +30m off reminders so a user due both isn't double-buzzed at once
   workflow_dispatch:
 
 # One run at a time (W14): the pipelines are scan-and-send with no server

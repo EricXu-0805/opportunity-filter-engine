@@ -22,11 +22,49 @@ function row(field: string, facet: string, state?: string) {
 
 describe('DetailFactsSection', () => {
   it('shows a source-confirmed field as "Source says"', () => {
+    renderCase('sro_structured_listing');
+    const citizenship = row('eligibility', 'citizenship', 'source');
+    expect(within(citizenship).getByText('detail.facts.state.source')).toBeInTheDocument();
+    expect(within(citizenship).getByText('detail.facts.values.citizenshipRequired')).toBeInTheDocument();
+    expect(within(row('funding', 'compensation', 'source')).getByText('$7,000')).toBeInTheDocument();
+  });
+
+  it('shows a configured campus program value as ours, not the source', () => {
     renderCase('curated_campus_program');
-    const majors = row('eligibility', 'majors', 'source');
-    expect(within(majors).getByText('detail.facts.state.source')).toBeInTheDocument();
+    const majors = row('eligibility', 'majors', 'inferred');
+    expect(within(majors).getByText('detail.facts.basis.collector_default')).toBeInTheDocument();
     expect(within(majors).getByText('Biology, Chemistry')).toBeInTheDocument();
-    expect(within(row('funding', 'paid', 'source')).getByText('detail.facts.values.paidStipend')).toBeInTheDocument();
+    expect(within(majors).queryByText('detail.facts.state.source')).not.toBeInTheDocument();
+  });
+
+  it('shows a configured value its page states as the source, in the page\'s words', () => {
+    renderCase('configured_program_page_states');
+    const paid = row('funding', 'paid', 'source');
+    expect(within(paid).getByText('detail.facts.state.source')).toBeInTheDocument();
+    expect(within(paid).getByText('detail.facts.values.paidStipend')).toBeInTheDocument();
+    expect(within(paid).getByTestId('fact-funding-paid-quote').textContent).toBe('Fellows receive a $5,000 stipend.');
+    expect(screen.getByTestId('fact-timing-application_window-quote').textContent)
+      .toBe('Applications are due March 1.');
+    // Each sentence links the page it was read on: the major's, a passage
+    // kept from the eligibility page.
+    const majors = row('eligibility', 'majors', 'source');
+    expect(within(majors).getByTestId('fact-eligibility-majors-quote').textContent).toBe('Open to Chemistry majors.');
+    expect(within(within(majors).getByTestId('fact-eligibility-majors-quote-source')).getByRole('link'))
+      .toHaveAttribute('href', 'https://example.edu/programs/fellows/eligibility');
+    // Class years the page contradicts stay ours and carry no quote.
+    const years = row('eligibility', 'class_year', 'inferred');
+    expect(within(years).getByText('detail.facts.basis.collector_default')).toBeInTheDocument();
+    expect(screen.queryByTestId('fact-eligibility-class_year-quote')).not.toBeInTheDocument();
+  });
+
+  it('dates each quote by when its own page was read', () => {
+    const c = contract.cases.find((x) => x.name === 'configured_program_page_states')!;
+    const fields = readDetailFields({ detail_fields: c.detail_fields })!;
+    const dated = (key: string, vars?: Record<string, string | number>) => (vars ? `${key} ${vars.date}` : key);
+    render(<DetailFactsSection fields={fields} isFaculty={false} t={dated as typeof t} />);
+    expect(screen.getByTestId('fact-eligibility-majors-quote-source')).toHaveTextContent(
+      'detail.facts.observed 2026-09-02');
+    expect(screen.getByTestId('fact-funding-paid-quote-source')).toHaveTextContent('detail.facts.observed 2026-09-01');
   });
 
   it('labels an inferred field "System inference" and says how we inferred it', () => {
@@ -90,6 +128,26 @@ describe('DetailFactsSection', () => {
     expect(within(row('research_content', 'research_areas', 'source')).getByText('Analytical engines; number theory')).toBeInTheDocument();
     expect(within(row('research_content', 'research_areas', 'inferred')).getByText('detail.facts.basis.external_enrichment')).toBeInTheDocument();
     expect(screen.getByTestId('facts-faculty-note')).toBeInTheDocument();
+  });
+
+  // M59 (axe definition-list + dlitem, serious): the label and its state tag
+  // shared a wrapper <div> inside the row, so no list held a dt/dd group and a
+  // screen reader announced neither terms nor their values as a list.
+  it.each(contract.cases.map((c) => c.name))('keeps every fact row a dt/dd group (%s)', (name) => {
+    const { container } = renderCase(name);
+    const lists = container.querySelectorAll('dl');
+    expect(lists.length).toBeGreaterThan(0);
+    for (const list of lists) {
+      for (const group of list.children) {
+        const tags = [...group.children].map((child) => child.tagName);
+        expect(group.tagName).toBe('DIV');
+        expect(tags[0]).toBe('DT');
+        expect(tags).toContain('DD');
+        expect(tags.every((tag) => tag === 'DT' || tag === 'DD')).toBe(true);
+      }
+    }
+    const majors = row('eligibility', 'majors');
+    expect(within(majors).getByRole('term')).toHaveTextContent('detail.facts.facets.majors');
   });
 
   it('carries provenance on a known field and none on an unknown one', () => {

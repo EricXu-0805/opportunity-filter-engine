@@ -2,7 +2,10 @@ name: daily-reminders
 
 on:
   schedule:
-    - cron: '0 23 * * *'   # 23:00 UTC = 6pm CDT / 5pm CST — evening open window
+    # :11, not :00: GitHub delays scheduled runs queued at the top of the
+    # hour first. The reminder day no longer depends on the start time
+    # (backend/routes/push.py, _reminder_day).
+    - cron: '11 23 * * *'   # 23:11 UTC = 6:11pm CDT / 5:11pm CST — evening open window
   workflow_dispatch:
 
 # One run at a time (W14): the pipelines are scan-and-send with no server

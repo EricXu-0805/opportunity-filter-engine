@@ -108,8 +108,11 @@ _MSE_SELECTORS = {
 # 12 cards per page behind a client-side hash router — the rest load as the URL
 # fragment changes to ``#…&page=N``. Physics/Math/Economics/EEB list everyone on
 # one page, so they omit this. Walked in one render session by the engine's
-# hash-paginate path (dedup by name+url).
-_LSA_PAGINATE = {"mode": "hash", "param": "page", "max": 12}
+# hash-paginate path (dedup by name+url). The grid's "next" link turns
+# ``inactive`` on the last page; while it is active, an empty page is one whose
+# cards did not render, not the end of the roster.
+_LSA_PAGINATE = {"mode": "hash", "param": "page", "max": 12,
+                 "next": "div.lsa-pagination a.next:not(.inactive)"}
 
 
 def _scrape(url: str, selectors: dict, *, name_flip: bool = False,

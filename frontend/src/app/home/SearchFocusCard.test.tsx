@@ -50,6 +50,30 @@ describe('SearchFocusCard — explore toggle', () => {
   });
 });
 
+// M59 (axe `label`, critical): the slider had no accessible name, so a screen
+// reader announced an unnamed "slider, 50". Its name is the card heading on
+// screen, so a speech-input user can say the words they see (WCAG 2.5.3), and
+// it reads the same sentence sighted users see under it.
+describe('SearchFocusCard — slider for screen readers', () => {
+  it.each([
+    [20, 'home.form.searchWeightInterests'],
+    [50, 'home.form.searchWeightBalanced'],
+    [80, 'home.form.searchWeightExperience'],
+  ])('at %i it is named and reads %s', (searchWeight, valueText) => {
+    renderCard({ searchWeight });
+    const slider = screen.getByRole('slider', { name: 'home.cards.searchFocusTitle' });
+    expect(slider).toHaveAttribute('aria-valuetext', valueText);
+    expect(screen.getByText(valueText)).toBeInTheDocument();
+  });
+
+  it('takes its name from the visible heading', () => {
+    renderCard();
+    const heading = screen.getByRole('heading', { level: 2 });
+    expect(screen.getByRole('slider')).toHaveAccessibleName(heading.textContent ?? '');
+    expect(screen.getByRole('slider')).toHaveAttribute('aria-labelledby', heading.id);
+  });
+});
+
 // ---------------------------------------------------------------------------
 // The slider may not promise that a resume changes the results
 //

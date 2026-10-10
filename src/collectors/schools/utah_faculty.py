@@ -220,7 +220,7 @@ _OMNI_SEL = {
 
 
 def _omni_dept(short: str, name: str, majors: list[str], url: str, *,
-               research_items: str | None = None) -> dict:
+               research_items: str | None = None, link: str | None = None) -> dict:
     """A department on the campus-wide v2 faculty-directory OMNI template.
 
     English and Writing & Rhetoric author a clean atomic chip list under a
@@ -231,6 +231,8 @@ def _omni_dept(short: str, name: str, majors: list[str], url: str, *,
     sel = _OMNI_SEL
     if research_items:
         sel = dict(_OMNI_SEL, research_items=research_items)
+    if link:
+        sel = dict(sel, link=link)
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
         "scrape": {"url": url, "selectors": sel, "ladder_filter": _LADDER},
@@ -242,7 +244,8 @@ def _flip_dept(short: str, name: str, majors: list[str], url: str, *,
                card: str, name_sel: str, title_sel: str,
                title_case: bool = False, strip_after: str | None = None,
                research_items: str | None = None,
-               research_re_text: str | None = None) -> dict:
+               research_re_text: str | None = None,
+               link: str | None = None) -> dict:
     """An older OMNI flip-panel directory: ``title_re`` recovers the rank, the
     per-site CSS ``title`` is the staff-safety fallback.
 
@@ -262,6 +265,8 @@ def _flip_dept(short: str, name: str, majors: list[str], url: str, *,
         sels["research_items"] = research_items
     if research_re_text:
         sels["research_re_text"] = research_re_text
+    if link:
+        sels["link"] = link
     return {
         "short": short, "name": name, "majors": majors, "directory_url": url,
         "scrape": {"url": url, "selectors": sels, "ladder_filter": _LADDER},
@@ -290,8 +295,10 @@ _TEAM_SEL = {
 # authoritative: ``directory_tag`` cleanly separates ladder ``Faculty`` from
 # ``Emeritus Faculty`` / ``Adjunct Faculty`` (the gate the mixed-rank roster
 # needs), and every faculty record carries rank + email inline. The JSON has no
-# per-person profile URL, so records land linkless (the engine points them at
-# the department directory) and de-dup on email.
+# per-person profile URL, but its ``unid`` keys the campus faculty profile
+# (``profiles.faculty.utah.edu/<unid>``, rendered 2026-10-09 with the person's
+# name); the department page itself links ``/profile/?unid=<unid>``, a query
+# string the retirement ledger's URL identity would strip to one shared path.
 def _coe_json(short: str, name: str, majors: list[str], slug: str,
               directory_url: str) -> dict:
     """A Price College of Engineering department fetched from its shared Vue
@@ -310,6 +317,7 @@ def _coe_json(short: str, name: str, majors: list[str], slug: str,
             # Faculty from the Emeritus/Adjunct blocks the same feed carries.
             "filter_field": "directory_tag",
             "filter_value": "Faculty",
+            "link_template": "https://profiles.faculty.utah.edu/{unid}",
             # Belt-and-suspenders on the title in case a block is mis-tagged.
             "ladder_filter": {"drop": r"emerit|adjunct"},
         },
@@ -329,6 +337,8 @@ _MSE_SEL = {
     "name": "h4",
     "title": "address strong",
     "email": "address a[href^='mailto:']",
+    # Only some ranks are linked, to the campus faculty profile.
+    "link": "a[href*='faculty.utah.edu/']",
 }
 
 
@@ -357,6 +367,10 @@ SCHOOL: dict = {
                     "name": "h2",
                     "title": "h4",
                     "email": "a[href^='mailto:']",
+                    # The name is plain text; the person's own site is the
+                    # paragraph link labelled "Website" (beside "Google
+                    # Scholar"), on 69 of 107 cards (2026-10-09).
+                    "link": "p a:-soup-contains('Website')",
                     # Research Interests live in a <p> after a <strong> label;
                     # bound just that paragraph so the label doesn't leak in.
                     "research_re": r"Research Interests</strong>(.*?)</p>",
@@ -423,7 +437,8 @@ SCHOOL: dict = {
             "directory_url": "https://www.civil.utah.edu/directory/",
             "scrape": {
                 "url": "https://www.civil.utah.edu/directory/",
-                "selectors": _TEAM_SEL,
+                # The card's button goes to the person's faculty profile.
+                "selectors": dict(_TEAM_SEL, link="a.uu-btn"),
                 "ladder_filter": _LADDER,
             },
         },
@@ -513,7 +528,8 @@ SCHOOL: dict = {
                    "https://econ.utah.edu/people/faculty.php",
                    card="div.isotope-item", name_sel="span.h3", title_sel="em",
                    research_re_text=(r"Areas? of Specialty\s*:?\s*(.+?)"
-                                     r"(?:\s+Send\s|\s*\||\s+\S+['’]s\s)")),
+                                     r"(?:\s+Send\s|\s*\||\s+\S+['’]s\s)"),
+                   link="a[href*='faculty.utah.edu/']"),
         # Parks, Recreation & Tourism (College of Health, Cohesion CMS).
         {
             "short": "PRT",
@@ -527,6 +543,7 @@ SCHOOL: dict = {
                     "name": "h3.gls-card-title",
                     "title": "p.gls-text-meta",
                     "email": "a[href^='mailto:']",
+                    "link": "a.gls-button[href*='faculty.utah.edu/']",
                 },
                 "ladder_filter": _LADDER,
             },
@@ -571,8 +588,10 @@ SCHOOL: dict = {
                 },
             },
         },
+        # Music's cards carry no name link or profile-link paragraph; the
+        # "Profile for <name>" button is the per-person page.
         _omni_dept("MUSIC", "School of Music", ["Music"],
-                   "https://music.utah.edu/faculty/index.php"),
+                   "https://music.utah.edu/faculty/index.php", link="a.uu-btn"),
         {
             "short": "THEATRE",
             "name": "Department of Theatre",

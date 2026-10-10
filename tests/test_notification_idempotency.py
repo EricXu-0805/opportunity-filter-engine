@@ -190,10 +190,10 @@ def _install_reminder_io(
 
     monkeypatch.setattr(push_mod, "_send_via_resend", send_impl or _record_send)
 
-    # Freeze the cron's clock at its scheduled 23:00 UTC on `today` so the
+    # Freeze the cron's clock at its scheduled 23:11 UTC on `today` so the
     # reminder idempotency key is reproducible (and cannot flake across a
     # midnight boundary).
-    _freeze_clock(monkeypatch, f"{today}T23:00:00+00:00")
+    _freeze_clock(monkeypatch, f"{today}T23:11:00+00:00")
     email_mod._recipient_sends.clear()
 
 
@@ -845,18 +845,18 @@ class TestDigestIncidents:
 
 
 class TestReminderDay:
-    # The cron is scheduled for 23:00 UTC, the same calendar date in every US
-    # time zone. Since 2026-10-02 GitHub has started it between 01:38 and
-    # 02:48 UTC the next day, where the UTC date is already tomorrow: those
-    # runs sent the next day's reminders the evening before the date the
-    # student picked.
+    # The cron is scheduled for 23:11 UTC, the same calendar date in every US
+    # time zone. From 2026-10-02, while it was still scheduled for 23:00,
+    # GitHub started it between 01:38 and 02:48 UTC the next day, where the
+    # UTC date is already tomorrow: those runs sent the next day's reminders
+    # the evening before the date the student picked.
 
     @pytest.mark.parametrize(("now", "day"), [
-        ("2026-10-09T23:00:00+00:00", "2026-10-09"),  # on time
+        ("2026-10-09T23:11:00+00:00", "2026-10-09"),  # on time
         ("2026-10-10T02:48:00+00:00", "2026-10-09"),  # as late as the 10-08 run, which began 10-09 02:48
         ("2026-10-10T07:59:00+00:00", "2026-10-09"),
         ("2026-10-10T08:00:00+00:00", "2026-10-10"),  # midnight at UTC-8
-        ("2026-01-15T23:00:00+00:00", "2026-01-15"),  # standard time
+        ("2026-01-15T23:11:00+00:00", "2026-01-15"),  # standard time
     ])
     def test_the_reminder_day_is_the_date_at_utc_minus_8(self, monkeypatch, now, day):
         _freeze_clock(monkeypatch, now)

@@ -306,7 +306,12 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # truth first, so the record leaves the ranked universe instead of staying with
 # the x0.7 haircut. Like 7 and 8, this is a truth change the fingerprint cannot
 # see.
-_MATCHER_VERSION_BASE = "19"
+# 20: match reasons stop presenting a campus program spec's majors and class
+# years as the program's terms, and a configured or keyword-scanned SRO pay
+# value no longer earns the "Paid opportunity" / "Includes stipend" sentence.
+# No score moves, but cached explanations would keep the old sentences, and the
+# fingerprint hashes knobs, not sentences.
+_MATCHER_VERSION_BASE = "20"
 
 
 def _matcher_fingerprint() -> str:

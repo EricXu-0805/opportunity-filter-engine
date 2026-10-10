@@ -350,13 +350,14 @@ async def _account_email(client, supabase_url: str, headers: dict, uid: str) -> 
 def _reminder_day() -> date:
     """The calendar day the reminders cron sends for: the date at UTC-8.
 
-    The cron is scheduled for 23:00 UTC, the same date in every US time zone,
-    but since 2026-10-02 GitHub has started it between 01:38 and 02:48 UTC the
-    next day. Taken in UTC, the date there is already tomorrow, and those runs
-    sent the next day's reminders the evening before the date the student
-    picked. UTC-8 is Pacific standard time, the last continental-US zone to
-    reach a new date. In summer it trails Pacific time by an hour, so a
-    reminder can only be held back, never sent early.
+    The cron is scheduled for 23:11 UTC, the same date in every US time zone,
+    but from 2026-10-02, while it was still scheduled for 23:00, GitHub started
+    it between 01:38 and 02:48 UTC the next day. Taken in UTC, the date there
+    is already tomorrow, and those runs sent the next day's reminders the
+    evening before the date the student picked. UTC-8 is Pacific standard
+    time, the last continental-US zone to reach a new date. In summer it
+    trails Pacific time by an hour, so a reminder can only be held back, never
+    sent early.
     """
     return (datetime.now(UTC) - timedelta(hours=8)).date()
 
