@@ -47,7 +47,7 @@ export function ResultsSearch({
           placeholder={t('results.search.placeholder')}
           className="w-full pl-11 pr-24 py-3 bg-white rounded-xl border-0 shadow-[0_1px_4px_rgba(0,0,0,0.04)] text-[14px] text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all duration-300"
         />
-        <kbd className="absolute right-10 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center justify-center h-5 px-1.5 text-[10px] font-mono text-gray-400 bg-gray-100 border border-gray-200 rounded">
+        <kbd className="absolute right-10 top-1/2 -translate-y-1/2 hidden sm:inline-flex items-center justify-center h-5 px-1.5 text-[10px] font-mono text-gray-600 bg-gray-100 border border-gray-200 rounded">
           /
         </kbd>
         {searchQuery && (
@@ -98,14 +98,14 @@ export function ResultsSearch({
         </div>
       )}
       {hasActiveFilters && (
-        <p className="text-[13px] text-gray-400 mt-2">
+        <p className="text-[13px] text-gray-600 mt-2">
           {filteredCount === 0
             ? t('results.search.noResults')
             : t('results.search.resultsFound', { count: filteredCount })}
           {debouncedQuery.trim() && (
             <span> {t('results.resultsForPrefix')} <span className="font-medium text-gray-600">&ldquo;{debouncedQuery}&rdquo;</span>
               {SEARCH_ALIASES_FOR_HINT[debouncedQuery.toLowerCase()] && (
-                <span className="text-gray-300"> ({t('results.alsoMatching', { terms: SEARCH_ALIASES_FOR_HINT[debouncedQuery.toLowerCase()]?.join(', ') ?? '' })})</span>
+                <span className="text-gray-600"> ({t('results.alsoMatching', { terms: SEARCH_ALIASES_FOR_HINT[debouncedQuery.toLowerCase()]?.join(', ') ?? '' })})</span>
               )}
             </span>
           )}

@@ -88,7 +88,7 @@ function DigestEditor({ initial, onSave, onClose, t }: DigestEditorProps) {
             : 'favorites.savedSearches.digestSaveFailed')}
         </p>
       )}
-      <p className="text-[12px] text-gray-400 leading-relaxed">
+      <p className="text-[12px] text-gray-500 leading-relaxed">
         {t('favorites.savedSearches.digestHint')}
       </p>
       <div className="flex items-center justify-end gap-2">
@@ -132,13 +132,13 @@ export function SavedSearchesSection({
             {t('favorites.savedSearches.sectionTitle')}
           </h2>
           {savedSearches.length > 0 && (
-            <p className="text-[12px] text-gray-400 mt-0.5">
+            <p className="text-[12px] text-gray-600 mt-0.5">
               {t('favorites.savedSearches.sectionHint')}
             </p>
           )}
         </div>
         {savedSearches.length > 0 && (
-          <span className="text-[11px] text-gray-400 tabular-nums">
+          <span className="text-[11px] text-gray-600 tabular-nums">
             {t('favorites.savedSearches.itemCount', { count: savedSearches.length })}
           </span>
         )}
@@ -216,7 +216,7 @@ export function SavedSearchesSection({
                       )}
                     </div>
                     <p className="text-[12px] text-gray-500 truncate mt-0.5">{summary}</p>
-                    <p className="text-[11px] text-gray-400 truncate mt-0.5 tabular-nums">{timestampLabel}</p>
+                    <p className="text-[11px] text-gray-500 truncate mt-0.5 tabular-nums">{timestampLabel}</p>
                   </Link>
                   {digests !== null && (
                     <button

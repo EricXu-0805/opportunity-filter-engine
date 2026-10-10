@@ -228,15 +228,15 @@ function DiffLine({
 }
 
 const SOURCE_CHIP_STYLES: Record<string, string> = {
-  base: 'bg-gray-100 text-gray-500',
+  base: 'bg-gray-100 text-gray-600',
   macro: 'bg-indigo-50 text-indigo-600',
-  ai: 'bg-fuchsia-50 text-fuchsia-600',
+  ai: 'bg-fuchsia-50 text-fuchsia-700',
   user: 'bg-amber-50 text-amber-700',
 };
 
 const ACTION_CHIP: Record<string, { className: string; icon: 'up' | 'down' | null }> = {
   foreground: { className: 'bg-emerald-50 text-emerald-700', icon: 'up' },
-  demote: { className: 'bg-gray-100 text-gray-500', icon: 'down' },
+  demote: { className: 'bg-gray-100 text-gray-600', icon: 'down' },
   keep: { className: '', icon: null },
 };
 
@@ -957,15 +957,15 @@ export default function ResumeRenovationModal({
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {savedFlash && !editingId && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600">
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700">
                 <CheckCircle className="w-3.5 h-3.5" aria-hidden="true" />
                 {t('renovate.saved')}
               </span>
             )}
             {saveFailed && !saving && ['unknown', 'unavailable'].includes(saveState.status) && (
-              <span className="inline-flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-amber-600" data-testid="renovation-save-failed">
+              <span className="inline-flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-amber-700" data-testid="renovation-save-failed">
                 {locale === 'zh' ? '保存结果未确认' : 'Save not confirmed'}
-                <button type="button" className="underline hover:text-amber-700" onClick={() => scopeRef.current?.queue?.retry()}>{t('renovate.retrySave')}</button>
+                <button type="button" className="underline hover:text-amber-800" onClick={() => scopeRef.current?.queue?.retry()}>{t('renovate.retrySave')}</button>
               </span>
             )}
             {saving && !savedFlash && (

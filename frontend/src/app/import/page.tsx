@@ -325,7 +325,7 @@ export default function ImportPage() {
         <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 tracking-tight">
           {t('import.title')}
         </h1>
-        <p className="mt-3 text-[15px] text-gray-500 leading-relaxed">
+        <p className="mt-3 text-[15px] text-gray-600 leading-relaxed">
           {t('import.intro')}
         </p>
       </header>
@@ -388,7 +388,7 @@ export default function ImportPage() {
                 autoFocus
               />
             </label>
-            <p className="mt-1.5 text-[12px] text-gray-400">{t('import.textHelp')}</p>
+            <p className="mt-1.5 text-[12px] text-gray-600">{t('import.textHelp')}</p>
             <button
               type="submit"
               disabled={loading}
@@ -470,7 +470,7 @@ function ModeTab({
       className={`px-3.5 py-1.5 rounded-lg text-[13px] font-medium transition-colors ${
         active
           ? 'bg-white text-gray-900 shadow-sm'
-          : 'text-gray-500 hover:text-gray-800'
+          : 'text-gray-600 hover:text-gray-800'
       }`}
     >
       {label}
@@ -533,7 +533,7 @@ function ResultCard({
 
       <ImportOpportunityDetails opportunity={opportunity} t={t} />
 
-      <p className="text-[12px] text-gray-400 leading-relaxed border-t border-gray-100 pt-4 mt-6">
+      <p className="text-[12px] text-gray-500 leading-relaxed border-t border-gray-100 pt-4 mt-6">
         {t('import.persistNote')}
       </p>
 

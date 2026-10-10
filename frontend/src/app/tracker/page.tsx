@@ -18,8 +18,8 @@ const COLUMN_ACCENT: Record<InteractionType, string> = {
   applied: 'text-indigo-700',
   replied: 'text-emerald-700',
   interviewing: 'text-violet-700',
-  rejected: 'text-gray-500',
-  dismissed: 'text-gray-400',
+  rejected: 'text-gray-600',
+  dismissed: 'text-gray-500',
 };
 
 export default function TrackerPage() {
@@ -201,7 +201,7 @@ export default function TrackerPage() {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4">
         <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-        <p className="text-[13px] text-gray-400">{t('tracker.loading')}</p>
+        <p className="text-[13px] text-gray-600">{t('tracker.loading')}</p>
       </div>
     );
   }
@@ -229,7 +229,7 @@ export default function TrackerPage() {
       <button
         type="button"
         onClick={() => router.back()}
-        className="mb-8 inline-flex items-center gap-2 text-[13px] text-gray-400 transition-colors duration-300 hover:text-gray-600"
+        className="mb-8 inline-flex items-center gap-2 text-[13px] text-gray-600 transition-colors duration-300 hover:text-gray-700"
       >
         <ArrowLeft className="h-4 w-4" />
         {t('tracker.back')}
@@ -243,14 +243,14 @@ export default function TrackerPage() {
         </div>
         <div>
           <h1 className="text-xl font-bold text-gray-900">{t('tracker.title')}</h1>
-          <p className="text-sm text-gray-400">{t('tracker.subtitle')}</p>
+          <p className="text-sm text-gray-600">{t('tracker.subtitle')}</p>
         </div>
       </div>
 
       {showEmptyState ? (
         <div className="rounded-2xl border border-dashed border-gray-200 px-6 py-16 text-center">
           <p className="text-sm font-medium text-gray-600">{t('tracker.emptyTitle')}</p>
-          <p className="mt-1 text-[13px] text-gray-400">{t('tracker.emptyBody')}</p>
+          <p className="mt-1 text-[13px] text-gray-600">{t('tracker.emptyBody')}</p>
           <Link
             ref={emptyStateLinkRef}
             href="/results"
@@ -308,7 +308,7 @@ export default function TrackerPage() {
                           reminder here will ever fire — said plainly instead
                           of leaving the date looking scheduled. There are no
                           presets for the same reason. */}
-                      <p className="mt-1 text-[11px] text-gray-400">
+                      <p className="mt-1 text-[11px] text-gray-500">
                         {t(u.record.remind_at
                           ? 'tracker.reminderWontSend'
                           : 'tracker.reminderUnavailable')}
@@ -353,7 +353,7 @@ export default function TrackerPage() {
                       className={`mb-3 px-1 text-xs font-semibold uppercase tracking-wide ${COLUMN_ACCENT[status]}`}
                     >
                       {t(`tracker.status.${status}`)}
-                      <span className="ml-1.5 text-gray-400">{colItems.length}</span>
+                      <span className="ml-1.5 text-gray-500">{colItems.length}</span>
                     </h2>
                     <div className="space-y-3">
                       {colItems.map((it) => (
@@ -378,7 +378,7 @@ export default function TrackerPage() {
                         />
                       ))}
                       {colItems.length === 0 && (
-                        <p className="px-1 py-6 text-center text-xs text-gray-300">{t('tracker.columnEmpty')}</p>
+                        <p className="px-1 py-6 text-center text-xs text-gray-500">{t('tracker.columnEmpty')}</p>
                       )}
                     </div>
                   </section>

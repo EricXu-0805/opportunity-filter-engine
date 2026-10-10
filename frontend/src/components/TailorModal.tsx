@@ -1195,7 +1195,7 @@ export default function TailorModal({
               </label>
               <div className="flex items-center gap-1.5">
                 {reviewable && rejected.size > 0 && (
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider bg-gray-100 text-gray-500">
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider bg-gray-100 text-gray-600">
                     {t('tailor.keptCount', { kept: keptCount, total: resp!.tailored_bullets.length })}
                   </span>
                 )}
@@ -1329,7 +1329,7 @@ export default function TailorModal({
                                 </p>
                               )}
                               {isEdited && !isEditing && (
-                                <span className="text-[9px] font-semibold uppercase tracking-wide px-1 py-px rounded bg-amber-50 text-amber-600">
+                                <span className="text-[9px] font-semibold uppercase tracking-wide px-1 py-px rounded bg-amber-50 text-amber-700">
                                   {t('tailor.edited')}
                                 </span>
                               )}
@@ -1377,8 +1377,8 @@ export default function TailorModal({
                                     onClick={() => handleCopyBullet(i, current)}
                                     className={`inline-flex items-center gap-1 text-[10.5px] font-medium px-1.5 py-0.5 rounded-md transition-colors ${
                                       copiedBulletIdx === i
-                                        ? 'text-emerald-600 bg-emerald-50'
-                                        : 'text-gray-400 hover:text-indigo-600 hover:bg-indigo-50'
+                                        ? 'text-emerald-700 bg-emerald-50'
+                                        : 'text-gray-500 hover:text-indigo-600 hover:bg-indigo-50'
                                     }`}
                                     aria-label={t('tailor.copyBulletAria')}
                                   >

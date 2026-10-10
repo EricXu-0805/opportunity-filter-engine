@@ -15,9 +15,9 @@ interface ScoreBarProps {
 }
 
 const BUCKET_COLOR: Record<MatchBucket, { bar: string; text: string }> = {
-  high_priority: { bar: 'from-emerald-400 to-emerald-300', text: 'text-emerald-600' },
+  high_priority: { bar: 'from-emerald-400 to-emerald-300', text: 'text-emerald-700' },
   good_match: { bar: 'from-indigo-400 to-indigo-300', text: 'text-indigo-600' },
-  reach: { bar: 'from-amber-400 to-amber-300', text: 'text-amber-600' },
+  reach: { bar: 'from-amber-400 to-amber-300', text: 'text-amber-700' },
   low_fit: { bar: 'from-gray-300 to-gray-200', text: 'text-gray-500' },
 };
 
@@ -29,9 +29,9 @@ function getScoreColor(score: number): string {
 }
 
 function getScoreText(score: number): string {
-  if (score >= 80) return 'text-emerald-600';
+  if (score >= 80) return 'text-emerald-700';
   if (score >= 60) return 'text-indigo-600';
-  if (score >= 40) return 'text-amber-600';
+  if (score >= 40) return 'text-amber-700';
   return 'text-gray-500';
 }
 

@@ -61,12 +61,12 @@ function isCurrentListing(opportunity: Record<string, unknown>): boolean {
 const FUNNEL_STATUSES = ['contacted', 'applied', 'replied', 'interviewing', 'rejected'] as const;
 
 const STATUS_CONFIG: Record<InteractionType, { labelKey: string; icon: React.ElementType; color: string; bg: string }> = {
-  contacted: { labelKey: 'tracker.status.contacted', icon: Send, color: 'text-sky-600', bg: 'bg-sky-50' },
+  contacted: { labelKey: 'tracker.status.contacted', icon: Send, color: 'text-sky-700', bg: 'bg-sky-50' },
   applied: { labelKey: 'tracker.status.applied', icon: Send, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-  replied: { labelKey: 'tracker.status.replied', icon: MessageSquare, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  rejected: { labelKey: 'tracker.status.rejected', icon: XCircle, color: 'text-red-500', bg: 'bg-red-50' },
+  replied: { labelKey: 'tracker.status.replied', icon: MessageSquare, color: 'text-emerald-700', bg: 'bg-emerald-50' },
+  rejected: { labelKey: 'tracker.status.rejected', icon: XCircle, color: 'text-red-700', bg: 'bg-red-50' },
   interviewing: { labelKey: 'tracker.status.interviewing', icon: Users, color: 'text-violet-600', bg: 'bg-violet-50' },
-  dismissed: { labelKey: 'tracker.status.dismissed', icon: XCircle, color: 'text-gray-400', bg: 'bg-gray-50' },
+  dismissed: { labelKey: 'tracker.status.dismissed', icon: XCircle, color: 'text-gray-500', bg: 'bg-gray-50' },
 };
 
 interface TrackedOpp {
@@ -462,7 +462,7 @@ export default function DashboardPage() {
         <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-4xl">
           {t('dashboard.title')}
         </h1>
-        <p className="mt-1.5 max-w-2xl text-[13px] text-gray-400 sm:mt-2 sm:text-[15px]">
+        <p className="mt-1.5 max-w-2xl text-[13px] text-gray-600 sm:mt-2 sm:text-[15px]">
           {t('dashboard.subtitle')}
         </p>
       </header>
@@ -578,7 +578,7 @@ export default function DashboardPage() {
                 <h2 id="dashboard-roadmap-cta" className="text-sm font-bold text-gray-950">
                   {t('dashboard.roadmapCta.title')}
                 </h2>
-                <p className="mt-0.5 text-[13px] leading-5 text-gray-500">
+                <p className="mt-0.5 text-[13px] leading-5 text-gray-600">
                   {t('dashboard.roadmapCta.body')}
                 </p>
               </div>
@@ -647,7 +647,7 @@ function StatCard({
           {resolved === 'ready' ? value : '—'}
         </p>
       )}
-      <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400">
+      <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500">
         {label}
       </p>
     </div>
@@ -743,7 +743,7 @@ function CorpusFreshnessLine({ t }: { t: Replier }) {
       <p
         data-testid="corpus-freshness"
         data-state="loading"
-        className="mb-6 flex items-center gap-2 text-[11px] text-gray-400"
+        className="mb-6 flex items-center gap-2 text-[11px] text-gray-600"
       >
         <Database className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
         {t('dashboard.freshness.checking')}
@@ -757,7 +757,7 @@ function CorpusFreshnessLine({ t }: { t: Replier }) {
       <p
         data-testid="corpus-freshness"
         data-state="unknown"
-        className="mb-6 flex items-center gap-2 text-[11px] text-gray-500"
+        className="mb-6 flex items-center gap-2 text-[11px] text-gray-600"
       >
         <Database className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
         <span className="font-medium text-gray-600">{t('dashboard.freshness.label')}</span>
@@ -768,7 +768,7 @@ function CorpusFreshnessLine({ t }: { t: Replier }) {
 
   const level = freshnessLevel(ageHours);
   const tone = level === 'stale'
-    ? 'text-red-600'
+    ? 'text-red-700'
     : level === 'warn'
       ? 'text-amber-700'
       : 'text-emerald-700';
@@ -808,7 +808,7 @@ function DashboardSection({
       <div className="flex items-center gap-2.5 border-b border-gray-100 px-6 py-4">
         <Icon className="h-4 w-4 text-gray-500" aria-hidden="true" />
         <h2 className="text-sm font-semibold text-gray-900">{title}</h2>
-        {subtitle && <span className="text-[11px] text-gray-400">{subtitle}</span>}
+        {subtitle && <span className="text-[11px] text-gray-500">{subtitle}</span>}
         {action && <div className="ml-auto">{action}</div>}
       </div>
       {children}
@@ -818,7 +818,7 @@ function DashboardSection({
 
 function LoadingRow({ label }: { label: string }) {
   return (
-    <div className="flex items-center justify-center gap-2 px-6 py-10 text-xs text-gray-400">
+    <div className="flex items-center justify-center gap-2 px-6 py-10 text-xs text-gray-500">
       <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
       {label}
     </div>
@@ -946,18 +946,18 @@ function DeadlineContent({
                 href={item.browserImport ? '/favorites' : `/opportunities/${encodeURIComponent(item.id)}`}
                 className="flex min-w-0 items-center gap-4 px-6 py-4 transition-colors hover:bg-gray-50/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500"
               >
-                <div className={`w-20 shrink-0 text-right ${urgent ? 'text-red-600' : 'text-amber-600'}`}>
+                <div className={`w-20 shrink-0 text-right ${urgent ? 'text-red-600' : 'text-amber-700'}`}>
                   <p className="text-xs font-bold">
                     {exactDays !== null ? deadlineLabel(exactDays, t) : precisionLabel}
                   </p>
-                  <p className="mt-0.5 text-[10px] text-gray-400">{item.deadline}</p>
+                  <p className="mt-0.5 text-[10px] text-gray-500">{item.deadline}</p>
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium text-gray-900">
                     {item.title ?? t('dashboard.unknownTarget')}
                   </p>
                   {item.organization && (
-                    <p className="mt-0.5 truncate text-xs text-gray-400">{item.organization}</p>
+                    <p className="mt-0.5 truncate text-xs text-gray-500">{item.organization}</p>
                   )}
                   {item.browserImport && (
                     <p className="mt-0.5 text-xs text-amber-700">{t('dashboard.deadlines.browserImport')}</p>
@@ -1042,19 +1042,19 @@ function ReminderContent({
             >
               <div className={`w-20 shrink-0 text-right ${reminderColor(item)}`}>
                 <p className="text-xs font-bold">{reminderLabel(item, t)}</p>
-                <p className="mt-0.5 text-[10px] text-gray-400">{item.remindAt}</p>
+                <p className="mt-0.5 text-[10px] text-gray-500">{item.remindAt}</p>
               </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-gray-900">
                   {item.title ?? t('dashboard.unknownTarget')}
                 </p>
                 {item.notes ? (
-                  <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-gray-400">
+                  <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-gray-500">
                     <StickyNote className="h-3 w-3 shrink-0" aria-hidden="true" />
                     {item.notes}
                   </p>
                 ) : item.organization ? (
-                  <p className="mt-0.5 truncate text-xs text-gray-400">{item.organization}</p>
+                  <p className="mt-0.5 truncate text-xs text-gray-500">{item.organization}</p>
                 ) : null}
               </div>
               <ArrowRight className="h-4 w-4 shrink-0 text-gray-300" aria-hidden="true" />
@@ -1130,7 +1130,7 @@ function TrackerContent({
                 <p className="truncate text-[14px] font-medium text-gray-900">
                   {item.title ?? t('dashboard.unknownTarget')}
                 </p>
-                <p className="truncate text-[12px] text-gray-400">
+                <p className="truncate text-[12px] text-gray-500">
                   {[item.organization, item.opportunity_type].filter(Boolean).join(' · ')}
                 </p>
               </div>
@@ -1176,6 +1176,6 @@ function reminderLabel(reminder: ReminderInfo, t: Replier): string {
 
 function reminderColor(reminder: ReminderInfo): string {
   if (reminder.status === 'overdue') return 'text-red-600';
-  if (reminder.status === 'today' || reminder.status === 'tomorrow') return 'text-amber-600';
+  if (reminder.status === 'today' || reminder.status === 'tomorrow') return 'text-amber-700';
   return 'text-gray-600';
 }

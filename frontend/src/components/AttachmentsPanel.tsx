@@ -140,7 +140,7 @@ function AttachmentFiles({ opportunityId }: Props) {
       <div className="flex flex-wrap items-center gap-2 text-[12px] text-gray-600">
         <Paperclip className="w-3.5 h-3.5 text-gray-400" aria-hidden="true" />
         <span className="font-medium">{t('detail.attachments.label')}</span>
-        <span className="text-[10px] text-gray-400">{t('detail.attachments.hint', { mb: Math.round(ATTACHMENTS_MAX_BYTES / 1024 / 1024) })}</span>
+        <span className="text-[10px] text-gray-500">{t('detail.attachments.hint', { mb: Math.round(ATTACHMENTS_MAX_BYTES / 1024 / 1024) })}</span>
         <button type="button" onClick={() => input.current?.click()} disabled={disabled} className={`${buttonClass} ml-auto`}>
           {action?.kind === 'upload' ? <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" /> : <Upload className="w-3 h-3" aria-hidden="true" />}
           {action?.kind === 'upload' ? t('detail.attachments.uploading', { name: action.name }) : t('detail.attachments.addButton')}
@@ -170,7 +170,7 @@ function AttachmentFiles({ opportunityId }: Props) {
             className="flex-1 flex items-center gap-2 min-w-0 min-h-9 text-left disabled:opacity-50" aria-label={t('detail.attachments.openAria', { name: file.name })}>
             {action?.kind === 'open' && action.name === file.name ? <Loader2 className="w-3 h-3 animate-spin shrink-0" aria-hidden="true" /> : <ExternalLink className="w-3 h-3 shrink-0" aria-hidden="true" />}
             <span className="truncate text-gray-700">{file.name}</span>
-            <span className="ml-auto text-[10px] text-gray-400 shrink-0 tabular-nums">{formatBytes(file.sizeBytes, t)}</span>
+            <span className="ml-auto text-[10px] text-gray-500 shrink-0 tabular-nums">{formatBytes(file.sizeBytes, t)}</span>
           </button>
           <button type="button" onClick={() => void runAction('delete', file.name)} disabled={disabled}
             className="text-gray-500 hover:text-red-500 p-2 min-h-9 rounded disabled:opacity-50" aria-label={t('detail.attachments.deleteAria', { name: file.name })}>

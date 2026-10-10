@@ -33,12 +33,12 @@ const STATUS_STYLES: Record<TicketStatus, string> = {
   in_progress: 'bg-amber-50 text-amber-700',
   waiting_on_user: 'bg-violet-50 text-violet-700',
   resolved: 'bg-emerald-50 text-emerald-700',
-  closed: 'bg-gray-100 text-gray-500',
+  closed: 'bg-gray-100 text-gray-600',
 };
 
 const PRIORITY_STYLES: Record<Priority, string> = {
-  low: 'bg-gray-100 text-gray-500',
-  normal: 'bg-gray-100 text-gray-600',
+  low: 'bg-gray-100 text-gray-600',
+  normal: 'bg-gray-100 text-gray-700',
   high: 'bg-amber-50 text-amber-700',
   urgent: 'bg-red-50 text-red-700',
 };

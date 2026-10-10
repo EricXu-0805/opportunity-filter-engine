@@ -2395,7 +2395,7 @@ export default function ColdEmailModal({
                       className={`px-3 py-1.5 rounded-full text-[12px] font-medium transition-all duration-200 ${
                         activeVariant === i
                           ? 'bg-indigo-600 text-white'
-                          : 'bg-black/[0.04] text-gray-500 hover:bg-black/[0.08]'
+                          : 'bg-black/[0.04] text-gray-600 hover:bg-black/[0.08]'
                       }`}
                     >
                       {variantLabel(v, t)}
@@ -2424,7 +2424,7 @@ export default function ColdEmailModal({
                 {/* Tone picker — drives the AI draft's voice. The recommended
                     tone is derived from the detected lab type (no scraping). */}
                 {!privateMode && <div className="flex items-center gap-1.5 px-5 pb-2 shrink-0 flex-wrap">
-                  <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mr-0.5">
+                  <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mr-0.5">
                     {t('coldEmail.tone.label')}
                   </span>
                   {STYLE_KEYS.map((s) => {
@@ -2570,7 +2570,7 @@ export default function ColdEmailModal({
                         )}
                       </div>
                     ) : (
-                      <p className="mt-1.5 text-[11px] text-gray-400">
+                      <p className="mt-1.5 text-[11px] text-gray-500">
                         {t('coldEmail.verifyBeforeSend')}
                       </p>
                     )}

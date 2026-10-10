@@ -242,7 +242,7 @@ function RoadmapVisual({ t }: { t: T }) {
               : <span className="w-1.5 h-1.5 rounded-full bg-gray-300" />}
           </span>
           <span className="flex-1 text-[13px] font-medium text-gray-800">{it.label}</span>
-          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${it.done ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${it.done ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'}`}>
             {it.tag}
           </span>
         </div>
@@ -307,7 +307,7 @@ function SchoolPicker({ t, locale, selected, onSelect }: {
               <span className="block text-[11px] text-gray-400 truncate">{s.location}</span>
             </span>
             <span className={`shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
-              hasRecords ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'
+              hasRecords ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'
             }`}>
               {t(hasRecords ? 'onboarding.schoolLiveBadge' : 'onboarding.schoolSoonBadge')}
             </span>
@@ -525,7 +525,7 @@ export default function OnboardingIntro() {
                   <span className="ob-pop inline-flex w-7 h-7 rounded-full bg-emerald-500 items-center justify-center shrink-0">
                     <Check className="w-4 h-4 text-white" strokeWidth={3} aria-hidden="true" />
                   </span>
-                  <span className="text-[13px] font-semibold text-emerald-600">{t('onboarding.readyTitle')}</span>
+                  <span className="text-[13px] font-semibold text-emerald-700">{t('onboarding.readyTitle')}</span>
                 </div>
                 <h2 className="mt-3 text-[20px] sm:text-[22px] font-bold tracking-tight text-gray-900">
                   {t('onboarding.schoolTitle')}
@@ -588,7 +588,7 @@ export default function OnboardingIntro() {
 
           <div className="flex items-center gap-3">
             {finishError && (
-              <span data-testid="onboarding-error" role="alert" className="text-[12px] text-amber-600">
+              <span data-testid="onboarding-error" role="alert" className="text-[12px] text-amber-700">
                 {t('onboarding.finishFailed')}
               </span>
             )}

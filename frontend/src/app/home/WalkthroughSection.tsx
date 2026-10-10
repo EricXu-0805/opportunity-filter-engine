@@ -28,7 +28,7 @@ export function WalkthroughSection() {
         <h2 id="walkthrough-heading" className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
           {t('home.walkthrough.title')}
         </h2>
-        <p className="mt-2 text-[15px] text-gray-500">{t('home.walkthrough.subtitle')}</p>
+        <p className="mt-2 text-[15px] text-gray-600">{t('home.walkthrough.subtitle')}</p>
       </div>
 
       <ol className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -54,48 +54,11 @@ interface Known {
   name: string;
 }
 
-const ON_RESULT_CARDS = 'Only on result cards, and which cards rank first changes with every data refresh.';
-
 // Colour entries are keyed on the text colour plus a ratio floor. Results come
 // from live data, so which card badges and backgrounds appear moves with every
 // refresh; a pair-exact key would turn a data PR red without any code change.
 // Ratios are axe's, which truncates to two decimals.
 const BASELINE: readonly Known[] = [
-  {
-    rule: 'color-contrast', impact: 'serious', fg: '#9ca3af', minRatio: 2.1,
-    name: 'Tailwind gray-400 text, 2.13-2.53:1 on white and the light page tints: home card subtitles and hints, the footer, '
-      + 'result and tab counts, detail fact labels and status buttons, the editor\'s Tone label, the tracker\'s back link and '
-      + 'subtitle. The fix is a palette change (gray-400 to gray-500 or darker) across shared components.',
-  },
-  {
-    rule: 'color-contrast', impact: 'serious', fg: '#d1d5db', minRatio: 1.3,
-    name: 'Tailwind gray-300 text, 1.35-1.38:1: the footer credit line and the tracker\'s empty-column note.',
-  },
-  {
-    rule: 'color-contrast', impact: 'serious', fg: '#6b7280', minRatio: 4.0,
-    name: 'Tailwind gray-500 text, 4.06-4.47:1 on tinted backgrounds (page #f5f5f7, results tab track #ebebed, gray Badge '
-      + '#f5f6f8, seeking-type pills): back links, the form validation hint, the feedback trigger, results scope notes and '
-      + 'tabs. It passes on white (4.83:1).',
-  },
-  {
-    rule: 'color-contrast', impact: 'serious', fg: '#059669', minRatio: 3.55, mayBeAbsent: ON_RESULT_CARDS,
-    name: 'emerald-600: the green Badge (3.60:1) and the High Priority score percentage (3.76:1 on white).',
-  },
-  {
-    rule: 'color-contrast', impact: 'serious', fg: '#ea580c', minRatio: 3.35, mayBeAbsent: ON_RESULT_CARDS,
-    name: 'orange-600 on the orange Badge, 3.40:1: "Faculty contact · openings not confirmed" (the same Badge marks '
-      + 'due-soon deadlines and an unverified international status).',
-  },
-  {
-    rule: 'color-contrast', impact: 'serious', fg: '#c026d3', minRatio: 4.3, mayBeAbsent: ON_RESULT_CARDS,
-    name: 'fuchsia-600 on fuchsia-50, 4.38:1: the result card\'s renovate-resume button, shown on actionable cards only.',
-  },
-  {
-    rule: 'color-contrast', impact: 'serious', fg: '#d97706', minRatio: 3.0,
-    mayBeAbsent: `${ON_RESULT_CARDS} Not seen on 10-09: it shows only when a Reach card lands on the first page.`,
-    name: 'amber-600: the yellow Badge (3.09:1 on a white card, 3.04:1 on the page tint) and the Reach score percentage '
-      + '(3.18:1). Computed from Badge.tsx and ScoreBar.tsx.',
-  },
   {
     rule: 'label', impact: 'critical', steps: ['home'], target: '#resume-upload',
     name: 'ResumeUpload.tsx\'s visually hidden PDF input has no accessible name. A real one ("Upload your résumé (PDF)") '

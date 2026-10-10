@@ -49,7 +49,7 @@ export default function FellowshipsPage() {
             </h1>
           </div>
         </div>
-        <p className="mt-3 text-base sm:text-lg text-gray-500 max-w-2xl">
+        <p className="mt-3 text-base sm:text-lg text-gray-600 max-w-2xl">
           {t('fellowships.subtitle')}
         </p>
         <div className="mt-4">

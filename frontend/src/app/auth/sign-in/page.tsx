@@ -39,7 +39,7 @@ export default function SignInDeepLinkPage() {
       <h1 className="text-[18px] font-semibold text-gray-900">
         {t('auth.deepLink.title')}
       </h1>
-      <p className="mt-2 text-sm text-gray-500">
+      <p className="mt-2 text-sm text-gray-600">
         {t('auth.deepLink.body')}
       </p>
       {!open && (
@@ -52,7 +52,7 @@ export default function SignInDeepLinkPage() {
         </button>
       )}
       <div className="mt-8 text-center">
-        <Link href="/" className="text-xs text-gray-400 hover:text-gray-600">
+        <Link href="/" className="text-xs text-gray-600 hover:text-gray-700">
           {t('auth.deepLink.backHome')}
         </Link>
       </div>

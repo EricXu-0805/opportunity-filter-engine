@@ -5,11 +5,11 @@ import { CreditCard } from 'lucide-react';
 import type { OrdersInbox, TFunc } from './types';
 
 const STATUS_STYLES: Record<string, string> = {
-  pending: 'bg-gray-100 text-gray-600',
+  pending: 'bg-gray-100 text-gray-700',
   awaiting_confirm: 'bg-amber-50 text-amber-700',
   paid: 'bg-emerald-50 text-emerald-700',
-  cancelled: 'bg-gray-100 text-gray-400',
-  refunded: 'bg-red-50 text-red-600',
+  cancelled: 'bg-gray-100 text-gray-600',
+  refunded: 'bg-red-50 text-red-700',
 };
 
 export function OrdersSection({

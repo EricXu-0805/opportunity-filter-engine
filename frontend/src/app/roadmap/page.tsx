@@ -18,7 +18,7 @@ function CenteredCard({ title, body, cta, href }: { title: string; body: string;
   return (
     <div className="rounded-2xl border border-dashed border-gray-200 px-6 py-16 text-center">
       <p className="text-sm font-medium text-gray-600">{title}</p>
-      <p className="mt-1 text-[13px] text-gray-400">{body}</p>
+      <p className="mt-1 text-[13px] text-gray-600">{body}</p>
       <Link
         href={href}
         className="mt-5 inline-flex items-center rounded-xl bg-gray-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-gray-800"
@@ -174,7 +174,7 @@ export default function RoadmapPage() {
       <button
         type="button"
         onClick={() => router.back()}
-        className="mb-8 inline-flex items-center gap-2 text-[13px] text-gray-400 transition-colors duration-300 hover:text-gray-600"
+        className="mb-8 inline-flex items-center gap-2 text-[13px] text-gray-600 transition-colors duration-300 hover:text-gray-700"
       >
         <ArrowLeft className="h-4 w-4" />
         {t('roadmap.back')}
@@ -185,7 +185,7 @@ export default function RoadmapPage() {
         </div>
         <div>
           <h1 className="text-xl font-bold text-gray-900">{t('roadmap.title')}</h1>
-          <p className="text-sm text-gray-400">{t('roadmap.subtitle')}</p>
+          <p className="text-sm text-gray-600">{t('roadmap.subtitle')}</p>
         </div>
       </div>
     </>
@@ -194,7 +194,7 @@ export default function RoadmapPage() {
   const errorCard = (
     <div className="rounded-2xl border border-dashed border-gray-200 px-6 py-16 text-center">
       <p className="text-sm font-medium text-gray-600">{t('roadmap.errorTitle')}</p>
-      <p className="mt-1 text-[13px] text-gray-400">{profileInputMessage(error, t) ?? t('roadmap.errorBody')}</p>
+      <p className="mt-1 text-[13px] text-gray-600">{profileInputMessage(error, t) ?? t('roadmap.errorBody')}</p>
       {profileInputMessage(error, t) && <Link href="/" className="block mt-3 text-sm underline">{t('profileInput.editProfile')}</Link>}
       <button
         type="button"
@@ -211,7 +211,7 @@ export default function RoadmapPage() {
     inner = (
       <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4">
         <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-        <p className="text-[13px] text-gray-400">{t('roadmap.loading')}</p>
+        <p className="text-[13px] text-gray-600">{t('roadmap.loading')}</p>
       </div>
     );
   } else if (!profile) {
@@ -273,7 +273,7 @@ export default function RoadmapPage() {
             {t(unknownRemainder ? 'roadmap.evidenceCoveredTitle' : 'roadmap.allSetTitle')}
           </p>
           <p className={`mt-1 text-[13px] ${
-            unknownRemainder ? 'text-amber-700' : 'text-emerald-600/80'
+            unknownRemainder ? 'text-amber-700' : 'text-emerald-700'
           }`}>
             {t(
               unknownRemainder ? 'roadmap.evidenceCoveredBody' : 'roadmap.allSetBody',
@@ -290,7 +290,7 @@ export default function RoadmapPage() {
         <TargetActivityNotice data={data} />
         <PartialResolutionNotice data={data} />
         <SkillEvidenceNotice data={data} />
-        <p className="mb-4 text-[13px] text-gray-500">
+        <p className="mb-4 text-[13px] text-gray-600">
           {t('roadmap.summary', { skills: data.skills.length, labs: evidenceTotal })}
         </p>
         <ol className="space-y-3">
@@ -304,8 +304,8 @@ export default function RoadmapPage() {
                 <span
                   className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
                     s.priority === 'high'
-                      ? 'bg-red-50 text-red-600'
-                      : 'bg-amber-50 text-amber-600'
+                      ? 'bg-red-50 text-red-700'
+                      : 'bg-amber-50 text-amber-700'
                   }`}
                 >
                   {s.priority === 'high' ? t('roadmap.priorityHigh') : t('roadmap.priorityMedium')}
