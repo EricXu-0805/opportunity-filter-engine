@@ -27,7 +27,7 @@
  * session in it, so tests do not share rows.
  */
 import { createServer } from 'node:http';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { validStubTargetResumeProvenance } from './target-resume-provenance-stub.mjs';
 
 const PORT = Number(process.env.E2E_SUPABASE_PORT ?? 54321);
@@ -53,26 +53,51 @@ const CONFLICT_KEYS = {
 
 const b64url = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64url');
 
+// ---------------------------------------------------------------------
+// Accounts. A uid the stub never registered is an anonymous user, exactly as
+// before. On top of that it keeps just enough of GoTrue's account model for
+// the cloud-save scenarios: a permanent email account, an anonymous user
+// converted in place by updateUser({ email }), a magic link into an existing
+// account, and the PKCE exchange that finishes both. No mail leaves the
+// process: every link lands in an in-memory outbox (GET /__e2e/outbox).
+// ---------------------------------------------------------------------
+/** uid -> { email, pendingEmail } ; email === null means anonymous. */
+const accounts = new Map();
+const outbox = [];
+/** One-time link tokens and the PKCE codes they turn into. */
+const linkTokens = new Map();
+const authCodes = new Map();
+
+const normalEmail = (value) => (typeof value === 'string' ? value.trim().toLowerCase() : '');
+const accountOf = (uid) => accounts.get(uid) ?? { email: null, pendingEmail: null };
+const uidForEmail = (email) => [...accounts].find(([, account]) => account.email === email)?.[0] ?? null;
+
 /** A structurally real JWT. Nothing verifies the signature; supabase-js does
- *  read the payload, so `sub`/`exp`/`role` have to be there and be sane. */
+ *  read the payload, so `sub`/`exp`/`role` have to be there and be sane. The
+ *  merge RPCs read `email` and `is_anonymous` from it, like auth.jwt() does. */
 function mintToken(uid) {
   const now = Math.floor(Date.now() / 1000);
+  const { email } = accountOf(uid);
   const payload = {
     sub: uid, aud: 'authenticated', role: 'authenticated',
-    iat: now, exp: now + 3600, is_anonymous: true,
+    iat: now, exp: now + 3600, is_anonymous: email === null,
+    ...(email === null ? {} : { email }),
   };
   return `${b64url({ alg: 'HS256', typ: 'JWT' })}.${b64url(payload)}.e2e-stub-signature`;
 }
 
 function userOf(uid) {
+  const { email, pendingEmail } = accountOf(uid);
+  const provider = email === null ? 'anonymous' : 'email';
   return {
     id: uid,
     aud: 'authenticated',
     role: 'authenticated',
-    is_anonymous: true,
-    email: null,
+    is_anonymous: email === null,
+    email,
+    ...(pendingEmail ? { new_email: pendingEmail } : {}),
     phone: null,
-    app_metadata: { provider: 'anonymous', providers: ['anonymous'] },
+    app_metadata: { provider, providers: [provider] },
     user_metadata: {},
     identities: [],
     created_at: new Date(0).toISOString(),
@@ -91,15 +116,47 @@ function sessionFor(uid) {
   };
 }
 
-/** The uid a request is acting as, read from its bearer token. */
-function callerUid(req) {
+/** The claims a request is acting with, read from its bearer token. */
+function callerClaims(req) {
   const auth = req.headers.authorization ?? '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
   const part = token.split('.')[1];
   if (!part) return null;
   try {
-    return JSON.parse(Buffer.from(part, 'base64url').toString()).sub ?? null;
+    return JSON.parse(Buffer.from(part, 'base64url').toString());
   } catch { return null; }
+}
+
+/** The uid a request is acting as, read from its bearer token. */
+function callerUid(req) {
+  return callerClaims(req)?.sub ?? null;
+}
+
+/** GoTrue's error body: supabase-js reads `msg` and `error_code`. */
+function authError(res, status, errorCode, msg) {
+  return send(res, status, { code: status, error_code: errorCode, msg });
+}
+
+/** Queue the mail GoTrue would send: a /verify link carrying a one-time token
+ *  bound to the account and to the requesting browser's PKCE challenge. */
+function queueLink({ uid, email, type, body, redirectTo }) {
+  const token = randomUUID();
+  linkTokens.set(token, {
+    uid, email, type, redirectTo,
+    challenge: body.code_challenge ?? null, method: body.code_challenge_method ?? null,
+  });
+  const link = new URL(`http://127.0.0.1:${PORT}/auth/v1/verify`);
+  link.searchParams.set('token', token);
+  link.searchParams.set('type', type);
+  if (redirectTo) link.searchParams.set('redirect_to', redirectTo);
+  outbox.push({ email, type, link: link.href, sent_at: new Date().toISOString() });
+}
+
+function pkceMatches(grant, verifier) {
+  if (!grant.challenge) return true;
+  if (typeof verifier !== 'string' || !verifier) return false;
+  if (grant.method === 'plain') return verifier === grant.challenge;
+  return createHash('sha256').update(verifier).digest('base64url') === grant.challenge;
 }
 
 // ---------------------------------------------------------------------
@@ -276,9 +333,9 @@ const rpcs = {
   // Independent full-document CAS. Real RLS/merge/rollback is proven in SQL;
   // the stub reproduces only this wire contract for local browser tests.
   commit_target_resume_with_provenance_cas(body, uid) {
-    return rpcs.commit_target_resume_cas(body, uid, true);
+    return rpcs.commit_target_resume_cas(body, uid, null, true);
   },
-  commit_target_resume_cas(body, uid, withProvenance = false) {
+  commit_target_resume_cas(body, uid, _claims, withProvenance = false) {
     const { p_expected_owner: owner, p_opportunity_id: opp, p_expected_revision: expected, p_doc: doc } = body;
     if (!uid || owner !== uid) return { status: 403, body: { code: '42501', message: 'identity_changed' } };
     if (!Number.isSafeInteger(expected) || expected < 0 || typeof opp !== 'string' || !opp.trim()
@@ -360,6 +417,13 @@ const rpcs = {
       return { status: 400, body: { message: 'empty_patch', code: '22023' } };
     }
     const expectedRevision = Number(body.p_expected_revision ?? 0);
+    // An account merged into another one owns no profile any more (029).
+    if (rowsOf('merged_devices').some((r) => r.source_device_id === uid)) {
+      return {
+        status: 200,
+        body: { status: 'missing', reason: 'merged_away', revision: 0, profile: null, updated_at: null },
+      };
+    }
     const rows = rowsOf('profiles');
     const now = new Date().toISOString();
     let row = rows.find((r) => r.id === uid);
@@ -402,12 +466,120 @@ const rpcs = {
     };
   },
 
-  // supabase/migrations/017 + 026 — a grant is minted, never redeemed here.
-  mint_merge_grant(body, uid) {
-    if (!uid) return { status: 403, body: { message: 'identity_changed', code: '42501' } };
-    return { status: 200, body: [{ token: `stub-grant-${randomUUID()}`, expires_at: new Date(Date.now() + 6e5).toISOString() }] };
+  // supabase/migrations/025 (mint_merge_grant) — RETURNS uuid, which PostgREST
+  // serialises as a bare JSON string; supabase.ts drops anything else.
+  mint_merge_grant(body, uid, claims) {
+    if (!uid) return raise('mint_merge_grant: no authenticated session');
+    if (claims?.is_anonymous !== true) {
+      return raise('mint_merge_grant: only an anonymous session may mint a merge grant');
+    }
+    const email = normalEmail(body.p_target_email) || null;
+    const secretHash = typeof body.p_secret_hash === 'string' && body.p_secret_hash.trim() ? body.p_secret_hash.trim() : null;
+    if (email !== null && secretHash !== null) {
+      return raise('mint_merge_grant: provide exactly one binding (target email or secret hash), not both');
+    }
+    if (email === null && secretHash === null) return raise('mint_merge_grant: target email is required');
+    if (rowsOf('merged_devices').some((r) => r.source_device_id === uid)) {
+      return raise('mint_merge_grant: device already merged');
+    }
+    const token = randomUUID();
+    rowsOf('merge_grants').push({
+      token, source_device_id: uid, target_email: email, secret_hash: secretHash,
+      expires_at: Date.now() + 60 * 60 * 1000, consumed_at: null, redeemed_by: null, redeemed_result: null,
+    });
+    return { status: 200, body: token };
+  },
+
+  // redeem_merge_grant as 034 wrote it; the current body is
+  // supabase/migrations/20260925052636, which only adds the auth.users lock
+  // and moves the renovation merge, neither modelled here. Mirrored: the
+  // email/secret binding, idempotent replay, both tombstone guards, and the
+  // per-table rules for the tables this stub holds. The whole body — including
+  // the notes salvage and the tables not modelled here (orders, renovations,
+  // waitlist, attachments) — runs against real Postgres in
+  // supabase/tests/run_flow_b_test.sh.
+  redeem_merge_grant(body, uid, claims) {
+    if (!uid) return raise('redeem_merge_grant: no authenticated session');
+    const grant = rowsOf('merge_grants').find((g) => g.token === body.p_token);
+    if (!grant) return raise('redeem_merge_grant: invalid grant');
+    const secret = typeof body.p_secret === 'string' ? body.p_secret : null;
+    const boundOk = grant.secret_hash !== null
+      ? secret !== null && createHash('sha256').update(secret, 'utf8').digest('hex') === grant.secret_hash
+      : grant.target_email !== null && grant.target_email === normalEmail(claims?.email);
+    if (grant.consumed_at !== null) {
+      if (grant.redeemed_by === uid && boundOk) return { status: 200, body: grant.redeemed_result };
+      return raise('redeem_merge_grant: grant already used');
+    }
+    if (grant.expires_at < Date.now()) return raise('redeem_merge_grant: grant expired');
+    if (grant.target_email === null && grant.secret_hash === null) {
+      return raise('redeem_merge_grant: unbound grant is not redeemable');
+    }
+    if (!boundOk) {
+      return raise(`redeem_merge_grant: grant not bound to this ${grant.secret_hash !== null ? 'session' : 'account'}`);
+    }
+    const source = grant.source_device_id;
+    const consume = (result) => {
+      Object.assign(grant, { consumed_at: new Date().toISOString(), redeemed_by: uid, redeemed_result: result });
+      return { status: 200, body: result };
+    };
+    if (source === uid) return consume({ merged: false, reason: 'same_device' });
+    const tombstones = rowsOf('merged_devices');
+    if (tombstones.some((r) => r.source_device_id === source)) {
+      return consume({ merged: false, reason: 'source_already_merged' });
+    }
+    if (tombstones.some((r) => r.source_device_id === uid)) return raise('redeem_merge_grant: target already merged');
+
+    const summary = { favorites: moveDeviceRows('favorites', 'opportunity_id', source, uid) };
+    // interactions: last writer wins per opportunity (by updated_at).
+    const stamp = (row) => Date.parse(row.updated_at ?? '') || -Infinity;
+    const newer = new Set(rowsOf('interactions').filter((s) => s.device_id === source)
+      .flatMap((s) => rowsOf('interactions').filter((t) => t.device_id === uid
+        && t.opportunity_id === s.opportunity_id && stamp(s) > stamp(t))));
+    tables.set('interactions', rowsOf('interactions').filter((t) => !newer.has(t)));
+    summary.interactions = moveDeviceRows('interactions', 'opportunity_id', source, uid);
+    // profiles: keep the target's; adopt the source's only when the target has
+    // none; otherwise keep the source's as a revision-less profile_version.
+    const profiles = rowsOf('profiles');
+    const sourceProfile = profiles.find((r) => r.id === source);
+    if (!profiles.some((r) => r.id === uid)) {
+      if (sourceProfile) sourceProfile.id = uid;
+      summary.profile = sourceProfile ? 'adopted' : 'none';
+    } else if (sourceProfile) {
+      rowsOf('profile_versions').push({
+        device_id: uid, profile_data: structuredClone(sourceProfile.profile_data),
+        created_at: new Date().toISOString(), profile_revision: null,
+      });
+      tables.set('profiles', profiles.filter((r) => r !== sourceProfile));
+      summary.profile = 'kept_target_saved_other_as_version';
+    } else {
+      summary.profile = 'kept_target';
+    }
+    summary.saved_searches = moveDeviceRows('saved_searches', 'id', source, uid);
+    summary.professor_follows = moveDeviceRows('professor_follows', 'professor_id', source, uid);
+    moveDeviceRows('professor_update_reads', 'professor_id', source, uid);
+    summary.attachments_not_moved = 0;
+    const result = { merged: true, summary };
+    tombstones.push({ source_device_id: source, target_device_id: uid, summary });
+    return consume(result);
   },
 };
+
+/** RAISE EXCEPTION as PostgREST reports it: HTTP 400, SQLSTATE P0001. */
+function raise(message) {
+  return { status: 400, body: { code: 'P0001', message, details: null, hint: null } };
+}
+
+/** Re-key `source`'s rows of `table` to `target`. Where both hold a row with
+ *  the same `key`, the target's stays and the source's is dropped (034's
+ *  set-union rule). Returns how many rows moved. */
+function moveDeviceRows(table, key, source, target) {
+  const held = new Set(rowsOf(table).filter((r) => r.device_id === target).map((r) => String(r[key])));
+  const kept = rowsOf(table).filter((r) => r.device_id !== source || !held.has(String(r[key])));
+  let moved = 0;
+  for (const row of kept) if (row.device_id === source) { row.device_id = target; moved += 1; }
+  tables.set(table, kept);
+  return moved;
+}
 
 // ---------------------------------------------------------------------
 const server = createServer((req, res) => {
@@ -427,7 +599,26 @@ const server = createServer((req, res) => {
     // ---------------- auth ----------------
     if (path.startsWith('/auth/v1/')) {
       const op = path.slice('/auth/v1/'.length);
-      if (op === 'signup') return send(res, 200, sessionFor(randomUUID()));
+      const redirectTo = url.searchParams.get('redirect_to');
+      if (op === 'signup') {
+        const uid = randomUUID();
+        const email = normalEmail(body.email);
+        // An email signup is a confirmed permanent account (autoconfirm on).
+        if (email) {
+          if (uidForEmail(email)) return authError(res, 422, 'user_already_exists', 'User already registered');
+          accounts.set(uid, { email, pendingEmail: null });
+        }
+        return send(res, 200, sessionFor(uid));
+      }
+      if (op === 'token' && url.searchParams.get('grant_type') === 'pkce') {
+        const grant = authCodes.get(String(body.auth_code ?? ''));
+        if (!grant) return authError(res, 404, 'flow_state_not_found', 'invalid flow state, no valid flow state found');
+        if (!pkceMatches(grant, body.code_verifier)) {
+          return authError(res, 403, 'bad_code_verifier', 'code challenge does not match previously saved code verifier');
+        }
+        authCodes.delete(String(body.auth_code));
+        return send(res, 200, sessionFor(grant.uid));
+      }
       if (op === 'token') {
         const uid = callerUid(req)
           ?? String(body.refresh_token ?? '').replace('stub-refresh-', '')
@@ -435,15 +626,74 @@ const server = createServer((req, res) => {
         return send(res, 200, sessionFor(uid || randomUUID()));
       }
       if (op === 'logout') return send(res, 204);
+      if (op === 'user' && req.method === 'PUT') {
+        const uid = callerUid(req);
+        if (!uid) return send(res, 401, { message: 'invalid claim: missing sub' });
+        const email = normalEmail(body.email);
+        if (email) {
+          const owner = uidForEmail(email);
+          if (owner && owner !== uid) {
+            return authError(res, 422, 'email_exists', 'A user with this email address has already been registered');
+          }
+          accounts.set(uid, { ...accountOf(uid), pendingEmail: email });
+          queueLink({ uid, email, type: 'email_change', body, redirectTo });
+        }
+        return send(res, 200, userOf(uid));
+      }
       if (op === 'user') {
         const uid = callerUid(req);
         if (!uid) return send(res, 401, { message: 'invalid claim: missing sub' });
         return send(res, 200, userOf(uid));
       }
-      // otp / verify / authorize: the E2E build runs with
-      // NEXT_PUBLIC_AUTH_PROVIDERS empty and dev-echo email, so nothing here
-      // is exercised. Answer plausibly rather than 404 into a confusing UI.
+      if (op === 'otp') {
+        const email = normalEmail(body.email);
+        if (!email) return authError(res, 422, 'validation_failed', 'Unable to validate email address: invalid format');
+        let uid = uidForEmail(email);
+        if (!uid) {
+          if (body.create_user === false) return authError(res, 422, 'otp_disabled', 'Signups not allowed for otp');
+          uid = randomUUID();
+          accounts.set(uid, { email, pendingEmail: null });
+        }
+        queueLink({ uid, email, type: 'magiclink', body, redirectTo });
+        return send(res, 200, {});
+      }
+      if (op === 'verify' && req.method === 'GET') {
+        // The link in the mail: spend the one-time token, then hand the
+        // browser back to the app with a PKCE code, as GoTrue does.
+        const token = url.searchParams.get('token') ?? '';
+        const pending = linkTokens.get(token);
+        linkTokens.delete(token);
+        const target = redirectTo ?? pending?.redirectTo;
+        if (!target) return authError(res, 400, 'validation_failed', 'redirect_to is required');
+        if (!pending) {
+          res.writeHead(303, { location: `${target}#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired` });
+          return res.end();
+        }
+        if (pending.type === 'email_change') {
+          // GoTrue confirms the change while verifying the link, before any
+          // code is exchanged (internal/api/verify.go, emailChangeVerify). The
+          // anonymous user becomes permanent IN PLACE: same uid, same rows.
+          accounts.set(pending.uid, { email: pending.email, pendingEmail: null });
+        }
+        const code = randomUUID();
+        authCodes.set(code, pending);
+        const next = new URL(target);
+        next.searchParams.set('code', code);
+        res.writeHead(303, { location: next.href });
+        return res.end();
+      }
+      // authorize (OAuth): the E2E build runs with NEXT_PUBLIC_AUTH_PROVIDERS
+      // empty, so nothing here is exercised. Answer plausibly rather than 404
+      // into a confusing UI.
       return send(res, 200, {});
+    }
+
+    // ---------------- mail (test-only) ----------------
+    // What GoTrue would have emailed, oldest first, so a spec can open the link
+    // the way a student opens it from their inbox.
+    if (path === '/__e2e/outbox') {
+      const email = normalEmail(url.searchParams.get('email'));
+      return send(res, 200, outbox.filter((mail) => !email || mail.email === email));
     }
 
     // ---------------- rest ----------------
@@ -451,7 +701,7 @@ const server = createServer((req, res) => {
       const name = path.slice('/rest/v1/rpc/'.length);
       const fn = rpcs[name];
       if (!fn) return send(res, 404, { message: `stub: unimplemented rpc ${name}`, code: '42883' });
-      const out = fn(body, callerUid(req));
+      const out = fn(body, callerUid(req), callerClaims(req));
       return send(res, out.status, out.body);
     }
 

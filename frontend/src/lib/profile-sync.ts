@@ -2069,6 +2069,68 @@ export async function hydrateProfile(signal?: AbortSignal, observe?: ProfileRead
   }
 }
 
+/**
+ * Flow B, after a merge that KEPT the account's own profile row: the claim has
+ * just re-labelled this browser's guest envelope to that account, and its
+ * confirmed revision counted the guest row's saves, not this one's. When the
+ * two counters meet, writeEnvelope refuses the account's row as "one revision,
+ * two contents" and every hydrate keeps serving the guest's copy; when the
+ * guest's is higher, the account's row reads as stale. The confirmed baseline
+ * is dropped and every unsent guest edit becomes one base-unknown working
+ * copy, so the next hydrate adopts the account's row and asks about real
+ * differences instead.
+ *
+ * "Every" includes an edit the journal holds but the outbox never got (the
+ * tab closed inside the autosave debounce). Its operation still carries the
+ * guest row's base, and left loose the next flush stages it against the
+ * account's row as if that were the row it was made on.
+ */
+export async function forgetMergedGuestRevision(token: OwnerToken): Promise<boolean> {
+  const locked = await withProfileLock(token, () => {
+    const stored = readProfileSyncEnvelopeStrict();
+    if (!stored.ok) return false;
+    const journal = readOutstandingOps();
+    if (!journal.ok) return false;
+    const envelope = stored.value;
+    const keys = [...new Set(journal.value.flatMap((op) => op.fields.map((f) => f.key)))].filter(isProfileKey);
+    // Two origins that disagree stay a journal conflict, which is asked about
+    // anyway; only a settled value can be folded into the working copy.
+    const loose = [...planKeysFromJournal(journal.value, keys)].flatMap(([key, plan]) => (
+      plan.kind === 'value' ? [{ key, value: plan.value }] : []
+    ));
+    if (!envelope && loose.length === 0) return true;
+    let pending = envelope?.pending ?? null;
+    if (loose.length > 0) {
+      const baseProfile = pending?.baseProfile ?? envelope?.confirmed?.profile ?? readRawProfileMirror()
+        ?? ({} as ProfileData);
+      const desired = { ...(pending?.desiredProfile ?? baseProfile) } as unknown as Record<string, unknown>;
+      for (const { key, value } of loose) desired[key] = value;
+      pending = {
+        mutationId: newMutationId(),
+        baseRevision: 0,
+        legacy: true,
+        keyVersions: {},
+        skillAdditions: [],
+        skillsReplaced: false,
+        skillOps: [],
+        additiveKeys: [],
+        lockedKeys: [],
+        conflictRemote: null,
+        journalOpIds: [],
+        journalPlan: {},
+        deferredCreate: false,
+        ...pending,
+        baseProfile,
+        desiredProfile: desired as unknown as ProfileData,
+        dirtyKeys: [...new Set([...(pending?.dirtyKeys ?? []), ...loose.map((l) => l.key)])],
+      };
+    }
+    if (pending) pending = { ...pending, legacy: true, baseRevision: 0 };
+    return writeEnvelope({ v: 1, confirmed: null, pending, tombstone: envelope?.tombstone ?? null }, token);
+  });
+  return locked.ok && locked.value;
+}
+
 async function hydrateLoadedProfile(
   loaded: LoadedProfile,
   token: OwnerToken,

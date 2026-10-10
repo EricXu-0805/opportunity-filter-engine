@@ -671,6 +671,10 @@ export interface MergeSummary {
   interactions: number;
   savedSearches: number;
   attachmentsNotMoved: number;
+  /** What the server did with the two profiles: 'adopted' (the account had
+   *  none and took this browser's row), 'kept_target' or
+   *  'kept_target_saved_other_as_version' (the account kept its own), 'none'. */
+  profile?: string;
 }
 
 /**
@@ -907,6 +911,7 @@ export async function redeemPendingMerge(): Promise<MergeRedemptionOutcome> {
       interactions: asCount(s.interactions),
       savedSearches: asCount(s.saved_searches),
       attachmentsNotMoved: asCount(s.attachments_not_moved),
+      profile: typeof s.profile === 'string' ? s.profile : undefined,
     },
   };
 }
