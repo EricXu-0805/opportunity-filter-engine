@@ -235,11 +235,49 @@ gh api repos/<owner>/<repo>/commits/<sha>/check-runs \
   --jq '.check_runs[] | "\(.name): \(.status) \(.conclusion)"'
 ```
 
-The structural fix is to stop letting an unrelated job decide: set
-`autoDeploy: false` and call a Render deploy hook from the CI workflow once —
-and only once — the four required jobs are green. That needs a
-`RENDER_DEPLOY_HOOK_URL` secret, so it is the operator's move, not a code
-change that can land ahead of it.
+The structural fix is to stop letting an unrelated job decide. `ci.yml` has a
+`Deploy backend (Render hook)` job for that: on a push to main, once Backend,
+Frontend and E2E (the checks branch protection requires) have passed, it POSTs
+the Render deploy hook with `ref` set to that commit, and fails on any answer
+outside 2xx. Until the `RENDER_DEPLOY_HOOK_URL` secret exists it logs a notice,
+deploys nothing and passes, so its own check cannot hold today's `checksPass`
+deploy. Nothing changes until the owner switches over.
+
+### Switching the backend deploy to the CI hook
+
+Steps 2 and 3 belong together; do them in one sitting.
+
+1. In the Render dashboard, open the `opportunity-filter-engine-api` service,
+   then Settings, then Deploy Hook, and copy the URL. It contains a key, and
+   anyone holding it can deploy the service, so it goes nowhere except the
+   secret in step 2.
+2. In GitHub, open the repository's Settings, then Secrets and variables, then
+   Actions, and add a repository secret named `RENDER_DEPLOY_HOOK_URL` with
+   the URL as its value.
+3. Open one PR that changes `render.yaml` to `autoDeployTrigger: off`, and
+   merge it. Render's deploy documentation says a deploy-hook call that names
+   a commit turns the service's auto-deploys off by itself; the blueprint line
+   keeps a later Blueprint sync from turning `checksPass` back on. If the
+   service is not synced from the Blueprint, also set auto-deploy to Off in
+   its Build & Deploy settings.
+4. On the merge commit, check three things: the `Deploy backend (Render hook)`
+   job log says "Render accepted the deploy of" that SHA, Render's Events list
+   a deploy of that SHA, and `/api/health` reports it as `release_sha` once
+   the deploy is live.
+
+A push to main between steps 2 and 3 reaches Render by both paths and builds
+twice; that costs one build.
+
+After the switch, a check that branch protection does not require (a refresh
+dispatched on main, the Migrations job) no longer holds a backend deploy. A
+non-2xx answer from the hook fails the job with the status code and is not
+retried; re-run the job from the Actions page once the cause is fixed. A 404
+usually means the hook was regenerated in Render and the secret still holds
+the old URL.
+
+To switch back, delete the secret and set `autoDeployTrigger: checksPass` in
+`render.yaml` again, and turn auto-deploy back on in the dashboard if Render
+left it off.
 
 ## 4. Rollback
 
@@ -384,4 +422,5 @@ Standard plan's 2 GB, so a second worker would not fit.
 | `REFRESH_PAT` | required | `refresh-data.yml` cannot open its data PR and fails. |
 | `FRONTEND_URL` | optional | Alert emails lose their dashboard link. The release gate does not observe the frontend. |
 | `OPERATOR_EMAIL` | optional | No alert or digest email is sent. The `daily-reminders.yml` alert step prints the alerts to the job log; the other alert steps log that they cannot alert and pass. `snapshot-reminder.yml` fails when a snapshot refresh is due. |
+| `RENDER_DEPLOY_HOOK_URL` | optional | The `Deploy backend (Render hook)` job in `ci.yml` logs a notice, deploys nothing and passes, and Render's own auto-deploy (`render.yaml` `autoDeployTrigger`) decides. Once the switch-over in §3 sets that to `off`, nothing deploys the backend without this secret. |
 | `RESEND_FROM_EMAIL` | optional | A repository variable (`vars.`), not a secret. Workflow emails are sent from Resend's test sender, `JoinALab <onboarding@resend.dev>`. |

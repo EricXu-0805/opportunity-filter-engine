@@ -244,6 +244,63 @@ jobs:
           path: frontend/playwright-report/
           retention-days: 14
 
+  # Deploys the backend through a Render deploy hook once the checks branch
+  # protection requires have passed. render.yaml's `autoDeployTrigger:
+  # checksPass` waits for EVERY check run on the commit and has no notion of
+  # "required", so an unrelated run on main (a red advisory, a refresh
+  # dispatched on main) has held backend deploys, once for four days
+  # (docs/RELEASE.md §3). This job waits only for the required ones.
+  #
+  # Until RENDER_DEPLOY_HOOK_URL is set it deploys nothing and succeeds, so
+  # its own check can never hold today's checksPass deploy. The switch-over,
+  # which sets the secret and turns checksPass off together, is in
+  # docs/RELEASE.md.
+  deploy-backend:
+    name: Deploy backend (Render hook)
+    needs: [backend, frontend, e2e]
+    # A push to main only: never a pull request, a manual dispatch or a
+    # schedule. There is no status function here, so GitHub applies
+    # success(): a needed job that failed, was cancelled or was skipped skips
+    # the deploy.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Ask Render to deploy this commit
+        # The hook URL carries a key, and anyone holding it can deploy. It
+        # reaches the script only through env and is never printed. `ref`
+        # pins the deploy to the commit these checks passed on rather than
+        # whatever is at the head of main when Render builds.
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+          DEPLOY_SHA: ${{ github.sha }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "::notice::RENDER_DEPLOY_HOOK_URL is not set, so this job deployed nothing. Render's own auto-deploy (render.yaml autoDeployTrigger) still decides; docs/RELEASE.md has the switch-over."
+            exit 0
+          fi
+          case "$RENDER_DEPLOY_HOOK_URL" in
+            *'?'*) sep='&' ;;
+            *) sep='?' ;;
+          esac
+          rc=0
+          status=$(curl -s -o /dev/null -w '%{http_code}' --max-time 60 -X POST \
+            "${RENDER_DEPLOY_HOOK_URL}${sep}ref=${DEPLOY_SHA}") || rc=$?
+          if [ "$rc" -ne 0 ]; then
+            echo "::error::The deploy-hook request did not complete (curl exit $rc), so $DEPLOY_SHA was NOT deployed. Re-run this job once Render answers."
+            exit 1
+          fi
+          case "$status" in
+            2??)
+              echo "Render accepted the deploy of $DEPLOY_SHA (HTTP $status)."
+              ;;
+            *)
+              echo "::error::The Render deploy hook answered HTTP $status, so $DEPLOY_SHA was NOT deployed. A 404 usually means the hook was regenerated and the secret still holds the old URL."
+              exit 1
+              ;;
+          esac
+
   # The dependency audits moved to .github/workflows/security-advisory.yml,
   # which runs on pull_request only. They stayed non-required either way; what
   # changed is that they no longer attach a check run to a main commit, because
