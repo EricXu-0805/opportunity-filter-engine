@@ -276,7 +276,7 @@ export function OpportunityCard({
                 <button
                   type="button"
                   onClick={() => { if (actionable) onOpenEmailModal(opp); }}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 text-[13px] font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-500 rounded-xl hover:from-indigo-700 hover:to-indigo-600 shadow-sm hover:shadow transition-all duration-200"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-[13px] font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 shadow-sm hover:shadow transition-all duration-200"
                 >
                   <Mail className="w-3.5 h-3.5" />
                   {t('card.draftEmail')}

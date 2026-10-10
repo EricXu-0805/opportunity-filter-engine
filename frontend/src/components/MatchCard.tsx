@@ -503,7 +503,7 @@ export default function MatchCard({ detailHref, isViewed, onViewOpportunity, mat
               href={applyUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-5 py-2.5 text-[13px] font-semibold text-white bg-gradient-to-r from-emerald-600 to-emerald-500 rounded-xl hover:from-emerald-700 hover:to-emerald-600 shadow-sm hover:shadow transition-all duration-200"
+              className="inline-flex items-center gap-2 px-5 py-2.5 text-[13px] font-semibold text-white bg-emerald-700 rounded-xl hover:bg-emerald-800 shadow-sm hover:shadow transition-all duration-200"
             >
               <ExternalLink className="w-3.5 h-3.5" />
               {t('card.applyNow')}
@@ -517,7 +517,7 @@ export default function MatchCard({ detailHref, isViewed, onViewOpportunity, mat
               aria-busy={!draftEmailReady}
               className={`inline-flex items-center gap-2 px-4 py-2 text-[13px] font-semibold rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-wait ${
                 emailIsPrimary
-                  ? 'text-white bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 shadow-sm hover:shadow px-5 py-2.5'
+                  ? 'text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm hover:shadow px-5 py-2.5'
                   : 'text-gray-600 bg-black/[0.04] hover:bg-black/[0.08]'
               }`}
             >
