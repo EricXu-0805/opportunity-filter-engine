@@ -92,6 +92,26 @@ describe('DetailFactsSection', () => {
     expect(screen.getByTestId('facts-faculty-note')).toBeInTheDocument();
   });
 
+  // M59 (axe definition-list + dlitem, serious): the label and its state tag
+  // shared a wrapper <div> inside the row, so no list held a dt/dd group and a
+  // screen reader announced neither terms nor their values as a list.
+  it.each(contract.cases.map((c) => c.name))('keeps every fact row a dt/dd group (%s)', (name) => {
+    const { container } = renderCase(name);
+    const lists = container.querySelectorAll('dl');
+    expect(lists.length).toBeGreaterThan(0);
+    for (const list of lists) {
+      for (const group of list.children) {
+        const tags = [...group.children].map((child) => child.tagName);
+        expect(group.tagName).toBe('DIV');
+        expect(tags[0]).toBe('DT');
+        expect(tags).toContain('DD');
+        expect(tags.every((tag) => tag === 'DT' || tag === 'DD')).toBe(true);
+      }
+    }
+    const majors = row('eligibility', 'majors');
+    expect(within(majors).getByRole('term')).toHaveTextContent('detail.facts.facets.majors');
+  });
+
   it('carries provenance on a known field and none on an unknown one', () => {
     renderCase('curated_campus_program');
     const school = screen.getByTestId('fact-field-school');

@@ -87,10 +87,10 @@ function FacetRow({ field, facet, truth, t }: {
       data-testid={`fact-${field}-${facet}`}
       data-state={truth.state}
     >
-      <div className="flex items-center gap-2 flex-wrap">
-        <dt className="text-[11px] text-gray-400 uppercase tracking-wider">{label}</dt>
+      <dt className="flex items-center gap-2 flex-wrap">
+        <span className="text-[11px] text-gray-400 uppercase tracking-wider">{label}</span>
         <StateTag truth={truth} t={t} />
-      </div>
+      </dt>
       <dd className={`text-[14px] break-words ${truth.state === 'unknown' ? 'text-gray-400 italic' : 'text-gray-800'}`}>
         {truth.state === 'unknown'
           ? (UNKNOWN_HINT_FACETS.has(facet)
