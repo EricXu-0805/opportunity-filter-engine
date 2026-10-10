@@ -29,11 +29,14 @@ _REPO = Path(__file__).resolve().parents[1]
 _WORKFLOWS = _REPO / ".github" / "workflows"
 sys.path.insert(0, str(_REPO / "scripts"))
 
-# Branch protection lives on GitHub, not in this repo, so the required set is
-# mirrored here on purpose: these are the four checks a PR must pass (Backend,
-# Frontend, Migrations, plus E2E — required since 2026-07-28). The security
-# audits were moved OUT of them into an advisory job precisely so that no
-# required job needs a step whose failure is ignored.
+# The four checks the release gate (`ci:*` in scripts/release_gate.py) and the
+# refresh-PR verifier (scripts/verify_refresh_pr.py) require: Backend,
+# Frontend, Migrations and E2E. GitHub branch protection, which lives outside
+# this repo, requires only Backend, Frontend and E2E (read 2026-10-09), so a red
+# Migrations check alone does not block a merge, and the deploy-backend job in
+# ci.yml does not wait for it. The security audits were moved OUT of these
+# into an advisory job precisely so that no required job needs a step whose
+# failure is ignored.
 REQUIRED_CI_JOBS = ("backend", "frontend", "migrations", "e2e")
 ADVISORY_CI_JOB = "security-advisory"
 # The advisory audits live in their own workflow rather than in ci.yml, because

@@ -39,7 +39,7 @@ would say nothing about what is actually running). `/api/health` and
 | `flag_parity` | backend vs frontend release-scope tables, by name **and value** | the gate itself |
 | `release_record` | the SHA `/api/health` reports, the `data-release-sha` on the frontend's HTML, and — derived from those two commits — each side's data version (last shard commit) and flag table | the gate itself with `--backend-url`/`--frontend-url`, or an operator |
 | `restore_drill` | `data/releases/drills/<drill_id>.json` | an operator, via `scripts/restore_drill.py` |
-| `ci:*` (4 required checks) | `scripts/verify_refresh_pr.py`-shaped snapshot | CI, bound to the head SHA |
+| `ci:*` (4 required checks: Backend, Frontend, Migrations, E2E; branch protection requires all but Migrations) | `scripts/verify_refresh_pr.py`-shaped snapshot | CI, bound to the head SHA |
 | `open_incidents` | `GET /api/admin/ops/incidents?unresolved_only=true` → `rollup` (the gate counts `release_blocking_total`: every unresolved incident except a `manual_review:snapshot_refresh:*` reminder) | an operator with `ADMIN_TOKEN` |
 | `provider_readiness` | `GET /api/ready` → `reported.providers` | an operator with `ADMIN_TOKEN` |
 | `api_ready` | `GET /api/ready` on the deployed instance | an operator |
@@ -250,7 +250,8 @@ gh api repos/<owner>/<repo>/commits/<sha>/check-runs \
 
 The structural fix is to stop letting an unrelated job decide. `ci.yml` has a
 `Deploy backend (Render hook)` job for that: on a push to main, once Backend,
-Frontend and E2E (the checks branch protection requires) have passed, it POSTs
+Frontend and E2E (the three checks branch protection requires; the release
+gate's `ci:*` also requires Migrations) have passed, it POSTs
 the Render deploy hook with `ref` set to that commit, and fails on any answer
 outside 2xx. It first asks GitHub for the head of main and deploys only if the
 commit is still the head; otherwise it logs a notice and passes, and the newer
@@ -286,7 +287,8 @@ it comes before the job's own check finishes, so a push to main between steps
 
 After the switch, a check that branch protection does not require (a refresh
 dispatched on main, the alert drill, the Migrations job) no longer holds a
-backend deploy. A non-2xx answer from the hook fails the job with the status
+backend deploy. A red Migrations check still stops a release candidate, because
+the release gate counts it, but the backend code on that commit deploys. A non-2xx answer from the hook fails the job with the status
 code and is not retried. A 404 usually means the hook was regenerated in Render
 and the secret still holds the old URL.
 
