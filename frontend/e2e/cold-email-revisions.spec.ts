@@ -176,8 +176,8 @@ async function setup(page: Page, info: TestInfo) {
     await page.goto('/favorites');
     await page.getByRole('button', { name: locale === 'zh' ? '起草邮件' : 'Draft Email', exact: true }).click();
     await expect(body).toHaveValue(BODY);
-    await expect.poll(() => state.calls.filter(path => path.endsWith('/stream')).length).toBe(1);
-    await expect(page.getByRole('button', { name: copy.aiVariantLabel, exact: true })).toBeEnabled();
+    await expect(page.getByRole('button', { name: copy.generateAiDraft, exact: true })).toBeEnabled();
+    expect(state.calls.filter(path => path.endsWith('/stream'))).toEqual([]);
   };
   const selectSecond = async () => {
     await body.scrollIntoViewIfNeeded();
@@ -272,7 +272,7 @@ test('real offline state pauses actions and reconnect waits for both fresh sourc
     await f.open();
     const manual = BODY + '\n保留这条离线前的手写补充。';
     await f.body.fill(manual); await f.request.fill(INSTRUCTION);
-    const ai = page.getByRole('button', { name: f.copy.aiVariantLabel, exact: true });
+    const ai = page.getByRole('button', { name: f.copy.generateAiDraft, exact: true });
     const gmail = page.getByRole('button', { name: 'Gmail', exact: true });
     await expect(ai).toBeEnabled(); await expect(gmail).toBeEnabled(); await expect(f.submit).toBeEnabled();
     const writingCalls = f.state.calls.length;

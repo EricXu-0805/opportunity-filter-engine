@@ -492,7 +492,7 @@ export default function ColdEmailModal({
   const [nameRequired, setNameRequired] = useState(false);
   const missingStudentName = !(profile.name ?? '').trim();
   const [variants, setVariants] = useState<EmailVariant[]>([]);
-  const [aiVariant, setAiVariant] = useState<EmailVariant | null>(null);
+  const [aiVariant, setAiVariant] = useState<(EmailVariant & { style: EmailStyle }) | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   // Which pipeline stage the streaming generation is in (null = not streaming
   // or stage unknown); drives the AI pill's progress label.
@@ -500,7 +500,8 @@ export default function ColdEmailModal({
   const [activeVariant, setActiveVariant] = useState(0);
   const [labType, setLabType] = useState<LabType | null>(null);
   // Voice overlay for the AI draft. `selectedStyle` seeds from the lab-type
-  // recommendation once variants load; the picker re-generates on change.
+  // recommendation once variants load; the picker only chooses the voice that
+  // the next Generate click uses.
   const [selectedStyle, setSelectedStyle] = useState<EmailStyle>('professional');
   const [recommendedStyle, setRecommendedStyle] = useState<EmailStyle | null>(null);
 
@@ -670,15 +671,12 @@ export default function ColdEmailModal({
   const chatHistoryRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
-  // AI is the default engine: one automatic pipeline run per open, kicked off
-  // once the template variants land. Reset on close.
-  const autoFiredRef = useRef(false);
   // A failed receipt may be checked again without spending generation or
   // replacing a draft. Only an explicit generation intent clears this fence.
   const targetCheckOnlyRef = useRef(false);
-  // Real AI drafts per (opportunity, style): reopening the same opportunity
-  // reuses the draft instead of re-billing the pipeline. Fallback responses
-  // are never cached (they retry on the next open). Cleared when the profile
+  // Real AI drafts per (opportunity, style): a later Generate click in the same
+  // tone reuses the draft instead of re-billing the pipeline. Fallback
+  // responses are never cached (the next click retries). Cleared when the profile
   // prop changes — a draft must not outlive a profile edit. W12: entries
   // also expire after AI_CACHE_TTL_MS and whenever the backend's
   // corpus_version or pipeline_version moves, so a long-lived tab does not
@@ -916,9 +914,9 @@ export default function ColdEmailModal({
         setProfileChanged(false);
         contextEditedRef.current = false;
         setContextChanged(false);
-        // Explicit regeneration runs the normal AI pipeline after fresh templates.
+        // Explicit regeneration rebuilds the template draft only; the AI draft
+        // still needs its own Generate click.
         if (keepEditor) {
-          autoFiredRef.current = false;
           // A newly built draft needs its own explicit send attestation.
           // Keep the historical contact/reminder record and allow its pending
           // receipt to update the parent, without confirming this new draft.
@@ -964,7 +962,7 @@ export default function ColdEmailModal({
   }, [privateMode, privateContext, contactPolicyBlock, paperReadingCurrent, locale, requestProfile, requestContactContext, opportunityId, expectedTargetVersion, t, missingStudentName, captureDraftSession, reportTargetVersionFailure, reportReadingChange, setSendError]);
 
   type WritingIntent = { kind: 'variants'; preserveDraft?: boolean; keepEditor?: boolean }
-    | { kind: 'ai'; style: EmailStyle; selectExisting?: boolean }
+    | { kind: 'ai'; style: EmailStyle }
     | { kind: 'refine'; instruction: string; typed?: boolean; label?: string; edit: EmailEditRequest }
     | { kind: 'accept-edit'; id: number }
     | { kind: 'coursework'; edit: EmailEditRequest }
@@ -987,7 +985,7 @@ export default function ColdEmailModal({
       if (profileChangedRef.current || profileChanged || profileRegenerating) return;
       if (intent.kind === 'accept-edit') { void acceptEdit(intent.id); return; }
       if (intent.kind === 'ai') {
-        if (intent.selectExisting && aiVariant) selectVariant(variants.length);
+        if (aiVariant?.method === 'ai' && aiVariant.style === intent.style) selectVariant(variants.length);
         else void generateAi(intent.style);
         return;
       }
@@ -1027,7 +1025,7 @@ export default function ColdEmailModal({
     if (retiredRefine !== null) setChatMessages(messages => messages.map(message =>
       message.requestId === retiredRefine ? { ...message, content: t('coldEmail.profileEditRetired') } : message));
     aiInFlightRef.current = false; refineInFlightRef.current = null;
-    aiCacheRef.current.clear(); autoFiredRef.current = true;
+    aiCacheRef.current.clear();
     setLoading(false); setAiLoading(false); setAiStage(null); setRefining(false);
     setProfileRegenerating(false); setProfileChanged(true); setContextChanged(true);
     setContactState(previous => ({ ...previous, dirty: true, revision: previous.revision + 1 }));
@@ -1062,7 +1060,7 @@ export default function ColdEmailModal({
       setPersistenceSession(nextSession);
       if (stored.draft) {
         const value = stored.draft;
-        autoFiredRef.current = true; editorUsedRef.current = true;
+        editorUsedRef.current = true;
         contextEditedRef.current = true;
         setDraftRestored(true); setLoading(false); metadataRefreshingRef.current = true; setMetadataRefreshing(true);
         setSubject(value.subject); setBody(value.body);
@@ -1091,7 +1089,6 @@ export default function ColdEmailModal({
       setDraftRestored(false); setDraftClosing(false); metadataRefreshingRef.current = false; setMetadataRefreshing(false); setPendingPanel(null); setPanelSavable(true); setPendingSupplement(null); setSupplementSavable(true); lastSupplementSnapshotRef.current = null;
       setRestoredSources(null); setSourceSignatures(null);
       cancelCompose();
-      autoFiredRef.current = false;
       contextDirtyRef.current = false; contextEditedRef.current = false;
       supplementScopeRef.current = null;
       setSupplementSession(null); setSupplementExpanded(false); setSupplementProfile(null);
@@ -1299,7 +1296,7 @@ export default function ColdEmailModal({
       () => editBaseCurrent(comparison.base) && savedVersions.some(v => v.id === version.id), () => {
         clearEmailRevisions(); action.cancel(); cancelCompose();
         aiRequestRef.current += 1; variantRequestRef.current += 1; refineInFlightRef.current = null; aiInFlightRef.current = false;
-        setAiLoading(false); setAiStage(null); setRefining(false); autoFiredRef.current = true;
+        setAiLoading(false); setAiStage(null); setRefining(false);
         draftRevisionRef.current += 1; setUserEditRevision(value => value + 1);
         setSubject(version.subject); setBody(version.body); setSelectedStyle(version.selectedStyle); setActiveVariant(-1);
         setScopeNeedsChoice(scope === 'reselect'); setVersionCompare(null);
@@ -1363,7 +1360,6 @@ export default function ColdEmailModal({
     aiCacheRef.current.clear();
     const hasDraft = contextEditedRef.current || editorUsedRef.current || !!(subject || body || recipient);
     profileChangedRef.current = hasDraft;
-    autoFiredRef.current = hasDraft;
     // New material must not erase an editor or let an old response overwrite it.
     setVariants([]); setAiVariant(null); setAiLoading(false); setAiStage(null); setRefining(false);
     setLoading(!hasDraft); setError(null); if (!targetCheckOnlyRef.current) setTargetVersionError(null); setNameRequired(false); setExperienceUsage(null); setTargetConditions(null);
@@ -1545,13 +1541,12 @@ export default function ColdEmailModal({
     });
   }
 
-  // Generate (or re-generate) the AI draft in a given voice. Used by the
-  // automatic run on open (AI is the default engine; `auto: true`), the ✨ AI
-  // pill, and the tone picker. Auto mode differs in three ways: it reports
-  // nothing until it succeeds (a fallback the user never asked for stays
-  // silent), it never clobbers a draft the user has meanwhile edited or
-  // switched away from, and it seeds/serves the per-open cache.
-  const generateAi = useCallback(async (style: EmailStyle, opts?: { auto?: boolean }) => {
+  // Generate (or re-generate) the AI draft in a given voice. The only caller
+  // is the Generate pill, so every model call here follows a click (M75:
+  // opening the editor, choosing a tone and rebuilding templates never call
+  // it). A response never clobbers a draft the user has meanwhile edited or
+  // switched away from; it stays available on the pill instead.
+  const generateAi = useCallback(async (style: EmailStyle) => {
     if (!sourceReadyRef.current || contextDirtyRef.current || !paperReadingCurrent || contactPolicyBlock || profileChanged || profileRegenerating || !variantsReadyRef.current || aiInFlightRef.current || refineInFlightRef.current !== null || missingStudentName) return;
     if (!expectedTargetVersion) { reportTargetVersionFailure('unavailable'); return; }
     if (targetVersionError) return;
@@ -1559,17 +1554,16 @@ export default function ColdEmailModal({
     const request = ++aiRequestRef.current;
     const current = () => sessionCurrent() && request === aiRequestRef.current;
     const revision = draftRevisionRef.current;
-    const auto = opts?.auto ?? false;
     const aiIdx = variants.length;
-    if (auto) setSelectedStyle(style);
 
     const applyResponse = async (
       resp: ColdEmailResponse,
       select: boolean,
       contactIsCurrent = true,
     ) => {
-      const v: EmailVariant = {
+      const v: EmailVariant & { style: EmailStyle } = {
         id: AI_VARIANT_ID,
+        style,
         label: t('coldEmail.aiVariantLabel'),
         subject: resp.subject,
         body: resp.body,
@@ -1581,7 +1575,7 @@ export default function ColdEmailModal({
         experience_usage: resp.experience_usage,
         target_conditions: resp.target_conditions,
       };
-      if (select && !auto && !await changeDraftRef.current({ subject: v.subject, body: v.body, selectedStyle: style }, 'regenerated',
+      if (select && !await changeDraftRef.current({ subject: v.subject, body: v.body, selectedStyle: style }, 'regenerated',
         () => current() && draftRevisionRef.current === revision, () => {})) return false;
       if (!current() || (select && draftRevisionRef.current !== revision)) return false;
       setAiVariant(v);
@@ -1625,12 +1619,10 @@ export default function ColdEmailModal({
 
     aiInFlightRef.current = true;
     setAiLoading(true);
-    if (!auto) {
-      setChatMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: t('coldEmail.tone.generating', { style: t(`coldEmail.tone.${style}`) }) },
-      ]);
-    }
+    setChatMessages((prev) => [
+      ...prev,
+      { role: 'assistant', content: t('coldEmail.tone.generating', { style: t(`coldEmail.tone.${style}`) }) },
+    ]);
     try {
       // Confirmed entries travel in the API's evidence envelope. The modal
       // never extracts raw strings or confirms an imported experience itself.
@@ -1666,7 +1658,6 @@ export default function ColdEmailModal({
         });
         if (resp.corpus_version) corpusVersionRef.current = resp.corpus_version;
       }
-      if (auto && resp.method !== 'ai') return; // silent — the user never asked
       if (!await applyResponse(resp, draftRevisionRef.current === revision)) return;
       setChatMessages((prev) => [
         ...prev,
@@ -1683,7 +1674,7 @@ export default function ColdEmailModal({
         setChatMessages(messages => [...messages, { role: 'assistant', content: emailInputTooLargeMessage(locale) }]);
       } else if (current() && readingChanged(error)) reportReadingChange();
       else if (current() && failure) reportTargetVersionFailure(failure);
-      else if (current() && !auto) {
+      else if (current()) {
         setChatMessages((prev) => [
           ...prev,
           { role: 'assistant', content: t('coldEmail.aiFailed') },
@@ -1698,23 +1689,20 @@ export default function ColdEmailModal({
     }
   }, [locale, contactPolicyBlock, paperReadingCurrent, profileChanged, profileRegenerating, missingStudentName, variants.length, requestProfile, requestContactContext, contactFingerprint, opportunityId, expectedTargetVersion, targetVersionError, labType, t, captureDraftSession, reportTargetVersionFailure, reportReadingChange, clearEmailRevisions]);
 
-  // AI is the default engine: once the template variants land, run the
-  // pipeline once automatically. The template is the instant placeholder; the
-  // AI draft takes over on success (unless the user already started editing).
-  useEffect(() => {
-    if (privateMode || !sourceReady || !isOpen || profileChanged || profileRegenerating || !variantsReadyRef.current || loading || variants.length === 0 || autoFiredRef.current) return;
-    autoFiredRef.current = true;
-    generateAi(selectedStyle, { auto: true });
-  }, [privateMode, sourceReady, isOpen, profileChanged, profileRegenerating, loading, variants.length, selectedStyle, generateAi]);
+  // The pill switches to an AI draft that already exists in the chosen tone;
+  // otherwise it is the Generate control.
+  const aiDraftForTone = aiVariant?.method === 'ai' && aiVariant.style === selectedStyle;
 
   function handleAiPillClick() {
     if (metadataRefreshingRef.current || versionBusyRef.current || aiLoading || action.busy) return;
-    action.request({ kind: 'ai', style: selectedStyle, selectExisting: true });
+    action.request({ kind: 'ai', style: selectedStyle });
   }
 
+  // Choosing a tone only sets the voice for the next Generate click. The
+  // template is the same in every tone, so the editor stays as it is.
   function handleToneClick(style: EmailStyle) {
     if (metadataRefreshingRef.current || versionBusyRef.current || aiLoading || action.busy) return;
-    action.request({ kind: 'ai', style });
+    setSelectedStyle(style);
   }
 
   function refineLimitMessage(field: string, max: number): string {
@@ -2407,33 +2395,37 @@ export default function ColdEmailModal({
                     disabled={metadataRefreshing || versionBusy || !sourceReady || !paperReadingCurrent || !!contactPolicyBlock || action.busy || profileChanged || profileRegenerating || aiLoading || refining}
                     title={t('coldEmail.aiVariantTitle')}
                     className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all duration-200 disabled:opacity-60 disabled:cursor-wait ${
-                      activeVariant === variants.length && aiVariant
-                        ? 'bg-gradient-to-r from-indigo-600 to-fuchsia-500 text-white shadow-sm'
-                        : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
+                      !aiDraftForTone
+                        ? 'bg-indigo-600 text-white shadow-sm hover:bg-indigo-700'
+                        : activeVariant === variants.length
+                          ? 'bg-gradient-to-r from-indigo-600 to-fuchsia-500 text-white shadow-sm'
+                          : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
                     }`}
                   >
                     {aiLoading ? (
                       <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
-                    ) : null}
+                    ) : aiDraftForTone ? null : <Sparkles className="w-3 h-3" aria-hidden="true" />}
                     {aiLoading && aiStage
                       ? t(STAGE_LABEL_KEYS[aiStage])
-                      : t('coldEmail.aiVariantLabel')}
+                      : t(aiDraftForTone ? 'coldEmail.aiVariantLabel' : 'coldEmail.generateAiDraft')}
                   </button>}
                 </div>
 
-                {/* Tone picker — drives the AI draft's voice. The recommended
-                    tone is derived from the detected lab type (no scraping). */}
+                {/* Tone picker — sets the voice of the next AI draft and calls
+                    nothing itself. The recommended tone is derived from the
+                    detected lab type (no scraping). */}
                 {!privateMode && <div className="flex items-center gap-1.5 px-5 pb-2 shrink-0 flex-wrap">
                   <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mr-0.5">
                     {t('coldEmail.tone.label')}
                   </span>
                   {STYLE_KEYS.map((s) => {
-                    const isActive = activeVariant === variants.length && aiVariant != null && selectedStyle === s;
+                    const isActive = selectedStyle === s;
                     const isRecommended = recommendedStyle === s;
                     return (
                       <button
                         key={s}
                         type="button"
+                        aria-pressed={isActive}
                         onClick={() => handleToneClick(s)}
                         disabled={metadataRefreshing || versionBusy || !sourceReady || !paperReadingCurrent || !!contactPolicyBlock || action.busy || profileChanged || profileRegenerating || aiLoading || refining}
                         className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all duration-200 disabled:opacity-60 disabled:cursor-wait ${

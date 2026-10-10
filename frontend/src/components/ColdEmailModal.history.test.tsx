@@ -56,7 +56,9 @@ function submit(request = 'Make this precise') {
 async function open(extra: Partial<Parameters<typeof ColdEmailModal>[0]> = {}) {
   const props = { isOpen: true, onClose: vi.fn(), profile, opportunityId: 'A', opportunityTitle: 'Lab', target: emailTarget('A'), ...extra };
   const view = render(<ColdEmailModal {...props} />);
-  await waitFor(() => expect(bodyField()).toHaveValue(ORIGINAL)); await waitFor(() => expect(api.stream).toHaveBeenCalledOnce()); await act(async () => {});
+  await waitFor(() => expect(bodyField()).toHaveValue(ORIGINAL));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'coldEmail.generateAiDraft' })).toBeEnabled()); await act(async () => {});
+  expect(api.stream).not.toHaveBeenCalled();
   return { ...view, props, show: (next: Partial<typeof props>) => view.rerender(<ColdEmailModal {...props} {...next} />) };
 }
 async function proposed() { await screen.findByRole('region', { name: 'Pending edit suggestion' }); }

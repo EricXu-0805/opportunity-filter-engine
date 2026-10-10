@@ -177,10 +177,11 @@ async function setup(page: Page, info: TestInfo, sharedOwner?: Fixture) {
   const suggestion = page.getByRole('region', { name: locale === 'zh' ? '待确认的修改建议' : 'Pending edit suggestion', exact: true });
   const open = async (expectedBody = BODY, navigate = true) => {
     if (navigate) await page.goto('/favorites');
+    const streams = state.calls.filter(path => path.endsWith('/stream')).length;
     await page.getByRole('button', { name: locale === 'zh' ? '起草邮件' : 'Draft Email', exact: true }).click();
     await expect(body).toHaveValue(expectedBody);
-    if (expectedBody === BODY) await expect.poll(() => state.calls.filter(path => path.endsWith('/stream')).length).toBeGreaterThanOrEqual(1);
-    await expect(page.getByRole('button', { name: copy.aiVariantLabel, exact: true })).toBeEnabled();
+    await expect(page.getByRole('button', { name: copy.generateAiDraft, exact: true })).toBeEnabled();
+    expect(state.calls.filter(path => path.endsWith('/stream'))).toHaveLength(streams);
   };
   const selectSecond = async () => {
     await body.scrollIntoViewIfNeeded();
@@ -275,6 +276,7 @@ async function prepareTwoVersions(page: Page, f: Screen) {
   expect(first.value.draft.history.map(value => value.body)).toEqual([BODY]);
   f.state.generatedBody = GENERATED;
   await page.getByRole('button', { name: f.copy.tone.warm, exact: true }).click();
+  await page.getByRole('button', { name: f.copy.generateAiDraft, exact: true }).click();
   await expect(f.body).toHaveValue(GENERATED); await saved(page, f);
   const next = await stored(page, f);
   expect(next.value.draft.history.map(value => value.body).sort()).toEqual([BODY, ACCEPTED].sort());

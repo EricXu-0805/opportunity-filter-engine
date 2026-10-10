@@ -100,7 +100,11 @@ async function setup(page: Page, info: TestInfo) {
     return route.fulfill({ json: { version: 1, items: [], next_cursor: null } });
   });
   const open = async (navigate = true) => { if (navigate) await page.goto('/favorites'); await page.getByRole('button', { name: locale === 'zh' ? '起草邮件' : 'Draft Email', exact: true }).click(); };
-  const ready = async () => { await expect(page.locator('#cold-email-body')).toHaveValue(BODY); await expect.poll(() => state.calls.filter(path => path.endsWith('/stream')).length).toBe(1); };
+  const ready = async () => {
+    await expect(page.locator('#cold-email-body')).toHaveValue(BODY);
+    await expect(page.getByRole('button', { name: copy.generateAiDraft, exact: true })).toBeEnabled();
+    expect(state.calls.filter(path => path.endsWith('/stream'))).toEqual([]);
+  };
   const edit = async () => {
     await page.locator('#cold-email-subject').fill(EDIT.subject); await page.locator('#cold-email-body').fill(EDIT.body);
     await page.locator('#cold-email-to').fill(EDIT.to); await page.getByRole('textbox', { name: copy.requestLabel, exact: true }).fill(EDIT.request);

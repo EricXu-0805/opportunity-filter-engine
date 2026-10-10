@@ -154,7 +154,9 @@ test.describe('Foreground profile refresh', () => {
     const owner = await seed(page), traffic = monitor(page), requests = await installWriting(page);
     try {
       await openEmail(page);
-      await expect(fields(page).body).toHaveValue(`AI professional draft for ${NAME}\n${FACT}`);
+      await expect(fields(page).body).toHaveValue(`Template for ${NAME}`);
+      await expect(page.getByRole('button', { name: 'Generate AI draft', exact: true })).toBeEnabled();
+      expect(requests.some(request => request.path.endsWith('/stream'))).toBe(false);
       await editManual(page); await observeTriggers(page);
       const node = await dialog(page).elementHandle(), count = requests.length, reads = traffic.profileReads;
       await commit(owner, { name: NEXT_NAME, experience_entries: [{ ...entry(NEXT_FACT), revision: 2 }] });
@@ -185,6 +187,9 @@ test.describe('Foreground profile refresh', () => {
     const requests = await installWriting(page, () => streamGate.promise);
     try {
       await openEmail(page);
+      await expect(fields(page).body).toHaveValue(`Template for ${NAME}`);
+      expect(requests.some(request => request.path.endsWith('/stream'))).toBe(false);
+      await page.getByRole('button', { name: 'Generate AI draft', exact: true }).click();
       await expect.poll(() => requests.some(request => request.path.endsWith('/stream'))).toBe(true);
       await expect(fields(page).body).toHaveValue(`Template for ${NAME}`);
       await observeTriggers(page);
@@ -214,9 +219,11 @@ test.describe('Foreground profile refresh', () => {
     const requests = await installWriting(page, request => request.style === 'warm' ? late.promise : Promise.resolve());
     try {
       await openEmail(page);
-      await expect(fields(page).body).toHaveValue(`AI professional draft for ${NAME}\n${FACT}`);
+      await expect(fields(page).body).toHaveValue(`Template for ${NAME}`);
       await editManual(page);
       await page.getByRole('button', { name: 'Warm', exact: true }).click();
+      expect(requests.some(request => request.path.endsWith('/stream'))).toBe(false);
+      await page.getByRole('button', { name: 'Generate AI draft', exact: true }).click();
       await expect.poll(() => requests.some(request => request.path.endsWith('/stream') && request.style === 'warm')).toBe(true);
       await expectManual(page); await observeTriggers(page);
       const reads = traffic.profileReads, count = requests.length;
