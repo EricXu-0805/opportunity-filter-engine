@@ -52,7 +52,7 @@ SCHOOL: dict = {
                     paid="stipend",
                     compensation="Stipend plus a supplies/expenses allowance",
                     preferred_year=["freshman", "sophomore", "junior", "senior"],
-                    deadline_note="Next deadline October 5, 2026 for Spring 2027 projects.",
+                    deadline_note="Three deadlines a year: October for Spring projects, February for Summer/Fall projects, July for fall projects. The October 5, 2026 deadline for Spring 2027 projects has passed; the next date is not posted yet.",
                     keywords=["undergraduate research", "faculty mentor",
                               "research funding", "stipend", "creative projects",
                               "proposal"],

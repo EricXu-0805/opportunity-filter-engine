@@ -62,12 +62,12 @@ SCHOOL: dict = {
                     "in independent research, scholarly inquiry, and creative "
                     "work under faculty mentorship, culminating in an "
                     "undergraduate thesis. Open across disciplines and run by "
-                    "the Office of Undergraduate Research; the current cycle "
-                    "lists a final application deadline of September 8, 2026.",
+                    "the Office of Undergraduate Research; the application for "
+                    "the 2027-2028 cohort opens in spring 2027.",
                     lab_or_program="Undergraduate Research Scholars",
                     opportunity_type="research",
                     preferred_year=["sophomore", "junior", "senior"],
-                    deadline_note="Final application deadline September 8, 2026.",
+                    deadline_note="Application for the 2027-2028 cohort opens in spring 2027; its deadlines are not posted yet.",
                     keywords=["thesis", "independent research",
                               "faculty mentorship", "scholars"],
                 ),
