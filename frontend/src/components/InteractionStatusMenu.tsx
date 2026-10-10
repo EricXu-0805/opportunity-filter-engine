@@ -20,8 +20,8 @@ const INTERACTION_PILL_CLASS: Record<InteractionType, string> = {
   applied: 'bg-indigo-50 text-indigo-700 border-indigo-200',
   replied: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   interviewing: 'bg-violet-50 text-violet-700 border-violet-200',
-  rejected: 'bg-gray-100 text-gray-500 border-gray-200',
-  dismissed: 'bg-gray-100 text-gray-400 border-gray-200',
+  rejected: 'bg-gray-100 text-gray-700 border-gray-200',
+  dismissed: 'bg-gray-100 text-gray-600 border-gray-200',
 };
 
 const INTERACTION_DOT_CLASS: Record<InteractionType, string> = {

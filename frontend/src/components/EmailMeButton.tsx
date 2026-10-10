@@ -232,7 +232,7 @@ export default function EmailMeButton({
                 </button>
               </div>
 
-              <p className="text-[10px] text-gray-400 pt-1">
+              <p className="text-[10px] text-gray-500 pt-1">
                 {t('email.privacyNote')}
               </p>
             </form>

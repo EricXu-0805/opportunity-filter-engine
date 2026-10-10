@@ -16,7 +16,7 @@ export function HeroSection({ t }: { t: TFunc }) {
           {t('home.hero.titleAccent')}
         </span>
       </h1>
-      <p className="mt-5 text-lg text-gray-400 max-w-xl mx-auto leading-relaxed">
+      <p className="mt-5 text-lg text-gray-600 max-w-xl mx-auto leading-relaxed">
         {t('home.hero.subtitle')}
       </p>
     </div>

@@ -169,7 +169,7 @@ export function ConciergeRequestSection({
           {t('detail.concierge.failed')}
         </p>
       )}
-      <p className="mt-2 text-[11px] text-gray-400">{t('detail.concierge.note')}</p>
+      <p className="mt-2 text-[11px] text-gray-500">{t('detail.concierge.note')}</p>
     </Section>
   );
 }

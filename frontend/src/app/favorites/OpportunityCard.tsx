@@ -177,7 +177,7 @@ export function OpportunityCard({
                   </a>
                 )}
               </h3>
-              <div className="flex items-center gap-3 mt-2 text-[13px] text-gray-400">
+              <div className="flex items-center gap-3 mt-2 text-[13px] text-gray-500">
                 {opp.organization && (
                   <span className="inline-flex items-center gap-1">
                     <Building2 className="w-3.5 h-3.5" />
@@ -324,7 +324,7 @@ export function OpportunityCard({
             <button
               type="button"
               onClick={() => onToggleExpand(opp.id)}
-              className="flex items-center justify-between w-full px-6 py-3 text-[13px] font-medium text-gray-400 hover:text-gray-600 transition-colors"
+              className="flex items-center justify-between w-full px-6 py-3 text-[13px] font-medium text-gray-500 hover:text-gray-600 transition-colors"
             >
               <span>{isExpanded ? t('card.hideDetails') : t('card.showDetails')}</span>
               <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
@@ -375,7 +375,7 @@ export function OpportunityCard({
                 {opp.keywords && opp.keywords.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
                     {opp.keywords.slice(0, 8).map((kw) => (
-                      <span key={kw} className="px-2 py-0.5 rounded-md bg-gray-100 text-[11px] text-gray-500">{kw}</span>
+                      <span key={kw} className="px-2 py-0.5 rounded-md bg-gray-100 text-[11px] text-gray-600">{kw}</span>
                     ))}
                   </div>
                 )}

@@ -26,7 +26,7 @@ export default function DatabaseLinkCard({ link }: DatabaseLinkCardProps) {
             <h3 className="text-base font-semibold text-gray-900 truncate">
               {t(`resources.databases.${link.key}.name`)}
             </h3>
-            <p className="text-[11px] text-gray-400 truncate">{link.domain}</p>
+            <p className="text-[11px] text-gray-500 truncate">{link.domain}</p>
           </div>
         </div>
         <ExternalLink className="w-4 h-4 text-gray-300 group-hover:text-indigo-500 shrink-0 transition-colors" aria-hidden="true" />

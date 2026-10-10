@@ -33,12 +33,12 @@ export function ResultsTabs({ activeTab, onChange, counts, t }: ResultsTabsProps
               ${
                 activeTab === key
                   ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
+                  : 'text-gray-700 hover:text-gray-800'
               }`}
           >
             <Icon className={`w-3.5 h-3.5 ${activeTab === key ? color : ''}`} aria-hidden="true" />
             {t(labelKey)}
-            <span className="text-[11px] font-semibold tabular-nums text-gray-400" aria-label={t('results.countResultsAria', { count: counts[key] })}>
+            <span className="text-[11px] font-semibold tabular-nums text-gray-600" aria-label={t('results.countResultsAria', { count: counts[key] })}>
               {counts[key]}
             </span>
           </button>

@@ -98,7 +98,7 @@ export function SubmitRow({
 
       {hydrationState !== 'ready' && (
         <div className="mt-4 text-center text-[13px]" role={hydrationState === 'failed' ? 'alert' : 'status'}>
-          <p data-testid="hydration-note" className={hydrationState === 'failed' ? 'text-amber-700' : 'text-gray-500'}>
+          <p data-testid="hydration-note" className={hydrationState === 'failed' ? 'text-amber-700' : 'text-gray-600'}>
             {t(hydrationState !== 'failed' ? 'home.actions.profileLoading'
               : signedInElsewhere ? 'home.actions.profileSignedInElsewhere' : 'home.actions.profileLoadFailed')}
           </p>
@@ -124,7 +124,7 @@ export function SubmitRow({
         </div>
       )}
       {!isValid && (
-        <p id="match-validation" className="text-center text-[13px] text-gray-500 mt-4">
+        <p id="match-validation" className="text-center text-[13px] text-gray-600 mt-4">
           {t(missingSeekingTypes ? 'home.validation.seekingRequired' : 'home.validation.requiredFields')}
         </p>
       )}
@@ -133,25 +133,25 @@ export function SubmitRow({
           profile as on a complete one. */}
       <div id="profile-save-status" className="flex justify-center items-center gap-2 mt-4 min-h-5" role="status" aria-live="polite">
         {saveStatus === 'saving' && (
-          <span className="inline-flex items-center gap-1.5 text-[12px] text-gray-400 animate-pulse">
+          <span className="inline-flex items-center gap-1.5 text-[12px] text-gray-600 animate-pulse">
             <Cloud className="w-3.5 h-3.5" aria-hidden="true" />
             {t('common.saving')}
           </span>
         )}
         {saveStatus === 'saved' && (
-          <span className="inline-flex items-center gap-1.5 text-[12px] text-emerald-500">
+          <span className="inline-flex items-center gap-1.5 text-[12px] text-emerald-700">
             <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
             {t('home.actions.profileSaved')}
           </span>
         )}
         {saveStatus === 'device-only' && (
-          <span className="inline-flex items-center gap-1.5 text-[12px] text-gray-500">
+          <span className="inline-flex items-center gap-1.5 text-[12px] text-gray-600">
             <Cloud className="w-3.5 h-3.5" aria-hidden="true" />
             {t('home.actions.profileDeviceOnly')}
           </span>
         )}
         {saveStatus === 'cloud-failed' && (
-          <span className="inline-flex items-center gap-1.5 text-[12px] text-amber-600">
+          <span className="inline-flex items-center gap-1.5 text-[12px] text-amber-700">
             <CloudOff className="w-3.5 h-3.5" aria-hidden="true" />
             {t('home.actions.profileCloudFailed')}
             {showRetry && (
@@ -159,7 +159,7 @@ export function SubmitRow({
                 type="button"
                 data-testid="retry-sync"
                 onClick={onRetrySync}
-                className="underline underline-offset-2 hover:text-amber-700"
+                className="underline underline-offset-2 hover:text-amber-800"
               >
                 {t('home.actions.retrySync')}
               </button>
@@ -167,7 +167,7 @@ export function SubmitRow({
           </span>
         )}
         {saveStatus === 'device-failed' && (
-          <span className="inline-flex items-center gap-1.5 text-[12px] text-amber-600">
+          <span className="inline-flex items-center gap-1.5 text-[12px] text-amber-700">
             <CloudOff className="w-3.5 h-3.5" aria-hidden="true" />
             {t('home.actions.profileDeviceFailed')}
             {showRetry && (
@@ -175,7 +175,7 @@ export function SubmitRow({
                 type="button"
                 data-testid="retry-sync"
                 onClick={onRetrySync}
-                className="underline underline-offset-2 hover:text-amber-700"
+                className="underline underline-offset-2 hover:text-amber-800"
               >
                 {t('home.actions.retrySync')}
               </button>
@@ -183,7 +183,7 @@ export function SubmitRow({
           </span>
         )}
         {saveStatus === 'conflict' && (
-          <span className="inline-flex items-center gap-1.5 text-[12px] text-amber-600">
+          <span className="inline-flex items-center gap-1.5 text-[12px] text-amber-700">
             <CloudOff className="w-3.5 h-3.5" aria-hidden="true" />
             {t('home.actions.profileConflict')}
           </span>
@@ -195,7 +195,7 @@ export function SubmitRow({
             about something that had already been decided". */}
         {saveStatus === 'conflict-stale' && (
           <span
-            className="inline-flex items-center gap-1.5 text-[12px] text-slate-500"
+            className="inline-flex items-center gap-1.5 text-[12px] text-slate-600"
             data-testid="conflict-stale"
           >
             <CloudOff className="w-3.5 h-3.5" aria-hidden="true" />
@@ -205,13 +205,13 @@ export function SubmitRow({
         {/* No Retry: the row is gone, and re-sending would recreate a profile
             the account no longer has. */}
         {saveStatus === 'stale' && (
-          <span className="inline-flex items-center gap-1.5 text-[12px] text-red-600">
+          <span className="inline-flex items-center gap-1.5 text-[12px] text-red-700">
             <CloudOff className="w-3.5 h-3.5" aria-hidden="true" />
             {t('home.actions.profileStale')}
           </span>
         )}
         {saveStatus === 'error' && (
-          <span className="inline-flex items-center gap-1.5 text-[12px] text-red-600">
+          <span className="inline-flex items-center gap-1.5 text-[12px] text-red-700">
             <CloudOff className="w-3.5 h-3.5" aria-hidden="true" />
             {t('home.actions.profileSaveFailed')}
             {showRetry && (
@@ -219,7 +219,7 @@ export function SubmitRow({
                 type="button"
                 data-testid="retry-sync"
                 onClick={onRetrySync}
-                className="underline underline-offset-2 hover:text-red-700"
+                className="underline underline-offset-2 hover:text-red-800"
               >
                 {t('home.actions.retrySync')}
               </button>
@@ -240,13 +240,13 @@ export function SubmitRow({
             off the screen and leave it unanswerable. The two can be true at
             once, and are shown at once. */}
         {hasConflict && (
-          <span className="inline-flex items-center gap-1.5 text-[12px] text-amber-600">
+          <span className="inline-flex items-center gap-1.5 text-[12px] text-amber-700">
             <button
               type="button"
               data-testid="conflict-keep-mine"
               disabled={!refreshReady}
               onClick={() => onKeepMyChanges()}
-              className="underline underline-offset-2 hover:text-amber-700"
+              className="underline underline-offset-2 hover:text-amber-800"
             >
               {t('home.actions.conflictKeepMine')}
             </button>
@@ -255,7 +255,7 @@ export function SubmitRow({
               data-testid="conflict-use-cloud"
               disabled={!refreshReady}
               onClick={() => onUseCloudVersion()}
-              className="underline underline-offset-2 hover:text-amber-700"
+              className="underline underline-offset-2 hover:text-amber-800"
             >
               {t('home.actions.conflictUseCloud')}
             </button>
