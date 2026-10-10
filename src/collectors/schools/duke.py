@@ -1048,7 +1048,7 @@ SCHOOL: dict = {
                     eligibility_majors=["biomedical engineering", "electrical engineering", "mechanical engineering", "materials science", "computer science", "engineering"],
                     preferred_year=["sophomore", "junior", "senior"],
                     international_friendly="no",
-                    deadline_note="NSF REU: US citizens/permanent residents. Applications open late fall, close in January. (Program's ",
+                    deadline_note="NSF REU: US citizens/permanent residents. Applications open late fall, close in January.",
                     keywords=["NSF REU", "engineering", "Grand Challenges", "Pratt", "summer research"],
                 ),
                 program(

@@ -179,7 +179,7 @@ SCHOOL: dict = {
                 "https://mrsec.northwestern.edu/education/undergraduate-opportunities.html",
                 "https://mrsec.northwestern.edu/education/undergraduate-opportunities.html",
                 "https://www.iinano.org/reu/",
-                "https://syntheticbiology.northwestern.edu/education/nsf-undergraduate-research-experience-reu.html",
+                "https://syntheticbiology.northwestern.edu/education/undergraduate-education/synbreu/",
                 "https://clp.northwestern.edu/education/undergraduate-research-programs/summer-scholars/",
                 "https://clp.northwestern.edu/education/undergraduate-research-programs/lambert/",
                 "https://clp.northwestern.edu/education/undergraduate-research-programs/caurs/",
@@ -197,8 +197,7 @@ SCHOOL: dict = {
                     "sophomores, and juniors with Institute for Policy Research faculty on "
                     "policy-relevant social science research. Pays $18.00/hour for up to 350 "
                     "hours (roughly 35 hours/week). International students with an eligible "
-                    "F-1 visa may apply; matching typically happens March-May and housing is "
-                    "not provided.",
+                    "F-1 visa may apply; housing is not provided.",
                     organization="Northwestern University",
                     department="Institute for Policy Research",
                     lab_or_program="SURA Program",
@@ -274,7 +273,7 @@ SCHOOL: dict = {
                     eligibility_majors=["materials science", "chemistry", "physics", "engineering"],
                     preferred_year=["sophomore", "junior", "senior"],
                     international_friendly="no",
-                    deadline_note="Applications due late October for the academic-year cohort (Oct 31 in recent cycle)",
+                    deadline_note="Application deadline October 31, 2026 for the academic-year cohort",
                     keywords=["academic year", "paid internship", "materials", "Northwestern students"],
                 ),
                 program(
@@ -303,7 +302,7 @@ SCHOOL: dict = {
                 program(
                     "nu_synbreu",
                     "Northwestern SynBREU \u2014 Synthetic Biology REU",
-                    "https://syntheticbiology.northwestern.edu/education/nsf-undergraduate-research-experience-reu.html",
+                    "https://syntheticbiology.northwestern.edu/education/undergraduate-education/synbreu/",
                     "NSF-funded 10-week summer program at Northwestern's Center for Synthetic "
                     "Biology supporting ten undergraduates in independent lab or "
                     "computational synthetic biology projects (biosensors, self-healing "
@@ -466,7 +465,7 @@ SCHOOL: dict = {
                 "https://undergradresearch.northwestern.edu/funding/ayurg/",
                 "https://undergradresearch.northwestern.edu/academic-year-urg-advanced/",
                 "https://undergradresearch.northwestern.edu/funding/surg/",
-                "https://undergradresearch.northwestern.edu/summer-urg-advanced/",
+                "https://undergradresearch.northwestern.edu/funding/surg/summer-urg-advanced/",
                 "https://undergradresearch.northwestern.edu/urap/",
                 "https://undergradresearch.northwestern.edu/funding/ctg/",
                 "https://undergradresearch.northwestern.edu/funding/circumnavigator-grant/",
@@ -591,7 +590,7 @@ SCHOOL: dict = {
                 program(
                     "nu_surg_advanced",
                     "Northwestern Summer URG Advanced",
-                    "https://undergradresearch.northwestern.edu/summer-urg-advanced/",
+                    "https://undergradresearch.northwestern.edu/funding/surg/summer-urg-advanced/",
                     "$4,000 stipend for a second eight-week summer of full-time research, for "
                     "students who previously received an OUR Summer URG. Project must align "
                     "with the student's home school; McCormick students who already held both "
@@ -668,7 +667,7 @@ SCHOOL: dict = {
                     compensation="$10,000 travel-study grant",
                     eligibility_majors=["all"],
                     preferred_year=["junior"],
-                    deadline_note="Application due Nov 13 (11:59 PM CST); interviews early January",
+                    deadline_note="Application due Thursday, November 19, 2026 (11:59 PM CST); final interviews in early January",
                     keywords=["global travel", "independent research", "juniors only", "travel grant", "circumnavigation"],
                 ),
                 program(
