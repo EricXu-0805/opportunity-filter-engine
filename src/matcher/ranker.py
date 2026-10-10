@@ -2098,10 +2098,11 @@ def score_eligibility(
         + rem * 0.1875 * skill_score
         + rem * 0.1875 * type_score
     )
-    # A concern from our own listing goes after the firmer eligibility ones
-    # (citizenship, skills, type), and both before readiness and upside: the
-    # compare view, the local summary and the AI prompt read only the first
-    # two or three. sort() is stable, so each group keeps its order.
+    # A concern from our own listing goes after the other lines here
+    # (citizenship, skills, type). The ranker then adds its own eligibility
+    # lines (topic, dates, graduate level), and readiness and upside follow:
+    # the compare view, the local summary and the AI prompt read only the
+    # first two or three. sort() is stable, so each group keeps its order.
     reasons_gap.sort(key=lambda gap: gap.endswith(_NOT_ON_PAGE))
     return total, reasons_fit, reasons_gap
 

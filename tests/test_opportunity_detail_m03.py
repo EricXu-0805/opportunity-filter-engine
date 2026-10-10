@@ -1250,10 +1250,9 @@ class TestCampusGraphContract:
     def test_a_year_list_that_names_no_year_tells_a_graduate_nothing(self):
         # A faculty row carries ["unknown"]: nobody said the opening is for
         # undergraduates, so a graduate student is not told it is.
-        record = dict(self._with_page(self._STATES), source_type="faculty_research")
-        record["eligibility"]["preferred_year"] = ["unknown"]
+        faculty = _listing(source_type="faculty_research", eligibility={"preferred_year": ["unknown"]})
         for year in ("graduate", "PhD", "Masters"):
-            gaps = score_eligibility({"year": year, "major": "History", "hard_skills": []}, _served(record)[1])[2]
+            gaps = score_eligibility({"year": year, "major": "History", "hard_skills": []}, faculty)[2]
             assert not any("undergraduates" in text for text in gaps), (year, gaps)
         # A posting's list that names an undergraduate year still says so.
         posting = dict(copy.deepcopy(_served(self._configured())[1]), source="example_postings")
