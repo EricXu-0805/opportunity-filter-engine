@@ -1161,6 +1161,14 @@ class TestCampusGraphContract:
         assert configured_fact(canonical, "majors").quote == "Open to students of all majors."
         _, _, gaps = score_eligibility({"year": "junior", "major": "History", "hard_skills": []}, canonical)
         assert not any(text.startswith("Prefers") for text in gaps)
+        # Beside majors it names, the answer is no preference either: the page
+        # still welcomes every major.
+        record = self._with_page("Open to students in Biology or any department.")
+        record["eligibility"]["majors"] = ["Biology", "any department"]
+        _, canonical = _served(record)
+        assert configured_fact(canonical, "majors").state == FACT_STATED
+        _, _, gaps = score_eligibility({"year": "junior", "major": "History", "hard_skills": []}, canonical)
+        assert not any(text.startswith("Prefers") for text in gaps), gaps
 
     # The owner (2026-10-10): a configured class year or major list the page
     # text does not state is a concern where a stated one would be, in words
@@ -1198,16 +1206,20 @@ class TestCampusGraphContract:
         assert score_eligibility(history, ours)[2] == [self._HEDGED_MAJORS]
         assert score_eligibility(history, stated)[2] == ["Prefers Biology"]
         # The lists that earn no "Prefers" earn no hedged line either: one
-        # another producer derived, the all-majors answer, an empty list, and
-        # a faculty member's department.
+        # another producer derived, the all-majors answer (alone, or beside
+        # majors it names, as Duke's ["all", "ethics", "philosophy", "public
+        # policy"] does), an empty list, and a faculty member's department.
         derived = self._configured()
         stamp_inferred(derived["metadata"], "eligibility.majors", "rule:enricher")
-        all_majors = self._configured()
-        all_majors["eligibility"]["majors"] = ["all"]
+        all_majors = []
+        for majors in (["all"], ["all", "Biology"], ["Biology", "All majors"], ["Biology", "any department"]):
+            record = self._configured()
+            record["eligibility"]["majors"] = majors
+            all_majors.append(record)
         empty = self._configured()
         empty["eligibility"]["majors"] = []
         department = dict(self._configured(), source_type="faculty_research")
-        for record in (derived, all_majors, empty, department):
+        for record in (derived, *all_majors, empty, department):
             gaps = score_eligibility(history, _served(record)[1])[2]
             assert not any(text.startswith(("Prefers", "Our listing suggests")) for text in gaps), gaps
 

@@ -1906,7 +1906,10 @@ def score_eligibility(
         and not is_inferred(opportunity, "eligibility.majors")
         # A campus program spec writes ["all"] for "open to every major", and
         # a page that says so makes it stated: "Prefers all" names nothing.
-        and not is_all_majors_answer(elig.get("majors"))
+        # Beside majors it names (Duke's ["all", "ethics", "philosophy",
+        # "public policy"]) "all" still welcomes every major, so a student in
+        # none of those has missed nothing either.
+        and not any(is_all_majors_answer([major]) for major in elig["majors"])
     ):
         # Only a REAL preference list earns a gap: an open posting (majors=[])
         # scores 30 too, and previously emitted the nonsensical gap "Prefers ".
