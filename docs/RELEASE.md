@@ -199,6 +199,19 @@ Record the observed row values in the evidence file. A drill that was not run
 is `UNVERIFIED`, not `PASS` — the design being correct is not evidence that
 the switch is armed.
 
+### The operator alert drill
+
+Each scheduled workflow's failure alert ends in `|| true`, so no run shows
+whether the mail arrived. `.github/workflows/alert-drill.yml` sends one alert
+down the same path (the `RESEND_API_KEY` and `OPERATOR_EMAIL` secrets, the
+`RESEND_FROM_EMAIL` sender, Resend's `/emails` API) with `[DRILL]` in the
+subject and the text. It fails when either secret is missing or Resend answers
+outside 2xx. It has no schedule: start it from the Actions tab (alert-drill,
+Run workflow). Resend accepting the mail is not delivery, so the drill counts
+only once the mail is in the `OPERATOR_EMAIL` inbox. While `render.yaml` says
+`checksPass`, a failed drill on main holds that commit's backend deploy like
+any other red check.
+
 ### A scheduled workflow can hold the backend deploy
 
 `render.yaml` sets `autoDeployTrigger: checksPass`, and Render waits for
@@ -269,11 +282,11 @@ A push to main between steps 2 and 3 reaches Render by both paths and builds
 twice; that costs one build.
 
 After the switch, a check that branch protection does not require (a refresh
-dispatched on main, the Migrations job) no longer holds a backend deploy. A
-non-2xx answer from the hook fails the job with the status code and is not
-retried; re-run the job from the Actions page once the cause is fixed. A 404
-usually means the hook was regenerated in Render and the secret still holds
-the old URL.
+dispatched on main, the alert drill, the Migrations job) no longer holds a
+backend deploy. A non-2xx answer from the hook fails the job with the status
+code and is not retried; re-run the job from the Actions page once the cause
+is fixed. A 404 usually means the hook was regenerated in Render and the
+secret still holds the old URL.
 
 To switch back, delete the secret and set `autoDeployTrigger: checksPass` in
 `render.yaml` again, and turn auto-deploy back on in the dashboard if Render
@@ -418,9 +431,9 @@ Standard plan's 2 GB, so a second worker would not fit.
 | Variable | Required | When missing |
 |---|---|---|
 | `BACKEND_URL`, `CRON_SECRET` | required | The cron workflows fail their "Require the secrets" step. The release gate does not observe the backend. |
-| `ADMIN_TOKEN`, `RESEND_API_KEY` | required | `daily-reminders.yml` fails its secrets step. |
+| `ADMIN_TOKEN`, `RESEND_API_KEY` | required | `daily-reminders.yml` fails its secrets step. Without `RESEND_API_KEY`, `alert-drill.yml` fails too. |
 | `REFRESH_PAT` | required | `refresh-data.yml` cannot open its data PR and fails. |
 | `FRONTEND_URL` | optional | Alert emails lose their dashboard link. The release gate does not observe the frontend. |
-| `OPERATOR_EMAIL` | optional | No alert or digest email is sent. The `daily-reminders.yml` alert step prints the alerts to the job log; the other alert steps log that they cannot alert and pass. `snapshot-reminder.yml` fails when a snapshot refresh is due. |
+| `OPERATOR_EMAIL` | optional | No alert or digest email is sent. The `daily-reminders.yml` alert step prints the alerts to the job log; the other alert steps log that they cannot alert and pass. `snapshot-reminder.yml` fails when a snapshot refresh is due, and `alert-drill.yml` fails. |
 | `RENDER_DEPLOY_HOOK_URL` | optional | The `Deploy backend (Render hook)` job in `ci.yml` logs a notice, deploys nothing and passes, and Render's own auto-deploy (`render.yaml` `autoDeployTrigger`) decides. Once the switch-over in §3 sets that to `off`, nothing deploys the backend without this secret. |
 | `RESEND_FROM_EMAIL` | optional | A repository variable (`vars.`), not a secret. Workflow emails are sent from Resend's test sender, `JoinALab <onboarding@resend.dev>`. |
