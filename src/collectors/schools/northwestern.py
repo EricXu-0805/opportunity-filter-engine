@@ -237,7 +237,7 @@ SCHOOL: dict = {
                     "nu_mrsec_reu",
                     "Northwestern MRSEC Materials Science REU",
                     "https://mrsec.northwestern.edu/education/undergraduate-opportunities.html",
-                    "Nine-week summer REU (June 15 - Aug 14, 2026) at Northwestern's "
+                    "Nine-week summer REU (June 14 - Aug 13, 2027) at Northwestern's "
                     "Materials Research Science and Engineering Center, spanning 30+ faculty "
                     "across 7 departments working on nanoscale and bioprogrammable materials. "
                     "Participants receive $6,000 plus on-campus housing and a travel "
