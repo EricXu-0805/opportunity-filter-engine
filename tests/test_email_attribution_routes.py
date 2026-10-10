@@ -331,8 +331,8 @@ def test_unsafe_parallel_candidate_cannot_win_by_judge_choice(client, monkeypatc
     assert "judge" not in calls  # Different deterministic scores, no tie.
 
 
-# The drafting and claim checks are CPU work; they run on the request lane (blocking.run_request_work),
-# off the event loop, on every path that runs them.
+# The drafting and claim checks run on the request lane (blocking.run_request_work) on every path
+# that runs them.
 def _lane_spy(monkeypatch):
     import asyncio
     import threading

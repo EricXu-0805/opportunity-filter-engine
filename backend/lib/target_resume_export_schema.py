@@ -25,7 +25,7 @@ class ExportError(ValueError):
     """Only stable public codes, never private text or underlying errors."""
 
 
-# A character XML 1.0 cannot hold, found by the regex engine's C loop rather than by a Python loop.
+# A character XML 1.0 cannot hold.
 _NOT_XML = re.compile('[^\t\n\r\x20-\ud7ff\ue000-\ufffd\U00010000-\U0010ffff]')
 
 

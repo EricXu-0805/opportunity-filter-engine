@@ -57,7 +57,7 @@ def encoded(value: Any) -> bytes:
         raise ValueError("Invalid JSON") from None
 
 
-# A lone surrogate, found by the regex engine's C loop rather than by a Python loop over every character.
+# A lone surrogate.
 _SURROGATE = re.compile("[\ud800-\udfff]")
 
 

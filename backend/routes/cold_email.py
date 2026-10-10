@@ -1958,8 +1958,7 @@ async def generate_email(
     profile_dict = request.profile.model_dump()
     if request.engine != "ai":
         # The template path contains no provider I/O and should not wait behind
-        # a saturated AI pool. Its drafting and claim checks are CPU work, so they
-        # run on the request lane, off the event loop.
+        # a saturated AI pool. Its drafting and claim checks run on the request lane.
         response = await run_request_work(_run_engine, request, opp, profile_dict, authed)
         return _bound_email_response(response, request, target, pipeline_version, authed)
     try:

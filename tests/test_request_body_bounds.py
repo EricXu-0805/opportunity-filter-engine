@@ -490,9 +490,9 @@ def test_a_json_body_is_refused_exactly_when_it_is_past_a_bound():
                 assert refused == past, (text, max_separators, max_containers)
 
 
-def test_a_body_with_more_strings_than_its_bounds_hold_is_refused_before_its_strings_are_set_aside(monkeypatch):
-    """A body within both bounds holds at most 2 * (separators + containers) + 1 strings. One past a
-    bound anywhere has its strings set aside only when it holds no more than that."""
+def test_a_body_past_a_bound_is_refused_without_reading_its_strings(monkeypatch):
+    """A body within both bounds holds at most 2 * (separators + containers) + 1 strings, so one that
+    holds more is refused without reading them."""
     from fastapi.exceptions import RequestValidationError
 
     seen, real = [], request_body._unescaped
@@ -852,8 +852,8 @@ def test_a_body_taken_on_the_lane_is_read_and_refused_as_a_body_parameter_is(met
 
 
 def test_the_per_character_checks_read_every_code_point_as_before():
-    """The private import's surrogate check and the export's XML check run in the regex engine; they
-    accept and refuse exactly the code points the per-character loops they replace did."""
+    """The private import's surrogate check and the export's XML check accept and refuse exactly the
+    code points they did before."""
     from backend.lib import private_import_targets_schema as private
     from backend.lib import target_resume_export_schema as export
 
