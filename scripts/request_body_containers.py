@@ -688,16 +688,18 @@ JSON_ITEMS = (0, "x", None, {}, [])
 WRONG_ITEM = 1.5e300
 
 
-def validation_bodies(app=None):
+def validation_bodies(app=None, at_most: int | None = None):
     """(method, template, path, name, body) for every JSON route: its largest valid body, every list cut
     to its first item, with one value, list, typed map or closed model of its request schema filled:
     a value with a list of numbers or an object, whatever type the schema gives it; a list or typed
     map with items of each JSON type (and, in a list of closed models, items of undeclared keys); a
     closed model with undeclared keys. Each is filled in one copy of the list or object that holds it
     and in as many copies as each list on its path allows, with as many items or keys as the route's
-    bounds and body limit admit, and with as many as its field allows."""
+    bounds and body limit admit, and with as many as its field allows. With `at_most`, a fill holds
+    no more than that many items or keys in all its copies."""
     if app is None:
         from backend.main import app
+    ceiling = () if at_most is None else (at_most,)
     routes = {(method, path): route for method, path, route in json_routes(app)}
     for method, template, path, largest in largest_bodies():
         base = _first_items(largest)
@@ -730,7 +732,7 @@ def validation_bodies(app=None):
                     lists, commas, room = bounds.containers - lists - 8, bounds.separators - commas - 8, limit - size
                     numerals = bounds.digits - numerals - 8
                     if shape == "keys":
-                        many = min(commas, numerals, room // 20) // times if count is None else count
+                        many = min(commas, numerals, room // 20, *ceiling) // times if count is None else count
                         if many <= 0:
                             continue
                         keys = {f"undeclared{i}": 0 for i in range(many)}
@@ -741,7 +743,7 @@ def validation_bodies(app=None):
                         per, figures = containers(item), digits(item)
                         many = min(commas // (separators(item) + 1), lists // per if per else commas,
                                    numerals // figures if figures else commas,
-                                   room // (len(item) + (1 if shape == "list" else 12))) // times
+                                   room // (len(item) + (1 if shape == "list" else 12)), *ceiling) // times
                         many = many if count is None else min(many, count)
                         if many <= 0:
                             continue

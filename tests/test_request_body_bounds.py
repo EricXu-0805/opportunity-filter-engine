@@ -9,7 +9,10 @@ import asyncio
 import collections
 import contextlib
 import functools
+import importlib
+import itertools
 import json
+import pkgutil
 
 import pytest
 from fastapi.testclient import TestClient
@@ -44,6 +47,20 @@ def on_the_event_loop() -> bool:
 TAILOR = {"profile": {"name": "Sample Student"}, "opportunity_id": "no-such-target", "locale": "en"}
 SIGNATURE = "v1:sha256:" + "0" * 64
 FULL = {"version": 1, "request_id": "probe", "locale": "en", "document_signature": SIGNATURE}
+
+
+@pytest.fixture(autouse=True)
+def _empty_corpus(monkeypatch):
+    """Every route module answers from an empty corpus, as scripts/worst_inputs_lag.py runs the routes:
+    no test here depends on a corpus record."""
+    from backend import routes
+
+    for info in pkgutil.iter_modules(routes.__path__):
+        module = importlib.import_module(f"backend.routes.{info.name}")
+        for name, empty in (("load_opportunities_by_id", dict), ("load_opportunities", list),
+                            ("load_opportunities_generation", lambda: ([], "probe"))):
+            if hasattr(module, name):
+                monkeypatch.setattr(module, name, empty)
 
 
 @pytest.fixture
@@ -644,6 +661,7 @@ def test_every_json_route_declares_bounds_its_route_enforces(method, path, json_
     assert isinstance(json_route, request_body.BoundedJSONRoute) or path in largest.FULL_TARGET
 
 
+@functools.cache
 def _concrete():
     return {(method, path): concrete for method, path, concrete, _ in largest.largest_bodies()}
 
@@ -917,14 +935,22 @@ def test_the_per_character_checks_read_every_code_point_as_before():
 # on the routes that read their body on the request lane (LANE_ROUTES and the full-target routes).
 ROUTE_ERRORS = 1_000
 LANE_ERRORS = 5_000
+# The most items or keys largest.validation_bodies puts in a fill, in all its copies: a model that builds
+# an error for each of them is past either cap, and these tests stay within the CI time limit.
+FILL = 2 * LANE_ERRORS
+# largest.validation_bodies, route by route: a test that asks for one route's bodies builds them, and
+# those of the routes the generator makes before it, once for the module.
+_BUILT: dict[tuple[str, str], list] = {}
+_ROUTE_BODIES = itertools.groupby(largest.validation_bodies(app, at_most=FILL), key=lambda row: row[:2])
 
 
-@functools.cache
-def _validation_bodies() -> dict:
-    bodies = collections.defaultdict(list)
-    for method, path, concrete, name, body in largest.validation_bodies(app):
-        bodies[method, path].append((name, concrete, body))
-    return bodies
+def _validation_bodies(method: str, path: str) -> list:
+    if (method, path) not in _BUILT:
+        for route, rows in _ROUTE_BODIES:
+            _BUILT[route] = [(name, concrete, body) for _, _, concrete, name, body in rows]
+            if route == (method, path):
+                break
+    return _BUILT.get((method, path), [])
 
 
 def _on_the_lane(path, json_route) -> bool:
@@ -934,16 +960,20 @@ def _on_the_lane(path, json_route) -> bool:
 @pytest.mark.parametrize(("method", "path", "json_route"), JSON_ROUTES, ids=ROUTE_IDS)
 def test_validation_of_a_body_within_its_routes_bounds_stays_bounded(method, path, json_route):
     """Each value, list, typed map and closed model of a route's request schema, filled within the
-    route's bounds and body limit (largest.validation_bodies: a value with a list of numbers or an
-    object, a list or typed map with items of every JSON type, a closed model with undeclared keys), in
-    one copy and in as many copies as the lists that hold it allow, makes validation build at most
-    ROUTE_ERRORS errors, or LANE_ERRORS on a route that reads its body on the request lane."""
+    route's bounds and body limit with up to FILL items or keys (largest.validation_bodies: a value
+    with a list of numbers or an object, a list or typed map with items of every JSON type, a closed
+    model with undeclared keys), in one copy and in as many copies as the lists that hold it allow,
+    makes validation build at most ROUTE_ERRORS errors, or LANE_ERRORS on a route that reads its body
+    on the request lane."""
     bounds = request_body.declared_bounds(json_route)
     cap = LANE_ERRORS if _on_the_lane(path, json_route) else ROUTE_ERRORS
-    bodies = _validation_bodies()[method, path]
+    bodies = _validation_bodies(method, path)
     model = largest.request_model(json_route)
-    sites = {".".join(map(str, site)) or "(body)" for _, site, _ in largest.schema_sites(getattr(model, "_type", model))}
+    schema = list(largest.schema_sites(getattr(model, "_type", model)))
+    sites = {".".join(map(str, site)) or "(body)" for _, site, _ in schema}
     assert sites <= {name.split(": ")[0] for name, _, _ in bodies}, (method, path)
+    # A fill of FILL items or keys reaches every copy of a list that holds at most FILL.
+    assert all(detail[0] is None or detail[0] <= FILL for kind, _, detail in schema if kind == "list"), (method, path)
     for name, _, body in bodies:
         content = json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode()
         request_body.check_body_bounds(content, bounds.separators, bounds.containers, bounds.digits)
@@ -1064,21 +1094,21 @@ def test_validation_of_a_body_within_its_routes_bounds_stays_bounded_through_the
     monkeypatch.setattr(exceptions.RequestValidationError, "__init__", recorded)
     monkeypatch.setattr(storage, "caller_verified_before_parsing", verified)
     monkeypatch.setattr(targets, "caller_verified_before_parsing", verified)
-    client, sent = TestClient(app, raise_server_exceptions=False), 0
+    client, sent, concrete = TestClient(app, raise_server_exceptions=False), 0, _concrete()
     for method, path, json_route in JSON_ROUTES:
         if _on_the_lane(path, json_route):
             continue
         chosen = {}
-        for name, _, body in _validation_bodies()[method, path]:
+        for name, _, body in _validation_bodies(method, path):
             site, content = name.split(": ")[0], json.dumps(body, separators=(",", ":")).encode()
             chosen[site] = max(chosen.get(site, (0, "", b"")), (len(content), name, content))
-        most = max(_validation_bodies()[method, path], default=None,
+        most = max(_validation_bodies(method, path), default=None,
                    key=lambda row: largest.validation_errors(json_route, row[2]))
         if most:
             chosen["most"] = (0, most[0], json.dumps(most[2], separators=(",", ":")).encode())
         for _, name, content in chosen.values():
             sizes.clear()
-            response = largest.send(client, method, _concrete()[method, path], content)
+            response = largest.send(client, method, concrete[method, path], content)
             assert response.status_code != 500, (method, path, name)
             assert max(sizes, default=0) <= ROUTE_ERRORS, (method, path, name, sizes)
             sent += 1
@@ -1104,7 +1134,7 @@ def test_every_json_route_answers_an_invalid_body_without_the_values_it_sent(mon
     client, refused = TestClient(app, raise_server_exceptions=False), collections.Counter()
     sent = json.dumps(largest.WRONG_ITEM).encode()
     for method, path, _ in JSON_ROUTES:
-        for name, concrete, body in _validation_bodies()[method, path]:
+        for name, concrete, body in _validation_bodies(method, path):
             if ": a list of " not in name or " copies of " in name:
                 continue
             content = json.dumps(body, separators=(",", ":")).encode()
