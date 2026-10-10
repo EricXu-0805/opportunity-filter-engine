@@ -2105,7 +2105,7 @@ export default function ColdEmailModal({
   }
 
   function startCompose(provider: ComposeProvider) {
-    if (composeRef.current || action.busy) return;
+    if (composeRef.current || action.busy || aiLoading) return;
     if (!sourceReadyRef.current || contextDirtyRef.current || !paperReadingCurrent || profileChangedRef.current
       || profileChanged || profileRegenerating || targetVersionError || (privateMode ? null : contactEmailBlock(target, subject, { subjectFormatConfirmed }))
       || privateBlocked || !privateReviewed || (provider !== 'copy' && !validContactRecipient(recipient.trim()))) {
@@ -2223,7 +2223,7 @@ export default function ColdEmailModal({
   const providerActions = <>
     <button
       type="button"
-      disabled={!sourceReady || !paperReadingCurrent || !!(privateMode ? null : contactEmailBlock(target, subject, { subjectFormatConfirmed })) || action.busy || composeBusy || contextDirty || profileChanged || profileRegenerating || !!targetVersionError || privateBlocked || !privateReviewed || !validContactRecipient(recipient.trim())}
+      disabled={!sourceReady || !paperReadingCurrent || !!(privateMode ? null : contactEmailBlock(target, subject, { subjectFormatConfirmed })) || action.busy || aiLoading || composeBusy || contextDirty || profileChanged || profileRegenerating || !!targetVersionError || privateBlocked || !privateReviewed || !validContactRecipient(recipient.trim())}
       onClick={() => startCompose('gmail')}
       className="inline-flex items-center justify-center px-3 py-2.5 text-[11px] font-semibold text-indigo-100 bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       title={t('coldEmail.openGmailTitle')}
@@ -2232,7 +2232,7 @@ export default function ColdEmailModal({
     </button>
     <button
       type="button"
-      disabled={!sourceReady || !paperReadingCurrent || !!(privateMode ? null : contactEmailBlock(target, subject, { subjectFormatConfirmed })) || action.busy || composeBusy || contextDirty || profileChanged || profileRegenerating || !!targetVersionError || privateBlocked || !privateReviewed || !validContactRecipient(recipient.trim())}
+      disabled={!sourceReady || !paperReadingCurrent || !!(privateMode ? null : contactEmailBlock(target, subject, { subjectFormatConfirmed })) || action.busy || aiLoading || composeBusy || contextDirty || profileChanged || profileRegenerating || !!targetVersionError || privateBlocked || !privateReviewed || !validContactRecipient(recipient.trim())}
       onClick={() => startCompose('outlook')}
       className="inline-flex items-center justify-center px-3 py-2.5 text-[11px] font-semibold text-indigo-100 bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       title={t('coldEmail.openOutlookTitle')}
@@ -2323,7 +2323,7 @@ export default function ColdEmailModal({
       {versionError && <div role="alert" className="shrink-0 border-b border-amber-200 bg-amber-50 px-5 py-2 text-sm text-amber-950">{versionError}</div>}
       {action.error && <div role="alert" className="shrink-0 border-b border-amber-200 bg-amber-50 px-5 py-2 text-sm text-amber-950">
         {locale === 'zh' ? (targetRefresh ? '本次操作未执行。草稿和请求仍保留，请核对资料及机会后重试。' : '本次操作未执行。草稿和请求仍保留，请核对资料后重试。') : (targetRefresh ? 'This action did not run. Your draft and request are kept. Review your profile and opportunity and try again.' : 'This action did not run. Your draft and request are kept. Review your profile and try again.')}
-        {variants.length === 0 && !profileChanged && <button type="button" className="ml-2 font-semibold underline" disabled={action.busy || !profileAvailable}
+        {variants.length === 0 && !profileChanged && <button type="button" className="ml-2 font-semibold underline" disabled={action.busy || aiLoading || !profileAvailable}
           onClick={() => action.request({ kind: 'variants' })}>{t('coldEmail.tryAgain')}</button>}
       </div>}
 
@@ -2333,7 +2333,7 @@ export default function ColdEmailModal({
           <button type="button" disabled={action.busy || profileRegenerating || !(targetRefresh || privateTargetRefresh) || (targetRefresh || privateTargetRefresh)?.status === 'checking'}
             className="mt-1 font-semibold underline disabled:opacity-50"
             onClick={() => { targetCheckOnlyRef.current = true; void (privateTargetRefresh ?? targetRefresh)?.refresh().catch(() => false); }}>{t('coldEmail.targetVersionRetry')}</button>
-          {!profileChanged && <button type="button" disabled={action.busy || profileRegenerating || !sourceReady}
+          {!profileChanged && <button type="button" disabled={action.busy || aiLoading || profileRegenerating || !sourceReady}
             className="ml-3 mt-1 font-semibold underline disabled:opacity-50"
             onClick={() => action.request({ kind: 'variants', keepEditor: hasEditor })}>
             {t(hasEditor ? 'coldEmail.regenerateFromProfile' : 'coldEmail.tryAgain')}</button>}
@@ -2377,7 +2377,7 @@ export default function ColdEmailModal({
                   {t('coldEmail.experienceReviewCta')}
                 </Link>
               )}
-              <button type="button" onClick={() => action.request({ kind: 'variants' })} className="text-sm text-indigo-600 underline hover:text-indigo-700">{t('coldEmail.tryAgain')}</button>
+              <button type="button" disabled={aiLoading} onClick={() => action.request({ kind: 'variants' })} className="text-sm text-indigo-600 underline hover:text-indigo-700 disabled:opacity-50">{t('coldEmail.tryAgain')}</button>
             </div>
           </div>
         )}
@@ -2395,7 +2395,7 @@ export default function ColdEmailModal({
                   {profileRegenerateError === 'name-required' && <Link href="/" onClick={leaveForProfile}
                     className="mt-1 inline-block font-medium underline">{t('coldEmail.nameRequiredCta')}</Link>}
                   <button type="button" className="mt-2 rounded-lg border border-amber-300 bg-white px-3 py-2 font-medium disabled:opacity-50"
-                    disabled={versionBusy || contextDirty || !sourceReady || action.busy || profileRegenerating} onClick={() => action.request({ kind: 'variants', keepEditor: true })}>
+                    disabled={versionBusy || contextDirty || !sourceReady || action.busy || aiLoading || profileRegenerating} onClick={() => action.request({ kind: 'variants', keepEditor: true })}>
                     {profileRegenerating ? t('coldEmail.generating') : t('coldEmail.regenerateFromProfile')}
                   </button>
                 </div>}
@@ -2757,7 +2757,7 @@ export default function ColdEmailModal({
                         ? editProposal.afterBody.slice(editProposal.selection.start_utf16, editProposal.afterBody.length - (editProposal.base.body.length - editProposal.selection.end_utf16)) || (locale === 'zh' ? '（删除所选内容）' : '(Delete selected text)')
                         : editProposal.afterBody}</p></div>
                     <div className="flex flex-wrap gap-2">
-                      <button type="button" disabled={versionBusy || !sourceReady || action.busy || refining} onClick={() => action.request({ kind: 'accept-edit', id: editProposal.id })}
+                      <button type="button" disabled={versionBusy || !sourceReady || action.busy || aiLoading || refining} onClick={() => action.request({ kind: 'accept-edit', id: editProposal.id })}
                         className="rounded-lg bg-indigo-600 px-3 py-2 font-medium text-white disabled:opacity-40">{locale === 'zh' ? '接受建议' : 'Accept suggestion'}</button>
                       <button type="button" onClick={() => { action.cancel(); discardProposal(); }} className="rounded-lg border border-gray-300 px-3 py-2 text-gray-800">{locale === 'zh' ? '拒绝建议' : 'Reject suggestion'}</button>
                     </div>
@@ -2963,7 +2963,7 @@ export default function ColdEmailModal({
             <button
               type="button"
               onClick={() => startCompose('copy')}
-              disabled={composeBusy || action.busy}
+              disabled={composeBusy || action.busy || aiLoading}
               className={`inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors ${wide ? '' : 'flex-1 sm:flex-none'}`}
             >
               {copied ? (
@@ -2985,7 +2985,7 @@ export default function ColdEmailModal({
             >
               <button
                 type="button"
-                disabled={!sourceReady || !paperReadingCurrent || !!(privateMode ? null : contactEmailBlock(target, subject, { subjectFormatConfirmed })) || action.busy || composeBusy || contextDirty || profileChanged || profileRegenerating || !!targetVersionError || privateBlocked || !privateReviewed || !validContactRecipient(recipient.trim())}
+                disabled={!sourceReady || !paperReadingCurrent || !!(privateMode ? null : contactEmailBlock(target, subject, { subjectFormatConfirmed })) || action.busy || aiLoading || composeBusy || contextDirty || profileChanged || profileRegenerating || !!targetVersionError || privateBlocked || !privateReviewed || !validContactRecipient(recipient.trim())}
                 onClick={() => startCompose('default')}
                 className={`col-span-2 inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${wide ? '' : 'flex-1'}`}
               >

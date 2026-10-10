@@ -312,6 +312,22 @@ describe('recoverable email versions', () => {
     expect(within(history()).getAllByRole('button', { name: 'Compare and restore' })[0]).toBeEnabled();
     expect(api.stream).toHaveBeenCalledTimes(1);
   });
+  it('copying, sending and accepting wait while Generate runs, so the paid draft is kept', async () => {
+    let release!: (value: unknown) => void;
+    api.stream.mockImplementation(() => new Promise(resolve => { release = resolve; }));
+    await open(); await saved();
+    await waitFor(() => expect(generate()).toBeEnabled());
+    fireEvent.click(generate()); await waitFor(() => expect(api.stream).toHaveBeenCalledTimes(1));
+    const copy = screen.getByRole('button', { name: 'coldEmail.copy' });
+    const sends = screen.queryAllByRole('button', { name: /^coldEmail\.(openInEmail|gmail|outlook)$/ });
+    for (const control of [copy, ...sends]) expect(control).toBeDisabled();
+    fireEvent.click(copy);
+    await act(async () => { release({ ...draft, subject: 'Paid subject', body: 'Paid AI body', method: 'ai' }); });
+    await waitFor(() => expect(bodyField()).toHaveValue('Paid AI body')); await saved();
+    expect(screen.getByText('coldEmail.aiGenerated')).toBeInTheDocument();
+    expect(api.stream).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: 'coldEmail.copy' })).toBeEnabled();
+  });
   it('comparing and restoring also wait while Generate checks the profile, so the paid draft is kept', async () => {
     const receipt = () => ({ checkId: 1, owner: captureOwnerToken(), revision: 1, source: 'cloud' as const, profile });
     const checkForAction = vi.fn(() => Promise.resolve(receipt()));
