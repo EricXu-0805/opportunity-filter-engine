@@ -245,11 +245,13 @@ jobs:
           retention-days: 14
 
   # Deploys the backend through a Render deploy hook once the checks branch
-  # protection requires have passed. render.yaml's `autoDeployTrigger:
-  # checksPass` waits for EVERY check run on the commit and has no notion of
-  # "required", so an unrelated run on main (a red advisory, a refresh
-  # dispatched on main) has held backend deploys, once for four days
-  # (docs/RELEASE.md §3). This job waits only for the required ones.
+  # protection requires, and the Migrations check, have passed. render.yaml's
+  # `autoDeployTrigger: checksPass` waits for EVERY check run on the commit
+  # and has no notion of "required", so an unrelated run on main (a red
+  # advisory, a refresh dispatched on main) has held backend deploys, once
+  # for four days (docs/RELEASE.md §3). This job waits only for these four.
+  # Branch protection does not require Migrations, so a commit can reach main
+  # with it red; waiting for it keeps that commit off the live backend.
   #
   # Until RENDER_DEPLOY_HOOK_URL is set it deploys nothing and succeeds, so
   # its own check can never hold today's checksPass deploy. The switch-over,
@@ -257,7 +259,7 @@ jobs:
   # docs/RELEASE.md.
   deploy-backend:
     name: Deploy backend (Render hook)
-    needs: [backend, frontend, e2e]
+    needs: [backend, frontend, migrations, e2e]
     # A push to main only: never a pull request, a manual dispatch or a
     # schedule. There is no status function here, so GitHub applies
     # success(): a needed job that failed, was cancelled or was skipped skips
