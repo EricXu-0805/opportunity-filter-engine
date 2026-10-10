@@ -10,6 +10,7 @@ from __future__ import annotations
 import copy
 import inspect
 import json
+import time
 
 import pytest
 from bs4 import BeautifulSoup
@@ -700,6 +701,52 @@ class TestUiucSroContract:
         # Each value names a stipend only to deny it; whether that is "no" or
         # unknown, it is not pay.
         assert sro._paid_from_compensation(compensation) != "yes"
+
+    @pytest.mark.parametrize("compensation", [
+        "$5,000 stipend; no housing", "$600/week, not including housing", "Paid, without housing",
+        "Stipend: $3,000. Housing not provided.", "$15.60/hour, without housing",
+        "$4,000 stipend. No housing or meals.", "$5,000 stipend; room and board not provided",
+    ])
+    def test_a_denied_benefit_beside_named_pay_reads_paid(self, compensation):
+        assert sro._paid_from_compensation(compensation) == "yes"
+
+    @pytest.mark.parametrize("compensation", [
+        # The negation may run on through a list or past a full stop, the money
+        # may be for something else, or the rest denies pay in other words:
+        # none of these is read as paid.
+        "No housing", "no housing, meals, or stipend", "No housing; $500 travel", "$5,000, no housing",
+        "Room and board not included, $400", "No housing, $500", "$500 stipend; no housing or stipend",
+        "Program fee: $500/week, housing not included", "Cost: $150 per week, housing not included",
+        "Tuition must be paid in full; housing not included", "Housing: $800/month, no meals",
+        "Housing and meals paid; no travel", "$500 travel stipend; no housing",
+        "Housing is not provided. Neither is a stipend.", "No housing or meals; or stipend",
+        "No housing. We don't offer a stipend.", "Stipend: N/A; no housing", "Stipend: $0; no housing",
+        "Excluding travel and stipend; no housing",
+        # Only the last comma clause is set aside: an earlier one may open a
+        # list the negation runs through.
+        "Room and board not included, $400 stipend", "No housing, $500 stipend",
+    ])
+    def test_a_denied_benefit_without_a_plain_pay_statement_stays_unknown(self, compensation):
+        assert sro._paid_from_compensation(compensation) == "unknown"
+
+    def test_a_field_that_only_denies_a_benefit_still_blocks_the_description_scan(self, monkeypatch):
+        record = _sro_fetch(monkeypatch, _sro_detail_html(
+            compensation="No housing", body="<p>Participants receive a $6,000 stipend.</p>",
+        ))
+        assert record["paid"] == "unknown"
+        assert inferred_method(record, "paid") is None
+
+    @pytest.mark.parametrize("value", [
+        # "room and board" once read two ways, which doubled the work per item.
+        "$5 stipend; no " + " and ".join(["room and board"] * 24) + " and x",
+        # A looser amount or "Stipend:" pattern goes quadratic on these.
+        "Stipend $5" + "," * 50000 + "x; no housing",
+        "Stipend" + " " * 50000 + "x; no housing",
+    ])
+    def test_a_long_field_is_read_in_linear_time(self, value):
+        started = time.perf_counter()
+        assert sro._paid_from_compensation(value) == "unknown"
+        assert time.perf_counter() - started < 0.5
 
     def test_page_without_timing_or_duration_has_no_duration(self, monkeypatch):
         record = _sro_fetch(monkeypatch, _sro_detail_html(timing="", duration=""),
