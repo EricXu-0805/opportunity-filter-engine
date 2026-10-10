@@ -389,7 +389,10 @@ the failure named in its last column.
 
 `WEB_CONCURRENCY` is not read: `render.yaml` starts uvicorn with `--workers 1`,
 which takes precedence over it. One worker holds about 1.3-1.5 GB of the
-Standard plan's 2 GB, so a second worker would not fit.
+Standard plan's 2 GB, so a second worker would not fit. Render runs the start
+command its dashboard shows, so after a change to `startCommand` check Settings,
+Start Command, and set it there by hand if the service is not synced from the
+Blueprint.
 
 | Variable | Required | When missing |
 |---|---|---|
