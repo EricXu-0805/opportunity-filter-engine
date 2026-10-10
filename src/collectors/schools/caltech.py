@@ -506,7 +506,7 @@ SCHOOL: dict = {
                     eligibility_majors=["chemistry", "biology", "biochemistry"],
                     preferred_year=["freshman", "sophomore", "junior"],
                     international_friendly="no",
-                    deadline_note="April (2026: April 17); PCC students with faculty nomination",
+                    deadline_note="The 2026 application period is now closed; PCC students with faculty nomination",
                     keywords=["community college", "research training", "chemistry", "biology", "certificate"],
                 ),
                 program(

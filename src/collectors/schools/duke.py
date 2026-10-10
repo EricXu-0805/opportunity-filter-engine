@@ -1025,7 +1025,7 @@ SCHOOL: dict = {
                     eligibility_majors=["biology", "biochemistry", "chemistry", "biomedical engineering", "neuroscience", "science"],
                     preferred_year=["sophomore", "junior", "senior"],
                     international_friendly="no",
-                    deadline_note="US citizens/permanent residents only; GPA 3.2+. Summer 2026 ran May 18\u2013July 24; deadline was early F",
+                    deadline_note="US citizens/permanent residents only; GPA 3.2+. Summer 2026 ran May 18\u2013July 24; complete applications were due Monday, February 2, 2026. Dates for the next cycle are not posted yet.",
                     keywords=["Amgen", "biotechnology", "drug discovery", "PhD pipeline", "national program"],
                 ),
                 program(
