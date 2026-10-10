@@ -43,6 +43,7 @@ The wire shape is deliberately boring so a client cannot misread it::
           "explicit": {"<facet>": <value>, ...},
           "inferred": {"<facet>": {"value": <value>, "basis": "<basis>"}, ...},
           "unknown": ["<facet>", ...],
+          "quotes": {"<facet>": {"text": str, "source_url": str | null, "observed_at": str | null}, ...},
           "provenance": {"source_url": str | null, "observed_at": str | null}
         }
       }
@@ -53,7 +54,10 @@ split the M03 brief asks for (``eligibility.explicit`` is eligibility_explicit,
 ``research_content.inferred.research_areas`` is research_areas_inferred). A
 facet may sit in ``explicit`` and ``inferred`` at once (a professor's stated
 research text beside topic tags we derived); it is in ``unknown`` only when it
-is in neither.
+is in neither. ``quotes`` holds the page's own sentence for an ``explicit``
+facet that was checked against page text, with where and when it was read: a
+campus program's configured value, shown as the page's only where the page
+text its row carries states it (`src.evidence.configured_fact`).
 """
 from __future__ import annotations
 
@@ -64,7 +68,16 @@ from collections.abc import Iterable
 # for `paid_basis`/`location_basis`, and a name import would fail on whichever
 # side of that cycle loads second.
 from backend.lib import public_projection
-from src.evidence import inferred_method, record_kind
+from src.evidence import (
+    CAMPUS_PROGRAM_SUFFIXES,
+    FACT_STATED,
+    SRO_NOTE_WINDOW_RE,
+    configured_fact,
+    configured_value_unstated,
+    inferred_method,
+    is_configured_program,
+    record_kind,
+)
 
 DETAIL_FIELDS_VERSION = "m03-v1"
 
@@ -147,7 +160,7 @@ STATE_UNKNOWN = "unknown"
 # `ucb_common`, `ucb_campus`, `ucsb_urca_projects`, `uiuc_faculty` — which is
 # where the institution is, not where the work happens. A remote internship
 # posted by a Berkeley lab is not in Berkeley.
-_LOCATION_FROM_POSTING = frozenset({"simplify_internships", "handshake", "manual"})
+_LOCATION_FROM_POSTING = frozenset({"simplify_internships", "handshake", "manual", "uiuc_sro"})
 # Collectors that parse a location when the page has one and fall back to the
 # campus otherwise. Only the fallback value is the template.
 _LOCATION_CAMPUS_FALLBACK = {
@@ -198,13 +211,27 @@ _REMOTE_TEMPLATES = {"nsf_reu": BASIS_PROGRAM_POLICY}  # "no": REU Sites are res
 _INTL_TEMPLATES = {
     "simplify_internships": BASIS_DERIVED,
     "nsf_reu": BASIS_PROGRAM_POLICY,
+    # Restated from the SRO page's own "Citizenship Requirement" field.
+    "uiuc_sro": BASIS_DERIVED,
 }
 _CITIZENSHIP_TEMPLATES = {"nsf_reu": BASIS_PROGRAM_POLICY}
+# Collectors that read citizenship off a labelled field, so a False is the
+# page's "No Citizenship Requirements" rather than a template.
+_CITIZENSHIP_FROM_FIELD = frozenset({"uiuc_sro"})
 
-# Sources whose eligibility lists (majors, skills) are written by a person
-# reading the program page — the campus-graph program specs and manual rows.
-# Every other collector fills them from a keyword bank or a category map.
-_CURATED_SOURCE_SUFFIXES = ("_research_programs", "_labs", "_external_research")
+# The SRO database states each record on its own detail page; the record's
+# `source_url` is the paginated list it was found on, which moves as rows are
+# added and states none of the eligibility, pay or timing fields.
+_DETAIL_PAGE_SOURCES = frozenset({"uiuc_sro"})
+# Keywords that are the source's own topic list: the SRO "Research Area".
+_KEYWORDS_FROM_SOURCE = frozenset({"uiuc_sro"})
+
+# Sources whose eligibility lists (majors, skills) a person typed in from one
+# posting: manual rows. Every other collector fills them from a keyword bank
+# or a category map. Campus program specs (campus_graph, ucb_campus) were
+# treated as curated until a 2026-10-09 check of 31 live program pages found
+# none of 12 configured major lists on the page: they are configuration
+# (`is_configured_program`), reported as a collector default.
 _CURATED_SOURCES = frozenset({"manual"})
 
 # Application requirement flags are only ever typed by a person for manual
@@ -228,7 +255,74 @@ _MAX_LIST = 20
 
 
 def _is_curated_source(source: str) -> bool:
-    return source in _CURATED_SOURCES or source.endswith(_CURATED_SOURCE_SUFFIXES)
+    return source in _CURATED_SOURCES
+
+
+def _configured(canonical: dict, facet: str) -> tuple[str | None, dict | None]:
+    """(basis, quote) for a value a campus program spec wrote.
+
+    No basis and the page's own sentence, with where and when it was read,
+    when the page text the row carries states the value
+    (`src.evidence.configured_fact`); a collector default when it does not, or
+    says otherwise. (None, None) on any other row.
+    """
+    if not is_configured_program(canonical):
+        return None, None
+    fact = configured_fact(canonical, facet)
+    if fact.state != FACT_STATED or not fact.quote:
+        return BASIS_COLLECTOR_DEFAULT, None
+    return None, {
+        "text": fact.quote,
+        "source_url": public_projection.safe_public_http_url(fact.source_url),
+        "observed_at": _date(fact.observed_at),
+    }
+
+
+def _stamped_or_configured(canonical: dict, path: str, facet: str) -> tuple[str | None, dict | None]:
+    """(basis, quote): an inference stamp on ``path`` wins over the configuration."""
+    stamped = _basis_for(canonical, path)
+    if stamped is not None:
+        return stamped, None
+    return _configured(canonical, facet)
+
+
+def _collector_constant_keywords(canonical: dict) -> set[str]:
+    """Keywords the campus collectors append to every row they emit.
+
+    Each appends its own source type ("program", "lab", "announcement"), and a
+    discovered row carries only that plus "undergraduate research". Neither is
+    a research topic.
+    """
+    constants = {
+        value.casefold() for value in (canonical.get("campus_source_type"), canonical.get("ucb_source_type"))
+        if isinstance(value, str) and value
+    }
+    if constants and _dict(canonical.get("metadata")).get("discovered"):
+        constants.add("undergraduate research")
+    return constants
+
+
+def class_years_are_template(years: object) -> bool:
+    """Whether a class-year list is one of the defaults collectors write."""
+    values = [y.lower() for y in _str_list(years)]
+    return tuple(sorted(y for y in values if y != "unknown")) in _TEMPLATE_CLASS_YEARS
+
+
+def pi_name_basis(canonical: dict) -> str | None:
+    """Why a record's pi_name is not a name read off its page, or None.
+
+    Shared with the public projector, which removes any pi_name that has one.
+    """
+    stamped = _basis_for(canonical, "pi_name")
+    if stamped is not None:
+        return stamped
+    # campus_graph and ucb_campus write pi_name None on every row, configured
+    # or discovered; a name there was scraped later by pi_enricher's page
+    # scan — 19 of 19 on the 2026-10-09 corpus are headings or navigation
+    # ("Team ProjectsGroup Conference Travel").
+    if str(canonical.get("source") or "").endswith(CAMPUS_PROGRAM_SUFFIXES) and canonical.get("pi_name"):
+        return BASIS_TEXT_SCAN
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -299,21 +393,24 @@ class _Field:
         self.name = name
         self.explicit: dict[str, object] = {}
         self.inferred: dict[str, dict] = {}
+        self.quotes: dict[str, dict] = {}
 
-    def source(self, facet: str, value: object) -> None:
+    def source(self, facet: str, value: object, quote: dict | None = None) -> None:
         if value in (None, "", [], {}):
             return
         self.explicit[facet] = value
+        if quote:
+            self.quotes[facet] = quote
 
     def infer(self, facet: str, value: object, basis: str) -> None:
         if value in (None, "", [], {}):
             return
         self.inferred[facet] = {"value": value, "basis": basis}
 
-    def put(self, facet: str, value: object, basis: str | None) -> None:
+    def put(self, facet: str, value: object, basis: str | None, quote: dict | None = None) -> None:
         """Source when no basis vouches for an inference, inferred otherwise."""
         if basis is None:
-            self.source(facet, value)
+            self.source(facet, value, quote)
         else:
             self.infer(facet, value, basis)
 
@@ -336,6 +433,7 @@ class _Field:
             "explicit": explicit,
             "inferred": inferred,
             "unknown": unknown,
+            "quotes": {f: self.quotes[f] for f in explicit if f in self.quotes},
             "provenance": provenance,
         }
 
@@ -350,10 +448,17 @@ def _school(payload: dict) -> _Field:
     return field
 
 
-def _department(payload: dict, source: str) -> _Field:
+def _department(payload: dict, canonical: dict, source: str) -> _Field:
     field = _Field("department")
-    if source not in _DEPARTMENT_NOT_A_DEPARTMENT:
-        field.source("department", _text(payload.get("department")))
+    if source in _DEPARTMENT_NOT_A_DEPARTMENT:
+        return field
+    department = _text(payload.get("department"))
+    if canonical.get("ucb_source_type") and _dict(canonical.get("metadata")).get("discovered"):
+        # ucb_campus gives a discovered page its source's first program's
+        # department: an astronomy jobs page reads "Chemistry".
+        field.infer("department", department, BASIS_COLLECTOR_DEFAULT)
+    else:
+        field.source("department", department)
     return field
 
 
@@ -362,7 +467,7 @@ def _professor_or_lab(payload: dict, canonical: dict) -> _Field:
     # The projector removes a derived pi_name outright (every derived name on
     # the corpus is an institution or a noun), so a pi_name that survives the
     # projection is one a collector read as a person.
-    if not inferred_method(canonical, "pi_name"):
+    if pi_name_basis(canonical) is None:
         field.source("principal_investigator", _text(payload.get("pi_name")))
     field.source("faculty_rank", _text(_dict(payload.get("metadata")).get("faculty_title")))
     lab = _text(payload.get("lab_or_program"))
@@ -373,20 +478,21 @@ def _professor_or_lab(payload: dict, canonical: dict) -> _Field:
     return field
 
 
-def _research_content(payload: dict, canonical: dict, kind: str) -> _Field:
+def _research_content(payload: dict, canonical: dict, kind: str, source: str) -> _Field:
     field = _Field("research_content")
     metadata = _dict(payload.get("metadata"))
     stated = _text(metadata.get("research_areas_raw"))
     if stated is None:
         areas = payload.get("research_areas")
         stated = _text(areas) if isinstance(areas, str) else (", ".join(_str_list(areas)) or None)
-    keywords = _str_list(payload.get("keywords"))
+    constants = _collector_constant_keywords(canonical)
+    keywords = [k for k in _str_list(payload.get("keywords")) if k.casefold() not in constants]
     keyword_basis = _basis_for(canonical, "keywords")
-    if keyword_basis is None and kind != "faculty_contact":
-        # Listing keywords are ours on every collector: Simplify expands its
-        # category through a map, NSF and the normalizer run a keyword bank,
-        # campus_graph appends its own source_type. None is a topic list the
-        # program published.
+    if keyword_basis is None and kind != "faculty_contact" and source not in _KEYWORDS_FROM_SOURCE:
+        # Listing keywords are ours on every other collector: Simplify expands
+        # its category through a map, NSF and the normalizer run a keyword
+        # bank, campus program specs carry tags a person typed. Only the SRO's
+        # "Research Area" field is a topic list the source published.
         keyword_basis = BASIS_TEXT_SCAN
     if stated:
         field.source("research_areas", stated)
@@ -407,18 +513,19 @@ def _eligibility(payload: dict, canonical: dict, source: str) -> _Field:
     years = [y.lower() for y in _str_list(elig.get("preferred_year"))]
     years = [y for y in years if y != "unknown"]
     if years:
-        basis = _basis_for(canonical, "eligibility.preferred_year")
-        if basis is None and tuple(sorted(years)) in _TEMPLATE_CLASS_YEARS:
-            pass  # a default list: no class-year statement was read. Unknown.
+        basis, quote = _stamped_or_configured(canonical, "eligibility.preferred_year", "class_year")
+        stamped = _basis_for(canonical, "eligibility.preferred_year") is not None
+        if not stamped and quote is None and tuple(sorted(years)) in _TEMPLATE_CLASS_YEARS:
+            pass  # a default list, and no page text names it: no class-year statement. Unknown.
         else:
-            field.put("class_year", years, basis)
+            field.put("class_year", years, basis, quote)
 
     majors = _str_list(elig.get("majors"))
     if majors:
-        basis = _basis_for(canonical, "eligibility.majors")
-        if basis is None and not curated:
+        basis, quote = _stamped_or_configured(canonical, "eligibility.majors", "majors")
+        if basis is None and quote is None and not curated:
             basis = BASIS_TEXT_SCAN
-        field.put("majors", majors, basis)
+        field.put("majors", majors, basis, quote)
 
     gpa = elig.get("min_gpa")
     if isinstance(gpa, int | float) and not isinstance(gpa, bool) and 0 < gpa <= 5:
@@ -426,22 +533,35 @@ def _eligibility(payload: dict, canonical: dict, source: str) -> _Field:
 
     intl = _text(elig.get("international_friendly"))
     intl_explicit = False
+    intl_quote = None
     if intl in {"yes", "no"}:
         basis = _basis_for(canonical, "eligibility.international_friendly") or _INTL_TEMPLATES.get(source)
-        field.put("international_students", intl, basis)
+        if basis is None:
+            basis, intl_quote = _configured(canonical, "international_students")
+        field.put("international_students", intl, basis, intl_quote)
         intl_explicit = basis is None
 
     citizenship = elig.get("citizenship_required")
+    citizenship_basis = _basis_for(canonical, "eligibility.citizenship_required")
     if citizenship is True:
-        basis = _basis_for(canonical, "eligibility.citizenship_required") or _CITIZENSHIP_TEMPLATES.get(source)
-        field.put("citizenship", "required", basis)
-    elif citizenship is False and intl_explicit and intl == "yes":
-        # "Not required" is a positive claim. The only evidence any collector
-        # has for it is a stated welcome to international students; a bare
-        # False is the template most collectors write when the page is silent.
-        field.source("citizenship", "not_required")
+        basis, quote = citizenship_basis or _CITIZENSHIP_TEMPLATES.get(source), None
+        if basis is None:
+            basis, quote = _configured(canonical, "citizenship")
+        field.put("citizenship", "required", basis, quote)
+    elif citizenship is False and citizenship_basis is None and (
+        (intl_explicit and intl == "yes") or source in _CITIZENSHIP_FROM_FIELD
+    ):
+        # "Not required" is a positive claim. The evidence for it is a stated
+        # welcome to international students or a citizenship field that says
+        # so; a bare False is the template most collectors write when the
+        # page is silent.
+        field.source("citizenship", "not_required", intl_quote)
 
-    field.source("work_authorization_notes", _text(elig.get("work_auth_notes")))
+    notes = _text(elig.get("work_auth_notes"))
+    # SRO notes written before the collector read the field are keyword
+    # windows (`SRO_NOTE_WINDOW_RE`), not a statement.
+    if not (source == "uiuc_sro" and notes and SRO_NOTE_WINDOW_RE.search(notes)):
+        field.source("work_authorization_notes", notes)
     return field
 
 
@@ -485,12 +605,13 @@ def _timing(payload: dict, canonical: dict, source: str) -> _Field:
         field.put("deadline", deadline, basis)
     note = _text(_dict(payload.get("metadata")).get("deadline_note"))
     if note:
-        field.source("application_window", note)
+        configured, quote = _configured(canonical, "application_window")
+        field.put("application_window", note, configured, quote)
         # Rolling is claimed only on a source note that says so. `is_rolling`
         # is a collector default (True on every Simplify and campus-graph row,
         # False on every faculty row) and decides nothing either way.
         if _ROLLING_NOTE_RE.search(note):
-            field.source("rolling", True)
+            field.put("rolling", True, configured, quote)
     start = _date(payload.get("start_date"))
     if start:
         field.put("start_date", start, _START_DATE_TEMPLATES.get(source))
@@ -505,10 +626,16 @@ def _funding(payload: dict, canonical: dict, source: str) -> _Field:
     field = _Field("funding")
     paid = _text(payload.get("paid"))
     if paid in {"yes", "stipend", "no"}:
-        field.put("paid", paid, paid_basis(canonical, paid))
+        basis, quote = paid_basis(canonical, paid), None
+        if basis is None:
+            basis, quote = _configured(canonical, "paid")
+        field.put("paid", paid, basis, quote)
     compensation = _text(payload.get("compensation_details"))
     if compensation:
-        field.put("compensation", compensation, _COMPENSATION_TEMPLATES.get(source))
+        basis, quote = _COMPENSATION_TEMPLATES.get(source), None
+        if basis is None:
+            basis, quote = _configured(canonical, "compensation")
+        field.put("compensation", compensation, basis, quote)
     return field
 
 
@@ -524,7 +651,7 @@ def paid_basis(canonical: dict, paid: object) -> str | None:
     template = _PAID_TEMPLATES.get(str(canonical.get("source") or ""))
     if template is not None and paid == template[0]:
         return template[1]
-    return None
+    return BASIS_COLLECTOR_DEFAULT if configured_value_unstated(canonical, "paid") else None
 
 
 def location_basis(canonical: dict, location: object) -> str | None:
@@ -587,27 +714,40 @@ def _application_method(payload: dict, source: str) -> _Field:
     return field
 
 
-def _provenance(payload: dict, *, observed_key: str | None = None) -> dict:
+def _provenance(payload: dict, source: str, *, observed_key: str | None = None) -> dict:
     """Where a field's value was read, and when we last saw it there.
 
-    ``observed_at`` prefers a field-specific stamp, then the collector's
-    ``last_seen_at`` (present on raw records), then the truth envelope's
-    ``verified_at`` — the loader drops ``last_seen_at`` from the served corpus
-    and the projector drops ``last_verified`` in favour of that envelope, so on
-    a production payload the envelope is the timestamp that survives. Never
-    synthesized: absent everywhere means null.
+    ``observed_at`` prefers a field-specific stamp, then the truth envelope's
+    ``verified_at`` — the last time the collector loaded the page and checked
+    it. Not ``last_seen_at``: that is the last run that listed the record,
+    whether or not its page loaded (the loader drops it from the served corpus
+    anyway). Never synthesized: absent everywhere means null.
     """
     metadata = _dict(payload.get("metadata"))
     truth = _dict(payload.get("target_truth"))
     observed = None
     if observed_key:
         observed = _date(metadata.get(observed_key))
-    observed = observed or _date(metadata.get("last_seen_at")) or _date(truth.get("verified_at"))
+    observed = observed or _date(truth.get("verified_at"))
+    first, second = ("url", "source_url") if source in _DETAIL_PAGE_SOURCES else ("source_url", "url")
     return {
-        "source_url": public_projection.safe_public_http_url(payload.get("source_url"))
-        or public_projection.safe_public_http_url(payload.get("url")),
+        "source_url": public_projection.safe_public_http_url(payload.get(first))
+        or public_projection.safe_public_http_url(payload.get(second)),
         "observed_at": observed,
     }
+
+
+# Bases no reading of the page produced: a value the collector writes itself,
+# or one a funding program's rules fix. A field holding only these was not
+# observed anywhere, whenever its page was last loaded.
+_UNOBSERVED_BASES = frozenset({BASIS_COLLECTOR_DEFAULT, BASIS_PROGRAM_POLICY})
+
+
+def _field_provenance(built: dict, provenance: dict) -> dict:
+    inferred = built["inferred"]
+    if not built["explicit"] and inferred and all(v["basis"] in _UNOBSERVED_BASES for v in inferred.values()):
+        return {**provenance, "observed_at": None}
+    return provenance
 
 
 def build_detail_fields(payload: dict, canonical: dict) -> dict:
@@ -622,13 +762,13 @@ def build_detail_fields(payload: dict, canonical: dict) -> dict:
         raise TypeError("detail fields need a payload dict and its canonical record")
     source = str(canonical.get("source") or "")
     kind = record_kind(canonical)
-    base = _provenance(payload)
-    research_provenance = _provenance(payload, observed_key="research_areas_verified_at")
+    base = _provenance(payload, source)
+    research_provenance = _provenance(payload, source, observed_key="research_areas_verified_at")
     fields = (
         _school(payload),
-        _department(payload, source),
+        _department(payload, canonical, source),
         _professor_or_lab(payload, canonical),
-        _research_content(payload, canonical, kind),
+        _research_content(payload, canonical, kind, source),
         _eligibility(payload, canonical, source),
         _required_skills(payload, canonical, source),
         _timing(payload, canonical, source),
@@ -636,13 +776,10 @@ def build_detail_fields(payload: dict, canonical: dict) -> dict:
         _location(payload, canonical, source),
         _application_method(payload, source),
     )
-    return {
-        "version": DETAIL_FIELDS_VERSION,
-        "fields": {
-            f.name: f.build(research_provenance if f.name == "research_content" else base)
-            for f in fields
-        },
-    }
+    built = {f.name: f.build(research_provenance if f.name == "research_content" else base) for f in fields}
+    for field in built.values():
+        field["provenance"] = _field_provenance(field, field["provenance"])
+    return {"version": DETAIL_FIELDS_VERSION, "fields": built}
 
 
 def unknown_facets(detail_fields: dict) -> Iterable[str]:

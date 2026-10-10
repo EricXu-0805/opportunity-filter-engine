@@ -461,6 +461,11 @@ def enrich_opportunities(opps: list[dict], save: bool = False,
                 # ucb_* joint-appointment data-quality gate and block the refresh.
                 if info.get("pi_name") and not opp.get("pi_name") and _is_person_name(info["pi_name"]):
                     opp["pi_name"] = info["pi_name"]
+                    if extract is _extract_contact_from_generic_page:
+                        # The text after any heading that mentions "contact",
+                        # "faculty" or "pi" ("Opportunities", "Pitch"): a scan,
+                        # and on program pages a heading or a menu, not a PI.
+                        stamp_inferred(opp.setdefault("metadata", {}), "pi_name", "rule:page_scan_name")
             time.sleep(DELAY)
 
         if not opp.get("pi_name"):
