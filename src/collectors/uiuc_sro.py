@@ -619,8 +619,52 @@ _UNPAID_RE = re.compile(
 _PAY_NEGATION_RE = re.compile(r"\bno\b|\bnot\b|\bnone\b|\bwithout\b", re.IGNORECASE)
 
 
+# A field that states pay and otherwise only denies benefits reads as paid:
+# "$5,000 stipend; no housing", "$600/week, not including housing". A denied
+# benefit counts as a whole clause between "." or ";", or as the last comma
+# clause; an earlier comma clause can open a list the negation runs through
+# ("no housing, meals, or stipend"). A "." inside "$15.60" or "U.S." splits
+# too, but only a whole benefit-denying clause is removed. What is left must
+# be nothing but the pay statement: "Program fee: $500/week" or "$500 travel"
+# may be money for something else, and "We don't offer a stipend" denies pay.
+# Anything else keeps the negation reading below.
+_BENEFIT = (
+    r"(?:on-campus\s+)?(?:housing|lodging|room|board|meals?|food"
+    r"|travel|transportation|airfare|relocation|parking|insurance)"
+)
+_BENEFITS = rf"{_BENEFIT}(?:\s+(?:and|or)\s+{_BENEFIT})*"
+_BENEFIT_DENIED_RE = re.compile(
+    rf"\s*(?:(?:no|without|not\s+including|excluding)\s+{_BENEFITS}"
+    rf"|{_BENEFITS}\s+(?:is\s+|are\s+)?not\s+(?:provided|included|covered|offered))\s*",
+    re.IGNORECASE,
+)
+_AMOUNT = r"\$\s?[1-9]\d*(?:,\d{3})*(?:\.\d+)?"
+_RATE = r"\s*(?:/\s*|per\s+)(?:hour|hr|week|wk|month|mo)\b"
+_PAY_WORD = r"(?:stipends?|salary|wages?)"
+_PAY_ONLY_RE = re.compile(
+    rf"[\s;.,]*(?:paid(?:\s+hourly)?|{_PAY_WORD}(?:\s+provided)?"
+    rf"|{_PAY_WORD}\s*(?::\s*|of\s+)?{_AMOUNT}(?:{_RATE})?"
+    rf"|{_AMOUNT}(?:{_RATE}(?:\s+{_PAY_WORD})?|\s+{_PAY_WORD}))[\s;.,]*",
+    re.IGNORECASE,
+)
+
+
+def _without_denied_benefits(value: str) -> str:
+    parts = re.split(r"([;.])", value)
+    for i in range(0, len(parts), 2):
+        head, comma, tail = parts[i].rpartition(",")
+        if _BENEFIT_DENIED_RE.fullmatch(parts[i]):
+            parts[i] = ""
+        elif comma and _BENEFIT_DENIED_RE.fullmatch(tail):
+            parts[i] = head
+    return "".join(parts)
+
+
 def _paid_from_compensation(value: str) -> str:
     """yes/no/unknown from the page's own Compensation field."""
+    rest = _without_denied_benefits(value)
+    if rest != value and _PAY_ONLY_RE.fullmatch(rest):
+        return "yes"
     if _UNPAID_RE.search(value):
         return "no"
     if _PAY_NEGATION_RE.search(value):
