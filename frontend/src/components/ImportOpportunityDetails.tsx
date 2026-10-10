@@ -75,7 +75,7 @@ function Field({
   const present = Boolean(value && value.trim());
   return (
     <div>
-      <dt className="text-[11px] uppercase tracking-wide text-gray-400 font-semibold mb-0.5">
+      <dt className="text-[11px] uppercase tracking-wide text-gray-500 font-semibold mb-0.5">
         {label}
       </dt>
       <dd className="text-gray-800">

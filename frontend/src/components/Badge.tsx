@@ -11,14 +11,14 @@ type BadgeVariant =
   | 'teal';
 
 const VARIANT_CLASSES: Record<BadgeVariant, string> = {
-  green: 'bg-emerald-50/80 text-emerald-600',
+  green: 'bg-emerald-50/80 text-emerald-700',
   red: 'bg-red-50/80 text-red-600',
   blue: 'bg-indigo-50/80 text-indigo-600',
-  yellow: 'bg-amber-50/80 text-amber-600',
-  orange: 'bg-orange-50/80 text-orange-600',
-  gray: 'bg-gray-100/80 text-gray-500',
+  yellow: 'bg-amber-50/80 text-amber-700',
+  orange: 'bg-orange-50/80 text-orange-700',
+  gray: 'bg-gray-100/80 text-gray-600',
   indigo: 'bg-indigo-50/80 text-indigo-600',
-  teal: 'bg-teal-50/80 text-teal-600',
+  teal: 'bg-teal-50/80 text-teal-700',
 };
 
 interface BadgeProps {

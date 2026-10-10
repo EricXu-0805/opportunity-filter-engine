@@ -65,10 +65,10 @@ export function DetailRow({
         {icon}
       </span>
       <div className="min-w-0">
-        <dt className="text-[11px] text-gray-400 uppercase tracking-wider mb-0.5">{label}</dt>
+        <dt className="text-[11px] text-gray-500 uppercase tracking-wider mb-0.5">{label}</dt>
         <dd className={`text-[14px] break-words ${warn ? 'text-amber-700' : 'text-gray-800'}`}>{value}</dd>
         {note && (
-          <dd className="mt-1 text-[11px] text-gray-400" data-testid={noteTestId}>{note}</dd>
+          <dd className="mt-1 text-[11px] text-gray-500" data-testid={noteTestId}>{note}</dd>
         )}
       </div>
     </div>
@@ -301,7 +301,7 @@ export function RecentWorksSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
         {works.slice(0, 5).map((w) => (
           <li key={w.title} className="flex items-baseline gap-2.5 text-[13px] leading-snug">
             {w.year != null && (
-              <span className="shrink-0 font-mono text-[11px] text-gray-400 tabular-nums">{w.year}</span>
+              <span className="shrink-0 font-mono text-[11px] text-gray-500 tabular-nums">{w.year}</span>
             )}
             <a
               href={`https://scholar.google.com/scholar?q=${encodeURIComponent(`"${w.title}"`)}`}
@@ -315,7 +315,7 @@ export function RecentWorksSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
         ))}
       </ul>
       <p className="mt-3 text-[11px] text-gray-500">{t('detail.researchLegacySearchNote')}</p>
-      <p className="mt-4 text-[11px] text-gray-400">
+      <p className="mt-4 text-[11px] text-gray-500">
         {/* "this professor's record" only when the scraped rank actually is
             professor-like (or unknown — legacy records); a known non-professor
             rank (e.g. "Senior Lecturer") gets the neutral wording. */}
@@ -342,7 +342,7 @@ export function KeywordsSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
         ))}
       </div>
       {inferred && (
-        <p className="mt-2 text-[11px] text-gray-400" data-testid="keywords-inferred-note">
+        <p className="mt-2 text-[11px] text-gray-500" data-testid="keywords-inferred-note">
           {t('detail.keywordsInferred')}
         </p>
       )}

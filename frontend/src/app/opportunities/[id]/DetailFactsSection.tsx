@@ -90,10 +90,10 @@ function FacetRow({ field, facet, truth, t }: {
       data-state={truth.state}
     >
       <dt className="flex items-center gap-2 flex-wrap">
-        <span className="text-[11px] text-gray-400 uppercase tracking-wider">{label}</span>
+        <span className="text-[11px] text-gray-500 uppercase tracking-wider">{label}</span>
         <StateTag truth={truth} t={t} />
       </dt>
-      <dd className={`text-[14px] break-words ${truth.state === 'unknown' ? 'text-gray-400 italic' : 'text-gray-800'}`}>
+      <dd className={`text-[14px] break-words ${truth.state === 'unknown' ? 'text-gray-500 italic' : 'text-gray-800'}`}>
         {truth.state === 'unknown'
           ? (UNKNOWN_HINT_FACETS.has(facet)
             ? t(`detail.facts.unknownHint.${facet}`)
@@ -117,7 +117,7 @@ function FacetRow({ field, facet, truth, t }: {
           <q data-testid={`fact-${field}-${facet}-quote`}>{quote.text}</q>
           {(quoteHref || quote.observedAt) && (
             <span
-              className="ml-2 text-[11px] text-gray-400 inline-flex flex-wrap gap-x-2"
+              className="ml-2 text-[11px] text-gray-500 inline-flex flex-wrap gap-x-2"
               data-testid={`fact-${field}-${facet}-quote-source`}
             >
               {quoteHref && (
@@ -184,7 +184,7 @@ export function DetailFactsSection({
                 ))}
               </dl>
               {field.state !== 'unknown' && (sourceHref || field.observedAt) && (
-                <p className="mt-1 text-[11px] text-gray-400 flex flex-wrap gap-x-3">
+                <p className="mt-1 text-[11px] text-gray-500 flex flex-wrap gap-x-3">
                   {sourceHref && (
                     <a href={sourceHref} target="_blank" rel="noopener noreferrer" className="hover:underline">
                       {t('detail.facts.sourceLink')}

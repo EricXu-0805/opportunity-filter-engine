@@ -16,10 +16,11 @@ import { en, zh } from '../src/i18n/dictionaries';
  * its fix lands; only entries marked mayBeAbsent are exempt.
  *
  * Every cold-email request is answered here, so none reaches the backend or a
- * model: the template variants get a fixed draft and the rest, including the
- * AI draft the editor starts on its own, get a 503. Every non-loopback request
- * is aborted. Results come from the local backend and the tracker from the
- * loopback Supabase stub, so the walk runs the shipped code.
+ * model: the template variants get a fixed draft and the rest get a 503. The
+ * editor starts no AI draft until its Generate control is clicked, and the walk
+ * never clicks it. Every non-loopback request is aborted. Results come from
+ * the local backend and the tracker from the loopback Supabase stub, so the
+ * walk runs the shipped code.
  *
  * Not covered here and still owed by M59: a real screen reader (VoiceOver,
  * TalkBack), real 200% zoom, and real phones.
@@ -54,48 +55,11 @@ interface Known {
   name: string;
 }
 
-const ON_RESULT_CARDS = 'Only on result cards, and which cards rank first changes with every data refresh.';
-
 // Colour entries are keyed on the text colour plus a ratio floor. Results come
 // from live data, so which card badges and backgrounds appear moves with every
 // refresh; a pair-exact key would turn a data PR red without any code change.
 // Ratios are axe's, which truncates to two decimals.
 const BASELINE: readonly Known[] = [
-  {
-    rule: 'color-contrast', impact: 'serious', fg: '#9ca3af', minRatio: 2.1,
-    name: 'Tailwind gray-400 text, 2.13-2.53:1 on white and the light page tints: home card subtitles and hints, the footer, '
-      + 'result and tab counts, detail fact labels and status buttons, the editor\'s Tone label, the tracker\'s back link and '
-      + 'subtitle. The fix is a palette change (gray-400 to gray-500 or darker) across shared components.',
-  },
-  {
-    rule: 'color-contrast', impact: 'serious', fg: '#d1d5db', minRatio: 1.3,
-    name: 'Tailwind gray-300 text, 1.35-1.38:1: the footer credit line and the tracker\'s empty-column note.',
-  },
-  {
-    rule: 'color-contrast', impact: 'serious', fg: '#6b7280', minRatio: 4.0,
-    name: 'Tailwind gray-500 text, 4.06-4.47:1 on tinted backgrounds (page #f5f5f7, results tab track #ebebed, gray Badge '
-      + '#f5f6f8, seeking-type pills): back links, the form validation hint, the feedback trigger, results scope notes and '
-      + 'tabs. It passes on white (4.83:1).',
-  },
-  {
-    rule: 'color-contrast', impact: 'serious', fg: '#059669', minRatio: 3.55, mayBeAbsent: ON_RESULT_CARDS,
-    name: 'emerald-600: the green Badge (3.60:1) and the High Priority score percentage (3.76:1 on white).',
-  },
-  {
-    rule: 'color-contrast', impact: 'serious', fg: '#ea580c', minRatio: 3.35, mayBeAbsent: ON_RESULT_CARDS,
-    name: 'orange-600 on the orange Badge, 3.40:1: "Faculty contact · openings not confirmed" (the same Badge marks '
-      + 'due-soon deadlines and an unverified international status).',
-  },
-  {
-    rule: 'color-contrast', impact: 'serious', fg: '#c026d3', minRatio: 4.3, mayBeAbsent: ON_RESULT_CARDS,
-    name: 'fuchsia-600 on fuchsia-50, 4.38:1: the result card\'s renovate-resume button, shown on actionable cards only.',
-  },
-  {
-    rule: 'color-contrast', impact: 'serious', fg: '#d97706', minRatio: 3.0,
-    mayBeAbsent: `${ON_RESULT_CARDS} Not seen on 10-09: it shows only when a Reach card lands on the first page.`,
-    name: 'amber-600: the yellow Badge (3.09:1 on a white card, 3.04:1 on the page tint) and the Reach score percentage '
-      + '(3.18:1). Computed from Badge.tsx and ScoreBar.tsx.',
-  },
   {
     rule: 'label', impact: 'critical', steps: ['home'], target: '#resume-upload',
     name: 'ResumeUpload.tsx\'s visually hidden PDF input has no accessible name. A real one ("Upload your résumé (PDF)") '
@@ -137,11 +101,11 @@ async function hermetic(context: BrowserContext) {
   });
 }
 
-// The editor starts an AI draft (POST /api/cold-email/stream) by itself once
-// the template lands. Passed through, it reaches the local backend, which calls
-// the paid model whenever its environment has a provider key: a developer's
-// backend/.env, or a dev backend Playwright reuses. A 503 leaves the editor as
-// CI's keyless backend does: the automatic draft keeps the template silently.
+// Any other cold-email request (an AI draft, POST /api/cold-email/stream, starts
+// only on a Generate click) would reach the local backend, which calls the paid
+// model whenever its environment has a provider key: a developer's
+// backend/.env, or a dev backend Playwright reuses. Recording and refusing it
+// with a 503 keeps the walk model-free and shows whether opening asked for one.
 // Routes registered later win, so the variants stub answers before the 503.
 async function stubColdEmail(page: Page, refused: string[]) {
   await page.route('**/api/cold-email**', route => {
@@ -151,9 +115,11 @@ async function stubColdEmail(page: Page, refused: string[]) {
   await page.route('**/api/cold-email/variants', route => {
     const request = route.request().postDataJSON();
     const receipt = contactReceiptForRequest(request);
+    // A recommended tone puts its badge on the selected tone chip, so the scan
+    // checks that badge's contrast too.
     return route.fulfill({ json: {
       opportunity_id: request.opportunity_id, target_version: request.expected_target_version,
-      contact_context_receipt: receipt, recipient_status: 'revealed', lab_type: null,
+      contact_context_receipt: receipt, recipient_status: 'revealed', lab_type: null, recommended_style: 'professional',
       variants: [{ id: 'v1', label: 'Template A', subject: 'Interested in your research',
         body: 'Dear Professor,\n\nI am interested in your lab.\n\nBest,\nAlex', recipient_email: 'prof@illinois.edu',
         mailto_link: 'mailto:prof@illinois.edu', contact_context_receipt: receipt }],
@@ -235,12 +201,13 @@ for (const locale of ['en', 'zh'] as const) {
 
     await page.getByRole('button', { name: t.detail.draftEmail, exact: true }).click();
     await expect(page.getByTestId('cold-email-footer')).toBeVisible({ timeout: 20_000 });
-    // The automatic AI draft has been tried and refused, so the scan sees the
-    // editor in the state it keeps, not mid-request. This wait assumes the
-    // editor starts that draft by itself; if the draft becomes opt-in, the
-    // wait has to change with it.
-    await expect.poll(() => refused, { message: 'the editor\'s AI draft request was answered here' })
-      .toContain('/api/cold-email/stream');
+    // Opening asks for no AI draft (M75), so the editor settles on the template
+    // once its Generate control is ready; the scan sees that state.
+    await expect(page.getByRole('button', { name: t.coldEmail.generateAiDraft, exact: true })).toBeEnabled();
+    // A request that opening starts a moment after the control is ready would
+    // be missed by an immediate read, so give it a short window first.
+    await page.waitForTimeout(500);
+    expect(refused, 'opening the editor must not request an AI draft').not.toContain('/api/cold-email/stream');
     // aria-modal hides the page behind it, so only the dialog is the editor.
     findings.push(...await scan(page, 'cold-email-editor', locale, '[role="dialog"][aria-modal="true"]'));
     await page.keyboard.press('Escape');

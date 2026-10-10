@@ -661,9 +661,9 @@ function ResultsContent() {
   }, []);
 
   // Every page-level check openWritingSession makes before it opens an editor.
-  // The cards disable Draft Email on this same value, so a click there is never
-  // live while it would be dropped. An open editor is not part of it: its
-  // dialog already covers the list.
+  // The cards disable Draft Email and Renovate Resume on this same value, so
+  // neither click is live while it would be dropped. An open editor is not part
+  // of it: its dialog already covers the list.
   const writingEntryReady = ownerReady && profileAvailable && !!profile
     && writingViewCurrent && !loading && !error;
   const openWritingSession = useCallback((kind: WritingSession['kind'], opportunityId: string) => {
@@ -921,7 +921,7 @@ function ResultsContent() {
       <button
         type="button"
         onClick={() => router.push('/')}
-        className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-8 transition-colors"
+        className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-700 mb-8 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
         {t('results.backToProfile')}
@@ -1039,10 +1039,10 @@ function ResultsContent() {
             t={t}
           />
           {scopeOptions.length > 0 && (
-            <p className="text-[12px] text-gray-500">{scopeIndicator}</p>
+            <p className="text-[12px] text-gray-600">{scopeIndicator}</p>
           )}
           {RELEASE_SCOPE.crossSchoolMatching && (
-            <p className="text-[12px] text-gray-500">{crossSchoolHint}</p>
+            <p className="text-[12px] text-gray-600">{crossSchoolHint}</p>
           )}
         </div>
       )}

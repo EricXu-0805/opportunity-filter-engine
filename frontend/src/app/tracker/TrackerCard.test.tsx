@@ -486,9 +486,9 @@ describe('TrackerCard — a reminder is only offered where one would be delivere
     renderCard(opportunity, status, onSetReminder);
     const label = screen.getByText(new RegExp(PAST));
     expect(label.textContent).toBe(`tracker.remindOn ${PAST}`);
-    expect(label.className).toContain('text-gray-400');
+    expect(label.className).toContain('text-gray-500');
     expect(label.className).not.toContain('text-red-600');
-    expect(label.className).not.toContain('text-amber-600');
+    expect(label.className).not.toContain('text-amber-700');
     expect(screen.queryByText(/tracker\.followUpDue/)).toBeNull();
     expect(screen.getByText('tracker.reminderWontSend')).toBeInTheDocument();
 

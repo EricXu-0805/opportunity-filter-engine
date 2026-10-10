@@ -100,7 +100,13 @@ async function setup(page: Page, info: TestInfo) {
     return route.fulfill({ json: { version: 1, items: [], next_cursor: null } });
   });
   const open = async (navigate = true) => { if (navigate) await page.goto('/favorites'); await page.getByRole('button', { name: locale === 'zh' ? '起草邮件' : 'Draft Email', exact: true }).click(); };
-  const ready = async () => { await expect(page.locator('#cold-email-body')).toHaveValue(BODY); await expect.poll(() => state.calls.filter(path => path.endsWith('/stream')).length).toBe(1); };
+  const ready = async () => {
+    await expect(page.locator('#cold-email-body')).toHaveValue(BODY);
+    await expect(page.getByRole('button', { name: copy.generateAiDraft, exact: true })).toBeEnabled();
+    // Give a request that opening starts a moment late the chance to show up.
+    await page.waitForTimeout(500);
+    expect(state.calls.filter(path => path.endsWith('/stream'))).toEqual([]);
+  };
   const edit = async () => {
     await page.locator('#cold-email-subject').fill(EDIT.subject); await page.locator('#cold-email-body').fill(EDIT.body);
     await page.locator('#cold-email-to').fill(EDIT.to); await page.getByRole('textbox', { name: copy.requestLabel, exact: true }).fill(EDIT.request);
@@ -112,9 +118,15 @@ async function setup(page: Page, info: TestInfo) {
   const saved = async () => expect(page.getByTestId('cold-email-draft-status')).toContainText(locale === 'zh' ? '已保存' : 'Saved on this browser');
   const close = async () => { await page.getByRole('button', { name: copy.closeAria, exact: true }).click(); await expect(page.getByRole('dialog', { name: copy.title })).toHaveCount(0); };
   const done = async () => {
-    await info.attach('draft-recovery-audit', { body: JSON.stringify({ ...audit, writes: state.mutations, calls: state.calls }, null, 2), contentType: 'application/json' });
-    await Promise.all(owners.map(item => item.http.dispose()));
-    expect(audit.pageErrors).toEqual([]); expect(audit.external).toEqual([]); expect(audit.unexpected5xx).toEqual([]); expect(state.mutations).toEqual([]);
+    try {
+      await info.attach('draft-recovery-audit', { body: JSON.stringify({ ...audit, writes: state.mutations, calls: state.calls }, null, 2), contentType: 'application/json' });
+      await Promise.all(owners.map(item => item.http.dispose()));
+      expect(audit.pageErrors).toEqual([]); expect(audit.external).toEqual([]); expect(audit.unexpected5xx).toEqual([]); expect(state.mutations).toEqual([]);
+    } finally {
+      // A detail read the page starts at the end of a test can still be inside
+      // route.fetch when the page closes. Its error is teardown, not a finding.
+      await page.unrouteAll({ behavior: 'ignoreErrors' });
+    }
   };
   return { state, audit, owners, locale, copy, open, ready, edit, retained, saved, close, done };
 }

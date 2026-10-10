@@ -596,6 +596,42 @@ describe('MatchCard', () => {
     });
   });
 
+  // Results opens its résumé editor on the same check as a draft, but Renovate
+  // Resume used to wait only for the owner: it went live when the favorites
+  // read answered, and a click before the rest was ready opened nothing.
+  describe('Renovate Resume when the page opens the editor', () => {
+    it('is disabled and busy until the page can open it, with the same disabled look as Draft Email', () => {
+      const open = vi.fn();
+      render(
+        <MatchCard match={makeMatch()} profile={PROFILE} onDraftEmail={() => {}} onOpenResume={open}
+          ownerReady draftEmailReady={false} />,
+      );
+      const button = screen.getByRole('button', { name: 'card.renovateResume' });
+      expect(button).toBeDisabled();
+      expect(button).toHaveAttribute('aria-busy', 'true');
+      fireEvent.click(button);
+      expect(open).not.toHaveBeenCalled();
+      // A disabled button that still looks live is the same lost click to the student.
+      const disabledLook = (el: HTMLElement) => el.className.split(/\s+/).filter((c) => c.startsWith('disabled:'));
+      expect(disabledLook(button)).toEqual(disabledLook(screen.getByRole('button', { name: 'card.draftEmail' })));
+    });
+
+    it('is enabled once the page can open it, and the click reaches the page', () => {
+      const open = vi.fn();
+      const onView = vi.fn();
+      render(
+        <MatchCard match={makeMatch({ id: 'opp-ready' })} profile={PROFILE} onDraftEmail={() => {}} onOpenResume={open}
+          onViewOpportunity={onView} ownerReady draftEmailReady />,
+      );
+      const button = screen.getByRole('button', { name: 'card.renovateResume' });
+      expect(button).toBeEnabled();
+      expect(button).toHaveAttribute('aria-busy', 'false');
+      fireEvent.click(button);
+      expect(open).toHaveBeenCalledWith('opp-ready');
+      expect(onView).toHaveBeenCalledWith('opp-ready');
+    });
+  });
+
   describe('the explanation panel speaks the reader language', () => {
     it('names every heading through the dictionary, not in hardcoded English', () => {
       // The expanded panel is the card's primary explanation surface. Its six

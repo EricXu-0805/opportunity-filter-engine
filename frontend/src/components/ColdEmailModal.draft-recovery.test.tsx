@@ -56,8 +56,9 @@ const button = (name: string) => screen.getByRole('button', { name: 'coldEmail.'
 const change = (name: Parameters<typeof field>[0], value: string) => fireEvent.change(field(name), { target: { value } });
 async function ready() {
   await screen.findByDisplayValue(draft.body);
-  await waitFor(() => expect(api.stream).toHaveBeenCalledOnce());
+  await waitFor(() => expect(button('generateAiDraft')).toBeEnabled());
   await act(async () => {});
+  expect(api.stream).not.toHaveBeenCalled();
 }
 function edit() { change('subject', edits.subject); change('body', edits.body); change('to', edits.recipient); change('requestLabel', edits.request); }
 function expectEdits() {
@@ -135,7 +136,9 @@ describe('persistent cold-email draft recovery', () => {
     fireEvent.click(screen.getByLabelText('I confirm this reading level for the selected paper.'));
     fireEvent.click(screen.getByRole('button', { name: 'Apply background to this draft' }));
     fireEvent.click(button('regenerateFromProfile'));
-    await waitFor(() => expect(api.stream).toHaveBeenCalledTimes(2)); await act(async () => {});
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'coldEmail.regenerateFromProfile' })).toBeNull());
+    await waitFor(() => expect(button('generateAiDraft')).toBeEnabled()); await act(async () => {});
+    expect(api.variants).toHaveBeenCalledTimes(2); expect(api.stream).not.toHaveBeenCalled();
     edit(); await close(view); clearCalls();
     mount({ target: { ...paperTarget, writing_target_version: `wt1:${'b'.repeat(64)}` } }); await restored();
     expect(screen.getByLabelText('How much did you read?')).toHaveValue('abstract');

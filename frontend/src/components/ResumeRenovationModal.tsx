@@ -228,15 +228,15 @@ function DiffLine({
 }
 
 const SOURCE_CHIP_STYLES: Record<string, string> = {
-  base: 'bg-gray-100 text-gray-500',
+  base: 'bg-gray-100 text-gray-600',
   macro: 'bg-indigo-50 text-indigo-600',
-  ai: 'bg-fuchsia-50 text-fuchsia-600',
+  ai: 'bg-fuchsia-50 text-fuchsia-700',
   user: 'bg-amber-50 text-amber-700',
 };
 
 const ACTION_CHIP: Record<string, { className: string; icon: 'up' | 'down' | null }> = {
   foreground: { className: 'bg-emerald-50 text-emerald-700', icon: 'up' },
-  demote: { className: 'bg-gray-100 text-gray-500', icon: 'down' },
+  demote: { className: 'bg-gray-100 text-gray-600', icon: 'down' },
   keep: { className: '', icon: null },
 };
 
@@ -950,26 +950,26 @@ export default function ResumeRenovationModal({
                 {onOpenFull ? (locale === 'zh' ? '经历条目编辑' : 'Résumé bullets') : t('renovate.title')}
               </h2>
               <p className="text-sm text-gray-500 truncate max-w-md">{opportunityTitle}</p>
-              <p className="text-xs text-gray-400 mt-1 max-w-md hidden sm:block">
+              <p className="text-xs text-gray-500 mt-1 max-w-md hidden sm:block">
                 {onOpenFull ? (locale === 'zh' ? '逐条调整经历。姓名、教育和完整结构请在目标简历中编辑。' : 'Edit experience bullets. Use the full target résumé for identity, education and complete structure.') : t('renovate.subtitle')}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {savedFlash && !editingId && (
-              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600">
+              <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700">
                 <CheckCircle className="w-3.5 h-3.5" aria-hidden="true" />
                 {t('renovate.saved')}
               </span>
             )}
             {saveFailed && !saving && ['unknown', 'unavailable'].includes(saveState.status) && (
-              <span className="inline-flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-amber-600" data-testid="renovation-save-failed">
+              <span className="inline-flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-amber-700" data-testid="renovation-save-failed">
                 {locale === 'zh' ? '保存结果未确认' : 'Save not confirmed'}
-                <button type="button" className="underline hover:text-amber-700" onClick={() => scopeRef.current?.queue?.retry()}>{t('renovate.retrySave')}</button>
+                <button type="button" className="underline hover:text-amber-800" onClick={() => scopeRef.current?.queue?.retry()}>{t('renovate.retrySave')}</button>
               </span>
             )}
             {saving && !savedFlash && (
-              <span className="text-[11px] text-gray-400">{t('renovate.saving')}</span>
+              <span className="text-[11px] text-gray-500">{t('renovate.saving')}</span>
             )}
             <button
               type="button"
@@ -1104,7 +1104,7 @@ export default function ResumeRenovationModal({
                   </div>
                 </div>
               )}
-              <p className="text-[11.5px] text-gray-400">{t('renovate.reviewHint')}</p>
+              <p className="text-[11.5px] text-gray-500">{t('renovate.reviewHint')}</p>
 
               {doc.sections.map((section: RenovatedSection) => (
                 <section key={section.id}>
@@ -1156,7 +1156,7 @@ export default function ResumeRenovationModal({
                                   type="button"
                                   onClick={() => handleRollback(b)}
                                   disabled={reviewedStep(b, -1) === null}
-                                  className="inline-flex items-center gap-1 text-[10.5px] font-medium px-1.5 py-0.5 rounded-md text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-400 transition-colors"
+                                  className="inline-flex items-center gap-1 text-[10.5px] font-medium px-1.5 py-0.5 rounded-md text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-gray-500 transition-colors"
                                   aria-label={t('renovate.rollbackAria')}
                                 >
                                   <RotateCcw className="w-3 h-3" aria-hidden="true" />
@@ -1166,7 +1166,7 @@ export default function ResumeRenovationModal({
                                   <button
                                     type="button"
                                     onClick={() => handleRollForward(b)}
-                                    className="inline-flex items-center gap-1 text-[10.5px] font-medium px-1.5 py-0.5 rounded-md text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                                    className="inline-flex items-center gap-1 text-[10.5px] font-medium px-1.5 py-0.5 rounded-md text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
                                     aria-label={t('renovate.rollForwardAria')}
                                   >
                                     <RefreshCw className="w-3 h-3" aria-hidden="true" />
@@ -1176,7 +1176,7 @@ export default function ResumeRenovationModal({
                                 <button
                                   type="button"
                                   onClick={() => startEdit(b)}
-                                  className="inline-flex items-center gap-1 text-[10.5px] font-medium px-1.5 py-0.5 rounded-md text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                                  className="inline-flex items-center gap-1 text-[10.5px] font-medium px-1.5 py-0.5 rounded-md text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
                                   aria-label={t('renovate.editAria')}
                                 >
                                   <Pencil className="w-3 h-3" aria-hidden="true" />
@@ -1260,7 +1260,7 @@ export default function ResumeRenovationModal({
                           )}
                           {showingVariant?.source_evidence && !isEditing && (
                             <p className="mt-1.5 text-[11.5px] text-gray-500 italic">
-                              <span className="font-medium not-italic uppercase tracking-wider text-[10px] text-gray-400">
+                              <span className="font-medium not-italic uppercase tracking-wider text-[10px] text-gray-500">
                                 {t('renovate.sourceLabel')}:
                               </span>{' '}
                               &quot;{showingVariant.source_evidence}&quot;

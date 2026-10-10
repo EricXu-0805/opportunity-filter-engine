@@ -36,7 +36,13 @@ export interface ColdEmailDraftPayload {
   body: string;
   /** User-entered text only. This field is never a verified address. */
   manualRecipient?: string;
+  /** The tone picker, which only chooses the next AI draft. */
   selectedStyle: EmailStyle;
+  /** The tone of `body` itself: an unedited AI draft's or restored version's,
+   * kept when only the subject is edited. Null when the body has none (a
+   * template, a fallback or an edited body); absent in drafts saved before it
+   * was recorded. */
+  draftStyle?: EmailStyle | null;
   pendingEdit: string;
   context: EmailContactContext;
   pendingPanel?: EmailContactDraftSnapshot | null;
@@ -134,9 +140,10 @@ function parsePayload(value: unknown, version: 1 | 2): ColdEmailDraftPayload {
   const item = snapshotJson(value);
   const required = ['subject', 'body', 'selectedStyle', 'pendingEdit', 'context', 'sources'];
   if (version === 2) required.push('history', 'editScope');
-  if (!record(item) || !exact(item, required, ['manualRecipient', 'pendingPanel', 'pendingSupplement'])
+  if (!record(item) || !exact(item, required, ['manualRecipient', 'pendingPanel', 'pendingSupplement', 'draftStyle'])
     || !text(item.subject, COLD_EMAIL_DRAFT_LIMITS.subject) || !text(item.body, COLD_EMAIL_DRAFT_LIMITS.body)
     || !text(item.pendingEdit, COLD_EMAIL_DRAFT_LIMITS.pendingEdit) || !validStyle(item.selectedStyle)
+    || (Object.hasOwn(item, 'draftStyle') && item.draftStyle !== null && !validStyle(item.draftStyle))
     || (Object.hasOwn(item, 'manualRecipient') && !text(item.manualRecipient, COLD_EMAIL_DRAFT_LIMITS.manualRecipient))
     || !validSources(item.sources)) fail('invalid_draft');
   if (!record(item.context)) fail('invalid_draft');

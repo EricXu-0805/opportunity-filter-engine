@@ -18,7 +18,7 @@ export default function OpportunityUnavailable() {
       <h1 className="text-2xl font-bold text-gray-900 mb-2 tracking-tight">
         {t('detail.unavailable.title')}
       </h1>
-      <p className="text-[14px] text-gray-500 mb-6 max-w-md mx-auto leading-relaxed">
+      <p className="text-[14px] text-gray-600 mb-6 max-w-md mx-auto leading-relaxed">
         {t('detail.unavailable.message')}
       </p>
       <button

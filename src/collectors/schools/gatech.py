@@ -103,7 +103,7 @@ SCHOOL: dict = {
                     paid="stipend",
                     preferred_year=["sophomore", "junior", "senior"],
                     international_friendly="unknown",
-                    deadline_note="2027 cohort applications open with a September 15, 2026 deadline",
+                    deadline_note="2027 cohort applications were due Sept. 15, 2026; dates for the next cohort are not posted yet",
                     keywords=["bioengineering", "bioscience", "biomaterials", "cancer biology", "regenerative medicine"],
                 ),
             ],
@@ -131,7 +131,7 @@ SCHOOL: dict = {
                     compensation="$11,500 cost-per-student support listed; program dates May 17–July 24, 2026",
                     preferred_year=["junior", "senior"],
                     international_friendly="unknown",
-                    deadline_note="Applications open Oct 15, 2025; deadline Feb 15, 2026; decisions by April 1, 2026",
+                    deadline_note="2026 cycle: applications opened Oct 15, 2025; deadline was Feb 15, 2026; decisions by April 1, 2026; dates for the next cycle are not posted yet",
                     keywords=["REU", "summer research", "engineering", "graduate school prep", "rising juniors seniors"],
                 ),
                 program(
