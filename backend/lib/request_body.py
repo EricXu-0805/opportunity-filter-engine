@@ -7,8 +7,9 @@ profile may hold any brackets and commas its own limits allow.
 
 Every endpoint that reads a JSON body declares its bounds (json_body_bounds), and its route class
 (BoundedJSONRoute, or the full-target routes' request lane) refuses a body past either before the
-body is parsed. A route whose body limit is above the default reads and validates its body on the
-request lane (json_body_on_lane, or the full-target routes' own preparation there). The bounds sit
+body is parsed. The routes with the largest bodies (a body limit above the default, and the
+cold-email routes) read and validate their body on the request lane (json_body_on_lane, or the
+full-target routes' own preparation there). The bounds sit
 well above what the route's legitimate requests hold:
 scripts/request_body_containers.py finds every route of the app that reads a JSON body, builds the
 largest body each request schema accepts and prints both counts beside the bounds, and
@@ -19,7 +20,7 @@ refuses unknown keys refuses an object with more keys than it has fields (known_
 schema leaves unbounded is cut to the most its route reads, or refused at once when an item is not a
 string, before its items are validated (backend.schemas; the export checks its block and line limits
 first). scripts/request_body_containers.py (validation_bodies) builds, for every JSON route, bodies
-within its bounds for each list and object its schema declares.
+within its bounds for each value, list and object its schema declares.
 
 /api/tailor/extract-bullets and /api/tailor/structure take one résumé of up to
 MAX_RESUME_TEXT_CHARACTERS, which origin/main reads whole (criterion E). They have a container bound
@@ -235,8 +236,9 @@ def json_body_on_lane(model):
     """A dependency that gives an endpoint its JSON body, read and validated for ``model``
     (validated_json_body) on the request lane (blocking.run_request_work) instead of the event loop.
 
-    For a route whose body limit is above the default, the endpoint takes its body this way rather
-    than as a body parameter; its route class still refuses a body past its declared bounds first.
+    For a route with a large body (a body limit above the default, or the cold-email routes), the
+    endpoint takes its body this way rather than as a body parameter; its route class still refuses a
+    body past its declared bounds first.
     """
     adapter = TypeAdapter(model)
 

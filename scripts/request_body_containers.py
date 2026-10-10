@@ -279,7 +279,7 @@ def largest_contact(pick: Pick, first_contact: bool = False) -> dict:
 
 
 def ids(count: int, prefix: str = "") -> list[str]:
-    """Opportunity ids as the corpus writes them (16 hex digits)."""
+    """Hex opportunity ids of 16 characters (real corpus ids are 11 characters or longer)."""
     return [f"{prefix}{i:016x}"[-16:] for i in range(count)]
 
 

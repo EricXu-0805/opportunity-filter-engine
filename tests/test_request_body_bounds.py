@@ -872,9 +872,9 @@ def test_the_per_character_checks_read_every_code_point_as_before():
 
 
 # ------------------------------------------------------------------ what validating a body may build
-# Validation errors one body within its route's bounds may make validation build: on the event loop,
-# and on the request lane (LANE_ROUTES and the full-target routes), where the route's class reads them.
-LOOP_ERRORS = 1_000
+# Validation errors one body within its route's bounds may make validation build: on most routes, and
+# on the routes that read their body on the request lane (LANE_ROUTES and the full-target routes).
+ROUTE_ERRORS = 1_000
 LANE_ERRORS = 5_000
 
 
@@ -891,13 +891,14 @@ def _on_the_lane(path, json_route) -> bool:
 
 
 @pytest.mark.parametrize(("method", "path", "json_route"), JSON_ROUTES, ids=ROUTE_IDS)
-def test_validating_a_body_within_its_routes_bounds_builds_few_errors(method, path, json_route):
-    """Each list, typed map and closed model of a route's request schema, filled within the route's
-    bounds and body limit with items of every JSON type or with undeclared keys, in one copy and in as
-    many copies as the lists that hold it allow (largest.validation_bodies), makes validation build at
-    most LOOP_ERRORS errors, or LANE_ERRORS on a route that validates on the request lane."""
+def test_validation_of_a_body_within_its_routes_bounds_stays_bounded(method, path, json_route):
+    """Each value, list, typed map and closed model of a route's request schema, filled within the
+    route's bounds and body limit (largest.validation_bodies: a value with a list of numbers or an
+    object, a list or typed map with items of every JSON type, a closed model with undeclared keys), in
+    one copy and in as many copies as the lists that hold it allow, makes validation build at most
+    ROUTE_ERRORS errors, or LANE_ERRORS on a route that reads its body on the request lane."""
     bounds = request_body.declared_bounds(json_route)
-    cap = LANE_ERRORS if _on_the_lane(path, json_route) else LOOP_ERRORS
+    cap = LANE_ERRORS if _on_the_lane(path, json_route) else ROUTE_ERRORS
     bodies = _validation_bodies()[method, path]
     model = largest.request_model(json_route)
     sites = {".".join(map(str, site)) or "(body)" for _, site, _ in largest.schema_sites(getattr(model, "_type", model))}
@@ -999,10 +1000,10 @@ def test_an_export_past_its_block_or_line_limits_is_refused_before_its_sections_
         assert [error["msg"] for error in refused.value.errors()] == ["Value error, projection_limit"]
 
 
-def test_the_app_builds_few_errors_for_a_body_on_a_route_that_validates_on_the_event_loop(monkeypatch):
-    """Through the app: every route that validates its body on the event loop builds at most
-    LOOP_ERRORS errors for the longest body largest.validation_bodies makes for each of its lists,
-    typed maps and closed models, and for the one whose model builds the most."""
+def test_validation_of_a_body_within_its_routes_bounds_stays_bounded_through_the_app(monkeypatch):
+    """Through the app: every route other than those that read their body on the request lane builds at
+    most ROUTE_ERRORS errors for the longest body largest.validation_bodies makes for each value, list,
+    typed map and closed model of its request schema, and for the one whose model builds the most."""
     from fastapi import exceptions
 
     from backend.lib import private_import_targets as storage
@@ -1038,7 +1039,7 @@ def test_the_app_builds_few_errors_for_a_body_on_a_route_that_validates_on_the_e
             sizes.clear()
             response = largest.send(client, method, _concrete()[method, path], content)
             assert response.status_code != 500, (method, path, name)
-            assert max(sizes, default=0) <= LOOP_ERRORS, (method, path, name, sizes)
+            assert max(sizes, default=0) <= ROUTE_ERRORS, (method, path, name, sizes)
             sent += 1
     assert sent >= 40
 
@@ -1102,8 +1103,8 @@ def test_a_validation_error_list_names_the_first_errors_without_their_values():
 
 
 def test_a_route_that_reads_its_body_in_a_helper_without_bounds_fails_the_test_that_reaches_it(unbounded_body_reads):
-    """tests/conftest.py records a backend route that reads its request body, wherever it reads it,
-    without declaring its bounds."""
+    """tests/conftest.py records a backend route that reads its request body through body() or json(),
+    in a dependency or a helper, without declaring its bounds."""
     from fastapi import APIRouter, Depends, FastAPI
 
     router = APIRouter()
