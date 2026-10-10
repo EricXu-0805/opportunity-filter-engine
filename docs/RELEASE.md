@@ -252,9 +252,11 @@ The structural fix is to stop letting an unrelated job decide. `ci.yml` has a
 `Deploy backend (Render hook)` job for that: on a push to main, once Backend,
 Frontend and E2E (the checks branch protection requires) have passed, it POSTs
 the Render deploy hook with `ref` set to that commit, and fails on any answer
-outside 2xx. Until the `RENDER_DEPLOY_HOOK_URL` secret exists it logs a notice,
-deploys nothing and passes, so its own check cannot hold today's `checksPass`
-deploy. Nothing changes until the owner switches over.
+outside 2xx. It first asks GitHub for the head of main and deploys only if the
+commit is still the head; otherwise it logs a notice and passes, and the newer
+commit's own run deploys. Until the `RENDER_DEPLOY_HOOK_URL` secret exists it
+logs a notice, deploys nothing and passes, so its own check cannot hold today's
+`checksPass` deploy. Nothing changes until the owner switches over.
 
 ### Switching the backend deploy to the CI hook
 
@@ -278,15 +280,23 @@ Steps 2 and 3 belong together; do them in one sitting.
    a deploy of that SHA, and `/api/health` reports it as `release_sha` once
    the deploy is live.
 
-A push to main between steps 2 and 3 reaches Render by both paths and builds
-twice; that costs one build.
+The first hook call after step 2 turns auto-deploy off in the dashboard, and
+it comes before the job's own check finishes, so a push to main between steps
+2 and 3 should be built once, by the hook.
 
 After the switch, a check that branch protection does not require (a refresh
 dispatched on main, the alert drill, the Migrations job) no longer holds a
 backend deploy. A non-2xx answer from the hook fails the job with the status
-code and is not retried; re-run the job from the Actions page once the cause
-is fixed. A 404 usually means the hook was regenerated in Render and the
-secret still holds the old URL.
+code and is not retried. A 404 usually means the hook was regenerated in Render
+and the secret still holds the old URL.
+
+**Re-run only the head commit's run.** Once the cause is fixed, re-run the
+failed jobs of the run for the commit at the head of main; that commit carries
+every earlier one. Never re-run an older main run to clear its red X. Its
+deploy job sees that main has moved and deploys nothing, but the re-run still
+joins `ci.yml`'s concurrency group, and a run waiting there for a newer commit
+is cancelled to make room for it, which leaves that newer commit undeployed
+until its own run is re-run.
 
 To switch back, delete the secret and set `autoDeployTrigger: checksPass` in
 `render.yaml` again, and turn auto-deploy back on in the dashboard if Render
