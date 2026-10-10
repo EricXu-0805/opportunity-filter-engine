@@ -116,7 +116,10 @@ test('a streaming target 409 preserves the draft and checks the new target befor
       if (model.state.changed) { target.description_clean += '\nUpdated requirements.'; target.writing_target_version = NEXT; }
       await route.fulfill({ response, json: target });
     });
-    await open(page); await expect.poll(() => model.state.streamStarted).toBe(true); await edit(page); release();
+    const generate = page.getByRole('button', { name: 'Generate AI draft', exact: true });
+    await open(page); await expect(fields(page).body).toHaveValue('Checked body'); await expect(generate).toBeEnabled();
+    expect(model.state.streamStarted).toBe(false);
+    await generate.click(); await expect.poll(() => model.state.streamStarted).toBe(true); await edit(page); release();
     await expect(page.getByText(CHANGED, { exact: true })).toBeVisible(); await kept(page);
     expect(model.state.calls.filter(call => call.path === '/api/cold-email/stream')).toHaveLength(1);
     expect(model.state.calls.filter(call => call.path === '/api/cold-email')).toEqual([]);
@@ -127,6 +130,10 @@ test('a streaming target 409 preserves the draft and checks the new target befor
     await expect(regenerate).toBeEnabled(); await kept(page);
     expect(model.state.calls.filter(call => call.path === '/api/cold-email/variants')).toHaveLength(1);
     await regenerate.click(); await expect(fields(page).body).toHaveValue('Checked body');
+    // The rebuild refreshes the template only; the AI draft is its own click.
+    await expect(generate).toBeEnabled();
+    expect(model.state.calls.filter(call => call.path === '/api/cold-email/stream')).toHaveLength(1);
+    await generate.click();
     await expect.poll(() => model.state.calls.filter(call => call.path === '/api/cold-email/stream').length).toBe(2);
     expect(model.state.calls.at(-1)?.expected_target_version).toBe(NEXT); await expect(fields(page).recipient).toHaveValue('manual@example.edu');
     expect(writes).toEqual([]); await page.screenshot({ path: info.outputPath('email-target-regenerated.png'), fullPage: true });

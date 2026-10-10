@@ -32,7 +32,11 @@ beforeEach(async () => {
   Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn().mockResolvedValue(undefined) } });
 });
 function mount(target = emailTarget('A')) { const props = { isOpen: true, onClose: vi.fn(), profile, opportunityId: target.id, opportunityTitle: 'Lab', target }; return { ...render(<ColdEmailModal {...props} />), props }; }
-async function ready() { await screen.findByDisplayValue(draft.body); await waitFor(() => expect(api.stream).toHaveBeenCalledOnce()); await act(async () => {}); }
+async function ready() {
+  await screen.findByDisplayValue(draft.body);
+  await waitFor(() => expect(screen.getByRole('button', { name: 'coldEmail.generateAiDraft' })).toBeEnabled()); await act(async () => {});
+  expect(api.stream).not.toHaveBeenCalled();
+}
 const compose = () => screen.getByRole('button', { name: 'coldEmail.gmail' });
 const subject = () => screen.getByLabelText('coldEmail.subject');
 const openRules = () => fireEvent.click(screen.getByTestId('contact-instructions').parentElement!.querySelector('summary')!);

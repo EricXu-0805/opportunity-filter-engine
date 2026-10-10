@@ -55,8 +55,9 @@ const field = (name: 'body' | 'requestLabel') => screen.getByLabelText('coldEmai
 const button = (name: string) => screen.getByRole('button', { name: 'coldEmail.' + name });
 async function ready() {
   await screen.findByDisplayValue(draft.body);
-  await waitFor(() => expect(api.stream).toHaveBeenCalledOnce());
+  await waitFor(() => expect(button('generateAiDraft')).toBeEnabled());
   await waitFor(() => expect(screen.getByTestId('cold-email-draft-status')).toHaveTextContent(/Saved on this browser/));
+  expect(api.stream).not.toHaveBeenCalled();
 }
 async function holdSave() {
   const acquired = deferred<void>(); const held = deferred<void>();
@@ -79,7 +80,9 @@ function beginLeave(kind: 'close' | 'profile') {
 describe('cold-email close while durable saving is pending', () => {
   it('retires an in-flight AI result on the close click before the save completes', async () => {
     const pending = deferred<ColdEmailResponse>(); api.stream.mockReturnValue(pending.promise);
-    const view = mount(); await ready(); const release = await holdSave();
+    const view = mount(); await ready();
+    fireEvent.click(button('generateAiDraft')); await waitFor(() => expect(api.stream).toHaveBeenCalledOnce());
+    const release = await holdSave();
     try {
       beginLeave('close'); expect(view.props.onClose).not.toHaveBeenCalled();
       await act(async () => { pending.resolve({ ...draft, body: 'Late AI must be discarded', method: 'ai' }); });
