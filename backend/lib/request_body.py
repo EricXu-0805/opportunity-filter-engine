@@ -46,15 +46,17 @@ from backend.lib.resume_input import MAX_RESUME_TEXT_CHARACTERS
 
 # Lists and objects outside JSON strings, per route. The largest body each route's request schema
 # accepts holds 651 (/api/tailor/renovate), 522 (/api/tailor), 520 (/api/tailor/bullet), 1 (either
-# extraction route) and 4,435 (a full-target draft at the master's caps, plus at most 49 for support
-# groups); scripts/request_body_containers.py builds and prints them.
+# extraction route) and 4,490 (a full-target selection plan: a draft at the master's caps and 24
+# support groups); scripts/request_body_containers.py builds and prints them.
 MAX_JSON_CONTAINERS = 10_000
 MAX_RESUME_JSON_CONTAINERS = 100
 MAX_FULL_TARGET_JSON_CONTAINERS = 20_000
-# Commas outside JSON strings. The same largest bodies hold at most 12,067 (the full-target draft),
-# 3,855 on the other writing routes and 1 on either extraction route.
+# Commas outside JSON strings. The same largest bodies hold at most 13,581 (the full-target selection
+# plan), 3,872 on the other writing routes and 1 on either extraction route.
 MAX_JSON_SEPARATORS = 50_000
 MAX_RESUME_JSON_SEPARATORS = MAX_RESUME_TEXT_CHARACTERS + 100
+# The document routes allow at least four times the full-target selection plan's commas.
+MAX_DOCUMENT_JSON_SEPARATORS = 60_000
 # Digits outside JSON strings, those of the body's numbers. These counts are dominated by the evidence
 # trees the document routes carry: every experience entry, skill fact and reference holds a revision
 # (up to 9,007,199,254,740,991, 16 digits) and the résumé-sourced ones two offsets (up to 60,000,
@@ -171,7 +173,8 @@ WRITING_BOUNDS = JSONBodyBounds(MAX_JSON_CONTAINERS, MAX_JSON_SEPARATORS)
 # A résumé master, a full-target draft or an export projection: the cold-email routes and those two.
 # These carry the evidence trees, so their digit bound is the larger MAX_DOCUMENT_JSON_DIGITS, and they
 # read and validate their body on the request lane.
-DOCUMENT_BOUNDS = JSONBodyBounds(MAX_FULL_TARGET_JSON_CONTAINERS, MAX_JSON_SEPARATORS, MAX_DOCUMENT_JSON_DIGITS)
+DOCUMENT_BOUNDS = JSONBodyBounds(MAX_FULL_TARGET_JSON_CONTAINERS, MAX_DOCUMENT_JSON_SEPARATORS,
+                                 MAX_DOCUMENT_JSON_DIGITS)
 # A profile and the ids of every saved or dismissed target. The schema keeps any number of ids, so
 # the comma bound sits above what real ids fill the body limit with.
 ID_LIST_BOUNDS = JSONBodyBounds(MAX_JSON_CONTAINERS, 100_000)

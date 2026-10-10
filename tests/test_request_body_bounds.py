@@ -32,6 +32,7 @@ FULL_HEAVY = [[]] * (request_body.MAX_FULL_TARGET_JSON_CONTAINERS + 1)
 # At the container bound, and well under the comma bound.
 CHAINS = [json.loads("[" * 98 + "0" + "]" * 98)] * ((request_body.MAX_JSON_CONTAINERS - 200) // 99)
 ITEMS = [0] * (request_body.MAX_JSON_SEPARATORS + 1)
+FULL_ITEMS = [None] * (request_body.DOCUMENT_BOUNDS.separators + 1)
 
 
 def on_the_event_loop() -> bool:
@@ -90,9 +91,9 @@ def test_a_body_at_the_bound_is_parsed_and_answered_as_before(parsed, padding):
 @pytest.mark.parametrize(("path", "body"), [
     ("/api/tailor", {**TAILOR, "original_bullets": ["Built a robot."], "padding": ITEMS}),
     ("/api/tailor/full-target/suggestions", {**FULL, "selected_unit_ids": ["line-1"],
-                                             "draft": {"kind": "full_resume", "junk": ITEMS}}),
+                                             "draft": {"kind": "full_resume", "junk": FULL_ITEMS}}),
     ("/api/tailor/full-target/selection-plan", {**FULL, "options": {"target_pages": 1},
-                                                "draft": {"kind": "full_resume", "junk": ITEMS}}),
+                                                "draft": {"kind": "full_resume", "junk": FULL_ITEMS}}),
 ], ids=["tailor", "full-target", "selection-plan"])
 def test_an_item_heavy_body_is_refused_unparsed(parsed, path, body):
     """Round 2, criterion (4): a body past the comma bound is refused before it is parsed."""
@@ -239,7 +240,7 @@ def test_a_heavy_full_target_body_is_refused_before_the_lane_parses_it(monkeypat
     monkeypatch.setattr(route, "json", Json)
     for path, extra in (("/api/tailor/full-target/suggestions", {"selected_unit_ids": ["line-1"]}),
                         ("/api/tailor/full-target/selection-plan", {"options": {"target_pages": 1}})):
-        for junk in (FULL_HEAVY, ITEMS):
+        for junk in (FULL_HEAVY, FULL_ITEMS):
             response = TestClient(app).post(path, json={**FULL, **extra, "draft": {"kind": "full_resume", "junk": junk}})
             assert (response.status_code, response.json()) == (422, {"detail": {"code": "invalid_request"}})
 
@@ -674,8 +675,9 @@ def test_every_json_route_has_a_largest_body():
 
 @pytest.mark.parametrize(("method", "path", "json_route"), JSON_ROUTES, ids=ROUTE_IDS)
 def test_every_json_route_reads_its_largest_valid_body_with_a_wide_margin(method, path, json_route):
-    """The largest body each request schema accepts is valid, holds at most a quarter of each of its
-    route's bounds, and its route reads it."""
+    """The largest body each request schema accepts (largest_bodies: free-form JSON and lists of any
+    length at the most the app writes or the route reads) is valid, holds at most a quarter of each of
+    its route's bounds, and its route reads it."""
     bounds = request_body.declared_bounds(json_route)
     concrete, body = next((c, b) for m, p, c, b in largest.largest_bodies() if (m, p) == (method, path))
     largest.validate(json_route, body)

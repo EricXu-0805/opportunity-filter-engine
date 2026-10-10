@@ -7,16 +7,16 @@ endpoint declares. This script finds every route of backend.main.app that reads 
 
 - schema: the largest body the route's request schema accepts, built from its caps (largest_bodies:
   every profile list at its item limit, 512 skills, 15 résumé sections with 100 bullets in all, a
-  60,000-character résumé, a full-target draft at the master's caps, an experience master at its
-  caps, 50 mailed items, 600 export lines, and so on). Each body is validated against the route's
-  request model and sent to its route, which must read it rather than refuse it. A list the schema
-  accepts at any length is built at the most items its route reads (5,000 favorite and 5,000
-  dismissed ids on /api/matches/view, 100 roadmap ids, 12 legacy résumé bullets), and free-form
-  JSON at the largest the app itself produces (a private import's metadata as the import routes
-  write it, a heartbeat's detail as the workflows send it). Further bodies put close to the most
-  commas their text fields or id lists allow (comma_dense_bodies): a full-target draft whose résumé
-  is 60,000 commas, an /api/tailor profile of 159,000 commas, and roadmap and match-view id lists
-  of real ids to the body limit.
+  60,000-character résumé, a full-target draft at the master's caps with every support group its
+  request takes, an experience master at its caps, 50 mailed items, 600 export lines, and so on).
+  Each body is validated against the route's request model and sent to its route, which must read
+  it rather than refuse it. A list the schema accepts at any length is built at the most items its
+  route reads (5,000 favorite and 5,000 dismissed ids on /api/matches/view, 100 roadmap ids, 12
+  legacy résumé bullets), and free-form JSON at the largest the app itself produces (a private
+  import's metadata as the import routes write it, a heartbeat's detail as the workflows send it).
+  Further bodies put close to the most commas their text fields or id lists allow
+  (comma_dense_bodies): a full-target draft whose résumé is 60,000 commas, an /api/tailor profile of
+  159,000 commas, and roadmap and match-view id lists of real ids to the body limit.
 - tests: the most that any request the given test files send to the route holds, among the
   requests the bounds admitted. pytest runs in this process with a recorder around the bound.
 
@@ -191,11 +191,20 @@ class Pick:
 
 
 def largest_profile(pick: Pick | None = None) -> dict:
-    """backend.schemas.ProfileRequest at every list's item limit (PROFILE_LIST_LIMITS, PROFILE_SKILL_LIMIT)."""
+    """backend.schemas.ProfileRequest with every field, every list at its item limit (PROFILE_LIST_LIMITS,
+    PROFILE_SKILL_LIMIT), and the numbers the schema leaves unbounded at 100, the top of the frontend's
+    range."""
     from backend.schemas import PROFILE_LIST_LIMITS, PROFILE_SKILL_LIMIT
     pick = pick or Pick()
-    profile = {"name": pick.text("Sample Student"), "major": "Computer Science",
-               "research_interests_text": pick.text("Robotics."), "preferences": {"min_match_threshold": 25}}
+    profile = {"name": pick.text("Sample Student"), "school": pick.text("University of Illinois"), "home_school": "uiuc",
+               "year": "junior", "major": "Computer Science", "college": pick.text("Grainger College of Engineering"),
+               "international_student": True, "experience_level": "beginner", "resume_ready": True,
+               "can_cold_email": True, "research_interests_text": pick.text("Robotics."),
+               "linkedin_url": "https://www.linkedin.com/in/sample", "github_url": "https://github.com/sample",
+               "scholar_url": "https://scholar.google.com/citations?user=sample", "search_weight": 100,
+               "exploring": True, "include_cross_school": True,
+               "preferences": {"min_match_threshold": 100, "show_reach_opportunities": True, "prioritize_paid": True,
+                               "exclude_citizenship_restricted": True}}
     for field, (count, _) in PROFILE_LIST_LIMITS.items():
         profile[field] = ["research" if field == "seeking_type" else pick.text(f"{field} {i}")
                           for i in range(pick.count(count))]
@@ -205,18 +214,18 @@ def largest_profile(pick: Pick | None = None) -> dict:
 
 
 def largest_draft(raw: str = ("Built a robot in Python. " * 2400)[:MAX_RESUME_TEXT_CHARACTERS]) -> dict:
-    """A full-target draft at the master's caps (target_resume_ai_validation): 100 experience entries,
-    300 activity records each citing one entry, 300 facts each a skill of its own, 300 unmapped
-    ranges. Every record, fact and citation becomes a block or line of the document, each a list
-    or object, so no other split of the caps holds more lists and objects. Every revision is at the
-    schema's maximum, so the draft and its mirrored document carry as many digits as the schema admits."""
+    """A full-target draft at the master's caps (largest_master), with 100 experience entries quoting
+    the résumé and the optional research interests (target_resume_ai_validation). Every revision is at
+    the schema's maximum, so the draft and its mirrored document carry as many digits as the schema
+    admits."""
     from backend.lib.target_resume_ai_validation import confirmed_document, fingerprint
     from backend.routes import target_resume_ai as full_route
 
     signature = hashlib.sha256(raw.encode()).hexdigest()
     entries = [{"id": f"e{i}", "revision": MAX_REVISION, "status": "confirmed", "text": f"Built rig {i} in Python.",
                 "source": resume_source(raw, signature, 10000 + 25 * i)} for i in range(100)]
-    snapshot = {"resume_text": raw, "experience_entries": entries, "resume_master": largest_master(signature, raw=raw)}
+    snapshot = {"resume_text": raw, "experience_entries": entries, "resume_master": largest_master(signature, raw=raw),
+                "research_interests": "Robotics."}
     target = full_route.authoritative_target({
         "id": "target", "title": "Research", "organization": "Example Lab", "source_url": "https://example.edu/lab",
         "description_clean": "Research robots with Python.", "eligibility": {"skills_required": ["Python"]},
@@ -240,37 +249,78 @@ def resume_source(raw: str, signature: str, start: int) -> dict:
     return {"kind": "resume", "signature": signature, "quote": raw[start:start + 24], "start": start, "end": start + 24}
 
 
+# The entries the first activity alone cites: a support group's line and the 24 others it may name
+# (target_resume_support.resolve_support_groups takes only lines whose entry one record cites).
+ALONE = 25
+
+
+def citations(entries: int) -> list[list[str]]:
+    """The entries each citing record of a master cites: 300 citations (validate_master's cap) in as
+    few records as that takes. The first cites every entry, so it alone cites the first ALONE; each
+    other one cites the rest."""
+    ids = [f"e{i}" for i in range(entries)]
+    records, rest, left = [ids], ids[ALONE:], 300 - len(ids)
+    while left > 0 and rest:
+        records.append(rest[:left])
+        left -= len(records[-1])
+    return records
+
+
 def largest_master(signature: str, entries: int = 100, raw: str | None = None) -> dict:
-    """A résumé master at its caps: 300 activity records each citing one entry, 300 skill facts and
-    300 unmapped ranges. Every revision is at the schema's maximum and every range runs between
-    five-digit offsets. With `raw`, each fact quotes the résumé from a five-digit offset, so the master
-    carries as many digits outside strings as the schema admits; without it, facts cite a manual source."""
+    """A résumé master at its caps (validate_master): 300 records, 300 facts, 300 citations and 300
+    unmapped ranges, split where the master and the document mirrored from it hold the most lists,
+    objects and commas. The citing records (citations) are an activity, an education, a publication
+    and further activities, so each of those sections is in the document; every other record is a
+    section of its own holding one fact; one fact is a basics field and the rest are skills. Every
+    revision is at the schema's maximum and every range runs between five-digit offsets. With `raw`,
+    each fact quotes the résumé from a five-digit offset, so the master carries as many digits outside
+    strings as the schema admits; without it, facts cite a manual source."""
     source = (lambda i: resume_source(raw, signature, 20000 + 25 * i)) if raw is not None else (lambda i: {"kind": "manual"})
     fact = lambda i, ident, value: {"id": ident, "revision": MAX_REVISION, "status": "confirmed",  # noqa: E731
                                     "value": value, "source": source(i)}
+    records = {"activities": [], "education": [], "publications": []}
+    for n, ids in enumerate(citations(entries)):
+        kind = ("activities", "education", "publications")[n] if n < 3 else "activities"
+        record = {"id": f"r{n}", "details": [{"id": ident, "revision": MAX_REVISION} for ident in ids]}
+        records[kind].append({**record, "kind": "project"} if kind == "activities" else record)
+    sections = 300 - sum(map(len, records.values()))
     step = (MAX_OFFSET - 10000) // 300
     return {"version": 1, "id": "master", "revision": MAX_REVISION, "source_signature": signature,
-            "basics": {"links": []}, "education": [], "publications": [], "other_sections": [],
-            "activities": [{"id": f"a{i}", "kind": "project",
-                            "details": [{"id": f"e{i % entries}", "revision": MAX_REVISION}]}
-                           for i in range(300)],
-            "skills": [fact(i, f"k{i}", f"Skill {i}") for i in range(300)],
-            "section_order": ["basics", "education", "activities", "publications", "skills"],
+            "basics": {"links": [], "name": fact(sections, "name", "Sample Student")}, **records,
+            "other_sections": [{"id": f"o{s}", "heading": f"Section {s}", "items": [fact(s, f"f{s}", f"Award {s}")]}
+                               for s in range(sections)],
+            "skills": [fact(i, f"k{i}", f"Skill {i}") for i in range(sections + 1, 300)],
+            "section_order": ["basics", "education", "activities", "publications", "skills",
+                              *(f"o{s}" for s in range(sections))],
             "unmapped_ranges": [{"start": 10000 + step * i, "end": 10000 + step * i + 10} for i in range(300)]}
 
 
 def full_target_bodies(doc: dict | None = None):
-    """The largest draft in a suggestions request (eight experience units, as many as one call
-    rewrites) and in a selection-plan request. Support groups, left out, add at most 49 lists and
-    objects (24 groups, each with its list of ids)."""
-    from backend.lib.target_resume_ai_schema import MAX_EXPERIENCE_UNITS
+    """The largest draft in a suggestions request and in a selection-plan request, each with every
+    optional field and as many support groups as it takes (target_resume_support): a group leads with
+    a line of the first activity that no other record cites and names 24 other such lines. The
+    suggestions request selects MAX_UNITS units, MAX_EXPERIENCE_UNITS of them (as many as one call
+    rewrites) such lines, each leading a group; the plan request takes 24 groups."""
+    from collections import Counter
+
+    from backend.lib.target_resume_ai_schema import MAX_EXPERIENCE_UNITS, MAX_UNITS
     from backend.lib.target_resume_ai_validation import fingerprint, units_for, validate_document
 
     doc = doc or largest_draft()
-    units = [unit["unit_id"] for unit in units_for(validate_document(doc))[0] if unit["role"] == "experience"]
-    head = {"version": 1, "request_id": "request", "locale": "en", "draft": doc, "document_signature": fingerprint(doc)}
-    yield FULL_TARGET[0], {**head, "selected_unit_ids": units[:MAX_EXPERIENCE_UNITS]}
-    yield FULL_TARGET[1], {**head, "options": {"target_pages": 2}}
+    master = doc["base_snapshot"]["resume_master"]
+    cited = Counter(ref["id"] for kind in ("activities", "education", "publications") for record in master[kind]
+                    for ref in record["details"])
+    units = units_for(validate_document(doc))[0]
+    alone = [unit["unit_id"] for unit in units
+             if unit["block_id"] == master["activities"][0]["id"] and cited[unit["evidence"]["id"]] == 1]
+    facts = [unit["unit_id"] for unit in units if unit["evidence"]["kind"] != "experience"]
+    groups = [{"unit_id": line, "support_unit_ids": [other for other in alone if other != line][:24], "confirmed": True}
+              for line in alone[:24]]
+    head = {"version": 1, "request_id": "request", "locale": "en", "include_check_version": False, "draft": doc,
+            "document_signature": fingerprint(doc)}
+    yield FULL_TARGET[0], {**head, "support_groups": groups[:MAX_EXPERIENCE_UNITS],
+                           "selected_unit_ids": alone[:MAX_EXPERIENCE_UNITS] + facts[:MAX_UNITS - MAX_EXPERIENCE_UNITS]}
+    yield FULL_TARGET[1], {**head, "support_groups": groups, "options": {"target_pages": 2}}
 
 
 def largest_evidence(pick: Pick) -> dict:
@@ -491,16 +541,18 @@ def validation_errors(route, body) -> int:
 
 
 def validate(route, body) -> None:
-    """Raise unless `body` is valid for the route's request model (the full-target draft as the lane
-    checks it)."""
+    """Raise unless `body` is valid for the route's request model (a full-target request as the lane
+    checks and prepares it, its support groups included)."""
     model = request_model(route)
     if hasattr(model, "validate_python"):
         model.validate_python(body, from_attributes=True)  # as fastapi.routing validates a body
-    else:
-        model.model_validate(body)
+        return
+    request = model.model_validate(body)
     if route.path in FULL_TARGET:
+        from backend.lib.target_resume_ai import prepare_batch
         from backend.lib.target_resume_ai_validation import validate_document
-        validate_document(body["draft"])
+        from backend.lib.target_resume_plan import prepare_plan
+        (prepare_batch if route.path == FULL_TARGET[0] else prepare_plan)(request, validate_document(body["draft"]))
 
 
 def comma_dense_bodies():

@@ -52,6 +52,7 @@ import httpx  # noqa: E402
 from backend import main as main_module  # noqa: E402
 from backend.lib import release_scope  # noqa: E402
 from backend.lib.request_body import (  # noqa: E402
+    MAX_DOCUMENT_JSON_SEPARATORS,
     MAX_FULL_TARGET_JSON_CONTAINERS,
     MAX_JSON_CONTAINERS,
     MAX_JSON_SEPARATORS,
@@ -212,8 +213,10 @@ ROUTE_FRAMES = (
      MAX_RESUME_JSON_SEPARATORS),
     ("/api/tailor/structure", b'{"resume_text":"x","locale":"en","padding":%s}', MAX_RESUME_JSON_CONTAINERS,
      MAX_RESUME_JSON_SEPARATORS),
-    ("/api/tailor/full-target/suggestions", _FULL_FRAME, MAX_FULL_TARGET_JSON_CONTAINERS, MAX_JSON_SEPARATORS),
-    ("/api/tailor/full-target/selection-plan", _PLAN_FRAME, MAX_FULL_TARGET_JSON_CONTAINERS, MAX_JSON_SEPARATORS),
+    ("/api/tailor/full-target/suggestions", _FULL_FRAME, MAX_FULL_TARGET_JSON_CONTAINERS,
+     MAX_DOCUMENT_JSON_SEPARATORS),
+    ("/api/tailor/full-target/selection-plan", _PLAN_FRAME, MAX_FULL_TARGET_JSON_CONTAINERS,
+     MAX_DOCUMENT_JSON_SEPARATORS),
 )
 
 
