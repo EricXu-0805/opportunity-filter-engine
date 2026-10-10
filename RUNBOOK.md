@@ -122,7 +122,7 @@ Add to `vercel.json`:
 ```json
 {
   "crons": [
-    { "path": "/api/cron/reminders", "schedule": "0 13 * * *" }
+    { "path": "/api/cron/reminders", "schedule": "11 23 * * *" }
   ]
 }
 ```
@@ -133,7 +133,7 @@ Add to `vercel.json`:
 name: daily-reminders
 on:
   schedule:
-    - cron: '0 13 * * *'
+    - cron: '11 23 * * *'
 jobs:
   ping:
     runs-on: ubuntu-latest
@@ -148,8 +148,10 @@ jobs:
 a GET to `https://<your-backend>/api/cron/reminders` with header
 `Authorization: Bearer <CRON_SECRET>`.
 
-Daily 1pm UTC (~8am Central during DST) is a reasonable default so
-overdue items get surfaced mid-morning.
+The shipped `.github/workflows/daily-reminders.yml` runs daily at 23:11 UTC
+(6:11pm CDT / 5:11pm CST), an evening open window. It starts at :11 rather
+than :00 because GitHub delays scheduled runs queued at the top of the hour
+first.
 
 ## 6. Verification
 
@@ -188,7 +190,7 @@ If anything goes wrong:
 | Frontend | https://opportunity-filter-engine.vercel.app | Vercel Hobby, Next.js 14 |
 | Backend | https://opportunity-filter-engine-api.onrender.com | Render Free, FastAPI (cold starts ~30s) |
 | Database | https://mjpirkyduibkakvlbdko.supabase.co | Supabase Free |
-| Cron | `.github/workflows/daily-reminders.yml` | GitHub Actions, daily 13:00 UTC |
+| Cron | `.github/workflows/daily-reminders.yml` | GitHub Actions, daily 23:11 UTC |
 
 ### Environment variables deployed
 
