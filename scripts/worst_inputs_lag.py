@@ -15,6 +15,8 @@ reads a JSON body (request_body_containers.json_routes), against that route's de
 body limit, and sends every route its largest valid body, and a private import's save and an export
 at their body limits. VALIDATION sends every route the bodies request_body_containers.validation_bodies
 builds for each value, list, typed map and closed model of its request schema, within the route's bounds.
+NUMBERS sends every route lists of numbers of each shape the JSON number grammar allows, with its parts
+at two widths each, at and past its digit bound.
 The admin routes are sent an operator token they accept, so they validate their bodies.
 
 Each request goes through backend.main.app over httpx.ASGITransport, as a caller whose credential
@@ -182,6 +184,7 @@ def cases():
     # Every route that reads a JSON body.
     yield from json_route_cases()
     yield from validation_cases()
+    yield from number_cases()
 
 
 def chains(total: int, depth: int) -> bytes:
@@ -258,7 +261,8 @@ def json_route_cases():
         yield f"ROUTES {method} {template} legitimate: its largest valid body", path, body, method
         if template in covered:
             continue
-        bound, separators = declared_bounds(routes[method, template])
+        bounds = declared_bounds(routes[method, template])
+        bound, separators = bounds.containers, bounds.separators
         cap = body_limit(method, path) - 400
         levels = [(bound - own, "at its bound"), (bound - own + 1, "one over its bound"), (PAST - own, "past every bound")]
         for shape, depth in enumerate((2, 50, 900), 1):
@@ -281,6 +285,47 @@ def json_route_cases():
         yield (f"ROUTES {method} {template} unknown field: quotes, then brackets past the bound", path,
                frame % (b'"' * (cap - bound - 10) + b"[" * (bound + 1)), method)
     yield from limit_bodies()
+
+
+def number_forms(width: int, exponent_width: int):
+    """One JSON number of each shape the grammar allows: an integer part, an optional fraction and an
+    optional exponent of either sign."""
+    whole, half, power = "9" * width, "9" * (width // 2 or 1), "9" * exponent_width
+    mantissas = {"int": whole, "frac": "0." + whole, "int.frac": half + "." + half}
+    exponents = {"": "", "e": "e" + power, "e-": "e-" + power, "e+": "e+" + power}
+    for m_tag, mantissa in mantissas.items():
+        for e_tag, exponent in exponents.items():
+            yield f"{m_tag}{e_tag}", (mantissa + exponent).encode()
+
+
+# The digits number_cases puts in a number's integer part or fraction, and in its exponent.
+NUMBER_WIDTHS = (1, 6)
+EXPONENT_WIDTHS = (1, 3)
+
+
+def number_cases():
+    """Every route: a list of numbers of each grammar shape (number_forms), at each width of its parts,
+    at the route's digit bound, and to its comma bound or body limit, past it."""
+    from backend.lib.request_body import declared_bounds, structural_digits
+    from scripts import request_body_containers as largest
+
+    forms = {}
+    for width in NUMBER_WIDTHS:
+        for exponent_width in EXPONENT_WIDTHS:
+            for tag, item in number_forms(width, exponent_width):
+                forms.setdefault(item, f"{tag} width {width}" + (f"/{exponent_width}" if "e" in tag else ""))
+    routes = {(method, path): route for method, path, route in largest.json_routes(main_module.app)}
+    for method, template, path, _ in largest.largest_bodies():
+        bounds = declared_bounds(routes[method, template])
+        cap = body_limit(method, path) - 400
+        for item, form in forms.items():
+            most = min(bounds.separators - 50, cap // (len(item) + 1))
+            at = bounds.digits // structural_digits(item)
+            positions = ((at, "at the digit bound"), (most, "past it, to the comma bound or body limit")) if at < most \
+                else ((most, "to the comma bound or body limit"),)
+            for count, where in positions:
+                body = b'{"padding":[' + b",".join([item] * count) + b"]}"
+                yield f"NUMBERS {method} {template} {count:,} x form {form}, {where}", path, body, method
 
 
 def validation_cases():

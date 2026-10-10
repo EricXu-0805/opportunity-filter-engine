@@ -85,15 +85,16 @@ def _validated(request, prepare):
 def _parsed(body: bytes, content_type: str | None, model):
     """The body as FastAPI would parse and validate it for ``model``, on the request lane.
 
-    First the structural bounds (check_body_bounds): the body's lists and objects and the commas
-    between its items, both counted outside its strings, against DOCUMENT_BOUNDS. Then, as
+    First the structural bounds (check_body_bounds): the body's lists and objects, the commas
+    between its items and the digits of its numbers, all counted outside its strings, against
+    DOCUMENT_BOUNDS. Then, as
     FastAPI does with a strict content type: only an application/json (or +json) body is
     read as JSON; anything else, an empty body included, is a validation error. Invalid JSON
     (json.JSONDecodeError) is a validation error; any other failure to parse, such as a body
     that is not UTF-8 or one nested past the parser's recursion limit, is the 400 FastAPI
     answers (fastapi.routing catches JSONDecodeError for 422 and every other exception for 400).
     """
-    check_body_bounds(body, DOCUMENT_BOUNDS.separators, DOCUMENT_BOUNDS.containers)
+    check_body_bounds(body, DOCUMENT_BOUNDS.separators, DOCUMENT_BOUNDS.containers, DOCUMENT_BOUNDS.digits)
     message = email.message.Message()
     message["content-type"] = content_type or ""
     subtype = message.get_content_subtype()

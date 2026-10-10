@@ -1,23 +1,24 @@
 """Refuse, before it is parsed, a JSON request body whose structure is larger than its route allows.
 
-Each route bounds two counts of a body, both read outside JSON strings: its lists and objects
-(structural_containers), and the commas between items (structural_separators), one before every
-item of a list or object but the first. Text inside strings counts for nothing, so a résumé or a
-profile may hold any brackets and commas its own limits allow.
+Each route bounds three counts of a body, all read outside JSON strings: its lists and objects
+(structural_containers), the commas between items (structural_separators), one before every item of
+a list or object but the first, and the digits of its numbers (structural_digits). Text inside
+strings counts for nothing, so a résumé or a profile may hold any brackets, commas and digits its own
+limits allow.
 
 Every endpoint that reads a JSON body declares its bounds (json_body_bounds), and its route class
-(BoundedJSONRoute, or the full-target routes' request lane) refuses a body past either before the
-body is parsed. The routes with the largest bodies (a body limit above the default, and the
+(BoundedJSONRoute, or the full-target routes' request lane) refuses a body past any of them before
+the body is parsed. The routes with the largest bodies (a body limit above the default, and the
 cold-email routes) read and validate their body on the request lane (json_body_on_lane, or the
 full-target routes' own preparation there). The bounds sit
 well above what the route's legitimate requests hold:
 scripts/request_body_containers.py finds every route of the app that reads a JSON body, builds the
-largest body each request schema accepts and prints both counts beside the bounds, and
+largest body each request schema accepts and prints its counts beside the bounds, and
 scripts/worst_inputs_lag.py measures bodies at and past them.
 
 The models of those bodies bound how many items and keys of a body they validate: a model that
 refuses unknown keys refuses an object with more keys than it has fields (known_keys), and a list the
-schema leaves unbounded is cut to the most its route reads, or refused at once when an item is not a
+schema leaves unbounded is cut to the most its route reads, or refused when an item is not a
 string, before its items are validated (backend.schemas; the export checks its block and line limits
 first). scripts/request_body_containers.py (validation_bodies) builds, for every JSON route, bodies
 within its bounds for each value, list and object its schema declares.
@@ -50,10 +51,23 @@ from backend.lib.resume_input import MAX_RESUME_TEXT_CHARACTERS
 MAX_JSON_CONTAINERS = 10_000
 MAX_RESUME_JSON_CONTAINERS = 100
 MAX_FULL_TARGET_JSON_CONTAINERS = 20_000
-# Commas outside JSON strings. The same largest bodies hold at most 10,467 (the full-target draft),
+# Commas outside JSON strings. The same largest bodies hold at most 12,067 (the full-target draft),
 # 3,855 on the other writing routes and 1 on either extraction route.
 MAX_JSON_SEPARATORS = 50_000
 MAX_RESUME_JSON_SEPARATORS = MAX_RESUME_TEXT_CHARACTERS + 100
+# Digits outside JSON strings, those of the body's numbers. These counts are dominated by the evidence
+# trees the document routes carry: every experience entry, skill fact and reference holds a revision
+# (up to 9,007,199,254,740,991, 16 digits) and the résumé-sourced ones two offsets (up to 60,000,
+# 5 digits). The largest body each route's schema accepts holds at most 27,839 digits on the two
+# full-target routes, about 18,230 on the cold-email routes, and at most 150 on every other route but
+# the private-import save, which sizes its own bound from its free-form metadata
+# (routes/private_import_targets.py). A numeric field the schema leaves unbounded (a profile's search
+# weight and match threshold, a mailed item's score) counts at the most the frontend sends.
+MAX_JSON_DIGITS = 20_000
+# The document routes carry the evidence trees, so they allow at least four times their largest body's
+# digits.
+MAX_DOCUMENT_JSON_DIGITS = 120_000
+_DIGITS = b"0123456789"
 
 
 def _json_text(body: bytes) -> bytes | str:
@@ -104,43 +118,60 @@ def structural_separators(text: bytes | str) -> int:
     return _outside_strings(text).count("," if isinstance(text, str) else b",")
 
 
-def check_body_bounds(body: bytes, max_separators: int = MAX_JSON_SEPARATORS,
-                      max_containers: int = MAX_JSON_CONTAINERS) -> None:
-    """Raise the RequestValidationError each route already answers when the body holds more lists
-    and objects, or more commas between items, than its route's bounds.
+def _digits(text: bytes | str) -> int:
+    if isinstance(text, str):
+        text = text.encode("utf-8", "surrogatepass")
+    return len(text) - len(text.translate(None, _DIGITS))
 
-    The counts read the whole body in C. Only a body with more brackets or commas than a bound
-    anywhere has its strings set aside before they are counted again, and only once its quotes are
-    counted: each string of a JSON text is a key or an item of a list or object, or the whole text,
-    and a text within both bounds has at most max_separators + max_containers items, so at most
+
+def structural_digits(text: bytes | str) -> int:
+    """The digits of the numbers json.loads reads in a JSON text."""
+    return _digits(_outside_strings(text))
+
+
+def check_body_bounds(body: bytes, max_separators: int = MAX_JSON_SEPARATORS,
+                      max_containers: int = MAX_JSON_CONTAINERS, max_digits: int = MAX_JSON_DIGITS) -> None:
+    """Raise the RequestValidationError each route already answers when the body holds more lists
+    and objects, more commas between items, or more digits in its numbers, than its route's bounds.
+
+    The counts read the whole body in C. Only a body with more brackets, commas or digits than a
+    bound anywhere has its strings set aside before they are counted again, and only once its quotes
+    are counted: each string of a JSON text is a key or an item of a list or object, or the whole
+    text, and a text within the bounds has at most max_separators + max_containers items, so at most
     twice that many strings plus one. A text with more is past a bound, or is not JSON.
     """
     text = _json_text(body)
     lists, objects, commas, quote = (b"[", b"{", b",", b'"') if isinstance(text, bytes) else ("[", "{", ",", '"')
-    if text.count(commas) <= max_separators and text.count(lists) + text.count(objects) <= max_containers:
+    if text.count(commas) <= max_separators and text.count(lists) + text.count(objects) <= max_containers \
+            and _digits(text) <= max_digits:
         return
     text = _unescaped(text)
     if text.count(quote) <= 2 * (2 * (max_separators + max_containers) + 1):
         outside = text[:0].join(text.split(quote)[::2])
-        if outside.count(commas) <= max_separators and outside.count(lists) + outside.count(objects) <= max_containers:
+        if outside.count(commas) <= max_separators and outside.count(lists) + outside.count(objects) <= max_containers \
+                and _digits(outside) <= max_digits:
             return
     raise RequestValidationError([{"type": "too_long", "loc": ("body",), "msg": "Request input is invalid.",
                                    "input": None}])
 
 
 class JSONBodyBounds(NamedTuple):
-    """At most this many lists and objects, and commas between items, outside a body's strings."""
+    """At most this many lists and objects, commas between items, and digits, outside a body's strings."""
 
     containers: int
     separators: int
+    digits: int = MAX_JSON_DIGITS
 
 
-# Each route's bounds are at least four times what the largest body its request schema accepts holds
-# (scripts/request_body_containers.py prints both for every JSON route). A profile and a few lists:
-# the matching, chat and writing routes.
+# Each route's bounds, except SAVE_BOUNDS (routes/private_import_targets.py), are at least four times
+# what the largest body its request schema accepts holds (scripts/request_body_containers.py prints all
+# three counts for every JSON route). A profile and a few lists: the matching, chat and writing routes.
+# Their largest body holds at most 150 digits, far under the shared digit bound.
 WRITING_BOUNDS = JSONBodyBounds(MAX_JSON_CONTAINERS, MAX_JSON_SEPARATORS)
 # A résumé master, a full-target draft or an export projection: the cold-email routes and those two.
-DOCUMENT_BOUNDS = JSONBodyBounds(MAX_FULL_TARGET_JSON_CONTAINERS, MAX_JSON_SEPARATORS)
+# These carry the evidence trees, so their digit bound is the larger MAX_DOCUMENT_JSON_DIGITS, and they
+# read and validate their body on the request lane.
+DOCUMENT_BOUNDS = JSONBodyBounds(MAX_FULL_TARGET_JSON_CONTAINERS, MAX_JSON_SEPARATORS, MAX_DOCUMENT_JSON_DIGITS)
 # A profile and the ids of every saved or dismissed target. The schema keeps any number of ids, so
 # the comma bound sits above what real ids fill the body limit with.
 ID_LIST_BOUNDS = JSONBodyBounds(MAX_JSON_CONTAINERS, 100_000)
@@ -170,7 +201,8 @@ LANE_BODY_BYTES = DEFAULT_MAX_REQUEST_BODY_BYTES
 
 
 async def refuse_container_heavy_body(request: Request, max_separators: int = MAX_JSON_SEPARATORS,
-                                      max_containers: int = MAX_JSON_CONTAINERS) -> None:
+                                      max_containers: int = MAX_JSON_CONTAINERS,
+                                      max_digits: int = MAX_JSON_DIGITS) -> None:
     """check_body_bounds on the request's body, before FastAPI parses it.
 
     A body of up to LANE_BODY_BYTES is counted on the event loop. A larger one, which only the
@@ -180,14 +212,14 @@ async def refuse_container_heavy_body(request: Request, max_separators: int = MA
     """
     body = await request.body()
     if len(body) > LANE_BODY_BYTES:
-        await run_request_work(check_body_bounds, body, max_separators, max_containers)
+        await run_request_work(check_body_bounds, body, max_separators, max_containers, max_digits)
     else:
-        check_body_bounds(body, max_separators, max_containers)
+        check_body_bounds(body, max_separators, max_containers, max_digits)
 
 
 def known_keys(cls, value):
-    """A model that refuses unknown keys refuses, as one error, an object with more keys than the model
-    has fields, before any of its keys is validated. Use as model_validator(mode="before")(known_keys).
+    """A model that refuses unknown keys refuses an object with more keys than the model has fields,
+    before any of its keys is validated. Use as model_validator(mode="before")(known_keys).
 
     Such an object holds at least one unknown key, so the model refuses it either way."""
     if isinstance(value, dict) and len(value) > len(cls.model_fields):
@@ -196,7 +228,7 @@ def known_keys(cls, value):
 
 
 def string_items(values):
-    """A list refused, as one error, when an item is not a string, before its items are validated.
+    """A list refused when an item is not a string, before its items are validated.
     Use as field_validator(name, mode="before")(string_items) on a list[str] field."""
     if isinstance(values, list) and not all(map(isinstance, values, repeat(str))):
         raise PydanticCustomError("string_type", "Input should be a valid string")
@@ -265,7 +297,7 @@ class BoundedJSONRoute(APIRoute):
             return original
 
         async def handler(request: Request):
-            await refuse_container_heavy_body(request, bounds.separators, bounds.containers)
+            await refuse_container_heavy_body(request, bounds.separators, bounds.containers, bounds.digits)
             return await original(request)
 
         return handler

@@ -45,9 +45,11 @@ _TRACKER_BATCH_CONCURRENCY = 4
 # grants this whole prefix is never a legitimate size for them.
 _SMALL_BODY_BYTES = MAX_BODY_BYTES - MAX_PAYLOAD_BYTES
 # A save's metadata (extra_fields) is any JSON within MAX_EXTRA_BYTES of compact encoding, where each
-# list or object, and each comma with the item after it, takes at least two bytes. The rest of the
-# body is strings in a few dozen keys.
-SAVE_BOUNDS = JSONBodyBounds(MAX_EXTRA_BYTES // 2 + 64, MAX_EXTRA_BYTES // 2 + 64)
+# list or object, and each comma with the item after it, takes at least two bytes, and each digit one.
+# The rest of the body is strings in a few dozen keys. The metadata is free-form, so a legitimate save
+# may hold a digit in every byte of it; the digit bound is therefore the schema maximum, not four times
+# a smaller figure.
+SAVE_BOUNDS = JSONBodyBounds(MAX_EXTRA_BYTES // 2 + 64, MAX_EXTRA_BYTES // 2 + 64, MAX_EXTRA_BYTES + 64)
 
 
 async def _screen_body(request: Request) -> None:

@@ -1,9 +1,9 @@
-"""How many lists and objects, and commas, outside JSON strings, the largest legitimate body of each JSON route holds.
+"""How many lists and objects, commas and digits, outside JSON strings, the largest legitimate body of each JSON route holds.
 
-backend/lib/request_body.py refuses, before parsing, a body that holds more lists and objects, or
-more commas between items, outside its strings than the bounds its route's endpoint declares. This
-script finds every route of backend.main.app that reads a JSON body (json_routes) and prints each
-route's bounds beside two readings of what a legitimate body holds:
+backend/lib/request_body.py refuses, before parsing, a body that holds more lists and objects, more
+commas between items, or more digits in its numbers, outside its strings than the bounds its route's
+endpoint declares. This script finds every route of backend.main.app that reads a JSON body
+(json_routes) and prints each route's bounds beside two readings of what a legitimate body holds:
 
 - schema: the largest body the route's request schema accepts, built from its caps (largest_bodies:
   every profile list at its item limit, 512 skills, 15 résumé sections with 100 bullets in all, a
@@ -57,6 +57,10 @@ PRIVATE_TARGET = "private-import:00000000-0000-4000-8000-000000000005"
 TARGET_VERSION = "wt1:" + "a" * 64
 # Characters a structural count must read past inside a string.
 STRUCTURAL = '[]{}",:\\ab∀'
+# The largest value a revision may take (backend.schemas.ExperienceEntry, validate_master.positive),
+# and a résumé offset's, so the largest bodies carry as many digits outside strings as the schema admits.
+MAX_REVISION = 9007199254740991
+MAX_OFFSET = 60000
 
 
 def containers(body: bytes) -> int:
@@ -65,6 +69,10 @@ def containers(body: bytes) -> int:
 
 def separators(body: bytes) -> int:
     return request_body.structural_separators(request_body._json_text(body))
+
+
+def digits(body: bytes) -> int:
+    return request_body.structural_digits(request_body._json_text(body))
 
 
 def lane_body_model(route):
@@ -196,24 +204,25 @@ def largest_profile(pick: Pick | None = None) -> dict:
     return profile
 
 
-def largest_draft(raw: str = "Built a robot in Python. " * 400) -> dict:
+def largest_draft(raw: str = ("Built a robot in Python. " * 2400)[:MAX_RESUME_TEXT_CHARACTERS]) -> dict:
     """A full-target draft at the master's caps (target_resume_ai_validation): 100 experience entries,
     300 activity records each citing one entry, 300 facts each a skill of its own, 300 unmapped
     ranges. Every record, fact and citation becomes a block or line of the document, each a list
-    or object, so no other split of the caps holds more lists and objects."""
+    or object, so no other split of the caps holds more lists and objects. Every revision is at the
+    schema's maximum, so the draft and its mirrored document carry as many digits as the schema admits."""
     from backend.lib.target_resume_ai_validation import confirmed_document, fingerprint
     from backend.routes import target_resume_ai as full_route
 
     signature = hashlib.sha256(raw.encode()).hexdigest()
-    entries = [{"id": f"e{i}", "revision": 1, "status": "confirmed", "text": f"Built rig {i} in Python.",
-                "source": {"kind": "manual"}} for i in range(100)]
-    snapshot = {"resume_text": raw, "experience_entries": entries, "resume_master": largest_master(signature)}
+    entries = [{"id": f"e{i}", "revision": MAX_REVISION, "status": "confirmed", "text": f"Built rig {i} in Python.",
+                "source": resume_source(raw, signature, 10000 + 25 * i)} for i in range(100)]
+    snapshot = {"resume_text": raw, "experience_entries": entries, "resume_master": largest_master(signature, raw=raw)}
     target = full_route.authoritative_target({
         "id": "target", "title": "Research", "organization": "Example Lab", "source_url": "https://example.edu/lab",
         "description_clean": "Research robots with Python.", "eligibility": {"skills_required": ["Python"]},
         "source_type": "campus_program", "opportunity_type": "research", "metadata": {"is_active": True}})
     doc = {"kind": "full_resume", "version": 1, "id": "draft", "opportunity_id": "target",
-           "base": {"master_id": "master", "master_revision": 1, "source_signature": signature,
+           "base": {"master_id": "master", "master_revision": MAX_REVISION, "source_signature": signature,
                     "profile_signature": "v1:sha256:" + "a" * 64, "target_signature": fingerprint(target)},
            "base_snapshot": snapshot, "target_snapshot": target, "document": confirmed_document(snapshot, signature)}
     for section in doc["document"]["sections"]:
@@ -225,18 +234,29 @@ def largest_draft(raw: str = "Built a robot in Python. " * 400) -> dict:
     return doc
 
 
-def largest_master(signature: str, entries: int = 100) -> dict:
+def resume_source(raw: str, signature: str, start: int) -> dict:
+    """A résumé-kind source quoting 24 characters of `raw` from a five-digit offset, so each fact or
+    entry that carries it holds a revision and two offsets outside its strings."""
+    return {"kind": "resume", "signature": signature, "quote": raw[start:start + 24], "start": start, "end": start + 24}
+
+
+def largest_master(signature: str, entries: int = 100, raw: str | None = None) -> dict:
     """A résumé master at its caps: 300 activity records each citing one entry, 300 skill facts and
-    300 unmapped ranges."""
-    fact = lambda ident, value: {"id": ident, "revision": 1, "status": "confirmed", "value": value,  # noqa: E731
-                                 "source": {"kind": "manual"}}
-    return {"version": 1, "id": "master", "revision": 1, "source_signature": signature,
+    300 unmapped ranges. Every revision is at the schema's maximum and every range runs between
+    five-digit offsets. With `raw`, each fact quotes the résumé from a five-digit offset, so the master
+    carries as many digits outside strings as the schema admits; without it, facts cite a manual source."""
+    source = (lambda i: resume_source(raw, signature, 20000 + 25 * i)) if raw is not None else (lambda i: {"kind": "manual"})
+    fact = lambda i, ident, value: {"id": ident, "revision": MAX_REVISION, "status": "confirmed",  # noqa: E731
+                                    "value": value, "source": source(i)}
+    step = (MAX_OFFSET - 10000) // 300
+    return {"version": 1, "id": "master", "revision": MAX_REVISION, "source_signature": signature,
             "basics": {"links": []}, "education": [], "publications": [], "other_sections": [],
-            "activities": [{"id": f"a{i}", "kind": "project", "details": [{"id": f"e{i % entries}", "revision": 1}]}
+            "activities": [{"id": f"a{i}", "kind": "project",
+                            "details": [{"id": f"e{i % entries}", "revision": MAX_REVISION}]}
                            for i in range(300)],
-            "skills": [fact(f"k{i}", f"Skill {i}") for i in range(300)],
+            "skills": [fact(i, f"k{i}", f"Skill {i}") for i in range(300)],
             "section_order": ["basics", "education", "activities", "publications", "skills"],
-            "unmapped_ranges": [{"start": 2 * i, "end": 2 * i + 1} for i in range(300)]}
+            "unmapped_ranges": [{"start": 10000 + step * i, "end": 10000 + step * i + 10} for i in range(300)]}
 
 
 def full_target_bodies(doc: dict | None = None):
@@ -258,10 +278,9 @@ def largest_evidence(pick: Pick) -> dict:
     raw = ("Built a robot in Python. " * (MAX_RESUME_TEXT_CHARACTERS // 25))[:MAX_RESUME_TEXT_CHARACTERS]
     signature = hashlib.sha256(raw.encode()).hexdigest()
     count = pick.count(100)
-    entries = [{"id": f"e{i}", "revision": 1, "status": "confirmed", "text": pick.text(f"Built rig {i}."),
-                "source": {"kind": "resume", "signature": signature, "quote": raw[25 * i:25 * i + 24],
-                           "start": 25 * i, "end": 25 * i + 24}} for i in range(count)]
-    master = largest_master(signature, max(count, 1)) if pick.count(1) else None
+    entries = [{"id": f"e{i}", "revision": MAX_REVISION, "status": "confirmed", "text": pick.text(f"Built rig {i}."),
+                "source": resume_source(raw, signature, 10000 + 25 * i)} for i in range(count)]
+    master = largest_master(signature, max(count, 1), raw=raw) if pick.count(1) else None
     return {"version": 2, "resume_text": raw, "entries": entries, "resume_master": master}
 
 
@@ -597,9 +616,9 @@ def _found(body, path: tuple):
     return body
 
 
-def _counts(body) -> tuple[int, int, int]:
+def _counts(body) -> tuple[int, int, int, int]:
     content = json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode()
-    return containers(content), separators(content), len(content)
+    return containers(content), separators(content), digits(content), len(content)
 
 
 def _first_items(value):
@@ -655,10 +674,11 @@ def validation_bodies(app=None):
                     times = max([1, *copies.values()])
                     empty = fill if shape == "keys" else [] if shape == "list" else {}
                     trial = _placed(json.loads(json.dumps(base)), site, empty, copies)
-                    lists, commas, size = _counts(trial)
+                    lists, commas, numerals, size = _counts(trial)
                     lists, commas, room = bounds.containers - lists - 8, bounds.separators - commas - 8, limit - size
+                    numerals = bounds.digits - numerals - 8
                     if shape == "keys":
-                        many = min(commas, room // 20) // times if count is None else count
+                        many = min(commas, numerals, room // 20) // times if count is None else count
                         if many <= 0:
                             continue
                         keys = {f"undeclared{i}": 0 for i in range(many)}
@@ -666,8 +686,9 @@ def validation_bodies(app=None):
                         name = f"{where}: {len(empty) + many:,} keys"
                     else:
                         item = json.dumps(fill, separators=(",", ":")).encode()
-                        per = containers(item)
+                        per, figures = containers(item), digits(item)
                         many = min(commas // (separators(item) + 1), lists // per if per else commas,
+                                   numerals // figures if figures else commas,
                                    room // (len(item) + (1 if shape == "list" else 12))) // times
                         many = many if count is None else min(many, count)
                         if many <= 0:
@@ -678,8 +699,9 @@ def validation_bodies(app=None):
                         name = f"{where}: {held if kind == 'value' else f'{many:,} x {item.decode()}'}"
                     if copies:
                         name += f" in {times:,} copies of {'.'.join(map(str, next(iter(copies)))) or '(body)'}"
-                    lists, commas, size = _counts(body)
-                    if lists <= bounds.containers and commas <= bounds.separators and size <= limit:
+                    lists, commas, numerals, size = _counts(body)
+                    if lists <= bounds.containers and commas <= bounds.separators and numerals <= bounds.digits \
+                            and size <= limit:
                         yield method, template, path, name, body
 
 
@@ -757,7 +779,8 @@ def schema_readings() -> tuple[dict, list]:
             content = json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode()
             parsed.clear()
             response = send(client, method, path, content)
-            out[method, template] = (containers(content), separators(content), response.status_code, bool(parsed))
+            out[method, template] = (containers(content), separators(content), digits(content), response.status_code,
+                                     bool(parsed))
         for name, path, body in comma_dense_bodies():
             content = json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode()
             parsed.clear()
@@ -796,7 +819,8 @@ class Recorder:
         def parsed(body, content_type, model):
             key = ("POST", FULL_TARGET[1] if model is FullTargetPlanRequest else FULL_TARGET[0])
             try:
-                request_body.check_body_bounds(body, *reversed(request_body.DOCUMENT_BOUNDS))
+                bounds = request_body.DOCUMENT_BOUNDS
+                request_body.check_body_bounds(body, bounds.separators, bounds.containers, bounds.digits)
             except Exception:
                 self.seen[key].append((containers(body), False, self.test))
             else:
@@ -841,17 +865,17 @@ def main() -> int:
         print(f"pytest exit code {int(code)} over {len(files)} files\n")
     bounds = route_bounds()
     schema, dense = schema_readings()
-    print("lists and objects, and commas, outside strings; 'read' = the route parsed the largest body")
-    print(f"{'route':66} {'bound':>7} {'schema':>7} {'bound':>7} {'schema':>7} {'status':>6} {'read':>5} "
-          f"{'tests':>7} {'bodies':>7}")
+    print("lists and objects, commas, and digits, outside strings; 'read' = the route parsed the largest body")
+    print(f"{'route':66} {'bound':>7} {'schema':>7} {'bound':>7} {'schema':>7} {'bound':>7} {'schema':>7} "
+          f"{'status':>6} {'read':>5} {'tests':>7} {'bodies':>7}")
     for (method, path), bound in bounds.items():
-        holds, commas, status, read = schema.get((method, path), ("-", "-", "-", "-"))
+        holds, commas, numerals, status, read = schema.get((method, path), ("-", "-", "-", "-", "-"))
         admitted = [row for row in (recorder.seen[method, path] if recorder else []) if row[1]]
         most = max(admitted, default=None)
         tests = f"{most[0]:7d} {len(admitted):7d}  {most[2]}" if most else f"{'-':>7} {'-':>7}"
-        bound = bound or ("-", "-")
-        print(f"{method + ' ' + path:66} {bound[0]!s:>7} {holds!s:>7} {bound[1]!s:>7} {commas!s:>7} {status!s:>6} "
-              f"{read!s:>5} {tests}")
+        bound = bound or ("-", "-", "-")
+        print(f"{method + ' ' + path:66} {bound[0]!s:>7} {holds!s:>7} {bound[1]!s:>7} {commas!s:>7} "
+              f"{bound[2]!s:>7} {numerals!s:>7} {status!s:>6} {read!s:>5} {tests}")
     print("\ncomma-dense legitimate bodies")
     for name, path, raw, commas, status, read in dense:
         print(f"{path:42} commas in the body {raw:7d}, outside strings {commas:6d}, status {status}, read {read}  {name}")

@@ -79,7 +79,7 @@ def test_a_container_heavy_full_target_request_is_refused_unparsed_and_private(p
     assert "no-store" in response.headers["cache-control"]
 
 
-@pytest.mark.parametrize("padding", [CHAINS, [0] * (request_body.MAX_JSON_SEPARATORS - 20)],
+@pytest.mark.parametrize("padding", [CHAINS, [None] * (request_body.MAX_JSON_SEPARATORS - 20)],
                          ids=["containers-at-the-bound", "items-at-the-bound"])
 def test_a_body_at_the_bound_is_parsed_and_answered_as_before(parsed, padding):
     response = TestClient(app).post("/api/tailor", json={**TAILOR, "original_bullets": ["Built a robot."],
@@ -271,6 +271,15 @@ def holds(body) -> int:
     return request_body.structural_containers(json.dumps(body).encode())
 
 
+def numbers(total: int) -> list[int]:
+    """Numbers of ten digits, and one of the rest, `total` digits in all."""
+    return [10 ** 9] * (total // 10) + ([10 ** (total % 10 - 1)] if total % 10 else [])
+
+
+def digits(body) -> int:
+    return request_body.structural_digits(json.dumps(body).encode())
+
+
 def separators(body) -> int:
     return request_body.structural_separators(json.dumps(body).encode())
 
@@ -408,12 +417,12 @@ def test_a_resume_of_commas_with_the_browsers_other_field_is_read_whole(parsed, 
 
 def _values(rng, depth=0):
     """A random JSON value whose strings are made of the characters a structural count must read past."""
-    alphabet = '[]{}",:\\ab∀ '
+    alphabet = '[]{}",:\\ab∀ 7'
     kind = rng.randrange(6 if depth < 6 else 3)
     if kind == 0:
         return "".join(rng.choice(alphabet) for _ in range(rng.randrange(12)))
     if kind == 1:
-        return rng.choice([0, -1.5, True, None])
+        return rng.choice([0, -1.5, True, None, 1e-7, 12345678901234567890, 2.5e300])
     if kind == 2:
         return ""
     if kind in (3, 4):
@@ -426,6 +435,17 @@ def _containers(value) -> int:
         return 1 + sum(_containers(item) for item in value)
     if isinstance(value, dict):
         return 1 + sum(_containers(item) for item in value.values())
+    return 0
+
+
+def _digits(value) -> int:
+    """The digits of the numbers in a JSON value, as json.dumps writes them."""
+    if isinstance(value, list):
+        return sum(_digits(item) for item in value)
+    if isinstance(value, dict):
+        return sum(_digits(item) for item in value.values())
+    if isinstance(value, int | float) and not isinstance(value, bool):
+        return sum(character.isdigit() for character in json.dumps(value))
     return 0
 
 
@@ -451,6 +471,20 @@ def test_the_structural_comma_count_is_the_number_of_separators_json_reads():
                 assert request_body.structural_separators(request_body._json_text(text.encode(encoding))) == expected
 
 
+def test_the_structural_digit_count_is_the_number_of_digits_of_the_numbers_json_reads():
+    import random
+
+    rng = random.Random(8)
+    for _ in range(2_000):
+        value = _values(rng)
+        expected = _digits(value)
+        for ensure_ascii in (True, False):
+            text = json.dumps(value, ensure_ascii=ensure_ascii)
+            assert request_body.structural_digits(text.encode()) == expected
+            for encoding in ("utf-16", "utf-16-be", "utf-32"):
+                assert request_body.structural_digits(request_body._json_text(text.encode(encoding))) == expected
+
+
 def test_the_structural_count_is_the_number_of_lists_and_objects_json_reads():
     import random
 
@@ -466,9 +500,9 @@ def test_the_structural_count_is_the_number_of_lists_and_objects_json_reads():
 
 
 def test_a_json_body_is_refused_exactly_when_it_is_past_a_bound():
-    """Whatever its strings hold, a JSON body is refused when its lists and objects or its commas
-    between items outnumber the bounds, and only then, down to bounds small enough that the count of
-    its strings decides."""
+    """Whatever its strings hold, a JSON body is refused when its lists and objects, its commas
+    between items or the digits of its numbers outnumber the bounds, and only then, down to bounds
+    small enough that the count of its strings decides."""
     import random
 
     from fastapi.exceptions import RequestValidationError
@@ -476,18 +510,19 @@ def test_a_json_body_is_refused_exactly_when_it_is_past_a_bound():
     rng = random.Random(5)
     for _ in range(3_000):
         value = _values(rng)
-        max_separators, max_containers = rng.randrange(8), rng.randrange(6)
-        past = _separators(value) > max_separators or _containers(value) > max_containers
+        max_separators, max_containers, max_digits = rng.randrange(8), rng.randrange(6), rng.randrange(40)
+        past = _separators(value) > max_separators or _containers(value) > max_containers or \
+            _digits(value) > max_digits
         for ensure_ascii in (True, False):
             text = json.dumps(value, ensure_ascii=ensure_ascii)
             for body in (text.encode(), text.encode("utf-16")):
                 try:
-                    request_body.check_body_bounds(body, max_separators, max_containers)
+                    request_body.check_body_bounds(body, max_separators, max_containers, max_digits)
                 except RequestValidationError:
                     refused = True
                 else:
                     refused = False
-                assert refused == past, (text, max_separators, max_containers)
+                assert refused == past, (text, max_separators, max_containers, max_digits)
 
 
 def test_a_body_past_a_bound_is_refused_without_reading_its_strings(monkeypatch):
@@ -619,9 +654,12 @@ def test_every_json_route_reads_a_body_at_its_bounds_and_refuses_one_past_either
     client = TestClient(app)
     with largest.reading() as parsed:
         for at, over in ((chains(bounds.containers - 1), chains(bounds.containers)),
-                         ([0] * (bounds.separators + 1), [0] * (bounds.separators + 2))):
+                         ([None] * (bounds.separators + 1), [None] * (bounds.separators + 2)),
+                         (numbers(bounds.digits), numbers(bounds.digits + 1))):
             assert holds(at) <= bounds.containers and separators(at) <= bounds.separators
-            assert holds(over) > bounds.containers or separators(over) > bounds.separators
+            assert digits(at) <= bounds.digits
+            assert holds(over) > bounds.containers or separators(over) > bounds.separators or \
+                digits(over) > bounds.digits
             parsed.clear()
             response = largest.send(client, method, concrete, json.dumps(over).encode())
             assert response.status_code == 422 and parsed == [], (method, path)
@@ -644,6 +682,7 @@ def test_every_json_route_reads_its_largest_valid_body_with_a_wide_margin(method
     content = json.dumps(body, ensure_ascii=False).encode()
     assert largest.containers(content) * 4 <= bounds.containers
     assert largest.separators(content) * 4 <= bounds.separators
+    assert largest.digits(content) * 4 <= bounds.digits
     with largest.reading() as parsed:
         largest.send(TestClient(app), method, concrete, content)
     assert len(parsed) == 1
@@ -905,12 +944,12 @@ def test_validation_of_a_body_within_its_routes_bounds_stays_bounded(method, pat
     assert sites <= {name.split(": ")[0] for name, _, _ in bodies}, (method, path)
     for name, _, body in bodies:
         content = json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode()
-        request_body.check_body_bounds(content, bounds.separators, bounds.containers)
+        request_body.check_body_bounds(content, bounds.separators, bounds.containers, bounds.digits)
         assert len(content) <= largest.body_limit(method, path)
         assert largest.validation_errors(json_route, body) <= cap, (method, path, name)
 
 
-def test_a_closed_model_refuses_more_keys_than_it_has_fields_as_one_error():
+def test_a_closed_model_refuses_more_keys_than_it_has_fields():
     from pydantic import ConfigDict, ValidationError, model_validator
 
     class Closed(BaseModel):
@@ -928,9 +967,9 @@ def test_a_closed_model_refuses_more_keys_than_it_has_fields_as_one_error():
     assert [(error["type"], error["loc"]) for error in many.value.errors()] == [("extra_forbidden", ())]
 
 
-def test_every_closed_request_model_refuses_more_keys_than_it_has_fields_as_one_error():
+def test_every_closed_request_model_refuses_more_keys_than_it_has_fields():
     """Every model of a JSON route's request schema that refuses unknown keys does so for an object
-    with more keys than it has fields as one error (request_body.known_keys)."""
+    with more keys than it has fields (request_body.known_keys)."""
     from pydantic import ValidationError
 
     closed = {detail for _, _, json_route in JSON_ROUTES for kind, _, detail in largest.schema_sites(
@@ -959,7 +998,7 @@ def test_a_match_view_reads_and_validates_only_the_ids_it_keeps(body, errors):
         assert errors == 0 and len(state.favorite_ids) == 1
 
 
-def test_a_list_kept_whole_is_refused_as_one_error_when_an_item_is_not_a_string():
+def test_a_list_kept_whole_is_refused_when_an_item_is_not_a_string():
     from pydantic import ValidationError
 
     from backend.schemas import RoadmapRequest
@@ -1140,24 +1179,27 @@ def _metadata_save(extra: dict) -> dict:
     return {**body, "opportunity": {**body["opportunity"], "extra_fields": extra}}
 
 
-def test_a_save_reads_metadata_of_as_many_lists_objects_and_commas_as_its_size_limit_holds(parsed):
+def test_a_save_reads_metadata_of_as_many_lists_objects_commas_and_digits_as_its_size_limit_holds(parsed):
     """A private import's metadata may hold anything within MAX_EXTRA_BYTES of compact JSON nested at
-    most as deep as the schema allows; the save's bounds hold the most lists and objects, and the
-    most commas, such metadata can."""
+    most as deep as the schema allows; the save's bounds hold the most lists and objects, the most
+    commas, and the most digits such metadata can."""
     from backend.lib.private_import_targets_schema import MAX_EXTRA_BYTES, SaveRequest, encoded
 
     room = MAX_EXTRA_BYTES - len(encoded({"": []}))
     chain = json.loads("[" * 30 + "]" * 30)
     lists = {"": [chain] * ((room + 1) // 61)}
     commas = {"": [0] * ((room + 1) // 2)}
+    count, rest = divmod(room + 1, 4_001)
+    long = {"": [10 ** 3_999] * count + ([10 ** (rest - 2)] if rest > 1 else [])}
     client = TestClient(app)
-    for extra in (lists, commas):
+    for extra in (lists, commas, long):
         assert MAX_EXTRA_BYTES - 61 < len(encoded(extra)) <= MAX_EXTRA_BYTES
         body = _metadata_save(extra)
         SaveRequest.model_validate(body)
         content = json.dumps(body).encode()
         assert largest.containers(content) > request_body.WRITING_BOUNDS.containers or \
-            largest.separators(content) > request_body.WRITING_BOUNDS.separators
+            largest.separators(content) > request_body.WRITING_BOUNDS.separators or \
+            largest.digits(content) > request_body.WRITING_BOUNDS.digits
         with largest.reading() as read:
             largest.send(client, "PUT", f"/api/private-import-targets/{largest.PRIVATE_TARGET}", content)
         assert read == ["request lane"]
