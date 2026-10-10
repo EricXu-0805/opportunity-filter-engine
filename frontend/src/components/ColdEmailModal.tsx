@@ -508,12 +508,12 @@ export default function ColdEmailModal({
   // the next Generate click uses.
   const [selectedStyle, setSelectedStyle] = useState<EmailStyle>('professional');
   const [recommendedStyle, setRecommendedStyle] = useState<EmailStyle | null>(null);
-  // The tone of the text in the editor, which a version records when that text
+  // The tone of the body in the editor, which a version records when the draft
   // is replaced. An AI draft, a restored version or a reopened draft brings its
-  // own, kept while the text is unchanged; edited text has none, like a template.
-  const [draftTone, setDraftTone] = useState<{ style: EmailStyle; subject: string; body: string } | null>(null);
-  const toneOf = (text: { subject: string; body: string }) =>
-    draftTone && draftTone.subject === text.subject && draftTone.body === text.body ? draftTone.style : null;
+  // own, kept while the body is unchanged, so a subject edit keeps it; an edited
+  // body has none, like a template.
+  const [draftTone, setDraftTone] = useState<{ style: EmailStyle; body: string } | null>(null);
+  const toneOf = (text: string) => draftTone && draftTone.body === text ? draftTone.style : null;
 
   const [subject, setSubject] = useState('');
   const [subjectFormatConfirmation, setSubjectFormatConfirmation] = useState<{ subject: string; version: string } | null>(null);
@@ -1075,7 +1075,7 @@ export default function ColdEmailModal({
         setDraftRestored(true); setLoading(false); metadataRefreshingRef.current = true; setMetadataRefreshing(true);
         setSubject(value.subject); setBody(value.body);
         // A draft saved before its own tone was recorded falls back to the picker's.
-        setDraftTone(value.draftStyle === null ? null : { style: value.draftStyle ?? value.selectedStyle, subject: value.subject, body: value.body });
+        setDraftTone(value.draftStyle === null ? null : { style: value.draftStyle ?? value.selectedStyle, body: value.body });
         setRecipient(value.manualRecipient ?? ''); recipientEditedRef.current = value.manualRecipient !== undefined;
         setSelectedStyle(value.selectedStyle); setChatInput(value.pendingEdit); setActiveVariant(-1);
         setSavedVersions(value.history); setSourceReview('pending');
@@ -1225,7 +1225,7 @@ export default function ColdEmailModal({
     else markDraftUnsaved('too_large');
   }, [markDraftUnsaved, opportunityId]);
   const draftPayload: ColdEmailDraftPayload = {
-    subject, body, selectedStyle, draftStyle: toneOf({ subject, body }), pendingEdit: chatInput, context: requestContactContext,
+    subject, body, selectedStyle, draftStyle: toneOf(body), pendingEdit: chatInput, context: requestContactContext,
     history: savedVersions, editScope: scopeNeedsChoice || invalidSelection ? 'reselect' : selection?.body === body ? selection.range : 'full',
     pendingPanel, pendingSupplement,
     sources: originKey && sourceSignatures?.key === originKey ? sourceSignatures.value : restoredSources ?? NO_DRAFT_SOURCES,
@@ -1258,16 +1258,16 @@ export default function ColdEmailModal({
           contact_sig: await emailDraftDigest(contactSerialized), target_version: expectedTargetVersion };
         if (!current()) return false;
         const variant = allVariants[activeVariant];
-        // A version keeps the tone of its own text, not the picker's, which only
+        // A version keeps the tone of its own body, not the picker's, which only
         // chooses the next AI draft. A template reads the same in every tone, and
-        // a fallback or edited text has no tone either, so those record the
+        // a fallback or an edited body has no tone either, so those record the
         // recommended tone, or the picker's when none is recommended.
         const saved: ColdEmailDraftVersion = { id: crypto.randomUUID(), createdAt: new Date().toISOString(), reason,
           subject: before.subject, body: before.body, selectedStyle: before.draftStyle ?? recommendedStyle ?? before.selectedStyle, sources: previousSources,
           origin: activeVariant < 0 || (variant && (variant.body !== before.body || variant.subject !== before.subject))
             ? 'manual' : variant?.method === 'ai' ? 'ai' : variant ? 'template' : 'unknown', variantId: variant?.id ?? null };
         const candidate: ColdEmailDraftPayload = { ...before, ...next, sources, history: [...before.history, saved], editScope: next.editScope ?? 'full',
-          draftStyle: next.draftStyle !== undefined ? next.draftStyle : toneOf({ subject: next.subject ?? before.subject, body: next.body ?? before.body }) };
+          draftStyle: next.draftStyle !== undefined ? next.draftStyle : toneOf(next.body ?? before.body) };
         if (JSON.stringify(candidate).length > COLD_EMAIL_DRAFT_LIMITS.total) {
           setVersionError(locale === 'zh' ? '版本内容已超过本地保存容量。请删除不需要的旧版；当前稿未替换。' : 'The versions exceed local storage capacity. Delete an unwanted version first. Your current draft is unchanged.');
           return false;
@@ -1306,9 +1306,10 @@ export default function ColdEmailModal({
 
   async function restoreSavedVersion() {
     const comparison = versionCompare;
-    // Restoring retires a Generate in flight, so it waits for one to finish
-    // (its controls are disabled then too) rather than discard a paid draft.
-    if (!comparison || aiInFlightRef.current || !editBaseCurrent(comparison.base) || !savedVersions.some(v => v.id === comparison.version.id)) return;
+    // Restoring retires a Generate in flight, so it waits rather than discard a
+    // paid draft (its controls are disabled then too). That includes a Generate
+    // still in its profile check, which could start the model call mid-save.
+    if (!comparison || aiInFlightRef.current || action.busy || !editBaseCurrent(comparison.base) || !savedVersions.some(v => v.id === comparison.version.id)) return;
     const version = comparison.version;
     const scope = draftPayloadRef.current.editScope === 'full' ? 'full' : 'reselect';
     await changeDraftRef.current({ subject: version.subject, body: version.body, selectedStyle: version.selectedStyle, draftStyle: version.selectedStyle, sources: version.sources, editScope: scope }, 'restored',
@@ -1318,7 +1319,7 @@ export default function ColdEmailModal({
         setAiLoading(false); setAiStage(null); setRefining(false);
         draftRevisionRef.current += 1; setUserEditRevision(value => value + 1);
         setSubject(version.subject); setBody(version.body); setSelectedStyle(version.selectedStyle); setActiveVariant(-1);
-        setDraftTone({ style: version.selectedStyle, subject: version.subject, body: version.body });
+        setDraftTone({ style: version.selectedStyle, body: version.body });
         setScopeNeedsChoice(scope === 'reselect'); setVersionCompare(null);
         draftSourcesRef.current = null; setOriginKey(null); setRestoredSources(version.sources); setSourceReview('pending');
         setDraftRestored(true); metadataRefreshingRef.current = true; setMetadataRefreshing(true); restoredMetadataRef.current = false;
@@ -1546,7 +1547,7 @@ export default function ColdEmailModal({
     clearEmailRevisions();
     setActiveVariant(idx);
     setSubject(v.subject);
-    setBody(v.body); setDraftTone(tone ? { style: tone, subject: v.subject, body: v.body } : null);
+    setBody(v.body); setDraftTone(tone ? { style: tone, body: v.body } : null);
     draftSourcesRef.current = { profile: JSON.stringify(requestProfile), target: expectedTargetVersion, contact: serializeEmailContactContext(requestContactContext) };
     setOriginKey(JSON.stringify(draftSourcesRef.current));
     setRestoredSources(null);
@@ -1613,7 +1614,7 @@ export default function ColdEmailModal({
         clearEmailRevisions();
         setSelectedStyle(style); setActiveVariant(aiIdx);
         setSubject(v.subject);
-        setBody(v.body); setDraftTone(v.method === 'ai' ? { style, subject: v.subject, body: v.body } : null);
+        setBody(v.body); setDraftTone(v.method === 'ai' ? { style, body: v.body } : null);
         draftSourcesRef.current = { profile: JSON.stringify(requestProfile), target: expectedTargetVersion, contact: serializeEmailContactContext(requestContactContext) };
         setOriginKey(JSON.stringify(draftSourcesRef.current));
         setRestoredSources(null);
@@ -2685,7 +2686,7 @@ export default function ColdEmailModal({
                       className="w-full min-w-0 min-h-64 flex-1 px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 leading-relaxed focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none transition-all resize-y"
                     />
                   </div>
-                  <EmailVersionHistory locale={locale} versions={savedVersions} busy={versionBusy} restoreDisabled={aiLoading} error={versionError}
+                  <EmailVersionHistory locale={locale} versions={savedVersions} busy={versionBusy} restoreDisabled={aiLoading || action.busy} error={versionError}
                     comparison={versionCompare ? { version: versionCompare.version, subject: versionCompare.base.subject, body: versionCompare.base.body } : null}
                     onCompare={version => { setVersionError(null); setVersionCompare({ version, base: captureEditBase() }); }}
                     onRestore={() => void restoreSavedVersion()} onCancel={() => setVersionCompare(null)} onDelete={id => void deleteSavedVersion(id)} />

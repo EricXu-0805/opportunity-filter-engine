@@ -43,6 +43,7 @@ function selectionReply(body: string, selection: EmailTextSelection, replacement
   } };
 }
 const bodyField = () => screen.getByLabelText('coldEmail.body') as HTMLTextAreaElement;
+const subjectField = () => screen.getByLabelText('coldEmail.subject') as HTMLInputElement;
 const input = () => screen.getByRole('textbox', { name: 'coldEmail.requestLabel' });
 const preview = () => screen.queryByRole('region', { name: 'Pending edit suggestion' });
 const accept = () => screen.getByRole('button', { name: 'Accept suggestion' });
@@ -278,6 +279,20 @@ describe('recoverable email versions', () => {
     expect(stored().draft.history.at(-1)).toMatchObject({ body: 'lively AI body', selectedStyle: 'lively' });
     expect(api.stream).toHaveBeenCalledTimes(1);
   });
+  it('an AI draft keeps its own tone when only its subject is edited', async () => {
+    api.variants.mockResolvedValue(toneTemplates); api.stream.mockImplementation(draftInTone);
+    await open(); await saved();
+    await generateIn('lively');
+    // The tone is in the body. A professor's required subject is a common edit to an AI draft.
+    fireEvent.change(subjectField(), { target: { value: 'Required subject' } });
+    await waitFor(() => expect(stored().draft.subject).toBe('Required subject'));
+    expect(stored().draft.draftStyle).toBe('lively');
+    fireEvent.click(tone('warm')); await switchToSecond();
+    expect(stored().draft.history.at(-1)).toMatchObject({ subject: 'Required subject', body: 'lively AI body', origin: 'manual', selectedStyle: 'lively' });
+    await restoreNewest(); await saved();
+    expect(subjectField()).toHaveValue('Required subject'); expect(bodyField()).toHaveValue('lively AI body');
+    expect(tone('lively')).toHaveAttribute('aria-pressed', 'true');
+  });
   it('comparing and restoring wait while Generate runs, so the paid draft is kept', async () => {
     let release!: (value: unknown) => void;
     api.stream.mockImplementation(() => new Promise(resolve => { release = resolve; }));
@@ -295,6 +310,29 @@ describe('recoverable email versions', () => {
     expect(aiControl()).toHaveAccessibleName('coldEmail.aiVariantLabel');
     expect(stored().draft.history.map(v => v.body)).toEqual([ORIGINAL, 'Revised full body']);
     expect(within(history()).getAllByRole('button', { name: 'Compare and restore' })[0]).toBeEnabled();
+    expect(api.stream).toHaveBeenCalledTimes(1);
+  });
+  it('comparing and restoring also wait while Generate checks the profile, so the paid draft is kept', async () => {
+    const receipt = () => ({ checkId: 1, owner: captureOwnerToken(), revision: 1, source: 'cloud' as const, profile });
+    const checkForAction = vi.fn(() => Promise.resolve(receipt()));
+    let release!: (value: unknown) => void;
+    api.stream.mockImplementation(() => new Promise(resolve => { release = resolve; }));
+    await open({ profileRefresh: { status: 'ready', refresh: vi.fn(async () => true), checkForAction } }); await editAndAccept();
+    await waitFor(() => expect(generate()).toBeEnabled());
+    compare(0); const comparison = screen.getByRole('region', { name: 'Compare email versions' });
+    let releaseCheck!: () => void; let checking = false;
+    checkForAction.mockImplementationOnce(() => new Promise(resolve => { checking = true; releaseCheck = () => resolve(receipt()); }));
+    fireEvent.click(generate()); await waitFor(() => expect(checking).toBe(true));
+    const restore = within(comparison).getByRole('button', { name: 'Restore this version' });
+    expect(restore).toBeDisabled();
+    expect(within(history()).getByRole('button', { name: 'Compare and restore' })).toBeDisabled();
+    fireEvent.click(restore);
+    await act(async () => { releaseCheck(); });
+    await waitFor(() => expect(api.stream).toHaveBeenCalledTimes(1));
+    await act(async () => { release({ ...draft, subject: 'Paid subject', body: 'Paid AI body', method: 'ai' }); });
+    await waitFor(() => expect(bodyField()).toHaveValue('Paid AI body')); await saved();
+    expect(screen.getByText('coldEmail.aiGenerated')).toBeInTheDocument();
+    expect(stored().draft.history.map(v => v.body)).toEqual([ORIGINAL, 'Revised full body']);
     expect(api.stream).toHaveBeenCalledTimes(1);
   });
   it.each(['manual', 'close', 'owner'] as const)('cancels a held acceptance on %s without writing the candidate', async change => {

@@ -38,9 +38,10 @@ export interface ColdEmailDraftPayload {
   manualRecipient?: string;
   /** The tone picker, which only chooses the next AI draft. */
   selectedStyle: EmailStyle;
-  /** The tone of `subject` and `body` themselves: an unedited AI draft's or
-   * restored version's. Null when the text has none (a template, a fallback
-   * or edited text); absent in drafts saved before it was recorded. */
+  /** The tone of `body` itself: an unedited AI draft's or restored version's,
+   * kept when only the subject is edited. Null when the body has none (a
+   * template, a fallback or an edited body); absent in drafts saved before it
+   * was recorded. */
   draftStyle?: EmailStyle | null;
   pendingEdit: string;
   context: EmailContactContext;
