@@ -175,7 +175,7 @@ SCHOOL: dict = {
                     eligibility_majors=["all"],
                     preferred_year=["sophomore", "junior"],
                     international_friendly="yes",
-                    deadline_note="Application due early March (2026: March 2, 5pm)",
+                    deadline_note="Application due by March 1, 2027, 5:00 pm",
                     keywords=["exchange", "Iceland", "international research", "SURF"],
                 ),
                 program(

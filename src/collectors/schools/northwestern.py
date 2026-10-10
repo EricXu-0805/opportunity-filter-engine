@@ -253,7 +253,7 @@ SCHOOL: dict = {
                     eligibility_majors=["materials science", "chemistry", "physics", "engineering", "biology"],
                     preferred_year=["sophomore", "junior"],
                     international_friendly="no",
-                    deadline_note="Deadline Feb 13 for Summer 2026 (annual mid-February cycle)",
+                    deadline_note="Deadline Feb 12, 2027 for Summer 2027",
                     keywords=["materials science", "nanotechnology", "REU", "NSF", "synthetic biology"],
                 ),
                 program(
