@@ -322,9 +322,10 @@ _UNSTATED = ConfiguredFact(FACT_UNSTATED)
 # "U.S. citizens" and "e.g. biology" stay whole. The excerpt is flattened page
 # text, so a heading ("SUMMER RESEARCH GRANTS (SURG)") or a field label
 # ("Deadline:") also ends one: without that, a menu run into the first
-# sentence reads as part of it.
+# sentence reads as part of it. A heading stops before an uppercase label,
+# so "FELLOWSHIP DEADLINE: February 14" keeps the label with its date.
 _SENTENCE_BREAK_RE = re.compile(r"[\n\r•·|]+|(?<=;)\s+|(?<=[a-z0-9)][.!?])\s+(?=[\"“(]?[A-Z0-9])")
-_HEADING_RE = re.compile(r"\b(?:[A-Z]{2,}[\s&/-]+){2,}[A-Z]{2,}\b(?:\s*\([A-Z]{2,}\))?")
+_HEADING_RE = re.compile(r"\b(?:[A-Z]{2,}[\s&/-]+){2,}[A-Z]{2,}\b(?!:)(?:\s*\([A-Z]{2,}\))?")
 # A capitalised word, and at most one more, before a colon: "Deadline:",
 # "Application deadline:", "ELIGIBILITY:".
 _LABEL_RE = re.compile(r"(?<!\S)(?:[A-Z][a-z]+(?:\s[A-Za-z]+)?|[A-Z]{2,}):(?=\s)")

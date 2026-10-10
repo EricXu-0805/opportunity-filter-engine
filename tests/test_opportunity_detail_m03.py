@@ -1364,6 +1364,12 @@ class TestConfiguredFactRules:
          FACT_CONTRADICTED),
         ("application_window", "Applications due March 1",
          "Application deadline: February 12. Applications are due March 1.", FACT_STATED),
+        # An uppercase label after an uppercase title stays with its date.
+        ("application_window", "Deadline Feb 15, 2026 at 11:59 p.m.",
+         "TITLE WORDS DEADLINE: February 14, 2027 at 11:59 p.m. (Application opens December 14, 2026)",
+         FACT_CONTRADICTED),
+        ("application_window", "Deadline February 14",
+         "TITLE WORDS DEADLINE: February 14, 2027 at 11:59 p.m.", FACT_STATED),
     ])
     def test_rule(self, facet, value, page, state):
         assert configured_fact(_page_row(facet, value, page), facet).state == state
@@ -1378,6 +1384,9 @@ class TestConfiguredFactRules:
         heading = "Page Navigation Overview FAQs SUMMER RESEARCH GRANTS (SURG) Summer grants provide a $4,000 stipend."
         assert configured_fact(_page_row("paid", "stipend", heading), "paid").quote == (
             "Summer grants provide a $4,000 stipend.")
+        labelled = "SOPHOMORE RESEARCH FELLOWSHIP APPLICATION DEADLINE: February 21, 2027 at 11:59 p.m."
+        assert configured_fact(_page_row("application_window", "Deadline February 21", labelled),
+                               "application_window").quote == "DEADLINE: February 21, 2027 at 11:59 p.m."
 
     def test_no_page_text_another_producer_or_another_row_is_unstated(self):
         row = _page_row("paid", "stipend", "Participants receive a stipend.")
