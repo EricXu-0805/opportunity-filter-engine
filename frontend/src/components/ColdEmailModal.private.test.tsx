@@ -52,7 +52,8 @@ describe('private email in the shared editor', () => {
   it('shows an honest manual template, with no public or AI request and no research controls', async () => {
     await harness(); expect(api.variants).toHaveBeenCalledOnce(); expect(api.publicVariants).not.toHaveBeenCalled(); expect(api.ai).not.toHaveBeenCalled(); expect(api.refine).not.toHaveBeenCalled();
     expect(screen.getByTestId('private-email-source')).toHaveTextContent('AI writing is not connected');
-    expect(screen.queryByText('coldEmail.aiVariantLabel')).toBeNull(); expect(screen.queryByTestId('cold-email-chat-history')).toBeNull();
+    expect(screen.queryByText('coldEmail.aiVariantLabel')).toBeNull(); expect(screen.queryByRole('button', { name: 'coldEmail.generateAiDraft' })).toBeNull();
+    expect(screen.queryByText('coldEmail.tone.label')).toBeNull(); expect(screen.queryByTestId('cold-email-chat-history')).toBeNull();
     expect(screen.getByLabelText('coldEmail.to')).toHaveValue(''); expect(compose()).toBeDisabled();
   });
   it('requires a valid recipient and fresh user review, opens only after both checks, and records only explicit sent confirmation', async () => {
