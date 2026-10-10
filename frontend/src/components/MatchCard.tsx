@@ -69,8 +69,9 @@ export interface MatchCardProps {
   onDraftEmail: (opportunityId: string) => void;
   /** True only while the page would open a draft for a Draft Email click (see
    *  writingEntryReady in results/page.tsx). Until then the button is disabled
-   *  and busy, like Tailor/Renovate before ownerReady, rather than live but
-   *  ignored. Defaults to false (fail-closed) when omitted. */
+   *  and busy, like Tailor before ownerReady, rather than live but ignored.
+   *  Renovate Resume waits for it too when the page opens that editor
+   *  (onOpenResume). Defaults to false (fail-closed) when omitted. */
   draftEmailReady?: boolean;
   /** Results owns the persistent editor; other callers may retain the local fallback. */
   onOpenResume?: (opportunityId: string) => void;
@@ -279,6 +280,9 @@ export default function MatchCard({ detailHref, isViewed, onViewOpportunity, mat
   const sourcePageUrl = !isFaculty && !applyUrl ? opportunitySourceUrl(opp) : undefined;
   const showApplyNow = !!applyUrl;
   const emailIsPrimary = isFaculty || !showApplyNow;
+  // The page's résumé editor (onOpenResume) opens on the same check as a
+  // draft; the card's own fallback editor needs only the owner.
+  const renovateReady = ownerReady && (!onOpenResume || draftEmailReady);
 
   return (
     <>
@@ -546,10 +550,10 @@ export default function MatchCard({ detailHref, isViewed, onViewOpportunity, mat
           {RELEASE_SCOPE.resumeRenovate && profile && posture === 'actionable' && (
             <button
               type="button"
-              onClick={() => { if (ownerReady && posture === 'actionable') { onViewOpportunity?.(opp.id); if (onOpenResume) onOpenResume(opp.id); else setRenovationOpen(true); } }}
-              disabled={!ownerReady}
-              aria-busy={!ownerReady}
-              className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-fuchsia-600 bg-fuchsia-50 rounded-xl hover:bg-fuchsia-100 transition-colors duration-200"
+              onClick={() => { if (renovateReady && posture === 'actionable') { onViewOpportunity?.(opp.id); if (onOpenResume) onOpenResume(opp.id); else setRenovationOpen(true); } }}
+              disabled={!renovateReady}
+              aria-busy={!renovateReady}
+              className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-fuchsia-600 bg-fuchsia-50 rounded-xl hover:bg-fuchsia-100 disabled:opacity-50 disabled:cursor-wait transition-colors duration-200"
             >
               <FileText className="w-3.5 h-3.5" />
               {t('card.renovateResume')}

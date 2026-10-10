@@ -513,6 +513,23 @@ describe('MatchList persistent résumé opener', () => {
     fireEvent.click(screen.getByRole('button', { name: 'card.renovateResume' }));
     expect(open).not.toHaveBeenCalled();
   });
+
+  it('does not invoke it while the owner is ready but the page cannot open an editor yet, and repaints once it can', () => {
+    const open = vi.fn();
+    const match = listingVariant({});
+    // Owner ready and every other prop STABLE: only the page's readiness flips.
+    const { rerender } = render(<MatchList {...STABLE} matches={[match]} draftEmailReady={false} onOpenResume={open} />);
+    const early = screen.getByRole('button', { name: 'card.renovateResume' });
+    expect(early).toBeDisabled();
+    fireEvent.click(early);
+    expect(open).not.toHaveBeenCalled();
+
+    rerender(<MatchList {...STABLE} matches={[match]} draftEmailReady onOpenResume={open} />);
+    const ready = screen.getByRole('button', { name: 'card.renovateResume' });
+    expect(ready).toBeEnabled();
+    fireEvent.click(ready);
+    expect(open).toHaveBeenCalledWith(match.opportunity.id);
+  });
 });
 
 describe('MatchList Draft Email readiness', () => {
