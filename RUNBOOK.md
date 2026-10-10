@@ -28,7 +28,9 @@ schedules late). It takes the
 shard for the UTC weekday (`date -u +%u`, 1 = Monday) from `WEEKLY_ROTATION`
 in `scripts/refresh_rotation.py`, so each school is re-scraped once a week.
 Monday's shard carries `uiuc`, and Sunday (7) is `national`: the SRO catalog,
-NSF REU and SimplifyJobs internships. Print any day's shard:
+NSF REU, SimplifyJobs internships and the campus programs open to students of
+every school (the 15 `<slug>_external_research` sources: 14 campus configs and
+UC Berkeley's registry). Print any day's shard:
 
 ```bash
 python3 scripts/refresh_rotation.py --day 1
