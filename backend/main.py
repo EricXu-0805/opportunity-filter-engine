@@ -26,6 +26,7 @@ from backend.lib import llm_budget
 from backend.lib.build_info import BUILD_VERSION, health_build_fields
 from backend.lib.observability import init_sentry
 from backend.lib.release_scope import ReleaseFeature, feature_enabled
+from backend.lib.request_body import DEFAULT_MAX_REQUEST_BODY_BYTES
 from backend.lib.target_actionability import REFUSED_BEFORE_WORK_HEADER
 
 init_sentry()
@@ -618,7 +619,6 @@ class ReleaseScopeMiddleware(BaseHTTPMiddleware):
 logger = logging.getLogger("ofe.main")
 
 
-DEFAULT_MAX_REQUEST_BODY_BYTES = 1 * 1024 * 1024
 MAX_CONFIGURABLE_REQUEST_BODY_BYTES = 16 * 1024 * 1024
 _MIN_CONFIGURABLE_REQUEST_BODY_BYTES = 1024
 

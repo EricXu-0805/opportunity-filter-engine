@@ -631,6 +631,18 @@ def test_random_valid_bodies_are_read_on_every_json_route():
                     assert len(parsed) == 1, (seed, method, path)
 
 
+def test_the_lane_threshold_is_the_default_body_limit(monkeypatch):
+    """The size past which a body is counted on the request lane is the body limit of every route
+    without a larger one of its own, defined in one place."""
+    from backend import main
+
+    monkeypatch.delenv("OFE_MAX_REQUEST_BODY_BYTES", raising=False)
+    assert main._request_body_limit_from_env() == request_body.DEFAULT_MAX_REQUEST_BODY_BYTES
+    assert request_body.LANE_BODY_BYTES == request_body.DEFAULT_MAX_REQUEST_BODY_BYTES
+    monkeypatch.setenv("OFE_MAX_REQUEST_BODY_BYTES", "not a size")
+    assert main._request_body_limit_from_env() == request_body.DEFAULT_MAX_REQUEST_BODY_BYTES
+
+
 def test_a_body_past_the_default_body_limit_is_counted_on_the_request_lane(monkeypatch):
     """Only the routes with a larger body limit accept such a body; it is counted off the event loop,
     one at a time, and a smaller one on the loop."""

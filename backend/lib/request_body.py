@@ -152,8 +152,11 @@ def declared_bounds(route: APIRoute) -> JSONBodyBounds | None:
     return getattr(route.endpoint, "json_body_bounds", None)
 
 
-# A body larger than the default body limit (backend.main) is counted on the request lane.
-LANE_BODY_BYTES = 1024 * 1024
+# The body limit of every route without a larger one of its own (backend.main.RequestBodyLimitMiddleware;
+# OFE_MAX_REQUEST_BODY_BYTES can change it, docs/RELEASE.md). A body larger than it is counted on the
+# request lane.
+DEFAULT_MAX_REQUEST_BODY_BYTES = 1024 * 1024
+LANE_BODY_BYTES = DEFAULT_MAX_REQUEST_BODY_BYTES
 
 
 async def refuse_container_heavy_body(request: Request, max_separators: int = MAX_JSON_SEPARATORS,
