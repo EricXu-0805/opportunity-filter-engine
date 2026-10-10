@@ -75,7 +75,13 @@ from backend.lib.public_projection import (
     sanitize_public_urls,
 )
 from backend.lib.release_scope import release_visible_opportunity_by_id
-from backend.lib.request_body import DOCUMENT_BOUNDS, BoundedJSONRoute, json_body_bounds, json_body_on_lane
+from backend.lib.request_body import (
+    DOCUMENT_BOUNDS,
+    BoundedJSONRoute,
+    json_body_bounds,
+    json_body_on_lane,
+    known_keys,
+)
 from backend.lib.supabase_auth import authenticated_uid
 from backend.lib.writing_target import WritingTargetSnapshot, prepare_writing_snapshot
 from backend.schemas import (
@@ -2560,6 +2566,7 @@ def _email_utf16_length(value: str, limit: int, *, field: str | None = None) -> 
 
 class EmailRefineSelection(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
+    _known_keys = model_validator(mode="before")(known_keys)
     start_utf16: int = Field(ge=0, le=5000)
     end_utf16: int = Field(gt=0, le=5000)
     text: str = Field(max_length=5000)
@@ -2640,6 +2647,11 @@ class EmailRefineRequest(BaseModel):
             if not self.selection.text.strip() or not self.instruction.strip():
                 raise ValueError("Select text and provide an edit instruction")
         return self
+
+    @field_validator("resume_bullets", mode="before")
+    @classmethod
+    def first_bullets(cls, v):
+        return v[:12] if isinstance(v, list) else v
 
     @field_validator("resume_bullets")
     @classmethod

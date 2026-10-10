@@ -14,6 +14,13 @@ scripts/request_body_containers.py finds every route of the app that reads a JSO
 largest body each request schema accepts and prints both counts beside the bounds, and
 scripts/worst_inputs_lag.py measures bodies at and past them.
 
+The models of those bodies bound how many items and keys of a body they validate: a model that
+refuses unknown keys refuses an object with more keys than it has fields (known_keys), and a list the
+schema leaves unbounded is cut to the most its route reads, or refused at once when an item is not a
+string, before its items are validated (backend.schemas; the export checks its block and line limits
+first). scripts/request_body_containers.py (validation_bodies) builds, for every JSON route, bodies
+within its bounds for each list and object its schema declares.
+
 /api/tailor/extract-bullets and /api/tailor/structure take one résumé of up to
 MAX_RESUME_TEXT_CHARACTERS, which origin/main reads whole (criterion E). They have a container bound
 of their own and keep the comma bound round 5 gave them (a comma per résumé character, plus 100),
@@ -23,12 +30,14 @@ from __future__ import annotations
 
 import email.message
 import json
+from itertools import repeat
 from typing import NamedTuple
 
 from fastapi import Depends, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.routing import APIRoute
 from pydantic import TypeAdapter, ValidationError
+from pydantic_core import PydanticCustomError
 
 from backend.lib.blocking import run_request_work
 from backend.lib.resume_input import MAX_RESUME_TEXT_CHARACTERS
@@ -173,6 +182,24 @@ async def refuse_container_heavy_body(request: Request, max_separators: int = MA
         await run_request_work(check_body_bounds, body, max_separators, max_containers)
     else:
         check_body_bounds(body, max_separators, max_containers)
+
+
+def known_keys(cls, value):
+    """A model that refuses unknown keys refuses, as one error, an object with more keys than the model
+    has fields, before any of its keys is validated. Use as model_validator(mode="before")(known_keys).
+
+    Such an object holds at least one unknown key, so the model refuses it either way."""
+    if isinstance(value, dict) and len(value) > len(cls.model_fields):
+        raise PydanticCustomError("extra_forbidden", "Extra inputs are not permitted")
+    return value
+
+
+def string_items(values):
+    """A list refused, as one error, when an item is not a string, before its items are validated.
+    Use as field_validator(name, mode="before")(string_items) on a list[str] field."""
+    if isinstance(values, list) and not all(map(isinstance, values, repeat(str))):
+        raise PydanticCustomError("string_type", "Input should be a valid string")
+    return values
 
 
 def validated_json_body(body: bytes, content_type: str | None, adapter: TypeAdapter):

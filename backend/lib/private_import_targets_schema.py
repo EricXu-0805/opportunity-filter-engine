@@ -8,7 +8,9 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, StrictInt, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, field_validator, model_validator
+
+from backend.lib.request_body import known_keys
 
 MAX_PAYLOAD_BYTES = 8 * 1024 * 1024
 MAX_BODY_BYTES = MAX_PAYLOAD_BYTES + 65536
@@ -112,6 +114,7 @@ def opportunity(value: object) -> dict:
 
 class Scope(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
+    _known_keys = model_validator(mode="before")(known_keys)
     expected_owner_id: str
     _owner = field_validator("expected_owner_id")(owner)
 

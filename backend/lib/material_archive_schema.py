@@ -6,7 +6,9 @@ from datetime import UTC, datetime
 from typing import ClassVar, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, field_validator, model_validator
+
+from backend.lib.request_body import known_keys
 
 MAX_FILE_BYTES = 50_000_000
 MAX_BODY_BYTES = MAX_FILE_BYTES + 65536
@@ -53,6 +55,7 @@ def filename(value: str) -> str:
 
 class _Scope(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
+    _known_keys = model_validator(mode="before")(known_keys)
     expected_owner_id: str
     opportunity_id: str = Field(min_length=1, max_length=200)
     _owner = field_validator("expected_owner_id")(uuid_text)

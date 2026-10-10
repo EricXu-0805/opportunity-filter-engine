@@ -10,6 +10,7 @@ from pydantic_core import PydanticCustomError
 
 from backend.lib.email_claims import unsupported_action_claims
 from backend.lib.email_contact_context import contains_context_work_claim
+from backend.lib.request_body import known_keys, string_items
 from backend.lib.resume_input import MAX_RESUME_TEXT_CHARACTERS
 
 # Where an imported skill came from. Absence is the student's own choice; an
@@ -234,6 +235,12 @@ class MatchViewState(BaseModel):
     # the Render instance's timezone.
     today: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}$")
 
+    @field_validator("favorite_ids", "dismissed_ids", mode="before")
+    @classmethod
+    def first_view_ids(cls, values):
+        # Only the first 5000 ids are read (cap_view_ids), so only those are validated.
+        return string_items(values[:5000] if isinstance(values, list) else values)
+
     @field_validator("favorite_ids", "dismissed_ids")
     @classmethod
     def cap_view_ids(cls, values: list) -> list[str]:
@@ -350,11 +357,13 @@ class MatchesResponse(BaseModel):
 
 class ExperienceManualSource(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
+    _known_keys = model_validator(mode="before")(known_keys)
     kind: Literal["manual"]
 
 
 class ExperienceResumeSource(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
+    _known_keys = model_validator(mode="before")(known_keys)
     kind: Literal["resume"]
     signature: str = Field(pattern=r"^[0-9a-f]{64}$")
     quote: str = Field(min_length=1, max_length=6000)
@@ -376,6 +385,7 @@ class ExperienceResumeSource(BaseModel):
 
 class ExperienceEntry(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
+    _known_keys = model_validator(mode="before")(known_keys)
     id: str = Field(min_length=1, max_length=80)
     revision: int = Field(gt=0, le=9007199254740991)
     status: Literal["candidate", "confirmed", "rejected", "withdrawn"]
@@ -393,6 +403,7 @@ class ExperienceEntry(BaseModel):
 
 class ExperienceEvidence(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
+    _known_keys = model_validator(mode="before")(known_keys)
     version: Literal[1, 2]
     resume_text: str = Field(max_length=MAX_RESUME_TEXT_CHARACTERS)
     entries: list[ExperienceEntry] = Field(max_length=100)
@@ -437,6 +448,7 @@ _CONTACT_TRIM = "\u0009\u000a\u000b\u000c\u000d\u0020\u00a0\u1680\u2000\u2001\u2
 
 class _ContactFields(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
+    _known_keys = model_validator(mode="before")(known_keys)
 
     @field_validator("*", mode="after")
     @classmethod
@@ -621,6 +633,11 @@ class ColdEmailRequest(BaseModel):
             )
         return v.model_copy(update={"name": name})
 
+    @field_validator("resume_bullets", mode="before")
+    @classmethod
+    def first_bullets(cls, v):
+        return v[:12] if isinstance(v, list) else v
+
     @field_validator("resume_bullets")
     @classmethod
     def cap_bullets(cls, v: list) -> list:
@@ -730,6 +747,7 @@ class ColdEmailResponse(BaseModel):
 class EmailDraftValidationRequest(ColdEmailRequest):
     """Provider-free checks of the exact manually edited draft and current target."""
     model_config = ConfigDict(extra="forbid")
+    _known_keys = model_validator(mode="before")(known_keys)
     expected_target_version: str = Field(strict=True, min_length=68, max_length=68,
                                           pattern=r"^wt1:[0-9a-f]{64}$")
     subject: str = Field(strict=True)
@@ -777,7 +795,9 @@ class GapAnalysisResponse(BaseModel):
 
 class RoadmapRequest(BaseModel):
     profile: ProfileRequest
+    # Every id is counted (routes/roadmap.py), so the list is kept whole.
     opportunity_ids: list[str]
+    _string_ids = field_validator("opportunity_ids", mode="before")(string_items)
 
 
 class RoadmapSkill(BaseModel):

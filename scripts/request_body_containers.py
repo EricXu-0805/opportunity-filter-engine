@@ -406,6 +406,21 @@ def request_model(route):
     return TypeAdapter(lane_body_model(route) or route.body_field.field_info.annotation)
 
 
+def validation_errors(route, body) -> int:
+    """How many errors validating `body` against the route's request model builds (0 when valid)."""
+    from pydantic import ValidationError
+
+    model = request_model(route)
+    try:
+        if hasattr(model, "validate_python"):
+            model.validate_python(body, from_attributes=True)
+        else:
+            model.model_validate(body)
+    except ValidationError as exc:
+        return exc.error_count()
+    return 0
+
+
 def validate(route, body) -> None:
     """Raise unless `body` is valid for the route's request model (the full-target draft as the lane
     checks it)."""
@@ -436,6 +451,175 @@ def comma_dense_bodies():
         "profile": {"name": "Sample Student"}, "page_size": 50, "cursor": None, "view": {
             "favorite_ids": [f"{i:011x}" for i in range(room // 2)],
             "dismissed_ids": [f"{i:011x}" for i in range(room // 2, room - 20)], "today": "2026-10-09"}}
+
+
+def body_limit(method: str, path: str) -> int:
+    """The most a route reads (backend.main.RequestBodyLimitMiddleware, and the private-import screen)."""
+    from backend.lib import private_import_targets_schema as private
+    from backend.lib import target_resume_ai_schema as full_target
+    from backend.lib import target_resume_export_schema as export
+
+    if path.startswith("/api/private-import-targets"):
+        return private.MAX_BODY_BYTES if method == "PUT" or "/cold-email/" in path else (
+            private.MAX_BODY_BYTES - private.MAX_PAYLOAD_BYTES)
+    if path.startswith("/api/tailor/full-target"):
+        return full_target.MAX_BODY_BYTES
+    if path == "/api/resume/full-target/export":
+        return export.MAX_BODY_BYTES
+    return request_body.DEFAULT_MAX_REQUEST_BODY_BYTES
+
+
+def schema_sites(annotation):
+    """(kind, path, detail) for each list, typed map and closed model a request schema declares, with
+    its JSON path (0 for a list's first item): ("list", path, (most items its field allows or None,
+    the item's closed model or None)), ("map", path, None) and ("keys", path, model)."""
+    import types
+    import typing
+
+    from pydantic import BaseModel
+
+    def closed(kind):
+        return kind if isinstance(kind, type) and issubclass(kind, BaseModel) and \
+            kind.model_config.get("extra") == "forbid" else None
+
+    def visit(kind, path, metadata, seen):
+        while typing.get_origin(kind) is typing.Annotated:
+            kind, *extra = typing.get_args(kind)
+            metadata = [*metadata, *(part for item in extra for part in getattr(item, "metadata", [item]))]
+        origin, args = typing.get_origin(kind), typing.get_args(kind)
+        if origin in (typing.Union, types.UnionType):
+            for member in args:
+                yield from visit(member, path, metadata, seen)
+        elif origin in (list, set, frozenset, tuple) and args:
+            most = min((item.max_length for item in metadata if type(item).__name__ == "MaxLen"), default=None)
+            yield "list", path, (most, closed(args[0]))
+            yield from visit(args[0], (*path, 0), [], seen)
+        elif origin is dict and args and args[1] not in (typing.Any, object):
+            yield "map", path, None
+            yield from visit(args[1], (*path, "key"), [], seen)
+        elif isinstance(kind, type) and issubclass(kind, BaseModel) and kind not in seen:
+            if closed(kind):
+                yield "keys", path, kind
+            for name, field in kind.model_fields.items():
+                yield from visit(field.annotation, (*path, field.alias or name), list(field.metadata), (*seen, kind))
+
+    yield from visit(annotation, (), [], ())
+
+
+def _placed(body, path: tuple, value, copies: dict | None = None):
+    """`body` with `value` at `path`, creating the objects and lists on the way. `copies` maps the
+    path of a list on the way to how many copies of its first item it holds."""
+    if not path:
+        return value
+    node = body
+    for step, following in zip(path, (*path[1:], None), strict=True):
+        if following is None:
+            if isinstance(step, int):
+                node[:1] = [value]
+            else:
+                node[step] = value
+            break
+        empty = [] if isinstance(following, int) else {}
+        if isinstance(step, int):
+            if not node or not isinstance(node[0], type(empty)):
+                node[:1] = [empty]
+            node = node[0]
+        else:
+            if not isinstance(node.get(step), type(empty)):
+                node[step] = empty
+            node = node[step]
+    for prefix, count in (copies or {}).items():
+        holder = _found(body, prefix)
+        holder[:] = [json.loads(json.dumps(holder[0])) for _ in range(count)]
+    return body
+
+
+def _found(body, path: tuple):
+    for step in path:
+        if isinstance(step, int):
+            body = body[0] if isinstance(body, list) and body else None
+        else:
+            body = body.get(step) if isinstance(body, dict) else None
+    return body
+
+
+def _counts(body) -> tuple[int, int, int]:
+    content = json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode()
+    return containers(content), separators(content), len(content)
+
+
+def _first_items(value):
+    """`value` with every list cut to its first item: the most room the bounds leave for one field."""
+    if isinstance(value, list):
+        return [_first_items(item) for item in value[:1]]
+    if isinstance(value, dict):
+        return {key: _first_items(item) for key, item in value.items()}
+    return value
+
+
+# One item of each JSON type; a list takes at most some of them.
+JSON_ITEMS = (0, "x", None, {}, [])
+
+
+def validation_bodies(app=None):
+    """(method, template, path, name, body) for every JSON route: its largest valid body, every list cut
+    to its first item, with one list, typed map or closed model of its request schema filled with
+    items of each JSON type (and, in a list of closed models, items of undeclared keys) or with
+    undeclared keys, in one copy of the list or object that holds it and in as many copies as each
+    list on its path allows. Each is filled with as many as the route's bounds and body limit admit,
+    and with as many as its field allows."""
+    if app is None:
+        from backend.main import app
+    routes = {(method, path): route for method, path, route in json_routes(app)}
+    for method, template, path, largest in largest_bodies():
+        base = _first_items(largest)
+        route = routes[method, template]
+        bounds = request_body.declared_bounds(route) or request_body.DOCUMENT_BOUNDS
+        limit = body_limit(method, path) - 4096
+        model = request_model(route)
+        sites = list(schema_sites(getattr(model, "_type", model)))
+        most = {site: detail[0] for kind, site, detail in sites if kind == "list"}
+        for kind, site, detail in sites:
+            where = ".".join(map(str, site)) or "(body)"
+            spreads = [{}] + [{site[:i]: most.get(site[:i]) or 10} for i, step in enumerate(site) if isinstance(step, int)]
+            if kind == "keys":
+                start = _found(base, site)
+                plans = [(dict(start) if isinstance(start, dict) else {}, None), ({}, len(detail.model_fields))]
+            else:
+                cap, item_model = detail if kind == "list" else (None, None)
+                items = [*JSON_ITEMS, *([{f"undeclared{i}": 0 for i in range(len(item_model.model_fields))}]
+                                        if item_model else [])]
+                plans = [(item, count) for item in items for count in {None, cap}]
+            for fill, count in plans:
+                for copies in spreads:
+                    times = max([1, *copies.values()])
+                    empty = fill if kind == "keys" else [] if kind == "list" else {}
+                    trial = _placed(json.loads(json.dumps(base)), site, empty, copies)
+                    lists, commas, size = _counts(trial)
+                    lists, commas, room = bounds.containers - lists - 8, bounds.separators - commas - 8, limit - size
+                    if kind == "keys":
+                        many = min(commas, room // 20) // times if count is None else count
+                        if many <= 0:
+                            continue
+                        keys = {f"undeclared{i}": 0 for i in range(many)}
+                        body = _placed(json.loads(json.dumps(base)), site, {**empty, **keys}, copies)
+                        name = f"{where}: {len(empty) + many:,} keys"
+                    else:
+                        item = json.dumps(fill, separators=(",", ":")).encode()
+                        per = containers(item)
+                        many = min(commas // (separators(item) + 1), lists // per if per else commas,
+                                   room // (len(item) + (1 if kind == "list" else 12))) // times
+                        many = many if count is None else min(many, count)
+                        if many <= 0:
+                            continue
+                        value = [fill] * many if kind == "list" else {f"k{i}": fill for i in range(many)}
+                        body = _placed(json.loads(json.dumps(base)), site, value, copies)
+                        name = f"{where}: {many:,} x {item.decode()}"
+                    if copies:
+                        name += f" in {times:,} copies of {'.'.join(map(str, next(iter(copies)))) or '(body)'}"
+                    lists, commas, size = _counts(body)
+                    if lists <= bounds.containers and commas <= bounds.separators and size <= limit:
+                        yield method, template, path, name, body
 
 
 @contextlib.contextmanager

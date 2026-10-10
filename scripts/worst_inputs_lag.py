@@ -13,7 +13,8 @@ quote, and the legitimate bodies whose text or id lists are commas (scripts/requ
 ROUTES runs the R6 and R7 shapes and the NEW unknown-field shapes on every other route of the app that
 reads a JSON body (request_body_containers.json_routes), against that route's declared bounds and
 body limit, and sends every route its largest valid body, and a private import's save and an export
-at their body limits.
+at their body limits. VALIDATION sends every route the bodies request_body_containers.validation_bodies
+builds for each list, typed map and closed model of its request schema, within the route's bounds.
 
 Each request goes through backend.main.app over httpx.ASGITransport, as a caller whose credential
 is already verified. The corpus is stubbed out, so a body that passes validation ends in a 404, or
@@ -54,6 +55,7 @@ from backend.lib.request_body import (  # noqa: E402
     MAX_RESUME_JSON_CONTAINERS,
     MAX_RESUME_JSON_SEPARATORS,
 )
+from scripts.request_body_containers import body_limit  # noqa: E402
 
 ONE_MIB = 1024 * 1024 - 2048
 FULL_BODY = 2 * 1024 * 1024 + 64 * 1024 - 2048
@@ -177,6 +179,7 @@ def cases():
     yield from quote_cases()
     # Every route that reads a JSON body.
     yield from json_route_cases()
+    yield from validation_cases()
 
 
 def chains(total: int, depth: int) -> bytes:
@@ -241,19 +244,6 @@ def quote_cases():
         yield f"R7 {path} legitimate: {name}", path, body
 
 
-def body_limit(method: str, path: str) -> int:
-    """The most a route reads (backend.main.RequestBodyLimitMiddleware, and the private-import screen)."""
-    from backend.lib import private_import_targets_schema as private
-    from backend.lib import target_resume_export_schema as export
-
-    if path.startswith("/api/private-import-targets"):
-        return private.MAX_BODY_BYTES if method == "PUT" or "/cold-email/" in path else (
-            private.MAX_BODY_BYTES - private.MAX_PAYLOAD_BYTES)
-    if path.startswith("/api/tailor/full-target"):
-        return FULL_BODY + 2048
-    return export.MAX_BODY_BYTES if path == "/api/resume/full-target/export" else ONE_MIB + 2048
-
-
 def json_route_cases():
     from backend.lib.request_body import declared_bounds
     from scripts import request_body_containers as largest
@@ -289,6 +279,15 @@ def json_route_cases():
         yield (f"ROUTES {method} {template} unknown field: quotes, then brackets past the bound", path,
                frame % (b'"' * (cap - bound - 10) + b"[" * (bound + 1)), method)
     yield from limit_bodies()
+
+
+def validation_cases():
+    """Every route's bodies for each list, typed map and closed model of its request schema
+    (request_body_containers.validation_bodies)."""
+    from scripts import request_body_containers as largest
+
+    for method, template, path, name, body in largest.validation_bodies(main_module.app):
+        yield f"VALIDATION {method} {template} {name}", path, body, method
 
 
 def limit_bodies():

@@ -6,7 +6,9 @@ these paths; these tests pin the behaviour they measure.
 from __future__ import annotations
 
 import asyncio
+import collections
 import contextlib
+import functools
 import json
 
 import pytest
@@ -829,3 +831,175 @@ def test_the_per_character_checks_read_every_code_point_as_before():
         export.xml_text("Built a rig.\x0b")
     with pytest.raises(ValueError):
         private.opportunity({"source": "text_parser", "title": "Lab", "description_raw": "Join \ud800 us."})
+
+
+# ------------------------------------------------------------------ what validating a body may build
+# Validation errors one body within its route's bounds may make validation build: on the event loop,
+# and on the request lane (LANE_ROUTES and the full-target routes), where the route's class reads them.
+LOOP_ERRORS = 1_000
+LANE_ERRORS = 5_000
+
+
+@functools.cache
+def _validation_bodies() -> dict:
+    bodies = collections.defaultdict(list)
+    for method, path, concrete, name, body in largest.validation_bodies(app):
+        bodies[method, path].append((name, concrete, body))
+    return bodies
+
+
+def _on_the_lane(path, json_route) -> bool:
+    return largest.lane_body_model(json_route) is not None or path in largest.FULL_TARGET
+
+
+@pytest.mark.parametrize(("method", "path", "json_route"), JSON_ROUTES, ids=ROUTE_IDS)
+def test_validating_a_body_within_its_routes_bounds_builds_few_errors(method, path, json_route):
+    """Each list, typed map and closed model of a route's request schema, filled within the route's
+    bounds and body limit with items of every JSON type or with undeclared keys, in one copy and in as
+    many copies as the lists that hold it allow (largest.validation_bodies), makes validation build at
+    most LOOP_ERRORS errors, or LANE_ERRORS on a route that validates on the request lane."""
+    bounds = request_body.declared_bounds(json_route)
+    cap = LANE_ERRORS if _on_the_lane(path, json_route) else LOOP_ERRORS
+    bodies = _validation_bodies()[method, path]
+    model = largest.request_model(json_route)
+    sites = {".".join(map(str, site)) or "(body)" for _, site, _ in largest.schema_sites(getattr(model, "_type", model))}
+    assert sites <= {name.split(": ")[0] for name, _, _ in bodies}, (method, path)
+    for name, _, body in bodies:
+        content = json.dumps(body, ensure_ascii=False, separators=(",", ":")).encode()
+        request_body.check_body_bounds(content, bounds.separators, bounds.containers)
+        assert len(content) <= largest.body_limit(method, path)
+        assert largest.validation_errors(json_route, body) <= cap, (method, path, name)
+
+
+def test_a_closed_model_refuses_more_keys_than_it_has_fields_as_one_error():
+    from pydantic import ConfigDict, ValidationError, model_validator
+
+    class Closed(BaseModel):
+        model_config = ConfigDict(extra="forbid")
+        _known_keys = model_validator(mode="before")(request_body.known_keys)
+        name: str
+        level: int = 0
+
+    assert Closed.model_validate({"name": "a", "level": 1}).level == 1
+    with pytest.raises(ValidationError) as one:
+        Closed.model_validate({"name": "a", "x": 1})
+    assert [error["type"] for error in one.value.errors()] == ["extra_forbidden"]
+    with pytest.raises(ValidationError) as many:
+        Closed.model_validate({"name": "a", **{f"x{i}": 1 for i in range(1_000)}})
+    assert [(error["type"], error["loc"]) for error in many.value.errors()] == [("extra_forbidden", ())]
+
+
+def test_every_closed_request_model_refuses_more_keys_than_it_has_fields_as_one_error():
+    """Every model of a JSON route's request schema that refuses unknown keys does so for an object
+    with more keys than it has fields as one error (request_body.known_keys)."""
+    from pydantic import ValidationError
+
+    closed = {detail for _, _, json_route in JSON_ROUTES for kind, _, detail in largest.schema_sites(
+        getattr(largest.request_model(json_route), "_type", largest.request_model(json_route))) if kind == "keys"}
+    assert len(closed) >= 20
+    for model in closed:
+        with pytest.raises(ValidationError) as refused:
+            model.model_validate({f"undeclared{i}": 0 for i in range(len(model.model_fields) + 1)})
+        assert refused.value.error_count() == 1, model.__name__
+
+
+@pytest.mark.parametrize(("body", "errors"), [
+    ({"favorite_ids": [0] * 20_000}, 1), ({"dismissed_ids": [None] * 20_000}, 1),
+    ({"favorite_ids": ["a"] * 6_000 + [0] * 6_000}, 0), ({"favorite_ids": [0]}, 1),
+])
+def test_a_match_view_reads_and_validates_only_the_ids_it_keeps(body, errors):
+    from pydantic import ValidationError
+
+    from backend.schemas import MatchViewState
+
+    try:
+        state = MatchViewState.model_validate({"today": "2026-10-09", **body})
+    except ValidationError as exc:
+        assert exc.error_count() == errors
+    else:
+        assert errors == 0 and len(state.favorite_ids) == 1
+
+
+def test_a_list_kept_whole_is_refused_as_one_error_when_an_item_is_not_a_string():
+    from pydantic import ValidationError
+
+    from backend.schemas import RoadmapRequest
+
+    ids = [f"{i:016x}" for i in range(20_000)]
+    assert RoadmapRequest.model_validate({"profile": {}, "opportunity_ids": ids}).opportunity_ids == ids
+    for wrong in (0, None, {}, []):
+        with pytest.raises(ValidationError) as refused:
+            RoadmapRequest.model_validate({"profile": {}, "opportunity_ids": ids + [wrong] * 20_000})
+        assert refused.value.error_count() == 1
+
+
+@pytest.mark.parametrize("model_path", ["backend.schemas.ColdEmailRequest", "backend.routes.cold_email.EmailRefineRequest"])
+def test_only_the_bullets_a_cold_email_reads_are_validated(model_path):
+    import importlib
+
+    from pydantic import ValidationError
+
+    module, name = model_path.rsplit(".", 1)
+    model = getattr(importlib.import_module(module), name)
+    body = {"profile": {"name": "Sample Student"}, "opportunity_id": "o", "current_body": "Hi.", "instruction": "Shorter."}
+    kept = model.model_validate({**body, "resume_bullets": ["Built a rig.", " ", *(["Led a team."] * 20), 0]})
+    assert kept.resume_bullets == ["Built a rig."] + ["Led a team."] * 10
+    with pytest.raises(ValidationError) as refused:
+        model.model_validate({**body, "resume_bullets": [0] * 20_000})
+    assert refused.value.error_count() == 12
+
+
+def test_an_export_past_its_block_or_line_limits_is_refused_before_its_sections_are_validated():
+    from pydantic import ValidationError
+
+    from backend.lib.target_resume_export_schema import ExportProjection
+
+    head = {"version": 1, "template": "standard-v1", "locale": "en", "page_size": "letter"}
+    for blocks in ([{"lines": [0] * 601}], [{"lines": [0]}] * 601, [{"lines": [0] * 300}] * 3):
+        with pytest.raises(ValidationError) as refused:
+            ExportProjection.model_validate({**head, "sections": [{"kind": "other", "heading": "", "blocks": blocks}]})
+        assert [error["msg"] for error in refused.value.errors()] == ["Value error, projection_limit"]
+
+
+def test_the_app_builds_few_errors_for_a_body_on_a_route_that_validates_on_the_event_loop(monkeypatch):
+    """Through the app: every route that validates its body on the event loop builds at most
+    LOOP_ERRORS errors for the longest body largest.validation_bodies makes for each of its lists,
+    typed maps and closed models, and for the one whose model builds the most."""
+    from fastapi import exceptions
+
+    from backend.lib import private_import_targets as storage
+    from backend.routes import private_import_targets as targets
+
+    sizes, real = [], exceptions.RequestValidationError.__init__
+
+    def recorded(self, errors, *args, **kwargs):
+        errors = list(errors)
+        sizes.append(len(errors))
+        real(self, errors, *args, **kwargs)
+
+    @contextlib.asynccontextmanager
+    async def verified(*args, **kwargs):
+        yield
+
+    monkeypatch.setattr(exceptions.RequestValidationError, "__init__", recorded)
+    monkeypatch.setattr(storage, "caller_verified_before_parsing", verified)
+    monkeypatch.setattr(targets, "caller_verified_before_parsing", verified)
+    client, sent = TestClient(app, raise_server_exceptions=False), 0
+    for method, path, json_route in JSON_ROUTES:
+        if _on_the_lane(path, json_route):
+            continue
+        chosen = {}
+        for name, _, body in _validation_bodies()[method, path]:
+            site, content = name.split(": ")[0], json.dumps(body, separators=(",", ":")).encode()
+            chosen[site] = max(chosen.get(site, (0, "", b"")), (len(content), name, content))
+        most = max(_validation_bodies()[method, path], default=None,
+                   key=lambda row: largest.validation_errors(json_route, row[2]))
+        if most:
+            chosen["most"] = (0, most[0], json.dumps(most[2], separators=(",", ":")).encode())
+        for _, name, content in chosen.values():
+            sizes.clear()
+            response = largest.send(client, method, _concrete()[method, path], content)
+            assert response.status_code != 500, (method, path, name)
+            assert max(sizes, default=0) <= LOOP_ERRORS, (method, path, name, sizes)
+            sent += 1
+    assert sent >= 40
