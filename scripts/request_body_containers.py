@@ -520,9 +520,11 @@ def body_limit(method: str, path: str) -> int:
 
 
 def schema_sites(annotation):
-    """(kind, path, detail) for each list, typed map and closed model a request schema declares, with
-    its JSON path (0 for a list's first item): ("list", path, (most items its field allows or None,
-    the item's closed model or None)), ("map", path, None) and ("keys", path, model)."""
+    """(kind, path, detail) for each value, list, typed map and closed model a request schema declares,
+    with its JSON path (0 for a list's first item, "key" for a map's values): ("value", path, None) for
+    the body and every field, item and map value, whatever its type; ("list", path, (most items its
+    field allows or None, the item's closed model or None)); ("map", path, None); and ("keys", path,
+    model)."""
     import types
     import typing
 
@@ -532,14 +534,16 @@ def schema_sites(annotation):
         return kind if isinstance(kind, type) and issubclass(kind, BaseModel) and \
             kind.model_config.get("extra") == "forbid" else None
 
-    def visit(kind, path, metadata, seen):
+    def visit(kind, path, metadata, seen, member=False):
         while typing.get_origin(kind) is typing.Annotated:
             kind, *extra = typing.get_args(kind)
             metadata = [*metadata, *(part for item in extra for part in getattr(item, "metadata", [item]))]
+        if not member:
+            yield "value", path, None
         origin, args = typing.get_origin(kind), typing.get_args(kind)
         if origin in (typing.Union, types.UnionType):
-            for member in args:
-                yield from visit(member, path, metadata, seen)
+            for member_kind in args:
+                yield from visit(member_kind, path, metadata, seen, member=True)
         elif origin in (list, set, frozenset, tuple) and args:
             most = min((item.max_length for item in metadata if type(item).__name__ == "MaxLen"), default=None)
             yield "list", path, (most, closed(args[0]))
@@ -609,15 +613,18 @@ def _first_items(value):
 
 # One item of each JSON type; a list takes at most some of them.
 JSON_ITEMS = (0, "x", None, {}, [])
+# The items of a list put in place of any value of a schema: a number no string or integer field takes.
+WRONG_ITEM = 1.5e300
 
 
 def validation_bodies(app=None):
     """(method, template, path, name, body) for every JSON route: its largest valid body, every list cut
-    to its first item, with one list, typed map or closed model of its request schema filled with
-    items of each JSON type (and, in a list of closed models, items of undeclared keys) or with
-    undeclared keys, in one copy of the list or object that holds it and in as many copies as each
-    list on its path allows. Each is filled with as many as the route's bounds and body limit admit,
-    and with as many as its field allows."""
+    to its first item, with one value, list, typed map or closed model of its request schema filled:
+    a value with a list of numbers or an object, whatever type the schema gives it; a list or typed
+    map with items of each JSON type (and, in a list of closed models, items of undeclared keys); a
+    closed model with undeclared keys. Each is filled in one copy of the list or object that holds it
+    and in as many copies as each list on its path allows, with as many items or keys as the route's
+    bounds and body limit admit, and with as many as its field allows."""
     if app is None:
         from backend.main import app
     routes = {(method, path): route for method, path, route in json_routes(app)}
@@ -634,20 +641,23 @@ def validation_bodies(app=None):
             spreads = [{}] + [{site[:i]: most.get(site[:i]) or 10} for i, step in enumerate(site) if isinstance(step, int)]
             if kind == "keys":
                 start = _found(base, site)
-                plans = [(dict(start) if isinstance(start, dict) else {}, None), ({}, len(detail.model_fields))]
+                plans = [("keys", dict(start) if isinstance(start, dict) else {}, None),
+                         ("keys", {}, len(detail.model_fields))]
+            elif kind == "value":
+                plans = [("list", WRONG_ITEM, None), ("map", 0, None)]
             else:
                 cap, item_model = detail if kind == "list" else (None, None)
                 items = [*JSON_ITEMS, *([{f"undeclared{i}": 0 for i in range(len(item_model.model_fields))}]
                                         if item_model else [])]
-                plans = [(item, count) for item in items for count in {None, cap}]
-            for fill, count in plans:
+                plans = [(kind, item, count) for item in items for count in {None, cap}]
+            for shape, fill, count in plans:
                 for copies in spreads:
                     times = max([1, *copies.values()])
-                    empty = fill if kind == "keys" else [] if kind == "list" else {}
+                    empty = fill if shape == "keys" else [] if shape == "list" else {}
                     trial = _placed(json.loads(json.dumps(base)), site, empty, copies)
                     lists, commas, size = _counts(trial)
                     lists, commas, room = bounds.containers - lists - 8, bounds.separators - commas - 8, limit - size
-                    if kind == "keys":
+                    if shape == "keys":
                         many = min(commas, room // 20) // times if count is None else count
                         if many <= 0:
                             continue
@@ -658,13 +668,14 @@ def validation_bodies(app=None):
                         item = json.dumps(fill, separators=(",", ":")).encode()
                         per = containers(item)
                         many = min(commas // (separators(item) + 1), lists // per if per else commas,
-                                   room // (len(item) + (1 if kind == "list" else 12))) // times
+                                   room // (len(item) + (1 if shape == "list" else 12))) // times
                         many = many if count is None else min(many, count)
                         if many <= 0:
                             continue
-                        value = [fill] * many if kind == "list" else {f"k{i}": fill for i in range(many)}
+                        value = [fill] * many if shape == "list" else {f"k{i}": fill for i in range(many)}
                         body = _placed(json.loads(json.dumps(base)), site, value, copies)
-                        name = f"{where}: {many:,} x {item.decode()}"
+                        held = f"a list of {many:,} x {item.decode()}" if shape == "list" else f"an object of {many:,} keys"
+                        name = f"{where}: {held if kind == 'value' else f'{many:,} x {item.decode()}'}"
                     if copies:
                         name += f" in {times:,} copies of {'.'.join(map(str, next(iter(copies)))) or '(body)'}"
                     lists, commas, size = _counts(body)

@@ -32,7 +32,6 @@ from backend.lib.target_actionability import REFUSED_BEFORE_WORK_HEADER
 init_sentry()
 
 from fastapi import FastAPI, Request, Response
-from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -841,7 +840,11 @@ app = FastAPI(
 
 @app.exception_handler(RequestValidationError)
 async def safe_profile_validation_error(request: Request, exc: RequestValidationError):
-    from backend.lib.profile_validation import safe_profile_validation_detail, safe_validation_errors
+    from backend.lib.profile_validation import (
+        safe_profile_validation_detail,
+        safe_validation_errors,
+        validation_errors_without_values,
+    )
 
     path = request.url.path
     profile_root = path == "/api/matches" or (
@@ -860,7 +863,7 @@ async def safe_profile_validation_error(request: Request, exc: RequestValidation
         # can attach the entire request to an error at body root. Keep the
         # standard error-list shape without reflecting its profile or text.
         return JSONResponse(status_code=422, content={"detail": safe_validation_errors(exc)})
-    return await request_validation_exception_handler(request, exc)
+    return JSONResponse(status_code=422, content={"detail": validation_errors_without_values(exc)})
 
 
 app.add_middleware(

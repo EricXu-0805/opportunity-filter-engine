@@ -14,7 +14,8 @@ ROUTES runs the R6 and R7 shapes and the NEW unknown-field shapes on every other
 reads a JSON body (request_body_containers.json_routes), against that route's declared bounds and
 body limit, and sends every route its largest valid body, and a private import's save and an export
 at their body limits. VALIDATION sends every route the bodies request_body_containers.validation_bodies
-builds for each list, typed map and closed model of its request schema, within the route's bounds.
+builds for each value, list, typed map and closed model of its request schema, within the route's bounds.
+The admin routes are sent an operator token they accept, so they validate their bodies.
 
 Each request goes through backend.main.app over httpx.ASGITransport, as a caller whose credential
 is already verified. The corpus is stubbed out, so a body that passes validation ends in a 404, or
@@ -66,6 +67,7 @@ UNDER_SEPARATORS = MAX_JSON_SEPARATORS - 40
 PROFILE = {"name": "Sample Student", "major": "Psychology"}
 TAILOR = {"profile": PROFILE, "opportunity_id": "probe-target", "locale": "en"}
 SIGNATURE = "v1:sha256:" + "0" * 64
+ADMIN_TOKEN = "probe-admin"
 
 
 def fill(kind: str, size: int):
@@ -335,7 +337,7 @@ async def probe(path: str, content: bytes, concurrent: int = 1, method: str = "P
 
         tasks = [asyncio.create_task(wake()), asyncio.create_task(heartbeat())]
         await asyncio.sleep(0.02)
-        headers = {"content-type": "application/json", "authorization": "Bearer probe"}
+        headers = {"content-type": "application/json", "authorization": "Bearer probe", "x-admin-token": ADMIN_TOKEN}
         responses = await asyncio.gather(*(client.request(method, path, content=content, headers=headers)
                                            for _ in range(concurrent)))
         response = responses[0]
@@ -386,6 +388,7 @@ def main() -> int:
     main_module.feature_enabled = lambda feature: True
     release_scope.feature_enabled = lambda feature: True
     stub_corpus_and_credentials()
+    os.environ["ADMIN_TOKEN"] = ADMIN_TOKEN
     gc.collect()
     gc.freeze()
     rows = []

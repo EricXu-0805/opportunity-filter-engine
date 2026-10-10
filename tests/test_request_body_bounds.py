@@ -1043,6 +1043,64 @@ def test_the_app_builds_few_errors_for_a_body_on_a_route_that_validates_on_the_e
     assert sent >= 40
 
 
+def test_every_json_route_answers_an_invalid_body_without_the_values_it_sent(monkeypatch):
+    """Every JSON route, sent each value of its request schema as a list of numbers no field of that
+    type takes (largest.validation_bodies, in one copy), answers without any of the values sent, and a
+    list of errors names at most MAX_VALIDATION_ERRORS of them by type, location and message."""
+    from backend.lib import private_import_targets as storage
+    from backend.lib.profile_validation import MAX_VALIDATION_ERRORS
+    from backend.routes import private_import_targets as targets
+
+    @contextlib.asynccontextmanager
+    async def verified(*args, **kwargs):
+        yield
+
+    monkeypatch.setattr(storage, "caller_verified_before_parsing", verified)
+    monkeypatch.setattr(targets, "caller_verified_before_parsing", verified)
+    monkeypatch.setenv("ADMIN_TOKEN", "probe-admin")
+    headers = {"content-type": "application/json", "authorization": "Bearer reader", "x-admin-token": "probe-admin"}
+    client, refused = TestClient(app, raise_server_exceptions=False), collections.Counter()
+    sent = json.dumps(largest.WRONG_ITEM).encode()
+    for method, path, _ in JSON_ROUTES:
+        for name, concrete, body in _validation_bodies()[method, path]:
+            if ": a list of " not in name or " copies of " in name:
+                continue
+            content = json.dumps(body, separators=(",", ":")).encode()
+            response = client.request(method, concrete, content=content, headers=headers)
+            assert response.status_code != 500 and sent not in response.content, (method, path, name)
+            detail = response.json().get("detail") if response.status_code == 422 else None
+            if isinstance(detail, list):
+                assert 0 < len(detail) <= MAX_VALIDATION_ERRORS, (method, path, name)
+                assert all(set(error) == {"type", "loc", "msg"} for error in detail), (method, path, name)
+            refused[method, path] += response.status_code == 422
+    assert all(refused[method, path] for method, path, _ in JSON_ROUTES), refused
+
+
+class _Items(BaseModel):
+    names: list[str]
+    title: str
+
+
+def test_a_validation_error_list_names_the_first_errors_without_their_values():
+    from fastapi import FastAPI
+
+    probe = FastAPI(exception_handlers=app.exception_handlers)
+
+    @probe.post("/items")
+    async def items(body: _Items):
+        return {}
+
+    client = TestClient(probe)
+    response = client.post("/items", json={"names": [0] * 50, "title": ["Built a rig."] * 3})
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert detail[0] == {"type": "string_type", "loc": ["body", "names", 0], "msg": "Input should be a valid string"}
+    assert len(detail) == 20 and "Built a rig." not in response.text
+    response = client.post("/items", json={"names": ["a"], "title": 1.5e300})
+    assert response.json()["detail"] == [{"type": "string_type", "loc": ["body", "title"],
+                                          "msg": "Input should be a valid string"}]
+
+
 def test_a_route_that_reads_its_body_in_a_helper_without_bounds_fails_the_test_that_reaches_it(unbounded_body_reads):
     """tests/conftest.py records a backend route that reads its request body, wherever it reads it,
     without declaring its bounds."""
