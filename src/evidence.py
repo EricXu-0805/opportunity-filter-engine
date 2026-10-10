@@ -40,6 +40,11 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
+from functools import lru_cache
+
+from src.contact_instructions import SOURCE_KEY as CONTACT_SOURCE_KEY
+from src.contact_instructions import _source_time as contact_source_time
+from src.contact_instructions import _url as contact_url
 
 # ---------------------------------------------------------------------------
 # 1. Observed vs synthesized (email provenance)
@@ -206,14 +211,16 @@ _COLLECTOR_TEMPLATE_STAMPS: dict[str, dict[str, tuple[object, str]]] = {
 # every refresh re-emits them without reading the page again. Checked against
 # 31 live program pages on 2026-10-09, 10 of 33 configured facets were stated
 # there and 5 were contradicted (a "stipend" that is a $500 expense grant;
-# "international students: yes" on a program for research abroad). Stamped
-# like the Simplify stipend; their majors and class years are classified for
-# display only, by the rule above.
+# "international students: yes" on a program for research abroad). So a
+# configured value is ours unless the page text the row carries states it
+# (`configured_fact` below): stamped like the Simplify stipend when it does
+# not, while majors and class years are classified for display only, by the
+# rule above.
 CAMPUS_PROGRAM_SUFFIXES = ("_research_programs", "_labs", "_external_research")
 _CONFIGURED_PROGRAM_STAMPS = {
-    "paid": lambda value: value in {"yes", "stipend", "no"},
-    "eligibility.international_friendly": lambda value: value in {"yes", "no"},
-    "eligibility.citizenship_required": lambda value: value is True or value is False,
+    "paid": ("paid", lambda value: value in {"yes", "stipend", "no"}),
+    "eligibility.international_friendly": ("international_students", lambda value: value in {"yes", "no"}),
+    "eligibility.citizenship_required": ("citizenship", lambda value: value is True or value is False),
 }
 CONFIGURED_PROGRAM_METHOD = "default:configured_program"
 
@@ -225,6 +232,572 @@ def is_configured_program(record: dict) -> bool:
     metadata = record.get("metadata")
     return (isinstance(source, str) and source.endswith(CAMPUS_PROGRAM_SUFFIXES)
             and not (isinstance(metadata, dict) and metadata.get("discovered")))
+
+
+# The owner's rule (2026-10-09): where the program page states a configured
+# value, show it as the page's, in the page's own words; where it does not, it
+# is our inference. The page text a configured row carries is of two kinds,
+# both read off a page a crawl loaded:
+#
+# * the excerpt the crawl appends to its description after
+#   CAPTURED_PAGE_MARKER (`_readable_excerpt`: the first 400 characters of the
+#   main content of the row's own `source_url`, rewritten by each run that
+#   loads the page, which also sets `last_verified`, and dropped by one that
+#   does not);
+# * the passages the condition capture kept from that page
+#   (`metadata.contact_instruction_sources`: whole paragraphs, each with the
+#   URL it was read at and when). The cold-email conditions quote the same
+#   passages (`backend.lib.email_target_conditions`).
+#
+# `configured_fact` reads them one sentence at a time, the excerpt first:
+#
+# * stated: one sentence holds the value's own terms where the facet's words
+#   make them a term of this program ("receive a stipend"; "international
+#   students are eligible"; "open to Biology majors"; every word of a free
+#   text value beside a pay or timing word). That sentence is the quote.
+# * contradicted: a sentence says what the value excludes ("positions are
+#   unpaid" against a stipend, "must be U.S. citizens" against an
+#   international "yes", "open to all majors" against a major list, a
+#   deadline on another day). It wins over a stating sentence: the page then
+#   says both, and that is for a person to read
+#   (`scripts/configured_facts_report.py` lists them).
+# * unstated: anything else. That includes a sentence that hedges ("may",
+#   "if", "subject to", "typically"), one that says nothing about this
+#   program (a legend, "$$ = Stipend provided"; a pointer, "check each
+#   program's website for details such as stipend amounts"; "funding for
+#   unpaid internships"), and one that cannot be read whole: over 300
+#   characters, which is navigation run together; the excerpt's last
+#   sentence when the 400-character cut ended it, since the words cut off may
+#   be the ones that qualify it; "rising juniors", which names the year after
+#   the one a student is in.
+#
+# Exact terms only. "Scholarship" does not state "stipend", "International"
+# alone does not state that international students may apply, and
+# "Biochemistry" does not state "Chemistry". The one normalization is spelling
+# that cannot change the meaning: "Jan" is "January", "$5,000" is "$5000",
+# "&" is "and".
+CAPTURED_PAGE_MARKER = "From the program page:"
+# Where the campus collectors cut that text: `_readable_excerpt`'s limit, and
+# their description cap (`_DESC_CAP`). An excerpt at either length was cut.
+EXCERPT_LIMIT = 400
+DESCRIPTION_LIMIT = 1500
+FACT_STATED = "stated"
+FACT_UNSTATED = "unstated"
+FACT_CONTRADICTED = "contradicted"
+_MAX_QUOTE = 300
+
+# The record path of each configured facet, by its detail-fields facet name.
+CONFIGURED_FACT_PATHS = {
+    "paid": "paid",
+    "compensation": "compensation_details",
+    "international_students": "eligibility.international_friendly",
+    "citizenship": "eligibility.citizenship_required",
+    "majors": "eligibility.majors",
+    "class_year": "eligibility.preferred_year",
+    "application_window": "metadata.deadline_note",
+}
+
+
+@dataclass(frozen=True)
+class ConfiguredFact:
+    """One configured value checked against the page text its row carries.
+
+    ``quote`` is the page's sentence: the one that states the value, or the
+    one that contradicts it. None when the page text says neither.
+    ``source_url`` and ``observed_at`` say where and when that sentence was
+    read: the row's page and `last_verified` for the excerpt, the passage's
+    own URL and `checked_at` for a captured passage.
+    """
+
+    state: str
+    quote: str | None = None
+    source_url: str | None = None
+    observed_at: str | None = None
+
+
+_UNSTATED = ConfiguredFact(FACT_UNSTATED)
+
+# A sentence ends at a line break, a bullet or pipe, a semicolon, or a full
+# stop after a lowercase letter or digit that starts a capitalised word, so
+# "U.S. citizens" and "e.g. biology" stay whole. The excerpt is flattened page
+# text, so a heading ("SUMMER RESEARCH GRANTS (SURG)") or a field label
+# ("Deadline:") also ends one: without that, a menu run into the first
+# sentence reads as part of it.
+_SENTENCE_BREAK_RE = re.compile(r"[\n\r•·|]+|(?<=;)\s+|(?<=[a-z0-9)][.!?])\s+(?=[\"“(]?[A-Z0-9])")
+_HEADING_RE = re.compile(r"\b(?:[A-Z]{2,}[\s&/-]+){2,}[A-Z]{2,}\b(?:\s*\([A-Z]{2,}\))?")
+# A capitalised word, and at most one more, before a colon: "Deadline:",
+# "Application deadline:", "ELIGIBILITY:".
+_LABEL_RE = re.compile(r"(?<!\S)(?:[A-Z][a-z]+(?:\s[A-Za-z]+)?|[A-Z]{2,}):(?=\s)")
+# A legend or a pointer to another page describes no program.
+_NOT_A_STATEMENT_RE = re.compile(
+    r"=|\b(?:check|see|visit|consult|refer\s+to)\b.{0,80}?\b(?:websites?|web\s+sites?|sites?|pages?|links?|details)\b",
+    re.IGNORECASE,
+)
+# "May" is a hedge, except in "may apply" and in a date ("May 1").
+_HEDGE_RE = re.compile(
+    r"\b(?:if|unless|depending|subject\s+to|might|could|possibly|typically|usually|generally|often|some"
+    r"|may(?!\s+(?:also\s+)?apply\b|\s+\d))\b",
+    re.IGNORECASE,
+)
+_TERMINATED_RE = re.compile(r"[.!?][\"”’')\]]*$")
+_NOT_RE = re.compile(r"\b(?:not|no|ineligible|cannot|unable|except|excluding|excluded)\b|n't\b", re.IGNORECASE)
+
+_PAY_WORD_RE = re.compile(
+    r"\b(?:stipends?|salar(?:y|ies)|wages?|hourly"
+    r"|(?:are|is|be|get|gets|getting|being|was|were)\s+paid(?!\s+for\b)"
+    r"|paid\s+(?:positions?|research|internships?|opportunit(?:y|ies)|programs?|roles?|work|undergraduates?"
+    r"|students?|summer|hourly|at\b|\$))",
+    re.IGNORECASE,
+)
+_STIPEND_RE = re.compile(r"\bstipends?\b", re.IGNORECASE)
+# Said of this position: "positions are unpaid", "this is an unpaid
+# internship". Not "funding for unpaid internships", which pays for them.
+_UNPAID_RE = re.compile(
+    r"\b(?:(?:is|are|be|was|were|remains?)\s+(?:an?\s+)?(?:(?!(?:for|to|in|of|on|with|from|by|towards?)\b)[\w-]+\s+){0,2}?"
+    r"unpaid|not\s+(?:be\s+)?paid"
+    r"|no\s+(?:stipends?|salary|pay|payment|compensation)"
+    r"|without\s+(?:a\s+)?(?:stipend|salary|pay|payment|compensation)|on\s+a\s+volunteer\s+basis)\b",
+    re.IGNORECASE,
+)
+_PAY_DENIED_RE = re.compile(
+    r"\b(?:stipends?|salary|pay|payment|compensation)\s+(?:is|are|will)\s+not\b"
+    r"|\bnot\s+(?:provide|offer|include|receive)\w*\s+(?:a\s+)?(?:stipends?|salary|pay|payment|compensation)\b",
+    re.IGNORECASE,
+)
+_PAY_CONTEXT_RE = re.compile(
+    r"\$\s?\d|\b(?:stipends?|scholarships?|awards?|salar(?:y|ies)|wages?|paid|pay|payment|funding|funded|funds?"
+    r"|grants?|fellowships?|compensation|compensated|hourly|earn(?:s|ings)?)\b",
+    re.IGNORECASE,
+)
+_AMOUNT_RE = re.compile(r"\$\s?(\d[\d,]*)")
+_PAY_NOUN_RE = re.compile(r"\b(stipend|grant|award|scholarship|fellowship|salar|wage)(?:s|y|ies)?\b", re.IGNORECASE)
+
+# Who an international student is. Not DACA recipients or undocumented
+# students: a page welcoming them says nothing about a student on a visa.
+_INTL_GROUP = (r"(?:international\s+(?:students?|undergraduates?|applicants?|scholars?)"
+               r"|non[- ]?(?:u\.?\s?s\.?\s+)?citizens?)")
+# The welcome is said of that group: "international students are eligible",
+# "open to U.S. citizens and international students". Not "international
+# student applicants must have an eligible F-1 visa", which sets a condition.
+_INTL_WELCOME_RE = re.compile(
+    rf"\b{_INTL_GROUP}\s+(?:are|is)\s+(?:also\s+|all\s+)?(?:eligible|welcomed?|encouraged\s+to\s+apply"
+    rf"|invited\s+to\s+apply)\b"
+    rf"|\b{_INTL_GROUP}\s+(?:may|can)\s+(?:also\s+)?apply\b"
+    rf"|\b(?:open|available)\s+to\s+(?:[\w.’'-]+\s+){{0,6}}?{_INTL_GROUP}"
+    rf"|\b(?:welcomes?|accepts?|considers?)\s+(?:applications\s+from\s+)?{_INTL_GROUP}"
+    r"|\bregardless\s+of\s+(?:citizenship|nationality|visa\s+status)\b",
+    re.IGNORECASE,
+)
+_WELCOME_RE = re.compile(
+    r"\b(?:eligible|welcome[ds]?|encouraged|invited|may\s+apply|can\s+apply|open\s+to|regardless)\b",
+    re.IGNORECASE,
+)
+_ONLY_RE = re.compile(r"\bonly\b", re.IGNORECASE)
+_US = r"(?:u\.?\s?s\.?|united\s+states)"
+_CITIZEN_ONLY_RE = re.compile(
+    rf"\bmust\s+be\s+(?:an?\s+)?{_US}\s+(?:citizens?|nationals?|permanent\s+residents?)"
+    rf"|\b(?:only|limited|restricted|open|available)\s+to\s+{_US}\s+(?:citizens?|nationals?|permanent\s+residents?)"
+    rf"|\b{_US}\s+citizens?(?:\s+(?:and|or|and/or)\s+(?:{_US}\s+)?(?:lawful\s+)?permanent\s+residents?)?\s+only\b"
+    rf"|\b{_US}\s+citizenship\s+(?:is\s+)?required"
+    r"|\b(?:international\s+(?:students?|applicants?)|non[- ]?(?:u\.?\s?s\.?\s+)?citizens?)\s+(?:are\s+)?"
+    r"(?:not\s+eligible|ineligible|cannot\s+apply|may\s+not\s+apply)",
+    re.IGNORECASE,
+)
+
+# Words that make a field name a student's major, before the list ("Biology
+# and Chemistry majors") or after it ("majoring in Biology", "students in
+# Physics"). "Disciplines" and "fields" are not among them: "projects
+# involving chemistry, physics and engineering disciplines" names research,
+# not who may apply; and a name elsewhere in the sentence ("the Honors Program
+# in Engineering Sciences") is not a major either.
+_MAJOR_NOUN = r"(?:majors?|concentrators?|concentrations?|minors?)"
+_MAJOR_LEAD = (r"(?:majors?\s+in|majoring\s+in|concentrat(?:ion|ions|ing|ors?)\s+in|minors?\s+in|degrees?\s+in"
+               r"|students?\s+(?:in|of|from|studying)|studying)")
+_LIST_SEPARATOR = r"(?:\s*,\s*(?:and\s+|or\s+)?|\s+and\s+|\s+or\s+|\s*/\s*)"
+_ANY_MAJOR_RE = re.compile(
+    r"\b(?:(?:all|any|every)\s+(?:academic\s+)?(?:majors?|disciplines|fields\s+of\s+study)"
+    r"|regardless\s+of\s+(?:academic\s+)?(?:major|discipline))\b",
+    re.IGNORECASE,
+)
+# A configured list that is itself the all-majors answer.
+_ALL_MAJORS_VALUES = frozenset({"all", "any", "all majors", "any major", "any majors"})
+
+
+def is_all_majors_answer(majors: object) -> bool:
+    """Whether a major list says "all majors" (``["all"]``) rather than naming any."""
+    return (isinstance(majors, list) and bool(majors)
+            and all(isinstance(m, str) and m.strip().lower() in _ALL_MAJORS_VALUES for m in majors))
+
+
+_CLASS_YEAR_RES = {
+    year: re.compile(
+        rf"\b(?:{plural}|{singular}\s+(?:students?|standing|undergraduates?)"
+        rf"|{ordinal}[- ]years|{ordinal}[- ]year\s+(?:students?|undergraduates?|standing))\b",
+        re.IGNORECASE,
+    )
+    for year, plural, singular, ordinal in (
+        ("freshman", "freshmen", "freshman", "first"),
+        ("sophomore", "sophomores", "sophomore", "second"),
+        ("junior", "juniors", "junior", "third"),
+        ("senior", "seniors", "senior", "fourth"),
+    )
+}
+_YEAR_CONTEXT_RE = re.compile(
+    r"\b(?:eligible|eligibility|(?:open|available|offered|awarded|made|limited|restricted)\s+to|must\s+be|only"
+    r"|apply|applicants?|welcome[ds]?|encouraged|(?:intended|designed)\s+(?:for|to)|serv(?:e|es|ing))\b",
+    re.IGNORECASE,
+)
+_ALL_YEARS_RE = re.compile(
+    r"\b(?:all\s+(?:class\s+)?years|all\s+undergraduates|all\s+class\s+levels|any\s+(?:class\s+)?year"
+    r"|students\s+of\s+all\s+(?:class\s+)?(?:years|levels))\b",
+    re.IGNORECASE,
+)
+_UNCERTAIN_YEAR_RE = re.compile(r"\b(?:rising|high\s+school)\b", re.IGNORECASE)
+
+_TIMING_RE = re.compile(
+    r"\b(?:deadlines?|due|apply|applications?|applicants?|open(?:s|ed)?|clos(?:e|es|ed|ing)|rolling"
+    r"|cycles?|submit(?:ted)?|submissions?|accept(?:ed|ing)?)\b",
+    re.IGNORECASE,
+)
+_DEADLINE_RE = re.compile(r"\b(?:deadlines?|due)\b", re.IGNORECASE)
+_MONTH_NAMES = ("january", "february", "march", "april", "may", "june", "july", "august",
+                "september", "october", "november", "december")
+_MONTH_ABBREVIATIONS = {name[:3]: name for name in _MONTH_NAMES} | {"sept": "september"}
+_MONTH_ABBREVIATION_RE = re.compile(r"\b(jan|feb|mar|apr|jun|jul|aug|sept?|oct|nov|dec)\b\.?")
+# "May" is a month only with a day after it: "students may apply" names none.
+_MONTH_RE = re.compile(r"\b(january|february|march|april|june|july|august|september|october|november|december)\b"
+                       r"|\b(may)\s+\d")
+_DATE_RE = re.compile(rf"\b({'|'.join(_MONTH_NAMES)})\s+(\d{{1,2}})(?:st|nd|rd|th)?\b"
+                      r"|\b(\d{1,2})/(\d{1,2})(?:/\d{2,4})?\b")
+_FILLER_WORDS = frozenset({
+    "the", "and", "for", "with", "via", "per", "from", "are", "its", "their", "this", "that", "also",
+    "plus", "into", "typically", "usually", "generally", "often", "about", "approximately", "around",
+})
+
+
+def _page_sentences(text: str, *, cut: bool) -> tuple[str, ...]:
+    text = _LABEL_RE.sub(lambda m: "\n" + m.group(0), _HEADING_RE.sub(lambda m: m.group(0) + "\n", text))
+    sentences = [s for s in (" ".join(part.split()) for part in _SENTENCE_BREAK_RE.split(text)) if s]
+    if cut and sentences and not _TERMINATED_RE.search(sentences[-1]):
+        sentences.pop()
+    return tuple(s for s in sentences if len(s) <= _MAX_QUOTE
+                 and not _NOT_A_STATEMENT_RE.search(s) and not _HEDGE_RE.search(s))
+
+
+@lru_cache(maxsize=4096)
+def _excerpt_sentences(description: str) -> tuple[str, ...]:
+    """The readable sentences of the excerpt after CAPTURED_PAGE_MARKER.
+
+    A description holding an email address gives none: the public projection
+    serves it as "[email redacted]", so no part of it can be quoted.
+    """
+    if CAPTURED_PAGE_MARKER not in description:
+        return ()
+    # Imported here: the projector imports this module.
+    from backend.lib.public_projection import contains_embedded_email
+
+    if contains_embedded_email(description):
+        return ()
+    excerpt = description.split(CAPTURED_PAGE_MARKER, 1)[1].lstrip()
+    return _page_sentences(excerpt, cut=len(excerpt) >= EXCERPT_LIMIT or len(description) >= DESCRIPTION_LIMIT)
+
+
+# A passage under a heading for another audience is about another program
+# ("Graduate Students > IPAC Visiting Graduate Student Research Fellowship"
+# on an undergraduate program's page).
+_OTHER_AUDIENCE_RE = re.compile(
+    r"\b(?:graduate|grad\s+students?|masters?|doctoral|ph\.?\s?d\.?|postdocs?|postdoctoral|high\s+school|faculty)\b",
+    re.IGNORECASE,
+)
+_MAX_PASSAGE = 4000
+
+
+@lru_cache(maxsize=4096)
+def _passage_sentences(sources: tuple[tuple[str, str, tuple[tuple[str, str], ...]], ...]
+                       ) -> tuple[tuple[str, str, str], ...]:
+    """(sentence, source_url, checked_at) for the captured passages
+    ``sources`` holds as (source_url, checked_at, ((heading, text), ...))."""
+    from backend.lib.public_projection import contains_embedded_email
+
+    out = []
+    for source_url, checked_at, sections in sources:
+        for heading, text in sections:
+            # A passage with an address in it is published as "[email
+            # redacted]" wherever it is quoted, so no sentence of it can be.
+            if len(text) > _MAX_PASSAGE or _OTHER_AUDIENCE_RE.search(heading) or contains_embedded_email(text):
+                continue
+            out.extend((sentence, source_url, checked_at) for sentence in _page_sentences(text, cut=False))
+    return tuple(out)
+
+
+def _captured_passages(record: dict, metadata: dict) -> tuple[tuple[str, str, str], ...]:
+    """The passages kept from the row's own page, as `email_target_conditions`
+    binds them: to the row's URL, with a past `checked_at`."""
+    sources = metadata.get(CONTACT_SOURCE_KEY)
+    if not isinstance(sources, list):
+        return ()
+    bound = {contact_url(record.get(key)) for key in ("source_url", "url")} - {None}
+    kept = []
+    for source in sources:
+        if not (isinstance(source, dict) and contact_url(source.get("record_source_url")) in bound
+                and contact_url(source.get("source_url")) and contact_source_time(source.get("checked_at"))
+                and isinstance(source.get("sections"), list)):
+            continue
+        sections = tuple((section["heading"], section["text"]) for section in source["sections"]
+                         if isinstance(section, dict) and isinstance(section.get("heading"), str)
+                         and isinstance(section.get("text"), str))
+        kept.append((source["source_url"], source["checked_at"], sections))
+    return _passage_sentences(tuple(kept)) if kept else ()
+
+
+def _captured_text(record: dict) -> tuple[tuple[str, ...], dict[str, tuple[str | None, str | None]]]:
+    """Every readable sentence of the page text a configured row carries, the
+    excerpt first, and where and when each was read."""
+    metadata = record.get("metadata")
+    metadata = metadata if isinstance(metadata, dict) else {}
+    description = record.get("description")
+    origins: dict[str, tuple[str | None, str | None]] = {}
+    if isinstance(description, str):
+        source_url = record.get("source_url")
+        verified = metadata.get("last_verified")
+        for sentence in _excerpt_sentences(description):
+            origins.setdefault(sentence, (source_url if isinstance(source_url, str) else None,
+                                          verified if isinstance(verified, str) else None))
+    for sentence, source_url, checked_at in _captured_passages(record, metadata):
+        origins.setdefault(sentence, (source_url, checked_at))
+    return tuple(origins), origins
+
+
+def _words(text: str) -> list[str]:
+    text = re.sub(r"(?<=\d),(?=\d{3}\b)", "", text.lower().replace("&", " and "))
+    return [_MONTH_ABBREVIATIONS.get(word, word) for word in re.findall(r"[a-z]+|\d+", text)]
+
+
+def _content_words(text: str) -> frozenset[str]:
+    return frozenset(w for w in _words(text) if w.isdigit() or (len(w) >= 3 and w not in _FILLER_WORDS))
+
+
+def _spell_months(text: str) -> str:
+    return _MONTH_ABBREVIATION_RE.sub(lambda m: _MONTH_ABBREVIATIONS[m.group(1)], text.lower())
+
+
+def _months(text: str) -> set[str]:
+    return {m.group(1) or m.group(2) for m in _MONTH_RE.finditer(_spell_months(text))}
+
+
+def _dates(text: str) -> set[tuple[str, int]]:
+    """(month, day) for every date written out: "March 1", "Mar. 1st", "3/1/27"."""
+    dates = set()
+    for m in _DATE_RE.finditer(_spell_months(text)):
+        if m.group(1):
+            dates.add((m.group(1), int(m.group(2))))
+        elif 1 <= int(m.group(3)) <= 12:
+            dates.add((_MONTH_NAMES[int(m.group(3)) - 1], int(m.group(4))))
+    return dates
+
+
+def _first(sentences: tuple[str, ...], test) -> str | None:
+    return next((s for s in sentences if test(s)), None)
+
+
+def _verdict(stated: str | None, contradicted: str | None) -> ConfiguredFact:
+    if contradicted is not None:
+        return ConfiguredFact(FACT_CONTRADICTED, contradicted)
+    if stated is not None:
+        return ConfiguredFact(FACT_STATED, stated)
+    return _UNSTATED
+
+
+def _all_words_stated(value: str, sentences: tuple[str, ...], context_re: re.Pattern, negated) -> str | None:
+    """The sentence holding every content word of a free-text value, or None."""
+    wanted = _content_words(value)
+    if not wanted:
+        return None
+    return _first(sentences, lambda s: bool(context_re.search(s)) and not negated(s) and wanted <= set(_words(s)))
+
+
+def _pay_negated(sentence: str) -> bool:
+    return bool(_UNPAID_RE.search(sentence) or _PAY_DENIED_RE.search(sentence))
+
+
+def _pay_stated(sentence: str) -> bool:
+    return bool(_PAY_WORD_RE.search(sentence)) and not _pay_negated(sentence)
+
+
+def _check_paid(value: object, sentences: tuple[str, ...]) -> ConfiguredFact:
+    if value == "no":
+        return _verdict(_first(sentences, _UNPAID_RE.search), _first(sentences, _pay_stated))
+    if value == "stipend":
+        stated = _first(sentences, lambda s: bool(_STIPEND_RE.search(s)) and not _pay_negated(s))
+    elif value == "yes":
+        stated = _first(sentences, _pay_stated)
+    else:
+        return _UNSTATED
+    return _verdict(stated, _first(sentences, _pay_negated))
+
+
+def _check_compensation(value: object, sentences: tuple[str, ...]) -> ConfiguredFact:
+    if not isinstance(value, str) or not value.strip():
+        return _UNSTATED
+    stated = _all_words_stated(value, sentences, _PAY_CONTEXT_RE, _pay_negated)
+    contradicted = None
+    amounts = {a.replace(",", "") for a in _AMOUNT_RE.findall(value)}
+    nouns = _pay_nouns(value)
+    if amounts and not any(amounts & {a.replace(",", "") for a in _AMOUNT_RE.findall(s)} for s in sentences):
+        # The page names its pay in dollars, and never the configured amount.
+        # When the value says what the money is ("$4,800 stipend"), only the
+        # same kind of pay can disagree with it: "up to $400 for travel" is
+        # another line of the same award, and the excerpt may have cut the
+        # stipend's own sentence.
+        contradicted = _first(sentences, lambda s: bool(_AMOUNT_RE.search(s) and _PAY_CONTEXT_RE.search(s))
+                              and (not nouns or bool(nouns & _pay_nouns(s))))
+    return _verdict(stated, contradicted)
+
+
+def _pay_nouns(text: str) -> set[str]:
+    return {noun.lower() for noun in _PAY_NOUN_RE.findall(text)}
+
+
+def _intl_welcome(sentence: str) -> bool:
+    return bool(_INTL_WELCOME_RE.search(sentence)) and not _NOT_RE.search(sentence) and not _ONLY_RE.search(sentence)
+
+
+def _citizen_restriction(sentence: str) -> bool:
+    return bool(_CITIZEN_ONLY_RE.search(sentence)) and not _intl_welcome(sentence)
+
+
+def _check_international(value: object, sentences: tuple[str, ...]) -> ConfiguredFact:
+    if value == "yes":
+        return _verdict(_first(sentences, _intl_welcome), _first(sentences, _citizen_restriction))
+    if value == "no":
+        return _verdict(_first(sentences, _citizen_restriction), _first(sentences, _intl_welcome))
+    return _UNSTATED
+
+
+def _check_citizenship(value: object, sentences: tuple[str, ...]) -> ConfiguredFact:
+    if value is True:
+        return _check_international("no", sentences)
+    if value is False:
+        return _check_international("yes", sentences)
+    return _UNSTATED
+
+
+def _phrase_pattern(phrase: str) -> str:
+    words = re.findall(r"[a-z0-9]+", phrase.lower().replace("&", " and "))
+    return r"\b" + r"\W+".join(map(re.escape, words)) + r"\b" if words else ""
+
+
+def _majors_named(majors: list[str], sentence: str) -> set[str]:
+    """The configured majors ``sentence`` names as majors: in a list of them
+    next to a major word, before it ("Biology and Chemistry majors") or after
+    it ("majoring in Biology")."""
+    names = {major: pattern for major in majors if (pattern := _phrase_pattern(major))}
+    if not names:
+        return set()
+    name = "(?:" + "|".join(names.values()) + ")"
+    run = rf"{name}(?:{_LIST_SEPARATOR}{name})*"
+    text = sentence.lower().replace("&", " and ")
+    spans = [m.group(1) for m in re.finditer(rf"({run})\s+{_MAJOR_NOUN}\b", text)]
+    spans += [m.group(1) for m in re.finditer(rf"\b{_MAJOR_LEAD}\s+(?:the\s+)?({run})", text)]
+    return {major for major, pattern in names.items() if any(re.search(pattern, span) for span in spans)}
+
+
+def _check_majors(value: object, sentences: tuple[str, ...]) -> ConfiguredFact:
+    majors = [m for m in value if isinstance(m, str) and m.strip()] if isinstance(value, list) else []
+    if not majors:
+        return _UNSTATED
+    # Every major, said of who may apply: "open to students of all majors".
+    # "Projects in all fields of study" is about the research, and "students
+    # from every major study biology" about who takes the courses.
+    every_major = _first(sentences, lambda s: bool(_ANY_MAJOR_RE.search(s) and _WELCOME_RE.search(s))
+                         and not _NOT_RE.search(s))
+    if is_all_majors_answer(majors):
+        return _verdict(every_major, None)
+    stated = _first(sentences, lambda s: not _NOT_RE.search(s) and not _ANY_MAJOR_RE.search(s)
+                    and _majors_named(majors, s) == set(majors))
+    return _verdict(stated, every_major)
+
+
+def _years_named(sentence: str) -> set[str]:
+    return {year for year, pattern in _CLASS_YEAR_RES.items() if pattern.search(sentence)}
+
+
+def _check_class_year(value: object, sentences: tuple[str, ...]) -> ConfiguredFact:
+    years = {y.lower() for y in value if isinstance(y, str)} - {"unknown"} if isinstance(value, list) else set()
+    if not years or not years <= set(_CLASS_YEAR_RES):
+        return _UNSTATED
+    readable = tuple(s for s in sentences if _YEAR_CONTEXT_RE.search(s)
+                     and not _UNCERTAIN_YEAR_RE.search(s) and not _NOT_RE.search(s))
+    stated = _first(readable, lambda s: _years_named(s) == years)
+    contradicted = _first(readable, lambda s: bool(_years_named(s) - years)
+                          or (len(years) < len(_CLASS_YEAR_RES) and bool(_ALL_YEARS_RE.search(s))))
+    return _verdict(stated, contradicted)
+
+
+def _check_window(value: object, sentences: tuple[str, ...]) -> ConfiguredFact:
+    if not isinstance(value, str) or not value.strip():
+        return _UNSTATED
+    stated = _all_words_stated(value, sentences, _TIMING_RE, lambda s: bool(_NOT_RE.search(s)))
+    # The page dates its deadline, and never on a day the note gives (or,
+    # when the note names only months, never in a month it names).
+    dates, months = _dates(value), _months(value)
+    on_page = _dates(" ".join(sentences))
+    contradicted = None
+    if (dates and not on_page & dates) or (not dates and months and not {m for m, _ in on_page} & months):
+        contradicted = _first(sentences, lambda s: bool(_DEADLINE_RE.search(s) and _dates(s)))
+    return _verdict(stated, contradicted)
+
+
+# A row whose config names its page a directory or a hub ("Summer
+# Undergraduate Research Opportunities directory", "Research Opportunities
+# Hub"): a sentence there is about one of the programs it lists.
+_HUB_RE = re.compile(r"\b(?:directory|directories|hub|database|listings?)\b", re.IGNORECASE)
+
+_FACT_CHECKS = {
+    "paid": _check_paid,
+    "compensation": _check_compensation,
+    "international_students": _check_international,
+    "citizenship": _check_citizenship,
+    "majors": _check_majors,
+    "class_year": _check_class_year,
+    "application_window": _check_window,
+}
+
+
+def configured_fact(record: dict, facet: str) -> ConfiguredFact:
+    """Whether the page text a configured campus row carries states its ``facet``.
+
+    ``facet`` is a key of CONFIGURED_FACT_PATHS. A row that is not a configured
+    program, a value another producer stamped (a tagger's pay, the enricher's
+    majors), a row with no page text, a row whose page the config shares
+    with another program (`shared_program_page`: a sentence there may be
+    about the other one) and a row the config calls a directory or hub are
+    all unstated.
+    """
+    path = CONFIGURED_FACT_PATHS[facet]
+    if not is_configured_program(record) or inferred_method(record, path) not in (None, CONFIGURED_PROGRAM_METHOD):
+        return _UNSTATED
+    metadata = record.get("metadata")
+    if isinstance(metadata, dict) and metadata.get("shared_program_page") is True:
+        return _UNSTATED
+    if any(isinstance(record.get(key), str) and _HUB_RE.search(record[key]) for key in ("title", "lab_or_program")):
+        return _UNSTATED
+    sentences, origins = _captured_text(record)
+    if not sentences:
+        return _UNSTATED
+    value: object = record
+    for part in path.split("."):
+        value = value.get(part) if isinstance(value, dict) else None
+    fact = _FACT_CHECKS[facet](value, sentences)
+    if fact.quote is None:
+        return fact
+    return ConfiguredFact(fact.state, fact.quote, *origins[fact.quote])
+
+
+def configured_value_unstated(record: dict, facet: str) -> bool:
+    """Whether ``facet`` holds a campus program spec's value that the page text
+    the row carries does not state: our configuration, shown as inference."""
+    return is_configured_program(record) and configured_fact(record, facet).state != FACT_STATED
 
 
 # SRO work-authorization notes written before the collector read the
@@ -265,14 +838,18 @@ def stamp_collector_templates(record: dict) -> dict:
     producer already accounted for keeps that producer's method. Only a value
     equal to the registered template (or, for a configured program or a
     scanned SRO field, any answer other than unknown) is stamped — a future
-    collector that reads a real pay value off the page is left stated.
+    collector that reads a real pay value off the page is left stated, and so
+    is a configured value its page text states (`configured_fact`).
     """
     templates = _COLLECTOR_TEMPLATE_STAMPS.get(record.get("source") or "", {})
     matches = {path: (lambda value, template=template: value == template, method)
                for path, (template, method) in templates.items()}
     if is_configured_program(record):
-        matches.update({path: (test, CONFIGURED_PROGRAM_METHOD)
-                        for path, test in _CONFIGURED_PROGRAM_STAMPS.items()})
+        matches.update({
+            path: (lambda value, facet=facet, test=test: test(value)
+                   and configured_fact(record, facet).state != FACT_STATED, CONFIGURED_PROGRAM_METHOD)
+            for path, (facet, test) in _CONFIGURED_PROGRAM_STAMPS.items()
+        })
     matches.update(_sro_scanned_fields(record))
     for path, (matches_template, method) in matches.items():
         if inferred_method(record, path) is not None:

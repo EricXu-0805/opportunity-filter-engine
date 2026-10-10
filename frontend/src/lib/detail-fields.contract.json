@@ -18,6 +18,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://example.edu/programs/surf"
             },
+            "quotes": {},
             "state": "source",
             "unknown": [
               "requirements",
@@ -33,6 +34,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://example.edu/programs/surf"
             },
+            "quotes": {},
             "state": "source",
             "unknown": []
           },
@@ -62,6 +64,7 @@
               "observed_at": null,
               "source_url": "https://example.edu/programs/surf"
             },
+            "quotes": {},
             "state": "inferred",
             "unknown": [
               "min_gpa",
@@ -85,6 +88,7 @@
               "observed_at": null,
               "source_url": "https://example.edu/programs/surf"
             },
+            "quotes": {},
             "state": "inferred",
             "unknown": []
           },
@@ -95,6 +99,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://example.edu/programs/surf"
             },
+            "quotes": {},
             "state": "unknown",
             "unknown": [
               "location",
@@ -110,6 +115,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://example.edu/programs/surf"
             },
+            "quotes": {},
             "state": "source",
             "unknown": [
               "principal_investigator",
@@ -123,6 +129,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://example.edu/programs/surf"
             },
+            "quotes": {},
             "state": "unknown",
             "unknown": [
               "required",
@@ -145,6 +152,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://example.edu/programs/surf"
             },
+            "quotes": {},
             "state": "inferred",
             "unknown": []
           },
@@ -157,6 +165,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://example.edu/programs/surf"
             },
+            "quotes": {},
             "state": "source",
             "unknown": []
           },
@@ -178,6 +187,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://example.edu/programs/surf"
             },
+            "quotes": {},
             "state": "source",
             "unknown": [
               "start_date",
@@ -197,6 +207,220 @@
         "fields": {
           "application_method": {
             "explicit": {
+              "application_url": "https://example.edu/programs/fellows/apply"
+            },
+            "inferred": {
+              "contact_method": {
+                "basis": "collector_default",
+                "value": "website"
+              }
+            },
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/programs/fellows"
+            },
+            "quotes": {},
+            "state": "source",
+            "unknown": [
+              "requirements",
+              "effort"
+            ]
+          },
+          "department": {
+            "explicit": {
+              "department": "Chemistry"
+            },
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/programs/fellows"
+            },
+            "quotes": {},
+            "state": "source",
+            "unknown": []
+          },
+          "eligibility": {
+            "explicit": {
+              "citizenship": "not_required",
+              "international_students": "yes",
+              "majors": [
+                "Chemistry"
+              ]
+            },
+            "inferred": {
+              "class_year": {
+                "basis": "collector_default",
+                "value": [
+                  "junior",
+                  "senior"
+                ]
+              }
+            },
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/programs/fellows"
+            },
+            "quotes": {
+              "citizenship": {
+                "observed_at": "2026-09-01T00:00:00",
+                "source_url": "https://example.edu/programs/fellows",
+                "text": "International students are eligible to apply."
+              },
+              "international_students": {
+                "observed_at": "2026-09-01T00:00:00",
+                "source_url": "https://example.edu/programs/fellows",
+                "text": "International students are eligible to apply."
+              },
+              "majors": {
+                "observed_at": "2026-09-02T12:00:00+00:00",
+                "source_url": "https://example.edu/programs/fellows/eligibility",
+                "text": "Open to Chemistry majors."
+              }
+            },
+            "state": "source",
+            "unknown": [
+              "min_gpa",
+              "work_authorization_notes"
+            ]
+          },
+          "funding": {
+            "explicit": {
+              "compensation": "$5,000 stipend",
+              "paid": "stipend"
+            },
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/programs/fellows"
+            },
+            "quotes": {
+              "compensation": {
+                "observed_at": "2026-09-01T00:00:00",
+                "source_url": "https://example.edu/programs/fellows",
+                "text": "Fellows receive a $5,000 stipend."
+              },
+              "paid": {
+                "observed_at": "2026-09-01T00:00:00",
+                "source_url": "https://example.edu/programs/fellows",
+                "text": "Fellows receive a $5,000 stipend."
+              }
+            },
+            "state": "source",
+            "unknown": []
+          },
+          "location": {
+            "explicit": {},
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/programs/fellows"
+            },
+            "quotes": {},
+            "state": "unknown",
+            "unknown": [
+              "location",
+              "remote_option"
+            ]
+          },
+          "professor_or_lab": {
+            "explicit": {
+              "lab_or_program": "Summer Fellows"
+            },
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/programs/fellows"
+            },
+            "quotes": {},
+            "state": "source",
+            "unknown": [
+              "principal_investigator",
+              "faculty_rank"
+            ]
+          },
+          "required_skills": {
+            "explicit": {},
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/programs/fellows"
+            },
+            "quotes": {},
+            "state": "unknown",
+            "unknown": [
+              "required",
+              "preferred",
+              "mentioned"
+            ]
+          },
+          "research_content": {
+            "explicit": {},
+            "inferred": {
+              "research_areas": {
+                "basis": "text_scan",
+                "value": [
+                  "chemistry"
+                ]
+              }
+            },
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/programs/fellows"
+            },
+            "quotes": {},
+            "state": "inferred",
+            "unknown": []
+          },
+          "school": {
+            "explicit": {
+              "institution": "Duke University"
+            },
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/programs/fellows"
+            },
+            "quotes": {},
+            "state": "source",
+            "unknown": []
+          },
+          "timing": {
+            "explicit": {
+              "application_window": "Applications due March 1"
+            },
+            "inferred": {},
+            "provenance": {
+              "observed_at": "2026-09-01T00:00:00",
+              "source_url": "https://example.edu/programs/fellows"
+            },
+            "quotes": {
+              "application_window": {
+                "observed_at": "2026-09-01T00:00:00",
+                "source_url": "https://example.edu/programs/fellows",
+                "text": "Applications are due March 1."
+              }
+            },
+            "state": "source",
+            "unknown": [
+              "deadline",
+              "rolling",
+              "start_date",
+              "duration",
+              "posted_date"
+            ]
+          }
+        },
+        "version": "m03-v1"
+      },
+      "location_attribution": "institution",
+      "name": "configured_program_page_states",
+      "paid_attribution": null
+    },
+    {
+      "detail_fields": {
+        "fields": {
+          "application_method": {
+            "explicit": {
               "application_url": "https://jobs.example.com/123"
             },
             "inferred": {
@@ -209,6 +433,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://jobs.example.com/123"
             },
+            "quotes": {},
             "state": "source",
             "unknown": [
               "requirements",
@@ -222,6 +447,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://jobs.example.com/123"
             },
+            "quotes": {},
             "state": "unknown",
             "unknown": [
               "department"
@@ -247,6 +473,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://jobs.example.com/123"
             },
+            "quotes": {},
             "state": "source",
             "unknown": [
               "class_year",
@@ -266,6 +493,7 @@
               "observed_at": null,
               "source_url": "https://jobs.example.com/123"
             },
+            "quotes": {},
             "state": "inferred",
             "unknown": [
               "compensation"
@@ -280,6 +508,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://jobs.example.com/123"
             },
+            "quotes": {},
             "state": "source",
             "unknown": [
               "remote_option"
@@ -292,6 +521,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://jobs.example.com/123"
             },
+            "quotes": {},
             "state": "unknown",
             "unknown": [
               "principal_investigator",
@@ -314,6 +544,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://jobs.example.com/123"
             },
+            "quotes": {},
             "state": "inferred",
             "unknown": [
               "required",
@@ -334,6 +565,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://jobs.example.com/123"
             },
+            "quotes": {},
             "state": "inferred",
             "unknown": []
           },
@@ -346,6 +578,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://jobs.example.com/123"
             },
+            "quotes": {},
             "state": "source",
             "unknown": []
           },
@@ -359,6 +592,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://jobs.example.com/123"
             },
+            "quotes": {},
             "state": "source",
             "unknown": [
               "deadline",
@@ -391,6 +625,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=1"
             },
+            "quotes": {},
             "state": "source",
             "unknown": [
               "requirements",
@@ -404,6 +639,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=1"
             },
+            "quotes": {},
             "state": "unknown",
             "unknown": [
               "department"
@@ -431,6 +667,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=1"
             },
+            "quotes": {},
             "state": "inferred",
             "unknown": [
               "class_year",
@@ -454,6 +691,7 @@
               "observed_at": null,
               "source_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=1"
             },
+            "quotes": {},
             "state": "inferred",
             "unknown": []
           },
@@ -473,6 +711,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=1"
             },
+            "quotes": {},
             "state": "inferred",
             "unknown": []
           },
@@ -486,6 +725,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=1"
             },
+            "quotes": {},
             "state": "source",
             "unknown": [
               "faculty_rank"
@@ -498,6 +738,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=1"
             },
+            "quotes": {},
             "state": "unknown",
             "unknown": [
               "required",
@@ -519,6 +760,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=1"
             },
+            "quotes": {},
             "state": "inferred",
             "unknown": []
           },
@@ -531,6 +773,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=1"
             },
+            "quotes": {},
             "state": "source",
             "unknown": []
           },
@@ -554,6 +797,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://www.nsf.gov/awardsearch/showAward?AWD_ID=1"
             },
+            "quotes": {},
             "state": "inferred",
             "unknown": [
               "rolling",
@@ -585,6 +829,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://example.edu/sro/1"
             },
+            "quotes": {},
             "state": "source",
             "unknown": [
               "requirements",
@@ -598,6 +843,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://example.edu/sro/1"
             },
+            "quotes": {},
             "state": "unknown",
             "unknown": [
               "department"
@@ -617,6 +863,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://example.edu/sro/1"
             },
+            "quotes": {},
             "state": "inferred",
             "unknown": [
               "class_year",
@@ -638,6 +885,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://example.edu/sro/1"
             },
+            "quotes": {},
             "state": "inferred",
             "unknown": [
               "compensation"
@@ -650,6 +898,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://example.edu/sro/1"
             },
+            "quotes": {},
             "state": "unknown",
             "unknown": [
               "location",
@@ -663,6 +912,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://example.edu/sro/1"
             },
+            "quotes": {},
             "state": "unknown",
             "unknown": [
               "principal_investigator",
@@ -684,6 +934,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://example.edu/sro/1"
             },
+            "quotes": {},
             "state": "inferred",
             "unknown": [
               "required",
@@ -701,6 +952,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://example.edu/sro/1"
             },
+            "quotes": {},
             "state": "source",
             "unknown": []
           },
@@ -713,6 +965,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://example.edu/sro/1"
             },
+            "quotes": {},
             "state": "source",
             "unknown": []
           },
@@ -723,6 +976,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://example.edu/sro/1"
             },
+            "quotes": {},
             "state": "unknown",
             "unknown": [
               "deadline",
@@ -750,6 +1004,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://example.edu/people/ada"
             },
+            "quotes": {},
             "state": "unknown",
             "unknown": [
               "application_url",
@@ -767,6 +1022,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://example.edu/people/ada"
             },
+            "quotes": {},
             "state": "source",
             "unknown": []
           },
@@ -777,6 +1033,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://example.edu/people/ada"
             },
+            "quotes": {},
             "state": "unknown",
             "unknown": [
               "class_year",
@@ -794,6 +1051,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://example.edu/people/ada"
             },
+            "quotes": {},
             "state": "unknown",
             "unknown": [
               "paid",
@@ -807,6 +1065,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://example.edu/people/ada"
             },
+            "quotes": {},
             "state": "unknown",
             "unknown": [
               "location",
@@ -823,6 +1082,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://example.edu/people/ada"
             },
+            "quotes": {},
             "state": "source",
             "unknown": [
               "lab_or_program"
@@ -835,6 +1095,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://example.edu/people/ada"
             },
+            "quotes": {},
             "state": "unknown",
             "unknown": [
               "required",
@@ -859,6 +1120,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://example.edu/people/ada"
             },
+            "quotes": {},
             "state": "source",
             "unknown": []
           },
@@ -871,6 +1133,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://example.edu/people/ada"
             },
+            "quotes": {},
             "state": "source",
             "unknown": []
           },
@@ -881,6 +1144,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://example.edu/people/ada"
             },
+            "quotes": {},
             "state": "unknown",
             "unknown": [
               "deadline",
@@ -915,6 +1179,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://researchops.web.illinois.edu/opportunity/example-reu"
             },
+            "quotes": {},
             "state": "source",
             "unknown": [
               "requirements",
@@ -928,6 +1193,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://researchops.web.illinois.edu/opportunity/example-reu"
             },
+            "quotes": {},
             "state": "unknown",
             "unknown": [
               "department"
@@ -954,6 +1220,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://researchops.web.illinois.edu/opportunity/example-reu"
             },
+            "quotes": {},
             "state": "source",
             "unknown": [
               "class_year",
@@ -970,6 +1237,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://researchops.web.illinois.edu/opportunity/example-reu"
             },
+            "quotes": {},
             "state": "source",
             "unknown": []
           },
@@ -982,6 +1250,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://researchops.web.illinois.edu/opportunity/example-reu"
             },
+            "quotes": {},
             "state": "source",
             "unknown": [
               "remote_option"
@@ -996,6 +1265,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://researchops.web.illinois.edu/opportunity/example-reu"
             },
+            "quotes": {},
             "state": "source",
             "unknown": [
               "principal_investigator",
@@ -1009,6 +1279,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://researchops.web.illinois.edu/opportunity/example-reu"
             },
+            "quotes": {},
             "state": "unknown",
             "unknown": [
               "required",
@@ -1028,6 +1299,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://researchops.web.illinois.edu/opportunity/example-reu"
             },
+            "quotes": {},
             "state": "source",
             "unknown": []
           },
@@ -1040,6 +1312,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://researchops.web.illinois.edu/opportunity/example-reu"
             },
+            "quotes": {},
             "state": "source",
             "unknown": []
           },
@@ -1058,6 +1331,7 @@
               "observed_at": "2026-09-01T00:00:00",
               "source_url": "https://researchops.web.illinois.edu/opportunity/example-reu"
             },
+            "quotes": {},
             "state": "source",
             "unknown": [
               "rolling",
@@ -1082,6 +1356,7 @@
               "observed_at": null,
               "source_url": null
             },
+            "quotes": {},
             "state": "unknown",
             "unknown": [
               "application_url",
@@ -1097,6 +1372,7 @@
               "observed_at": null,
               "source_url": null
             },
+            "quotes": {},
             "state": "unknown",
             "unknown": [
               "department"
@@ -1109,6 +1385,7 @@
               "observed_at": null,
               "source_url": null
             },
+            "quotes": {},
             "state": "unknown",
             "unknown": [
               "class_year",
@@ -1126,6 +1403,7 @@
               "observed_at": null,
               "source_url": null
             },
+            "quotes": {},
             "state": "unknown",
             "unknown": [
               "paid",
@@ -1139,6 +1417,7 @@
               "observed_at": null,
               "source_url": null
             },
+            "quotes": {},
             "state": "unknown",
             "unknown": [
               "location",
@@ -1152,6 +1431,7 @@
               "observed_at": null,
               "source_url": null
             },
+            "quotes": {},
             "state": "unknown",
             "unknown": [
               "principal_investigator",
@@ -1166,6 +1446,7 @@
               "observed_at": null,
               "source_url": null
             },
+            "quotes": {},
             "state": "unknown",
             "unknown": [
               "required",
@@ -1180,6 +1461,7 @@
               "observed_at": null,
               "source_url": null
             },
+            "quotes": {},
             "state": "unknown",
             "unknown": [
               "research_areas"
@@ -1192,6 +1474,7 @@
               "observed_at": null,
               "source_url": null
             },
+            "quotes": {},
             "state": "unknown",
             "unknown": [
               "institution"
@@ -1204,6 +1487,7 @@
               "observed_at": null,
               "source_url": null
             },
+            "quotes": {},
             "state": "unknown",
             "unknown": [
               "deadline",

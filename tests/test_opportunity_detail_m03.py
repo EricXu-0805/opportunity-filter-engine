@@ -8,6 +8,7 @@ inferred skill → hard requirement.
 from __future__ import annotations
 
 import copy
+import inspect
 import json
 
 import pytest
@@ -25,16 +26,25 @@ from backend.lib.opportunity_detail import (
 from backend.main import app
 from backend.routes import opportunities as opportunities_module
 from backend.routes.opportunities import _redact
+from scripts import configured_facts_report as facts_report
 from scripts.generate_detail_fields_contract import CASES, CONTRACT_PATH, render_contract
 from src.collectors import campus_graph as cg
-from src.collectors import pi_enricher, ucb_campus, ucb_sources
+from src.collectors import pi_enricher, ucb_campus, ucb_common, ucb_sources
 from src.collectors import uiuc_sro as sro
 from src.collectors.base import RawOpportunity
 from src.contact_instructions import CAPTURE_KEY
 from src.evidence import (
+    CONFIGURED_FACT_PATHS,
     CONFIGURED_PROGRAM_METHOD,
+    DESCRIPTION_LIMIT,
+    EXCERPT_LIMIT,
+    FACT_CONTRADICTED,
+    FACT_STATED,
+    FACT_UNSTATED,
     SRO_SCANNED_CITIZENSHIP_METHOD,
     SRO_SCANNED_PAY_METHOD,
+    ConfiguredFact,
+    configured_fact,
     inferred_method,
     neutralize_unverified_faculty_claims,
     stamp_collector_templates,
@@ -1024,6 +1034,374 @@ class TestCampusGraphContract:
         assert fields["eligibility"]["explicit"]["majors"] == ["Biology"]
         assert fields["funding"]["explicit"]["paid"] == "stipend"
 
+    # The owner's rule (2026-10-09): a configured value the page text states
+    # is the page's, shown in its words with where and when they were read;
+    # one it does not state, or says otherwise about, stays ours.
+
+    def _with_page(self, excerpt: str) -> dict:
+        school = _campus_school()
+        source = school["sources"][0]
+        return cg._normalize_program(school, source, source["programs"][0], extra_desc=excerpt,
+                                     seed_page_verified=True)
+
+    _STATES = (
+        "Fellows receive a $5,000 stipend. International students are eligible to apply. "
+        "Open to juniors and seniors majoring in Biology. Applications are due March 1."
+    )
+
+    def test_values_the_page_text_states_are_the_pages_in_its_words(self):
+        record = self._with_page(self._STATES)
+        _, fields = _detail(record)
+        seen = record["metadata"]["last_verified"]
+        sentences = {
+            ("eligibility", "majors"): "Open to juniors and seniors majoring in Biology.",
+            ("eligibility", "class_year"): "Open to juniors and seniors majoring in Biology.",
+            ("eligibility", "international_students"): "International students are eligible to apply.",
+            ("funding", "paid"): "Fellows receive a $5,000 stipend.",
+            ("funding", "compensation"): "Fellows receive a $5,000 stipend.",
+            ("timing", "application_window"): "Applications are due March 1.",
+        }
+        for field, facet, value in _CONFIGURED_FACETS:
+            assert fields[field]["explicit"][facet] == value, facet
+            assert facet not in fields[field]["inferred"], facet
+            assert fields[field]["quotes"][facet] == {
+                "text": sentences[field, facet], "source_url": _SPEC_URL, "observed_at": seen}, facet
+        # "Not required" rests on the same sentence as the welcome.
+        assert fields["eligibility"]["explicit"]["citizenship"] == "not_required"
+        assert fields["eligibility"]["quotes"]["citizenship"]["text"] == "International students are eligible to apply."
+        for name in ("eligibility", "funding", "timing"):
+            assert fields[name]["provenance"] == {"source_url": _SPEC_URL, "observed_at": seen}, name
+        for facet in CONFIGURED_FACT_PATHS:
+            assert configured_fact(record, facet).state == FACT_STATED, facet
+
+    def test_badges_stamps_and_reasons_follow_the_page_text(self):
+        stated = self._with_page(self._STATES)
+        payload, _ = _detail(stated)
+        for key in ("paid_attribution", "international_attribution", "citizenship_attribution",
+                    "majors_attribution", "preferred_year_attribution"):
+            assert key not in payload, key
+        _, canonical = _served(stated)
+        for path in ("paid", "eligibility.international_friendly", "eligibility.citizenship_required"):
+            assert inferred_method(canonical, path) is None, path
+        assert "Includes stipend" in score_upside({}, canonical)[1]
+        fit = {"year": "junior", "major": "Biology", "hard_skills": []}
+        miss = {"year": "freshman", "major": "History", "hard_skills": []}
+        assert {"Your major (Biology) is a direct match", "Accepts junior students"} <= set(
+            score_eligibility(fit, canonical)[1])
+        assert {"Prefers Biology", "Typically targets junior, senior"} <= set(score_eligibility(miss, canonical)[2])
+        # Scores do not move (an owner decision): only words and labels do.
+        _, ours = _served(self._configured())
+        for profile in (fit, miss, {}):
+            assert score_eligibility(profile, canonical)[0] == score_eligibility(profile, ours)[0]
+            assert score_upside(profile, canonical)[0] == score_upside(profile, ours)[0]
+
+    def test_values_the_page_text_does_not_state_stay_ours(self):
+        # Near words that are not the value: a scholarship is not a stipend,
+        # "International" names a research-abroad office, Biochemistry is not
+        # Biology, a senior thesis names no class year, and a hedge states
+        # nothing.
+        record = self._with_page(
+            "Scholars receive a scholarship through International Programs. "
+            "Biochemistry students write a senior thesis. Applications may be due March 1."
+        )
+        payload, fields = _detail(record)
+        for field, facet, value in _CONFIGURED_FACETS:
+            assert fields[field]["inferred"][facet] == {"value": value, "basis": BASIS_COLLECTOR_DEFAULT}, facet
+            assert facet not in fields[field]["explicit"], facet
+        for name in ("eligibility", "funding", "timing"):
+            assert fields[name]["quotes"] == {}, name
+            assert fields[name]["provenance"]["observed_at"] is None, name
+        for key in ("paid_attribution", "international_attribution", "majors_attribution",
+                    "preferred_year_attribution"):
+            assert payload[key] == "inferred", key
+        for facet in CONFIGURED_FACT_PATHS:
+            assert configured_fact(record, facet) == ConfiguredFact(FACT_UNSTATED), facet
+
+    def test_values_the_page_contradicts_stay_ours_and_are_flagged(self):
+        record = self._with_page(
+            "Research positions are unpaid. Applicants must be U.S. citizens. "
+            "Open to sophomores and juniors from all majors. Application deadline: February 12, 2027."
+        )
+        payload, fields = _detail(record)
+        for field, facet, value in _CONFIGURED_FACETS:
+            assert fields[field]["inferred"][facet] == {"value": value, "basis": BASIS_COLLECTOR_DEFAULT}, facet
+            assert fields[field]["quotes"] == {}, facet
+        expected = {
+            "paid": "Research positions are unpaid.",
+            "international_students": "Applicants must be U.S. citizens.",
+            "majors": "Open to sophomores and juniors from all majors.",
+            "class_year": "Open to sophomores and juniors from all majors.",
+            "application_window": "Application deadline: February 12, 2027.",
+        }
+        seen = record["metadata"]["last_verified"]
+        for facet, quote in expected.items():
+            assert configured_fact(record, facet) == ConfiguredFact(FACT_CONTRADICTED, quote, _SPEC_URL, seen), facet
+        assert payload["paid_attribution"] == "inferred"
+
+    def test_a_default_class_year_list_the_page_names_is_the_pages(self):
+        record = self._with_page("Awards are made to first-years, sophomores, and juniors.")
+        record["eligibility"]["preferred_year"] = ["freshman", "sophomore", "junior"]
+        _, fields = _detail(record)
+        assert fields["eligibility"]["explicit"]["class_year"] == ["freshman", "sophomore", "junior"]
+        assert fields["eligibility"]["quotes"]["class_year"]["text"] == (
+            "Awards are made to first-years, sophomores, and juniors.")
+        silent = self._with_page("Ten weeks in a faculty lab.")
+        silent["eligibility"]["preferred_year"] = ["freshman", "sophomore", "junior"]
+        assert _where(_detail(silent)[1]["eligibility"], "class_year") == "unknown"
+
+    def test_a_stated_all_majors_answer_names_no_preference(self):
+        record = self._with_page("Open to students of all majors.")
+        record["eligibility"]["majors"] = ["all"]
+        _, canonical = _served(record)
+        assert configured_fact(canonical, "majors").quote == "Open to students of all majors."
+        _, _, gaps = score_eligibility({"year": "junior", "major": "History", "hard_skills": []}, canonical)
+        assert not any(text.startswith("Prefers") for text in gaps)
+
+    def test_a_quote_the_projection_would_withhold_is_never_shown(self):
+        # The projector serves a description holding an address as "[email
+        # redacted]", so no sentence of it can be the page's words here.
+        record = self._with_page(self._STATES + " Questions: surf@example.edu")
+        payload, fields = _detail(record)
+        assert payload["description"] == "[email redacted]"
+        assert fields["funding"]["inferred"]["paid"]["basis"] == BASIS_COLLECTOR_DEFAULT
+        assert configured_fact(record, "paid") == ConfiguredFact(FACT_UNSTATED)
+
+    def test_the_sentence_a_cut_excerpt_ends_on_is_not_read(self):
+        # The crawl keeps the first 400 characters of the page, and the
+        # description stops at 1,500, so the last sentence may have lost the
+        # words that qualify it ("…, except …").
+        welcome = "International students are eligible to apply"
+        lead = "Ten weeks of full-time research in a faculty lab. "
+        pad = "x" * (EXCERPT_LIMIT - len(lead) - len(welcome) - 2) + ". "
+        cut = lead + pad + welcome
+        assert len(cut) == cg_excerpt_limit()
+        assert configured_fact(self._with_page(cut), "international_students").state == FACT_UNSTATED
+        # The same words, ending a page short enough to have kept whole.
+        whole = self._with_page(lead + welcome)
+        assert configured_fact(whole, "international_students").state == FACT_STATED
+        # Cut by the description's cap instead.
+        tail = f"\n\nFrom the program page: {lead}{welcome}"
+        for length, state in ((DESCRIPTION_LIMIT, FACT_UNSTATED), (DESCRIPTION_LIMIT - 1, FACT_STATED)):
+            record = dict(whole, description="y" * (length - len(tail)) + tail)
+            assert configured_fact(record, "international_students").state == state, length
+
+    def test_the_excerpt_limits_are_the_collectors(self):
+        assert cg_excerpt_limit() == EXCERPT_LIMIT
+        assert cg._DESC_CAP == ucb_campus._DESC_CAP == DESCRIPTION_LIMIT
+
+    # The condition capture's passages are page text too, each read at its
+    # own URL and time.
+
+    def _passage(self, text: str, *, heading: str = "Eligibility", record_source_url: str = _SPEC_URL,
+                 checked_at: str = "2026-10-05T15:17:16+00:00") -> dict:
+        return {"source_url": _SPEC_URL + "/apply", "record_source_url": record_source_url,
+                "checked_at": checked_at, "sections": [{"heading": heading, "text": text}]}
+
+    def test_a_captured_passage_states_values_with_its_own_url_and_date(self):
+        record = self._configured()
+        record["metadata"]["contact_instruction_sources"] = [
+            self._passage("Open to juniors and seniors. Fellows receive a $5,000 stipend.")]
+        payload, fields = _detail(record)
+        read = {"source_url": _SPEC_URL + "/apply", "observed_at": "2026-10-05T15:17:16+00:00"}
+        assert fields["eligibility"]["quotes"]["class_year"] == {"text": "Open to juniors and seniors.", **read}
+        assert fields["funding"]["quotes"]["paid"] == {"text": "Fellows receive a $5,000 stipend.", **read}
+        assert fields["funding"]["explicit"] == {"paid": "stipend", "compensation": "$5,000"}
+        assert "paid_attribution" not in payload
+        # The excerpt is read first: its sentence, its page, its date.
+        both = self._with_page("Participants receive a stipend.")
+        both["metadata"]["contact_instruction_sources"] = record["metadata"]["contact_instruction_sources"]
+        assert configured_fact(both, "paid") == ConfiguredFact(
+            FACT_STATED, "Participants receive a stipend.", _SPEC_URL, both["metadata"]["last_verified"])
+
+    @pytest.mark.parametrize("passage", [
+        # Read off another row's page, or at a time that has not happened.
+        {"record_source_url": "https://other.example.edu/surf"},
+        {"checked_at": "2999-01-01T00:00:00+00:00"},
+        {"checked_at": "2026-10-05T15:17:16"},
+        # About another audience's program on the same page.
+        {"heading": "Graduate Students > Visiting Graduate Fellowship"},
+    ])
+    def test_a_passage_from_elsewhere_states_nothing(self, passage):
+        record = self._configured()
+        record["metadata"]["contact_instruction_sources"] = [
+            self._passage("Fellows receive a $5,000 stipend.", **passage)]
+        assert configured_fact(record, "paid") == ConfiguredFact(FACT_UNSTATED)
+        assert _detail(record)[1]["funding"]["inferred"]["paid"]["basis"] == BASIS_COLLECTOR_DEFAULT
+
+    def test_a_passage_holding_an_address_is_not_quoted(self):
+        record = self._configured()
+        record["metadata"]["contact_instruction_sources"] = [
+            self._passage("Fellows receive a $5,000 stipend. Questions: surf@example.edu")]
+        assert configured_fact(record, "paid") == ConfiguredFact(FACT_UNSTATED)
+
+    def test_a_passage_can_contradict_the_excerpt(self):
+        record = self._with_page("Open to juniors and seniors.")
+        record["metadata"]["contact_instruction_sources"] = [
+            self._passage("Requirements: Open to all years and experience levels.")]
+        fact = configured_fact(record, "class_year")
+        assert (fact.state, fact.quote) == (FACT_CONTRADICTED, "Requirements: Open to all years and experience levels.")
+        assert _detail(record)[1]["eligibility"]["inferred"]["class_year"]["basis"] == BASIS_COLLECTOR_DEFAULT
+
+
+def test_the_report_lists_the_values_the_page_text_contradicts(tmp_path, capsys):
+    school = _campus_school()
+    source = school["sources"][0]
+    contradicted = cg._normalize_program(school, source, source["programs"][0], seed_page_verified=True,
+                                         extra_desc="Research positions are unpaid.")
+    stated = dict(cg._normalize_program(school, source, source["programs"][0], seed_page_verified=True,
+                                        extra_desc="Fellows receive a $5,000 stipend."), id="stated-row")
+    corpus = tmp_path / "opportunities.json"
+    corpus.write_text(json.dumps([contradicted, stated, _listing()]), encoding="utf-8")
+    rows = {(row["id"], row["facet"]): row for row in facts_report.check_records(json.loads(corpus.read_text()))}
+    assert {row_id for row_id, _ in rows} == {contradicted["id"], "stated-row"}
+    seen = contradicted["metadata"]["last_verified"]
+    assert rows[contradicted["id"], "paid"] == {
+        "id": contradicted["id"], "facet": "paid", "value": "stipend", "page_text": FACT_CONTRADICTED,
+        "served": "inferred", "quote": "Research positions are unpaid.", "source_url": _SPEC_URL, "observed_at": seen}
+    assert (rows["stated-row", "paid"]["page_text"], rows["stated-row", "paid"]["served"]) == (FACT_STATED, "source")
+    assert (rows["stated-row", "majors"]["page_text"], rows["stated-row", "majors"]["served"]) == (
+        FACT_UNSTATED, "inferred")
+    assert facts_report.main(["--corpus", str(corpus)]) == 0
+    out = capsys.readouterr().out
+    assert "Contradicted by the page text (1;" in out
+    assert f'- {contradicted["id"]} paid = "stipend"' in out
+    assert f'page ({_SPEC_URL}, {seen}): "Research positions are unpaid."' in out
+
+
+def cg_excerpt_limit() -> int:
+    return inspect.signature(ucb_common._readable_excerpt).parameters["limit"].default
+
+
+def _page_row(facet: str, value: object, page: str) -> dict:
+    """A configured campus row whose only page text is ``page``."""
+    path = CONFIGURED_FACT_PATHS[facet].split(".")
+    row = {
+        "id": "rule-row", "source": "example_research_programs", "paid": "unknown",
+        "description": f"Our summary.\n\nFrom the program page: {page}",
+        "eligibility": {}, "metadata": {"deadline_note": ""},
+    }
+    target = row
+    for part in path[:-1]:
+        target = target.setdefault(part, {})
+    target[path[-1]] = value
+    return row
+
+
+class TestConfiguredFactRules:
+    """Each rule `configured_fact` reads a configured value by, one row each."""
+
+    @pytest.mark.parametrize("facet, value, page, state", [
+        # Pay: the value's own word, no negation; "unpaid" said of the position contradicts.
+        ("paid", "stipend", "Participants receive a stipend for the summer.", FACT_STATED),
+        ("paid", "stipend", "Scholars receive a $3,000 scholarship.", FACT_UNSTATED),
+        ("paid", "stipend", "This is a paid research position.", FACT_UNSTATED),
+        ("paid", "stipend", "Participants may receive a stipend.", FACT_UNSTATED),
+        ("paid", "stipend", "The position is unpaid.", FACT_CONTRADICTED),
+        ("paid", "stipend", "A stipend is not provided.", FACT_CONTRADICTED),
+        ("paid", "stipend", "Funding is available for unpaid or underpaid summer internships.", FACT_UNSTATED),
+        ("paid", "yes", "This is a paid research position.", FACT_STATED),
+        ("paid", "yes", "Travel expenses are paid for by the program.", FACT_UNSTATED),
+        ("paid", "yes", "This is an unpaid internship.", FACT_CONTRADICTED),
+        ("paid", "no", "Positions are unpaid; students earn course credit.", FACT_STATED),
+        ("paid", "no", "Students earn course credit.", FACT_UNSTATED),
+        ("paid", "no", "Students receive an hourly wage.", FACT_CONTRADICTED),
+        # A legend and a pointer say nothing about this program.
+        ("paid", "stipend", "H = Housing provided, $$ = Stipend provided.", FACT_UNSTATED),
+        ("paid", "stipend", "Check each program's website for details such as stipend amounts.", FACT_UNSTATED),
+        # Free text: every word in one sentence beside a pay word; another dollar
+        # amount for the same kind of pay contradicts.
+        ("compensation", "$5,000 stipend", "Fellows receive a $5000 stipend.", FACT_STATED),
+        ("compensation", "$5,000 stipend for ten weeks", "Fellows receive a $5,000 stipend.", FACT_UNSTATED),
+        ("compensation", "$5,000", "Grants of up to $500 cover materials and travel.", FACT_CONTRADICTED),
+        ("compensation", "$4,800 stipend", "Up to $400 covers round-trip travel.", FACT_UNSTATED),
+        ("compensation", "$4,800 stipend", "Fellows receive a $4,500 stipend.", FACT_CONTRADICTED),
+        ("compensation", "Varies by program", "Contact the office.", FACT_UNSTATED),
+        # International students: welcomed by name, not negated; a citizenship bar contradicts.
+        ("international_students", "yes", "International students are eligible to apply.", FACT_STATED),
+        ("international_students", "yes", "Open to U.S. citizens and international students.", FACT_STATED),
+        ("international_students", "yes", "Do research abroad through International Programs.", FACT_UNSTATED),
+        ("international_students", "yes", "DACA recipients are eligible to apply.", FACT_UNSTATED),
+        ("international_students", "yes", "International student applicants must have an eligible F-1 visa.",
+         FACT_UNSTATED),
+        ("international_students", "yes", "International students are not eligible.", FACT_CONTRADICTED),
+        ("international_students", "yes", "Applicants must be U.S. citizens. Apply now.", FACT_CONTRADICTED),
+        ("international_students", "no", "Available to US citizens and permanent residents.", FACT_STATED),
+        ("international_students", "no", "International students are welcome to apply.", FACT_CONTRADICTED),
+        ("citizenship", True, "U.S. citizens or permanent residents only.", FACT_STATED),
+        ("citizenship", False, "Open to US citizens and non US citizens Deadline: 10/11/2026", FACT_STATED),
+        # Majors: every one, named as a major; "all majors" contradicts a list and states "all".
+        ("majors", ["Biology", "Chemistry"], "Open to Biology and Chemistry majors.", FACT_STATED),
+        ("majors", ["Biology", "Chemistry"], "Open to Biology majors.", FACT_UNSTATED),
+        ("majors", ["Chemistry"], "Open to Biochemistry majors.", FACT_UNSTATED),
+        ("majors", ["Physics"], "Projects involve physics and engineering disciplines.", FACT_UNSTATED),
+        ("majors", ["Engineering Sciences"],
+         "Engineering majors are eligible for the Honors Program in Engineering Sciences.", FACT_UNSTATED),
+        ("majors", ["Computer Science", "Informatics"],
+         "A research program for early undergraduates studying computer science and informatics.", FACT_STATED),
+        ("majors", ["Computer Science", "Informatics"],
+         "The course may count for computer science and informatics majors.", FACT_UNSTATED),
+        ("majors", ["Biology"], "Open to students of all majors.", FACT_CONTRADICTED),
+        ("majors", ["Biology"], "Students from every major study life in all its forms.", FACT_UNSTATED),
+        ("majors", ["all"], "Open to students of all majors.", FACT_STATED),
+        ("majors", ["all"], "Grants support projects in all fields of study.", FACT_UNSTATED),
+        ("majors", ["Library & Information Science"], "Open to Library and Information Science majors.",
+         FACT_STATED),
+        # Class years: exactly these years, in an eligibility sentence.
+        ("class_year", ["junior", "senior"], "Open to juniors and seniors.", FACT_STATED),
+        ("class_year", ["junior", "senior"], "Open to first-years, sophomores and juniors.", FACT_CONTRADICTED),
+        ("class_year", ["freshman", "sophomore"], "Open to first-years.", FACT_UNSTATED),
+        ("class_year", ["junior"], "Open to rising juniors.", FACT_UNSTATED),
+        ("class_year", ["senior"], "Students apply to write a senior thesis.", FACT_UNSTATED),
+        ("class_year", ["freshman"], "Research is open to all undergraduates.", FACT_CONTRADICTED),
+        ("class_year", ["freshman"], "This grant program focuses on serving first year students.", FACT_STATED),
+        # Deadline note: every word beside a timing word; a deadline on another date contradicts.
+        ("application_window", "Applications due Jan 9", "Applications are due January 9.", FACT_STATED),
+        ("application_window", "Applications due May 1", "Applications are due May 1.", FACT_STATED),
+        ("application_window", "Rolling via faculty", "Contact faculty to apply.", FACT_UNSTATED),
+        ("application_window", "Deadline Feb 13", "Application deadline: Friday, February 12, 2027.",
+         FACT_CONTRADICTED),
+        ("application_window", "Applications due in early November", "Deadline: 08/23/2027 (Tentative)",
+         FACT_CONTRADICTED),
+        ("application_window", "Applications due March 1",
+         "Application deadline: February 12. Applications are due March 1.", FACT_STATED),
+    ])
+    def test_rule(self, facet, value, page, state):
+        assert configured_fact(_page_row(facet, value, page), facet).state == state
+
+    def test_sentences_keep_abbreviations_and_drop_menus(self):
+        nav = " ".join(["Overview"] * 60)
+        page = f"{nav} Fellows receive a stipend. Applicants must be U.S. citizens. Apply now."
+        row = _page_row("international_students", "no", page)
+        assert configured_fact(row, "international_students").quote == "Applicants must be U.S. citizens."
+        # The stipend sentence is glued to 60 menu words: too long to read.
+        assert configured_fact(_page_row("paid", "stipend", page), "paid").state == FACT_UNSTATED
+        heading = "Page Navigation Overview FAQs SUMMER RESEARCH GRANTS (SURG) Summer grants provide a $4,000 stipend."
+        assert configured_fact(_page_row("paid", "stipend", heading), "paid").quote == (
+            "Summer grants provide a $4,000 stipend.")
+
+    def test_no_page_text_another_producer_or_another_row_is_unstated(self):
+        row = _page_row("paid", "stipend", "Participants receive a stipend.")
+        assert configured_fact(dict(row, description="Our summary."), "paid").state == FACT_UNSTATED
+        stamped = copy.deepcopy(row)
+        stamped["metadata"]["inferred_fields"] = {"paid": "rule:llm_tagger"}
+        assert configured_fact(stamped, "paid").state == FACT_UNSTATED
+        assert configured_fact(dict(row, source="example_postings"), "paid").state == FACT_UNSTATED
+        discovered = copy.deepcopy(row)
+        discovered["metadata"]["discovered"] = True
+        assert configured_fact(discovered, "paid").state == FACT_UNSTATED
+        # A page the config gives two programs: its sentence may be the other's.
+        shared = copy.deepcopy(row)
+        shared["metadata"]["shared_program_page"] = True
+        assert configured_fact(shared, "paid").state == FACT_UNSTATED
+        # A page the config calls a directory or hub lists other programs.
+        for key, name in (("title", "Summer Research Opportunities Hub"),
+                          ("lab_or_program", "Summer Undergraduate Research Opportunities directory")):
+            assert configured_fact(dict(row, **{key: name}), "paid").state == FACT_UNSTATED, key
+        # The loader's own stamp is not another producer's: still checked.
+        own = copy.deepcopy(row)
+        own["metadata"]["inferred_fields"] = {"paid": CONFIGURED_PROGRAM_METHOD}
+        assert configured_fact(own, "paid").state == FACT_STATED
+
 
 class TestUcbCampusContract:
     def _source(self, emit=ucb_sources.EMIT_CAMPUS) -> dict:
@@ -1045,6 +1423,19 @@ class TestUcbCampusContract:
         assert fields["eligibility"]["inferred"]["class_year"]["basis"] == BASIS_COLLECTOR_DEFAULT
         assert fields["eligibility"]["explicit"] == {}
         assert fields["research_content"]["inferred"]["research_areas"]["value"] == ["machine learning"]
+
+    def test_values_its_page_text_states_are_the_pages(self):
+        source = self._source()
+        record = ucb_campus._normalize_program(
+            source, source["programs"][0], seed_page_verified=True,
+            extra_desc="BAIR brings together researchers. Open to juniors and seniors majoring in Computer Science.",
+        )
+        payload, fields = _detail(record)
+        quote = {"text": "Open to juniors and seniors majoring in Computer Science.",
+                 "source_url": "https://bair.example.edu/", "observed_at": record["metadata"]["last_verified"]}
+        assert fields["eligibility"]["explicit"] == {"class_year": ["junior", "senior"], "majors": ["Computer Science"]}
+        assert fields["eligibility"]["quotes"] == {"class_year": quote, "majors": quote}
+        assert "majors_attribution" not in payload and "preferred_year_attribution" not in payload
 
     def test_discovered_department_is_the_first_programs_not_the_pages(self):
         source = self._source()

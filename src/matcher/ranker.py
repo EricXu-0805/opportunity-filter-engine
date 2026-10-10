@@ -17,12 +17,13 @@ from functools import lru_cache
 from backend.lib.contact_visibility import send_target_strength, verified_send_target
 
 from ..evidence import (
+    configured_value_unstated,
     faculty_availability_status,
     faculty_contact_claims_unverified,
     faculty_positive_major_labels,
     faculty_safe_eligibility,
     faculty_safe_lab_or_program,
-    is_configured_program,
+    is_all_majors_answer,
     is_inferred,
     is_professor_rank,
     is_read_off_the_page,
@@ -1816,9 +1817,9 @@ def score_eligibility(
     year_score = _year_match_score(student_year, stated_years)
     pref_years = stated_years
     # A campus program spec's class years, like its majors below, are our
-    # configuration: they still score as stated, but are not called the
-    # program's terms.
-    years_are_configured = bool(stated_years) and is_configured_program(opportunity)
+    # configuration unless the page text the row carries states them: they
+    # still score as stated, but are not called the program's terms.
+    years_are_configured = bool(stated_years) and configured_value_unstated(opportunity, "class_year")
     if year_score >= 80:
         reasons_fit.append(
             f"Your class year ({student_year}) may fit this program" if years_are_configured
@@ -1859,7 +1860,7 @@ def score_eligibility(
     major_is_label = opportunity.get("source_type") == "faculty_research"
     major_is_inferred = is_inferred(opportunity, "eligibility.majors")
     # Same for a campus program spec's majors (see the class years above).
-    major_is_configured = not major_is_inferred and is_configured_program(opportunity)
+    major_is_configured = not major_is_inferred and configured_value_unstated(opportunity, "majors")
     major_labels = (
         faculty_positive_major_labels(opportunity)
         if major_is_label
@@ -1894,6 +1895,9 @@ def score_eligibility(
         and not major_is_label
         and not is_inferred(opportunity, "eligibility.majors")
         and not major_is_configured
+        # A campus program spec writes ["all"] for "open to every major", and
+        # a page that says so makes it stated: "Prefers all" names nothing.
+        and not is_all_majors_answer(elig.get("majors"))
     ):
         # Only a REAL preference list earns a gap: an open posting (majors=[])
         # scores 30 too, and previously emitted the nonsensical gap "Prefers ".

@@ -77,6 +77,65 @@ CASES: list[tuple[str, dict]] = [
         },
     ),
     (
+        # The same kind of row after a crawl loaded its page. The excerpt
+        # states the stipend, its amount, the intl welcome and the deadline,
+        # and a passage the condition capture kept from the eligibility page
+        # states the major, so those are the page's, each with its sentence,
+        # URL and read time in `quotes`. The excerpt opens the program to
+        # sophomores, which contradicts the configured juniors and seniors
+        # (still ours).
+        "configured_program_page_states",
+        {
+            "id": "contract-campus-2",
+            "source": "duke_research_programs",
+            "source_type": "campus_program",
+            "source_url": "https://example.edu/programs/fellows",
+            "url": "https://example.edu/programs/fellows",
+            "title": "Summer Research Fellows",
+            "organization": "Duke University",
+            "department": "Chemistry",
+            "lab_or_program": "Summer Fellows",
+            "location": "Durham, NC",
+            "remote_option": "unknown",
+            "paid": "stipend",
+            "compensation_details": "$5,000 stipend",
+            "deadline": None,
+            "description": (
+                "Ten weeks in a chemistry lab.\n\nFrom the program page: Fellows receive a $5,000 stipend. "
+                "International students are eligible to apply. Open to sophomores and juniors. "
+                "Applications are due March 1."
+            ),
+            "keywords": ["chemistry"],
+            "eligibility": {
+                "preferred_year": ["junior", "senior"],
+                "majors": ["Chemistry"],
+                "skills_required": [],
+                "skills_preferred": [],
+                "citizenship_required": False,
+                "international_friendly": "yes",
+                "work_auth_notes": "",
+            },
+            "application": {
+                "contact_method": "website",
+                "requires_resume": "unknown",
+                "application_effort": "medium",
+                "application_url": "https://example.edu/programs/fellows/apply",
+            },
+            "metadata": {
+                "is_active": True,
+                "last_verified": _SEEN,
+                "last_seen_at": _SEEN,
+                "deadline_note": "Applications due March 1",
+                "contact_instruction_sources": [{
+                    "source_url": "https://example.edu/programs/fellows/eligibility",
+                    "record_source_url": "https://example.edu/programs/fellows",
+                    "checked_at": "2026-09-02T12:00:00+00:00",
+                    "sections": [{"heading": "Eligibility", "text": "Open to Chemistry majors."}],
+                }],
+            },
+        },
+    ),
+    (
         # The Simplify template: a defaulted "stipend", the three-year class
         # list, tagger-written skills without a stamp, a derived intl "no"
         # from the sponsorship enum, and a location read off the posting.

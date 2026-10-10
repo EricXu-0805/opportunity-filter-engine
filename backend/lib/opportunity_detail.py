@@ -43,6 +43,7 @@ The wire shape is deliberately boring so a client cannot misread it::
           "explicit": {"<facet>": <value>, ...},
           "inferred": {"<facet>": {"value": <value>, "basis": "<basis>"}, ...},
           "unknown": ["<facet>", ...],
+          "quotes": {"<facet>": {"text": str, "source_url": str | null, "observed_at": str | null}, ...},
           "provenance": {"source_url": str | null, "observed_at": str | null}
         }
       }
@@ -53,7 +54,10 @@ split the M03 brief asks for (``eligibility.explicit`` is eligibility_explicit,
 ``research_content.inferred.research_areas`` is research_areas_inferred). A
 facet may sit in ``explicit`` and ``inferred`` at once (a professor's stated
 research text beside topic tags we derived); it is in ``unknown`` only when it
-is in neither.
+is in neither. ``quotes`` holds the page's own sentence for an ``explicit``
+facet that was checked against page text, with where and when it was read: a
+campus program's configured value, shown as the page's only where the page
+text its row carries states it (`src.evidence.configured_fact`).
 """
 from __future__ import annotations
 
@@ -66,7 +70,10 @@ from collections.abc import Iterable
 from backend.lib import public_projection
 from src.evidence import (
     CAMPUS_PROGRAM_SUFFIXES,
+    FACT_STATED,
     SRO_NOTE_WINDOW_RE,
+    configured_fact,
+    configured_value_unstated,
     inferred_method,
     is_configured_program,
     record_kind,
@@ -251,9 +258,32 @@ def _is_curated_source(source: str) -> bool:
     return source in _CURATED_SOURCES
 
 
-def _configured_basis(canonical: dict) -> str | None:
-    """The basis for a value a campus program spec wrote, or None."""
-    return BASIS_COLLECTOR_DEFAULT if is_configured_program(canonical) else None
+def _configured(canonical: dict, facet: str) -> tuple[str | None, dict | None]:
+    """(basis, quote) for a value a campus program spec wrote.
+
+    No basis and the page's own sentence, with where and when it was read,
+    when the page text the row carries states the value
+    (`src.evidence.configured_fact`); a collector default when it does not, or
+    says otherwise. (None, None) on any other row.
+    """
+    if not is_configured_program(canonical):
+        return None, None
+    fact = configured_fact(canonical, facet)
+    if fact.state != FACT_STATED or not fact.quote:
+        return BASIS_COLLECTOR_DEFAULT, None
+    return None, {
+        "text": fact.quote,
+        "source_url": public_projection.safe_public_http_url(fact.source_url),
+        "observed_at": _date(fact.observed_at),
+    }
+
+
+def _stamped_or_configured(canonical: dict, path: str, facet: str) -> tuple[str | None, dict | None]:
+    """(basis, quote): an inference stamp on ``path`` wins over the configuration."""
+    stamped = _basis_for(canonical, path)
+    if stamped is not None:
+        return stamped, None
+    return _configured(canonical, facet)
 
 
 def _collector_constant_keywords(canonical: dict) -> set[str]:
@@ -363,21 +393,24 @@ class _Field:
         self.name = name
         self.explicit: dict[str, object] = {}
         self.inferred: dict[str, dict] = {}
+        self.quotes: dict[str, dict] = {}
 
-    def source(self, facet: str, value: object) -> None:
+    def source(self, facet: str, value: object, quote: dict | None = None) -> None:
         if value in (None, "", [], {}):
             return
         self.explicit[facet] = value
+        if quote:
+            self.quotes[facet] = quote
 
     def infer(self, facet: str, value: object, basis: str) -> None:
         if value in (None, "", [], {}):
             return
         self.inferred[facet] = {"value": value, "basis": basis}
 
-    def put(self, facet: str, value: object, basis: str | None) -> None:
+    def put(self, facet: str, value: object, basis: str | None, quote: dict | None = None) -> None:
         """Source when no basis vouches for an inference, inferred otherwise."""
         if basis is None:
-            self.source(facet, value)
+            self.source(facet, value, quote)
         else:
             self.infer(facet, value, basis)
 
@@ -400,6 +433,7 @@ class _Field:
             "explicit": explicit,
             "inferred": inferred,
             "unknown": unknown,
+            "quotes": {f: self.quotes[f] for f in explicit if f in self.quotes},
             "provenance": provenance,
         }
 
@@ -475,23 +509,23 @@ def _eligibility(payload: dict, canonical: dict, source: str) -> _Field:
     field = _Field("eligibility")
     elig = _dict(payload.get("eligibility"))
     curated = _is_curated_source(source)
-    configured = _configured_basis(canonical)
 
     years = [y.lower() for y in _str_list(elig.get("preferred_year"))]
     years = [y for y in years if y != "unknown"]
     if years:
-        basis = _basis_for(canonical, "eligibility.preferred_year")
-        if basis is None and tuple(sorted(years)) in _TEMPLATE_CLASS_YEARS:
-            pass  # a default list: no class-year statement was read. Unknown.
+        basis, quote = _stamped_or_configured(canonical, "eligibility.preferred_year", "class_year")
+        stamped = _basis_for(canonical, "eligibility.preferred_year") is not None
+        if not stamped and quote is None and tuple(sorted(years)) in _TEMPLATE_CLASS_YEARS:
+            pass  # a default list, and no page text names it: no class-year statement. Unknown.
         else:
-            field.put("class_year", years, basis or configured)
+            field.put("class_year", years, basis, quote)
 
     majors = _str_list(elig.get("majors"))
     if majors:
-        basis = _basis_for(canonical, "eligibility.majors") or configured
-        if basis is None and not curated:
+        basis, quote = _stamped_or_configured(canonical, "eligibility.majors", "majors")
+        if basis is None and quote is None and not curated:
             basis = BASIS_TEXT_SCAN
-        field.put("majors", majors, basis)
+        field.put("majors", majors, basis, quote)
 
     gpa = elig.get("min_gpa")
     if isinstance(gpa, int | float) and not isinstance(gpa, bool) and 0 < gpa <= 5:
@@ -499,17 +533,21 @@ def _eligibility(payload: dict, canonical: dict, source: str) -> _Field:
 
     intl = _text(elig.get("international_friendly"))
     intl_explicit = False
+    intl_quote = None
     if intl in {"yes", "no"}:
-        basis = (_basis_for(canonical, "eligibility.international_friendly")
-                 or _INTL_TEMPLATES.get(source) or configured)
-        field.put("international_students", intl, basis)
+        basis = _basis_for(canonical, "eligibility.international_friendly") or _INTL_TEMPLATES.get(source)
+        if basis is None:
+            basis, intl_quote = _configured(canonical, "international_students")
+        field.put("international_students", intl, basis, intl_quote)
         intl_explicit = basis is None
 
     citizenship = elig.get("citizenship_required")
     citizenship_basis = _basis_for(canonical, "eligibility.citizenship_required")
     if citizenship is True:
-        basis = citizenship_basis or _CITIZENSHIP_TEMPLATES.get(source) or configured
-        field.put("citizenship", "required", basis)
+        basis, quote = citizenship_basis or _CITIZENSHIP_TEMPLATES.get(source), None
+        if basis is None:
+            basis, quote = _configured(canonical, "citizenship")
+        field.put("citizenship", "required", basis, quote)
     elif citizenship is False and citizenship_basis is None and (
         (intl_explicit and intl == "yes") or source in _CITIZENSHIP_FROM_FIELD
     ):
@@ -517,7 +555,7 @@ def _eligibility(payload: dict, canonical: dict, source: str) -> _Field:
         # welcome to international students or a citizenship field that says
         # so; a bare False is the template most collectors write when the
         # page is silent.
-        field.source("citizenship", "not_required")
+        field.source("citizenship", "not_required", intl_quote)
 
     notes = _text(elig.get("work_auth_notes"))
     # SRO notes written before the collector read the field are keyword
@@ -567,13 +605,13 @@ def _timing(payload: dict, canonical: dict, source: str) -> _Field:
         field.put("deadline", deadline, basis)
     note = _text(_dict(payload.get("metadata")).get("deadline_note"))
     if note:
-        configured = _configured_basis(canonical)
-        field.put("application_window", note, configured)
+        configured, quote = _configured(canonical, "application_window")
+        field.put("application_window", note, configured, quote)
         # Rolling is claimed only on a source note that says so. `is_rolling`
         # is a collector default (True on every Simplify and campus-graph row,
         # False on every faculty row) and decides nothing either way.
         if _ROLLING_NOTE_RE.search(note):
-            field.put("rolling", True, configured)
+            field.put("rolling", True, configured, quote)
     start = _date(payload.get("start_date"))
     if start:
         field.put("start_date", start, _START_DATE_TEMPLATES.get(source))
@@ -588,11 +626,16 @@ def _funding(payload: dict, canonical: dict, source: str) -> _Field:
     field = _Field("funding")
     paid = _text(payload.get("paid"))
     if paid in {"yes", "stipend", "no"}:
-        field.put("paid", paid, paid_basis(canonical, paid))
+        basis, quote = paid_basis(canonical, paid), None
+        if basis is None:
+            basis, quote = _configured(canonical, "paid")
+        field.put("paid", paid, basis, quote)
     compensation = _text(payload.get("compensation_details"))
     if compensation:
-        field.put("compensation", compensation,
-                  _COMPENSATION_TEMPLATES.get(source) or _configured_basis(canonical))
+        basis, quote = _COMPENSATION_TEMPLATES.get(source), None
+        if basis is None:
+            basis, quote = _configured(canonical, "compensation")
+        field.put("compensation", compensation, basis, quote)
     return field
 
 
@@ -608,7 +651,7 @@ def paid_basis(canonical: dict, paid: object) -> str | None:
     template = _PAID_TEMPLATES.get(str(canonical.get("source") or ""))
     if template is not None and paid == template[0]:
         return template[1]
-    return _configured_basis(canonical)
+    return BASIS_COLLECTOR_DEFAULT if configured_value_unstated(canonical, "paid") else None
 
 
 def location_basis(canonical: dict, location: object) -> str | None:

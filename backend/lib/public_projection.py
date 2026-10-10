@@ -12,8 +12,8 @@ from urllib.parse import unquote, urlsplit
 # Module import: opportunity_detail imports this module back.
 from backend.lib import opportunity_detail
 from src.evidence import (
+    configured_value_unstated,
     inferred_method,
-    is_configured_program,
     is_read_off_the_page,
     record_kind,
     target_truth,
@@ -842,12 +842,14 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     # stopped the matcher calling them a stated preference; the detail page
     # still printed them under "MAJORS", so the student read our keyword-bank
     # guess as the program's own eligibility terms.
-    # A campus program spec's majors are configuration too: none of 12 such
-    # lists checked against the live page on 2026-10-09 was stated there.
-    # Classified, not stamped — a stamp would move the major score.
-    configured = is_configured_program(canonical_record)
+    # A campus program spec's majors are configuration too, unless the page
+    # text the row carries states them: none of 12 such lists checked against
+    # the live page on 2026-10-09 was stated there. Classified, not stamped —
+    # a stamp would move the major score.
     majors_method = inferred_method(canonical_record, "eligibility.majors")
-    if (majors_method or configured) and (projected.get("eligibility") or {}).get("majors"):
+    if (majors_method or configured_value_unstated(canonical_record, "majors")) and (
+        projected.get("eligibility") or {}
+    ).get("majors"):
         projected["majors_attribution"] = "inferred"
 
     # An eligibility restriction we read off the page, told to a student as the
@@ -876,7 +878,7 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
                 # A configured program's class years, like its majors, are
                 # classified rather than stamped; its intl and citizenship
                 # values are stamped at load (`stamp_collector_templates`).
-                field == "preferred_year" and configured
+                field == "preferred_year" and configured_value_unstated(canonical_record, "class_year")
                 and not opportunity_detail.class_years_are_template(value)
             ):
                 projected[wire_key] = "inferred"
