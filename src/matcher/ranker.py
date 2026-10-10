@@ -1838,15 +1838,17 @@ def score_eligibility(
         # mismatch from a list the student may perfectly fit.
         reasons_gap.append("Add your class year to confirm year eligibility")
     elif year_score < 50:
-        if _is_grad_year(student_year) and pref_years and not any(
-            _is_grad_year(p) for p in pref_years
+        # "unknown" names no year: a faculty row's ["unknown"] says nothing
+        # about who the opening is for.
+        named_years = [p for p in pref_years if p and p.lower() != "unknown"]
+        if _is_grad_year(student_year) and named_years and not any(
+            _is_grad_year(p) for p in named_years
         ):
             if not years_are_configured:
                 reasons_gap.append("For undergraduates — not a graduate-level opening")
             elif configured_fact(opportunity, "class_year").state == FACT_UNSTATED:
                 reasons_gap.append(f"Our listing suggests this is for undergraduates{_NOT_ON_PAGE}")
         else:
-            named_years = [p for p in pref_years if p and p.lower() != "unknown"]
             if named_years and not years_are_configured:
                 reasons_gap.append(f"Typically targets {', '.join(named_years)}")
             elif named_years and configured_fact(opportunity, "class_year").state == FACT_UNSTATED:
@@ -2096,6 +2098,11 @@ def score_eligibility(
         + rem * 0.1875 * skill_score
         + rem * 0.1875 * type_score
     )
+    # A concern from our own listing goes after the firmer eligibility ones
+    # (citizenship, skills, type), and both before readiness and upside: the
+    # compare view, the local summary and the AI prompt read only the first
+    # two or three. sort() is stable, so each group keeps its order.
+    reasons_gap.sort(key=lambda gap: gap.endswith(_NOT_ON_PAGE))
     return total, reasons_fit, reasons_gap
 
 
@@ -3417,10 +3424,7 @@ def _rank_opportunity_unlocked(
     # visible top-3 were near-identical across the whole results page
     # (2026-07 dogfood). Stable sort: within a tier, original order holds.
     all_fit = sorted(elig_fit + ready_fit + up_fit, key=_reason_priority)
-    # A concern from our own listing goes after every firmer one: the card's
-    # compare view, the local summary and the AI prompt read only the first
-    # two or three. sorted() is stable, so each group keeps its order.
-    all_gap = sorted(elig_gap + ready_gap + up_gap, key=lambda gap: gap.endswith(_NOT_ON_PAGE))
+    all_gap = elig_gap + ready_gap + up_gap
     if faculty_contact_claims_unverified(opportunity):
         all_gap.append(
             "Faculty availability and eligibility are not confirmed — verify when you contact them"
