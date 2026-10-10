@@ -254,22 +254,24 @@ class TestSeedNormalization:
         assert merged["metadata"]["last_verified"] == "2026-06-01T00:00:00"
         assert merged["title"].endswith("(applications closed)")
 
-    def test_verified_unknown_status_does_not_reopen_closed_seed(
+    @pytest.mark.parametrize("stored", ["closed", "open"])
+    def test_a_loaded_page_that_states_no_status_ends_the_stored_one(
         self,
         monkeypatch,
         tmp_path,
+        stored,
     ):
         source = reg.UCB_SOURCES[0]
         program = source["programs"][0]
-        closed = ucb_campus._normalize_program(
+        before = ucb_campus._normalize_program(
             source,
             program,
-            status="closed",
+            status=stored,
             seed_page_verified=True,
         )
-        closed["metadata"]["last_verified"] = "2026-06-01T00:00:00"
+        before["metadata"]["last_verified"] = "2026-06-01T00:00:00"
         processed = tmp_path / "opportunities.json"
-        processed.write_text(json.dumps([closed]), encoding="utf-8")
+        processed.write_text(json.dumps([before]), encoding="utf-8")
         monkeypatch.setattr(ucb_campus, "PROCESSED_FILE", processed)
 
         unknown = ucb_campus._normalize_program(
@@ -281,10 +283,10 @@ class TestSeedNormalization:
         ucb_campus.merge_into_processed([unknown])
 
         [merged] = json.loads(processed.read_text(encoding="utf-8"))
-        assert merged["metadata"]["status"] == "closed"
-        assert merged["metadata"]["is_active"] is False
+        assert merged["metadata"]["status"] == "unknown"
+        assert merged["metadata"]["is_active"] is True
         assert merged["metadata"]["last_verified"] != "2026-06-01T00:00:00"
-        assert merged["title"].endswith("(applications closed)")
+        assert "(applications" not in merged["title"]
 
     def test_discovered_anchor_requires_its_own_page_before_emission(
         self,

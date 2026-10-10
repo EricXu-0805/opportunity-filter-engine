@@ -934,9 +934,19 @@ def merge_into_processed(
             )
             ambiguous_status = opp["metadata"].get("status") == "unknown"
             if unverified_seed or ambiguous_status:
-                # Quick/failed fetches, and loaded pages with no explicit
-                # status signal, cannot prove a prior closed record reopened.
-                for key in ("status", "is_active"):
+                # A quick or failed fetch read nothing, so the row keeps what
+                # the page last said.
+                carried = ("status", "is_active")
+                stored_status = existing_metadata.get("status")
+                if not unverified_seed and stored_status in {"open", "closed"}:
+                    # A page that loaded and no longer says applications are
+                    # open, or closed, ends the stored word: it was the page's,
+                    # and the page has stopped saying it. A closure's
+                    # inactivity ends with it; an open row's inactivity is a
+                    # retirement, and survives.
+                    retired = stored_status == "open" and existing_metadata.get("is_active") is False
+                    carried = ("is_active",) if retired else ()
+                for key in carried:
                     if key in existing_metadata:
                         opp["metadata"][key] = existing_metadata[key]
                 if unverified_seed:
@@ -944,7 +954,7 @@ def merge_into_processed(
                         opp["metadata"]["last_verified"] = existing_metadata[
                             "last_verified"
                         ]
-                if (
+                if "status" in carried and (
                     existing_metadata.get("status") in {"open", "closed"}
                     or existing_metadata.get("is_active") is False
                 ):

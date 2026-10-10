@@ -758,9 +758,16 @@ def merge_into_processed(
             )
             ambiguous_status = opp["metadata"].get("status") == "unknown"
             if unverified_seed or ambiguous_status:
-                # A loaded page with no explicit status signal is not evidence
-                # that a previously closed opportunity reopened.
-                for key in ("status", "is_active"):
+                # A quick or failed fetch read nothing, so the row keeps what
+                # the page last said. A page that loaded and says neither open
+                # nor closed ends a stored "open" or "closed": campus_graph's
+                # rule.
+                carried = ("status", "is_active")
+                stored_status = existing_metadata.get("status")
+                if not unverified_seed and stored_status in {"open", "closed"}:
+                    retired = stored_status == "open" and existing_metadata.get("is_active") is False
+                    carried = ("is_active",) if retired else ()
+                for key in carried:
                     if key in existing_metadata:
                         opp["metadata"][key] = existing_metadata[key]
                 if unverified_seed:
@@ -768,7 +775,7 @@ def merge_into_processed(
                         opp["metadata"]["last_verified"] = existing_metadata[
                             "last_verified"
                         ]
-                if (
+                if "status" in carried and (
                     existing_metadata.get("status") in {"open", "closed"}
                     or existing_metadata.get("is_active") is False
                 ):

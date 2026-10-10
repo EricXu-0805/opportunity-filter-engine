@@ -342,23 +342,28 @@ class TestSeedNormalization:
         assert merged["metadata"]["last_verified"] == "2026-06-01T00:00:00"
         assert merged["title"].endswith("(applications closed)")
 
-    def test_verified_unknown_status_does_not_reopen_closed_seed(
+    @pytest.mark.parametrize("stored", ["closed", "open"])
+    def test_a_loaded_page_that_states_no_status_ends_the_stored_one(
         self,
         monkeypatch,
         tmp_path,
+        stored,
     ):
+        # The stored word was the page's, and the page has stopped saying it:
+        # Wisconsin's Sophomore Research Fellowship kept "(applications open)"
+        # for three months of loaded pages that said nothing of the kind.
         source = PRINCETON["sources"][0]
         spec = source["programs"][0]
-        closed = cg._normalize_program(
+        before = cg._normalize_program(
             PRINCETON,
             source,
             spec,
-            status="closed",
+            status=stored,
             seed_page_verified=True,
         )
-        closed["metadata"]["last_verified"] = "2026-06-01T00:00:00"
+        before["metadata"]["last_verified"] = "2026-06-01T00:00:00"
         processed = tmp_path / "opportunities.json"
-        processed.write_text(json.dumps([closed]), encoding="utf-8")
+        processed.write_text(json.dumps([before]), encoding="utf-8")
         monkeypatch.setattr(cg, "PROCESSED_FILE", processed)
 
         unknown = cg._normalize_program(
@@ -371,10 +376,38 @@ class TestSeedNormalization:
         cg.merge_into_processed([unknown])
 
         [merged] = json.loads(processed.read_text(encoding="utf-8"))
-        assert merged["metadata"]["status"] == "closed"
-        assert merged["metadata"]["is_active"] is False
+        assert merged["metadata"]["status"] == "unknown"
+        assert merged["metadata"]["is_active"] is True
         assert merged["metadata"]["last_verified"] != "2026-06-01T00:00:00"
-        assert merged["title"].endswith("(applications closed)")
+        assert "(applications" not in merged["title"]
+
+    def test_a_loaded_page_that_states_no_status_keeps_a_retirement(
+        self,
+        monkeypatch,
+        tmp_path,
+    ):
+        source = PRINCETON["sources"][0]
+        spec = source["programs"][0]
+        retired = cg._normalize_program(
+            PRINCETON,
+            source,
+            spec,
+            status="open",
+            seed_page_verified=True,
+        )
+        retired["metadata"]["is_active"] = False
+        processed = tmp_path / "opportunities.json"
+        processed.write_text(json.dumps([retired]), encoding="utf-8")
+        monkeypatch.setattr(cg, "PROCESSED_FILE", processed)
+
+        cg.merge_into_processed([cg._normalize_program(
+            PRINCETON, source, spec, status="unknown", seed_page_verified=True,
+        )])
+
+        [merged] = json.loads(processed.read_text(encoding="utf-8"))
+        assert merged["metadata"]["status"] == "unknown"
+        assert merged["metadata"]["is_active"] is False
+        assert "(applications" not in merged["title"]
 
     def test_div_only_closed_page_still_closes_prior_open_seed(
         self,
