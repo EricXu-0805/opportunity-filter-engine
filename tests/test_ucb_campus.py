@@ -63,6 +63,16 @@ class TestRegistry:
             assert source in SOURCE_DEFAULTS
             assert SOURCE_DEFAULTS[source] == (school, audience)
 
+    def test_splitting_the_registry_by_shard_changes_no_record(self):
+        """The national shard's run collects the open programs and the ucb run
+        the rest; together they are exactly what the whole registry yields."""
+        whole, _ = ucb_campus.fetch_and_normalize_with_evidence()
+        national, _ = ucb_campus.fetch_and_normalize_with_evidence(national=True)
+        own, _ = ucb_campus.fetch_and_normalize_with_evidence(national=False)
+        assert {r["id"] for r in national} | {r["id"] for r in own} == {r["id"] for r in whole}
+        assert {r["source"] for r in national} == {ucb_campus.national_source()}
+        assert all(r["school"] == "ucb" for r in own)
+
 
 # --- Seed normalization -----------------------------------------------------
 
@@ -660,7 +670,8 @@ class TestDroppedProgramRetirement:
 class TestRetirementThroughTheUcbShard:
     """The refresh workflow assembles the work file from the committed shards,
     refreshes ucb, and splits back only ucb.json; "open" rows live in
-    national.json, which only a full split writes."""
+    national.json, which only the national shard's split or a full one
+    writes."""
 
     @staticmethod
     def _shard_refresh(monkeypatch, processed, shards, sources):

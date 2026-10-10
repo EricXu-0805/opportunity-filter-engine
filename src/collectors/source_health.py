@@ -482,10 +482,8 @@ def source_rows(
             "failure_reason": row.get("failure_reason"),
             "consecutive_failures": int(row.get("consecutive_failures") or 0),
             # Whether a weekly clock may judge this source at all. False for
-            # data the corpus carries but no scheduled run reproduces -
-            # ``manual`` seeds and the ``*_external_research`` pages a campus
-            # crawl only re-stamps when it rediscovers them. Shown, never
-            # counted as stale.
+            # data the corpus carries but no scheduled run reproduces, such as
+            # the ``manual`` seeds. Shown, never counted as stale.
             "eligible": eligible is None or source in eligible,
         })
     rows.sort(key=lambda r: (r["school"] or "", r["source"]))

@@ -125,6 +125,32 @@ class TestValidator:
                 {"source_name": "n", "source_type": "bogus", "emit": "campus",
                  "crawl": cg.STATIC, "seeds": [], "programs": []}]})
 
+    def test_two_school_less_sources_flagged(self):
+        # The national refresh reports a school's open programs under the one
+        # source they carry (national_source).
+        bad = {"school_slug": "x", "sources": [], "emit": {
+            "open": ("x_external_research", None, "open"),
+            "lab": ("x_external_labs", None, "open"),
+        }}
+        assert "more than one emit bucket stamps no school" in cg.validate(bad)
+
+
+def test_splitting_a_config_by_shard_changes_no_record():
+    """refresh_all collects the sources that publish in national.json on the
+    national shard's run and the rest on the school's. Each half must yield
+    exactly the records the whole config did, or the split itself would move
+    a program between files."""
+    for config in SCHOOL_CONFIGS:
+        whole, _ = cg.fetch_and_normalize_with_evidence(config)
+        national, _ = cg.fetch_and_normalize_with_evidence(config, national=True)
+        own, _ = cg.fetch_and_normalize_with_evidence(config, national=False)
+        slug = config["school_slug"]
+        assert {row["id"] for row in national} | {row["id"] for row in own} == {
+            row["id"] for row in whole}, slug
+        assert all(row["school"] is None for row in national), slug
+        assert all(row["school"] == slug for row in own), slug
+        assert bool(national) is (cg.national_source(config) is not None), slug
+
 
 # --- Seed normalization (driven over the whole registry) --------------------
 
@@ -970,10 +996,10 @@ class TestDroppedProgramRetirement:
 
 class TestProgramMovesBetweenShards:
     """A school-shard refresh publishes only its own shard; national.json,
-    where "open" rows live, is written by a full refresh alone. Listing by
-    record id got a program moving between the two wrong, because the id
-    names the bucket: its old row retired and its new one published on
-    different schedules."""
+    where "open" rows live, is written by the national shard's refresh or a
+    full one. Listing by record id got a program moving between the two
+    wrong, because the id names the bucket: its old row retired and its new
+    one published on different schedules."""
 
     @staticmethod
     def _commit(processed, shards, school):

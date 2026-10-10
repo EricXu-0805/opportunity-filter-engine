@@ -123,6 +123,30 @@ def program(
     }
 
 
+def emits_national(school: dict, source: dict) -> bool:
+    """Whether ``source``'s emit bucket stamps no school.
+
+    Its programs are open to students of every school, so its records publish
+    in national.json rather than in the school's own shard.
+    """
+    return school["emit"][source["emit"]][1] is None
+
+
+def national_source(school: dict) -> str | None:
+    """The source this school's national.json records carry, or None.
+
+    Only the national shard's refresh writes national.json, so that refresh
+    collects these programs and reports them under this name, the way it
+    reports uiuc_sro or nsf_reu. validate() allows one such source per school.
+    """
+    for source in school.get("sources", []):
+        # An unmapped bucket is validate()'s to report, inside the fetch.
+        bucket = school.get("emit", {}).get(source.get("emit"))
+        if bucket and bucket[1] is None:
+            return bucket[0]
+    return None
+
+
 def validate(school: dict) -> list[str]:
     """Structural problems with a school config (empty = healthy)."""
     errors: list[str] = []
@@ -132,6 +156,9 @@ def validate(school: dict) -> list[str]:
     for bucket in emit:
         if bucket not in EMIT_BUCKETS:
             errors.append(f"bad emit bucket {bucket!r}")
+    # national_source() names the one source a school's national.json rows carry.
+    if len({value for value, slug, _audience in emit.values() if slug is None}) > 1:
+        errors.append("more than one emit bucket stamps no school")
     seen_keys: set[str] = set()
     for s in school.get("sources", []):
         if s.get("source_type") not in SOURCE_TYPES:
@@ -658,10 +685,18 @@ def _crawl_source(school: dict, source: dict) -> tuple[dict, list[dict], dict]:
 def fetch_and_normalize_with_evidence(
     school: dict,
     deep: bool = False,
+    national: bool | None = None,
 ) -> tuple[list[dict], dict]:
     errors = validate(school)
     if errors:
         raise ValueError(f"{school.get('school_slug')} config invalid: " + "; ".join(errors))
+    # True collects only the sources whose records publish in national.json,
+    # False only the school's own, None both. refresh_all runs each half on the
+    # refresh that publishes it.
+    sources = [
+        source for source in school.get("sources", [])
+        if national is None or emits_national(school, source) is national
+    ]
     records: list[dict] = []
     evidence = {
         "deep": deep,
@@ -669,7 +704,7 @@ def fetch_and_normalize_with_evidence(
         "condition_capture_complete": False,
         "condition_capture_updates": [],
         "normalization_failed": 0,
-        "crawl_sources_expected": len(school.get("sources", [])) if deep else 0,
+        "crawl_sources_expected": len(sources) if deep else 0,
         "crawl_sources_loaded": 0,
         "live_pages_attempted": 0,
         "live_pages_loaded": 0,
@@ -682,7 +717,7 @@ def fetch_and_normalize_with_evidence(
         "crawl_errors": [],
         "degraded_page_errors": [],
     }
-    for source in school.get("sources", []):
+    for source in sources:
         status_by_url: dict[str, dict] = {}
         discovered: list[dict] = []
         captures: dict[str, dict] = {}

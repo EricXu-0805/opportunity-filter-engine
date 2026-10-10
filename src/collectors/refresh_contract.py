@@ -20,8 +20,10 @@ from src.normalizers.deactivate_stale_faculty import FACULTY_SOURCES
 from src.normalizers.school_audience import SOURCE_DEFAULTS
 from src.school_scope import is_supported
 
+from .campus_graph import national_source
 from .schools import SCHOOL_CONFIGS
 from .source_health import collection_evidence_issues
+from .ucb_campus import national_source as ucb_national_source
 
 # The shard file that holds every record not owned by one school. It is a
 # publication unit exactly like a school is, so a broken nsf_reu withholds
@@ -30,6 +32,20 @@ NATIONAL_SHARD = "national"
 NATIONAL_SOURCES = frozenset(
     {"uiuc_sro", "nsf_reu", "simplify_internships"}
 )
+
+
+def national_campus_sources() -> frozenset[str]:
+    """Campus programs open to every school, by the source their records carry.
+
+    Their emit bucket stamps no school, so they publish in national.json, and
+    only the national shard's refresh writes that file. That refresh collects
+    them, each school's under the source its records carry, the way it
+    collects NATIONAL_SOURCES.
+    """
+    found = {national_source(config) for config in SCHOOL_CONFIGS}
+    found.add(ucb_national_source())
+    return frozenset(found - {None})
+
 
 # Statuses that mean "this source ran out of the run's wall-clock budget",
 # not "this source failed". The budget (#712, #714) exists so a run that
@@ -129,7 +145,7 @@ def expected_sources(
     policies: dict[str, SourcePolicy] = {}
 
     if national or schools is None:
-        for key in NATIONAL_SOURCES:
+        for key in NATIONAL_SOURCES | national_campus_sources():
             policies[key] = SourcePolicy(key, None, "deep" if deep else "quick")
 
     graph_slugs = {
@@ -181,6 +197,10 @@ def shard_of_source(key: str) -> str | None:
     for school, keys in _DEEP_SPECIAL.items():
         if key in keys:
             return school
+    # Checked last because it walks every config, and the freshness report
+    # asks once per stored record.
+    if key in national_campus_sources():
+        return NATIONAL_SHARD
     return None
 
 
@@ -193,12 +213,11 @@ def monitored_sources() -> frozenset[str]:
 
     It matters because the corpus also carries sources that are not scheduled
     producers and must not be judged on a weekly clock: ``manual`` (16
-    hand-curated records, by design never re-scraped) and the
-    ``*_external_research`` rows a campus crawl discovers opportunistically
-    and only re-stamps when it happens to rediscover the page. Counting those
-    as stale shards would report the national shard permanently degraded
-    while its three real producers are fresh, and a monitor that is always
-    amber is one nobody reads.
+    hand-curated records, by design never re-scraped). Counting it as a stale
+    shard would report the national shard permanently degraded while its real
+    producers are fresh, and a monitor that is always amber is one nobody
+    reads. The ``*_external_research`` campus programs used to be excluded on
+    the same ground; the national refresh now collects them.
     """
     return frozenset(expected_sources(None, national=False, deep=True))
 
@@ -465,6 +484,7 @@ def evaluate_refresh_summary(
                     unit_of(key),
                 )
 
+    campus_crawls = national_campus_sources() | {"ucb_campus"}
     for key, policy in policies.items():
         info = sources.get(key)
         if not isinstance(info, dict):
@@ -570,7 +590,7 @@ def evaluate_refresh_summary(
                     "to have seen the source",
                 )
 
-        if deep and (key == "ucb_campus" or key.startswith("campus_graph:")):
+        if deep and (key in campus_crawls or key.startswith("campus_graph:")):
             attempted = info.get("live_pages_attempted")
             loaded = info.get("live_pages_loaded")
             sources_expected = info.get("crawl_sources_expected")

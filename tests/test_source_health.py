@@ -302,13 +302,12 @@ class TestSchoolAggregation:
         assert report["stale_shard_count"] == 2
 
     def test_unscheduled_sources_are_shown_but_never_counted_stale(self):
-        """``manual`` seeds and opportunistic ``*_external_research`` pages are
-        carried data, not weekly producers. Judging them on a weekly clock
-        reported the national shard permanently degraded."""
+        """``manual`` seeds are carried data, not weekly producers. Judging
+        them on a weekly clock reported the national shard permanently
+        degraded."""
         ledger = _ledger_with({
             "nsf_reu": ("national", 4, sh.SUCCESS_NONZERO),
             "manual": ("national", 163, sh.SUCCESS_NONZERO),
-            "ucb_external_research": ("national", 47, sh.SUCCESS_NONZERO),
         })
         eligible = monitored_sources()
         assert "nsf_reu" in eligible
@@ -321,6 +320,21 @@ class TestSchoolAggregation:
         school = sh.school_rows(ledger, NOW, eligible)[0]
         assert school["state"] == "fully_fresh"
         assert school["total_shard_count"] == 1
+
+    def test_open_campus_programs_are_judged_like_the_other_national_producers(self):
+        """The national refresh collects the ``*_external_research`` programs
+        now. Exempted as carried data, they had no scheduled refresh after
+        2026-08-09 and nothing counted them stale."""
+        ledger = _ledger_with({
+            "nsf_reu": ("national", 4, sh.SUCCESS_NONZERO),
+            "ucb_external_research": ("national", 47, sh.SUCCESS_NONZERO),
+            "stanford_external_research": ("national", 71, sh.SUCCESS_NONZERO),
+        })
+        eligible = monitored_sources()
+        school = sh.school_rows(ledger, NOW, eligible)[0]
+        assert school["state"] == "partially_degraded"
+        assert school["stale_shard_count"] == 2
+        assert school["total_shard_count"] == 3
 
 
 class TestLedgerIO:

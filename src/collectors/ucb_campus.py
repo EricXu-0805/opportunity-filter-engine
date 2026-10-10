@@ -517,24 +517,46 @@ def _crawl_source(source: dict) -> tuple[dict, list[dict], dict]:
 # Public API
 # ---------------------------------------------------------------------------
 
+def national_source() -> str | None:
+    """The source UC Berkeley's national.json records carry, or None.
+
+    campus_graph.national_source's rule for the registry: only the national
+    shard's refresh writes national.json, so that refresh collects these.
+    """
+    for source in reg.UCB_SOURCES:
+        value, school, _audience = EMIT_TO_SCHOOL_AUDIENCE[source["emit"]]
+        if school is None:
+            return value
+    return None
+
+
 def fetch_and_normalize_with_evidence(
     deep: bool = False,
+    national: bool | None = None,
 ) -> tuple[list[dict], dict]:
     """Return normalized campus opportunity records.
 
     ``deep=False`` (default): seed records only, no network.
     ``deep=True``: crawl refines seed status/description and adds discovered
     records. Evidence distinguishes mandatory configured-seed failures from
-    optional recursive-page degradation."""
+    optional recursive-page degradation.
+    ``national``: True collects only the sources whose emit bucket stamps no
+    school (their records publish in national.json), False only the rest,
+    None (default) every source."""
     errors = reg.validate_registry()
     if errors:
         # Fail loud: a malformed registry should not silently drop sources.
         raise ValueError("ucb_sources registry invalid: " + "; ".join(errors))
 
+    sources = [
+        source for source in reg.UCB_SOURCES
+        if national is None
+        or (EMIT_TO_SCHOOL_AUDIENCE[source["emit"]][1] is None) is national
+    ]
     records: list[dict] = []
     evidence = {
         "deep": deep,
-        "crawl_sources_expected": len(reg.UCB_SOURCES) if deep else 0,
+        "crawl_sources_expected": len(sources) if deep else 0,
         "crawl_sources_loaded": 0,
         "live_pages_attempted": 0,
         "live_pages_loaded": 0,
@@ -547,7 +569,7 @@ def fetch_and_normalize_with_evidence(
         "crawl_errors": [],
         "degraded_page_errors": [],
     }
-    for source in reg.UCB_SOURCES:
+    for source in sources:
         status_by_url: dict[str, dict] = {}
         discovered: list[dict] = []
         if deep:

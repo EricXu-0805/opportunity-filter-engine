@@ -221,8 +221,25 @@ def _config_needs_browser(school: dict) -> bool:
     return False
 
 
+def _national_source_renders(school: dict) -> bool:
+    """Whether a render campus source of ``school`` publishes in national.json.
+
+    refresh_all crawls such a source on the national shard's run, not on the
+    school's, so that run is the one that needs Chromium for it.
+    """
+    emit = school.get("emit") or {}
+    for source in school.get("sources", []):
+        bucket = emit.get(source.get("emit")) if isinstance(source, dict) else None
+        if bucket and bucket[1] is None and source.get("render"):
+            return True
+    return False
+
+
 def browser_schools() -> frozenset[str]:
     """Slugs whose collectors need headless Chromium, derived from the configs.
+
+    ``national`` is among them when a campus source the national shard crawls
+    renders (_national_source_renders).
 
     The workflow used to carry this as a hardcoded alternation, and 11
     render-mode schools (asu, brown, casewestern, colostate, drexel, indiana,
@@ -257,6 +274,8 @@ def browser_schools() -> frozenset[str]:
             slug = config.get("school_slug")
             if slug:
                 needed.add(slug)
+        if isinstance(config, dict) and _national_source_renders(config):
+            needed.add(NATIONAL_SHARD)
     return frozenset(needed)
 
 
@@ -265,7 +284,7 @@ def shard_needs_browser(shard: str) -> bool:
 
     normalized = normalize_requested_shard(shard, allow_full=True)
     if normalized == NATIONAL_SHARD:
-        return False
+        return NATIONAL_SHARD in browser_schools()
     if normalized == "":
         return True
     return bool(set(normalized.split(",")) & browser_schools())
