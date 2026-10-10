@@ -22,7 +22,9 @@ deploys a `main` commit only after its CI checks pass
 
 ## 2. Data refresh
 
-`.github/workflows/refresh-data.yml` runs every day at 06:00 UTC. It takes the
+`.github/workflows/refresh-data.yml` runs every day at 06:07 UTC (every schedule
+here starts a few minutes past the hour, because GitHub starts top-of-hour
+schedules late). It takes the
 shard for the UTC weekday (`date -u +%u`, 1 = Monday) from `WEEKLY_ROTATION`
 in `scripts/refresh_rotation.py`, so each school is re-scraped once a week.
 Monday's shard carries `uiuc`, and Sunday (7) is `national`: the SRO catalog,
@@ -77,11 +79,11 @@ publish data through the workflow's PR, not a hand-committed shard.
 
 | Workflow | When (UTC) | What it does |
 |---|---|---|
-| `ops-scan.yml` | daily 11:00 | `POST /api/cron/ops-scan`: files collector and drift incidents |
-| `snapshot-reminder.yml` | Monday 13:00 | Emails the operator when a hand-exported snapshot (CMU) is due |
-| `daily-reminders.yml` | daily 23:00 | `GET /api/cron/reminders` (Web Push, email fallback), then the data-quality check and the feedback and orders digests |
-| `saved-searches-refresh.yml` | daily 23:30 | `GET /api/cron/saved-searches/refresh`, then `/digest` |
-| `campus-seed-health.yml` | Sunday 12:00 | Probes configured seed and program URLs for dead pages |
+| `ops-scan.yml` | daily 11:13 | `POST /api/cron/ops-scan`: files collector and drift incidents |
+| `snapshot-reminder.yml` | Monday 13:23 | Emails the operator when a hand-exported snapshot (CMU) is due |
+| `daily-reminders.yml` | daily 23:11 | `GET /api/cron/reminders` (Web Push, email fallback), then the data-quality check and the feedback and orders digests |
+| `saved-searches-refresh.yml` | daily 23:41 | `GET /api/cron/saved-searches/refresh`, then `/digest` |
+| `campus-seed-health.yml` | Sunday 12:19 | Probes configured seed and program URLs for dead pages |
 | `release-gate.yml` | manual only | The release gate (`docs/RELEASE.md`) |
 
 Every scheduled workflow checks in with `POST /api/cron/heartbeat` at the

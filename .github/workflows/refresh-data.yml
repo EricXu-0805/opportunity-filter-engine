@@ -22,7 +22,9 @@ name: Refresh Opportunity Data
 # on each school's OWN shard day in the first week of the month.
 on:
   schedule:
-    - cron: '0 6 * * *'    # daily 6am UTC — that day's shard, deep
+    # :07, not :00: GitHub delays scheduled runs queued at the top of the
+    # hour first, and under load drops some (tests/test_workflow_schedules.py).
+    - cron: '7 6 * * *'    # daily 06:07 UTC — that day's shard, deep
   workflow_dispatch:
     inputs:
       deep:

@@ -1,0 +1,90 @@
+name: alert-drill
+
+# Every scheduled workflow ends in the same operator alert: a POST to
+# Resend's /emails endpoint with RESEND_API_KEY, from vars.RESEND_FROM_EMAIL,
+# to OPERATOR_EMAIL, fired on failure() || cancelled(). Each of those sends
+# ends in `|| true` so a failed send cannot hide the failure it reports, and
+# so nothing ever shows that an alert arrives: a revoked key, an unverified
+# sending domain or a wrong address looks exactly like a quiet week.
+#
+# This sends one alert down that path, labelled [DRILL], and fails if Resend
+# does not accept it. Start it from the Actions tab (alert-drill, Run
+# workflow), then confirm the mail reached the OPERATOR_EMAIL inbox. Resend
+# accepting it is not delivery.
+#
+# workflow_dispatch only: a schedule would mail the operator drills on
+# repeat. A run started on main hangs its check on main's head commit, and
+# while render.yaml says `autoDeployTrigger: checksPass` a failed drill holds
+# that commit's backend deploy until a re-run passes or another commit
+# merges (docs/RELEASE.md §3).
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: alert-drill
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  drill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Send one [DRILL] operator alert
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          OPERATOR_EMAIL: ${{ secrets.OPERATOR_EMAIL }}
+          MAIL_FROM: ${{ vars.RESEND_FROM_EMAIL || 'JoinALab <onboarding@resend.dev>' }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TRIGGERED_BY: ${{ github.actor }}
+        run: |
+          # Unlike the alert steps, a drill with no key or no address fails:
+          # those are exactly what it is here to find.
+          missing=""
+          for name in RESEND_API_KEY OPERATOR_EMAIL; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::missing secret(s):$missing. Every scheduled workflow's operator alert is silent until they are set, and the drill cannot send."
+            exit 1
+          fi
+          PAYLOAD=$(python3 -c '
+          import json, os
+          print(json.dumps({
+              "from": os.environ["MAIL_FROM"],
+              "to": [os.environ["OPERATOR_EMAIL"]],
+              "subject": "[DRILL] JoinALab: operator alert drill, nothing failed",
+              "text": (
+                  "[DRILL] This is a drill. Nothing failed.\n\n"
+                  "%s started the alert-drill workflow, which sends this down the "
+                  "path the failure alert of every scheduled workflow takes: the "
+                  "RESEND_API_KEY and OPERATOR_EMAIL secrets, the RESEND_FROM_EMAIL "
+                  "sender and the Resend /emails API. Receiving it means that path "
+                  "delivers.\n\nRun: %s"
+              ) % (os.environ.get("TRIGGERED_BY") or "Someone", os.environ["RUN_URL"]),
+          }))
+          ')
+          rc=0
+          status=$(curl -s -o "$RUNNER_TEMP/drill-response.json" -w '%{http_code}' --max-time 60 \
+            -X POST https://api.resend.com/emails \
+            -H "Authorization: Bearer $RESEND_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD") || rc=$?
+          if [ "$rc" -ne 0 ]; then
+            echo "::error::The request to Resend did not complete (curl exit $rc), so no drill alert was sent."
+            exit 1
+          fi
+          response=$(cat "$RUNNER_TEMP/drill-response.json")
+          case "$status" in
+            2??)
+              echo "Resend accepted the drill alert (HTTP $status): $response"
+              echo "Now confirm the [DRILL] mail reached the OPERATOR_EMAIL inbox, spam folder included."
+              ;;
+            *)
+              echo "::error::Resend refused the drill alert with HTTP $status: $response"
+              exit 1
+              ;;
+          esac

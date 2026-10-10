@@ -39,7 +39,7 @@ would say nothing about what is actually running). `/api/health` and
 | `flag_parity` | backend vs frontend release-scope tables, by name **and value** | the gate itself |
 | `release_record` | the SHA `/api/health` reports, the `data-release-sha` on the frontend's HTML, and — derived from those two commits — each side's data version (last shard commit) and flag table | the gate itself with `--backend-url`/`--frontend-url`, or an operator |
 | `restore_drill` | `data/releases/drills/<drill_id>.json` | an operator, via `scripts/restore_drill.py` |
-| `ci:*` (4 required checks) | `scripts/verify_refresh_pr.py`-shaped snapshot | CI, bound to the head SHA |
+| `ci:*` (4 required checks: Backend, Frontend, Migrations, E2E; branch protection requires all but Migrations) | `scripts/verify_refresh_pr.py`-shaped snapshot | CI, bound to the head SHA |
 | `open_incidents` | `GET /api/admin/ops/incidents?unresolved_only=true` → `rollup` (the gate counts `release_blocking_total`: every unresolved incident except a `manual_review:snapshot_refresh:*` reminder) | an operator with `ADMIN_TOKEN` |
 | `provider_readiness` | `GET /api/ready` → `reported.providers` | an operator with `ADMIN_TOKEN` |
 | `api_ready` | `GET /api/ready` on the deployed instance | an operator |
@@ -199,6 +199,19 @@ Record the observed row values in the evidence file. A drill that was not run
 is `UNVERIFIED`, not `PASS` — the design being correct is not evidence that
 the switch is armed.
 
+### The operator alert drill
+
+Each scheduled workflow's failure alert ends in `|| true`, so no run shows
+whether the mail arrived. `.github/workflows/alert-drill.yml` sends one alert
+down the same path (the `RESEND_API_KEY` and `OPERATOR_EMAIL` secrets, the
+`RESEND_FROM_EMAIL` sender, Resend's `/emails` API) with `[DRILL]` in the
+subject and the text. It fails when either secret is missing or Resend answers
+outside 2xx. It has no schedule: start it from the Actions tab (alert-drill,
+Run workflow). Resend accepting the mail is not delivery, so the drill counts
+only once the mail is in the `OPERATOR_EMAIL` inbox. While `render.yaml` says
+`checksPass`, a failed drill on main holds that commit's backend deploy like
+any other red check.
+
 ### A scheduled workflow can hold the backend deploy
 
 `render.yaml` sets `autoDeployTrigger: checksPass`, and Render waits for
@@ -235,11 +248,61 @@ gh api repos/<owner>/<repo>/commits/<sha>/check-runs \
   --jq '.check_runs[] | "\(.name): \(.status) \(.conclusion)"'
 ```
 
-The structural fix is to stop letting an unrelated job decide: set
-`autoDeploy: false` and call a Render deploy hook from the CI workflow once —
-and only once — the four required jobs are green. That needs a
-`RENDER_DEPLOY_HOOK_URL` secret, so it is the operator's move, not a code
-change that can land ahead of it.
+The structural fix is to stop letting an unrelated job decide. `ci.yml` has a
+`Deploy backend (Render hook)` job for that: on a push to main, once Backend,
+Frontend and E2E (the three checks branch protection requires; the release
+gate's `ci:*` also requires Migrations) have passed, it POSTs
+the Render deploy hook with `ref` set to that commit, and fails on any answer
+outside 2xx. It first asks GitHub for the head of main and deploys only if the
+commit is still the head; otherwise it logs a notice and passes, and the newer
+commit's own run deploys. Until the `RENDER_DEPLOY_HOOK_URL` secret exists it
+logs a notice, deploys nothing and passes, so its own check cannot hold today's
+`checksPass` deploy. Nothing changes until the owner switches over.
+
+### Switching the backend deploy to the CI hook
+
+Steps 2 and 3 belong together; do them in one sitting.
+
+1. In the Render dashboard, open the `opportunity-filter-engine-api` service,
+   then Settings, then Deploy Hook, and copy the URL. It contains a key, and
+   anyone holding it can deploy the service, so it goes nowhere except the
+   secret in step 2.
+2. In GitHub, open the repository's Settings, then Secrets and variables, then
+   Actions, and add a repository secret named `RENDER_DEPLOY_HOOK_URL` with
+   the URL as its value.
+3. Open one PR that changes `render.yaml` to `autoDeployTrigger: off`, and
+   merge it. Render's deploy documentation says a deploy-hook call that names
+   a commit turns the service's auto-deploys off by itself; the blueprint line
+   keeps a later Blueprint sync from turning `checksPass` back on. If the
+   service is not synced from the Blueprint, also set auto-deploy to Off in
+   its Build & Deploy settings.
+4. On the merge commit, check three things: the `Deploy backend (Render hook)`
+   job log says "Render accepted the deploy of" that SHA, Render's Events list
+   a deploy of that SHA, and `/api/health` reports it as `release_sha` once
+   the deploy is live.
+
+The first hook call after step 2 turns auto-deploy off in the dashboard, and
+it comes before the job's own check finishes, so a push to main between steps
+2 and 3 should be built once, by the hook.
+
+After the switch, a check that branch protection does not require (a refresh
+dispatched on main, the alert drill, the Migrations job) no longer holds a
+backend deploy. A red Migrations check still stops a release candidate, because
+the release gate counts it, but the backend code on that commit deploys. A non-2xx answer from the hook fails the job with the status
+code and is not retried. A 404 usually means the hook was regenerated in Render
+and the secret still holds the old URL.
+
+**Re-run only the head commit's run.** Once the cause is fixed, re-run the
+failed jobs of the run for the commit at the head of main; that commit carries
+every earlier one. Never re-run an older main run to clear its red X. Its
+deploy job sees that main has moved and deploys nothing, but the re-run still
+joins `ci.yml`'s concurrency group, and a run waiting there for a newer commit
+is cancelled to make room for it, which leaves that newer commit undeployed
+until its own run is re-run.
+
+To switch back, delete the secret and set `autoDeployTrigger: checksPass` in
+`render.yaml` again, and turn auto-deploy back on in the dashboard if Render
+left it off.
 
 ## 4. Rollback
 
@@ -324,6 +387,13 @@ the failure named in its last column.
 
 ### Backend (Render web service)
 
+`WEB_CONCURRENCY` is not read: `render.yaml` starts uvicorn with `--workers 1`,
+which takes precedence over it. One worker holds about 1.3-1.5 GB of the
+Standard plan's 2 GB, so a second worker would not fit. Render runs the start
+command its dashboard shows, so after a change to `startCommand` check Settings,
+Start Command, and set it there by hand if the service is not synced from the
+Blueprint.
+
 | Variable | Required | When missing |
 |---|---|---|
 | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | required | Accounts, cloud save, reminders, saved searches and the incident queue stop. Signed-in requests are treated as signed out. Incident reads and the heartbeat answer 503 and name the variable. Each cron answers `{"status": "skipped", "missing": [...]}`, which fails the workflow's `check_cron_response.py` step. `/api/ready` reports `providers.supabase: missing` without gating. |
@@ -376,8 +446,9 @@ the failure named in its last column.
 | Variable | Required | When missing |
 |---|---|---|
 | `BACKEND_URL`, `CRON_SECRET` | required | The cron workflows fail their "Require the secrets" step. The release gate does not observe the backend. |
-| `ADMIN_TOKEN`, `RESEND_API_KEY` | required | `daily-reminders.yml` fails its secrets step. |
+| `ADMIN_TOKEN`, `RESEND_API_KEY` | required | `daily-reminders.yml` fails its secrets step. Without `RESEND_API_KEY`, `alert-drill.yml` fails too. |
 | `REFRESH_PAT` | required | `refresh-data.yml` cannot open its data PR and fails. |
 | `FRONTEND_URL` | optional | Alert emails lose their dashboard link. The release gate does not observe the frontend. |
-| `OPERATOR_EMAIL` | optional | No alert or digest email is sent. The `daily-reminders.yml` alert step prints the alerts to the job log; the other alert steps log that they cannot alert and pass. `snapshot-reminder.yml` fails when a snapshot refresh is due. |
+| `OPERATOR_EMAIL` | optional | No alert or digest email is sent. The `daily-reminders.yml` alert step prints the alerts to the job log; the other alert steps log that they cannot alert and pass. `snapshot-reminder.yml` fails when a snapshot refresh is due, and `alert-drill.yml` fails. |
+| `RENDER_DEPLOY_HOOK_URL` | optional | The `Deploy backend (Render hook)` job in `ci.yml` logs a notice, deploys nothing and passes, and Render's own auto-deploy (`render.yaml` `autoDeployTrigger`) decides. Once the switch-over in §3 sets that to `off`, nothing deploys the backend without this secret. |
 | `RESEND_FROM_EMAIL` | optional | A repository variable (`vars.`), not a secret. Workflow emails are sent from Resend's test sender, `JoinALab <onboarding@resend.dev>`. |
