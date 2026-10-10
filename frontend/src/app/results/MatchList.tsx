@@ -230,7 +230,7 @@ export function MatchList({
           >
             {t('results.pagination.previous')}
           </button>
-          <span className="text-sm text-gray-500 tabular-nums px-3">
+          <span className="text-sm text-gray-600 tabular-nums px-3">
             {page} / {totalPages}
           </span>
           <button

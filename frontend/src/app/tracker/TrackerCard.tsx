@@ -136,7 +136,7 @@ export function TrackerCard({
       </Link>
 
       {isCurrentListing && opp.deadline && (
-        <p className="mt-1.5 flex items-center gap-1 text-xs text-gray-400">
+        <p className="mt-1.5 flex items-center gap-1 text-xs text-gray-500">
           <Calendar className="h-3 w-3" />
           {/* An NSF date derived from the award start is a guess, and every
               other surface says so — the favorites badge, the detail page and
@@ -160,8 +160,8 @@ export function TrackerCard({
             <span
               className={`inline-flex items-center gap-1 ${
                 !canSetReminder
-                  ? 'text-gray-400'
-                  : isReminderDue(remindAt) ? 'font-medium text-red-600' : 'font-medium text-amber-600'
+                  ? 'text-gray-500'
+                  : isReminderDue(remindAt) ? 'font-medium text-red-600' : 'font-medium text-amber-700'
               }`}
             >
               <BellRing className="h-3 w-3" />
@@ -179,7 +179,7 @@ export function TrackerCard({
           </>
         ) : canSetReminder ? (
           <>
-            <span className="inline-flex items-center gap-1 text-gray-400">
+            <span className="inline-flex items-center gap-1 text-gray-500">
               <BellRing className="h-3 w-3" />{t('tracker.remind')}
             </span>
             {([['tracker.remind3', 3], ['tracker.remind7', 7], ['tracker.remind14', 14]] as const).map(
@@ -207,7 +207,7 @@ export function TrackerCard({
             rather than greyed out: a disabled button still announces that the
             action exists. */}
         {!canSetReminder && (
-          <span className="inline-flex items-center gap-1 text-gray-400">
+          <span className="inline-flex items-center gap-1 text-gray-500">
             <BellRing className="h-3 w-3" />
             {/* Two different facts, and the reason is not always the target:
                 an actionable listing marked `rejected` is undeliverable too.
@@ -271,7 +271,7 @@ export function TrackerCard({
         className="mt-3 w-full resize-y rounded-xl border border-gray-200 px-3 py-2 text-xs text-gray-700 placeholder:text-gray-400 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-500/20 outline-none disabled:opacity-50 disabled:cursor-wait"
       />
       {notesPending && (
-        <p className="mt-1 text-[11px] text-gray-400">{t('tracker.notesSaving')}</p>
+        <p className="mt-1 text-[11px] text-gray-500">{t('tracker.notesSaving')}</p>
       )}
       {notesError && (
         <p role="alert" className="mt-1 flex items-center gap-1.5 text-[11px] text-red-700">

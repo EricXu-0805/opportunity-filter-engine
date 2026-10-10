@@ -18,7 +18,7 @@ export default function EmptyState({ hasFilters, onClearFilters }: EmptyStatePro
       <p className="text-base font-semibold text-gray-900">
         {t('fellowships.empty.title')}
       </p>
-      <p className="mt-2 text-sm text-gray-500 max-w-sm">
+      <p className="mt-2 text-sm text-gray-600 max-w-sm">
         {hasFilters ? t('fellowships.empty.withFilters') : t('fellowships.empty.noResults')}
       </p>
       {hasFilters && (

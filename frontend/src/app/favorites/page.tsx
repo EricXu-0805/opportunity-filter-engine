@@ -207,7 +207,7 @@ export default function FavoritesPage() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <Loader2 className="w-6 h-6 text-gray-400 animate-spin" />
-        <p className="text-[13px] text-gray-400">{t('favorites.loading')}</p>
+        <p className="text-[13px] text-gray-600">{t('favorites.loading')}</p>
       </div>
     );
   }
@@ -235,7 +235,7 @@ export default function FavoritesPage() {
       <button
         type="button"
         onClick={() => router.back()}
-        className="inline-flex items-center gap-2 text-[13px] text-gray-400 hover:text-gray-600 mb-8 transition-colors duration-300"
+        className="inline-flex items-center gap-2 text-[13px] text-gray-600 hover:text-gray-700 mb-8 transition-colors duration-300"
       >
         <ArrowLeft className="w-4 h-4" />
         Back
@@ -261,7 +261,7 @@ export default function FavoritesPage() {
         <div className="mb-10">
           <h1 className="text-4xl font-bold text-gray-900 tracking-tight">{t('favorites.title')}</h1>
           {!error && customStorage.status === 'ready' && (
-            <p className="mt-2 text-[15px] text-gray-400">
+            <p className="mt-2 text-[15px] text-gray-600">
               {t('favorites.count', { count: opportunities.length + unavailableCount })}
             </p>
           )}

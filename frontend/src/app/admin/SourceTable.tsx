@@ -75,7 +75,7 @@ export function SourceTable(
                 <td className="px-4 py-3 text-right tabular-nums text-gray-600">{row.total}</td>
                 <td className="px-4 py-3 text-right tabular-nums"><Cell v={row.empty_majors || 0} listingTotal={row.listing_total} currentScope={currentScope} /></td>
                 <td className="px-4 py-3 text-right tabular-nums"><Cell v={row.empty_keywords || 0} listingTotal={row.listing_total} currentScope={currentScope} /></td>
-                <td className="px-4 py-3 text-right tabular-nums text-emerald-600">{row.rolling_deadline || 0}</td>
+                <td className="px-4 py-3 text-right tabular-nums text-emerald-700">{row.rolling_deadline || 0}</td>
                 <td className="px-4 py-3 text-right tabular-nums"><Cell v={row.missing_deadline || 0} listingTotal={row.listing_total} currentScope={currentScope} /></td>
                 <td className="px-4 py-3 text-right tabular-nums text-gray-500">{row.past_deadline || 0}</td>
                 <td className="px-4 py-3 text-right tabular-nums text-gray-500">{row.flagged_inactive || 0}</td>
@@ -100,7 +100,7 @@ export function SourceTable(
               <dt className="text-gray-500">{col('emptyKeywords')}</dt>
               <dd className="text-right tabular-nums"><Cell v={row.empty_keywords || 0} listingTotal={row.listing_total} currentScope={currentScope} /></dd>
               <dt className="text-gray-500">{col('rolling')}</dt>
-              <dd className="text-right tabular-nums text-emerald-600">{row.rolling_deadline || 0}</dd>
+              <dd className="text-right tabular-nums text-emerald-700">{row.rolling_deadline || 0}</dd>
               <dt className="text-gray-500">{col('missingDeadline')}</dt>
               <dd className="text-right tabular-nums"><Cell v={row.missing_deadline || 0} listingTotal={row.listing_total} currentScope={currentScope} /></dd>
               <dt className="text-gray-500">{col('past')}</dt>

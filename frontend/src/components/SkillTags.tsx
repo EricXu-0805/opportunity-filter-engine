@@ -250,7 +250,7 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
 
       {/* Always-visible hint so students know the presets aren't a closed list —
           custom-add was previously only discoverable inside the dropdown. */}
-      <p className="mt-1.5 text-[11px] text-gray-400 leading-snug">
+      <p className="mt-1.5 text-[11px] text-gray-500 leading-snug">
         {t('skills.addAnyHint')}
       </p>
     </div>

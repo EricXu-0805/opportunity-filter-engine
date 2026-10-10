@@ -58,7 +58,7 @@ export function InteractionPills({
                 onTrack(type);
               }}
               className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:opacity-50 disabled:cursor-wait ${
-                active ? INTERACTION_PILL[type] : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300'
+                active ? INTERACTION_PILL[type] : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
               }`}
             >
               {t(`detail.interactions.${type}`)}
@@ -70,7 +70,7 @@ export function InteractionPills({
             type="button"
             disabled={pillsDisabled}
             onClick={() => setConfirmingRemove(true)}
-            className="ml-auto text-[11px] text-gray-400 underline underline-offset-2 hover:text-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded disabled:opacity-50"
+            className="ml-auto text-[11px] text-gray-500 underline underline-offset-2 hover:text-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded disabled:opacity-50"
           >
             {t('results.statusMenu.remove')}
           </button>

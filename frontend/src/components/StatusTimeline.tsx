@@ -11,7 +11,7 @@ const STATUS_COLORS: Record<string, { dot: string; pill: string }> = {
   replied: { dot: 'bg-violet-500', pill: 'bg-violet-50 text-violet-700' },
   interviewing: { dot: 'bg-amber-500', pill: 'bg-amber-50 text-amber-700' },
   rejected: { dot: 'bg-gray-400', pill: 'bg-gray-100 text-gray-600' },
-  dismissed: { dot: 'bg-gray-300', pill: 'bg-gray-50 text-gray-400' },
+  dismissed: { dot: 'bg-gray-300', pill: 'bg-gray-50 text-gray-500' },
 };
 
 interface Props {
@@ -96,7 +96,7 @@ export default function StatusTimeline({ opportunityId, fallbackType, fallbackUp
               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-medium ${colors.pill}`}>
                 {label}
               </span>
-              {age && <span className="text-gray-400">· {age}</span>}
+              {age && <span className="text-gray-500">· {age}</span>}
             </li>
           );
         })}

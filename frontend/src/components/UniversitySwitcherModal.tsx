@@ -63,14 +63,14 @@ function CoverageChip(
     // for a campus nobody has collected yet would be a measurement we never
     // made; the pending note says what is actually true.
     return (
-      <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-medium bg-amber-50/80 text-amber-600">
+      <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-medium bg-amber-50/80 text-amber-700">
         {t('universitySwitcher.coveragePending')}
       </span>
     );
   }
   const count = displayCoverageCount(coverage.count);
   const cls = count >= 1000
-    ? 'bg-emerald-50/80 text-emerald-600'
+    ? 'bg-emerald-50/80 text-emerald-700'
     : 'bg-indigo-50/80 text-indigo-600';
   return (
     <div>
@@ -215,7 +215,7 @@ export default function UniversitySwitcherModal({
                     )}
                     <p className="text-[14px] font-semibold text-gray-900 leading-snug pr-6">{primaryName}</p>
                     <p className="text-[12px] text-gray-500 mt-0.5">{secondaryName}</p>
-                    <p className="flex items-center gap-1 text-[12px] text-gray-400 mt-1.5">
+                    <p className="flex items-center gap-1 text-[12px] text-gray-500 mt-1.5">
                       <MapPin className="w-3 h-3" aria-hidden="true" />
                       {entry.location}
                     </p>
@@ -237,7 +237,7 @@ export default function UniversitySwitcherModal({
             </div>
           )}
 
-          <p className="mt-4 text-[11px] text-gray-400 leading-relaxed">
+          <p className="mt-4 text-[11px] text-gray-500 leading-relaxed">
             {note ?? t('universitySwitcher.footerNote')}
           </p>
         </div>
@@ -249,7 +249,7 @@ export default function UniversitySwitcherModal({
           </p>
           <div className="flex items-center gap-2 shrink-0">
             {errorMessage && (
-              <span data-testid="switcher-error" role="alert" className="text-[12px] text-amber-600">
+              <span data-testid="switcher-error" role="alert" className="text-[12px] text-amber-700">
                 {errorMessage}
               </span>
             )}
