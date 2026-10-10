@@ -249,7 +249,7 @@ export default function TrackerPage() {
 
       {showEmptyState ? (
         <div className="rounded-2xl border border-dashed border-gray-200 px-6 py-16 text-center">
-          <p className="text-sm font-medium text-gray-600">{t('tracker.emptyTitle')}</p>
+          <p className="text-sm font-medium text-gray-800">{t('tracker.emptyTitle')}</p>
           <p className="mt-1 text-[13px] text-gray-600">{t('tracker.emptyBody')}</p>
           <Link
             ref={emptyStateLinkRef}

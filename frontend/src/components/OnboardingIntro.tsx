@@ -304,7 +304,7 @@ function SchoolPicker({ t, locale, selected, onSelect }: {
               <span className="block text-[13.5px] font-semibold text-gray-900 truncate">
                 {locale === 'zh' ? s.nameZh : s.shortName}
               </span>
-              <span className="block text-[11px] text-gray-400 truncate">{s.location}</span>
+              <span className="block text-[11px] text-gray-500 truncate">{s.location}</span>
             </span>
             <span className={`shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full ${
               hasRecords ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-600'
@@ -500,7 +500,7 @@ export default function OnboardingIntro() {
       <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden">
         {/* top bar: step counter + Skip (Skip is hidden on the final gate slide) */}
         <div className="flex items-center justify-between px-5 sm:px-7 pt-4">
-          <span className="text-[12px] font-medium text-gray-400 tabular-nums">
+          <span className="text-[12px] font-medium text-gray-500 tabular-nums">
             {i + 1} / {SLIDES.length}
           </span>
           {!isLast && (
@@ -508,7 +508,7 @@ export default function OnboardingIntro() {
               type="button"
               onClick={gotoSchoolGate}
               data-testid="onboarding-skip"
-              className="text-[13px] font-medium text-gray-400 hover:text-gray-700 transition-colors"
+              className="text-[13px] font-medium text-gray-500 hover:text-gray-700 transition-colors"
             >
               {t('onboarding.skipTour')}
             </button>

@@ -760,7 +760,7 @@ function CorpusFreshnessLine({ t }: { t: Replier }) {
         className="mb-6 flex items-center gap-2 text-[11px] text-gray-600"
       >
         <Database className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-        <span className="font-medium text-gray-600">{t('dashboard.freshness.label')}</span>
+        <span className="font-medium text-gray-700">{t('dashboard.freshness.label')}</span>
         {t('dashboard.freshness.unknown')}
       </p>
     );

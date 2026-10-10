@@ -215,7 +215,7 @@ export default function UniversitySwitcherModal({
                     )}
                     <p className="text-[14px] font-semibold text-gray-900 leading-snug pr-6">{primaryName}</p>
                     <p className="text-[12px] text-gray-500 mt-0.5">{secondaryName}</p>
-                    <p className="flex items-center gap-1 text-[12px] text-gray-400 mt-1.5">
+                    <p className="flex items-center gap-1 text-[12px] text-gray-500 mt-1.5">
                       <MapPin className="w-3 h-3" aria-hidden="true" />
                       {entry.location}
                     </p>
@@ -237,7 +237,7 @@ export default function UniversitySwitcherModal({
             </div>
           )}
 
-          <p className="mt-4 text-[11px] text-gray-400 leading-relaxed">
+          <p className="mt-4 text-[11px] text-gray-500 leading-relaxed">
             {note ?? t('universitySwitcher.footerNote')}
           </p>
         </div>

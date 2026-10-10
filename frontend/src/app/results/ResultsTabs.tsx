@@ -33,7 +33,7 @@ export function ResultsTabs({ activeTab, onChange, counts, t }: ResultsTabsProps
               ${
                 activeTab === key
                   ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-700'
+                  : 'text-gray-700 hover:text-gray-800'
               }`}
           >
             <Icon className={`w-3.5 h-3.5 ${activeTab === key ? color : ''}`} aria-hidden="true" />

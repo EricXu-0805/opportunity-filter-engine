@@ -17,7 +17,7 @@ import { useT } from '@/i18n/client';
 function CenteredCard({ title, body, cta, href }: { title: string; body: string; cta: string; href: string }) {
   return (
     <div className="rounded-2xl border border-dashed border-gray-200 px-6 py-16 text-center">
-      <p className="text-sm font-medium text-gray-600">{title}</p>
+      <p className="text-sm font-medium text-gray-800">{title}</p>
       <p className="mt-1 text-[13px] text-gray-600">{body}</p>
       <Link
         href={href}
@@ -193,7 +193,7 @@ export default function RoadmapPage() {
 
   const errorCard = (
     <div className="rounded-2xl border border-dashed border-gray-200 px-6 py-16 text-center">
-      <p className="text-sm font-medium text-gray-600">{t('roadmap.errorTitle')}</p>
+      <p className="text-sm font-medium text-gray-800">{t('roadmap.errorTitle')}</p>
       <p className="mt-1 text-[13px] text-gray-600">{profileInputMessage(error, t) ?? t('roadmap.errorBody')}</p>
       {profileInputMessage(error, t) && <Link href="/" className="block mt-3 text-sm underline">{t('profileInput.editProfile')}</Link>}
       <button

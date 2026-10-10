@@ -103,7 +103,7 @@ export function ResultsSearch({
             ? t('results.search.noResults')
             : t('results.search.resultsFound', { count: filteredCount })}
           {debouncedQuery.trim() && (
-            <span> {t('results.resultsForPrefix')} <span className="font-medium text-gray-600">&ldquo;{debouncedQuery}&rdquo;</span>
+            <span> {t('results.resultsForPrefix')} <span className="font-medium text-gray-800">&ldquo;{debouncedQuery}&rdquo;</span>
               {SEARCH_ALIASES_FOR_HINT[debouncedQuery.toLowerCase()] && (
                 <span className="text-gray-600"> ({t('results.alsoMatching', { terms: SEARCH_ALIASES_FOR_HINT[debouncedQuery.toLowerCase()]?.join(', ') ?? '' })})</span>
               )}

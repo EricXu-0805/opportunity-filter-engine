@@ -10,7 +10,7 @@ export function FavoritesEmptyState({ t }: { t: TFunc }) {
   return (
     <div className="text-center py-20">
       <Star className="w-10 h-10 text-gray-200 mx-auto mb-4" />
-      <p className="text-[15px] text-gray-600 mb-2">{t('favorites.emptyHint')}</p>
+      <p className="text-[15px] text-gray-700 mb-2">{t('favorites.emptyHint')}</p>
       <p className="text-[13px] text-gray-600 mb-6">{t('favorites.emptyHintImport')}</p>
       <div className="flex items-center justify-center gap-3 flex-wrap">
         <button

@@ -28,7 +28,7 @@ export function EmptyState({
   if (deadlineFilterFoundNothing) {
     return (
       <div className="text-center py-16 space-y-3">
-        <p className="text-gray-600 text-lg">{t('results.empty.noDeadlines')}</p>
+        <p className="text-gray-700 text-lg">{t('results.empty.noDeadlines')}</p>
         <p className="text-gray-600 text-sm">{t('results.empty.noDeadlinesHint')}</p>
         <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
           {onShowRolling && (
@@ -55,7 +55,7 @@ export function EmptyState({
   if (hasFilters) {
     return (
       <div className="text-center py-16 space-y-3">
-        <p className="text-gray-600 text-lg">{t('results.empty.withFilters')}</p>
+        <p className="text-gray-700 text-lg">{t('results.empty.withFilters')}</p>
         <p className="text-gray-600 text-sm">{t('results.empty.withFiltersHint')}</p>
         <button
           type="button"
@@ -72,7 +72,7 @@ export function EmptyState({
     return (
       <div className="text-center py-16 space-y-2">
         <Star className="w-8 h-8 text-gray-300 mx-auto" />
-        <p className="text-gray-600 text-lg">{t('results.empty.starred')}</p>
+        <p className="text-gray-700 text-lg">{t('results.empty.starred')}</p>
         <p className="text-gray-600 text-sm">{t('results.empty.starredHint')}</p>
       </div>
     );
