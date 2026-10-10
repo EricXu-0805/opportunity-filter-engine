@@ -1181,11 +1181,15 @@ class TestCampusGraphContract:
         _, stated = _served(self._with_page(self._STATES))
         assert score_eligibility(freshman, ours)[2] == [self._HEDGED_YEARS]
         assert score_eligibility(freshman, stated)[2] == ["Typically targets junior, senior"]
-        # Where the stated list gives another line or none, so does ours: a
-        # graduate student, a profile without a class year, and the year next
-        # to one named (it scores 50).
-        for year, gaps in (("graduate", ["For undergraduates — not a graduate-level opening"]),
-                           ("", ["Add your class year to confirm year eligibility"]),
+        # A graduate student hears it as ours too.
+        graduate = dict(freshman, year="graduate")
+        assert score_eligibility(graduate, ours)[2] == [
+            "Our listing suggests this is for undergraduates — not confirmed on the program page"]
+        assert score_eligibility(graduate, stated)[2] == ["For undergraduates — not a graduate-level opening"]
+        # Where the stated list gives no targeting line, neither does ours: a
+        # profile without a class year, and the year next to one named (it
+        # scores 50).
+        for year, gaps in (("", ["Add your class year to confirm year eligibility"]),
                            ("sophomore", [])):
             profile = dict(freshman, year=year)
             assert score_eligibility(profile, ours)[2] == score_eligibility(profile, stated)[2] == gaps, year
@@ -1222,6 +1226,25 @@ class TestCampusGraphContract:
         for record in (derived, *all_majors, empty, department):
             gaps = score_eligibility(history, _served(record)[1])[2]
             assert not any(text.startswith(("Prefers", "Our listing suggests")) for text in gaps), gaps
+
+    def test_a_concern_from_our_listing_comes_after_the_firmer_ones(self):
+        # The compare view, the local summary and the AI prompt read only the
+        # first two or three gap lines.
+        record = self._configured()
+        record["eligibility"]["international_friendly"] = "no"
+        record["application"] = dict(record.get("application") or {}, requires_resume="yes")
+        _, ours = _served(record)
+        profile = {"year": "freshman", "major": "History", "hard_skills": [], "international_student": True}
+        gaps = rank_opportunity(profile, ours, precomputed_sim=0.2).reasons_gap
+        hedged = [self._HEDGED_YEARS, self._HEDGED_MAJORS]
+        assert gaps[-2:] == hedged, gaps
+        assert {"Requires US citizenship or permanent residency",
+                "Resume required — prepare one before applying"} <= set(gaps[:-2]), gaps
+        # A page that states the lists keeps them where they were.
+        record = self._with_page(self._STATES)
+        record["eligibility"]["international_friendly"] = "no"
+        gaps = rank_opportunity(profile, _served(record)[1], precomputed_sim=0.2).reasons_gap
+        assert gaps[:2] == ["Typically targets junior, senior", "Prefers Biology"], gaps
 
     def test_a_configured_preference_the_page_text_contradicts_is_no_gap(self):
         # The page text says otherwise: that is for a person to read

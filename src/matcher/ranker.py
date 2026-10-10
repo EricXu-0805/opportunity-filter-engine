@@ -1788,6 +1788,11 @@ def _mentioned_skill_labels(opportunity: dict) -> list[str]:
     return _bounded_skill_labels(metadata.get("skill_mentions"))
 
 
+# Ends every gap line built from a configured value the page text the row
+# carries does not state (see score_eligibility).
+_NOT_ON_PAGE = " — not confirmed on the program page"
+
+
 def score_eligibility(
     profile: dict,
     opportunity: dict,
@@ -1836,7 +1841,10 @@ def score_eligibility(
         if _is_grad_year(student_year) and pref_years and not any(
             _is_grad_year(p) for p in pref_years
         ):
-            reasons_gap.append("For undergraduates — not a graduate-level opening")
+            if not years_are_configured:
+                reasons_gap.append("For undergraduates — not a graduate-level opening")
+            elif configured_fact(opportunity, "class_year").state == FACT_UNSTATED:
+                reasons_gap.append(f"Our listing suggests this is for undergraduates{_NOT_ON_PAGE}")
         else:
             named_years = [p for p in pref_years if p and p.lower() != "unknown"]
             if named_years and not years_are_configured:
@@ -1846,9 +1854,7 @@ def score_eligibility(
                 # not state are still a concern, said as ours. Years that text
                 # contradicts are for a person to read (`scripts/configured_facts_report.py`
                 # lists them), not a shortfall to put to the student.
-                reasons_gap.append(
-                    f"Our listing suggests {', '.join(named_years)} students — not confirmed on the program page"
-                )
+                reasons_gap.append(f"Our listing suggests {', '.join(named_years)} students{_NOT_ON_PAGE}")
 
     # Major match (20% weight)
     #
@@ -1925,9 +1931,7 @@ def score_eligibility(
             reasons_gap.append(f"Prefers {', '.join(elig.get('majors', []))}")
         elif configured_fact(opportunity, "majors").state == FACT_UNSTATED:
             # Said as ours, like the class years above.
-            reasons_gap.append(
-                f"Our listing suggests {', '.join(elig['majors'])} majors — not confirmed on the program page"
-            )
+            reasons_gap.append(f"Our listing suggests {', '.join(elig['majors'])} majors{_NOT_ON_PAGE}")
 
     intl_score = 100.0
     if profile.get("international_student"):
@@ -3413,7 +3417,10 @@ def _rank_opportunity_unlocked(
     # visible top-3 were near-identical across the whole results page
     # (2026-07 dogfood). Stable sort: within a tier, original order holds.
     all_fit = sorted(elig_fit + ready_fit + up_fit, key=_reason_priority)
-    all_gap = elig_gap + ready_gap + up_gap
+    # A concern from our own listing goes after every firmer one: the card's
+    # compare view, the local summary and the AI prompt read only the first
+    # two or three. sorted() is stable, so each group keeps its order.
+    all_gap = sorted(elig_gap + ready_gap + up_gap, key=lambda gap: gap.endswith(_NOT_ON_PAGE))
     if faculty_contact_claims_unverified(opportunity):
         all_gap.append(
             "Faculty availability and eligibility are not confirmed — verify when you contact them"
