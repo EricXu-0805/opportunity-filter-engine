@@ -1003,3 +1003,32 @@ def test_the_app_builds_few_errors_for_a_body_on_a_route_that_validates_on_the_e
             assert max(sizes, default=0) <= LOOP_ERRORS, (method, path, name, sizes)
             sent += 1
     assert sent >= 40
+
+
+def _metadata_save(extra: dict) -> dict:
+    method, path, concrete, body = next(row for row in largest.largest_bodies()
+                                        if row[:2] == ("PUT", "/api/private-import-targets/{target_id}"))
+    return {**body, "opportunity": {**body["opportunity"], "extra_fields": extra}}
+
+
+def test_a_save_reads_metadata_of_as_many_lists_objects_and_commas_as_its_size_limit_holds(parsed):
+    """A private import's metadata may hold anything within MAX_EXTRA_BYTES of compact JSON nested at
+    most as deep as the schema allows; the save's bounds hold the most lists and objects, and the
+    most commas, such metadata can."""
+    from backend.lib.private_import_targets_schema import MAX_EXTRA_BYTES, SaveRequest, encoded
+
+    room = MAX_EXTRA_BYTES - len(encoded({"": []}))
+    chain = json.loads("[" * 30 + "]" * 30)
+    lists = {"": [chain] * ((room + 1) // 61)}
+    commas = {"": [0] * ((room + 1) // 2)}
+    client = TestClient(app)
+    for extra in (lists, commas):
+        assert MAX_EXTRA_BYTES - 61 < len(encoded(extra)) <= MAX_EXTRA_BYTES
+        body = _metadata_save(extra)
+        SaveRequest.model_validate(body)
+        content = json.dumps(body).encode()
+        assert largest.containers(content) > request_body.WRITING_BOUNDS.containers or \
+            largest.separators(content) > request_body.WRITING_BOUNDS.separators
+        with largest.reading() as read:
+            largest.send(client, "PUT", f"/api/private-import-targets/{largest.PRIVATE_TARGET}", content)
+        assert read == ["request lane"]

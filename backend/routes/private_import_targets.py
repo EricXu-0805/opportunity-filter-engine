@@ -19,6 +19,7 @@ from backend.lib.private_import_targets import (
 )
 from backend.lib.private_import_targets_schema import (
     MAX_BODY_BYTES,
+    MAX_EXTRA_BYTES,
     MAX_PAYLOAD_BYTES,
     PRIVATE,
     DeleteRequest,
@@ -31,8 +32,8 @@ from backend.lib.private_import_targets_schema import (
 from backend.lib.private_target_resolution import project_private_target, resolve_private_import_target
 from backend.lib.request_body import (
     SMALL_BOUNDS,
-    WRITING_BOUNDS,
     BoundedJSONRoute,
+    JSONBodyBounds,
     json_body_bounds,
     json_body_on_lane,
 )
@@ -43,6 +44,10 @@ _TRACKER_BATCH_CONCURRENCY = 4
 # revision and at most 100 ids, so the 8 MiB allowance the body middleware
 # grants this whole prefix is never a legitimate size for them.
 _SMALL_BODY_BYTES = MAX_BODY_BYTES - MAX_PAYLOAD_BYTES
+# A save's metadata (extra_fields) is any JSON within MAX_EXTRA_BYTES of compact encoding, where each
+# list or object, and each comma with the item after it, takes at least two bytes. The rest of the
+# body is strings in a few dozen keys.
+SAVE_BOUNDS = JSONBodyBounds(MAX_EXTRA_BYTES // 2 + 64, MAX_EXTRA_BYTES // 2 + 64)
 
 
 async def _screen_body(request: Request) -> None:
@@ -193,7 +198,7 @@ async def read_target(target_id: str, request: Request):
 
 
 @router.put("/{target_id}")
-@json_body_bounds(WRITING_BOUNDS)
+@json_body_bounds(SAVE_BOUNDS)
 async def save_target(target_id: str, request: Request, data: SaveRequest = json_body_on_lane(SaveRequest)):
     identifier(target_id)
     if request.query_params:

@@ -136,7 +136,7 @@ class JSONBodyBounds(NamedTuple):
 
 # Each route's bounds are at least four times what the largest body its request schema accepts holds
 # (scripts/request_body_containers.py prints both for every JSON route). A profile and a few lists:
-# the matching, chat and writing routes, and a private import's save.
+# the matching, chat and writing routes.
 WRITING_BOUNDS = JSONBodyBounds(MAX_JSON_CONTAINERS, MAX_JSON_SEPARATORS)
 # A résumé master, a full-target draft or an export projection: the cold-email routes and those two.
 DOCUMENT_BOUNDS = JSONBodyBounds(MAX_FULL_TARGET_JSON_CONTAINERS, MAX_JSON_SEPARATORS)
