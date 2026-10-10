@@ -1220,6 +1220,11 @@ class TestCampusGraphContract:
         {"checked_at": "2026-10-05T15:17:16"},
         # About another audience's program on the same page.
         {"heading": "Graduate Students > Visiting Graduate Fellowship"},
+        # About another program the page lists, named by an acronym the row's
+        # title and program do not carry.
+        {"heading": "Research Opportunities > Early Research Scholars Program (ERSP)"},
+        {"heading": "Programs (ERSP) > Eligibility"},
+        {"heading": "Programs > Summer Undergraduate Research (SUR)"},
     ])
     def test_a_passage_from_elsewhere_states_nothing(self, passage):
         record = self._configured()
@@ -1227,6 +1232,15 @@ class TestCampusGraphContract:
             self._passage("Fellows receive a $5,000 stipend.", **passage)]
         assert configured_fact(record, "paid") == ConfiguredFact(FACT_UNSTATED)
         assert _detail(record)[1]["funding"]["inferred"]["paid"]["basis"] == BASIS_COLLECTOR_DEFAULT
+
+    def test_a_passage_under_its_own_programs_acronym_is_read(self):
+        record = self._configured()
+        record["metadata"]["contact_instruction_sources"] = [
+            self._passage("Fellows receive a $5,000 stipend.", heading="Summer Research Fellowship (SURF) > Awards")]
+        assert configured_fact(record, "paid").state == FACT_STATED
+        # The acronym may be in the title alone.
+        titled = dict(record, title="Summer Research Fellowship (SURF)", lab_or_program="Summer Research Fellowship")
+        assert configured_fact(titled, "paid").state == FACT_STATED
 
     def test_a_passage_holding_an_address_is_not_quoted(self):
         record = self._configured()

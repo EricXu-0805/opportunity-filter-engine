@@ -531,13 +531,28 @@ def _passage_sentences(sources: tuple[tuple[str, str, tuple[tuple[str, str], ...
     return tuple(out)
 
 
+# A program named by its acronym in a passage's heading ("CICS-Based Research
+# Opportunities > Early Research Scholars Program (ERSP)").
+_HEADING_ACRONYM_RE = re.compile(r"\(([A-Z][A-Z0-9+&]+)\)")
+
+
+def _names_another_program(heading: str, names: str) -> bool:
+    """Whether ``heading`` names a program by an acronym the row's own title
+    and program name (``names``) do not carry: a page listing several
+    programs, and this passage is about one of the others."""
+    return any(not re.search(rf"(?<![A-Za-z0-9]){re.escape(acronym)}(?![A-Za-z0-9])", names)
+               for acronym in _HEADING_ACRONYM_RE.findall(heading))
+
+
 def _captured_passages(record: dict, metadata: dict) -> tuple[tuple[str, str, str], ...]:
     """The passages kept from the row's own page, as `email_target_conditions`
-    binds them: to the row's URL, with a past `checked_at`."""
+    binds them: to the row's URL, with a past `checked_at`. A passage under
+    another program's name is left out."""
     sources = metadata.get(CONTACT_SOURCE_KEY)
     if not isinstance(sources, list):
         return ()
     bound = {contact_url(record.get(key)) for key in ("source_url", "url")} - {None}
+    names = " ".join(record[key] for key in ("title", "lab_or_program") if isinstance(record.get(key), str))
     kept = []
     for source in sources:
         if not (isinstance(source, dict) and contact_url(source.get("record_source_url")) in bound
@@ -546,7 +561,8 @@ def _captured_passages(record: dict, metadata: dict) -> tuple[tuple[str, str, st
             continue
         sections = tuple((section["heading"], section["text"]) for section in source["sections"]
                          if isinstance(section, dict) and isinstance(section.get("heading"), str)
-                         and isinstance(section.get("text"), str))
+                         and isinstance(section.get("text"), str)
+                         and not _names_another_program(section["heading"], names))
         kept.append((source["source_url"], source["checked_at"], sections))
     return _passage_sentences(tuple(kept)) if kept else ()
 
