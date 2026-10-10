@@ -1,5 +1,6 @@
 """Safe ProfileRequest rejection metadata shared by HTTP route boundaries."""
 
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 
 from backend.schemas import ProfileRequest
@@ -43,6 +44,13 @@ def safe_profile_validation_detail(exc: RequestValidationError, *, profile_root:
 
 # A 422 names its first errors; a longer list says no more.
 MAX_VALIDATION_ERRORS = 20
+
+
+def validation_errors_without_values(exc: RequestValidationError) -> list[dict]:
+    """The standard error list, its first MAX_VALIDATION_ERRORS errors by type, location and message,
+    without the values sent or the error context."""
+    return jsonable_encoder([{"type": error.get("type", "value_error"), "loc": error.get("loc", ()),
+                              "msg": error.get("msg", "")} for error in exc.errors()[:MAX_VALIDATION_ERRORS]])
 
 
 def safe_validation_errors(exc: RequestValidationError) -> list[dict]:

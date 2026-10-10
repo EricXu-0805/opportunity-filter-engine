@@ -26,12 +26,12 @@ from backend.lib import llm_budget
 from backend.lib.build_info import BUILD_VERSION, health_build_fields
 from backend.lib.observability import init_sentry
 from backend.lib.release_scope import ReleaseFeature, feature_enabled
+from backend.lib.request_body import DEFAULT_MAX_REQUEST_BODY_BYTES
 from backend.lib.target_actionability import REFUSED_BEFORE_WORK_HEADER
 
 init_sentry()
 
 from fastapi import FastAPI, Request, Response
-from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -618,7 +618,6 @@ class ReleaseScopeMiddleware(BaseHTTPMiddleware):
 logger = logging.getLogger("ofe.main")
 
 
-DEFAULT_MAX_REQUEST_BODY_BYTES = 1 * 1024 * 1024
 MAX_CONFIGURABLE_REQUEST_BODY_BYTES = 16 * 1024 * 1024
 _MIN_CONFIGURABLE_REQUEST_BODY_BYTES = 1024
 
@@ -841,7 +840,11 @@ app = FastAPI(
 
 @app.exception_handler(RequestValidationError)
 async def safe_profile_validation_error(request: Request, exc: RequestValidationError):
-    from backend.lib.profile_validation import safe_profile_validation_detail, safe_validation_errors
+    from backend.lib.profile_validation import (
+        safe_profile_validation_detail,
+        safe_validation_errors,
+        validation_errors_without_values,
+    )
 
     path = request.url.path
     profile_root = path == "/api/matches" or (
@@ -860,7 +863,7 @@ async def safe_profile_validation_error(request: Request, exc: RequestValidation
         # can attach the entire request to an error at body root. Keep the
         # standard error-list shape without reflecting its profile or text.
         return JSONResponse(status_code=422, content={"detail": safe_validation_errors(exc)})
-    return await request_validation_exception_handler(request, exc)
+    return JSONResponse(status_code=422, content={"detail": validation_errors_without_values(exc)})
 
 
 app.add_middleware(

@@ -23,7 +23,7 @@ from backend.lib.evidence_map import (
 )
 from backend.lib.llm import is_configured
 from backend.lib.release_scope import release_visible_opportunity_by_id
-from backend.lib.request_body import MAX_FULL_TARGET_JSON_CONTAINERS, check_body_bounds
+from backend.lib.request_body import DOCUMENT_BOUNDS, check_body_bounds, json_body_bounds
 from backend.lib.target_actionability import assert_target_actionable
 from backend.lib.target_resume_ai import (
     REVIEW_UNCHECKED,
@@ -48,8 +48,8 @@ PRIVATE = {"Cache-Control": "private, no-store", "Pragma": "no-cache"}
 
 class PrivateValidationRoute(APIRoute):
     """Every refusal stays private. Each route reads its raw body and parses it on the request lane
-    (_parsed), where a body past its structural bounds is refused before it is parsed, as
-    BoundedJSONRoute refuses it for the other writing routes."""
+    (_parsed), where a body past its declared structural bounds (DOCUMENT_BOUNDS) is refused before
+    it is parsed, as BoundedJSONRoute refuses one for the other JSON routes."""
 
     def get_route_handler(self):
         original = super().get_route_handler()
@@ -85,15 +85,16 @@ def _validated(request, prepare):
 def _parsed(body: bytes, content_type: str | None, model):
     """The body as FastAPI would parse and validate it for ``model``, on the request lane.
 
-    First the structural bounds (check_body_bounds): the body's lists and objects, against
-    MAX_FULL_TARGET_JSON_CONTAINERS, and the commas between its items, both counted outside its
-    strings. Then, as FastAPI does with a strict content type: only an application/json (or +json) body is
+    First the structural bounds (check_body_bounds): the body's lists and objects, the commas
+    between its items and the digits of its numbers, all counted outside its strings, against
+    DOCUMENT_BOUNDS. Then, as
+    FastAPI does with a strict content type: only an application/json (or +json) body is
     read as JSON; anything else, an empty body included, is a validation error. Invalid JSON
     (json.JSONDecodeError) is a validation error; any other failure to parse, such as a body
     that is not UTF-8 or one nested past the parser's recursion limit, is the 400 FastAPI
     answers (fastapi.routing catches JSONDecodeError for 422 and every other exception for 400).
     """
-    check_body_bounds(body, max_containers=MAX_FULL_TARGET_JSON_CONTAINERS)
+    check_body_bounds(body, DOCUMENT_BOUNDS.separators, DOCUMENT_BOUNDS.containers, DOCUMENT_BOUNDS.digits)
     message = email.message.Message()
     message["content-type"] = content_type or ""
     subtype = message.get_content_subtype()
@@ -146,6 +147,7 @@ def _prepare_suggestions(body: bytes, content_type: str | None):
 
 
 @router.post("/tailor/full-target/suggestions")
+@json_body_bounds(DOCUMENT_BOUNDS)
 async def full_target_suggestions(http_request: Request):
     started = time.monotonic()
     request, doc, units, protected, selected, processable, anchors, messages, reason = await run_request_work(
@@ -206,6 +208,7 @@ def _prepare_plan(body: bytes, content_type: str | None):
 
 
 @router.post("/tailor/full-target/selection-plan")
+@json_body_bounds(DOCUMENT_BOUNDS)
 async def full_target_selection_plan(http_request: Request):
     request, doc, blocks, manifest, scope, messages, reason = await run_request_work(
         _prepare_plan, await http_request.body(), http_request.headers.get("content-type"))

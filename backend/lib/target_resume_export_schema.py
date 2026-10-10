@@ -8,6 +8,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from backend.lib.request_body import known_keys
+
 TEMPLATE = 'standard-v1'
 MAX_PROJECTION_BYTES = 2 * 1024 * 1024
 MAX_BODY_BYTES = MAX_PROJECTION_BYTES + 64 * 1024
@@ -23,11 +25,13 @@ class ExportError(ValueError):
     """Only stable public codes, never private text or underlying errors."""
 
 
+# A character XML 1.0 cannot hold.
+_NOT_XML = re.compile('[^\t\n\r\x20-\ud7ff\ue000-\ufffd\U00010000-\U0010ffff]')
+
+
 def xml_text(value: str) -> str:
-    for char in value:
-        point = ord(char)
-        if not (point in (9, 10, 13) or 0x20 <= point <= 0xD7FF or 0xE000 <= point <= 0xFFFD or 0x10000 <= point <= 0x10FFFF):
-            raise ExportError('invalid_export_text')
+    if _NOT_XML.search(value):
+        raise ExportError('invalid_export_text')
     return value
 
 
@@ -41,6 +45,7 @@ def export_signature(value) -> str:
 
 class StrictModel(BaseModel):
     model_config = ConfigDict(extra='forbid', strict=True)
+    _known_keys = model_validator(mode='before')(known_keys)
 
 
 class ExportLine(StrictModel):
@@ -88,6 +93,19 @@ class ExportProjection(StrictModel):
     def strict_version(cls, value):
         if type(value) is not int or value != 1:
             raise ValueError('invalid_version')
+        return value
+
+    @model_validator(mode='before')
+    @classmethod
+    def projection_size(cls, value):
+        """The block and line limits valid_document checks, applied before the sections are validated."""
+        sections = value.get('sections') if isinstance(value, dict) else None
+        if isinstance(sections, list):
+            blocks = [block for section in sections if isinstance(section, dict) and isinstance(section.get('blocks'), list)
+                      for block in section['blocks']]
+            lines = sum(len(block['lines']) for block in blocks if isinstance(block, dict) and isinstance(block.get('lines'), list))
+            if len(blocks) > 600 or lines > 600:
+                raise ValueError('projection_limit')
         return value
 
     @model_validator(mode='after')

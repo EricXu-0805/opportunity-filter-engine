@@ -36,6 +36,7 @@ from backend.lib.release_scope import (
     release_visible_opportunities,
     release_visible_opportunity_by_id,
 )
+from backend.lib.request_body import SMALL_BOUNDS, BoundedJSONRoute, json_body_bounds, known_keys
 from backend.lib.supabase_auth import authenticated_identity
 from backend.lib.target_actionability import assert_target_actionable, prework_refusal
 from src.evidence import (
@@ -54,7 +55,7 @@ def _validate_email(value: str) -> str:
         raise ValueError("invalid email")
     return v
 
-router = APIRouter()
+router = APIRouter(route_class=BoundedJSONRoute)
 logger = logging.getLogger(__name__)
 
 RESEND_API_URL = "https://api.resend.com/emails"
@@ -208,6 +209,7 @@ class MatchItemRequest(BaseModel):
     """
 
     model_config = ConfigDict(extra="forbid")
+    _known_keys = model_validator(mode="before")(known_keys)
 
     # Optional for the rollout window only. `None` means "old client, use the
     # locator"; a blank string stays a 422 (see `_require_real_id`).
@@ -247,6 +249,7 @@ class MatchItem(BaseModel):
 
 class SendMatchesRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    _known_keys = model_validator(mode="before")(known_keys)
 
     # ROLLOUT BRIDGE, like the describing fields above: accepted so a client
     # that still sends it is not 422'd, and optional so one that has stopped is
@@ -279,6 +282,7 @@ class FavoriteItemRequest(BaseModel):
     """
 
     model_config = ConfigDict(extra="forbid")
+    _known_keys = model_validator(mode="before")(known_keys)
 
     opportunity_id: str | None = Field(default=None, max_length=_MAX_ID_LENGTH)
     notes: str = Field(default="", max_length=_MAX_NOTES_LENGTH)
@@ -327,6 +331,7 @@ class FavoriteItem(BaseModel):
 
 class SendFavoritesRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    _known_keys = model_validator(mode="before")(known_keys)
 
     # ROLLOUT BRIDGE, like the describing fields above: accepted so a client
     # that still sends it is not 422'd, and optional so one that has stopped is
@@ -954,6 +959,7 @@ def _resolve_all(items: list, lookup: dict, legacy_index: dict | None) -> list[d
 
 
 @router.post("/email/send-matches")
+@json_body_bounds(SMALL_BOUNDS)
 async def send_matches(
     req: SendMatchesRequest,
     authorization: str | None = Header(default=None),
@@ -1001,6 +1007,7 @@ async def send_matches(
 
 
 @router.post("/email/send-favorites")
+@json_body_bounds(SMALL_BOUNDS)
 async def send_favorites(
     req: SendFavoritesRequest,
     authorization: str | None = Header(default=None),

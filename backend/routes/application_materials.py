@@ -10,7 +10,7 @@ from urllib.parse import quote
 
 import httpx
 from fastapi import APIRouter, Request
-from fastapi.routing import APIRoute
+from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 from starlette.datastructures import UploadFile
 from starlette.exceptions import HTTPException
@@ -32,6 +32,7 @@ from backend.lib.material_archive_schema import (
     timestamp,
     uuid_text,
 )
+from backend.lib.request_body import SMALL_BOUNDS, BoundedJSONRoute, json_body_bounds
 
 _IO_CAPACITY = threading.BoundedSemaphore(2)
 _REQUEST_TIMEOUT_SECONDS = 110
@@ -42,7 +43,7 @@ _BODY_MIN_BYTES_PER_SECOND = 32 * 1024
 _ACTIVE_OWNERS: set[str] = set()
 
 
-class MaterialRoute(APIRoute):
+class MaterialRoute(BoundedJSONRoute):
     def get_route_handler(self):
         original = super().get_route_handler()
 
@@ -52,7 +53,7 @@ class MaterialRoute(APIRoute):
                     return await original(request)
             except MaterialError as exc:
                 return JSONResponse({"detail": {"code": exc.code}}, status_code=exc.status, headers=PRIVATE)
-            except (ValidationError, ValueError, UnicodeError, json.JSONDecodeError):
+            except (RequestValidationError, ValidationError, ValueError, UnicodeError, json.JSONDecodeError):
                 return JSONResponse({"detail": {"code": "material_invalid_request"}}, status_code=422, headers=PRIVATE)
             except HTTPException as exc:
                 code = "material_too_large" if exc.status_code == 413 else "material_invalid_request"
@@ -198,6 +199,7 @@ def material_router(prefix: str, scope_type, input_type, deletion_type) -> APIRo
 
 
     @router.delete("/{record_id}")
+    @json_body_bounds(SMALL_BOUNDS)
     async def delete_material(request: Request, record_id: str):
         uuid_text(record_id)
         scope = deletion_type.model_validate(await request.json())

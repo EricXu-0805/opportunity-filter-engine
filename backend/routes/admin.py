@@ -26,7 +26,7 @@ from pathlib import Path
 
 import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from backend.data_loader import load_opportunities, load_opportunities_by_id
 from backend.lib.corpus_freshness import (
@@ -34,13 +34,14 @@ from backend.lib.corpus_freshness import (
     CORPUS_FRESHNESS_WARN_HOURS,
 )
 from backend.lib.corpus_freshness import corpus_last_updated_at as _opportunities_mtime
+from backend.lib.request_body import SMALL_BOUNDS, BoundedJSONRoute, json_body_bounds, known_keys
 from backend.routes.email import _enforce_recipient_quota, _html_escape, _send_via_resend
 from backend.routes.push import _required_env
 from backend.routes.saved_searches import _parse_iso_ts
 from src.evidence import record_kind
 from src.matcher.feedback_learning import analyze_votes
 
-router = APIRouter()
+router = APIRouter(route_class=BoundedJSONRoute)
 logger = logging.getLogger(__name__)
 
 _PROCESSED_DIR = Path(__file__).resolve().parents[2] / "data" / "processed"
@@ -1243,6 +1244,7 @@ class FeedbackPatchRequest(BaseModel):
     explicitly unassigns (model_fields_set distinguishes the two)."""
 
     model_config = ConfigDict(extra="forbid")
+    _known_keys = model_validator(mode="before")(known_keys)
 
     status: str | None = None
     priority: str | None = None
@@ -1253,6 +1255,7 @@ class FeedbackPatchRequest(BaseModel):
 
 class FeedbackReplyRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    _known_keys = model_validator(mode="before")(known_keys)
 
     reply: str = Field(min_length=1, max_length=5000)
     deliver: bool = False
@@ -1425,6 +1428,7 @@ async def feedback_ticket_detail(
 
 
 @router.patch("/admin/feedback/{ticket_id}")
+@json_body_bounds(SMALL_BOUNDS)
 async def update_feedback_ticket(
     ticket_id: str,
     req: FeedbackPatchRequest,
@@ -1582,6 +1586,7 @@ async def update_feedback_ticket(
 
 
 @router.post("/admin/feedback/{ticket_id}/reply")
+@json_body_bounds(SMALL_BOUNDS)
 async def reply_to_feedback_ticket(
     ticket_id: str,
     req: FeedbackReplyRequest,

@@ -12,11 +12,12 @@ from backend.lib.blocking import (
     run_blocking,
 )
 from backend.lib.release_scope import release_visible_opportunity_by_id
+from backend.lib.request_body import ID_LIST_BOUNDS, BoundedJSONRoute, json_body_bounds
 from backend.schemas import RoadmapRequest, RoadmapResponse
 from src.evidence import target_truth
 from src.recommender.roadmap import prepare_roadmap
 
-router = APIRouter()
+router = APIRouter(route_class=BoundedJSONRoute)
 logger = logging.getLogger("ofe.roadmap")
 
 # Bound the aggregation cost / payload — far more saved targets than anyone curates.
@@ -79,6 +80,7 @@ def _prepare_roadmap_request(profile: dict, opportunity_ids: list[str]) -> dict:
 
 
 @router.post("/roadmap", response_model=RoadmapResponse)
+@json_body_bounds(ID_LIST_BOUNDS)
 async def get_roadmap(req: RoadmapRequest):
     """Aggregate the skill gaps across a target set of opportunities (e.g. the
     user's favorites) into one dependency-ordered learning path. Campus course

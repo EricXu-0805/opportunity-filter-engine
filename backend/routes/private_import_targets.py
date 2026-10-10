@@ -6,7 +6,6 @@ from contextlib import asynccontextmanager
 import httpx
 from fastapi import APIRouter, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.routing import APIRoute
 from pydantic import Field, ValidationError, field_validator
 from starlette.exceptions import HTTPException
 from starlette.responses import JSONResponse
@@ -20,6 +19,7 @@ from backend.lib.private_import_targets import (
 )
 from backend.lib.private_import_targets_schema import (
     MAX_BODY_BYTES,
+    MAX_EXTRA_BYTES,
     MAX_PAYLOAD_BYTES,
     PRIVATE,
     DeleteRequest,
@@ -30,6 +30,13 @@ from backend.lib.private_import_targets_schema import (
     timestamp,
 )
 from backend.lib.private_target_resolution import project_private_target, resolve_private_import_target
+from backend.lib.request_body import (
+    SMALL_BOUNDS,
+    BoundedJSONRoute,
+    JSONBodyBounds,
+    json_body_bounds,
+    json_body_on_lane,
+)
 
 TRACKER_BATCH_LIMIT = 100
 _TRACKER_BATCH_CONCURRENCY = 4
@@ -37,6 +44,12 @@ _TRACKER_BATCH_CONCURRENCY = 4
 # revision and at most 100 ids, so the 8 MiB allowance the body middleware
 # grants this whole prefix is never a legitimate size for them.
 _SMALL_BODY_BYTES = MAX_BODY_BYTES - MAX_PAYLOAD_BYTES
+# A save's metadata (extra_fields) is any JSON within MAX_EXTRA_BYTES of compact encoding, where each
+# list or object, and each comma with the item after it, takes at least two bytes, and each digit one.
+# The rest of the body is strings in a few dozen keys. The metadata is free-form, so a legitimate save
+# may hold a digit in every byte of it; the digit bound is therefore the schema maximum, not four times
+# a smaller figure.
+SAVE_BOUNDS = JSONBodyBounds(MAX_EXTRA_BYTES // 2 + 64, MAX_EXTRA_BYTES // 2 + 64, MAX_EXTRA_BYTES + 64)
 
 
 async def _screen_body(request: Request) -> None:
@@ -62,7 +75,7 @@ async def _screen_body(request: Request) -> None:
         raise PrivateTargetError("private_target_auth_required", 401)
 
 
-class PrivateTargetRoute(APIRoute):
+class PrivateTargetRoute(BoundedJSONRoute):
     def get_route_handler(self):
         original = super().get_route_handler()
 
@@ -144,6 +157,7 @@ class TrackerBatchRequest(Scope):
 
 
 @router.post("/resolved")
+@json_body_bounds(SMALL_BOUNDS)
 async def read_resolved_targets(data: TrackerBatchRequest, request: Request):
     """Tracker identity for many owned targets in one rate-limited request.
 
@@ -186,7 +200,8 @@ async def read_target(target_id: str, request: Request):
 
 
 @router.put("/{target_id}")
-async def save_target(target_id: str, data: SaveRequest, request: Request):
+@json_body_bounds(SAVE_BOUNDS)
+async def save_target(target_id: str, request: Request, data: SaveRequest = json_body_on_lane(SaveRequest)):
     identifier(target_id)
     if request.query_params:
         raise ValueError("Unexpected query")
@@ -196,6 +211,7 @@ async def save_target(target_id: str, data: SaveRequest, request: Request):
 
 
 @router.delete("/{target_id}")
+@json_body_bounds(SMALL_BOUNDS)
 async def delete_target(target_id: str, data: DeleteRequest, request: Request):
     identifier(target_id)
     if request.query_params:

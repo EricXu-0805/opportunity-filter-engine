@@ -25,6 +25,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from backend.lib.blocking import SINGLE_LLM_TIMEOUT_SECONDS, BlockingWorkTimeout, run_blocking
+from backend.lib.request_body import SMALL_BOUNDS, BoundedJSONRoute, json_body_bounds
 from src.collectors.url_parser import (
     PASTE_TEXT_MAX_CHARS,
     PASTE_TEXT_MIN_CHARS,
@@ -32,7 +33,7 @@ from src.collectors.url_parser import (
 )
 
 logger = logging.getLogger(__name__)
-router = APIRouter()
+router = APIRouter(route_class=BoundedJSONRoute)
 
 
 class ImportTextRequest(BaseModel):
@@ -50,6 +51,7 @@ class ImportTextResponse(BaseModel):
 
 
 @router.post("/import-text", response_model=ImportTextResponse)
+@json_body_bounds(SMALL_BOUNDS)
 async def import_text(req: ImportTextRequest) -> ImportTextResponse:
     trimmed = req.text.strip()
     if len(trimmed) < PASTE_TEXT_MIN_CHARS:

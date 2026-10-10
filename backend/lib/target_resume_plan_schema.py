@@ -3,8 +3,9 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from backend.lib.request_body import known_keys
 from backend.lib.target_resume_support_schema import ResumeSupportGroup
 
 PIPELINE_VERSION = "full-target-plan-v5"
@@ -14,6 +15,7 @@ MAX_BODY_BYTES = 2 * 1024 * 1024 + 64 * 1024
 
 class PlanOptions(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
+    _known_keys = model_validator(mode="before")(known_keys)
     target_pages: Literal[1, 2]
 
     @field_validator("target_pages", mode="before")
@@ -26,6 +28,7 @@ class PlanOptions(BaseModel):
 
 class FullTargetPlanRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
+    _known_keys = model_validator(mode="before")(known_keys)
     version: Literal[1]
     request_id: str = Field(min_length=1, max_length=80)
     locale: Literal["en", "zh"]

@@ -117,7 +117,10 @@ async def run_blocking(
 # wait is one request's longest C call, whatever the number of requests; the requests queue on the
 # lane instead (scripts/worst_inputs_lag.py and scripts/rewrite_route_lag.py measure it with
 # --concurrent). The contract and claim-lock checks of a full-target answer run here too, rather than
-# on run_blocking's workers. Provider calls never run here (run_blocking does those).
+# on run_blocking's workers, and so do the structural count of a body past the default body limit
+# (request_body), the reading and validating of the bodies of the other routes with a larger body
+# limit (request_body.json_body_on_lane) and the cold-email drafting and claim checks. Provider calls
+# never run here (run_blocking does those).
 _REQUEST_WORK_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ofe-request-work")
 
 

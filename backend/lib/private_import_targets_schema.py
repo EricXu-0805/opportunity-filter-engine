@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, StrictInt, field_validator
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, field_validator, model_validator
+
+from backend.lib.request_body import known_keys
 
 MAX_PAYLOAD_BYTES = 8 * 1024 * 1024
 MAX_BODY_BYTES = MAX_PAYLOAD_BYTES + 65536
@@ -54,8 +57,12 @@ def encoded(value: Any) -> bytes:
         raise ValueError("Invalid JSON") from None
 
 
+# A lone surrogate.
+_SURROGATE = re.compile("[\ud800-\udfff]")
+
+
 def _depth(value: Any, depth: int = 0) -> None:
-    if isinstance(value, str) and ("\x00" in value or any(0xD800 <= ord(c) <= 0xDFFF for c in value)):
+    if isinstance(value, str) and ("\x00" in value or _SURROGATE.search(value)):
         raise ValueError("Invalid JSON text")
     if depth > 32:
         raise ValueError("Invalid JSON nesting")
@@ -107,6 +114,7 @@ def opportunity(value: object) -> dict:
 
 class Scope(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
+    _known_keys = model_validator(mode="before")(known_keys)
     expected_owner_id: str
     _owner = field_validator("expected_owner_id")(owner)
 
