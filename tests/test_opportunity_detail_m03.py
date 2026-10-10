@@ -1227,6 +1227,61 @@ class TestCampusGraphContract:
             gaps = score_eligibility(history, _served(record)[1])[2]
             assert not any(text.startswith(("Prefers", "Our listing suggests")) for text in gaps), gaps
 
+    # The owner (2026-10-10): a list that welcomes every major is a full major
+    # fit for every student, as a direct match is. It used to score as a
+    # mismatch: 15 for a History student, below the 30 of a list naming none.
+    _OURS_ALL_MAJORS = "Our listing says this is open to all majors — not confirmed on the program page"
+
+    def test_a_list_that_welcomes_every_major_is_a_full_major_fit(self):
+        students = ({"year": "junior", "major": "History", "hard_skills": []},
+                    {"year": "junior", "major": "Biology", "hard_skills": []},
+                    {"year": "junior", "major": "Undeclared", "hard_skills": [], "exploring": True},
+                    {"year": "junior", "major": "", "hard_skills": []})
+        # What a direct match scores: only the major layer reads the major.
+        _, biology = _served(self._configured())
+        for majors in (["all"], ["All majors"], ["any department"],
+                       ["all", "ethics", "philosophy", "public policy"], ["Chemistry", "any department"]):
+            record = self._configured()
+            record["eligibility"]["majors"] = majors
+            _, ours = _served(record)
+            assert configured_fact(ours, "majors").state == FACT_UNSTATED, majors
+            for student in students:
+                score, fits, gaps = score_eligibility(student, ours)
+                assert score == score_eligibility(dict(student, major="Biology"), biology)[0], (majors, student)
+                assert self._OURS_ALL_MAJORS in fits, (majors, student, fits)
+                assert not any(text.startswith("Your major (") for text in fits), fits
+                assert not any(text.startswith(("Prefers", "Our listing suggests")) for text in gaps), gaps
+        assert _reason_priority(self._OURS_ALL_MAJORS) == _reason_priority("Open to all majors") == 6
+        # A major the list names is still a direct match, and says so.
+        record = self._configured()
+        record["eligibility"]["majors"] = ["all", "ethics", "philosophy", "public policy"]
+        _, fits, _ = score_eligibility({"year": "junior", "major": "Philosophy", "hard_skills": []},
+                                       _served(record)[1])
+        assert "Your major (Philosophy) may fit this program" in fits
+        assert self._OURS_ALL_MAJORS not in fits
+        assert int(MATCHER_VERSION.split(".")[0]) >= 22
+
+    def test_a_page_that_welcomes_every_major_makes_it_the_pages_line(self):
+        history = {"year": "junior", "major": "History", "hard_skills": []}
+        for majors, page, state in (
+            (["all"], "Open to students of all majors.", FACT_STATED),
+            (["Biology", "any department"], "Open to students in Biology or any department.", FACT_STATED),
+            # Beside a major it names, it is the page's welcome to every major
+            # that contradicts the list: the all-majors answer is the page's.
+            (["all", "Biology"], "Open to students of all majors.", FACT_CONTRADICTED),
+        ):
+            record = self._with_page(page)
+            record["eligibility"]["majors"] = majors
+            _, canonical = _served(record)
+            assert configured_fact(canonical, "majors").state == state, majors
+            _, fits, _ = score_eligibility(history, canonical)
+            assert "Open to all majors" in fits, (majors, fits)
+            assert self._OURS_ALL_MAJORS not in fits, (majors, fits)
+        # A posting's own list is the posting's answer.
+        posting = dict(copy.deepcopy(_served(self._configured())[1]), source="example_postings")
+        posting["eligibility"]["majors"] = ["all"]
+        assert "Open to all majors" in score_eligibility(history, posting)[1]
+
     def test_a_concern_from_our_listing_comes_after_the_firmer_eligibility_ones(self):
         # The compare view, the local summary and the AI prompt read only the
         # first two or three gap lines. Our listing's concerns follow the firmer

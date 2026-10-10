@@ -486,6 +486,19 @@ class TestFacultyMajorIsALabel:
         assert matched > outside
         assert any("department aligns" in f for f in fit), fit
 
+    def test_an_all_majors_label_is_still_only_a_label(self):
+        # A posting's ["all"] welcomes every major and is a full major fit; on
+        # a faculty record it is a label, and scores as no label does.
+        everyone = self._faculty()
+        everyone["eligibility"] = {**everyone["eligibility"], "majors": ["all"]}
+        unlabelled = self._faculty()
+        unlabelled["eligibility"] = {**unlabelled["eligibility"], "majors": []}
+        scored, fit, _ = score_eligibility(self.PROFILE, everyone)
+        assert scored == score_eligibility(self.PROFILE, unlabelled)[0]
+        assert not any("all majors" in f for f in fit), fit
+        posted = score_eligibility(self.PROFILE, dict(everyone, source_type="handshake"))[0]
+        assert posted > score_eligibility(self.PROFILE, dict(unlabelled, source_type="handshake"))[0]
+
     def test_department_credit_survives_faculty_claim_neutralization(self):
         from src.evidence import (
             FACULTY_MAJOR_LABELS_MARKER,
