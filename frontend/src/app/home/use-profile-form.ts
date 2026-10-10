@@ -9,11 +9,14 @@ import { parseGitHubProfile } from '@/lib/api';
 import { removeResumeEntries, validateExperienceEntries, withdrawResumeEntries } from '@/lib/experience-evidence';
 import { removeResumeMasterSources, resumeMasterEditBase, validateResumeMaster, withdrawResumeMaster } from '@/lib/resume-master';
 import {
+  browserMarkerNames,
   captureOwnerToken,
   isOwnerScopedLoadError,
+  isOwnerTokenEstablished,
   isOwnerTokenValid,
   isTokenOwnerStillCurrent,
   onLocalOwnerStateChange,
+  OwnerNotReadyError,
   type OwnerToken,
 } from '@/lib/identity-owner';
 import { clearMatchCache } from '@/lib/match-cache';
@@ -23,7 +26,7 @@ import { migrateProfile } from '@/lib/profile-compat';
 import { PROFILE_REFRESH_INTERVAL_MS, PROFILE_REFRESH_DEADLINE_MS } from '@/lib/use-profile-refresh';
 import { STORAGE_KEYS, HOME_SCHOOL_EVENT } from '@/lib/storage-keys';
 import { bySlug } from '@/lib/schools';
-import { onAuthChange } from '@/lib/supabase';
+import { getDeviceId, onAuthChange } from '@/lib/supabase';
 import {
   flushPendingProfileWrite,
   resolveProfileConflict,
@@ -147,6 +150,11 @@ export interface UseProfileFormResult {
   hydrationState: HydrationState;
   /** Read retry only; keeps same-owner inputs and never creates a default row. */
   retryProfileLoad: () => void;
+  /** The read failed only because another tab signed this browser in to an
+   *  account and this tab could not yet confirm the account's local data.
+   *  Meaningful while hydrationState is 'failed'; `retryProfileLoad` loads
+   *  the account's profile once that tab has finished. */
+  signedInElsewhere: boolean;
   profileRefreshStatus: HomeProfileRefreshStatus;
   retryProfileRefresh: () => void;
   isValid: boolean;
@@ -247,6 +255,14 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
   // The synchronous companion: a submit landing in the same tick as a failed
   // read must see the failure, not the state React has yet to commit.
   const hydrationStateRef = useRef<HydrationState>('loading');
+  // The last read was refused only because this browser could not yet vouch
+  // for the owner's local data, not because the read itself failed. Reset by
+  // every new attempt; see startLoad.
+  const ownerUnconfirmedRef = useRef(false);
+  // The screen moved from an identity it already had to a signed-in account:
+  // somebody signed in from another tab while this one was open.
+  const signedInElsewhereRef = useRef(false);
+  const [signedInElsewhere, setSignedInElsewhere] = useState(false);
   const [profileRefreshStatus, setProfileRefreshStatus] = useState<HomeProfileRefreshStatus>('ready');
   const profileRefreshStatusRef = useRef<HomeProfileRefreshStatus>('ready');
   const backgroundPausedEditsRef = useRef(false);
@@ -861,6 +877,9 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     hydrationReadyRef.current = true;
     hydrationStateRef.current = 'ready';
     setHydrationState('ready');
+    ownerUnconfirmedRef.current = false;
+    signedInElsewhereRef.current = false;
+    setSignedInElsewhere(false);
     // A read that failed and then succeeded must stop saying it failed. With
     // carried edits the save this hydration arms takes the status over
     // (saving → saved/error) a moment later; without them nothing else ever
@@ -1621,7 +1640,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     timer: ReturnType<typeof setTimeout>; trace: ProfileReadObserver;
   } | null>(null);
   const loadMountedRef = useRef(true);
-  const identityObservationRef = useRef<((uid: string | null) => void) | null>(null);
+  const identityObservationRef = useRef<((uid: string | null, account?: boolean) => void) | null>(null);
   const retireProfileLoad = useCallback(() => {
     const previous = activeLoadRef.current;
     if (!previous) return;
@@ -1634,7 +1653,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
   // same-uid re-observation re-runs startLoad; without this it would fire a
   // second attempt behind the first.
   const flushedGenerationsRef = useRef<Set<number>>(new Set());
-  const startLoad = useCallback((generation: number, replace = false) => {
+  const startLoad = useCallback((generation: number, replace = false, confirmOwner = false) => {
     if (!loadMountedRef.current || generation !== identityGenerationRef.current) return;
     const previous = activeLoadRef.current;
     if (!replace && previous?.generation === generation && !previous.controller.signal.aborted) return;
@@ -1642,6 +1661,8 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     stopBackgroundReadRef.current?.();
     publishProfileRefresh('ready');
     backgroundAbsenceRef.current = null;
+    ownerUnconfirmedRef.current = false;
+    setSignedInElsewhere(false);
     const trace = createProfileReadTrace('home');
     trace('started');
     // The origin of the screen this load is for. An edit made before the row
@@ -1687,7 +1708,16 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     activeLoadRef.current = attempt;
     const currentRead = () => loadMountedRef.current && activeLoadRef.current === attempt
       && generation === identityGenerationRef.current;
-    hydrateProfile(controller.signal, trace).then((hydration) => {
+    // After a read was refused because this browser could not yet vouch for
+    // the owner's local data, the session check that confirms it runs FIRST.
+    // loadProfile fixes its token before its own check runs, so the attempt
+    // whose check adopts a namespace another tab has just claimed for this
+    // account is refused anyway; left to the read, every first Retry after a
+    // sign-in from another tab failed exactly that way.
+    const read = confirmOwner
+      ? getDeviceId().then(() => hydrateProfile(controller.signal, trace))
+      : hydrateProfile(controller.signal, trace);
+    read.then((hydration) => {
       if (!currentRead() || controller.signal.aborted) return;
       // Deadline covers only the read. A legitimate recovered-outbox write
       // below remains governed by its existing save/owner/receipt rules.
@@ -1711,6 +1741,17 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         accepted = { token: hydration.token, generation };
         loadingOriginRef.current = accepted;
       } else if (!ownsScreen(accepted)) { trace('owner-rejected'); return; }
+      // The same exception one step later: this owner was known, but its
+      // namespace was not yet confirmed when the screen was issued (another
+      // tab was still handing the browser over to the account it signed in
+      // to). Nothing was ever written under that token, so the read that
+      // confirmed the namespace gives the screen its capability — and an edit
+      // already made on it moves along, or the save it arms is refused.
+      if (!isOwnerTokenEstablished(accepted.token) && isOwnerTokenValid(hydration.token, accepted.token.uid)) {
+        accepted = { token: hydration.token, generation };
+        loadingOriginRef.current = accepted;
+        if (editOriginRef.current === origin) editOriginRef.current = accepted;
+      }
       // Only a RESOLVED result — a row, or a confirmed-absent row —
       // settles the form. `hydration.profile` already carries this
       // browser's own unsent edits back on top of the cloud row.
@@ -1774,6 +1815,14 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         // failure belongs to the identity the read actually resolved.
         loadingOriginRef.current = { token: resolved, generation };
       }
+      // Refused for this screen's own, KNOWN owner only because this browser
+      // could not vouch for the owner's local data. The usual cause is another
+      // tab that signed in and is still moving this browser to the account,
+      // or has finished without this tab hearing anything but the auth event.
+      // (A signed-out screen has no owner to confirm and keeps its own rules.)
+      ownerUnconfirmedRef.current = isOwnerScopedLoadError(err) && err.ownerToken.uid !== null
+        && err.cause instanceof OwnerNotReadyError;
+      setSignedInElsewhere(ownerUnconfirmedRef.current && signedInElsewhereRef.current);
       // A read that FAILED is not "you have no profile": treating it as
       // one would let the next edit persist DEFAULT_PROFILE plus that
       // field over a row that still exists and simply could not be read.
@@ -1819,11 +1868,11 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       identityObservationRef.current?.(captureOwnerToken().uid);
       return;
     }
-    startLoad(identityGenerationRef.current, true);
+    startLoad(identityGenerationRef.current, true, ownerUnconfirmedRef.current);
   }, [ownsScreen, startLoad]);
 
   useEffect(() => {
-    const observeIdentity = (uid: string | null) => {
+    const observeIdentity = (uid: string | null, account = false) => {
       const firstObservation = lastUidRef.current === undefined;
       const observedOwner = captureOwnerToken();
       const ownerEpoch = observedOwner.epoch;
@@ -1850,6 +1899,9 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       // leak W-identity-owed pins. A genuine first-visit edit's frozen token
       // names nobody; that is what makes it the visitor's own.
       const virginScreen = !everHadRealUidRef.current && !rowEverAcceptedRef.current;
+      // A screen that already had an identity now belongs to a signed-in
+      // account: somebody signed in from another tab while it was open.
+      signedInElsewhereRef.current = !firstObservation && !virginScreen && account;
       const heldInputOrigin = screenOrigin();
       const inputOwner = heldInputOrigin?.token ?? academicMountOwnerRef.current;
       // The first observation still invalidates async work below. Confirming
@@ -2014,7 +2066,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       startLoad(generation);
     };
     identityObservationRef.current = observeIdentity;
-    const unsub = onAuthChange((s) => observeIdentity(s.user?.id ?? null));
+    const unsub = onAuthChange((s) => observeIdentity(s.user?.id ?? null, s.user !== null && s.isAnonymous === false));
     return () => {
       if (identityObservationRef.current === observeIdentity) identityObservationRef.current = null;
       unsub();
@@ -2437,8 +2489,20 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       // has a frozen origin, and a null one is not a current one — an effect
       // with nothing to act on behalf of says nothing.
       const armedForFailure = editOriginRef.current;
-      if (hydrationStateRef.current === 'failed'
-        && armedForFailure && ownsScreen(armedForFailure)) setSaveStatus('error');
+      if (hydrationStateRef.current !== 'failed' || !armedForFailure || !ownsScreen(armedForFailure)) return;
+      // A read refused only for want of this owner's confirmed namespace is
+      // asked for again by the edit itself — once the browser's marker names
+      // this owner, when a sync here can only adopt what another tab handed
+      // over. Before that, a sync could run this tab's own transition in the
+      // instant that tab has redeemed its grant but not yet claimed the
+      // guest's data, and sweep the guest's local-only data from under it.
+      if (ownerUnconfirmedRef.current && browserMarkerNames(armedForFailure.token.uid)) {
+        startLoad(identityGenerationRef.current, false, true);
+        return;
+      }
+      // While the note says another tab's sign-in is still being finished,
+      // nothing was attempted and the edit is kept, as the note promises.
+      if (!(ownerUnconfirmedRef.current && signedInElsewhereRef.current)) setSaveStatus('error');
       return;
     }
     // A shared draft is explicitly not the visitor's own profile — see
@@ -2507,7 +2571,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [profile, searchWeight, hydrationTick, commitSave, recordOutstandingIntents, ownsScreen, armRetryable, setSaveStatus]);
+  }, [profile, searchWeight, hydrationTick, commitSave, recordOutstandingIntents, ownsScreen, armRetryable, setSaveStatus, startLoad]);
 
   useEffect(() => {
     return () => {
@@ -3583,6 +3647,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     useCloudVersion,
     hydrationState,
     retryProfileLoad,
+    signedInElsewhere,
     profileRefreshStatus,
     retryProfileRefresh,
     isValid,

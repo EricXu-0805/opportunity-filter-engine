@@ -16,6 +16,7 @@ export function SubmitRow({
   canRetrySync,
   onRetrySync,
   onRetryProfileLoad,
+  signedInElsewhere = false,
   onKeepMyChanges,
   onUseCloudVersion,
   onSubmit,
@@ -38,6 +39,9 @@ export function SubmitRow({
   canRetrySync: boolean;
   onRetrySync: () => void;
   onRetryProfileLoad?: () => void;
+  /** The failed read is waiting on a sign-in another tab made; see
+   *  useProfileForm's `signedInElsewhere`. */
+  signedInElsewhere?: boolean;
   onKeepMyChanges: () => void;
   onUseCloudVersion: () => void;
   onSubmit: () => void;
@@ -95,12 +99,13 @@ export function SubmitRow({
       {hydrationState !== 'ready' && (
         <div className="mt-4 text-center text-[13px]" role={hydrationState === 'failed' ? 'alert' : 'status'}>
           <p data-testid="hydration-note" className={hydrationState === 'failed' ? 'text-amber-700' : 'text-gray-500'}>
-            {t(hydrationState === 'failed' ? 'home.actions.profileLoadFailed' : 'home.actions.profileLoading')}
+            {t(hydrationState !== 'failed' ? 'home.actions.profileLoading'
+              : signedInElsewhere ? 'home.actions.profileSignedInElsewhere' : 'home.actions.profileLoadFailed')}
           </p>
           {hydrationState === 'failed' && onRetryProfileLoad && (
             <button type="button" data-testid="retry-profile-load" onClick={() => onRetryProfileLoad()}
               className="mt-2 min-h-11 rounded-lg px-4 py-2 font-medium text-indigo-700 underline underline-offset-2 hover:bg-indigo-50">
-              {t('home.actions.retryProfileLoad')}
+              {t(signedInElsewhere ? 'home.actions.loadAccountProfile' : 'home.actions.retryProfileLoad')}
             </button>
           )}
         </div>

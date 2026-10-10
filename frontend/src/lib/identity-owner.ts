@@ -736,6 +736,23 @@ export function isLocalOwnerReadyNow(): boolean {
 }
 
 /**
+ * Whether the browser's shared marker names `uid`, in any phase. Read-only and
+ * lock-free: it grants nothing and says nothing about THIS tab's readiness.
+ *
+ * What it does tell a tab still blocked for `uid` is whether a sync here can
+ * only adopt or finish `uid`'s own namespace. While the marker still names the
+ * previous identity, another tab's Flow B hand-off may be between redeeming
+ * its grant (which removes the deferral) and claiming the guest's namespace,
+ * and a sync from here in that instant allocates a fresh generation and sweeps
+ * the guest's local-only data before the claim can carry it over.
+ */
+export function browserMarkerNames(uid: string | null): boolean {
+  if (uid === null || typeof window === 'undefined') return false;
+  const read = readMarker();
+  return read.status === 'present' && read.marker.uid === uid;
+}
+
+/**
  * Readiness-gated read for a USER_SCOPED_KEYS/prefix key. Every reader of
  * one of these fixed key names (match-cache, SchoolConfirmGate, the
  * favorites/profile local fallbacks, EmailMeButton, the semantic-rerank/
@@ -1021,6 +1038,13 @@ export function captureOwnerToken(): OwnerToken {
     epoch: currentOwnerEpoch,
     generation: currentGeneration ?? UNESTABLISHED_GENERATION,
   };
+}
+
+/** False for a token captured before any transition had confirmed a namespace
+ *  for its owner. Such a token never validates, and nothing was ever written
+ *  under it. */
+export function isOwnerTokenEstablished(token: OwnerToken): boolean {
+  return token.generation !== UNESTABLISHED_GENERATION;
 }
 
 /**
