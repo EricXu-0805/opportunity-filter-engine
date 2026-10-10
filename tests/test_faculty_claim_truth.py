@@ -1007,7 +1007,7 @@ def test_a_derived_major_list_is_not_a_stated_preference():
     assert any(g.startswith("Prefers ") for g in stated.reasons_gap)
 
     ours = rank_opportunity(profile, program(inferred=True), precomputed_sim=0.2)
-    assert not any(g.startswith("Prefers ") for g in ours.reasons_gap)
+    assert not any(g.startswith(("Prefers ", "Our listing suggests ")) for g in ours.reasons_gap)
 
 
 def test_the_sro_collector_stamps_the_majors_it_derives():
@@ -1257,7 +1257,7 @@ def test_a_class_year_we_derived_is_not_a_targeting_claim():
         _listing(prose="A program.", raw=False, preferred_year=["senior"], inferred_year=True),
     )
     assert any("Typically targets" in g for g in stated.reasons_gap)
-    assert not any("Typically targets" in g for g in derived.reasons_gap)
+    assert not any(g.startswith(("Typically targets", "Our listing suggests")) for g in derived.reasons_gap)
     # And it stops costing them 30% of the eligibility layer.
     assert derived.eligibility_score > stated.eligibility_score
 
