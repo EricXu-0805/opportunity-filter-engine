@@ -58,8 +58,9 @@ const button = (name: string) => screen.getByRole('button', { name: 'coldEmail.'
 const change = (name: Parameters<typeof field>[0], value: string) => fireEvent.change(field(name), { target: { value } });
 async function ready() {
   await screen.findByDisplayValue(draft.body);
-  await waitFor(() => expect(api.stream).toHaveBeenCalledOnce());
+  await waitFor(() => expect(button('generateAiDraft')).toBeEnabled());
   await act(async () => {});
+  expect(api.stream).not.toHaveBeenCalled();
 }
 function edit() { change('subject', edits.subject); change('body', edits.body); change('to', edits.recipient); change('requestLabel', edits.request); }
 function expectEdits() {

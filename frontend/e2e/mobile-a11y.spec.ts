@@ -16,10 +16,11 @@ import { en, zh } from '../src/i18n/dictionaries';
  * its fix lands; only entries marked mayBeAbsent are exempt.
  *
  * Every cold-email request is answered here, so none reaches the backend or a
- * model: the template variants get a fixed draft and the rest, including the
- * AI draft the editor starts on its own, get a 503. Every non-loopback request
- * is aborted. Results come from the local backend and the tracker from the
- * loopback Supabase stub, so the walk runs the shipped code.
+ * model: the template variants get a fixed draft and the rest get a 503. The
+ * editor starts no AI draft until its Generate control is clicked, and the walk
+ * never clicks it. Every non-loopback request is aborted. Results come from
+ * the local backend and the tracker from the loopback Supabase stub, so the
+ * walk runs the shipped code.
  *
  * Not covered here and still owed by M59: a real screen reader (VoiceOver,
  * TalkBack), real 200% zoom, and real phones.
@@ -137,11 +138,11 @@ async function hermetic(context: BrowserContext) {
   });
 }
 
-// The editor starts an AI draft (POST /api/cold-email/stream) by itself once
-// the template lands. Passed through, it reaches the local backend, which calls
-// the paid model whenever its environment has a provider key: a developer's
-// backend/.env, or a dev backend Playwright reuses. A 503 leaves the editor as
-// CI's keyless backend does: the automatic draft keeps the template silently.
+// Any other cold-email request (an AI draft, POST /api/cold-email/stream, starts
+// only on a Generate click) would reach the local backend, which calls the paid
+// model whenever its environment has a provider key: a developer's
+// backend/.env, or a dev backend Playwright reuses. Recording and refusing it
+// with a 503 keeps the walk model-free and shows whether opening asked for one.
 // Routes registered later win, so the variants stub answers before the 503.
 async function stubColdEmail(page: Page, refused: string[]) {
   await page.route('**/api/cold-email**', route => {
@@ -151,9 +152,11 @@ async function stubColdEmail(page: Page, refused: string[]) {
   await page.route('**/api/cold-email/variants', route => {
     const request = route.request().postDataJSON();
     const receipt = contactReceiptForRequest(request);
+    // A recommended tone puts its badge on the selected tone chip, so the scan
+    // checks that badge's contrast too.
     return route.fulfill({ json: {
       opportunity_id: request.opportunity_id, target_version: request.expected_target_version,
-      contact_context_receipt: receipt, recipient_status: 'revealed', lab_type: null,
+      contact_context_receipt: receipt, recipient_status: 'revealed', lab_type: null, recommended_style: 'professional',
       variants: [{ id: 'v1', label: 'Template A', subject: 'Interested in your research',
         body: 'Dear Professor,\n\nI am interested in your lab.\n\nBest,\nAlex', recipient_email: 'prof@illinois.edu',
         mailto_link: 'mailto:prof@illinois.edu', contact_context_receipt: receipt }],
@@ -235,12 +238,13 @@ for (const locale of ['en', 'zh'] as const) {
 
     await page.getByRole('button', { name: t.detail.draftEmail, exact: true }).click();
     await expect(page.getByTestId('cold-email-footer')).toBeVisible({ timeout: 20_000 });
-    // The automatic AI draft has been tried and refused, so the scan sees the
-    // editor in the state it keeps, not mid-request. This wait assumes the
-    // editor starts that draft by itself; if the draft becomes opt-in, the
-    // wait has to change with it.
-    await expect.poll(() => refused, { message: 'the editor\'s AI draft request was answered here' })
-      .toContain('/api/cold-email/stream');
+    // Opening asks for no AI draft (M75), so the editor settles on the template
+    // once its Generate control is ready; the scan sees that state.
+    await expect(page.getByRole('button', { name: t.coldEmail.generateAiDraft, exact: true })).toBeEnabled();
+    // A request that opening starts a moment after the control is ready would
+    // be missed by an immediate read, so give it a short window first.
+    await page.waitForTimeout(500);
+    expect(refused, 'opening the editor must not request an AI draft').not.toContain('/api/cold-email/stream');
     // aria-modal hides the page behind it, so only the dialog is the editor.
     findings.push(...await scan(page, 'cold-email-editor', locale, '[role="dialog"][aria-modal="true"]'));
     await page.keyboard.press('Escape');

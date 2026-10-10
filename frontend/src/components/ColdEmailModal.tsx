@@ -258,6 +258,10 @@ function variantLabel(variant: { id: string; label: string }, t: Replier): strin
   return Object.hasOwn(VARIANT_LABEL_KEYS, variant.id) ? t(VARIANT_LABEL_KEYS[variant.id]) : variant.label;
 }
 
+function historyFullMessage(locale: string): string {
+  return locale === 'zh' ? '已保存 10 个版本。请先删除不需要的旧版；当前稿未替换。' : 'There are 10 saved versions. Delete an unwanted version first. Your current draft is unchanged.';
+}
+
 // The backend 422s every cold-email entry point with this error code when the
 // profile has no name (emails must never go out addressed from "Student").
 // Structured API errors retain the Pydantic error code without exposing the
@@ -492,7 +496,7 @@ export default function ColdEmailModal({
   const [nameRequired, setNameRequired] = useState(false);
   const missingStudentName = !(profile.name ?? '').trim();
   const [variants, setVariants] = useState<EmailVariant[]>([]);
-  const [aiVariant, setAiVariant] = useState<EmailVariant | null>(null);
+  const [aiVariant, setAiVariant] = useState<(EmailVariant & { style: EmailStyle }) | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   // Which pipeline stage the streaming generation is in (null = not streaming
   // or stage unknown); drives the AI pill's progress label.
@@ -500,9 +504,16 @@ export default function ColdEmailModal({
   const [activeVariant, setActiveVariant] = useState(0);
   const [labType, setLabType] = useState<LabType | null>(null);
   // Voice overlay for the AI draft. `selectedStyle` seeds from the lab-type
-  // recommendation once variants load; the picker re-generates on change.
+  // recommendation once variants load; the picker only chooses the voice that
+  // the next Generate click uses.
   const [selectedStyle, setSelectedStyle] = useState<EmailStyle>('professional');
   const [recommendedStyle, setRecommendedStyle] = useState<EmailStyle | null>(null);
+  // The tone of the body in the editor, which a version records when the draft
+  // is replaced. An AI draft, a restored version or a reopened draft brings its
+  // own, kept while the body is unchanged, so a subject edit keeps it; an edited
+  // body has none, like a template.
+  const [draftTone, setDraftTone] = useState<{ style: EmailStyle; body: string } | null>(null);
+  const toneOf = (text: string) => draftTone && draftTone.body === text ? draftTone.style : null;
 
   const [subject, setSubject] = useState('');
   const [subjectFormatConfirmation, setSubjectFormatConfirmation] = useState<{ subject: string; version: string } | null>(null);
@@ -670,15 +681,12 @@ export default function ColdEmailModal({
   const chatHistoryRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
-  // AI is the default engine: one automatic pipeline run per open, kicked off
-  // once the template variants land. Reset on close.
-  const autoFiredRef = useRef(false);
   // A failed receipt may be checked again without spending generation or
   // replacing a draft. Only an explicit generation intent clears this fence.
   const targetCheckOnlyRef = useRef(false);
-  // Real AI drafts per (opportunity, style): reopening the same opportunity
-  // reuses the draft instead of re-billing the pipeline. Fallback responses
-  // are never cached (they retry on the next open). Cleared when the profile
+  // Real AI drafts per (opportunity, style): a later Generate click in the same
+  // tone reuses the draft instead of re-billing the pipeline. Fallback
+  // responses are never cached (the next click retries). Cleared when the profile
   // prop changes — a draft must not outlive a profile edit. W12: entries
   // also expire after AI_CACHE_TTL_MS and whenever the backend's
   // corpus_version or pipeline_version moves, so a long-lived tab does not
@@ -877,7 +885,7 @@ export default function ColdEmailModal({
       }
       if (keepEditor) {
         const first = data.variants[0];
-        if (!await changeDraftRef.current({ subject: first.subject, body: first.body, selectedStyle: data.recommended_style ?? draftPayloadRef.current.selectedStyle },
+        if (!await changeDraftRef.current({ subject: first.subject, body: first.body, selectedStyle: data.recommended_style ?? draftPayloadRef.current.selectedStyle, draftStyle: null },
           'regenerated', () => current() && revision === draftRevisionRef.current, () => {})) return;
         if (!current() || revision !== draftRevisionRef.current) return;
       }
@@ -903,7 +911,7 @@ export default function ColdEmailModal({
       if (!preserveDraft && revision === draftRevisionRef.current && data.variants.length > 0) {
         const first = data.variants[0];
         setSubject(first.subject);
-        setBody(first.body);
+        setBody(first.body); setDraftTone(null);
         draftSourcesRef.current = { profile: JSON.stringify(requestProfile), target: expectedTargetVersion, contact: serializeEmailContactContext(requestContactContext) };
         setOriginKey(JSON.stringify(draftSourcesRef.current));
         setRestoredSources(null);
@@ -916,9 +924,9 @@ export default function ColdEmailModal({
         setProfileChanged(false);
         contextEditedRef.current = false;
         setContextChanged(false);
-        // Explicit regeneration runs the normal AI pipeline after fresh templates.
+        // Explicit regeneration rebuilds the template draft only; the AI draft
+        // still needs its own Generate click.
         if (keepEditor) {
-          autoFiredRef.current = false;
           // A newly built draft needs its own explicit send attestation.
           // Keep the historical contact/reminder record and allow its pending
           // receipt to update the parent, without confirming this new draft.
@@ -964,7 +972,7 @@ export default function ColdEmailModal({
   }, [privateMode, privateContext, contactPolicyBlock, paperReadingCurrent, locale, requestProfile, requestContactContext, opportunityId, expectedTargetVersion, t, missingStudentName, captureDraftSession, reportTargetVersionFailure, reportReadingChange, setSendError]);
 
   type WritingIntent = { kind: 'variants'; preserveDraft?: boolean; keepEditor?: boolean }
-    | { kind: 'ai'; style: EmailStyle; selectExisting?: boolean }
+    | { kind: 'ai'; style: EmailStyle }
     | { kind: 'refine'; instruction: string; typed?: boolean; label?: string; edit: EmailEditRequest }
     | { kind: 'accept-edit'; id: number }
     | { kind: 'coursework'; edit: EmailEditRequest }
@@ -987,7 +995,7 @@ export default function ColdEmailModal({
       if (profileChangedRef.current || profileChanged || profileRegenerating) return;
       if (intent.kind === 'accept-edit') { void acceptEdit(intent.id); return; }
       if (intent.kind === 'ai') {
-        if (intent.selectExisting && aiVariant) selectVariant(variants.length);
+        if (aiVariant?.method === 'ai' && aiVariant.style === intent.style) selectVariant(variants.length);
         else void generateAi(intent.style);
         return;
       }
@@ -1027,7 +1035,7 @@ export default function ColdEmailModal({
     if (retiredRefine !== null) setChatMessages(messages => messages.map(message =>
       message.requestId === retiredRefine ? { ...message, content: t('coldEmail.profileEditRetired') } : message));
     aiInFlightRef.current = false; refineInFlightRef.current = null;
-    aiCacheRef.current.clear(); autoFiredRef.current = true;
+    aiCacheRef.current.clear();
     setLoading(false); setAiLoading(false); setAiStage(null); setRefining(false);
     setProfileRegenerating(false); setProfileChanged(true); setContextChanged(true);
     setContactState(previous => ({ ...previous, dirty: true, revision: previous.revision + 1 }));
@@ -1062,10 +1070,12 @@ export default function ColdEmailModal({
       setPersistenceSession(nextSession);
       if (stored.draft) {
         const value = stored.draft;
-        autoFiredRef.current = true; editorUsedRef.current = true;
+        editorUsedRef.current = true;
         contextEditedRef.current = true;
         setDraftRestored(true); setLoading(false); metadataRefreshingRef.current = true; setMetadataRefreshing(true);
         setSubject(value.subject); setBody(value.body);
+        // A draft saved before its own tone was recorded falls back to the picker's.
+        setDraftTone(value.draftStyle === null ? null : { style: value.draftStyle ?? value.selectedStyle, body: value.body });
         setRecipient(value.manualRecipient ?? ''); recipientEditedRef.current = value.manualRecipient !== undefined;
         setSelectedStyle(value.selectedStyle); setChatInput(value.pendingEdit); setActiveVariant(-1);
         setSavedVersions(value.history); setSourceReview('pending');
@@ -1091,7 +1101,6 @@ export default function ColdEmailModal({
       setDraftRestored(false); setDraftClosing(false); metadataRefreshingRef.current = false; setMetadataRefreshing(false); setPendingPanel(null); setPanelSavable(true); setPendingSupplement(null); setSupplementSavable(true); lastSupplementSnapshotRef.current = null;
       setRestoredSources(null); setSourceSignatures(null);
       cancelCompose();
-      autoFiredRef.current = false;
       contextDirtyRef.current = false; contextEditedRef.current = false;
       supplementScopeRef.current = null;
       setSupplementSession(null); setSupplementExpanded(false); setSupplementProfile(null);
@@ -1134,7 +1143,7 @@ export default function ColdEmailModal({
       setRefining(false);
       setLabType(null);
       setSelectedStyle('professional');
-      setRecommendedStyle(null);
+      setRecommendedStyle(null); setDraftTone(null);
       editorUsedRef.current = false;
       setSubject(''); setSubjectFormatConfirmation(null);
       setBody('');
@@ -1197,7 +1206,7 @@ export default function ColdEmailModal({
     if (!draftRestored) { restoredMetadataRef.current = false; return; }
     if (!isOpen || !sourceReady || contextDirty || profileChanged || !paperReadingCurrent || restoredMetadataRef.current) return;
     restoredMetadataRef.current = true;
-    // Refresh verified recipient/metadata only; keep the editor and suppress automatic AI.
+    // Refresh the verified recipient and metadata only; the restored draft stays in the editor.
     void fetchVariantsRef.current(true);
   }, [draftRestored, isOpen, sourceReady, contextDirty, profileChanged, paperReadingCurrent]);
 
@@ -1216,7 +1225,7 @@ export default function ColdEmailModal({
     else markDraftUnsaved('too_large');
   }, [markDraftUnsaved, opportunityId]);
   const draftPayload: ColdEmailDraftPayload = {
-    subject, body, selectedStyle, pendingEdit: chatInput, context: requestContactContext,
+    subject, body, selectedStyle, draftStyle: toneOf(body), pendingEdit: chatInput, context: requestContactContext,
     history: savedVersions, editScope: scopeNeedsChoice || invalidSelection ? 'reselect' : selection?.body === body ? selection.range : 'full',
     pendingPanel, pendingSupplement,
     sources: originKey && sourceSignatures?.key === originKey ? sourceSignatures.value : restoredSources ?? NO_DRAFT_SOURCES,
@@ -1236,7 +1245,7 @@ export default function ColdEmailModal({
       let settle!: () => void; const pending = new Promise<void>(resolve => { settle = resolve; }); versionPendingRef.current = pending;
       try {
         if (before.history.length >= COLD_EMAIL_DRAFT_LIMITS.historyItems) {
-          setVersionError(locale === 'zh' ? '已保存 10 个版本。请先删除不需要的旧版；当前稿未替换。' : 'There are 10 saved versions. Delete an unwanted version first. Your current draft is unchanged.');
+          setVersionError(historyFullMessage(locale));
           return false;
         }
         let previousSources = before.sources;
@@ -1249,11 +1258,16 @@ export default function ColdEmailModal({
           contact_sig: await emailDraftDigest(contactSerialized), target_version: expectedTargetVersion };
         if (!current()) return false;
         const variant = allVariants[activeVariant];
+        // A version keeps the tone of its own body, not the picker's, which only
+        // chooses the next AI draft. A template reads the same in every tone, and
+        // a fallback or an edited body has no tone either, so those record the
+        // recommended tone, or the picker's when none is recommended.
         const saved: ColdEmailDraftVersion = { id: crypto.randomUUID(), createdAt: new Date().toISOString(), reason,
-          subject: before.subject, body: before.body, selectedStyle: before.selectedStyle, sources: previousSources,
+          subject: before.subject, body: before.body, selectedStyle: before.draftStyle ?? recommendedStyle ?? before.selectedStyle, sources: previousSources,
           origin: activeVariant < 0 || (variant && (variant.body !== before.body || variant.subject !== before.subject))
             ? 'manual' : variant?.method === 'ai' ? 'ai' : variant ? 'template' : 'unknown', variantId: variant?.id ?? null };
-        const candidate: ColdEmailDraftPayload = { ...before, ...next, sources, history: [...before.history, saved], editScope: next.editScope ?? 'full' };
+        const candidate: ColdEmailDraftPayload = { ...before, ...next, sources, history: [...before.history, saved], editScope: next.editScope ?? 'full',
+          draftStyle: next.draftStyle !== undefined ? next.draftStyle : toneOf(next.body ?? before.body) };
         if (JSON.stringify(candidate).length > COLD_EMAIL_DRAFT_LIMITS.total) {
           setVersionError(locale === 'zh' ? '版本内容已超过本地保存容量。请删除不需要的旧版；当前稿未替换。' : 'The versions exceed local storage capacity. Delete an unwanted version first. Your current draft is unchanged.');
           return false;
@@ -1292,16 +1306,20 @@ export default function ColdEmailModal({
 
   async function restoreSavedVersion() {
     const comparison = versionCompare;
-    if (!comparison || !editBaseCurrent(comparison.base) || !savedVersions.some(v => v.id === comparison.version.id)) return;
+    // Restoring retires a Generate in flight, so it waits rather than discard a
+    // paid draft (its controls are disabled then too). That includes a Generate
+    // still in its profile check, which could start the model call mid-save.
+    if (!comparison || aiInFlightRef.current || action.busy || !editBaseCurrent(comparison.base) || !savedVersions.some(v => v.id === comparison.version.id)) return;
     const version = comparison.version;
     const scope = draftPayloadRef.current.editScope === 'full' ? 'full' : 'reselect';
-    await changeDraftRef.current({ subject: version.subject, body: version.body, selectedStyle: version.selectedStyle, sources: version.sources, editScope: scope }, 'restored',
+    await changeDraftRef.current({ subject: version.subject, body: version.body, selectedStyle: version.selectedStyle, draftStyle: version.selectedStyle, sources: version.sources, editScope: scope }, 'restored',
       () => editBaseCurrent(comparison.base) && savedVersions.some(v => v.id === version.id), () => {
         clearEmailRevisions(); action.cancel(); cancelCompose();
         aiRequestRef.current += 1; variantRequestRef.current += 1; refineInFlightRef.current = null; aiInFlightRef.current = false;
-        setAiLoading(false); setAiStage(null); setRefining(false); autoFiredRef.current = true;
+        setAiLoading(false); setAiStage(null); setRefining(false);
         draftRevisionRef.current += 1; setUserEditRevision(value => value + 1);
         setSubject(version.subject); setBody(version.body); setSelectedStyle(version.selectedStyle); setActiveVariant(-1);
+        setDraftTone({ style: version.selectedStyle, body: version.body });
         setScopeNeedsChoice(scope === 'reselect'); setVersionCompare(null);
         draftSourcesRef.current = null; setOriginKey(null); setRestoredSources(version.sources); setSourceReview('pending');
         setDraftRestored(true); metadataRefreshingRef.current = true; setMetadataRefreshing(true); restoredMetadataRef.current = false;
@@ -1363,7 +1381,6 @@ export default function ColdEmailModal({
     aiCacheRef.current.clear();
     const hasDraft = contextEditedRef.current || editorUsedRef.current || !!(subject || body || recipient);
     profileChangedRef.current = hasDraft;
-    autoFiredRef.current = hasDraft;
     // New material must not erase an editor or let an old response overwrite it.
     setVariants([]); setAiVariant(null); setAiLoading(false); setAiStage(null); setRefining(false);
     setLoading(!hasDraft); setError(null); if (!targetCheckOnlyRef.current) setTargetVersionError(null); setNameRequired(false); setExperienceUsage(null); setTargetConditions(null);
@@ -1523,13 +1540,14 @@ export default function ColdEmailModal({
     const v = allVariants[idx];
     if (!sourceReadyRef.current || contextDirtyRef.current || targetVersionError || profileChanged || profileRegenerating || !v) return;
     const base = captureEditBase();
-    await changeDraftRef.current({ subject: v.subject, body: v.body }, 'variant', () => editBaseCurrent(base), () => {
+    const tone = v === aiVariant && v.method === 'ai' ? aiVariant.style : null;
+    await changeDraftRef.current({ subject: v.subject, body: v.body, draftStyle: tone }, 'variant', () => editBaseCurrent(base), () => {
     draftRevisionRef.current += 1;
     noteUserEdit();
     clearEmailRevisions();
     setActiveVariant(idx);
     setSubject(v.subject);
-    setBody(v.body);
+    setBody(v.body); setDraftTone(tone ? { style: tone, body: v.body } : null);
     draftSourcesRef.current = { profile: JSON.stringify(requestProfile), target: expectedTargetVersion, contact: serializeEmailContactContext(requestContactContext) };
     setOriginKey(JSON.stringify(draftSourcesRef.current));
     setRestoredSources(null);
@@ -1545,31 +1563,34 @@ export default function ColdEmailModal({
     });
   }
 
-  // Generate (or re-generate) the AI draft in a given voice. Used by the
-  // automatic run on open (AI is the default engine; `auto: true`), the ✨ AI
-  // pill, and the tone picker. Auto mode differs in three ways: it reports
-  // nothing until it succeeds (a fallback the user never asked for stays
-  // silent), it never clobbers a draft the user has meanwhile edited or
-  // switched away from, and it seeds/serves the per-open cache.
-  const generateAi = useCallback(async (style: EmailStyle, opts?: { auto?: boolean }) => {
+  // Generate (or re-generate) the AI draft in a given voice. The only caller
+  // is the Generate pill, so every model call here follows a click (M75:
+  // opening the editor, choosing a tone and rebuilding templates never call
+  // it). A response never clobbers a draft the user has meanwhile edited or
+  // switched away from. A real AI draft then waits on the pill in its tone
+  // and in the cache; a template fallback is neither, so the next click asks
+  // again.
+  const generateAi = useCallback(async (style: EmailStyle) => {
     if (!sourceReadyRef.current || contextDirtyRef.current || !paperReadingCurrent || contactPolicyBlock || profileChanged || profileRegenerating || !variantsReadyRef.current || aiInFlightRef.current || refineInFlightRef.current !== null || missingStudentName) return;
     if (!expectedTargetVersion) { reportTargetVersionFailure('unavailable'); return; }
     if (targetVersionError) return;
+    // Showing a new draft first saves the one it replaces. At the version cap
+    // the result could be neither shown nor kept, so say so before paying.
+    if (draftPayloadRef.current.history.length >= COLD_EMAIL_DRAFT_LIMITS.historyItems) { setVersionError(historyFullMessage(locale)); return; }
     const sessionCurrent = captureDraftSession();
     const request = ++aiRequestRef.current;
     const current = () => sessionCurrent() && request === aiRequestRef.current;
     const revision = draftRevisionRef.current;
-    const auto = opts?.auto ?? false;
     const aiIdx = variants.length;
-    if (auto) setSelectedStyle(style);
 
     const applyResponse = async (
       resp: ColdEmailResponse,
       select: boolean,
       contactIsCurrent = true,
     ) => {
-      const v: EmailVariant = {
+      const v: EmailVariant & { style: EmailStyle } = {
         id: AI_VARIANT_ID,
+        style,
         label: t('coldEmail.aiVariantLabel'),
         subject: resp.subject,
         body: resp.body,
@@ -1581,7 +1602,7 @@ export default function ColdEmailModal({
         experience_usage: resp.experience_usage,
         target_conditions: resp.target_conditions,
       };
-      if (select && !auto && !await changeDraftRef.current({ subject: v.subject, body: v.body, selectedStyle: style }, 'regenerated',
+      if (select && !await changeDraftRef.current({ subject: v.subject, body: v.body, selectedStyle: style, draftStyle: v.method === 'ai' ? style : null }, 'regenerated',
         () => current() && draftRevisionRef.current === revision, () => {})) return false;
       if (!current() || (select && draftRevisionRef.current !== revision)) return false;
       setAiVariant(v);
@@ -1593,7 +1614,7 @@ export default function ColdEmailModal({
         clearEmailRevisions();
         setSelectedStyle(style); setActiveVariant(aiIdx);
         setSubject(v.subject);
-        setBody(v.body);
+        setBody(v.body); setDraftTone(v.method === 'ai' ? { style, body: v.body } : null);
         draftSourcesRef.current = { profile: JSON.stringify(requestProfile), target: expectedTargetVersion, contact: serializeEmailContactContext(requestContactContext) };
         setOriginKey(JSON.stringify(draftSourcesRef.current));
         setRestoredSources(null);
@@ -1625,12 +1646,10 @@ export default function ColdEmailModal({
 
     aiInFlightRef.current = true;
     setAiLoading(true);
-    if (!auto) {
-      setChatMessages((prev) => [
-        ...prev,
-        { role: 'assistant', content: t('coldEmail.tone.generating', { style: t(`coldEmail.tone.${style}`) }) },
-      ]);
-    }
+    setChatMessages((prev) => [
+      ...prev,
+      { role: 'assistant', content: t('coldEmail.tone.generating', { style: t(`coldEmail.tone.${style}`) }) },
+    ]);
     try {
       // Confirmed entries travel in the API's evidence envelope. The modal
       // never extracts raw strings or confirms an imported experience itself.
@@ -1666,7 +1685,6 @@ export default function ColdEmailModal({
         });
         if (resp.corpus_version) corpusVersionRef.current = resp.corpus_version;
       }
-      if (auto && resp.method !== 'ai') return; // silent — the user never asked
       if (!await applyResponse(resp, draftRevisionRef.current === revision)) return;
       setChatMessages((prev) => [
         ...prev,
@@ -1683,7 +1701,7 @@ export default function ColdEmailModal({
         setChatMessages(messages => [...messages, { role: 'assistant', content: emailInputTooLargeMessage(locale) }]);
       } else if (current() && readingChanged(error)) reportReadingChange();
       else if (current() && failure) reportTargetVersionFailure(failure);
-      else if (current() && !auto) {
+      else if (current()) {
         setChatMessages((prev) => [
           ...prev,
           { role: 'assistant', content: t('coldEmail.aiFailed') },
@@ -1698,23 +1716,20 @@ export default function ColdEmailModal({
     }
   }, [locale, contactPolicyBlock, paperReadingCurrent, profileChanged, profileRegenerating, missingStudentName, variants.length, requestProfile, requestContactContext, contactFingerprint, opportunityId, expectedTargetVersion, targetVersionError, labType, t, captureDraftSession, reportTargetVersionFailure, reportReadingChange, clearEmailRevisions]);
 
-  // AI is the default engine: once the template variants land, run the
-  // pipeline once automatically. The template is the instant placeholder; the
-  // AI draft takes over on success (unless the user already started editing).
-  useEffect(() => {
-    if (privateMode || !sourceReady || !isOpen || profileChanged || profileRegenerating || !variantsReadyRef.current || loading || variants.length === 0 || autoFiredRef.current) return;
-    autoFiredRef.current = true;
-    generateAi(selectedStyle, { auto: true });
-  }, [privateMode, sourceReady, isOpen, profileChanged, profileRegenerating, loading, variants.length, selectedStyle, generateAi]);
+  // The pill switches to an AI draft that already exists in the chosen tone;
+  // otherwise it is the Generate control.
+  const aiDraftForTone = aiVariant?.method === 'ai' && aiVariant.style === selectedStyle;
 
   function handleAiPillClick() {
     if (metadataRefreshingRef.current || versionBusyRef.current || aiLoading || action.busy) return;
-    action.request({ kind: 'ai', style: selectedStyle, selectExisting: true });
+    action.request({ kind: 'ai', style: selectedStyle });
   }
 
+  // Choosing a tone only sets the voice for the next Generate click. The
+  // template is the same in every tone, so the editor stays as it is.
   function handleToneClick(style: EmailStyle) {
     if (metadataRefreshingRef.current || versionBusyRef.current || aiLoading || action.busy) return;
-    action.request({ kind: 'ai', style });
+    setSelectedStyle(style);
   }
 
   function refineLimitMessage(field: string, max: number): string {
@@ -1731,16 +1746,15 @@ export default function ColdEmailModal({
   }
 
   // A suggestion is inert until an explicit accept passes fresh source checks.
+  // A refine never starts while a Generate is in flight (its controls are
+  // disabled then too), so it cannot discard a draft the student paid for.
   async function runRefine(instruction: string, edit: EmailEditRequest, typed = false) {
-    if (!editBaseCurrent(edit.base) || !sourceReadyRef.current || contextDirtyRef.current || !paperReadingCurrent || contactPolicyBlock || profileChanged || profileRegenerating || refineInFlightRef.current !== null) return;
+    if (!editBaseCurrent(edit.base) || !sourceReadyRef.current || contextDirtyRef.current || !paperReadingCurrent || contactPolicyBlock || profileChanged || profileRegenerating || refineInFlightRef.current !== null || aiInFlightRef.current) return;
     if (!expectedTargetVersion) { reportTargetVersionFailure('unavailable'); return; }
     if (targetVersionError) return;
     if (!checkRefineLimits(edit, instruction)) return;
-    discardProposal();
-    // Retire automatic generation without pretending the user edited the body.
     // Starting or failing another request must leave the last accepted undo intact.
-    aiRequestRef.current += 1; aiInFlightRef.current = false;
-    setAiLoading(false); setAiStage(null);
+    discardProposal();
     const sessionCurrent = captureDraftSession();
     const requestId = ++refineRequestRef.current;
     refineInFlightRef.current = requestId;
@@ -1877,7 +1891,7 @@ export default function ColdEmailModal({
     return { base: captureEditBase(), selection: selection?.body === body ? selection.range : null };
   }
   function handleQuickAction(key: QuickActionKey) {
-    if (invalidSelection || scopeNeedsChoice || versionBusyRef.current || metadataRefreshingRef.current || !sourceReadyRef.current || action.busy || profileChanged || profileRegenerating || refineInFlightRef.current !== null) return;
+    if (invalidSelection || scopeNeedsChoice || versionBusyRef.current || metadataRefreshingRef.current || !sourceReadyRef.current || action.busy || profileChanged || profileRegenerating || refineInFlightRef.current !== null || aiInFlightRef.current) return;
     if (key === 'coursework') {
       if (selection?.body === body) return;
       action.request({ kind: 'coursework', edit: currentEdit() }); return;
@@ -1886,7 +1900,7 @@ export default function ColdEmailModal({
   }
   function handleChatSubmit() {
     const msg = chatInput.trim();
-    if (invalidSelection || scopeNeedsChoice || versionBusyRef.current || metadataRefreshingRef.current || !sourceReadyRef.current || action.busy || !msg || profileChanged || profileRegenerating || refineInFlightRef.current !== null) return;
+    if (invalidSelection || scopeNeedsChoice || versionBusyRef.current || metadataRefreshingRef.current || !sourceReadyRef.current || action.busy || !msg || profileChanged || profileRegenerating || refineInFlightRef.current !== null || aiInFlightRef.current) return;
     // Keep the request through provider failure, rejection and close/reopen.
     action.request({ kind: 'refine', instruction: msg, typed: true, edit: currentEdit() });
   }
@@ -2091,7 +2105,7 @@ export default function ColdEmailModal({
   }
 
   function startCompose(provider: ComposeProvider) {
-    if (composeRef.current || action.busy) return;
+    if (composeRef.current || action.busy || aiLoading) return;
     if (!sourceReadyRef.current || contextDirtyRef.current || !paperReadingCurrent || profileChangedRef.current
       || profileChanged || profileRegenerating || targetVersionError || (privateMode ? null : contactEmailBlock(target, subject, { subjectFormatConfirmed }))
       || privateBlocked || !privateReviewed || (provider !== 'copy' && !validContactRecipient(recipient.trim()))) {
@@ -2209,7 +2223,7 @@ export default function ColdEmailModal({
   const providerActions = <>
     <button
       type="button"
-      disabled={!sourceReady || !paperReadingCurrent || !!(privateMode ? null : contactEmailBlock(target, subject, { subjectFormatConfirmed })) || action.busy || composeBusy || contextDirty || profileChanged || profileRegenerating || !!targetVersionError || privateBlocked || !privateReviewed || !validContactRecipient(recipient.trim())}
+      disabled={!sourceReady || !paperReadingCurrent || !!(privateMode ? null : contactEmailBlock(target, subject, { subjectFormatConfirmed })) || action.busy || aiLoading || composeBusy || contextDirty || profileChanged || profileRegenerating || !!targetVersionError || privateBlocked || !privateReviewed || !validContactRecipient(recipient.trim())}
       onClick={() => startCompose('gmail')}
       className="inline-flex items-center justify-center px-3 py-2.5 text-[11px] font-semibold text-indigo-100 bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       title={t('coldEmail.openGmailTitle')}
@@ -2218,7 +2232,7 @@ export default function ColdEmailModal({
     </button>
     <button
       type="button"
-      disabled={!sourceReady || !paperReadingCurrent || !!(privateMode ? null : contactEmailBlock(target, subject, { subjectFormatConfirmed })) || action.busy || composeBusy || contextDirty || profileChanged || profileRegenerating || !!targetVersionError || privateBlocked || !privateReviewed || !validContactRecipient(recipient.trim())}
+      disabled={!sourceReady || !paperReadingCurrent || !!(privateMode ? null : contactEmailBlock(target, subject, { subjectFormatConfirmed })) || action.busy || aiLoading || composeBusy || contextDirty || profileChanged || profileRegenerating || !!targetVersionError || privateBlocked || !privateReviewed || !validContactRecipient(recipient.trim())}
       onClick={() => startCompose('outlook')}
       className="inline-flex items-center justify-center px-3 py-2.5 text-[11px] font-semibold text-indigo-100 bg-indigo-600 hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       title={t('coldEmail.openOutlookTitle')}
@@ -2309,7 +2323,7 @@ export default function ColdEmailModal({
       {versionError && <div role="alert" className="shrink-0 border-b border-amber-200 bg-amber-50 px-5 py-2 text-sm text-amber-950">{versionError}</div>}
       {action.error && <div role="alert" className="shrink-0 border-b border-amber-200 bg-amber-50 px-5 py-2 text-sm text-amber-950">
         {locale === 'zh' ? (targetRefresh ? '本次操作未执行。草稿和请求仍保留，请核对资料及机会后重试。' : '本次操作未执行。草稿和请求仍保留，请核对资料后重试。') : (targetRefresh ? 'This action did not run. Your draft and request are kept. Review your profile and opportunity and try again.' : 'This action did not run. Your draft and request are kept. Review your profile and try again.')}
-        {variants.length === 0 && !profileChanged && <button type="button" className="ml-2 font-semibold underline" disabled={action.busy || !profileAvailable}
+        {variants.length === 0 && !profileChanged && <button type="button" className="ml-2 font-semibold underline" disabled={action.busy || aiLoading || !profileAvailable}
           onClick={() => action.request({ kind: 'variants' })}>{t('coldEmail.tryAgain')}</button>}
       </div>}
 
@@ -2319,7 +2333,7 @@ export default function ColdEmailModal({
           <button type="button" disabled={action.busy || profileRegenerating || !(targetRefresh || privateTargetRefresh) || (targetRefresh || privateTargetRefresh)?.status === 'checking'}
             className="mt-1 font-semibold underline disabled:opacity-50"
             onClick={() => { targetCheckOnlyRef.current = true; void (privateTargetRefresh ?? targetRefresh)?.refresh().catch(() => false); }}>{t('coldEmail.targetVersionRetry')}</button>
-          {!profileChanged && <button type="button" disabled={action.busy || profileRegenerating || !sourceReady}
+          {!profileChanged && <button type="button" disabled={action.busy || aiLoading || profileRegenerating || !sourceReady}
             className="ml-3 mt-1 font-semibold underline disabled:opacity-50"
             onClick={() => action.request({ kind: 'variants', keepEditor: hasEditor })}>
             {t(hasEditor ? 'coldEmail.regenerateFromProfile' : 'coldEmail.tryAgain')}</button>}
@@ -2363,7 +2377,7 @@ export default function ColdEmailModal({
                   {t('coldEmail.experienceReviewCta')}
                 </Link>
               )}
-              <button type="button" onClick={() => action.request({ kind: 'variants' })} className="text-sm text-indigo-600 underline hover:text-indigo-700">{t('coldEmail.tryAgain')}</button>
+              <button type="button" disabled={aiLoading} onClick={() => action.request({ kind: 'variants' })} className="text-sm text-indigo-600 underline hover:text-indigo-700 disabled:opacity-50">{t('coldEmail.tryAgain')}</button>
             </div>
           </div>
         )}
@@ -2381,7 +2395,7 @@ export default function ColdEmailModal({
                   {profileRegenerateError === 'name-required' && <Link href="/" onClick={leaveForProfile}
                     className="mt-1 inline-block font-medium underline">{t('coldEmail.nameRequiredCta')}</Link>}
                   <button type="button" className="mt-2 rounded-lg border border-amber-300 bg-white px-3 py-2 font-medium disabled:opacity-50"
-                    disabled={versionBusy || contextDirty || !sourceReady || action.busy || profileRegenerating} onClick={() => action.request({ kind: 'variants', keepEditor: true })}>
+                    disabled={versionBusy || contextDirty || !sourceReady || action.busy || aiLoading || profileRegenerating} onClick={() => action.request({ kind: 'variants', keepEditor: true })}>
                     {profileRegenerating ? t('coldEmail.generating') : t('coldEmail.regenerateFromProfile')}
                   </button>
                 </div>}
@@ -2401,39 +2415,47 @@ export default function ColdEmailModal({
                       {variantLabel(v, t)}
                     </button>
                   ))}
+                  {/* Until an AI draft exists in the chosen tone this is the
+                      Generate action, outlined so it does not read as a
+                      selected tab like the filled active tab and tone. */}
                   {!privateMode && <button
                     type="button"
                     onClick={handleAiPillClick}
                     disabled={metadataRefreshing || versionBusy || !sourceReady || !paperReadingCurrent || !!contactPolicyBlock || action.busy || profileChanged || profileRegenerating || aiLoading || refining}
                     title={t('coldEmail.aiVariantTitle')}
                     className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-medium transition-all duration-200 disabled:opacity-60 disabled:cursor-wait ${
-                      activeVariant === variants.length && aiVariant
-                        ? 'bg-gradient-to-r from-indigo-600 to-fuchsia-500 text-white shadow-sm'
-                        : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
+                      !aiDraftForTone
+                        ? 'bg-white text-indigo-700 ring-1 ring-inset ring-indigo-600 shadow-sm hover:bg-indigo-50'
+                        : activeVariant === variants.length
+                          ? 'bg-gradient-to-r from-indigo-600 to-fuchsia-500 text-white shadow-sm'
+                          : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
                     }`}
                   >
                     {aiLoading ? (
                       <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" />
-                    ) : null}
-                    {aiLoading && aiStage
-                      ? t(STAGE_LABEL_KEYS[aiStage])
-                      : t('coldEmail.aiVariantLabel')}
+                    ) : aiDraftForTone ? null : <Sparkles className="w-3 h-3" aria-hidden="true" />}
+                    {aiLoading
+                      ? t(aiStage ? STAGE_LABEL_KEYS[aiStage] : 'coldEmail.aiGenerating')
+                      : t(aiDraftForTone ? 'coldEmail.aiVariantLabel' : 'coldEmail.generateAiDraft')}
                   </button>}
                 </div>
 
-                {/* Tone picker — drives the AI draft's voice. The recommended
-                    tone is derived from the detected lab type (no scraping). */}
+                {/* Tone picker — sets the voice of the next AI draft and calls
+                    nothing itself. The recommended tone is derived from the
+                    detected lab type (no scraping). */}
                 {!privateMode && <div className="flex items-center gap-1.5 px-5 pb-2 shrink-0 flex-wrap">
                   <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mr-0.5">
                     {t('coldEmail.tone.label')}
                   </span>
                   {STYLE_KEYS.map((s) => {
-                    const isActive = activeVariant === variants.length && aiVariant != null && selectedStyle === s;
+                    const isActive = selectedStyle === s;
                     const isRecommended = recommendedStyle === s;
                     return (
                       <button
                         key={s}
                         type="button"
+                        aria-pressed={isActive}
+                        aria-describedby="cold-email-tone-hint"
                         onClick={() => handleToneClick(s)}
                         disabled={metadataRefreshing || versionBusy || !sourceReady || !paperReadingCurrent || !!contactPolicyBlock || action.busy || profileChanged || profileRegenerating || aiLoading || refining}
                         className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium transition-all duration-200 disabled:opacity-60 disabled:cursor-wait ${
@@ -2446,7 +2468,7 @@ export default function ColdEmailModal({
                         {isRecommended && (
                           <span
                             className={`text-[9px] font-semibold uppercase tracking-wide px-1 py-px rounded ${
-                              isActive ? 'bg-white/25 text-white' : 'bg-indigo-100 text-indigo-500'
+                              isActive ? 'bg-indigo-800 text-white' : 'bg-indigo-100 text-indigo-700'
                             }`}
                           >
                             {t('coldEmail.tone.recommended')}
@@ -2455,6 +2477,7 @@ export default function ColdEmailModal({
                       </button>
                     );
                   })}
+                  <span id="cold-email-tone-hint" className="text-[11px] text-gray-500">{t('coldEmail.tone.hint')}</span>
                 </div>}
 
                 <div className={`${styles.editorFields} px-5 pb-4 space-y-4`} data-testid="cold-email-editor-fields">
@@ -2663,7 +2686,7 @@ export default function ColdEmailModal({
                       className="w-full min-w-0 min-h-64 flex-1 px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-700 leading-relaxed focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none transition-all resize-y"
                     />
                   </div>
-                  <EmailVersionHistory locale={locale} versions={savedVersions} busy={versionBusy} error={versionError}
+                  <EmailVersionHistory locale={locale} versions={savedVersions} busy={versionBusy} restoreDisabled={aiLoading || action.busy} error={versionError}
                     comparison={versionCompare ? { version: versionCompare.version, subject: versionCompare.base.subject, body: versionCompare.base.body } : null}
                     onCompare={version => { setVersionError(null); setVersionCompare({ version, base: captureEditBase() }); }}
                     onRestore={() => void restoreSavedVersion()} onCancel={() => setVersionCompare(null)} onDelete={id => void deleteSavedVersion(id)} />
@@ -2734,7 +2757,7 @@ export default function ColdEmailModal({
                         ? editProposal.afterBody.slice(editProposal.selection.start_utf16, editProposal.afterBody.length - (editProposal.base.body.length - editProposal.selection.end_utf16)) || (locale === 'zh' ? '（删除所选内容）' : '(Delete selected text)')
                         : editProposal.afterBody}</p></div>
                     <div className="flex flex-wrap gap-2">
-                      <button type="button" disabled={versionBusy || !sourceReady || action.busy || refining} onClick={() => action.request({ kind: 'accept-edit', id: editProposal.id })}
+                      <button type="button" disabled={versionBusy || !sourceReady || action.busy || aiLoading || refining} onClick={() => action.request({ kind: 'accept-edit', id: editProposal.id })}
                         className="rounded-lg bg-indigo-600 px-3 py-2 font-medium text-white disabled:opacity-40">{locale === 'zh' ? '接受建议' : 'Accept suggestion'}</button>
                       <button type="button" onClick={() => { action.cancel(); discardProposal(); }} className="rounded-lg border border-gray-300 px-3 py-2 text-gray-800">{locale === 'zh' ? '拒绝建议' : 'Reject suggestion'}</button>
                     </div>
@@ -2758,7 +2781,7 @@ export default function ColdEmailModal({
                         key={key}
                         type="button"
                         onClick={() => handleQuickAction(key)}
-                        disabled={metadataRefreshing || versionBusy || scopeNeedsChoice || invalidSelection || (key === 'coursework' && selection?.body === body) || !sourceReady || !paperReadingCurrent || !!contactPolicyBlock || action.busy || profileChanged || profileRegenerating || refining}
+                        disabled={metadataRefreshing || versionBusy || scopeNeedsChoice || invalidSelection || (key === 'coursework' && selection?.body === body) || !sourceReady || !paperReadingCurrent || !!contactPolicyBlock || action.busy || profileChanged || profileRegenerating || refining || aiLoading}
                         className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-white border border-gray-200 text-gray-600 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                       >
                         {t(`coldEmail.quickActions.${key}`)}
@@ -2784,7 +2807,7 @@ export default function ColdEmailModal({
                     <button
                       type="submit"
                       aria-label={t('coldEmail.submitRequest')}
-                      disabled={metadataRefreshing || versionBusy || scopeNeedsChoice || invalidSelection || !sourceReady || !paperReadingCurrent || !!contactPolicyBlock || action.busy || !chatInput.trim() || profileChanged || profileRegenerating || refining}
+                      disabled={metadataRefreshing || versionBusy || scopeNeedsChoice || invalidSelection || !sourceReady || !paperReadingCurrent || !!contactPolicyBlock || action.busy || !chatInput.trim() || profileChanged || profileRegenerating || refining || aiLoading}
                       className="p-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
                     >
                       <Send className="w-4 h-4" />
@@ -2940,7 +2963,7 @@ export default function ColdEmailModal({
             <button
               type="button"
               onClick={() => startCompose('copy')}
-              disabled={composeBusy || action.busy}
+              disabled={composeBusy || action.busy || aiLoading}
               className={`inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors ${wide ? '' : 'flex-1 sm:flex-none'}`}
             >
               {copied ? (
@@ -2962,7 +2985,7 @@ export default function ColdEmailModal({
             >
               <button
                 type="button"
-                disabled={!sourceReady || !paperReadingCurrent || !!(privateMode ? null : contactEmailBlock(target, subject, { subjectFormatConfirmed })) || action.busy || composeBusy || contextDirty || profileChanged || profileRegenerating || !!targetVersionError || privateBlocked || !privateReviewed || !validContactRecipient(recipient.trim())}
+                disabled={!sourceReady || !paperReadingCurrent || !!(privateMode ? null : contactEmailBlock(target, subject, { subjectFormatConfirmed })) || action.busy || aiLoading || composeBusy || contextDirty || profileChanged || profileRegenerating || !!targetVersionError || privateBlocked || !privateReviewed || !validContactRecipient(recipient.trim())}
                 onClick={() => startCompose('default')}
                 className={`col-span-2 inline-flex items-center justify-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${wide ? '' : 'flex-1'}`}
               >

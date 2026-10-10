@@ -114,7 +114,8 @@ async function openEditor() {
   render(<Harness />); await drain();
   expect(screen.getByDisplayValue('Template body')).toBeVisible();
   expect(screen.getByTestId('refresh-state')).toHaveTextContent('ready');
-  expect(services.stream).toHaveBeenCalledOnce();
+  expect(screen.getByRole('button', { name: 'coldEmail.generateAiDraft' })).toBeEnabled();
+  expect(services.stream).not.toHaveBeenCalled();
 }
 function editDraft() {
   fireEvent.change(screen.getByDisplayValue('Template subject'), { target: { value: 'My subject' } });
@@ -146,6 +147,8 @@ describe('foreground cloud refresh with the real cold-email editor', () => {
   it('accepts an in-flight AI draft while an unchanged periodic read is pending', async () => {
     const ai = deferred<ColdEmailResponse>(); services.stream.mockReturnValue(ai.promise);
     await openEditor(); const footer = screen.getByTestId('cold-email-footer');
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.generateAiDraft' }));
+    await drain(); expect(services.stream).toHaveBeenCalledOnce();
     const query = await startPeriodicRead();
     expect(screen.getByTestId('refresh-state')).toHaveTextContent('ready');
     expect(screen.queryByText('Checking for profile updates…')).toBeNull();
@@ -161,7 +164,6 @@ describe('foreground cloud refresh with the real cold-email editor', () => {
   });
 
   it('waits for the initial native receipt verification before asserting the template is ready', async () => {
-    const ai = deferred<ColdEmailResponse>(); services.stream.mockReturnValue(ai.promise);
     const verified = deferred<void>(); digestGate = verified.promise;
     render(<Harness />);
     // The full-suite failure occurred inside openEditor, before its first
@@ -176,7 +178,7 @@ describe('foreground cloud refresh with the real cold-email editor', () => {
     verified.resolve(); await drain();
     expect(pendingDigests.size).toBe(0);
     expect(screen.getByDisplayValue('Template body')).toBeVisible();
-    expect(services.stream).toHaveBeenCalledOnce();
+    expect(services.stream).not.toHaveBeenCalled();
     expect(services.generate).not.toHaveBeenCalled();
   });
 
@@ -196,7 +198,7 @@ describe('foreground cloud refresh with the real cold-email editor', () => {
     }
     refinement.resolve({ body: 'STALE refinement must not replace my draft', method: 'llm' }); await drain();
     expectManualDraft(); expect(screen.queryByDisplayValue('STALE refinement must not replace my draft')).toBeNull();
-    expect(services.stream).toHaveBeenCalledOnce(); expect(services.refine).toHaveBeenCalledOnce();
+    expect(services.stream).not.toHaveBeenCalled(); expect(services.refine).toHaveBeenCalledOnce();
     expect(services.rpc).not.toHaveBeenCalled();
   });
 

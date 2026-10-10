@@ -189,6 +189,8 @@ test.describe('Action-time profile checks without refresh events', () => {
       gate.release();
       expect(await (await loaded).json()).toMatchObject([{ revision: 2, profile_data: { name: NEW_NAME } }]);
       await expect(fields(page).body).toHaveValue(`Draft for ${NEW_NAME}\n${NEW_FACT}`);
+      expect(requests.some(item => item.path.endsWith('/stream'))).toBe(false);
+      await page.getByRole('button', { name: 'Generate AI draft', exact: true }).click();
       await expect.poll(() => requests.some(item => item.path.endsWith('/stream'))).toBe(true);
       assertLatest(requests, nextEntries);
       expect(writes).toEqual([]);
@@ -204,7 +206,8 @@ test.describe('Action-time profile checks without refresh events', () => {
       await detailReady(page);
       await page.getByRole('button', { name: 'Draft email', exact: true }).click();
       await expect(fields(page).body).toHaveValue(`Draft for ${OLD_NAME}\n${OLD_FACT}\n${KEPT_FACT}`);
-      await expect.poll(() => requests.some(item => item.path.endsWith('/stream'))).toBe(true);
+      await expect(page.getByRole('button', { name: 'Generate AI draft', exact: true })).toBeEnabled();
+      expect(requests.some(item => item.path.endsWith('/stream'))).toBe(false);
       const edit = fields(page);
       await edit.subject.fill(MANUAL_SUBJECT); await edit.body.fill(MANUAL_BODY);
       await edit.recipient.fill(MANUAL_RECIPIENT); await edit.instruction.fill(INSTRUCTION);
@@ -229,6 +232,9 @@ test.describe('Action-time profile checks without refresh events', () => {
       expect(requests).toHaveLength(initialCount);
       gate.release();
       await expect(edit.body).toHaveValue(`Draft for ${NEW_NAME}\n${KEPT_FACT}`);
+      // The rebuild refreshes the template only; the AI draft is its own click.
+      expect(requests.slice(initialCount).some(item => item.path.endsWith('/stream'))).toBe(false);
+      await page.getByRole('button', { name: 'Generate AI draft', exact: true }).click();
       await expect.poll(() => requests.slice(initialCount).some(item => item.path.endsWith('/stream'))).toBe(true);
       assertLatest(requests.slice(initialCount), nextEntries);
       expect(requests.filter(item => item.path.endsWith('/refine'))).toEqual([]);
@@ -271,6 +277,8 @@ test.describe('Action-time profile checks without refresh events', () => {
       release();
       if (stillActionable) {
         await expect(fields(page).body).toHaveValue(`Draft for ${NEW_NAME}\n${NEW_FACT}`);
+        expect(requests.some(item => item.path.endsWith('/stream'))).toBe(false);
+        await page.getByRole('button', { name: 'Generate AI draft', exact: true }).click();
         await expect.poll(() => requests.some(item => item.path.endsWith('/stream'))).toBe(true);
         assertLatest(requests, nextEntries);
         await page.screenshot({ path: test.info().outputPath('checked-rematched-target-draft.png') });

@@ -43,7 +43,8 @@ async function harness() {
     profileRefresh: { status: 'ready' as const, refresh: vi.fn(), checkForAction: profileCheck },
     targetRefresh: { status: 'ready' as const, target, reason: null, refresh: vi.fn(), checkForAction: targetCheck } };
   const view = render(<ColdEmailModal {...props} />); await screen.findByDisplayValue(draft.body);
-  await waitFor(() => expect(api.stream).toHaveBeenCalledOnce()); await act(async () => {});
+  await waitFor(() => expect(screen.getByRole('button', { name: 'coldEmail.generateAiDraft' })).toBeEnabled()); await act(async () => {});
+  expect(api.stream).not.toHaveBeenCalled();
   profileCheck.mockClear(); targetCheck.mockClear();
   return { ...view, props, profileCheck, targetCheck, close, window, open };
 }
