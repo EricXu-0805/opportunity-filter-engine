@@ -661,9 +661,9 @@ function ResultsContent() {
   }, []);
 
   // Every page-level check openWritingSession makes before it opens an editor.
-  // The cards disable Draft Email on this same value, so a click there is never
-  // live while it would be dropped. An open editor is not part of it: its
-  // dialog already covers the list.
+  // The cards disable Draft Email and Renovate Resume on this same value, so
+  // neither click is live while it would be dropped. An open editor is not part
+  // of it: its dialog already covers the list.
   const writingEntryReady = ownerReady && profileAvailable && !!profile
     && writingViewCurrent && !loading && !error;
   const openWritingSession = useCallback((kind: WritingSession['kind'], opportunityId: string) => {
