@@ -48,9 +48,10 @@ from src.evidence import (
     inferred_method,
     neutralize_unverified_faculty_claims,
     stamp_collector_templates,
+    stamp_inferred,
 )
 from src.matcher.config import MATCHER_VERSION
-from src.matcher.ranker import _reason_priority, score_eligibility, score_upside
+from src.matcher.ranker import _reason_priority, rank_opportunity, score_eligibility, score_upside
 from src.normalizers.normalizer import normalize
 
 _CASES = dict(CASES)
@@ -961,6 +962,9 @@ class TestCampusGraphContract:
         _, canonical = _served(record)
         assert inferred_method(canonical, "paid") == CONFIGURED_PROGRAM_METHOD
 
+    _HEDGED_YEARS = "Our listing suggests junior, senior students — not confirmed on the program page"
+    _HEDGED_MAJORS = "Our listing suggests Biology majors — not confirmed on the program page"
+
     def test_match_reasons_do_not_call_configured_terms_the_programs(self):
         # Configured majors and class years still score as stated (an owner
         # decision); only the sentences stop presenting them as the program's.
@@ -975,8 +979,9 @@ class TestCampusGraphContract:
         assert {_reason_priority(text) for text in fits} == {6}
         _, related, _ = score_eligibility(dict(fit, major="Chemistry"), canonical)
         assert "Your major (Chemistry) may be related to this program" in related
+        # A miss is still a concern (the owner, 2026-10-10), said as ours.
         _, _, gaps = score_eligibility(miss, canonical)
-        assert not any(text.startswith(("Prefers", "Typically targets")) for text in gaps)
+        assert gaps == [self._HEDGED_YEARS, self._HEDGED_MAJORS]
         posting = dict(copy.deepcopy(canonical), source="example_postings")
         for profile in (fit, miss):
             assert score_eligibility(profile, canonical)[0] == score_eligibility(profile, posting)[0]
@@ -986,7 +991,7 @@ class TestCampusGraphContract:
         assert posting_gaps == ["Typically targets junior, senior", "Prefers Biology"]
         # Reasons are part of the matcher version, and the fingerprint cannot
         # see a sentence change: cached explanations must not keep the old ones.
-        assert int(MATCHER_VERSION.split(".")[0]) >= 20
+        assert int(MATCHER_VERSION.split(".")[0]) >= 21
 
     def test_template_class_years_get_no_attribution(self):
         record = self._configured()
@@ -1156,6 +1161,79 @@ class TestCampusGraphContract:
         assert configured_fact(canonical, "majors").quote == "Open to students of all majors."
         _, _, gaps = score_eligibility({"year": "junior", "major": "History", "hard_skills": []}, canonical)
         assert not any(text.startswith("Prefers") for text in gaps)
+
+    # The owner (2026-10-10): a configured class year or major list the page
+    # text does not state is a concern where a stated one would be, in words
+    # that say it is our listing's. "Typically targets" and "Prefers" stay the
+    # sentences for a list the page states.
+
+    def test_unstated_configured_class_years_are_a_hedged_gap(self):
+        freshman = {"year": "freshman", "major": "Biology", "hard_skills": []}
+        _, ours = _served(self._configured())
+        _, stated = _served(self._with_page(self._STATES))
+        assert score_eligibility(freshman, ours)[2] == [self._HEDGED_YEARS]
+        assert score_eligibility(freshman, stated)[2] == ["Typically targets junior, senior"]
+        # Where the stated list gives another line or none, so does ours: a
+        # graduate student, a profile without a class year, and the year next
+        # to one named (it scores 50).
+        for year, gaps in (("graduate", ["For undergraduates — not a graduate-level opening"]),
+                           ("", ["Add your class year to confirm year eligibility"]),
+                           ("sophomore", [])):
+            profile = dict(freshman, year=year)
+            assert score_eligibility(profile, ours)[2] == score_eligibility(profile, stated)[2] == gaps, year
+        # "unknown" is not a year to name.
+        record = self._configured()
+        record["eligibility"]["preferred_year"] = ["junior", "unknown"]
+        assert score_eligibility(freshman, _served(record)[1])[2] == [
+            "Our listing suggests junior students — not confirmed on the program page"]
+        # A list another producer derived is no targeting claim of anyone's.
+        derived = self._configured()
+        stamp_inferred(derived["metadata"], "eligibility.preferred_year", "rule:llm_tagger")
+        assert score_eligibility(freshman, _served(derived)[1])[2] == []
+
+    def test_an_unstated_configured_major_list_is_a_hedged_gap(self):
+        history = {"year": "junior", "major": "History", "hard_skills": []}
+        _, ours = _served(self._configured())
+        _, stated = _served(self._with_page(self._STATES))
+        assert score_eligibility(history, ours)[2] == [self._HEDGED_MAJORS]
+        assert score_eligibility(history, stated)[2] == ["Prefers Biology"]
+        # The lists that earn no "Prefers" earn no hedged line either: one
+        # another producer derived, the all-majors answer, an empty list, and
+        # a faculty member's department.
+        derived = self._configured()
+        stamp_inferred(derived["metadata"], "eligibility.majors", "rule:enricher")
+        all_majors = self._configured()
+        all_majors["eligibility"]["majors"] = ["all"]
+        empty = self._configured()
+        empty["eligibility"]["majors"] = []
+        department = dict(self._configured(), source_type="faculty_research")
+        for record in (derived, all_majors, empty, department):
+            gaps = score_eligibility(history, _served(record)[1])[2]
+            assert not any(text.startswith(("Prefers", "Our listing suggests")) for text in gaps), gaps
+
+    def test_a_configured_preference_the_page_text_contradicts_is_no_gap(self):
+        # The page text says otherwise: that is for a person to read
+        # (configured_facts_report), not a shortfall to put to the student.
+        _, canonical = _served(self._with_page("Open to sophomores and juniors from all majors."))
+        for facet in ("majors", "class_year"):
+            assert configured_fact(canonical, facet).state == FACT_CONTRADICTED, facet
+        _, _, gaps = score_eligibility({"year": "freshman", "major": "History", "hard_skills": []}, canonical)
+        assert not any(text.startswith(("Prefers", "Typically targets", "Our listing suggests")) for text in gaps)
+
+    def test_the_hedged_gaps_move_no_score(self):
+        # Configured majors and class years keep their scores (an owner
+        # decision): the page text stating them changes sentences, not numbers.
+        _, ours = _served(self._configured())
+        _, stated = _served(self._with_page(self._STATES))
+        for profile in ({"year": "freshman", "major": "History", "hard_skills": []},
+                        {"year": "graduate", "major": "Physics", "hard_skills": []},
+                        {"year": "sophomore", "major": "Chemistry", "hard_skills": []},
+                        {"year": "", "major": "", "hard_skills": []}):
+            assert score_eligibility(profile, ours)[0] == score_eligibility(profile, stated)[0], profile
+            hedged = rank_opportunity(profile, ours, precomputed_sim=0.2)
+            plain = rank_opportunity(profile, stated, precomputed_sim=0.2)
+            assert (hedged.eligibility_score, hedged.final_score, hedged.bucket) == (
+                plain.eligibility_score, plain.final_score, plain.bucket), profile
 
     def test_a_quote_the_projection_would_withhold_is_never_shown(self):
         # The projector serves a description holding an address as "[email

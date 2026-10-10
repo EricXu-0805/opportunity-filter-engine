@@ -17,6 +17,8 @@ from functools import lru_cache
 from backend.lib.contact_visibility import send_target_strength, verified_send_target
 
 from ..evidence import (
+    FACT_UNSTATED,
+    configured_fact,
     configured_value_unstated,
     faculty_availability_status,
     faculty_contact_claims_unverified,
@@ -1839,6 +1841,14 @@ def score_eligibility(
             named_years = [p for p in pref_years if p and p.lower() != "unknown"]
             if named_years and not years_are_configured:
                 reasons_gap.append(f"Typically targets {', '.join(named_years)}")
+            elif named_years and configured_fact(opportunity, "class_year").state == FACT_UNSTATED:
+                # The owner (2026-10-10): configured years the page text does
+                # not state are still a concern, said as ours. Years that text
+                # contradicts are for a person to read (`scripts/configured_facts_report.py`
+                # lists them), not a shortfall to put to the student.
+                reasons_gap.append(
+                    f"Our listing suggests {', '.join(named_years)} students — not confirmed on the program page"
+                )
 
     # Major match (20% weight)
     #
@@ -1894,7 +1904,6 @@ def score_eligibility(
         and elig.get("majors")
         and not major_is_label
         and not is_inferred(opportunity, "eligibility.majors")
-        and not major_is_configured
         # A campus program spec writes ["all"] for "open to every major", and
         # a page that says so makes it stated: "Prefers all" names nothing.
         and not is_all_majors_answer(elig.get("majors"))
@@ -1909,7 +1918,13 @@ def score_eligibility(
         # docstring says "approximate" — so a UW-Madison biology program filed
         # under "Medicine & Health" came out preferring ECE, Physics and CS,
         # and told a biology student so.
-        reasons_gap.append(f"Prefers {', '.join(elig.get('majors', []))}")
+        if not major_is_configured:
+            reasons_gap.append(f"Prefers {', '.join(elig.get('majors', []))}")
+        elif configured_fact(opportunity, "majors").state == FACT_UNSTATED:
+            # Said as ours, like the class years above.
+            reasons_gap.append(
+                f"Our listing suggests {', '.join(elig['majors'])} majors — not confirmed on the program page"
+            )
 
     intl_score = 100.0
     if profile.get("international_student"):

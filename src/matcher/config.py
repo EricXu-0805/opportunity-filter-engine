@@ -311,7 +311,11 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # value no longer earns the "Paid opportunity" / "Includes stipend" sentence.
 # No score moves, but cached explanations would keep the old sentences, and the
 # fingerprint hashes knobs, not sentences.
-_MATCHER_VERSION_BASE = "20"
+# 21: those majors and class years, where the page text does not state them,
+# are a concern again, said as our listing's ("Our listing suggests Biology
+# majors — not confirmed on the program page") instead of left out. Sentences
+# only, like 20.
+_MATCHER_VERSION_BASE = "21"
 
 
 def _matcher_fingerprint() -> str:
