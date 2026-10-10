@@ -15,7 +15,10 @@ services:
     # so a red-CI commit could reach prod before its checks finished.
     autoDeployTrigger: checksPass
     buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    # One worker, named here: uvicorn's --workers defaults to $WEB_CONCURRENCY
+    # when it is set, and each worker holds its own ~1.3-1.5 GB corpus, so a
+    # second one does not fit the 2GB plan above.
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT --workers 1
     envVars:
       - key: PYTHON_VERSION
         value: "3.11"

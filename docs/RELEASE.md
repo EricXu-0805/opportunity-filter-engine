@@ -324,6 +324,10 @@ the failure named in its last column.
 
 ### Backend (Render web service)
 
+`WEB_CONCURRENCY` is not read: `render.yaml` starts uvicorn with `--workers 1`,
+which takes precedence over it. One worker holds about 1.3-1.5 GB of the
+Standard plan's 2 GB, so a second worker would not fit.
+
 | Variable | Required | When missing |
 |---|---|---|
 | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | required | Accounts, cloud save, reminders, saved searches and the incident queue stop. Signed-in requests are treated as signed out. Incident reads and the heartbeat answer 503 and name the variable. Each cron answers `{"status": "skipped", "missing": [...]}`, which fails the workflow's `check_cron_response.py` step. `/api/ready` reports `providers.supabase: missing` without gating. |
