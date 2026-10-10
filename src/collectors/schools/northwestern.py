@@ -179,7 +179,7 @@ SCHOOL: dict = {
                 "https://mrsec.northwestern.edu/education/undergraduate-opportunities.html",
                 "https://mrsec.northwestern.edu/education/undergraduate-opportunities.html",
                 "https://www.iinano.org/reu/",
-                "https://syntheticbiology.northwestern.edu/education/nsf-undergraduate-research-experience-reu.html",
+                "https://syntheticbiology.northwestern.edu/education/undergraduate-education/synbreu/",
                 "https://clp.northwestern.edu/education/undergraduate-research-programs/summer-scholars/",
                 "https://clp.northwestern.edu/education/undergraduate-research-programs/lambert/",
                 "https://clp.northwestern.edu/education/undergraduate-research-programs/caurs/",
@@ -197,8 +197,7 @@ SCHOOL: dict = {
                     "sophomores, and juniors with Institute for Policy Research faculty on "
                     "policy-relevant social science research. Pays $18.00/hour for up to 350 "
                     "hours (roughly 35 hours/week). International students with an eligible "
-                    "F-1 visa may apply; matching typically happens March-May and housing is "
-                    "not provided.",
+                    "F-1 visa may apply; housing is not provided.",
                     organization="Northwestern University",
                     department="Institute for Policy Research",
                     lab_or_program="SURA Program",
@@ -208,7 +207,7 @@ SCHOOL: dict = {
                     eligibility_majors=["social sciences", "economics", "political science", "sociology", "psychology", "statistics"],
                     preferred_year=["freshman", "sophomore", "junior"],
                     international_friendly="yes",
-                    deadline_note="2026 applications closed; annual cycle with matches made March-May",
+                    deadline_note="2026 applications closed; 2027 dates not posted yet",
                     keywords=["policy research", "social science", "paid RA", "IPR", "summer"],
                 ),
                 program(
@@ -237,7 +236,7 @@ SCHOOL: dict = {
                     "nu_mrsec_reu",
                     "Northwestern MRSEC Materials Science REU",
                     "https://mrsec.northwestern.edu/education/undergraduate-opportunities.html",
-                    "Nine-week summer REU (June 15 - Aug 14, 2026) at Northwestern's "
+                    "Nine-week summer REU (June 14 - Aug 13, 2027) at Northwestern's "
                     "Materials Research Science and Engineering Center, spanning 30+ faculty "
                     "across 7 departments working on nanoscale and bioprogrammable materials. "
                     "Participants receive $6,000 plus on-campus housing and a travel "
@@ -253,7 +252,7 @@ SCHOOL: dict = {
                     eligibility_majors=["materials science", "chemistry", "physics", "engineering", "biology"],
                     preferred_year=["sophomore", "junior"],
                     international_friendly="no",
-                    deadline_note="Deadline Feb 13 for Summer 2026 (annual mid-February cycle)",
+                    deadline_note="Deadline Feb 12, 2027 for Summer 2027",
                     keywords=["materials science", "nanotechnology", "REU", "NSF", "synthetic biology"],
                 ),
                 program(
@@ -274,7 +273,7 @@ SCHOOL: dict = {
                     eligibility_majors=["materials science", "chemistry", "physics", "engineering"],
                     preferred_year=["sophomore", "junior", "senior"],
                     international_friendly="no",
-                    deadline_note="Applications due late October for the academic-year cohort (Oct 31 in recent cycle)",
+                    deadline_note="Application deadline October 31, 2026 for the academic-year cohort",
                     keywords=["academic year", "paid internship", "materials", "Northwestern students"],
                 ),
                 program(
@@ -297,13 +296,13 @@ SCHOOL: dict = {
                     eligibility_majors=["chemistry", "physics", "materials science", "engineering"],
                     preferred_year=["sophomore", "junior"],
                     international_friendly="no",
-                    deadline_note="Deadline Feb 9, 2026 for Summer 2026 (annual early-February cycle)",
+                    deadline_note="Summer 2026 deadline was Feb 9, 2026; Summer 2027 deadline not posted yet",
                     keywords=["nanotechnology", "REU", "NSF", "summer research", "Argonne"],
                 ),
                 program(
                     "nu_synbreu",
                     "Northwestern SynBREU \u2014 Synthetic Biology REU",
-                    "https://syntheticbiology.northwestern.edu/education/nsf-undergraduate-research-experience-reu.html",
+                    "https://syntheticbiology.northwestern.edu/education/undergraduate-education/synbreu/",
                     "NSF-funded 10-week summer program at Northwestern's Center for Synthetic "
                     "Biology supporting ten undergraduates in independent lab or "
                     "computational synthetic biology projects (biosensors, self-healing "
@@ -453,7 +452,7 @@ SCHOOL: dict = {
                     eligibility_majors=["biology", "chemistry", "biomedical engineering", "neuroscience", "health sciences"],
                     preferred_year=["freshman", "sophomore", "junior", "senior"],
                     international_friendly="no",
-                    deadline_note="Apply by Feb 16, 2026; recommendations Feb 23; decisions Mar 27",
+                    deadline_note="Summer 2026 deadline was Feb 16, 2026; Summer 2027 dates not posted yet",
                     keywords=["cancer research", "biomedical", "Feinberg", "summer internship", "wet lab"],
                 ),
             ],
@@ -466,7 +465,7 @@ SCHOOL: dict = {
                 "https://undergradresearch.northwestern.edu/funding/ayurg/",
                 "https://undergradresearch.northwestern.edu/academic-year-urg-advanced/",
                 "https://undergradresearch.northwestern.edu/funding/surg/",
-                "https://undergradresearch.northwestern.edu/summer-urg-advanced/",
+                "https://undergradresearch.northwestern.edu/funding/surg/summer-urg-advanced/",
                 "https://undergradresearch.northwestern.edu/urap/",
                 "https://undergradresearch.northwestern.edu/funding/ctg/",
                 "https://undergradresearch.northwestern.edu/funding/circumnavigator-grant/",
@@ -543,7 +542,7 @@ SCHOOL: dict = {
                     eligibility_majors=["all"],
                     preferred_year=["sophomore", "junior", "senior"],
                     international_friendly="yes",
-                    deadline_note="2026-27 deadlines: Oct 13, Nov 10, Jan 19, Feb 16 (11:59 PM CST, no extensions)",
+                    deadline_note="2026-27 deadlines: Oct 13, Nov 10, Jan 12, Feb 9 (11:59 PM CST, no extensions)",
                     keywords=["academic year", "research grant", "independent study", "thesis", "all majors"],
                 ),
                 program(
@@ -591,7 +590,7 @@ SCHOOL: dict = {
                 program(
                     "nu_surg_advanced",
                     "Northwestern Summer URG Advanced",
-                    "https://undergradresearch.northwestern.edu/summer-urg-advanced/",
+                    "https://undergradresearch.northwestern.edu/funding/surg/summer-urg-advanced/",
                     "$4,000 stipend for a second eight-week summer of full-time research, for "
                     "students who previously received an OUR Summer URG. Project must align "
                     "with the student's home school; McCormick students who already held both "
@@ -606,7 +605,7 @@ SCHOOL: dict = {
                     eligibility_majors=["all"],
                     preferred_year=["junior", "senior"],
                     international_friendly="yes",
-                    deadline_note="Summer 2026 deadline was Friday, March 13 (11:59 PM CST); annual mid-March cycle",
+                    deadline_note="Summer 2027 deadline: Friday, March 5 (11:59 PM CST)",
                     keywords=["summer research", "advanced grant", "repeat funding", "stipend"],
                 ),
                 program(
@@ -628,7 +627,7 @@ SCHOOL: dict = {
                     eligibility_majors=["all"],
                     preferred_year=["freshman", "sophomore", "junior"],
                     international_friendly="yes",
-                    deadline_note="2026-27: pre-selected materials due Oct 6, 2026; open job search applications Oct 26 - Nov 8, 2026",
+                    deadline_note="2026-27 open job search applications Oct 26 - Nov 8, 2026; pre-selected materials were due Oct 6, 2026",
                     keywords=["research assistant", "paid", "beginners", "hourly", "faculty-initiated"],
                 ),
                 program(
@@ -668,7 +667,7 @@ SCHOOL: dict = {
                     compensation="$10,000 travel-study grant",
                     eligibility_majors=["all"],
                     preferred_year=["junior"],
-                    deadline_note="Application due Nov 13 (11:59 PM CST); interviews early January",
+                    deadline_note="Application due Thursday, November 19, 2026 (11:59 PM CST); final interviews in early January",
                     keywords=["global travel", "independent research", "juniors only", "travel grant", "circumnavigation"],
                 ),
                 program(
@@ -710,7 +709,7 @@ SCHOOL: dict = {
                     compensation="$4,500 stipend + up to $500 expenses",
                     eligibility_majors=["engineering", "computer science", "applied math", "materials science", "biomedical engineering", "chemical engineering"],
                     preferred_year=["freshman", "sophomore", "junior"],
-                    deadline_note="2026 deadline: 5:00 PM Monday, April 6, 2026 (annual early-April cycle)",
+                    deadline_note="2026 deadline was 5:00 PM Monday, April 6, 2026; 2027 deadline not posted yet",
                     keywords=["engineering", "summer stipend", "faculty mentor", "McCormick"],
                 ),
                 program(
@@ -732,7 +731,7 @@ SCHOOL: dict = {
                     compensation="$5,400 for 9 weeks",
                     eligibility_majors=["biomedical engineering"],
                     preferred_year=["sophomore", "junior"],
-                    deadline_note="Rolling acceptance; applications close April 6, 2026",
+                    deadline_note="Rolling acceptance; Summer 2026 applications were expected to close by April 6, 2026; Summer 2027 dates not posted yet",
                     keywords=["biomedical engineering", "summer lab", "stipend", "Jaharis fellowship"],
                 ),
                 program(
@@ -753,7 +752,7 @@ SCHOOL: dict = {
                     compensation="$4,000 for 8 weeks (prorated for 6-7 weeks)",
                     eligibility_majors=["arts and sciences", "humanities", "social sciences", "natural sciences"],
                     preferred_year=["freshman", "sophomore", "junior"],
-                    deadline_note="2026 portal: April 15 - May 1 (11:59 PM); faculty endorsements due May 8",
+                    deadline_note="Application portal will open in April 2027",
                     keywords=["Weinberg", "summer stipend", "senior thesis", "faculty supervision"],
                 ),
                 program(
@@ -772,7 +771,7 @@ SCHOOL: dict = {
                     compensation="Up to $1,000 expense grant",
                     eligibility_majors=["arts and sciences", "humanities", "social sciences", "natural sciences"],
                     preferred_year=["sophomore", "junior", "senior"],
-                    deadline_note="Application window Sept 16, 2025 - April 1, 2026 (rolling decisions)",
+                    deadline_note="Application window Sept 23, 2026 - April 1, 2027 (rolling decisions)",
                     keywords=["academic year", "Weinberg", "expense grant", "creative work"],
                 ),
             ],
