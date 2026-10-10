@@ -81,16 +81,18 @@ function FacetRow({ field, facet, truth, t }: {
   const isLink = facet === 'application_url' && truth.state !== 'unknown';
   const href = isLink && typeof truth.value === 'string' ? safeHttpUrl(truth.value) : null;
   const text = truth.state === 'unknown' ? null : formatValue(facet, truth.value, t);
+  const quote = truth.state === 'source' ? truth.quote : undefined;
+  const quoteHref = quote?.sourceUrl ? safeHttpUrl(quote.sourceUrl) : null;
   return (
     <div
       className="flex flex-col gap-1 py-2 border-b border-gray-50 last:border-b-0"
       data-testid={`fact-${field}-${facet}`}
       data-state={truth.state}
     >
-      <div className="flex items-center gap-2 flex-wrap">
-        <dt className="text-[11px] text-gray-400 uppercase tracking-wider">{label}</dt>
+      <dt className="flex items-center gap-2 flex-wrap">
+        <span className="text-[11px] text-gray-400 uppercase tracking-wider">{label}</span>
         <StateTag truth={truth} t={t} />
-      </div>
+      </dt>
       <dd className={`text-[14px] break-words ${truth.state === 'unknown' ? 'text-gray-400 italic' : 'text-gray-800'}`}>
         {truth.state === 'unknown'
           ? (UNKNOWN_HINT_FACETS.has(facet)
@@ -110,6 +112,24 @@ function FacetRow({ field, facet, truth, t }: {
             )
             : text}
       </dd>
+      {quote && (
+        <dd className="text-[12px] text-gray-500">
+          <q data-testid={`fact-${field}-${facet}-quote`}>{quote.text}</q>
+          {(quoteHref || quote.observedAt) && (
+            <span
+              className="ml-2 text-[11px] text-gray-400 inline-flex flex-wrap gap-x-2"
+              data-testid={`fact-${field}-${facet}-quote-source`}
+            >
+              {quoteHref && (
+                <a href={quoteHref} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                  {t('detail.facts.sourceLink')}
+                </a>
+              )}
+              {quote.observedAt && <span>{t('detail.facts.observed', { date: quote.observedAt })}</span>}
+            </span>
+          )}
+        </dd>
+      )}
       {truth.state === 'inferred' && (
         <dd className="text-[11px] text-amber-700" data-testid={`fact-${field}-${facet}-basis`}>
           {t(`detail.facts.basis.${truth.basis}`)}
@@ -121,9 +141,10 @@ function FacetRow({ field, facet, truth, t }: {
 
 /**
  * Every detail field, each facet tagged Source says / System inference / Not
- * provided. Renders what the server classified and nothing else — see
- * `readDetailFields` for why this never re-derives a state from the flat
- * record.
+ * provided, with the page's own sentence (and where and when it was read)
+ * under a source value the server checked against page text. Renders what
+ * the server classified and nothing else — see `readDetailFields` for why
+ * this never re-derives a state from the flat record.
  */
 export function DetailFactsSection({
   fields,

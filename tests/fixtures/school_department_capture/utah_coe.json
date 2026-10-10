@@ -1,0 +1,18 @@
+{
+ "profiles": [
+  {
+   "unid": "u0000001",
+   "name": "Ada Example",
+   "titles": "Professor (Lecturer)",
+   "email": "ada.example@utah.edu",
+   "directory_tag": "Faculty"
+  },
+  {
+   "unid": "",
+   "name": "Bo Sample",
+   "titles": "Assistant Professor (Lecturer)",
+   "email": "bo.sample@utah.edu",
+   "directory_tag": "Faculty"
+  }
+ ]
+}

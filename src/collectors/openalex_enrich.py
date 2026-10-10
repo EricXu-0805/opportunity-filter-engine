@@ -255,6 +255,14 @@ _HEALTH = {"Medicine", "Nursing", "Pharmacology, Toxicology and Pharmaceutics", 
 _SOC = {"Social Sciences", "Arts and Humanities", "Psychology", "Economics, Econometrics and Finance",
         "Business, Management and Accounting", "Decision Sciences"}
 _DEPT_FIELDS: tuple[tuple[str, set[str]], ...] = (
+    # Clinical names that contain a shorter key further down: "physical" holds
+    # "physic", "gynecology" holds "ecolog", "reconstructive" holds "econ".
+    # Scanned first, they otherwise read as Physics, Ecology and Economics and
+    # the gate turns away a surgeon's or physiatrist's own author record. Few
+    # existed before the JHU and Feinberg medical schools were split into
+    # departments (Physical Therapy, 19 faculty); afterwards about 330 do.
+    ("physical medicine", _HEALTH), ("physical therap", _HEALTH),
+    ("gynecolog", _HEALTH), ("reconstructive", _HEALTH),
     ("electric", _ENG), ("computer", _ENG), ("computing", _ENG), ("software", _ENG),
     ("mechanic", _ENG), ("aero", _ENG), ("civil", _ENG | {"Earth and Planetary Sciences"}),
     ("industrial", _ENG | {"Business, Management and Accounting", "Decision Sciences"}),

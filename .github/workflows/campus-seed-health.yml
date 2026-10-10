@@ -7,12 +7,14 @@ name: campus-seed-health
 # URLs that are not seeds are probed too: they are where Match sends a
 # student, and one of Duke's was a 404 with no seed pointing at it.
 #
-# Sunday 12:00 UTC — after the national refresh has finished and well clear
+# Sunday 12:19 UTC — after the national refresh has finished and well clear
 # of every school shard, so a burst of probes cannot compete with a live
 # crawl for the same hosts.
 on:
   schedule:
-    - cron: '0 12 * * 0'
+    # :19, not :00: GitHub delays scheduled runs queued at the top of the
+    # hour first.
+    - cron: '19 12 * * 0'
   workflow_dispatch:
 
 concurrency:

@@ -10,10 +10,11 @@ name: snapshot-reminder
 # fifth week. ops-scan files the same reminder in the incident queue, daily
 # before the end date and once after it.
 #
-# Monday 13:00 UTC: clear of the 06:00 refresh and the 11:00 ops-scan.
+# Monday 13:23 UTC: clear of the 06:07 refresh and the 11:13 ops-scan. :23,
+# not :00, because GitHub delays scheduled runs queued at the top of the hour.
 on:
   schedule:
-    - cron: '0 13 * * 1'
+    - cron: '23 13 * * 1'
   workflow_dispatch:
 
 concurrency:

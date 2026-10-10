@@ -40,7 +40,7 @@ import {
   type OAuthProvider,
 } from '@/lib/supabase';
 import { advanceOwnerEpochIfUnchanged, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
-import { hydrateProfile } from '@/lib/profile-sync';
+import { forgetMergedGuestRevision, hydrateProfile } from '@/lib/profile-sync';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { useT } from '@/i18n/client';
@@ -116,6 +116,13 @@ function CallbackInner() {
         // canonical. Re-read the row and refresh the sync envelope + mirror
         // before anything reads them, or /results would keep matching
         // against a profile this account does not actually have.
+        // The claimed envelope's revision counts the guest row's saves, so
+        // unless the account adopted that very row it must be forgotten
+        // first, or the re-read is refused whenever the two counters meet.
+        const owner = captureOwnerToken();
+        if (merge.merged && merge.profile !== 'adopted' && owner.uid === uid) {
+          await forgetMergedGuestRevision(owner).catch(() => false);
+        }
         await hydrateProfile().catch(() => {});
       }
     }
@@ -258,7 +265,17 @@ function CallbackInner() {
         // between preflight and exchange. Re-check session state; if
         // we're now signed in, treat the exchange's stale-verifier
         // error as a no-op and show success.
-        const postCheck = await getAuthState();
+        let postCheck = await getAuthState();
+        // An anonymous guest adding an email can never complete the exchange:
+        // supabase-js updateUser({ email }) saves the session and with it drops
+        // the PKCE verifier it had just created. GoTrue has already confirmed
+        // the change by the time the link redirects here, so this browser's own
+        // account may be permanent now; only a refreshed session says so.
+        if (!cancelledRef.current && postCheck.user && postCheck.isAnonymous) {
+          const { error: refreshError } = await supabase.auth.refreshSession();
+          if (cancelledRef.current) return;
+          if (!refreshError) postCheck = await getAuthState();
+        }
         if (!cancelledRef.current && postCheck.user && !postCheck.isAnonymous) {
           await finishSignedIn(postCheck.email, postCheck.user.id);
           return;

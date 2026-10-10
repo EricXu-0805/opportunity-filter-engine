@@ -1264,7 +1264,7 @@ async def _scan_collectors(rec: _Recorder, summary: dict) -> dict | None:
 
 
 # How old the snapshot may be before scanning it is scanning yesterday.
-# The refresh runs daily at 06:00 UTC, so anything past ~a day and a half
+# The refresh runs daily at 06:07 UTC, so anything past ~a day and a half
 # means this scan did not see the most recent run at all.
 _SNAPSHOT_STALE_HOURS = 36.0
 

@@ -65,8 +65,16 @@ export type InferenceBasis = typeof INFERENCE_BASES[number];
 
 export type FacetValue = string | number | boolean | string[];
 
+// The page's own sentence for a value we checked against page text (a campus
+// program's configured value the page states), and where and when it was read.
+export interface FacetQuote {
+  text: string;
+  sourceUrl: string | null;
+  observedAt: string | null;
+}
+
 export type FacetTruth =
-  | { state: 'source'; value: FacetValue }
+  | { state: 'source'; value: FacetValue; quote?: FacetQuote }
   | { state: 'inferred'; value: FacetValue; basis: InferenceBasis }
   | { state: 'unknown' };
 
@@ -108,6 +116,15 @@ export function safeHttpUrl(value: unknown): string | null {
   }
 }
 
+function readDate(value: unknown): string | null {
+  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : null;
+}
+
+function readQuote(raw: unknown): FacetQuote | null {
+  if (!isRecord(raw) || typeof raw.text !== 'string' || !raw.text.trim()) return null;
+  return { text: raw.text, sourceUrl: safeHttpUrl(raw.source_url), observedAt: readDate(raw.observed_at) };
+}
+
 /**
  * Every truth the server reports for one facet: a source row, an inference
  * row, both (a professor's stated research text beside topic tags we derived
@@ -116,12 +133,14 @@ export function safeHttpUrl(value: unknown): string | null {
 function readFacet(raw: Record<string, unknown>, facet: string): FacetTruth[] {
   const explicit = isRecord(raw.explicit) ? raw.explicit : {};
   const inferred = isRecord(raw.inferred) ? raw.inferred : {};
+  const quotes = isRecord(raw.quotes) ? raw.quotes : {};
   const out: FacetTruth[] = [];
   if (facet in explicit) {
     // A facet the server put in `explicit` with an unreadable value is not
     // quietly demoted to an inference: we cannot say what it is.
     const value = asFacetValue(explicit[facet]);
-    if (value !== null) out.push({ state: 'source', value });
+    const quote = readQuote(quotes[facet]);
+    if (value !== null) out.push(quote ? { state: 'source', value, quote } : { state: 'source', value });
   }
   if (facet in inferred) {
     const entry = inferred[facet];
@@ -150,14 +169,11 @@ function readField(raw: unknown, name: DetailFieldName): FieldTruth {
       ? 'inferred'
       : 'unknown';
   const provenance = isRecord(field.provenance) ? field.provenance : {};
-  const observed = provenance.observed_at;
   return {
     state,
     facets,
     sourceUrl: safeHttpUrl(provenance.source_url),
-    observedAt: typeof observed === 'string' && /^\d{4}-\d{2}-\d{2}/.test(observed)
-      ? observed.slice(0, 10)
-      : null,
+    observedAt: readDate(provenance.observed_at),
   };
 }
 

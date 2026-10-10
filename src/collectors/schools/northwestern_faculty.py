@@ -25,6 +25,36 @@ from __future__ import annotations
 
 from .. import faculty_graph
 
+# Feinberg departments, read off the seed's "Feinberg School of Medicine — …":
+# the profile masthead's appointment line after the rank, e.g.
+# "Medicine (General Internal Medicine) , Medical Education", cut at 45
+# characters by the harvest. The department is the first listed appointment
+# without its division; the harvest ran some lines into the next title
+# ("Pharmacology Research Associate Professor, We…"), which the boundary
+# allows. Centres ("Robert H. Lurie Comprehensive Cancer Center") and lines
+# that open with another school's joint title stay under the umbrella.
+_FEINBERG_DEPARTMENTS = {
+    "prefix": "Feinberg School of Medicine — ",
+    "names": [
+        "Anesthesiology", "Biochemistry and Molecular Genetics",
+        "Cell and Developmental Biology", "Dermatology", "Emergency Medicine",
+        "Family and Community Medicine", "Medical Education",
+        "Medical Social Sciences", "Medicine", "Microbiology-Immunology",
+        "Neurological Surgery", "Neurology", "Neuroscience",
+        "Obstetrics and Gynecology", "Ophthalmology", "Orthopaedic Surgery",
+        "Otolaryngology - Head and Neck Surgery", "Pathology", "Pediatrics",
+        "Pharmacology", "Physical Medicine and Rehabilitation",
+        "Physical Therapy and Human Movement Sciences", "Preventive Medicine",
+        "Psychiatry and Behavioral Sciences", "Radiation Oncology", "Radiology",
+        "Surgery", "Urology",
+    ],
+    "aliases": {
+        "Neurology - Ken and Ruth Davee Department": "Neurology",
+        "Otolaryngology": "Otolaryngology - Head and Neck Surgery",
+    },
+    "boundary": r"\s*$|\s*\(|\s+,|\s+(?:Research\s+)?(?:Associate\s+|Assistant\s+)?Pro",
+}
+
 # Shared Weinberg Cascade card theme.
 _NW_SEL = {"card": "div.people-wrap", "name": "h3 a", "link": "h3 a",
            "title": "p.title", "email": "a[href^='mailto:']"}
@@ -401,6 +431,8 @@ SCHOOL: dict = {
                 "file": "data/faculty_seeds/nu_feinberg.json",
                 "name_fields": ["name"], "title_field": "title",
                 "email_field": "email", "link_field": "url",
+                "department_field": "department",
+                "department_units": _FEINBERG_DEPARTMENTS,
             },
         },
     ],

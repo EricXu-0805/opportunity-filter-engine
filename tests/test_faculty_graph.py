@@ -356,6 +356,247 @@ class TestScrapeLayer:
         names = [p["name"] for p in fg._scrape_directory(dept)]
         assert names == ["Ann Alpha", "Cy Gamma"]
 
+    # A page of the roster that was not read must withhold the unit's
+    # retirement authority: otherwise every professor listed on it is retired
+    # as "absent from the directory". These go through fetch_and_normalize to
+    # the unit ledger's coverage, which is what the stale pass judges.
+    _NAV = '<a href="?page={0}">{0}</a>'
+
+    @staticmethod
+    def _coverage(monkeypatch, pages, **scrape):
+        from bs4 import BeautifulSoup
+
+        def serve(url, **_kw):
+            page = pages.get(url)
+            return BeautifulSoup(page, "html.parser") if isinstance(page, str) else page
+
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup", serve)
+        monkeypatch.setattr(fg, "_render_soup", serve)
+        school = {"school_slug": "x", "source": "x_faculty", "organization": "X University",
+                  "id_prefix": "x", "location": "Somewhere",
+                  "departments": [{"short": "X", "name": "Department of X", "majors": [],
+                                   "directory_url": "https://x.edu/f",
+                                   "scrape": {"url": "https://x.edu/f",
+                                              "selectors": {"card": "div.c", "name": ".n",
+                                                            "link": ".n"},
+                                              **scrape}}]}
+        ledger: dict = {}
+        fg.fetch_and_normalize(school, deep=True, unit_ledger=ledger)
+        return ledger["x"]["coverage"]
+
+    @staticmethod
+    def _card(slug, name):
+        return f'<div class="c"><a class="n" href="/p/{slug}">{name}</a></div>'
+
+    def test_a_page_the_pager_links_that_does_not_load_withholds_the_unit(self, monkeypatch):
+        # fetch_soup returns None for a 403 or a timeout, the same as for the 404
+        # that ends some pagers. The roster's own pager link to page 1 tells them
+        # apart.
+        pages = {"https://x.edu/f": self._card("a", "Ann Alpha") + self._NAV.format(1)}
+        cov = self._coverage(monkeypatch, pages,
+                             paginate={"param": "page", "start": 1, "max": 5})
+        assert cov["partial_render_rows"] == 1
+
+    def test_a_missing_page_past_the_last_linked_one_ends_the_roster(self, monkeypatch):
+        pages = {
+            "https://x.edu/f": self._card("a", "Ann Alpha") + self._NAV.format(1),
+            "https://x.edu/f?page=1": self._card("b", "Ben Beta") + '<a href="?page=0">0</a>',
+        }
+        cov = self._coverage(monkeypatch, pages,
+                             paginate={"param": "page", "start": 1, "max": 5})
+        assert cov["partial_render_rows"] == 0
+        assert cov["raw_roster_rows"] == cov["parsed_faculty_rows"] == 2
+
+    def test_a_next_link_on_a_follow_up_page_counts(self, monkeypatch):
+        # A pager that shows only "next" names page 2 on page 1, not on the
+        # first page of the roster.
+        pages = {
+            "https://x.edu/f": self._card("a", "Ann Alpha") + self._NAV.format(1),
+            "https://x.edu/f?page=1": self._card("b", "Ben Beta") + self._NAV.format(2),
+        }
+        cov = self._coverage(monkeypatch, pages,
+                             paginate={"param": "page", "start": 1, "max": 5})
+        assert cov["partial_render_rows"] == 1
+
+    def test_a_malformed_link_does_not_cost_the_roster(self, monkeypatch):
+        # urljoin raises on "http://[bad"; the pager reading its links must
+        # not throw away the page's rows.
+        from bs4 import BeautifulSoup
+        page = self._card("a", "Ann Alpha") + '<a href="http://[bad">x</a>'
+        monkeypatch.setattr(
+            "src.collectors.ucb_common.fetch_soup",
+            lambda url, **_kw: BeautifulSoup(page, "html.parser") if url == "https://x.edu/f" else None)
+        dept = {"short": "X", "scrape": {
+            "url": "https://x.edu/f", "selectors": {"card": "div.c", "name": ".n", "link": ".n"},
+            "paginate": {"param": "page", "start": 1, "max": 5}}}
+        assert [p["name"] for p in fg._scrape_directory(dept)] == ["Ann Alpha"]
+
+    def test_another_listing_s_pager_on_the_page_is_not_the_roster_s(self, monkeypatch):
+        pages = {"https://x.edu/f": (self._card("a", "Ann Alpha")
+                                     + '<a href="/news?page=3">3</a>'
+                                     + '<a href="https://other.edu/f?page=3">3</a>')}
+        cov = self._coverage(monkeypatch, pages,
+                             paginate={"param": "page", "start": 1, "max": 5})
+        assert cov["partial_render_rows"] == 0
+
+    def test_an_empty_page_before_a_full_one_withholds_the_unit(self, monkeypatch):
+        pages = {
+            "https://x.edu/f": self._card("a", "Ann Alpha"),
+            "https://x.edu/f?page=1": "<html><title>Faculty</title><body><p>Faculty</p></body></html>",
+            "https://x.edu/f?page=2": self._card("c", "Cy Gamma"),
+        }
+        cov = self._coverage(monkeypatch, pages,
+                             paginate={"param": "page", "start": 1, "max": 5})
+        assert cov["partial_render_rows"] == 1
+
+    def test_a_render_that_comes_back_empty_handed_withholds_the_unit(self, monkeypatch):
+        # A render returns a document for any HTTP status, so None is a failure
+        # (Cloudflare's shell, a timeout) even on the last page and even with
+        # no pager on the roster. The page after it is the site past the end.
+        pages = {"https://x.edu/f": self._card("a", "Ann Alpha"),
+                 "https://x.edu/f?page=2": "<html><title>Faculty</title><body><p>Faculty</p></body></html>"}
+        cov = self._coverage(monkeypatch, pages, render=True,
+                             paginate={"param": "page", "start": 1, "max": 5})
+        assert cov["partial_render_rows"] == 1
+
+    @pytest.mark.parametrize("served", [
+        pytest.param("<html><head></head><body></body></html>", id="blank-document"),
+        pytest.param("<html><head><title>Just a moment...</title></head>"
+                     "<body><p>Checking your browser</p></body></html>", id="cloudflare-shell"),
+    ])
+    def test_a_last_page_that_is_not_the_site_withholds_the_unit(self, monkeypatch, served):
+        pages = {"https://x.edu/f": self._card("a", "Ann Alpha"), "https://x.edu/f?page=1": served}
+        cov = self._coverage(monkeypatch, pages,
+                             paginate={"param": "page", "start": 1, "max": 5})
+        assert cov["partial_render_rows"] == 1
+
+    def test_a_page_linked_past_the_cap_withholds_the_unit(self, monkeypatch):
+        # The walk stops at ``max``; a pager that links a page past it says the
+        # roster goes on (Harris's page 5 held Ryan Kellogg, retired while
+        # listed, when its max was 4).
+        pages = {
+            "https://x.edu/f": self._card("a", "Ann Alpha") + self._NAV.format(1),
+            "https://x.edu/f?page=1": self._card("b", "Ben Beta") + self._NAV.format(2),
+        }
+        cov = self._coverage(monkeypatch, pages,
+                             paginate={"param": "page", "start": 1, "max": 1})
+        assert cov["partial_render_rows"] == 1
+
+    def test_a_last_page_link_past_the_cap_withholds_the_unit(self, monkeypatch):
+        # Drupal's full pager names the last page on the first one.
+        pages = {"https://x.edu/f": (self._card("a", "Ann Alpha") + self._NAV.format(1)
+                                     + self._NAV.format(7)),
+                 "https://x.edu/f?page=1": self._card("b", "Ben Beta"),
+                 "https://x.edu/f?page=2": self._card("c", "Cy Gamma")}
+        cov = self._coverage(monkeypatch, pages,
+                             paginate={"param": "page", "start": 1, "max": 2})
+        assert cov["partial_render_rows"] == 1
+
+    # A follow-up page that serves cards the walk already read (the site
+    # ignored the page parameter, or a cache answered with another page) did
+    # not show the people of the page it was asked for.
+    def test_a_linked_page_that_serves_an_earlier_page_withholds_the_unit(self, monkeypatch):
+        first = self._card("a", "Ann Alpha") + self._NAV.format(1) + self._NAV.format(2)
+        pages = {"https://x.edu/f": first,
+                 "https://x.edu/f?page=1": self._card("b", "Ben Beta") + self._NAV.format(2),
+                 "https://x.edu/f?page=2": first}
+        cov = self._coverage(monkeypatch, pages,
+                             paginate={"param": "page", "start": 1, "max": 5})
+        assert cov["partial_render_rows"] == 1
+
+    def test_a_repeated_page_before_a_new_one_withholds_the_unit(self, monkeypatch):
+        first = self._card("a", "Ann Alpha")
+        pages = {"https://x.edu/f": first, "https://x.edu/f?page=1": first,
+                 "https://x.edu/f?page=2": self._card("c", "Cy Gamma")}
+        cov = self._coverage(monkeypatch, pages,
+                             paginate={"param": "page", "start": 1, "max": 5})
+        assert cov["partial_render_rows"] == 1
+
+    def test_a_site_that_repeats_its_last_page_past_the_end_keeps_the_unit(self, monkeypatch):
+        # Stanford EE answers ?page=6 and ?page=7 with its last page (5) again,
+        # and that page's pager links itself as the current page.
+        last = self._card("b", "Ben Beta") + self._NAV.format(1) + '<a href="#top">top</a>'
+        pages = {"https://x.edu/f": self._card("a", "Ann Alpha") + self._NAV.format(1),
+                 "https://x.edu/f?page=1": last, "https://x.edu/f?page=2": last,
+                 "https://x.edu/f?page=3": last}
+        cov = self._coverage(monkeypatch, pages,
+                             paginate={"param": "page", "start": 1, "max": 5})
+        assert cov["partial_render_rows"] == 0
+
+    def test_a_site_that_ignores_the_page_parameter_off_its_pager_keeps_the_unit(self, monkeypatch):
+        # OSU Arts and Sciences lists the whole roster on one page and answers
+        # ?page=N with it again; the roster has no pager.
+        whole = self._card("a", "Ann Alpha") + self._card("b", "Ben Beta")
+        pages = {"https://x.edu/f": whole, "https://x.edu/f?page=1": whole,
+                 "https://x.edu/f?page=2": whole}
+        cov = self._coverage(monkeypatch, pages,
+                             paginate={"param": "page", "start": 1, "max": 4})
+        assert cov["partial_render_rows"] == 0
+
+    def test_a_page_of_new_cards_the_filters_drop_counts_as_read(self, monkeypatch):
+        # Pitt Chemistry's last two linked pages hold only staff: new cards that
+        # yield no faculty rows. The page was read; it is not a repeat.
+        staff = ('<div class="c"><a class="n" href="/p/{0}">{1}</a>'
+                 '<span class="t">Staff Assistant</span></div>')
+        pages = {"https://x.edu/f": (self._card("a", "Ann Alpha") + self._NAV.format(1)
+                                     + self._NAV.format(2)),
+                 "https://x.edu/f?page=1": staff.format("s1", "Sam Staff"),
+                 "https://x.edu/f?page=2": staff.format("s2", "Sue Staff")}
+        cov = self._coverage(monkeypatch, pages, ladder_filter={"drop": "(?i)staff"},
+                             selectors={"card": "div.c", "name": ".n", "link": ".n",
+                                        "title": ".t"},
+                             paginate={"param": "page", "start": 1, "max": 5})
+        assert cov["raw_roster_rows"] == 3
+        assert cov["parsed_faculty_rows"] == 1
+        assert cov["partial_render_rows"] == 0
+
+    def test_a_pager_on_the_page_the_directory_redirects_to_counts(self, monkeypatch):
+        # cs.cornell.edu/people/faculty lands on /directory, and its pager's
+        # relative links resolve there, not under the configured path.
+        from bs4 import BeautifulSoup
+        landed = BeautifulSoup(self._card("a", "Ann Alpha") + self._NAV.format(1), "html.parser")
+        landed._ofe_final_url = "https://x.edu/directory"
+        cov = self._coverage(monkeypatch, {"https://x.edu/f": landed},
+                             paginate={"param": "page", "start": 1, "max": 5})
+        assert cov["partial_render_rows"] == 1
+
+    def test_a_prefixed_pager_value_counts(self, monkeypatch):
+        # Drupal's second view on a page pages as ?page=%2C1 ("page=,1").
+        pages = {"https://x.edu/f": self._card("a", "Ann Alpha") + '<a href="?page=%2C1">2</a>'}
+        cov = self._coverage(monkeypatch, pages,
+                             paginate={"param": "page", "value_prefix": "%2C",
+                                       "start": 1, "max": 5})
+        assert cov["partial_render_rows"] == 1
+
+    def test_path_pager_links_count_too(self, monkeypatch):
+        pages = {"https://x.edu/f": self._card("a", "Ann Alpha") + '<a href="/f/page/2/">2</a>'}
+        cov = self._coverage(monkeypatch, pages,
+                             paginate={"mode": "path", "param": "page", "start": 2, "max": 5})
+        assert cov["partial_render_rows"] == 1
+
+    def test_an_extra_roster_page_that_does_not_load_withholds_the_unit(self, monkeypatch):
+        pages = {"https://x.edu/f": self._card("a", "Ann Alpha")}
+        cov = self._coverage(monkeypatch, pages, extra_urls=["https://x.edu/assoc"])
+        assert cov["partial_render_rows"] == 1
+
+    def test_a_page_that_fails_to_parse_withholds_the_unit(self, monkeypatch):
+        # The scrape returns no rows, but page 1 was already counted as fully
+        # read; with curated people in the unit, it would keep its authority.
+        parse, calls = fg._parse_cards, []
+
+        def drifted_on_page_2(*a, **kw):
+            calls.append(a[2])
+            if len(calls) == 2:
+                raise ValueError("markup drift")
+            return parse(*a, **kw)
+
+        monkeypatch.setattr(fg, "_parse_cards", drifted_on_page_2)
+        pages = {"https://x.edu/f": self._card("a", "Ann Alpha"),
+                 "https://x.edu/f?page=1": self._card("b", "Ben Beta")}
+        cov = self._coverage(monkeypatch, pages,
+                             paginate={"param": "page", "start": 1, "max": 5})
+        assert cov["parser_errors"] == 1
+
     def test_profile_enrich_fills_research_from_profile_when_enabled(self, monkeypatch):
         """A listing that carries name/title only can be enriched per-profile: the
         gated pass follows each profile link and lifts a "<strong>Research Areas:
@@ -443,7 +684,8 @@ class TestScrapeLayer:
                      '<a href="/p/a">Ada Prof</a></h2><p class="title">Professor</p></div>')
         calls = {"paged": 0}
 
-        def fake_paginated(url, param="page", max_pages=12, card_sel="", timeout_ms=60000):
+        def fake_paginated(url, param="page", max_pages=12, card_sel="", timeout_ms=60000,
+                           **_kw):
             calls["paged"] += 1
             return BeautifulSoup(page_html, "html.parser")
 
@@ -459,6 +701,115 @@ class TestScrapeLayer:
         people = fg._scrape_directory(dept)
         assert calls["paged"] == 1
         assert any(p["name"] == "Ada Prof" for p in people)
+
+    # Michigan LSA's hash router: past the last page the grid is empty, and so
+    # is a page whose cards have not rendered yet. The roster's own "next" link
+    # (inactive on the last page) tells them apart.
+    @staticmethod
+    def _hash_router(monkeypatch, pages):
+        """Headless Chromium on a hash-router roster. ``pages[n]`` is page n's
+        card names, whether its "next" link is active, and how many waits its
+        cards take to render (default one)."""
+        import sys
+        import types
+        from urllib.parse import parse_qs, urlsplit
+
+        class Page:
+            def goto(self, url, **_kw):
+                self.pg = int(parse_qs(urlsplit(url).fragment).get("page", ["1"])[0])
+                self.waits = 0
+
+            def wait_for_timeout(self, _ms):
+                self.waits += 1
+
+            def _spec(self):
+                spec = pages.get(self.pg, {"cards": []})
+                return spec if self.waits >= spec.get("waits", 1) else {"cards": []}
+
+            def eval_on_selector_all(self, _sel, _js):
+                return [f'<div class="c"><a class="n" href="/p/{n}">{n}</a></div>'
+                        for n in self._spec()["cards"]]
+
+            def query_selector(self, _sel):
+                return object() if self._spec().get("next") else None
+
+        class Browser:
+            def new_context(self, **_kw):
+                return types.SimpleNamespace(new_page=Page)
+
+            def close(self):
+                pass
+
+        class Session:
+            chromium = types.SimpleNamespace(launch=lambda **_kw: Browser())
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_a):
+                return False
+
+        sync_api = types.ModuleType("playwright.sync_api")
+        sync_api.sync_playwright = Session
+        package = types.ModuleType("playwright")
+        package.sync_api = sync_api
+        monkeypatch.setitem(sys.modules, "playwright", package)
+        monkeypatch.setitem(sys.modules, "playwright.sync_api", sync_api)
+
+    def _hash_walk(self, monkeypatch, pages, max_pages=12, **paginate):
+        self._hash_router(monkeypatch, pages)
+        paginate = {"mode": "hash", "param": "page", "max": max_pages,
+                    "next": "a.next:not(.inactive)", **paginate}
+        cov = self._coverage(monkeypatch, {}, render=True, paginate=paginate)
+        dept = {"short": "X", "scrape": {
+            "url": "https://x.edu/f", "render": True, "paginate": paginate,
+            "selectors": {"card": "div.c", "name": ".n", "link": ".n"}}}
+        return cov, [p["name"] for p in fg._scrape_directory(dept)]
+
+    def test_a_hash_roster_read_to_its_last_page_keeps_the_unit(self, monkeypatch):
+        cov, names = self._hash_walk(monkeypatch, {
+            1: {"cards": ["Ann Alpha", "Ben Beta"], "next": True},
+            2: {"cards": ["Cy Gamma"], "next": False}})
+        assert names == ["Ann Alpha", "Ben Beta", "Cy Gamma"]
+        assert cov["partial_render_rows"] == 0
+
+    def test_a_hash_page_that_does_not_render_withholds_the_unit(self, monkeypatch):
+        cov, names = self._hash_walk(monkeypatch, {
+            1: {"cards": ["Ann Alpha", "Ben Beta"], "next": True},
+            2: {"cards": ["Cy Gamma"], "next": False, "waits": 99}})
+        assert names == ["Ann Alpha", "Ben Beta"]
+        assert cov["partial_render_rows"] == 1
+
+    def test_a_slow_hash_page_gets_a_second_look(self, monkeypatch):
+        cov, names = self._hash_walk(monkeypatch, {
+            1: {"cards": ["Ann Alpha", "Ben Beta"], "next": True},
+            2: {"cards": ["Cy Gamma"], "next": False, "waits": 2}})
+        assert names == ["Ann Alpha", "Ben Beta", "Cy Gamma"]
+        assert cov["partial_render_rows"] == 0
+
+    def test_a_hash_walk_stopped_by_its_cap_withholds_the_unit(self, monkeypatch):
+        cov, names = self._hash_walk(monkeypatch, {
+            1: {"cards": ["Ann Alpha"], "next": True},
+            2: {"cards": ["Ben Beta"], "next": True},
+            3: {"cards": ["Cy Gamma"], "next": False}}, max_pages=2)
+        assert names == ["Ann Alpha", "Ben Beta"]
+        assert cov["partial_render_rows"] == 1
+
+    def test_an_empty_first_hash_page_before_cards_withholds_the_unit(self, monkeypatch):
+        cov, names = self._hash_walk(monkeypatch, {
+            1: {"cards": ["Ann Alpha"], "next": True, "waits": 99},
+            2: {"cards": ["Ben Beta"], "next": False}})
+        assert names == ["Ben Beta"]
+        assert cov["partial_render_rows"] == 1
+
+    def test_a_hash_walk_with_no_next_selector_cannot_vouch_for_its_end(self, monkeypatch):
+        # Without the roster's "next" link the walk cannot tell its last page
+        # from a page that did not render, so the unit retires nobody.
+        cov, names = self._hash_walk(monkeypatch, {
+            1: {"cards": ["Ann Alpha"], "next": True},
+            2: {"cards": ["Ben Beta"], "next": False}}, next="")
+        assert names == ["Ann Alpha", "Ben Beta"]
+        assert cov["partial_render_rows"] == 1
 
     def test_research_join_fills_areas_from_aggregator_page(self, monkeypatch):
         """When research areas live only on one shared page (a "research

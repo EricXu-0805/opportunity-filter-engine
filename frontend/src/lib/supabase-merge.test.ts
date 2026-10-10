@@ -383,6 +383,18 @@ describe('redeemPendingMerge', () => {
     expect(localStorage.getItem(STORAGE_KEYS.MERGE_GRANT)).toBeNull();
   });
 
+  it('reports which profile the server kept, so the callback can tell an adopted row from the account\'s own', async () => {
+    localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, GRANT);
+    mockRpc.mockResolvedValueOnce({
+      data: { merged: true, summary: { favorites: 1, profile: 'kept_target_saved_other_as_version' } },
+      error: null,
+    });
+
+    const res = await redeemPendingMerge();
+
+    expect(res).toMatchObject({ kind: 'success', summary: { merged: true, favorites: 1, profile: 'kept_target_saved_other_as_version' } });
+  });
+
   it('maps a no-op merge (merged:false) to a zeroed summary', async () => {
     localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, GRANT);
     mockRpc.mockResolvedValueOnce({

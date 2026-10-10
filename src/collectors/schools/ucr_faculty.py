@@ -30,10 +30,12 @@ affiliate, visiting). Result: every department is ladder + teaching faculty only
 and 100% emailed. Teaching-track (Professor of Teaching / Lecturer) are kept —
 real faculty who mentor undergrads (mirrors the ncsu lecturer precedent).
 
-The feed carries no per-person profile URL (the SPA builds it client-side from
-``netId``), which ``json_dir`` can't template — so records fall back to each
-department's human directory URL (an accepted engine pattern), and joint
-appointments de-dupe on the always-present email.
+The feed carries no per-person profile URL; the SPA builds it client-side from
+``netId`` as ``profiles.ucr.edu/app/home/profile/<netId>`` (a rendered check,
+2026-10-09: the route shows that person, an unknown id falls back to the search
+page). ``link_template`` builds the same URL, so each record links to its own
+profile; a record without a ``netId`` falls back to the department directory.
+Joint appointments de-dupe on the always-present email.
 
 Coverage: 40 departments across all six academic colleges (Bourns Engineering,
 CNAS, CHASS, Business, Education, Public Policy) — ~1,150 ladder/teaching faculty.
@@ -71,14 +73,15 @@ _LADDER = [{
 }]
 
 # Shared field mapping (name/title/email scalars; researchAreas is a clean
-# controlled-vocab string array → keywords). No link field in the feed → each
-# record falls back to its department directory_url.
+# controlled-vocab string array → keywords; the profile link is built from
+# netId — see the module docstring).
 _MAP = {
     "name_fields": ["name"],
     "title_field": "title",
     "email_field": "email",
     "research_field": "researchAreas[]",
     "field_filters": _LADDER,
+    "link_template": "https://profiles.ucr.edu/app/home/profile/{netId}",
 }
 
 

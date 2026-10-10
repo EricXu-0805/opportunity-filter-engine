@@ -31,9 +31,9 @@ _SEEN = "2026-09-01T00:00:00"
 
 CASES: list[tuple[str, dict]] = [
     (
-        # A curated campus program: majors and class years a person read off
-        # the program page, an explicit intl welcome, a stated pay value, and
-        # the host school's city in `location`.
+        # A configured campus program (campus_graph spec): majors, class years,
+        # an intl welcome and a pay value typed into the collector config —
+        # ours, not the page's — beside the host school's city in `location`.
         "curated_campus_program",
         {
             "id": "contract-campus-1",
@@ -73,6 +73,65 @@ CASES: list[tuple[str, dict]] = [
                 "last_verified": _SEEN,
                 "last_seen_at": _SEEN,
                 "deadline_note": "Applications reviewed on a rolling basis",
+            },
+        },
+    ),
+    (
+        # The same kind of row after a crawl loaded its page. The excerpt
+        # states the stipend, its amount, the intl welcome and the deadline,
+        # and a passage the condition capture kept from the eligibility page
+        # states the major, so those are the page's, each with its sentence,
+        # URL and read time in `quotes`. The excerpt opens the program to
+        # sophomores, which contradicts the configured juniors and seniors
+        # (still ours).
+        "configured_program_page_states",
+        {
+            "id": "contract-campus-2",
+            "source": "duke_research_programs",
+            "source_type": "campus_program",
+            "source_url": "https://example.edu/programs/fellows",
+            "url": "https://example.edu/programs/fellows",
+            "title": "Summer Research Fellows",
+            "organization": "Duke University",
+            "department": "Chemistry",
+            "lab_or_program": "Summer Fellows",
+            "location": "Durham, NC",
+            "remote_option": "unknown",
+            "paid": "stipend",
+            "compensation_details": "$5,000 stipend",
+            "deadline": None,
+            "description": (
+                "Ten weeks in a chemistry lab.\n\nFrom the program page: Fellows receive a $5,000 stipend. "
+                "International students are eligible to apply. Open to sophomores and juniors. "
+                "Applications are due March 1."
+            ),
+            "keywords": ["chemistry"],
+            "eligibility": {
+                "preferred_year": ["junior", "senior"],
+                "majors": ["Chemistry"],
+                "skills_required": [],
+                "skills_preferred": [],
+                "citizenship_required": False,
+                "international_friendly": "yes",
+                "work_auth_notes": "",
+            },
+            "application": {
+                "contact_method": "website",
+                "requires_resume": "unknown",
+                "application_effort": "medium",
+                "application_url": "https://example.edu/programs/fellows/apply",
+            },
+            "metadata": {
+                "is_active": True,
+                "last_verified": _SEEN,
+                "last_seen_at": _SEEN,
+                "deadline_note": "Applications due March 1",
+                "contact_instruction_sources": [{
+                    "source_url": "https://example.edu/programs/fellows/eligibility",
+                    "record_source_url": "https://example.edu/programs/fellows",
+                    "checked_at": "2026-09-02T12:00:00+00:00",
+                    "sections": [{"heading": "Eligibility", "text": "Open to Chemistry majors."}],
+                }],
             },
         },
     ),
@@ -237,6 +296,53 @@ CASES: list[tuple[str, dict]] = [
                 "faculty_title": "Professor",
                 "research_areas_raw": "Analytical engines; number theory",
                 "inferred_fields": {"keywords": "derived:openalex_topics"},
+            },
+        },
+    ),
+    (
+        # An SRO row read off its labelled detail page: sponsor, location,
+        # citizenship field, compensation and an anticipated deadline, found
+        # on the paginated list but stated on the detail page.
+        "sro_structured_listing",
+        {
+            "id": "contract-sro-1",
+            "source": "uiuc_sro",
+            "source_type": "summer_program",
+            "source_url": "https://researchops.web.illinois.edu/?page=3",
+            "url": "https://researchops.web.illinois.edu/opportunity/example-reu",
+            "title": "Example REU",
+            "organization": "Example State University",
+            "department": "",
+            "lab_or_program": "Example REU",
+            "location": "Springfield, IL",
+            "remote_option": "unknown",
+            "paid": "yes",
+            "compensation_details": "$7,000",
+            "deadline": "2027-03-15",
+            "deadline_is_estimate": True,
+            "is_rolling": False,
+            "duration": "Summer (10 weeks)",
+            "keywords": ["Natural Sciences", "Science & Technology"],
+            "eligibility": {
+                "preferred_year": ["freshman", "sophomore", "junior", "senior"],
+                "majors": ["Physics"],
+                "skills_required": [],
+                "skills_preferred": [],
+                "citizenship_required": True,
+                "international_friendly": "no",
+                "work_auth_notes": "US Citizen, National, or Permanent Resident required",
+            },
+            "application": {
+                "contact_method": "online",
+                "requires_resume": "unknown",
+                "application_effort": "medium",
+                "application_url": "https://reu.example.edu/",
+            },
+            "metadata": {
+                "is_active": True,
+                "last_verified": _SEEN,
+                "deadline_note": "3/15/27 (anticipated)",
+                "inferred_fields": {"eligibility.majors": "rule:research_area_bank"},
             },
         },
     ),

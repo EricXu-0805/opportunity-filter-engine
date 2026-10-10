@@ -1,0 +1,19 @@
+{
+ "profiles": [
+  {
+   "full_name": "Ada Example",
+   "title": "Associate Chair, Co-Director and Assistant Professor",
+   "email": "ada.example@ufl.edu",
+   "link": "http://cop-main-a2-new.sites.medinfo.ufl.edu/blog/profile/example-ada/"
+  },
+  {
+   "full_name": "Bo Sample",
+   "title": "Research Assistant Professor",
+   "email": "bo.sample@ufl.edu",
+   "link": "http://cop-main-a2-new.sites.medinfo.ufl.edu/profile/sample-bo/"
+  }
+ ],
+ "pagination": {
+  "total": 2
+ }
+}

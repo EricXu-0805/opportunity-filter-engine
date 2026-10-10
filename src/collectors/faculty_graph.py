@@ -65,7 +65,7 @@ from collections import Counter, defaultdict
 from contextlib import contextmanager
 from copy import deepcopy
 from datetime import UTC, datetime
-from urllib.parse import unquote, urljoin
+from urllib.parse import parse_qs, quote, unquote, urljoin, urlsplit
 
 from backend.lib.contact_visibility import carries_contact_evidence
 from src.normalizers.deactivate_stale_faculty import (
@@ -994,6 +994,9 @@ def _new_coverage() -> dict:
         "duplicate_rows": 0,
         "identity_match_failures": 0,
         "parser_errors": 0,
+        # Also counts roster pages the walk did not read (blocked, timed out,
+        # rendered empty, served another page's cards, past the walk's cap):
+        # the people listed on them were never seen.
         "partial_render_rows": 0,
     }
 
@@ -1199,6 +1202,50 @@ def _paginated_url(base: str, page: int, param: str) -> str:
     return f"{paged}{sep}{query}" if query else paged
 
 
+def _directory_root(url: str) -> tuple[str, str]:
+    parts = urlsplit(url)
+    return parts.netloc.lower(), parts.path.rstrip("/")
+
+
+def _pager_pages(soup, page_url: str, roots: set[tuple[str, str]], param: str,
+                 value_prefix: str = "", path_mode: bool = False) -> set[int]:
+    """Page numbers this roster page's own pager links to.
+
+    A link counts only when it points at the walk's own directory (a host and
+    path in ``roots``: the configured URL, and where it redirects) and carries
+    the walk's page parameter, so a news widget's pager on the same page
+    promises nothing. The walk needs this to tell a page that failed from the
+    end of the roster: ``fetch_soup`` returns None for the 404 past the last
+    page and for a 403 or a timeout alike, and a blocked page can come back as
+    the site with an empty list.
+    """
+    prefix = unquote(value_prefix)
+    pages: set[int] = set()
+    for a in soup.select("a[href]"):
+        try:
+            link = urlsplit(urljoin(page_url, a.get("href") or ""))
+        except ValueError:  # "http://[bad" — not a pager link, and not a reason to drop the roster
+            continue
+        host, path = link.netloc.lower(), link.path.rstrip("/")
+        if path_mode:
+            head, _, n = path.rpartition("/")
+            head, _, word = head.rpartition("/")
+            if word == param and n.isdigit() and (host, head) in roots:
+                pages.add(int(n))
+        elif (host, path) in roots:
+            for value in parse_qs(link.query).get(param, []):
+                n = value[len(prefix):] if value.startswith(prefix) else ""
+                if n.isdigit():
+                    pages.add(int(n))
+    return pages
+
+
+def _card_print(card) -> str:
+    """A roster card's text and links: equal on a page the site served twice."""
+    hrefs = [card.get("href") or "", *(a.get("href") or "" for a in card.select("a[href]"))]
+    return " ".join([*card.get_text(" ", strip=True).split(), *hrefs])
+
+
 def _is_cf_interstitial(soup) -> bool:
     """True when a rendered page is still Cloudflare's challenge shell, not content.
 
@@ -1307,7 +1354,8 @@ def _render_soup(url: str, timeout_ms: int = 60000,
 
 
 def _render_paginated_soup(url: str, param: str = "page", max_pages: int = 12,
-                          card_sel: str = "", timeout_ms: int = 60000):
+                          card_sel: str = "", timeout_ms: int = 60000,
+                          next_sel: str = ""):
     """Walk a client-side hash-router directory in ONE render session.
 
     Some AEM "people" grids (Michigan LSA — Chemistry, Psychology, Statistics,
@@ -1319,6 +1367,13 @@ def _render_paginated_soup(url: str, param: str = "page", max_pages: int = 12,
     page's ``card_sel`` outerHTML until a page surfaces nothing new or the cap is
     hit. Returns a soup of all pages' cards concatenated (parsed by the caller's
     normal selectors), or ``None`` where Playwright/Chromium is unavailable.
+
+    Past the last page the grid is empty, and so is a page whose cards have not
+    rendered yet. ``next_sel`` matches the roster's own "next page" control
+    while it is active; when the page before an empty one offered a next page,
+    or the cap stops a walk that still offers one, or an empty page comes before
+    one with cards, the soup carries ``_ofe_truncated`` so the unit retires
+    nobody that run. Without ``next_sel`` every walk counts as truncated.
     """
     if not card_sel:
         return None
@@ -1330,25 +1385,41 @@ def _render_paginated_soup(url: str, param: str = "page", max_pages: int = 12,
     except ImportError:
         return None
     parts: list[str] = []
+    truncated = missed = False
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
             try:
                 page = browser.new_context(user_agent=HEADERS["User-Agent"]).new_page()
                 seen: set[str] = set()
+
+                def fresh_cards() -> list[str]:
+                    cards = page.eval_on_selector_all(
+                        card_sel, "els => els.map(e => e.outerHTML)")
+                    return [c for c in cards if c not in seen]
+
+                more = False
                 for pg in range(1, max_pages + 1):
                     if _source_budget_spent():
                         break
                     target = url if pg == 1 else f"{url}#q=&alpha=&{param}={pg}"
                     page.goto(target, wait_until="domcontentloaded", timeout=timeout_ms)
                     page.wait_for_timeout(3500 if pg == 1 else 2500)
-                    cards = page.eval_on_selector_all(
-                        card_sel, "els => els.map(e => e.outerHTML)")
-                    fresh = [c for c in cards if c not in seen]
+                    fresh = fresh_cards()
+                    if not fresh and more:
+                        # The page before promised this one: give its grid one
+                        # more settle before calling it unrendered.
+                        page.wait_for_timeout(5000)
+                        fresh = fresh_cards()
                     if pg > 1 and not fresh:
+                        truncated = more
                         break
+                    missed = missed or not fresh
                     seen.update(fresh)
                     parts.extend(fresh)
+                    more = not next_sel or page.query_selector(next_sel) is not None
+                else:
+                    truncated = more
             finally:
                 browser.close()
     except Exception as e:  # noqa: BLE001 — degrade to None like fetch_soup
@@ -1356,7 +1427,9 @@ def _render_paginated_soup(url: str, param: str = "page", max_pages: int = 12,
         return None
     if not parts:
         return None
-    return BeautifulSoup("<div>" + "".join(parts) + "</div>", "html.parser")
+    soup = BeautifulSoup("<div>" + "".join(parts) + "</div>", "html.parser")
+    soup._ofe_truncated = truncated or missed
+    return soup
 
 
 def _scrape_directory(dept: dict) -> list[dict]:
@@ -1449,7 +1522,15 @@ def _scrape_directory(dept: dict) -> list[dict]:
         # every page inside one render session (below) instead of the fetch-per-URL
         # loop, which can't drive a same-document router.
         soup = _render_paginated_soup(base, pag.get("param", "page"),
-                                      pag.get("max", 12), sel.get("card", ""))
+                                      pag.get("max", 12), sel.get("card", ""),
+                                      next_sel=pag.get("next", ""))
+        if getattr(soup, "_ofe_truncated", False):
+            # Same rule as the fetch-per-URL walk below: a roster page the walk
+            # did not read withholds the unit's retirements for the run.
+            _cover("partial_render_rows")
+            logger.warning("faculty_graph: %s hash-router walk stopped before the "
+                           "roster's last page; the unit retires nobody this run",
+                           dept.get("short"))
     elif cfg.get("render"):
         # Wait for the card selector so a Cloudflare-walled dept retries past the
         # interstitial instead of parsing the challenge shell (empty result). A
@@ -1479,13 +1560,52 @@ def _scrape_directory(dept: dict) -> list[dict]:
             # failed fetch once, and require two barren pages in a row before
             # concluding the walk is actually over. Costs one extra request per
             # paginated department; buys back silently-missing faculty.
+            #
+            # The walk ending is not proof the roster ended, and the stale pass
+            # retires whoever the unit no longer lists. So a page that was not
+            # read withholds the unit's retirement authority for the run
+            # (``partial_render_rows``) instead of retiring the people on it:
+            #   * a render that came back None: a render returns a document for
+            #     any HTTP status, so None is Cloudflare's shell, a timeout or
+            #     an empty document after every retry;
+            #   * a document with no text at all, or Cloudflare's shell;
+            #   * a page that showed no new cards before a page that did;
+            #   * a page that the roster's own pager links to (on the configured
+            #     directory or where it redirects) and that showed no new cards.
+            #     This is what tells a plain fetch's None for a 403 or a timeout
+            #     from the 404 past the last page. A linked page past ``max``
+            #     means the walk stopped short of the roster.
+            # A page counts as showing cards only when some card is new: a page
+            # that repeats cards already read is the site ignoring the page
+            # parameter, or a cache answering with another page. Past the last
+            # page some sites serve their last page again; nothing links it.
+            start, last = pag.get("start", 1), pag.get("max", 12)
+            card_sel = sel.get("card", "")
+            landed = getattr(soup, "_ofe_final_url", None) or base
+            roots = {_directory_root(base), _directory_root(landed)}
+            linked = _pager_pages(soup, landed, roots, param, vpre, path_mode)
+            shown = {_card_print(c) for c in soup.select(card_sel)}
+            walked: list[int] = []
+            read: set[int] = set()
+            not_read: set[int] = set()
             barren = 0
-            for pg in range(pag.get("start", 1), pag.get("max", 12) + 1):
+            for pg in range(start, last + 1):
                 if _source_budget_spent():
                     break
                 next_url = _paginated_url(base, pg, param) if path_mode else (
                     f"{base}{'&' if '?' in base else '?'}{param}={vpre}{pg}")
                 s2 = fetch(next_url) or fetch(next_url)
+                walked.append(pg)
+                cards = [] if s2 is None else [_card_print(c) for c in s2.select(card_sel)]
+                if not shown.issuperset(cards):
+                    read.add(pg)
+                    shown.update(cards)
+                    linked |= _pager_pages(
+                        s2, getattr(s2, "_ofe_final_url", None) or next_url,
+                        roots, param, vpre, path_mode)
+                elif (s2 is None and cfg.get("render")) or (s2 is not None and (
+                        _is_cf_interstitial(s2) or not s2.get_text(strip=True))):
+                    not_read.add(pg)
                 fresh = [] if s2 is None else [
                     p for p in _parse_cards(s2, sel, base, lf, flip, link_f, sf, ff)
                     if (p["name"], p["url"]) not in seen]
@@ -1497,6 +1617,14 @@ def _scrape_directory(dept: dict) -> list[dict]:
                 barren = 0
                 seen.update((p["name"], p["url"]) for p in fresh)
                 people.extend(fresh)
+            last_read = max(read, default=start - 1)
+            not_read |= {pg for pg in walked if pg not in read and pg < last_read}
+            not_read |= {pg for pg in linked if pg >= start and pg not in read}
+            if not_read:
+                _cover("partial_render_rows", len(not_read))
+                logger.warning(
+                    "faculty_graph: %s roster page(s) %s were not read; the unit "
+                    "retires nobody this run", dept.get("short"), sorted(not_read))
         for _extra_url in cfg.get("extra_urls", []):
             # Sibling roster pages of the SAME department that share one theme —
             # rank-split med-school galleries, art-history + studio art, core +
@@ -1509,7 +1637,10 @@ def _scrape_directory(dept: dict) -> list[dict]:
                 import time
                 time.sleep(cfg["pre_delay"])
             _es = fetch(_extra_url) or fetch(_extra_url)
-            if _es is None:
+            if _es is None or _is_cf_interstitial(_es) or not _es.get_text(strip=True):
+                _cover("partial_render_rows")
+                logger.warning("faculty_graph: %s roster page %s was not read; the "
+                               "unit retires nobody this run", dept.get("short"), _extra_url)
                 continue
             _seen = {(p["name"], p["url"]) for p in people}
             people.extend(
@@ -1518,6 +1649,8 @@ def _scrape_directory(dept: dict) -> list[dict]:
         people = _apply_profile_enrich(people, cfg.get("profile_enrich"))
     except Exception as e:  # noqa: BLE001
         logger.warning("faculty_graph: scrape parse failed for %s: %s", dept.get("short"), e)
+        # Rows counted before the failure would read as a fully parsed roster.
+        _cover("parser_errors")
         return []
     return people
 
@@ -3133,6 +3266,15 @@ def _json_dir_records(dept: dict, cfg: dict, recs) -> list[dict]:
             # W11; 395 corpus records). Drop it so _normalize falls back to
             # the department directory_url, which IS the observed source.
             url_v = ""
+        if url_v and cfg.get("link_rewrite"):
+            # UF Health's Apollo feeds link every profile on an internal
+            # staging host; the public site serves the same slug. A link that
+            # doesn't fit the pattern is dropped rather than kept unreachable.
+            pattern, replacement = cfg["link_rewrite"]
+            m = re.fullmatch(pattern, url_v)
+            url_v = m.expand(replacement) if m else ""
+        if not url_v and cfg.get("link_template"):
+            url_v = _json_link_template(x, cfg["link_template"])
         research = ""
         keywords: list[str] = []
         for rf in ([cfg["research_field"]] if isinstance(cfg.get("research_field"), str)
@@ -3155,9 +3297,66 @@ def _json_dir_records(dept: dict, cfg: dict, recs) -> list[dict]:
                 research = str(_dig(x, rf) or "").strip()
                 if research:
                     break
+        department = ""
+        if cfg.get("department_field"):
+            department = _json_department(_dig(x, cfg["department_field"]),
+                                          cfg.get("department_units"))
         specs.append(faculty(name, title=title, url=url_v, email=email,
-                             research_areas=research, keywords=keywords))
+                             research_areas=research, keywords=keywords,
+                             department=department))
     return specs
+
+
+def _json_link_template(record: dict, template: str) -> str:
+    """Fill ``{dotted.path}`` placeholders from a feed record.
+
+    For feeds that carry a person's id but no absolute profile URL (UCR's
+    ``netId``, ASU's ``eid``). Any empty placeholder yields ``""`` so the record
+    falls back to the directory page instead of a URL shared by everyone
+    missing that id.
+    """
+    missing = False
+
+    def fill(m: re.Match) -> str:
+        nonlocal missing
+        value = _dig(record, m.group(1))
+        text = "" if value is None else str(value).strip()
+        if not text:
+            missing = True
+        return quote(text, safe="")
+
+    url = re.sub(r"\{([^{}]+)\}", fill, template)
+    return "" if missing else url
+
+
+def _json_department(raw, units: dict | None) -> str:
+    """A feed record's home department, or ``""`` for the config umbrella.
+
+    Without ``units`` the field passes through. With them, the value must name
+    one of the school's own departments (``names`` / ``aliases``) after the
+    school ``prefix`` and an optional rank modifier (``strip``), followed by
+    nothing or by what ``boundary`` allows (a division in parentheses, a second
+    appointment, page text the harvest ran into). Anything else — another
+    institution's appointment read off a biography, a centre, a fragment — is
+    not evidence of a department here, so it returns ``""``.
+    """
+    text = re.sub(r"\s+", " ", str(raw or "")).strip()
+    if units is None:
+        return text
+    prefix = units.get("prefix", "")
+    if prefix:
+        if not text.startswith(prefix):
+            return ""
+        text = text[len(prefix):]
+    if units.get("strip"):
+        text = re.sub(units["strip"], "", text, count=1)
+    names = {n: n for n in units.get("names", ())}
+    names.update(units.get("aliases", {}))
+    boundary = re.compile(units.get("boundary", r"\s*$"))
+    for name in sorted(names, key=len, reverse=True):
+        if text.startswith(name) and boundary.match(text[len(name):]):
+            return prefix + names[name]
+    return ""
 
 
 # ---------------------------------------------------------------------------
@@ -3306,6 +3505,20 @@ def clean_corpus_faculty_keywords(opps: list[dict]) -> int:
 # with the same person under a specific dept is the redundant one.
 _UMBRELLA_DEPTS: dict[str, frozenset[str]] = {
     "gatech": frozenset({"College of Computing"}),
+}
+
+# Schools whose medical faculty come from a harvested seed on another mail
+# domain than the department rosters, keyed by school_slug -> the seed's
+# department prefix. JHU's School of Medicine seed gives every professor an
+# @jh.edu address and a Hopkins Medicine profile; the Whiting rosters publish
+# @jhu.edu or @jhmi.edu and their own pages. A Biomedical Engineering professor
+# with a SOM appointment therefore arrives twice, and no email, URL or name pass
+# pairs the two. The seed names the appointment ("School of Medicine —
+# Biomedical Engineering"): that department and the same name are the evidence.
+# The name alone is not: SOM's John Miller (Medicine) and Whiting's John Miller
+# (Applied Mathematics and Statistics) carry different JHED ids.
+_MEDICAL_SEED_PREFIXES: dict[str, str] = {
+    "jhu": "School of Medicine — ",
 }
 
 
@@ -3496,6 +3709,41 @@ def collapse_same_person_faculty(opps: list[dict]) -> dict:
             for o in group:
                 clear_contact_claim(o)
                 nulled_by_school[school] += 1
+
+    # A medical-seed record and a department roster record for one person
+    # (``_MEDICAL_SEED_PREFIXES``): same name, and the seed's appointment is
+    # the roster's department. The roster is the department's own page,
+    # re-observed every run with the address it publishes, so it keeps the
+    # person unless the seed record holds more research keywords. The survivor
+    # also takes the other record's major labels: the person is in both.
+    from .uiuc_faculty import _faculty_specific_keywords
+    seeds: dict[tuple, dict] = {}
+    rosters: dict[tuple, dict] = {}
+    for o in active:
+        prefix = _MEDICAL_SEED_PREFIXES.get(o.get("school"))
+        if not prefix or id(o) in remove:
+            continue
+        dept = (o.get("department") or "").strip()
+        nn = _norm_person_name(o.get("pi_name"))
+        if dept.startswith(prefix):
+            seeds[(o.get("school"), nn, dept[len(prefix):].casefold())] = o
+        elif dept.startswith("Department of "):
+            rosters[(o.get("school"), nn, dept[len("Department of "):].casefold())] = o
+    for key, seed in seeds.items():
+        roster = rosters.get(key)
+        if roster is None:
+            continue
+        survivor, loser = roster, seed
+        if len(_faculty_specific_keywords(seed)) > len(_faculty_specific_keywords(roster)):
+            survivor, loser = seed, roster
+        _merge_faculty_fields(survivor, loser)
+        labels = list((survivor.get("metadata") or {}).get(FACULTY_MAJOR_LABELS_MARKER) or [])
+        for label in (loser.get("metadata") or {}).get(FACULTY_MAJOR_LABELS_MARKER) or []:
+            if label not in labels:
+                labels.append(label)
+        survivor.setdefault("metadata", {})[FACULTY_MAJOR_LABELS_MARKER] = labels
+        remove.add(id(loser))
+        removed_by_school[key[0]] += 1
 
     by_name: dict[tuple[str, str], list[dict]] = defaultdict(list)
     for o in active:

@@ -1,276 +1,202 @@
-# RUNBOOK — Operator actions required after this session
+# RUNBOOK — operating JoinALab
 
-This session shipped infrastructure that needs one-time operator setup
-before the features go live. Work through the sections in order.
+Checked against the code on 2026-10-09. Every command in a code block was run
+that day, except the ones marked **operator**: those need production secrets
+or change production. Releases and rollback have their own document,
+`docs/RELEASE.md`. Open work is not tracked here (section 8).
 
-## 1. Supabase — enable Anonymous Sign-ins  ⚠️ REQUIRED
-
-Dashboard → **Authentication → Sign In / Providers → Anonymous Sign-Ins → Enable**.
-
-Without this, `signInAnonymously()` returns HTTP 422 (`anonymous_provider_disabled`)
-and users can't save profiles/favorites/interactions. The app now degrades
-gracefully: favorites are written to `localStorage` (`ofe_favs_fallback`)
-and an amber **"Saved locally only"** banner appears on Results/Favorites
-pages. When you flip the switch on, the next `getFavorites()` call will
-backfill any local-only favorites into Supabase automatically.
-
-To verify it's enabled, run:
+## 1. Check what is deployed
 
 ```bash
-curl -sS -X POST "https://<project-ref>.supabase.co/auth/v1/signup" \
-  -H "apikey: <anon-key>" -H "Content-Type: application/json" -d '{}'
-# Success → {"user": {...}}    Disabled → {"error_code":"anonymous_provider_disabled"}
+curl -sS https://opportunity-filter-engine-api.onrender.com/api/health
+curl -sS https://opportunity-filter-engine-api.onrender.com/api/ready
+curl -sS https://joinalab.com/ | grep -o 'data-release-sha="[^"]*"'
 ```
 
-## 2. Supabase — apply migrations 006 and 007
+`/api/health` reports the backend's `release_sha`; the page attribute reports
+the frontend's. Both should name the same `main` commit: on 2026-10-09 both
+said `6e7530d0`. `/api/ready` answers 200 with `"ready": true`, or 503 with
+the failing checks (corpus freshness among them) listed in `reasons`. Render
+deploys a `main` commit only after its CI checks pass
+(`autoDeployTrigger: checksPass` in `render.yaml`).
 
-Dashboard → **SQL Editor → New query**, paste each file, run in order.
+## 2. Data refresh
+
+`.github/workflows/refresh-data.yml` runs every day at 06:07 UTC (every schedule
+here starts a few minutes past the hour, because GitHub starts top-of-hour
+schedules late). It takes the
+shard for the UTC weekday (`date -u +%u`, 1 = Monday) from `WEEKLY_ROTATION`
+in `scripts/refresh_rotation.py`, so each school is re-scraped once a week.
+Monday's shard carries `uiuc`, and Sunday (7) is `national`: the SRO catalog,
+NSF REU and SimplifyJobs internships. Print any day's shard:
 
 ```bash
-supabase/migrations/006_anonymous_auth_rls.sql   # Anonymous auth RLS
-supabase/migrations/007_push_subscriptions.sql   # Push subscription table
+python3 scripts/refresh_rotation.py --day 1
+python3 scripts/refresh_rotation.py --day 7
 ```
 
-Or via CLI: `supabase db push`.
+`--day` refuses to answer when a supported school sits in no shard or in two.
+That check exists because 25 registered schools were once in no shard and
+went unrefreshed after onboarding. A school leaves the rotation only by
+leaving the product (`src/school_scope.py`).
 
-Verify:
+What one scheduled run does:
 
-```sql
-SELECT policyname, cmd FROM pg_policies
-WHERE tablename IN ('profiles', 'favorites', 'interactions', 'profile_versions', 'push_subscriptions')
-ORDER BY tablename, policyname;
-```
+1. Scrapes its shard in deep mode, with a 240-minute source budget (210 on a
+   day that also runs the Illinois Experts pass). The job itself times out at
+   350 minutes.
+2. In the first seven days of the month, follows each faculty profile link of
+   the shard (`OFE_ENRICH_PROFILES=1`). On the first Monday it also runs the
+   Illinois Experts pass for `uiuc`, capped at 30 minutes.
+3. Runs the corpus-wide offline passes (`python -m src.normalizers.enrich_processed --save`,
+   `python -m src.normalizers.deactivate_past --save`) and the data-quality
+   tests.
+4. Writes back only the shards it was allowed to refresh and whose sources
+   succeeded, opens an `auto/refresh-data-*` PR, and squash-merges it once the
+   required checks pass. That step needs the `REFRESH_PAT` secret.
+5. Checks in to the dead man's switch (section 3).
 
-Each table should have SELECT/INSERT/UPDATE/DELETE (or subset) policies
-referencing `auth.uid()::text`.
+GitHub can start a scheduled run late; the 2026-10-02 run started 5.5 hours
+late. Scheduled and manual runs sit in separate concurrency groups, and the
+first step keeps them apart: a manual run defers to a refresh in progress, and
+a scheduled run cancels a manual one.
 
-## 3. Vercel — env var cleanup
-
-**Delete** (no longer used):
-
-- `NEXT_PUBLIC_SUPABASE_JWT_SECRET`
-
-**Keep** (unchanged):
-
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-
-**Add**: nothing. Web Push needs no frontend variable — the browser fetches
-the public key from the backend at `GET /api/push/vapid-public-key`, so the
-key a subscription is minted with is always the one whose private half signs
-the pushes. A build-time copy could only drift.
-
-## 4. Web Push — generate VAPID keypair
+**Manual run (operator).** Actions → Refresh Opportunity Data → Run workflow.
+`schools` takes comma-separated school slugs or `national`; empty means a
+full refresh. `deep` and `enrich_profiles` are `true`/`false`. The
+workflow validates `schools` with this command, which you can run first:
 
 ```bash
-pip install cryptography
-python scripts/generate_vapid_keys.py
+python3 scripts/refresh_rotation.py --schools ucla --allow-full
+python3 scripts/refresh_rotation.py --schools ucla --allow-full --needs-browser
 ```
 
-The script prints three env vars. Paste them:
+The second prints whether the run will install headless Chromium. To read a
+refresh's options locally, run `python -m src.collectors.refresh_all --help`;
+publish data through the workflow's PR, not a hand-committed shard.
 
-| Env var | Where |
-|---|---|
-| `VAPID_PRIVATE_KEY` | Backend host (Render/Fly/your server) |
-| `VAPID_PUBLIC_KEY` | Backend host |
-| `VAPID_SUBJECT` | Backend host, e.g. `mailto:you@example.com` |
+## 3. Other scheduled jobs
 
-The private key must stay secret — store in a password manager. The script
-also prints a `NEXT_PUBLIC_VAPID_PUBLIC_KEY=` line; the backend accepts it as
-a fallback name for `VAPID_PUBLIC_KEY`, and nothing else reads it.
-
-Until the backend has a public key, `GET /api/push/vapid-public-key` answers
-503 and the "Enable notifications" button on `/dashboard` stays hidden
-(graceful degradation).
-
-## 5. Push cron — wire up scheduler
-
-The backend exposes `GET /api/cron/reminders` (guarded by `CRON_SECRET`)
-that scans overdue reminders and fires Web Push notifications.
-
-### 5a. Backend env
-
-```
-CRON_SECRET=<long random string, e.g. `openssl rand -hex 32`>
-SUPABASE_URL=https://<your-project>.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=<service role key from Supabase dashboard>
-VAPID_PRIVATE_KEY=<from step 4>
-VAPID_PUBLIC_KEY=<from step 4>
-VAPID_SUBJECT=mailto:you@example.com
-```
-
-### 5b. Backend dependency
-
-```bash
-pip install pywebpush httpx
-```
-
-Add both to `requirements.txt` if you're deploying to a fresh host:
-
-```
-pywebpush>=1.14
-httpx>=0.25
-```
-
-### 5c. Scheduler
-
-Pick one:
-
-**Option A — Vercel Cron** (if backend runs on Vercel):
-Add to `vercel.json`:
-
-```json
-{
-  "crons": [
-    { "path": "/api/cron/reminders", "schedule": "0 13 * * *" }
-  ]
-}
-```
-
-**Option B — GitHub Actions** (backend anywhere):
-
-```yaml
-name: daily-reminders
-on:
-  schedule:
-    - cron: '0 13 * * *'
-jobs:
-  ping:
-    runs-on: ubuntu-latest
-    steps:
-      - run: |
-          curl -sf \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "${{ secrets.BACKEND_URL }}/api/cron/reminders"
-```
-
-**Option C — external cron service** (cron-job.org, EasyCron): configure
-a GET to `https://<your-backend>/api/cron/reminders` with header
-`Authorization: Bearer <CRON_SECRET>`.
-
-Daily 1pm UTC (~8am Central during DST) is a reasonable default so
-overdue items get surfaced mid-morning.
-
-## 6. Verification
-
-After the above, sanity check:
-
-1. Open the app in an **incognito** window (to get a fresh anonymous auth).
-2. Home → fill out a profile → refresh — profile should still be there.
-3. Star an opportunity → `/favorites` → see it listed.
-4. Open `/dashboard` — you should see the "Enable notifications" button
-   (only if VAPID key is set and browser supports Web Push).
-5. Click it → accept browser permission → check Supabase dashboard → table
-   `push_subscriptions` should have a new row with your `auth.uid()`.
-6. Add a reminder on any opportunity detail page with `remind_at` set to
-   today.
-7. Manually trigger: `curl -H "Authorization: Bearer $CRON_SECRET" \
-   https://<backend>/api/cron/reminders` — should return `{"sent": 1, ...}`
-   and the browser should show a notification.
-
-## 7. Rollback
-
-If anything goes wrong:
-
-- **Migration 006** — recreate 004 policies by pasting
-  `supabase/migrations/004_rls_device_scoping.sql` and restoring old
-  `frontend/src/lib/supabase.ts` from git history
-  (`git show HEAD~1:frontend/src/lib/supabase.ts`).
-- **Push** — remove `VAPID_PUBLIC_KEY` (and the `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
-  fallback, if set) from the backend host. `/api/push/vapid-public-key` then
-  503s, the subscribe UI disappears, no new subscriptions happen, existing
-  subscriptions sit inert until the cron runs.
-
-## Live environment (as of Apr 2026)
-
-| Service | URL | Notes |
+| Workflow | When (UTC) | What it does |
 |---|---|---|
-| Frontend | https://opportunity-filter-engine.vercel.app | Vercel Hobby, Next.js 14 |
-| Backend | https://opportunity-filter-engine-api.onrender.com | Render Free, FastAPI (cold starts ~30s) |
-| Database | https://mjpirkyduibkakvlbdko.supabase.co | Supabase Free |
-| Cron | `.github/workflows/daily-reminders.yml` | GitHub Actions, daily 13:00 UTC |
+| `ops-scan.yml` | daily 11:13 | `POST /api/cron/ops-scan`: files collector and drift incidents |
+| `snapshot-reminder.yml` | Monday 13:23 | Emails the operator when a hand-exported snapshot (CMU) is due |
+| `daily-reminders.yml` | daily 23:11 | `GET /api/cron/reminders` (Web Push, email fallback), then the data-quality check and the feedback and orders digests |
+| `saved-searches-refresh.yml` | daily 23:41 | `GET /api/cron/saved-searches/refresh`, then `/digest` |
+| `campus-seed-health.yml` | Sunday 12:19 | Probes configured seed and program URLs for dead pages |
+| `release-gate.yml` | manual only | The release gate (`docs/RELEASE.md`) |
 
-### Environment variables deployed
+Every scheduled workflow checks in with `POST /api/cron/heartbeat` at the
+end. A pg_cron job from migration 032 files an incident for any heartbeat that
+misses its deadline, and `ops-scan` checks the pg_cron job's own heartbeat.
+`docs/RELEASE.md` ("The dead man's switch") has the drill. `ops-scan`,
+`daily-reminders` and `saved-searches-refresh` start with a "Require the
+secrets this cron runs on" step that names the secrets each needs. Every
+workflow above also has a manual Run workflow button (**operator**).
 
-**Vercel (1):**
-- `BACKEND_URL` → Render URL
+## 4. Database migrations
 
-**Render (6):**
-- `CRON_SECRET`
-- `SUPABASE_URL`
-- `SUPABASE_SERVICE_ROLE_KEY` (⚠️ bypasses RLS, keep secret)
-- `VAPID_PRIVATE_KEY`
-- `VAPID_PUBLIC_KEY`
-- `VAPID_SUBJECT`
+### Why the 49 names look different
 
-**GitHub Secrets (2):**
-- `BACKEND_URL`
-- `CRON_SECRET` (must match Render's value)
+`supabase/migrations/` held 49 files on 2026-10-09. A migration's version is
+the part of its name before the first underscore. The Supabase CLI applies
+files in filename order and records each version once.
 
-### Applied Supabase migrations
-- 001 (pre-existing)
-- 002_interactions
-- 003_profile_versions
-- 005_interaction_notes (columns: notes, remind_at, last_contacted_at)
-- 006_anonymous_auth_rls (auth.uid()::text policies, supersedes 004)
-- 007_push_subscriptions
+| Names | Count | Where they came from |
+|---|---|---|
+| `001`–`034` | 34 | The original three-digit sequence. `001` was written on 2026-07-24 (#646) to recreate tables first made in the dashboard. The last two, `033` (2026-08-27) and `034` (2026-09-05), landed after the first timestamp file. |
+| `0181_oauth_merge_secret`, `0201_usage_events` | 2 | Renamed from `018_` and `020_` in #646 because two files shared each version, which made `supabase db push` impossible. Content unchanged. In filename order `0181_` runs before `018_` and `0201_` before `020_`. |
+| `20260819164641_…` onward | 13 | `YYYYMMDDHHMMSS` UTC timestamps, the format `supabase migration new` writes. Every migration since 2026-09-24 uses it. |
 
-Migration 004 was defined but superseded by 006 — do not apply.
+The replay in CI (`supabase/tests/run_supabase_cli_migration_test.sh`)
+applies all 49 into an empty database in that order.
 
-## Data quality — majors/keywords enricher
+### Rule for a new migration
 
-`src/normalizers/enricher.py` backfills `eligibility.majors` and
-`keywords` for opportunities whose upstream source left them empty or
-tagged `"Unsorted"`. Wired into `uiuc_our_rss`, `handshake`, and
-`manual_importer` normalizers, so new entries are enriched on ingestion.
+1. Create it with `supabase migration new <snake_case_name>`. It gets a UTC
+   timestamp later than every existing file. Never use a three-digit name: a
+   `035_` sorts before all the timestamp files, so a fresh replay would run it
+   before 13 migrations it may depend on. `tests/test_docs_current.py` fails on
+   any new name that is not a 14-digit timestamp later than `20260930220000`,
+   the newest version when the check was written.
+2. Never edit or rename a migration that production has run. Write a new one
+   that supersedes it; the chain is forward-only (`docs/RELEASE.md`,
+   "Migration recovery").
+3. Add the version to the array in
+   `supabase/tests/migration_history_contract_test.sql`. Add its SQL test
+   under `supabase/tests/` and name that test in a runner CI executes.
+   `tests/test_ci_gate_honesty.py` fails while the version is missing from
+   the array or a SQL test is named by no CI runner.
+4. Replay locally:
 
-To retroactively enrich the current dataset:
-
-```bash
-# Preview changes
-python3 -m src.normalizers.enrich_processed --dry-run
-
-# Persist
-python3 -m src.normalizers.enrich_processed --save
-```
-
-Rules are regex-based and conservative — never overwrites real upstream
-data. Extend `MAJOR_PATTERNS` / `KEYWORD_PATTERNS` in the enricher when
-new domains (e.g. a new humanities source) are added.
-
-## Email endpoints (Resend)
-
-Three new endpoints under `/api/email/*`:
-
-- `POST /api/email/send-matches` — send top-50 filtered matches to an email
-- `POST /api/email/send-favorites` — send saved opportunities + notes
-- `POST /api/email/restore-link` — send a signed URL that verifies on `/restore`
-
-All three return **503** when env vars are unset — the UI falls back
-gracefully. To enable:
-
-1. Sign up at [resend.com](https://resend.com) (100 emails/day free).
-2. Verify a sending domain or use the built-in `onboarding@resend.dev`
-   for testing (not for production — Resend throttles).
-3. Add to **Render** env vars:
+   ```bash
+   bash supabase/tests/run_flow_b_test.sh
+   bash supabase/tests/run_supabase_cli_migration_test.sh
    ```
-   RESEND_API_KEY=re_xxx
-   RESEND_FROM_EMAIL=OpportunityEngine <hello@yourdomain.com>
+
+5. **Operator:** the owner applies it to production by hand, through the
+   dashboard SQL editor or the Supabase MCP `apply_migration`, sending the
+   file unchanged. Never run `supabase db push` against
+   production. Production's history records `012`, `013` and `014` under
+   timestamp versions such as `20260611111920`, so match its ledger to the
+   files by name, not by version string (`docs/RELEASE.md`, section 5, and
+   `supabase/MIGRATION_REPAIR.md`). `scripts/check_migration_parity.py` does
+   that match offline: `--print-sql` prints the read-only export query, and
+   `--applied <export>` reads its result back and exits 1 on drift, such as
+   a file production never ran or a row the repo does not have. Running the
+   query against production waits on the owner's OK.
+
+`supabase db push` with the pinned CLI 2.95.4 works only on an empty
+database. On 2026-10-09 a scratch database that had taken the full chain
+refused all five follow-up pushes tried: with and without `--include-all`,
+with and without a new migration file. Each time the CLI reported remote
+versions `018` and `020` as missing locally. `supabase migration list` shows
+the mismatch: it lists the remote `018` before `0181` and the local `018`
+after it.
+
+## 5. Release flags
+
+`docs/product_scope.md` lists every flag, its state and why each closed one
+is closed. A flag flips only in that feature's acceptance PR, which edits both
+`backend/lib/release_scope.py` and `frontend/src/lib/release-scope.ts`, moves
+the feature from `UNACCEPTED_FEATURES` to `ACCEPTED_FEATURES` in
+`tests/test_release_scope.py`, and updates the table in
+`docs/product_scope.md`.
+
+## 6. Setting up a new environment
+
+1. **Supabase.** Enable Authentication → Sign In / Providers → Anonymous
+   Sign-Ins. Without it, `signInAnonymously()` returns HTTP 422
+   (`anonymous_provider_disabled`), and the app keeps favorites in the browser
+   under a "Saved locally only" banner. Then apply the migrations. Into an
+   empty database `supabase db push` takes the whole chain, which is what the
+   CI replay does (section 4).
+2. **Secrets.** `docs/RELEASE.md` section 6 lists every variable the
+   backend, the frontend build and the workflows read, whether production
+   needs it, and what breaks without it. The backend's go in the Render
+   dashboard (`render.yaml` holds only non-secret settings), the frontend's
+   build variables in Vercel, and the workflows' in GitHub repository
+   secrets. Section 3 says where the cron workflows name theirs.
+3. **Web Push.** Generate a VAPID keypair and set `VAPID_PRIVATE_KEY`,
+   `VAPID_PUBLIC_KEY` and `VAPID_SUBJECT` on the backend. Keep the private key
+   in a password manager.
+
+   ```bash
+   python scripts/generate_vapid_keys.py
    ```
-4. For restore links to work, also set `RESTORE_LINK_SECRET` (or reuse
-   `ADMIN_TOKEN`). HMAC-signed, 30-day TTL.
 
-Rate-limits: 3 per IP per hour, enforced in `backend/main.py`.
+   The script also prints a `NEXT_PUBLIC_VAPID_PUBLIC_KEY` line. Nothing on the
+   frontend reads it: the browser asks `GET /api/push/vapid-public-key`, which
+   answers 503 until the backend has a public key, and the backend accepts
+   that name only as a fallback for `VAPID_PUBLIC_KEY`.
+4. **Check** with section 1's commands against the new hosts.
 
-## What this session deferred
+## 7. Releases and rollback
 
-The following were initially planned but **not shipped** to keep the
-session focused on infrastructure + Anonymous Auth + Web Push + Compare:
+`docs/RELEASE.md`: the gate, the evidence each check needs, rollback for
+Render, Vercel and the database, and the known weak spots.
 
-- **Tracker v2** (markdown notes, file attachments, timeline view).
-- **Admin dashboard** for data-quality monitoring.
-- **College/major i18n** is partial — section headings and form labels
-  are translated, but college/major dropdown *values* still render as
-  English only (they're dictionary-gated but only `colleges.*` is
-  populated, not individual majors). Keys preserve English as form state
-  so nothing breaks on locale switch.
+## 8. Open work
+
+The single to-do list is the owner's MVP checklist (the private "OE todolist"
+Google Doc, MVP tab, items M01–M70). Work that is not in it is not planned.

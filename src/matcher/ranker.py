@@ -17,11 +17,13 @@ from functools import lru_cache
 from backend.lib.contact_visibility import send_target_strength, verified_send_target
 
 from ..evidence import (
+    configured_value_unstated,
     faculty_availability_status,
     faculty_contact_claims_unverified,
     faculty_positive_major_labels,
     faculty_safe_eligibility,
     faculty_safe_lab_or_program,
+    is_all_majors_answer,
     is_inferred,
     is_professor_rank,
     is_read_off_the_page,
@@ -1814,8 +1816,15 @@ def score_eligibility(
     )
     year_score = _year_match_score(student_year, stated_years)
     pref_years = stated_years
+    # A campus program spec's class years, like its majors below, are our
+    # configuration unless the page text the row carries states them: they
+    # still score as stated, but are not called the program's terms.
+    years_are_configured = bool(stated_years) and configured_value_unstated(opportunity, "class_year")
     if year_score >= 80:
-        reasons_fit.append(f"Accepts {student_year} students")
+        reasons_fit.append(
+            f"Your class year ({student_year}) may fit this program" if years_are_configured
+            else f"Accepts {student_year} students"
+        )
     elif not student_year or student_year.lower() == "unknown":
         # Neutral 40 (see _year_match_score) — the gap names the actual
         # problem (missing profile data) instead of fabricating a targeting
@@ -1828,7 +1837,7 @@ def score_eligibility(
             reasons_gap.append("For undergraduates — not a graduate-level opening")
         else:
             named_years = [p for p in pref_years if p and p.lower() != "unknown"]
-            if named_years:
+            if named_years and not years_are_configured:
                 reasons_gap.append(f"Typically targets {', '.join(named_years)}")
 
     # Major match (20% weight)
@@ -1850,6 +1859,8 @@ def score_eligibility(
     # should have been graded on."
     major_is_label = opportunity.get("source_type") == "faculty_research"
     major_is_inferred = is_inferred(opportunity, "eligibility.majors")
+    # Same for a campus program spec's majors (see the class years above).
+    major_is_configured = not major_is_inferred and configured_value_unstated(opportunity, "majors")
     major_labels = (
         faculty_positive_major_labels(opportunity)
         if major_is_label
@@ -1870,6 +1881,10 @@ def score_eligibility(
         reasons_fit.append("Your major may fit this field")
     elif major_is_inferred and major_score >= 70:
         reasons_fit.append("Your major may be related to this field")
+    elif major_is_configured and major_score >= 100:
+        reasons_fit.append(f"Your major ({profile.get('major', '')}) may fit this program")
+    elif major_is_configured and major_score >= 70:
+        reasons_fit.append(f"Your major ({profile.get('major', '')}) may be related to this program")
     elif major_score >= 100:
         reasons_fit.append(f"Your major ({profile.get('major', '')}) is a direct match")
     elif major_score >= 70:
@@ -1879,6 +1894,10 @@ def score_eligibility(
         and elig.get("majors")
         and not major_is_label
         and not is_inferred(opportunity, "eligibility.majors")
+        and not major_is_configured
+        # A campus program spec writes ["all"] for "open to every major", and
+        # a page that says so makes it stated: "Prefers all" names nothing.
+        and not is_all_majors_answer(elig.get("majors"))
     ):
         # Only a REAL preference list earns a gap: an open posting (majors=[])
         # scores 30 too, and previously emitted the nonsensical gap "Prefers ".
@@ -1932,9 +1951,14 @@ def score_eligibility(
     required_skills_list = _bounded_skill_labels(elig.get("skills_required"))
     requirements_are_ours = is_inferred(opportunity, "eligibility.skills_required")
     stated_required_skills = [] if requirements_are_ours else required_skills_list
+    # An SRO row whose deadline is the database's "Anticipated" date was
+    # rolling only because that date did not parse. It keeps this boost until
+    # the owner decides whether an estimated deadline should: dropping it
+    # costs those rows about 2 points.
+    sro_estimate = opportunity.get("source") == "uiuc_sro" and opportunity.get("deadline_is_estimate") is True
     if (
         not stated_required_skills
-        and opportunity.get("is_rolling")
+        and (opportunity.get("is_rolling") or sro_estimate)
         and not faculty_contact_claims_unverified(opportunity)
     ):
         skill_score = 60.0
@@ -3215,7 +3239,7 @@ _REASON_TIERS: tuple[tuple[int, tuple[str, ...]], ...] = (
     # 6 — boilerplate that is true of half the results page. The brand lines
     # are school-constant (every registered-school result gets one), so they
     # must not occupy a top-3 card slot when specific reasons are scarce.
-    (6, ("Accepts ", "Your major (", "Open to international students",
+    (6, ("Accepts ", "Your class year (", "Your major (", "Open to international students",
          "Your experience level is competitive",
          "You're comfortable with direct outreach", "Low application effort",
          "Matches your interest in ", "Major research university",

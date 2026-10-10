@@ -5,9 +5,10 @@
  * scripts/generate_detail_fields_contract.py from the real detail-route
  * projection, and a backend test fails if it goes stale. This file closes the
  * other half: for every case, every facet the server put in `explicit`
- * renders "Source says", every facet it put in `inferred` renders "System
- * inference" with its basis, and every facet it left unknown renders "Not
- * provided" — nothing more, nothing less.
+ * renders "Source says" (with the page's sentence when the API sent one), every
+ * facet it put in `inferred` renders "System inference" with its basis, and
+ * every facet it left unknown renders "Not provided" — nothing more, nothing
+ * less.
  */
 import { describe, expect, it } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
@@ -22,6 +23,7 @@ interface ContractField {
   explicit: Record<string, unknown>;
   inferred: Record<string, { value: unknown; basis: string }>;
   unknown: string[];
+  quotes: Record<string, { text: string; source_url: string | null; observed_at: string | null }>;
 }
 interface ContractCase {
   name: string;
@@ -67,6 +69,19 @@ describe('detail-fields contract', () => {
         const sourceRow = rows.find((r) => r.getAttribute('data-state') === 'source');
         if (sourceRow) {
           expect(within(sourceRow).getByText('detail.facts.state.source')).toBeInTheDocument();
+        }
+        // The page's own words appear exactly where the API sent them.
+        const quote = within(group).queryByTestId(`fact-${name}-${facet}-quote`);
+        if (facet in apiField.quotes) {
+          expect(sourceRow, `${c.name} ${name}.${facet}`).toBeDefined();
+          expect(within(sourceRow!).getByTestId(`fact-${name}-${facet}-quote`).textContent)
+            .toBe(apiField.quotes[facet].text);
+          // …linked to the page that sentence was read on.
+          const link = within(sourceRow!).queryByTestId(`fact-${name}-${facet}-quote-source`)?.querySelector('a');
+          expect(link?.getAttribute('href') ?? null, `${c.name} ${name}.${facet}`)
+            .toBe(apiField.quotes[facet].source_url);
+        } else {
+          expect(quote, `${c.name} ${name}.${facet}`).toBeNull();
         }
       }
     }
