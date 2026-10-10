@@ -1036,7 +1036,7 @@ export default function TailorModal({
               <p className="text-sm text-gray-500 truncate max-w-md">
                 {opportunityTitle}
               </p>
-              <p className="text-xs text-gray-400 mt-1 max-w-md hidden sm:block">
+              <p className="text-xs text-gray-500 mt-1 max-w-md hidden sm:block">
                 {t('tailor.subtitle')}
               </p>
             </div>
@@ -1103,7 +1103,7 @@ export default function TailorModal({
                   </span>
                 )}
               </div>
-              <p className="text-xs text-gray-400 mb-2">
+              <p className="text-xs text-gray-500 mb-2">
                 {t('tailor.bulletsHint')}
               </p>
               {sourceReady && target && !writingTargetVersion(target) && !error && <p role="alert" className="mb-2 text-xs text-amber-800">{t('tailor.targetVersionUnavailable')}</p>}
@@ -1195,7 +1195,7 @@ export default function TailorModal({
               </label>
               <div className="flex items-center gap-1.5">
                 {reviewable && rejected.size > 0 && (
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider bg-gray-100 text-gray-500">
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider bg-gray-100 text-gray-600">
                     {t('tailor.keptCount', { kept: keptCount, total: resp!.tailored_bullets.length })}
                   </span>
                 )}
@@ -1271,7 +1271,7 @@ export default function TailorModal({
               {/* R73: one-line nudge that this is a review surface — edit or
                   reject any bullet before copying. */}
               {!loading && !error && reviewable && (
-                <p className="text-[11.5px] text-gray-400 px-1">
+                <p className="text-[11.5px] text-gray-500 px-1">
                   {keptCount === 0 ? t('tailor.allRejectedHint') : t('tailor.reviewHint')}
                 </p>
               )}
@@ -1312,7 +1312,7 @@ export default function TailorModal({
                             the same text twice adds noise without value. */}
                         {original && !sameAsOriginal && !isEditing && (
                           <div className="px-4 py-2.5 bg-gray-50/80 border-b border-gray-100">
-                            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">
+                            <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-1">
                               {t('tailor.originalRowLabel')}
                             </p>
                             <p className="text-[12.5px] text-gray-500 leading-relaxed">
@@ -1329,7 +1329,7 @@ export default function TailorModal({
                                 </p>
                               )}
                               {isEdited && !isEditing && (
-                                <span className="text-[9px] font-semibold uppercase tracking-wide px-1 py-px rounded bg-amber-50 text-amber-600">
+                                <span className="text-[9px] font-semibold uppercase tracking-wide px-1 py-px rounded bg-amber-50 text-amber-700">
                                   {t('tailor.edited')}
                                 </span>
                               )}
@@ -1343,7 +1343,7 @@ export default function TailorModal({
                                     <button
                                       type="button"
                                       onClick={() => startEdit(i, current)}
-                                      className="inline-flex items-center gap-1 text-[10.5px] font-medium px-1.5 py-0.5 rounded-md text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                                      className="inline-flex items-center gap-1 text-[10.5px] font-medium px-1.5 py-0.5 rounded-md text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
                                       aria-label={t('tailor.editBulletAria')}
                                     >
                                       <Pencil className="w-3 h-3" aria-hidden="true" />
@@ -1352,7 +1352,7 @@ export default function TailorModal({
                                     <button
                                       type="button"
                                       onClick={() => toggleReject(i)}
-                                      className="inline-flex items-center gap-1 text-[10.5px] font-medium px-1.5 py-0.5 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                                      className="inline-flex items-center gap-1 text-[10.5px] font-medium px-1.5 py-0.5 rounded-md text-gray-500 hover:text-red-700 hover:bg-red-50 transition-colors"
                                       aria-label={t('tailor.rejectBulletAria')}
                                     >
                                       <Trash2 className="w-3 h-3" aria-hidden="true" />
@@ -1377,8 +1377,8 @@ export default function TailorModal({
                                     onClick={() => handleCopyBullet(i, current)}
                                     className={`inline-flex items-center gap-1 text-[10.5px] font-medium px-1.5 py-0.5 rounded-md transition-colors ${
                                       copiedBulletIdx === i
-                                        ? 'text-emerald-600 bg-emerald-50'
-                                        : 'text-gray-400 hover:text-indigo-600 hover:bg-indigo-50'
+                                        ? 'text-emerald-700 bg-emerald-50'
+                                        : 'text-gray-500 hover:text-indigo-600 hover:bg-indigo-50'
                                     }`}
                                     aria-label={t('tailor.copyBulletAria')}
                                   >
@@ -1426,7 +1426,7 @@ export default function TailorModal({
                           ) : (
                             <p
                               className={`mt-1 text-[13.5px] leading-relaxed ${
-                                isRejected ? 'line-through text-gray-400' : 'text-gray-800'
+                                isRejected ? 'line-through text-gray-500' : 'text-gray-800'
                               }`}
                             >
                               {sameAsOriginal || isEdited ? (
@@ -1462,7 +1462,7 @@ export default function TailorModal({
                           )}
                           {b.source_evidence && !isEditing && (b.status === undefined || b.source_evidence !== original) && !kept && (
                             <p className="mt-2 text-[11.5px] text-gray-500 italic">
-                              <span className="font-medium not-italic uppercase tracking-wider text-[10px] text-gray-400">
+                              <span className="font-medium not-italic uppercase tracking-wider text-[10px] text-gray-500">
                                 {t('tailor.sourceLabel')}:
                               </span>{' '}
                               {isFallbackBullet

@@ -27,7 +27,7 @@ export function ProfileStrength({
   const color = pct >= 80 ? 'emerald' : pct >= 60 ? 'blue' : 'amber';
 
   const colorMap = { emerald: 'bg-emerald-400', blue: 'bg-indigo-400', amber: 'bg-amber-400' };
-  const textMap = { emerald: 'text-emerald-600', blue: 'text-indigo-600', amber: 'text-amber-600' };
+  const textMap = { emerald: 'text-emerald-700', blue: 'text-indigo-600', amber: 'text-amber-700' };
 
   if (completed === total) return null;
 
@@ -45,7 +45,7 @@ export function ProfileStrength({
       </div>
       <div className="flex flex-wrap gap-x-4 gap-y-1">
         {checks.filter((c) => !c.done).map((c) => (
-          <span key={c.label} className="text-[11px] text-gray-400">+ {c.label}</span>
+          <span key={c.label} className="text-[11px] text-gray-500">+ {c.label}</span>
         ))}
       </div>
     </div>

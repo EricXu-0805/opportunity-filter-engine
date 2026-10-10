@@ -13,7 +13,7 @@ describe('Badge', () => {
   it('applies the green variant classes', () => {
     render(<Badge variant="green">ok</Badge>);
     const el = screen.getByText('ok');
-    expect(el).toHaveClass('bg-emerald-50/80', 'text-emerald-600');
+    expect(el).toHaveClass('bg-emerald-50/80', 'text-emerald-700');
   });
 
   it('applies the red variant classes (distinct from green)', () => {

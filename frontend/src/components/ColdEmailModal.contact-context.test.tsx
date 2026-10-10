@@ -39,7 +39,12 @@ function open(onContactConfirmed = vi.fn(), reminderTarget?: ReturnType<typeof e
   const view = render(<ColdEmailModal {...props} />);
   return { ...view, onClose, show: (next: Partial<typeof props>) => view.rerender(<ColdEmailModal {...props} {...next} />) };
 }
-async function ready() { await screen.findByDisplayValue('Draft first_contact'); await waitFor(() => expect(api.stream).toHaveBeenCalledTimes(1)); await act(async () => {}); }
+async function ready() {
+  await screen.findByDisplayValue('Draft first_contact');
+  await waitFor(() => expect(screen.getByRole('button', { name: 'coldEmail.generateAiDraft' })).toBeEnabled()); await act(async () => {});
+  expect(api.stream).not.toHaveBeenCalled();
+}
+function generate() { fireEvent.click(screen.getByRole('button', { name: 'coldEmail.generateAiDraft' })); }
 function expand() { const details = screen.getByTestId('email-contact-context-panel'); if (!(details as HTMLDetailsElement).open) fireEvent.click(details.querySelector('summary')!); }
 function purpose(value: string) { expand(); fireEvent.change(screen.getByLabelText('Contact purpose'), { target: { value } }); }
 function apply() { fireEvent.click(screen.getByRole('button', { name: 'Apply background to this draft' })); }
@@ -68,13 +73,12 @@ function deferred<T>() { let resolve!: (value: T) => void; let reject!: (error: 
 describe('confirmed contact context and editable email lifetime', () => {
   it('applies referral background without generating or recording contact, then explicitly rebuilds with that context', async () => {
     open(); await ready(); manual(); referral(); kept();
-    expect(api.variants).toHaveBeenCalledTimes(1); expect(api.stream).toHaveBeenCalledTimes(1);
+    expect(api.variants).toHaveBeenCalledTimes(1); expect(api.stream).not.toHaveBeenCalled();
     expect(api.contact).not.toHaveBeenCalled(); expect(api.reminder).not.toHaveBeenCalled();
     regenerate(); await screen.findByDisplayValue('Draft referral');
-    await waitFor(() => expect(api.stream).toHaveBeenCalledTimes(2));
     const context = api.variants.mock.calls[1][3].contactContext;
     expect(context).toEqual({ version: 1, purpose: 'referral', referral: { referrer_name: 'Dr. Chen', referral_note: 'Suggested asking about sensor methods.', confirmed: true } });
-    expect(api.stream.mock.calls[1][2].contactContext).toEqual(context);
+    expect(api.stream).not.toHaveBeenCalled();
     expect(screen.getByLabelText('coldEmail.to')).toHaveValue('manual@example.edu');
     expect(screen.getByRole('textbox', { name: 'coldEmail.requestLabel' })).toHaveValue('Unsubmitted instruction');
     fireEvent.click(screen.getByRole('button', { name: 'coldEmail.quickActions.shorter' }));
@@ -83,6 +87,9 @@ describe('confirmed contact context and editable email lifetime', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
     await screen.findByDisplayValue('Refined draft'); expect(api.refine.mock.calls[0][4].contactContext).toEqual(context);
     expect(screen.getByRole('textbox', { name: 'coldEmail.requestLabel' })).toHaveValue('Unsubmitted instruction');
+    await waitFor(() => expect(screen.getByRole('button', { name: 'coldEmail.generateAiDraft' })).toBeEnabled());
+    generate(); await waitFor(() => expect(api.stream).toHaveBeenCalledTimes(1));
+    expect(api.stream.mock.calls[0][2].contactContext).toEqual(context);
   });
   it('requires confirmation and missing follow-up facts before allowing any new generation', async () => {
     open(); await ready(); manual(); purpose('follow_up'); apply(); kept();
@@ -97,10 +104,12 @@ describe('confirmed contact context and editable email lifetime', () => {
   });
   it('retires a held AI response across first-contact to referral to first-contact even if the old context returns', async () => {
     const held = deferred<ReturnType<typeof draft>>(); api.stream.mockReturnValueOnce(held.promise);
-    open(); await ready(); manual(); purpose('referral'); purpose('first_contact'); apply(); kept();
+    open(); await ready(); generate(); await waitFor(() => expect(api.stream).toHaveBeenCalledTimes(1));
+    manual(); purpose('referral'); purpose('first_contact'); apply(); kept();
     await act(async () => held.resolve({ ...draft('STALE'), method: 'ai' })); kept();
     expect(screen.queryByDisplayValue('Draft STALE')).toBeNull(); expect(api.stream).toHaveBeenCalledTimes(1);
-    regenerate(); await screen.findByDisplayValue('Draft first_contact'); await waitFor(() => expect(api.stream).toHaveBeenCalledTimes(2));
+    regenerate(); await screen.findByDisplayValue('Draft first_contact'); await act(async () => {});
+    expect(api.stream).toHaveBeenCalledTimes(1);
   });
   it('keeps all manual fields on a failed explicit rebuild and supports retry with the applied context', async () => {
     open(); await ready(); manual(); referral(); api.variants.mockRejectedValueOnce(new Error('offline'));
@@ -302,11 +311,12 @@ describe('confirmed contact context and editable email lifetime', () => {
     expect(api.refine).toHaveBeenCalledTimes(1); expect(api.contact).not.toHaveBeenCalled();
   });
 
-  it('rejects a pending old clipboard success after automatic AI replaces the body', async () => {
+  it('rejects a pending old clipboard success after an AI draft replaces the body', async () => {
     const clipboard = deferred<void>(); const ai = deferred<ReturnType<typeof draft>>();
     api.stream.mockReturnValueOnce(ai.promise);
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn(() => clipboard.promise) } });
-    open(); await ready(); fireEvent.click(screen.getByRole('button', { name: 'coldEmail.copy' }));
+    open(); await ready(); generate(); await waitFor(() => expect(api.stream).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.copy' }));
     await act(async () => ai.resolve({ ...draft('AI'), method: 'ai' }));
     await screen.findByDisplayValue('Draft AI');
     await act(async () => clipboard.resolve());

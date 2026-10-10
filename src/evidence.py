@@ -421,7 +421,7 @@ _ANY_MAJOR_RE = re.compile(
     re.IGNORECASE,
 )
 # A configured list that is itself the all-majors answer.
-_ALL_MAJORS_VALUES = frozenset({"all", "any", "all majors", "any major", "any majors"})
+_ALL_MAJORS_VALUES = frozenset({"all", "any", "all majors", "any major", "any majors", "any department"})
 
 
 def is_all_majors_answer(majors: object) -> bool:

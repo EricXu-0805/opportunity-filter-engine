@@ -212,6 +212,13 @@ it('preserves pending incomplete panel answers independently from applied contex
     pendingPanel: { ...value.pendingPanel, opportunityId: 'other' } })).rejects.toMatchObject({ code: 'invalid_draft' });
   expect(readColdEmailDraft(captureOwnerToken(), O)).toMatchObject({ draft: value });
 });
+it('stores the tone of the draft text apart from the picker and rejects an unknown tone', async () => {
+  const toned = { ...payload(), draftStyle: 'lively' as const }; const first = await save(toned);
+  expect(readColdEmailDraft(captureOwnerToken(), O)).toEqual({ status: 'present', revision: first.revision, draft: toned });
+  const toneless = { ...payload(), draftStyle: null }; const second = await save(toneless, first.revision);
+  expect(readColdEmailDraft(captureOwnerToken(), O)).toEqual({ status: 'present', revision: second.revision, draft: toneless });
+  expect(() => snapshotColdEmailDraft({ ...payload(), draftStyle: 'loud' })).toThrow(expect.objectContaining({ code: 'invalid_draft' }));
+});
 it('rejects invalid or over-limit panel snapshots while retaining their prior backup', async () => {
   const saved = await save(); const value = payload();
   value.pendingPanel = { version: 1, opportunityId: O, paperSourceKey: '', fields: { purpose: 'first_contact', referrerName: '',

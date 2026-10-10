@@ -161,8 +161,8 @@ SCHOOL: dict = {
                     lab_or_program="Kellogg Developing Researchers Program",
                     opportunity_type="research",
                     paid="yes",
-                    deadline_note=("Fall application due September 10, 2026; "
-                                   "spring deadline December 7, open to first-years."),
+                    deadline_note=("Spring 2027 deadline: Monday, December 7, 2026; "
+                                   "first-years may apply in December to join in the spring semester."),
                     preferred_year=["freshman", "sophomore", "junior"],
                     keywords=["paid research assistant", "skills workshops",
                               "social science", "international studies"],

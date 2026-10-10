@@ -250,8 +250,8 @@ gh api repos/<owner>/<repo>/commits/<sha>/check-runs \
 
 The structural fix is to stop letting an unrelated job decide. `ci.yml` has a
 `Deploy backend (Render hook)` job for that: on a push to main, once Backend,
-Frontend and E2E (the three checks branch protection requires; the release
-gate's `ci:*` also requires Migrations) have passed, it POSTs
+Frontend, E2E (the three checks branch protection requires) and Migrations
+(which the release gate's `ci:*` also requires) have passed, it POSTs
 the Render deploy hook with `ref` set to that commit, and fails on any answer
 outside 2xx. It first asks GitHub for the head of main and deploys only if the
 commit is still the head; otherwise it logs a notice and passes, and the newer

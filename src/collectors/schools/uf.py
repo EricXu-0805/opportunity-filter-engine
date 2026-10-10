@@ -127,7 +127,7 @@ SCHOOL: dict = {
                     paid="stipend",
                     compensation="Up to $5,000 for travel and living expenses",
                     preferred_year=["sophomore", "junior"],
-                    deadline_note="Applications close February 15, 2026.",
+                    deadline_note="Applications closed February 15, 2026 at 11:59 PM; dates for the next cycle are not posted yet.",
                     keywords=["international research", "summer research",
                               "research funding"],
                 ),

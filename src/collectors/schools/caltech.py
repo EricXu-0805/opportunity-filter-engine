@@ -175,7 +175,7 @@ SCHOOL: dict = {
                     eligibility_majors=["all"],
                     preferred_year=["sophomore", "junior"],
                     international_friendly="yes",
-                    deadline_note="Application due early March (2026: March 2, 5pm)",
+                    deadline_note="Application due by March 1, 2027, 5:00 pm",
                     keywords=["exchange", "Iceland", "international research", "SURF"],
                 ),
                 program(
@@ -506,7 +506,7 @@ SCHOOL: dict = {
                     eligibility_majors=["chemistry", "biology", "biochemistry"],
                     preferred_year=["freshman", "sophomore", "junior"],
                     international_friendly="no",
-                    deadline_note="April (2026: April 17); PCC students with faculty nomination",
+                    deadline_note="The 2026 application period is now closed; PCC students with faculty nomination",
                     keywords=["community college", "research training", "chemistry", "biology", "certificate"],
                 ),
                 program(

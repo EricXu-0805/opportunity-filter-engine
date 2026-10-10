@@ -60,7 +60,7 @@ export function SimilarOpportunities({
                 {s.title}
               </h3>
               {s.organization && (
-                <p className="text-[12px] text-gray-400 mt-1.5 truncate">
+                <p className="text-[12px] text-gray-500 mt-1.5 truncate">
                   <Building2 className="w-3 h-3 inline mr-1" aria-hidden="true" />
                   {s.organization}
                 </p>

@@ -176,7 +176,7 @@ SCHOOL: dict = {
                     compensation="$5,600 stipend for 8 weeks (2026), plus free optional housing",
                     preferred_year=["freshman", "sophomore", "junior"],
                     international_friendly="yes",
-                    deadline_note="Annual cycle; the 2026 application has closed (typically opens in winter). Seniors graduating in the program year are ineligible.",
+                    deadline_note="The 2026 program has concluded; the 2027 program application is not posted yet (the page says to check back in fall 2026). Graduating college seniors are not eligible.",
                     keywords=["data science", "mentored research", "machine learning", "open to all institutions", "summer research"],
                 ),
                 program(
@@ -207,7 +207,7 @@ SCHOOL: dict = {
                     eligibility_majors=["Economics"],
                     preferred_year=["freshman", "sophomore"],
                     international_friendly="unknown",
-                    deadline_note="2026 cohort application closed Feb 16, 2026 (annual cycle).",
+                    deadline_note="Annual program; 2026 cohort application closed Feb 16, 2026; details of the EDE+ 2027 application are not posted yet.",
                     keywords=["economics research", "early undergraduate", "research pipeline", "Brookings", "summer program"],
                 ),
             ],

@@ -61,8 +61,8 @@ SCHOOL: dict = {
                     "https://www.stonybrook.edu/ureca/funding-opportunities/apply-for-ureca-support.html",
                     "URECA Summer supports Stony Brook undergraduates doing "
                     "full-time faculty-mentored research, scholarly or "
-                    "creative activity for ten weeks on campus (May 26 - "
-                    "July 31, 2026). Open to all majors with at least one "
+                    "creative activity for ten weeks on campus (May 24 - "
+                    "July 30, 2027). Open to all majors with at least one "
                     "semester of coursework remaining; graduating seniors are "
                     "not eligible. Awards a $5,000 stipend with possible "
                     "supplemental housing support; participants prepare an "
@@ -75,7 +75,7 @@ SCHOOL: dict = {
                     preferred_year=["freshman", "sophomore", "junior"],
                     deadline_note=("One centralized application covers URECA "
                                    "Summer, Explorations in STEM and the Velay "
-                                   "Fellowship (deadline March 13, 2026)"),
+                                   "Fellowship (deadline March 12, 2027)"),
                     keywords=["summer research", "stipend", "faculty-mentored",
                               "all majors"],
                 ),
@@ -96,7 +96,7 @@ SCHOOL: dict = {
                     paid="stipend",
                     compensation="$5,000 stipend for the ten-week summer",
                     preferred_year=["freshman", "sophomore"],
-                    deadline_note="Centralized URECA summer application, deadline March 13, 2026",
+                    deadline_note="Centralized URECA summer application, deadline March 12, 2027",
                     keywords=["STEM", "first research experience",
                               "engineering", "summer stipend"],
                 ),
@@ -117,7 +117,7 @@ SCHOOL: dict = {
                     paid="stipend",
                     compensation="$5,100 summer stipend",
                     preferred_year=["sophomore", "junior"],
-                    deadline_note="Centralized URECA summer application, deadline March 13, 2026",
+                    deadline_note="Centralized URECA summer application, deadline March 12, 2027",
                     keywords=["women in science", "physical sciences",
                               "summer research", "fellowship"],
                 ),
@@ -135,7 +135,7 @@ SCHOOL: dict = {
                     paid="stipend",
                     compensation="Stipend plus on-campus housing and meal allowance",
                     preferred_year=["freshman", "sophomore"],
-                    deadline_note="Application deadline listed as March 24, 2026",
+                    deadline_note="2026 applications closed (deadline was March 24, 2026); 2027 deadline not posted yet",
                     keywords=["first-generation", "summer research",
                               "housing", "stipend"],
                 ),

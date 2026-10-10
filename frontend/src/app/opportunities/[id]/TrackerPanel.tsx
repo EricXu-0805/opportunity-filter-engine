@@ -296,7 +296,7 @@ export function TrackerPanel({
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center gap-2 text-[12px] text-gray-500 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded"
+        className="w-full flex items-center gap-2 text-[12px] text-gray-600 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded"
         aria-expanded={open}
       >
         <StickyNote className="w-3.5 h-3.5" aria-hidden="true" />
@@ -304,7 +304,7 @@ export function TrackerPanel({
           {hasContent ? t('detail.tracker.openButton') : t('detail.tracker.addButton')}
         </span>
         {hasContent && !open && (
-          <span className="ml-auto text-[11px] text-gray-400">
+          <span className="ml-auto text-[11px] text-gray-500">
             {notes && <span>{notes.length > 40 ? notes.slice(0, 40) + '…' : notes}</span>}
             {remindAt && (
               // Collapsed, the amber bell and a date read as "this is
@@ -314,7 +314,7 @@ export function TrackerPanel({
               // sentence comes with it.
               <span
                 className={`ml-2 inline-flex items-center gap-1 ${
-                  reminderEligible ? 'text-amber-600' : 'text-gray-400'
+                  reminderEligible ? 'text-amber-700' : 'text-gray-500'
                 }`}
               >
                 <BellRing className="w-3 h-3" aria-hidden="true" />
@@ -326,7 +326,7 @@ export function TrackerPanel({
             )}
           </span>
         )}
-        <span className="ml-auto text-[11px] text-gray-400" aria-live="polite">
+        <span className="ml-auto text-[11px] text-gray-500" aria-live="polite">
           {saveStatus === 'saving' && t('common.saving')}
           {saveStatus === 'saved' && t('common.saved')}
         </span>
@@ -334,7 +334,7 @@ export function TrackerPanel({
       {open && (
         <div className="mt-3 space-y-3 animate-in">
           {!hasInteraction && (
-            <p className="text-[11px] text-amber-600 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5">
+            <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5">
               {t('detail.tracker.statusFirst')}
             </p>
           )}
@@ -370,7 +370,7 @@ export function TrackerPanel({
                 className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
                   notesMode === 'edit'
                     ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
                 {t('detail.tracker.editTab')}
@@ -383,7 +383,7 @@ export function TrackerPanel({
                 className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
                   notesMode === 'preview'
                     ? 'bg-indigo-600 text-white'
-                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
                 {t('detail.tracker.previewTab')}
@@ -401,7 +401,7 @@ export function TrackerPanel({
                   placeholder={t('detail.tracker.notesPlaceholder')}
                   className="w-full px-3 py-2 text-[13px] bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-400 resize-y disabled:opacity-60 disabled:cursor-wait"
                 />
-                <div className="flex justify-between mt-1 text-[10px] text-gray-400">
+                <div className="flex justify-between mt-1 text-[10px] text-gray-500">
                   <span className="italic">{t('detail.tracker.markdownHint')}</span>
                   <span>{notes.length} / 2000</span>
                 </div>
@@ -414,7 +414,7 @@ export function TrackerPanel({
                 {notes.trim() ? (
                   <MarkdownPreview>{notes}</MarkdownPreview>
                 ) : (
-                  <p className="text-gray-400 italic text-[12px]">{t('detail.tracker.previewEmpty')}</p>
+                  <p className="text-gray-500 italic text-[12px]">{t('detail.tracker.previewEmpty')}</p>
                 )}
               </div>
             )}
@@ -443,13 +443,13 @@ export function TrackerPanel({
                 type="button"
                 onClick={() => handleRemindAtChange('')}
                 disabled={!writeReady}
-                className="text-[11px] text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50 disabled:cursor-wait"
+                className="text-[11px] text-gray-500 hover:text-red-500 transition-colors disabled:opacity-50 disabled:cursor-wait"
               >
                 {t('common.clear')}
               </button>
             )}
             {!reminderEligible && (
-              <span className="text-[11px] text-gray-400">
+              <span className="text-[11px] text-gray-500">
                 {t(remindAt
                   ? 'tracker.reminderWontSend'
                   : 'tracker.reminderUnavailable')}

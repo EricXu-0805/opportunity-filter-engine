@@ -51,6 +51,7 @@ function HomePageInner() {
     isSubmitting,
     retryCloudSave,
     retryProfileLoad,
+    signedInElsewhere,
     profileRefreshStatus,
     retryProfileRefresh,
     canRetrySync,
@@ -160,6 +161,7 @@ function HomePageInner() {
         canRetrySync={canRetrySync}
         onRetrySync={retryCloudSave}
         onRetryProfileLoad={retryProfileLoad}
+        signedInElsewhere={signedInElsewhere}
         profileRefreshStatus={profileRefreshStatus}
         onRetryProfileRefresh={retryProfileRefresh}
         onKeepMyChanges={keepMyChanges}

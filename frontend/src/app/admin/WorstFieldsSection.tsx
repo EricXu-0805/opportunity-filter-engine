@@ -65,7 +65,7 @@ export function WorstFieldsSection({
                   </div>
                 </td>
                 <td className="px-4 py-3 text-gray-500">{row.source}</td>
-                <td className="px-4 py-3 text-right tabular-nums font-semibold text-amber-600">{row.missing_count}</td>
+                <td className="px-4 py-3 text-right tabular-nums font-semibold text-amber-700">{row.missing_count}</td>
               </tr>
             ))}
           </tbody>

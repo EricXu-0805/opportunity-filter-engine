@@ -132,7 +132,7 @@ export default function DifferencesSection({ rows, profile }: Props) {
         <button
           type="button"
           onClick={() => setShowSame((s) => !s)}
-          className="w-full mb-3 px-4 py-2.5 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-between text-[12px] text-gray-500 hover:bg-gray-200/70 transition-colors"
+          className="w-full mb-3 px-4 py-2.5 rounded-xl bg-gray-100 border border-gray-200 flex items-center justify-between text-[12px] text-gray-600 hover:bg-gray-200/70 transition-colors"
         >
           <span>{t('compare.identicalCount', { count: identical.length })}</span>
           <span className="inline-flex items-center gap-1 text-gray-700 font-medium">

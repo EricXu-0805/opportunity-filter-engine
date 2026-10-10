@@ -742,7 +742,7 @@ SCHOOL: dict = {
                     eligibility_majors=["computer science", "computer engineering", "data science", "mathematics"],
                     preferred_year=["sophomore", "junior", "senior"],
                     international_friendly="no",
-                    deadline_note="Summer 2026 deadline Feb 16, 2026; runs May\u2013August",
+                    deadline_note="Summer 2026 deadline was Feb 16, 2026; Summer 2027 dates not posted yet; runs May\u2013August",
                     keywords=["REU", "supercomputing", "Anvil", "HPC", "AI"],
                 ),
                 program(
@@ -1289,7 +1289,7 @@ SCHOOL: dict = {
                     eligibility_majors=["agriculture", "life sciences"],
                     preferred_year=["freshman", "sophomore", "junior"],
                     international_friendly="yes",
-                    deadline_note="Summer 2026 runs May 26\u2013July 30; application cycle currently closed",
+                    deadline_note="2026 application cycle is now closed",
                     keywords=["SCARF", "agriculture", "summer research", "stipend"],
                 ),
                 program(

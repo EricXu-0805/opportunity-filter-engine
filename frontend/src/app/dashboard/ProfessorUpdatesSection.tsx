@@ -218,7 +218,7 @@ export function ProfessorUpdatesSection() {
           {t('dashboard.professorUpdates.title')}
         </h2>
         {state.status === 'ready' && state.followCount > 0 && (
-          <span className="text-[11px] text-gray-400">
+          <span className="text-[11px] text-gray-500">
             {t('dashboard.professorUpdates.count', { count: state.followCount })}
           </span>
         )}
@@ -263,7 +263,7 @@ function SectionContent({
 }) {
   if (state.status === 'loading') {
     return (
-      <div className="flex items-center justify-center gap-2 px-6 py-10 text-xs text-gray-400">
+      <div className="flex items-center justify-center gap-2 px-6 py-10 text-xs text-gray-500">
         <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
         {t('dashboard.loading')}
       </div>
@@ -346,7 +346,7 @@ function SectionContent({
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-gray-900">
                 {event.professor_name}
-                <span className="ml-2 text-[11px] font-normal uppercase tracking-wide text-gray-400">
+                <span className="ml-2 text-[11px] font-normal uppercase tracking-wide text-gray-500">
                   {event.school}
                 </span>
               </p>
@@ -356,14 +356,14 @@ function SectionContent({
                   .join(' · ')}
               </p>
               {event.project_became_available && (
-                <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-600">
+                <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
                   <Sparkles className="h-3 w-3" aria-hidden="true" />
                   {t('dashboard.professorUpdates.becameAvailable')}
                 </p>
               )}
             </div>
             <div className="shrink-0 text-right">
-              <p className="text-[10px] text-gray-400">{event.verified_at.slice(0, 10)}</p>
+              <p className="text-[10px] text-gray-500">{event.verified_at.slice(0, 10)}</p>
               <a
                 href={event.source_url}
                 target="_blank"

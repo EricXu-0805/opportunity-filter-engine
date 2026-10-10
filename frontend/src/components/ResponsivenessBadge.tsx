@@ -31,7 +31,7 @@ export default function ResponsivenessBadge({
   const cls =
     size === 'detail'
       ? 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700'
-      : 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-50/80 text-emerald-600';
+      : 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-50/80 text-emerald-700';
 
   return (
     <span className={cls}>

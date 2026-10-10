@@ -87,7 +87,8 @@ test('B54 target conditions, manual review, backup, late response and restored d
   const snapshot = async (name: string) => { expect(await page.evaluate(() => document.body.scrollWidth <= innerWidth)).toBe(true); await page.screenshot({ path: info.outputPath(name + '-' + locale + '.png') }); };
   try {
     await page.goto('/favorites'); await page.getByRole('button', { name: pick('Draft Email', '起草邮件'), exact: true }).click(); await expect(body).toHaveValue(BODY);
-    await expect.poll(() => state.calls.filter(x => x.path.endsWith('/stream')).length).toBe(1);
+    await expect(page.getByRole('button', { name: c.generateAiDraft, exact: true })).toBeEnabled();
+    expect(state.calls.filter(x => x.path.endsWith('/stream'))).toEqual([]);
     await panel.locator('summary').first().click(); await expect(panel.getByText(pick('Deadline · Not verified', '截止日期 · 尚未核对'))).toBeVisible();
     await expect(panel.getByText(pick('Required', '需要'), { exact: true })).toBeVisible();
     await expect(panel.getByText(pick('Freshman', '大一'), { exact: true })).toBeVisible();

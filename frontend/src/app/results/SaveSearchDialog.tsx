@@ -125,7 +125,7 @@ export function SaveSearchDialog({
                   {t('results.saveSearchDialog.digestEmailInvalid')}
                 </p>
               )}
-              <p className="text-[12px] text-gray-400 leading-relaxed">
+              <p className="text-[12px] text-gray-500 leading-relaxed">
                 {t('results.saveSearchDialog.digestHint')}
               </p>
             </div>

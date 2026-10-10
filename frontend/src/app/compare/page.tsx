@@ -50,7 +50,7 @@ export default async function ComparePage({
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
       <Link
         href="/favorites"
-        className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-6 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded"
+        className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-700 mb-6 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded"
       >
         <ArrowLeft className="w-4 h-4" aria-hidden="true" />
         {t('compare.backToFavorites')}
@@ -61,7 +61,7 @@ export default async function ComparePage({
           {t('compare.title')}
         </h1>
         {opps.length > 0 && (
-          <p className="text-[13px] text-gray-500 mt-1.5">
+          <p className="text-[13px] text-gray-600 mt-1.5">
             {t('compare.subtitle', { count: opps.length })}
           </p>
         )}

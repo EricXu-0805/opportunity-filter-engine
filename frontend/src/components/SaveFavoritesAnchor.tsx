@@ -120,7 +120,7 @@ export default function SaveFavoritesAnchor({ favoriteCount }: SaveFavoritesAnch
             <button
               type="button"
               onClick={handleDismiss}
-              className="px-3 py-1.5 rounded-full text-[12px] text-gray-500 hover:text-gray-700 hover:bg-white transition-colors"
+              className="px-3 py-1.5 rounded-full text-[12px] text-gray-600 hover:text-gray-700 hover:bg-white transition-colors"
             >
               {t('auth.anchor.favorites3.dismiss')}
             </button>

@@ -65,7 +65,7 @@ function FellowshipPreviewCard({
         )}
       </div>
       {deadline && (
-        <p className="text-[11px] text-gray-400">
+        <p className="text-[11px] text-gray-500">
           {labelDeadline}: <span className="text-gray-600 font-medium">{deadline}</span>
         </p>
       )}
@@ -124,7 +124,7 @@ export default function FeaturedFellowships() {
             <GraduationCap className="w-4 h-4 text-indigo-600" aria-hidden="true" />
             {t('home.featured.title')}
           </h2>
-          <p className="mt-1 text-[12px] text-gray-500">{t('home.featured.subtitle')}</p>
+          <p className="mt-1 text-[12px] text-gray-600">{t('home.featured.subtitle')}</p>
         </div>
         <Link
           href="/fellowships"

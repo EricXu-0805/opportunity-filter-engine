@@ -59,7 +59,7 @@ export function ResultsHeader({
           {t('results.title')}
         </h1>
         <p
-          className="mt-1.5 sm:mt-2 text-[13px] sm:text-[15px] text-gray-400 transition-opacity duration-200"
+          className="mt-1.5 sm:mt-2 text-[13px] sm:text-[15px] text-gray-600 transition-opacity duration-200"
           aria-busy={loading}
           aria-live="polite"
         >
@@ -79,7 +79,7 @@ export function ResultsHeader({
                     // list, so neither may wear the badge that says so.
                     <span
                       className={`ml-2 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold align-middle ${
-                        refining ? 'bg-gray-100 text-gray-500' : 'bg-violet-50 text-violet-700'
+                        refining ? 'bg-gray-100 text-gray-600' : 'bg-violet-50 text-violet-700'
                       }`}
                     >
                       <Sparkles
@@ -99,7 +99,7 @@ export function ResultsHeader({
               ? t('results.fieldMatchesOne')
               : t('results.fieldMatches', { count: data.field_relevant_count })}
             {data.thin_inventory && (
-              <span className="ml-1.5 font-normal text-gray-400">· {t('results.thinInventory')}</span>
+              <span className="ml-1.5 font-normal text-gray-600">· {t('results.thinInventory')}</span>
             )}
           </p>
         )}
@@ -124,7 +124,7 @@ export function ResultsHeader({
           <button
             type="button"
             onClick={onOpenHelp}
-            className="hidden md:inline-flex items-center justify-center h-6 px-2 text-[10px] font-mono text-gray-400 bg-gray-100 border border-gray-200 rounded hover:bg-gray-200 hover:text-gray-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 transition-colors"
+            className="hidden md:inline-flex items-center justify-center h-6 px-2 text-[10px] font-mono text-gray-600 bg-gray-100 border border-gray-200 rounded hover:bg-gray-200 hover:text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 transition-colors"
             aria-label={t('results.keyboardHelp.open_aria_show')}
             title={t('results.keyboardHelp.open_title')}
           >

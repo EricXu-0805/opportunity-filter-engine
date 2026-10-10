@@ -21,7 +21,7 @@ export default async function ResourcesPage() {
         <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 tracking-tight leading-[1.1]">
           {t('resources.title')}
         </h1>
-        <p className="mt-4 text-base sm:text-lg text-gray-500 max-w-2xl">
+        <p className="mt-4 text-base sm:text-lg text-gray-600 max-w-2xl">
           {t('resources.subtitle')}
         </p>
       </header>
@@ -33,7 +33,7 @@ export default async function ResourcesPage() {
             {t('resources.contactTipsHeading')}
           </h2>
         </div>
-        <p className="text-sm text-gray-500 mb-8 max-w-2xl">
+        <p className="text-sm text-gray-600 mb-8 max-w-2xl">
           {t('resources.contactTipsSubtitle')}
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -50,7 +50,7 @@ export default async function ResourcesPage() {
             {t('resources.databasesHeading')}
           </h2>
         </div>
-        <p className="text-sm text-gray-500 mb-8 max-w-2xl">
+        <p className="text-sm text-gray-600 mb-8 max-w-2xl">
           {t('resources.databasesSubtitle')}
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

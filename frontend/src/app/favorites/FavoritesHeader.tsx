@@ -52,7 +52,7 @@ export function FavoritesHeader({
     <div className="mb-10 flex items-start justify-between gap-4 flex-wrap">
       <div>
         <h1 className="text-4xl font-bold text-gray-900 tracking-tight">{t('favorites.title')}</h1>
-        <p className="mt-2 text-[15px] text-gray-400">
+        <p className="mt-2 text-[15px] text-gray-600">
           {opportunities.length === 0 ? t('favorites.empty') : t('favorites.count', { count: opportunities.length })}
         </p>
         {selectionMode && (

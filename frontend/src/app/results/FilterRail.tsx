@@ -212,7 +212,7 @@ export function FilterRail({
             className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px] font-medium border transition-colors ${
               showDismissed
                 ? 'bg-gray-100 border-gray-300 text-gray-700'
-                : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300'
+                : 'bg-white border-gray-200 text-gray-500 hover:border-gray-300'
             }`}
             title={showDismissed ? t('results.hideDismissedTitle') : t('results.showDismissedTitle')}
           >

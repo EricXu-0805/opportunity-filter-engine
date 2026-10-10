@@ -14,12 +14,14 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   advanceOwnerEpoch,
   advanceOwnerEpochIfUnchanged,
+  browserMarkerNames,
   captureOwnerToken,
   enqueuePrivateWrite,
   enterLocalOnlyMode,
   isLocalOnlyRealmReady,
   isLocalOwnerReady,
   isOwnerScopedLoadError,
+  isOwnerTokenEstablished,
   isOwnerTokenValid,
   MERGE_GRANT_MAX_AGE_MS,
   onLocalOwnerStateChange,
@@ -1404,5 +1406,56 @@ describe('OwnerScopedLoadError: a capability, not a shape', () => {
     expect(isOwnerScopedLoadError(new Error('plain'))).toBe(false);
     expect(isOwnerScopedLoadError(null)).toBe(false);
     expect(isOwnerScopedLoadError({ ownerToken: { uid: null, epoch: 0 } })).toBe(false);
+  });
+});
+
+describe('what a tab blocked by another tab\'s hand-off may tell about it', () => {
+  const marker = (uid: string, phase: 'ready' | 'switching' = 'ready') =>
+    JSON.stringify({ v: 2, uid, generation: 0, phase });
+
+  it('browserMarkerNames: the uid the shared marker names, in any phase, and nobody else', () => {
+    expect(browserMarkerNames('hand-off-account'), 'no marker names nobody').toBe(false);
+    localStorage.setItem(MARKER, marker('hand-off-guest'));
+    expect(browserMarkerNames('hand-off-account')).toBe(false);
+    expect(browserMarkerNames('hand-off-guest')).toBe(true);
+    localStorage.setItem(MARKER, marker('hand-off-account', 'switching'));
+    expect(browserMarkerNames('hand-off-account'), 'a claim still being written is already this uid\'s').toBe(true);
+    localStorage.setItem(MARKER, '{not json');
+    expect(browserMarkerNames('hand-off-account'), 'an unreadable marker names nobody').toBe(false);
+    expect(browserMarkerNames(null)).toBe(false);
+  });
+
+  it('reading the marker writes nothing and readies nothing', () => {
+    localStorage.setItem(MARKER, marker('hand-off-account'));
+    localStorage.setItem('__ofe_ns', '0');
+    advanceOwnerEpoch('hand-off-account');
+    const writes = vi.spyOn(localStorage, 'setItem');
+    const removes = vi.spyOn(localStorage, 'removeItem');
+    expect(browserMarkerNames('hand-off-account')).toBe(true);
+    expect(writes).not.toHaveBeenCalled();
+    expect(removes).not.toHaveBeenCalled();
+    expect(isLocalOwnerReady('hand-off-account'), 'only a sync confirms the namespace').toBe(false);
+  });
+
+  it('a token taken while the hand-off defers the transition is unestablished, and stays unusable after the claim', async () => {
+    localStorage.setItem(MARKER, marker('hand-off-guest'));
+    localStorage.setItem('__ofe_ns', '0');
+    localStorage.setItem(STORAGE_KEYS.MERGE_GRANT, JSON.stringify({ token: 'grant', minted_at: Date.now() }));
+    advanceOwnerEpoch('hand-off-account');
+    expect(await syncLocalIdentityOwner('hand-off-account'), 'deferred by the fresh grant').toBe(false);
+    const early = captureOwnerToken();
+    expect(isOwnerTokenEstablished(early)).toBe(false);
+    expect(browserMarkerNames('hand-off-account')).toBe(false);
+
+    // The other tab redeems its grant and claims the guest's namespace.
+    localStorage.removeItem(STORAGE_KEYS.MERGE_GRANT);
+    localStorage.setItem(MARKER, marker('hand-off-account'));
+    expect(browserMarkerNames('hand-off-account')).toBe(true);
+    expect(await syncLocalIdentityOwner('hand-off-account'), 'a sync here only adopts it').toBe(true);
+    expect(generationOf(localStorage.getItem(MARKER))).toBe(0);
+    const late = captureOwnerToken();
+    expect(isOwnerTokenEstablished(late)).toBe(true);
+    expect(isOwnerTokenValid(late, 'hand-off-account')).toBe(true);
+    expect(isOwnerTokenValid(early, 'hand-off-account'), 'the early token never validates').toBe(false);
   });
 });

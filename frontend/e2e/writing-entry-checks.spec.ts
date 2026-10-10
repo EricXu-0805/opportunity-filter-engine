@@ -169,7 +169,10 @@ test.describe('Writing entry checks use current profiles', () => {
       gate.release();
       const fields = emailFields(page);
       await expect(fields.body).toHaveValue(`Draft for ${NEW_NAME}\n${NEW_BULLET}`);
+      expect(requests.some(item => item.path.endsWith('/stream'))).toBe(false);
+      await page.getByRole('button', { name: 'Generate AI draft', exact: true }).click();
       await expect.poll(() => requests.some(item => item.path.endsWith('/stream'))).toBe(true);
+      await expect(page.getByRole('button', { name: '✨ AI', exact: true })).toBeEnabled();
       for (const request of requests) {
         expect(request.profile!.name).toBe(NEW_NAME);
         expect(request.experience_evidence).toEqual({ version: 2, resume_master: profile().resume_master, resume_text: profile().resume_text, entries: nextEntries });
@@ -320,7 +323,8 @@ async function openTargetCheckedEmail(page: Page, requests: WritingRequest[]) {
   await enter(page, 'favorites');
   await page.getByRole('button', { name: 'Draft Email', exact: true }).click();
   await expect(emailFields(page).body).toHaveValue(`Draft for ${OLD_NAME}\n${OLD_BULLET}`);
-  await expect.poll(() => requests.some(request => request.path === '/api/cold-email/stream')).toBe(true);
+  await expect(page.getByRole('button', { name: 'Generate AI draft', exact: true })).toBeEnabled();
+  expect(requests.filter(request => request.path === '/api/cold-email/stream')).toEqual([]);
   await expect(page.getByRole('button', { name: 'Shorter', exact: true })).toBeEnabled();
 }
 async function fillRetainedEmail(page: Page) {
@@ -399,7 +403,7 @@ test.describe('Writing entry checks use current authoritative targets', () => {
     } finally { await owner.http.dispose(); }
   });
 
-  test('a quiet unchanged target read keeps the in-flight automatic email stream eligible to populate the editor', async ({ page }) => {
+  test('a quiet unchanged target read keeps the in-flight email stream eligible to populate the editor', async ({ page }) => {
     await page.clock.install();
     const owner = await seed(page), writes = profileWrites(page), requests = await installWriting(page);
     let releaseStream!: () => void;
@@ -419,8 +423,10 @@ test.describe('Writing entry checks use current authoritative targets', () => {
     try {
       const target = await installControlledWritingTarget(page);
       await enter(page, 'favorites'); await page.getByRole('button', { name: 'Draft Email', exact: true }).click();
-      await expect.poll(() => streamStarted).toBe(true);
       await expect(emailFields(page).body).toHaveValue(`Draft for ${OLD_NAME}\n${OLD_BULLET}`);
+      expect(streamStarted).toBe(false);
+      await page.getByRole('button', { name: 'Generate AI draft', exact: true }).click();
+      await expect.poll(() => streamStarted).toBe(true);
       const node = await page.getByTestId('cold-email-editor-fields').elementHandle(), reads = target.reads();
       targetGate = target.holdNext();
       await page.clock.fastForward(60_000);
@@ -610,8 +616,10 @@ test('an interrupted email stream keeps manual text and does not make a second g
   });
   try {
     await enter(page, 'favorites'); await page.getByRole('button', { name: 'Draft Email', exact: true }).click();
-    await expect.poll(() => started).toBe(true);
     await expect(emailFields(page).body).toHaveValue(`Draft for ${OLD_NAME}\n${OLD_BULLET}`);
+    expect(started).toBe(false);
+    await page.getByRole('button', { name: 'Generate AI draft', exact: true }).click();
+    await expect.poll(() => started).toBe(true);
     await emailFields(page).body.fill(MANUAL);
     const failed = page.waitForResponse(response => new URL(response.url()).pathname === '/api/cold-email/stream' && response.status() === 503);
     release(); await failed;

@@ -435,7 +435,7 @@ export default function AuthModal() {
 
                 <div className="flex items-center gap-3 my-5" aria-hidden="true">
                   <span className="h-px flex-1 bg-gray-200" />
-                  <span className="text-[11px] text-gray-400">{t('auth.modal.divider')}</span>
+                  <span className="text-[11px] text-gray-500">{t('auth.modal.divider')}</span>
                   <span className="h-px flex-1 bg-gray-200" />
                 </div>
               </>
@@ -558,7 +558,7 @@ export default function AuthModal() {
                 {submitting ? t('auth.modal.signin.submitting') : t('auth.modal.signin.submit')}
               </button>
 
-              <p className="text-[11px] text-gray-400 text-center leading-relaxed pt-1">
+              <p className="text-[11px] text-gray-500 text-center leading-relaxed pt-1">
                 {t('auth.modal.signin.trust')}
               </p>
             </form>

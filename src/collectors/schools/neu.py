@@ -85,15 +85,15 @@ SCHOOL: dict = {
                     "research through Northeastern's signature co-op cycle: "
                     "candidates either apply to a posted AJC Merit Research "
                     "Scholarship co-op project or propose a co-op they build "
-                    "with a mentor. For the Summer-Fall 2026 cycle the "
-                    "Northeastern deadline was 02/27/2026, and the seventh "
-                    "cohort of AJC Merit Research Scholars began co-ops this "
-                    "year.",
+                    "with a mentor. For the Spring 2027 co-op cycle the "
+                    "Northeastern deadline was 10/08/2026; this round of AJC "
+                    "Merit Research Scholar opportunities will run from "
+                    "January 2027 to June 2027.",
                     lab_or_program="AJC Merit Research Scholarship",
                     opportunity_type="research",
                     paid="stipend",
                     preferred_year=["sophomore", "junior"],
-                    deadline_note="Summer-Fall 2026 cycle deadline was 02/27/2026; annual cycle.",
+                    deadline_note="Spring 2027 co-op cycle deadline was 10/08/2026; dates for the next cycle are not posted yet.",
                     keywords=["research co-op", "funded research", "merit scholarship"],
                 ),
                 program(
@@ -168,7 +168,7 @@ SCHOOL: dict = {
                     opportunity_type="research",
                     preferred_year=["freshman", "sophomore", "junior"],
                     eligibility_majors=["Marine and Environmental Sciences", "Biology"],
-                    deadline_note="Summer 2026 applications were due Friday, February 13; annual cycle.",
+                    deadline_note="Summer 2026 applications were due Friday, February 13; dates for the next cycle are not posted yet.",
                     keywords=["marine science", "summer research", "internship",
                               "ecology", "ocean"],
                 ),

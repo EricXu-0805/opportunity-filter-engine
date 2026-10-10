@@ -37,12 +37,15 @@ def test_the_backend_starts_exactly_one_uvicorn_worker():
 # --------------------------------------------------- the deploy-hook job
 
 _DEPLOY_JOB = "deploy-backend"
-# The checks branch protection requires on main (read from the GitHub API on
-# 2026-10-09): job id -> the check name it reports.
-_REQUIRED_CHECKS = {
+# The checks the deploy waits for: job id -> the check name it reports. Branch
+# protection on main requires the first three (read from the GitHub API on
+# 2026-10-09); it does not require Migrations, so the deploy waits for that one
+# itself rather than letting a commit whose migrations failed go live.
+_DEPLOY_CHECKS = {
     "backend": "Backend (lint + pytest)",
     "frontend": "Frontend (typecheck + build)",
     "e2e": "E2E (Playwright)",
+    "migrations": "Migrations (Flow B merge + CLI replay)",
 }
 _SHA = "0123456789abcdef0123456789abcdef01234567"
 _HOOK = "https://api.render.com/deploy/srv-fakeservice?key=fake-hook-key-0000"
@@ -62,11 +65,11 @@ def _deploy_step() -> dict:
     return step
 
 
-def test_the_deploy_waits_for_every_required_check():
+def test_the_deploy_waits_for_the_required_checks_and_migrations():
     job = _deploy_job()
-    assert sorted(job["needs"]) == sorted(_REQUIRED_CHECKS)
+    assert sorted(job["needs"]) == sorted(_DEPLOY_CHECKS)
     jobs = _ci()["jobs"]
-    for job_id, check in _REQUIRED_CHECKS.items():
+    for job_id, check in _DEPLOY_CHECKS.items():
         assert jobs[job_id]["name"] == check, job_id
 
 

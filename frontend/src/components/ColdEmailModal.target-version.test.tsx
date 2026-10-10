@@ -33,6 +33,7 @@ function edit() {
 }
 function kept() { for (const value of ['Manual subject', 'Manual body 王', 'manual@example.edu']) expect(screen.getByDisplayValue(value)).toBeVisible(); }
 function refine() { fireEvent.click(screen.getByRole('button', { name: 'coldEmail.quickActions.formal' })); }
+async function generate() { await waitFor(() => expect(screen.getByRole('button', { name: 'coldEmail.generateAiDraft' })).toBeEnabled()); fireEvent.click(screen.getByRole('button', { name: 'coldEmail.generateAiDraft' })); }
 beforeEach(async () => {
   vi.resetAllMocks(); localization.locale = 'en'; localStorage.clear(); advanceOwnerEpoch(null); advanceOwnerEpoch('receipt-owner'); await syncLocalIdentityOwner('receipt-owner');
   api.auth.mockReturnValue(() => {}); api.variants.mockResolvedValue(templates);
@@ -54,6 +55,8 @@ describe('ColdEmail authoritative target receipt', () => {
     expect(screen.getByLabelText('coldEmail.body')).toHaveValue('Template body');
     fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
     await screen.findByDisplayValue('Verified refinement');
+    expect(api.stream).not.toHaveBeenCalled();
+    await generate(); await waitFor(() => expect(api.stream).toHaveBeenCalledOnce());
     expect(api.variants).toHaveBeenCalledWith(profile, ID, undefined, { expectedTargetVersion: A, contactContext: { version: 1, purpose: 'first_contact' } });
     expect(api.stream).toHaveBeenCalledWith(profile, ID, { engine: 'ai', style: 'professional', expectedTargetVersion: A, contactContext: { version: 1, purpose: 'first_contact' } }, expect.any(Function));
     expect(api.refine).toHaveBeenCalledWith('Template body', expect.any(String), profile, ID, { expectedTargetVersion: A, contactContext: { version: 1, purpose: 'first_contact' }, subject: 'Template subject' });
@@ -67,14 +70,14 @@ describe('ColdEmail authoritative target receipt', () => {
   it.each(['stream', 'compat'] as const)('rejects a mismatched %s response and never caches its text', async mode => {
     if (mode === 'stream') api.stream.mockResolvedValue({ ...result, target_version: B, body: 'WRONG TARGET' });
     else { api.stream.mockRejectedValue(new ColdEmailStreamError('unsupported', 404)); api.generate.mockResolvedValue({ ...result, target_version: B, body: 'WRONG TARGET' }); }
-    const view = await open(); expect(screen.queryByDisplayValue('WRONG TARGET')).toBeNull();
+    const view = await open(); await generate();
     expect(await screen.findByText('coldEmail.targetVersionUnavailable')).toBeVisible();
+    expect(screen.queryByDisplayValue('WRONG TARGET')).toBeNull();
     view.rerender(<ColdEmailModal {...props} isOpen={false} />); api.stream.mockResolvedValue({ ...result, body: 'Current AI' });
     view.rerender(<ColdEmailModal {...props} />); await screen.findByDisplayValue('Template body');
     await act(async () => {});
-    const rebuild = screen.queryByRole('button', { name: 'coldEmail.regenerateFromProfile' });
-    const ai = screen.getByRole('button', { name: 'coldEmail.aiVariantLabel' });
-    await waitFor(() => expect(rebuild ?? ai).toBeEnabled()); fireEvent.click(rebuild ?? ai);
+    expect(screen.queryByRole('button', { name: 'coldEmail.regenerateFromProfile' })).toBeNull();
+    await generate();
     await screen.findByDisplayValue('Current AI');
     expect(api.stream.mock.calls.length).toBeGreaterThan(1);
   });
@@ -94,7 +97,8 @@ describe('ColdEmail authoritative target receipt', () => {
     expect(api.variants).toHaveBeenLastCalledWith(profile, ID, undefined, { expectedTargetVersion: B, contactContext: { version: 1, purpose: 'first_contact' } });
   });
   it('retires late streams on a target-only version change without losing human edits', async () => {
-    const held = pending<typeof result>(); api.stream.mockReturnValue(held.promise); const view = await open(); edit();
+    const held = pending<typeof result>(); api.stream.mockReturnValue(held.promise); const view = await open();
+    await generate(); await waitFor(() => expect(api.stream).toHaveBeenCalledOnce()); edit();
     view.rerender(<ColdEmailModal {...props} target={{ ...props.target, writing_target_version: B }} />); await drain();
     await act(async () => held.resolve({ ...result, body: 'Late A text', recipient_email: 'wrong@example.edu' })); kept();
     expect(screen.queryByDisplayValue('Late A text')).toBeNull(); expect(api.stream).toHaveBeenCalledOnce();
@@ -104,7 +108,7 @@ describe('ColdEmail authoritative target receipt', () => {
     view.rerender(<ColdEmailModal {...props} profile={{ ...profile, coursework: ['New course'] }} />); await drain();
     api.variants.mockResolvedValue({ ...templates, target_version: B, variants: [{ ...variant, body: 'Wrong regeneration' }] });
     fireEvent.click(screen.getByRole('button', { name: 'coldEmail.regenerateFromProfile' })); await drain();
-    kept(); expect(screen.queryByDisplayValue('Wrong regeneration')).toBeNull(); expect(api.stream).toHaveBeenCalledOnce();
+    kept(); expect(screen.queryByDisplayValue('Wrong regeneration')).toBeNull(); expect(api.stream).not.toHaveBeenCalled();
     expect(await screen.findByText('coldEmail.targetVersionUnavailable')).toBeVisible();
   });
   it('does not reveal a recipient from variants for another target', async () => {
@@ -125,6 +129,7 @@ describe('ColdEmail authoritative target receipt', () => {
   it.each(['variants', 'stream'] as const)('surfaces a target 409 from %s without replaying generation', async entry => {
     api[entry].mockRejectedValue(Object.assign(new Error('PRIVATE RESPONSE'), { code: 'WRITING_TARGET_CHANGED', status: 409 }));
     render(<ColdEmailModal {...props} />); await drain();
+    if (entry === 'stream') { await screen.findByDisplayValue('Template body'); await generate(); }
     expect(await screen.findByText('coldEmail.targetVersionChanged')).toBeVisible(); expect(screen.queryByText('PRIVATE RESPONSE')).toBeNull();
     expect(api[entry]).toHaveBeenCalledOnce(); expect(api.generate).not.toHaveBeenCalled();
     if (entry === 'stream') expect(screen.getByDisplayValue('Template body')).toBeVisible();
@@ -144,12 +149,12 @@ describe('ColdEmail authoritative target receipt', () => {
     const history = screen.getByTestId('cold-email-chat-history').textContent;
     fireEvent.click(screen.getByRole('button', { name: 'coldEmail.targetVersionRetry' })); await drain();
     expect(refresh).toHaveBeenCalledOnce(); kept(); expect(screen.getByTestId('cold-email-chat-history').textContent).toBe(history);
-    expect(api.variants).toHaveBeenCalledOnce(); expect(api.stream).toHaveBeenCalledOnce(); expect(api.refine).toHaveBeenCalledOnce();
+    expect(api.variants).toHaveBeenCalledOnce(); expect(api.stream).not.toHaveBeenCalled(); expect(api.refine).toHaveBeenCalledOnce();
   });
   it.each(['refine', 'stream'] as const)('retires held %s after recipient reveal rejects the target receipt', async method => {
     api.variants.mockResolvedValueOnce({ ...templates, recipient_status: 'sign_in_required' });
     const held = pending<typeof result>(); api[method].mockReturnValue(held.promise);
-    await open(); edit(); if (method === 'refine') refine(); await drain(); expect(api[method]).toHaveBeenCalledOnce();
+    await open(); if (method === 'stream') await generate(); edit(); if (method === 'refine') refine(); await drain(); expect(api[method]).toHaveBeenCalledOnce();
     const callback = api.auth.mock.calls.at(-1)?.[0]; expect(callback).toBeTypeOf('function');
     api.variants.mockResolvedValue({ ...templates, target_version: B });
     await act(async () => callback({ session: { user: { id: 'receipt-owner' } }, isAnonymous: false })); await drain();
@@ -181,10 +186,10 @@ describe('oversized email material preserves the editor', () => {
     const message = locale === 'zh'
       ? '用于写邮件的资料和修改要求合计太长。请减少本次选用的内容后重试；原稿和要求已保留。'
       : 'The selected email material and edit request are too long together. Reduce the selected content and try again. Your draft and request are kept.';
-    it(`shows an explicit ${locale} automatic-generation warning without replay or erasing a draft`, async () => {
+    it(`shows an explicit ${locale} generation warning without replay or erasing a draft`, async () => {
       localization.locale = locale;
       api.stream.mockRejectedValue(new ColdEmailStreamError('EMAIL_INPUT_TOO_LARGE', 413));
-      await open(); expect(screen.getByText(message)).toBeVisible();
+      await open(); await generate(); expect(await screen.findByText(message)).toBeVisible();
       expect(screen.getByDisplayValue('Template body')).toBeVisible();
       expect(api.stream).toHaveBeenCalledOnce(); expect(api.generate).not.toHaveBeenCalled(); expect(api.variants).toHaveBeenCalledOnce();
     });
@@ -193,9 +198,9 @@ describe('oversized email material preserves the editor', () => {
       const failure = new ColdEmailStreamError('EMAIL_INPUT_TOO_LARGE', 413);
       api.stream.mockRejectedValue(mode === 'stream' ? failure : new ColdEmailStreamError('unsupported', 404));
       api.generate.mockRejectedValue(failure);
-      fireEvent.click(screen.getByRole('button', { name: 'coldEmail.aiVariantLabel' }));
+      await generate();
       await screen.findByText(message); kept();
-      expect(api.stream).toHaveBeenCalledTimes(2);
+      expect(api.stream).toHaveBeenCalledOnce();
       expect(api.generate).toHaveBeenCalledTimes(mode === 'stream' ? 0 : 1);
       expect(api.variants).toHaveBeenCalledOnce();
     });
@@ -206,7 +211,7 @@ describe('oversized email material preserves the editor', () => {
       fireEvent.submit(screen.getByPlaceholderText('coldEmail.refinePlaceholder').closest('form')!);
       await screen.findByText(message); kept();
       expect(screen.getByPlaceholderText('coldEmail.refinePlaceholder')).toHaveValue('Keep every contribution and explain this precise request.');
-      expect(api.refine).toHaveBeenCalledOnce(); expect(api.stream).toHaveBeenCalledOnce(); expect(api.generate).not.toHaveBeenCalled();
+      expect(api.refine).toHaveBeenCalledOnce(); expect(api.stream).not.toHaveBeenCalled(); expect(api.generate).not.toHaveBeenCalled();
       expect(screen.queryByText('PRIVATE provider diagnostic')).toBeNull();
     });
   }
@@ -217,7 +222,7 @@ describe('oversized email material preserves the editor', () => {
     await open(); edit();
     const error = Object.assign(new Error('PRIVATE_PAYLOAD'), {code:'PROFILE_INPUT_LIMIT_EXCEEDED',status:422,detail:{field:'profile.research_interests_text',actual:60001,limit:60000,unit:'characters'}});
     api[mode].mockRejectedValue(error);
-    if (mode === 'stream') fireEvent.click(screen.getByRole('button', { name: 'coldEmail.aiVariantLabel' }));
+    if (mode === 'stream') await generate();
     else {fireEvent.change(screen.getByPlaceholderText('coldEmail.refinePlaceholder'), {target:{value:'Keep my precise edit request.'}}); fireEvent.submit(screen.getByPlaceholderText('coldEmail.refinePlaceholder').closest('form')!);}
     await screen.findByText('profileInput.characters'); kept();
     if(mode==='refine') expect(screen.getByPlaceholderText('coldEmail.refinePlaceholder')).toHaveValue('Keep my precise edit request.');

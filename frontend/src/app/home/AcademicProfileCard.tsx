@@ -127,7 +127,7 @@ export function AcademicProfileCard({
         </div>
         <div>
           <h2 className="text-xl font-bold text-gray-900">{t('home.cards.academicTitle')}</h2>
-          <p className="text-sm text-gray-400">{t('home.cards.academicSubtitle')}</p>
+          <p className="text-sm text-gray-500">{t('home.cards.academicSubtitle')}</p>
         </div>
       </div>
 
@@ -186,7 +186,7 @@ export function AcademicProfileCard({
                 placeholder={t('home.form.collegeFreeTextPlaceholder')}
                 className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none transition-all duration-300"
               />
-              <p className="text-xs text-gray-400 mt-1.5">{t('home.form.catalogPendingNote')}</p>
+              <p className="text-xs text-gray-500 mt-1.5">{t('home.form.catalogPendingNote')}</p>
             </>
           )}
         </div>
@@ -276,7 +276,7 @@ export function AcademicProfileCard({
               <span id="international-label" className="text-sm font-medium text-gray-700">
                 {t('home.form.internationalLabel')}
               </span>
-              <p id="international-hint" className="text-xs text-gray-400">{t('home.form.internationalHint')}</p>
+              <p id="international-hint" className="text-xs text-gray-500">{t('home.form.internationalHint')}</p>
             </div>
           </div>
           <button
@@ -315,7 +315,7 @@ export function AcademicProfileCard({
                   className={`px-3 py-1.5 rounded-full text-[13px] font-medium transition-all duration-200 ${
                     isSelected
                       ? 'bg-indigo-600 text-white'
-                      : 'bg-black/[0.04] text-gray-500 hover:bg-black/[0.08]'
+                      : 'bg-black/[0.04] text-gray-600 hover:bg-black/[0.08]'
                   }`}
                 >
                   {t(seekingLabel[type])}
@@ -347,7 +347,7 @@ export function AcademicProfileCard({
           />
           {remainingInterests.length > 0 && (
             <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              <span className="text-[11px] text-gray-400 mr-0.5">{t('home.form.interestSuggestLabel')}</span>
+              <span className="text-[11px] text-gray-500 mr-0.5">{t('home.form.interestSuggestLabel')}</span>
               {remainingInterests.map((s) => (
                 <button
                   key={s}

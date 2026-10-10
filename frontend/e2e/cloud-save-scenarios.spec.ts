@@ -167,6 +167,57 @@ async function openLinkAndLand(page: Page, link: string, email: string) {
   return text;
 }
 
+type GuestDraft = Pick<ProfileData, 'name' | 'college' | 'major' | 'grade' | 'research_interests'>;
+
+/** A guest saves a profile on Home, asks for a sign-in link to an account that
+ *  already exists, and opens it in a NEW tab of the same browser while Home
+ *  stays open in the first one. The new tab's merge redemption is held until
+ *  `finish()`, so the first tab can be looked at while this browser is still
+ *  being handed over to the account. */
+async function signInFromNewTab(page: Page, context: BrowserContext, http: APIRequestContext, email: string, guest: GuestDraft) {
+  await englishOnly(page);
+  const receipts = recordCas(page);
+  await page.goto('/');
+  await waitForForm(page);
+  await fillForm(page, guest);
+  await expect(page.locator('#profile-save-status')).toHaveText('Profile saved', { timeout: 15_000 });
+  const guestUid = (await storedSession(page)).user.id;
+  const { modal } = await requestLink(page, email);
+  const existing = modal.getByTestId('auth-modal-signin-existing');
+  await expect(existing).toBeVisible();
+  await existing.click();
+  await expect(modal.getByText('Check your inbox', { exact: true })).toBeVisible();
+  await modal.getByRole('button', { name: 'Done', exact: true }).click();
+  const writesBeforeLink = receipts.length;
+
+  const mailTab = await context.newPage();
+  await englishOnly(mailTab);
+  const mailReceipts = recordCas(mailTab);
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => { release = resolve; });
+  await mailTab.route('**/rest/v1/rpc/redeem_merge_grant', async (route) => { await held; await route.continue(); });
+  const redeemSent = mailTab.waitForRequest((request) => path(request.url()) === '/rest/v1/rpc/redeem_merge_grant');
+  const landing = await mailTab.goto(await latestLink(http, email, 'magiclink'));
+  expect(landing?.url()).toMatch(/\/auth\/callback\?code=/);
+  await redeemSent;
+  // The new tab has exchanged the code, so the first tab hears the sign-in.
+  await expect(accountMenu(page)).toHaveAttribute('aria-label', `Your account, signed in as ${email}`, { timeout: 15_000 });
+
+  const finish = async () => {
+    const redeemed = mailTab.waitForResponse((response) => path(response.url()) === '/rest/v1/rpc/redeem_merge_grant');
+    release();
+    expect(await (await redeemed).json()).toMatchObject({ merged: true, summary: { profile: 'kept_target_saved_other_as_version' } });
+    await expect(mailTab.getByRole('heading', { name: "You're saved.", exact: true })).toBeVisible({ timeout: 15_000 });
+    await mailTab.waitForURL((url) => url.pathname === '/', { timeout: 15_000 });
+    await waitForForm(mailTab);
+    await expectForm(mailTab, ACCOUNT_PROFILE);
+  };
+  return { guestUid, receipts, writesBeforeLink, mailReceipts, release: () => release(), finish };
+}
+
+const SIGNED_IN_ELSEWHERE = "You signed in from another tab, so this page switched to that account. "
+  + "Once that tab has finished signing you in, load your account's profile here. Anything you type is kept.";
+
 test.describe('M19 cloud save scenarios', () => {
   test('a guest who signs in keeps the profile in place and finds it on a second device', async ({ page, browser }, info) => {
     const http = await apiRequest.newContext();
@@ -355,6 +406,93 @@ test.describe('M19 cloud save scenarios', () => {
       expect(mailReceipts).toEqual([]);
       expect(await profileRows(http, account.uid)).toMatchObject([{ revision: 1, profile_data: ACCOUNT_PROFILE }]);
     } finally {
+      await http.dispose();
+    }
+  });
+
+  test('a guest Home tab left open while a new tab signs in loads the account profile on the first click, with no page reload', async ({ page, context }, info) => {
+    const http = await apiRequest.newContext();
+    const email = mailbox('open-tab-retry');
+    const guest = {
+      name: 'Guest whose tab stays open 王', college: 'Grainger College of Engineering', major: 'Computer Science',
+      grade: 'Freshman', research_interests: 'Guest draft left in the first tab 王',
+    };
+    const typed = 'Typed in the first tab while the second one finished 王';
+    let flow: Awaited<ReturnType<typeof signInFromNewTab>> | null = null;
+    try {
+      const account = await seedAccount(http, email);
+      flow = await signInFromNewTab(page, context, http, email, guest);
+      const note = page.getByTestId('hydration-note');
+      const load = page.getByTestId('retry-profile-load');
+      // The guest's profile is gone from the screen, and the note says why
+      // rather than reporting a failed read.
+      await expect(note).toHaveText(SIGNED_IN_ELSEWHERE, { timeout: 15_000 });
+      await expect(load).toHaveText('Load my profile');
+      await expect(page.locator('#student_name')).toHaveValue('');
+      await watchStatus(page);
+      // Typed while the other tab still holds the hand-off: kept on screen,
+      // sent nowhere, and not reported as a save that failed.
+      await page.locator('#research_interests').fill(typed);
+      await expect(note).toHaveText(SIGNED_IN_ELSEWHERE);
+      await load.scrollIntoViewIfNeeded();
+      await page.screenshot({ path: info.outputPath('old-tab-while-new-tab-finishes.png') });
+
+      await flow.finish();
+      await page.bringToFront();
+      await expect(note, "nothing loads behind the student's back").toHaveText(SIGNED_IN_ELSEWHERE);
+      await load.click();
+      await expect(note).toHaveCount(0, { timeout: 15_000 });
+      await expectForm(page, { ...ACCOUNT_PROFILE, research_interests: typed });
+      await expect(page.locator('#profile-save-status')).toHaveText('Profile saved', { timeout: 15_000 });
+      const shown = await page.evaluate(() => (window as unknown as { cloudSaveStatuses: Array<{ text: string }> }).cloudSaveStatuses);
+      expect(shown.filter((entry) => entry.text.includes("Couldn't save"))).toEqual([]);
+      expect(flow.receipts.slice(flow.writesBeforeLink), 'the old tab writes only what was typed there, onto the account row').toEqual([
+        { uid: account.uid, patch: { research_interests: typed }, status: 'applied', revision: 2 },
+      ]);
+      expect(flow.mailReceipts).toEqual([]);
+      expect(await profileRows(http, account.uid))
+        .toMatchObject([{ revision: 2, profile_data: { ...ACCOUNT_PROFILE, research_interests: typed } }]);
+      expect(await stubGet(http, `/rest/v1/profile_versions?device_id=eq.${account.uid}`))
+        .toMatchObject([{ profile_revision: null, profile_data: guest }]);
+      expect(await profileRows(http, flow.guestUid)).toEqual([]);
+    } finally {
+      flow?.release();
+      await http.dispose();
+    }
+  });
+
+  test('in a guest Home tab left open while a new tab signs in, the next edit loads the account profile and saves only that edit', async ({ page, context }) => {
+    const http = await apiRequest.newContext();
+    const email = mailbox('open-tab-edit');
+    const guest = {
+      name: 'Guest who keeps typing 王', college: 'Grainger College of Engineering', major: 'Computer Science',
+      grade: 'Sophomore', research_interests: 'Guest draft from before signing in 王',
+    };
+    const typed = 'First edit in the old tab after the new tab finished 王';
+    let flow: Awaited<ReturnType<typeof signInFromNewTab>> | null = null;
+    try {
+      const account = await seedAccount(http, email);
+      flow = await signInFromNewTab(page, context, http, email, guest);
+      const note = page.getByTestId('hydration-note');
+      await expect(note).toHaveText(SIGNED_IN_ELSEWHERE, { timeout: 15_000 });
+      await flow.finish();
+
+      await page.bringToFront();
+      await watchStatus(page);
+      await page.locator('#research_interests').fill(typed);
+      await expect(note).toHaveCount(0, { timeout: 15_000 });
+      await expectForm(page, { ...ACCOUNT_PROFILE, research_interests: typed });
+      await expect(page.locator('#profile-save-status')).toHaveText('Profile saved', { timeout: 15_000 });
+      const shown = await page.evaluate(() => (window as unknown as { cloudSaveStatuses: Array<{ text: string }> }).cloudSaveStatuses);
+      expect(shown.filter((entry) => entry.text.includes("Couldn't save"))).toEqual([]);
+      expect(flow.receipts.slice(flow.writesBeforeLink)).toEqual([
+        { uid: account.uid, patch: { research_interests: typed }, status: 'applied', revision: 2 },
+      ]);
+      expect(flow.mailReceipts).toEqual([]);
+      expect(await profileRows(http, account.uid))
+        .toMatchObject([{ revision: 2, profile_data: { ...ACCOUNT_PROFILE, research_interests: typed } }]);
+    } finally {
+      flow?.release();
       await http.dispose();
     }
   });

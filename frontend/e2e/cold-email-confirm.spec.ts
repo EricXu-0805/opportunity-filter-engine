@@ -82,8 +82,8 @@ async function installNetwork(page: Page, opts: { hold?: boolean; labType?: 'dry
   // Playwright matches routes in REVERSE registration order, so the broad
   // fallbacks go first and the specific handlers below override them.
   await page.route('**/api/cold-email**', (route) => route.fulfill({
-    // The AI pipeline fires automatically on open; it is not this test's
-    // subject, and the modal is designed to stay on the template when it fails.
+    // Opening the editor starts no AI draft; any other writing route is not
+    // this test's subject, and the modal stays on the template when it fails.
     status: 503,
     contentType: 'application/json',
     body: '{}',

@@ -43,7 +43,7 @@ describe('ScoreBar', () => {
     it('uses emerald gradient for score >= 80', () => {
       const { container } = render(<ScoreBar score={92} />);
       expect(getFillBar(container).className).toMatch(/from-emerald-400/);
-      expect(screen.getByText('92%')).toHaveClass('text-emerald-600');
+      expect(screen.getByText('92%')).toHaveClass('text-emerald-700');
     });
 
     it('uses blue gradient for 60 <= score < 80', () => {
@@ -55,7 +55,7 @@ describe('ScoreBar', () => {
     it('uses amber gradient for 40 <= score < 60', () => {
       const { container } = render(<ScoreBar score={50} />);
       expect(getFillBar(container).className).toMatch(/from-amber-400/);
-      expect(screen.getByText('50%')).toHaveClass('text-amber-600');
+      expect(screen.getByText('50%')).toHaveClass('text-amber-700');
     });
 
     it('uses gray gradient for score < 40', () => {
@@ -76,7 +76,7 @@ describe('ScoreBar', () => {
       // score-only path would paint it blue. The bucket prop keeps them in sync.
       const { container } = render(<ScoreBar score={79} bucket="high_priority" />);
       expect(getFillBar(container).className).toMatch(/from-emerald-400/);
-      expect(screen.getByText('79%')).toHaveClass('text-emerald-600');
+      expect(screen.getByText('79%')).toHaveClass('text-emerald-700');
     });
 
     it('paints a percentile-demoted reach amber even when the score is high', () => {

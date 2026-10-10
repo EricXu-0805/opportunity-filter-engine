@@ -28,7 +28,7 @@ export function OnlineProfilesCard({
         </div>
         <div>
           <h2 className="text-xl font-bold text-gray-900">{t('home.cards.onlineProfilesTitle')}</h2>
-          <p className="text-sm text-gray-400">{t('home.cards.onlineProfilesSubtitle')}</p>
+          <p className="text-sm text-gray-500">{t('home.cards.onlineProfilesSubtitle')}</p>
         </div>
       </div>
 
@@ -46,7 +46,7 @@ export function OnlineProfilesCard({
             placeholder={t('home.form.linkedinPlaceholder')}
             className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none transition-all duration-300"
           />
-          <p className="mt-2 text-xs text-gray-400">{t('home.form.linkedinHint')}</p>
+          <p className="mt-2 text-xs text-gray-500">{t('home.form.linkedinHint')}</p>
         </div>
 
         <div>
@@ -73,7 +73,7 @@ export function OnlineProfilesCard({
             </button>
           </div>
           {ghStatus && (
-            <p className={`mt-2 text-xs ${ghStatus.startsWith('__fail__') ? 'text-red-500' : 'text-emerald-600'}`}>
+            <p className={`mt-2 text-xs ${ghStatus.startsWith('__fail__') ? 'text-red-600' : 'text-emerald-700'}`}>
               {ghStatus.replace(/^__fail__/, '')}
             </p>
           )}

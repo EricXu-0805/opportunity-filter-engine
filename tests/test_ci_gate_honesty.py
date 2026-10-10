@@ -33,8 +33,8 @@ sys.path.insert(0, str(_REPO / "scripts"))
 # refresh-PR verifier (scripts/verify_refresh_pr.py) require: Backend,
 # Frontend, Migrations and E2E. GitHub branch protection, which lives outside
 # this repo, requires only Backend, Frontend and E2E (read 2026-10-09), so a red
-# Migrations check alone does not block a merge, and the deploy-backend job in
-# ci.yml does not wait for it. The security audits were moved OUT of these
+# Migrations check alone does not block a merge; the deploy-backend job in
+# ci.yml waits for it anyway, so such a commit does not deploy. The security audits were moved OUT of these
 # into an advisory job precisely so that no required job needs a step whose
 # failure is ignored.
 REQUIRED_CI_JOBS = ("backend", "frontend", "migrations", "e2e")

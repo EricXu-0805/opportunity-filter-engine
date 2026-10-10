@@ -242,7 +242,7 @@ export default function ResumeUpload({ onParsed, onRemove, alreadyUploaded }: Re
                 {t('resume.dropHere')}{' '}
                 <span className="text-indigo-600">{t('resume.browse')}</span>
               </p>
-              <p className="mt-1 text-xs text-gray-400">{t('resume.pdfOnly')}</p>
+              <p className="mt-1 text-xs text-gray-500">{t('resume.pdfOnly')}</p>
             </div>
           </>
         )}
@@ -287,7 +287,7 @@ export default function ResumeUpload({ onParsed, onRemove, alreadyUploaded }: Re
               </span>
               <CheckCircle className="w-4 h-4 text-emerald-500" />
             </div>
-            <p className="text-xs text-emerald-600">
+            <p className="text-xs text-emerald-700">
               {t('resume.success')}
             </p>
             {hasUnreadablePages && (

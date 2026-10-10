@@ -870,7 +870,7 @@ SCHOOL: dict = {
                     eligibility_majors=["materials science", "electrical engineering", "physics", "chemistry"],
                     preferred_year=["sophomore", "junior"],
                     international_friendly="no",
-                    deadline_note="Paused for 2026; winter cycle in operating years",
+                    deadline_note="Not hosted in 2026; the page points students to Penn's LRSM REU and posts nothing about 2027",
                     keywords=["nanotechnology", "NSF REU", "nanofabrication", "paused-2026"],
                 ),
                 program(

@@ -43,6 +43,7 @@ function selectionReply(body: string, selection: EmailTextSelection, replacement
   } };
 }
 const bodyField = () => screen.getByLabelText('coldEmail.body') as HTMLTextAreaElement;
+const subjectField = () => screen.getByLabelText('coldEmail.subject') as HTMLInputElement;
 const input = () => screen.getByRole('textbox', { name: 'coldEmail.requestLabel' });
 const preview = () => screen.queryByRole('region', { name: 'Pending edit suggestion' });
 const accept = () => screen.getByRole('button', { name: 'Accept suggestion' });
@@ -56,7 +57,9 @@ function submit(request = 'Make this precise') {
 async function open(extra: Partial<Parameters<typeof ColdEmailModal>[0]> = {}) {
   const props = { isOpen: true, onClose: vi.fn(), profile, opportunityId: 'A', opportunityTitle: 'Lab', target: emailTarget('A'), ...extra };
   const view = render(<ColdEmailModal {...props} />);
-  await waitFor(() => expect(bodyField()).toHaveValue(ORIGINAL)); await waitFor(() => expect(api.stream).toHaveBeenCalledOnce()); await act(async () => {});
+  await waitFor(() => expect(bodyField()).toHaveValue(ORIGINAL));
+  await waitFor(() => expect(screen.getByRole('button', { name: 'coldEmail.generateAiDraft' })).toBeEnabled()); await act(async () => {});
+  expect(api.stream).not.toHaveBeenCalled();
   return { ...view, props, show: (next: Partial<typeof props>) => view.rerender(<ColdEmailModal {...props} {...next} />) };
 }
 async function proposed() { await screen.findByRole('region', { name: 'Pending edit suggestion' }); }
@@ -85,6 +88,24 @@ async function closeAndReopen(view: Awaited<ReturnType<typeof open>>) {
   await waitFor(() => expect(view.props.onClose).toHaveBeenCalled());
   view.show({ isOpen: false }); view.show({ isOpen: true });
   await waitFor(() => expect(screen.getByTestId('cold-email-draft-status')).toHaveTextContent(/Restored draft/));
+}
+const tone = (style: string) => screen.getByRole('button', { name: new RegExp(`^coldEmail\\.tone\\.${style}`) });
+const generate = () => screen.getByRole('button', { name: 'coldEmail.generateAiDraft' });
+const aiControl = () => screen.getByRole('button', { name: /^coldEmail\.(generateAiDraft|aiVariantLabel)$/ });
+const toneTemplates = { variants: [draft, { ...draft, id: 'second', label: 'Second', body: 'Other variant' }], recommended_style: 'professional' };
+const draftInTone = (_profile: unknown, _id: string, options: { style: string }) => ({ ...draft, subject: `${options.style} subject`, body: `${options.style} AI body`, method: 'ai' });
+async function generateIn(style: string) {
+  await waitFor(() => expect(tone(style)).toBeEnabled()); fireEvent.click(tone(style));
+  await waitFor(() => expect(generate()).toBeEnabled()); fireEvent.click(generate());
+  await waitFor(() => expect(bodyField()).toHaveValue(`${style} AI body`)); await saved();
+}
+async function restoreNewest() {
+  compare(0); fireEvent.click(within(screen.getByRole('region', { name: 'Compare email versions' })).getByRole('button', { name: 'Restore this version' }));
+  await waitFor(() => expect(aiControl()).toBeEnabled());
+}
+async function switchToSecond() {
+  fireEvent.click(screen.getByRole('button', { name: 'Second' }));
+  await waitFor(() => expect(bodyField()).toHaveValue('Other variant')); await saved();
 }
 
 describe('recoverable email versions', () => {
@@ -174,6 +195,161 @@ describe('recoverable email versions', () => {
     api.refine.mockResolvedValue({ body: 'Eleventh change', method: 'llm' }); fireEvent.change(input(), { target: { value: 'Eleventh request' } }); await waitFor(() => expect(screen.getByRole('button', { name: 'coldEmail.submitRequest' })).toBeEnabled()); fireEvent.submit(input().closest('form')!); await proposed(); fireEvent.click(accept());
     await waitFor(() => expect(screen.getAllByText(/There are 10 saved versions/).length).toBeGreaterThan(0));
     expect(bodyField()).toHaveValue('Revised full body'); expect(stored().draft.history).toHaveLength(10);
+  });
+  it('at the version cap, Generate shows the cap message without calling the model', async () => {
+    api.stream.mockResolvedValue({ ...draft, body: 'Paid AI body', method: 'ai' });
+    const view = await open(); await editAndAccept(); const record = stored();
+    view.show({ isOpen: false });
+    const value = { ...record.draft, history: Array.from({ length: 10 }, () => ({ ...record.draft.history[0], id: crypto.randomUUID() })) };
+    const latest = stored(); await saveColdEmailDraft(captureOwnerToken(), 'A', latest.revision, value);
+    view.show({ isOpen: true }); await waitFor(() => expect(bodyField()).toHaveValue('Revised full body'));
+    const generate = screen.getByRole('button', { name: 'coldEmail.generateAiDraft' });
+    await waitFor(() => expect(generate).toBeEnabled()); fireEvent.click(generate);
+    await waitFor(() => expect(screen.getAllByText(/There are 10 saved versions/).length).toBeGreaterThan(0));
+    await act(async () => { await new Promise(resolve => setTimeout(resolve, 20)); });
+    expect(api.stream).not.toHaveBeenCalled();
+    expect(bodyField()).toHaveValue('Revised full body'); expect(stored().draft.history).toHaveLength(10);
+    expect(screen.queryByText('coldEmail.tone.generating')).toBeNull();
+  });
+  it('saves each version with the tone of its own text, and restoring an AI draft selects that tone', async () => {
+    api.variants.mockResolvedValue({ variants: [draft], recommended_style: 'professional' });
+    api.stream.mockImplementation(draftInTone);
+    await open(); await saved();
+    await waitFor(() => expect(tone('lively')).toBeEnabled()); fireEvent.click(tone('lively'));
+    fireEvent.click(generate()); await waitFor(() => expect(bodyField()).toHaveValue('lively AI body')); await saved();
+    await waitFor(() => expect(tone('warm')).toBeEnabled()); fireEvent.click(tone('warm'));
+    await waitFor(() => expect(generate()).toBeEnabled()); fireEvent.click(generate());
+    await waitFor(() => expect(bodyField()).toHaveValue('warm AI body')); await saved();
+    // The template has no tone of its own, so it keeps the recommended one rather than the tone picked for the next draft.
+    expect(stored().draft.history.map(v => [v.body, v.origin, v.selectedStyle])).toEqual([
+      [ORIGINAL, 'template', 'professional'], ['lively AI body', 'ai', 'lively'],
+    ]);
+    compare(0); fireEvent.click(within(screen.getByRole('region', { name: 'Compare email versions' })).getByRole('button', { name: 'Restore this version' }));
+    await waitFor(() => expect(bodyField()).toHaveValue('lively AI body')); await saved();
+    expect(tone('lively')).toHaveAttribute('aria-pressed', 'true');
+    expect(stored().draft.history.at(-1)).toMatchObject({ body: 'warm AI body', origin: 'ai', selectedStyle: 'warm' });
+  });
+  it('a reopened AI draft keeps its own tone, even when another tone was picked before closing', async () => {
+    api.variants.mockResolvedValue(toneTemplates); api.stream.mockImplementation(draftInTone);
+    const view = await open(); await saved();
+    await generateIn('lively');
+    fireEvent.click(tone('warm')); await waitFor(() => expect(stored().draft.selectedStyle).toBe('warm'));
+    await closeAndReopen(view); await waitFor(() => expect(aiControl()).toBeEnabled());
+    expect(bodyField()).toHaveValue('lively AI body'); expect(tone('warm')).toHaveAttribute('aria-pressed', 'true');
+    await switchToSecond();
+    expect(stored().draft.history.at(-1)).toMatchObject({ body: 'lively AI body', selectedStyle: 'lively' });
+    await restoreNewest();
+    expect(bodyField()).toHaveValue('lively AI body'); expect(tone('lively')).toHaveAttribute('aria-pressed', 'true');
+  });
+  it('a draft saved before its own tone was recorded takes its picker tone', async () => {
+    api.variants.mockResolvedValue(toneTemplates);
+    const view = await open(); await saved();
+    view.show({ isOpen: false }); const latest = stored();
+    const older = { ...latest.draft, subject: 'lively subject', body: 'lively AI body', selectedStyle: 'lively' as const };
+    delete older.draftStyle;
+    await saveColdEmailDraft(captureOwnerToken(), 'A', latest.revision, older);
+    view.show({ isOpen: true }); await waitFor(() => expect(aiControl()).toBeEnabled());
+    expect(bodyField()).toHaveValue('lively AI body');
+    fireEvent.click(tone('warm')); await switchToSecond();
+    expect(stored().draft.history.at(-1)).toMatchObject({ body: 'lively AI body', selectedStyle: 'lively' });
+  });
+  it('a restored AI draft keeps its own tone until it is edited', async () => {
+    api.variants.mockResolvedValue(toneTemplates); api.stream.mockImplementation(draftInTone);
+    await open(); await saved();
+    await generateIn('lively'); await generateIn('warm');
+    await restoreNewest(); await saved();
+    expect(bodyField()).toHaveValue('lively AI body'); expect(tone('lively')).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(tone('friendly')); await switchToSecond();
+    expect(stored().draft.history.at(-1)).toMatchObject({ body: 'lively AI body', selectedStyle: 'lively' });
+    await restoreNewest(); await saved();
+    expect(bodyField()).toHaveValue('lively AI body'); expect(tone('lively')).toHaveAttribute('aria-pressed', 'true');
+    // Edited text has no tone of its own, so it records the recommended one.
+    fireEvent.change(bodyField(), { target: { value: 'lively AI body, edited' } }); await saved();
+    await switchToSecond();
+    expect(stored().draft.history.at(-1)).toMatchObject({ body: 'lively AI body, edited', selectedStyle: 'professional' });
+  });
+  it('an AI draft keeps its own tone when new materials rebuild the template', async () => {
+    api.variants.mockResolvedValue(toneTemplates); api.stream.mockImplementation(draftInTone);
+    const view = await open(); await saved();
+    await generateIn('lively'); fireEvent.click(tone('warm'));
+    view.show({ profile: { ...profile, research_interests: 'robots and sensors' } });
+    const rebuild = await screen.findByRole('button', { name: 'coldEmail.regenerateFromProfile' });
+    await waitFor(() => expect(rebuild).toBeEnabled()); fireEvent.click(rebuild);
+    await waitFor(() => expect(bodyField()).toHaveValue(ORIGINAL)); await saved();
+    expect(stored().draft.history.at(-1)).toMatchObject({ body: 'lively AI body', selectedStyle: 'lively' });
+    expect(api.stream).toHaveBeenCalledTimes(1);
+  });
+  it('an AI draft keeps its own tone when only its subject is edited', async () => {
+    api.variants.mockResolvedValue(toneTemplates); api.stream.mockImplementation(draftInTone);
+    await open(); await saved();
+    await generateIn('lively');
+    // The tone is in the body. A professor's required subject is a common edit to an AI draft.
+    fireEvent.change(subjectField(), { target: { value: 'Required subject' } });
+    await waitFor(() => expect(stored().draft.subject).toBe('Required subject'));
+    expect(stored().draft.draftStyle).toBe('lively');
+    fireEvent.click(tone('warm')); await switchToSecond();
+    expect(stored().draft.history.at(-1)).toMatchObject({ subject: 'Required subject', body: 'lively AI body', origin: 'manual', selectedStyle: 'lively' });
+    await restoreNewest(); await saved();
+    expect(subjectField()).toHaveValue('Required subject'); expect(bodyField()).toHaveValue('lively AI body');
+    expect(tone('lively')).toHaveAttribute('aria-pressed', 'true');
+  });
+  it('comparing and restoring wait while Generate runs, so the paid draft is kept', async () => {
+    let release!: (value: unknown) => void;
+    api.stream.mockImplementation(() => new Promise(resolve => { release = resolve; }));
+    await open(); await editAndAccept();
+    await waitFor(() => expect(generate()).toBeEnabled());
+    compare(0); const comparison = screen.getByRole('region', { name: 'Compare email versions' });
+    fireEvent.click(generate()); await waitFor(() => expect(api.stream).toHaveBeenCalledTimes(1));
+    const restore = within(comparison).getByRole('button', { name: 'Restore this version' });
+    expect(restore).toBeDisabled();
+    expect(within(history()).getByRole('button', { name: 'Compare and restore' })).toBeDisabled();
+    fireEvent.click(restore);
+    await act(async () => { release({ ...draft, subject: 'Paid subject', body: 'Paid AI body', method: 'ai' }); });
+    await waitFor(() => expect(bodyField()).toHaveValue('Paid AI body')); await saved();
+    expect(screen.getByText('coldEmail.aiGenerated')).toBeInTheDocument();
+    expect(aiControl()).toHaveAccessibleName('coldEmail.aiVariantLabel');
+    expect(stored().draft.history.map(v => v.body)).toEqual([ORIGINAL, 'Revised full body']);
+    expect(within(history()).getAllByRole('button', { name: 'Compare and restore' })[0]).toBeEnabled();
+    expect(api.stream).toHaveBeenCalledTimes(1);
+  });
+  it('copying, sending and accepting wait while Generate runs, so the paid draft is kept', async () => {
+    let release!: (value: unknown) => void;
+    api.stream.mockImplementation(() => new Promise(resolve => { release = resolve; }));
+    await open(); await saved();
+    await waitFor(() => expect(generate()).toBeEnabled());
+    fireEvent.click(generate()); await waitFor(() => expect(api.stream).toHaveBeenCalledTimes(1));
+    const copy = screen.getByRole('button', { name: 'coldEmail.copy' });
+    const sends = screen.queryAllByRole('button', { name: /^coldEmail\.(openInEmail|gmail|outlook)$/ });
+    for (const control of [copy, ...sends]) expect(control).toBeDisabled();
+    fireEvent.click(copy);
+    await act(async () => { release({ ...draft, subject: 'Paid subject', body: 'Paid AI body', method: 'ai' }); });
+    await waitFor(() => expect(bodyField()).toHaveValue('Paid AI body')); await saved();
+    expect(screen.getByText('coldEmail.aiGenerated')).toBeInTheDocument();
+    expect(api.stream).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('button', { name: 'coldEmail.copy' })).toBeEnabled();
+  });
+  it('comparing and restoring also wait while Generate checks the profile, so the paid draft is kept', async () => {
+    const receipt = () => ({ checkId: 1, owner: captureOwnerToken(), revision: 1, source: 'cloud' as const, profile });
+    const checkForAction = vi.fn(() => Promise.resolve(receipt()));
+    let release!: (value: unknown) => void;
+    api.stream.mockImplementation(() => new Promise(resolve => { release = resolve; }));
+    await open({ profileRefresh: { status: 'ready', refresh: vi.fn(async () => true), checkForAction } }); await editAndAccept();
+    await waitFor(() => expect(generate()).toBeEnabled());
+    compare(0); const comparison = screen.getByRole('region', { name: 'Compare email versions' });
+    let releaseCheck!: () => void; let checking = false;
+    checkForAction.mockImplementationOnce(() => new Promise(resolve => { checking = true; releaseCheck = () => resolve(receipt()); }));
+    fireEvent.click(generate()); await waitFor(() => expect(checking).toBe(true));
+    const restore = within(comparison).getByRole('button', { name: 'Restore this version' });
+    expect(restore).toBeDisabled();
+    expect(within(history()).getByRole('button', { name: 'Compare and restore' })).toBeDisabled();
+    fireEvent.click(restore);
+    await act(async () => { releaseCheck(); });
+    await waitFor(() => expect(api.stream).toHaveBeenCalledTimes(1));
+    await act(async () => { release({ ...draft, subject: 'Paid subject', body: 'Paid AI body', method: 'ai' }); });
+    await waitFor(() => expect(bodyField()).toHaveValue('Paid AI body')); await saved();
+    expect(screen.getByText('coldEmail.aiGenerated')).toBeInTheDocument();
+    expect(stored().draft.history.map(v => v.body)).toEqual([ORIGINAL, 'Revised full body']);
+    expect(api.stream).toHaveBeenCalledTimes(1);
   });
   it.each(['manual', 'close', 'owner'] as const)('cancels a held acceptance on %s without writing the candidate', async change => {
     const view = await open(); await saved(); submit(); await proposed(); await saved();

@@ -350,7 +350,7 @@ function CallbackInner() {
           <h1 className="text-[18px] font-semibold text-gray-900">
             {t('auth.callback.verifying')}
           </h1>
-          <p className="mt-2 text-sm text-gray-500">
+          <p className="mt-2 text-sm text-gray-600">
             {t('auth.callback.verifyingHint')}
           </p>
         </div>
@@ -379,7 +379,7 @@ function CallbackInner() {
               {mergeLine}
             </p>
           )}
-          <p className="mt-5 text-xs text-gray-400" aria-live="polite">
+          <p className="mt-5 text-xs text-gray-600" aria-live="polite">
             {t('auth.callback.autoRedirect', { seconds: secondsLeft })}
           </p>
           <div className="mt-3 flex items-center justify-center gap-3">
@@ -402,7 +402,7 @@ function CallbackInner() {
           <p className="mt-2 text-sm text-gray-600">
             {t('auth.callback.identityTakenBody')}
           </p>
-          <p className="mt-3 text-xs text-gray-400">
+          <p className="mt-3 text-xs text-gray-600">
             {t('auth.callback.identityTakenHint')}
           </p>
           <p className="mt-2 text-xs text-amber-700">
@@ -466,7 +466,7 @@ function CallbackInner() {
           <p className="mt-2 text-sm text-gray-600">
             {errorMsg || t('auth.callback.errGeneric')}
           </p>
-          <p className="mt-3 text-xs text-gray-400">
+          <p className="mt-3 text-xs text-gray-600">
             {t('auth.callback.sameBrowserHint')}
           </p>
           <div className="mt-6 flex items-center justify-center gap-3">

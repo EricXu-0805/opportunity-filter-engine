@@ -10,7 +10,7 @@ export default function OpportunityNotFound() {
       <h1 className="text-2xl font-bold text-gray-900 mb-2 tracking-tight">
         Opportunity not found
       </h1>
-      <p className="text-[14px] text-gray-500 mb-6 max-w-md mx-auto leading-relaxed">
+      <p className="text-[14px] text-gray-600 mb-6 max-w-md mx-auto leading-relaxed">
         This opportunity may have expired, been removed, or the link is wrong.
         Try finding a match that fits your profile instead.
       </p>

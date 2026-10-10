@@ -116,28 +116,28 @@ export default async function RootLayout({
             <footer className="border-t border-black/[0.04] mt-16">
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <p className="text-[12px] text-gray-400">
+                  <p className="text-[12px] text-gray-600">
                     © {new Date().getFullYear()} JoinALab
                   </p>
                   <nav className="flex items-center gap-4">
-                    <a href="/privacy" className="text-[12px] text-gray-400 hover:text-gray-700 transition-colors">
+                    <a href="/privacy" className="text-[12px] text-gray-600 hover:text-gray-700 transition-colors">
                       {privacyLabel}
                     </a>
-                    <a href="/terms" className="text-[12px] text-gray-400 hover:text-gray-700 transition-colors">
+                    <a href="/terms" className="text-[12px] text-gray-600 hover:text-gray-700 transition-colors">
                       {termsLabel}
                     </a>
-                    <a href="/about" className="text-[12px] text-gray-400 hover:text-gray-700 transition-colors">
+                    <a href="/about" className="text-[12px] text-gray-600 hover:text-gray-700 transition-colors">
                       {contactLabel}
                     </a>
                   </nav>
-                  <p className="text-[11px] text-gray-400 text-center">
+                  <p className="text-[11px] text-gray-600 text-center">
                     {footerDisclaimer}
                   </p>
                 </div>
                 <FeedbackWidget />
-                <p className="mt-3 text-center text-[11px] text-gray-300">
+                <p className="mt-3 text-center text-[11px] text-gray-600">
                   {builtByLabel} ·{' '}
-                  <a href="mailto:eric.guoyi.xu@gmail.com" className="hover:text-gray-600 transition-colors">
+                  <a href="mailto:eric.guoyi.xu@gmail.com" className="hover:text-gray-700 transition-colors">
                     eric.guoyi.xu@gmail.com
                   </a>
                 </p>

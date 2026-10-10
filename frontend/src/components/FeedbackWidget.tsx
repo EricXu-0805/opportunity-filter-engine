@@ -319,7 +319,7 @@ export default function FeedbackWidget() {
         aria-expanded={open}
         aria-controls="site-feedback-panel"
         data-testid="feedback-open"
-        className="inline-flex min-h-11 scroll-mt-20 items-center gap-2 rounded-lg px-3 text-[12px] font-medium text-gray-500 hover:bg-gray-50 hover:text-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+        className="inline-flex min-h-11 scroll-mt-20 items-center gap-2 rounded-lg px-3 text-[12px] font-medium text-gray-600 hover:bg-gray-50 hover:text-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
       >
         <MessageSquarePlus className="h-4 w-4" aria-hidden="true" />
         <span>{t('feedback.button')}</span>
@@ -352,7 +352,7 @@ export default function FeedbackWidget() {
           )}
           {ticket?.id && (
             <div className="mt-4 rounded-xl bg-gray-50 border border-black/[0.06] px-3 py-2.5 text-left">
-              <p className="text-[11px] uppercase tracking-wide text-gray-400">{t('feedback.reference')}</p>
+              <p className="text-[11px] uppercase tracking-wide text-gray-500">{t('feedback.reference')}</p>
               <div className="mt-1 flex items-center gap-2">
                 <code
                   className="font-mono text-[13px] text-gray-900"
@@ -442,7 +442,7 @@ export default function FeedbackWidget() {
               className="w-full rounded-xl border border-gray-200 px-3 py-2 text-[14px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
             />
             <span
-              className="mt-1 block text-right text-[10px] text-gray-400"
+              className="mt-1 block text-right text-[10px] text-gray-500"
               data-testid="feedback-counter"
             >
               {t('feedback.counter', { count: draft.message.length, max: MESSAGE_MAX })}
@@ -491,7 +491,7 @@ export default function FeedbackWidget() {
           >
             {status === 'sending' ? t('feedback.sending') : t('feedback.send')}
           </button>
-          <p className="text-[11px] text-gray-400 text-center">{t('feedback.draftSaved')}</p>
+          <p className="text-[11px] text-gray-500 text-center">{t('feedback.draftSaved')}</p>
         </form>
       )}
       </section>}

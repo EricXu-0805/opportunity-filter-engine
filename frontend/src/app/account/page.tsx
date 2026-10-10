@@ -193,11 +193,11 @@ export default function AccountPage() {
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16">
       <div className="mb-8">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{t('account.title')}</h1>
-        <p className="text-sm text-gray-400 mt-1">{t('account.subtitle')}</p>
+        <p className="text-sm text-gray-600 mt-1">{t('account.subtitle')}</p>
       </div>
 
       {loading ? (
-        <p className="text-sm text-gray-400">{t('account.loading')}</p>
+        <p className="text-sm text-gray-600">{t('account.loading')}</p>
       ) : loadError ? (
         // auth stays null on ANY rejected load — rendering the normal
         // identity/profile/activity cards here would show a CONFIRMED
@@ -460,7 +460,7 @@ function PlanRow() {
 function Field({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-[11px] font-medium uppercase tracking-wide text-gray-400">{label}</dt>
+      <dt className="text-[11px] font-medium uppercase tracking-wide text-gray-500">{label}</dt>
       <dd className="text-sm text-gray-800 mt-1 break-words">{value}</dd>
     </div>
   );
@@ -491,7 +491,7 @@ function ActivityTile({
         )}
       </div>
       <p className="text-sm font-semibold text-gray-800">{label}</p>
-      <p className="text-[12px] text-gray-400 mt-0.5">{desc}</p>
+      <p className="text-[12px] text-gray-500 mt-0.5">{desc}</p>
     </Link>
   );
 }

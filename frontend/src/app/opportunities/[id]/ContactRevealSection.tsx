@@ -118,11 +118,11 @@ function ContactRead({ opp, t }: { opp: Opportunity; t: TFunc }) {
       <div className="flex items-start gap-3">
         <span className="mt-0.5 shrink-0 text-gray-400" aria-hidden="true"><Mail /></span>
         <div className="min-w-0">
-          <dt className="mb-0.5 text-[11px] uppercase tracking-wider text-gray-400">{t('detail.fields.contactEmail')}</dt>
+          <dt className="mb-0.5 text-[11px] uppercase tracking-wider text-gray-500">{t('detail.fields.contactEmail')}</dt>
           <dd className="break-words text-[14px]">
             <a href={`mailto:${encodeURIComponent(result.email)}`} className="text-indigo-600 hover:text-indigo-700 hover:underline" data-testid="contact-email-link">{result.email}</a>
           </dd>
-          <p className="mt-1 text-[11px] text-gray-400">{t('detail.contactVerifyHint')}</p>
+          <p className="mt-1 text-[11px] text-gray-500">{t('detail.contactVerifyHint')}</p>
         </div>
       </div>
     </Section>

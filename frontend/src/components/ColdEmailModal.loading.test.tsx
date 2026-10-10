@@ -77,7 +77,8 @@ describe('cold email initial readiness versus a retained editor', () => {
     await waitFor(() => expect(view.checkForAction).toHaveBeenCalledOnce());
     await act(async () => view.check.resolve(receipt()));
     await screen.findByDisplayValue('Checked body');
-    await waitFor(() => expect(api.stream).toHaveBeenCalledOnce());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'coldEmail.generateAiDraft' })).toBeEnabled());
+    expect(api.stream).not.toHaveBeenCalled();
     fireEvent.change(screen.getByDisplayValue('Checked subject'), { target: { value: 'My subject' } });
     fireEvent.change(screen.getByDisplayValue('Checked body'), { target: { value: 'My manual body' } });
     fireEvent.change(screen.getByDisplayValue('lab@example.edu'), { target: { value: 'my@example.edu' } });
@@ -89,12 +90,13 @@ describe('cold email initial readiness versus a retained editor', () => {
       expect(editor).toBeEnabled();
       expect(screen.getByRole('button', { name: 'coldEmail.openInEmail' })).toBeDisabled();
       expect(screen.getByRole('button', { name: 'coldEmail.quickActions.formal' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'coldEmail.generateAiDraft' })).toBeDisabled();
     }
     fireEvent.click(screen.getByTestId('copy-draft-only'));
     await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith('Subject: My subject\n\nMy manual body'));
     expect(screen.queryByText('coldEmail.generating')).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Retry' })); expect(view.refresh).toHaveBeenCalledOnce();
-    expect(api.variants).toHaveBeenCalledOnce(); expect(api.refine).not.toHaveBeenCalled();
+    expect(api.variants).toHaveBeenCalledOnce(); expect(api.refine).not.toHaveBeenCalled(); expect(api.stream).not.toHaveBeenCalled();
   });
 
   it('ends the initial waiting UI on a failed profile check and retries through the same read gate', async () => {
@@ -152,7 +154,7 @@ function targetHarness(checkForAction: WritingTargetState['checkForAction'], sta
   return { ...render(show()), show };
 }
 describe('cold email committed target receipts', () => {
-  it('waits for the target receipt before templates or automatic AI even when the profile is ready', async () => {
+  it('waits for the target receipt before templates even when the profile is ready, and starts no AI', async () => {
     const held = deferred<TargetActionReceipt | null>(); const check = vi.fn(() => held.promise);
     const view = targetHarness(check, 'checking');
     await waitFor(() => expect(check).toHaveBeenCalledOnce());
@@ -160,12 +162,16 @@ describe('cold email committed target receipts', () => {
     view.rerender(view.show('ready'));
     await act(async () => held.resolve(targetReceipt()));
     await waitFor(() => expect(api.variants).toHaveBeenCalledOnce());
-    await waitFor(() => expect(api.stream).toHaveBeenCalledOnce());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'coldEmail.generateAiDraft' })).toBeEnabled());
+    expect(api.stream).not.toHaveBeenCalled();
     expect(check).toHaveBeenCalledOnce();
   });
-  it('lets an in-flight automatic draft land across an unchanged quiet target read', async () => {
+  it('lets an in-flight AI draft land across an unchanged quiet target read', async () => {
     const held = deferred<typeof variant & { method: string }>(); api.stream.mockReturnValue(held.promise);
     const view = targetHarness(async () => targetReceipt());
+    await screen.findByDisplayValue('Checked body');
+    await waitFor(() => expect(screen.getByRole('button', { name: 'coldEmail.generateAiDraft' })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: 'coldEmail.generateAiDraft' }));
     await waitFor(() => expect(api.stream).toHaveBeenCalledOnce());
     // Quiet reader retains ready and the exact target while its HTTP read is pending.
     view.rerender(view.show('ready', { ...checkedTarget }));
@@ -178,7 +184,8 @@ describe('cold email committed target receipts', () => {
     const check = vi.fn<WritingTargetState['checkForAction']>().mockResolvedValueOnce(targetReceipt()).mockReturnValue(held.promise);
     const view = targetHarness(check);
     const body = await screen.findByDisplayValue('Checked body');
-    await waitFor(() => expect(api.stream).toHaveBeenCalledOnce());
+    await waitFor(() => expect(screen.getByRole('button', { name: 'coldEmail.generateAiDraft' })).toBeEnabled());
+    expect(api.stream).not.toHaveBeenCalled();
     fireEvent.change(body, { target: { value: 'My manual draft' } });
     const instruction = screen.getByRole('textbox', { name: 'coldEmail.requestLabel' });
     fireEvent.change(instruction, { target: { value: 'Keep my pending request' } });

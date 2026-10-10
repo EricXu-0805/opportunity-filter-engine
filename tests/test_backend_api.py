@@ -2514,6 +2514,24 @@ class TestExplainPromptSanitization:
         assert "P" * 500 not in user
         assert "P" * 120 in user
 
+    def test_explain_prompt_keeps_a_hedged_signal_hedged(self, sample_profile_req, monkeypatch):
+        # A configured preference the program page does not state reaches the
+        # model as our listing's, and the model is told not to make it the
+        # program's requirement.
+        import backend.routes.matches as m_module
+        captured: dict = {}
+
+        def capture(messages, **_kwargs):
+            captured["messages"] = messages
+            return "fit summary"
+
+        monkeypatch.setattr(m_module, "chat_completion", capture)
+        gap = "Our listing suggests Biology majors — not confirmed on the program page"
+        m_module._llm_explanation(sample_profile_req, {"title": "SURF"}, [], [gap])
+        system, user = (message["content"] for message in captured["messages"])
+        assert gap in user
+        assert "never restated as the program's own requirement" in system
+
 
 class TestExplainServerCache:
     """The compare page fires one explain LLM call per card; sessionStorage only

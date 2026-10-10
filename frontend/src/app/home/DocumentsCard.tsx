@@ -35,7 +35,7 @@ export function DocumentsCard({
         </div>
         <div>
           <h2 className="text-xl font-bold text-gray-900">{t('home.cards.documentsTitle')}</h2>
-          <p className="text-sm text-gray-400">{t('home.cards.documentsSubtitle')}</p>
+          <p className="text-sm text-gray-500">{t('home.cards.documentsSubtitle')}</p>
         </div>
       </div>
 

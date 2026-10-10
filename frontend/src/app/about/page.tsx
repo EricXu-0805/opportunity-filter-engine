@@ -31,7 +31,7 @@ export default async function AboutPage() {
             {t('about.heroLine2')}
           </span>
         </h1>
-        <p className="mt-6 text-lg text-gray-400 leading-relaxed max-w-xl mx-auto">
+        <p className="mt-6 text-lg text-gray-600 leading-relaxed max-w-xl mx-auto">
           {t('about.heroSubtitle')}
         </p>
       </div>
@@ -45,7 +45,7 @@ export default async function AboutPage() {
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
 
         <div className="mb-20">
-          <h2 className="text-[13px] font-semibold text-gray-400 uppercase tracking-widest text-center mb-12">
+          <h2 className="text-[13px] font-semibold text-gray-600 uppercase tracking-widest text-center mb-12">
             {t('about.builtWith')}
           </h2>
           <div className="flex flex-wrap justify-center gap-2">
@@ -67,7 +67,7 @@ export default async function AboutPage() {
             </div>
             <div>
               <h3 className="text-[15px] font-semibold text-gray-900 mb-1.5">{t('about.privacy')}</h3>
-              <p className="text-[14px] text-gray-400 leading-relaxed">
+              <p className="text-[14px] text-gray-500 leading-relaxed">
                 {t('about.privacyBody')}
               </p>
             </div>
@@ -75,14 +75,14 @@ export default async function AboutPage() {
         </div>
 
         <div className="mb-16">
-          <h2 className="text-[13px] font-semibold text-gray-400 uppercase tracking-widest text-center mb-12">
+          <h2 className="text-[13px] font-semibold text-gray-600 uppercase tracking-widest text-center mb-12">
             {t('about.behindTitle')}
           </h2>
           <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] p-8">
             <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left">
               <div className="flex-1">
                 <p className="text-[17px] font-semibold text-gray-900">{t('about.author')}</p>
-                <p className="text-[13px] text-gray-400 mt-1">{t('about.authorRole')}</p>
+                <p className="text-[13px] text-gray-500 mt-1">{t('about.authorRole')}</p>
                 <p className="text-[14px] text-gray-500 leading-relaxed mt-4">{t('about.behindBody')}</p>
                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2.5 mt-5">
                   <a
@@ -97,7 +97,7 @@ export default async function AboutPage() {
             </div>
 
             <div className="mt-8 pt-8 border-t border-black/[0.05]">
-              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-4">
+              <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-widest mb-4">
                 {t('about.contributorsTitle')}
               </p>
               <ul className="flex flex-wrap gap-x-8 gap-y-4">
@@ -108,7 +108,7 @@ export default async function AboutPage() {
                     </span>
                     <span>
                       <span className="block text-[14px] font-semibold text-gray-900">{c.name}</span>
-                      <span className="block text-[12px] text-gray-400">{t(c.roleKey)}</span>
+                      <span className="block text-[12px] text-gray-500">{t(c.roleKey)}</span>
                     </span>
                   </li>
                 ))}
@@ -118,7 +118,7 @@ export default async function AboutPage() {
         </div>
 
         <div className="text-center">
-          <p className="text-[11px] text-gray-400 leading-relaxed max-w-md mx-auto">
+          <p className="text-[11px] text-gray-600 leading-relaxed max-w-md mx-auto">
             {t('about.disclaimer')}
           </p>
         </div>

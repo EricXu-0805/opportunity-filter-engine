@@ -38,7 +38,7 @@ export function StatCard({
         <p className="text-[10px] opacity-60 mt-0.5 italic">{hint}</p>
       )}
       {typeof delta === 'number' && delta !== 0 && (
-        <p className={`text-[10px] mt-1 font-medium ${delta > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+        <p className={`text-[10px] mt-1 font-medium ${delta > 0 ? 'text-red-700' : 'text-emerald-700'}`}>
           {delta > 0 ? `▲ +${delta}` : `▼ ${delta}`}
         </p>
       )}

@@ -149,7 +149,7 @@ export default function MajorTags({ selected, options, onChange, translate }: Ma
         </div>
       )}
 
-      <p className="mt-1.5 text-[11px] text-gray-400 leading-snug">
+      <p className="mt-1.5 text-[11px] text-gray-500 leading-snug">
         {t('home.form.additionalMajorsHint')}
       </p>
     </div>

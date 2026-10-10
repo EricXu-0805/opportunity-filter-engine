@@ -2,12 +2,14 @@ import type { ColdEmailDraftVersion } from '@/lib/cold-email-draft';
 
 type Props = {
   locale: string; versions: ColdEmailDraftVersion[]; busy: boolean; error: string | null;
+  /** Comparing and restoring wait, e.g. while an AI draft is being generated. */
+  restoreDisabled: boolean;
   comparison: { version: ColdEmailDraftVersion; subject: string; body: string } | null;
   onCompare: (version: ColdEmailDraftVersion) => void;
   onRestore: () => void; onCancel: () => void; onDelete: (id: string) => void;
 };
 
-export default function EmailVersionHistory({ locale, versions, busy, error, comparison, onCompare, onRestore, onCancel, onDelete }: Props) {
+export default function EmailVersionHistory({ locale, versions, busy, restoreDisabled, error, comparison, onCompare, onRestore, onCancel, onDelete }: Props) {
   const zh = locale === 'zh';
   const reasons = zh ? { accepted_edit: '接受修改前', regenerated: '重新生成前', restored: '恢复旧版前', undo: '撤销修改前', variant: '切换稿件前' }
     : { accepted_edit: 'Before accepting an edit', regenerated: 'Before regeneration', restored: 'Before restoring a version', undo: 'Before undo', variant: 'Before switching drafts' };
@@ -24,7 +26,7 @@ export default function EmailVersionHistory({ locale, versions, busy, error, com
         <p className="break-words">{version.subject || (zh ? '（无主题）' : '(No subject)')}</p>
         <p className="whitespace-pre-wrap break-words text-xs text-gray-600">{version.body.slice(0, 120)}{version.body.length > 120 ? '…' : ''}</p>
         <div className="flex flex-wrap gap-3">
-          <button type="button" disabled={busy} onClick={() => onCompare(version)} className="underline text-indigo-700 disabled:opacity-50">{zh ? '比较并恢复' : 'Compare and restore'}</button>
+          <button type="button" disabled={busy || restoreDisabled} onClick={() => onCompare(version)} className="underline text-indigo-700 disabled:opacity-50">{zh ? '比较并恢复' : 'Compare and restore'}</button>
           <button type="button" disabled={busy} onClick={() => onDelete(version.id)} className="underline disabled:opacity-50">{zh ? '删除此版本' : 'Delete this version'}</button>
         </div>
       </li>)}
@@ -36,7 +38,7 @@ export default function EmailVersionHistory({ locale, versions, busy, error, com
         <div><h4 className="font-semibold">{zh ? '已保存版本' : 'Saved version'}</h4><p className="mt-2 whitespace-pre-wrap break-words font-medium">{comparison.version.subject}</p><p className="mt-2 whitespace-pre-wrap break-words">{comparison.version.body}</p></div>
       </div>
       <div className="flex flex-wrap gap-3">
-        <button type="button" disabled={busy} onClick={onRestore} className="rounded-lg bg-indigo-600 px-3 py-2 text-white disabled:opacity-50">{zh ? '恢复此版本' : 'Restore this version'}</button>
+        <button type="button" disabled={busy || restoreDisabled} onClick={onRestore} className="rounded-lg bg-indigo-600 px-3 py-2 text-white disabled:opacity-50">{zh ? '恢复此版本' : 'Restore this version'}</button>
         <button type="button" disabled={busy} onClick={onCancel} className="rounded-lg border border-gray-300 px-3 py-2 disabled:opacity-50">{zh ? '取消' : 'Cancel'}</button>
       </div>
     </section>}

@@ -122,8 +122,11 @@ async function open(page: Page) {
   await page.goto('/favorites'); await profileRead;
   await page.getByRole('button', { name: 'Draft Email', exact: true }).click();
 }
+// Opening shows the template; only the Generate control starts an AI draft.
+const generate = (page: Page) => page.getByRole('button', { name: 'Generate AI draft', exact: true });
 async function ready(page: Page) {
-  await expect(fields(page).body).toHaveValue('AI first_contact draft 王');
+  await expect(fields(page).body).toHaveValue('Template first_contact draft 王');
+  await expect(generate(page)).toBeEnabled();
   await expect(page.getByRole('button', { name: 'Shorter', exact: true })).toBeEnabled();
 }
 
@@ -142,6 +145,9 @@ test('referral confirmation applies background without generating or recording c
     await apply(page).scrollIntoViewIfNeeded();
     await page.screenshot({ path: info.outputPath('contact-background-referral-confirmed.png'), fullPage: true });
     await regenerate(page).click();
+    await expect(fields(page).body).toHaveValue('Template referral draft 王');
+    expect(model.state.calls.slice(before).map(call => call.path)).toEqual(['/api/cold-email/variants']);
+    await generate(page).click();
     await expect(fields(page).body).toHaveValue('AI referral draft 王');
     const after = model.state.calls.slice(before);
     expect(after.map(call => call.path)).toEqual(['/api/cold-email/variants', '/api/cold-email/stream']);
@@ -163,7 +169,9 @@ test('follow-up confirms an actual previous message without inventing a date, re
     await expect(panel(page).getByRole('textbox', { name: 'Date sent (optional, YYYY-MM-DD)', exact: true })).toHaveValue('');
     await apply(page).click(); await expect(regenerate(page)).toBeEnabled(); await kept(page);
     expect(model.state.calls).toHaveLength(before); expect(mutations).toEqual([]);
-    await regenerate(page).click(); await expect(fields(page).body).toHaveValue('AI follow_up draft 王');
+    await regenerate(page).click(); await expect(fields(page).body).toHaveValue('Template follow_up draft 王');
+    await generate(page).click(); await expect(fields(page).body).toHaveValue('AI follow_up draft 王');
+    expect(model.state.calls.at(-1)!.path).toBe('/api/cold-email/stream');
     const context = model.state.calls.at(-1)!.contact_context;
     expect(context.follow_up).toEqual({ sent_confirmed: true,
       previous_message: 'Dear researcher,\nCould I ask about student research opportunities?\nThank you.', reply_status: 'unknown' });
@@ -177,11 +185,11 @@ for (const kind of ['stream', 'refine'] as const) {
     const owner = await account(); let release = () => {};
     try {
       await seed(page, owner); const model = writing(page, kind); release = model.release; await model.install;
-      const mutations = writes(page); await open(page);
+      const mutations = writes(page); await open(page); await ready(page);
       if (kind === 'stream') {
-        await expect(fields(page).body).toHaveValue('Template first_contact draft 王');
+        await generate(page).click();
         await expect.poll(() => model.state.heldStarted).toBe(true);
-      } else await ready(page);
+      }
       await edit(page);
       if (kind === 'refine') {
         await page.getByRole('button', { name: 'Shorter', exact: true }).click();

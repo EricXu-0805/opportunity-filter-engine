@@ -64,7 +64,7 @@ function ResultsReturnLink({ label }: { label: string }) {
   const href = id ? resultSessionUrl(publicReturn, id) : publicReturn;
   return (
     <Link href={href} scroll={false} data-testid="return-to-results"
-      className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700 mb-6 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded">
+      className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-700 mb-6 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded">
       <ArrowLeft className="w-4 h-4" aria-hidden="true" />
       {label}
     </Link>
@@ -157,7 +157,7 @@ export default function OpportunityDetail({
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
-      <Suspense fallback={<span className="inline-flex mb-6 text-sm text-gray-500" aria-busy="true">{t('detail.backToMatches')}</span>}>
+      <Suspense fallback={<span className="inline-flex mb-6 text-sm text-gray-600" aria-busy="true">{t('detail.backToMatches')}</span>}>
         <ResultsReturnLink label={t('detail.backToMatches')} />
       </Suspense>
 
@@ -307,7 +307,7 @@ export default function OpportunityDetail({
           {!showsFacts && <KeywordsSection opp={opp} t={t} />}
           {similarContent ?? <SimilarOpportunities similar={similar} t={t} />}
 
-          <div className="mt-8 pt-6 border-t border-gray-100 text-[11px] text-gray-400 space-y-1">
+          <div className="mt-8 pt-6 border-t border-gray-100 text-[11px] text-gray-600 space-y-1">
             {opp.source && <p>{t('detail.source', { source: sourceLabel(opp.source, t) })}</p>}
             {/* From the truth envelope, not metadata: the server stopped
                 serving metadata.last_verified once target_truth carried it,

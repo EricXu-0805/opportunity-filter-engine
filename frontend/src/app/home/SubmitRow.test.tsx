@@ -54,6 +54,22 @@ describe('SubmitRow — generating matches requires a loaded profile row', () =>
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
+  it('names a sign-in from another tab as the reason, with one button that loads the account profile', () => {
+    const onRetryProfileLoad = vi.fn();
+    renderRow({ hydrationState: 'failed', signedInElsewhere: true, onRetryProfileLoad });
+    expect(screen.getByTestId('hydration-note').textContent).toBe('home.actions.profileSignedInElsewhere');
+    expect(screen.queryByRole('button', { name: 'home.actions.retryProfileLoad' })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'home.actions.loadAccountProfile' }));
+    expect(onRetryProfileLoad.mock.calls).toEqual([[]]);
+    expect(screen.getByTestId('generate-matches')).toBeDisabled();
+  });
+
+  it('says it is loading, not why the last read failed, while the account profile loads', () => {
+    renderRow({ hydrationState: 'loading', signedInElsewhere: true });
+    expect(screen.getByTestId('hydration-note').textContent).toBe('home.actions.profileLoading');
+    expect(screen.queryByTestId('retry-profile-load')).not.toBeInTheDocument();
+  });
+
   it.each(['loading', 'ready'] as const)('does not offer another read while %s', (hydrationState) => {
     renderRow({ hydrationState });
     expect(screen.queryByTestId('retry-profile-load')).not.toBeInTheDocument();

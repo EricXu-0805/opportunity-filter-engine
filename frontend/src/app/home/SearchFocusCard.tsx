@@ -32,7 +32,7 @@ export function SearchFocusCard({
         </div>
         <div>
           <h2 id={headingId} className="text-xl font-bold text-gray-900">{t('home.cards.searchFocusTitle')}</h2>
-          <p className="text-sm text-gray-400">{t('home.cards.searchFocusSubtitle')}</p>
+          <p className="text-sm text-gray-500">{t('home.cards.searchFocusSubtitle')}</p>
         </div>
       </div>
 
@@ -56,7 +56,7 @@ export function SearchFocusCard({
           aria-valuetext={emphasis}
           className="w-full h-2 rounded-full appearance-none cursor-pointer accent-indigo-600 bg-gray-200 disabled:cursor-not-allowed"
         />
-        <p className="mt-2 text-xs text-gray-400 text-center">{emphasis}</p>
+        <p className="mt-2 text-xs text-gray-500 text-center">{emphasis}</p>
       </div>
 
       <div className="mt-6 pt-5 border-t border-gray-100 flex items-center justify-between gap-3">
@@ -66,7 +66,7 @@ export function SearchFocusCard({
             <span className="text-sm font-medium text-gray-700">
               {t('home.form.exploringLabel')}
             </span>
-            <p className="text-xs text-gray-400">{t('home.form.exploringHint')}</p>
+            <p className="text-xs text-gray-500">{t('home.form.exploringHint')}</p>
           </div>
         </div>
         <button

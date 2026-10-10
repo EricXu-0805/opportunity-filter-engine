@@ -171,7 +171,7 @@ SCHOOL: dict = {
                     paid="stipend",
                     compensation="Stipend + housing (fully funded summer program)",
                     preferred_year=["sophomore", "junior"],
-                    deadline_note="2026 application deadline was February 2, 2026",
+                    deadline_note="2026 application deadline was February 2, 2026; the page has not posted a 2027 Amgen Scholars application yet",
                     keywords=["biomedical research", "summer research",
                               "Amgen Scholars", "life sciences", "lab research"],
                 ),

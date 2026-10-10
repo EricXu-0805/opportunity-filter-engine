@@ -110,7 +110,12 @@ async function setup(page: Page, info: TestInfo, locale: 'en' | 'zh' = 'en') {
   });
   const mutations: string[] = []; page.on('request', request => { if (request.method() !== 'GET' && /confirm_contact_event|commit_profile_patch_cas/.test(request.url())) mutations.push(pathOf(request.url())); });
   const open = async () => { await page.goto('/favorites'); await page.getByRole('button', { name: locale === 'zh' ? '起草邮件' : 'Draft Email', exact: true }).click(); };
-  const ready = async () => { await expect(page.locator('#cold-email-body')).toHaveValue(BODY); await expect.poll(() => state.calls.filter(call => call.path.endsWith('/stream')).length).toBe(1); await expect(page.getByRole('button', { name: 'Gmail', exact: true })).toBeEnabled(); };
+  const ready = async () => {
+    await expect(page.locator('#cold-email-body')).toHaveValue(BODY);
+    await expect(page.getByRole('button', { name: locale === 'zh' ? '生成 AI 草稿' : 'Generate AI draft', exact: true })).toBeEnabled();
+    expect(state.calls.filter(call => call.path.endsWith('/stream'))).toEqual([]);
+    await expect(page.getByRole('button', { name: 'Gmail', exact: true })).toBeEnabled();
+  };
   const done = async () => { release(); await info.attach('network-audit', { body: JSON.stringify(checks.state, null, 2), contentType: 'application/json' }); await owner.http.dispose(); expect(checks.state.pageErrors).toEqual([]); expect(checks.state.external).toEqual([]); expect(checks.state.unexpected5xx).toEqual([]); };
   return { state, checks, open, ready, release, done, mutations, owner };
 }
@@ -198,7 +203,9 @@ test('a blocked popup performs no fresh read and creates no contact attestation'
 test('paper level is explicitly confirmed and transport-bound; server changes reopen background without replay', async ({ page }, info) => {
   if (info.project.name === 'mobile-chrome') await page.setViewportSize({ width: 320, height: 568 });
   const f = await setup(page, info); try { await f.open(); await f.ready(); const panel = page.getByTestId('email-contact-context-panel'); await panel.locator('summary').click(); await panel.getByLabel('Paper you looked at (optional)', { exact: true }).selectOption(JSON.stringify([PAPER, 2025])); await panel.getByLabel('How much did you read?', { exact: true }).selectOption('abstract'); await readingLayout(page, info, 'en');
-    await panel.getByRole('button', { name: 'Apply background to this draft' }).click(); const before = f.state.calls.length; await expect(page.locator('#cold-email-body')).toHaveValue(BODY); expect(f.state.calls.length).toBe(before); await page.getByRole('button', { name: 'Regenerate from updated materials', exact: true }).click(); await expect.poll(() => f.state.calls.length).toBe(before + 2); expect(f.state.calls.at(-1)?.contact_context.paper_reading).toEqual({ title: PAPER, year: 2025, level: 'abstract', confirmed: true });
+    await panel.getByRole('button', { name: 'Apply background to this draft' }).click(); const before = f.state.calls.length; await expect(page.locator('#cold-email-body')).toHaveValue(BODY); expect(f.state.calls.length).toBe(before); await page.getByRole('button', { name: 'Regenerate from updated materials', exact: true }).click(); await expect.poll(() => f.state.calls.length).toBe(before + 1); expect(f.state.calls.at(-1)?.path).toBe('/api/cold-email/variants');
+    await page.getByRole('button', { name: 'Generate AI draft', exact: true }).click(); await expect.poll(() => f.state.calls.length).toBe(before + 2); expect(f.state.calls.at(-1)?.path).toBe('/api/cold-email/stream');
+    for (const call of f.state.calls.slice(before)) expect(call.contact_context.paper_reading).toEqual({ title: PAPER, year: 2025, level: 'abstract', confirmed: true });
     await page.locator('#cold-email-body').fill('Manual preserved reading draft'); await panel.locator('summary').click(); f.state.readingError = true; await page.getByRole('button', { name: 'Shorter', exact: true }).click(); await expect(page.getByTestId('cold-email-reading-changed')).toBeVisible(); await expect(panel).toHaveAttribute('open'); await expect(panel.getByRole('checkbox', { name: 'I confirm this reading level for the selected paper.' })).not.toBeChecked(); await expect(page.locator('#cold-email-body')).toHaveValue('Manual preserved reading draft'); await expect(page.getByText('private source diagnostic')).toHaveCount(0); expect(f.mutations).toEqual([]); await panel.getByLabel('How much did you read?', { exact: true }).scrollIntoViewIfNeeded(); await screenProof(page, info, 'reading-changed-preserved-draft.png');
   } finally { await f.done(); }
 });
@@ -207,7 +214,9 @@ test('confirmed personal contribution is saved once and reused only after explic
   const f = await setup(page, info); try { await f.open(); await f.ready(); const wrapper = page.getByTestId('cold-email-supplement'); await wrapper.locator('summary').click(); const panel = page.getByTestId('resume-supplement-panel'); await panel.getByLabel('Project or experience in your master résumé', { exact: true }).selectOption('project-1');
     const own = 'I measured 12 samples; the team designed the experiment. 王'; await panel.getByLabel('What did you personally do?', { exact: true }).fill(own); await panel.getByRole('checkbox', { name: 'Include my role', exact: true }).check(); await panel.getByRole('checkbox', { name: 'I confirm the selected information is accurate.', exact: true }).check(); expect(f.mutations).toEqual([]);
     await panel.getByRole('button', { name: 'Confirm and add to my master résumé', exact: true }).click(); await expect(panel.getByText('Saved to your profile and master résumé. Your current email is kept. Generate a new draft when ready.')).toBeVisible(); await expect(page.locator('#cold-email-body')).toHaveValue(BODY); expect(f.mutations.filter(path => path.endsWith('commit_profile_patch_cas'))).toHaveLength(1); const before = f.state.calls.length;
-    await page.getByRole('button', { name: 'Regenerate from updated materials', exact: true }).click(); await expect.poll(() => f.state.calls.length).toBe(before + 2); expect(f.state.calls.at(-1)?.experience_evidence.entries.some(entry => entry.text === `My role: ${own}`)).toBe(true); expect(f.mutations.some(path => path.includes('confirm_contact_event'))).toBe(false); await panel.scrollIntoViewIfNeeded(); await screenProof(page, info, 'contribution-saved-reused.png');
+    await page.getByRole('button', { name: 'Regenerate from updated materials', exact: true }).click(); await expect.poll(() => f.state.calls.length).toBe(before + 1); expect(f.state.calls.at(-1)?.path).toBe('/api/cold-email/variants');
+    await page.getByRole('button', { name: 'Generate AI draft', exact: true }).click(); await expect.poll(() => f.state.calls.length).toBe(before + 2); expect(f.state.calls.at(-1)?.path).toBe('/api/cold-email/stream');
+    for (const call of f.state.calls.slice(before)) expect(call.experience_evidence.entries.some(entry => entry.text === `My role: ${own}`)).toBe(true); expect(f.mutations.some(path => path.includes('confirm_contact_event'))).toBe(false); await panel.scrollIntoViewIfNeeded(); await screenProof(page, info, 'contribution-saved-reused.png');
   } finally { await f.done(); }
 });
 
@@ -278,7 +287,8 @@ for (const status of ['available', 'stale'] as const) test(`research ${status} k
       await confirm.check(); await panel.getByRole('button', { name: copy('Apply background to this draft', '将背景应用于草稿'), exact: true }).click();
       expect(f.state.calls.length).toBe(before);
       await page.getByRole('button', { name: copy('Regenerate from updated materials', '按最新资料和机会重新生成'), exact: true }).click();
-      await expect.poll(() => f.state.calls.length).toBe(before + 2);
+      await expect.poll(() => f.state.calls.length).toBe(before + 1);
+      expect(f.state.calls.at(-1)?.path).toBe('/api/cold-email/variants');
       expect(f.state.calls.at(-1)?.contact_context.paper_reading).toEqual({ title: RESEARCH_TITLE, year: 2025, level: 'abstract', confirmed: true,
         work_id: f.state.research.snapshot!.works[0].work_id, snapshot_version: f.state.research.snapshot!.snapshot_version });
     }
@@ -325,8 +335,13 @@ for (const status of ['available', 'stale'] as const) test(`website lab ${status
     expect(geometry).toEqual({ fits: true, inViewport: true });
     await confirm.check(); await panel.getByRole('button', { name: copy('Apply background to this draft', '将背景应用于草稿'), exact: true }).click();
     expect(f.state.calls.length).toBe(before);
-    await page.getByRole('button', { name: copy('Regenerate from updated materials', '按最新资料和机会重新生成'), exact: true }).click();
-    await expect.poll(() => f.state.calls.length).toBe(before + 2);
+    const rebuild = page.getByRole('button', { name: copy('Regenerate from updated materials', '按最新资料和机会重新生成'), exact: true });
+    await rebuild.click();
+    await expect.poll(() => f.state.calls.length).toBe(before + 1);
+    // The rebuild refreshes the template only and starts no AI draft.
+    await expect(rebuild).toHaveCount(0);
+    await expect(page.getByRole('button', { name: copy('Generate AI draft', '生成 AI 草稿'), exact: true })).toBeEnabled();
+    expect(f.state.calls.at(-1)?.path).toBe('/api/cold-email/variants');
     const manual = 'Handwritten draft stays complete. 官网更新不改我的原稿。🧪';
     await page.locator('#cold-email-body').fill(manual);
     await expect(page.getByTestId('cold-email-draft-status')).toContainText(copy('Saved on this browser', '已保存'));
