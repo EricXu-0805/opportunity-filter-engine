@@ -1,0 +1,20 @@
+[
+ {
+  "netId": "adaexam",
+  "name": "Ada Example",
+  "title": "Professor",
+  "email": "ada.example@ucr.edu",
+  "researchAreas": [
+   "Computer Systems"
+  ]
+ },
+ {
+  "netId": "",
+  "name": "Bo Sample",
+  "title": "Associate Professor",
+  "email": "bo.sample@ucr.edu",
+  "researchAreas": [
+   "Databases"
+  ]
+ }
+]

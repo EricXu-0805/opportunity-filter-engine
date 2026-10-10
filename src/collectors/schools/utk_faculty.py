@@ -352,7 +352,9 @@ SCHOOL: dict = {
                 "field_filter": {"selector": "div.contact_title",
                                  "require_present": True,
                                  "include": r"professor|lecturer"},
-                "paginate": {"mode": "path", "param": "page", "start": 2, "max": 8},
+                # /page/10/ was the last (7 cards) and /page/11/ a 404 on
+                # 2026-10-09.
+                "paginate": {"mode": "path", "param": "page", "start": 2, "max": 12},
             },
         },
     ],

@@ -391,7 +391,9 @@ SCHOOL: dict = {
                 # require "professor" to drop the Research Associates within it.
                 "field_filter": {"selector": "div.teaser-table--profile-type", "include": r"Faculty"},
                 "ladder_filter": {"require": r"professor", "drop": r"emerit|visiting|lecturer"},
-                "paginate": {"param": "page", "start": 1, "max": 4},
+                # One A-Z list of everyone, 25 a page: ?page=11 was the last
+                # (7 cards) on 2026-10-09. The old max of 4 stopped partway through K.
+                "paginate": {"param": "page", "start": 1, "max": 14},
             },
         },
         {

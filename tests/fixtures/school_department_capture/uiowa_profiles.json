@@ -1,0 +1,18 @@
+{
+ "results": [
+  {
+   "personType": "FACULTY",
+   "profileName": "Ada Example",
+   "directoryTitle": "Assistant Professor of Instruction",
+   "email": "ada-example@uiowa.edu",
+   "slug": "ada-example"
+  },
+  {
+   "personType": "EMERITUS",
+   "profileName": "Bo Sample",
+   "directoryTitle": "Emeritus Lecturer in Accounting",
+   "email": "bo-sample@uiowa.edu",
+   "slug": "bo-sample"
+  }
+ ]
+}
