@@ -152,9 +152,11 @@ async function stubColdEmail(page: Page, refused: string[]) {
   await page.route('**/api/cold-email/variants', route => {
     const request = route.request().postDataJSON();
     const receipt = contactReceiptForRequest(request);
+    // A recommended tone puts its badge on the selected tone chip, so the scan
+    // checks that badge's contrast too.
     return route.fulfill({ json: {
       opportunity_id: request.opportunity_id, target_version: request.expected_target_version,
-      contact_context_receipt: receipt, recipient_status: 'revealed', lab_type: null,
+      contact_context_receipt: receipt, recipient_status: 'revealed', lab_type: null, recommended_style: 'professional',
       variants: [{ id: 'v1', label: 'Template A', subject: 'Interested in your research',
         body: 'Dear Professor,\n\nI am interested in your lab.\n\nBest,\nAlex', recipient_email: 'prof@illinois.edu',
         mailto_link: 'mailto:prof@illinois.edu', contact_context_receipt: receipt }],
@@ -239,6 +241,9 @@ for (const locale of ['en', 'zh'] as const) {
     // Opening asks for no AI draft (M75), so the editor settles on the template
     // once its Generate control is ready; the scan sees that state.
     await expect(page.getByRole('button', { name: t.coldEmail.generateAiDraft, exact: true })).toBeEnabled();
+    // A request that opening starts a moment after the control is ready would
+    // be missed by an immediate read, so give it a short window first.
+    await page.waitForTimeout(500);
     expect(refused, 'opening the editor must not request an AI draft').not.toContain('/api/cold-email/stream');
     // aria-modal hides the page behind it, so only the dialog is the editor.
     findings.push(...await scan(page, 'cold-email-editor', locale, '[role="dialog"][aria-modal="true"]'));

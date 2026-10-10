@@ -181,6 +181,8 @@ async function setup(page: Page, info: TestInfo, sharedOwner?: Fixture) {
     await page.getByRole('button', { name: locale === 'zh' ? '起草邮件' : 'Draft Email', exact: true }).click();
     await expect(body).toHaveValue(expectedBody);
     await expect(page.getByRole('button', { name: copy.generateAiDraft, exact: true })).toBeEnabled();
+    // Give a request that opening starts a moment late the chance to show up.
+    await page.waitForTimeout(500);
     expect(state.calls.filter(path => path.endsWith('/stream'))).toHaveLength(streams);
   };
   const selectSecond = async () => {

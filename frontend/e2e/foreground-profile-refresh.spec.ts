@@ -156,6 +156,8 @@ test.describe('Foreground profile refresh', () => {
       await openEmail(page);
       await expect(fields(page).body).toHaveValue(`Template for ${NAME}`);
       await expect(page.getByRole('button', { name: 'Generate AI draft', exact: true })).toBeEnabled();
+      // Give a request that opening starts a moment late the chance to show up.
+      await page.waitForTimeout(500);
       expect(requests.some(request => request.path.endsWith('/stream'))).toBe(false);
       await editManual(page); await observeTriggers(page);
       const node = await dialog(page).elementHandle(), count = requests.length, reads = traffic.profileReads;
@@ -188,6 +190,8 @@ test.describe('Foreground profile refresh', () => {
     try {
       await openEmail(page);
       await expect(fields(page).body).toHaveValue(`Template for ${NAME}`);
+      await expect(page.getByRole('button', { name: 'Generate AI draft', exact: true })).toBeEnabled();
+      await page.waitForTimeout(500);
       expect(requests.some(request => request.path.endsWith('/stream'))).toBe(false);
       await page.getByRole('button', { name: 'Generate AI draft', exact: true }).click();
       await expect.poll(() => requests.some(request => request.path.endsWith('/stream'))).toBe(true);

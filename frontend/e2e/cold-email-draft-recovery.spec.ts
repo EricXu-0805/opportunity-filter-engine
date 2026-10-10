@@ -103,6 +103,8 @@ async function setup(page: Page, info: TestInfo) {
   const ready = async () => {
     await expect(page.locator('#cold-email-body')).toHaveValue(BODY);
     await expect(page.getByRole('button', { name: copy.generateAiDraft, exact: true })).toBeEnabled();
+    // Give a request that opening starts a moment late the chance to show up.
+    await page.waitForTimeout(500);
     expect(state.calls.filter(path => path.endsWith('/stream'))).toEqual([]);
   };
   const edit = async () => {
@@ -116,9 +118,15 @@ async function setup(page: Page, info: TestInfo) {
   const saved = async () => expect(page.getByTestId('cold-email-draft-status')).toContainText(locale === 'zh' ? '已保存' : 'Saved on this browser');
   const close = async () => { await page.getByRole('button', { name: copy.closeAria, exact: true }).click(); await expect(page.getByRole('dialog', { name: copy.title })).toHaveCount(0); };
   const done = async () => {
-    await info.attach('draft-recovery-audit', { body: JSON.stringify({ ...audit, writes: state.mutations, calls: state.calls }, null, 2), contentType: 'application/json' });
-    await Promise.all(owners.map(item => item.http.dispose()));
-    expect(audit.pageErrors).toEqual([]); expect(audit.external).toEqual([]); expect(audit.unexpected5xx).toEqual([]); expect(state.mutations).toEqual([]);
+    try {
+      await info.attach('draft-recovery-audit', { body: JSON.stringify({ ...audit, writes: state.mutations, calls: state.calls }, null, 2), contentType: 'application/json' });
+      await Promise.all(owners.map(item => item.http.dispose()));
+      expect(audit.pageErrors).toEqual([]); expect(audit.external).toEqual([]); expect(audit.unexpected5xx).toEqual([]); expect(state.mutations).toEqual([]);
+    } finally {
+      // A detail read the page starts at the end of a test can still be inside
+      // route.fetch when the page closes. Its error is teardown, not a finding.
+      await page.unrouteAll({ behavior: 'ignoreErrors' });
+    }
   };
   return { state, audit, owners, locale, copy, open, ready, edit, retained, saved, close, done };
 }

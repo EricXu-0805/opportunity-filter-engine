@@ -879,6 +879,89 @@ describe('ColdEmailModal', () => {
       expect(mockGenerateColdEmailStream).toHaveBeenCalledTimes(1);
       expect(screen.getByText('coldEmail.openInEmail').closest('button')).toBeDisabled();
     });
+
+    it('keeps the paid draft: quick actions and typed requests wait until Generate finishes', async () => {
+      mockGetVariants.mockResolvedValue({ variants: [makeVariant()], pipeline_version: 'pipeline-current' });
+      let release!: (v: typeof AI_RESP) => void;
+      mockGenerateColdEmailStream.mockReset().mockImplementation(() => new Promise((res) => { release = res; }));
+      mockRefineEmail.mockResolvedValue({ body: 'Refined body', method: 'llm' });
+      render(
+        <ColdEmailModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp-busy" opportunityTitle="REU" />,
+      );
+      await waitFor(() => expect(generate()).toBeEnabled());
+      fireEvent.click(generate());
+      await waitFor(() => expect(mockGenerateColdEmailStream).toHaveBeenCalledTimes(1));
+      const request = screen.getByRole('textbox', { name: 'coldEmail.requestLabel' });
+      fireEvent.change(request, { target: { value: 'Make it shorter' } });
+      for (const key of ['formal', 'shorter', 'enthusiastic', 'coursework']) {
+        expect(screen.getByRole('button', { name: `coldEmail.quickActions.${key}` })).toBeDisabled();
+      }
+      expect(screen.getByRole('button', { name: 'coldEmail.submitRequest' })).toBeDisabled();
+      // A submit that bypasses the disabled button must not start a refine either.
+      fireEvent.submit(request.closest('form')!);
+      await settle();
+      expect(mockRefineEmail).not.toHaveBeenCalled();
+      await act(async () => { release(AI_RESP); });
+      await screen.findByDisplayValue('Clicked AI Body');
+      expect(screen.getByText('coldEmail.aiGenerated')).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByRole('button', { name: 'coldEmail.quickActions.shorter' })).toBeEnabled());
+      expect(screen.getByRole('button', { name: 'coldEmail.submitRequest' })).toBeEnabled();
+      expect(mockGenerateColdEmailStream).toHaveBeenCalledTimes(1);
+      expect(mockRefineEmail).not.toHaveBeenCalled();
+    });
+
+    it('the busy control says it is generating until a pipeline stage arrives', async () => {
+      mockGetVariants.mockResolvedValue({ variants: [makeVariant()], pipeline_version: 'pipeline-current' });
+      let onStage!: (stage: string) => void;
+      let release!: (v: typeof AI_RESP) => void;
+      mockGenerateColdEmailStream.mockReset().mockImplementation((_profile: unknown, _id: unknown, _opts: unknown, stage: (s: string) => void) => {
+        onStage = stage;
+        return new Promise((res) => { release = res; });
+      });
+      render(
+        <ColdEmailModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp-busy-label" opportunityTitle="REU" />,
+      );
+      await waitFor(() => expect(generate()).toBeEnabled());
+      fireEvent.click(generate());
+      expect(await screen.findByRole('button', { name: 'coldEmail.aiGenerating' })).toBeDisabled();
+      expect(screen.queryByRole('button', { name: 'coldEmail.generateAiDraft' })).toBeNull();
+      act(() => onStage('drafting'));
+      expect(screen.getByRole('button', { name: 'coldEmail.stageDrafting' })).toBeDisabled();
+      await act(async () => { release(AI_RESP); });
+      await screen.findByDisplayValue('Clicked AI Body');
+      expect(screen.getByRole('button', { name: 'coldEmail.aiVariantLabel' })).toBeInTheDocument();
+    });
+
+    it('the busy control says it is generating on the compatibility route too', async () => {
+      mockGetVariants.mockResolvedValue({ variants: [makeVariant()], pipeline_version: 'pipeline-current' });
+      // beforeEach: the stream route answers 404, so the click falls back to the blocking route.
+      let release!: (v: typeof AI_RESP) => void;
+      mockGenerateColdEmail.mockReset().mockImplementation(() => new Promise((res) => { release = res; }));
+      render(
+        <ColdEmailModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp-busy-compat" opportunityTitle="REU" />,
+      );
+      await waitFor(() => expect(generate()).toBeEnabled());
+      fireEvent.click(generate());
+      await waitFor(() => expect(mockGenerateColdEmail).toHaveBeenCalledTimes(1));
+      expect(screen.getByRole('button', { name: 'coldEmail.aiGenerating' })).toBeDisabled();
+      expect(screen.queryByRole('button', { name: 'coldEmail.generateAiDraft' })).toBeNull();
+      await act(async () => { release(AI_RESP); });
+      await screen.findByDisplayValue('Clicked AI Body');
+    });
+
+    it('says next to the tone chips that the tone applies to the next AI draft', async () => {
+      mockGetVariants.mockResolvedValue({ variants: [makeVariant()], recommended_style: 'warm' });
+      render(
+        <ColdEmailModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp-tone-hint" opportunityTitle="REU" />,
+      );
+      await screen.findByDisplayValue(/Interested/);
+      expect(screen.getByText('coldEmail.tone.hint')).toBeVisible();
+      for (const style of ['professional', 'warm', 'friendly', 'lively']) {
+        expect(screen.getByRole('button', { name: new RegExp(`^coldEmail\\.tone\\.${style}`) })).toHaveAccessibleDescription('coldEmail.tone.hint');
+      }
+      expect(en.coldEmail.tone.hint).toBeTruthy();
+      expect(zh.coldEmail.tone.hint).toBeTruthy();
+    });
   });
 
   describe('send buttons (FE-2)', () => {

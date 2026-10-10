@@ -405,7 +405,8 @@ describe('cold email pipeline cache compatibility', () => {
     view.show({ opportunityId: 'B' });
     await waitFor(() => expect(api.variants).toHaveBeenCalledTimes(2));
     expect(api.stream.mock.calls.map((call) => call[1])).toEqual(['A']);
-    expect(screen.queryByRole('button', { name: 'coldEmail.generateAiDraft' })).toBeNull();
+    // A's draft exists in this tone, so a leftover control would read '✨ AI'.
+    expect(screen.queryByRole('button', { name: /^coldEmail\.(generateAiDraft|aiVariantLabel)$/ })).toBeNull();
     view.show({ opportunityId: 'A' });
     await screen.findByDisplayValue('Cached target A draft');
     expect(api.stream.mock.calls.map((call) => call[1])).toEqual(['A']);
