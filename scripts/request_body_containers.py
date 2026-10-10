@@ -80,13 +80,67 @@ def lane_body_model(route):
     return None
 
 
+def _request_parameters(function) -> list[str]:
+    """The parameters of a function that hold a Request: annotated as one, or unannotated and named
+    request."""
+    try:
+        parameters = inspect.signature(function).parameters
+    except (TypeError, ValueError):
+        return []
+    return [name for name, parameter in parameters.items()
+            if parameter.annotation in ("Request", "fastapi.Request", "starlette.requests.Request")
+            or getattr(parameter.annotation, "__name__", "") == "Request"
+            or (parameter.annotation is inspect.Parameter.empty and name in ("request", "http_request"))]
+
+
+def _named_functions(function):
+    """The functions a function names: globals, attributes of a module it names, and closures."""
+    names, codes = set(), [function.__code__]
+    while codes:
+        code = codes.pop()
+        names.update(code.co_names)
+        codes.extend(const for const in code.co_consts if inspect.iscode(const))
+    values = [function.__globals__.get(name) for name in names]
+    values += [getattr(value, name, None) for value in values if inspect.ismodule(value) for name in names]
+    values += [cell.cell_contents for cell in function.__closure__ or () if cell.cell_contents is not None]
+    return [inspect.unwrap(value) for value in values if inspect.isfunction(value)]
+
+
+def _reads_its_request(route) -> bool:
+    """Whether the route's endpoint, one of its dependencies, or a function of the app's own code that
+    either hands a Request to, calls json(), body() or stream() on that Request."""
+    packages = {"backend", "src", route.endpoint.__module__.split(".")[0]}
+    pending, seen = [route.endpoint], set()
+    dependencies = list(route.dependant.dependencies)
+    while dependencies:
+        dependency = dependencies.pop()
+        pending.append(dependency.call)
+        dependencies.extend(dependency.dependencies)
+    while pending:
+        function = inspect.unwrap(pending.pop())
+        if not inspect.isfunction(function) or function in seen or \
+                function.__module__.split(".")[0] not in packages:
+            continue
+        seen.add(function)
+        names = _request_parameters(function)
+        if function is not route.endpoint and not names:
+            continue
+        source = inspect.getsource(function)
+        if any(re.search(rf"\b{name}\.(?:json|body|stream)\(", source) for name in names):
+            return True
+        pending.extend(_named_functions(function))
+    return False
+
+
 def json_routes(app=None) -> list[tuple[str, str, object]]:
     """(method, path, route) for every route of the app whose endpoint reads a JSON body.
 
-    FastAPI parses one for a body parameter that is not a form; an endpoint that calls json() or
-    body() on its Request parses one itself, and one that takes its body through
+    FastAPI parses one for a body parameter that is not a form; an endpoint that calls json(),
+    body() or stream() on its Request, or hands it to a dependency or a function of the app's own
+    code that does, reads one itself; and one that takes its body through
     request_body.json_body_on_lane has it parsed on the request lane. A multipart upload
-    (request.form()) is not JSON.
+    (request.form()) is not JSON. An endpoint that declares bounds reads a JSON body, wherever it
+    reads it (tests/conftest.py fails a test in which a route reads a body without declaring them).
     """
     from fastapi import params
     from fastapi.routing import APIRoute
@@ -98,13 +152,9 @@ def json_routes(app=None) -> list[tuple[str, str, object]]:
         if not isinstance(route, APIRoute):
             continue
         field = route.body_field
-        reads = (field is not None and not isinstance(field.field_info, params.Form)) or lane_body_model(route) is not None
-        if not reads:
-            names = [name for name, parameter in inspect.signature(route.endpoint).parameters.items()
-                     if parameter.annotation in ("Request", "fastapi.Request") or getattr(
-                         parameter.annotation, "__name__", "") == "Request"]
-            source = inspect.getsource(route.endpoint)
-            reads = any(re.search(rf"\b{name}\.(?:json|body|stream)\(", source) for name in names)
+        reads = (field is not None and not isinstance(field.field_info, params.Form)) or \
+            lane_body_model(route) is not None or request_body.declared_bounds(route) is not None or \
+            _reads_its_request(route)
         if reads:
             found.extend((method, route.path, route) for method in sorted(route.methods))
     return found

@@ -562,6 +562,44 @@ def test_a_json_route_without_bounds_is_found_by_the_check():
     assert all(request_body.declared_bounds(route) is None for route in routes.values())
 
 
+async def _read_json(request: Request):
+    return await request.json()
+
+
+async def _read_through(request):
+    return await _read_json(request)
+
+
+def test_a_route_that_reads_its_body_in_a_dependency_or_a_helper_is_found_by_the_check():
+    """A route whose dependency, or a helper it hands its Request to, reads the body is a JSON route
+    too, and so is one whose helper is a closure; a route that only reads its Request's URL is not."""
+    from fastapi import APIRouter, Depends, FastAPI
+
+    probe, router = FastAPI(), APIRouter(route_class=request_body.BoundedJSONRoute)
+
+    async def nested(request: Request):
+        return await request.body()
+
+    @router.post("/in-a-dependency")
+    async def in_a_dependency(body=Depends(_read_json)):
+        return {}
+
+    @router.post("/in-a-helper")
+    async def in_a_helper(request: Request):
+        return await _read_through(request)
+
+    @router.post("/in-a-closure")
+    async def in_a_closure(request: Request):
+        return await nested(request)
+
+    @router.post("/no-body")
+    async def no_body(request: Request):
+        return {"path": request.url.path}
+
+    probe.include_router(router)
+    assert {path for _, path, _ in largest.json_routes(probe)} == {"/in-a-dependency", "/in-a-helper", "/in-a-closure"}
+
+
 @pytest.mark.parametrize(("method", "path", "json_route"), JSON_ROUTES, ids=ROUTE_IDS)
 def test_every_json_route_declares_bounds_its_route_enforces(method, path, json_route):
     bounds = request_body.declared_bounds(json_route)
@@ -1003,6 +1041,38 @@ def test_the_app_builds_few_errors_for_a_body_on_a_route_that_validates_on_the_e
             assert max(sizes, default=0) <= LOOP_ERRORS, (method, path, name, sizes)
             sent += 1
     assert sent >= 40
+
+
+def test_a_route_that_reads_its_body_in_a_helper_without_bounds_fails_the_test_that_reaches_it(unbounded_body_reads):
+    """tests/conftest.py records a backend route that reads its request body, wherever it reads it,
+    without declaring its bounds."""
+    from fastapi import APIRouter, Depends, FastAPI
+
+    router = APIRouter()
+
+    async def helper(request: Request):
+        return await request.json()
+
+    async def in_a_dependency(body=Depends(helper)):
+        return {}
+
+    async def in_a_helper(request: Request):
+        return await helper(request)
+
+    @request_body.json_body_bounds(request_body.SMALL_BOUNDS)
+    async def bounded(request: Request):
+        return await helper(request)
+
+    for name, probe_endpoint in (("dependency", in_a_dependency), ("helper", in_a_helper), ("bounded", bounded)):
+        probe_endpoint.__module__ = "backend.routes.probe"
+        router.post(f"/{name}")(probe_endpoint)
+    probe = FastAPI()
+    probe.include_router(router)
+    client = TestClient(probe)
+    for name in ("dependency", "helper", "bounded"):
+        client.post(f"/{name}", json={"a": 1})
+    assert unbounded_body_reads == ["POST /dependency", "POST /helper"]
+    unbounded_body_reads.clear()
 
 
 def _metadata_save(extra: dict) -> dict:
