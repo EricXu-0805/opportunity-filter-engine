@@ -62,7 +62,7 @@ function seedMatchCache(): void {
 describe('Header', () => {
   it('renders all nav labels in both desktop and mobile panels plus a language switcher', () => {
     render(<Header />);
-    for (const key of ['nav.findMatches', 'nav.favorites', 'nav.dashboard', 'nav.import', 'nav.about']) {
+    for (const key of ['nav.findMatches', 'nav.favorites', 'nav.dashboard', 'nav.resources', 'nav.about']) {
       expect(screen.getAllByText(key).length).toBeGreaterThanOrEqual(2);
     }
     expect(screen.getAllByRole('button', { name: 'Switch to Chinese' }).length).toBeGreaterThanOrEqual(1);
@@ -72,6 +72,15 @@ describe('Header', () => {
     render(<Header />);
     const home = screen.getByRole('link', { name: 'JoinALab · auth.callback.goHome' });
     expect(home).toHaveAttribute('href', '/');
+  });
+
+  it('has one Resources entry per panel and no separate Import entry', () => {
+    // Import is a tab on the Resources page, so the nav names it once there.
+    const { container } = render(<Header />);
+    const hrefs = Array.from(container.querySelectorAll('nav a')).map((a) => a.getAttribute('href'));
+    expect(hrefs.filter((href) => href === '/resources')).toHaveLength(2);
+    expect(hrefs.filter((href) => href?.startsWith('/import'))).toHaveLength(0);
+    expect(screen.queryByText('nav.import')).not.toBeInTheDocument();
   });
 
   it('does not advertise hidden Fellowships or Roadmap routes', () => {

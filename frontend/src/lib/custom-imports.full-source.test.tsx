@@ -22,7 +22,7 @@ async function mountImport() {
   const owner = await import('./identity-owner');
   owner.advanceOwnerEpoch('b58-fixture-owner');
   await owner.syncLocalIdentityOwner('b58-fixture-owner');
-  const { default: ImportPage } = await import('@/app/import/page');
+  const { default: ImportPage } = await import('@/app/import/ImportPanel');
   return render(<ImportPage />);
 }
 

@@ -10,7 +10,7 @@ vi.mock('@/lib/private-import-target-api', () => ({ getPrivateImportTarget: mock
   PrivateTargetError: class extends Error { constructor(readonly code: string) { super(code); } } }));
 vi.mock('@/lib/auth-modal-context', () => ({ useAuthModal: () => ({ openModal: mocks.signIn }) }));
 vi.mock('@/i18n/client', () => ({ useT: () => ({ locale: mocks.locale, t: translate }) }));
-import ImportPage from './page';
+import ImportPage from './ImportPanel';
 import { PrivateTargetError } from '@/lib/private-import-target-api';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import { readCustomImports, updateCustomImport } from '@/lib/custom-imports';

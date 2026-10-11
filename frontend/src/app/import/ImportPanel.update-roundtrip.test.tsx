@@ -27,7 +27,7 @@ describe('actual reimport response → reviewed update → reopened favorite', (
     const storage = await import('@/lib/custom-imports');
     const { writeLocalStorageJSON } = await import('@/lib/use-local-storage-json');
     const { STORAGE_KEYS } = await import('@/lib/storage-keys');
-    const { default: ImportPage } = await import('./page');
+    const { default: ImportPage } = await import('./ImportPanel');
     fetchMock.mockResolvedValueOnce(response(fixture.initial)).mockResolvedValueOnce(response(fixture.updated));
     const mounted = render(<ImportPage />);
     fireEvent.change(screen.getByPlaceholderText(t('import.urlPlaceholder')), { target: { value: fixture.initial.opportunity.source_url } });

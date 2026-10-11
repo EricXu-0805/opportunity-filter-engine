@@ -1,5 +1,37 @@
 import { test, expect, type Route } from '@playwright/test';
 
+test.describe('Import is a tab of Resources', () => {
+  test('/import redirects to the Import tab and keeps its query string', async ({ page }) => {
+    await page.goto('/import?utm_source=mail&lab=dry');
+    await expect(page).toHaveURL(/\/resources\?utm_source=mail&lab=dry&tab=import$/);
+    await expect(page.getByRole('tab', { name: 'Import', exact: true })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByPlaceholder('https://...')).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1);
+  });
+
+  test('/resources opens on the guides and switches to Import without losing the typed link', async ({ page }) => {
+    await page.goto('/resources');
+    await expect(page.getByRole('tab', { name: /Guides/ })).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByPlaceholder('https://...')).toHaveCount(0);
+    await page.getByRole('tab', { name: 'Import', exact: true }).click();
+    await expect(page).toHaveURL(/\/resources\?tab=import$/);
+    await page.getByPlaceholder('https://...').fill('https://lab.example/typed');
+    await page.getByRole('tab', { name: /Guides/ }).click();
+    await expect(page).toHaveURL(/\/resources$/);
+    await expect(page.locator('section[aria-labelledby="databases-heading"]')).toBeVisible();
+    await page.getByRole('tab', { name: 'Import', exact: true }).click();
+    await expect(page.getByPlaceholder('https://...')).toHaveValue('https://lab.example/typed');
+  });
+
+  test('the header names Resources once and has no separate Import entry', async ({ page }) => {
+    await page.goto('/');
+    const toggle = page.getByTestId('mobile-nav-toggle');
+    if (await toggle.isVisible()) await toggle.click();
+    await expect(page.locator('header a[href="/import"]')).toHaveCount(0);
+    await expect(page.locator('header a[href="/resources"]:visible')).toHaveCount(1);
+  });
+});
+
 test.describe('Import by URL', () => {
   test('renders form with disabled button initially empty', async ({ page }) => {
     await page.goto('/import');
@@ -133,8 +165,10 @@ test.describe('Import by URL', () => {
     await expect(page.getByText('Acme Corp')).toBeVisible();
     await expect(page.getByText('AI-assisted · needs review')).toBeVisible();
     await expect(page.getByText('2026-04-15')).toBeVisible();
-    await expect(page.getByText('Python').first()).toBeVisible();
-    await expect(page.getByText('Rust').first()).toBeVisible();
+    // The guides stay mounted (hidden) beside the Import tab and also say "Python".
+    const importTab = page.locator('#resources-panel-import');
+    await expect(importTab.getByText('Python').first()).toBeVisible();
+    await expect(importTab.getByText('Rust').first()).toBeVisible();
   });
 
   test('reset button clears the form and result', async ({ page }) => {
