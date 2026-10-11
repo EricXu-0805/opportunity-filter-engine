@@ -298,6 +298,30 @@ class TestSeedNormalization:
         assert merged["metadata"]["last_verified"] != "2026-06-01T00:00:00"
         assert "(applications" not in merged["title"]
 
+    @pytest.mark.parametrize("stored", ["open", "closed"])
+    def test_a_discovery_whose_loaded_page_states_no_status_is_inactive(self, monkeypatch, processed, stored):
+        """campus_graph's rule for the registry: a stored "open" discovery
+        whose page loads and states no status leaves the listings, and a
+        stored "closed" one stays hidden."""
+        sources = _registry("kept")
+        sources[0]["crawl"] = reg.RECURSIVE
+        hub_url, page_url = sources[0]["seeds"][0], "https://example.berkeley.edu/lab/"
+        anchor = "Summer Lab Research Fellowship"
+        before = ucb_campus._normalize_discovered(sources[0], anchor, page_url, anchor)
+        before["metadata"].update({"discovered_page_verified": True, "status": stored, "is_active": stored == "open"})
+        processed.write_text(json.dumps([before]), encoding="utf-8")
+        hub = BeautifulSoup(f'<body><a href="{page_url}">{anchor}</a></body>', "html.parser")
+        monkeypatch.setattr(ucb_campus, "_fetch", lambda url: (
+            hub if url == hub_url else _StaticSoup("The application opens December 14, 2026.")))
+
+        evidence = _refresh(monkeypatch, sources, deep=True, national=False)
+
+        assert evidence["discovered_records"] == 1
+        merged = _stored(processed)[before["id"]]["metadata"]
+        assert merged["status"] == "unknown"
+        assert merged["is_active"] is False
+        assert "deactivation_reason" not in merged
+
     def test_discovered_anchor_requires_its_own_page_before_emission(
         self,
         monkeypatch,
