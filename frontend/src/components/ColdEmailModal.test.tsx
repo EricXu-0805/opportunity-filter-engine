@@ -685,19 +685,20 @@ describe('ColdEmailModal', () => {
 
     // White on the old indigo-600→fuchsia-500 gradient fell to 3.46:1 at the fuchsia stop.
     it('draws the selected AI pill in solid indigo-600, not a gradient', async () => {
-      mockGetVariants.mockResolvedValue({ variants: [makeVariant()] });
-      mockGenerateColdEmail.mockResolvedValue({
+      mockGetVariants.mockResolvedValue({ variants: [makeVariant()], pipeline_version: 'pipeline-current' });
+      mockGenerateColdEmailStream.mockReset().mockResolvedValue({
         subject: 'AI', body: 'AI Body', recipient_email: 'p@x.edu',
-        mailto_link: 'mailto:p@x.edu', method: 'ai',
+        mailto_link: 'mailto:p@x.edu', method: 'ai', pipeline_version: 'pipeline-current',
       });
       render(
         <ColdEmailModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp" opportunityTitle="REU" />,
       );
       await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
-      const pill = screen.getByRole('button', { name: 'coldEmail.aiVariantLabel' });
-      await waitFor(() => expect(pill).toBeEnabled());
-      fireEvent.click(pill);
+      const generate = screen.getByRole('button', { name: 'coldEmail.generateAiDraft' });
+      await waitFor(() => expect(generate).toBeEnabled());
+      fireEvent.click(generate);
       await waitFor(() => expect(screen.getByDisplayValue('AI Body')).toBeInTheDocument());
+      const pill = screen.getByRole('button', { name: 'coldEmail.aiVariantLabel' });
       expect(pill).toHaveClass('bg-indigo-600', 'text-white');
       expect(pill.className).not.toContain('gradient');
     });
