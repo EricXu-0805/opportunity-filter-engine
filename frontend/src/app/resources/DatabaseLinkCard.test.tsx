@@ -16,6 +16,15 @@ describe('DatabaseLinkCard', () => {
     expect(screen.getByText('NIH')).toBeInTheDocument();
   });
 
+  // White on the old indigo-600→500 gradient fell to 4.47:1 at the light stop.
+  it('draws the short label badge in solid indigo-600, not a gradient', () => {
+    const nih = DATABASES.find((d) => d.key === 'nihReporter')!;
+    render(<DatabaseLinkCard link={nih} />);
+    const badge = screen.getByText('NIH');
+    expect(badge).toHaveClass('text-white', 'bg-indigo-600');
+    expect(badge.className).not.toContain('gradient');
+  });
+
   it('renders the visible domain', () => {
     const nsf = DATABASES.find((d) => d.key === 'nsfAwards')!;
     render(<DatabaseLinkCard link={nsf} />);

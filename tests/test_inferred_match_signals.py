@@ -40,6 +40,19 @@ def test_inferred_major_fit_is_useful_but_does_not_claim_requirement():
     assert not any("requirement" in text or "direct match" in text for text in fit)
 
 
+def test_an_inferred_all_majors_list_stays_neutral():
+    # A posted ["all"] is a full major fit, as a direct match is; one we
+    # derived is nobody's answer and scores as no list does.
+    stated = opportunity(majors=["all"])
+    score, fit, _ = score_eligibility(profile(), stated)
+    assert score == score_eligibility(profile(), opportunity(majors=["Art History"]))[0]
+    assert "Open to all majors" in fit
+    derived = mark(opportunity(majors=["all"]), "eligibility.majors")
+    score, fit, _ = score_eligibility(profile(), derived)
+    assert score == score_eligibility(profile(), opportunity())[0]
+    assert not any("all majors" in text for text in fit)
+
+
 def test_legacy_inferred_missing_skills_cannot_score_below_unknown_requirements():
     derived = mark(opportunity(skills_required=["Python", "MATLAB"]), "eligibility.skills_required")
     assert score_eligibility(profile(), derived)[0] == score_eligibility(profile(), opportunity())[0]

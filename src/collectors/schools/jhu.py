@@ -799,40 +799,5 @@ SCHOOL: dict = {
                 ),
             ],
         },
-        {
-            "source_name": "jhu_program_open",
-            "source_type": PROGRAM,
-            "emit": "open",
-            "seeds": [
-                "https://theleadershipalliance.org/summer-research-early-identification-program",
-            ],
-            "crawl": STATIC,
-            "programs": [
-                program(
-                    "leadership_alliance_sreip_jhu",
-                    "Leadership Alliance Summer Research Early Identification Program (SR-EIP) \u2014 Johns Hopkins sites",
-                    "https://theleadershipalliance.org/summer-research-early-identification-program",
-                    "National fully funded 8\u201311 week residential summer research program "
-                    "preparing undergraduates for PhD and MD-PhD applications, with stipend, "
-                    "housing, and travel support and a capstone presentation at the "
-                    "Leadership Alliance National Symposium. Johns Hopkins participates as a "
-                    "host site through the Bloomberg School of Public Health, School of "
-                    "Medicine, and Krieger School. Class-year eligibility varies by site "
-                    "(rising sophomores through rising seniors); applications open November 1 "
-                    "and close in early February.",
-                    organization="The Leadership Alliance",
-                    department="Johns Hopkins participating sites (BSPH, SOM, KSAS)",
-                    lab_or_program="SR-EIP",
-                    opportunity_type="summer_program",
-                    paid="stipend",
-                    compensation="Stipend plus housing and travel (varies by site)",
-                    eligibility_majors=["all"],
-                    preferred_year=["sophomore", "junior"],
-                    international_friendly="no",
-                    deadline_note="2026 program: applications opened November 1, 2025; deadline was February 3, 2026; dates for the next cycle are not posted yet",
-                    keywords=["Leadership Alliance", "SR-EIP", "PhD pipeline", "summer research", "national program"],
-                ),
-            ],
-        },
     ],
 }

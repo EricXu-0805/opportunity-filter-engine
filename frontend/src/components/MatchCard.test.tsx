@@ -675,6 +675,27 @@ describe('MatchCard', () => {
       expect(link!.getAttribute('target')).toBe('_blank');
     });
 
+    // White text on the old emerald-600→500 gradient was 3.77:1 at the dark
+    // stop and 2.54:1 at the light one; axe only reports a gradient as
+    // "incomplete", so no scan caught it. Solid emerald-700 is 5.48:1.
+    it('Apply Now is solid emerald-700 with an emerald-800 hover, not a gradient', () => {
+      const match = makeMatch({}, undefined);
+      match.opportunity.application = { ...match.opportunity.application, application_url: 'https://apply.example' };
+      render(<MatchCard match={match} onDraftEmail={() => {}} />);
+      const link = screen.getByRole('link', { name: 'card.applyNow' });
+      expect(link).toHaveClass('text-white', 'bg-emerald-700', 'hover:bg-emerald-800');
+      expect(link.className).not.toContain('gradient');
+    });
+
+    // The light stop of the old indigo-600→500 gradient was 4.47:1 under white.
+    it('the primary Draft Email is solid indigo-600 with an indigo-700 hover and keeps its disabled dimming', () => {
+      const match = makeMatch({ source_type: 'faculty_research', faculty_title: 'Professor' });
+      render(<MatchCard match={match} onDraftEmail={() => {}} draftEmailReady />);
+      const button = screen.getByRole('button', { name: 'card.draftEmail' });
+      expect(button).toHaveClass('text-white', 'bg-indigo-600', 'hover:bg-indigo-700', 'disabled:opacity-50');
+      expect(button.className).not.toContain('gradient');
+    });
+
     it('falls back to View Details (opp.url) when no application_url', () => {
       const match = makeMatch({ url: 'https://opp.example' });
       render(<MatchCard match={match} onDraftEmail={() => {}} />);

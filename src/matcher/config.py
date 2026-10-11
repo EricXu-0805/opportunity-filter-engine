@@ -317,7 +317,13 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # after the other concerns score_eligibility gives. A graduate student is no longer told
 # "For undergraduates" by a year list that names no year (a faculty row's
 # ["unknown"]). Sentences and their order only, like 20.
-_MATCHER_VERSION_BASE = "21"
+# 22: a major list that welcomes every major (["all"], "All majors", "any
+# department", alone or beside majors it names) is a full major fit for every
+# student, as a direct match is, and says "Open to all majors" (as our
+# listing's where the page text does not say so). It scored as a mismatch: 15
+# for a History student, below the 30 a list naming no major gets. A formula
+# change no hashed knob sees.
+_MATCHER_VERSION_BASE = "22"
 
 
 def _matcher_fingerprint() -> str:

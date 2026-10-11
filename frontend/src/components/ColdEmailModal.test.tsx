@@ -389,6 +389,18 @@ describe('ColdEmailModal', () => {
       expect(writeTextMock).toHaveBeenCalledWith('Subject: Hello\n\nBody text');
     });
 
+    // White on the old indigo-600→500 gradient fell to 4.47:1 at the light stop.
+    it('draws Open in Email in solid indigo-600 with an indigo-700 hover and keeps its disabled dimming', async () => {
+      mockGetVariants.mockResolvedValue({ variants: [makeVariant({ subject: 'Hi' })] });
+      render(
+        <ColdEmailModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp" opportunityTitle="REU" />,
+      );
+      await waitFor(() => expect(screen.getByDisplayValue('Hi')).toBeInTheDocument());
+      const open = screen.getByRole('button', { name: 'coldEmail.openInEmail' });
+      expect(open).toHaveClass('text-white', 'bg-indigo-600', 'hover:bg-indigo-700', 'disabled:opacity-50');
+      expect(open.className).not.toContain('gradient');
+    });
+
     it('renders Gmail + Outlook deep-link buttons that open in a new window', async () => {
       mockGetVariants.mockResolvedValue({
         variants: [makeVariant({ subject: 'Hi', body: 'Hey', recipient_email: 'p@x.edu' })],
@@ -669,6 +681,26 @@ describe('ColdEmailModal', () => {
       fireEvent.click(screen.getByRole('button', { name: 'coldEmail.generateAiDraft' }));
       await waitFor(() => expect(screen.getByDisplayValue('AI Body')).toBeInTheDocument());
       expect(screen.queryByText('coldEmail.templateFallbackBadge')).toBeNull();
+    });
+
+    // White on the old indigo-600→fuchsia-500 gradient fell to 3.46:1 at the fuchsia stop.
+    it('draws the selected AI pill in solid indigo-600, not a gradient', async () => {
+      mockGetVariants.mockResolvedValue({ variants: [makeVariant()], pipeline_version: 'pipeline-current' });
+      mockGenerateColdEmailStream.mockReset().mockResolvedValue({
+        subject: 'AI', body: 'AI Body', recipient_email: 'p@x.edu',
+        mailto_link: 'mailto:p@x.edu', method: 'ai', pipeline_version: 'pipeline-current',
+      });
+      render(
+        <ColdEmailModal isOpen onClose={vi.fn()} profile={makeProfile()} opportunityId="opp" opportunityTitle="REU" />,
+      );
+      await waitFor(() => expect(screen.getByDisplayValue(/Interested/)).toBeInTheDocument());
+      const generate = screen.getByRole('button', { name: 'coldEmail.generateAiDraft' });
+      await waitFor(() => expect(generate).toBeEnabled());
+      fireEvent.click(generate);
+      await waitFor(() => expect(screen.getByDisplayValue('AI Body')).toBeInTheDocument());
+      const pill = screen.getByRole('button', { name: 'coldEmail.aiVariantLabel' });
+      expect(pill).toHaveClass('bg-indigo-600', 'text-white');
+      expect(pill.className).not.toContain('gradient');
     });
   });
 
