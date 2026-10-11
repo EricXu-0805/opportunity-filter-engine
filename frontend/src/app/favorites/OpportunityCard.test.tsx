@@ -330,6 +330,22 @@ describe('favorites card target-truth postures', () => {
     expect(screen.getByText('card.draftEmail')).toBeInTheDocument();
     expect(screen.getByText('card.tailorResume')).toBeInTheDocument();
   });
+
+  // White on the old indigo-600→500 gradient fell to 4.47:1 at the light stop.
+  it('draws Draft Email in solid indigo-600 with an indigo-700 hover, not a gradient', () => {
+    renderSaved({
+      listing_state: 'open',
+      reference_only: false,
+      actionable: true,
+      accepting_state: 'accepting',
+      reason_code: null,
+      verified_at: null,
+      expires_at: null,
+    });
+    const button = screen.getByRole('button', { name: 'card.draftEmail' });
+    expect(button).toHaveClass('text-white', 'bg-indigo-600', 'hover:bg-indigo-700');
+    expect(button.className).not.toContain('gradient');
+  });
 });
 
 // ---------------------------------------------------------------------------

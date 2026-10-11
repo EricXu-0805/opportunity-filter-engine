@@ -1064,7 +1064,7 @@ export default function ResumeRenovationModal({
                     type="button"
                     disabled={!sourceReady || targetBindingUnavailable || profileAction.busy}
                     onClick={requestGeneration}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-fuchsia-500 rounded-xl hover:from-indigo-700 hover:to-fuchsia-600 shadow-sm transition-all"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 shadow-sm transition-all"
                   >
                     <Wand2 className="w-4 h-4" aria-hidden="true" />
                     {t('renovate.start')}

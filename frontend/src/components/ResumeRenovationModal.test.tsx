@@ -185,6 +185,14 @@ describe('ResumeRenovationModal', () => {
     expect(mockLoadRenovation).toHaveBeenCalledWith('opp-1', captureOwnerToken());
   });
 
+  // White on the old indigo-600→fuchsia-500 gradient fell to 3.46:1 at the fuchsia stop.
+  it('draws the start CTA in solid indigo-600 with an indigo-700 hover, not a gradient', async () => {
+    renderModal();
+    const start = (await screen.findByText('renovate.start')).closest('button')!;
+    expect(start).toHaveClass('text-white', 'bg-indigo-600', 'hover:bg-indigo-700');
+    expect(start.className).not.toContain('gradient');
+  });
+
   it('asks for a resume when the profile has none', async () => {
     renderModal(makeProfile({ resume_text: '' }));
     expect(await screen.findByText('renovate.noResume')).toBeInTheDocument();

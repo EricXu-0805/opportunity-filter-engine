@@ -160,6 +160,14 @@ describe('TailorModal', () => {
     expect(generate.hasAttribute('disabled')).toBe(true);
   });
 
+  // White on the old indigo-600→fuchsia-500 gradient fell to 3.46:1 at the fuchsia stop.
+  it('draws Generate in solid indigo-600 with an indigo-700 hover and keeps its disabled dimming', () => {
+    render(<TailorModal {...baseProps} profile={makeProfile()} />);
+    const generate = screen.getByRole('button', { name: /tailor\.generate/ });
+    expect(generate).toHaveClass('text-white', 'bg-indigo-600', 'hover:bg-indigo-700', 'disabled:opacity-50');
+    expect(generate.className).not.toContain('gradient');
+  });
+
   it('pre-fills bullets from profile.resume_text when bullet-shaped lines exist', () => {
     const profile = makeProfile({
       resume_text:
