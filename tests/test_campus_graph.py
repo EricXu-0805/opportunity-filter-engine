@@ -999,6 +999,38 @@ class TestProgramMovesBetweenShards:
         assert row["metadata"]["deactivation_reason"] == "no_longer_listed"
 
 
+def test_jhu_leadership_alliance_row_is_kept_but_never_served():
+    """JHU's open-bucket SR-EIP record said Johns Hopkins hosts SR-EIP sites.
+    The program page's research-site list (28 entries, read 2026-10-10) names
+    no Johns Hopkins site, so the record leaves the config. Its stored row is
+    an "open" row in national.json, where no refresh retires it (see
+    test_other_sources_other_schools_and_inactive_rows_are_left_alone), so it
+    is retired in the committed shard instead, the way fba47cb6 retired Duke's
+    and Macalester's rows."""
+    from pathlib import Path
+
+    from src.collectors.schools.jhu import SCHOOL as JHU
+    from src.evidence import target_truth
+    from src.matcher.ranker import _filter_context, hard_exclusion
+
+    page = "https://theleadershipalliance.org/summer-research-early-identification-program"
+    assert not any(
+        spec["key"] == "leadership_alliance_sreip_jhu" or spec["url"] == page
+        for source in JHU["sources"] for spec in source.get("programs", [])
+    )
+    assert not any(page in source.get("seeds", []) for source in JHU["sources"])
+
+    national = Path(__file__).resolve().parents[1] / "data" / "processed" / "shards" / "national.json"
+    [row] = [row for row in json.loads(national.read_text(encoding="utf-8"))
+             if row["id"] == cg._hash_id("jhu", "jhu_external_research", "leadership_alliance_sreip_jhu")]
+    assert row["metadata"]["is_active"] is False
+    assert row["metadata"]["deactivation_reason"] == "no_longer_listed"
+    assert row["metadata"]["deactivated_at"] == "2026-10-10"
+    assert target_truth(row).actionable is False
+    for profile in ({"home_school": "jhu"}, {"home_school": "uiuc", "include_cross_school": True}):
+        assert hard_exclusion(row, _filter_context(profile)) == "inactive"
+
+
 # --- Per-school: Princeton (the reference config) ---------------------------
 
 class TestPrinceton:
