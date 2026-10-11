@@ -1707,6 +1707,16 @@ class TestConfiguredFactRules:
             assert fact.quote.endswith("11:59 p.m. (Application opens December 14, 2026)")
 
 
+    def test_wisconsin_fellowship_notes_are_stated_by_their_pages(self):
+        from src.collectors.schools.wisc import SCHOOL
+
+        notes = {p["key"]: p["deadline_note"] for src in SCHOOL["sources"] for p in src.get("programs", [])}
+        for key, page in (("hilldale_fellowship", self._HILLDALE_PAGE),
+                          ("sophomore_research_fellowship", self._SOPHOMORE_PAGE)):
+            row = _page_row("application_window", notes[key], page)
+            assert configured_fact(row, "application_window").state == FACT_STATED, key
+
+
 class TestUcbCampusContract:
     def _source(self, emit=ucb_sources.EMIT_CAMPUS) -> dict:
         program = ucb_sources._prog(
