@@ -240,9 +240,13 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
   // conflict the same way. Every publication advances this, so a delayed
   // callback can name the exact statement it was armed for.
   const saveStatusVersionRef = useRef(0);
+  // What the status line says right now, for listeners outside React's
+  // render (the reconnect resend reads it inside a browser event).
+  const saveStatusRef = useRef<SaveStatus>('idle');
   /** The ONLY way this form's status line moves. */
   const setSaveStatus = useCallback((status: SaveStatus) => {
     saveStatusVersionRef.current += 1;
+    saveStatusRef.current = status;
     publishSaveStatus(status);
   }, []);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -270,9 +274,14 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
   // keeps its old view, but a later explicit server recreation may start at 1.
   // This fact survives failed checks and belongs only to this owner/screen.
   const backgroundAbsenceRef = useRef<ScreenOrigin | null>(null);
+  // The reconnect resend (see resendAfterReconnect). A profile check that is
+  // running or has failed pauses every save, so a resend still due then is
+  // made when a check next comes back ready.
+  const resendAfterReconnectRef = useRef<(() => void) | null>(null);
   const publishProfileRefresh = useCallback((status: HomeProfileRefreshStatus) => {
     profileRefreshStatusRef.current = status;
     setProfileRefreshStatus(status);
+    if (status === 'ready') void Promise.resolve().then(() => resendAfterReconnectRef.current?.());
   }, []);
   const backgroundReadRef = useRef<(() => void) | null>(null);
   const stopBackgroundReadRef = useRef<(() => void) | null>(null);
@@ -2940,35 +2949,13 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     );
   }, [importGitHubSkills, actingOrigin, ownsScreen, editProfile]);
 
-  /** Re-attempts a save that did not fully land — either half, or both.
-   *  A fresh owner token, captured at THIS click: it is a new user intent,
-   *  made by whoever is signed in now. A payload left behind by a previous
-   *  identity is dropped, never re-sent. */
-  const retryCloudSave = useCallback(() => {
-    if (profileRefreshStatusRef.current !== 'ready') return;
-    const failed = retryableRef.current;
-    if (!failed) return;
-    const token = captureOwnerToken();
-    if (
-      failed.generation !== identityGenerationRef.current
-      || token.uid !== failed.token.uid
-      || token.epoch !== failed.token.epoch
-      || !isOwnerTokenValid(token, token.uid)
-    ) {
-      // A different account (or the same one across a sign-out cycle) is
-      // active now, or this browser's data is not confirmed for it. The
-      // unsent write belongs to neither — drop the affordance rather than
-      // replay it anywhere.
-      armRetryable(null);
-      return;
-    }
+  /** Sends whatever this form still owes the cloud, as `origin`. Shared by
+   *  Retry and the reconnect resend; the caller has already decided that
+   *  `origin` may act. */
+  const replayUnsent = useCallback((origin: ScreenOrigin) => {
+    const { token, generation } = origin;
     saveIntentRef.current += 1;
     const intent = saveIntentRef.current;
-    const generation = identityGenerationRef.current;
-    // Retry is a NEW intent by whoever is signed in now — but once made, it is
-    // as bound to that identity as any other action, including while its own
-    // request is in flight.
-    const origin: ScreenOrigin = { token, generation };
     setSaveStatus('saving');
     if (unrecordedRef.current.size > 0) {
       // The failure being retried happened BEFORE the journal — there is no
@@ -2987,8 +2974,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         setSaveStatus('error');
         return;
       }
-      commitSave(live, dirty.value, origin, intent);
-      return;
+      return commitSave(live, dirty.value, origin, intent);
     }
     // Whatever is STILL unsent, not a snapshot this hook remembers: the
     // coordinator may have rebased it, layered a newer edit onto it, or
@@ -3013,7 +2999,99 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         if (retryEditEpoch !== editEpochRef.current) return;
         setSaveStatus('cloud-failed');
       });
-  }, [applySaveResult, commitSave, epochsNow, recordOutstandingIntents, ownsScreen, armRetryable, setSaveStatus]);
+  }, [applySaveResult, commitSave, epochsNow, recordOutstandingIntents, ownsScreen, setSaveStatus]);
+
+  /** Re-attempts a save that did not fully land — either half, or both.
+   *  A fresh owner token, captured at THIS click: it is a new user intent,
+   *  made by whoever is signed in now. A payload left behind by a previous
+   *  identity is dropped, never re-sent. */
+  const retryCloudSave = useCallback(() => {
+    if (profileRefreshStatusRef.current !== 'ready') return;
+    const failed = retryableRef.current;
+    if (!failed) return;
+    const token = captureOwnerToken();
+    if (
+      failed.generation !== identityGenerationRef.current
+      || token.uid !== failed.token.uid
+      || token.epoch !== failed.token.epoch
+      || !isOwnerTokenValid(token, token.uid)
+    ) {
+      // A different account (or the same one across a sign-out cycle) is
+      // active now, or this browser's data is not confirmed for it. The
+      // unsent write belongs to neither — drop the affordance rather than
+      // replay it anywhere.
+      armRetryable(null);
+      return;
+    }
+    // Retry is a NEW intent by whoever is signed in now — but once made, it is
+    // as bound to that identity as any other action, including while its own
+    // request is in flight.
+    return replayUnsent({ token, generation: identityGenerationRef.current });
+  }, [armRetryable, replayUnsent]);
+
+  // An edit the network let down is resent ONCE when the browser is back —
+  // the `online` event, or the tab returning to the foreground online —
+  // rather than waiting for the student to press Retry. It is the same
+  // replay Retry makes, so it goes through the same revision-checked CAS:
+  // another device's newer edit still comes back as a conflict, and a key
+  // already locked as one is never sent. Only a 'cloud-failed' write is
+  // resent; a conflict, a deleted row or a local-storage failure is not a
+  // network problem and reconnecting does not answer it.
+  //
+  // The resend goes out at once when the profile check is ready. It does not
+  // wait for the check the same event starts: the revision check on the
+  // resend itself is what catches another device's save. While a check is
+  // running, or the last one failed (on a train, the check made on the way
+  // back to the tab failed too), the resend stays due and is made when a
+  // check next comes back ready (see publishProfileRefresh).
+  const reconnectDueRef = useRef(false);
+  const reconnectInFlightRef = useRef(false);
+  const resendAfterReconnect = useCallback(() => {
+    if (!reconnectDueRef.current || reconnectInFlightRef.current) return;
+    if (document.visibilityState !== 'visible' || !navigator.onLine) return;
+    const failed = retryableRef.current;
+    if (!failed || saveStatusRef.current !== 'cloud-failed') {
+      reconnectDueRef.current = false;
+      return;
+    }
+    if (profileRefreshStatusRef.current !== 'ready') return;
+    // The identity that made the edit, by its OWN token — never one captured
+    // now. Nobody pressed anything, so there is no new intent to attribute to
+    // whoever happens to own the browser by the time the network returns.
+    if (!ownsScreen(failed) || !isOwnerTokenValid(failed.token, failed.token.uid)) {
+      reconnectDueRef.current = false;
+      return;
+    }
+    reconnectDueRef.current = false;
+    reconnectInFlightRef.current = true;
+    void Promise.resolve(replayUnsent(failed)).finally(() => {
+      reconnectInFlightRef.current = false;
+      // An `online` that arrived while this was in flight (a flapping
+      // connection) is one more chance: taken only if this one failed.
+      if (reconnectDueRef.current) resendAfterReconnectRef.current?.();
+    });
+  }, [ownsScreen, replayUnsent]);
+  useEffect(() => {
+    resendAfterReconnectRef.current = resendAfterReconnect;
+    const onReconnect = (event: Event) => {
+      if (document.visibilityState !== 'visible' || !navigator.onLine) return;
+      if (reconnectInFlightRef.current) {
+        // `online` and `visibilitychange` often arrive together: one resend.
+        // Only a new `online` while it is in flight is a new reconnect.
+        if (event.type === 'online') reconnectDueRef.current = true;
+        return;
+      }
+      reconnectDueRef.current = true;
+      resendAfterReconnect();
+    };
+    window.addEventListener('online', onReconnect);
+    document.addEventListener('visibilitychange', onReconnect);
+    return () => {
+      if (resendAfterReconnectRef.current === resendAfterReconnect) resendAfterReconnectRef.current = null;
+      window.removeEventListener('online', onReconnect);
+      document.removeEventListener('visibilitychange', onReconnect);
+    };
+  }, [resendAfterReconnect]);
 
   /** The two halves of a conflict, as explicit user choices. Nothing else
    *  unlocks a conflicted field — see the coordinator's lock rule. */

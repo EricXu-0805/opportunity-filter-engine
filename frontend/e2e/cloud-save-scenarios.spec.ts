@@ -556,7 +556,7 @@ test.describe('M19 cloud save scenarios', () => {
     }
   });
 
-  test('an edit made offline is reported as not saved, and Retry after reconnecting saves it', async ({ page, context }, info) => {
+  test('an edit made offline is reported as not saved, and is sent once by itself when the browser is back online', async ({ page, context }, info) => {
     const http = await apiRequest.newContext();
     const offlineText = 'Typed on a train with no signal 王';
     let release!: () => void;
@@ -582,23 +582,33 @@ test.describe('M19 cloud save scenarios', () => {
       await status.scrollIntoViewIfNeeded();
       await page.screenshot({ path: info.outputPath('offline-save-failed.png') });
 
-      await context.setOffline(false);
-      await expect.poll(() => page.evaluate(() => navigator.onLine)).toBe(true);
-      // Hold the retried write so the screen can be read while it is in flight.
+      // Hold the resend so the screen can be read while it is in flight, and
+      // note which revision it was made against.
+      const expected: number[] = [];
       await page.route('**/rest/v1/rpc/commit_profile_patch_cas', async (route) => {
+        expected.push(route.request().postDataJSON().p_expected_revision);
         await held;
         await route.continue();
       });
-      const retried = page.waitForResponse((response) => isCas(response.url()));
-      await page.getByTestId('retry-sync').click();
-      await expect(status).toHaveText('Saving...');
+      const resent = page.waitForResponse((response) => isCas(response.url()));
+      // Back online. Nobody presses Retry.
+      await context.setOffline(false);
+      await expect.poll(() => page.evaluate(() => navigator.onLine)).toBe(true);
+      await expect(status).toHaveText('Saving...', { timeout: 15_000 });
       await page.evaluate(() => { (window as unknown as { cloudSaveReleased: boolean }).cloudSaveReleased = true; });
       release();
-      expect(await (await retried).json()).toMatchObject({ status: 'applied', revision: 2, profile: { research_interests: offlineText } });
+      expect(await (await resent).json()).toMatchObject({ status: 'applied', revision: 2, profile: { research_interests: offlineText } });
       await expect(status).toHaveText('Profile saved');
       await expectStatusOnlyAfterRelease(page);
+      expect(expected, 'one resend, made against the revision the edit was typed on').toEqual([1]);
+      expect(receipts).toMatchObject([{ status: 'applied', revision: 2, patch: { research_interests: offlineText } }]);
       expect(await profileRows(http, account.uid))
         .toMatchObject([{ revision: 2, profile_data: { ...ACCOUNT_PROFILE, research_interests: offlineText } }]);
+      // Coming back to the tab later sends nothing more: nothing is owed.
+      await page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+      await page.evaluate(() => window.dispatchEvent(new Event('online')));
+      await page.waitForTimeout(2_000);
+      expect(expected).toEqual([1]);
 
       await page.unroute('**/rest/v1/rpc/commit_profile_patch_cas');
       await page.reload();
@@ -610,7 +620,7 @@ test.describe('M19 cloud save scenarios', () => {
     }
   });
 
-  test('an edit that failed offline survives a reload and is sent from the journal', async ({ page, context }) => {
+  test('an edit that failed offline, and again when the browser came back, survives a reload and is sent from the journal', async ({ page, context }) => {
     const http = await apiRequest.newContext();
     const offlineText = 'Typed offline, then the tab was reloaded 王';
     try {
@@ -626,8 +636,15 @@ test.describe('M19 cloud save scenarios', () => {
       await expect(page.getByTestId('retry-sync')).toBeVisible({ timeout: 15_000 });
       expect(receipts).toEqual([]);
 
+      // The browser comes back but the server is still out of reach, so the
+      // one resend on reconnecting fails as well.
+      await page.route('**/rest/v1/rpc/commit_profile_patch_cas', (route) => route.abort('internetdisconnected'));
+      const refused = page.waitForEvent('requestfailed', (request) => isCas(request.url()));
       await context.setOffline(false);
       await expect.poll(() => page.evaluate(() => navigator.onLine)).toBe(true);
+      await refused;
+      await expect(page.getByTestId('retry-sync')).toBeVisible({ timeout: 15_000 });
+      await page.unroute('**/rest/v1/rpc/commit_profile_patch_cas');
       const sent = page.waitForResponse((response) => isCas(response.url()));
       await page.reload();
       await waitForForm(page);
