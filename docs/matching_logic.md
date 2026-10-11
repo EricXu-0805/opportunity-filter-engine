@@ -39,7 +39,7 @@ It does not blend uncalibrated model scores directly into the rule score.
 | Factor | Weight | Logic |
 |--------|--------|-------|
 | Year match | 28.5% | Known fit 100, adjacent undergraduate year 50, mismatch 0, unknown 40; inferred year lists are unknown |
-| Major/field match | 24% | Exact 100, related 70, absent 30; faculty department labels only earn positive fit, not a mismatch penalty |
+| Major/field match | 24% | Exact 100, related 70, absent 30; a list that welcomes every major (`all`, `All majors`, `any department`, alone or beside named majors) 100 for every student, unless it is a faculty department label or a list we derived; faculty department labels only earn positive fit, not a mismatch penalty |
 | International eligibility | 19% | Known friendly 100, restricted 0, unknown 60 (72 for internships); non-international profile defaults to 100 |
 | Skill overlap | 14.25% | Required-skill weighted coverage: expert 1, experienced .75, beginner .5; no overlap 10, usually no requirements 35 |
 | Opportunity type | 14.25% | Exact 100; research/summer 70, summer/internship 60, research/internship 50; unrelated 30, no preference 60 |
