@@ -553,3 +553,56 @@ describe('MatchList Draft Email readiness', () => {
     expect(open).toHaveBeenCalledWith(match.opportunity.id);
   });
 });
+
+describe('MatchList — tier legend: shown only when the visible list mixes opportunity types', () => {
+  function renderWithTypes(types: string[]) {
+    const matches = types.map((type, i) => {
+      const m = makeMatch(`opp-${i}`, `Opportunity ${i}`);
+      m.opportunity.opportunity_type = type;
+      return m;
+    });
+    render(
+      <MatchList
+        matches={matches}
+        profile={null}
+        highlightSet={new Set()}
+        focusedIdx={-1}
+        favs={new Set()}
+        interactions={new Map()}
+        ownerReady
+        identityGeneration={1}
+        ownerScopeKey="owner-1"
+        pendingFavIds={new Set()}
+        pendingTrackIds={new Set()}
+        favSaveErrors={new Set()}
+        trackSaveErrors={new Set()}
+        interactionsUnready={false}
+        feedback={new Map()}
+        draftEmailReady
+        onDraftEmail={() => {}}
+        onToggleFavorite={() => {}}
+        onTrackInteraction={() => {}}
+        onRetryFavSave={() => {}}
+        onRetryTrackSave={() => {}}
+        onFeedback={() => {}}
+        positionOffset={0}
+        page={1}
+        totalPages={1}
+        paginationReady
+        onPageChange={() => {}}
+        t={((key: string) => key) as never}
+      />,
+    );
+  }
+
+  it('renders the legend once when research and internship rows are listed together', () => {
+    renderWithTypes(['Research', 'Internship']);
+    expect(screen.getAllByTestId('results-tier-legend')).toHaveLength(1);
+    expect(screen.getByTestId('results-tier-legend')).toHaveTextContent('results.tierLegend');
+  });
+
+  it('omits the legend when every row has the same type', () => {
+    renderWithTypes(['Research', 'research', 'Research']);
+    expect(screen.queryByTestId('results-tier-legend')).toBeNull();
+  });
+});

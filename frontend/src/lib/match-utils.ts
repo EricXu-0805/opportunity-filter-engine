@@ -28,6 +28,22 @@ export type DeadlineUrgency = 'passed' | 'urgent' | 'soon' | 'later' | null;
 export type { OpportunityRecordKind } from './record-kind';
 export { opportunityRecordKind };
 
+/**
+ * True when the list holds more than one opportunity type. The Good Match /
+ * Reach labels are assigned relative to the other results of the same type, so
+ * across types a lower percent can carry a higher label. Rows with no type
+ * say nothing about it and are ignored.
+ */
+export function mixesOpportunityTypes(matches: readonly MatchResult[]): boolean {
+  const types = new Set<string>();
+  for (const m of matches) {
+    const type = m.opportunity.opportunity_type?.trim().toLowerCase();
+    if (type) types.add(type);
+    if (types.size > 1) return true;
+  }
+  return false;
+}
+
 export function daysUntil(deadline: string | undefined, now: Date = new Date()): number | null {
   if (!deadline) return null;
   const dl = new Date(deadline + 'T00:00:00');

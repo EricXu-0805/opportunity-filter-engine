@@ -7,6 +7,7 @@ import {
   opportunityRecordKind,
   matchesToCSV,
   hashProfile,
+  mixesOpportunityTypes,
 } from './match-utils';
 import type { MatchResult } from './types';
 import countFixture from './__fixtures__/count-reconciliation.json';
@@ -643,5 +644,22 @@ describe('the CSV export counts the same records as the other surfaces', () => {
         expect(row.Deadline, served.id).toBe('');
       }
     });
+  });
+});
+
+describe('mixesOpportunityTypes', () => {
+  const row = (type: string | undefined) => ({ opportunity: { opportunity_type: type } }) as unknown as MatchResult;
+
+  it('is false for an empty list and for a single type', () => {
+    expect(mixesOpportunityTypes([])).toBe(false);
+    expect(mixesOpportunityTypes([row('Research'), row('Research')])).toBe(false);
+  });
+
+  it('is true as soon as two different types are present', () => {
+    expect(mixesOpportunityTypes([row('Research'), row('Internship')])).toBe(true);
+  });
+
+  it('ignores case, surrounding spaces and rows with no type', () => {
+    expect(mixesOpportunityTypes([row('Research'), row(' research '), row(undefined), row('')])).toBe(false);
   });
 });
