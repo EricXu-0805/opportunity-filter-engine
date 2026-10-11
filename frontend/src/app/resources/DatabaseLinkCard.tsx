@@ -19,7 +19,7 @@ export default function DatabaseLinkCard({ link }: DatabaseLinkCardProps) {
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-indigo-500 text-white flex items-center justify-center text-sm font-bold tracking-tight shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-sm font-bold tracking-tight shrink-0">
             {link.short}
           </div>
           <div className="min-w-0">
