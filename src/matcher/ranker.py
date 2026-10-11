@@ -1891,6 +1891,20 @@ def score_eligibility(
         exploring=bool(profile.get("exploring")),
         label_only=major_is_label or major_is_inferred,
     )
+    # A list that welcomes every major is a full fit for every student, as a
+    # direct match is: a campus program spec writes ["all"] for "open to every
+    # major", and beside majors it names (Duke's ["all", "ethics", "philosophy",
+    # "public policy"]) "all" still welcomes the rest. It used to score as a
+    # mismatch — 15 for a History student, below the 30 of a list naming no
+    # major. A department label and a list we derived name no one's answer, so
+    # they keep their scores.
+    open_to_every_major = (
+        major_score < 100
+        and not (major_is_label or major_is_inferred)
+        and any(is_all_majors_answer([major]) for major in major_labels)
+    )
+    if open_to_every_major:
+        major_score = 100.0
     if major_is_label and major_score >= 100:
         reasons_fit.append("This faculty member's department aligns with your major")
     elif major_is_label and major_score >= 70:
@@ -1899,6 +1913,15 @@ def score_eligibility(
         reasons_fit.append("Your major may fit this field")
     elif major_is_inferred and major_score >= 70:
         reasons_fit.append("Your major may be related to this field")
+    elif (open_to_every_major and major_is_configured
+          and configured_fact(opportunity, "majors").state == FACT_UNSTATED):
+        # Said as ours where the page text says nothing of it. A list holding
+        # the all-majors answer is contradicted only where the page welcomes
+        # every major (that is what contradicts the majors named beside it),
+        # so that page gets the plain line below too.
+        reasons_fit.append(f"Our listing says this is open to all majors{_NOT_ON_PAGE}")
+    elif open_to_every_major:
+        reasons_fit.append("Open to all majors")
     elif major_is_configured and major_score >= 100:
         reasons_fit.append(f"Your major ({profile.get('major', '')}) may fit this program")
     elif major_is_configured and major_score >= 70:
@@ -1912,12 +1935,6 @@ def score_eligibility(
         and elig.get("majors")
         and not major_is_label
         and not is_inferred(opportunity, "eligibility.majors")
-        # A campus program spec writes ["all"] for "open to every major", and
-        # a page that says so makes it stated: "Prefers all" names nothing.
-        # Beside majors it names (Duke's ["all", "ethics", "philosophy",
-        # "public policy"]) "all" still welcomes every major, so a student in
-        # none of those has missed nothing either.
-        and not any(is_all_majors_answer([major]) for major in elig["majors"])
     ):
         # Only a REAL preference list earns a gap: an open posting (majors=[])
         # scores 30 too, and previously emitted the nonsensical gap "Prefers ".
@@ -3269,7 +3286,8 @@ _REASON_TIERS: tuple[tuple[int, tuple[str, ...]], ...] = (
     # 6 — boilerplate that is true of half the results page. The brand lines
     # are school-constant (every registered-school result gets one), so they
     # must not occupy a top-3 card slot when specific reasons are scarce.
-    (6, ("Accepts ", "Your class year (", "Your major (", "Open to international students",
+    (6, ("Accepts ", "Your class year (", "Your major (", "Open to all majors",
+         "Our listing says this is open to all majors", "Open to international students",
          "Your experience level is competitive",
          "You're comfortable with direct outreach", "Low application effort",
          "Matches your interest in ", "Major research university",
