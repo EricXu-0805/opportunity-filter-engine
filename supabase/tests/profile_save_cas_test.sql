@@ -157,6 +157,8 @@ DO $$
 DECLARE
   u text := '9a9a9a9a-9a9a-4a9a-8a9a-9a9a9a9a9a03';
   other text := '9a9a9a9a-9a9a-4a9a-8a9a-9a9a9a9a9a04';
+  -- Owns no row, so a revision-0 patch from it really is a create.
+  fresh text := '9a9a9a9a-9a9a-4a9a-8a9a-9a9a9a9a9a20';
   res jsonb;
   c int;
 BEGIN
@@ -219,19 +221,22 @@ BEGIN
   -- A create carrying only ONE field — the exact shape a single-field writer
   -- (cross-school toggle, school gate) would send on a device whose row does
   -- not exist yet. Accepting it would make a mutilated row canonical.
+  -- Sent as `fresh`, which has no row: onto a row that exists, a revision-0
+  -- patch is a stale revision (section 10), not a create.
+  PERFORM set_config('test.uid', fresh, false);
   BEGIN
-    PERFORM commit_profile_patch_cas(u, 0, '{"include_cross_school":true}'::jsonb);
+    PERFORM commit_profile_patch_cas(fresh, 0, '{"include_cross_school":true}'::jsonb);
     RAISE EXCEPTION 'TEST FAIL cas-partial-create: should have raised';
   EXCEPTION WHEN sqlstate '22023' THEN NULL;
   END;
   BEGIN
-    PERFORM commit_profile_patch_cas(u, 0, '{"home_school":"uiuc"}'::jsonb);
+    PERFORM commit_profile_patch_cas(fresh, 0, '{"home_school":"uiuc"}'::jsonb);
     RAISE EXCEPTION 'TEST FAIL cas-partial-create-school: should have raised';
   EXCEPTION WHEN sqlstate '22023' THEN NULL;
   END;
   -- Missing exactly one required key is still incomplete.
   BEGIN
-    PERFORM commit_profile_patch_cas(u, 0,
+    PERFORM commit_profile_patch_cas(fresh, 0,
       '{"home_school":"uiuc","college":"C","major":"M","grade":"G"}'::jsonb);
     RAISE EXCEPTION 'TEST FAIL cas-partial-create-weight: should have raised';
   EXCEPTION WHEN sqlstate '22023' THEN NULL;
@@ -241,36 +246,41 @@ BEGIN
   -- blank (or whitespace, which looks filled in) would become canonical and
   -- the create path would never run again.
   BEGIN
-    PERFORM commit_profile_patch_cas(u, 0,
+    PERFORM commit_profile_patch_cas(fresh, 0,
       '{"home_school":"uiuc","college":"   ","major":"M","grade":"G","search_weight":50}'::jsonb);
     RAISE EXCEPTION 'TEST FAIL cas-blank-create-college: should have raised';
   EXCEPTION WHEN sqlstate '22023' THEN NULL;
   END;
   BEGIN
-    PERFORM commit_profile_patch_cas(u, 0,
+    PERFORM commit_profile_patch_cas(fresh, 0,
       '{"home_school":"uiuc","college":"C","major":"","grade":"G","search_weight":50}'::jsonb);
     RAISE EXCEPTION 'TEST FAIL cas-blank-create-major: should have raised';
   EXCEPTION WHEN sqlstate '22023' THEN NULL;
   END;
   BEGIN
-    PERFORM commit_profile_patch_cas(u, 0,
+    PERFORM commit_profile_patch_cas(fresh, 0,
       '{"home_school":"uiuc","college":"C","major":"M","grade":"  ","search_weight":50}'::jsonb);
     RAISE EXCEPTION 'TEST FAIL cas-blank-create-grade: should have raised';
   EXCEPTION WHEN sqlstate '22023' THEN NULL;
   END;
   -- …as is a search_weight that is not a number in range.
   BEGIN
-    PERFORM commit_profile_patch_cas(u, 0,
+    PERFORM commit_profile_patch_cas(fresh, 0,
       '{"home_school":"uiuc","college":"C","major":"M","grade":"G","search_weight":"lots"}'::jsonb);
     RAISE EXCEPTION 'TEST FAIL cas-create-weight-type: should have raised';
   EXCEPTION WHEN sqlstate '22023' THEN NULL;
   END;
   BEGIN
-    PERFORM commit_profile_patch_cas(u, 0,
+    PERFORM commit_profile_patch_cas(fresh, 0,
       '{"home_school":"uiuc","college":"C","major":"M","grade":"G","search_weight":900}'::jsonb);
     RAISE EXCEPTION 'TEST FAIL cas-create-weight-range: should have raised';
   EXCEPTION WHEN sqlstate '22023' THEN NULL;
   END;
+  SELECT count(*) INTO c FROM profiles WHERE id = fresh;
+  IF c IS DISTINCT FROM 0 THEN RAISE EXCEPTION 'TEST FAIL cas-invalid-create: a refused create wrote a row'; END IF;
+  SELECT count(*) INTO c FROM profile_versions WHERE device_id = fresh;
+  IF c IS DISTINCT FROM 0 THEN RAISE EXCEPTION 'TEST FAIL cas-invalid-create: a refused create wrote history'; END IF;
+  PERFORM set_config('test.uid', u, false);
 
   -- Every rejection above wrote nothing.
   SELECT revision INTO c FROM profiles WHERE id = u;
@@ -585,6 +595,12 @@ BEGIN
   IF res->>'status' IS DISTINCT FROM 'missing' OR res->>'reason' IS DISTINCT FROM 'merged_away' THEN
     RAISE EXCEPTION 'TEST FAIL merge-tombstone: want missing/merged_away got %', res;
   END IF;
+  -- A partial revision-0 patch gets the same answer: the create-shape check
+  -- runs only once the row is known to be absent, after this one.
+  res := commit_profile_patch_cas(src, 0, '{"include_cross_school":true}'::jsonb);
+  IF res->>'status' IS DISTINCT FROM 'missing' OR res->>'reason' IS DISTINCT FROM 'merged_away' THEN
+    RAISE EXCEPTION 'TEST FAIL merge-tombstone-partial: want missing/merged_away got %', res;
+  END IF;
   SELECT count(*) INTO c FROM profiles WHERE id = src;
   IF c IS DISTINCT FROM 0 THEN RAISE EXCEPTION 'TEST FAIL merge-tombstone: source profile was recreated'; END IF;
 END;
@@ -796,6 +812,71 @@ BEGIN
     RAISE EXCEPTION 'TEST FAIL cas-schema: profile_revision 0 was accepted';
   EXCEPTION WHEN check_violation THEN NULL;
   END;
+END;
+$$;
+
+-- =====================================================================
+-- 10. M79 (20261011230618): a PARTIAL revision-0 patch onto a row that
+--     exists — what a tab opened before #1017 still sends — is a stale
+--     revision. It gets the conflict a stale revision gets, with the
+--     current row to rebase onto, and writes nothing. 029 raised
+--     incomplete_create here, which the client could only resend.
+-- =====================================================================
+DO $$
+DECLARE
+  u text := '9a9a9a9a-9a9a-4a9a-8a9a-9a9a9a9a9a21';
+  res jsonb;
+  c int;
+BEGIN
+  PERFORM set_config('test.uid', u, false);
+  PERFORM commit_profile_patch_cas(u, 0, '{"home_school":"uiuc","search_weight":50,"college":"Grainger","major":"CS","grade":"Junior"}'::jsonb);
+
+  -- Row at revision 1: a one-field revision-0 patch that changes something.
+  res := commit_profile_patch_cas(u, 0, '{"major":"Math"}'::jsonb);
+  IF res->>'status' IS DISTINCT FROM 'conflict' OR (res->>'revision')::bigint IS DISTINCT FROM 1 THEN
+    RAISE EXCEPTION 'TEST FAIL cas-rev0-partial: want conflict@1 got %', res;
+  END IF;
+  IF res->'profile'->>'major' IS DISTINCT FROM 'CS' OR res->'profile'->>'college' IS DISTINCT FROM 'Grainger' THEN
+    RAISE EXCEPTION 'TEST FAIL cas-rev0-partial: conflict must return the current row, got %', res;
+  END IF;
+
+  -- The same rule a complete revision-0 patch follows (section 4): at
+  -- revision 1, a patch whose values are all stored already is unchanged.
+  res := commit_profile_patch_cas(u, 0, '{"major":"CS"}'::jsonb);
+  IF res->>'status' IS DISTINCT FROM 'unchanged' OR (res->>'revision')::bigint IS DISTINCT FROM 1 THEN
+    RAISE EXCEPTION 'TEST FAIL cas-rev0-partial-noop: want unchanged@1 got %', res;
+  END IF;
+
+  -- Further along, a revision-0 patch is just further behind: conflict,
+  -- whether or not its values happen to match.
+  PERFORM commit_profile_patch_cas(u, 1, '{"grade":"Senior"}'::jsonb);
+  res := commit_profile_patch_cas(u, 0, '{"include_cross_school":true}'::jsonb);
+  IF res->>'status' IS DISTINCT FROM 'conflict' OR (res->>'revision')::bigint IS DISTINCT FROM 2 THEN
+    RAISE EXCEPTION 'TEST FAIL cas-rev0-partial-behind: want conflict@2 got %', res;
+  END IF;
+  IF res->'profile'->>'grade' IS DISTINCT FROM 'Senior' THEN
+    RAISE EXCEPTION 'TEST FAIL cas-rev0-partial-behind: conflict must return the current row, got %', res;
+  END IF;
+  res := commit_profile_patch_cas(u, 0, '{"major":"CS"}'::jsonb);
+  IF res->>'status' IS DISTINCT FROM 'conflict' OR (res->>'revision')::bigint IS DISTINCT FROM 2 THEN
+    RAISE EXCEPTION 'TEST FAIL cas-rev0-partial-behind-noop: want conflict@2 got %', res;
+  END IF;
+  -- An incomplete create shape (blank college) onto the row: same answer.
+  res := commit_profile_patch_cas(u, 0,
+    '{"home_school":"uiuc","college":"   ","major":"M","grade":"G","search_weight":50}'::jsonb);
+  IF res->>'status' IS DISTINCT FROM 'conflict' OR (res->>'revision')::bigint IS DISTINCT FROM 2 THEN
+    RAISE EXCEPTION 'TEST FAIL cas-rev0-blank-create: want conflict@2 got %', res;
+  END IF;
+
+  -- None of the revision-0 patches wrote anything.
+  SELECT revision INTO c FROM profiles WHERE id = u;
+  IF c IS DISTINCT FROM 2 THEN RAISE EXCEPTION 'TEST FAIL cas-rev0-partial: revision moved to %', c; END IF;
+  SELECT count(*) INTO c FROM profile_versions WHERE device_id = u;
+  IF c IS DISTINCT FROM 2 THEN RAISE EXCEPTION 'TEST FAIL cas-rev0-partial: history grew to %', c; END IF;
+  PERFORM 1 FROM profiles WHERE id = u
+    AND profile_data->>'major' = 'CS' AND profile_data->>'college' = 'Grainger'
+    AND NOT profile_data ? 'include_cross_school';
+  IF NOT FOUND THEN RAISE EXCEPTION 'TEST FAIL cas-rev0-partial: the row was changed'; END IF;
 END;
 $$;
 
