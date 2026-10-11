@@ -460,14 +460,18 @@ def _program_id(emit, key):
     return ucb_campus._hash_id(_SOURCE_OF_EMIT[emit], key)
 
 
-def _refresh(monkeypatch, sources, deep=False):
-    """One ucb_campus refresh over ``sources``, merged the way refresh_all merges it."""
+def _refresh(monkeypatch, sources, deep=False, national=None):
+    """One ucb_campus refresh over ``sources``, merged the way refresh_all
+    merges it. ``national`` picks the half: False is ucb's day, True Sunday's,
+    None both at once."""
     monkeypatch.setattr(reg, "UCB_SOURCES", sources)
-    records, evidence = ucb_campus.fetch_and_normalize_with_evidence(deep=deep)
+    records, evidence = ucb_campus.fetch_and_normalize_with_evidence(deep=deep, national=national)
+    listed = evidence["listed_program_keys"]
     ucb_campus.merge_into_processed(
         records,
         complete_recursive_sources=set(evidence["complete_recursive_sources"]),
-        listed_program_keys=set(evidence["listed_program_keys"]),
+        listed_program_keys=None if listed is None else set(listed),
+        national=national,
     )
     return evidence
 
@@ -535,12 +539,13 @@ class TestDroppedProgramRetirement:
                    "metadata": {"is_active": True}}
         processed.write_text(json.dumps([*rows, discovery, unminted, faculty]), encoding="utf-8")
 
-        _refresh(monkeypatch, _registry("kept"))
+        _refresh(monkeypatch, _registry("kept"), national=False)
 
         saved = _stored(processed)
         assert saved[dropped_id]["metadata"]["deactivation_reason"] == "no_longer_listed"
-        # An "open" row lives in national.json, which the ucb shard refresh
-        # never writes, so retiring it there would never publish.
+        # An "open" row lives in national.json, which ucb's day does not
+        # publish, so retiring it then would never reach production: the
+        # national day retires it (the next test).
         open_row = saved[_program_id(reg.EMIT_OPEN, "open_dropped")]
         assert open_row["school"] is None
         assert open_row["metadata"]["is_active"] is True
@@ -550,6 +555,22 @@ class TestDroppedProgramRetirement:
         for row in (discovery, unminted, faculty):
             assert saved[row["id"]]["metadata"]["is_active"] is True
             assert "deactivation_reason" not in saved[row["id"]]["metadata"]
+
+    @pytest.mark.parametrize("open_kept", [("open_kept",), ()], ids=["one_left", "none_left"])
+    def test_the_national_day_retires_a_dropped_open_program_and_no_ucb_row(self, monkeypatch, processed, open_kept):
+        _refresh(monkeypatch, _registry("kept", "dropped", open_keys=("open_dropped", *open_kept)))
+
+        evidence = _refresh(monkeypatch, _registry("kept", open_keys=open_kept), national=True)
+
+        assert evidence["listed_program_keys"] == list(open_kept)
+        saved = _stored(processed)
+        dropped = saved[_program_id(reg.EMIT_OPEN, "open_dropped")]
+        assert dropped["school"] is None
+        assert dropped["metadata"]["is_active"] is False
+        assert dropped["metadata"]["deactivation_reason"] == "no_longer_listed"
+        for key in open_kept:
+            assert saved[_program_id(reg.EMIT_OPEN, key)]["metadata"]["is_active"] is True
+        assert saved[_program_id(reg.EMIT_CAMPUS, "dropped")]["metadata"]["is_active"] is True
 
     def test_a_program_listed_again_comes_back(self, monkeypatch, processed):
         back_id = _program_id(reg.EMIT_CAMPUS, "back")
@@ -669,54 +690,84 @@ class TestDroppedProgramRetirement:
 
 class TestRetirementThroughTheUcbShard:
     """The refresh workflow assembles the work file from the committed shards,
-    refreshes ucb, and splits back only ucb.json; "open" rows live in
-    national.json, which only the national shard's split or a full one
-    writes."""
+    refreshes the half of the registry the day publishes, and splits back
+    only that day's shard: ucb.json on ucb's day, national.json, where "open"
+    rows live, on Sunday."""
 
-    @staticmethod
-    def _shard_refresh(monkeypatch, processed, shards, sources):
-        assemble(processed, shards, force=True, allow_empty=True)
+    OLD_URL = "https://example.berkeley.edu/moving/"
+    NATIONAL_ROW = {"id": "nsf-reu-0001", "source": "nsf_reu", "source_type": "reu", "school": None,
+                    "title": "Example REU Site", "url": "https://example.org/reu/",
+                    "metadata": {"is_active": True}}
+
+    def _commit(self, monkeypatch, processed, shards, sources):
         _refresh(monkeypatch, sources)
-        split(processed, shards, only_shards={"ucb"})
+        rows = json.loads(processed.read_text(encoding="utf-8"))
+        processed.write_text(json.dumps([*rows, self.NATIONAL_ROW]), encoding="utf-8")
+        split(processed, shards)
 
     @staticmethod
-    def _published(shards, key):
-        return [row["metadata"]["is_active"] for row in load_shards(shards)
-                if row["metadata"].get("collector_key") == key]
+    def _day(monkeypatch, processed, shards, sources, national):
+        assemble(processed, shards, force=True, allow_empty=True)
+        _refresh(monkeypatch, sources, national=national)
+        split(processed, shards, only_shards={"national" if national else "ucb"})
+
+    @staticmethod
+    def _listed(shards, key):
+        return [(row["school"], row["url"]) for row in load_shards(shards)
+                if row["metadata"].get("collector_key") == key and row["metadata"]["is_active"]]
 
     def test_a_dropped_program_retires_in_the_published_ucb_shard(self, monkeypatch, processed, tmp_path):
         shards = tmp_path / "shards"
-        _refresh(monkeypatch, _registry("kept", "dropped"))
-        split(processed, shards)
+        self._commit(monkeypatch, processed, shards, _registry("kept", "dropped"))
 
-        self._shard_refresh(monkeypatch, processed, shards, _registry("kept"))
+        self._day(monkeypatch, processed, shards, _registry("kept"), national=False)
 
         [row] = [row for row in load_shards(shards) if row["metadata"].get("collector_key") == "dropped"]
         assert row["school"] == "ucb"
         assert row["metadata"]["is_active"] is False
         assert row["metadata"]["deactivation_reason"] == "no_longer_listed"
 
-    def test_a_program_moved_to_the_open_bucket_stays_listed_once(self, monkeypatch, processed, tmp_path):
-        """Listing goes by key, not id: the id names the emit bucket, and the
-        open record would publish only on a full split while its campus row
-        retired in ucb.json at once."""
+    @pytest.mark.parametrize("old_day_first", [True, False], ids=["old_file_day_first", "new_file_day_first"])
+    @pytest.mark.parametrize("url", [OLD_URL, "https://example.berkeley.edu/moving-reu/"],
+                             ids=["same_url", "new_url"])
+    @pytest.mark.parametrize("to_open", [True, False], ids=["into_open", "out_of_open"])
+    def test_a_moved_program_changes_file_and_is_never_listed_twice(
+            self, monkeypatch, processed, tmp_path, to_open, url, old_day_first):
+        """While both days listed the whole registry, the old row never
+        retired: frozen in its old file with the same URL, listed twice with
+        a new one."""
+        if to_open:
+            before, after = _registry("kept", "moving"), _registry("kept", open_keys=("moving",), urls={"moving": url})
+        else:
+            before, after = _registry("kept", open_keys=("moving",)), _registry("kept", "moving", urls={"moving": url})
+        old_school, new_school = ("ucb", None) if to_open else (None, "ucb")
         shards = tmp_path / "shards"
-        _refresh(monkeypatch, _registry("kept", "moving"))
-        split(processed, shards)
+        self._commit(monkeypatch, processed, shards, before)
+        assert self._listed(shards, "moving") == [(old_school, self.OLD_URL)]
 
-        self._shard_refresh(monkeypatch, processed, shards, _registry("kept", open_keys=("moving",)))
+        old_day, new_day = old_school is None, new_school is None
+        if old_day_first:
+            days = [(old_day, []), (new_day, [(new_school, url)])]
+        else:
+            days = [(new_day, [(old_school, self.OLD_URL)]), (old_day, []), (new_day, [(new_school, url)])]
+        for national, listed in days:
+            self._day(monkeypatch, processed, shards, after, national)
+            assert self._listed(shards, "moving") == listed, national
 
-        assert self._published(shards, "moving") == [True]
-        split(processed, shards)
-        assert self._published(shards, "moving") == [True]
+        [old] = [row for row in load_shards(shards)
+                 if row["metadata"].get("collector_key") == "moving" and row["school"] == old_school]
+        assert old["metadata"]["deactivation_reason"] == "no_longer_listed"
+        assert self._listed(shards, "kept") == [("ucb", "https://example.berkeley.edu/kept/")]
+        assert self.NATIONAL_ROW in load_shards(shards)
 
 
 @pytest.mark.parametrize("emit", [reg.EMIT_CAMPUS, reg.EMIT_LAB, reg.EMIT_OPEN])
 def test_replay_dropping_one_real_key_changes_only_that_row(monkeypatch, processed, emit):
-    """Replays a quick ucb refresh over the real registry twice from one
-    stored corpus, as configured and with one curated key removed. The two
-    results differ in that key's row alone: a campus or lab row is the stored
-    row plus the three retirement stamps, and an open row is left as stored."""
+    """Replays a quick refresh of the real registry's half that publishes the
+    key's row (ucb's day for a campus or lab row, Sunday for an open one)
+    twice from one stored corpus, as configured and with that curated key
+    removed. The two results differ in that key's row alone, which is the
+    stored row plus the three retirement stamps."""
     clock = {"now": datetime(2026, 9, 1, 6, 0, tzinfo=UTC)}
 
     class _Clock(datetime):
@@ -747,15 +798,14 @@ def test_replay_dropping_one_real_key_changes_only_that_row(monkeypatch, process
     results = {}
     for name, sources in (("configured", configured), ("without", without)):
         processed.write_text(json.dumps(stored), encoding="utf-8")
-        _refresh(monkeypatch, sources)
+        _refresh(monkeypatch, sources, national=emit == reg.EMIT_OPEN)
         results[name] = _stored(processed)
 
     assert set(results["configured"]) == set(results["without"]) == set(before)
     assert [row_id for row_id in before if results["configured"][row_id] != results["without"][row_id]] == [dropped_id]
     expected = copy.deepcopy(before[dropped_id])
-    if emit != reg.EMIT_OPEN:
-        expected["metadata"].update({"is_active": False, "deactivated_at": "2026-10-08",
-                                     "deactivation_reason": "no_longer_listed"})
+    expected["metadata"].update({"is_active": False, "deactivated_at": "2026-10-08",
+                                 "deactivation_reason": "no_longer_listed"})
     assert results["without"][dropped_id] == expected
     for row in unrelated:
         assert results["without"][row["id"]] == row

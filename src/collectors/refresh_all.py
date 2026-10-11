@@ -952,14 +952,16 @@ def refresh_all(
             )
             # The listed program keys are a merge input, not report content.
             campus_evidence = dict(campus_evidence)
-            listed_program_keys = campus_evidence.pop("listed_program_keys", None) or ()
+            listed_program_keys = campus_evidence.pop("listed_program_keys", None)
             added, updated = merge_ucb_campus(
                 campus_opps,
                 complete_recursive_sources=set(
                     campus_evidence.get("complete_recursive_sources") or ()
                 ),
-                # Retirement acts on ucb rows, which only the ucb run publishes.
-                listed_program_keys=set() if national_part else set(listed_program_keys),
+                # Each run lists the keys of the sources it collected, and
+                # retirement acts on the rows of the file it publishes.
+                listed_program_keys=None if listed_program_keys is None else set(listed_program_keys),
+                national=national_part,
             )
             summary["sources"][source_key] = {
                 "fetched": len(campus_opps),
@@ -1012,15 +1014,17 @@ def refresh_all(
                 # evidence object untouched.
                 graph_evidence = dict(graph_evidence)
                 condition_capture_updates = graph_evidence.pop("condition_capture_updates", None)
-                listed_program_keys = graph_evidence.pop("listed_program_keys", None) or ()
+                listed_program_keys = graph_evidence.pop("listed_program_keys", None)
                 added, updated = merge_campus_graph(
                     school_opps,
                     condition_capture_updates=condition_capture_updates,
                     complete_recursive_sources=set(
                         graph_evidence.get("complete_recursive_sources") or ()
                     ),
-                    # Retirement acts on the school's rows, which only its run publishes.
-                    listed_program_keys=set() if national_part else set(listed_program_keys),
+                    # Each run lists the keys of the sources it collected, and
+                    # retirement acts on the rows of the file it publishes.
+                    listed_program_keys=None if listed_program_keys is None else set(listed_program_keys),
+                    national=national_part,
                     school_slug=slug,
                 )
                 summary["sources"][source_key] = {

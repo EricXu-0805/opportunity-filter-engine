@@ -789,13 +789,16 @@ def fetch_and_normalize_with_evidence(
                 logger.warning("campus_graph: program normalization failed")
         records.extend(discovered)
         evidence["discovered_records"] += len(discovered)
-    # The key of every program(...) entry in the config, whichever bucket it
-    # emits to and whether or not its record normalized or survives the dedupe
-    # below: merge retires a stored program row of this school only once its
-    # key is gone from all of them.
+    # The key of every program(...) entry in the sources this call collected,
+    # whether or not its record normalized or survives the dedupe below: merge
+    # retires a stored program row in the file those sources publish to once
+    # its key is gone from them, so a key moved to the other file's sources
+    # retires its old row on the run that publishes the old row. A config with
+    # no program(...) entry at all proves nothing and lists None, which
+    # retires nothing; one whose collected sources alone list none lists [].
     evidence["listed_program_keys"] = sorted({
-        spec["key"] for source in school.get("sources", []) for spec in source.get("programs", [])
-    })
+        spec["key"] for source in sources for spec in source.get("programs", [])
+    }) if any(source.get("programs") for source in school.get("sources", [])) else None
     counts = evidence["condition_capture_counts"]
     evidence["condition_capture_complete"] = bool(sum(counts.values()) and not counts["failed"] and not counts["unsupported"])
     records, dropped = _dedupe_with_program_scope(records, [])
@@ -852,7 +855,8 @@ def merge_into_processed(
     complete_recursive_sources: set[str] | frozenset[str] = frozenset(),
     school_slug: str | None = None,
     condition_capture_updates: list[dict] | None = None,
-    listed_program_keys: set[str] | frozenset[str] = frozenset(),
+    listed_program_keys: set[str] | frozenset[str] | None = None,
+    national: bool | None = None,
 ) -> tuple[int, int]:
     """Upsert records and retire what this run proves is gone.
 
@@ -861,13 +865,21 @@ def merge_into_processed(
     default empty set preserves all old records, as do partial/failed crawls.
 
     ``listed_program_keys`` holds that evidence's key for every program(...)
-    entry in the school's config. A stored active program row of the school
-    whose key is missing from all of them was dropped from the config, and is
-    retired as ``no_longer_listed``, never deleted. Listing goes by key, not
-    record id: the id names the emit bucket, and a program moving between the
-    school's shard and national.json would otherwise retire on one schedule
-    and publish on another. The empty default retires nothing. A retired row
-    whose program is listed again comes back.
+    entry in the sources the fetch collected, and ``national`` repeats the
+    fetch's argument: False for the sources that publish in the school's
+    shard, True for those that publish in national.json, None for both. A
+    stored active program row of the school, in a file this run publishes,
+    whose key is not listed for that file was dropped from it, and is retired
+    as ``no_longer_listed``, never deleted. An empty listing retires every
+    such row; the None default retires nothing. A retired row whose program
+    is listed again comes back.
+
+    Each file is written only by its own scheduled run (refresh-data.yml
+    splits --only-shards), so a program moved between the school's shard and
+    national.json retires from the old file on that file's run. A record of
+    it arriving in the new file before then is held back, so the program is
+    listed from its old row until that retires, then missing until the new
+    file's next run, and never listed twice.
     """
 
     if not PROCESSED_FILE.exists():
@@ -879,7 +891,7 @@ def merge_into_processed(
         raise ValueError("complete recursive source names must be nonempty strings")
     if complete_recursive_sources and not school_slug:
         raise ValueError("school_slug is required for discovery retirement")
-    if listed_program_keys and not school_slug:
+    if listed_program_keys is not None and not school_slug:
         raise ValueError("school_slug is required for program retirement")
     with PROCESSED_FILE.open("r", encoding="utf-8") as f:
         existing = json.load(f)
@@ -898,20 +910,31 @@ def merge_into_processed(
             in complete_recursive_sources
         )
     }
+    # The school value of the rows in the files this run publishes: an "open"
+    # row (school None) lives in national.json, the school's other rows in
+    # its own shard.
+    published = {None, school_slug} if national is None else {None if national else school_slug}
+    # Each incoming program record by its key and the school value of its file.
+    arriving = {(opp["metadata"]["collector_key"], opp.get("school")) for opp in new_opps if _program_record(opp)}
     retired_programs = 0
-    if listed_program_keys:
+    held: set[tuple[str, str | None]] = set()
+    if listed_program_keys is not None:
         deactivated_on = datetime.now(UTC).date().isoformat()
         for opp in existing:
-            # An "open" row (school None) lives in national.json, which a
-            # school-shard refresh never writes: retiring it here would stay
-            # unpublished until a full refresh while the school's shard
-            # publishes at once, so it is left alone.
-            if (
-                opp.get("school") != school_slug
-                or not _configured_program_row(opp, school_slug)
-                or opp["metadata"]["collector_key"] in listed_program_keys
-                or opp["metadata"].get("is_active") is False
-            ):
+            if not _configured_program_row(opp, school_slug) or opp["metadata"].get("is_active") is False:
+                continue
+            key = opp["metadata"]["collector_key"]
+            # The program's record, had it moved to the other file.
+            moved = (key, school_slug if opp.get("school") is None else None)
+            if opp.get("school") not in published:
+                # Another run writes this row's file, so retiring it here would
+                # never publish. Its moved record waits for that run.
+                if moved in arriving:
+                    held.add(moved)
+                continue
+            # A key listed only because it moved to the other file, which the
+            # same call collected, is not listed for this one.
+            if key in listed_program_keys and moved not in arriving:
                 continue
             opp["metadata"]["is_active"] = False
             opp["metadata"]["deactivated_at"] = deactivated_on
@@ -922,6 +945,14 @@ def merge_into_processed(
             "campus_graph: %s: retired %d program record(s) no longer in its config",
             school_slug,
             retired_programs,
+        )
+    if held:
+        new_opps = [opp for opp in new_opps if not (
+            _program_record(opp) and (opp["metadata"]["collector_key"], opp.get("school")) in held)]
+        logger.info(
+            "campus_graph: %s: held %d moved program record(s) until their old row retires",
+            school_slug,
+            len(held),
         )
     # This school's program rows retired as no longer listed keep no claim on
     # their URL or title against its incoming program(...) records: held

@@ -716,6 +716,92 @@ def test_a_config_edit_to_an_open_program_reaches_national_json_on_schedule(monk
     assert {path.name for path in shards.glob("*.json")} == {"national.json"}
 
 
+@pytest.mark.parametrize("school_day_first", [True, False], ids=["school_day_first", "sunday_first"])
+@pytest.mark.parametrize("to_open", [True, False], ids=["into_open", "out_of_open"])
+def test_a_program_moved_between_a_schools_shard_and_national_json_is_listed_once(
+        monkeypatch, tmp_path, to_open, school_day_first):
+    """A config edit moves a program between Stanford's own bucket and its
+    open bucket and changes its URL. While both days listed every key of the
+    config, the old row never retired, and the moved record published beside
+    it on the new file's day. Out of the open bucket the program is SSRP,
+    Stanford's only open program, so Sunday then lists no key at all.
+
+    Driven through the scheduled path, as the test above."""
+    from datetime import UTC, datetime
+
+    from bs4 import BeautifulSoup
+
+    from scripts.publishable_shards import publishable
+    from scripts.refresh_rotation import target_shards
+    from scripts.shard_corpus import assemble, load_shards, split
+    from src.collectors import campus_graph
+    from src.collectors.schools.stanford import SCHOOL as STANFORD
+
+    by_name = {source["source_name"]: source for source in STANFORD["sources"]}
+    campus, open_bucket = by_name["stanford_program"], by_name["stanford_program_open"]
+    if to_open:
+        moving = campus_graph.program("moving", "Moving Summer Fellowship",
+                                      "https://example.stanford.edu/moving/", "Curated")
+        moved = {**moving, "url": "https://example.stanford.edu/moving-reu/"}
+        before = ([*campus["programs"], moving], open_bucket["programs"])
+        after = (campus["programs"], [*open_bucket["programs"], moved])
+    else:
+        [moving] = open_bucket["programs"]
+        moved = {**moving, "url": "https://example.stanford.edu/ssrp/"}
+        before = (campus["programs"], open_bucket["programs"])
+        after = ([*campus["programs"], moved], [])
+    old_school, new_school = ("stanford", None) if to_open else (None, "stanford")
+
+    def configure(programs):
+        monkeypatch.setitem(campus, "programs", programs[0])
+        monkeypatch.setitem(open_bucket, "programs", programs[1])
+
+    configure(before)
+    processed = _stub_with_processed_file(monkeypatch, tmp_path, campus_graph.fetch_and_normalize(STANFORD))
+    shards = tmp_path / "shards"
+    split(processed, shards)
+    monkeypatch.setattr(refresh_all, "fetch_campus_graph_with_evidence",
+                        campus_graph.fetch_and_normalize_with_evidence)
+    monkeypatch.setattr(refresh_all, "merge_campus_graph", campus_graph.merge_into_processed)
+    monkeypatch.setattr(campus_graph, "PROCESSED_FILE", processed)
+
+    def page(url, **kwargs):
+        # Every page loads and states no status. A source with no record and
+        # no loaded page is an error that withholds national.json, and an
+        # emptied open source has no record.
+        soup = BeautifulSoup("<body><p>Program page</p></body>", "html.parser")
+        soup._ofe_fetch_metadata = {"requested_url": url, "final_url": url,
+                                    "checked_at": datetime.now(UTC).isoformat()}
+        return soup
+
+    monkeypatch.setattr(campus_graph, "_fetch", page)
+
+    def listed():
+        return [(row["school"], row["url"]) for row in load_shards(shards)
+                if row["metadata"].get("collector_key") == moving["key"] and row["metadata"]["is_active"]]
+
+    def run(shard):
+        assemble(processed, shards, force=True, allow_empty=True)
+        summary = (refresh_all.refresh_all(deep=True, national=True) if shard == "national"
+                   else refresh_all.refresh_all(deep=True, schools={shard}))
+        targets = publishable(list(target_shards(shard)), {"release": summary["release"]})
+        assert targets == [shard]
+        split(processed, shards, only_shards=set(targets))
+
+    assert listed() == [(old_school, moving["url"])]
+    configure(after)
+    old_shard, new_shard = ("stanford", "national") if to_open else ("national", "stanford")
+    if (old_shard == "stanford") == school_day_first:
+        days = [(old_shard, []), (new_shard, [(new_school, moved["url"])])]
+    else:
+        # The moved record waits while the old row is listed.
+        days = [(new_shard, [(old_school, moving["url"])]), (old_shard, []),
+                (new_shard, [(new_school, moved["url"])])]
+    for shard, expected in days:
+        run(shard)
+        assert listed() == expected, shard
+
+
 @pytest.mark.parametrize("structure_complete", [True, False])
 def test_ucsb_empty_urca_is_never_a_publishable_single_snapshot(
     monkeypatch,

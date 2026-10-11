@@ -749,14 +749,18 @@ def _program_id(school, bucket, key):
     return cg._hash_id(school["school_slug"], school["emit"][bucket][0], key)
 
 
-def _refresh_school(school, deep=False):
-    """One refresh of ``school``, quick by default, merged the way refresh_all merges it."""
-    records, evidence = cg.fetch_and_normalize_with_evidence(school, deep=deep)
+def _refresh_school(school, deep=False, national=None):
+    """One refresh of ``school``, quick by default, merged the way refresh_all
+    merges it. ``national`` picks the half: False is the school's day, True
+    Sunday's, None both at once."""
+    records, evidence = cg.fetch_and_normalize_with_evidence(school, deep=deep, national=national)
+    listed = evidence["listed_program_keys"]
     cg.merge_into_processed(
         records,
         complete_recursive_sources=set(evidence["complete_recursive_sources"]),
         condition_capture_updates=evidence["condition_capture_updates"],
-        listed_program_keys=set(evidence["listed_program_keys"]),
+        listed_program_keys=None if listed is None else set(listed),
+        national=national,
         school_slug=school["school_slug"],
     )
     return evidence
@@ -799,7 +803,7 @@ class TestDroppedProgramRetirement:
         school = _listing_school("first", "second", "third")
         _refresh_school(school)
 
-        assert _refresh_school(_listing_school())["listed_program_keys"] == []
+        assert _refresh_school(_listing_school())["listed_program_keys"] is None
         assert all(row["metadata"]["is_active"] for row in _stored(processed).values())
 
         normalize = cg._normalize_program
@@ -841,12 +845,13 @@ class TestDroppedProgramRetirement:
                    "metadata": {"is_active": True}}
         processed.write_text(json.dumps([*rows, discovery, other, faculty]), encoding="utf-8")
 
-        _refresh_school(_listing_school("kept"))
+        _refresh_school(_listing_school("kept"), national=False)
 
         saved = _stored(processed)
         assert saved[_program_id(school, "campus", "dropped")]["metadata"]["is_active"] is False
-        # An "open" row lives in national.json, which no school-shard refresh
-        # writes, so retiring it here would never publish: it is left alone.
+        # An "open" row lives in national.json, which the school's day does
+        # not publish, so retiring it then would never reach production: the
+        # national day retires it (the next test).
         open_row = saved[_program_id(school, "open", "open_dropped")]
         assert open_row["school"] is None
         assert open_row["metadata"]["is_active"] is True
@@ -856,6 +861,28 @@ class TestDroppedProgramRetirement:
         for row in (discovery, other, faculty):
             assert saved[row["id"]]["metadata"]["is_active"] is True
             assert "deactivation_reason" not in saved[row["id"]]["metadata"]
+
+    @pytest.mark.parametrize("open_kept", [("open_kept",), ()], ids=["one_left", "none_left"])
+    def test_the_national_day_retires_a_dropped_open_program_and_no_school_row(self, processed, open_kept):
+        """The school's day lists only its own sources' keys and the national
+        day only the open source's, each retiring in the file it publishes.
+        An open source left with no program lists none, and its last row
+        retires too."""
+        _refresh_school(_listing_school("kept", "dropped", open_keys=("open_dropped", *open_kept)))
+        after = _listing_school("kept", open_keys=open_kept)
+
+        evidence = _refresh_school(after, national=True)
+
+        assert evidence["listed_program_keys"] == list(open_kept)
+        saved = _stored(processed)
+        dropped = saved[_program_id(after, "open", "open_dropped")]
+        assert dropped["school"] is None
+        assert dropped["metadata"]["is_active"] is False
+        assert dropped["metadata"]["deactivation_reason"] == "no_longer_listed"
+        for key in open_kept:
+            assert saved[_program_id(after, "open", key)]["metadata"]["is_active"] is True
+        # The school's own rows are its day's to retire.
+        assert saved[_program_id(after, "campus", "dropped")]["metadata"]["is_active"] is True
 
     def test_a_program_listed_again_comes_back(self, processed):
         school = _listing_school("kept", "back")
@@ -995,62 +1022,104 @@ class TestDroppedProgramRetirement:
 
 
 class TestProgramMovesBetweenShards:
-    """A school-shard refresh publishes only its own shard; national.json,
-    where "open" rows live, is written by the national shard's refresh or a
-    full one. Listing by record id got a program moving between the two
-    wrong, because the id names the bucket: its old row retired and its new
-    one published on different schedules."""
+    """A program moved between a school's own bucket and its open bucket
+    changes file: its stored row is in the school's shard or national.json,
+    and its record now publishes in the other. Each file is written by its own
+    day only (refresh-data.yml splits --only-shards), the school's shard on
+    the school's day and national.json on Sunday. While every day listed every
+    key of the config, the old row never retired: with the same URL the
+    program stayed frozen in its old file, and with a new URL it was listed
+    twice."""
+
+    OLD_URL = "https://example.edu/moving/"
+    # national.json always holds other sources' rows, so Sunday always has a
+    # shard to write.
+    NATIONAL_ROW = {"id": "nsf-reu-0001", "source": "nsf_reu", "source_type": "reu", "school": None,
+                    "title": "Example REU Site", "url": "https://example.org/reu/",
+                    "metadata": {"is_active": True}}
 
     @staticmethod
-    def _commit(processed, shards, school):
+    def _move(to_open, url):
+        """The config before and after the move, and the school value of the
+        old and the new file."""
+        if to_open:
+            return (_listing_school("kept", "moving"),
+                    _listing_school("kept", open_keys=("moving",), urls={"moving": url}), "example", None)
+        return (_listing_school("kept", open_keys=("moving",)),
+                _listing_school("kept", "moving", urls={"moving": url}), None, "example")
+
+    def _commit(self, processed, shards, school):
         """The committed corpus: ``school`` refreshed and every shard written."""
         _refresh_school(school)
+        rows = json.loads(processed.read_text(encoding="utf-8"))
+        processed.write_text(json.dumps([*rows, self.NATIONAL_ROW]), encoding="utf-8")
         split(processed, shards)
 
     @staticmethod
-    def _school_shard_refresh(processed, shards, school):
-        """The refresh workflow for one shard: assemble the work file from the
-        committed shards, refresh the school, split only its shard back."""
+    def _day(processed, shards, school, national):
+        """One scheduled run: assemble the work file from the committed
+        shards, refresh the half of ``school`` the day publishes, and split
+        back only that day's shard."""
         assemble(processed, shards, force=True, allow_empty=True)
-        _refresh_school(school)
-        split(processed, shards, only_shards={school["school_slug"]})
+        _refresh_school(school, national=national)
+        split(processed, shards, only_shards={"national" if national else school["school_slug"]})
 
     @staticmethod
-    def _published(shards, key):
-        return [row["metadata"]["is_active"] for row in load_shards(shards)
-                if row["metadata"].get("collector_key") == key]
+    def _listed(shards, key):
+        return [(row["school"], row["url"]) for row in load_shards(shards)
+                if row["metadata"].get("collector_key") == key and row["metadata"]["is_active"]]
 
-    def test_a_program_moved_to_the_open_bucket_stays_listed_once(self, processed, tmp_path):
-        """Its campus row retired in example.json while its open record waited
-        in the work file for a full refresh, so the program was gone."""
+    @pytest.mark.parametrize("old_day_first", [True, False], ids=["old_file_day_first", "new_file_day_first"])
+    @pytest.mark.parametrize("url", [OLD_URL, "https://example.edu/moving-reu/"], ids=["same_url", "new_url"])
+    @pytest.mark.parametrize("to_open", [True, False], ids=["into_open", "out_of_open"])
+    def test_a_moved_program_changes_file_and_is_never_listed_twice(
+            self, processed, tmp_path, to_open, url, old_day_first):
+        before, after, old_school, new_school = self._move(to_open, url)
         shards = tmp_path / "shards"
-        self._commit(processed, shards, _listing_school("kept", "moving"))
+        self._commit(processed, shards, before)
+        assert self._listed(shards, "moving") == [(old_school, self.OLD_URL)]
 
-        self._school_shard_refresh(processed, shards, _listing_school("kept", open_keys=("moving",)))
+        # The national flag of the day that publishes the old file, and of
+        # the day that publishes the new one.
+        old_day, new_day = old_school is None, new_school is None
+        if old_day_first:
+            # The old row retires, and the program is missing until the new
+            # file's day publishes it.
+            days = [(old_day, []), (new_day, [(new_school, url)])]
+        else:
+            # The moved record waits while the old row is listed, and
+            # publishes on the new file's next day after that row retired.
+            days = [(new_day, [(old_school, self.OLD_URL)]), (old_day, []), (new_day, [(new_school, url)])]
+        for national, listed in days:
+            self._day(processed, shards, after, national)
+            assert self._listed(shards, "moving") == listed, national
 
-        assert self._published(shards, "moving") == [True]
-        split(processed, shards)
-        assert self._published(shards, "moving") == [True]
+        [old] = [row for row in load_shards(shards)
+                 if row["metadata"].get("collector_key") == "moving" and row["school"] == old_school]
+        assert old["metadata"]["deactivation_reason"] == "no_longer_listed"
+        assert self._listed(shards, "kept") == [("example", "https://example.edu/kept/")]
+        assert self.NATIONAL_ROW in load_shards(shards)
 
-    def test_a_program_moved_out_of_the_open_bucket_is_listed_once(self, processed, tmp_path):
-        """Its open row retired only in the work file while its campus record
-        published, so the program was listed twice."""
-        shards = tmp_path / "shards"
-        self._commit(processed, shards, _listing_school("kept", open_keys=("moving",)))
-        national = (shards / "national.json").read_bytes()
+    @pytest.mark.parametrize("url", [OLD_URL, "https://example.edu/moving-reu/"], ids=["same_url", "new_url"])
+    @pytest.mark.parametrize("to_open", [True, False], ids=["into_open", "out_of_open"])
+    def test_one_call_that_publishes_both_files_moves_the_program_at_once(self, processed, to_open, url):
+        """With national=None one call collects and publishes both halves: the
+        moved key is listed, but for the other file, so its old row retires
+        and its record lands in the same call."""
+        before, after, old_school, new_school = self._move(to_open, url)
+        _refresh_school(before)
 
-        self._school_shard_refresh(processed, shards, _listing_school("kept", "moving"))
+        _refresh_school(after)
 
-        assert (shards / "national.json").read_bytes() == national
-        assert self._published(shards, "moving") == [True]
-        split(processed, shards)
-        assert self._published(shards, "moving") == [True]
+        rows = [row for row in _stored(processed).values() if row["metadata"].get("collector_key") == "moving"]
+        assert sorted(((row["school"] or ""), row["url"], row["metadata"]["is_active"]) for row in rows) == sorted([
+            ((old_school or ""), self.OLD_URL, False), ((new_school or ""), url, True)])
 
     def test_a_program_gone_from_the_whole_config_still_retires(self, processed, tmp_path):
         shards = tmp_path / "shards"
         self._commit(processed, shards, _listing_school("kept", "dropped"))
 
-        self._school_shard_refresh(processed, shards, _listing_school("kept"))
+        self._day(processed, shards, _listing_school("kept"), national=False)
 
         [row] = [row for row in load_shards(shards) if row["metadata"].get("collector_key") == "dropped"]
         assert row["school"] == "example"

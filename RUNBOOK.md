@@ -37,6 +37,15 @@ python3 scripts/refresh_rotation.py --day 1
 python3 scripts/refresh_rotation.py --day 7
 ```
 
+A program moved in a config between a school's own bucket and its open bucket
+changes file. Its old row retires on the day that writes the old file, and its
+new record publishes on the next day that writes the new one. Until the old row
+retires, the log says `held N moved program record(s)`. The program can be
+missing for up to six days, but it is never listed twice. To retire a config's
+open programs, empty the open source's `programs` and leave the source in place
+until a Sunday run has passed. A deleted open source has no run that retires
+its rows in national.json.
+
 `--day` refuses to answer when a supported school sits in no shard or in two.
 That check exists because 25 registered schools were once in no shard and
 went unrefreshed after onboarding. A school leaves the rotation only by

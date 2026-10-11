@@ -49,7 +49,7 @@ from src.normalizers.ucb_dedup import dedupe_against_existing
 from . import ucb_sources as reg
 from .application_status import detect_application_status
 from .atomic_json import atomic_write_json
-from .campus_graph import NO_LONGER_LISTED, _retired_as_unlisted
+from .campus_graph import NO_LONGER_LISTED, _program_record, _retired_as_unlisted
 from .ucb_common import _readable_excerpt
 
 logger = logging.getLogger(__name__)
@@ -629,10 +629,13 @@ def fetch_and_normalize_with_evidence(
             evidence["seed_records"] += 1
         records.extend(discovered)
         evidence["discovered_records"] += len(discovered)
-    # The key of every curated program, whichever bucket it emits to and
+    # The key of every curated program in the sources this call collected,
     # whether or not its record survives the dedupe below: merge retires a
-    # stored program row only once its key is gone from the whole registry.
-    evidence["listed_program_keys"] = sorted(program["key"] for _source, program in reg.iter_programs())
+    # stored program row in the file those sources publish to once its key is
+    # gone from them, and an empty registry lists None (campus_graph's rule).
+    evidence["listed_program_keys"] = sorted(
+        program["key"] for source in sources for program in source.get("programs", [])
+    ) if any(source.get("programs") for source in reg.UCB_SOURCES) else None
 
     # Collapse within-batch duplicates (a discovered URL that matches a seed, a
     # lab listed under two sources, ...). Existing list is empty here so this is
@@ -671,7 +674,8 @@ def merge_into_processed(
     new_opps: list[dict],
     *,
     complete_recursive_sources: set[str] | frozenset[str] = frozenset(),
-    listed_program_keys: set[str] | frozenset[str] = frozenset(),
+    listed_program_keys: set[str] | frozenset[str] | None = None,
+    national: bool | None = None,
 ) -> tuple[int, int]:
     """Upsert campus records into processed/opportunities.json.
 
@@ -681,15 +685,15 @@ def merge_into_processed(
     completely crawled recursive sources; the default empty set holds them.
 
     ``listed_program_keys`` holds the key of every curated program in the
-    registry. A stored active ucb program row whose key is missing from it was
-    dropped from the registry, and is retired as ``no_longer_listed``, never
-    deleted: campus_graph's rule for its schools. Listing goes by key, not
-    record id, because the id names the emit bucket and a program moving to
-    or from the open bucket would otherwise retire on one shard's schedule and
-    publish on another's. "Open" rows (school None) live in national.json,
-    which a ucb shard refresh never writes, so they are left alone. A retired
-    row whose program is listed again comes back. The empty default retires
-    nothing."""
+    sources the fetch collected, and ``national`` repeats the fetch's
+    argument. A stored active registry row in a file this run publishes
+    (ucb.json for False, national.json for True, both for None) whose key is
+    not listed for that file is retired as ``no_longer_listed``, never
+    deleted, and a program moved between the two files is held back until
+    the old file's run retires its old row: campus_graph's rule for its
+    schools. An empty listing retires every such row; the None default
+    retires nothing. A retired row whose program is listed again comes
+    back."""
     if not PROCESSED_FILE.exists():
         return (0, 0)
     if any(
@@ -713,16 +717,23 @@ def merge_into_processed(
             in complete_recursive_sources
         )
     }
+    # campus_graph.merge_into_processed's file rule, for the registry's rows.
+    published = {None, "ucb"} if national is None else {None if national else "ucb"}
+    arriving = {(opp["metadata"]["collector_key"], opp.get("school")) for opp in new_opps if _program_record(opp)}
     retired_programs = 0
-    if listed_program_keys:
+    held: set[tuple[str, str | None]] = set()
+    if listed_program_keys is not None:
         deactivated_on = datetime.now(UTC).date().isoformat()
         for opp in existing:
-            if (
-                opp.get("school") != "ucb"
-                or not _registry_program_row(opp)
-                or opp["metadata"]["collector_key"] in listed_program_keys
-                or opp["metadata"].get("is_active") is False
-            ):
+            if not _registry_program_row(opp) or opp["metadata"].get("is_active") is False:
+                continue
+            key = opp["metadata"]["collector_key"]
+            moved = (key, "ucb" if opp.get("school") is None else None)
+            if opp.get("school") not in published:
+                if moved in arriving:
+                    held.add(moved)
+                continue
+            if key in listed_program_keys and moved not in arriving:
                 continue
             opp["metadata"]["is_active"] = False
             opp["metadata"]["deactivated_at"] = deactivated_on
@@ -733,6 +744,10 @@ def merge_into_processed(
             "ucb_campus: retired %d program record(s) no longer in the registry",
             retired_programs,
         )
+    if held:
+        new_opps = [opp for opp in new_opps if not (
+            _program_record(opp) and (opp["metadata"]["collector_key"], opp.get("school")) in held)]
+        logger.info("ucb_campus: held %d moved program record(s) until their old row retires", len(held))
     # The registry's own rows retired as no longer listed keep no claim on
     # their URL or title against incoming program records: held against them,
     # a retired row would suppress whatever replaced it (a renamed key), and
