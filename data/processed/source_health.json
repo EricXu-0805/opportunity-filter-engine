@@ -198,8 +198,8 @@
       "last_publish_record_count": 1008
     },
     "national": {
-      "last_publish_at": "2026-10-04T11:48:45.534145+00:00",
-      "last_publish_record_count": 8996
+      "last_publish_at": "2026-10-11T13:12:11.426186+00:00",
+      "last_publish_record_count": 10191
     },
     "ncsu": {
       "last_publish_at": "2026-10-05T16:58:40.322118+00:00",
@@ -2674,11 +2674,12 @@
       "baseline_count": 160,
       "bootstrapped_from": "corpus_last_seen_at",
       "consecutive_failures": 0,
-      "current_count": 129,
+      "current_count": 137,
       "failure_reason": null,
-      "last_attempt_at": "2026-10-04T11:45:21.581280+00:00",
-      "last_good_count": 129,
-      "last_success_at": "2026-10-04T11:45:21.581280+00:00",
+      "last_attempt_at": "2026-10-11T13:08:09.075127+00:00",
+      "last_good_count": 137,
+      "last_nonzero_at": "2026-10-11T13:08:09.075127+00:00",
+      "last_success_at": "2026-10-11T13:08:09.075127+00:00",
       "school": "national",
       "status": "success_nonzero"
     },
@@ -2879,14 +2880,15 @@
       "status": "success_nonzero"
     },
     "simplify_internships": {
-      "baseline_count": 3722,
+      "baseline_count": 4650,
       "bootstrapped_from": "corpus_last_seen_at",
       "consecutive_failures": 0,
-      "current_count": 3722,
+      "current_count": 4650,
       "failure_reason": null,
-      "last_attempt_at": "2026-10-04T11:45:21.581280+00:00",
-      "last_good_count": 3722,
-      "last_success_at": "2026-10-04T11:45:21.581280+00:00",
+      "last_attempt_at": "2026-10-11T13:08:09.075127+00:00",
+      "last_good_count": 4650,
+      "last_nonzero_at": "2026-10-11T13:08:09.075127+00:00",
+      "last_success_at": "2026-10-11T13:08:09.075127+00:00",
       "school": "national",
       "status": "success_nonzero"
     },
@@ -3969,13 +3971,14 @@
       "status": "success_nonzero"
     },
     "uiuc_sro": {
-      "baseline_count": 280,
+      "baseline_count": 281,
       "bootstrapped_from": "corpus_last_seen_at",
-      "consecutive_failures": 1,
-      "current_count": 279,
+      "consecutive_failures": 2,
+      "current_count": 280,
       "failure_reason": "Source check incomplete: list_pages_failed, list_incomplete, condition_capture_unsupported, list_errors, detail_errors",
-      "last_attempt_at": "2026-10-04T11:45:21.581280+00:00",
+      "last_attempt_at": "2026-10-11T13:08:09.075127+00:00",
       "last_good_count": 278,
+      "last_nonzero_at": null,
       "last_success_at": "2026-09-06T06:33:36.916204+00:00",
       "school": "national",
       "status": "failed"
