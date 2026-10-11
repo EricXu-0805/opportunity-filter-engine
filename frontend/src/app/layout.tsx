@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import AuthModal from '@/components/AuthModal';
 import BackendWaker from '@/components/BackendWaker';
@@ -19,6 +19,12 @@ const inter = Inter({
   variable: '--font-inter',
   display: 'swap',
 });
+
+// A soft keyboard shrinks the layout viewport instead of overlaying it, so
+// fixed and dvh-sized UI (the cold-email editor) re-fits above the keyboard.
+export const viewport: Viewport = {
+  interactiveWidget: 'resizes-content',
+};
 
 export const metadata: Metadata = {
   title: {
