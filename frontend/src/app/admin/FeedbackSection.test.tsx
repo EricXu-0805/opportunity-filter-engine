@@ -399,6 +399,7 @@ describe('FeedbackSection ticket workflow', () => {
       ['stored', 'admin.tickets.deliveryStored'],
       ['emailed', 'admin.tickets.deliveryEmailed'],
       ['email_failed', 'admin.tickets.deliveryFailed'],
+      ['unknown', 'admin.tickets.deliveryUnknown'],
     ] as const)('renders the %s delivery state verbatim', (delivery, key) => {
       render(
         <FeedbackSection
@@ -428,6 +429,20 @@ describe('FeedbackSection ticket workflow', () => {
         expect(copy).not.toMatch(/已发送/);
       }
       expect(translate('en', 'admin.tickets.deliveryStored')).toMatch(/not emailed/i);
+    });
+
+    it('an unknown delivery is described as neither failed nor sent', () => {
+      // A timeout or provider 5xx: the student may have the email, so the
+      // label must not tell the operator it failed (inviting a resend) or
+      // that it went out.
+      const en = translate('en', 'admin.tickets.deliveryUnknown');
+      const zh = translate('zh', 'admin.tickets.deliveryUnknown');
+      expect(en).toMatch(/outcome unknown/i);
+      expect(en).toMatch(/may have/i);
+      expect(en).not.toMatch(/\b(sent|failed|emailed)\b/i);
+      expect(zh).toMatch(/未知/);
+      expect(zh).toMatch(/可能/);
+      expect(zh).not.toMatch(/失败|已发送|已发出/);
     });
   });
 
@@ -463,6 +478,7 @@ describe('FeedbackSection ticket workflow', () => {
       'admin.tickets.deliveryStored',
       'admin.tickets.deliveryEmailed',
       'admin.tickets.deliveryFailed',
+      'admin.tickets.deliveryUnknown',
       'admin.tickets.resolveTitle',
       'admin.tickets.resolveAs',
       'admin.tickets.resolutionLabel',

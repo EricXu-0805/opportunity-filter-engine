@@ -52,12 +52,16 @@ const DELIVERY_KEYS: Record<ReplyDelivery, string> = {
   stored: 'admin.tickets.deliveryStored',
   emailed: 'admin.tickets.deliveryEmailed',
   email_failed: 'admin.tickets.deliveryFailed',
+  // Neither failed nor emailed: the student may have it, so a resend may be
+  // their second copy.
+  unknown: 'admin.tickets.deliveryUnknown',
 };
 
 const DELIVERY_STYLES: Record<ReplyDelivery, string> = {
   stored: 'text-gray-500',
   emailed: 'text-emerald-700',
   email_failed: 'text-red-700',
+  unknown: 'text-amber-700',
 };
 
 const inputCls =

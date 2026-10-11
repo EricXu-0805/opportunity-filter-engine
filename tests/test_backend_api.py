@@ -7127,6 +7127,88 @@ class TestAdminFeedbackReply:
         assert body["ticket"]["admin_reply"] == "We shipped a fix."
         assert "audit log write failed" in body["audit_log_error"]
 
+    # M79: a read timeout or a Resend 5xx happens after the request reached
+    # the provider, so the email may have gone out. Recording 'email_failed'
+    # told the operator the student had nothing, and the natural resend could
+    # be a second copy.
+    def test_each_send_outcome_records_its_own_delivery(self, monkeypatch):
+        import httpx
+        from fastapi import HTTPException
+
+        from backend.routes import admin as admin_mod
+
+        def _resend_error(upstream_status):
+            # What _send_via_resend raises for a Resend error response.
+            failure = HTTPException(status_code=502, detail="Email delivery failed")
+            failure.upstream_status = upstream_status
+            return failure
+
+        cases = [
+            ("accepted", None, "emailed"),
+            ("read timeout", httpx.ReadTimeout("resend hung"), "unknown"),
+            ("write timeout", httpx.WriteTimeout("resend hung"), "unknown"),
+            ("resend 503", _resend_error(503), "unknown"),
+            ("resend 422", _resend_error(422), "email_failed"),
+            ("connect error", httpx.ConnectError("no route"), "email_failed"),
+            ("connect timeout", httpx.ConnectTimeout("no route"), "email_failed"),
+        ]
+        for label, raised, want in cases:
+            fake, sent = self._deliverable(monkeypatch)
+
+            async def _send(raised=raised, sent=sent, **kwargs):
+                sent.append(kwargs)
+                if raised is not None:
+                    raise raised
+
+            monkeypatch.setattr(admin_mod, "_send_via_resend", _send)
+            r = client.post(
+                f"/api/admin/feedback/{TICKET_ID}/reply",
+                json={"reply": "We shipped a fix.", "deliver": True},
+                headers=_auth(),
+            )
+            assert r.status_code == 200, label
+            body = r.json()
+            assert body["delivery"] == want, label
+            assert fake.last_patch["admin_reply_delivery"] == want, label
+            assert fake.event("replied")["to_value"] == want, label
+            if want == "unknown":
+                assert "may have been sent" in body["delivery_error"], label
+            elif want == "email_failed":
+                assert "may have been sent" not in body["delivery_error"], label
+            # Tried once and never again here, whatever came back.
+            assert len(sent) == 1, label
+
+    def test_an_unknown_send_whose_reply_was_not_saved_says_it_may_have_gone(
+        self, monkeypatch,
+    ):
+        import httpx
+
+        from backend.routes import admin as admin_mod
+
+        fake, sent = self._deliverable(
+            monkeypatch, patch_error=httpx.ConnectError("supabase down"),
+        )
+
+        async def _hangs(**kwargs):
+            sent.append(kwargs)
+            raise httpx.ReadTimeout("resend hung")
+
+        monkeypatch.setattr(admin_mod, "_send_via_resend", _hangs)
+        r = client.post(
+            f"/api/admin/feedback/{TICKET_ID}/reply",
+            json={"reply": "We shipped a fix.", "deliver": True},
+            headers=_auth(),
+        )
+        assert len(sent) == 1
+        assert r.status_code == 502
+        detail = r.json()["detail"]
+        assert "not saved" in detail
+        assert "may have reached the submitter" in detail
+        assert "email unchecked" in detail
+        # adminFetch shows the first 120 characters of a string detail.
+        assert len(detail) <= 120
+        assert fake.inserted_events == []
+
     def test_blank_reply_rejected(self, monkeypatch):
         _admin_env(monkeypatch)
         FakeSupabase(ticket=_ticket()).install(monkeypatch)
