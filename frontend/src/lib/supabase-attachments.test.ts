@@ -16,7 +16,7 @@ const U2 = '22222222-2222-4222-8222-222222222222';
 const OPP = 'faculty-old-opportunity';
 const path = `${U1}/${OPP}/resume.pdf`;
 const file = () => new File(['original bytes'], 'resume.pdf', { type: 'application/pdf' });
-const session = (uid: string | null = U1) => ({ data: { session: uid ? { user: { id: uid, is_anonymous: true }, access_token: 'token' } : null }, error: null });
+const session = (uid: string | null = U1, guest = false) => ({ data: { session: uid ? { user: { id: uid, is_anonymous: guest }, access_token: 'token' } : null }, error: null });
 const row = { name: 'resume.pdf', id: 'object-id', metadata: { size: 14, mimetype: 'application/pdf' }, created_at: '2026-01-01T00:00:00Z' };
 function deferred<T>() { let resolve!: (value: T) => void; let reject!: (cause: unknown) => void;
   const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; }
@@ -74,6 +74,13 @@ describe('legacy attachment protocol and failures', () => {
   it.each([null, { path: 'wrong-account/resume.pdf', id: 'object-id' }, { path }])('incomplete or mismatched upload receipt cannot claim completion (%j)', async receipt => {
     mocks.upload.mockResolvedValue({ data: receipt, error: null });
     await expect(operations.upload()).rejects.toMatchObject({ code: 'unavailable' });
+  });
+  it('a guest session cannot upload: refused before any storage request, while its files stay readable', async () => {
+    mocks.session.mockResolvedValue(session(U1, true));
+    expect(await operations.upload()).toEqual({ ok: false, reason: 'guest' });
+    expect(mocks.from).not.toHaveBeenCalled(); expect(mocks.upload).not.toHaveBeenCalled();
+    expect(await operations.list()).toHaveLength(1);
+    expect(await operations.remove()).toBe(true);
   });
   it('duplicate is a safe explicit refusal with no server message', async () => {
     mocks.upload.mockResolvedValue({ data: null, error: { message: 'Duplicate private path secret' } });

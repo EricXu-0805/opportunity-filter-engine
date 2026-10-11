@@ -84,6 +84,17 @@ test.describe('Legacy Tracker attachment recovery', () => {
     } finally { await owner.http.dispose(); }
   });
 
+  test('a guest sees a sign-in prompt instead of the upload control, and nothing is uploaded', async ({ page }) => {
+    const owner = await account(true); try {
+      const state = await setup(page, owner);
+      await expect(page.getByTestId('tracker-attachments-guest')).toContainText(dict().guestNotice);
+      await expect(panel(page).getByRole('button', { name: dict().guestSignIn, exact: true })).toBeVisible();
+      await expect(panel(page).getByRole('button', { name: dict().addButton, exact: true })).toHaveCount(0);
+      await expect(panel(page).locator('input[type="file"]')).toHaveCount(0);
+      await expect(openFile(page)).toBeEnabled(); expect(state.uploads).toBe(0);
+    } finally { await owner.http.dispose(); }
+  });
+
   test('a held list times out, offers retry and ignores the late first response', async ({ page }) => {
     const owner = await account(); const held = gate(); try {
       await page.clock.install(); const state = await setup(page, owner, { holdFirst: held }); await expect.poll(() => state.reads.length).toBe(1);
