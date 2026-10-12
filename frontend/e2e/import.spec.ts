@@ -23,6 +23,25 @@ test.describe('Import is a tab of Resources', () => {
     await expect(page.getByPlaceholder('https://...')).toHaveValue('https://lab.example/typed');
   });
 
+  test('the tab follows the URL: the header Resources link and Back/Forward switch it', async ({ page }) => {
+    const guides = page.getByRole('tab', { name: /Guides/ });
+    const importTab = page.getByRole('tab', { name: 'Import', exact: true });
+    await page.goto('/resources?tab=import');
+    await expect(importTab).toHaveAttribute('aria-selected', 'true');
+    const toggle = page.getByTestId('mobile-nav-toggle');
+    if (await toggle.isVisible()) await toggle.click();
+    await page.locator('header a[href="/resources"]:visible').click();
+    await expect(page).toHaveURL(/\/resources$/);
+    await expect(guides).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('section[aria-labelledby="databases-heading"]')).toBeVisible();
+    await page.goBack();
+    await expect(page).toHaveURL(/\/resources\?tab=import$/);
+    await expect(importTab).toHaveAttribute('aria-selected', 'true');
+    await page.goForward();
+    await expect(page).toHaveURL(/\/resources$/);
+    await expect(guides).toHaveAttribute('aria-selected', 'true');
+  });
+
   test('the header names Resources once and has no separate Import entry', async ({ page }) => {
     await page.goto('/');
     const toggle = page.getByTestId('mobile-nav-toggle');

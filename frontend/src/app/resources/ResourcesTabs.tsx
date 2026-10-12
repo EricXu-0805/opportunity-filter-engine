@@ -1,8 +1,9 @@
 'use client';
 
 import { useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useT } from '@/i18n/client';
-import type { ResourcesTab } from '@/lib/resources-tab';
+import { parseResourcesTab, type ResourcesTab } from '@/lib/resources-tab';
 
 const TABS: { key: ResourcesTab; labelKey: string }[] = [
   { key: 'guides', labelKey: 'resources.tabGuides' },
@@ -10,10 +11,12 @@ const TABS: { key: ResourcesTab; labelKey: string }[] = [
 ];
 
 /**
- * Guides and Import as two tabs of one page. The selected tab is mirrored to
- * `?tab=` with replaceState (no history entry per click, other params and the
- * hash kept). Import mounts when first opened and then stays mounted, so
- * switching back to the guides never discards a half-finished extraction.
+ * Guides and Import as two tabs of one page. The selection follows `?tab=`
+ * (read with useSearchParams), so the header link, Back and Forward show the
+ * matching tab. A click selects at once and mirrors the tab to `?tab=` with
+ * replaceState (no history entry per click, other params and the hash kept).
+ * Import mounts when first opened and then stays mounted, so switching back to
+ * the guides never discards a half-finished extraction.
  */
 export default function ResourcesTabs({
   initialTab,
@@ -25,13 +28,23 @@ export default function ResourcesTabs({
   importPanel: ReactNode;
 }) {
   const { t } = useT();
-  const [active, setActive] = useState<ResourcesTab>(initialTab);
-  const [importOpened, setImportOpened] = useState(initialTab === 'import');
+  const params = useSearchParams();
+  const urlTab: ResourcesTab = params ? parseResourcesTab(params.get('tab') ?? undefined) : initialTab;
+  // A click shows its tab at once; Next reports the new URL to useSearchParams
+  // in a later transition. Whenever the URL's tab changes (header link, Back,
+  // Forward) the selection follows it.
+  const [active, setActive] = useState<ResourcesTab>(urlTab);
+  const [seenUrlTab, setSeenUrlTab] = useState<ResourcesTab>(urlTab);
+  const [importOpened, setImportOpened] = useState(urlTab === 'import');
+  if (urlTab !== seenUrlTab) {
+    setSeenUrlTab(urlTab);
+    setActive(urlTab);
+  }
+  if (active === 'import' && !importOpened) setImportOpened(true);
   const tabRefs = useRef<Record<ResourcesTab, HTMLButtonElement | null>>({ guides: null, import: null });
 
   function select(next: ResourcesTab) {
     setActive(next);
-    if (next === 'import') setImportOpened(true);
     const url = new URL(window.location.href);
     if (next === 'import') url.searchParams.set('tab', 'import');
     else url.searchParams.delete('tab');
