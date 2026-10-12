@@ -903,7 +903,11 @@ def merge_into_processed(
     national.json retires from the old file on that file's run. A record of
     it arriving in the new file while its old row is still active is held
     back, so the program is listed from its old row until that retires, then
-    missing until the new file's next run, and never listed twice.
+    missing until the new file's next run, and never listed twice. The hold
+    matches the key, so a program renamed in the same edit is not held. A
+    closed old row is not listed and holds nothing back, but a record sharing
+    its URL or title is dropped as its near-duplicate until it retires, and
+    after that until a run loads the record's page.
     """
 
     if not PROCESSED_FILE.exists():
