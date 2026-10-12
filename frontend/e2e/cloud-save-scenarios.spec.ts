@@ -641,3 +641,134 @@ test.describe('M19 cloud save scenarios', () => {
     }
   });
 });
+
+// In-app navigation away from Home and back unmounts the form and mounts a new
+// one in the same page load. Whatever the old form left unsent is sent by the
+// new form's load, as a full page load sends it, with no further input.
+const PROFILE_READS = '**/rest/v1/profiles?**';
+const refreshStatus = (page: Page) => page.getByTestId('home-profile-refresh-status');
+
+async function markPage(page: Page) {
+  await page.evaluate(() => { (window as unknown as { m101SamePage: boolean }).m101SamePage = true; });
+}
+async function expectSamePage(page: Page) {
+  expect(await page.evaluate(() => (window as unknown as { m101SamePage?: boolean }).m101SamePage),
+    'no page load happened in between').toBe(true);
+}
+async function leaveHome(page: Page) {
+  const menu = page.getByTestId('mobile-nav-toggle');
+  if (await menu.isVisible()) await menu.click();
+  await page.getByRole('link', { name: 'About', exact: true }).filter({ visible: true }).click();
+  await expect(page).toHaveURL(/\/about$/);
+  await expect(page.locator('#research_interests')).toHaveCount(0);
+}
+async function returnHome(page: Page) {
+  await page.getByRole('link', { name: 'JoinALab · Go home', exact: true }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await waitForForm(page);
+  await expectSamePage(page);
+}
+/** Holds the next profile check's read until `release`, or fails it the way a
+ *  dropped connection does. */
+async function nextProfileCheck(page: Page, outcome: 'held' | 'dropped') {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => { release = resolve; });
+  await page.route(PROFILE_READS, async (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    if (outcome === 'dropped') return route.abort('internetdisconnected');
+    await held;
+    // The form that asked is gone by now and has cancelled the request.
+    await route.continue().catch(() => {});
+  });
+  await page.evaluate(() => { window.dispatchEvent(new Event('focus')); });
+  // A dropped read is retried by the client (1 s, 2 s, 4 s) before it fails.
+  await expect(refreshStatus(page)).toContainText(outcome === 'held'
+    ? 'Checking for profile updates…'
+    : 'Could not check for profile updates. Your entries are kept; saving and matching are paused.', { timeout: 15_000 });
+  return async () => { release(); await page.unroute(PROFILE_READS); };
+}
+
+test.describe('M101 leaving Home and coming back in the same page', () => {
+  for (const outcome of ['held', 'dropped'] as const) {
+    const when = outcome === 'held' ? 'while a profile check is running' : 'after a profile check lost its connection';
+    test(`an edit typed ${when} is sent when Home is opened again, with no further input`, async ({ page }) => {
+      const http = await apiRequest.newContext();
+      const text = `Typed ${when} 王`;
+      let finish = async () => {};
+      try {
+        const account = await seedAccount(http, mailbox(`remount-${outcome}`));
+        await englishOnly(page);
+        await signedIn(page, account);
+        const receipts = recordCas(page);
+        await page.goto('/');
+        await waitForForm(page);
+        await expectForm(page, ACCOUNT_PROFILE);
+        await markPage(page);
+
+        finish = await nextProfileCheck(page, outcome);
+        await page.locator('#research_interests').fill(text);
+        // Past the autosave: saving waits for the check.
+        await page.waitForTimeout(2500);
+        expect(receipts, 'nothing is sent while the check holds saving').toEqual([]);
+
+        await leaveHome(page);
+        await finish();
+        expect(receipts, 'leaving Home sends nothing').toEqual([]);
+        await returnHome(page);
+        await expect(page.locator('#research_interests')).toHaveValue(text);
+        await expect.poll(() => receipts.length, { message: 'the edit is sent by the load', timeout: 15_000 }).toBe(1);
+        expect(receipts).toMatchObject([{ uid: account.uid, status: 'applied', revision: 2, patch: { research_interests: text } }]);
+        expect(await profileRows(http, account.uid))
+          .toMatchObject([{ revision: 2, profile_data: { ...ACCOUNT_PROFILE, research_interests: text } }]);
+        await page.waitForTimeout(2000);
+        expect(receipts, 'and only once').toHaveLength(1);
+      } finally {
+        await finish();
+        await http.dispose();
+      }
+    });
+  }
+
+  test('a save still in flight when Home is left lands once and is reported saved when Home is opened again', async ({ page }) => {
+    const http = await apiRequest.newContext();
+    const text = 'Typed just before leaving Home 王';
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => { release = resolve; });
+    try {
+      const account = await seedAccount(http, mailbox('remount-inflight'));
+      await englishOnly(page);
+      await signedIn(page, account);
+      const receipts = recordCas(page);
+      await page.goto('/');
+      await waitForForm(page);
+      await expectForm(page, ACCOUNT_PROFILE);
+      await markPage(page);
+
+      await page.route('**/rest/v1/rpc/commit_profile_patch_cas', async (route) => { await held; await route.continue(); });
+      const sent = page.waitForRequest((request) => isCas(request.url()));
+      await page.locator('#research_interests').fill(text);
+      await sent;
+
+      await leaveHome(page);
+      await returnHome(page);
+      await expect(page.locator('#research_interests')).toHaveValue(text);
+      await watchStatus(page);
+      release();
+      await expect.poll(() => receipts.length, { timeout: 15_000 }).toBe(1);
+      expect(receipts).toMatchObject([{ status: 'applied', revision: 2, patch: { research_interests: text } }]);
+      await expect.poll(async () => (await page.evaluate(() => (window as unknown as { cloudSaveStatuses: Array<{ text: string }> })
+        .cloudSaveStatuses)).map((entry) => entry.text), { message: 'the new form reports the save', timeout: 10_000 })
+        .toContain('Profile saved');
+      await expect(page.getByTestId('retry-sync')).toHaveCount(0);
+      const seen = await page.evaluate(() => (window as unknown as { cloudSaveStatuses: Array<{ text: string }> }).cloudSaveStatuses);
+      expect(seen.filter((entry) => entry.text.includes("Couldn't save")), 'and never as failed').toEqual([]);
+      await page.waitForTimeout(2000);
+      expect(receipts, 'nothing is sent behind it').toHaveLength(1);
+      expect(await profileRows(http, account.uid))
+        .toMatchObject([{ revision: 2, profile_data: { ...ACCOUNT_PROFILE, research_interests: text } }]);
+    } finally {
+      release();
+      await http.dispose();
+    }
+  });
+});
