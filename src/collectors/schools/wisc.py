@@ -115,7 +115,7 @@ SCHOOL: dict = {
                     compensation="$4,000 student stipend (plus $1,000 to the faculty advisor)",
                     preferred_year=["junior", "senior"],
                     international_friendly="unknown",
-                    deadline_note="Applications open Dec 14, 2026; deadline Feb 14, 2027 at 11:59 p.m.",
+                    deadline_note="Application opens Dec 14, 2026; deadline Feb 14, 2027 at 11:59 p.m.",
                     keywords=["fellowship", "independent research", "faculty mentor", "stipend", "any discipline"],
                 ),
                 program(
@@ -130,7 +130,7 @@ SCHOOL: dict = {
                     compensation="$3,000 student stipend (plus up to $500 to the advisor)",
                     preferred_year=["freshman", "sophomore"],
                     international_friendly="unknown",
-                    deadline_note="Applications open Dec 14, 2026; deadline Feb 21, 2027 at 11:59 p.m.",
+                    deadline_note="Application opens Dec 14, 2026; deadline Feb 21, 2027 at 11:59 p.m.",
                     keywords=["sophomore", "fellowship", "independent research", "stipend", "early-career"],
                 ),
             ],

@@ -45,6 +45,7 @@ from src.evidence import (
     SRO_SCANNED_CITIZENSHIP_METHOD,
     SRO_SCANNED_PAY_METHOD,
     ConfiguredFact,
+    _page_sentences,
     configured_fact,
     inferred_method,
     neutralize_unverified_faculty_claims,
@@ -1662,6 +1663,58 @@ class TestConfiguredFactRules:
         own = copy.deepcopy(row)
         own["metadata"]["inferred_fields"] = {"paid": CONFIGURED_PROGRAM_METHOD}
         assert configured_fact(own, "paid").state == FACT_STATED
+
+    def test_sentence_after_a_clock_time_ends_only_before_a_capital_or_digit(self):
+        line = "DEADLINE: February 14, 2027 at 11:59 p.m. (Application opens December 14, 2026)"
+        assert _page_sentences(line, cut=False) == (line,)
+        assert _page_sentences("Applications close at 5 p.m. The program runs all summer.", cut=False) == (
+            "Applications close at 5 p.m.", "The program runs all summer.")
+        assert _page_sentences("Office hours end at 9 a.m. Applicants must attend.", cut=False) == (
+            "Office hours end at 9 a.m.", "Applicants must attend.")
+        assert _page_sentences('Due at 5 p.m. "Late" forms are refused.', cut=False) == (
+            "Due at 5 p.m.", '"Late" forms are refused.')
+        # Any other full stop still ends a sentence before "(".
+        assert _page_sentences("Apply online. (Late forms are refused.)", cut=False) == (
+            "Apply online.", "(Late forms are refused.)")
+
+    # The two Wisconsin fellowship pages, as the committed shard carries them.
+    _HILLDALE_PAGE = (
+        "HILLDALE UNDERGRADUATE/FACULTY RESEARCH FELLOWSHIP DEADLINE: February 14, 2027 at 11:59 p.m. "
+        "(Application opens December 14, 2026) DESCRIPTION: The Hilldale Undergraduate/Faculty Research "
+        "Fellowship provides research training and support to undergraduates.")
+    _SOPHOMORE_PAGE = (
+        "SOPHOMORE RESEARCH FELLOWSHIP APPLICATION DEADLINE: February 21, 2027 at 11:59 p.m. "
+        "(Application opens December 14, 2026) DESCRIPTION: Funded by grants from the Brittingham "
+        "Wisconsin Trust, the Kemper K. Knapp Bequest, and the Provost\u2019s Office, the Sophomore "
+        "Research Fellowship provides research training and support to undergraduates.")
+
+    @pytest.mark.parametrize("page, note, state", [
+        (_HILLDALE_PAGE, "Application opens Dec 14, 2026; deadline Feb 14, 2027 at 11:59 p.m.", FACT_STATED),
+        (_SOPHOMORE_PAGE, "Application opens Dec 14, 2026; deadline Feb 21, 2027 at 11:59 p.m.", FACT_STATED),
+        # A wrong day is not stated.
+        (_HILLDALE_PAGE, "Application opens Dec 14, 2026; deadline Feb 15, 2027 at 11:59 p.m.", FACT_UNSTATED),
+        (_SOPHOMORE_PAGE, "Application opens Dec 14, 2026; deadline Feb 22, 2027 at 11:59 p.m.", FACT_UNSTATED),
+        # "Applications open" is not the page's "Application opens".
+        (_HILLDALE_PAGE, "Applications open Dec 14, 2026; deadline Feb 14, 2027 at 11:59 p.m.", FACT_UNSTATED),
+        (_SOPHOMORE_PAGE, "Applications open Dec 14, 2026; deadline Feb 21, 2027 at 11:59 p.m.", FACT_UNSTATED),
+    ])
+    def test_deadline_line_with_an_opening_date_in_brackets(self, page, note, state):
+        fact = configured_fact(_page_row("application_window", note, page), "application_window")
+        assert fact.state == state
+        if state == FACT_STATED:
+            # The whole line is the quote, opening date included.
+            assert fact.quote.startswith("DEADLINE: February ")
+            assert fact.quote.endswith("11:59 p.m. (Application opens December 14, 2026)")
+
+
+    def test_wisconsin_fellowship_notes_are_stated_by_their_pages(self):
+        from src.collectors.schools.wisc import SCHOOL
+
+        notes = {p["key"]: p["deadline_note"] for src in SCHOOL["sources"] for p in src.get("programs", [])}
+        for key, page in (("hilldale_fellowship", self._HILLDALE_PAGE),
+                          ("sophomore_research_fellowship", self._SOPHOMORE_PAGE)):
+            row = _page_row("application_window", notes[key], page)
+            assert configured_fact(row, "application_window").state == FACT_STATED, key
 
 
 class TestUcbCampusContract:
