@@ -89,7 +89,7 @@ test('an authoritative empty status history shows current status without assigni
     await expect(timeline(page)).not.toContainText(UPDATED.slice(0, 10)); await expect(timeline(page).locator('li')).toHaveCount(0);
     expect(reads).toBe(1); expect(mutations).toEqual([]);
     await timeline(page).scrollIntoViewIfNeeded(); await page.screenshot({ path: info.outputPath('tracker-empty-history.png') });
-    await page.getByRole('button', { name: 'Switch to Chinese', exact: true }).click();
+    await page.getByRole('button', { name: '切换到中文', exact: true }).click();
     await expect(timeline(page)).toContainText('暂无状态历史记录，无法确认此状态的变更时间。');
     await expect(timeline(page)).toContainText('当前状态'); await expect(timeline(page)).toContainText('已申请');
     await expect(timeline(page)).not.toContainText(UPDATED.slice(0, 10)); expect(mutations).toEqual([]);

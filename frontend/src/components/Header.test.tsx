@@ -65,7 +65,7 @@ describe('Header', () => {
     for (const key of ['nav.findMatches', 'nav.favorites', 'nav.dashboard', 'nav.import', 'nav.about']) {
       expect(screen.getAllByText(key).length).toBeGreaterThanOrEqual(2);
     }
-    expect(screen.getAllByRole('button', { name: 'Switch to Chinese' }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole('button', { name: '切换到中文' }).length).toBeGreaterThanOrEqual(1);
   });
 
   it('names the home link even when its visible brand text is hidden on narrow screens', () => {
