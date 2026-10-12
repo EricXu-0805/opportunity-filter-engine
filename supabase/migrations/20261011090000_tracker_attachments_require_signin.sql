@@ -13,6 +13,6 @@ CREATE POLICY "tracker_attachments_insert_own"
   ON storage.objects FOR INSERT
   WITH CHECK (
     bucket_id = 'tracker-attachments'
-    AND (storage.foldername(name))[1] = auth.uid()::text
-    AND coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false) IS NOT TRUE
+    AND (storage.foldername(name))[1] = (select auth.uid()::text)
+    AND (select coalesce((auth.jwt() ->> 'is_anonymous')::boolean, false)) IS NOT TRUE
   );
