@@ -487,6 +487,9 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
         # Every id tonight's load contains, live or not. Whatever the baseline
         # holds outside it is unknown tonight, not gone.
         corpus_ids = {opportunity["id"] for opportunity in corpus if opportunity.get("id")}
+        # Every row searches the same records: each is read through the
+        # public contact boundary once tonight, not once per saved search.
+        served: dict = {}
 
         for row in rows:
             try:
@@ -510,7 +513,7 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
                 ]
 
                 current_ids = [
-                    oid for oid in matching_ids(opportunities, filters, query)
+                    oid for oid in matching_ids(opportunities, filters, query, served=served)
                     if oid not in ineligible
                 ]
                 # A search that has never run has no prior set to diff against

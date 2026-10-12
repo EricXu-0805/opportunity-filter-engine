@@ -132,3 +132,50 @@ def test_a_miss_is_charged_to_the_ranking_that_answered_it():
     assert recorder.compute_for(miss(1.0, 2.0)) is joined
     assert recorder.compute_for(miss(2.4, 4.3)) is own
     assert recorder.compute_for(miss(4.1, 6.0)) is later
+
+
+def test_a_miss_answered_by_a_snapshot_stored_after_it_missed_is_not_a_ranking(monkeypatch):
+    """A ranking can finish between a request's store lookup and its in-flight check.
+
+    The route then serves the stored snapshot from the re-check under the lock:
+    no ranking ran for this request and none may be charged to it.
+    """
+    import asyncio
+    import time
+    from types import SimpleNamespace
+
+    from backend.routes import matches
+
+    key, identity = "measure-recheck", 4242
+    snapshot = matches._MatchSnapshot(
+        created_at=time.time(), corpus_identity=identity, result_set_id="rs",
+        visible=[], by_id={}, view_rows={}, buckets={}, field_relevant_count=0,
+        ranked_with="same-day",
+    )
+    monkeypatch.setattr(matches, "_SNAPSHOT_TTL_SECONDS", 600)
+    monkeypatch.setitem(matches._match_snapshots, key, snapshot)
+    monkeypatch.setattr(matches, "_match_inflight", {})
+
+    recorder = measure.Recorder()
+    patches = measure.Patches()
+    measure._install(recorder, patches, breakdown=False, sampler=SimpleNamespace(scenario="s"))
+    try:
+        async def request():
+            measure.REQUEST_ID.set("r1")
+            return await matches._get_or_compute_rule_snapshot(
+                key, {"name": "p"}, identity, [], None, "same-day",
+            )
+
+        assert asyncio.run(request()) is snapshot
+    finally:
+        patches.restore()
+
+    sample = SimpleNamespace(
+        rid="r1", scenario="s", persona="p", note=None, status=200, error=None,
+        t_start=0.0, t_end=1.0, response_bytes=0, payload=None, wall_start=None, wall_end=None,
+    )
+    run = SimpleNamespace(recorder=recorder, probe=SimpleNamespace(window=lambda start, end: {}))
+    record = measure._sample_record(run, sample, 0.0)
+    assert recorder.computes == []
+    assert record["served_from"] == "snapshot"
+    assert "ranking" not in record

@@ -697,6 +697,45 @@ class TestRefreshAccumulatesNewMatches:
         # keeps its place in the queue — ahead of tonight's new match.
         assert body["new_match_ids"] == ["opp-vanished", "opp-a", "opp-b"]
 
+    def test_saved_queries_read_each_card_once_per_run(self, monkeypatch):
+        """A saved query reads the fields as the card serves them, and every
+        row of a run shares one read of each record."""
+        from src.saved_searches import filter as filter_mod
+
+        _set_digest_env(monkeypatch)
+        patches: list = []
+        contact_bearing = {
+            **_OPP_A, "id": "opp-c",
+            "description_clean": "Image segmentation. Write jane@example.edu to join.",
+        }
+        rows = [
+            self._refresh_row(id=f"row-{query}", query=query)
+            for query in ("jane", "segmentation", "vision", "lab")
+        ]
+        _install_stubs(
+            monkeypatch, rows=rows, patches=patches,
+            opportunities=[_OPP_A, _OPP_B, contact_bearing],
+        )
+        reads: list[str] = []
+        read_fields = filter_mod._served_query_fields
+
+        def counted(opp):
+            reads.append(opp["id"])
+            return read_fields(opp)
+
+        monkeypatch.setattr(filter_mod, "_served_query_fields", counted)
+
+        response = client.get("/api/cron/saved-searches/refresh", headers=AUTH)
+        assert response.status_code == 200
+
+        found = {p["params"]["id"]: p["json"]["last_result_ids"] for p in patches}
+        assert found["eq.row-jane"] == []
+        assert found["eq.row-segmentation"] == []
+        # Its title is stated in the open.
+        assert found["eq.row-vision"] == ["opp-a", "opp-c"]
+        assert found["eq.row-lab"] == ["opp-a", "opp-c"]
+        assert sorted(reads) == ["opp-a", "opp-b", "opp-c"]
+
     def test_cap_keeps_newest_ids(self, monkeypatch):
         _set_digest_env(monkeypatch)
         patches: list = []
