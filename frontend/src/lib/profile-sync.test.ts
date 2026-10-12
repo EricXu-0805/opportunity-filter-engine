@@ -1680,6 +1680,40 @@ describe('a real reload is a new document, and its edits continue the same draft
       .find((op) => op.fields[0].desired.present && op.fields[0].desired.value === 'Physics')!;
     expect(majorOp.supersedes ?? []).not.toContain(collegeOp.opId);
   });
+
+  it('a chain continued after the reload through an edit of another field is still the same draft', async () => {
+    // Before the reload: a college switch, a major pick and another college
+    // switch, none of them sent. After it, the first edit picks a major (it
+    // names all three) and the next switches college again — naming only
+    // that major pick, which carries no college. It still continues the
+    // college the old chain left, and is not a disagreement with it.
+    const server = casServer({ ...FULL, college: 'Grainger', major: 'CS', additional_majors: ['Math'] }, 4);
+    loadProfileMock.mockResolvedValue(cloud(server.row as unknown as ProfileData, server.rev));
+    const token = captureOwnerToken();
+    await hydrateProfile();
+    const cascade: (keyof ProfileData)[] = ['college', 'major', 'additional_majors'];
+    const start = server.row as unknown as ProfileData;
+    expect(recordProfileIntent({ ...start, college: 'LAS', major: '', additional_majors: [] }, cascade, token)).toBe(true);
+    expect(recordProfileIntent({ ...start, college: 'LAS', major: 'Physics', additional_majors: [] }, ['major'], token))
+      .toBe(true);
+    expect(recordProfileIntent({ ...start, college: 'Business', major: '', additional_majors: [] }, cascade, token))
+      .toBe(true);
+
+    reloadDocument();
+    await hydrateProfile();
+    expect(recordProfileIntent({ ...start, college: 'Business', major: 'Finance', additional_majors: [] }, ['major'], token))
+      .toBe(true);
+    const last = { ...start, college: 'Media', major: '', additional_majors: [] };
+    expect(recordProfileIntent(last, cascade, token)).toBe(true);
+
+    commitMock.mockReset();
+    commitMock.mockImplementation(async (intent) => server.handle(intent));
+    const result = await stageProfilePatch(last, dirtyKeys(token), token);
+    expect(result.status).toBe('saved');
+    expect(server.seen).toHaveLength(1);
+    expect(server.row).toMatchObject({ college: 'Media', major: '', additional_majors: [] });
+    expect(journalOps()).toEqual([]);
+  });
 });
 
 describe('a composite operation across two passes settles exactly once, at the end', () => {
