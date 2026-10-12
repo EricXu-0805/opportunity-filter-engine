@@ -334,6 +334,56 @@ def test_match_result_projection_covers_reasons_next_steps_unknowns_and_ai_reaso
     assert response["unknowns"] == ["[email redacted]"]
 
 
+@pytest.mark.parametrize("field", ["keywords", "lab_or_program"])
+@pytest.mark.parametrize("contact", CONTACT_VARIANTS)
+def test_view_search_reads_ranked_reasons_as_the_response_serves_them(contact: str, field: str):
+    """The reasons quote keywords and the lab name; the results-page search reads them."""
+    from backend.routes.matches import (
+        _apply_match_view_rows,
+        _match_view_row,
+        _normalized_profile,
+    )
+    from backend.schemas import MatchViewState
+    from src.matcher.ranker import rank_opportunity
+
+    record = {
+        "id": "contact-in-reason-field",
+        "title": "ML Research",
+        "organization": "Example University",
+        "opportunity_type": "research",
+        "source_type": "campus_program",
+        "school": "uiuc",
+        "on_campus": True,
+        "paid": "yes",
+        "description_raw": "Machine learning research with mentorship. Python required.",
+        "keywords": ["machine learning", "robotics"],
+        "eligibility": {"skills_required": ["Python"], "majors": ["CS"]},
+        "metadata": {"is_active": True},
+    }
+    if field == "keywords":
+        record["keywords"] = ["machine learning", f"robot learning (contact {contact})", "robotics"]
+    else:
+        record["lab_or_program"] = f"Write {contact} Lab"
+    profile = _normalized_profile(
+        _profile().model_copy(update={"desired_fields": ["machine learning"]})
+    )
+    result = rank_opportunity(profile, record)
+    # The ranker quotes the field as the record states it; the response
+    # serves that line as "[email redacted]".
+    assert any(contains_embedded_email(reason) for reason in result.reasons_fit)
+    rows = {record["id"]: _match_view_row(record)}
+
+    def found(query: str) -> tuple[list[str], int]:
+        view = MatchViewState(today="2026-10-11", tab="all", search_query=query)
+        filtered, counts, *_ = _apply_match_view_rows([result], rows, view, "uiuc")
+        return [row.opportunity_id for row in filtered], counts["all"]
+
+    assert found(contact) == ([], 0)
+    # What the record states in the open still finds it.
+    assert found("robotics") == ([record["id"]], 1)
+    assert found("machine learning") == ([record["id"]], 1)
+
+
 def test_ask_ai_prompt_and_local_fallback_only_receive_public_projection():
     public = _redact(_opportunity())
 
