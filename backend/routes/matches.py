@@ -22,6 +22,7 @@ from backend.data_loader import (
     corpus_version,
     load_opportunities_by_id,
     load_opportunities_generation,
+    on_corpus_published,
 )
 from backend.lib import release_scope
 from backend.lib.blocking import (
@@ -1153,6 +1154,13 @@ def _activate_corpus_generation(corpus: list[dict]) -> int:
             # filter that may be running; they are keyed by corpus anyway.
             _match_universe = None
     return corpus_identity
+
+
+# A reload is published by whichever request loads first, often not a match
+# request. Activating the new generation then frees the old one's snapshots,
+# view rows and filtered universe, which hold its records, at once instead of
+# at the next match request.
+on_corpus_published(_activate_corpus_generation)
 
 
 def _release_universe(corpus: list[dict]) -> list[dict]:
