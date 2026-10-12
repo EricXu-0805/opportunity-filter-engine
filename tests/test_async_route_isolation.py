@@ -133,7 +133,7 @@ def _post(path: str, payload: dict):
     [
         ("/api/opportunities?opportunity_type=bogus&limit=1", "actionable_opportunities"),
         ("/api/opportunities/upcoming?days=30", "actionable_opportunities"),
-        ("/api/opportunities/stats/summary", "actionable_opportunities"),
+        ("/api/opportunities/stats/summary", "countable_opportunities"),
         ("/api/opportunities/coverage", "coverage_payload"),
     ],
 )

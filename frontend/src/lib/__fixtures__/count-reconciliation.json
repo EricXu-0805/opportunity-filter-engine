@@ -1,5 +1,5 @@
 {
-  "_comment": "One fixed corpus every count surface is checked against: home stats, school-picker coverage, the Match universe (tests/test_school_coverage.py) and the CSV export (frontend/src/lib/match-utils.test.ts). `served` is what the API sends for each release-visible record and `expected` is what every surface must report; the Python test recomputes both from `corpus`.",
+  "_comment": "One fixed corpus every count surface is checked against: home stats, school-picker coverage, the Match universe (tests/test_school_coverage.py) and the CSV export (frontend/src/lib/match-utils.test.ts). `served` is what the API sends for each release-visible record and `expected` is what every surface must report; the Python test recomputes both from `corpus`. The two `event` records are actionable listings of a type no student can select (`expected.seekable_types`), so results and export never reach them and no count includes them.",
   "corpus": [
     {
       "id": "uiuc-listing-campus",
@@ -180,6 +180,24 @@
       "school": "uiuc"
     },
     {
+      "id": "uiuc-event",
+      "title": "Event at uiuc",
+      "organization": "UIUC",
+      "source": "uiuc_our_rss",
+      "source_type": "rss",
+      "audience": "campus",
+      "opportunity_type": "event",
+      "keywords": [
+        "machine learning"
+      ],
+      "is_rolling": true,
+      "url": "https://example.edu/uiuc-event",
+      "metadata": {
+        "is_active": true
+      },
+      "school": "uiuc"
+    },
+    {
       "id": "ucb-listing-campus",
       "title": "Research at ucb",
       "organization": "UCB",
@@ -300,12 +318,30 @@
       "metadata": {
         "is_active": true
       }
+    },
+    {
+      "id": "national-event",
+      "title": "Event at national",
+      "organization": "NATIONAL",
+      "source": "national_events_rss",
+      "source_type": "rss",
+      "audience": "open",
+      "opportunity_type": "event",
+      "keywords": [
+        "machine learning"
+      ],
+      "is_rolling": true,
+      "url": "https://example.edu/national-event",
+      "metadata": {
+        "is_active": true
+      }
     }
   ],
   "served": [
     {
       "id": "uiuc-listing-campus",
       "source_type": "campus_program",
+      "opportunity_type": "research",
       "record_kind": "listing",
       "target_truth": {
         "listing_state": "unknown",
@@ -320,6 +356,7 @@
     {
       "id": "uiuc-listing-open",
       "source_type": "internship",
+      "opportunity_type": "internship",
       "record_kind": "listing",
       "target_truth": {
         "listing_state": "unknown",
@@ -334,6 +371,7 @@
     {
       "id": "uiuc-faculty-1",
       "source_type": "faculty_research",
+      "opportunity_type": "research",
       "record_kind": "faculty_contact",
       "target_truth": {
         "listing_state": "unknown",
@@ -348,6 +386,7 @@
     {
       "id": "uiuc-faculty-2",
       "source_type": "faculty_research",
+      "opportunity_type": "research",
       "record_kind": "faculty_contact",
       "target_truth": {
         "listing_state": "unknown",
@@ -362,6 +401,7 @@
     {
       "id": "uiuc-faculty-3",
       "source_type": "faculty_research",
+      "opportunity_type": "research",
       "record_kind": "faculty_contact",
       "target_truth": {
         "listing_state": "unknown",
@@ -376,6 +416,7 @@
     {
       "id": "uiuc-listing-closed",
       "source_type": "campus_lab",
+      "opportunity_type": "research",
       "record_kind": "listing",
       "target_truth": {
         "listing_state": "closed",
@@ -390,6 +431,7 @@
     {
       "id": "uiuc-listing-inactive",
       "source_type": "campus_program",
+      "opportunity_type": "research",
       "record_kind": "listing",
       "target_truth": {
         "listing_state": "unknown",
@@ -404,6 +446,7 @@
     {
       "id": "uiuc-faculty-declines",
       "source_type": "faculty_research",
+      "opportunity_type": "research",
       "record_kind": "faculty_contact",
       "target_truth": {
         "listing_state": "unknown",
@@ -418,6 +461,7 @@
     {
       "id": "uiuc-unreviewed",
       "source_type": "mystery_feed",
+      "opportunity_type": "research",
       "record_kind": "unknown",
       "target_truth": {
         "listing_state": "unknown",
@@ -430,8 +474,24 @@
       }
     },
     {
+      "id": "uiuc-event",
+      "source_type": "rss",
+      "opportunity_type": "event",
+      "record_kind": "listing",
+      "target_truth": {
+        "listing_state": "unknown",
+        "reference_only": false,
+        "actionable": true,
+        "accepting_state": "unknown",
+        "reason_code": null,
+        "verified_at": null,
+        "expires_at": null
+      }
+    },
+    {
       "id": "ucb-listing-campus",
       "source_type": "ucb_program",
+      "opportunity_type": "research",
       "record_kind": "listing",
       "target_truth": {
         "listing_state": "unknown",
@@ -446,6 +506,7 @@
     {
       "id": "ucb-listing-open",
       "source_type": "external_reu",
+      "opportunity_type": "research",
       "record_kind": "listing",
       "target_truth": {
         "listing_state": "unknown",
@@ -460,6 +521,7 @@
     {
       "id": "ucb-summer-open",
       "source_type": "external_reu",
+      "opportunity_type": "summer_program",
       "record_kind": "listing",
       "target_truth": {
         "listing_state": "unknown",
@@ -474,6 +536,7 @@
     {
       "id": "ucb-faculty-1",
       "source_type": "faculty_research",
+      "opportunity_type": "research",
       "record_kind": "faculty_contact",
       "target_truth": {
         "listing_state": "unknown",
@@ -488,6 +551,7 @@
     {
       "id": "ucb-faculty-2",
       "source_type": "faculty_research",
+      "opportunity_type": "research",
       "record_kind": "faculty_contact",
       "target_truth": {
         "listing_state": "unknown",
@@ -502,6 +566,7 @@
     {
       "id": "national-reu",
       "source_type": "external_reu",
+      "opportunity_type": "summer_program",
       "record_kind": "listing",
       "target_truth": {
         "listing_state": "unknown",
@@ -516,6 +581,22 @@
     {
       "id": "national-internship",
       "source_type": "internship",
+      "opportunity_type": "internship",
+      "record_kind": "listing",
+      "target_truth": {
+        "listing_state": "unknown",
+        "reference_only": false,
+        "actionable": true,
+        "accepting_state": "unknown",
+        "reason_code": null,
+        "verified_at": null,
+        "expires_at": null
+      }
+    },
+    {
+      "id": "national-event",
+      "source_type": "rss",
+      "opportunity_type": "event",
       "record_kind": "listing",
       "target_truth": {
         "listing_state": "unknown",
@@ -529,6 +610,11 @@
     }
   ],
   "expected": {
+    "seekable_types": [
+      "internship",
+      "research",
+      "summer_program"
+    ],
     "listing_total": 7,
     "faculty_contact_total": 5,
     "national_count": 2,

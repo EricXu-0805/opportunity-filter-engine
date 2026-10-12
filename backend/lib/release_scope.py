@@ -85,6 +85,16 @@ _RUNTIME_KILL_SWITCHES: dict[ReleaseFeature, str] = {
     "payments": "OFE_PAYMENTS_ENABLED",
 }
 
+# The opportunity types a student can select, in form order. Mirrors
+# SEEKING_TYPES in frontend/src/app/home/types.ts — add to both or to neither.
+# Match drops every other selection and ranker.hard_exclusion drops every
+# record whose type is not selected, so a type missing here is one no student
+# can reach in results or export, and the public counts leave it out as well.
+SEEKING_TYPES: tuple[str, ...] = ("research", "summer_program", "internship", "fellowship")
+_SEEKING_TYPE_FEATURES: dict[str, ReleaseFeature] = {
+    "fellowship": "fellowships",
+}
+
 
 def feature_enabled(feature: ReleaseFeature) -> bool:
     """Return whether ``feature`` is accepted and enabled for this process."""
@@ -95,6 +105,16 @@ def feature_enabled(feature: ReleaseFeature) -> bool:
     if env_name is None:
         return True
     return os.environ.get(env_name, "").strip().lower() in {"1", "true"}
+
+
+def seekable_types() -> frozenset[str]:
+    """The seeking types this release offers a student to select."""
+    return frozenset(
+        value
+        for value in SEEKING_TYPES
+        if (feature := _SEEKING_TYPE_FEATURES.get(value)) is None
+        or feature_enabled(feature)
+    )
 
 
 def session_provider_accepted(user: Mapping[str, object]) -> bool:

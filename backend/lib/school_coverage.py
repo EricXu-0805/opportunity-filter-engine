@@ -39,7 +39,9 @@ records we cannot yet classify, not a third kind of coverage.
 **The same filter stack as every other count.** Release scope then actionability,
 so the chip describes the universe ``/opportunities`` and "what's due soon"
 describe, rather than one padded with fellowships the release hides and
-professors who have stated they are not taking undergraduates.
+professors who have stated they are not taking undergraduates. Then the
+seeking types: a record whose type no student can select never appears in
+results or export, so no count includes it (``countable_opportunities``).
 """
 
 from __future__ import annotations
@@ -47,9 +49,10 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 
-from backend.lib.release_scope import release_visible_opportunities
+from backend.lib.release_scope import release_visible_opportunities, seekable_types
 from backend.lib.target_actionability import actionable_opportunities
 from src.evidence import record_kind
+from src.matcher.ranker import opportunity_type_key
 
 # Bumped whenever the *meaning* of the numbers changes, not when the numbers do.
 # Clients compare it before reading any count: a payload without it is a
@@ -90,10 +93,27 @@ class SchoolCoverage:
         }
 
 
+def countable_opportunities(opportunities: Iterable[dict]) -> list[dict]:
+    """The records every public count describes: home stats, the school picker
+    and its static fallback.
+
+    Release-visible and actionable, and of a type some seeking type the release
+    offers can return in Match. The type set is ``seekable_types``, the one Match
+    reads, so a type that becomes selectable is counted with no change here and
+    one that stops being selectable stops being counted.
+    """
+    seekable = seekable_types()
+    return [
+        record
+        for record in actionable_opportunities(release_visible_opportunities(opportunities))
+        if opportunity_type_key(record) in seekable
+    ]
+
+
 def school_coverage(opportunities: Iterable[dict]) -> dict[str, SchoolCoverage]:
     """Per-school coverage over an unfiltered corpus.
 
-    Takes raw records and applies the release/actionability stack itself, so a
+    Takes raw records and applies ``countable_opportunities`` itself, so a
     caller cannot accidentally count a differently-filtered universe than the
     one the switcher promises.
 
@@ -114,7 +134,7 @@ def school_coverage(opportunities: Iterable[dict]) -> dict[str, SchoolCoverage]:
     faculty: dict[str, int] = {}
     unreviewed: dict[str, int] = {}
 
-    for record in actionable_opportunities(release_visible_opportunities(opportunities)):
+    for record in countable_opportunities(opportunities):
         # Belt-and-braces: actionability already drops these, but the chip must
         # never advertise a record an explicit flag has retired.
         if (record.get("metadata") or {}).get("is_active") is False:
@@ -185,7 +205,7 @@ def national_count(opportunities: Iterable[dict]) -> int:
     pool added to each card would overstate every card and, summed across the
     grid, count itself once per school.
     """
-    records = actionable_opportunities(release_visible_opportunities(opportunities))
+    records = countable_opportunities(opportunities)
     return sum(
         1
         for record in records

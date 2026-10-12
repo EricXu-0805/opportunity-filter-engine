@@ -9,6 +9,7 @@ import {
   hashProfile,
 } from './match-utils';
 import type { MatchResult } from './types';
+import { SEEKING_TYPES } from '@/app/home/types';
 import countFixture from './__fixtures__/count-reconciliation.json';
 
 const NOW = new Date('2026-04-16T10:00:00Z');
@@ -579,8 +580,19 @@ describe('hashProfile', () => {
 // rows into the same kinds, so a listing the home page counts is exported as
 // an open listing and nothing it does not count is exported as one.
 describe('the CSV export counts the same records as the other surfaces', () => {
+  // Results, and so the export, hold only records of a type the form offers;
+  // the Python test proves Match returns no other.
+  const offered: readonly string[] = SEEKING_TYPES;
+  const exportable = countFixture.served.filter((served) => offered.includes(served.opportunity_type));
+
+  it('offers exactly the seeking types the server counts', () => {
+    expect([...offered].sort()).toEqual(countFixture.expected.seekable_types);
+    expect(countFixture.served.filter((served) => !exportable.includes(served)).map((s) => s.id))
+      .toEqual(['uiuc-event', 'national-event']);
+  });
+
   function exportedRows(): Array<Record<string, string>> {
-    const rows = countFixture.served.map((served) => makeMatch(
+    const rows = exportable.map((served) => makeMatch(
       {
         id: served.id,
         title: served.id,
@@ -621,7 +633,7 @@ describe('the CSV export counts the same records as the other surfaces', () => {
 
   it('agrees row by row with the server\'s own verdict', () => {
     const statuses = exportedStatuses();
-    countFixture.served.forEach((served, i) => {
+    exportable.forEach((served, i) => {
       const counted = served.target_truth.actionable;
       const label = served.record_kind === 'faculty_contact'
         ? 'Faculty contact — opening not confirmed'
@@ -633,7 +645,7 @@ describe('the CSV export counts the same records as the other surfaces', () => {
 
   it('gives a row the opening-shaped columns only when it is a counted listing', () => {
     exportedRows().forEach((row, i) => {
-      const served = countFixture.served[i];
+      const served = exportable[i];
       const countedListing = served.record_kind === 'listing' && served.target_truth.actionable;
       if (countedListing) {
         expect(row.Type, served.id).toBe('research');
