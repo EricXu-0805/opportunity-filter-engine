@@ -547,6 +547,20 @@ def _observable_page(soup) -> bool:
                if text.parent is None or text.parent.name not in {"script", "style", "noscript", "template", "title"})
 
 
+def _failed_load(soup, capture: dict) -> bool:
+    """Whether a fetched page counts as not loaded: a redirect to another
+    page, unbound fetch metadata, or a sign-in, block or invalid page.
+
+    A page with no heading/paragraph/list DOM (link-card hubs, div-only CMS
+    bodies) still loaded: its condition capture is unsupported, but its
+    status and links remain observed. An empty body, a script shell or a
+    body-less sign-in page shows nothing, and counting it as loaded would
+    complete the crawl and retire every earlier discovery.
+    """
+    return (capture["status"] == "failed" or capture.get("reason") in {"access_page", "invalid_html"}
+            or (capture.get("reason") == "no_supported_content" and not _observable_page(soup)))
+
+
 def _crawl_source(school: dict, source: dict) -> tuple[dict, list[dict], dict]:
     status_by_url: dict[str, dict] = {}
     discovered: list[dict] = []
@@ -588,13 +602,7 @@ def _crawl_source(school: dict, source: dict) -> tuple[dict, list[dict], dict]:
                                       checked_at=capture["attempted_at"], status="unsupported",
                                       reason="ambiguous_program_scope")
         captures[url] = capture
-        # A page with no heading/paragraph/list DOM (link-card hubs, div-only
-        # CMS bodies) still loaded: its condition capture is unsupported, but
-        # its status and links remain observed. An empty body, a script shell
-        # or a body-less sign-in page shows nothing, and counting it as loaded
-        # would complete the crawl and retire every earlier discovery.
-        if (capture["status"] == "failed" or capture.get("reason") in {"access_page", "invalid_html"}
-                or (capture.get("reason") == "no_supported_content" and not _observable_page(soup))):
+        if _failed_load(soup, capture):
             (seed_page_errors if url in seed_urls else degraded_page_errors).append(url)
             continue
         try:

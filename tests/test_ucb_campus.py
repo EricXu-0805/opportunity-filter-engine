@@ -11,6 +11,7 @@ from __future__ import annotations
 import copy
 import json
 from datetime import UTC, datetime
+from types import SimpleNamespace
 
 import pytest
 from bs4 import BeautifulSoup
@@ -321,6 +322,44 @@ class TestSeedNormalization:
         assert merged["status"] == "unknown"
         assert merged["is_active"] is False
         assert "deactivation_reason" not in merged
+
+    @pytest.mark.parametrize(("final_url", "html", "loaded"), [
+        pytest.param("https://example.berkeley.edu/", "<body><p>Office of Undergraduate Research home</p></body>",
+                     False, id="redirected_to_another_page"),
+        pytest.param(None, '<title>Sign in</title><form><input type="password"></form>', False, id="sign_in_page"),
+        pytest.param("https://example.berkeley.edu/kept", "<body><p>Program page</p></body>",
+                     True, id="same_page_without_its_slash"),
+    ])
+    @pytest.mark.parametrize("stored", ["closed", "open"])
+    def test_a_page_that_did_not_load_keeps_the_stored_status(
+            self, monkeypatch, processed, stored, final_url, html, loaded):
+        """campus_graph's load rule. _fetch followed a redirect and read the
+        landing page, which states no status, as the program page: a stored
+        closure ended and the program was listed again."""
+        import requests
+
+        sources = _registry("kept")
+        url = sources[0]["seeds"][0] = sources[0]["programs"][0]["url"]
+        word = {"closed": "Applications are now closed.", "open": "Applications are now open!"}[stored]
+        page = {"url": url, "html": f"<body><p>{word}</p></body>"}
+        monkeypatch.setattr(requests, "get", lambda requested, **_: SimpleNamespace(
+            url=page["url"], content=page["html"].encode(), raise_for_status=lambda: None))
+        _refresh(monkeypatch, sources, deep=True, national=False)
+        row_id = _program_id(reg.EMIT_CAMPUS, "kept")
+        before = _stored(processed)[row_id]
+        assert (before["metadata"]["status"], before["metadata"]["is_active"]) == (stored, stored == "open")
+
+        page.update(url=final_url or url, html=html)
+        evidence = _refresh(monkeypatch, sources, deep=True, national=False)
+
+        after = _stored(processed)[row_id]
+        if loaded:
+            assert (after["metadata"]["status"], after["metadata"]["is_active"]) == ("unknown", True)
+        else:
+            assert (after["metadata"]["status"], after["metadata"]["is_active"]) == (stored, stored == "open")
+            assert after["title"] == before["title"]
+            assert after["metadata"]["last_verified"] == before["metadata"]["last_verified"]
+        assert evidence["seed_pages_failed"] == (0 if loaded else 1)
 
     def test_discovered_anchor_requires_its_own_page_before_emission(
         self,

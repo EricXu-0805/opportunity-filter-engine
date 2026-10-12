@@ -49,7 +49,7 @@ from src.normalizers.ucb_dedup import dedupe_against_existing
 from . import ucb_sources as reg
 from .application_status import detect_application_status
 from .atomic_json import atomic_write_json
-from .campus_graph import NO_LONGER_LISTED, _program_record, _retired_as_unlisted
+from .campus_graph import NO_LONGER_LISTED, _failed_load, _page_capture, _program_record, _retired_as_unlisted
 from .ucb_common import _readable_excerpt
 
 logger = logging.getLogger(__name__)
@@ -296,6 +296,10 @@ def _normalize_discovered(source: dict, title: str, url: str, snippet: str) -> d
 def _fetch(url: str):
     """Fetch a page and return BeautifulSoup, or None on any failure.
 
+    A page that did not load its own content is a failure by campus_graph's
+    rule: a redirect to another page, or a sign-in, block or empty page.
+    Read as loaded, its silence would end the row's stored status.
+
     Lazy-imports requests/bs4 so the seed path never needs them."""
     try:
         import requests
@@ -306,10 +310,20 @@ def _fetch(url: str):
     try:
         resp = requests.get(url, timeout=_CRAWL_TIMEOUT, headers=HEADERS)
         resp.raise_for_status()
-        return BeautifulSoup(resp.content, "html.parser")
+        soup = BeautifulSoup(resp.content, "html.parser")
+        soup._ofe_fetch_metadata = {
+            "requested_url": url,
+            "final_url": getattr(resp, "url", None),
+            "checked_at": datetime.now(UTC).isoformat(),
+        }
+        failed = _failed_load(soup, _page_capture(soup, url))
     except Exception as e:  # noqa: BLE001 — never crash the run on one page
         logger.warning("fetch failed for %s: %s", url, e)
         return None
+    if failed:
+        logger.warning("fetch failed for %s: redirected away or not the page's content", url)
+        return None
+    return soup
 
 
 def _detect_status(page_text: str) -> str:
