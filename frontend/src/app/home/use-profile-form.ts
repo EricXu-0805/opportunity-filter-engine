@@ -2565,13 +2565,25 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         setSaveStatus('error');
         return;
       }
+      // Nothing is left to send: something confirmed every edit since this was
+      // armed — a load's recovery flush sends this form's edits from the load
+      // along with what a closed tab left. An empty patch is refused as
+      // 'blocked', which is no failure of anything; Generate says it locally
+      // in the same spot.
+      if (dirty.value.length === 0 && hasConfirmedProfileRevision()) {
+        applySaveResult(
+          { status: 'already-saved', revision: 0, profile: toSave }, token, armedGeneration, intent, false,
+          intent === saveIntentRef.current,
+        );
+        return;
+      }
       commitSave(toSave, dirty.value, origin, intent);
     }, 1500);
 
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     };
-  }, [profile, searchWeight, hydrationTick, commitSave, recordOutstandingIntents, ownsScreen, armRetryable, setSaveStatus, startLoad]);
+  }, [profile, searchWeight, hydrationTick, commitSave, applySaveResult, recordOutstandingIntents, ownsScreen, armRetryable, setSaveStatus, startLoad]);
 
   useEffect(() => {
     return () => {
