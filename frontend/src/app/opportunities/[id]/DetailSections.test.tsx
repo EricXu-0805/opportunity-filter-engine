@@ -371,6 +371,27 @@ describe('EligibilitySection skills provenance', () => {
     expect(screen.queryByText('detail.fields.majors')).toBeNull();
   });
 
+  it('says a configured major and class-year list is our listing\'s, not the keyword bank\'s', () => {
+    // 475 active rows carry a campus program spec's majors (355 its years):
+    // typed into our config, not matched from research areas or read from text.
+    const elig = {
+      majors: ['Biology'], international_friendly: 'unknown',
+      preferred_year: ['junior', 'senior'], skills_required: [], citizenship_required: false,
+    } as unknown as Opportunity['eligibility'];
+    render(
+      <EligibilitySection
+        opp={opp({}, {
+          source_type: 'campus_program', eligibility: elig,
+          majors_attribution: 'inferred', majors_basis: 'configured',
+          preferred_year_attribution: 'inferred', preferred_year_basis: 'configured',
+        })}
+        t={tFn}
+      />,
+    );
+    expect(screen.getByTestId('majors-inferred-note')).toHaveTextContent('detail.majorsConfigured');
+    expect(screen.getByTestId('year-inferred-note')).toHaveTextContent('detail.yearConfigured');
+  });
+
   it('keeps "majors" with no note when the program stated them', () => {
     const elig = {
       majors: ['Biology', 'Chemistry'], international_friendly: 'unknown',

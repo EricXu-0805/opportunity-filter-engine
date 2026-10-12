@@ -298,7 +298,7 @@ def test_new_criteria_count_complete_unicode_and_prompt_constraints_are_not_quot
     assert reason is None
     prompt = json.loads(messages[1]['content'])
     assert prompt['criteria'] == target['criteria']
-    assert '"criteria" (the opportunity\'s published constraints: never anchors, never evidence)' in messages[0]['content']
+    assert '"criteria" (the opportunity\'s constraints: never anchors, never evidence;' in messages[0]['content']
     assert anchors and not any('unknown' in anchor.text for anchor in anchors)
     assert not engine.valid_quotes([{'field': 'criteria', 'requirement_index': None, 'start': 0, 'end': 7,
                                      'quote': 'unknown'}], target)

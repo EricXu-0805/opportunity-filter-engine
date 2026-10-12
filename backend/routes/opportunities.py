@@ -30,7 +30,7 @@ from backend.lib.llm import (
     chat_model_options,
     chat_model_slug,
 )
-from backend.lib.opportunity_detail import build_detail_fields
+from backend.lib.opportunity_detail import build_detail_fields, note_says_rolling
 from backend.lib.position_truth import displayed_title
 from backend.lib.prompt_budget import check_prompt_size
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
@@ -169,6 +169,21 @@ def _as_listed(value: object, facet: str, unstated: frozenset[str]) -> object:
     if facet not in unstated or not isinstance(value, str) or value in _NO_VALUE:
         return value
     return f"our listing suggests {value} — not confirmed on the program page"
+
+
+def _rolling_as_listed(opp: dict, unstated: frozenset[str]) -> str:
+    """What the prompt says about rolling admissions.
+
+    ``is_rolling`` is a collector default (True on every Simplify and campus
+    program row) and decides nothing; only a deadline note that says rolling
+    does, and on a campus program spec that note is our listing's unless the
+    page text states it (the detail facts' rule).
+    """
+    if not note_says_rolling((opp.get("metadata") or {}).get("deadline_note")):
+        return "not stated"
+    if "application_window" in unstated:
+        return "our listing's note says rolling — not confirmed on the program page"
+    return "True"
 
 
 def _public_payload(value):
@@ -744,7 +759,7 @@ def _build_chat_system_prompt(
         f"- {'Faculty affiliation location' if faculty_profile else 'Location'}: {opp.get('location', 'unspecified')} (on-campus: {'unknown' if faculty_profile else _tri_state(opp.get('on_campus'))})",
         f"- Remote: {'unknown' if faculty_profile else opp.get('remote_option', 'unknown')}",
         f"- Paid: {'unknown' if faculty_profile else _as_listed(opp.get('paid', 'unknown'), 'paid', unstated)}; compensation: {('—' if faculty_profile else _as_listed(opp.get('compensation_details') or '—', 'compensation', unstated))}",
-        f"- Deadline: {('not confirmed (faculty profile; not rolling evidence)' if faculty_profile else (opp.get('deadline') or '—'))} (rolling: {'unknown' if faculty_profile else bool(opp.get('is_rolling'))})",
+        f"- Deadline: {('not confirmed (faculty profile; not rolling evidence)' if faculty_profile else (opp.get('deadline') or '—'))} (rolling: {'unknown' if faculty_profile else _rolling_as_listed(opp, unstated)})",
         f"- Start date: {('—' if faculty_profile else opp.get('start_date') or '—')}; duration: {('—' if faculty_profile else opp.get('duration') or '—')}",
         f"- {'Related majors (not eligibility)' if faculty_profile else 'Majors' if 'majors' in unstated else 'Eligible majors'}: {_as_listed(', '.join(elig.get('majors') or []), 'majors', unstated) or '(unspecified)'}",
         f"- {'Class years' if 'class_year' in unstated else 'Preferred years'}: {_as_listed(', '.join(stated_years), 'class_year', unstated) or '(unspecified)'}",

@@ -1004,6 +1004,20 @@ class TestCampusGraphContract:
         _, fits, _ = score_upside({}, canonical)
         assert "Includes stipend" not in fits
 
+    def test_configured_majors_and_years_say_they_came_from_our_config(self):
+        payload, _ = _detail(self._configured())
+        assert payload["majors_basis"] == "configured"
+        assert payload["preferred_year_basis"] == "configured"
+
+    def test_a_stamped_list_keeps_its_own_basis(self):
+        record = self._configured()
+        record["metadata"]["inferred_fields"] = {
+            "eligibility.majors": "rule:research_area_bank", "eligibility.preferred_year": "rule:text_scan"}
+        payload, _ = _detail(record)
+        assert payload["majors_attribution"] == payload["preferred_year_attribution"] == "inferred"
+        assert "majors_basis" not in payload
+        assert "preferred_year_basis" not in payload
+
     @pytest.mark.parametrize("paid", ["yes", "stipend", "no"])
     def test_configured_pay_is_stamped_whatever_it_says(self, paid):
         record = self._configured()
@@ -1234,6 +1248,30 @@ class TestCampusGraphContract:
             assert line in prompt, line
         assert "our listing suggests" not in prompt
         assert "our listing suggests" not in opportunities_module._local_chat_fallback(_redact(stated), "?")
+
+    def test_ask_ai_does_not_state_rolling_from_the_blanket_default(self):
+        # is_rolling is True on every campus program row. The prompt called a
+        # row with a March deadline note "rolling: True"; it now says rolling
+        # only for a note that says so, as our listing's when the page does not.
+        record = self._configured()
+        assert record["is_rolling"] is True
+        _, ours = _served(record)
+        prompt = opportunities_module._build_chat_system_prompt(
+            _redact(ours), None, opportunities_module._configured_unstated(ours))
+        assert "(rolling: not stated)" in prompt and "rolling: True" not in prompt
+
+        record["metadata"]["deadline_note"] = "Rolling; SURF cycles for summer"
+        _, ours = _served(record)
+        prompt = opportunities_module._build_chat_system_prompt(
+            _redact(ours), None, opportunities_module._configured_unstated(ours))
+        assert f"(rolling: our listing's note says rolling{self._NOT_ON_PAGE})" in prompt
+
+        stated = self._with_page("Applications are accepted on a rolling basis.")
+        stated["metadata"]["deadline_note"] = "Rolling"
+        _, theirs = _served(stated)
+        prompt = opportunities_module._build_chat_system_prompt(
+            _redact(theirs), None, opportunities_module._configured_unstated(theirs))
+        assert "(rolling: True)" in prompt
 
     def test_ask_ai_reads_the_page_text_off_the_canonical_record(self, monkeypatch):
         # The public payload drops the captured passages, so the route checks

@@ -214,6 +214,25 @@ function OpportunityColumnHeaders({
   );
 }
 
+// Where a cell's value is our listing's or our pipeline's rather than the
+// program page's, said under it in the detail page's own words. The same
+// three facts, flagged by the same payload keys: a major or class-year list
+// (`majors_basis` says whether our config or our keyword bank wrote it) and a
+// "Rolling" read off a campus program spec's deadline note.
+function sourceNoteKey(field: FieldSpec, opp: Opportunity, value: ComparisonValue): string | null {
+  if (value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0)) return null;
+  if (field.key === 'majors' && opp.majors_attribution === 'inferred') {
+    return opp.majors_basis === 'configured' ? 'detail.majorsConfigured' : 'detail.majorsInferred';
+  }
+  if (field.key === 'preferredYear' && opp.preferred_year_attribution === 'inferred') {
+    return opp.preferred_year_basis === 'configured' ? 'detail.yearConfigured' : 'detail.yearInferred';
+  }
+  if (field.key === 'deadline' && value === 'rolling' && opp.deadline_note_attribution === 'inferred') {
+    return 'detail.rollingInferred';
+  }
+  return null;
+}
+
 function Row({
   field,
   rows,
@@ -243,6 +262,7 @@ function Row({
         {t(field.labelKey)}
       </div>
       {values.map((v, i) => {
+        const noteKey = sourceNoteKey(field, rows[i].opp, v);
         return (
           <div
             key={rows[i].opp.id}
@@ -259,6 +279,14 @@ function Row({
               userSkills={userSkills}
               t={t}
             />
+            {noteKey && (
+              <p
+                data-testid={`compare-source-note-${field.key}-${rows[i].opp.id}`}
+                className="mt-1 text-[11px] leading-snug text-gray-500"
+              >
+                {t(noteKey)}
+              </p>
+            )}
           </div>
         );
       })}

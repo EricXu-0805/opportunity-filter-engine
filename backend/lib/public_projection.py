@@ -851,6 +851,10 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
         projected.get("eligibility") or {}
     ).get("majors"):
         projected["majors_attribution"] = "inferred"
+        # The detail page's note names where the list came from: the keyword
+        # bank for a stamped list, our config for a program spec's.
+        if not majors_method:
+            projected["majors_basis"] = "configured"
 
     # And for the deadline note a program spec typed into the config: the
     # detail facts call it a collector default unless the page text states it
@@ -883,7 +887,9 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
             value = restricted.get(field)
             if value in (None, "", [], {}) or value == "unknown":
                 continue
-            if is_read_off_the_page(canonical_record, f"eligibility.{field}") or (
+            if is_read_off_the_page(canonical_record, f"eligibility.{field}"):
+                projected[wire_key] = "inferred"
+            elif (
                 # A configured program's class years, like its majors, are
                 # classified rather than stamped; its intl and citizenship
                 # values are stamped at load (`stamp_collector_templates`).
@@ -891,6 +897,7 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
                 and not opportunity_detail.class_years_are_template(value)
             ):
                 projected[wire_key] = "inferred"
+                projected["preferred_year_basis"] = "configured"
 
     # A green "Paid" badge on "in many cases, funding or a stipend" is a
     # student planning a summer around money we guessed at: 220 records carry a

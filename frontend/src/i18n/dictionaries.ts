@@ -3405,6 +3405,8 @@ export const en = {
     skillsInferred: 'Read from the posting text by our pipeline, not listed by the program — a hint, not a requirement.',
     majorsInferred: 'Matched from the program’s research areas by our pipeline, not an eligibility list the program published.',
     yearInferred: 'Read from the posting text by our pipeline, not a class-year restriction the program published.',
+    majorsConfigured: 'From our listing’s major list, not confirmed on the program page.',
+    yearConfigured: 'These come from our listing’s own list, not confirmed on the program page.',
     eligibilityInferred: 'Read from the posting text by our pipeline, not a restriction the program published — check the program’s own page before ruling yourself out.',
     rollingInferred: 'From our listing’s deadline note, not confirmed on the program page.',
     concierge: {
@@ -3683,6 +3685,7 @@ export const en = {
     facultyAffiliationLocation: 'Faculty affiliation: {location}',
     viewSource: 'View source',
     rolling: 'Rolling',
+    rollingFromListing: 'From our listing’s deadline note, not confirmed on the program page.',
     // No-deadline records without scraped rolling evidence — "Rolling" would
     // overclaim, this is all we actually know.
     noDeadline: 'No fixed deadline',
@@ -8594,6 +8597,8 @@ export const zh = {
     skillsInferred: '由我们的系统从招募文本中推断，不是项目列出的要求 —— 当作提示，不是硬性条件。',
     majorsInferred: '由我们的系统根据项目研究方向匹配，不是项目公布的专业要求。',
     yearInferred: '由我们的系统从招募文本中推断，不是项目公布的年级限制。',
+    majorsConfigured: '来自我们列表里的专业清单，项目页面未确认。',
+    yearConfigured: '这些来自我们列表里的年级清单，项目页面未确认。',
     eligibilityInferred: '由我们的系统从招募文本中推断，不是项目公布的限制 —— 在放弃之前先看项目自己的页面。',
     rollingInferred: '来自我们列表里的截止说明，项目页面未确认。',
     concierge: {
@@ -8853,6 +8858,7 @@ export const zh = {
     facultyAffiliationLocation: '教师所在机构：{location}',
     viewSource: '查看来源',
     rolling: '滚动招生',
+    rollingFromListing: '来自我们列表里的截止说明，项目页面未确认。',
     // 无截止日期且无滚动招生证据的记录 —— "滚动招生"是过度断言,
     // 我们实际知道的只有这些。
     noDeadline: '无固定截止日期',
