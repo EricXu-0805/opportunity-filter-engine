@@ -25,6 +25,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import src.collectors.refresh_all as refresh_all
 from src.collectors import ucsb_urca_projects
+from src.collectors.refresh_contract import expected_sources
 from src.normalizers.deactivate_stale_faculty import FACULTY_SOURCES
 
 # All Berkeley faculty collectors wired into refresh_all's deep block. Derived
@@ -632,8 +633,255 @@ def test_ucb_shard_runs_exactly_ucb_sources(monkeypatch, tmp_path):
 def test_national_shard_runs_exactly_national_sources(monkeypatch, tmp_path):
     _stub_all_collectors(monkeypatch, tmp_path)
     summary = refresh_all.refresh_all(deep=True, national=True)
-    assert set(summary["sources"]) == {"uiuc_sro", "nsf_reu", "simplify_internships"}
+    # The campus programs open to every school publish in national.json, so
+    # this shard collects them too, one source per school.
+    assert set(summary["sources"]) == set(
+        expected_sources(None, national=True, deep=True)
+    )
+    assert {
+        "uiuc_sro", "nsf_reu", "simplify_internships",
+        "stanford_external_research", "ucb_external_research",
+    } <= set(summary["sources"])
     assert summary["shard"] == {"schools": [], "national": True}
+
+
+def test_a_config_edit_to_an_open_program_reaches_national_json_on_schedule(monkeypatch, tmp_path):
+    """A campus program open to every school stamps no school, so its row lives
+    in national.json, and only the national day may write that file. That run
+    collected no campus programs, while the school's own day collected them
+    and its split dropped them: no config edit to one reached production after
+    the split was bounded to a run's own shards (#722, 2026-08-09).
+
+    Driven through the scheduled path: the rotation names the day's shard and
+    the shards it may replace, the run's verdict narrows them, and the split
+    writes what is left of the assembled corpus."""
+    from scripts.publishable_shards import publishable
+    from scripts.refresh_rotation import scheduled_shard, target_shards
+    from scripts.shard_corpus import assemble, load_shards, split
+    from src.collectors import campus_graph, ucb_campus, ucb_sources
+    from src.collectors.schools.stanford import SCHOOL as STANFORD
+    from src.collectors.schools.uchicago import SCHOOL as UCHICAGO
+    from src.collectors.schools.ucla import SCHOOL as UCLA
+    from src.collectors.schools.upenn import SCHOOL as UPENN
+
+    days = {day: scheduled_shard(day) for day in range(1, 8)}
+    assert [day for day, shard in days.items() if "national" in target_shards(shard)] == [7]
+
+    # The committed corpus: national.json holding each open row as its config
+    # wrote it. The five M93 named, plus one of UC Berkeley's.
+    configs = (STANFORD, UCHICAGO, UCLA, UPENN)
+    stored = [row for config in configs for row in campus_graph.fetch_and_normalize(config)
+              if row["school"] is None]
+    stored += [row for row in ucb_campus.fetch_and_normalize() if row["school"] is None]
+    edited = {"ssrp_amgen_scholars", "dsi_summer_lab", "ede_plus", "amgen_scholars_ucla",
+              "singh_reu", "haas_scholars"}
+    assert edited <= {row["metadata"]["collector_key"] for row in stored}
+    processed = _stub_with_processed_file(monkeypatch, tmp_path, stored)
+    shards = tmp_path / "shards"
+    split(processed, shards)
+
+    note = "Applications for the 2027 cohort open November 1, 2026."
+    specs = [spec for config in configs for source in config["sources"] for spec in source["programs"]]
+    specs += [spec for source in ucb_sources.UCB_SOURCES for spec in source["programs"]]
+    for spec in specs:
+        if spec["key"] in edited:
+            monkeypatch.setitem(spec, "deadline_note", note)
+
+    monkeypatch.setattr(refresh_all, "fetch_campus_graph_with_evidence",
+                        campus_graph.fetch_and_normalize_with_evidence)
+    monkeypatch.setattr(refresh_all, "merge_campus_graph", campus_graph.merge_into_processed)
+    monkeypatch.setattr(refresh_all, "fetch_ucb_campus_with_evidence",
+                        ucb_campus.fetch_and_normalize_with_evidence)
+    monkeypatch.setattr(refresh_all, "merge_ucb_campus", ucb_campus.merge_into_processed)
+    for module in (campus_graph, ucb_campus):
+        monkeypatch.setattr(module, "PROCESSED_FILE", processed)
+        # Every page unreachable: the edit has to arrive from the config alone.
+        monkeypatch.setattr(module, "_fetch", lambda url, **kwargs: None)
+
+    assert days[7] == "national"
+    assemble(processed, shards, force=True, allow_empty=True)
+    summary = refresh_all.refresh_all(deep=True, national=True)
+    targets = publishable(list(target_shards(days[7])), {"release": summary["release"]})
+    assert targets == ["national"]
+    split(processed, shards, only_shards=set(targets))
+
+    published = {row["metadata"].get("collector_key"): row for row in load_shards(shards)}
+    for key in edited:
+        row = published[key]
+        assert row["metadata"]["deadline_note"] == note, key
+        assert row["eligibility"]["eligibility_text_raw"] == note, key
+        # Still a national row, open to every school, and still listed.
+        assert (row["school"], row["audience"]) == (None, "open"), key
+        assert row["metadata"]["is_active"] is True, key
+    assert {path.name for path in shards.glob("*.json")} == {"national.json"}
+
+
+@pytest.mark.parametrize("school_day_first", [True, False], ids=["school_day_first", "sunday_first"])
+@pytest.mark.parametrize("to_open", [True, False], ids=["into_open", "out_of_open"])
+def test_a_program_moved_between_a_schools_shard_and_national_json_is_listed_once(
+        monkeypatch, tmp_path, to_open, school_day_first):
+    """A config edit moves a program between Stanford's own bucket and its
+    open bucket and changes its URL. While both days listed every key of the
+    config, the old row never retired, and the moved record published beside
+    it on the new file's day. Out of the open bucket the program is SSRP,
+    Stanford's only open program, so Sunday then lists no key at all.
+
+    Driven through the scheduled path, as the test above."""
+    from datetime import UTC, datetime
+
+    from bs4 import BeautifulSoup
+
+    from scripts.publishable_shards import publishable
+    from scripts.refresh_rotation import target_shards
+    from scripts.shard_corpus import assemble, load_shards, split
+    from src.collectors import campus_graph
+    from src.collectors.schools.stanford import SCHOOL as STANFORD
+
+    by_name = {source["source_name"]: source for source in STANFORD["sources"]}
+    campus, open_bucket = by_name["stanford_program"], by_name["stanford_program_open"]
+    if to_open:
+        moving = campus_graph.program("moving", "Moving Summer Fellowship",
+                                      "https://example.stanford.edu/moving/", "Curated")
+        moved = {**moving, "url": "https://example.stanford.edu/moving-reu/"}
+        before = ([*campus["programs"], moving], open_bucket["programs"])
+        after = (campus["programs"], [*open_bucket["programs"], moved])
+    else:
+        [moving] = open_bucket["programs"]
+        moved = {**moving, "url": "https://example.stanford.edu/ssrp/"}
+        before = (campus["programs"], open_bucket["programs"])
+        after = ([*campus["programs"], moved], [])
+    old_school, new_school = ("stanford", None) if to_open else (None, "stanford")
+
+    def configure(programs):
+        monkeypatch.setitem(campus, "programs", programs[0])
+        monkeypatch.setitem(open_bucket, "programs", programs[1])
+
+    configure(before)
+    processed = _stub_with_processed_file(monkeypatch, tmp_path, campus_graph.fetch_and_normalize(STANFORD))
+    shards = tmp_path / "shards"
+    split(processed, shards)
+    monkeypatch.setattr(refresh_all, "fetch_campus_graph_with_evidence",
+                        campus_graph.fetch_and_normalize_with_evidence)
+    monkeypatch.setattr(refresh_all, "merge_campus_graph", campus_graph.merge_into_processed)
+    monkeypatch.setattr(campus_graph, "PROCESSED_FILE", processed)
+
+    def page(url, **kwargs):
+        # Every page loads and states no status. A source with no record and
+        # no loaded page is an error that withholds national.json, and an
+        # emptied open source has no record.
+        soup = BeautifulSoup("<body><p>Program page</p></body>", "html.parser")
+        soup._ofe_fetch_metadata = {"requested_url": url, "final_url": url,
+                                    "checked_at": datetime.now(UTC).isoformat()}
+        return soup
+
+    monkeypatch.setattr(campus_graph, "_fetch", page)
+
+    def listed():
+        return [(row["school"], row["url"]) for row in load_shards(shards)
+                if row["metadata"].get("collector_key") == moving["key"] and row["metadata"]["is_active"]]
+
+    def run(shard):
+        assemble(processed, shards, force=True, allow_empty=True)
+        summary = (refresh_all.refresh_all(deep=True, national=True) if shard == "national"
+                   else refresh_all.refresh_all(deep=True, schools={shard}))
+        targets = publishable(list(target_shards(shard)), {"release": summary["release"]})
+        assert targets == [shard]
+        split(processed, shards, only_shards=set(targets))
+
+    assert listed() == [(old_school, moving["url"])]
+    configure(after)
+    old_shard, new_shard = ("stanford", "national") if to_open else ("national", "stanford")
+    if (old_shard == "stanford") == school_day_first:
+        days = [(old_shard, []), (new_shard, [(new_school, moved["url"])])]
+    else:
+        # The moved record waits while the old row is listed.
+        days = [(new_shard, [(old_school, moving["url"])]), (old_shard, []),
+                (new_shard, [(new_school, moved["url"])])]
+    for shard, expected in days:
+        run(shard)
+        assert listed() == expected, shard
+
+
+@pytest.mark.parametrize("to_open", [True, False], ids=["into_open", "out_of_open"])
+def test_a_closed_program_moved_with_its_url_is_listed_again_when_it_reopens(monkeypatch, tmp_path, to_open):
+    """The program's page says closed, the config moves it between Stanford's
+    own bucket and its open bucket with its URL, and the page later reopens.
+    The merges' listing rule skipped the closed old row, which therefore kept
+    its claim on the URL, and the moved record was dropped as its
+    near-duplicate on every run: the program was never listed again.
+
+    Driven through the scheduled path, as the test above."""
+    from datetime import UTC, datetime
+
+    from bs4 import BeautifulSoup
+
+    from scripts.publishable_shards import publishable
+    from scripts.refresh_rotation import target_shards
+    from scripts.shard_corpus import assemble, load_shards, split
+    from src.collectors import campus_graph
+    from src.collectors.schools.stanford import SCHOOL as STANFORD
+
+    by_name = {source["source_name"]: source for source in STANFORD["sources"]}
+    campus, open_bucket = by_name["stanford_program"], by_name["stanford_program_open"]
+    if to_open:
+        moving = campus_graph.program("moving", "Moving Summer Fellowship",
+                                      "https://example.stanford.edu/moving/", "Curated")
+        before = ([*campus["programs"], moving], open_bucket["programs"])
+        after = (campus["programs"], [*open_bucket["programs"], moving])
+        old_shard, new_shard, new_school = "stanford", "national", None
+    else:
+        [moving] = open_bucket["programs"]
+        before = (campus["programs"], open_bucket["programs"])
+        after = ([*campus["programs"], moving], [])
+        old_shard, new_shard, new_school = "national", "stanford", "stanford"
+    for source in (campus, open_bucket):
+        if moving["url"] not in source["seeds"]:
+            monkeypatch.setitem(source, "seeds", [*source["seeds"], moving["url"]])
+
+    def configure(programs):
+        monkeypatch.setitem(campus, "programs", programs[0])
+        monkeypatch.setitem(open_bucket, "programs", programs[1])
+
+    configure(before)
+    processed = _stub_with_processed_file(monkeypatch, tmp_path, campus_graph.fetch_and_normalize(STANFORD))
+    shards = tmp_path / "shards"
+    split(processed, shards)
+    monkeypatch.setattr(refresh_all, "fetch_campus_graph_with_evidence",
+                        campus_graph.fetch_and_normalize_with_evidence)
+    monkeypatch.setattr(refresh_all, "merge_campus_graph", campus_graph.merge_into_processed)
+    monkeypatch.setattr(campus_graph, "PROCESSED_FILE", processed)
+    page = {"word": "Applications are now closed."}
+
+    def fetch(url, **kwargs):
+        text = page["word"] if url == moving["url"] else "Program page"
+        soup = BeautifulSoup(f"<body><p>{text}</p></body>", "html.parser")
+        soup._ofe_fetch_metadata = {"requested_url": url, "final_url": url,
+                                    "checked_at": datetime.now(UTC).isoformat()}
+        return soup
+
+    monkeypatch.setattr(campus_graph, "_fetch", fetch)
+
+    def run(shard):
+        assemble(processed, shards, force=True, allow_empty=True)
+        summary = (refresh_all.refresh_all(deep=True, national=True) if shard == "national"
+                   else refresh_all.refresh_all(deep=True, schools={shard}))
+        targets = publishable(list(target_shards(shard)), {"release": summary["release"]})
+        assert targets == [shard]
+        split(processed, shards, only_shards=set(targets))
+
+    def listed():
+        return [(row["school"], row["metadata"]["status"]) for row in load_shards(shards)
+                if row["metadata"].get("collector_key") == moving["key"] and row["metadata"]["is_active"]]
+
+    run(old_shard)
+    assert listed() == []
+    configure(after)
+    run(old_shard)
+    run(new_shard)
+    page["word"] = "Applications are now open!"
+    run(old_shard)
+    run(new_shard)
+    assert listed() == [(new_school, "open")]
 
 
 @pytest.mark.parametrize("structure_complete", [True, False])
@@ -1482,10 +1730,10 @@ def test_a_campus_refresh_retires_dropped_programs_only_where_it_completed(monke
     for slug in slugs:
         campus_graph.merge_into_processed(campus_graph.fetch_and_normalize(school(slug, "kept", "dropped")))
 
-    def fetch(config, deep=False):
+    def fetch(config, deep=False, **kwargs):
         if config["school_slug"] == "duke":
             raise RuntimeError("synthetic duke fetch failure")
-        return campus_graph.fetch_and_normalize_with_evidence(config, deep=deep)
+        return campus_graph.fetch_and_normalize_with_evidence(config, deep=deep, **kwargs)
 
     monkeypatch.setattr(refresh_all, "SCHOOL_CONFIGS", [school(slug, "kept") for slug in slugs])
     monkeypatch.setattr(refresh_all, "fetch_campus_graph_with_evidence", fetch)

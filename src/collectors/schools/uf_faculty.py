@@ -76,9 +76,10 @@ across seven markup families, verified live 2026-07-17:
   (cop-main-a2-new.sites.medinfo.ufl.edu …); ``link_rewrite`` moves its
   ``/profile/<slug>/`` path to the college's public host (see ``_apollo``).
   Cross-page duplicates collapse via the engine's school-wide email dedupe.
-  PHHP's feed answered ``total: 0`` on 2026-10-09 — its directory page now
-  renders cards linking ``directory.ufhealth.org/<slug>`` — so PHHP keeps no
-  link rewrite until it is rewired.
+  PHHP is the exception: its Apollo feed has answered ``total: 0`` since
+  2026-10-09 (the college page now embeds its roster as a JS array, only 10
+  rows are server-rendered), so it reads the UF Health Directory's public
+  ``webservices/v1.1`` JSON instead — see ``_phhp``.
   College of Education is the same shape: its own /faculty/query endpoint
   returns ``posts: null`` past the last page (an uncaught TypeError in
   json_dir), so COE is wired to the subsite's standard wp/v2/posts route
@@ -307,6 +308,81 @@ def _apollo(short: str, college: str, majors: list[str], host: str,
          }}
         for n in range(1, pages + 1)
     ]
+
+
+# PHHP: the UF Health Directory's public API (documented at
+# directory.ufhealth.org/api-documentation, no key for the public tier) lists a
+# department's profiles at ``departments/deptid/<id>/profiles``. PHHP's people
+# sit under three department roots (counts verified 2026-10-11): the college
+# tree (33000000, 980 profiles incl. Clinical & Health Psychology, PT, OT, SLHS,
+# HSA, EGH), Biostatistics (36010000, 103) and Epidemiology (36020000, 154) —
+# the last two are PHHP-COM units outside the college tree. The only research
+# text a profile carries as short source-stated terms is ``research_interests``
+# (a list); ``research_summary`` is bio prose wrapped in <p>, so it is not read.
+# The list is nested at data.results.profiles and pages with ``page=N``.
+_PHHP_API = ("https://directory.ufhealth.org/webservices/v1.1/departments/"
+             "deptid/{}/profiles?includeIndirect=1&pagesize=500"
+             "&fields=slug,full_name,title,email,profile_url,research_interests")
+# The old Apollo feed paged alphabetically (by first name) into PHHP / PHHP2 /
+# PHHP3, and ids hash short+name. The college tree reuses those three shorts
+# split at the same first-name boundaries (the 132 stored rows: PHHP runs
+# "Adetola…" to "John Lednicky", PHHP2 "Jose F Colon-Burgos" to "Takis Benos",
+# PHHP3 "Tanja Taivassalo" on) so a person still listed under the same name keeps
+# their id (81 of the 132 on 2026-10-11). Biostatistics and Epidemiology are
+# separate URLs, hence separate shorts (a short is one URL), so their people get
+# new ids even where a stored row exists; that row is retired, and the tombstone
+# pass folds it into the new row that carries its address. Every page states the
+# tree's size at ``data.count`` (``total_key``), and every row has its own
+# ``slug`` (``total_distinct_key``; the profile link is built from it, and rows
+# with no title or email still carry one): a unit may retire only after reading
+# that many different slugs. A page that fails to load, or a reorder between
+# page requests that repeats one row and skips another, retires nobody. A stored
+# person the directory still lists is kept even when the gate drops their row
+# (Thomas A Pearson, listed under Epidemiology with no title).
+_PHHP_PAGE1 = r"^(?:[A-I]|J(?:[^a-z]|[a-n]|o[a-h]))"  # "J. Glenn" sorts before "Ja"
+_PHHP_PAGE3 = r"^(?:T[b-z]|Ta[n-z]|[U-Z])"
+# Many PHHP titles are HR shorthand: "AST PROF", "CLIN ASO PROF", "RES AST PROF",
+# "PROF, INTERIM CHAIR", "CHAIR & PROF". "PROF" counts only as a rank of its
+# own: it starts the title or follows a separator (& , ; | /) or a rank word
+# (AST, ASO, ASST, ASSOC, CLIN, RES, INSTR), and it ends the title or meets a
+# separator. "PROF DEV COORD", "ASST TO PROF", "IT PROF'L", "VST PROF" and
+# "PROF EMRT" stay out. The shorthand for courtesy is an upper-case "CO" word
+# ("CO CLIN ASO PROF"), dropped like "courtesy", and so are ADJ, VIS, EMER and
+# RETIRED, the shorthand for the ladder's other drops ("ADJ LECTURER", "PROF,
+# RETIRED").
+_PHHP_LADDER = {
+    "require": _LADDER["require"]
+    + r"|(?:^|[&,;|/]\s*|\b(?:ast|aso|asst|assoc|clin|res|instr)\s+)prof\b"
+    r"(?=\s*(?:$|[,&;|/]))",
+    "drop": _LADDER["drop"]
+    + r"|(?-i:\bCO\s)|\badj\b|\bvis\b|\bemer\b|\bretired\b",
+}
+# json_dir lets a record with NO title through; "require" on the title field
+# drops those (staff, students, grad assistants carry none or a non-faculty one).
+_PHHP_FACULTY = {"field": "title", "include": _PHHP_LADDER["require"]}
+
+
+def _phhp(short: str, deptid: str, *name_gates: dict) -> dict:
+    return {
+        "short": short, "name": "College of Public Health & Health Professions",
+        "majors": ["Health Science", "Public Health",
+                   "Communication Sciences and Disorders"],
+        "directory_url": "https://phhp.ufl.edu/about/phhp-faculty-and-staff/",
+        "json_dir": {
+            "url": _PHHP_API.format(deptid),
+            "paginate": {"param": "page", "max": 4},
+            "records_key": "data.results.profiles",
+            "total_key": "data.count",
+            "total_distinct_key": "slug",
+            "name_fields": ["full_name"],
+            "title_field": "title",
+            "email_field": "email",
+            "link_field": "profile_url",
+            "research_field": ["research_interests[]"],
+            "field_filters": [_PHHP_FACULTY, *name_gates],
+            "ladder_filter": _PHHP_LADDER,
+        },
+    }
 
 
 def _arts(short: str, name: str, majors: list[str], slug: str,
@@ -608,11 +684,12 @@ SCHOOL: dict = {
                  "nursing.ufl.edu", 3,
                  "https://nursing.ufl.edu/faculty/faculty-directory/",
                  profile_base="https://nursing.ufl.edu"),
-        *_apollo("PHHP", "College of Public Health & Health Professions",
-                 ["Health Science", "Public Health",
-                  "Communication Sciences and Disorders"],
-                 "phhp.ufl.edu", 4,
-                 "https://phhp.ufl.edu/about/phhp-faculty-and-staff/"),
+        _phhp("PHHP", "33000000", {"field": "full_name", "include": _PHHP_PAGE1}),
+        _phhp("PHHP2", "33000000", {"field": "full_name", "exclude": _PHHP_PAGE1},
+              {"field": "full_name", "exclude": _PHHP_PAGE3}),
+        _phhp("PHHP3", "33000000", {"field": "full_name", "include": _PHHP_PAGE3}),
+        _phhp("PHHP4", "36010000"),  # Biostatistics
+        _phhp("PHHP5", "36020000"),  # Epidemiology
         *_apollo("CVM", "College of Veterinary Medicine",
                  ["Animal Sciences", "Biology", "Microbiology and Cell Science"],
                  "vetmed.ufl.edu", 4,

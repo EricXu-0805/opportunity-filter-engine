@@ -1680,6 +1680,40 @@ describe('a real reload is a new document, and its edits continue the same draft
       .find((op) => op.fields[0].desired.present && op.fields[0].desired.value === 'Physics')!;
     expect(majorOp.supersedes ?? []).not.toContain(collegeOp.opId);
   });
+
+  it('a chain continued after the reload through an edit of another field is still the same draft', async () => {
+    // Before the reload: a college switch, a major pick and another college
+    // switch, none of them sent. After it, the first edit picks a major (it
+    // names all three) and the next switches college again — naming only
+    // that major pick, which carries no college. It still continues the
+    // college the old chain left, and is not a disagreement with it.
+    const server = casServer({ ...FULL, college: 'Grainger', major: 'CS', additional_majors: ['Math'] }, 4);
+    loadProfileMock.mockResolvedValue(cloud(server.row as unknown as ProfileData, server.rev));
+    const token = captureOwnerToken();
+    await hydrateProfile();
+    const cascade: (keyof ProfileData)[] = ['college', 'major', 'additional_majors'];
+    const start = server.row as unknown as ProfileData;
+    expect(recordProfileIntent({ ...start, college: 'LAS', major: '', additional_majors: [] }, cascade, token)).toBe(true);
+    expect(recordProfileIntent({ ...start, college: 'LAS', major: 'Physics', additional_majors: [] }, ['major'], token))
+      .toBe(true);
+    expect(recordProfileIntent({ ...start, college: 'Business', major: '', additional_majors: [] }, cascade, token))
+      .toBe(true);
+
+    reloadDocument();
+    await hydrateProfile();
+    expect(recordProfileIntent({ ...start, college: 'Business', major: 'Finance', additional_majors: [] }, ['major'], token))
+      .toBe(true);
+    const last = { ...start, college: 'Media', major: '', additional_majors: [] };
+    expect(recordProfileIntent(last, cascade, token)).toBe(true);
+
+    commitMock.mockReset();
+    commitMock.mockImplementation(async (intent) => server.handle(intent));
+    const result = await stageProfilePatch(last, dirtyKeys(token), token);
+    expect(result.status).toBe('saved');
+    expect(server.seen).toHaveLength(1);
+    expect(server.row).toMatchObject({ college: 'Media', major: '', additional_majors: [] });
+    expect(journalOps()).toEqual([]);
+  });
 });
 
 describe('a composite operation across two passes settles exactly once, at the end', () => {
@@ -1869,6 +1903,164 @@ describe('a settled field can also be one a later edit took over', () => {
     expect(survivor, 'the operation carrying the locked field must survive').toBeDefined();
     expect(survivor!.fields.find((f) => f.key === 'major')?.desired)
       .toEqual({ present: true, value: '' });
+  });
+});
+
+describe('a chain of edits that replaced each other is settled whole by its latest edit', () => {
+  // Each edit names only the edit it directly replaced, so the first edit of
+  // a chain is reached from the last one only THROUGH the middle one. When
+  // the middle edit carried fewer fields, the last edit still has to speak
+  // for the first edit's other fields — or those stay owed after the save,
+  // asking for old values at an old revision.
+  const CASCADE = ['college', 'major', 'additional_majors'] as const;
+  const START = { ...FULL, college: 'Grainger', major: 'CS', additional_majors: ['Math'] };
+
+  async function startOn(server: ReturnType<typeof casServer>) {
+    loadProfileMock.mockResolvedValue(cloud(server.row as unknown as ProfileData, server.rev));
+    commitMock.mockReset();
+    commitMock.mockImplementation(async (intent) => server.handle(intent));
+    const token = captureOwnerToken();
+    await hydrateProfile();
+    return token;
+  }
+
+  it('a college switch, a major pick and another college switch leave nothing owed after the save', async () => {
+    const server = casServer(START, 1);
+    const token = await startOn(server);
+    expect(recordProfileIntent({ ...START, college: 'LAS', major: '', additional_majors: [] }, [...CASCADE], token))
+      .toBe(true);
+    expect(recordProfileIntent({ ...START, college: 'LAS', major: 'Physics', additional_majors: [] }, ['major'], token))
+      .toBe(true);
+    const last = { ...START, college: 'Business', major: '', additional_majors: [] };
+    expect(recordProfileIntent(last, [...CASCADE], token)).toBe(true);
+    expect(journalOps()).toHaveLength(3);
+
+    expect((await stageProfilePatch(last, dirtyKeys(token), token)).status).toBe('saved');
+    expect(server.row).toMatchObject({ college: 'Business', major: '', additional_majors: [] });
+    expect(journalOps(), 'nothing may still ask for LAS at revision 1').toEqual([]);
+    expect(dirtyKeys(token)).toEqual([]);
+
+    // A phone moves the row on. This tab reloads: it must show the phone's
+    // values and send nothing.
+    server.handle({ expectedRevision: server.rev, patch: { college: 'Media', major: 'Film' } });
+    startDocumentForTests('reload');
+    resetProfileDirtyLedger();
+    commitMock.mockClear();
+    loadProfileMock.mockResolvedValue(cloud(server.row as unknown as ProfileData, server.rev));
+    const reread = await hydrateProfile();
+    expect(reread.profile).toMatchObject({ college: 'Media', major: 'Film' });
+    expect(reread.conflictKeys ?? []).toEqual([]);
+    expect((await flushPendingProfileWrite(token)).status).toBe('blocked');
+    expect(commitMock).not.toHaveBeenCalled();
+  });
+
+  it('a full-form edit, a one-field edit and another full-form edit leave nothing owed after the save', async () => {
+    const server = casServer(START, 1);
+    const token = await startOn(server);
+    const form = ['research_interests', 'grade', 'is_international'] as const;
+    expect(recordProfileIntent(
+      { ...START, research_interests: 'vision', grade: 'Senior', is_international: true }, [...form], token,
+    )).toBe(true);
+    expect(recordProfileIntent(
+      { ...START, research_interests: 'vision and language', grade: 'Senior', is_international: true },
+      ['research_interests'], token,
+    )).toBe(true);
+    const last = { ...START, research_interests: 'graphics', grade: 'Masters', is_international: false };
+    expect(recordProfileIntent(last, [...form], token)).toBe(true);
+    expect(journalOps()).toHaveLength(3);
+
+    expect((await stageProfilePatch(last, dirtyKeys(token), token)).status).toBe('saved');
+    expect(server.row).toMatchObject({ research_interests: 'graphics', grade: 'Masters', is_international: false });
+    expect(journalOps()).toEqual([]);
+    expect(dirtyKeys(token)).toEqual([]);
+  });
+
+  it('the entries made while the save was in flight stay owed, and are sent afterwards', async () => {
+    const server = casServer(START, 1);
+    const token = await startOn(server);
+    // A middle edit carrying a field the last edit does not: the last edit
+    // cannot speak for it.
+    expect(recordProfileIntent(
+      { ...START, research_interests: 'vision', grade: 'Senior' }, ['research_interests', 'grade'], token,
+    )).toBe(true);
+    expect(recordProfileIntent(
+      { ...START, research_interests: 'vision', grade: 'Senior', exploring: true }, ['grade', 'exploring'], token,
+    )).toBe(true);
+    const last = { ...START, research_interests: 'graphics', grade: 'Masters', exploring: true };
+    expect(recordProfileIntent(last, ['research_interests', 'grade'], token)).toBe(true);
+
+    // The request goes out; while it is in flight the user switches college
+    // (continuing nothing in the request) and edits the interests again
+    // (continuing the chain the request carries).
+    let release: (() => void) | undefined;
+    commitMock.mockImplementationOnce((intent) => new Promise<ProfilePatchOutcome>((resolve) => {
+      release = () => resolve(server.handle(intent));
+    }));
+    const inFlight = stageProfilePatch(last, dirtyKeys(token), token);
+    for (let i = 0; i < 50 && !release; i += 1) await Promise.resolve();
+    expect(release, 'the request must actually be in flight').toBeDefined();
+    const carried = new Set(journalOps().map((op) => op.opId));
+    const later = { ...last, college: 'LAS', major: '', additional_majors: [], research_interests: 'graphics, HCI' };
+    expect(recordProfileIntent(later, [...CASCADE], token)).toBe(true);
+    expect(recordProfileIntent(later, ['research_interests'], token)).toBe(true);
+    const unsent = journalOps().map((op) => op.opId).filter((id) => !carried.has(id)).sort();
+    expect(unsent).toHaveLength(2);
+
+    release!();
+    expect((await inFlight).status).toBe('saved');
+    expect(server.row).toMatchObject({ research_interests: 'graphics', grade: 'Masters', exploring: true });
+    // The chain the request carried is gone; the two edits it never carried
+    // are not.
+    expect(journalOps().map((op) => op.opId).sort()).toEqual(unsent);
+
+    expect((await flushPendingProfileWrite(token)).status).toBe('saved');
+    expect(server.row).toMatchObject({
+      college: 'LAS', major: '', additional_majors: [], research_interests: 'graphics, HCI', grade: 'Masters',
+    });
+    expect(journalOps()).toEqual([]);
+  });
+
+  // A college switch (A) conflicts with a phone's Media/Film; instead of
+  // answering, the student picks a major (Z, replaces A), then switches
+  // college again (X, names only Z because Z already named A). A is reached
+  // from X only through Z, and Z does not carry college: A's college base
+  // (Grainger) must not still count as part of the chain.
+  async function collegeSwitchAfterAnotherField(phoneReverts: boolean) {
+    const server = casServer(START, 1);
+    const token = await startOn(server);
+    const a = { ...START, college: 'LAS', major: '', additional_majors: [] };
+    expect(recordProfileIntent(a, [...CASCADE], token)).toBe(true);
+    server.handle({ expectedRevision: 1, patch: { college: 'Media', major: 'Film' } });
+    expect((await stageProfilePatch(a, dirtyKeys(token), token)).status).toBe('conflict');
+    // The student does not answer; they pick a major instead.
+    const shown = { ...START, college: 'Media', major: 'Film', additional_majors: [] };
+    const z = { ...shown, major: 'Chem' };
+    expect(recordProfileIntent(z, ['major'], token)).toBe(true);
+    await stageProfilePatch(z, ['major'], token);
+    const x = { ...z, college: 'Eng', major: '', additional_majors: [] };
+    expect(recordProfileIntent(x, [...CASCADE], token)).toBe(true);
+    if (phoneReverts) server.handle({ expectedRevision: server.rev, patch: { college: 'Grainger' } });
+    const sentBefore = server.seen.length;
+    const result = await stageProfilePatch(x, dirtyKeys(token), token);
+    return { server, token, result, sent: server.seen.slice(sentBefore) };
+  }
+
+  it('a college switch after an edit of another field that replaced a conflicted switch is saved, not asked again', async () => {
+    const { server, token, result } = await collegeSwitchAfterAnotherField(false);
+    expect(result.status).toBe('saved');
+    expect(server.row).toMatchObject({ college: 'Eng', major: '', additional_majors: [] });
+    expect(journalOps(), 'nothing may still ask for the replaced switch').toEqual([]);
+    expect(dirtyKeys(token)).toEqual([]);
+  });
+
+  it('the same college switch is a conflict that keeps the phone\'s Grainger when the phone moved college back first', async () => {
+    const { server, token, result, sent } = await collegeSwitchAfterAnotherField(true);
+    expect(result.status).toBe('conflict');
+    expect(result.status === 'conflict' ? result.conflictKeys : []).toEqual(['college']);
+    expect(server.row.college, 'the phone\'s newer value is never silently overwritten').toBe('Grainger');
+    expect(sent.filter((s) => 'college' in s.patch && s.expected === server.rev)).toEqual([]);
+    expect(journalOps().length).toBeGreaterThan(0);
+    expect(dirtyKeys(token)).toContain('college');
   });
 });
 

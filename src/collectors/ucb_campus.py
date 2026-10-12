@@ -49,7 +49,14 @@ from src.normalizers.ucb_dedup import dedupe_against_existing
 from . import ucb_sources as reg
 from .application_status import detect_application_status
 from .atomic_json import atomic_write_json
-from .campus_graph import NO_LONGER_LISTED, _retired_as_unlisted
+from .campus_graph import (
+    NO_LONGER_LISTED,
+    _failed_load,
+    _listing_applies,
+    _page_capture,
+    _program_record,
+    _retired_as_unlisted,
+)
 from .ucb_common import _readable_excerpt
 
 logger = logging.getLogger(__name__)
@@ -296,6 +303,10 @@ def _normalize_discovered(source: dict, title: str, url: str, snippet: str) -> d
 def _fetch(url: str):
     """Fetch a page and return BeautifulSoup, or None on any failure.
 
+    A page that did not load its own content is a failure by campus_graph's
+    rule: a redirect to another page, or a sign-in, block or empty page.
+    Read as loaded, its silence would end the row's stored status.
+
     Lazy-imports requests/bs4 so the seed path never needs them."""
     try:
         import requests
@@ -306,10 +317,20 @@ def _fetch(url: str):
     try:
         resp = requests.get(url, timeout=_CRAWL_TIMEOUT, headers=HEADERS)
         resp.raise_for_status()
-        return BeautifulSoup(resp.content, "html.parser")
+        soup = BeautifulSoup(resp.content, "html.parser")
+        soup._ofe_fetch_metadata = {
+            "requested_url": url,
+            "final_url": getattr(resp, "url", None),
+            "checked_at": datetime.now(UTC).isoformat(),
+        }
+        failed = _failed_load(soup, _page_capture(soup, url))
     except Exception as e:  # noqa: BLE001 — never crash the run on one page
         logger.warning("fetch failed for %s: %s", url, e)
         return None
+    if failed:
+        logger.warning("fetch failed for %s: redirected away or not the page's content", url)
+        return None
+    return soup
 
 
 def _detect_status(page_text: str) -> str:
@@ -517,24 +538,46 @@ def _crawl_source(source: dict) -> tuple[dict, list[dict], dict]:
 # Public API
 # ---------------------------------------------------------------------------
 
+def national_source() -> str | None:
+    """The source UC Berkeley's national.json records carry, or None.
+
+    campus_graph.national_source's rule for the registry: only the national
+    shard's refresh writes national.json, so that refresh collects these.
+    """
+    for source in reg.UCB_SOURCES:
+        value, school, _audience = EMIT_TO_SCHOOL_AUDIENCE[source["emit"]]
+        if school is None:
+            return value
+    return None
+
+
 def fetch_and_normalize_with_evidence(
     deep: bool = False,
+    national: bool | None = None,
 ) -> tuple[list[dict], dict]:
     """Return normalized campus opportunity records.
 
     ``deep=False`` (default): seed records only, no network.
     ``deep=True``: crawl refines seed status/description and adds discovered
     records. Evidence distinguishes mandatory configured-seed failures from
-    optional recursive-page degradation."""
+    optional recursive-page degradation.
+    ``national``: True collects only the sources whose emit bucket stamps no
+    school (their records publish in national.json), False only the rest,
+    None (default) every source."""
     errors = reg.validate_registry()
     if errors:
         # Fail loud: a malformed registry should not silently drop sources.
         raise ValueError("ucb_sources registry invalid: " + "; ".join(errors))
 
+    sources = [
+        source for source in reg.UCB_SOURCES
+        if national is None
+        or (EMIT_TO_SCHOOL_AUDIENCE[source["emit"]][1] is None) is national
+    ]
     records: list[dict] = []
     evidence = {
         "deep": deep,
-        "crawl_sources_expected": len(reg.UCB_SOURCES) if deep else 0,
+        "crawl_sources_expected": len(sources) if deep else 0,
         "crawl_sources_loaded": 0,
         "live_pages_attempted": 0,
         "live_pages_loaded": 0,
@@ -547,7 +590,7 @@ def fetch_and_normalize_with_evidence(
         "crawl_errors": [],
         "degraded_page_errors": [],
     }
-    for source in reg.UCB_SOURCES:
+    for source in sources:
         status_by_url: dict[str, dict] = {}
         discovered: list[dict] = []
         if deep:
@@ -607,10 +650,13 @@ def fetch_and_normalize_with_evidence(
             evidence["seed_records"] += 1
         records.extend(discovered)
         evidence["discovered_records"] += len(discovered)
-    # The key of every curated program, whichever bucket it emits to and
+    # The key of every curated program in the sources this call collected,
     # whether or not its record survives the dedupe below: merge retires a
-    # stored program row only once its key is gone from the whole registry.
-    evidence["listed_program_keys"] = sorted(program["key"] for _source, program in reg.iter_programs())
+    # stored program row in the file those sources publish to once its key is
+    # gone from them, and an empty registry lists None (campus_graph's rule).
+    evidence["listed_program_keys"] = sorted(
+        program["key"] for source in sources for program in source.get("programs", [])
+    ) if any(source.get("programs") for source in reg.UCB_SOURCES) else None
 
     # Collapse within-batch duplicates (a discovered URL that matches a seed, a
     # lab listed under two sources, ...). Existing list is empty here so this is
@@ -649,7 +695,8 @@ def merge_into_processed(
     new_opps: list[dict],
     *,
     complete_recursive_sources: set[str] | frozenset[str] = frozenset(),
-    listed_program_keys: set[str] | frozenset[str] = frozenset(),
+    listed_program_keys: set[str] | frozenset[str] | None = None,
+    national: bool | None = None,
 ) -> tuple[int, int]:
     """Upsert campus records into processed/opportunities.json.
 
@@ -659,15 +706,18 @@ def merge_into_processed(
     completely crawled recursive sources; the default empty set holds them.
 
     ``listed_program_keys`` holds the key of every curated program in the
-    registry. A stored active ucb program row whose key is missing from it was
-    dropped from the registry, and is retired as ``no_longer_listed``, never
-    deleted: campus_graph's rule for its schools. Listing goes by key, not
-    record id, because the id names the emit bucket and a program moving to
-    or from the open bucket would otherwise retire on one shard's schedule and
-    publish on another's. "Open" rows (school None) live in national.json,
-    which a ucb shard refresh never writes, so they are left alone. A retired
-    row whose program is listed again comes back. The empty default retires
-    nothing."""
+    sources the fetch collected, and ``national`` repeats the fetch's
+    argument. A stored registry row, active or closed by its page, in a file
+    this run publishes (ucb.json for False, national.json for True, both for
+    None) whose key is not listed for that file is retired as
+    ``no_longer_listed``, never deleted, and a program moved between the two
+    files is held back until the old file's run retires its old active row.
+    A record sharing a closed old row's URL or title is dropped as its
+    near-duplicate until that row retires, and after that until a run loads
+    the record's page: campus_graph's rule for its schools. An empty listing
+    retires every such row; the None default retires nothing. A retired row
+    whose program is listed again comes back as it was, closed if its page had
+    closed it."""
     if not PROCESSED_FILE.exists():
         return (0, 0)
     if any(
@@ -691,16 +741,23 @@ def merge_into_processed(
             in complete_recursive_sources
         )
     }
+    # campus_graph.merge_into_processed's file rule, for the registry's rows.
+    published = {None, "ucb"} if national is None else {None if national else "ucb"}
+    arriving = {(opp["metadata"]["collector_key"], opp.get("school")) for opp in new_opps if _program_record(opp)}
     retired_programs = 0
-    if listed_program_keys:
+    held: set[tuple[str, str | None]] = set()
+    if listed_program_keys is not None:
         deactivated_on = datetime.now(UTC).date().isoformat()
         for opp in existing:
-            if (
-                opp.get("school") != "ucb"
-                or not _registry_program_row(opp)
-                or opp["metadata"]["collector_key"] in listed_program_keys
-                or opp["metadata"].get("is_active") is False
-            ):
+            if not _registry_program_row(opp) or not _listing_applies(opp):
+                continue
+            key = opp["metadata"]["collector_key"]
+            moved = (key, "ucb" if opp.get("school") is None else None)
+            if opp.get("school") not in published:
+                if moved in arriving and opp["metadata"].get("is_active") is not False:
+                    held.add(moved)
+                continue
+            if key in listed_program_keys and moved not in arriving:
                 continue
             opp["metadata"]["is_active"] = False
             opp["metadata"]["deactivated_at"] = deactivated_on
@@ -711,12 +768,17 @@ def merge_into_processed(
             "ucb_campus: retired %d program record(s) no longer in the registry",
             retired_programs,
         )
+    if held:
+        new_opps = [opp for opp in new_opps if not (
+            _program_record(opp) and (opp["metadata"]["collector_key"], opp.get("school")) in held)]
+        logger.info("ucb_campus: held %d moved program record(s) until their old row retires", len(held))
     # The registry's own rows retired as no longer listed keep no claim on
     # their URL or title against incoming program records: held against them,
     # a retired row would suppress whatever replaced it (a renamed key), and
     # the program would vanish instead of moving. Every other row keeps its
     # claim, and so do these against discoveries, which find a page rather
-    # than a replacement.
+    # than a replacement, and a closed one against a record whose page this
+    # run did not load.
     incoming_ids = {opp.get("id") for opp in new_opps}
     released = [
         row for row in existing
@@ -733,9 +795,16 @@ def merge_into_processed(
         found = [opp for opp in new_opps
                  if opp["metadata"].get("discovered") and opp.get("id") not in stored_ids]
         survivors, lost = dedupe_against_existing(found, released)
-        lost_ids = {opp.get("id") for opp in found} - {opp.get("id") for opp in survivors}
+        # A row retired while its page said closed gives up its claim only to
+        # a record whose page this run loaded: campus_graph's rule.
+        unread = [opp for opp in new_opps if _program_record(opp) and opp.get("id") not in stored_ids
+                  and opp["metadata"].get("seed_page_verified") is not True]
+        closed = [row for row in released if row["metadata"].get("status") == "closed"]
+        landing, waiting = dedupe_against_existing(unread, closed)
+        lost_ids = ({opp.get("id") for opp in found} - {opp.get("id") for opp in survivors}) | (
+            {opp.get("id") for opp in unread} - {opp.get("id") for opp in landing})
         new_opps = [opp for opp in new_opps if opp.get("id") not in lost_ids]
-        dropped += lost
+        dropped += lost + waiting
     if dropped:
         logger.info("ucb_campus: suppressed %d near-duplicate(s) vs corpus", dropped)
 
@@ -749,18 +818,26 @@ def merge_into_processed(
             existing_metadata = existing_opp.get("metadata", {})
             if _retired_as_unlisted(existing_opp):
                 # Listed again, which disproves the absence that retired it.
-                # Carry forward the state it was retired from, which was
-                # active; the retirement stamps leave with the old metadata.
-                existing_metadata = {**existing_metadata, "is_active": True}
+                # Carry forward the state it was retired from: active, unless
+                # its page had closed it. The retirement stamps leave with the
+                # old metadata.
+                existing_metadata = {**existing_metadata, "is_active": existing_metadata.get("status") != "closed"}
             unverified_seed = (
                 not opp["metadata"].get("discovered")
                 and opp["metadata"].get("seed_page_verified") is not True
             )
             ambiguous_status = opp["metadata"].get("status") == "unknown"
             if unverified_seed or ambiguous_status:
-                # A loaded page with no explicit status signal is not evidence
-                # that a previously closed opportunity reopened.
-                for key in ("status", "is_active"):
+                # A quick or failed fetch read nothing, so the row keeps what
+                # the page last said. A page that loaded and says neither open
+                # nor closed ends a stored "open" or "closed": campus_graph's
+                # rule.
+                carried = ("status", "is_active")
+                stored_status = existing_metadata.get("status")
+                if not unverified_seed and stored_status in {"open", "closed"}:
+                    retired = stored_status == "open" and existing_metadata.get("is_active") is False
+                    carried = ("is_active",) if retired else ()
+                for key in carried:
                     if key in existing_metadata:
                         opp["metadata"][key] = existing_metadata[key]
                 if unverified_seed:
@@ -768,7 +845,7 @@ def merge_into_processed(
                         opp["metadata"]["last_verified"] = existing_metadata[
                             "last_verified"
                         ]
-                if (
+                if "status" in carried and (
                     existing_metadata.get("status") in {"open", "closed"}
                     or existing_metadata.get("is_active") is False
                 ):

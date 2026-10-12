@@ -11,9 +11,9 @@ import os
 import re
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -22,7 +22,9 @@ from backend.data_loader import (
     corpus_version,
     load_opportunities_by_id,
     load_opportunities_generation,
+    on_corpus_published,
 )
+from backend.lib import release_scope
 from backend.lib.blocking import (
     MULTI_LLM_TIMEOUT_SECONDS,
     SINGLE_LLM_TIMEOUT_SECONDS,
@@ -36,6 +38,9 @@ from backend.lib.prompt_budget import PromptInputTooLarge, check_prompt_size
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
 from backend.lib.public_opportunity_detail import project_public_detail
 from backend.lib.public_projection import (
+    _LISTING_ONLY_FIELDS,
+    contains_embedded_email,
+    neutralize_lifecycle_title,
     project_public_opportunity_payload,
     redact_embedded_emails,
     sanitize_public_urls,
@@ -60,6 +65,7 @@ from backend.schemas import (
     MatchViewState,
     ProfileRequest,
 )
+from src import evidence as evidence_module
 from src.evidence import (
     faculty_safe_eligibility,
     faculty_safe_public_record,
@@ -181,6 +187,175 @@ def _match_card(opp: dict) -> dict:
     # signal of its own — the truth has to travel as an explicit field or the
     # UI has nothing to gate its CTAs on.
     return project_public_opportunity_payload(out, opp)
+
+
+@dataclass(frozen=True, slots=True)
+class _MatchViewRow:
+    """Everything /matches/view reads from one card, and nothing else.
+
+    A snapshot used to hold a projected card for every visible row so the view
+    pass could filter, count, sort and search over them: 84,000 to 130,000
+    cards per cross-school ranking, 18 to 31 s of the first page. It now holds
+    one of these per row and projects cards only for the rows a response
+    serves. Each value is the card's own, after the public contact and truth
+    boundary, so a search reads exactly the redacted text the card shows.
+    ``record`` is the canonical record the card is projected from.
+    """
+
+    record: dict | None
+    kind: str
+    deadline: date | None
+    source: object
+    scoped: bool
+    school: object
+    audience: object
+    paid: object
+    on_campus: object
+    is_rolling: object
+    international_friendly: object
+    posted_date: object
+    title: str
+    organization: str
+    department: str
+    keywords: tuple[str, ...]
+    description: str
+
+
+def _view_row_from_card(card: dict, record: dict | None = None) -> _MatchViewRow:
+    """Read one card the way _apply_match_view_rows needs it.
+
+    The single definition of what the view pass reads: _match_view_row builds
+    the same values from a canonical record without projecting the whole card.
+    """
+    kind = record_kind(card)
+    description = card.get("description_clean")
+    return _MatchViewRow(
+        record=record,
+        kind=kind,
+        # The scorer's deadline evidence bar, for a confirmed listing only.
+        deadline=_stated_deadline_date(card) if kind == "listing" else None,
+        source=card.get("source"),
+        scoped="school" in card or "audience" in card,
+        school=card.get("school"),
+        audience=card.get("audience"),
+        paid=card.get("paid"),
+        on_campus=card.get("on_campus"),
+        is_rolling=card.get("is_rolling"),
+        international_friendly=(
+            faculty_safe_eligibility(card).get("international_friendly")
+            if kind == "listing"
+            else None
+        ),
+        posted_date=card.get("posted_date"),
+        title=str(card.get("title") or ""),
+        organization=str(card.get("organization") or ""),
+        department=str(card.get("department") or ""),
+        keywords=tuple(str(keyword) for keyword in (card.get("keywords") or [])),
+        description=str(
+            description if description is not None else card.get("description_raw") or ""
+        ),
+    )
+
+
+_EMPTY_VIEW_ROW = _view_row_from_card({})
+
+# The card columns _view_row_from_card reads, besides the title, the
+# eligibility subset and the rebound source_type handled below.
+_VIEW_CARD_FIELDS = (
+    "organization", "department", "paid", "deadline", "is_rolling", "source",
+    "on_campus", "posted_date", "school", "audience", "description_clean",
+    "deadline_is_estimate", "keywords",
+)
+
+
+def _public_view_value(value, redacts: Callable[[str], bool]):
+    """``redact_embedded_emails(sanitize_public_urls(value))`` for one card value.
+
+    None of the view's columns is a URL field, so the URL boundary changes
+    only what it recurses into. ``redacts`` answers contains_embedded_email,
+    memoized while a corpus is indexed: keywords, departments and
+    organizations repeat across thousands of records.
+    """
+    if isinstance(value, str):
+        return redact_embedded_emails(value) if redacts(value) else value
+    if isinstance(value, list):
+        return [_public_view_value(item, redacts) for item in value]
+    if isinstance(value, tuple):
+        return tuple(_public_view_value(item, redacts) for item in value)
+    return redact_embedded_emails(sanitize_public_urls(value))
+
+
+def _match_view_row(
+    opportunity: dict,
+    redacts: Callable[[str], bool] = contains_embedded_email,
+) -> _MatchViewRow:
+    """The view row of ``_match_card(opportunity)``, without projecting the card.
+
+    _match_card's steps, restricted to the columns the view reads:
+    project_public_opportunity_payload treats each of these columns on its
+    own, so the rest of the card (links, application terms, papers, research
+    and lab context, attribution marks) cannot change them. Order matters and
+    is the projection's: identity is rebound before the contact boundary, the
+    unverified-kind strip follows it, and the lifecycle suffix is removed from
+    the already redacted title. tests/test_match_view_rows.py holds the two
+    paths equal, and scripts/match_view_differential.py does so for every
+    record of a corpus.
+
+    The one input from outside the record is the title's lifecycle suffix,
+    which stays only on a listing target_truth calls actionable. A visible row
+    is actionable on the day it is ranked, and a record the calendar closes
+    never reopens, so a row built on an earlier day of the same corpus
+    generation carries the title its card would carry on the ranking day.
+    """
+    safe = faculty_safe_public_record(opportunity)
+    card = {
+        key: _public_view_value(safe[key], redacts)
+        for key in _VIEW_CARD_FIELDS
+        if key in safe
+    }
+    card["title"] = _public_view_value(displayed_title(safe), redacts)
+    eligibility = safe.get("eligibility")
+    if isinstance(eligibility, dict):
+        card["eligibility"] = {
+            key: _public_view_value(eligibility[key], redacts)
+            for key in ("international_friendly",)
+            if key in eligibility
+        }
+    if "source_type" in safe:
+        card["source_type"] = _public_view_value(safe["source_type"], redacts)
+    if record_kind(safe) == "unknown":
+        for key in _LISTING_ONLY_FIELDS:
+            card.pop(key, None)
+        if "eligibility" in card:
+            card["eligibility"] = {}
+    card["title"] = neutralize_lifecycle_title(card["title"], safe)
+    # A faculty description is rebuilt by faculty_safe_public_record and
+    # equals the corpus's own: keep one string, not one per row.
+    canonical_description = opportunity.get("description_clean")
+    if (
+        isinstance(canonical_description, str)
+        and card.get("description_clean") == canonical_description
+    ):
+        card["description_clean"] = canonical_description
+    return _view_row_from_card(card, record=opportunity)
+
+
+_MEMO_MAX_CHARS = 256
+
+
+def _memoized(check: Callable[[str], bool]) -> Callable[[str], bool]:
+    """``check`` with its answers kept for short strings, which repeat."""
+    answers: dict[str, bool] = {}
+
+    def memoized(text: str) -> bool:
+        if len(text) > _MEMO_MAX_CHARS:
+            return check(text)
+        answer = answers.get(text)
+        if answer is None:
+            answer = answers[text] = check(text)
+        return answer
+
+    return memoized
 
 
 # First response is deliberately bounded. Complete counts still describe the
@@ -593,7 +768,9 @@ class _MatchSnapshot:
     result_set_id: str
     visible: list[MatchResult]          # non-low_fit slice, same order (the pageable universe)
     by_id: dict[str, MatchResult]       # visible opportunity_id → entry (ids are unique)
-    opportunities_by_id: dict[str, dict]  # compact visible cards, same generation
+    # Visible opportunity_id → what the view reads of its card, holding the
+    # canonical record of the same generation (shared, never copied).
+    view_rows: dict[str, _MatchViewRow]
     buckets: dict[str, int]
     field_relevant_count: int
     # Whether the paid refine actually produced judgements for THIS snapshot.
@@ -605,10 +782,32 @@ class _MatchSnapshot:
     # worker rather than from the request (see _ranked_with). Served only
     # while the worker still reads the same.
     ranked_with: str = ""
+    # Cards projected for rows this snapshot has served (_snapshot_cards),
+    # so a card stays the same for the snapshot's life.
+    cards: dict[str, dict] = field(default_factory=dict)
 
 
 _match_snapshots: dict[str, _MatchSnapshot] = {}
 _active_corpus_identity: int | None = None
+# id(record) → view row for the active corpus generation. Records are
+# immutable between reloads (as the ranker's statics assume); a row is reused
+# only for the very record it was built from, and the table is emptied when a
+# reload is observed. Corpus data only: nothing here depends on a profile.
+_match_view_rows: dict[int, _MatchViewRow] = {}
+
+
+@dataclass(frozen=True)
+class _MatchUniverse:
+    """The records a ranking may score, for one corpus, UTC day and release."""
+
+    corpus: list[dict]
+    utc_day: date
+    fellowships: bool
+    opportunities: list[dict]
+
+
+_match_universe: _MatchUniverse | None = None
+_match_universe_lock = threading.Lock()
 _match_executor = ThreadPoolExecutor(
     max_workers=_MATCH_MAX_WORKERS,
     thread_name_prefix="ofe-match",
@@ -898,6 +1097,12 @@ def _ranked_with(responsiveness: dict | None) -> str:
     Neither joins the snapshot key or the result-set id: when they change the
     list, the rows the id hashes change with it, and when they do not, a
     cursor minted before the turn keeps paging.
+
+    The UTC day joins as well. A snapshot's cards are projected when a page
+    is served, and their truth envelope reads that day (src.evidence's
+    target_truth), so no card is projected on a later day than the list it is
+    cut from. On a host that runs on UTC, as Render does, it turns with the
+    local day.
     """
     signals = (
         "off"
@@ -906,7 +1111,7 @@ def _ranked_with(responsiveness: dict | None) -> str:
             json.dumps(responsiveness, sort_keys=True, separators=(",", ":")).encode()
         ).hexdigest()
     )
-    return f"{date.today().isoformat()}|{signals}"
+    return f"{date.today().isoformat()}|{evidence_module._today().isoformat()}|{signals}"
 
 
 def _store_snapshot(key: str, snap: _MatchSnapshot) -> _MatchSnapshot:
@@ -932,19 +1137,125 @@ def _store_snapshot(key: str, snap: _MatchSnapshot) -> _MatchSnapshot:
 
 
 def _activate_corpus_generation(corpus: list[dict]) -> int:
-    """Activate one loader list identity and release older snapshot cards.
+    """Activate one loader list identity and release older snapshots.
 
-    Snapshots keep only compact card projections, never the full corpus list.
-    Clearing the previous generation as soon as a reload is observed prevents
-    the ten-minute snapshot TTL from amplifying hot-refresh memory pressure.
+    Snapshots reference records of their own generation, never the full
+    corpus list. Clearing the previous generation as soon as a reload is
+    observed prevents the ten-minute snapshot TTL from keeping it alive.
     """
-    global _active_corpus_identity
+    global _active_corpus_identity, _match_universe
     corpus_identity = id(corpus)
     with _match_inflight_lock:
         if corpus_identity != _active_corpus_identity:
             _active_corpus_identity = corpus_identity
             _match_snapshots.clear()
+            _match_view_rows.clear()
+            # Drop the old generation's survivors without waiting for a
+            # filter that may be running; they are keyed by corpus anyway.
+            _match_universe = None
     return corpus_identity
+
+
+# A reload is published by whichever request loads first, often not a match
+# request. Activating the new generation then frees the old one's snapshots,
+# view rows and filtered universe, which hold its records, at once instead of
+# at the next match request.
+on_corpus_published(_activate_corpus_generation)
+
+
+def _release_universe(corpus: list[dict]) -> list[dict]:
+    """The release-visible, actionable records of ``corpus``: what a ranking scores.
+
+    Every snapshot miss used to run both filters over the whole corpus on the
+    event loop, 0.28-0.77 s during which no other request on the worker could
+    answer. They read nothing but the records, whether fellowships are
+    released, and in target_truth the UTC day a stated deadline is read
+    against. So the survivors are kept for one corpus generation, UTC day and
+    release, and callers compute them off the event loop; concurrent callers
+    wait for the first instead of filtering twice.
+    """
+    global _match_universe
+    with _match_universe_lock:
+        utc_day = evidence_module._today()
+        fellowships = release_scope.feature_enabled("fellowships")
+        cached = _match_universe
+        if (
+            cached is not None
+            and cached.corpus is corpus
+            and cached.utc_day == utc_day
+            and cached.fellowships == fellowships
+        ):
+            return cached.opportunities
+        opportunities = actionable_opportunities(release_visible_opportunities(corpus))
+        # Filtered across midnight UTC, some records read one day and some
+        # the next: serve it, as before, but do not keep it. Nor keep a
+        # generation a reload retired while it was filtered, which would pin
+        # the old corpus until the next miss.
+        with _match_inflight_lock:
+            if evidence_module._today() == utc_day and id(corpus) == _active_corpus_identity:
+                _match_universe = _MatchUniverse(corpus, utc_day, fellowships, opportunities)
+        return opportunities
+
+
+def _snapshot_view_rows(
+    opportunities: list[dict],
+    visible_ids: set[str],
+    corpus_identity: int,
+) -> dict[str, _MatchViewRow]:
+    """View rows for a ranking's visible ids, built once per record and generation.
+
+    Keyed like the cards it replaces: the last record carrying an id wins.
+    """
+    with _match_inflight_lock:
+        shared = _match_view_rows if corpus_identity == _active_corpus_identity else {}
+    redacts = _memoized(contains_embedded_email)
+    rows: dict[str, _MatchViewRow] = {}
+    built: dict[int, _MatchViewRow] = {}
+    for opportunity in opportunities:
+        opportunity_id = opportunity.get("id")
+        if opportunity_id not in visible_ids:
+            continue
+        row = shared.get(id(opportunity))
+        if row is None or row.record is not opportunity:
+            row = built[id(opportunity)] = _match_view_row(opportunity, redacts)
+        rows[opportunity_id] = row
+    # A reload may have emptied the table for the next generation while these
+    # were built. Share them only if this generation is still the active one,
+    # or they would pin the old records there until the next reload.
+    with _match_inflight_lock:
+        if corpus_identity == _active_corpus_identity:
+            _match_view_rows.update(built)
+    return rows
+
+
+def prepare_match_views(corpus: list[dict]) -> None:
+    """Build the active generation's view rows ahead of the first ranking.
+
+    Called by the API's startup warmup, so the first cross-school page does
+    not pay for 130,000 rows. Rankings build any row still missing.
+    """
+    corpus_identity = _activate_corpus_generation(corpus)
+    opportunities = _release_universe(corpus)
+    _snapshot_view_rows(
+        opportunities,
+        {opportunity.get("id") for opportunity in opportunities},
+        corpus_identity,
+    )
+
+
+def _snapshot_cards(snap: _MatchSnapshot, results: list[MatchResult]) -> dict[str, dict]:
+    """Project the cards for the rows one response serves."""
+    cards: dict[str, dict] = {}
+    for result in results:
+        opportunity_id = result.opportunity_id
+        card = snap.cards.get(opportunity_id)
+        if card is None:
+            row = snap.view_rows.get(opportunity_id)
+            if row is None or row.record is None:
+                continue
+            card = snap.cards[opportunity_id] = _match_card(row.record)
+        cards[opportunity_id] = card
+    return cards
 
 
 def _compute_rule_snapshot(
@@ -986,11 +1297,7 @@ def _compute_rule_snapshot(
         ),
         visible=universe.visible,
         by_id={result.opportunity_id: result for result in universe.visible},
-        opportunities_by_id={
-            opportunity["id"]: _match_card(opportunity)
-            for opportunity in opportunities
-            if opportunity.get("id") in visible_ids
-        },
+        view_rows=_snapshot_view_rows(opportunities, visible_ids, corpus_identity),
         buckets=universe.buckets,
         field_relevant_count=universe.field_relevant_count,
         ranked_with=ranked_with,
@@ -1027,17 +1334,46 @@ def _remove_inflight(inflight_key: tuple[str, int], future) -> None:
     _match_capacity.release()
 
 
+def _stored_snapshot(
+    key: str,
+    corpus_identity: int,
+    ranked_with: str,
+) -> _MatchSnapshot | None:
+    """The stored snapshot this request may be served, if any.
+
+    Call under _match_inflight_lock.
+    """
+    snap = _match_snapshots.get(key)
+    if (
+        snap is not None
+        and _SNAPSHOT_TTL_SECONDS > 0
+        and snap.corpus_identity == corpus_identity
+        and snap.ranked_with == ranked_with
+        and time.time() - snap.created_at <= _SNAPSHOT_TTL_SECONDS
+    ):
+        return snap
+    return None
+
+
 async def _get_or_compute_rule_snapshot(
     key: str,
     profile_dict: dict,
     corpus_identity: int,
     opportunities: list[dict],
     responsiveness: dict | None,
+    ranked_with: str,
 ) -> _MatchSnapshot:
     inflight_key = (key, corpus_identity)
     with _match_inflight_lock:
         concurrent_future = _match_inflight.get(inflight_key)
         if concurrent_future is None:
+            # Another request's ranking of this key may have finished, stored
+            # its snapshot and left the in-flight table since this request
+            # missed the store. Ranking the profile again would hold the
+            # worker's only executor thread for nothing (40-55 s cross-school).
+            stored = _stored_snapshot(key, corpus_identity, ranked_with)
+            if stored is not None:
+                return stored
             if not _match_capacity.acquire(blocking=False):
                 raise HTTPException(
                     status_code=503,
@@ -1135,20 +1471,14 @@ async def _get_or_compute_snapshot(profile_dict: dict, llm: bool) -> _MatchSnaps
     responsiveness = await _responsiveness_for_matching()
     ranked_with = _ranked_with(responsiveness)
     with _match_inflight_lock:
-        snap = _match_snapshots.get(key)
-        if (
-            snap is not None
-            and _SNAPSHOT_TTL_SECONDS > 0
-            and snap.corpus_identity == corpus_identity
-            and snap.ranked_with == ranked_with
-            and time.time() - snap.created_at <= _SNAPSHOT_TTL_SECONDS
-        ):
+        snap = _stored_snapshot(key, corpus_identity, ranked_with)
+        if snap is not None:
             return snap
 
-    # Release filtering scans the full corpus and allocates a survivor list.
-    # Cursor/view pages normally hit the snapshot above, so only a true miss
-    # should pay that cost.
-    opportunities = actionable_opportunities(release_visible_opportunities(corpus))
+    # Release filtering scans the full corpus and allocates a survivor list,
+    # once per corpus generation and UTC day, off the event loop. Cursor/view
+    # pages normally hit the snapshot above and never ask.
+    opportunities = await asyncio.to_thread(_release_universe, corpus)
     if not llm:
         return await _get_or_compute_rule_snapshot(
             key,
@@ -1156,6 +1486,7 @@ async def _get_or_compute_snapshot(profile_dict: dict, llm: bool) -> _MatchSnaps
             corpus_identity,
             opportunities,
             responsiveness,
+            ranked_with,
         )
 
     # Refine path: keep the complete result list because the LLM blend moves
@@ -1227,6 +1558,12 @@ async def _get_or_compute_snapshot(profile_dict: dict, llm: bool) -> _MatchSnaps
                 field_relevant_count += 1
 
     visible_ids = {result.opportunity_id for result in visible_results}
+    view_rows = await asyncio.to_thread(
+        _snapshot_view_rows,
+        list(opp_lookup.values()),
+        visible_ids,
+        corpus_identity,
+    )
     snap = _MatchSnapshot(
         created_at=time.time(),
         corpus_identity=corpus_identity,
@@ -1239,11 +1576,7 @@ async def _get_or_compute_snapshot(profile_dict: dict, llm: bool) -> _MatchSnaps
         ),
         visible=visible_results,
         by_id={r.opportunity_id: r for r in visible_results},
-        opportunities_by_id={
-            opportunity_id: _match_card(opportunity)
-            for opportunity_id, opportunity in opp_lookup.items()
-            if opportunity_id in visible_ids
-        },
+        view_rows=view_rows,
         buckets=buckets,
         field_relevant_count=field_relevant_count,
         refined=refined,
@@ -1295,17 +1628,35 @@ def _search_matcher(term: str) -> Callable[[str], bool]:
     return lambda haystack: pattern.search(haystack) is not None
 
 
-def _calendar_days_until(opportunity: dict, today: date) -> int | None:
+def _calendar_days_until(row: _MatchViewRow, today: date) -> int | None:
     """Use the scorer's deadline evidence bar for facets, filters and sorting."""
-    if record_kind(opportunity) != "listing":
-        return None
-    deadline = _stated_deadline_date(opportunity)
-    return (deadline - today).days if deadline is not None else None
+    return (row.deadline - today).days if row.deadline is not None else None
 
 
 def _apply_match_view(
     results: list[MatchResult],
-    opportunities_by_id: dict[str, dict],
+    opportunities_by_id: Mapping[str, dict],
+    view: MatchViewState,
+    home_school: str,
+) -> tuple[
+    list[MatchResult],
+    dict[str, int],
+    list[dict[str, str | int]],
+    bool,
+    dict[str, int],
+]:
+    """The view pass over projected cards: one view row read off each card."""
+    rows = {
+        result.opportunity_id: _view_row_from_card(opportunities_by_id[result.opportunity_id])
+        for result in results
+        if result.opportunity_id in opportunities_by_id
+    }
+    return _apply_match_view_rows(results, rows, view, home_school)
+
+
+def _apply_match_view_rows(
+    results: list[MatchResult],
+    rows: Mapping[str, _MatchViewRow],
     view: MatchViewState,
     home_school: str,
 ) -> tuple[
@@ -1342,25 +1693,25 @@ def _apply_match_view(
     deadline_counts = {"7": 0, "14": 0, "30": 0, "passed": 0}
     base: list[MatchResult] = []
     for result in results:
-        opportunity = opportunities_by_id.get(result.opportunity_id, {})
-        source = opportunity.get("source")
+        row = rows.get(result.opportunity_id, _EMPTY_VIEW_ROW)
+        source = row.source
         if isinstance(source, str) and source:
             source_counts[source] = source_counts.get(source, 0) + 1
-        if "school" in opportunity or "audience" in opportunity:
+        if row.scoped:
             scope_available = True
         # Three kinds, not two. Excluding only faculty left the unreviewed
         # source types on the listing side, so a record we have never confirmed
         # IS a listing contributed a deadline to the "due in 7 days" facet, a
         # pay value to the paid filter, and an on-campus flag — every one of
         # them a term of an application that may not exist.
-        is_confirmed_listing = record_kind(opportunity) == "listing"
+        is_confirmed_listing = row.kind == "listing"
         # An estimated date contributes to no deadline facet. It is derived
         # from an NSF award start date, and the card that would be shown for it
         # renders "· estimated" and deliberately refuses a passed/countdown
         # verdict. Counting it made "Deadline passed" the only deadline chip on
         # the page, selecting 151 records not one of which says passed.
         # The scorer also recognizes inference stamps without the older flag.
-        days_left = _calendar_days_until(opportunity, today)
+        days_left = _calendar_days_until(row, today)
         if days_left is not None:
             if days_left < 0:
                 deadline_counts["passed"] += 1
@@ -1371,19 +1722,19 @@ def _apply_match_view(
 
         if not view.show_dismissed and result.opportunity_id in dismissed_ids:
             continue
-        paid = opportunity.get("paid") if is_confirmed_listing else "unknown"
+        paid = row.paid if is_confirmed_listing else "unknown"
         if view.paid == "yes" and paid not in {"yes", "stipend"}:
             continue
         if view.paid == "no" and paid not in {"no", "unknown"}:
             continue
         if view.intl == "yes" and (
             not is_confirmed_listing
-            or faculty_safe_eligibility(opportunity).get("international_friendly") != "yes"
+            or row.international_friendly != "yes"
         ):
             continue
         if view.source and source != view.source:
             continue
-        on_campus = opportunity.get("on_campus") if is_confirmed_listing else None
+        on_campus = row.on_campus if is_confirmed_listing else None
         if view.on_campus == "yes" and on_campus is not True:
             continue
         if view.on_campus == "no" and on_campus is not False:
@@ -1393,7 +1744,7 @@ def _apply_match_view(
             # Faculty contact profiles are explicitly excluded: no listed
             # opening deadline is not evidence of rolling recruitment.
             if (
-                opportunity.get("is_rolling") is not True
+                row.is_rolling is not True
                 or not is_confirmed_listing
             ):
                 continue
@@ -1411,28 +1762,21 @@ def _apply_match_view(
                 continue
         if view.min_score > 0 and math.floor(result.final_score + 0.5) < view.min_score:
             continue
-        if view.scope == "campus" and opportunity.get("school") != home_school:
+        if view.scope == "campus" and row.school != home_school:
             continue
-        if view.scope == "open" and opportunity.get("audience") not in {
+        if view.scope == "open" and row.audience not in {
             "open",
             "unknown",
         }:
             continue
 
         if search_matchers:
-            title = str(opportunity.get("title") or "").lower()
-            organization = str(opportunity.get("organization") or "").lower()
-            department = str(opportunity.get("department") or "").lower()
-            keywords = [
-                str(keyword).lower()
-                for keyword in (opportunity.get("keywords") or [])
-            ]
-            description_clean = opportunity.get("description_clean")
-            description = str(
-                description_clean
-                if description_clean is not None
-                else opportunity.get("description_raw") or ""
-            ).lower()
+            # The card's own text, after its contact boundary.
+            title = row.title.lower()
+            organization = row.organization.lower()
+            department = row.department.lower()
+            keywords = [keyword.lower() for keyword in row.keywords]
+            description = row.description.lower()
             # Not the countdown or the season line: they turn with the
             # server's calendar while the result-set id holds.
             reasons = " ".join(
@@ -1482,8 +1826,8 @@ def _apply_match_view(
         # most-recent first. `today` is the student's own calendar day, which
         # the request already carries.
         def _deadline_order(result: MatchResult) -> tuple[int, int]:
-            record = opportunities_by_id.get(result.opportunity_id, {})
-            days = _calendar_days_until(record, today)
+            row = rows.get(result.opportunity_id, _EMPTY_VIEW_ROW)
+            days = _calendar_days_until(row, today)
             if days is None:
                 return (1, 0)
             # Expired days are negative, so -days grows with staleness and the
@@ -1492,19 +1836,11 @@ def _apply_match_view(
 
         filtered.sort(key=_deadline_order)
     elif view.sort_by == "newest":
-        filtered.sort(
-            key=lambda result: str(
-                (
-                    opportunities_by_id.get(result.opportunity_id, {}).get("posted_date")
-                    if record_kind(
-                        opportunities_by_id.get(result.opportunity_id, {}),
-                    ) == "listing"
-                    else None
-                )
-                or ""
-            ),
-            reverse=True,
-        )
+        def _posted_order(result: MatchResult) -> str:
+            row = rows.get(result.opportunity_id, _EMPTY_VIEW_ROW)
+            return str((row.posted_date if row.kind == "listing" else None) or "")
+
+        filtered.sort(key=_posted_order, reverse=True)
 
     source_facets = [
         {"source": source, "count": count}
@@ -1590,7 +1926,6 @@ async def get_matches(
     profile_dict = _normalized_profile(profile)
     use_llm = _ai_pass_allowed(request, llm)
     snap = await _get_or_compute_snapshot(profile_dict, use_llm)
-    opp_lookup = snap.opportunities_by_id
 
     visible_results = snap.visible
     page_offset = offset
@@ -1612,7 +1947,8 @@ async def get_matches(
                 },
             )
     page = visible_results[page_offset:page_offset + limit]
-    page_response = [_match_result_response(r, opp_lookup) for r in page]
+    cards = _snapshot_cards(snap, page)
+    page_response = [_match_result_response(r, cards) for r in page]
     next_offset = page_offset + len(page_response)
     has_more = next_offset < len(visible_results)
 
@@ -1681,7 +2017,6 @@ async def get_match_view(
 
     profile_dict = _normalized_profile(body.profile)
     snap = await _get_or_compute_snapshot(profile_dict, _ai_pass_allowed(request, llm))
-    opportunities_by_id = snap.opportunities_by_id
     view_id = _match_view_id(body.view)
     page_offset = 0
     if decoded_cursor is not None:
@@ -1709,16 +2044,15 @@ async def get_match_view(
         source_facets,
         scope_available,
         deadline_facets,
-    ) = _apply_match_view(
+    ) = _apply_match_view_rows(
         snap.visible,
-        opportunities_by_id,
+        snap.view_rows,
         body.view,
         profile_dict.get("home_school") or "uiuc",
     )
     page = filtered[page_offset:page_offset + body.page_size]
-    page_response = [
-        _match_result_response(result, opportunities_by_id) for result in page
-    ]
+    cards = _snapshot_cards(snap, page)
+    page_response = [_match_result_response(result, cards) for result in page]
     next_offset = page_offset + len(page_response)
     has_more = next_offset < len(filtered)
 
@@ -1943,7 +2277,7 @@ async def get_match_explanation(
         # Render/explain from the exact corpus generation that produced the
         # visible result, even if a data refresh landed between lookup and
         # snapshot resolution.
-        opp = snap.opportunities_by_id.get(opportunity_id, opp)
+        opp = _snapshot_cards(snap, [result]).get(opportunity_id, opp)
     else:
         # Not in the profile's result universe. Same shared hard filter the
         # list applied — never a re-derivation — plus an informational

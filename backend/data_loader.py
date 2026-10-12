@@ -4,6 +4,7 @@ import json
 import logging
 import re
 import threading
+from collections.abc import Callable
 from pathlib import Path
 
 from src.evidence import neutralize_unverified_faculty_claims, stamp_collector_templates
@@ -20,6 +21,10 @@ _opp_cache_mtime: float = 0
 _opp_cache_generation: int = 0
 _tfidf_fitted_mtime: float = -1
 _loader_lock = threading.RLock()
+# Called with each newly published corpus, under the loader lock. State built
+# over the previous generation (backend/routes/matches.py) lets it go here
+# rather than holding it until that state's next request.
+_publish_hooks: list[Callable[[list[dict]], None]] = []
 
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
 
@@ -234,7 +239,18 @@ def _try_publish_corpus(raw: list[dict], mtime: float, source: str) -> bool:
     _opp_cache_mtime = mtime
     _opp_cache_generation += 1
     _STR_POOL.clear()
+    for hook in _publish_hooks:
+        try:
+            hook(candidate)
+        except Exception:
+            # The generation is published; a failed hook must not undo that.
+            logger.exception("Corpus publish hook %r failed", hook)
     return True
+
+
+def on_corpus_published(hook: Callable[[list[dict]], None]) -> None:
+    """Call ``hook`` with every corpus generation published from now on."""
+    _publish_hooks.append(hook)
 
 
 def load_opportunities() -> list[dict]:

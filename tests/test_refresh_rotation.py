@@ -205,6 +205,16 @@ class TestBrowserDetection:
 
         assert shard_needs_browser("national") is False
 
+    def test_a_render_source_open_to_every_school_needs_the_browser_on_the_national_day(
+            self, monkeypatch):
+        # refresh_all crawls it on the national shard's run, not on the school's.
+        from scripts.refresh_rotation import shard_needs_browser
+        from src.collectors.schools.stanford import SCHOOL as STANFORD
+
+        [source] = [s for s in STANFORD["sources"] if s["emit"] == "open"]
+        monkeypatch.setitem(source, "render", True)
+        assert shard_needs_browser("national") is True
+
     def test_full_refresh_installs_the_browser(self):
         from scripts.refresh_rotation import shard_needs_browser
 

@@ -41,6 +41,17 @@ def _feed(monkeypatch, payload):
     monkeypatch.setattr("requests.get", lambda *a, **k: _Resp())
 
 
+class _Page:
+    def __init__(self, payload):
+        self.payload = payload
+
+    def raise_for_status(self):
+        pass
+
+    def json(self):
+        return self.payload
+
+
 # --- engine: json_dir link_template / link_rewrite ---------------------------
 
 class TestJsonDirLinkTemplate:
@@ -92,6 +103,345 @@ class TestJsonDirLinkTemplate:
             "https://pharmacy.example.edu/profile/byron-ada/",
             "https://pharmacy.example.edu/profile/lee-bob-1/",
             ""]
+
+
+class TestJsonDirNestedRecords:
+    def test_records_key_may_be_a_dotted_path(self, monkeypatch):
+        _feed(monkeypatch, {"success": True, "data": {"results": {"profiles": [
+            {"name": "Ada Byron", "title": "Professor"}]}}})
+        people = fg._fetch_json_dir({"short": "X", "json_dir": {
+            "url": "https://feed.example.edu/api", "name_fields": ["name"],
+            "records_key": "data.results.profiles"}})
+        assert [p["name"] for p in people] == ["Ada Byron"]
+
+    def test_a_plain_records_key_reads_exactly_like_dict_get(self, monkeypatch):
+        # Every json_dir config before PHHP used a dotless records_key; the
+        # dotted-path change must leave their result untouched.
+        monkeypatch.setattr("requests.get", lambda *a, **k: _Page(
+            {"results": [{"name": "Ada Byron"}]}))
+        people = fg._fetch_json_dir({"short": "X", "json_dir": {
+            "url": "https://feed.example.edu/api", "name_fields": ["name"],
+            "records_key": "results"}})
+        assert [p["name"] for p in people] == ["Ada Byron"]
+
+    @pytest.mark.parametrize("payload", [
+        {"other": [{"name": "Ada Byron"}]},   # key missing
+        {"results": None},                    # key null
+        {"results": "oops"},                  # not a list
+    ])
+    def test_a_plain_records_key_with_no_list_yields_no_people_when_paged(
+            self, monkeypatch, payload):
+        monkeypatch.setattr("requests.get", lambda *a, **k: _Page(payload))
+        people = fg._fetch_json_dir({"short": "X", "json_dir": {
+            "url": "https://feed.example.edu/api", "name_fields": ["name"],
+            "records_key": "results", "paginate": {"max": 2}}})
+        assert people == []
+
+
+# --- engine: json_dir total_key — a walk that read the roster it states -------
+
+_ADA = {"name": "Ada Byron", "title": "Professor", "url": "https://x.edu/p/ada"}
+_SAM = {"name": "Sam Staff", "title": "Program Coordinator", "url": "https://x.edu/p/sam"}
+_CY = {"name": "Cy Gamma", "title": "Associate Professor", "url": "https://x.edu/p/cy"}
+_FEED = {1: {"count": 3, "rows": [_ADA, _SAM]}, 2: {"count": 3, "rows": [_CY]},
+         3: {"count": 3, "rows": []}}
+
+
+class TestJsonDirStatedTotal:
+    """Every json_dir unit reported an all-zero roster coverage, which the stale
+    pass reads as an empty roster, so a JSON roster could never retire anyone.
+    A paged feed that states its size can prove the walk read every row; a page
+    that failed, a roster longer than the walk's cap, a total that moved mid-walk
+    or a reorder that served one row twice and another never must then withhold
+    the unit rather than retire the people unread."""
+
+    @staticmethod
+    def _unit(monkeypatch, pages, **json_dir):
+        def get(url, **_kw):
+            page = pages[int(url.rsplit("page=", 1)[1])]
+            if isinstance(page, Exception):
+                raise page
+            return _Page(page)
+
+        monkeypatch.setattr("requests.get", get)
+        school = {"school_slug": "x", "source": "x_faculty", "organization": "X University",
+                  "id_prefix": "x", "location": "Somewhere",
+                  "departments": [{"short": "X", "name": "Department of X", "majors": [],
+                                   "directory_url": "https://x.edu/people",
+                                   "json_dir": {"url": "https://x.edu/api?all=1",
+                                                "records_key": "rows",
+                                                "name_fields": ["name"], "link_field": "url",
+                                                "total_distinct_key": "url",
+                                                "paginate": {"param": "page", "max": 5},
+                                                "ladder_filter": {"require": "professor"},
+                                                **json_dir}}]}
+        ledger: dict = {}
+        fg.fetch_and_normalize(school, deep=True, unit_ledger=ledger)
+        return ledger["x"]
+
+    def test_only_a_feed_that_states_its_total_counts_its_rows(self, monkeypatch):
+        from src.normalizers.deactivate_stale_faculty import unit_identity_completeness
+        unit = self._unit(monkeypatch, _FEED, total_key="count")
+        assert {k: v for k, v in unit["coverage"].items() if v} == {
+            "raw_roster_rows": 3, "parsed_faculty_rows": 2,
+            "classified_nonfaculty_rows": 1}
+        assert unit_identity_completeness(unit) == (True, "identity_complete")
+        # Without one, the unit reports what every json_dir unit reported before.
+        unit = self._unit(monkeypatch, _FEED)
+        assert not any(unit["coverage"].values())
+        assert "listed_identities" not in unit
+
+    @pytest.mark.parametrize("pages, json_dir, reason", [
+        pytest.param({**_FEED, 2: ConnectionError("reset")}, {},
+                     "blocked_partial_render_rows", id="page-2-does-not-load"),
+        pytest.param(_FEED, {"paginate": {"param": "page", "max": 1}},
+                     "blocked_partial_render_rows", id="walk-stops-at-its-cap"),
+        pytest.param({**_FEED, 2: {"count": 4, "rows": [_CY]}}, {},
+                     "blocked_partial_render_rows", id="total-moves-mid-walk"),
+        pytest.param({p: {"rows": v["rows"]} for p, v in _FEED.items()}, {},
+                     "blocked_partial_render_rows", id="feed-states-no-total"),
+        pytest.param({**_FEED, 1: {"count": 3, "rows": [_ADA, {"name": "Faculty",
+                                                               "title": "Professor",
+                                                               "url": "https://x.edu/p/f"}]}},
+                     {}, "blocked_unparsed_rows", id="a-row-that-is-not-a-person"),
+        # The feed reordered after page 1 was served: Sam slid onto page 2, so
+        # Sam is read twice, Cy never, and the walk still reads 3 rows.
+        pytest.param({**_FEED, 2: {"count": 3, "rows": [_SAM]}}, {},
+                     "blocked_partial_render_rows", id="a-reorder-repeats-one-row-and-skips-another"),
+        pytest.param({**_FEED, 2: {"count": 3, "rows": [dict(_CY, url="")]}}, {},
+                     "blocked_partial_render_rows", id="a-row-without-its-key"),
+        pytest.param(dict.fromkeys((1, 2), {"count": 3, "rows": [_ADA, _SAM, _CY]}),
+                     {"paginate": {"param": "page", "max": 2}},
+                     "blocked_partial_render_rows", id="the-server-ignores-the-page-parameter"),
+    ])
+    def test_a_walk_that_did_not_read_every_row_withholds_the_unit(
+            self, monkeypatch, pages, json_dir, reason):
+        from src.normalizers.deactivate_stale_faculty import unit_identity_completeness
+        unit = self._unit(monkeypatch, pages, total_key="count", **json_dir)
+        assert unit_identity_completeness(unit) == (False, reason)
+
+    @pytest.mark.parametrize("stated_total, requests_per_page", [(True, 1), (False, 2)])
+    def test_units_that_split_one_stated_total_feed_share_one_walk(
+            self, monkeypatch, stated_total, requests_per_page):
+        # UF PHHP splits one directory tree into three units by first name; one
+        # walk means one request per page and one order of the feed per run.
+        # Feeds without a stated total keep walking once per unit.
+        from src.normalizers.deactivate_stale_faculty import unit_identity_completeness
+        calls: Counter = Counter()
+
+        def get(url, **_kw):
+            calls[url] += 1
+            return _Page(_FEED[int(url.rsplit("page=", 1)[1])])
+
+        monkeypatch.setattr("requests.get", get)
+        total = {"total_key": "count", "total_distinct_key": "url"} if stated_total else {}
+        school = {"school_slug": "x", "source": "x_faculty", "organization": "X University",
+                  "id_prefix": "x", "location": "Somewhere", "departments": [
+                      {"short": short, "name": f"Department of {short}", "majors": [],
+                       "directory_url": "https://x.edu/people",
+                       "json_dir": {"url": "https://x.edu/api?all=1", "records_key": "rows",
+                                    "name_fields": ["name"], "link_field": "url",
+                                    "paginate": {"param": "page", "max": 5},
+                                    "ladder_filter": {"require": "professor"},
+                                    "field_filters": [{"field": "name", "include": f"^{short}"}],
+                                    **total}}
+                      for short in ("A", "C")]}
+        ledger: dict = {}
+        people = fg.fetch_and_normalize(school, deep=True, unit_ledger=ledger)
+        assert sorted(p["pi_name"] for p in people) == ["Ada Byron", "Cy Gamma"]
+        assert set(calls.values()) == {requests_per_page}
+        if stated_total:
+            assert [unit_identity_completeness(ledger[u]) for u in ("a", "c")] == [
+                (True, "identity_complete")] * 2
+
+    @pytest.mark.parametrize("json_dir, error", [
+        ({"paginate": None}, "X: json_dir total_key needs paginate"),
+        ({"total_distinct_key": None}, "X: json_dir total_key needs total_distinct_key"),
+    ])
+    def test_a_stated_total_needs_a_paged_walk_and_a_row_key(
+            self, monkeypatch, json_dir, error):
+        with pytest.raises(ValueError, match=error):
+            self._unit(monkeypatch, _FEED, total_key="count", **json_dir)
+
+
+# --- retirement: a stored person a stated-total walk still lists -------------
+
+def _person(name, title="Professor"):
+    slug = name.lower().replace(" ", "-")
+    return {"name": name, "title": title, "url": f"https://x.edu/p/{slug}",
+            "email": f"{slug}@x.edu"}
+
+
+_BO, _DI, _ED = _person("Bo Chen"), _person("Di Evans"), _person("Ed Fox")
+
+
+class TestJsonDirStillListed:
+    """Owner decision 2026-10-11: a stored person whom the directory still lists,
+    by profile link or by an address only one row carries under their name, is
+    not retired whatever the title gate makes of their row (UF PHHP lists Thomas
+    A Pearson with no title). It is a per-row protection: the people the walk no
+    longer lists are still retired."""
+
+    @staticmethod
+    def _run(monkeypatch, feeds):
+        def get(url, **_kw):
+            base, page = url.rsplit("page=", 1)
+            rows = feeds[base.split("/api/")[1].split("?")[0]]
+            return _Page({"count": len(rows), "rows": rows if page == "1" else []})
+
+        monkeypatch.setattr("requests.get", get)
+        school = {"school_slug": "x", "source": "x_faculty", "organization": "X University",
+                  "id_prefix": "x", "location": "Somewhere", "departments": [
+                      {"short": short, "name": f"Department of {short}", "majors": [],
+                       "directory_url": "https://x.edu/people",
+                       "json_dir": {"url": f"https://x.edu/api/{short}?all=1",
+                                    "records_key": "rows", "name_fields": ["name"],
+                                    "link_field": "url", "total_key": "count",
+                                    "total_distinct_key": "name",
+                                    "paginate": {"param": "page", "max": 3},
+                                    "field_filters": [{"field": "title",
+                                                       "include": "professor"}],
+                                    "ladder_filter": {"require": "professor",
+                                                      "drop": "emerit"}}}
+                      for short in feeds]}
+        ledger: dict = {}
+        return fg.fetch_and_normalize(school, deep=True, unit_ledger=ledger), ledger
+
+    def _retire(self, monkeypatch, before, after, edit=None, unlisted=()):
+        """Store what ``before`` lists, re-walk ``after``, run the stale pass.
+        The ``unlisted`` units record no listed rows, as an HTML roster does."""
+        from datetime import date
+
+        from src.normalizers.deactivate_stale_faculty import deactivate_stale_faculty, finalize_unit_ledger
+        corpus, _ = self._run(monkeypatch, before)
+        for r in corpus:
+            r["metadata"]["last_seen_at"] = "2026-01-01T00:00:00"
+            (edit or {}).get(r["pi_name"], dict)(r)
+        fresh, ledger = self._run(monkeypatch, after)
+        by_id = {r["id"]: r for r in corpus}
+        for r in fresh:  # merge_into_processed: upsert by id
+            if r["id"] in by_id:
+                by_id[r["id"]].update(r)
+            else:
+                corpus.append(r)
+        for unit in unlisted:
+            del ledger[unit]["listed_identities"]
+        finalize_unit_ledger(ledger, corpus, "x_faculty")
+        counts = deactivate_stale_faculty(corpus, {"x_faculty": ledger},
+                                          today=date(2026, 10, 11))
+        retired = sorted(r["id"].split("-")[2] + "/" + r["pi_name"] for r in corpus
+                         if r["metadata"].get("is_active") is False)
+        return retired, counts, ledger
+
+    @pytest.mark.parametrize("bo", [
+        dict(_BO, title=""),
+        dict(_BO, title="Professor Emeritus"),
+        dict(_BO, title="Program Coordinator", email=None),  # by profile link
+        dict(_BO, title="", url="https://x.edu/p/bo-chen-2"),  # by address
+        dict(_BO, title="", url="https://x.edu/p/bo-chen-2", name="BO CHÉN"),
+    ])
+    def test_a_listed_person_the_gate_drops_stays_and_the_absent_are_retired(
+            self, monkeypatch, bo):
+        retired, counts, _ = self._retire(
+            monkeypatch, {"X": [_BO, _DI, _ED]}, {"X": [bo, _DI]})
+        assert retired == ["x/Ed Fox"]
+        assert counts["records_preserved_still_listed"] == 1
+
+    def test_a_listing_under_another_unit_keeps_a_row_whose_link_is_the_listing_page(
+            self, monkeypatch):
+        # Pearson: stored under the college with the college listing page as
+        # his link, listed today only under Epidemiology, with no title.
+        def listing_page(r):
+            r["url"] = "https://x.edu/people"
+
+        retired, _, _ = self._retire(
+            monkeypatch, {"X": [_BO, _DI], "Y": [_ED]},
+            {"X": [_DI], "Y": [_ED, dict(_BO, title="", url="https://x.edu/y/bo")]},
+            edit={"Bo Chen": listing_page})
+        assert retired == []
+
+    def test_a_person_published_under_a_new_row_leaves_the_old_row_to_retire(
+            self, monkeypatch):
+        # The person is live in the new row; keeping the old one active beside
+        # it would show them twice. The tombstone pass folds the retired row.
+        retired, counts, _ = self._retire(
+            monkeypatch, {"X": [_BO, _DI], "Y": [_ED]},
+            {"X": [_DI], "Y": [_ED, dict(_BO, url="https://x.edu/y/bo")]})
+        assert retired == ["x/Bo Chen"]
+        assert counts["records_preserved_still_listed"] == 0
+
+    def test_a_directory_page_link_lists_no_one(self, monkeypatch):
+        def listing_page(r):
+            r["url"] = "https://x.edu/people"
+
+        office = {"name": "Front Office", "title": "Staff", "url": "https://x.edu/people/"}
+        retired, _, _ = self._retire(
+            monkeypatch, {"X": [_BO, _DI]}, {"X": [_DI, office]},
+            edit={"Bo Chen": listing_page})
+        assert retired == ["x/Bo Chen"]
+
+    @pytest.mark.parametrize("rows_after", [
+        # Bo left; his stored address is the office's, which a staff row carries.
+        {"X": [_DI, dict(_person("Sam Staff", title="Program Coordinator"),
+                         email="epi-office@x.edu")]},
+        # Two rows carry it, one under a name that reads like his.
+        {"X": [_DI, *(dict(_person(n, title="Program Coordinator"), email="epi-office@x.edu")
+                      for n in ("Bea Chen", "Tia Staff"))]},
+        # A row that names no person carries it, under another unit.
+        {"X": [_DI], "Y": [_ED, {"name": "Epidemiology Front Office", "title": "Office",
+                                 "url": "https://x.edu/y/office", "email": "epi-office@x.edu"}]},
+    ], ids=["one-staff-row", "two-rows", "office-row-in-another-unit"])
+    def test_an_office_address_keeps_no_one_whose_name_its_one_row_does_not_read(
+            self, monkeypatch, rows_after):
+        def office_address(r):
+            r["contact_email"] = "epi-office@x.edu"
+
+        retired, counts, _ = self._retire(
+            monkeypatch, {"X": [_BO, _DI], "Y": [_ED]}, rows_after,
+            edit={"Bo Chen": office_address})
+        assert retired == ["x/Bo Chen"]
+        assert counts["records_preserved_still_listed"] == 0
+
+    def test_a_listing_keeps_no_one_in_a_unit_that_records_no_listed_rows(
+            self, monkeypatch):
+        # X stands for an HTML roster that dropped Bo; Y's directory lists him.
+        retired, counts, _ = self._retire(
+            monkeypatch, {"X": [_BO, _DI], "Y": [_ED]},
+            {"X": [_DI], "Y": [_ED, dict(_BO, title="", url="https://x.edu/y/bo")]},
+            unlisted=("x",))
+        assert retired == ["x/Bo Chen"]
+
+    def test_the_ledger_carries_no_listed_address_or_link(self, monkeypatch):
+        sam = _person("Sam Staff", title="Program Coordinator")
+        _, ledger = self._run(monkeypatch, {"X": [_DI, sam]})
+        tokens = ledger["x"]["listed_identities"]
+        assert len(tokens) == 4 and all(len(t) == 16 for t in tokens)
+        assert ledger["x"]["listed_rows"] == 2
+        dumped = json.dumps(ledger)
+        assert "sam-staff" not in dumped
+        assert "di-evans@x.edu" not in dumped
+
+    def test_a_listed_digest_is_keyed_and_the_key_lasts_one_process(self, monkeypatch):
+        # Without the key a digest must test no guessed address: it is no plain
+        # hash of it, it changes with the key, and every process draws a new key.
+        import hashlib
+        import subprocess
+        import sys
+
+        from src.normalizers import deactivate_stale_faculty as deactivate
+        value = "di-evans@x.edu evans d"
+        token = deactivate.listed_token("email", value)
+        for plain in ("di-evans@x.edu", value, f"email:{value}"):
+            for algorithm in (hashlib.sha256, hashlib.sha1, hashlib.md5):
+                assert token not in algorithm(plain.encode()).hexdigest()
+        code = ("from src.normalizers.deactivate_stale_faculty import listed_token; "
+                f"print(listed_token('email', {value!r}))")
+        others = {subprocess.run([sys.executable, "-c", code], capture_output=True,
+                                 text=True, check=True, cwd=Path(__file__).parents[1],
+                                 ).stdout.strip() for _ in range(2)}
+        assert len(others | {token}) == 3
+        monkeypatch.setattr(deactivate, "_LISTED_KEY", b"another key")
+        assert deactivate.listed_token("email", value) != token
 
 
 # --- engine: json_dir department_field / department_units --------------------
@@ -347,10 +697,69 @@ class TestFeedProfileLinks:
         assert urls == {"Ada Example": f"{host}/profile/example-ada/",
                         "Bo Sample": f"{host}/profile/sample-bo/"}
 
-    def test_uf_phhp_keeps_no_staging_link(self, monkeypatch):
+    @pytest.mark.parametrize("short, expected", [
+        # PHHP/PHHP2/PHHP3 split the college tree at the first-name boundaries
+        # of the retired Apollo pages, so existing ids keep resolving ("J. Quinn"
+        # sorted before "Ja" on those pages, so it stays on page 1).
+        ("PHHP", {"Ada Example", "Ian Sample", "J. Quinn Sample"}),
+        ("PHHP2", {"Joseph Sample"}),
+        ("PHHP3", {"Tanja Example"}),
+        # Biostatistics / Epidemiology are their own URLs: no name split.
+        ("PHHP4", {"Ada Example", "Ian Sample", "J. Quinn Sample", "Joseph Sample",
+                  "Tanja Example"}),
+    ])
+    def test_uf_phhp_reads_faculty_from_the_directory_api(
+            self, monkeypatch, short, expected):
         from src.collectors.schools import uf_faculty
-        urls = _feed_urls(monkeypatch, uf_faculty, "PHHP", "uf_apollo.json")
-        assert set(urls.values()) == {""}
+        pages = _fixture_json("uf_phhp_directory.json")
+
+        # The feed pages with ?page=N and answers an empty list past the end.
+        monkeypatch.setattr(
+            "requests.get",
+            lambda url, **k: _Page(pages[url.rsplit("page=", 1)[1]]))
+        people = fg._fetch_json_dir(_dept(uf_faculty, short))
+        # Rows with no title, a student/assistant title or emeritus are gated out.
+        assert {p["name"] for p in people} == expected
+        by_name = {p["name"]: p for p in people}
+        for name, person in by_name.items():
+            slug = {"Ada Example": "example-ada", "Ian Sample": "sample-ian",
+                    "Joseph Sample": "sample-joseph", "J. Quinn Sample": "sample-j",
+                    "Tanja Example": "example-tanja"}[name]
+            assert person["url"] == f"https://directory.ufhealth.org/{slug}"
+            assert person["email"].endswith("@ufl.edu")
+        if "Ada Example" in by_name:
+            # research_interests is the profile's own term list; an empty list
+            # stays empty rather than becoming invented research text.
+            assert by_name["Ada Example"]["keywords"] == [
+                "Health disparities", "Type 2 Diabetes"]
+            assert not by_name["Ian Sample"].get("keywords")
+
+    @pytest.mark.parametrize("title, published", [
+        # The directory writes many professor titles in HR shorthand.
+        ("AST PROF", True), ("ASO PROF", True), ("CLIN AST PROF", True),
+        ("RES AST PROF", True), ("PROF", True), ("PROF, INTERIM CHAIR", True),
+        ("CHAIR & PROF", True), ("Clin Assoc Prof & Assistant Chair, Dept PT", True),
+        ("ASO DIR & CLIN PROF", True),
+        # Its shorthand for courtesy, adjunct and emeritus stays out, as do
+        # staff titles and rows with no title.
+        ("CO PROF", False), ("CO CLIN ASO PROF", False), ("ADJ LECTURER", False),
+        ("PROF EMER", False), ("IT Professional 1", False), ("", False),
+        # "PROF" that is not a rank of its own (titles made up for the test).
+        *((t, False) for t in (
+            "PROF DEV COORD", "PROF DEV SPEC", "PROF STAFF", "PROF ASST", "ASST TO PROF",
+            "IT PROF'L", "IT PROF.", "PROF TRAINEE", "OPS - PROF", "STUDENT ASST - PROF LAB",
+            "Co Prof", "Co-Prof", "CO-PROF", "CRTSY PROF", "VST PROF", "PROF EMRT",
+            "AFFILIATE PROF", "RETIRED PROF", "PROF, RETIRED")),
+    ])
+    def test_uf_phhp_reads_the_directorys_shorthand_titles(
+            self, monkeypatch, title, published):
+        from src.collectors.schools import uf_faculty
+        ada = {"slug": "example-ada", "full_name": "Ada Example", "title": title,
+               "email": "ada@ufl.edu", "profile_url": "https://directory.ufhealth.org/example-ada"}
+        monkeypatch.setattr("requests.get", lambda url, **k: _Page({"data": {
+            "count": 1, "results": {"profiles": [ada] if url.endswith("page=1") else []}}}))
+        people = fg._fetch_json_dir(_dept(uf_faculty, "PHHP4"))
+        assert [p["name"] for p in people] == (["Ada Example"] if published else [])
 
     @pytest.mark.parametrize("short, base", [
         ("ACCT", "https://tippie.uiowa.edu/people"),

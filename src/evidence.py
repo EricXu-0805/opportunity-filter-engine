@@ -1494,9 +1494,9 @@ def stated_listing_deadline(record: dict) -> date | None:
 
 
 def _today() -> date:
-    # The UTC date, whatever the host's zone. The ranker's deadline penalty and
-    # the match snapshot day key read the local date.today() instead; the two
-    # agree only because Render runs on UTC.
+    # The UTC date, whatever the host's zone. The ranker's deadline penalty
+    # reads the local date.today() instead, and the match snapshot stamp reads
+    # both dates; they agree only because Render runs on UTC.
     return datetime.now(UTC).date()
 
 

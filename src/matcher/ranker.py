@@ -2892,6 +2892,36 @@ class _OppStatic:
     deadline_date: date | None
 
 
+def _cut_name(text: str, name: str) -> str:
+    """``re.sub(re.escape(name), " ", text, flags=re.IGNORECASE)``, without a pattern per name.
+
+    Records carry tens of thousands of names, so that pattern missed re's
+    cache and was compiled again for every record of every ranking. For ASCII
+    text and an ASCII name a case-insensitive match is a match of the
+    lowercased strings (every other case fold re knows involves a non-ASCII
+    character), and lowercasing ASCII moves no position, so str.find finds the
+    same cuts. Anything else takes re's own path.
+    """
+    if not (
+        isinstance(text, str) and isinstance(name, str) and name
+        and text.isascii() and name.isascii()
+    ):
+        return re.sub(re.escape(name), " ", text, flags=re.IGNORECASE)
+    folded, needle = text.lower(), name.lower()
+    start = folded.find(needle)
+    if start < 0:
+        return text
+    pieces: list[str] = []
+    end = 0
+    while start >= 0:
+        pieces.append(text[end:start])
+        pieces.append(" ")
+        end = start + len(needle)
+        start = folded.find(needle, end)
+    pieces.append(text[end:])
+    return "".join(pieces)
+
+
 def _build_opp_static(opp: dict) -> _OppStatic:
     is_faculty_contact = faculty_contact_claims_unverified(opp)
     keywords = opp.get("keywords", []) or []
@@ -2952,9 +2982,17 @@ def _build_opp_static(opp: dict) -> _OppStatic:
     # upside layer for a listing — were the constants 35.0 and 40.0, and the
     # "publication or long-term involvement" reason could never be produced.
     desc = (opp.get("description_raw") or opp.get("description_clean") or "").lower()
-    stem_scan = _ML_TOPIC_RE.sub(" ", desc)
-    mentor_hits = sum(1 for k in _MENTOR_KEYWORDS if _UPSIDE_STEM_RES[k].search(stem_scan))
-    pathway_hits = sum(1 for k in _PATHWAY_KEYWORDS if _UPSIDE_STEM_RES[k].search(stem_scan))
+    # Every match of these patterns contains a fixed word (the stem, or
+    # "learning"), so a description without the word cannot match. Testing for
+    # it first skips scans that walked every position of the description,
+    # more than half of each static build, and changes no answer.
+    stem_scan = _ML_TOPIC_RE.sub(" ", desc) if "learning" in desc else desc
+    mentor_hits = sum(
+        1 for k in _MENTOR_KEYWORDS if k in stem_scan and _UPSIDE_STEM_RES[k].search(stem_scan)
+    )
+    pathway_hits = sum(
+        1 for k in _PATHWAY_KEYWORDS if k in stem_scan and _UPSIDE_STEM_RES[k].search(stem_scan)
+    )
 
     lab = faculty_safe_lab_or_program(opp)
     pi_name = opp.get("pi_name", "")
@@ -2979,10 +3017,7 @@ def _build_opp_static(opp: dict) -> _OppStatic:
     # bonus can require a word boundary at the start of each hit.
     signal_parts = [opp.get("title", ""), " ".join(keywords), lab or ""]
     if pi_name:
-        signal_parts = [
-            re.sub(re.escape(pi_name), " ", part, flags=re.IGNORECASE)
-            for part in signal_parts
-        ]
+        signal_parts = [_cut_name(part, pi_name) for part in signal_parts]
     signal_joined = re.sub(r"[^a-z0-9]+", " ", " ".join(signal_parts).lower()).strip()
 
     deadline_date = _stated_deadline_date(opp)

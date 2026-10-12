@@ -290,7 +290,7 @@ def _release_contract_snapshot(
     opportunity: dict | None = None,
 ) -> matches_module._MatchSnapshot:
     visible: list[MatchResult] = []
-    opportunities_by_id: dict[str, dict] = {}
+    view_rows: dict[str, matches_module._MatchViewRow] = {}
     if opportunity is not None:
         visible = [
             MatchResult(
@@ -305,14 +305,14 @@ def _release_contract_snapshot(
                 next_steps=["Review details"],
             )
         ]
-        opportunities_by_id = {opportunity["id"]: opportunity}
+        view_rows = {opportunity["id"]: matches_module._match_view_row(opportunity)}
     return matches_module._MatchSnapshot(
         created_at=0,
         corpus_identity=1,
         result_set_id="release-contract-snapshot",
         visible=visible,
         by_id={result.opportunity_id: result for result in visible},
-        opportunities_by_id=opportunities_by_id,
+        view_rows=view_rows,
         buckets={
             "high_priority": 0,
             "good_match": len(visible),

@@ -6,6 +6,7 @@ from src.collectors.refresh_contract import (
     NATIONAL_SOURCES,
     evaluate_refresh_summary,
     expected_sources,
+    national_campus_sources,
 )
 
 
@@ -292,14 +293,19 @@ def test_deep_campus_graph_recursive_page_failure_is_degraded_only():
     assert any("degraded on recursive" in warning for warning in verdict["warnings"])
 
 
-def test_national_requires_exact_three_external_sources():
-    assert set(expected_sources(None, national=True, deep=True)) == set(
-        NATIONAL_SOURCES
+def test_national_requires_its_external_sources_and_open_campus_programs():
+    open_programs = national_campus_sources()
+    assert {"stanford_external_research", "ucb_external_research"} <= open_programs
+    assert set(expected_sources(None, national=True, deep=True)) == (
+        NATIONAL_SOURCES | open_programs
     )
     verdict = evaluate_refresh_summary(
         _summary(
             None,
-            {key: _ok(3) for key in NATIONAL_SOURCES},
+            {
+                **{key: _ok(3) for key in NATIONAL_SOURCES},
+                **{key: _graph_ok() for key in open_programs},
+            },
             national=True,
         ),
         schools=None,
@@ -307,6 +313,37 @@ def test_national_requires_exact_three_external_sources():
         deep=True,
     )
     assert verdict["ready"] is True
+    assert verdict["publishable"] == ["national"]
+
+
+def test_an_open_campus_program_crawl_is_judged_against_the_national_shard():
+    """Its records publish in national.json, so an unreachable page degrades
+    national, and a failed collection withholds national alone."""
+    sources = {
+        **{key: _ok(3) for key in NATIONAL_SOURCES},
+        **{key: _graph_ok() for key in national_campus_sources()},
+        "stanford_external_research": _graph_ok(
+            fetched=1, live_pages_loaded=0, crawl_sources_loaded=0,
+            seed_pages_loaded=0, seed_pages_failed=1,
+        ),
+    }
+    verdict = evaluate_refresh_summary(
+        _summary(None, sources, national=True),
+        schools=None, national=True, deep=True,
+    )
+    assert verdict["publishable"] == ["national"]
+    assert ("dark_crawl", "stanford_external_research") in {
+        (item["kind"], item["source"]) for item in verdict["degradations"]
+    }
+
+    sources["stanford_external_research"] = {"status": "error", "error": "boom"}
+    verdict = evaluate_refresh_summary(
+        _summary(None, sources, national=True),
+        schools=None, national=True, deep=True,
+    )
+    assert verdict["publishable"] == []
+    assert verdict["structural_reasons"] == []
+    assert verdict["by_unit"]["national"]["ready"] is False
 
 
 def test_uiuc_and_ucb_special_source_sets_are_explicit():

@@ -703,12 +703,12 @@ class TestSnapshotPagination:
         assert snap2 is not snap1
         assert snap2.corpus_identity == id(swapped)
         assert snap1 not in m_module._match_snapshots.values()
-        assert all(
-            snap2.opportunities_by_id[opportunity_id] is not opportunity
-            for opportunity_id, opportunity in {
-                opportunity["id"]: opportunity for opportunity in swapped
-            }.items()
-            if opportunity_id in snap2.opportunities_by_id
+        # Its rows are the swapped generation's own records, never the
+        # previous generation's.
+        swapped_by_id = {opportunity["id"]: opportunity for opportunity in swapped}
+        assert snap2.view_rows and all(
+            row.record is swapped_by_id[opportunity_id]
+            for opportunity_id, row in snap2.view_rows.items()
         )
 
     def test_stale_loader_result_never_rebinds_ranker_backwards(
