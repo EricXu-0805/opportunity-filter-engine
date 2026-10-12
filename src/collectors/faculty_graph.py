@@ -215,6 +215,14 @@ def validate(school: dict) -> list[str]:
         for person in dept.get("faculty", []):
             if not person.get("name"):
                 errors.append(f"{short}: faculty entry missing name")
+        jd = dept.get("json_dir")
+        if isinstance(jd, dict) and jd.get("total_key"):
+            # Only a paged walk reads the total; without a row key a repeated
+            # row would pass for the one it displaced.
+            if not jd.get("paginate"):
+                errors.append(f"{short}: json_dir total_key needs paginate")
+            if not jd.get("total_distinct_key"):
+                errors.append(f"{short}: json_dir total_key needs total_distinct_key")
     return errors
 
 
@@ -3025,6 +3033,12 @@ def _fetch_cola(dept: dict) -> list[dict]:
 #     }
 #
 # ``records_key`` may be a dotted path when the list is nested ("data.results.profiles").
+# ``total_key`` (paginated feeds) names where each page states the roster's size
+# ("data.count") and ``total_distinct_key`` the row's own key ("slug"); only a
+# walk that read exactly that many distinct rows reports roster coverage, so
+# only such a unit can retire the people it no longer lists. A feed that
+# reorders between page requests can serve one row twice and another never, at
+# the same row count.
 # Options for a shared cross-department roster feed (UChicago BSD / Chemistry):
 #     "headers": {"Referer": "https://microbiology.uchicago.edu/"},  # same-origin gate
 #     "filter_field": "department", "filter_index": 0,               # PRIMARY appt only
@@ -3095,6 +3109,8 @@ def _fetch_json_dir(dept: dict) -> list[dict]:
         # records, or the ``max`` guard trips. Records accumulate across pages.
         param = pag.get("param", "page")
         recs_all: list = []
+        total_key = cfg.get("total_key")
+        stated: list = []
         for page in range(pag.get("start", 1), pag.get("max", 50) + 1):
             sep = "&" if "?" in cfg["url"] else "?"
             try:
@@ -3104,6 +3120,8 @@ def _fetch_json_dir(dept: dict) -> list[dict]:
                 data = resp.json()
             except Exception:  # noqa: BLE001
                 break
+            if total_key:
+                stated.append(_dig(data, total_key) if isinstance(data, dict) else None)
             rk = cfg.get("records_key")
             if rk and isinstance(data, dict):
                 page_recs = _dig(data, rk) or []
@@ -3117,7 +3135,10 @@ def _fetch_json_dir(dept: dict) -> list[dict]:
             cnt = pag.get("count_key")
             if cnt and isinstance(data, dict) and data.get(cnt) and page >= data[cnt]:
                 break
-        return _json_dir_records(dept, cfg, recs_all)
+        if total_key:
+            _json_roster_unread(dept, stated, len(recs_all),
+                                _distinct_rows(recs_all, cfg.get("total_distinct_key")))
+        return _json_dir_records(dept, cfg, recs_all, roster=bool(total_key))
     try:
         if str(cfg.get("method", "get")).lower() == "post":
             # Some campus HR feeds only answer form POSTs (UCSD's EAH directory
@@ -3133,9 +3154,53 @@ def _fetch_json_dir(dept: dict) -> list[dict]:
     return _json_dir_records(dept, cfg, recs)
 
 
-def _json_dir_records(dept: dict, cfg: dict, recs) -> list[dict]:
+def _distinct_rows(recs: list, key: str | None) -> int:
+    """How many different rows a walk read, by the row's own ``key``.
+
+    A row read twice counts once and a row without the key not at all, so a
+    walk that served one row twice and skipped another falls short of the
+    feed's stated total."""
+    if not key:
+        return 0
+    return len({v for x in recs if isinstance(x, dict)
+                and isinstance(v := _dig(x, key), str | int)
+                and not isinstance(v, bool) and str(v).strip()})
+
+
+def _json_roster_unread(dept: dict, stated: list, read: int, distinct: int) -> None:
+    """Withhold the unit's retirements unless the walk read the whole roster.
+
+    A page that failed to load, a page that came back empty early and a roster
+    longer than ``max`` pages all end the walk the way the last page does; the
+    total the feed states is what tells them apart. Pages that state different
+    totals mean the roster changed mid-walk, so rows may have shifted between
+    pages unread. The rows read and the ``distinct`` rows among them must both
+    equal the total: a feed that reorders between page requests can repeat one
+    row and skip another at the same row count, and a feed that ignores the page
+    parameter serves the same rows again.
+    """
+    total = stated[0] if stated and all(t == stated[0] for t in stated) else None
+    if isinstance(total, bool) or not isinstance(total, int):
+        unread = 1
+    else:
+        unread = max(abs(total - read), abs(total - distinct))
+    if unread:
+        _cover("partial_render_rows", unread)
+        logger.warning("faculty_graph: %s feed states %s rows and the walk read %d "
+                       "(%d distinct); the unit retires nobody this run",
+                       dept.get("short"), stated, read, distinct)
+
+
+def _json_dir_records(dept: dict, cfg: dict, recs, *, roster: bool = False) -> list[dict]:
     """Map a JSON directory payload (from a live endpoint or a committed file)
-    into faculty specs, honouring the field-name / filter / title-map options."""
+    into faculty specs, honouring the field-name / filter / title-map options.
+
+    ``roster`` counts every row into the unit's roster coverage; only a live
+    walk that matched the feed's stated total passes it (see ``total_key``)."""
+    def cover(bucket: str) -> None:
+        if roster:
+            _cover(bucket)
+
     if isinstance(recs, dict):
         recs = (_dig(recs, cfg["records_key"]) if cfg.get("records_key")
                 else next((v for v in recs.values() if isinstance(v, list)), []))
@@ -3148,6 +3213,8 @@ def _json_dir_records(dept: dict, cfg: dict, recs) -> list[dict]:
     specs: list[dict] = []
     for x in recs:
         if not isinstance(x, dict):
+            cover("raw_roster_rows")
+            cover("unparsed_rows")
             continue
         if filt_field is not None:
             fv = _dig(x, filt_field)
@@ -3162,9 +3229,13 @@ def _json_dir_records(dept: dict, cfg: dict, recs) -> list[dict]:
                     continue
             elif filt_value not in (fv if isinstance(fv, list) else [fv]):
                 continue
+        # Rows another department owns on a shared feed (above) are outside
+        # this unit's roster; every row from here on is one of its rows.
+        cover("raw_roster_rows")
         if status_field is not None:
             sv = _dig(x, status_field)
             if status_value not in (sv if isinstance(sv, list) else [sv]):
+                cover("classified_nonfaculty_rows")
                 continue
         # Regex gates over arbitrary fields, for feeds that need more than the
         # single equality pair above (e.g. UCSD Math's HR feed: keep ladder
@@ -3174,10 +3245,13 @@ def _json_dir_records(dept: dict, cfg: dict, recs) -> list[dict]:
             or (ff.get("exclude") and re.search(ff["exclude"], str(_dig(x, ff["field"]) or ""), re.I))
             for ff in cfg.get("field_filters", [])
         ):
+            cover("classified_nonfaculty_rows")
             continue
         name = re.sub(r"\s+", " ",
                       " ".join(str(_dig(x, f) or "").strip() for f in name_fields)).strip()
         if not _is_person_name(name):
+            # A row that does not read as a person is loss, not a classification.
+            cover("unparsed_rows")
             continue
         tfl = cfg.get("title_from_list")
         if tfl:
@@ -3228,8 +3302,10 @@ def _json_dir_records(dept: dict, cfg: dict, recs) -> list[dict]:
         # row (mirrors _passes_ladder).
         if title:
             if require_re and not re.search(require_re, title, re.I):
+                cover("classified_nonfaculty_rows")
                 continue
             if drop_re and re.search(drop_re, title, re.I):
+                cover("classified_nonfaculty_rows")
                 continue
         email = str(_dig(x, cfg.get("email_field", "email")) or "").strip() or None
         ll = cfg.get("link_list")
@@ -3302,6 +3378,7 @@ def _json_dir_records(dept: dict, cfg: dict, recs) -> list[dict]:
         if cfg.get("department_field"):
             department = _json_department(_dig(x, cfg["department_field"]),
                                           cfg.get("department_units"))
+        cover("parsed_faculty_rows")
         specs.append(faculty(name, title=title, url=url_v, email=email,
                              research_areas=research, keywords=keywords,
                              department=department))

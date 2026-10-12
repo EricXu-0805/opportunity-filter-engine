@@ -138,6 +138,97 @@ class TestJsonDirNestedRecords:
         assert people == []
 
 
+# --- engine: json_dir total_key — a walk that read the roster it states -------
+
+_ADA = {"name": "Ada Byron", "title": "Professor", "url": "https://x.edu/p/ada"}
+_SAM = {"name": "Sam Staff", "title": "Program Coordinator", "url": "https://x.edu/p/sam"}
+_CY = {"name": "Cy Gamma", "title": "Associate Professor", "url": "https://x.edu/p/cy"}
+_FEED = {1: {"count": 3, "rows": [_ADA, _SAM]}, 2: {"count": 3, "rows": [_CY]},
+         3: {"count": 3, "rows": []}}
+
+
+class TestJsonDirStatedTotal:
+    """Every json_dir unit reported an all-zero roster coverage, which the stale
+    pass reads as an empty roster, so a JSON roster could never retire anyone.
+    A paged feed that states its size can prove the walk read every row; a page
+    that failed, a roster longer than the walk's cap, a total that moved mid-walk
+    or a reorder that served one row twice and another never must then withhold
+    the unit rather than retire the people unread."""
+
+    @staticmethod
+    def _unit(monkeypatch, pages, **json_dir):
+        def get(url, **_kw):
+            page = pages[int(url.rsplit("page=", 1)[1])]
+            if isinstance(page, Exception):
+                raise page
+            return _Page(page)
+
+        monkeypatch.setattr("requests.get", get)
+        school = {"school_slug": "x", "source": "x_faculty", "organization": "X University",
+                  "id_prefix": "x", "location": "Somewhere",
+                  "departments": [{"short": "X", "name": "Department of X", "majors": [],
+                                   "directory_url": "https://x.edu/people",
+                                   "json_dir": {"url": "https://x.edu/api?all=1",
+                                                "records_key": "rows",
+                                                "name_fields": ["name"], "link_field": "url",
+                                                "total_distinct_key": "url",
+                                                "paginate": {"param": "page", "max": 5},
+                                                "ladder_filter": {"require": "professor"},
+                                                **json_dir}}]}
+        ledger: dict = {}
+        fg.fetch_and_normalize(school, deep=True, unit_ledger=ledger)
+        return ledger["x"]
+
+    def test_only_a_feed_that_states_its_total_counts_its_rows(self, monkeypatch):
+        from src.normalizers.deactivate_stale_faculty import unit_identity_completeness
+        unit = self._unit(monkeypatch, _FEED, total_key="count")
+        assert {k: v for k, v in unit["coverage"].items() if v} == {
+            "raw_roster_rows": 3, "parsed_faculty_rows": 2,
+            "classified_nonfaculty_rows": 1}
+        assert unit_identity_completeness(unit) == (True, "identity_complete")
+        # Without one, the unit reports what every json_dir unit reported before.
+        unit = self._unit(monkeypatch, _FEED)
+        assert not any(unit["coverage"].values())
+
+    @pytest.mark.parametrize("pages, json_dir, reason", [
+        pytest.param({**_FEED, 2: ConnectionError("reset")}, {},
+                     "blocked_partial_render_rows", id="page-2-does-not-load"),
+        pytest.param(_FEED, {"paginate": {"param": "page", "max": 1}},
+                     "blocked_partial_render_rows", id="walk-stops-at-its-cap"),
+        pytest.param({**_FEED, 2: {"count": 4, "rows": [_CY]}}, {},
+                     "blocked_partial_render_rows", id="total-moves-mid-walk"),
+        pytest.param({p: {"rows": v["rows"]} for p, v in _FEED.items()}, {},
+                     "blocked_partial_render_rows", id="feed-states-no-total"),
+        pytest.param({**_FEED, 1: {"count": 3, "rows": [_ADA, {"name": "Faculty",
+                                                               "title": "Professor",
+                                                               "url": "https://x.edu/p/f"}]}},
+                     {}, "blocked_unparsed_rows", id="a-row-that-is-not-a-person"),
+        # The feed reordered after page 1 was served: Sam slid onto page 2, so
+        # Sam is read twice, Cy never, and the walk still reads 3 rows.
+        pytest.param({**_FEED, 2: {"count": 3, "rows": [_SAM]}}, {},
+                     "blocked_partial_render_rows", id="a-reorder-repeats-one-row-and-skips-another"),
+        pytest.param({**_FEED, 2: {"count": 3, "rows": [dict(_CY, url="")]}}, {},
+                     "blocked_partial_render_rows", id="a-row-without-its-key"),
+        pytest.param(dict.fromkeys((1, 2), {"count": 3, "rows": [_ADA, _SAM, _CY]}),
+                     {"paginate": {"param": "page", "max": 2}},
+                     "blocked_partial_render_rows", id="the-server-ignores-the-page-parameter"),
+    ])
+    def test_a_walk_that_did_not_read_every_row_withholds_the_unit(
+            self, monkeypatch, pages, json_dir, reason):
+        from src.normalizers.deactivate_stale_faculty import unit_identity_completeness
+        unit = self._unit(monkeypatch, pages, total_key="count", **json_dir)
+        assert unit_identity_completeness(unit) == (False, reason)
+
+    @pytest.mark.parametrize("json_dir, error", [
+        ({"paginate": None}, "X: json_dir total_key needs paginate"),
+        ({"total_distinct_key": None}, "X: json_dir total_key needs total_distinct_key"),
+    ])
+    def test_a_stated_total_needs_a_paged_walk_and_a_row_key(
+            self, monkeypatch, json_dir, error):
+        with pytest.raises(ValueError, match=error):
+            self._unit(monkeypatch, _FEED, total_key="count", **json_dir)
+
+
 # --- engine: json_dir department_field / department_units --------------------
 
 _UNITS = {
