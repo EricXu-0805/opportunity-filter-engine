@@ -150,6 +150,18 @@ def test_valid_batch_preserves_source_and_excludes_private_and_manual_text(endpo
     assert doc == before
 
 
+def test_the_prompt_separates_stated_criteria_from_inferred_ones():
+    """The criteria carry *_attribution flags; the prompt must say what "inferred" means."""
+    doc = make_doc()
+    doc["target_snapshot"]["criteria"]["attribution"].update(majors_attribution="inferred")
+    messages = engine.build_prompt(doc, units_for(doc)[0], "en", anchors_of(doc))
+    system, user = messages[0]["content"], json.loads(messages[1]["content"])
+    assert user["criteria"]["attribution"] == {"majors_attribution": "inferred"}
+    assert "published constraints" not in system
+    assert 'criteria.attribution as "inferred"' in system
+    assert "not something the program page states" in system
+
+
 @pytest.mark.parametrize("mutation", [
     lambda d: d["base_snapshot"]["experience_entries"][0].update(status="withdrawn"),
     lambda d: d["base_snapshot"]["experience_entries"][0]["source"].update(quote="x"),
