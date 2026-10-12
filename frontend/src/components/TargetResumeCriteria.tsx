@@ -13,7 +13,7 @@ const fields: Labels = {
   citizenship_required: ['Citizenship requirement', '公民身份要求'], international_friendly: ['International eligibility', '国际学生资格'],
   work_auth_notes: ['Work authorization', '工作许可说明'], first_time_researchers: ['First-time researchers', '初次参与科研'],
   deadline: ['Deadline', '截止日期'], deadline_is_estimate: ['Estimated deadline', '是否为预计截止日期'],
-  is_rolling: ['Rolling application flag', '滚动申请标记'], deadline_note: ['Deadline note', '截止日期原始说明'],
+  is_rolling: ['Rolling application flag', '滚动申请标记'], deadline_note: ['Deadline note', '截止日期说明'],
   start_date: ['Start date', '开始日期'], posted_date: ['Posted date', '发布日期'], duration: ['Duration', '持续时间'],
   contact_method: ['Application method', '申请方式'], application_effort: ['Estimated application effort', '预计申请工作量'],
   requires_resume: ['Résumé required', '是否需要简历'], requires_cover_letter: ['Cover letter required', '是否需要求职信'],
@@ -27,7 +27,7 @@ const fields: Labels = {
   accepting_state: ['Accepting students', '接收学生状态'], reason_code: ['Availability note', '状态说明'],
   skills_attribution: ['Skills', '技能'], majors_attribution: ['Majors', '专业'], preferred_year_attribution: ['Year of study', '年级'],
   international_attribution: ['International eligibility', '国际学生资格'], citizenship_attribution: ['Citizenship', '公民身份'],
-  paid_attribution: ['Pay status', '报酬情况'],
+  paid_attribution: ['Pay status', '报酬情况'], deadline_note_attribution: ['Deadline note', '截止日期说明'],
 };
 const values: Labels = {
   unknown: ['Unknown', '未知'], yes: ['Yes', '是'], no: ['No', '否'], inferred: ['Inferred', '推断'],
@@ -45,6 +45,9 @@ export default function TargetResumeCriteria({ target, locale }: { target: Targe
     skills_required: 'skills_attribution', majors: 'majors_attribution',
     preferred_year: 'preferred_year_attribution', international_friendly: 'international_attribution',
     citizenship_required: 'citizenship_attribution', paid: 'paid_attribution',
+    // A draft saved before the note had a flag shows the neutral label: no
+    // flag recorded, which the intro says is not a confirmation.
+    deadline_note: 'deadline_note_attribution',
   };
   const label = (key: string) => {
     const base = fields[key]?.[language] ?? key.replaceAll('_', ' ');

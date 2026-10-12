@@ -88,6 +88,14 @@ describe('versioned persisted target context', () => {
     expect(value.criteria.attribution.skills_attribution).toBeNull();
     expect(value.requirements).toEqual(['Python']);
   });
+  it('carries the deadline note flag the server published', () => {
+    const input = { ...opportunity(), deadline_note_attribution: 'inferred',
+      metadata: { ...opportunity().metadata, deadline_note: 'Applications due March 1' } } as Opportunity;
+    const value = targetResumeContextFromOpportunity(input);
+    expect(value.criteria.timing.deadline_note).toBe('Applications due March 1');
+    expect(value.criteria.attribution).toEqual({ deadline_note_attribution: 'inferred' });
+    expect(isCurrentTargetResumeContext(value)).toBe(true);
+  });
   it('accepts legacy documents without upgrading their source, but forbids AI and new legacy creation', async () => {
     const doc = oldDoc(), before = canonical(doc);
     expect(isCurrentTargetResumeContext(doc.target_snapshot)).toBe(false);

@@ -27,6 +27,7 @@ from backend.lib.opportunity_detail import (
 from backend.main import app
 from backend.routes import opportunities as opportunities_module
 from backend.routes.opportunities import _redact
+from backend.routes.target_resume_ai import authoritative_target
 from scripts import configured_facts_report as facts_report
 from scripts.generate_detail_fields_contract import CASES, CONTRACT_PATH, render_contract
 from src.collectors import campus_graph as cg
@@ -1189,6 +1190,19 @@ class TestCampusGraphContract:
         for facet, quote in expected.items():
             assert configured_fact(record, facet) == ConfiguredFact(FACT_CONTRADICTED, quote, _SPEC_URL, seen), facet
         assert payload["paid_attribution"] == "inferred"
+
+    def test_the_saved_resume_target_flags_a_deadline_note_the_page_does_not_state(self):
+        # M92: the tracker résumé page labels the saved note from this flag,
+        # by the rule the detail facts use for the application window.
+        contradicted = self._with_page("Application deadline: February 12, 2027.")
+        posting = _listing(metadata={"is_active": True, "deadline_note": "Applications due March 1"})
+        for record, flag in ((self._configured(), "inferred"), (contradicted, "inferred"),
+                             (self._with_page(self._STATES), None), (posting, None)):
+            payload, canonical = _served(record)
+            assert payload.get("deadline_note_attribution") == flag
+            target = authoritative_target(canonical)
+            assert target["criteria"]["timing"]["deadline_note"] == "Applications due March 1"
+            assert target["criteria"]["attribution"].get("deadline_note_attribution") == flag
 
     def test_a_default_class_year_list_the_page_names_is_the_pages(self):
         record = self._with_page("Awards are made to first-years, sophomores, and juniors.")

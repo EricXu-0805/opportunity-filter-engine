@@ -393,6 +393,9 @@ export interface Opportunity {
   international_attribution?: 'inferred' | null;
   citizenship_attribution?: 'inferred' | null;
   preferred_year_attribution?: 'inferred' | null;
+  // 'inferred': metadata.deadline_note is a campus program spec's note that
+  // the page text the row carries does not state. Absent = no flag.
+  deadline_note_attribution?: 'inferred' | null;
   // Where `location` came from. 'institution' means the collector wrote its
   // host school's city — where the school is, not where the work happens —
   // so no surface may print it as the opportunity's location. 'inferred'

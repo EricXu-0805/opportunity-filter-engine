@@ -852,6 +852,15 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     ).get("majors"):
         projected["majors_attribution"] = "inferred"
 
+    # And for the deadline note a program spec typed into the config: the
+    # detail facts call it a collector default unless the page text states it
+    # (`opportunity_detail._timing`), and the saved résumé target that copies
+    # the note needs the same answer to label it.
+    metadata = projected.get("metadata")
+    note = metadata.get("deadline_note") if isinstance(metadata, dict) else None
+    if isinstance(note, str) and note.strip() and configured_value_unstated(canonical_record, "application_window"):
+        projected["deadline_note_attribution"] = "inferred"
+
     # An eligibility restriction we read off the page, told to a student as the
     # program's own terms, is the most expensive guess here: they self-select
     # out and never apply. 32 live listings carry an international_friendly /

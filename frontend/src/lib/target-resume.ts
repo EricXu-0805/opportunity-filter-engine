@@ -51,6 +51,7 @@ export interface TargetResumeCriteriaV2 {
     skills_attribution?: 'inferred' | null; majors_attribution?: 'inferred' | null;
     preferred_year_attribution?: 'inferred' | null; international_attribution?: 'inferred' | null;
     citizenship_attribution?: 'inferred' | null; paid_attribution?: 'inferred' | null;
+    deadline_note_attribution?: 'inferred' | null;
   };
 }
 export interface TargetResumeContextV2 extends TargetResumeContextV1 {
@@ -201,7 +202,8 @@ const CRITERIA_FIELDS = {
     compensation_details: 'string', department: 'string', lab_or_program: 'string', pi_name: 'string' },
   availability: { record_kind: 'string', source_type: 'string', faculty_availability_status: 'string', target_truth: 'truth' },
   attribution: { skills_attribution: 'attribution', majors_attribution: 'attribution', preferred_year_attribution: 'attribution',
-    international_attribution: 'attribution', citizenship_attribution: 'attribution', paid_attribution: 'attribution' },
+    international_attribution: 'attribution', citizenship_attribution: 'attribution', paid_attribution: 'attribution',
+    deadline_note_attribution: 'attribution' },
 } as const;
 type CriteriaFieldType = 'string' | 'strings' | 'boolean' | 'truth' | 'attribution';
 function criteriaGroup(value: unknown, fields: Readonly<Record<string, CriteriaFieldType>>): void {

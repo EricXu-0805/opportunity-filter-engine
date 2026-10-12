@@ -40,6 +40,7 @@ CRITERIA_FIELDS = {
     'attribution': {
         'skills_attribution': str, 'majors_attribution': str, 'preferred_year_attribution': str,
         'international_attribution': str, 'citizenship_attribution': str, 'paid_attribution': str,
+        'deadline_note_attribution': str,
     },
 }
 TRUTH_FIELDS = {
