@@ -41,7 +41,12 @@ import {
   refreshConflictQuestion,
   markSkillsReplaced,
   PROFILE_KEYS,
+  readProfileSyncEnvelopeStrict,
+  readWhetherStoredProfileIs,
+  saveWholeProfile,
   stageProfilePatch,
+  storedProfileIs,
+  type WholeProfileSaveOutcome,
   type ProfileConflict,
   type ProfileConflictRefresh,
   type ProfileHydration,
@@ -52,7 +57,7 @@ import {
   type ProfileConflictPrompt,
 } from '@/lib/profile-sync';
 import { decodeProfileResult, buildShareUrl } from '@/lib/profile-share';
-import { DEFAULT_PROFILE, hasSelectedSeekingType, SEEKING_TYPES, type HydrationState, type HomeProfileRefreshStatus, type SaveStatus, type TFunc } from './types';
+import { DEFAULT_PROFILE, FRESH_PROFILE, hasSelectedSeekingType, SEEKING_TYPES, type HydrationState, type HomeProfileRefreshStatus, type SaveStatus, type TFunc } from './types';
 
 /** Who a rendered screen belongs to: the owner it was issued for and the
  *  identity generation it was built under. Immutable — an action carries the
@@ -107,6 +112,33 @@ function applyPrefill(
 }
 
 type ReadonlyURLSearchParams = ReturnType<typeof useSearchParams>;
+
+/** An archived profile as Home restores it: every field from the archived
+ *  copy, and every field it never had as a fresh guest profile has it, so
+ *  nothing of the profile it replaces survives (a résumé, links, opportunity
+ *  types). */
+function restoredProfileFrom(archived: Record<string, unknown>): ProfileData & { search_weight: number } {
+  const copy = migrateProfile(archived as unknown as ProfileData) as unknown as Record<string, unknown>;
+  const restored: Record<string, unknown> = {};
+  for (const key of PROFILE_KEYS) restored[key] = copy[key] ?? structuredClone(FRESH_PROFILE[key]);
+  return normalizeProfileForRelease(restored as unknown as ProfileData & { search_weight: number });
+}
+
+/** Why the guest-profile restore cannot be sent right now: no connection;
+ *  one of the form's saves is waiting, in flight or unsent, or a question
+ *  about one is open; or the form is not known to show the stored profile (a
+ *  profile check is running or failed). */
+export type GuestRestoreBlocker = 'offline' | 'saving' | 'refreshing';
+
+/** How a guest-profile restore ended. `unknown`: sent, with no answer, so
+ *  whether the server saved it is found out by reading it back. `skipped`:
+ *  the archived row was not there to restore. */
+export type GuestRestoreOutcome = 'restored' | 'conflict' | 'refused' | 'unknown' | 'busy' | 'skipped';
+
+/** What reading the stored profile back after an `unknown` restore found:
+ *  the restore; the row it was sent against; or another row, saved
+ *  elsewhere before or after it. */
+export type GuestRestoreCheck = 'restored' | 'notRestored' | 'changed';
 
 export interface UseProfileFormResult {
   profile: ProfileData;
@@ -195,6 +227,23 @@ export interface UseProfileFormResult {
   handleExperienceChange: (entries: ExperienceEntry[], expected: { resumeText: string; entriesJson: string }) => boolean;
   handleResumeMasterChange: (master: ResumeMasterV1, expected: { resumeText: string; entriesJson: string; masterJson: string }) => boolean;
   handleGitHubImport: () => Promise<void>;
+  /** Why restoring the guest profile a merge set aside cannot be sent for
+   *  `owner` now, or null when it can. */
+  guestRestoreBlocker: (owner: OwnerToken) => GuestRestoreBlocker | null;
+  /** Saves that archived profile, as `read` reads it for `owner`, as the
+   *  whole profile in one revision-checked save outside the form's edits,
+   *  and puts it on the form only once the server has saved it. Anyone else
+   *  is refused. Until the outcome is known this tab sends no other save. */
+  restoreArchivedProfile: (owner: OwnerToken, read: () => Promise<Record<string, unknown> | null>) => Promise<GuestRestoreOutcome>;
+  /** After an `unknown` restore: reads the stored profile, puts it on the
+   *  form and says what it is; the saves held meanwhile then go out against
+   *  it. Rejects, still holding them, when the read failed. */
+  confirmArchivedProfileRestored: (archived: Record<string, unknown>, owner: OwnerToken) => Promise<GuestRestoreCheck>;
+  /** A restore's outcome is not known yet, so this tab's saves wait. */
+  guestRestoreHeld: boolean;
+  /** Whether `owner`'s stored profile, as this form holds it, already is
+   *  that archived profile restored. */
+  isArchivedProfileStored: (archived: Record<string, unknown>, owner: OwnerToken) => boolean;
 }
 
 /** Append skills whose names aren't already present (case-sensitive match,
@@ -278,6 +327,17 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
   // running or has failed pauses every save, so a resend still due then is
   // made when a check next comes back ready.
   const resendAfterReconnectRef = useRef<(() => void) | null>(null);
+  // A guest-profile restore whose outcome is not known yet: from the click
+  // until its save is answered or, with no answer, until reading the stored
+  // profile back has told whether the server took it (see
+  // restoreArchivedProfile). Until then this tab sends no profile save at all
+  // (not the autosave, the resend, Retry, Generate or a conflict answer), so
+  // the read-back finds either the restore or the row it was sent against.
+  // Edits wait in the journal, as they do while a profile check runs, and a
+  // profile check sends them once the outcome is known, against what is then
+  // stored. `editEpoch` and `revision`: the form when the hold began.
+  const restoreHoldRef = useRef<{ owner: OwnerToken; editEpoch: number; revision: number } | null>(null);
+  const [guestRestoreHeld, setGuestRestoreHeld] = useState(false);
   const publishProfileRefresh = useCallback((status: HomeProfileRefreshStatus) => {
     profileRefreshStatusRef.current = status;
     setProfileRefreshStatus(status);
@@ -704,6 +764,9 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     setShareDraftActive(false);
     backgroundPausedEditsRef.current = false;
     backgroundAbsenceRef.current = null;
+    // A restore's outcome is the business of the identity it was sent for.
+    restoreHoldRef.current = null;
+    setGuestRestoreHeld(false);
     draftTouchedRef.current.clear();
     hydrationReadyRef.current = false;
     hydrationStateRef.current = 'loading';
@@ -1038,7 +1101,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // a save issued later is resolved three ways against what the user
     // actually started from rather than against whatever the row has become.
     if (touched.size > 0) {
-      if (profileRefreshStatusRef.current !== 'ready') backgroundPausedEditsRef.current = true;
+      if (profileRefreshStatusRef.current !== 'ready' || restoreHoldRef.current !== null) backgroundPausedEditsRef.current = true;
       if (gapCarry) {
         // Remembered as owed, not journalled: recordIntent would be a
         // private write under an owner this keystroke was never made by.
@@ -1117,7 +1180,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     if (!origin && !gapCarry) return;
     if (origin) editOriginRef.current = origin;
     weightDirtyRef.current = true;
-    if (profileRefreshStatusRef.current !== 'ready') backgroundPausedEditsRef.current = true;
+    if (profileRefreshStatusRef.current !== 'ready' || restoreHoldRef.current !== null) backgroundPausedEditsRef.current = true;
     bumpEditEpochs(['search_weight']);
     // The LIVE document moves, exactly as it does for every other field —
     // not a mirror beside it. A weight kept only in `weightRef` left
@@ -2446,7 +2509,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     origin: ScreenOrigin,
     intent: number,
   ) => {
-    if (profileRefreshStatusRef.current !== 'ready') return Promise.resolve(undefined);
+    if (profileRefreshStatusRef.current !== 'ready' || restoreHoldRef.current !== null) return Promise.resolve(undefined);
     const token = origin.token;
     const generation = origin.generation;
     // The FULL universe, not just this patch's keys. A generic conflict's
@@ -2517,7 +2580,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // A shared draft is explicitly not the visitor's own profile — see
     // shareDraftActiveRef. Their tweaks stay on screen; only Generate
     // commits them.
-    if (shareDraftActiveRef.current || profileRefreshStatusRef.current !== 'ready') return;
+    if (shareDraftActiveRef.current || profileRefreshStatusRef.current !== 'ready' || restoreHoldRef.current !== null) return;
     // Hydrated data is not an edit: re-saving what a load (or the identity
     // reset) just put on screen would write one identity's row from
     // another's response ordering.
@@ -2553,7 +2616,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       // BEFORE the journal is read. An old token is not a defence: the reads
       // below go to whatever this browser holds NOW, and the new owner's
       // dirty set would be answered with the old screen's document.
-      if (!ownsScreen(origin) || profileRefreshStatusRef.current !== 'ready') return;
+      if (!ownsScreen(origin) || profileRefreshStatusRef.current !== 'ready' || restoreHoldRef.current !== null) return;
       const token = origin.token;
       // The keys the CLOUD has not confirmed — read at fire time, so an edit
       // made during the debounce is included. Never the whole document. A
@@ -2591,7 +2654,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       textBurstRef.current = { timer: null, origin: null };
       // A shared draft is never flushed: the banner promises the visitor's
       // own profile stays untouched until they generate.
-      if (!shareDraftActiveRef.current && profileRefreshStatusRef.current !== 'ready') {
+      if (!shareDraftActiveRef.current && (profileRefreshStatusRef.current !== 'ready' || restoreHoldRef.current !== null)) {
         const held = screenOrigin();
         if (held && ownsScreen(held) && isOwnerTokenValid(held.token, held.token.uid)) {
           // Even while cloud writes are paused, the final owed keystrokes must
@@ -2599,7 +2662,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
           recordOutstandingIntents(profileRef.current);
         }
       }
-      const pending = shareDraftActiveRef.current || profileRefreshStatusRef.current !== 'ready' ? null : pendingSaveRef.current;
+      const pending = shareDraftActiveRef.current || profileRefreshStatusRef.current !== 'ready' || restoreHoldRef.current !== null ? null : pendingSaveRef.current;
       const origin = pendingSaveOriginRef.current;
       // Same rule on the way out. Leaving the page is not a reason to send an
       // old screen's document under whoever owns the browser now, and the
@@ -2790,7 +2853,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
   }, [identityGeneration, editProfile, editingOrigin, setSaveStatus]);
 
   const handleResumeRemoved = useCallback(() => {
-    if (profileRefreshStatusRef.current !== 'ready') return false;
+    if (profileRefreshStatusRef.current !== 'ready' || restoreHoldRef.current !== null) return false;
     if (identityGeneration !== identityGenerationRef.current || !hydrationReadyRef.current || !viewSnapshotRef.current) return false;
     // PREFLIGHT. This action edits the form, takes the status line and sends
     // immediately, so a check further down would already have painted a dead
@@ -3006,7 +3069,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
    *  made by whoever is signed in now. A payload left behind by a previous
    *  identity is dropped, never re-sent. */
   const retryCloudSave = useCallback(() => {
-    if (profileRefreshStatusRef.current !== 'ready') return;
+    if (profileRefreshStatusRef.current !== 'ready' || restoreHoldRef.current !== null) return;
     const failed = retryableRef.current;
     if (!failed) return;
     const token = captureOwnerToken();
@@ -3042,8 +3105,9 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
   // wait for the check the same event starts: the revision check on the
   // resend itself is what catches another device's save. While a check is
   // running, or the last one failed (on a train, the check made on the way
-  // back to the tab failed too), the resend stays due and is made when a
-  // check next comes back ready (see publishProfileRefresh).
+  // back to the tab failed too), or a guest-profile restore's outcome is not
+  // known yet, the resend stays due and is made when a check next comes back
+  // ready (see publishProfileRefresh).
   const reconnectDueRef = useRef(false);
   const reconnectInFlightRef = useRef(false);
   const resendAfterReconnect = useCallback(() => {
@@ -3054,7 +3118,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       reconnectDueRef.current = false;
       return;
     }
-    if (profileRefreshStatusRef.current !== 'ready') return;
+    if (profileRefreshStatusRef.current !== 'ready' || restoreHoldRef.current !== null) return;
     // The identity that made the edit, by its OWN token — never one captured
     // now. Nobody pressed anything, so there is no new intent to attribute to
     // whoever happens to own the browser by the time the network returns.
@@ -3093,6 +3157,209 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     };
   }, [resendAfterReconnect]);
 
+  // Restoring the guest profile a merge set aside in the account's history.
+  // It is never an edit: it does not go through the journal, the outbox or
+  // the resend, and the form changes only once the server has saved it (see
+  // saveWholeProfile). So nothing of a restore is ever left on the form
+  // unsaved, or sent later by anything. While its outcome is not known, this
+  // tab's own saves wait (see restoreHoldRef).
+  // After a conflict whose row could not be shown at once: the restore waits
+  // until the form shows at least that revision.
+  const restoreAfterRef = useRef<{ owner: OwnerToken; revision: number } | null>(null);
+
+  /** The capability to act for `owner`, the identity a profile was read
+   *  for: this form's own, when it still speaks for exactly that owner. */
+  const originFor = useCallback((owner: OwnerToken): ScreenOrigin | null => {
+    const origin = actingOrigin();
+    if (!origin || origin.token.uid !== owner.uid || origin.token.epoch !== owner.epoch
+      || origin.token.generation !== owner.generation || !isOwnerTokenValid(origin.token, origin.token.uid)) return null;
+    return origin;
+  }, [actingOrigin]);
+
+  const guestRestoreBlocker = useCallback((owner: OwnerToken): GuestRestoreBlocker | null => {
+    if (!navigator.onLine) return 'offline';
+    const view = viewSnapshotRef.current;
+    const after = restoreAfterRef.current;
+    if (!originFor(owner) || !view || !hydrationReadyRef.current || shareDraftActiveRef.current
+      || profileRefreshStatusRef.current !== 'ready'
+      || (after && after.owner.uid === owner.uid && after.owner.epoch === owner.epoch
+        && after.owner.generation === owner.generation && view.revision < after.revision)) return 'refreshing';
+    // Only what is unsent or being sent: an edit waiting, in flight, or
+    // failed with a retry behind it, or a question open about one. A status
+    // that only stays put (a deleted row, a stale answer, this device only)
+    // holds nothing back.
+    const status = saveStatusRef.current;
+    if (restoreHoldRef.current !== null || status === 'saving' || pendingSaveRef.current !== null
+      || unrecordedRef.current.size > 0 || (retryableRef.current !== null && status !== 'idle' && status !== 'saved')
+      || reconnectInFlightRef.current || submittingRef.current || activeResolveRef.current !== null
+      || conflictsRef.current.length > 0) return 'saving';
+    // The outbox is shared by every tab of this account.
+    const stored = readProfileSyncEnvelopeStrict();
+    return stored.ok && !stored.value?.pending ? null : 'saving';
+  }, [originFor]);
+
+  /** A profile check of the row as it is now. One already running may have
+   *  read the row before a restore landed, so it is started again when a new
+   *  one can start at once (otherwise the next check, on reconnecting or
+   *  coming back to the tab, reads it). */
+  const recheckStoredRow = useCallback(() => {
+    if (document.visibilityState === 'visible' && navigator.onLine && !activeLoadRef.current) {
+      stopBackgroundReadRef.current?.();
+    }
+    backgroundReadRef.current?.();
+  }, []);
+
+  /**
+   * Puts the stored row `hydration` took in at `revision` on the form, as the
+   * stored state with nothing pending: what a profile check that read it
+   * shows. Only when nothing was edited since `editEpoch` and the coordinator
+   * has nothing to layer on it; otherwise the profile check is asked to put
+   * it there, edits and questions included, and to send those edits. True
+   * when it was shown here.
+   */
+  const showStoredRow = useCallback((
+    hydration: ProfileHydration | null,
+    origin: ScreenOrigin,
+    revision: number,
+    editEpoch: number,
+  ): boolean => {
+    const token = hydration?.token;
+    const dirty = getDirtyProfileKeys(origin.token, HOME_FORM_WRITER);
+    if (!hydration?.baseProfile || !token || hydration.revision !== revision || hydration.quarantineFailed
+      || hydration.hasPending || hydration.conflictKeys.length > 0 || hydration.conflicts.length > 0
+      || token.uid !== origin.token.uid || token.epoch !== origin.token.epoch || token.generation !== origin.token.generation
+      || !ownsScreen(origin) || !isOwnerTokenValid(origin.token, origin.token.uid) || editEpochRef.current !== editEpoch
+      || !hydrationReadyRef.current || shareDraftActiveRef.current || !dirty.ok || dirty.value.length > 0) {
+      recheckStoredRow();
+      return false;
+    }
+    const next = normalizeProfileForRelease({ ...DEFAULT_PROFILE, ...(migrateProfile(hydration.baseProfile) ?? {}) } as ProfileData);
+    const weight = typeof next.search_weight === 'number' ? next.search_weight : DEFAULT_SEARCH_WEIGHT;
+    const rendered = { ...next, search_weight: weight } as ProfileData;
+    const accepted = makeProfileViewSnapshot({ baseProfile: hydration.baseProfile, renderedProfile: rendered,
+      revision: hydration.revision, token, identityGeneration: origin.generation, source: 'hydration' });
+    dirtyKeysRef.current = new Set();
+    weightDirtyRef.current = false;
+    hydratedProfileRef.current = rendered; hydratedWeightRef.current = weight;
+    pendingSaveRef.current = null; pendingSaveOriginRef.current = null;
+    profileRef.current = rendered; weightRef.current = weight;
+    viewSnapshotRef.current = accepted;
+    setViewSnapshot(accepted); setProfile(rendered); setSearchWeight(weight);
+    backgroundAbsenceRef.current = null;
+    return true;
+  }, [ownsScreen, recheckStoredRow]);
+
+  /** Ends `hold`, once its restore's outcome is known. The saves that
+   *  waited go out through a profile check, against what is then stored:
+   *  the one showStoredRow asks for when `showsRow`, otherwise one asked for
+   *  here when anything was edited meanwhile. */
+  const endRestoreHold = useCallback((hold: { owner: OwnerToken } | null, showsRow: boolean) => {
+    if (!hold || restoreHoldRef.current !== hold) return;
+    restoreHoldRef.current = null;
+    setGuestRestoreHeld(false);
+    if (!showsRow && (backgroundPausedEditsRef.current || pendingSaveRef.current !== null
+      || unrecordedRef.current.size > 0)) recheckStoredRow();
+  }, [recheckStoredRow]);
+
+  /**
+   * Restores, for `owner`, the guest profile a merge saved in the account's
+   * history. `read` reads that archived row again, and resolves null when
+   * there is nothing to restore (the caller says why). It is saved as the
+   * whole profile (see restoredProfileFrom: a field it never had gets a
+   * fresh guest profile's value), in one revision-checked save against the
+   * revision on screen, and only when nothing else of the form's is waiting
+   * to be saved. From the call until the outcome is known this tab sends no
+   * other save (see restoreHoldRef); with no answer, that is until
+   * confirmArchivedProfileRestored has read the stored profile back. The
+   * form shows the restore once the server has saved it; a conflict brings
+   * the form up to the row the server holds, so the student can restore
+   * over that.
+   */
+  const restoreArchivedProfile = useCallback(async (
+    owner: OwnerToken,
+    read: () => Promise<Record<string, unknown> | null>,
+  ): Promise<GuestRestoreOutcome> => {
+    // Read for one owner, written for that owner or for nobody.
+    const origin = originFor(owner);
+    const view = viewSnapshotRef.current;
+    if (!origin || !view) return 'refused';
+    if (guestRestoreBlocker(owner) !== null) return 'busy';
+    const hold = { owner: origin.token, editEpoch: editEpochRef.current, revision: view.revision };
+    restoreHoldRef.current = hold;
+    setGuestRestoreHeld(true);
+    let restored: (ProfileData & { search_weight: number }) | null = null;
+    try {
+      const archived = await read();
+      if (!archived) {
+        endRestoreHold(hold, false);
+        return 'skipped';
+      }
+      restored = restoredProfileFrom(archived);
+    } catch {
+      // Not read, or not a profile: nothing was sent.
+    }
+    // The identity may have moved while the row was read.
+    if (!restored || restoreHoldRef.current !== hold || !originFor(owner)
+      || !validateExperienceEntries(restored.experience_entries).ok
+      || !validateResumeMaster(restored.resume_master).ok) {
+      endRestoreHold(hold, false);
+      return 'refused';
+    }
+    const outcome = await saveWholeProfile(origin.token, restored as unknown as Record<string, unknown>, hold.revision)
+      .catch((): WholeProfileSaveOutcome => ({ status: 'unknown' }));
+    // No answer: still held, until it is read back.
+    if (outcome.status === 'unknown') return 'unknown';
+    if (outcome.status === 'refused') {
+      endRestoreHold(hold, false);
+      return 'refused';
+    }
+    endRestoreHold(hold, true);
+    const shown = showStoredRow(outcome.hydration, origin, outcome.revision, hold.editEpoch);
+    if (outcome.status === 'saved') return 'restored';
+    if (!shown) restoreAfterRef.current = { owner: origin.token, revision: outcome.revision };
+    return 'conflict';
+  }, [originFor, guestRestoreBlocker, showStoredRow, endRestoreHold]);
+
+  const confirmArchivedProfileRestored = useCallback(async (
+    archived: Record<string, unknown>,
+    owner: OwnerToken,
+  ): Promise<GuestRestoreCheck> => {
+    const origin = originFor(owner);
+    if (!origin) throw new OwnerNotReadyError();
+    const held = restoreHoldRef.current;
+    const hold = held && held.owner.uid === owner.uid && held.owner.epoch === owner.epoch
+      && held.owner.generation === owner.generation ? held : null;
+    const editEpoch = hold?.editEpoch ?? editEpochRef.current;
+    const sentAgainst = hold?.revision ?? viewSnapshotRef.current?.revision;
+    const controller = new AbortController();
+    const deadline = setTimeout(() => controller.abort(), PROFILE_REFRESH_DEADLINE_MS);
+    try {
+      const sent = restoredProfileFrom(archived) as unknown as Record<string, unknown>;
+      const { matches, hydration } = await readWhetherStoredProfileIs(sent, controller.signal);
+      const { token } = hydration;
+      if (!ownsScreen(origin) || token.uid !== owner.uid || token.epoch !== owner.epoch
+        || token.generation !== owner.generation) throw new OwnerNotReadyError();
+      // Nothing of this tab's was sent since the restore, so a row that is
+      // neither the restore nor the one it was sent against was saved
+      // elsewhere, before or after it.
+      const check: GuestRestoreCheck = matches ? 'restored'
+        : hydration.source === 'cloud' && hydration.revision === sentAgainst ? 'notRestored' : 'changed';
+      endRestoreHold(hold, true);
+      showStoredRow(hydration, origin, hydration.revision, editEpoch);
+      return check;
+    } finally {
+      clearTimeout(deadline);
+    }
+  }, [originFor, ownsScreen, showStoredRow, endRestoreHold]);
+
+  const isArchivedProfileStored = useCallback((archived: Record<string, unknown>, owner: OwnerToken): boolean => {
+    const view = viewSnapshotRef.current;
+    if (!view?.baseProfile || view.token.uid !== owner.uid || view.token.epoch !== owner.epoch
+      || view.token.generation !== owner.generation) return false;
+    return storedProfileIs(view.baseProfile as unknown as Record<string, unknown>,
+      restoredProfileFrom(archived) as unknown as Record<string, unknown>);
+  }, []);
+
   /** The two halves of a conflict, as explicit user choices. Nothing else
    *  unlocks a conflicted field — see the coordinator's lock rule. */
   const resolveConflictAs = useCallback((
@@ -3104,7 +3371,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // From the PUBLISHED prompt, not from React state: the two can disagree
     // for a tick, and a click landing in that window would answer a question
     // that is no longer the one on screen.
-    if (profileRefreshStatusRef.current !== 'ready') return;
+    if (profileRefreshStatusRef.current !== 'ready' || restoreHoldRef.current !== null) return;
     const published = conflictPromptRef.current;
     if (!published) return;
     const asking = only ? narrowConflictPrompt(published, only) : published;
@@ -3320,7 +3587,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // submit whose own GitHub request invalidates the first's import, and
     // the first would still write, clear the cache and navigate — with the
     // skills it was told to drop missing from the row it just saved.
-    if (submittingRef.current || profileRefreshStatusRef.current !== 'ready') return;
+    if (submittingRef.current || profileRefreshStatusRef.current !== 'ready' || restoreHoldRef.current !== null) return;
     // Backstop for the disabled button, before imports, saves or navigation.
     // [] means the user deselected every type; it is not a request for defaults.
     if (!hasSelectedSeekingType(profileRef.current)) return;
@@ -3393,7 +3660,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // generation cannot see. Checked here, ahead of the visitor's own-row
     // read, the skill ledger, the journal and the stage: from this line down
     // everything either reads private data or writes it.
-    if (!ownsScreen(origin) || profileRefreshStatusRef.current !== 'ready') return;
+    if (!ownsScreen(origin) || profileRefreshStatusRef.current !== 'ready' || restoreHoldRef.current !== null) return;
     // Built from the LIVE form, after the await — the user keeps typing
     // while GitHub is being fetched, and persisting the snapshot this
     // handler closed over would silently roll those edits back (and then
@@ -3580,7 +3847,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // edit to one of them is lost to a response that predates it.
     const submitFieldEpochs = epochsNow(PROFILE_KEYS as readonly string[]);
     setSaveStatus('saving');
-    if (profileRefreshStatusRef.current !== 'ready') return;
+    if (profileRefreshStatusRef.current !== 'ready' || restoreHoldRef.current !== null) return;
     const saveKeys = dirty.length > 0
       ? dirty
       : (hasConfirmedProfileRevision() ? [] : (Object.keys(profileToSave) as (keyof ProfileData)[]));
@@ -3741,5 +4008,10 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     handleExperienceChange,
     handleResumeMasterChange,
     handleGitHubImport,
+    guestRestoreBlocker,
+    restoreArchivedProfile,
+    confirmArchivedProfileRestored,
+    guestRestoreHeld,
+    isArchivedProfileStored,
   };
 }

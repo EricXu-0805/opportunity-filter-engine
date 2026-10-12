@@ -1551,6 +1551,89 @@ export async function loadProfile(signal?: AbortSignal, observe?: ProfileReadObs
   }
 }
 
+/**
+ * The id of the guest profile a Flow B merge has just archived in this
+ * account's history. When the account already had a profile, the merge keeps
+ * it and inserts the guest's as a revision-less profile_versions row stamped
+ * with the merge's own time (034). The RPC does not return that row, so
+ * /auth/callback asks for it here, right after the merge, in the same session.
+ *
+ * Why the newest revision-less row is that archive: browsers cannot insert
+ * into profile_versions (029 revoked it) and every CAS save stamps its
+ * revision, so the only revision-less rows are pre-029 history and what
+ * merges write: the archive, plus the guest's own older history moved across
+ * with its original times. A guest save that landed while the merge waited
+ * for its lock can carry a later time than the archive, but it holds the same
+ * profile the archive copied. The only way to get a different guest's profile
+ * is another merge into this account committing between this merge and this
+ * read (a second guest browser signing in to the same account at the same
+ * moment, or a Retry that replays this grant after such a merge).
+ *
+ * Read-only, under the caller's own row-level security. Null when there is no
+ * revision-less row; throws when the read failed or can no longer be
+ * attributed to `token`.
+ */
+export async function findLatestProfileArchive(token: OwnerToken): Promise<string | null> {
+  const id = await ensureAnonSession();
+  if (!id || !isOwnerTokenValid(token, id)) throw new OwnerNotReadyError();
+  const { data, error } = await supabase
+    .from('profile_versions')
+    .select('id')
+    .eq('device_id', id)
+    .is('profile_revision', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!isOwnerTokenValid(token, id)) throw new OwnerNotReadyError();
+  if (error) throw new Error(`Failed to find the archived guest profile: ${error.message}`);
+  const archive = (data as { id?: unknown } | null)?.id;
+  return typeof archive === 'string' && archive ? archive : null;
+}
+
+/**
+ * The profile in the archived row `archiveId` (see findLatestProfileArchive),
+ * read by its id under the caller's own row-level security. Null when that
+ * row is gone, or when a later merge into this account archived another
+ * revision-less row after it: then nothing may be restored in its place.
+ *
+ * Read-only. Restoring it is one revision-checked save of the whole profile
+ * (saveWholeProfile in profile-sync); nothing here writes the table. Throws when a read
+ * failed or can no longer be attributed to `token` — never "you have none".
+ */
+export async function loadArchivedGuestProfile(
+  token: OwnerToken,
+  archiveId: string,
+): Promise<Record<string, unknown> | null> {
+  const id = await ensureAnonSession();
+  if (!id || !isOwnerTokenValid(token, id)) throw new OwnerNotReadyError();
+  const { data, error } = await supabase
+    .from('profile_versions')
+    .select('id, profile_data, created_at')
+    .eq('device_id', id)
+    .eq('id', archiveId)
+    .is('profile_revision', null)
+    .maybeSingle();
+  if (!isOwnerTokenValid(token, id)) throw new OwnerNotReadyError();
+  if (error) throw new Error(`Failed to load the archived guest profile: ${error.message}`);
+  if (!data) return null;
+  const row = data as { profile_data?: unknown; created_at?: unknown };
+  const profile = row.profile_data;
+  if (!profile || typeof profile !== 'object' || Array.isArray(profile) || typeof row.created_at !== 'string') {
+    throw new Error('Failed to load the archived guest profile: the stored copy is not a profile');
+  }
+  const { data: later, error: laterError } = await supabase
+    .from('profile_versions')
+    .select('id')
+    .eq('device_id', id)
+    .is('profile_revision', null)
+    .gt('created_at', row.created_at)
+    .limit(1);
+  if (!isOwnerTokenValid(token, id)) throw new OwnerNotReadyError();
+  if (laterError) throw new Error(`Failed to load the archived guest profile: ${laterError.message}`);
+  if (!Array.isArray(later)) throw new Error('Failed to load the archived guest profile: unreadable history');
+  return later.length > 0 ? null : profile as Record<string, unknown>;
+}
+
 // getFavorites is not a pure read: on success it backfills local-only ids up
 // to the remote table and mirrors the merged result back into the local
 // fallback. Both are private-write side effects (RLS protects the remote

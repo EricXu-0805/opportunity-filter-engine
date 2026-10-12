@@ -11,6 +11,7 @@ export function SubmitRow({
   hydrationState,
   profileRefreshStatus = 'ready',
   onRetryProfileRefresh,
+  guestRestoreHeld = false,
   isSubmitting,
   hasConflict,
   canRetrySync,
@@ -30,6 +31,9 @@ export function SubmitRow({
   hydrationState: HydrationState;
   profileRefreshStatus?: HomeProfileRefreshStatus;
   onRetryProfileRefresh?: () => void;
+  /** A guest-profile restore's outcome is not known yet, so nothing is
+   *  saved until it is (see useProfileForm's restoreHoldRef). */
+  guestRestoreHeld?: boolean;
   isSubmitting: boolean;
   /** Whether a disagreement is still open. Independent of `saveStatus`: an
    *  unrelated clean save, or a rejected answer, moves the wording on while
@@ -51,8 +55,9 @@ export function SubmitRow({
   // Generating matches writes the whole profile row. Until this identity's
   // stored row has been read, that write would replace fields the form has
   // never seen — so the action is unavailable, with the reason spelled out
-  // rather than a button that silently does nothing.
-  const refreshReady = profileRefreshStatus === 'ready';
+  // rather than a button that silently does nothing. The same while a
+  // guest-profile restore's outcome is not known: nothing is saved then.
+  const refreshReady = profileRefreshStatus === 'ready' && !guestRestoreHeld;
   const canSubmit = isValid && hydrationState === 'ready' && refreshReady && !isSubmitting;
   // A generic Retry cannot unlock a conflicted key (see the coordinator's
   // lock rule), so while a question is open it is not a way out — it is a
@@ -110,7 +115,12 @@ export function SubmitRow({
           )}
         </div>
       )}
-      {hydrationState === 'ready' && !refreshReady && (
+      {hydrationState === 'ready' && profileRefreshStatus === 'ready' && guestRestoreHeld && (
+        <p data-testid="guest-restore-hold" role="status" className="mt-4 text-center text-[13px] text-gray-600">
+          {t('home.actions.guestRestoreHold')}
+        </p>
+      )}
+      {hydrationState === 'ready' && profileRefreshStatus !== 'ready' && (
         <div data-testid="home-profile-refresh-status" className="mt-4 text-center text-[13px] text-amber-700"
           role={profileRefreshStatus === 'checking' ? 'status' : 'alert'}>
           <p>{t(profileRefreshStatus === 'deleted' ? 'home.actions.profileRefreshDeleted'

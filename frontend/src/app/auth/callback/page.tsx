@@ -30,6 +30,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { CheckCircle, Sparkles } from 'lucide-react';
 import type { EmailOtpType } from '@supabase/supabase-js';
 import {
+  findLatestProfileArchive,
   getAuthState,
   getDataInventory,
   redeemPendingMerge,
@@ -40,6 +41,7 @@ import {
   type OAuthProvider,
 } from '@/lib/supabase';
 import { advanceOwnerEpochIfUnchanged, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
+import { recordMergedGuestProfile } from '@/lib/merged-guest-profile';
 import { forgetMergedGuestRevision, hydrateProfile } from '@/lib/profile-sync';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
@@ -122,6 +124,14 @@ function CallbackInner() {
         const owner = captureOwnerToken();
         if (merge.merged && merge.profile !== 'adopted' && owner.uid === uid) {
           await forgetMergedGuestRevision(owner).catch(() => false);
+          // The guest's profile was saved in the account's history rather
+          // than dropped. Home offers to restore it from there: that row and
+          // no other, so its id is read now, straight after the merge that
+          // wrote it. Without the id there is nothing safe to offer.
+          if (merge.profile === 'kept_target_saved_other_as_version') {
+            const archive = await findLatestProfileArchive(owner).catch(() => null);
+            if (archive) recordMergedGuestProfile(owner, archive);
+          }
         }
         await hydrateProfile().catch(() => {});
       }

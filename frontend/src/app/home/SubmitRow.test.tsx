@@ -236,4 +236,14 @@ describe('SubmitRow — background profile checks', () => {
     expect(screen.getByTestId('generate-matches')).toBeEnabled();
     expect(screen.queryByTestId('home-profile-refresh-status')).toBeNull();
   });
+  it('holds Generate, Retry and the conflict answers, and says why, while a guest-profile restore is unresolved', () => {
+    const onSubmit = vi.fn(), onRetrySync = vi.fn();
+    renderRow({ guestRestoreHeld: true, saveStatus: 'cloud-failed', canRetrySync: true, hasConflict: true, onSubmit, onRetrySync });
+    expect(screen.getByTestId('generate-matches')).toBeDisabled();
+    expect(screen.getByTestId('guest-restore-hold')).toHaveTextContent('home.actions.guestRestoreHold');
+    expect(screen.queryByTestId('retry-sync')).toBeNull();
+    expect(screen.getByTestId('conflict-keep-mine')).toBeDisabled();
+    expect(screen.getByTestId('conflict-use-cloud')).toBeDisabled();
+    expect(screen.queryByTestId('home-profile-refresh-status')).toBeNull();
+  });
 });

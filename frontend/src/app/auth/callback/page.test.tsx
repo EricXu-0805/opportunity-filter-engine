@@ -22,10 +22,12 @@ const mockRefreshSession = vi.fn();
 const mockOAuthExisting = vi.fn();
 const mockHydrateProfile = vi.fn();
 const mockForgetMergedGuestRevision = vi.fn();
+const mockFindLatestProfileArchive = vi.fn();
 const replaceSpy = vi.fn();
 const searchRef = { current: '?code=stub-code' };
 
 vi.mock('@/lib/supabase', () => ({
+  findLatestProfileArchive: (token: unknown) => mockFindLatestProfileArchive(token),
   getAuthState: () => mockGetAuthState(),
   getDataInventory: () => mockGetDataInventory(),
   redeemPendingMerge: () => mockRedeemMerge(),
@@ -80,6 +82,7 @@ vi.mock('@/i18n/client', () => ({
 
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { advanceOwnerEpoch, getLocalOwnerState, syncLocalIdentityOwner } from '@/lib/identity-owner';
+import { readMergedGuestProfile } from '@/lib/merged-guest-profile';
 
 import CallbackPage from './page';
 /** The marker is a versioned record now — {v:2, uid, generation, phase} — so
@@ -109,6 +112,7 @@ beforeEach(async () => {
   mockRedeemMerge.mockResolvedValue({ kind: 'none' });
   mockHydrateProfile.mockResolvedValue(undefined);
   mockForgetMergedGuestRevision.mockResolvedValue(true);
+  mockFindLatestProfileArchive.mockResolvedValue(null);
   // identity-owner's module-level owner state is a singleton shared across
   // every test in this file (no per-test module reset) — force it back to
   // a known null baseline so a prior test's real uid transition can't leak
@@ -272,6 +276,7 @@ describe('CallbackPage — R68 idempotency guard', () => {
 
   describe('the profile the merge kept', () => {
     const signedIn = { session: { user: { id: 'p' } }, user: { id: 'p' }, isAnonymous: false, email: 'eric@illinois.edu' };
+    const ARCHIVE = '6f1c2b9e-0d4a-4c1e-9a57-3f2d8e1b7c40';
     const merged = (profile: string) => ({
       kind: 'success',
       summary: { merged: true, favorites: 1, interactions: 0, savedSearches: 0, attachmentsNotMoved: 0, profile },
@@ -295,6 +300,54 @@ describe('CallbackPage — R68 idempotency guard', () => {
           .toBeLessThan(mockHydrateProfile.mock.invocationCallOrder[0]);
       },
     );
+
+    it.each([
+      ['kept_target_saved_other_as_version', true],
+      ['kept_target', false],
+      ['adopted', false],
+    ])('tells Home about an archived guest profile only when the merge saved one (%s)', async (profile, archived) => {
+      localStorage.setItem(STORAGE_KEYS.LOCAL_IDENTITY_OWNER, 'anon-uid');
+      mockGetAuthState.mockResolvedValue(signedIn);
+      mockRedeemMerge.mockResolvedValue(merged(profile));
+      mockFindLatestProfileArchive.mockResolvedValue(ARCHIVE);
+
+      render(<CallbackPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText('auth.callback.successTitle')).toBeInTheDocument();
+      });
+      // Read as the account the browser now belongs to.
+      expect(markerUid()).toBe('p');
+      // The notice names the row this merge archived, read for this account
+      // straight after the merge, before anything else reads the profile.
+      expect(readMergedGuestProfile()).toBe(archived ? ARCHIVE : null);
+      if (archived) {
+        expect(mockFindLatestProfileArchive).toHaveBeenCalledOnce();
+        expect(mockFindLatestProfileArchive.mock.calls[0][0]).toMatchObject({ uid: 'p' });
+        expect(mockFindLatestProfileArchive.mock.invocationCallOrder[0])
+          .toBeLessThan(mockHydrateProfile.mock.invocationCallOrder[0]);
+      } else {
+        expect(mockFindLatestProfileArchive).not.toHaveBeenCalled();
+      }
+    });
+
+    it.each([
+      ['the archive could not be found', () => mockFindLatestProfileArchive.mockResolvedValue(null)],
+      ['the lookup failed', () => mockFindLatestProfileArchive.mockRejectedValue(new Error('offline'))],
+    ])('offers no restore when %s, since no other row may stand in for it', async (_case, arrange) => {
+      localStorage.setItem(STORAGE_KEYS.LOCAL_IDENTITY_OWNER, 'anon-uid');
+      mockGetAuthState.mockResolvedValue(signedIn);
+      mockRedeemMerge.mockResolvedValue(merged('kept_target_saved_other_as_version'));
+      arrange();
+
+      render(<CallbackPage />);
+
+      await waitFor(() => {
+        expect(screen.getByText('auth.callback.successTitle')).toBeInTheDocument();
+      });
+      expect(readMergedGuestProfile()).toBeNull();
+      expect(mockHydrateProfile).toHaveBeenCalled();
+    });
 
     it('keeps the revision when the account adopted this browser\'s row', async () => {
       localStorage.setItem(STORAGE_KEYS.LOCAL_IDENTITY_OWNER, 'anon-uid');

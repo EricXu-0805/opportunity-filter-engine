@@ -169,6 +169,26 @@ async function openLinkAndLand(page: Page, link: string, email: string) {
 
 type GuestDraft = Pick<ProfileData, 'name' | 'college' | 'major' | 'grade' | 'research_interests'>;
 
+/** A guest saves a profile on Home and signs in, in the same tab, to the
+ *  account that already has its own profile at `email`. */
+async function guestSignsInToAccount(page: Page, http: APIRequestContext, email: string, guest: GuestDraft) {
+  await page.goto('/');
+  await waitForForm(page);
+  await fillForm(page, guest);
+  await expect(page.locator('#profile-save-status')).toHaveText('Profile saved', { timeout: 15_000 });
+  const { modal } = await requestLink(page, email);
+  const existing = modal.getByTestId('auth-modal-signin-existing');
+  await expect(existing).toBeVisible();
+  await existing.click();
+  await expect(modal.getByText('Check your inbox', { exact: true })).toBeVisible();
+  const redeemed = page.waitForResponse((response) => path(response.url()) === '/rest/v1/rpc/redeem_merge_grant');
+  await openLinkAndLand(page, await latestLink(http, email, 'magiclink'), email);
+  expect(await (await redeemed).json()).toMatchObject({
+    merged: true, summary: { profile: 'kept_target_saved_other_as_version' },
+  });
+  await waitForForm(page);
+}
+
 /** A guest saves a profile on Home, asks for a sign-in link to an account that
  *  already exists, and opens it in a NEW tab of the same browser while Home
  *  stays open in the first one. The new tab's merge redemption is held until
@@ -355,6 +375,389 @@ test.describe('M19 cloud save scenarios', () => {
       }
       await page.screenshot({ path: info.outputPath('merged-favorites.png') });
     } finally {
+      await http.dispose();
+    }
+  });
+
+  test('a guest who signs in to an account with its own profile can restore the guest profile from Home', async ({ page }, info) => {
+    const http = await apiRequest.newContext();
+    const email = mailbox('restore');
+    const guest = {
+      name: 'Guest whose profile was set aside 王', college: 'Grainger College of Engineering', major: 'Computer Science',
+      grade: 'Freshman', research_interests: 'Guest draft about tactile sensing 王',
+    };
+    // Fields the account has and the guest profile never set: a restore
+    // leaves none of them behind.
+    const accountOnly = {
+      linkedin_url: 'https://www.linkedin.com/in/account-owner', resume_text: 'Account owner résumé: two years in a photonics lab 王',
+    };
+    const cleared = { linkedin_url: '', resume_text: '', seeking_types: ['research', 'summer_program'] };
+    try {
+      const account = await seedAccount(http, email);
+      const patched = await http.post(new URL('/rest/v1/rpc/commit_profile_patch_cas', STUB).href, {
+        headers: bearer(account), data: { p_expected_device_id: account.uid, p_expected_revision: 1, p_patch: accountOnly },
+      });
+      expect(await patched.json()).toMatchObject({ status: 'applied', revision: 2 });
+      await englishOnly(page);
+      const receipts = recordCas(page);
+      const expected: number[] = [];
+      page.on('request', (request) => {
+        if (isCas(request.url()) && request.method() === 'POST') expected.push(request.postDataJSON().p_expected_revision);
+      });
+      const status = page.locator('#profile-save-status');
+      await page.goto('/');
+      await waitForForm(page);
+      await fillForm(page, guest);
+      await expect(status).toHaveText('Profile saved', { timeout: 15_000 });
+      const { modal } = await requestLink(page, email);
+      const existing = modal.getByTestId('auth-modal-signin-existing');
+      await expect(existing).toBeVisible();
+      await existing.click();
+      await expect(modal.getByText('Check your inbox', { exact: true })).toBeVisible();
+      const writesBeforeLink = receipts.length;
+      const sendsBeforeLink = expected.length;
+
+      const redeemed = page.waitForResponse((response) => path(response.url()) === '/rest/v1/rpc/redeem_merge_grant');
+      await openLinkAndLand(page, await latestLink(http, email, 'magiclink'), email);
+      expect(await (await redeemed).json()).toMatchObject({
+        merged: true, summary: { profile: 'kept_target_saved_other_as_version' },
+      });
+      await waitForForm(page);
+      await expectForm(page, ACCOUNT_PROFILE);
+
+      // Home says where the guest profile went and offers it back; saying so
+      // writes nothing.
+      const notice = page.getByTestId('merged-guest-notice');
+      await expect(notice).toContainText('Your guest profile is saved.', { timeout: 15_000 });
+      await expect(notice).toContainText('saved the profile you made as a guest separately in this account');
+      await expect(notice).toContainText('replaces the whole profile below with it, including the résumé, links');
+      await expect(notice).toContainText('"Keep my account profile" is final');
+      await expect(notice).not.toContainText('version history');
+      const restore = page.getByTestId('restore-guest-profile');
+      await expect(restore).toHaveText('Restore my guest profile');
+      await expect(page.getByTestId('keep-account-profile')).toHaveText('Keep my account profile');
+      expect(receipts.slice(writesBeforeLink)).toEqual([]);
+      await notice.scrollIntoViewIfNeeded();
+      await page.screenshot({ path: info.outputPath('restore-guest-profile-offer.png') });
+
+      await restore.click();
+      await expect(notice).toContainText('Your guest profile is restored.', { timeout: 15_000 });
+      await expectForm(page, guest);
+      await expect(status).not.toContainText("couldn't sync");
+      // One revision-checked save of the whole profile, against the account
+      // revision that was on screen: the account's profile was revision 2,
+      // the guest's is 3.
+      expect(expected.slice(sendsBeforeLink)).toEqual([2]);
+      expect(receipts.slice(writesBeforeLink)).toMatchObject([{
+        uid: account.uid, status: 'applied', revision: 3,
+        patch: { name: guest.name, major: guest.major, grade: guest.grade, research_interests: guest.research_interests, ...cleared },
+      }]);
+      expect(await profileRows(http, account.uid)).toMatchObject([{ revision: 3, profile_data: { ...guest, ...cleared } }]);
+      expect(await stubGet(http, `/rest/v1/profile_versions?device_id=eq.${account.uid}`))
+        .toMatchObject([{ profile_revision: null, profile_data: guest }]);
+      await page.screenshot({ path: info.outputPath('restore-guest-profile-done.png') });
+
+      // Restored once; a reload shows it and does not offer it again.
+      await page.reload();
+      await waitForForm(page);
+      await expectForm(page, guest);
+      await expect(page.getByTestId('merged-guest-notice')).toHaveCount(0);
+      expect(receipts.slice(writesBeforeLink)).toHaveLength(1);
+    } finally {
+      await http.dispose();
+    }
+  });
+
+  test('a restore whose save gets no answer and did not reach the server changes nothing, and nothing of it is sent later', async ({ page, context }, info) => {
+    const http = await apiRequest.newContext();
+    const email = mailbox('restore-lost');
+    const guest: GuestDraft = {
+      name: 'Guest whose restore did not save 王', college: 'Grainger College of Engineering', major: 'Computer Science',
+      grade: 'Freshman', research_interests: 'Guest draft about haptics that never reached the server 王',
+    };
+    try {
+      const account = await seedAccount(http, email);
+      await englishOnly(page);
+      await guestSignsInToAccount(page, http, email, guest);
+      const notice = page.getByTestId('merged-guest-notice');
+      const restore = page.getByTestId('restore-guest-profile');
+      const status = page.locator('#profile-save-status');
+      await expect(restore).toBeEnabled({ timeout: 15_000 });
+      // Every profile save this page tries, whether or not it gets through.
+      const attempts: Array<Partial<ProfileData>> = [];
+      page.on('request', (request) => {
+        if (isCas(request.url()) && request.method() === 'POST') attempts.push(request.postDataJSON().p_patch);
+      });
+
+      // Offline, Restore is not sent at all, and the notice says why.
+      await context.setOffline(true);
+      await expect(restore).toBeDisabled();
+      await expect(notice).toContainText('Restoring needs an internet connection.');
+      await context.setOffline(false);
+      await expect(restore).toBeEnabled({ timeout: 15_000 });
+
+      // The restore's save never reaches the server. The notice reads the
+      // stored profile back, finds the account's, and says nothing was
+      // restored; the form never showed the guest profile.
+      await page.route('**/rest/v1/rpc/commit_profile_patch_cas', (route) => route.abort('internetdisconnected'));
+      await restore.click();
+      await expect(notice).toContainText('Your guest profile was not restored, and the profile below is unchanged.', { timeout: 15_000 });
+      await expectForm(page, ACCOUNT_PROFILE);
+      await expect(status).not.toContainText("couldn't sync");
+      await expect(restore).toBeEnabled();
+      await expect(page.getByTestId('keep-account-profile')).toBeEnabled();
+      expect(attempts).toMatchObject([{ name: guest.name, major: guest.major }]);
+      await notice.scrollIntoViewIfNeeded();
+      await page.screenshot({ path: info.outputPath('restore-not-restored.png') });
+
+      // Nothing of it is pending: reconnecting sends nothing.
+      await page.unroute('**/rest/v1/rpc/commit_profile_patch_cas');
+      await context.setOffline(true);
+      await page.waitForTimeout(300);
+      const checked = page.waitForResponse((response) => path(response.url()) === '/rest/v1/profiles'
+        && response.request().method() === 'GET');
+      await context.setOffline(false);
+      await checked;
+      await page.waitForTimeout(3_000);
+      expect(attempts, 'nothing is sent on reconnecting').toHaveLength(1);
+      await expectForm(page, ACCOUNT_PROFILE);
+
+      // Keeping the account profile only removes the offer, for good: a
+      // reload shows the account profile, does not offer the guest profile
+      // again, and sends nothing.
+      await page.getByTestId('keep-account-profile').click();
+      await expect(notice).toHaveCount(0);
+      await page.reload();
+      await waitForForm(page);
+      await expectForm(page, ACCOUNT_PROFILE);
+      await page.waitForTimeout(1_000);
+      await expect(notice).toHaveCount(0);
+      expect(attempts).toHaveLength(1);
+      expect(await profileRows(http, account.uid)).toMatchObject([{ revision: 1, profile_data: ACCOUNT_PROFILE }]);
+    } finally {
+      await http.dispose();
+    }
+  });
+
+  test('a restore the server saved but whose answer was lost is read back and shown as restored', async ({ page }) => {
+    const http = await apiRequest.newContext();
+    const email = mailbox('restore-answer-lost');
+    const guest: GuestDraft = {
+      name: 'Guest restored without an answer', college: 'Grainger College of Engineering', major: 'Computer Science',
+      grade: 'Sophomore', research_interests: 'Guest draft about acoustic sensing',
+    };
+    try {
+      const account = await seedAccount(http, email);
+      await englishOnly(page);
+      await guestSignsInToAccount(page, http, email, guest);
+      const notice = page.getByTestId('merged-guest-notice');
+      await expect(page.getByTestId('restore-guest-profile')).toBeEnabled({ timeout: 15_000 });
+      // The save reaches the server, and its answer never reaches the page.
+      await page.route('**/rest/v1/rpc/commit_profile_patch_cas', async (route) => {
+        await route.fetch();
+        await route.abort('internetdisconnected');
+      });
+      await page.getByTestId('restore-guest-profile').click();
+      await expect(notice).toContainText('Your guest profile is restored.', { timeout: 15_000 });
+      await expectForm(page, guest);
+      await expect(page.getByTestId('restore-guest-profile')).toHaveCount(0);
+      expect(await profileRows(http, account.uid)).toMatchObject([{ revision: 2, profile_data: guest }]);
+      await page.unroute('**/rest/v1/rpc/commit_profile_patch_cas');
+
+      await page.reload();
+      await waitForForm(page);
+      await expectForm(page, guest);
+      await page.waitForTimeout(1_000);
+      await expect(notice).toHaveCount(0);
+      expect(await profileRows(http, account.uid)).toMatchObject([{ revision: 2, profile_data: guest }]);
+    } finally {
+      await http.dispose();
+    }
+  });
+
+  test('an edit typed while a restore with no answer is read back waits, and then the notice, the form and the server agree', async ({ page }, info) => {
+    // The review's probe E: sent at once, the edit was rebased onto the
+    // restored row and saved, so the read-back found neither profile and
+    // said "not restored" while the server held the guest's.
+    const http = await apiRequest.newContext();
+    const email = mailbox('restore-hold');
+    // A junior, like the account: the grade is a field both profiles share.
+    const guest: GuestDraft = {
+      name: 'Guest whose restore was read back slowly', college: 'Grainger College of Engineering', major: 'Computer Science',
+      grade: 'Junior', research_interests: 'Guest draft about microfluidics, read back slowly',
+    };
+    try {
+      const account = await seedAccount(http, email);
+      await englishOnly(page);
+      await guestSignsInToAccount(page, http, email, guest);
+      const notice = page.getByTestId('merged-guest-notice');
+      const restore = page.getByTestId('restore-guest-profile');
+      await expect(restore).toBeEnabled({ timeout: 15_000 });
+      const attempts: Array<{ revision: number; patch: Partial<ProfileData> }> = [];
+      page.on('request', (request) => {
+        if (isCas(request.url()) && request.method() === 'POST') {
+          attempts.push({ revision: request.postDataJSON().p_expected_revision, patch: request.postDataJSON().p_patch });
+        }
+      });
+      // The restore reaches the server and its answer is lost; from then on
+      // reading the profile is held until the test lets it through.
+      let releaseReads!: () => void;
+      const reads = new Promise<void>((resolve) => { releaseReads = resolve; });
+      let holdReads = false;
+      let first = true;
+      await page.route('**/rest/v1/rpc/commit_profile_patch_cas', async (route) => {
+        if (!first) { await route.continue(); return; }
+        first = false;
+        await route.fetch();
+        holdReads = true;
+        await route.abort('internetdisconnected');
+      });
+      await page.route('**/rest/v1/profiles?**', async (route) => {
+        if (holdReads && route.request().method() === 'GET') await reads;
+        await route.continue();
+      });
+
+      await restore.click();
+      await expect(notice).toContainText('Checking whether your guest profile was restored', { timeout: 15_000 });
+      await expect(page.getByTestId('keep-account-profile')).toBeDisabled();
+      await expect(notice).toContainText('You can keep your account profile once the restore has finished.');
+      await page.locator('#grade').selectOption('Senior');
+      const hold = page.getByTestId('guest-restore-hold');
+      await expect(hold).toHaveText('Saving and matching are paused until we know whether your guest profile was restored. Your entries are kept.');
+      await expect(page.getByTestId('generate-matches')).toBeDisabled();
+      // Well past the autosave's 1.5 s: the edit waits in the journal.
+      await page.waitForTimeout(3_000);
+      expect(attempts).toHaveLength(1);
+      expect(await profileRows(http, account.uid)).toMatchObject([{ revision: 2, profile_data: guest }]);
+      await notice.scrollIntoViewIfNeeded();
+      await page.screenshot({ path: info.outputPath('restore-hold-while-checking.png') });
+
+      releaseReads();
+      await expect(notice).toContainText('Your guest profile is restored.', { timeout: 15_000 });
+      // Then the edit goes out, against the restored row, and nothing is in
+      // dispute: the form and the server hold the same profile.
+      await expect.poll(async () => (await profileRows(http, account.uid))[0]?.revision, { timeout: 15_000 }).toBe(3);
+      expect(await profileRows(http, account.uid)).toMatchObject([{ revision: 3, profile_data: { ...guest, grade: 'Senior' } }]);
+      await expectForm(page, { ...guest, grade: 'Senior' });
+      await expect(hold).toHaveCount(0);
+      await expect(page.getByTestId('conflict-keep-mine')).toHaveCount(0);
+      expect(attempts.slice(1).every((attempt) => Object.keys(attempt.patch).join() === 'grade')).toBe(true);
+
+      await page.reload();
+      await waitForForm(page);
+      await expectForm(page, { ...guest, grade: 'Senior' });
+      await page.waitForTimeout(1_000);
+      await expect(notice).toHaveCount(0);
+      expect(await profileRows(http, account.uid)).toMatchObject([{ revision: 3 }]);
+    } finally {
+      await http.dispose();
+    }
+  });
+
+  test('an edit made offline after a restore with no answer could not be read back is sent on reconnecting only once the restore is read back', async ({ page, context }) => {
+    const http = await apiRequest.newContext();
+    const email = mailbox('restore-hold-offline');
+    const guest: GuestDraft = {
+      name: 'Guest whose restore was read back after reconnecting', college: 'Grainger College of Engineering',
+      major: 'Computer Science', grade: 'Junior', research_interests: 'Guest draft about wearable sensing, offline',
+    };
+    try {
+      const account = await seedAccount(http, email);
+      await englishOnly(page);
+      await guestSignsInToAccount(page, http, email, guest);
+      const notice = page.getByTestId('merged-guest-notice');
+      const status = page.locator('#profile-save-status');
+      await expect(page.getByTestId('restore-guest-profile')).toBeEnabled({ timeout: 15_000 });
+      const attempts: Array<Partial<ProfileData>> = [];
+      page.on('request', (request) => {
+        if (isCas(request.url()) && request.method() === 'POST') attempts.push(request.postDataJSON().p_patch);
+      });
+      // The restore reaches the server, and the browser goes offline before
+      // its answer arrives, so the profile cannot be read back either.
+      await page.route('**/rest/v1/rpc/commit_profile_patch_cas', async (route) => {
+        await route.fetch();
+        await context.setOffline(true);
+        await route.abort('internetdisconnected');
+      });
+      await page.getByTestId('restore-guest-profile').click();
+      await expect(notice).toContainText("We couldn't check whether your guest profile was restored.", { timeout: 15_000 });
+      await page.unroute('**/rest/v1/rpc/commit_profile_patch_cas');
+
+      await page.locator('#grade').selectOption('Senior');
+      await page.waitForTimeout(3_000);
+      expect(attempts, 'nothing is sent offline').toHaveLength(1);
+      await expect(status).not.toContainText("couldn't sync");
+      await expect(page.getByTestId('guest-restore-hold')).toBeVisible();
+
+      // Back online: the notice reads the profile back, finds the restore,
+      // and only then does the edit go out, against it.
+      await context.setOffline(false);
+      await expect(notice).toContainText('Your guest profile is restored.', { timeout: 15_000 });
+      await expect.poll(async () => (await profileRows(http, account.uid))[0]?.revision, { timeout: 15_000 }).toBe(3);
+      expect(await profileRows(http, account.uid)).toMatchObject([{ revision: 3, profile_data: { ...guest, grade: 'Senior' } }]);
+      await expectForm(page, { ...guest, grade: 'Senior' });
+      await expect(page.getByTestId('conflict-keep-mine')).toHaveCount(0);
+      expect(attempts.slice(1).every((patch) => Object.keys(patch).join() === 'grade')).toBe(true);
+
+      await page.reload();
+      await waitForForm(page);
+      await expectForm(page, { ...guest, grade: 'Senior' });
+      await expect(notice).toHaveCount(0);
+    } finally {
+      await http.dispose();
+    }
+  });
+
+  test('a restore offer left open restores nothing once a guest in another browser has signed in to the same account', async ({ page, browser }, info) => {
+    const http = await apiRequest.newContext();
+    const email = mailbox('restore-later');
+    const first: GuestDraft = {
+      name: 'Guest on the laptop 王', college: 'Grainger College of Engineering', major: 'Computer Science',
+      grade: 'Freshman', research_interests: 'Laptop guest draft about soft robotics 王',
+    };
+    const second: GuestDraft = {
+      name: 'Guest on the phone', college: 'Grainger College of Engineering', major: 'Electrical Engineering',
+      grade: 'Sophomore', research_interests: 'Phone guest draft about power electronics',
+    };
+    let other: BrowserContext | null = null;
+    try {
+      const account = await seedAccount(http, email);
+      await englishOnly(page);
+      const receipts = recordCas(page);
+      await guestSignsInToAccount(page, http, email, first);
+      await expect(page.getByTestId('restore-guest-profile')).toHaveText('Restore my guest profile', { timeout: 15_000 });
+      const writesAfterFirst = receipts.length;
+
+      // The laptop's offer is left unanswered while a second guest signs in
+      // to the same account on another browser, which archives its own.
+      other = await browser.newContext();
+      const phone = await other.newPage();
+      await englishOnly(phone);
+      await guestSignsInToAccount(phone, http, email, second);
+      await expect(phone.getByTestId('restore-guest-profile')).toHaveText('Restore my guest profile', { timeout: 15_000 });
+      expect(await stubGet(http, `/rest/v1/profile_versions?device_id=eq.${account.uid}&order=created_at.asc`))
+        .toMatchObject([{ profile_revision: null, profile_data: first }, { profile_revision: null, profile_data: second }]);
+
+      // The laptop's offer names its own guest's row, but a later sign-in has
+      // since set the phone guest's profile aside in the same account, and
+      // only the newest one set aside is restored. It restores nothing and
+      // says so.
+      await page.bringToFront();
+      await page.getByTestId('restore-guest-profile').click();
+      const notice = page.getByTestId('merged-guest-notice');
+      await expect(notice).toContainText("Your guest profile can't be restored here any more", { timeout: 15_000 });
+      await expect(notice).toContainText('Nothing was restored');
+      await expect(page.getByTestId('restore-guest-profile')).toHaveCount(0);
+      await expectForm(page, ACCOUNT_PROFILE);
+      await page.screenshot({ path: info.outputPath('restore-after-later-merge.png') });
+      expect(receipts.slice(writesAfterFirst), 'the laptop writes nothing').toEqual([]);
+      expect(await profileRows(http, account.uid)).toMatchObject([{ revision: 1, profile_data: ACCOUNT_PROFILE }]);
+
+      await page.reload();
+      await waitForForm(page);
+      await expect(page.getByTestId('merged-guest-notice'), 'and it is not offered again').toHaveCount(0);
+    } finally {
+      await other?.close();
       await http.dispose();
     }
   });
