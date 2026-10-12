@@ -342,12 +342,21 @@ _PHHP_API = ("https://directory.ufhealth.org/webservices/v1.1/departments/"
 _PHHP_PAGE1 = r"^(?:[A-I]|J(?:[^a-z]|[a-n]|o[a-h]))"  # "J. Glenn" sorts before "Ja"
 _PHHP_PAGE3 = r"^(?:T[b-z]|Ta[n-z]|[U-Z])"
 # Many PHHP titles are HR shorthand: "AST PROF", "CLIN ASO PROF", "RES AST PROF",
-# "PROF, INTERIM CHAIR", "CHAIR & PROF". "PROF" as a whole word is a professor
-# ("IT Professional" is not). The shorthand for courtesy is an upper-case "CO"
-# word ("CO PROF", "CO CLIN ASO PROF"), dropped like "courtesy", and so are ADJ,
-# VIS and EMER, the shorthand for the ladder's other drops ("ADJ LECTURER").
-_PHHP_LADDER = {"require": _LADDER["require"] + r"|\bprof\b",
-                "drop": _LADDER["drop"] + r"|(?-i:\bCO\s)|\badj\b|\bvis\b|\bemer\b"}
+# "PROF, INTERIM CHAIR", "CHAIR & PROF". "PROF" counts only as a rank of its
+# own: it starts the title or follows a separator (& , ; | /) or a rank word
+# (AST, ASO, ASST, ASSOC, CLIN, RES, INSTR), and it ends the title or meets a
+# separator. "PROF DEV COORD", "ASST TO PROF", "IT PROF'L", "VST PROF" and
+# "PROF EMRT" stay out. The shorthand for courtesy is an upper-case "CO" word
+# ("CO CLIN ASO PROF"), dropped like "courtesy", and so are ADJ, VIS, EMER and
+# RETIRED, the shorthand for the ladder's other drops ("ADJ LECTURER", "PROF,
+# RETIRED").
+_PHHP_LADDER = {
+    "require": _LADDER["require"]
+    + r"|(?:^|[&,;|/]\s*|\b(?:ast|aso|asst|assoc|clin|res|instr)\s+)prof\b"
+    r"(?=\s*(?:$|[,&;|/]))",
+    "drop": _LADDER["drop"]
+    + r"|(?-i:\bCO\s)|\badj\b|\bvis\b|\bemer\b|\bretired\b",
+}
 # json_dir lets a record with NO title through; "require" on the title field
 # drops those (staff, students, grad assistants carry none or a non-faculty one).
 _PHHP_FACULTY = {"field": "title", "include": _PHHP_LADDER["require"]}

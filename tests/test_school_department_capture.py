@@ -739,10 +739,17 @@ class TestFeedProfileLinks:
         ("AST PROF", True), ("ASO PROF", True), ("CLIN AST PROF", True),
         ("RES AST PROF", True), ("PROF", True), ("PROF, INTERIM CHAIR", True),
         ("CHAIR & PROF", True), ("Clin Assoc Prof & Assistant Chair, Dept PT", True),
+        ("ASO DIR & CLIN PROF", True),
         # Its shorthand for courtesy, adjunct and emeritus stays out, as do
         # staff titles and rows with no title.
         ("CO PROF", False), ("CO CLIN ASO PROF", False), ("ADJ LECTURER", False),
         ("PROF EMER", False), ("IT Professional 1", False), ("", False),
+        # "PROF" that is not a rank of its own (titles made up for the test).
+        *((t, False) for t in (
+            "PROF DEV COORD", "PROF DEV SPEC", "PROF STAFF", "PROF ASST", "ASST TO PROF",
+            "IT PROF'L", "IT PROF.", "PROF TRAINEE", "OPS - PROF", "STUDENT ASST - PROF LAB",
+            "Co Prof", "Co-Prof", "CO-PROF", "CRTSY PROF", "VST PROF", "PROF EMRT",
+            "AFFILIATE PROF", "RETIRED PROF", "PROF, RETIRED")),
     ])
     def test_uf_phhp_reads_the_directorys_shorthand_titles(
             self, monkeypatch, title, published):
