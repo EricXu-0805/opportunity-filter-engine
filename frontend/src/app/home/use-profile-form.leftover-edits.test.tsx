@@ -68,6 +68,12 @@ function nothingOutstanding() {
   expect(readProfileSyncEnvelope()?.pending ?? null, 'no outbox entry').toBeNull();
   expect(readOutstandingOps(), 'no journal operation').toEqual({ ok: true, value: [] });
 }
+async function mount(owner = uid) {
+  const form = renderHook(() => useProfileForm(t));
+  act(() => { service.auth?.({ user: { id: owner } }); }); await drain();
+  expect(form.result.current.hydrationState).toBe('ready');
+  return form;
+}
 /** A Home form whose load is held open until `respond`. */
 async function mountLoading(owner = uid) {
   let respond: () => void = () => {};
@@ -115,5 +121,31 @@ describe('a first load', () => {
     expect(form.result.current.canRetrySync).toBe(false);
     expect(rowOf(uid)).toMatchObject({ revision: 4, profile: { college: 'Liberal Arts', linkedin_url: 'https://linkedin.com/in/owner' } });
     nothingOutstanding();
+  });
+});
+
+// In-app navigation away from Home and back unmounts the form and mounts a new
+// one in the SAME page load.
+describe('a Home form remounted in the same page load', () => {
+  it('reports the save the form it replaced still had in flight, and sends it once', async () => {
+    const first = await mount();
+    let land: () => void = () => {};
+    service.commit.mockImplementationOnce((intent) => new Promise((resolve) => { land = () => resolve(apply(intent)); }));
+    act(() => { first.result.current.setProfile((p) => ({ ...p, college: 'Liberal Arts' })); });
+    await tick(2000);
+    expect(sends(), 'the autosave is in flight').toHaveLength(1);
+    first.unmount();
+    await drain();
+    const second = await mount();
+    expect(second.result.current.profile.college).toBe('Liberal Arts');
+    act(() => { land(); });
+    await drain();
+    expect(sends(), 'nothing is sent behind it').toHaveLength(1);
+    expect(rowOf(uid)).toMatchObject({ revision: 4, profile: { college: 'Liberal Arts' } });
+    expect(second.result.current.saveStatus, 'a write that landed is not reported as failed').toBe('saved');
+    expect(second.result.current.canRetrySync).toBe(false);
+    nothingOutstanding();
+    await tick(5000);
+    expect(sends()).toHaveLength(1);
   });
 });

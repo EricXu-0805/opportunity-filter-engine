@@ -815,6 +815,25 @@ describe('the outbox', () => {
     expect(b.status).toBe('saved');
   });
 
+  it('a flush queued behind the write already sending the same entry reports that write landing', async () => {
+    loadProfileMock.mockResolvedValue(cloud(FULL, 7));
+    await hydrateProfile();
+    const token = captureOwnerToken();
+    expect(recordProfileIntent({ ...FULL, major: 'ECE' }, ['major'], token)).toBe(true);
+    let release: (v: ProfilePatchOutcome) => void = () => {};
+    commitMock.mockImplementationOnce(() => new Promise((r) => { release = r; }));
+    const sending = stageProfilePatch({ ...FULL, major: 'ECE' }, ['major'], token);
+    await tick();
+    // Home mounted again in this page recovers the entry still in flight.
+    const recovering = flushPendingProfileWrite(token);
+    await tick();
+    release(saved({ ...FULL, major: 'ECE' }, 8));
+    expect((await sending).status).toBe('saved');
+    expect(await recovering, 'the write ahead of it landed: not a failure to send')
+      .toEqual({ status: 'already-saved', revision: 8, profile: { ...FULL, major: 'ECE' } });
+    expect(commitMock, 'and nothing is sent twice').toHaveBeenCalledTimes(1);
+  });
+
   it('an edit made while a save is in flight stays dirty', async () => {
     loadProfileMock.mockResolvedValue(cloud(FULL, 7));
     await hydrateProfile();

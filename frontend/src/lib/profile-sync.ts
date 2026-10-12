@@ -4371,6 +4371,23 @@ function survivorFor(
 const MAX_AUTO_REBASES = 1;
 const COORDINATOR_WRITE_ID = 'profile-coordinator';
 
+/** The entry a queued flush was asked to send, found gone from the outbox
+ *  because the row on record already holds every value it was to send. That
+ *  is the write landing, not a failure to send it; anything else is not. */
+function landedAhead(
+  queued: ProfilePendingWrite | null,
+  mutationId: string,
+  confirmed: { revision: number; profile: ProfileData } | null,
+): ProfileSaveResult | null {
+  if (!queued || queued.mutationId !== mutationId || !confirmed) return null;
+  const locked = new Set(queued.lockedKeys);
+  const sent = queued.dirtyKeys.filter((k) => !locked.has(k));
+  const wanted = queued.desiredProfile as unknown as Record<string, unknown>;
+  const row = confirmed.profile as unknown as Record<string, unknown>;
+  if (sent.length === 0 || !sent.every((k) => sameValue(wanted[k], row[k]))) return null;
+  return { status: 'already-saved', revision: confirmed.revision, profile: confirmed.profile };
+}
+
 /**
  * Sends whatever the outbox holds under `mutationId`. Serialized per owner:
  * a queued attempt re-reads the envelope when its turn actually comes, so a
@@ -4379,6 +4396,11 @@ const COORDINATOR_WRITE_ID = 'profile-coordinator';
  * has superseded stands down instead of racing it.
  */
 function flushByMutation(mutationId: string, token: OwnerToken): Promise<ProfileSaveResult> {
+  // What this write was to send, as it stood when the flush was queued. A
+  // write ahead of it in this page's queue can be sending the very same entry
+  // (the Home form that in-app navigation replaced, still saving), and by
+  // this flush's turn it has landed.
+  const queued = readProfileSyncEnvelope()?.pending ?? null;
   return enqueuePrivateWrite(token, COORDINATOR_WRITE_ID, async () => {
     let currentId = mutationId;
     // Set when a conflict was resolved into "these collided, the rest is
@@ -4394,7 +4416,10 @@ function flushByMutation(mutationId: string, token: OwnerToken): Promise<Profile
       if (!isOwnerTokenValid(token, token.uid)) return { status: 'abandoned' } as ProfileSaveResult;
       const env = readProfileSyncEnvelope();
       const pending = env?.pending ?? null;
-      if (!pending) return { status: 'blocked' } as ProfileSaveResult;
+      if (!pending) {
+        return (rebases === 0 ? landedAhead(queued, mutationId, env?.confirmed ?? null) : null)
+          ?? { status: 'blocked' } as ProfileSaveResult;
+      }
       if (pending.mutationId !== currentId) {
         // Superseded while queued. The newer entry has its own flush behind
         // this one and carries this write's fields (edits LAYER), so standing
