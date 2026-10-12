@@ -7,6 +7,7 @@ import {
   opportunityRecordKind,
   matchesToCSV,
   hashProfile,
+  mixesOpportunityTypes,
 } from './match-utils';
 import type { MatchResult } from './types';
 import { SEEKING_TYPES } from '@/app/home/types';
@@ -198,6 +199,24 @@ describe('matchesToCSV', () => {
   it('emits one data row per match', () => {
     const csv = matchesToCSV([makeMatch(), makeMatch({ id: 'test-2', title: 'Other' })]);
     expect(csv.split('\n').length).toBe(3);
+  });
+
+  it('marks Paid and International Friendly we inferred, and leaves stated ones alone', () => {
+    // Simplify's blanket stipend and a tagger's federal-organisation guess are
+    // ours; the card already says so ("Pay unconfirmed"), the sheet did not.
+    const listing = { source_type: 'campus_program', target_truth: { ...LIVE_TRUTH } };
+    const inferred = matchesToCSV([makeMatch({
+      ...listing, paid: 'stipend', paid_attribution: 'inferred', international_attribution: 'inferred',
+    } as never)]).split('\n')[1];
+    expect(inferred).toContain('"stipend (inferred)"');
+    expect(inferred).toContain('"yes (inferred)"');
+    const stated = matchesToCSV([makeMatch(listing as never)]).split('\n')[1];
+    expect(stated).toContain('"yes"');
+    expect(stated).not.toContain('(inferred)');
+    const unknown = matchesToCSV([makeMatch({
+      ...listing, eligibility: { international_friendly: 'unknown' }, international_attribution: 'inferred',
+    } as never)]).split('\n')[1];
+    expect(unknown).not.toContain('(inferred)');
   });
 
   it('escapes double quotes in field values', () => {
@@ -655,5 +674,28 @@ describe('the CSV export counts the same records as the other surfaces', () => {
         expect(row.Deadline, served.id).toBe('');
       }
     });
+  });
+});
+
+describe('mixesOpportunityTypes', () => {
+  const row = (type: string | undefined) => ({ opportunity: { opportunity_type: type } }) as unknown as MatchResult;
+
+  it('is false for an empty list and for a single type', () => {
+    expect(mixesOpportunityTypes([])).toBe(false);
+    expect(mixesOpportunityTypes([row('Research'), row('Research')])).toBe(false);
+  });
+
+  it('is true as soon as two different types are present', () => {
+    expect(mixesOpportunityTypes([row('Research'), row('Internship')])).toBe(true);
+  });
+
+  it('groups types the way the matcher does: case, surrounding spaces, spaces and hyphens as "_"', () => {
+    expect(mixesOpportunityTypes([row('Research'), row(' research ')])).toBe(false);
+    expect(mixesOpportunityTypes([row('summer_program'), row('Summer program'), row('summer-program')])).toBe(false);
+  });
+
+  it('treats rows with no type as a group of their own, as the matcher does', () => {
+    expect(mixesOpportunityTypes([row(undefined), row('')])).toBe(false);
+    expect(mixesOpportunityTypes([row('research'), row(undefined)])).toBe(true);
   });
 });

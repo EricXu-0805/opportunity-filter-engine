@@ -50,7 +50,7 @@ paper_index:0,start:0,end:1,quote:"..."}, without requirement_index. Only availa
 may support advice; paper_abstract requires abstract_status present. These are retrieved titles and
 abstracts, never full text or proof of student accomplishments, paper reading, or recruiting.
 Use Unicode codepoint offsets, not UTF-16 offsets. Quotes must match exactly and cannot use current text.
-Target criteria constrain advice, not student achievements. Unknown criteria do not establish eligibility.
+Target criteria constrain advice, not student achievements. Unknown criteria do not establish eligibility. A criterion marked "inferred" in criteria.attribution is our inference, not the program's stated term.
 Return rewrites: [] for every item: this plan proposes no new wording. student_direction is interest only,
 not student skills or accomplishments. line.text is editable and supplied only for layout/length.
 Nothing is applied or sent. Users must separately approve selection changes.

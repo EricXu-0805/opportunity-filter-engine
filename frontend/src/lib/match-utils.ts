@@ -28,6 +28,23 @@ export type DeadlineUrgency = 'passed' | 'urgent' | 'soon' | 'later' | null;
 export type { OpportunityRecordKind } from './record-kind';
 export { opportunityRecordKind };
 
+/**
+ * True when the list holds more than one opportunity type. The Good Match /
+ * Reach labels are assigned relative to the other results of the same type, so
+ * across types a lower percent can carry a higher label. Types are grouped the
+ * way the matcher groups them (`_normalize_type_key` in ranker.py: trimmed,
+ * lower-cased, spaces and hyphens to "_"); a row with no type is a group of
+ * its own there, so it counts as one here.
+ */
+export function mixesOpportunityTypes(matches: readonly MatchResult[]): boolean {
+  const types = new Set<string>();
+  for (const m of matches) {
+    types.add((m.opportunity.opportunity_type ?? '').trim().toLowerCase().replace(/[ -]/g, '_'));
+    if (types.size > 1) return true;
+  }
+  return false;
+}
+
 export function daysUntil(deadline: string | undefined, now: Date = new Date()): number | null {
   if (!deadline) return null;
   const dl = new Date(deadline + 'T00:00:00');
@@ -138,6 +155,15 @@ function deadlineCell(opportunity: Opportunity): string {
   return opportunity.deadline_is_estimate ? `${deadline} (estimated)` : deadline;
 }
 
+// The same suffix idea as "(estimated)": a column read as fact months later
+// says when the value is our inference (the card's "Funding mentioned" /
+// "Pay unconfirmed"), not the posting's. A blank or "unknown" cell claims
+// nothing, so it gets none. The export is English-only, like its headers.
+function inferredCell(value: string | undefined, attribution: 'inferred' | null | undefined): string {
+  const cell = value ?? '';
+  return attribution === 'inferred' && cell && cell !== 'unknown' ? `${cell} (inferred)` : cell;
+}
+
 export function matchesToCSV(matches: MatchResult[]): string {
   const header = [
     'Title', 'Organization', 'Type', 'Paid', 'Location / faculty affiliation', 'Deadline',
@@ -166,14 +192,14 @@ export function matchesToCSV(matches: MatchResult[]): string {
       m.opportunity.title,
       m.opportunity.organization ?? '',
       openListing ? m.opportunity.opportunity_type : recordKind,
-      openListing ? m.opportunity.paid : '',
+      openListing ? inferredCell(m.opportunity.paid, m.opportunity.paid_attribution) : '',
       m.opportunity.location ?? '',
       // A spreadsheet column is read as fact months later, and this date can
       // be a guess derived from an NSF award start. The card says
       // "2025-02-15 · estimated" and refuses to call it passed; the CSV said
       // Deadline=2025-02-15 with Status=Open listing on the same row.
       openListing ? deadlineCell(m.opportunity) : '',
-      facultySafeInternational(m.opportunity) ?? '',
+      inferredCell(facultySafeInternational(m.opportunity), m.opportunity.international_attribution),
       m.final_score.toFixed(1),
       m.bucket,
       status,

@@ -77,6 +77,21 @@ describe('AtAGlanceSection no-deadline wording', () => {
       />,
     );
     expect(screen.getByText('detail.fields.rollingBasis')).toBeInTheDocument();
+    expect(screen.queryByTestId('rolling-inferred-note')).toBeNull();
+  });
+
+  it('says "rolling" read off a configured note the page does not state is ours', () => {
+    render(
+      <AtAGlanceSection
+        opp={opp(
+          { deadline_note: 'Rolling; SURF/WAVE cycles for summer' },
+          { source_type: 'campus_program', is_rolling: true, deadline_note_attribution: 'inferred' },
+        )}
+        t={tFn}
+      />,
+    );
+    expect(screen.getByText('detail.fields.rollingBasis')).toBeInTheDocument();
+    expect(screen.getByTestId('rolling-inferred-note')).toHaveTextContent('detail.rollingInferred');
   });
 
   it('a poisoned faculty deadline is hidden behind the contact-profile boundary', () => {
@@ -354,6 +369,27 @@ describe('EligibilitySection skills provenance', () => {
     expect(screen.getByText('detail.fields.majorsApproximate')).toBeInTheDocument();
     expect(screen.getByTestId('majors-inferred-note')).toBeInTheDocument();
     expect(screen.queryByText('detail.fields.majors')).toBeNull();
+  });
+
+  it('says a configured major and class-year list is our listing\'s, not the keyword bank\'s', () => {
+    // 475 active rows carry a campus program spec's majors (355 its years):
+    // typed into our config, not matched from research areas or read from text.
+    const elig = {
+      majors: ['Biology'], international_friendly: 'unknown',
+      preferred_year: ['junior', 'senior'], skills_required: [], citizenship_required: false,
+    } as unknown as Opportunity['eligibility'];
+    render(
+      <EligibilitySection
+        opp={opp({}, {
+          source_type: 'campus_program', eligibility: elig,
+          majors_attribution: 'inferred', majors_basis: 'configured',
+          preferred_year_attribution: 'inferred', preferred_year_basis: 'configured',
+        })}
+        t={tFn}
+      />,
+    );
+    expect(screen.getByTestId('majors-inferred-note')).toHaveTextContent('detail.majorsConfigured');
+    expect(screen.getByTestId('year-inferred-note')).toHaveTextContent('detail.yearConfigured');
   });
 
   it('keeps "majors" with no note when the program stated them', () => {

@@ -10,7 +10,8 @@ Every endpoint that reads a JSON body declares its bounds (json_body_bounds), an
 (BoundedJSONRoute, or the full-target routes' request lane) refuses a body past any of them before
 the body is parsed. The routes with the largest bodies (a body limit above the default, and the
 cold-email routes) read and validate their body on the request lane (json_body_on_lane, or the
-full-target routes' own preparation there). The bounds sit
+full-target routes' own preparation there). A request whose first work on the lane finds it full is
+refused (admitted_to_request_lane). The bounds sit
 well above what the route's legitimate requests hold:
 scripts/request_body_containers.py finds every route of the app that reads a JSON body, builds the
 largest body each request schema accepts and prints its counts beside the bounds, and
@@ -40,9 +41,11 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.routing import APIRoute
 from pydantic import TypeAdapter, ValidationError
 from pydantic_core import PydanticCustomError
+from starlette.responses import JSONResponse
 
-from backend.lib.blocking import run_request_work
+from backend.lib.blocking import RequestLaneFull, request_lane_admission, run_request_work
 from backend.lib.resume_input import MAX_RESUME_TEXT_CHARACTERS
+from backend.lib.target_actionability import REFUSED_BEFORE_WORK_HEADER
 
 # Lists and objects outside JSON strings, per route. The largest body each route's request schema
 # accepts holds 651 (/api/tailor/renovate), 522 (/api/tailor), 520 (/api/tailor/bullet), 1 (either
@@ -285,13 +288,53 @@ def json_body_on_lane(model):
     return Depends(json_body)
 
 
+# The answer to a request whose first work on the request lane finds it full (blocking.RequestLaneFull),
+# which comes before any provider call: nothing was spent, so the rate limiter gives back the global
+# slot it took (REFUSED_BEFORE_WORK_HEADER). The connection is closed; a client retries after Retry-After.
+REQUEST_LANE_FULL_CODE = "request_lane_full"
+REQUEST_LANE_RETRY_AFTER_SECONDS = 5
+
+
+def admitted_to_request_lane(app):
+    """A route's ASGI app, run so that a request is admitted to the request lane by its first work
+    there (blocking.request_lane_admission); a request refused then is answered at once."""
+
+    async def admitted_app(scope, receive, send):
+        started = False
+
+        async def sending(message):
+            nonlocal started
+            started = True
+            await send(message)
+
+        with request_lane_admission():
+            try:
+                await app(scope, receive, sending)
+                return
+            except RequestLaneFull:
+                if started:
+                    raise
+        refusal = JSONResponse({"detail": {"code": REQUEST_LANE_FULL_CODE}}, status_code=503, headers={
+            "Retry-After": str(REQUEST_LANE_RETRY_AFTER_SECONDS), "Cache-Control": "private, no-store",
+            "Pragma": "no-cache", "Connection": "close", REFUSED_BEFORE_WORK_HEADER: "1"})
+        await refusal(scope, receive, send)
+
+    return admitted_app
+
+
 class BoundedJSONRoute(APIRoute):
     """An APIRoute that refuses a JSON body past its endpoint's declared bounds before the body is parsed.
 
     The check runs inside any handler a subclass wraps around this one, so a refusal takes the form
     of that route's own validation errors. An endpoint that declares no bounds (one that takes no
-    JSON body, or a multipart upload) reads its body as an APIRoute does.
+    JSON body, or a multipart upload) reads its body as an APIRoute does. A request whose first work
+    on the request lane, a subclass's handler's included, finds it full is refused
+    (admitted_to_request_lane).
     """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.app = admitted_to_request_lane(self.app)
 
     def get_route_handler(self):
         original = super().get_route_handler()

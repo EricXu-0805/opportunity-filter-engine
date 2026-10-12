@@ -254,6 +254,11 @@ _MAX_TEXT = 600
 _MAX_LIST = 20
 
 
+def note_says_rolling(note: object) -> bool:
+    """Whether a deadline note says applications are rolling."""
+    return isinstance(note, str) and bool(_ROLLING_NOTE_RE.search(note))
+
+
 def _is_curated_source(source: str) -> bool:
     return source in _CURATED_SOURCES
 

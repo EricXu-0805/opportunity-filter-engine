@@ -23,7 +23,6 @@ const NAV_ITEMS = [
     ? [{ href: '/roadmap', labelKey: 'nav.roadmap', shortKey: 'nav.roadmapShort' }]
     : []),
   { href: '/dashboard', labelKey: 'nav.dashboard', shortKey: 'nav.dashShort' },
-  { href: '/import', labelKey: 'nav.import', shortKey: 'nav.importShort' },
   { href: '/resources', labelKey: 'nav.resources', shortKey: 'nav.resourcesShort' },
   { href: '/about', labelKey: 'nav.about', shortKey: 'nav.aboutShort' },
 ] as const;

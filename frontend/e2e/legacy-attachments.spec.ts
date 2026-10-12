@@ -84,6 +84,22 @@ test.describe('Legacy Tracker attachment recovery', () => {
     } finally { await owner.http.dispose(); }
   });
 
+  for (const locale of ['en', 'zh'] as const) {
+    test(`a guest gets a sign-in prompt instead of the upload control (${locale}); the prompt opens sign-in and nothing is uploaded`, async ({ page }) => {
+      const owner = await account(true); try {
+        const state = await setup(page, owner, { locale });
+        const copy = dict(locale);
+        await expect(page.getByTestId('tracker-attachments-guest')).toContainText(copy.guestNotice);
+        await expect(panel(page).getByRole('button', { name: copy.addButton, exact: true })).toHaveCount(0);
+        await expect(panel(page).locator('input[type="file"]')).toHaveCount(0);
+        await expect(openFile(page, 'original.pdf', locale)).toBeEnabled();
+        await panel(page).getByRole('button', { name: copy.guestSignIn, exact: true }).click();
+        await expect(page.getByRole('dialog')).toBeVisible();
+        expect(state.uploads).toBe(0); expect(state.deletes).toBe(0);
+      } finally { await owner.http.dispose(); }
+    });
+  }
+
   test('a held list times out, offers retry and ignores the late first response', async ({ page }) => {
     const owner = await account(); const held = gate(); try {
       await page.clock.install(); const state = await setup(page, owner, { holdFirst: held }); await expect.poll(() => state.reads.length).toBe(1);

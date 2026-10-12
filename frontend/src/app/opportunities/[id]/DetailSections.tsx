@@ -102,10 +102,15 @@ export function AtAGlanceSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
           />
         )}
         {(isFaculty || (!opp.deadline && opp.is_rolling)) && (
+          // "Rolling" read off a note a campus program spec typed into our
+          // config, which its page does not state, is ours, as the facts say.
           <DetailRow
             icon={<Calendar />}
             label={t('detail.fields.deadline')}
             value={t(NO_DEADLINE_KEYS[noDeadlineKind(opp)])}
+            note={noDeadlineKind(opp) === 'rolling' && opp.deadline_note_attribution === 'inferred'
+              ? t('detail.rollingInferred') : undefined}
+            noteTestId="rolling-inferred-note"
           />
         )}
         {!isFaculty && opp.start_date && (
@@ -156,7 +161,8 @@ export function EligibilitySection({ opp, t }: { opp: Opportunity; t: TFunc }) {
             icon={<GraduationCap />}
             label={t(opp.preferred_year_attribution === 'inferred' ? 'detail.fields.preferredYearMentioned' : 'detail.fields.preferredYear')}
             value={statedYears.join(', ')}
-            note={opp.preferred_year_attribution === 'inferred' ? t('detail.yearInferred') : undefined}
+            note={opp.preferred_year_attribution === 'inferred'
+              ? t(opp.preferred_year_basis === 'configured' ? 'detail.yearConfigured' : 'detail.yearInferred') : undefined}
             noteTestId="year-inferred-note"
           />
         )}
@@ -169,7 +175,8 @@ export function EligibilitySection({ opp, t }: { opp: Opportunity; t: TFunc }) {
             icon={<GraduationCap />}
             label={t(opp.majors_attribution === 'inferred' ? 'detail.fields.majorsApproximate' : 'detail.fields.majors')}
             value={e.majors.join(', ')}
-            note={opp.majors_attribution === 'inferred' ? t('detail.majorsInferred') : undefined}
+            note={opp.majors_attribution === 'inferred'
+              ? t(opp.majors_basis === 'configured' ? 'detail.majorsConfigured' : 'detail.majorsInferred') : undefined}
             noteTestId="majors-inferred-note"
           />
         )}

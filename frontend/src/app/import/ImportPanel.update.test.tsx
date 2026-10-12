@@ -8,7 +8,7 @@ vi.mock('@/i18n/client', () => {
   const t = (key: string) => key;
   return { useT: () => ({ t, locale: 'en', setLocale: vi.fn() }) };
 });
-import ImportPage from './page';
+import ImportPage from './ImportPanel';
 import { addCustomImport, readCustomImports } from '@/lib/custom-imports';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import { writeLocalStorageJSON } from '@/lib/use-local-storage-json';

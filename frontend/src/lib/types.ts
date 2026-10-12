@@ -281,11 +281,15 @@ export interface OpportunityMetadata {
   // stated.
   skills_attribution?: 'inferred' | null;
   majors_attribution?: 'inferred' | null;
+  // 'configured': the list is a campus program spec's, typed into our config
+  // and not stated on the page; absent on a list our keyword bank wrote.
+  majors_basis?: 'configured' | null;
 
   paid_attribution?: 'inferred' | null;
   international_attribution?: 'inferred' | null;
   citizenship_attribution?: 'inferred' | null;
   preferred_year_attribution?: 'inferred' | null;
+  preferred_year_basis?: 'configured' | null;
   // Where `location` came from. 'institution' means the collector wrote its
   // host school's city — where the school is, not where the work happens —
   // so no surface may print it as the opportunity's location. 'inferred'
@@ -388,11 +392,18 @@ export interface Opportunity {
   // stated.
   skills_attribution?: 'inferred' | null;
   majors_attribution?: 'inferred' | null;
+  // 'configured': the list is a campus program spec's, typed into our config
+  // and not stated on the page; absent on a list our keyword bank wrote.
+  majors_basis?: 'configured' | null;
 
   paid_attribution?: 'inferred' | null;
   international_attribution?: 'inferred' | null;
   citizenship_attribution?: 'inferred' | null;
   preferred_year_attribution?: 'inferred' | null;
+  preferred_year_basis?: 'configured' | null;
+  // 'inferred': metadata.deadline_note is a campus program spec's note that
+  // the page text the row carries does not state. Absent = no flag.
+  deadline_note_attribution?: 'inferred' | null;
   // Where `location` came from. 'institution' means the collector wrote its
   // host school's city — where the school is, not where the work happens —
   // so no surface may print it as the opportunity's location. 'inferred'

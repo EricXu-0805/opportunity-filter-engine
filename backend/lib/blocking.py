@@ -17,8 +17,11 @@ import asyncio
 import logging
 import os
 import threading
-from collections.abc import Callable
+import time
+from collections.abc import Callable, Iterator
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
+from contextvars import ContextVar
 from functools import partial
 from typing import TypeVar
 
@@ -123,15 +126,101 @@ async def run_blocking(
 # never run here (run_blocking does those).
 _REQUEST_WORK_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ofe-request-work")
 
+# The capacity of the request lane, in pieces of work waiting for it or running on it. Only work
+# submitted to the lane (run_request_work) counts: a request counts for nothing while its body arrives,
+# while it waits on Supabase or a provider, or while it does anything else off the lane. A request's
+# first work on the lane is its admission: when the lane already holds REQUEST_LANE_CAPACITY pieces of
+# work, that work is not submitted and the request is refused at once (RequestLaneFull,
+# request_body.admitted_to_request_lane). Every later piece of work of an admitted request is
+# submitted and counted, never refused, so the lane can hold more than its capacity; while it does,
+# every new request is refused. The API runs one worker process (render.yaml, --workers 1) and the
+# lane one thread, so work waits behind all the work submitted before it. Sixteen is above the most
+# requests at once the lane is measured with (ten: scripts/worst_inputs_lag.py --concurrent 1,4,10),
+# and a request sends its work to the lane one piece after another, so that use is not refused.
+REQUEST_LANE_CAPACITY = 16
+_REQUEST_LANE_LOCK = threading.Lock()
+# Work submitted to the lane that is waiting for it or running on it.
+_request_lane_load = 0
+# A refusal is logged at most once a minute, with the number of refusals since the last line.
+_REFUSAL_LOG_INTERVAL_SECONDS = 60.0
+_refusals_not_logged = 0
+_refusal_logged_at: float | None = None
+
+
+class RequestLaneFull(Exception):
+    """A request's first work found the request lane at its capacity, and was not submitted."""
+
+
+class _LaneRequest:
+    """Whether the current request has been admitted to the request lane (its first work submitted)."""
+
+    __slots__ = ("admitted",)
+
+    def __init__(self) -> None:
+        self.admitted = False
+
+
+_LANE_REQUEST: ContextVar[_LaneRequest | None] = ContextVar("ofe_request_lane_request", default=None)
+
+
+def _leave_request_lane(*_args) -> None:
+    global _request_lane_load
+    with _REQUEST_LANE_LOCK:
+        _request_lane_load -= 1
+
+
+def _log_refusal() -> None:
+    global _refusals_not_logged, _refusal_logged_at
+    now = time.monotonic()
+    with _REQUEST_LANE_LOCK:
+        _refusals_not_logged += 1
+        if _refusal_logged_at is not None and now - _refusal_logged_at < _REFUSAL_LOG_INTERVAL_SECONDS:
+            return
+        refused, _refusals_not_logged, _refusal_logged_at = _refusals_not_logged, 0, now
+    logger.warning("request_lane_full capacity=%d refused=%d", REQUEST_LANE_CAPACITY, refused)
+
+
+@contextmanager
+def request_lane_admission() -> Iterator[None]:
+    """Within it, the current request is admitted to the request lane by its first work there, or
+    refused then (run_request_work). Nothing is counted for the request itself."""
+    token = _LANE_REQUEST.set(_LaneRequest())
+    try:
+        yield
+    finally:
+        _LANE_REQUEST.reset(token)
+
 
 async def run_request_work(func: Callable[..., T], /, *args, timeout_seconds: float | None = None, **kwargs) -> T:
     """Run ``func`` on the single request lane, one request at a time, off the event loop.
 
     Work that is cancelled, or runs out of ``timeout_seconds`` (BlockingWorkTimeout), while it
-    waits for the lane never runs; work already running finishes on the lane.
+    waits for the lane never runs; work already running finishes on the lane. Within
+    request_lane_admission, the request's first work raises RequestLaneFull, without being submitted,
+    when the lane already holds REQUEST_LANE_CAPACITY pieces of work; no other work is refused.
     """
+    global _request_lane_load
     loop = asyncio.get_running_loop()
-    future = loop.run_in_executor(_REQUEST_WORK_EXECUTOR, partial(func, *args, **kwargs))
+    lane_request = _LANE_REQUEST.get()
+    with _REQUEST_LANE_LOCK:
+        refused = (lane_request is not None and not lane_request.admitted
+                   and _request_lane_load >= REQUEST_LANE_CAPACITY)
+        if not refused:
+            if lane_request is not None:
+                lane_request.admitted = True
+            _request_lane_load += 1
+    if refused:
+        _log_refusal()
+        raise RequestLaneFull(f"the request lane holds {REQUEST_LANE_CAPACITY} pieces of work")
+    try:
+        concurrent_future = _REQUEST_WORK_EXECUTOR.submit(partial(func, *args, **kwargs))
+    except BaseException:
+        _leave_request_lane()
+        raise
+    # It stops counting when the work itself finishes or is cancelled before it starts, not when the
+    # asyncio wrapper does: cancelling the wrapper cannot stop work that is already running.
+    concurrent_future.add_done_callback(_leave_request_lane)
+    future = asyncio.wrap_future(concurrent_future, loop=loop)
     if timeout_seconds is None:
         return await future
     try:

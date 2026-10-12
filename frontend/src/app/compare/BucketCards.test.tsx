@@ -154,6 +154,26 @@ describe('BucketCards — canonical match truth', () => {
     expect(screen.queryByText(/No fixed deadline/)).toBeNull();
   });
 
+  it('says "Rolling" read off a configured note the page does not state is our listing\'s', () => {
+    const row = readyRow();
+    row.opp = {
+      ...row.opp,
+      is_rolling: true,
+      deadline_note_attribution: 'inferred',
+      metadata: { is_active: true, confidence_score: 0.9, deadline_note: 'Rolling; SURF/WAVE cycles for summer' },
+    } as Opportunity;
+
+    render(<BucketCards rows={[row]} />);
+
+    // The qualifier sits in its own element: the one-line summary above is
+    // truncated, which would cut it off in a narrow compare column.
+    const note = screen.getByText('From our listing’s deadline note, not confirmed on the program page.');
+    expect(note).toBe(screen.getByTestId('rolling-from-listing'));
+    expect(note.className).not.toMatch(/truncate|line-clamp/);
+    expect(note.closest('.truncate')).toBeNull();
+    expect(screen.getByText(/Rolling/).className).toMatch(/truncate/);
+  });
+
   it('a listed date wins over the is_rolling flag', () => {
     const row = readyRow();
     row.opp = {

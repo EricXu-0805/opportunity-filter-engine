@@ -23,7 +23,7 @@ from backend.lib.evidence_map import (
 )
 from backend.lib.llm import is_configured
 from backend.lib.release_scope import release_visible_opportunity_by_id
-from backend.lib.request_body import DOCUMENT_BOUNDS, check_body_bounds, json_body_bounds
+from backend.lib.request_body import DOCUMENT_BOUNDS, admitted_to_request_lane, check_body_bounds, json_body_bounds
 from backend.lib.target_actionability import assert_target_actionable
 from backend.lib.target_resume_ai import (
     REVIEW_UNCHECKED,
@@ -49,7 +49,12 @@ PRIVATE = {"Cache-Control": "private, no-store", "Pragma": "no-cache"}
 class PrivateValidationRoute(APIRoute):
     """Every refusal stays private. Each route reads its raw body and parses it on the request lane
     (_parsed), where a body past its declared structural bounds (DOCUMENT_BOUNDS) is refused before
-    it is parsed, as BoundedJSONRoute refuses one for the other JSON routes."""
+    it is parsed, as BoundedJSONRoute refuses one for the other JSON routes. A request whose first
+    work on the lane finds it full is refused (admitted_to_request_lane)."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.app = admitted_to_request_lane(self.app)
 
     def get_route_handler(self):
         original = super().get_route_handler()

@@ -532,6 +532,28 @@ for (const size of [
       expect(net.otherWrites).toHaveLength(0);
       expect(await page.getByTestId('cold-email-workspace').evaluate((el) => el.scrollWidth <= el.clientWidth + 1)).toBe(true);
     });
+
+    // The save-status row is the only place a failed or conflicting draft save
+    // is said, so it must stay on screen while the student types or scrolls.
+    test('the save-status row stays in view while the draft is edited and scrolled', async ({ page }) => {
+      await installNetwork(page, { labType: 'dry', body: LONG_BODY });
+      await hideDevBadge(page);
+      await openModal(page);
+      await expect(page.locator('meta[name="viewport"]')).toHaveAttribute('content', /interactive-widget=resizes-content/);
+      const status = page.getByTestId('cold-email-draft-status');
+      await inView(status);
+      const body = page.locator('#cold-email-body');
+      await body.scrollIntoViewIfNeeded();
+      await body.fill(`${LONG_BODY}\nP.S. Edited on a small screen.`);
+      await expect(status).toContainText('Saved on this browser.');
+      await inView(status);
+      await page.getByRole('textbox', { name: 'Request an edit' }).scrollIntoViewIfNeeded();
+      await inView(status);
+      if (size.keyboardUp) {
+        await page.setViewportSize(size.keyboardUp);
+        await inView(status);
+      }
+    });
   });
 }
 
