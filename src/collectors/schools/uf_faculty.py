@@ -327,9 +327,18 @@ _PHHP_API = ("https://directory.ufhealth.org/webservices/v1.1/departments/"
 # PHHP3, and ids hash short+name. The college tree reuses those three shorts
 # split at the same first-name boundaries (the 132 stored rows: PHHP runs
 # "Adetola…" to "John Lednicky", PHHP2 "Jose F Colon-Burgos" to "Takis Benos",
-# PHHP3 "Tanja Taivassalo" on) so existing rows keep their ids. Biostatistics and
-# Epidemiology are separate URLs, hence separate shorts (a short is one URL), so
-# their people get new ids even where a stored row exists.
+# PHHP3 "Tanja Taivassalo" on) so a person still listed under the same name keeps
+# their id (81 of the 132 on 2026-10-11). Biostatistics and Epidemiology are
+# separate URLs, hence separate shorts (a short is one URL), so their people get
+# new ids even where a stored row exists; that row is retired, and the tombstone
+# pass folds it into the new row that carries its address. Every page states the
+# tree's size at ``data.count`` (``total_key``), and every row has its own
+# ``slug`` (``total_distinct_key``; the profile link is built from it, and rows
+# with no title or email still carry one): a unit may retire only after reading
+# that many different slugs. A page that fails to load, or a reorder between
+# page requests that repeats one row and skips another, retires nobody. A stored
+# person the directory still lists is kept even when the gate drops their row
+# (Thomas A Pearson, listed under Epidemiology with no title).
 _PHHP_PAGE1 = r"^(?:[A-I]|J(?:[^a-z]|[a-n]|o[a-h]))"  # "J. Glenn" sorts before "Ja"
 _PHHP_PAGE3 = r"^(?:T[b-z]|Ta[n-z]|[U-Z])"
 # json_dir lets a record with NO title through; "require" on the title field
@@ -347,6 +356,8 @@ def _phhp(short: str, deptid: str, *name_gates: dict) -> dict:
             "url": _PHHP_API.format(deptid),
             "paginate": {"param": "page", "max": 4},
             "records_key": "data.results.profiles",
+            "total_key": "data.count",
+            "total_distinct_key": "slug",
             "name_fields": ["full_name"],
             "title_field": "title",
             "email_field": "email",
