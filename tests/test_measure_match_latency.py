@@ -68,7 +68,7 @@ def test_every_scenario_runs_and_every_wrapper_reports(tmp_path):
     assert result.returncode == 0, result.stderr[-4000:]
     document = json.loads(out.read_text(encoding="utf-8"))
     assert document["corpus"] == {"source": "shards", "data_dir": str(data_dir), "records": 40}
-    assert set(document["boot"]["phases_s"]) >= {"canonicalize", "fit_tfidf", "register_matrix"}
+    assert set(document["boot"]["phases_s"]) >= {"canonicalize", "fit_tfidf", "register_matrix", "view_rows"}
 
     summary = {(row["scenario"], row["persona"]): row for row in document["summary"]}
     assert {scenario for scenario, _ in summary} == {
@@ -87,7 +87,7 @@ def test_every_scenario_runs_and_every_wrapper_reports(tmp_path):
         assert set(sample["ranking"]["phases_s"]) >= {"rank", "cards", "result_set_id", "store"}
         assert set(sample["ranking"]["calls"]) >= {"hard_exclusion", "eligibility", "score"}
         assert set(sample["request_phases_s"]) >= {
-            "corpus_lookup", "release_filter", "actionable_filter", "view_pass", "page_rows",
+            "corpus_lookup", "release_filter", "actionable_filter", "view_pass", "page_cards", "page_rows",
         }
     assert any("static_builds" in sample["ranking"]["calls"] for sample in ranked)
     assert any("tfidf" in sample["ranking"]["calls"] for sample in ranked)
@@ -102,6 +102,9 @@ def test_every_scenario_runs_and_every_wrapper_reports(tmp_path):
     diagnostics = document["diagnostics"]
     assert diagnostics["card_projection_profile"]["cards"] == 5
     assert len(diagnostics["view_parity"]) == 16
+    for row in diagnostics["view_parity"]:
+        assert row["same_rows_in_order"] and row["tab_counts_equal"], row
+        assert row["source_facets_equal"] and row["deadline_facets_equal"], row
     assert [trace["status"] for trace in diagnostics["memory_trace"]] == [200, 200]
     assert all(trace["snapshot_rows"] > 0 for trace in diagnostics["memory_trace"])
 

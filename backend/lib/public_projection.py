@@ -173,6 +173,28 @@ def _html_display_text(value: str) -> str | None:
     return re.sub(r"<!--.*?--!?>", "", "".join(parser.parts), flags=re.DOTALL)
 
 
+def _format_control_views(text: str) -> tuple[str, str]:
+    """``text`` with each format control (Cf) as a space, and with it removed.
+
+    No ASCII character is a format control, so an ASCII string is both of
+    its views as it stands; only other strings pay for the per-character
+    scan.
+    """
+    if text.isascii():
+        return text, text
+    return (
+        "".join(
+            " " if unicodedata.category(character) == "Cf" else character
+            for character in text
+        ),
+        "".join(
+            character
+            for character in text
+            if unicodedata.category(character) != "Cf"
+        ),
+    )
+
+
 def _contact_detection_view(
     value: str,
 ) -> tuple[str, str, str, str, str, str, bool]:
@@ -211,24 +233,8 @@ def _contact_detection_view(
             markup_parse_failed = True
         else:
             text = parsed_text
-    markup_format_separator_text = "".join(
-        " " if unicodedata.category(character) == "Cf" else character
-        for character in markup_text
-    )
-    markup_text = "".join(
-        character
-        for character in markup_text
-        if unicodedata.category(character) != "Cf"
-    )
-    format_separator_text = "".join(
-        " " if unicodedata.category(character) == "Cf" else character
-        for character in text
-    )
-    text = "".join(
-        character
-        for character in text
-        if unicodedata.category(character) != "Cf"
-    )
+    markup_format_separator_text, markup_text = _format_control_views(markup_text)
+    format_separator_text, text = _format_control_views(text)
     explicit_marker_view = text
     text = _CONTACT_AT_DELIMITER_RE.sub("@", text)
     text = _CONTACT_DOT_DELIMITER_RE.sub(".", text)
@@ -358,25 +364,29 @@ def contains_embedded_email(value: object) -> bool:
         )
         return bool(strong_or_mixed_matches)
 
-    if view_has_contact(detection_view, explicit_marker_view):
-        return True
-    if view_has_contact(format_separator_view, format_separator_marker_view):
-        return True
-    if view_has_contact(markup_view, markup_view):
-        return True
-    if view_has_contact(
-        markup_format_separator_view,
-        markup_format_separator_view,
-    ):
-        return True
-
     # In query/form data, '+' may represent a space. Build a secondary bounded
     # detection-only view instead of using unquote_plus globally, which would
     # corrupt legitimate plus-address local parts in the display value.
     form_marker_view = explicit_marker_view.replace("+", " ")
     form_detection_view = _CONTACT_AT_DELIMITER_RE.sub("@", form_marker_view)
     form_detection_view = _CONTACT_DOT_DELIMITER_RE.sub(".", form_detection_view)
-    return view_has_contact(form_detection_view, form_marker_view)
+    # Most text has no format control, markup or plus sign, and then several
+    # of these views are the same strings. view_has_contact is pure, so a
+    # pair already answered "no" is not asked again.
+    asked: set[tuple[str, str]] = set()
+    for view, marker_view in (
+        (detection_view, explicit_marker_view),
+        (format_separator_view, format_separator_marker_view),
+        (markup_view, markup_view),
+        (markup_format_separator_view, markup_format_separator_view),
+        (form_detection_view, form_marker_view),
+    ):
+        if (view, marker_view) in asked:
+            continue
+        if view_has_contact(view, marker_view):
+            return True
+        asked.add((view, marker_view))
+    return False
 
 
 def safe_public_http_url(value: object) -> str | None:
