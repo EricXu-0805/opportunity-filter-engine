@@ -1677,6 +1677,60 @@ class TestServerMatchView:
         assert search("in season") == []
         assert search("robotics") == ["due"]
 
+    def test_search_cannot_find_a_record_by_a_contact_its_card_redacts(
+        self, snapshot_env, monkeypatch
+    ):
+        """The fit reasons the search reads quote the keywords and the lab name.
+
+        The card serves those fields, and the reasons built from them, as
+        "[email redacted]", so the search must read no more, or it finds and
+        counts the record by the detail its card withholds.
+        """
+        corpus = [dict(record) for record in snapshot_env["corpus"]]
+        corpus[0]["keywords"] = [
+            "machine learning",
+            "robot learning (contact zqxlab.jane@example.edu)",
+            "robotics",
+        ]
+        corpus[1]["lab_or_program"] = "Write zqxpi.bob@example.edu Lab"
+        ranker.register_corpus(corpus)
+        monkeypatch.setattr(
+            m_module, "load_opportunities_generation", lambda: (corpus, "contact-fixture")
+        )
+        monkeypatch.setattr(
+            m_module, "load_opportunities_by_id", lambda: {o["id"]: o for o in corpus}
+        )
+        profile = _profile()
+
+        def view(query: str) -> dict:
+            request = {**self._request(profile, search_query=query), "page_size": 20}
+            response = client.post("/api/matches/view", json=request)
+            assert response.status_code == 200, response.text
+            return response.json()
+
+        everything = view("")
+        visible = [
+            result.opportunity_id
+            for result in ranker.rank_all(profile, corpus)
+            if result.bucket != "low_fit"
+        ]
+        assert {"opp-00", "opp-01"} <= set(visible)
+        assert everything["filtered_total"] == everything["view_counts"]["all"] == len(visible)
+        assert {row["opportunity_id"] for row in everything["results"]} == set(visible)
+
+        for hidden in ("zqxlab", "zqxpi", "jane@example", "bob@example.edu"):
+            found = view(hidden)
+            assert found["results"] == [], hidden
+            assert found["filtered_total"] == 0
+            assert found["view_counts"] == {
+                "all": 0, "high_priority": 0, "good_match": 0, "reach": 0, "starred": 0,
+            }
+            # Facets describe the universe behind the search, not the search.
+            assert found["source_facets"] == everything["source_facets"]
+            assert found["deadline_facets"] == everything["deadline_facets"]
+        # What the record states in the open still finds it.
+        assert [row["opportunity_id"] for row in view("robotics")["results"]] == ["opp-00"]
+
     def test_rolling_deadline_excludes_unconfirmed_faculty_contacts(self):
         """A legacy faculty stamp cannot turn a directory profile into an opening."""
         from backend.schemas import MatchViewState

@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { CREATE_REQUIRED_KEYS, RESUME_BUNDLE } from './profile-sync';
-import { DEFAULT_PROFILE } from '@/app/home/types';
+import { CREATE_REQUIRED_KEYS, PROFILE_KEYS, RESUME_BUNDLE } from './profile-sync';
+import { DEFAULT_PROFILE, FRESH_PROFILE } from '@/app/home/types';
 import { STORAGE_KEYS } from './storage-keys';
 import { USER_SCOPED_KEYS } from './identity-owner';
 
@@ -125,6 +125,15 @@ describe('profile write path — shape contracts', () => {
     for (const key of CREATE_REQUIRED_KEYS) {
       expect(Object.prototype.hasOwnProperty.call(DEFAULT_PROFILE, key)).toBe(true);
       expect((DEFAULT_PROFILE as unknown as Record<string, unknown>)[key]).not.toBeUndefined();
+    }
+  });
+
+  it('FRESH_PROFILE gives every profile field a value', () => {
+    // Restoring an archived guest profile sets every field from it, and a
+    // field the guest never set from here. A field missing here would keep
+    // the account's value in a profile that is supposed to be the guest's.
+    for (const key of PROFILE_KEYS) {
+      expect((FRESH_PROFILE as unknown as Record<string, unknown>)[key], key).not.toBeUndefined();
     }
   });
 

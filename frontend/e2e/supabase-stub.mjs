@@ -546,7 +546,7 @@ const rpcs = {
       summary.profile = sourceProfile ? 'adopted' : 'none';
     } else if (sourceProfile) {
       rowsOf('profile_versions').push({
-        device_id: uid, profile_data: structuredClone(sourceProfile.profile_data),
+        id: randomUUID(), device_id: uid, profile_data: structuredClone(sourceProfile.profile_data),
         created_at: new Date().toISOString(), profile_revision: null,
       });
       tables.set('profiles', profiles.filter((r) => r !== sourceProfile));

@@ -36,6 +36,24 @@ export function selectedSeekingTypes(profile: Pick<ProfileData, 'seeking_types'>
   return profile.seeking_types ?? ['research', 'summer_program'];
 }
 
+/** What a brand-new guest profile reads as in EVERY field: DEFAULT_PROFILE,
+ *  plus, for the optional fields it leaves unset, the value readers take when
+ *  one is absent (buildProfileRequest in lib/api.ts, selectedSeekingTypes).
+ *  Pinned against PROFILE_KEYS in profile-sync.contract.test.ts. */
+export const FRESH_PROFILE = {
+  ...DEFAULT_PROFILE,
+  resume_text: '',
+  coursework: [],
+  exploring: false,
+  include_cross_school: false,
+  linkedin_url: '',
+  github_url: '',
+  scholar_url: '',
+  seeking_types: selectedSeekingTypes({}),
+  experience_level: 'beginner',
+  account_type: 'personal',
+} as Required<ProfileData>;
+
 export function hasSelectedSeekingType(profile: Pick<ProfileData, 'seeking_types'>): boolean {
   const selected = selectedSeekingTypes(profile);
   return SEEKING_TYPES.some((type) => selected.includes(type));

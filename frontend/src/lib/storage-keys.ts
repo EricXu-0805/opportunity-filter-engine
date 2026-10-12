@@ -72,6 +72,12 @@ export const STORAGE_KEYS = {
   // before an existing-account sign-in redirect. Survives the redirect in
   // localStorage and is redeemed once on /auth/callback, then cleared.
   MERGE_GRANT: 'ofe_merge_grant',
+  // Flow B: the merge just redeemed kept the account's own profile and saved
+  // this browser's guest profile in the account's history; names that archived
+  // row. Written by /auth/callback, read by Home's restore notice, removed once
+  // the student restores or keeps the account's profile, or the row can no
+  // longer be restored. See lib/merged-guest-profile.ts.
+  MERGED_GUEST_PROFILE: 'ofe_merged_guest_profile',
   RESULTS_CTA_DISMISSED: 'ofe_results_cta_dismissed',
   // W15: the SINGLE in-progress feedback draft (message/email/category/
   // subject + its idempotency token), so a reload or a failed send doesn't
