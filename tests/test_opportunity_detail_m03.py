@@ -1204,6 +1204,64 @@ class TestCampusGraphContract:
             assert target["criteria"]["timing"]["deadline_note"] == "Applications due March 1"
             assert target["criteria"]["attribution"].get("deadline_note_attribution") == flag
 
+    _NOT_ON_PAGE = " — not confirmed on the program page"
+
+    def test_ask_ai_gives_configured_terms_the_page_does_not_state_as_our_listings(self):
+        # M92: Ask AI's prompt and its local fallback say such a value is our
+        # listing's suggestion; a value the page text states stays the program's.
+        _, ours = _served(self._configured())
+        unstated = opportunities_module._configured_unstated(ours)
+        prompt = opportunities_module._build_chat_system_prompt(_redact(ours), None, unstated)
+        fallback = opportunities_module._local_chat_fallback(_redact(ours), "Who can apply?", unstated)
+        for line in (f"- Majors: our listing suggests Biology{self._NOT_ON_PAGE}",
+                     f"- Class years: our listing suggests junior, senior{self._NOT_ON_PAGE}",
+                     f"- Paid: our listing suggests stipend{self._NOT_ON_PAGE}; "
+                     f"compensation: our listing suggests $5,000{self._NOT_ON_PAGE}",
+                     f"- International friendly: our listing suggests yes{self._NOT_ON_PAGE}",
+                     "never present it as the program's requirement"):
+            assert line in prompt, line
+        assert "Eligible majors" not in prompt and "Preferred years" not in prompt
+        assert f"- Majors: our listing suggests Biology{self._NOT_ON_PAGE}." in fallback
+        assert f"paid: our listing suggests stipend{self._NOT_ON_PAGE};" in fallback
+        assert f"International-friendly: our listing suggests yes{self._NOT_ON_PAGE};" in fallback
+        assert "Eligible majors" not in fallback
+
+        _, stated = _served(self._with_page(self._STATES))
+        prompt = opportunities_module._build_chat_system_prompt(_redact(stated), None, None)
+        for line in ("- Eligible majors: Biology", "- Preferred years: junior, senior",
+                     "- Paid: stipend; compensation: $5,000", "- International friendly: yes"):
+            assert line in prompt, line
+        assert "our listing suggests" not in prompt
+        assert "our listing suggests" not in opportunities_module._local_chat_fallback(_redact(stated), "?")
+
+    def test_ask_ai_reads_the_page_text_off_the_canonical_record(self, monkeypatch):
+        # The public payload drops the captured passages, so the route checks
+        # the record it loaded: the years and pay this passage states stay
+        # the program's, and the majors it does not state are ours.
+        record = self._configured()
+        record["metadata"]["contact_instruction_sources"] = [{
+            "source_url": _SPEC_URL + "/apply", "record_source_url": _SPEC_URL,
+            "checked_at": "2026-10-05T15:17:16+00:00",
+            "sections": [{"heading": "Eligibility", "text": "Open to juniors and seniors. "
+                                                            "Fellows receive a $5,000 stipend."}]}]
+        _, canonical = _served(record)
+        captured = {}
+
+        def capture(messages, _model_id=None):
+            captured["system"] = messages[0]["content"]
+
+        monkeypatch.setattr(opportunities_module, "load_opportunities_by_id", lambda: {canonical["id"]: canonical})
+        monkeypatch.setattr(opportunities_module, "release_visible_opportunity_by_id", lambda by_id, oid: by_id.get(oid))
+        monkeypatch.setattr(opportunities_module, "_llm_chat_call", capture)
+        response = _CLIENT.post(f"/api/opportunities/{canonical['id']}/chat", json={"message": "Who can apply?"})
+        assert response.status_code == 200, response.text
+        reply = response.json()["reply"]
+        for text in (captured["system"], reply):
+            assert f"Majors: our listing suggests Biology{self._NOT_ON_PAGE}" in text
+        for line in ("- Preferred years: junior, senior", "- Paid: stipend; compensation: $5,000"):
+            assert line in captured["system"], line
+        assert "paid: stipend;" in reply
+
     def test_a_default_class_year_list_the_page_names_is_the_pages(self):
         record = self._with_page("Awards are made to first-years, sophomores, and juniors.")
         record["eligibility"]["preferred_year"] = ["freshman", "sophomore", "junior"]
