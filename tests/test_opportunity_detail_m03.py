@@ -1003,6 +1003,20 @@ class TestCampusGraphContract:
         _, fits, _ = score_upside({}, canonical)
         assert "Includes stipend" not in fits
 
+    def test_configured_majors_and_years_say_they_came_from_our_config(self):
+        payload, _ = _detail(self._configured())
+        assert payload["majors_basis"] == "configured"
+        assert payload["preferred_year_basis"] == "configured"
+
+    def test_a_stamped_list_keeps_its_own_basis(self):
+        record = self._configured()
+        record["metadata"]["inferred_fields"] = {
+            "eligibility.majors": "rule:research_area_bank", "eligibility.preferred_year": "rule:text_scan"}
+        payload, _ = _detail(record)
+        assert payload["majors_attribution"] == payload["preferred_year_attribution"] == "inferred"
+        assert "majors_basis" not in payload
+        assert "preferred_year_basis" not in payload
+
     @pytest.mark.parametrize("paid", ["yes", "stipend", "no"])
     def test_configured_pay_is_stamped_whatever_it_says(self, paid):
         record = self._configured()

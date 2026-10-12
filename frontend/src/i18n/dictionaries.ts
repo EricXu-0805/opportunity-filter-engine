@@ -3405,6 +3405,8 @@ export const en = {
     skillsInferred: 'Read from the posting text by our pipeline, not listed by the program — a hint, not a requirement.',
     majorsInferred: 'Matched from the program’s research areas by our pipeline, not an eligibility list the program published.',
     yearInferred: 'Read from the posting text by our pipeline, not a class-year restriction the program published.',
+    majorsConfigured: 'From our listing’s major list, not confirmed on the program page.',
+    yearConfigured: 'From our listing’s class-year list, not confirmed on the program page.',
     eligibilityInferred: 'Read from the posting text by our pipeline, not a restriction the program published — check the program’s own page before ruling yourself out.',
     rollingInferred: 'From our listing’s deadline note, not confirmed on the program page.',
     concierge: {
@@ -8593,6 +8595,8 @@ export const zh = {
     skillsInferred: '由我们的系统从招募文本中推断，不是项目列出的要求 —— 当作提示，不是硬性条件。',
     majorsInferred: '由我们的系统根据项目研究方向匹配，不是项目公布的专业要求。',
     yearInferred: '由我们的系统从招募文本中推断，不是项目公布的年级限制。',
+    majorsConfigured: '来自我们列表里的专业清单，项目页面未确认。',
+    yearConfigured: '来自我们列表里的年级清单，项目页面未确认。',
     eligibilityInferred: '由我们的系统从招募文本中推断，不是项目公布的限制 —— 在放弃之前先看项目自己的页面。',
     rollingInferred: '来自我们列表里的截止说明，项目页面未确认。',
     concierge: {

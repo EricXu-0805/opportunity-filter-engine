@@ -161,7 +161,8 @@ export function EligibilitySection({ opp, t }: { opp: Opportunity; t: TFunc }) {
             icon={<GraduationCap />}
             label={t(opp.preferred_year_attribution === 'inferred' ? 'detail.fields.preferredYearMentioned' : 'detail.fields.preferredYear')}
             value={statedYears.join(', ')}
-            note={opp.preferred_year_attribution === 'inferred' ? t('detail.yearInferred') : undefined}
+            note={opp.preferred_year_attribution === 'inferred'
+              ? t(opp.preferred_year_basis === 'configured' ? 'detail.yearConfigured' : 'detail.yearInferred') : undefined}
             noteTestId="year-inferred-note"
           />
         )}
@@ -174,7 +175,8 @@ export function EligibilitySection({ opp, t }: { opp: Opportunity; t: TFunc }) {
             icon={<GraduationCap />}
             label={t(opp.majors_attribution === 'inferred' ? 'detail.fields.majorsApproximate' : 'detail.fields.majors')}
             value={e.majors.join(', ')}
-            note={opp.majors_attribution === 'inferred' ? t('detail.majorsInferred') : undefined}
+            note={opp.majors_attribution === 'inferred'
+              ? t(opp.majors_basis === 'configured' ? 'detail.majorsConfigured' : 'detail.majorsInferred') : undefined}
             noteTestId="majors-inferred-note"
           />
         )}
