@@ -56,6 +56,7 @@ from .campus_graph import (
     _page_capture,
     _program_record,
     _retired_as_unlisted,
+    _waiting_for_a_read,
 )
 from .ucb_common import _readable_excerpt
 
@@ -714,10 +715,11 @@ def merge_into_processed(
     files is held back until the old file's run retires its old active row.
     A record sharing a closed old row's URL or title is dropped as its
     near-duplicate until that row retires, and after that until a run loads
-    the record's page: campus_graph's rule for its schools. An empty listing
-    retires every such row; the None default retires nothing. A retired row
-    whose program is listed again comes back as it was, closed if its page had
-    closed it."""
+    the record's page: campus_graph's rule for its schools, which holds a
+    program renamed back to a key, or moved back to a file, where its row
+    retired the same way. An empty listing retires every such row; the None
+    default retires nothing. A retired row whose program is listed again
+    comes back as it was, closed if its page had closed it."""
     if not PROCESSED_FILE.exists():
         return (0, 0)
     if any(
@@ -795,16 +797,16 @@ def merge_into_processed(
         found = [opp for opp in new_opps
                  if opp["metadata"].get("discovered") and opp.get("id") not in stored_ids]
         survivors, lost = dedupe_against_existing(found, released)
-        # A row retired while its page said closed gives up its claim only to
-        # a record whose page this run loaded: campus_graph's rule.
-        unread = [opp for opp in new_opps if _program_record(opp) and opp.get("id") not in stored_ids
-                  and opp["metadata"].get("seed_page_verified") is not True]
-        closed = [row for row in released if row["metadata"].get("status") == "closed"]
-        landing, waiting = dedupe_against_existing(unread, closed)
-        lost_ids = ({opp.get("id") for opp in found} - {opp.get("id") for opp in survivors}) | (
-            {opp.get("id") for opp in unread} - {opp.get("id") for opp in landing})
+        lost_ids = {opp.get("id") for opp in found} - {opp.get("id") for opp in survivors}
         new_opps = [opp for opp in new_opps if opp.get("id") not in lost_ids]
-        dropped += lost + waiting
+        dropped += lost
+    # A row retired while its page said closed gives up its claim only to a
+    # record whose page this run loaded, and a record coming back to its own
+    # retired row waits the same way: campus_graph's rule.
+    waiting = _waiting_for_a_read(new_opps, existing, _registry_program_row)
+    if waiting:
+        new_opps = [opp for opp in new_opps if opp.get("id") not in waiting]
+        dropped += len(waiting)
     if dropped:
         logger.info("ucb_campus: suppressed %d near-duplicate(s) vs corpus", dropped)
 

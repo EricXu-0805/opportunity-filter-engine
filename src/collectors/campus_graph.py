@@ -872,6 +872,39 @@ def _listing_applies(opp: dict) -> bool:
         metadata.get("status") == "closed" and metadata.get("deactivation_reason") is None)
 
 
+def _waiting_for_a_read(new_opps: list[dict], existing: list[dict], owned) -> set:
+    """The ids of incoming program records left out until a run reads their
+    page, because a row that carries their program says the page was closed.
+
+    A record waits when this run read nothing for it (a quick run, or its
+    page failed to load), it is new or its own row retired as no longer
+    listed, and a closed row that ``owned`` accepts shares its URL or title
+    and either retired as no longer listed or has the record's key. That row
+    holds the program's last reading after a rename or move with its URL, a
+    rename back, or a move back. A record on a page its config shares with
+    another program (shared_program_page) waits too: it skips the
+    near-duplicate filter because the page is not its identity, but what the
+    page said still holds.
+    """
+    incoming_ids = {opp.get("id") for opp in new_opps}
+    closed = [row for row in existing if isinstance(row.get("metadata"), dict)
+              and row["metadata"].get("status") == "closed" and row.get("id") not in incoming_ids and owned(row)]
+    if not closed:
+        return set()
+    stored = {row.get("id"): row for row in existing}
+    waiting = set()
+    for opp in new_opps:
+        own = stored.get(opp.get("id"))
+        if (not _program_record(opp) or opp["metadata"].get("seed_page_verified") is True
+                or (own is not None and not _retired_as_unlisted(own))):
+            continue
+        claims = [row for row in closed if _retired_as_unlisted(row)
+                  or row["metadata"]["collector_key"] == opp["metadata"]["collector_key"]]
+        if claims and dedupe_against_existing([opp], claims)[1]:
+            waiting.add(opp["id"])
+    return waiting
+
+
 def merge_into_processed(
     new_opps: list[dict],
     *,
@@ -907,7 +940,9 @@ def merge_into_processed(
     matches the key, so a program renamed in the same edit is not held. A
     closed old row is not listed and holds nothing back, but a record sharing
     its URL or title is dropped as its near-duplicate until it retires, and
-    after that until a run loads the record's page.
+    after that until a run loads the record's page. That wait also holds a
+    record on a page its config shares with another program, and a program
+    renamed back to a key, or moved back to a file, where its row retired.
     """
 
     if not PROCESSED_FILE.exists():
@@ -1007,18 +1042,20 @@ def merge_into_processed(
         stored_ids = {row.get("id") for row in existing}
         found = [opp for opp in new_opps if not _program_record(opp) and opp.get("id") not in stored_ids]
         survivors, lost = dedupe_against_existing(found, released)
-        # A row retired while its page said closed gives up its claim only to
-        # a record whose page this run loaded. A quick run, or one whose page
-        # failed to load, read nothing: the record would land listed, though
-        # the page last said closed. The first run that reads it hands over.
-        unread = [opp for opp in new_opps if _program_record(opp) and opp.get("id") not in stored_ids
-                  and opp["metadata"].get("seed_page_verified") is not True]
-        closed = [row for row in released if row["metadata"].get("status") == "closed"]
-        landing, waiting = _dedupe_with_program_scope(unread, closed)
-        lost_ids = ({opp.get("id") for opp in found} - {opp.get("id") for opp in survivors}) | (
-            {opp.get("id") for opp in unread} - {opp.get("id") for opp in landing})
+        lost_ids = {opp.get("id") for opp in found} - {opp.get("id") for opp in survivors}
         new_opps = [opp for opp in new_opps if opp.get("id") not in lost_ids]
-        dropped += lost + waiting
+        dropped += lost
+    # A row retired while its page said closed gives up its claim only to a
+    # record whose page this run loaded. A quick run, or one whose page
+    # failed to load, read nothing: the record would land listed, though the
+    # page last said closed. The first run that reads it hands over. The same
+    # holds for a record coming back to its own retired row, which a closed
+    # row with its key in the other file holds back too.
+    waiting = _waiting_for_a_read(
+        new_opps, existing, lambda row: bool(school_slug) and _configured_program_row(row, school_slug))
+    if waiting:
+        new_opps = [opp for opp in new_opps if opp.get("id") not in waiting]
+        dropped += len(waiting)
     if dropped:
         logger.info("campus_graph: suppressed %d near-duplicate(s) vs corpus", dropped)
     index = {o.get("id"): o for o in existing if o.get("id")}
