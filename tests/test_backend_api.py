@@ -3288,6 +3288,58 @@ class TestCORS:
     def test_localhost_allowed(self):
         assert self._allowed("http://localhost:3000")
 
+    # The grant is configured when backend.main is imported, so each
+    # environment gets a fresh interpreter started with that environment.
+    _PREFLIGHT_SCRIPT = (
+        "import json, sys\n"
+        "from fastapi.testclient import TestClient\n"
+        "from backend.main import app\n"
+        "client = TestClient(app)\n"
+        "allowed = {}\n"
+        "for origin in sys.argv[1:]:\n"
+        "    resp = client.options('/api/health', headers={\n"
+        "        'Origin': origin, 'Access-Control-Request-Method': 'GET'})\n"
+        "    allowed[origin] = 'access-control-allow-origin' in {\n"
+        "        h.lower() for h in resp.headers.keys()}\n"
+        "print(json.dumps(allowed))\n"
+    )
+    _ORIGINS = (
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://joinalab.com",
+        "https://www.joinalab.com",
+    )
+
+    def _allowed_in(self, env_overrides: dict[str, str]) -> dict[str, bool]:
+        import subprocess
+
+        env = {k: v for k, v in os.environ.items() if k not in ("RENDER", "OFE_ENVIRONMENT")}
+        env.update(env_overrides)
+        result = subprocess.run(
+            [sys.executable, "-c", self._PREFLIGHT_SCRIPT, *self._ORIGINS],
+            cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            env=env, capture_output=True, text=True, timeout=120, check=False,
+        )
+        assert result.returncode == 0, result.stderr[-2000:]
+        return json.loads(result.stdout.strip().splitlines()[-1])
+
+    @pytest.mark.parametrize("env_overrides", [
+        {"RENDER": "true"},
+        {"OFE_ENVIRONMENT": "production"},
+    ], ids=["render", "ofe-environment-production"])
+    def test_production_does_not_grant_localhost(self, env_overrides):
+        allowed = self._allowed_in(env_overrides)
+        assert allowed == {
+            "http://localhost:3000": False,
+            "http://127.0.0.1:3000": False,
+            "https://joinalab.com": True,
+            "https://www.joinalab.com": True,
+        }
+
+    def test_local_development_grants_localhost(self):
+        allowed = self._allowed_in({})
+        assert allowed == {origin: True for origin in self._ORIGINS}
+
     def test_joinalab_domains_allowed(self):
         assert self._allowed("https://joinalab.com")
         assert self._allowed("https://www.joinalab.com")
