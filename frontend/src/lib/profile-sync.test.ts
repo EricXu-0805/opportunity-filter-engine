@@ -1872,6 +1872,121 @@ describe('a settled field can also be one a later edit took over', () => {
   });
 });
 
+describe('a chain of edits that replaced each other is settled whole by its latest edit', () => {
+  // Each edit names only the edit it directly replaced, so the first edit of
+  // a chain is reached from the last one only THROUGH the middle one. When
+  // the middle edit carried fewer fields, the last edit still has to speak
+  // for the first edit's other fields — or those stay owed after the save,
+  // asking for old values at an old revision.
+  const CASCADE = ['college', 'major', 'additional_majors'] as const;
+  const START = { ...FULL, college: 'Grainger', major: 'CS', additional_majors: ['Math'] };
+
+  async function startOn(server: ReturnType<typeof casServer>) {
+    loadProfileMock.mockResolvedValue(cloud(server.row as unknown as ProfileData, server.rev));
+    commitMock.mockReset();
+    commitMock.mockImplementation(async (intent) => server.handle(intent));
+    const token = captureOwnerToken();
+    await hydrateProfile();
+    return token;
+  }
+
+  it('a college switch, a major pick and another college switch leave nothing owed after the save', async () => {
+    const server = casServer(START, 1);
+    const token = await startOn(server);
+    expect(recordProfileIntent({ ...START, college: 'LAS', major: '', additional_majors: [] }, [...CASCADE], token))
+      .toBe(true);
+    expect(recordProfileIntent({ ...START, college: 'LAS', major: 'Physics', additional_majors: [] }, ['major'], token))
+      .toBe(true);
+    const last = { ...START, college: 'Business', major: '', additional_majors: [] };
+    expect(recordProfileIntent(last, [...CASCADE], token)).toBe(true);
+    expect(journalOps()).toHaveLength(3);
+
+    expect((await stageProfilePatch(last, dirtyKeys(token), token)).status).toBe('saved');
+    expect(server.row).toMatchObject({ college: 'Business', major: '', additional_majors: [] });
+    expect(journalOps(), 'nothing may still ask for LAS at revision 1').toEqual([]);
+    expect(dirtyKeys(token)).toEqual([]);
+
+    // A phone moves the row on. This tab reloads: it must show the phone's
+    // values and send nothing.
+    server.handle({ expectedRevision: server.rev, patch: { college: 'Media', major: 'Film' } });
+    startDocumentForTests('reload');
+    resetProfileDirtyLedger();
+    commitMock.mockClear();
+    loadProfileMock.mockResolvedValue(cloud(server.row as unknown as ProfileData, server.rev));
+    const reread = await hydrateProfile();
+    expect(reread.profile).toMatchObject({ college: 'Media', major: 'Film' });
+    expect(reread.conflictKeys ?? []).toEqual([]);
+    expect((await flushPendingProfileWrite(token)).status).toBe('blocked');
+    expect(commitMock).not.toHaveBeenCalled();
+  });
+
+  it('a full-form edit, a one-field edit and another full-form edit leave nothing owed after the save', async () => {
+    const server = casServer(START, 1);
+    const token = await startOn(server);
+    const form = ['research_interests', 'grade', 'is_international'] as const;
+    expect(recordProfileIntent(
+      { ...START, research_interests: 'vision', grade: 'Senior', is_international: true }, [...form], token,
+    )).toBe(true);
+    expect(recordProfileIntent(
+      { ...START, research_interests: 'vision and language', grade: 'Senior', is_international: true },
+      ['research_interests'], token,
+    )).toBe(true);
+    const last = { ...START, research_interests: 'graphics', grade: 'Masters', is_international: false };
+    expect(recordProfileIntent(last, [...form], token)).toBe(true);
+    expect(journalOps()).toHaveLength(3);
+
+    expect((await stageProfilePatch(last, dirtyKeys(token), token)).status).toBe('saved');
+    expect(server.row).toMatchObject({ research_interests: 'graphics', grade: 'Masters', is_international: false });
+    expect(journalOps()).toEqual([]);
+    expect(dirtyKeys(token)).toEqual([]);
+  });
+
+  it('an edit the chain did not replace is still owed, and still sent', async () => {
+    const server = casServer(START, 1);
+    const token = await startOn(server);
+    // A middle edit carrying a field the last edit does not: the last edit
+    // cannot speak for it.
+    expect(recordProfileIntent(
+      { ...START, research_interests: 'vision', grade: 'Senior' }, ['research_interests', 'grade'], token,
+    )).toBe(true);
+    expect(recordProfileIntent(
+      { ...START, research_interests: 'vision', grade: 'Senior', exploring: true }, ['grade', 'exploring'], token,
+    )).toBe(true);
+    const last = { ...START, research_interests: 'graphics', grade: 'Masters', exploring: true };
+    expect(recordProfileIntent(last, ['research_interests', 'grade'], token)).toBe(true);
+
+    // The request goes out; while it is in flight the user switches college
+    // (continuing nothing in the request) and edits the interests again
+    // (continuing the chain the request carries).
+    let release: (() => void) | undefined;
+    commitMock.mockImplementationOnce((intent) => new Promise<ProfilePatchOutcome>((resolve) => {
+      release = () => resolve(server.handle(intent));
+    }));
+    const inFlight = stageProfilePatch(last, dirtyKeys(token), token);
+    for (let i = 0; i < 50 && !release; i += 1) await Promise.resolve();
+    expect(release, 'the request must actually be in flight').toBeDefined();
+    const carried = new Set(journalOps().map((op) => op.opId));
+    const later = { ...last, college: 'LAS', major: '', additional_majors: [], research_interests: 'graphics, HCI' };
+    expect(recordProfileIntent(later, [...CASCADE], token)).toBe(true);
+    expect(recordProfileIntent(later, ['research_interests'], token)).toBe(true);
+    const unsent = journalOps().map((op) => op.opId).filter((id) => !carried.has(id)).sort();
+    expect(unsent).toHaveLength(2);
+
+    release!();
+    expect((await inFlight).status).toBe('saved');
+    expect(server.row).toMatchObject({ research_interests: 'graphics', grade: 'Masters', exploring: true });
+    // The chain the request carried is gone; the two edits it never carried
+    // are not.
+    expect(journalOps().map((op) => op.opId).sort()).toEqual(unsent);
+
+    expect((await flushPendingProfileWrite(token)).status).toBe('saved');
+    expect(server.row).toMatchObject({
+      college: 'LAS', major: '', additional_majors: [], research_interests: 'graphics, HCI', grade: 'Masters',
+    });
+    expect(journalOps()).toEqual([]);
+  });
+});
+
 describe('answering ONE locked field leaves the evidence for the others', () => {
   it('Use Cloud on one of two locked fields keeps the other one\'s value, durably', async () => {
     // One action touching three fields. Two of them collide. The user answers

@@ -1089,9 +1089,22 @@ function finishedClosures(
       for (const k of claimed) taken.add(k);
       spokenFor.set(target, taken);
     };
+    // An edit speaks for every operation it replaced, directly or through a
+    // chain of replacements, in each field it carries: recordProfileIntent
+    // names only the nearest one, so the first edit of a chain is reached from
+    // the last only through the edits between, which may not carry its fields.
     for (const member of closure) {
       const op = byId.get(member)!;
-      for (const target of op.supersedes ?? []) claim(target, op.fields.map((f) => f.key));
+      const carried = op.fields.map((f) => f.key);
+      const walked = new Set<string>();
+      const queue = [...(op.supersedes ?? [])];
+      while (queue.length > 0) {
+        const target = queue.pop()!;
+        if (walked.has(target)) continue;
+        walked.add(target);
+        claim(target, carried);
+        queue.push(...(byId.get(target)?.supersedes ?? []));
+      }
       for (const target of op.resolves ?? []) claim(target, Object.keys(op.decisions ?? {}));
     }
 
