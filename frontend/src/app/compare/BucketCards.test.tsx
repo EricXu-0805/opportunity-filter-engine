@@ -165,7 +165,13 @@ describe('BucketCards — canonical match truth', () => {
 
     render(<BucketCards rows={[row]} />);
 
-    expect(screen.getByText(/Rolling \(our listing’s note, not confirmed on the program page\)/)).toBeInTheDocument();
+    // The qualifier sits in its own element: the one-line summary above is
+    // truncated, which would cut it off in a narrow compare column.
+    const note = screen.getByText('From our listing’s deadline note, not confirmed on the program page.');
+    expect(note).toBe(screen.getByTestId('rolling-from-listing'));
+    expect(note.className).not.toMatch(/truncate|line-clamp/);
+    expect(note.closest('.truncate')).toBeNull();
+    expect(screen.getByText(/Rolling/).className).toMatch(/truncate/);
   });
 
   it('a listed date wins over the is_rolling flag', () => {

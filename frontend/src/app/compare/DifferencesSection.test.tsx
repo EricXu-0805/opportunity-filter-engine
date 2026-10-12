@@ -89,7 +89,7 @@ describe('DifferencesSection source notes', () => {
       'From our listing’s major list, not confirmed on the program page.',
     );
     expect(screen.getByTestId('compare-source-note-preferredYear-configured')).toHaveTextContent(
-      'From our listing’s class-year list, not confirmed on the program page.',
+      'These come from our listing’s own list, not confirmed on the program page.',
     );
     expect(screen.getByTestId('compare-source-note-deadline-configured')).toHaveTextContent(
       'From our listing’s deadline note, not confirmed on the program page.',

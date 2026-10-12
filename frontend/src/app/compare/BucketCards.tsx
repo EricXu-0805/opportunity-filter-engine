@@ -222,12 +222,16 @@ export default function BucketCards({ rows }: Props) {
                     )}`
               }`
             : opp.is_rolling
-              ? t(noDeadlineKind(opp) === 'rolling'
-                // A campus program spec's note, which the page does not state,
-                // is our listing's: the detail page says so, so does this.
-                ? (opp.deadline_note_attribution === 'inferred' ? 'compare.rollingFromListing' : 'compare.rolling')
-                : 'compare.noDeadline')
+              ? t(noDeadlineKind(opp) === 'rolling' ? 'compare.rolling' : 'compare.noDeadline')
               : null;
+          // A campus program spec's note, which the page does not state, is
+          // our listing's: the detail page says so, so does this, on its own
+          // line so the one-line summary above cannot truncate it.
+          const rollingFromListing = !opp.deadline
+            && opp.source_type !== 'faculty_research'
+            && opp.is_rolling
+            && noDeadlineKind(opp) === 'rolling'
+            && opp.deadline_note_attribution === 'inferred';
 
           return (
             <article
@@ -252,6 +256,11 @@ export default function BucketCards({ rows }: Props) {
                 {[opp.organization, deadlineSummary]
                   .filter(Boolean).join(' · ')}
               </p>
+              {rollingFromListing && (
+                <p data-testid="rolling-from-listing" className="text-[12px] text-gray-500 mt-0.5">
+                  {t('compare.rollingFromListing')}
+                </p>
+              )}
 
               {match && (
                 <div className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-1">
