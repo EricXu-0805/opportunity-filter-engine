@@ -107,11 +107,12 @@ function AttachmentFiles({ opportunityId }: Props) {
         const result = await uploadAttachment(opportunityId, file, token, { signal: controller.signal });
         if (!current(controller, token)) return;
         if (!result.ok) {
+          // The prompt already says it; a guest gets no second message as an error.
+          if (result.reason === 'guest') { setGuest(true); return; }
           const key = { too_large: 'errTooLarge', wrong_type: 'errWrongType', duplicate: 'errDuplicate',
-            guest: 'guestNotice', unauthenticated: 'errUnauth', unknown: 'uploadUnknown' }[result.reason];
+            unauthenticated: 'errUnauth', unknown: 'uploadUnknown' }[result.reason];
           setError({ key, vars: { name } });
-          if (result.reason === 'guest') setGuest(true);
-          else if (result.reason === 'unknown') setStatus('error');
+          if (result.reason === 'unknown') setStatus('error');
           else if (result.reason === 'unauthenticated') { setFiles([]); setStatus('signed-out'); }
           return;
         }

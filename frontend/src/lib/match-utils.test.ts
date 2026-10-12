@@ -659,7 +659,13 @@ describe('mixesOpportunityTypes', () => {
     expect(mixesOpportunityTypes([row('Research'), row('Internship')])).toBe(true);
   });
 
-  it('ignores case, surrounding spaces and rows with no type', () => {
-    expect(mixesOpportunityTypes([row('Research'), row(' research '), row(undefined), row('')])).toBe(false);
+  it('groups types the way the matcher does: case, surrounding spaces, spaces and hyphens as "_"', () => {
+    expect(mixesOpportunityTypes([row('Research'), row(' research ')])).toBe(false);
+    expect(mixesOpportunityTypes([row('summer_program'), row('Summer program'), row('summer-program')])).toBe(false);
+  });
+
+  it('treats rows with no type as a group of their own, as the matcher does', () => {
+    expect(mixesOpportunityTypes([row(undefined), row('')])).toBe(false);
+    expect(mixesOpportunityTypes([row('research'), row(undefined)])).toBe(true);
   });
 });

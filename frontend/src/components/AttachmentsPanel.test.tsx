@@ -575,6 +575,9 @@ describe('AttachmentsPanel — adding files needs a signed-in account', () => {
       { target: { files: [fileFromMime('a.pdf', 'application/pdf')] } });
     await waitFor(() => expect(screen.getByTestId('tracker-attachments-guest')).toBeInTheDocument());
     expect(screen.queryByRole('button', { name: /detail.attachments.addButton/ })).toBeNull();
+    // Said once, in the prompt: no second copy as an error line.
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getAllByText(/detail.attachments.guestNotice/)).toHaveLength(1);
   });
 
   it('shows the upload control, with no prompt, to a signed-in account', async () => {
