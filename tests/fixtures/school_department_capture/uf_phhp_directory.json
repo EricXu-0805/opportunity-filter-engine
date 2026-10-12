@@ -1,0 +1,94 @@
+{
+ "1": {
+  "success": true,
+  "data": {
+   "count": 8,
+   "results": {
+    "count": 8,
+    "start": 0,
+    "profiles": [
+     {
+      "slug": "example-ada",
+      "full_name": "Ada Example",
+      "title": "Professor",
+      "email": "ada.example@ufl.edu",
+      "profile_url": "https://directory.ufhealth.org/example-ada",
+      "research_interests": [
+       "Health disparities",
+       "Type 2 Diabetes"
+      ]
+     },
+     {
+      "slug": "sample-ian",
+      "full_name": "Ian Sample",
+      "title": "UF REHABILITATION HOSPITAL/Clinical Assistant Professor",
+      "email": "ian.sample@ufl.edu",
+      "profile_url": "https://directory.ufhealth.org/sample-ian",
+      "research_interests": []
+     },
+     {
+      "slug": "sample-j",
+      "full_name": "J. Quinn Sample",
+      "title": "Assistant Professor",
+      "email": "j.sample@ufl.edu",
+      "profile_url": "https://directory.ufhealth.org/sample-j"
+     },
+     {
+      "slug": "sample-joseph",
+      "full_name": "Joseph Sample",
+      "title": "Associate Professor",
+      "email": "joseph.sample@ufl.edu",
+      "profile_url": "https://directory.ufhealth.org/sample-joseph"
+     },
+     {
+      "slug": "example-tanja",
+      "full_name": "Tanja Example",
+      "title": "Research Associate Professor",
+      "email": "tanja.example@ufl.edu",
+      "profile_url": "https://directory.ufhealth.org/example-tanja"
+     },
+     {
+      "slug": "student-grace",
+      "full_name": "Grace Student",
+      "title": "Graduate Assistant",
+      "email": "grace.student@ufl.edu",
+      "profile_url": "https://directory.ufhealth.org/student-grace"
+     },
+     {
+      "slug": "blank-pat",
+      "full_name": "Pat Blank",
+      "title": "",
+      "email": "pat.blank@ufl.edu",
+      "profile_url": "https://directory.ufhealth.org/blank-pat"
+     },
+     {
+      "slug": "emeritus-lee",
+      "full_name": "Lee Emeritus",
+      "title": "Professor Emeritus",
+      "email": "lee.emeritus@ufl.edu",
+      "profile_url": "https://directory.ufhealth.org/emeritus-lee"
+     }
+    ]
+   }
+  },
+  "links": {
+   "next": null,
+   "prev": null
+  }
+ },
+ "2": {
+  "success": true,
+  "data": {
+   "count": 8,
+   "results": {
+    "count": 8,
+    "start": 0,
+    "profiles": []
+   }
+  },
+  "links": {
+   "next": null,
+   "prev": null
+  }
+ }
+}

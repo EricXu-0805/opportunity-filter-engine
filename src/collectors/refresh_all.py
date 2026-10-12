@@ -1772,6 +1772,11 @@ def refresh_all(
             # a summary artifact, not the corpus.
             "would_deactivate": stale_faculty["would_deactivate"][:200],
             "would_deactivate_total": len(stale_faculty["would_deactivate"]),
+            # Stored people kept because a walk still lists them, whatever
+            # the title gate made of their row.
+            "records_preserved_still_listed": (
+                stale_faculty["records_preserved_still_listed"]
+            ),
             "status": "ok",
         }
         logger.info(
@@ -1996,6 +2001,16 @@ def refresh_all(
         summary["total_in_file"] = len(all_opps)
     else:
         summary["total_in_file"] = 0
+
+    # The digests of the rows a walk listed are for deactivate_stale_faculty
+    # alone, and most of those rows are staff and students. The summary is
+    # committed, so each unit keeps only its ``listed_rows`` count, whether or
+    # not the pass ran (it does not without a corpus file).
+    for info in summary["sources"].values():
+        ledger = info.get("stale_unit_ledger") if isinstance(info, dict) else None
+        for entry in ledger.values() if isinstance(ledger, dict) else ():
+            if isinstance(entry, dict):
+                entry.pop("listed_identities", None)
 
     # Hosts whose certificate failed verification this run, with the fetches
     # skipped after the first failure (the PI pass's included).
