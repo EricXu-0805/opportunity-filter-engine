@@ -35,7 +35,12 @@ from backend.lib.corpus_freshness import (
 )
 from backend.lib.corpus_freshness import corpus_last_updated_at as _opportunities_mtime
 from backend.lib.request_body import SMALL_BOUNDS, BoundedJSONRoute, json_body_bounds, known_keys
-from backend.routes.email import _enforce_recipient_quota, _html_escape, _send_via_resend
+from backend.routes.email import (
+    _enforce_recipient_quota,
+    _html_escape,
+    _send_via_resend,
+    classify_send_failure,
+)
 from backend.routes.push import _required_env
 from backend.routes.saved_searches import _parse_iso_ts
 from src.evidence import record_kind
@@ -1597,10 +1602,12 @@ async def reply_to_feedback_ticket(
     Delivery honesty (the W12/W14 invariant): admin_reply_delivery is set to
     'emailed' ONLY when Resend accepted the message. `deliver=false`, a ticket
     with no email, or an unconfigured provider all record 'stored' — the reply
-    exists in the ticket and nobody was told. A requested send that fails
-    records 'email_failed' and returns the reason; it never degrades to a
-    silent 'stored' (which would read as "we chose not to send") and never
-    claims 'emailed'.
+    exists in the ticket and nobody was told. A requested send that was
+    definitely refused (Resend 4xx, recipient cap, no connection) records
+    'email_failed'; one whose outcome is ambiguous (read timeout, Resend 5xx)
+    records 'unknown', because the email may have gone out. Either returns the
+    reason; neither degrades to a silent 'stored' (which would read as "we
+    chose not to send") or claims 'emailed', and neither is retried here.
 
     A reply is not a handling decision: status and resolution are untouched.
     """
@@ -1634,11 +1641,19 @@ async def reply_to_feedback_ticket(
                         )
                         delivery = "emailed"
                     except Exception as e:  # provider 4xx/5xx, timeout, quota
-                        delivery = "email_failed"
+                        # A timeout after the request went out, or a 5xx, may
+                        # still have delivered it; calling that a failure tells
+                        # the operator to resend a copy the student may have.
+                        ambiguous = classify_send_failure(e) == "ambiguous"
+                        delivery = "unknown" if ambiguous else "email_failed"
                         detail = getattr(e, "detail", None) or str(e)
-                        delivery_error = f"{type(e).__name__}: {detail}"[:200]
+                        delivery_error = f"{type(e).__name__}: {detail}"
+                        if ambiguous:
+                            delivery_error = f"outcome unknown, may have been sent: {delivery_error}"
+                        delivery_error = delivery_error[:200]
                         logger.warning(
-                            "Admin reply delivery failed for ticket %s: %s", ticket_id, delivery_error
+                            "Admin reply delivery %s for ticket %s: %s",
+                            "outcome unknown" if ambiguous else "failed", ticket_id, delivery_error,
                         )
 
             updates = {
@@ -1651,21 +1666,25 @@ async def reply_to_feedback_ticket(
             try:
                 updated = await _patch_ticket(client, supabase_url, headers, ticket_id, updates)
             except (httpx.HTTPError, HTTPException) as exc:
-                if delivery != "emailed":
+                if delivery not in ("emailed", "unknown"):
                     raise
-                # The student already has this email. A bare storage error
-                # reads as "nothing happened", and retrying with the box still
-                # ticked sends it again; say both outcomes, each on its own.
+                # The student already has this email, or may have. A bare
+                # storage error reads as "nothing happened", and retrying with
+                # the box still ticked sends it again; say both outcomes, each
+                # on its own.
                 logger.error(
-                    "Admin reply for ticket %s was emailed but not saved: %s",
-                    ticket_id, type(exc).__name__,
+                    "Admin reply for ticket %s was %s but not saved: %s",
+                    ticket_id, "emailed" if delivery == "emailed" else "maybe emailed",
+                    type(exc).__name__,
+                )
+                sent = (
+                    "the email was sent to the submitter"
+                    if delivery == "emailed"
+                    else "the email may have reached the submitter"
                 )
                 raise HTTPException(
                     status_code=502,
-                    detail=(
-                        "Reply not saved, but the email was sent to the submitter. "
-                        "Save it again with email unchecked."
-                    ),
+                    detail=f"Reply not saved, but {sent}. Save it again with email unchecked.",
                 ) from exc
             audit_error = await _log_events(
                 client, supabase_url, headers,

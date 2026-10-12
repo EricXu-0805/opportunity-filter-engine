@@ -109,7 +109,7 @@ files in filename order and records each version once.
 | `20260819164641_…` onward | 13 | `YYYYMMDDHHMMSS` UTC timestamps, the format `supabase migration new` writes. Every migration since 2026-09-24 uses it. |
 
 The replay in CI (`supabase/tests/run_supabase_cli_migration_test.sh`)
-applies all 49 into an empty database in that order.
+applies every file into an empty database in that order.
 
 ### Rule for a new migration
 

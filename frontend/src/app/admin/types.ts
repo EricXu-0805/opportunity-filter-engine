@@ -210,8 +210,9 @@ export const TICKET_RESOLUTIONS = [
 ] as const;
 export type TicketResolution = (typeof TICKET_RESOLUTIONS)[number];
 
-/** What actually happened to a reply. 'stored' is NOT 'sent'. */
-export type ReplyDelivery = 'stored' | 'emailed' | 'email_failed';
+/** What actually happened to a reply. 'stored' is NOT 'sent'; 'unknown' is a
+ *  send whose outcome is ambiguous (timeout, provider 5xx) and may have gone. */
+export type ReplyDelivery = 'stored' | 'emailed' | 'email_failed' | 'unknown';
 
 export const DEFAULT_TICKET_STATUS: TicketStatus = 'open';
 export const DEFAULT_PRIORITY: Priority = 'normal';
