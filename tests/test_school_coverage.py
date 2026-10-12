@@ -598,6 +598,46 @@ class TestEverySurfaceCountsTheSameRecords:
             entry["faculty_contact_count"] for entry in picker["schools"].values()
         )
 
+    def test_an_event_is_counted_neither_on_home_nor_in_the_picker(self, monkeypatch, count_fixture):
+        """Owner decision (Eric, 2026-10-11, M02/M86): a record no seeking type
+        can reach in results or export is not counted. Both events are
+        actionable listings, so only their type keeps them out."""
+        from src.evidence import is_actionable_target, record_kind
+
+        events = [r for r in count_fixture["corpus"] if r["opportunity_type"] == "event"]
+        assert {r["id"] for r in events} == {"uiuc-event", "national-event"}
+        assert all(is_actionable_target(r) and record_kind(r) == "listing" for r in events)
+        assert "event" not in count_fixture["expected"]["seekable_types"]
+
+        stats = self._home_stats(monkeypatch, events)
+        assert stats["total"] == 0
+        assert stats["by_type"] == {}
+        picker = school_stats_payload(events)
+        assert picker["schools"] == {}
+        assert picker["national_count"] == 0
+
+    def test_the_fixture_lists_the_seeking_types_the_release_offers(self, count_fixture):
+        """match-utils.test.ts holds the form's SEEKING_TYPES to the same list,
+        so the form cannot offer a type the counts leave out, or the reverse."""
+        from backend.lib.release_scope import seekable_types
+
+        assert sorted(seekable_types()) == count_fixture["expected"]["seekable_types"]
+
+    def test_the_server_seeking_types_are_the_forms_list(self):
+        """The whole list, dormant entries included, so turning a feature on
+        cannot open a type on one side only. test_release_scope.py already
+        holds the two RELEASE_SCOPE tables to each other."""
+        import re
+
+        from backend.lib import release_scope
+
+        source = (REPO_ROOT / "frontend" / "src" / "app" / "home" / "types.ts").read_text()
+        block = re.search(r"export const SEEKING_TYPES = \[(.*?)\] as const;", source, re.S)
+        assert block, "SEEKING_TYPES in home/types.ts must stay a literal list"
+        assert tuple(re.findall(r"'(\w+)'", block.group(1))) == release_scope.SEEKING_TYPES
+        gated = re.findall(r"RELEASE_SCOPE\.(\w+) \? \(\['(\w+)'\]", block.group(1))
+        assert {value: feature for feature, value in gated} == release_scope._SEEKING_TYPE_FEATURES
+
     def test_the_served_kind_and_truth_are_what_the_export_test_reads(self, count_fixture):
         """The CSV half lives in match-utils.test.ts and reads `served`. It is
         only a cross-check if `served` is what the API actually sends."""
@@ -607,7 +647,7 @@ class TestEverySurfaceCountsTheSameRecords:
 
         served = [
             {
-                "id": r["id"], "source_type": r["source_type"],
+                "id": r["id"], "source_type": r["source_type"], "opportunity_type": r["opportunity_type"],
                 "record_kind": record_kind(r), "target_truth": public_target_truth(r),
             }
             for r in count_fixture["corpus"] if opportunity_visible_in_release(r)
@@ -638,11 +678,12 @@ class TestEverySurfaceCountsTheSameRecords:
 
         client = TestClient(app)
 
-        def universe(include_cross_school: bool) -> dict:
+        def universe(include_cross_school: bool, seeking_type: list[str] | None = None) -> dict:
             profile = {
                 "year": "sophomore", "major": "Computer Science",
                 "home_school": count_fixture["expected"]["home_school"],
-                "seeking_type": ["research", "summer_program", "internship"],
+                # Every type the form offers, unless the test says otherwise.
+                "seeking_type": seeking_type or count_fixture["expected"]["seekable_types"],
                 "international_student": False,
                 "include_cross_school": include_cross_school,
                 # The default 25-point floor drops low scorers from the
@@ -687,20 +728,24 @@ class TestEverySurfaceCountsTheSameRecords:
         )
         assert body["total"] + body["low_fit"] == expected["match_universe_home_only"]
 
+    @staticmethod
+    def _other_campus_only(count_fixture) -> int:
+        from src.evidence import is_actionable_target, record_kind
+
+        return sum(
+            1 for r in count_fixture["corpus"]
+            if r.get("school") not in (None, count_fixture["expected"]["home_school"])
+            and r.get("audience") == "campus" and record_kind(r) == "listing"
+            and is_actionable_target(r)
+        )
+
     def test_a_cross_school_universe_is_home_stats_less_other_campus_only_postings(
         self, monkeypatch, match_on_fixture, count_fixture,
     ):
         """The one rule that keeps a counted record out of every student's
         results but its own campus's: another school's campus-only posting."""
-        from src.evidence import is_actionable_target, record_kind
-
         expected = count_fixture["expected"]
-        other_campus_only = sum(
-            1 for r in count_fixture["corpus"]
-            if r.get("school") not in (None, expected["home_school"])
-            and r.get("audience") == "campus" and record_kind(r) == "listing"
-            and is_actionable_target(r)
-        )
+        other_campus_only = self._other_campus_only(count_fixture)
         stats = self._home_stats(monkeypatch, count_fixture["corpus"])
         body = match_on_fixture(True)
         assert body["total"] + body["low_fit"] == (
@@ -708,20 +753,56 @@ class TestEverySurfaceCountsTheSameRecords:
         )
         assert body["total"] + body["low_fit"] == expected["match_universe_cross_school"]
 
+    def test_what_counts_follows_the_seeking_types_not_a_named_type(
+        self, monkeypatch, match_on_fixture, count_fixture,
+    ):
+        """Nothing excludes "event" by name. Offer it and both events count on
+        home, on the UIUC card and in the national pool, and Match returns
+        them. Stop offering "internship" and its listings leave every surface
+        at once, even for a request that still asks for internships."""
+        from backend.lib import release_scope
+
+        corpus = count_fixture["corpus"]
+        expected = count_fixture["expected"]
+        other_campus_only = self._other_campus_only(count_fixture)
+
+        def reconciled_stats(seeking_type: list[str]) -> dict:
+            stats = self._home_stats(monkeypatch, corpus)
+            body = match_on_fixture(True, seeking_type)
+            assert body["total"] + body["low_fit"] == (
+                stats["total"] + stats["faculty_contact_total"] - other_campus_only
+            )
+            return stats
+
+        monkeypatch.setattr(release_scope, "SEEKING_TYPES", (*release_scope.SEEKING_TYPES, "event"))
+        stats = reconciled_stats([*expected["seekable_types"], "event"])
+        picker = school_stats_payload(corpus)
+        assert stats["total"] == expected["listing_total"] + 2
+        assert stats["by_type"]["event"] == 2
+        assert picker["schools"]["uiuc"]["listing_count"] == expected["schools"]["uiuc"]["listing_count"] + 1
+        assert picker["national_count"] == expected["national_count"] + 1
+
+        monkeypatch.setattr(release_scope, "SEEKING_TYPES", ("research", "summer_program"))
+        stats = reconciled_stats(expected["seekable_types"])
+        picker = school_stats_payload(corpus)
+        assert stats["total"] == expected["listing_total"] - 2
+        assert "internship" not in stats["by_type"]
+        assert picker["schools"]["uiuc"]["listing_count"] == expected["schools"]["uiuc"]["listing_count"] - 1
+        assert picker["national_count"] == expected["national_count"] - 1
+
     def test_home_stats_and_the_picker_reconcile_on_the_real_corpus(self):
         """The same identity on the committed corpus: on 10-09, 1,297 campus
         listings + 4,225 national = 5,522 on the home page, and 129,757 faculty
         contacts on both. The 26 records of unreviewed type are on neither."""
         from backend.data_loader import load_opportunities
-        from backend.lib.release_scope import release_visible_opportunities
-        from backend.lib.target_actionability import actionable_opportunities
+        from backend.lib.school_coverage import countable_opportunities
         from src.evidence import record_kind
 
         corpus = load_opportunities()
         stats = opportunity_routes._stats_summary()
         picker = school_stats_payload(corpus)
         national = [
-            r for r in actionable_opportunities(release_visible_opportunities(corpus))
+            r for r in countable_opportunities(corpus)
             if not (isinstance(r.get("school"), str) and r["school"].strip())
         ]
         assert len(national) == picker["national_count"]

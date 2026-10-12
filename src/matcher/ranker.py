@@ -1741,6 +1741,13 @@ def _normalize_type_key(value: str) -> str:
     return value.strip().lower().replace(" ", "_").replace("-", "_")
 
 
+def opportunity_type_key(opp: dict) -> str:
+    """The key hard_exclusion compares with the selected seeking types. The
+    public counts read a record's type through this too, so they count a record
+    exactly when some seeking type can return it."""
+    return _normalize_type_key(opp.get("opportunity_type") or "")
+
+
 def _type_preference_score(seeking_types: list[str], opp_type: str) -> float:
     """Score how well the opportunity type matches user preferences.
 
@@ -3963,7 +3970,7 @@ def hard_exclusion(opp: dict, ctx: _FilterCtx) -> str | None:
             if ctx.exclude_citizenship_restricted:
                 return "citizenship_restricted"
 
-    opp_type = _normalize_type_key(opp.get("opportunity_type") or "")
+    opp_type = opportunity_type_key(opp)
     # Type selection defines the result universe, independently of major fit.
     # Missing/unknown record types cannot establish membership in that set.
     if ctx.seeking and opp_type not in ctx.seeking:

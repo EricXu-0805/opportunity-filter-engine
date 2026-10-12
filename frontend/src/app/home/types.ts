@@ -20,6 +20,8 @@ export const DEFAULT_PROFILE: ProfileData = {
   search_weight: 50,
 };
 
+// Mirrors SEEKING_TYPES in backend/lib/release_scope.py — add to both or to
+// neither. The public counts include only these types.
 export const SEEKING_TYPES = [
   'research',
   'summer_program',
