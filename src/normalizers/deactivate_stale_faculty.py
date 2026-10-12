@@ -25,7 +25,10 @@ the survivor. Either way a professor who reappears goes live again.
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import logging
+import secrets
 from datetime import date, datetime, timedelta
 
 logger = logging.getLogger(__name__)
@@ -383,6 +386,31 @@ def identity_key(record: dict, listing_urls: frozenset[str] | set[str] | None = 
     return None
 
 
+# A json_dir walk with a stated total records every row it read — staff and
+# students as much as faculty — and the unit ledger is committed with the
+# refresh summary. So the rows travel as digests under a key that lives only as
+# long as the run: they match within the run and identify no one outside it.
+_LISTED_KEY = secrets.token_bytes(16)
+
+
+def listed_token(kind: str, value: str) -> str:
+    """A run-keyed digest of one listed row's ``("email" | "url", value)``."""
+    return hmac.new(_LISTED_KEY, f"{kind}:{value}".encode(),
+                    hashlib.sha256).hexdigest()[:16]
+
+
+def _listed_tokens_of(record: dict) -> set[str]:
+    """The tokens a listed row would carry for this record's address or link."""
+    tokens = set()
+    url = canonical_profile_url(record.get("url") or record.get("source_url"))
+    if url:
+        tokens.add(listed_token("url", url))
+    email = record.get("contact_email")
+    if isinstance(email, str) and "@" in email:
+        tokens.add(listed_token("email", email.strip().lower()))
+    return tokens
+
+
 def _identity_index(records, listing_urls=None) -> tuple[dict, list]:
     """``({identity: [records]}, [records with no identity])``."""
     index: dict[tuple[str, str], list] = {}
@@ -721,6 +749,7 @@ def deactivate_stale_faculty(
         "records_preserved_ambiguous_identity": 0,
         "records_preserved_moved_unit": 0,
         "moved": [],
+        "records_preserved_still_listed": 0,
         "units_examined": 0,
         "units_complete_by_identity": 0,
         "units_blocked_unparsed_rows": 0,
@@ -768,6 +797,24 @@ def deactivate_stale_faculty(
             for record in active:
                 key = _unit_id_of(record) if rich else _unit_of(record)
                 by_unit.setdefault(key, []).append(record)
+            # A stored person the source's directory still lists, by address or
+            # profile link, is not gone however the title gate read the row
+            # (UF PHHP lists Thomas A Pearson with no title). Unless a record
+            # this run observed carries that address or link: then the person
+            # is live there, and the stored row is a superseded copy for the
+            # tombstone pass to fold away.
+            listed: set = set()
+            for entry in ledger.values():
+                if isinstance(entry, dict) and isinstance(
+                        entry.get("listed_identities"), list):
+                    listed.update(entry["listed_identities"])
+            if listed:
+                observed_here: set = set()
+                for entry in ledger.values():
+                    observed_here |= _observed_identities(entry) or set()
+                for record in active:
+                    if identity_key(record) in observed_here:
+                        listed -= _listed_tokens_of(record)
 
             for unit, unit_records in sorted(
                 by_unit.items(), key=lambda kv: (kv[0] is None, kv[0] or "")
@@ -849,6 +896,10 @@ def deactivate_stale_faculty(
                         counts["kept_fresh"] += 1
                         continue
                     if seen is None or seen >= cutoff:
+                        counts["kept_fresh"] += 1
+                        continue
+                    if listed and listed & _listed_tokens_of(opp):
+                        counts["records_preserved_still_listed"] += 1
                         counts["kept_fresh"] += 1
                         continue
                     counts["records_retirement_authorized"] += 1

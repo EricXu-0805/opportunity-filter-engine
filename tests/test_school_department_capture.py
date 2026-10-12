@@ -189,6 +189,7 @@ class TestJsonDirStatedTotal:
         # Without one, the unit reports what every json_dir unit reported before.
         unit = self._unit(monkeypatch, _FEED)
         assert not any(unit["coverage"].values())
+        assert "listed_identities" not in unit
 
     @pytest.mark.parametrize("pages, json_dir, reason", [
         pytest.param({**_FEED, 2: ConnectionError("reset")}, {},
@@ -227,6 +228,127 @@ class TestJsonDirStatedTotal:
             self, monkeypatch, json_dir, error):
         with pytest.raises(ValueError, match=error):
             self._unit(monkeypatch, _FEED, total_key="count", **json_dir)
+
+
+# --- retirement: a stored person a stated-total walk still lists -------------
+
+def _person(name, title="Professor"):
+    slug = name.lower().replace(" ", "-")
+    return {"name": name, "title": title, "url": f"https://x.edu/p/{slug}",
+            "email": f"{slug}@x.edu"}
+
+
+_BO, _DI, _ED = _person("Bo Chen"), _person("Di Evans"), _person("Ed Fox")
+
+
+class TestJsonDirStillListed:
+    """Owner decision 2026-10-11: a stored person whom the directory still lists,
+    by address or profile link, is not retired whatever the title gate makes of
+    their row (UF PHHP lists Thomas A Pearson with no title). It is a per-row
+    protection: the people the walk no longer lists are still retired."""
+
+    @staticmethod
+    def _run(monkeypatch, feeds):
+        def get(url, **_kw):
+            base, page = url.rsplit("page=", 1)
+            rows = feeds[base.split("/api/")[1].split("?")[0]]
+            return _Page({"count": len(rows), "rows": rows if page == "1" else []})
+
+        monkeypatch.setattr("requests.get", get)
+        school = {"school_slug": "x", "source": "x_faculty", "organization": "X University",
+                  "id_prefix": "x", "location": "Somewhere", "departments": [
+                      {"short": short, "name": f"Department of {short}", "majors": [],
+                       "directory_url": "https://x.edu/people",
+                       "json_dir": {"url": f"https://x.edu/api/{short}?all=1",
+                                    "records_key": "rows", "name_fields": ["name"],
+                                    "link_field": "url", "total_key": "count",
+                                    "total_distinct_key": "name",
+                                    "paginate": {"param": "page", "max": 3},
+                                    "field_filters": [{"field": "title",
+                                                       "include": "professor"}],
+                                    "ladder_filter": {"require": "professor",
+                                                      "drop": "emerit"}}}
+                      for short in feeds]}
+        ledger: dict = {}
+        return fg.fetch_and_normalize(school, deep=True, unit_ledger=ledger), ledger
+
+    def _retire(self, monkeypatch, before, after, edit=None):
+        """Store what ``before`` lists, re-walk ``after``, run the stale pass."""
+        from datetime import date
+
+        from src.normalizers.deactivate_stale_faculty import deactivate_stale_faculty, finalize_unit_ledger
+        corpus, _ = self._run(monkeypatch, before)
+        for r in corpus:
+            r["metadata"]["last_seen_at"] = "2026-01-01T00:00:00"
+            (edit or {}).get(r["pi_name"], dict)(r)
+        fresh, ledger = self._run(monkeypatch, after)
+        by_id = {r["id"]: r for r in corpus}
+        for r in fresh:  # merge_into_processed: upsert by id
+            if r["id"] in by_id:
+                by_id[r["id"]].update(r)
+            else:
+                corpus.append(r)
+        finalize_unit_ledger(ledger, corpus, "x_faculty")
+        counts = deactivate_stale_faculty(corpus, {"x_faculty": ledger},
+                                          today=date(2026, 10, 11))
+        retired = sorted(r["id"].split("-")[2] + "/" + r["pi_name"] for r in corpus
+                         if r["metadata"].get("is_active") is False)
+        return retired, counts, ledger
+
+    @pytest.mark.parametrize("bo", [
+        dict(_BO, title=""),
+        dict(_BO, title="Professor Emeritus"),
+        dict(_BO, title="Program Coordinator", email=None),  # by profile link
+        dict(_BO, title="", url="https://x.edu/p/bo-chen-2"),  # by address
+    ])
+    def test_a_listed_person_the_gate_drops_stays_and_the_absent_are_retired(
+            self, monkeypatch, bo):
+        retired, counts, _ = self._retire(
+            monkeypatch, {"X": [_BO, _DI, _ED]}, {"X": [bo, _DI]})
+        assert retired == ["x/Ed Fox"]
+        assert counts["records_preserved_still_listed"] == 1
+
+    def test_a_listing_under_another_unit_keeps_a_row_whose_link_is_the_listing_page(
+            self, monkeypatch):
+        # Pearson: stored under the college with the college listing page as
+        # his link, listed today only under Epidemiology, with no title.
+        def listing_page(r):
+            r["url"] = "https://x.edu/people"
+
+        retired, _, _ = self._retire(
+            monkeypatch, {"X": [_BO, _DI], "Y": [_ED]},
+            {"X": [_DI], "Y": [_ED, dict(_BO, title="", url="https://x.edu/y/bo")]},
+            edit={"Bo Chen": listing_page})
+        assert retired == []
+
+    def test_a_person_published_under_a_new_row_leaves_the_old_row_to_retire(
+            self, monkeypatch):
+        # The person is live in the new row; keeping the old one active beside
+        # it would show them twice. The tombstone pass folds the retired row.
+        retired, counts, _ = self._retire(
+            monkeypatch, {"X": [_BO, _DI], "Y": [_ED]},
+            {"X": [_DI], "Y": [_ED, dict(_BO, url="https://x.edu/y/bo")]})
+        assert retired == ["x/Bo Chen"]
+        assert counts["records_preserved_still_listed"] == 0
+
+    def test_a_directory_page_link_lists_no_one(self, monkeypatch):
+        def listing_page(r):
+            r["url"] = "https://x.edu/people"
+
+        office = {"name": "Front Office", "title": "Staff", "url": "https://x.edu/people/"}
+        retired, _, _ = self._retire(
+            monkeypatch, {"X": [_BO, _DI]}, {"X": [_DI, office]},
+            edit={"Bo Chen": listing_page})
+        assert retired == ["x/Bo Chen"]
+
+    def test_the_ledger_carries_no_listed_address_or_link(self, monkeypatch):
+        sam = _person("Sam Staff", title="Program Coordinator")
+        _, ledger = self._run(monkeypatch, {"X": [_DI, sam]})
+        tokens = ledger["x"]["listed_identities"]
+        assert len(tokens) == 4 and all(len(t) == 16 for t in tokens)
+        dumped = json.dumps(ledger)
+        assert "sam-staff" not in dumped
+        assert "di-evans@x.edu" not in dumped
 
 
 # --- engine: json_dir department_field / department_units --------------------

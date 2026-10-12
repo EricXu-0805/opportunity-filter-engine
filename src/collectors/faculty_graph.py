@@ -1014,6 +1014,18 @@ def _cover(bucket: str, n: int = 1) -> None:
         _ACTIVE_COVERAGE[bucket] = _ACTIVE_COVERAGE.get(bucket, 0) + n
 
 
+def _cover_listed(email: object, link: object) -> None:
+    """Note a roster row's address and profile link as still listed, kept or
+    dropped by the title gate (a json_dir walk with a stated total)."""
+    if _ACTIVE_COVERAGE is None:
+        return
+    listed = _ACTIVE_COVERAGE.setdefault("_listed_rows", set())
+    if isinstance(email, str) and "@" in email:
+        listed.add(("email", email.strip().lower()))
+    if isinstance(link, str) and link.strip():
+        listed.add(("url", link.strip()))
+
+
 def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = None,
                  name_flip: bool = False, link_filter: str | None = None,
                  section_filter: dict | None = None,
@@ -3038,7 +3050,9 @@ def _fetch_cola(dept: dict) -> list[dict]:
 # walk that read exactly that many distinct rows reports roster coverage, so
 # only such a unit can retire the people it no longer lists. A feed that
 # reorders between page requests can serve one row twice and another never, at
-# the same row count.
+# the same row count. Such a walk also records every row's address and profile
+# link, whatever the title gate makes of the row, so the retirement pass keeps
+# a stored person the directory still lists (see ``listed_identities``).
 # Options for a shared cross-department roster feed (UChicago BSD / Chemistry):
 #     "headers": {"Referer": "https://microbiology.uchicago.edu/"},  # same-origin gate
 #     "filter_field": "department", "filter_index": 0,               # PRIMARY appt only
@@ -3232,6 +3246,9 @@ def _json_dir_records(dept: dict, cfg: dict, recs, *, roster: bool = False) -> l
         # Rows another department owns on a shared feed (above) are outside
         # this unit's roster; every row from here on is one of its rows.
         cover("raw_roster_rows")
+        if roster:
+            _cover_listed(_dig(x, cfg.get("email_field", "email")),
+                          _dig(x, cfg["link_field"]) if cfg.get("link_field") else None)
         if status_field is not None:
             sv = _dig(x, status_field)
             if status_value not in (sv if isinstance(sv, list) else [sv]):
@@ -4547,9 +4564,11 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
         parse_status = "ok" if ids else "zero_rows"
     cov = dict(coverage) if isinstance(coverage, dict) else None
     document_identities: list = []
+    listed_identities: list | None = None
     if cov is not None:
         from src.normalizers.deactivate_stale_faculty import (  # noqa: PLC0415
             canonical_profile_url,
+            listed_token,
         )
         seen_doc = set()
         for href in cov.pop("_document_hrefs", ()) or ():
@@ -4557,13 +4576,25 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
             if canon and canon not in seen_doc:
                 seen_doc.add(canon)
                 document_identities.append(["url", canon])
+        listed = cov.pop("_listed_rows", None)
+        if listed is not None:
+            # A link that is a directory page is everyone's, not a person's.
+            listing = {canonical_profile_url(u) for u in listing_urls or ()}
+            tokens = set()
+            for kind, value in listed:
+                if kind == "url":
+                    value = canonical_profile_url(value)
+                    if not value or value in listing:
+                        continue
+                tokens.add(listed_token(kind, value))
+            listed_identities = sorted(tokens)
     if cov is not None:
         # Identity loss is roster loss: a row we parsed but could not identify
         # cannot be told apart from a rename next run.
         cov["identity_match_failures"] = (
             cov.get("identity_match_failures", 0) + unresolved)
         cov["duplicate_rows"] = cov.get("duplicate_rows", 0) + duplicates
-    return {
+    observation = {
         "school": school.get("school_slug"),
         "source": school.get("source"),
         "unit_id": str(dept.get("short") or "").lower() or None,
@@ -4593,6 +4624,12 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
         "retirement_authorized": False,
         "failure_reason": failure_reason,
     }
+    if listed_identities is not None:
+        # Every row a stated-total walk read, as run-keyed tokens: the ledger is
+        # committed with the refresh summary, and most of these rows are staff
+        # and students the unit does not publish.
+        observation["listed_identities"] = listed_identities
+    return observation
 
 
 def fetch_and_normalize(school: dict, deep: bool = False,
