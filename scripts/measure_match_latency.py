@@ -443,6 +443,7 @@ class RequestRecord:
     status: int | None = None
     key: str | None = None
     joined: bool = False
+    from_store: bool = False
     miss_start: float | None = None
     miss_end: float | None = None
     seconds: dict[str, float] = field(default_factory=lambda: defaultdict(float))
@@ -470,8 +471,11 @@ class Recorder:
         The first ranking of the same key still running when the miss began
         (one it joined) or started during its wait (its own). A later one is
         another request's ranking of the same key and did not answer this one.
+        A miss that found a stored snapshot on the route's re-check, because a
+        ranking finished and stored it after the miss but before the lookup,
+        was answered by no ranking at all.
         """
-        if request.key is None or request.miss_start is None:
+        if request.key is None or request.miss_start is None or request.from_store:
             return None
         wait_end = request.miss_end if request.miss_end is not None else float("inf")
         with self.lock:
@@ -603,7 +607,21 @@ def _install(recorder: Recorder, patches: Patches, breakdown: bool, sampler: Mem
                 record.miss_end = clock()
         return wrapper
 
+    def stored(original):
+        def wrapper(*args, **kwargs):
+            snapshot = original(*args, **kwargs)
+            rid = REQUEST_ID.get()
+            if snapshot is not None and rid is not None:
+                record = recorder.request(rid)
+                # Only the re-check inside a miss counts: the route's first
+                # lookup runs before the miss wrapper sets miss_start.
+                if record.miss_start is not None and record.miss_end is None:
+                    record.from_store = True
+            return snapshot
+        return wrapper
+
     patches.wrap(matches, "_compute_rule_snapshot", compute)
+    patches.wrap(matches, "_stored_snapshot", stored)
     patches.wrap(matches, "_get_or_compute_rule_snapshot", miss)
     patches.wrap(matches, "load_opportunities_generation", _in_request(recorder, "corpus_lookup"))
     patches.wrap(matches, "release_visible_opportunities", _in_request(recorder, "release_filter"))
@@ -1151,7 +1169,7 @@ def _sample_record(run: Run, sample: Sample, overhead: float) -> dict:
     }
     if request is not None:
         served_from = "snapshot"
-        if request.key is not None:
+        if request.key is not None and not request.from_store:
             served_from = "joined_ranking" if request.joined else "new_ranking"
         record.update({
             "server_s": round(request.end - request.start, 3)
