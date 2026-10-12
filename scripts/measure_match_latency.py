@@ -28,17 +28,19 @@ Scenarios, in run order:
 
 It also records, without changing app code:
 
-  - where each ranking's time goes (rank, card projection, result-set id), by
-    wrapping the route module's and the ranker's own functions;
+  - where each ranking's time goes (rank, per-row data, result-set id), by
+    wrapping the route module's and the ranker's own functions. "cards" is
+    what the snapshot builds for every visible row: since M74 a view row
+    (_snapshot_view_rows) instead of a projected card, which is now made
+    only for the rows a response serves (the "page_cards" request phase);
   - how long /api/health waited during each request: every request on a
     worker shares one event loop and one GIL with the ranking;
   - memory sampled every 50 ms per scenario and the kernel's peak, and, from
     tracemalloc, what one ranking allocates at its peak and what its stored
     snapshot keeps;
   - a cProfile of card projection over a sample of cross-school cards;
-  - whether /matches/view gives the same answer for a set of views when it
-    reads the canonical records instead of the projected cards, which is what
-    projecting only the served page would need.
+  - whether /matches/view gives the same answer for a set of views over the
+    snapshot's view rows as over every visible row's projected card.
 
 Output: a table on stdout, then the JSON document (or --json PATH). Nothing
 leaves the machine: provider, Supabase and Sentry settings are blanked before
@@ -212,7 +214,7 @@ CROSS_PERSONAS = {
 
 PERSONAS = {**HOME_PERSONAS, **CROSS_PERSONAS}
 
-# Views compared on the projected cards and on the canonical records.
+# Views compared on the projected cards and on the snapshot's view rows.
 PARITY_VIEWS = {
     "first_page": {},
     "tab_all": {"tab": "all"},
@@ -606,10 +608,11 @@ def _install(recorder: Recorder, patches: Patches, breakdown: bool, sampler: Mem
     patches.wrap(matches, "load_opportunities_generation", _in_request(recorder, "corpus_lookup"))
     patches.wrap(matches, "release_visible_opportunities", _in_request(recorder, "release_filter"))
     patches.wrap(matches, "actionable_opportunities", _in_request(recorder, "actionable_filter"))
-    patches.wrap(matches, "_apply_match_view", _in_request(recorder, "view_pass", rows=lambda args: len(args[0])))
+    patches.wrap(matches, "_apply_match_view_rows", _in_request(recorder, "view_pass", rows=lambda args: len(args[0])))
+    patches.wrap(matches, "_snapshot_cards", _in_request(recorder, "page_cards", rows=lambda args: len(args[1])))
     patches.wrap(matches, "_match_result_response", _in_request(recorder, "page_rows", rows=lambda args: 1))
     patches.wrap(matches, "rank_visible_universe", _in_compute(recorder, "rank"))
-    patches.wrap(matches, "_match_card", _in_compute(recorder, "cards"))
+    patches.wrap(matches, "_snapshot_view_rows", _in_compute(recorder, "cards"))
     patches.wrap(matches, "_result_set_id", _in_compute(recorder, "result_set_id"))
     patches.wrap(matches, "_store_snapshot", _in_compute(recorder, "store"))
     if breakdown:
@@ -620,6 +623,7 @@ def _install(recorder: Recorder, patches: Patches, breakdown: bool, sampler: Mem
         patches.wrap(ranker, "_build_opp_static", _in_compute(recorder, "static_builds"))
     patches.wrap(app_main, "_warmup", _boot_phase(recorder, "warmup"))
     patches.wrap(data_loader, "load_opportunities_by_id", _boot_phase(recorder, "load"))
+    patches.wrap(matches, "prepare_match_views", _boot_phase(recorder, "view_rows"))
     patches.wrap(data_loader, "_canonicalize_corpus", _boot_phase(recorder, "canonicalize"))
     patches.wrap(data_loader, "_maybe_fit_tfidf", _boot_phase(recorder, "fit_tfidf"))
     patches.wrap(ranker, "_register_corpus_unlocked", _boot_phase(recorder, "register_matrix"))
@@ -1012,7 +1016,8 @@ class Run:
             stored = self.stored_snapshots()
             rows = sum(len(snapshot.visible) for snapshot in stored)
             for snapshot in stored:
-                snapshot.opportunities_by_id.clear()
+                snapshot.cards.clear()
+                snapshot.view_rows.clear()
             # The loop variable would otherwise keep the last snapshot, and
             # with it the ranked rows, alive past clear_snapshots below.
             stored = snapshot = None
@@ -1030,6 +1035,8 @@ class Run:
             "peak_mb": _mb(peak),
             "kept_after_request_mb": _mb(kept),
             "snapshot_mb": _mb(kept - without_snapshot),
+            # Page cards and the visible-row map; the view rows themselves are
+            # the corpus generation's, built at boot.
             "snapshot_cards_mb": _mb(kept - without_cards),
             "kept_outside_snapshot_mb": _mb(without_snapshot),
         }
@@ -1083,43 +1090,42 @@ def _profile_cards(snapshot, limit: int) -> dict | None:
 
 
 def _view_parity(snapshot, home_school: str, today: str) -> list[dict]:
-    """Run /matches/view's own pass over the cards and over the canonical records."""
-    from backend import data_loader
+    """Run /matches/view's own pass over every visible card and over the view rows."""
     from backend.routes import matches
     from backend.schemas import MatchViewState
 
     if snapshot is None:
         return []
-    apply = _unwrapped(matches._apply_match_view)
-    canonical = _unwrapped(data_loader.load_opportunities_by_id)()
+    apply_cards = _unwrapped(matches._apply_match_view)
+    apply_rows = _unwrapped(matches._apply_match_view_rows)
+    project = _unwrapped(matches._match_card)
+    cards = {
+        opportunity_id: project(row.record)
+        for opportunity_id, row in snapshot.view_rows.items()
+        if row.record is not None
+    }
     out = []
     for name, overrides in PARITY_VIEWS.items():
         view = MatchViewState(**{**FIRST_PAGE_VIEW, **overrides, "today": today})
         started = time.perf_counter()
-        on_cards = apply(snapshot.visible, snapshot.opportunities_by_id, view, home_school)
+        on_cards = apply_cards(snapshot.visible, cards, view, home_school)
         cards_seconds = time.perf_counter() - started
         started = time.perf_counter()
-        on_canonical = apply(snapshot.visible, canonical, view, home_school)
-        canonical_seconds = time.perf_counter() - started
+        on_rows = apply_rows(snapshot.visible, snapshot.view_rows, view, home_school)
+        rows_seconds = time.perf_counter() - started
         card_ids = [result.opportunity_id for result in on_cards[0]]
-        canonical_ids = [result.opportunity_id for result in on_canonical[0]]
-        first_difference = next(
-            (index for index, (left, right) in enumerate(zip(card_ids, canonical_ids, strict=False)) if left != right),
-            None if len(card_ids) == len(canonical_ids) else min(len(card_ids), len(canonical_ids)),
-        )
+        row_ids = [result.opportunity_id for result in on_rows[0]]
         out.append({
             "view": name,
             "rows_on_cards": len(card_ids),
-            "rows_on_canonical": len(canonical_ids),
-            "ids_only_on_cards": len(set(card_ids) - set(canonical_ids)),
-            "ids_only_on_canonical": len(set(canonical_ids) - set(card_ids)),
-            "first_order_difference": first_difference,
-            "tab_counts_equal": on_cards[1] == on_canonical[1],
-            "source_facets_equal": on_cards[2] == on_canonical[2],
-            "scope_available_equal": on_cards[3] == on_canonical[3],
-            "deadline_facets_equal": on_cards[4] == on_canonical[4],
+            "rows_on_view_rows": len(row_ids),
+            "same_rows_in_order": card_ids == row_ids,
+            "tab_counts_equal": on_cards[1] == on_rows[1],
+            "source_facets_equal": on_cards[2] == on_rows[2],
+            "scope_available_equal": on_cards[3] == on_rows[3],
+            "deadline_facets_equal": on_cards[4] == on_rows[4],
             "seconds_on_cards": round(cards_seconds, 3),
-            "seconds_on_canonical": round(canonical_seconds, 3),
+            "seconds_on_view_rows": round(rows_seconds, 3),
         })
     return out
 
@@ -1336,7 +1342,7 @@ async def _drive(run: Run, server: ServerThread) -> dict:
             lead = next((s for s in reversed(run.samples) if s.persona == cross[0] and s.payload), None)
             snapshot = run.snapshot_by_result_set(lead.payload["result_set_id"]) if lead else None
             run.sampler.set_scenario("diagnostics")
-            run.log("profiling card projection and comparing views on the canonical records")
+            run.log("profiling card projection and comparing views on cards and view rows")
             diagnostics = {
                 "snapshot_persona": cross[0] if snapshot is not None else None,
                 "snapshot_visible_rows": len(snapshot.visible) if snapshot is not None else None,
@@ -1455,6 +1461,7 @@ def main(argv: list[str] | None = None) -> int:
     records_out = [_sample_record(run, sample, overhead) for sample in run.samples]
     summary = _summary([record for record in records_out if record["scenario"] != "memory_trace"], sampler)
     measured = sum(boot_phases.get(name, 0.0) for name in ("canonicalize", "fit_tfidf", "register_matrix"))
+    view_rows_s = boot_phases.get("view_rows", 0.0)
     document = {
         "schema": "ofe-match-latency/1",
         "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
@@ -1494,7 +1501,10 @@ def main(argv: list[str] | None = None) -> int:
                     name: value for name, value in boot_phases.items() if name in (
                         "canonicalize", "fit_tfidf", "register_matrix")
                 }),
-                "gc_collect_freeze": round(max(0.0, boot_phases.get("warmup", 0.0) - boot_phases.get("load", 0.0)), 3),
+                "view_rows": round(view_rows_s, 3),
+                "gc_collect_freeze": round(
+                    max(0.0, boot_phases.get("warmup", 0.0) - boot_phases.get("load", 0.0) - view_rows_s), 3,
+                ),
                 "warmup_total": round(boot_phases.get("warmup", 0.0), 3),
             },
             "peak": sampler.peak("boot"),

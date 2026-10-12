@@ -797,8 +797,12 @@ def _warmup() -> None:
     first user request after a cold start pays the ~1-2s data-load + fit cost."""
     import gc
 
-    from backend.data_loader import load_opportunities_by_id
+    from backend.data_loader import load_opportunities, load_opportunities_by_id
+    from backend.routes.matches import prepare_match_views
     load_opportunities_by_id()
+    # Results-page view rows, so the first ranking does not build them; they
+    # join the corpus in the frozen generation below.
+    prepare_match_views(load_opportunities())
     # The corpus (~1GB of objects at 126k records) is immutable after load.
     # Freezing moves it to a permanent generation the GC never scans again —
     # cuts every later gen-2 collection from ~1M-object scans to the small
