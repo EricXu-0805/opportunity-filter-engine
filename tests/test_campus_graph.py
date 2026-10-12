@@ -1031,6 +1031,37 @@ def test_jhu_leadership_alliance_row_is_kept_but_never_served():
         assert hard_exclusion(row, _filter_context(profile)) == "inactive"
 
 
+def test_uf_newcastle_row_is_kept_but_never_served():
+    """UF's Research in Newcastle record is taken down. Its page
+    (cur.aa.ufl.edu/research-in-newcastle/) returned 404 with no redirect on
+    2026-10-11 and is in no sitemap, while the record said the exchange was
+    "launching Summer B 2026", which no live page states. The row stays in
+    uf.json for the record, retired the way a UF refresh would retire it once
+    the program is out of the config, and never served."""
+    from pathlib import Path
+
+    from src.collectors.schools.uf import SCHOOL as UF
+    from src.evidence import target_truth
+    from src.matcher.ranker import _filter_context, hard_exclusion
+
+    page = "https://cur.aa.ufl.edu/research-in-newcastle/"
+    assert not any(
+        spec["key"] == "newcastle_exchange" or spec["url"] == page
+        for source in UF["sources"] for spec in source.get("programs", [])
+    )
+    assert not any(page in source.get("seeds", []) for source in UF["sources"])
+
+    uf = Path(__file__).resolve().parents[1] / "data" / "processed" / "shards" / "uf.json"
+    [row] = [row for row in json.loads(uf.read_text(encoding="utf-8"))
+             if row["id"] == cg._hash_id("uf", "uf_research_programs", "newcastle_exchange")]
+    assert row["metadata"]["is_active"] is False
+    assert row["metadata"]["deactivation_reason"] == "no_longer_listed"
+    assert row["metadata"]["deactivated_at"] == "2026-10-11"
+    assert target_truth(row).actionable is False
+    for profile in ({"home_school": "uf"}, {"home_school": "uiuc", "include_cross_school": True}):
+        assert hard_exclusion(row, _filter_context(profile)) == "inactive"
+
+
 # --- Per-school: Princeton (the reference config) ---------------------------
 
 class TestPrinceton:

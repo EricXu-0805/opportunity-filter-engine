@@ -2,9 +2,8 @@
 
 Curated seed records of UF's undergraduate-research landscape, centered on
 the Center for Undergraduate Research (CUR, cur.aa.ufl.edu) and its program
-family — University Scholars, Emerging Scholars, URSP, REPU, SUIRP, the
-Newcastle exchange — plus the TRiO-funded McNair Scholars program. URLs
-verified live (HTTP 200) on 2026-07-17 by the recon pass.
+family — University Scholars, Emerging Scholars, URSP, REPU, SUIRP —
+plus the TRiO-funded McNair Scholars program. URLs verified live (HTTP 200) on 2026-07-17 by the recon pass.
 
 Emit buckets → (source, school, audience), kept in lockstep with
 school_audience.SOURCE_DEFAULTS:
@@ -146,22 +145,6 @@ SCHOOL: dict = {
                     preferred_year=["sophomore", "junior"],
                     keywords=["first-generation", "TRiO", "PhD preparation",
                               "mentored research"],
-                ),
-                program(
-                    "newcastle_exchange",
-                    "Research in Newcastle — UF-Newcastle Summer Exchange",
-                    "https://cur.aa.ufl.edu/research-in-newcastle/",
-                    "A pilot summer research exchange with Newcastle "
-                    "University in England launching Summer B 2026: UF "
-                    "students conduct research with Newcastle faculty while "
-                    "Newcastle students join labs across UF's campus. "
-                    "Accepted students choose from a range of research "
-                    "projects.",
-                    lab_or_program="Research in Newcastle",
-                    opportunity_type="research",
-                    preferred_year=["sophomore", "junior"],
-                    keywords=["international exchange", "summer research",
-                              "Newcastle University"],
                 ),
             ],
         },
