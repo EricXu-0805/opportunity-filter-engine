@@ -199,6 +199,24 @@ describe('matchesToCSV', () => {
     expect(csv.split('\n').length).toBe(3);
   });
 
+  it('marks Paid and International Friendly we inferred, and leaves stated ones alone', () => {
+    // Simplify's blanket stipend and a tagger's federal-organisation guess are
+    // ours; the card already says so ("Pay unconfirmed"), the sheet did not.
+    const listing = { source_type: 'campus_program', target_truth: { ...LIVE_TRUTH } };
+    const inferred = matchesToCSV([makeMatch({
+      ...listing, paid: 'stipend', paid_attribution: 'inferred', international_attribution: 'inferred',
+    } as never)]).split('\n')[1];
+    expect(inferred).toContain('"stipend (inferred)"');
+    expect(inferred).toContain('"yes (inferred)"');
+    const stated = matchesToCSV([makeMatch(listing as never)]).split('\n')[1];
+    expect(stated).toContain('"yes"');
+    expect(stated).not.toContain('(inferred)');
+    const unknown = matchesToCSV([makeMatch({
+      ...listing, eligibility: { international_friendly: 'unknown' }, international_attribution: 'inferred',
+    } as never)]).split('\n')[1];
+    expect(unknown).not.toContain('(inferred)');
+  });
+
   it('escapes double quotes in field values', () => {
     const csv = matchesToCSV([makeMatch({ title: 'Lab "AI for Good"' })]);
     expect(csv).toContain('"Lab ""AI for Good"""');
