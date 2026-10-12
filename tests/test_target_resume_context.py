@@ -109,7 +109,8 @@ FIELD_CASES = [
     ('availability', 'target_truth', {'listing_state': 'future-state', 'actionable': False,
                                     'reference_only': True, 'accepting_state': None, 'reason_code': 'new-code'}),
     *[('attribution', field, 'inferred') for field in ('skills_attribution', 'majors_attribution',
-      'preferred_year_attribution', 'international_attribution', 'citizenship_attribution', 'paid_attribution')],
+      'preferred_year_attribution', 'international_attribution', 'citizenship_attribution', 'paid_attribution',
+      'deadline_note_attribution')],
 ]
 
 

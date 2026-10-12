@@ -3406,6 +3406,7 @@ export const en = {
     majorsInferred: 'Matched from the program’s research areas by our pipeline, not an eligibility list the program published.',
     yearInferred: 'Read from the posting text by our pipeline, not a class-year restriction the program published.',
     eligibilityInferred: 'Read from the posting text by our pipeline, not a restriction the program published — check the program’s own page before ruling yourself out.',
+    rollingInferred: 'From our listing’s deadline note, not confirmed on the program page.',
     concierge: {
       title: 'Want us to handle this one?',
       body: 'Tell us and we will read this lab, tailor your résumé to it, and draft the outreach for you. A person does this by hand, so it takes a day or two.',
@@ -8594,6 +8595,7 @@ export const zh = {
     majorsInferred: '由我们的系统根据项目研究方向匹配，不是项目公布的专业要求。',
     yearInferred: '由我们的系统从招募文本中推断，不是项目公布的年级限制。',
     eligibilityInferred: '由我们的系统从招募文本中推断，不是项目公布的限制 —— 在放弃之前先看项目自己的页面。',
+    rollingInferred: '来自我们列表里的截止说明，项目页面未确认。',
     concierge: {
       title: '这个要不要我们替你办？',
       body: '说一声，我们去读这个组、把你的简历改到贴合它、再把联系信写好给你。是人工一封一封做的，所以要等一两天。',

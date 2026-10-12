@@ -25,6 +25,19 @@ describe('saved opportunity uncertainty labels', () => {
   });
 });
 
+describe('saved deadline note label', () => {
+  const withNote = (attribution: TargetResumeContextV2['criteria']['attribution']): TargetResumeContextV2 => ({
+    ...target, criteria: { ...target.criteria, timing: { deadline_note: 'Applications due March 1' }, attribution } });
+  it.each(['en', 'zh'])('marks a note the program page does not state as inferred in %s', locale => {
+    render(<TargetResumeCriteria target={withNote({ deadline_note_attribution: 'inferred' })} locale={locale} />);
+    expect(screen.getByText(locale === 'en' ? 'Deadline note (inferred)' : '截止日期说明（推断）')).toBeVisible();
+  });
+  it.each(['en', 'zh'])('gives a note saved without the flag a neutral label, not the page\'s wording, in %s', locale => {
+    render(<TargetResumeCriteria target={withNote({})} locale={locale} />);
+    expect(screen.getByText(locale === 'en' ? 'Deadline note' : '截止日期说明')).toBeVisible();
+    expect(screen.queryByText(/原始说明|\(inferred\)|（推断）/)).toBeNull();
+  });
+});
 
 describe('saved research source labels', () => {
   it.each(['en', 'zh'])('shows attributed complete title/abstract and original link in %s', locale => {

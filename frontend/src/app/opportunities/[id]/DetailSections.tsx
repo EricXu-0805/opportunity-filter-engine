@@ -102,10 +102,15 @@ export function AtAGlanceSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
           />
         )}
         {(isFaculty || (!opp.deadline && opp.is_rolling)) && (
+          // "Rolling" read off a note a campus program spec typed into our
+          // config, which its page does not state, is ours, as the facts say.
           <DetailRow
             icon={<Calendar />}
             label={t('detail.fields.deadline')}
             value={t(NO_DEADLINE_KEYS[noDeadlineKind(opp)])}
+            note={noDeadlineKind(opp) === 'rolling' && opp.deadline_note_attribution === 'inferred'
+              ? t('detail.rollingInferred') : undefined}
+            noteTestId="rolling-inferred-note"
           />
         )}
         {!isFaculty && opp.start_date && (

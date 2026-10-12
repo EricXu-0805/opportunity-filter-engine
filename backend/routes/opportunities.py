@@ -66,6 +66,8 @@ from backend.lib.target_actionability import (
 from backend.routes.cold_email import _format_recent_works
 from backend.schemas import ProfileRequest
 from src.evidence import (
+    CONFIGURED_FACT_PATHS,
+    configured_value_unstated,
     faculty_availability_status,
     faculty_contact_claims_unverified,
     faculty_safe_eligibility,
@@ -150,6 +152,23 @@ def _tri_state(value: object) -> str:
     if value is False:
         return "no"
     return "unknown"
+
+
+_NO_VALUE = frozenset({"", "unknown", "unspecified", "(unspecified)", "—"})
+
+
+def _configured_unstated(record: dict) -> frozenset[str]:
+    """The facets holding a campus program spec's value that the page text the
+    row carries does not state: our listing's, not the program's. Read off the
+    canonical record, whose captured passages the public payload drops."""
+    return frozenset(facet for facet in CONFIGURED_FACT_PATHS if configured_value_unstated(record, facet))
+
+
+def _as_listed(value: object, facet: str, unstated: frozenset[str]) -> object:
+    """``value`` said as our listing's suggestion when its facet is unstated."""
+    if facet not in unstated or not isinstance(value, str) or value in _NO_VALUE:
+        return value
+    return f"our listing suggests {value} — not confirmed on the program page"
 
 
 def _public_payload(value):
@@ -643,8 +662,15 @@ def _format_skill_list(skills: list) -> str:
     return ", ".join(filter(None, out)) or "(none listed)"
 
 
-def _build_chat_system_prompt(opp: dict, profile: ProfileRequest | None) -> str:
+def _build_chat_system_prompt(
+    opp: dict, profile: ProfileRequest | None, unstated: frozenset[str] | None = None,
+) -> str:
+    """``unstated`` is `_configured_unstated` of the canonical record; None reads it off ``opp``."""
     faculty_profile = faculty_contact_claims_unverified(opp)
+    # A campus program spec's value the page text does not state goes to the
+    # model as our listing's suggestion, never as the program's terms.
+    if unstated is None:
+        unstated = _configured_unstated(opp)
     faculty_status = faculty_availability_status(opp)
     elig = faculty_safe_eligibility(opp)
     app = {} if faculty_profile else (opp.get("application") or {})
@@ -680,6 +706,11 @@ def _build_chat_system_prompt(opp: dict, profile: ProfileRequest | None) -> str:
         ),
         "Use ONLY the structured information provided below. Do not invent or guess details.",
         "A value of unknown or unspecified means the source did not state it; never turn it into a positive eligibility, availability, location, effort, or work-authorization claim.",
+        *(
+            ["A value given as \"our listing suggests …\" is our listing's, not confirmed on the program page: never present it as the program's requirement or terms; say it is our listing's suggestion and that the program page does not confirm it."]
+            if unstated
+            else []
+        ),
         "If a question cannot be answered from the data, say so plainly and suggest checking the source URL or emailing the contact.",
         "Keep replies under 150 words unless the user asks for more. Use plain prose, no markdown headings. Bullets OK for lists.",
         # Treat scraped opportunity text and user-supplied profile/messages as
@@ -712,14 +743,14 @@ def _build_chat_system_prompt(opp: dict, profile: ProfileRequest | None) -> str:
         f"- PI / Lab: {opp.get('pi_name') or '—'} / {lab_or_program or '—'}",
         f"- {'Faculty affiliation location' if faculty_profile else 'Location'}: {opp.get('location', 'unspecified')} (on-campus: {'unknown' if faculty_profile else _tri_state(opp.get('on_campus'))})",
         f"- Remote: {'unknown' if faculty_profile else opp.get('remote_option', 'unknown')}",
-        f"- Paid: {'unknown' if faculty_profile else opp.get('paid', 'unknown')}; compensation: {('—' if faculty_profile else opp.get('compensation_details') or '—')}",
+        f"- Paid: {'unknown' if faculty_profile else _as_listed(opp.get('paid', 'unknown'), 'paid', unstated)}; compensation: {('—' if faculty_profile else _as_listed(opp.get('compensation_details') or '—', 'compensation', unstated))}",
         f"- Deadline: {('not confirmed (faculty profile; not rolling evidence)' if faculty_profile else (opp.get('deadline') or '—'))} (rolling: {'unknown' if faculty_profile else bool(opp.get('is_rolling'))})",
         f"- Start date: {('—' if faculty_profile else opp.get('start_date') or '—')}; duration: {('—' if faculty_profile else opp.get('duration') or '—')}",
-        f"- {'Related majors (not eligibility)' if faculty_profile else 'Eligible majors'}: {', '.join(elig.get('majors') or []) or '(unspecified)'}",
-        f"- Preferred years: {', '.join(stated_years) or '(unspecified)'}",
+        f"- {'Related majors (not eligibility)' if faculty_profile else 'Majors' if 'majors' in unstated else 'Eligible majors'}: {_as_listed(', '.join(elig.get('majors') or []), 'majors', unstated) or '(unspecified)'}",
+        f"- {'Class years' if 'class_year' in unstated else 'Preferred years'}: {_as_listed(', '.join(stated_years), 'class_year', unstated) or '(unspecified)'}",
         f"- Required skills: {', '.join(elig.get('skills_required') or []) or '(none specified)'}",
-        f"- International friendly: {elig.get('international_friendly', 'unknown')}",
-        f"- Citizenship required: {_tri_state(elig.get('citizenship_required'))}",
+        f"- International friendly: {_as_listed(elig.get('international_friendly', 'unknown'), 'international_students', unstated)}",
+        f"- Citizenship required: {_as_listed(_tri_state(elig.get('citizenship_required')), 'citizenship', unstated)}",
         (
             "- Outreach/application requirements: not confirmed"
             if faculty_profile
@@ -811,7 +842,7 @@ def _llm_chat_stream(messages: list[dict], model_id: str | None = None) -> Itera
     yield from chat_completion_stream(messages, max_tokens=400, temperature=0.4)
 
 
-def _local_chat_fallback(opp: dict, message: str) -> str:
+def _local_chat_fallback(opp: dict, message: str, unstated: frozenset[str] | None = None) -> str:
     elig = opp.get("eligibility") or {}
     app = opp.get("application") or {}
     if faculty_contact_claims_unverified(opp):
@@ -839,13 +870,15 @@ def _local_chat_fallback(opp: dict, message: str) -> str:
             "Contact them to ask whether an undergraduate research opportunity is currently available.",
             "Set OPENAI_API_KEY, GEMINI_API_KEY, or OPENROUTER_API_KEY on the backend to enable AI chat.",
         ])
+    if unstated is None:
+        unstated = _configured_unstated(opp)
     bits: list[str] = [
         "AI chat is not configured on this server, so here are the structured facts for this opportunity:",
         f"- {opp.get('title', '')}",
-        f"- Type: {opp.get('opportunity_type', 'unknown')}; paid: {opp.get('paid', 'unknown')}; deadline: {opp.get('deadline') or 'not specified'}.",
-        f"- Eligible majors: {', '.join(elig.get('majors') or []) or 'unspecified'}.",
+        f"- Type: {opp.get('opportunity_type', 'unknown')}; paid: {_as_listed(opp.get('paid', 'unknown'), 'paid', unstated)}; deadline: {opp.get('deadline') or 'not specified'}.",
+        f"- {'Majors' if 'majors' in unstated else 'Eligible majors'}: {_as_listed(', '.join(elig.get('majors') or []), 'majors', unstated) or 'unspecified'}.",
         f"- Required skills: {', '.join(elig.get('skills_required') or []) or 'none listed'}.",
-        f"- International-friendly: {elig.get('international_friendly', 'unknown')}; citizenship required: {_tri_state(elig.get('citizenship_required'))}.",
+        f"- International-friendly: {_as_listed(elig.get('international_friendly', 'unknown'), 'international_students', unstated)}; citizenship required: {_as_listed(_tri_state(elig.get('citizenship_required')), 'citizenship', unstated)}.",
         f"- Apply at: {app.get('application_url') or opp.get('url') or 'see source'}.",
         "Set OPENAI_API_KEY, GEMINI_API_KEY, or OPENROUTER_API_KEY on the backend to enable AI chat.",
     ]
@@ -862,6 +895,7 @@ def _chat_sse_events(
     model_id: str | None,
     message: str,
     opportunity_id: str,
+    unstated: frozenset[str] | None = None,
 ) -> Iterator[str]:
     # Buffer the bounded model reply before emitting it. Sanitizing each token
     # independently is not safe: ``jane@`` and ``example.edu`` can arrive in
@@ -881,7 +915,7 @@ def _chat_sse_events(
             yield _sse({"done": True, "method": "llm"})
             return
     if not chunks:
-        yield _sse({"delta": _local_chat_fallback(opp, message), "method": "local"})
+        yield _sse({"delta": _local_chat_fallback(opp, message, unstated), "method": "local"})
         yield _sse({"done": True, "method": "local"})
         return
     yield _sse({"delta": redact_embedded_emails("".join(chunks))})
@@ -914,7 +948,10 @@ async def chat_with_opportunity(
     # Keep the raw record only for lookup; neither the provider nor the local
     # fallback receives hidden contact-bearing fields.
     public_opp = _redact(opp)
-    system_prompt = _build_chat_system_prompt(public_opp, body.profile)
+    # Facet names only: which configured values the raw record's captured
+    # page text does not state, for both to say as our listing's.
+    unstated = _configured_unstated(opp)
+    system_prompt = _build_chat_system_prompt(public_opp, body.profile, unstated)
     messages: list[dict] = [{"role": "system", "content": system_prompt}]
     # SEC-5: unlike the cold-email / tailor prompts, chat content is NOT routed
     # through prompt_safety.sanitize_field — and intentionally so. Those handlers
@@ -942,6 +979,7 @@ async def chat_with_opportunity(
                 body.model,
                 body.message,
                 opportunity_id,
+                unstated,
             ),
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
@@ -964,7 +1002,7 @@ async def chat_with_opportunity(
             "method": "llm",
         }
     return {
-        "reply": _local_chat_fallback(public_opp, body.message),
+        "reply": _local_chat_fallback(public_opp, body.message, unstated),
         "method": "local",
     }
 
