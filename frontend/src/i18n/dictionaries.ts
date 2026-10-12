@@ -3685,6 +3685,7 @@ export const en = {
     facultyAffiliationLocation: 'Faculty affiliation: {location}',
     viewSource: 'View source',
     rolling: 'Rolling',
+    rollingFromListing: 'Rolling (our listing’s note, not confirmed on the program page)',
     // No-deadline records without scraped rolling evidence — "Rolling" would
     // overclaim, this is all we actually know.
     noDeadline: 'No fixed deadline',
@@ -8856,6 +8857,7 @@ export const zh = {
     facultyAffiliationLocation: '教师所在机构：{location}',
     viewSource: '查看来源',
     rolling: '滚动招生',
+    rollingFromListing: '滚动招生（来自我们列表的说明，项目页面未确认）',
     // 无截止日期且无滚动招生证据的记录 —— "滚动招生"是过度断言,
     // 我们实际知道的只有这些。
     noDeadline: '无固定截止日期',

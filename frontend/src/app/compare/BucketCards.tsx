@@ -222,7 +222,11 @@ export default function BucketCards({ rows }: Props) {
                     )}`
               }`
             : opp.is_rolling
-              ? t(noDeadlineKind(opp) === 'rolling' ? 'compare.rolling' : 'compare.noDeadline')
+              ? t(noDeadlineKind(opp) === 'rolling'
+                // A campus program spec's note, which the page does not state,
+                // is our listing's: the detail page says so, so does this.
+                ? (opp.deadline_note_attribution === 'inferred' ? 'compare.rollingFromListing' : 'compare.rolling')
+                : 'compare.noDeadline')
               : null;
 
           return (
