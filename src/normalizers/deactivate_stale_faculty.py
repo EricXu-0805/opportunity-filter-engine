@@ -389,9 +389,10 @@ def identity_key(record: dict, listing_urls: frozenset[str] | set[str] | None = 
 
 
 # A json_dir walk with a stated total records every row it read — staff and
-# students as much as faculty — and the unit ledger is committed with the
-# refresh summary. So the rows travel as digests under a key that lives only as
-# long as the run: they match within the run and identify no one outside it.
+# students as much as faculty. The rows travel in the unit ledger as digests
+# under a key that lives only as long as the process: they match within the run
+# and identify no one outside it. refresh_all drops them from the ledger once
+# this pass has read them, so no digest reaches the committed summary.
 _LISTED_KEY = secrets.token_bytes(16)
 
 

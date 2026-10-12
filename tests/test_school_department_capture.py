@@ -416,9 +416,32 @@ class TestJsonDirStillListed:
         _, ledger = self._run(monkeypatch, {"X": [_DI, sam]})
         tokens = ledger["x"]["listed_identities"]
         assert len(tokens) == 4 and all(len(t) == 16 for t in tokens)
+        assert ledger["x"]["listed_rows"] == 2
         dumped = json.dumps(ledger)
         assert "sam-staff" not in dumped
         assert "di-evans@x.edu" not in dumped
+
+    def test_a_listed_digest_is_keyed_and_the_key_lasts_one_process(self, monkeypatch):
+        # Without the key a digest must test no guessed address: it is no plain
+        # hash of it, it changes with the key, and every process draws a new key.
+        import hashlib
+        import subprocess
+        import sys
+
+        from src.normalizers import deactivate_stale_faculty as deactivate
+        value = "di-evans@x.edu evans d"
+        token = deactivate.listed_token("email", value)
+        for plain in ("di-evans@x.edu", value, f"email:{value}"):
+            for algorithm in (hashlib.sha256, hashlib.sha1, hashlib.md5):
+                assert token not in algorithm(plain.encode()).hexdigest()
+        code = ("from src.normalizers.deactivate_stale_faculty import listed_token; "
+                f"print(listed_token('email', {value!r}))")
+        others = {subprocess.run([sys.executable, "-c", code], capture_output=True,
+                                 text=True, check=True, cwd=Path(__file__).parents[1],
+                                 ).stdout.strip() for _ in range(2)}
+        assert len(others | {token}) == 3
+        monkeypatch.setattr(deactivate, "_LISTED_KEY", b"another key")
+        assert deactivate.listed_token("email", value) != token
 
 
 # --- engine: json_dir department_field / department_units --------------------

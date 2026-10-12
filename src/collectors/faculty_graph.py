@@ -4588,6 +4588,7 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
     cov = dict(coverage) if isinstance(coverage, dict) else None
     document_identities: list = []
     listed_identities: list | None = None
+    listed_rows = 0
     if cov is not None:
         from src.normalizers.deactivate_stale_faculty import (  # noqa: PLC0415
             canonical_profile_url,
@@ -4619,6 +4620,7 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
                 if email and carriers[email] == 1 and person:
                     tokens.add(listed_token("email", f"{email} {person}"))
             listed_identities = sorted(tokens)
+            listed_rows = len(listed)
     if cov is not None:
         # Identity loss is roster loss: a row we parsed but could not identify
         # cannot be told apart from a rename next run.
@@ -4656,10 +4658,12 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
         "failure_reason": failure_reason,
     }
     if listed_identities is not None:
-        # Every row a stated-total walk read, as run-keyed tokens: the ledger is
-        # committed with the refresh summary, and most of these rows are staff
-        # and students the unit does not publish.
+        # Every row a stated-total walk read, as run-keyed tokens for the
+        # retirement pass. Most of these rows are staff and students the unit
+        # does not publish, so refresh_all drops the tokens once the pass has
+        # read them, and the committed summary keeps only the row count.
         observation["listed_identities"] = listed_identities
+        observation["listed_rows"] = listed_rows
     return observation
 
 

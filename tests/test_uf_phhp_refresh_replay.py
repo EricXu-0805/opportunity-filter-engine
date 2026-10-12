@@ -37,6 +37,7 @@ from pathlib import Path
 import requests
 
 import src.collectors.refresh_all as refresh_all
+import src.normalizers.deactivate_stale_faculty as deactivate
 from src.collectors import faculty_graph, ucb_common
 from src.collectors.schools import uf_faculty
 from src.normalizers.deactivate_stale_faculty import unit_retirement_authority
@@ -137,6 +138,38 @@ def test_the_next_refresh_lists_every_phhp_person_once(monkeypatch, tmp_path):
     seraphin = [r for r in active if r["pi_name"] == "Marie N Séraphin"]
     assert [_short(r) for r in seraphin] == ["phhp5"]
     assert summary["sources"]["deactivate_stale_faculty"]["newly_deactivated"] == 50
+
+
+def test_the_committed_status_carries_no_digest_of_a_listed_row(monkeypatch, tmp_path):
+    # Most of the rows the walks list are staff and students, and every data
+    # refresh commits collector_status.json: the digests serve the retirement
+    # pass, and each unit's ledger keeps only how many rows it listed.
+    digests = set()
+    keyed = deactivate.listed_token
+
+    def listed_token(kind, value):
+        digests.add(token := keyed(kind, value))
+        return token
+
+    monkeypatch.setattr(deactivate, "listed_token", listed_token)
+    summary, corpus = _replay(monkeypatch, tmp_path, FIXTURE["pages"])
+    status, history = tmp_path / "collector_status.json", tmp_path / "history.jsonl"
+    monkeypatch.setattr(refresh_all, "STATUS_FILE", status)
+    monkeypatch.setattr(refresh_all, "STATUS_HISTORY_FILE", history)
+    refresh_all.write_status(summary)
+
+    written = status.read_text(encoding="utf-8") + history.read_text(encoding="utf-8")
+    assert len(digests) > 400
+    assert "listed_identities" not in written
+    assert [d for d in digests if d in written] == []
+    ledger = summary["sources"]["uf_faculty"]["stale_unit_ledger"]
+    assert {u: ledger[u]["listed_rows"] for u in SHORTS} == {
+        u: ledger[u]["coverage"]["raw_roster_rows"] for u in SHORTS}
+    assert ledger["phhp"]["listed_rows"] == 980
+    # The pass still read them: Pearson is the one person they keep.
+    assert _active(next(r for r in corpus if r["pi_name"] == "Thomas A Pearson"))
+    stale = summary["sources"]["deactivate_stale_faculty"]
+    assert (stale["records_preserved_still_listed"], stale["newly_deactivated"]) == (1, 50)
 
 
 def test_a_college_page_that_does_not_load_retires_nobody(monkeypatch, tmp_path):
