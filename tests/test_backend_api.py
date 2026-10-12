@@ -4519,7 +4519,7 @@ def _set_push_env(monkeypatch):
 
 def _install_push_stubs(monkeypatch, *, interactions, subscriptions, webpush_impl=None,
                         calls=None, patches=None, deletes=None, account_email=None,
-                        emails=None, target_fields=None):
+                        account_unconfirmed=False, emails=None, target_fields=None):
     """Stub httpx.AsyncClient + pywebpush.webpush for the reminders cron.
 
     The route fetches due interactions then push subscriptions from Supabase
@@ -4528,8 +4528,9 @@ def _install_push_stubs(monkeypatch, *, interactions, subscriptions, webpush_imp
     Supabase GET responses (routed by url substring), ``webpush_impl`` lets a
     test simulate a successful delivery or a WebPushException, ``patches`` /
     ``deletes`` capture delivery bookkeeping writes, ``account_email`` seeds
-    the auth-admin lookup (None -> 404, i.e. anonymous device), and ``emails``
-    captures the Resend fallback sends.
+    the auth-admin lookup (None -> 404, i.e. anonymous device; confirmed
+    unless ``account_unconfirmed``), and ``emails`` captures the Resend
+    fallback sends.
     """
     import httpx
     import pywebpush
@@ -4562,7 +4563,10 @@ def _install_push_stubs(monkeypatch, *, interactions, subscriptions, webpush_imp
             if "/auth/v1/admin/users/" in url:
                 if account_email is None:
                     return _Resp({}, status_code=404)
-                return _Resp({"email": account_email})
+                return _Resp({
+                    "email": account_email,
+                    "email_confirmed_at": None if account_unconfirmed else "2026-01-01T00:00:00Z",
+                })
             if "push_subscriptions" in url:
                 return _Resp(subscriptions)
             return _Resp(interactions)
@@ -5150,6 +5154,26 @@ class TestPushDeliveryBookkeeping:
         body = self._run().json()
         assert body["emailed"] == 0
         assert emails == []
+        assert patches == []
+
+    def test_unconfirmed_account_email_gets_no_reminder(self, monkeypatch):
+        # The account holds an address but has not confirmed it: it may be
+        # mistyped or someone else's, so the fallback has nowhere to go.
+        _set_push_env(monkeypatch)
+        monkeypatch.setenv("RESEND_API_KEY", "fake")
+        monkeypatch.setenv("RESEND_FROM_EMAIL", "from@example.com")
+        patches: list = []
+        emails: list = []
+        _install_push_stubs(
+            monkeypatch, interactions=[_DUE_ROW], subscriptions=[],
+            patches=patches, emails=emails, account_email="user@example.com",
+            account_unconfirmed=True,
+        )
+        body = self._run().json()
+        assert body["emailed"] == 0
+        assert body["no_channel"] == 1
+        assert emails == []
+        # Not delivered, so the reminder stays set.
         assert patches == []
 
     def test_no_email_fallback_without_resend_env(self, monkeypatch):

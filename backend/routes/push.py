@@ -335,14 +335,26 @@ def _render_reminder_email(opportunity_id: str) -> tuple[str, str, str]:
 
 
 async def _account_email(client, supabase_url: str, headers: dict, uid: str) -> str | None:
-    """device_id == Supabase auth uid; anonymous users have no email."""
+    """The account's CONFIRMED email address, or None.
+
+    device_id == Supabase auth uid; anonymous users have no email. An address
+    the account holds but has not confirmed is None too: it may have been
+    mistyped or may belong to someone else, and the account has not shown it
+    receives mail there. Confirmation is the same GoTrue pair
+    supabase_auth.authenticated_identity reads for the user-facing sends.
+    """
     resp = await client.get(
         f"{supabase_url}/auth/v1/admin/users/{uid}", headers=headers,
     )
     if resp.status_code >= 400:
         return None
+    user = resp.json() or {}
+    if not isinstance(user, dict):
+        return None
+    if not (user.get("email_confirmed_at") or user.get("confirmed_at")):
+        return None
     try:
-        return _validate_email((resp.json() or {}).get("email") or "")
+        return _validate_email(user.get("email") or "")
     except ValueError:
         return None
 
@@ -755,18 +767,20 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
                     )
                 to_email = email_by_device[device_id]
                 if not to_email and not had_subscription:
-                    # The device never signed in, so the fallback has no
-                    # address. Same silence as above, different cause.
+                    # The device never signed in, or its account has not
+                    # confirmed its address, so the fallback has no address.
+                    # Same silence as above, different cause.
                     no_channel += 1
                 if to_email:
                     subject, html, text = _render_reminder_email(row["opportunity_id"])
                     # One reminder for one device on one day is ONE logical
-                    # send, however many times the cron retries it. Deriving
-                    # the key from that identity (never generating one per
-                    # attempt) is what makes a retry after an ambiguous Resend
-                    # failure a no-op at the provider instead of a second
-                    # email. The date is the natural window: tomorrow's
-                    # reminder for the same row is a different send.
+                    # send, however many times the cron retries it that day.
+                    # Deriving the key from that identity (never generating
+                    # one per attempt) is what makes a same-day retry after an
+                    # ambiguous Resend failure a no-op at the provider instead
+                    # of a second email. The date is the window: the next
+                    # day's run uses a different key, so the provider does
+                    # not collapse it.
                     fallback_key = build_idempotency_key(
                         "reminder", device_id, opportunity_id, today,
                     )
@@ -808,8 +822,11 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
                                 "error_category": "email_fallback_failed",
                                 "outcome": outcome,
                                 "may_have_been_delivered": outcome == _AMBIGUOUS_OUTCOME,
-                                # The retry next run reuses this exact key, so
-                                # the provider collapses it if it did land.
+                                # Only a retry on the same reminder day reuses
+                                # this key and is collapsed by the provider.
+                                # The key includes the day, so the next day's
+                                # run sends under a new key, and an email that
+                                # did land can then arrive a second time.
                                 "idempotency_key": fallback_key,
                                 # Type only: the message can carry the
                                 # recipient address or provider payload.

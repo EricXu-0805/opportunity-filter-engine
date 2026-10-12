@@ -49,9 +49,16 @@ _OPP_B = {"id": "opp-b", "title": "NLP Internship", "organization": "Acme AI",
           "source_type": "campus_program", "deadline": ""}
 
 
+# The owning account's uid. The digest goes only to the address that account
+# has confirmed, so every row names its owner.
+_OWNER = "owner-uid"
+_CONFIRMED_AT = "2026-01-01T00:00:00Z"
+
+
 def _digest_row(**overrides):
     row = {
         "id": "11111111-2222-3333-4444-555555555555",
+        "device_id": _OWNER,
         "name": "ML research",
         "digest_email": "user@example.com",
         "new_match_ids": ["opp-a", "opp-b"],
@@ -71,14 +78,27 @@ def _set_digest_env(monkeypatch):
 
 
 def _install_stubs(monkeypatch, *, rows, sends=None, patches=None,
-                   opportunities=None, profiles=None):
+                   opportunities=None, profiles=None, accounts=None):
     """Stub the digest route's three exits: Supabase httpx traffic,
-    the Resend send helper, and the opportunities data file."""
+    the Resend send helper, and the opportunities data file.
+
+    ``accounts`` maps a uid to the user GoTrue's admin API returns for it (an
+    absent uid is a 404). Unsupplied means each row's owner has confirmed the
+    address the row names, so every test written before the recipient check
+    still describes a row that may be sent."""
+    if accounts is None:
+        accounts = {
+            row.get("device_id"): {
+                "email": row.get("digest_email"),
+                "email_confirmed_at": _CONFIRMED_AT,
+            }
+            for row in rows
+        }
 
     class _Resp:
-        def __init__(self, data=None):
+        def __init__(self, data=None, status_code=200):
             self._data = data
-            self.status_code = 200
+            self.status_code = status_code
             self.text = ""
 
         def json(self):
@@ -105,6 +125,9 @@ def _install_stubs(monkeypatch, *, rows, sends=None, patches=None,
             # that fails is a different case: TestAnOpportunityIsNewOnce.
             if "/rest/v1/profiles" in url:
                 return _Resp(profiles or [])
+            if "/auth/v1/admin/users/" in url:
+                account = accounts.get(url.rsplit("/", 1)[-1])
+                return _Resp(account) if account else _Resp({}, status_code=404)
             return _Resp(rows)
 
         async def patch(self, url, **kwargs):
@@ -305,6 +328,49 @@ class TestDigestCronSend:
         assert body["sent"] == 0
         assert body["skipped"] == 1
         assert sends == []
+
+    @pytest.mark.parametrize("account", [
+        # The owner confirmed a different address than the row names.
+        {"email": "owner@example.com", "email_confirmed_at": _CONFIRMED_AT},
+        # The owner holds the row's address but has not confirmed it.
+        {"email": "user@example.com", "email_confirmed_at": None},
+        # No such account (an anonymous or deleted owner): a 404.
+        None,
+    ], ids=["other-confirmed-address", "unconfirmed", "no-account"])
+    def test_a_digest_email_that_is_not_the_confirmed_account_address_is_not_sent(
+        self, monkeypatch, account,
+    ):
+        _set_digest_env(monkeypatch)
+        sends: list = []
+        patches: list = []
+        _install_stubs(
+            monkeypatch, rows=[_digest_row(digest_email="user@example.com")],
+            sends=sends, patches=patches,
+            accounts={_OWNER: account} if account else {},
+        )
+        r = client.get("/api/cron/saved-searches/digest", headers=AUTH)
+        body = r.json()
+        assert body["status"] == "ok"
+        assert body["sent"] == 0
+        assert body["unverified_recipient"] == 1
+        assert sends == []
+        # Held back, not consumed: nothing stamped, the queue kept.
+        assert patches == []
+
+    def test_a_digest_email_matching_the_confirmed_account_address_is_sent(self, monkeypatch):
+        _set_digest_env(monkeypatch)
+        sends: list = []
+        _install_stubs(
+            monkeypatch, rows=[_digest_row(digest_email="user@example.com")],
+            sends=sends,
+            # Address comparison is case-insensitive, as _validate_email is.
+            accounts={_OWNER: {"email": "User@Example.com", "email_confirmed_at": _CONFIRMED_AT}},
+        )
+        r = client.get("/api/cron/saved-searches/digest", headers=AUTH)
+        body = r.json()
+        assert body["sent"] == 1
+        assert body["unverified_recipient"] == 0
+        assert [send["to"] for send in sends] == ["user@example.com"]
 
     def test_escapes_html_in_titles(self, monkeypatch):
         _set_digest_env(monkeypatch)
@@ -1474,6 +1540,11 @@ class _Nights:
                     if params.get("digest_opt_in") == "eq.true" and not nights.row["digest_opt_in"]:
                         return _Resp([])
                     return _Resp([deepcopy(nights.row)])
+                if f"/auth/v1/admin/users/{nights.DEVICE}" in url:
+                    return _Resp({
+                        "email": nights.row["digest_email"],
+                        "email_confirmed_at": _CONFIRMED_AT,
+                    })
                 return _Resp([])
 
             async def patch(self, url, params=None, json=None, **kwargs):
