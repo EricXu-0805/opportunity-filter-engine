@@ -28,12 +28,54 @@ schedules late). It takes the
 shard for the UTC weekday (`date -u +%u`, 1 = Monday) from `WEEKLY_ROTATION`
 in `scripts/refresh_rotation.py`, so each school is re-scraped once a week.
 Monday's shard carries `uiuc`, and Sunday (7) is `national`: the SRO catalog,
-NSF REU and SimplifyJobs internships. Print any day's shard:
+NSF REU, SimplifyJobs internships and the campus programs open to students of
+every school (the 14 `<slug>_external_research` sources: 13 campus configs and
+UC Berkeley's registry). Print any day's shard:
 
 ```bash
 python3 scripts/refresh_rotation.py --day 1
 python3 scripts/refresh_rotation.py --day 7
 ```
+
+A program moved in a config between a school's own bucket and its open bucket
+changes file. Its old row retires on the day that writes the old file, and its
+new record publishes on the next day that writes the new one. Until the old row
+retires, the log says `held N moved program record(s)`. A listed program can
+be missing for up to six days, but it is never listed twice, with one exception.
+The hold matches the program's key. If the edit renames the key and changes the
+URL too, and the new file's day comes first, the new record publishes beside
+the old row until the old file's day retires it. A local run of every source
+(`refresh_all` with neither `--schools` nor `--national`) collects each
+school's own sources before its open ones, so a program moved out of the open
+bucket is missing after that run and lands on the next one.
+
+A program whose page said applications are closed is not listed, so it holds
+nothing back, and its old row retires closed. A new record with the old row's
+URL is instead dropped as that row's near-duplicate (the log counts it in
+`suppressed N near-duplicate(s) vs corpus`) until the old row has retired and
+a deep run of the new file loads the record's page. A quick run, or one on
+which that page fails to load, leaves the record out. A closed program renamed
+with its URL waits the same way. If the page reopens before the old file's
+day, the program stays unlisted until the new file's first day after it, up to
+13 days after the edit, or later if that day's run cannot load the page. Its
+new source must crawl the page (list it in its `seeds`), or the program is
+never listed again. Three cases do not wait this way: a record on a page its
+config shares with another program (`shared_program_page`), which takes no
+row's claim, and a program renamed back to a key, or moved back to a file,
+where it already has a stored row; in each, a quick run or a failed load can
+list the program from that row or as it arrived, until a run reads its page.
+
+To retire a config's open programs, empty the open source's `programs` and
+leave the source in place until a Sunday run has passed. A deleted open source
+has no run that retires its rows in national.json. While the emptied source
+stays in the config:
+
+- It emits no record. A Sunday on which its seed page fails to load makes it a
+  source error, and the release withholds all of national.json, the SRO
+  catalog, NSF REU and SimplifyJobs rows included.
+- From the Sunday that retires its last row, it reports `suspicious_zero`
+  ("0 records, previously 0") every Sunday, and national.json publishes
+  degraded, until the source is deleted.
 
 `--day` refuses to answer when a supported school sits in no shard or in two.
 That check exists because 25 registered schools were once in no shard and

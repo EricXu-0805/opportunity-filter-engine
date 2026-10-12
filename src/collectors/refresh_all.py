@@ -48,6 +48,7 @@ from . import faculty_graph, source_health
 from .atomic_json import atomic_write_json, atomic_write_text
 from .campus_graph import (
     RECURSIVE,
+    national_source,
     quarantine_unverified_discovered,
 )
 from .campus_graph import (
@@ -318,6 +319,7 @@ from .ucb_campus import (
     fetch_and_normalize_with_evidence as fetch_ucb_campus_with_evidence,
 )
 from .ucb_campus import merge_into_processed as merge_ucb_campus
+from .ucb_campus import national_source as ucb_national_source
 from .ucb_cbe_faculty import fetch_and_normalize as fetch_ucb_cbe
 from .ucb_cee_faculty import fetch_and_normalize as fetch_ucb_cee
 from .ucb_chem_faculty import fetch_and_normalize as fetch_ucb_chem
@@ -611,7 +613,8 @@ def refresh_all(
 
     ``schools`` shards the run to collectors belonging to those school slugs;
     ``national`` selects the school-less sources (SRO catalog, NSF REU,
-    Simplify). Neither flag = full run. Skipped collectors write NOTHING into
+    Simplify, and the campus programs open to every school). Neither flag =
+    full run. Skipped collectors write NOTHING into
     ``summary["sources"]`` — deactivate_stale_faculty only considers sources
     reporting "ok" in this run's summary, so a shard run provably cannot
     deactivate another school's records.
@@ -932,24 +935,35 @@ def refresh_all(
     # department pages, career boards, lab recruiting). The curated seed layer
     # runs unconditionally (no network); the keyword-prioritized BFS crawl that
     # refines status and discovers extra postings only runs in deep mode.
-    if selected("ucb") and not defer("ucb_campus"):
+    # Its programs open to every school publish in national.json, so the
+    # national shard's run collects those and the ucb run the rest (see 5a-ii).
+    ucb_national = ucb_national_source() if selected(None) else None
+    ucb_runs = [("ucb_campus", False)] if selected("ucb") else []
+    if ucb_national:
+        ucb_runs.append((ucb_national, True))
+    for source_key, national_part in ucb_runs:
+        if defer(source_key):
+            continue
         logger.info("=" * 50)
-        logger.info(f"Collecting from UC Berkeley campus sources (deep={deep})...")
+        logger.info(f"Collecting from UC Berkeley campus sources ({source_key}, deep={deep})...")
         try:
             campus_opps, campus_evidence = fetch_ucb_campus_with_evidence(
-                deep=deep
+                deep=deep, national=national_part,
             )
             # The listed program keys are a merge input, not report content.
             campus_evidence = dict(campus_evidence)
-            listed_program_keys = campus_evidence.pop("listed_program_keys", None) or ()
+            listed_program_keys = campus_evidence.pop("listed_program_keys", None)
             added, updated = merge_ucb_campus(
                 campus_opps,
                 complete_recursive_sources=set(
                     campus_evidence.get("complete_recursive_sources") or ()
                 ),
-                listed_program_keys=set(listed_program_keys),
+                # Each run lists the keys of the sources it collected, and
+                # retirement acts on the rows of the file it publishes.
+                listed_program_keys=None if listed_program_keys is None else set(listed_program_keys),
+                national=national_part,
             )
-            summary["sources"]["ucb_campus"] = {
+            summary["sources"][source_key] = {
                 "fetched": len(campus_opps),
                 "new": added,
                 "updated": updated,
@@ -959,10 +973,10 @@ def refresh_all(
             }
             summary["total_new"] += added
             summary["total_updated"] += updated
-            logger.info(f"UCB campus: {len(campus_opps)} fetched, {added} new, {updated} updated")
+            logger.info(f"UCB campus ({source_key}): {len(campus_opps)} fetched, {added} new, {updated} updated")
         except Exception as e:
-            logger.error(f"UCB campus collection failed: {e}")
-            summary["sources"]["ucb_campus"] = {"status": "error", "error": str(e)}
+            logger.error(f"UCB campus collection failed ({source_key}): {e}")
+            summary["sources"][source_key] = {"status": "error", "error": str(e)}
 
     # 5a-ii. Generic campus-graph schools (US-News Top-50 rollout). Same model
     # as ucb_campus — curated seed layer runs unconditionally (no network), the
@@ -975,46 +989,58 @@ def refresh_all(
     logger.info(f"Collecting from campus-graph schools (n={len(SCHOOL_CONFIGS)}, deep={deep})...")
     for school_cfg in SCHOOL_CONFIGS:
         slug = school_cfg.get("school_slug", "unknown")
-        if not selected(slug):
-            continue
-        if defer(f"campus_graph:{slug}"):
-            continue
-        try:
-            school_opps, graph_evidence = (
-                fetch_campus_graph_with_evidence(
-                    school_cfg,
-                    deep=deep,
+        # A program open to every school stamps no school, so it publishes in
+        # national.json, which only the national shard writes. That shard's run
+        # collects it, under the source its records carry, and the school's run
+        # collects the rest. Collected on the school's day, it was dropped at
+        # the split (refresh-data.yml splits --only-shards) and never published.
+        national_key = national_source(school_cfg) if selected(None) else None
+        runs = [(f"campus_graph:{slug}", False)] if selected(slug) else []
+        if national_key:
+            runs.append((national_key, True))
+        for source_key, national_part in runs:
+            if defer(source_key):
+                continue
+            try:
+                school_opps, graph_evidence = (
+                    fetch_campus_graph_with_evidence(
+                        school_cfg,
+                        deep=deep,
+                        national=national_part,
+                    )
                 )
-            )
-            # Failure/revocation receipts and the listed program keys are merge
-            # inputs, not public report content. Keep the collector's original
-            # evidence object untouched.
-            graph_evidence = dict(graph_evidence)
-            condition_capture_updates = graph_evidence.pop("condition_capture_updates", None)
-            listed_program_keys = graph_evidence.pop("listed_program_keys", None) or ()
-            added, updated = merge_campus_graph(
-                school_opps,
-                condition_capture_updates=condition_capture_updates,
-                complete_recursive_sources=set(
-                    graph_evidence.get("complete_recursive_sources") or ()
-                ),
-                listed_program_keys=set(listed_program_keys),
-                school_slug=slug,
-            )
-            summary["sources"][f"campus_graph:{slug}"] = {
-                "fetched": len(school_opps),
-                "new": added,
-                "updated": updated,
-                "deep": deep,
-                **graph_evidence,
-                "status": "ok",
-            }
-            summary["total_new"] += added
-            summary["total_updated"] += updated
-            logger.info(f"campus-graph {slug}: {len(school_opps)} fetched, {added} new, {updated} updated")
-        except Exception as e:
-            logger.error(f"campus-graph collection failed for {slug}: {e}")
-            summary["sources"][f"campus_graph:{slug}"] = {"status": "error", "error": str(e)}
+                # Failure/revocation receipts and the listed program keys are merge
+                # inputs, not public report content. Keep the collector's original
+                # evidence object untouched.
+                graph_evidence = dict(graph_evidence)
+                condition_capture_updates = graph_evidence.pop("condition_capture_updates", None)
+                listed_program_keys = graph_evidence.pop("listed_program_keys", None)
+                added, updated = merge_campus_graph(
+                    school_opps,
+                    condition_capture_updates=condition_capture_updates,
+                    complete_recursive_sources=set(
+                        graph_evidence.get("complete_recursive_sources") or ()
+                    ),
+                    # Each run lists the keys of the sources it collected, and
+                    # retirement acts on the rows of the file it publishes.
+                    listed_program_keys=None if listed_program_keys is None else set(listed_program_keys),
+                    national=national_part,
+                    school_slug=slug,
+                )
+                summary["sources"][source_key] = {
+                    "fetched": len(school_opps),
+                    "new": added,
+                    "updated": updated,
+                    "deep": deep,
+                    **graph_evidence,
+                    "status": "ok",
+                }
+                summary["total_new"] += added
+                summary["total_updated"] += updated
+                logger.info(f"campus-graph {source_key}: {len(school_opps)} fetched, {added} new, {updated} updated")
+            except Exception as e:
+                logger.error(f"campus-graph collection failed for {source_key}: {e}")
+                summary["sources"][source_key] = {"status": "error", "error": str(e)}
 
     # 5b. UC Berkeley faculty directories — deep-only, same class as the
     # uiuc_faculty enrichment hop: each collector visits every profile page for
@@ -2049,7 +2075,8 @@ def main(argv: list[str] | None = None) -> int:
     selector.add_argument(
         "--national",
         action="store_true",
-        help="Run only the national (school-less) sources: SRO catalog, NSF REU, Simplify",
+        help="Run only the national (school-less) sources: SRO catalog, NSF REU, Simplify, "
+             "and the campus programs open to every school",
     )
     args = parser.parse_args(argv)
 

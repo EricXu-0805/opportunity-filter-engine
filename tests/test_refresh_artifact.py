@@ -23,6 +23,7 @@ from refresh_artifact import (  # noqa: E402
 from src.collectors.refresh_contract import (  # noqa: E402
     evaluate_refresh_summary,
     expected_sources,
+    national_campus_sources,
 )
 
 RUN_ID = "123"
@@ -85,7 +86,8 @@ def _init_base_repository(
 
 def _source_info(key: str, *, deep: bool) -> dict:
     info = {"status": "ok", "fetched": 1}
-    if deep and (key == "ucb_campus" or key.startswith("campus_graph:")):
+    if deep and (key == "ucb_campus" or key.startswith("campus_graph:")
+                 or key in national_campus_sources()):
         info.update(
             {
                 "deep": True,
