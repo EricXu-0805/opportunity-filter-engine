@@ -183,7 +183,7 @@ test.describe('Production detail streams independently of similar recommendation
 
   test('shows usable main content before release, then places localized recommendations above the source footer', async ({ page }) => {
     await openHeldDetail(page, A);
-    await page.getByRole('button', { name: /Switch to Chinese/i }).click();
+    await page.getByRole('button', { name: '切换到中文' }).click();
     await expect(page.getByTestId('return-to-results')).toHaveText('返回匹配列表');
     await expect(page.locator('html')).toHaveAttribute('lang', 'zh');
     expect(openRequests(A), 'still pending when the main content is already interactive').toBeGreaterThan(0);
@@ -213,7 +213,7 @@ test.describe('Production detail streams independently of similar recommendation
       await expectHealthyMain(page, A);
       await expect(page.getByRole('heading', { name: 'Similar opportunities', exact: true })).toHaveCount(0);
       await expect(page.getByText('Malformed rail poison')).toHaveCount(0);
-      await page.getByRole('button', { name: /Switch to Chinese/i }).click();
+      await page.getByRole('button', { name: '切换到中文' }).click();
       await expect(page.getByTestId('return-to-results')).toHaveText('返回匹配列表');
       expect(errors).toEqual([]);
     });
@@ -277,7 +277,7 @@ test.describe('Production detail streams independently of similar recommendation
     await expect.poll(() => page.evaluate(() => (window as ProbeWindow).__detailStreamingProbe?.markers ?? 0), {
       message: 'the browser reads the real late A payload after returning to B, without waiting for RSC EOF',
     }).toBeGreaterThan(0);
-    await page.getByRole('button', { name: /Switch to Chinese/i }).click();
+    await page.getByRole('button', { name: '切换到中文' }).click();
     await expect(page.getByTestId('return-to-results')).toHaveText('返回匹配列表');
     await expect(page.getByRole('region', { name: '相似机会', exact: true }).getByRole('link', { name: /Streaming target A/ })).toBeVisible();
     await expect(page.getByRole('link', { name: /Late A recommendation must stay with A/ })).toHaveCount(0);
