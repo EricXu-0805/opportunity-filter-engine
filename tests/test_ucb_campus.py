@@ -582,14 +582,18 @@ class TestDroppedProgramRetirement:
 
         assert all(row["metadata"]["is_active"] for row in _stored(processed).values())
 
-    def test_open_rows_other_rows_and_closed_rows_are_left_alone(self, monkeypatch, processed):
-        _refresh(monkeypatch, _registry("kept", "dropped", "closed", open_keys=("open_dropped",)))
+    def test_open_rows_other_rows_and_otherwise_retired_rows_are_left_alone(self, monkeypatch, processed):
+        _refresh(monkeypatch, _registry("kept", "dropped", "closed", "unsupported", open_keys=("open_dropped",)))
         rows = json.loads(processed.read_text(encoding="utf-8"))
         closed_id = _program_id(reg.EMIT_CAMPUS, "closed")
+        unsupported_id = _program_id(reg.EMIT_CAMPUS, "unsupported")
         dropped_id = _program_id(reg.EMIT_CAMPUS, "dropped")
         for row in rows:
             if row["id"] == closed_id:
                 row["metadata"].update({"status": "closed", "is_active": False})
+            if row["id"] == unsupported_id:
+                row["metadata"].update({"is_active": False, "deactivated_at": "2026-09-01",
+                                        "deactivation_reason": "school_unsupported"})
         discovery = ucb_campus._normalize_discovered(
             _registry()[0], "Summer Lab Fellowship", "https://example.berkeley.edu/lab/", "lab")
         discovery["metadata"].update({"discovered_page_verified": True, "status": "open", "is_active": True})
@@ -613,8 +617,11 @@ class TestDroppedProgramRetirement:
         assert open_row["school"] is None
         assert open_row["metadata"]["is_active"] is True
         assert "deactivation_reason" not in open_row["metadata"]
-        assert saved[closed_id]["metadata"]["is_active"] is False
-        assert "deactivation_reason" not in saved[closed_id]["metadata"]
+        # A closed row retires too, and keeps its closure.
+        closed = saved[closed_id]
+        assert (closed["metadata"]["status"], closed["metadata"]["is_active"]) == ("closed", False)
+        assert closed["metadata"]["deactivation_reason"] == "no_longer_listed"
+        assert saved[unsupported_id] == next(row for row in rows if row["id"] == unsupported_id)
         for row in (discovery, unminted, faculty):
             assert saved[row["id"]]["metadata"]["is_active"] is True
             assert "deactivation_reason" not in saved[row["id"]]["metadata"]
@@ -691,6 +698,78 @@ class TestDroppedProgramRetirement:
         saved = _stored(processed)
         assert saved[_program_id(reg.EMIT_CAMPUS, "old_key")]["metadata"]["deactivation_reason"] == "no_longer_listed"
         assert saved[_program_id(reg.EMIT_CAMPUS, "new_key")]["metadata"]["is_active"] is True
+
+    def test_a_closed_program_renamed_with_its_url_is_listed_again_when_it_reopens(self, monkeypatch, processed):
+        url = "https://example.berkeley.edu/summer/"
+        before = _registry("old_key", titles={"old_key": "Summer Fellowship"}, urls={"old_key": url})
+        after = _registry("new_key", titles={"new_key": "Summer Fellowship"}, urls={"new_key": url})
+        for sources in (before, after):
+            sources[0]["seeds"] = [url]
+        page = {"word": "Applications are now closed."}
+        monkeypatch.setattr(ucb_campus, "_fetch", lambda requested: _StaticSoup(page["word"]))
+        _refresh(monkeypatch, before, deep=True)
+
+        _refresh(monkeypatch, after, deep=True)
+        page["word"] = "Applications are now open!"
+        _refresh(monkeypatch, after, deep=True)
+
+        saved = _stored(processed)
+        assert [(row["metadata"]["collector_key"], row["metadata"]["status"])
+                for row in saved.values() if row["metadata"]["is_active"]] == [("new_key", "open")]
+        old = saved[_program_id(reg.EMIT_CAMPUS, "old_key")]["metadata"]
+        assert (old["status"], old["is_active"], old["deactivation_reason"]) == ("closed", False, "no_longer_listed")
+
+    @pytest.mark.parametrize("unread", ["page_fails", "quick_run"])
+    def test_a_closed_program_renamed_with_its_url_waits_for_a_run_that_reads_its_page(
+            self, monkeypatch, processed, unread):
+        """Its retired row gives up its page only to a record whose page
+        loaded. Landing on a run that read nothing, the record was listed
+        under a plain title, though the page last said closed."""
+        url = "https://example.berkeley.edu/summer/"
+        before = _registry("old_key", titles={"old_key": "Summer Fellowship"}, urls={"old_key": url})
+        after = _registry("new_key", titles={"new_key": "Summer Fellowship"}, urls={"new_key": url})
+        for sources in (before, after):
+            sources[0]["seeds"] = [url]
+        monkeypatch.setattr(ucb_campus, "_fetch", lambda requested: _StaticSoup("Applications are now closed."))
+        _refresh(monkeypatch, before, deep=True)
+        old_id, new_id = _program_id(reg.EMIT_CAMPUS, "old_key"), _program_id(reg.EMIT_CAMPUS, "new_key")
+        stored = _stored(processed)[old_id]
+
+        if unread == "page_fails":
+            monkeypatch.setattr(ucb_campus, "_fetch", lambda requested: None)
+        _refresh(monkeypatch, after, deep=unread == "page_fails")
+
+        saved = _stored(processed)
+        assert new_id not in saved
+        old = saved[old_id]
+        assert (old["title"], old["metadata"]["status"], old["metadata"]["is_active"]) == (
+            stored["title"], "closed", False)
+        assert old["metadata"]["deactivation_reason"] == "no_longer_listed"
+
+        monkeypatch.setattr(ucb_campus, "_fetch", lambda requested: _StaticSoup("Applications are now open!"))
+        _refresh(monkeypatch, after, deep=True)
+
+        assert [(row["metadata"]["collector_key"], row["metadata"]["status"])
+                for row in _stored(processed).values() if row["metadata"]["is_active"]] == [("new_key", "open")]
+
+    def test_a_closed_program_listed_again_comes_back_closed(self, monkeypatch, processed):
+        """Its row retired keeping its closure. A quick run reads no page and
+        carries the row's state forward, so the closure comes back with it."""
+        back_id = _program_id(reg.EMIT_CAMPUS, "back")
+        _refresh(monkeypatch, _registry("kept", "back"))
+        rows = json.loads(processed.read_text(encoding="utf-8"))
+        for row in rows:
+            if row["id"] == back_id:
+                row["metadata"].update({"status": "closed", "is_active": False})
+        processed.write_text(json.dumps(rows), encoding="utf-8")
+        _refresh(monkeypatch, _registry("kept"))
+        assert _stored(processed)[back_id]["metadata"]["deactivation_reason"] == "no_longer_listed"
+
+        _refresh(monkeypatch, _registry("kept", "back"))
+
+        metadata = _stored(processed)[back_id]["metadata"]
+        assert (metadata["status"], metadata["is_active"]) == ("closed", False)
+        assert "deactivation_reason" not in metadata
 
     def test_another_collectors_retired_row_keeps_its_page_against_a_new_program(self, monkeypatch, processed):
         """Only this registry's own retired program rows give up their page;
@@ -769,9 +848,9 @@ class TestRetirementThroughTheUcbShard:
         split(processed, shards)
 
     @staticmethod
-    def _day(monkeypatch, processed, shards, sources, national):
+    def _day(monkeypatch, processed, shards, sources, national, deep=False):
         assemble(processed, shards, force=True, allow_empty=True)
-        _refresh(monkeypatch, sources, national=national)
+        _refresh(monkeypatch, sources, deep=deep, national=national)
         split(processed, shards, only_shards={"national" if national else "ucb"})
 
     @staticmethod
@@ -822,6 +901,76 @@ class TestRetirementThroughTheUcbShard:
         assert old["metadata"]["deactivation_reason"] == "no_longer_listed"
         assert self._listed(shards, "kept") == [("ucb", "https://example.berkeley.edu/kept/")]
         assert self.NATIONAL_ROW in load_shards(shards)
+
+    @pytest.mark.parametrize("old_day_first", [True, False], ids=["old_file_day_first", "new_file_day_first"])
+    @pytest.mark.parametrize("to_open", [True, False], ids=["into_open", "out_of_open"])
+    def test_a_closed_program_moved_with_its_url_is_listed_again_when_it_reopens(
+            self, monkeypatch, processed, tmp_path, to_open, old_day_first):
+        """The listing rule skipped a closed row, so the row kept its claim on
+        its URL, and the moved record was dropped as its near-duplicate on
+        every run, even after the page reopened."""
+        if to_open:
+            before, after = _registry("kept", "moving"), _registry("kept", open_keys=("moving",))
+        else:
+            before, after = _registry("kept", open_keys=("moving",)), _registry("kept", "moving")
+        for source in (*before, *after):
+            source["seeds"].append(self.OLD_URL)
+        old_school, new_school = ("ucb", None) if to_open else (None, "ucb")
+        page = {"word": "Applications are now closed."}
+        monkeypatch.setattr(ucb_campus, "_fetch", lambda url: _StaticSoup(
+            page["word"] if url == self.OLD_URL else "Program page"))
+        shards = tmp_path / "shards"
+        self._commit(monkeypatch, processed, shards, before)
+        old_day, new_day = old_school is None, new_school is None
+        self._day(monkeypatch, processed, shards, before, old_day, deep=True)
+        assert self._listed(shards, "moving") == []
+
+        for national in (old_day, new_day) if old_day_first else (new_day, old_day):
+            self._day(monkeypatch, processed, shards, after, national, deep=True)
+            assert self._listed(shards, "moving") == []
+        page["word"] = "Applications are now open!"
+        for national in (old_day, new_day):
+            self._day(monkeypatch, processed, shards, after, national, deep=True)
+
+        assert self._listed(shards, "moving") == [(new_school, self.OLD_URL)]
+        [old] = [row["metadata"] for row in load_shards(shards)
+                 if row["metadata"].get("collector_key") == "moving" and row["school"] == old_school]
+        assert (old["status"], old["is_active"], old["deactivation_reason"]) == ("closed", False, "no_longer_listed")
+
+    @pytest.mark.parametrize("unread", ["page_fails", "quick_run"])
+    @pytest.mark.parametrize("to_open", [True, False], ids=["into_open", "out_of_open"])
+    def test_a_closed_program_moved_with_its_url_waits_for_a_day_that_reads_its_page(
+            self, monkeypatch, processed, tmp_path, to_open, unread):
+        """The old file's day retires the closed row, which gives up its page
+        only to a record whose page loaded. Landing on a day that read
+        nothing, the record was listed though the page last said closed."""
+        if to_open:
+            before, after = _registry("kept", "moving"), _registry("kept", open_keys=("moving",))
+        else:
+            before, after = _registry("kept", open_keys=("moving",)), _registry("kept", "moving")
+        for source in (*before, *after):
+            source["seeds"].append(self.OLD_URL)
+        old_school, new_school = ("ucb", None) if to_open else (None, "ucb")
+        page = {"word": "Applications are now closed."}
+        monkeypatch.setattr(ucb_campus, "_fetch", lambda url: None if url == self.OLD_URL and page["word"] is None
+                            else _StaticSoup(page["word"] if url == self.OLD_URL else "Program page"))
+        shards = tmp_path / "shards"
+        self._commit(monkeypatch, processed, shards, before)
+        old_day, new_day = old_school is None, new_school is None
+        self._day(monkeypatch, processed, shards, before, old_day, deep=True)
+        self._day(monkeypatch, processed, shards, after, old_day, deep=True)
+        assert self._listed(shards, "moving") == []
+
+        if unread == "page_fails":
+            page["word"] = None
+        self._day(monkeypatch, processed, shards, after, new_day, deep=unread == "page_fails")
+        assert self._listed(shards, "moving") == []
+        assert [row["school"] for row in load_shards(shards) if row["metadata"].get("collector_key") == "moving"] == [
+            old_school]
+        page["word"] = "Applications are now open!"
+        self._day(monkeypatch, processed, shards, after, new_day, deep=True)
+
+        assert self._listed(shards, "moving") == [(new_school, self.OLD_URL)]
 
 
 @pytest.mark.parametrize("emit", [reg.EMIT_CAMPUS, reg.EMIT_LAB, reg.EMIT_OPEN])

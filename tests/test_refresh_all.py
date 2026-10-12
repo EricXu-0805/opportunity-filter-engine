@@ -802,6 +802,88 @@ def test_a_program_moved_between_a_schools_shard_and_national_json_is_listed_onc
         assert listed() == expected, shard
 
 
+@pytest.mark.parametrize("to_open", [True, False], ids=["into_open", "out_of_open"])
+def test_a_closed_program_moved_with_its_url_is_listed_again_when_it_reopens(monkeypatch, tmp_path, to_open):
+    """The program's page says closed, the config moves it between Stanford's
+    own bucket and its open bucket with its URL, and the page later reopens.
+    The merges' listing rule skipped the closed old row, which therefore kept
+    its claim on the URL, and the moved record was dropped as its
+    near-duplicate on every run: the program was never listed again.
+
+    Driven through the scheduled path, as the test above."""
+    from datetime import UTC, datetime
+
+    from bs4 import BeautifulSoup
+
+    from scripts.publishable_shards import publishable
+    from scripts.refresh_rotation import target_shards
+    from scripts.shard_corpus import assemble, load_shards, split
+    from src.collectors import campus_graph
+    from src.collectors.schools.stanford import SCHOOL as STANFORD
+
+    by_name = {source["source_name"]: source for source in STANFORD["sources"]}
+    campus, open_bucket = by_name["stanford_program"], by_name["stanford_program_open"]
+    if to_open:
+        moving = campus_graph.program("moving", "Moving Summer Fellowship",
+                                      "https://example.stanford.edu/moving/", "Curated")
+        before = ([*campus["programs"], moving], open_bucket["programs"])
+        after = (campus["programs"], [*open_bucket["programs"], moving])
+        old_shard, new_shard, new_school = "stanford", "national", None
+    else:
+        [moving] = open_bucket["programs"]
+        before = (campus["programs"], open_bucket["programs"])
+        after = ([*campus["programs"], moving], [])
+        old_shard, new_shard, new_school = "national", "stanford", "stanford"
+    for source in (campus, open_bucket):
+        if moving["url"] not in source["seeds"]:
+            monkeypatch.setitem(source, "seeds", [*source["seeds"], moving["url"]])
+
+    def configure(programs):
+        monkeypatch.setitem(campus, "programs", programs[0])
+        monkeypatch.setitem(open_bucket, "programs", programs[1])
+
+    configure(before)
+    processed = _stub_with_processed_file(monkeypatch, tmp_path, campus_graph.fetch_and_normalize(STANFORD))
+    shards = tmp_path / "shards"
+    split(processed, shards)
+    monkeypatch.setattr(refresh_all, "fetch_campus_graph_with_evidence",
+                        campus_graph.fetch_and_normalize_with_evidence)
+    monkeypatch.setattr(refresh_all, "merge_campus_graph", campus_graph.merge_into_processed)
+    monkeypatch.setattr(campus_graph, "PROCESSED_FILE", processed)
+    page = {"word": "Applications are now closed."}
+
+    def fetch(url, **kwargs):
+        text = page["word"] if url == moving["url"] else "Program page"
+        soup = BeautifulSoup(f"<body><p>{text}</p></body>", "html.parser")
+        soup._ofe_fetch_metadata = {"requested_url": url, "final_url": url,
+                                    "checked_at": datetime.now(UTC).isoformat()}
+        return soup
+
+    monkeypatch.setattr(campus_graph, "_fetch", fetch)
+
+    def run(shard):
+        assemble(processed, shards, force=True, allow_empty=True)
+        summary = (refresh_all.refresh_all(deep=True, national=True) if shard == "national"
+                   else refresh_all.refresh_all(deep=True, schools={shard}))
+        targets = publishable(list(target_shards(shard)), {"release": summary["release"]})
+        assert targets == [shard]
+        split(processed, shards, only_shards=set(targets))
+
+    def listed():
+        return [(row["school"], row["metadata"]["status"]) for row in load_shards(shards)
+                if row["metadata"].get("collector_key") == moving["key"] and row["metadata"]["is_active"]]
+
+    run(old_shard)
+    assert listed() == []
+    configure(after)
+    run(old_shard)
+    run(new_shard)
+    page["word"] = "Applications are now open!"
+    run(old_shard)
+    run(new_shard)
+    assert listed() == [(new_school, "open")]
+
+
 @pytest.mark.parametrize("structure_complete", [True, False])
 def test_ucsb_empty_urca_is_never_a_publishable_single_snapshot(
     monkeypatch,

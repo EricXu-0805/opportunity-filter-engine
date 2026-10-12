@@ -49,7 +49,14 @@ from src.normalizers.ucb_dedup import dedupe_against_existing
 from . import ucb_sources as reg
 from .application_status import detect_application_status
 from .atomic_json import atomic_write_json
-from .campus_graph import NO_LONGER_LISTED, _failed_load, _page_capture, _program_record, _retired_as_unlisted
+from .campus_graph import (
+    NO_LONGER_LISTED,
+    _failed_load,
+    _listing_applies,
+    _page_capture,
+    _program_record,
+    _retired_as_unlisted,
+)
 from .ucb_common import _readable_excerpt
 
 logger = logging.getLogger(__name__)
@@ -700,14 +707,17 @@ def merge_into_processed(
 
     ``listed_program_keys`` holds the key of every curated program in the
     sources the fetch collected, and ``national`` repeats the fetch's
-    argument. A stored active registry row in a file this run publishes
-    (ucb.json for False, national.json for True, both for None) whose key is
-    not listed for that file is retired as ``no_longer_listed``, never
-    deleted, and a program moved between the two files is held back until
-    the old file's run retires its old row: campus_graph's rule for its
-    schools. An empty listing retires every such row; the None default
-    retires nothing. A retired row whose program is listed again comes
-    back."""
+    argument. A stored registry row, active or closed by its page, in a file
+    this run publishes (ucb.json for False, national.json for True, both for
+    None) whose key is not listed for that file is retired as
+    ``no_longer_listed``, never deleted, and a program moved between the two
+    files is held back until the old file's run retires its old active row.
+    A record sharing a closed old row's URL or title is dropped as its
+    near-duplicate until that row retires, and after that until a run loads
+    the record's page: campus_graph's rule for its schools. An empty listing
+    retires every such row; the None default retires nothing. A retired row
+    whose program is listed again comes back as it was, closed if its page had
+    closed it."""
     if not PROCESSED_FILE.exists():
         return (0, 0)
     if any(
@@ -739,12 +749,12 @@ def merge_into_processed(
     if listed_program_keys is not None:
         deactivated_on = datetime.now(UTC).date().isoformat()
         for opp in existing:
-            if not _registry_program_row(opp) or opp["metadata"].get("is_active") is False:
+            if not _registry_program_row(opp) or not _listing_applies(opp):
                 continue
             key = opp["metadata"]["collector_key"]
             moved = (key, "ucb" if opp.get("school") is None else None)
             if opp.get("school") not in published:
-                if moved in arriving:
+                if moved in arriving and opp["metadata"].get("is_active") is not False:
                     held.add(moved)
                 continue
             if key in listed_program_keys and moved not in arriving:
@@ -767,7 +777,8 @@ def merge_into_processed(
     # a retired row would suppress whatever replaced it (a renamed key), and
     # the program would vanish instead of moving. Every other row keeps its
     # claim, and so do these against discoveries, which find a page rather
-    # than a replacement.
+    # than a replacement, and a closed one against a record whose page this
+    # run did not load.
     incoming_ids = {opp.get("id") for opp in new_opps}
     released = [
         row for row in existing
@@ -784,9 +795,16 @@ def merge_into_processed(
         found = [opp for opp in new_opps
                  if opp["metadata"].get("discovered") and opp.get("id") not in stored_ids]
         survivors, lost = dedupe_against_existing(found, released)
-        lost_ids = {opp.get("id") for opp in found} - {opp.get("id") for opp in survivors}
+        # A row retired while its page said closed gives up its claim only to
+        # a record whose page this run loaded: campus_graph's rule.
+        unread = [opp for opp in new_opps if _program_record(opp) and opp.get("id") not in stored_ids
+                  and opp["metadata"].get("seed_page_verified") is not True]
+        closed = [row for row in released if row["metadata"].get("status") == "closed"]
+        landing, waiting = dedupe_against_existing(unread, closed)
+        lost_ids = ({opp.get("id") for opp in found} - {opp.get("id") for opp in survivors}) | (
+            {opp.get("id") for opp in unread} - {opp.get("id") for opp in landing})
         new_opps = [opp for opp in new_opps if opp.get("id") not in lost_ids]
-        dropped += lost
+        dropped += lost + waiting
     if dropped:
         logger.info("ucb_campus: suppressed %d near-duplicate(s) vs corpus", dropped)
 
@@ -800,9 +818,10 @@ def merge_into_processed(
             existing_metadata = existing_opp.get("metadata", {})
             if _retired_as_unlisted(existing_opp):
                 # Listed again, which disproves the absence that retired it.
-                # Carry forward the state it was retired from, which was
-                # active; the retirement stamps leave with the old metadata.
-                existing_metadata = {**existing_metadata, "is_active": True}
+                # Carry forward the state it was retired from: active, unless
+                # its page had closed it. The retirement stamps leave with the
+                # old metadata.
+                existing_metadata = {**existing_metadata, "is_active": existing_metadata.get("status") != "closed"}
             unverified_seed = (
                 not opp["metadata"].get("discovered")
                 and opp["metadata"].get("seed_page_verified") is not True

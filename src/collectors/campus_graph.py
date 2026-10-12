@@ -857,6 +857,21 @@ def _retired_as_unlisted(opp: dict) -> bool:
     )
 
 
+def _listing_applies(opp: dict) -> bool:
+    """Whether the listing rule acts on a stored program row: an active one,
+    or one inactive only because its page said applications are closed.
+
+    A closed row it skipped kept its claim on its URL, so a program moved or
+    renamed with that URL was dropped as the row's near-duplicate on every
+    run, and never listed again even after its page reopened. A row inactive
+    for any other reason (no_longer_listed, school_unsupported) is left as it
+    is.
+    """
+    metadata = opp["metadata"]
+    return metadata.get("is_active") is not False or (
+        metadata.get("status") == "closed" and metadata.get("deactivation_reason") is None)
+
+
 def merge_into_processed(
     new_opps: list[dict],
     *,
@@ -876,18 +891,19 @@ def merge_into_processed(
     entry in the sources the fetch collected, and ``national`` repeats the
     fetch's argument: False for the sources that publish in the school's
     shard, True for those that publish in national.json, None for both. A
-    stored active program row of the school, in a file this run publishes,
-    whose key is not listed for that file was dropped from it, and is retired
-    as ``no_longer_listed``, never deleted. An empty listing retires every
-    such row; the None default retires nothing. A retired row whose program
-    is listed again comes back.
+    stored program row of the school, active or closed by its page, in a file
+    this run publishes, whose key is not listed for that file was dropped from
+    it, and is retired as ``no_longer_listed``, never deleted; a closed row
+    keeps its closure. An empty listing retires every such row; the None
+    default retires nothing. A retired row whose program is listed again comes
+    back as it was, closed if its page had closed it.
 
     Each file is written only by its own scheduled run (refresh-data.yml
     splits --only-shards), so a program moved between the school's shard and
     national.json retires from the old file on that file's run. A record of
-    it arriving in the new file before then is held back, so the program is
-    listed from its old row until that retires, then missing until the new
-    file's next run, and never listed twice.
+    it arriving in the new file while its old row is still active is held
+    back, so the program is listed from its old row until that retires, then
+    missing until the new file's next run, and never listed twice.
     """
 
     if not PROCESSED_FILE.exists():
@@ -929,15 +945,17 @@ def merge_into_processed(
     if listed_program_keys is not None:
         deactivated_on = datetime.now(UTC).date().isoformat()
         for opp in existing:
-            if not _configured_program_row(opp, school_slug) or opp["metadata"].get("is_active") is False:
+            if not _configured_program_row(opp, school_slug) or not _listing_applies(opp):
                 continue
             key = opp["metadata"]["collector_key"]
             # The program's record, had it moved to the other file.
             moved = (key, school_slug if opp.get("school") is None else None)
             if opp.get("school") not in published:
                 # Another run writes this row's file, so retiring it here would
-                # never publish. Its moved record waits for that run.
-                if moved in arriving:
+                # never publish. Its moved record waits for that run: held
+                # while the row is listed, and while it is closed, dropped as
+                # its near-duplicate if it shares the row's URL or title.
+                if moved in arriving and opp["metadata"].get("is_active") is not False:
                     held.add(moved)
                 continue
             # A key listed only because it moved to the other file, which the
@@ -967,7 +985,8 @@ def merge_into_processed(
     # against them, a retired row would suppress whatever replaced it (a
     # renamed key), and the program would vanish instead of moving. Every
     # other row keeps its claim, and so do these against discoveries, which
-    # find a page rather than a replacement.
+    # find a page rather than a replacement, and a closed one against a record
+    # whose page this run did not load.
     incoming_ids = {opp.get("id") for opp in new_opps}
     released = [
         row for row in existing
@@ -984,9 +1003,18 @@ def merge_into_processed(
         stored_ids = {row.get("id") for row in existing}
         found = [opp for opp in new_opps if not _program_record(opp) and opp.get("id") not in stored_ids]
         survivors, lost = dedupe_against_existing(found, released)
-        lost_ids = {opp.get("id") for opp in found} - {opp.get("id") for opp in survivors}
+        # A row retired while its page said closed gives up its claim only to
+        # a record whose page this run loaded. A quick run, or one whose page
+        # failed to load, read nothing: the record would land listed, though
+        # the page last said closed. The first run that reads it hands over.
+        unread = [opp for opp in new_opps if _program_record(opp) and opp.get("id") not in stored_ids
+                  and opp["metadata"].get("seed_page_verified") is not True]
+        closed = [row for row in released if row["metadata"].get("status") == "closed"]
+        landing, waiting = _dedupe_with_program_scope(unread, closed)
+        lost_ids = ({opp.get("id") for opp in found} - {opp.get("id") for opp in survivors}) | (
+            {opp.get("id") for opp in unread} - {opp.get("id") for opp in landing})
         new_opps = [opp for opp in new_opps if opp.get("id") not in lost_ids]
-        dropped += lost
+        dropped += lost + waiting
     if dropped:
         logger.info("campus_graph: suppressed %d near-duplicate(s) vs corpus", dropped)
     index = {o.get("id"): o for o in existing if o.get("id")}
@@ -999,9 +1027,10 @@ def merge_into_processed(
             existing_metadata = existing_opp.get("metadata", {})
             if _retired_as_unlisted(existing_opp):
                 # Listed again, which disproves the absence that retired it.
-                # Carry forward the state it was retired from, which was
-                # active; the retirement stamps leave with the old metadata.
-                existing_metadata = {**existing_metadata, "is_active": True}
+                # Carry forward the state it was retired from: active, unless
+                # its page had closed it. The retirement stamps leave with the
+                # old metadata.
+                existing_metadata = {**existing_metadata, "is_active": existing_metadata.get("status") != "closed"}
             unverified_seed = (
                 not opp["metadata"].get("discovered")
                 and opp["metadata"].get("seed_page_verified") is not True
