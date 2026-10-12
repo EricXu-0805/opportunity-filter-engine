@@ -77,6 +77,21 @@ describe('AtAGlanceSection no-deadline wording', () => {
       />,
     );
     expect(screen.getByText('detail.fields.rollingBasis')).toBeInTheDocument();
+    expect(screen.queryByTestId('rolling-inferred-note')).toBeNull();
+  });
+
+  it('says "rolling" read off a configured note the page does not state is ours', () => {
+    render(
+      <AtAGlanceSection
+        opp={opp(
+          { deadline_note: 'Rolling; SURF/WAVE cycles for summer' },
+          { source_type: 'campus_program', is_rolling: true, deadline_note_attribution: 'inferred' },
+        )}
+        t={tFn}
+      />,
+    );
+    expect(screen.getByText('detail.fields.rollingBasis')).toBeInTheDocument();
+    expect(screen.getByTestId('rolling-inferred-note')).toHaveTextContent('detail.rollingInferred');
   });
 
   it('a poisoned faculty deadline is hidden behind the contact-profile boundary', () => {
