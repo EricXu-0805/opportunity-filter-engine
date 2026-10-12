@@ -2222,7 +2222,7 @@ export async function saveWholeProfile(
     case 'already-saved':
     case 'conflict': {
       const row: LoadedProfile = { source: 'cloud', profile: outcome.profile, revision: outcome.revision, token };
-      const hydration = await hydrateLoadedProfile(row, token, observedBefore).catch(() => null);
+      const hydration = await hydrateLoadedProfile(row, token, observedBefore, new Set<string>()).catch(() => null);
       return { status: outcome.status === 'conflict' ? 'conflict' : 'saved', revision: outcome.revision, hydration };
     }
     case 'transport-error':
