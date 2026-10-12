@@ -21,7 +21,7 @@ export function FavoritesEmptyState({ t }: { t: TFunc }) {
           {t('favorites.browseMatches')}
         </button>
         <Link
-          href="/import"
+          href="/resources?tab=import"
           className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-gray-200 text-gray-700 text-[13px] font-medium hover:bg-gray-50 transition-colors duration-300"
         >
           <Bookmark className="w-3.5 h-3.5" />

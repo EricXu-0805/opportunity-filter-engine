@@ -2556,14 +2556,18 @@ function sanitizeFilename(raw: string): string {
 
 export type AttachmentUploadResult =
   | { ok: true; name: string }
-  | { ok: false; reason: 'too_large' | 'wrong_type' | 'duplicate' | 'unauthenticated' | 'unknown'; message?: string };
+  | { ok: false; reason: 'too_large' | 'wrong_type' | 'duplicate' | 'guest' | 'unauthenticated' | 'unknown'; message?: string };
 
-async function attachmentOwner(token: OwnerToken, request: AttachmentRequestContext): Promise<string> {
+async function attachmentAuth(token: OwnerToken, request: AttachmentRequestContext) {
   // Reading files must not create an account or silently substitute a later one.
   const auth = await request.wait(getAuthState({ throwOnError: true }));
   const uid = auth.user?.id ?? null;
   assertAttachmentOwner(token, uid);
-  return uid;
+  return { uid, guest: auth.isAnonymous };
+}
+
+async function attachmentOwner(token: OwnerToken, request: AttachmentRequestContext): Promise<string> {
+  return (await attachmentAuth(token, request)).uid;
 }
 
 function checkAttachmentError(error: { statusCode?: string | number } | null): void {
@@ -2579,7 +2583,10 @@ export async function uploadAttachment(
   if (file.size > ATTACHMENTS_MAX_BYTES) return { ok: false, reason: 'too_large' };
   if (!ATTACHMENTS_ALLOWED_MIME.has(file.type)) return { ok: false, reason: 'wrong_type' };
   return runAttachmentRequest(token, options, async request => {
-    const deviceId = await attachmentOwner(token, request);
+    // Files stay under the guest's uid when it signs in to an existing account,
+    // so a guest may not add one. Storage refuses it too (20261011090000).
+    const { uid: deviceId, guest } = await attachmentAuth(token, request);
+    if (guest) return { ok: false, reason: 'guest' };
     request.check();
     const safeName = sanitizeFilename(file.name);
     const path = attachmentPath(deviceId, opportunityId, safeName);

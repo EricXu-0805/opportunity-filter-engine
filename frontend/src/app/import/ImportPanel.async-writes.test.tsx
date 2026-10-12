@@ -4,7 +4,7 @@ import type { ImportedOpportunity } from '@/lib/api';
 const api = vi.hoisted(() => ({ url: vi.fn(), text: vi.fn() }));
 vi.mock('@/lib/api', () => ({ importByUrl: api.url, importByText: api.text }));
 vi.mock('@/i18n/client', () => ({ useT: () => ({ t: (key: string) => key, locale: 'en' }) }));
-import ImportPage from './page';
+import ImportPage from './ImportPanel';
 import { addCustomImport, readCustomImports } from '@/lib/custom-imports';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner, PRIVATE_STORAGE_LOCK } from '@/lib/identity-owner';
 const opportunity = (title = 'Current import'): ImportedOpportunity => ({ source: 'url_parser', source_url: 'https://example.edu/program',

@@ -2,6 +2,7 @@
 
 import { Fragment, memo } from 'react';
 import MatchCard from '@/components/MatchCard';
+import { mixesOpportunityTypes } from '@/lib/match-utils';
 import { ConciergeCta } from './ConciergeCta';
 import type { MatchResult, ProfileData } from '@/lib/types';
 import type { InteractionType } from '@/lib/supabase';
@@ -145,6 +146,11 @@ export function MatchList({
 }: MatchListProps) {
   return (
     <>
+      {mixesOpportunityTypes(matches) && (
+        <p data-testid="results-tier-legend" className="mb-4 text-[12px] text-gray-600">
+          {t('results.tierLegend')}
+        </p>
+      )}
       {/*
         R69-C: lg:grid-cols-2 at the lg (1024px) breakpoint reclaims the
         ~50% of horizontal whitespace the single-column layout left on

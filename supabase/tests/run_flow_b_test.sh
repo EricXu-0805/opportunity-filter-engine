@@ -125,6 +125,9 @@ source "$HERE/legacy_renovation_concurrency_test.sh"
 echo "==> run hidden_capabilities_acl_test.sql"
 "${PSQL[@]}" -f "$HERE/hidden_capabilities_acl_test.sql"
 
+echo "==> run tracker_attachments_guest_test.sql"
+"${PSQL[@]}" -f "$HERE/tracker_attachments_guest_test.sql"
+
 # 027's advisory lock only matters under real concurrency, which a single
 # psql session cannot demonstrate: advisory locks are re-entrant per session,
 # so the same connection re-taking its own key always succeeds. Hold the key

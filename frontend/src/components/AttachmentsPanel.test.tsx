@@ -19,9 +19,11 @@ const mockUpload = vi.fn<(oppId: string, file: File) => Promise<AttachmentUpload
 const mockDelete = vi.fn<(oppId: string, name: string) => Promise<boolean>>();
 const mockSigned = vi.fn<(oppId: string, name: string) => Promise<string | null>>();
 
-// The auth state a subscriber is told on subscription; null says nothing,
-// which is what every test before the guest notice relied on.
+// The auth state a subscriber is told on subscription. null says nothing, which
+// leaves the upload control unmounted; the tests default to a signed-in account.
 const authFeed = vi.hoisted(() => ({ state: null as null | { session: object | null; isAnonymous: boolean } }));
+const authModal = vi.hoisted(() => ({ openModal: vi.fn() }));
+vi.mock('@/lib/auth-modal-context', () => ({ useAuthModal: () => ({ openModal: authModal.openModal }) }));
 
 vi.mock('@/lib/supabase', () => ({
   onAuthChange: (cb: (state: { session: object | null; user: null; isAnonymous: boolean; email: null }) => void) => {
@@ -63,7 +65,8 @@ function fileFromMime(name: string, mime: string, size = 100): File {
 }
 
 beforeEach(() => {
-  authFeed.state = null;
+  authFeed.state = { session: {}, isAnonymous: false };
+  authModal.openModal.mockReset();
   mockList.mockReset();
   mockUpload.mockReset();
   mockDelete.mockReset();
@@ -533,22 +536,54 @@ it('old rendered controls cannot borrow the new owner token before React redraws
 });
 
 
-describe('AttachmentsPanel — a guest is told where the files live', () => {
-  // A guest could upload with only "PDF, image, doc, txt · max 5 MB" on
-  // screen; signing in to an existing account then left the files behind,
-  // and the only notice came after the merge.
-  it('warns a guest session before the first upload', async () => {
+describe('AttachmentsPanel — adding files needs a signed-in account', () => {
+  // A guest could upload; signing in to an existing account then left the
+  // files behind. A guest now gets a sign-in prompt where the control was.
+  it('replaces the upload control with a sign-in prompt for a guest session', async () => {
     authFeed.state = { session: {}, isAnonymous: true };
     render(<AttachmentsPanel opportunityId={OPP_ID} />);
     await waitFor(() => expect(screen.getByText(/detail.attachments.empty/)).toBeInTheDocument());
     expect(screen.getByTestId('tracker-attachments-guest')).toHaveTextContent('detail.attachments.guestNotice');
-    expect(screen.getByRole('button', { name: /detail.attachments.addButton/ })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: /detail.attachments.addButton/ })).toBeNull();
+    expect(screen.queryByLabelText(/detail.attachments.addButton/)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /detail.attachments.guestSignIn/ }));
+    expect(authModal.openModal).toHaveBeenCalledWith({ reason: 'tracker-attachments' });
   });
 
-  it('says nothing to a signed-in account', async () => {
-    authFeed.state = { session: {}, isAnonymous: false };
+  it('shows neither control until the session is known', async () => {
+    authFeed.state = null;
+    render(<AttachmentsPanel opportunityId={OPP_ID} />);
+    await waitFor(() => expect(screen.getByText(/detail.attachments.empty/)).toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: /detail.attachments.addButton/ })).toBeNull();
+    expect(screen.queryByTestId('tracker-attachments-guest')).toBeNull();
+  });
+
+  it('keeps a guest\'s earlier files listed, openable and deletable', async () => {
+    authFeed.state = { session: {}, isAnonymous: true };
+    mockList.mockResolvedValue([makeAttachment()]);
+    render(<AttachmentsPanel opportunityId={OPP_ID} />);
+    await waitFor(() => expect(screen.getByText('resume.pdf')).toBeInTheDocument());
+    expect(screen.getByRole('button', { name: /detail.attachments.openAria/ })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /detail.attachments.deleteAria/ })).toBeEnabled();
+  });
+
+  it('swaps to the prompt when the server says the session is a guest', async () => {
+    mockUpload.mockResolvedValue({ ok: false, reason: 'guest' });
+    const { container } = render(<AttachmentsPanel opportunityId={OPP_ID} />);
+    await waitFor(() => expect(screen.getByText(/detail.attachments.empty/)).toBeInTheDocument());
+    fireEvent.change(container.querySelector('input[type="file"]') as HTMLInputElement,
+      { target: { files: [fileFromMime('a.pdf', 'application/pdf')] } });
+    await waitFor(() => expect(screen.getByTestId('tracker-attachments-guest')).toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: /detail.attachments.addButton/ })).toBeNull();
+    // Said once, in the prompt: no second copy as an error line.
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getAllByText(/detail.attachments.guestNotice/)).toHaveLength(1);
+  });
+
+  it('shows the upload control, with no prompt, to a signed-in account', async () => {
     render(<AttachmentsPanel opportunityId={OPP_ID} />);
     await waitFor(() => expect(screen.getByText(/detail.attachments.empty/)).toBeInTheDocument());
     expect(screen.queryByTestId('tracker-attachments-guest')).toBeNull();
+    expect(screen.getByRole('button', { name: /detail.attachments.addButton/ })).toBeEnabled();
   });
 });

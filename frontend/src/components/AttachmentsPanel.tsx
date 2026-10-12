@@ -7,6 +7,7 @@ import { Paperclip, Trash2, Upload, ExternalLink, Loader2 } from 'lucide-react';
 import { ATTACHMENTS_ALLOWED_MIME, ATTACHMENTS_MAX_BYTES, deleteAttachment, getAttachmentSignedUrl,
   listAttachments, onAuthChange, uploadAttachment, type Attachment } from '@/lib/supabase';
 import { useT } from '@/i18n/client';
+import { useAuthModal } from '@/lib/auth-modal-context';
 
 type Replier = (path: string, vars?: Record<string, string | number>) => string;
 type Message = { key: string; vars?: Record<string, string | number> };
@@ -42,8 +43,10 @@ function AttachmentFiles({ opportunityId }: Props) {
   const [error, setError] = useState<Message | null>(null);
   const [notice, setNotice] = useState<Message | null>(null);
   // Files live under the session's uid. Signing a guest in to an account it
-  // already has merges its rows but not these files, so say so up front.
-  const [guest, setGuest] = useState(false);
+  // already has merges its rows but not these files, so a guest cannot add
+  // one. Unknown until the first auth event; the upload control waits for it.
+  const { openModal } = useAuthModal();
+  const [guest, setGuest] = useState<boolean | null>(null);
   const input = useRef<HTMLInputElement>(null);
   const active = useRef(false);
   const pendingAction = useRef(false);
@@ -104,6 +107,8 @@ function AttachmentFiles({ opportunityId }: Props) {
         const result = await uploadAttachment(opportunityId, file, token, { signal: controller.signal });
         if (!current(controller, token)) return;
         if (!result.ok) {
+          // The prompt already says it; a guest gets no second message as an error.
+          if (result.reason === 'guest') { setGuest(true); return; }
           const key = { too_large: 'errTooLarge', wrong_type: 'errWrongType', duplicate: 'errDuplicate',
             unauthenticated: 'errUnauth', unknown: 'uploadUnknown' }[result.reason];
           setError({ key, vars: { name } });
@@ -141,17 +146,22 @@ function AttachmentFiles({ opportunityId }: Props) {
         <Paperclip className="w-3.5 h-3.5 text-gray-400" aria-hidden="true" />
         <span className="font-medium">{t('detail.attachments.label')}</span>
         <span className="text-[10px] text-gray-500">{t('detail.attachments.hint', { mb: Math.round(ATTACHMENTS_MAX_BYTES / 1024 / 1024) })}</span>
-        <button type="button" onClick={() => input.current?.click()} disabled={disabled} className={`${buttonClass} ml-auto`}>
-          {action?.kind === 'upload' ? <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" /> : <Upload className="w-3 h-3" aria-hidden="true" />}
-          {action?.kind === 'upload' ? t('detail.attachments.uploading', { name: action.name }) : t('detail.attachments.addButton')}
-        </button>
-        <input ref={input} type="file" accept={Array.from(ATTACHMENTS_ALLOWED_MIME).join(',')} disabled={disabled}
-          aria-label={t('detail.attachments.addButton')} className="hidden" onChange={event => {
-            const file = event.target.files?.[0]; event.target.value = '';
-            if (file) void runAction('upload', file.name, file);
-          }} />
+        {guest === false && <>
+          <button type="button" onClick={() => input.current?.click()} disabled={disabled} className={`${buttonClass} ml-auto`}>
+            {action?.kind === 'upload' ? <Loader2 className="w-3 h-3 animate-spin" aria-hidden="true" /> : <Upload className="w-3 h-3" aria-hidden="true" />}
+            {action?.kind === 'upload' ? t('detail.attachments.uploading', { name: action.name }) : t('detail.attachments.addButton')}
+          </button>
+          <input ref={input} type="file" accept={Array.from(ATTACHMENTS_ALLOWED_MIME).join(',')} disabled={disabled}
+            aria-label={t('detail.attachments.addButton')} className="hidden" onChange={event => {
+              const file = event.target.files?.[0]; event.target.value = '';
+              if (file) void runAction('upload', file.name, file);
+            }} />
+        </>}
       </div>
-      {guest && <p data-testid="tracker-attachments-guest" className="text-[11px] text-amber-700 break-words">{t('detail.attachments.guestNotice')}</p>}
+      {guest === true && <div data-testid="tracker-attachments-guest" className="flex flex-wrap items-center gap-2">
+        <p className="text-[12px] text-gray-700 break-words min-w-0">{t('detail.attachments.guestNotice')}</p>
+        <button type="button" className={buttonClass} onClick={() => openModal({ reason: 'tracker-attachments' })}>{t('detail.attachments.guestSignIn')}</button>
+      </div>}
       {notice && <p role="status" data-testid="tracker-attachments-notice" className="text-[12px] text-green-700 break-words">{t(`detail.attachments.${notice.key}`, notice.vars)}</p>}
       {error && <p role="alert" className="text-[12px] text-red-700 break-words">{t(`detail.attachments.${error.key}`, error.vars)}</p>}
       {status === 'loading' && <p role="status" data-testid="tracker-attachments-loading" className="text-[12px] text-gray-500">{t('detail.attachments.loading')}</p>}

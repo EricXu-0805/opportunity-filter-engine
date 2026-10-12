@@ -1,31 +1,30 @@
 import type { Metadata } from 'next';
 import { Mail, BookOpen } from 'lucide-react';
 import { getServerT } from '@/i18n/server';
+import { parseResourcesTab } from '@/lib/resources-tab';
+import ImportPanel from '../import/ImportPanel';
 import ContactTipsCard from './ContactTipsCard';
 import DatabaseLinkCard from './DatabaseLinkCard';
 import HighlightLabType from './HighlightLabType';
+import ResourcesTabs from './ResourcesTabs';
 import { DATABASES, LAB_TYPES } from './types';
 
 export const metadata: Metadata = {
-  title: 'Resources — Cold-email guides & research databases',
+  title: 'Resources — Cold-email guides, research databases & import',
   description:
-    'Per-lab-type cold-email guides (wet, dry, humanities) and curated links to Illinois Experts, NIH Reporter, NSF Awards, and Google Scholar — four databases students use to research professors before reaching out.',
+    'Per-lab-type cold-email guides (wet, dry, humanities) and curated links to Illinois Experts, NIH Reporter, NSF Awards, and Google Scholar — four databases students use to research professors before reaching out — plus an import tool for adding an opportunity from a link or pasted text.',
 };
 
-export default async function ResourcesPage() {
+export default async function ResourcesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const t = await getServerT();
-  return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20">
+  const initialTab = parseResourcesTab((await searchParams).tab);
+  const guides = (
+    <>
       <HighlightLabType />
-      <header className="mb-12 sm:mb-16">
-        <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 tracking-tight leading-[1.1]">
-          {t('resources.title')}
-        </h1>
-        <p className="mt-4 text-base sm:text-lg text-gray-600 max-w-2xl">
-          {t('resources.subtitle')}
-        </p>
-      </header>
-
       <section aria-labelledby="contact-tips-heading" className="mb-16 sm:mb-20">
         <div className="flex items-center gap-3 mb-6">
           <Mail className="w-5 h-5 text-indigo-600" aria-hidden="true" />
@@ -59,6 +58,21 @@ export default async function ResourcesPage() {
           ))}
         </div>
       </section>
+    </>
+  );
+
+  return (
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20">
+      <header className="mb-8 sm:mb-10">
+        <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 tracking-tight leading-[1.1]">
+          {t('resources.title')}
+        </h1>
+        <p className="mt-4 text-base sm:text-lg text-gray-600 max-w-2xl">
+          {t('resources.subtitle')}
+        </p>
+      </header>
+
+      <ResourcesTabs initialTab={initialTab} guides={guides} importPanel={<ImportPanel />} />
     </div>
   );
 }
