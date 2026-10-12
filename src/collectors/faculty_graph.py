@@ -3024,6 +3024,7 @@ def _fetch_cola(dept: dict) -> list[dict]:
 #         "ladder_filter": {"drop": "emerit|lecturer|of the practice"},
 #     }
 #
+# ``records_key`` may be a dotted path when the list is nested ("data.results.profiles").
 # Options for a shared cross-department roster feed (UChicago BSD / Chemistry):
 #     "headers": {"Referer": "https://microbiology.uchicago.edu/"},  # same-origin gate
 #     "filter_field": "department", "filter_index": 0,               # PRIMARY appt only
@@ -3105,7 +3106,7 @@ def _fetch_json_dir(dept: dict) -> list[dict]:
                 break
             rk = cfg.get("records_key")
             if rk and isinstance(data, dict):
-                page_recs = data.get(rk) or []
+                page_recs = _dig(data, rk) or []
             elif isinstance(data, dict):
                 page_recs = next((v for v in data.values() if isinstance(v, list)), [])
             else:
@@ -3136,7 +3137,7 @@ def _json_dir_records(dept: dict, cfg: dict, recs) -> list[dict]:
     """Map a JSON directory payload (from a live endpoint or a committed file)
     into faculty specs, honouring the field-name / filter / title-map options."""
     if isinstance(recs, dict):
-        recs = (recs.get(cfg.get("records_key", "")) if cfg.get("records_key")
+        recs = (_dig(recs, cfg["records_key"]) if cfg.get("records_key")
                 else next((v for v in recs.values() if isinstance(v, list)), []))
     lf = cfg.get("ladder_filter") or {}
     require_re, drop_re = lf.get("require"), lf.get("drop")

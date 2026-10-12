@@ -41,6 +41,17 @@ def _feed(monkeypatch, payload):
     monkeypatch.setattr("requests.get", lambda *a, **k: _Resp())
 
 
+class _Page:
+    def __init__(self, payload):
+        self.payload = payload
+
+    def raise_for_status(self):
+        pass
+
+    def json(self):
+        return self.payload
+
+
 # --- engine: json_dir link_template / link_rewrite ---------------------------
 
 class TestJsonDirLinkTemplate:
@@ -92,6 +103,39 @@ class TestJsonDirLinkTemplate:
             "https://pharmacy.example.edu/profile/byron-ada/",
             "https://pharmacy.example.edu/profile/lee-bob-1/",
             ""]
+
+
+class TestJsonDirNestedRecords:
+    def test_records_key_may_be_a_dotted_path(self, monkeypatch):
+        _feed(monkeypatch, {"success": True, "data": {"results": {"profiles": [
+            {"name": "Ada Byron", "title": "Professor"}]}}})
+        people = fg._fetch_json_dir({"short": "X", "json_dir": {
+            "url": "https://feed.example.edu/api", "name_fields": ["name"],
+            "records_key": "data.results.profiles"}})
+        assert [p["name"] for p in people] == ["Ada Byron"]
+
+    def test_a_plain_records_key_reads_exactly_like_dict_get(self, monkeypatch):
+        # Every json_dir config before PHHP used a dotless records_key; the
+        # dotted-path change must leave their result untouched.
+        monkeypatch.setattr("requests.get", lambda *a, **k: _Page(
+            {"results": [{"name": "Ada Byron"}]}))
+        people = fg._fetch_json_dir({"short": "X", "json_dir": {
+            "url": "https://feed.example.edu/api", "name_fields": ["name"],
+            "records_key": "results"}})
+        assert [p["name"] for p in people] == ["Ada Byron"]
+
+    @pytest.mark.parametrize("payload", [
+        {"other": [{"name": "Ada Byron"}]},   # key missing
+        {"results": None},                    # key null
+        {"results": "oops"},                  # not a list
+    ])
+    def test_a_plain_records_key_with_no_list_yields_no_people_when_paged(
+            self, monkeypatch, payload):
+        monkeypatch.setattr("requests.get", lambda *a, **k: _Page(payload))
+        people = fg._fetch_json_dir({"short": "X", "json_dir": {
+            "url": "https://feed.example.edu/api", "name_fields": ["name"],
+            "records_key": "results", "paginate": {"max": 2}}})
+        assert people == []
 
 
 # --- engine: json_dir department_field / department_units --------------------
@@ -347,10 +391,42 @@ class TestFeedProfileLinks:
         assert urls == {"Ada Example": f"{host}/profile/example-ada/",
                         "Bo Sample": f"{host}/profile/sample-bo/"}
 
-    def test_uf_phhp_keeps_no_staging_link(self, monkeypatch):
+    @pytest.mark.parametrize("short, expected", [
+        # PHHP/PHHP2/PHHP3 split the college tree at the first-name boundaries
+        # of the retired Apollo pages, so existing ids keep resolving ("J. Quinn"
+        # sorted before "Ja" on those pages, so it stays on page 1).
+        ("PHHP", {"Ada Example", "Ian Sample", "J. Quinn Sample"}),
+        ("PHHP2", {"Joseph Sample"}),
+        ("PHHP3", {"Tanja Example"}),
+        # Biostatistics / Epidemiology are their own URLs: no name split.
+        ("PHHP4", {"Ada Example", "Ian Sample", "J. Quinn Sample", "Joseph Sample",
+                  "Tanja Example"}),
+    ])
+    def test_uf_phhp_reads_faculty_from_the_directory_api(
+            self, monkeypatch, short, expected):
         from src.collectors.schools import uf_faculty
-        urls = _feed_urls(monkeypatch, uf_faculty, "PHHP", "uf_apollo.json")
-        assert set(urls.values()) == {""}
+        pages = _fixture_json("uf_phhp_directory.json")
+
+        # The feed pages with ?page=N and answers an empty list past the end.
+        monkeypatch.setattr(
+            "requests.get",
+            lambda url, **k: _Page(pages[url.rsplit("page=", 1)[1]]))
+        people = fg._fetch_json_dir(_dept(uf_faculty, short))
+        # Rows with no title, a student/assistant title or emeritus are gated out.
+        assert {p["name"] for p in people} == expected
+        by_name = {p["name"]: p for p in people}
+        for name, person in by_name.items():
+            slug = {"Ada Example": "example-ada", "Ian Sample": "sample-ian",
+                    "Joseph Sample": "sample-joseph", "J. Quinn Sample": "sample-j",
+                    "Tanja Example": "example-tanja"}[name]
+            assert person["url"] == f"https://directory.ufhealth.org/{slug}"
+            assert person["email"].endswith("@ufl.edu")
+        if "Ada Example" in by_name:
+            # research_interests is the profile's own term list; an empty list
+            # stays empty rather than becoming invented research text.
+            assert by_name["Ada Example"]["keywords"] == [
+                "Health disparities", "Type 2 Diabetes"]
+            assert not by_name["Ian Sample"].get("keywords")
 
     @pytest.mark.parametrize("short, base", [
         ("ACCT", "https://tippie.uiowa.edu/people"),
