@@ -626,14 +626,15 @@ export function recordProfileIntent(
   //
   // Named ONCE each, not by every descendant. An ancestor this origin has
   // already superseded is reached through the operation that superseded it:
-  // effectiveOpBase, finishedClosures and the plan walk the ancestry
-  // (replacedThroughChain), the stage capture takes the connected component,
-  // and the cache unions `supersedes` over the whole journal — so a link to
-  // the predecessor gives every one of them what the full list did. Listing the full list gave
-  // each keystroke 37 bytes of UUID per keystroke before it: storage grew with
-  // the SQUARE of the characters typed, 160 characters was 575 KB, and the
-  // origin's 5 MB quota died near 500 with the rest of the paragraph lost on
-  // reload (production, 2026-08-31).
+  // effectiveOpBase walks the ancestry with its own walk, finishedClosures
+  // and the plan use replacedThroughChain, the stage capture takes the
+  // connected component, and the cache unions `supersedes` over the whole
+  // journal — so a link to the predecessor gives every one of them what the
+  // full list did. Listing the full list cost every keystroke 37 bytes of
+  // UUID per keystroke before it: storage grew with the SQUARE of the
+  // characters typed, 160 characters was 575 KB, and the origin's 5 MB quota
+  // died near 500 with the rest of the paragraph lost on reload (production,
+  // 2026-08-31).
   //
   // What stays fully named is the other origin's chain — the one a reload
   // left behind. The plan's heir check is the single consumer that needs a
@@ -848,7 +849,7 @@ function planKeysFromJournal(
       // the replaced one keep contributing its base would send the answer
       // against the revision the user has already looked at and rejected, and
       // collide all over again.
-      const replaced = new Set(ordered.flatMap((o) => o.op.supersedes ?? []));
+      const replaced = new Set(ordered.flatMap((o) => [...replacedThroughChain(o.op, byId)]));
       const order = ordered.filter((o) => !replaced.has(o.op.opId));
       if (order.length === 0) return null;
       return {

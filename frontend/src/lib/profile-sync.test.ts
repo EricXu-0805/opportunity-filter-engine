@@ -1975,7 +1975,7 @@ describe('a chain of edits that replaced each other is settled whole by its late
     expect(dirtyKeys(token)).toEqual([]);
   });
 
-  it('an edit the chain did not replace is still owed, and still sent', async () => {
+  it('the entries made while the save was in flight stay owed, and are sent afterwards', async () => {
     const server = casServer(START, 1);
     const token = await startOn(server);
     // A middle edit carrying a field the last edit does not: the last edit
@@ -2018,6 +2018,49 @@ describe('a chain of edits that replaced each other is settled whole by its late
       college: 'LAS', major: '', additional_majors: [], research_interests: 'graphics, HCI', grade: 'Masters',
     });
     expect(journalOps()).toEqual([]);
+  });
+
+  // A college switch (A) conflicts with a phone's Media/Film; instead of
+  // answering, the student picks a major (Z, replaces A), then switches
+  // college again (X, names only Z because Z already named A). A is reached
+  // from X only through Z, and Z does not carry college: A's college base
+  // (Grainger) must not still count as part of the chain.
+  async function collegeSwitchAfterAnotherField(phoneReverts: boolean) {
+    const server = casServer(START, 1);
+    const token = await startOn(server);
+    const a = { ...START, college: 'LAS', major: '', additional_majors: [] };
+    expect(recordProfileIntent(a, [...CASCADE], token)).toBe(true);
+    server.handle({ expectedRevision: 1, patch: { college: 'Media', major: 'Film' } });
+    expect((await stageProfilePatch(a, dirtyKeys(token), token)).status).toBe('conflict');
+    // The student does not answer; they pick a major instead.
+    const shown = { ...START, college: 'Media', major: 'Film', additional_majors: [] };
+    const z = { ...shown, major: 'Chem' };
+    expect(recordProfileIntent(z, ['major'], token)).toBe(true);
+    await stageProfilePatch(z, ['major'], token);
+    const x = { ...z, college: 'Eng', major: '', additional_majors: [] };
+    expect(recordProfileIntent(x, [...CASCADE], token)).toBe(true);
+    if (phoneReverts) server.handle({ expectedRevision: server.rev, patch: { college: 'Grainger' } });
+    const sentBefore = server.seen.length;
+    const result = await stageProfilePatch(x, dirtyKeys(token), token);
+    return { server, token, result, sent: server.seen.slice(sentBefore) };
+  }
+
+  it('a college switch after an edit of another field that replaced a conflicted switch is saved, not asked again', async () => {
+    const { server, token, result } = await collegeSwitchAfterAnotherField(false);
+    expect(result.status).toBe('saved');
+    expect(server.row).toMatchObject({ college: 'Eng', major: '', additional_majors: [] });
+    expect(journalOps(), 'nothing may still ask for the replaced switch').toEqual([]);
+    expect(dirtyKeys(token)).toEqual([]);
+  });
+
+  it('the same college switch is a conflict that keeps the phone\'s Grainger when the phone moved college back first', async () => {
+    const { server, token, result, sent } = await collegeSwitchAfterAnotherField(true);
+    expect(result.status).toBe('conflict');
+    expect(result.status === 'conflict' ? result.conflictKeys : []).toEqual(['college']);
+    expect(server.row.college, 'the phone\'s newer value is never silently overwritten').toBe('Grainger');
+    expect(sent.filter((s) => 'college' in s.patch && s.expected === server.rev)).toEqual([]);
+    expect(journalOps().length).toBeGreaterThan(0);
+    expect(dirtyKeys(token)).toContain('college');
   });
 });
 
