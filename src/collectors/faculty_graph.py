@@ -1014,16 +1014,15 @@ def _cover(bucket: str, n: int = 1) -> None:
         _ACTIVE_COVERAGE[bucket] = _ACTIVE_COVERAGE.get(bucket, 0) + n
 
 
-def _cover_listed(email: object, link: object) -> None:
-    """Note a roster row's address and profile link as still listed, kept or
-    dropped by the title gate (a json_dir walk with a stated total)."""
+def _cover_listed(email: object, link: object, name: str) -> None:
+    """Note a roster row's address, profile link and name as still listed, kept
+    or dropped by the title gate (a json_dir walk with a stated total)."""
     if _ACTIVE_COVERAGE is None:
         return
-    listed = _ACTIVE_COVERAGE.setdefault("_listed_rows", set())
-    if isinstance(email, str) and "@" in email:
-        listed.add(("email", email.strip().lower()))
-    if isinstance(link, str) and link.strip():
-        listed.add(("url", link.strip()))
+    _ACTIVE_COVERAGE.setdefault("_listed_rows", []).append((
+        email.strip().lower() if isinstance(email, str) and "@" in email else None,
+        link.strip() if isinstance(link, str) and link.strip() else None,
+        name))
 
 
 def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = None,
@@ -3050,9 +3049,10 @@ def _fetch_cola(dept: dict) -> list[dict]:
 # walk that read exactly that many distinct rows reports roster coverage, so
 # only such a unit can retire the people it no longer lists. A feed that
 # reorders between page requests can serve one row twice and another never, at
-# the same row count. Such a walk also records every row's address and profile
-# link, whatever the title gate makes of the row, so the retirement pass keeps
-# a stored person the directory still lists (see ``listed_identities``).
+# the same row count. Such a walk also records every row's address, profile
+# link and name, whatever the title gate makes of the row, so the retirement
+# pass keeps a stored person the directory still lists (see
+# ``listed_identities``).
 # Options for a shared cross-department roster feed (UChicago BSD / Chemistry):
 #     "headers": {"Referer": "https://microbiology.uchicago.edu/"},  # same-origin gate
 #     "filter_field": "department", "filter_index": 0,               # PRIMARY appt only
@@ -3268,9 +3268,12 @@ def _json_dir_records(dept: dict, cfg: dict, recs, *, roster: bool = False) -> l
         # Rows another department owns on a shared feed (above) are outside
         # this unit's roster; every row from here on is one of its rows.
         cover("raw_roster_rows")
+        name = re.sub(r"\s+", " ",
+                      " ".join(str(_dig(x, f) or "").strip() for f in name_fields)).strip()
         if roster:
             _cover_listed(_dig(x, cfg.get("email_field", "email")),
-                          _dig(x, cfg["link_field"]) if cfg.get("link_field") else None)
+                          _dig(x, cfg["link_field"]) if cfg.get("link_field") else None,
+                          name)
         if status_field is not None:
             sv = _dig(x, status_field)
             if status_value not in (sv if isinstance(sv, list) else [sv]):
@@ -3286,8 +3289,6 @@ def _json_dir_records(dept: dict, cfg: dict, recs, *, roster: bool = False) -> l
         ):
             cover("classified_nonfaculty_rows")
             continue
-        name = re.sub(r"\s+", " ",
-                      " ".join(str(_dig(x, f) or "").strip() for f in name_fields)).strip()
         if not _is_person_name(name):
             # A row that does not read as a person is loss, not a classification.
             cover("unparsed_rows")
@@ -4590,6 +4591,7 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
     if cov is not None:
         from src.normalizers.deactivate_stale_faculty import (  # noqa: PLC0415
             canonical_profile_url,
+            listed_name_key,
             listed_token,
         )
         seen_doc = set()
@@ -4602,13 +4604,20 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
         if listed is not None:
             # A link that is a directory page is everyone's, not a person's.
             listing = {canonical_profile_url(u) for u in listing_urls or ()}
+            # An address is a person's only when one row carries it (a row
+            # served twice is still one) and that row reads as a name; it then
+            # counts together with the name, so a staff row on an office or
+            # forwarded address keeps no one else.
+            rows = set(listed)
+            carriers = Counter(email for email, _, _ in rows if email)
             tokens = set()
-            for kind, value in listed:
-                if kind == "url":
-                    value = canonical_profile_url(value)
-                    if not value or value in listing:
-                        continue
-                tokens.add(listed_token(kind, value))
+            for email, link, name in rows:
+                url = canonical_profile_url(link)
+                if url and url not in listing:
+                    tokens.add(listed_token("url", url))
+                person = listed_name_key(name) if _is_person_name(name) else None
+                if email and carriers[email] == 1 and person:
+                    tokens.add(listed_token("email", f"{email} {person}"))
             listed_identities = sorted(tokens)
     if cov is not None:
         # Identity loss is roster loss: a row we parsed but could not identify

@@ -277,9 +277,10 @@ _BO, _DI, _ED = _person("Bo Chen"), _person("Di Evans"), _person("Ed Fox")
 
 class TestJsonDirStillListed:
     """Owner decision 2026-10-11: a stored person whom the directory still lists,
-    by address or profile link, is not retired whatever the title gate makes of
-    their row (UF PHHP lists Thomas A Pearson with no title). It is a per-row
-    protection: the people the walk no longer lists are still retired."""
+    by profile link or by an address only one row carries under their name, is
+    not retired whatever the title gate makes of their row (UF PHHP lists Thomas
+    A Pearson with no title). It is a per-row protection: the people the walk no
+    longer lists are still retired."""
 
     @staticmethod
     def _run(monkeypatch, feeds):
@@ -306,8 +307,9 @@ class TestJsonDirStillListed:
         ledger: dict = {}
         return fg.fetch_and_normalize(school, deep=True, unit_ledger=ledger), ledger
 
-    def _retire(self, monkeypatch, before, after, edit=None):
-        """Store what ``before`` lists, re-walk ``after``, run the stale pass."""
+    def _retire(self, monkeypatch, before, after, edit=None, unlisted=()):
+        """Store what ``before`` lists, re-walk ``after``, run the stale pass.
+        The ``unlisted`` units record no listed rows, as an HTML roster does."""
         from datetime import date
 
         from src.normalizers.deactivate_stale_faculty import deactivate_stale_faculty, finalize_unit_ledger
@@ -322,6 +324,8 @@ class TestJsonDirStillListed:
                 by_id[r["id"]].update(r)
             else:
                 corpus.append(r)
+        for unit in unlisted:
+            del ledger[unit]["listed_identities"]
         finalize_unit_ledger(ledger, corpus, "x_faculty")
         counts = deactivate_stale_faculty(corpus, {"x_faculty": ledger},
                                           today=date(2026, 10, 11))
@@ -334,6 +338,7 @@ class TestJsonDirStillListed:
         dict(_BO, title="Professor Emeritus"),
         dict(_BO, title="Program Coordinator", email=None),  # by profile link
         dict(_BO, title="", url="https://x.edu/p/bo-chen-2"),  # by address
+        dict(_BO, title="", url="https://x.edu/p/bo-chen-2", name="BO CHÉN"),
     ])
     def test_a_listed_person_the_gate_drops_stays_and_the_absent_are_retired(
             self, monkeypatch, bo):
@@ -373,6 +378,37 @@ class TestJsonDirStillListed:
         retired, _, _ = self._retire(
             monkeypatch, {"X": [_BO, _DI]}, {"X": [_DI, office]},
             edit={"Bo Chen": listing_page})
+        assert retired == ["x/Bo Chen"]
+
+    @pytest.mark.parametrize("rows_after", [
+        # Bo left; his stored address is the office's, which a staff row carries.
+        {"X": [_DI, dict(_person("Sam Staff", title="Program Coordinator"),
+                         email="epi-office@x.edu")]},
+        # Two rows carry it, one under a name that reads like his.
+        {"X": [_DI, *(dict(_person(n, title="Program Coordinator"), email="epi-office@x.edu")
+                      for n in ("Bea Chen", "Tia Staff"))]},
+        # A row that names no person carries it, under another unit.
+        {"X": [_DI], "Y": [_ED, {"name": "Epidemiology Front Office", "title": "Office",
+                                 "url": "https://x.edu/y/office", "email": "epi-office@x.edu"}]},
+    ], ids=["one-staff-row", "two-rows", "office-row-in-another-unit"])
+    def test_an_office_address_keeps_no_one_whose_name_its_one_row_does_not_read(
+            self, monkeypatch, rows_after):
+        def office_address(r):
+            r["contact_email"] = "epi-office@x.edu"
+
+        retired, counts, _ = self._retire(
+            monkeypatch, {"X": [_BO, _DI], "Y": [_ED]}, rows_after,
+            edit={"Bo Chen": office_address})
+        assert retired == ["x/Bo Chen"]
+        assert counts["records_preserved_still_listed"] == 0
+
+    def test_a_listing_keeps_no_one_in_a_unit_that_records_no_listed_rows(
+            self, monkeypatch):
+        # X stands for an HTML roster that dropped Bo; Y's directory lists him.
+        retired, counts, _ = self._retire(
+            monkeypatch, {"X": [_BO, _DI], "Y": [_ED]},
+            {"X": [_DI], "Y": [_ED, dict(_BO, title="", url="https://x.edu/y/bo")]},
+            unlisted=("x",))
         assert retired == ["x/Bo Chen"]
 
     def test_the_ledger_carries_no_listed_address_or_link(self, monkeypatch):

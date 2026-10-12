@@ -28,7 +28,9 @@ from __future__ import annotations
 import hashlib
 import hmac
 import logging
+import re
 import secrets
+import unicodedata
 from datetime import date, datetime, timedelta
 
 logger = logging.getLogger(__name__)
@@ -399,15 +401,34 @@ def listed_token(kind: str, value: str) -> str:
                     hashlib.sha256).hexdigest()[:16]
 
 
+_NAME_SUFFIXES = frozenset({"jr", "sr", "ii", "iii", "iv"})
+
+
+def listed_name_key(name: object) -> str | None:
+    """A name's surname and first initial, case- and accent-insensitive
+    ("Thomas A Pearson" -> "pearson t"), or None without both. Only the part
+    before a comma counts (", MD", ", Jr."), so "Pearson, Thomas" has none."""
+    if not isinstance(name, str):
+        return None
+    folded = "".join(c for c in unicodedata.normalize("NFKD", name)
+                     if not unicodedata.combining(c)).casefold()
+    words = [w for w in re.findall(r"[^\W\d_]+(?:['-][^\W\d_]+)*",
+                                   folded.split(",")[0])
+             if w not in _NAME_SUFFIXES]
+    return f"{words[-1]} {words[0][0]}" if len(words) >= 2 else None
+
+
 def _listed_tokens_of(record: dict) -> set[str]:
-    """The tokens a listed row would carry for this record's address or link."""
+    """The tokens a listed row would carry for this record: its profile link,
+    and its address together with its name (see ``_unit_observation``)."""
     tokens = set()
     url = canonical_profile_url(record.get("url") or record.get("source_url"))
     if url:
         tokens.add(listed_token("url", url))
     email = record.get("contact_email")
-    if isinstance(email, str) and "@" in email:
-        tokens.add(listed_token("email", email.strip().lower()))
+    person = listed_name_key(record.get("pi_name"))
+    if isinstance(email, str) and "@" in email and person:
+        tokens.add(listed_token("email", f"{email.strip().lower()} {person}"))
     return tokens
 
 
@@ -797,17 +818,21 @@ def deactivate_stale_faculty(
             for record in active:
                 key = _unit_id_of(record) if rich else _unit_of(record)
                 by_unit.setdefault(key, []).append(record)
-            # A stored person the source's directory still lists, by address or
-            # profile link, is not gone however the title gate read the row
-            # (UF PHHP lists Thomas A Pearson with no title). Unless a record
-            # this run observed carries that address or link: then the person
-            # is live there, and the stored row is a superseded copy for the
-            # tombstone pass to fold away.
+            # A stored person the source's directory still lists, by profile
+            # link or by an address only their own row carries, is not gone
+            # however the title gate read the row (UF PHHP lists Thomas A
+            # Pearson with no title). Only in a unit that records its listed
+            # rows: another college's professor is not kept by a PHHP listing.
+            # Unless a record this run observed carries that address or link:
+            # then the person is live there, and the stored row is a superseded
+            # copy for the tombstone pass to fold away.
             listed: set = set()
-            for entry in ledger.values():
+            listed_units: set = set()
+            for unit_id, entry in ledger.items():
                 if isinstance(entry, dict) and isinstance(
                         entry.get("listed_identities"), list):
                     listed.update(entry["listed_identities"])
+                    listed_units.add(unit_id)
             if listed:
                 observed_here: set = set()
                 for entry in ledger.values():
@@ -898,7 +923,7 @@ def deactivate_stale_faculty(
                     if seen is None or seen >= cutoff:
                         counts["kept_fresh"] += 1
                         continue
-                    if listed and listed & _listed_tokens_of(opp):
+                    if unit in listed_units and listed & _listed_tokens_of(opp):
                         counts["records_preserved_still_listed"] += 1
                         counts["kept_fresh"] += 1
                         continue
