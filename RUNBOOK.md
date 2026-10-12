@@ -59,7 +59,11 @@ with its URL waits the same way. If the page reopens before the old file's
 day, the program stays unlisted until the new file's first day after it, up to
 13 days after the edit, or later if that day's run cannot load the page. Its
 new source must crawl the page (list it in its `seeds`), or the program is
-never listed again.
+never listed again. Three cases do not wait this way: a record on a page its
+config shares with another program (`shared_program_page`), which takes no
+row's claim, and a program renamed back to a key, or moved back to a file,
+where it already has a stored row; in each, a quick run or a failed load can
+list the program from that row or as it arrived, until a run reads its page.
 
 To retire a config's open programs, empty the open source's `programs` and
 leave the source in place until a Sunday run has passed. A deleted open source
