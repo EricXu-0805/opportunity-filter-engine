@@ -2047,12 +2047,33 @@ export interface ProfileHydration {
 }
 
 /**
+ * The operations THIS DOCUMENT still has outstanding, by id. A form takes this
+ * when it mounts: everything here was recorded before it existed, by a screen
+ * that in-app navigation has since unmounted, and that screen will never send
+ * it. Handed back to `hydrateProfile` as `leftBehind`. Empty when the journal
+ * cannot be read, which recovers nothing rather than guessing.
+ */
+export function readDocumentOpIds(): ReadonlySet<string> {
+  const journal = readOutstandingOps();
+  if (!journal.ok) return new Set();
+  const origin = getJournalOriginId();
+  return new Set(journal.value.filter((op) => op.originId === origin).map((op) => op.opId));
+}
+
+/**
  * Reads the cloud row and reconciles it with this browser's envelope + legacy
  * raw mirror. Throws exactly what loadProfile throws (OwnerNotReadyError for
  * an unattributable read, Error for a failed one) — a failed read is never
  * turned into "you have no profile".
+ *
+ * `leftBehind` (see readDocumentOpIds) names this document's own operations
+ * that `hasPending` reports like another document's.
  */
-export async function hydrateProfile(signal?: AbortSignal, observe?: ProfileReadObserver): Promise<ProfileHydration> {
+export async function hydrateProfile(
+  signal?: AbortSignal,
+  observe?: ProfileReadObserver,
+  leftBehind: ReadonlySet<string> = new Set(),
+): Promise<ProfileHydration> {
   assertProfileReadActive(signal);
   // The network read happens FIRST and unlocked — holding the shared-state
   // lock across it would freeze every other tab for as long as it takes.
@@ -2071,7 +2092,7 @@ export async function hydrateProfile(signal?: AbortSignal, observe?: ProfileRead
   assertProfileReadActive(signal);
   const token = loaded.token;
   try {
-    return await awaitProfileRead(hydrateLoadedProfile(loaded, token, observedBefore, signal, observe), signal);
+    return await awaitProfileRead(hydrateLoadedProfile(loaded, token, observedBefore, leftBehind, signal, observe), signal);
   } catch (err) {
     assertProfileReadActive(signal);
     // Everything above this line ran with `token` already fixed, so a failure
@@ -2231,6 +2252,7 @@ async function hydrateLoadedProfile(
   loaded: LoadedProfile,
   token: OwnerToken,
   observedBefore: LoadFence,
+  leftBehind: ReadonlySet<string>,
   signal?: AbortSignal,
   observe?: ProfileReadObserver,
 ): Promise<ProfileHydration> {
@@ -2252,7 +2274,7 @@ async function hydrateLoadedProfile(
       // below is synchronous: cancellation cannot interleave with its writes.
       assertProfileReadActive(signal);
       observe?.('reconcile-locked');
-      return reconcileLoadedProfile(loaded, token, observedBefore);
+      return reconcileLoadedProfile(loaded, token, observedBefore, leftBehind);
     },
   );
   assertProfileReadActive(signal);
@@ -2311,6 +2333,7 @@ function reconcileLoadedProfile(
   loaded: LoadedProfile,
   token: OwnerToken,
   observedBefore: LoadFence = { revision: 0, tombstone: null },
+  leftBehind: ReadonlySet<string> = new Set(),
 ): ProfileHydration {
   if (!readProfileSyncEnvelopeStrict().ok) throw new ExperienceEvidenceError('invalid_entries');
   const journal = readOutstandingOps();
@@ -2696,12 +2719,15 @@ function reconcileLoadedProfile(
     // left behind by a document that is gone (a closed tab, a reload inside
     // the autosave debounce). Operations this document recorded itself are
     // deliberately excluded — the live form still holds those edits and will
-    // send them on its own, and flushing them here races its own save.
+    // send them on its own, and flushing them here races its own save — except
+    // the ones the caller says a screen that is gone left behind: in-app
+    // navigation unmounts a form without ending the document, and nothing
+    // else would ever send what it left.
     // Unsent WORK, not leftover bytes: an operation whose planned value is
     // already what the row holds has nothing to send, however it got that way
     // — answered by a receipt, superseded, or landed under another mutation.
     hasPending: !!pending || journal.value.some((op) => (
-      op.originId !== getJournalOriginId()
+      (op.originId !== getJournalOriginId() || leftBehind.has(op.opId))
       && op.fields.some((f) => {
         const plan = journalPlan.get(f.key);
         if (plan?.kind !== 'value') return false;
@@ -4447,6 +4473,23 @@ function survivorFor(
 const MAX_AUTO_REBASES = 1;
 const COORDINATOR_WRITE_ID = 'profile-coordinator';
 
+/** The entry a queued flush was asked to send, found gone from the outbox
+ *  because the row on record already holds every value it was to send. That
+ *  is the write landing, not a failure to send it; anything else is not. */
+function landedAhead(
+  queued: ProfilePendingWrite | null,
+  mutationId: string,
+  confirmed: { revision: number; profile: ProfileData } | null,
+): ProfileSaveResult | null {
+  if (!queued || queued.mutationId !== mutationId || !confirmed) return null;
+  const locked = new Set(queued.lockedKeys);
+  const sent = queued.dirtyKeys.filter((k) => !locked.has(k));
+  const wanted = queued.desiredProfile as unknown as Record<string, unknown>;
+  const row = confirmed.profile as unknown as Record<string, unknown>;
+  if (sent.length === 0 || !sent.every((k) => sameValue(wanted[k], row[k]))) return null;
+  return { status: 'already-saved', revision: confirmed.revision, profile: confirmed.profile };
+}
+
 /**
  * Sends whatever the outbox holds under `mutationId`. Serialized per owner:
  * a queued attempt re-reads the envelope when its turn actually comes, so a
@@ -4455,6 +4498,11 @@ const COORDINATOR_WRITE_ID = 'profile-coordinator';
  * has superseded stands down instead of racing it.
  */
 function flushByMutation(mutationId: string, token: OwnerToken): Promise<ProfileSaveResult> {
+  // What this write was to send, as it stood when the flush was queued. A
+  // write ahead of it in this page's queue can be sending the very same entry
+  // (the Home form that in-app navigation replaced, still saving), and by
+  // this flush's turn it has landed.
+  const queued = readProfileSyncEnvelope()?.pending ?? null;
   return enqueuePrivateWrite(token, COORDINATOR_WRITE_ID, async () => {
     let currentId = mutationId;
     // Set when a conflict was resolved into "these collided, the rest is
@@ -4470,7 +4518,10 @@ function flushByMutation(mutationId: string, token: OwnerToken): Promise<Profile
       if (!isOwnerTokenValid(token, token.uid)) return { status: 'abandoned' } as ProfileSaveResult;
       const env = readProfileSyncEnvelope();
       const pending = env?.pending ?? null;
-      if (!pending) return { status: 'blocked' } as ProfileSaveResult;
+      if (!pending) {
+        return (rebases === 0 ? landedAhead(queued, mutationId, env?.confirmed ?? null) : null)
+          ?? { status: 'blocked' } as ProfileSaveResult;
+      }
       if (pending.mutationId !== currentId) {
         // Superseded while queued. The newer entry has its own flush behind
         // this one and carries this write's fields (edits LAYER), so standing
