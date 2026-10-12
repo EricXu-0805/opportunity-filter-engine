@@ -675,6 +675,26 @@ class TestFeedProfileLinks:
                 "Health disparities", "Type 2 Diabetes"]
             assert not by_name["Ian Sample"].get("keywords")
 
+    @pytest.mark.parametrize("title, published", [
+        # The directory writes many professor titles in HR shorthand.
+        ("AST PROF", True), ("ASO PROF", True), ("CLIN AST PROF", True),
+        ("RES AST PROF", True), ("PROF", True), ("PROF, INTERIM CHAIR", True),
+        ("CHAIR & PROF", True), ("Clin Assoc Prof & Assistant Chair, Dept PT", True),
+        # Its shorthand for courtesy, adjunct and emeritus stays out, as do
+        # staff titles and rows with no title.
+        ("CO PROF", False), ("CO CLIN ASO PROF", False), ("ADJ LECTURER", False),
+        ("PROF EMER", False), ("IT Professional 1", False), ("", False),
+    ])
+    def test_uf_phhp_reads_the_directorys_shorthand_titles(
+            self, monkeypatch, title, published):
+        from src.collectors.schools import uf_faculty
+        ada = {"slug": "example-ada", "full_name": "Ada Example", "title": title,
+               "email": "ada@ufl.edu", "profile_url": "https://directory.ufhealth.org/example-ada"}
+        monkeypatch.setattr("requests.get", lambda url, **k: _Page({"data": {
+            "count": 1, "results": {"profiles": [ada] if url.endswith("page=1") else []}}}))
+        people = fg._fetch_json_dir(_dept(uf_faculty, "PHHP4"))
+        assert [p["name"] for p in people] == (["Ada Example"] if published else [])
+
     @pytest.mark.parametrize("short, base", [
         ("ACCT", "https://tippie.uiowa.edu/people"),
         ("EDUTL", "https://education.uiowa.edu/directory"),

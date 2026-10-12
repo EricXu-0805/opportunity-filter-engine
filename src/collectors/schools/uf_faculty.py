@@ -341,9 +341,16 @@ _PHHP_API = ("https://directory.ufhealth.org/webservices/v1.1/departments/"
 # (Thomas A Pearson, listed under Epidemiology with no title).
 _PHHP_PAGE1 = r"^(?:[A-I]|J(?:[^a-z]|[a-n]|o[a-h]))"  # "J. Glenn" sorts before "Ja"
 _PHHP_PAGE3 = r"^(?:T[b-z]|Ta[n-z]|[U-Z])"
+# Many PHHP titles are HR shorthand: "AST PROF", "CLIN ASO PROF", "RES AST PROF",
+# "PROF, INTERIM CHAIR", "CHAIR & PROF". "PROF" as a whole word is a professor
+# ("IT Professional" is not). The shorthand for courtesy is an upper-case "CO"
+# word ("CO PROF", "CO CLIN ASO PROF"), dropped like "courtesy", and so are ADJ,
+# VIS and EMER, the shorthand for the ladder's other drops ("ADJ LECTURER").
+_PHHP_LADDER = {"require": _LADDER["require"] + r"|\bprof\b",
+                "drop": _LADDER["drop"] + r"|(?-i:\bCO\s)|\badj\b|\bvis\b|\bemer\b"}
 # json_dir lets a record with NO title through; "require" on the title field
 # drops those (staff, students, grad assistants carry none or a non-faculty one).
-_PHHP_FACULTY = {"field": "title", "include": _LADDER["require"]}
+_PHHP_FACULTY = {"field": "title", "include": _PHHP_LADDER["require"]}
 
 
 def _phhp(short: str, deptid: str, *name_gates: dict) -> dict:
@@ -364,7 +371,7 @@ def _phhp(short: str, deptid: str, *name_gates: dict) -> dict:
             "link_field": "profile_url",
             "research_field": ["research_interests[]"],
             "field_filters": [_PHHP_FACULTY, *name_gates],
-            "ladder_filter": _LADDER,
+            "ladder_filter": _PHHP_LADDER,
         },
     }
 

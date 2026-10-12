@@ -103,8 +103,8 @@ def test_the_next_refresh_lists_every_phhp_person_once(monkeypatch, tmp_path):
                   sum(1 for r in phhp if _short(r) == s and not _active(r)))
               for s in SHORTS}
     # (active, retired) per short.
-    assert counts == {"phhp": (72, 12), "phhp2": (69, 9), "phhp3": (9, 5),
-                      "phhp4": (29, 0), "phhp5": (26, 0)}
+    assert counts == {"phhp": (79, 12), "phhp2": (72, 9), "phhp3": (11, 5),
+                      "phhp4": (31, 0), "phhp5": (26, 0)}
 
     active = [r for r in phhp if _active(r)]
     emails = Counter(r["contact_email"] for r in active)
