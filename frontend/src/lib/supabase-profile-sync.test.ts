@@ -61,8 +61,10 @@ import {
 import { STORAGE_KEYS } from './storage-keys';
 import {
   commitProfilePatch,
+  findLatestProfileArchive,
   getDeviceId,
   getStorageStatus,
+  loadArchivedGuestProfile,
   loadProfile,
   onAuthChange,
   OwnerNotReadyError,
@@ -799,5 +801,130 @@ describe('loadProfile: an unverified read is an error, never an empty profile', 
     mockFrom.mockImplementation(() => selectChain(null));
 
     await expect(loadProfile()).resolves.toMatchObject({ source: 'cloud-absent', profile: null });
+  });
+});
+
+describe('the guest profile a merge set aside: found by id, restored only by that id', () => {
+  const ARCHIVE = '6f1c2b9e-0d4a-4c1e-9a57-3f2d8e1b7c40';
+  const AT = '2026-10-11T23:53:27.123456+00:00';
+  /** A PostgREST builder that records the query it was given and answers
+   *  `results` in order, one per query. */
+  function versionsQueries(...results: Array<Promise<{ data: unknown; error: unknown }>>) {
+    const queries: Array<Array<[string, unknown[]]>> = [];
+    const chains: Array<Record<string, unknown>> = [];
+    mockFrom.mockImplementation(() => {
+      const calls: Array<[string, unknown[]]> = [];
+      const result = results[queries.length];
+      queries.push(calls);
+      const chain: Record<string, unknown> = {};
+      for (const method of ['select', 'eq', 'is', 'gt', 'order']) {
+        chain[method] = vi.fn((...args: unknown[]) => { calls.push([method, args]); return chain; });
+      }
+      // A query ends at limit() (awaited) or maybeSingle().
+      chain.limit = vi.fn((...args: unknown[]) => {
+        calls.push(['limit', args]);
+        return Object.assign(Object.create(chain) as object, { then: (ok: (v: unknown) => unknown, bad: (e: unknown) => unknown) => result.then(ok, bad) });
+      });
+      chain.maybeSingle = vi.fn(() => { calls.push(['maybeSingle', []]); return result; });
+      for (const write of ['insert', 'upsert', 'update', 'delete']) chain[write] = vi.fn();
+      chains.push(chain);
+      return chain;
+    });
+    return { queries, chains };
+  }
+  async function signedInAs(uid: string) {
+    await liveAuthCallback?.('SIGNED_IN', session(uid).data.session);
+    mockGetSession.mockResolvedValue(session(uid));
+  }
+
+  it('finds the newest revision-less row of the caller\'s own history, and writes nothing', async () => {
+    await signedInAs(U1);
+    const { queries, chains } = versionsQueries(Promise.resolve({ data: { id: ARCHIVE }, error: null }));
+
+    await expect(findLatestProfileArchive(captureOwnerToken())).resolves.toBe(ARCHIVE);
+    expect(mockFrom).toHaveBeenCalledWith('profile_versions');
+    expect(queries).toEqual([[
+      ['select', ['id']],
+      ['eq', ['device_id', U1]],
+      ['is', ['profile_revision', null]],
+      ['order', ['created_at', { ascending: false }]],
+      ['limit', [1]],
+      ['maybeSingle', []],
+    ]]);
+    for (const write of ['insert', 'upsert', 'update', 'delete']) expect(chains[0][write]).not.toHaveBeenCalled();
+    expect(mockRpc).not.toHaveBeenCalled();
+  });
+
+  it('finds nothing when the history holds no revision-less row, and throws when the read fails', async () => {
+    await signedInAs(U1);
+    versionsQueries(Promise.resolve({ data: null, error: null }));
+    await expect(findLatestProfileArchive(captureOwnerToken())).resolves.toBeNull();
+    versionsQueries(Promise.resolve({ data: null, error: { message: 'boom' } }));
+    await expect(findLatestProfileArchive(captureOwnerToken())).rejects.toThrow('boom');
+  });
+
+  it('reads the recorded row by its id, and checks that no merge archived anything after it', async () => {
+    await signedInAs(U1);
+    const { queries, chains } = versionsQueries(
+      Promise.resolve({ data: { id: ARCHIVE, profile_data: { major: 'Physics', name: 'Guest' }, created_at: AT }, error: null }),
+      Promise.resolve({ data: [], error: null }),
+    );
+
+    await expect(loadArchivedGuestProfile(captureOwnerToken(), ARCHIVE)).resolves.toEqual({ major: 'Physics', name: 'Guest' });
+    expect(queries).toEqual([
+      [
+        ['select', ['id, profile_data, created_at']],
+        ['eq', ['device_id', U1]],
+        ['eq', ['id', ARCHIVE]],
+        ['is', ['profile_revision', null]],
+        ['maybeSingle', []],
+      ],
+      [
+        ['select', ['id']],
+        ['eq', ['device_id', U1]],
+        ['is', ['profile_revision', null]],
+        ['gt', ['created_at', AT]],
+        ['limit', [1]],
+      ],
+    ]);
+    for (const chain of chains) for (const write of ['insert', 'upsert', 'update', 'delete']) expect(chain[write]).not.toHaveBeenCalled();
+    expect(mockRpc).not.toHaveBeenCalled();
+  });
+
+  it('restores nothing in place of a row that is gone or that a later merge followed', async () => {
+    await signedInAs(U1);
+    const { queries } = versionsQueries(Promise.resolve({ data: null, error: null }));
+    await expect(loadArchivedGuestProfile(captureOwnerToken(), ARCHIVE)).resolves.toBeNull();
+    expect(queries, 'nothing else is looked up for a missing row').toHaveLength(1);
+
+    versionsQueries(
+      Promise.resolve({ data: { id: ARCHIVE, profile_data: { major: 'G1 guest' }, created_at: AT }, error: null }),
+      Promise.resolve({ data: [{ id: 'a-later-merge' }], error: null }),
+    );
+    await expect(loadArchivedGuestProfile(captureOwnerToken(), ARCHIVE)).resolves.toBeNull();
+  });
+
+  it('throws, never "none", when either read fails', async () => {
+    await signedInAs(U1);
+    versionsQueries(Promise.resolve({ data: null, error: { message: 'boom' } }));
+    await expect(loadArchivedGuestProfile(captureOwnerToken(), ARCHIVE)).rejects.toThrow('boom');
+    versionsQueries(
+      Promise.resolve({ data: { id: ARCHIVE, profile_data: { major: 'Physics' }, created_at: AT }, error: null }),
+      Promise.resolve({ data: null, error: { message: 'later boom' } }),
+    );
+    await expect(loadArchivedGuestProfile(captureOwnerToken(), ARCHIVE)).rejects.toThrow('later boom');
+  });
+
+  it('rejects when the identity changes during the read, rather than handing one account another\'s profile', async () => {
+    await signedInAs(U1);
+    let resolveSelect!: (v: { data: unknown; error: unknown }) => void;
+    const { queries } = versionsQueries(new Promise((r) => { resolveSelect = r; }));
+
+    const promise = loadArchivedGuestProfile(captureOwnerToken(), ARCHIVE);
+    for (let i = 0; i < 30 && queries.length === 0; i += 1) await Promise.resolve();
+    await liveAuthCallback?.('SIGNED_IN', session(U2).data.session);
+    resolveSelect({ data: { id: ARCHIVE, profile_data: { major: 'U1 guest' }, created_at: AT }, error: null });
+
+    await expect(promise).rejects.toBeInstanceOf(OwnerNotReadyError);
   });
 });

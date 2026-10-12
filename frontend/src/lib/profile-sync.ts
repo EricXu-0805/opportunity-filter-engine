@@ -2151,6 +2151,82 @@ export async function forgetMergedGuestRevision(token: OwnerToken): Promise<bool
   return locked.ok && locked.value;
 }
 
+/** Whether `stored` holds `profile`'s value in every profile field, object
+ *  keys in any order (the server returns jsonb). */
+export function storedProfileIs(stored: Record<string, unknown> | null, profile: Record<string, unknown>): boolean {
+  return !!stored && PROFILE_KEYS.every((key) => sameValue(stored[key], profile[key]));
+}
+
+/** What a whole-profile save made outside the form's edits came to (see
+ *  saveWholeProfile). */
+export type WholeProfileSaveOutcome =
+  /** The row is now the profile sent. `hydration` is that row taken in as
+   *  this browser's stored row, null when it could not be. */
+  | { status: 'saved'; revision: number; hydration: ProfileHydration | null }
+  /** Another write got there first and nothing was written. `hydration` is
+   *  the row as it stands, taken in the same way. */
+  | { status: 'conflict'; revision: number; hydration: ProfileHydration | null }
+  /** Nothing was written: no row to patch, no backend, or another identity. */
+  | { status: 'refused' }
+  /** Sent, with no answer this browser can read: the row may or may not be
+   *  the profile sent. */
+  | { status: 'unknown' };
+
+/**
+ * Saves `profile`, every field of it, as ONE revision-checked save against
+ * `expectedRevision`, and nothing else: no journal operation, no outbox
+ * entry, so nothing of it is ever sent later by a flush, a resend or a
+ * reload. Home's guest-profile restore, which changes the form only once the
+ * server has saved it. The row the server answers with, saved or
+ * conflicting, is taken in exactly as a read that returned it would be.
+ */
+export async function saveWholeProfile(
+  token: OwnerToken,
+  profile: Record<string, unknown>,
+  expectedRevision: number,
+): Promise<WholeProfileSaveOutcome> {
+  const fence = readProfileSyncEnvelope();
+  const observedBefore: LoadFence = {
+    revision: fence?.confirmed?.revision ?? 0,
+    tombstone: fence?.tombstone?.reason ?? null,
+  };
+  let outcome: ProfilePatchOutcome;
+  try {
+    outcome = await commitProfilePatch({ expectedRevision, patch: profile, token, mutationId: newMutationId() });
+  } catch {
+    return { status: 'unknown' };
+  }
+  switch (outcome.status) {
+    case 'saved':
+    case 'already-saved':
+    case 'conflict': {
+      const row: LoadedProfile = { source: 'cloud', profile: outcome.profile, revision: outcome.revision, token };
+      const hydration = await hydrateLoadedProfile(row, token, observedBefore).catch(() => null);
+      return { status: outcome.status === 'conflict' ? 'conflict' : 'saved', revision: outcome.revision, hydration };
+    }
+    case 'transport-error':
+    case 'malformed':
+      return { status: 'unknown' };
+    default:
+      return { status: 'refused' };
+  }
+}
+
+/**
+ * After saveWholeProfile came back 'unknown': reads the stored row (a
+ * hydrateProfile, so it is taken in as any read is) and says whether it is
+ * `profile` in every profile field. Throws what hydrateProfile throws.
+ */
+export async function readWhetherStoredProfileIs(
+  profile: Record<string, unknown>,
+  signal?: AbortSignal,
+): Promise<{ matches: boolean; hydration: ProfileHydration }> {
+  const hydration = await hydrateProfile(signal);
+  const stored = hydration.source === 'cloud'
+    ? hydration.baseProfile as unknown as Record<string, unknown> | null : null;
+  return { matches: storedProfileIs(stored, profile), hydration };
+}
+
 async function hydrateLoadedProfile(
   loaded: LoadedProfile,
   token: OwnerToken,

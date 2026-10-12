@@ -12,6 +12,7 @@ import { ResumeMasterCard } from './home/ResumeMasterCard';
 import { DocumentsCard } from './home/DocumentsCard';
 import { HeroSection } from './home/HeroSection';
 import { LiveDatabaseCard } from './home/LiveDatabaseCard';
+import { MergedGuestProfileNotice } from './home/MergedGuestProfileNotice';
 import { OnlineProfilesCard } from './home/OnlineProfilesCard';
 import { ProfileStrength } from './home/ProfileStrength';
 import { SaveCta } from './home/SaveCta';
@@ -72,6 +73,11 @@ function HomePageInner() {
     handleExperienceChange,
     handleResumeMasterChange,
     handleGitHubImport,
+    guestRestoreBlocker,
+    restoreArchivedProfile,
+    confirmArchivedProfileRestored,
+    guestRestoreHeld,
+    isArchivedProfileStored,
   } = useProfileForm(t);
 
   useEffect(() => {
@@ -82,6 +88,16 @@ function HomePageInner() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
       {shareError && <p role="alert" className="mb-4 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">{shareError}</p>}
       <SharedBanner message={sharedBanner} onDismiss={dismissSharedBanner} t={t} />
+      <MergedGuestProfileNotice
+        key={`merged-guest-${identityGeneration}`}
+        ready={hydrationState === 'ready' && viewSnapshot !== null}
+        owner={viewSnapshot?.token ?? null}
+        blocker={guestRestoreBlocker}
+        onRestore={restoreArchivedProfile}
+        onCheck={confirmArchivedProfileRestored}
+        onStored={isArchivedProfileStored}
+        t={t}
+      />
 
       <HeroSection t={t} />
 
@@ -96,7 +112,7 @@ function HomePageInner() {
             identityGeneration={identityGeneration}
             profile={profile}
             update={update}
-            viewSnapshot={profileRefreshStatus === 'ready' ? viewSnapshot : null}
+            viewSnapshot={profileRefreshStatus === 'ready' && !guestRestoreHeld ? viewSnapshot : null}
             t={t}
           />
         </div>
@@ -164,6 +180,7 @@ function HomePageInner() {
         signedInElsewhere={signedInElsewhere}
         profileRefreshStatus={profileRefreshStatus}
         onRetryProfileRefresh={retryProfileRefresh}
+        guestRestoreHeld={guestRestoreHeld}
         onKeepMyChanges={keepMyChanges}
         onUseCloudVersion={useCloudVersion}
         onSubmit={handleSubmit}
