@@ -178,6 +178,23 @@ describe('a Home form remounted in the same page load', () => {
     expect(second.result.current.saveStatus).not.toBe('error');
   });
 
+  it('writes the edit once when another tab sends it at the same moment', async () => {
+    await leaveWithJournalOnlyEdit();
+    // Another tab's write of the same edit reaches the server just ahead of
+    // this one, after this form's load read the row.
+    service.commit.mockImplementationOnce(async (intent) => {
+      rowOf(uid).profile = { ...rowOf(uid).profile, college: 'Liberal Arts' }; rowOf(uid).revision = 4;
+      return apply(intent);
+    });
+    const second = await mount();
+    expect(sends(), 'this form sent it too').toEqual([{ uid, patch: { college: 'Liberal Arts' } }]);
+    expect(rowOf(uid), 'but the row took one write').toMatchObject({ revision: 4, profile: { college: 'Liberal Arts' } });
+    expect(second.result.current.saveStatus).toBe('saved');
+    nothingOutstanding();
+    await tick(5000);
+    expect(sends()).toHaveLength(1);
+  });
+
   it("does not send the old form's edit for another account", async () => {
     await leaveWithJournalOnlyEdit();
     const other = `${uid}-other`;
