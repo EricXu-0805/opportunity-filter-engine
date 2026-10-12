@@ -220,6 +220,40 @@ class TestJsonDirStatedTotal:
         unit = self._unit(monkeypatch, pages, total_key="count", **json_dir)
         assert unit_identity_completeness(unit) == (False, reason)
 
+    @pytest.mark.parametrize("stated_total, requests_per_page", [(True, 1), (False, 2)])
+    def test_units_that_split_one_stated_total_feed_share_one_walk(
+            self, monkeypatch, stated_total, requests_per_page):
+        # UF PHHP splits one directory tree into three units by first name; one
+        # walk means one request per page and one order of the feed per run.
+        # Feeds without a stated total keep walking once per unit.
+        from src.normalizers.deactivate_stale_faculty import unit_identity_completeness
+        calls: Counter = Counter()
+
+        def get(url, **_kw):
+            calls[url] += 1
+            return _Page(_FEED[int(url.rsplit("page=", 1)[1])])
+
+        monkeypatch.setattr("requests.get", get)
+        total = {"total_key": "count", "total_distinct_key": "url"} if stated_total else {}
+        school = {"school_slug": "x", "source": "x_faculty", "organization": "X University",
+                  "id_prefix": "x", "location": "Somewhere", "departments": [
+                      {"short": short, "name": f"Department of {short}", "majors": [],
+                       "directory_url": "https://x.edu/people",
+                       "json_dir": {"url": "https://x.edu/api?all=1", "records_key": "rows",
+                                    "name_fields": ["name"], "link_field": "url",
+                                    "paginate": {"param": "page", "max": 5},
+                                    "ladder_filter": {"require": "professor"},
+                                    "field_filters": [{"field": "name", "include": f"^{short}"}],
+                                    **total}}
+                      for short in ("A", "C")]}
+        ledger: dict = {}
+        people = fg.fetch_and_normalize(school, deep=True, unit_ledger=ledger)
+        assert sorted(p["pi_name"] for p in people) == ["Ada Byron", "Cy Gamma"]
+        assert set(calls.values()) == {requests_per_page}
+        if stated_total:
+            assert [unit_identity_completeness(ledger[u]) for u in ("a", "c")] == [
+                (True, "identity_complete")] * 2
+
     @pytest.mark.parametrize("json_dir, error", [
         ({"paginate": None}, "X: json_dir total_key needs paginate"),
         ({"total_distinct_key": None}, "X: json_dir total_key needs total_distinct_key"),

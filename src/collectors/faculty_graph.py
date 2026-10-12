@@ -3077,12 +3077,15 @@ def _dig(record: dict, path: str):
     return cur
 
 
-def _fetch_json_dir(dept: dict) -> list[dict]:
+def _fetch_json_dir(dept: dict, walks: dict | None = None) -> list[dict]:
     """Best-effort faculty fetch from an authoritative JSON directory (opt-in).
 
     Field-name options (``name_fields``, ``title_field``, ``email_field``,
     ``link_field``, ``filter_field``, ``status_field``) accept dotted paths
     into nested objects.
+
+    ``walks`` (one school run's) lets units that page the same ``total_key``
+    feed share one walk of it (UF PHHP splits one college tree into three).
     """
     cfg = dept.get("json_dir")
     if not cfg:
@@ -3117,38 +3120,18 @@ def _fetch_json_dir(dept: dict) -> list[dict]:
     hdrs = {**HEADERS, **(cfg.get("headers") or {})}
     pag = cfg.get("paginate")
     if pag:
-        # Paginated REST directory (MSU College of Natural Science:
-        # ``?page=1..pageCount``, 100 records/page). Follow pages until the
-        # feed's own ``count_key`` (pageCount) is reached, a page yields no
-        # records, or the ``max`` guard trips. Records accumulate across pages.
-        param = pag.get("param", "page")
-        recs_all: list = []
         total_key = cfg.get("total_key")
-        stated: list = []
-        for page in range(pag.get("start", 1), pag.get("max", 50) + 1):
-            sep = "&" if "?" in cfg["url"] else "?"
-            try:
-                resp = requests.get(f"{cfg['url']}{sep}{param}={page}",
-                                    headers=hdrs, timeout=25)
-                resp.raise_for_status()
-                data = resp.json()
-            except Exception:  # noqa: BLE001
-                break
-            if total_key:
-                stated.append(_dig(data, total_key) if isinstance(data, dict) else None)
-            rk = cfg.get("records_key")
-            if rk and isinstance(data, dict):
-                page_recs = _dig(data, rk) or []
-            elif isinstance(data, dict):
-                page_recs = next((v for v in data.values() if isinstance(v, list)), [])
-            else:
-                page_recs = data
-            if not page_recs:
-                break
-            recs_all.extend(page_recs)
-            cnt = pag.get("count_key")
-            if cnt and isinstance(data, dict) and data.get(cnt) and page >= data[cnt]:
-                break
+        # Units that split one stated-total feed between them read one walk of
+        # it, so a single run sees the feed in a single order.
+        shared = ((cfg["url"], repr(sorted(pag.items())), cfg.get("records_key"),
+                   total_key, repr(sorted((cfg.get("headers") or {}).items())))
+                  if total_key and walks is not None else None)
+        if shared is not None and shared in walks:
+            recs_all, stated = walks[shared]
+        else:
+            recs_all, stated = _walk_json_pages(cfg, pag, hdrs, requests)
+            if shared is not None:
+                walks[shared] = (recs_all, stated)
         if total_key:
             _json_roster_unread(dept, stated, len(recs_all),
                                 _distinct_rows(recs_all, cfg.get("total_distinct_key")))
@@ -3166,6 +3149,45 @@ def _fetch_json_dir(dept: dict) -> list[dict]:
     except Exception:  # noqa: BLE001
         return []
     return _json_dir_records(dept, cfg, recs)
+
+
+def _walk_json_pages(cfg: dict, pag: dict, hdrs: dict, requests) -> tuple[list, list]:
+    """``(rows, stated totals)`` from walking a paginated json_dir feed.
+
+    Paginated REST directory (MSU College of Natural Science:
+    ``?page=1..pageCount``, 100 records/page). Follow pages until the feed's own
+    ``count_key`` (pageCount) is reached, a page yields no records, or the
+    ``max`` guard trips. Records accumulate across pages.
+    """
+    param = pag.get("param", "page")
+    recs_all: list = []
+    total_key = cfg.get("total_key")
+    stated: list = []
+    for page in range(pag.get("start", 1), pag.get("max", 50) + 1):
+        sep = "&" if "?" in cfg["url"] else "?"
+        try:
+            resp = requests.get(f"{cfg['url']}{sep}{param}={page}",
+                                headers=hdrs, timeout=25)
+            resp.raise_for_status()
+            data = resp.json()
+        except Exception:  # noqa: BLE001
+            break
+        if total_key:
+            stated.append(_dig(data, total_key) if isinstance(data, dict) else None)
+        rk = cfg.get("records_key")
+        if rk and isinstance(data, dict):
+            page_recs = _dig(data, rk) or []
+        elif isinstance(data, dict):
+            page_recs = next((v for v in data.values() if isinstance(v, list)), [])
+        else:
+            page_recs = data
+        if not page_recs:
+            break
+        recs_all.extend(page_recs)
+        cnt = pag.get("count_key")
+        if cnt and isinstance(data, dict) and data.get(cnt) and page >= data[cnt]:
+            break
+    return recs_all, stated
 
 
 def _distinct_rows(recs: list, key: str | None) -> int:
@@ -4659,6 +4681,7 @@ def fetch_and_normalize(school: dict, deep: bool = False,
     seen_urls: set[str] = set()
     seen_ids: set[str] = set()
     listing_urls = _listing_urls(school)
+    json_walks: dict = {}
     for dept in school.get("departments", []):
         _unit_short = str(dept.get("short") or "").lower()
         _unit_started = datetime.now(UTC).isoformat()
@@ -4690,7 +4713,8 @@ def fetch_and_normalize(school: dict, deep: bool = False,
                                + _fetch_worx_ajax(dept)
                                + _fetch_algolia(dept)
                                + _fetch_faculty180(dept) + _fetch_cola(dept)
-                               + _fetch_json_dir(dept) + _fetch_coa_api(dept)
+                               + _fetch_json_dir(dept, json_walks)
+                               + _fetch_coa_api(dept)
                                + _fetch_krieger_table(dept)
                                + _fetch_poly_jsonapi(dept)
                                + _fetch_sitemap_directory(dept)):
