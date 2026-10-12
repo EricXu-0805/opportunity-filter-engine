@@ -11,6 +11,9 @@ export interface SaveSearchDialogProps {
   /** False while migration 013 is unapplied — the digest fields are hidden
    *  entirely and onSave always receives digest: null. */
   digestAvailable: boolean;
+  /** The signed-in account's email. Prefills the digest address: the digest
+   *  cron sends only to the account's confirmed address. */
+  accountEmail?: string | null;
   onCancel: () => void;
   onSave: (input: { name: string; digest: SavedSearchDigest | null }) => void;
   t: TFunc;
@@ -18,12 +21,13 @@ export interface SaveSearchDialogProps {
 
 export function SaveSearchDialog({
   digestAvailable,
+  accountEmail = null,
   onCancel,
   onSave,
   t,
 }: SaveSearchDialogProps) {
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(accountEmail ?? '');
   const [optIn, setOptIn] = useState(false);
   const [emailError, setEmailError] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);

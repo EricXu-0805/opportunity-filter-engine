@@ -27,18 +27,22 @@ export interface SavedSearchesSectionProps {
   onApplyOptimisticClear: (id: string) => void;
   onRemove: (search: SavedSearch) => void;
   onDigestSave: (id: string, digest: SavedSearchDigest) => Promise<boolean>;
+  /** The signed-in account's email. Prefills an empty digest address: the
+   *  digest cron sends only to the account's confirmed address. */
+  accountEmail?: string | null;
   t: TFunc;
 }
 
 interface DigestEditorProps {
   initial: SavedSearchDigest;
+  accountEmail: string | null;
   onSave: (digest: SavedSearchDigest) => Promise<boolean>;
   onClose: () => void;
   t: TFunc;
 }
 
-function DigestEditor({ initial, onSave, onClose, t }: DigestEditorProps) {
-  const [email, setEmail] = useState(initial.email);
+function DigestEditor({ initial, accountEmail, onSave, onClose, t }: DigestEditorProps) {
+  const [email, setEmail] = useState(initial.email || accountEmail || '');
   const [optIn, setOptIn] = useState(initial.optIn);
   const [error, setError] = useState<'invalid' | 'failed' | null>(null);
   const [saving, setSaving] = useState(false);
@@ -120,6 +124,7 @@ export function SavedSearchesSection({
   onApplyOptimisticClear,
   onRemove,
   onDigestSave,
+  accountEmail = null,
   t,
 }: SavedSearchesSectionProps) {
   const [editingDigestId, setEditingDigestId] = useState<string | null>(null);
@@ -243,6 +248,7 @@ export function SavedSearchesSection({
                 {editingDigestId === search.id && (
                   <DigestEditor
                     initial={digest ?? { email: '', optIn: false }}
+                    accountEmail={accountEmail}
                     onSave={(d) => onDigestSave(search.id, d)}
                     onClose={() => setEditingDigestId(null)}
                     t={t}

@@ -9,6 +9,7 @@ import {
   type SavedSearch,
   type SavedSearchDigest,
 } from '@/lib/saved-searches';
+import { getAuthState } from '@/lib/supabase';
 import type { TFunc } from './types';
 
 export interface UseSavedSearchesResult {
@@ -24,6 +25,9 @@ export interface UseSavedSearchesResult {
   handleRemove: (search: SavedSearch) => Promise<void>;
   handleApplyOptimisticClear: (id: string) => void;
   handleDigestSave: (id: string, digest: SavedSearchDigest) => Promise<boolean>;
+  /** The signed-in account's email, null for a guest or until it is read.
+   *  Prefills the digest editor. */
+  accountEmail: string | null;
 }
 
 // Optimistic local clear of new_match_ids when the user clicks an item:
@@ -34,6 +38,7 @@ export function useSavedSearches(t: TFunc): UseSavedSearchesResult {
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
   const [digests, setDigests] = useState<Map<string, SavedSearchDigest> | null>(null);
   const [loadError, setLoadError] = useState(false);
+  const [accountEmail, setAccountEmail] = useState<string | null>(null);
   // Only the newest read may land: a retry clicked while the first read is
   // still out must not be overwritten by that read's late failure.
   const readRef = useRef(0);
@@ -71,6 +76,13 @@ export function useSavedSearches(t: TFunc): UseSavedSearchesResult {
         // itself still renders, so this is not a false-empty.
         if (!cancelled) setDigests(null);
       });
+    getAuthState()
+      .then(({ isAnonymous, email }) => {
+        if (!cancelled) setAccountEmail(isAnonymous ? null : email);
+      })
+      .catch(() => {
+        // No prefill; the address can still be typed.
+      });
     return () => { cancelled = true; };
   }, [loadList]);
 
@@ -104,5 +116,5 @@ export function useSavedSearches(t: TFunc): UseSavedSearchesResult {
     );
   }, []);
 
-  return { savedSearches, digests, loadError, retryLoad, handleRemove, handleApplyOptimisticClear, handleDigestSave };
+  return { savedSearches, digests, loadError, retryLoad, handleRemove, handleApplyOptimisticClear, handleDigestSave, accountEmail };
 }

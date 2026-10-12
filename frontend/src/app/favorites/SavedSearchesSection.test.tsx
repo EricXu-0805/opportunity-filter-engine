@@ -12,11 +12,14 @@ import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from '@t
 vi.mock('@/lib/supabase', () => ({
   supabase: { from: vi.fn() },
   getDeviceId: vi.fn(),
+  getAuthState: vi.fn().mockResolvedValue({
+    session: null, user: null, isAnonymous: false, email: null,
+  }),
 }));
 
 import { SavedSearchesSection } from './SavedSearchesSection';
 import { useSavedSearches } from './use-saved-searches';
-import { getDeviceId, supabase } from '@/lib/supabase';
+import { getAuthState, getDeviceId, supabase } from '@/lib/supabase';
 import type { SavedSearch, SavedSearchDigest } from '@/lib/saved-searches';
 
 const t = (key: string, vars?: Record<string, string | number>) =>
@@ -41,6 +44,7 @@ const SEARCH: SavedSearch = {
 function renderSection(
   digests: Map<string, SavedSearchDigest> | null,
   onDigestSave = vi.fn().mockResolvedValue(true),
+  accountEmail: string | null = null,
 ) {
   render(
     <SavedSearchesSection
@@ -49,6 +53,7 @@ function renderSection(
       onApplyOptimisticClear={vi.fn()}
       onRemove={vi.fn()}
       onDigestSave={onDigestSave}
+      accountEmail={accountEmail}
       t={t}
     />,
   );
@@ -98,6 +103,33 @@ describe('SavedSearchesSection digest editor', () => {
     expect(screen.queryByLabelText('favorites.savedSearches.digestEmailAria')).toBeNull();
   });
 
+  it('prefills an empty digest address with the signed-in account email', async () => {
+    // The digest cron sends only to the account's confirmed address.
+    const { onDigestSave } = renderSection(
+      new Map([['uuid-1', { email: '', optIn: false }]]),
+      vi.fn().mockResolvedValue(true),
+      'me@example.com',
+    );
+    fireEvent.click(digestButton()!);
+    expect(screen.getByLabelText('favorites.savedSearches.digestEmailAria')).toHaveValue('me@example.com');
+
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('button', { name: 'favorites.savedSearches.digestSave' }));
+    await waitFor(() =>
+      expect(onDigestSave).toHaveBeenCalledWith('uuid-1', { email: 'me@example.com', optIn: true }),
+    );
+  });
+
+  it('shows a stored digest address as stored, not the account email', () => {
+    renderSection(
+      new Map([['uuid-1', { email: 'stored@example.com', optIn: true }]]),
+      vi.fn().mockResolvedValue(true),
+      'me@example.com',
+    );
+    fireEvent.click(digestButton()!);
+    expect(screen.getByLabelText('favorites.savedSearches.digestEmailAria')).toHaveValue('stored@example.com');
+  });
+
   it('blocks save with an invalid email while opted in', () => {
     const { onDigestSave } = renderSection(
       new Map([['uuid-1', { email: '', optIn: false }]]),
@@ -124,6 +156,42 @@ describe('SavedSearchesSection digest editor', () => {
     await waitFor(() =>
       expect(screen.getByText('favorites.savedSearches.digestSaveFailed')).toBeInTheDocument(),
     );
+  });
+});
+
+describe('useSavedSearches account email', () => {
+  function emptyReads() {
+    vi.mocked(getDeviceId).mockResolvedValue('device-1');
+    vi.mocked(supabase.from).mockImplementation(() => {
+      const result = { data: [], error: null };
+      const builder = {
+        select: () => builder,
+        eq: () => builder,
+        order: () => Promise.resolve(result),
+        then: (resolve: (value: typeof result) => unknown) => Promise.resolve(result).then(resolve),
+      };
+      return builder as unknown as ReturnType<typeof supabase.from>;
+    });
+  }
+
+  it('reads the signed-in account email for the digest prefill', async () => {
+    emptyReads();
+    vi.mocked(getAuthState).mockResolvedValueOnce({
+      session: null, user: null, isAnonymous: false, email: 'me@example.com',
+    });
+    const { result } = renderHook(() => useSavedSearches(t));
+    await waitFor(() => expect(result.current.accountEmail).toBe('me@example.com'));
+  });
+
+  it('gives a guest no account email', async () => {
+    emptyReads();
+    vi.mocked(getAuthState).mockResolvedValueOnce({
+      session: null, user: null, isAnonymous: true, email: 'guest@example.com',
+    });
+    const { result } = renderHook(() => useSavedSearches(t));
+    await waitFor(() => expect(getAuthState).toHaveBeenCalled());
+    await act(async () => {});
+    expect(result.current.accountEmail).toBeNull();
   });
 });
 

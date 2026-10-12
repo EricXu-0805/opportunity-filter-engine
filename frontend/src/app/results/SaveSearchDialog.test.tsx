@@ -103,6 +103,21 @@ describe('SaveSearchDialog', () => {
     });
   });
 
+  it('prefills the digest address with the signed-in account email', () => {
+    // The digest cron sends only to the account's confirmed address.
+    const { onSave } = renderDialog({ accountEmail: 'me@example.com' });
+    expect(emailInput()).toHaveValue('me@example.com');
+
+    fireEvent.change(nameInput(), { target: { value: 'Paid ML' } });
+    fireEvent.click(optInCheckbox());
+    fireEvent.click(saveButton());
+
+    expect(onSave).toHaveBeenCalledWith({
+      name: 'Paid ML',
+      digest: { email: 'me@example.com', optIn: true },
+    });
+  });
+
   it('clears the email error once the user edits again', () => {
     renderDialog();
     fireEvent.change(nameInput(), { target: { value: 'Paid ML' } });
