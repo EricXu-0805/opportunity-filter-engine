@@ -626,22 +626,23 @@ export function recordProfileIntent(
   //
   // Named ONCE each, not by every descendant. An ancestor this origin has
   // already superseded is reached through the operation that superseded it:
-  // effectiveOpBase walks the ancestry, finishedClosures and the stage
-  // capture take the connected component, and the plan and the cache union
-  // `supersedes` over the whole chain — so a link to the predecessor gives
-  // every one of them what the full list did. Listing the full list gave
-  // each keystroke 37 bytes of UUID per keystroke before it: storage grew with
-  // the SQUARE of the characters typed, 160 characters was 575 KB, and the
-  // origin's 5 MB quota died near 500 with the rest of the paragraph lost on
-  // reload (production, 2026-08-31).
+  // effectiveOpBase walks the ancestry with its own walk, finishedClosures
+  // and the plan use replacedThroughChain, the stage capture takes the
+  // connected component, and the cache unions `supersedes` over the whole
+  // journal — so a link to the predecessor gives every one of them what the
+  // full list did. Listing the full list cost every keystroke 37 bytes of
+  // UUID per keystroke before it: storage grew with the SQUARE of the
+  // characters typed, 160 characters was 575 KB, and the origin's 5 MB quota
+  // died near 500 with the rest of the paragraph lost on reload (production,
+  // 2026-08-31).
   //
   // What stays fully named is the other origin's chain — the one a reload
   // left behind. The plan's heir check is the single consumer that needs a
   // whole set rather than a path: it decides between two chains by whether
   // one's `supersedes` covers every id of the other, and chains are keyed by
   // origin. So the first post-reload edit names all of them, once, and the
-  // next edit names only that one; the union over the new chain still covers
-  // the old one.
+  // next edit names only that one; the ancestry walked from the new chain
+  // still covers the old one, even when that first edit carried another field.
   const outstanding = readOutstandingOps();
   const liveOps = outstanding.ok ? outstanding.value : [];
   const mine = getJournalLineageId();
@@ -772,11 +773,28 @@ function rebasedOps(ops: readonly JournalOp[]): JournalOp[] | null {
   });
 }
 
+/** Every operation `op` replaced, directly or through a chain of replacements
+ *  among `byId`: recordProfileIntent names only the nearest one, so the first
+ *  edit of a chain is reached from the last only through the edits between,
+ *  which may not carry its fields. */
+function replacedThroughChain(op: JournalOp, byId: ReadonlyMap<string, JournalOp>): Set<string> {
+  const walked = new Set<string>();
+  const queue = [...(op.supersedes ?? [])];
+  while (queue.length > 0) {
+    const id = queue.pop()!;
+    if (walked.has(id)) continue;
+    walked.add(id);
+    queue.push(...(byId.get(id)?.supersedes ?? []));
+  }
+  return walked;
+}
+
 function planKeysFromJournal(
   ops: readonly JournalOp[],
   keys: readonly string[],
 ): Map<string, KeyPlan> {
   const plans = new Map<string, KeyPlan>();
+  const byId = new Map(ops.map((op) => [op.opId, op]));
   // What a person has already ANSWERED. A receipt speaks for every operation
   // it names, in every field it decides — across lineages, which is the whole
   // point of answering a disagreement between two tabs. Honoured here, before
@@ -831,7 +849,7 @@ function planKeysFromJournal(
       // the replaced one keep contributing its base would send the answer
       // against the revision the user has already looked at and rejected, and
       // collide all over again.
-      const replaced = new Set(ordered.flatMap((o) => o.op.supersedes ?? []));
+      const replaced = new Set(ordered.flatMap((o) => [...replacedThroughChain(o.op, byId)]));
       const order = ordered.filter((o) => !replaced.has(o.op.opId));
       if (order.length === 0) return null;
       return {
@@ -849,7 +867,7 @@ function planKeysFromJournal(
         // to be re-sent as if nobody had answered it.
         opIds: ordered.map((o) => o.op.opId),
         lineage: order[0].op.lineage,
-        supersedes: new Set(ordered.flatMap((o) => o.op.supersedes ?? [])),
+        supersedes: new Set(ordered.flatMap((o) => [...replacedThroughChain(o.op, byId)])),
         additive: order.every((o) => o.op.mode === 'add-skills'),
       };
     }).filter((c): c is NonNullable<typeof c> => c !== null);
@@ -1089,9 +1107,11 @@ function finishedClosures(
       for (const k of claimed) taken.add(k);
       spokenFor.set(target, taken);
     };
+    // An edit speaks, in each field it carries, for every operation it
+    // replaced directly or through a chain of replacements.
     for (const member of closure) {
       const op = byId.get(member)!;
-      for (const target of op.supersedes ?? []) claim(target, op.fields.map((f) => f.key));
+      for (const target of replacedThroughChain(op, byId)) claim(target, op.fields.map((f) => f.key));
       for (const target of op.resolves ?? []) claim(target, Object.keys(op.decisions ?? {}));
     }
 

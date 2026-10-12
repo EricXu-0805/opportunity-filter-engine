@@ -25,7 +25,7 @@ import { DEFAULT_PROFILE } from './types';
 import { PROFILE_REFRESH_INTERVAL_MS } from '@/lib/use-profile-refresh';
 import { advanceOwnerEpoch, captureOwnerToken, isOwnerTokenValid, readUserScopedRaw, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import { readProfileSyncEnvelope, resetProfileDirtyLedger } from '@/lib/profile-sync';
-import { resetJournalLaneForTests } from '@/lib/profile-journal';
+import { readOutstandingOps, resetJournalLaneForTests, startDocumentForTests } from '@/lib/profile-journal';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { encodeProfile } from '@/lib/profile-share';
 
@@ -376,5 +376,38 @@ describe('Home foreground reads with real profile coordination', () => {
       expect(result.current.viewSnapshot?.token).toEqual(captureOwnerToken());
     }
     expect(service.commit).not.toHaveBeenCalled();
+  });
+});
+
+describe('Home edit chains settled by one save', () => {
+  it('a college switch, a major pick and another college switch leave nothing that a reload sends over a newer profile', async () => {
+    const first = await start();
+    act(() => { first.result.current.update('college', 'LAS'); });
+    act(() => { first.result.current.update('major', 'Physics'); });
+    act(() => { first.result.current.update('college', 'Business'); });
+    await tick(1500);
+    expect(service.commit).toHaveBeenCalledOnce();
+    expect(remote).toMatchObject({ college: 'Business', major: '', additional_majors: [] });
+    expect(first.result.current.saveStatus).toBe('saved');
+    const left = readOutstandingOps();
+    expect.soft(left.ok && left.value, 'the save settles every edit of the chain').toEqual([]);
+
+    // A phone moves college and major on, and then this tab reloads.
+    publish({ college: 'Media', major: 'Film' });
+    first.unmount();
+    startDocumentForTests('reload'); resetProfileDirtyLedger();
+    service.commit.mockClear();
+    const second = renderHook(() => useProfileForm(t));
+    act(() => { service.auth?.({ user: { id: uid } }); }); await drain();
+    expect(second.result.current.hydrationState).toBe('ready');
+    await tick(1500);
+    expect.soft(second.result.current.profile, 'the phone\'s profile is shown').toMatchObject({ college: 'Media', major: 'Film' });
+    expect.soft(service.commit.mock.calls.map(([intent]) => intent.patch), 'nothing old is sent').toEqual([]);
+    expect.soft(second.result.current.conflicts, 'nobody is asked about their own saved edits').toEqual([]);
+    // Whatever was asked, the student answers "Keep what I typed" (a no-op
+    // when nothing was asked); the phone's profile must survive it.
+    act(() => { second.result.current.keepMyChanges(); }); await tick(1500);
+    expect(remote).toMatchObject({ college: 'Media', major: 'Film' });
+    expect(revision).toBe(3);
   });
 });
