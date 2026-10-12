@@ -84,6 +84,31 @@ async function mountLoading(owner = uid) {
   return { form, respond: async () => { act(() => { respond(); }); await drain(); } };
 }
 
+/** A profile check (focus) whose read is held open until the returned call. */
+async function holdProfileCheck(form: Awaited<ReturnType<typeof mount>>) {
+  let release: () => void = () => {};
+  service.load.mockImplementationOnce(() => new Promise<LoadedProfile>((resolve) => { release = () => resolve(read()); }));
+  act(() => { window.dispatchEvent(new Event('focus')); });
+  await drain();
+  expect(form.result.current.profileRefreshStatus).toBe('checking');
+  return () => release();
+}
+/** An edit typed while a profile check holds saving, then Home is left. */
+async function leaveWithJournalOnlyEdit() {
+  const first = await mount();
+  const release = await holdProfileCheck(first);
+  act(() => { first.result.current.setProfile((p) => ({ ...p, college: 'Liberal Arts' })); });
+  await tick(2000);
+  expect(sends(), 'the check holds the save while it runs').toEqual([]);
+  first.unmount();
+  await drain();
+  release();
+  await drain();
+  expect(sends(), 'leaving Home writes the journal only').toEqual([]);
+  const ops = readOutstandingOps();
+  expect(ops.ok && ops.value.map((op) => op.fields.map((f) => f.key))).toEqual([['college']]);
+}
+
 beforeEach(async () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
   service.auth = null; service.params = new URLSearchParams();
@@ -127,6 +152,57 @@ describe('a first load', () => {
 // In-app navigation away from Home and back unmounts the form and mounts a new
 // one in the SAME page load.
 describe('a Home form remounted in the same page load', () => {
+  it('sends an edit the form it replaced left in the journal, without another keystroke', async () => {
+    await leaveWithJournalOnlyEdit();
+    const second = await mount();
+    expect(second.result.current.profile.college, 'the edit is on the form').toBe('Liberal Arts');
+    expect(sends(), 'and the load itself sends it').toEqual([{ uid, patch: { college: 'Liberal Arts' } }]);
+    expect(rowOf(uid)).toMatchObject({ revision: 4, profile: { college: 'Liberal Arts' } });
+    expect(second.result.current.saveStatus).toBe('saved');
+    nothingOutstanding();
+    // Idle past the autosave and the next profile check: nothing else goes out.
+    await tick(5000);
+    expect(sends()).toHaveLength(1);
+  });
+
+  it('sends nothing when another tab already delivered the edit while this one was away', async () => {
+    await leaveWithJournalOnlyEdit();
+    // The other tab's write landed; its acknowledgement has not reached the
+    // journal yet, so the operation is still outstanding here.
+    rowOf(uid).profile = { ...rowOf(uid).profile, college: 'Liberal Arts' }; rowOf(uid).revision = 4;
+    const second = await mount();
+    expect(second.result.current.profile.college).toBe('Liberal Arts');
+    await tick(5000);
+    expect(sends(), 'a value the row already holds is not sent again').toEqual([]);
+    expect(rowOf(uid).revision).toBe(4);
+    expect(second.result.current.saveStatus).not.toBe('error');
+  });
+
+  it("does not send the old form's edit for another account", async () => {
+    await leaveWithJournalOnlyEdit();
+    const other = `${uid}-other`;
+    rows.set(other, { profile: { ...structuredClone(ROW), name: 'Other account' }, revision: 7 });
+    advanceOwnerEpoch(other); await syncLocalIdentityOwner(other);
+    const second = await mount(other);
+    expect(second.result.current.profile).toMatchObject({ name: 'Other account', college: 'Engineering' });
+    await tick(5000);
+    expect(sends(), 'nothing is sent under the other account').toEqual([]);
+    expect(rowOf(other)).toMatchObject({ revision: 7, profile: { college: 'Engineering' } });
+    expect(rowOf(uid)).toMatchObject({ revision: 3, profile: { college: 'Engineering' } });
+  });
+
+  it('sends its own edit typed during the load once, together with what the old form left', async () => {
+    await leaveWithJournalOnlyEdit();
+    const { form, respond } = await mountLoading();
+    act(() => { form.result.current.setProfile((p) => ({ ...p, linkedin_url: 'https://linkedin.com/in/owner' })); });
+    await respond();
+    await tick(1600);
+    expect(sentKeys().sort(), 'each edit goes out once').toEqual(['college', 'linkedin_url']);
+    expect(form.result.current.saveStatus).toBe('saved');
+    expect(rowOf(uid)).toMatchObject({ revision: 4, profile: { college: 'Liberal Arts', linkedin_url: 'https://linkedin.com/in/owner' } });
+    nothingOutstanding();
+  });
+
   it('reports the save the form it replaced still had in flight, and sends it once', async () => {
     const first = await mount();
     let land: () => void = () => {};

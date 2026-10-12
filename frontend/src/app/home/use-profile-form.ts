@@ -37,6 +37,7 @@ import {
   HOME_FORM_WRITER,
   recordProfileIntent,
   hydrateProfile,
+  readDocumentOpIds,
   markSkillAdditions,
   refreshConflictQuestion,
   markSkillsReplaced,
@@ -1653,6 +1654,13 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
   // same-uid re-observation re-runs startLoad; without this it would fire a
   // second attempt behind the first.
   const flushedGenerationsRef = useRef<Set<number>>(new Set());
+  // What this page's journal already held when this form mounted: edits the
+  // Home form it replaced (in-app navigation away and back) left unsent. They
+  // are recovered by the first load exactly as a closed tab's are. Taken
+  // before this form can record anything, so none of its own edits are among
+  // them, and declared ahead of the effects that start a load.
+  const leftBehindOpsRef = useRef<ReadonlySet<string>>(new Set());
+  useEffect(() => { leftBehindOpsRef.current = readDocumentOpIds(); }, []);
   const startLoad = useCallback((generation: number, replace = false, confirmOwner = false) => {
     if (!loadMountedRef.current || generation !== identityGenerationRef.current) return;
     const previous = activeLoadRef.current;
@@ -1715,8 +1723,8 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // account is refused anyway; left to the read, every first Retry after a
     // sign-in from another tab failed exactly that way.
     const read = confirmOwner
-      ? getDeviceId().then(() => hydrateProfile(controller.signal, trace))
-      : hydrateProfile(controller.signal, trace);
+      ? getDeviceId().then(() => hydrateProfile(controller.signal, trace, leftBehindOpsRef.current))
+      : hydrateProfile(controller.signal, trace, leftBehindOpsRef.current);
     read.then((hydration) => {
       if (!currentRead() || controller.signal.aborted) return;
       // Deadline covers only the read. A legitimate recovered-outbox write

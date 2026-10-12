@@ -43,6 +43,7 @@ import {
   recordProfileIntent,
   markSkillAdditions,
   markSkillsReplaced,
+  readDocumentOpIds,
   readProfileSyncEnvelope,
   makeProfileViewSnapshot,
   withRenderedProfile,
@@ -260,6 +261,23 @@ describe('hydrate', () => {
     expect(h.profile?.major).toBe('ECE');
     expect(h.hasPending).toBe(true);
     expect(rawMirror()?.major).toBe('ECE');
+  });
+
+  it("reports this page's own unsent edit as work to recover only when a screen that is gone left it", async () => {
+    loadProfileMock.mockResolvedValue(cloud(FULL, 7));
+    await hydrateProfile();
+    const token = captureOwnerToken();
+    expect(recordProfileIntent({ ...FULL, major: 'ECE' }, ['major'], token)).toBe(true);
+    // A Home form mounting now: the edit was made before it existed.
+    const leftBehind = readDocumentOpIds();
+    expect(leftBehind.size).toBe(1);
+    expect((await hydrateProfile()).hasPending, 'a live form still holds it').toBe(false);
+    const recovered = await hydrateProfile(undefined, undefined, leftBehind);
+    expect(recovered.profile?.major).toBe('ECE');
+    expect(recovered.hasPending, 'nothing would ever send what the form that is gone left').toBe(true);
+    // Once the row holds it, there is nothing to recover.
+    loadProfileMock.mockResolvedValue(cloud({ ...FULL, major: 'ECE' }, 8));
+    expect((await hydrateProfile(undefined, undefined, leftBehind)).hasPending).toBe(false);
   });
 
   it('does NOT blindly rebase a pending onto a newer row — a same-key remote change locks', async () => {
