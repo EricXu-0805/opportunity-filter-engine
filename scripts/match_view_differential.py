@@ -20,9 +20,10 @@ equal byte for byte after JSON parsing.
 What one capture asks, per profile: the first page; every tab; each filter
 value; each sort; searches including text that only a redacted contact
 carries ("@", "edu", an email local part and domain read off the corpus,
-"email", "redacted"); combinations; favourites and dismissals taken from the
-profile's own results; a later ``today``; page sizes 10 and 100; pages two
-and three by cursor for a few views; the /matches list and its next page; and
+"email", "redacted", and a local part read off the fields fit reasons
+quote); combinations; favourites and dismissals taken from the profile's
+own results; a later ``today``; page sizes 10 and 100; pages two and three
+by cursor for a few views; the /matches list and its next page; and
 /matches/{id}/explain for two served rows (its release gate opened in both).
 
 ``rows`` checks the other half of the argument directly: for every record of
@@ -156,6 +157,21 @@ def _contact_terms(corpus: list[dict]) -> tuple[str, str]:
     return "jane.doe", "example.edu"
 
 
+def _reason_contact_term(corpus: list[dict]) -> str:
+    """An email local part in a field fit reasons quote, if any record has one.
+
+    Keywords, the lab or program name and the department: the search reads
+    them in the reasons as well as on the card.
+    """
+    for record in corpus:
+        for text in (*(record.get("keywords") or []), record.get("lab_or_program"),
+                     record.get("department")):
+            match = _EMAIL_RE.search(str(text or ""))
+            if match:
+                return match.group(1).lower()
+    return "lab.contact"
+
+
 SEARCHES = [
     "machine learning", "Machine Learning", " ml ", "ml", "ai", "nlp", "edu", "@", "email",
     "redacted", "[email redacted]", "[", "prof", "research", "lab", "university",
@@ -164,7 +180,8 @@ SEARCHES = [
 
 
 def _views(favorites: list[str], dismissed: list[str], sources: list[str],
-           local_part: str, domain: str, today: str) -> list[tuple[str, dict]]:
+           local_part: str, domain: str, reason_term: str,
+           today: str) -> list[tuple[str, dict]]:
     views: list[tuple[str, dict]] = [
         ("first_page", {}),
         ("tab_all", {"tab": "all"}),
@@ -208,7 +225,7 @@ def _views(favorites: list[str], dismissed: list[str], sources: list[str],
     for index, source in enumerate(sources[:3]):
         views.append((f"source_{index}", {"tab": "all", "source": source}))
         views.append((f"source_{index}_search_ml", {"tab": "all", "source": source, "search_query": "ml"}))
-    for query in [*SEARCHES, local_part, domain, f"{local_part}@{domain}"]:
+    for query in [*SEARCHES, local_part, domain, f"{local_part}@{domain}", reason_term]:
         views.append((f"search:{query}", {"tab": "all", "search_query": query}))
     return views
 
@@ -260,13 +277,14 @@ def capture(args) -> int:
         with TestClient(app) as client, gzip.open(args.out, "wt", encoding="utf-8") as out:
             corpus = data_loader.load_opportunities()
             local_part, domain = _contact_terms(corpus)
+            reason_term = _reason_contact_term(corpus)
             out.write(json.dumps({
                 "header": True,
                 "backend": str(Path(backend.__file__).resolve().parent),
                 "today": today,
                 "records": len(corpus),
                 "corpus_generation": data_loader.corpus_version(),
-                "contact_terms": [local_part, domain],
+                "contact_terms": [local_part, domain, reason_term],
                 "profiles": list(personas),
             }) + "\n")
 
@@ -299,7 +317,8 @@ def capture(args) -> int:
                 favorites = [*ids[:3], *ids[-2:], "not-a-real-id"]
                 dismissed = ids[1:4]
                 sources = [facet["source"] for facet in every.get("source_facets", [])]
-                for label, overrides in _views(favorites, dismissed, sources, local_part, domain, today):
+                for label, overrides in _views(favorites, dismissed, sources, local_part, domain,
+                                               reason_term, today):
                     page = view(label, overrides)
                     if label in PAGED:
                         for number in (2, 3):

@@ -15,6 +15,7 @@ from collections.abc import Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import date
+from functools import lru_cache
 
 from fastapi import APIRouter, HTTPException, Query, Request
 
@@ -1628,6 +1629,15 @@ def _search_matcher(term: str) -> Callable[[str], bool]:
     return lambda haystack: pattern.search(haystack) is not None
 
 
+# A snapshot keeps fit reasons as the ranker wrote them, and they quote record
+# fields (keywords, lab, department); a response redacts each line on the way
+# out. The search reads the served line. Lines repeat heavily across rows and
+# profiles, so each distinct one is checked once.
+@lru_cache(maxsize=1 << 16)
+def _served_fit_reason(reason: str) -> str:
+    return redact_embedded_emails(reason)
+
+
 def _calendar_days_until(row: _MatchViewRow, today: date) -> int | None:
     """Use the scorer's deadline evidence bar for facets, filters and sorting."""
     return (row.deadline - today).days if row.deadline is not None else None
@@ -1780,7 +1790,9 @@ def _apply_match_view_rows(
             # Not the countdown or the season line: they turn with the
             # server's calendar while the result-set id holds.
             reasons = " ".join(
-                reason for reason in result.reasons_fit if not is_dated_fit_reason(reason)
+                _served_fit_reason(reason)
+                for reason in result.reasons_fit
+                if not is_dated_fit_reason(reason)
             ).lower()
             if not any(
                 matches(title)
