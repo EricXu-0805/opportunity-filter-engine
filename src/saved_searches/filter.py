@@ -12,7 +12,8 @@ logic across these dimensions:
   - filters.source in {'', '<source-name>'}
   - filters.onCampus in {'', 'yes', 'no'}
   - filters.deadline in {'', 'rolling', '7', '14', '30', 'passed'}
-  - query text search across title/organization/keywords/description
+  - query text search across title/organization/keywords/description,
+    read as the card serves them (after the public contact boundary)
 
 Deliberately omitted: filters.minScore. Scoring requires the user's
 profile, which the cron doesn't have access to (and we don't want to
@@ -35,6 +36,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from datetime import date, datetime
 
+from backend.lib.public_projection import redact_embedded_emails
 from src.evidence import faculty_contact_claims_unverified
 from src.matcher.ranker import _word_re, expand_search_aliases
 
@@ -112,18 +114,43 @@ def _matches_deadline(opp: dict, want: str) -> bool:
 _WORD_BOUNDARY_TERM_MAX_LEN = 3
 
 
-def _matches_query(opp: dict, query_lower: str) -> bool:
+def _served_query_fields(opp: dict) -> tuple:
+    """The fields a query reads, as the record's card serves them.
+
+    The card passes each of them through the public contact boundary, so the
+    query reads what that boundary returns rather than the stored text.
+    """
+    fields = [
+        opp.get("title") or "",
+        opp.get("organization") or "",
+        opp.get("department") or "",
+        opp.get("description_clean") or opp.get("description_raw") or "",
+    ]
+    fields.extend(kw for kw in opp.get("keywords") or [] if isinstance(kw, str))
+    return tuple(redact_embedded_emails(field) for field in fields)
+
+
+def _query_fields(opp: dict, served: dict | None) -> tuple:
+    """``_served_query_fields(opp)``, kept in ``served`` across calls if given.
+
+    The cron checks every saved search against the same records, and the
+    boundary costs about 7 s over the committed corpus, so it keeps one
+    ``served`` for the whole run: each record is read through it at most once.
+    """
+    if served is None:
+        return _served_query_fields(opp)
+    entry = served.get(id(opp))
+    # The record is kept with its fields, so an id reused by another object
+    # can never answer for it.
+    if entry is None or entry[0] is not opp:
+        entry = served[id(opp)] = (opp, _served_query_fields(opp))
+    return entry[1]
+
+
+def _matches_query(opp: dict, query_lower: str, served: dict | None = None) -> bool:
     if not query_lower:
         return True
-    haystacks: list[str] = [
-        (opp.get("title") or "").lower(),
-        (opp.get("organization") or "").lower(),
-        (opp.get("department") or "").lower(),
-        (opp.get("description_clean") or opp.get("description_raw") or "").lower(),
-    ]
-    for kw in opp.get("keywords") or []:
-        if isinstance(kw, str):
-            haystacks.append(kw.lower())
+    haystacks = [field.lower() for field in _query_fields(opp, served)]
     # A term short enough to live inside ordinary English must match a whole
     # word. Every faculty description ends "...opportunities are currently
     # available", which contains av-AI-lable, re-SE-arch and depart-ME-nt, so
@@ -179,21 +206,38 @@ def filter_opportunities(
     opportunities: Iterable[dict],
     filters: dict,
     query: str = "",
+    *,
+    served: dict | None = None,
 ) -> list[dict]:
     """Return opportunities matching ``filters`` + ``query`` text search.
 
     Order is preserved from the input iterable. The cron only cares about
     the set of matched IDs, but downstream callers may want the full row
     (e.g. a future "show me what's in this saved search right now" route).
+    ``served``: an empty dict shared by calls over the same records, so each
+    record's served fields are read once (see ``_query_fields``).
     """
     q = (query or "").strip().lower()
-    return [o for o in opportunities if match_filter(o, filters) and _matches_query(o, q)]
+    return [
+        o for o in opportunities
+        if match_filter(o, filters) and _matches_query(o, q, served)
+    ]
 
 
-def matching_ids(opportunities: Iterable[dict], filters: dict, query: str = "") -> list[str]:
+def matching_ids(
+    opportunities: Iterable[dict],
+    filters: dict,
+    query: str = "",
+    *,
+    served: dict | None = None,
+) -> list[str]:
     """Same as filter_opportunities but returns just the opportunity IDs.
 
     Stable insertion order. Used by the cron to compute the result set
     that gets diff'd against last_result_ids.
     """
-    return [str(o["id"]) for o in filter_opportunities(opportunities, filters, query) if o.get("id")]
+    return [
+        str(o["id"])
+        for o in filter_opportunities(opportunities, filters, query, served=served)
+        if o.get("id")
+    ]

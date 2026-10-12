@@ -306,6 +306,42 @@ def test_all_opportunity_projection_shapes_remove_embedded_contacts_and_unsafe_u
         assert "application_url" not in projected["application"]
 
 
+@pytest.mark.parametrize(
+    "field",
+    ["title", "organization", "department", "description_clean", "description_raw", "keywords"],
+)
+@pytest.mark.parametrize("contact", CONTACT_VARIANTS)
+def test_saved_search_reads_query_fields_as_the_card_serves_them(contact: str, field: str):
+    """The digest cron matches a saved query against fields the card shows."""
+    from src.saved_searches.filter import matching_ids
+
+    record = {
+        "id": "contact-in-query-field",
+        "source_type": "campus_program",
+        "title": "Robotics Research Assistant",
+        "organization": "Northfield University",
+        "department": "Mechanical Engineering",
+        "description_clean": "Build robot arms with the lab team.",
+        "keywords": ["robotics", "controls"],
+    }
+    text = f"Questions: write {contact} today"
+    if field == "keywords":
+        record["keywords"] = [*record["keywords"], text]
+    elif field == "description_raw":
+        record["description_clean"] = ""
+        record["description_raw"] = text
+    else:
+        record[field] = text
+    if field != "description_raw":  # the card carries no raw description
+        card = _match_card(record)
+        assert "[email redacted]" in (card[field] if field == "keywords" else [card[field]])
+
+    assert matching_ids([record], {}, contact) == []
+    # What the record states in the open still finds it.
+    assert matching_ids([record], {}, "robotics") == [record["id"]]
+    assert matching_ids([record], {}, "controls") == [record["id"]]
+
+
 def test_match_result_projection_covers_reasons_next_steps_unknowns_and_ai_reason():
     result = MatchResult(
         opportunity_id="contact-bearing",
