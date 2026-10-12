@@ -23,6 +23,7 @@ from backend.data_loader import (
     load_opportunities_by_id,
     load_opportunities_generation,
 )
+from backend.lib import release_scope
 from backend.lib.blocking import (
     MULTI_LLM_TIMEOUT_SECONDS,
     SINGLE_LLM_TIMEOUT_SECONDS,
@@ -792,6 +793,20 @@ _active_corpus_identity: int | None = None
 # only for the very record it was built from, and the table is emptied when a
 # reload is observed. Corpus data only: nothing here depends on a profile.
 _match_view_rows: dict[int, _MatchViewRow] = {}
+
+
+@dataclass(frozen=True)
+class _MatchUniverse:
+    """The records a ranking may score, for one corpus, UTC day and release."""
+
+    corpus: list[dict]
+    utc_day: date
+    fellowships: bool
+    opportunities: list[dict]
+
+
+_match_universe: _MatchUniverse | None = None
+_match_universe_lock = threading.Lock()
 _match_executor = ThreadPoolExecutor(
     max_workers=_MATCH_MAX_WORKERS,
     thread_name_prefix="ofe-match",
@@ -1127,14 +1142,51 @@ def _activate_corpus_generation(corpus: list[dict]) -> int:
     corpus list. Clearing the previous generation as soon as a reload is
     observed prevents the ten-minute snapshot TTL from keeping it alive.
     """
-    global _active_corpus_identity
+    global _active_corpus_identity, _match_universe
     corpus_identity = id(corpus)
     with _match_inflight_lock:
         if corpus_identity != _active_corpus_identity:
             _active_corpus_identity = corpus_identity
             _match_snapshots.clear()
             _match_view_rows.clear()
+            # Drop the old generation's survivors without waiting for a
+            # filter that may be running; they are keyed by corpus anyway.
+            _match_universe = None
     return corpus_identity
+
+
+def _release_universe(corpus: list[dict]) -> list[dict]:
+    """The release-visible, actionable records of ``corpus``: what a ranking scores.
+
+    Every snapshot miss used to run both filters over the whole corpus on the
+    event loop, 0.28-0.77 s during which no other request on the worker could
+    answer. They read nothing but the records, whether fellowships are
+    released, and in target_truth the UTC day a stated deadline is read
+    against. So the survivors are kept for one corpus generation, UTC day and
+    release, and callers compute them off the event loop; concurrent callers
+    wait for the first instead of filtering twice.
+    """
+    global _match_universe
+    with _match_universe_lock:
+        utc_day = evidence_module._today()
+        fellowships = release_scope.feature_enabled("fellowships")
+        cached = _match_universe
+        if (
+            cached is not None
+            and cached.corpus is corpus
+            and cached.utc_day == utc_day
+            and cached.fellowships == fellowships
+        ):
+            return cached.opportunities
+        opportunities = actionable_opportunities(release_visible_opportunities(corpus))
+        # Filtered across midnight UTC, some records read one day and some
+        # the next: serve it, as before, but do not keep it. Nor keep a
+        # generation a reload retired while it was filtered, which would pin
+        # the old corpus until the next miss.
+        with _match_inflight_lock:
+            if evidence_module._today() == utc_day and id(corpus) == _active_corpus_identity:
+                _match_universe = _MatchUniverse(corpus, utc_day, fellowships, opportunities)
+        return opportunities
 
 
 def _snapshot_view_rows(
@@ -1175,7 +1227,7 @@ def prepare_match_views(corpus: list[dict]) -> None:
     not pay for 130,000 rows. Rankings build any row still missing.
     """
     corpus_identity = _activate_corpus_generation(corpus)
-    opportunities = actionable_opportunities(release_visible_opportunities(corpus))
+    opportunities = _release_universe(corpus)
     _snapshot_view_rows(
         opportunities,
         {opportunity.get("id") for opportunity in opportunities},
@@ -1274,17 +1326,46 @@ def _remove_inflight(inflight_key: tuple[str, int], future) -> None:
     _match_capacity.release()
 
 
+def _stored_snapshot(
+    key: str,
+    corpus_identity: int,
+    ranked_with: str,
+) -> _MatchSnapshot | None:
+    """The stored snapshot this request may be served, if any.
+
+    Call under _match_inflight_lock.
+    """
+    snap = _match_snapshots.get(key)
+    if (
+        snap is not None
+        and _SNAPSHOT_TTL_SECONDS > 0
+        and snap.corpus_identity == corpus_identity
+        and snap.ranked_with == ranked_with
+        and time.time() - snap.created_at <= _SNAPSHOT_TTL_SECONDS
+    ):
+        return snap
+    return None
+
+
 async def _get_or_compute_rule_snapshot(
     key: str,
     profile_dict: dict,
     corpus_identity: int,
     opportunities: list[dict],
     responsiveness: dict | None,
+    ranked_with: str,
 ) -> _MatchSnapshot:
     inflight_key = (key, corpus_identity)
     with _match_inflight_lock:
         concurrent_future = _match_inflight.get(inflight_key)
         if concurrent_future is None:
+            # Another request's ranking of this key may have finished, stored
+            # its snapshot and left the in-flight table since this request
+            # missed the store. Ranking the profile again would hold the
+            # worker's only executor thread for nothing (40-55 s cross-school).
+            stored = _stored_snapshot(key, corpus_identity, ranked_with)
+            if stored is not None:
+                return stored
             if not _match_capacity.acquire(blocking=False):
                 raise HTTPException(
                     status_code=503,
@@ -1382,20 +1463,14 @@ async def _get_or_compute_snapshot(profile_dict: dict, llm: bool) -> _MatchSnaps
     responsiveness = await _responsiveness_for_matching()
     ranked_with = _ranked_with(responsiveness)
     with _match_inflight_lock:
-        snap = _match_snapshots.get(key)
-        if (
-            snap is not None
-            and _SNAPSHOT_TTL_SECONDS > 0
-            and snap.corpus_identity == corpus_identity
-            and snap.ranked_with == ranked_with
-            and time.time() - snap.created_at <= _SNAPSHOT_TTL_SECONDS
-        ):
+        snap = _stored_snapshot(key, corpus_identity, ranked_with)
+        if snap is not None:
             return snap
 
-    # Release filtering scans the full corpus and allocates a survivor list.
-    # Cursor/view pages normally hit the snapshot above, so only a true miss
-    # should pay that cost.
-    opportunities = actionable_opportunities(release_visible_opportunities(corpus))
+    # Release filtering scans the full corpus and allocates a survivor list,
+    # once per corpus generation and UTC day, off the event loop. Cursor/view
+    # pages normally hit the snapshot above and never ask.
+    opportunities = await asyncio.to_thread(_release_universe, corpus)
     if not llm:
         return await _get_or_compute_rule_snapshot(
             key,
@@ -1403,6 +1478,7 @@ async def _get_or_compute_snapshot(profile_dict: dict, llm: bool) -> _MatchSnaps
             corpus_identity,
             opportunities,
             responsiveness,
+            ranked_with,
         )
 
     # Refine path: keep the complete result list because the LLM blend moves
