@@ -201,6 +201,18 @@ def test_hidden_fellowship_only_legacy_fallback_is_retained(selection):
     assert matches._normalized_profile(profile)["seeking_type"] == ["research", "summer_program"]
 
 
+def test_a_type_the_form_does_not_offer_reaches_no_results(match_corpus):
+    # The public counts leave out every type outside seekable_types (M02/M86),
+    # so a crafted or stale selection must not reach one either.
+    profile = _profile(seeking_type=["research", "unknown"])
+    assert matches._normalized_profile(ProfileRequest(**profile))["seeking_type"] == ["research"]
+    rows, _ = _pages(profile)
+    assert {row["opportunity_id"] for row in rows} == {"research"}
+    explanation = client.post("/api/matches/unknown/explain", json=profile).json()
+    assert explanation["in_results"] is False
+    assert explanation["excluded_reason"] == "seeking_type_mismatch"
+
+
 def test_switching_selected_types_invalidates_existing_match_cursors(match_corpus):
     profile = _profile(seeking_type=list(TYPES))
     first = client.post("/api/matches?limit=1", json=profile).json()

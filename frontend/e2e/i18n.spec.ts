@@ -22,7 +22,7 @@ test.describe('i18n: language switcher', () => {
 
   test('switcher toggles page to Chinese', async ({ page }) => {
     await page.goto('/');
-    const switcher = page.getByRole('button', { name: /Switch to Chinese/i });
+    const switcher = page.getByRole('button', { name: '切换到中文' });
     await switcher.click();
     await expectMatchNav(page, /匹配机会|^匹配$/);
     await expect(page.getByRole('button', { name: /生成匹配/ })).toBeVisible();
@@ -31,13 +31,13 @@ test.describe('i18n: language switcher', () => {
   test('html lang attribute updates on switch', async ({ page }) => {
     await page.goto('/');
     expect(await page.locator('html').getAttribute('lang')).toBe('en');
-    await page.getByRole('button', { name: /Switch to Chinese/i }).click();
+    await page.getByRole('button', { name: '切换到中文' }).click();
     await expect(page.locator('html')).toHaveAttribute('lang', 'zh');
   });
 
   test('language preference persists across navigations via cookie', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: /Switch to Chinese/i }).click();
+    await page.getByRole('button', { name: '切换到中文' }).click();
     await expectMatchNav(page, /匹配机会|^匹配$/);
 
     await page.goto('/about');
@@ -73,7 +73,7 @@ test.describe('i18n: language switcher', () => {
 
   test('switching back to English works', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: /Switch to Chinese/i }).click();
+    await page.getByRole('button', { name: '切换到中文' }).click();
     await expect(page.getByRole('button', { name: /生成匹配/ })).toBeVisible();
     await page.getByRole('button', { name: /Switch to English/i }).click();
     await expect(page.getByRole('button', { name: /Generate Matches/i })).toBeVisible();
@@ -81,7 +81,7 @@ test.describe('i18n: language switcher', () => {
 
   test('results page tabs and summary translate', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: /Switch to Chinese/i }).click();
+    await page.getByRole('button', { name: '切换到中文' }).click();
 
     await page.selectOption('#college', 'Grainger College of Engineering');
     await page.selectOption('#major', { index: 1 });

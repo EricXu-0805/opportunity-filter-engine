@@ -5437,10 +5437,12 @@ describe('full supported resume persistence', () => {
 });
 
 describe('an edit made while this device\'s first create is unanswered', () => {
-  /** supabase/migrations/029_profile_save_cas.sql as deployed: a revision-0
-   *  patch must be a complete create, and that is checked BEFORE the row is
-   *  looked up, so a partial revision-0 patch fails even when the row exists.
-   *  commitProfilePatch reports that RPC error as a transport error. */
+  /** supabase/migrations/029_profile_save_cas.sql: a revision-0 patch must be
+   *  a complete create, and that is checked BEFORE the row is looked up, so a
+   *  partial revision-0 patch fails even when the row exists.
+   *  commitProfilePatch reports that RPC error as a transport error.
+   *  20261011230618 answers that patch with a conflict instead; this fake
+   *  keeps 029's refusal so a client that sent one could not pass on it. */
   function productionCas() {
     let row: Record<string, unknown> | null = null;
     let rev = 0;

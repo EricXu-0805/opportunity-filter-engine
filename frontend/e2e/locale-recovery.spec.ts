@@ -14,10 +14,10 @@ async function seed(page: Page, context: BrowserContext, origin: string, stored:
     localStorage.setItem('locale-recovery-seeded', '1');
   }, { stored, keys: STORAGE_KEYS });
 }
-async function assertLanguage(page: Page, locale: Locale) {
+async function assertLanguage(page: Page, locale: Locale, buttonName = locale === 'zh' ? 'Switch to English' : '切换到中文') {
   await expect(page.locator('html')).toHaveAttribute('lang', locale);
   await expect(page.getByRole('contentinfo').getByRole('link', { name: footer(locale), exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: locale === 'zh' ? 'Switch to English' : 'Switch to Chinese' })).toBeEnabled();
+  await expect(page.getByRole('button', { name: buttonName })).toBeEnabled();
 }
 
 test.describe('Server and client language recovery', () => {
@@ -131,10 +131,10 @@ test.describe('Server and client language recovery', () => {
       return route.fallback();
     });
     try {
-      await page.getByRole('button', { name: 'Switch to Chinese' }).click();
+      await page.getByRole('button', { name: '切换到中文' }).click();
       await expect.poll(() => held).toBe(1);
-      await expect(page.getByRole('button', { name: 'Switch to Chinese' })).toBeDisabled();
-      await expect(page.getByRole('button', { name: 'Switch to Chinese' })).toHaveText('Switching…');
+      await expect(page.getByRole('button', { name: 'Switching…' })).toBeDisabled();
+      await expect(page.getByRole('button', { name: 'Switching…' })).toHaveAttribute('lang', 'en');
       await expect(page.locator('#student_name')).toHaveValue('Unsaved name 王');
       release();
       await assertLanguage(page, 'zh');
@@ -155,12 +155,12 @@ test.describe('Server and client language recovery', () => {
     let refreshes = 0;
     page.on('request', request => { if (request.headers().rsc === '1' && !request.headers()['next-router-prefetch']) refreshes += 1; });
     await page.goto(TARGET);
-    await assertLanguage(page, 'en');
+    await assertLanguage(page, 'en', 'Retry language');
     await expect(page.getByRole('alert').filter({ hasText: 'Allow cookies' })).toHaveCount(1);
-    await expect(page.getByRole('button', { name: 'Switch to Chinese' })).toHaveText('Retry language');
-    await page.getByRole('button', { name: 'Switch to Chinese' }).click();
+    await expect(page.getByRole('button', { name: 'Retry language' })).toHaveAttribute('lang', 'en');
+    await page.getByRole('button', { name: 'Retry language' }).click();
     await page.reload();
-    await assertLanguage(page, 'en');
+    await assertLanguage(page, 'en', 'Retry language');
     expect(refreshes).toBe(0);
     expect(errors).toEqual([]);
   });

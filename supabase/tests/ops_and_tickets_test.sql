@@ -78,6 +78,17 @@ BEGIN
   EXCEPTION WHEN check_violation THEN NULL;
   END;
 
+  -- A reply email whose outcome is ambiguous (timeout, provider 5xx) is
+  -- stored as 'unknown' (20261011230617), not squeezed into 'email_failed'.
+  UPDATE feedback SET admin_reply_delivery = 'unknown' WHERE id = tid;
+  PERFORM 1 FROM feedback WHERE id = tid AND admin_reply_delivery = 'unknown';
+  IF NOT FOUND THEN RAISE EXCEPTION 'TEST FAIL t1: unknown reply delivery not stored'; END IF;
+  BEGIN
+    UPDATE feedback SET admin_reply_delivery = 'probably_sent' WHERE id = tid;
+    RAISE EXCEPTION 'TEST FAIL t1: bogus reply delivery accepted';
+  EXCEPTION WHEN check_violation THEN NULL;
+  END;
+
   RAISE WARNING 'PASS scenario 1 (ticket lifecycle, reply != resolution, no silent close)';
 END $$;
 

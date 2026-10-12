@@ -81,8 +81,8 @@ describe('language recovery shares the server-rendered locale', () => {
     expect(navigation.refresh).not.toHaveBeenCalled();
     expect(screen.getByLabelText('locale')).toHaveTextContent('en');
     expect(screen.getByRole('alert')).toHaveTextContent('Allow cookies');
-    expect(screen.getByRole('button', { name: 'Switch to Chinese' })).toHaveTextContent('Retry language');
-    fireEvent.click(screen.getByRole('button', { name: 'Switch to Chinese' }));
+    expect(screen.getByRole('button', { name: 'Retry language' })).toHaveTextContent('Retry language');
+    fireEvent.click(screen.getByRole('button', { name: 'Retry language' }));
     view.rerender(<StrictMode><View locale="en" /></StrictMode>);
     expect(navigation.refresh).not.toHaveBeenCalled();
     expect(document.documentElement.lang).toBe('en');
@@ -91,7 +91,7 @@ describe('language recovery shares the server-rendered locale', () => {
   it('preserves the current unsaved form through an explicit server locale update', () => {
     const view = render(<View locale="en" />);
     fireEvent.change(screen.getByLabelText('unsaved draft'), { target: { value: 'My existing draft 王' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Switch to Chinese' }));
+    fireEvent.click(screen.getByRole('button', { name: '切换到中文' }));
     expect(navigation.refresh).toHaveBeenCalledTimes(1);
     expect(localStorage.getItem(STORAGE_KEYS.LOCALE)).toBe('zh');
     expect(screen.getByLabelText('locale')).toHaveTextContent('en');
@@ -104,7 +104,7 @@ describe('language recovery shares the server-rendered locale', () => {
   it('can persist the cookie even when writing localStorage is blocked', () => {
     render(<View locale="en" />);
     vi.spyOn(localStorage, 'setItem').mockImplementation(() => { throw new DOMException('blocked', 'SecurityError'); });
-    fireEvent.click(screen.getByRole('button', { name: 'Switch to Chinese' }));
+    fireEvent.click(screen.getByRole('button', { name: '切换到中文' }));
     expect(document.cookie).toContain('ofe_lang=zh');
     expect(navigation.refresh).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
@@ -114,8 +114,9 @@ describe('language recovery shares the server-rendered locale', () => {
     let settle!: () => void;
     navigation.refresh.mockImplementation(() => new Promise<void>(resolve => { settle = resolve; }));
     const view = render(<View locale="en" />);
-    const button = screen.getByRole('button', { name: 'Switch to Chinese' });
+    const button = screen.getByRole('button', { name: '切换到中文' });
     fireEvent.click(button);
+    expect(screen.getByRole('button', { name: 'Switching…' })).toBe(button);
     expect(button).toBeDisabled();
     expect(button).toHaveTextContent('Switching…');
     expect(button).toHaveAttribute('lang', 'en');
@@ -125,5 +126,47 @@ describe('language recovery shares the server-rendered locale', () => {
     await act(async () => { settle(); });
     view.rerender(<View locale="zh" />);
     expect(screen.getByRole('button', { name: 'Switch to English' })).toBeEnabled();
+  });
+});
+
+describe('language switch accessible name', () => {
+  // The name must contain the visible text (WCAG 2.5.3) and `lang` must be the name's language.
+  const failCookies = () => vi.spyOn(document, 'cookie', 'set').mockImplementation(() => {});
+
+  it('names the idle English-UI button in Chinese with lang zh', () => {
+    render(<View locale="en" />);
+    const button = screen.getByRole('button', { name: '切换到中文' });
+    expect(button).toHaveTextContent('中文');
+    expect(button).toHaveAttribute('lang', 'zh');
+  });
+
+  it('names the idle Chinese-UI button in English with lang en', () => {
+    render(<View locale="zh" />);
+    const button = screen.getByRole('button', { name: 'Switch to English' });
+    expect(button.textContent?.toLowerCase()).toContain('en');
+    expect(button).toHaveAttribute('lang', 'en');
+  });
+
+  it('names the switching button by its visible text in the UI language (en and zh)', async () => {
+    navigation.refresh.mockImplementation(() => new Promise<void>(() => {}));
+    const en = render(<View locale="en" />);
+    fireEvent.click(screen.getByRole('button', { name: '切换到中文' }));
+    expect(screen.getByRole('button', { name: 'Switching…' })).toHaveAttribute('lang', 'en');
+    en.unmount();
+    render(<View locale="zh" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Switch to English' }));
+    const button = screen.getByRole('button', { name: '切换中…' });
+    expect(button).toHaveTextContent('切换中…');
+    expect(button).toHaveAttribute('lang', 'zh');
+  });
+
+  it.each([['en', 'Retry language'], ['zh', '重试切换']] as const)('names the failed %s button by its retry text', (locale, text) => {
+    localStorage.setItem(STORAGE_KEYS.LOCALE, locale === 'en' ? 'zh' : 'en');
+    failCookies();
+    render(<View locale={locale} />);
+    const button = screen.getByRole('button', { name: text });
+    expect(button).toHaveTextContent(text);
+    expect(button).toHaveAttribute('lang', locale);
+    expect(screen.getByRole('alert')).toBeInTheDocument();
   });
 });

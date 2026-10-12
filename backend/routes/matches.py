@@ -45,6 +45,7 @@ from backend.lib.release_scope import (
     feature_enabled,
     release_visible_opportunities,
     release_visible_opportunity_by_id,
+    seekable_types,
 )
 from backend.lib.request_body import ID_LIST_BOUNDS, WRITING_BOUNDS, BoundedJSONRoute, json_body_bounds
 from backend.lib.target_actionability import (
@@ -79,6 +80,7 @@ from src.matcher.ranker import (
     _assign_buckets,
     _diversify_explore,
     _filter_context,
+    _normalize_type_key,
     _profile_query_text,
     _stated_deadline_date,
     _word_re,
@@ -638,16 +640,12 @@ def _normalized_profile(profile: ProfileRequest) -> dict:
             },
         )
     profile_dict = profile.model_dump()
-    profile_dict["seeking_type"] = selected_types
-    if not feature_enabled("fellowships"):
-        seeking = [
-            value for value in profile_dict.get("seeking_type", [])
-            if not (
-                isinstance(value, str)
-                and value.strip().lower() == "fellowship"
-            )
-        ]
-        profile_dict["seeking_type"] = seeking or ["research", "summer_program"]
+    # Only a type the release offers may shape results: a hidden fellowship
+    # preference left in stale storage, or a type no control sets, is dropped.
+    # The public counts read the same set (backend/lib/school_coverage.py).
+    seekable = seekable_types()
+    seeking = [value for value in selected_types if _normalize_type_key(value) in seekable]
+    profile_dict["seeking_type"] = seeking or ["research", "summer_program"]
     # Cross-school deterministic matching is accepted for this release. Keep
     # the server-side kill switch authoritative, though: if operations disable
     # it later, stale clients or crafted JSON must not preserve the expansion.

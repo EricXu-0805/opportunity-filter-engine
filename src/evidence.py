@@ -324,7 +324,13 @@ _UNSTATED = ConfiguredFact(FACT_UNSTATED)
 # ("Deadline:") also ends one: without that, a menu run into the first
 # sentence reads as part of it. A heading stops before an uppercase label,
 # so "FELLOWSHIP DEADLINE: February 14" keeps the label with its date.
-_SENTENCE_BREAK_RE = re.compile(r"[\n\r•·|]+|(?<=;)\s+|(?<=[a-z0-9)][.!?])\s+(?=[\"“(]?[A-Z0-9])")
+_SENTENCE_BREAK_RE = re.compile(
+    r"[\n\r•·|]+|(?<=;)\s+"
+    r"|(?<=[a-z0-9)][.!?])(?<![ap]\.m\.)\s+(?=[\"“(]?[A-Z0-9])"
+    # After "a.m."/"p.m." a sentence ends only before a capital or digit, not before "(":
+    # "11:59 p.m. (Application opens ...)" is one sentence.
+    r"|(?<=[ap]\.m\.)\s+(?=[\"“]?[A-Z0-9])"
+)
 _HEADING_RE = re.compile(r"\b(?:[A-Z]{2,}[\s&/-]+){2,}[A-Z]{2,}\b(?!:)(?:\s*\([A-Z]{2,}\))?")
 # A capitalised word, and at most one more, before a colon: "Deadline:",
 # "Application deadline:", "ELIGIBILITY:".

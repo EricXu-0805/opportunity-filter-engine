@@ -74,11 +74,25 @@ it('does not accept an application pending JSON copied into the contact namespac
   writeUserScopedRaw(key, JSON.stringify({ v: 1, ownerId: OWNER, attempt: result.attempt }), captureOwnerToken());
   expect(() => readPendingContactMaterialAttempts(captureOwnerToken(), scope)).toThrowError(expect.objectContaining({ code: 'invalid_pending' }));
 });
-it('serializes same-contact tabs, preserves original filename, and gives different contacts independent records', async () => {
-  const [first, replay] = await Promise.all([prepare(), prepare(file('renamed.pdf'))]);
-  expect(replay.attempt).toEqual(first.attempt); expect(replay.reused).toBe(true);
+it.each(['natural', 'second-first'] as const)('serializes same-contact tabs (%s), preserves original filename, and gives different contacts independent records', async order => {
+  const files = [file(), file('renamed.pdf')];
+  const bytes = await files[0].arrayBuffer(); const gate = deferred<ArrayBuffer>();
+  if (order === 'second-first') Object.defineProperty(files[0], 'arrayBuffer', { value: () => gate.promise });
+  const locks = vi.spyOn(navigator.locks, 'request'); const writes = vi.spyOn(localStorage, 'setItem');
+  const pending = files.map(selected => prepare(selected));
+  if (order === 'second-first') { try { await pending[1]; } finally { gate.resolve(bytes); } }
+  const [a, b] = await Promise.all(pending);
+  // Reading and hashing happen before the lock, so invocation order does not
+  // decide which tab establishes the attempt; only that exactly one does.
+  expect(a.attempt).toEqual(b.attempt); expect([a.reused, b.reused].sort()).toEqual([false, true]);
+  const winner = a.reused ? 1 : 0;
+  if (order === 'second-first') expect(winner).toBe(1);
+  expect(a.attempt.input.filename).toBe(files[winner].name);
+  expect(readPendingContactMaterialAttempts(captureOwnerToken(), scope)).toEqual([a.attempt]);
+  expect(writes.mock.calls.filter(([name]) => name.includes(STORAGE_KEYS.CONTACT_MATERIAL_ATTEMPT_PREFIX))).toHaveLength(1);
+  expect(new Set(locks.mock.calls.map(([name]) => name)).size).toBe(1); expect(locks).toHaveBeenCalledTimes(2);
   const other = await prepareContactMaterialAttempt(captureOwnerToken(), { ...scope, contactEventId: OTHER }, file(), true);
-  expect(other.status).toBe('ready'); if (other.status === 'ready') expect(other.attempt.input.materialId).not.toBe(first.attempt.input.materialId);
+  expect(other.status).toBe('ready'); if (other.status === 'ready') expect(other.attempt.input.materialId).not.toBe(a.attempt.input.materialId);
 });
 it('only a matching terminal receipt retires contact upload and deletion; application intent is untouched', async () => {
   const token = captureOwnerToken(); const { attempt } = await prepare();

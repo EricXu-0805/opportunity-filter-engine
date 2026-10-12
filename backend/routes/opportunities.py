@@ -55,6 +55,7 @@ from backend.lib.release_scope import (
 from backend.lib.request_body import SMALL_BOUNDS, WRITING_BOUNDS, BoundedJSONRoute, json_body_bounds
 from backend.lib.school_coverage import (
     SCHOOL_COVERAGE_SCHEMA,
+    countable_opportunities,
     coverage_payload,
 )
 from backend.lib.supabase_auth import authenticated_uid
@@ -552,7 +553,7 @@ async def get_stats():
 
 
 def _stats_summary() -> dict:
-    records = actionable_opportunities(release_visible_opportunities(load_opportunities()))
+    records = countable_opportunities(load_opportunities())
     opportunities = [
         opportunity
         for opportunity in records
