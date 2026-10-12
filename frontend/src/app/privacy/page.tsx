@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import MarkdownPreview from '@/components/MarkdownPreview';
+import { MAX_RESUME_TEXT_CHARACTERS } from '@/lib/resume-input';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy',
@@ -7,7 +8,8 @@ export const metadata: Metadata = {
     'How JoinALab collects, uses, stores, and shares your information, including AI-provider processing and your data rights.',
 };
 
-const EFFECTIVE_DATE = 'August 1, 2026';
+const EFFECTIVE_DATE = 'October 12, 2026';
+const RESUME_TEXT_LIMIT = MAX_RESUME_TEXT_CHARACTERS.toLocaleString('en-US');
 
 const CONTENT = `# Privacy Policy
 
@@ -31,7 +33,7 @@ Only school, college, major, and academic year are required; everything else is 
 - **International-student status:** an optional flag indicating whether you are an international student. We use this only to assess which opportunities are realistically open to you (e.g. work-authorization or on-campus constraints). You may leave it blank.
 - **Background:** research interests, skills and proficiency levels, coursework, experience level.
 - **Links:** LinkedIn and GitHub URLs (optional).
-- **Résumé text:** if you upload a PDF résumé, we extract text from it in your browser session to pre-fill skills, coursework, and interests. We store up to ~8,000 characters of extracted résumé text as part of your profile. **The original PDF file is not stored on our servers.** Removing the résumé from your profile clears that text and the coursework it extracted from your current profile, and future matching and generation stop using them. Earlier saved versions of your profile (§4, profile history) still contain the text until you request a full data deletion under §7.
+- **Résumé text:** if you upload a PDF résumé, we extract text from it in your browser session to pre-fill skills, coursework, and interests. We store up to ${RESUME_TEXT_LIMIT} characters of extracted résumé text as part of your profile. **The original PDF file is not stored on our servers.** Removing the résumé from your profile clears that text and the coursework it extracted from your current profile, and future matching and generation stop using them. Earlier saved versions of your profile (§4, profile history) still contain the text until you request a full data deletion under §7.
 - **Preferences:** the kinds of opportunities you are seeking, search weighting, saved searches, filters.
 
 ### 2.2 Activity information
@@ -39,6 +41,7 @@ Only school, college, major, and academic year are required; everything else is 
 - **Favorites and application tracking:** opportunities you save, and status you set (applied / replied / interviewing / rejected / dismissed).
 - **Match feedback:** thumbs-up/down signals you give on matches.
 - **Attachments:** files you attach to tracked opportunities (stored under your own private folder; see §4).
+- **Application and email records, target résumés, and saved imports:** what you record about applications you submitted and emails you sent (and any PDF you add to those records), the target résumés you save, and opportunities you import and save to your account (see §4).
 
 ### 2.3 Account / authentication information
 
@@ -79,6 +82,10 @@ We do **not** sell your personal information, and we do **not** use it for third
 - **Your profile, favorites, tracking, saved searches, and match feedback** are stored in a Supabase Postgres database, in rows that are access-restricted to your own identity by database row-level security — other users cannot read your rows. If you enable the weekly email digest for a saved search, the email address you provide for it is stored alongside that saved search until you turn the digest off.
 - **Product-analytics events and any paid-help interest you register** (including the contact email you provide) are stored in the same Supabase database, scoped to your own anonymous identity.
 - **Attachments** you add to tracked opportunities are stored in Supabase Storage under a folder private to your identity (≤5 MB per file; PDF, common image, DOCX, TXT, Markdown).
+- **Application and email records:** when you record on an opportunity's page that you submitted an application (how and where you applied, the date and your notes) or sent an email (recipient, subject and body), that record is stored in the same database under your identity. Records cannot be edited or deleted in the app; they are removed when your account is deleted (§7).
+- **PDFs you submitted or attached** (signed-in accounts only): under a recorded application or email you can upload the PDF you actually submitted or attached, up to 50 MB per file. We keep the original file in private Supabase Storage, with its file name, size and checksum, until you delete the file or your account is deleted. Open the record's files on the opportunity's page to download the original PDF or delete it. Deleting stops downloads at once and removes the file name, size and checksum; the stored file is then erased in the background, and only the dates remain on the record. When your account is deleted, these records are removed and the stored files are erased the same way.
+- **Target résumés:** a target résumé you save for an opportunity is stored in the same database under your identity, together with up to its 20 most recent saved versions; a draft you save in the résumé bullet editor is stored the same way, with every saved version. You can export a target résumé as a PDF or Word file from the résumé window on the opportunity's page; exports are generated on request and not stored. There is no way to delete either kind in the app today; they are removed when your account is deleted (§7).
+- **Imports saved to your account** (signed-in accounts only): if you import an opportunity from a link or pasted text and choose to save it to your account, we store the imported content (its title, description, source link and the other details read from the page or text). Under "Imports in your account" on the Favorites page you can read the saved copy or delete it. Deleting removes the imported content at once, but not the copy kept in your browser; an empty entry with its dates stays until your account is deleted.
 - **Profile history:** every time your profile is saved, a copy of it is also appended to a version-history table (profile_versions) in the same database, under the same row-level security. That history is append-only: editing your profile — including removing your résumé from it (§2.1) — updates the current profile but does **not** rewrite or remove earlier versions, which still contain what your profile held at the time. There is no self-serve way to purge that history today; it is removed when you request a full data deletion under §7.
 - **In your browser:** your profile and some preferences are also cached in your browser's local storage so the app works smoothly and offline-tolerantly. You can clear this at any time via your browser settings.
 
@@ -88,7 +95,7 @@ We rely on the following service providers. We share only what each needs to per
 
 | Provider | Role | What it receives |
 |---|---|---|
-| **Supabase** (US) | Authentication, database, file storage | Your profile, favorites, tracking, saved searches, attachments; your email / linked-account identifier for sign-in; a digest email address if you enable a saved-search email digest; product-analytics events; any "apply for me" interest you register (with the contact email you provide); and feedback you submit (with the optional reply email) |
+| **Supabase** (US) | Authentication, database, file storage | Your profile, favorites, tracking, saved searches, attachments; application and email records and the PDFs you add to them; target résumés; imports you save to your account; your email / linked-account identifier for sign-in; a digest email address if you enable a saved-search email digest; product-analytics events; any "apply for me" interest you register (with the contact email you provide); and feedback you submit (with the optional reply email) |
 | **Vercel** (US) | Frontend hosting | Standard request logs (IP, user-agent, path) |
 | **Render** (US) | Backend hosting | API request contents and server logs |
 | **AI language-model provider** — **OpenAI**, **Google (Gemini)**, and/or **Anthropic (Claude)**, reached either directly or through **OpenRouter** (a routing gateway to those providers), depending on configuration. The exact models used are operator-configurable and chosen per task for quality. | Generating résumé and cold-email drafts | The relevant profile fields (e.g. name, year, major, skills, coursework, research interests, your own résumé bullet points, LinkedIn/GitHub URLs) **plus** the opportunity's public details, **only for the specific item you ask us to generate** |
@@ -101,6 +108,7 @@ We rely on the following service providers. We share only what each needs to per
 ## 6. How long we keep your data
 
 - **Account and profile data** is retained until you delete it (see §7) or until your account is closed.
+- **PDFs added to application and email records, and imports saved to your account,** are kept until you delete them in the app or your account is deleted. **Application and email records and target résumés** are kept until your account is deleted (§4).
 - **Browser local storage** persists in your browser until you clear it.
 - **Email content** is not retained by JoinALab after sending; the email provider retains it per its own policy.
 - **Server and error logs** are retained by our hosting and monitoring providers per their standard retention windows.
