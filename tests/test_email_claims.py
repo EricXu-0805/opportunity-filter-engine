@@ -39,8 +39,6 @@ def test_unsupported_completed_actions(text):
     "I can include my resume as an attachment on request.", "My resume has not been included with this email.",
 ])
 def test_negation_future_and_metadata_reference_are_not_completed_actions(text):
-    # "Your paper caught my attention." is no completed action; without a chosen
-    # paper, unchosen_paper_claims rejects it as a reaction (M33, below).
     assert unsupported_action_claims(text) == []
 
 
@@ -62,45 +60,59 @@ def test_confirmed_reading_exemption_never_covers_an_attachment_claim():
     assert unsupported_action_claims(exempted, confirmed_reading_sentence=exempted) == ["unsupported attachment claim"]
 
 
-# M33 (owner decision 2026-10-12): a paper is named only when the student chose it.
-TITLES = ["Grounded Models for Robot Planning", "Sparse Nets"]
+# M33 (owner decision 2026-10-12): a reply may not quote the full title of a
+# verified paper the student did not choose, unless the student supplied it.
+TITLES = ["Grounded Models for Robot Planning", "Sparse Nets", "Learning What’s Next — A Survey?"]
 UNCHOSEN = ["names a paper the student did not choose"]
 
 
 @pytest.mark.parametrize("text", [
-    'Your recent paper "Grounded Models for Robot Planning" (2026) caught my attention.',
-    "Your paper caught my attention.", "Your recent paper on planning interested me.",
-    "I was impressed by your recent paper.", "I'm really interested in your 2025 article.", "I enjoyed your paper.",
-    "I found your latest publication fascinating.", "Your study on planning excited me.",
-    "Grounded models for robot planning is close to my interests.",
-    "Your paper “Grounded  Models for Robot Planning.” is on this topic.",
-    'Your paper "Sparse Nets" is on this topic.',
+    'Your recent paper "Grounded Models for Robot Planning" (2026) is on this topic.',
+    "Your paper “grounded  models for robot planning.” is on this topic.",
+    "Your paper ‘Grounded Models for Robot\nPlanning,’ is on this topic.",
+    "Your paper 'Grounded Models for Robot Planning' is on this topic.",
+    'Your survey "Learning What\'s Next - A Survey?" is on this topic.',
 ])
-def test_without_a_chosen_paper_naming_or_reacting_to_one_is_rejected(text):
-    assert unchosen_paper_claims(text, TITLES)
+def test_a_quoted_full_title_the_student_did_not_choose_is_rejected(text):
+    assert unchosen_paper_claims(text, TITLES) == UNCHOSEN
 
 
 @pytest.mark.parametrize("text", [
-    "I would like to learn more about your work on grounded models for planning.",
-    "Your work on robot planning caught my attention.", "Your research interests me.",
-    "I am interested in sparse nets and pruning.",
-    "I would be interested in reading your papers.", "The study of robot planning interests me.",
+    # Unquoted, partial or longer quotations, a title under three words, and a
+    # reaction to a paper are outside the rule (reactions are left to the prompt).
+    "Grounded models for robot planning is close to my interests.",
+    'Your paper "Grounded Models" is on this topic.',
+    'The phrase "Grounded Models for Robot Planning and Control" is not that title.',
+    "The lab's Grounded Models for Robot Planning' line is not a quotation.",
+    'Your paper "Sparse Nets" is on this topic.',
+    "Your paper caught my attention.", "I was impressed by your recent paper.",
 ])
-def test_research_direction_without_a_paper_title_is_not_a_paper_claim(text):
+def test_anything_but_a_quoted_full_title_of_three_words_is_outside_the_rule(text):
     assert unchosen_paper_claims(text, TITLES) == []
 
 
-def test_only_the_chosen_paper_may_be_named():
+@pytest.mark.parametrize("student_text", [
+    "Reproduced the experiments of “Grounded Models for Robot Planning” in PyTorch.",
+    "grounded models for robot planning",
+    "Mention your paper 'GROUNDED MODELS FOR ROBOT PLANNING'.",
+])
+def test_a_title_the_student_supplied_may_be_quoted(student_text):
+    text = 'Your paper "Grounded Models for Robot Planning" is on this topic.'
+    assert unchosen_paper_claims(text, TITLES, student_text=student_text) == []
+    assert unchosen_paper_claims(text, TITLES, student_text="robot planning") == UNCHOSEN
+
+
+def test_only_the_chosen_paper_may_be_quoted():
     chosen = TITLES[0]
-    assert unchosen_paper_claims(READ, ["Grounded Models"], chosen_title="Grounded Models") == []
     read = "I have read the abstract of your paper “Grounded Models for Robot Planning” (2026)."
     assert unchosen_paper_claims(read, TITLES, chosen_title=chosen) == []
-    assert unchosen_paper_claims(read + " Grounded Models for Robot Planning fits.", TITLES, chosen_title=chosen) == []
-    assert unchosen_paper_claims(read + " Your paper caught my attention.", TITLES, chosen_title=chosen) == []
-    assert unchosen_paper_claims(read + ' Your paper "Sparse Nets" is related.', TITLES,
-                                 chosen_title=chosen) == UNCHOSEN
+    assert unchosen_paper_claims(read + " I mean “Grounded Models for Robot Planning”.", TITLES,
+                                 chosen_title=chosen) == []
+    other = read + " Your survey “Learning What’s Next – A Survey?” is related."
+    assert unchosen_paper_claims(other, TITLES, chosen_title=chosen) == UNCHOSEN
+    assert unchosen_paper_claims(other, TITLES, chosen_title=chosen, student_text="Learning What's Next - A Survey") == []
     assert unchosen_paper_claims(read, TITLES) == UNCHOSEN
-    # A title inside the chosen one is not named by it; one containing it is.
+    # A title inside the chosen one's quotation is not quoted by it; one quoted whole is.
     assert unchosen_paper_claims(read, ["Models for Robot Planning", chosen], chosen_title=chosen) == []
     assert unchosen_paper_claims(read, ["Models for Robot Planning", chosen],
                                  chosen_title="Models for Robot Planning") == UNCHOSEN

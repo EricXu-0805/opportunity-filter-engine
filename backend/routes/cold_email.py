@@ -2069,8 +2069,25 @@ def _email_condition_findings(text: str, parts: dict, opp: dict) -> list[str]:
     return sorted(set(issues))
 
 
+def _student_paper_title_text(parts: dict) -> str:
+    """Text the student supplied for this request, read only by the M33 title rule.
+
+    Research interests, the confirmed experience the other checks read (each
+    printed bullet and its resume-master fields), and for an edit the current
+    draft, selection and instruction. It authenticates nothing else.
+    """
+    texts = [str(parts.get("research_interests_verbatim") or ""), str(parts.get("research_interests") or "")]
+    texts.extend(str(bullet) for bullet in parts.get("resume_bullets") or [])
+    for material in parts.get("experience_materials_all") or []:
+        context = material.get("context")
+        if context:
+            texts.extend(str(fact["value"]) for fact in context["fields"].values())
+    texts.extend(parts.get("refine_inputs") or [])
+    return "\n".join(texts)
+
+
 def _email_grounding_findings(
-    text: str, parts: dict, opp: dict, *, corpus: str | None = None,
+    text: str, parts: dict, opp: dict, *, corpus: str | None = None, deterministic: bool = False,
 ) -> tuple[list[str], list[str]]:
     """One fact contract for drafting, revision, and interactive refinement.
 
@@ -2079,6 +2096,8 @@ def _email_grounding_findings(
     Completed actions also keep actor, negation and project/metric attribution
     within each experience entry. This is a bounded English check, not semantic
     verification. Neither a previous draft nor an edit request is a new source.
+    ``deterministic`` text (a template or local edit) skips the M33 paper-title
+    rule, which is a check on what a model wrote.
     """
     if corpus is None:
         corpus = _build_email_corpus(parts, opp)
@@ -2109,13 +2128,15 @@ def _email_grounding_findings(
     fabricated.extend(unsupported_action_claims(
         text, confirmed_reading_sentence=parts.get("contact_paper_reading"),
     ))
-    # M33: only the paper the student chose (validated against these works
-    # before any route builds parts) may be named.
-    chosen = ((parts.get("contact_context") or {}).get("paper_reading") or {}).get("title")
-    fabricated.extend(unchosen_paper_claims(
-        text, [str(work.get("title") or "") for work in email_research_works(opp) if isinstance(work, dict)],
-        chosen_title=chosen,
-    ))
+    if not deterministic:
+        # M33: only the paper the student chose (validated against these works
+        # before any route builds parts) may be quoted by title, unless the
+        # student supplied the title. Templates name only the chosen paper.
+        chosen = ((parts.get("contact_context") or {}).get("paper_reading") or {}).get("title")
+        fabricated.extend(unchosen_paper_claims(
+            text, [str(work.get("title") or "") for work in email_research_works(opp) if isinstance(work, dict)],
+            student_text=_student_paper_title_text(parts), chosen_title=chosen,
+        ))
     fabricated.extend(contact_claim_violations(text, parts))
     # The deterministic template's label counts examples, not achievements.
     # Keep the quoted project/metrics in the check, excluding only that label.
@@ -2150,13 +2171,15 @@ def _neutral_inquiry(parts: dict, opp: dict) -> str:
     # last resort. Contact history never authenticates competence/attachments.
     availability = parts.get("contact_availability") or ""
     availability_parts = {**parts, "contact_opening": "", "contact_reply_line": "", "contact_paper_reading": ""}
-    if availability and any(_email_grounding_findings(availability, availability_parts, opp)):
+    if availability and any(_email_grounding_findings(availability, availability_parts, opp, deterministic=True)):
         availability = ""
     return "\n\n".join(line for line in [greeting, *context_lines, availability, ask, "Thank you for your time."] if line)
 
 
 
-def _guard_email_output(subject: str, body: str, parts: dict, opp: dict) -> tuple[str, str, bool]:
+def _guard_email_output(
+    subject: str, body: str, parts: dict, opp: dict, *, deterministic: bool = False,
+) -> tuple[str, str, bool]:
     """Validate even deterministic outputs; never recursively regenerate.
 
     Templates can quote accepted bullets, which still cannot establish a file
@@ -2165,7 +2188,8 @@ def _guard_email_output(subject: str, body: str, parts: dict, opp: dict) -> tupl
     """
     subject = required_email_subject(opp) or subject
     subject, body = redact_embedded_emails(subject), redact_embedded_emails(body)
-    if subject.strip() and body.strip() and not any(_email_grounding_findings(f"{subject}\n{body}", parts, opp)):
+    if subject.strip() and body.strip() and not any(_email_grounding_findings(
+            f"{subject}\n{body}", parts, opp, deterministic=deterministic)):
         return subject, body, False
     return required_email_subject(opp) or "Research inquiry", redact_embedded_emails(_neutral_inquiry(parts, opp)), True
 
@@ -2334,7 +2358,7 @@ def _run_engine(
     # Last output belt: a provider or a legacy template must not synthesize or
     # preserve a recipient address in the draft body. The dedicated recipient
     # field below is the only allowed reveal channel.
-    subject, body, replaced = _guard_email_output(subject, body, parts, safe_opp)
+    subject, body, replaced = _guard_email_output(subject, body, parts, safe_opp, deterministic=method != "ai")
     if replaced:
         method = "template"
         fallback_reason = fallback_reason or "fabrication"
@@ -2399,7 +2423,8 @@ def _template_after_timeout(
 
 def _guard_variants(raw_variants: list[dict], parts: dict, opp: dict) -> list[tuple[str, str]]:
     """Each variant's subject and body after the output guard (run on the request lane)."""
-    return [_guard_email_output(*_extract_subject_and_body(v["text"]), parts, opp)[:2] for v in raw_variants]
+    return [_guard_email_output(*_extract_subject_and_body(v["text"]), parts, opp, deterministic=True)[:2]
+            for v in raw_variants]
 
 
 def _sse_frame(payload: dict) -> str:
@@ -2702,6 +2727,10 @@ def _refine_context(request: EmailRefineRequest, opp: dict | None) -> dict | Non
         # evidence in a provider prompt for an anonymous legacy caller.
         for key in ("name", "year", "major", "school"):
             parts[key] = ""
+    # Read only by the M33 rule: a paper title the student typed into this edit
+    # may stay. These inputs never enter the evidence corpus.
+    parts["refine_inputs"] = [request.current_body, request.instruction,
+                              request.selection.text if request.selection is not None else ""]
     return {
         "safe_opp": safe_opp,
         "profile_dict": profile_dict,
@@ -2734,7 +2763,7 @@ def _safe_refine_template_body(context: dict) -> str:
             parts_cache=context["parts"],
         )
         subject, body = _extract_subject_and_body(template)
-        return _guard_email_output(subject, body, context["parts"], context["safe_opp"])[1]
+        return _guard_email_output(subject, body, context["parts"], context["safe_opp"], deterministic=True)[1]
 
     return _neutral_inquiry(context["parts"], context["safe_opp"])
 
@@ -2771,7 +2800,7 @@ def _local_refine_fallback(
             return _preserve_refine_draft_after_condition_failure(request, safe_body, context, condition_issues)
         normalized = _enforce_brief_greeting(candidate, context["prof_brief"])
         invalid = normalized is None or any(_email_grounding_findings(
-            normalized, context["parts"], context["safe_opp"], corpus=context["corpus"],
+            normalized, context["parts"], context["safe_opp"], corpus=context["corpus"], deterministic=True,
         ))
         if invalid:
             fallback_reason = fallback_reason or "fabrication"
@@ -2792,7 +2821,7 @@ def _local_refine_fallback(
             candidate = (
                 normalized
                 if normalized is not None and not any(_email_grounding_findings(
-                    normalized, context["parts"], context["safe_opp"], corpus=context["corpus"],
+                    normalized, context["parts"], context["safe_opp"], corpus=context["corpus"], deterministic=True,
                 ))
                 else redact_embedded_emails(template_body)
             )

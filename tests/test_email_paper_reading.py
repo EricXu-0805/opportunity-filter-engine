@@ -1,4 +1,5 @@
 """A selected verified title authenticates attribution, never a student's reading."""
+import json
 import re
 from copy import deepcopy
 
@@ -101,6 +102,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from backend.routes import cold_email as ce
+from tests.experience_fixtures import confirmed_experience
 from tests.test_cold_email_writing_quality import OPP as WRITING_OPP
 from tests.test_cold_email_writing_quality import PROFILE
 from tests.test_email_contact_context import post, result
@@ -295,68 +297,153 @@ def test_ai_prompt_cites_a_paper_only_when_the_student_chose_it(writing_client, 
     assert all("If no paper was chosen, name, quote or cite no paper" in s for s in drafting)
 
 
-# M33 enforcement: the prompt alone does not stop a model naming a paper. The
-# shared grounding check rejects a reply that names a paper the student did not
-# choose, or (with none chosen) states a reaction to a paper, and every route
-# falls back as for any other unsupported claim.
+# M33 enforcement: the prompt alone does not stop a model naming a paper. A model
+# reply that quotes the full title of a verified paper the student did not
+# choose is sent back like any other unsupported claim, unless the student
+# supplied that title for this request. Templates and local edits are not checked.
 SECOND_PAPER = {"title": "Pruning Large Language Models Without Retraining", "year": 2025}
-UNCHOSEN = [
-    'Your recent paper "Efficient Sparse Training at Scale" (2026) caught my attention.',
-    "Your paper caught my attention.",
-    "I was impressed by your recent paper.",
-    "Your paper “Efficient Sparse Training at Scale” (2026) is on this topic.",
-]
+TITLE = PROFESSOR_PAPER["title"]
+QUOTED = f"Your paper “{TITLE}” (2026) is on this topic."
+SKIPPED = {"version": 1, "purpose": "first_contact"}
+CHOSEN = {**SKIPPED, "paper_reading": {**PROFESSOR_PAPER, "level": "abstract", "confirmed": True}}
+EXPERIENCE = f"Reproduced the experiments of “{TITLE}” in PyTorch for sparse neural network training."
+INTRO = "I am Audit Student, a sophomore in Computer Science at UIUC."
+ASK = "Could I ask whether you have any current or upcoming research openings?"
 
 
 def _model_reply(path, *sentences):
-    body = " ".join(["I am Audit Student, a sophomore in Computer Science at UIUC.", *sentences,
-                     "I would like to learn more about your research in sparse neural network training.",
-                     "Could I ask whether you have any current or upcoming research openings?"])
+    body = " ".join([INTRO, *sentences,
+                     "I would like to learn more about your research in sparse neural network training.", ASK])
     email = f"Dear Professor Ada Lovelace,\n\n{body}\n\nBest regards,\nAudit Student"
     return email if path == "refine" else f"Subject: Sparse neural network training\n\n{email}"
 
 
-def _post_model_reply(client, monkeypatch, path, value, reply):
+def _hand_typed(*sentences):
+    return "\n\n".join(["Dear Professor Ada Lovelace,", " ".join([INTRO, *sentences]), ASK,
+                        "Best regards,\nAudit Student"])
+
+
+def _m33_post(client, monkeypatch, path, value=SKIPPED, *, reply=None, profile=PROFILE, experience=(), **fields):
     professor = deepcopy(PROFESSOR)
     professor["metadata"]["recent_works"].append(SECOND_PAPER)
     monkeypatch.setattr(ce, "load_opportunities_by_id", lambda: {professor["id"]: professor})
-    monkeypatch.setattr(ce, "is_configured", lambda: True)
-    monkeypatch.setattr(ce, "chat_completion", lambda *_a, **_k: reply)
-    extra = {} if path == "refine" else {"engine": "ai"}
-    out = result(post(client, path, value, opportunity_id=professor["id"], **extra), path)
-    return out, out["method"] == ("llm" if path == "refine" else "ai")
+    if reply is not None:
+        monkeypatch.setattr(ce, "is_configured", lambda: True)
+        monkeypatch.setattr(ce, "chat_completion", lambda *_a, **_k: reply)
+    request = {"profile": profile, "opportunity_id": professor["id"], "contact_context": value,
+               "experience_evidence": confirmed_experience(list(experience)), **fields}
+    if path == "refine":
+        request = {"current_body": _hand_typed(), "instruction": "Make this clearer", **request}
+    response = client.post("/api/cold-email" + (f"/{path}" if path else ""),
+                           content=json.dumps(request, ensure_ascii=True), headers={"Content-Type": "application/json"})
+    return result(response, path)
+
+
+def _served(out, path):
+    return out["method"] == ("llm" if path == "refine" else "ai") and out.get("fallback_reason") is None
 
 
 @pytest.mark.parametrize("path", ["", "stream", "refine"])
-@pytest.mark.parametrize("sentence", [None, *UNCHOSEN])
-def test_model_reply_naming_or_reacting_to_an_unchosen_paper_is_rejected(writing_client, monkeypatch, path, sentence):
+@pytest.mark.parametrize("sentence", [None, QUOTED, f'Your paper "{TITLE.lower()}" is on this topic.'])
+def test_model_reply_quoting_an_unchosen_title_is_sent_back(writing_client, monkeypatch, path, sentence):
     client, _ = writing_client
     reply = _model_reply(path, *([sentence] if sentence else []))
-    out, served = _post_model_reply(client, monkeypatch, path, {"version": 1, "purpose": "first_contact"}, reply)
+    out = _m33_post(client, monkeypatch, path, reply=reply, **({} if path == "refine" else {"engine": "ai"}))
     if sentence is None:
-        # The same reply without a paper sentence is served as written.
-        assert served and out.get("fallback_reason") is None, out
-        assert out["body"] in reply
+        # The same reply without the title is served as written.
+        assert _served(out, path) and out["body"] in reply, out
         return
-    assert not served and out["fallback_reason"] == "fabrication", out
-    assert sentence not in out["body"]
-    assert "caught my attention" not in out["body"]
-    assert PROFESSOR_PAPER["title"] not in out["body"]
+    assert not _served(out, path) and out["fallback_reason"] == "fabrication", out
+    assert TITLE.lower() not in out["body"].lower()
 
 
 @pytest.mark.parametrize("path", ["", "stream", "refine"])
 @pytest.mark.parametrize("extra,allowed", [
     (None, True),
-    ("Efficient Sparse Training at Scale is the paper I chose.", True),
+    (f"“{TITLE}” is the paper I chose.", True),
     (f"Your paper “{SECOND_PAPER['title']}” (2025) is on this topic.", False),
 ])
-def test_with_a_chosen_paper_only_that_paper_may_be_named(writing_client, monkeypatch, path, extra, allowed):
+def test_with_a_chosen_paper_only_that_title_may_be_quoted(writing_client, monkeypatch, path, extra, allowed):
     client, _ = writing_client
-    value = {"version": 1, "purpose": "first_contact",
-             "paper_reading": {**PROFESSOR_PAPER, "level": "abstract", "confirmed": True}}
-    reply = _model_reply(path, paper_reading_sentence(value), *([extra] if extra else []))
-    out, served = _post_model_reply(client, monkeypatch, path, value, reply)
-    assert served is allowed, out
+    reply = _model_reply(path, paper_reading_sentence(CHOSEN), *([extra] if extra else []))
+    out = _m33_post(client, monkeypatch, path, CHOSEN, reply=reply, **({} if path == "refine" else {"engine": "ai"}))
+    assert _served(out, path) is allowed, out
     assert (out.get("fallback_reason") is None) is allowed
-    assert out["body"].count(paper_reading_sentence(value)) == 1
-    assert (SECOND_PAPER["title"] in out["body"]) is False
+    assert out["body"].count(paper_reading_sentence(CHOSEN)) == 1
+    assert SECOND_PAPER["title"] not in out["body"]
+
+
+# Review of the first version of this check (which matched any unquoted title
+# and a list of reaction phrases) found it discarded the student's own words.
+@pytest.mark.parametrize("path,engine", [("", "template"), ("stream", "template"), ("variants", "template"),
+                                         ("", "ai"), ("stream", "ai")])
+def test_confirmed_experience_quoting_a_title_keeps_the_students_draft(writing_client, monkeypatch, path, engine):
+    client, _ = writing_client
+    sentence = f"I reproduced the experiments of “{TITLE}” in PyTorch for sparse neural network training."
+    reply = _model_reply(path, sentence) if engine == "ai" else None
+    out = _m33_post(client, monkeypatch, path, reply=reply, experience=[EXPERIENCE], engine=engine)
+    assert out.get("fallback_reason") is None, out
+    if engine == "ai":
+        assert out["method"] == "ai" and sentence in out["body"], out
+        return
+    for variant in out.get("variants", [out]):
+        assert NEUTRAL_ASK not in variant["body"]
+        assert "Audit Student" in variant["body"] and EXPERIENCE in variant["body"]
+
+
+@pytest.mark.parametrize("path,engine", [("", "template"), ("stream", "template"), ("variants", "template"),
+                                         ("", "ai"), ("stream", "ai")])
+def test_research_interests_naming_a_title_keep_the_draft(writing_client, monkeypatch, path, engine):
+    client, _ = writing_client
+    sentence = f"My research interest is “{TITLE}”."
+    reply = _model_reply(path, sentence) if engine == "ai" else None
+    out = _m33_post(client, monkeypatch, path, reply=reply, engine=engine,
+                    profile={**PROFILE, "research_interests_text": TITLE.lower()})
+    assert out.get("fallback_reason") is None, out
+    if engine == "ai":
+        assert out["method"] == "ai" and sentence in out["body"], out
+        return
+    for variant in out.get("variants", [out]):
+        assert NEUTRAL_ASK not in variant["body"]
+        assert "Audit Student" in variant["body"]
+
+
+@pytest.mark.parametrize("provider", [False, True])
+@pytest.mark.parametrize("sentence", [f"I would like to ask about your paper “{TITLE}”.",
+                                      "I really enjoyed your recent paper."])
+def test_full_refine_keeps_a_hand_typed_draft_that_names_a_paper(writing_client, monkeypatch, provider, sentence):
+    client, _ = writing_client
+    draft = _hand_typed(sentence)
+    edited = draft.replace("Could I ask", "May I ask")
+    out = _m33_post(client, monkeypatch, "refine", reply=edited if provider else None, current_body=draft)
+    assert out.get("fallback_reason") is None, out
+    assert out["method"] == ("llm" if provider else "local")
+    assert sentence in out["body"] and "My name is" not in out["body"]
+
+
+def test_refine_instruction_quoting_a_title_allows_it(writing_client, monkeypatch):
+    client, _ = writing_client
+    sentence = f"I would like to ask about your paper “{TITLE}”."
+    out = _m33_post(client, monkeypatch, "refine", reply=_hand_typed(sentence), current_body=_hand_typed(),
+                    instruction=f"Mention your paper “{TITLE}”.")
+    assert out["method"] == "llm" and out.get("fallback_reason") is None, out
+    assert sentence in out["body"]
+
+
+@pytest.mark.parametrize("replacement,proposed", [
+    ("May I ask whether you have any current or upcoming research openings?", True),
+    # Already in the student's draft, so not a new finding.
+    (f"May I ask about your paper “{TITLE}”?", True),
+    (f"May I ask about your paper “{SECOND_PAPER['title']}”?", False),
+])
+def test_selection_refine_counts_only_a_title_new_to_the_draft(writing_client, monkeypatch, replacement, proposed):
+    client, _ = writing_client
+    draft = _hand_typed(f"I would like to ask about your paper “{TITLE}”.")
+    start = len(draft[:draft.index(ASK)].encode("utf-16-le")) // 2
+    selection = {"start_utf16": start, "end_utf16": start + len(ASK), "text": ASK}
+    out = _m33_post(client, monkeypatch, "refine", reply=json.dumps({"replacement": replacement}),
+                    current_body=draft, subject="Research inquiry", selection=selection,
+                    instruction="Make only this selection clearer.")
+    assert out["outcome"] == ("proposal" if proposed else "no_change"), out
+    if not proposed:
+        assert out["reason"] == "fabrication"

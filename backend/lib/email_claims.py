@@ -72,30 +72,12 @@ def unsupported_action_claims(text: str, *, confirmed_reading_sentence: str | No
 
 
 # M33 (owner decision 2026-10-12): a paper is named only when the student chose
-# it. Text is compared after NFKC, casefolding, one quotation-mark and dash style
-# and single spaces. A title of three or more words counts wherever it appears
-# whole; a shorter one only inside quotation marks, where it cannot be an
-# ordinary research-area phrase.
-_COMPARABLE = str.maketrans({**dict.fromkeys("“”„‟", '"'), **dict.fromkeys("‘’‛`", "'"),
+# it. The reply check is one rule: a reply may not quote the full title of an
+# unchosen verified paper unless the student supplied that title for this
+# request. A stated reaction to a paper is left to the prompt. Titles compare
+# after NFKC, casefolding, one quotation-mark and dash style and single spaces.
+_COMPARABLE = str.maketrans({**dict.fromkeys("“”„‟", '"'), **dict.fromkeys("‘’‛", "'"),
                              **dict.fromkeys("‐‑‒–—―", "-")})
-# A stated reaction to a paper: the paper caught my attention / interested me,
-# I was impressed by / interested in the paper, I enjoyed the paper, I found
-# the paper interesting. "Paper" means paper, article, publication, preprint,
-# or "your study"; a reaction to "your work" or "your research" is not one.
-_PAPER = (r"(?:(?:your|the|this|that)\s+(?:(?:recent|latest|new|published|\d{4})\s+){0,2}"
-          r"(?:papers?|articles?|publications?|preprints?)|"
-          r"your\s+(?:(?:recent|latest|new|published|\d{4})\s+){0,2}stud(?:y|ies))\b")
-_PAPER_REACTION = re.compile(
-    rf"\b{_PAPER}[^.!?\n]*?\b(?:(?:caught|catches|grabbed|grabs|captured|captures)\s+my\s+"
-    r"(?:attention|eye|interest)|(?:excited|excites|impressed|impresses|intrigued|intrigues|fascinated|"
-    r"fascinates|inspired|inspires|struck|strikes|interested|interests)\s+me)\b|"
-    r"\bi(?:\s+was|\s+am|'m|\s+have\s+been|'ve\s+been)\s+"
-    r"(?:(?:really|particularly|especially|very|quite|so|deeply|greatly)\s+)?"
-    rf"(?:excited|impressed|intrigued|fascinated|inspired|struck|interested)\s+(?:by|with|in|about)\s+{_PAPER}|"
-    rf"\bi\s+(?:(?:really|particularly|especially)\s+)?(?:enjoyed|loved|admired)\s+{_PAPER}|"
-    rf"\bi\s+found\s+{_PAPER}[^.!?\n]*?\b(?:interesting|fascinating|compelling|inspiring|exciting|impressive)\b",
-    re.IGNORECASE,
-)
 
 
 def _comparable(text: str) -> str:
@@ -106,32 +88,27 @@ def _title_core(title: str) -> str:
     return _comparable(title).strip(" \"'.,;:!?")
 
 
-def unchosen_paper_claims(text: str, titles: Iterable[str], *, chosen_title: str | None = None) -> list[str]:
-    """Reject naming a paper the student did not choose, or a reaction without one.
+def unchosen_paper_claims(text: str, titles: Iterable[str], *, student_text: str = "",
+                          chosen_title: str | None = None) -> list[str]:
+    """Reject a reply that quotes the full title of a paper the student did not choose.
 
-    ``titles`` are the professor's paper titles the draft could have seen. With
-    a chosen paper, its title may appear anywhere and only other titles count;
-    without one, the reaction patterns above count too. This is a bounded
-    pattern check: a paraphrased or partial title is not detected.
+    ``titles`` are the professor's verified paper titles. A title counts only
+    inside quotation marks (straight or curly, single or double; a closing
+    punctuation mark may sit inside them). A title under three words, the
+    chosen paper's title, and a title that also appears anywhere in
+    ``student_text`` (what the student supplied for this request) never count.
+    An unquoted, partial or paraphrased title is not detected.
     """
-    norm = _comparable(text)
+    norm, supplied = _comparable(text), _comparable(student_text)
     chosen = _title_core(chosen_title or "")
-    chosen_spans = [match.span() for match in re.finditer(rf"(?<!\w){re.escape(chosen)}(?!\w)", norm)] if chosen else []
-    findings: set[str] = set()
     for title in titles:
         core = _title_core(str(title))
-        if not core:
+        if len(core.split()) < 3 or core == chosen:
             continue
-        pattern = (rf"(?<!\w)(?P<t>{re.escape(core)})(?!\w)" if len(core.split()) >= 3
-                   else rf"[\"'] ?(?P<t>{re.escape(core)})[.,;:!?]? ?[\"']")
-        for match in re.finditer(pattern, norm):
-            start, end = match.span("t")
-            if not any(a <= start and end <= b for a, b in chosen_spans):
-                findings.add("names a paper the student did not choose")
-                break
-    if not chosen and _PAPER_REACTION.search(norm):
-        findings.add("states a reaction to a paper the student did not choose")
-    return sorted(findings)
+        quoted = re.search(rf"(?<!\w)[\"'] ?{re.escape(core)}[.,;:!?]? ?[\"'](?!\w)", norm)
+        if quoted and not re.search(rf"(?<!\w){re.escape(core)}(?!\w)", supplied):
+            return ["names a paper the student did not choose"]
+    return []
 
 
 # Lower tiers are included as boundaries: in "expert in Python and basic
