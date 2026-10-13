@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { X, Plus } from 'lucide-react';
+import { Check, X, Plus } from 'lucide-react';
 import type { SkillWithLevel, SkillLevel } from '@/lib/types';
 import { skillNeedsConfirming } from '@/lib/skill-evidence';
 import { useT } from '@/i18n/client';
@@ -111,6 +111,13 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
     );
   }
 
+  // Confirming without moving. The level an import arrived at may already be
+  // right, and the badge alone moves it on, so keeping it meant cycling all the
+  // way round: three clicks, two of them through levels they did not mean.
+  function keepLevel(name: string) {
+    onChange(selected.map((s) => (s.name === name ? { ...s, confirmed: true } : s)));
+  }
+
   // Named rather than counted per chip: the student needs one sentence telling
   // them why some chips look different and what to do, not a badge on each.
   const unsettledCount = selected.filter(skillNeedsConfirming).length;
@@ -163,6 +170,20 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
               >
                 {levelLabel}
               </button>
+              {unsettled && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    keepLevel(skill.name);
+                  }}
+                  className="shrink-0 p-0.5 rounded hover:bg-black/5 transition-colors"
+                  aria-label={t('skills.keepLevel', { skill: skill.name, level: levelLabel })}
+                  title={t('skills.keepLevel', { skill: skill.name, level: levelLabel })}
+                >
+                  <Check className="w-3 h-3" />
+                </button>
+              )}
               <button
                 type="button"
                 onClick={(e) => {

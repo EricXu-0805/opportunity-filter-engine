@@ -152,6 +152,37 @@ describe('SkillTags — level cycling', () => {
   });
 });
 
+describe('SkillTags — keeping an imported level', () => {
+  // The badge always moves the level on, so settling an import at the level
+  // it arrived at took three clicks through levels the student did not mean.
+  it('confirms the level it arrived at without changing it, keeping its source', () => {
+    const imported: SkillWithLevel = {
+      name: 'Python', level: 'beginner', source: 'github',
+      evidence: 'repo engine: language Python',
+    };
+    const { onChange } = setup([imported, { name: 'Rust', level: 'beginner', source: 'resume' }]);
+    fireEvent.click(screen.getByRole('button', { name: 'Keep this level for Python (Beginner)' }));
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith([
+      { ...imported, confirmed: true },
+      // Untouched: keeping one chip confirms that chip only.
+      { name: 'Rust', level: 'beginner', source: 'resume' },
+    ]);
+  });
+
+  it('is offered only on a chip still waiting to be settled', () => {
+    setup([
+      { name: 'Python', level: 'beginner' },
+      { name: 'Go', level: 'beginner', source: 'github', confirmed: true },
+      { name: 'Rust', level: 'experienced' },
+    ]);
+    expect(screen.queryByRole('button', { name: /Keep this level for Python/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Keep this level for Go/ })).toBeNull();
+    // A legacy `experienced` is held back too, so it can be kept as it stands.
+    expect(screen.getByRole('button', { name: 'Keep this level for Rust (Experienced)' })).toBeInTheDocument();
+  });
+});
+
 describe('SkillTags — Enter adds the skill you typed', () => {
   // `available` is a substring filter in declaration order, so its first entry
   // is rarely the one typed: "R" led with JavaScript, "C" with C++. The wrong

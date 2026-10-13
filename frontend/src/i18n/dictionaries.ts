@@ -2860,7 +2860,8 @@ export const en = {
     confirmLevelTitle: 'Click to confirm where you actually stand',
     foundOn: 'Found on your resume: "{line}" — click to set your level',
     foundOnGithub: 'Inferred from your GitHub ({line}) — click to set your level',
-    confirmImportedHint: '{count} skill(s) came from your resume or GitHub. Click each level to set where you actually stand — until then they are described as exposure, not experience.',
+    confirmImportedHint: '{count} skill(s) came from your resume or GitHub. Click each level to set where you actually stand, or ✓ to keep it — until then they are described as exposure, not experience.',
+    keepLevel: 'Keep this level for {skill} ({level})',
     remove: 'Remove {skill}',
   },
   results: {
@@ -8097,7 +8098,8 @@ export const zh = {
     confirmLevelTitle: '点击确认你实际的掌握程度',
     foundOn: '在简历里找到：「{line}」—— 点击设置你的水平',
     foundOnGithub: '根据你的 GitHub 推断（{line}）—— 点击设置你的水平',
-    confirmImportedHint: '有 {count} 项技能来自简历或 GitHub。点击各自的水平标签，标明你实际的掌握程度；在此之前它们只会被表述为「接触过」，而不是「有经验」。',
+    confirmImportedHint: '有 {count} 项技能来自简历或 GitHub。点击各自的水平标签，标明你实际的掌握程度，或点 ✓ 保持当前水平；在此之前它们只会被表述为「接触过」，而不是「有经验」。',
+    keepLevel: '保持 {skill} 的当前水平（{level}）',
     remove: '移除 {skill}',
   },
   results: {
