@@ -118,6 +118,54 @@ describe('SkillTags — an imported skill shows where it came from', () => {
     expect(badge.getAttribute('title')).toMatch(/GitHub/i);
   });
 
+  // A title is hover-only, so on a touch screen the source was never shown at
+  // all. getByText reads rendered text, not attributes.
+  it('shows the resume line as text under the chip, not only in a title', () => {
+    setup([{
+      name: 'Python', level: 'beginner', source: 'resume',
+      evidence: 'Relevant coursework: Introduction to Python',
+    }]);
+    expect(screen.getByText('From your resume: “Relevant coursework: Introduction to Python”'))
+      .toBeVisible();
+  });
+
+  it('shows the GitHub repo field as text under the chip, labelled as inferred', () => {
+    setup([{
+      name: 'Python', level: 'beginner', source: 'github',
+      evidence: 'repo thesis: language Jupyter Notebook',
+    }]);
+    expect(screen.getByText('Inferred from your GitHub (repo thesis: language Jupyter Notebook)'))
+      .toBeVisible();
+  });
+
+  it('names the source as text when no line was captured', () => {
+    setup([{ name: 'Python', level: 'beginner', source: 'shared' }]);
+    expect(screen.getByText('From a shared profile')).toBeVisible();
+  });
+
+  it('opens the full line without opening the skill picker', () => {
+    const { input } = setup([{
+      name: 'Python', level: 'beginner', source: 'resume',
+      evidence: 'Relevant coursework: Introduction to Python',
+    }]);
+    const line = screen.getByText(/^From your resume:/);
+    fireEvent.click(line);
+    expect(line.closest('details')).toHaveAttribute('open');
+    expect(input).not.toHaveFocus();
+  });
+
+  it('adds nothing under a typed or a settled skill', () => {
+    setup([
+      { name: 'Python', level: 'beginner' },
+      {
+        name: 'Go', level: 'experienced', source: 'resume', confirmed: true,
+        evidence: 'Built a CLI in Go',
+      },
+    ]);
+    expect(screen.queryByText(/From your resume|Inferred from your GitHub|Built a CLI/)).toBeNull();
+    expect(document.querySelector('details')).toBeNull();
+  });
+
   it('leaves a settled skill with the ordinary cycle hint', () => {
     setup([{ name: 'Python', level: 'expert' }]);
     const badge = screen.getByRole('button', { name: 'Expert' });

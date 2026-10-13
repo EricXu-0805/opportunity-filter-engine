@@ -139,62 +139,92 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
           // provenance missing. Either way the chip reads as unsettled — dashed
           // rather than solid — and one tap on the level both sets and settles it.
           const unsettled = skillNeedsConfirming(skill);
+          // The badge's title says this too, but a touch screen never shows a
+          // title, and the student cannot accept, correct or delete an import
+          // without seeing where it came from. Typed and settled chips have
+          // nothing to explain.
+          const sourceLine = !unsettled || !skill.source
+            ? null
+            : skill.evidence
+              ? t(skill.source === 'github' ? 'skills.sourceLine.github' : 'skills.sourceLine.resume', { line: skill.evidence })
+              : t(`skills.sourceName.${skill.source}`);
           return (
             <span
               key={skill.name}
               // Tailwind has no dashed RING, so an unsettled chip swaps the
               // ring for the dashed border this codebase already uses for
               // provisional things, in the amber of the hint line below.
-              className={`inline-flex max-w-full min-w-0 items-center gap-1.5 pl-2.5 pr-1 py-1 rounded-lg ${cfg.bg} ${cfg.color} ${unsettled ? 'border border-dashed border-amber-300' : `ring-1 ${cfg.ring}`} text-sm font-medium group transition-all duration-200`}
+              className={`inline-flex max-w-full min-w-0 flex-col pl-2.5 pr-1 py-1 rounded-lg ${cfg.bg} ${cfg.color} ${unsettled ? 'border border-dashed border-amber-300' : `ring-1 ${cfg.ring}`} text-sm font-medium group transition-all duration-200`}
             >
-              <span className="min-w-0 break-all">{skill.name}</span>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  cycleLevel(skill.name);
-                }}
-                className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide ${cfg.bg} hover:brightness-95 transition-all cursor-pointer select-none`}
-                title={
-                  // The line it was found on beats any generic explanation:
-                  // "Relevant coursework: Introduction to Python" tells the
-                  // student in one glance that this is not experience.
-                  unsettled && skill.evidence
-                    ? t(skill.source === 'github' ? 'skills.foundOnGithub' : 'skills.foundOn', { line: skill.evidence })
-                    : unsettled && skill.source
-                      ? t(`skills.importedFrom.${skill.source}`)
-                      : unsettled
-                        ? t('skills.confirmLevelTitle')
-                        : t('skills.cycleLevelTitle', { level: levelLabel })
-                }
-              >
-                {levelLabel}
-              </button>
-              {unsettled && (
+              <span className="flex min-w-0 items-center gap-1.5">
+                <span className="min-w-0 break-all">{skill.name}</span>
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    keepLevel(skill.name);
+                    cycleLevel(skill.name);
+                  }}
+                  className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wide ${cfg.bg} hover:brightness-95 transition-all cursor-pointer select-none`}
+                  title={
+                    // The line it was found on beats any generic explanation:
+                    // "Relevant coursework: Introduction to Python" tells the
+                    // student in one glance that this is not experience.
+                    unsettled && skill.evidence
+                      ? t(skill.source === 'github' ? 'skills.foundOnGithub' : 'skills.foundOn', { line: skill.evidence })
+                      : unsettled && skill.source
+                        ? t(`skills.importedFrom.${skill.source}`)
+                        : unsettled
+                          ? t('skills.confirmLevelTitle')
+                          : t('skills.cycleLevelTitle', { level: levelLabel })
+                  }
+                >
+                  {levelLabel}
+                </button>
+                {unsettled && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      keepLevel(skill.name);
+                    }}
+                    className="shrink-0 p-0.5 rounded hover:bg-black/5 transition-colors"
+                    aria-label={t('skills.keepLevel', { skill: skill.name, level: levelLabel })}
+                    title={t('skills.keepLevel', { skill: skill.name, level: levelLabel })}
+                  >
+                    <Check className="w-3 h-3" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeSkill(skill.name);
                   }}
                   className="shrink-0 p-0.5 rounded hover:bg-black/5 transition-colors"
-                  aria-label={t('skills.keepLevel', { skill: skill.name, level: levelLabel })}
-                  title={t('skills.keepLevel', { skill: skill.name, level: levelLabel })}
+                  aria-label={t('skills.remove', { skill: skill.name })}
                 >
-                  <Check className="w-3 h-3" />
+                  <X className="w-3 h-3" />
                 </button>
-              )}
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  removeSkill(skill.name);
-                }}
-                className="shrink-0 p-0.5 rounded hover:bg-black/5 transition-colors"
-                aria-label={t('skills.remove', { skill: skill.name })}
-              >
-                <X className="w-3 h-3" />
-              </button>
+              </span>
+              {sourceLine && skill.evidence ? (
+                // One truncated line keeps the chip small on a phone; opening
+                // it wraps the whole quote. A native disclosure is reachable
+                // by keyboard and announces its state without extra wiring.
+                <details className="group/source min-w-0 max-w-[16rem] pr-1 text-[11px] font-normal leading-snug text-gray-600">
+                  <summary
+                    // A click on the chip box opens the picker and raises a
+                    // phone's keyboard; opening the line should do neither.
+                    onClick={(e) => e.stopPropagation()}
+                    className="cursor-pointer truncate group-open/source:whitespace-normal group-open/source:[overflow-wrap:anywhere]"
+                  >
+                    {sourceLine}
+                  </summary>
+                </details>
+              ) : sourceLine ? (
+                <span className="min-w-0 max-w-[16rem] truncate pr-1 text-[11px] font-normal leading-snug text-gray-600">
+                  {sourceLine}
+                </span>
+              ) : null}
             </span>
           );
         })}
