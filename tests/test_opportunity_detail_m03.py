@@ -556,6 +556,28 @@ class TestApiAndFrontendAgree:
         assert "research_areas" not in fields["research_content"]["inferred"]
         assert payload["keywords_attribution"] == "inferred"
 
+    @pytest.mark.parametrize("source,topics,majors", [
+        # Simplify maps its category to topics and majors.
+        ("simplify_internships", "system_tag", "system_tag"),
+        # Tags a person typed into a program spec or a manual row.
+        ("duke_research_programs", "system_tag", "configured"),
+        ("manual", "system_tag", None),
+        # A keyword bank or tagger read of the text.
+        ("nsf_reu", "text_scan", "text_scan"),
+        ("cmu_uro_projects", "text_scan", "text_scan"),
+    ])
+    def test_tags_we_assign_are_not_called_a_reading_of_the_page(self, source, topics, majors):
+        # "Read from the page text by our pipeline" was the facts' label for a
+        # program spec's or manual row's tags and Simplify's category-map
+        # majors, none of them read off any page.
+        fields = _fields(_listing(source=source, keywords=["machine learning"], eligibility={"majors": ["Biology"]}))
+        assert fields["research_content"]["inferred"]["research_areas"]["basis"] == topics
+        if topics == "system_tag":
+            assert fields["research_content"]["provenance"]["observed_at"] is None
+        elig = fields["eligibility"]
+        assert (elig["inferred"].get("majors") or {}).get("basis") == majors
+        assert ("majors" in elig["explicit"]) is (majors is None)
+
 
 # ---------------------------------------------------------------------------
 # Listing collectors wired to the contract (campus_graph, ucb_campus, uiuc_sro)

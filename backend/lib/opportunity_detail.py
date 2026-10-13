@@ -137,6 +137,7 @@ BASIS_PROGRAM_POLICY = "program_policy"   # a published rule of the funding prog
 BASIS_COLLECTOR_DEFAULT = "collector_default"  # a constant the collector writes on every row
 BASIS_CONFIGURED = "configured"           # this program's own value, typed into our config
 BASIS_DERIVED = "derived_from_source"     # restated from a different source fact
+BASIS_SYSTEM_TAG = "system_tag"           # a tag or category-map value we assign
 
 _STAMP_PREFIX_BASIS = {
     "rule": BASIS_TEXT_SCAN,
@@ -230,6 +231,10 @@ _CITIZENSHIP_FROM_FIELD = frozenset({"uiuc_sro"})
 _DETAIL_PAGE_SOURCES = frozenset({"uiuc_sro"})
 # Keywords that are the source's own topic list: the SRO "Research Area".
 _KEYWORDS_FROM_SOURCE = frozenset({"uiuc_sro"})
+# Collectors that write a listing's topics and majors through a map keyed on
+# the source's category (Simplify's "Software Engineering" becomes Computer
+# Science, Data Science, …): our tags, not words on the posting.
+_CATEGORY_MAP_SOURCES = frozenset({"simplify_internships"})
 
 # Sources whose eligibility lists (majors, skills) a person typed in from one
 # posting: manual rows. Every other collector fills them from a keyword bank
@@ -508,12 +513,16 @@ def keywords_basis(canonical: dict) -> str | None:
     stamped = _basis_for(canonical, "keywords")
     if stamped is not None or record_kind(canonical) == "faculty_contact":
         return stamped
-    if str(canonical.get("source") or "") in _KEYWORDS_FROM_SOURCE:
+    source = str(canonical.get("source") or "")
+    if source in _KEYWORDS_FROM_SOURCE:
         return None
     # Listing keywords are ours on every other collector: Simplify expands
-    # its category through a map, NSF and the normalizer run a keyword
-    # bank, campus program specs carry tags a person typed. Only the SRO's
-    # "Research Area" field is a topic list the source published.
+    # its category through a map, campus program specs and manual rows carry
+    # tags a person typed (neither read off a page), NSF and the normalizer
+    # run a keyword bank over the text. Only the SRO's "Research Area" field
+    # is a topic list the source published.
+    if source in _CATEGORY_MAP_SOURCES or _is_curated_source(source) or is_configured_program(canonical):
+        return BASIS_SYSTEM_TAG
     return BASIS_TEXT_SCAN
 
 
@@ -526,10 +535,15 @@ def majors_basis(canonical: dict) -> tuple[str | None, dict | None]:
     spec's unstamped list is `configured` unless its page text states it.
     """
     basis, quote = _stamped_or_configured(canonical, "eligibility.majors", "majors")
-    if basis is not None or quote is not None or _is_curated_source(str(canonical.get("source") or "")):
+    if basis is not None or quote is not None:
         return basis, quote
-    # Every other collector fills majors from a keyword bank, a tagger read of
-    # prose or a category map (Simplify), stamped or not.
+    source = str(canonical.get("source") or "")
+    if _is_curated_source(source):
+        return None, None
+    if source in _CATEGORY_MAP_SOURCES:
+        return BASIS_SYSTEM_TAG, None
+    # Every other collector fills majors from a keyword bank or tagger read
+    # of prose, stamped or not.
     return BASIS_TEXT_SCAN, None
 
 
@@ -793,9 +807,10 @@ def _provenance(payload: dict, source: str, *, observed_key: str | None = None) 
 
 
 # Bases no reading of the page produced: a value the collector or our config
-# writes itself, or one a funding program's rules fix. A field holding only
-# these was not observed anywhere, whenever its page was last loaded.
-_UNOBSERVED_BASES = frozenset({BASIS_COLLECTOR_DEFAULT, BASIS_CONFIGURED, BASIS_PROGRAM_POLICY})
+# writes itself (a tag, a category-map entry), or one a funding program's
+# rules fix. A field holding only these was not observed anywhere, whenever
+# its page was last loaded.
+_UNOBSERVED_BASES = frozenset({BASIS_COLLECTOR_DEFAULT, BASIS_CONFIGURED, BASIS_PROGRAM_POLICY, BASIS_SYSTEM_TAG})
 
 
 def _field_provenance(built: dict, provenance: dict) -> dict:

@@ -64,6 +64,9 @@ export const INFERENCE_BASES = [
   // compensation, intl answer, citizenship rule, deadline note and rolling.
   'configured',
   'derived_from_source',
+  // A tag typed into our config or a manual row, or a list mapped from the
+  // source's category (Simplify's topics and majors): read off no page.
+  'system_tag',
 ] as const;
 export type InferenceBasis = typeof INFERENCE_BASES[number];
 

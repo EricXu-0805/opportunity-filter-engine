@@ -145,6 +145,28 @@ describe('DetailFactsSection', () => {
       .toHaveTextContent(entryNote);
   });
 
+  // Simplify's majors and topics come from a map keyed on its category, and a
+  // program spec's topics are tags we typed: none was read off a page, and
+  // the facts said "Read from the page text by our pipeline".
+  it.each([
+    ['en', 'Tagged by our system', 'Read from the page text by our pipeline'],
+    ['zh', '由我们的系统标注', '由我们的程序从页面文字中读取'],
+  ] as const)('says tags we assign are tagged by our system, not read from the page (%s)', (locale, tagged, scanned) => {
+    const translateKey = (key: string) => translate(locale, key);
+    const { unmount } = renderCase('simplify_internship_template', false, translateKey);
+    expect(within(row('eligibility', 'majors', 'inferred')).getByTestId('fact-eligibility-majors-basis'))
+      .toHaveTextContent(tagged);
+    expect(within(row('research_content', 'research_areas', 'inferred'))
+      .getByTestId('fact-research_content-research_areas-basis')).toHaveTextContent(tagged);
+    // Skills a tagger read out of the text keep the reading label.
+    expect(within(row('required_skills', 'mentioned', 'inferred')).getByTestId('fact-required_skills-mentioned-basis'))
+      .toHaveTextContent(scanned);
+    unmount();
+    renderCase('curated_campus_program', false, translateKey);
+    expect(within(row('research_content', 'research_areas', 'inferred'))
+      .getByTestId('fact-research_content-research_areas-basis')).toHaveTextContent(tagged);
+  });
+
   it('labels an inferred field "System inference" and says how we inferred it', () => {
     renderCase('simplify_internship_template');
     const paid = row('funding', 'paid', 'inferred');

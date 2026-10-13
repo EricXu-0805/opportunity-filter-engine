@@ -141,7 +141,7 @@
             "explicit": {},
             "inferred": {
               "research_areas": {
-                "basis": "text_scan",
+                "basis": "system_tag",
                 "value": [
                   "biology",
                   "undergraduate research"
@@ -149,7 +149,7 @@
               }
             },
             "provenance": {
-              "observed_at": "2026-09-01T00:00:00",
+              "observed_at": null,
               "source_url": "https://example.edu/programs/surf"
             },
             "quotes": {},
@@ -357,14 +357,14 @@
             "explicit": {},
             "inferred": {
               "research_areas": {
-                "basis": "text_scan",
+                "basis": "system_tag",
                 "value": [
                   "chemistry"
                 ]
               }
             },
             "provenance": {
-              "observed_at": "2026-09-01T00:00:00",
+              "observed_at": null,
               "source_url": "https://example.edu/programs/fellows"
             },
             "quotes": {},
@@ -463,7 +463,7 @@
                 "value": "no"
               },
               "majors": {
-                "basis": "text_scan",
+                "basis": "system_tag",
                 "value": [
                   "Computer Science"
                 ]
@@ -555,14 +555,14 @@
             "explicit": {},
             "inferred": {
               "research_areas": {
-                "basis": "text_scan",
+                "basis": "system_tag",
                 "value": [
                   "software engineering"
                 ]
               }
             },
             "provenance": {
-              "observed_at": "2026-09-01T00:00:00",
+              "observed_at": null,
               "source_url": "https://jobs.example.com/123"
             },
             "quotes": {},

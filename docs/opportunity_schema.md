@@ -105,7 +105,9 @@ only when it is in neither. `quotes` holds the page's own sentence for an
 `explicit` facet that was checked against page text, with the URL it was read
 at and when. Inference bases:
 `text_scan`, `model_extraction`, `external_enrichment`, `estimate`,
-`program_policy`, `collector_default`, `configured`, `derived_from_source`.
+`program_policy`, `collector_default`, `configured`, `derived_from_source`,
+`system_tag` (topics a person typed into a program spec or a manual row, and
+Simplify's topics and majors, mapped from its category: read off no page).
 
 Rules that never bend:
 

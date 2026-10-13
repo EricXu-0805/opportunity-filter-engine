@@ -95,7 +95,7 @@ describe('DifferencesSection source notes', () => {
       'From our listing’s deadline note, not confirmed on the program page.',
     );
     expect(screen.getByTestId('compare-source-note-majors-banked')).toHaveTextContent(
-      'Matched from the program’s research areas',
+      'Tagged by our system, not an eligibility list the program published.',
     );
     expect(screen.queryByTestId('compare-source-note-majors-stated')).toBeNull();
     expect(screen.queryByTestId('compare-source-note-preferredYear-stated')).toBeNull();

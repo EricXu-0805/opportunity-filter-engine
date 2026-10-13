@@ -3342,6 +3342,9 @@ export const en = {
         // yearConfigured / rollingInferred.
         configured: 'From our listing’s entry for this program, not confirmed on the program page.',
         derived_from_source: 'Restated from a related source fact',
+        // Tags a person typed into our config or a manual row, and lists a
+        // collector maps from the source's category: read off no page.
+        system_tag: 'Tagged by our system',
       },
       sourceLink: 'Source page',
       observed: 'Observed {date}',
@@ -3434,7 +3437,8 @@ export const en = {
     keywordsInferred: 'Inferred from their publication record, not stated on their page — worth checking before you write to them.',
     keywordsInferredListing: 'Topics tagged by our system, not listed by the program — a hint, not a requirement.',
     skillsInferred: 'Read from the posting text by our pipeline, not listed by the program — a hint, not a requirement.',
-    majorsInferred: 'Matched from the program’s research areas by our pipeline, not an eligibility list the program published.',
+    // Covers a keyword bank's match and a category map's list (Simplify).
+    majorsInferred: 'Tagged by our system, not an eligibility list the program published.',
     yearInferred: 'Read from the posting text by our pipeline, not a class-year restriction the program published.',
     majorsConfigured: 'From our listing’s major list, not confirmed on the program page.',
     yearConfigured: 'These come from our listing’s own list, not confirmed on the program page.',
@@ -8571,6 +8575,7 @@ export const zh = {
         // 专业、年级和截止说明用 detail.majorsConfigured / yearConfigured / rollingInferred。
         configured: '来自我们列表里这个项目的条目，项目页面未确认。',
         derived_from_source: '由相关来源信息转述',
+        system_tag: '由我们的系统标注',
       },
       sourceLink: '来源页面',
       observed: '采集于 {date}',
@@ -8663,7 +8668,7 @@ export const zh = {
     keywordsInferred: '根据对方的论文发表记录推断，不是对方主页上写的 —— 写信前值得自己核一下。',
     keywordsInferredListing: '由我们的系统标注的研究方向，不是项目列出的 —— 当作提示，不是要求。',
     skillsInferred: '由我们的系统从招募文本中推断，不是项目列出的要求 —— 当作提示，不是硬性条件。',
-    majorsInferred: '由我们的系统根据项目研究方向匹配，不是项目公布的专业要求。',
+    majorsInferred: '由我们的系统标注，不是项目公布的专业要求。',
     yearInferred: '由我们的系统从招募文本中推断，不是项目公布的年级限制。',
     majorsConfigured: '来自我们列表里的专业清单，项目页面未确认。',
     yearConfigured: '这些来自我们列表里的年级清单，项目页面未确认。',
