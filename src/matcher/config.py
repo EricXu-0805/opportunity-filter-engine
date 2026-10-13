@@ -323,7 +323,11 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # listing's where the page text does not say so). It scored as a mismatch: 15
 # for a History student, below the 30 a list naming no major gets. A formula
 # change no hashed knob sees.
-_MATCHER_VERSION_BASE = "22"
+# 23: "Open to international students" and "Requires US citizenship or
+# permanent residency" are said as our listing's (a program spec's configured
+# answer) or our reading of the page (a scan) when the wire flags the value
+# inferred, as the badges already do. Sentences only, like 20 and 21.
+_MATCHER_VERSION_BASE = "23"
 
 
 def _matcher_fingerprint() -> str:

@@ -17,6 +17,7 @@ from functools import lru_cache
 from backend.lib.contact_visibility import send_target_strength, verified_send_target
 
 from ..evidence import (
+    CONFIGURED_PROGRAM_METHOD,
     FACT_UNSTATED,
     configured_fact,
     configured_value_unstated,
@@ -25,6 +26,7 @@ from ..evidence import (
     faculty_positive_major_labels,
     faculty_safe_eligibility,
     faculty_safe_lab_or_program,
+    inferred_method,
     is_all_majors_answer,
     is_inferred,
     is_professor_rank,
@@ -1798,6 +1800,22 @@ def _mentioned_skill_labels(opportunity: dict) -> list[str]:
 # Ends every gap line built from a configured value the page text the row
 # carries does not state (see score_eligibility).
 _NOT_ON_PAGE = " — not confirmed on the program page"
+# Ends a line built from a value our pipeline read off the page text.
+_OUR_READING = ", by our reading of the page — not stated by the program"
+
+
+def _intl_terms_basis(opportunity: dict, fields: tuple[str, ...]) -> str | None:
+    """Whose the intl answer or citizenship rule in ``fields`` is: None when
+    the program states it (or a funding program's policy does), "configured"
+    when every one is a program spec's value from our config, "read" when we
+    read any of them off the page — the wire's `international_attribution` /
+    `citizenship_attribution` rule, so the sentence and the badge agree."""
+    paths = [f"eligibility.{field}" for field in fields]
+    if not paths or not all(is_read_off_the_page(opportunity, path) for path in paths):
+        return None
+    if all(inferred_method(opportunity, path) == CONFIGURED_PROGRAM_METHOD for path in paths):
+        return "configured"
+    return "read"
 
 
 def score_eligibility(
@@ -1969,7 +1987,22 @@ def score_eligibility(
         # as domestic / US-only sources enter the corpus.
         if friendly == "no" or elig.get("citizenship_required") is True:
             intl_score = 0.0
-            reasons_gap.append("Requires US citizenship or permanent residency")
+            # The score is the record's either way; the sentence says whose
+            # restriction it is when we, not the program, supplied it (M96).
+            restricted_by = tuple(
+                field for field, restricts in (
+                    ("international_friendly", friendly == "no"),
+                    ("citizenship_required", elig.get("citizenship_required") is True),
+                ) if restricts
+            )
+            basis = _intl_terms_basis(opportunity, restricted_by)
+            reasons_gap.append(
+                f"Our listing says this requires US citizenship or permanent residency{_NOT_ON_PAGE}"
+                if basis == "configured"
+                else f"May require US citizenship or permanent residency{_OUR_READING}"
+                if basis == "read"
+                else "Requires US citizenship or permanent residency"
+            )
         elif friendly == "unknown":
             # DQ-6: "unknown" covers 37% of the corpus (mostly internships whose
             # source sponsorship field was blank). For internships specifically,
@@ -1990,7 +2023,14 @@ def score_eligibility(
                     else "International eligibility unclear — verify before applying"
                 )
         else:
-            reasons_fit.append("Open to international students")
+            basis = _intl_terms_basis(opportunity, ("international_friendly",))
+            reasons_fit.append(
+                f"Our listing says this is open to international students{_NOT_ON_PAGE}"
+                if basis == "configured"
+                else f"Open to international students{_OUR_READING}"
+                if basis == "read"
+                else "Open to international students"
+            )
 
     # Skill overlap (15% weight). Evidence-backed rolling postings such as SRO
     # entries may omit fixed requirements because they adapt to the applicant.
@@ -3330,6 +3370,7 @@ _REASON_TIERS: tuple[tuple[int, tuple[str, ...]], ...] = (
     # must not occupy a top-3 card slot when specific reasons are scarce.
     (6, ("Accepts ", "Your class year (", "Your major (", "Open to all majors",
          "Our listing says this is open to all majors", "Open to international students",
+         "Our listing says this is open to international students",
          "Your experience level is competitive",
          "You're comfortable with direct outreach", "Low application effort",
          "Matches your interest in ", "Major research university",

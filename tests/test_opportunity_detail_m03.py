@@ -222,6 +222,28 @@ class TestNoCollapse:
         assert "Requires US citizenship or permanent residency" in restricted_gaps
         assert "Requires US citizenship or permanent residency" not in unknown_gaps
 
+    def test_an_intl_answer_we_read_off_the_page_is_said_as_ours(self):
+        # M96: the badge hedges a welcome or restriction a scan of the page
+        # produced; the match reasons stated it as the program's. A funding
+        # program's published rule (`policy:`) stays the program's.
+        profile = {"international_student": True, "year": "sophomore", "major": "Biology"}
+        ours = ", by our reading of the page — not stated by the program"
+        for method, fit, gap in (
+            ("rule:title_scan", f"Open to international students{ours}",
+             f"May require US citizenship or permanent residency{ours}"),
+            ("policy:nsf_reu", "Open to international students", "Requires US citizenship or permanent residency"),
+            (None, "Open to international students", "Requires US citizenship or permanent residency"),
+        ):
+            stamps = {} if method is None else {
+                "eligibility.international_friendly": method, "eligibility.citizenship_required": method,
+            }
+            welcome = _listing(eligibility={"international_friendly": "yes"})
+            restricted = _listing(eligibility={"international_friendly": "no", "citizenship_required": True})
+            for record in (welcome, restricted):
+                record["metadata"]["inferred_fields"] = dict(stamps)
+            assert fit in score_eligibility(profile, welcome)[1], method
+            assert gap in score_eligibility(profile, restricted)[2], method
+
     def test_citizenship_false_counts_only_beside_a_stated_welcome(self):
         stated = _fields(_listing(eligibility={
             "citizenship_required": False, "international_friendly": "yes",
@@ -1513,6 +1535,27 @@ class TestCampusGraphContract:
         posting["eligibility"]["majors"] = ["all"]
         assert "Open to all majors" in score_eligibility(history, posting)[1]
 
+    _HEDGED_CITIZENSHIP = (
+        "Our listing says this requires US citizenship or permanent residency — not confirmed on the program page"
+    )
+
+    def test_an_intl_answer_from_our_listing_is_said_as_ours(self):
+        # M96: the cards say "Intl OK (inferred)" for a configured welcome; the
+        # match reasons said "Open to international students" as the program's.
+        profile = {"year": "junior", "major": "Biology", "international_student": True}
+        _, welcome = _served(self._configured())
+        _, fits, gaps = score_eligibility(profile, welcome)
+        assert "Our listing says this is open to international students — not confirmed on the program page" in fits
+        assert "Open to international students" not in fits
+        record = self._configured()
+        record["eligibility"]["international_friendly"] = "no"
+        _, gaps = score_eligibility(profile, _served(record)[1])[::2]
+        assert self._HEDGED_CITIZENSHIP in gaps
+        assert "Requires US citizenship or permanent residency" not in gaps
+        # The page text stating the welcome makes it the program's again.
+        _, fits, _ = score_eligibility(profile, _served(self._with_page(self._STATES))[1])
+        assert "Open to international students" in fits
+
     def test_a_concern_from_our_listing_comes_after_the_firmer_eligibility_ones(self):
         # The compare view, the local summary and the AI prompt read only the
         # first two or three gap lines. Our listing's concerns follow the firmer
@@ -1524,9 +1567,10 @@ class TestCampusGraphContract:
         _, ours = _served(record)
         profile = {"year": "freshman", "major": "History", "hard_skills": [], "international_student": True}
         gaps = rank_opportunity(profile, ours, precomputed_sim=0.2).reasons_gap
-        citizenship = gaps.index("Requires US citizenship or permanent residency")
+        # The configured "no" is our listing's too (M96), so it joins them.
+        citizenship = gaps.index(self._HEDGED_CITIZENSHIP)
         resume = gaps.index("Resume required — prepare one before applying")
-        assert citizenship < gaps.index(self._HEDGED_YEARS) < gaps.index(self._HEDGED_MAJORS) < resume, gaps
+        assert gaps.index(self._HEDGED_YEARS) < gaps.index(self._HEDGED_MAJORS) < citizenship < resume, gaps
         # A page that states the lists keeps them where they were.
         record = self._with_page(self._STATES)
         record["eligibility"]["international_friendly"] = "no"
