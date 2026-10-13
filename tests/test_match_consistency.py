@@ -387,16 +387,16 @@ class TestExplainServesTheListConclusion:
     @pytest.mark.parametrize(("stamps", "expected"), [
         ({"eligibility.citizenship_required": "rule:title_scan",
           "eligibility.international_friendly": "rule:title_scan"},
-         "May require US citizenship or permanent residency, by our reading of the page"
-         " — not confirmed on the program page — excluded from your results"),
+         "Excluded from your results: may require US citizenship or permanent residency,"
+         " by our reading of the page — not confirmed on the program page"),
         ({"eligibility.citizenship_required": evidence_module.CONFIGURED_PROGRAM_METHOD,
           "eligibility.international_friendly": evidence_module.CONFIGURED_PROGRAM_METHOD},
-         "Our listing says this requires US citizenship or permanent residency"
-         " — not confirmed on the program page — excluded from your results"),
+         "Excluded from your results: our listing says this requires US citizenship or permanent residency"
+         " — not confirmed on the program page"),
         ({"eligibility.citizenship_required": evidence_module.CONFIGURED_PROGRAM_METHOD,
           "eligibility.international_friendly": "rule:title_scan"},
-         "May require US citizenship or permanent residency, per our listing and our reading of the page"
-         " — not confirmed on the program page — excluded from your results"),
+         "Excluded from your results: may require US citizenship or permanent residency,"
+         " per our listing and our reading of the page — not confirmed on the program page"),
         ({}, "Requires US citizenship or permanent residency — excluded from your results"),
     ])
     def test_a_citizenship_exclusion_says_whose_restriction_it_is(

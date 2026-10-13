@@ -2257,7 +2257,12 @@ def _exclusion_gap_text(excluded_reason: str, opp: dict) -> str:
     prompt that quotes this line.
     """
     if excluded_reason == "citizenship_restricted":
-        return f"{citizenship_restriction_reason(opp)} — excluded from your results"
+        reason = citizenship_restriction_reason(opp)
+        if " — " not in reason:
+            return f"{reason} — excluded from your results"
+        # A hedged reason ends "— not confirmed on the program page": lead
+        # with the exclusion so the line keeps one dash.
+        return f"Excluded from your results: {reason[0].lower()}{reason[1:]}"
     return _EXCLUSION_GAP_TEXT.get(excluded_reason, "Not part of your current results")
 
 

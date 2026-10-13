@@ -191,7 +191,7 @@ résumé target drops a flag of a value it saves.
 | Detail header (`OpportunityHeader`) | pay, intl, location, deadline | hedged badges; school city hidden; estimate |
 | Detail fallback sections (`DetailSections`) | years, majors, skills, intl, citizenship, compensation, rolling, topics | label + note |
 | Results card (`MatchCard`, `lib/badge-utils`) | pay, compensation, intl, location, skills, deadline | hedged badges, "(inferred)", heading |
-| Match reasons (`src/matcher/ranker.py`), explain (`backend/routes/matches.py`) | pay, intl, citizenship, majors, years | sentence omitted or said as our listing's / our reading / both ("— not confirmed on the program page"); a record excluded for citizenship gets the same sentence as its first line (`citizenship_restriction_reason`), and the summary prompt keeps those qualifiers; matcher version 23 retires cached sentences |
+| Match reasons (`src/matcher/ranker.py`), explain (`backend/routes/matches.py`) | pay, intl, citizenship, majors, years | sentence omitted or said as our listing's / our reading / both ("— not confirmed on the program page"); a record excluded for citizenship gets the same sentence as its first line (`citizenship_restriction_reason`, after "Excluded from your results:" when hedged), and the summary prompt keeps those qualifiers; matcher version 23 retires cached sentences |
 | Cached results page (`lib/match-cache`) | all flags | kept in the cache projection |
 | Results CSV (`lib/match-utils`) | pay, intl, location, deadline | "(inferred)", "(estimated)", school city blank |
 | Favorites card | pay, intl, location, skills, topics | badge helpers, heading, note |
