@@ -203,3 +203,42 @@ def test_finite_neutral_fallback_keeps_reading_and_lawful_availability(writing_c
     assert fallback is True
     assert body.count(value["availability"]["text"]) == 1
     assert body.count(paper_reading_sentence(value)) == 1
+
+
+# M33 (production, 2026-10-12): with "Skip paper reading" the template draft
+# said 'Your recent paper "<title>" (2026) caught my attention.' — a reaction
+# the student never reported. A paper is named only when the student chose it;
+# otherwise the opening keeps the professor's research direction alone.
+PROFESSOR_PAPER = {"title": "Efficient Sparse Training at Scale", "year": 2026}
+PROFESSOR = {
+    "id": "professor-m33", "source_type": "faculty_research", "opportunity_type": "research",
+    "title": "Research with Prof. Ada Lovelace — CS", "pi_name": "Ada Lovelace",
+    "lab_or_program": "Prof. Ada Lovelace's Research Group", "organization": "Test University",
+    "department": "Computer Science", "eligibility": {}, "application": {},
+    "metadata": {"is_active": True, "faculty_title": "Professor",
+                 "research_areas_raw": "sparse neural network training",
+                 "publication_attribution_status": "verified_author_id",
+                 "recent_works": [PROFESSOR_PAPER]},
+}
+
+@pytest.mark.parametrize("path", ["", "variants", "stream"])
+def test_template_names_a_paper_only_when_the_student_chose_it(writing_client, monkeypatch, path):
+    client, _ = writing_client
+    monkeypatch.setattr(ce, "load_opportunities_by_id", lambda: {PROFESSOR["id"]: deepcopy(PROFESSOR)})
+    skipped = result(post(client, path, {"version": 1, "purpose": "first_contact"},
+                          opportunity_id=PROFESSOR["id"]), path)
+    assert skipped.get("fallback_reason") is None, skipped
+    for variant in skipped.get("variants", [skipped]):
+        assert NEUTRAL_ASK not in variant["body"]
+        assert "caught my attention" not in variant["body"]
+        assert PROFESSOR_PAPER["title"] not in variant["body"]
+        assert "sparse neural network training" in variant["body"]
+    chosen = {"version": 1, "purpose": "first_contact",
+              "paper_reading": {**PROFESSOR_PAPER, "level": "title_only", "confirmed": True}}
+    picked = result(post(client, path, chosen, opportunity_id=PROFESSOR["id"]), path)
+    assert picked.get("fallback_reason") is None, picked
+    for variant in picked.get("variants", [picked]):
+        assert NEUTRAL_ASK not in variant["body"]
+        assert variant["body"].count(PROFESSOR_PAPER["title"]) == 1
+        assert paper_reading_sentence(chosen) in variant["body"]
+        assert "caught my attention" not in variant["body"]
