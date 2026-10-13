@@ -65,8 +65,8 @@ import re
 from collections.abc import Iterable
 
 # Module import, not a name import: the public projector imports this module
-# for `paid_basis`/`location_basis`, and a name import would fail on whichever
-# side of that cycle loads second.
+# for `paid_basis`/`location_basis`/`keywords_basis`/`skills_basis`, and a name
+# import would fail on whichever side of that cycle loads second.
 from backend.lib import public_projection
 from src.evidence import (
     CAMPUS_PROGRAM_SUFFIXES,
@@ -499,7 +499,40 @@ def _professor_or_lab(payload: dict, canonical: dict) -> _Field:
     return field
 
 
-def _research_content(payload: dict, canonical: dict, kind: str, source: str) -> _Field:
+def keywords_basis(canonical: dict) -> str | None:
+    """Why a record's keywords are not the page's own topics, or None when they are.
+
+    Shared with the public projector, so ``keywords_attribution`` and the
+    detail facts' topic row cannot disagree.
+    """
+    stamped = _basis_for(canonical, "keywords")
+    if stamped is not None or record_kind(canonical) == "faculty_contact":
+        return stamped
+    if str(canonical.get("source") or "") in _KEYWORDS_FROM_SOURCE:
+        return None
+    # Listing keywords are ours on every other collector: Simplify expands
+    # its category through a map, NSF and the normalizer run a keyword
+    # bank, campus program specs carry tags a person typed. Only the SRO's
+    # "Research Area" field is a topic list the source published.
+    return BASIS_TEXT_SCAN
+
+
+def skills_basis(canonical: dict, path: str) -> str | None:
+    """Why the skill list at ``path`` is not the posting's, or None when it is.
+
+    Shared with the public projector, so ``skills_attribution`` and the
+    detail facts' skills row cannot disagree.
+    """
+    stamped = _basis_for(canonical, path)
+    if stamped is None and not _is_curated_source(str(canonical.get("source") or "")):
+        # Outside hand-curated rows every skill list is a keyword-bank or
+        # tagger read of prose, stamped or not (the tagger's pre-stamp runs
+        # left ~2,400 unstamped lists on the internship corpus alone).
+        return BASIS_TEXT_SCAN
+    return stamped
+
+
+def _research_content(payload: dict, canonical: dict) -> _Field:
     field = _Field("research_content")
     metadata = _dict(payload.get("metadata"))
     stated = _text(metadata.get("research_areas_raw"))
@@ -508,13 +541,7 @@ def _research_content(payload: dict, canonical: dict, kind: str, source: str) ->
         stated = _text(areas) if isinstance(areas, str) else (", ".join(_str_list(areas)) or None)
     constants = _collector_constant_keywords(canonical)
     keywords = [k for k in _str_list(payload.get("keywords")) if k.casefold() not in constants]
-    keyword_basis = _basis_for(canonical, "keywords")
-    if keyword_basis is None and kind != "faculty_contact" and source not in _KEYWORDS_FROM_SOURCE:
-        # Listing keywords are ours on every other collector: Simplify expands
-        # its category through a map, NSF and the normalizer run a keyword
-        # bank, campus program specs carry tags a person typed. Only the SRO's
-        # "Research Area" field is a topic list the source published.
-        keyword_basis = BASIS_TEXT_SCAN
+    keyword_basis = keywords_basis(canonical)
     if stated:
         field.source("research_areas", stated)
     elif keywords and keyword_basis is None:
@@ -586,19 +613,13 @@ def _eligibility(payload: dict, canonical: dict, source: str) -> _Field:
     return field
 
 
-def _required_skills(payload: dict, canonical: dict, source: str) -> _Field:
+def _required_skills(payload: dict, canonical: dict) -> _Field:
     field = _Field("required_skills")
     elig = _dict(payload.get("eligibility"))
     required = _str_list(elig.get("skills_required"))
     preferred = _str_list(elig.get("skills_preferred"))
-    required_basis = _basis_for(canonical, "eligibility.skills_required")
-    preferred_basis = _basis_for(canonical, "eligibility.skills_preferred")
-    if not _is_curated_source(source):
-        # Outside hand-curated rows every skill list is a keyword-bank or
-        # tagger read of prose, stamped or not (the tagger's pre-stamp runs
-        # left ~2,400 unstamped lists on the internship corpus alone).
-        required_basis = required_basis or BASIS_TEXT_SCAN
-        preferred_basis = preferred_basis or BASIS_TEXT_SCAN
+    required_basis = skills_basis(canonical, "eligibility.skills_required")
+    preferred_basis = skills_basis(canonical, "eligibility.skills_preferred")
     if required and required_basis is None:
         field.source("required", required)
     if preferred and preferred_basis is None:
@@ -782,16 +803,15 @@ def build_detail_fields(payload: dict, canonical: dict) -> dict:
     if not isinstance(payload, dict) or not isinstance(canonical, dict):
         raise TypeError("detail fields need a payload dict and its canonical record")
     source = str(canonical.get("source") or "")
-    kind = record_kind(canonical)
     base = _provenance(payload, source)
     research_provenance = _provenance(payload, source, observed_key="research_areas_verified_at")
     fields = (
         _school(payload),
         _department(payload, canonical, source),
         _professor_or_lab(payload, canonical),
-        _research_content(payload, canonical, kind, source),
+        _research_content(payload, canonical),
         _eligibility(payload, canonical, source),
-        _required_skills(payload, canonical, source),
+        _required_skills(payload, canonical),
         _timing(payload, canonical, source),
         _funding(payload, canonical, source),
         _location(payload, canonical, source),

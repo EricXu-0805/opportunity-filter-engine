@@ -160,7 +160,18 @@ flags `backend/lib/public_projection.py` adds to each public payload:
 `keywords_attribution`, `deadline_note_attribution` (`"inferred"`), and
 `location_attribution` (`"institution"` = the host school's city, `"inferred"`
 = read off another record). Absent means stated, so a site checks for the
-flag's value and never for its absence. A value we inferred is shown hedged
+flag's value and never for its absence. `skills_attribution` and
+`keywords_attribution` say inferred wherever the detail facts do, through
+the helper both call: `opportunity_detail.skills_basis` for a required or
+preferred skill list (inferred outside a hand-curated `manual` row, stamped
+or not, and wherever stamped; one flag covers both lists), and
+`keywords_basis` for topics (inferred on every listing but an SRO row, whose
+"Research Area" field is the source's own list, and wherever stamped). The
+flag also covers the source-type tags a campus collector appends
+("announcement", "undergraduate research"), which the facts drop as no topic.
+`paid_attribution` and `location_attribution` share `paid_basis` and
+`location_basis` the same way, except that pay a funding program's published
+rules fix (`program_policy`) is not flagged. A value we inferred is shown hedged
 ("Funding mentioned", "Pay not confirmed", "Unpaid (inferred)", "Intl OK
 (inferred)", "Skills mentioned", "{location} (inferred)", a note under the
 row), or left out where nothing can carry a marker (a share-image pill, a

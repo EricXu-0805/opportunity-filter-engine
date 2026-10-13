@@ -44,7 +44,8 @@ export default function TargetResumeCriteria({ target, locale }: { target: Targe
   if (!hasTargetResumeCriteria(target)) return null;
   const language = locale === 'zh' ? 1 : 0;
   const inferredFields: Record<string, keyof typeof target.criteria.attribution> = {
-    skills_required: 'skills_attribution', majors: 'majors_attribution',
+    // One flag covers both skill lists (`skills_attribution` on the wire).
+    skills_required: 'skills_attribution', skills_preferred: 'skills_attribution', majors: 'majors_attribution',
     preferred_year: 'preferred_year_attribution', international_friendly: 'international_attribution',
     citizenship_required: 'citizenship_attribution', paid: 'paid_attribution',
     // A draft saved before the note had a flag shows the neutral label: no

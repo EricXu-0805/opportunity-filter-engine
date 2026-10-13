@@ -339,7 +339,8 @@ def test_local_refinement_condition_failure_preserves_original(writing_client, m
 
 def test_legacy_skill_and_application_fields_are_not_labeled_source_confirmed_requirements(writing_client, monkeypatch):  # noqa: F811
     client, opp = writing_client; conditions_record(opp, verified=False); captured = []
-    opp['eligibility']['skills_required'] = ['Python']
+    # A hand-curated row, whose list the email records (any other row's is ours).
+    opp['source'] = 'manual'; opp['eligibility']['skills_required'] = ['Python']
     def provider(messages, **_kwargs):
         captured.extend(deepcopy(messages))
         return 'Subject: Research inquiry\n\n' + body('Could you clarify which skills are required for applicants?')

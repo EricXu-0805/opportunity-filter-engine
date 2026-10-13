@@ -24,7 +24,8 @@ def opportunity():
     old = old_document()['target_snapshot']
     return {'id': old['opportunity_id'], 'title': old['title'], 'organization': old['organization'],
             'source_url': old['source_url'], 'description_clean': old['description'],
-            'source_type': 'campus_program', 'opportunity_type': 'research',
+            # A hand-curated row: its skill list is the posting's requirements.
+            'source': 'manual', 'source_type': 'campus_program', 'opportunity_type': 'research',
             'metadata': {'is_active': True}, 'eligibility': {'skills_required': old['requirements']},
             'application': {}}
 

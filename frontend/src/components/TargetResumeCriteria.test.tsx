@@ -72,3 +72,16 @@ describe('saved location and compensation labels', () => {
     expect(screen.getByText(locale === 'en' ? 'Compensation details' : '报酬说明')).toBeVisible();
   });
 });
+
+describe('saved preferred skills label', () => {
+  const withPreferred = (attribution: TargetResumeContextV2['criteria']['attribution']): TargetResumeContextV2 => ({
+    ...target, criteria: { ...target.criteria, eligibility: { skills_preferred: ['Linux'] }, attribution } });
+  it.each(['en', 'zh'])('marks a preferred list the skills flag says we read off the page in %s', locale => {
+    render(<TargetResumeCriteria target={withPreferred({ skills_attribution: 'inferred' })} locale={locale} />);
+    expect(screen.getByText(locale === 'en' ? 'Preferred skills (inferred)' : '加分技能（推断）')).toBeVisible();
+  });
+  it('leaves a curated row\'s preferred list unmarked', () => {
+    render(<TargetResumeCriteria target={withPreferred({ skills_attribution: null })} locale="en" />);
+    expect(screen.getByText('Preferred skills')).toBeVisible();
+  });
+});

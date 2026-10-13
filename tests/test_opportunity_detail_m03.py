@@ -501,6 +501,41 @@ class TestApiAndFrontendAgree:
         # Regenerate with: python scripts/generate_detail_fields_contract.py
         assert CONTRACT_PATH.read_text(encoding="utf-8") == render_contract()
 
+    # Every contract case, and one row per listing collector whose skills or
+    # topics a keyword bank wrote with no stamp (the 2026-10-12 corpus had 99
+    # actionable listings showing "Required skills" and 5,920 showing topics
+    # as stated while their detail facts said inferred).
+    _FLAG_CASES = [*CASES, *[
+        (f"unstamped_{source}", _listing(
+            id=f"flags-{source}", source=source, keywords=["machine learning"],
+            eligibility={"skills_required": ["Python"], "skills_preferred": ["Linux"]},
+        ))
+        for source in ("cmu_uro_projects", "uiuc_our_rss", "nsf_reu", "uiuc_sro", "manual")
+    ], ("faculty_unstamped", {**_CASES["faculty_profile"], "metadata": {"is_active": True}})]
+
+    @pytest.mark.parametrize("name,record", _FLAG_CASES, ids=[name for name, _ in _FLAG_CASES])
+    def test_the_flat_flags_say_inferred_exactly_where_the_detail_facts_do(self, name, record):
+        """The cards, Ask AI, the page keywords and the saved résumé target
+        read `skills_attribution` / `keywords_attribution`, not the detail
+        facts; the two must not disagree about whose words a list is."""
+        payload, canonical = _served(record)
+        fields = build_detail_fields(payload, canonical)["fields"]
+        skills_inferred = "mentioned" in fields["required_skills"]["inferred"]
+        topics_inferred = "research_areas" in fields["research_content"]["inferred"]
+        assert (payload.get("skills_attribution") == "inferred") is skills_inferred
+        assert (payload.get("keywords_attribution") == "inferred") is topics_inferred
+
+    def test_a_campus_collectors_own_tags_are_flagged_though_the_facts_drop_them(self):
+        # The facts leave out the source-type tags a campus collector appends
+        # (no topic); the cards still print them, so the flag marks them ours.
+        record = _listing(source="duke_research_programs", campus_source_type="announcement",
+                          keywords=["announcement", "undergraduate research"])
+        record["metadata"]["discovered"] = True
+        payload, canonical = _served(record)
+        fields = build_detail_fields(payload, canonical)["fields"]
+        assert "research_areas" not in fields["research_content"]["inferred"]
+        assert payload["keywords_attribution"] == "inferred"
+
 
 # ---------------------------------------------------------------------------
 # Listing collectors wired to the contract (campus_graph, ucb_campus, uiuc_sro)
@@ -2034,7 +2069,14 @@ def test_ask_ai_says_a_value_we_inferred_is_ours():
         assert line in fallback, line
 
     del record["metadata"]["inferred_fields"]
-    stated, _ = _served(_listing(**{k: v for k, v in record.items() if k != "location"}))
+    # Unstamped, a listing's skills and topics are still ours: the keyword bank
+    # or tagger wrote them (the detail facts' rule, `skills_basis`/`keywords_basis`).
+    unstamped, _ = _served(_listing(**{k: v for k, v in record.items() if k != "location"}))
+    prompt = opportunities_module._build_chat_system_prompt(unstamped, None, frozenset())
+    assert f"- Skills mentioned: Python{ours}" in prompt and f"- Keywords: optics{ours}" in prompt
+    # A hand-curated row states its skills; only an SRO row states its topics.
+    stated, _ = _served(_listing(**{k: v for k, v in record.items() if k not in ("location", "keywords", "source")},
+                                 source="manual"))
     prompt = opportunities_module._build_chat_system_prompt(stated, None, frozenset())
     assert "our inference" not in prompt
     assert "- Paid: yes; compensation: —" in prompt and "- Required skills: Python" in prompt

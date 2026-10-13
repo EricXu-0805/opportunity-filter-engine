@@ -817,10 +817,10 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     # derived from a matched OpenAlex author record, and that match is wrong
     # often enough — common surname, department field family too coarse to
     # separate two people — that presenting them as stated fact is a claim we
-    # cannot support. Absent means stated, which is what every non-enriched
-    # record has always been.
-    keywords_method = inferred_method(canonical_record, "keywords")
-    if keywords_method and projected.get("keywords"):
+    # cannot support. Absent means stated. A listing's topics are ours too
+    # unless it is an SRO row (`opportunity_detail.keywords_basis`, the rule
+    # the detail facts use): keyword banks, category maps and config tags.
+    if projected.get("keywords") and opportunity_detail.keywords_basis(canonical_record) is not None:
         projected["keywords_attribution"] = "inferred"
     # pi_name is the exception that gets removed rather than marked. It is
     # derived by taking the word before "Laboratory" or "Group" in the program
@@ -843,9 +843,15 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     # page prose that names none, and the detail page printed them under
     # "REQUIRED SKILLS". A wet-lab biology REU "required" Python and MATLAB
     # (#859 stopped the matcher turning them into a shortfall; this stops the
-    # page presenting them as the program's terms).
-    skills_method = inferred_method(canonical_record, "eligibility.skills_required")
-    if skills_method and (projected.get("eligibility") or {}).get("skills_required"):
+    # page presenting them as the program's terms). Stamped or not: outside
+    # hand-curated rows every skill list is our reading of prose
+    # (`opportunity_detail.skills_basis`, the rule the detail facts use). One
+    # flag covers both lists the saved résumé target shows.
+    skills = projected.get("eligibility")
+    if isinstance(skills, dict) and any(
+        skills.get(field) and opportunity_detail.skills_basis(canonical_record, f"eligibility.{field}") is not None
+        for field in ("skills_required", "skills_preferred")
+    ):
         projected["skills_attribution"] = "inferred"
 
     # Same rule for the major list. #862 stamped the SRO lists as ours and
