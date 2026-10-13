@@ -323,9 +323,10 @@ def _hand_typed(*sentences):
                         "Best regards,\nAudit Student"])
 
 
-def _m33_post(client, monkeypatch, path, value=SKIPPED, *, reply=None, profile=PROFILE, experience=(), **fields):
+def _m33_post(client, monkeypatch, path, value=SKIPPED, *, reply=None, profile=PROFILE, experience=(), works=(),
+              **fields):
     professor = deepcopy(PROFESSOR)
-    professor["metadata"]["recent_works"].append(SECOND_PAPER)
+    professor["metadata"]["recent_works"].extend([SECOND_PAPER, *works])
     monkeypatch.setattr(ce, "load_opportunities_by_id", lambda: {professor["id"]: professor})
     if reply is not None:
         monkeypatch.setattr(ce, "is_configured", lambda: True)
@@ -447,3 +448,38 @@ def test_selection_refine_counts_only_a_title_new_to_the_draft(writing_client, m
     assert out["outcome"] == ("proposal" if proposed else "no_change"), out
     if not proposed:
         assert out["reason"] == "fabrication"
+
+
+# Review 3 of this check: the chosen title may itself quote another verified
+# title, and the student's own subject is student-supplied text like the draft.
+RESPONSE = {"title": f'Author response for "{TITLE}"', "year": 2026}
+
+@pytest.mark.parametrize("path", ["", "stream", "refine"])
+@pytest.mark.parametrize("level", ["abstract", "full_text"])
+def test_chosen_title_quoting_another_title_is_allowed(writing_client, monkeypatch, path, level):
+    client, _ = writing_client
+    value = {**SKIPPED, "paper_reading": {**RESPONSE, "level": level, "confirmed": True}}
+    reply = _model_reply(path, paper_reading_sentence(value))
+    out = _m33_post(client, monkeypatch, path, value, reply=reply, works=[RESPONSE],
+                    **({} if path == "refine" else {"engine": "ai"}))
+    assert _served(out, path), out
+    assert out["body"].count(paper_reading_sentence(value)) == 1
+
+
+@pytest.mark.parametrize("scope", ["selection", "full"])
+def test_a_title_quoted_in_the_students_own_subject_counts_as_supplied(writing_client, monkeypatch, scope):
+    client, _ = writing_client
+    draft, subject = _hand_typed(), f"Question about “{SECOND_PAPER['title']}”"
+    if scope == "selection":
+        # The draft has no title and the replacement is unrelated to the subject.
+        start = len(draft[:draft.index(ASK)].encode("utf-16-le")) // 2
+        out = _m33_post(client, monkeypatch, "refine",
+                        reply=json.dumps({"replacement": "May I ask whether you have any current openings?"}),
+                        current_body=draft, subject=subject, instruction="Make only this selection clearer.",
+                        selection={"start_utf16": start, "end_utf16": start + len(ASK), "text": ASK})
+        assert out["outcome"] == "proposal", out
+        return
+    sentence = f"I would like to ask about your paper “{SECOND_PAPER['title']}”."
+    out = _m33_post(client, monkeypatch, "refine", reply=_hand_typed(sentence), current_body=draft, subject=subject)
+    assert out["method"] == "llm" and out.get("fallback_reason") is None, out
+    assert sentence in out["body"]

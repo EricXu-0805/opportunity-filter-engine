@@ -2074,7 +2074,7 @@ def _student_paper_title_text(parts: dict) -> str:
 
     Research interests, the confirmed experience the other checks read (each
     printed bullet and its resume-master fields), and for an edit the current
-    draft, selection and instruction. It authenticates nothing else.
+    draft, subject, selection and instruction. It authenticates nothing else.
     """
     texts = [str(parts.get("research_interests_verbatim") or ""), str(parts.get("research_interests") or "")]
     texts.extend(str(bullet) for bullet in parts.get("resume_bullets") or [])
@@ -2728,8 +2728,9 @@ def _refine_context(request: EmailRefineRequest, opp: dict | None) -> dict | Non
         for key in ("name", "year", "major", "school"):
             parts[key] = ""
     # Read only by the M33 rule: a paper title the student typed into this edit
-    # may stay. These inputs never enter the evidence corpus.
-    parts["refine_inputs"] = [request.current_body, request.instruction,
+    # (draft, subject, instruction or selection) may stay. These inputs never
+    # enter the evidence corpus.
+    parts["refine_inputs"] = [request.current_body, request.subject, request.instruction,
                               request.selection.text if request.selection is not None else ""]
     return {
         "safe_opp": safe_opp,

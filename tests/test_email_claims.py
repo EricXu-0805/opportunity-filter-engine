@@ -62,7 +62,7 @@ def test_confirmed_reading_exemption_never_covers_an_attachment_claim():
 
 # M33 (owner decision 2026-10-12): a reply may not quote the full title of a
 # verified paper the student did not choose, unless the student supplied it.
-TITLES = ["Grounded Models for Robot Planning", "Sparse Nets", "Learning What’s Next — A Survey?"]
+TITLES = ["Grounded Models for Robot Planning", "Sparse Nets", "Learning What’s Next — A Survey?", "Consent & Causation"]
 UNCHOSEN = ["names a paper the student did not choose"]
 
 
@@ -85,6 +85,8 @@ def test_a_quoted_full_title_the_student_did_not_choose_is_rejected(text):
     'The phrase "Grounded Models for Robot Planning and Control" is not that title.',
     "The lab's Grounded Models for Robot Planning' line is not a quotation.",
     'Your paper "Sparse Nets" is on this topic.',
+    # "&" has no letter or digit, so this title has two words.
+    'Your paper "Consent & Causation" is on this topic.',
     "Your paper caught my attention.", "I was impressed by your recent paper.",
 ])
 def test_anything_but_a_quoted_full_title_of_three_words_is_outside_the_rule(text):
@@ -165,3 +167,19 @@ def test_skill_levels_cannot_be_upgraded(text, levels):
 ])
 def test_levels_do_not_grade_project_actions_or_borrow_other_speakers(text, levels):
     assert skill_level_violations(text, levels) == []
+
+
+def test_a_title_inside_the_chosen_title_does_not_count():
+    inner = TITLES[0]
+    titles = [inner, f'Author response for "{inner}"', f"“{inner}”: A Reply"]
+    for chosen in titles[1:]:
+        read = f"I have read the abstract of your paper “{chosen}” (2026)."
+        assert unchosen_paper_claims(read, titles, chosen_title=chosen) == []
+        # Compared after the same normalisation as every title.
+        assert unchosen_paper_claims(read.upper().replace('"', "“"), titles, chosen_title=chosen) == []
+        # The inner title quoted on its own still counts.
+        assert unchosen_paper_claims(f"{read} Your paper “{inner}” is related.", titles, chosen_title=chosen) == UNCHOSEN
+    # With the inner paper chosen, the outer title quoted whole is another paper.
+    read = f"I have read the abstract of your paper “{inner}” (2026)."
+    assert unchosen_paper_claims(read, titles, chosen_title=inner) == []
+    assert unchosen_paper_claims(f"{read} Your “{titles[1]}” is related.", titles, chosen_title=inner) == UNCHOSEN

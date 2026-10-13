@@ -75,7 +75,8 @@ def unsupported_action_claims(text: str, *, confirmed_reading_sentence: str | No
 # it. The reply check is one rule: a reply may not quote the full title of an
 # unchosen verified paper unless the student supplied that title for this
 # request. A stated reaction to a paper is left to the prompt. Titles compare
-# after NFKC, casefolding, one quotation-mark and dash style and single spaces.
+# after NFKC, casefolding, one quotation-mark and dash style and single spaces;
+# a title's words are its tokens with at least one letter or digit.
 _COMPARABLE = str.maketrans({**dict.fromkeys("“”„‟", '"'), **dict.fromkeys("‘’‛", "'"),
                              **dict.fromkeys("‐‑‒–—―", "-")})
 
@@ -95,19 +96,23 @@ def unchosen_paper_claims(text: str, titles: Iterable[str], *, student_text: str
     ``titles`` are the professor's verified paper titles. A title counts only
     inside quotation marks (straight or curly, single or double; a closing
     punctuation mark may sit inside them). A title under three words, the
-    chosen paper's title, and a title that also appears anywhere in
-    ``student_text`` (what the student supplied for this request) never count.
-    An unquoted, partial or paraphrased title is not detected.
+    chosen paper's title, a title found inside an occurrence of the chosen
+    title (which may itself quote another title), and a title that also appears
+    anywhere in ``student_text`` (what the student supplied for this request)
+    never count. An unquoted, partial or paraphrased title is not detected.
     """
     norm, supplied = _comparable(text), _comparable(student_text)
     chosen = _title_core(chosen_title or "")
+    inside_chosen = [match.span() for match in re.finditer(rf"(?<!\w){re.escape(chosen)}(?!\w)", norm)] if chosen else []
     for title in titles:
         core = _title_core(str(title))
-        if len(core.split()) < 3 or core == chosen:
+        if sum(any(char.isalnum() for char in word) for word in core.split()) < 3 or core == chosen:
             continue
-        quoted = re.search(rf"(?<!\w)[\"'] ?{re.escape(core)}[.,;:!?]? ?[\"'](?!\w)", norm)
-        if quoted and not re.search(rf"(?<!\w){re.escape(core)}(?!\w)", supplied):
-            return ["names a paper the student did not choose"]
+        for quoted in re.finditer(rf"(?<!\w)[\"'] ?({re.escape(core)})[.,;:!?]? ?[\"'](?!\w)", norm):
+            if any(start <= quoted.start(1) and quoted.end(1) <= end for start, end in inside_chosen):
+                continue
+            if not re.search(rf"(?<!\w){re.escape(core)}(?!\w)", supplied):
+                return ["names a paper the student did not choose"]
     return []
 
 

@@ -10,7 +10,7 @@ The brief carries complete admitted titles, lab/program, organization, departmen
 
 The previous limits discarded requirements after the fifth item, required-skill text after 200 characters, descriptions/research areas after 600 characters, long identity/application fields, and legacy paper titles after 200 characters. The prompt now contains the full stored fields. This does not recover text that a collector never stored, and it does not establish that each stored record is fresh or correct.
 
-A shorter derived topic and a lab-style classification remain writing aids. They do not replace the full source input. Templates still select a few skills/courses and at most one suitable short paper title; email subjects remain bounded. Those output choices are separate from admission of facts. Template names and profile links are not prefix-clipped by the renderer. Whole confirmed student experiences keep their existing count and character budgets.
+A shorter derived topic and a lab-style classification remain writing aids. They do not replace the full source input. Templates still select a few skills/courses and name a paper only when the student chose it, through the student's own paper-reading sentence; email subjects remain bounded. Those output choices are separate from admission of facts. Template names and profile links are not prefix-clipped by the renderer. Whole confirmed student experiences keep their existing count and character budgets.
 
 ## Source boundaries
 
