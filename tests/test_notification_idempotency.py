@@ -54,6 +54,8 @@ _DUE = {
 }
 _SUB = {"device_id": "dev-1", "endpoint": "https://push.example.test/wpush/v2/abc",
         "p256dh": "k", "auth": "a"}
+# GoTrue's stamp on an account that has confirmed its address.
+_CONFIRMED_AT = "2026-01-01T00:00:00Z"
 
 
 class _Resp:
@@ -148,7 +150,7 @@ def _install_reminder_io(
             if "/auth/v1/admin/users/" in url:
                 if account_email is None:
                     return _Resp({}, status_code=404)
-                return _Resp({"email": account_email})
+                return _Resp({"email": account_email, "email_confirmed_at": _CONFIRMED_AT})
             if "ops_incidents" in url:
                 return _Resp([])
             if "push_subscriptions" in url:
@@ -555,11 +557,15 @@ _OPP_A = {
     "metadata": {"is_active": True},
 }
 _SID = "11111111-2222-3333-4444-555555555555"
+# The digest goes only to the address its owning account has confirmed.
+_OWNER = "owner-uid"
+_OWNER_ACCOUNT = {"email": "user@example.com", "email_confirmed_at": _CONFIRMED_AT}
 
 
 def _digest_row(**overrides):
     row = {
         "id": _SID,
+        "device_id": _OWNER,
         "name": "ML research",
         "digest_email": "user@example.com",
         "new_match_ids": ["opp-a"],
@@ -595,6 +601,8 @@ def _install_digest_io(monkeypatch, *, rows, sends=None, rpcs=None,
         async def get(self, url, **_kwargs):
             if "ops_incidents" in url:
                 return _Resp([])
+            if f"/auth/v1/admin/users/{_OWNER}" in url:
+                return _Resp(_OWNER_ACCOUNT)
             return _Resp(rows)
 
         async def post(self, url, json=None, **_kwargs):
@@ -711,6 +719,8 @@ class TestDigestFailureClassification:
                 return False
 
             async def get(self, url, **_kwargs):
+                if f"/auth/v1/admin/users/{_OWNER}" in url:
+                    return _Resp(_OWNER_ACCOUNT)
                 return _Resp([] if "ops_incidents" in url else [_digest_row()])
 
             async def post(self, _url, json=None, **_kwargs):
@@ -811,6 +821,8 @@ class TestDigestIncidents:
                 return False
 
             async def get(self, url, **_kwargs):
+                if f"/auth/v1/admin/users/{_OWNER}" in url:
+                    return _Resp(_OWNER_ACCOUNT)
                 return _Resp([] if "ops_incidents" in url else [_digest_row()])
 
             async def post(self, *_a, **_k):

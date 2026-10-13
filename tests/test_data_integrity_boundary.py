@@ -119,7 +119,7 @@ def _install_stubs(monkeypatch, *, interactions, subscriptions, gets=None,
             if "/auth/v1/admin/users/" in url:
                 if account_email is None:
                     return _Resp({}, status_code=404)
-                return _Resp({"email": account_email})
+                return _Resp({"email": account_email, "email_confirmed_at": "2026-01-01T00:00:00Z"})
             if "push_subscriptions" in url:
                 return _Resp(subscriptions)
             return _Resp(_postgrest_in(

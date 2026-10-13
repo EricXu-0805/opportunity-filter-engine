@@ -72,6 +72,7 @@ function SavedSearchesPanel({
     handleRemove,
     handleApplyOptimisticClear,
     handleDigestSave,
+    accountEmail,
   } = useSavedSearches(t);
 
   // A failed read is not "nothing saved": it stays on screen even when there
@@ -87,6 +88,7 @@ function SavedSearchesPanel({
       onApplyOptimisticClear={handleApplyOptimisticClear}
       onRemove={handleRemove}
       onDigestSave={handleDigestSave}
+      accountEmail={accountEmail}
       t={t}
     />
   );

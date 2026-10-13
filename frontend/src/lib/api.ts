@@ -1417,9 +1417,20 @@ export async function extractResumeBullets(
   });
 }
 
+/** The repo field that named a skill: its `language`, or one of its `topics`,
+ *  with GitHub's own value. */
+export interface GitHubSkillEvidence {
+  skill: string;
+  repo: string;
+  field: 'language' | 'topic';
+  value: string;
+}
+
 export interface GitHubParseResponse {
   username: string;
   extracted_skills: string[];
+  /** Absent from a backend older than this field. */
+  skill_evidence?: GitHubSkillEvidence[];
   topics: string[];
   repo_count: number;
   top_repos: string[];

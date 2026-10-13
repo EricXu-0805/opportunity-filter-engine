@@ -3,7 +3,7 @@
 Checked against the code on 2026-10-09. Every command in a code block was run
 that day, except the ones marked **operator**: those need production secrets
 or change production. Releases and rollback have their own document,
-`docs/RELEASE.md`. Open work is not tracked here (section 8).
+`docs/RELEASE.md`. Open work is not tracked here (section 9).
 
 ## 1. Check what is deployed
 
@@ -238,7 +238,343 @@ the feature from `UNACCEPTED_FEATURES` to `ACCEPTED_FEATURES` in
 `docs/RELEASE.md`: the gate, the evidence each check needs, rollback for
 Render, Vercel and the database, and the known weak spots.
 
-## 8. Open work
+## 8. Data export and deletion request
+
+> **Untested.** Written on 2026-10-12 from `supabase/migrations/` and the code
+> that reads it; it has not been run against production. Its SQL has run only
+> on a local PostgreSQL 16 replay of the migrations (all but the superseded
+> `004`) on top of `supabase/tests/_stubs.sql`. Those stubs lack the
+> `auth.users` columns `email`, `created_at` and `last_sign_in_at` and the
+> `auth.identities` table, so a seed script added minimal versions of them
+> before loading a test account, a guest merged into it and a second account.
+> There the SQL exported, deleted and re-exported the account and its guest
+> and left the second account untouched. Storage was simulated by deleting
+> `storage.objects` rows, auth users were deleted with SQL, and the token wait
+> in step 5 was not exercised. Before using it on a real request, the owner
+> runs it once end to end on a test account (checklist M20) and records the
+> counts here.
+
+Privacy §7 (`frontend/src/app/privacy/page.tsx`) promises a full export or
+deletion within 30 days of an emailed request, after checking that the request
+is genuinely the student's. Every step is **operator**. The SQL runs in the
+Supabase dashboard's SQL editor, which runs as `postgres` rather than as a
+student; files are handled in its Storage browser.
+
+**Which rows belong to the student.** The app keys almost every row by
+`device_id`, the auth user id as text (`auth.uid()::text`, migration 006). A
+signed-in account also owns each guest session merged into it: `merged_devices`
+(017) holds one row per merged guest uid (`source_device_id`) with the
+account's uid as `target_device_id`. The merge re-keys the guest's rows to the
+account but leaves its tracker attachments in Storage under the guest's uid,
+and the guest's auth user stays (anonymous, no email). The queries below
+therefore search the account's uid and every uid merged into it. Step 4 of
+the deletion removes the `merged_devices` rows that link them, so the list of
+uids is worked out once, saved, and pasted into every later query as a fixed
+list.
+
+| Keyed by | Tables |
+|---|---|
+| `id` (the uid) | `profiles` |
+| `device_id` | `profile_versions`, `favorites`, `interactions`, `interaction_status_changes`, `interaction_merge_archive` (also `source_device_id`), `saved_searches`, `match_feedback`, `push_subscriptions`, `analytics_events`, `waitlist`, `feedback`, `orders`, `usage_events`, `resume_renovations` and `resume_renovation_versions` (also `owner_id`), `professor_follows`, `professor_update_reads`, `contact_events`, `application_events` |
+| `owner_id` (uuid) | `target_resumes`, `target_resume_versions`, `private_import_targets`, `material_artifacts`, `application_material_records`, `contact_material_records` |
+| something else | `feedback_events` (`ticket_id` of the student's `feedback`); `ops_incidents` (a reminder or digest failure names the uid or a saved search id in `dedup_key`); `merge_grants` (`source_device_id`, `redeemed_by`, `target_email`); `merged_devices` |
+| Storage | `tracker-attachments`: objects named `<device_id>/<opportunity_id>/<file>`. `application-materials`: objects named `pdf/<material_id>.pdf`, found through `material_artifacts.object_key` |
+
+The table comes from the migrations. A table created in the dashboard would
+not be in it, so before each request list every table in `public` that has a
+`device_id` or `owner_id` column (read only) and compare. A table missing from
+the table above needs its rows exported and deleted by hand, and this section
+updated.
+
+```sql
+SELECT c.relname AS table_name, string_agg(a.attname, ', ' ORDER BY a.attname) AS key_columns
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
+WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') AND a.attname IN ('device_id', 'owner_id')
+GROUP BY c.relname
+ORDER BY 1;
+```
+
+Rows written before migration 006 are keyed by a device id the browser made
+up, not by an auth uid. Nothing ties them to a student, so this procedure
+neither finds nor deletes them (`20260925052636_legacy_renovation_cas_rpc.sql`
+leaves such `resume_renovations` rows unclaimed for the same reason).
+
+### Find the account
+
+```sql
+SELECT id, email, is_anonymous, created_at FROM auth.users
+WHERE lower(email) = lower('student@example.edu');
+```
+
+A guest session has no email, so a guest's request can only be found from the
+uid itself. If the request gives a guest uid, first check whether that guest
+was merged into an account:
+
+```sql
+SELECT target_device_id FROM public.merged_devices
+WHERE source_device_id = '00000000-0000-0000-0000-000000000000';
+```
+
+If it returns a row, the guest's rows now belong to that account: repeat the
+check with the account's uid until it returns nothing, then act on the request
+as that account's, found by its uid and verified against its email.
+
+Then list the uids to search: the account's uid and every guest uid merged
+into it, with what `auth.users` holds for each. Put the account's uid in
+place of the zero uuid.
+
+```sql
+WITH RECURSIVE owned(device_id) AS (
+  SELECT '00000000-0000-0000-0000-000000000000'::text
+  UNION
+  SELECT m.source_device_id FROM public.merged_devices m JOIN owned o ON m.target_device_id = o.device_id
+)
+SELECT o.device_id, u.email, u.is_anonymous, '{' || string_agg(o.device_id, ',') OVER () || '}' AS saved_ids
+FROM owned o LEFT JOIN auth.users u ON u.id::text = o.device_id
+ORDER BY u.is_anonymous, o.device_id;
+```
+
+Every row other than the account's must show `is_anonymous` true and no
+email (or nothing at all, if that guest's auth user is already gone; keep it
+in the list). A merged uid that shows a signed-in account (an email, or
+`is_anonymous` false) is a separate account. Do not include it unless the
+student shows it is theirs as well, verified the same way as the first;
+otherwise leave it out of the list and treat it as someone else's data.
+
+Save the `saved_ids` value (with any such uid removed) and the account's
+email with the request. Every query below starts with
+`ids AS (SELECT '{…}'::text[] AS a, lower('…') AS email)`: put the saved list
+in place of `{00000000-0000-0000-0000-000000000000}` and the email in place of
+`student@example.edu` (for a guest with no account, replace
+`lower('student@example.edu')` with `NULL::text`). From the export on, use
+only the saved list: step 4 removes the rows that link the guest uids to the
+account, so the list cannot be worked out again afterwards.
+
+### Export (SELECT only)
+
+One row per table: its row count and its rows as JSON. The `owned_device_ids`
+row lists the uids searched. Push keys, merge-grant tokens and hashes are left
+out.
+
+```sql
+WITH ids AS (SELECT '{00000000-0000-0000-0000-000000000000}'::text[] AS a, lower('student@example.edu') AS email),
+searches AS (
+  SELECT coalesce(array_agg(s.id::text), '{}') AS a FROM public.saved_searches s, ids WHERE s.device_id = ANY (ids.a)
+),
+export(source, rows) AS (
+  SELECT 'owned_device_ids', (SELECT to_jsonb(a) FROM ids)
+  UNION ALL SELECT 'auth.users', (SELECT jsonb_agg(jsonb_build_object('id', t.id, 'email', t.email,
+      'is_anonymous', t.is_anonymous, 'created_at', t.created_at, 'last_sign_in_at', t.last_sign_in_at))
+    FROM auth.users t, ids WHERE t.id::text = ANY (ids.a))
+  UNION ALL SELECT 'auth.identities', (SELECT jsonb_agg(jsonb_build_object('provider', t.provider,
+      'identity_data', t.identity_data, 'created_at', t.created_at))
+    FROM auth.identities t, ids WHERE t.user_id::text = ANY (ids.a))
+  UNION ALL SELECT 'profiles', (SELECT jsonb_agg(t) FROM public.profiles t, ids WHERE t.id = ANY (ids.a))
+  UNION ALL SELECT 'profile_versions', (SELECT jsonb_agg(t) FROM public.profile_versions t, ids WHERE t.device_id = ANY (ids.a))
+  UNION ALL SELECT 'favorites', (SELECT jsonb_agg(t) FROM public.favorites t, ids WHERE t.device_id = ANY (ids.a))
+  UNION ALL SELECT 'interactions', (SELECT jsonb_agg(t) FROM public.interactions t, ids WHERE t.device_id = ANY (ids.a))
+  UNION ALL SELECT 'interaction_status_changes', (SELECT jsonb_agg(t) FROM public.interaction_status_changes t, ids WHERE t.device_id = ANY (ids.a))
+  UNION ALL SELECT 'interaction_merge_archive', (SELECT jsonb_agg(t) FROM public.interaction_merge_archive t, ids
+    WHERE t.device_id = ANY (ids.a) OR t.source_device_id = ANY (ids.a))
+  UNION ALL SELECT 'saved_searches', (SELECT jsonb_agg(t) FROM public.saved_searches t, ids WHERE t.device_id = ANY (ids.a))
+  UNION ALL SELECT 'match_feedback', (SELECT jsonb_agg(t) FROM public.match_feedback t, ids WHERE t.device_id = ANY (ids.a))
+  UNION ALL SELECT 'push_subscriptions', (SELECT jsonb_agg(to_jsonb(t) - 'p256dh' - 'auth') FROM public.push_subscriptions t, ids WHERE t.device_id = ANY (ids.a))
+  UNION ALL SELECT 'analytics_events', (SELECT jsonb_agg(t) FROM public.analytics_events t, ids WHERE t.device_id = ANY (ids.a))
+  UNION ALL SELECT 'waitlist', (SELECT jsonb_agg(t) FROM public.waitlist t, ids WHERE t.device_id = ANY (ids.a))
+  UNION ALL SELECT 'feedback', (SELECT jsonb_agg(t) FROM public.feedback t, ids WHERE t.device_id = ANY (ids.a))
+  UNION ALL SELECT 'feedback_events', (SELECT jsonb_agg(t) FROM public.feedback_events t, ids
+    WHERE t.ticket_id IN (SELECT f.id FROM public.feedback f WHERE f.device_id = ANY (ids.a)))
+  UNION ALL SELECT 'orders', (SELECT jsonb_agg(t) FROM public.orders t, ids WHERE t.device_id = ANY (ids.a))
+  UNION ALL SELECT 'usage_events', (SELECT jsonb_agg(t) FROM public.usage_events t, ids WHERE t.device_id = ANY (ids.a))
+  UNION ALL SELECT 'resume_renovations', (SELECT jsonb_agg(t) FROM public.resume_renovations t, ids WHERE t.device_id = ANY (ids.a))
+  UNION ALL SELECT 'resume_renovation_versions', (SELECT jsonb_agg(t) FROM public.resume_renovation_versions t, ids WHERE t.device_id = ANY (ids.a))
+  UNION ALL SELECT 'professor_follows', (SELECT jsonb_agg(t) FROM public.professor_follows t, ids WHERE t.device_id = ANY (ids.a))
+  UNION ALL SELECT 'professor_update_reads', (SELECT jsonb_agg(t) FROM public.professor_update_reads t, ids WHERE t.device_id = ANY (ids.a))
+  UNION ALL SELECT 'contact_events', (SELECT jsonb_agg(t) FROM public.contact_events t, ids WHERE t.device_id = ANY (ids.a))
+  UNION ALL SELECT 'application_events', (SELECT jsonb_agg(t) FROM public.application_events t, ids WHERE t.device_id = ANY (ids.a))
+  UNION ALL SELECT 'target_resumes', (SELECT jsonb_agg(t) FROM public.target_resumes t, ids WHERE t.owner_id::text = ANY (ids.a))
+  UNION ALL SELECT 'target_resume_versions', (SELECT jsonb_agg(t) FROM public.target_resume_versions t, ids WHERE t.owner_id::text = ANY (ids.a))
+  UNION ALL SELECT 'private_import_targets', (SELECT jsonb_agg(t) FROM public.private_import_targets t, ids WHERE t.owner_id::text = ANY (ids.a))
+  UNION ALL SELECT 'material_artifacts', (SELECT jsonb_agg(t) FROM public.material_artifacts t, ids WHERE t.owner_id::text = ANY (ids.a))
+  UNION ALL SELECT 'application_material_records', (SELECT jsonb_agg(t) FROM public.application_material_records t, ids WHERE t.owner_id::text = ANY (ids.a))
+  UNION ALL SELECT 'contact_material_records', (SELECT jsonb_agg(t) FROM public.contact_material_records t, ids WHERE t.owner_id::text = ANY (ids.a))
+  UNION ALL SELECT 'ops_incidents', (SELECT jsonb_agg(t) FROM public.ops_incidents t, ids, searches
+    WHERE EXISTS (SELECT 1 FROM unnest(ids.a || searches.a) k WHERE strpos(t.dedup_key, k) > 0))
+  UNION ALL SELECT 'merge_grants', (SELECT jsonb_agg(to_jsonb(t) - 'token' - 'secret_hash') FROM public.merge_grants t, ids
+    WHERE t.source_device_id = ANY (ids.a) OR t.redeemed_by = ANY (ids.a) OR lower(t.target_email) = ids.email)
+  UNION ALL SELECT 'merged_devices', (SELECT jsonb_agg(t) FROM public.merged_devices t, ids
+    WHERE t.source_device_id = ANY (ids.a) OR t.target_device_id = ANY (ids.a))
+)
+SELECT source, coalesce(jsonb_array_length(rows), 0) AS row_count, rows FROM export;
+```
+
+Files, listed for the same uids. An `application-materials` row with
+no `created_at` has no object left (deleted by the student and already
+erased, or never uploaded). Keep the `application-materials` names: the
+deletion check below needs them after the rows that point to them are gone.
+
+```sql
+WITH ids AS (SELECT '{00000000-0000-0000-0000-000000000000}'::text[] AS a, lower('student@example.edu') AS email)
+SELECT o.bucket_id, o.name, o.created_at, NULL AS material_status
+FROM storage.objects o, ids
+WHERE o.bucket_id = 'tracker-attachments' AND (storage.foldername(o.name))[1] = ANY (ids.a)
+UNION ALL
+SELECT 'application-materials', a.object_key, o.created_at, a.status
+FROM public.material_artifacts a CROSS JOIN ids
+LEFT JOIN storage.objects o ON o.bucket_id = 'application-materials' AND o.name = a.object_key
+WHERE a.owner_id::text = ANY (ids.a)
+ORDER BY 1, 2;
+```
+
+Download each listed object that exists from the Storage browser and send the
+files with the query results.
+
+### Deletion
+
+Export first, so the counts can be compared afterwards. Then, in this order:
+
+1. **Tracker attachments.** In the Storage browser, delete the folder of each
+   saved uid in `tracker-attachments`. Use Storage, not SQL: deleting a
+   `storage.objects` row does not erase the stored file
+   (`docs/material_archive_http_contract.md`). Rerun the file listing; no
+   `tracker-attachments` row may remain.
+2. **Rows keyed by `device_id`, plus the incidents and merge grants that name
+   the student.** One statement; it returns how many rows it deleted from each
+   table. `feedback_events` go with their `feedback` (`ON DELETE CASCADE`),
+   and `ops_incident_events` with their `ops_incidents`. It leaves
+   `contact_events` and `application_events` alone: their trigger refuses a
+   delete while the auth user exists.
+
+   ```sql
+   WITH ids AS (SELECT '{00000000-0000-0000-0000-000000000000}'::text[] AS a, lower('student@example.edu') AS email),
+   searches AS (
+     SELECT coalesce(array_agg(s.id::text), '{}') AS a FROM public.saved_searches s, ids WHERE s.device_id = ANY (ids.a)
+   ),
+   d_ops_incidents AS (DELETE FROM public.ops_incidents t USING ids, searches
+     WHERE EXISTS (SELECT 1 FROM unnest(ids.a || searches.a) k WHERE strpos(t.dedup_key, k) > 0) RETURNING 1),
+   d_profiles AS (DELETE FROM public.profiles t USING ids WHERE t.id = ANY (ids.a) RETURNING 1),
+   d_profile_versions AS (DELETE FROM public.profile_versions t USING ids WHERE t.device_id = ANY (ids.a) RETURNING 1),
+   d_favorites AS (DELETE FROM public.favorites t USING ids WHERE t.device_id = ANY (ids.a) RETURNING 1),
+   d_interactions AS (DELETE FROM public.interactions t USING ids WHERE t.device_id = ANY (ids.a) RETURNING 1),
+   d_interaction_status_changes AS (DELETE FROM public.interaction_status_changes t USING ids WHERE t.device_id = ANY (ids.a) RETURNING 1),
+   d_interaction_merge_archive AS (DELETE FROM public.interaction_merge_archive t USING ids
+     WHERE t.device_id = ANY (ids.a) OR t.source_device_id = ANY (ids.a) RETURNING 1),
+   d_saved_searches AS (DELETE FROM public.saved_searches t USING ids WHERE t.device_id = ANY (ids.a) RETURNING 1),
+   d_match_feedback AS (DELETE FROM public.match_feedback t USING ids WHERE t.device_id = ANY (ids.a) RETURNING 1),
+   d_push_subscriptions AS (DELETE FROM public.push_subscriptions t USING ids WHERE t.device_id = ANY (ids.a) RETURNING 1),
+   d_analytics_events AS (DELETE FROM public.analytics_events t USING ids WHERE t.device_id = ANY (ids.a) RETURNING 1),
+   d_waitlist AS (DELETE FROM public.waitlist t USING ids WHERE t.device_id = ANY (ids.a) RETURNING 1),
+   d_feedback AS (DELETE FROM public.feedback t USING ids WHERE t.device_id = ANY (ids.a) RETURNING 1),
+   d_orders AS (DELETE FROM public.orders t USING ids WHERE t.device_id = ANY (ids.a) RETURNING 1),
+   d_usage_events AS (DELETE FROM public.usage_events t USING ids WHERE t.device_id = ANY (ids.a) RETURNING 1),
+   d_resume_renovations AS (DELETE FROM public.resume_renovations t USING ids WHERE t.device_id = ANY (ids.a) RETURNING 1),
+   d_resume_renovation_versions AS (DELETE FROM public.resume_renovation_versions t USING ids WHERE t.device_id = ANY (ids.a) RETURNING 1),
+   d_professor_follows AS (DELETE FROM public.professor_follows t USING ids WHERE t.device_id = ANY (ids.a) RETURNING 1),
+   d_professor_update_reads AS (DELETE FROM public.professor_update_reads t USING ids WHERE t.device_id = ANY (ids.a) RETURNING 1),
+   d_merge_grants AS (DELETE FROM public.merge_grants t USING ids
+     WHERE t.source_device_id = ANY (ids.a) OR t.redeemed_by = ANY (ids.a) OR lower(t.target_email) = ids.email RETURNING 1)
+   SELECT (SELECT count(*) FROM d_ops_incidents) AS ops_incidents,
+     (SELECT count(*) FROM d_profiles) AS profiles,
+     (SELECT count(*) FROM d_profile_versions) AS profile_versions,
+     (SELECT count(*) FROM d_favorites) AS favorites,
+     (SELECT count(*) FROM d_interactions) AS interactions,
+     (SELECT count(*) FROM d_interaction_status_changes) AS interaction_status_changes,
+     (SELECT count(*) FROM d_interaction_merge_archive) AS interaction_merge_archive,
+     (SELECT count(*) FROM d_saved_searches) AS saved_searches,
+     (SELECT count(*) FROM d_match_feedback) AS match_feedback,
+     (SELECT count(*) FROM d_push_subscriptions) AS push_subscriptions,
+     (SELECT count(*) FROM d_analytics_events) AS analytics_events,
+     (SELECT count(*) FROM d_waitlist) AS waitlist,
+     (SELECT count(*) FROM d_feedback) AS feedback,
+     (SELECT count(*) FROM d_orders) AS orders,
+     (SELECT count(*) FROM d_usage_events) AS usage_events,
+     (SELECT count(*) FROM d_resume_renovations) AS resume_renovations,
+     (SELECT count(*) FROM d_resume_renovation_versions) AS resume_renovation_versions,
+     (SELECT count(*) FROM d_professor_follows) AS professor_follows,
+     (SELECT count(*) FROM d_professor_update_reads) AS professor_update_reads,
+     (SELECT count(*) FROM d_merge_grants) AS merge_grants;
+   ```
+
+3. **The auth users.** First rerun the uid list query from "Find the
+   account". If it shows a uid the saved list lacks (a guest merged in since),
+   check it as described there, add it to the list, and repeat steps 1 and 2
+   with the new list. Then delete every saved uid that still has an auth user
+   (the export's `auth.users` row) under Authentication → Users, and never a
+   signed-in account that was left out of the list. The triggers below fire
+   only when the `auth.users` row is really deleted, so a soft delete is not
+   enough. For each deleted user:
+   - `auth_user_delete_contact_events` and
+     `auth_user_delete_application_events` delete its `contact_events` and
+     `application_events`;
+   - `auth_user_delete_materials` queues every `material_artifacts` object key
+     in `private.material_cleanup_outbox` and deletes the artifacts; their
+     `application_material_records` and `contact_material_records` go with
+     them (`ON DELETE CASCADE`, which the records' guard allows once the auth
+     row is gone);
+   - `ON DELETE CASCADE` from `auth.users` removes `target_resumes` (and their
+     `target_resume_versions`), `private_import_targets`, and any
+     `resume_renovations` or `resume_renovation_versions` step 2 left.
+4. **The merge tombstones**, last, so no guest session counts as active again
+   while its auth user still exists. First re-run the id-list query from
+   "Find the account": a guest merged into the account after step 3's re-check
+   would otherwise lose its link here and keep its empty guest login. If the
+   list shows a uid that is not in the saved list, add it and handle it as
+   step 3 does (steps 2-3 for that uid) before running this step:
+
+   ```sql
+   WITH ids AS (SELECT '{00000000-0000-0000-0000-000000000000}'::text[] AS a, lower('student@example.edu') AS email)
+   DELETE FROM public.merged_devices m USING ids
+   WHERE m.source_device_id = ANY (ids.a) OR m.target_device_id = ANY (ids.a);
+   ```
+
+5. **Wait out open sessions.** Deleting an auth user does not end a session
+   that is already open: its access token stays valid until it expires, so a
+   tab the student left open can still write rows keyed by one of the saved
+   uids (for example `favorites` or `analytics_events`) and upload tracker
+   attachments, both during the deletion and for up to one token lifetime
+   after step 3. That lifetime is the project's JWT expiry, 3,600 seconds
+   unless it was changed; the dashboard shows it in the project settings as
+   the JWT (access token) expiry, and Supabase's Management API returns it as
+   `jwt_exp` in the project's auth config. Wait that long plus a few minutes
+   after step 3, then run step 2's statement and the file listing again, and
+   delete any `tracker-attachments` folder the listing shows, as in step 1.
+6. **Check.** Rerun the export: every `row_count` is 0 except
+   `owned_device_ids`, which keeps the saved list. Rerun the file listing: no
+   rows. If a count is not 0:
+   - a table that step 2 deletes from, or a `tracker-attachments` file:
+     something wrote after the last run of step 2. Run step 2 (and step 1)
+     again; if step 3 was less than one token lifetime ago, wait until it is
+     not, and check again;
+   - `auth.users`: a listed user was not deleted; delete it as in step 3,
+     then repeat steps 5 and 6;
+   - `merged_devices`: repeat step 4;
+   - any other table: those rows should have gone with the auth user. Do not
+     delete them by hand (a `material_artifacts` row deleted that way never
+     queues its file for erasure); find out why they stayed, fix this section,
+     and record what happened here.
+
+   Then check that the backend's cleanup loop (`backend/lib/material_cleanup.py`,
+   every 60 seconds) erased the `application-materials` files; put the names
+   saved from the export in the array:
+
+   ```sql
+   SELECT o.object_key, o.attempts, o.last_removed_at, o.completed_at,
+     EXISTS (SELECT 1 FROM storage.objects s WHERE s.bucket_id = 'application-materials' AND s.name = o.object_key) AS file_left
+   FROM private.material_cleanup_outbox o
+   WHERE o.object_key = ANY ('{pdf/00000000-0000-0000-0000-000000000000.pdf}'::text[]);
+   ```
+
+   Each key needs a row with `file_left` false and `last_removed_at` set.
+   `completed_at` stays empty until the loop has found the file absent again
+   24 hours after the key was queued.
+
+Nothing here reaches the student's browser storage, the hosting and error
+logs, or mail the email provider holds (privacy §6). Tell the student to
+clear the site data in their browser.
+
+## 9. Open work
 
 The single to-do list is the owner's MVP checklist (the private "OE todolist"
 Google Doc, MVP tab, items M01–M70). Work that is not in it is not planned.

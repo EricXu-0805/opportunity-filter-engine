@@ -439,6 +439,20 @@ describe('ResumeUpload — Remove is a real removal, not a UI reset', () => {
     expect(screen.getByText('resume.removeNote')).toBeInTheDocument();
   });
 
+  // The badge shows a file icon and "Resume (saved)", but parseResumePDF reads
+  // the file in the browser and the parent keeps only the extracted text.
+  it('says the PDF file itself is not stored once a résumé is on file', async () => {
+    mockParse.mockResolvedValue({ success: true, message: 'ok' } as unknown as ResumeParseResponse);
+    const { unmount } = render(<ResumeUpload onParsed={vi.fn()} onRemove={vi.fn()} />);
+    expect(screen.queryByText('resume.textOnlyNote')).toBeNull();
+    fireEvent.change(document.querySelector('input[type="file"]')!, { target: { files: [pdfFile()] } });
+    await waitFor(() => expect(screen.getByText('resume.textOnlyNote')).toBeInTheDocument());
+    unmount();
+
+    render(<ResumeUpload onParsed={vi.fn()} onRemove={vi.fn()} alreadyUploaded />);
+    expect(screen.getByText('resume.textOnlyNote')).toBeInTheDocument();
+  });
+
   it('a new upload after a removal restores the on-file state', async () => {
     mockParse.mockResolvedValue({ success: true, message: 'ok' } as unknown as ResumeParseResponse);
     const onParsed = vi.fn();
@@ -485,6 +499,14 @@ describe('ResumeUpload — the copy matches what the code actually does', () => 
     expect(enPrivacy).toContain('saved with your profile');
     expect(zhPrivacy).not.toContain('永不永久存储');
     expect(zhPrivacy).toContain('随档案一起保存');
+  });
+
+  it('EN and ZH say only the extracted text is saved and the PDF file is not', async () => {
+    const { dictionaries } = await import('@/i18n/dictionaries');
+    expect((dictionaries.en.resume as Record<string, string>).textOnlyNote)
+      .toBe('Only the extracted text is saved; the PDF file itself is not stored.');
+    expect((dictionaries.zh.resume as Record<string, string>).textOnlyNote)
+      .toBe('只保存提取出的文字，PDF 文件本身不会保存。');
   });
 });
 

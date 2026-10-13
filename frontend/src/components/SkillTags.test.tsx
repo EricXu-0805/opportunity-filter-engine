@@ -7,7 +7,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import type { SkillWithLevel } from '@/lib/types';
+import { LanguageProvider } from '@/i18n/client';
 import SkillTags from './SkillTags';
+
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 afterEach(cleanup);
 
@@ -101,10 +104,109 @@ describe('SkillTags — an imported skill shows where it came from', () => {
       .toContain('Relevant coursework: Introduction to Python');
   });
 
+  it('puts the GitHub repo field on the badge, labelled as inferred and not as a resume line', () => {
+    setup([{
+      name: 'Python', level: 'beginner', source: 'github',
+      evidence: 'repo thesis: language Jupyter Notebook',
+    }]);
+    const title = screen.getByRole('button', { name: 'Beginner' }).getAttribute('title');
+    expect(title).toContain('repo thesis, language Jupyter Notebook');
+    expect(title).toMatch(/Inferred from your GitHub/);
+    expect(title).not.toMatch(/resume/i);
+  });
+
   it('falls back to naming the source when no line was captured', () => {
     setup([{ name: 'Python', level: 'beginner', source: 'github' }]);
     const badge = screen.getByRole('button', { name: 'Beginner' });
     expect(badge.getAttribute('title')).toMatch(/GitHub/i);
+  });
+
+  // A title is hover-only, so on a touch screen the source was never shown at
+  // all. getByText reads rendered text, not attributes.
+  it('shows the resume line as text under the chip, not only in a title', () => {
+    setup([{
+      name: 'Python', level: 'beginner', source: 'resume',
+      evidence: 'Relevant coursework: Introduction to Python',
+    }]);
+    expect(screen.getByText('From your resume: “Relevant coursework: Introduction to Python”'))
+      .toBeVisible();
+  });
+
+  it('shows the GitHub repo field as text under the chip, labelled as inferred', () => {
+    setup([{
+      name: 'Python', level: 'beginner', source: 'github',
+      evidence: 'repo thesis: language Jupyter Notebook',
+    }]);
+    expect(screen.getByText('Inferred from your GitHub (repo thesis, language Jupyter Notebook)'))
+      .toBeVisible();
+  });
+
+  // The saved line is English ("repo engine: language Jupyter Notebook") in
+  // every profile, old ones included; only its labels follow the language.
+  it('labels the GitHub repo field in Chinese, keeping the repo and GitHub value as written', () => {
+    render(
+      <LanguageProvider initialLocale="zh">
+        <SkillTags
+          selected={[
+            { name: 'Python', level: 'beginner', source: 'github', evidence: 'repo engine: language Jupyter Notebook' },
+            { name: 'Docker', level: 'beginner', source: 'github', evidence: 'repo infra-tools: topic docker' },
+          ]}
+          onChange={vi.fn()}
+        />
+      </LanguageProvider>,
+    );
+    expect(screen.getByText('根据你的 GitHub 推断（仓库 engine，语言 Jupyter Notebook）')).toBeVisible();
+    expect(screen.getByText('根据你的 GitHub 推断（仓库 infra-tools，话题 docker）')).toBeVisible();
+    const titles = screen.getAllByRole('button', { name: '入门' }).map((b) => b.getAttribute('title'));
+    expect(titles).toEqual([
+      '根据你的 GitHub 推断（仓库 engine，语言 Jupyter Notebook）—— 点击设置你的水平',
+      '根据你的 GitHub 推断（仓库 infra-tools，话题 docker）—— 点击设置你的水平',
+    ]);
+  });
+
+  it('shows any other line as it was saved', () => {
+    setup([
+      { name: 'Python', level: 'beginner', source: 'github', evidence: 'pinned repo engine' },
+      // A resume line is the page's own words, even one shaped like a repo field.
+      { name: 'Go', level: 'beginner', source: 'resume', evidence: 'repo engine: language Go' },
+    ]);
+    expect(screen.getByText('Inferred from your GitHub (pinned repo engine)')).toBeVisible();
+    expect(screen.getByText('From your resume: “repo engine: language Go”')).toBeVisible();
+  });
+
+  it('names the source as text when no line was captured', () => {
+    setup([{ name: 'Python', level: 'beginner', source: 'shared' }]);
+    expect(screen.getByText('From a shared profile')).toBeVisible();
+  });
+
+  it('opens the full line without opening the skill picker', () => {
+    const { input } = setup([{
+      name: 'Python', level: 'beginner', source: 'resume',
+      evidence: 'Relevant coursework: Introduction to Python',
+    }]);
+    const line = screen.getByText(/^From your resume:/);
+    fireEvent.click(line);
+    expect(line.closest('details')).toHaveAttribute('open');
+    expect(input).not.toHaveFocus();
+  });
+
+  it('opens neither the picker nor the keyboard from the plain source line', () => {
+    render(<SkillTags selected={[{ name: 'Python', level: 'beginner', source: 'shared' }]} onChange={vi.fn()} />);
+    fireEvent.click(screen.getByText('From a shared profile'));
+    expect(screen.getByPlaceholderText(/add more/i)).not.toHaveFocus();
+    expect(screen.queryByRole('button', { name: 'Java' })).toBeNull();
+  });
+
+  it('adds nothing under a typed or a settled skill', () => {
+    setup([
+      { name: 'Python', level: 'beginner' },
+      {
+        name: 'Go', level: 'experienced', source: 'resume', confirmed: true,
+        evidence: 'Built a CLI in Go',
+      },
+    ]);
+    expect(screen.queryByText(/From your resume|Inferred from your GitHub|Built a CLI/)).toBeNull();
+    expect(document.querySelector('details')).toBeNull();
   });
 
   it('leaves a settled skill with the ordinary cycle hint', () => {
@@ -138,6 +240,43 @@ describe('SkillTags — level cycling', () => {
       { name: 'Python', level: 'expert' },
       { name: 'Java', level: 'experienced', confirmed: true },
     ]);
+  });
+});
+
+describe('SkillTags — keeping an imported level', () => {
+  // The badge always moves the level on, so settling an import at the level
+  // it arrived at took three clicks through levels the student did not mean.
+  it('confirms the level it arrived at without changing it, keeping its source', () => {
+    const imported: SkillWithLevel = {
+      name: 'Python', level: 'beginner', source: 'github',
+      evidence: 'repo engine: language Python',
+    };
+    const { onChange } = setup([imported, { name: 'Rust', level: 'beginner', source: 'resume' }]);
+    fireEvent.click(screen.getByRole('button', { name: 'Keep this level for Python (Beginner)' }));
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith([
+      { ...imported, confirmed: true },
+      // Untouched: keeping one chip confirms that chip only.
+      { name: 'Rust', level: 'beginner', source: 'resume' },
+    ]);
+  });
+
+  it('is offered only on a chip still waiting to be settled', () => {
+    setup([
+      { name: 'Python', level: 'beginner' },
+      { name: 'Go', level: 'beginner', source: 'github', confirmed: true },
+      { name: 'Rust', level: 'experienced' },
+    ]);
+    expect(screen.queryByRole('button', { name: /Keep this level for Python/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Keep this level for Go/ })).toBeNull();
+    // A legacy `experienced` is held back too, so it can be kept as it stands.
+    expect(screen.getByRole('button', { name: 'Keep this level for Rust (Experienced)' })).toBeInTheDocument();
+  });
+
+  it('names the keep button once, without repeating it as a title', () => {
+    setup([{ name: 'Python', level: 'beginner', source: 'github' }]);
+    expect(screen.getByRole('button', { name: 'Keep this level for Python (Beginner)' }))
+      .not.toHaveAttribute('title');
   });
 });
 

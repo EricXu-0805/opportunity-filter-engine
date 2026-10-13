@@ -296,6 +296,9 @@ export default function ResumeUpload({ onParsed, onRemove, alreadyUploaded }: Re
               </p>
             )}
             <p className="text-[11px] text-gray-500 text-center max-w-[260px]">
+              {t('resume.textOnlyNote')}
+            </p>
+            <p className="text-[11px] text-gray-500 text-center max-w-[260px]">
               {t('resume.removeNote')}{' '}
               <Link
                 href="/privacy"

@@ -2,8 +2,10 @@
  * SavedSearchesSection digest-editor tests.
  *
  * Pins the pre-migration degradation (digests=null hides every digest
- * control) and the editor's save contract: opt-in requires a valid email,
- * and onDigestSave receives exactly what the user confirmed.
+ * control) and the digest's one-address contract: the cron sends only to the
+ * signed-in account's confirmed email, so that is the only address the editor
+ * offers, the "weekly email" badge shows only on rows the cron will send, and
+ * an opted-in row stored for any other address says it is not being sent.
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -12,11 +14,14 @@ import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from '@t
 vi.mock('@/lib/supabase', () => ({
   supabase: { from: vi.fn() },
   getDeviceId: vi.fn(),
+  getAuthState: vi.fn().mockResolvedValue({
+    session: null, user: null, isAnonymous: false, email: null,
+  }),
 }));
 
 import { SavedSearchesSection } from './SavedSearchesSection';
 import { useSavedSearches } from './use-saved-searches';
-import { getDeviceId, supabase } from '@/lib/supabase';
+import { getAuthState, getDeviceId, supabase } from '@/lib/supabase';
 import type { SavedSearch, SavedSearchDigest } from '@/lib/saved-searches';
 
 const t = (key: string, vars?: Record<string, string | number>) =>
@@ -41,23 +46,31 @@ const SEARCH: SavedSearch = {
 function renderSection(
   digests: Map<string, SavedSearchDigest> | null,
   onDigestSave = vi.fn().mockResolvedValue(true),
+  accountEmail: string | null = null,
 ) {
-  render(
+  const element = (email: string | null) => (
     <SavedSearchesSection
       savedSearches={[SEARCH]}
       digests={digests}
       onApplyOptimisticClear={vi.fn()}
       onRemove={vi.fn()}
       onDigestSave={onDigestSave}
+      accountEmail={email}
       t={t}
-    />,
+    />
   );
-  return { onDigestSave };
+  const { rerender } = render(element(accountEmail));
+  return { onDigestSave, setAccountEmail: (email: string | null) => rerender(element(email)) };
 }
 
 const digestButton = () =>
   screen.queryByRole('button', {
     name: 'favorites.savedSearches.digestButtonAria:{"name":"ML labs"}',
+  });
+const emailField = () => screen.queryByLabelText('favorites.savedSearches.digestEmailAria');
+const switchButton = (email: string) =>
+  screen.queryByRole('button', {
+    name: `favorites.savedSearches.digestSwitchToAccount:{"email":"${email}"}`,
   });
 
 afterEach(() => {
@@ -72,51 +85,111 @@ describe('SavedSearchesSection digest editor', () => {
     expect(screen.queryByText('favorites.savedSearches.digestOnBadge')).toBeNull();
   });
 
-  it('shows the weekly-email badge for opted-in searches', () => {
-    renderSection(new Map([['uuid-1', { email: 'user@example.com', optIn: true }]]));
-    expect(screen.getByText('favorites.savedSearches.digestOnBadge')).toBeInTheDocument();
+  it('shows the weekly-email badge only on the row stored for the account address', () => {
+    const other: SavedSearch = { ...SEARCH, id: 'uuid-2', name: 'Bio labs' };
+    render(
+      <SavedSearchesSection
+        savedSearches={[SEARCH, other]}
+        digests={new Map([
+          // Compared case-insensitively, as the cron does.
+          ['uuid-1', { email: 'Me@Example.com', optIn: true }],
+          ['uuid-2', { email: 'stored@example.com', optIn: true }],
+        ])}
+        onApplyOptimisticClear={vi.fn()}
+        onRemove={vi.fn()}
+        onDigestSave={vi.fn()}
+        accountEmail="me@example.com"
+        t={t}
+      />,
+    );
+    const badges = screen.getAllByText('favorites.savedSearches.digestOnBadge');
+    expect(badges).toHaveLength(1);
+    expect(badges[0].closest('li')).toHaveTextContent('ML labs');
   });
 
-  it('opens the editor prefilled and saves a new opt-in', async () => {
+  it('shows no badge for a row stored for another address, and offers the account address', async () => {
+    // The cron holds this row back, so the page must not say it is on.
     const { onDigestSave } = renderSection(
-      new Map([['uuid-1', { email: '', optIn: false }]]),
+      new Map([['uuid-1', { email: 'stored@example.com', optIn: true }]]),
+      vi.fn().mockResolvedValue(true),
+      'me@example.com',
     );
+    expect(screen.queryByText('favorites.savedSearches.digestOnBadge')).toBeNull();
+    expect(
+      screen.getByText('favorites.savedSearches.digestNotSentOtherAddress:{"email":"stored@example.com"}'),
+    ).toBeInTheDocument();
+
+    fireEvent.click(switchButton('me@example.com')!);
+    await waitFor(() =>
+      expect(onDigestSave).toHaveBeenCalledWith('uuid-1', { email: 'me@example.com', optIn: true }),
+    );
+  });
+
+  it('says when switching to the account address fails', async () => {
+    renderSection(
+      new Map([['uuid-1', { email: 'stored@example.com', optIn: true }]]),
+      vi.fn().mockResolvedValue(false),
+      'me@example.com',
+    );
+    fireEvent.click(switchButton('me@example.com')!);
+    await waitFor(() =>
+      expect(screen.getByText('favorites.savedSearches.digestSaveFailed')).toBeInTheDocument(),
+    );
+  });
+
+  it('shows a guest\'s opted-in row as not sent, with no badge and no address to switch to', () => {
+    renderSection(new Map([['uuid-1', { email: 'user@example.com', optIn: true }]]));
+    expect(screen.queryByText('favorites.savedSearches.digestOnBadge')).toBeNull();
+    expect(screen.getByText('favorites.savedSearches.digestNotSentNeedsAccount')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /digestSwitchToAccount/ })).toBeNull();
+  });
+
+  it('does not let a guest turn the digest on', () => {
+    const { onDigestSave } = renderSection(new Map([['uuid-1', { email: '', optIn: false }]]));
     fireEvent.click(digestButton()!);
 
-    const emailInput = screen.getByLabelText('favorites.savedSearches.digestEmailAria');
+    expect(screen.getByRole('checkbox')).toBeDisabled();
+    expect(emailField()).toBeNull();
+    expect(screen.getByText('favorites.savedSearches.digestNeedsAccount')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.change(emailInput, { target: { value: 'user@example.com' } });
     fireEvent.click(screen.getByRole('button', { name: 'favorites.savedSearches.digestSave' }));
+    expect(onDigestSave).not.toHaveBeenCalledWith('uuid-1', expect.objectContaining({ optIn: true }));
+  });
 
+  it('shows the account email read-only and saves the opt-in to it', async () => {
+    const { onDigestSave } = renderSection(
+      new Map([['uuid-1', { email: '', optIn: false }]]),
+      vi.fn().mockResolvedValue(true),
+      'me@example.com',
+    );
+    fireEvent.click(digestButton()!);
+    expect(emailField()).toHaveValue('me@example.com');
+    expect(emailField()).toHaveAttribute('readonly');
+
+    fireEvent.click(screen.getByRole('checkbox'));
+    fireEvent.click(screen.getByRole('button', { name: 'favorites.savedSearches.digestSave' }));
     await waitFor(() =>
-      expect(onDigestSave).toHaveBeenCalledWith('uuid-1', {
-        email: 'user@example.com',
-        optIn: true,
-      }),
+      expect(onDigestSave).toHaveBeenCalledWith('uuid-1', { email: 'me@example.com', optIn: true }),
     );
     // editor closes on success
-    expect(screen.queryByLabelText('favorites.savedSearches.digestEmailAria')).toBeNull();
+    expect(emailField()).toBeNull();
   });
 
-  it('blocks save with an invalid email while opted in', () => {
-    const { onDigestSave } = renderSection(
-      new Map([['uuid-1', { email: '', optIn: false }]]),
-    );
+  it('shows the account address once it arrives after the editor opened', () => {
+    const { setAccountEmail } = renderSection(new Map([['uuid-1', { email: '', optIn: false }]]));
     fireEvent.click(digestButton()!);
-    fireEvent.click(screen.getByRole('checkbox'));
-    fireEvent.change(screen.getByLabelText('favorites.savedSearches.digestEmailAria'), {
-      target: { value: 'nope' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'favorites.savedSearches.digestSave' }));
+    expect(emailField()).toBeNull();
 
-    expect(onDigestSave).not.toHaveBeenCalled();
-    expect(screen.getByText('favorites.savedSearches.digestEmailInvalid')).toBeInTheDocument();
+    setAccountEmail('me@example.com');
+    expect(emailField()).toHaveValue('me@example.com');
+    expect(screen.getByRole('checkbox')).not.toBeDisabled();
   });
 
   it('surfaces a failure message when the save rejects server-side', async () => {
     renderSection(
-      new Map([['uuid-1', { email: 'user@example.com', optIn: true }]]),
+      new Map([['uuid-1', { email: 'me@example.com', optIn: true }]]),
       vi.fn().mockResolvedValue(false),
+      'me@example.com',
     );
     fireEvent.click(digestButton()!);
     fireEvent.click(screen.getByRole('button', { name: 'favorites.savedSearches.digestSave' }));
@@ -124,6 +197,61 @@ describe('SavedSearchesSection digest editor', () => {
     await waitFor(() =>
       expect(screen.getByText('favorites.savedSearches.digestSaveFailed')).toBeInTheDocument(),
     );
+  });
+});
+
+describe('useSavedSearches account email', () => {
+  function emptyReads() {
+    vi.mocked(getDeviceId).mockResolvedValue('device-1');
+    vi.mocked(supabase.from).mockImplementation(() => {
+      const result = { data: [], error: null };
+      const builder = {
+        select: () => builder,
+        eq: () => builder,
+        order: () => Promise.resolve(result),
+        then: (resolve: (value: typeof result) => unknown) => Promise.resolve(result).then(resolve),
+      };
+      return builder as unknown as ReturnType<typeof supabase.from>;
+    });
+  }
+
+  function auth(user: Record<string, unknown> | null, isAnonymous: boolean, email: string | null) {
+    return { session: null, user, isAnonymous, email } as unknown as Awaited<ReturnType<typeof getAuthState>>;
+  }
+
+  it('reads the signed-in account\'s confirmed email', async () => {
+    emptyReads();
+    vi.mocked(getAuthState).mockResolvedValueOnce(
+      auth({ id: 'u1', email_confirmed_at: '2026-01-01T00:00:00Z' }, false, 'Me@Example.com'),
+    );
+    const { result } = renderHook(() => useSavedSearches(t));
+    await waitFor(() => expect(result.current.accountEmail).toBe('me@example.com'));
+  });
+
+  it.each([
+    ['a guest', auth({ id: 'u1', email_confirmed_at: '2026-01-01T00:00:00Z' }, true, 'guest@example.com')],
+    ['an unconfirmed address', auth({ id: 'u1' }, false, 'me@example.com')],
+  ])('gives %s no account email', async (_label, state) => {
+    emptyReads();
+    vi.mocked(getAuthState).mockResolvedValueOnce(state);
+    const { result } = renderHook(() => useSavedSearches(t));
+    await waitFor(() => expect(result.current.digests).not.toBeNull());
+    expect(result.current.accountEmail).toBeNull();
+  });
+
+  it('keeps the digest UI hidden until the account is known', async () => {
+    emptyReads();
+    let resolveAuth: (state: Awaited<ReturnType<typeof getAuthState>>) => void = () => {};
+    vi.mocked(getAuthState).mockReturnValueOnce(new Promise((resolve) => { resolveAuth = resolve; }));
+    const { result } = renderHook(() => useSavedSearches(t));
+    await act(async () => {});
+    expect(result.current.digests).toBeNull();
+
+    await act(async () => {
+      resolveAuth(auth({ id: 'u1', email_confirmed_at: '2026-01-01T00:00:00Z' }, false, 'me@example.com'));
+    });
+    expect(result.current.digests).not.toBeNull();
+    expect(result.current.accountEmail).toBe('me@example.com');
   });
 });
 

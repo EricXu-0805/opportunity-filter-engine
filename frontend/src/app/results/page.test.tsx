@@ -121,6 +121,7 @@ const MATCH_VIEW_RESPONSE = {
 };
 
 vi.mock('@/lib/saved-searches', () => ({
+  confirmedAccountEmail: vi.fn().mockReturnValue(null),
   listSavedSearchDigests: vi.fn().mockResolvedValue(null),
   saveSearch: vi.fn(),
   setSavedSearchDigest: vi.fn(),
