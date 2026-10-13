@@ -34,6 +34,18 @@ GITHUB_LANG_TO_SKILL = {
     "CSS": "HTML/CSS", "Dockerfile": "Docker",
 }
 
+# A topic counts only where it NAMES the tool. "machine-learning",
+# "deep-learning" and "data-science" say what a repo is about, not what it is
+# built with: mapping them to PyTorch and pandas put a library on the profile
+# that no repo states, and the import showed it as found on GitHub.
+GITHUB_TOPIC_TO_SKILL = {
+    "react": "React", "nextjs": "Next.js", "vue": "Vue",
+    "flask": "Flask", "django": "Django", "fastapi": "FastAPI",
+    "docker": "Docker", "kubernetes": "Kubernetes",
+    "aws": "AWS", "tensorflow": "TensorFlow",
+    "pytorch": "PyTorch", "opencv": "OpenCV", "pandas": "pandas",
+}
+
 
 @router.get("/resume/github/{username}")
 async def parse_github_profile(username: str):
@@ -71,37 +83,36 @@ async def parse_github_profile(username: str):
     except httpx.TimeoutException as e:
         raise HTTPException(status_code=504, detail="GitHub API timeout") from e
 
-    skills: set[str] = set()
     topics: set[str] = set()
     repo_names: list[str] = []
+    # Each skill keeps the repo field that named it — the first one, in
+    # GitHub's most-recently-updated order — so the form can show the student
+    # what GitHub actually says instead of a bare skill name.
+    evidence: dict[str, dict[str, str]] = {}
 
     for repo in repos:
         if repo.get("fork"):
             continue
+        name = repo.get("name", "")
         lang = repo.get("language")
-        if lang and lang in GITHUB_LANG_TO_SKILL:
-            skills.add(GITHUB_LANG_TO_SKILL[lang])
+        skill = GITHUB_LANG_TO_SKILL.get(lang) if lang else None
+        if skill:
+            evidence.setdefault(skill, {
+                "skill": skill, "repo": name, "field": "language", "value": lang,
+            })
         for topic in repo.get("topics", []):
             topics.add(topic)
-        repo_names.append(repo.get("name", ""))
-
-    topic_skill_map = {
-        "machine-learning": "PyTorch", "deep-learning": "PyTorch",
-        "react": "React", "nextjs": "Next.js", "vue": "Vue",
-        "flask": "Flask", "django": "Django", "fastapi": "FastAPI",
-        "docker": "Docker", "kubernetes": "Kubernetes",
-        "aws": "AWS", "tensorflow": "TensorFlow",
-        "pytorch": "PyTorch", "opencv": "OpenCV",
-        "data-science": "pandas", "pandas": "pandas",
-    }
-    for t in topics:
-        mapped = topic_skill_map.get(t.lower())
-        if mapped:
-            skills.add(mapped)
+            skill = GITHUB_TOPIC_TO_SKILL.get(topic.lower())
+            if skill:
+                evidence.setdefault(skill, {
+                    "skill": skill, "repo": name, "field": "topic", "value": topic,
+                })
+        repo_names.append(name)
 
     payload = {
         "username": username,
-        "extracted_skills": sorted(skills),
+        "extracted_skills": sorted(evidence),
+        "skill_evidence": [evidence[skill] for skill in sorted(evidence)],
         "topics": sorted(topics),
         "repo_count": len([r for r in repos if not r.get("fork")]),
         "top_repos": repo_names[:10],
