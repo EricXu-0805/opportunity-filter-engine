@@ -36,7 +36,7 @@ Two invariants the tests hold this module to:
 The wire shape is deliberately boring so a client cannot misread it::
 
     "detail_fields": {
-      "version": "m03-v1",
+      "version": "m03-v2",
       "fields": {
         "<field>": {
           "state": "source" | "inferred" | "unknown",
@@ -79,7 +79,10 @@ from src.evidence import (
     record_kind,
 )
 
-DETAIL_FIELDS_VERSION = "m03-v1"
+# v2 adds the `configured` basis. A v1 client would read that basis as
+# unrecognised and show the facet as unknown; on a version it does not know it
+# falls back to the legacy sections, which already name a configured list.
+DETAIL_FIELDS_VERSION = "m03-v2"
 
 DETAIL_FIELD_NAMES = (
     "school",
@@ -131,6 +134,7 @@ BASIS_ENRICHMENT = "external_enrichment"  # matched third-party record (OpenAlex
 BASIS_ESTIMATE = "estimate"               # computed from another date/value
 BASIS_PROGRAM_POLICY = "program_policy"   # a published rule of the funding program
 BASIS_COLLECTOR_DEFAULT = "collector_default"  # a constant the collector writes on every row
+BASIS_CONFIGURED = "configured"           # this program's own list, typed into our config
 BASIS_DERIVED = "derived_from_source"     # restated from a different source fact
 
 _STAMP_PREFIX_BASIS = {
@@ -231,7 +235,7 @@ _KEYWORDS_FROM_SOURCE = frozenset({"uiuc_sro"})
 # or a category map. Campus program specs (campus_graph, ucb_campus) were
 # treated as curated until a 2026-10-09 check of 31 live program pages found
 # none of 12 configured major lists on the page: they are configuration
-# (`is_configured_program`), reported as a collector default.
+# (`is_configured_program`), reported as `configured`.
 _CURATED_SOURCES = frozenset({"manual"})
 
 # Application requirement flags are only ever typed by a person for manual
@@ -263,19 +267,19 @@ def _is_curated_source(source: str) -> bool:
     return source in _CURATED_SOURCES
 
 
-def _configured(canonical: dict, facet: str) -> tuple[str | None, dict | None]:
+def _configured(canonical: dict, facet: str, unstated: str = BASIS_COLLECTOR_DEFAULT) -> tuple[str | None, dict | None]:
     """(basis, quote) for a value a campus program spec wrote.
 
     No basis and the page's own sentence, with where and when it was read,
     when the page text the row carries states the value
-    (`src.evidence.configured_fact`); a collector default when it does not, or
-    says otherwise. (None, None) on any other row.
+    (`src.evidence.configured_fact`); ``unstated`` when it does not, or says
+    otherwise. (None, None) on any other row.
     """
     if not is_configured_program(canonical):
         return None, None
     fact = configured_fact(canonical, facet)
     if fact.state != FACT_STATED or not fact.quote:
-        return BASIS_COLLECTOR_DEFAULT, None
+        return unstated, None
     return None, {
         "text": fact.quote,
         "source_url": public_projection.safe_public_http_url(fact.source_url),
@@ -284,11 +288,17 @@ def _configured(canonical: dict, facet: str) -> tuple[str | None, dict | None]:
 
 
 def _stamped_or_configured(canonical: dict, path: str, facet: str) -> tuple[str | None, dict | None]:
-    """(basis, quote): an inference stamp on ``path`` wins over the configuration."""
+    """(basis, quote) for a major or class-year list: an inference stamp on
+    ``path`` wins over the configuration.
+
+    An unstamped list a program spec carries is that program's own, typed into
+    our config — `configured`, the basis the projector publishes as
+    majors_basis / preferred_year_basis — not a constant on every row.
+    """
     stamped = _basis_for(canonical, path)
     if stamped is not None:
         return stamped, None
-    return _configured(canonical, facet)
+    return _configured(canonical, facet, BASIS_CONFIGURED)
 
 
 def _collector_constant_keywords(canonical: dict) -> set[str]:
@@ -742,10 +752,10 @@ def _provenance(payload: dict, source: str, *, observed_key: str | None = None) 
     }
 
 
-# Bases no reading of the page produced: a value the collector writes itself,
-# or one a funding program's rules fix. A field holding only these was not
-# observed anywhere, whenever its page was last loaded.
-_UNOBSERVED_BASES = frozenset({BASIS_COLLECTOR_DEFAULT, BASIS_PROGRAM_POLICY})
+# Bases no reading of the page produced: a value the collector or our config
+# writes itself, or one a funding program's rules fix. A field holding only
+# these was not observed anywhere, whenever its page was last loaded.
+_UNOBSERVED_BASES = frozenset({BASIS_COLLECTOR_DEFAULT, BASIS_CONFIGURED, BASIS_PROGRAM_POLICY})
 
 
 def _field_provenance(built: dict, provenance: dict) -> dict:

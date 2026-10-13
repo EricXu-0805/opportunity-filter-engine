@@ -18,6 +18,7 @@ from fastapi.testclient import TestClient
 
 from backend.lib.opportunity_detail import (
     BASIS_COLLECTOR_DEFAULT,
+    BASIS_CONFIGURED,
     DETAIL_FIELD_NAMES,
     DETAIL_FIELDS_VERSION,
     FIELD_FACETS,
@@ -972,6 +973,12 @@ _CONFIGURED_FACETS = (
 )
 
 
+def _configured_basis(facet: str) -> str:
+    """The basis of an unstated configured value: a program's own major and
+    class-year lists are `configured`; its other values a collector default."""
+    return BASIS_CONFIGURED if facet in ("majors", "class_year") else BASIS_COLLECTOR_DEFAULT
+
+
 class TestCampusGraphContract:
     def _configured(self) -> dict:
         school = _campus_school()
@@ -990,7 +997,7 @@ class TestCampusGraphContract:
         assert fields["department"]["explicit"] == {"department": "Biology"}
         assert fields["professor_or_lab"]["explicit"] == {"lab_or_program": "SURF"}
         for field, facet, value in _CONFIGURED_FACETS:
-            assert fields[field]["inferred"][facet] == {"value": value, "basis": BASIS_COLLECTOR_DEFAULT}, facet
+            assert fields[field]["inferred"][facet] == {"value": value, "basis": _configured_basis(facet)}, facet
             assert facet not in fields[field]["explicit"], facet
         assert _where(fields["eligibility"], "citizenship") == "unknown"
         assert _where(fields["location"], "location") == "unknown"
@@ -1017,6 +1024,36 @@ class TestCampusGraphContract:
         assert payload["majors_attribution"] == payload["preferred_year_attribution"] == "inferred"
         assert "majors_basis" not in payload
         assert "preferred_year_basis" not in payload
+
+    def test_a_programs_own_lists_are_configured_not_a_source_default(self):
+        # Shaped like purdue-7dc8e5d17382 (2026-10-12): the program spec's own
+        # major and class-year lists, unstamped, and no page text states them.
+        # The detail facts called them "A default we apply to this source"
+        # while the payload already said `configured`.
+        record = _listing(
+            id="purdue-like", source="purdue_research_programs", source_type="campus_department",
+            title="Summer Undergraduate Research Fellowship (SURF) — Engineering (Purdue)", paid="stipend",
+            eligibility={"preferred_year": ["sophomore", "junior"], "majors": ["Engineering", "Computer Science"],
+                         "international_friendly": "unknown", "citizenship_required": None},
+            metadata={"is_active": True, "last_verified": "2026-09-30T06:06:42", "shared_program_page": False,
+                      "deadline_note": "Annual summer cycle; applications typically due late winter."},
+        )
+        payload, fields = _detail(record)
+        assert payload["majors_basis"] == payload["preferred_year_basis"] == "configured"
+        assert fields["eligibility"]["inferred"] == {
+            "majors": {"value": ["Engineering", "Computer Science"], "basis": BASIS_CONFIGURED},
+            "class_year": {"value": ["sophomore", "junior"], "basis": BASIS_CONFIGURED},
+        }
+        # Nothing on the page produced them, so the field is not dated by it.
+        assert fields["eligibility"]["provenance"]["observed_at"] is None
+
+    def test_a_source_wide_default_keeps_the_collector_default_basis(self):
+        record = self._configured()
+        record["metadata"]["inferred_fields"] = {"eligibility.majors": "default:every_row"}
+        _, fields = _detail(record)
+        assert fields["eligibility"]["inferred"]["majors"]["basis"] == BASIS_COLLECTOR_DEFAULT
+        _, fields = _detail(_CASES["simplify_internship_template"])
+        assert fields["funding"]["inferred"]["paid"]["basis"] == BASIS_COLLECTOR_DEFAULT
 
     @pytest.mark.parametrize("paid", ["yes", "stipend", "no"])
     def test_configured_pay_is_stamped_whatever_it_says(self, paid):
@@ -1174,7 +1211,7 @@ class TestCampusGraphContract:
         )
         payload, fields = _detail(record)
         for field, facet, value in _CONFIGURED_FACETS:
-            assert fields[field]["inferred"][facet] == {"value": value, "basis": BASIS_COLLECTOR_DEFAULT}, facet
+            assert fields[field]["inferred"][facet] == {"value": value, "basis": _configured_basis(facet)}, facet
             assert facet not in fields[field]["explicit"], facet
         for name in ("eligibility", "funding", "timing"):
             assert fields[name]["quotes"] == {}, name
@@ -1192,7 +1229,7 @@ class TestCampusGraphContract:
         )
         payload, fields = _detail(record)
         for field, facet, value in _CONFIGURED_FACETS:
-            assert fields[field]["inferred"][facet] == {"value": value, "basis": BASIS_COLLECTOR_DEFAULT}, facet
+            assert fields[field]["inferred"][facet] == {"value": value, "basis": _configured_basis(facet)}, facet
             assert fields[field]["quotes"] == {}, facet
         expected = {
             "paid": "Research positions are unpaid.",
@@ -1597,7 +1634,7 @@ class TestCampusGraphContract:
             self._passage("Requirements: Open to all years and experience levels.")]
         fact = configured_fact(record, "class_year")
         assert (fact.state, fact.quote) == (FACT_CONTRADICTED, "Requirements: Open to all years and experience levels.")
-        assert _detail(record)[1]["eligibility"]["inferred"]["class_year"]["basis"] == BASIS_COLLECTOR_DEFAULT
+        assert _detail(record)[1]["eligibility"]["inferred"]["class_year"]["basis"] == BASIS_CONFIGURED
 
 
 def test_the_report_lists_the_values_the_page_text_contradicts(tmp_path, capsys):
@@ -1843,8 +1880,8 @@ class TestUcbCampusContract:
         record = ucb_campus._normalize_program(source, source["programs"][0], seed_page_verified=True)
         payload, fields = _detail(record)
         assert fields["department"]["explicit"] == {"department": "Electrical Engineering and Computer Sciences"}
-        assert fields["eligibility"]["inferred"]["majors"]["basis"] == BASIS_COLLECTOR_DEFAULT
-        assert fields["eligibility"]["inferred"]["class_year"]["basis"] == BASIS_COLLECTOR_DEFAULT
+        assert fields["eligibility"]["inferred"]["majors"]["basis"] == BASIS_CONFIGURED
+        assert fields["eligibility"]["inferred"]["class_year"]["basis"] == BASIS_CONFIGURED
         assert fields["eligibility"]["explicit"] == {}
         assert fields["research_content"]["inferred"]["research_areas"]["value"] == ["machine learning"]
 

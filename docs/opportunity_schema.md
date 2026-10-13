@@ -81,7 +81,7 @@ raw record, so nothing the projector stripped comes back):
 
 ```json
 "detail_fields": {
-  "version": "m03-v1",
+  "version": "m03-v2",
   "fields": {
     "eligibility": {
       "state": "source | inferred | unknown",
@@ -105,7 +105,7 @@ only when it is in neither. `quotes` holds the page's own sentence for an
 `explicit` facet that was checked against page text, with the URL it was read
 at and when. Inference bases:
 `text_scan`, `model_extraction`, `external_enrichment`, `estimate`,
-`program_policy`, `collector_default`, `derived_from_source`.
+`program_policy`, `collector_default`, `configured`, `derived_from_source`.
 
 Rules that never bend:
 
@@ -119,8 +119,9 @@ Rules that never bend:
 - `is_rolling` decides nothing — rolling needs a source `deadline_note`;
 - a campus program spec (`campus_graph` / `ucb_campus` config,
   `src.evidence.is_configured_program`) is configuration: its pay,
-  compensation, majors, class years, intl answer, citizenship and deadline
-  note are `collector_default` (a 2026-10-09 check of 31 live program pages
+  compensation, intl answer, citizenship and deadline note are
+  `collector_default`, and its majors and class years, the program's own
+  lists, are `configured` (a 2026-10-09 check of 31 live program pages
   found 10 of 33 configured facets stated there), except a value the page
   text the row carries states. That text is the excerpt after "From the
   program page:" in its description (read at the row's `source_url`, observed
@@ -129,10 +130,11 @@ Rules that never bend:
   `checked_at`). `src.evidence.configured_fact` checks them one sentence at a
   time, with exact terms and no hedge or negation, and a stated value is
   source with that sentence in `quotes`. A value the page text contradicts
-  stays `collector_default`, and `scripts/configured_facts_report.py` lists it
+  keeps that basis, and `scripts/configured_facts_report.py` lists it
   for review;
 - `provenance.observed_at` is null for a field whose every value is a
-  `collector_default` or `program_policy` — nothing on the page produced it;
+  `collector_default`, `configured` or `program_policy` — nothing on the page
+  produced it;
 - an SRO row (`uiuc_sro`) links its detail page, not the paginated list it
   was found on, and its labelled fields (Sponsoring Institution, Location,
   Deadline, Duration, Compensation, Citizenship Requirement) are source; a

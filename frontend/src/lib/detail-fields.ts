@@ -14,7 +14,7 @@
  * ineligible or "no deadline".
  */
 
-export const DETAIL_FIELDS_VERSION = 'm03-v1';
+export const DETAIL_FIELDS_VERSION = 'm03-v2';
 
 export const DETAIL_FIELD_NAMES = [
   'school',
@@ -59,6 +59,8 @@ export const INFERENCE_BASES = [
   'estimate',
   'program_policy',
   'collector_default',
+  // A program's own major or class-year list, typed into our config (m03-v2).
+  'configured',
   'derived_from_source',
 ] as const;
 export type InferenceBasis = typeof INFERENCE_BASES[number];

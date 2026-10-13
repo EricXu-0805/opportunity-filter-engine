@@ -42,7 +42,7 @@
             "explicit": {},
             "inferred": {
               "class_year": {
-                "basis": "collector_default",
+                "basis": "configured",
                 "value": [
                   "sophomore",
                   "junior"
@@ -53,7 +53,7 @@
                 "value": "yes"
               },
               "majors": {
-                "basis": "collector_default",
+                "basis": "configured",
                 "value": [
                   "Biology",
                   "Chemistry"
@@ -196,7 +196,7 @@
             ]
           }
         },
-        "version": "m03-v1"
+        "version": "m03-v2"
       },
       "location_attribution": "institution",
       "name": "curated_campus_program",
@@ -249,7 +249,7 @@
             },
             "inferred": {
               "class_year": {
-                "basis": "collector_default",
+                "basis": "configured",
                 "value": [
                   "junior",
                   "senior"
@@ -410,7 +410,7 @@
             ]
           }
         },
-        "version": "m03-v1"
+        "version": "m03-v2"
       },
       "location_attribution": "institution",
       "name": "configured_program_page_states",
@@ -602,7 +602,7 @@
             ]
           }
         },
-        "version": "m03-v1"
+        "version": "m03-v2"
       },
       "location_attribution": null,
       "name": "simplify_internship_template",
@@ -806,7 +806,7 @@
             ]
           }
         },
-        "version": "m03-v1"
+        "version": "m03-v2"
       },
       "location_attribution": "inferred",
       "name": "nsf_reu_policy",
@@ -988,7 +988,7 @@
             ]
           }
         },
-        "version": "m03-v1"
+        "version": "m03-v2"
       },
       "location_attribution": null,
       "name": "stamped_listing",
@@ -1156,7 +1156,7 @@
             ]
           }
         },
-        "version": "m03-v1"
+        "version": "m03-v2"
       },
       "location_attribution": "institution",
       "name": "faculty_profile",
@@ -1340,7 +1340,7 @@
             ]
           }
         },
-        "version": "m03-v1"
+        "version": "m03-v2"
       },
       "location_attribution": null,
       "name": "sro_structured_listing",
@@ -1499,7 +1499,7 @@
             ]
           }
         },
-        "version": "m03-v1"
+        "version": "m03-v2"
       },
       "location_attribution": null,
       "name": "legacy_sparse",
@@ -1569,5 +1569,5 @@
     "location",
     "application_method"
   ],
-  "version": "m03-v1"
+  "version": "m03-v2"
 }

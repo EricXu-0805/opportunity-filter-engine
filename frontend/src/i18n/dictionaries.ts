@@ -3334,6 +3334,8 @@ export const en = {
         estimate: 'Estimated by us',
         program_policy: 'Based on the funding program’s published rules',
         collector_default: 'A default we apply to this source',
+        // Majors and class years use detail.majorsConfigured / yearConfigured.
+        configured: 'From our listing, not confirmed on the program page',
         derived_from_source: 'Restated from a related source fact',
       },
       sourceLink: 'Source page',
@@ -8551,6 +8553,8 @@ export const zh = {
         estimate: '由我们估算',
         program_policy: '依据资助项目公布的规定',
         collector_default: '我们对该来源使用的默认值',
+        // 专业和年级用 detail.majorsConfigured / yearConfigured。
+        configured: '来自我们的列表，项目页面未确认',
         derived_from_source: '由相关来源信息转述',
       },
       sourceLink: '来源页面',

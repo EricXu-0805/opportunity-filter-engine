@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { DETAIL_FIELD_NAMES, readDetailFields } from './detail-fields';
+import { DETAIL_FIELD_NAMES, DETAIL_FIELDS_VERSION, readDetailFields } from './detail-fields';
 
-function envelope(fields: Record<string, unknown>, version = 'm03-v1') {
+function envelope(fields: Record<string, unknown>, version = DETAIL_FIELDS_VERSION) {
   return { detail_fields: { version, fields } };
 }
 
