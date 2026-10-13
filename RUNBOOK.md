@@ -242,11 +242,17 @@ Render, Vercel and the database, and the known weak spots.
 
 > **Untested.** Written on 2026-10-12 from `supabase/migrations/` and the code
 > that reads it; it has not been run against production. Its SQL has run only
-> on a local replay of the migrations with Supabase's auth and Storage stubbed
-> (`supabase/tests/_stubs.sql`), where it exported, deleted and re-exported a
-> seeded account and left a second account untouched. Before using it on a
-> real request, the owner runs it once end to end on a test account (checklist
-> M20) and records the counts here.
+> on a local PostgreSQL 16 replay of the migrations (all but the superseded
+> `004`) on top of `supabase/tests/_stubs.sql`. Those stubs lack the
+> `auth.users` columns `email`, `created_at` and `last_sign_in_at` and the
+> `auth.identities` table, so a seed script added minimal versions of them
+> before loading a test account, a guest merged into it and a second account.
+> There the SQL exported, deleted and re-exported the account and its guest
+> and left the second account untouched. Storage was simulated by deleting
+> `storage.objects` rows, auth users were deleted with SQL, and the token wait
+> in step 5 was not exercised. Before using it on a real request, the owner
+> runs it once end to end on a test account (checklist M20) and records the
+> counts here.
 
 Privacy §7 (`frontend/src/app/privacy/page.tsx`) promises a full export or
 deletion within 30 days of an emailed request, after checking that the request
@@ -261,7 +267,10 @@ signed-in account also owns each guest session merged into it: `merged_devices`
 account's uid as `target_device_id`. The merge re-keys the guest's rows to the
 account but leaves its tracker attachments in Storage under the guest's uid,
 and the guest's auth user stays (anonymous, no email). The queries below
-therefore search the account's uid and every uid merged into it.
+therefore search the account's uid and every uid merged into it. Step 4 of
+the deletion removes the `merged_devices` rows that link them, so the list of
+uids is worked out once, saved, and pasted into every later query as a fixed
+list.
 
 | Keyed by | Tables |
 |---|---|
@@ -271,6 +280,27 @@ therefore search the account's uid and every uid merged into it.
 | something else | `feedback_events` (`ticket_id` of the student's `feedback`); `ops_incidents` (a reminder or digest failure names the uid or a saved search id in `dedup_key`); `merge_grants` (`source_device_id`, `redeemed_by`, `target_email`); `merged_devices` |
 | Storage | `tracker-attachments`: objects named `<device_id>/<opportunity_id>/<file>`. `application-materials`: objects named `pdf/<material_id>.pdf`, found through `material_artifacts.object_key` |
 
+The table comes from the migrations. A table created in the dashboard would
+not be in it, so before each request list every table in `public` that has a
+`device_id` or `owner_id` column (read only) and compare. A table missing from
+the table above needs its rows exported and deleted by hand, and this section
+updated.
+
+```sql
+SELECT c.relname AS table_name, string_agg(a.attname, ', ' ORDER BY a.attname) AS key_columns
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
+WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p') AND a.attname IN ('device_id', 'owner_id')
+GROUP BY c.relname
+ORDER BY 1;
+```
+
+Rows written before migration 006 are keyed by a device id the browser made
+up, not by an auth uid. Nothing ties them to a student, so this procedure
+neither finds nor deletes them (`20260925052636_legacy_renovation_cas_rpc.sql`
+leaves such `resume_renovations` rows unclaimed for the same reason).
+
 ### Find the account
 
 ```sql
@@ -278,10 +308,49 @@ SELECT id, email, is_anonymous, created_at FROM auth.users
 WHERE lower(email) = lower('student@example.edu');
 ```
 
-Put that `id` in place of the zero uuid in `account` at the top of each query
-below.
 A guest session has no email, so a guest's request can only be found from the
-uid itself.
+uid itself. If the request gives a guest uid, first check whether that guest
+was merged into an account:
+
+```sql
+SELECT target_device_id FROM public.merged_devices
+WHERE source_device_id = '00000000-0000-0000-0000-000000000000';
+```
+
+If it returns a row, the guest's rows now belong to that account: repeat the
+check with the account's uid until it returns nothing, then act on the request
+as that account's, found by its uid and verified against its email.
+
+Then list the uids to search: the account's uid and every guest uid merged
+into it, with what `auth.users` holds for each. Put the account's uid in
+place of the zero uuid.
+
+```sql
+WITH RECURSIVE owned(device_id) AS (
+  SELECT '00000000-0000-0000-0000-000000000000'::text
+  UNION
+  SELECT m.source_device_id FROM public.merged_devices m JOIN owned o ON m.target_device_id = o.device_id
+)
+SELECT o.device_id, u.email, u.is_anonymous, '{' || string_agg(o.device_id, ',') OVER () || '}' AS saved_ids
+FROM owned o LEFT JOIN auth.users u ON u.id::text = o.device_id
+ORDER BY u.is_anonymous, o.device_id;
+```
+
+Every row other than the account's must show `is_anonymous` true and no
+email (or nothing at all, if that guest's auth user is already gone; keep it
+in the list). A merged uid that shows a signed-in account (an email, or
+`is_anonymous` false) is a separate account. Do not include it unless the
+student shows it is theirs as well, verified the same way as the first;
+otherwise leave it out of the list and treat it as someone else's data.
+
+Save the `saved_ids` value (with any such uid removed) and the account's
+email with the request. Every query below starts with
+`ids AS (SELECT '{…}'::text[] AS a, lower('…') AS email)`: put the saved list
+in place of `{00000000-0000-0000-0000-000000000000}` and the email in place of
+`student@example.edu` (for a guest with no account, replace
+`lower('student@example.edu')` with `NULL::text`). From the export on, use
+only the saved list: step 4 removes the rows that link the guest uids to the
+account, so the list cannot be worked out again afterwards.
 
 ### Export (SELECT only)
 
@@ -290,17 +359,7 @@ row lists the uids searched. Push keys, merge-grant tokens and hashes are left
 out.
 
 ```sql
-WITH RECURSIVE account AS (SELECT '00000000-0000-0000-0000-000000000000'::uuid AS uid),
-owned(device_id) AS (
-  SELECT uid::text FROM account
-  UNION
-  SELECT m.source_device_id FROM public.merged_devices m JOIN owned o ON m.target_device_id = o.device_id
-),
-ids AS (
-  SELECT array_agg(device_id) AS a,
-         (SELECT lower(u.email) FROM auth.users u, account WHERE u.id = account.uid) AS email
-  FROM owned
-),
+WITH ids AS (SELECT '{00000000-0000-0000-0000-000000000000}'::text[] AS a, lower('student@example.edu') AS email),
 searches AS (
   SELECT coalesce(array_agg(s.id::text), '{}') AS a FROM public.saved_searches s, ids WHERE s.device_id = ANY (ids.a)
 ),
@@ -351,26 +410,21 @@ export(source, rows) AS (
 SELECT source, coalesce(jsonb_array_length(rows), 0) AS row_count, rows FROM export;
 ```
 
-Files, listed with the same owned uids. An `application-materials` row with
+Files, listed for the same uids. An `application-materials` row with
 no `created_at` has no object left (deleted by the student and already
 erased, or never uploaded). Keep the `application-materials` names: the
 deletion check below needs them after the rows that point to them are gone.
 
 ```sql
-WITH RECURSIVE account AS (SELECT '00000000-0000-0000-0000-000000000000'::uuid AS uid),
-owned(device_id) AS (
-  SELECT uid::text FROM account
-  UNION
-  SELECT m.source_device_id FROM public.merged_devices m JOIN owned o ON m.target_device_id = o.device_id
-)
+WITH ids AS (SELECT '{00000000-0000-0000-0000-000000000000}'::text[] AS a, lower('student@example.edu') AS email)
 SELECT o.bucket_id, o.name, o.created_at, NULL AS material_status
-FROM storage.objects o
-WHERE o.bucket_id = 'tracker-attachments' AND (storage.foldername(o.name))[1] IN (SELECT device_id FROM owned)
+FROM storage.objects o, ids
+WHERE o.bucket_id = 'tracker-attachments' AND (storage.foldername(o.name))[1] = ANY (ids.a)
 UNION ALL
 SELECT 'application-materials', a.object_key, o.created_at, a.status
-FROM public.material_artifacts a
+FROM public.material_artifacts a CROSS JOIN ids
 LEFT JOIN storage.objects o ON o.bucket_id = 'application-materials' AND o.name = a.object_key
-WHERE a.owner_id::text IN (SELECT device_id FROM owned)
+WHERE a.owner_id::text = ANY (ids.a)
 ORDER BY 1, 2;
 ```
 
@@ -382,7 +436,7 @@ files with the query results.
 Export first, so the counts can be compared afterwards. Then, in this order:
 
 1. **Tracker attachments.** In the Storage browser, delete the folder of each
-   owned uid in `tracker-attachments`. Use Storage, not SQL: deleting a
+   saved uid in `tracker-attachments`. Use Storage, not SQL: deleting a
    `storage.objects` row does not erase the stored file
    (`docs/material_archive_http_contract.md`). Rerun the file listing; no
    `tracker-attachments` row may remain.
@@ -394,17 +448,7 @@ Export first, so the counts can be compared afterwards. Then, in this order:
    delete while the auth user exists.
 
    ```sql
-   WITH RECURSIVE account AS (SELECT '00000000-0000-0000-0000-000000000000'::uuid AS uid),
-   owned(device_id) AS (
-     SELECT uid::text FROM account
-     UNION
-     SELECT m.source_device_id FROM public.merged_devices m JOIN owned o ON m.target_device_id = o.device_id
-   ),
-   ids AS (
-     SELECT array_agg(device_id) AS a,
-            (SELECT lower(u.email) FROM auth.users u, account WHERE u.id = account.uid) AS email
-     FROM owned
-   ),
+   WITH ids AS (SELECT '{00000000-0000-0000-0000-000000000000}'::text[] AS a, lower('student@example.edu') AS email),
    searches AS (
      SELECT coalesce(array_agg(s.id::text), '{}') AS a FROM public.saved_searches s, ids WHERE s.device_id = ANY (ids.a)
    ),
@@ -453,9 +497,12 @@ Export first, so the counts can be compared afterwards. Then, in this order:
      (SELECT count(*) FROM d_merge_grants) AS merge_grants;
    ```
 
-3. **The auth users**: the account, then each merged guest uid that the
-   export's `auth.users` row still lists (each must show `is_anonymous`
-   true). Delete them under Authentication → Users. The triggers below fire
+3. **The auth users.** First rerun the uid list query from "Find the
+   account". If it shows a uid the saved list lacks (a guest merged in since),
+   check it as described there, add it to the list, and repeat steps 1 and 2
+   with the new list. Then delete every saved uid that still has an auth user
+   (the export's `auth.users` row) under Authentication → Users, and never a
+   signed-in account that was left out of the list. The triggers below fire
    only when the `auth.users` row is really deleted, so a soft delete is not
    enough. For each deleted user:
    - `auth_user_delete_contact_events` and
@@ -473,19 +520,38 @@ Export first, so the counts can be compared afterwards. Then, in this order:
    while its auth user still exists:
 
    ```sql
-   WITH RECURSIVE account AS (SELECT '00000000-0000-0000-0000-000000000000'::uuid AS uid),
-   owned(device_id) AS (
-     SELECT uid::text FROM account
-     UNION
-     SELECT m.source_device_id FROM public.merged_devices m JOIN owned o ON m.target_device_id = o.device_id
-   )
-   DELETE FROM public.merged_devices m
-   WHERE m.source_device_id IN (SELECT device_id FROM owned) OR m.target_device_id IN (SELECT device_id FROM owned);
+   WITH ids AS (SELECT '{00000000-0000-0000-0000-000000000000}'::text[] AS a, lower('student@example.edu') AS email)
+   DELETE FROM public.merged_devices m USING ids
+   WHERE m.source_device_id = ANY (ids.a) OR m.target_device_id = ANY (ids.a);
    ```
 
-5. **Check.** Rerun the export: every `row_count` is 0 except
-   `owned_device_ids`, which keeps the uid. Rerun the file listing: no rows.
-   Check that the backend's cleanup loop (`backend/lib/material_cleanup.py`,
+5. **Wait out open sessions.** Deleting an auth user does not end a session
+   that is already open: its access token stays valid until it expires, so a
+   tab the student left open can still write rows keyed by one of the saved
+   uids (for example `favorites` or `analytics_events`) and upload tracker
+   attachments, both during the deletion and for up to one token lifetime
+   after step 3. That lifetime is the project's JWT expiry, 3,600 seconds
+   unless it was changed; the dashboard shows it in the project settings as
+   the JWT (access token) expiry, and Supabase's Management API returns it as
+   `jwt_exp` in the project's auth config. Wait that long plus a few minutes
+   after step 3, then run step 2's statement and the file listing again, and
+   delete any `tracker-attachments` folder the listing shows, as in step 1.
+6. **Check.** Rerun the export: every `row_count` is 0 except
+   `owned_device_ids`, which keeps the saved list. Rerun the file listing: no
+   rows. If a count is not 0:
+   - a table that step 2 deletes from, or a `tracker-attachments` file:
+     something wrote after the last run of step 2. Run step 2 (and step 1)
+     again; if step 3 was less than one token lifetime ago, wait until it is
+     not, and check again;
+   - `auth.users`: a listed user was not deleted; delete it as in step 3,
+     then repeat steps 5 and 6;
+   - `merged_devices`: repeat step 4;
+   - any other table: those rows should have gone with the auth user. Do not
+     delete them by hand (a `material_artifacts` row deleted that way never
+     queues its file for erasure); find out why they stayed, fix this section,
+     and record what happened here.
+
+   Then check that the backend's cleanup loop (`backend/lib/material_cleanup.py`,
    every 60 seconds) erased the `application-materials` files; put the names
    saved from the export in the array:
 
