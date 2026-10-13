@@ -1,4 +1,5 @@
 """A selected verified title authenticates attribution, never a student's reading."""
+import re
 from copy import deepcopy
 
 import pytest
@@ -242,3 +243,20 @@ def test_template_names_a_paper_only_when_the_student_chose_it(writing_client, m
         assert variant["body"].count(PROFESSOR_PAPER["title"]) == 1
         assert paper_reading_sentence(chosen) in variant["body"]
         assert "caught my attention" not in variant["body"]
+
+def test_ai_prompt_never_asks_for_a_reaction_to_an_unchosen_paper(writing_client, monkeypatch):
+    # The AI counterpart of M33: every drafting angle, with the professor's
+    # verified paper offered and no paper chosen, may name a paper for its
+    # topic but must not ask why something caught the student's attention.
+    client, _ = writing_client
+    monkeypatch.setattr(ce, "load_opportunities_by_id", lambda: {PROFESSOR["id"]: deepcopy(PROFESSOR)})
+    monkeypatch.setattr(ce, "is_configured", lambda: True)
+    monkeypatch.setenv("OFE_COLD_EMAIL_NDRAFT", str(len(ce._DRAFT_ANGLES)))
+    systems = []
+    monkeypatch.setattr(ce, "chat_completion", lambda messages, **_k: systems.append(messages[0]["content"]))
+    result(post(client, "", {"version": 1, "purpose": "first_contact"},
+                opportunity_id=PROFESSOR["id"], engine="ai"), "")
+    assert len(systems) == len(ce._DRAFT_ANGLES)
+    for system in systems:
+        assert not re.search(r"\bwhy (?:it|they|this)\s+(?:caught|interests?|interested|impressed)", system, re.I)
+        assert "reaction to a paper they did not choose" in system

@@ -578,8 +578,10 @@ _READER_RULES = (
     "the recipient's area, say so once, plainly, as the student would.\n"
     "- Use the past tense for roles, courses and projects dated before today's date "
     "in the STUDENT block.\n"
-    "- Apart from a confirmed reading sentence, name a paper for its topic and why "
-    "it interests the student; never say that only its title was seen.\n"
+    "- Apart from a confirmed reading sentence, name a paper only for its topic. Do "
+    "not state the student's reaction to a paper they did not choose (that it caught "
+    "their attention, interested, impressed or excited them), and never say that "
+    "only its title was seen.\n"
     "- Make one clear request and ask it once. Ask a program or coordinator about "
     "eligibility or how to apply rather than for a meeting. Do not offer tests, "
     "assessments or unpaid trials."
@@ -1279,8 +1281,8 @@ def _render_professor_brief(p: dict, opp: dict) -> str:
 # rolls of the same prompt. Structure-only — none licenses a new factual claim.
 _DRAFT_ANGLES: tuple[str, ...] = (
     "Lead with the professor's work: open on the single most relevant thread "
-    "of their research and why it caught your attention, then connect your "
-    "own listed experience to it.",
+    "of their research and how it connects to your stated interests, then "
+    "connect your own listed experience to it.",
     "Lead with your fit: open on the one listed experience or skill that best "
     "matches this lab, then tie it to the professor's research.",
     "Build the email around one sharp, informed question about the "
