@@ -891,7 +891,7 @@ def _common_parts(
         coursework=coursework, lab_type=lab_type,
         # Publication trust boundary: only works with explicitly verified
         # attribution may personalize output — name-matched/legacy/unknown
-        # works never reach the template cite or the AI professor brief.
+        # works never reach the template or the AI professor brief.
         recent_works=verified_recent_works(opportunity),
         faculty_title=faculty_title, research_areas_raw=research_areas_raw,
         is_faculty=is_faculty,
@@ -1302,8 +1302,9 @@ def _chosen_paper_sentence(p: dict) -> str:
     2026-10-12, checklist M33). The template used to fall back to the newest
     verified work — 'Your recent paper "<title>" (2026) caught my attention.'
     — which states a reaction the student never reported. With no paper
-    chosen the opening keeps only the research-direction sentence from
-    ``_p1_research_hook``."""
+    chosen nothing is added: the opening ends on ``_p1_research_hook``'s
+    research-direction sentence when the record has a usable topic, area or
+    lab name, and otherwise on the student's interest or introduction."""
     reading = p.get("contact_paper_reading")
     return f" {reading}" if reading else ""
 
