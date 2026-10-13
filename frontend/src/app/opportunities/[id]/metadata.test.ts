@@ -190,3 +190,10 @@ describe('nothing else propagates an opening claim', () => {
     expect(publishedTime(meta)).toBeUndefined();
   });
 });
+
+describe('topics we inferred are not published as page keywords', () => {
+  it('drops inferred keywords and keeps stated ones', async () => {
+    expect((await metadataFor({ keywords_attribution: 'inferred' })).keywords).toBeUndefined();
+    expect((await metadataFor()).keywords).toEqual(['machine learning']);
+  });
+});

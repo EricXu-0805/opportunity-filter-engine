@@ -219,6 +219,23 @@ describe('matchesToCSV', () => {
     expect(unknown).not.toContain('(inferred)');
   });
 
+  it("leaves a listing's host-school city out of Location and marks one we inferred", () => {
+    const listing = { source_type: 'campus_program', target_truth: { ...LIVE_TRUTH } };
+    const campus = matchesToCSV([makeMatch({
+      ...listing, location: 'Urbana, IL', location_attribution: 'institution',
+    } as never)]).split('\n')[1];
+    expect(campus).not.toContain('Urbana, IL');
+    const inferred = matchesToCSV([makeMatch({
+      ...listing, location: 'Springfield, IL', location_attribution: 'inferred',
+    } as never)]).split('\n')[1];
+    expect(inferred).toContain('"Springfield, IL (inferred)"');
+    const faculty = matchesToCSV([makeMatch({
+      source_type: 'faculty_research', target_truth: { ...LIVE_TRUTH },
+      location: 'Urbana, IL', location_attribution: 'institution',
+    } as never)]).split('\n')[1];
+    expect(faculty).toContain('"Urbana, IL"');
+  });
+
   it('escapes double quotes in field values', () => {
     const csv = matchesToCSV([makeMatch({ title: 'Lab "AI for Good"' })]);
     expect(csv).toContain('"Lab ""AI for Good"""');
