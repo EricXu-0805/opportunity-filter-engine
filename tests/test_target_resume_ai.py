@@ -160,6 +160,7 @@ def test_the_prompt_separates_stated_criteria_from_inferred_ones():
     assert "published constraints" not in system
     assert 'criteria.attribution as "inferred"' in system
     assert "not something the program page states" in system
+    assert 'location_attribution "institution" means' in system
 
 
 @pytest.mark.parametrize("mutation", [

@@ -110,7 +110,8 @@ FIELD_CASES = [
                                     'reference_only': True, 'accepting_state': None, 'reason_code': 'new-code'}),
     *[('attribution', field, 'inferred') for field in ('skills_attribution', 'majors_attribution',
       'preferred_year_attribution', 'international_attribution', 'citizenship_attribution', 'paid_attribution',
-      'deadline_note_attribution')],
+      'deadline_note_attribution', 'location_attribution', 'compensation_attribution')],
+    ('attribution', 'location_attribution', 'institution'),
 ]
 
 
@@ -185,6 +186,7 @@ def test_null_is_kept_and_missing_is_not_filled(group, key, value):
     lambda t: t['criteria']['availability'].update(target_truth={'actionable': 'yes'}),
     lambda t: t['criteria']['availability'].update(target_truth={'verified_at': '2026-09-24'}),
     lambda t: t['criteria']['attribution'].update(skills_attribution='verified'),
+    lambda t: t['criteria']['attribution'].update(compensation_attribution='institution'),
     lambda t: t['criteria']['application'].update(contact_email='PRIVATE@example.test'),
     lambda t: t['criteria']['eligibility'].update(eligibility_text_raw='PRIVATE'),
 ])

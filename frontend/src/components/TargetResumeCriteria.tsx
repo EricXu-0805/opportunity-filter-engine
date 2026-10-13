@@ -28,6 +28,7 @@ const fields: Labels = {
   skills_attribution: ['Skills', '技能'], majors_attribution: ['Majors', '专业'], preferred_year_attribution: ['Year of study', '年级'],
   international_attribution: ['International eligibility', '国际学生资格'], citizenship_attribution: ['Citizenship', '公民身份'],
   paid_attribution: ['Pay status', '报酬情况'], deadline_note_attribution: ['Deadline note', '截止日期说明'],
+  location_attribution: ['Location', '地点'], compensation_attribution: ['Compensation details', '报酬说明'],
 };
 const values: Labels = {
   unknown: ['Unknown', '未知'], yes: ['Yes', '是'], no: ['No', '否'], inferred: ['Inferred', '推断'],
@@ -35,6 +36,7 @@ const values: Labels = {
   listing_closed: ['Listing closed', '机会已关闭'], reference_only: ['For reference only', '仅供参考'],
   faculty_not_accepting: ['Faculty not accepting students', '教授不接收学生'], inactive: ['Inactive', '未开放'],
   record_kind_unverified: ['Record type unverified', '记录类型未核实'],
+  institution: ['Host school’s city', '所在学校的城市'],
 };
 
 /** Only the saved, validated public snapshot is shown here, never live data. */
@@ -47,13 +49,17 @@ export default function TargetResumeCriteria({ target, locale }: { target: Targe
     citizenship_required: 'citizenship_attribution', paid: 'paid_attribution',
     // A draft saved before the note had a flag shows the neutral label: no
     // flag recorded, which the intro says is not a confirmation.
-    deadline_note: 'deadline_note_attribution',
+    deadline_note: 'deadline_note_attribution', compensation_details: 'compensation_attribution',
+    location: 'location_attribution',
   };
   const label = (key: string) => {
     const base = fields[key]?.[language] ?? key.replaceAll('_', ' ');
     const inferred = inferredFields[key] && target.criteria.attribution[inferredFields[key]] === 'inferred';
     const estimated = key === 'deadline' && target.criteria.timing.deadline_is_estimate;
-    return base + (inferred ? [' (inferred)', '（推断）'][language] : estimated ? [' (estimated)', '（预计）'][language] : '');
+    // The host school's city says where the school is, not where the work is.
+    const school = key === 'location' && target.criteria.attribution.location_attribution === 'institution';
+    return base + (inferred ? [' (inferred)', '（推断）'][language] : estimated ? [' (estimated)', '（预计）'][language]
+      : school ? [' (host school’s city)', '（所在学校的城市）'][language] : '');
   };
   const text = (value: unknown, attribution: boolean): string => {
     if (value === null || value === undefined || value === '') return attribution

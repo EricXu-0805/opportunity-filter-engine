@@ -40,9 +40,11 @@ CRITERIA_FIELDS = {
     'attribution': {
         'skills_attribution': str, 'majors_attribution': str, 'preferred_year_attribution': str,
         'international_attribution': str, 'citizenship_attribution': str, 'paid_attribution': str,
-        'deadline_note_attribution': str,
+        'deadline_note_attribution': str, 'location_attribution': str, 'compensation_attribution': str,
     },
 }
+# "institution": the location is the host school's city, not where the work is.
+_ATTRIBUTION_VALUES = {'location_attribution': (None, 'inferred', 'institution')}
 TRUTH_FIELDS = {
     'listing_state': str, 'reference_only': bool, 'actionable': bool,
     'accepting_state': str, 'reason_code': str,
@@ -115,7 +117,8 @@ def validate_target_context(value):
             invalid()
         for group, schema in CRITERIA_FIELDS.items():
             _fields(criteria[group], schema)
-        if any(flag not in (None, 'inferred') for flag in criteria['attribution'].values()):
+        if any(flag not in _ATTRIBUTION_VALUES.get(key, (None, 'inferred'))
+               for key, flag in criteria['attribution'].items()):
             invalid()
     return value
 

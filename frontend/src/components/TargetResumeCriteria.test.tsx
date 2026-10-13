@@ -56,3 +56,19 @@ describe('saved research source labels', () => {
     expect(screen.getByRole('link', { name: '机器人😀研究' })).toBeVisible();
   });
 });
+
+describe('saved location and compensation labels', () => {
+  const withSetting = (attribution: TargetResumeContextV2['criteria']['attribution']): TargetResumeContextV2 => ({
+    ...target, criteria: { ...target.criteria, setting: { location: 'Champaign, IL', compensation_details: '$500' }, attribution } });
+  it.each(['en', 'zh'])('marks inferred compensation and location in %s', locale => {
+    render(<TargetResumeCriteria target={withSetting({ location_attribution: 'inferred', compensation_attribution: 'inferred' })} locale={locale} />);
+    expect(screen.getByText(locale === 'en' ? 'Location (inferred)' : '地点（推断）')).toBeVisible();
+    expect(screen.getByText(locale === 'en' ? 'Compensation details (inferred)' : '报酬说明（推断）')).toBeVisible();
+  });
+  it.each(['en', 'zh'])('says a host school\'s city is the school\'s, not where the work is, in %s', locale => {
+    render(<TargetResumeCriteria target={withSetting({ location_attribution: 'institution' })} locale={locale} />);
+    expect(screen.getByText(locale === 'en' ? 'Location (host school’s city)' : '地点（所在学校的城市）')).toBeVisible();
+    expect(screen.getByText(locale === 'en' ? 'Host school’s city' : '所在学校的城市')).toBeVisible();
+    expect(screen.getByText(locale === 'en' ? 'Compensation details' : '报酬说明')).toBeVisible();
+  });
+});
