@@ -1863,6 +1863,10 @@ def score_eligibility(
     elig = faculty_safe_eligibility(opportunity)
     reasons_fit = []
     reasons_gap = []
+    # Year and major concerns from our own listing, added after the other
+    # lines at the end. Collected by kind, not by wording: a restriction we
+    # supplied also starts "Our listing …" and must keep its place.
+    listing_gaps: list[str] = []
 
     # Year match (30% weight)
     student_year = (profile.get("year") or "").strip()
@@ -1903,7 +1907,7 @@ def score_eligibility(
             if not years_are_configured:
                 reasons_gap.append("For undergraduates — not a graduate-level opening")
             elif configured_fact(opportunity, "class_year").state == FACT_UNSTATED:
-                reasons_gap.append(f"Our listing suggests this is for undergraduates{_NOT_ON_PAGE}")
+                listing_gaps.append(f"Our listing suggests this is for undergraduates{_NOT_ON_PAGE}")
         else:
             if named_years and not years_are_configured:
                 reasons_gap.append(f"Typically targets {', '.join(named_years)}")
@@ -1912,7 +1916,7 @@ def score_eligibility(
                 # not state are still a concern, said as ours. Years that text
                 # contradicts are for a person to read (`scripts/configured_facts_report.py`
                 # lists them), not a shortfall to put to the student.
-                reasons_gap.append(f"Our listing suggests {', '.join(named_years)} students{_NOT_ON_PAGE}")
+                listing_gaps.append(f"Our listing suggests {', '.join(named_years)} students{_NOT_ON_PAGE}")
 
     # Major match (20% weight)
     #
@@ -2006,7 +2010,7 @@ def score_eligibility(
             reasons_gap.append(f"Prefers {', '.join(elig.get('majors', []))}")
         elif configured_fact(opportunity, "majors").state == FACT_UNSTATED:
             # Said as ours, like the class years above.
-            reasons_gap.append(f"Our listing suggests {', '.join(elig['majors'])} majors{_NOT_ON_PAGE}")
+            listing_gaps.append(f"Our listing suggests {', '.join(elig['majors'])} majors{_NOT_ON_PAGE}")
 
     intl_score = 100.0
     if profile.get("international_student"):
@@ -2180,12 +2184,12 @@ def score_eligibility(
         + rem * 0.1875 * skill_score
         + rem * 0.1875 * type_score
     )
-    # A concern from our own listing goes after the other lines here
-    # (citizenship, skills, type). The ranker then adds its own eligibility
-    # lines (topic, dates, graduate level), and readiness and upside follow:
-    # the compare view, the local summary and the AI prompt read only the
-    # first two or three. sort() is stable, so each group keeps its order.
-    reasons_gap.sort(key=lambda gap: gap.startswith("Our listing "))
+    # A year or major concern from our own listing goes after the other lines
+    # here (citizenship, however it is worded, skills, type). The ranker then
+    # adds its own eligibility lines (topic, dates, graduate level), and
+    # readiness and upside follow: the compare view, the local summary and the
+    # AI prompt read only the first two or three.
+    reasons_gap.extend(listing_gaps)
     return total, reasons_fit, reasons_gap
 
 

@@ -1622,15 +1622,40 @@ class TestCampusGraphContract:
         _, ours = _served(record)
         profile = {"year": "freshman", "major": "History", "hard_skills": [], "international_student": True}
         gaps = rank_opportunity(profile, ours, precomputed_sim=0.2).reasons_gap
-        # The configured "no" is our listing's too (M96), so it joins them.
+        # The configured "no" is said as our listing's (M96) but is still the
+        # restriction that zeroes the score: it keeps its place ahead of them.
         citizenship = gaps.index(self._HEDGED_CITIZENSHIP)
         resume = gaps.index("Resume required — prepare one before applying")
-        assert gaps.index(self._HEDGED_YEARS) < gaps.index(self._HEDGED_MAJORS) < citizenship < resume, gaps
+        assert citizenship < gaps.index(self._HEDGED_YEARS) < gaps.index(self._HEDGED_MAJORS) < resume, gaps
         # A page that states the lists keeps them where they were.
         record = self._with_page(self._STATES)
         record["eligibility"]["international_friendly"] = "no"
         gaps = rank_opportunity(profile, _served(record)[1], precomputed_sim=0.2).reasons_gap
         assert gaps[:2] == ["Typically targets junior, senior", "Prefers Biology"], gaps
+
+    def test_a_restriction_from_our_listing_leads_the_gaps_however_it_is_worded(self):
+        # The upenn-657700f0564a shape: a configured external program whose
+        # "US only" and lists the page text does not state. The local summary
+        # reads only the first two gap lines; the restriction moved from first
+        # to third when its wording began "Our listing …".
+        record = {
+            "id": "upenn-msap", "source": "upenn_external_research", "source_type": "summer_program",
+            "opportunity_type": "summer_program", "title": "Science Apprenticeship Program",
+            "organization": "University of Pennsylvania", "url": _SPEC_URL, "source_url": _SPEC_URL,
+            "eligibility": {"preferred_year": ["freshman", "sophomore", "junior"],
+                            "majors": ["biology", "neuroscience", "psychology", "chemistry"],
+                            "skills_required": ["Python", "MATLAB"], "skills_preferred": [],
+                            "citizenship_required": True, "international_friendly": "no"},
+            "application": {}, "metadata": {"is_active": True, "last_verified": "2026-09-01T00:00:00"},
+        }
+        profile = {"year": "graduate", "major": "History", "hard_skills": [], "international_student": True,
+                   "seeking_type": ["internship"]}
+        _, ours = _served(record)
+        gaps = score_eligibility(profile, ours)[2]
+        assert gaps[0] == self._HEDGED_CITIZENSHIP, gaps
+        listing = [i for i, gap in enumerate(gaps) if gap.startswith("Our listing suggests")]
+        assert len(listing) == 2 and listing == list(range(len(gaps) - 2, len(gaps))), gaps
+        assert rank_opportunity(profile, ours, precomputed_sim=0.2).reasons_gap[0] == self._HEDGED_CITIZENSHIP
 
     def test_a_year_list_that_names_no_year_tells_a_graduate_nothing(self):
         # A faculty row carries ["unknown"]: nobody said the opening is for
