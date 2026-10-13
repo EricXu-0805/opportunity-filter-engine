@@ -120,7 +120,13 @@ export function AtAGlanceSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
           <DetailRow icon={<Clock />} label={t('detail.fields.duration')} value={opp.duration} />
         )}
         {compensation && (
-          <DetailRow icon={<DollarSign />} label={t('detail.fields.compensation')} value={compensation} />
+          <DetailRow
+            icon={<DollarSign />}
+            label={t('detail.fields.compensation')}
+            value={compensation}
+            note={opp.compensation_attribution === 'inferred' ? t('detail.facts.basis.configured') : undefined}
+            noteTestId="compensation-inferred-note"
+          />
         )}
         {!isFaculty && opp.posted_date && (
           <DetailRow icon={<Calendar />} label={t('detail.fields.posted')} value={opp.posted_date} />

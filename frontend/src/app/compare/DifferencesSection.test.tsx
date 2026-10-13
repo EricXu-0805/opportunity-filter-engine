@@ -146,3 +146,20 @@ describe('DifferencesSection marks pay, eligibility, skills and location we infe
     expect(screen.getByText('Chicago, IL')).toBeInTheDocument();
   });
 });
+
+describe('DifferencesSection compensation prose from our listing', () => {
+  it('notes a program spec\'s compensation the page does not state', () => {
+    const configured = {
+      ...opportunity('configured'), source_type: 'campus_program',
+      compensation_details: '$500 stipend', compensation_attribution: 'inferred',
+    } as unknown as Opportunity;
+    const stated = {
+      ...opportunity('stated'), source_type: 'campus_program', compensation_details: '$6,000 stipend',
+    } as unknown as Opportunity;
+    render(<DifferencesSection rows={[{ opp: configured }, { opp: stated }]} profile={null} />);
+    expect(screen.getByTestId('compare-source-note-compensation-configured')).toHaveTextContent(
+      'From our listing’s entry for this program, not confirmed on the program page.',
+    );
+    expect(screen.queryByTestId('compare-source-note-compensation-stated')).toBeNull();
+  });
+});

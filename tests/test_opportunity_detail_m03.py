@@ -1005,6 +1005,17 @@ class TestCampusGraphContract:
         _, fits, _ = score_upside({}, canonical)
         assert "Includes stipend" not in fits
 
+    def test_configured_compensation_is_flagged_for_the_cards(self):
+        # M96: the results card and compare table print compensation prose
+        # beside the pay badge; a program spec's prose is ours, as its pay is.
+        payload, _ = _detail(self._configured())
+        assert payload["compensation_details"] == "$5,000"
+        assert payload["compensation_attribution"] == "inferred"
+        stated, _ = _detail(self._with_page(self._STATES))
+        assert "compensation_attribution" not in stated
+        posting, _ = _detail(_listing(compensation_details="$600 per week"))
+        assert "compensation_attribution" not in posting
+
     def test_configured_majors_and_years_say_they_came_from_our_config(self):
         payload, _ = _detail(self._configured())
         assert payload["majors_basis"] == "configured"

@@ -927,6 +927,16 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
         or opportunity_detail.paid_basis(canonical_record, paid) not in (None, "program_policy")
     ):
         projected["paid_attribution"] = "inferred"
+    # The compensation prose a program spec typed into the config (a "$500"
+    # that turned out to be an expense grant) is our listing's too, unless its
+    # page text states it; the results card and the compare table print it
+    # beside the pay badge. NSF's template prose is program policy, unhedged
+    # like its pay.
+    compensation = projected.get("compensation_details")
+    if isinstance(compensation, str) and compensation.strip() and configured_value_unstated(
+        canonical_record, "compensation"
+    ):
+        projected["compensation_attribution"] = "inferred"
 
     # The host school's city is not where the work happens. Six collectors
     # write their campus city into `location` on every record — all 130k

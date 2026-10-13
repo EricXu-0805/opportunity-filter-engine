@@ -397,6 +397,9 @@ export interface Opportunity {
   majors_basis?: 'configured' | null;
 
   paid_attribution?: 'inferred' | null;
+  // 'inferred': compensation_details is a campus program spec's prose that the
+  // page text the row carries does not state. Absent = stated.
+  compensation_attribution?: 'inferred' | null;
   international_attribution?: 'inferred' | null;
   citizenship_attribution?: 'inferred' | null;
   preferred_year_attribution?: 'inferred' | null;

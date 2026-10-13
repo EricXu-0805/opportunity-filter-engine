@@ -229,6 +229,9 @@ function sourceNoteKey(field: FieldSpec, opp: Opportunity, value: ComparisonValu
   const showsPay = field.key === 'paid'
     || (field.key === 'compensation' && !cleanCompensation(opp.compensation_details));
   if (showsPay && opp.paid_attribution === 'inferred') return 'compare.inferredNote';
+  if (field.key === 'compensation' && !showsPay && opp.compensation_attribution === 'inferred') {
+    return 'detail.facts.basis.configured';
+  }
   if (field.key === 'international' && opp.international_attribution === 'inferred') return 'compare.inferredNote';
   if (field.key === 'citizenship' && opp.citizenship_attribution === 'inferred') return 'compare.inferredNote';
   if (field.key === 'skills' && opp.skills_attribution === 'inferred') return 'detail.skillsInferred';
