@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import golden from '../../../tests/fixtures/target-resume-context-v3-golden.json';
 import type { TargetResumeContextV3, TargetResumeContextV2 } from '@/lib/target-resume';
@@ -70,6 +70,16 @@ describe('saved location and compensation labels', () => {
     expect(screen.getByText(locale === 'en' ? 'Location (host school’s city)' : '地点（所在学校的城市）')).toBeVisible();
     expect(screen.getByText(locale === 'en' ? 'Host school’s city' : '所在学校的城市')).toBeVisible();
     expect(screen.getByText(locale === 'en' ? 'Compensation details' : '报酬说明')).toBeVisible();
+  });
+  it.each(['en', 'zh'])('says a faculty draft\'s location is the school\'s city from its saved record kind in %s', locale => {
+    const faculty = withSetting({});
+    faculty.criteria.availability = { record_kind: 'faculty_contact' };
+    render(<TargetResumeCriteria target={faculty} locale={locale} />);
+    expect(screen.getByText(locale === 'en' ? 'Location (host school’s city)' : '地点（所在学校的城市）')).toBeVisible();
+    cleanup();
+    render(<TargetResumeCriteria target={{ ...faculty, criteria: { ...faculty.criteria, availability: { record_kind: 'listing' } } }}
+      locale={locale} />);
+    expect(screen.getByText(locale === 'en' ? 'Location' : '地点')).toBeVisible();
   });
 });
 

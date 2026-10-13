@@ -58,7 +58,10 @@ export default function TargetResumeCriteria({ target, locale }: { target: Targe
     const inferred = inferredFields[key] && target.criteria.attribution[inferredFields[key]] === 'inferred';
     const estimated = key === 'deadline' && target.criteria.timing.deadline_is_estimate;
     // The host school's city says where the school is, not where the work is.
-    const school = key === 'location' && target.criteria.attribution.location_attribution === 'institution';
+    // A faculty contact's location is always its school's city, saved without
+    // the flag so lab drafts stay current: the saved record kind says so.
+    const school = key === 'location' && (target.criteria.attribution.location_attribution === 'institution'
+      || target.criteria.availability.record_kind === 'faculty_contact');
     return base + (inferred ? [' (inferred)', '（推断）'][language] : estimated ? [' (estimated)', '（预计）'][language]
       : school ? [' (host school’s city)', '（所在学校的城市）'][language] : '');
   };
