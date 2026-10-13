@@ -150,6 +150,42 @@ API↔frontend contract is `frontend/src/lib/detail-fields.contract.json`, regen
 `python scripts/generate_detail_fields_contract.py` and drift-tested on both
 sides.
 
+## Where inferred values are shown
+
+`detail_fields` serves the detail facts. Every other surface reads the flat
+flags `backend/lib/public_projection.py` adds to each public payload:
+`paid_attribution`, `international_attribution`, `citizenship_attribution`,
+`preferred_year_attribution` (+ `preferred_year_basis: "configured"`),
+`majors_attribution` (+ `majors_basis`), `skills_attribution`,
+`keywords_attribution`, `deadline_note_attribution` (`"inferred"`), and
+`location_attribution` (`"institution"` = the host school's city, `"inferred"`
+= read off another record). Absent means stated, so a site checks for the
+flag's value and never for its absence. A value we inferred is shown hedged
+("Funding mentioned", "Pay not confirmed", "Unpaid (inferred)", "Intl OK
+(inferred)", "Skills mentioned", "{location} (inferred)", a note under the
+row), or left out where nothing can carry a marker (a share-image pill, a
+meta tag); an `institution` location is never shown as a listing's location.
+`frontend/src/lib/attribution-sites.contract.test.ts` fails when a source
+file renders one of these values without reading its flag.
+
+| Surface | Values | How the basis is shown |
+| --- | --- | --- |
+| Detail facts (`DetailFactsSection`) | all M03 facets | basis line per inferred facet |
+| Detail header (`OpportunityHeader`) | pay, intl, location, deadline | hedged badges; school city hidden; estimate |
+| Detail fallback sections (`DetailSections`) | years, majors, skills, intl, citizenship, rolling, topics | label + note |
+| Results card (`MatchCard`, `lib/badge-utils`) | pay, intl, location, skills, deadline | hedged badges and heading |
+| Cached results page (`lib/match-cache`) | all flags | kept in the cache projection |
+| Results CSV (`lib/match-utils`) | pay, intl, location, deadline | "(inferred)", "(estimated)", school city blank |
+| Favorites card | pay, intl, location, skills, topics | badge helpers, heading, note |
+| Similar rail | pay | hedged badges |
+| Compare table / bucket cards | pay, compensation fallback, intl, citizenship, skills, majors, years, location, rolling | note under the cell; school city blank |
+| Fellowship page, home preview | pay, intl, deadline | hedged pills; estimate |
+| Share image (`og-facts`) | pay, intl, location, deadline | pill omitted; "(inferred)"; deadline wording |
+| Page metadata | topics | inferred topics omitted |
+| Saved résumé target (`TargetResumeCriteria`) | the seven flagged eligibility, pay and note values | "(inferred)" label |
+| Cold-email conditions panel | eligibility, deadline, materials | per-condition status |
+| Email digest | deadline | "estimated" |
+
 ## Field Extraction Strategy
 
 | Field | Auto-extractable? | Method |
