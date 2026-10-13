@@ -166,7 +166,8 @@ flag's value and never for its absence. A value we inferred is shown hedged
 row), or left out where nothing can carry a marker (a share-image pill, a
 meta tag); an `institution` location is never shown as a listing's location.
 `frontend/src/lib/attribution-sites.contract.test.ts` fails when a source
-file renders one of these values without reading its flag.
+file renders one of these values without reading its flag, or when the saved
+résumé target drops a flag of a value it saves.
 
 | Surface | Values | How the basis is shown |
 | --- | --- | --- |
@@ -174,7 +175,7 @@ file renders one of these values without reading its flag.
 | Detail header (`OpportunityHeader`) | pay, intl, location, deadline | hedged badges; school city hidden; estimate |
 | Detail fallback sections (`DetailSections`) | years, majors, skills, intl, citizenship, compensation, rolling, topics | label + note |
 | Results card (`MatchCard`, `lib/badge-utils`) | pay, compensation, intl, location, skills, deadline | hedged badges, "(inferred)", heading |
-| Match reasons (`src/matcher/ranker.py`) | pay, intl, citizenship, majors, years | sentence omitted or said as our listing's / our reading |
+| Match reasons (`src/matcher/ranker.py`) | pay, intl, citizenship, majors, years | sentence omitted or said as our listing's / our reading; matcher version 23 retires cached sentences |
 | Cached results page (`lib/match-cache`) | all flags | kept in the cache projection |
 | Results CSV (`lib/match-utils`) | pay, intl, location, deadline | "(inferred)", "(estimated)", school city blank |
 | Favorites card | pay, intl, location, skills, topics | badge helpers, heading, note |
@@ -183,7 +184,7 @@ file renders one of these values without reading its flag.
 | Fellowship page, home preview | pay, intl, deadline | hedged pills; estimate |
 | Share image (`og-facts`) | pay, intl, location, deadline | pill omitted; "(inferred)"; deadline wording |
 | Page metadata | topics | inferred topics omitted |
-| Saved résumé target (`TargetResumeCriteria`) | the seven flagged eligibility, pay and note values | "(inferred)" label; location and compensation are saved without a flag (open: needs a context version with those flags) |
+| Saved résumé target (`TargetResumeCriteria`, `backend/lib/target_resume_context.py`) | skills, majors, years, intl, citizenship, pay, deadline note, location, compensation | flag saved in `criteria.attribution`; "(inferred)" label, "(host school's city)"; the AI prompts say what the flags mean. A draft saved before a flag existed shows the neutral label |
 | Ask AI prompt and local fallback (`backend/routes/opportunities.py`) | pay, compensation, majors, years, skills, intl, citizenship, topics, location | "our listing suggests …", "(our inference, not stated by the program)", school city said as such |
 | Cold-email conditions panel | eligibility, deadline, materials | per-condition status |
 | Email digest | deadline | "estimated" |
