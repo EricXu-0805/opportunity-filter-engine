@@ -57,7 +57,9 @@ const FIELDS: FieldSpec[] = [
   { key: 'location', labelKey: 'compare.fields.location', value: (o) => (
     o.source_type === 'faculty_research' && o.location
       ? `${FACULTY_AFFILIATION_PREFIX}${o.location}`
-      : o.location
+      // A listing's host-school city is where the school is, not where the
+      // work happens: the header and cards leave it off, and so does this.
+      : o.location_attribution === 'institution' ? undefined : o.location
   ) },
   { key: 'remote', labelKey: 'compare.fields.remote', value: (o) => openingValue(o, o.remote_option) },
   { key: 'onCampus', labelKey: 'compare.fields.onCampus', value: (o) => openingValue(o, truthValue(o.on_campus)) },
@@ -215,12 +217,24 @@ function OpportunityColumnHeaders({
 }
 
 // Where a cell's value is our listing's or our pipeline's rather than the
-// program page's, said under it in the detail page's own words. The same
-// three facts, flagged by the same payload keys: a major or class-year list
-// (`majors_basis` says whether our config or our keyword bank wrote it) and a
-// "Rolling" read off a campus program spec's deadline note.
+// program page's, said under it in the detail page's own words, flagged by the
+// same payload keys: a major or class-year list (`majors_basis` says whether
+// our config or our keyword bank wrote it), a "Rolling" read off a campus
+// program spec's deadline note, a skill list the tagger wrote, and pay,
+// eligibility or a location we inferred. "unknown" claims nothing.
 function sourceNoteKey(field: FieldSpec, opp: Opportunity, value: ComparisonValue): string | null {
-  if (value === undefined || value === null || value === '' || (Array.isArray(value) && value.length === 0)) return null;
+  if (value === undefined || value === null || value === '' || value === 'unknown'
+    || (Array.isArray(value) && value.length === 0)) return null;
+  // The compensation cell falls back to the pay value when there is no prose.
+  const showsPay = field.key === 'paid'
+    || (field.key === 'compensation' && !cleanCompensation(opp.compensation_details));
+  if (showsPay && opp.paid_attribution === 'inferred') return 'compare.inferredNote';
+  if (field.key === 'international' && opp.international_attribution === 'inferred') return 'compare.inferredNote';
+  if (field.key === 'citizenship' && opp.citizenship_attribution === 'inferred') return 'compare.inferredNote';
+  if (field.key === 'skills' && opp.skills_attribution === 'inferred') return 'detail.skillsInferred';
+  if (field.key === 'location' && opp.source_type !== 'faculty_research' && opp.location_attribution === 'inferred') {
+    return 'compare.inferredNote';
+  }
   if (field.key === 'majors' && opp.majors_attribution === 'inferred') {
     return opp.majors_basis === 'configured' ? 'detail.majorsConfigured' : 'detail.majorsInferred';
   }

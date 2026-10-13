@@ -3721,6 +3721,9 @@ export const en = {
     // overclaim, this is all we actually know.
     noDeadline: 'No fixed deadline',
     facultyOpeningUnconfirmed: 'Current opening and deadline not confirmed',
+    // Under a pay, eligibility or location cell our pipeline or our listing
+    // wrote rather than read off the program page.
+    inferredNote: 'Inferred by us, not stated on the program page.',
     deadlineEstimated: 'estimated',
     deadlineVerify: 'verify date',
     show: 'Show',
@@ -8925,6 +8928,7 @@ export const zh = {
     // 我们实际知道的只有这些。
     noDeadline: '无固定截止日期',
     facultyOpeningUnconfirmed: '当前是否有名额及截止日期尚未确认',
+    inferredNote: '我们推断的，项目页面未写明。',
     deadlineEstimated: '估算日期',
     deadlineVerify: '请核实日期',
     show: '展开',
