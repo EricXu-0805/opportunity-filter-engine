@@ -59,7 +59,9 @@ export const INFERENCE_BASES = [
   'estimate',
   'program_policy',
   'collector_default',
-  // A program's own major or class-year list, typed into our config (m03-v2).
+  // A campus program's own value typed into our config, which the page text
+  // the row carries does not state (m03-v2): its majors, class years, pay,
+  // compensation, intl answer, citizenship rule, deadline note and rolling.
   'configured',
   'derived_from_source',
 ] as const;
