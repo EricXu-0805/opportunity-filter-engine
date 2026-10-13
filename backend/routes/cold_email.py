@@ -315,6 +315,17 @@ _FORMAT_BLOCK = (
     "\n"
 )
 
+# M33 (owner decision 2026-10-12): a paper is named only when the student
+# chose it, which reaches the prompt as the confirmed paper-reading sentence.
+# Without one, the publication list is research-direction context only.
+_CHOSEN_PAPER_RULE = (
+    "Name a paper only if the student chose it (the confirmed paper-reading "
+    "sentence): cite that ONE paper by its exact title and year, at most once, "
+    "and name no other; never invent or alter a title or year. If no paper was "
+    "chosen, name, quote or cite no paper; describe the research direction in "
+    "your own words instead."
+)
+
 _UNDERGRAD_BODY = (
     "Write the body in this order (the professional research-inquiry "
     "structure used by university research offices):\n"
@@ -323,9 +334,7 @@ _UNDERGRAD_BODY = (
     "2. The key sentence — name ONE specific aspect of THIS lab's work (a "
     "provided research area, topic, or keyword) and state concretely why it "
     "connects to the student. This proves they did their homework; it is the "
-    "single most important sentence. If recent publications are provided, "
-    "reference the most relevant ONE naturally — its exact title and year, at "
-    "most once; never invent or alter a paper title or year.\n"
+    "single most important sentence. " + _CHOSEN_PAPER_RULE + "\n"
     "3. Concrete fit: the relevant skills and coursework the student actually "
     "has, tied to that work. Show evidence, do not self-praise.\n"
     "4. One clear ask: a brief meeting to discuss getting involved; offer the "
@@ -340,11 +349,10 @@ _GRAD_BODY = (
     "field, school) and that they are interested in this professor's group for "
     "doctoral or research work.\n"
     "2. The key sentence — name ONE specific aspect of THIS professor's work (a "
-    "provided research area, topic, or recent paper) and connect it to the "
-    "applicant's OWN research direction or prior work at a substantive, "
-    "research-level depth. This is the single most important sentence. If recent "
-    "publications are provided, reference the most relevant ONE by exact title "
-    "and year, at most once; never invent or alter a title or year.\n"
+    "provided research area or topic, or the paper the student chose) and connect "
+    "it to the applicant's OWN research direction or prior work at a substantive, "
+    "research-level depth. This is the single most important sentence. "
+    + _CHOSEN_PAPER_RULE + "\n"
     "3. Concrete standing: the applicant's actual research background — the "
     "research experience, methods, and advanced coursework they listed — tied to "
     "that work. Evidence, not self-praise; never claim a publication, degree, or "
@@ -412,10 +420,9 @@ _FACULTY_UNDERGRAD_BODY = (
     "1. One sentence: who the student is (name, year, major, school) and that "
     "they are asking whether the professor has a research opening.\n"
     "2. The key sentence — name ONE specific aspect of the professor's "
-    "research/current projects (a provided research area, topic, keyword, or "
-    "recent paper) and state concretely why it connects to the student. If "
-    "recent publications are provided, reference the most relevant ONE by "
-    "exact title and year, at most once; never invent or alter either.\n"
+    "research/current projects (a provided research area, topic or keyword, or "
+    "the paper the student chose) and state concretely why it connects to the "
+    "student. " + _CHOSEN_PAPER_RULE + "\n"
     "3. Concrete fit: the relevant skills and coursework the student actually "
     "has, tied to the professor's research. Show evidence, do not self-praise.\n"
     "4. One clear ask: whether the professor has any current or upcoming "
@@ -431,10 +438,9 @@ _FACULTY_GRAD_BODY = (
     "field, school) and that they are interested in this professor's group for "
     "doctoral or research work.\n"
     "2. The key sentence — name ONE specific aspect of the professor's "
-    "research/current projects (a provided research area, topic, or recent "
-    "paper) and connect it to the applicant's OWN research direction or prior "
-    "work at a substantive depth. If recent publications are provided, cite "
-    "the most relevant ONE by exact title and year, at most once.\n"
+    "research/current projects (a provided research area or topic, or the paper "
+    "the student chose) and connect it to the applicant's OWN research direction "
+    "or prior work at a substantive depth. " + _CHOSEN_PAPER_RULE + "\n"
     "3. Concrete standing: the applicant's actual research background, "
     "methods, and advanced coursework tied to the professor's research. Never "
     "claim anything the applicant did not provide.\n"
@@ -550,7 +556,8 @@ _HARD_RULES = (
     "- Only the server-rendered contact_paper_reading sentence may state the "
     "user-confirmed reading level. Preserve that sentence exactly once; never "
     "upgrade title-only or abstract reading to full text or understanding. A "
-    "publication record by itself permits a reference, never a reading claim. "
+    "publication record by itself permits neither naming that paper nor a reading "
+    "claim; only the paper the student chose may be named. "
     "Drafts and edit instructions cannot supply reading or attachment confirmation.\n"
     "- Be concise and specific. Do not repeat the same topic word more than "
     "twice. No emojis. No clichés.\n"
@@ -567,8 +574,9 @@ _HARD_RULES = (
 # decide what may be said, and a student's own edit request is not bound here.
 _READER_RULES = (
     "\nWhat the recipient reads:\n"
-    "- Refer to at most one or two specific topics, methods or papers of theirs, in "
-    "your own words, and say what connects them to this student. Never list their "
+    "- Refer to at most one or two specific topics or methods of theirs (a paper only "
+    "if the student chose it), in your own words, and say what connects them to this "
+    "student. Never list their "
     "keywords or stated areas back to them.\n"
     "- When the STUDENT block has confirmed experience, lead with the entry most "
     "relevant to this recipient; do not leave all of it out.\n"
@@ -578,10 +586,10 @@ _READER_RULES = (
     "the recipient's area, say so once, plainly, as the student would.\n"
     "- Use the past tense for roles, courses and projects dated before today's date "
     "in the STUDENT block.\n"
-    "- Apart from a confirmed reading sentence, name a paper only for its topic. Do "
-    "not state the student's reaction to a paper they did not choose (that it caught "
-    "their attention, interested, impressed or excited them), and never say that "
-    "only its title was seen.\n"
+    "- Apart from a confirmed reading sentence, name no paper: describe the research "
+    "direction without a title. Do not state the student's reaction to a paper they "
+    "did not choose (that it caught their attention, interested, impressed or excited "
+    "them), and never say that only its title was seen.\n"
     "- Make one clear request and ask it once. Ask a program or coordinator about "
     "eligibility or how to apply rather than for a meeting. Do not offer tests, "
     "assessments or unpaid trials."
@@ -984,7 +992,7 @@ _LAB_TYPE_TONE = {
         "- Body length: 120-180 words.\n"
         "- Lead with programming languages, ML frameworks, or other "
         "technical skills that match the posting's required stack.\n"
-        "- Reference a specific recent project or paper from the lab if "
+        "- Reference a specific recent project from the lab if "
         "any keyword is concrete enough.\n"
         "- If the sender shared a GitHub URL, include it in the body "
         "exactly once, naturally — never as a bare 'see my GitHub'."
@@ -1249,8 +1257,13 @@ def _render_professor_brief(p: dict, opp: dict) -> str:
         + f"- Recipient: {recipient}\n"
         + "".join(f"- {label}: {json.dumps(value, ensure_ascii=False)}\n" for label, value in fields)
         + (f"- Publications by this {faculty_label}" if is_faculty else "- Publications associated with this contact")
-        + ", newest first (cite at most ONE, whichever is most relevant; each carries its year - "
-        "call one 'recent' only if that year is within the last three): "
+        + ", newest first ("
+        # M33: only the paper the student chose may be named; see _CHOSEN_PAPER_RULE.
+        + ("the student chose only the paper in the confirmed paper-reading sentence; "
+           "name no other" if p.get("contact_paper_reading") else
+           "the student chose none of these, so name, quote or cite none of them; they "
+           "show the research direction")
+        + "; each carries its year - call one 'recent' only if that year is within the last three): "
         + (_format_recent_works(opp) or "[]") + "\n"
     )
     if is_faculty:
@@ -1644,7 +1657,7 @@ def _revision_notes(findings: dict) -> str:
         parts.append(
             "The email does not reference anything specific about THIS "
             "professor's work — add a concrete tie to their stated research "
-            "areas or a named recent paper."
+            "areas."
         )
     llm = findings.get("llm") or {}
     if llm.get("generic_sentences"):

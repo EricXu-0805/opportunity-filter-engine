@@ -994,13 +994,15 @@ class TestRecentWorkGrounding:
         assert ce._pipeline_generate(self._profile(), opp, None) is not None
         return next(m["content"] for m in captured["messages"] if m["role"] == "user")
 
-    def test_prompt_offers_recent_works_for_the_model_to_choose(self, monkeypatch):
+    def test_prompt_offers_recent_works_as_research_direction_only(self, monkeypatch):
         user_msg = self._capture_prompt(monkeypatch, self._opp(self._WORKS))
-        # All stored (≤3, already the most recent) titles are offered with years,
-        # and the model is told to cite at most one — the most relevant.
+        # All stored (≤3, already the most recent) titles are offered with years
+        # as research-direction context. M33: no paper was chosen, so the model
+        # is told to name none of them rather than cite the most relevant one.
         assert '"title": "NeuroFlow: Decoding Imagined Speech from ECoG Arrays", "year": 2026' in user_msg
         assert '"title": "Cortical Signal Denoising for Implantable BCIs", "year": 2024' in user_msg
-        assert "cite at most ONE, whichever is most relevant" in user_msg
+        assert "the student chose none of these, so name, quote or cite none of them" in user_msg
+        assert "most relevant" not in user_msg
 
     def test_prompt_shows_none_when_absent(self, monkeypatch):
         user_msg = self._capture_prompt(monkeypatch, self._opp())
@@ -1012,7 +1014,7 @@ class TestRecentWorkGrounding:
         # EXCLUDED from the prompt entirely — [] is offered instead of a
         # labeled candidate list.
         user_msg = self._capture_prompt(monkeypatch, self._opp(self._WORKS))
-        assert "Publications by this professor, newest first (cite at most ONE" in user_msg
+        assert "Publications by this professor, newest first (" in user_msg
         assert "matched to this professor by name" not in user_msg
         # The block used to be labelled "Recent publications", and the GOOD
         # few-shot taught "Your recent paper on ...". For 12% of the harvested

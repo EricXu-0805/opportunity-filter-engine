@@ -260,3 +260,36 @@ def test_ai_prompt_never_asks_for_a_reaction_to_an_unchosen_paper(writing_client
     for system in systems:
         assert not re.search(r"\bwhy (?:it|they|this)\s+(?:caught|interests?|interested|impressed)", system, re.I)
         assert "reaction to a paper they did not choose" in system
+
+_CITE_MOST_RELEVANT = re.compile(r"most relevant ONE|cite at most ONE|whichever is most relevant", re.I)
+
+@pytest.mark.parametrize("chosen", [False, True])
+def test_ai_prompt_cites_a_paper_only_when_the_student_chose_it(writing_client, monkeypatch, chosen):
+    # M33: with no paper chosen the prompt used to tell the model to cite the
+    # most relevant verified paper by exact title. Every stage (drafts, judge,
+    # revision, refine) now says to name none, or only the chosen one.
+    client, _ = writing_client
+    monkeypatch.setattr(ce, "load_opportunities_by_id", lambda: {PROFESSOR["id"]: deepcopy(PROFESSOR)})
+    monkeypatch.setattr(ce, "is_configured", lambda: True)
+    monkeypatch.setenv("OFE_COLD_EMAIL_NDRAFT", str(len(ce._DRAFT_ANGLES)))
+    calls = []
+    # Banned filler makes the pipeline run its revision stage as well.
+    reply = ("Subject: Sparse training\n\nDear Professor Lovelace,\n\nI am a passionate student. "
+             "Could I ask whether you have any openings?\n\nBest regards,\nAudit Student")
+    monkeypatch.setattr(ce, "chat_completion", lambda messages, **_k: calls.append(messages) or reply)
+    value = {"version": 1, "purpose": "first_contact"}
+    if chosen:
+        value["paper_reading"] = {**PROFESSOR_PAPER, "level": "abstract", "confirmed": True}
+    for path in ("", "refine"):
+        result(post(client, path, value, opportunity_id=PROFESSOR["id"], engine="ai"), path)
+    systems = [m[0]["content"] for m in calls]
+    assert any(s.startswith("You are revising") for s in systems) and any("email editor" in s for s in systems)
+    clause = ("the student chose only the paper in the confirmed paper-reading sentence; name no other" if chosen
+              else "the student chose none of these, so name, quote or cite none of them")
+    for messages in calls:
+        text = "\n".join(m["content"] for m in messages)
+        assert not _CITE_MOST_RELEVANT.search(text), text
+        assert clause in messages[-1]["content"]
+    drafting = [s for s in systems if "Write the body in this order" in s]
+    assert len(drafting) == len(ce._DRAFT_ANGLES)
+    assert all("If no paper was chosen, name, quote or cite no paper" in s for s in drafting)
