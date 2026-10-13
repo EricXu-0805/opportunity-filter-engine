@@ -300,8 +300,12 @@ export function targetResumeContextFromOpportunity(opportunity: Opportunity): Ta
     if (!record(availability.target_truth)) fail('invalid_target');
     availability.target_truth = pick(availability.target_truth, TRUTH_FIELDS);
   }
+  // A faculty contact's location is its school's city by definition, shown as
+  // the professor's affiliation; the server leaves that flag out too.
+  const faculty = source.source_type === 'faculty_research';
   const attribution = Object.fromEntries(Object.keys(CRITERIA_FIELDS.attribution).flatMap(key =>
-    Object.hasOwn(source, key) ? [[key, source[key]]] : Object.hasOwn(metadata, key) ? [[key, metadata[key]]] : []));
+    faculty && key === 'location_attribution' ? []
+      : Object.hasOwn(source, key) ? [[key, source[key]]] : Object.hasOwn(metadata, key) ? [[key, metadata[key]]] : []));
   const criteria = { eligibility, timing, application: pick(sourceGroup('application'), CRITERIA_FIELDS.application),
     setting: pick(source, CRITERIA_FIELDS.setting), availability, attribution };
   const statedSkills = eligibility.skills_required;

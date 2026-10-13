@@ -143,6 +143,22 @@ describe('the saved résumé target carries and labels every flag of a value it 
     expect(declaredFlags().filter((key) => !saved.includes(key) && !NOT_SAVED[key])).toEqual([]);
     expect(Object.keys(NOT_SAVED).filter((key) => saved.includes(key) || !declaredFlags().includes(key))).toEqual([]);
   });
+  // Saved for every record but a faculty contact, whose location is its
+  // school's city by definition and is shown as the professor's affiliation.
+  // The browser builds the snapshot and the server rebuilds it to check a
+  // draft, so both must skip it for the same records.
+  const SAVED_EXCEPT_FACULTY = ['location_attribution'];
+  it('skips a flag for faculty contacts in the browser and the server alike', () => {
+    const server = readFileSync(join(SRC, '../../backend/lib/target_resume_context.py'), 'utf8');
+    const loop = server.slice(server.indexOf("for field in CRITERIA_FIELDS['attribution']:"));
+    const builder = schema.slice(schema.indexOf('export function targetResumeContextFromOpportunity'));
+    for (const key of SAVED_EXCEPT_FACULTY) {
+      expect(saved).toContain(key);
+      expect(loop.slice(0, loop.indexOf('\n    inferred'))).toMatch(new RegExp(`'${key}'[^\\n]*'faculty_research'`));
+      expect(builder.slice(0, builder.indexOf('const criteria'))).toMatch(/'faculty_research'/);
+      expect(builder.slice(0, builder.indexOf('const criteria'))).toContain(`key === '${key}'`);
+    }
+  });
   it('the server snapshot schema and the saved criteria page know each saved flag', () => {
     const server = readFileSync(join(SRC, '../../backend/lib/target_resume_context.py'), 'utf8');
     const page = SOURCES.get('components/TargetResumeCriteria.tsx')!;

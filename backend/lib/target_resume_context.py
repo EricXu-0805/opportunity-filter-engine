@@ -163,6 +163,11 @@ def public_target_context(public):
         truth = public['target_truth']
         criteria['availability']['target_truth'] = None if truth is None else _copy_fields(truth, TRUTH_FIELDS)
     for field in CRITERIA_FIELDS['attribution']:
+        # A faculty contact's location is its school's city by definition, and
+        # the pages show it as the professor's affiliation: saving its
+        # "institution" flag would only make every lab draft stale.
+        if field == 'location_attribution' and public.get('source_type') == 'faculty_research':
+            continue
         if field in public:
             criteria['attribution'][field] = deepcopy(public[field])
         elif field in metadata:
