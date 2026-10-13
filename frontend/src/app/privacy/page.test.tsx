@@ -40,7 +40,9 @@ describe('Privacy page', () => {
     expect(text).toContain('every target résumé you saved and each of its saved versions holds a full copy of the résumé text');
     expect(text).toContain('None of these copies can be deleted in the app');
     expect(text).toContain('on its records page: "View records" under "Imports in your account"');
-    expect(text).toContain('not the application and email records (with their PDFs) or target résumés you made for it');
+    expect(text).toContain('not the application and email records (with their PDFs) you made for it;');
+    expect(text).not.toContain('or target résumés you made for it');
+    expect(text).toContain('keep their content until you delete them in the app; an empty entry with its dates then stays until your account is deleted');
     expect(text).toContain('the target résumés and résumé bullet-editor drafts you save');
     expect(text).toContain('target résumés and bullet-editor drafts; imports you save');
     expect(text).toContain('Application and email records, target résumés and bullet-editor drafts are kept until your account is deleted');

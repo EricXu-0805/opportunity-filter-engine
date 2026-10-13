@@ -517,7 +517,11 @@ Export first, so the counts can be compared afterwards. Then, in this order:
      `target_resume_versions`), `private_import_targets`, and any
      `resume_renovations` or `resume_renovation_versions` step 2 left.
 4. **The merge tombstones**, last, so no guest session counts as active again
-   while its auth user still exists:
+   while its auth user still exists. First re-run the id-list query from
+   "Find the account": a guest merged into the account after step 3's re-check
+   would otherwise lose its link here and keep its empty guest login. If the
+   list shows a uid that is not in the saved list, add it and handle it as
+   step 3 does (steps 2-3 for that uid) before running this step:
 
    ```sql
    WITH ids AS (SELECT '{00000000-0000-0000-0000-000000000000}'::text[] AS a, lower('student@example.edu') AS email)
