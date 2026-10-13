@@ -184,7 +184,9 @@ export function OpportunityHeader({
                 ? <DetailBadge tone="gray" icon={<DollarSign className="w-3 h-3" />}>{t('badges.payUnconfirmed')}</DetailBadge>
                 : <DetailBadge tone="emerald">{t('badges.stipend')}</DetailBadge>
             )}
-            {isCurrentListing && opp.paid === 'no' && <DetailBadge tone="gray">{t('badges.unpaid')}</DetailBadge>}
+            {isCurrentListing && opp.paid === 'no' && (
+              <DetailBadge tone="gray">{t(opp.paid_attribution === 'inferred' ? 'badges.unpaidInferred' : 'badges.unpaid')}</DetailBadge>
+            )}
             {isCurrentListing && opp.on_campus && <DetailBadge tone="gray">{t('badges.onCampus')}</DetailBadge>}
             {/* The values the pipeline actually writes. This tested 'yes',
                 which the corpus vocabulary {unknown, no, remote, hybrid, null}

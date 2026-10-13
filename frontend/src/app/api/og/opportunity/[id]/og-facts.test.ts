@@ -311,6 +311,41 @@ describe('an international welcome we inferred is not shared as a fact', () => {
   });
 });
 
+describe('pay we inferred is not shared as a fact', () => {
+  // Simplify writes "stipend" on every internship because its feed has no pay
+  // field; the header and cards say "Pay not confirmed", and the share image
+  // put a green Stipend pill on the same record.
+  it.each(['yes', 'stipend'])('drops the pill for an inferred %s and keeps it for a stated one', (paid) => {
+    const listing = { source_type: 'campus_program', paid };
+    expect(buildOpportunityOgFacts(
+      opportunity({ ...listing, paid_attribution: 'inferred' } as never),
+    ).showPaid).toBe(false);
+    expect(buildOpportunityOgFacts(opportunity(listing as never)).showPaid).toBe(true);
+  });
+});
+
+describe('a listing location we did not read off the posting', () => {
+  const LISTING = { source_type: 'campus_program', location: 'Urbana, IL' };
+
+  it("leaves the host school's city off a listing, as the header does", () => {
+    expect(buildOpportunityOgFacts(
+      opportunity({ ...LISTING, location_attribution: 'institution' } as never),
+    ).location).toBe('');
+  });
+
+  it('says a location read off another record is inferred', () => {
+    expect(buildOpportunityOgFacts(
+      opportunity({ ...LISTING, location_attribution: 'inferred' } as never),
+    ).location).toBe('Urbana, IL (inferred)');
+  });
+
+  it("keeps a faculty row's affiliation, which is the school by design", () => {
+    expect(buildOpportunityOgFacts(opportunity({
+      source_type: 'faculty_research', location: 'Test City', location_attribution: 'institution',
+    } as never)).location).toBe('Test City');
+  });
+});
+
 describe('location is an offer term on a listing and an identity fact on a person', () => {
   // The card copied `location` unconditionally. Two different lies came out of
   // that one line: a closed or inactive LISTING kept showing the job's old

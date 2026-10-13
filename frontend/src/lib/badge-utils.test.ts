@@ -50,6 +50,14 @@ describe('a card hedges exactly what the detail page hedges', () => {
     });
   });
 
+  it('marks an "unpaid" we inferred instead of stating it', () => {
+    // A configured program's pay answer or a scan of the prose can say 'no'
+    // too; the card printed it as the program's own plain "Unpaid".
+    expect(getPaidBadge('no', t, 'inferred')).toEqual({
+      label: 'badges.unpaidInferred', variant: 'gray',
+    });
+  });
+
   it('leaves a stated pay value alone', () => {
     expect(getPaidBadge('yes', t)).toEqual({ label: 'badges.paid', variant: 'green' });
     expect(getPaidBadge('stipend', t)).toEqual({ label: 'badges.stipend', variant: 'blue' });

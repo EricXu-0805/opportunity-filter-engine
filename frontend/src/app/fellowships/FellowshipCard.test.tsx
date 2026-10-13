@@ -57,6 +57,21 @@ describe('FellowshipCard', () => {
     expect(screen.getByText('International OK')).toBeInTheDocument();
   });
 
+  it.each([
+    ['yes', 'Funding mentioned'],
+    ['stipend', 'Pay not confirmed'],
+  ] as const)('says pay we inferred (%s) is ours, not a green Paid', (paid, hedged) => {
+    render(<FellowshipCard opp={makeOpp({ paid, paid_attribution: 'inferred' })} />);
+    expect(screen.getByText(hedged)).toBeInTheDocument();
+    expect(screen.queryByText('Paid')).not.toBeInTheDocument();
+  });
+
+  it('marks an international welcome we inferred', () => {
+    render(<FellowshipCard opp={makeOpp({ international_attribution: 'inferred' })} />);
+    expect(screen.getByText('Intl OK (inferred)')).toBeInTheDocument();
+    expect(screen.queryByText('International OK')).not.toBeInTheDocument();
+  });
+
   it('shows Summer badge for summer_program type', () => {
     render(<FellowshipCard opp={makeOpp()} />);
     expect(screen.getByText('Summer')).toBeInTheDocument();

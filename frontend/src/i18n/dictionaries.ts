@@ -72,6 +72,7 @@ export const en = {
     fundingMentioned: 'Funding mentioned',
     stipend: 'Stipend',
     unpaid: 'Unpaid',
+    unpaidInferred: 'Unpaid (inferred)',
     // R70-D: distinct label for paid='unknown' so the 1262 records (65.9%
     // of dataset, mostly uiuc_faculty PI pages where compensation is simply
     // not advertised) don't get badged as the misleading "Unpaid".
@@ -5326,6 +5327,7 @@ export const zh = {
     fundingMentioned: '提到有资助',
     stipend: '有津贴',
     unpaid: '无酬',
+    unpaidInferred: '无酬（推断）',
     // R70-D: 区分 paid='unknown' 与 'no'，避免把 1262 条（65.9%，多为
     // uiuc_faculty 的 PI 页面 — 实际是页面上未注明薪酬）误标为"无酬"。
     notDisclosed: '薪酬未公开',

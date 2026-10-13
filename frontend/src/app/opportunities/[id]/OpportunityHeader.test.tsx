@@ -535,6 +535,17 @@ describe('OpportunityHeader — M03 location and pay provenance', () => {
     expect(screen.queryByText('badges.stipend')).toBeNull();
   });
 
+  it('marks an "unpaid" we inferred, and keeps a stated one plain', () => {
+    renderHeader({ opp: { ...OPP, paid: 'no', paid_attribution: 'inferred' } as Opportunity });
+    expect(screen.getByText('badges.unpaidInferred')).toBeInTheDocument();
+    expect(screen.queryByText('badges.unpaid')).toBeNull();
+  });
+
+  it('keeps a stated "unpaid" plain', () => {
+    renderHeader({ opp: { ...OPP, paid: 'no' } as Opportunity });
+    expect(screen.getByText('badges.unpaid')).toBeInTheDocument();
+  });
+
   it('keeps a stated stipend', () => {
     renderHeader({ opp: { ...OPP, paid: 'stipend' } as Opportunity });
     expect(screen.getByText('badges.stipend')).toBeInTheDocument();

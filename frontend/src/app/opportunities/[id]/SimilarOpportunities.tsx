@@ -54,7 +54,12 @@ export function SimilarOpportunities({
                     ? <DetailBadge tone="gray">{t('badges.fundingMentioned')}</DetailBadge>
                     : <DetailBadge tone="emerald">{t('badges.paid')}</DetailBadge>
                 )}
-                {isListing && s.paid === 'stipend' && <DetailBadge tone="emerald">{t('badges.stipend')}</DetailBadge>}
+                {/* Simplify's stipend is its collector default, as on the header. */}
+                {isListing && s.paid === 'stipend' && (
+                  s.paid_attribution === 'inferred'
+                    ? <DetailBadge tone="gray">{t('badges.payUnconfirmed')}</DetailBadge>
+                    : <DetailBadge tone="emerald">{t('badges.stipend')}</DetailBadge>
+                )}
               </div>
               <h3 className="text-[14px] font-semibold text-gray-900 leading-snug line-clamp-2 group-hover:text-indigo-600 transition-colors">
                 {s.title}

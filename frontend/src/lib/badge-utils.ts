@@ -64,6 +64,11 @@ export function getPaidBadge(
   if (attribution === 'inferred' && paid === 'stipend') {
     return { label: t('badges.payUnconfirmed'), variant: 'gray' };
   }
+  // An "unpaid" we read off the prose or a configured program's answer is
+  // ours too: it keeps its tone but says it is inferred.
+  if (attribution === 'inferred' && paid === 'no') {
+    return { label: t('badges.unpaidInferred'), variant: 'gray' };
+  }
   if (paid === 'stipend') return { label: t('badges.stipend'), variant: 'blue' };
   if (paid === 'yes') return { label: t('badges.paid'), variant: 'green' };
   // Canonical unknown semantics: ONLY an explicit 'no' is "Unpaid".
