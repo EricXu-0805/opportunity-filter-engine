@@ -28,7 +28,7 @@ from backend.lib.blocking import (
     run_request_work,
 )
 from backend.lib.contact_visibility import contact_email_status
-from backend.lib.email_claims import skill_level_violations, unsupported_action_claims
+from backend.lib.email_claims import skill_level_violations, unchosen_paper_claims, unsupported_action_claims
 from backend.lib.email_contact_context import (
     contact_claim_violations,
     contact_context_brief,
@@ -2108,6 +2108,13 @@ def _email_grounding_findings(
     fabricated.extend(unsupported_website_reading_claims(text))
     fabricated.extend(unsupported_action_claims(
         text, confirmed_reading_sentence=parts.get("contact_paper_reading"),
+    ))
+    # M33: only the paper the student chose (validated against these works
+    # before any route builds parts) may be named.
+    chosen = ((parts.get("contact_context") or {}).get("paper_reading") or {}).get("title")
+    fabricated.extend(unchosen_paper_claims(
+        text, [str(work.get("title") or "") for work in email_research_works(opp) if isinstance(work, dict)],
+        chosen_title=chosen,
     ))
     fabricated.extend(contact_claim_violations(text, parts))
     # The deterministic template's label counts examples, not achievements.

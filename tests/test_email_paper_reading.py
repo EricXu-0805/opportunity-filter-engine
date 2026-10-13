@@ -293,3 +293,70 @@ def test_ai_prompt_cites_a_paper_only_when_the_student_chose_it(writing_client, 
     drafting = [s for s in systems if "Write the body in this order" in s]
     assert len(drafting) == len(ce._DRAFT_ANGLES)
     assert all("If no paper was chosen, name, quote or cite no paper" in s for s in drafting)
+
+
+# M33 enforcement: the prompt alone does not stop a model naming a paper. The
+# shared grounding check rejects a reply that names a paper the student did not
+# choose, or (with none chosen) states a reaction to a paper, and every route
+# falls back as for any other unsupported claim.
+SECOND_PAPER = {"title": "Pruning Large Language Models Without Retraining", "year": 2025}
+UNCHOSEN = [
+    'Your recent paper "Efficient Sparse Training at Scale" (2026) caught my attention.',
+    "Your paper caught my attention.",
+    "I was impressed by your recent paper.",
+    "Your paper “Efficient Sparse Training at Scale” (2026) is on this topic.",
+]
+
+
+def _model_reply(path, *sentences):
+    body = " ".join(["I am Audit Student, a sophomore in Computer Science at UIUC.", *sentences,
+                     "I would like to learn more about your research in sparse neural network training.",
+                     "Could I ask whether you have any current or upcoming research openings?"])
+    email = f"Dear Professor Ada Lovelace,\n\n{body}\n\nBest regards,\nAudit Student"
+    return email if path == "refine" else f"Subject: Sparse neural network training\n\n{email}"
+
+
+def _post_model_reply(client, monkeypatch, path, value, reply):
+    professor = deepcopy(PROFESSOR)
+    professor["metadata"]["recent_works"].append(SECOND_PAPER)
+    monkeypatch.setattr(ce, "load_opportunities_by_id", lambda: {professor["id"]: professor})
+    monkeypatch.setattr(ce, "is_configured", lambda: True)
+    monkeypatch.setattr(ce, "chat_completion", lambda *_a, **_k: reply)
+    extra = {} if path == "refine" else {"engine": "ai"}
+    out = result(post(client, path, value, opportunity_id=professor["id"], **extra), path)
+    return out, out["method"] == ("llm" if path == "refine" else "ai")
+
+
+@pytest.mark.parametrize("path", ["", "stream", "refine"])
+@pytest.mark.parametrize("sentence", [None, *UNCHOSEN])
+def test_model_reply_naming_or_reacting_to_an_unchosen_paper_is_rejected(writing_client, monkeypatch, path, sentence):
+    client, _ = writing_client
+    reply = _model_reply(path, *([sentence] if sentence else []))
+    out, served = _post_model_reply(client, monkeypatch, path, {"version": 1, "purpose": "first_contact"}, reply)
+    if sentence is None:
+        # The same reply without a paper sentence is served as written.
+        assert served and out.get("fallback_reason") is None, out
+        assert out["body"] in reply
+        return
+    assert not served and out["fallback_reason"] == "fabrication", out
+    assert sentence not in out["body"]
+    assert "caught my attention" not in out["body"]
+    assert PROFESSOR_PAPER["title"] not in out["body"]
+
+
+@pytest.mark.parametrize("path", ["", "stream", "refine"])
+@pytest.mark.parametrize("extra,allowed", [
+    (None, True),
+    ("Efficient Sparse Training at Scale is the paper I chose.", True),
+    (f"Your paper “{SECOND_PAPER['title']}” (2025) is on this topic.", False),
+])
+def test_with_a_chosen_paper_only_that_paper_may_be_named(writing_client, monkeypatch, path, extra, allowed):
+    client, _ = writing_client
+    value = {"version": 1, "purpose": "first_contact",
+             "paper_reading": {**PROFESSOR_PAPER, "level": "abstract", "confirmed": True}}
+    reply = _model_reply(path, paper_reading_sentence(value), *([extra] if extra else []))
+    out, served = _post_model_reply(client, monkeypatch, path, value, reply)
+    assert served is allowed, out
+    assert (out.get("fallback_reason") is None) is allowed
+    assert out["body"].count(paper_reading_sentence(value)) == 1
+    assert (SECOND_PAPER["title"] in out["body"]) is False

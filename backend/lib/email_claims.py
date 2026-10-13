@@ -8,7 +8,8 @@ claimable levels; concrete project actions are deliberately not level claims.
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
+import unicodedata
+from collections.abc import Iterable, Mapping
 
 _CLAUSES = re.compile(
     r"[!?;\n]+|\.(?=\s|$)|\b(?:but|however|whereas)\b|"
@@ -67,6 +68,69 @@ def unsupported_action_claims(text: str, *, confirmed_reading_sentence: str | No
             if re.match(r"after\b", read.group(), re.I) and re.search(r"\bi\s+(?:will|plan\s+to)\b", clause[read.end():], re.I):
                 continue
             findings.add("unsupported completed-reading claim")
+    return sorted(findings)
+
+
+# M33 (owner decision 2026-10-12): a paper is named only when the student chose
+# it. Text is compared after NFKC, casefolding, one quotation-mark and dash style
+# and single spaces. A title of three or more words counts wherever it appears
+# whole; a shorter one only inside quotation marks, where it cannot be an
+# ordinary research-area phrase.
+_COMPARABLE = str.maketrans({**dict.fromkeys("“”„‟", '"'), **dict.fromkeys("‘’‛`", "'"),
+                             **dict.fromkeys("‐‑‒–—―", "-")})
+# A stated reaction to a paper: the paper caught my attention / interested me,
+# I was impressed by / interested in the paper, I enjoyed the paper, I found
+# the paper interesting. "Paper" means paper, article, publication, preprint,
+# or "your study"; a reaction to "your work" or "your research" is not one.
+_PAPER = (r"(?:(?:your|the|this|that)\s+(?:(?:recent|latest|new|published|\d{4})\s+){0,2}"
+          r"(?:papers?|articles?|publications?|preprints?)|"
+          r"your\s+(?:(?:recent|latest|new|published|\d{4})\s+){0,2}stud(?:y|ies))\b")
+_PAPER_REACTION = re.compile(
+    rf"\b{_PAPER}[^.!?\n]*?\b(?:(?:caught|catches|grabbed|grabs|captured|captures)\s+my\s+"
+    r"(?:attention|eye|interest)|(?:excited|excites|impressed|impresses|intrigued|intrigues|fascinated|"
+    r"fascinates|inspired|inspires|struck|strikes|interested|interests)\s+me)\b|"
+    r"\bi(?:\s+was|\s+am|'m|\s+have\s+been|'ve\s+been)\s+"
+    r"(?:(?:really|particularly|especially|very|quite|so|deeply|greatly)\s+)?"
+    rf"(?:excited|impressed|intrigued|fascinated|inspired|struck|interested)\s+(?:by|with|in|about)\s+{_PAPER}|"
+    rf"\bi\s+(?:(?:really|particularly|especially)\s+)?(?:enjoyed|loved|admired)\s+{_PAPER}|"
+    rf"\bi\s+found\s+{_PAPER}[^.!?\n]*?\b(?:interesting|fascinating|compelling|inspiring|exciting|impressive)\b",
+    re.IGNORECASE,
+)
+
+
+def _comparable(text: str) -> str:
+    return re.sub(r"\s+", " ", unicodedata.normalize("NFKC", text).translate(_COMPARABLE).casefold())
+
+
+def _title_core(title: str) -> str:
+    return _comparable(title).strip(" \"'.,;:!?")
+
+
+def unchosen_paper_claims(text: str, titles: Iterable[str], *, chosen_title: str | None = None) -> list[str]:
+    """Reject naming a paper the student did not choose, or a reaction without one.
+
+    ``titles`` are the professor's paper titles the draft could have seen. With
+    a chosen paper, its title may appear anywhere and only other titles count;
+    without one, the reaction patterns above count too. This is a bounded
+    pattern check: a paraphrased or partial title is not detected.
+    """
+    norm = _comparable(text)
+    chosen = _title_core(chosen_title or "")
+    chosen_spans = [match.span() for match in re.finditer(rf"(?<!\w){re.escape(chosen)}(?!\w)", norm)] if chosen else []
+    findings: set[str] = set()
+    for title in titles:
+        core = _title_core(str(title))
+        if not core:
+            continue
+        pattern = (rf"(?<!\w)(?P<t>{re.escape(core)})(?!\w)" if len(core.split()) >= 3
+                   else rf"[\"'] ?(?P<t>{re.escape(core)})[.,;:!?]? ?[\"']")
+        for match in re.finditer(pattern, norm):
+            start, end = match.span("t")
+            if not any(a <= start and end <= b for a, b in chosen_spans):
+                findings.add("names a paper the student did not choose")
+                break
+    if not chosen and _PAPER_REACTION.search(norm):
+        findings.add("states a reaction to a paper the student did not choose")
     return sorted(findings)
 
 
