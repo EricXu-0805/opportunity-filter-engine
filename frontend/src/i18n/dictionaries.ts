@@ -2859,7 +2859,25 @@ export const en = {
     },
     confirmLevelTitle: 'Click to confirm where you actually stand',
     foundOn: 'Found on your resume: "{line}" — click to set your level',
-    confirmImportedHint: '{count} skill(s) came from your resume or GitHub. Click each level to set where you actually stand — until then they are described as exposure, not experience.',
+    foundOnGithub: 'Inferred from your GitHub ({line}) — click to set your level',
+    // The same source as a line under the chip: a touch screen never shows the
+    // badge's title, so the title cannot be the only place it is said.
+    sourceLine: {
+      resume: 'From your resume: “{line}”',
+      github: 'Inferred from your GitHub ({line})',
+    },
+    // The {line} above for a repo field; {value} is GitHub's own word.
+    githubEvidence: {
+      language: 'repo {repo}, language {value}',
+      topic: 'repo {repo}, topic {value}',
+    },
+    sourceName: {
+      resume: 'From your resume',
+      github: 'Inferred from your GitHub repos',
+      shared: 'From a shared profile',
+    },
+    confirmImportedHint: '{count} skill(s) came from your resume or GitHub. Click each level to set where you actually stand, or ✓ to keep it — until then they are described as exposure, not experience.',
+    keepLevel: 'Keep this level for {skill} ({level})',
     remove: 'Remove {skill}',
   },
   results: {
@@ -8096,7 +8114,24 @@ export const zh = {
     },
     confirmLevelTitle: '点击确认你实际的掌握程度',
     foundOn: '在简历里找到：「{line}」—— 点击设置你的水平',
-    confirmImportedHint: '有 {count} 项技能来自简历或 GitHub。点击各自的水平标签，标明你实际的掌握程度；在此之前它们只会被表述为「接触过」，而不是「有经验」。',
+    foundOnGithub: '根据你的 GitHub 推断（{line}）—— 点击设置你的水平',
+    // 同样的来源写在标签下方：触屏设备不会显示水平标签的悬停提示。
+    sourceLine: {
+      resume: '来自你的简历：「{line}」',
+      github: '根据你的 GitHub 推断（{line}）',
+    },
+    // 上面 {line} 里的仓库字段；{value} 保留 GitHub 的原词。
+    githubEvidence: {
+      language: '仓库 {repo}，语言 {value}',
+      topic: '仓库 {repo}，话题 {value}',
+    },
+    sourceName: {
+      resume: '来自你的简历',
+      github: '根据你的 GitHub 仓库推断',
+      shared: '来自分享的档案',
+    },
+    confirmImportedHint: '有 {count} 项技能来自简历或 GitHub。点击各自的水平标签，标明你实际的掌握程度，或点 ✓ 保持当前水平；在此之前它们只会被表述为「接触过」，而不是「有经验」。',
+    keepLevel: '保持 {skill} 的当前水平（{level}）',
     remove: '移除 {skill}',
   },
   results: {
