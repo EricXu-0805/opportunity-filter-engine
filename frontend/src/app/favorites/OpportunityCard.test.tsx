@@ -620,3 +620,49 @@ describe('OpportunityCard — faculty profile description', () => {
     expect(screen.queryByText(/Faculty research profile for/)).toBeNull();
   });
 });
+
+describe('OpportunityCard — values we did not read off the page say so', () => {
+  const OPEN = {
+    ...LISTING_KIND,
+    target_truth: {
+      listing_state: 'open', reference_only: false, actionable: true,
+      accepting_state: 'accepting', reason_code: null, verified_at: null, expires_at: null,
+    },
+  };
+
+  it("leaves a listing's host-school city off, as the header does", () => {
+    renderCard({ ...OPEN, location: 'Urbana, IL', location_attribution: 'institution' });
+    expect(screen.queryByText('Urbana, IL')).toBeNull();
+  });
+
+  it('marks a location read off another record as inferred', () => {
+    renderCard({ ...OPEN, location: 'Urbana, IL', location_attribution: 'inferred' });
+    expect(screen.getByText('detail.locationInferred')).toBeInTheDocument();
+    expect(screen.queryByText('Urbana, IL')).toBeNull();
+  });
+
+  it('keeps a stated location plain', () => {
+    renderCard({ ...OPEN, location: 'Urbana, IL' });
+    expect(screen.getByText('Urbana, IL')).toBeInTheDocument();
+  });
+
+  it('heads a skill list the tagger wrote "Skills mentioned", not "Required skills"', () => {
+    renderCard({
+      ...OPEN, skills_attribution: 'inferred',
+      eligibility: { skills_required: ['Python'] },
+    });
+    expect(screen.getByText('favorites.skillsMentioned')).toBeInTheDocument();
+    expect(screen.queryByText('favorites.requiredSkills')).toBeNull();
+  });
+
+  it('notes topics inferred from a publication record', () => {
+    renderCard({ ...OPEN, keywords: ['optics'], keywords_attribution: 'inferred' });
+    expect(screen.getByText('favorites.keywordsInferred')).toBeInTheDocument();
+  });
+
+  it('adds no note to stated topics', () => {
+    renderCard({ ...OPEN, keywords: ['optics'] });
+    expect(screen.getByText('optics')).toBeInTheDocument();
+    expect(screen.queryByText('favorites.keywordsInferred')).toBeNull();
+  });
+});

@@ -188,13 +188,17 @@ export function OpportunityCard({
                     is where the person works — identity. A listing's is where
                     the work would happen — a term of an offer, gone when the
                     offer is. `showsOfferTerms` already covers a custom entry,
-                    which keeps the location its owner typed. */}
-                {opp.location && (isFaculty || showsOfferTerms) && (
+                    which keeps the location its owner typed. A listing's host
+                    school city is not where the work happens, and one we read
+                    off another record says so, as on the header. */}
+                {opp.location && (isFaculty || (showsOfferTerms && opp.location_attribution !== 'institution')) && (
                   <span className="inline-flex items-center gap-1">
                     <MapPin className="w-3.5 h-3.5" />
                     {isFaculty
                       ? t('favorites.facultyAffiliationLocation', { location: opp.location })
-                      : opp.location}
+                      : opp.location_attribution === 'inferred'
+                        ? t('detail.locationInferred', { location: opp.location })
+                        : opp.location}
                   </span>
                 )}
               </div>
@@ -359,7 +363,9 @@ export function OpportunityCard({
 
                 {showsOfferTerms && opp.eligibility?.skills_required && opp.eligibility.skills_required.length > 0 && (
                   <div>
-                    <span className="text-[11px] font-semibold text-indigo-600 uppercase tracking-widest">{t('favorites.requiredSkills')}</span>
+                    <span className="text-[11px] font-semibold text-indigo-600 uppercase tracking-widest">
+                      {t(opp.skills_attribution === 'inferred' ? 'favorites.skillsMentioned' : 'favorites.requiredSkills')}
+                    </span>
                     <div className="flex flex-wrap gap-1.5 mt-1.5">
                       {opp.eligibility.skills_required.map((s) => (
                         <span key={s} className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-[12px] font-medium">{s}</span>
@@ -377,6 +383,11 @@ export function OpportunityCard({
                     {opp.keywords.slice(0, 8).map((kw) => (
                       <span key={kw} className="px-2 py-0.5 rounded-md bg-gray-100 text-[11px] text-gray-600">{kw}</span>
                     ))}
+                    {/* Topics from a matched publication record, which the
+                        detail page notes are not stated on their page. */}
+                    {opp.keywords_attribution === 'inferred' && (
+                      <span className="w-full text-[11px] text-gray-500">{t('favorites.keywordsInferred')}</span>
+                    )}
                   </div>
                 )}
               </div>
