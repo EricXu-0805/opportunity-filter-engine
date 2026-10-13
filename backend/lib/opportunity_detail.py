@@ -517,6 +517,22 @@ def keywords_basis(canonical: dict) -> str | None:
     return BASIS_TEXT_SCAN
 
 
+def majors_basis(canonical: dict) -> tuple[str | None, dict | None]:
+    """(basis, quote) for a record's major list: why it is not the posting's,
+    or None and the page's sentence when it is.
+
+    Shared with the public projector, so ``majors_attribution`` and the detail
+    facts' majors row cannot disagree. An inference stamp wins; a program
+    spec's unstamped list is `configured` unless its page text states it.
+    """
+    basis, quote = _stamped_or_configured(canonical, "eligibility.majors", "majors")
+    if basis is not None or quote is not None or _is_curated_source(str(canonical.get("source") or "")):
+        return basis, quote
+    # Every other collector fills majors from a keyword bank, a tagger read of
+    # prose or a category map (Simplify), stamped or not.
+    return BASIS_TEXT_SCAN, None
+
+
 def skills_basis(canonical: dict, path: str) -> str | None:
     """Why the skill list at ``path`` is not the posting's, or None when it is.
 
@@ -556,7 +572,6 @@ def _research_content(payload: dict, canonical: dict) -> _Field:
 def _eligibility(payload: dict, canonical: dict, source: str) -> _Field:
     field = _Field("eligibility")
     elig = _dict(payload.get("eligibility"))
-    curated = _is_curated_source(source)
 
     years = [y.lower() for y in _str_list(elig.get("preferred_year"))]
     years = [y for y in years if y != "unknown"]
@@ -570,9 +585,7 @@ def _eligibility(payload: dict, canonical: dict, source: str) -> _Field:
 
     majors = _str_list(elig.get("majors"))
     if majors:
-        basis, quote = _stamped_or_configured(canonical, "eligibility.majors", "majors")
-        if basis is None and quote is None and not curated:
-            basis = BASIS_TEXT_SCAN
+        basis, quote = majors_basis(canonical)
         field.put("majors", majors, basis, quote)
 
     gpa = elig.get("min_gpa")

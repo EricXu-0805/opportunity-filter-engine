@@ -515,29 +515,35 @@ class TestApiAndFrontendAgree:
         # Regenerate with: python scripts/generate_detail_fields_contract.py
         assert CONTRACT_PATH.read_text(encoding="utf-8") == render_contract()
 
-    # Every contract case, and one row per listing collector whose skills or
-    # topics a keyword bank wrote with no stamp (the 2026-10-12 corpus had 99
-    # actionable listings showing "Required skills" and 5,920 showing topics
-    # as stated while their detail facts said inferred).
+    # Every contract case, and one row per listing collector whose skills,
+    # topics or majors a keyword bank or category map wrote with no stamp (the
+    # 2026-10-12 corpus had 99 actionable listings showing "Required skills",
+    # 5,920 showing topics and 4,652 showing majors as stated while their
+    # detail facts said inferred).
     _FLAG_CASES = [*CASES, *[
         (f"unstamped_{source}", _listing(
             id=f"flags-{source}", source=source, keywords=["machine learning"],
-            eligibility={"skills_required": ["Python"], "skills_preferred": ["Linux"]},
+            eligibility={"skills_required": ["Python"], "skills_preferred": ["Linux"],
+                         "majors": ["Computer Science"]},
         ))
-        for source in ("cmu_uro_projects", "uiuc_our_rss", "nsf_reu", "uiuc_sro", "manual")
+        for source in ("cmu_uro_projects", "uiuc_our_rss", "nsf_reu", "uiuc_sro", "simplify_internships", "manual")
     ], ("faculty_unstamped", {**_CASES["faculty_profile"], "metadata": {"is_active": True}})]
 
     @pytest.mark.parametrize("name,record", _FLAG_CASES, ids=[name for name, _ in _FLAG_CASES])
     def test_the_flat_flags_say_inferred_exactly_where_the_detail_facts_do(self, name, record):
-        """The cards, Ask AI, the page keywords and the saved résumé target
-        read `skills_attribution` / `keywords_attribution`, not the detail
-        facts; the two must not disagree about whose words a list is."""
+        """The cards, Ask AI, the compare table, the page keywords and the
+        saved résumé target read `skills_attribution` / `keywords_attribution`
+        / `majors_attribution`, not the detail facts; the two must not
+        disagree about whose words a list is."""
         payload, canonical = _served(record)
         fields = build_detail_fields(payload, canonical)["fields"]
         skills_inferred = "mentioned" in fields["required_skills"]["inferred"]
         topics_inferred = "research_areas" in fields["research_content"]["inferred"]
+        majors = fields["eligibility"]["inferred"].get("majors")
         assert (payload.get("skills_attribution") == "inferred") is skills_inferred
         assert (payload.get("keywords_attribution") == "inferred") is topics_inferred
+        assert (payload.get("majors_attribution") == "inferred") is (majors is not None)
+        assert (payload.get("majors_basis") == "configured") is (majors is not None and majors["basis"] == "configured")
 
     def test_a_campus_collectors_own_tags_are_flagged_though_the_facts_drop_them(self):
         # The facts leave out the source-type tags a campus collector appends
@@ -2094,3 +2100,28 @@ def test_ask_ai_says_a_value_we_inferred_is_ours():
     prompt = opportunities_module._build_chat_system_prompt(stated, None, frozenset())
     assert "our inference" not in prompt
     assert "- Paid: yes; compensation: —" in prompt and "- Required skills: Python" in prompt
+
+
+def test_a_category_map_major_list_is_ours_in_ask_ai_and_the_saved_target():
+    # Simplify fills majors from its category map on every internship. The
+    # detail facts called them inferred; the flag did not, so Ask AI printed
+    # "Eligible majors: Computer Science" beside topics from the same map
+    # marked as ours, and the compare table and saved résumé target agreed.
+    record = copy.deepcopy(_CASES["simplify_internship_template"])
+    payload, canonical = _served(record)
+    assert payload["majors_attribution"] == "inferred"
+    assert "majors_basis" not in payload  # not our config: the generic note
+    ours = " (our inference, not confirmed on the program page)"
+    prompt = opportunities_module._build_chat_system_prompt(payload, None, frozenset())
+    assert f"- Majors: Computer Science{ours}" in prompt
+    assert "Eligible majors" not in prompt
+    fallback = opportunities_module._local_chat_fallback(payload, "Who can apply?", frozenset())
+    assert f"- Majors: Computer Science{ours}." in fallback
+    assert authoritative_target(canonical)["criteria"]["attribution"]["majors_attribution"] == "inferred"
+
+    # A hand-curated row's list is the posting's own.
+    stated, canonical = _served(_listing(source="manual", eligibility={"majors": ["Computer Science"]}))
+    assert "majors_attribution" not in stated
+    prompt = opportunities_module._build_chat_system_prompt(stated, None, frozenset())
+    assert "- Eligible majors: Computer Science\n" in prompt
+    assert "majors_attribution" not in authoritative_target(canonical)["criteria"]["attribution"]

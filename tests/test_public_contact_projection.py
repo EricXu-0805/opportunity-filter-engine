@@ -1091,6 +1091,10 @@ class TestApproximateMajorsAreLabelledOnTheWire:
             record["metadata"] = {
                 "inferred_fields": {"eligibility.majors": "rule:research_area_bank"}
             }
+        else:
+            # Only a hand-curated row's list is the posting's own
+            # (`opportunity_detail.majors_basis`).
+            record["source"] = "manual"
         return record
 
     def test_a_bank_written_major_list_is_labelled(self):
@@ -1102,6 +1106,14 @@ class TestApproximateMajorsAreLabelledOnTheWire:
         record = self._program(inferred=False)
         out = project_public_opportunity_payload(dict(record), record)
         assert "majors_attribution" not in out
+
+    def test_an_unstamped_category_map_list_is_labelled(self):
+        # Simplify fills majors from its category map on every internship,
+        # with no stamp: the detail facts call it inferred, so does the flag.
+        record = {**self._program(inferred=False), "source": "simplify_internships"}
+        out = project_public_opportunity_payload(dict(record), record)
+        assert out["majors_attribution"] == "inferred"
+        assert "majors_basis" not in out
 
     def test_an_empty_list_is_not_labelled(self):
         record = self._program(inferred=True)

@@ -13,7 +13,6 @@ from urllib.parse import unquote, urlsplit
 from backend.lib import opportunity_detail
 from src.evidence import (
     configured_value_unstated,
-    inferred_method,
     is_read_off_the_page,
     record_kind,
     target_truth,
@@ -861,16 +860,19 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     # A campus program spec's majors are configuration too, unless the page
     # text the row carries states them: none of 12 such lists checked against
     # the live page on 2026-10-09 was stated there. Classified, not stamped —
-    # a stamp would move the major score.
-    majors_method = inferred_method(canonical_record, "eligibility.majors")
-    if (majors_method or configured_value_unstated(canonical_record, "majors")) and (
-        projected.get("eligibility") or {}
-    ).get("majors"):
-        projected["majors_attribution"] = "inferred"
-        # The detail page's note names where the list came from: the keyword
-        # bank for a stamped list, our config for a program spec's.
-        if not majors_method:
-            projected["majors_basis"] = "configured"
+    # a stamp would move the major score. Stamped or not, outside hand-curated
+    # rows the list is ours (Simplify fills it from its category map on all
+    # its internships): `opportunity_detail.majors_basis`, the rule the detail
+    # facts use.
+    majors = projected.get("eligibility")
+    if isinstance(majors, dict) and majors.get("majors"):
+        basis, _ = opportunity_detail.majors_basis(canonical_record)
+        if basis is not None:
+            projected["majors_attribution"] = "inferred"
+            # The detail page's note names where the list came from: our
+            # config for a program spec's, our pipeline for any other.
+            if basis == opportunity_detail.BASIS_CONFIGURED:
+                projected["majors_basis"] = "configured"
 
     # And for the deadline note a program spec typed into the config: the
     # detail facts call it configured unless the page text states it
