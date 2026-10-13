@@ -56,6 +56,20 @@ const LEVEL_CONFIG: Record<SkillLevel, { color: string; bg: string; ring: string
 
 const LEVELS: SkillLevel[] = ['beginner', 'experienced', 'expert'];
 
+// A GitHub import saves "repo engine: language Jupyter Notebook", in English,
+// into the profile. Only the labels are translated, here at display, so old
+// profiles read in the student's language too; the repo name and GitHub's own
+// value stay as GitHub wrote them. A resume line is the page's words: verbatim.
+const GITHUB_EVIDENCE = /^repo (.+): (language|topic) (.+)$/;
+
+function shownEvidence(
+  skill: SkillWithLevel,
+  t: (path: string, vars?: Record<string, string | number>) => string,
+): string | undefined {
+  const match = skill.source === 'github' && skill.evidence ? GITHUB_EVIDENCE.exec(skill.evidence) : null;
+  return match ? t(`skills.githubEvidence.${match[2]}`, { repo: match[1], value: match[3] }) : skill.evidence;
+}
+
 interface SkillTagsProps {
   selected: SkillWithLevel[];
   onChange: (skills: SkillWithLevel[]) => void;
@@ -139,14 +153,15 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
           // provenance missing. Either way the chip reads as unsettled — dashed
           // rather than solid — and one tap on the level both sets and settles it.
           const unsettled = skillNeedsConfirming(skill);
+          const evidence = shownEvidence(skill, t);
           // The badge's title says this too, but a touch screen never shows a
           // title, and the student cannot accept, correct or delete an import
           // without seeing where it came from. Typed and settled chips have
           // nothing to explain.
           const sourceLine = !unsettled || !skill.source
             ? null
-            : skill.evidence
-              ? t(skill.source === 'github' ? 'skills.sourceLine.github' : 'skills.sourceLine.resume', { line: skill.evidence })
+            : evidence
+              ? t(skill.source === 'github' ? 'skills.sourceLine.github' : 'skills.sourceLine.resume', { line: evidence })
               : t(`skills.sourceName.${skill.source}`);
           return (
             <span
@@ -169,8 +184,8 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
                     // The line it was found on beats any generic explanation:
                     // "Relevant coursework: Introduction to Python" tells the
                     // student in one glance that this is not experience.
-                    unsettled && skill.evidence
-                      ? t(skill.source === 'github' ? 'skills.foundOnGithub' : 'skills.foundOn', { line: skill.evidence })
+                    unsettled && evidence
+                      ? t(skill.source === 'github' ? 'skills.foundOnGithub' : 'skills.foundOn', { line: evidence })
                       : unsettled && skill.source
                         ? t(`skills.importedFrom.${skill.source}`)
                         : unsettled
@@ -189,7 +204,6 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
                     }}
                     className="shrink-0 p-0.5 rounded hover:bg-black/5 transition-colors"
                     aria-label={t('skills.keepLevel', { skill: skill.name, level: levelLabel })}
-                    title={t('skills.keepLevel', { skill: skill.name, level: levelLabel })}
                   >
                     <Check className="w-3 h-3" />
                   </button>
@@ -206,7 +220,7 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
                   <X className="w-3 h-3" />
                 </button>
               </span>
-              {sourceLine && skill.evidence ? (
+              {sourceLine && evidence ? (
                 // One truncated line keeps the chip small on a phone; opening
                 // it wraps the whole quote. A native disclosure is reachable
                 // by keyboard and announces its state without extra wiring.
@@ -221,7 +235,11 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
                   </summary>
                 </details>
               ) : sourceLine ? (
-                <span className="min-w-0 max-w-[16rem] truncate pr-1 text-[11px] font-normal leading-snug text-gray-600">
+                <span
+                  // Not part of the picker's tap target either, like the line above.
+                  onClick={(e) => e.stopPropagation()}
+                  className="min-w-0 max-w-[16rem] truncate pr-1 text-[11px] font-normal leading-snug text-gray-600"
+                >
                   {sourceLine}
                 </span>
               ) : null}

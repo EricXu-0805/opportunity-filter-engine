@@ -7,7 +7,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import type { SkillWithLevel } from '@/lib/types';
+import { LanguageProvider } from '@/i18n/client';
 import SkillTags from './SkillTags';
+
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 afterEach(cleanup);
 
@@ -107,7 +110,7 @@ describe('SkillTags — an imported skill shows where it came from', () => {
       evidence: 'repo thesis: language Jupyter Notebook',
     }]);
     const title = screen.getByRole('button', { name: 'Beginner' }).getAttribute('title');
-    expect(title).toContain('repo thesis: language Jupyter Notebook');
+    expect(title).toContain('repo thesis, language Jupyter Notebook');
     expect(title).toMatch(/Inferred from your GitHub/);
     expect(title).not.toMatch(/resume/i);
   });
@@ -134,8 +137,41 @@ describe('SkillTags — an imported skill shows where it came from', () => {
       name: 'Python', level: 'beginner', source: 'github',
       evidence: 'repo thesis: language Jupyter Notebook',
     }]);
-    expect(screen.getByText('Inferred from your GitHub (repo thesis: language Jupyter Notebook)'))
+    expect(screen.getByText('Inferred from your GitHub (repo thesis, language Jupyter Notebook)'))
       .toBeVisible();
+  });
+
+  // The saved line is English ("repo engine: language Jupyter Notebook") in
+  // every profile, old ones included; only its labels follow the language.
+  it('labels the GitHub repo field in Chinese, keeping the repo and GitHub value as written', () => {
+    render(
+      <LanguageProvider initialLocale="zh">
+        <SkillTags
+          selected={[
+            { name: 'Python', level: 'beginner', source: 'github', evidence: 'repo engine: language Jupyter Notebook' },
+            { name: 'Docker', level: 'beginner', source: 'github', evidence: 'repo infra-tools: topic docker' },
+          ]}
+          onChange={vi.fn()}
+        />
+      </LanguageProvider>,
+    );
+    expect(screen.getByText('根据你的 GitHub 推断（仓库 engine，语言 Jupyter Notebook）')).toBeVisible();
+    expect(screen.getByText('根据你的 GitHub 推断（仓库 infra-tools，话题 docker）')).toBeVisible();
+    const titles = screen.getAllByRole('button', { name: '入门' }).map((b) => b.getAttribute('title'));
+    expect(titles).toEqual([
+      '根据你的 GitHub 推断（仓库 engine，语言 Jupyter Notebook）—— 点击设置你的水平',
+      '根据你的 GitHub 推断（仓库 infra-tools，话题 docker）—— 点击设置你的水平',
+    ]);
+  });
+
+  it('shows any other line as it was saved', () => {
+    setup([
+      { name: 'Python', level: 'beginner', source: 'github', evidence: 'pinned repo engine' },
+      // A resume line is the page's own words, even one shaped like a repo field.
+      { name: 'Go', level: 'beginner', source: 'resume', evidence: 'repo engine: language Go' },
+    ]);
+    expect(screen.getByText('Inferred from your GitHub (pinned repo engine)')).toBeVisible();
+    expect(screen.getByText('From your resume: “repo engine: language Go”')).toBeVisible();
   });
 
   it('names the source as text when no line was captured', () => {
@@ -152,6 +188,13 @@ describe('SkillTags — an imported skill shows where it came from', () => {
     fireEvent.click(line);
     expect(line.closest('details')).toHaveAttribute('open');
     expect(input).not.toHaveFocus();
+  });
+
+  it('opens neither the picker nor the keyboard from the plain source line', () => {
+    render(<SkillTags selected={[{ name: 'Python', level: 'beginner', source: 'shared' }]} onChange={vi.fn()} />);
+    fireEvent.click(screen.getByText('From a shared profile'));
+    expect(screen.getByPlaceholderText(/add more/i)).not.toHaveFocus();
+    expect(screen.queryByRole('button', { name: 'Java' })).toBeNull();
   });
 
   it('adds nothing under a typed or a settled skill', () => {
@@ -228,6 +271,12 @@ describe('SkillTags — keeping an imported level', () => {
     expect(screen.queryByRole('button', { name: /Keep this level for Go/ })).toBeNull();
     // A legacy `experienced` is held back too, so it can be kept as it stands.
     expect(screen.getByRole('button', { name: 'Keep this level for Rust (Experienced)' })).toBeInTheDocument();
+  });
+
+  it('names the keep button once, without repeating it as a title', () => {
+    setup([{ name: 'Python', level: 'beginner', source: 'github' }]);
+    expect(screen.getByRole('button', { name: 'Keep this level for Python (Beginner)' }))
+      .not.toHaveAttribute('title');
   });
 });
 

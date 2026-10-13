@@ -2866,6 +2866,11 @@ export const en = {
       resume: 'From your resume: “{line}”',
       github: 'Inferred from your GitHub ({line})',
     },
+    // The {line} above for a repo field; {value} is GitHub's own word.
+    githubEvidence: {
+      language: 'repo {repo}, language {value}',
+      topic: 'repo {repo}, topic {value}',
+    },
     sourceName: {
       resume: 'From your resume',
       github: 'Inferred from your GitHub repos',
@@ -8113,6 +8118,11 @@ export const zh = {
     sourceLine: {
       resume: '来自你的简历：「{line}」',
       github: '根据你的 GitHub 推断（{line}）',
+    },
+    // 上面 {line} 里的仓库字段；{value} 保留 GitHub 的原词。
+    githubEvidence: {
+      language: '仓库 {repo}，语言 {value}',
+      topic: '仓库 {repo}，话题 {value}',
     },
     sourceName: {
       resume: '来自你的简历',
