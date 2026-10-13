@@ -227,7 +227,7 @@ class TestNoCollapse:
         # produced; the match reasons stated it as the program's. A funding
         # program's published rule (`policy:`) stays the program's.
         profile = {"international_student": True, "year": "sophomore", "major": "Biology"}
-        ours = ", by our reading of the page — not stated by the program"
+        ours = ", by our reading of the page — not confirmed on the program page"
         for method, fit, gap in (
             ("rule:title_scan", f"Open to international students{ours}",
              f"May require US citizenship or permanent residency{ours}"),
@@ -243,6 +243,20 @@ class TestNoCollapse:
                 record["metadata"]["inferred_fields"] = dict(stamps)
             assert fit in score_eligibility(profile, welcome)[1], method
             assert gap in score_eligibility(profile, restricted)[2], method
+
+    def test_a_restriction_partly_configured_and_partly_read_names_both(self):
+        # Neither "our listing says" nor "by our reading of the page" alone is
+        # true of a rule whose parts came from each.
+        profile = {"international_student": True, "year": "sophomore", "major": "Biology"}
+        restricted = _listing(eligibility={"international_friendly": "no", "citizenship_required": True})
+        restricted["metadata"]["inferred_fields"] = {
+            "eligibility.international_friendly": "rule:title_scan",
+            "eligibility.citizenship_required": CONFIGURED_PROGRAM_METHOD,
+        }
+        assert score_eligibility(profile, restricted)[2][0] == (
+            "May require US citizenship or permanent residency, per our listing and our reading of the page"
+            " — not confirmed on the program page"
+        )
 
     def test_citizenship_false_counts_only_beside_a_stated_welcome(self):
         stated = _fields(_listing(eligibility={
@@ -2052,7 +2066,7 @@ def test_ask_ai_says_a_value_we_inferred_is_ours():
     }
     payload, _ = _served(record)
     assert payload["location_attribution"] == "institution"
-    ours = " (our inference, not stated by the program)"
+    ours = " (our inference, not confirmed on the program page)"
     prompt = opportunities_module._build_chat_system_prompt(payload, None, frozenset())
     for line in (f"- Paid: yes{ours}; compensation: —",
                  "- Location: not stated (the host institution is in Example, ST)",

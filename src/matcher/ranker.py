@@ -1800,22 +1800,53 @@ def _mentioned_skill_labels(opportunity: dict) -> list[str]:
 # Ends every gap line built from a configured value the page text the row
 # carries does not state (see score_eligibility).
 _NOT_ON_PAGE = " — not confirmed on the program page"
-# Ends a line built from a value our pipeline read off the page text.
-_OUR_READING = ", by our reading of the page — not stated by the program"
+# Ends a line built from a value our pipeline read off the page text. A scan
+# can miss a sentence, so it says "not confirmed", not "not stated".
+_OUR_READING = ", by our reading of the page — not confirmed on the program page"
+# Ends a restriction one part of which our config supplied and one part of
+# which we read off the page.
+_OUR_LISTING_AND_READING = ", per our listing and our reading of the page — not confirmed on the program page"
 
 
 def _intl_terms_basis(opportunity: dict, fields: tuple[str, ...]) -> str | None:
     """Whose the intl answer or citizenship rule in ``fields`` is: None when
     the program states it (or a funding program's policy does), "configured"
     when every one is a program spec's value from our config, "read" when we
-    read any of them off the page — the wire's `international_attribution` /
-    `citizenship_attribution` rule, so the sentence and the badge agree."""
+    read every one off the page, "mixed" when some are each — the wire's
+    `international_attribution` / `citizenship_attribution` rule, so the
+    sentence and the badge agree."""
     paths = [f"eligibility.{field}" for field in fields]
     if not paths or not all(is_read_off_the_page(opportunity, path) for path in paths):
         return None
-    if all(inferred_method(opportunity, path) == CONFIGURED_PROGRAM_METHOD for path in paths):
+    configured = [inferred_method(opportunity, path) == CONFIGURED_PROGRAM_METHOD for path in paths]
+    if all(configured):
         return "configured"
-    return "read"
+    return "mixed" if any(configured) else "read"
+
+
+def citizenship_restriction_reason(opportunity: dict) -> str:
+    """The reason line for an intl "no" or a citizenship rule, said as whose
+    the restriction is (M96).
+
+    Shared with the explain route, whose line for a record it excluded from an
+    international student's results must not state as the program's a
+    restriction this one hedges.
+    """
+    elig = faculty_safe_eligibility(opportunity)
+    restricted_by = tuple(
+        field for field, restricts in (
+            ("international_friendly", elig.get("international_friendly", "unknown") == "no"),
+            ("citizenship_required", elig.get("citizenship_required") is True),
+        ) if restricts
+    )
+    basis = _intl_terms_basis(opportunity, restricted_by)
+    if basis == "configured":
+        return f"Our listing says this requires US citizenship or permanent residency{_NOT_ON_PAGE}"
+    if basis == "read":
+        return f"May require US citizenship or permanent residency{_OUR_READING}"
+    if basis == "mixed":
+        return f"May require US citizenship or permanent residency{_OUR_LISTING_AND_READING}"
+    return "Requires US citizenship or permanent residency"
 
 
 def score_eligibility(
@@ -1989,20 +2020,7 @@ def score_eligibility(
             intl_score = 0.0
             # The score is the record's either way; the sentence says whose
             # restriction it is when we, not the program, supplied it (M96).
-            restricted_by = tuple(
-                field for field, restricts in (
-                    ("international_friendly", friendly == "no"),
-                    ("citizenship_required", elig.get("citizenship_required") is True),
-                ) if restricts
-            )
-            basis = _intl_terms_basis(opportunity, restricted_by)
-            reasons_gap.append(
-                f"Our listing says this requires US citizenship or permanent residency{_NOT_ON_PAGE}"
-                if basis == "configured"
-                else f"May require US citizenship or permanent residency{_OUR_READING}"
-                if basis == "read"
-                else "Requires US citizenship or permanent residency"
-            )
+            reasons_gap.append(citizenship_restriction_reason(opportunity))
         elif friendly == "unknown":
             # DQ-6: "unknown" covers 37% of the corpus (mostly internships whose
             # source sponsorship field was blank). For internships specifically,
@@ -2167,7 +2185,7 @@ def score_eligibility(
     # lines (topic, dates, graduate level), and readiness and upside follow:
     # the compare view, the local summary and the AI prompt read only the
     # first two or three. sort() is stable, so each group keeps its order.
-    reasons_gap.sort(key=lambda gap: gap.endswith(_NOT_ON_PAGE))
+    reasons_gap.sort(key=lambda gap: gap.startswith("Our listing "))
     return total, reasons_fit, reasons_gap
 
 

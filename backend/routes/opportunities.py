@@ -171,7 +171,8 @@ def _as_listed(value: object, facet: str, unstated: frozenset[str]) -> object:
     return f"our listing suggests {value} — not confirmed on the program page"
 
 
-_INFERRED = " (our inference, not stated by the program)"
+# "Not confirmed", not "not stated": a scan of the page can miss a sentence.
+_INFERRED = " (our inference, not confirmed on the program page)"
 _INFERRED_RULE = (
     f"A value marked \"{_INFERRED.strip()}\" was inferred by our pipeline: never present it as the "
     "program's requirement or terms; say it is inferred and suggest confirming it on the program page."

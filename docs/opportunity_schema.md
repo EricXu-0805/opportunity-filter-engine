@@ -186,7 +186,7 @@ résumé target drops a flag of a value it saves.
 | Detail header (`OpportunityHeader`) | pay, intl, location, deadline | hedged badges; school city hidden; estimate |
 | Detail fallback sections (`DetailSections`) | years, majors, skills, intl, citizenship, compensation, rolling, topics | label + note |
 | Results card (`MatchCard`, `lib/badge-utils`) | pay, compensation, intl, location, skills, deadline | hedged badges, "(inferred)", heading |
-| Match reasons (`src/matcher/ranker.py`) | pay, intl, citizenship, majors, years | sentence omitted or said as our listing's / our reading; matcher version 23 retires cached sentences |
+| Match reasons (`src/matcher/ranker.py`), explain (`backend/routes/matches.py`) | pay, intl, citizenship, majors, years | sentence omitted or said as our listing's / our reading / both ("— not confirmed on the program page"); a record excluded for citizenship gets the same sentence as its first line (`citizenship_restriction_reason`), and the summary prompt keeps those qualifiers; matcher version 23 retires cached sentences |
 | Cached results page (`lib/match-cache`) | all flags | kept in the cache projection |
 | Results CSV (`lib/match-utils`) | pay, intl, location, deadline | "(inferred)", "(estimated)", school city blank |
 | Favorites card | pay, intl, location, skills, topics | badge helpers, heading, note |
@@ -196,7 +196,7 @@ résumé target drops a flag of a value it saves.
 | Share image (`og-facts`) | pay, intl, location, deadline | pill omitted; "(inferred)"; deadline wording |
 | Page metadata | topics | inferred topics omitted |
 | Saved résumé target (`TargetResumeCriteria`, `backend/lib/target_resume_context.py`) | skills, majors, years, intl, citizenship, pay, deadline note, location, compensation | flag saved in `criteria.attribution` (`location_attribution` for every record but a faculty contact, whose location is its school's city by definition and is shown as the professor's affiliation; the browser and the server skip it alike); "(inferred)" label, "(host school's city)"; the AI prompts say what the flags mean. A draft saved before a flag existed shows the neutral label and still opens, saves and exports, but its snapshot no longer matches the current target: the suggestions and selection-plan routes answer `409 target_changed` and the editor disables AI until the student rebuilds the draft |
-| Ask AI prompt and local fallback (`backend/routes/opportunities.py`) | pay, compensation, majors, years, skills, intl, citizenship, topics, location | "our listing suggests …", "(our inference, not stated by the program)", school city said as such |
+| Ask AI prompt and local fallback (`backend/routes/opportunities.py`) | pay, compensation, majors, years, skills, intl, citizenship, topics, location | "our listing suggests …", "(our inference, not confirmed on the program page)", school city said as such |
 | Cold-email conditions panel | eligibility, deadline, materials | per-condition status |
 | Email digest | deadline | "estimated" |
 
