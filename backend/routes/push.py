@@ -334,15 +334,49 @@ def _render_reminder_email(opportunity_id: str) -> tuple[str, str, str]:
     return subject, html, text
 
 
+class AccountLookupError(RuntimeError):
+    """The auth service did not say what the account's email is.
+
+    Not the same as an account without a confirmed address (None): a lookup
+    that failed says nothing about the account, so a caller treats it as a
+    fault of its own run and asks again on the next one. The message carries
+    only the HTTP status or the exception type, never an address.
+    """
+
+
 async def _account_email(client, supabase_url: str, headers: dict, uid: str) -> str | None:
-    """device_id == Supabase auth uid; anonymous users have no email."""
-    resp = await client.get(
-        f"{supabase_url}/auth/v1/admin/users/{uid}", headers=headers,
-    )
+    """The account's CONFIRMED email address, or None.
+
+    device_id == Supabase auth uid; anonymous users have no email. An address
+    the account holds but has not confirmed is None too: it may have been
+    mistyped or may belong to someone else, and the account has not shown it
+    receives mail there. Confirmation is the same GoTrue pair
+    supabase_auth.authenticated_identity reads for the user-facing sends.
+
+    None only when GoTrue answers: 404 (no such user), or a user with no
+    confirmed address. A transport error, any other error status, or a body
+    that is not a user object raises AccountLookupError.
+    """
+    try:
+        resp = await client.get(
+            f"{supabase_url}/auth/v1/admin/users/{uid}", headers=headers,
+        )
+    except Exception as exc:  # noqa: BLE001 — re-raised as a lookup failure
+        raise AccountLookupError(type(exc).__name__) from exc
+    if resp.status_code == 404:
+        return None
     if resp.status_code >= 400:
+        raise AccountLookupError(f"HTTP {resp.status_code}")
+    try:
+        user = resp.json()
+    except Exception as exc:  # noqa: BLE001 — re-raised as a lookup failure
+        raise AccountLookupError(f"unreadable body ({type(exc).__name__})") from exc
+    if not isinstance(user, dict):
+        raise AccountLookupError("body is not a user object")
+    if not (user.get("email_confirmed_at") or user.get("confirmed_at")):
         return None
     try:
-        return _validate_email((resp.json() or {}).get("email") or "")
+        return _validate_email(user.get("email") or "")
     except ValueError:
         return None
 
@@ -750,23 +784,28 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
                 no_channel += 1
             elif not delivered and not row_ambiguous:
                 if device_id not in email_by_device:
+                    # A failed lookup raises AccountLookupError into the
+                    # per-row handler below: counted in row_errors, remind_at
+                    # kept, so the reminder is tried again on the next run.
                     email_by_device[device_id] = await _account_email(
                         client, supabase_url, headers, device_id,
                     )
                 to_email = email_by_device[device_id]
                 if not to_email and not had_subscription:
-                    # The device never signed in, so the fallback has no
-                    # address. Same silence as above, different cause.
+                    # The device never signed in, or its account has not
+                    # confirmed its address, so the fallback has no address.
+                    # Same silence as above, different cause.
                     no_channel += 1
                 if to_email:
                     subject, html, text = _render_reminder_email(row["opportunity_id"])
                     # One reminder for one device on one day is ONE logical
-                    # send, however many times the cron retries it. Deriving
-                    # the key from that identity (never generating one per
-                    # attempt) is what makes a retry after an ambiguous Resend
-                    # failure a no-op at the provider instead of a second
-                    # email. The date is the natural window: tomorrow's
-                    # reminder for the same row is a different send.
+                    # send, however many times the cron retries it that day.
+                    # Deriving the key from that identity (never generating
+                    # one per attempt) is what makes a same-day retry after an
+                    # ambiguous Resend failure a no-op at the provider instead
+                    # of a second email. The date is the window: the next
+                    # day's run uses a different key, so the provider does
+                    # not collapse it.
                     fallback_key = build_idempotency_key(
                         "reminder", device_id, opportunity_id, today,
                     )
@@ -784,9 +823,9 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
                         )
                     except Exception as e:
                         # HTTPException (quota/Resend 4xx) AND transport
-                        # errors (httpx timeout in _send_via_resend or
-                        # _account_email) — the fallback is best-effort and
-                        # must never abort the cron (W14).
+                        # errors (httpx timeout in _send_via_resend) — the
+                        # fallback is best-effort and must never abort the
+                        # cron (W14).
                         failed += 1
                         outcome = classify_send_failure(e)
                         if outcome == _AMBIGUOUS_OUTCOME:
@@ -808,8 +847,11 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
                                 "error_category": "email_fallback_failed",
                                 "outcome": outcome,
                                 "may_have_been_delivered": outcome == _AMBIGUOUS_OUTCOME,
-                                # The retry next run reuses this exact key, so
-                                # the provider collapses it if it did land.
+                                # Only a retry on the same reminder day reuses
+                                # this key and is collapsed by the provider.
+                                # The key includes the day, so the next day's
+                                # run sends under a new key, and an email that
+                                # did land can then arrive a second time.
                                 "idempotency_key": fallback_key,
                                 # Type only: the message can carry the
                                 # recipient address or provider payload.

@@ -3288,6 +3288,58 @@ class TestCORS:
     def test_localhost_allowed(self):
         assert self._allowed("http://localhost:3000")
 
+    # The grant is configured when backend.main is imported, so each
+    # environment gets a fresh interpreter started with that environment.
+    _PREFLIGHT_SCRIPT = (
+        "import json, sys\n"
+        "from fastapi.testclient import TestClient\n"
+        "from backend.main import app\n"
+        "client = TestClient(app)\n"
+        "allowed = {}\n"
+        "for origin in sys.argv[1:]:\n"
+        "    resp = client.options('/api/health', headers={\n"
+        "        'Origin': origin, 'Access-Control-Request-Method': 'GET'})\n"
+        "    allowed[origin] = 'access-control-allow-origin' in {\n"
+        "        h.lower() for h in resp.headers.keys()}\n"
+        "print(json.dumps(allowed))\n"
+    )
+    _ORIGINS = (
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://joinalab.com",
+        "https://www.joinalab.com",
+    )
+
+    def _allowed_in(self, env_overrides: dict[str, str]) -> dict[str, bool]:
+        import subprocess
+
+        env = {k: v for k, v in os.environ.items() if k not in ("RENDER", "OFE_ENVIRONMENT")}
+        env.update(env_overrides)
+        result = subprocess.run(
+            [sys.executable, "-c", self._PREFLIGHT_SCRIPT, *self._ORIGINS],
+            cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            env=env, capture_output=True, text=True, timeout=120, check=False,
+        )
+        assert result.returncode == 0, result.stderr[-2000:]
+        return json.loads(result.stdout.strip().splitlines()[-1])
+
+    @pytest.mark.parametrize("env_overrides", [
+        {"RENDER": "true"},
+        {"OFE_ENVIRONMENT": "production"},
+    ], ids=["render", "ofe-environment-production"])
+    def test_production_does_not_grant_localhost(self, env_overrides):
+        allowed = self._allowed_in(env_overrides)
+        assert allowed == {
+            "http://localhost:3000": False,
+            "http://127.0.0.1:3000": False,
+            "https://joinalab.com": True,
+            "https://www.joinalab.com": True,
+        }
+
+    def test_local_development_grants_localhost(self):
+        allowed = self._allowed_in({})
+        assert allowed == {origin: True for origin in self._ORIGINS}
+
     def test_joinalab_domains_allowed(self):
         assert self._allowed("https://joinalab.com")
         assert self._allowed("https://www.joinalab.com")
@@ -4519,7 +4571,8 @@ def _set_push_env(monkeypatch):
 
 def _install_push_stubs(monkeypatch, *, interactions, subscriptions, webpush_impl=None,
                         calls=None, patches=None, deletes=None, account_email=None,
-                        emails=None, target_fields=None):
+                        account_unconfirmed=False, account_status=None, emails=None,
+                        target_fields=None):
     """Stub httpx.AsyncClient + pywebpush.webpush for the reminders cron.
 
     The route fetches due interactions then push subscriptions from Supabase
@@ -4528,8 +4581,9 @@ def _install_push_stubs(monkeypatch, *, interactions, subscriptions, webpush_imp
     Supabase GET responses (routed by url substring), ``webpush_impl`` lets a
     test simulate a successful delivery or a WebPushException, ``patches`` /
     ``deletes`` capture delivery bookkeeping writes, ``account_email`` seeds
-    the auth-admin lookup (None -> 404, i.e. anonymous device), and ``emails``
-    captures the Resend fallback sends.
+    the auth-admin lookup (None -> 404, i.e. anonymous device; confirmed
+    unless ``account_unconfirmed``; ``account_status`` makes it fail with that
+    status instead), and ``emails`` captures the Resend fallback sends.
     """
     import httpx
     import pywebpush
@@ -4560,9 +4614,14 @@ def _install_push_stubs(monkeypatch, *, interactions, subscriptions, webpush_imp
 
         async def get(self, url, **kwargs):
             if "/auth/v1/admin/users/" in url:
+                if account_status is not None:
+                    return _Resp({}, status_code=account_status)
                 if account_email is None:
                     return _Resp({}, status_code=404)
-                return _Resp({"email": account_email})
+                return _Resp({
+                    "email": account_email,
+                    "email_confirmed_at": None if account_unconfirmed else "2026-01-01T00:00:00Z",
+                })
             if "push_subscriptions" in url:
                 return _Resp(subscriptions)
             return _Resp(interactions)
@@ -5148,6 +5207,47 @@ class TestPushDeliveryBookkeeping:
             patches=patches, emails=emails, account_email=None,
         )
         body = self._run().json()
+        assert body["emailed"] == 0
+        assert emails == []
+        assert patches == []
+
+    def test_unconfirmed_account_email_gets_no_reminder(self, monkeypatch):
+        # The account holds an address but has not confirmed it: it may be
+        # mistyped or someone else's, so the fallback has nowhere to go.
+        _set_push_env(monkeypatch)
+        monkeypatch.setenv("RESEND_API_KEY", "fake")
+        monkeypatch.setenv("RESEND_FROM_EMAIL", "from@example.com")
+        patches: list = []
+        emails: list = []
+        _install_push_stubs(
+            monkeypatch, interactions=[_DUE_ROW], subscriptions=[],
+            patches=patches, emails=emails, account_email="user@example.com",
+            account_unconfirmed=True,
+        )
+        body = self._run().json()
+        assert body["emailed"] == 0
+        assert body["no_channel"] == 1
+        assert emails == []
+        # Not delivered, so the reminder stays set.
+        assert patches == []
+
+    def test_a_failed_account_lookup_is_a_row_error_not_a_missing_address(self, monkeypatch):
+        # The auth service did not answer: that says nothing about whether the
+        # account has an address, so it is not "no channel". The row fails,
+        # visibly, and keeps its date for the next run.
+        _set_push_env(monkeypatch)
+        monkeypatch.setenv("RESEND_API_KEY", "fake")
+        monkeypatch.setenv("RESEND_FROM_EMAIL", "from@example.com")
+        patches: list = []
+        emails: list = []
+        _install_push_stubs(
+            monkeypatch, interactions=[_DUE_ROW], subscriptions=[],
+            patches=patches, emails=emails, account_email="user@example.com",
+            account_status=503,
+        )
+        body = self._run().json()
+        assert body["row_errors"] == 1
+        assert body["no_channel"] == 0
         assert body["emailed"] == 0
         assert emails == []
         assert patches == []

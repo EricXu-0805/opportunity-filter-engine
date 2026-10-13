@@ -23,7 +23,7 @@ except ImportError:
     pass
 
 from backend.lib import llm_budget
-from backend.lib.build_info import BUILD_VERSION, health_build_fields
+from backend.lib.build_info import BUILD_VERSION, environment, health_build_fields
 from backend.lib.observability import init_sentry
 from backend.lib.release_scope import ReleaseFeature, feature_enabled
 from backend.lib.request_body import DEFAULT_MAX_REQUEST_BODY_BYTES
@@ -882,6 +882,21 @@ app.add_middleware(RateLimitMiddleware)
 app.add_middleware(ReleaseScopeMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 
+_FIRST_PARTY_ORIGINS = ["https://joinalab.com", "https://www.joinalab.com"]
+# The Next.js dev server. Granted only outside production: on Render
+# (RENDER=true, which build_info.environment() reports as "render") or where
+# OFE_ENVIRONMENT says "production", the frontend is served from the
+# first-party domains above, and no page on a localhost port is part of it.
+_LOCAL_DEV_ORIGINS = ["http://localhost:3000", "http://127.0.0.1:3000"]
+
+
+def _cors_allow_origins() -> list[str]:
+    """The origins granted credentialed CORS in this process's environment."""
+    if environment().strip().lower() in {"render", "production"}:
+        return list(_FIRST_PARTY_ORIGINS)
+    return [*_LOCAL_DEV_ORIGINS, *_FIRST_PARTY_ORIGINS]
+
+
 app.add_middleware(
     CORSMiddleware,
     # Whitelist first-party origins only — NO .vercel.app regex. Every real
@@ -892,12 +907,7 @@ app.add_middleware(
     # squattable anyway: Vercel project names are free-form, so an attacker
     # can register a project whose auto-assigned production domain matches
     # any pattern we could write (incl. one carrying our team slug).
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "https://joinalab.com",
-        "https://www.joinalab.com",
-    ],
+    allow_origins=_cors_allow_origins(),
     allow_credentials=True,
     # PATCH is here for the admin ticket-lifecycle route (W15). Without it a
     # cross-origin admin call from a first-party origin fails preflight, so the

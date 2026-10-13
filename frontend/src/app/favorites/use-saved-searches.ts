@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  confirmedAccountEmail,
   listSavedSearchDigests,
   listSavedSearches,
   removeSavedSearch,
@@ -9,12 +10,13 @@ import {
   type SavedSearch,
   type SavedSearchDigest,
 } from '@/lib/saved-searches';
+import { getAuthState } from '@/lib/supabase';
 import type { TFunc } from './types';
 
 export interface UseSavedSearchesResult {
   savedSearches: SavedSearch[];
-  /** null while loading or when migration 013 is unapplied — the section
-   *  hides all digest UI on null. */
+  /** null while loading (the account read included) or when migration 013
+   *  is unapplied — the section hides all digest UI on null. */
   digests: Map<string, SavedSearchDigest> | null;
   /** W14: true when the saved-searches list failed to load — the section
    *  renders an inline error note instead of silently vanishing. */
@@ -24,6 +26,9 @@ export interface UseSavedSearchesResult {
   handleRemove: (search: SavedSearch) => Promise<void>;
   handleApplyOptimisticClear: (id: string) => void;
   handleDigestSave: (id: string, digest: SavedSearchDigest) => Promise<boolean>;
+  /** The signed-in account's confirmed email, the only address a digest goes
+   *  to. Null for a guest or an account without a confirmed email. */
+  accountEmail: string | null;
 }
 
 // Optimistic local clear of new_match_ids when the user clicks an item:
@@ -34,6 +39,9 @@ export function useSavedSearches(t: TFunc): UseSavedSearchesResult {
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
   const [digests, setDigests] = useState<Map<string, SavedSearchDigest> | null>(null);
   const [loadError, setLoadError] = useState(false);
+  // undefined until the auth read lands: digest UI waits for it, so a row is
+  // never shown as "not sent" only because the account is not known yet.
+  const [accountEmail, setAccountEmail] = useState<string | null | undefined>(undefined);
   // Only the newest read may land: a retry clicked while the first read is
   // still out must not be overwritten by that read's late failure.
   const readRef = useRef(0);
@@ -71,6 +79,14 @@ export function useSavedSearches(t: TFunc): UseSavedSearchesResult {
         // itself still renders, so this is not a false-empty.
         if (!cancelled) setDigests(null);
       });
+    getAuthState()
+      .then((auth) => {
+        if (!cancelled) setAccountEmail(confirmedAccountEmail(auth));
+      })
+      .catch(() => {
+        // No known confirmed address: the digest cannot be turned on.
+        if (!cancelled) setAccountEmail(null);
+      });
     return () => { cancelled = true; };
   }, [loadList]);
 
@@ -104,5 +120,14 @@ export function useSavedSearches(t: TFunc): UseSavedSearchesResult {
     );
   }, []);
 
-  return { savedSearches, digests, loadError, retryLoad, handleRemove, handleApplyOptimisticClear, handleDigestSave };
+  return {
+    savedSearches,
+    digests: accountEmail === undefined ? null : digests,
+    loadError,
+    retryLoad,
+    handleRemove,
+    handleApplyOptimisticClear,
+    handleDigestSave,
+    accountEmail: accountEmail ?? null,
+  };
 }

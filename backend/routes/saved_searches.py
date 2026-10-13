@@ -46,7 +46,13 @@ from backend.routes.email import (
     build_idempotency_key,
     classify_send_failure,
 )
-from backend.routes.push import _IncidentSink, _required_env, _verify_cron_secret
+from backend.routes.push import (
+    AccountLookupError,
+    _account_email,
+    _IncidentSink,
+    _required_env,
+    _verify_cron_secret,
+)
 from src.evidence import is_actionable_target
 from src.matcher.ranker import _filter_context, hard_exclusion
 from src.saved_searches.filter import matching_ids
@@ -582,7 +588,11 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
     digest_opt_in=true, a digest_email, and unseen new matches, sends ONE
     email via the email.py Resend machinery — throttled to at most one
     digest per search per DIGEST_MIN_INTERVAL_DAYS via last_digest_sent_at.
-    No email is ever sent without the explicit opt-in flag.
+    No email is ever sent without the explicit opt-in flag, and none to any
+    address but the owning account's confirmed one: digest_email is what was
+    typed when the digest was turned on, so a row naming another address is
+    held back and counted in ``unverified_recipient``. A row whose account
+    could not be looked up is an error of the run instead (status "partial").
     """
     _verify_cron_secret(authorization)
 
@@ -652,7 +662,9 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
     throttled = 0
     skipped = 0
     ambiguous = 0
+    unverified_recipient = 0
     errors: list[str] = []
+    account_email_by_device: dict[str, str | None] = {}
 
     async with httpx.AsyncClient(timeout=30.0, trust_env=False, follow_redirects=False) as client:
         incidents = _IncidentSink(
@@ -734,6 +746,52 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
                     to_email = _validate_email(row.get("digest_email") or "")
                 except ValueError:
                     skipped += 1
+                    continue
+
+                # Sent only when digest_email is the address the owning
+                # account has confirmed (device_id is the Supabase auth uid,
+                # the same lookup the reminders cron makes). Anything else is
+                # held back rather than redirected to the account address:
+                # the student chose this address, and the row stays queued
+                # until it is changed. Not stamped, so it is re-checked on
+                # every run.
+                device_id = row.get("device_id") or ""
+                if device_id not in account_email_by_device:
+                    try:
+                        account_email_by_device[device_id] = (
+                            await _account_email(client, supabase_url, headers, device_id)
+                            if device_id else None
+                        )
+                    except AccountLookupError as lookup_exc:
+                        # The auth service did not answer, so whether this is
+                        # the account's address is unknown. That is a fault of
+                        # this run, not the student's setting: not sent, not
+                        # stamped, and asked again on the next run.
+                        errors.append(
+                            f"{sid}: account email lookup failed ({lookup_exc}) "
+                            "— not sent, retries next run"
+                        )
+                        await incidents.record(
+                            digest_key,
+                            title="Saved-search digest recipient could not be checked",
+                            summary="the auth service did not return the owning "
+                                    "account; the digest was not sent",
+                            detail={
+                                "error_category": "account_lookup_failed",
+                                "reason": str(lookup_exc),
+                                "stamped": False,
+                                "consequence": "digest retries on the next nightly run",
+                            },
+                            failure_state=(
+                                "timed_out"
+                                if isinstance(lookup_exc.__cause__, httpx.TimeoutException)
+                                else "failed"
+                            ),
+                            entity_id=sid,
+                        )
+                        continue
+                if account_email_by_device[device_id] != to_email:
+                    unverified_recipient += 1
                     continue
 
                 unsubscribe_url = _build_unsubscribe_url(sid)
@@ -923,6 +981,12 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
         # Sends whose outcome is unknown: not stamped, so they retry — and may
         # therefore duplicate if the original did land (see the W16 note above).
         "ambiguous": ambiguous,
+        # Rows held back because the auth service answered that digest_email
+        # is not the owning account's confirmed address (another address, an
+        # unconfirmed one, or no such account). Reported, not alerted on: it is
+        # a setting the student can change. A lookup that failed is not counted
+        # here; it is in `errors`, so the run reports "partial".
+        "unverified_recipient": unverified_recipient,
         "errors": errors[:10],
         # W16 ops-queue bookkeeping, mirroring the reminders cron. Non-zero
         # incident_errors means failures that did NOT reach the operator queue;

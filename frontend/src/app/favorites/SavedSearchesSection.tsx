@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { BellRing, Cloud, Mail, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import {
-  isValidDigestEmail,
+  digestWillSend,
   savedSearchToUrl,
   type SavedSearch,
   type SavedSearchDigest,
@@ -27,32 +27,35 @@ export interface SavedSearchesSectionProps {
   onApplyOptimisticClear: (id: string) => void;
   onRemove: (search: SavedSearch) => void;
   onDigestSave: (id: string, digest: SavedSearchDigest) => Promise<boolean>;
+  /** The signed-in account's confirmed email: the digest cron sends only
+   *  there. Null for a guest or an account without one — the digest cannot
+   *  be turned on. */
+  accountEmail?: string | null;
   t: TFunc;
 }
 
 interface DigestEditorProps {
   initial: SavedSearchDigest;
+  accountEmail: string | null;
   onSave: (digest: SavedSearchDigest) => Promise<boolean>;
   onClose: () => void;
   t: TFunc;
 }
 
-function DigestEditor({ initial, onSave, onClose, t }: DigestEditorProps) {
-  const [email, setEmail] = useState(initial.email);
+function DigestEditor({ initial, accountEmail, onSave, onClose, t }: DigestEditorProps) {
   const [optIn, setOptIn] = useState(initial.optIn);
-  const [error, setError] = useState<'invalid' | 'failed' | null>(null);
+  const [failed, setFailed] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Without a confirmed address the digest can be turned off, never on.
+  const blocked = optIn && !accountEmail;
 
   const handleSave = async () => {
-    if (optIn && !isValidDigestEmail(email)) {
-      setError('invalid');
-      return;
-    }
+    if (blocked) return;
     setSaving(true);
-    const ok = await onSave({ email: email.trim(), optIn });
+    const ok = await onSave({ email: accountEmail ?? initial.email, optIn });
     setSaving(false);
     if (!ok) {
-      setError('failed');
+      setFailed(true);
       return;
     }
     onClose();
@@ -64,28 +67,30 @@ function DigestEditor({ initial, onSave, onClose, t }: DigestEditorProps) {
         <input
           type="checkbox"
           checked={optIn}
-          onChange={(e) => { setOptIn(e.target.checked); setError(null); }}
-          className="mt-0.5 w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+          disabled={!accountEmail && !optIn}
+          onChange={(e) => { setOptIn(e.target.checked); setFailed(false); }}
+          className="mt-0.5 w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 disabled:opacity-40"
         />
         <span className="text-[13px] text-gray-700">
           {t('favorites.savedSearches.digestOptIn')}
         </span>
       </label>
-      <input
-        type="email"
-        value={email}
-        maxLength={254}
-        onChange={(e) => { setEmail(e.target.value); setError(null); }}
-        placeholder={t('favorites.savedSearches.digestEmailPlaceholder')}
-        aria-label={t('favorites.savedSearches.digestEmailAria')}
-        aria-invalid={error === 'invalid'}
-        className={`w-full px-3 py-2 rounded-lg border text-[13px] text-gray-800 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-indigo-500/30 ${error === 'invalid' ? 'border-red-300' : 'border-gray-200 focus:border-indigo-300'}`}
-      />
-      {error && (
+      {accountEmail ? (
+        <input
+          type="email"
+          value={accountEmail}
+          readOnly
+          aria-label={t('favorites.savedSearches.digestEmailAria')}
+          className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-[13px] text-gray-600 outline-none"
+        />
+      ) : (
+        <p className="text-[12px] text-gray-600">
+          {t('favorites.savedSearches.digestNeedsAccount')}
+        </p>
+      )}
+      {failed && (
         <p className="text-[12px] text-red-600">
-          {t(error === 'invalid'
-            ? 'favorites.savedSearches.digestEmailInvalid'
-            : 'favorites.savedSearches.digestSaveFailed')}
+          {t('favorites.savedSearches.digestSaveFailed')}
         </p>
       )}
       <p className="text-[12px] text-gray-500 leading-relaxed">
@@ -102,12 +107,60 @@ function DigestEditor({ initial, onSave, onClose, t }: DigestEditorProps) {
         <button
           type="button"
           onClick={handleSave}
-          disabled={saving}
+          disabled={saving || blocked}
           className="px-3 py-1.5 rounded-lg text-[12px] font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 transition-colors"
         >
           {t('favorites.savedSearches.digestSave')}
         </button>
       </div>
+    </div>
+  );
+}
+
+interface DigestNotSentNoteProps {
+  storedEmail: string;
+  accountEmail: string | null;
+  onSwitch: (digest: SavedSearchDigest) => Promise<boolean>;
+  t: TFunc;
+}
+
+/** An opted-in row the cron will not send: its stored address is not the
+ *  account's confirmed one, or there is no confirmed one. */
+function DigestNotSentNote({ storedEmail, accountEmail, onSwitch, t }: DigestNotSentNoteProps) {
+  const [saving, setSaving] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  const handleSwitch = async () => {
+    if (!accountEmail) return;
+    setSaving(true);
+    setFailed(false);
+    const ok = await onSwitch({ email: accountEmail, optIn: true });
+    setSaving(false);
+    if (!ok) setFailed(true);
+  };
+
+  return (
+    <div className="px-4 pb-3 -mt-1 space-y-1.5">
+      <p className="text-[12px] text-amber-700">
+        {accountEmail
+          ? t('favorites.savedSearches.digestNotSentOtherAddress', { email: storedEmail })
+          : t('favorites.savedSearches.digestNotSentNeedsAccount')}
+      </p>
+      {accountEmail && (
+        <button
+          type="button"
+          onClick={handleSwitch}
+          disabled={saving}
+          className="text-[12px] font-semibold text-indigo-700 hover:text-indigo-800 disabled:opacity-40"
+        >
+          {t('favorites.savedSearches.digestSwitchToAccount', { email: accountEmail })}
+        </button>
+      )}
+      {failed && (
+        <p className="text-[12px] text-red-600">
+          {t('favorites.savedSearches.digestSaveFailed')}
+        </p>
+      )}
     </div>
   );
 }
@@ -120,6 +173,7 @@ export function SavedSearchesSection({
   onApplyOptimisticClear,
   onRemove,
   onDigestSave,
+  accountEmail = null,
   t,
 }: SavedSearchesSectionProps) {
   const [editingDigestId, setEditingDigestId] = useState<string | null>(null);
@@ -177,7 +231,9 @@ export function SavedSearchesSection({
             const newCount = search.new_match_ids?.length ?? 0;
             const hasNew = newCount > 0;
             const digest = digests?.get(search.id);
-            const digestOn = !!digest?.optIn;
+            // Only a row the cron will actually send is shown as on.
+            const digestOn = digestWillSend(digest, accountEmail);
+            const digestNotSent = !!digest?.optIn && !digestOn;
             return (
               <li
                 key={search.id}
@@ -240,9 +296,18 @@ export function SavedSearchesSection({
                     <Trash2 className="w-4 h-4" aria-hidden="true" />
                   </button>
                 </div>
+                {digestNotSent && digest && (
+                  <DigestNotSentNote
+                    storedEmail={digest.email}
+                    accountEmail={accountEmail}
+                    onSwitch={(d) => onDigestSave(search.id, d)}
+                    t={t}
+                  />
+                )}
                 {editingDigestId === search.id && (
                   <DigestEditor
                     initial={digest ?? { email: '', optIn: false }}
+                    accountEmail={accountEmail}
                     onSave={(d) => onDigestSave(search.id, d)}
                     onClose={() => setEditingDigestId(null)}
                     t={t}

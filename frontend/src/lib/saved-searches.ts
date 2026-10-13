@@ -1,4 +1,4 @@
-import { getDeviceId, supabase } from './supabase';
+import { getDeviceId, supabase, type AuthState } from './supabase';
 import { isOwnerTokenValid, OwnerMismatchError, type OwnerToken } from './identity-owner';
 import type { DeadlineFilterValue } from './types';
 
@@ -237,6 +237,28 @@ const DIGEST_EMAIL_RE = /^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$/;
 export function isValidDigestEmail(value: string): boolean {
   const v = value.trim();
   return v.length > 0 && v.length <= 254 && DIGEST_EMAIL_RE.test(v);
+}
+
+/** The address a weekly digest can go to: the signed-in account's confirmed
+ *  email. Null for a guest, a signed-out visitor, or an address the account
+ *  has not confirmed; the digest cron sends to nothing else (push.py
+ *  _account_email). */
+export function confirmedAccountEmail(auth: AuthState): string | null {
+  if (auth.isAnonymous || !auth.user || !auth.email) return null;
+  if (!(auth.user.email_confirmed_at || auth.user.confirmed_at)) return null;
+  return isValidDigestEmail(auth.email) ? auth.email.trim().toLowerCase() : null;
+}
+
+/** True when the cron would send this row's digest: opted in, and stored for
+ *  the account's confirmed address (compared case-insensitively, as the cron
+ *  does). */
+export function digestWillSend(
+  digest: SavedSearchDigest | undefined,
+  accountEmail: string | null,
+): boolean {
+  return !!digest?.optIn
+    && !!accountEmail
+    && digest.email.trim().toLowerCase() === accountEmail.trim().toLowerCase();
 }
 
 /** Digest columns are read separately from listSavedSearches so an

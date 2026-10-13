@@ -34,6 +34,7 @@ import {
   type FilterPreset,
 } from '@/lib/filter-presets';
 import {
+  confirmedAccountEmail,
   listSavedSearchDigests,
   saveSearch,
   setSavedSearchDigest,
@@ -690,6 +691,7 @@ function ResultsContent() {
 
   const [helpOpen, setHelpOpen] = useState(false);
   const [digestAvailable, setDigestAvailable] = useState(false);
+  const [saveDialogAccountEmail, setSaveDialogAccountEmail] = useState<string | null>(null);
   const openHelp = useCallback(() => setHelpOpen(true), [setHelpOpen]);
 
   const { focusedIdx, setFocusedIdx } = useResultsKeyboardNav({
@@ -738,6 +740,7 @@ function ResultsContent() {
     // digest opt-in inside the dialog (graceful pre-migration degradation).
     const digests = await listSavedSearchDigests();
     setDigestAvailable(digests !== null);
+    setSaveDialogAccountEmail(confirmedAccountEmail(authState));
     setSaveDialogOpen(true);
   }, [openAuthModal]);
 
@@ -1187,6 +1190,7 @@ function ResultsContent() {
       {saveDialogOpen && (
         <SaveSearchDialog
           digestAvailable={digestAvailable}
+          accountEmail={saveDialogAccountEmail}
           onCancel={closeSaveDialog}
           onSave={handleSaveSearchSubmit}
           t={t}
