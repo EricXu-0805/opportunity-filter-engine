@@ -35,8 +35,12 @@ const KEY = STORAGE_KEYS.MATCH_RESULTS;
 // papers that are not his. The server has stopped serving them; a seven-day
 // local payload would keep rendering them under "Recent work" and keep feeding
 // them to a cold-email draft, which is the same false claim by a slower route.
+//
+// Bumped with attribution-v1: a page cached before it dropped every
+// `*_attribution` flag, so a restored card printed an inferred stipend as a
+// plain "Stipend" and a host-school city as the listing's location.
 const CACHE_VERSION =
-  'mvp-core-close-v1-contact-trust-v1-target-truth-v2-pubtrust-v3';
+  'mvp-core-close-v1-contact-trust-v1-target-truth-v2-pubtrust-v3-attribution-v1';
 // Exactly the wire this backend speaks — `MATCH_VIEW_CONTRACT_VERSION` in
 // backend/routes/matches.py — and nothing else. A version string nobody
 // emits is not forward compatibility; it is a promise accepted in advance
@@ -115,6 +119,13 @@ const OPP_FIELDS = [
   // W11: keep the stated faculty title for rank-aware profile copy, while
   // deadline_is_estimate keeps an estimated date from rendering as hard.
   'faculty_title', 'deadline_is_estimate',
+  // Where a value came from. The card and the CSV hedge a value flagged
+  // 'inferred' (and hide an 'institution' location); without these a cache
+  // hit renders the same record as though the program had stated it all.
+  'paid_attribution', 'international_attribution', 'citizenship_attribution',
+  'location_attribution', 'skills_attribution', 'keywords_attribution',
+  'majors_attribution', 'majors_basis', 'preferred_year_attribution',
+  'preferred_year_basis', 'deadline_note_attribution',
 ] as const;
 const ELIG_FIELDS = ['international_friendly', 'skills_required', 'skills_preferred'] as const;
 const APP_FIELDS = [
