@@ -193,8 +193,12 @@ export function OpportunityHeader({
                 nothing, indistinguishable from an on-site one. */}
             {isCurrentListing && opp.remote_option === 'remote' && <DetailBadge tone="gray">{t('badges.remoteOk')}</DetailBadge>}
             {isCurrentListing && opp.remote_option === 'hybrid' && <DetailBadge tone="gray">{t('badges.hybrid')}</DetailBadge>}
+            {/* Same rule as the pay badge: a welcome we inferred (a configured
+                program's answer, a keyword scan of the page) says so. */}
             {isCurrentListing && effectiveIntl === 'yes' && (
-              <DetailBadge tone="indigo" icon={<Globe className="w-3 h-3" />}>{t('badges.internationalFriendly')}</DetailBadge>
+              opp.international_attribution === 'inferred'
+                ? <DetailBadge tone="gray" icon={<Globe className="w-3 h-3" />}>{t('badges.internationalFriendlyInferred')}</DetailBadge>
+                : <DetailBadge tone="indigo" icon={<Globe className="w-3 h-3" />}>{t('badges.internationalFriendly')}</DetailBadge>
             )}
             {deadlineBadge}
             {RELEASE_SCOPE.professorSignals && (

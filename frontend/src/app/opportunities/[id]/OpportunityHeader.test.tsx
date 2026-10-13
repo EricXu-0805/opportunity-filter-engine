@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import type { Opportunity, ProfileData } from '@/lib/types';
+import { translate } from '@/i18n/translate';
 
 vi.mock('@/components/ResponsivenessBadge', () => ({
   default: () => <span>unaccepted-professor-signal</span>,
@@ -537,5 +538,32 @@ describe('OpportunityHeader — M03 location and pay provenance', () => {
   it('keeps a stated stipend', () => {
     renderHeader({ opp: { ...OPP, paid: 'stipend' } as Opportunity });
     expect(screen.getByText('badges.stipend')).toBeInTheDocument();
+  });
+
+  it('marks an international welcome we inferred, as the pay badge beside it is marked', () => {
+    // purdue-af71941ba814 (a configured program's answer) read "International
+    // friendly" here while the cards and the facts called it our inference.
+    const inferred = {
+      ...OPP,
+      eligibility: { international_friendly: 'yes' },
+      international_attribution: 'inferred',
+    } as unknown as Opportunity;
+    const { unmount } = renderHeader({ opp: inferred });
+    expect(screen.getByText('badges.internationalFriendlyInferred')).toBeInTheDocument();
+    expect(screen.queryByText('badges.internationalFriendly')).toBeNull();
+    unmount();
+    for (const [locale, label] of [['en', 'International friendly (inferred)'], ['zh', '国际友好（推断）']] as const) {
+      const { unmount: done } = renderHeader({ opp: inferred, t: (key: string) => translate(locale, key) });
+      expect(screen.getByText(label)).toBeInTheDocument();
+      done();
+    }
+  });
+
+  it('keeps a stated international welcome plain', () => {
+    renderHeader({
+      opp: { ...OPP, eligibility: { international_friendly: 'yes' } } as unknown as Opportunity,
+    });
+    expect(screen.getByText('badges.internationalFriendly')).toBeInTheDocument();
+    expect(screen.queryByText('badges.internationalFriendlyInferred')).toBeNull();
   });
 });
