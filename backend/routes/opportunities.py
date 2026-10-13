@@ -171,6 +171,35 @@ def _as_listed(value: object, facet: str, unstated: frozenset[str]) -> object:
     return f"our listing suggests {value} — not confirmed on the program page"
 
 
+_INFERRED = " (our inference, not stated by the program)"
+_INFERRED_RULE = (
+    f"A value marked \"{_INFERRED.strip()}\" was inferred by our pipeline: never present it as the "
+    "program's requirement or terms; say it is inferred and suggest confirming it on the program page."
+)
+
+
+def _as_known(value: object, facet: str, unstated: frozenset[str], flag: object) -> object:
+    """``value`` said as our listing's when it is an unstated configured value
+    (`_as_listed`), as our inference when the public payload flags it
+    ``inferred`` (a scan of the page, a source default), as stated otherwise."""
+    if facet in unstated:
+        return _as_listed(value, facet, unstated)
+    if flag != "inferred" or not isinstance(value, str) or value in _NO_VALUE:
+        return value
+    return f"{value}{_INFERRED}"
+
+
+def _location_as_known(opp: dict) -> object:
+    """A listing's location, or what it is when we did not read it off the posting.
+
+    ``institution`` is the host school's city, which says where the school is,
+    not where the work happens (the cards print no location for it)."""
+    location = opp.get("location", "unspecified")
+    if opp.get("location_attribution") == "institution":
+        return f"not stated (the host institution is in {location})"
+    return _as_known(location, "location", frozenset(), opp.get("location_attribution"))
+
+
 def _rolling_as_listed(opp: dict, unstated: frozenset[str]) -> str:
     """What the prompt says about rolling admissions.
 
@@ -756,16 +785,16 @@ def _build_chat_system_prompt(
         f"- Organization: {opp.get('organization', '')} {('(' + opp.get('department', '') + ')') if opp.get('department') else ''}".strip(),
         f"- Type: {'faculty contact profile' if faculty_profile else opp.get('opportunity_type', 'unknown')}",
         f"- PI / Lab: {opp.get('pi_name') or '—'} / {lab_or_program or '—'}",
-        f"- {'Faculty affiliation location' if faculty_profile else 'Location'}: {opp.get('location', 'unspecified')} (on-campus: {'unknown' if faculty_profile else _tri_state(opp.get('on_campus'))})",
+        f"- {'Faculty affiliation location' if faculty_profile else 'Location'}: {opp.get('location', 'unspecified') if faculty_profile else _location_as_known(opp)} (on-campus: {'unknown' if faculty_profile else _tri_state(opp.get('on_campus'))})",
         f"- Remote: {'unknown' if faculty_profile else opp.get('remote_option', 'unknown')}",
-        f"- Paid: {'unknown' if faculty_profile else _as_listed(opp.get('paid', 'unknown'), 'paid', unstated)}; compensation: {('—' if faculty_profile else _as_listed(opp.get('compensation_details') or '—', 'compensation', unstated))}",
+        f"- Paid: {'unknown' if faculty_profile else _as_known(opp.get('paid', 'unknown'), 'paid', unstated, opp.get('paid_attribution'))}; compensation: {('—' if faculty_profile else _as_known(opp.get('compensation_details') or '—', 'compensation', unstated, opp.get('compensation_attribution')))}",
         f"- Deadline: {('not confirmed (faculty profile; not rolling evidence)' if faculty_profile else (opp.get('deadline') or '—'))} (rolling: {'unknown' if faculty_profile else _rolling_as_listed(opp, unstated)})",
         f"- Start date: {('—' if faculty_profile else opp.get('start_date') or '—')}; duration: {('—' if faculty_profile else opp.get('duration') or '—')}",
-        f"- {'Related majors (not eligibility)' if faculty_profile else 'Majors' if 'majors' in unstated else 'Eligible majors'}: {_as_listed(', '.join(elig.get('majors') or []), 'majors', unstated) or '(unspecified)'}",
-        f"- {'Class years' if 'class_year' in unstated else 'Preferred years'}: {_as_listed(', '.join(stated_years), 'class_year', unstated) or '(unspecified)'}",
-        f"- Required skills: {', '.join(elig.get('skills_required') or []) or '(none specified)'}",
-        f"- International friendly: {_as_listed(elig.get('international_friendly', 'unknown'), 'international_students', unstated)}",
-        f"- Citizenship required: {_as_listed(_tri_state(elig.get('citizenship_required')), 'citizenship', unstated)}",
+        f"- {'Related majors (not eligibility)' if faculty_profile else 'Majors' if 'majors' in unstated or opp.get('majors_attribution') == 'inferred' else 'Eligible majors'}: {_as_known(', '.join(elig.get('majors') or []), 'majors', unstated, opp.get('majors_attribution')) or '(unspecified)'}",
+        f"- {'Class years' if 'class_year' in unstated or opp.get('preferred_year_attribution') == 'inferred' else 'Preferred years'}: {_as_known(', '.join(stated_years), 'class_year', unstated, opp.get('preferred_year_attribution')) or '(unspecified)'}",
+        f"- {'Skills mentioned' if opp.get('skills_attribution') == 'inferred' else 'Required skills'}: {_as_known(', '.join(elig.get('skills_required') or []), 'skills', unstated, opp.get('skills_attribution')) or '(none specified)'}",
+        f"- International friendly: {_as_known(elig.get('international_friendly', 'unknown'), 'international_students', unstated, opp.get('international_attribution'))}",
+        f"- Citizenship required: {_as_known(_tri_state(elig.get('citizenship_required')), 'citizenship', unstated, opp.get('citizenship_attribution'))}",
         (
             "- Outreach/application requirements: not confirmed"
             if faculty_profile
@@ -776,7 +805,7 @@ def _build_chat_system_prompt(
             if faculty_profile
             else f"- Apply URL: {app.get('application_url') or opp.get('url') or opp.get('source_url') or '—'}"
         ),
-        f"- Keywords: {', '.join(opp.get('keywords') or []) or '(none)'}",
+        f"- Keywords: {_as_known(', '.join(opp.get('keywords') or []), 'keywords', unstated, opp.get('keywords_attribution')) or '(none)'}",
     ]
     # Publication trust boundary: only works with explicitly verified
     # attribution may enter the Ask-AI context (_format_recent_works reads
@@ -785,6 +814,10 @@ def _build_chat_system_prompt(
     # them, so it cannot present them as this professor's papers. When no
     # verified works exist the prompt simply carries no publications line and
     # the model's own no-invention rule keeps it from claiming any.
+    if any(_INFERRED in line for line in lines):
+        # Beside the "our listing suggests" rule, which a value we inferred
+        # needs as much: the model would otherwise state it as the program's.
+        lines.insert(lines.index("OPPORTUNITY DATA:") - 1, _INFERRED_RULE)
     works_str = _format_recent_works(opp)
     if works_str:
         owner_label = "professor" if faculty_is_professor else "faculty member"
@@ -890,10 +923,10 @@ def _local_chat_fallback(opp: dict, message: str, unstated: frozenset[str] | Non
     bits: list[str] = [
         "AI chat is not configured on this server, so here are the structured facts for this opportunity:",
         f"- {opp.get('title', '')}",
-        f"- Type: {opp.get('opportunity_type', 'unknown')}; paid: {_as_listed(opp.get('paid', 'unknown'), 'paid', unstated)}; deadline: {opp.get('deadline') or 'not specified'}.",
-        f"- {'Majors' if 'majors' in unstated else 'Eligible majors'}: {_as_listed(', '.join(elig.get('majors') or []), 'majors', unstated) or 'unspecified'}.",
-        f"- Required skills: {', '.join(elig.get('skills_required') or []) or 'none listed'}.",
-        f"- International-friendly: {_as_listed(elig.get('international_friendly', 'unknown'), 'international_students', unstated)}; citizenship required: {_as_listed(_tri_state(elig.get('citizenship_required')), 'citizenship', unstated)}.",
+        f"- Type: {opp.get('opportunity_type', 'unknown')}; paid: {_as_known(opp.get('paid', 'unknown'), 'paid', unstated, opp.get('paid_attribution'))}; deadline: {opp.get('deadline') or 'not specified'}.",
+        f"- {'Majors' if 'majors' in unstated or opp.get('majors_attribution') == 'inferred' else 'Eligible majors'}: {_as_known(', '.join(elig.get('majors') or []), 'majors', unstated, opp.get('majors_attribution')) or 'unspecified'}.",
+        f"- {'Skills mentioned' if opp.get('skills_attribution') == 'inferred' else 'Required skills'}: {_as_known(', '.join(elig.get('skills_required') or []), 'skills', unstated, opp.get('skills_attribution')) or 'none listed'}.",
+        f"- International-friendly: {_as_known(elig.get('international_friendly', 'unknown'), 'international_students', unstated, opp.get('international_attribution'))}; citizenship required: {_as_known(_tri_state(elig.get('citizenship_required')), 'citizenship', unstated, opp.get('citizenship_attribution'))}.",
         f"- Apply at: {app.get('application_url') or opp.get('url') or 'see source'}.",
         "Set OPENAI_API_KEY, GEMINI_API_KEY, or OPENROUTER_API_KEY on the backend to enable AI chat.",
     ]

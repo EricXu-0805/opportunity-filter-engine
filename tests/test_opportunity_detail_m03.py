@@ -1954,3 +1954,43 @@ def test_pi_enricher_stamps_a_page_scanned_name(monkeypatch):
     pi_enricher.enrich_opportunities([opp])
     assert opp["pi_name"] == "Ada Lovelace"
     assert inferred_method(opp, "pi_name") == "rule:page_scan_name"
+
+
+def test_ask_ai_says_a_value_we_inferred_is_ours():
+    # M96: the public payload flags pay, eligibility, skills, topics and a
+    # location we did not read off the page, and the cards hedge them; Ask AI's
+    # prompt and its local fallback printed them as the program's terms.
+    record = _listing(
+        paid="yes", location="Example, ST", keywords=["optics"],
+        eligibility={"international_friendly": "yes", "citizenship_required": False, "skills_required": ["Python"]},
+    )
+    record["metadata"]["inferred_fields"] = {
+        "paid": "rule:detect_paid_from_text",
+        "eligibility.international_friendly": "rule:title_scan",
+        "eligibility.citizenship_required": "rule:title_scan",
+        "eligibility.skills_required": "llm:tagger",
+        "keywords": "derived:openalex",
+    }
+    payload, _ = _served(record)
+    assert payload["location_attribution"] == "institution"
+    ours = " (our inference, not stated by the program)"
+    prompt = opportunities_module._build_chat_system_prompt(payload, None, frozenset())
+    for line in (f"- Paid: yes{ours}; compensation: —",
+                 "- Location: not stated (the host institution is in Example, ST)",
+                 f"- Skills mentioned: Python{ours}",
+                 f"- International friendly: yes{ours}",
+                 f"- Citizenship required: no{ours}",
+                 f"- Keywords: optics{ours}",
+                 "was inferred by our pipeline: never present it as the program's requirement"):
+        assert line in prompt, line
+    assert "Required skills" not in prompt
+    fallback = opportunities_module._local_chat_fallback(payload, "Is it paid?", frozenset())
+    for line in (f"paid: yes{ours};", f"- Skills mentioned: Python{ours}.",
+                 f"International-friendly: yes{ours}; citizenship required: no{ours}."):
+        assert line in fallback, line
+
+    del record["metadata"]["inferred_fields"]
+    stated, _ = _served(_listing(**{k: v for k, v in record.items() if k != "location"}))
+    prompt = opportunities_module._build_chat_system_prompt(stated, None, frozenset())
+    assert "our inference" not in prompt
+    assert "- Paid: yes; compensation: —" in prompt and "- Required skills: Python" in prompt
