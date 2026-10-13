@@ -41,6 +41,7 @@ const RULES: Record<string, Rule> = {
     flag: /international_attribution/,
   },
   citizenship: { reads: /citizenship_required\s*(===\s*true|&&|\))/, flag: /citizenship_attribution/ },
+  compensation: { reads: /cleanCompensation\(\w+\.compensation_details\)/, flag: /compensation_attribution/ },
   location: { reads: /\b(opp|opportunity|o|s|m\.opportunity)\??\.location\b/, flag: /location_attribution/ },
   skills: { reads: /skills_required\??\.(map|join)\b|skills_required\)/, flag: /skills_attribution/ },
   keywords: { reads: /\bkeywords\??\.(map|slice|join)\b/, flag: /keywords_attribution/ },
@@ -104,18 +105,49 @@ describe('every site that shows an inferrable value reads its source flag', () =
   });
 });
 
+// The *_attribution / *_basis keys Opportunity declares (lib/types.ts).
+function declaredFlags(): string[] {
+  const types = SOURCES.get('lib/types.ts')!;
+  const body = types.slice(types.indexOf('export interface Opportunity {'));
+  return [...new Set(
+    [...body.slice(0, body.indexOf('\n}')).matchAll(/^\s*(\w+_(?:attribution|basis))\?:/gm)].map((m) => m[1]),
+  )].filter((key) => key !== 'publication_attribution_status');
+}
+
 describe('the cached results page keeps every source flag the wire declares', () => {
   // A results page restored from local storage renders through the same card
   // and CSV as a fresh one; a flag missing from the cache projection prints
   // the value bare on every cache hit for seven days.
   it('lists each *_attribution / *_basis key of Opportunity', () => {
-    const types = SOURCES.get('lib/types.ts')!;
-    const body = types.slice(types.indexOf('export interface Opportunity {'));
-    const declared = [...new Set(
-      [...body.slice(0, body.indexOf('\n}')).matchAll(/^\s*(\w+_(?:attribution|basis))\?:/gm)].map((m) => m[1]),
-    )].filter((key) => key !== 'publication_attribution_status');
+    const declared = declaredFlags();
     expect(declared.length).toBeGreaterThan(5);
     const cache = SOURCES.get('lib/match-cache.ts')!;
     expect(declared.filter((key) => !cache.includes(`'${key}'`))).toEqual([]);
+  });
+});
+
+describe('the saved résumé target carries and labels every flag of a value it saves', () => {
+  // The target snapshot is signed when the draft is saved and cannot be
+  // recomputed, so a flag left out of it is lost for that draft; the saved
+  // criteria page then prints the value bare.
+  const NOT_SAVED: Record<string, string> = {
+    keywords_attribution: 'research topics are not saved in the target',
+    majors_basis: 'majors_attribution carries the same answer into the target',
+    preferred_year_basis: 'preferred_year_attribution carries the same answer into the target',
+  };
+  const schema = SOURCES.get('lib/target-resume.ts')!;
+  const saved = [...schema.slice(schema.indexOf('const CRITERIA_FIELDS'))
+    .match(/attribution: \{([^}]*)\}/)![1].matchAll(/(\w+_attribution):/g)].map((m) => m[1]);
+  it('saves each declared flag, or names why it does not', () => {
+    expect(saved.length).toBeGreaterThan(5);
+    expect(declaredFlags().filter((key) => !saved.includes(key) && !NOT_SAVED[key])).toEqual([]);
+    expect(Object.keys(NOT_SAVED).filter((key) => saved.includes(key) || !declaredFlags().includes(key))).toEqual([]);
+  });
+  it('the server snapshot schema and the saved criteria page know each saved flag', () => {
+    const server = readFileSync(join(SRC, '../../backend/lib/target_resume_context.py'), 'utf8');
+    const page = SOURCES.get('components/TargetResumeCriteria.tsx')!;
+    const labelled = page.slice(page.indexOf('const inferredFields'));
+    expect(saved.filter((key) => !server.includes(`'${key}'`))).toEqual([]);
+    expect(saved.filter((key) => !labelled.includes(`'${key}'`))).toEqual([]);
   });
 });
