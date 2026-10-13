@@ -34,6 +34,7 @@ import {
   type FilterPreset,
 } from '@/lib/filter-presets';
 import {
+  confirmedAccountEmail,
   listSavedSearchDigests,
   saveSearch,
   setSavedSearchDigest,
@@ -739,7 +740,7 @@ function ResultsContent() {
     // digest opt-in inside the dialog (graceful pre-migration degradation).
     const digests = await listSavedSearchDigests();
     setDigestAvailable(digests !== null);
-    setSaveDialogAccountEmail(authState.email);
+    setSaveDialogAccountEmail(confirmedAccountEmail(authState));
     setSaveDialogOpen(true);
   }, [openAuthModal]);
 

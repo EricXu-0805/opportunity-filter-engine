@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
-import { isValidDigestEmail, type SavedSearchDigest } from '@/lib/saved-searches';
+import type { SavedSearchDigest } from '@/lib/saved-searches';
 import type { TFunc } from './types';
 
 // Mounted conditionally by the parent (same pattern as KeyboardHelpDialog)
@@ -11,8 +11,8 @@ export interface SaveSearchDialogProps {
   /** False while migration 013 is unapplied — the digest fields are hidden
    *  entirely and onSave always receives digest: null. */
   digestAvailable: boolean;
-  /** The signed-in account's email. Prefills the digest address: the digest
-   *  cron sends only to the account's confirmed address. */
+  /** The signed-in account's confirmed email: the digest cron sends only
+   *  there. Null for an account without one — the digest cannot be turned on. */
   accountEmail?: string | null;
   onCancel: () => void;
   onSave: (input: { name: string; digest: SavedSearchDigest | null }) => void;
@@ -27,9 +27,7 @@ export function SaveSearchDialog({
   t,
 }: SaveSearchDialogProps) {
   const [name, setName] = useState('');
-  const [email, setEmail] = useState(accountEmail ?? '');
   const [optIn, setOptIn] = useState(false);
-  const [emailError, setEmailError] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -45,14 +43,10 @@ export function SaveSearchDialog({
     e.preventDefault();
     const trimmedName = name.trim();
     if (!trimmedName) return;
-    if (digestAvailable && optIn && !isValidDigestEmail(email)) {
-      setEmailError(true);
-      return;
-    }
     onSave({
       name: trimmedName,
-      digest: digestAvailable && optIn
-        ? { email: email.trim(), optIn: true }
+      digest: digestAvailable && optIn && accountEmail
+        ? { email: accountEmail, optIn: true }
         : null,
     });
   };
@@ -107,26 +101,25 @@ export function SaveSearchDialog({
                 <input
                   type="checkbox"
                   checked={optIn}
-                  onChange={(e) => { setOptIn(e.target.checked); setEmailError(false); }}
-                  className="mt-0.5 w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  disabled={!accountEmail}
+                  onChange={(e) => setOptIn(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 disabled:opacity-40"
                 />
                 <span className="text-[13px] text-gray-700">
                   {t('results.saveSearchDialog.digestOptIn')}
                 </span>
               </label>
-              <input
-                type="email"
-                value={email}
-                maxLength={254}
-                onChange={(e) => { setEmail(e.target.value); setEmailError(false); }}
-                placeholder={t('results.saveSearchDialog.digestEmailPlaceholder')}
-                aria-label={t('results.saveSearchDialog.digestEmailLabel')}
-                aria-invalid={emailError}
-                className={`w-full px-3 py-2 rounded-lg border text-[13px] text-gray-800 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-indigo-500/30 ${emailError ? 'border-red-300' : 'border-gray-200 focus:border-indigo-300'}`}
-              />
-              {emailError && (
-                <p className="text-[12px] text-red-600">
-                  {t('results.saveSearchDialog.digestEmailInvalid')}
+              {accountEmail ? (
+                <input
+                  type="email"
+                  value={accountEmail}
+                  readOnly
+                  aria-label={t('results.saveSearchDialog.digestEmailLabel')}
+                  className="w-full px-3 py-2 rounded-lg border border-gray-200 bg-white/60 text-[13px] text-gray-600 outline-none"
+                />
+              ) : (
+                <p className="text-[12px] text-gray-600">
+                  {t('results.saveSearchDialog.digestNeedsAccount')}
                 </p>
               )}
               <p className="text-[12px] text-gray-500 leading-relaxed">

@@ -2,8 +2,9 @@
  * SaveSearchDialog interaction tests.
  *
  * The core invariant pinned here is the opt-in contract: onSave only ever
- * carries a digest object when the user explicitly checked the opt-in AND
- * supplied a valid email — everything else produces digest: null. Plus the
+ * carries a digest object when the user explicitly checked the opt-in, and
+ * then only for the signed-in account's confirmed email — the one address
+ * the digest cron sends to. Everything else produces digest: null. Plus the
  * pre-migration degradation: digestAvailable=false hides the digest block
  * entirely.
  */
@@ -39,7 +40,7 @@ function renderDialog(overrides: Partial<Parameters<typeof SaveSearchDialog>[0]>
 const nameInput = () =>
   screen.getByPlaceholderText('results.saveSearchDialog.namePlaceholder');
 const emailInput = () =>
-  screen.queryByPlaceholderText('results.saveSearchDialog.digestEmailPlaceholder');
+  screen.queryByLabelText('results.saveSearchDialog.digestEmailLabel');
 const optInCheckbox = () => screen.getByRole('checkbox');
 const saveButton = () =>
   screen.getByRole('button', { name: 'results.saveSearchDialog.save' });
@@ -68,45 +69,21 @@ describe('SaveSearchDialog', () => {
   });
 
   it('saves with digest: null when opt-in is unchecked (the default)', () => {
-    const { onSave } = renderDialog();
+    const { onSave } = renderDialog({ accountEmail: 'me@example.com' });
     expect(optInCheckbox()).not.toBeChecked();
 
     fireEvent.change(nameInput(), { target: { value: '  Paid ML  ' } });
-    // A typed email WITHOUT the checkbox must not opt the user in.
-    fireEvent.change(emailInput()!, { target: { value: 'user@example.com' } });
     fireEvent.click(saveButton());
 
     expect(onSave).toHaveBeenCalledWith({ name: 'Paid ML', digest: null });
   });
 
-  it('blocks save and shows an error when opted in with an invalid email', () => {
-    const { onSave } = renderDialog();
-    fireEvent.change(nameInput(), { target: { value: 'Paid ML' } });
-    fireEvent.click(optInCheckbox());
-    fireEvent.change(emailInput()!, { target: { value: 'not-an-email' } });
-    fireEvent.click(saveButton());
-
-    expect(onSave).not.toHaveBeenCalled();
-    expect(screen.getByText('results.saveSearchDialog.digestEmailInvalid')).toBeInTheDocument();
-  });
-
-  it('passes the digest through when opted in with a valid email', () => {
-    const { onSave } = renderDialog();
-    fireEvent.change(nameInput(), { target: { value: 'Paid ML' } });
-    fireEvent.click(optInCheckbox());
-    fireEvent.change(emailInput()!, { target: { value: ' user@example.com ' } });
-    fireEvent.click(saveButton());
-
-    expect(onSave).toHaveBeenCalledWith({
-      name: 'Paid ML',
-      digest: { email: 'user@example.com', optIn: true },
-    });
-  });
-
-  it('prefills the digest address with the signed-in account email', () => {
-    // The digest cron sends only to the account's confirmed address.
+  it('shows the account email read-only and sends the digest only there', () => {
+    // The digest cron sends only to the account's confirmed address, so that
+    // is the address shown, and it cannot be edited into another one.
     const { onSave } = renderDialog({ accountEmail: 'me@example.com' });
     expect(emailInput()).toHaveValue('me@example.com');
+    expect(emailInput()).toHaveAttribute('readonly');
 
     fireEvent.change(nameInput(), { target: { value: 'Paid ML' } });
     fireEvent.click(optInCheckbox());
@@ -118,16 +95,17 @@ describe('SaveSearchDialog', () => {
     });
   });
 
-  it('clears the email error once the user edits again', () => {
-    renderDialog();
+  it('cannot turn the digest on without a confirmed account email', () => {
+    const { onSave } = renderDialog({ accountEmail: null });
+    expect(optInCheckbox()).toBeDisabled();
+    expect(emailInput()).toBeNull();
+    expect(screen.getByText('results.saveSearchDialog.digestNeedsAccount')).toBeInTheDocument();
+
     fireEvent.change(nameInput(), { target: { value: 'Paid ML' } });
     fireEvent.click(optInCheckbox());
-    fireEvent.change(emailInput()!, { target: { value: 'bad' } });
     fireEvent.click(saveButton());
-    expect(screen.getByText('results.saveSearchDialog.digestEmailInvalid')).toBeInTheDocument();
 
-    fireEvent.change(emailInput()!, { target: { value: 'user@example.com' } });
-    expect(screen.queryByText('results.saveSearchDialog.digestEmailInvalid')).toBeNull();
+    expect(onSave).toHaveBeenCalledWith({ name: 'Paid ML', digest: null });
   });
 
   it('cancels via the close button and Escape', () => {
