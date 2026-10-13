@@ -31,6 +31,12 @@ export function getIntlBadge(
   t: (key: string) => string,
   attribution?: Attribution,
 ): BadgeResult<IntlBadgeVariant> {
+  // A welcome we inferred (a configured program's answer, a keyword scan of
+  // the page) is ours, not the program's: the detail page calls it a system
+  // inference, so the card says so too, in the verify tone, not a plain green.
+  if (friendly === 'yes' && attribution === 'inferred') {
+    return { label: t('badges.intlOkInferred'), variant: 'orange' };
+  }
   if (friendly === 'yes') return { label: t('badges.intlOk'), variant: 'green' };
   // A guessed restriction becomes the verify state, not a red no: 32 live
   // records say 'no' only because the tagger matched a federal-organisation

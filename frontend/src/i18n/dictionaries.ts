@@ -79,6 +79,7 @@ export const en = {
     // R70-E: i18n the intl-friendly badge (previously hardcoded English
     // in MatchCard.getIntlBadge + OpportunityCard inline ternary).
     intlOk: 'Intl OK',
+    intlOkInferred: 'Intl OK (inferred)',
     intlUsOnly: 'US Only',
     intlVerify: 'Verify',
     onCampus: 'On campus',
@@ -5329,6 +5330,7 @@ export const zh = {
     // R70-E: i18n 国际生友好徽章（之前在 MatchCard.getIntlBadge +
     // OpportunityCard 内联三元里硬编码英文）。
     intlOk: '接受国际生',
+    intlOkInferred: '接受国际生（推断）',
     intlUsOnly: '仅限美国',
     intlVerify: '需确认',
     onCampus: '校内',
