@@ -269,11 +269,21 @@ describe('KeywordsSection provenance', () => {
   it('tells the student when the topics were inferred rather than stated', () => {
     render(
       <KeywordsSection
-        opp={opp({}, { keywords: kw, keywords_attribution: 'inferred' })}
+        opp={opp({}, { source_type: 'faculty_research', keywords: kw, keywords_attribution: 'inferred' })}
         t={tFn}
       />,
     );
-    expect(screen.getByTestId('keywords-inferred-note')).toBeInTheDocument();
+    expect(screen.getByTestId('keywords-inferred-note')).toHaveTextContent('detail.keywordsInferred');
+  });
+
+  it("says a listing's inferred topics are our tags, not a publication record's", () => {
+    render(
+      <KeywordsSection
+        opp={opp({}, { source_type: 'summer_program', keywords: ['optics'], keywords_attribution: 'inferred' })}
+        t={tFn}
+      />,
+    );
+    expect(screen.getByTestId('keywords-inferred-note')).toHaveTextContent('detail.keywordsInferredListing');
   });
 
   it('says nothing extra when the professor stated them', () => {

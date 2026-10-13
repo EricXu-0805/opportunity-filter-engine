@@ -655,14 +655,27 @@ describe('OpportunityCard — values we did not read off the page say so', () =>
     expect(screen.queryByText('favorites.requiredSkills')).toBeNull();
   });
 
-  it('notes topics inferred from a publication record', () => {
+  it("says a listing's inferred topics are our tags, not a publication record's", () => {
+    // A keyword bank (cmu_uro_projects, uiuc_our_rss, nsf_reu) wrote these;
+    // no publication record is involved.
     renderCard({ ...OPEN, keywords: ['optics'], keywords_attribution: 'inferred' });
+    expect(screen.getByText('favorites.keywordsInferredListing')).toBeInTheDocument();
+    expect(screen.queryByText('favorites.keywordsInferred')).toBeNull();
+  });
+
+  it("notes a faculty row's topics inferred from a publication record", () => {
+    renderCard({
+      ...OPEN, source_type: 'faculty_research', record_kind: 'faculty_contact',
+      keywords: ['optics'], keywords_attribution: 'inferred',
+    });
     expect(screen.getByText('favorites.keywordsInferred')).toBeInTheDocument();
+    expect(screen.queryByText('favorites.keywordsInferredListing')).toBeNull();
   });
 
   it('adds no note to stated topics', () => {
     renderCard({ ...OPEN, keywords: ['optics'] });
     expect(screen.getByText('optics')).toBeInTheDocument();
     expect(screen.queryByText('favorites.keywordsInferred')).toBeNull();
+    expect(screen.queryByText('favorites.keywordsInferredListing')).toBeNull();
   });
 });

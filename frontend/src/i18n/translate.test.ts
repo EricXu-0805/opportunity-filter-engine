@@ -171,6 +171,21 @@ describe('dictionary parity', () => {
     }
   });
 
+  it('names where inferred topics came from by record kind, neutrally, in both locales', () => {
+    // A faculty row's inferred topics come from a matched publication record;
+    // a listing's from our tags, which no publication record produced.
+    for (const prefix of ['favorites', 'detail']) {
+      for (const locale of ['en', 'zh'] as const) {
+        const faculty = translate(locale, `${prefix}.keywordsInferred`);
+        const listing = translate(locale, `${prefix}.keywordsInferredListing`);
+        expect(faculty).toMatch(locale === 'en' ? /publication record/ : /论文发表记录/);
+        expect(listing).not.toMatch(/publication|论文/);
+        expect(listing).toMatch(locale === 'en' ? /our system/ : /我们的系统/);
+        expect(`${faculty}${listing}`).not.toMatch(/他|她/);
+      }
+    }
+  });
+
   it('dictionaries object exposes both locales', () => {
     expect(dictionaries.en).toBeDefined();
     expect(dictionaries.zh).toBeDefined();
