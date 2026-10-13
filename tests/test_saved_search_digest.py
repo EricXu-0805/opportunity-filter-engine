@@ -22,6 +22,7 @@ import time
 from copy import deepcopy
 from datetime import UTC, datetime, timedelta
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 
@@ -78,14 +79,16 @@ def _set_digest_env(monkeypatch):
 
 
 def _install_stubs(monkeypatch, *, rows, sends=None, patches=None,
-                   opportunities=None, profiles=None, accounts=None):
+                   opportunities=None, profiles=None, accounts=None, posts=None):
     """Stub the digest route's three exits: Supabase httpx traffic,
     the Resend send helper, and the opportunities data file.
 
     ``accounts`` maps a uid to the user GoTrue's admin API returns for it (an
-    absent uid is a 404). Unsupplied means each row's owner has confirmed the
-    address the row names, so every test written before the recipient check
-    still describes a row that may be sent."""
+    absent uid is a 404; an int is that error status; an exception is
+    raised, as a transport failure is). Unsupplied means each row's owner has
+    confirmed the address the row names, so every test written before the
+    recipient check still describes a row that may be sent. ``posts``
+    collects the incident RPC calls."""
     if accounts is None:
         accounts = {
             row.get("device_id"): {
@@ -127,13 +130,24 @@ def _install_stubs(monkeypatch, *, rows, sends=None, patches=None,
                 return _Resp(profiles or [])
             if "/auth/v1/admin/users/" in url:
                 account = accounts.get(url.rsplit("/", 1)[-1])
-                return _Resp(account) if account else _Resp({}, status_code=404)
+                if account is None:
+                    return _Resp({}, status_code=404)
+                if isinstance(account, BaseException):
+                    raise account
+                if isinstance(account, int):
+                    return _Resp({}, status_code=account)
+                return _Resp(account)
             return _Resp(rows)
 
         async def patch(self, url, **kwargs):
             if patches is not None:
                 patches.append({"url": url, **kwargs})
             return _Resp()
+
+        async def post(self, url, **kwargs):
+            if posts is not None:
+                posts.append({"url": url, **kwargs})
+            return _Resp(True)
 
     import httpx
     monkeypatch.setattr(httpx, "AsyncClient", _Client)
@@ -356,6 +370,47 @@ class TestDigestCronSend:
         assert sends == []
         # Held back, not consumed: nothing stamped, the queue kept.
         assert patches == []
+
+    @pytest.mark.parametrize("account", [
+        503,
+        429,
+        httpx.ConnectError("auth service unreachable"),
+        httpx.ReadTimeout("auth service timed out"),
+        # 200, but not a user object.
+        ["not", "a", "user"],
+    ], ids=["503", "429", "transport", "timeout", "malformed"])
+    def test_a_failed_account_lookup_is_a_run_error_not_a_student_setting(
+        self, monkeypatch, account,
+    ):
+        # The auth service not answering says nothing about the student's
+        # setting: the run reports it as an error and the row waits for the
+        # next run, unsent and unstamped.
+        _set_digest_env(monkeypatch)
+        sends: list = []
+        patches: list = []
+        posts: list = []
+        _install_stubs(
+            monkeypatch, rows=[_digest_row(digest_email="user@example.com")],
+            sends=sends, patches=patches, posts=posts,
+            accounts={_OWNER: account},
+        )
+        r = client.get("/api/cron/saved-searches/digest", headers=AUTH)
+        body = r.json()
+        assert body["status"] == "partial"
+        assert len(body["errors"]) == 1
+        assert "account email lookup failed" in body["errors"][0]
+        assert "user@example.com" not in body["errors"][0]
+        assert body["unverified_recipient"] == 0
+        assert body["sent"] == 0
+        assert sends == []
+        assert patches == []
+        incident = [p["json"] for p in posts if p["url"].endswith("/rpc/record_ops_incident")]
+        assert len(incident) == 1
+        assert incident[0]["p_kind"] == "notification_failure"
+        assert incident[0]["p_detail"]["error_category"] == "account_lookup_failed"
+        assert incident[0]["p_failure_state"] == (
+            "timed_out" if isinstance(account, httpx.TimeoutException) else "failed"
+        )
 
     def test_a_digest_email_matching_the_confirmed_account_address_is_sent(self, monkeypatch):
         _set_digest_env(monkeypatch)

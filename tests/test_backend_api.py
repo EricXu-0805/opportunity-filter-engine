@@ -4571,7 +4571,8 @@ def _set_push_env(monkeypatch):
 
 def _install_push_stubs(monkeypatch, *, interactions, subscriptions, webpush_impl=None,
                         calls=None, patches=None, deletes=None, account_email=None,
-                        account_unconfirmed=False, emails=None, target_fields=None):
+                        account_unconfirmed=False, account_status=None, emails=None,
+                        target_fields=None):
     """Stub httpx.AsyncClient + pywebpush.webpush for the reminders cron.
 
     The route fetches due interactions then push subscriptions from Supabase
@@ -4581,8 +4582,8 @@ def _install_push_stubs(monkeypatch, *, interactions, subscriptions, webpush_imp
     test simulate a successful delivery or a WebPushException, ``patches`` /
     ``deletes`` capture delivery bookkeeping writes, ``account_email`` seeds
     the auth-admin lookup (None -> 404, i.e. anonymous device; confirmed
-    unless ``account_unconfirmed``), and ``emails`` captures the Resend
-    fallback sends.
+    unless ``account_unconfirmed``; ``account_status`` makes it fail with that
+    status instead), and ``emails`` captures the Resend fallback sends.
     """
     import httpx
     import pywebpush
@@ -4613,6 +4614,8 @@ def _install_push_stubs(monkeypatch, *, interactions, subscriptions, webpush_imp
 
         async def get(self, url, **kwargs):
             if "/auth/v1/admin/users/" in url:
+                if account_status is not None:
+                    return _Resp({}, status_code=account_status)
                 if account_email is None:
                     return _Resp({}, status_code=404)
                 return _Resp({
@@ -5226,6 +5229,27 @@ class TestPushDeliveryBookkeeping:
         assert body["no_channel"] == 1
         assert emails == []
         # Not delivered, so the reminder stays set.
+        assert patches == []
+
+    def test_a_failed_account_lookup_is_a_row_error_not_a_missing_address(self, monkeypatch):
+        # The auth service did not answer: that says nothing about whether the
+        # account has an address, so it is not "no channel". The row fails,
+        # visibly, and keeps its date for the next run.
+        _set_push_env(monkeypatch)
+        monkeypatch.setenv("RESEND_API_KEY", "fake")
+        monkeypatch.setenv("RESEND_FROM_EMAIL", "from@example.com")
+        patches: list = []
+        emails: list = []
+        _install_push_stubs(
+            monkeypatch, interactions=[_DUE_ROW], subscriptions=[],
+            patches=patches, emails=emails, account_email="user@example.com",
+            account_status=503,
+        )
+        body = self._run().json()
+        assert body["row_errors"] == 1
+        assert body["no_channel"] == 0
+        assert body["emailed"] == 0
+        assert emails == []
         assert patches == []
 
     def test_no_email_fallback_without_resend_env(self, monkeypatch):

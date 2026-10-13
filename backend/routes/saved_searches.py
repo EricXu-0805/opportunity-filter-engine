@@ -47,6 +47,7 @@ from backend.routes.email import (
     classify_send_failure,
 )
 from backend.routes.push import (
+    AccountLookupError,
     _account_email,
     _IncidentSink,
     _required_env,
@@ -590,7 +591,8 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
     No email is ever sent without the explicit opt-in flag, and none to any
     address but the owning account's confirmed one: digest_email is what was
     typed when the digest was turned on, so a row naming another address is
-    held back and counted in ``unverified_recipient``.
+    held back and counted in ``unverified_recipient``. A row whose account
+    could not be looked up is an error of the run instead (status "partial").
     """
     _verify_cron_secret(authorization)
 
@@ -755,10 +757,39 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
                 # every run.
                 device_id = row.get("device_id") or ""
                 if device_id not in account_email_by_device:
-                    account_email_by_device[device_id] = (
-                        await _account_email(client, supabase_url, headers, device_id)
-                        if device_id else None
-                    )
+                    try:
+                        account_email_by_device[device_id] = (
+                            await _account_email(client, supabase_url, headers, device_id)
+                            if device_id else None
+                        )
+                    except AccountLookupError as lookup_exc:
+                        # The auth service did not answer, so whether this is
+                        # the account's address is unknown. That is a fault of
+                        # this run, not the student's setting: not sent, not
+                        # stamped, and asked again on the next run.
+                        errors.append(
+                            f"{sid}: account email lookup failed ({lookup_exc}) "
+                            "— not sent, retries next run"
+                        )
+                        await incidents.record(
+                            digest_key,
+                            title="Saved-search digest recipient could not be checked",
+                            summary="the auth service did not return the owning "
+                                    "account; the digest was not sent",
+                            detail={
+                                "error_category": "account_lookup_failed",
+                                "reason": str(lookup_exc),
+                                "stamped": False,
+                                "consequence": "digest retries on the next nightly run",
+                            },
+                            failure_state=(
+                                "timed_out"
+                                if isinstance(lookup_exc.__cause__, httpx.TimeoutException)
+                                else "failed"
+                            ),
+                            entity_id=sid,
+                        )
+                        continue
                 if account_email_by_device[device_id] != to_email:
                     unverified_recipient += 1
                     continue
@@ -950,9 +981,11 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
         # Sends whose outcome is unknown: not stamped, so they retry — and may
         # therefore duplicate if the original did land (see the W16 note above).
         "ambiguous": ambiguous,
-        # Rows held back because digest_email is not the owning account's
-        # confirmed address. Reported, not alerted on: it is a setting the
-        # student can change, not a failure of this run.
+        # Rows held back because the auth service answered that digest_email
+        # is not the owning account's confirmed address (another address, an
+        # unconfirmed one, or no such account). Reported, not alerted on: it is
+        # a setting the student can change. A lookup that failed is not counted
+        # here; it is in `errors`, so the run reports "partial".
         "unverified_recipient": unverified_recipient,
         "errors": errors[:10],
         # W16 ops-queue bookkeeping, mirroring the reminders cron. Non-zero

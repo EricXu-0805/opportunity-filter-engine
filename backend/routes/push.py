@@ -334,6 +334,16 @@ def _render_reminder_email(opportunity_id: str) -> tuple[str, str, str]:
     return subject, html, text
 
 
+class AccountLookupError(RuntimeError):
+    """The auth service did not say what the account's email is.
+
+    Not the same as an account without a confirmed address (None): a lookup
+    that failed says nothing about the account, so a caller treats it as a
+    fault of its own run and asks again on the next one. The message carries
+    only the HTTP status or the exception type, never an address.
+    """
+
+
 async def _account_email(client, supabase_url: str, headers: dict, uid: str) -> str | None:
     """The account's CONFIRMED email address, or None.
 
@@ -342,15 +352,27 @@ async def _account_email(client, supabase_url: str, headers: dict, uid: str) -> 
     mistyped or may belong to someone else, and the account has not shown it
     receives mail there. Confirmation is the same GoTrue pair
     supabase_auth.authenticated_identity reads for the user-facing sends.
+
+    None only when GoTrue answers: 404 (no such user), or a user with no
+    confirmed address. A transport error, any other error status, or a body
+    that is not a user object raises AccountLookupError.
     """
-    resp = await client.get(
-        f"{supabase_url}/auth/v1/admin/users/{uid}", headers=headers,
-    )
+    try:
+        resp = await client.get(
+            f"{supabase_url}/auth/v1/admin/users/{uid}", headers=headers,
+        )
+    except Exception as exc:  # noqa: BLE001 — re-raised as a lookup failure
+        raise AccountLookupError(type(exc).__name__) from exc
+    if resp.status_code == 404:
+        return None
     if resp.status_code >= 400:
-        return None
-    user = resp.json() or {}
+        raise AccountLookupError(f"HTTP {resp.status_code}")
+    try:
+        user = resp.json()
+    except Exception as exc:  # noqa: BLE001 — re-raised as a lookup failure
+        raise AccountLookupError(f"unreadable body ({type(exc).__name__})") from exc
     if not isinstance(user, dict):
-        return None
+        raise AccountLookupError("body is not a user object")
     if not (user.get("email_confirmed_at") or user.get("confirmed_at")):
         return None
     try:
@@ -762,6 +784,9 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
                 no_channel += 1
             elif not delivered and not row_ambiguous:
                 if device_id not in email_by_device:
+                    # A failed lookup raises AccountLookupError into the
+                    # per-row handler below: counted in row_errors, remind_at
+                    # kept, so the reminder is tried again on the next run.
                     email_by_device[device_id] = await _account_email(
                         client, supabase_url, headers, device_id,
                     )
@@ -798,9 +823,9 @@ async def reminders_cron(authorization: str | None = Header(default=None)):
                         )
                     except Exception as e:
                         # HTTPException (quota/Resend 4xx) AND transport
-                        # errors (httpx timeout in _send_via_resend or
-                        # _account_email) — the fallback is best-effort and
-                        # must never abort the cron (W14).
+                        # errors (httpx timeout in _send_via_resend) — the
+                        # fallback is best-effort and must never abort the
+                        # cron (W14).
                         failed += 1
                         outcome = classify_send_failure(e)
                         if outcome == _AMBIGUOUS_OUTCOME:
