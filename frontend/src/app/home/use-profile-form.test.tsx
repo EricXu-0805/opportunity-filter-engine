@@ -188,7 +188,7 @@ import {
   startDocumentForTests,
   type JournalOp,
 } from '@/lib/profile-journal';
-import { parseGitHubProfile } from '@/lib/api';
+import { parseGitHubProfile, type GitHubSkillEvidence } from '@/lib/api';
 import { HOME_SCHOOL_EVENT, STORAGE_KEYS } from '@/lib/storage-keys';
 import { decodeProfileWithKeys, encodeProfile } from '@/lib/profile-share';
 import { persistHomeSchool } from '@/lib/school-confirmation';
@@ -984,10 +984,13 @@ describe('useProfileForm — imported skills are candidates until the student se
     ...RESUME('', Object.keys(lines)),
     skill_evidence: Object.entries(lines).map(([skill, line]) => ({ skill, line })),
   });
-  function githubReturns(skills: string[]) {
+  function githubReturns(
+    skills: string[],
+    skill_evidence: GitHubSkillEvidence[] = skills.map((skill) => ({ skill, repo: 'engine', field: 'language', value: skill })),
+  ) {
     vi.mocked(parseGitHubProfile).mockReset();
     vi.mocked(parseGitHubProfile).mockResolvedValue({
-      username: 'octocat', extracted_skills: skills, topics: [], repo_count: 12, top_repos: [],
+      username: 'octocat', extracted_skills: skills, skill_evidence, topics: [], repo_count: 12, top_repos: [],
     });
   }
   async function importGitHub(result: Awaited<ReturnType<typeof readyForm>>) {
@@ -1013,10 +1016,27 @@ describe('useProfileForm — imported skills are candidates until the student se
     const result = await readyForm();
     await importGitHub(result);
     expect(result.current.profile.skills).toEqual([
-      { name: 'Python', level: 'beginner', source: 'github' },
-      { name: 'Rust', level: 'beginner', source: 'github' },
+      { name: 'Python', level: 'beginner', source: 'github', evidence: 'repo engine: language Python' },
+      { name: 'Rust', level: 'beginner', source: 'github', evidence: 'repo engine: language Rust' },
     ]);
     expect(result.current.profile.skills.some(skillLevelIsTheStudentsOwn)).toBe(false);
+  });
+
+  it('a GitHub skill carries the repo field that named it, in GitHub\'s own words', async () => {
+    // The skill name can be a mapping (a notebook repo becomes Python); the
+    // evidence is what GitHub actually says, so the student can judge it.
+    githubReturns(['PyTorch', 'Python', 'Rust'], [
+      { skill: 'PyTorch', repo: 'vision', field: 'topic', value: 'pytorch' },
+      { skill: 'Python', repo: 'thesis', field: 'language', value: 'Jupyter Notebook' },
+    ]);
+    const result = await readyForm();
+    await importGitHub(result);
+    expect(result.current.profile.skills).toEqual([
+      { name: 'PyTorch', level: 'beginner', source: 'github', evidence: 'repo vision: topic pytorch' },
+      { name: 'Python', level: 'beginner', source: 'github', evidence: 'repo thesis: language Jupyter Notebook' },
+      // Nothing to quote is not a reason to invent a line: it is left without.
+      { name: 'Rust', level: 'beginner', source: 'github' },
+    ]);
   });
 
   it('stays a beginner candidate through later imports, and keeps the level the student sets', async () => {
@@ -1027,7 +1047,7 @@ describe('useProfileForm — imported skills are candidates until the student se
     // The second source neither raises the first one nor replaces its quote.
     expect(result.current.profile.skills).toEqual([
       { name: 'Python', level: 'beginner', source: 'resume', evidence: LINE },
-      { name: 'Rust', level: 'beginner', source: 'github' },
+      { name: 'Rust', level: 'beginner', source: 'github', evidence: 'repo engine: language Rust' },
     ]);
 
     // SkillTags.cycleLevel's write: choosing a level IS the confirmation.
@@ -1041,7 +1061,7 @@ describe('useProfileForm — imported skills are candidates until the student se
     expect(python).toMatchObject({ level: 'experienced', confirmed: true });
     expect(skillLevelIsTheStudentsOwn(python)).toBe(true);
     const rust = result.current.profile.skills.find((skill) => skill.name === 'Rust')!;
-    expect(rust).toEqual({ name: 'Rust', level: 'beginner', source: 'github' });
+    expect(rust).toEqual({ name: 'Rust', level: 'beginner', source: 'github', evidence: 'repo engine: language Rust' });
   });
 
   it('an import never relabels a skill the student typed', async () => {

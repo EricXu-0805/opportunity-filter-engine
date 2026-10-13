@@ -153,7 +153,7 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
                   // "Relevant coursework: Introduction to Python" tells the
                   // student in one glance that this is not experience.
                   unsettled && skill.evidence
-                    ? t('skills.foundOn', { line: skill.evidence })
+                    ? t(skill.source === 'github' ? 'skills.foundOnGithub' : 'skills.foundOn', { line: skill.evidence })
                     : unsettled && skill.source
                       ? t(`skills.importedFrom.${skill.source}`)
                       : unsettled

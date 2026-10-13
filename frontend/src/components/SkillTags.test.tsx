@@ -101,6 +101,17 @@ describe('SkillTags — an imported skill shows where it came from', () => {
       .toContain('Relevant coursework: Introduction to Python');
   });
 
+  it('puts the GitHub repo field on the badge, labelled as inferred and not as a resume line', () => {
+    setup([{
+      name: 'Python', level: 'beginner', source: 'github',
+      evidence: 'repo thesis: language Jupyter Notebook',
+    }]);
+    const title = screen.getByRole('button', { name: 'Beginner' }).getAttribute('title');
+    expect(title).toContain('repo thesis: language Jupyter Notebook');
+    expect(title).toMatch(/Inferred from your GitHub/);
+    expect(title).not.toMatch(/resume/i);
+  });
+
   it('falls back to naming the source when no line was captured', () => {
     setup([{ name: 'Python', level: 'beginner', source: 'github' }]);
     const badge = screen.getByRole('button', { name: 'Beginner' });

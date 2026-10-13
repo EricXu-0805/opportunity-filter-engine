@@ -2992,12 +2992,21 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       if (profileRef.current.github_url?.trim() !== url) return null;
       githubImportedUrlRef.current = url;
       setGhStatus(t('home.form.githubImportSuccess', { skills: data.extracted_skills.length, repos: data.repo_count }));
-      // Inferred from a repo's language field, which says the code exists, not
-      // that the student wrote it or understands it. Marked and unclaimed until
-      // they raise the level themselves.
-      return data.extracted_skills.map(
-        (name) => ({ name, level: 'beginner' as const, source: 'github' as const }),
+      // Inferred from a repo's language or topic field, which says the code
+      // exists, not that the student wrote it or understands it. Marked and
+      // unclaimed until they set the level themselves.
+      // Each skill carries the field that named it — "repo engine: language
+      // Jupyter Notebook" — in the slot a resume line uses, so the student sees
+      // what GitHub said and not only the skill it was mapped to.
+      const evidenceFor = new Map(
+        (data.skill_evidence ?? []).map((e) => [e.skill, `repo ${e.repo}: ${e.field} ${e.value}`]),
       );
+      return data.extracted_skills.map((name) => ({
+        name,
+        level: 'beginner' as const,
+        source: 'github' as const,
+        ...(evidenceFor.get(name) ? { evidence: evidenceFor.get(name) } : {}),
+      }));
     } catch {
       if (request !== ghRequestRef.current) return null;
       if (!ownsScreen(origin)) return null;
