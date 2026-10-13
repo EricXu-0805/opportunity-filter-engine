@@ -297,6 +297,20 @@ describe('estimated deadlines are never stated as hard on a share card', () => {
   });
 });
 
+describe('an international welcome we inferred is not shared as a fact', () => {
+  // purdue-af71941ba814 (a configured program's answer) put "International OK"
+  // on the share image while the detail page called it our inference. A pill
+  // cannot carry the caveat, so it goes, as an unconfirmed date's countdown does.
+  it('drops the pill for an inferred yes and keeps it for a stated one', () => {
+    const listing = { source_type: 'campus_program' };
+    const now = Date.parse('2026-08-17T00:00:00Z');
+    expect(buildOpportunityOgFacts(
+      opportunity({ ...listing, international_attribution: 'inferred' } as never), now,
+    ).showInternational).toBe(false);
+    expect(buildOpportunityOgFacts(opportunity(listing as never), now).showInternational).toBe(true);
+  });
+});
+
 describe('location is an offer term on a listing and an identity fact on a person', () => {
   // The card copied `location` unconditionally. Two different lies came out of
   // that one line: a closed or inactive LISTING kept showing the job's old

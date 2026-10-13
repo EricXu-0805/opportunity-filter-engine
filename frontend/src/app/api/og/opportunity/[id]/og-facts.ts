@@ -104,8 +104,12 @@ export function buildOpportunityOgFacts(
     showPaid: isOpenListing
       && (opportunity.paid === 'yes' || opportunity.paid === 'stipend'),
     showOnCampus: isOpenListing && opportunity.on_campus === true,
+    // Only a welcome the page states. An inferred one (a configured
+    // program's answer, a keyword scan) gets no pill, as an unconfirmed date
+    // gets no countdown: a pill cannot carry the caveat.
     showInternational: isOpenListing
-      && opportunity.eligibility?.international_friendly === 'yes',
+      && opportunity.eligibility?.international_friendly === 'yes'
+      && opportunity.international_attribution !== 'inferred',
     daysUntilDeadline: deadlineDays,
     deadlineLabel: isOpenListing && opportunity.deadline
       ? deadlineConfirmed
