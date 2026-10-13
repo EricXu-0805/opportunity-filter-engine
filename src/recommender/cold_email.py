@@ -1,5 +1,4 @@
 import re
-from datetime import date
 
 from src.evidence import (
     faculty_contact_claims_unverified,
@@ -892,7 +891,7 @@ def _common_parts(
         coursework=coursework, lab_type=lab_type,
         # Publication trust boundary: only works with explicitly verified
         # attribution may personalize output — name-matched/legacy/unknown
-        # works never reach the template cite or the AI professor brief.
+        # works never reach the template or the AI professor brief.
         recent_works=verified_recent_works(opportunity),
         faculty_title=faculty_title, research_areas_raw=research_areas_raw,
         is_faculty=is_faculty,
@@ -1170,7 +1169,7 @@ def _build_balanced(p: dict) -> str:
 
     intro = f"My name is {p['name']}, and I am {_student_self(p, 'studying')}."
     intro += _p1_research_hook(p)
-    intro += _recent_work_cite(p)
+    intro += _chosen_paper_sentence(p)
 
     skills_para = _p2_skills_applied(p)
     work_para = _p3_concrete_work(p)
@@ -1186,7 +1185,7 @@ def _build_skills_focus(p: dict) -> str:
 
     intro = f"My name is {p['name']}, and I am {_student_self(p, 'major')}."
     intro += _p1_research_hook(p)
-    intro += _recent_work_cite(p)
+    intro += _chosen_paper_sentence(p)
 
     skills_para = ""
     skills = p["skills"]
@@ -1296,48 +1295,18 @@ def _p1_research_hook(p: dict) -> str:
     return " " + " ".join(sentences) if sentences else ""
 
 
-# A paper stops being "recent" some years after it is published. Three keeps
-# the word honest without discarding the citation, which stays useful at any
-# age — it is evidence the student looked the professor up.
-_RECENT_WORK_MAX_AGE_YEARS = 3
+def _chosen_paper_sentence(p: dict) -> str:
+    """The student's own paper-reading sentence, or nothing.
 
-
-def _is_recent_year(year: object) -> bool:
-    return isinstance(year, int) and year >= date.today().year - _RECENT_WORK_MAX_AGE_YEARS
-
-
-def _recent_work_cite(p: dict) -> str:
-    """One sentence citing the professor's newest usable paper — the template
-    path's counterpart to the AI prompt's recent-works block, so the free tier
-    also shows the student did their homework. ``p["recent_works"]`` comes
-    through the publication trust gate (``_common_parts`` →
-    ``verified_recent_works``), so "Your recent paper" is only ever said of a
-    work with explicitly verified attribution; name-matched/legacy candidates
-    never reach this sentence. "Caught my attention" claims only that they saw
-    the title (they did — it is on the profile they are emailing from), never
-    that they read the paper. OpenAlex
-    titles can carry markup (``[<sup>18</sup>F]FDG``) and can run to hundreds
-    of characters, so tags are stripped and only a 10-110 char title is cited;
-    none qualifying → no sentence."""
-    if p.get("contact_paper_reading"):
-        return f" {p['contact_paper_reading']}"
-    for w in p.get("recent_works", [])[:3]:
-        title = re.sub(r"<[^>]+>", "", str(w.get("title") or ""))
-        title = re.sub(r"\s+", " ", title).strip()
-        if not 10 <= len(title) <= 110:
-            continue
-        year = w.get("year")
-        yr = f" ({year})" if year else ""
-        # "recent" is a claim, and the newest paper we hold is not always a
-        # recent one: of the 2,581 professors in the first roster works
-        # harvest, 305 (12%) have nothing newer than three years, and the
-        # oldest cited paper is from 1995. Calling that recent — to its
-        # author, with the year printed right beside the word — reads as a
-        # machine that does not know what the word means. The paper is still
-        # worth citing; only the adjective has to go.
-        lead = "Your recent paper" if _is_recent_year(year) else "Your paper"
-        return f' {lead} "{title}"{yr} caught my attention.'
-    return ""
+    A paper is mentioned only when the student chose it (owner decision
+    2026-10-12, checklist M33). The template used to fall back to the newest
+    verified work — 'Your recent paper "<title>" (2026) caught my attention.'
+    — which states a reaction the student never reported. With no paper
+    chosen nothing is added: the opening ends on ``_p1_research_hook``'s
+    research-direction sentence when the record has a usable topic, area or
+    lab name, and otherwise on the student's interest or introduction."""
+    reading = p.get("contact_paper_reading")
+    return f" {reading}" if reading else ""
 
 
 def _p2_skills_applied(p: dict) -> str:
