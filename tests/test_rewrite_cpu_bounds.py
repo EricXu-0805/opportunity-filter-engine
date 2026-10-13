@@ -252,7 +252,7 @@ def test_the_event_loop_answers_while_the_selection_plan_reads_a_proposal_at_the
     original, rewrite = PLAN_SHAPES[shape]("Responsible for leading y. ")
     opportunity = {"id": "plan-target", "title": "Research Tools", "organization": "Example Lab",
                    "source_url": "https://example.edu/lab", "description_clean": "Research Python parsers.",
-                   "eligibility": {"skills_required": ["Python"]}, "source_type": "campus_program",
+                   "eligibility": {"skills_required": ["Python"]}, "source": "manual", "source_type": "campus_program",
                    "opportunity_type": "research", "metadata": {"is_active": True}}
     plan = plan_tests.Endpoint(TestClient(app), opportunity)
     monkeypatch.setattr(full_target_route, "load_opportunities_by_id", lambda: {opportunity["id"]: opportunity})

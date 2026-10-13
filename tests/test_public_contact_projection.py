@@ -987,6 +987,30 @@ class TestKeywordProvenanceReachesTheClient:
         out = project_public_opportunity_payload(card, record)
         assert out["keywords_attribution"] == "inferred"
 
+    @staticmethod
+    def _listing(source: str) -> dict:
+        return {"id": f"{source}-1", "title": "Undergraduate project", "source": source,
+                "source_type": "uiuc_research", "keywords": ["machine learning"], "metadata": {}}
+
+    @pytest.mark.parametrize("source", ["cmu_uro_projects", "uiuc_our_rss", "nsf_reu", "manual"])
+    def test_an_unstamped_listing_topic_is_labelled(self, source):
+        """A listing's topics are a keyword bank's, a category map's or a
+        config tag, stamped or not: the detail facts call them inferred, so
+        the flag every other surface reads must too."""
+        record = self._listing(source)
+        out = project_public_opportunity_payload(dict(record), record)
+        assert out["keywords_attribution"] == "inferred"
+
+    def test_the_sro_research_area_carries_no_label(self):
+        """The SRO's "Research Area" field is the one topic list a listing
+        source publishes."""
+        record = self._listing("uiuc_sro")
+        out = project_public_opportunity_payload(dict(record), record)
+        assert "keywords_attribution" not in out
+        record["metadata"] = {"inferred_fields": {"keywords": "rule:enricher"}}
+        out = project_public_opportunity_payload(dict(record), record)
+        assert out["keywords_attribution"] == "inferred"
+
 
 class TestInventedSkillsAreLabelledOnTheWire:
     """The detail page printed "REQUIRED SKILLS / Python / MATLAB" for a
@@ -994,10 +1018,10 @@ class TestInventedSkillsAreLabelledOnTheWire:
     The stamp existed in the data (#826); nothing put it on the wire."""
 
     @staticmethod
-    def _program(inferred: bool) -> dict:
+    def _program(inferred: bool, source: str = "manual") -> dict:
         record = {
             "id": "sro-3c378261", "title": "Cellular and Molecular Biology of Stress Summer Research Program",
-            "source_type": "summer_program", "organization": "University of Wisconsin-Madison",
+            "source": source, "source_type": "summer_program", "organization": "University of Wisconsin-Madison",
             "eligibility": {"skills_required": ["Python", "MATLAB"]},
             "metadata": {},
         }
@@ -1011,7 +1035,28 @@ class TestInventedSkillsAreLabelledOnTheWire:
         assert out["skills_attribution"] == "inferred"
 
     def test_a_stated_requirement_carries_no_label(self):
+        """Only a hand-curated row's list is the posting's own."""
         record = self._program(inferred=False)
+        out = project_public_opportunity_payload(dict(record), record)
+        assert "skills_attribution" not in out
+
+    @pytest.mark.parametrize("source", ["uiuc_sro", "nsf_reu", "campus_graph_research_programs", ""])
+    def test_an_unstamped_list_off_any_other_collector_is_labelled(self, source):
+        """Outside hand-curated rows every skill list is a keyword-bank or
+        tagger read of prose, stamped or not. The detail facts already said
+        "mentioned"; the cards, Ask AI and the saved résumé target read this
+        flag and printed "Required skills"."""
+        record = self._program(inferred=False, source=source)
+        out = project_public_opportunity_payload(dict(record), record)
+        assert out["skills_attribution"] == "inferred"
+
+    def test_a_preferred_list_alone_is_labelled(self):
+        """The saved résumé target shows the preferred list too."""
+        record = self._program(inferred=False, source="nsf_reu")
+        record["eligibility"] = {"skills_required": [], "skills_preferred": ["Linux"]}
+        out = project_public_opportunity_payload(dict(record), record)
+        assert out["skills_attribution"] == "inferred"
+        record["source"] = "manual"
         out = project_public_opportunity_payload(dict(record), record)
         assert "skills_attribution" not in out
 
@@ -1046,6 +1091,10 @@ class TestApproximateMajorsAreLabelledOnTheWire:
             record["metadata"] = {
                 "inferred_fields": {"eligibility.majors": "rule:research_area_bank"}
             }
+        else:
+            # Only a hand-curated row's list is the posting's own
+            # (`opportunity_detail.majors_basis`).
+            record["source"] = "manual"
         return record
 
     def test_a_bank_written_major_list_is_labelled(self):
@@ -1057,6 +1106,14 @@ class TestApproximateMajorsAreLabelledOnTheWire:
         record = self._program(inferred=False)
         out = project_public_opportunity_payload(dict(record), record)
         assert "majors_attribution" not in out
+
+    def test_an_unstamped_category_map_list_is_labelled(self):
+        # Simplify fills majors from its category map on every internship,
+        # with no stamp: the detail facts call it inferred, so does the flag.
+        record = {**self._program(inferred=False), "source": "simplify_internships"}
+        out = project_public_opportunity_payload(dict(record), record)
+        assert out["majors_attribution"] == "inferred"
+        assert "majors_basis" not in out
 
     def test_an_empty_list_is_not_labelled(self):
         record = self._program(inferred=True)

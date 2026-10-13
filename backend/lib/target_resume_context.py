@@ -40,9 +40,11 @@ CRITERIA_FIELDS = {
     'attribution': {
         'skills_attribution': str, 'majors_attribution': str, 'preferred_year_attribution': str,
         'international_attribution': str, 'citizenship_attribution': str, 'paid_attribution': str,
-        'deadline_note_attribution': str,
+        'deadline_note_attribution': str, 'location_attribution': str, 'compensation_attribution': str,
     },
 }
+# "institution": the location is the host school's city, not where the work is.
+_ATTRIBUTION_VALUES = {'location_attribution': (None, 'inferred', 'institution')}
 TRUTH_FIELDS = {
     'listing_state': str, 'reference_only': bool, 'actionable': bool,
     'accepting_state': str, 'reason_code': str,
@@ -115,7 +117,8 @@ def validate_target_context(value):
             invalid()
         for group, schema in CRITERIA_FIELDS.items():
             _fields(criteria[group], schema)
-        if any(flag not in (None, 'inferred') for flag in criteria['attribution'].values()):
+        if any(flag not in _ATTRIBUTION_VALUES.get(key, (None, 'inferred'))
+               for key, flag in criteria['attribution'].items()):
             invalid()
     return value
 
@@ -160,6 +163,11 @@ def public_target_context(public):
         truth = public['target_truth']
         criteria['availability']['target_truth'] = None if truth is None else _copy_fields(truth, TRUTH_FIELDS)
     for field in CRITERIA_FIELDS['attribution']:
+        # A faculty contact's location is its school's city by definition, and
+        # the pages show it as the professor's affiliation: saving its
+        # "institution" flag would only make every lab draft stale.
+        if field == 'location_attribution' and public.get('source_type') == 'faculty_research':
+            continue
         if field in public:
             criteria['attribution'][field] = deepcopy(public[field])
         elif field in metadata:

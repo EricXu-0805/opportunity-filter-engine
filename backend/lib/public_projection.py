@@ -13,7 +13,6 @@ from urllib.parse import unquote, urlsplit
 from backend.lib import opportunity_detail
 from src.evidence import (
     configured_value_unstated,
-    inferred_method,
     is_read_off_the_page,
     record_kind,
     target_truth,
@@ -817,10 +816,10 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     # derived from a matched OpenAlex author record, and that match is wrong
     # often enough — common surname, department field family too coarse to
     # separate two people — that presenting them as stated fact is a claim we
-    # cannot support. Absent means stated, which is what every non-enriched
-    # record has always been.
-    keywords_method = inferred_method(canonical_record, "keywords")
-    if keywords_method and projected.get("keywords"):
+    # cannot support. Absent means stated. A listing's topics are ours too
+    # unless it is an SRO row (`opportunity_detail.keywords_basis`, the rule
+    # the detail facts use): keyword banks, category maps and config tags.
+    if projected.get("keywords") and opportunity_detail.keywords_basis(canonical_record) is not None:
         projected["keywords_attribution"] = "inferred"
     # pi_name is the exception that gets removed rather than marked. It is
     # derived by taking the word before "Laboratory" or "Group" in the program
@@ -843,9 +842,15 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     # page prose that names none, and the detail page printed them under
     # "REQUIRED SKILLS". A wet-lab biology REU "required" Python and MATLAB
     # (#859 stopped the matcher turning them into a shortfall; this stops the
-    # page presenting them as the program's terms).
-    skills_method = inferred_method(canonical_record, "eligibility.skills_required")
-    if skills_method and (projected.get("eligibility") or {}).get("skills_required"):
+    # page presenting them as the program's terms). Stamped or not: outside
+    # hand-curated rows every skill list is our reading of prose
+    # (`opportunity_detail.skills_basis`, the rule the detail facts use). One
+    # flag covers both lists the saved résumé target shows.
+    skills = projected.get("eligibility")
+    if isinstance(skills, dict) and any(
+        skills.get(field) and opportunity_detail.skills_basis(canonical_record, f"eligibility.{field}") is not None
+        for field in ("skills_required", "skills_preferred")
+    ):
         projected["skills_attribution"] = "inferred"
 
     # Same rule for the major list. #862 stamped the SRO lists as ours and
@@ -855,19 +860,22 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
     # A campus program spec's majors are configuration too, unless the page
     # text the row carries states them: none of 12 such lists checked against
     # the live page on 2026-10-09 was stated there. Classified, not stamped —
-    # a stamp would move the major score.
-    majors_method = inferred_method(canonical_record, "eligibility.majors")
-    if (majors_method or configured_value_unstated(canonical_record, "majors")) and (
-        projected.get("eligibility") or {}
-    ).get("majors"):
-        projected["majors_attribution"] = "inferred"
-        # The detail page's note names where the list came from: the keyword
-        # bank for a stamped list, our config for a program spec's.
-        if not majors_method:
-            projected["majors_basis"] = "configured"
+    # a stamp would move the major score. Stamped or not, outside hand-curated
+    # rows the list is ours (Simplify fills it from its category map on all
+    # its internships): `opportunity_detail.majors_basis`, the rule the detail
+    # facts use.
+    majors = projected.get("eligibility")
+    if isinstance(majors, dict) and majors.get("majors"):
+        basis, _ = opportunity_detail.majors_basis(canonical_record)
+        if basis is not None:
+            projected["majors_attribution"] = "inferred"
+            # The detail page's note names where the list came from: our
+            # config for a program spec's, our pipeline for any other.
+            if basis == opportunity_detail.BASIS_CONFIGURED:
+                projected["majors_basis"] = "configured"
 
     # And for the deadline note a program spec typed into the config: the
-    # detail facts call it a collector default unless the page text states it
+    # detail facts call it configured unless the page text states it
     # (`opportunity_detail._timing`), and the saved résumé target that copies
     # the note needs the same answer to label it.
     metadata = projected.get("metadata")
@@ -927,6 +935,16 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
         or opportunity_detail.paid_basis(canonical_record, paid) not in (None, "program_policy")
     ):
         projected["paid_attribution"] = "inferred"
+    # The compensation prose a program spec typed into the config (a "$500"
+    # that turned out to be an expense grant) is our listing's too, unless its
+    # page text states it; the results card and the compare table print it
+    # beside the pay badge. NSF's template prose is program policy, unhedged
+    # like its pay.
+    compensation = projected.get("compensation_details")
+    if isinstance(compensation, str) and compensation.strip() and configured_value_unstated(
+        canonical_record, "compensation"
+    ):
+        projected["compensation_attribution"] = "inferred"
 
     # The host school's city is not where the work happens. Six collectors
     # write their campus city into `location` on every record — all 130k

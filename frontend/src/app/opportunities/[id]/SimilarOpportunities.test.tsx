@@ -120,3 +120,22 @@ describe('the similar rail only recommends what can be acted on', () => {
     expect(screen.queryByText('Dead one')).toBeNull();
   });
 });
+
+describe('pay we inferred is hedged on the similar rail as on the header', () => {
+  // Simplify's stipend is a collector default (its feed has no pay field): the
+  // header says "Pay not confirmed", and this rail said a plain green Stipend.
+  it.each([
+    ['stipend', 'badges.payUnconfirmed', 'badges.stipend'],
+    ['yes', 'badges.fundingMentioned', 'badges.paid'],
+  ])('an inferred %s says %s, never %s', (paid, hedged, plain) => {
+    render(<SimilarOpportunities
+      similar={[similar({ source_type: 'campus_program', paid, paid_attribution: 'inferred' })]} t={t} />);
+    expect(screen.getByText(hedged)).toBeInTheDocument();
+    expect(screen.queryByText(plain)).not.toBeInTheDocument();
+  });
+
+  it('a stated stipend keeps the plain badge', () => {
+    render(<SimilarOpportunities similar={[similar({ source_type: 'campus_program', paid: 'stipend' })]} t={t} />);
+    expect(screen.getByText('badges.stipend')).toBeInTheDocument();
+  });
+});

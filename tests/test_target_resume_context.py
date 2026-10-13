@@ -24,7 +24,8 @@ def opportunity():
     old = old_document()['target_snapshot']
     return {'id': old['opportunity_id'], 'title': old['title'], 'organization': old['organization'],
             'source_url': old['source_url'], 'description_clean': old['description'],
-            'source_type': 'campus_program', 'opportunity_type': 'research',
+            # A hand-curated row: its skill list is the posting's requirements.
+            'source': 'manual', 'source_type': 'campus_program', 'opportunity_type': 'research',
             'metadata': {'is_active': True}, 'eligibility': {'skills_required': old['requirements']},
             'application': {}}
 
@@ -110,7 +111,8 @@ FIELD_CASES = [
                                     'reference_only': True, 'accepting_state': None, 'reason_code': 'new-code'}),
     *[('attribution', field, 'inferred') for field in ('skills_attribution', 'majors_attribution',
       'preferred_year_attribution', 'international_attribution', 'citizenship_attribution', 'paid_attribution',
-      'deadline_note_attribution')],
+      'deadline_note_attribution', 'location_attribution', 'compensation_attribution')],
+    ('attribution', 'location_attribution', 'institution'),
 ]
 
 
@@ -185,6 +187,7 @@ def test_null_is_kept_and_missing_is_not_filled(group, key, value):
     lambda t: t['criteria']['availability'].update(target_truth={'actionable': 'yes'}),
     lambda t: t['criteria']['availability'].update(target_truth={'verified_at': '2026-09-24'}),
     lambda t: t['criteria']['attribution'].update(skills_attribution='verified'),
+    lambda t: t['criteria']['attribution'].update(compensation_attribution='institution'),
     lambda t: t['criteria']['application'].update(contact_email='PRIVATE@example.test'),
     lambda t: t['criteria']['eligibility'].update(eligibility_text_raw='PRIVATE'),
 ])
@@ -235,6 +238,34 @@ def test_attribute_top_null_precedes_metadata_and_inferred_stays_distinct():
     explicit_null = public_target_context(public)
     assert explicit_null['requirements'] == public['eligibility']['skills_required']
     assert explicit_null['criteria']['attribution']['skills_attribution'] is None
+
+
+def test_a_faculty_contacts_school_city_flag_is_not_saved():
+    # Its location is the school's city by definition, shown as the
+    # professor's affiliation; saving the flag would only make every lab
+    # draft saved before it stale (AI routes answer target_changed).
+    from backend.lib.target_resume_context import public_target_context
+    faculty = {**opportunity(), 'source_type': 'faculty_research', 'location': 'Urbana, IL',
+               'location_attribution': 'institution', 'compensation_details': '$500',
+               'compensation_attribution': 'inferred'}
+    saved = public_target_context(faculty)
+    assert 'location_attribution' not in saved['criteria']['attribution']
+    assert saved['criteria']['setting']['location'] == 'Urbana, IL'
+    assert saved['criteria']['attribution']['compensation_attribution'] == 'inferred'
+    assert saved == public_target_context({k: v for k, v in faculty.items() if k != 'location_attribution'})
+    listing = {**faculty, 'source_type': 'campus_program'}
+    assert public_target_context(listing)['criteria']['attribution']['location_attribution'] == 'institution'
+
+
+def test_a_faculty_draft_saved_before_the_location_flag_still_matches(endpoint):
+    client, opp = endpoint
+    opp.update(source='uiuc_faculty', source_type='faculty_research', location='Urbana, IL')
+    assert route._redact(opp)['location_attribution'] == 'institution'
+    doc = new_document(opp)
+    # The snapshot a draft saved before the flag existed holds.
+    assert 'location_attribution' not in doc['target_snapshot']['criteria']['attribution']
+    response = client.post(PATH, json=request(doc))
+    assert response.status_code == 200, response.text
 
 
 def test_public_projection_redacts_private_raw_tracking_and_retains_nulls():

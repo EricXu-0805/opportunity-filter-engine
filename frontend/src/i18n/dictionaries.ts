@@ -72,6 +72,7 @@ export const en = {
     fundingMentioned: 'Funding mentioned',
     stipend: 'Stipend',
     unpaid: 'Unpaid',
+    unpaidInferred: 'Unpaid (inferred)',
     // R70-D: distinct label for paid='unknown' so the 1262 records (65.9%
     // of dataset, mostly uiuc_faculty PI pages where compensation is simply
     // not advertised) don't get badged as the misleading "Unpaid".
@@ -79,12 +80,14 @@ export const en = {
     // R70-E: i18n the intl-friendly badge (previously hardcoded English
     // in MatchCard.getIntlBadge + OpportunityCard inline ternary).
     intlOk: 'Intl OK',
+    intlOkInferred: 'Intl OK (inferred)',
     intlUsOnly: 'US Only',
     intlVerify: 'Verify',
     onCampus: 'On campus',
     remoteOk: 'Remote OK',
     hybrid: 'Hybrid',
     internationalFriendly: 'International friendly',
+    internationalFriendlyInferred: 'International friendly (inferred)',
     pastDeadline: 'Past deadline',
     deadlinePassed: 'Deadline passed',
     dueInDays: 'Due in {count}d',
@@ -3215,6 +3218,7 @@ export const en = {
     preparationTimeline: 'Preparation timeline',
     hideDetails: 'Hide details',
     resumeRequired: 'Resume required',
+    compensationInferred: '{compensation} (inferred)',
     recLetterNeeded: 'Rec. letter needed',
     renovateResume: 'Renovate Resume',
     recentWork: 'Recent work',
@@ -3351,7 +3355,13 @@ export const en = {
         estimate: 'Estimated by us',
         program_policy: 'Based on the funding program’s published rules',
         collector_default: 'A default we apply to this source',
+        // Majors, class years and the deadline note use detail.majorsConfigured /
+        // yearConfigured / rollingInferred.
+        configured: 'From our listing’s entry for this program, not confirmed on the program page.',
         derived_from_source: 'Restated from a related source fact',
+        // Tags a person typed into our config or a manual row, and lists a
+        // collector maps from the source's category: read off no page.
+        system_tag: 'Tagged by our system',
       },
       sourceLink: 'Source page',
       observed: 'Observed {date}',
@@ -3442,8 +3452,10 @@ export const en = {
     contactVerifyHint: 'Collected from an official public source — double-check it there before sending.',
     locationInferred: '{location} (inferred)',
     keywordsInferred: 'Inferred from their publication record, not stated on their page — worth checking before you write to them.',
+    keywordsInferredListing: 'Topics tagged by our system, not listed by the program — a hint, not a requirement.',
     skillsInferred: 'Read from the posting text by our pipeline, not listed by the program — a hint, not a requirement.',
-    majorsInferred: 'Matched from the program’s research areas by our pipeline, not an eligibility list the program published.',
+    // Covers a keyword bank's match and a category map's list (Simplify).
+    majorsInferred: 'Tagged by our system, not an eligibility list the program published.',
     yearInferred: 'Read from the posting text by our pipeline, not a class-year restriction the program published.',
     majorsConfigured: 'From our listing’s major list, not confirmed on the program page.',
     yearConfigured: 'These come from our listing’s own list, not confirmed on the program page.',
@@ -3659,6 +3671,8 @@ export const en = {
     },
     requiredSkills: 'Required skills',
     skillsMentioned: 'Skills mentioned',
+    keywordsInferred: 'Topics inferred from their publication record, not stated on their page',
+    keywordsInferredListing: 'Topics tagged by our system, not listed by the program',
     compare: 'Compare',
     cancel: 'Cancel',
     confirmCompare: 'Compare',
@@ -3733,6 +3747,9 @@ export const en = {
     // overclaim, this is all we actually know.
     noDeadline: 'No fixed deadline',
     facultyOpeningUnconfirmed: 'Current opening and deadline not confirmed',
+    // Under a pay, eligibility or location cell our pipeline or our listing
+    // wrote rather than read off the program page.
+    inferredNote: 'Inferred by us, not stated on the program page.',
     deadlineEstimated: 'estimated',
     deadlineVerify: 'verify date',
     show: 'Show',
@@ -5341,18 +5358,21 @@ export const zh = {
     fundingMentioned: '提到有资助',
     stipend: '有津贴',
     unpaid: '无酬',
+    unpaidInferred: '无酬（推断）',
     // R70-D: 区分 paid='unknown' 与 'no'，避免把 1262 条（65.9%，多为
     // uiuc_faculty 的 PI 页面 — 实际是页面上未注明薪酬）误标为"无酬"。
     notDisclosed: '薪酬未公开',
     // R70-E: i18n 国际生友好徽章（之前在 MatchCard.getIntlBadge +
     // OpportunityCard 内联三元里硬编码英文）。
     intlOk: '接受国际生',
+    intlOkInferred: '接受国际生（推断）',
     intlUsOnly: '仅限美国',
     intlVerify: '需确认',
     onCampus: '校内',
     remoteOk: '支持远程',
     hybrid: '混合办公',
     internationalFriendly: '国际友好',
+    internationalFriendlyInferred: '国际友好（推断）',
     pastDeadline: '已过截止',
     deadlinePassed: '已过截止',
     dueInDays: '还剩 {count} 天',
@@ -8467,6 +8487,7 @@ export const zh = {
     preparationTimeline: '准备时间线',
     hideDetails: '收起详情',
     resumeRequired: '需要简历',
+    compensationInferred: '{compensation}（推断）',
     recLetterNeeded: '需要推荐信',
     renovateResume: '简历翻新',
     recentWork: '近作',
@@ -8587,7 +8608,10 @@ export const zh = {
         estimate: '由我们估算',
         program_policy: '依据资助项目公布的规定',
         collector_default: '我们对该来源使用的默认值',
+        // 专业、年级和截止说明用 detail.majorsConfigured / yearConfigured / rollingInferred。
+        configured: '来自我们列表里这个项目的条目，项目页面未确认。',
         derived_from_source: '由相关来源信息转述',
+        system_tag: '由我们的系统标注',
       },
       sourceLink: '来源页面',
       observed: '采集于 {date}',
@@ -8677,9 +8701,10 @@ export const zh = {
     contactSessionRequired: '暂时无法确认你的登录状态，请重新登录后查看邮箱。',
     contactVerifyHint: '采集自官方公开来源 —— 发送前请到来源页面再核对一次。',
     locationInferred: '{location}（推断）',
-    keywordsInferred: '根据他的论文发表记录推断，不是他主页上写的 —— 写信前值得自己核一下。',
+    keywordsInferred: '根据对方的论文发表记录推断，不是对方主页上写的 —— 写信前值得自己核一下。',
+    keywordsInferredListing: '由我们的系统标注的研究方向，不是项目列出的 —— 当作提示，不是要求。',
     skillsInferred: '由我们的系统从招募文本中推断，不是项目列出的要求 —— 当作提示，不是硬性条件。',
-    majorsInferred: '由我们的系统根据项目研究方向匹配，不是项目公布的专业要求。',
+    majorsInferred: '由我们的系统标注，不是项目公布的专业要求。',
     yearInferred: '由我们的系统从招募文本中推断，不是项目公布的年级限制。',
     majorsConfigured: '来自我们列表里的专业清单，项目页面未确认。',
     yearConfigured: '这些来自我们列表里的年级清单，项目页面未确认。',
@@ -8892,6 +8917,8 @@ export const zh = {
     },
     requiredSkills: '所需技能',
     skillsMentioned: '提到的技能',
+    keywordsInferred: '根据论文发表记录推断的研究方向，不是对方主页上写的',
+    keywordsInferredListing: '由我们的系统标注的研究方向，不是项目列出的',
     compare: '对比',
     cancel: '取消',
     confirmCompare: '开始对比',
@@ -8950,6 +8977,7 @@ export const zh = {
     // 我们实际知道的只有这些。
     noDeadline: '无固定截止日期',
     facultyOpeningUnconfirmed: '当前是否有名额及截止日期尚未确认',
+    inferredNote: '我们推断的，项目页面未写明。',
     deadlineEstimated: '估算日期',
     deadlineVerify: '请核实日期',
     show: '展开',

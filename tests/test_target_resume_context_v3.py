@@ -55,7 +55,8 @@ def endpoint(monkeypatch):
     snapshot.pop('snapshot_version')
     opp = {'id': 'research-target', 'school': 'uiuc', 'title': 'Research', 'organization': 'UIUC',
            'pi_name': snapshot['identity_name'], 'source_url': snapshot['record_source_url'],
-           'description_clean': 'Python research.', 'source_type': 'campus_program', 'opportunity_type': 'research',
+           'description_clean': 'Python research.', 'source': 'manual', 'source_type': 'campus_program',
+           'opportunity_type': 'research',
            'eligibility': {'skills_required': ['Python']}, 'metadata': {'is_active': True,
            'publication_attribution_status': 'verified_author_id', 'publication_author_id': snapshot['author_id'],
            'publication_institution_id': snapshot['institution_id'], 'works_gate': 3, 'research_snapshot': snapshot}}

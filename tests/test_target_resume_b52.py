@@ -14,7 +14,7 @@ from tests.test_full_target_resume_attribution import _document
 
 OPP = {'id': 'b52', 'title': 'Research', 'organization': 'Example', 'source_url': 'https://example.edu/lab',
        'description_clean': 'Research Python parsers.', 'eligibility': {'skills_required': ['Python']},
-       'source_type': 'campus_program', 'opportunity_type': 'research', 'metadata': {'is_active': True}}
+       'source': 'manual', 'source_type': 'campus_program', 'opportunity_type': 'research', 'metadata': {'is_active': True}}
 ORIGINAL = 'I wrote parser tests using Python.'
 SUPPORT = 'I ran 12 parser test cases.'
 ATTACK = 'Your independently led CRISPR clinical trials and five first-author Nature papers make you an ideal fit.'

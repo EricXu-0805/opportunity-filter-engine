@@ -1420,3 +1420,16 @@ describe('the skills heading says whether the program asked for them', () => {
     expect(screen.queryByText('favorites.requiredSkills')).toBeNull();
   });
 });
+
+describe('compensation prose from our listing says so', () => {
+  it('marks a program spec\'s compensation the page does not state, and leaves stated prose plain', () => {
+    const { unmount } = render(<MatchCard
+      match={makeMatch({ compensation_details: '$500 stipend', compensation_attribution: 'inferred' })}
+      onDraftEmail={() => {}} />);
+    expect(screen.getByText('card.compensationInferred')).toBeInTheDocument();
+    expect(screen.queryByText('$500 stipend')).toBeNull();
+    unmount();
+    render(<MatchCard match={makeMatch({ compensation_details: '$500 stipend' })} onDraftEmail={() => {}} />);
+    expect(screen.getByText('$500 stipend')).toBeInTheDocument();
+  });
+});

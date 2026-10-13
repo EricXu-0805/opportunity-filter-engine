@@ -1,16 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import contract from '@/lib/detail-fields.contract.json';
-import { readDetailFields } from '@/lib/detail-fields';
+import { translate } from '@/i18n/translate';
+import { DETAIL_FIELDS_VERSION, readDetailFields } from '@/lib/detail-fields';
 import { DetailFactsSection } from './DetailFactsSection';
 
 const t = (key: string) => key;
 
-function renderCase(name: string, isFaculty = false) {
+function renderCase(name: string, isFaculty = false, translateKey: (key: string) => string = t) {
   const c = contract.cases.find((x) => x.name === name);
   if (!c) throw new Error(`no contract case ${name}`);
   const fields = readDetailFields({ detail_fields: c.detail_fields });
-  return render(<DetailFactsSection fields={fields!} isFaculty={isFaculty} t={t} />);
+  return render(<DetailFactsSection fields={fields!} isFaculty={isFaculty} t={translateKey} />);
 }
 
 function row(field: string, facet: string, state?: string) {
@@ -32,7 +33,7 @@ describe('DetailFactsSection', () => {
   it('shows a configured campus program value as ours, not the source', () => {
     renderCase('curated_campus_program');
     const majors = row('eligibility', 'majors', 'inferred');
-    expect(within(majors).getByText('detail.facts.basis.collector_default')).toBeInTheDocument();
+    expect(within(majors).getByText('detail.majorsConfigured')).toBeInTheDocument();
     expect(within(majors).getByText('Biology, Chemistry')).toBeInTheDocument();
     expect(within(majors).queryByText('detail.facts.state.source')).not.toBeInTheDocument();
   });
@@ -53,7 +54,7 @@ describe('DetailFactsSection', () => {
       .toHaveAttribute('href', 'https://example.edu/programs/fellows/eligibility');
     // Class years the page contradicts stay ours and carry no quote.
     const years = row('eligibility', 'class_year', 'inferred');
-    expect(within(years).getByText('detail.facts.basis.collector_default')).toBeInTheDocument();
+    expect(within(years).getByText('detail.yearConfigured')).toBeInTheDocument();
     expect(screen.queryByTestId('fact-eligibility-class_year-quote')).not.toBeInTheDocument();
   });
 
@@ -65,6 +66,105 @@ describe('DetailFactsSection', () => {
     expect(screen.getByTestId('fact-eligibility-majors-quote-source')).toHaveTextContent(
       'detail.facts.observed 2026-09-02');
     expect(screen.getByTestId('fact-funding-paid-quote-source')).toHaveTextContent('detail.facts.observed 2026-09-01');
+  });
+
+  // purdue-7dc8e5d17382 (2026-10-12): the program's own major and class-year
+  // lists, from our config, read "A default we apply to this source" — a
+  // constant on every row, which they are not.
+  it.each([
+    ['en', 'System inference', 'From our listing’s major list, not confirmed on the program page.',
+      'These come from our listing’s own list, not confirmed on the program page.', 'A default we apply to this source'],
+    ['zh', '系统推断', '来自我们列表里的专业清单，项目页面未确认。', '这些来自我们列表里的年级清单，项目页面未确认。',
+      '我们对该来源使用的默认值'],
+  ] as const)('says a configured major or class-year list is our listing\'s (%s)', (locale, inferred, majorsNote, yearNote, sourceDefault) => {
+    const fields = readDetailFields({
+      detail_fields: {
+        version: DETAIL_FIELDS_VERSION,
+        fields: {
+          eligibility: {
+            state: 'inferred',
+            explicit: {},
+            inferred: {
+              majors: { value: ['Engineering', 'Computer Science'], basis: 'configured' },
+              class_year: { value: ['sophomore', 'junior'], basis: 'configured' },
+            },
+            unknown: ['min_gpa', 'international_students', 'citizenship', 'work_authorization_notes'],
+          },
+        },
+      },
+    });
+    render(<DetailFactsSection fields={fields!} isFaculty={false} t={(key) => translate(locale, key)} />);
+    const majors = row('eligibility', 'majors', 'inferred');
+    expect(within(majors).getByText(inferred)).toBeInTheDocument();
+    expect(within(majors).getByText('Engineering, Computer Science')).toBeInTheDocument();
+    expect(within(majors).getByTestId('fact-eligibility-majors-basis')).toHaveTextContent(majorsNote);
+    expect(within(row('eligibility', 'class_year', 'inferred')).getByTestId('fact-eligibility-class_year-basis'))
+      .toHaveTextContent(yearNote);
+    expect(screen.queryByText(sourceDefault)).not.toBeInTheDocument();
+  });
+
+  // purdue-af71941ba814 (2026-10-12): a program's own pay, intl answer,
+  // citizenship rule and deadline note, from our config, read "A default we
+  // apply to this source" like the stipend Simplify writes on every row.
+  it.each([
+    ['en', 'From our listing’s entry for this program, not confirmed on the program page.',
+      'From our listing’s deadline note, not confirmed on the program page.', 'A default we apply to this source'],
+    ['zh', '来自我们列表里这个项目的条目，项目页面未确认。', '来自我们列表里的截止说明，项目页面未确认。',
+      '我们对该来源使用的默认值'],
+  ] as const)('says a configured pay, intl, citizenship or deadline note is our listing\'s (%s)', (locale, entryNote, noteNote, sourceDefault) => {
+    const translateKey = (key: string) => translate(locale, key);
+    const { unmount } = renderCase('curated_campus_program', false, translateKey);
+    for (const [field, facet] of [
+      ['funding', 'paid'], ['funding', 'compensation'], ['eligibility', 'international_students'],
+    ] as const) {
+      expect(within(row(field, facet, 'inferred')).getByTestId(`fact-${field}-${facet}-basis`))
+        .toHaveTextContent(entryNote);
+    }
+    for (const facet of ['application_window', 'rolling']) {
+      expect(within(row('timing', facet, 'inferred')).getByTestId(`fact-timing-${facet}-basis`))
+        .toHaveTextContent(noteNote);
+    }
+    // The contact method every collector writes is a real source default.
+    expect(screen.getByTestId('fact-application_method-contact_method-basis')).toHaveTextContent(sourceDefault);
+    unmount();
+    const fields = readDetailFields({
+      detail_fields: {
+        version: DETAIL_FIELDS_VERSION,
+        fields: {
+          eligibility: {
+            state: 'inferred',
+            explicit: {},
+            inferred: { citizenship: { value: 'required', basis: 'configured' } },
+            unknown: ['class_year', 'majors', 'min_gpa', 'international_students', 'work_authorization_notes'],
+          },
+        },
+      },
+    });
+    render(<DetailFactsSection fields={fields!} isFaculty={false} t={translateKey} />);
+    expect(within(row('eligibility', 'citizenship', 'inferred')).getByTestId('fact-eligibility-citizenship-basis'))
+      .toHaveTextContent(entryNote);
+  });
+
+  // Simplify's majors and topics come from a map keyed on its category, and a
+  // program spec's topics are tags we typed: none was read off a page, and
+  // the facts said "Read from the page text by our pipeline".
+  it.each([
+    ['en', 'Tagged by our system', 'Read from the page text by our pipeline'],
+    ['zh', '由我们的系统标注', '由我们的程序从页面文字中读取'],
+  ] as const)('says tags we assign are tagged by our system, not read from the page (%s)', (locale, tagged, scanned) => {
+    const translateKey = (key: string) => translate(locale, key);
+    const { unmount } = renderCase('simplify_internship_template', false, translateKey);
+    expect(within(row('eligibility', 'majors', 'inferred')).getByTestId('fact-eligibility-majors-basis'))
+      .toHaveTextContent(tagged);
+    expect(within(row('research_content', 'research_areas', 'inferred'))
+      .getByTestId('fact-research_content-research_areas-basis')).toHaveTextContent(tagged);
+    // Skills a tagger read out of the text keep the reading label.
+    expect(within(row('required_skills', 'mentioned', 'inferred')).getByTestId('fact-required_skills-mentioned-basis'))
+      .toHaveTextContent(scanned);
+    unmount();
+    renderCase('curated_campus_program', false, translateKey);
+    expect(within(row('research_content', 'research_areas', 'inferred'))
+      .getByTestId('fact-research_content-research_areas-basis')).toHaveTextContent(tagged);
   });
 
   it('labels an inferred field "System inference" and says how we inferred it', () => {

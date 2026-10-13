@@ -31,6 +31,12 @@ export function getIntlBadge(
   t: (key: string) => string,
   attribution?: Attribution,
 ): BadgeResult<IntlBadgeVariant> {
+  // A welcome we inferred (a configured program's answer, a keyword scan of
+  // the page) is ours, not the program's: the detail page calls it a system
+  // inference, so the card says so too, in the verify tone, not a plain green.
+  if (friendly === 'yes' && attribution === 'inferred') {
+    return { label: t('badges.intlOkInferred'), variant: 'orange' };
+  }
   if (friendly === 'yes') return { label: t('badges.intlOk'), variant: 'green' };
   // A guessed restriction becomes the verify state, not a red no: 32 live
   // records say 'no' only because the tagger matched a federal-organisation
@@ -57,6 +63,11 @@ export function getPaidBadge(
   // no pay field, M03) — nothing was "mentioned", so say only what is true.
   if (attribution === 'inferred' && paid === 'stipend') {
     return { label: t('badges.payUnconfirmed'), variant: 'gray' };
+  }
+  // An "unpaid" we read off the prose or a configured program's answer is
+  // ours too: it keeps its tone but says it is inferred.
+  if (attribution === 'inferred' && paid === 'no') {
+    return { label: t('badges.unpaidInferred'), variant: 'gray' };
   }
   if (paid === 'stipend') return { label: t('badges.stipend'), variant: 'blue' };
   if (paid === 'yes') return { label: t('badges.paid'), variant: 'green' };

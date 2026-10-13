@@ -269,11 +269,21 @@ describe('KeywordsSection provenance', () => {
   it('tells the student when the topics were inferred rather than stated', () => {
     render(
       <KeywordsSection
-        opp={opp({}, { keywords: kw, keywords_attribution: 'inferred' })}
+        opp={opp({}, { source_type: 'faculty_research', keywords: kw, keywords_attribution: 'inferred' })}
         t={tFn}
       />,
     );
-    expect(screen.getByTestId('keywords-inferred-note')).toBeInTheDocument();
+    expect(screen.getByTestId('keywords-inferred-note')).toHaveTextContent('detail.keywordsInferred');
+  });
+
+  it("says a listing's inferred topics are our tags, not a publication record's", () => {
+    render(
+      <KeywordsSection
+        opp={opp({}, { source_type: 'summer_program', keywords: ['optics'], keywords_attribution: 'inferred' })}
+        t={tFn}
+      />,
+    );
+    expect(screen.getByTestId('keywords-inferred-note')).toHaveTextContent('detail.keywordsInferredListing');
   });
 
   it('says nothing extra when the professor stated them', () => {
@@ -437,5 +447,21 @@ describe('research snapshot details', () => {
   it('labels the legacy link as a search instead of a retrieved paper source', () => {
     render(<RecentWorksSection opp={opp({ publication_attribution_status: 'verified_author_id', recent_works: [{ title: 'Legacy', year: 2025 }] })} t={tFn} />);
     expect(screen.getByText('detail.researchLegacySearchNote')).toBeInTheDocument();
+  });
+});
+
+describe('AtAGlanceSection compensation from our listing', () => {
+  it('notes compensation prose the program page does not state', () => {
+    render(<AtAGlanceSection
+      opp={opp({}, { source_type: 'campus_program', compensation_details: '$500 stipend', compensation_attribution: 'inferred' })}
+      t={tFn} />);
+    expect(screen.getByTestId('compensation-inferred-note')).toHaveTextContent('detail.facts.basis.configured');
+  });
+
+  it('adds no note to stated compensation', () => {
+    render(<AtAGlanceSection
+      opp={opp({}, { source_type: 'campus_program', compensation_details: '$500 stipend' })} t={tFn} />);
+    expect(screen.getByText('$500 stipend')).toBeInTheDocument();
+    expect(screen.queryByTestId('compensation-inferred-note')).toBeNull();
   });
 });

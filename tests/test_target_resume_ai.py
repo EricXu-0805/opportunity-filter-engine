@@ -42,10 +42,12 @@ def make_doc(raw="Built a Python robot with a team of 3. I did not lead the proj
               "publications": [], "skills": [fact("skill", "Python")], "other_sections": [],
               "section_order": ["basics", "education", "activities", "publications", "skills"], "unmapped_ranges": []}
     snapshot = {"resume_text": raw, "experience_entries": entries, "resume_master": master}
+    # A hand-curated row: its skill list is the posting's requirements (any
+    # other row's is ours, `opportunity_detail.skills_basis`).
     target = route.authoritative_target({
         "id": "target", "title": "Research", "organization": "Example Lab", "source_url": "https://example.edu/lab",
         "description_clean": "Research robots 🧪 with Python.", "eligibility": {"skills_required": ["Python"]},
-        "source_type": "campus_program", "opportunity_type": "research", "metadata": {"is_active": True},
+        "source": "manual", "source_type": "campus_program", "opportunity_type": "research", "metadata": {"is_active": True},
     })
     doc = {"kind": "full_resume", "version": 1, "id": "draft", "opportunity_id": "target",
            "base": {"master_id": "master", "master_revision": 1, "source_signature": signature,
@@ -106,7 +108,7 @@ def endpoint(monkeypatch):
     target = doc["target_snapshot"]
     opp = {"id": "target", "title": target["title"], "organization": target["organization"], "source_url": target["source_url"],
            "description_clean": target["description"], "eligibility": {"skills_required": target["requirements"]},
-           "source_type": "campus_program", "opportunity_type": "research", "metadata": {"is_active": True}}
+           "source": "manual", "source_type": "campus_program", "opportunity_type": "research", "metadata": {"is_active": True}}
     monkeypatch.setattr(route, "load_opportunities_by_id", lambda: {"target": opp})
     monkeypatch.setattr(route, "is_configured", lambda: True)
     monkeypatch.setattr(engine.llm_budget, "exhausted", lambda: False)
@@ -160,6 +162,7 @@ def test_the_prompt_separates_stated_criteria_from_inferred_ones():
     assert "published constraints" not in system
     assert 'criteria.attribution as "inferred"' in system
     assert "not something the program page states" in system
+    assert 'location_attribution "institution" means' in system
 
 
 @pytest.mark.parametrize("mutation", [

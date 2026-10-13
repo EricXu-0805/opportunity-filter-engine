@@ -17,6 +17,10 @@ export interface Opp {
    *  detail page does. */
   paid_attribution?: 'inferred' | null;
   international_attribution?: 'inferred' | null;
+  skills_attribution?: 'inferred' | null;
+  keywords_attribution?: 'inferred' | null;
+  // 'institution': the host school's city, not where the work happens.
+  location_attribution?: 'institution' | 'inferred' | null;
   location?: string;
   url?: string;
   // The page the collector actually read. A historical record may carry only

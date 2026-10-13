@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ArrowRight, ExternalLink, Calendar, MapPin, Sparkles } from 'lucide-react';
 import type { Opportunity } from '@/lib/types';
 import { useT } from '@/i18n/client';
+import { getIntlBadge, getPaidBadge } from '@/lib/badge-utils';
 
 interface FellowshipCardProps {
   opp: Opportunity;
@@ -27,6 +28,10 @@ export default function FellowshipCard({ opp }: FellowshipCardProps) {
   const { t } = useT();
   const paid = opp.paid === 'yes' || opp.paid === 'stipend';
   const intl = opp.eligibility?.international_friendly === 'yes';
+  // Pay or a welcome we inferred keeps the result cards' hedged label in the
+  // neutral tone, not this page's own green "Paid" / "International OK".
+  const paidInferred = paid && opp.paid_attribution === 'inferred';
+  const intlInferred = intl && opp.international_attribution === 'inferred';
   const deadline = opp.deadline ?? null;
   // Only a positively estimated deadline gets the caveat. Absent precision
   // data stays silent — most of the catalog predates the flag, and wrapping
@@ -66,16 +71,24 @@ export default function FellowshipCard({ opp }: FellowshipCardProps) {
       )}
 
       <div className="flex flex-wrap gap-1.5 mb-3">
-        {paid && (
+        {paid && (paidInferred ? (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-50 text-gray-600 ring-1 ring-inset ring-gray-200">
+            {getPaidBadge(opp.paid, t, opp.paid_attribution).label}
+          </span>
+        ) : (
           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-200">
             {t('fellowships.badges.paid')}
           </span>
-        )}
-        {intl && (
+        ))}
+        {intl && (intlInferred ? (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-50 text-gray-600 ring-1 ring-inset ring-gray-200">
+            {getIntlBadge('yes', t, opp.international_attribution).label}
+          </span>
+        ) : (
           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-200">
             {t('fellowships.badges.intl')}
           </span>
-        )}
+        ))}
         {opp.opportunity_type === 'summer_program' && (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-200">
             <Sparkles className="w-3 h-3" aria-hidden="true" />

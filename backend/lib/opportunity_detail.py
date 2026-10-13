@@ -36,7 +36,7 @@ Two invariants the tests hold this module to:
 The wire shape is deliberately boring so a client cannot misread it::
 
     "detail_fields": {
-      "version": "m03-v1",
+      "version": "m03-v2",
       "fields": {
         "<field>": {
           "state": "source" | "inferred" | "unknown",
@@ -65,11 +65,12 @@ import re
 from collections.abc import Iterable
 
 # Module import, not a name import: the public projector imports this module
-# for `paid_basis`/`location_basis`, and a name import would fail on whichever
-# side of that cycle loads second.
+# for `paid_basis`/`location_basis`/`keywords_basis`/`skills_basis`, and a name
+# import would fail on whichever side of that cycle loads second.
 from backend.lib import public_projection
 from src.evidence import (
     CAMPUS_PROGRAM_SUFFIXES,
+    CONFIGURED_PROGRAM_METHOD,
     FACT_STATED,
     SRO_NOTE_WINDOW_RE,
     configured_fact,
@@ -79,7 +80,10 @@ from src.evidence import (
     record_kind,
 )
 
-DETAIL_FIELDS_VERSION = "m03-v1"
+# v2 adds the `configured` basis. A v1 client would read that basis as
+# unrecognised and show the facet as unknown; on a version it does not know it
+# falls back to the legacy sections, which already name a configured list.
+DETAIL_FIELDS_VERSION = "m03-v2"
 
 DETAIL_FIELD_NAMES = (
     "school",
@@ -131,7 +135,9 @@ BASIS_ENRICHMENT = "external_enrichment"  # matched third-party record (OpenAlex
 BASIS_ESTIMATE = "estimate"               # computed from another date/value
 BASIS_PROGRAM_POLICY = "program_policy"   # a published rule of the funding program
 BASIS_COLLECTOR_DEFAULT = "collector_default"  # a constant the collector writes on every row
+BASIS_CONFIGURED = "configured"           # this program's own value, typed into our config
 BASIS_DERIVED = "derived_from_source"     # restated from a different source fact
+BASIS_SYSTEM_TAG = "system_tag"           # a tag or category-map value we assign
 
 _STAMP_PREFIX_BASIS = {
     "rule": BASIS_TEXT_SCAN,
@@ -225,13 +231,17 @@ _CITIZENSHIP_FROM_FIELD = frozenset({"uiuc_sro"})
 _DETAIL_PAGE_SOURCES = frozenset({"uiuc_sro"})
 # Keywords that are the source's own topic list: the SRO "Research Area".
 _KEYWORDS_FROM_SOURCE = frozenset({"uiuc_sro"})
+# Collectors that write a listing's topics and majors through a map keyed on
+# the source's category (Simplify's "Software Engineering" becomes Computer
+# Science, Data Science, …): our tags, not words on the posting.
+_CATEGORY_MAP_SOURCES = frozenset({"simplify_internships"})
 
 # Sources whose eligibility lists (majors, skills) a person typed in from one
 # posting: manual rows. Every other collector fills them from a keyword bank
 # or a category map. Campus program specs (campus_graph, ucb_campus) were
 # treated as curated until a 2026-10-09 check of 31 live program pages found
 # none of 12 configured major lists on the page: they are configuration
-# (`is_configured_program`), reported as a collector default.
+# (`is_configured_program`), reported as `configured`.
 _CURATED_SOURCES = frozenset({"manual"})
 
 # Application requirement flags are only ever typed by a person for manual
@@ -268,14 +278,15 @@ def _configured(canonical: dict, facet: str) -> tuple[str | None, dict | None]:
 
     No basis and the page's own sentence, with where and when it was read,
     when the page text the row carries states the value
-    (`src.evidence.configured_fact`); a collector default when it does not, or
-    says otherwise. (None, None) on any other row.
+    (`src.evidence.configured_fact`); `configured` when it does not, or says
+    otherwise: that program's own entry in our config, not a constant on every
+    row of its source. (None, None) on any other row.
     """
     if not is_configured_program(canonical):
         return None, None
     fact = configured_fact(canonical, facet)
     if fact.state != FACT_STATED or not fact.quote:
-        return BASIS_COLLECTOR_DEFAULT, None
+        return BASIS_CONFIGURED, None
     return None, {
         "text": fact.quote,
         "source_url": public_projection.safe_public_http_url(fact.source_url),
@@ -284,7 +295,12 @@ def _configured(canonical: dict, facet: str) -> tuple[str | None, dict | None]:
 
 
 def _stamped_or_configured(canonical: dict, path: str, facet: str) -> tuple[str | None, dict | None]:
-    """(basis, quote): an inference stamp on ``path`` wins over the configuration."""
+    """(basis, quote) for a major or class-year list: an inference stamp on
+    ``path`` wins over the configuration.
+
+    An unstamped list a program spec carries is `configured`, the basis the
+    projector publishes as majors_basis / preferred_year_basis.
+    """
     stamped = _basis_for(canonical, path)
     if stamped is not None:
         return stamped, None
@@ -381,6 +397,11 @@ def _basis_for(canonical: dict, path: str) -> str | None:
     method = inferred_method(canonical, path)
     if method is None:
         return None
+    if method == CONFIGURED_PROGRAM_METHOD:
+        # The load-time stamp on a program spec's pay, intl answer or
+        # citizenship rule its page does not state: that program's own config
+        # (`_configured`), not a constant on every row of the source.
+        return BASIS_CONFIGURED
     prefix = method.split(":", 1)[0]
     # An unrecognised prefix is still an inference: it must never read as
     # source-backed just because this table has not heard of it yet.
@@ -483,7 +504,65 @@ def _professor_or_lab(payload: dict, canonical: dict) -> _Field:
     return field
 
 
-def _research_content(payload: dict, canonical: dict, kind: str, source: str) -> _Field:
+def keywords_basis(canonical: dict) -> str | None:
+    """Why a record's keywords are not the page's own topics, or None when they are.
+
+    Shared with the public projector, so ``keywords_attribution`` and the
+    detail facts' topic row cannot disagree.
+    """
+    stamped = _basis_for(canonical, "keywords")
+    if stamped is not None or record_kind(canonical) == "faculty_contact":
+        return stamped
+    source = str(canonical.get("source") or "")
+    if source in _KEYWORDS_FROM_SOURCE:
+        return None
+    # Listing keywords are ours on every other collector: Simplify expands
+    # its category through a map, campus program specs and manual rows carry
+    # tags a person typed (neither read off a page), NSF and the normalizer
+    # run a keyword bank over the text. Only the SRO's "Research Area" field
+    # is a topic list the source published.
+    if source in _CATEGORY_MAP_SOURCES or _is_curated_source(source) or is_configured_program(canonical):
+        return BASIS_SYSTEM_TAG
+    return BASIS_TEXT_SCAN
+
+
+def majors_basis(canonical: dict) -> tuple[str | None, dict | None]:
+    """(basis, quote) for a record's major list: why it is not the posting's,
+    or None and the page's sentence when it is.
+
+    Shared with the public projector, so ``majors_attribution`` and the detail
+    facts' majors row cannot disagree. An inference stamp wins; a program
+    spec's unstamped list is `configured` unless its page text states it.
+    """
+    basis, quote = _stamped_or_configured(canonical, "eligibility.majors", "majors")
+    if basis is not None or quote is not None:
+        return basis, quote
+    source = str(canonical.get("source") or "")
+    if _is_curated_source(source):
+        return None, None
+    if source in _CATEGORY_MAP_SOURCES:
+        return BASIS_SYSTEM_TAG, None
+    # Every other collector fills majors from a keyword bank or tagger read
+    # of prose, stamped or not.
+    return BASIS_TEXT_SCAN, None
+
+
+def skills_basis(canonical: dict, path: str) -> str | None:
+    """Why the skill list at ``path`` is not the posting's, or None when it is.
+
+    Shared with the public projector, so ``skills_attribution`` and the
+    detail facts' skills row cannot disagree.
+    """
+    stamped = _basis_for(canonical, path)
+    if stamped is None and not _is_curated_source(str(canonical.get("source") or "")):
+        # Outside hand-curated rows every skill list is a keyword-bank or
+        # tagger read of prose, stamped or not (the tagger's pre-stamp runs
+        # left ~2,400 unstamped lists on the internship corpus alone).
+        return BASIS_TEXT_SCAN
+    return stamped
+
+
+def _research_content(payload: dict, canonical: dict) -> _Field:
     field = _Field("research_content")
     metadata = _dict(payload.get("metadata"))
     stated = _text(metadata.get("research_areas_raw"))
@@ -492,13 +571,7 @@ def _research_content(payload: dict, canonical: dict, kind: str, source: str) ->
         stated = _text(areas) if isinstance(areas, str) else (", ".join(_str_list(areas)) or None)
     constants = _collector_constant_keywords(canonical)
     keywords = [k for k in _str_list(payload.get("keywords")) if k.casefold() not in constants]
-    keyword_basis = _basis_for(canonical, "keywords")
-    if keyword_basis is None and kind != "faculty_contact" and source not in _KEYWORDS_FROM_SOURCE:
-        # Listing keywords are ours on every other collector: Simplify expands
-        # its category through a map, NSF and the normalizer run a keyword
-        # bank, campus program specs carry tags a person typed. Only the SRO's
-        # "Research Area" field is a topic list the source published.
-        keyword_basis = BASIS_TEXT_SCAN
+    keyword_basis = keywords_basis(canonical)
     if stated:
         field.source("research_areas", stated)
     elif keywords and keyword_basis is None:
@@ -513,7 +586,6 @@ def _research_content(payload: dict, canonical: dict, kind: str, source: str) ->
 def _eligibility(payload: dict, canonical: dict, source: str) -> _Field:
     field = _Field("eligibility")
     elig = _dict(payload.get("eligibility"))
-    curated = _is_curated_source(source)
 
     years = [y.lower() for y in _str_list(elig.get("preferred_year"))]
     years = [y for y in years if y != "unknown"]
@@ -527,9 +599,7 @@ def _eligibility(payload: dict, canonical: dict, source: str) -> _Field:
 
     majors = _str_list(elig.get("majors"))
     if majors:
-        basis, quote = _stamped_or_configured(canonical, "eligibility.majors", "majors")
-        if basis is None and quote is None and not curated:
-            basis = BASIS_TEXT_SCAN
+        basis, quote = majors_basis(canonical)
         field.put("majors", majors, basis, quote)
 
     gpa = elig.get("min_gpa")
@@ -570,19 +640,13 @@ def _eligibility(payload: dict, canonical: dict, source: str) -> _Field:
     return field
 
 
-def _required_skills(payload: dict, canonical: dict, source: str) -> _Field:
+def _required_skills(payload: dict, canonical: dict) -> _Field:
     field = _Field("required_skills")
     elig = _dict(payload.get("eligibility"))
     required = _str_list(elig.get("skills_required"))
     preferred = _str_list(elig.get("skills_preferred"))
-    required_basis = _basis_for(canonical, "eligibility.skills_required")
-    preferred_basis = _basis_for(canonical, "eligibility.skills_preferred")
-    if not _is_curated_source(source):
-        # Outside hand-curated rows every skill list is a keyword-bank or
-        # tagger read of prose, stamped or not (the tagger's pre-stamp runs
-        # left ~2,400 unstamped lists on the internship corpus alone).
-        required_basis = required_basis or BASIS_TEXT_SCAN
-        preferred_basis = preferred_basis or BASIS_TEXT_SCAN
+    required_basis = skills_basis(canonical, "eligibility.skills_required")
+    preferred_basis = skills_basis(canonical, "eligibility.skills_preferred")
     if required and required_basis is None:
         field.source("required", required)
     if preferred and preferred_basis is None:
@@ -656,7 +720,7 @@ def paid_basis(canonical: dict, paid: object) -> str | None:
     template = _PAID_TEMPLATES.get(str(canonical.get("source") or ""))
     if template is not None and paid == template[0]:
         return template[1]
-    return BASIS_COLLECTOR_DEFAULT if configured_value_unstated(canonical, "paid") else None
+    return BASIS_CONFIGURED if configured_value_unstated(canonical, "paid") else None
 
 
 def location_basis(canonical: dict, location: object) -> str | None:
@@ -742,10 +806,11 @@ def _provenance(payload: dict, source: str, *, observed_key: str | None = None) 
     }
 
 
-# Bases no reading of the page produced: a value the collector writes itself,
-# or one a funding program's rules fix. A field holding only these was not
-# observed anywhere, whenever its page was last loaded.
-_UNOBSERVED_BASES = frozenset({BASIS_COLLECTOR_DEFAULT, BASIS_PROGRAM_POLICY})
+# Bases no reading of the page produced: a value the collector or our config
+# writes itself (a tag, a category-map entry), or one a funding program's
+# rules fix. A field holding only these was not observed anywhere, whenever
+# its page was last loaded.
+_UNOBSERVED_BASES = frozenset({BASIS_COLLECTOR_DEFAULT, BASIS_CONFIGURED, BASIS_PROGRAM_POLICY, BASIS_SYSTEM_TAG})
 
 
 def _field_provenance(built: dict, provenance: dict) -> dict:
@@ -766,16 +831,15 @@ def build_detail_fields(payload: dict, canonical: dict) -> dict:
     if not isinstance(payload, dict) or not isinstance(canonical, dict):
         raise TypeError("detail fields need a payload dict and its canonical record")
     source = str(canonical.get("source") or "")
-    kind = record_kind(canonical)
     base = _provenance(payload, source)
     research_provenance = _provenance(payload, source, observed_key="research_areas_verified_at")
     fields = (
         _school(payload),
         _department(payload, canonical, source),
         _professor_or_lab(payload, canonical),
-        _research_content(payload, canonical, kind, source),
+        _research_content(payload, canonical),
         _eligibility(payload, canonical, source),
-        _required_skills(payload, canonical, source),
+        _required_skills(payload, canonical),
         _timing(payload, canonical, source),
         _funding(payload, canonical, source),
         _location(payload, canonical, source),

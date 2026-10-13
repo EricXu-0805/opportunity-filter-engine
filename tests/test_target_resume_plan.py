@@ -71,7 +71,7 @@ class Endpoint:
 def endpoint(monkeypatch):
     opp = {"id": "plan-target", "title": "Research Tools", "organization": "Example Lab",
            "source_url": "https://example.edu/lab", "description_clean": "Research Python parsers 🧪 中文.",
-           "eligibility": {"skills_required": ["Python"]}, "source_type": "campus_program",
+           "eligibility": {"skills_required": ["Python"]}, "source": "manual", "source_type": "campus_program",
            "opportunity_type": "research", "metadata": {"is_active": True}}
     result = Endpoint(TestClient(main.app), opp)
     monkeypatch.setattr(route, "load_opportunities_by_id", lambda: {opp["id"]: opp})

@@ -51,6 +51,7 @@ may support advice; paper_abstract requires abstract_status present. These are r
 abstracts, never full text or proof of student accomplishments, paper reading, or recruiting.
 Use Unicode codepoint offsets, not UTF-16 offsets. Quotes must match exactly and cannot use current text.
 Target criteria constrain advice, not student achievements. Unknown criteria do not establish eligibility. A criterion marked "inferred" in criteria.attribution is our inference, not the program's stated term.
+location_attribution "institution" means the location is the host school's city, not where the work happens.
 Return rewrites: [] for every item: this plan proposes no new wording. student_direction is interest only,
 not student skills or accomplishments. line.text is editable and supplied only for layout/length.
 Nothing is applied or sent. Users must separately approve selection changes.

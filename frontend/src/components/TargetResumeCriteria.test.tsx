@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import golden from '../../../tests/fixtures/target-resume-context-v3-golden.json';
 import type { TargetResumeContextV3, TargetResumeContextV2 } from '@/lib/target-resume';
@@ -54,5 +54,44 @@ describe('saved research source labels', () => {
     value.research.status = 'stale'; render(<TargetResumeCriteria target={value} locale="en" />);
     expect(screen.getByText(/AI does not use these papers/)).toBeVisible();
     expect(screen.getByRole('link', { name: '机器人😀研究' })).toBeVisible();
+  });
+});
+
+describe('saved location and compensation labels', () => {
+  const withSetting = (attribution: TargetResumeContextV2['criteria']['attribution']): TargetResumeContextV2 => ({
+    ...target, criteria: { ...target.criteria, setting: { location: 'Champaign, IL', compensation_details: '$500' }, attribution } });
+  it.each(['en', 'zh'])('marks inferred compensation and location in %s', locale => {
+    render(<TargetResumeCriteria target={withSetting({ location_attribution: 'inferred', compensation_attribution: 'inferred' })} locale={locale} />);
+    expect(screen.getByText(locale === 'en' ? 'Location (inferred)' : '地点（推断）')).toBeVisible();
+    expect(screen.getByText(locale === 'en' ? 'Compensation details (inferred)' : '报酬说明（推断）')).toBeVisible();
+  });
+  it.each(['en', 'zh'])('says a host school\'s city is the school\'s, not where the work is, in %s', locale => {
+    render(<TargetResumeCriteria target={withSetting({ location_attribution: 'institution' })} locale={locale} />);
+    expect(screen.getByText(locale === 'en' ? 'Location (host school’s city)' : '地点（所在学校的城市）')).toBeVisible();
+    expect(screen.getByText(locale === 'en' ? 'Host school’s city' : '所在学校的城市')).toBeVisible();
+    expect(screen.getByText(locale === 'en' ? 'Compensation details' : '报酬说明')).toBeVisible();
+  });
+  it.each(['en', 'zh'])('says a faculty draft\'s location is the school\'s city from its saved record kind in %s', locale => {
+    const faculty = withSetting({});
+    faculty.criteria.availability = { record_kind: 'faculty_contact' };
+    render(<TargetResumeCriteria target={faculty} locale={locale} />);
+    expect(screen.getByText(locale === 'en' ? 'Location (host school’s city)' : '地点（所在学校的城市）')).toBeVisible();
+    cleanup();
+    render(<TargetResumeCriteria target={{ ...faculty, criteria: { ...faculty.criteria, availability: { record_kind: 'listing' } } }}
+      locale={locale} />);
+    expect(screen.getByText(locale === 'en' ? 'Location' : '地点')).toBeVisible();
+  });
+});
+
+describe('saved preferred skills label', () => {
+  const withPreferred = (attribution: TargetResumeContextV2['criteria']['attribution']): TargetResumeContextV2 => ({
+    ...target, criteria: { ...target.criteria, eligibility: { skills_preferred: ['Linux'] }, attribution } });
+  it.each(['en', 'zh'])('marks a preferred list the skills flag says we read off the page in %s', locale => {
+    render(<TargetResumeCriteria target={withPreferred({ skills_attribution: 'inferred' })} locale={locale} />);
+    expect(screen.getByText(locale === 'en' ? 'Preferred skills (inferred)' : '加分技能（推断）')).toBeVisible();
+  });
+  it('leaves a curated row\'s preferred list unmarked', () => {
+    render(<TargetResumeCriteria target={withPreferred({ skills_attribution: null })} locale="en" />);
+    expect(screen.getByText('Preferred skills')).toBeVisible();
   });
 });

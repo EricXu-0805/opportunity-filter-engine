@@ -26,17 +26,27 @@ function FellowshipPreviewCard({
   labelDeadline,
   labelPaid,
   labelIntl,
+  labelPaidInferred,
+  labelIntlInferred,
+  labelEstimated,
 }: {
   opp: Opportunity;
   labelDeadline: string;
   labelPaid: string;
   labelIntl: string;
+  labelPaidInferred: string;
+  labelIntlInferred: string;
+  labelEstimated: string;
 }) {
   const isExternal = typeof opp.url === 'string' && /^https?:\/\//i.test(opp.url);
   const href = isExternal ? (opp.url as string) : `/opportunities/${opp.id}`;
   const deadline = formatDeadline(opp.deadline);
   const paid = opp.paid === 'yes';
   const intl = opp.eligibility?.international_friendly === 'yes';
+  // Pay read off the prose or a welcome we inferred says so, in gray, as the
+  // result cards do; an estimated date says so, as every other date does.
+  const paidInferred = opp.paid_attribution === 'inferred';
+  const intlInferred = opp.international_attribution === 'inferred';
 
   const cardClasses = 'group block rounded-2xl bg-white border border-gray-100 shadow-[0_1px_6px_rgba(0,0,0,0.04)] hover:shadow-[0_4px_16px_rgba(0,0,0,0.08)] transition-all duration-300 p-4 h-full';
 
@@ -53,20 +63,25 @@ function FellowshipPreviewCard({
       )}
       <div className="flex flex-wrap gap-1.5 mb-2">
         {paid && (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-medium">
-            {labelPaid}
+          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
+            paidInferred ? 'bg-gray-100 text-gray-600' : 'bg-emerald-50 text-emerald-700'
+          }`}>
+            {paidInferred ? labelPaidInferred : labelPaid}
           </span>
         )}
         {intl && (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[10px] font-medium">
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${
+            intlInferred ? 'bg-gray-100 text-gray-600' : 'bg-indigo-50 text-indigo-700'
+          }`}>
             <Globe className="w-2.5 h-2.5" aria-hidden="true" />
-            {labelIntl}
+            {intlInferred ? labelIntlInferred : labelIntl}
           </span>
         )}
       </div>
       {deadline && (
         <p className="text-[11px] text-gray-500">
           {labelDeadline}: <span className="text-gray-600 font-medium">{deadline}</span>
+          {opp.deadline_is_estimate === true && ` · ${labelEstimated}`}
         </p>
       )}
     </>
@@ -153,6 +168,9 @@ export default function FeaturedFellowships() {
               labelDeadline={t('home.featured.deadlineLabel')}
               labelPaid={t('home.featured.paid')}
               labelIntl={t('home.featured.intl')}
+              labelPaidInferred={t('badges.fundingMentioned')}
+              labelIntlInferred={t('badges.intlOkInferred')}
+              labelEstimated={t('badges.estimated')}
             />
           ))}
         </div>

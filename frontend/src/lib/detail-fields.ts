@@ -14,7 +14,7 @@
  * ineligible or "no deadline".
  */
 
-export const DETAIL_FIELDS_VERSION = 'm03-v1';
+export const DETAIL_FIELDS_VERSION = 'm03-v2';
 
 export const DETAIL_FIELD_NAMES = [
   'school',
@@ -59,7 +59,14 @@ export const INFERENCE_BASES = [
   'estimate',
   'program_policy',
   'collector_default',
+  // A campus program's own value typed into our config, which the page text
+  // the row carries does not state (m03-v2): its majors, class years, pay,
+  // compensation, intl answer, citizenship rule, deadline note and rolling.
+  'configured',
   'derived_from_source',
+  // A tag typed into our config or a manual row, or a list mapped from the
+  // source's category (Simplify's topics and majors): read off no page.
+  'system_tag',
 ] as const;
 export type InferenceBasis = typeof INFERENCE_BASES[number];
 

@@ -181,6 +181,27 @@ describe('FeaturedFellowships', () => {
     expect(screen.queryByText('home.featured.intl')).toBeNull();
   });
 
+  it('says pay and a welcome we inferred are ours, not the plain badges', async () => {
+    mockGetFeatured.mockResolvedValue({
+      opportunities: [makeOpp({ paid_attribution: 'inferred', international_attribution: 'inferred' })],
+      total: 1,
+    });
+    render(<FeaturedFellowships />);
+    await waitFor(() => expect(screen.getByText('badges.fundingMentioned')).toBeInTheDocument());
+    expect(screen.getByText('badges.intlOkInferred')).toBeInTheDocument();
+    expect(screen.queryByText('home.featured.paid')).toBeNull();
+    expect(screen.queryByText('home.featured.intl')).toBeNull();
+  });
+
+  it('marks an estimated deadline as estimated', async () => {
+    mockGetFeatured.mockResolvedValue({
+      opportunities: [makeOpp({ deadline_is_estimate: true })],
+      total: 1,
+    });
+    render(<FeaturedFellowships />);
+    await waitFor(() => expect(screen.getByText(/badges\.estimated/)).toBeInTheDocument());
+  });
+
   it('renders the deadline label and formatted date', async () => {
     mockGetFeatured.mockResolvedValue({
       opportunities: [makeOpp({ deadline: FAR_FUTURE_DEADLINE_ISO })],
