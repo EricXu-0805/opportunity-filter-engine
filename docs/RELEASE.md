@@ -421,7 +421,7 @@ Blueprint.
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | optional | Read only as a fallback for `VAPID_PUBLIC_KEY`. |
 | `GITHUB_TOKEN` | optional | GitHub profile imports use the unauthenticated limit of 60 requests per hour, shared by every student behind Render's egress IP. |
 | `SENTRY_DSN`, `SENTRY_ENVIRONMENT`, `SENTRY_RELEASE`, `SENTRY_TRACES_SAMPLE_RATE` | optional | Errors are not reported to Sentry. |
-| `RENDER_GIT_COMMIT`, `OFE_RELEASE_SHA`, `RENDER`, `OFE_ENVIRONMENT` | optional | `/api/health` reports `release_sha: null` and `environment: "unknown"`. The release record then cannot bind the backend (UNVERIFIED). CORS also grants the `localhost:3000` and `127.0.0.1:3000` development origins unless `RENDER` is true or `OFE_ENVIRONMENT` is `production`. Render sets `RENDER_GIT_COMMIT` and `RENDER` itself. |
+| `RENDER_GIT_COMMIT`, `OFE_RELEASE_SHA`, `RENDER`, `OFE_ENVIRONMENT` | optional | `/api/health` reports `release_sha: null` and `environment: "unknown"`. The release record then cannot bind the backend (UNVERIFIED). CORS also grants the `localhost:3000` and `127.0.0.1:3000` development origins unless `RENDER` is `true`, `1` or `yes`, or `OFE_ENVIRONMENT` is `production`; both are matched in any letter case. Render sets `RENDER_GIT_COMMIT` and `RENDER` itself. |
 
 ### Data refresh (GitHub Actions `refresh-data.yml` and the collector CLIs)
 
