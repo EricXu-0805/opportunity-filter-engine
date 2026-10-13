@@ -49,7 +49,7 @@
                 ]
               },
               "international_students": {
-                "basis": "collector_default",
+                "basis": "configured",
                 "value": "yes"
               },
               "majors": {
@@ -76,11 +76,11 @@
             "explicit": {},
             "inferred": {
               "compensation": {
-                "basis": "collector_default",
+                "basis": "configured",
                 "value": "$5,000"
               },
               "paid": {
-                "basis": "collector_default",
+                "basis": "configured",
                 "value": "stipend"
               }
             },
@@ -175,11 +175,11 @@
             },
             "inferred": {
               "application_window": {
-                "basis": "collector_default",
+                "basis": "configured",
                 "value": "Applications reviewed on a rolling basis"
               },
               "rolling": {
-                "basis": "collector_default",
+                "basis": "configured",
                 "value": true
               }
             },

@@ -119,11 +119,11 @@ Rules that never bend:
 - `is_rolling` decides nothing — rolling needs a source `deadline_note`;
 - a campus program spec (`campus_graph` / `ucb_campus` config,
   `src.evidence.is_configured_program`) is configuration: its pay,
-  compensation, intl answer, citizenship and deadline note are
-  `collector_default`, and its majors and class years, the program's own
-  lists, are `configured` (a 2026-10-09 check of 31 live program pages
-  found 10 of 33 configured facets stated there), except a value the page
-  text the row carries states. That text is the excerpt after "From the
+  compensation, majors, class years, intl answer, citizenship and deadline
+  note, that program's own entry, are `configured`, stamped
+  (`default:configured_program`) or not (a 2026-10-09 check of 31 live
+  program pages found 10 of 33 configured facets stated there), except a
+  value the page text the row carries states. That text is the excerpt after "From the
   program page:" in its description (read at the row's `source_url`, observed
   at `last_verified`) and the passages the condition capture kept from the
   row's page (`contact_instruction_sources`, each with its own URL and

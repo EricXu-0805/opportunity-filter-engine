@@ -38,11 +38,15 @@ const LIST_VALUE_KEYS: Record<string, Record<string, string>> = {
   },
 };
 
-// A program's own major or class-year list, typed into our config: the note
-// the legacy eligibility section gives the same list (`majors_basis`).
+// A program's own value, typed into our config: the note the legacy sections
+// give the same list or deadline note (`majors_basis`,
+// `deadline_note_attribution`). Its pay, intl answer and citizenship rule take
+// the generic `detail.facts.basis.configured`.
 const CONFIGURED_BASIS_KEYS: Record<string, string> = {
   majors: 'detail.majorsConfigured',
   class_year: 'detail.yearConfigured',
+  application_window: 'detail.rollingInferred',
+  rolling: 'detail.rollingInferred',
 };
 
 /** The dictionary key that says how an inferred facet was produced. */

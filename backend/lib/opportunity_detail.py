@@ -70,6 +70,7 @@ from collections.abc import Iterable
 from backend.lib import public_projection
 from src.evidence import (
     CAMPUS_PROGRAM_SUFFIXES,
+    CONFIGURED_PROGRAM_METHOD,
     FACT_STATED,
     SRO_NOTE_WINDOW_RE,
     configured_fact,
@@ -134,7 +135,7 @@ BASIS_ENRICHMENT = "external_enrichment"  # matched third-party record (OpenAlex
 BASIS_ESTIMATE = "estimate"               # computed from another date/value
 BASIS_PROGRAM_POLICY = "program_policy"   # a published rule of the funding program
 BASIS_COLLECTOR_DEFAULT = "collector_default"  # a constant the collector writes on every row
-BASIS_CONFIGURED = "configured"           # this program's own list, typed into our config
+BASIS_CONFIGURED = "configured"           # this program's own value, typed into our config
 BASIS_DERIVED = "derived_from_source"     # restated from a different source fact
 
 _STAMP_PREFIX_BASIS = {
@@ -267,19 +268,20 @@ def _is_curated_source(source: str) -> bool:
     return source in _CURATED_SOURCES
 
 
-def _configured(canonical: dict, facet: str, unstated: str = BASIS_COLLECTOR_DEFAULT) -> tuple[str | None, dict | None]:
+def _configured(canonical: dict, facet: str) -> tuple[str | None, dict | None]:
     """(basis, quote) for a value a campus program spec wrote.
 
     No basis and the page's own sentence, with where and when it was read,
     when the page text the row carries states the value
-    (`src.evidence.configured_fact`); ``unstated`` when it does not, or says
-    otherwise. (None, None) on any other row.
+    (`src.evidence.configured_fact`); `configured` when it does not, or says
+    otherwise: that program's own entry in our config, not a constant on every
+    row of its source. (None, None) on any other row.
     """
     if not is_configured_program(canonical):
         return None, None
     fact = configured_fact(canonical, facet)
     if fact.state != FACT_STATED or not fact.quote:
-        return unstated, None
+        return BASIS_CONFIGURED, None
     return None, {
         "text": fact.quote,
         "source_url": public_projection.safe_public_http_url(fact.source_url),
@@ -291,14 +293,13 @@ def _stamped_or_configured(canonical: dict, path: str, facet: str) -> tuple[str 
     """(basis, quote) for a major or class-year list: an inference stamp on
     ``path`` wins over the configuration.
 
-    An unstamped list a program spec carries is that program's own, typed into
-    our config — `configured`, the basis the projector publishes as
-    majors_basis / preferred_year_basis — not a constant on every row.
+    An unstamped list a program spec carries is `configured`, the basis the
+    projector publishes as majors_basis / preferred_year_basis.
     """
     stamped = _basis_for(canonical, path)
     if stamped is not None:
         return stamped, None
-    return _configured(canonical, facet, BASIS_CONFIGURED)
+    return _configured(canonical, facet)
 
 
 def _collector_constant_keywords(canonical: dict) -> set[str]:
@@ -391,6 +392,11 @@ def _basis_for(canonical: dict, path: str) -> str | None:
     method = inferred_method(canonical, path)
     if method is None:
         return None
+    if method == CONFIGURED_PROGRAM_METHOD:
+        # The load-time stamp on a program spec's pay, intl answer or
+        # citizenship rule its page does not state: that program's own config
+        # (`_configured`), not a constant on every row of the source.
+        return BASIS_CONFIGURED
     prefix = method.split(":", 1)[0]
     # An unrecognised prefix is still an inference: it must never read as
     # source-backed just because this table has not heard of it yet.
@@ -666,7 +672,7 @@ def paid_basis(canonical: dict, paid: object) -> str | None:
     template = _PAID_TEMPLATES.get(str(canonical.get("source") or ""))
     if template is not None and paid == template[0]:
         return template[1]
-    return BASIS_COLLECTOR_DEFAULT if configured_value_unstated(canonical, "paid") else None
+    return BASIS_CONFIGURED if configured_value_unstated(canonical, "paid") else None
 
 
 def location_basis(canonical: dict, location: object) -> str | None:

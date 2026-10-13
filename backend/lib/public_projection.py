@@ -867,7 +867,7 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
             projected["majors_basis"] = "configured"
 
     # And for the deadline note a program spec typed into the config: the
-    # detail facts call it a collector default unless the page text states it
+    # detail facts call it configured unless the page text states it
     # (`opportunity_detail._timing`), and the saved résumé target that copies
     # the note needs the same answer to label it.
     metadata = projected.get("metadata")

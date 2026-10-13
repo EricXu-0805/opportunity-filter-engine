@@ -973,12 +973,6 @@ _CONFIGURED_FACETS = (
 )
 
 
-def _configured_basis(facet: str) -> str:
-    """The basis of an unstated configured value: a program's own major and
-    class-year lists are `configured`; its other values a collector default."""
-    return BASIS_CONFIGURED if facet in ("majors", "class_year") else BASIS_COLLECTOR_DEFAULT
-
-
 class TestCampusGraphContract:
     def _configured(self) -> dict:
         school = _campus_school()
@@ -997,7 +991,7 @@ class TestCampusGraphContract:
         assert fields["department"]["explicit"] == {"department": "Biology"}
         assert fields["professor_or_lab"]["explicit"] == {"lab_or_program": "SURF"}
         for field, facet, value in _CONFIGURED_FACETS:
-            assert fields[field]["inferred"][facet] == {"value": value, "basis": _configured_basis(facet)}, facet
+            assert fields[field]["inferred"][facet] == {"value": value, "basis": BASIS_CONFIGURED}, facet
             assert facet not in fields[field]["explicit"], facet
         assert _where(fields["eligibility"], "citizenship") == "unknown"
         assert _where(fields["location"], "location") == "unknown"
@@ -1047,11 +1041,42 @@ class TestCampusGraphContract:
         # Nothing on the page produced them, so the field is not dated by it.
         assert fields["eligibility"]["provenance"]["observed_at"] is None
 
+    def test_a_programs_own_pay_intl_and_deadline_note_are_configured(self):
+        # Shaped like purdue-af71941ba814 (2026-10-12): a lab spec's intl
+        # answer, compensation and deadline note, none stated on a page the row
+        # carries. The facts called each "A default we apply to this source".
+        record = _listing(
+            id="purdue-like-lab", source="purdue_labs", source_type="campus_lab",
+            title="Purdue Experimental Mathematics Lab (PXML) — Purdue University", paid="yes",
+            compensation_details="Varies; some credit/funded roles",
+            eligibility={"international_friendly": "yes", "citizenship_required": False},
+            metadata={"is_active": True, "last_verified": "2026-09-30T06:06:42", "shared_program_page": False,
+                      "deadline_note": "Applications each semester"},
+        )
+        _, canonical = _served(record)
+        # The load-time stamp is the configured program's own, not a source default.
+        assert inferred_method(canonical, "paid") == CONFIGURED_PROGRAM_METHOD
+        assert inferred_method(canonical, "eligibility.international_friendly") == CONFIGURED_PROGRAM_METHOD
+        _, fields = _detail(record)
+        assert fields["eligibility"]["inferred"] == {
+            "international_students": {"value": "yes", "basis": BASIS_CONFIGURED}}
+        assert fields["funding"]["inferred"] == {
+            "paid": {"value": "yes", "basis": BASIS_CONFIGURED},
+            "compensation": {"value": "Varies; some credit/funded roles", "basis": BASIS_CONFIGURED},
+        }
+        assert fields["timing"]["inferred"]["application_window"] == {
+            "value": "Applications each semester", "basis": BASIS_CONFIGURED}
+        record["eligibility"] = {"international_friendly": "no", "citizenship_required": True}
+        _, fields = _detail(record)
+        assert fields["eligibility"]["inferred"]["citizenship"] == {"value": "required", "basis": BASIS_CONFIGURED}
+        assert fields["funding"]["provenance"]["observed_at"] is None
+
     def test_a_source_wide_default_keeps_the_collector_default_basis(self):
         record = self._configured()
-        record["metadata"]["inferred_fields"] = {"eligibility.majors": "default:every_row"}
+        record["metadata"]["inferred_fields"] = {"eligibility.majors": "default:every_row", "paid": "default:every_row"}
         _, fields = _detail(record)
         assert fields["eligibility"]["inferred"]["majors"]["basis"] == BASIS_COLLECTOR_DEFAULT
+        assert fields["funding"]["inferred"]["paid"]["basis"] == BASIS_COLLECTOR_DEFAULT
         _, fields = _detail(_CASES["simplify_internship_template"])
         assert fields["funding"]["inferred"]["paid"]["basis"] == BASIS_COLLECTOR_DEFAULT
 
@@ -1211,7 +1236,7 @@ class TestCampusGraphContract:
         )
         payload, fields = _detail(record)
         for field, facet, value in _CONFIGURED_FACETS:
-            assert fields[field]["inferred"][facet] == {"value": value, "basis": _configured_basis(facet)}, facet
+            assert fields[field]["inferred"][facet] == {"value": value, "basis": BASIS_CONFIGURED}, facet
             assert facet not in fields[field]["explicit"], facet
         for name in ("eligibility", "funding", "timing"):
             assert fields[name]["quotes"] == {}, name
@@ -1229,7 +1254,7 @@ class TestCampusGraphContract:
         )
         payload, fields = _detail(record)
         for field, facet, value in _CONFIGURED_FACETS:
-            assert fields[field]["inferred"][facet] == {"value": value, "basis": _configured_basis(facet)}, facet
+            assert fields[field]["inferred"][facet] == {"value": value, "basis": BASIS_CONFIGURED}, facet
             assert fields[field]["quotes"] == {}, facet
         expected = {
             "paid": "Research positions are unpaid.",
@@ -1543,7 +1568,7 @@ class TestCampusGraphContract:
         record = self._with_page(self._STATES + " Questions: surf@example.edu")
         payload, fields = _detail(record)
         assert payload["description"] == "[email redacted]"
-        assert fields["funding"]["inferred"]["paid"]["basis"] == BASIS_COLLECTOR_DEFAULT
+        assert fields["funding"]["inferred"]["paid"]["basis"] == BASIS_CONFIGURED
         assert configured_fact(record, "paid") == ConfiguredFact(FACT_UNSTATED)
 
     def test_the_sentence_a_cut_excerpt_ends_on_is_not_read(self):
@@ -1611,7 +1636,7 @@ class TestCampusGraphContract:
         record["metadata"]["contact_instruction_sources"] = [
             self._passage("Fellows receive a $5,000 stipend.", **passage)]
         assert configured_fact(record, "paid") == ConfiguredFact(FACT_UNSTATED)
-        assert _detail(record)[1]["funding"]["inferred"]["paid"]["basis"] == BASIS_COLLECTOR_DEFAULT
+        assert _detail(record)[1]["funding"]["inferred"]["paid"]["basis"] == BASIS_CONFIGURED
 
     def test_a_passage_under_its_own_programs_acronym_is_read(self):
         record = self._configured()
