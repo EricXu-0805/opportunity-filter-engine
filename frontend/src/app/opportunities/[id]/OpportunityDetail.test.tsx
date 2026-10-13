@@ -186,6 +186,7 @@ vi.mock('./use-opportunity-detail', () => ({
 import OpportunityDetail from './OpportunityDetail';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { advanceOwnerEpoch, captureOwnerToken, enterLocalOnlyMode } from '@/lib/identity-owner';
+import { DETAIL_FIELDS_VERSION } from '@/lib/detail-fields';
 
 // Hook state below says ownerReady=true; establish its matching readable local
 // realm before mounting, rather than depending on an attachment child's effect.
@@ -834,7 +835,7 @@ describe('OpportunityDetail whole-profile deletion while writing', () => {
 describe('OpportunityDetail — M03 detail facts', () => {
   const withFacts = {
     ...(opp as unknown as Record<string, unknown>),
-    detail_fields: { version: 'm03-v1', fields: {} },
+    detail_fields: { version: DETAIL_FIELDS_VERSION, fields: {} },
   };
 
   it('renders the facts section in place of the legacy term sections', () => {

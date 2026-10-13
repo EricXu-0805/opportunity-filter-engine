@@ -38,6 +38,22 @@ const LIST_VALUE_KEYS: Record<string, Record<string, string>> = {
   },
 };
 
+// A program's own value, typed into our config: the note the legacy sections
+// give the same list or deadline note (`majors_basis`,
+// `deadline_note_attribution`). Its pay, intl answer and citizenship rule take
+// the generic `detail.facts.basis.configured`.
+const CONFIGURED_BASIS_KEYS: Record<string, string> = {
+  majors: 'detail.majorsConfigured',
+  class_year: 'detail.yearConfigured',
+  application_window: 'detail.rollingInferred',
+  rolling: 'detail.rollingInferred',
+};
+
+/** The dictionary key that says how an inferred facet was produced. */
+export function basisKey(facet: string, basis: string): string {
+  return (basis === 'configured' && CONFIGURED_BASIS_KEYS[facet]) || `detail.facts.basis.${basis}`;
+}
+
 function formatValue(facet: string, value: FacetValue, t: TFunc): string {
   if (typeof value === 'boolean') {
     // The only boolean facet is `rolling`, and the server sends it only as
@@ -132,7 +148,7 @@ function FacetRow({ field, facet, truth, t }: {
       )}
       {truth.state === 'inferred' && (
         <dd className="text-[11px] text-amber-700" data-testid={`fact-${field}-${facet}-basis`}>
-          {t(`detail.facts.basis.${truth.basis}`)}
+          {t(basisKey(facet, truth.basis))}
         </dd>
       )}
     </div>

@@ -14,7 +14,6 @@ pin the three defects found in review:
 from __future__ import annotations
 
 import re
-from datetime import date
 
 from src.evidence import stamp_inferred
 from src.recommender.cold_email import (
@@ -995,13 +994,15 @@ class TestRecentWorkGrounding:
         assert ce._pipeline_generate(self._profile(), opp, None) is not None
         return next(m["content"] for m in captured["messages"] if m["role"] == "user")
 
-    def test_prompt_offers_recent_works_for_the_model_to_choose(self, monkeypatch):
+    def test_prompt_offers_recent_works_as_research_direction_only(self, monkeypatch):
         user_msg = self._capture_prompt(monkeypatch, self._opp(self._WORKS))
-        # All stored (≤3, already the most recent) titles are offered with years,
-        # and the model is told to cite at most one — the most relevant.
+        # All stored (≤3, already the most recent) titles are offered with years
+        # as research-direction context. M33: no paper was chosen, so the model
+        # is told to name none of them rather than cite the most relevant one.
         assert '"title": "NeuroFlow: Decoding Imagined Speech from ECoG Arrays", "year": 2026' in user_msg
         assert '"title": "Cortical Signal Denoising for Implantable BCIs", "year": 2024' in user_msg
-        assert "cite at most ONE, whichever is most relevant" in user_msg
+        assert "the student chose none of these, so name, quote or cite none of them" in user_msg
+        assert "most relevant" not in user_msg
 
     def test_prompt_shows_none_when_absent(self, monkeypatch):
         user_msg = self._capture_prompt(monkeypatch, self._opp())
@@ -1013,7 +1014,7 @@ class TestRecentWorkGrounding:
         # EXCLUDED from the prompt entirely — [] is offered instead of a
         # labeled candidate list.
         user_msg = self._capture_prompt(monkeypatch, self._opp(self._WORKS))
-        assert "Publications by this professor, newest first (cite at most ONE" in user_msg
+        assert "Publications by this professor, newest first (" in user_msg
         assert "matched to this professor by name" not in user_msg
         # The block used to be labelled "Recent publications", and the GOOD
         # few-shot taught "Your recent paper on ...". For 12% of the harvested
@@ -1067,10 +1068,11 @@ class TestRecentWorkGrounding:
 
 
 class TestTemplateRecentWorkCitation:
-    """The template path cites the professor's newest usable VERIFIED paper —
-    the free tier's counterpart to the AI prompt's recent-works block. The
-    "Your recent paper" possessive asserts authorship, so it is allowed only
-    behind the publication trust gate."""
+    """The template names a paper only when the student chose it (checklist
+    M33, owner decision 2026-10-12). It used to cite the newest verified work
+    as 'Your recent paper "<title>" caught my attention' — a reaction the
+    student never reported. A verified work still never reaches the draft
+    through any other route, and an unverified one never at all."""
 
     _profile = {"name": "Eric", "year": "sophomore", "major": "CompE",
                 "hard_skills": ["Python"], "research_interests_text": "machine learning"}
@@ -1081,46 +1083,33 @@ class TestTemplateRecentWorkCitation:
             md["publication_attribution_status"] = status
         return {"pi_name": "Ada Lovelace", "title": "Research with Prof. Ada Lovelace — CS",
                 "lab_or_program": "Prof. Ada Lovelace's Research Group",
-                "keywords": ["machine learning"], "source_type": "faculty_research",
+                "keywords": ["sparse neural network training"], "source_type": "faculty_research",
                 "metadata": md}
 
-    def test_balanced_and_skills_cite_newest_clean_title(self):
+    def _texts(self, opp, parts=None):
+        return [generate_cold_email(self._profile, opp, parts_cache=parts),
+                *(v["text"] for v in generate_variants(self._profile, opp, parts_cache=parts))]
+
+    def test_unchosen_verified_paper_is_never_cited(self):
         works = [{"title": "Efficient Sparse Training at Scale", "year": 2026}]
-        for build in (generate_cold_email,):
-            text = build(self._profile, self._opp(works))
-            assert '"Efficient Sparse Training at Scale" (2026) caught my attention' in text
-        variants = {v["id"]: v["text"] for v in generate_variants(self._profile, self._opp(works))}
-        assert "caught my attention" in variants["balanced"]
-        assert "caught my attention" in variants["skills"]
-        assert "caught my attention" not in variants["concise"]  # concise stays lean
+        for text in self._texts(self._opp(works)):
+            assert "caught my attention" not in text
+            assert "Efficient Sparse Training at Scale" not in text
+            assert "sparse neural network training" in text  # the research direction stays
 
-    def test_markup_stripped_and_unusable_titles_skipped(self):
-        works = [
-            {"title": "X" * 200, "year": 2026},                       # too long
-            {"title": "Imaging [<sup>18</sup>F]FDG PET/CT of Nicotinic Receptors", "year": 2025},
-        ]
-        text = generate_cold_email(self._profile, self._opp(works))
-        assert "<sup>" not in text
-        assert '"Imaging [18F]FDG PET/CT of Nicotinic Receptors" (2025)' in text
+    def test_chosen_paper_is_the_only_paper_sentence(self):
+        from backend.lib.email_contact_context import contact_context_parts, validate_paper_reading
 
-    def test_recent_is_only_said_of_a_recent_paper(self):
-        """The newest paper we hold is not always a recent one. Of the 2,581
-        professors in the first roster works harvest, 305 (12%) have nothing
-        newer than three years, and the oldest cited paper is from 1995.
-        "Your recent paper (1995)" prints the contradiction beside the word.
-        The citation still earns its place — only the adjective is dropped.
-        """
-        this_year = date.today().year
-        fresh = generate_cold_email(
-            self._profile, self._opp([{"title": "Efficient Sparse Training", "year": this_year - 1}]))
-        assert 'Your recent paper "Efficient Sparse Training"' in fresh
-
-        stale = generate_cold_email(
-            self._profile, self._opp([{"title": "Efficient Sparse Training", "year": this_year - 9}]))
-        assert 'Your paper "Efficient Sparse Training"' in stale
-        assert "recent" not in stale.lower().split("caught my attention")[0].split("your paper")[-1]
-        # the paper is still cited, with its real year
-        assert f"({this_year - 9}) caught my attention" in stale
+        works = [{"title": "Efficient Sparse Training at Scale", "year": 2026}]
+        opp = self._opp(works)
+        context = {"version": 1, "purpose": "first_contact",
+                   "paper_reading": {**works[0], "level": "abstract", "confirmed": True}}
+        validate_paper_reading(context, opp)
+        parts = {**_common_parts(self._profile, opp), **contact_context_parts(context)}
+        for text in self._texts(opp, parts):
+            assert text.count("Efficient Sparse Training at Scale") == 1
+            assert "I have read the abstract of your paper" in text
+            assert "caught my attention" not in text
 
     def test_no_works_no_citation(self):
         text = generate_cold_email(self._profile, self._opp([]))

@@ -2,7 +2,7 @@
 
 import pytest
 
-from backend.lib.email_claims import skill_level_violations, unsupported_action_claims
+from backend.lib.email_claims import skill_level_violations, unchosen_paper_claims, unsupported_action_claims
 
 
 @pytest.mark.parametrize("text", [
@@ -60,6 +60,66 @@ def test_confirmed_reading_exemption_never_covers_an_attachment_claim():
     assert unsupported_action_claims(exempted, confirmed_reading_sentence=exempted) == ["unsupported attachment claim"]
 
 
+# M33 (owner decision 2026-10-12): a reply may not quote the full title of a
+# verified paper the student did not choose, unless the student supplied it.
+TITLES = ["Grounded Models for Robot Planning", "Sparse Nets", "Learning What’s Next — A Survey?", "Consent & Causation"]
+UNCHOSEN = ["names a paper the student did not choose"]
+
+
+@pytest.mark.parametrize("text", [
+    'Your recent paper "Grounded Models for Robot Planning" (2026) is on this topic.',
+    "Your paper “grounded  models for robot planning.” is on this topic.",
+    "Your paper ‘Grounded Models for Robot\nPlanning,’ is on this topic.",
+    "Your paper 'Grounded Models for Robot Planning' is on this topic.",
+    'Your survey "Learning What\'s Next - A Survey?" is on this topic.',
+])
+def test_a_quoted_full_title_the_student_did_not_choose_is_rejected(text):
+    assert unchosen_paper_claims(text, TITLES) == UNCHOSEN
+
+
+@pytest.mark.parametrize("text", [
+    # Unquoted, partial or longer quotations, a title under three words, and a
+    # reaction to a paper are outside the rule (reactions are left to the prompt).
+    "Grounded models for robot planning is close to my interests.",
+    'Your paper "Grounded Models" is on this topic.',
+    'The phrase "Grounded Models for Robot Planning and Control" is not that title.',
+    "The lab's Grounded Models for Robot Planning' line is not a quotation.",
+    'Your paper "Sparse Nets" is on this topic.',
+    # "&" has no letter or digit, so this title has two words.
+    'Your paper "Consent & Causation" is on this topic.',
+    "Your paper caught my attention.", "I was impressed by your recent paper.",
+])
+def test_anything_but_a_quoted_full_title_of_three_words_is_outside_the_rule(text):
+    assert unchosen_paper_claims(text, TITLES) == []
+
+
+@pytest.mark.parametrize("student_text", [
+    "Reproduced the experiments of “Grounded Models for Robot Planning” in PyTorch.",
+    "grounded models for robot planning",
+    "Mention your paper 'GROUNDED MODELS FOR ROBOT PLANNING'.",
+])
+def test_a_title_the_student_supplied_may_be_quoted(student_text):
+    text = 'Your paper "Grounded Models for Robot Planning" is on this topic.'
+    assert unchosen_paper_claims(text, TITLES, student_text=student_text) == []
+    assert unchosen_paper_claims(text, TITLES, student_text="robot planning") == UNCHOSEN
+
+
+def test_only_the_chosen_paper_may_be_quoted():
+    chosen = TITLES[0]
+    read = "I have read the abstract of your paper “Grounded Models for Robot Planning” (2026)."
+    assert unchosen_paper_claims(read, TITLES, chosen_title=chosen) == []
+    assert unchosen_paper_claims(read + " I mean “Grounded Models for Robot Planning”.", TITLES,
+                                 chosen_title=chosen) == []
+    other = read + " Your survey “Learning What’s Next – A Survey?” is related."
+    assert unchosen_paper_claims(other, TITLES, chosen_title=chosen) == UNCHOSEN
+    assert unchosen_paper_claims(other, TITLES, chosen_title=chosen, student_text="Learning What's Next - A Survey") == []
+    assert unchosen_paper_claims(read, TITLES) == UNCHOSEN
+    # A title inside the chosen one's quotation is not quoted by it; one quoted whole is.
+    assert unchosen_paper_claims(read, ["Models for Robot Planning", chosen], chosen_title=chosen) == []
+    assert unchosen_paper_claims(read, ["Models for Robot Planning", chosen],
+                                 chosen_title="Models for Robot Planning") == UNCHOSEN
+
+
 @pytest.mark.parametrize("text,levels", [
     ("I have experience with Python.", {"Python": "beginner"}),
     ("I have hands-on experience with Python.", {"Python": "beginner"}),
@@ -107,3 +167,19 @@ def test_skill_levels_cannot_be_upgraded(text, levels):
 ])
 def test_levels_do_not_grade_project_actions_or_borrow_other_speakers(text, levels):
     assert skill_level_violations(text, levels) == []
+
+
+def test_a_title_inside_the_chosen_title_does_not_count():
+    inner = TITLES[0]
+    titles = [inner, f'Author response for "{inner}"', f"“{inner}”: A Reply"]
+    for chosen in titles[1:]:
+        read = f"I have read the abstract of your paper “{chosen}” (2026)."
+        assert unchosen_paper_claims(read, titles, chosen_title=chosen) == []
+        # Compared after the same normalisation as every title.
+        assert unchosen_paper_claims(read.upper().replace('"', "“"), titles, chosen_title=chosen) == []
+        # The inner title quoted on its own still counts.
+        assert unchosen_paper_claims(f"{read} Your paper “{inner}” is related.", titles, chosen_title=chosen) == UNCHOSEN
+    # With the inner paper chosen, the outer title quoted whole is another paper.
+    read = f"I have read the abstract of your paper “{inner}” (2026)."
+    assert unchosen_paper_claims(read, titles, chosen_title=inner) == []
+    assert unchosen_paper_claims(f"{read} Your “{titles[1]}” is related.", titles, chosen_title=inner) == UNCHOSEN

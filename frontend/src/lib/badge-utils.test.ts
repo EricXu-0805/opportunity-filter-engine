@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
+import { translate } from '@/i18n/translate';
 import { getIntlBadge, getPaidBadge } from './badge-utils';
 
 const t = (key: string) => key;
@@ -49,6 +50,14 @@ describe('a card hedges exactly what the detail page hedges', () => {
     });
   });
 
+  it('marks an "unpaid" we inferred instead of stating it', () => {
+    // A configured program's pay answer or a scan of the prose can say 'no'
+    // too; the card printed it as the program's own plain "Unpaid".
+    expect(getPaidBadge('no', t, 'inferred')).toEqual({
+      label: 'badges.unpaidInferred', variant: 'gray',
+    });
+  });
+
   it('leaves a stated pay value alone', () => {
     expect(getPaidBadge('yes', t)).toEqual({ label: 'badges.paid', variant: 'green' });
     expect(getPaidBadge('stipend', t)).toEqual({ label: 'badges.stipend', variant: 'blue' });
@@ -64,8 +73,21 @@ describe('a card hedges exactly what the detail page hedges', () => {
     });
   });
 
-  it('keeps a stated restriction red, and never downgrades a yes', () => {
+  it('keeps a stated restriction red and a stated welcome a plain green "Intl OK"', () => {
     expect(getIntlBadge('no', t)).toEqual({ label: 'badges.intlUsOnly', variant: 'red' });
-    expect(getIntlBadge('yes', t, 'inferred')).toEqual({ label: 'badges.intlOk', variant: 'green' });
+    expect(getIntlBadge('yes', t)).toEqual({ label: 'badges.intlOk', variant: 'green' });
+    expect(getIntlBadge('yes', t, null)).toEqual({ label: 'badges.intlOk', variant: 'green' });
+  });
+
+  it('marks a welcome we inferred as our inference', () => {
+    // purdue-af71941ba814 (a configured program's answer) and sro-3d5d9a42 (a
+    // keyword scan of the SRO page) showed a plain green "Intl OK" on the
+    // card while the detail page called the same answer a system inference.
+    expect(getIntlBadge('yes', t, 'inferred')).toEqual({ label: 'badges.intlOkInferred', variant: 'orange' });
+    const en = (key: string) => translate('en', key);
+    const zh = (key: string) => translate('zh', key);
+    expect(getIntlBadge('yes', en, 'inferred').label).toBe('Intl OK (inferred)');
+    expect(getIntlBadge('yes', zh, 'inferred').label).toBe('接受国际生（推断）');
+    expect(getIntlBadge('yes', en).label).toBe('Intl OK');
   });
 });

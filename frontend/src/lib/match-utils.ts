@@ -164,6 +164,17 @@ function inferredCell(value: string | undefined, attribution: 'inferred' | null 
   return attribution === 'inferred' && cell && cell !== 'unknown' ? `${cell} (inferred)` : cell;
 }
 
+// A listing's location column says what the card says: nothing for its host
+// school's city ('institution' — where the school is, not the work), and
+// "(inferred)" for one read off another record. A faculty row's location is
+// its affiliation, which the column header names.
+function locationCell(opportunity: Opportunity, recordKind: string): string {
+  const location = opportunity.location ?? '';
+  if (recordKind === 'faculty_contact') return location;
+  if (opportunity.location_attribution === 'institution') return '';
+  return inferredCell(location, opportunity.location_attribution === 'inferred' ? 'inferred' : null);
+}
+
 export function matchesToCSV(matches: MatchResult[]): string {
   const header = [
     'Title', 'Organization', 'Type', 'Paid', 'Location / faculty affiliation', 'Deadline',
@@ -193,7 +204,7 @@ export function matchesToCSV(matches: MatchResult[]): string {
       m.opportunity.organization ?? '',
       openListing ? m.opportunity.opportunity_type : recordKind,
       openListing ? inferredCell(m.opportunity.paid, m.opportunity.paid_attribution) : '',
-      m.opportunity.location ?? '',
+      locationCell(m.opportunity, recordKind),
       // A spreadsheet column is read as fact months later, and this date can
       // be a guess derived from an NSF award start. The card says
       // "2025-02-15 · estimated" and refuses to call it passed; the CSV said

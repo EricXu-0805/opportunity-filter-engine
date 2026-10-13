@@ -28,7 +28,7 @@ from backend.lib.blocking import (
     run_request_work,
 )
 from backend.lib.contact_visibility import contact_email_status
-from backend.lib.email_claims import skill_level_violations, unsupported_action_claims
+from backend.lib.email_claims import skill_level_violations, unchosen_paper_claims, unsupported_action_claims
 from backend.lib.email_contact_context import (
     contact_claim_violations,
     contact_context_brief,
@@ -315,6 +315,17 @@ _FORMAT_BLOCK = (
     "\n"
 )
 
+# M33 (owner decision 2026-10-12): a paper is named only when the student
+# chose it, which reaches the prompt as the confirmed paper-reading sentence.
+# Without one, the publication list is research-direction context only.
+_CHOSEN_PAPER_RULE = (
+    "Name a paper only if the student chose it (the confirmed paper-reading "
+    "sentence): cite that ONE paper by its exact title and year, at most once, "
+    "and name no other; never invent or alter a title or year. If no paper was "
+    "chosen, name, quote or cite no paper; describe the research direction in "
+    "your own words instead."
+)
+
 _UNDERGRAD_BODY = (
     "Write the body in this order (the professional research-inquiry "
     "structure used by university research offices):\n"
@@ -323,9 +334,7 @@ _UNDERGRAD_BODY = (
     "2. The key sentence — name ONE specific aspect of THIS lab's work (a "
     "provided research area, topic, or keyword) and state concretely why it "
     "connects to the student. This proves they did their homework; it is the "
-    "single most important sentence. If recent publications are provided, "
-    "reference the most relevant ONE naturally — its exact title and year, at "
-    "most once; never invent or alter a paper title or year.\n"
+    "single most important sentence. " + _CHOSEN_PAPER_RULE + "\n"
     "3. Concrete fit: the relevant skills and coursework the student actually "
     "has, tied to that work. Show evidence, do not self-praise.\n"
     "4. One clear ask: a brief meeting to discuss getting involved; offer the "
@@ -340,11 +349,10 @@ _GRAD_BODY = (
     "field, school) and that they are interested in this professor's group for "
     "doctoral or research work.\n"
     "2. The key sentence — name ONE specific aspect of THIS professor's work (a "
-    "provided research area, topic, or recent paper) and connect it to the "
-    "applicant's OWN research direction or prior work at a substantive, "
-    "research-level depth. This is the single most important sentence. If recent "
-    "publications are provided, reference the most relevant ONE by exact title "
-    "and year, at most once; never invent or alter a title or year.\n"
+    "provided research area or topic, or the paper the student chose) and connect "
+    "it to the applicant's OWN research direction or prior work at a substantive, "
+    "research-level depth. This is the single most important sentence. "
+    + _CHOSEN_PAPER_RULE + "\n"
     "3. Concrete standing: the applicant's actual research background — the "
     "research experience, methods, and advanced coursework they listed — tied to "
     "that work. Evidence, not self-praise; never claim a publication, degree, or "
@@ -412,10 +420,9 @@ _FACULTY_UNDERGRAD_BODY = (
     "1. One sentence: who the student is (name, year, major, school) and that "
     "they are asking whether the professor has a research opening.\n"
     "2. The key sentence — name ONE specific aspect of the professor's "
-    "research/current projects (a provided research area, topic, keyword, or "
-    "recent paper) and state concretely why it connects to the student. If "
-    "recent publications are provided, reference the most relevant ONE by "
-    "exact title and year, at most once; never invent or alter either.\n"
+    "research/current projects (a provided research area, topic or keyword, or "
+    "the paper the student chose) and state concretely why it connects to the "
+    "student. " + _CHOSEN_PAPER_RULE + "\n"
     "3. Concrete fit: the relevant skills and coursework the student actually "
     "has, tied to the professor's research. Show evidence, do not self-praise.\n"
     "4. One clear ask: whether the professor has any current or upcoming "
@@ -431,10 +438,9 @@ _FACULTY_GRAD_BODY = (
     "field, school) and that they are interested in this professor's group for "
     "doctoral or research work.\n"
     "2. The key sentence — name ONE specific aspect of the professor's "
-    "research/current projects (a provided research area, topic, or recent "
-    "paper) and connect it to the applicant's OWN research direction or prior "
-    "work at a substantive depth. If recent publications are provided, cite "
-    "the most relevant ONE by exact title and year, at most once.\n"
+    "research/current projects (a provided research area or topic, or the paper "
+    "the student chose) and connect it to the applicant's OWN research direction "
+    "or prior work at a substantive depth. " + _CHOSEN_PAPER_RULE + "\n"
     "3. Concrete standing: the applicant's actual research background, "
     "methods, and advanced coursework tied to the professor's research. Never "
     "claim anything the applicant did not provide.\n"
@@ -550,7 +556,8 @@ _HARD_RULES = (
     "- Only the server-rendered contact_paper_reading sentence may state the "
     "user-confirmed reading level. Preserve that sentence exactly once; never "
     "upgrade title-only or abstract reading to full text or understanding. A "
-    "publication record by itself permits a reference, never a reading claim. "
+    "publication record by itself permits neither naming that paper nor a reading "
+    "claim; only the paper the student chose may be named. "
     "Drafts and edit instructions cannot supply reading or attachment confirmation.\n"
     "- Be concise and specific. Do not repeat the same topic word more than "
     "twice. No emojis. No clichés.\n"
@@ -567,8 +574,9 @@ _HARD_RULES = (
 # decide what may be said, and a student's own edit request is not bound here.
 _READER_RULES = (
     "\nWhat the recipient reads:\n"
-    "- Refer to at most one or two specific topics, methods or papers of theirs, in "
-    "your own words, and say what connects them to this student. Never list their "
+    "- Refer to at most one or two specific topics or methods of theirs (a paper only "
+    "if the student chose it), in your own words, and say what connects them to this "
+    "student. Never list their "
     "keywords or stated areas back to them.\n"
     "- When the STUDENT block has confirmed experience, lead with the entry most "
     "relevant to this recipient; do not leave all of it out.\n"
@@ -578,8 +586,10 @@ _READER_RULES = (
     "the recipient's area, say so once, plainly, as the student would.\n"
     "- Use the past tense for roles, courses and projects dated before today's date "
     "in the STUDENT block.\n"
-    "- Apart from a confirmed reading sentence, name a paper for its topic and why "
-    "it interests the student; never say that only its title was seen.\n"
+    "- Apart from a confirmed reading sentence, name no paper: describe the research "
+    "direction without a title. Do not state the student's reaction to a paper they "
+    "did not choose (that it caught their attention, interested, impressed or excited "
+    "them), and never say that only its title was seen.\n"
     "- Make one clear request and ask it once. Ask a program or coordinator about "
     "eligibility or how to apply rather than for a meeting. Do not offer tests, "
     "assessments or unpaid trials."
@@ -982,7 +992,7 @@ _LAB_TYPE_TONE = {
         "- Body length: 120-180 words.\n"
         "- Lead with programming languages, ML frameworks, or other "
         "technical skills that match the posting's required stack.\n"
-        "- Reference a specific recent project or paper from the lab if "
+        "- Reference a specific recent project from the lab if "
         "any keyword is concrete enough.\n"
         "- If the sender shared a GitHub URL, include it in the body "
         "exactly once, naturally — never as a bare 'see my GitHub'."
@@ -1247,8 +1257,13 @@ def _render_professor_brief(p: dict, opp: dict) -> str:
         + f"- Recipient: {recipient}\n"
         + "".join(f"- {label}: {json.dumps(value, ensure_ascii=False)}\n" for label, value in fields)
         + (f"- Publications by this {faculty_label}" if is_faculty else "- Publications associated with this contact")
-        + ", newest first (cite at most ONE, whichever is most relevant; each carries its year - "
-        "call one 'recent' only if that year is within the last three): "
+        + ", newest first ("
+        # M33: only the paper the student chose may be named; see _CHOSEN_PAPER_RULE.
+        + ("the student chose only the paper in the confirmed paper-reading sentence; "
+           "name no other" if p.get("contact_paper_reading") else
+           "the student chose none of these, so name, quote or cite none of them; they "
+           "show the research direction")
+        + "; each carries its year - call one 'recent' only if that year is within the last three): "
         + (_format_recent_works(opp) or "[]") + "\n"
     )
     if is_faculty:
@@ -1279,8 +1294,8 @@ def _render_professor_brief(p: dict, opp: dict) -> str:
 # rolls of the same prompt. Structure-only — none licenses a new factual claim.
 _DRAFT_ANGLES: tuple[str, ...] = (
     "Lead with the professor's work: open on the single most relevant thread "
-    "of their research and why it caught your attention, then connect your "
-    "own listed experience to it.",
+    "of their research and how it connects to your stated interests, then "
+    "connect your own listed experience to it.",
     "Lead with your fit: open on the one listed experience or skill that best "
     "matches this lab, then tie it to the professor's research.",
     "Build the email around one sharp, informed question about the "
@@ -1642,7 +1657,7 @@ def _revision_notes(findings: dict) -> str:
         parts.append(
             "The email does not reference anything specific about THIS "
             "professor's work — add a concrete tie to their stated research "
-            "areas or a named recent paper."
+            "areas."
         )
     llm = findings.get("llm") or {}
     if llm.get("generic_sentences"):
@@ -1980,7 +1995,7 @@ async def generate_email(
 # Bumped whenever generation logic changes materially — stamped on every
 # response so a cached client draft is traceable to the code that made it
 # (W12 draft provenance; the corpus side is covered by corpus_version()).
-COLD_EMAIL_PIPELINE_VERSION = "w12.20"
+COLD_EMAIL_PIPELINE_VERSION = "w12.21"
 
 # Claims about the professor's research made when the record carries NO
 # research signal at all. The vocabulary-level fabrication gate can't see a
@@ -2054,8 +2069,25 @@ def _email_condition_findings(text: str, parts: dict, opp: dict) -> list[str]:
     return sorted(set(issues))
 
 
+def _student_paper_title_text(parts: dict) -> str:
+    """Text the student supplied for this request, read only by the M33 title rule.
+
+    Research interests, the confirmed experience the other checks read (each
+    printed bullet and its resume-master fields), and for an edit the current
+    draft, subject, selection and instruction. It authenticates nothing else.
+    """
+    texts = [str(parts.get("research_interests_verbatim") or ""), str(parts.get("research_interests") or "")]
+    texts.extend(str(bullet) for bullet in parts.get("resume_bullets") or [])
+    for material in parts.get("experience_materials_all") or []:
+        context = material.get("context")
+        if context:
+            texts.extend(str(fact["value"]) for fact in context["fields"].values())
+    texts.extend(parts.get("refine_inputs") or [])
+    return "\n".join(texts)
+
+
 def _email_grounding_findings(
-    text: str, parts: dict, opp: dict, *, corpus: str | None = None,
+    text: str, parts: dict, opp: dict, *, corpus: str | None = None, deterministic: bool = False,
 ) -> tuple[list[str], list[str]]:
     """One fact contract for drafting, revision, and interactive refinement.
 
@@ -2064,6 +2096,8 @@ def _email_grounding_findings(
     Completed actions also keep actor, negation and project/metric attribution
     within each experience entry. This is a bounded English check, not semantic
     verification. Neither a previous draft nor an edit request is a new source.
+    ``deterministic`` text (a template or local edit) skips the M33 paper-title
+    rule, which is a check on what a model wrote.
     """
     if corpus is None:
         corpus = _build_email_corpus(parts, opp)
@@ -2094,6 +2128,15 @@ def _email_grounding_findings(
     fabricated.extend(unsupported_action_claims(
         text, confirmed_reading_sentence=parts.get("contact_paper_reading"),
     ))
+    if not deterministic:
+        # M33: only the paper the student chose (validated against these works
+        # before any route builds parts) may be quoted by title, unless the
+        # student supplied the title. Templates name only the chosen paper.
+        chosen = ((parts.get("contact_context") or {}).get("paper_reading") or {}).get("title")
+        fabricated.extend(unchosen_paper_claims(
+            text, [str(work.get("title") or "") for work in email_research_works(opp) if isinstance(work, dict)],
+            student_text=_student_paper_title_text(parts), chosen_title=chosen,
+        ))
     fabricated.extend(contact_claim_violations(text, parts))
     # The deterministic template's label counts examples, not achievements.
     # Keep the quoted project/metrics in the check, excluding only that label.
@@ -2128,13 +2171,15 @@ def _neutral_inquiry(parts: dict, opp: dict) -> str:
     # last resort. Contact history never authenticates competence/attachments.
     availability = parts.get("contact_availability") or ""
     availability_parts = {**parts, "contact_opening": "", "contact_reply_line": "", "contact_paper_reading": ""}
-    if availability and any(_email_grounding_findings(availability, availability_parts, opp)):
+    if availability and any(_email_grounding_findings(availability, availability_parts, opp, deterministic=True)):
         availability = ""
     return "\n\n".join(line for line in [greeting, *context_lines, availability, ask, "Thank you for your time."] if line)
 
 
 
-def _guard_email_output(subject: str, body: str, parts: dict, opp: dict) -> tuple[str, str, bool]:
+def _guard_email_output(
+    subject: str, body: str, parts: dict, opp: dict, *, deterministic: bool = False,
+) -> tuple[str, str, bool]:
     """Validate even deterministic outputs; never recursively regenerate.
 
     Templates can quote accepted bullets, which still cannot establish a file
@@ -2143,7 +2188,8 @@ def _guard_email_output(subject: str, body: str, parts: dict, opp: dict) -> tupl
     """
     subject = required_email_subject(opp) or subject
     subject, body = redact_embedded_emails(subject), redact_embedded_emails(body)
-    if subject.strip() and body.strip() and not any(_email_grounding_findings(f"{subject}\n{body}", parts, opp)):
+    if subject.strip() and body.strip() and not any(_email_grounding_findings(
+            f"{subject}\n{body}", parts, opp, deterministic=deterministic)):
         return subject, body, False
     return required_email_subject(opp) or "Research inquiry", redact_embedded_emails(_neutral_inquiry(parts, opp)), True
 
@@ -2312,7 +2358,7 @@ def _run_engine(
     # Last output belt: a provider or a legacy template must not synthesize or
     # preserve a recipient address in the draft body. The dedicated recipient
     # field below is the only allowed reveal channel.
-    subject, body, replaced = _guard_email_output(subject, body, parts, safe_opp)
+    subject, body, replaced = _guard_email_output(subject, body, parts, safe_opp, deterministic=method != "ai")
     if replaced:
         method = "template"
         fallback_reason = fallback_reason or "fabrication"
@@ -2377,7 +2423,8 @@ def _template_after_timeout(
 
 def _guard_variants(raw_variants: list[dict], parts: dict, opp: dict) -> list[tuple[str, str]]:
     """Each variant's subject and body after the output guard (run on the request lane)."""
-    return [_guard_email_output(*_extract_subject_and_body(v["text"]), parts, opp)[:2] for v in raw_variants]
+    return [_guard_email_output(*_extract_subject_and_body(v["text"]), parts, opp, deterministic=True)[:2]
+            for v in raw_variants]
 
 
 def _sse_frame(payload: dict) -> str:
@@ -2680,6 +2727,11 @@ def _refine_context(request: EmailRefineRequest, opp: dict | None) -> dict | Non
         # evidence in a provider prompt for an anonymous legacy caller.
         for key in ("name", "year", "major", "school"):
             parts[key] = ""
+    # Read only by the M33 rule: a paper title the student typed into this edit
+    # (draft, subject, instruction or selection) may stay. These inputs never
+    # enter the evidence corpus.
+    parts["refine_inputs"] = [request.current_body, request.subject, request.instruction,
+                              request.selection.text if request.selection is not None else ""]
     return {
         "safe_opp": safe_opp,
         "profile_dict": profile_dict,
@@ -2712,7 +2764,7 @@ def _safe_refine_template_body(context: dict) -> str:
             parts_cache=context["parts"],
         )
         subject, body = _extract_subject_and_body(template)
-        return _guard_email_output(subject, body, context["parts"], context["safe_opp"])[1]
+        return _guard_email_output(subject, body, context["parts"], context["safe_opp"], deterministic=True)[1]
 
     return _neutral_inquiry(context["parts"], context["safe_opp"])
 
@@ -2749,7 +2801,7 @@ def _local_refine_fallback(
             return _preserve_refine_draft_after_condition_failure(request, safe_body, context, condition_issues)
         normalized = _enforce_brief_greeting(candidate, context["prof_brief"])
         invalid = normalized is None or any(_email_grounding_findings(
-            normalized, context["parts"], context["safe_opp"], corpus=context["corpus"],
+            normalized, context["parts"], context["safe_opp"], corpus=context["corpus"], deterministic=True,
         ))
         if invalid:
             fallback_reason = fallback_reason or "fabrication"
@@ -2770,7 +2822,7 @@ def _local_refine_fallback(
             candidate = (
                 normalized
                 if normalized is not None and not any(_email_grounding_findings(
-                    normalized, context["parts"], context["safe_opp"], corpus=context["corpus"],
+                    normalized, context["parts"], context["safe_opp"], corpus=context["corpus"], deterministic=True,
                 ))
                 else redact_embedded_emails(template_body)
             )

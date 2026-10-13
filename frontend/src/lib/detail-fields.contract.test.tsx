@@ -14,7 +14,7 @@ import { describe, expect, it } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import contract from './detail-fields.contract.json';
 import { DETAIL_FIELD_NAMES, DETAIL_FIELDS_VERSION, FIELD_FACETS, readDetailFields } from './detail-fields';
-import { DetailFactsSection } from '@/app/opportunities/[id]/DetailFactsSection';
+import { basisKey, DetailFactsSection } from '@/app/opportunities/[id]/DetailFactsSection';
 
 const t = (key: string) => key;
 
@@ -63,7 +63,7 @@ describe('detail-fields contract', () => {
         if (facet in apiField.inferred) {
           expect(within(inferredRow!).getByText('detail.facts.state.inferred')).toBeInTheDocument();
           expect(
-            within(inferredRow!).getByText(`detail.facts.basis.${apiField.inferred[facet].basis}`),
+            within(inferredRow!).getByText(basisKey(facet, apiField.inferred[facet].basis)),
           ).toBeInTheDocument();
         }
         const sourceRow = rows.find((r) => r.getAttribute('data-state') === 'source');

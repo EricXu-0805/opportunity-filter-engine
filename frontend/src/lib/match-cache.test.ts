@@ -364,7 +364,7 @@ describe('match-cache', () => {
     // historical publication remediation — a page cached before it holds
     // citations the server has since withdrawn.
     expect(JSON.parse(raw).version).toBe(
-      'mvp-core-close-v1-contact-trust-v1-target-truth-v2-pubtrust-v3',
+      'mvp-core-close-v1-contact-trust-v1-target-truth-v2-pubtrust-v3-attribution-v1',
     );
     expect(raw).not.toContain('"metadata"');
     expect(raw).not.toContain('eligibility_text_raw');
@@ -385,6 +385,35 @@ describe('match-cache', () => {
     expect(opp.metadata).toBeUndefined();
     expect((opp.eligibility as Record<string, unknown>).international_friendly).toBe('yes');
     expect((opp.eligibility as Record<string, unknown>).eligibility_text_raw).toBeUndefined();
+  });
+
+  it('keeps every attribution flag across a cache hit', () => {
+    // The card hedges an inferred stipend ("Pay not confirmed") and hides a
+    // host-school city; a restored page that lost the flags printed both as
+    // the program's own terms.
+    const flags = {
+      paid_attribution: 'inferred', international_attribution: 'inferred',
+      citizenship_attribution: 'inferred', location_attribution: 'institution',
+      skills_attribution: 'inferred', keywords_attribution: 'inferred',
+      majors_attribution: 'inferred', majors_basis: 'configured',
+      preferred_year_attribution: 'inferred', preferred_year_basis: 'configured',
+      deadline_note_attribution: 'inferred',
+    };
+    const resp = makeResponse(1);
+    Object.assign(resp.results[0].opportunity, flags);
+    writeMatchCache('h1', false, resp);
+    const opp = readMatchCache('h1', false)!.results[0].opportunity as unknown as Record<string, unknown>;
+    for (const [key, value] of Object.entries(flags)) expect(opp[key], key).toBe(value);
+  });
+
+  it('discards a page cached before attribution-v1, which dropped the flags', () => {
+    const RETIRED_CACHE_VERSION = 'mvp-core-close-v1-contact-trust-v1-target-truth-v2-pubtrust-v3';
+    writeMatchCache('h1', false, makeResponse(1));
+    const planted = JSON.parse(localStorage.getItem(MATCH_KEY)!);
+    planted.version = RETIRED_CACHE_VERSION;
+    localStorage.setItem(MATCH_KEY, JSON.stringify(planted));
+    expect(readMatchCache('h1', false)).toBeNull();
+    expect(localStorage.getItem(MATCH_KEY)).toBeNull();
   });
 
   it('preserves source_type so the faculty CTA survives a cache-hit return', () => {

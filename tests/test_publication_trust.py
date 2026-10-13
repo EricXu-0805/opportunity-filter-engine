@@ -207,8 +207,9 @@ class TestColdEmailSurface:
 
         profile = {"name": "Eric", "year": "sophomore", "major": "CompE",
                    "hard_skills": ["Python"], "research_interests_text": "bci"}
-        assert "NeuroFlow" in generate_cold_email(profile, _opp(VERIFIED_AUTHOR_ID))
-        for status in (NAME_MATCH, "__absent__", "pending"):
+        # Even a verified paper is named only when the student chose it (M33);
+        # the chosen-paper path is covered in test_email_paper_reading.py.
+        for status in (VERIFIED_AUTHOR_ID, NAME_MATCH, "__absent__", "pending"):
             opp = _opp(status) if status != "__absent__" else _opp()
             text = generate_cold_email(profile, opp)
             assert "NeuroFlow" not in text

@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { parseResearchContext } from '@/lib/research-context';
 import type { Opportunity } from '@/lib/types';
-import { facultySafeInternational } from '@/lib/match-utils';
+import { facultySafeInternational, opportunityRecordKind } from '@/lib/match-utils';
 import {
   allowsProfessorFraming,
   cleanCompensation,
@@ -120,7 +120,13 @@ export function AtAGlanceSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
           <DetailRow icon={<Clock />} label={t('detail.fields.duration')} value={opp.duration} />
         )}
         {compensation && (
-          <DetailRow icon={<DollarSign />} label={t('detail.fields.compensation')} value={compensation} />
+          <DetailRow
+            icon={<DollarSign />}
+            label={t('detail.fields.compensation')}
+            value={compensation}
+            note={opp.compensation_attribution === 'inferred' ? t('detail.facts.basis.configured') : undefined}
+            noteTestId="compensation-inferred-note"
+          />
         )}
         {!isFaculty && opp.posted_date && (
           <DetailRow icon={<Calendar />} label={t('detail.fields.posted')} value={opp.posted_date} />
@@ -339,6 +345,9 @@ export function KeywordsSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
   // Checked for 'inferred', never for absence: a record that never went
   // through enrichment carries nothing here and is stated by default.
   const inferred = opp.keywords_attribution === 'inferred';
+  // A faculty row's inferred topics come from a matched publication record; a
+  // listing's from our keyword bank, category map or listing config.
+  const note = opportunityRecordKind(opp) === 'faculty_contact' ? 'detail.keywordsInferred' : 'detail.keywordsInferredListing';
   return (
     <Section title={t('detail.sections.keywords')}>
       <div className="flex flex-wrap gap-1.5">
@@ -350,7 +359,7 @@ export function KeywordsSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
       </div>
       {inferred && (
         <p className="mt-2 text-[11px] text-gray-500" data-testid="keywords-inferred-note">
-          {t('detail.keywordsInferred')}
+          {t(note)}
         </p>
       )}
     </Section>

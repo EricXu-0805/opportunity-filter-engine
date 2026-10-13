@@ -703,12 +703,12 @@ def _full_target(monkeypatch, original, rewrite, *, locale=None, op="verb_first"
         target = full_target.route.authoritative_target({
             "id": "target", "title": "Research", "organization": "Example Lab", "source_url": "https://example.edu/lab",
             "description_clean": description, "eligibility": {"skills_required": ["Python"]},
-            "source_type": "campus_program", "opportunity_type": "research", "metadata": {"is_active": True}})
+            "source": "manual", "source_type": "campus_program", "opportunity_type": "research", "metadata": {"is_active": True}})
         doc["target_snapshot"], doc["base"]["target_signature"] = target, fingerprint(target)
     target = doc["target_snapshot"]
     opp = {"id": "target", "title": target["title"], "organization": target["organization"],
            "source_url": target["source_url"], "description_clean": target["description"],
-           "eligibility": {"skills_required": target["requirements"]}, "source_type": "campus_program",
+           "eligibility": {"skills_required": target["requirements"]}, "source": "manual", "source_type": "campus_program",
            "opportunity_type": "research", "metadata": {"is_active": True}}
     monkeypatch.setattr(full_target.route, "load_opportunities_by_id", lambda: {"target": opp})
     monkeypatch.setattr(full_target.route, "is_configured", lambda: True)

@@ -92,7 +92,16 @@ export function buildOpportunityOgFacts(
     // moment the listing is not open, exactly like paid/on-campus/deadline.
     // On a FACULTY row it is the person's affiliation and survives any
     // posture. On an unreviewed kind we know neither, so nothing is shown.
-    location: isFacultyRecord || isOpenListing ? (opportunity.location ?? '') : '',
+    // A listing's host-school city ('institution') is where the school is,
+    // not where the work happens, so it is left off as the header leaves it;
+    // one we read off another record says so in words the image can carry.
+    location: isFacultyRecord
+      ? (opportunity.location ?? '')
+      : isOpenListing && opportunity.location && opportunity.location_attribution !== 'institution'
+        ? opportunity.location_attribution === 'inferred'
+          ? `${opportunity.location} (inferred)`
+          : opportunity.location
+        : '',
     locationPrefix: isFacultyRecord ? 'Faculty affiliation' : '',
     typeLabel: statusReason
       ? STATUS_TYPE_LABEL[statusReason]
@@ -101,11 +110,18 @@ export function buildOpportunityOgFacts(
         : isOpenListing
           ? (opportunity.opportunity_type ?? '').replace(/_/g, ' ')
           : 'Record type unconfirmed',
+    // Same rule as the welcome below: pay read off the prose, Simplify's
+    // stipend default or a configured program's answer gets no green pill.
     showPaid: isOpenListing
-      && (opportunity.paid === 'yes' || opportunity.paid === 'stipend'),
+      && (opportunity.paid === 'yes' || opportunity.paid === 'stipend')
+      && opportunity.paid_attribution !== 'inferred',
     showOnCampus: isOpenListing && opportunity.on_campus === true,
+    // Only a welcome the page states. An inferred one (a configured
+    // program's answer, a keyword scan) gets no pill, as an unconfirmed date
+    // gets no countdown: a pill cannot carry the caveat.
     showInternational: isOpenListing
-      && opportunity.eligibility?.international_friendly === 'yes',
+      && opportunity.eligibility?.international_friendly === 'yes'
+      && opportunity.international_attribution !== 'inferred',
     daysUntilDeadline: deadlineDays,
     deadlineLabel: isOpenListing && opportunity.deadline
       ? deadlineConfirmed

@@ -43,7 +43,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
   const org = opp.organization ? ` at ${opp.organization}` : '';
   const title = `${opp.title}${org}`;
-  const keywords = opp.keywords?.slice(0, 10) ?? [];
+  // Topics from a matched publication record are ours, and a meta tag cannot
+  // say so, so only topics read off the page itself are published.
+  const keywords = opp.keywords_attribution === 'inferred' ? [] : opp.keywords?.slice(0, 10) ?? [];
 
   // Metadata outlives the page: a link preview is cached by the messaging app
   // that rendered it, and a search snippet by the index. So a dead target's

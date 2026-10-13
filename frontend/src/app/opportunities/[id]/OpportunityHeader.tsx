@@ -184,7 +184,9 @@ export function OpportunityHeader({
                 ? <DetailBadge tone="gray" icon={<DollarSign className="w-3 h-3" />}>{t('badges.payUnconfirmed')}</DetailBadge>
                 : <DetailBadge tone="emerald">{t('badges.stipend')}</DetailBadge>
             )}
-            {isCurrentListing && opp.paid === 'no' && <DetailBadge tone="gray">{t('badges.unpaid')}</DetailBadge>}
+            {isCurrentListing && opp.paid === 'no' && (
+              <DetailBadge tone="gray">{t(opp.paid_attribution === 'inferred' ? 'badges.unpaidInferred' : 'badges.unpaid')}</DetailBadge>
+            )}
             {isCurrentListing && opp.on_campus && <DetailBadge tone="gray">{t('badges.onCampus')}</DetailBadge>}
             {/* The values the pipeline actually writes. This tested 'yes',
                 which the corpus vocabulary {unknown, no, remote, hybrid, null}
@@ -193,8 +195,12 @@ export function OpportunityHeader({
                 nothing, indistinguishable from an on-site one. */}
             {isCurrentListing && opp.remote_option === 'remote' && <DetailBadge tone="gray">{t('badges.remoteOk')}</DetailBadge>}
             {isCurrentListing && opp.remote_option === 'hybrid' && <DetailBadge tone="gray">{t('badges.hybrid')}</DetailBadge>}
+            {/* Same rule as the pay badge: a welcome we inferred (a configured
+                program's answer, a keyword scan of the page) says so. */}
             {isCurrentListing && effectiveIntl === 'yes' && (
-              <DetailBadge tone="indigo" icon={<Globe className="w-3 h-3" />}>{t('badges.internationalFriendly')}</DetailBadge>
+              opp.international_attribution === 'inferred'
+                ? <DetailBadge tone="gray" icon={<Globe className="w-3 h-3" />}>{t('badges.internationalFriendlyInferred')}</DetailBadge>
+                : <DetailBadge tone="indigo" icon={<Globe className="w-3 h-3" />}>{t('badges.internationalFriendly')}</DetailBadge>
             )}
             {deadlineBadge}
             {RELEASE_SCOPE.professorSignals && (

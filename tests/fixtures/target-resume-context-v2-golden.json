@@ -1120,6 +1120,86 @@
         }
       },
       "target_signature": "v1:sha256:3aacf6f64781222891765edbe16e0de813796251628a9701edfc91e3ea8d91d5"
+    },
+    {
+      "name": "location-and-compensation-flags",
+      "target": {
+        "description": "Robotics 😀 materials. Research is collaborative.",
+        "opportunity_id": "golden-opportunity",
+        "organization": "Example University",
+        "requirements": [],
+        "source_url": "https://example.test/lab",
+        "title": "Robotics research",
+        "context_version": 2,
+        "criteria": {
+          "eligibility": {
+            "preferred_year": [
+              "Junior",
+              "研究生 😀"
+            ],
+            "min_gpa_decimal": "3.5",
+            "majors": [
+              "ECE",
+              "材料科学"
+            ],
+            "skills_required": [
+              "Python",
+              "😀研究"
+            ],
+            "skills_preferred": [],
+            "citizenship_required": null,
+            "international_friendly": "unknown",
+            "work_auth_notes": "Verify on source — 未知",
+            "first_time_researchers": false
+          },
+          "timing": {
+            "deadline": null,
+            "deadline_is_estimate": true,
+            "is_rolling": false,
+            "deadline_note": null,
+            "start_date": "2027 spring",
+            "posted_date": null,
+            "duration": "12 weeks"
+          },
+          "application": {
+            "contact_method": "email",
+            "application_effort": "unknown",
+            "requires_resume": "yes",
+            "requires_cover_letter": null,
+            "requires_transcript": "unknown",
+            "requires_recommendation": "no",
+            "application_url": "https://example.test/apply"
+          },
+          "setting": {
+            "location": "Urbana—Champaign",
+            "remote_option": "unknown",
+            "on_campus": true,
+            "opportunity_type": "research",
+            "paid": "unknown",
+            "compensation_details": "$500 / 补贴 🧪",
+            "department": "ECE",
+            "lab_or_program": "材料实验室 😀",
+            "pi_name": null
+          },
+          "availability": {
+            "record_kind": "listing",
+            "source_type": "campus_program",
+            "faculty_availability_status": "unknown",
+            "target_truth": {
+              "listing_state": "open",
+              "reference_only": false,
+              "actionable": true,
+              "accepting_state": "unknown",
+              "reason_code": null
+            }
+          },
+          "attribution": {
+            "location_attribution": "institution",
+            "compensation_attribution": "inferred"
+          }
+        }
+      },
+      "target_signature": "v1:sha256:0af3051b17c92815b209e88aca238a580e885aef7826bb2fb283d39d81a7a044"
     }
   ],
   "export": {

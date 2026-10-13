@@ -441,7 +441,10 @@ export default function MatchCard({ detailHref, isViewed, onViewOpportunity, mat
             {compensation && (
               <span className="inline-flex items-center gap-1">
                 <DollarSign className="w-3 h-3 text-emerald-400" />
-                {compensation}
+                {/* A program spec's prose its page does not state is ours. */}
+                {opp.compensation_attribution === 'inferred'
+                  ? t('card.compensationInferred', { compensation })
+                  : compensation}
               </span>
             )}
             {opp.duration && (

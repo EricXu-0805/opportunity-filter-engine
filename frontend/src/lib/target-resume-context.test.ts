@@ -96,6 +96,25 @@ describe('versioned persisted target context', () => {
     expect(value.criteria.attribution).toEqual({ deadline_note_attribution: 'inferred' });
     expect(isCurrentTargetResumeContext(value)).toBe(true);
   });
+  it('carries the location and compensation flags the server published', () => {
+    const input = { ...opportunity(), location: 'Champaign, IL', location_attribution: 'institution',
+      compensation_details: '$500 stipend', compensation_attribution: 'inferred' } as Opportunity;
+    const value = targetResumeContextFromOpportunity(input);
+    expect(value.criteria.attribution).toMatchObject({ location_attribution: 'institution', compensation_attribution: 'inferred' });
+    expect(isCurrentTargetResumeContext(value)).toBe(true);
+    expect(() => targetResumeContextFromOpportunity({ ...input, compensation_attribution: 'institution' } as unknown as Opportunity))
+      .toThrow('invalid_target');
+  });
+  it('leaves a faculty contact\'s school-city flag out, as the server does', () => {
+    // Its location is the school's city by definition, shown as the
+    // professor's affiliation; saving the flag would retire every lab draft.
+    const input = { ...opportunity(), source_type: 'faculty_research', location: 'Champaign, IL',
+      location_attribution: 'institution', compensation_details: '$500', compensation_attribution: 'inferred' } as Opportunity;
+    const value = targetResumeContextFromOpportunity(input);
+    expect(value.criteria.attribution).not.toHaveProperty('location_attribution');
+    expect(value.criteria.attribution).toMatchObject({ compensation_attribution: 'inferred' });
+    expect(value.criteria.setting.location).toBe('Champaign, IL');
+  });
   it('accepts legacy documents without upgrading their source, but forbids AI and new legacy creation', async () => {
     const doc = oldDoc(), before = canonical(doc);
     expect(isCurrentTargetResumeContext(doc.target_snapshot)).toBe(false);

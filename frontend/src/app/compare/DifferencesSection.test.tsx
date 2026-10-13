@@ -95,9 +95,71 @@ describe('DifferencesSection source notes', () => {
       'From our listing’s deadline note, not confirmed on the program page.',
     );
     expect(screen.getByTestId('compare-source-note-majors-banked')).toHaveTextContent(
-      'Matched from the program’s research areas',
+      'Tagged by our system, not an eligibility list the program published.',
     );
     expect(screen.queryByTestId('compare-source-note-majors-stated')).toBeNull();
     expect(screen.queryByTestId('compare-source-note-preferredYear-stated')).toBeNull();
+  });
+});
+
+describe('DifferencesSection marks pay, eligibility, skills and location we inferred', () => {
+  const inferred = {
+    ...opportunity('inferred'),
+    source_type: 'campus_program',
+    paid: 'stipend', paid_attribution: 'inferred',
+    location: 'Springfield, IL', location_attribution: 'inferred',
+    eligibility: {
+      ...opportunity('inferred').eligibility,
+      international_friendly: 'yes', citizenship_required: false, skills_required: ['Python'],
+    },
+    international_attribution: 'inferred', citizenship_attribution: 'inferred', skills_attribution: 'inferred',
+  } as unknown as Opportunity;
+  const stated = {
+    ...opportunity('stated'),
+    source_type: 'campus_program',
+    paid: 'yes',
+    location: 'Chicago, IL',
+    eligibility: {
+      ...opportunity('stated').eligibility,
+      international_friendly: 'no', citizenship_required: true, skills_required: ['MATLAB'],
+    },
+  } as unknown as Opportunity;
+
+  it('notes each inferred cell and leaves the stated one bare', () => {
+    render(<DifferencesSection rows={[{ opp: inferred }, { opp: stated }]} profile={null} />);
+    for (const key of ['compensation', 'paid', 'international', 'citizenship', 'location']) {
+      expect(screen.getByTestId(`compare-source-note-${key}-inferred`), key).toHaveTextContent(
+        'Inferred by us, not stated on the program page.',
+      );
+      expect(screen.queryByTestId(`compare-source-note-${key}-stated`), key).toBeNull();
+    }
+    expect(screen.getByTestId('compare-source-note-skills-inferred')).toHaveTextContent(
+      'Read from the posting text by our pipeline',
+    );
+    expect(screen.queryByTestId('compare-source-note-skills-stated')).toBeNull();
+  });
+
+  it("shows no host-school city as a listing's location", () => {
+    const campus = { ...stated, id: 'campus', title: 'campus', location: 'Urbana, IL', location_attribution: 'institution' } as unknown as Opportunity;
+    render(<DifferencesSection rows={[{ opp: campus }, { opp: stated }]} profile={null} />);
+    expect(screen.queryByText('Urbana, IL')).toBeNull();
+    expect(screen.getByText('Chicago, IL')).toBeInTheDocument();
+  });
+});
+
+describe('DifferencesSection compensation prose from our listing', () => {
+  it('notes a program spec\'s compensation the page does not state', () => {
+    const configured = {
+      ...opportunity('configured'), source_type: 'campus_program',
+      compensation_details: '$500 stipend', compensation_attribution: 'inferred',
+    } as unknown as Opportunity;
+    const stated = {
+      ...opportunity('stated'), source_type: 'campus_program', compensation_details: '$6,000 stipend',
+    } as unknown as Opportunity;
+    render(<DifferencesSection rows={[{ opp: configured }, { opp: stated }]} profile={null} />);
+    expect(screen.getByTestId('compare-source-note-compensation-configured')).toHaveTextContent(
+      'From our listing’s entry for this program, not confirmed on the program page.',
+    );
+    expect(screen.queryByTestId('compare-source-note-compensation-stated')).toBeNull();
   });
 });

@@ -45,6 +45,8 @@ from tests.test_responsiveness import (
 )
 
 client = TestClient(app)
+# The summary prompt builder itself; snapshot_env replaces it with a stub.
+_LLM_EXPLANATION = m_module._llm_explanation
 
 
 def _profile(**overrides):
@@ -381,6 +383,54 @@ class TestExplainServesTheListConclusion:
         assert body["excluded_reason"] == "other_school_campus"
         # The canonical conclusion is stated, not contradicted by omission.
         assert "not in your results" in body["reasons_gap"][0].lower()
+
+    @pytest.mark.parametrize(("stamps", "expected"), [
+        ({"eligibility.citizenship_required": "rule:title_scan",
+          "eligibility.international_friendly": "rule:title_scan"},
+         "Excluded from your results: may require US citizenship or permanent residency,"
+         " by our reading of the page — not confirmed on the program page"),
+        ({"eligibility.citizenship_required": evidence_module.CONFIGURED_PROGRAM_METHOD,
+          "eligibility.international_friendly": evidence_module.CONFIGURED_PROGRAM_METHOD},
+         "Excluded from your results: our listing says this requires US citizenship or permanent residency"
+         " — not confirmed on the program page"),
+        ({"eligibility.citizenship_required": evidence_module.CONFIGURED_PROGRAM_METHOD,
+          "eligibility.international_friendly": "rule:title_scan"},
+         "Excluded from your results: may require US citizenship or permanent residency,"
+         " per our listing and our reading of the page — not confirmed on the program page"),
+        ({}, "Requires US citizenship or permanent residency — excluded from your results"),
+    ])
+    def test_a_citizenship_exclusion_says_whose_restriction_it_is(
+        self, snapshot_env, monkeypatch, stamps, expected,
+    ):
+        """An international student's list drops a citizenship-restricted
+        record, and explain says why first. A restriction we read off the page
+        or our config supplied was said as the program's ("Requires US
+        citizenship…") above the ranker's own hedged line, and the summary
+        prompt quoted it so."""
+        restricted = _opp(
+            "us-only", eligibility={**_opp("x")["eligibility"], "international_friendly": "no",
+                                    "citizenship_required": True},
+            metadata={"is_active": True, "inferred_fields": stamps},
+        )
+        corpus = snapshot_env["corpus"] + [restricted]
+        by_id = {o["id"]: o for o in corpus}
+        ranker.register_corpus(corpus)
+        monkeypatch.setattr(m_module, "load_opportunities_generation", lambda: (corpus, f"us-only-{len(stamps)}"))
+        monkeypatch.setattr(m_module, "load_opportunities_by_id", lambda: by_id)
+        m_module._match_snapshots.clear()
+
+        profile = _profile(international_student=True)
+        body = client.post("/api/matches/us-only/explain", json=profile).json()
+        assert body["excluded_reason"] == "citizenship_restricted"
+        assert body["reasons_gap"][0] == expected
+        if stamps:
+            assert not any(gap.startswith("Requires US citizenship") for gap in body["reasons_gap"])
+
+        prompts = []
+        monkeypatch.setattr(m_module, "chat_completion", lambda messages, **_kw: prompts.append(messages))
+        _LLM_EXPLANATION(profile, restricted, body["reasons_fit"], body["reasons_gap"])
+        assert expected in prompts[0][1]["content"]
+        assert "our reading of the page" in prompts[0][0]["content"]
 
     @pytest.mark.parametrize(
         ("source_text", "reason", "gap_text"),

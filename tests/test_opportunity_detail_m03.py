@@ -18,6 +18,7 @@ from fastapi.testclient import TestClient
 
 from backend.lib.opportunity_detail import (
     BASIS_COLLECTOR_DEFAULT,
+    BASIS_CONFIGURED,
     DETAIL_FIELD_NAMES,
     DETAIL_FIELDS_VERSION,
     FIELD_FACETS,
@@ -220,6 +221,42 @@ class TestNoCollapse:
         assert unknown_score > restricted_score
         assert "Requires US citizenship or permanent residency" in restricted_gaps
         assert "Requires US citizenship or permanent residency" not in unknown_gaps
+
+    def test_an_intl_answer_we_read_off_the_page_is_said_as_ours(self):
+        # M96: the badge hedges a welcome or restriction a scan of the page
+        # produced; the match reasons stated it as the program's. A funding
+        # program's published rule (`policy:`) stays the program's.
+        profile = {"international_student": True, "year": "sophomore", "major": "Biology"}
+        ours = ", by our reading of the page — not confirmed on the program page"
+        for method, fit, gap in (
+            ("rule:title_scan", f"Open to international students{ours}",
+             f"May require US citizenship or permanent residency{ours}"),
+            ("policy:nsf_reu", "Open to international students", "Requires US citizenship or permanent residency"),
+            (None, "Open to international students", "Requires US citizenship or permanent residency"),
+        ):
+            stamps = {} if method is None else {
+                "eligibility.international_friendly": method, "eligibility.citizenship_required": method,
+            }
+            welcome = _listing(eligibility={"international_friendly": "yes"})
+            restricted = _listing(eligibility={"international_friendly": "no", "citizenship_required": True})
+            for record in (welcome, restricted):
+                record["metadata"]["inferred_fields"] = dict(stamps)
+            assert fit in score_eligibility(profile, welcome)[1], method
+            assert gap in score_eligibility(profile, restricted)[2], method
+
+    def test_a_restriction_partly_configured_and_partly_read_names_both(self):
+        # Neither "our listing says" nor "by our reading of the page" alone is
+        # true of a rule whose parts came from each.
+        profile = {"international_student": True, "year": "sophomore", "major": "Biology"}
+        restricted = _listing(eligibility={"international_friendly": "no", "citizenship_required": True})
+        restricted["metadata"]["inferred_fields"] = {
+            "eligibility.international_friendly": "rule:title_scan",
+            "eligibility.citizenship_required": CONFIGURED_PROGRAM_METHOD,
+        }
+        assert score_eligibility(profile, restricted)[2][0] == (
+            "May require US citizenship or permanent residency, per our listing and our reading of the page"
+            " — not confirmed on the program page"
+        )
 
     def test_citizenship_false_counts_only_beside_a_stated_welcome(self):
         stated = _fields(_listing(eligibility={
@@ -477,6 +514,69 @@ class TestApiAndFrontendAgree:
     def test_committed_contract_matches_the_backend(self):
         # Regenerate with: python scripts/generate_detail_fields_contract.py
         assert CONTRACT_PATH.read_text(encoding="utf-8") == render_contract()
+
+    # Every contract case, and one row per listing collector whose skills,
+    # topics or majors a keyword bank or category map wrote with no stamp (the
+    # 2026-10-12 corpus had 99 actionable listings showing "Required skills",
+    # 5,920 showing topics and 4,652 showing majors as stated while their
+    # detail facts said inferred).
+    _FLAG_CASES = [*CASES, *[
+        (f"unstamped_{source}", _listing(
+            id=f"flags-{source}", source=source, keywords=["machine learning"],
+            eligibility={"skills_required": ["Python"], "skills_preferred": ["Linux"],
+                         "majors": ["Computer Science"]},
+        ))
+        for source in ("cmu_uro_projects", "uiuc_our_rss", "nsf_reu", "uiuc_sro", "simplify_internships", "manual")
+    ], ("faculty_unstamped", {**_CASES["faculty_profile"], "metadata": {"is_active": True}})]
+
+    @pytest.mark.parametrize("name,record", _FLAG_CASES, ids=[name for name, _ in _FLAG_CASES])
+    def test_the_flat_flags_say_inferred_exactly_where_the_detail_facts_do(self, name, record):
+        """The cards, Ask AI, the compare table, the page keywords and the
+        saved résumé target read `skills_attribution` / `keywords_attribution`
+        / `majors_attribution`, not the detail facts; the two must not
+        disagree about whose words a list is."""
+        payload, canonical = _served(record)
+        fields = build_detail_fields(payload, canonical)["fields"]
+        skills_inferred = "mentioned" in fields["required_skills"]["inferred"]
+        topics_inferred = "research_areas" in fields["research_content"]["inferred"]
+        majors = fields["eligibility"]["inferred"].get("majors")
+        assert (payload.get("skills_attribution") == "inferred") is skills_inferred
+        assert (payload.get("keywords_attribution") == "inferred") is topics_inferred
+        assert (payload.get("majors_attribution") == "inferred") is (majors is not None)
+        assert (payload.get("majors_basis") == "configured") is (majors is not None and majors["basis"] == "configured")
+
+    def test_a_campus_collectors_own_tags_are_flagged_though_the_facts_drop_them(self):
+        # The facts leave out the source-type tags a campus collector appends
+        # (no topic); the cards still print them, so the flag marks them ours.
+        record = _listing(source="duke_research_programs", campus_source_type="announcement",
+                          keywords=["announcement", "undergraduate research"])
+        record["metadata"]["discovered"] = True
+        payload, canonical = _served(record)
+        fields = build_detail_fields(payload, canonical)["fields"]
+        assert "research_areas" not in fields["research_content"]["inferred"]
+        assert payload["keywords_attribution"] == "inferred"
+
+    @pytest.mark.parametrize("source,topics,majors", [
+        # Simplify maps its category to topics and majors.
+        ("simplify_internships", "system_tag", "system_tag"),
+        # Tags a person typed into a program spec or a manual row.
+        ("duke_research_programs", "system_tag", "configured"),
+        ("manual", "system_tag", None),
+        # A keyword bank or tagger read of the text.
+        ("nsf_reu", "text_scan", "text_scan"),
+        ("cmu_uro_projects", "text_scan", "text_scan"),
+    ])
+    def test_tags_we_assign_are_not_called_a_reading_of_the_page(self, source, topics, majors):
+        # "Read from the page text by our pipeline" was the facts' label for a
+        # program spec's or manual row's tags and Simplify's category-map
+        # majors, none of them read off any page.
+        fields = _fields(_listing(source=source, keywords=["machine learning"], eligibility={"majors": ["Biology"]}))
+        assert fields["research_content"]["inferred"]["research_areas"]["basis"] == topics
+        if topics == "system_tag":
+            assert fields["research_content"]["provenance"]["observed_at"] is None
+        elig = fields["eligibility"]
+        assert (elig["inferred"].get("majors") or {}).get("basis") == majors
+        assert ("majors" in elig["explicit"]) is (majors is None)
 
 
 # ---------------------------------------------------------------------------
@@ -990,7 +1090,7 @@ class TestCampusGraphContract:
         assert fields["department"]["explicit"] == {"department": "Biology"}
         assert fields["professor_or_lab"]["explicit"] == {"lab_or_program": "SURF"}
         for field, facet, value in _CONFIGURED_FACETS:
-            assert fields[field]["inferred"][facet] == {"value": value, "basis": BASIS_COLLECTOR_DEFAULT}, facet
+            assert fields[field]["inferred"][facet] == {"value": value, "basis": BASIS_CONFIGURED}, facet
             assert facet not in fields[field]["explicit"], facet
         assert _where(fields["eligibility"], "citizenship") == "unknown"
         assert _where(fields["location"], "location") == "unknown"
@@ -1003,6 +1103,17 @@ class TestCampusGraphContract:
         _, canonical = _served(self._configured())
         _, fits, _ = score_upside({}, canonical)
         assert "Includes stipend" not in fits
+
+    def test_configured_compensation_is_flagged_for_the_cards(self):
+        # M96: the results card and compare table print compensation prose
+        # beside the pay badge; a program spec's prose is ours, as its pay is.
+        payload, _ = _detail(self._configured())
+        assert payload["compensation_details"] == "$5,000"
+        assert payload["compensation_attribution"] == "inferred"
+        stated, _ = _detail(self._with_page(self._STATES))
+        assert "compensation_attribution" not in stated
+        posting, _ = _detail(_listing(compensation_details="$600 per week"))
+        assert "compensation_attribution" not in posting
 
     def test_configured_majors_and_years_say_they_came_from_our_config(self):
         payload, _ = _detail(self._configured())
@@ -1017,6 +1128,67 @@ class TestCampusGraphContract:
         assert payload["majors_attribution"] == payload["preferred_year_attribution"] == "inferred"
         assert "majors_basis" not in payload
         assert "preferred_year_basis" not in payload
+
+    def test_a_programs_own_lists_are_configured_not_a_source_default(self):
+        # Shaped like purdue-7dc8e5d17382 (2026-10-12): the program spec's own
+        # major and class-year lists, unstamped, and no page text states them.
+        # The detail facts called them "A default we apply to this source"
+        # while the payload already said `configured`.
+        record = _listing(
+            id="purdue-like", source="purdue_research_programs", source_type="campus_department",
+            title="Summer Undergraduate Research Fellowship (SURF) — Engineering (Purdue)", paid="stipend",
+            eligibility={"preferred_year": ["sophomore", "junior"], "majors": ["Engineering", "Computer Science"],
+                         "international_friendly": "unknown", "citizenship_required": None},
+            metadata={"is_active": True, "last_verified": "2026-09-30T06:06:42", "shared_program_page": False,
+                      "deadline_note": "Annual summer cycle; applications typically due late winter."},
+        )
+        payload, fields = _detail(record)
+        assert payload["majors_basis"] == payload["preferred_year_basis"] == "configured"
+        assert fields["eligibility"]["inferred"] == {
+            "majors": {"value": ["Engineering", "Computer Science"], "basis": BASIS_CONFIGURED},
+            "class_year": {"value": ["sophomore", "junior"], "basis": BASIS_CONFIGURED},
+        }
+        # Nothing on the page produced them, so the field is not dated by it.
+        assert fields["eligibility"]["provenance"]["observed_at"] is None
+
+    def test_a_programs_own_pay_intl_and_deadline_note_are_configured(self):
+        # Shaped like purdue-af71941ba814 (2026-10-12): a lab spec's intl
+        # answer, compensation and deadline note, none stated on a page the row
+        # carries. The facts called each "A default we apply to this source".
+        record = _listing(
+            id="purdue-like-lab", source="purdue_labs", source_type="campus_lab",
+            title="Purdue Experimental Mathematics Lab (PXML) — Purdue University", paid="yes",
+            compensation_details="Varies; some credit/funded roles",
+            eligibility={"international_friendly": "yes", "citizenship_required": False},
+            metadata={"is_active": True, "last_verified": "2026-09-30T06:06:42", "shared_program_page": False,
+                      "deadline_note": "Applications each semester"},
+        )
+        _, canonical = _served(record)
+        # The load-time stamp is the configured program's own, not a source default.
+        assert inferred_method(canonical, "paid") == CONFIGURED_PROGRAM_METHOD
+        assert inferred_method(canonical, "eligibility.international_friendly") == CONFIGURED_PROGRAM_METHOD
+        _, fields = _detail(record)
+        assert fields["eligibility"]["inferred"] == {
+            "international_students": {"value": "yes", "basis": BASIS_CONFIGURED}}
+        assert fields["funding"]["inferred"] == {
+            "paid": {"value": "yes", "basis": BASIS_CONFIGURED},
+            "compensation": {"value": "Varies; some credit/funded roles", "basis": BASIS_CONFIGURED},
+        }
+        assert fields["timing"]["inferred"]["application_window"] == {
+            "value": "Applications each semester", "basis": BASIS_CONFIGURED}
+        record["eligibility"] = {"international_friendly": "no", "citizenship_required": True}
+        _, fields = _detail(record)
+        assert fields["eligibility"]["inferred"]["citizenship"] == {"value": "required", "basis": BASIS_CONFIGURED}
+        assert fields["funding"]["provenance"]["observed_at"] is None
+
+    def test_a_source_wide_default_keeps_the_collector_default_basis(self):
+        record = self._configured()
+        record["metadata"]["inferred_fields"] = {"eligibility.majors": "default:every_row", "paid": "default:every_row"}
+        _, fields = _detail(record)
+        assert fields["eligibility"]["inferred"]["majors"]["basis"] == BASIS_COLLECTOR_DEFAULT
+        assert fields["funding"]["inferred"]["paid"]["basis"] == BASIS_COLLECTOR_DEFAULT
+        _, fields = _detail(_CASES["simplify_internship_template"])
+        assert fields["funding"]["inferred"]["paid"]["basis"] == BASIS_COLLECTOR_DEFAULT
 
     @pytest.mark.parametrize("paid", ["yes", "stipend", "no"])
     def test_configured_pay_is_stamped_whatever_it_says(self, paid):
@@ -1174,7 +1346,7 @@ class TestCampusGraphContract:
         )
         payload, fields = _detail(record)
         for field, facet, value in _CONFIGURED_FACETS:
-            assert fields[field]["inferred"][facet] == {"value": value, "basis": BASIS_COLLECTOR_DEFAULT}, facet
+            assert fields[field]["inferred"][facet] == {"value": value, "basis": BASIS_CONFIGURED}, facet
             assert facet not in fields[field]["explicit"], facet
         for name in ("eligibility", "funding", "timing"):
             assert fields[name]["quotes"] == {}, name
@@ -1192,7 +1364,7 @@ class TestCampusGraphContract:
         )
         payload, fields = _detail(record)
         for field, facet, value in _CONFIGURED_FACETS:
-            assert fields[field]["inferred"][facet] == {"value": value, "basis": BASIS_COLLECTOR_DEFAULT}, facet
+            assert fields[field]["inferred"][facet] == {"value": value, "basis": BASIS_CONFIGURED}, facet
             assert fields[field]["quotes"] == {}, facet
         expected = {
             "paid": "Research positions are unpaid.",
@@ -1440,6 +1612,27 @@ class TestCampusGraphContract:
         posting["eligibility"]["majors"] = ["all"]
         assert "Open to all majors" in score_eligibility(history, posting)[1]
 
+    _HEDGED_CITIZENSHIP = (
+        "Our listing says this requires US citizenship or permanent residency — not confirmed on the program page"
+    )
+
+    def test_an_intl_answer_from_our_listing_is_said_as_ours(self):
+        # M96: the cards say "Intl OK (inferred)" for a configured welcome; the
+        # match reasons said "Open to international students" as the program's.
+        profile = {"year": "junior", "major": "Biology", "international_student": True}
+        _, welcome = _served(self._configured())
+        _, fits, gaps = score_eligibility(profile, welcome)
+        assert "Our listing says this is open to international students — not confirmed on the program page" in fits
+        assert "Open to international students" not in fits
+        record = self._configured()
+        record["eligibility"]["international_friendly"] = "no"
+        _, gaps = score_eligibility(profile, _served(record)[1])[::2]
+        assert self._HEDGED_CITIZENSHIP in gaps
+        assert "Requires US citizenship or permanent residency" not in gaps
+        # The page text stating the welcome makes it the program's again.
+        _, fits, _ = score_eligibility(profile, _served(self._with_page(self._STATES))[1])
+        assert "Open to international students" in fits
+
     def test_a_concern_from_our_listing_comes_after_the_firmer_eligibility_ones(self):
         # The compare view, the local summary and the AI prompt read only the
         # first two or three gap lines. Our listing's concerns follow the firmer
@@ -1451,7 +1644,9 @@ class TestCampusGraphContract:
         _, ours = _served(record)
         profile = {"year": "freshman", "major": "History", "hard_skills": [], "international_student": True}
         gaps = rank_opportunity(profile, ours, precomputed_sim=0.2).reasons_gap
-        citizenship = gaps.index("Requires US citizenship or permanent residency")
+        # The configured "no" is said as our listing's (M96) but is still the
+        # restriction that zeroes the score: it keeps its place ahead of them.
+        citizenship = gaps.index(self._HEDGED_CITIZENSHIP)
         resume = gaps.index("Resume required — prepare one before applying")
         assert citizenship < gaps.index(self._HEDGED_YEARS) < gaps.index(self._HEDGED_MAJORS) < resume, gaps
         # A page that states the lists keeps them where they were.
@@ -1459,6 +1654,30 @@ class TestCampusGraphContract:
         record["eligibility"]["international_friendly"] = "no"
         gaps = rank_opportunity(profile, _served(record)[1], precomputed_sim=0.2).reasons_gap
         assert gaps[:2] == ["Typically targets junior, senior", "Prefers Biology"], gaps
+
+    def test_a_restriction_from_our_listing_leads_the_gaps_however_it_is_worded(self):
+        # The upenn-657700f0564a shape: a configured external program whose
+        # "US only" and lists the page text does not state. The local summary
+        # reads only the first two gap lines; the restriction moved from first
+        # to third when its wording began "Our listing …".
+        record = {
+            "id": "upenn-msap", "source": "upenn_external_research", "source_type": "summer_program",
+            "opportunity_type": "summer_program", "title": "Science Apprenticeship Program",
+            "organization": "University of Pennsylvania", "url": _SPEC_URL, "source_url": _SPEC_URL,
+            "eligibility": {"preferred_year": ["freshman", "sophomore", "junior"],
+                            "majors": ["biology", "neuroscience", "psychology", "chemistry"],
+                            "skills_required": ["Python", "MATLAB"], "skills_preferred": [],
+                            "citizenship_required": True, "international_friendly": "no"},
+            "application": {}, "metadata": {"is_active": True, "last_verified": "2026-09-01T00:00:00"},
+        }
+        profile = {"year": "graduate", "major": "History", "hard_skills": [], "international_student": True,
+                   "seeking_type": ["internship"]}
+        _, ours = _served(record)
+        gaps = score_eligibility(profile, ours)[2]
+        assert gaps[0] == self._HEDGED_CITIZENSHIP, gaps
+        listing = [i for i, gap in enumerate(gaps) if gap.startswith("Our listing suggests")]
+        assert len(listing) == 2 and listing == list(range(len(gaps) - 2, len(gaps))), gaps
+        assert rank_opportunity(profile, ours, precomputed_sim=0.2).reasons_gap[0] == self._HEDGED_CITIZENSHIP
 
     def test_a_year_list_that_names_no_year_tells_a_graduate_nothing(self):
         # A faculty row carries ["unknown"]: nobody said the opening is for
@@ -1506,7 +1725,7 @@ class TestCampusGraphContract:
         record = self._with_page(self._STATES + " Questions: surf@example.edu")
         payload, fields = _detail(record)
         assert payload["description"] == "[email redacted]"
-        assert fields["funding"]["inferred"]["paid"]["basis"] == BASIS_COLLECTOR_DEFAULT
+        assert fields["funding"]["inferred"]["paid"]["basis"] == BASIS_CONFIGURED
         assert configured_fact(record, "paid") == ConfiguredFact(FACT_UNSTATED)
 
     def test_the_sentence_a_cut_excerpt_ends_on_is_not_read(self):
@@ -1574,7 +1793,7 @@ class TestCampusGraphContract:
         record["metadata"]["contact_instruction_sources"] = [
             self._passage("Fellows receive a $5,000 stipend.", **passage)]
         assert configured_fact(record, "paid") == ConfiguredFact(FACT_UNSTATED)
-        assert _detail(record)[1]["funding"]["inferred"]["paid"]["basis"] == BASIS_COLLECTOR_DEFAULT
+        assert _detail(record)[1]["funding"]["inferred"]["paid"]["basis"] == BASIS_CONFIGURED
 
     def test_a_passage_under_its_own_programs_acronym_is_read(self):
         record = self._configured()
@@ -1597,7 +1816,7 @@ class TestCampusGraphContract:
             self._passage("Requirements: Open to all years and experience levels.")]
         fact = configured_fact(record, "class_year")
         assert (fact.state, fact.quote) == (FACT_CONTRADICTED, "Requirements: Open to all years and experience levels.")
-        assert _detail(record)[1]["eligibility"]["inferred"]["class_year"]["basis"] == BASIS_COLLECTOR_DEFAULT
+        assert _detail(record)[1]["eligibility"]["inferred"]["class_year"]["basis"] == BASIS_CONFIGURED
 
 
 def test_the_report_lists_the_values_the_page_text_contradicts(tmp_path, capsys):
@@ -1843,8 +2062,8 @@ class TestUcbCampusContract:
         record = ucb_campus._normalize_program(source, source["programs"][0], seed_page_verified=True)
         payload, fields = _detail(record)
         assert fields["department"]["explicit"] == {"department": "Electrical Engineering and Computer Sciences"}
-        assert fields["eligibility"]["inferred"]["majors"]["basis"] == BASIS_COLLECTOR_DEFAULT
-        assert fields["eligibility"]["inferred"]["class_year"]["basis"] == BASIS_COLLECTOR_DEFAULT
+        assert fields["eligibility"]["inferred"]["majors"]["basis"] == BASIS_CONFIGURED
+        assert fields["eligibility"]["inferred"]["class_year"]["basis"] == BASIS_CONFIGURED
         assert fields["eligibility"]["explicit"] == {}
         assert fields["research_content"]["inferred"]["research_areas"]["value"] == ["machine learning"]
 
@@ -1881,3 +2100,75 @@ def test_pi_enricher_stamps_a_page_scanned_name(monkeypatch):
     pi_enricher.enrich_opportunities([opp])
     assert opp["pi_name"] == "Ada Lovelace"
     assert inferred_method(opp, "pi_name") == "rule:page_scan_name"
+
+
+def test_ask_ai_says_a_value_we_inferred_is_ours():
+    # M96: the public payload flags pay, eligibility, skills, topics and a
+    # location we did not read off the page, and the cards hedge them; Ask AI's
+    # prompt and its local fallback printed them as the program's terms.
+    record = _listing(
+        paid="yes", location="Example, ST", keywords=["optics"],
+        eligibility={"international_friendly": "yes", "citizenship_required": False, "skills_required": ["Python"]},
+    )
+    record["metadata"]["inferred_fields"] = {
+        "paid": "rule:detect_paid_from_text",
+        "eligibility.international_friendly": "rule:title_scan",
+        "eligibility.citizenship_required": "rule:title_scan",
+        "eligibility.skills_required": "llm:tagger",
+        "keywords": "derived:openalex",
+    }
+    payload, _ = _served(record)
+    assert payload["location_attribution"] == "institution"
+    ours = " (our inference, not confirmed on the program page)"
+    prompt = opportunities_module._build_chat_system_prompt(payload, None, frozenset())
+    for line in (f"- Paid: yes{ours}; compensation: —",
+                 "- Location: not stated (the host institution is in Example, ST)",
+                 f"- Skills mentioned: Python{ours}",
+                 f"- International friendly: yes{ours}",
+                 f"- Citizenship required: no{ours}",
+                 f"- Keywords: optics{ours}",
+                 "was inferred by our pipeline: never present it as the program's requirement"):
+        assert line in prompt, line
+    assert "Required skills" not in prompt
+    fallback = opportunities_module._local_chat_fallback(payload, "Is it paid?", frozenset())
+    for line in (f"paid: yes{ours};", f"- Skills mentioned: Python{ours}.",
+                 f"International-friendly: yes{ours}; citizenship required: no{ours}."):
+        assert line in fallback, line
+
+    del record["metadata"]["inferred_fields"]
+    # Unstamped, a listing's skills and topics are still ours: the keyword bank
+    # or tagger wrote them (the detail facts' rule, `skills_basis`/`keywords_basis`).
+    unstamped, _ = _served(_listing(**{k: v for k, v in record.items() if k != "location"}))
+    prompt = opportunities_module._build_chat_system_prompt(unstamped, None, frozenset())
+    assert f"- Skills mentioned: Python{ours}" in prompt and f"- Keywords: optics{ours}" in prompt
+    # A hand-curated row states its skills; only an SRO row states its topics.
+    stated, _ = _served(_listing(**{k: v for k, v in record.items() if k not in ("location", "keywords", "source")},
+                                 source="manual"))
+    prompt = opportunities_module._build_chat_system_prompt(stated, None, frozenset())
+    assert "our inference" not in prompt
+    assert "- Paid: yes; compensation: —" in prompt and "- Required skills: Python" in prompt
+
+
+def test_a_category_map_major_list_is_ours_in_ask_ai_and_the_saved_target():
+    # Simplify fills majors from its category map on every internship. The
+    # detail facts called them inferred; the flag did not, so Ask AI printed
+    # "Eligible majors: Computer Science" beside topics from the same map
+    # marked as ours, and the compare table and saved résumé target agreed.
+    record = copy.deepcopy(_CASES["simplify_internship_template"])
+    payload, canonical = _served(record)
+    assert payload["majors_attribution"] == "inferred"
+    assert "majors_basis" not in payload  # not our config: the generic note
+    ours = " (our inference, not confirmed on the program page)"
+    prompt = opportunities_module._build_chat_system_prompt(payload, None, frozenset())
+    assert f"- Majors: Computer Science{ours}" in prompt
+    assert "Eligible majors" not in prompt
+    fallback = opportunities_module._local_chat_fallback(payload, "Who can apply?", frozenset())
+    assert f"- Majors: Computer Science{ours}." in fallback
+    assert authoritative_target(canonical)["criteria"]["attribution"]["majors_attribution"] == "inferred"
+
+    # A hand-curated row's list is the posting's own.
+    stated, canonical = _served(_listing(source="manual", eligibility={"majors": ["Computer Science"]}))
+    assert "majors_attribution" not in stated
+    prompt = opportunities_module._build_chat_system_prompt(stated, None, frozenset())
+    assert "- Eligible majors: Computer Science\n" in prompt
+    assert "majors_attribution" not in authoritative_target(canonical)["criteria"]["attribution"]

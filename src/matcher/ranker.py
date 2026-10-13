@@ -17,6 +17,7 @@ from functools import lru_cache
 from backend.lib.contact_visibility import send_target_strength, verified_send_target
 
 from ..evidence import (
+    CONFIGURED_PROGRAM_METHOD,
     FACT_UNSTATED,
     configured_fact,
     configured_value_unstated,
@@ -25,6 +26,7 @@ from ..evidence import (
     faculty_positive_major_labels,
     faculty_safe_eligibility,
     faculty_safe_lab_or_program,
+    inferred_method,
     is_all_majors_answer,
     is_inferred,
     is_professor_rank,
@@ -1798,6 +1800,53 @@ def _mentioned_skill_labels(opportunity: dict) -> list[str]:
 # Ends every gap line built from a configured value the page text the row
 # carries does not state (see score_eligibility).
 _NOT_ON_PAGE = " — not confirmed on the program page"
+# Ends a line built from a value our pipeline read off the page text. A scan
+# can miss a sentence, so it says "not confirmed", not "not stated".
+_OUR_READING = ", by our reading of the page — not confirmed on the program page"
+# Ends a restriction one part of which our config supplied and one part of
+# which we read off the page.
+_OUR_LISTING_AND_READING = ", per our listing and our reading of the page — not confirmed on the program page"
+
+
+def _intl_terms_basis(opportunity: dict, fields: tuple[str, ...]) -> str | None:
+    """Whose the intl answer or citizenship rule in ``fields`` is: None when
+    the program states it (or a funding program's policy does), "configured"
+    when every one is a program spec's value from our config, "read" when we
+    read every one off the page, "mixed" when some are each — the wire's
+    `international_attribution` / `citizenship_attribution` rule, so the
+    sentence and the badge agree."""
+    paths = [f"eligibility.{field}" for field in fields]
+    if not paths or not all(is_read_off_the_page(opportunity, path) for path in paths):
+        return None
+    configured = [inferred_method(opportunity, path) == CONFIGURED_PROGRAM_METHOD for path in paths]
+    if all(configured):
+        return "configured"
+    return "mixed" if any(configured) else "read"
+
+
+def citizenship_restriction_reason(opportunity: dict) -> str:
+    """The reason line for an intl "no" or a citizenship rule, said as whose
+    the restriction is (M96).
+
+    Shared with the explain route, whose line for a record it excluded from an
+    international student's results must not state as the program's a
+    restriction this one hedges.
+    """
+    elig = faculty_safe_eligibility(opportunity)
+    restricted_by = tuple(
+        field for field, restricts in (
+            ("international_friendly", elig.get("international_friendly", "unknown") == "no"),
+            ("citizenship_required", elig.get("citizenship_required") is True),
+        ) if restricts
+    )
+    basis = _intl_terms_basis(opportunity, restricted_by)
+    if basis == "configured":
+        return f"Our listing says this requires US citizenship or permanent residency{_NOT_ON_PAGE}"
+    if basis == "read":
+        return f"May require US citizenship or permanent residency{_OUR_READING}"
+    if basis == "mixed":
+        return f"May require US citizenship or permanent residency{_OUR_LISTING_AND_READING}"
+    return "Requires US citizenship or permanent residency"
 
 
 def score_eligibility(
@@ -1814,6 +1863,10 @@ def score_eligibility(
     elig = faculty_safe_eligibility(opportunity)
     reasons_fit = []
     reasons_gap = []
+    # Year and major concerns from our own listing, added after the other
+    # lines at the end. Collected by kind, not by wording: a restriction we
+    # supplied also starts "Our listing …" and must keep its place.
+    listing_gaps: list[str] = []
 
     # Year match (30% weight)
     student_year = (profile.get("year") or "").strip()
@@ -1854,7 +1907,7 @@ def score_eligibility(
             if not years_are_configured:
                 reasons_gap.append("For undergraduates — not a graduate-level opening")
             elif configured_fact(opportunity, "class_year").state == FACT_UNSTATED:
-                reasons_gap.append(f"Our listing suggests this is for undergraduates{_NOT_ON_PAGE}")
+                listing_gaps.append(f"Our listing suggests this is for undergraduates{_NOT_ON_PAGE}")
         else:
             if named_years and not years_are_configured:
                 reasons_gap.append(f"Typically targets {', '.join(named_years)}")
@@ -1863,7 +1916,7 @@ def score_eligibility(
                 # not state are still a concern, said as ours. Years that text
                 # contradicts are for a person to read (`scripts/configured_facts_report.py`
                 # lists them), not a shortfall to put to the student.
-                reasons_gap.append(f"Our listing suggests {', '.join(named_years)} students{_NOT_ON_PAGE}")
+                listing_gaps.append(f"Our listing suggests {', '.join(named_years)} students{_NOT_ON_PAGE}")
 
     # Major match (20% weight)
     #
@@ -1957,7 +2010,7 @@ def score_eligibility(
             reasons_gap.append(f"Prefers {', '.join(elig.get('majors', []))}")
         elif configured_fact(opportunity, "majors").state == FACT_UNSTATED:
             # Said as ours, like the class years above.
-            reasons_gap.append(f"Our listing suggests {', '.join(elig['majors'])} majors{_NOT_ON_PAGE}")
+            listing_gaps.append(f"Our listing suggests {', '.join(elig['majors'])} majors{_NOT_ON_PAGE}")
 
     intl_score = 100.0
     if profile.get("international_student"):
@@ -1969,7 +2022,9 @@ def score_eligibility(
         # as domestic / US-only sources enter the corpus.
         if friendly == "no" or elig.get("citizenship_required") is True:
             intl_score = 0.0
-            reasons_gap.append("Requires US citizenship or permanent residency")
+            # The score is the record's either way; the sentence says whose
+            # restriction it is when we, not the program, supplied it (M96).
+            reasons_gap.append(citizenship_restriction_reason(opportunity))
         elif friendly == "unknown":
             # DQ-6: "unknown" covers 37% of the corpus (mostly internships whose
             # source sponsorship field was blank). For internships specifically,
@@ -1990,7 +2045,14 @@ def score_eligibility(
                     else "International eligibility unclear — verify before applying"
                 )
         else:
-            reasons_fit.append("Open to international students")
+            basis = _intl_terms_basis(opportunity, ("international_friendly",))
+            reasons_fit.append(
+                f"Our listing says this is open to international students{_NOT_ON_PAGE}"
+                if basis == "configured"
+                else f"Open to international students{_OUR_READING}"
+                if basis == "read"
+                else "Open to international students"
+            )
 
     # Skill overlap (15% weight). Evidence-backed rolling postings such as SRO
     # entries may omit fixed requirements because they adapt to the applicant.
@@ -2122,12 +2184,12 @@ def score_eligibility(
         + rem * 0.1875 * skill_score
         + rem * 0.1875 * type_score
     )
-    # A concern from our own listing goes after the other lines here
-    # (citizenship, skills, type). The ranker then adds its own eligibility
-    # lines (topic, dates, graduate level), and readiness and upside follow:
-    # the compare view, the local summary and the AI prompt read only the
-    # first two or three. sort() is stable, so each group keeps its order.
-    reasons_gap.sort(key=lambda gap: gap.endswith(_NOT_ON_PAGE))
+    # A year or major concern from our own listing goes after the other lines
+    # here (citizenship, however it is worded, skills, type). The ranker then
+    # adds its own eligibility lines (topic, dates, graduate level), and
+    # readiness and upside follow: the compare view, the local summary and the
+    # AI prompt read only the first two or three.
+    reasons_gap.extend(listing_gaps)
     return total, reasons_fit, reasons_gap
 
 
@@ -3330,6 +3392,7 @@ _REASON_TIERS: tuple[tuple[int, tuple[str, ...]], ...] = (
     # must not occupy a top-3 card slot when specific reasons are scarce.
     (6, ("Accepts ", "Your class year (", "Your major (", "Open to all majors",
          "Our listing says this is open to all majors", "Open to international students",
+         "Our listing says this is open to international students",
          "Your experience level is competitive",
          "You're comfortable with direct outreach", "Low application effort",
          "Matches your interest in ", "Major research university",

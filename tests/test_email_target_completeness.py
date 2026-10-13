@@ -23,6 +23,9 @@ def no_network(monkeypatch):
 
 
 def full_target(opp):
+    # A hand-curated row: the only kind whose skill list is the posting's
+    # (`opportunity_detail.skills_basis`), so the email may record it.
+    opp['source'] = 'manual'
     opp.update(title='Research tools ' * 20 + 'TITLE_END',
                lab_or_program='Methods group ' * 20 + 'LAB_END',
                organization='Public University', department='Research Department',
@@ -104,7 +107,7 @@ def test_oversized_legacy_target_is_explicitly_rejected_before_first_provider(wr
     # JSON escaping of admitted controls exceeds the provider budget.
     huge = '\x01' * 19000
     if field == 'description': opp['description_raw'] = huge
-    elif field == 'requirements': opp['eligibility']['skills_required'] = ['Python', huge]
+    elif field == 'requirements': opp.update(source='manual'); opp['eligibility']['skills_required'] = ['Python', huge]
     elif field == 'research_areas': opp['metadata']['research_areas_raw'] = huge
     elif field == 'keywords': opp['keywords'] = ['Python parser', huge]
     else: opp['metadata']['recent_works'] = [{'title': huge, 'year': 2025}]
@@ -163,6 +166,8 @@ def test_inferred_skills_never_become_source_requirements(writing_client, monkey
         opp['description_raw'] = 'Applicants must have experience in Cryptographic sensing.'
     if source_case != 'explicit_requirement':
         opp['metadata']['inferred_fields'] = {'eligibility.skills_required': 'llm:tagger'}
+    else:
+        opp['source'] = 'manual'  # only a hand-curated row's list is the posting's
     profile = {**PROFILE, 'hard_skills': [{'name': phrase, 'level': 'beginner'}]}
     calls = []
     monkeypatch.setattr(ce, 'is_configured', lambda: True)
@@ -230,6 +235,7 @@ def test_late_target_fact_can_pass_actual_output_grounding_without_becoming_stud
 @pytest.mark.parametrize('path', ['', 'stream', 'refine', 'selection'])
 def test_aggregate_plain_target_fields_exceed_budget_without_exceeding_public_field_limits(writing_client, monkeypatch, path):  # noqa: F811
     client, opp = writing_client
+    opp['source'] = 'manual'
     opp['eligibility']['skills_required'] = [f'Skill {i}: ' + 'x' * 18000 for i in range(7)]
     public = project_public_detail(opp)
     assert public['eligibility']['skills_required'] == opp['eligibility']['skills_required']
