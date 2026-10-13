@@ -154,7 +154,7 @@ sides.
 
 `detail_fields` serves the detail facts. Every other surface reads the flat
 flags `backend/lib/public_projection.py` adds to each public payload:
-`paid_attribution`, `international_attribution`, `citizenship_attribution`,
+`paid_attribution`, `compensation_attribution`, `international_attribution`, `citizenship_attribution`,
 `preferred_year_attribution` (+ `preferred_year_basis: "configured"`),
 `majors_attribution` (+ `majors_basis`), `skills_attribution`,
 `keywords_attribution`, `deadline_note_attribution` (`"inferred"`), and
@@ -172,17 +172,19 @@ file renders one of these values without reading its flag.
 | --- | --- | --- |
 | Detail facts (`DetailFactsSection`) | all M03 facets | basis line per inferred facet |
 | Detail header (`OpportunityHeader`) | pay, intl, location, deadline | hedged badges; school city hidden; estimate |
-| Detail fallback sections (`DetailSections`) | years, majors, skills, intl, citizenship, rolling, topics | label + note |
-| Results card (`MatchCard`, `lib/badge-utils`) | pay, intl, location, skills, deadline | hedged badges and heading |
+| Detail fallback sections (`DetailSections`) | years, majors, skills, intl, citizenship, compensation, rolling, topics | label + note |
+| Results card (`MatchCard`, `lib/badge-utils`) | pay, compensation, intl, location, skills, deadline | hedged badges, "(inferred)", heading |
+| Match reasons (`src/matcher/ranker.py`) | pay, intl, citizenship, majors, years | sentence omitted or said as our listing's / our reading |
 | Cached results page (`lib/match-cache`) | all flags | kept in the cache projection |
 | Results CSV (`lib/match-utils`) | pay, intl, location, deadline | "(inferred)", "(estimated)", school city blank |
 | Favorites card | pay, intl, location, skills, topics | badge helpers, heading, note |
 | Similar rail | pay | hedged badges |
-| Compare table / bucket cards | pay, compensation fallback, intl, citizenship, skills, majors, years, location, rolling | note under the cell; school city blank |
+| Compare table / bucket cards | pay, compensation, intl, citizenship, skills, majors, years, location, rolling | note under the cell; school city blank |
 | Fellowship page, home preview | pay, intl, deadline | hedged pills; estimate |
 | Share image (`og-facts`) | pay, intl, location, deadline | pill omitted; "(inferred)"; deadline wording |
 | Page metadata | topics | inferred topics omitted |
-| Saved résumé target (`TargetResumeCriteria`) | the seven flagged eligibility, pay and note values | "(inferred)" label |
+| Saved résumé target (`TargetResumeCriteria`) | the seven flagged eligibility, pay and note values | "(inferred)" label; location and compensation are saved without a flag (open: needs a context version with those flags) |
+| Ask AI prompt and local fallback (`backend/routes/opportunities.py`) | pay, compensation, majors, years, skills, intl, citizenship, topics, location | "our listing suggests …", "(our inference, not stated by the program)", school city said as such |
 | Cold-email conditions panel | eligibility, deadline, materials | per-condition status |
 | Email digest | deadline | "estimated" |
 
