@@ -365,7 +365,16 @@ SHA and confirm the previously-passing gates still pass.
   The script reports files production never ran, rows the repo does not have,
   and rows recorded twice, and exits 1 on any of them. It compares md5 where a
   row holds one statement. Run the query against production only with the
-  owner's OK (backlog Q4); it has not been run against production yet.
+  owner's OK (backlog Q4). Run once on 2026-10-15 with that OK: 51 rows for
+  52 files, all matched by name; the one file without a row is
+  `20261011090000_tracker_attachments_require_signin.sql`, which the owner ran
+  by hand in the SQL editor on 2026-10-12 after the MCP connector declined it.
+  Of 29 single-statement rows, 2 match the file byte for byte, 16 match once
+  leading and trailing whitespace is ignored, and 11 (`014`, `024`-`032`,
+  `034`) do not. For 7 of those 11 the file's last commit predates its
+  application; `026`-`029` reached main in the 2026-08-07 merge (07:07 UTC),
+  about two hours after they were applied (04:49-05:13 UTC). The applied
+  texts have not been compared with the files yet.
 - **`/api/ready` is not wired to `render.yaml`'s `healthCheckPath`** on
   purpose. It gates on corpus freshness, and at the time of writing the corpus
   sat at 94h against a 96h stale bound — pointing the instance probe at it

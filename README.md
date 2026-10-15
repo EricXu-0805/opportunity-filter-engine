@@ -16,7 +16,7 @@ Built for the students each campus serves worst — including international stud
 ## Scope, to-do list and docs
 
 - **What ships.** Several built features (compare, fellowships, the roadmap, Ask AI, payments) are switched off in the public release. `docs/product_scope.md` lists every release flag, its state, and why each closed one is closed.
-- **The to-do list.** Open work lives in one place: the owner's MVP checklist (the private "OE todolist" Google Doc, MVP tab, items M01–M70). Ask the owner for access. `docs/roadmap.md`, `docs/PROJECT_PLAN.md`, `docs/MASTER_PLAN.md` and `docs/future_features.md` are earlier plans, kept for history.
+- **The to-do list.** Open work lives in one place: the owner's MVP checklist (the private "OE todolist" Google Doc, MVP tab, items numbered from M01). Ask the owner for access. `docs/roadmap.md`, `docs/PROJECT_PLAN.md`, `docs/MASTER_PLAN.md` and `docs/future_features.md` are earlier plans, kept for history.
 - **Operations.** `RUNBOOK.md` covers the scheduled jobs, the weekly refresh rotation, migrations (including how to name a new one) and environment setup. `docs/RELEASE.md` covers releases and rollback. `docs/collector_sop.md` is the procedure for adding a school.
 
 ## Screenshots
