@@ -115,4 +115,19 @@ describe('the slider names the signals it actually moves', () => {
     expect(d.en.home.form.searchWeightRight.toLowerCase()).toContain('coursework');
     expect(d.zh.home.form.searchWeightRight).toContain('课程');
   });
+
+  // Checklist M13: the matcher counts every course but a planned one
+  // (src/student_evidence.courses_counted_as_taken) — in progress and not
+  // marked included — so no end of the slider may say only completed ones do.
+  it('says every course but a planned one counts, never only the completed ones', async () => {
+    const { dictionaries } = await dict();
+    const d = dictionaries as never as Record<string, { home: { form: Record<string, string>; cards: Record<string, string> } }>;
+    for (const locale of ['en', 'zh'] as const) {
+      const { form, cards } = d[locale].home;
+      const copy = [cards.searchFocusSubtitle, form.searchWeightRight, form.searchWeightExperience, form.searchWeightBalanced].join(' ');
+      expect(copy, locale).not.toMatch(/completed|have taken|已修|修过/i);
+    }
+    expect(d.en.home.form.searchWeightExperience).toContain('plan');
+    expect(d.zh.home.form.searchWeightExperience).toContain('计划');
+  });
 });

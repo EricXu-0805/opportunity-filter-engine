@@ -501,6 +501,19 @@ describe('ResumeUpload — the copy matches what the code actually does', () => 
     expect(zhPrivacy).toContain('随档案一起保存');
   });
 
+  it('EN and ZH say which courses go with the résumé, and that no status read from it stays (checklist M13)', async () => {
+    const { dictionaries } = await import('@/i18n/dictionaries');
+    const enNote = (dictionaries.en.resume as Record<string, string>).removeNote;
+    const zhNote = (dictionaries.zh.resume as Record<string, string>).removeNote;
+    expect(enNote).toContain('together with the courses it found that you have not marked yourself (a status read from the résumé is not a mark)');
+    expect(enNote).toContain('Courses you marked or added stay');
+    // No course keeps a résumé line, so there is none to remove.
+    expect(enNote).not.toContain('line');
+    expect(zhNote).toContain('连同它找到但你还没有亲自标注的课程（据简历推断的状态不算标注）');
+    expect(zhNote).toContain('你标注过或自己添加的课程会保留');
+    expect(zhNote).not.toContain('原句');
+  });
+
   it('EN and ZH say only the extracted text is saved and the PDF file is not', async () => {
     const { dictionaries } = await import('@/i18n/dictionaries');
     expect((dictionaries.en.resume as Record<string, string>).textOnlyNote)

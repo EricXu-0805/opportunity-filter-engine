@@ -16,16 +16,18 @@ describe('Privacy page', () => {
     expect(text).not.toContain('8,000');
   });
 
-  // Checklist M13: a course now carries a status and the résumé line it was
-  // found on, and removing the résumé keeps the courses the student marked.
-  it('says courses are stored with their status and résumé line, and what removing the résumé keeps', () => {
+  // Checklist M13: a course is stored with a status only once the student sets
+  // one; its résumé line and any status read from the résumé are not stored,
+  // and removing the résumé keeps only the courses the student marked or added.
+  it('says what is stored of each course, what is read from the résumé instead, and what removing the résumé keeps', () => {
     const { container } = render(<PrivacyPage />);
     const text = container.textContent ?? '';
-    expect(text).toContain('courses and the status you give each (completed, in progress, planned or not marked)');
-    expect(text).toContain('With each course found on the résumé we also store the résumé line it was found on');
-    expect(text).toContain('a course is marked planned or in progress only when that line says so');
-    expect(text).toContain('together with the courses it found that you have not marked and the résumé line kept with every course; courses you marked or added yourself stay');
+    expect(text).toContain('courses (for each one its name, whether it came from your résumé or you added it, and the status you set: completed, in progress, planned or not marked)');
+    expect(text).toContain('Of each course found on the résumé we store its name; the line it was found on is not stored, and the form shows it from the stored résumé text.');
+    expect(text).toContain('A course listed under a résumé label that gives a status, such as “Current courses:” or “Planned courses:”, is shown and used as in progress or planned while that résumé is on your profile, until you confirm or change it; that status is read from the résumé text each time and is not stored.');
+    expect(text).toContain('together with the courses it found that you have not marked yourself, so no status read from it remains; courses you marked or added yourself stay');
     expect(text).not.toContain('the coursework it extracted');
+    expect(text).not.toContain('store the résumé line');
   });
 
   it('discloses the application and email PDF archive, its limit and how to remove it', () => {
