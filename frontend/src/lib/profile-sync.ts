@@ -4656,15 +4656,23 @@ function flushByMutation(mutationId: string, token: OwnerToken): Promise<Profile
       }
 
       const patch = pick(pending.desiredProfile, sendKeys) as Record<string, unknown>;
-      // Revision 0 is the "no row yet" baseline — here, an edit made while
-      // this browser's own create was unanswered. The server refuses every
-      // revision-0 patch that is not a complete create, before it looks the
-      // row up, so sending it fails the same way forever. The CAS answer
-      // (expected 0, current N) is taken against the row confirmed since and
-      // handled like any other conflict: fields the row holds nothing else
-      // for are rebased, and a field it holds other content for is locked as
-      // a question for the student, never settled locally.
       const known = env?.confirmed ?? null;
+      // With no row on record, a revision-0 patch is a CREATE, which becomes
+      // the whole row: it goes out complete or not at all. A required key
+      // held back by a lock would make the server refuse it
+      // (incomplete_create) on every retry, so it waits instead, exactly like
+      // a create the form cannot make yet.
+      if (pending.baseRevision === 0 && !known && !isCompleteDocument(patch as unknown as ProfileData)) {
+        return { status: 'blocked', reason: 'incomplete-create' };
+      }
+      // Otherwise revision 0 here is an edit made while this browser's own
+      // create was unanswered. Sent, a partial revision-0 patch cannot
+      // succeed (029 refused it; 20261011230618 answers it with a conflict
+      // once the row exists), so the CAS answer (expected 0, current N) is
+      // taken against the row confirmed since and handled like any other
+      // conflict: fields the row holds nothing else for are rebased, and a
+      // field it holds other content for is locked as a question for the
+      // student, never settled locally.
       const onKnownRow = pending.baseRevision === 0 && !!known && !isCompleteDocument(patch as unknown as ProfileData);
       if (onKnownRow) localPasses += 1;
       const outcome: ProfilePatchOutcome = onKnownRow && known

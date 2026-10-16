@@ -3336,6 +3336,37 @@ describe('creating a row requires a profile that MEANS something', () => {
     expect(['blocked', 'staged-local']).toContain(attempt.status);
   });
 
+  it('a create is never sent without a required key: one a question holds back waits instead of failing on every retry', async () => {
+    loadProfileMock.mockResolvedValue(absent());
+    await hydrateProfile();
+    const token = captureOwnerToken();
+    // Two documents picked different colleges. This one has not heard from
+    // the cloud itself, so nothing says the row was never created, and the
+    // disagreement stays a question that locks college.
+    expect(recordProfileIntent({ ...FULL, college: 'Grainger' }, ['college'], token,
+      { writer: HOME_FORM_WRITER })).toBe(true);
+    resetJournalLaneForTests();
+    resetProfileDirtyLedger();
+    expect(recordProfileIntent({ ...FULL, college: 'LAS' }, ['college'], token,
+      { writer: HOME_FORM_WRITER })).toBe(true);
+    // The server's own rule (20261011230618): no row, revision 0, and not
+    // complete is incomplete_create, which reaches the client as a transport
+    // error.
+    commitMock.mockImplementation(async (intent) => (
+      ['home_school', 'college', 'major', 'grade', 'search_weight'].every((k) => k in intent.patch)
+        ? saved(intent.patch as unknown as ProfileData, 1)
+        : { status: 'transport-error', message: 'commit_profile_patch_cas: incomplete_create' }
+    ));
+
+    const create = await stageProfilePatch({ ...FULL, college: 'LAS' }, ['college'], token, { allowCreate: true });
+    expect(readProfileSyncEnvelope()?.pending?.lockedKeys).toEqual(['college']);
+    expect(commitMock, 'a create without college is not sent').not.toHaveBeenCalled();
+    expect(create).toEqual({ status: 'blocked', reason: 'incomplete-create' });
+    // And a retry says the same thing, rather than resending it.
+    expect(await flushPendingProfileWrite(token)).toEqual({ status: 'blocked', reason: 'incomplete-create' });
+    expect(commitMock).not.toHaveBeenCalled();
+  });
+
   it('a create with real values still goes', async () => {
     loadProfileMock.mockResolvedValue(absent());
     const token = captureOwnerToken();
