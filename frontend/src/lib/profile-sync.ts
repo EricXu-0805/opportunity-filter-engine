@@ -39,6 +39,7 @@ import { assertProfileReadActive, awaitProfileRead } from './profile-read-abort'
 import type { ProfileReadObserver } from './profile-read-diagnostics';
 import { ExperienceEvidenceError, validateExperienceEntries } from './experience-evidence';
 import { validateResumeMaster } from './resume-master';
+import { isCourseList } from './course-status';
 import {
   appendJournalOp,
   getJournalOriginId,
@@ -88,6 +89,11 @@ export const CREATE_REQUIRED_KEYS: readonly ProfileKey[] = [
  *  Staging any member stages the whole bundle. */
 export const RESUME_BUNDLE: readonly ProfileKey[] = ['resume_text', 'coursework', 'experience_entries', 'resume_master'];
 
+/** The courses and their names: one list, written together, and one unit in
+ *  a conflict too. An older client removes or replaces the résumé by writing
+ *  the names alone, and the two must never resolve apart. */
+const COURSE_BUNDLE: readonly ProfileKey[] = ['courses', 'coursework'];
+
 /** Every key the app recognises. Declared as a Record<keyof ProfileData, …>
  *  so adding a profile field without listing it here is a COMPILE error — a
  *  runtime "unknown key" filter that silently drops new fields would be worse
@@ -96,7 +102,8 @@ export const RESUME_BUNDLE: readonly ProfileKey[] = ['resume_text', 'coursework'
 const KNOWN_PROFILE_KEYS: Record<ProfileKey, true> = {
   institution: true, home_school: true, college: true, major: true,
   additional_majors: true, grade: true, is_international: true,
-  research_interests: true, skills: true, resume_text: true, coursework: true, experience_entries: true, resume_master: true,
+  research_interests: true, skills: true, resume_text: true, coursework: true, courses: true,
+  experience_entries: true, resume_master: true,
   search_weight: true, exploring: true, include_cross_school: true,
   linkedin_url: true, github_url: true, scholar_url: true, seeking_types: true,
   name: true, experience_level: true, account_type: true,
@@ -143,7 +150,9 @@ function isProfileKey(key: string): key is ProfileKey {
 export const RESUME_BUNDLE_ID = 'resume';
 registerJournalKeyGuard(isProfileKey, [RESUME_BUNDLE_ID], (key, value) => (
   !value.present || (key === 'experience_entries' ? validateExperienceEntries(value.value).ok
-    : key === 'resume_master' ? validateResumeMaster(value.value).ok : true)
+    : key === 'resume_master' ? validateResumeMaster(value.value).ok
+      // Absent, as in a profile saved before courses had a status.
+      : key === 'courses' ? value.value === undefined || isCourseList(value.value) : true)
 ));
 
 function emptyResumeValue(key: ProfileKey): string | [] | null {
@@ -1035,16 +1044,19 @@ function planKeysFromJournal(
     });
   }
 
-  // The résumé is one document: half of it agreeing does not make it sendable.
-  if (RESUME_BUNDLE.some((k) => plans.get(k)?.kind === 'conflict')) {
-    for (const k of RESUME_BUNDLE) {
-      const plan = plans.get(k);
-      if (plan) {
-        plans.set(k, {
-          kind: 'conflict',
-          opIds: plan.opIds,
-          candidates: plan.kind === 'conflict' ? plan.candidates : [],
-        });
+  // The résumé is one document: half of it agreeing does not make it
+  // sendable. Nor does half of the course list. A bundle that shares a key
+  // with another takes the other's question with it.
+  for (let grew = true; grew;) {
+    grew = false;
+    for (const bundle of [RESUME_BUNDLE, COURSE_BUNDLE]) {
+      if (!bundle.some((k) => plans.get(k)?.kind === 'conflict')) continue;
+      for (const k of bundle) {
+        const plan = plans.get(k);
+        if (plan && plan.kind !== 'conflict') {
+          plans.set(k, { kind: 'conflict', opIds: plan.opIds, candidates: [] });
+          grew = true;
+        }
       }
     }
   }
@@ -5196,15 +5208,22 @@ export function resolveConflict(
     conflictKeys.push(key as ProfileKey);
   }
 
-  // Bundle: if either half of the résumé collides, both do — applying only
-  // the non-colliding half is how coursework outlives the résumé it came from.
-  if (RESUME_BUNDLE.some((k) => conflictKeys.includes(k))) {
-    for (const k of RESUME_BUNDLE) {
-      if (pending.dirtyKeys.includes(k) && !conflictKeys.includes(k)) {
-        conflictKeys.push(k);
-        const at = applyKeys.indexOf(k);
-        if (at >= 0) applyKeys.splice(at, 1);
-        delete resolvedValues[k];
+  // Bundles: if one member of the résumé collides, every member does —
+  // applying only the non-colliding part is how coursework outlives the
+  // résumé it came from. The same holds for the courses and their names, and
+  // a bundle that shares a key with another takes the other's question too.
+  for (let grew = true; grew;) {
+    grew = false;
+    for (const bundle of [RESUME_BUNDLE, COURSE_BUNDLE]) {
+      if (!bundle.some((k) => conflictKeys.includes(k))) continue;
+      for (const k of bundle) {
+        if (pending.dirtyKeys.includes(k) && !conflictKeys.includes(k)) {
+          conflictKeys.push(k);
+          const at = applyKeys.indexOf(k);
+          if (at >= 0) applyKeys.splice(at, 1);
+          delete resolvedValues[k];
+          grew = true;
+        }
       }
     }
   }

@@ -39,7 +39,7 @@ const ACCOUNT: ProfileData = { ...DEFAULT_PROFILE, name: 'Account owner', home_s
 const GUEST = { ...DEFAULT_PROFILE, name: 'Guest', college: 'Engineering', major: 'Physics', grade: 'Freshman',
   research_interests: 'Guest research', skills: [{ name: 'Python', level: 'beginner' }], search_weight: 70 };
 // What a fresh guest profile has in the fields this guest never set.
-const UNSET_BY_GUEST = { resume_text: '', coursework: [], seeking_types: ['research', 'summer_program'],
+const UNSET_BY_GUEST = { resume_text: '', coursework: [], courses: [], seeking_types: ['research', 'summer_program'],
   experience_level: 'beginner', include_cross_school: false, exploring: false,
   linkedin_url: '', github_url: '', scholar_url: '', account_type: 'personal' };
 const t = (key: string) => key;

@@ -44,6 +44,7 @@ export const FRESH_PROFILE = {
   ...DEFAULT_PROFILE,
   resume_text: '',
   coursework: [],
+  courses: [],
   exploring: false,
   include_cross_school: false,
   linkedin_url: '',
