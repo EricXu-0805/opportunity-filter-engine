@@ -34,6 +34,7 @@ from ..evidence import (
     target_truth,
 )
 from ..normalizers.school_audience import SOURCE_DEFAULTS
+from ..student_evidence import courses_counted_as_taken
 from .config import (
     BUCKET_THRESHOLDS,
     COLLEGE_AFFINITY_MAX,
@@ -1186,7 +1187,7 @@ def _coursework_focus_bonus(profile: dict, opportunity: dict) -> float:
     sw = max(0, min(100, profile.get("search_weight", 50) or 0))
     if sw <= 50:
         return 0.0
-    courses = profile.get("coursework") or []
+    courses = courses_counted_as_taken(profile)
     if not courses:
         return 0.0
     _, tokens = _course_sets(tuple(courses))
@@ -2224,7 +2225,9 @@ def score_readiness(profile: dict, opportunity: dict) -> tuple[float, list[str],
             else "Limited prior experience — position may be competitive"
         )
 
-    student_courses, course_tokens = _course_sets(tuple(profile.get("coursework", []) or []))
+    # M13: a planned course is not preparation the student has; in-progress
+    # and unmarked courses count as every course did before statuses existed.
+    student_courses, course_tokens = _course_sets(tuple(courses_counted_as_taken(profile)))
     course_score = _coursework_score(student_courses, opportunity, course_tokens=course_tokens)
 
     # Cold email (15%)
@@ -2405,8 +2408,10 @@ def score_upside(
                     else f"They also work on {work}"
                 )
             elif lab_label:
+                # The similarity is to the student's stated interests, which
+                # are never their background or experience (M13).
                 reasons_fit.append(
-                    f"Your research background aligns with {lab_label}'s focus area"
+                    f"Your research interests align with {lab_label}'s focus area"
                 )
             # If the similarity reason re-mentions every keyword from the bare
             # "Matches your interests" reason, that earlier reason is pure
@@ -3378,8 +3383,7 @@ def _course_tokens(courses: frozenset[str] | set[str]) -> frozenset[str]:
 # unrecognized reason lands mid-pack (tier 4) rather than misfiling.
 _REASON_TIERS: tuple[tuple[int, tuple[str, ...]], ...] = (
     # 0 — student-specific topical tie: the reason that answers "why THIS one".
-    (0, ("Your interest in ", "Your research interests align",
-         "Your research background aligns", "Matches your interests:")),
+    (0, ("Your interest in ", "Your research interests align", "Matches your interests:")),
     # 2 — concrete skill fit.
     (2, ("Strong tech stack fit", "Tech stack overlap", "Partial skill match")),
     # 3 — genuine differentiators of the posting itself.

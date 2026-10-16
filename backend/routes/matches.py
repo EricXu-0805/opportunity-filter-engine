@@ -416,6 +416,7 @@ _SCORING_PROFILE_FIELDS = frozenset({
     "desired_fields",
     "hard_skills",
     "coursework",
+    "courses",
     "experience_level",
     "resume_ready",
     "can_cold_email",

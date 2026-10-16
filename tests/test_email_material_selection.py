@@ -9,6 +9,7 @@ from backend.lib.public_opportunity_detail import project_public_detail
 from backend.routes import cold_email as ce
 from backend.schemas import ColdEmailRequest
 from src.recommender.cold_email import _common_parts, resume_bullet_relevance
+from src.student_evidence import COURSE_STATUS_LABELS
 from tests.experience_fixtures import confirmed_experience
 from tests.test_cold_email_selection_refine import payload as selection_payload
 from tests.test_cold_email_writing_quality import OPP, PROFILE
@@ -151,7 +152,9 @@ def test_all_accepted_fields_and_selected_experience_round_trip_as_json_without_
     assert field(brief, 'Year & major') == {key: profile[key] for key in ('year', 'major', 'school')}
     assert field(brief, 'Skills (self-reported level)') == [
         {'name': skill['name'], 'level': 'experienced'} for skill in profile['hard_skills']]
-    assert field(brief, 'Relevant coursework') == profile['coursework']
+    # M13: every legacy coursework string is a course without a status.
+    assert field(brief, 'Coursework (each course with the only way its status may be stated)') == [
+        {'course': name, 'status': COURSE_STATUS_LABELS['unknown']} for name in profile['coursework']]
     assert field(brief, 'Research interests (aspirations, NOT evidence of experience)') == profile['research_interests_text']
     assert field(brief, 'Real resume experience (use ONLY these for any experience claim)') == [text]
     for label, key in [('LinkedIn', 'linkedin_url'), ('GitHub', 'github_url'), ('Google Scholar', 'scholar_url')]:
@@ -175,7 +178,7 @@ def test_generation_and_refinement_share_full_fields_and_source_rank(writing_cli
     data = calls[0][1]['content']
     assert field(data, 'Real resume experience (use ONLY these for any experience claim)')[0] == RELATED
     assert len(field(data, 'Skills (self-reported level)')) == 50
-    assert len(field(data, 'Relevant coursework')) == 50
+    assert len(field(data, 'Coursework (each course with the only way its status may be stated)')) == 50
     assert field(data, 'Research interests (aspirations, NOT evidence of experience)') == profile['research_interests_text']
 
 

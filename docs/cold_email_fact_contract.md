@@ -8,7 +8,14 @@ Match remains deterministic by default.
 
 - Student interests may explain motivation, but do not establish competence.
   First-person experience claims must be supported by the student's own skills,
-  coursework or resume evidence. Target vocabulary cannot supply that support.
+  completed or in-progress coursework, or resume evidence. Target vocabulary
+  cannot supply that support.
+- Each course carries a status (checklist M13, `src/student_evidence.py`). Only
+  a completed course may be stated as completed or taken, an in-progress course
+  only as currently taking, a planned course only as planned, and a course
+  without a status (every legacy `coursework` string) only neutrally ("my
+  coursework includes"). The template words each course by its status, the AI
+  brief labels it, and the shared gate refuses a course claimed beyond it.
 - Quantified achievements are checked against student resume bullets. The
   quantity and unit must be present; target facts, the current draft, and an edit
   instruction are not new student evidence.
