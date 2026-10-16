@@ -64,7 +64,7 @@ hard exclusions. GPA is not evaluated; it is surfaced as unknown.
 | Factor | Weight | Logic |
 |--------|--------|-------|
 | Resume available | 25% | Ready 100; absent and required 30, otherwise 60 |
-| Relevant coursework | 20% | No courses 30; otherwise count score max(30,12×unique courses), capped at 70, plus up to 30 for relevant course signals |
+| Relevant coursework | 20% | No courses 30; otherwise count score max(30,12×unique courses), capped at 70, plus up to 30 for relevant course signals. A course marked planned does not count; completed, in-progress and unmarked courses (every legacy `coursework` string) do |
 | Prior experience | 20% | strong=100, some=70, beginner=40, none=20 |
 | Cold email capability | 15% | 100 if yes, 40 if no (limits outreach options) |
 | Application effort | 20% | Low 90, medium/unknown 60, high 30; faculty application requirements are neutralized |
