@@ -1191,4 +1191,67 @@ test.describe('M101 leaving Home and coming back in the same page', () => {
       await http.dispose();
     }
   });
+
+  test('a save still in flight when Home is left that comes back a partial conflict is asked about when Home is opened again', async ({ page }) => {
+    // Checklist M103: the new form used to say "Saving..." until the next
+    // profile check (a minute), and the disputed field went nowhere.
+    const http = await apiRequest.newContext();
+    const name = 'Name typed just before leaving Home 王';
+    const text = 'Interests typed just before leaving Home 王';
+    const phoneText = 'Interests saved on the phone meanwhile 王';
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => { release = resolve; });
+    try {
+      const account = await seedAccount(http, mailbox('remount-partial'));
+      await englishOnly(page);
+      await signedIn(page, account);
+      const receipts = recordCas(page);
+      await page.goto('/');
+      await waitForForm(page);
+      await expectForm(page, ACCOUNT_PROFILE);
+      await markPage(page);
+
+      await page.route('**/rest/v1/rpc/commit_profile_patch_cas', async (route) => { await held; await route.continue(); });
+      const sent = page.waitForRequest((request) => isCas(request.url()));
+      await page.locator('#student_name').fill(name);
+      await page.locator('#research_interests').fill(text);
+      expect(Object.keys((await sent).postDataJSON().p_patch).sort()).toEqual(['name', 'research_interests']);
+
+      await leaveHome(page);
+      await returnHome(page);
+      await expect(page.locator('#research_interests')).toHaveValue(text);
+      // Another device saves the interests while the first request is out.
+      const phone = await http.post(new URL('/rest/v1/rpc/commit_profile_patch_cas', STUB).href, {
+        headers: bearer(account),
+        data: { p_expected_device_id: account.uid, p_expected_revision: 1, p_patch: { research_interests: phoneText } },
+      });
+      expect(await phone.json()).toMatchObject({ status: 'applied', revision: 2 });
+      release();
+
+      const status = page.locator('#profile-save-status');
+      await expect(page.getByTestId('conflict-keep-mine'), 'the question is asked').toBeVisible({ timeout: 10_000 });
+      await expect(status).toContainText('Changed on another device — this edit was NOT saved.');
+      await expect(page.locator('#research_interests')).toHaveValue(text);
+      await expect.poll(() => receipts.length).toBe(2);
+      expect(receipts, 'the name nobody else changed went through').toMatchObject([
+        { status: 'conflict', revision: 2, patch: { name, research_interests: text } },
+        { status: 'applied', revision: 3, patch: { name } },
+      ]);
+      expect(await profileRows(http, account.uid))
+        .toMatchObject([{ revision: 3, profile_data: { ...ACCOUNT_PROFILE, name, research_interests: phoneText } }]);
+
+      await page.getByTestId('conflict-keep-mine').click();
+      await expect(status).toHaveText('Profile saved', { timeout: 15_000 });
+      await expect.poll(() => receipts.length).toBe(3);
+      expect(receipts[2]).toMatchObject({ status: 'applied', revision: 4, patch: { research_interests: text } });
+      expect(await profileRows(http, account.uid))
+        .toMatchObject([{ revision: 4, profile_data: { ...ACCOUNT_PROFILE, name, research_interests: text } }]);
+    } finally {
+      release();
+      await http.dispose();
+    }
+  });
 });
+
+// M102: a question one tab's edit raised is asked in that tab, not in another
+// tab of the account that typed nothing.
