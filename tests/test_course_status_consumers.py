@@ -391,6 +391,32 @@ def test_after_a_or_an_a_title_is_the_course_only_before_a_course_noun(
     assert claim in out["body"]
 
 
+# Fix round 5: a course noun at the end of a list of listed titles names every
+# title in it; after a course noun, ", and" starts a new clause.
+@pytest.mark.parametrize("route", ROUTES)
+@pytest.mark.parametrize("claim", [
+    "I have taken both a Machine Learning and a Computer Vision course.",
+    "I have taken a Machine Learning and Computer Vision course.",
+    "I have completed machine learning and data structures courses.",
+])
+def test_a_course_noun_ending_a_list_names_every_listed_title_in_it(
+        email_client, monkeypatch, route, claim):  # noqa: F811
+    out = request(email_client, monkeypatch, route, claim, LEGACY_TITLES)
+    assert out["fallback_reason"] == "fabrication" and claim not in out["body"], out
+
+
+@pytest.mark.parametrize("route", ROUTES)
+@pytest.mark.parametrize("claim", [
+    "I have completed several courses, and machine learning became my main interest.",
+    "I took a statistics class, and machine learning quickly became my favorite topic.",
+])
+def test_after_a_course_noun_a_comma_and_and_start_a_new_clause(
+        email_client, monkeypatch, route, claim):  # noqa: F811
+    out = request(email_client, monkeypatch, route, claim, LEGACY_TITLES)
+    assert out["method"] == ("ai" if route == "/cold-email" else "llm"), out
+    assert claim in out["body"]
+
+
 def test_the_template_may_quote_the_students_own_course_line(email_client):  # noqa: F811
     line = "Completed CS 225 project: built a PyTorch model of hypersonics flow data in Python."
     response = email_client.post("/api/cold-email", json={

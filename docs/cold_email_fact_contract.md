@@ -24,15 +24,26 @@ Match remains deterministic by default.
   when its own verb phrase is negated, conditional or future, and does not
   check a line of the student's confirmed experience the draft repeats
   verbatim. A title also counts in any capitalisation when a course noun
-  (course, courses, coursework, class, classes) stands right before it
-  ("coursework in machine learning and data structures") or right after it
-  ("machine learning courses"); right after "a" or "an" it counts only when a
-  course noun follows it ("a Machine Learning project" names a project, "a
-  Machine Learning course" the course). Known limits: unlisted courses are not
-  checked; a planned course's term written as "in the Fall" or "for Spring
-  2027" is not read as future (left to the frontend phase); a slash
-  cross-listing ("CS/ECE 374") is not read; and a word that names no course
-  ends a list ("machine learning and data structures courses" is not read).
+  (course, courses, coursework, class, classes) stands right before it,
+  together with the list that noun introduces, also after a comma, colon or
+  parenthesis ("coursework in machine learning and data structures",
+  "courses: machine learning, data structures"), or when one follows it,
+  right after it or at the end of the list of listed titles it belongs to,
+  joined by and, or, commas and "a" or "an" ("machine learning courses",
+  "machine learning and data structures courses", "a Machine Learning and a
+  Computer Vision course"). Right after "a" or "an" a title counts only when a
+  course noun follows it in that way ("a Machine Learning project" names a
+  project). After a course noun, a comma followed by "and" or "but" starts a
+  new clause, so a title after it counts only as written or by its code ("I
+  have completed several courses, and machine learning became my main
+  interest" claims nothing about Machine Learning; "..., and CS 446 was my
+  favorite" still names CS 446).
+  Known limits: unlisted courses are not checked; a planned course's term
+  written as "in the Fall" or "for Spring 2027" is not read as future (left to
+  the frontend phase); a slash cross-listing ("CS/ECE 374") is not read; and a
+  word that names no listed course ends a list ("I completed a Machine
+  Learning project and a Data Structures course" does not read Data
+  Structures).
   A coursework listing may name any
   listed course; elsewhere only a completed or in-progress course's name
   supports a claim of competence in its topic.

@@ -203,6 +203,35 @@ def test_after_a_or_an_a_title_is_the_course_only_before_a_course_noun(claim, co
     assert course_claim_violations(claim, courses) == []
 
 
+# Fix round 5 (review of 17f05698): a course noun at the end of a list of listed
+# titles names every title in it, "a" or "an" included; after a course noun,
+# ", and" or ", but" starts a new clause.
+@pytest.mark.parametrize(("claim", "flagged"), [
+    ("I have taken both a Machine Learning and a Computer Vision course.", ["Computer Vision", "Machine Learning"]),
+    ("I have taken a Machine Learning and Computer Vision course.", ["Computer Vision", "Machine Learning"]),
+    ("I have completed machine learning and data structures courses.", ["Data Structures", "Machine Learning"]),
+])
+def test_a_course_noun_ending_a_list_names_every_listed_title_in_it(claim, flagged):
+    assert course_claim_violations(claim, LEGACY_TITLES) == [f"unsupported course status: {name}" for name in flagged]
+
+
+@pytest.mark.parametrize("claim", [
+    "I have completed several courses, and machine learning became my main interest.",
+    "I took a statistics class, and machine learning quickly became my favorite topic.",
+    "I completed a Machine Learning and Data Structures project.",
+])
+def test_a_new_clause_or_a_list_ending_on_another_noun_names_no_course(claim):
+    assert course_claim_violations(claim, LEGACY_TITLES) == []
+
+
+@pytest.mark.parametrize(("claim", "flagged"), [
+    ("I have completed several courses, and CS 225 was my favorite.", ["CS 225"]),
+    ("I have completed several courses, and Machine Learning was my favorite.", ["Machine Learning"]),
+])
+def test_after_a_new_clause_a_code_or_a_title_as_written_still_names_the_course(claim, flagged):
+    assert course_claim_violations(claim, LEGACY_TITLES) == [f"unsupported course status: {name}" for name in flagged]
+
+
 @pytest.mark.parametrize(("claim", "courses"), [
     ("I have not taken CS 446 yet.", PLANNED),
     ("I am taking CS 446 next semester.", PLANNED),

@@ -433,6 +433,12 @@ _NOUN_AHEAD = re.compile(r"(?:[^\W_]+[\s-]+){1,4}(?=(?:coursework|courses?|class
 # The course nouns a title may stand beside, and "a" or "an" right before it.
 _TITLE_NOUN = re.compile(r"(?:coursework|courses?|class(?:es)?)\b", re.I)
 _NOUN_NEXT = re.compile(rf"\s+{_TITLE_NOUN.pattern}", re.I)
+# How the next listed title joins a list: "Machine Learning and (a) Computer
+# Vision course", "Machine Learning, Computer Vision, or Robotics classes".
+_LIST_JOIN = re.compile(r"(?:\s*,)?\s+(?:and|or)\s+(?:an?\s+)?|\s*,\s*(?:an?\s+)?", re.I)
+# After a course noun and a comma, "and" or "but" starts a new clause: a title
+# after it is not one the noun introduces.
+_NEW_CLAUSE = re.compile(r"(?:and|but)\b", re.I)
 _HEAD_NOUN = re.compile(rf"{_TITLE_NOUN.pattern}$", re.I)
 _ARTICLE = re.compile(r"\ban?\s+$", re.I)
 
@@ -456,6 +462,7 @@ class _Reader:
         self.names_at: dict[int, list[tuple[_Name, int, bool]]] = {}
         self.letters: tuple[str, list[int]] | None = None
         self.nouns: dict[int, bool] = {}
+        self.list_nouns: dict[int, bool] = {}
         self.objects: dict[tuple, tuple[list, int]] = {}
         self._marks: dict[str, tuple[list[int], list[int]]] = {}
 
@@ -533,6 +540,33 @@ class _Reader:
             known = self.nouns[at] = _NOUN_NEXT.match(self.text, at) is not None
         return known
 
+    def noun_after(self, at: int) -> bool:
+        """Whether a course noun follows a listed name ending at ``at``, right after it or at the end of its list.
+
+        The list is listed names joined by and, or, commas and "a"/"an"
+        ("a Machine Learning and a Computer Vision course"); the longest name
+        at each place is followed. A walk stops where a place already walked
+        is known, so each place is walked once.
+        """
+        walked: list[int] = []
+        result = False
+        while True:
+            if (known := self.list_nouns.get(at)) is not None:
+                result = known
+                break
+            walked.append(at)
+            if self.noun_next(at):
+                result = True
+                break
+            join = _LIST_JOIN.match(self.text, at)
+            ends = [end for _, end, cased in self._names(join.end()) if not cased] if join else []
+            if not ends:
+                break
+            at = max(ends)
+        for place in walked:
+            self.list_nouns[place] = result
+        return result
+
     def listed(self, at: int, *, whole: bool = False) -> Mapping | None:
         """The listed course written at ``at`` as the list writes it (a code in any case), first in list order."""
         best: tuple[int, Mapping] | None = None
@@ -550,8 +584,9 @@ class _Reader:
 
         The first name in list order that counts there: a code in any case;
         a title as the list capitalises it, or in any case when a course noun
-        stands right before it or right after it; right after "a" or "an"
-        only when a course noun follows it.
+        stands right before it or follows it (right after it or at the end of
+        the list it belongs to); right after "a" or "an" only when a course
+        noun follows it.
         """
         if pos and _LATIN.match(span, pos - 1):
             return None
@@ -560,7 +595,7 @@ class _Reader:
         for name, end, cased in self._names(start):
             if cased or (best is not None and name.order > best[0]):
                 continue
-            if (name.code is not None and name.code[0] == name.order) or self.noun_next(end) or (
+            if (name.code is not None and name.code[0] == name.order) or self.noun_after(end) or (
                     not article and noun_before):
                 pick: tuple[int, Mapping] | None = (name.order, name.entry)
             else:
@@ -627,7 +662,10 @@ def _courses_named(reader: _Reader, origin: int, *, bare: bool, noun: bool = Fal
                     and not _CODE.match(span, rest) and reader.listed(origin + rest) is None:
                 break
             pos, free, started = noun.end(), 6, True
-            noun_before = _TITLE_NOUN.fullmatch(noun.group()) is not None
+            # "several courses, and machine learning became ...": a new clause,
+            # so a title after it counts only as written or by its code.
+            noun_before = _TITLE_NOUN.fullmatch(noun.group()) is not None and not (
+                nxt and "," in nxt.group() and _NEW_CLAUSE.match(span, rest))
             continue
         if (intro := _INTRO.match(span, pos)) is not None and (started or not bare):
             pos, started = intro.end(), True
