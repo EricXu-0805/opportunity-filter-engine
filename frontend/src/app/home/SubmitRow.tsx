@@ -65,6 +65,9 @@ export function SubmitRow({
   // write. A conflict result arms a retryable, so without this a rejected
   // answer's 'cloud-failed' drew exactly that.
   const showRetry = canRetrySync && !hasConflict && refreshReady;
+  // While the save status says it is waiting for college, major and grade,
+  // the hint under Generate would say the same thing a second time.
+  const showHint = !isValid && (missingSeekingTypes || saveStatus !== 'awaiting-required');
   return (
     <>
       <div className="flex flex-col sm:flex-row items-center justify-center mt-8 gap-3">
@@ -72,7 +75,7 @@ export function SubmitRow({
           type="button"
           disabled={!canSubmit}
           data-testid="generate-matches"
-          aria-describedby={!isValid ? 'match-validation' : undefined}
+          aria-describedby={!isValid ? (showHint ? 'match-validation' : 'profile-save-status') : undefined}
           onClick={onSubmit}
           className="group inline-flex items-center justify-center gap-2.5 w-full sm:w-auto px-8 py-3.5 text-[15px] font-semibold text-white bg-indigo-600 rounded-full hover:bg-indigo-700 transition-all duration-300 disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_2px_12px_rgba(79,70,229,0.25)] hover:shadow-[0_4px_20px_rgba(79,70,229,0.35)]"
         >
@@ -133,7 +136,7 @@ export function SubmitRow({
           )}
         </div>
       )}
-      {!isValid && (
+      {showHint && (
         <p id="match-validation" className="text-center text-[13px] text-gray-600 mt-4">
           {t(missingSeekingTypes ? 'home.validation.seekingRequired' : 'home.validation.requiredFields')}
         </p>

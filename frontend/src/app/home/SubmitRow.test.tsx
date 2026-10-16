@@ -126,6 +126,22 @@ describe('SubmitRow — generating matches requires a loaded profile row', () =>
     expect(screen.queryByTestId('conflict-keep-mine')).toBeNull();
   });
 
+  it('while it waits for college, major and grade, the hint under Generate does not say the same thing again', () => {
+    renderRow({ saveStatus: 'awaiting-required', isValid: false });
+    expect(screen.queryByText('home.validation.requiredFields')).not.toBeInTheDocument();
+    // Generate is still described, by the line that now says it.
+    expect(screen.getByTestId('generate-matches'))
+      .toHaveAccessibleDescription('home.actions.profileAwaitingRequired');
+  });
+
+  it('the hint stays whenever the status line is not saying it', () => {
+    renderRow({ saveStatus: 'saving', isValid: false });
+    expect(screen.getByTestId('generate-matches')).toHaveAccessibleDescription('home.validation.requiredFields');
+    // A missing opportunity type is not what the status line is about.
+    renderRow({ saveStatus: 'awaiting-required', isValid: false, missingSeekingTypes: true });
+    expect(screen.getByText('home.validation.seekingRequired')).toBeInTheDocument();
+  });
+
   it('SR-conflict-live: the answer controls belong to the QUESTION, not to the last save', () => {
     const onKeepMyChanges = vi.fn();
     const onUseCloudVersion = vi.fn();
