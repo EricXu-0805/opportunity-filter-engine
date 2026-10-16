@@ -4,10 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, Globe, GraduationCap } from 'lucide-react';
 import Card from '@/components/Card';
 import SkillTags from '@/components/SkillTags';
+import CourseList from '@/components/CourseList';
 import MajorTags from '@/components/MajorTags';
 import UniversitySwitcherModal from '@/components/UniversitySwitcherModal';
 import { useLocale } from '@/i18n/client';
 import type { ProfileData } from '@/lib/types';
+import { courseEntries } from '@/lib/course-status';
 import { GRADES } from '@/lib/colleges';
 import { loadCatalog } from '@/lib/catalogs';
 import { suggestInterests } from '@/lib/interest-suggestions';
@@ -372,6 +374,12 @@ export function AcademicProfileCard({
             onChange={(skills) => update('skills', skills)}
           />
         </div>
+
+        <CourseList
+          key={`courses-${identityGeneration}`}
+          courses={courseEntries(profile)}
+          onChange={(courses) => update('courses', courses)}
+        />
       </div>
     </Card>
   );

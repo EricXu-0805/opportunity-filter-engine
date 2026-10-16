@@ -385,3 +385,16 @@ describe('AcademicProfileCard — international status switch', () => {
     expect(update).toHaveBeenCalledWith('is_international', true);
   });
 });
+
+describe('AcademicProfileCard — courses (checklist M13)', () => {
+  it('shows a profile saved before statuses as courses not marked, and marks one through the form update', () => {
+    const { update } = renderCard({ coursework: ['CS 225', 'CS 446'] });
+    expect((screen.getByLabelText('courses.statusOf:CS 225') as HTMLSelectElement).value).toBe('unknown');
+    expect((screen.getByLabelText('courses.statusOf:CS 446') as HTMLSelectElement).value).toBe('unknown');
+    fireEvent.change(screen.getByLabelText('courses.statusOf:CS 446'), { target: { value: 'planned' } });
+    expect(update).toHaveBeenCalledWith('courses', [
+      { name: 'CS 225', status: 'unknown', source: 'resume' },
+      { name: 'CS 446', status: 'planned', source: 'resume' },
+    ]);
+  });
+});
