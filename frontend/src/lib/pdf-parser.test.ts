@@ -20,6 +20,7 @@ vi.mock('pdfjs-dist', () => ({
 
 import { parseResumePDF } from './pdf-parser';
 import { MAX_RESUME_TEXT_CHARACTERS, weakWrapEvidence, wrapEvidence } from './resume-input';
+import { courseRows } from './course-status';
 
 type MockPdf = {
   numPages: number;
@@ -277,76 +278,27 @@ describe('parseResumePDF — coursework extraction', () => {
   });
 });
 
-describe('parseResumePDF — each course keeps its line, pre-marked only where the line says so (checklist M13)', () => {
-  // Terms are read against the day of the parse.
-  beforeEach(() => { vi.useFakeTimers({ toFake: ['Date'] }); vi.setSystemTime(new Date('2026-10-16T12:00:00Z')); });
-  afterEach(() => { vi.useRealTimers(); });
-  async function courses(...pages: string[]) {
+describe('parseResumePDF — courses under a status label (checklist M13)', () => {
+  async function parse(...pages: string[]) {
     mockGetDocument.mockReturnValue({ promise: Promise.resolve(fakePdf(pages)) });
-    const res = await parseResumePDF(fakeFile());
-    expect(res.course_evidence?.map((item) => item.course)).toEqual(res.extracted_coursework);
-    return Object.fromEntries((res.course_evidence ?? []).map((item) => [item.course, item]));
+    return parseResumePDF(fakeFile());
   }
 
-  it('keeps the line each course was found on and leaves a plain coursework line not marked', async () => {
-    const found = await courses('Guoyi Xu', 'Relevant Coursework: CS 225, Data Structures');
-    expect(found).toEqual({
-      'CS 225': { course: 'CS 225', line: 'Relevant Coursework: CS 225, Data Structures', status: 'unknown' },
-      'Data Structures': { course: 'Data Structures', line: 'Relevant Coursework: CS 225, Data Structures', status: 'unknown' },
-    });
-  });
-
-  it('marks a course planned under a planned label, an expected one or a future term', async () => {
-    const found = await courses(
-      'Planned Courses: CS 446, Machine Learning',
-      'Expected Coursework: ECE 448',
-      'Spring 2027 Courses: STAT 410',
+  it('reads the named courses of a list after a status label as well, and returns names only', async () => {
+    const res = await parse(
+      'Courses in progress - Machine Learning, Data Mining',
+      'Currently taking: Operating Systems',
+      'Courses to take: Compilers; Robotics',
     );
-    expect(Object.values(found).map((item) => [item.course, item.status])).toEqual([
-      ['CS 446', 'planned'], ['ECE 448', 'planned'], ['Machine Learning', 'planned'], ['STAT 410', 'planned'],
-    ]);
-    expect(found['CS 446'].line).toBe('Planned Courses: CS 446, Machine Learning');
+    expect(res.extracted_coursework).toEqual(['Compilers', 'Data Mining', 'Machine Learning', 'Operating Systems', 'Robotics']);
+    // What a course's status is, and the line it is on, are read from the
+    // stored text when they are needed (lib/course-status.ts), never stored.
+    expect(res).not.toHaveProperty('course_evidence');
   });
 
-  it('marks a course in progress where the line says currently or in progress', async () => {
-    const found = await courses('Current Coursework: CS 374', 'Courses in progress: MATH 415');
-    expect(found['CS 374'].status).toBe('in_progress');
-    expect(found['MATH 415']).toEqual({ course: 'MATH 415', line: 'Courses in progress: MATH 415', status: 'in_progress' });
-  });
-
-  it('reads a note after one course for that course only, and drops the note from its name', async () => {
-    const found = await courses('Coursework: CS 225, CS 374 (in progress), CS 446 (Spring 2027), CS 233 (Fall 2025), Algorithms - Fall 2027');
-    expect(Object.keys(found)).toEqual(['Algorithms', 'CS 225', 'CS 233', 'CS 374', 'CS 446']);
-    expect(found['CS 225'].status).toBe('unknown');
-    expect(found['CS 374'].status).toBe('in_progress');
-    expect(found['CS 446'].status).toBe('planned');
-    // A past term says the course was taken, which only the student marks.
-    expect(found['CS 233'].status).toBe('unknown');
-    expect(found['Algorithms'].status).toBe('planned');
-  });
-
-  it('reads a sentence course by course', async () => {
-    const found = await courses('I am currently taking CS 374 and will take CS 446 next spring. Completed CS 225; planning to take CS 411.');
-    expect(found['CS 374'].status).toBe('in_progress');
-    expect(found['CS 446'].status).toBe('planned');
-    expect(found['CS 225'].status).toBe('unknown');
-    expect(found['CS 411'].status).toBe('planned');
-  });
-
-  it('never marks a course completed, and a degree line\'s expected date marks no course', async () => {
-    const found = await courses(
-      'Completed Coursework: CS 173',
-      'B.S. Computer Science Expected May 2028 Relevant Coursework: CS 225, CS 357',
-    );
-    expect(Object.values(found).map((item) => item.status)).toEqual(['unknown', 'unknown', 'unknown']);
-  });
-
-  it('leaves a course not marked when its lines disagree, showing the first line', async () => {
-    const found = await courses('Planned: CS 446', 'Currently taking CS 446 with Prof. Lee');
-    expect(found['CS 446']).toEqual({ course: 'CS 446', line: 'Planned: CS 446', status: 'unknown' });
-    const agreeing = await courses('Teaching assistant for CS 225', 'Planned: CS 446', 'Project for CS 446 (planned)');
-    expect(agreeing['CS 446']).toEqual({ course: 'CS 446', line: 'Planned: CS 446', status: 'planned' });
-    expect(agreeing['CS 225'].status).toBe('unknown');
+  it('ends a list at the next list label on its line', async () => {
+    const res = await parse('Relevant Coursework: Databases, Algorithms Current courses: Compilers');
+    expect(res.extracted_coursework).toEqual(['Algorithms', 'Compilers', 'Databases']);
   });
 });
 
@@ -608,17 +560,18 @@ describe('real résumé PDFs keep every word and bullet intact', () => {
       .toBe(PERSONA.replace('BERT on 3,000 labeled tweets', 'BERT on\n3,000 labeled tweets'));
   });
 
-  it('keeps each course\'s line from a printed résumé, and its degree line\'s expected date marks no course', async () => {
+  it('reads each course of a printed résumé with the line it is on, and its degree line\'s expected date marks no course', async () => {
     const result = await readFixture('resume-ce2.pdf');
     const rows = PERSONA.split('\n');
-    expect(result.course_evidence?.length).toBeGreaterThan(0);
-    for (const item of result.course_evidence ?? []) {
-      expect(item.status, item.course).toBe('unknown');
-      expect(rows.some((row) => row.includes(item.line)), item.course).toBe(true);
+    const read = courseRows({ coursework: result.extracted_coursework, resume_text: result.raw_text });
+    expect(read.length).toBeGreaterThan(0);
+    for (const course of read) {
+      expect(course.status, course.name).toBe('unknown');
+      expect(rows.some((row) => row.includes(course.line ?? '\u0000')), course.name).toBe(true);
     }
     // A course code on a project line shows that line, so the student sees
     // the course came from a project and not from a coursework list.
-    expect(result.course_evidence?.find((item) => item.course === 'CS 446')?.line).toMatch(/^Swahili-English Sentiment Classifier \(course project, CS 446\)/);
+    expect(read.find((course) => course.name === 'CS 446')?.line).toMatch(/^Swahili-English Sentiment Classifier \(course project, CS 446\)/);
   });
 
   it('offers the tailor prefill the four complete bullets', async () => {

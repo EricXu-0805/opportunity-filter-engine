@@ -36,20 +36,29 @@ export interface SkillWithLevel {
 }
 
 // ── Courses (checklist M13) ──────────────────────────────────────────
-/** What the student has said of a course. `unknown` is every course they have
- *  not marked, including every course stored before statuses existed: it may
- *  be named, never said to be taken. lib/course-status.ts holds the rules. */
+/** What may be said of a course. `unknown` is a course not marked, including
+ *  every course stored before statuses existed: it may be named, never said
+ *  to be taken. lib/course-status.ts holds the rules. */
 export type CourseStatus = 'completed' | 'in_progress' | 'planned' | 'unknown';
 
 /** Read from the résumé, or added on the form. */
 export type CourseSource = 'resume' | 'manual';
 
+/** A course as the profile stores it. It has a status only once the student
+ *  sets one: a résumé course without one is read with the status the current
+ *  résumé text gives it, which is never stored. Nor is the résumé line it was
+ *  found on; the form finds that in the résumé text. */
+export interface StoredCourse {
+  name: string;
+  source: CourseSource;
+  status?: CourseStatus;
+}
+
+/** A course as it is read and sent: always exactly one status. */
 export interface CourseEntry {
   name: string;
   status: CourseStatus;
   source: CourseSource;
-  /** The résumé line the course was found on. */
-  evidence?: string;
 }
 
 // ── Student-confirmed experience evidence ──────────────────────────
@@ -164,12 +173,14 @@ export interface ProfileData {
   experience_entries?: ExperienceEntry[];
   /** Missing/null means the student has not created a complete master yet. */
   resume_master?: ResumeMasterV1 | null;
-  /** Course names only, kept for clients older than `courses` and written
-   *  from it. Without `courses`, each name is a course not marked. */
+  /** Course names only, written with `courses` for clients older than it. A
+   *  name `courses` lacks is a résumé course not marked; a résumé course the
+   *  student has not marked counts only while this list names it, since an
+   *  older client's résumé removal or re-import writes only this list. */
   coursework?: string[];
-  /** Each course with its status; read through lib/course-status.ts
-   *  courseEntries, never directly. */
-  courses?: CourseEntry[];
+  /** Each course as the student set it; read through lib/course-status.ts
+   *  (courseEntries, courseRows), never directly. */
+  courses?: StoredCourse[];
   search_weight?: number;
   /** "I'm still exploring" — widens matching for undecided students. */
   exploring?: boolean;
@@ -900,23 +911,12 @@ export interface ResumeSkillEvidence {
   line: string;
 }
 
-/** One extracted course, the résumé line it was found on, and the status that
- *  line gives it: planned or in progress only where the line says so, and
- *  otherwise not marked. The extractor never marks a course completed. */
-export interface ResumeCourseEvidence {
-  course: string;
-  line: string;
-  status: Exclude<CourseStatus, 'completed'>;
-}
-
 export interface ResumeParseResponse {
   error_code?: 'text_too_long' | 'no_readable_text' | 'pdf_resources_unavailable';
   pages_without_text?: number[];
   extracted_skills: string[];
   skill_evidence: ResumeSkillEvidence[];
   extracted_coursework: string[];
-  /** One entry per name in `extracted_coursework`, in the same order. */
-  course_evidence?: ResumeCourseEvidence[];
   raw_text: string;
   success: boolean;
   message: string;

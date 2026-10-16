@@ -9,7 +9,7 @@ import MajorTags from '@/components/MajorTags';
 import UniversitySwitcherModal from '@/components/UniversitySwitcherModal';
 import { useLocale } from '@/i18n/client';
 import type { ProfileData } from '@/lib/types';
-import { courseEntries } from '@/lib/course-status';
+import { courseRows } from '@/lib/course-status';
 import { GRADES } from '@/lib/colleges';
 import { loadCatalog } from '@/lib/catalogs';
 import { suggestInterests } from '@/lib/interest-suggestions';
@@ -116,6 +116,13 @@ export function AcademicProfileCard({
     [profile.major, profile.college],
   );
   const remainingInterests = suggested.filter((s) => !have.has(s.toLowerCase()));
+  // Each course's status and résumé line are read from the stored résumé
+  // text, so the rows follow it as well as the courses.
+  const { courses: storedCourses, coursework, resume_text: resumeText } = profile;
+  const courses = useMemo(
+    () => courseRows({ courses: storedCourses, coursework, resume_text: resumeText }),
+    [storedCourses, coursework, resumeText],
+  );
   const addInterest = (term: string) => {
     const base = (profile.research_interests || '').replace(/[,\s]+$/, '');
     update('research_interests', base ? `${base}, ${term}` : term);
@@ -377,8 +384,8 @@ export function AcademicProfileCard({
 
         <CourseList
           key={`courses-${identityGeneration}`}
-          courses={courseEntries(profile)}
-          onChange={(courses) => update('courses', courses)}
+          courses={courses}
+          onChange={(next) => update('courses', next)}
         />
       </div>
     </Card>

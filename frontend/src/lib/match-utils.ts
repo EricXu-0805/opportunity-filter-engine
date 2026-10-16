@@ -6,7 +6,7 @@ import {
   targetPosture,
   targetStatusReason,
 } from './target-truth';
-import type { CourseEntry, MatchResult, Opportunity } from './types';
+import type { MatchResult, Opportunity, StoredCourse } from './types';
 
 // One line per reason, none of them implying the others. A closed listing was
 // open once; a reference record never was; a professor not taking
@@ -275,7 +275,7 @@ export function hashProfile(profile: {
   include_cross_school?: boolean;
   additional_majors?: string[];
   coursework?: string[];
-  courses?: CourseEntry[];
+  courses?: StoredCourse[];
   experience_level?: string;
   resume_text?: string;
   exploring?: boolean;
@@ -297,7 +297,8 @@ export function hashProfile(profile: {
     // → secondary_interests: secondary-major + keyword matching signal.
     addl: profile.additional_majors ?? [],
     // → coursework / courses: scored in the readiness layer, which does not
-    // count a planned course as taken, so a status change re-matches too.
+    // count a planned course as taken, so a status change re-matches too,
+    // including one read from a changed résumé text.
     courses: courseEntries(profile).map((course) => `${course.name}:${course.status}`),
     // → experience_level: scored in the readiness layer.
     exp: profile.experience_level ?? 'beginner',

@@ -44,16 +44,18 @@ describe('profile-share encode/decode roundtrip', () => {
   it('carries course names only: a shared course arrives not marked, whatever the sharer marked (checklist M13)', () => {
     const encoded = encodeProfile({ ...FULL_PROFILE, courses: [
       { name: 'CS 124', status: 'completed', source: 'manual' },
-      { name: 'CS 446', status: 'planned', source: 'resume', evidence: 'Planned: CS 446' },
+      { name: 'CS 446', status: 'planned', source: 'resume' },
     ] });
     const wire = JSON.parse(decodeURIComponent(escape(atob(encoded.replace(/-/g, '+').replace(/_/g, '/')))));
     expect(wire.courses).toEqual(['CS 124', 'CS 446', 'STAT 107']);
     const decoded = decodeProfileResult(encoded);
     expect(decoded.ok && decoded.keys).toEqual(expect.arrayContaining(['coursework', 'courses']));
+    // Added by the visitor, not read from their résumé: removing or replacing
+    // their own résumé later leaves these alone.
     expect(decoded.ok && decoded.profile.courses).toEqual([
-      { name: 'CS 124', status: 'unknown', source: 'resume' },
-      { name: 'CS 446', status: 'unknown', source: 'resume' },
-      { name: 'STAT 107', status: 'unknown', source: 'resume' },
+      { name: 'CS 124', status: 'unknown', source: 'manual' },
+      { name: 'CS 446', status: 'unknown', source: 'manual' },
+      { name: 'STAT 107', status: 'unknown', source: 'manual' },
     ]);
     expect(decoded.ok && decoded.profile.coursework).toEqual(['CS 124', 'CS 446', 'STAT 107']);
   });

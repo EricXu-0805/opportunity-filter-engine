@@ -170,6 +170,7 @@ import {
 } from '@/lib/identity-owner';
 import { DEFAULT_PROFILE } from './types';
 import { skillLevelIsTheStudentsOwn, skillNeedsConfirming } from '@/lib/skill-evidence';
+import { courseEntries } from '@/lib/course-status';
 import type { LoadedProfile, ProfilePatchIntent, ProfilePatchOutcome } from '@/lib/supabase';
 import {
   resetProfileDirtyLedger,
@@ -10727,9 +10728,7 @@ describe('useProfileForm — confirmed experience lifecycle', () => {
 
 
 describe('useProfileForm — courses keep the status the student set (checklist M13)', () => {
-  const parse = (found: Array<{ course: string; line: string; status: 'planned' | 'in_progress' | 'unknown' }>) => ({
-    ...RESUME('', []), raw_text: 'new resume body', extracted_coursework: found.map((item) => item.course), course_evidence: found,
-  });
+  const parse = (text: string, found: string[]) => ({ ...RESUME('', []), raw_text: text, extracted_coursework: found });
 
   it('marks a course on a profile saved before statuses and saves the course with its names', async () => {
     mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'Old source', coursework: ['CS 225', 'CS 446'] }));
@@ -10737,43 +10736,42 @@ describe('useProfileForm — courses keep the status the student set (checklist 
     await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
     act(() => result.current.update('courses', [
       { name: 'CS 225', status: 'completed', source: 'resume' },
-      { name: 'CS 446', status: 'unknown', source: 'resume' },
+      { name: 'CS 446', source: 'resume' },
     ]));
     await waitFor(() => expect(serverRow?.courses).toBeDefined(), { timeout: 2500 });
     const patch = commitProfilePatch.mock.calls.at(-1)?.[0].patch;
     expect(Object.keys(patch ?? {}).sort()).toEqual(['courses', 'coursework']);
+    // Only the status the student set is stored.
     expect(serverRow?.courses).toEqual([
       { name: 'CS 225', status: 'completed', source: 'resume' },
-      { name: 'CS 446', status: 'unknown', source: 'resume' },
+      { name: 'CS 446', source: 'resume' },
     ]);
     expect(serverRow?.coursework).toEqual(['CS 225', 'CS 446']);
     expect(serverRow?.resume_text).toBe('Old source');
   });
 
-  it('a re-import merges by name, keeps a status the student set and pre-marks only what the new lines say', async () => {
-    mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'Old source', coursework: ['CS 225', 'CS 125'], courses: [
-      { name: 'CS 225', status: 'completed', source: 'resume', evidence: 'Old line CS 225' },
-      { name: 'CS 125', status: 'unknown', source: 'resume', evidence: 'Old line CS 125' },
+  it('a re-import merges by name, keeps a status the student set and reads the rest from the new text', async () => {
+    mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'Old source', coursework: ['CS 225', 'CS 125', 'STAT 400'], courses: [
+      { name: 'CS 225', status: 'completed', source: 'resume' },
+      { name: 'CS 125', source: 'resume' },
       { name: 'STAT 400', status: 'unknown', source: 'manual' },
     ] }));
     const { result } = renderHook(() => useProfileForm(stableT));
     await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
-    act(() => { result.current.handleResumeParsed(parse([
-      { course: 'CS 225', line: 'Coursework: CS 225', status: 'unknown' },
-      { course: 'CS 446', line: 'Planned: CS 446 (Spring 2027)', status: 'planned' },
-    ])); });
+    act(() => { result.current.handleResumeParsed(parse('Coursework: CS 225\nPlanned courses: CS 446', ['CS 225', 'CS 446'])); });
     expect(result.current.profile.courses).toEqual([
-      { name: 'CS 225', status: 'completed', source: 'resume', evidence: 'Coursework: CS 225' },
+      { name: 'CS 225', status: 'completed', source: 'resume' },
       { name: 'STAT 400', status: 'unknown', source: 'manual' },
-      { name: 'CS 446', status: 'planned', source: 'resume', evidence: 'Planned: CS 446 (Spring 2027)' },
+      { name: 'CS 446', source: 'resume' },
     ]);
     expect(result.current.profile.coursework).toEqual(['CS 225', 'STAT 400', 'CS 446']);
+    expect(courseEntries(result.current.profile).map((course) => course.status)).toEqual(['completed', 'unknown', 'planned']);
   });
 
-  it('removing the résumé drops only its courses nobody marked, and every line quoted from it', async () => {
-    mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'Old source', coursework: ['CS 125', 'CS 225', 'STAT 400', 'ECE 110'], courses: [
-      { name: 'CS 125', status: 'unknown', source: 'resume', evidence: 'Coursework: CS 125' },
-      { name: 'CS 225', status: 'completed', source: 'resume', evidence: 'Coursework: CS 225' },
+  it('removing the résumé drops only its courses nobody marked', async () => {
+    mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'Current courses: CS 125', coursework: ['CS 125', 'CS 225', 'STAT 400', 'ECE 110'], courses: [
+      { name: 'CS 125', source: 'resume' },
+      { name: 'CS 225', status: 'completed', source: 'resume' },
       { name: 'STAT 400', status: 'unknown', source: 'manual' },
     ] }));
     const { result } = renderHook(() => useProfileForm(stableT));
@@ -10785,7 +10783,6 @@ describe('useProfileForm — courses keep the status the student set (checklist 
       { name: 'STAT 400', status: 'unknown', source: 'manual' },
     ]);
     expect(serverRow?.coursework).toEqual(['CS 225', 'STAT 400']);
-    expect(JSON.stringify(serverRow?.courses)).not.toContain('Coursework:');
   });
 });
 

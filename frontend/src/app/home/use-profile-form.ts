@@ -4,8 +4,8 @@ import { profileInputMessage } from '@/lib/profile-input';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import type { CourseEntry, ExperienceEntry, ResumeMasterV1, ProfileData, ResumeParseResponse, SkillWithLevel } from '@/lib/types';
-import { courseEntries, courseFields, coursesWithoutResume, importResumeCourses, resumeCourses } from '@/lib/course-status';
+import type { ExperienceEntry, ResumeMasterV1, ProfileData, ResumeParseResponse, SkillWithLevel, StoredCourse } from '@/lib/types';
+import { courseFields, coursesWithoutResume, importResumeCourses } from '@/lib/course-status';
 import { parseGitHubProfile } from '@/lib/api';
 import { removeResumeEntries, validateExperienceEntries, withdrawResumeEntries } from '@/lib/experience-evidence';
 import { removeResumeMasterSources, resumeMasterEditBase, validateResumeMaster, withdrawResumeMaster } from '@/lib/resume-master';
@@ -2885,7 +2885,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         // Additional majors are catalog-scoped like the primary, so a college
         // switch invalidates them too.
         ...(clearMajor ? { major: '', additional_majors: [] } : {}),
-        ...(courses ? courseFields((value ?? []) as CourseEntry[]) : {}),
+        ...(courses ? courseFields((value ?? []) as StoredCourse[]) : {}),
       }),
       // The cascade is an intent even when the fields are already empty:
       // the row still loading must not put its own major back afterwards.
@@ -2987,8 +2987,10 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         experience_entries: resumeEntries,
         resume_master: resumeMaster,
         // Merged by name: a status the student set survives a re-import, and
-        // a course they added on the form is theirs, not the résumé's.
-        ...courseFields(importResumeCourses(prev, resumeCourses(data))),
+        // a course they added on the form is theirs, not the résumé's. A
+        // course found is stored without a status; the form reads one from
+        // the new text where its label gives one.
+        ...courseFields(importResumeCourses(prev, data.extracted_coursework)),
         // Seed the interests box (the only semantic-match lever the form sends)
         // from the resume when the user hasn't typed their own — never overwrite.
         research_interests: prev.research_interests?.trim()
@@ -3026,7 +3028,8 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     editProfile(
       (prev) => (
         (prev.resume_text ?? '') === ''
-          && JSON.stringify(courseEntries(prev)) === JSON.stringify(retainedCourses.courses)
+          && JSON.stringify(prev.courses ?? []) === JSON.stringify(retainedCourses.courses)
+          && JSON.stringify(prev.coursework ?? []) === JSON.stringify(retainedCourses.coursework)
           && !(prev.experience_entries ?? []).some((entry) => entry.source.kind === 'resume')
           && JSON.stringify(prev.resume_master ?? null) === JSON.stringify(retainedMaster)
           ? prev

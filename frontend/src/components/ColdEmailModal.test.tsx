@@ -1160,7 +1160,7 @@ describe('ColdEmailModal', () => {
           profile={makeProfile({
             coursework: ['CS 446', 'CS 225', 'CS 374', 'MATH 241', 'STAT 400'],
             courses: [
-              { name: 'CS 446', status: 'planned', source: 'resume', evidence: 'Planned: CS 446' },
+              { name: 'CS 446', status: 'planned', source: 'resume' },
               { name: 'CS 225', status: 'completed', source: 'resume' },
               { name: 'CS 374', status: 'in_progress', source: 'manual' },
               { name: 'MATH 241', status: 'unknown', source: 'resume' },

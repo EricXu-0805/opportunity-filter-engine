@@ -1,9 +1,9 @@
 'use client';
 
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { Plus, X } from 'lucide-react';
-import type { CourseEntry, CourseStatus } from '@/lib/types';
-import { courseKey } from '@/lib/course-status';
+import type { CourseStatus, StoredCourse } from '@/lib/types';
+import { courseKey, storedCourse, type CourseRow } from '@/lib/course-status';
 import { useT } from '@/i18n/client';
 
 /** The order the student reads the choices in. */
@@ -12,24 +12,53 @@ const STATUS_CHOICES: readonly CourseStatus[] = ['completed', 'in_progress', 'pl
 const COURSE_LIMIT = 512;
 const COURSE_TEXT_LIMIT = 1000;
 
+/** Where focus goes once the list is drawn again after an action that takes
+ *  the focused control away. */
+type PendingFocus = { after: 'remove'; removed: string; index: number } | { after: 'confirm'; course: string };
+
+/** A status the student has not set, read from the résumé text. */
+const inferred = (course: CourseRow) => course.source === 'resume' && course.marked === undefined && course.status !== 'unknown';
+
 /**
  * The student's courses, one row each, with the status they give it.
  *
  * A row per course rather than a chip: four statuses do not fit inside a chip
  * on a phone, and a native select is a full-size control there. A course read
- * from the résumé shows the line it was found on, so the student can see why
- * it is listed, and why it is marked planned or in progress if it is.
+ * from the résumé shows the line it sits on, so the student can see why it is
+ * listed; a status read from that line is shown as one to check until the
+ * student confirms or changes it, and only then stored.
  */
 export default function CourseList({ courses, onChange }: {
-  courses: CourseEntry[];
-  onChange: (courses: CourseEntry[]) => void;
+  courses: CourseRow[];
+  onChange: (courses: StoredCourse[]) => void;
 }) {
   const { t } = useT();
   const id = useId();
   const [name, setName] = useState('');
   const [status, setStatus] = useState<CourseStatus>('unknown');
   const [notice, setNotice] = useState<string | null>(null);
+  const pendingFocus = useRef<PendingFocus | null>(null);
   const unmarked = courses.filter((course) => course.status === 'unknown').length;
+  const toCheck = courses.filter(inferred).length;
+
+  useEffect(() => {
+    const focus = pendingFocus.current;
+    if (!focus) return;
+    pendingFocus.current = null;
+    const at = (key: string) => courses.findIndex((course) => courseKey(course.name) === key);
+    if (focus.after === 'remove') {
+      // Not removed after all (the form did not take the edit): focus stays.
+      if (at(focus.removed) >= 0) return;
+      document.getElementById(focus.index < courses.length ? `${id}-status-${focus.index}` : `${id}-add`)?.focus();
+      return;
+    }
+    const index = at(focus.course);
+    if (index >= 0 && courses[index].marked !== undefined) document.getElementById(`${id}-status-${index}`)?.focus();
+  }, [courses, id]);
+
+  const mark = (index: number, value: CourseStatus) => {
+    onChange(courses.map((course, at) => storedCourse(at === index ? { ...course, marked: value } : course)));
+  };
 
   const add = () => {
     const trimmed = name.trim();
@@ -37,14 +66,17 @@ export default function CourseList({ courses, onChange }: {
     const existing = courses.find((course) => courseKey(course.name) === courseKey(trimmed));
     if (existing) { setNotice(t('courses.duplicate', { course: existing.name })); return; }
     if (courses.length >= COURSE_LIMIT) { setNotice(t('courses.full', { limit: COURSE_LIMIT })); return; }
-    onChange([...courses, { name: trimmed, status, source: 'manual' }]);
+    onChange([...courses.map(storedCourse), { name: trimmed, source: 'manual', status }]);
     setName('');
     setStatus('unknown');
     setNotice(null);
   };
 
   return (
-    <fieldset aria-describedby={`${id}-hint`}>
+    // min-w-0: a fieldset is otherwise as wide as its widest line, and one
+    // long résumé line pushed the rows past a phone's edge and under the next
+    // card on a desktop.
+    <fieldset aria-describedby={`${id}-hint`} className="min-w-0">
       <legend className="block text-sm font-medium text-gray-700 mb-2">{t('courses.label')}</legend>
       <p id={`${id}-hint`} className="mb-3 text-xs leading-relaxed text-gray-500">{t('courses.hint')}</p>
       {courses.length === 0 ? (
@@ -53,6 +85,7 @@ export default function CourseList({ courses, onChange }: {
         <ul className="mb-3 space-y-2">
           {courses.map((course, index) => {
             const selectId = `${id}-status-${index}`;
+            const toConfirm = inferred(course);
             return (
               <li key={courseKey(course.name)} className="rounded-xl border border-gray-200 bg-white px-3 py-2">
                 <div className="flex items-center gap-2">
@@ -61,11 +94,9 @@ export default function CourseList({ courses, onChange }: {
                   <select
                     id={selectId}
                     value={course.status}
-                    onChange={(e) => onChange(courses.map((item, at) => (
-                      at === index ? { ...item, status: e.target.value as CourseStatus } : item
-                    )))}
+                    onChange={(e) => mark(index, e.target.value as CourseStatus)}
                     className={`h-9 shrink-0 rounded-lg border px-2 text-[13px] outline-none focus:ring-2 focus:ring-indigo-500/20 ${
-                      course.status === 'unknown' ? 'border-dashed border-amber-300 text-amber-800' : 'border-gray-200 text-gray-700'
+                      course.status === 'unknown' || toConfirm ? 'border-dashed border-amber-300 text-amber-800' : 'border-gray-200 text-gray-700'
                     }`}
                   >
                     {STATUS_CHOICES.map((choice) => (
@@ -74,19 +105,38 @@ export default function CourseList({ courses, onChange }: {
                   </select>
                   <button
                     type="button"
-                    onClick={() => onChange(courses.filter((_, at) => at !== index))}
+                    onClick={() => {
+                      pendingFocus.current = { after: 'remove', removed: courseKey(course.name), index };
+                      onChange(courses.filter((_, at) => at !== index).map(storedCourse));
+                    }}
                     aria-label={t('courses.remove', { course: course.name })}
                     className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-400 hover:bg-black/5 hover:text-gray-600 transition-colors"
                   >
                     <X className="h-4 w-4" />
                   </button>
                 </div>
-                {course.source === 'resume' && course.evidence ? (
+                {toConfirm ? (
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] leading-snug text-amber-800">
+                    <span>{t('courses.inferred')}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        pendingFocus.current = { after: 'confirm', course: courseKey(course.name) };
+                        mark(index, course.status);
+                      }}
+                      aria-label={t('courses.confirmLabel', { course: course.name, status: t(`courses.status.${course.status}`) })}
+                      className="rounded-md border border-amber-300 px-2 py-0.5 font-medium hover:bg-amber-50 transition-colors"
+                    >
+                      {t('courses.confirm')}
+                    </button>
+                  </div>
+                ) : null}
+                {course.source === 'resume' && course.line ? (
                   // One line on a phone; opening it wraps the whole quote, as
                   // a skill's source line does.
                   <details className="group/source mt-1 min-w-0 text-[11px] leading-snug text-gray-600">
                     <summary className="cursor-pointer truncate group-open/source:whitespace-normal group-open/source:[overflow-wrap:anywhere]">
-                      {t('courses.fromResume', { line: course.evidence })}
+                      {t('courses.fromResume', { line: course.line })}
                     </summary>
                   </details>
                 ) : null}
@@ -95,8 +145,13 @@ export default function CourseList({ courses, onChange }: {
           })}
         </ul>
       )}
-      <p role="status" aria-live="polite" className={`mb-3 text-xs ${unmarked > 0 || notice ? 'text-amber-700' : 'sr-only'}`}>
-        {notice ?? (unmarked > 0 ? t('courses.unmarked', { count: unmarked }) : '')}
+      <p role="status" aria-live="polite" className={`mb-3 text-xs ${unmarked > 0 || toCheck > 0 || notice ? 'text-amber-700' : 'sr-only'}`}>
+        {notice ?? (
+          <>
+            {unmarked > 0 ? <span className="block">{t('courses.unmarked', { count: unmarked })}</span> : null}
+            {toCheck > 0 ? <span className="block">{t('courses.toCheck', { count: toCheck })}</span> : null}
+          </>
+        )}
       </p>
       <div className="flex flex-wrap items-center gap-2">
         <label htmlFor={`${id}-add`} className="sr-only">{t('courses.addLabel')}</label>

@@ -1,4 +1,5 @@
-import type { ResumeCourseEvidence, ResumeParseResponse } from './types';
+import type { ResumeParseResponse } from './types';
+import { courseCodes, courseLists, listedCourses, trimCourse } from './course-status';
 import {
   BULLET_LINE, firstWord, glyphItemsEndWithStop, glyphLine, hangingRest, lineBreakText, lowercaseOpening,
   MAX_RESUME_TEXT_CHARACTERS, RESUME_ROLE, resumeTextCharacters, weakWrapEvidence, wrapEvidence, wrapJoin,
@@ -31,13 +32,6 @@ const SKILL_PATTERNS = KNOWN_SKILLS.map((skill) => ({
     'i',
   ),
 }));
-
-const COURSE_PATTERN = /\b([A-Z]{2,4})\s+(\d{3,4})\b/g;
-
-// Matches a "Coursework:" / "Relevant Courses -" label and captures the rest
-// of the line, so named courses ("Data Structures") are extracted, not just
-// department codes ("CS 124"). Requires the label to be followed by : - or —.
-const COURSEWORK_LABEL = /\b(?:relevant\s+)?(?:course\s?work|courses)\b\s*[:\-—]\s*(.+)/i;
 
 // Matches an "Areas of Interest" / "Research Interests" / "Research Areas" label.
 // PDF extraction often flattens the whole resume onto one line, so the value is
@@ -81,169 +75,40 @@ function extractSkills(text: string): { skill: string; line: string }[] {
   return hits;
 }
 
-// A résumé's address block and grant citations have the same shape as a course
-// code, so "Urbana IL 61801 / APT 402" was reaching a student's profile as
-// coursework and from there into the sentence a cold email makes about what
-// they have studied. These prefixes are never a department.
-const NOT_A_DEPARTMENT = new Set([
-  'APT', 'STE', 'RM', 'BOX', 'PO', 'POB', 'FL', 'UNIT', 'NO', 'BLDG', 'DEPT',
-  'EXT', 'TEL', 'FAX', 'ISBN', 'DOI', 'GPA', 'ID', 'SSN', 'ZIP',
-]);
-
-function trimCourse(s: string): string {
-  return s.replace(/^[ .\t]+/, '').replace(/[ .\t]+$/, '');
-}
-
 // A label that opens a row of its own ("Honors: Dean's List", "Tools: PyTorch").
 const LABEL_ROW = /^[^,:：]{1,40}(?::\s|：)/u;
 // A row under a coursework list or under an item's text that starts
 // something of its own: a label or an honor ("Dean's List, James Scholar").
 const NOT_COURSEWORK = new RegExp(String.raw`${LABEL_ROW.source}|\b(?:dean['’]?s list|scholars?|scholarships?|honou?rs?|awards?|prizes?|fellowships?|medal(?:ist)?|cum laude|finalist|winner|recipient)\b`, 'iu');
 
-type CourseMark = ResumeCourseEvidence['status'];
-
-// What a résumé line says of a course's status (checklist M13). Only planned
-// and in progress are pre-marked; a word saying it was done ("completed",
-// "took", a past term) reads as not marked, because the student marks a
-// course completed themselves. "to be taken" is listed before "taken".
-const STATUS_WORD = new RegExp([
-  String.raw`(?<planned>\b(?:planned|planning\s+to\s+take|plans?\s+to\s+take|expected|will\s+(?:be\s+)?tak(?:e|ing)|to\s+be\s+taken|upcoming|future)\b)`,
-  String.raw`(?<progress>\b(?:currently|current|in[\s-]progress|ongoing)\b)`,
-  String.raw`(?<done>\b(?:completed?|took|taken|finished|passed)\b)`,
-  String.raw`(?<term>\b(?<season>spring|summer|fall|autumn|winter)\s*(?:'(?<yy>\d{2})|(?<yyyy>\d{4}))\b)`,
-].join('|'), 'giu');
-const TERM_MONTH: Record<string, number> = { winter: 0, spring: 0, summer: 4, fall: 7, autumn: 7 };
-// What ends the item a course sits in: a list separator or a sentence end.
-const ITEM_BREAK = /[,;|•·\t]|\.\s/gu;
-// A status note written after a course: "(in progress)", "- Spring 2027".
-const STATUS_NOTE = /^\s*(?:[(\[]([^()[\]]*)[)\]]|[-–—:]\s*(.+))/u;
-const TRAILING_NOTE = /\s*(?:[(\[]([^()[\]]*)[)\]]|[-–—]\s+([^-–—]+))\s*$/u;
-
-/** Each status word in `text`, in order: null for a word that marks nothing. */
-function statusWords(text: string, now: Date): Array<CourseMark | null> {
-  return Array.from(text.matchAll(STATUS_WORD), (m) => {
-    const g = m.groups ?? {};
-    if (g.planned) return 'planned';
-    if (g.progress) return 'in_progress';
-    if (g.term) {
-      const year = g.yyyy ? Number(g.yyyy) : 2000 + Number(g.yy);
-      const month = TERM_MONTH[g.season.toLowerCase()];
-      // A term not begun yet is a course planned; a current or past one
-      // says nothing the student has not marked.
-      if (year > now.getFullYear() || (year === now.getFullYear() && month > now.getMonth())) return 'planned';
-    }
-    return null;
-  });
-}
-
-/** The one status a list of words gives, or null when they give none or disagree. */
-function agreed(words: Array<CourseMark | null>): CourseMark | null {
-  if (words.length === 0) return null;
-  return words.every((word) => word === words[0]) ? words[0] : null;
-}
-
-/** What `line` says of the course at [start, end): a status word before it in
- *  its item ("currently taking CS 374"), else a note right after it
- *  ("CS 374 (in progress)"), else the label its list is under ("Planned
- *  Courses: …", up to four words). Undefined when the line says nothing. */
-function courseMark(line: string, start: number, end: number, now: Date): CourseMark | undefined {
-  let itemStart = 0;
-  let itemEnd = line.length;
-  for (const m of line.matchAll(ITEM_BREAK)) {
-    if (m.index + m[0].length <= start) itemStart = m.index + m[0].length;
-    else if (m.index >= end) { itemEnd = m.index; break; }
-  }
-  const lead = line.slice(itemStart, start);
-  const colon = Math.max(lead.lastIndexOf(':'), lead.lastIndexOf('：'));
-  const before = statusWords(colon >= 0 ? lead.slice(colon + 1) : lead, now);
-  if (before.length > 0) return before[before.length - 1] ?? 'unknown';
-  const note = STATUS_NOTE.exec(line.slice(end, itemEnd));
-  const after = note ? statusWords(note[1] ?? note[2] ?? '', now) : [];
-  if (after.length > 0) return after[0] ?? 'unknown';
-  // The label: in this item before its colon, or the last one before the item.
-  let label = colon >= 0 ? lead.slice(0, colon) : '';
-  if (colon < 0) {
-    const head = line.slice(0, itemStart);
-    const at = Math.max(head.lastIndexOf(':'), head.lastIndexOf('：'));
-    if (at >= 0) {
-      const opened = Array.from(head.slice(0, at).matchAll(ITEM_BREAK)).pop();
-      label = head.slice(opened ? opened.index + opened[0].length : 0, at);
-    }
-  }
-  const words = label.trim().split(/\s+/u).slice(-4).join(' ');
-  if (!words) return undefined;
-  const marks = statusWords(words, now);
-  return marks.length > 0 ? agreed(marks) ?? 'unknown' : undefined;
-}
-
-/** A labeled course without the status note written after it: "CS 374 (in
- *  progress)" is CS 374, the note being what courseMark reads. */
-function withoutStatusNote(name: string, now: Date): string {
-  const note = TRAILING_NOTE.exec(name);
-  return note && statusWords(note[1] ?? note[2] ?? '', now).length > 0 ? trimCourse(name.slice(0, note.index)) : name;
-}
-
-/** Course codes anywhere, and named courses on a labeled coursework line,
- *  each with the line it was found on and the status that line gives it.
- *  The text keeps a list cut inside a name ("…, Data" / "Structures and
- *  Algorithms, …") on two lines, since the row under a list is as often an
- *  organization or an honor. A coursework label says what the list is, so
- *  the list goes on across a break the page marks as a possible wrap
- *  (`possibleWraps`, offsets of line breaks in `text`) unless the next line
- *  is a row of its own. A course found on lines that disagree about its
- *  status is not marked. */
-function extractCoursework(
-  text: string, possibleWraps: ReadonlySet<number> = new Set(), now: Date = new Date(),
-): ResumeCourseEvidence[] {
-  const found = new Map<string, Array<{ line: string; mark: CourseMark | undefined }>>();
-  const add = (name: string, line: string, start: number, length: number) => {
-    const seen = found.get(name) ?? [];
-    seen.push({ line: evidenceFor(line, start, length), mark: courseMark(line, start, start + length, now) });
-    found.set(name, seen);
-  };
-  for (const m of text.matchAll(COURSE_PATTERN)) {
-    // A number in the calendar band is a venue or a date ("CVPR 2026",
-    // "MAY 2027"), not a catalog number — publications and graduation dates
-    // share the course-code shape, and a venue cited as coursework becomes a
-    // false claim in generated emails. Catalog numbers in the band ("CS 2050")
-    // are sacrificed; a labeled "Coursework:" line still captures them below.
-    const num = Number(m[2]);
-    if (num >= 1950 && num <= 2049) continue;
-    if (NOT_A_DEPARTMENT.has(m[1].toUpperCase())) continue;
-    const lineStart = text.lastIndexOf('\n', m.index) + 1;
-    const lineEnd = text.indexOf('\n', m.index);
-    add(`${m[1]} ${m[2]}`, text.slice(lineStart, lineEnd === -1 ? text.length : lineEnd), m.index - lineStart, m[0].length);
-  }
+/** Course codes anywhere, and named courses in a labeled list
+ *  (course-status.ts courseLists: "Coursework:", "Relevant Courses -",
+ *  "Current courses:"). The text keeps a list cut inside a name ("…, Data" /
+ *  "Structures and Algorithms, …") on two lines, since the row under a list is
+ *  as often an organization or an honor. A coursework label says what the
+ *  list is, so the list goes on across a break the page marks as a possible
+ *  wrap (`possibleWraps`, offsets of line breaks in `text`) unless the next
+ *  line is a row of its own. Names only: what a course's status is, and the
+ *  line it is on, are read from the stored text when needed (checklist M13). */
+function extractCoursework(text: string, possibleWraps: ReadonlySet<number> = new Set()): string[] {
+  const courses = courseCodes(text).map((code) => code.name);
   const lines = text.split('\n');
   let end = -1;
   for (let index = 0; index < lines.length; index++) {
     end += lines[index].length + 1;
-    const label = COURSEWORK_LABEL.exec(lines[index]);
-    if (!label) continue;
-    // The labeled line and any line it wraps onto, read as one.
-    let full = lines[index];
-    const listStart = full.length - label[1].length;
+    const found = courseLists(lines[index]);
+    // A label with nothing after it on its line opens no list.
+    if (!found.some((list) => list.end > list.start)) continue;
+    const lists = found.map((list) => lines[index].slice(list.start, list.end));
     while (possibleWraps.has(end) && index + 1 < lines.length
       && !NOT_COURSEWORK.test(lines[index + 1]) && !RESUME_ROLE.test(lines[index + 1])) {
       index += 1;
       end += lines[index].length + 1;
-      full += wrapJoin(full, lines[index]) + lines[index];
+      lists[lists.length - 1] += wrapJoin(lists[lists.length - 1], lines[index]) + lines[index];
     }
-    for (const item of full.slice(listStart).matchAll(/[^;,]+/gu)) {
-      const name = withoutStatusNote(trimCourse(item[0]), now);
-      if (name && /[A-Za-z]/.test(name) && name.length >= 3 && name.length <= 40) {
-        const at = listStart + item.index + item[0].indexOf(name);
-        add(name, full, at, name.length);
-      }
-    }
+    for (const list of lists) courses.push(...listedCourses(list).map((item) => item.name));
   }
-  return Array.from(found.keys()).sort().map((course) => {
-    const seen = found.get(course)!;
-    const marks = seen.map((item) => item.mark).filter((mark): mark is CourseMark => mark !== undefined);
-    const status = agreed(marks) ?? 'unknown';
-    const line = (seen.find((item) => status !== 'unknown' && item.mark === status) ?? seen[0]).line;
-    return { course, line, status };
-  });
+  return Array.from(new Set(courses)).sort();
 }
 
 /** Capture a labeled research-interests line from a resume. The form's only
@@ -611,7 +476,8 @@ function pageText(items: readonly unknown[]): { text: string; possibleWraps: num
     // A joined line stays in the item it continues; any other line opens one.
     if (separator === null) {
       bulletItem = glyph[index];
-      list = (list || COURSEWORK_LABEL.test(out.slice(start))) && possibleWrap(shapes, index, texts, pitch, column, shown);
+      list = (list || courseLists(out.slice(start)).some((found) => found.end > found.start))
+        && possibleWrap(shapes, index, texts, pitch, column, shown);
       if (list) possibleWraps.push(out.length);
       start = out.length + 1;
     }
@@ -700,15 +566,13 @@ export async function parseResumePDF(file: File): Promise<ResumeParseResponse> {
   }
 
   const hits = extractSkills(rawText);
-  const courses = extractCoursework(rawText, possibleWraps);
-  const coursework = courses.map((item) => item.course);
+  const coursework = extractCoursework(rawText, possibleWraps);
   const interests = extractResearchInterests(rawText);
 
   return {
     extracted_skills: hits.map((h) => h.skill),
     skill_evidence: hits,
     extracted_coursework: coursework,
-    course_evidence: courses,
     raw_text: rawText,
     success: true,
     message: `Extracted ${hits.length} skills, ${coursework.length} courses from resume.`,

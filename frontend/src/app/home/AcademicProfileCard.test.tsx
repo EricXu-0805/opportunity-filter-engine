@@ -392,9 +392,21 @@ describe('AcademicProfileCard — courses (checklist M13)', () => {
     expect((screen.getByLabelText('courses.statusOf:CS 225') as HTMLSelectElement).value).toBe('unknown');
     expect((screen.getByLabelText('courses.statusOf:CS 446') as HTMLSelectElement).value).toBe('unknown');
     fireEvent.change(screen.getByLabelText('courses.statusOf:CS 446'), { target: { value: 'planned' } });
+    // Only the status the student set is written: CS 225 stays unset.
     expect(update).toHaveBeenCalledWith('courses', [
-      { name: 'CS 225', status: 'unknown', source: 'resume' },
-      { name: 'CS 446', status: 'planned', source: 'resume' },
+      { name: 'CS 225', source: 'resume' },
+      { name: 'CS 446', source: 'resume', status: 'planned' },
     ]);
+  });
+
+  it('shows the status the current résumé text gives a course nobody set, as one to check', () => {
+    renderCard({
+      resume_text: 'Current courses: CS 374\nRelevant Coursework: CS 225',
+      courses: [{ name: 'CS 225', source: 'resume' }, { name: 'CS 374', source: 'resume' }],
+      coursework: ['CS 225', 'CS 374'],
+    });
+    expect((screen.getByLabelText('courses.statusOf:CS 374') as HTMLSelectElement).value).toBe('in_progress');
+    expect((screen.getByLabelText('courses.statusOf:CS 225') as HTMLSelectElement).value).toBe('unknown');
+    expect(screen.getAllByText('courses.inferred')).toHaveLength(1);
   });
 });

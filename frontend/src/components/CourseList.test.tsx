@@ -11,54 +11,101 @@ vi.mock('@/i18n/client', () => ({
 }));
 
 import CourseList from './CourseList';
-import type { CourseEntry } from '@/lib/types';
+import { courseRows } from '@/lib/course-status';
+import type { ProfileData, StoredCourse } from '@/lib/types';
 
-const COURSES: CourseEntry[] = [
-  { name: 'CS 225', status: 'unknown', source: 'resume', evidence: 'Relevant Coursework: CS 225, CS 446' },
-  { name: 'CS 446', status: 'planned', source: 'resume', evidence: 'Planned: CS 446 (Spring 2027)' },
-  { name: 'STAT 400', status: 'completed', source: 'manual' },
+// The form's own read of the profile: the rows come from the stored courses
+// and the current résumé text, exactly as AcademicProfileCard builds them.
+const RESUME = 'Relevant Coursework: CS 225, CS 446\nCurrent courses: CS 374';
+const STORED: StoredCourse[] = [
+  { name: 'CS 225', source: 'resume' },
+  { name: 'CS 374', source: 'resume' },
+  { name: 'CS 446', source: 'resume', status: 'planned' },
+  { name: 'STAT 400', source: 'manual', status: 'completed' },
 ];
 
-function Harness({ initial, onChange }: { initial: CourseEntry[]; onChange: (courses: CourseEntry[]) => void }) {
-  const [courses, setCourses] = useState(initial);
-  return <CourseList courses={courses} onChange={(next) => { setCourses(next); onChange(next); }} />;
+function Harness({ initial, onChange, resume = RESUME }: {
+  initial: StoredCourse[]; onChange: (courses: StoredCourse[]) => void; resume?: string;
+}) {
+  const [profile, setProfile] = useState<Pick<ProfileData, 'courses' | 'coursework' | 'resume_text'>>({
+    courses: initial, coursework: initial.map((course) => course.name), resume_text: resume,
+  });
+  return (
+    <CourseList
+      courses={courseRows(profile)}
+      onChange={(next) => {
+        setProfile((prev) => ({ ...prev, courses: next, coursework: next.map((course) => course.name) }));
+        onChange(next);
+      }}
+    />
+  );
 }
 
 afterEach(() => { cleanup(); i18n.locale = 'en'; });
 
 describe('CourseList (checklist M13)', () => {
-  it('shows each course with its status, the résumé line it came from, and how many are not marked', () => {
-    render(<Harness initial={COURSES} onChange={vi.fn()} />);
+  it('shows each course with its status, the résumé line found in the current text, and what is left to mark or check', () => {
+    render(<Harness initial={STORED} onChange={vi.fn()} />);
     expect(screen.getByRole('group', { name: 'Courses' })).toBeTruthy();
     const status = screen.getByLabelText('Status of CS 225') as HTMLSelectElement;
     expect(status.value).toBe('unknown');
     expect(within(status).getAllByRole('option').map((option) => option.textContent))
       .toEqual(['Completed', 'In progress', 'Planned', 'Not marked']);
+    expect((screen.getByLabelText('Status of CS 374') as HTMLSelectElement).value).toBe('in_progress');
     expect((screen.getByLabelText('Status of CS 446') as HTMLSelectElement).value).toBe('planned');
     expect((screen.getByLabelText('Status of STAT 400') as HTMLSelectElement).value).toBe('completed');
-    expect(screen.getByText('From your résumé: “Relevant Coursework: CS 225, CS 446”')).toBeTruthy();
-    expect(screen.getByText('From your résumé: “Planned: CS 446 (Spring 2027)”')).toBeTruthy();
+    // The same spelling as the skill rows on this form.
+    expect(screen.getAllByText('From your resume: “Relevant Coursework: CS 225, CS 446”')).toHaveLength(2);
+    expect(screen.getByText('From your resume: “Current courses: CS 374”')).toBeTruthy();
     // A course added on the form has no résumé line to show.
-    expect(screen.getAllByText(/^From your résumé/)).toHaveLength(2);
-    expect(screen.getByRole('status').textContent).toBe(
-      '1 not marked yet. Until you mark them they are only listed as part of your coursework, never as completed.');
+    expect(screen.getAllByText(/^From your resume: /)).toHaveLength(3);
+    // Only the status read from the résumé asks to be checked.
+    expect(screen.getAllByText('From your resume — please check')).toHaveLength(1);
+    const left = screen.getByRole('status');
+    expect(within(left).getByText('Not marked yet: 1. Until you mark a course, it is only listed as part of your coursework, never as completed.')).toBeTruthy();
+    expect(within(left).getByText('Read from your resume, still to check: 1.')).toBeTruthy();
   });
 
-  it('marks, removes and adds courses, an added one by hand', () => {
+  it('confirms a status read from the résumé as the student\'s own, and moves focus to its status', () => {
     const onChange = vi.fn();
-    render(<Harness initial={COURSES} onChange={onChange} />);
-    fireEvent.change(screen.getByLabelText('Status of CS 225'), { target: { value: 'completed' } });
-    expect(onChange).toHaveBeenLastCalledWith([{ ...COURSES[0], status: 'completed' }, COURSES[1], COURSES[2]]);
-    expect(screen.getByRole('status').textContent).toBe('');
+    render(<Harness initial={STORED} onChange={onChange} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm In progress for CS 374' }));
+    expect(onChange).toHaveBeenLastCalledWith([
+      { name: 'CS 225', source: 'resume' },
+      { name: 'CS 374', source: 'resume', status: 'in_progress' },
+      { name: 'CS 446', source: 'resume', status: 'planned' },
+      { name: 'STAT 400', source: 'manual', status: 'completed' },
+    ]);
+    expect(screen.queryByText('From your resume — please check')).toBeNull();
+    expect(document.activeElement).toBe(screen.getByLabelText('Status of CS 374'));
+  });
+
+  it('marks, removes and adds courses, writing back no status for a course the student has not set', () => {
+    const onChange = vi.fn();
+    render(<Harness initial={STORED} onChange={onChange} />);
+    fireEvent.change(screen.getByLabelText('Status of CS 374'), { target: { value: 'planned' } });
+    expect(onChange).toHaveBeenLastCalledWith([
+      { name: 'CS 225', source: 'resume' },
+      { name: 'CS 374', source: 'resume', status: 'planned' },
+      { name: 'CS 446', source: 'resume', status: 'planned' },
+      { name: 'STAT 400', source: 'manual', status: 'completed' },
+    ]);
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove CS 446' }));
-    expect(onChange).toHaveBeenLastCalledWith([{ ...COURSES[0], status: 'completed' }, COURSES[2]]);
+    expect(onChange).toHaveBeenLastCalledWith([
+      { name: 'CS 225', source: 'resume' },
+      { name: 'CS 374', source: 'resume', status: 'planned' },
+      { name: 'STAT 400', source: 'manual', status: 'completed' },
+    ]);
 
     fireEvent.change(screen.getByLabelText('Add a course'), { target: { value: '  ECE 220 ' } });
     fireEvent.change(screen.getByLabelText('Status of the new course'), { target: { value: 'in_progress' } });
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
     expect(onChange).toHaveBeenLastCalledWith([
-      { ...COURSES[0], status: 'completed' }, COURSES[2], { name: 'ECE 220', status: 'in_progress', source: 'manual' },
+      { name: 'CS 225', source: 'resume' },
+      { name: 'CS 374', source: 'resume', status: 'planned' },
+      { name: 'STAT 400', source: 'manual', status: 'completed' },
+      { name: 'ECE 220', source: 'manual', status: 'in_progress' },
     ]);
     expect((screen.getByLabelText('Add a course') as HTMLInputElement).value).toBe('');
     expect((screen.getByLabelText('Status of the new course') as HTMLSelectElement).value).toBe('unknown');
@@ -70,21 +117,41 @@ describe('CourseList (checklist M13)', () => {
     expect(screen.getByRole('status').textContent).toBe('ECE 220 is already listed.');
   });
 
+  it('after Remove, moves focus to the next row\'s status, or to the add field when no row follows', () => {
+    render(<Harness initial={STORED} onChange={vi.fn()} />);
+    screen.getByRole('button', { name: 'Remove CS 374' }).focus();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove CS 374' }));
+    expect(document.activeElement).toBe(screen.getByLabelText('Status of CS 446'));
+
+    screen.getByRole('button', { name: 'Remove STAT 400' }).focus();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove STAT 400' }));
+    expect(document.activeElement).toBe(screen.getByLabelText('Add a course'));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove CS 225' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove CS 446' }));
+    expect(screen.getByText('No courses yet. Upload your resume, or add a course below.')).toBeTruthy();
+    expect(document.activeElement).toBe(screen.getByLabelText('Add a course'));
+  });
+
   it('says so when there are no courses yet', () => {
     render(<Harness initial={[]} onChange={vi.fn()} />);
-    expect(screen.getByText('No courses yet. Upload your résumé, or add a course below.')).toBeTruthy();
+    expect(screen.getByText('No courses yet. Upload your resume, or add a course below.')).toBeTruthy();
     expect((screen.getByRole('button', { name: 'Add' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('reads in Chinese with the same four choices', () => {
     i18n.locale = 'zh';
-    render(<Harness initial={COURSES} onChange={vi.fn()} />);
+    render(<Harness initial={STORED} onChange={vi.fn()} />);
     expect(screen.getByRole('group', { name: '课程' })).toBeTruthy();
     const status = screen.getByLabelText('CS 225 的状态') as HTMLSelectElement;
     expect(within(status).getAllByRole('option').map((option) => option.textContent)).toEqual(['已修', '在修', '计划修', '未标']);
-    expect(screen.getByText('来自你的简历：「Relevant Coursework: CS 225, CS 446」')).toBeTruthy();
-    expect(screen.getByRole('status').textContent).toBe('有 1 门课还未标注。标注之前，它们只会被列为你的课程之一，不会写成已修。');
+    expect(screen.getByText('来自你的简历：「Current courses: CS 374」')).toBeTruthy();
+    expect(screen.getByText('据简历推断，请确认')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '确认 CS 374 为「在修」' })).toBeTruthy();
+    const left = screen.getByRole('status');
+    expect(within(left).getByText('有 1 门课还未标注。标注之前，它们只会被列为你的课程之一，不会写成已修。')).toBeTruthy();
+    expect(within(left).getByText('有 1 门课的状态是据简历推断的，请确认。')).toBeTruthy();
     expect(screen.getByRole('button', { name: '移除 CS 446' })).toBeTruthy();
-    expect(screen.getByLabelText('添加课程')).toBeTruthy();
+    expect((screen.getByLabelText('添加课程') as HTMLInputElement).placeholder).toBe('例如 CS 225 或数据结构');
   });
 });

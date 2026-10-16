@@ -412,10 +412,9 @@ export function toProfileRequest(profile: ProfileData): ProfileRequest {
     })),
     // Each course with its status: the server words a course only as its
     // status allows (src/student_evidence.py). The names alone still go as
-    // `coursework` for server code that reads names only; a course not marked,
-    // including every legacy name, is sent as `unknown`, never as completed.
-    // Like a skill's, a course's résumé line stays in the browser: no route
-    // reads it, and the matcher is not sent the résumé.
+    // `coursework` for server code that reads names only. A résumé course the
+    // student has not marked goes with the status its current résumé line
+    // gives it, else as `unknown` — never as completed, legacy names included.
     coursework: courses.map((course) => course.name),
     courses: courses.map(({ name, status, source }) => ({ name, status, source })),
     experience_level: profile.experience_level ?? 'beginner',

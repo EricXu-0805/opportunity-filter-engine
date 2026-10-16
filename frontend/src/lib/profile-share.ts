@@ -81,9 +81,11 @@ function fromShared(shared: SharedProfile): Partial<ProfileData> {
     search_weight: typeof shared.weight === 'number' && shared.weight >= 0 && shared.weight <= 100
       ? shared.weight
       : undefined,
-    // Each shared course arrives not marked: the visitor marks their own.
+    // Each shared course arrives not marked: the visitor marks their own. It
+    // is theirs, as one added on the form is, not read from their résumé: a
+    // later removal or re-import of their résumé leaves it alone.
     ...(Array.isArray(shared.courses)
-      ? courseFields(shared.courses.map((x) => ({ name: shareText(x), status: 'unknown' as const, source: 'resume' as const })))
+      ? courseFields(shared.courses.map((x) => ({ name: shareText(x), status: 'unknown' as const, source: 'manual' as const })))
       : {}),
   };
 }

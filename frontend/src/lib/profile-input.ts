@@ -47,7 +47,6 @@ export function assertProfileInput(profile: object, checkShareSize = false): voi
       if (key === 'courses') {
         if (!value || typeof value !== 'object') invalid(field);
         text(value.name, `${field}.name`, max);
-        if (value.evidence !== undefined) text(value.evidence, `${field}.evidence`, max);
       } else if (key === 'hard_skills') {
         if (!value || typeof value !== 'object') invalid(field);
         text(value.name, `${field}.name`, max);

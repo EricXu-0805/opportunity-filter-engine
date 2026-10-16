@@ -12,21 +12,26 @@ import { hashProfile } from './match-utils';
 
 // Checklist M13: every request that sends the profile sends each course with
 // its status, so matching, cold email, Tailor, Renovate and Ask AI read one
-// set of statuses. A course not marked, and every legacy name, goes as unknown.
+// set of statuses. A résumé course nobody marked goes with the status its
+// current résumé line gives it, and otherwise, legacy names included, as
+// unknown.
 const TOKEN = 'wt1:' + 'b'.repeat(64);
 const profile: ProfileData = {
   name: 'Student', institution: 'UIUC', college: 'Grainger', major: 'CS', grade: 'Sophomore',
   research_interests: 'robotics', is_international: false, skills: [],
-  coursework: ['CS 225', 'CS 446', 'MATH 241'],
+  resume_text: 'Relevant Coursework: CS 225, STAT 400\nCurrent courses: MATH 241',
+  coursework: ['CS 225', 'CS 446', 'MATH 241', 'STAT 400'],
   courses: [
-    { name: 'CS 225', status: 'completed', source: 'resume', evidence: 'Relevant Coursework: CS 225' },
+    { name: 'CS 225', status: 'completed', source: 'resume' },
     { name: 'CS 446', status: 'planned', source: 'manual' },
+    { name: 'MATH 241', source: 'resume' },
   ],
 };
 const SENT = [
   { name: 'CS 225', status: 'completed', source: 'resume' },
   { name: 'CS 446', status: 'planned', source: 'manual' },
-  { name: 'MATH 241', status: 'unknown', source: 'resume' },
+  { name: 'MATH 241', status: 'in_progress', source: 'resume' },
+  { name: 'STAT 400', status: 'unknown', source: 'resume' },
 ];
 const routes = ['matches', 'email', 'stream', 'variants', 'refine', 'tailor', 'renovate', 'bullet', 'chat'] as const;
 type Route = typeof routes[number];
@@ -68,9 +73,10 @@ describe('every request that sends the profile sends the courses with their stat
     const body = JSON.parse(fetchMock.mock.calls[0][1].body);
     const sent = route === 'matches' ? body : body.profile;
     expect(sent.courses).toEqual(SENT);
-    expect(sent.coursework).toEqual(['CS 225', 'CS 446', 'MATH 241']);
-    // The résumé line stays in the browser.
+    expect(sent.coursework).toEqual(['CS 225', 'CS 446', 'MATH 241', 'STAT 400']);
+    // No résumé line goes with a course.
     expect(JSON.stringify(sent)).not.toContain('Relevant Coursework');
+    expect(JSON.stringify(sent)).not.toContain('Current courses');
   });
 });
 
@@ -79,5 +85,7 @@ describe('the match cache key', () => {
     const planned = { ...profile, courses: [{ name: 'CS 225', status: 'planned' as const, source: 'resume' as const }] };
     const done = { ...profile, courses: [{ name: 'CS 225', status: 'completed' as const, source: 'resume' as const }] };
     expect(hashProfile(planned)).not.toBe(hashProfile(done));
+    // Also with a status read from a changed résumé text.
+    expect(hashProfile({ ...profile, resume_text: 'Planned courses: MATH 241' })).not.toBe(hashProfile(profile));
   });
 });
