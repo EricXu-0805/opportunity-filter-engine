@@ -12,10 +12,13 @@ from backend.lib.email_claims import unsupported_action_claims
 from backend.lib.email_contact_context import contains_context_work_claim
 from backend.lib.request_body import known_keys, string_items
 from backend.lib.resume_input import MAX_RESUME_TEXT_CHARACTERS
+from src.student_evidence import COURSE_SOURCES, COURSE_STATUSES
 
 # Where an imported skill came from. Absence is the student's own choice; an
 # unrecognised value is normalised to "unknown" and treated as an import.
 _SKILL_SOURCES = frozenset({"resume", "github", "shared"})
+_COURSE_STATUSES = frozenset(COURSE_STATUSES)
+_COURSE_SOURCES = frozenset(COURSE_SOURCES)
 
 
 class SkillItem(BaseModel):
@@ -32,6 +35,32 @@ class SkillItem(BaseModel):
     level: str = "beginner"
     source: str | None = None
     confirmed: bool = False
+
+
+class CourseEntry(BaseModel):
+    """One course and its status (checklist M13); src.student_evidence decides what may be said of it.
+
+    Every field is declared for the reason SkillItem gives. A status or source
+    this server does not know is read as ``unknown`` / ``resume`` rather than
+    refused, so a newer client never loses a request and an unrecognised
+    status is never read as completed.
+    """
+
+    name: str
+    status: Literal["completed", "in_progress", "planned", "unknown"] = "unknown"
+    source: Literal["resume", "manual"] = "resume"
+    evidence: str | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def known_status_and_source(cls, value):
+        if isinstance(value, dict):
+            value = dict(value)
+            if value.get("status") not in _COURSE_STATUSES:
+                value["status"] = "unknown"
+            if value.get("source") not in _COURSE_SOURCES:
+                value["source"] = "resume"
+        return value
 
 
 class ProfilePreferences(BaseModel):
@@ -55,6 +84,9 @@ PROFILE_LIST_LIMITS = {
 }
 PROFILE_SKILL_LIMIT = 512
 PROFILE_SKILL_TEXT_LIMIT = 1000
+# A course's name and the résumé line it was read from, like a coursework string.
+PROFILE_COURSE_LIMIT = 512
+PROFILE_COURSE_TEXT_LIMIT = 1000
 
 
 def _profile_error(field: str, *, actual: int | None = None,
@@ -91,7 +123,11 @@ class ProfileRequest(BaseModel):
     seeking_type: list[str] = Field(default_factory=lambda: ["research", "summer_program"])
     desired_fields: list[str] = Field(default_factory=list)
     hard_skills: list[Union[SkillItem, str]] = Field(default_factory=list)
+    # Legacy: names only, every one of unknown status. ``courses`` carries a
+    # status and wins over a coursework string of the same course name
+    # (src.student_evidence.course_entries).
     coursework: list[str] = Field(default_factory=list)
+    courses: list[CourseEntry] = Field(default_factory=list)
     experience_level: str = "beginner"
     resume_ready: bool = False
     can_cold_email: bool = True
@@ -147,6 +183,23 @@ class ProfileRequest(BaseModel):
                         _profile_error("profile.hard_skills.source")
                 else:
                     _profile_error("profile.hard_skills")
+        if "courses" in value:
+            items = value["courses"]
+            if not isinstance(items, list):
+                _profile_error("profile.courses")
+            if len(items) > PROFILE_COURSE_LIMIT:
+                _profile_error("profile.courses", actual=len(items), limit=PROFILE_COURSE_LIMIT, unit="items")
+            for item in items:
+                if isinstance(item, CourseEntry):
+                    item = item.model_dump()
+                if not isinstance(item, dict):
+                    _profile_error("profile.courses")
+                _profile_text(item.get("name", ""), "profile.courses.name", PROFILE_COURSE_TEXT_LIMIT)
+                if item.get("evidence") is not None:
+                    _profile_text(item["evidence"], "profile.courses.evidence", PROFILE_COURSE_TEXT_LIMIT)
+                for key in ("status", "source"):
+                    if item.get(key) is not None and not isinstance(item[key], str):
+                        _profile_error(f"profile.courses.{key}")
         return value
 
     @field_validator("home_school")

@@ -48,14 +48,14 @@ from backend.lib.resume_input import MAX_RESUME_TEXT_CHARACTERS
 from backend.lib.target_actionability import REFUSED_BEFORE_WORK_HEADER
 
 # Lists and objects outside JSON strings, per route. The largest body each route's request schema
-# accepts holds 651 (/api/tailor/renovate), 522 (/api/tailor), 520 (/api/tailor/bullet), 1 (either
+# accepts holds 1,164 (/api/tailor/renovate), 1,035 (/api/tailor), 1,033 (/api/tailor/bullet), 1 (either
 # extraction route) and 4,490 (a full-target selection plan: a draft at the master's caps and 24
 # support groups); scripts/request_body_containers.py builds and prints them.
 MAX_JSON_CONTAINERS = 10_000
 MAX_RESUME_JSON_CONTAINERS = 100
 MAX_FULL_TARGET_JSON_CONTAINERS = 20_000
 # Commas outside JSON strings. The same largest bodies hold at most 13,581 (the full-target selection
-# plan), 3,872 on the other writing routes and 1 on either extraction route.
+# plan), 5,920 on the other writing routes and 1 on either extraction route.
 MAX_JSON_SEPARATORS = 50_000
 MAX_RESUME_JSON_SEPARATORS = MAX_RESUME_TEXT_CHARACTERS + 100
 # The document routes allow at least four times the full-target selection plan's commas.
