@@ -746,8 +746,8 @@ export function getDirtyProfileKeys(
  * latest value, the earliest base, acknowledged together. ACROSS origins,
  * identical values coalesce and skill ADDITIONS merge by name; anything else
  * is a conflict resolved locally, with zero requests, unless one operation
- * explicitly says it supersedes the other — or the row was never created,
- * where the latest edit wins.
+ * explicitly says it supersedes the other — or the row was never created
+ * and every operation involved is clocked, where the latest edit wins.
  */
 type KeyPlan =
   | { kind: 'value'; value: unknown; baseValue: unknown; baseRevision: number; opIds: string[] }
@@ -795,11 +795,11 @@ function replacedThroughChain(op: JournalOp, byId: ReadonlyMap<string, JournalOp
   return walked;
 }
 
-/** Whether one operation was written after another was on disk: higher
- *  `seq` (see profile-journal's nextSeq), then opId so a tie between two
- *  that never saw each other still has one answer everywhere. */
+/** Whether one CLOCKED operation was written after another was on disk:
+ *  higher `clock` (see JournalOp.clock), then opId so a tie between two that
+ *  never saw each other still has one answer everywhere. */
 function writtenLater(a: JournalOp, b: JournalOp): boolean {
-  return a.seq !== b.seq ? a.seq > b.seq : a.opId > b.opId;
+  return a.clock !== b.clock ? a.clock! > b.clock! : a.opId > b.opId;
 }
 
 /**
@@ -896,9 +896,10 @@ function planKeysFromJournal(
         supersedes: new Set(ordered.flatMap((o) => [...replacedThroughChain(o.op, byId)])),
         additive: order.every((o) => o.op.mode === 'add-skills'),
         newest: order[order.length - 1].op,
-        // Made before any row was known. An operation against revision 1 or
-        // later proves a row existed, whatever the envelope says now.
-        beforeAnyRow: ordered.every((o) => o.op.baseRevision === 0),
+        // Made before any row was known (an operation against revision 1 or
+        // later proves a row existed, whatever the envelope says now), and
+        // every one clocked, so "latest" means written latest.
+        rankable: ordered.every((o) => o.op.baseRevision === 0 && o.op.clock !== undefined),
       };
     }).filter((c): c is NonNullable<typeof c> => c !== null);
 
@@ -976,7 +977,11 @@ function planKeysFromJournal(
     // operation stays in the plan: the create that carries the winner settles
     // them all. The price is deliberate: two tabs open at once on a row not
     // yet created no longer ask — the later edit wins.
-    if (neverCreated && chains.every((c) => c.beforeAnyRow)) {
+    //
+    // Only between clocked operations. One without a clock (an earlier
+    // build's) cannot be placed in time, so a disagreement it is part of
+    // stays a question, as it always was.
+    if (neverCreated && chains.every((c) => c.rankable)) {
       const latest = chains.reduce((a, b) => (writtenLater(b.newest, a.newest) ? b : a));
       plans.set(key, {
         kind: 'value',
@@ -2756,7 +2761,8 @@ function reconcileLoadedProfile(
   if (neverCreated && pending?.lockedKeys.some((k) => journalPlan.get(k)?.kind === 'value')) {
     // Before any row exists, a lock in the outbox can only be an earlier
     // disagreement between this browser's own sessions — and the plan has
-    // just decided it by the latest-edit rule. Left locked, it would still be
+    // just decided it by the latest-edit rule, which it applies only when
+    // every operation involved is clocked. Left locked, it would still be
     // asked about, and a create sent while it stood would leave the field out.
     const decided = pending.lockedKeys.filter((k) => journalPlan.get(k)?.kind === 'value');
     const desired = { ...pending.desiredProfile } as unknown as Record<string, unknown>;

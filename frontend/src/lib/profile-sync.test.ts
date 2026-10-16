@@ -1739,6 +1739,7 @@ describe('a real reload is a new document, and its edits continue the same draft
     expect(recordProfileIntent({ ...form, skills: skills('Rust') }, ['skills'], token,
       { writer: HOME_FORM_WRITER })).toBe(true);
     for (const op of journalOps()) expect(op.supersedes ?? []).toEqual([]);
+    expect(journalOps().every((op) => op.clock !== undefined), 'both written by this build').toBe(true);
     let shown = await hydrateProfile();
     expect(shown.conflictKeys).toEqual([]);
     expect(shown.profile?.skills, 'the later edit').toEqual(skills('Rust'));
@@ -1764,43 +1765,32 @@ describe('a real reload is a new document, and its edits continue the same draft
     expect(journalOps()).toEqual([]);
   });
 
-  it('a lock an earlier build left on a row NEVER CREATED dissolves on the next load, and the create carries the field', async () => {
+  it('on a row NEVER CREATED, a lock left while nothing said so dissolves on the next load that does, and the create carries the later college', async () => {
     loadProfileMock.mockResolvedValue(absent());
     await hydrateProfile();
     const token = captureOwnerToken();
-    // What that build left: two visits picked different colleges (each
-    // lineage numbered from 1, neither superseding the other), and the
-    // complete create it staged locked college and went out without it —
-    // refused by the server as incomplete, again on every retry.
-    const visit = (opId: string, lineage: string, college: string) => {
-      localStorage.setItem(`${STORAGE_KEYS.PROFILE_JOURNAL_PREFIX}op_${opId}`, JSON.stringify({
-        opId, originId: `doc-${lineage}`, lineage,
-        fields: [{ key: 'college', base: { present: false }, desired: { present: true, value: college } }],
-        baseRevision: 0, writer: HOME_FORM_WRITER, mode: 'set', seq: 1,
-      }));
-    };
-    visit('op-visit-1', 'visit-1', 'Grainger');
-    visit('op-visit-2', 'visit-2', 'LAS');
-    const form = { ...FULL, college: 'LAS' };
-    localStorage.setItem(STORAGE_KEYS.PROFILE_SYNC, JSON.stringify({
-      v: 1,
-      confirmed: null,
-      pending: {
-        mutationId: 'm-old', baseRevision: 0, baseProfile: form, desiredProfile: form,
-        dirtyKeys: Object.keys(form), keyVersions: {}, skillAdditions: [], skillOps: [],
-        skillsReplaced: false, additiveKeys: [], lockedKeys: ['college'], conflictRemote: null,
-        legacy: false, deferredCreate: false,
-        journalOpIds: ['op-visit-1', 'op-visit-2'], journalPlan: {},
-      },
-      tombstone: null,
-    }));
+    expect(recordProfileIntent({ ...FULL, college: 'Grainger' }, ['college'], token,
+      { writer: HOME_FORM_WRITER })).toBe(true);
+    // A second visit picks another college before its own load has answered:
+    // nothing says the row was never created, so the two visits are a
+    // question, and the create it stages leaves college locked.
+    resetJournalLaneForTests();
+    resetProfileDirtyLedger();
+    expect(recordProfileIntent({ ...FULL, college: 'LAS' }, ['college'], token,
+      { writer: HOME_FORM_WRITER })).toBe(true);
+    await stageProfilePatch({ ...FULL, college: 'LAS' }, ['college'], token, { allowCreate: true });
+    expect(readProfileSyncEnvelope()?.pending?.lockedKeys).toEqual(['college']);
+    expect(commitMock).not.toHaveBeenCalled();
+    // The journal's own random ids: the clock alone says LAS came later.
+    const [earlier, later] = journalOps().sort((a, b) => a.clock! - b.clock!);
+    expect([earlier.fields[0].desired, later.fields[0].desired])
+      .toEqual([{ present: true, value: 'Grainger' }, { present: true, value: 'LAS' }]);
 
     startDocumentForTests('other');
     resetProfileDirtyLedger();
     const h = await hydrateProfile();
     expect(h.conflictKeys, 'no question about the person\'s own two visits').toEqual([]);
     expect(readProfileSyncEnvelope()?.pending?.lockedKeys).toEqual([]);
-    // Equal seqs: the tie is broken by opId, one answer in every tab.
     expect(h.profile?.college).toBe('LAS');
 
     const server = casServer({} as ProfileData, 0);
@@ -1809,6 +1799,77 @@ describe('a real reload is a new document, and its edits continue the same draft
     expect(server.seen).toHaveLength(1);
     expect(server.seen[0]).toMatchObject({ expected: 0, patch: { college: 'LAS', major: 'CS', grade: 'Junior' } });
     expect(journalOps(), 'both visits\' edits are settled by the create').toEqual([]);
+  });
+
+  /** An operation exactly as an earlier build wrote it: no clock, and a seq
+   *  counted from 1 per lineage. */
+  function earlierBuildOp(lineage: string, seq: number, key: string, value: unknown): string {
+    const opId = crypto.randomUUID();
+    localStorage.setItem(`${STORAGE_KEYS.PROFILE_JOURNAL_PREFIX}op_${opId}`, JSON.stringify({
+      opId, originId: `doc-${lineage}`, lineage,
+      fields: [{ key, base: { present: false }, desired: { present: true, value } }],
+      baseRevision: 0, writer: HOME_FORM_WRITER, mode: 'set', seq,
+    }));
+    return opId;
+  }
+
+  it('on a row NEVER CREATED, what an earlier build wrote is never ranked: the newer visit\'s edit stays a question and outlives the create', async () => {
+    // Production (M109), as the previous build left it. Visit 1 typed its
+    // interests (seq 1) and added Rust (seq 2); visit 2, later, showed Rust
+    // and added Julia — seq 1 of its own lineage. Ranked by seq, the visit
+    // with more edits would win and Julia would go without a word.
+    const skills = (...names: string[]) => names.map((name) => ({ name, level: 'beginner' as const }));
+    const interests = earlierBuildOp('visit-1', 1, 'research_interests', 'robotics');
+    const rust = earlierBuildOp('visit-1', 2, 'skills', skills('Rust'));
+    const julia = earlierBuildOp('visit-2', 1, 'skills', skills('Rust', 'Julia'));
+    const doc = { ...FULL, college: '', major: '', grade: '', research_interests: 'robotics', skills: skills('Rust') };
+    localStorage.setItem(STORAGE_KEYS.PROFILE_SYNC, JSON.stringify({
+      v: 1,
+      confirmed: null,
+      pending: {
+        mutationId: 'm-old', baseRevision: 0, baseProfile: {}, desiredProfile: doc,
+        dirtyKeys: ['research_interests', 'skills'], keyVersions: {}, skillAdditions: [], skillOps: [],
+        skillsReplaced: false, additiveKeys: [], lockedKeys: ['skills'], conflictRemote: null,
+        legacy: false, deferredCreate: true,
+        journalOpIds: [interests, rust, julia], journalPlan: {},
+      },
+      tombstone: null,
+    }));
+    loadProfileMock.mockResolvedValue(absent());
+    startDocumentForTests('other');
+    resetProfileDirtyLedger();
+
+    const h = await hydrateProfile();
+    expect(h.conflictKeys, 'still asked').toEqual(['skills']);
+    expect(readProfileSyncEnvelope()?.pending?.lockedKeys).toEqual(['skills']);
+    expect(h.conflicts.find((c) => c.key === 'skills')?.candidates.map((c) => c.value))
+      .toContainEqual(skills('Rust', 'Julia'));
+
+    // The create goes without skills, and both visits' skills are still there
+    // to be chosen between.
+    const server = casServer({} as ProfileData, 0);
+    commitMock.mockImplementation(async (intent) => server.handle(intent) as ProfilePatchOutcome);
+    const created = await stageProfilePatch({ ...FULL, research_interests: 'robotics', skills: skills('Rust') },
+      ['college', 'major', 'grade'], captureOwnerToken(), { allowCreate: true });
+    expect(created).toMatchObject({ status: 'conflict', conflictKeys: ['skills'] });
+    expect(server.seen.every((sent) => !('skills' in sent.patch))).toBe(true);
+    expect(journalOps().map((o) => o.opId).sort()).toEqual([rust, julia].sort());
+  });
+
+  it('on a row NEVER CREATED, an earlier build\'s edit and this build\'s that disagree are still a question', async () => {
+    earlierBuildOp('visit-1', 1, 'college', 'Grainger');
+    loadProfileMock.mockResolvedValue(absent());
+    startDocumentForTests('other');
+    resetProfileDirtyLedger();
+    const token = captureOwnerToken();
+    expect((await hydrateProfile()).profile?.college).toBe('Grainger');
+
+    expect(recordProfileIntent({ ...FULL, college: 'LAS' }, ['college'], token,
+      { writer: HOME_FORM_WRITER })).toBe(true);
+    const h = await hydrateProfile();
+    expect(h.conflictKeys).toEqual(['college']);
+    expect(h.conflicts[0].candidates.map((c) => c.value).sort()).toEqual(['Grainger', 'LAS']);
+    expect(journalOps().filter((o) => o.clock !== undefined), 'only this build\'s is clocked').toHaveLength(1);
   });
 
   it('adoption is per KEY: continuing one field does not claim another tab\'s edit to a different one', async () => {
