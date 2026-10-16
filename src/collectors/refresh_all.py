@@ -950,9 +950,11 @@ def refresh_all(
             campus_opps, campus_evidence = fetch_ucb_campus_with_evidence(
                 deep=deep, national=national_part,
             )
-            # The listed program keys are a merge input, not report content.
+            # The program keys (this file's and the other's) are merge inputs,
+            # not report content.
             campus_evidence = dict(campus_evidence)
             listed_program_keys = campus_evidence.pop("listed_program_keys", None)
+            other_file_program_keys = campus_evidence.pop("other_file_program_keys", None)
             added, updated = merge_ucb_campus(
                 campus_opps,
                 complete_recursive_sources=set(
@@ -962,6 +964,7 @@ def refresh_all(
                 # retirement acts on the rows of the file it publishes.
                 listed_program_keys=None if listed_program_keys is None else set(listed_program_keys),
                 national=national_part,
+                other_file_program_keys=None if other_file_program_keys is None else set(other_file_program_keys),
             )
             summary["sources"][source_key] = {
                 "fetched": len(campus_opps),
@@ -1009,12 +1012,13 @@ def refresh_all(
                         national=national_part,
                     )
                 )
-                # Failure/revocation receipts and the listed program keys are merge
-                # inputs, not public report content. Keep the collector's original
-                # evidence object untouched.
+                # Failure/revocation receipts and the program keys (this file's and
+                # the other's) are merge inputs, not public report content. Keep
+                # the collector's original evidence object untouched.
                 graph_evidence = dict(graph_evidence)
                 condition_capture_updates = graph_evidence.pop("condition_capture_updates", None)
                 listed_program_keys = graph_evidence.pop("listed_program_keys", None)
+                other_file_program_keys = graph_evidence.pop("other_file_program_keys", None)
                 added, updated = merge_campus_graph(
                     school_opps,
                     condition_capture_updates=condition_capture_updates,
@@ -1025,6 +1029,7 @@ def refresh_all(
                     # retirement acts on the rows of the file it publishes.
                     listed_program_keys=None if listed_program_keys is None else set(listed_program_keys),
                     national=national_part,
+                    other_file_program_keys=None if other_file_program_keys is None else set(other_file_program_keys),
                     school_slug=slug,
                 )
                 summary["sources"][source_key] = {
