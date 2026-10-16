@@ -4700,13 +4700,15 @@ function flushByMutation(mutationId: string, token: OwnerToken): Promise<Profile
       const patch = pick(pending.desiredProfile, sendKeys) as Record<string, unknown>;
       const known = env?.confirmed ?? null;
       // With no row on record, a revision-0 patch is a CREATE, which becomes
-      // the whole row: it goes out complete or not at all, because the server
-      // refuses anything less (incomplete_create) on every retry. Held back,
-      // it says why: a required field blank in the document waits for the
-      // person to fill it in; a filled one held back by a lock is the
-      // question that lock is. A visit that loaded with no backend at all
-      // sends nothing anywhere, so it goes on as it always did and is kept on
-      // this device.
+      // the whole row, and the server refuses one that is not complete
+      // (incomplete_create) on every retry. So a create whose document has a
+      // required field blank, or one held back by a lock, is not sent, and
+      // says why: the blank field waits for the person to fill it in; the
+      // locked one is the question that lock is. Not covered, as before: a
+      // complete, unlocked document whose entry marks only some keys dirty
+      // (such as a legacy entry) still goes out partial and is refused. A
+      // visit that loaded with no backend at all sends nothing anywhere, so
+      // it goes on as it always did and is kept on this device.
       const loadedFrom = lastLoadSource?.scope === scopeOf(token) ? lastLoadSource.source : null;
       if (pending.baseRevision === 0 && !known && loadedFrom !== 'local-only'
         && !isCompleteDocument(patch as unknown as ProfileData)) {
