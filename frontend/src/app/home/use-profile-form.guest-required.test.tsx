@@ -346,4 +346,44 @@ describe('a guest with two tabs open before the row exists', () => {
     await tick(5000);
     expect(sends()).toHaveLength(1);
   });
+
+  it('the tab whose major the other tab\'s college switch cleared shows it blank when it says to fill it in', async () => {
+    // Review M109 r2 (PH1).
+    await mount();
+    await edit('college', 'Grainger College of Engineering');
+    await edit('major', 'Computer Science');
+
+    // The other tab, a moment later, switches college, which clears the major.
+    const ops = readOutstandingOps();
+    const clock = Math.max(0, ...(ops.ok ? ops.value.map((o) => o.clock ?? 0) : [])) + 1;
+    const opId = crypto.randomUUID();
+    localStorage.setItem(`${STORAGE_KEYS.PROFILE_JOURNAL_PREFIX}op_${opId}`, JSON.stringify({
+      opId, originId: 'tab-b', lineage: 'tab-b',
+      fields: [
+        { key: 'college', base: { present: false }, desired: { present: true, value: 'College of Liberal Arts & Sciences' } },
+        { key: 'major', base: { present: false }, desired: { present: true, value: '' } },
+        { key: 'additional_majors', base: { present: false }, desired: { present: true, value: [] } },
+      ],
+      baseRevision: 0, writer: HOME_FORM_WRITER, mode: 'set', seq: 1, clock,
+    }));
+
+    // This tab picks a grade. Its create would carry the later college and
+    // the blank major, so it waits, and the screen shows what waits.
+    await edit('grade', 'Junior');
+    expect(sends(), 'no create without a major').toEqual([]);
+    expect(form().saveStatus).toBe('awaiting-required');
+    expect(statusRow('en').textContent).toContain('Fill in your college, major, and grade');
+    expect([form().profile.college, form().profile.major, form().profile.grade])
+      .toEqual(['College of Liberal Arts & Sciences', '', 'Junior']);
+
+    // Picking a major creates the row with what the screen shows.
+    await edit('major', 'Mathematics');
+    expect(sends(), 'ONE create').toHaveLength(1);
+    expect(sends()[0].patch).toMatchObject({
+      college: 'College of Liberal Arts & Sciences', major: 'Mathematics', grade: 'Junior',
+    });
+    expect(form().saveStatus).toBe('saved');
+    await tick(5000);
+    expect(sends()).toHaveLength(1);
+  });
 });

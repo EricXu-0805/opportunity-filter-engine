@@ -319,8 +319,11 @@ export type ProfileSaveResult =
    *  `reason: 'incomplete-create'` means a create was refused only because
    *  the document is not complete (on the home form: college, major or grade
    *  is still blank). Nothing failed, the edit is in the journal, and a retry
-   *  cannot help. Every other cause carries no reason. */
-  | { status: 'blocked'; reason?: 'incomplete-create' }
+   *  cannot help. Every other cause carries no reason. `profile` is the
+   *  document held back, as it would have been sent, when it was staged
+   *  first: the journal's latest edits, which can be another tab's, are in
+   *  it, so it need not be the document the caller handed in. */
+  | { status: 'blocked'; reason?: 'incomplete-create'; profile?: ProfileData }
   /** The identity moved on. Not this user's news. */
   | { status: 'abandoned' }
   /** A local write failed (quota, private mode, a storage shim).
@@ -4707,7 +4710,9 @@ function flushByMutation(mutationId: string, token: OwnerToken): Promise<Profile
       const loadedFrom = lastLoadSource?.scope === scopeOf(token) ? lastLoadSource.source : null;
       if (pending.baseRevision === 0 && !known && loadedFrom !== 'local-only'
         && !isCompleteDocument(patch as unknown as ProfileData)) {
-        if (!isCompleteDocument(pending.desiredProfile)) return { status: 'blocked', reason: 'incomplete-create' };
+        if (!isCompleteDocument(pending.desiredProfile)) {
+          return { status: 'blocked', reason: 'incomplete-create', profile: pending.desiredProfile };
+        }
         if (pending.lockedKeys.length > 0) return lockedQuestion();
       }
       // Otherwise revision 0 here is an edit made while this browser's own
