@@ -32,7 +32,7 @@ def filter_course_entries(courses: list) -> list[str]:
     ]
 
 
-from src.student_evidence import claimable_skill_levels
+from src.student_evidence import claimable_skill_levels, course_entries, course_sentences
 
 
 def _extract_skill_names(raw_skills: list) -> list[str]:
@@ -866,7 +866,10 @@ def _common_parts(
         # deterministic drafts to the neutral greeting in ``_greeting``.
         recipient = "Faculty member" if is_faculty else ""
 
-    coursework = filter_course_entries(profile.get("coursework", []))
+    # M13: each course with its status (src.student_evidence decides what each
+    # status may say); a legacy coursework string is one of unknown status.
+    courses = [entry for entry in course_entries(profile) if filter_course_entries([entry["name"]])]
+    coursework = [entry["name"] for entry in courses]
     lab_type = _detect_lab_type(opportunity)
 
     # The professor's own free-text research areas (the substantive signal) and
@@ -888,7 +891,7 @@ def _common_parts(
         matching_skills=matching_skills, recipient=recipient,
         contact_method=(opportunity.get("application") or {}).get("contact_method"),
         application_url=(opportunity.get("application") or {}).get("application_url"),
-        coursework=coursework, lab_type=lab_type,
+        coursework=coursework, courses=courses, lab_type=lab_type,
         # Publication trust boundary: only works with explicitly verified
         # attribution may personalize output — name-matched/legacy/unknown
         # works never reach the template or the AI professor brief.
@@ -1207,9 +1210,10 @@ def _build_skills_focus(p: dict) -> str:
             # impose — never presented as experience, at most exposure.
             skills_para += f"\n\nI have foundational exposure to {', '.join(skills[:4])}."
 
-    coursework = p.get("coursework", [])
-    if coursework:
-        skills_para += f" Relevant coursework includes {', '.join(coursework[:3])}."
+    if p.get("courses"):
+        # Each course only as its status allows: "I plan to take", never
+        # "Relevant coursework includes", for a course not yet taken.
+        skills_para += f" {course_sentences(p['courses'])}"
 
     lab_type = p.get("lab_type", "dry")
     if lab_type == "dry" and p.get("github_url"):
@@ -1324,8 +1328,7 @@ def _p2_skills_applied(p: dict) -> str:
     # particular use; concrete actions come from _p3_concrete_work evidence.
     para = f"\n\n{_skill_claims(top, p['skill_levels'])}"
 
-    coursework = p.get("coursework", [])
-    if coursework:
-        para += f" Relevant coursework includes {', '.join(coursework[:3])}."
+    if p.get("courses"):
+        para += f" {course_sentences(p['courses'])}"
 
     return para

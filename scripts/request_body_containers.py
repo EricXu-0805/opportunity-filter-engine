@@ -192,9 +192,9 @@ class Pick:
 
 def largest_profile(pick: Pick | None = None) -> dict:
     """backend.schemas.ProfileRequest with every field, every list at its item limit (PROFILE_LIST_LIMITS,
-    PROFILE_SKILL_LIMIT), and the numbers the schema leaves unbounded at 100, the top of the frontend's
-    range."""
-    from backend.schemas import PROFILE_LIST_LIMITS, PROFILE_SKILL_LIMIT
+    PROFILE_SKILL_LIMIT, PROFILE_COURSE_LIMIT), and the numbers the schema leaves unbounded at 100, the top
+    of the frontend's range."""
+    from backend.schemas import PROFILE_COURSE_LIMIT, PROFILE_LIST_LIMITS, PROFILE_SKILL_LIMIT
     pick = pick or Pick()
     profile = {"name": pick.text("Sample Student"), "school": pick.text("University of Illinois"), "home_school": "uiuc",
                "year": "junior", "major": "Computer Science", "college": pick.text("Grainger College of Engineering"),
@@ -210,6 +210,9 @@ def largest_profile(pick: Pick | None = None) -> dict:
                           for i in range(pick.count(count))]
     profile["hard_skills"] = [{"name": pick.text(f"Skill {i}"), "level": "beginner", "source": "resume",
                                "confirmed": True} for i in range(pick.count(PROFILE_SKILL_LIMIT))]
+    profile["courses"] = [{"name": pick.text(f"COURSE {i}"), "status": "in_progress", "source": "resume",
+                           "evidence": pick.text(f"Currently taking COURSE {i}.")}
+                          for i in range(pick.count(PROFILE_COURSE_LIMIT))]
     return profile
 
 

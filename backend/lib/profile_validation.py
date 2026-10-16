@@ -18,7 +18,9 @@ def safe_profile_validation_detail(exc: RequestValidationError, *, profile_root:
         if kind in {"profile_input_limit_exceeded", "profile_input_invalid"}:
             field = context.get("field", "profile")
             allowed = {"profile", *(f"profile.{key}" for key in ProfileRequest.model_fields),
-                       "profile.hard_skills.name", "profile.hard_skills.level", "profile.hard_skills.source"}
+                       "profile.hard_skills.name", "profile.hard_skills.level", "profile.hard_skills.source",
+                       "profile.courses.name", "profile.courses.evidence", "profile.courses.status",
+                       "profile.courses.source"}
             detail = {"code": kind.upper(), "field": field if field in allowed else "profile",
                       "message": "Profile input exceeds the supported limit." if kind == "profile_input_limit_exceeded" else "Profile input is invalid.",
                       "retryable": False}

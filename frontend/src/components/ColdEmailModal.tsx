@@ -314,7 +314,10 @@ function statusOf(
 }
 
 // Coursework stays client-side: it inserts the student's own courses verbatim
-// (naturally grounded), so a network round-trip buys nothing.
+// (naturally grounded), so a network round-trip buys nothing. It lists them
+// neutrally, the one wording every course status allows (checklist M13): this
+// list carries no status, so "I have completed" would claim what the student
+// never said, and the server refuses it.
 function applyQuickEdit(
   body: string,
   action: QuickActionKey,
@@ -328,7 +331,7 @@ function applyQuickEdit(
         return { body, reply: t('coldEmail.replies.courseworkNone') };
       }
       const courseStr = courses.join(', ');
-      const insertion = `\n\nI have completed relevant coursework including ${courseStr}.`;
+      const insertion = `\n\nMy coursework includes ${courseStr}.`;
       if (body.length + insertion.length > COLD_EMAIL_DRAFT_LIMITS.body) {
         return { body, reply: t('profileInput.courseworkTooLarge') };
       }
