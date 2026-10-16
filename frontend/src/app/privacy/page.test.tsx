@@ -16,6 +16,18 @@ describe('Privacy page', () => {
     expect(text).not.toContain('8,000');
   });
 
+  // Checklist M13: a course now carries a status and the résumé line it was
+  // found on, and removing the résumé keeps the courses the student marked.
+  it('says courses are stored with their status and résumé line, and what removing the résumé keeps', () => {
+    const { container } = render(<PrivacyPage />);
+    const text = container.textContent ?? '';
+    expect(text).toContain('courses and the status you give each (completed, in progress, planned or not marked)');
+    expect(text).toContain('With each course found on the résumé we also store the résumé line it was found on');
+    expect(text).toContain('a course is marked planned or in progress only when that line says so');
+    expect(text).toContain('together with the courses it found that you have not marked and the résumé line kept with every course; courses you marked or added yourself stay');
+    expect(text).not.toContain('the coursework it extracted');
+  });
+
   it('discloses the application and email PDF archive, its limit and how to remove it', () => {
     const { container } = render(<PrivacyPage />);
     const text = container.textContent ?? '';
