@@ -74,7 +74,10 @@ export default defineConfig({
       cwd: '..',
       url: `http://127.0.0.1:${BACKEND_PORT}/api/health`,
       reuseExistingServer: !process.env.CI,
-      timeout: 60_000,
+      // Startup loads the whole corpus. On CI it took 46-56 s in the passing
+      // runs of 2026-10-13 to 10-15 and missed 60 s on main on 10-15, so the
+      // limit is about four times the usual time rather than just above it.
+      timeout: 240_000,
       env: {
         OFE_DISABLE_RATE_LIMIT: '1',
       },
