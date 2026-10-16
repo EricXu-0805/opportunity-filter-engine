@@ -113,6 +113,35 @@ describe('SubmitRow — generating matches requires a loaded profile row', () =>
     },
   );
 
+  it('waiting for college, major and grade is grey, with its own copy and NO retry', () => {
+    // Nothing failed: a create cannot be sent until those fields are filled
+    // in, so a Retry would be a button that can never succeed — even if
+    // something left canRetrySync on.
+    renderRow({ saveStatus: 'awaiting-required', isValid: false, canRetrySync: true });
+    const status = screen.getByTestId('awaiting-required');
+    expect(status.textContent).toBe('home.actions.profileAwaitingRequired');
+    expect(status.className).toContain('text-gray-600');
+    expect(screen.queryByTestId('retry-sync')).toBeNull();
+    expect(screen.queryByText('home.actions.profileSaveFailed')).toBeNull();
+    expect(screen.queryByTestId('conflict-keep-mine')).toBeNull();
+  });
+
+  it('while it waits for college, major and grade, the hint under Generate does not say the same thing again', () => {
+    renderRow({ saveStatus: 'awaiting-required', isValid: false });
+    expect(screen.queryByText('home.validation.requiredFields')).not.toBeInTheDocument();
+    // Generate is still described, by the line that now says it.
+    expect(screen.getByTestId('generate-matches'))
+      .toHaveAccessibleDescription('home.actions.profileAwaitingRequired');
+  });
+
+  it('the hint stays whenever the status line is not saying it', () => {
+    renderRow({ saveStatus: 'saving', isValid: false });
+    expect(screen.getByTestId('generate-matches')).toHaveAccessibleDescription('home.validation.requiredFields');
+    // A missing opportunity type is not what the status line is about.
+    renderRow({ saveStatus: 'awaiting-required', isValid: false, missingSeekingTypes: true });
+    expect(screen.getByText('home.validation.seekingRequired')).toBeInTheDocument();
+  });
+
   it('SR-conflict-live: the answer controls belong to the QUESTION, not to the last save', () => {
     const onKeepMyChanges = vi.fn();
     const onUseCloudVersion = vi.fn();

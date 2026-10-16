@@ -73,10 +73,13 @@ export function hasSelectedSeekingType(profile: Pick<ProfileData, 'seeking_types
 // 'stale'    = the row this edit belongs to no longer exists (deleted, or the
 //              account was merged into another one). Nothing is retried —
 //              recreating it would resurrect a dead identity's data.
+// 'awaiting-required' = no row exists yet and none can be created until
+//              college, major and grade are filled in. The edits are kept in
+//              this browser's journal; nothing failed, so there is no Retry.
 export type SaveStatus =
   | 'idle' | 'saving' | 'saved' | 'error'
   | 'device-only' | 'cloud-failed' | 'device-failed'
-  | 'conflict' | 'stale'
+  | 'conflict' | 'stale' | 'awaiting-required'
   // The answer was about a question that no longer exists — the row moved, a
   // candidate appeared or disappeared, another tab settled it. Nothing was
   // written or sent; the current question is being shown instead. Distinct
