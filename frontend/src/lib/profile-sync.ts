@@ -299,8 +299,9 @@ export type ProfileSaveResult =
   | { status: 'local-only' }
   /** Durably staged on this device, deliberately not sent: the cloud has no
    *  row yet and this write is too partial to create one. It goes out with
-   *  the first complete profile the home form saves. */
-  | { status: 'staged-local' }
+   *  the first complete profile the home form saves. `reason` is set when the
+   *  staged document itself is still incomplete (see 'blocked'). */
+  | { status: 'staged-local'; reason?: 'incomplete-create' }
   /** A newer edit replaced this one in the outbox before it was sent; the
    *  newer write carries this one's fields and owns the outcome. */
   | { status: 'superseded' }
@@ -314,8 +315,12 @@ export type ProfileSaveResult =
    *  current state and ask again rather than apply a decision the person made
    *  about values that are no longer in dispute. */
   | { status: 'stale-conflict' }
-  /** Nothing was staged: no confirmed revision to patch against yet. */
-  | { status: 'blocked' }
+  /** Nothing was staged: no confirmed revision to patch against yet.
+   *  `reason: 'incomplete-create'` means a create was refused only because
+   *  the document is not complete (on the home form: college, major or grade
+   *  is still blank). Nothing failed, the edit is in the journal, and a retry
+   *  cannot help. Every other cause carries no reason. */
+  | { status: 'blocked'; reason?: 'incomplete-create' }
   /** The identity moved on. Not this user's news. */
   | { status: 'abandoned' }
   /** A local write failed (quota, private mode, a storage shim).
@@ -2927,8 +2932,9 @@ function prepareStagedWrite(
   if (opts.allowCreate && creating && baseRevision === 0 && !baseUnknown && !isCompleteCreate) {
     // Home asked to create but the document it holds is not complete. The
     // server would reject it (incomplete_create); saying so here is the same
-    // answer without the round trip.
-    return { result: { status: 'blocked' } };
+    // answer without the round trip. The edit itself is already durable in
+    // the journal, and the first complete create carries it.
+    return { result: { status: 'blocked', reason: 'incomplete-create' } };
   }
   const stagedKeys = (isCompleteCreate
     ? (Object.keys(desired).filter(isProfileKey) as ProfileKey[])
@@ -4533,7 +4539,9 @@ function flushByMutation(mutationId: string, token: OwnerToken): Promise<Profile
         // Durably staged, deliberately unsent: the cloud confirmed there is
         // no row and this write cannot legally create one. It goes out with
         // the first complete create.
-        return { status: 'staged-local' };
+        return !env?.confirmed && !isCompleteDocument(pending.desiredProfile)
+          ? { status: 'staged-local', reason: 'incomplete-create' }
+          : { status: 'staged-local' };
       }
       if (pending.legacy) {
         // The revision these values were computed against is UNKNOWN — a

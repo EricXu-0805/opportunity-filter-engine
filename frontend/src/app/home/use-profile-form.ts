@@ -1417,9 +1417,12 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       case 'local-only':
       case 'staged-local':
         // Durably on this device, and honestly labelled as such: there is
-        // either no backend right now, or no row to patch yet.
+        // either no backend right now, or no row to patch yet — and when that
+        // row cannot be created until the required fields are filled in, the
+        // label says so.
         armRetry(null);
-        say('device-only');
+        say(result.status === 'staged-local' && result.reason === 'incomplete-create'
+          ? 'awaiting-required' : 'device-only');
         return ADOPTED;
       case 'conflict': {
         // NOT published as it arrived, and the baseline is NOT moved from it.
@@ -1472,6 +1475,13 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         say(result.phase === 'confirm' ? 'device-failed' : 'error');
         return DEVICE_FAILED;
       case 'blocked':
+        // The first create waits for college, major and grade. Nothing
+        // failed and a Retry could not send it, so none is offered.
+        if (result.reason === 'incomplete-create') {
+          armRetry(null);
+          say('awaiting-required');
+          return STALE;
+        }
         armRetry({ generation, token });
         say('error');
         return DEVICE_FAILED;

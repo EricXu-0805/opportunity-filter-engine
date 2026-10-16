@@ -113,6 +113,19 @@ describe('SubmitRow — generating matches requires a loaded profile row', () =>
     },
   );
 
+  it('waiting for college, major and grade is grey, with its own copy and NO retry', () => {
+    // Nothing failed: a create cannot be sent until those fields are filled
+    // in, so a Retry would be a button that can never succeed — even if
+    // something left canRetrySync on.
+    renderRow({ saveStatus: 'awaiting-required', isValid: false, canRetrySync: true });
+    const status = screen.getByTestId('awaiting-required');
+    expect(status.textContent).toBe('home.actions.profileAwaitingRequired');
+    expect(status.className).toContain('text-gray-600');
+    expect(screen.queryByTestId('retry-sync')).toBeNull();
+    expect(screen.queryByText('home.actions.profileSaveFailed')).toBeNull();
+    expect(screen.queryByTestId('conflict-keep-mine')).toBeNull();
+  });
+
   it('SR-conflict-live: the answer controls belong to the QUESTION, not to the last save', () => {
     const onKeepMyChanges = vi.fn();
     const onUseCloudVersion = vi.fn();

@@ -160,6 +160,14 @@ export function SubmitRow({
             {t('home.actions.profileDeviceOnly')}
           </span>
         )}
+        {/* Not a failure, so grey and no Retry: nothing can be sent until
+            college, major and grade are filled in, and then it is. */}
+        {saveStatus === 'awaiting-required' && (
+          <span className="inline-flex items-center gap-1.5 text-[12px] text-gray-600" data-testid="awaiting-required">
+            <Cloud className="w-3.5 h-3.5" aria-hidden="true" />
+            {t('home.actions.profileAwaitingRequired')}
+          </span>
+        )}
         {saveStatus === 'cloud-failed' && (
           <span className="inline-flex items-center gap-1.5 text-[12px] text-amber-700">
             <CloudOff className="w-3.5 h-3.5" aria-hidden="true" />

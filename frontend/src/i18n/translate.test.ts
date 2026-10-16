@@ -191,6 +191,15 @@ describe('dictionary parity', () => {
     expect(dictionaries.zh).toBeDefined();
   });
 
+  it('the status for a profile waiting on college, major and grade resolves in both locales', () => {
+    expect(translate('en', 'home.actions.profileAwaitingRequired')).toBe(
+      'Your entries are kept in this browser. Fill in your college, major, and grade to save your profile.',
+    );
+    expect(translate('zh', 'home.actions.profileAwaitingRequired')).toBe(
+      '已输入的内容保留在这个浏览器里。填好学院、专业和年级后，档案就会保存。',
+    );
+  });
+
   it('every ZH value containing {var} also contains it in EN', () => {
     const enKeys = collectKeys(en as never);
     for (const k of enKeys) {

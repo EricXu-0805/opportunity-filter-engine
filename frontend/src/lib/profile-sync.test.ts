@@ -591,6 +591,37 @@ describe('staging', () => {
     expect(commitMock).not.toHaveBeenCalled();
   });
 
+  it('says WHY an incomplete create waits, and only for that cause', async () => {
+    loadProfileMock.mockResolvedValue(absent());
+    await hydrateProfile();
+    const token = captureOwnerToken();
+    const typed = { ...FULL, college: '', major: '', grade: '', research_interests: 'robotics' };
+    expect(recordProfileIntent(typed, ['research_interests'], token, { writer: HOME_FORM_WRITER })).toBe(true);
+
+    // The home form's create, refused only because college, major and grade
+    // are still blank: a state to wait in, not a failure to retry.
+    expect(await stageProfilePatch(typed, ['research_interests'], token, { allowCreate: true }))
+      .toEqual({ status: 'blocked', reason: 'incomplete-create' });
+    // Any other refusal keeps the plain status.
+    expect(await stageProfilePatch(typed, [], token, { allowCreate: true })).toEqual({ status: 'blocked' });
+
+    // The same wait, staged: a flush (Retry, a load's recovery) defers the
+    // journal's edit as a create that cannot go yet, and says the same thing.
+    expect(await flushPendingProfileWrite(token))
+      .toEqual({ status: 'staged-local', reason: 'incomplete-create' });
+    expect(readProfileSyncEnvelope()?.pending?.deferredCreate).toBe(true);
+    expect(commitMock).not.toHaveBeenCalled();
+  });
+
+  it('a deferred partial of a document that is otherwise complete is staged with no reason', async () => {
+    loadProfileMock.mockResolvedValue(absent());
+    await hydrateProfile();
+    const result = await stageProfilePatch(
+      { ...FULL, home_school: 'mit' }, ['home_school'], captureOwnerToken(),
+    );
+    expect(result).toEqual({ status: 'staged-local' });
+  });
+
   it('local-only stages durably and never sends', async () => {
     loadProfileMock.mockResolvedValue(localOnly(null));
     await hydrateProfile();
