@@ -747,7 +747,7 @@ export function getDirtyProfileKeys(
  * identical values coalesce and skill ADDITIONS merge by name; anything else
  * is a conflict resolved locally, with zero requests, unless one operation
  * explicitly says it supersedes the other — or the row was never created
- * and every operation involved is clocked, where the latest edit wins.
+ * and every operation connected to it is clocked, where the latest edit wins.
  */
 type KeyPlan =
   | { kind: 'value'; value: unknown; baseValue: unknown; baseRevision: number; opIds: string[] }
@@ -819,9 +819,14 @@ function planKeysFromJournal(
   /** See rowNeverCreated. Callers that cannot say pass nothing, and keep
    *  every disagreement a question. */
   neverCreated = false,
+  /** Every outstanding operation, rebased like `ops`, where `ops` holds only
+   *  those touching `keys`: the latest-edit rule looks past the keys asked
+   *  about. */
+  everyOp: readonly JournalOp[] = ops,
 ): Map<string, KeyPlan> {
   const plans = new Map<string, KeyPlan>();
   const byId = new Map(ops.map((op) => [op.opId, op]));
+  const everyById = new Map(everyOp.map((op) => [op.opId, op]));
   // What a person has already ANSWERED. A receipt speaks for every operation
   // it names, in every field it decides — across lineages, which is the whole
   // point of answering a disagreement between two tabs. Honoured here, before
@@ -897,10 +902,6 @@ function planKeysFromJournal(
         supersedes: new Set(ordered.flatMap((o) => [...replacedThroughChain(o.op, byId)])),
         additive: order.every((o) => o.op.mode === 'add-skills'),
         newest: order[order.length - 1].op,
-        // Made before any row was known (an operation against revision 1 or
-        // later proves a row existed, whatever the envelope says now), and
-        // every one clocked, so "latest" means written latest.
-        rankable: ordered.every((o) => o.op.baseRevision === 0 && o.op.clock !== undefined),
       };
     }).filter((c): c is NonNullable<typeof c> => c !== null);
 
@@ -975,14 +976,26 @@ function planKeysFromJournal(
     // conflict. Nothing drains before the row exists, and a new session is a
     // new lineage that may not claim the old one's operations, so otherwise
     // one person's edits from two visits stay a question forever. Every
-    // operation stays in the plan: the create that carries the winner settles
-    // them all. The price is deliberate: two tabs open at once on a row not
+    // operation stays in the plan, for the create that carries the winner to
+    // settle. The price is deliberate: two tabs open at once on a row not
     // yet created no longer ask — the later edit wins.
     //
-    // Only between clocked operations. One without a clock (an earlier
-    // build's) cannot be placed in time, so a disagreement it is part of
-    // stays a question, as it always was.
-    if (neverCreated && chains.every((c) => c.rankable)) {
+    // Only when every operation CONNECTED to the disagreement — through a
+    // field it shares, an edit it replaced or an answer, transitively — is
+    // clocked and made against revision 0 (one against revision 1 or later
+    // proves a row existed, whatever the envelope says now). One without a
+    // clock (an earlier build's) cannot be placed in time, so what it is
+    // part of stays a question, as it always was; and it has to be the whole
+    // connected set, because the create settles an operation only once
+    // every field it carries has landed. A losing edit that also carries a
+    // field still in question would outlive the create, and once the row
+    // exists nothing ranks it any more: its value, or the question, comes
+    // back on the next load.
+    const rankable = (id: string) => {
+      const op = everyById.get(id) ?? byId.get(id);
+      return !!op && op.baseRevision === 0 && op.clock !== undefined;
+    };
+    if (neverCreated && [...connectedOps(allOpIds, everyOp, true)].every(rankable)) {
       const latest = chains.reduce((a, b) => (writtenLater(b.newest, a.newest) ? b : a));
       plans.set(key, {
         kind: 'value',
@@ -1028,13 +1041,27 @@ function planKeysFromJournal(
 /** `seeds` and every outstanding operation joined to one of them through
  *  `supersedes` or `resolves`. An answer belongs with what it answers, and an
  *  edit with what it replaced: they are settled together or not at all (see
- *  finishedClosures), so a write captures the whole group it touches. */
-function connectedOps(seeds: Iterable<string>, ops: readonly JournalOp[]): Set<string> {
+ *  finishedClosures), so a write captures the whole group it touches.
+ *  `throughFields` also joins every two operations that carry the same
+ *  field. */
+function connectedOps(
+  seeds: Iterable<string>,
+  ops: readonly JournalOp[],
+  throughFields = false,
+): Set<string> {
   const related = new Map<string, Set<string>>();
+  const join = (a: string, b: string) => {
+    (related.get(a) ?? related.set(a, new Set()).get(a)!).add(b);
+    (related.get(b) ?? related.set(b, new Set()).get(b)!).add(a);
+  };
+  const firstWithField = new Map<string, string>();
   for (const op of ops) {
-    for (const ancestor of [...(op.supersedes ?? []), ...(op.resolves ?? [])]) {
-      (related.get(op.opId) ?? related.set(op.opId, new Set()).get(op.opId)!).add(ancestor);
-      (related.get(ancestor) ?? related.set(ancestor, new Set()).get(ancestor)!).add(op.opId);
+    for (const ancestor of [...(op.supersedes ?? []), ...(op.resolves ?? [])]) join(op.opId, ancestor);
+    if (!throughFields) continue;
+    for (const { key } of op.fields) {
+      const first = firstWithField.get(key);
+      if (first === undefined) firstWithField.set(key, op.opId);
+      else join(first, op.opId);
     }
   }
   const knownIds = new Set(ops.map((op) => op.opId));
@@ -2763,8 +2790,9 @@ function reconcileLoadedProfile(
     // Before any row exists, a lock in the outbox can only be an earlier
     // disagreement between this browser's own sessions — and the plan has
     // just decided it by the latest-edit rule, which it applies only when
-    // every operation involved is clocked. Left locked, it would still be
-    // asked about, and a create sent while it stood would leave the field out.
+    // every operation connected to it is clocked. Left locked, it would still
+    // be asked about, and a create sent while it stood would leave the field
+    // out.
     const decided = pending.lockedKeys.filter((k) => journalPlan.get(k)?.kind === 'value');
     const desired = { ...pending.desiredProfile } as unknown as Record<string, unknown>;
     const plannedOps: Record<string, string[]> = { ...pending.journalPlan };
@@ -3086,7 +3114,12 @@ function prepareStagedWrite(
   const outstandingRebased = rebasedOps(outstanding.value);
   if (!outstandingRebased) return { result: { status: 'device-failed', phase: 'stage' } };
   const outstandingById = new Map(outstanding.value.map((op) => [op.opId, op]));
-  const plans = planKeysFromJournal(outstandingRebased, dirtyKeys, rowNeverCreated(env ?? null, token));
+  const everything = readOutstandingOps();
+  if (!everything.ok) return { result: { status: 'device-failed', phase: 'stage' } };
+  const neverCreated = rowNeverCreated(env ?? null, token);
+  const everyRebased = neverCreated ? rebasedOps(everything.value) : outstandingRebased;
+  if (!everyRebased) return { result: { status: 'device-failed', phase: 'stage' } };
+  const plans = planKeysFromJournal(outstandingRebased, dirtyKeys, neverCreated, everyRebased);
   // A SET: one operation carrying three fields is reached once per field,
   // and every settle path (ack, abandon, survivor) treats these as the ops
   // this write owns — a duplicate id would be acknowledged twice.
@@ -3111,8 +3144,6 @@ function prepareStagedWrite(
   // this request can only settle what the request itself captured — so the
   // group has to be captured here rather than rebuilt from whatever is
   // outstanding when the response lands.
-  const everything = readOutstandingOps();
-  if (!everything.ok) return { result: { status: 'device-failed', phase: 'stage' } };
   const knownIds = new Set(everything.value.map((op) => op.opId));
 
   // Ownership of any EXACT pending-resolution receipt the repair attached to

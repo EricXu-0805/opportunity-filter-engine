@@ -1872,6 +1872,148 @@ describe('a real reload is a new document, and its edits continue the same draft
     expect(journalOps().filter((o) => o.clock !== undefined), 'only this build\'s is clocked').toHaveLength(1);
   });
 
+  function newVisit() {
+    startDocumentForTests('other');
+    resetProfileDirtyLedger();
+  }
+
+  it('on a row NEVER CREATED, two of this build\'s edits that disagree stay a question while one of them shares a field with an earlier build\'s edit', async () => {
+    // Review M109 r2 (PA). Visit 1 recorded interests and Rust in ONE
+    // operation; an earlier build's interests disagree with it. Visit 2
+    // removed Rust. Had the later edit won skills, the create would settle
+    // only visit 2's operation (visit 1's still owes its interests), and once
+    // the row exists nothing ranks them: Rust came back on the next load and
+    // was sent.
+    const skills = (...names: string[]) => names.map((name) => ({ name, level: 'beginner' as const }));
+    const server = casServer({} as ProfileData, 0);
+    commitMock.mockImplementation(async (intent) => server.handle(intent) as ProfilePatchOutcome);
+    earlierBuildOp('visit-0', 1, 'research_interests', 'robotics');
+    loadProfileMock.mockResolvedValue(absent());
+    newVisit();
+    await hydrateProfile();
+    const blank = { ...FULL, college: '', major: '', grade: '' };
+    expect(recordProfileIntent({ ...blank, research_interests: 'ML', skills: skills('Rust') },
+      ['research_interests', 'skills'], captureOwnerToken(), { writer: HOME_FORM_WRITER })).toBe(true);
+    newVisit();
+    expect((await hydrateProfile()).conflictKeys).toEqual(['research_interests']);
+    const token = captureOwnerToken();
+    const doc = { ...FULL, research_interests: 'ML', skills: [] };
+    expect(recordProfileIntent({ ...blank, research_interests: 'ML', skills: [] }, ['skills'], token,
+      { writer: HOME_FORM_WRITER })).toBe(true);
+    for (const key of ['college', 'major', 'grade'] as const) {
+      expect(recordProfileIntent(doc, [key], token, { writer: HOME_FORM_WRITER })).toBe(true);
+    }
+
+    const created = await stageProfilePatch(doc, ['college', 'major', 'grade'], token, { allowCreate: true });
+    expect(created).toMatchObject({ status: 'conflict' });
+    expect((created as Extract<ProfileSaveResult, { status: 'conflict' }>).conflictKeys.sort())
+      .toEqual(['research_interests', 'skills']);
+    expect(server.row).toMatchObject({ college: 'Grainger', major: 'CS', grade: 'Junior' });
+    expect('skills' in server.row, 'skills is still a question, so the create leaves it out').toBe(false);
+    const bothSkills = () => journalOps().filter((o) => o.fields.some((f) => f.key === 'skills'));
+    expect(bothSkills(), 'both visits\' skills are kept').toHaveLength(2);
+
+    // A reload with the row there: still asked, and nothing sends Rust.
+    newVisit();
+    loadProfileMock.mockResolvedValue(cloud(server.row as unknown as ProfileData, server.rev));
+    let h = await hydrateProfile();
+    expect(h.conflictKeys).toContain('skills');
+    await flushPendingProfileWrite(captureOwnerToken());
+
+    // Answering the interests question does not answer skills.
+    expect(await answerConflict(['research_interests'], 'local', captureOwnerToken(),
+      { ...doc, skills: (h.profile?.skills ?? []) as ProfileData['skills'] }))
+      .toMatchObject({ status: 'conflict', conflictKeys: ['skills'] });
+    newVisit();
+    loadProfileMock.mockResolvedValue(cloud(server.row as unknown as ProfileData, server.rev));
+    h = await hydrateProfile();
+    expect(h.conflictKeys).toEqual(['skills']);
+    expect(h.conflicts[0].candidates.map((c) => c.value)).toEqual(expect.arrayContaining([[], skills('Rust')]));
+    await flushPendingProfileWrite(captureOwnerToken());
+    expect(server.row.research_interests).toBe('ML');
+    expect('skills' in server.row, 'the row never gets Rust back without a question').toBe(false);
+    expect(bothSkills()).toHaveLength(2);
+  });
+
+  it('on a row NEVER CREATED, the same visits all written by this build: the later edits win and the create settles every one', async () => {
+    const skills = (...names: string[]) => names.map((name) => ({ name, level: 'beginner' as const }));
+    const server = casServer({} as ProfileData, 0);
+    commitMock.mockImplementation(async (intent) => server.handle(intent) as ProfilePatchOutcome);
+    loadProfileMock.mockResolvedValue(absent());
+    const blank = { ...FULL, college: '', major: '', grade: '' };
+    newVisit();
+    await hydrateProfile();
+    expect(recordProfileIntent({ ...blank, research_interests: 'robotics' }, ['research_interests'],
+      captureOwnerToken(), { writer: HOME_FORM_WRITER })).toBe(true);
+    newVisit();
+    await hydrateProfile();
+    expect(recordProfileIntent({ ...blank, research_interests: 'ML', skills: skills('Rust') },
+      ['research_interests', 'skills'], captureOwnerToken(), { writer: HOME_FORM_WRITER })).toBe(true);
+    newVisit();
+    expect((await hydrateProfile()).conflictKeys).toEqual([]);
+    const token = captureOwnerToken();
+    const doc = { ...FULL, research_interests: 'ML', skills: [] };
+    expect(recordProfileIntent({ ...blank, research_interests: 'ML', skills: [] }, ['skills'], token,
+      { writer: HOME_FORM_WRITER })).toBe(true);
+    for (const key of ['college', 'major', 'grade'] as const) {
+      expect(recordProfileIntent(doc, [key], token, { writer: HOME_FORM_WRITER })).toBe(true);
+    }
+
+    expect((await stageProfilePatch(doc, ['college', 'major', 'grade'], token, { allowCreate: true })).status)
+      .toBe('saved');
+    expect(server.row).toMatchObject({ research_interests: 'ML', skills: [] });
+    expect(journalOps()).toEqual([]);
+    newVisit();
+    loadProfileMock.mockResolvedValue(cloud(server.row as unknown as ProfileData, server.rev));
+    const h = await hydrateProfile();
+    expect(h.conflictKeys).toEqual([]);
+    expect(h.profile?.skills).toEqual([]);
+  });
+
+  it('on a row NEVER CREATED, a question that was answered before the create is not asked again after it', async () => {
+    // Review M109 r2 (PR). An earlier build's major; then two visits of this
+    // build, each switching college (which clears the major) and picking a
+    // major. Every question asked is answered before the create.
+    const server = casServer({} as ProfileData, 0);
+    commitMock.mockImplementation(async (intent) => server.handle(intent) as ProfilePatchOutcome);
+    earlierBuildOp('visit-0', 1, 'major', 'CS');
+    loadProfileMock.mockResolvedValue(absent());
+    newVisit();
+    await hydrateProfile();
+    const record = (doc: ProfileData, keys: (keyof ProfileData)[]) => expect(
+      recordProfileIntent(doc, keys, captureOwnerToken(), { writer: HOME_FORM_WRITER }),
+    ).toBe(true);
+    const blank = { ...FULL, grade: '', additional_majors: [] };
+    record({ ...blank, college: 'Grainger', major: '' }, ['college', 'major', 'additional_majors']);
+    record({ ...blank, college: 'Grainger', major: 'ECE' }, ['major']);
+    newVisit();
+    await hydrateProfile();
+    record({ ...blank, college: 'LAS', major: '' }, ['college', 'major', 'additional_majors']);
+    record({ ...blank, college: 'LAS', major: 'Math' }, ['major']);
+    const mine = { ...blank, college: 'LAS', major: 'Math' };
+
+    let asked = (await hydrateProfile()).conflictKeys;
+    for (const key of ['major', 'college']) {
+      if (!asked.includes(key)) continue;
+      expect((await answerConflict([key], 'local', captureOwnerToken(), mine)).status).not.toBe('stale-conflict');
+      asked = (await hydrateProfile()).conflictKeys;
+    }
+    expect(asked).toEqual([]);
+    record({ ...mine, grade: 'Junior' }, ['grade']);
+    const created = await stageProfilePatch({ ...mine, grade: 'Junior' }, ['grade'], captureOwnerToken(),
+      { allowCreate: true });
+    expect(created.status).toBe('saved');
+    expect(server.row).toMatchObject({ college: 'LAS', major: 'Math', grade: 'Junior' });
+
+    newVisit();
+    loadProfileMock.mockResolvedValue(cloud(server.row as unknown as ProfileData, server.rev));
+    const after = await hydrateProfile();
+    expect(after.conflictKeys, 'nothing answered is asked again').toEqual([]);
+    expect(after.profile).toMatchObject({ college: 'LAS', major: 'Math', grade: 'Junior' });
+    await flushPendingProfileWrite(captureOwnerToken());
+    expect(server.row).toMatchObject({ college: 'LAS', major: 'Math', grade: 'Junior' });
+  });
+
   it('adoption is per KEY: continuing one field does not claim another tab\'s edit to a different one', async () => {
     loadProfileMock.mockResolvedValue(cloud(FULL, 4));
     const token = captureOwnerToken();
