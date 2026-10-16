@@ -41,6 +41,23 @@ describe('profile-share encode/decode roundtrip', () => {
     expect(decoded!.seeking_types).toEqual(FULL_PROFILE.seeking_types);
   });
 
+  it('carries course names only: a shared course arrives not marked, whatever the sharer marked (checklist M13)', () => {
+    const encoded = encodeProfile({ ...FULL_PROFILE, courses: [
+      { name: 'CS 124', status: 'completed', source: 'manual' },
+      { name: 'CS 446', status: 'planned', source: 'resume', evidence: 'Planned: CS 446' },
+    ] });
+    const wire = JSON.parse(decodeURIComponent(escape(atob(encoded.replace(/-/g, '+').replace(/_/g, '/')))));
+    expect(wire.courses).toEqual(['CS 124', 'CS 446', 'STAT 107']);
+    const decoded = decodeProfileResult(encoded);
+    expect(decoded.ok && decoded.keys).toEqual(expect.arrayContaining(['coursework', 'courses']));
+    expect(decoded.ok && decoded.profile.courses).toEqual([
+      { name: 'CS 124', status: 'unknown', source: 'resume' },
+      { name: 'CS 446', status: 'unknown', source: 'resume' },
+      { name: 'STAT 107', status: 'unknown', source: 'resume' },
+    ]);
+    expect(decoded.ok && decoded.profile.coursework).toEqual(['CS 124', 'CS 446', 'STAT 107']);
+  });
+
   it('produces URL-safe base64 (no +, /, =)', () => {
     const encoded = encodeProfile(FULL_PROFILE);
     expect(encoded).not.toMatch(/[+/=]/);
