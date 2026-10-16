@@ -112,6 +112,9 @@ TITLED = [{"name": "CS 446 Machine Learning", "status": "planned"},
     "I took CS 446 and hope to join your lab in the fall.",
     "Having completed CS 446, I hope to join your lab next semester.",
     "I am currently taking CS 446 and will finish it next semester.",
+    # A time phrase never makes a completion future: these falls are past.
+    "I completed CS 446 in the fall.",
+    "In the fall, I took CS 446.",
     # Nor is a "would" or "once" outside the claim's own verb phrase.
     "I would love to join your lab and have completed CS 446.",
     "I would like to mention that I have completed CS 446.",

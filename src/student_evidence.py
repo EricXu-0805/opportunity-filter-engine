@@ -439,8 +439,9 @@ def _claims_nothing(prefix: str, head: str) -> bool:
 def _course_findings(text: str, aliases: list[tuple[re.Pattern, Mapping]]) -> set[str]:
     findings: set[str] = set()
     for clause in _CLAUSE.split(text or ""):
-        if not clause.strip() or _FUTURE_AT.match(clause):
+        if not clause.strip():
             continue
+        opens_future = _FUTURE_AT.match(clause) is not None
         for allowed, head_re in _HEADS:
             heads = [(m, False) for m in head_re.finditer(clause)]
             if head_re is _DONE_HEAD:
@@ -451,7 +452,10 @@ def _course_findings(text: str, aliases: list[tuple[re.Pattern, Mapping]]) -> se
                 if _claims_nothing(clause[:head.start()], head.group()):
                     continue
                 named = _courses_named(clause[head.end():], aliases, bare=bare)
-                if named and _FUTURE_AT.match(clause, head.end() + named[-1][3]):
+                # A time phrase makes only an enrolment claim future ("I am
+                # taking CS 446 next semester"); "I took CS 446 in the fall" is past.
+                if head_re is not _DONE_HEAD and (
+                        opens_future or (named and _FUTURE_AT.match(clause, head.end() + named[-1][3]))):
                     continue
                 for name, entry, _start, _end in named:
                     if entry is None or entry["status"] not in allowed:
@@ -468,8 +472,9 @@ def course_claim_violations(text: str, entries: Iterable[Mapping], *, student_li
     ("my coursework includes"). A course the student did not list has no
     status at all. A claim is exempt only when its own verb phrase is negated,
     conditional or future, or has someone else as its subject; a future time
-    phrase counts where it opens the clause or follows the courses ("I am
-    taking CS 446 next semester"). ``student_lines`` are the student's own
+    phrase that opens the clause or follows the courses makes only an
+    enrolment claim future ("I am taking CS 446 next semester"), never a
+    completion ("I took CS 446 in the fall"). ``student_lines`` are the student's own
     confirmed experience: a line of it that states a course, repeated verbatim
     ("Completed CS 225 project: built a parser"), is their statement, not one
     to check.
