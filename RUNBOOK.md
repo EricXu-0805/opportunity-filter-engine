@@ -64,10 +64,18 @@ never listed again. A record on a page its config shares with another program
 or a failed load leaves it out all the same. So does a program renamed back to
 a key, or moved back to a file, where its row retired, or both in one edit:
 that row comes back only on a run that loads its page, even before the closed
-row in the other file retires. Only a closed row with the record's key, or
-with a key its file's sources no longer list, makes a record wait for a read:
-a closed program still listed in the other file does not, even on a shared
-page.
+row in the other file retires. A closed row makes a record wait for a read
+only if it has the record's key, or it retired in a file the run writes, or it
+sits in the other file under a key that file's sources no longer list. So a
+closed program still listed in the other file holds no other program back,
+even on a shared page, and neither does one retired there and listed there
+again. The wait does not look at how old the closed reading is: a program
+coming back to its own retired row waits for a run that loads its page if a
+row on that page retired closed in that file (another program's on a shared
+page, or its own under a key it has dropped), even if a later run read the
+page open. That is cautious, and a new program on that page waits the same
+way. The log counts the records left out to wait for a read in
+`suppressed N near-duplicate(s) vs corpus` too.
 
 To retire a config's open programs, empty the open source's `programs` and
 leave the source in place until a Sunday run has passed. A deleted open source

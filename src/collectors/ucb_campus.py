@@ -724,11 +724,12 @@ def merge_into_processed(
     near-duplicate until that row retires, and after that until a run loads
     the record's page: campus_graph's rule for its schools, which holds a
     program renamed back to a key, or moved back to a file, where its row
-    retired the same way, and a closed row in the other file under a key
-    ``other_file_program_keys`` no longer lists (None: any key) the same way
-    until that file's run retires it. An empty listing retires every such
-    row; the None default retires nothing. A retired row whose program is
-    listed again comes back as it was, closed if its page had closed it."""
+    retired the same way. Only a closed row that has the record's key,
+    retired in a file this run publishes, or sits in the other file under a
+    key ``other_file_program_keys`` no longer lists (None: any key) makes a
+    record wait. An empty listing retires every such row; the None default
+    retires nothing. A retired row whose program is listed again comes back
+    as it was, closed if its page had closed it."""
     if not PROCESSED_FILE.exists():
         return (0, 0)
     if any(
@@ -809,9 +810,10 @@ def merge_into_processed(
         lost_ids = {opp.get("id") for opp in found} - {opp.get("id") for opp in survivors}
         new_opps = [opp for opp in new_opps if opp.get("id") not in lost_ids]
         dropped += lost
-    # A row retired while its page said closed gives up its claim only to a
-    # record whose page this run loaded, and a record coming back to its own
-    # retired row waits the same way: campus_graph's rule.
+    # A row retired while its page said closed, in a file this run publishes,
+    # gives up its claim only to a record whose page this run loaded, and a
+    # record coming back to its own retired row waits the same way:
+    # campus_graph's rule.
     waiting = _waiting_for_a_read(new_opps, existing, _registry_program_row, published, other_file_program_keys)
     if waiting:
         new_opps = [opp for opp in new_opps if opp.get("id") not in waiting]
