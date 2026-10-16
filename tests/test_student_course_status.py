@@ -1,10 +1,13 @@
 """Checklist M13: one set of course-status and interest rules for every student-voice consumer."""
 from __future__ import annotations
 
+import time
+
 import pytest
 
 from backend.schemas import ProfileRequest
 from src.student_evidence import (
+    COURSE_STATUSES,
     course_claim_violations,
     course_entries,
     course_sentences,
@@ -256,3 +259,32 @@ def test_the_students_own_confirmed_line_repeated_verbatim_is_theirs():
 ])
 def test_only_a_coursework_listing_hides_a_courses_name(text, masked):
     assert mask_course_names(text, [{"name": "Machine Learning", "status": "planned"}]) == masked
+
+
+# Fix round 5 (review of 17f05698): the check runs on every draft and on the
+# student's own draft at refine, so its time must not grow with how often a
+# claim repeats or how many courses are listed. The review's two worst inputs at
+# the request limits (a 5000-character body; 512 courses and 512 legacy
+# coursework strings filling the profile): 10.5 s and 1.4 s on 17f05698, about
+# 15-35 ms per call now.
+TOPIC_WORDS = ["Advanced", "Topics", "in", "Applied", "Systems", "Theory", "Design", "Machine", "Learning", "Data"]
+
+
+def full_profile_entries():
+    names = ["Machine Learning", "CS 225", "Data Structures"] + [
+        f"ZZ {100 + i} " + " ".join(f"{TOPIC_WORDS[(i * 3 + k) % 10]}{(i + k) % 7}" for k in range(14))
+        for i in range(1021)]
+    profile = ProfileRequest(name="S", coursework=names[512:], courses=[
+        {"name": name, "status": COURSE_STATUSES[i % 4]} for i, name in enumerate(names[:512])])
+    return course_entries(profile.model_dump())
+
+
+@pytest.mark.parametrize("unit", ["Completed coursework, ", "I took "])
+def test_the_course_check_takes_about_the_same_time_at_the_request_limits(unit):
+    text = (unit * (5000 // len(unit) + 1))[:5000]
+    listed = full_profile_entries()
+    assert len(listed) == 1024
+    for checked in ({"text": text}, {"text": "Thank you.", "student_draft": text}):
+        began = time.perf_counter()
+        course_claim_violations(entries=listed, **checked)
+        assert time.perf_counter() - began < 0.5

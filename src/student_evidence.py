@@ -34,8 +34,10 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from bisect import bisect_left, bisect_right
 from collections.abc import Iterable, Mapping
 from functools import lru_cache
+from itertools import accumulate
 
 DEFAULT_LEVEL = "beginner"
 
@@ -237,21 +239,61 @@ _TITLE_WORD = r"(?:[A-Z][\w'’&-]*|of|to|for|the|in|and|with|&)"
 _TITLE_CODE = re.compile(rf"[A-Z][\w'’&-]*(?:\s+{_TITLE_WORD}){{0,7}}\s*\(\s*(?P<code>{_CODE_TEXT})\s*\)")
 _YEARLIKE = re.compile(r"(?:19[5-9]\d|20[0-4]\d)$")
 
+# A listed name is read piece by piece through a trie built once per check, so
+# finding the courses at a word costs the length of the name found there, not
+# the number of courses listed. A piece is a run of ASCII letters (with the
+# four other letters case-insensitive matching reads as ASCII ones), a run of
+# digits, or one other letter. Pieces compare as re.IGNORECASE compares them;
+# between words a name needs a separator, except where letters meet digits
+# ("CS225" is "CS 225"), and its end may not run on into an ASCII letter or
+# digit (nor, read in any case, into one of those four).
+_PIECE = re.compile(r"([A-Za-zİıſK]+|[0-9]+|[^\W_])([\W_]*)")
+_LATIN = re.compile(r"[A-Za-z0-9İıſK]")
+_ASCII_ALNUM = re.compile(r"[A-Za-z0-9]")
+_LATIN_FOLD = str.maketrans({"İ": "i", "ı": "i", "ſ": "s", "K": "k"})
+_CASED_CUT = re.compile("[İıſK]")
+# How a piece follows the one before it: in the same word, after a separator,
+# or either way (a word starting with a digit after one ending in a letter).
+_JOINED, _APART, _EITHER = 0, 1, 2
+
+
+def _fold(piece: str) -> str:
+    if piece.isascii():
+        return piece.lower()
+    if _LATIN.match(piece):
+        return piece.translate(_LATIN_FOLD).lower()
+    return "\0" + piece.casefold()
+
 
 @lru_cache(maxsize=4096)
-def _alias_pattern(name: str, any_case: bool) -> re.Pattern | None:
+def _name_steps(name: str) -> tuple[tuple[tuple[int, str], ...], str] | None:
+    """A name as the trie reads it: each piece with how it follows the last, and its letters."""
+    steps: list[tuple[int, str]] = []
+    letters: list[str] = []
     words = re.findall(r"[^\W_]+", name)
-    if not words:
-        return None
-    pattern = re.escape(words[0])
-    for before, word in zip(words, words[1:], strict=False):
-        joint = r"[\W_]+" if before[-1].isdigit() == word[0].isdigit() else r"[\W_]*"
-        pattern += joint + re.escape(word)
-    return re.compile(rf"(?<![A-Za-z0-9]){pattern}(?![A-Za-z0-9])", re.I if any_case else 0)
+    for before, word in zip([""] + words, words, strict=False):
+        joint = _EITHER if not before or before[-1].isdigit() != word[0].isdigit() else _APART
+        for piece in _PIECE.finditer(word):
+            steps.append((joint, _fold(piece.group(1))))
+            letters.append(piece.group(1))
+            joint = _JOINED
+    return (tuple(steps), "".join(letters)) if steps else None
 
 
-def _course_aliases(entries: Iterable[Mapping]) -> list[tuple[re.Pattern, Mapping]]:
-    aliases: list[tuple[int, re.Pattern, Mapping]] = []
+class _Name:
+    """The listed names read alike in any case: the first of them, the first that is a code, and each as written."""
+
+    __slots__ = ("order", "entry", "code", "written")
+
+    def __init__(self, order: int, entry: Mapping):
+        self.order, self.entry = order, entry
+        self.code: tuple[int, Mapping] | None = None
+        self.written: dict[str, tuple[int, Mapping]] = {}
+
+
+def _course_aliases(entries: Iterable[Mapping]) -> dict:
+    """The trie of every listed course's names, longest name first in ``order``."""
+    aliases: list[tuple[int, str, bool, Mapping]] = []
     for entry in entries:
         name = str(entry.get("name") or "")
         rest = _LISTED_CODE.sub(" ", name)
@@ -261,11 +303,24 @@ def _course_aliases(entries: Iterable[Mapping]) -> list[tuple[re.Pattern, Mappin
         forms = {name: not title, **dict.fromkeys((m.group() for m in _LISTED_CODE.finditer(name)), True)}
         if title:
             forms.setdefault(title, False)
-        for alias, any_case in forms.items():
-            pattern = _alias_pattern(alias, any_case)
-            if pattern is not None:
-                aliases.append((len(alias.strip()), pattern, entry))
-    return [(pattern, entry) for _, pattern, entry in sorted(aliases, key=lambda item: -item[0])]
+        aliases.extend((len(alias.strip()), alias, any_case, entry) for alias, any_case in forms.items())
+    trie: dict = {}
+    names: dict[tuple, _Name] = {}
+    for order, (_length, alias, any_case, entry) in enumerate(sorted(aliases, key=lambda item: -item[0])):
+        if (read := _name_steps(alias)) is None:
+            continue
+        steps, letters = read
+        if (known := names.get(steps)) is None:
+            known = names[steps] = _Name(order, entry)
+            node = trie
+            for step in steps:
+                node = node.setdefault(step, {})
+            node[None] = known
+        if any_case:
+            known.code = known.code or (order, entry)
+        else:
+            known.written.setdefault(letters, (order, entry))
+    return trie
 
 
 # "My coursework includes X": the neutral listing every course may take.
@@ -283,10 +338,10 @@ def mask_course_names(text: str, entries: Iterable[Mapping]) -> str:
     experience with machine learning" is refused for a planned or unmarked
     "Machine Learning" course.
     """
-    aliases = _course_aliases(entries)
+    reader = _Reader(text, _course_aliases(entries))
     spans = {(head.end() + start, head.end() + end)
              for head in _LISTING.finditer(text)
-             for _name, entry, start, end in _courses_named(text[head.end():], aliases, bare=False)
+             for _name, entry, start, end in _courses_named(reader, head.end(), bare=False)
              if entry is not None}
     kept, pos = [], 0
     for start, end in sorted(spans):
@@ -358,6 +413,10 @@ _SUBJECT = re.compile(r"\b(?:i|we)\b|我们?", re.I)
 _OTHER_SUBJECT = re.compile(
     r"\b(?:you|they|he|she|students|applicants|candidates|undergraduates|those|anyone|others)"
     r"(?:\s+(?:who|that))?\s+(?:\w+\s+)?$", re.I)
+_STOP_END = re.compile(rf"(?:{_STOP.pattern})$", re.I)
+# What an end-anchored verb-phrase pattern can match: a few words and spaces.
+_FEW_WORDS = re.compile(r"\s*[\w'’]*(?:\s+[\w'’]*){0,4}\s*")
+_WORDISH = re.compile(r"\w")
 _SEP = re.compile(r"(?:[\s,;/&()\[\]\-–—'’\"“”《》「」、，]|和|与|及|以及|了|过|的)+")
 _FILLER = re.compile(
     r"(?:the|my|a|an|both|two|three|four|several|relevant|related|introductory|intro|advanced|"
@@ -378,28 +437,145 @@ _HEAD_NOUN = re.compile(rf"{_TITLE_NOUN.pattern}$", re.I)
 _ARTICLE = re.compile(r"\ban?\s+$", re.I)
 
 
-@lru_cache(maxsize=4096)
-def _any_case(pattern: str) -> re.Pattern:
-    return re.compile(pattern, re.I)
+_UNREAD = object()
 
 
-def _title_counts(pattern: re.Pattern, match: re.Match, *, noun_before: bool, article: bool) -> bool:
-    """Whether a listed title, found here in any case, names the course.
+class _Reader:
+    """One text's course reads, shared by every claim in it.
 
-    As the list capitalises it; in any case when a course noun stands right
-    before it or right after it; right after "a" or "an" only when a course
-    noun follows it.
+    Each piece of the text, the listed names that start at each place, and
+    each object from where it stands in a given reading state are read once: a
+    claim whose object runs into one already read takes the courses read from
+    there, so a text full of claims costs about what one claim reading to its
+    end does.
     """
-    if _NOUN_NEXT.match(match.string, match.end()):
-        return True
-    if article:
-        return False
-    return noun_before or pattern.match(match.string, match.start()) is not None
+
+    def __init__(self, text: str, trie: dict):
+        self.text, self.trie = text, trie
+        self.pieces: dict[int, tuple | None] = {}
+        self.names_at: dict[int, list[tuple[_Name, int, bool]]] = {}
+        self.letters: tuple[str, list[int]] | None = None
+        self.nouns: dict[int, bool] = {}
+        self.objects: dict[tuple, tuple[list, int]] = {}
+        self._marks: dict[str, tuple[list[int], list[int]]] = {}
+
+    def marks(self, pattern: re.Pattern) -> tuple[list[int], list[int]]:
+        """Where ``pattern`` matches in the text: the starts and the ends, in order."""
+        if (known := self._marks.get(pattern.pattern)) is None:
+            spans = [m.span() for m in pattern.finditer(self.text)]
+            known = self._marks[pattern.pattern] = ([start for start, _ in spans], [end for _, end in spans])
+        return known
+
+    def within(self, pattern: re.Pattern, start: int, end: int) -> bool:
+        """Whether ``pattern`` matches in ``text[start:end]`` read alone (no match of it spans a word's start)."""
+        starts, ends = self.marks(pattern)
+        first = bisect_left(starts, start)
+        if (start and _WORDISH.match(self.text, start - 1) and _WORDISH.match(self.text, start)) or (
+                first < len(starts) and starts[first] < end < ends[first]):
+            return pattern.search(self.text[start:end]) is not None
+        return first < len(starts) and ends[first] <= end
+
+    def _piece(self, at: int) -> tuple | None:
+        known = self.pieces.get(at, _UNREAD)
+        if known is _UNREAD:
+            m = _PIECE.match(self.text, at)
+            known = self.pieces[at] = None if m is None else (
+                _fold(m.group(1)), m.end(1), m.end(), not m.group(1).isascii() and _LATIN.match(m.group(1)) is not None)
+        return known
+
+    def _names(self, at: int) -> list[tuple[_Name, int, bool]]:
+        """The listed names whose text starts at ``at``, each with where it ends and whether only as written.
+
+        A name that runs on into one of the four letters only case-insensitive
+        matching reads as ASCII is the name only as the list writes it, even
+        where that letter continues the name's last run of letters.
+        """
+        if (known := self.names_at.get(at)) is not None:
+            return known
+        found: list[tuple[_Name, int, bool]] = []
+        nodes, joints, start = [self.trie], (_EITHER,), at
+        while nodes and (piece := self._piece(at)) is not None:
+            folded, end, after, mixed = piece
+            for cut in (_CASED_CUT.finditer(self.text, at + 1, end) if mixed else ()):
+                head = _fold(self.text[at:cut.start()])
+                found.extend((name, cut.start(), True) for node in nodes for joint in joints
+                             if (name := node.get((joint, head), {}).get(None)) is not None)
+            at = after
+            nodes = [child for node in nodes for joint in joints if (child := node.get((joint, folded))) is not None]
+            if names := [name for node in nodes if (name := node.get(None)) is not None]:
+                cased = _LATIN.match(self.text, end) is not None
+                if not cased or not _ASCII_ALNUM.match(self.text, end):
+                    found.extend((name, end, cased) for name in names)
+            joints = (_JOINED, _EITHER) if at == end else (_APART, _EITHER)
+        self.names_at[start] = found
+        return found
+
+    def _letters(self, start: int, end: int) -> str:
+        """The letters (word characters but "_") of ``text[start:end]``, from one join of the text's letters."""
+        starts, ends = self.marks(_WORD)
+        if self.letters is None:
+            self.letters = ("".join(self.text[run:stop] for run, stop in zip(starts, ends, strict=True)),
+                            list(accumulate((stop - run for run, stop in zip(starts, ends, strict=True)), initial=0)))
+        letters, before = self.letters
+
+        def count(at: int) -> int:
+            run = bisect_right(starts, at) - 1
+            return 0 if run < 0 else before[run] + min(at, ends[run]) - starts[run]
+
+        return letters[count(start):count(end)]
+
+    def _written(self, name: _Name, start: int, end: int) -> tuple[int, Mapping] | None:
+        """The first listed name of ``name``'s group written exactly as ``text[start:end]``, if any."""
+        return name.written.get(self._letters(start, end)) if name.written else None
+
+    def noun_next(self, at: int) -> bool:
+        if (known := self.nouns.get(at)) is None:
+            known = self.nouns[at] = _NOUN_NEXT.match(self.text, at) is not None
+        return known
+
+    def listed(self, at: int, *, whole: bool = False) -> Mapping | None:
+        """The listed course written at ``at`` as the list writes it (a code in any case), first in list order."""
+        best: tuple[int, Mapping] | None = None
+        for name, end, cased in self._names(at):
+            if not whole or end == len(self.text):
+                written = self._written(name, at, end)
+                for pick in ((written,) if cased else (name.code, written)):
+                    if pick is not None and (best is None or pick[0] < best[0]):
+                        best = pick
+        return best[1] if best else None
+
+    def course_at(self, span: str, pos: int, origin: int, *, noun_before: bool, article: bool
+                  ) -> tuple[Mapping, int] | None:
+        """The listed course read at ``pos`` of ``span`` (``origin`` in the text), and where it ends in the span.
+
+        The first name in list order that counts there: a code in any case;
+        a title as the list capitalises it, or in any case when a course noun
+        stands right before it or right after it; right after "a" or "an"
+        only when a course noun follows it.
+        """
+        if pos and _LATIN.match(span, pos - 1):
+            return None
+        start = origin + pos
+        best: tuple[int, Mapping, int] | None = None
+        for name, end, cased in self._names(start):
+            if cased or (best is not None and name.order > best[0]):
+                continue
+            if (name.code is not None and name.code[0] == name.order) or self.noun_next(end) or (
+                    not article and noun_before):
+                pick: tuple[int, Mapping] | None = (name.order, name.entry)
+            else:
+                pick = name.code
+                if not article and (hit := self._written(name, start, end)) is not None and (
+                        pick is None or hit[0] < pick[0]):
+                    pick = hit
+            if pick is not None and (best is None or pick[0] < best[0]):
+                best = (pick[0], pick[1], end - origin)
+        return (best[1], best[2]) if best else None
 
 
-def _courses_named(span: str, aliases: list[tuple[re.Pattern, Mapping]], *,
-                   bare: bool, noun: bool = False) -> list[tuple[str, Mapping | None, int, int]]:
-    """The courses an object span names, read from its start, each with where it stands in the span.
+def _courses_named(reader: _Reader, origin: int, *, bare: bool, noun: bool = False
+                   ) -> list[tuple[str, Mapping | None, int, int]]:
+    """The courses the object at ``origin`` of the reader's text names, each with where it stands from ``origin``.
 
     "the courses CS 225 and CS 446", "Data Structures (CS 225) and Machine
     Learning (CS 446)". ``noun``: a course noun ends the text before the span.
@@ -407,33 +583,36 @@ def _courses_named(span: str, aliases: list[tuple[re.Pattern, Mapping]], *,
     ("coursework in machine learning and data structures") until a word that
     names no course.
     """
+    span = reader.text[origin:]
     found: list[tuple[str, Mapping | None, int, int]] = []
-    # Each alias read in any case: a code (compiled so) as it is, a title (as
-    # the list capitalises it) through _title_counts.
-    loose = [(pattern, pattern if pattern.flags & re.I else _any_case(pattern.pattern), entry)
-             for pattern, entry in aliases]
+    # From its fourth character on, what an object reads depends only on where
+    # it stands and the reading state, so every claim shares it.
+    visited: list[tuple[tuple, int]] = []
     pos, free, started, noun_before = 0, 0, False, noun
     while True:
+        if pos > 2:
+            state = (origin + pos, free, started, noun_before, bool(found), bare)
+            if (known := reader.objects.get(state)) is not None:
+                read, first = known
+                found += [(name, entry, start - origin, end - origin) for name, entry, start, end in read[first:]]
+                break
+            visited.append((state, len(found)))
         sep = _SEP.match(span, pos)
         start, pos = pos, (sep.end() if sep else pos)
         if pos >= len(span):
-            return found
+            break
         article = _ARTICLE.search(span, max(0, start - 2), pos) is not None
-        match, entry = next(((m, entry) for pattern, any_case, entry in loose
-                             if (m := any_case.match(span, pos)) is not None and (
-                                 any_case is pattern
-                                 or _title_counts(pattern, m, noun_before=noun_before, article=article))),
-                            (None, None))
+        entry, end = reader.course_at(span, pos, origin, noun_before=noun_before, article=article) or (None, None)
         name = entry["name"] if entry is not None else ""
-        if match is None and (match := _CODE.match(span, pos) or _TITLE_CODE.match(span, pos)) is not None:
+        if end is None and (match := _CODE.match(span, pos) or _TITLE_CODE.match(span, pos)) is not None:
             name = match.groupdict().get("code") or match.group()
-            entry = next((candidate for pattern, candidate in aliases if pattern.fullmatch(name)), None)
-            name = entry["name"] if entry is not None else name
-        if match is not None:
-            tail = _TITLE_TAIL.match(span, match.end())
-            end = tail.end() if tail else match.end()
+            entry = _Reader(name, reader.trie).listed(0, whole=True)
+            name, end = (entry["name"] if entry is not None else name), match.end()
+        if end is not None:
+            tail = _TITLE_TAIL.match(span, end)
+            end = tail.end() if tail else end
             if entry is not None or not _YEARLIKE.search(name):
-                found.append((name, entry, match.start(), end))
+                found.append((name, entry, pos, end))
             pos, started = end, True
             continue
         if (filler := _FILLER.match(span, pos)) is not None:
@@ -442,12 +621,11 @@ def _courses_named(span: str, aliases: list[tuple[re.Pattern, Mapping]], *,
         if (noun := _COURSE_NOUN.match(span, pos)) is not None:
             # "coursework in machine learning (CS 446)" names the course a few
             # words on; "a course project in CS 446" names a project.
-            after = span[noun.end():]
-            nxt = _SEP.match(after)
-            rest = after[nxt.end():] if nxt else after
-            if not (nxt and re.search(r"[,:(]", nxt.group())) and not _INTRO.match(rest) and not _CODE.match(rest) \
-                    and not any(pattern.match(rest) for pattern, _ in aliases):
-                return found
+            nxt = _SEP.match(span, noun.end())
+            rest = nxt.end() if nxt else noun.end()
+            if not (nxt and re.search(r"[,:(]", nxt.group())) and not _INTRO.match(span, rest) \
+                    and not _CODE.match(span, rest) and reader.listed(origin + rest) is None:
+                break
             pos, free, started = noun.end(), 6, True
             noun_before = _TITLE_NOUN.fullmatch(noun.group()) is not None
             continue
@@ -460,48 +638,72 @@ def _courses_named(span: str, aliases: list[tuple[re.Pattern, Mapping]], *,
         if free > 0 and (word := _WORD.match(span, pos)) is not None:
             pos, free, noun_before = word.end(), free - 1, False
             continue
-        return found
+        break
+    if visited:
+        read = [(name, entry, start + origin, end + origin) for name, entry, start, end in found]
+        for state, first in visited:
+            reader.objects[state] = (read, first)
+    return found
 
 
-def _claims_nothing(prefix: str, head: str) -> bool:
+def _ends_on(pattern: re.Pattern, text: str, at: int) -> bool:
+    """Whether ``pattern``, anchored at its end, matches ``text[:at]``, read near ``at`` unless all words lead there."""
+    near = max(0, at - 200)
+    if pattern.search(text, near, at):
+        return True
+    return near > 0 and _FEW_WORDS.fullmatch(text, near, at) is not None and pattern.search(text, 0, at) is not None
+
+
+def _claims_nothing(reader: _Reader, head: re.Match) -> bool:
     """Whether a completion or enrolment verb claims nothing for the student, judged on its own verb phrase.
 
     A negation right before the verb ("have not taken"), someone else as its
     subject ("students who have completed"), or a conditional, modal or future
     word from the word before its subject to its verb ("if I took", "I would
     have completed"). The same word elsewhere in the sentence ("I would love to
-    join and have completed CS 446") exempts nothing.
+    join and have completed CS 446") exempts nothing. Each is read near the
+    verb or from where the clause marks it, never by re-reading the clause.
     """
-    if _NEGATED.search(prefix):
+    text, verb, end = reader.text, head.start(), head.end()
+    if _ends_on(_NEGATED, text, verb):
         return True
-    stops = list(_STOP.finditer(prefix))
-    phrase = (prefix[stops[-1].end():] if stops else prefix) + head
-    subjects = list(_SUBJECT.finditer(phrase))
-    if subjects:
-        before = re.search(r"[^\W_]+\W*$", phrase[:subjects[-1].start()])
-        phrase = phrase[before.start() if before else subjects[-1].start():]
-    elif _OTHER_SUBJECT.search(prefix):
+    # The phrase starts after the last stop before the verb.
+    _starts, ends = reader.marks(_STOP)
+    stop = bisect_left(ends, verb)
+    start = verb if _STOP_END.search(text, max(0, verb - 8), verb) else ends[stop - 1] if stop else 0
+    starts, _ends = reader.marks(_SUBJECT)
+    subject = bisect_left(starts, end) - 1
+    if subject >= 0 and starts[subject] >= start:
+        # From the word before the subject, if only non-word characters
+        # ("_" is none) stand between them.
+        subject = starts[subject]
+        words, word_ends = reader.marks(_WORD)
+        word = bisect_left(words, subject) - 1
+        last = min(word_ends[word], subject) if word >= 0 else start
+        start = max(words[word], start) if last > start and text.find("_", last, subject) < 0 else subject
+    elif _ends_on(_OTHER_SUBJECT, text, verb):
         return True
-    return bool(_NOT_YET.search(phrase) or _FUTURE.search(phrase))
+    return reader.within(_NOT_YET, start, end) or reader.within(_FUTURE, start, end)
 
 
-def _course_findings(text: str, aliases: list[tuple[re.Pattern, Mapping]]) -> set[tuple[frozenset, str]]:
+def _course_findings(text: str, trie: dict) -> set[tuple[frozenset, str]]:
     """Each unsupported claim as the statuses its kind of claim allows and the course it names."""
     findings: set[tuple[frozenset, str]] = set()
     for clause in _CLAUSE.split(text or ""):
         if not clause.strip():
             continue
+        reader = _Reader(clause, trie)
         opens_future = _FUTURE_AT.match(clause) is not None
         for allowed, head_re in _HEADS:
             heads = [(m, False) for m in head_re.finditer(clause)]
             if head_re is _DONE_HEAD:
-                covered = [m.span() for m, _ in heads]
+                starts, ends = [m.start() for m, _ in heads], [m.end() for m, _ in heads]
                 heads += [(m, True) for m in _BARE_DONE.finditer(clause)
-                          if not any(start <= m.start() < end for start, end in covered)]
+                          if not (at := bisect_right(starts, m.start())) or ends[at - 1] <= m.start()]
             for head, bare in heads:
-                if _claims_nothing(clause[:head.start()], head.group()):
+                if _claims_nothing(reader, head):
                     continue
-                named = _courses_named(clause[head.end():], aliases, bare=bare,
+                named = _courses_named(reader, head.end(), bare=bare,
                                        noun=_HEAD_NOUN.search(head.group()) is not None)
                 # A time phrase makes only an enrolment claim future ("I am
                 # taking CS 446 next semester"); "I took CS 446 in the fall" is past.
@@ -535,13 +737,13 @@ def course_claim_violations(text: str, entries: Iterable[Mapping], *, student_li
     a claim it already makes (the same kind of claim about the same course) is
     theirs, so only a claim new to ``text`` is a finding.
     """
-    aliases = _course_aliases(list(entries))
+    trie = _course_aliases(list(entries))
     text = text or ""
     for line in student_lines:
         line = str(line).strip().rstrip(".!?。！？").strip()
-        if line and _course_findings(line, aliases):
+        if line and _course_findings(line, trie):
             text = text.replace(line, " ")
-    found = _course_findings(text, aliases) - _course_findings(student_draft, aliases)
+    found = _course_findings(text, trie) - _course_findings(student_draft, trie)
     return sorted({f"unsupported course status: {name}" for _allowed, name in found})
 
 
