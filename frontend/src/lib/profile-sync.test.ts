@@ -883,6 +883,59 @@ describe('the outbox', () => {
     expect(commitMock, 'and nothing is sent twice').toHaveBeenCalledTimes(1);
   });
 
+  it('a flush queued behind a write that came back a partial conflict reports the question that write left, not "superseded"', async () => {
+    // Checklist M103. The write ahead sends the half nobody else changed under
+    // a new id and answers its own caller, which can be a Home form in-app
+    // navigation has unmounted; the form mounted again queued this flush.
+    loadProfileMock.mockResolvedValue(cloud(FULL, 7));
+    await hydrateProfile();
+    const token = captureOwnerToken();
+    const mine = { ...FULL, major: 'ECE', grade: 'Senior' };
+    expect(recordProfileIntent(mine, ['major', 'grade'], token)).toBe(true);
+    let release: (v: ProfilePatchOutcome) => void = () => {};
+    commitMock.mockImplementationOnce(() => new Promise((r) => { release = r; }));
+    const sending = stageProfilePatch(mine, ['major', 'grade'], token);
+    await tick();
+    const recovering = flushPendingProfileWrite(token);
+    await tick();
+    // Another device changed the major while the first request was out.
+    const phone = { ...FULL, major: 'Physics' };
+    commitMock.mockResolvedValueOnce(saved({ ...phone, grade: 'Senior' }, 9));
+    release(conflict(phone, 8));
+    expect(await sending).toMatchObject({ status: 'conflict', conflictKeys: ['major'] });
+    expect(commitMock.mock.calls[1][0]).toMatchObject({ expectedRevision: 8, patch: { grade: 'Senior' } });
+
+    const followed = await recovering;
+    expect(followed).toMatchObject({ status: 'conflict', revision: 9, conflictKeys: ['major'] });
+    expect(followed.status === 'conflict' && followed.conflicts.map((c) => [c.key, c.remote, c.candidates.map((x) => x.value)]))
+      .toEqual([['major', 'Physics', ['ECE']]]);
+    expect(commitMock, 'nothing is sent behind it').toHaveBeenCalledTimes(2);
+    expect(readProfileSyncEnvelope()?.pending).toMatchObject({ lockedKeys: ['major'], dirtyKeys: ['major'] });
+  });
+
+  it('a flush queued behind a write that a newer edit replaced still stands down', async () => {
+    loadProfileMock.mockResolvedValue(cloud(FULL, 7));
+    await hydrateProfile();
+    const token = captureOwnerToken();
+    expect(recordProfileIntent({ ...FULL, major: 'ECE' }, ['major'], token)).toBe(true);
+    let release: (v: ProfilePatchOutcome) => void = () => {};
+    commitMock.mockImplementationOnce(() => new Promise((r) => { release = r; }));
+    const sending = stageProfilePatch({ ...FULL, major: 'ECE' }, ['major'], token);
+    await tick();
+    const recovering = flushPendingProfileWrite(token);
+    await tick();
+    // A newer edit is staged over the entry; its own flush owns the outcome.
+    expect(recordProfileIntent({ ...FULL, major: 'ECE', grade: 'Senior' }, ['grade'], token)).toBe(true);
+    commitMock.mockResolvedValueOnce(saved({ ...FULL, major: 'ECE', grade: 'Senior' }, 9));
+    const newer = stageProfilePatch({ ...FULL, major: 'ECE', grade: 'Senior' }, ['grade'], token);
+    await tick();
+    release(saved({ ...FULL, major: 'ECE' }, 8));
+    expect((await sending).status).toBe('saved');
+    expect(await recovering).toEqual({ status: 'superseded' });
+    expect((await newer).status).toBe('saved');
+    expect(commitMock).toHaveBeenCalledTimes(2);
+  });
+
   it('an edit made while a save is in flight stays dirty', async () => {
     loadProfileMock.mockResolvedValue(cloud(FULL, 7));
     await hydrateProfile();

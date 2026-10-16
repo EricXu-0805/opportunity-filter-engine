@@ -463,6 +463,7 @@ function ensureScope(token: OwnerToken): void {
   unwrittenConfirmation = null;
   lastLoadSource = null;
   skillOps = null;
+  continuedAs.clear();
 }
 
 function versionOf(key: string): number {
@@ -1104,6 +1105,7 @@ export function resetProfileDirtyLedger(): void {
   unwrittenConfirmation = null;
   lastLoadSource = null;
   skillOps = null;
+  continuedAs.clear();
 }
 
 /**
@@ -4603,6 +4605,16 @@ function survivorFor(
 const MAX_AUTO_REBASES = 1;
 const COORDINATOR_WRITE_ID = 'profile-coordinator';
 
+/**
+ * The outbox entry a flush in this page carried on under a new id after a
+ * conflict (the rebase, or the half nobody else changed), by the id it
+ * replaced. A flush queued behind it for the old id follows it rather than
+ * standing down as superseded: the flush that wrote it has already answered
+ * its own caller, which can be a Home form that in-app navigation unmounted,
+ * and nothing else is left to say what became of the write.
+ */
+const continuedAs = new Map<string, string>();
+
 /** The entry a queued flush was asked to send, found gone from the outbox
  *  because the row on record already holds every value it was to send. That
  *  is the write landing, not a failure to send it; anything else is not. */
@@ -4661,10 +4673,13 @@ function flushByMutation(
           ?? { status: 'blocked' } as ProfileSaveResult;
       }
       if (pending.mutationId !== currentId) {
+        let next = continuedAs.get(currentId);
+        while (next !== undefined && next !== pending.mutationId) next = continuedAs.get(next);
         // Superseded while queued. The newer entry has its own flush behind
         // this one and carries this write's fields (edits LAYER), so standing
         // down loses nothing and avoids sending a stale revision.
-        return { status: 'superseded' } as ProfileSaveResult;
+        if (next === undefined) return { status: 'superseded' } as ProfileSaveResult;
+        currentId = next;
       }
 
       if (pending.deferredCreate) {
@@ -4890,6 +4905,7 @@ function flushByMutation(
           ));
           if (!rebasedWrite.ok) return rebasedWrite.result;
           if (!rebasedWrite.value) return { status: 'device-failed', phase: 'stage' };
+          continuedAs.set(currentId, rebased.mutationId);
           currentId = rebased.mutationId;
           continue; // one more pass, inside this same queue slot
         }
@@ -4927,6 +4943,7 @@ function flushByMutation(
           if (!partialWrite.ok) return partialWrite.result;
           if (!partialWrite.value) return { status: 'device-failed', phase: 'stage' };
           deferredConflict = { keys: conflictKeys, remote };
+          continuedAs.set(currentId, partial.mutationId);
           currentId = partial.mutationId;
           continue;
         }
