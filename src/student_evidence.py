@@ -223,9 +223,13 @@ def course_context_line(entries: Iterable[Mapping]) -> str:
 # Only courses the student listed are checked; text naming a course code or
 # title the student never listed is not a course claim. A listed course is
 # recognised by its code, or by its title written with the same capitalisation
-# as in the list: lower-case, "machine learning" is the topic. A title with its
-# code in parentheses ("Machine Learning (CS 446)") is the course its code
-# names, and an unlisted code is read only to find where a list of courses ends.
+# as in the list: lower-case, "machine learning" is the topic. Beside a course
+# noun a title is the course in any case ("coursework in machine learning",
+# "machine learning courses"); right after "a" or "an" it is the course only
+# before a course noun ("a Machine Learning project" is a project). A title
+# with its code in parentheses ("Machine Learning (CS 446)") is the course its
+# code names, and an unlisted code is read only to find where a list of courses
+# ends.
 _CODE_TEXT = r"[A-Z]{2,6}[ \-]?\d{2,4}[A-Z]?"
 _CODE = re.compile(rf"(?<![A-Za-z0-9]){_CODE_TEXT}(?![A-Za-z0-9])")
 _LISTED_CODE = re.compile(_CODE.pattern, re.I)
@@ -367,23 +371,58 @@ _INTRO = re.compile(r"(?:in|on|including|includes?|such\s+as|like|namely|are|is)
 _TITLE_TAIL = re.compile(r"(?:(?:\s+(?:of|to|for|the|in|with|&))*\s+[A-Z][a-z][\w'’-]*)+")
 _WORD = re.compile(r"[^\W_]+")
 _NOUN_AHEAD = re.compile(r"(?:[^\W_]+[\s-]+){1,4}(?=(?:coursework|courses?|class(?:es)?)\b)", re.I)
+# The course nouns a title may stand beside, and "a" or "an" right before it.
+_TITLE_NOUN = re.compile(r"(?:coursework|courses?|class(?:es)?)\b", re.I)
+_NOUN_NEXT = re.compile(rf"\s+{_TITLE_NOUN.pattern}", re.I)
+_HEAD_NOUN = re.compile(rf"{_TITLE_NOUN.pattern}$", re.I)
+_ARTICLE = re.compile(r"\ban?\s+$", re.I)
+
+
+@lru_cache(maxsize=4096)
+def _any_case(pattern: str) -> re.Pattern:
+    return re.compile(pattern, re.I)
+
+
+def _title_counts(pattern: re.Pattern, match: re.Match, *, noun_before: bool, article: bool) -> bool:
+    """Whether a listed title, found here in any case, names the course.
+
+    As the list capitalises it; in any case when a course noun stands right
+    before it or right after it; right after "a" or "an" only when a course
+    noun follows it.
+    """
+    if _NOUN_NEXT.match(match.string, match.end()):
+        return True
+    if article:
+        return False
+    return noun_before or pattern.match(match.string, match.start()) is not None
 
 
 def _courses_named(span: str, aliases: list[tuple[re.Pattern, Mapping]], *,
-                   bare: bool) -> list[tuple[str, Mapping | None, int, int]]:
+                   bare: bool, noun: bool = False) -> list[tuple[str, Mapping | None, int, int]]:
     """The courses an object span names, read from its start, each with where it stands in the span.
 
     "the courses CS 225 and CS 446", "Data Structures (CS 225) and Machine
-    Learning (CS 446)".
+    Learning (CS 446)". ``noun``: a course noun ends the text before the span.
+    A course noun stands right before each title of the list it introduces
+    ("coursework in machine learning and data structures") until a word that
+    names no course.
     """
     found: list[tuple[str, Mapping | None, int, int]] = []
-    pos, free, started = 0, 0, False
+    # Each alias read in any case: a code (compiled so) as it is, a title (as
+    # the list capitalises it) through _title_counts.
+    loose = [(pattern, pattern if pattern.flags & re.I else _any_case(pattern.pattern), entry)
+             for pattern, entry in aliases]
+    pos, free, started, noun_before = 0, 0, False, noun
     while True:
         sep = _SEP.match(span, pos)
-        pos = sep.end() if sep else pos
+        start, pos = pos, (sep.end() if sep else pos)
         if pos >= len(span):
             return found
-        match, entry = next(((m, entry) for pattern, entry in aliases if (m := pattern.match(span, pos))),
+        article = _ARTICLE.search(span, max(0, start - 2), pos) is not None
+        match, entry = next(((m, entry) for pattern, any_case, entry in loose
+                             if (m := any_case.match(span, pos)) is not None and (
+                                 any_case is pattern
+                                 or _title_counts(pattern, m, noun_before=noun_before, article=article))),
                             (None, None))
         name = entry["name"] if entry is not None else ""
         if match is None and (match := _CODE.match(span, pos) or _TITLE_CODE.match(span, pos)) is not None:
@@ -410,6 +449,7 @@ def _courses_named(span: str, aliases: list[tuple[re.Pattern, Mapping]], *,
                     and not any(pattern.match(rest) for pattern, _ in aliases):
                 return found
             pos, free, started = noun.end(), 6, True
+            noun_before = _TITLE_NOUN.fullmatch(noun.group()) is not None
             continue
         if (intro := _INTRO.match(span, pos)) is not None and (started or not bare):
             pos, started = intro.end(), True
@@ -418,7 +458,7 @@ def _courses_named(span: str, aliases: list[tuple[re.Pattern, Mapping]], *,
             pos = ahead.end()
             continue
         if free > 0 and (word := _WORD.match(span, pos)) is not None:
-            pos, free = word.end(), free - 1
+            pos, free, noun_before = word.end(), free - 1, False
             continue
         return found
 
@@ -461,7 +501,8 @@ def _course_findings(text: str, aliases: list[tuple[re.Pattern, Mapping]]) -> se
             for head, bare in heads:
                 if _claims_nothing(clause[:head.start()], head.group()):
                     continue
-                named = _courses_named(clause[head.end():], aliases, bare=bare)
+                named = _courses_named(clause[head.end():], aliases, bare=bare,
+                                       noun=_HEAD_NOUN.search(head.group()) is not None)
                 # A time phrase makes only an enrolment claim future ("I am
                 # taking CS 446 next semester"); "I took CS 446 in the fall" is past.
                 if head_re is not _DONE_HEAD and (
@@ -481,7 +522,8 @@ def course_claim_violations(text: str, entries: Iterable[Mapping], *, student_li
     ``in_progress`` course as currently taken, and "while taking" either. A
     planned course may be named as a plan and an unknown one only neutrally
     ("my coursework includes"). Only listed courses are checked, each read by
-    its code or by its title as the list capitalises it; text naming a course
+    its code or by its title as the list capitalises it (in any case beside a
+    course noun; right after "a" or "an" only before one); text naming a course
     the student never listed is no course claim. A claim is exempt only when
     its own verb phrase is negated, conditional or future, or has someone else
     as its subject; a future time phrase that opens the clause or follows the

@@ -358,6 +358,39 @@ def test_text_naming_no_listed_course_is_no_course_claim(
     assert claim in out["body"]
 
 
+# Fix round 4: beside a course noun a listed title is the course in any case;
+# right after "a" or "an" it is the course only before a course noun.
+LEGACY_TITLES = {**BASE, "coursework": ["CS 225", "Machine Learning", "Data Structures", "Computer Vision"]}
+
+
+@pytest.mark.parametrize("route", ROUTES)
+@pytest.mark.parametrize("claim", [
+    "I have completed coursework in machine learning and data structures.",
+    "I've taken courses in machine learning and data structures.",
+    "I have taken machine learning courses.",
+    "I am currently taking a computer vision course.",
+    "I have completed a machine learning course.",
+    "I have completed a Machine Learning course.",
+])
+def test_a_title_beside_a_course_noun_is_the_course_in_any_case(email_client, monkeypatch, route, claim):  # noqa: F811
+    out = request(email_client, monkeypatch, route, claim, LEGACY_TITLES)
+    assert out["fallback_reason"] == "fabrication" and claim not in out["body"], out
+
+
+@pytest.mark.parametrize("route", ROUTES)
+@pytest.mark.parametrize("claim", [
+    "I completed a Machine Learning project in Python.",
+    "I took a Machine Learning approach to the problem.",
+    "I completed a Machine Learning internship.",
+    "I completed a machine learning project in Python.",
+])
+def test_after_a_or_an_a_title_is_the_course_only_before_a_course_noun(
+        email_client, monkeypatch, route, claim):  # noqa: F811
+    out = request(email_client, monkeypatch, route, claim, LEGACY_TITLES)
+    assert out["method"] == ("ai" if route == "/cold-email" else "llm"), out
+    assert claim in out["body"]
+
+
 def test_the_template_may_quote_the_students_own_course_line(email_client):  # noqa: F811
     line = "Completed CS 225 project: built a PyTorch model of hypersonics flow data in Python."
     response = email_client.post("/api/cold-email", json={

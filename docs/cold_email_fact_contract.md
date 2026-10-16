@@ -23,7 +23,17 @@ Match remains deterministic by default.
   capitalisation as in the list (also "Title (CODE)"), exempts a claim only
   when its own verb phrase is negated, conditional or future, and does not
   check a line of the student's confirmed experience the draft repeats
-  verbatim. A coursework listing may name any
+  verbatim. A title also counts in any capitalisation when a course noun
+  (course, courses, coursework, class, classes) stands right before it
+  ("coursework in machine learning and data structures") or right after it
+  ("machine learning courses"); right after "a" or "an" it counts only when a
+  course noun follows it ("a Machine Learning project" names a project, "a
+  Machine Learning course" the course). Known limits: unlisted courses are not
+  checked; a planned course's term written as "in the Fall" or "for Spring
+  2027" is not read as future (left to the frontend phase); a slash
+  cross-listing ("CS/ECE 374") is not read; and a word that names no course
+  ends a list ("machine learning and data structures courses" is not read).
+  A coursework listing may name any
   listed course; elsewhere only a completed or in-progress course's name
   supports a claim of competence in its topic.
 - Quantified achievements are checked against student resume bullets. The

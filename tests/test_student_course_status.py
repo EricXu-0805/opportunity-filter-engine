@@ -171,6 +171,35 @@ def test_a_title_names_the_course_only_as_the_list_capitalises_it(claim, courses
     assert course_claim_violations(claim, courses) == []
 
 
+# Fix round 4 (review of a678cc04): a legacy list, every course unknown.
+LEGACY_TITLES = [{"name": name, "status": "unknown"}
+                 for name in ["CS 225", "Machine Learning", "Data Structures", "Computer Vision"]]
+
+
+@pytest.mark.parametrize(("claim", "flagged"), [
+    ("I have completed coursework in machine learning and data structures.", ["Data Structures", "Machine Learning"]),
+    ("I've taken courses in machine learning and data structures.", ["Data Structures", "Machine Learning"]),
+    ("I have taken machine learning courses.", ["Machine Learning"]),
+    ("I am currently taking a computer vision course.", ["Computer Vision"]),
+    ("I have completed a machine learning course.", ["Machine Learning"]),
+    ("I have completed a Machine Learning course.", ["Machine Learning"]),
+    ("Completed coursework in machine learning.", ["Machine Learning"]),
+])
+def test_a_title_beside_a_course_noun_is_the_course_in_any_case(claim, flagged):
+    assert course_claim_violations(claim, LEGACY_TITLES) == [f"unsupported course status: {name}" for name in flagged]
+
+
+@pytest.mark.parametrize(("claim", "courses"), [
+    ("I completed a Machine Learning project in Python.", LEGACY_TITLES),
+    ("I took a Machine Learning approach to the problem.", LEGACY_TITLES),
+    ("I completed a Machine Learning internship.", LEGACY_TITLES),
+    ("I completed a machine learning project in Python.", LEGACY_TITLES),
+    ("I completed a machine learning project.", [{"name": "machine learning", "status": "unknown"}]),
+])
+def test_after_a_or_an_a_title_is_the_course_only_before_a_course_noun(claim, courses):
+    assert course_claim_violations(claim, courses) == []
+
+
 @pytest.mark.parametrize(("claim", "courses"), [
     ("I have not taken CS 446 yet.", PLANNED),
     ("I am taking CS 446 next semester.", PLANNED),
