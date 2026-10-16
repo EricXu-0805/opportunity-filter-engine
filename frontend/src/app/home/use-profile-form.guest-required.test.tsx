@@ -26,7 +26,7 @@ import { SubmitRow } from './SubmitRow';
 import { translate } from '@/i18n/translate';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import { readProfileSyncEnvelope, resetProfileDirtyLedger } from '@/lib/profile-sync';
-import { readOutstandingOps, resetJournalLaneForTests } from '@/lib/profile-journal';
+import { readOutstandingOps, resetJournalLaneForTests, startDocumentForTests } from '@/lib/profile-journal';
 
 // A brand-new guest: the cloud has no row for them, and the server creates
 // one only from a COMPLETE revision-0 patch (migration 20261011230618):
@@ -164,6 +164,76 @@ describe('a fresh guest who has not filled in college, major and grade yet', () 
     expect(form().saveStatus).toBe('saved');
     expect(row).toMatchObject({ revision: 1, profile: { research_interests: 'robotics and control' } });
     expect(readProfileSyncEnvelope()?.pending ?? null).toBeNull();
+    expect(readOutstandingOps()).toEqual({ ok: true, value: [] });
+  });
+});
+
+// A new browser session is a new journal lineage (sessionStorage is empty),
+// and nothing before the row exists ever drains: so one person's edits from
+// two visits used to stay "Changed on another device" forever, the older
+// value on screen and the newer one lost.
+describe('a guest who comes back in a new browser session before the row exists', () => {
+  const skills = (...names: string[]) => names.map((name) => ({ name, level: 'beginner' as const }));
+  async function newSession() {
+    cleanup(); await drain();
+    resetJournalLaneForTests(); resetProfileDirtyLedger();
+  }
+
+  it("keeps the newer session's edit of a field the older one also edited, with no question, and creates the row with it", async () => {
+    let view = await mount();
+    await edit('skills', skills('Rust'));
+    expect(form().saveStatus).toBe('awaiting-required');
+    view.unmount();
+
+    await newSession();
+    view = await mount();
+    expect(form().profile.skills.map((s) => s.name), 'the first visit is on screen').toEqual(['Rust']);
+    expect(form().saveStatus).toBe('awaiting-required');
+    await edit('skills', skills('Rust', 'Julia'));
+    view.unmount();
+
+    // A reload of that session.
+    cleanup(); await drain();
+    startDocumentForTests('reload'); resetProfileDirtyLedger();
+    view = await mount();
+    // The newer edit REPLACES the list: it is the whole list that session
+    // showed (the first visit's Rust) plus Julia, not a merge of the two.
+    expect(form().profile.skills.map((s) => s.name)).toEqual(['Rust', 'Julia']);
+    expect(form().conflictKeys, 'no question about the person\'s own two visits').toEqual([]);
+    expect(form().conflicts).toEqual([]);
+    expect(form().saveStatus).toBe('awaiting-required');
+    expect(screen.queryByText(/Changed on another device/)).toBeNull();
+    expect(sends()).toEqual([]);
+
+    await edit('college', 'Grainger College of Engineering');
+    await edit('major', 'Computer Science');
+    await edit('grade', 'Junior');
+    expect(sends(), 'ONE create').toHaveLength(1);
+    expect(sends()[0].patch.skills).toEqual(skills('Rust', 'Julia'));
+    expect(form().saveStatus).toBe('saved');
+    expect(readOutstandingOps(), 'both visits\' edits are settled by it').toEqual({ ok: true, value: [] });
+    expect(readProfileSyncEnvelope()?.pending ?? null).toBeNull();
+  });
+
+  it('creates the row with the college picked last, never a create without one', async () => {
+    let view = await mount();
+    await edit('college', 'Grainger College of Engineering');
+    view.unmount();
+
+    await newSession();
+    view = await mount();
+    expect(form().profile.college).toBe('Grainger College of Engineering');
+    await edit('college', 'College of Liberal Arts & Sciences');
+    await edit('major', 'Mathematics');
+    await edit('grade', 'Sophomore');
+
+    expect(sends(), 'ONE create, complete').toHaveLength(1);
+    expect(sends()[0].patch).toMatchObject({
+      college: 'College of Liberal Arts & Sciences', major: 'Mathematics', grade: 'Sophomore',
+    });
+    expect(form().saveStatus).toBe('saved');
+    expect(form().conflictKeys).toEqual([]);
+    expect(row?.profile.college).toBe('College of Liberal Arts & Sciences');
     expect(readOutstandingOps()).toEqual({ ok: true, value: [] });
   });
 });

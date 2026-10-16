@@ -1722,6 +1722,95 @@ describe('a real reload is a new document, and its edits continue the same draft
     expect(journalOps()).toHaveLength(2);
   });
 
+  it('on a row NEVER CREATED, two open tabs editing the same field ask nothing: the later edit wins', async () => {
+    // The deliberate trade-off of the never-created rule. The test above is
+    // the same two tabs on a row that exists, and still a question.
+    loadProfileMock.mockResolvedValue(absent());
+    const token = captureOwnerToken();
+    await hydrateProfile();
+    const form = { ...FULL, college: '', major: '', grade: '' };
+    const skills = (...names: string[]) => names.map((name) => ({ name, level: 'beginner' as const }));
+    expect(recordProfileIntent({ ...form, skills: skills('Go') }, ['skills'], token,
+      { writer: HOME_FORM_WRITER })).toBe(true);
+    const tabOne = journalOps()[0];
+
+    // A second tab, hydrated before that edit existed, edits the same field.
+    resetJournalLaneForTests();
+    expect(recordProfileIntent({ ...form, skills: skills('Rust') }, ['skills'], token,
+      { writer: HOME_FORM_WRITER })).toBe(true);
+    for (const op of journalOps()) expect(op.supersedes ?? []).toEqual([]);
+    let shown = await hydrateProfile();
+    expect(shown.conflictKeys).toEqual([]);
+    expect(shown.profile?.skills, 'the later edit').toEqual(skills('Rust'));
+
+    // The first tab, still open, edits again: now IT is the later edit.
+    expect(appendJournalOp({
+      fields: [{ key: 'skills', base: { present: false }, desired: { present: true, value: skills('Go', 'Zig') } }],
+      baseRevision: 0, writer: HOME_FORM_WRITER, mode: 'set', supersedes: [tabOne.opId],
+      originId: tabOne.originId, lineage: tabOne.lineage,
+    }, token)).not.toBeNull();
+    shown = await hydrateProfile();
+    expect(shown.conflictKeys).toEqual([]);
+    expect(shown.profile?.skills).toEqual(skills('Go', 'Zig'));
+
+    // The create carries that value and settles every tab's operation.
+    const server = casServer({} as ProfileData, 0);
+    commitMock.mockImplementation(async (intent) => server.handle(intent) as ProfilePatchOutcome);
+    const created = await stageProfilePatch({ ...FULL, skills: skills('Go', 'Zig') }, ['college', 'major', 'grade'], token,
+      { allowCreate: true });
+    expect(created.status).toBe('saved');
+    expect(server.seen).toHaveLength(1);
+    expect(server.seen[0].patch.skills).toEqual(skills('Go', 'Zig'));
+    expect(journalOps()).toEqual([]);
+  });
+
+  it('a lock an earlier build left on a row NEVER CREATED dissolves on the next load, and the create carries the field', async () => {
+    loadProfileMock.mockResolvedValue(absent());
+    await hydrateProfile();
+    const token = captureOwnerToken();
+    // What that build left: two visits picked different colleges (each
+    // lineage numbered from 1, neither superseding the other), and the
+    // complete create it staged locked college and went out without it —
+    // refused by the server as incomplete, again on every retry.
+    const visit = (opId: string, lineage: string, college: string) => {
+      localStorage.setItem(`${STORAGE_KEYS.PROFILE_JOURNAL_PREFIX}op_${opId}`, JSON.stringify({
+        opId, originId: `doc-${lineage}`, lineage,
+        fields: [{ key: 'college', base: { present: false }, desired: { present: true, value: college } }],
+        baseRevision: 0, writer: HOME_FORM_WRITER, mode: 'set', seq: 1,
+      }));
+    };
+    visit('op-visit-1', 'visit-1', 'Grainger');
+    visit('op-visit-2', 'visit-2', 'LAS');
+    const form = { ...FULL, college: 'LAS' };
+    localStorage.setItem(STORAGE_KEYS.PROFILE_SYNC, JSON.stringify({
+      v: 1,
+      confirmed: null,
+      pending: {
+        mutationId: 'm-old', baseRevision: 0, baseProfile: form, desiredProfile: form,
+        dirtyKeys: Object.keys(form), keyVersions: {}, skillAdditions: [], skillOps: [],
+        skillsReplaced: false, additiveKeys: [], lockedKeys: ['college'], conflictRemote: null,
+        legacy: false, deferredCreate: false,
+        journalOpIds: ['op-visit-1', 'op-visit-2'], journalPlan: {},
+      },
+      tombstone: null,
+    }));
+
+    startDocumentForTests('other');
+    resetProfileDirtyLedger();
+    const h = await hydrateProfile();
+    expect(h.conflictKeys, 'no question about the person\'s own two visits').toEqual([]);
+    expect(readProfileSyncEnvelope()?.pending?.lockedKeys).toEqual([]);
+    // Equal seqs: the tie is broken by opId, one answer in every tab.
+    expect(h.profile?.college).toBe('LAS');
+
+    const server = casServer({} as ProfileData, 0);
+    commitMock.mockImplementation(async (intent) => server.handle(intent) as ProfilePatchOutcome);
+    expect((await flushPendingProfileWrite(token)).status).toBe('saved');
+    expect(server.seen).toHaveLength(1);
+    expect(server.seen[0]).toMatchObject({ expected: 0, patch: { college: 'LAS', major: 'CS', grade: 'Junior' } });
+    expect(journalOps(), 'both visits\' edits are settled by the create').toEqual([]);
+  });
+
   it('adoption is per KEY: continuing one field does not claim another tab\'s edit to a different one', async () => {
     loadProfileMock.mockResolvedValue(cloud(FULL, 4));
     const token = captureOwnerToken();

@@ -24,9 +24,14 @@
 //     `ofe_profile_journal_v1_ack` FIRST, then delete those op keys. A crash
 //     between the two leaves acked-but-present operations, which readers skip
 //     — never the reverse, which would re-send a write that already landed.
-//   * NO GLOBAL ORDER. `seq` orders one tab's own operations and nothing
-//     else. Two tabs editing the same field are resolved by their frozen
-//     bases, never by which key happened to enumerate first.
+//   * NO GLOBAL ORDER BEYOND WHAT WAS SEEN. `seq` orders one tab's own
+//     operations, and each new operation's seq is also above that of every
+//     operation outstanding when it was appended, so of two operations the
+//     higher seq was written while the other was already on disk. That
+//     order decides only one thing: on a row never created, the latest edit
+//     wins (see planKeysFromJournal). Everywhere else two tabs editing the
+//     same field are resolved by their frozen bases, never by which key
+//     happened to enumerate first.
 //   * ONE LOCK, SHARED BY EVERY ACCOUNT. The raw storage keys are NOT
 //     uid-scoped — they are fixed names holding whichever identity currently
 //     owns this browser — so a lock named per-uid would let U1 and U2 mutate
@@ -105,8 +110,8 @@ export interface JournalField {
 
 export interface JournalOp {
   opId: string;
-  /** WHICH tab wrote it. `seq` orders operations within one origin and means
-   *  nothing across origins — two tabs both start at 1. Without the origin,
+  /** WHICH tab wrote it. `seq` alone cannot say: two tabs that have not seen
+   *  each other's operations can issue the same one. Without the origin,
    *  "this is the user's next keystroke" and "this is somebody else's
    *  independent edit" look identical. */
   originId: string;
@@ -161,7 +166,9 @@ export interface JournalOp {
    */
   resolvesPending?: { mutationId: string; keyVersions: Record<string, number> };
   decisions?: Record<string, 'local' | 'cloud'>;
-  /** Monotonic within this tab; orders its own operations and nothing else. */
+  /** Monotonic within this tab, and above every operation that was
+   *  outstanding when this one was appended (see nextSeq). Operations
+   *  written before that rule held carry per-lineage numbers only. */
   seq: number;
 }
 
@@ -182,8 +189,9 @@ const LINEAGE_SEQ_KEY = `${PREFIX}lineage_seq`;
  *  cannot happen here. */
 const MAX_OUTSTANDING_OPS = 500;
 
-/** Orders THIS tab's own operations. Deliberately not a global sequence: two
- *  tabs cannot agree on one without the coordination this design removes.
+/** Orders THIS tab's own operations. Not a global sequence: two tabs cannot
+ *  agree on one without the coordination this design removes, so all it can
+ *  promise across tabs is to be above whatever this tab could see.
  *  Persisted with the lineage (see LINEAGE_SEQ_KEY) so it keeps rising across
  *  a reload —
  *  otherwise two of the same tab's operations could share a seq and their
@@ -280,12 +288,18 @@ getJournalLineageId();
  *
  * `seq` orders a lineage's own operations, so re-issuing one it has already
  * used makes that order depend on storage enumeration instead. A missing or
- * corrupt counter therefore does NOT fall back to zero: the highest seq this
- * lineage still has outstanding is the floor, and if that cannot be read —
- * or the next value would leave the safe integer range — the append is
- * refused before any key is written.
+ * corrupt counter therefore does NOT fall back to zero: the highest seq
+ * still outstanding is the floor, and if that cannot be read — or the next
+ * value would leave the safe integer range — the append is refused before any
+ * key is written.
+ *
+ * The floor is EVERY outstanding operation, of any lineage, read again at
+ * every append: then an operation numbered higher than another was written
+ * while that one was already on disk, which is what "the latest edit" means
+ * on a row never created (see planKeysFromJournal).
  */
 function nextSeq(): number | null {
+  let stored: JournalResult<JournalOp[]> | null = null;
   if (laneSeq === null) {
     let restored: number | null = null;
     try {
@@ -300,15 +314,17 @@ function nextSeq(): number | null {
     // lineage id persisted, an op was appended, and only the LATER counter
     // write silently no-opped. A new document then trusts the old value and
     // issues a sequence this lineage has already used.
-    const stored = readOutstandingOps();
+    stored = readOutstandingOps();
     // Unreadable while recovery is exactly what is needed: fail closed.
     if (!stored.ok) return null;
-    const mine = getJournalLineageId();
-    let floor = restored ?? 0;
-    for (const op of stored.value) {
-      if (op.lineage === mine && op.seq > floor) floor = op.seq;
-    }
-    laneSeq = floor;
+    laneSeq = restored ?? 0;
+  }
+  // Every append, not once per document: another tab may have written since
+  // this one's last edit. Unreadable here leaves the lineage's own floor,
+  // which is all an append made before this rule ever had.
+  stored ??= readOutstandingOps();
+  if (stored.ok) {
+    for (const op of stored.value) if (op.seq > laneSeq) laneSeq = op.seq;
   }
   if (!Number.isSafeInteger(laneSeq + 1)) return null;
   laneSeq += 1;

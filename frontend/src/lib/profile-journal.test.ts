@@ -106,6 +106,27 @@ describe('a lineage never re-issues a sequence it has already used', () => {
     expect(c.seq).not.toBe(b.seq);
   });
 
+  it('numbers an operation above every one already on disk, whichever tab wrote them', () => {
+    const token = captureOwnerToken();
+    const first = appendJournalOp(op('major', 'ECE'), token)!;
+    // Another tab opened independently: its own lineage, its own counter.
+    resetJournalLaneForTests();
+    const other = appendJournalOp(op('major', 'Physics'), token)!;
+    expect(other.lineage).not.toBe(first.lineage);
+    expect(other.seq, 'written while the first was on disk').toBeGreaterThan(first.seq);
+
+    // A third tab writes while this one stays open. This tab's next edit is
+    // later still, whatever its own counter had reached.
+    localStorage.setItem(opKeyOf('elsewhere'), JSON.stringify({
+      opId: 'elsewhere', originId: 'tab-3', lineage: 'tab-3',
+      fields: [{ key: 'major', base: { present: false }, desired: { present: true, value: 'Math' } }],
+      baseRevision: 7, writer: 'home-form', mode: 'set', seq: other.seq + 5,
+    }));
+    const next = appendJournalOp(op('major', 'Biology'), token)!;
+    expect(next.lineage).toBe(other.lineage);
+    expect(next.seq).toBeGreaterThan(other.seq + 5);
+  });
+
   it('refuses to append when the outstanding scan cannot be read', () => {
     const token = captureOwnerToken();
     const a = appendJournalOp({

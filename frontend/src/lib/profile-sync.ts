@@ -746,7 +746,8 @@ export function getDirtyProfileKeys(
  * latest value, the earliest base, acknowledged together. ACROSS origins,
  * identical values coalesce and skill ADDITIONS merge by name; anything else
  * is a conflict resolved locally, with zero requests, unless one operation
- * explicitly says it supersedes the other.
+ * explicitly says it supersedes the other — or the row was never created,
+ * where the latest edit wins.
  */
 type KeyPlan =
   | { kind: 'value'; value: unknown; baseValue: unknown; baseRevision: number; opIds: string[] }
@@ -794,9 +795,29 @@ function replacedThroughChain(op: JournalOp, byId: ReadonlyMap<string, JournalOp
   return walked;
 }
 
+/** Whether one operation was written after another was on disk: higher
+ *  `seq` (see profile-journal's nextSeq), then opId so a tie between two
+ *  that never saw each other still has one answer everywhere. */
+function writtenLater(a: JournalOp, b: JournalOp): boolean {
+  return a.seq !== b.seq ? a.seq > b.seq : a.opId > b.opId;
+}
+
+/**
+ * Whether this browser's profile row is known never to have been created: the
+ * cloud's last answer for this owner was "no row", and this browser has
+ * neither confirmed one nor recorded one as deleted or merged away.
+ */
+function rowNeverCreated(env: ProfileSyncEnvelope | null, token: OwnerToken): boolean {
+  return !env?.confirmed && !env?.tombstone
+    && lastLoadSource?.scope === scopeOf(token) && lastLoadSource.source === 'cloud-absent';
+}
+
 function planKeysFromJournal(
   ops: readonly JournalOp[],
   keys: readonly string[],
+  /** See rowNeverCreated. Callers that cannot say pass nothing, and keep
+   *  every disagreement a question. */
+  neverCreated = false,
 ): Map<string, KeyPlan> {
   const plans = new Map<string, KeyPlan>();
   const byId = new Map(ops.map((op) => [op.opId, op]));
@@ -874,6 +895,10 @@ function planKeysFromJournal(
         lineage: order[0].op.lineage,
         supersedes: new Set(ordered.flatMap((o) => [...replacedThroughChain(o.op, byId)])),
         additive: order.every((o) => o.op.mode === 'add-skills'),
+        newest: order[order.length - 1].op,
+        // Made before any row was known. An operation against revision 1 or
+        // later proves a row existed, whatever the envelope says now.
+        beforeAnyRow: ordered.every((o) => o.op.baseRevision === 0),
       };
     }).filter((c): c is NonNullable<typeof c> => c !== null);
 
@@ -942,6 +967,27 @@ function planKeysFromJournal(
       }
     }
 
+    // While this browser's profile row has never been created, the latest
+    // edit to a field supersedes this browser's earlier unsent edits to that
+    // field from any session, so a closed session's leftovers never become a
+    // conflict. Nothing drains before the row exists, and a new session is a
+    // new lineage that may not claim the old one's operations, so otherwise
+    // one person's edits from two visits stay a question forever. Every
+    // operation stays in the plan: the create that carries the winner settles
+    // them all. The price is deliberate: two tabs open at once on a row not
+    // yet created no longer ask — the later edit wins.
+    if (neverCreated && chains.every((c) => c.beforeAnyRow)) {
+      const latest = chains.reduce((a, b) => (writtenLater(b.newest, a.newest) ? b : a));
+      plans.set(key, {
+        kind: 'value',
+        value: latest.desired.present ? latest.desired.value : undefined,
+        baseValue: latest.baseValue,
+        baseRevision: 0,
+        opIds: allOpIds,
+      });
+      continue;
+    }
+
     // Two independent origins want different things. Nothing is sent — and
     // the caller is told exactly WHAT is in dispute, so the person can be
     // shown the actual values and the answer can name the very operations
@@ -971,6 +1017,33 @@ function planKeysFromJournal(
     }
   }
   return plans;
+}
+
+/** `seeds` and every outstanding operation joined to one of them through
+ *  `supersedes` or `resolves`. An answer belongs with what it answers, and an
+ *  edit with what it replaced: they are settled together or not at all (see
+ *  finishedClosures), so a write captures the whole group it touches. */
+function connectedOps(seeds: Iterable<string>, ops: readonly JournalOp[]): Set<string> {
+  const related = new Map<string, Set<string>>();
+  for (const op of ops) {
+    for (const ancestor of [...(op.supersedes ?? []), ...(op.resolves ?? [])]) {
+      (related.get(op.opId) ?? related.set(op.opId, new Set()).get(op.opId)!).add(ancestor);
+      (related.get(ancestor) ?? related.set(ancestor, new Set()).get(ancestor)!).add(op.opId);
+    }
+  }
+  const knownIds = new Set(ops.map((op) => op.opId));
+  const captured = new Set(seeds);
+  const frontier = [...captured];
+  while (frontier.length > 0) {
+    const id = frontier.pop()!;
+    for (const next of related.get(id) ?? []) {
+      if (knownIds.has(next) && !captured.has(next)) {
+        captured.add(next);
+        frontier.push(next);
+      }
+    }
+  }
+  return captured;
 }
 
 /** Every operation touching one of `keys`. Failure PROPAGATES: acknowledging
@@ -2678,7 +2751,32 @@ function reconcileLoadedProfile(
       quarantineFailed: true,
     };
   }
-  const journalPlan = planKeysFromJournal(journalRebased, journalKeys);
+  const neverCreated = rowNeverCreated({ v: 1, confirmed, pending, tombstone }, token);
+  const journalPlan = planKeysFromJournal(journalRebased, journalKeys, neverCreated);
+  if (neverCreated && pending?.lockedKeys.some((k) => journalPlan.get(k)?.kind === 'value')) {
+    // Before any row exists, a lock in the outbox can only be an earlier
+    // disagreement between this browser's own sessions — and the plan has
+    // just decided it by the latest-edit rule. Left locked, it would still be
+    // asked about, and a create sent while it stood would leave the field out.
+    const decided = pending.lockedKeys.filter((k) => journalPlan.get(k)?.kind === 'value');
+    const desired = { ...pending.desiredProfile } as unknown as Record<string, unknown>;
+    const plannedOps: Record<string, string[]> = { ...pending.journalPlan };
+    for (const key of decided) {
+      const plan = journalPlan.get(key) as Extract<KeyPlan, { kind: 'value' }>;
+      desired[key] = plan.value;
+      plannedOps[key] = plan.opIds;
+    }
+    const unlocked: ProfilePendingWrite = {
+      ...pending,
+      desiredProfile: desired as unknown as ProfileData,
+      lockedKeys: pending.lockedKeys.filter((k) => !decided.includes(k)),
+      journalPlan: plannedOps,
+      journalOpIds: [...connectedOps(
+        [...pending.journalOpIds, ...decided.flatMap((k) => plannedOps[k])], journal.value,
+      )],
+    };
+    if (writeEnvelope({ v: 1, confirmed, pending: unlocked, tombstone }, token)) pending = unlocked;
+  }
   const journalConflicts: string[] = [];
   let working = staged;
   for (const [key, plan] of journalPlan) {
@@ -2981,7 +3079,7 @@ function prepareStagedWrite(
   const outstandingRebased = rebasedOps(outstanding.value);
   if (!outstandingRebased) return { result: { status: 'device-failed', phase: 'stage' } };
   const outstandingById = new Map(outstanding.value.map((op) => [op.opId, op]));
-  const plans = planKeysFromJournal(outstandingRebased, dirtyKeys);
+  const plans = planKeysFromJournal(outstandingRebased, dirtyKeys, rowNeverCreated(env ?? null, token));
   // A SET: one operation carrying three fields is reached once per field,
   // and every settle path (ack, abandon, survivor) treats these as the ops
   // this write owns — a duplicate id would be acknowledged twice.
@@ -3008,15 +3106,6 @@ function prepareStagedWrite(
   // outstanding when the response lands.
   const everything = readOutstandingOps();
   if (!everything.ok) return { result: { status: 'device-failed', phase: 'stage' } };
-  const related = new Map<string, Set<string>>();
-  for (const op of everything.value) {
-    // An answer belongs with what it answers: the receipt and the operations
-    // it covers are settled together or not at all.
-    for (const ancestor of [...(op.supersedes ?? []), ...(op.resolves ?? [])]) {
-      (related.get(op.opId) ?? related.set(op.opId, new Set()).get(op.opId)!).add(ancestor);
-      (related.get(ancestor) ?? related.set(ancestor, new Set()).get(ancestor)!).add(op.opId);
-    }
-  }
   const knownIds = new Set(everything.value.map((op) => op.opId));
 
   // Ownership of any EXACT pending-resolution receipt the repair attached to
@@ -3051,17 +3140,7 @@ function prepareStagedWrite(
   }
   const seededIds = [...new Set([...journalOpIds, ...inheritedIds])];
 
-  const captured = new Set(seededIds);
-  const frontier = [...seededIds];
-  while (frontier.length > 0) {
-    const id = frontier.pop()!;
-    for (const next of related.get(id) ?? []) {
-      if (knownIds.has(next) && !captured.has(next)) {
-        captured.add(next);
-        frontier.push(next);
-      }
-    }
-  }
+  const captured = connectedOps(seededIds, everything.value);
 
   // Keys whose planned value is ALREADY what the row holds have nothing to
   // say. Sending them would be a request whose only possible answer is
@@ -3577,7 +3656,7 @@ export async function refreshConflictQuestion(
         tombstone: env?.tombstone ?? null,
       }, token)) return { failed: 'envelope' };
     }
-    const journalPlan = planKeysFromJournal(rebased, keys);
+    const journalPlan = planKeysFromJournal(rebased, keys, rowNeverCreated(env, token));
     const journalConflicts = [...journalPlan]
       .filter(([, plan]) => plan.kind === 'conflict')
       .map(([key]) => key);
@@ -4372,7 +4451,7 @@ export async function flushPendingProfileWrite(token: OwnerToken): Promise<Profi
       journal.value.flatMap((op) => op.fields.map((f) => f.key)),
     )].filter(isProfileKey);
     if (keys.length === 0) return { status: 'blocked' };
-    const plan = planKeysFromJournal(journal.value, keys);
+    const plan = planKeysFromJournal(journal.value, keys, rowNeverCreated(env, token));
     const sendable = keys.filter((k) => plan.get(k)?.kind === 'value');
     if (sendable.length === 0) return { status: 'blocked' }; // all conflicted
     const base = env?.confirmed?.profile ?? readRawProfileMirror();
