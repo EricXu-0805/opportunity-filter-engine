@@ -308,6 +308,38 @@ def full_profile_entries():
     return course_entries(profile.model_dump())
 
 
+def test_a_listed_name_of_more_than_24_words_and_numbers_is_not_read():
+    def course(words):
+        return [{"name": " ".join(f"Word{chr(97 + i % 26)}" for i in range(words)), "status": "planned"}]
+    for words, flagged in ((24, True), (25, False)):
+        claim = f"I have completed {course(words)[0]['name']}."
+        assert bool(course_claim_violations(claim, course(words))) is flagged, words
+
+
+def test_the_course_check_reads_each_course_list_on_its_own():
+    claim = "I have completed CS 446."
+    assert course_claim_violations(claim, [{"name": "CS 446", "status": "completed"}]) == []
+    assert course_claim_violations(claim, [{"name": "CS 446", "status": "planned"}]) == [
+        "unsupported course status: CS 446"]
+    assert course_claim_violations(claim, [{"name": "CS 446", "status": "completed"}]) == []
+
+
+def test_a_refine_request_of_nested_names_takes_bounded_time():
+    # The slowest valid input found: 368 names nested inside each other. A
+    # refine checks its draft up to five times against the same bullets and
+    # the student's own subject and body. About 0.1 s for all five here; about
+    # 1.5 s for each one before the 24-piece bound and the per-content cache.
+    names = [("a " * i).strip() for i in range(1, 369)]
+    listed = course_entries(ProfileRequest(name="S", courses=[
+        {"name": name, "status": "planned"} for name in names]).model_dump())
+    body = "I took " + ("A " * 2500)[:4990]
+    bullets = ["I took " + ("A " * 250)[:490]] * 12
+    began = time.perf_counter()
+    for _ in range(5):
+        course_claim_violations(body, listed, student_lines=bullets, student_draft=body[:2000] + " " + body)
+    assert time.perf_counter() - began < 0.75
+
+
 @pytest.mark.parametrize("unit", ["Completed coursework, ", "I took "])
 def test_the_course_check_takes_about_the_same_time_at_the_request_limits(unit):
     text = (unit * (5000 // len(unit) + 1))[:5000]

@@ -32,9 +32,12 @@ taken.
 
 from __future__ import annotations
 
+import hashlib
 import re
+import threading
 import unicodedata
 from bisect import bisect_left, bisect_right
+from collections import OrderedDict
 from collections.abc import Iterable, Mapping
 from functools import lru_cache
 from itertools import accumulate
@@ -291,6 +294,13 @@ class _Name:
         self.written: dict[str, tuple[int, Mapping]] = {}
 
 
+# No course is named in more than 24 words and numbers. A longer listed name is
+# not read, which bounds how far a walk through the trie can go at one place:
+# names nested inside each other ("a", "a a", ... hundreds of them) made each
+# place cost the depth of the nesting.
+_NAME_PIECES = 24
+
+
 def _course_aliases(entries: Iterable[Mapping]) -> dict:
     """The trie of every listed course's names, longest name first in ``order``."""
     aliases: list[tuple[int, str, bool, Mapping]] = []
@@ -307,7 +317,7 @@ def _course_aliases(entries: Iterable[Mapping]) -> dict:
     trie: dict = {}
     names: dict[tuple, _Name] = {}
     for order, (_length, alias, any_case, entry) in enumerate(sorted(aliases, key=lambda item: -item[0])):
-        if (read := _name_steps(alias)) is None:
+        if (read := _name_steps(alias)) is None or len(read[0]) > _NAME_PIECES:
             continue
         steps, letters = read
         if (known := names.get(steps)) is None:
@@ -775,14 +785,51 @@ def course_claim_violations(text: str, entries: Iterable[Mapping], *, student_li
     a claim it already makes (the same kind of claim about the same course) is
     theirs, so only a claim new to ``text`` is a finding.
     """
-    trie = _course_aliases(list(entries))
+    listed = [{"name": str(entry.get("name") or ""), "status": entry.get("status")} for entry in entries]
+    key = _digest(repr([(entry["name"], entry["status"]) for entry in listed]))
     text = text or ""
     for line in student_lines:
         line = str(line).strip().rstrip(".!?。！？").strip()
-        if line and _course_findings(line, trie):
+        if line and _findings_of(line, key, listed):
             text = text.replace(line, " ")
-    found = _course_findings(text, trie) - _course_findings(student_draft, trie)
+    found = _findings_of(text, key, listed) - _findings_of(student_draft or "", key, listed)
     return sorted({f"unsupported course status: {name}" for _allowed, name in found})
+
+
+# One request checks the same course list, the student's own draft and lines
+# several times (each draft, its repair, the fallback, the final gate), so the
+# trie and each text's findings are kept by content for the next call. Keys are
+# digests: a course list can be a megabyte.
+_TRIES: OrderedDict[str, dict] = OrderedDict()
+_FINDINGS: OrderedDict[tuple[str, str], frozenset] = OrderedDict()
+_CACHE_LOCK = threading.Lock()
+
+
+def _digest(text: str) -> str:
+    return hashlib.blake2b(text.encode("utf-8", "surrogatepass"), digest_size=16).hexdigest()
+
+
+def _findings_of(text: str, key: str, listed: list[dict]) -> frozenset:
+    """``_course_findings`` of ``text`` against the course list ``key`` names, from the cache when it holds them."""
+    slot = (key, _digest(text))
+    with _CACHE_LOCK:
+        if (known := _FINDINGS.get(slot)) is not None:
+            _FINDINGS.move_to_end(slot)
+            return known
+        if (trie := _TRIES.get(key)) is not None:
+            _TRIES.move_to_end(key)
+    if trie is None:
+        trie = _course_aliases(listed)
+    found = frozenset(_course_findings(text, trie))
+    with _CACHE_LOCK:
+        _TRIES[key] = trie
+        _TRIES.move_to_end(key)
+        while len(_TRIES) > 2:
+            _TRIES.popitem(last=False)
+        _FINDINGS[slot] = found
+        while len(_FINDINGS) > 64:
+            _FINDINGS.popitem(last=False)
+    return found
 
 
 # ---------------------------------------------------------------------------

@@ -38,7 +38,9 @@ Match remains deterministic by default.
   have completed several courses, and machine learning became my main
   interest" claims nothing about Machine Learning; "..., and CS 446 was my
   favorite" still names CS 446).
-  Known limits: unlisted courses are not checked; a planned course's term
+  Known limits: unlisted courses are not checked, nor is a listed name of
+  more than 24 words and numbers (no course is named that long, and the bound
+  keeps every check fast); a planned course's term
   written as "in the Fall" or "for Spring 2027" is not read as future (left to
   the frontend phase); a slash cross-listing ("CS/ECE 374") is not read; and a
   word that names no listed course ends a list ("I completed a Machine
