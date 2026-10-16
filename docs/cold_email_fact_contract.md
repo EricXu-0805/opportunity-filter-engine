@@ -41,7 +41,7 @@ Match remains deterministic by default.
   A text whose check would take more than 1,000 plus 5 trie steps per
   character is refused: the draft falls back to the template, or to the
   neutral inquiry when the unreadable text is the student's own draft or a
-  line of their experience. Real drafts and course lists take at most about
+  line of their experience (an edit of a selection is left unchanged). Real drafts and course lists take at most about
   two steps per character, and only names built to match each other at
   every word take more, so every check stays fast.
   Known limits: unlisted courses are not checked; a planned course's term

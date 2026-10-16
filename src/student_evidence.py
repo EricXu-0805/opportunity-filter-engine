@@ -832,8 +832,9 @@ def course_claim_violations(text: str, entries: Iterable[Mapping], *, student_li
 # (nested inside each other, or one word split every way) take hundreds per
 # character. A text whose check would take more than this is refused (the
 # draft falls back to the template, or to the neutral inquiry when the
-# student's own draft is the unreadable text), so one text costs at most about
-# 15 ms per thousand characters whatever the input within the request limits.
+# unreadable text is the student's own draft or a line of their experience),
+# so one text costs at most about 15 ms per thousand characters whatever the
+# input within the request limits.
 def _text_steps(text: str) -> int:
     return 1_000 + 5 * len(text)
 
