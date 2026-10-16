@@ -14,8 +14,15 @@ Match remains deterministic by default.
   a completed course may be stated as completed or taken, an in-progress course
   only as currently taking, a planned course only as planned, and a course
   without a status (every legacy `coursework` string) only neutrally ("my
-  coursework includes"). The template words each course by its status, the AI
-  brief labels it, and the shared gate refuses a course claimed beyond it.
+  coursework includes"). The template words each course by its status, and the
+  AI brief lists the courses under their status with each status's rule once.
+  The gate is a bounded English and Chinese pattern check, not semantic
+  verification: it reads a course by its code or listed title (also "Title
+  (CODE)"), exempts a claim only when its own verb phrase is negated,
+  conditional or future, and does not check a line of the student's confirmed
+  experience the draft repeats verbatim. A coursework listing may name any
+  listed course; elsewhere only a completed or in-progress course's name
+  supports a claim of competence in its topic.
 - Quantified achievements are checked against student resume bullets. The
   quantity and unit must be present; target facts, the current draft, and an edit
   instruction are not new student evidence.

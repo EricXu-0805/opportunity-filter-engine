@@ -10,6 +10,7 @@ from src.student_evidence import (
     course_sentences,
     courses_counted_as_taken,
     interest_experience_violations,
+    mask_course_names,
 )
 
 COURSES = [
@@ -97,3 +98,94 @@ def test_a_planned_course_does_not_count_as_taken_for_matching():
 ])
 def test_an_interest_is_never_stated_as_experience(claim, facts, flagged):
     assert interest_experience_violations(claim, "neural signal analysis, robotics", facts) == flagged
+
+
+# Fix round 1 (reviews of 8724591c). A planned CS 446 throughout.
+PLANNED = [{"name": "CS 446", "status": "planned"}, {"name": "CS 225", "status": "completed"}]
+TITLED = [{"name": "CS 446 Machine Learning", "status": "planned"},
+          {"name": "CS 225 Data Structures", "status": "completed"}]
+
+
+@pytest.mark.parametrize("claim", [
+    # A future word elsewhere in the sentence is not the claim's own.
+    "I have completed CS 446 and am available to start next semester.",
+    "I took CS 446 and hope to join your lab in the fall.",
+    "Having completed CS 446, I hope to join your lab next semester.",
+    "I am currently taking CS 446 and will finish it next semester.",
+    # Nor is a "would" or "once" outside the claim's own verb phrase.
+    "I would love to join your lab and have completed CS 446.",
+    "I would like to mention that I have completed CS 446.",
+    "Because I would like to contribute, I took CS 446.",
+    "I would love to contribute, having completed CS 446.",
+    "Once I joined UIUC, I took CS 446.",
+    "I once took CS 446.",
+    # "Not only" negates nothing.
+    "I have not only completed CS 446 but also built a classifier.",
+    # A title with its code in parentheses is the course its code names.
+    "I have completed Machine Learning (CS 446).",
+    "I have completed Data Structures (CS 225) and Machine Learning (CS 446).",
+    # Someone who is the student.
+    "As someone who has completed CS 446, I can help.",
+])
+def test_an_exemption_applies_only_to_the_claims_own_verb_phrase(claim):
+    assert course_claim_violations(claim, PLANNED) == ["unsupported course status: CS 446"]
+
+
+@pytest.mark.parametrize("claim", [
+    "I have completed Machine Learning.",
+    "I have completed Data Structures and Machine Learning.",
+    "I have completed data structures and machine learning.",
+])
+def test_a_listed_course_is_found_by_its_title(claim):
+    assert course_claim_violations(claim, TITLED) == ["unsupported course status: CS 446 Machine Learning"]
+
+
+@pytest.mark.parametrize(("claim", "courses"), [
+    ("I have not taken CS 446 yet.", PLANNED),
+    ("I am taking CS 446 next semester.", PLANNED),
+    ("Next semester, I am taking CS 446.", PLANNED),
+    ("If I took CS 446, I would know more.", PLANNED),
+    ("Once I have completed CS 446, I will apply.", PLANNED),
+    ("I would have completed CS 446 by then.", PLANNED),
+    ("I have completed Data Structures (CS 225).", PLANNED),
+    ("I have completed Data Structures.", TITLED),
+    # "While taking" says the course was taken at some point: a completed one was.
+    ("While taking CS 225, I built a Python parser.", PLANNED),
+    ("While taking CS 225, I built a Python parser.", [{"name": "CS 225", "status": "in_progress"}]),
+    # A requirement restated about other students claims nothing for this one.
+    ("Your program asks for students who have completed CS 225, which I am currently taking.",
+     [{"name": "CS 225", "status": "in_progress"}]),
+])
+def test_a_claim_the_courses_status_allows_or_that_claims_nothing_passes(claim, courses):
+    assert course_claim_violations(claim, courses) == []
+
+
+def test_while_taking_still_needs_a_course_that_was_taken():
+    assert course_claim_violations("While taking CS 446, I built a classifier.", PLANNED) == [
+        "unsupported course status: CS 446"]
+
+
+def test_the_students_own_confirmed_line_repeated_verbatim_is_theirs():
+    legacy = [{"name": "CS 225", "status": "unknown"}]
+    line = "Completed CS 225 project: built a Python parser"
+    text = f"One example of my experience:\n\n{line}."
+    assert course_claim_violations(text, legacy) == ["unsupported course status: CS 225"]
+    assert course_claim_violations(text, legacy, student_lines=[line]) == []
+    # Only the line itself: the model's own claim beside it is still checked,
+    # and a line that states no course exempts nothing.
+    assert course_claim_violations(f"{text} I have completed CS 225.", legacy, student_lines=[line]) == [
+        "unsupported course status: CS 225"]
+    assert course_claim_violations("I have completed CS 225.", legacy, student_lines=["CS 225"]) == [
+        "unsupported course status: CS 225"]
+
+
+@pytest.mark.parametrize(("text", "masked"), [
+    # A coursework listing may name any listed course, whatever its status.
+    ("My coursework includes Machine Learning.", "My coursework includes  ."),
+    # Elsewhere the name is ordinary words, judged by the competence check.
+    ("I have experience with machine learning.", "I have experience with machine learning."),
+    ("My coursework includes Machine Learning, so I have experience with machine learning.",
+     "My coursework includes  , so I have experience with machine learning."),
+])
+def test_only_a_coursework_listing_hides_a_courses_name(text, masked):
+    assert mask_course_names(text, [{"name": "Machine Learning", "status": "planned"}]) == masked

@@ -153,8 +153,8 @@ def test_all_accepted_fields_and_selected_experience_round_trip_as_json_without_
     assert field(brief, 'Skills (self-reported level)') == [
         {'name': skill['name'], 'level': 'experienced'} for skill in profile['hard_skills']]
     # M13: every legacy coursework string is a course without a status.
-    assert field(brief, 'Coursework (each course with the only way its status may be stated)') == [
-        {'course': name, 'status': COURSE_STATUS_LABELS['unknown']} for name in profile['coursework']]
+    assert field(brief, 'Coursework by status (each status states the only way its courses may be stated)') == {
+        COURSE_STATUS_LABELS['unknown']: profile['coursework']}
     assert field(brief, 'Research interests (aspirations, NOT evidence of experience)') == profile['research_interests_text']
     assert field(brief, 'Real resume experience (use ONLY these for any experience claim)') == [text]
     for label, key in [('LinkedIn', 'linkedin_url'), ('GitHub', 'github_url'), ('Google Scholar', 'scholar_url')]:
@@ -178,7 +178,8 @@ def test_generation_and_refinement_share_full_fields_and_source_rank(writing_cli
     data = calls[0][1]['content']
     assert field(data, 'Real resume experience (use ONLY these for any experience claim)')[0] == RELATED
     assert len(field(data, 'Skills (self-reported level)')) == 50
-    assert len(field(data, 'Coursework (each course with the only way its status may be stated)')) == 50
+    assert len(field(data, 'Coursework by status (each status states the only way its courses may be stated)')[
+        COURSE_STATUS_LABELS['unknown']]) == 50
     assert field(data, 'Research interests (aspirations, NOT evidence of experience)') == profile['research_interests_text']
 
 

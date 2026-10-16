@@ -361,9 +361,10 @@ _GRAD_BODY = (
     "research-level depth. This is the single most important sentence. "
     + _CHOSEN_PAPER_RULE + "\n"
     "3. Concrete standing: the applicant's actual research background — the "
-    "research experience, methods, and advanced coursework they listed — tied to "
-    "that work. Evidence, not self-praise; never claim a publication, degree, or "
-    "experience the applicant did not provide.\n"
+    "research experience and methods they listed, and their advanced coursework, "
+    "each course only as its status allows — tied to that work. Evidence, not "
+    "self-praise; never claim a publication, degree, or experience the applicant "
+    "did not provide.\n"
     "4. One clear ask: whether the professor is taking students or has openings "
     "for the relevant cycle, and a brief meeting to discuss fit; offer to share "
     "a CV or other materials on request (never claim anything is attached).\n"
@@ -411,9 +412,9 @@ _GRAD_BODY_NO_TARGET_DATA = (
     "topic, paper, or research area, and never claim to have read or "
     "followed their work.\n"
     "3. Concrete standing: the applicant's actual research background — the "
-    "research experience, methods, and advanced coursework they listed. "
-    "Evidence, not self-praise; never claim a publication, degree, or "
-    "experience the applicant did not provide.\n"
+    "research experience and methods they listed, and their advanced coursework, "
+    "each course only as its status allows. Evidence, not self-praise; never "
+    "claim a publication, degree, or experience the applicant did not provide.\n"
     "4. One clear ask: whether the professor is taking students or has openings "
     "for the relevant cycle, and a brief meeting to discuss fit; offer to share "
     "a CV or other materials on request (never claim anything is attached).\n"
@@ -450,9 +451,10 @@ _FACULTY_GRAD_BODY = (
     "research/current projects (a provided research area or topic, or the paper "
     "the student chose) and connect it to the applicant's OWN research direction "
     "or prior work at a substantive depth. " + _CHOSEN_PAPER_RULE + "\n"
-    "3. Concrete standing: the applicant's actual research background, "
-    "methods, and advanced coursework tied to the professor's research. Never "
-    "claim anything the applicant did not provide.\n"
+    "3. Concrete standing: the applicant's actual research background and "
+    "methods, and their advanced coursework, each course only as its status "
+    "allows, tied to the professor's research. Never claim anything the "
+    "applicant did not provide.\n"
     "4. One clear ask: whether the professor is taking students or has any "
     "current or upcoming research openings, and a brief meeting to discuss fit "
     "if so; offer to share a CV or other materials on request.\n"
@@ -487,9 +489,9 @@ _FACULTY_GRAD_BODY_NO_TARGET_DATA = (
     "or program, honestly and at that level. No specific research details were "
     "provided, so never invent a topic, paper, or research area, and never "
     "claim to have read or followed the professor's work.\n"
-    "3. Concrete standing: the applicant's actual research background, "
-    "methods, and advanced coursework. Never claim anything the applicant did "
-    "not provide.\n"
+    "3. Concrete standing: the applicant's actual research background and "
+    "methods, and their advanced coursework, each course only as its status "
+    "allows. Never claim anything the applicant did not provide.\n"
     "4. One clear ask: whether the professor is taking students or has any "
     "current or upcoming research openings, and a brief meeting to discuss fit "
     "if so; offer to share a CV or other materials on request.\n"
@@ -548,12 +550,13 @@ _HARD_RULES = (
     "- Research interests are aspirations, not experience. Quantified "
     "achievements must come from the student's real resume evidence, never "
     "from the professor's work, an edit instruction, or the existing draft.\n"
-    "- Each course in the STUDENT block carries its status. Only a completed "
+    "- The STUDENT block lists the courses under their status. Only a completed "
     "course may be stated as completed or taken; an in-progress course only as "
     "currently taking; a planned course only as planning to take, never as "
     "taken or as experience; a course without a status only neutrally (\"my "
-    "coursework includes\"), never as completed, taken or in progress. Never "
-    "name a course the student did not list.\n"
+    "coursework includes\"), never as taken, in progress or not taken. A course "
+    "the student did not list, such as a prerequisite the recipient names, may be "
+    "named only as the recipient's, never as one the student took or is taking.\n"
     "- Skills are annotated with the sender's self-reported level "
     "(beginner / experienced / expert). Emphasize expert and experienced "
     "skills; never present a beginner skill as a strength or claim "
@@ -1201,7 +1204,7 @@ def _render_student_brief(p: dict) -> str:
         ("Name", p["name"]),
         ("Year & major", {"year": p["year"], "major": p["major"], "school": p["school"]}),
         ("Skills (self-reported level)", skills),
-        ("Coursework (each course with the only way its status may be stated)",
+        ("Coursework by status (each status states the only way its courses may be stated)",
          course_brief(p.get("courses") or [])),
         (("Skills relevant to this professor's research/current projects" if p.get("faculty_is_professor")
           else "Skills relevant to this faculty member's research/current projects") if p.get("is_faculty")
@@ -2175,15 +2178,18 @@ def _email_grounding_findings(
         achievement_text, [str(b) for b in parts.get("resume_bullets", [])],
         activity_materials=parts.get("experience_materials_all"),
     ))
-    # M13: a listed course's own name may be written; what is claimed about it
-    # is the status rule's, and what the student knows the competence check's.
+    # M13: a coursework listing may name any listed course; elsewhere only a
+    # completed or in-progress course's name (in the student corpus) may stand
+    # for its topic. What is claimed about a course is the status rule's, and a
+    # confirmed experience line the draft repeats verbatim is the student's own.
     courses = parts.get("courses") or []
     borrowed = competence_violations(
         mask_course_names(text, courses), _student_email_corpus(parts), extra_allow=_EMAIL_SCAFFOLDING,
         interest_topics=str(parts.get("research_interests") or ""),
     )
     borrowed.extend(skill_level_violations(text, parts.get("skill_levels") or {}))
-    borrowed.extend(course_claim_violations(text, courses))
+    borrowed.extend(course_claim_violations(
+        text, courses, student_lines=[str(b) for b in parts.get("resume_bullets", [])]))
     return fabricated, borrowed
 
 

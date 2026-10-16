@@ -24,8 +24,10 @@ The same holds for courses and interests (checklist M13). A course is
 completed, in progress, planned or of unknown status, and only the first may be
 said to be done; every course stored before statuses existed is unknown, and
 is mentioned only neutrally until the student marks it (owner decision
-2026-10-16). An interest is never experience. The cold email, Tailor, Renovate
-and the ranker read both rules from here.
+2026-10-16). An interest is never experience. The cold email gate reads both
+rules from here (bounded patterns, not semantic verification); Tailor, Renovate
+and Ask-AI read each course's status, and the ranker which courses count as
+taken.
 """
 
 from __future__ import annotations
@@ -123,13 +125,13 @@ COURSE_STATEMENTS = {
     "unknown": "My coursework includes {courses}.",
 }
 
-# The same rule, as a model is told it beside each course.
+# The same rule, as a model is told it once for each status's courses.
 COURSE_STATUS_LABELS = {
     "completed": "completed (may be stated as completed or taken)",
     "in_progress": "in progress (state only as currently taking; never as completed)",
     "planned": "planned (state only as planning to take; never as taken, in progress or experience)",
-    "unknown": ("status not given (mention only neutrally, as 'my coursework includes'; "
-                "never as completed, taken or in progress)"),
+    "unknown": ("status not given: the student has not said whether they took these (mention only neutrally, "
+                "as 'my coursework includes'; never as taken, in progress or not taken)"),
 }
 
 # Statuses whose course may support a claim of the student's competence. A
@@ -182,8 +184,10 @@ def course_entries(profile: object) -> list[dict]:
 def courses_counted_as_taken(profile: object) -> list[str]:
     """Course names the ranker may score as taken: every course but a planned one.
 
-    In-progress and unknown courses count as every course did before statuses
-    existed; a planned course is not preparation the student has.
+    In-progress and unknown courses count as every named course did before
+    statuses existed (an entry with no letter or digit, such as "-", is no
+    course and no longer counts); a planned course is not preparation the
+    student has.
     """
     return [entry["name"] for entry in course_entries(profile) if entry["status"] != "planned"]
 
@@ -204,9 +208,11 @@ def course_sentences(entries: Iterable[Mapping], *, limit: int = 3) -> str:
     )
 
 
-def course_brief(entries: Iterable[Mapping]) -> list[dict[str, str]]:
-    """Each course with the words its status allows, for a model's student brief."""
-    return [{"course": entry["name"], "status": COURSE_STATUS_LABELS[entry["status"]]} for entry in entries]
+def course_brief(entries: Iterable[Mapping]) -> dict[str, list[str]]:
+    """The courses grouped by status, each status's rule stated once, for a model's student brief."""
+    entries = list(entries)
+    return {COURSE_STATUS_LABELS[status]: names for status in COURSE_STATUSES
+            if (names := [entry["name"] for entry in entries if entry["status"] == status])}
 
 
 def course_context_line(entries: Iterable[Mapping]) -> str:
@@ -214,10 +220,16 @@ def course_context_line(entries: Iterable[Mapping]) -> str:
     return ", ".join(f"{entry['name']} ({entry['status'].replace('_', ' ')})" for entry in entries)
 
 
-# A course is found where the text names a listed course (by its name, or by a
-# catalog code inside that name) or any catalog code at all ("CS 446"). An
-# unlisted course has no status, so nothing may be claimed done about it.
-_CODE = re.compile(r"(?<![A-Za-z0-9])[A-Z]{2,6}[ \-]?\d{2,4}[A-Z]?(?![A-Za-z0-9])")
+# A course is identified by its code or its listed title: where the text names
+# a listed course (its whole name, a catalog code inside it, or its title — the
+# name without its code), any catalog code at all ("CS 446"), or a title with
+# its code in parentheses ("Machine Learning (CS 446)"), which is the course its
+# code names. An unlisted course has no status, so nothing may be claimed done
+# about it.
+_CODE_TEXT = r"[A-Z]{2,6}[ \-]?\d{2,4}[A-Z]?"
+_CODE = re.compile(rf"(?<![A-Za-z0-9]){_CODE_TEXT}(?![A-Za-z0-9])")
+_TITLE_WORD = r"(?:[A-Z][\w'’&-]*|of|to|for|the|in|and|with|&)"
+_TITLE_CODE = re.compile(rf"[A-Z][\w'’&-]*(?:\s+{_TITLE_WORD}){{0,7}}\s*\(\s*(?P<code>{_CODE_TEXT})\s*\)")
 _YEARLIKE = re.compile(r"(?:19[5-9]\d|20[0-4]\d)$")
 
 
@@ -237,24 +249,40 @@ def _course_aliases(entries: Iterable[Mapping]) -> list[tuple[re.Pattern, Mappin
     aliases: list[tuple[int, re.Pattern, Mapping]] = []
     for entry in entries:
         name = str(entry.get("name") or "")
-        for alias in dict.fromkeys([name, *(m.group() for m in _CODE.finditer(name))]):
+        title = _CODE.sub(" ", name) if re.search(r"[^\W\d_]", _CODE.sub(" ", name)) else ""
+        for alias in dict.fromkeys([name, *(m.group() for m in _CODE.finditer(name)), title]):
             pattern = _alias_pattern(alias)
             if pattern is not None:
-                aliases.append((len(alias), pattern, entry))
+                aliases.append((len(alias.strip()), pattern, entry))
     return [(pattern, entry) for _, pattern, entry in sorted(aliases, key=lambda item: -item[0])]
 
 
-def mask_course_names(text: str, entries: Iterable[Mapping]) -> str:
-    """``text`` with every listed course's name blanked.
+# "My coursework includes X": the neutral listing every course may take.
+_LISTING = re.compile(r"\bmy\s+(?:\w+\s+)?(?:coursework|courses)\s+(?:includes?|spans?)\b", re.I)
 
-    A course's own name is the student's data and may always be written; what
-    may be said about it is the status rule's to judge, and what the student
-    may claim to know is the competence check's, without the course title
-    standing in as its own proof.
+
+def mask_course_names(text: str, entries: Iterable[Mapping]) -> str:
+    """``text`` with each listed course a coursework listing names blanked.
+
+    "My coursework includes Machine Learning" names the student's course
+    without claiming anything about it, whatever its status, so the competence
+    check never reads those names. Anywhere else a course's name is ordinary
+    words: only a completed or in-progress course is in the student's
+    competence corpus, so only its name may stand for its topic, and "I have
+    experience with machine learning" is refused for a planned or unmarked
+    "Machine Learning" course.
     """
-    for pattern, _entry in _course_aliases(entries):
-        text = pattern.sub(" ", text)
-    return text
+    aliases = _course_aliases(entries)
+    spans = {(head.end() + start, head.end() + end)
+             for head in _LISTING.finditer(text)
+             for _name, entry, start, end in _courses_named(text[head.end():], aliases, bare=False)
+             if entry is not None}
+    kept, pos = [], 0
+    for start, end in sorted(spans):
+        if end > pos:
+            kept.append(text[pos:max(start, pos)] + " ")
+            pos = end
+    return "".join(kept) + text[pos:]
 
 
 _CLAUSE = re.compile(
@@ -266,8 +294,9 @@ _ADVERBS = r"(?:(?:already|successfully|recently|also|previously|just|both|curre
 # Completion: "I (have) completed / took / have taken / passed", "after
 # completing", "completed coursework", "courses I have taken", and a résumé
 # line opening on the verb. Current enrolment: "I am (currently) taking /
-# enrolled in", "current courses", "while taking". Bounded English and
-# Chinese patterns, not semantic entailment.
+# enrolled in", "current courses". "While taking" says only that the course
+# was taken at some point, finished or not. Bounded English and Chinese
+# patterns, not semantic entailment.
 _DONE_HEAD = re.compile(
     rf"\b(?:i|we)\s+(?:have\s+|['’]ve\s+|had\s+|['’]d\s+)?{_ADVERBS}(?:completed|finished|passed|took|taken)\b"
     rf"|\b(?:have|has|['’]ve|had)\s+{_ADVERBS}(?:completed|finished|passed|taken)\b"
@@ -285,17 +314,21 @@ _BARE_DONE = re.compile(r"\b(?:completed|finished|took|taken|passed)\b", re.I)
 _NOW_HEAD = re.compile(
     rf"\b(?:i\s+am|i['’]m|am|we\s+are|we['’]re)\s+{_ADVERBS}(?:taking|enrolled\s+in|registered\s+for)\b"
     r"|\b(?:currently|presently|now)\s+(?:taking|enrolled\s+in|registered\s+for)\b"
-    r"|\bwhile\s+(?:also\s+)?taking\b"
     r"|\b(?:current|ongoing)\s+(?:coursework|courses?|class(?:es)?)\b"
     r"|\b(?:coursework|courses?|class(?:es)?)\s+(?:that\s+|which\s+)?i\s*(?:am|['’]m)\s+(?:currently\s+)?taking\b"
     r"|^\s*(?:currently\s+)?(?:taking|enrolled\s+in)\b"
     r"|正在(?:修读|修|上|学习|学)|(?:目前|本学期|这学期)(?:在|正在)?(?:修读|修|上|学习|学)",
     re.I,
 )
-_NEGATED = re.compile(r"(?:\b(?:not|never|no|yet|without)|n['’]t|没有|没|未|尚未)\s*(?:\w+\s+){0,2}$", re.I)
+_WHILE_TAKING = re.compile(r"\bwhile\s+(?:also\s+)?taking\b", re.I)
+# Each claim shape and the statuses whose course it may name.
+_HEADS = ((frozenset({"completed"}), _DONE_HEAD), (frozenset({"in_progress"}), _NOW_HEAD),
+          (frozenset({"completed", "in_progress"}), _WHILE_TAKING))
+_NEGATED = re.compile(
+    r"(?:\b(?:not(?!\s+only\b)|never|no|yet|without)\b|n['’]t|没有|没|未|尚未)\s*(?:\w+\s+){0,2}$", re.I)
 _NOT_YET = re.compile(
-    r"\b(?:will|would|plan(?:ning)?\s+to|hope\s+to|intend\s+to|expect\s+to|going\s+to|once|unless|until|if)\b"
-    r"|将|计划|打算|准备",
+    r"\b(?:will|would|plan(?:ning)?\s+to|hope\s+to|intend\s+to|expect\s+to|going\s+to|unless|until|if)\b"
+    r"|\bonce(?=\s+(?:i|we)\b)|将|计划|打算|准备",
     re.I,
 )
 _FUTURE = re.compile(
@@ -303,6 +336,16 @@ _FUTURE = re.compile(
     r"|\bin\s+the\s+(?:fall|spring|summer|winter|future)\b|下学期|明年|将来",
     re.I,
 )
+# A future time phrase that opens a clause, or stands right after its courses.
+_FUTURE_AT = re.compile(rf"[\s,]*(?:(?:this|starting|beginning|from)\s+)?(?:{_FUTURE.pattern})", re.I)
+# Where the verb phrase before a claim's verb can start: after a comma or a
+# conjunction, at the word before its subject ("if" in "if I took").
+_STOP = re.compile(r"[,;:()，、：]|\b(?:and|or|but|so|that|which|who)\b", re.I)
+_SUBJECT = re.compile(r"\b(?:i|we)\b|我们?", re.I)
+# A verb with someone else as its subject: "students who have completed".
+_OTHER_SUBJECT = re.compile(
+    r"\b(?:you|they|he|she|students|applicants|candidates|undergraduates|those|anyone|others)"
+    r"(?:\s+(?:who|that))?\s+(?:\w+\s+)?$", re.I)
 _SEP = re.compile(r"(?:[\s,;/&()\[\]\-–—'’\"“”《》「」、，]|和|与|及|以及|了|过|的)+")
 _FILLER = re.compile(
     r"(?:the|my|a|an|both|two|three|four|several|relevant|related|introductory|intro|advanced|"
@@ -317,24 +360,33 @@ _WORD = re.compile(r"[^\W_]+")
 _NOUN_AHEAD = re.compile(r"(?:[^\W_]+[\s-]+){1,4}(?=(?:coursework|courses?|class(?:es)?)\b)", re.I)
 
 
-def _courses_named(span: str, aliases: list[tuple[re.Pattern, Mapping]], *, bare: bool) -> list[tuple[str, Mapping | None]]:
-    """The courses an object span names, read from its start: "the courses CS 225 and CS 446"."""
-    found: list[tuple[str, Mapping | None]] = []
+def _courses_named(span: str, aliases: list[tuple[re.Pattern, Mapping]], *,
+                   bare: bool) -> list[tuple[str, Mapping | None, int, int]]:
+    """The courses an object span names, read from its start, each with where it stands in the span.
+
+    "the courses CS 225 and CS 446", "Data Structures (CS 225) and Machine
+    Learning (CS 446)".
+    """
+    found: list[tuple[str, Mapping | None, int, int]] = []
     pos, free, started = 0, 0, False
     while True:
         sep = _SEP.match(span, pos)
         pos = sep.end() if sep else pos
         if pos >= len(span):
             return found
-        hit = next(((m, entry) for pattern, entry in aliases if (m := pattern.match(span, pos))), None)
-        code = None if hit else _CODE.match(span, pos)
-        if hit or code:
-            match, entry = hit if hit else (code, None)
-            if entry is not None or not _YEARLIKE.search(match.group()):
-                found.append((entry["name"] if entry is not None else match.group(), entry))
-            pos, started = match.end(), True
-            tail = _TITLE_TAIL.match(span, pos)
-            pos = tail.end() if tail else pos
+        match, entry = next(((m, entry) for pattern, entry in aliases if (m := pattern.match(span, pos))),
+                            (None, None))
+        name = entry["name"] if entry is not None else ""
+        if match is None and (match := _CODE.match(span, pos) or _TITLE_CODE.match(span, pos)) is not None:
+            name = match.groupdict().get("code") or match.group()
+            entry = next((candidate for pattern, candidate in aliases if pattern.fullmatch(name)), None)
+            name = entry["name"] if entry is not None else name
+        if match is not None:
+            tail = _TITLE_TAIL.match(span, match.end())
+            end = tail.end() if tail else match.end()
+            if entry is not None or not _YEARLIKE.search(name):
+                found.append((name, entry, match.start(), end))
+            pos, started = end, True
             continue
         if (filler := _FILLER.match(span, pos)) is not None:
             pos, started = filler.end(), True
@@ -362,36 +414,73 @@ def _courses_named(span: str, aliases: list[tuple[re.Pattern, Mapping]], *, bare
         return found
 
 
-def course_claim_violations(text: str, entries: Iterable[Mapping]) -> list[str]:
-    """Courses the text claims done, or claims to be taking, when their status does not allow it.
+def _claims_nothing(prefix: str, head: str) -> bool:
+    """Whether a completion or enrolment verb claims nothing for the student, judged on its own verb phrase.
 
-    Only a ``completed`` course may be stated as completed or taken, and only
-    an ``in_progress`` course as currently taken. A planned course may be named
-    as a plan and an unknown one only neutrally ("my coursework includes"). A
-    course the student did not list has no status at all. Negated, conditional
-    and future statements ("I have not taken", "once I take", "I am taking it
-    next semester") claim nothing.
+    A negation right before the verb ("have not taken"), someone else as its
+    subject ("students who have completed"), or a conditional, modal or future
+    word from the word before its subject to its verb ("if I took", "I would
+    have completed"). The same word elsewhere in the sentence ("I would love to
+    join and have completed CS 446") exempts nothing.
     """
-    entries = list(entries)
-    aliases = _course_aliases(entries)
+    if _NEGATED.search(prefix):
+        return True
+    stops = list(_STOP.finditer(prefix))
+    phrase = (prefix[stops[-1].end():] if stops else prefix) + head
+    subjects = list(_SUBJECT.finditer(phrase))
+    if subjects:
+        before = re.search(r"[^\W_]+\W*$", phrase[:subjects[-1].start()])
+        phrase = phrase[before.start() if before else subjects[-1].start():]
+    elif _OTHER_SUBJECT.search(prefix):
+        return True
+    return bool(_NOT_YET.search(phrase) or _FUTURE.search(phrase))
+
+
+def _course_findings(text: str, aliases: list[tuple[re.Pattern, Mapping]]) -> set[str]:
     findings: set[str] = set()
     for clause in _CLAUSE.split(text or ""):
-        if not clause.strip() or _FUTURE.search(clause):
+        if not clause.strip() or _FUTURE_AT.match(clause):
             continue
-        for allowed, head_re in (("completed", _DONE_HEAD), ("in_progress", _NOW_HEAD)):
+        for allowed, head_re in _HEADS:
             heads = [(m, False) for m in head_re.finditer(clause)]
-            if allowed == "completed":
+            if head_re is _DONE_HEAD:
                 covered = [m.span() for m, _ in heads]
                 heads += [(m, True) for m in _BARE_DONE.finditer(clause)
                           if not any(start <= m.start() < end for start, end in covered)]
             for head, bare in heads:
-                prefix = clause[:head.start()]
-                if _NEGATED.search(prefix) or _NOT_YET.search(prefix):
+                if _claims_nothing(clause[:head.start()], head.group()):
                     continue
-                for name, entry in _courses_named(clause[head.end():], aliases, bare=bare):
-                    if entry is None or entry["status"] != allowed:
+                named = _courses_named(clause[head.end():], aliases, bare=bare)
+                if named and _FUTURE_AT.match(clause, head.end() + named[-1][3]):
+                    continue
+                for name, entry, _start, _end in named:
+                    if entry is None or entry["status"] not in allowed:
                         findings.add(f"unsupported course status: {name}")
-    return sorted(findings)
+    return findings
+
+
+def course_claim_violations(text: str, entries: Iterable[Mapping], *, student_lines: Iterable[str] = ()) -> list[str]:
+    """Courses the text claims done, or claims to be taking, when their status does not allow it.
+
+    Only a ``completed`` course may be stated as completed or taken, only an
+    ``in_progress`` course as currently taken, and "while taking" either. A
+    planned course may be named as a plan and an unknown one only neutrally
+    ("my coursework includes"). A course the student did not list has no
+    status at all. A claim is exempt only when its own verb phrase is negated,
+    conditional or future, or has someone else as its subject; a future time
+    phrase counts where it opens the clause or follows the courses ("I am
+    taking CS 446 next semester"). ``student_lines`` are the student's own
+    confirmed experience: a line of it that states a course, repeated verbatim
+    ("Completed CS 225 project: built a parser"), is their statement, not one
+    to check.
+    """
+    aliases = _course_aliases(list(entries))
+    text = text or ""
+    for line in student_lines:
+        line = str(line).strip().rstrip(".!?。！？").strip()
+        if line and _course_findings(line, aliases):
+            text = text.replace(line, " ")
+    return sorted(_course_findings(text, aliases))
 
 
 # ---------------------------------------------------------------------------

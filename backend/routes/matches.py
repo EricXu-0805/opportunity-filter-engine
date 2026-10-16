@@ -872,6 +872,13 @@ def _snapshot_key(
         field: profile_dict.get(field)
         for field in sorted(_SCORING_PROFILE_FIELDS)
     }
+    if isinstance(scoring_profile["courses"], list):
+        # The ranker reads a course's name and status only; its source and
+        # résumé line must not split the cache.
+        scoring_profile["courses"] = [
+            [course.get("name"), course.get("status")] if isinstance(course, dict) else course
+            for course in scoring_profile["courses"]
+        ]
     payload = json.dumps(
         scoring_profile,
         sort_keys=True,

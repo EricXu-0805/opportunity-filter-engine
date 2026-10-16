@@ -133,7 +133,7 @@ _MAX_SOURCE_TOTAL_CHARACTERS = _DEFAULT_BULLETS_PER_REQUEST * _MAX_BULLET_CHARAC
 # response with the target echo so a client can pair a suggestion set to the
 # exact target + code that produced it (W13; mirrors the W12 cold-email
 # provenance contract).
-TAILOR_PIPELINE_VERSION = "w14.1"
+TAILOR_PIPELINE_VERSION = "w14.2"
 
 TAILOR_PROMPT_MAX_CHARACTERS = 120_000
 # The renovation plan is ID-only and must leave the rewrite and its review
@@ -219,16 +219,19 @@ _STUDENT_CONTEXT_RULE_EN = (
     "skill, course or interest is never proof that a unit used it, and none of its words may enter a rewrite unless "
     "the unit's original already says it. Represent a skill honestly at its stated level when the original already "
     "uses it: never present a beginner skill as mastery - no 'proficient in' or 'expert at' - and never add a "
-    "proficiency qualifier of your own. Only a completed course was taken: never present a planned, in-progress or "
-    "unknown course as completed, and never present an interest as experience.\n"
+    "proficiency qualifier of your own. A course's status says what is known: completed was taken, in progress is "
+    "being taken, planned is not taken yet, and unknown means the student has not said, so never state that it was "
+    "or was not taken. Never present a planned, in-progress or unknown course as completed, and never present an "
+    "interest as experience.\n"
 )
 _STUDENT_CONTEXT_RULE_ZH = (
     "学生背景（STUDENT CONTEXT）：用户消息开头可能有学生的姓名、年级与专业、带自评水平（beginner / experienced / "
     "expert）的技能、带修读状态（completed 已修 / in progress 在修 / planned 计划修 / unknown 未标注）的课程和研究兴趣。"
     "它们只提供方向，绝不是证据：可以说明哪些经历对学生更重要，但技能、课程或兴趣"
     "绝不能证明某一条经历用过它；除非该条原文已经写了，这些词都不能进入改写。原文已使用的技能按自评水平如实表述："
-    "beginner 的技能绝不能写成精通或熟练掌握，也不要自己添加任何水平限定语。只有已修课程才算修过：绝不能把计划修、在修"
-    "或未标注的课程写成已修完，也绝不能把兴趣写成经历。\n"
+    "beginner 的技能绝不能写成精通或熟练掌握，也不要自己添加任何水平限定语。课程状态说明已知的情况：已修表示修过，在修表示"
+    "正在修，计划修表示还没修，未标注表示学生没有说明，既不能写成修过，也不能写成没修过。绝不能把计划修、在修或未标注的"
+    "课程写成已修完，也绝不能把兴趣写成经历。\n"
 )
 _LANGUAGE_RULE_EN = (
     "OUTPUT LANGUAGE. Write each rewrite in the language of its own original: an English line stays English and a "

@@ -1167,7 +1167,20 @@ def _implicit_steer(profile: dict) -> set[str]:
     return set() if has_explicit_interest else _profile_implicit_keywords(profile)
 
 
-def _coursework_focus_bonus(profile: dict, opportunity: dict) -> float:
+def _student_course_sets(profile: dict) -> tuple[frozenset[str], frozenset[str]]:
+    """The courses counted as taken (every course but a planned one, M13) and their words.
+
+    One profile's answer for every opportunity: rank_all reads it once per
+    request, as it does the skill map, and passes it down.
+    """
+    return _course_sets(tuple(courses_counted_as_taken(profile)))
+
+
+def _coursework_focus_bonus(
+    profile: dict,
+    opportunity: dict,
+    course_sets: tuple[frozenset[str], frozenset[str]] | None = None,
+) -> float:
     """Additive lift (0..COURSEWORK_FOCUS_BONUS) for coursework that names this
     professor's field, growing across the right half of the search-focus slider.
 
@@ -1187,10 +1200,9 @@ def _coursework_focus_bonus(profile: dict, opportunity: dict) -> float:
     sw = max(0, min(100, profile.get("search_weight", 50) or 0))
     if sw <= 50:
         return 0.0
-    courses = courses_counted_as_taken(profile)
+    courses, tokens = course_sets if course_sets is not None else _student_course_sets(profile)
     if not courses:
         return 0.0
-    _, tokens = _course_sets(tuple(courses))
     relevance = _coursework_relevance(opportunity, tokens)
     if relevance <= 0.0:
         return 0.0
@@ -2194,8 +2206,12 @@ def score_eligibility(
     return total, reasons_fit, reasons_gap
 
 
-def score_readiness(profile: dict, opportunity: dict) -> tuple[float, list[str], list[str]]:
-    """Score readiness (0-100)."""
+def score_readiness(
+    profile: dict,
+    opportunity: dict,
+    course_sets: tuple[frozenset[str], frozenset[str]] | None = None,
+) -> tuple[float, list[str], list[str]]:
+    """Score readiness (0-100). ``course_sets`` is ``_student_course_sets(profile)``, read once by rank_all."""
     is_faculty_contact = faculty_contact_claims_unverified(opportunity)
     app = {} if is_faculty_contact else (opportunity.get("application") or {})
     reasons_fit = []
@@ -2226,8 +2242,9 @@ def score_readiness(profile: dict, opportunity: dict) -> tuple[float, list[str],
         )
 
     # M13: a planned course is not preparation the student has; in-progress
-    # and unmarked courses count as every course did before statuses existed.
-    student_courses, course_tokens = _course_sets(tuple(courses_counted_as_taken(profile)))
+    # and unmarked courses count as every named course did before statuses
+    # existed.
+    student_courses, course_tokens = course_sets if course_sets is not None else _student_course_sets(profile)
     course_score = _coursework_score(student_courses, opportunity, course_tokens=course_tokens)
 
     # Cold email (15%)
@@ -3440,6 +3457,7 @@ def _rank_opportunity_unlocked(
     implicit_keywords: set[str] | None = None,
     responsiveness: dict[str, dict] | None = None,
     contact_checked_at: datetime | None = None,
+    course_sets: tuple[frozenset[str], frozenset[str]] | None = None,
 ) -> MatchResult:
     st = _opp_static(opportunity)
 
@@ -3456,6 +3474,8 @@ def _rank_opportunity_unlocked(
         implicit_keywords = _implicit_steer(profile)
     if contact_checked_at is None:
         contact_checked_at = _contact_checked_at(date.today())
+    if course_sets is None:
+        course_sets = _student_course_sets(profile)
 
     desired_lc = {f.lower() for f in profile.get("desired_fields", [])}
     desired_overlap = _desired_field_overlap(
@@ -3466,7 +3486,7 @@ def _rank_opportunity_unlocked(
         elig_score, elig_fit, elig_gap = precomputed_eligibility
     else:
         elig_score, elig_fit, elig_gap = score_eligibility(profile, opportunity)
-    ready_score, ready_fit, ready_gap = score_readiness(profile, opportunity)
+    ready_score, ready_fit, ready_gap = score_readiness(profile, opportunity, course_sets)
     up_score, up_fit, up_gap = score_upside(
         profile, opportunity,
         precomputed_sim=precomputed_sim,
@@ -3486,7 +3506,7 @@ def _rank_opportunity_unlocked(
     college_bonus = _college_affinity(profile, opportunity)
     home_bonus = _home_school_affinity(profile, opportunity)
     resp_bonus = _responsiveness_bonus(opportunity, responsiveness)
-    course_bonus = _coursework_focus_bonus(profile, opportunity)
+    course_bonus = _coursework_focus_bonus(profile, opportunity, course_sets)
     raw = min(100.0, raw + interest_bonus + major_bonus + college_bonus + home_bonus
               + resp_bonus + course_bonus)
 
@@ -4133,6 +4153,7 @@ def _iter_scored_results_unlocked(
     ctx = _filter_context(profile)
     profile_skill_map = _parse_skills(profile.get("hard_skills", []))
     implicit_kw = _implicit_steer(profile)
+    course_sets = _student_course_sets(profile)
     research_text = (profile.get("research_interests_text") or "").lower()
     min_threshold = (profile.get("preferences") or {}).get("min_match_threshold", 0)
     contact_checked_at = _contact_checked_at(date.today())
@@ -4155,6 +4176,7 @@ def _iter_scored_results_unlocked(
                 implicit_keywords=implicit_kw,
                 responsiveness=responsiveness,
                 contact_checked_at=contact_checked_at,
+                course_sets=course_sets,
             )
             if result.final_score >= min_threshold:
                 yield result
