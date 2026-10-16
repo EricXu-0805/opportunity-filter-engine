@@ -220,21 +220,22 @@ def course_context_line(entries: Iterable[Mapping]) -> str:
     return ", ".join(f"{entry['name']} ({entry['status'].replace('_', ' ')})" for entry in entries)
 
 
-# A course is identified by its code or its listed title: where the text names
-# a listed course (its whole name, a catalog code inside it, or its title — the
-# name without its code), any catalog code at all ("CS 446"), or a title with
-# its code in parentheses ("Machine Learning (CS 446)"), which is the course its
-# code names. An unlisted course has no status, so nothing may be claimed done
-# about it.
+# Only courses the student listed are checked; text naming a course code or
+# title the student never listed is not a course claim. A listed course is
+# recognised by its code, or by its title written with the same capitalisation
+# as in the list: lower-case, "machine learning" is the topic. A title with its
+# code in parentheses ("Machine Learning (CS 446)") is the course its code
+# names, and an unlisted code is read only to find where a list of courses ends.
 _CODE_TEXT = r"[A-Z]{2,6}[ \-]?\d{2,4}[A-Z]?"
 _CODE = re.compile(rf"(?<![A-Za-z0-9]){_CODE_TEXT}(?![A-Za-z0-9])")
+_LISTED_CODE = re.compile(_CODE.pattern, re.I)
 _TITLE_WORD = r"(?:[A-Z][\w'’&-]*|of|to|for|the|in|and|with|&)"
 _TITLE_CODE = re.compile(rf"[A-Z][\w'’&-]*(?:\s+{_TITLE_WORD}){{0,7}}\s*\(\s*(?P<code>{_CODE_TEXT})\s*\)")
 _YEARLIKE = re.compile(r"(?:19[5-9]\d|20[0-4]\d)$")
 
 
 @lru_cache(maxsize=4096)
-def _alias_pattern(name: str) -> re.Pattern | None:
+def _alias_pattern(name: str, any_case: bool) -> re.Pattern | None:
     words = re.findall(r"[^\W_]+", name)
     if not words:
         return None
@@ -242,16 +243,22 @@ def _alias_pattern(name: str) -> re.Pattern | None:
     for before, word in zip(words, words[1:], strict=False):
         joint = r"[\W_]+" if before[-1].isdigit() == word[0].isdigit() else r"[\W_]*"
         pattern += joint + re.escape(word)
-    return re.compile(rf"(?<![A-Za-z0-9]){pattern}(?![A-Za-z0-9])", re.I)
+    return re.compile(rf"(?<![A-Za-z0-9]){pattern}(?![A-Za-z0-9])", re.I if any_case else 0)
 
 
 def _course_aliases(entries: Iterable[Mapping]) -> list[tuple[re.Pattern, Mapping]]:
     aliases: list[tuple[int, re.Pattern, Mapping]] = []
     for entry in entries:
         name = str(entry.get("name") or "")
-        title = _CODE.sub(" ", name) if re.search(r"[^\W\d_]", _CODE.sub(" ", name)) else ""
-        for alias in dict.fromkeys([name, *(m.group() for m in _CODE.finditer(name)), title]):
-            pattern = _alias_pattern(alias)
+        rest = _LISTED_CODE.sub(" ", name)
+        title = rest if re.search(r"[^\W\d_]", rest) else ""
+        # Its codes in any case; its name and title only as written, unless
+        # the name is only a code.
+        forms = {name: not title, **dict.fromkeys((m.group() for m in _LISTED_CODE.finditer(name)), True)}
+        if title:
+            forms.setdefault(title, False)
+        for alias, any_case in forms.items():
+            pattern = _alias_pattern(alias, any_case)
             if pattern is not None:
                 aliases.append((len(alias.strip()), pattern, entry))
     return [(pattern, entry) for _, pattern, entry in sorted(aliases, key=lambda item: -item[0])]
@@ -325,10 +332,10 @@ _WHILE_TAKING = re.compile(r"\bwhile\s+(?:also\s+)?taking\b", re.I)
 _HEADS = ((frozenset({"completed"}), _DONE_HEAD), (frozenset({"in_progress"}), _NOW_HEAD),
           (frozenset({"completed", "in_progress"}), _WHILE_TAKING))
 _NEGATED = re.compile(
-    r"(?:\b(?:not(?!\s+only\b)|never|no|yet|without)\b|n['’]t|没有|没|未|尚未)\s*(?:\w+\s+){0,2}$", re.I)
+    r"(?:\b(?:not(?!\s+only\b)|never|no|without)\b|n['’]t|没有|没|未|尚未)\s*(?:\w+\s+){0,2}$", re.I)
 _NOT_YET = re.compile(
     r"\b(?:will|would|plan(?:ning)?\s+to|hope\s+to|intend\s+to|expect\s+to|going\s+to|unless|until|if)\b"
-    r"|\bonce(?=\s+(?:i|we)\b)|将|计划|打算|准备",
+    r"|['’]ll\b|['’]d\s+have\b|\bonce(?=\s+(?:i|we)\b)|将|计划|打算|准备",
     re.I,
 )
 _FUTURE = re.compile(
@@ -337,7 +344,8 @@ _FUTURE = re.compile(
     re.I,
 )
 # A future time phrase that opens a clause, or stands right after its courses.
-_FUTURE_AT = re.compile(rf"[\s,]*(?:(?:this|starting|beginning|from)\s+)?(?:{_FUTURE.pattern})", re.I)
+_FUTURE_AT = re.compile(
+    rf"[\s,]*(?:(?:for|in|during)\s+(?:the\s+)?)?(?:(?:this|starting|beginning|from)\s+)?(?:{_FUTURE.pattern})", re.I)
 # Where the verb phrase before a claim's verb can start: after a comma or a
 # conjunction, at the word before its subject ("if" in "if I took").
 _STOP = re.compile(r"[,;:()，、：]|\b(?:and|or|but|so|that|which|who)\b", re.I)
@@ -355,7 +363,8 @@ _FILLER = re.compile(
 )
 _COURSE_NOUN = re.compile(r"(?:coursework|courses?|class(?:es)?|modules?)\b", re.I)
 _INTRO = re.compile(r"(?:in|on|including|includes?|such\s+as|like|namely|are|is)\b|:", re.I)
-_TITLE_TAIL = re.compile(r"(?:\s+(?:[A-Z][a-z][\w'’-]*|of|to|for|the|in|with|&))+")
+# A title after a code ends on a capitalised word: "CS 446 in the fall" has none.
+_TITLE_TAIL = re.compile(r"(?:(?:\s+(?:of|to|for|the|in|with|&))*\s+[A-Z][a-z][\w'’-]*)+")
 _WORD = re.compile(r"[^\W_]+")
 _NOUN_AHEAD = re.compile(r"(?:[^\W_]+[\s-]+){1,4}(?=(?:coursework|courses?|class(?:es)?)\b)", re.I)
 
@@ -459,7 +468,7 @@ def _course_findings(text: str, aliases: list[tuple[re.Pattern, Mapping]]) -> se
                         opens_future or (named and _FUTURE_AT.match(clause, head.end() + named[-1][3]))):
                     continue
                 for name, entry, _start, _end in named:
-                    if entry is None or entry["status"] not in allowed:
+                    if entry is not None and entry["status"] not in allowed:
                         findings.add((allowed, name))
     return findings
 
@@ -471,15 +480,16 @@ def course_claim_violations(text: str, entries: Iterable[Mapping], *, student_li
     Only a ``completed`` course may be stated as completed or taken, only an
     ``in_progress`` course as currently taken, and "while taking" either. A
     planned course may be named as a plan and an unknown one only neutrally
-    ("my coursework includes"). A course the student did not list has no
-    status at all. A claim is exempt only when its own verb phrase is negated,
-    conditional or future, or has someone else as its subject; a future time
-    phrase that opens the clause or follows the courses makes only an
-    enrolment claim future ("I am taking CS 446 next semester"), never a
-    completion ("I took CS 446 in the fall"). ``student_lines`` are the student's own
-    confirmed experience: a line of it that states a course, repeated verbatim
-    ("Completed CS 225 project: built a parser"), is their statement, not one
-    to check. ``student_draft`` is the student's own draft that ``text`` edits:
+    ("my coursework includes"). Only listed courses are checked, each read by
+    its code or by its title as the list capitalises it; text naming a course
+    the student never listed is no course claim. A claim is exempt only when
+    its own verb phrase is negated, conditional or future, or has someone else
+    as its subject; a future time phrase that opens the clause or follows the
+    courses makes only an enrolment claim future ("I am taking CS 446 next
+    semester"), never a completion ("I took CS 446 in the fall").
+    ``student_lines`` are the student's own confirmed experience: a line of it
+    that states a course, repeated verbatim ("Completed CS 225 project: built a
+    parser"), is their statement, not one to check. ``student_draft`` is the student's own draft that ``text`` edits:
     a claim it already makes (the same kind of claim about the same course) is
     theirs, so only a claim new to ``text`` is a finding.
     """

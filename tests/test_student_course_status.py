@@ -76,12 +76,26 @@ def test_each_status_is_stated_in_its_own_words():
     ("I completed MATH 241.", ["MATH 241"]),
     ("After completing MATH 241, I built a solver.", ["MATH 241"]),
     ("I have completed ECE 448.", ["ECE 448"]),
-    ("I completed CS 999.", ["CS 999"]),
     ("我修过 CS 446。", ["CS 446 Machine Learning"]),
     ("我正在修改 CS 225 的作业。", []),
 ])
 def test_only_a_course_whose_status_allows_it_may_be_claimed_done_or_current(claim, flagged):
     assert course_claim_violations(claim, entries()) == [f"unsupported course status: {name}" for name in flagged]
+
+
+@pytest.mark.parametrize("claim", [
+    "I completed CS 999.",
+    "I have completed COVID-19 lab safety training.",
+    "I have completed OSHA 10 safety training.",
+    "I passed IEEE 754 compliance testing.",
+    "Completed SAT 1550 and ACT 34 test prep.",
+])
+def test_only_courses_the_student_listed_are_checked(claim):
+    """Text naming a course code or title the student never listed is not a course claim (fix round 3)."""
+    assert course_claim_violations(claim, entries()) == []
+    # An unlisted code beside a listed course does not hide the listed one.
+    assert course_claim_violations("I completed CS 999 and CS 446.", entries()) == [
+        "unsupported course status: CS 446 Machine Learning"]
 
 
 def test_a_planned_course_does_not_count_as_taken_for_matching():
@@ -124,6 +138,9 @@ TITLED = [{"name": "CS 446 Machine Learning", "status": "planned"},
     "I once took CS 446.",
     # "Not only" negates nothing.
     "I have not only completed CS 446 but also built a classifier.",
+    # Nor does "yet" as a conjunction, and "I'd" alone is "I had".
+    "I am only a sophomore, yet I have already completed CS 446.",
+    "I'd completed CS 446 before joining.",
     # A title with its code in parentheses is the course its code names.
     "I have completed Machine Learning (CS 446).",
     "I have completed Data Structures (CS 225) and Machine Learning (CS 446).",
@@ -134,22 +151,40 @@ def test_an_exemption_applies_only_to_the_claims_own_verb_phrase(claim):
     assert course_claim_violations(claim, PLANNED) == ["unsupported course status: CS 446"]
 
 
-@pytest.mark.parametrize("claim", [
-    "I have completed Machine Learning.",
-    "I have completed Data Structures and Machine Learning.",
-    "I have completed data structures and machine learning.",
+@pytest.mark.parametrize(("claim", "courses"), [
+    ("I have completed Machine Learning.", TITLED),
+    ("I have completed Data Structures and Machine Learning.", TITLED),
+    # A code is the course in any case, as typed in the list or in the text.
+    ("I have completed cs 446.", TITLED),
+    ("I have completed CS 446.", [{"name": "cs 446", "status": "planned"}]),
 ])
-def test_a_listed_course_is_found_by_its_title(claim):
-    assert course_claim_violations(claim, TITLED) == ["unsupported course status: CS 446 Machine Learning"]
+def test_a_listed_course_is_found_by_its_code_or_its_title(claim, courses):
+    assert course_claim_violations(claim, courses) == [f"unsupported course status: {courses[0]['name']}"]
+
+
+@pytest.mark.parametrize(("claim", "courses"), [
+    ("I have completed data structures and machine learning.", TITLED),
+    ("I completed a machine learning project.", [{"name": "Machine Learning", "status": "unknown"}]),
+])
+def test_a_title_names_the_course_only_as_the_list_capitalises_it(claim, courses):
+    """Lower-case, "machine learning" is the topic, not the listed course (fix round 3)."""
+    assert course_claim_violations(claim, courses) == []
 
 
 @pytest.mark.parametrize(("claim", "courses"), [
     ("I have not taken CS 446 yet.", PLANNED),
     ("I am taking CS 446 next semester.", PLANNED),
     ("Next semester, I am taking CS 446.", PLANNED),
+    # The time phrase after the courses, however it is introduced (fix round 3).
+    ("I am taking CS 446 in the fall.", PLANNED),
+    ("I am registered for CS 446 in the spring.", PLANNED),
+    ("I am enrolled in CS 446 for next semester.", PLANNED),
+    ("I am taking CS 446 Machine Learning in the fall semester.", TITLED),
     ("If I took CS 446, I would know more.", PLANNED),
     ("Once I have completed CS 446, I will apply.", PLANNED),
     ("I would have completed CS 446 by then.", PLANNED),
+    ("I'll have completed CS 446 by May.", PLANNED),
+    ("I'd have completed CS 446 by then.", PLANNED),
     ("I have completed Data Structures (CS 225).", PLANNED),
     ("I have completed Data Structures.", TITLED),
     # "While taking" says the course was taken at some point: a completed one was.

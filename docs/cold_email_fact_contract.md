@@ -17,10 +17,13 @@ Match remains deterministic by default.
   coursework includes"). The template words each course by its status, and the
   AI brief lists the courses under their status with each status's rule once.
   The gate is a bounded English and Chinese pattern check, not semantic
-  verification: it reads a course by its code or listed title (also "Title
-  (CODE)"), exempts a claim only when its own verb phrase is negated,
-  conditional or future, and does not check a line of the student's confirmed
-  experience the draft repeats verbatim. A coursework listing may name any
+  verification: it checks only courses the student listed (text naming a
+  course code or title the student never listed is not a course claim), reads
+  a listed course by its code or by its title written with the same
+  capitalisation as in the list (also "Title (CODE)"), exempts a claim only
+  when its own verb phrase is negated, conditional or future, and does not
+  check a line of the student's confirmed experience the draft repeats
+  verbatim. A coursework listing may name any
   listed course; elsewhere only a completed or in-progress course's name
   supports a claim of competence in its topic.
 - Quantified achievements are checked against student resume bullets. The

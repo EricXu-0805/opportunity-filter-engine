@@ -105,6 +105,8 @@ def request(http, monkeypatch, route, claim, profile):
     # the code, no longer lets the claim through.
     (PROFILE, "I have completed CS 446 and am available to start next semester."),
     (PROFILE, "I have completed Machine Learning (CS 446)."),
+    # Fix round 3: "yet" as a conjunction negates nothing.
+    (PROFILE, "I am only a sophomore, yet I have already completed CS 446."),
 ], ids=lambda value: value if isinstance(value, str) else ("statuses" if value is PROFILE else "legacy"))
 def test_ai_gate_refuses_a_course_claimed_beyond_its_status_or_an_interest_as_experience(
         email_client, monkeypatch, route, profile, claim):  # noqa: F811
@@ -121,6 +123,9 @@ def test_ai_gate_refuses_a_course_claimed_beyond_its_status_or_an_interest_as_ex
     (PROFILE, "I am interested in brain-computer interfaces."),
     (LEGACY, "My coursework includes CS 225."),
     (LEGACY, "My coursework includes BIOE 498 Brain-Computer Interfaces."),
+    # Fix round 3: a time phrase after the course, and "I'll have", are future.
+    (PROFILE, "I am taking CS 446 in the fall."),
+    (PROFILE, "I'll have completed CS 446 by May."),
 ], ids=lambda value: value if isinstance(value, str) else ("statuses" if value is PROFILE else "legacy"))
 def test_ai_gate_serves_each_course_as_its_status_allows(email_client, monkeypatch, route, profile, claim):  # noqa: F811
     out = request(email_client, monkeypatch, route, claim, profile)
@@ -339,6 +344,20 @@ def test_what_the_student_may_say_about_a_course_is_served(
     assert claim in out["body"]
 
 
+@pytest.mark.parametrize("route", ROUTES)
+@pytest.mark.parametrize(("profile", "claim", "bullets"), [
+    # Fix round 3: only courses the student listed are checked, and a listed
+    # title is the course only as the list capitalises it.
+    (LEGACY, "I have completed OSHA 10 safety training.", ["Completed OSHA 10 safety training."]),
+    ({**BASE, "coursework": ["Machine Learning"]}, "I completed a machine learning project in Python.", []),
+], ids=["unlisted_code", "lowercase_title"])
+def test_text_naming_no_listed_course_is_no_course_claim(
+        email_client, monkeypatch, route, profile, claim, bullets):  # noqa: F811
+    out = fact_request(email_client, monkeypatch, route, claim, bullets=bullets, profile=profile)
+    assert out["method"] == ("ai" if route == "/cold-email" else "llm"), out
+    assert claim in out["body"]
+
+
 def test_the_template_may_quote_the_students_own_course_line(email_client):  # noqa: F811
     line = "Completed CS 225 project: built a PyTorch model of hypersonics flow data in Python."
     response = email_client.post("/api/cold-email", json={
@@ -351,10 +370,11 @@ def test_the_template_may_quote_the_students_own_course_line(email_client):  # n
 # What the ColdEmailModal "Add coursework" quick action now inserts (phase 1a:
 # the neutral listing every status allows), and what it inserted before, in a
 # draft the student refines. A course claim already in the student's draft is
-# their own text, so only a claim new to the reply is refused.
+# their own text, so only a claim new to the reply is refused. Only a listed
+# course is checked, so the new claim's CS 446 is listed too.
 QUICK = "My coursework includes CS 225, CS 374."
 OLD_QUICK = "I have completed relevant coursework including CS 225, CS 374."
-QUICK_PROFILE = {**BASE, "coursework": ["CS 225", "CS 374"]}
+QUICK_PROFILE = {**BASE, "coursework": ["CS 225", "CS 374", "CS 446"]}
 QUICK_PROFILES = {"legacy": QUICK_PROFILE,
                   "statuses": {**BASE, "courses": [{"name": "CS 225", "status": "unknown"},
                                                    {"name": "CS 374", "status": "planned"},
