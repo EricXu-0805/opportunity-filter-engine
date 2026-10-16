@@ -19,6 +19,8 @@ from __future__ import annotations
 import re
 from decimal import Decimal
 
+from src.student_evidence import interest_experience_violations
+
 # 5+ char lowercase tokens with optional tech punctuation (c++, scikit-learn,
 # node.js). Anything shorter is too generic to count as a hard claim.
 _HARD_CLAIM_RE = re.compile(r"\b[a-z][a-z0-9+\-#./]{4,}\b")
@@ -647,12 +649,6 @@ def competence_violations(
     corpus_lower = student_corpus.lower()
     corpus_tokens = _corpus_tokens(corpus_lower)
     violations: set[str] = set()
-    # Interest phrases can consist entirely of common prose ("machine
-    # learning"). They still cannot support a claim of experience. Check the
-    # explicitly supplied topics as phrases, without tightening the shared
-    # filler vocabulary for all callers.
-    topics = [_norm_phrase(t) for t in re.split(r"[,;\n]", interest_topics)]
-    source_phrases = f" {_norm_phrase(student_corpus)} "
     # A single sentence can contain separate assertions: "I have experience
     # with Python and I am interested in ML" must not turn the interest clause
     # into a competence claim. Keep coordinated skill lists together.
@@ -671,9 +667,11 @@ def competence_violations(
             if _in_corpus(token, corpus_lower, corpus_tokens) or _ing_form_in_corpus(token, corpus_tokens):
                 continue
             violations.add(token)
-        for topic in topics:
-            if len(topic) > 3 and f" {topic} " in f" {_norm_phrase(sentence)} " and f" {topic} " not in source_phrases:
-                violations.add(topic)
+        # Interest phrases can consist entirely of common prose ("machine
+        # learning"). They still cannot support a claim of experience: the
+        # shared student rule checks them as phrases, without tightening the
+        # filler vocabulary for all callers.
+        violations.update(interest_experience_violations(sentence, interest_topics, student_corpus))
     return sorted(violations)
 
 

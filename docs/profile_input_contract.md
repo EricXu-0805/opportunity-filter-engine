@@ -11,6 +11,7 @@ All text limits count Unicode codepoints. A paired emoji counts as one character
 | Research interests | 60,000 characters |
 | Skills | 512 items; 1,000 characters each for name and level |
 | Coursework and additional majors | 512 items each; 1,000 characters per item |
+| Courses with a status | 512 items; 1,000 characters each for name and evidence line; an unknown status or source reads as `unknown` / `resume` |
 | Desired fields derived from interests | 512 items; 60,000 characters per item |
 | Name | 256 characters |
 | School, major, college | 1,000 characters each |

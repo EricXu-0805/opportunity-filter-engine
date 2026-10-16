@@ -76,6 +76,7 @@ from src.evidence import (
     is_professor_rank,
     target_truth,
 )
+from src.student_evidence import course_context_line, course_entries
 from src.tracking.professor_profiles import canonical_professor_id
 
 router = APIRouter(route_class=BoundedJSONRoute)
@@ -838,7 +839,11 @@ def _build_chat_system_prompt(
             f"- Year / college / major: {p.year or '—'} / {p.college or '—'} / {p.major or '—'}",
             f"- International student: {p.international_student}",
             f"- Skills: {_format_skill_list(p.hard_skills)}",
-            f"- Coursework: {', '.join(p.coursework) or '(none listed)'}",
+            # Each course beside its status (M13). Every course stored before
+            # statuses existed is unknown: the student has not said either way.
+            f"- Coursework (each course with its status: completed was taken, in progress is being taken, "
+            f"planned is not taken yet; unknown means the student has not said, so state neither that it "
+            f"was taken nor that it was not): {course_context_line(course_entries(p)) or '(none listed)'}",
             f"- Experience level: {p.experience_level or '—'}",
             f"- Research interests: {_sanitize_field(p.research_interests_text, max_len=None) or '(none stated)'}",
             "",

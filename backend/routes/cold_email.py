@@ -105,6 +105,12 @@ from src.recommender.cold_email import (
     has_source_backed_target_evidence,
     select_resume_bullets,
 )
+from src.student_evidence import (
+    COMPETENCE_COURSE_STATUSES,
+    course_brief,
+    course_claim_violations,
+    mask_course_names,
+)
 from src.tracking.professor_profiles import FRESHNESS_TTL_DAYS
 
 logger = logging.getLogger("ofe.cold_email")
@@ -335,8 +341,9 @@ _UNDERGRAD_BODY = (
     "provided research area, topic, or keyword) and state concretely why it "
     "connects to the student. This proves they did their homework; it is the "
     "single most important sentence. " + _CHOSEN_PAPER_RULE + "\n"
-    "3. Concrete fit: the relevant skills and coursework the student actually "
-    "has, tied to that work. Show evidence, do not self-praise.\n"
+    "3. Concrete fit: the relevant skills the student actually has and their "
+    "coursework, each course only as its status allows, tied to that work. "
+    "Show evidence, do not self-praise.\n"
     "4. One clear ask: a brief meeting to discuss getting involved; offer the "
     "student's availability if provided, and offer to share a resume or other "
     "materials on request (never claim anything is attached).\n"
@@ -354,9 +361,10 @@ _GRAD_BODY = (
     "research-level depth. This is the single most important sentence. "
     + _CHOSEN_PAPER_RULE + "\n"
     "3. Concrete standing: the applicant's actual research background — the "
-    "research experience, methods, and advanced coursework they listed — tied to "
-    "that work. Evidence, not self-praise; never claim a publication, degree, or "
-    "experience the applicant did not provide.\n"
+    "research experience and methods they listed, and their advanced coursework, "
+    "each course only as its status allows — tied to that work. Evidence, not "
+    "self-praise; never claim a publication, degree, or experience the applicant "
+    "did not provide.\n"
     "4. One clear ask: whether the professor is taking students or has openings "
     "for the relevant cycle, and a brief meeting to discuss fit; offer to share "
     "a CV or other materials on request (never claim anything is attached).\n"
@@ -383,8 +391,9 @@ _UNDERGRAD_BODY_NO_TARGET_DATA = (
     "imply familiarity with the professor's work: never invent a topic, "
     "paper, or research area, and never claim to have read or followed "
     "their work.\n"
-    "3. Concrete fit: the relevant skills and coursework the student actually "
-    "has. Show evidence, do not self-praise.\n"
+    "3. Concrete fit: the relevant skills the student actually has and their "
+    "coursework, each course only as its status allows. Show evidence, do not "
+    "self-praise.\n"
     "4. One clear ask: a brief meeting to discuss getting involved; offer the "
     "student's availability if provided, and offer to share a resume or other "
     "materials on request (never claim anything is attached).\n"
@@ -403,9 +412,9 @@ _GRAD_BODY_NO_TARGET_DATA = (
     "topic, paper, or research area, and never claim to have read or "
     "followed their work.\n"
     "3. Concrete standing: the applicant's actual research background — the "
-    "research experience, methods, and advanced coursework they listed. "
-    "Evidence, not self-praise; never claim a publication, degree, or "
-    "experience the applicant did not provide.\n"
+    "research experience and methods they listed, and their advanced coursework, "
+    "each course only as its status allows. Evidence, not self-praise; never "
+    "claim a publication, degree, or experience the applicant did not provide.\n"
     "4. One clear ask: whether the professor is taking students or has openings "
     "for the relevant cycle, and a brief meeting to discuss fit; offer to share "
     "a CV or other materials on request (never claim anything is attached).\n"
@@ -423,8 +432,9 @@ _FACULTY_UNDERGRAD_BODY = (
     "research/current projects (a provided research area, topic or keyword, or "
     "the paper the student chose) and state concretely why it connects to the "
     "student. " + _CHOSEN_PAPER_RULE + "\n"
-    "3. Concrete fit: the relevant skills and coursework the student actually "
-    "has, tied to the professor's research. Show evidence, do not self-praise.\n"
+    "3. Concrete fit: the relevant skills the student actually has and their "
+    "coursework, each course only as its status allows, tied to the professor's "
+    "research. Show evidence, do not self-praise.\n"
     "4. One clear ask: whether the professor has any current or upcoming "
     "research openings, followed by a brief meeting request if so; offer to "
     "share a resume or other materials on request (never claim anything is "
@@ -441,9 +451,10 @@ _FACULTY_GRAD_BODY = (
     "research/current projects (a provided research area or topic, or the paper "
     "the student chose) and connect it to the applicant's OWN research direction "
     "or prior work at a substantive depth. " + _CHOSEN_PAPER_RULE + "\n"
-    "3. Concrete standing: the applicant's actual research background, "
-    "methods, and advanced coursework tied to the professor's research. Never "
-    "claim anything the applicant did not provide.\n"
+    "3. Concrete standing: the applicant's actual research background and "
+    "methods, and their advanced coursework, each course only as its status "
+    "allows, tied to the professor's research. Never claim anything the "
+    "applicant did not provide.\n"
     "4. One clear ask: whether the professor is taking students or has any "
     "current or upcoming research openings, and a brief meeting to discuss fit "
     "if so; offer to share a CV or other materials on request.\n"
@@ -461,8 +472,9 @@ _FACULTY_UNDERGRAD_BODY_NO_TARGET_DATA = (
     "program, honestly and at that level. No specific research details were "
     "provided, so never invent a topic, paper, or research area, and never "
     "claim to have read or followed the professor's work.\n"
-    "3. Concrete fit: the relevant skills and coursework the student actually "
-    "has. Show evidence, do not self-praise.\n"
+    "3. Concrete fit: the relevant skills the student actually has and their "
+    "coursework, each course only as its status allows. Show evidence, do not "
+    "self-praise.\n"
     "4. One clear ask: whether the professor has any current or upcoming "
     "research openings, followed by a brief meeting request if so; offer to "
     "share a resume or other materials on request.\n"
@@ -477,9 +489,9 @@ _FACULTY_GRAD_BODY_NO_TARGET_DATA = (
     "or program, honestly and at that level. No specific research details were "
     "provided, so never invent a topic, paper, or research area, and never "
     "claim to have read or followed the professor's work.\n"
-    "3. Concrete standing: the applicant's actual research background, "
-    "methods, and advanced coursework. Never claim anything the applicant did "
-    "not provide.\n"
+    "3. Concrete standing: the applicant's actual research background and "
+    "methods, and their advanced coursework, each course only as its status "
+    "allows. Never claim anything the applicant did not provide.\n"
     "4. One clear ask: whether the professor is taking students or has any "
     "current or upcoming research openings, and a brief meeting to discuss fit "
     "if so; offer to share a CV or other materials on request.\n"
@@ -538,6 +550,13 @@ _HARD_RULES = (
     "- Research interests are aspirations, not experience. Quantified "
     "achievements must come from the student's real resume evidence, never "
     "from the professor's work, an edit instruction, or the existing draft.\n"
+    "- The STUDENT block lists the courses under their status. Only a completed "
+    "course may be stated as completed or taken; an in-progress course only as "
+    "currently taking; a planned course only as planning to take, never as "
+    "taken or as experience; a course without a status only neutrally (\"my "
+    "coursework includes\"), never as taken, in progress or not taken. A course "
+    "the student did not list, such as a prerequisite the recipient names, may be "
+    "named only as the recipient's, never as one the student took or is taking.\n"
     "- Skills are annotated with the sender's self-reported level "
     "(beginner / experienced / expert). Emphasize expert and experienced "
     "skills; never present a beginner skill as a strength or claim "
@@ -976,7 +995,8 @@ _LAB_TYPE_TONE = {
         "- Body length: 140-200 words.\n"
         "- Highlight relevant lab techniques first (PCR, cell culture, "
         "microscopy, sterile technique, etc.) over generic coding skills.\n"
-        "- Mention completed lab coursework BY NAME if any was provided.\n"
+        "- Mention lab coursework BY NAME if any was provided, each course only as "
+        "its status allows.\n"
         "- Mention a time commitment only as the sender's stated availability "
         "gives it; never offer hours, weeks or semesters they did not state.\n"
         "- For an UNDERGRADUATE only, it is acceptable to mention willingness "
@@ -1184,7 +1204,8 @@ def _render_student_brief(p: dict) -> str:
         ("Name", p["name"]),
         ("Year & major", {"year": p["year"], "major": p["major"], "school": p["school"]}),
         ("Skills (self-reported level)", skills),
-        ("Relevant coursework", p["coursework"]),
+        ("Coursework by status (each status states the only way its courses may be stated)",
+         course_brief(p.get("courses") or [])),
         (("Skills relevant to this professor's research/current projects" if p.get("faculty_is_professor")
           else "Skills relevant to this faculty member's research/current projects") if p.get("is_faculty")
          else "Skills that match this posting", p["matching_skills"]),
@@ -1600,6 +1621,10 @@ _REVISION_FIXES: tuple[tuple[tuple[str, ...], str], ...] = (
      "keep a confirmed contact sentence exactly once."),
     (("unsupported skill level", "unsupported expertise level"),
      "Describe each skill no more strongly than the level the student listed"),
+    (("unsupported course status",),
+     "State each course only as its status in the STUDENT block allows: completed or taken only for a "
+     "completed course, currently taking only for one in progress, planning to take for a planned one, "
+     "and 'my coursework includes' for one without a status"),
 )
 
 
@@ -1835,14 +1860,17 @@ def _student_email_corpus(p: dict) -> str:
     provided. This is the sole corpus a first-person competence claim may
     ground in (``grounding.competence_violations``) — the professor's
     vocabulary deliberately is not here, so "I have experience with
-    hypersonics" cannot borrow the posting's own words as proof."""
+    hypersonics" cannot borrow the posting's own words as proof. A course
+    counts only once it is completed or in progress (M13): a planned course is
+    not knowledge yet, and one without a status may only be named."""
     parts: list[str] = [
         str(p.get("name", "")), str(p.get("major", "")), str(p.get("school", "")),
         str(p.get("linkedin_url", "")),
         str(p.get("github_url", "")), str(p.get("scholar_url", "")),
     ]
-    for key in ("skills", "coursework", "matching_skills", "resume_bullets"):
+    for key in ("skills", "matching_skills", "resume_bullets"):
         parts.extend(str(x) for x in (p.get(key) or []))
+    parts.extend(c["name"] for c in p.get("courses") or [] if c["status"] in COMPETENCE_COURSE_STATUSES)
     for material in p.get("experience_materials_all") or []:
         context = material.get("context")
         if context:
@@ -1869,8 +1897,10 @@ def _build_email_corpus(p: dict, opp: dict, *, include_lab: bool = True) -> str:
         contact_instruction_vocabulary(opp),
         target_conditions_vocabulary(p.get("target_conditions") or email_target_conditions(opp)),
         # Interests may be discussed as interests, but never authenticate a
-        # first-person experience claim in the separate student corpus.
+        # first-person experience claim in the separate student corpus. The
+        # same holds for every listed course's name, whatever its status.
         str(p.get("research_interests", "")),
+        " ".join(str(x) for x in p.get("coursework") or []),
         str(p.get("title", "")),
         str(p.get("recipient", "")), str(p.get("lab", "")),
         str(p.get("research_area", "")), str(p.get("research_topic", "")),
@@ -1995,7 +2025,7 @@ async def generate_email(
 # Bumped whenever generation logic changes materially — stamped on every
 # response so a cached client draft is traceable to the code that made it
 # (W12 draft provenance; the corpus side is covered by corpus_version()).
-COLD_EMAIL_PIPELINE_VERSION = "w12.21"
+COLD_EMAIL_PIPELINE_VERSION = "w12.22"
 
 # Claims about the professor's research made when the record carries NO
 # research signal at all. The vocabulary-level fabrication gate can't see a
@@ -2095,9 +2125,11 @@ def _email_grounding_findings(
     interests; numeric achievements require the student's own resume evidence.
     Completed actions also keep actor, negation and project/metric attribution
     within each experience entry. This is a bounded English check, not semantic
-    verification. Neither a previous draft nor an edit request is a new source.
-    ``deterministic`` text (a template or local edit) skips the M33 paper-title
-    rule, which is a check on what a model wrote.
+    verification. Neither a previous draft nor an edit request is a new source,
+    but on refine a course claim already in the student's draft is theirs, so
+    only a claim new to the edited text counts. ``deterministic`` text (a
+    template or local edit) skips the M33 paper-title rule, which is a check on
+    what a model wrote.
     """
     if corpus is None:
         corpus = _build_email_corpus(parts, opp)
@@ -2148,11 +2180,20 @@ def _email_grounding_findings(
         achievement_text, [str(b) for b in parts.get("resume_bullets", [])],
         activity_materials=parts.get("experience_materials_all"),
     ))
+    # M13: a coursework listing may name any listed course; elsewhere only a
+    # completed or in-progress course's name (in the student corpus) may stand
+    # for its topic. What is claimed about a course is the status rule's, and a
+    # confirmed experience line the draft repeats verbatim, or on refine a claim
+    # already in the student's draft, is the student's own.
+    courses = parts.get("courses") or []
     borrowed = competence_violations(
-        text, _student_email_corpus(parts), extra_allow=_EMAIL_SCAFFOLDING,
+        mask_course_names(text, courses), _student_email_corpus(parts), extra_allow=_EMAIL_SCAFFOLDING,
         interest_topics=str(parts.get("research_interests") or ""),
     )
     borrowed.extend(skill_level_violations(text, parts.get("skill_levels") or {}))
+    borrowed.extend(course_claim_violations(
+        text, courses, student_lines=[str(b) for b in parts.get("resume_bullets", [])],
+        student_draft=parts.get("refine_draft") or ""))
     return fabricated, borrowed
 
 
@@ -2711,7 +2752,8 @@ def _refine_context(request: EmailRefineRequest, opp: dict | None) -> dict | Non
     The user's instruction and current draft are deliberately excluded from
     evidence.  A pasted unsupported claim cannot authenticate itself after one
     edit; real facts must come from the profile/resume or the contact-safe
-    opportunity record.
+    opportunity record. A course claim the draft already makes may stay as the
+    student's own text, and it authenticates nothing else.
     """
     if opp is None:
         return None
@@ -2732,6 +2774,10 @@ def _refine_context(request: EmailRefineRequest, opp: dict | None) -> dict | Non
     # enter the evidence corpus.
     parts["refine_inputs"] = [request.current_body, request.subject, request.instruction,
                               request.selection.text if request.selection is not None else ""]
+    # Read only by the M13 course rule: a course claim already in the draft
+    # being edited is the student's own text, not the model's; the instruction
+    # is not draft text. Generation sets no draft, so there every claim counts.
+    parts["refine_draft"] = f"{request.subject}\n{request.current_body}"
     return {
         "safe_opp": safe_opp,
         "profile_dict": profile_dict,

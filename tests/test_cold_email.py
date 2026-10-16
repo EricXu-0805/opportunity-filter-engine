@@ -615,7 +615,7 @@ class TestCourseworkDatePollution:
             "coursework": ["CVPR 2026", "May 2027", "NeurIPS 2025"],
         }
         email = generate_cold_email(profile, self._OPP)
-        assert "Relevant coursework" not in email
+        assert "My coursework includes" not in email
 
     def test_real_course_codes_survive(self):
         # CS 2110 sits above the calendar band; MCBT 310 and a named course

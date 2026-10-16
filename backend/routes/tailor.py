@@ -102,7 +102,7 @@ from backend.schemas import (
 )
 from src.evidence import is_inferred
 from src.recommender.cold_email import filter_course_entries
-from src.student_evidence import claimable_skill_level
+from src.student_evidence import claimable_skill_level, course_context_line, course_entries
 
 logger = logging.getLogger("ofe.tailor")
 
@@ -133,7 +133,7 @@ _MAX_SOURCE_TOTAL_CHARACTERS = _DEFAULT_BULLETS_PER_REQUEST * _MAX_BULLET_CHARAC
 # response with the target echo so a client can pair a suggestion set to the
 # exact target + code that produced it (W13; mirrors the W12 cold-email
 # provenance contract).
-TAILOR_PIPELINE_VERSION = "w14.1"
+TAILOR_PIPELINE_VERSION = "w14.2"
 
 TAILOR_PROMPT_MAX_CHARACTERS = 120_000
 # The renovation plan is ID-only and must leave the rewrite and its review
@@ -213,18 +213,25 @@ def _build_evidence_corpus(
 # student context rule and the language rule are written in that language.
 _STUDENT_CONTEXT_RULE_EN = (
     "STUDENT CONTEXT. The user message may open with the student's name, year and major, skills with a "
-    "self-reported proficiency level (beginner / experienced / expert), coursework and research interests. They are "
+    "self-reported proficiency level (beginner / experienced / expert), coursework with each course's status "
+    "(completed / in progress / planned / unknown) and research interests. They are "
     "direction only, never evidence: they can tell you which of the student's own lines matter most to them, but a "
     "skill, course or interest is never proof that a unit used it, and none of its words may enter a rewrite unless "
     "the unit's original already says it. Represent a skill honestly at its stated level when the original already "
     "uses it: never present a beginner skill as mastery - no 'proficient in' or 'expert at' - and never add a "
-    "proficiency qualifier of your own.\n"
+    "proficiency qualifier of your own. A course's status says what is known: completed was taken, in progress is "
+    "being taken, planned is not taken yet, and unknown means the student has not said, so never state that it was "
+    "or was not taken. Never present a planned, in-progress or unknown course as completed, and never present an "
+    "interest as experience.\n"
 )
 _STUDENT_CONTEXT_RULE_ZH = (
     "学生背景（STUDENT CONTEXT）：用户消息开头可能有学生的姓名、年级与专业、带自评水平（beginner / experienced / "
-    "expert）的技能、课程和研究兴趣。它们只提供方向，绝不是证据：可以说明哪些经历对学生更重要，但技能、课程或兴趣"
+    "expert）的技能、带修读状态（completed 已修 / in progress 在修 / planned 计划修 / unknown 未标注）的课程和研究兴趣。"
+    "它们只提供方向，绝不是证据：可以说明哪些经历对学生更重要，但技能、课程或兴趣"
     "绝不能证明某一条经历用过它；除非该条原文已经写了，这些词都不能进入改写。原文已使用的技能按自评水平如实表述："
-    "beginner 的技能绝不能写成精通或熟练掌握，也不要自己添加任何水平限定语。\n"
+    "beginner 的技能绝不能写成精通或熟练掌握，也不要自己添加任何水平限定语。课程状态说明已知的情况：已修表示修过，在修表示"
+    "正在修，计划修表示还没修，未标注表示学生没有说明，既不能写成修过，也不能写成没修过。绝不能把计划修、在修或未标注的"
+    "课程写成已修完，也绝不能把兴趣写成经历。\n"
 )
 _LANGUAGE_RULE_EN = (
     "OUTPUT LANGUAGE. Write each rewrite in the language of its own original: an English line stays English and a "
@@ -319,8 +326,10 @@ def _student_context(profile_dict: dict) -> str:
             # something the profile never said.
             skills_lines.append(f"- {_sanitize_field(skill, max_len=None)}")
     skills_block = "\n".join(skills_lines) or "(none listed)"
-    coursework = filter_course_entries(profile_dict.get("coursework"))
-    coursework_str = _sanitize_field(", ".join(coursework), max_len=None) or "(none listed)"
+    # Each course beside its status (M13), so a planned course is never handed
+    # to the model as coursework the student has.
+    courses = [entry for entry in course_entries(profile_dict) if filter_course_entries([entry["name"]])]
+    coursework_str = _sanitize_field(course_context_line(courses), max_len=None) or "(none listed)"
     return (
         "STUDENT CONTEXT (direction only, never evidence):\n"
         f"- Name: {name}\n"

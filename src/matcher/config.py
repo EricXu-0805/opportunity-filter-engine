@@ -327,7 +327,12 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # permanent residency" are said as our listing's (a program spec's configured
 # answer) or our reading of the page (a scan) when the wire flags the value
 # inferred, as the badges already do. Sentences only, like 20 and 21.
-_MATCHER_VERSION_BASE = "23"
+# 24: a course the student marked planned no longer counts as taken in the
+# readiness coursework score or the search-focus coursework lift (checklist
+# M13), and the interest-similarity reason with no lab keywords says "Your
+# research interests align" instead of calling the interest text the
+# student's "research background". A formula and a sentence no knob sees.
+_MATCHER_VERSION_BASE = "24"
 
 
 def _matcher_fingerprint() -> str:

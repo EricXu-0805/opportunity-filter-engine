@@ -43,11 +43,12 @@ def draft(claim):
     return f"Dear Pat Lee,\n\n{claim}\n\nWould you have 15 minutes for a conversation?\n\nBest regards,\nEric"
 
 
-def request_email(client, monkeypatch, endpoint, claim, bullets=(), current=None, context=None):
+def request_email(client, monkeypatch, endpoint, claim, bullets=(), current=None, context=None, profile=None):
     body = draft(claim)
     monkeypatch.setattr(ce, "_pipeline_generate", lambda *_a, **_k: f"Subject: Research inquiry\n\n{body}")
     monkeypatch.setattr(ce, "chat_completion", lambda *_a, **_k: body)
-    payload = {"profile": PROFILE, "opportunity_id": OPP["id"], "experience_evidence": confirmed_experience(list(bullets))}
+    payload = {"profile": profile or PROFILE, "opportunity_id": OPP["id"],
+               "experience_evidence": confirmed_experience(list(bullets))}
     if context is not None:
         payload["contact_context"] = context
     if endpoint == "/cold-email":
@@ -88,6 +89,20 @@ def test_interest_target_and_unsupported_numbers_are_not_student_facts(email_cli
     assert claim not in out["body"]
 
 
+def test_a_course_claim_beyond_its_status_is_refused_unless_the_students_draft_makes_it(email_client, monkeypatch):
+    # M13: PROFILE's coursework is a legacy list, so CS 225 has no status and
+    # is named only neutrally, never as completed (owner decision 2026-10-16).
+    # On refine a course claim already in the student's draft is their own
+    # text, not the model's; only a claim new to the reply is refused.
+    claim = "I completed CS 225 in 2025."
+    for endpoint in ("/cold-email", "/cold-email/refine"):
+        out = request_email(email_client, monkeypatch, endpoint, claim)
+        assert out["method"] in ("local", "template") and out["fallback_reason"] == "fabrication", out
+        assert claim not in out["body"]
+    out = request_email(email_client, monkeypatch, "/cold-email/refine", claim, current=draft(claim))
+    assert out["method"] == "llm" and out.get("fallback_reason") is None and claim in out["body"], out
+
+
 @pytest.mark.parametrize("endpoint", ["/cold-email", "/cold-email/refine"])
 @pytest.mark.parametrize(("claim", "bullets"), [
     ("I have experience with hypersonics.", ["Built hypersonics experiments using Python."]),
@@ -97,13 +112,13 @@ def test_interest_target_and_unsupported_numbers_are_not_student_facts(email_cli
     ("I improved throughput by 45x.", ["Improved throughput by 45x using Python."]),
     ("I improved throughput by 4.5x.", ["Improved throughput by 4.5 times using Python."]),
     ("I analyzed 10,000 samples.", ["Analyzed 10000 samples using Python."]),
-    ("I completed CS 225 in 2025.", []),
     ("I have experience with Python and I am interested in machine learning.", []),
     ("I built a Python parser and would appreciate a 15-minute conversation.", ["Built a Python parser."]),
     ("I have no experience with hypersonics yet, and I am interested in learning.", []),
     # The claim's own verb is not a fabrication ("proficient", "worked", "includes").
     ("I am proficient in Python.", []),
     ("I’ve worked on hypersonics.", ["Built hypersonics experiments using Python."]),
+    # The neutral statement every course may take, whatever its status.
     ("My coursework includes CS 225.", []),
     # A GPA is a decimal over a decimal, not a course number or a date.
     ("I have a 3.8 GPA.", ["GPA 3.8/4.0."]),
@@ -120,6 +135,23 @@ def test_real_evidence_interests_and_benign_numbers_stay_usable(email_client, mo
     assert out["method"] == ("ai" if endpoint == "/cold-email" else "llm"), out
     assert claim in out["body"]
     assert "15 minutes" in out["body"]
+
+
+@pytest.mark.parametrize("endpoint", ["/cold-email", "/cold-email/refine"])
+@pytest.mark.parametrize(("status", "usable"), [
+    ("completed", True), ("in_progress", False), ("planned", False), ("unknown", False),
+])
+def test_a_course_is_claimed_completed_only_when_the_student_marked_it_completed(
+        email_client, monkeypatch, endpoint, status, usable):
+    """M13: "I completed CS 225" was usable for any coursework entry; it is now usable only for a completed one."""
+    claim = "I completed CS 225 in 2025."
+    out = request_email(email_client, monkeypatch, endpoint, claim,
+                        profile={**PROFILE, "courses": [{"name": "CS 225", "status": status}]})
+    if usable:
+        assert out["method"] == ("ai" if endpoint == "/cold-email" else "llm"), out
+        assert claim in out["body"]
+    else:
+        assert out["fallback_reason"] == "fabrication" and claim not in out["body"]
 
 
 @pytest.mark.parametrize(("claim", "evidence"), [

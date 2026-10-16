@@ -8,7 +8,51 @@ Match remains deterministic by default.
 
 - Student interests may explain motivation, but do not establish competence.
   First-person experience claims must be supported by the student's own skills,
-  coursework or resume evidence. Target vocabulary cannot supply that support.
+  completed or in-progress coursework, or resume evidence. Target vocabulary
+  cannot supply that support.
+- Each course carries a status (checklist M13, `src/student_evidence.py`). Only
+  a completed course may be stated as completed or taken, an in-progress course
+  only as currently taking, a planned course only as planned, and a course
+  without a status (every legacy `coursework` string) only neutrally ("my
+  coursework includes"). The template words each course by its status, and the
+  AI brief lists the courses under their status with each status's rule once.
+  The gate is a bounded English and Chinese pattern check, not semantic
+  verification: it checks only courses the student listed (text naming a
+  course code or title the student never listed is not a course claim), reads
+  a listed course by its code or by its title written with the same
+  capitalisation as in the list (also "Title (CODE)"), exempts a claim only
+  when its own verb phrase is negated, conditional or future, and does not
+  check a line of the student's confirmed experience the draft repeats
+  verbatim. A title also counts in any capitalisation when a course noun
+  (course, courses, coursework, class, classes) stands right before it,
+  together with the list that noun introduces, also after a comma, colon or
+  parenthesis ("coursework in machine learning and data structures",
+  "courses: machine learning, data structures"), or when one follows it,
+  right after it or at the end of the list of listed titles it belongs to,
+  joined by and, or, commas and "a" or "an" ("machine learning courses",
+  "machine learning and data structures courses", "a Machine Learning and a
+  Computer Vision course"). Right after "a" or "an" a title counts only when a
+  course noun follows it in that way ("a Machine Learning project" names a
+  project). After a course noun, a comma followed by "and" or "but" starts a
+  new clause, so a title after it counts only as written or by its code ("I
+  have completed several courses, and machine learning became my main
+  interest" claims nothing about Machine Learning; "..., and CS 446 was my
+  favorite" still names CS 446).
+  A text whose check would take more than 1,000 plus 5 trie steps per
+  character is refused: the draft falls back to the template, or to the
+  neutral inquiry when the unreadable text is the student's own draft or a
+  line of their experience (an edit of a selection is left unchanged). Real drafts and course lists take at most about
+  two steps per character, and only names built to match each other at
+  every word take more, so every check stays fast.
+  Known limits: unlisted courses are not checked; a planned course's term
+  written as "in the Fall" or "for Spring 2027" is not read as future (left to
+  the frontend phase); a slash cross-listing ("CS/ECE 374") is not read; and a
+  word that names no listed course ends a list ("I completed a Machine
+  Learning project and a Data Structures course" does not read Data
+  Structures).
+  A coursework listing may name any
+  listed course; elsewhere only a completed or in-progress course's name
+  supports a claim of competence in its topic.
 - Quantified achievements are checked against student resume bullets. The
   quantity and unit must be present; target facts, the current draft, and an edit
   instruction are not new student evidence.
