@@ -170,7 +170,7 @@ import {
 } from '@/lib/identity-owner';
 import { DEFAULT_PROFILE } from './types';
 import { skillLevelIsTheStudentsOwn, skillNeedsConfirming } from '@/lib/skill-evidence';
-import { courseEntries } from '@/lib/course-status';
+import { courseEntries, courseRows } from '@/lib/course-status';
 import type { LoadedProfile, ProfilePatchIntent, ProfilePatchOutcome } from '@/lib/supabase';
 import {
   resetProfileDirtyLedger,
@@ -10750,7 +10750,7 @@ describe('useProfileForm — courses keep the status the student set (checklist 
     expect(serverRow?.resume_text).toBe('Old source');
   });
 
-  it('a re-import merges by name, keeps a status the student set and reads the rest from the new text', async () => {
+  it('a re-import merges by name, keeps a status the student set and suggests the rest from the new text', async () => {
     mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'Old source', coursework: ['CS 225', 'CS 125', 'STAT 400'], courses: [
       { name: 'CS 225', status: 'completed', source: 'resume' },
       { name: 'CS 125', source: 'resume' },
@@ -10765,7 +10765,9 @@ describe('useProfileForm — courses keep the status the student set (checklist 
       { name: 'CS 446', source: 'resume' },
     ]);
     expect(result.current.profile.coursework).toEqual(['CS 225', 'STAT 400', 'CS 446']);
-    expect(courseEntries(result.current.profile).map((course) => course.status)).toEqual(['completed', 'unknown', 'planned']);
+    // CS 446's planned status is only suggested on the form: sent as not marked.
+    expect(courseEntries(result.current.profile).map((course) => course.status)).toEqual(['completed', 'unknown', 'unknown']);
+    expect(courseRows(result.current.profile).map((course) => course.suggested ?? null)).toEqual([null, null, 'planned']);
   });
 
   it('removing the résumé drops only its courses nobody marked', async () => {
