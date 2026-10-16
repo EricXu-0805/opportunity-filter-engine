@@ -1,4 +1,5 @@
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import AxeBuilder from '@axe-core/playwright';
 import { STORAGE_KEYS } from '../src/lib/storage-keys';
 import type { CourseEntry, ProfileData, ProfileRequest } from '../src/lib/types';
 
@@ -109,7 +110,8 @@ for (const locale of ['en', 'zh'] as const) {
 }
 
 // A profile whose courses come from one ordinary 115-character résumé line,
-// plus a line whose label says the courses on it are current. What is stored
+// plus a line whose label says the courses on it are current: the form only
+// suggests that status until the student confirms it. What is stored
 // is what an import stores (names, from the résumé, no status); `evidence` is
 // what the previous version of this branch kept with each course, which this
 // build neither reads nor writes: every line shown comes from the text.
@@ -128,7 +130,7 @@ const IMPORTED = {
 };
 
 for (const [locale, width] of [['zh', 390], ['en', 1280]] as const) {
-  test(`courses from a long résumé line fit at ${width} px, and a status read from the résumé is confirmed (${locale})`, async ({ page, request }, info) => {
+  test(`courses from a long résumé line fit at ${width} px, and a status the résumé suggests is sent only once confirmed (${locale})`, async ({ page, request }, info) => {
     test.setTimeout(90_000);
     expect(LONG_LINE).toHaveLength(115);
     const copy = (en: string, zh: string) => (locale === 'zh' ? zh : en);
@@ -161,17 +163,21 @@ for (const [locale, width] of [['zh', 390], ['en', 1280]] as const) {
         expect(hit, `${course} ${kind}: the control is the element at its own centre`).toBe(true);
       }
     }
+    // Every control in the list is a target of at least 24 by 24 px, or far
+    // enough from the next one (WCAG 2.2 target size, axe "target-size").
+    const targets = await new AxeBuilder({ page }).include('fieldset:has(input[id$="-add"])').withRules(['target-size']).analyze();
+    expect(targets.violations.flatMap((violation) => violation.nodes.map((node) => node.html))).toEqual([]);
     await statusOf('CS 374').scrollIntoViewIfNeeded();
     await page.screenshot({ path: info.outputPath(`course-status-long-line-${locale}-${width}.png`), fullPage: true });
 
     for (const course of LISTED) await expect(statusOf(course)).toHaveValue('unknown');
-    // Read from the line "Current courses:", shown as a status to check.
+    // Suggested by the line "Current courses:", shown as a status to check.
     for (const course of CURRENT) await expect(statusOf(course)).toHaveValue('in_progress');
-    await expect(page.getByText(copy('From your resume — please check', '据简历推断，请确认'), { exact: true })).toHaveCount(2);
-    await expect(page.getByText(copy(`From your resume: “${LONG_LINE}”`, `来自你的简历：「${LONG_LINE}」`), { exact: true })).toHaveCount(5);
+    await expect(page.getByText(copy('From your résumé — please check', '据简历推断，请确认'), { exact: true })).toHaveCount(2);
+    await expect(page.getByText(copy(`From your résumé: “${LONG_LINE}”`, `来自你的简历：「${LONG_LINE}」`), { exact: true })).toHaveCount(5);
 
     await page.getByRole('button', { name: copy('Confirm In progress for CS 374', '确认 CS 374 为「在修」'), exact: true }).click();
-    await expect(page.getByText(copy('From your resume — please check', '据简历推断，请确认'), { exact: true })).toHaveCount(1);
+    await expect(page.getByText(copy('From your résumé — please check', '据简历推断，请确认'), { exact: true })).toHaveCount(1);
     await expect(statusOf('CS 374')).toBeFocused();
     await expect.poll(async () => (await storedProfile(request, session.user.id)).courses?.find((course) => course.name === 'CS 374')?.status,
       { timeout: 15_000 }).toBe('in_progress');
@@ -187,10 +193,12 @@ for (const [locale, width] of [['zh', 390], ['en', 1280]] as const) {
     await page.getByTestId('generate-matches').click();
     await expect(page).toHaveURL(/\/results/);
     await expect.poll(() => sent.length, { timeout: 30_000 }).toBeGreaterThan(0);
+    // The confirmed course goes in progress; the one the résumé only
+    // suggests goes as not marked.
     expect(sent[0].courses).toEqual([
       ...LISTED.map((name) => ({ name, status: 'unknown', source: 'resume' })),
       { name: 'CS 374', status: 'in_progress', source: 'resume' },
-      { name: 'MATH 415', status: 'in_progress', source: 'resume' },
+      { name: 'MATH 415', status: 'unknown', source: 'resume' },
     ]);
     expect(external).toEqual([]);
     expect(errors).toEqual([]);

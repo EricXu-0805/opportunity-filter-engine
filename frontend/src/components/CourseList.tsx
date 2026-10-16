@@ -135,9 +135,10 @@ export default function CourseList({ courses, onChange }: {
                 ) : null}
                 {course.source === 'resume' && course.line ? (
                   // One line on a phone; opening it wraps the whole quote, as
-                  // a skill's source line does.
+                  // a skill's source line does. At least 24 px tall, a target
+                  // a finger can hit.
                   <details className="group/source mt-1 min-w-0 text-[11px] leading-snug text-gray-600">
-                    <summary className="cursor-pointer truncate group-open/source:whitespace-normal group-open/source:[overflow-wrap:anywhere]">
+                    <summary className="min-h-6 cursor-pointer truncate py-1 group-open/source:whitespace-normal group-open/source:[overflow-wrap:anywhere]">
                       {t('courses.fromResume', { line: course.line })}
                     </summary>
                   </details>
