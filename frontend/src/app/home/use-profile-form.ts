@@ -1517,7 +1517,9 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         // The first create waits for college, major and grade. Nothing
         // failed and a Retry could not send it, so none is offered. What
         // waits is shown first: another tab's later edit can be what left a
-        // field blank.
+        // field blank. Only a create planned in the same call comes with it;
+        // a reload's recovery flush finds an entry that can be older than
+        // the journal the load just showed, and shows nothing from it.
         if (result.reason === 'incomplete-create') {
           if (result.profile) showCoordinatorDocument(result.profile as unknown as Record<string, unknown>);
           armRetry(null);

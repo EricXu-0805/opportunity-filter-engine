@@ -386,4 +386,88 @@ describe('a guest with two tabs open before the row exists', () => {
     await tick(5000);
     expect(sends()).toHaveLength(1);
   });
+
+  // An edit in the other tab: in the journal only, written after everything
+  // on disk.
+  function otherTabEdit(fields: { key: string; value: unknown }[]) {
+    const ops = readOutstandingOps();
+    const clock = Math.max(0, ...(ops.ok ? ops.value.map((o) => o.clock ?? 0) : [])) + 1;
+    const opId = crypto.randomUUID();
+    localStorage.setItem(`${STORAGE_KEYS.PROFILE_JOURNAL_PREFIX}op_${opId}`, JSON.stringify({
+      opId, originId: 'tab-b', lineage: 'tab-b',
+      fields: fields.map(({ key, value }) => ({ key, base: { present: false }, desired: { present: true, value } })),
+      baseRevision: 0, writer: HOME_FORM_WRITER, mode: 'set', seq: clock, clock,
+    }));
+  }
+  async function reload() {
+    cleanup(); await drain();
+    startDocumentForTests('reload'); resetProfileDirtyLedger();
+    await mount();
+    await tick(100);
+  }
+  // The create held back above stays in the outbox as it was planned, and a
+  // reload's flush of it answers that it waits. Edits made after it was held
+  // back never reached it, so it is no picture of what the screen should show.
+
+  it('after a reload, shows the major and interests the other tab chose after this tab\'s create was held back', async () => {
+    // Review M109 r3 (R1).
+    await mount();
+    await edit('college', 'Grainger College of Engineering');
+    await edit('major', 'Computer Science');
+    otherTabEdit([
+      { key: 'college', value: 'College of Liberal Arts & Sciences' },
+      { key: 'major', value: '' },
+      { key: 'additional_majors', value: [] },
+    ]);
+    await edit('grade', 'Junior');
+    expect(form().saveStatus).toBe('awaiting-required');
+    // The other tab, still open, picks a major and types interests. It shows
+    // no grade, so it stages nothing: the edits are in the journal only.
+    otherTabEdit([{ key: 'major', value: 'Mathematics' }]);
+    otherTabEdit([{ key: 'research_interests', value: 'robotics' }]);
+
+    await reload();
+    expect([form().profile.college, form().profile.major, form().profile.grade, form().profile.research_interests])
+      .toEqual(['College of Liberal Arts & Sciences', 'Mathematics', 'Junior', 'robotics']);
+    expect(sends()).toEqual([]);
+
+    // The create carries what the screen shows.
+    service.router.push.mockClear();
+    await act(async () => { await form().handleSubmit(); }); await drain();
+    expect(sends(), 'ONE create').toHaveLength(1);
+    expect(sends()[0].patch).toMatchObject({
+      college: 'College of Liberal Arts & Sciences', major: 'Mathematics', grade: 'Junior', research_interests: 'robotics',
+    });
+    expect(form().profile.research_interests).toBe('robotics');
+  });
+
+  it('after a reload, still shows what this tab typed after its create was held back', async () => {
+    // Review M109 r3 (R1b).
+    await mount();
+    await edit('college', 'Grainger College of Engineering');
+    await edit('major', 'Computer Science');
+    otherTabEdit([
+      { key: 'college', value: 'College of Liberal Arts & Sciences' },
+      { key: 'major', value: '' },
+      { key: 'additional_majors', value: [] },
+    ]);
+    await edit('grade', 'Junior');
+    expect([form().profile.college, form().profile.major, form().profile.grade])
+      .toEqual(['College of Liberal Arts & Sciences', '', 'Junior']);
+    await edit('research_interests', 'vision');
+    expect(form().saveStatus).toBe('awaiting-required');
+
+    await reload();
+    expect([form().profile.college, form().profile.major, form().profile.grade, form().profile.research_interests])
+      .toEqual(['College of Liberal Arts & Sciences', '', 'Junior', 'vision']);
+    expect(form().saveStatus).toBe('awaiting-required');
+    expect(sends()).toEqual([]);
+
+    await edit('major', 'Mathematics');
+    expect(sends(), 'ONE create').toHaveLength(1);
+    expect(sends()[0].patch).toMatchObject({
+      college: 'College of Liberal Arts & Sciences', major: 'Mathematics', grade: 'Junior', research_interests: 'vision',
+    });
+    expect(form().profile.research_interests).toBe('vision');
+  });
 });

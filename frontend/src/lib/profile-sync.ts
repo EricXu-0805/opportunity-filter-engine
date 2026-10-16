@@ -320,9 +320,13 @@ export type ProfileSaveResult =
    *  the document is not complete (on the home form: college, major or grade
    *  is still blank). Nothing failed, the edit is in the journal, and a retry
    *  cannot help. Every other cause carries no reason. `profile` is the
-   *  document held back, as it would have been sent, when it was staged
-   *  first: the journal's latest edits, which can be another tab's, are in
-   *  it, so it need not be the document the caller handed in. */
+   *  document held back, as it would have been sent, and only when this same
+   *  call planned it from the whole journal and staged it: the journal's
+   *  latest edits, which can be another tab's, are in it, so it need not be
+   *  the document the caller handed in. A flush of an entry staged earlier (a
+   *  reload's recovery, a Retry) carries none: an edit made while a required
+   *  field was blank is refused before staging and never reaches that entry,
+   *  so it can be older than the journal. */
   | { status: 'blocked'; reason?: 'incomplete-create'; profile?: ProfileData }
   /** The identity moved on. Not this user's news. */
   | { status: 'abandoned' }
@@ -2970,7 +2974,7 @@ export async function stageProfilePatch(
     prepareStagedWrite(desired, effectiveKeys, token, opts));
   if (!prepared.ok) return prepared.result;
   if ('result' in prepared.value) return prepared.value.result;
-  return flushByMutation(prepared.value.mutationId, token);
+  return flushByMutation(prepared.value.mutationId, token, true);
 }
 
 type StagePrepared = { result: ProfileSaveResult } | { mutationId: string };
@@ -4622,8 +4626,16 @@ function landedAhead(
  * closure captured before an earlier write landed can never send a patch
  * against a revision that has since moved — and an attempt that a newer edit
  * has superseded stands down instead of racing it.
+ *
+ * `plannedHere` says the caller planned this entry from the whole journal and
+ * staged it in the same call (stageProfilePatch), rather than finding it in
+ * the outbox.
  */
-function flushByMutation(mutationId: string, token: OwnerToken): Promise<ProfileSaveResult> {
+function flushByMutation(
+  mutationId: string,
+  token: OwnerToken,
+  plannedHere = false,
+): Promise<ProfileSaveResult> {
   // What this write was to send, as it stood when the flush was queued. A
   // write ahead of it in this page's queue can be sending the very same entry
   // (the Home form that in-app navigation replaced, still saving), and by
@@ -4713,7 +4725,11 @@ function flushByMutation(mutationId: string, token: OwnerToken): Promise<Profile
       if (pending.baseRevision === 0 && !known && loadedFrom !== 'local-only'
         && !isCompleteDocument(patch as unknown as ProfileData)) {
         if (!isCompleteDocument(pending.desiredProfile)) {
-          return { status: 'blocked', reason: 'incomplete-create', profile: pending.desiredProfile };
+          // The held-back document goes back for the screen only when it
+          // was planned in this call (see 'blocked' in ProfileSaveResult).
+          return plannedHere
+            ? { status: 'blocked', reason: 'incomplete-create', profile: pending.desiredProfile }
+            : { status: 'blocked', reason: 'incomplete-create' };
         }
         if (pending.lockedKeys.length > 0) return lockedQuestion();
       }
