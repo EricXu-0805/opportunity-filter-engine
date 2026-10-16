@@ -311,3 +311,39 @@ describe('a guest whose college, major and grade are all filled in, two visits a
     expect(service.router.push).toHaveBeenCalledTimes(1);
   });
 });
+
+// Two tabs open at once before the row exists: the later edit to a field wins
+// without a question (see planKeysFromJournal), so the create can carry the
+// OTHER tab's value for a field this one shows differently.
+describe('a guest with two tabs open before the row exists', () => {
+  it('the tab whose college lost shows the college that was saved when it says "Profile saved"', async () => {
+    await mount();
+    await edit('college', 'Grainger College of Engineering');
+    await edit('major', 'Computer Science');
+    expect(form().saveStatus).toBe('awaiting-required');
+
+    // The other tab, a moment later, picks another college.
+    const ops = readOutstandingOps();
+    const clock = Math.max(0, ...(ops.ok ? ops.value.map((o) => o.clock ?? 0) : [])) + 1;
+    const opId = crypto.randomUUID();
+    localStorage.setItem(`${STORAGE_KEYS.PROFILE_JOURNAL_PREFIX}op_${opId}`, JSON.stringify({
+      opId, originId: 'tab-b', lineage: 'tab-b',
+      fields: [{ key: 'college', base: { present: false }, desired: { present: true, value: 'College of Liberal Arts & Sciences' } }],
+      baseRevision: 0, writer: HOME_FORM_WRITER, mode: 'set', seq: 1, clock,
+    }));
+
+    // This tab completes the form; its create carries the later college.
+    await edit('grade', 'Junior');
+    expect(sends(), 'ONE create').toHaveLength(1);
+    expect(sends()[0].patch).toMatchObject({ college: 'College of Liberal Arts & Sciences', major: 'Computer Science' });
+    expect(form().saveStatus).toBe('saved');
+    expect(statusRow('en').textContent).toBe('Profile saved');
+    expect(form().profile.college, 'the screen shows what was saved').toBe('College of Liberal Arts & Sciences');
+    expect(form().profile.major).toBe('Computer Science');
+    expect(form().profile.grade).toBe('Junior');
+
+    // Nothing is sent again for it.
+    await tick(5000);
+    expect(sends()).toHaveLength(1);
+  });
+});

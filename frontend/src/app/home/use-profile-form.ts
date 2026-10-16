@@ -1378,6 +1378,41 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         // live form, so an edit made while this acknowledgement was in flight
         // stays in the document a later write builds from — an ack must not
         // roll the screen back to what it confirmed.
+        //
+        // The one exception is the save that CREATED the row: it carries the
+        // latest edit to each field, which can be another tab's (see the
+        // coordinator's never-created rule), and "Profile saved" beside a
+        // value the row does not hold is false. So a field the row holds
+        // differently (not merely empty in another form) is shown as the row
+        // holds it — unless it was typed into since this save began, which
+        // is newer than the row.
+        if (fromCoordinator && epochsAtStart && (viewSnapshotRef.current?.revision ?? 0) === 0) {
+          const row = result.profile as unknown as Record<string, unknown>;
+          const merged = { ...(profileRef.current as unknown as Record<string, unknown>) };
+          const empty = (v: unknown) => v === undefined || v === null || v === ''
+            || (Array.isArray(v) && v.length === 0);
+          let moved = false;
+          for (const key of PROFILE_KEYS as readonly string[]) {
+            if (!(key in row)) continue;
+            if ((fieldEpochRef.current.get(key) ?? 0) !== (epochsAtStart.get(key) ?? 0)) continue;
+            if (empty(merged[key]) && empty(row[key])) continue;
+            if (JSON.stringify(merged[key]) === JSON.stringify(row[key])) continue;
+            merged[key] = row[key];
+            moved = true;
+          }
+          if (moved) {
+            const next = merged as unknown as ProfileData;
+            // Not an edit of the person's. With nothing typed since, it IS
+            // the saved document, and the autosave must not send it back.
+            if (editEpochAtStart === editEpochRef.current) {
+              hydratedProfileRef.current = next;
+              hydratedWeightRef.current = weightRef.current;
+            }
+            profileRef.current = next;
+            setProfile(next);
+            republishRendered(next);
+          }
+        }
         if (fromCoordinator) advanceAcceptedBase(result.profile, result.revision, token, generation);
         armRetry(null);
         // The question on screen is NOT retired here. A successful write says
@@ -1501,7 +1536,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         say('cloud-failed');
         return DEVICE_FAILED;
     }
-  }, [advanceAcceptedBase, epochsNow, publishConflicts, retireConflictQuestion, unrepresentedNow, armRetryable, setSaveStatus]);
+  }, [advanceAcceptedBase, epochsNow, publishConflicts, retireConflictQuestion, unrepresentedNow, armRetryable, setSaveStatus, republishRendered]);
 
   /**
    * Everything Home does with a conflict refresh, taken FROM the refresh.
