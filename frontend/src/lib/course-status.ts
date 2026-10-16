@@ -136,7 +136,10 @@ function readResume(text: string): Map<string, ResumeCourse> {
   const found = new Map<string, Array<{ line: string; at: number; length: number; status?: ResumeMark }>>();
   const add = (name: string, line: string, at: number, status: ResumeMark | undefined) => {
     const key = courseKey(name);
-    if (key) found.set(key, [...(found.get(key) ?? []), { line, at, length: name.length, status }]);
+    if (!key) return;
+    const seen = found.get(key);
+    if (seen) seen.push({ line, at, length: name.length, status });
+    else found.set(key, [{ line, at, length: name.length, status }]);
   };
   for (const line of text.split('\n')) {
     const lists = courseLists(line);
