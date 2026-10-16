@@ -25,7 +25,8 @@ import { useProfileForm } from './use-profile-form';
 import { SubmitRow } from './SubmitRow';
 import { translate } from '@/i18n/translate';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
-import { readProfileSyncEnvelope, resetProfileDirtyLedger } from '@/lib/profile-sync';
+import { HOME_FORM_WRITER, readProfileSyncEnvelope, resetProfileDirtyLedger } from '@/lib/profile-sync';
+import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { readOutstandingOps, resetJournalLaneForTests, startDocumentForTests } from '@/lib/profile-journal';
 
 // A brand-new guest: the cloud has no row for them, and the server creates
@@ -235,5 +236,78 @@ describe('a guest who comes back in a new browser session before the row exists'
     expect(form().conflictKeys).toEqual([]);
     expect(row?.profile.college).toBe('College of Liberal Arts & Sciences');
     expect(readOutstandingOps()).toEqual({ ok: true, value: [] });
+  });
+});
+
+// College, major and grade all filled in, and still no create: either nothing
+// can reach a server this visit, or a question holds one of them back.
+// Neither is "fill in your college, major, and grade".
+describe('a guest whose college, major and grade are all filled in, two visits apart', () => {
+  const FILL_IN = 'Fill in your college, major, and grade';
+  async function newSession() {
+    cleanup(); await drain();
+    resetJournalLaneForTests(); resetProfileDirtyLedger();
+  }
+
+  it('with no backend this visit (anonymous sign-in failed): kept on this device and Generate goes ahead, as before', async () => {
+    service.load.mockReset().mockImplementation(async () => (
+      { source: 'local-only', profile: null, revision: 0, token: captureOwnerToken() }));
+    service.commit.mockReset().mockImplementation(async () => ({ status: 'local-only' }));
+    let view = await mount();
+    await edit('college', 'Grainger College of Engineering');
+    await edit('major', 'Computer Science');
+    await edit('grade', 'Junior');
+    expect(form().saveStatus).toBe('device-only');
+    view.unmount();
+
+    await newSession();
+    view = await mount();
+    await edit('college', 'College of Liberal Arts & Sciences');
+    await edit('major', 'Mathematics');
+    expect([form().profile.college, form().profile.major, form().profile.grade])
+      .toEqual(['College of Liberal Arts & Sciences', 'Mathematics', 'Junior']);
+    expect(form().saveStatus).toBe('device-only');
+    expect(statusRow('en').textContent).not.toContain(FILL_IN);
+
+    service.router.push.mockClear();
+    await act(async () => { await form().handleSubmit(); }); await drain();
+    expect(service.router.push, 'Generate is not refused').toHaveBeenCalledTimes(1);
+  });
+
+  it('with the cloud reachable: the question about the earlier visit is asked, with its buttons, and once answered Generate creates the row', async () => {
+    // The earlier visit was served by the previous build: its operations
+    // carry no clock, so they are never ranked against this visit's.
+    for (const [key, value] of [['college', 'Grainger College of Engineering'], ['grade', 'Junior']] as const) {
+      const opId = crypto.randomUUID();
+      localStorage.setItem(`${STORAGE_KEYS.PROFILE_JOURNAL_PREFIX}op_${opId}`, JSON.stringify({
+        opId, originId: 'doc-visit-1', lineage: 'visit-1',
+        fields: [{ key, base: { present: false }, desired: { present: true, value } }],
+        baseRevision: 0, writer: HOME_FORM_WRITER, mode: 'set', seq: 1,
+      }));
+    }
+    await mount();
+    expect(form().profile.college).toBe('Grainger College of Engineering');
+    await edit('college', 'College of Liberal Arts & Sciences');
+    // Major really is blank here, so that is what the status says.
+    expect(form().saveStatus).toBe('awaiting-required');
+    await edit('major', 'Mathematics');
+
+    expect([form().profile.college, form().profile.major, form().profile.grade])
+      .toEqual(['College of Liberal Arts & Sciences', 'Mathematics', 'Junior']);
+    expect(form().saveStatus).toBe('conflict');
+    expect(form().conflictKeys).toEqual(['college']);
+    expect(statusRow('en').textContent).not.toContain(FILL_IN);
+    expect(screen.getAllByTestId('conflict-keep-mine').length).toBeGreaterThan(0);
+    expect(sends(), 'no create without college').toEqual([]);
+
+    act(() => { form().keepMyChanges(); }); await tick(1600);
+    expect(form().conflictKeys).toEqual([]);
+    service.router.push.mockClear();
+    await act(async () => { await form().handleSubmit(); }); await drain();
+    expect(sends(), 'ONE create, complete').toHaveLength(1);
+    expect(sends()[0].patch).toMatchObject({
+      college: 'College of Liberal Arts & Sciences', major: 'Mathematics', grade: 'Junior',
+    });
+    expect(service.router.push).toHaveBeenCalledTimes(1);
   });
 });

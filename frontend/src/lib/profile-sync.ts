@@ -4649,7 +4649,7 @@ function flushByMutation(mutationId: string, token: OwnerToken): Promise<Profile
 
       const locked = new Set(pending.lockedKeys);
       const sendKeys = pending.dirtyKeys.filter((k) => !locked.has(k)) as ProfileKey[];
-      if (sendKeys.length === 0) {
+      const lockedQuestion = (): ProfileSaveResult => {
         const revision = env?.confirmed?.revision ?? pending.baseRevision;
         return {
           status: 'conflict',
@@ -4659,17 +4659,24 @@ function flushByMutation(mutationId: string, token: OwnerToken): Promise<Profile
           conflictKeys: pending.lockedKeys,
           conflicts: conflictPayload(pending.lockedKeys, pending, pending.conflictRemote, revision),
         };
-      }
+      };
+      if (sendKeys.length === 0) return lockedQuestion();
 
       const patch = pick(pending.desiredProfile, sendKeys) as Record<string, unknown>;
       const known = env?.confirmed ?? null;
       // With no row on record, a revision-0 patch is a CREATE, which becomes
-      // the whole row: it goes out complete or not at all. A required key
-      // held back by a lock would make the server refuse it
-      // (incomplete_create) on every retry, so it waits instead, exactly like
-      // a create the form cannot make yet.
-      if (pending.baseRevision === 0 && !known && !isCompleteDocument(patch as unknown as ProfileData)) {
-        return { status: 'blocked', reason: 'incomplete-create' };
+      // the whole row: it goes out complete or not at all, because the server
+      // refuses anything less (incomplete_create) on every retry. Held back,
+      // it says why: a required field blank in the document waits for the
+      // person to fill it in; a filled one held back by a lock is the
+      // question that lock is. A visit that loaded with no backend at all
+      // sends nothing anywhere, so it goes on as it always did and is kept on
+      // this device.
+      const loadedFrom = lastLoadSource?.scope === scopeOf(token) ? lastLoadSource.source : null;
+      if (pending.baseRevision === 0 && !known && loadedFrom !== 'local-only'
+        && !isCompleteDocument(patch as unknown as ProfileData)) {
+        if (!isCompleteDocument(pending.desiredProfile)) return { status: 'blocked', reason: 'incomplete-create' };
+        if (pending.lockedKeys.length > 0) return lockedQuestion();
       }
       // Otherwise revision 0 here is an edit made while this browser's own
       // create was unanswered. Sent, a partial revision-0 patch cannot

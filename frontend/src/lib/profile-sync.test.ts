@@ -3397,7 +3397,7 @@ describe('creating a row requires a profile that MEANS something', () => {
     expect(['blocked', 'staged-local']).toContain(attempt.status);
   });
 
-  it('a create is never sent without a required key: one a question holds back waits instead of failing on every retry', async () => {
+  it('a create is never sent without a required key: one a question holds back is asked, not refused on every retry', async () => {
     loadProfileMock.mockResolvedValue(absent());
     await hydrateProfile();
     const token = captureOwnerToken();
@@ -3419,13 +3419,39 @@ describe('creating a row requires a profile that MEANS something', () => {
         : { status: 'transport-error', message: 'commit_profile_patch_cas: incomplete_create' }
     ));
 
+    // College, major and grade are all filled in: what holds the create back
+    // is the question, and that is what the person is shown.
     const create = await stageProfilePatch({ ...FULL, college: 'LAS' }, ['college'], token, { allowCreate: true });
     expect(readProfileSyncEnvelope()?.pending?.lockedKeys).toEqual(['college']);
     expect(commitMock, 'a create without college is not sent').not.toHaveBeenCalled();
-    expect(create).toEqual({ status: 'blocked', reason: 'incomplete-create' });
-    // And a retry says the same thing, rather than resending it.
-    expect(await flushPendingProfileWrite(token)).toEqual({ status: 'blocked', reason: 'incomplete-create' });
+    expect(create).toMatchObject({ status: 'conflict', conflictKeys: ['college'] });
+    const asked = (create as Extract<ProfileSaveResult, { status: 'conflict' }>).conflicts;
+    expect(asked.map((c) => c.key)).toEqual(['college']);
+    expect(asked[0].candidates.map((c) => c.value).sort()).toEqual(['Grainger', 'LAS']);
+    // And a retry asks the same thing, rather than resending it.
+    expect(await flushPendingProfileWrite(token)).toMatchObject({ status: 'conflict', conflictKeys: ['college'] });
     expect(commitMock).not.toHaveBeenCalled();
+  });
+
+  it('with no backend this visit, a create a question holds back is kept on this device as before', async () => {
+    // Anonymous sign-in failed (local-only): nothing can reach a server, so
+    // nothing is held back for it. Two visits picked different colleges.
+    loadProfileMock.mockResolvedValue(localOnly(null));
+    await hydrateProfile();
+    const token = captureOwnerToken();
+    expect(recordProfileIntent({ ...FULL, college: 'Grainger' }, ['college'], token,
+      { writer: HOME_FORM_WRITER })).toBe(true);
+    resetJournalLaneForTests();
+    resetProfileDirtyLedger();
+    await hydrateProfile();
+    expect(recordProfileIntent({ ...FULL, college: 'LAS' }, ['college'], token,
+      { writer: HOME_FORM_WRITER })).toBe(true);
+    commitMock.mockResolvedValue({ status: 'local-only' });
+
+    const result = await stageProfilePatch({ ...FULL, college: 'LAS' }, ['college'], token, { allowCreate: true });
+    expect(readProfileSyncEnvelope()?.pending?.lockedKeys).toEqual(['college']);
+    expect(result).toEqual({ status: 'local-only' });
+    expect(commitMock).toHaveBeenCalledTimes(1);
   });
 
   it('a create with real values still goes', async () => {
