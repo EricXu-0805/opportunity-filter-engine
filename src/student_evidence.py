@@ -294,11 +294,22 @@ class _Name:
         self.written: dict[str, tuple[int, Mapping]] = {}
 
 
-# No course is named in more than 24 words and numbers. A longer listed name is
-# not read, which bounds how far a walk through the trie can go at one place:
-# names nested inside each other ("a", "a a", ... hundreds of them) made each
-# place cost the depth of the nesting.
-_NAME_PIECES = 24
+class _OverBudget(Exception):
+    """A text's check needs more trie steps than any real draft and course list do."""
+
+
+class _Budget:
+    """The trie steps one text's check may still take."""
+
+    __slots__ = ("left",)
+
+    def __init__(self, steps: int):
+        self.left = steps
+
+    def spend(self, steps: int) -> None:
+        self.left -= steps
+        if self.left < 0:
+            raise _OverBudget
 
 
 def _course_aliases(entries: Iterable[Mapping]) -> dict:
@@ -317,7 +328,7 @@ def _course_aliases(entries: Iterable[Mapping]) -> dict:
     trie: dict = {}
     names: dict[tuple, _Name] = {}
     for order, (_length, alias, any_case, entry) in enumerate(sorted(aliases, key=lambda item: -item[0])):
-        if (read := _name_steps(alias)) is None or len(read[0]) > _NAME_PIECES:
+        if (read := _name_steps(alias)) is None:
             continue
         steps, letters = read
         if (known := names.get(steps)) is None:
@@ -348,11 +359,17 @@ def mask_course_names(text: str, entries: Iterable[Mapping]) -> str:
     experience with machine learning" is refused for a planned or unmarked
     "Machine Learning" course.
     """
-    reader = _Reader(text, _course_aliases(entries))
-    spans = {(head.end() + start, head.end() + end)
-             for head in _LISTING.finditer(text)
-             for _name, entry, start, end in _courses_named(reader, head.end(), bare=False)
-             if entry is not None}
+    listed, key = _listed(entries)
+    reader = _Reader(text, _trie_for(key, listed), _Budget(_text_steps(text)))
+    try:
+        spans = {(head.end() + start, head.end() + end)
+                 for head in _LISTING.finditer(text)
+                 for _name, entry, start, end in _courses_named(reader, head.end(), bare=False)
+                 if entry is not None}
+    except _OverBudget:
+        # Unmasked, the competence check reads every course name as words,
+        # which can only refuse more.
+        return text
     kept, pos = [], 0
     for start, end in sorted(spans):
         if end > pos:
@@ -466,8 +483,8 @@ class _Reader:
     end does.
     """
 
-    def __init__(self, text: str, trie: dict):
-        self.text, self.trie = text, trie
+    def __init__(self, text: str, trie: dict, budget: _Budget | None = None):
+        self.text, self.trie, self.budget = text, trie, budget
         self.pieces: dict[int, tuple | None] = {}
         self.names_at: dict[int, list[tuple[_Name, int, bool]]] = {}
         self.letters: tuple[str, list[int]] | None = None
@@ -513,7 +530,11 @@ class _Reader:
         nodes, joints, start = [self.trie], (_EITHER,), at
         while nodes and (piece := self._piece(at)) is not None:
             folded, end, after, mixed = piece
+            if self.budget is not None:
+                self.budget.spend(len(nodes) * len(joints))
             for cut in (_CASED_CUT.finditer(self.text, at + 1, end) if mixed else ()):
+                if self.budget is not None:
+                    self.budget.spend(len(nodes) * len(joints))
                 head = _fold(self.text[at:cut.start()])
                 found.extend((name, cut.start(), True) for node in nodes for joint in joints
                              if (name := node.get((joint, head), {}).get(None)) is not None)
@@ -651,7 +672,7 @@ def _courses_named(reader: _Reader, origin: int, *, bare: bool, noun: bool = Fal
         name = entry["name"] if entry is not None else ""
         if end is None and (match := _CODE.match(span, pos) or _TITLE_CODE.match(span, pos)) is not None:
             name = match.groupdict().get("code") or match.group()
-            entry = _Reader(name, reader.trie).listed(0, whole=True)
+            entry = _Reader(name, reader.trie, reader.budget).listed(0, whole=True)
             name, end = (entry["name"] if entry is not None else name), match.end()
         if end is not None:
             tail = _TITLE_TAIL.match(span, end)
@@ -734,13 +755,13 @@ def _claims_nothing(reader: _Reader, head: re.Match) -> bool:
     return reader.within(_NOT_YET, start, end) or reader.within(_FUTURE, start, end)
 
 
-def _course_findings(text: str, trie: dict) -> set[tuple[frozenset, str]]:
+def _course_findings(text: str, trie: dict, budget: _Budget | None = None) -> set[tuple[frozenset, str]]:
     """Each unsupported claim as the statuses its kind of claim allows and the course it names."""
     findings: set[tuple[frozenset, str]] = set()
     for clause in _CLAUSE.split(text or ""):
         if not clause.strip():
             continue
-        reader = _Reader(clause, trie)
+        reader = _Reader(clause, trie, budget)
         opens_future = _FUTURE_AT.match(clause) is not None
         for allowed, head_re in _HEADS:
             heads = [(m, False) for m in head_re.finditer(clause)]
@@ -785,15 +806,33 @@ def course_claim_violations(text: str, entries: Iterable[Mapping], *, student_li
     a claim it already makes (the same kind of claim about the same course) is
     theirs, so only a claim new to ``text`` is a finding.
     """
-    listed = [{"name": str(entry.get("name") or ""), "status": entry.get("status")} for entry in entries]
-    key = _digest(repr([(entry["name"], entry["status"]) for entry in listed]))
+    listed, key = _listed(entries)
     text = text or ""
     for line in student_lines:
         line = str(line).strip().rstrip(".!?。！？").strip()
         if line and _findings_of(line, key, listed):
             text = text.replace(line, " ")
-    found = _findings_of(text, key, listed) - _findings_of(student_draft or "", key, listed)
-    return sorted({f"unsupported course status: {name}" for _allowed, name in found})
+    found, theirs = _findings_of(text, key, listed), _findings_of(student_draft or "", key, listed)
+    # A text too costly to read is refused, never subtracted away: an unread
+    # student draft cannot vouch for an unread one.
+    if _UNCHECKED in found or _UNCHECKED in theirs:
+        return [COURSE_CHECK_TOO_COSTLY]
+    return sorted({f"unsupported course status: {name}" for _allowed, name in found - theirs})
+
+
+# A draft and course list a student writes take at most about half a trie step
+# per character of the text (a 5,000-character list of course codes against
+# 512 codes: 2,376 steps); names built to match each other at every word
+# (nested inside each other, or one word split every way) take hundreds per
+# character. A text whose check would take more than this is refused, which
+# falls back to the template, so one text costs at most a few milliseconds per
+# thousand characters whatever the input within the request limits.
+def _text_steps(text: str) -> int:
+    return 1_000 + 5 * len(text)
+
+
+_UNCHECKED = (frozenset(), "")
+COURSE_CHECK_TOO_COSTLY = "unsupported course status: (too costly to check against the listed courses)"
 
 
 # One request checks the same course list, the student's own draft and lines
@@ -809,23 +848,40 @@ def _digest(text: str) -> str:
     return hashlib.blake2b(text.encode("utf-8", "surrogatepass"), digest_size=16).hexdigest()
 
 
+def _listed(entries: Iterable[Mapping]) -> tuple[list[dict], str]:
+    """The course list as the checks read it (each name and status) and the digest it is cached under."""
+    listed = [{"name": str(entry.get("name") or ""), "status": entry.get("status")} for entry in entries]
+    return listed, _digest(repr([(entry["name"], entry["status"]) for entry in listed]))
+
+
+def _trie_for(key: str, listed: list[dict]) -> dict:
+    with _CACHE_LOCK:
+        if (trie := _TRIES.get(key)) is not None:
+            _TRIES.move_to_end(key)
+            return trie
+    trie = _course_aliases(listed)
+    with _CACHE_LOCK:
+        _TRIES[key] = trie
+        while len(_TRIES) > 2:
+            _TRIES.popitem(last=False)
+    return trie
+
+
 def _findings_of(text: str, key: str, listed: list[dict]) -> frozenset:
-    """``_course_findings`` of ``text`` against the course list ``key`` names, from the cache when it holds them."""
+    """``_course_findings`` of ``text`` against the course list ``key`` names, from the cache when it holds them.
+
+    A text that needs more than ``_text_steps(text)`` trie steps gives ``{_UNCHECKED}``.
+    """
     slot = (key, _digest(text))
     with _CACHE_LOCK:
         if (known := _FINDINGS.get(slot)) is not None:
             _FINDINGS.move_to_end(slot)
             return known
-        if (trie := _TRIES.get(key)) is not None:
-            _TRIES.move_to_end(key)
-    if trie is None:
-        trie = _course_aliases(listed)
-    found = frozenset(_course_findings(text, trie))
+    try:
+        found = frozenset(_course_findings(text, _trie_for(key, listed), _Budget(_text_steps(text))))
+    except _OverBudget:
+        found = frozenset({_UNCHECKED})
     with _CACHE_LOCK:
-        _TRIES[key] = trie
-        _TRIES.move_to_end(key)
-        while len(_TRIES) > 2:
-            _TRIES.popitem(last=False)
         _FINDINGS[slot] = found
         while len(_FINDINGS) > 64:
             _FINDINGS.popitem(last=False)

@@ -7,6 +7,7 @@ import pytest
 
 from backend.schemas import ProfileRequest
 from src.student_evidence import (
+    COURSE_CHECK_TOO_COSTLY,
     COURSE_STATUSES,
     course_claim_violations,
     course_entries,
@@ -308,12 +309,38 @@ def full_profile_entries():
     return course_entries(profile.model_dump())
 
 
-def test_a_listed_name_of_more_than_24_words_and_numbers_is_not_read():
-    def course(words):
-        return [{"name": " ".join(f"Word{chr(97 + i % 26)}" for i in range(words)), "status": "planned"}]
-    for words, flagged in ((24, True), (25, False)):
-        claim = f"I have completed {course(words)[0]['name']}."
-        assert bool(course_claim_violations(claim, course(words))) is flagged, words
+@pytest.mark.parametrize(("claim", "title"), [
+    ("我修过人工智能导论：机器学习、深度学习与自然语言处理的原理与应用。",
+     "人工智能导论：机器学习、深度学习与自然语言处理的原理与应用"),
+    ("I have completed " + " ".join(f"Topic{chr(97 + i)}" for i in range(26)) + ".",
+     " ".join(f"Topic{chr(97 + i)}" for i in range(26))),
+])
+def test_a_long_course_title_is_read_in_any_script(claim, title):
+    assert course_claim_violations(claim, [{"name": title, "status": "planned"}]) == [
+        f"unsupported course status: {title}"]
+
+
+NESTED_NAMES = [("a " * i).strip() for i in range(1, 369)]
+
+
+def test_a_text_too_costly_to_check_is_refused_even_beside_the_students_own_draft():
+    listed = course_entries(ProfileRequest(name="S", courses=[
+        {"name": name, "status": "planned"} for name in NESTED_NAMES]).model_dump())
+    text = "I took " + ("A " * 2500)[:4990]
+    assert course_claim_violations(text, listed) == [COURSE_CHECK_TOO_COSTLY]
+    assert course_claim_violations(text, listed, student_draft=text) == [COURSE_CHECK_TOO_COSTLY]
+    assert course_claim_violations("Thank you.", listed, student_draft=text) == [COURSE_CHECK_TOO_COSTLY]
+    listing = "My coursework includes " + ("A " * 2500)[:4990]
+    assert mask_course_names(listing, listed) == listing
+
+
+def test_the_densest_honest_text_is_checked_in_full():
+    # A 5,000-character run of course codes against 512 listed codes uses about
+    # half a trie step per character, a tenth of what a text may use.
+    codes = [f"{d} {n}" for d in ("CS", "ECE", "MATH", "STAT", "PHYS", "CHEM", "BIOE", "MSE") for n in range(100, 164)]
+    text = (("I have completed " + ", ".join(codes[:40]) + ". I took " + ", ".join(codes[40:80]) + ". ") * 6)[:5000]
+    found = course_claim_violations(text, [{"name": code, "status": "planned"} for code in codes])
+    assert found == sorted(f"unsupported course status: {code}" for code in codes[:80])
 
 
 def test_the_course_check_reads_each_course_list_on_its_own():
