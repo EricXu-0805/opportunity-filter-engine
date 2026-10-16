@@ -534,7 +534,8 @@ class _Reader:
                 self.budget.spend(len(nodes) * len(joints))
             for cut in (_CASED_CUT.finditer(self.text, at + 1, end) if mixed else ()):
                 if self.budget is not None:
-                    self.budget.spend(len(nodes) * len(joints))
+                    # Each cut copies and folds the word up to it.
+                    self.budget.spend(len(nodes) * len(joints) + cut.start() - at)
                 head = _fold(self.text[at:cut.start()])
                 found.extend((name, cut.start(), True) for node in nodes for joint in joints
                              if (name := node.get((joint, head), {}).get(None)) is not None)
@@ -810,7 +811,11 @@ def course_claim_violations(text: str, entries: Iterable[Mapping], *, student_li
     text = text or ""
     for line in student_lines:
         line = str(line).strip().rstrip(".!?。！？").strip()
-        if line and _findings_of(line, key, listed):
+        if line and (stated := _findings_of(line, key, listed)):
+            # An unreadable line states nothing anyone checked: cutting it out
+            # would let the rest of the text through unread.
+            if _UNCHECKED in stated:
+                return [COURSE_CHECK_TOO_COSTLY]
             text = text.replace(line, " ")
     found, theirs = _findings_of(text, key, listed), _findings_of(student_draft or "", key, listed)
     # A text too costly to read is refused, never subtracted away: an unread
@@ -820,13 +825,15 @@ def course_claim_violations(text: str, entries: Iterable[Mapping], *, student_li
     return sorted({f"unsupported course status: {name}" for _allowed, name in found - theirs})
 
 
-# A draft and course list a student writes take at most about half a trie step
+# A draft and course list a student writes take at most about two trie steps
 # per character of the text (a 5,000-character list of course codes against
-# 512 codes: 2,376 steps); names built to match each other at every word
+# 512 codes: 2,376 steps; one Chinese sentence naming 60 titles that share
+# 计算机…: 1.84 per character); names built to match each other at every word
 # (nested inside each other, or one word split every way) take hundreds per
-# character. A text whose check would take more than this is refused, which
-# falls back to the template, so one text costs at most a few milliseconds per
-# thousand characters whatever the input within the request limits.
+# character. A text whose check would take more than this is refused (the
+# draft falls back to the template, or to the neutral inquiry when the
+# student's own draft is the unreadable text), so one text costs at most about
+# 15 ms per thousand characters whatever the input within the request limits.
 def _text_steps(text: str) -> int:
     return 1_000 + 5 * len(text)
 

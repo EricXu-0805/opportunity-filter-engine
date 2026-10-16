@@ -334,6 +334,25 @@ def test_a_text_too_costly_to_check_is_refused_even_beside_the_students_own_draf
     assert mask_course_names(listing, listed) == listing
 
 
+def test_an_unreadable_line_of_the_students_own_is_never_cut_out_of_the_text():
+    listed = course_entries(ProfileRequest(name="S", courses=[
+        {"name": name, "status": "planned"} for name in NESTED_NAMES]).model_dump())
+    line = "I took " + ("A " * 300)[:590]
+    assert course_claim_violations("I am currently taking " + line + ".", listed, student_lines=[line]) == [
+        COURSE_CHECK_TOO_COSTLY]
+    assert course_claim_violations("Thank you.", listed, student_lines=[line]) == [COURSE_CHECK_TOO_COSTLY]
+
+
+def test_a_word_split_at_every_letter_case_matching_reads_as_ascii_is_cheap():
+    # U+212A KELVIN SIGN matches "k" in any case: each one is a place a name
+    # could end, and reading up to it copies the word so far.
+    text = "I took " + "K" * 4990
+    began = time.perf_counter()
+    found = course_claim_violations(text, [{"name": "CS 225", "status": "planned"}, {"name": "K", "status": "planned"}])
+    assert time.perf_counter() - began < 0.25
+    assert found == [COURSE_CHECK_TOO_COSTLY]
+
+
 def test_the_densest_honest_text_is_checked_in_full():
     # A 5,000-character run of course codes against 512 listed codes uses about
     # half a trie step per character, a tenth of what a text may use.

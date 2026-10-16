@@ -39,9 +39,11 @@ Match remains deterministic by default.
   interest" claims nothing about Machine Learning; "..., and CS 446 was my
   favorite" still names CS 446).
   A text whose check would take more than 1,000 plus 5 trie steps per
-  character is refused and falls back to the template: real drafts and
-  course lists take about half a step per character, and only names built to
-  match each other at every word take more, so every check stays fast.
+  character is refused: the draft falls back to the template, or to the
+  neutral inquiry when the unreadable text is the student's own draft or a
+  line of their experience. Real drafts and course lists take at most about
+  two steps per character, and only names built to match each other at
+  every word take more, so every check stays fast.
   Known limits: unlisted courses are not checked; a planned course's term
   written as "in the Fall" or "for Spring 2027" is not read as future (left to
   the frontend phase); a slash cross-listing ("CS/ECE 374") is not read; and a
