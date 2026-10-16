@@ -349,30 +349,91 @@ def test_the_template_may_quote_the_students_own_course_line(email_client):  # n
 
 
 # What the ColdEmailModal "Add coursework" quick action now inserts (phase 1a:
-# the neutral listing every status allows), in a draft the student refines.
+# the neutral listing every status allows), and what it inserted before, in a
+# draft the student refines. A course claim already in the student's draft is
+# their own text, so only a claim new to the reply is refused.
 QUICK = "My coursework includes CS 225, CS 374."
+OLD_QUICK = "I have completed relevant coursework including CS 225, CS 374."
 QUICK_PROFILE = {**BASE, "coursework": ["CS 225", "CS 374"]}
+QUICK_PROFILES = {"legacy": QUICK_PROFILE,
+                  "statuses": {**BASE, "courses": [{"name": "CS 225", "status": "unknown"},
+                                                   {"name": "CS 374", "status": "planned"},
+                                                   {"name": "CS 446", "status": "planned"}]}}
 
 
-def test_refine_keeps_a_draft_holding_the_coursework_quick_action(email_client, monkeypatch):  # noqa: F811
-    monkeypatch.setattr(ce, "chat_completion", lambda *_a, **_k: draft(f"I am very interested in hypersonics.\n\n{QUICK}"))
-    response = email_client.post("/api/cold-email/refine", json={
-        "profile": QUICK_PROFILE, "opportunity_id": OPP["id"], "instruction": "make it warmer",
-        "current_body": draft(f"I am interested in hypersonics.\n\n{QUICK}")})
+def refine_quick(http, monkeypatch, profile, current, reply, instruction="make it warmer"):
+    monkeypatch.setattr(ce, "chat_completion", lambda *_a, **_k: draft(f"I am very interested in hypersonics.\n\n{reply}"))
+    response = http.post("/api/cold-email/refine", json={
+        "profile": profile, "opportunity_id": OPP["id"], "instruction": instruction,
+        "current_body": draft(f"I am interested in hypersonics.\n\n{current}")})
     assert response.status_code == 200, response.text
-    out = response.json()
-    assert out.get("fallback_reason") is None and out["method"] == "llm" and QUICK in out["body"], out
+    return response.json()
 
 
-def test_selection_refine_beside_the_coursework_quick_action(email_client, monkeypatch):  # noqa: F811
+def select_quick(http, monkeypatch, profile, sentence, replacement):
     old = "I am interested in hypersonics."
-    whole = draft(f"{old}\n\n{QUICK}")
+    whole = draft(f"{old}\n\n{sentence}")
     start = len(whole[:whole.index(old)].encode("utf-16-le")) // 2
-    monkeypatch.setattr(ce, "chat_completion",
-                        lambda *_a, **_k: json.dumps({"replacement": "I am very interested in hypersonics."}))
-    response = email_client.post("/api/cold-email/refine", json={
-        "profile": QUICK_PROFILE, "opportunity_id": OPP["id"], "current_body": whole, "subject": "Research inquiry",
+    monkeypatch.setattr(ce, "chat_completion", lambda *_a, **_k: json.dumps({"replacement": replacement}))
+    response = http.post("/api/cold-email/refine", json={
+        "profile": profile, "opportunity_id": OPP["id"], "current_body": whole, "subject": "Research inquiry",
         "instruction": "Make only this selection clearer.",
         "selection": {"start_utf16": start, "end_utf16": start + len(old), "text": old}})
     assert response.status_code == 200, response.text
-    assert response.json().get("outcome") == "proposal", response.json()
+    return response.json()
+
+
+@pytest.mark.parametrize("provider", [True, False], ids=["reply", "no_provider"])
+@pytest.mark.parametrize("profile", QUICK_PROFILES.values(), ids=QUICK_PROFILES)
+@pytest.mark.parametrize("sentence", [QUICK, OLD_QUICK], ids=["quick", "old_quick"])
+def test_refine_keeps_a_draft_holding_the_coursework_quick_action(
+        email_client, monkeypatch, sentence, profile, provider):  # noqa: F811
+    monkeypatch.setattr(ce, "is_configured", lambda: provider)
+    out = refine_quick(email_client, monkeypatch, profile, sentence, sentence)
+    assert out.get("fallback_reason") is None and out["method"] == ("llm" if provider else "local"), out
+    assert sentence in out["body"], out
+
+
+@pytest.mark.parametrize("profile", QUICK_PROFILES.values(), ids=QUICK_PROFILES)
+@pytest.mark.parametrize("sentence", [QUICK, OLD_QUICK], ids=["quick", "old_quick"])
+def test_selection_refine_beside_the_coursework_quick_action(email_client, monkeypatch, sentence, profile):  # noqa: F811
+    out = select_quick(email_client, monkeypatch, profile, sentence, "I am very interested in hypersonics.")
+    assert out.get("outcome") == "proposal", out
+
+
+@pytest.mark.parametrize("profile", QUICK_PROFILES.values(), ids=QUICK_PROFILES)
+@pytest.mark.parametrize(("current", "reply", "instruction"), [
+    (OLD_QUICK, f"{OLD_QUICK} I have completed CS 446.", "make it warmer"),
+    (OLD_QUICK, "I have completed relevant coursework including CS 225, CS 374, CS 446.", "make it warmer"),
+    # An edit request is not the student's draft.
+    (OLD_QUICK, f"{OLD_QUICK} I have completed CS 446.", "Say that I have completed CS 446."),
+    # The same course, claimed completed where the draft said currently taking.
+    ("I am currently taking CS 446.", "I have completed CS 446.", "make it warmer"),
+], ids=["new_course", "widened_list", "instruction", "taking_to_completed"])
+def test_refine_still_refuses_a_course_claim_new_to_the_reply(
+        email_client, monkeypatch, profile, current, reply, instruction):  # noqa: F811
+    out = refine_quick(email_client, monkeypatch, profile, current, reply, instruction)
+    assert out["method"] == "local" and out["fallback_reason"] == "fabrication", out
+    assert reply not in out["body"]
+
+
+@pytest.mark.parametrize("profile", QUICK_PROFILES.values(), ids=QUICK_PROFILES)
+def test_selection_refine_still_refuses_a_course_claim_new_to_the_draft(email_client, monkeypatch, profile):  # noqa: F811
+    out = select_quick(email_client, monkeypatch, profile, OLD_QUICK,
+                       "I am very interested in hypersonics. I have completed CS 446.")
+    assert out.get("outcome") == "no_change" and out["reason"] == "fabrication", out
+
+
+@pytest.mark.parametrize("route", ["/cold-email", "/cold-email/stream"])
+@pytest.mark.parametrize("profile", QUICK_PROFILES.values(), ids=QUICK_PROFILES)
+def test_generation_still_refuses_the_old_coursework_sentence_from_the_model(
+        email_client, monkeypatch, route, profile):  # noqa: F811
+    body = draft(OLD_QUICK)
+    monkeypatch.setattr(ce, "_pipeline_generate", lambda *_a, **_k: f"Subject: Research inquiry\n\n{body}")
+    monkeypatch.setattr(ce, "chat_completion", lambda *_a, **_k: body)
+    response = email_client.post(f"/api{route}", json={"profile": profile, "opportunity_id": OPP["id"], "engine": "ai"})
+    assert response.status_code == 200, response.text
+    out = (next(json.loads(line[6:]) for line in response.text.splitlines()
+                if line.startswith("data: ") and json.loads(line[6:]).get("stage") == "done")
+           if route.endswith("stream") else response.json())
+    assert out["fallback_reason"] == "fabrication" and OLD_QUICK not in out["body"], out

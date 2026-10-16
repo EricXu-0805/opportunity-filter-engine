@@ -436,8 +436,9 @@ def _claims_nothing(prefix: str, head: str) -> bool:
     return bool(_NOT_YET.search(phrase) or _FUTURE.search(phrase))
 
 
-def _course_findings(text: str, aliases: list[tuple[re.Pattern, Mapping]]) -> set[str]:
-    findings: set[str] = set()
+def _course_findings(text: str, aliases: list[tuple[re.Pattern, Mapping]]) -> set[tuple[frozenset, str]]:
+    """Each unsupported claim as the statuses its kind of claim allows and the course it names."""
+    findings: set[tuple[frozenset, str]] = set()
     for clause in _CLAUSE.split(text or ""):
         if not clause.strip():
             continue
@@ -459,11 +460,12 @@ def _course_findings(text: str, aliases: list[tuple[re.Pattern, Mapping]]) -> se
                     continue
                 for name, entry, _start, _end in named:
                     if entry is None or entry["status"] not in allowed:
-                        findings.add(f"unsupported course status: {name}")
+                        findings.add((allowed, name))
     return findings
 
 
-def course_claim_violations(text: str, entries: Iterable[Mapping], *, student_lines: Iterable[str] = ()) -> list[str]:
+def course_claim_violations(text: str, entries: Iterable[Mapping], *, student_lines: Iterable[str] = (),
+                            student_draft: str = "") -> list[str]:
     """Courses the text claims done, or claims to be taking, when their status does not allow it.
 
     Only a ``completed`` course may be stated as completed or taken, only an
@@ -477,7 +479,9 @@ def course_claim_violations(text: str, entries: Iterable[Mapping], *, student_li
     completion ("I took CS 446 in the fall"). ``student_lines`` are the student's own
     confirmed experience: a line of it that states a course, repeated verbatim
     ("Completed CS 225 project: built a parser"), is their statement, not one
-    to check.
+    to check. ``student_draft`` is the student's own draft that ``text`` edits:
+    a claim it already makes (the same kind of claim about the same course) is
+    theirs, so only a claim new to ``text`` is a finding.
     """
     aliases = _course_aliases(list(entries))
     text = text or ""
@@ -485,7 +489,8 @@ def course_claim_violations(text: str, entries: Iterable[Mapping], *, student_li
         line = str(line).strip().rstrip(".!?。！？").strip()
         if line and _course_findings(line, aliases):
             text = text.replace(line, " ")
-    return sorted(_course_findings(text, aliases))
+    found = _course_findings(text, aliases) - _course_findings(student_draft, aliases)
+    return sorted({f"unsupported course status: {name}" for _allowed, name in found})
 
 
 # ---------------------------------------------------------------------------

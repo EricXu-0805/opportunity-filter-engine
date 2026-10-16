@@ -2125,9 +2125,11 @@ def _email_grounding_findings(
     interests; numeric achievements require the student's own resume evidence.
     Completed actions also keep actor, negation and project/metric attribution
     within each experience entry. This is a bounded English check, not semantic
-    verification. Neither a previous draft nor an edit request is a new source.
-    ``deterministic`` text (a template or local edit) skips the M33 paper-title
-    rule, which is a check on what a model wrote.
+    verification. Neither a previous draft nor an edit request is a new source,
+    but on refine a course claim already in the student's draft is theirs, so
+    only a claim new to the edited text counts. ``deterministic`` text (a
+    template or local edit) skips the M33 paper-title rule, which is a check on
+    what a model wrote.
     """
     if corpus is None:
         corpus = _build_email_corpus(parts, opp)
@@ -2181,7 +2183,8 @@ def _email_grounding_findings(
     # M13: a coursework listing may name any listed course; elsewhere only a
     # completed or in-progress course's name (in the student corpus) may stand
     # for its topic. What is claimed about a course is the status rule's, and a
-    # confirmed experience line the draft repeats verbatim is the student's own.
+    # confirmed experience line the draft repeats verbatim, or on refine a claim
+    # already in the student's draft, is the student's own.
     courses = parts.get("courses") or []
     borrowed = competence_violations(
         mask_course_names(text, courses), _student_email_corpus(parts), extra_allow=_EMAIL_SCAFFOLDING,
@@ -2189,7 +2192,8 @@ def _email_grounding_findings(
     )
     borrowed.extend(skill_level_violations(text, parts.get("skill_levels") or {}))
     borrowed.extend(course_claim_violations(
-        text, courses, student_lines=[str(b) for b in parts.get("resume_bullets", [])]))
+        text, courses, student_lines=[str(b) for b in parts.get("resume_bullets", [])],
+        student_draft=parts.get("refine_draft") or ""))
     return fabricated, borrowed
 
 
@@ -2748,7 +2752,8 @@ def _refine_context(request: EmailRefineRequest, opp: dict | None) -> dict | Non
     The user's instruction and current draft are deliberately excluded from
     evidence.  A pasted unsupported claim cannot authenticate itself after one
     edit; real facts must come from the profile/resume or the contact-safe
-    opportunity record.
+    opportunity record. A course claim the draft already makes may stay as the
+    student's own text, and it authenticates nothing else.
     """
     if opp is None:
         return None
@@ -2769,6 +2774,10 @@ def _refine_context(request: EmailRefineRequest, opp: dict | None) -> dict | Non
     # enter the evidence corpus.
     parts["refine_inputs"] = [request.current_body, request.subject, request.instruction,
                               request.selection.text if request.selection is not None else ""]
+    # Read only by the M13 course rule: a course claim already in the draft
+    # being edited is the student's own text, not the model's; the instruction
+    # is not draft text. Generation sets no draft, so there every claim counts.
+    parts["refine_draft"] = f"{request.subject}\n{request.current_body}"
     return {
         "safe_opp": safe_opp,
         "profile_dict": profile_dict,

@@ -81,15 +81,26 @@ def request_email(client, monkeypatch, endpoint, claim, bullets=(), current=None
     "I have three years of experience with Kubernetes.",
     "I am quite experienced with Kubernetes.",
     "I am comfortable with Rust.",
-    # M13: PROFILE's coursework is a legacy list, so CS 225 has no status and
-    # is named only neutrally, never as completed (owner decision 2026-10-16).
-    "I completed CS 225 in 2025.",
 ])
 def test_interest_target_and_unsupported_numbers_are_not_student_facts(email_client, monkeypatch, endpoint, claim):
     out = request_email(email_client, monkeypatch, endpoint, claim, current=draft(claim))
     assert out["method"] in ("local", "template")
     assert out["fallback_reason"] == "fabrication"
     assert claim not in out["body"]
+
+
+def test_a_course_claim_beyond_its_status_is_refused_unless_the_students_draft_makes_it(email_client, monkeypatch):
+    # M13: PROFILE's coursework is a legacy list, so CS 225 has no status and
+    # is named only neutrally, never as completed (owner decision 2026-10-16).
+    # On refine a course claim already in the student's draft is their own
+    # text, not the model's; only a claim new to the reply is refused.
+    claim = "I completed CS 225 in 2025."
+    for endpoint in ("/cold-email", "/cold-email/refine"):
+        out = request_email(email_client, monkeypatch, endpoint, claim)
+        assert out["method"] in ("local", "template") and out["fallback_reason"] == "fabrication", out
+        assert claim not in out["body"]
+    out = request_email(email_client, monkeypatch, "/cold-email/refine", claim, current=draft(claim))
+    assert out["method"] == "llm" and out.get("fallback_reason") is None and claim in out["body"], out
 
 
 @pytest.mark.parametrize("endpoint", ["/cold-email", "/cold-email/refine"])
