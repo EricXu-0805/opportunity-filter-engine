@@ -62,9 +62,12 @@ new source must crawl the page (list it in its `seeds`), or the program is
 never listed again. A record on a page its config shares with another program
 (`shared_program_page`) is never dropped as a near-duplicate, but a quick run
 or a failed load leaves it out all the same. So does a program renamed back to
-a key, or moved back to a file, where its row retired: that row comes back
-only on a run that loads its page, even before the closed row in the other
-file retires.
+a key, or moved back to a file, where its row retired, or both in one edit:
+that row comes back only on a run that loads its page, even before the closed
+row in the other file retires. Only a closed row with the record's key, or
+with a key its file's sources no longer list, makes a record wait for a read:
+a closed program still listed in the other file does not, even on a shared
+page.
 
 To retire a config's open programs, empty the open source's `programs` and
 leave the source in place until a Sunday run has passed. A deleted open source

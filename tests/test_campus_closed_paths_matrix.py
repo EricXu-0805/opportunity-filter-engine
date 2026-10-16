@@ -23,9 +23,17 @@ under the day.
   page that fails to load) or reads the page saying open, closed or nothing.
 - 7 scenarios on the three paths M98 closes: a page shared with another
   program, a program renamed back, and one moved back.
+- 3 scenarios where the closed row that holds the program is in the other
+  file under a key that file no longer lists, before that file's day retires
+  it: renamed and moved back in one edit, and renamed and moved on a shared
+  page.
+- 9 scenarios such a row must not hold back: a program on a page it shares
+  with a program still listed in the other file, new or back to its own
+  retired row; a new program under the title of one in the other file; and a
+  program renamed and moved back whose landing run reads its page.
 
-Main at c99142c2 passes the first 73 as written. The 7 M98 scenarios fail
-there on the day that reads nothing, which listed the program.
+Main at c99142c2 passes the 73 and the 9 as written. The other 10 fail there
+on the day that reads nothing, which listed the program.
 """
 
 from __future__ import annotations
@@ -45,10 +53,13 @@ from src.collectors import ucb_sources as reg
 _TEXT = {"open": "Applications are now open!", "closed": "Applications are now closed.", "nothing": "Program page"}
 # The pages the scenarios' programs live on. Every other page loads and states
 # no status.
-_PROGRAM_PAGES = frozenset({"summer", "summer-new", "hub"})
+_PROGRAM_PAGES = frozenset({"summer", "summer-new", "hub", "twin"})
 _PROGRAM_OF = {"old_key": "summer", "new_key": "summer", "moving": "summer", "first_key": "summer",
-               "second_key": "summer", "alpha": "alpha", "alpha2": "alpha", "beta": "beta"}
-_TITLE_OF = {"summer": "Summer Fellowship", "alpha": "Alpha Fellowship", "beta": "Beta Grant"}
+               "second_key": "summer", "alpha": "alpha", "alpha2": "alpha", "beta": "beta", "gamma": "gamma",
+               "twin": "twin"}
+# twin is another program under alpha's title.
+_TITLE_OF = {"summer": "Summer Fellowship", "alpha": "Alpha Fellowship", "beta": "Beta Grant",
+             "gamma": "Gamma Award", "twin": "Alpha Fellowship"}
 # national.json always holds other sources' rows, so Sunday always has a
 # shard to write.
 _NATIONAL_ROW = {"id": "nsf-reu-0001", "source": "nsf_reu", "source_type": "reu", "school": None,
@@ -105,6 +116,13 @@ def _serve(page):
     return fetch
 
 
+def _other_file(evidence):
+    """The other file's keys as a merge argument; none from main's fetch,
+    whose merge takes none, so the module runs on main's code too."""
+    keys = evidence.get("other_file_program_keys")
+    return {} if keys is None else {"other_file_program_keys": set(keys)}
+
+
 class _CampusGraph:
     home = "example"
 
@@ -124,7 +142,7 @@ class _CampusGraph:
                         _source(cg.program, base, "example_external", "open", config.open)],
         }
         records, evidence = cg.fetch_and_normalize_with_evidence(school, deep=deep, national=national)
-        listed = evidence["listed_program_keys"]
+        listed, other = evidence["listed_program_keys"], _other_file(evidence)
         cg.merge_into_processed(
             records,
             complete_recursive_sources=set(evidence["complete_recursive_sources"]),
@@ -132,6 +150,7 @@ class _CampusGraph:
             listed_program_keys=None if listed is None else set(listed),
             national=national,
             school_slug="example",
+            **other,
         )
 
 
@@ -153,12 +172,13 @@ class _Ucb:
             _source(reg._prog, base, "ucb_fixture_external", reg.EMIT_OPEN, config.open),
         ])
         records, evidence = ucb_campus.fetch_and_normalize_with_evidence(deep=deep, national=national)
-        listed = evidence["listed_program_keys"]
+        listed, other = evidence["listed_program_keys"], _other_file(evidence)
         ucb_campus.merge_into_processed(
             records,
             complete_recursive_sources=set(evidence["complete_recursive_sources"]),
             listed_program_keys=None if listed is None else set(listed),
             national=national,
+            **other,
         )
 
 
@@ -450,5 +470,107 @@ def test_a_closed_program_on_m98s_paths_waits_for_a_run_that_reads_its_page(monk
     _play(monkeypatch, tmp_path, engine, days)
 
 
-def test_the_groups_hold_43_30_and_7_scenarios():
-    assert (len(MOVES_AND_RENAMES), len(LANDING_DAYS), len(M98_PATHS)) == (43, 30, 7)
+# --- 3 scenarios with the closed row in the other file under an unlisted key --
+
+def _renamed_and_moved_back_home_file_day_first(engine, run):
+    """The closed row in the other file, not yet retired there, carries
+    another key, so it held nothing back."""
+    home, away = Config(campus=(("first_key", "summer"),)), Config(open=(("second_key", "summer"),))
+    return pytest.param(engine, [
+        Day(home, None, "deep", "open", "first_key@home open listed"),
+        Day(away, False, "deep", "open", "first_key@home open retired"),
+        Day(away, True, "deep", "open", "first_key@home open retired, second_key@national open listed"),
+        Day(away, True, "deep", "closed", "first_key@home open retired, second_key@national closed hidden"),
+        Day(home, False, run, "closed", "first_key@home open retired, second_key@national closed hidden"),
+        Day(home, True, "deep", "closed", "first_key@home open retired, second_key@national closed retired"),
+        Day(home, False, "deep", "open", "first_key@home open listed, second_key@national closed retired"),
+    ], id=f"{engine}-renamed_and_moved_back-home_file_day_first-{'page_fails' if run == 'fails' else 'quick_run'}")
+
+
+def _shared_page_renamed_and_moved_into_open():
+    before = Config(campus=(("alpha", "hub"), ("beta", "hub")))
+    after = Config(campus=(("beta", "hub"),), open=(("alpha2", "hub"),))
+    return pytest.param("cg", [
+        Day(before, None, "deep", "closed", "alpha@home closed hidden, beta@home closed hidden"),
+        Day(after, True, "quick", "closed", "alpha@home closed hidden, beta@home closed hidden"),
+        Day(after, False, "deep", "closed", "alpha@home closed retired, beta@home closed hidden"),
+        Day(after, True, "deep", "open", "alpha@home closed retired, alpha2@national open listed, beta@home closed hidden"),
+    ], id="cg-shared_page-renamed_and_moved_into_open-new_file_day_first-quick_run")
+
+
+OTHER_FILE_UNDER_ANOTHER_KEY = [
+    _renamed_and_moved_back_home_file_day_first("cg", "quick"),
+    _renamed_and_moved_back_home_file_day_first("ucb", "fails"),
+    _shared_page_renamed_and_moved_into_open(),
+]
+
+
+@pytest.mark.parametrize(("engine", "days"), OTHER_FILE_UNDER_ANOTHER_KEY)
+def test_a_closed_row_in_the_other_file_holds_its_program_under_a_key_that_file_dropped(
+        monkeypatch, tmp_path, engine, days):
+    _play(monkeypatch, tmp_path, engine, days)
+
+
+# --- 9 scenarios a closed row in the other file must not hold back ------------
+
+def _new_on_a_page_shared_across_files():
+    """A new program on a page its config shares with a program in the other
+    file, whose closure is that program's own reading."""
+    before, after = Config(open=(("alpha", "hub"),)), Config(campus=(("gamma", "hub"),), open=(("alpha", "hub"),))
+    return pytest.param("cg", [
+        Day(before, None, "deep", "closed", "alpha@national closed hidden"),
+        Day(after, False, "quick", "closed", "alpha@national closed hidden, gamma@home unknown listed"),
+    ], id="cg-new_program_on_a_page_shared_with_a_closed_program_in_the_other_file-quick_run")
+
+
+def _back_on_a_page_shared_across_files(engine, run):
+    """ucb_campus keeps one of two programs on a page in one run, so the
+    other file's program arrives on its own day."""
+    gamma, alpha = Config(campus=(("gamma", "hub"),)), Config(open=(("alpha", "hub"),))
+    both = Config(campus=(("gamma", "hub"),), open=(("alpha", "hub"),))
+    return pytest.param(engine, [
+        Day(gamma, None, "deep", "open", "gamma@home open listed"),
+        Day(alpha, False, "deep", "open", "gamma@home open retired"),
+        Day(alpha, True, "deep", "closed", "alpha@national closed hidden, gamma@home open retired"),
+        Day(both, False, run, "closed", "alpha@national closed hidden, gamma@home open listed"),
+    ], id=f"{engine}-program_back_on_a_page_shared_with_a_closed_program_in_the_other_file-"
+          f"{'page_fails' if run == 'fails' else 'quick_run'}")
+
+
+def _new_under_the_title_of_a_closed_program_in_the_other_file(engine):
+    before, after = Config(open=(("alpha", "hub"),)), Config(campus=(("twin", "twin"),), open=(("alpha", "hub"),))
+    return pytest.param(engine, [
+        Day(before, None, "deep", "closed", "alpha@national closed hidden"),
+        Day(after, False, "quick", "closed", "alpha@national closed hidden, twin@home unknown listed"),
+    ], id=f"{engine}-new_program_under_the_title_of_a_closed_program_in_the_other_file-quick_run")
+
+
+def _renamed_and_moved_back_read_on_landing(engine, word):
+    """The run that lands the program reads its page, which says what holds."""
+    home, away = Config(campus=(("first_key", "summer"),)), Config(open=(("second_key", "summer"),))
+    return pytest.param(engine, [
+        Day(home, None, "deep", "open", "first_key@home open listed"),
+        Day(away, False, "deep", "open", "first_key@home open retired"),
+        Day(away, True, "deep", "closed", "first_key@home open retired, second_key@national closed hidden"),
+        Day(home, False, "deep", word, f"first_key@home {word} {_shown(word)}, second_key@national closed hidden"),
+    ], id=f"{engine}-renamed_and_moved_back-home_file_day_first-reads_{word}")
+
+
+NOT_HELD = [
+    _new_on_a_page_shared_across_files(),
+    _back_on_a_page_shared_across_files("cg", "quick"),
+    _back_on_a_page_shared_across_files("ucb", "fails"),
+    *(_new_under_the_title_of_a_closed_program_in_the_other_file(engine) for engine in _ENGINES),
+    *(_renamed_and_moved_back_read_on_landing(engine, word) for engine in _ENGINES for word in ("open", "closed")),
+]
+
+
+@pytest.mark.parametrize(("engine", "days"), NOT_HELD)
+def test_a_closed_row_in_the_other_file_holds_back_no_other_program_and_no_read_record(
+        monkeypatch, tmp_path, engine, days):
+    _play(monkeypatch, tmp_path, engine, days)
+
+
+def test_the_groups_hold_43_30_7_3_and_9_scenarios():
+    assert (len(MOVES_AND_RENAMES), len(LANDING_DAYS), len(M98_PATHS), len(OTHER_FILE_UNDER_ANOTHER_KEY),
+            len(NOT_HELD)) == (43, 30, 7, 3, 9)

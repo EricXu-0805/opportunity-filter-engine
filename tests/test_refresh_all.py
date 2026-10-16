@@ -1606,9 +1606,9 @@ def test_b55_campus_failure_receipts_reach_merge_without_report_content(monkeypa
 
 def test_listed_program_keys_reach_the_campus_merge_without_report_content(monkeypatch, tmp_path):
     _stub_all_collectors(monkeypatch, tmp_path)
-    listed = ["uw_first_program", "uw_second_program"]
+    listed, other = ["uw_first_program", "uw_second_program"], ["uw_open_program"]
     proof = {"condition_capture_counts": {"captured": 0, "empty": 0, "unsupported": 0, "failed": 0},
-             "condition_capture_complete": False, "listed_program_keys": listed}
+             "condition_capture_complete": False, "listed_program_keys": listed, "other_file_program_keys": other}
     monkeypatch.setattr(refresh_all, "fetch_campus_graph_with_evidence", lambda *a, **k: ([], proof))
     calls = []
     monkeypatch.setattr(refresh_all, "merge_campus_graph", lambda records, **kwargs: (calls.append(kwargs) or (0, 0)))
@@ -1616,9 +1616,12 @@ def test_listed_program_keys_reach_the_campus_merge_without_report_content(monke
     summary = refresh_all.refresh_all(deep=False, schools={"uw"})
 
     assert [call["listed_program_keys"] for call in calls] == [set(listed)]
+    assert [call["other_file_program_keys"] for call in calls] == [set(other)]
     assert calls[0]["school_slug"] == "uw"
     assert "listed_program_keys" not in summary["sources"]["campus_graph:uw"]
+    assert "other_file_program_keys" not in summary["sources"]["campus_graph:uw"]
     assert proof["listed_program_keys"] == listed
+    assert proof["other_file_program_keys"] == other
 
 
 def test_the_run_summary_counts_fetches_skipped_for_a_rejected_certificate(monkeypatch, tmp_path):
@@ -1660,8 +1663,8 @@ def test_the_run_summary_counts_fetches_skipped_for_a_rejected_certificate(monke
 
 def test_listed_program_keys_reach_the_ucb_campus_merge_without_report_content(monkeypatch, tmp_path):
     _stub_all_collectors(monkeypatch, tmp_path)
-    listed = ["first_program", "second_program"]
-    proof = {"complete_recursive_sources": [], "listed_program_keys": listed}
+    listed, other = ["first_program", "second_program"], ["open_program"]
+    proof = {"complete_recursive_sources": [], "listed_program_keys": listed, "other_file_program_keys": other}
     monkeypatch.setattr(refresh_all, "fetch_ucb_campus_with_evidence", lambda *a, **k: ([], proof))
     calls = []
     monkeypatch.setattr(refresh_all, "merge_ucb_campus", lambda records, **kwargs: (calls.append(kwargs) or (0, 0)))
@@ -1669,8 +1672,11 @@ def test_listed_program_keys_reach_the_ucb_campus_merge_without_report_content(m
     summary = refresh_all.refresh_all(deep=False, schools={"ucb"})
 
     assert [call["listed_program_keys"] for call in calls] == [set(listed)]
+    assert [call["other_file_program_keys"] for call in calls] == [set(other)]
     assert "listed_program_keys" not in summary["sources"]["ucb_campus"]
+    assert "other_file_program_keys" not in summary["sources"]["ucb_campus"]
     assert proof["listed_program_keys"] == listed
+    assert proof["other_file_program_keys"] == other
 
 
 def test_a_ucb_refresh_retires_a_program_dropped_from_its_registry(monkeypatch, tmp_path):

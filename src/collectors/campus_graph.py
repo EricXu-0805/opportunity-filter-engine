@@ -807,6 +807,13 @@ def fetch_and_normalize_with_evidence(
     evidence["listed_program_keys"] = sorted({
         spec["key"] for source in sources for spec in source.get("programs", [])
     }) if any(source.get("programs") for source in school.get("sources", [])) else None
+    # The same for the sources left to the other file's run: a closed row
+    # there whose key they no longer list retires on that run, and until then
+    # holds the program's last reading for merge.
+    evidence["other_file_program_keys"] = sorted({
+        spec["key"] for source in school.get("sources", []) if source not in sources
+        for spec in source.get("programs", [])
+    }) if any(source.get("programs") for source in school.get("sources", [])) else None
     counts = evidence["condition_capture_counts"]
     evidence["condition_capture_complete"] = bool(sum(counts.values()) and not counts["failed"] and not counts["unsupported"])
     records, dropped = _dedupe_with_program_scope(records, [])
@@ -872,19 +879,24 @@ def _listing_applies(opp: dict) -> bool:
         metadata.get("status") == "closed" and metadata.get("deactivation_reason") is None)
 
 
-def _waiting_for_a_read(new_opps: list[dict], existing: list[dict], owned) -> set:
+def _waiting_for_a_read(new_opps: list[dict], existing: list[dict], owned, published: set, other_file_keys) -> set:
     """The ids of incoming program records left out until a run reads their
     page, because a row that carries their program says the page was closed.
 
     A record waits when this run read nothing for it (a quick run, or its
     page failed to load), it is new or its own row retired as no longer
     listed, and a closed row that ``owned`` accepts shares its URL or title
-    and either retired as no longer listed or has the record's key. That row
-    holds the program's last reading after a rename or move with its URL, a
-    rename back, or a move back. A record on a page its config shares with
-    another program (shared_program_page) waits too: it skips the
-    near-duplicate filter because the page is not its identity, but what the
-    page said still holds.
+    and either retired as no longer listed, has the record's key, or is in a
+    file this run does not publish (``published`` holds the school value of
+    the files it does) under a key that file's sources no longer list
+    (``other_file_keys``; None, not known, counts every key). That row holds
+    the program's last reading after a rename or move with its URL, a rename
+    back, or a move back; in the other file it retires only on that file's
+    run, so it holds a program renamed and moved in one edit, or renamed and
+    moved back, until then. A record on a page its config shares with another
+    program (shared_program_page) waits too: it skips the near-duplicate
+    filter because the page is not its identity, but what the page said
+    still holds.
     """
     incoming_ids = {opp.get("id") for opp in new_opps}
     closed = [row for row in existing if isinstance(row.get("metadata"), dict)
@@ -899,7 +911,9 @@ def _waiting_for_a_read(new_opps: list[dict], existing: list[dict], owned) -> se
                 or (own is not None and not _retired_as_unlisted(own))):
             continue
         claims = [row for row in closed if _retired_as_unlisted(row)
-                  or row["metadata"]["collector_key"] == opp["metadata"]["collector_key"]]
+                  or row["metadata"]["collector_key"] == opp["metadata"]["collector_key"]
+                  or (row.get("school") not in published
+                      and (other_file_keys is None or row["metadata"]["collector_key"] not in other_file_keys))]
         if claims and dedupe_against_existing([opp], claims)[1]:
             waiting.add(opp["id"])
     return waiting
@@ -913,6 +927,7 @@ def merge_into_processed(
     condition_capture_updates: list[dict] | None = None,
     listed_program_keys: set[str] | frozenset[str] | None = None,
     national: bool | None = None,
+    other_file_program_keys: set[str] | frozenset[str] | None = None,
 ) -> tuple[int, int]:
     """Upsert records and retire what this run proves is gone.
 
@@ -942,7 +957,12 @@ def merge_into_processed(
     its URL or title is dropped as its near-duplicate until it retires, and
     after that until a run loads the record's page. That wait also holds a
     record on a page its config shares with another program, and a program
-    renamed back to a key, or moved back to a file, where its row retired.
+    renamed back to a key, or moved back to a file, where its row retired. A
+    closed row in the other file whose key ``other_file_program_keys`` (the
+    evidence's keys for the sources the fetch left to that file's run) no
+    longer lists retires only on that run, and holds them the same way until
+    then, so a program renamed and moved in one edit, or back, waits too. The
+    None default counts every key there.
     """
 
     if not PROCESSED_FILE.exists():
@@ -1050,9 +1070,11 @@ def merge_into_processed(
     # failed to load, read nothing: the record would land listed, though the
     # page last said closed. The first run that reads it hands over. The same
     # holds for a record coming back to its own retired row, which a closed
-    # row with its key in the other file holds back too.
+    # row in the other file holds back too, under its key or one that file
+    # no longer lists.
     waiting = _waiting_for_a_read(
-        new_opps, existing, lambda row: bool(school_slug) and _configured_program_row(row, school_slug))
+        new_opps, existing, lambda row: bool(school_slug) and _configured_program_row(row, school_slug), published,
+        other_file_program_keys)
     if waiting:
         new_opps = [opp for opp in new_opps if opp.get("id") not in waiting]
         dropped += len(waiting)
