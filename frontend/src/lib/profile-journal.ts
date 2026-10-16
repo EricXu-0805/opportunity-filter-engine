@@ -26,7 +26,8 @@
 //     — never the reverse, which would re-send a write that already landed.
 //   * NO GLOBAL ORDER. `seq` orders one tab's own operations and nothing
 //     else. Two tabs editing the same field are resolved by their frozen
-//     bases, never by which key happened to enumerate first.
+//     bases, never by which key happened to enumerate first. The one
+//     exception is `clock` (see JournalOp), used only on a row never created.
 //   * ONE LOCK, SHARED BY EVERY ACCOUNT. The raw storage keys are NOT
 //     uid-scoped — they are fixed names holding whichever identity currently
 //     owns this browser — so a lock named per-uid would let U1 and U2 mutate
@@ -163,6 +164,18 @@ export interface JournalOp {
   decisions?: Record<string, 'local' | 'cloud'>;
   /** Monotonic within this tab; orders its own operations and nothing else. */
   seq: number;
+  /**
+   * Above the clock of every operation outstanding when this one was
+   * appended, whichever tab wrote it: an operation written while another was
+   * already on disk has the higher clock. (Two written without seeing each
+   * other are in no particular order.) Absent on every
+   * operation written by an earlier build (its `seq` counts per lineage, so
+   * it ranks visits by how many edits they made, not by when) and on one
+   * appended while the journal could not be read; such an operation is never
+   * ranked against another. Optional, so an earlier build reads the
+   * operation and ignores it.
+   */
+  clock?: number;
 }
 
 export type JournalResult<T> = { ok: true; value: T } | { ok: false; reason: string };
@@ -321,6 +334,18 @@ function nextSeq(): number | null {
   return laneSeq;
 }
 
+/** The clock for an operation appended now (see JournalOp.clock), or null
+ *  when the journal cannot be read or the next value would leave the safe
+ *  integer range. Null does not refuse the append: the edit is recorded, it
+ *  is only never ranked against another. */
+function nextClock(): number | null {
+  const stored = readOutstandingOps();
+  if (!stored.ok) return null;
+  let floor = 0;
+  for (const op of stored.value) if (op.clock !== undefined && op.clock > floor) floor = op.clock;
+  return Number.isSafeInteger(floor + 1) ? floor + 1 : null;
+}
+
 function newId(): string {
   const c = typeof crypto !== 'undefined' ? crypto : undefined;
   if (c && typeof c.randomUUID === 'function') return c.randomUUID();
@@ -423,6 +448,8 @@ function parseOp(raw: string | null, storageKey: string): JournalResult<JournalO
     // values past 2^53 parse to the same double — which would silently make
     // one operation's identity equal another's.
     || typeof op.seq !== 'number' || !Number.isSafeInteger(op.seq) || op.seq < 0
+    || (op.clock !== undefined
+      && (typeof op.clock !== 'number' || !Number.isSafeInteger(op.clock) || op.clock < 0))
     || typeof op.baseRevision !== 'number' || !Number.isSafeInteger(op.baseRevision)
     || op.baseRevision < 0
     || !Array.isArray(op.fields) || op.fields.length === 0
@@ -483,6 +510,7 @@ function parseOp(raw: string | null, storageKey: string): JournalResult<JournalO
       mode: op.mode,
       bundle: typeof op.bundle === 'string' ? op.bundle : undefined,
       seq: op.seq,
+      ...(op.clock !== undefined ? { clock: op.clock } : {}),
     },
   };
 }
@@ -552,7 +580,7 @@ export function appendJournalOp(
   // "use the other device's version" path). The replacement is the original's
   // own continuation and must keep its identity, or it would be claiming
   // ancestry across lineages — the thing the read guard rejects.
-  op: Omit<JournalOp, 'opId' | 'seq' | 'originId' | 'lineage'>
+  op: Omit<JournalOp, 'opId' | 'seq' | 'clock' | 'originId' | 'lineage'>
     & { originId?: string; lineage?: string },
   token: OwnerToken,
 ): JournalOp | null {
@@ -571,12 +599,14 @@ export function appendJournalOp(
   // unused sequence must not exist at all.
   const seq = nextSeq();
   if (seq === null) return null;
+  const clock = nextClock();
   const full: JournalOp = {
     ...op,
     originId: op.originId || getJournalOriginId(),
     lineage: op.lineage || getJournalLineageId(),
     opId: newId(),
     seq,
+    ...(clock !== null ? { clock } : {}),
   };
   const storageKey = `${OP_PREFIX}${full.opId}`;
   return writeUserScopedRaw(storageKey, JSON.stringify(full), token) ? full : null;

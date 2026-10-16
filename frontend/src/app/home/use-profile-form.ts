@@ -1366,6 +1366,39 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     const armRetry = (value: { generation: number; token: OwnerToken } | null) => {
       if (ownsNow) armRetryable(value);
     };
+    // A document the coordinator built from the journal carries the latest
+    // edit to each field, which can be another tab's (see its never-created
+    // rule). Beside one the screen does not match, "Profile saved" or "Fill
+    // in your college, major, and grade" is false. So a field it holds
+    // differently (not merely empty in another form) is shown as it holds
+    // it — unless it was typed into since this save began, which is newer.
+    const showCoordinatorDocument = (doc: Record<string, unknown>) => {
+      if (!fromCoordinator || !epochsAtStart) return;
+      const merged = { ...(profileRef.current as unknown as Record<string, unknown>) };
+      const empty = (v: unknown) => v === undefined || v === null || v === ''
+        || (Array.isArray(v) && v.length === 0);
+      let moved = false;
+      for (const key of PROFILE_KEYS as readonly string[]) {
+        if (!(key in doc)) continue;
+        if ((fieldEpochRef.current.get(key) ?? 0) !== (epochsAtStart.get(key) ?? 0)) continue;
+        if (empty(merged[key]) && empty(doc[key])) continue;
+        if (JSON.stringify(merged[key]) === JSON.stringify(doc[key])) continue;
+        merged[key] = doc[key];
+        moved = true;
+      }
+      if (!moved) return;
+      const next = merged as unknown as ProfileData;
+      // Not an edit of the person's. With nothing typed since, it IS the
+      // document the coordinator holds, and the autosave must not send it
+      // back.
+      if (editEpochAtStart === editEpochRef.current) {
+        hydratedProfileRef.current = next;
+        hydratedWeightRef.current = weightRef.current;
+      }
+      profileRef.current = next;
+      setProfile(next);
+      republishRendered(next);
+    };
     switch (result.status) {
       case 'saved':
       case 'already-saved':
@@ -1378,6 +1411,12 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         // live form, so an edit made while this acknowledgement was in flight
         // stays in the document a later write builds from — an ack must not
         // roll the screen back to what it confirmed.
+        //
+        // The one exception is the save that CREATED the row, which the
+        // coordinator built from the journal (see showCoordinatorDocument).
+        if ((viewSnapshotRef.current?.revision ?? 0) === 0) {
+          showCoordinatorDocument(result.profile as unknown as Record<string, unknown>);
+        }
         if (fromCoordinator) advanceAcceptedBase(result.profile, result.revision, token, generation);
         armRetry(null);
         // The question on screen is NOT retired here. A successful write says
@@ -1417,9 +1456,12 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       case 'local-only':
       case 'staged-local':
         // Durably on this device, and honestly labelled as such: there is
-        // either no backend right now, or no row to patch yet.
+        // either no backend right now, or no row to patch yet — and when that
+        // row cannot be created until the required fields are filled in, the
+        // label says so.
         armRetry(null);
-        say('device-only');
+        say(result.status === 'staged-local' && result.reason === 'incomplete-create'
+          ? 'awaiting-required' : 'device-only');
         return ADOPTED;
       case 'conflict': {
         // NOT published as it arrived, and the baseline is NOT moved from it.
@@ -1472,6 +1514,18 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         say(result.phase === 'confirm' ? 'device-failed' : 'error');
         return DEVICE_FAILED;
       case 'blocked':
+        // The first create waits for college, major and grade. Nothing
+        // failed and a Retry could not send it, so none is offered. What
+        // waits is shown first: another tab's later edit can be what left a
+        // field blank. Only a create planned in the same call comes with it;
+        // a reload's recovery flush finds an entry that can be older than
+        // the journal the load just showed, and shows nothing from it.
+        if (result.reason === 'incomplete-create') {
+          if (result.profile) showCoordinatorDocument(result.profile as unknown as Record<string, unknown>);
+          armRetry(null);
+          say('awaiting-required');
+          return STALE;
+        }
         armRetry({ generation, token });
         say('error');
         return DEVICE_FAILED;
@@ -1491,7 +1545,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         say('cloud-failed');
         return DEVICE_FAILED;
     }
-  }, [advanceAcceptedBase, epochsNow, publishConflicts, retireConflictQuestion, unrepresentedNow, armRetryable, setSaveStatus]);
+  }, [advanceAcceptedBase, epochsNow, publishConflicts, retireConflictQuestion, unrepresentedNow, armRetryable, setSaveStatus, republishRendered]);
 
   /**
    * Everything Home does with a conflict refresh, taken FROM the refresh.

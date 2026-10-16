@@ -69,6 +69,72 @@ afterEach(() => {
   clearJournalKeyGuardForTests();
 });
 
+describe('the clock: when an operation was written, across tabs', () => {
+  /** An operation exactly as an earlier build wrote it: seq per lineage, no clock. */
+  function earlierBuildOp(lineage: string, seq: number, value: string): string {
+    const opId = crypto.randomUUID();
+    localStorage.setItem(opKeyOf(opId), JSON.stringify({
+      opId, originId: `doc-${lineage}`, lineage,
+      fields: [{ key: 'major', base: { present: false }, desired: { present: true, value } }],
+      baseRevision: 0, writer: 'home-form', mode: 'set', seq,
+    }));
+    return opId;
+  }
+
+  it('is above every clocked operation on disk, whichever tab wrote it, while seq still counts per lineage', () => {
+    const token = captureOwnerToken();
+    const first = appendJournalOp(op('major', 'ECE'), token)!;
+    // Another tab opened independently: its own lineage, its own counter.
+    resetJournalLaneForTests();
+    const other = appendJournalOp(op('major', 'Physics'), token)!;
+    expect(other.lineage).not.toBe(first.lineage);
+    expect(other.seq, 'seq is per lineage, as an earlier build reads it').toBe(first.seq);
+    expect(other.clock, 'written while the first was on disk').toBeGreaterThan(first.clock!);
+
+    // A third tab writes while this one stays open. This tab's next edit is
+    // later still, whatever its own counters had reached.
+    localStorage.setItem(opKeyOf('elsewhere'), JSON.stringify({
+      ...other, opId: 'elsewhere', originId: 'tab-3', lineage: 'tab-3', seq: 1, clock: other.clock! + 5,
+    }));
+    const next = appendJournalOp(op('major', 'Biology'), token)!;
+    expect(next.seq).toBe(other.seq + 1);
+    expect(next.clock).toBeGreaterThan(other.clock! + 5);
+    const stored = readOutstandingOps();
+    expect(stored.ok && stored.value.find((o) => o.opId === next.opId)?.clock, 'read back').toBe(next.clock);
+  });
+
+  it('never counts, and is never stopped by, an operation an earlier build wrote', () => {
+    const token = captureOwnerToken();
+    // Its seq is per lineage and means nothing here, even at the very top of
+    // the safe range.
+    earlierBuildOp('old-visit', Number.MAX_SAFE_INTEGER, 'Physics');
+    const next = appendJournalOp(op('major', 'ECE'), token);
+    expect(next, 'the append is not refused').not.toBeNull();
+    expect(next!.seq).toBe(1);
+    expect(next!.clock).toBe(1);
+    const stored = readOutstandingOps();
+    expect(stored.ok && stored.value.filter((o) => o.clock === undefined)).toHaveLength(1);
+  });
+
+  it('is left off, never made up, when it cannot be issued safely; the edit is still recorded', () => {
+    const token = captureOwnerToken();
+    const top = appendJournalOp(op('major', 'ECE'), token)!;
+    localStorage.setItem(opKeyOf('at-the-top'), JSON.stringify({
+      ...top, opId: 'at-the-top', clock: Number.MAX_SAFE_INTEGER,
+    }));
+    const next = appendJournalOp(op('major', 'Physics'), token);
+    expect(next).not.toBeNull();
+    expect(next!.clock).toBeUndefined();
+  });
+
+  it('a malformed clock fails the read closed, like a malformed seq', () => {
+    const token = captureOwnerToken();
+    const a = appendJournalOp(op('major', 'ECE'), token)!;
+    localStorage.setItem(opKeyOf(a.opId), JSON.stringify({ ...a, clock: '3' }));
+    expect(readOutstandingOps().ok).toBe(false);
+  });
+});
+
 describe('a lineage never re-issues a sequence it has already used', () => {
   it('a stale positive counter is reconciled against the ops actually stored', () => {
     const token = captureOwnerToken();

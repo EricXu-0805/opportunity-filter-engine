@@ -1019,6 +1019,111 @@ class TestDroppedProgramRetirement:
         assert [(row["metadata"]["collector_key"], row["metadata"]["status"])
                 for row in _stored(processed).values() if row["metadata"]["is_active"]] == [("new_key", "open")]
 
+    @pytest.mark.parametrize("unread", ["page_fails", "quick_run"])
+    def test_a_closed_program_on_a_shared_page_renamed_with_its_url_waits_for_a_run_that_reads_its_page(
+            self, monkeypatch, processed, unread):
+        """A record on a page its config shares with another program
+        (shared_program_page) skips the near-duplicate filter, so it took no
+        retired row's claim, and landed listed under a plain title on a run
+        that read nothing, though the page last said closed."""
+        url = "https://example.edu/hub/"
+        titles = {"alpha": "Alpha Fellowship", "alpha2": "Alpha Fellowship", "beta": "Beta Grant"}
+        before = _listing_school("alpha", "beta", titles=titles, urls={"alpha": url, "beta": url})
+        after = _listing_school("alpha2", "beta", titles=titles, urls={"alpha2": url, "beta": url})
+        for school in (before, after):
+            school["sources"][0]["seeds"] = [url]
+        page = {"word": "Applications are now closed."}
+        monkeypatch.setattr(cg, "_fetch", lambda requested, **_: (
+            None if page["word"] is None else _StaticSoup(requested, page["word"])))
+        _refresh_school(before, deep=True)
+        assert not any(row["metadata"]["is_active"] for row in _stored(processed).values())
+
+        if unread == "page_fails":
+            page["word"] = None
+        _refresh_school(after, deep=unread == "page_fails")
+
+        saved = _stored(processed)
+        assert _program_id(after, "campus", "alpha2") not in saved
+        assert not any(row["metadata"]["is_active"] for row in saved.values())
+
+        page["word"] = "Applications are now open!"
+        _refresh_school(after, deep=True)
+
+        assert sorted((row["metadata"]["collector_key"], row["metadata"]["status"])
+                      for row in _stored(processed).values() if row["metadata"]["is_active"]) == [
+            ("alpha2", "open"), ("beta", "open")]
+
+    @pytest.mark.parametrize("unread", ["page_fails", "quick_run"])
+    def test_a_closed_program_moved_to_the_lab_bucket_on_a_shared_page_waits_by_its_key(
+            self, monkeypatch, processed, unread):
+        """Moved from the campus bucket to the lab bucket of its school's
+        file, a program gets a new id but keeps its key. On a page its config
+        shares with another program its record skips the near-duplicate
+        filter, and the closed row with its key holds it until a run reads
+        its page."""
+        url = "https://example.edu/hub/"
+        titles = {"alpha": "Alpha Fellowship", "beta": "Beta Grant"}
+        before = _listing_school("alpha", "beta", titles=titles, urls={"alpha": url, "beta": url})
+        after = _listing_school("beta", titles=titles, urls={"beta": url})
+        after["sources"].append({"source_name": "example_labs", "source_type": cg.LAB, "emit": "lab",
+                                 "crawl": cg.STATIC, "seeds": [url],
+                                 "programs": [cg.program("alpha", titles["alpha"], url, "Curated")]})
+        for school in (before, after):
+            school["emit"]["lab"] = ("example_labs", "example", "unknown")
+            school["sources"][0]["seeds"] = [url]
+        page = {"word": "Applications are now closed."}
+        monkeypatch.setattr(cg, "_fetch", lambda requested, **_: (
+            None if page["word"] is None else _StaticSoup(requested, page["word"])))
+        _refresh_school(before, deep=True)
+        moved = _program_id(after, "lab", "alpha")
+
+        if unread == "page_fails":
+            page["word"] = None
+        _refresh_school(after, deep=unread == "page_fails")
+
+        assert moved not in _stored(processed)
+
+        page["word"] = "Applications are now open!"
+        _refresh_school(after, deep=True)
+
+        metadata = _stored(processed)[moved]["metadata"]
+        assert (metadata["status"], metadata["is_active"]) == ("open", True)
+
+    @pytest.mark.parametrize("unread", ["page_fails", "quick_run"])
+    def test_a_program_renamed_back_after_its_page_closed_waits_for_a_run_that_reads_its_page(
+            self, monkeypatch, processed, unread):
+        """Renamed back, the program's record is its first key's retired row,
+        which came back as it was retired, listed open, though the page had
+        since said closed on the second key's row."""
+        url = "https://example.edu/summer/"
+        first = _listing_school("first_key", titles={"first_key": "Summer Fellowship"}, urls={"first_key": url})
+        second = _listing_school("second_key", titles={"second_key": "Summer Fellowship"}, urls={"second_key": url})
+        for school in (first, second):
+            school["sources"][0]["seeds"] = [url]
+        page = {"word": "Applications are now open!"}
+        monkeypatch.setattr(cg, "_fetch", lambda requested, **_: (
+            None if page["word"] is None else _StaticSoup(requested, page["word"])))
+        _refresh_school(first, deep=True)
+        _refresh_school(second, deep=True)
+        page["word"] = "Applications are now closed."
+        _refresh_school(second, deep=True)
+        assert not any(row["metadata"]["is_active"] for row in _stored(processed).values())
+
+        if unread == "page_fails":
+            page["word"] = None
+        _refresh_school(first, deep=unread == "page_fails")
+
+        saved = _stored(processed)
+        assert not any(row["metadata"]["is_active"] for row in saved.values())
+        first_row = saved[_program_id(first, "campus", "first_key")]
+        assert first_row["metadata"]["deactivation_reason"] == "no_longer_listed"
+
+        page["word"] = "Applications are now open!"
+        _refresh_school(first, deep=True)
+
+        assert [(row["metadata"]["collector_key"], row["metadata"]["status"])
+                for row in _stored(processed).values() if row["metadata"]["is_active"]] == [("first_key", "open")]
+
     def test_a_closed_program_listed_again_comes_back_closed(self, processed):
         """Its row retired keeping its closure. A quick run reads no page and
         carries the row's state forward, so the closure comes back with it."""
@@ -1270,6 +1375,42 @@ class TestProgramMovesBetweenShards:
         self._day(processed, shards, after, new_day, deep=True)
 
         assert self._listed(shards, "moving") == [(new_school, self.OLD_URL)]
+
+    @pytest.mark.parametrize("unread", ["page_fails", "quick_run"])
+    @pytest.mark.parametrize("away_day_first", [True, False], ids=["away_file_day_first", "home_file_day_first"])
+    @pytest.mark.parametrize("to_open", [True, False], ids=["into_open", "out_of_open"])
+    def test_a_program_moved_back_after_its_page_closed_waits_for_a_day_that_reads_its_page(
+            self, monkeypatch, processed, tmp_path, to_open, away_day_first, unread):
+        """Moved back, the program's record is its retired row in its home
+        file, which came back as it was retired, listed open, though the page
+        had since said closed on its row in the other file, retired or not."""
+        home, away, home_school, away_school = self._move(to_open, self.OLD_URL)
+        for school in (home, away):
+            for source in school["sources"]:
+                source["seeds"].append(self.OLD_URL)
+        page = {"word": "Applications are now open!"}
+        monkeypatch.setattr(cg, "_fetch", lambda url, **_: None if url == self.OLD_URL and page["word"] is None
+                            else _StaticSoup(url, page["word"] if url == self.OLD_URL else "Program page"))
+        shards = tmp_path / "shards"
+        self._commit(processed, shards, home)
+        home_day, away_day = home_school is None, away_school is None
+        for school, national in ((home, home_day), (away, home_day), (away, away_day)):
+            self._day(processed, shards, school, national, deep=True)
+        assert self._listed(shards, "moving") == [(away_school, self.OLD_URL)]
+        page["word"] = "Applications are now closed."
+        self._day(processed, shards, away, away_day, deep=True)
+        assert self._listed(shards, "moving") == []
+
+        if away_day_first:
+            self._day(processed, shards, home, away_day, deep=True)
+        if unread == "page_fails":
+            page["word"] = None
+        self._day(processed, shards, home, home_day, deep=unread == "page_fails")
+        assert self._listed(shards, "moving") == []
+        page["word"] = "Applications are now open!"
+        self._day(processed, shards, home, home_day, deep=True)
+
+        assert self._listed(shards, "moving") == [(home_school, self.OLD_URL)]
 
     @pytest.mark.parametrize("url", [OLD_URL, "https://example.edu/moving-reu/"], ids=["same_url", "new_url"])
     @pytest.mark.parametrize("to_open", [True, False], ids=["into_open", "out_of_open"])

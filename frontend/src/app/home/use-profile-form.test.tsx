@@ -3246,7 +3246,7 @@ describe('useProfileForm — "saved on this device" is only claimed when there i
     const { dictionaries } = await import('@/i18n/dictionaries');
     for (const locale of ['en', 'zh'] as const) {
       const actions = (dictionaries[locale].home as Record<string, unknown>).actions as Record<string, string>;
-      for (const key of ['profileSaved', 'profileSaveFailed', 'profileCloudFailed', 'profileDeviceOnly', 'retrySync', 'profileLoading', 'profileLoadFailed', 'generating']) {
+      for (const key of ['profileSaved', 'profileSaveFailed', 'profileCloudFailed', 'profileDeviceOnly', 'profileAwaitingRequired', 'retrySync', 'profileLoading', 'profileLoadFailed', 'generating']) {
         expect(actions[key], `${locale}.home.actions.${key}`).toBeTruthy();
       }
     }

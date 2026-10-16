@@ -591,6 +591,37 @@ describe('staging', () => {
     expect(commitMock).not.toHaveBeenCalled();
   });
 
+  it('says WHY an incomplete create waits, and only for that cause', async () => {
+    loadProfileMock.mockResolvedValue(absent());
+    await hydrateProfile();
+    const token = captureOwnerToken();
+    const typed = { ...FULL, college: '', major: '', grade: '', research_interests: 'robotics' };
+    expect(recordProfileIntent(typed, ['research_interests'], token, { writer: HOME_FORM_WRITER })).toBe(true);
+
+    // The home form's create, refused only because college, major and grade
+    // are still blank: a state to wait in, not a failure to retry.
+    expect(await stageProfilePatch(typed, ['research_interests'], token, { allowCreate: true }))
+      .toEqual({ status: 'blocked', reason: 'incomplete-create' });
+    // Any other refusal keeps the plain status.
+    expect(await stageProfilePatch(typed, [], token, { allowCreate: true })).toEqual({ status: 'blocked' });
+
+    // The same wait, staged: a flush (Retry, a load's recovery) defers the
+    // journal's edit as a create that cannot go yet, and says the same thing.
+    expect(await flushPendingProfileWrite(token))
+      .toEqual({ status: 'staged-local', reason: 'incomplete-create' });
+    expect(readProfileSyncEnvelope()?.pending?.deferredCreate).toBe(true);
+    expect(commitMock).not.toHaveBeenCalled();
+  });
+
+  it('a deferred partial of a document that is otherwise complete is staged with no reason', async () => {
+    loadProfileMock.mockResolvedValue(absent());
+    await hydrateProfile();
+    const result = await stageProfilePatch(
+      { ...FULL, home_school: 'mit' }, ['home_school'], captureOwnerToken(),
+    );
+    expect(result).toEqual({ status: 'staged-local' });
+  });
+
   it('local-only stages durably and never sends', async () => {
     loadProfileMock.mockResolvedValue(localOnly(null));
     await hydrateProfile();
@@ -1689,6 +1720,298 @@ describe('a real reload is a new document, and its edits continue the same draft
     expect(commitMock).not.toHaveBeenCalled();
     // Neither value is thrown away while the disagreement stands.
     expect(journalOps()).toHaveLength(2);
+  });
+
+  it('on a row NEVER CREATED, two open tabs editing the same field ask nothing: the later edit wins', async () => {
+    // The deliberate trade-off of the never-created rule. The test above is
+    // the same two tabs on a row that exists, and still a question.
+    loadProfileMock.mockResolvedValue(absent());
+    const token = captureOwnerToken();
+    await hydrateProfile();
+    const form = { ...FULL, college: '', major: '', grade: '' };
+    const skills = (...names: string[]) => names.map((name) => ({ name, level: 'beginner' as const }));
+    expect(recordProfileIntent({ ...form, skills: skills('Go') }, ['skills'], token,
+      { writer: HOME_FORM_WRITER })).toBe(true);
+    const tabOne = journalOps()[0];
+
+    // A second tab, hydrated before that edit existed, edits the same field.
+    resetJournalLaneForTests();
+    expect(recordProfileIntent({ ...form, skills: skills('Rust') }, ['skills'], token,
+      { writer: HOME_FORM_WRITER })).toBe(true);
+    for (const op of journalOps()) expect(op.supersedes ?? []).toEqual([]);
+    expect(journalOps().every((op) => op.clock !== undefined), 'both written by this build').toBe(true);
+    let shown = await hydrateProfile();
+    expect(shown.conflictKeys).toEqual([]);
+    expect(shown.profile?.skills, 'the later edit').toEqual(skills('Rust'));
+
+    // The first tab, still open, edits again: now IT is the later edit.
+    expect(appendJournalOp({
+      fields: [{ key: 'skills', base: { present: false }, desired: { present: true, value: skills('Go', 'Zig') } }],
+      baseRevision: 0, writer: HOME_FORM_WRITER, mode: 'set', supersedes: [tabOne.opId],
+      originId: tabOne.originId, lineage: tabOne.lineage,
+    }, token)).not.toBeNull();
+    shown = await hydrateProfile();
+    expect(shown.conflictKeys).toEqual([]);
+    expect(shown.profile?.skills).toEqual(skills('Go', 'Zig'));
+
+    // The create carries that value and settles every tab's operation.
+    const server = casServer({} as ProfileData, 0);
+    commitMock.mockImplementation(async (intent) => server.handle(intent) as ProfilePatchOutcome);
+    const created = await stageProfilePatch({ ...FULL, skills: skills('Go', 'Zig') }, ['college', 'major', 'grade'], token,
+      { allowCreate: true });
+    expect(created.status).toBe('saved');
+    expect(server.seen).toHaveLength(1);
+    expect(server.seen[0].patch.skills).toEqual(skills('Go', 'Zig'));
+    expect(journalOps()).toEqual([]);
+  });
+
+  it('on a row NEVER CREATED, a lock left while nothing said so dissolves on the next load that does, and the create carries the later college', async () => {
+    loadProfileMock.mockResolvedValue(absent());
+    await hydrateProfile();
+    const token = captureOwnerToken();
+    expect(recordProfileIntent({ ...FULL, college: 'Grainger' }, ['college'], token,
+      { writer: HOME_FORM_WRITER })).toBe(true);
+    // A second visit picks another college before its own load has answered:
+    // nothing says the row was never created, so the two visits are a
+    // question, and the create it stages leaves college locked.
+    resetJournalLaneForTests();
+    resetProfileDirtyLedger();
+    expect(recordProfileIntent({ ...FULL, college: 'LAS' }, ['college'], token,
+      { writer: HOME_FORM_WRITER })).toBe(true);
+    await stageProfilePatch({ ...FULL, college: 'LAS' }, ['college'], token, { allowCreate: true });
+    expect(readProfileSyncEnvelope()?.pending?.lockedKeys).toEqual(['college']);
+    expect(commitMock).not.toHaveBeenCalled();
+    // The journal's own random ids: the clock alone says LAS came later.
+    const [earlier, later] = journalOps().sort((a, b) => a.clock! - b.clock!);
+    expect([earlier.fields[0].desired, later.fields[0].desired])
+      .toEqual([{ present: true, value: 'Grainger' }, { present: true, value: 'LAS' }]);
+
+    startDocumentForTests('other');
+    resetProfileDirtyLedger();
+    const h = await hydrateProfile();
+    expect(h.conflictKeys, 'no question about the person\'s own two visits').toEqual([]);
+    expect(readProfileSyncEnvelope()?.pending?.lockedKeys).toEqual([]);
+    expect(h.profile?.college).toBe('LAS');
+
+    const server = casServer({} as ProfileData, 0);
+    commitMock.mockImplementation(async (intent) => server.handle(intent) as ProfilePatchOutcome);
+    expect((await flushPendingProfileWrite(token)).status).toBe('saved');
+    expect(server.seen).toHaveLength(1);
+    expect(server.seen[0]).toMatchObject({ expected: 0, patch: { college: 'LAS', major: 'CS', grade: 'Junior' } });
+    expect(journalOps(), 'both visits\' edits are settled by the create').toEqual([]);
+  });
+
+  /** An operation exactly as an earlier build wrote it: no clock, and a seq
+   *  counted from 1 per lineage. */
+  function earlierBuildOp(lineage: string, seq: number, key: string, value: unknown): string {
+    const opId = crypto.randomUUID();
+    localStorage.setItem(`${STORAGE_KEYS.PROFILE_JOURNAL_PREFIX}op_${opId}`, JSON.stringify({
+      opId, originId: `doc-${lineage}`, lineage,
+      fields: [{ key, base: { present: false }, desired: { present: true, value } }],
+      baseRevision: 0, writer: HOME_FORM_WRITER, mode: 'set', seq,
+    }));
+    return opId;
+  }
+
+  it('on a row NEVER CREATED, what an earlier build wrote is never ranked: the newer visit\'s edit stays a question and outlives the create', async () => {
+    // Production (M109), as the previous build left it. Visit 1 typed its
+    // interests (seq 1) and added Rust (seq 2); visit 2, later, showed Rust
+    // and added Julia — seq 1 of its own lineage. Ranked by seq, the visit
+    // with more edits would win and Julia would go without a word.
+    const skills = (...names: string[]) => names.map((name) => ({ name, level: 'beginner' as const }));
+    const interests = earlierBuildOp('visit-1', 1, 'research_interests', 'robotics');
+    const rust = earlierBuildOp('visit-1', 2, 'skills', skills('Rust'));
+    const julia = earlierBuildOp('visit-2', 1, 'skills', skills('Rust', 'Julia'));
+    const doc = { ...FULL, college: '', major: '', grade: '', research_interests: 'robotics', skills: skills('Rust') };
+    localStorage.setItem(STORAGE_KEYS.PROFILE_SYNC, JSON.stringify({
+      v: 1,
+      confirmed: null,
+      pending: {
+        mutationId: 'm-old', baseRevision: 0, baseProfile: {}, desiredProfile: doc,
+        dirtyKeys: ['research_interests', 'skills'], keyVersions: {}, skillAdditions: [], skillOps: [],
+        skillsReplaced: false, additiveKeys: [], lockedKeys: ['skills'], conflictRemote: null,
+        legacy: false, deferredCreate: true,
+        journalOpIds: [interests, rust, julia], journalPlan: {},
+      },
+      tombstone: null,
+    }));
+    loadProfileMock.mockResolvedValue(absent());
+    startDocumentForTests('other');
+    resetProfileDirtyLedger();
+
+    const h = await hydrateProfile();
+    expect(h.conflictKeys, 'still asked').toEqual(['skills']);
+    expect(readProfileSyncEnvelope()?.pending?.lockedKeys).toEqual(['skills']);
+    expect(h.conflicts.find((c) => c.key === 'skills')?.candidates.map((c) => c.value))
+      .toContainEqual(skills('Rust', 'Julia'));
+
+    // The create goes without skills, and both visits' skills are still there
+    // to be chosen between.
+    const server = casServer({} as ProfileData, 0);
+    commitMock.mockImplementation(async (intent) => server.handle(intent) as ProfilePatchOutcome);
+    const created = await stageProfilePatch({ ...FULL, research_interests: 'robotics', skills: skills('Rust') },
+      ['college', 'major', 'grade'], captureOwnerToken(), { allowCreate: true });
+    expect(created).toMatchObject({ status: 'conflict', conflictKeys: ['skills'] });
+    expect(server.seen.every((sent) => !('skills' in sent.patch))).toBe(true);
+    expect(journalOps().map((o) => o.opId).sort()).toEqual([rust, julia].sort());
+  });
+
+  it('on a row NEVER CREATED, an earlier build\'s edit and this build\'s that disagree are still a question', async () => {
+    earlierBuildOp('visit-1', 1, 'college', 'Grainger');
+    loadProfileMock.mockResolvedValue(absent());
+    startDocumentForTests('other');
+    resetProfileDirtyLedger();
+    const token = captureOwnerToken();
+    expect((await hydrateProfile()).profile?.college).toBe('Grainger');
+
+    expect(recordProfileIntent({ ...FULL, college: 'LAS' }, ['college'], token,
+      { writer: HOME_FORM_WRITER })).toBe(true);
+    const h = await hydrateProfile();
+    expect(h.conflictKeys).toEqual(['college']);
+    expect(h.conflicts[0].candidates.map((c) => c.value).sort()).toEqual(['Grainger', 'LAS']);
+    expect(journalOps().filter((o) => o.clock !== undefined), 'only this build\'s is clocked').toHaveLength(1);
+  });
+
+  function newVisit() {
+    startDocumentForTests('other');
+    resetProfileDirtyLedger();
+  }
+
+  it('on a row NEVER CREATED, two of this build\'s edits that disagree stay a question while one of them shares a field with an earlier build\'s edit', async () => {
+    // Review M109 r2 (PA). Visit 1 recorded interests and Rust in ONE
+    // operation; an earlier build's interests disagree with it. Visit 2
+    // removed Rust. Had the later edit won skills, the create would settle
+    // only visit 2's operation (visit 1's still owes its interests), and once
+    // the row exists nothing ranks them: Rust came back on the next load and
+    // was sent.
+    const skills = (...names: string[]) => names.map((name) => ({ name, level: 'beginner' as const }));
+    const server = casServer({} as ProfileData, 0);
+    commitMock.mockImplementation(async (intent) => server.handle(intent) as ProfilePatchOutcome);
+    earlierBuildOp('visit-0', 1, 'research_interests', 'robotics');
+    loadProfileMock.mockResolvedValue(absent());
+    newVisit();
+    await hydrateProfile();
+    const blank = { ...FULL, college: '', major: '', grade: '' };
+    expect(recordProfileIntent({ ...blank, research_interests: 'ML', skills: skills('Rust') },
+      ['research_interests', 'skills'], captureOwnerToken(), { writer: HOME_FORM_WRITER })).toBe(true);
+    newVisit();
+    expect((await hydrateProfile()).conflictKeys).toEqual(['research_interests']);
+    const token = captureOwnerToken();
+    const doc = { ...FULL, research_interests: 'ML', skills: [] };
+    expect(recordProfileIntent({ ...blank, research_interests: 'ML', skills: [] }, ['skills'], token,
+      { writer: HOME_FORM_WRITER })).toBe(true);
+    for (const key of ['college', 'major', 'grade'] as const) {
+      expect(recordProfileIntent(doc, [key], token, { writer: HOME_FORM_WRITER })).toBe(true);
+    }
+
+    const created = await stageProfilePatch(doc, ['college', 'major', 'grade'], token, { allowCreate: true });
+    expect(created).toMatchObject({ status: 'conflict' });
+    expect((created as Extract<ProfileSaveResult, { status: 'conflict' }>).conflictKeys.sort())
+      .toEqual(['research_interests', 'skills']);
+    expect(server.row).toMatchObject({ college: 'Grainger', major: 'CS', grade: 'Junior' });
+    expect('skills' in server.row, 'skills is still a question, so the create leaves it out').toBe(false);
+    const bothSkills = () => journalOps().filter((o) => o.fields.some((f) => f.key === 'skills'));
+    expect(bothSkills(), 'both visits\' skills are kept').toHaveLength(2);
+
+    // A reload with the row there: still asked, and nothing sends Rust.
+    newVisit();
+    loadProfileMock.mockResolvedValue(cloud(server.row as unknown as ProfileData, server.rev));
+    let h = await hydrateProfile();
+    expect(h.conflictKeys).toContain('skills');
+    await flushPendingProfileWrite(captureOwnerToken());
+
+    // Answering the interests question does not answer skills.
+    expect(await answerConflict(['research_interests'], 'local', captureOwnerToken(),
+      { ...doc, skills: (h.profile?.skills ?? []) as ProfileData['skills'] }))
+      .toMatchObject({ status: 'conflict', conflictKeys: ['skills'] });
+    newVisit();
+    loadProfileMock.mockResolvedValue(cloud(server.row as unknown as ProfileData, server.rev));
+    h = await hydrateProfile();
+    expect(h.conflictKeys).toEqual(['skills']);
+    expect(h.conflicts[0].candidates.map((c) => c.value)).toEqual(expect.arrayContaining([[], skills('Rust')]));
+    await flushPendingProfileWrite(captureOwnerToken());
+    expect(server.row.research_interests).toBe('ML');
+    expect('skills' in server.row, 'the row never gets Rust back without a question').toBe(false);
+    expect(bothSkills()).toHaveLength(2);
+  });
+
+  it('on a row NEVER CREATED, the same visits all written by this build: the later edits win and the create settles every one', async () => {
+    const skills = (...names: string[]) => names.map((name) => ({ name, level: 'beginner' as const }));
+    const server = casServer({} as ProfileData, 0);
+    commitMock.mockImplementation(async (intent) => server.handle(intent) as ProfilePatchOutcome);
+    loadProfileMock.mockResolvedValue(absent());
+    const blank = { ...FULL, college: '', major: '', grade: '' };
+    newVisit();
+    await hydrateProfile();
+    expect(recordProfileIntent({ ...blank, research_interests: 'robotics' }, ['research_interests'],
+      captureOwnerToken(), { writer: HOME_FORM_WRITER })).toBe(true);
+    newVisit();
+    await hydrateProfile();
+    expect(recordProfileIntent({ ...blank, research_interests: 'ML', skills: skills('Rust') },
+      ['research_interests', 'skills'], captureOwnerToken(), { writer: HOME_FORM_WRITER })).toBe(true);
+    newVisit();
+    expect((await hydrateProfile()).conflictKeys).toEqual([]);
+    const token = captureOwnerToken();
+    const doc = { ...FULL, research_interests: 'ML', skills: [] };
+    expect(recordProfileIntent({ ...blank, research_interests: 'ML', skills: [] }, ['skills'], token,
+      { writer: HOME_FORM_WRITER })).toBe(true);
+    for (const key of ['college', 'major', 'grade'] as const) {
+      expect(recordProfileIntent(doc, [key], token, { writer: HOME_FORM_WRITER })).toBe(true);
+    }
+
+    expect((await stageProfilePatch(doc, ['college', 'major', 'grade'], token, { allowCreate: true })).status)
+      .toBe('saved');
+    expect(server.row).toMatchObject({ research_interests: 'ML', skills: [] });
+    expect(journalOps()).toEqual([]);
+    newVisit();
+    loadProfileMock.mockResolvedValue(cloud(server.row as unknown as ProfileData, server.rev));
+    const h = await hydrateProfile();
+    expect(h.conflictKeys).toEqual([]);
+    expect(h.profile?.skills).toEqual([]);
+  });
+
+  it('on a row NEVER CREATED, a question that was answered before the create is not asked again after it', async () => {
+    // Review M109 r2 (PR). An earlier build's major; then two visits of this
+    // build, each switching college (which clears the major) and picking a
+    // major. Every question asked is answered before the create.
+    const server = casServer({} as ProfileData, 0);
+    commitMock.mockImplementation(async (intent) => server.handle(intent) as ProfilePatchOutcome);
+    earlierBuildOp('visit-0', 1, 'major', 'CS');
+    loadProfileMock.mockResolvedValue(absent());
+    newVisit();
+    await hydrateProfile();
+    const record = (doc: ProfileData, keys: (keyof ProfileData)[]) => expect(
+      recordProfileIntent(doc, keys, captureOwnerToken(), { writer: HOME_FORM_WRITER }),
+    ).toBe(true);
+    const blank = { ...FULL, grade: '', additional_majors: [] };
+    record({ ...blank, college: 'Grainger', major: '' }, ['college', 'major', 'additional_majors']);
+    record({ ...blank, college: 'Grainger', major: 'ECE' }, ['major']);
+    newVisit();
+    await hydrateProfile();
+    record({ ...blank, college: 'LAS', major: '' }, ['college', 'major', 'additional_majors']);
+    record({ ...blank, college: 'LAS', major: 'Math' }, ['major']);
+    const mine = { ...blank, college: 'LAS', major: 'Math' };
+
+    let asked = (await hydrateProfile()).conflictKeys;
+    for (const key of ['major', 'college']) {
+      if (!asked.includes(key)) continue;
+      expect((await answerConflict([key], 'local', captureOwnerToken(), mine)).status).not.toBe('stale-conflict');
+      asked = (await hydrateProfile()).conflictKeys;
+    }
+    expect(asked).toEqual([]);
+    record({ ...mine, grade: 'Junior' }, ['grade']);
+    const created = await stageProfilePatch({ ...mine, grade: 'Junior' }, ['grade'], captureOwnerToken(),
+      { allowCreate: true });
+    expect(created.status).toBe('saved');
+    expect(server.row).toMatchObject({ college: 'LAS', major: 'Math', grade: 'Junior' });
+
+    newVisit();
+    loadProfileMock.mockResolvedValue(cloud(server.row as unknown as ProfileData, server.rev));
+    const after = await hydrateProfile();
+    expect(after.conflictKeys, 'nothing answered is asked again').toEqual([]);
+    expect(after.profile).toMatchObject({ college: 'LAS', major: 'Math', grade: 'Junior' });
+    await flushPendingProfileWrite(captureOwnerToken());
+    expect(server.row).toMatchObject({ college: 'LAS', major: 'Math', grade: 'Junior' });
   });
 
   it('adoption is per KEY: continuing one field does not claim another tab\'s edit to a different one', async () => {
@@ -3214,6 +3537,63 @@ describe('creating a row requires a profile that MEANS something', () => {
     // the round trip — and without a row that exists but says nothing.
     expect(commitMock, 'a row is never created from a blank form').not.toHaveBeenCalled();
     expect(['blocked', 'staged-local']).toContain(attempt.status);
+  });
+
+  it('a create is never sent without a required key: one a question holds back is asked, not refused on every retry', async () => {
+    loadProfileMock.mockResolvedValue(absent());
+    await hydrateProfile();
+    const token = captureOwnerToken();
+    // Two documents picked different colleges. This one has not heard from
+    // the cloud itself, so nothing says the row was never created, and the
+    // disagreement stays a question that locks college.
+    expect(recordProfileIntent({ ...FULL, college: 'Grainger' }, ['college'], token,
+      { writer: HOME_FORM_WRITER })).toBe(true);
+    resetJournalLaneForTests();
+    resetProfileDirtyLedger();
+    expect(recordProfileIntent({ ...FULL, college: 'LAS' }, ['college'], token,
+      { writer: HOME_FORM_WRITER })).toBe(true);
+    // The server's own rule (20261011230618): no row, revision 0, and not
+    // complete is incomplete_create, which reaches the client as a transport
+    // error.
+    commitMock.mockImplementation(async (intent) => (
+      ['home_school', 'college', 'major', 'grade', 'search_weight'].every((k) => k in intent.patch)
+        ? saved(intent.patch as unknown as ProfileData, 1)
+        : { status: 'transport-error', message: 'commit_profile_patch_cas: incomplete_create' }
+    ));
+
+    // College, major and grade are all filled in: what holds the create back
+    // is the question, and that is what the person is shown.
+    const create = await stageProfilePatch({ ...FULL, college: 'LAS' }, ['college'], token, { allowCreate: true });
+    expect(readProfileSyncEnvelope()?.pending?.lockedKeys).toEqual(['college']);
+    expect(commitMock, 'a create without college is not sent').not.toHaveBeenCalled();
+    expect(create).toMatchObject({ status: 'conflict', conflictKeys: ['college'] });
+    const asked = (create as Extract<ProfileSaveResult, { status: 'conflict' }>).conflicts;
+    expect(asked.map((c) => c.key)).toEqual(['college']);
+    expect(asked[0].candidates.map((c) => c.value).sort()).toEqual(['Grainger', 'LAS']);
+    // And a retry asks the same thing, rather than resending it.
+    expect(await flushPendingProfileWrite(token)).toMatchObject({ status: 'conflict', conflictKeys: ['college'] });
+    expect(commitMock).not.toHaveBeenCalled();
+  });
+
+  it('with no backend this visit, a create a question holds back is kept on this device as before', async () => {
+    // Anonymous sign-in failed (local-only): nothing can reach a server, so
+    // nothing is held back for it. Two visits picked different colleges.
+    loadProfileMock.mockResolvedValue(localOnly(null));
+    await hydrateProfile();
+    const token = captureOwnerToken();
+    expect(recordProfileIntent({ ...FULL, college: 'Grainger' }, ['college'], token,
+      { writer: HOME_FORM_WRITER })).toBe(true);
+    resetJournalLaneForTests();
+    resetProfileDirtyLedger();
+    await hydrateProfile();
+    expect(recordProfileIntent({ ...FULL, college: 'LAS' }, ['college'], token,
+      { writer: HOME_FORM_WRITER })).toBe(true);
+    commitMock.mockResolvedValue({ status: 'local-only' });
+
+    const result = await stageProfilePatch({ ...FULL, college: 'LAS' }, ['college'], token, { allowCreate: true });
+    expect(readProfileSyncEnvelope()?.pending?.lockedKeys).toEqual(['college']);
+    expect(result).toEqual({ status: 'local-only' });
+    expect(commitMock).toHaveBeenCalledTimes(1);
   });
 
   it('a create with real values still goes', async () => {
