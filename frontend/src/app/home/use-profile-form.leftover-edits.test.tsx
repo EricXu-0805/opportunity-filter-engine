@@ -241,4 +241,47 @@ describe('a Home form remounted in the same page load', () => {
     await tick(5000);
     expect(sends()).toHaveLength(1);
   });
+
+  it('asks about the field another device changed while the old form\'s save was in flight, sends the rest, and sends the field once answered', async () => {
+    // Checklist M103.
+    const first = await mount();
+    let land: () => void = () => {};
+    service.commit.mockImplementationOnce((intent) => new Promise((resolve) => { land = () => resolve(apply(intent)); }));
+    act(() => {
+      first.result.current.setProfile((p) => ({ ...p, college: 'Liberal Arts', linkedin_url: 'https://linkedin.com/in/owner' }));
+    });
+    await tick(2000);
+    expect(sends(), 'the autosave is in flight').toEqual([
+      { uid, patch: { college: 'Liberal Arts', linkedin_url: 'https://linkedin.com/in/owner' } },
+    ]);
+    first.unmount();
+    await drain();
+    const second = await mount();
+    expect(second.result.current.profile).toMatchObject({ college: 'Liberal Arts', linkedin_url: 'https://linkedin.com/in/owner' });
+    // Another device saves a different college before the held save lands.
+    rowOf(uid).profile = { ...rowOf(uid).profile, college: 'Business' }; rowOf(uid).revision = 4;
+    act(() => { land(); });
+    await drain();
+
+    expect(sends(), 'the field nobody else changed goes out').toEqual([
+      { uid, patch: { college: 'Liberal Arts', linkedin_url: 'https://linkedin.com/in/owner' } },
+      { uid, patch: { linkedin_url: 'https://linkedin.com/in/owner' } },
+    ]);
+    expect(rowOf(uid)).toMatchObject({ revision: 5, profile: { college: 'Business', linkedin_url: 'https://linkedin.com/in/owner' } });
+    expect(second.result.current.saveStatus, 'not left saying it is saving').toBe('conflict');
+    expect(second.result.current.conflictKeys).toEqual(['college']);
+    expect(second.result.current.conflicts).toMatchObject([
+      { key: 'college', remote: 'Business', candidates: [{ value: 'Liberal Arts' }] },
+    ]);
+
+    act(() => { second.result.current.keepMyChanges(); });
+    await drain();
+    expect(sends().at(-1), 'the answer sends the field').toEqual({ uid, patch: { college: 'Liberal Arts' } });
+    expect(rowOf(uid)).toMatchObject({ revision: 6, profile: { college: 'Liberal Arts', linkedin_url: 'https://linkedin.com/in/owner' } });
+    expect(second.result.current.saveStatus).toBe('saved');
+    expect(second.result.current.conflicts).toEqual([]);
+    nothingOutstanding();
+    await tick(5000);
+    expect(sends()).toHaveLength(3);
+  });
 });
