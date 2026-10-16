@@ -1143,10 +1143,44 @@ describe('ColdEmailModal', () => {
       await waitFor(() => expect(screen.getByDisplayValue(/CS 225/)).toBeInTheDocument());
       expect(screen.getByDisplayValue(/CS 374/)).toBeInTheDocument();
       expect(screen.getByDisplayValue(/LATE COURSE 5/)).toBeInTheDocument();
-      // M13: a neutral listing, the one wording every course status allows. The
-      // list carries no status, and the server refuses "I have completed" for it.
+      // M13: a profile saved before statuses lists its courses neutrally, the
+      // one wording a course not marked allows; never "I have completed".
       expect(screen.getByLabelText('coldEmail.body')).toHaveValue(
-        'Intro.\n\nMy coursework includes CS 225, CS 374, CS 101, CS 102, LATE COURSE 5.\n\nBest regards,\nAlex');
+        'Intro.\n\nMy coursework includes CS 225, CS 374, CS 101, CS 102 and LATE COURSE 5.\n\nBest regards,\nAlex');
+    });
+
+    it('"coursework" states each course only as its status allows, in the server\'s words (checklist M13)', async () => {
+      mockGetVariants.mockResolvedValue({
+        variants: [makeVariant({ body: 'Intro.\n\nBest regards,\nAlex' })],
+      });
+      render(
+        <ColdEmailModal
+          isOpen
+          onClose={vi.fn()}
+          profile={makeProfile({
+            coursework: ['CS 446', 'CS 225', 'CS 374', 'MATH 241', 'STAT 400'],
+            courses: [
+              { name: 'CS 446', status: 'planned', source: 'resume', evidence: 'Planned: CS 446' },
+              { name: 'CS 225', status: 'completed', source: 'resume' },
+              { name: 'CS 374', status: 'in_progress', source: 'manual' },
+              { name: 'MATH 241', status: 'unknown', source: 'resume' },
+            ],
+          })}
+          opportunityId="opp"
+          opportunityTitle="REU"
+        />,
+      );
+      await waitFor(() => expect(screen.getByDisplayValue(/Intro/)).toBeInTheDocument());
+      fireEvent.click(screen.getByText('coldEmail.quickActions.coursework'));
+      expect(await screen.findByRole('region', { name: 'Pending edit suggestion' })).toHaveTextContent('I plan to take CS 446.');
+      fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
+      await waitFor(() => expect(screen.getByDisplayValue(/CS 446/)).toBeInTheDocument());
+      const body = (screen.getByLabelText('coldEmail.body') as HTMLTextAreaElement).value;
+      // STAT 400 is a legacy name with no status: listed, never completed.
+      expect(body).toBe('Intro.\n\nI have completed CS 225. I am currently taking CS 374. '
+        + 'My coursework includes MATH 241 and STAT 400. I plan to take CS 446.\n\nBest regards,\nAlex');
+      // A planned course is never written as completed, taken or in progress.
+      expect(body).not.toMatch(/completed[^.]*CS 446|taking[^.]*CS 446|includes[^.]*CS 446/);
     });
 
     it('keeps the draft when complete coursework exceeds the email body limit', async () => {

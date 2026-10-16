@@ -3,6 +3,7 @@
 import { privateEmailKey, privateEmailVariants, validatePrivateEmail, type PrivateEmailIssue } from '@/lib/private-email';
 import type { PrivateEmailTargetState } from '@/lib/use-private-email-target';
 import { profileInputMessage } from '@/lib/profile-input';
+import { courseEntries, courseSentences } from '@/lib/course-status';
 
 import { applyEmailReplacement, captureTextareaSelection, type EmailTextSelection } from '@/lib/email-revision';
 import { canFallbackColdEmailStream, emailInputTooLargeMessage, isEmailInputTooLarge } from '@/lib/cold-email-stream';
@@ -314,10 +315,10 @@ function statusOf(
 }
 
 // Coursework stays client-side: it inserts the student's own courses verbatim
-// (naturally grounded), so a network round-trip buys nothing. It lists them
-// neutrally, the one wording every course status allows (checklist M13): this
-// list carries no status, so "I have completed" would claim what the student
-// never said, and the server refuses it.
+// (naturally grounded), so a network round-trip buys nothing. Each course is
+// stated only as its status allows, in the server's own words (checklist M13,
+// lib/course-status.ts): "I have completed" only for a course the student
+// marked completed, and a course not marked only as "My coursework includes".
 function applyQuickEdit(
   body: string,
   action: QuickActionKey,
@@ -326,12 +327,12 @@ function applyQuickEdit(
 ): { body: string; reply: string } {
   switch (action) {
     case 'coursework': {
-      const courses = profile.coursework ?? [];
+      const courses = courseEntries(profile);
       if (courses.length === 0) {
         return { body, reply: t('coldEmail.replies.courseworkNone') };
       }
-      const courseStr = courses.join(', ');
-      const insertion = `\n\nMy coursework includes ${courseStr}.`;
+      const courseStr = courses.map((course) => course.name).join(', ');
+      const insertion = `\n\n${courseSentences(courses, courses.length)}`;
       if (body.length + insertion.length > COLD_EMAIL_DRAFT_LIMITS.body) {
         return { body, reply: t('profileInput.courseworkTooLarge') };
       }
