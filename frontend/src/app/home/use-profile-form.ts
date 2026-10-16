@@ -4,7 +4,8 @@ import { profileInputMessage } from '@/lib/profile-input';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import type { ExperienceEntry, ResumeMasterV1, ProfileData, ResumeParseResponse, SkillWithLevel } from '@/lib/types';
+import type { CourseEntry, ExperienceEntry, ResumeMasterV1, ProfileData, ResumeParseResponse, SkillWithLevel } from '@/lib/types';
+import { courseEntries, courseFields, coursesWithoutResume, importResumeCourses, resumeCourses } from '@/lib/course-status';
 import { parseGitHubProfile } from '@/lib/api';
 import { removeResumeEntries, validateExperienceEntries, withdrawResumeEntries } from '@/lib/experience-evidence';
 import { removeResumeMasterSources, resumeMasterEditBase, validateResumeMaster, withdrawResumeMaster } from '@/lib/resume-master';
@@ -270,6 +271,8 @@ function mergeSkills(existing: SkillWithLevel[], incoming: SkillWithLevel[]): Sk
 // field changes in one action — a select, a chip, a slider, a pasted URL —
 // and records one operation per action as it always has.
 const TYPED_KEYS: ReadonlySet<keyof ProfileData> = new Set<keyof ProfileData>(['research_interests']);
+/** What removing the résumé writes: its bundle and the courses that outlive it. */
+const REMOVAL_KEYS: readonly (keyof ProfileData)[] = ['resume_text', 'experience_entries', 'resume_master', 'courses', 'coursework'];
 // How long the typing has to pause before the burst's final value is written
 // down. Shorter than the 1.5 s autosave debounce by design: the journal is
 // the crash record, the autosave is the send.
@@ -2482,10 +2485,13 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         const moved = (key: string) => (fieldEpochRef.current.get(key) ?? 0) !== atIssue.get(key);
         const preserve = new Set<string>(PROFILE_KEYS.filter((key) => moved(key)
           || unrepresented.has(key) || owed.has(key) || (disputed.has(key) && !notTypedHere.has(key))));
-        const sourceBundle = ['resume_text', 'coursework', 'experience_entries', 'resume_master'] as const;
+        const sourceBundle = ['resume_text', 'experience_entries', 'resume_master'] as const;
         // The source and its confirmations are one revision, never a mixture
         // of the old editor's metadata with the newly read résumé text.
         if (sourceBundle.some((key) => preserve.has(key))) for (const key of sourceBundle) preserve.add(key);
+        // A course list and its names are one edit (courseFields).
+        const courseKeys = ['courses', 'coursework'] as const;
+        if (courseKeys.some((key) => preserve.has(key))) for (const key of courseKeys) preserve.add(key);
         for (const key of preserve) {
           if (key in live) combined[key] = live[key]; else delete combined[key];
         }
@@ -2870,6 +2876,8 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // would wipe the user's input.
     const clearMajor =
       key === 'college' && bySlug(profileRef.current.home_school ?? 'uiuc')?.catalog != null;
+    // The course names old clients read are written with every course edit.
+    const courses = key === 'courses';
     editProfile(
       (prev) => ({
         ...prev,
@@ -2877,10 +2885,11 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         // Additional majors are catalog-scoped like the primary, so a college
         // switch invalidates them too.
         ...(clearMajor ? { major: '', additional_majors: [] } : {}),
+        ...(courses ? courseFields((value ?? []) as CourseEntry[]) : {}),
       }),
       // The cascade is an intent even when the fields are already empty:
       // the row still loading must not put its own major back afterwards.
-      clearMajor ? [key, 'major', 'additional_majors'] : [key],
+      clearMajor ? [key, 'major', 'additional_majors'] : courses ? ['courses', 'coursework'] : [key],
       origin ?? undefined,
     );
   }, [editProfile, editingOrigin, screenOrigin]);
@@ -2977,7 +2986,9 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         resume_text: data.raw_text,
         experience_entries: resumeEntries,
         resume_master: resumeMaster,
-        coursework: data.extracted_coursework,
+        // Merged by name: a status the student set survives a re-import, and
+        // a course they added on the form is theirs, not the résumé's.
+        ...courseFields(importResumeCourses(prev, resumeCourses(data))),
         // Seed the interests box (the only semantic-match lever the form sends)
         // from the resume when the user hasn't typed their own — never overwrite.
         research_interests: prev.research_interests?.trim()
@@ -3010,17 +3021,20 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       setSaveStatus('error');
       return false;
     }
+    // Only the courses the résumé brought and nobody marked go with it.
+    const retainedCourses = courseFields(coursesWithoutResume(profileRef.current));
     editProfile(
       (prev) => (
-        (prev.resume_text ?? '') === '' && (prev.coursework?.length ?? 0) === 0
+        (prev.resume_text ?? '') === ''
+          && JSON.stringify(courseEntries(prev)) === JSON.stringify(retainedCourses.courses)
           && !(prev.experience_entries ?? []).some((entry) => entry.source.kind === 'resume')
           && JSON.stringify(prev.resume_master ?? null) === JSON.stringify(retainedMaster)
           ? prev
-          : { ...prev, resume_text: '', coursework: [], experience_entries: retainedEntries, resume_master: retainedMaster }
+          : { ...prev, resume_text: '', ...retainedCourses, experience_entries: retainedEntries, resume_master: retainedMaster }
       ),
       // Record the whole source bundle, including an already-empty member.
       // Deletion must not revive old quoted evidence during reconciliation.
-      ['resume_text', 'coursework', 'experience_entries', 'resume_master'],
+      REMOVAL_KEYS,
       origin,
     );
     // Removal does not wait for the 1.5s debounce: until it is persisted,
@@ -3038,7 +3052,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     const cleansed = normalizeProfileForRelease({
       ...profileRef.current,
       resume_text: '',
-      coursework: [],
+      ...retainedCourses,
       experience_entries: retainedEntries,
       resume_master: retainedMaster,
       search_weight: weightRef.current,
@@ -3063,7 +3077,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // action with a specific meaning, and folding an unrelated half-typed
     // field into it would make the removal fail for a reason the user cannot
     // connect to what they clicked.
-    commitSave(cleansed, ['resume_text', 'coursework', 'experience_entries', 'resume_master'], origin, saveIntentRef.current);
+    commitSave(cleansed, REMOVAL_KEYS, origin, saveIntentRef.current);
     return true;
   }, [identityGeneration, editProfile, commitSave, editingOrigin, setSaveStatus]);
 

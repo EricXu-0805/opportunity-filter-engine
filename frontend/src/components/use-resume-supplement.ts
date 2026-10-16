@@ -60,9 +60,7 @@ const ownerKey = (owner: OwnerToken) => JSON.stringify([owner.uid, owner.epoch, 
 const canonical = (value: unknown): string => JSON.stringify(value, (_key, item: unknown) =>
   !item || typeof item !== 'object' || Array.isArray(item) ? item
     : Object.fromEntries(Object.entries(item as Record<string, unknown>).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)));
-const bundleKey = (profile: ProfileData): string => canonical({
-  ...resumeMasterEditBase(profile), coursework: profile.coursework ?? [],
-});
+const bundleKey = (profile: ProfileData): string => canonical(resumeMasterEditBase(profile));
 const rejected = (): ProfileActionOutcome => ({ durable: false, reason: 'stale-view' });
 
 /** Receipt identity is the complete manual entry plus its particular activity

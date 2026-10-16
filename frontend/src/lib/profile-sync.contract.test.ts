@@ -137,8 +137,10 @@ describe('profile write path — shape contracts', () => {
     }
   });
 
-  it('the résumé bundle is exactly the fields a résumé produces', () => {
-    expect([...RESUME_BUNDLE].sort()).toEqual(['coursework', 'experience_entries', 'resume_master', 'resume_text']);
+  it('the résumé bundle is the résumé and what is quoted from it, not the courses', () => {
+    // Courses outlive the résumé when the student added or marked them
+    // (checklist M13), so they are not deleted or conflicted with it.
+    expect([...RESUME_BUNDLE].sort()).toEqual(['experience_entries', 'resume_master', 'resume_text']);
   });
 
   it('the sync envelope is cleared on an account switch', () => {

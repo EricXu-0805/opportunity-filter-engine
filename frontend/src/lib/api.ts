@@ -31,6 +31,7 @@ import { captureOwnerToken, isOwnerTokenValid, isTokenOwnerStillCurrent, type Ow
 import { FULL_TARGET_AI_MAX_BODY_BYTES, type TargetResumeAiRequest, type TargetResumeAiResponse } from './target-resume-ai-protocol';
 import { TARGET_RESUME_PLAN_MAX_BODY_BYTES, type TargetResumePlanRequest, type TargetResumePlanResponse } from './target-resume-plan-protocol';
 import { bySlug } from './schools';
+import { courseEntries } from './course-status';
 import { isFellowshipPreference, RELEASE_SCOPE } from './release-scope';
 import { getRevealAccessToken, refreshRevealAccessToken } from './supabase';
 
@@ -382,6 +383,7 @@ export function toProfileRequest(profile: ProfileData): ProfileRequest {
   const acceptedSeekingTypes = requestedSeekingTypes.filter(
     (value) => RELEASE_SCOPE.fellowships || !isFellowshipPreference(value),
   );
+  const courses = courseEntries(profile);
   const request: ProfileRequest = {
     name: profile.name ?? '',
     // Free-text display name (cold-email "…student at {school}");
@@ -408,7 +410,14 @@ export function toProfileRequest(profile: ProfileData): ProfileRequest {
       ...(s.source !== undefined && s.source !== null ? { source: s.source } : {}),
       ...(s.confirmed === true ? { confirmed: true } : {}),
     })),
-    coursework: profile.coursework ?? [],
+    // Each course with its status: the server words a course only as its
+    // status allows (src/student_evidence.py). The names alone still go as
+    // `coursework` for server code that reads names only; a course not marked,
+    // including every legacy name, is sent as `unknown`, never as completed.
+    // Like a skill's, a course's résumé line stays in the browser: no route
+    // reads it, and the matcher is not sent the résumé.
+    coursework: courses.map((course) => course.name),
+    courses: courses.map(({ name, status, source }) => ({ name, status, source })),
     experience_level: profile.experience_level ?? 'beginner',
     resume_ready: !!profile.resume_text,
     can_cold_email: true,

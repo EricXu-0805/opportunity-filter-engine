@@ -84,10 +84,14 @@ export const CREATE_REQUIRED_KEYS: readonly ProfileKey[] = [
 ];
 
 /** Fields that are one unit as far as conflict detection goes. The résumé
- *  text, extracted coursework and experience sources must stay together.
+ *  text and the experience sources quoted from it must stay together.
  *  Taking them from different revisions can attach claims to the wrong résumé.
- *  Staging any member stages the whole bundle. */
-export const RESUME_BUNDLE: readonly ProfileKey[] = ['resume_text', 'coursework', 'experience_entries', 'resume_master'];
+ *  Staging any member stages the whole bundle. Courses are not in it: a
+ *  course the student added or marked outlives the résumé (checklist M13),
+ *  and a status click must not stage the résumé. A course's résumé line is
+ *  shown back only, never a claim, and the two course keys are written
+ *  together (lib/course-status.ts courseFields). */
+export const RESUME_BUNDLE: readonly ProfileKey[] = ['resume_text', 'experience_entries', 'resume_master'];
 
 /** The courses and their names: one list, written together, and one unit in
  *  a conflict too. An older client removes or replaces the résumé by writing

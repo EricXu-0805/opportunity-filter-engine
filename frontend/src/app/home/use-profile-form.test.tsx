@@ -3453,7 +3453,7 @@ describe('useProfileForm — a save that half-landed is never a dead end', () =>
     const loaded = { ...DEFAULT_PROFILE, major: 'Computer Engineering', research_interests: 'Keep this independent interest',
       skills: [{ name: 'Python', level: 'beginner', confirmed: true }],
       resume_text: 'old text', coursework: ['ECE 220'], experience_entries: [sourced, manual], resume_master: master };
-    const removalPatch = { resume_text: '', coursework: [], experience_entries: [manual], resume_master: master };
+    const removalPatch = { resume_text: '', courses: [], coursework: [], experience_entries: [manual], resume_master: master };
     let releaseFirst!: (outcome: ProfilePatchOutcome) => void;
     const firstOutcome = new Promise<ProfilePatchOutcome>(resolve => { releaseFirst = resolve; });
     let releaseRetry!: () => void;
@@ -3486,7 +3486,7 @@ describe('useProfileForm — a save that half-landed is never a dead end', () =>
     expect(screen.getByTestId('coursework').textContent).toBe('');
 
     // Restoring local storage alone does not send anything. Retry records the
-    // same four-field source bundle, preserving independent data and ownership.
+    // same source bundle and courses, preserving independent data and ownership.
     setItemSpy.mockRestore();
     expect(commitProfilePatch).not.toHaveBeenCalled();
     phase = 'retry-to-held-cas';
@@ -3500,7 +3500,7 @@ describe('useProfileForm — a save that half-landed is never a dead end', () =>
     expect(serverRevision).toBe(1);
     expect(readProfileSyncEnvelope()).toMatchObject({
       confirmed: { revision: 1 }, pending: { baseRevision: 1, desiredProfile: removalPatch,
-        dirtyKeys: ['resume_text', 'coursework', 'experience_entries', 'resume_master'] }, tombstone: null,
+        dirtyKeys: ['resume_text', 'experience_entries', 'resume_master', 'courses', 'coursework'] }, tombstone: null,
     });
 
     // This time a real CAS attempt reports a typed transport failure. Unlike
@@ -7631,9 +7631,12 @@ describe('useProfileForm — every action is bound to the capability the screen 
     waitFor(() => expect(sentPatches().length, 'the removal is sent at once')
       .toBeGreaterThan(0));
     const patch = await sentPatches()[0];
-    expect(Object.keys(patch).sort(), 'and it is exactly the résumé bundle')
-      .toEqual(['coursework', 'experience_entries', 'resume_master', 'resume_text']);
+    expect(Object.keys(patch).sort(), 'and it is exactly the résumé bundle and the courses that outlive it')
+      .toEqual(['courses', 'coursework', 'experience_entries', 'resume_master', 'resume_text']);
     expect(patch.resume_text).toBe('');
+    // A course nobody marked came from the résumé and goes with it.
+    expect(patch.courses).toEqual([]);
+    expect(patch.coursework).toEqual([]);
   });
 
   async function staleResumeRemoval(move: () => Promise<void>) {
@@ -10669,7 +10672,8 @@ describe('useProfileForm — confirmed experience lifecycle', () => {
     await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
     act(() => { expect(result.current.handleExperienceChange([manual], baseOf(result.current))).toBe(true); });
     await waitFor(() => expect(serverRow?.experience_entries).toEqual([manual]), { timeout: 2500 });
-    expect(commitProfilePatch.mock.calls.at(-1)?.[0].patch).toMatchObject({ resume_text: 'Old source', coursework: ['CS 225'], experience_entries: [manual] });
+    expect(commitProfilePatch.mock.calls.at(-1)?.[0].patch).toMatchObject({ resume_text: 'Old source', experience_entries: [manual] });
+    expect(commitProfilePatch.mock.calls.at(-1)?.[0].patch).not.toHaveProperty('coursework');
   });
   it('refuses a late review after another edit or source replacement', async () => {
     mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'Old source', experience_entries: [] }));
@@ -10722,6 +10726,69 @@ describe('useProfileForm — confirmed experience lifecycle', () => {
 });
 
 
+describe('useProfileForm — courses keep the status the student set (checklist M13)', () => {
+  const parse = (found: Array<{ course: string; line: string; status: 'planned' | 'in_progress' | 'unknown' }>) => ({
+    ...RESUME('', []), raw_text: 'new resume body', extracted_coursework: found.map((item) => item.course), course_evidence: found,
+  });
+
+  it('marks a course on a profile saved before statuses and saves the course with its names', async () => {
+    mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'Old source', coursework: ['CS 225', 'CS 446'] }));
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    act(() => result.current.update('courses', [
+      { name: 'CS 225', status: 'completed', source: 'resume' },
+      { name: 'CS 446', status: 'unknown', source: 'resume' },
+    ]));
+    await waitFor(() => expect(serverRow?.courses).toBeDefined(), { timeout: 2500 });
+    const patch = commitProfilePatch.mock.calls.at(-1)?.[0].patch;
+    expect(Object.keys(patch ?? {}).sort()).toEqual(['courses', 'coursework']);
+    expect(serverRow?.courses).toEqual([
+      { name: 'CS 225', status: 'completed', source: 'resume' },
+      { name: 'CS 446', status: 'unknown', source: 'resume' },
+    ]);
+    expect(serverRow?.coursework).toEqual(['CS 225', 'CS 446']);
+    expect(serverRow?.resume_text).toBe('Old source');
+  });
+
+  it('a re-import merges by name, keeps a status the student set and pre-marks only what the new lines say', async () => {
+    mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'Old source', coursework: ['CS 225', 'CS 125'], courses: [
+      { name: 'CS 225', status: 'completed', source: 'resume', evidence: 'Old line CS 225' },
+      { name: 'CS 125', status: 'unknown', source: 'resume', evidence: 'Old line CS 125' },
+      { name: 'STAT 400', status: 'unknown', source: 'manual' },
+    ] }));
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    act(() => { result.current.handleResumeParsed(parse([
+      { course: 'CS 225', line: 'Coursework: CS 225', status: 'unknown' },
+      { course: 'CS 446', line: 'Planned: CS 446 (Spring 2027)', status: 'planned' },
+    ])); });
+    expect(result.current.profile.courses).toEqual([
+      { name: 'CS 225', status: 'completed', source: 'resume', evidence: 'Coursework: CS 225' },
+      { name: 'STAT 400', status: 'unknown', source: 'manual' },
+      { name: 'CS 446', status: 'planned', source: 'resume', evidence: 'Planned: CS 446 (Spring 2027)' },
+    ]);
+    expect(result.current.profile.coursework).toEqual(['CS 225', 'STAT 400', 'CS 446']);
+  });
+
+  it('removing the résumé drops only its courses nobody marked, and every line quoted from it', async () => {
+    mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'Old source', coursework: ['CS 125', 'CS 225', 'STAT 400', 'ECE 110'], courses: [
+      { name: 'CS 125', status: 'unknown', source: 'resume', evidence: 'Coursework: CS 125' },
+      { name: 'CS 225', status: 'completed', source: 'resume', evidence: 'Coursework: CS 225' },
+      { name: 'STAT 400', status: 'unknown', source: 'manual' },
+    ] }));
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    await act(async () => { expect(result.current.handleResumeRemoved()).toBe(true); });
+    await waitFor(() => expect(serverRow?.resume_text).toBe(''));
+    expect(serverRow?.courses).toEqual([
+      { name: 'CS 225', status: 'completed', source: 'resume' },
+      { name: 'STAT 400', status: 'unknown', source: 'manual' },
+    ]);
+    expect(serverRow?.coursework).toEqual(['CS 225', 'STAT 400']);
+    expect(JSON.stringify(serverRow?.courses)).not.toContain('Coursework:');
+  });
+});
+
 describe('useProfileForm — full resume master lifecycle', () => {
   const manual = { id: 'name', revision: 1, status: 'confirmed' as const, value: 'Alex 王', source: { kind: 'manual' as const } };
   const sourced = { id: 'school', revision: 1, status: 'confirmed' as const, value: 'Old source',
@@ -10736,7 +10803,8 @@ describe('useProfileForm — full resume master lifecycle', () => {
     await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
     act(() => { expect(result.current.handleResumeMasterChange(master(), baseOf(result.current))).toBe(true); });
     await waitFor(() => expect(serverRow?.resume_master).toEqual(master()), { timeout: 2500 });
-    expect(commitProfilePatch.mock.calls.at(-1)?.[0].patch).toMatchObject({ resume_text: 'Old source', coursework: ['CS 225'], experience_entries: [], resume_master: master() });
+    expect(commitProfilePatch.mock.calls.at(-1)?.[0].patch).toMatchObject({ resume_text: 'Old source', experience_entries: [], resume_master: master() });
+    expect(commitProfilePatch.mock.calls.at(-1)?.[0].patch).not.toHaveProperty('coursework');
   });
 
   it('refuses a stale editor after an experience edit, source replacement or another master edit', async () => {

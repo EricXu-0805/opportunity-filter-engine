@@ -162,7 +162,7 @@ describe('buildShareUrl', () => {
    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify({v:1,interests:'🧪'.repeat(60001)}))));
    const result = decodeProfileResult(encoded);
    expect(result).toMatchObject({ok:false,error:{code:'PROFILE_INPUT_LIMIT_EXCEEDED',detail:{field:'profile.research_interests_text',actual:60001,limit:60000}}});
-   expect(() => encodeProfile({...FULL_PROFILE,coursework:Array(513).fill('CS 101')})).toThrow();
+   expect(() => encodeProfile({...FULL_PROFILE,coursework:Array.from({length:513},(_,i)=>`CS ${i}`)})).toThrow();
  });
 
  it('rejects a string international flag without turning false into true; legacy absence stays false', () => {

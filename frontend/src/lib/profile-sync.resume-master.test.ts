@@ -97,16 +97,16 @@ describe('full resume master persistence', () => {
 
   it('adds a nullable master partner to a legacy pending bundle without inventing a master', async () => {
     const token = await hydrate(WITH_RESUME);
-    recordProfileIntent({ ...WITH_RESUME, coursework: [] }, ['coursework'], token);
+    recordProfileIntent({ ...WITH_RESUME, resume_text: '' }, ['resume_text'], token);
     commitMock.mockResolvedValue({ status: 'transport-error', message: 'offline' });
-    await stageProfilePatch({ ...WITH_RESUME, coursework: [] }, ['coursework'], token);
+    await stageProfilePatch({ ...WITH_RESUME, resume_text: '' }, ['resume_text'], token);
     const env = readProfileSyncEnvelope()!;
     const pending = env.pending!;
     delete pending.desiredProfile.resume_master;
     delete pending.baseProfile.resume_master;
     pending.dirtyKeys = pending.dirtyKeys.filter(k => k !== 'resume_master');
     delete pending.keyVersions.resume_master;
-    pending.lockedKeys = ['coursework'];
+    pending.lockedKeys = ['resume_text'];
     localStorage.setItem(STORAGE_KEYS.PROFILE_SYNC, JSON.stringify(env));
     const recovered = readProfileSyncEnvelope()!.pending!;
     expect(recovered.desiredProfile.resume_master).toBeNull();
