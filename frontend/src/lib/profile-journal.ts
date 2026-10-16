@@ -166,8 +166,9 @@ export interface JournalOp {
   seq: number;
   /**
    * Above the clock of every operation outstanding when this one was
-   * appended, whichever tab wrote it: of two clocked operations, the higher
-   * clock was written while the other was already on disk. Absent on every
+   * appended, whichever tab wrote it: an operation written while another was
+   * already on disk has the higher clock. (Two written without seeing each
+   * other are in no particular order.) Absent on every
    * operation written by an earlier build (its `seq` counts per lineage, so
    * it ranks visits by how many edits they made, not by when) and on one
    * appended while the journal could not be read; such an operation is never

@@ -795,9 +795,10 @@ function replacedThroughChain(op: JournalOp, byId: ReadonlyMap<string, JournalOp
   return walked;
 }
 
-/** Whether one CLOCKED operation was written after another was on disk:
- *  higher `clock` (see JournalOp.clock), then opId so a tie between two that
- *  never saw each other still has one answer everywhere. */
+/** Which of two CLOCKED operations counts as the later edit: the higher
+ *  `clock` (see JournalOp.clock), which an operation written while the other
+ *  was on disk always has, then opId, so two that never saw each other still
+ *  get one answer everywhere. */
 function writtenLater(a: JournalOp, b: JournalOp): boolean {
   return a.clock !== b.clock ? a.clock! > b.clock! : a.opId > b.opId;
 }
