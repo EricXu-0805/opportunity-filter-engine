@@ -1054,6 +1054,42 @@ class TestDroppedProgramRetirement:
             ("alpha2", "open"), ("beta", "open")]
 
     @pytest.mark.parametrize("unread", ["page_fails", "quick_run"])
+    def test_a_closed_program_moved_to_the_lab_bucket_on_a_shared_page_waits_by_its_key(
+            self, monkeypatch, processed, unread):
+        """Moved from the campus bucket to the lab bucket of its school's
+        file, a program gets a new id but keeps its key. On a page its config
+        shares with another program its record skips the near-duplicate
+        filter, and the closed row with its key holds it until a run reads
+        its page."""
+        url = "https://example.edu/hub/"
+        titles = {"alpha": "Alpha Fellowship", "beta": "Beta Grant"}
+        before = _listing_school("alpha", "beta", titles=titles, urls={"alpha": url, "beta": url})
+        after = _listing_school("beta", titles=titles, urls={"beta": url})
+        after["sources"].append({"source_name": "example_labs", "source_type": cg.LAB, "emit": "lab",
+                                 "crawl": cg.STATIC, "seeds": [url],
+                                 "programs": [cg.program("alpha", titles["alpha"], url, "Curated")]})
+        for school in (before, after):
+            school["emit"]["lab"] = ("example_labs", "example", "unknown")
+            school["sources"][0]["seeds"] = [url]
+        page = {"word": "Applications are now closed."}
+        monkeypatch.setattr(cg, "_fetch", lambda requested, **_: (
+            None if page["word"] is None else _StaticSoup(requested, page["word"])))
+        _refresh_school(before, deep=True)
+        moved = _program_id(after, "lab", "alpha")
+
+        if unread == "page_fails":
+            page["word"] = None
+        _refresh_school(after, deep=unread == "page_fails")
+
+        assert moved not in _stored(processed)
+
+        page["word"] = "Applications are now open!"
+        _refresh_school(after, deep=True)
+
+        metadata = _stored(processed)[moved]["metadata"]
+        assert (metadata["status"], metadata["is_active"]) == ("open", True)
+
+    @pytest.mark.parametrize("unread", ["page_fails", "quick_run"])
     def test_a_program_renamed_back_after_its_page_closed_waits_for_a_run_that_reads_its_page(
             self, monkeypatch, processed, unread):
         """Renamed back, the program's record is its first key's retired row,

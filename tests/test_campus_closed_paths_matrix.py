@@ -35,12 +35,18 @@ under the day.
   run reads its page. A title alone never ties a record to a row in the
   other file: title matches are scoped to the record's source, which names
   its file.
+- 4 scenarios on a merge given no list of the other file's keys, as a direct
+  caller may: every closed row in the other file counts, so a new program
+  beside a closed program still listed there, or retired there and listed
+  there again, waits for a run that reads its page.
 
-Main at c99142c2 passes the 73 and 10 of the 11 as written. The other 11
-fail there on the day that reads nothing: 10 listed the program, and
+Main at c99142c2 passes the 73, 10 of the 11 and 1 of the 4 as written. The
+other 14 fail there on the day that reads nothing: 10 listed the program,
 ucb_campus held the new program beside the one listed again in the other
 file, as it held any new record sharing the URL or title of a row retired
-closed, in either file.
+closed, in either file, and campus_graph listed the new program in the
+other 3 of the 4, as its wait for a read skipped every record on a shared
+page.
 """
 
 from __future__ import annotations
@@ -604,6 +610,47 @@ def test_a_closed_row_in_the_other_file_holds_back_no_other_program_and_no_read_
     _play(monkeypatch, tmp_path, engine, days)
 
 
-def test_the_groups_hold_43_30_7_3_and_11_scenarios():
+# --- 4 scenarios on a merge given no list of the other file's keys ------------
+
+def _beside_a_closed_program_still_listed_in_the_other_file(run):
+    """The first NOT_HELD scenario, which a merge told that file's keys
+    lists on the day that reads nothing."""
+    before, after = Config(open=(("alpha", "hub"),)), Config(campus=(("gamma", "hub"),), open=(("alpha", "hub"),))
+    return pytest.param("cg", [
+        Day(before, None, "deep", "closed", "alpha@national closed hidden"),
+        Day(after, False, run, "closed", "alpha@national closed hidden"),
+        Day(after, False, "deep", "open", "alpha@national closed hidden, gamma@home open listed"),
+    ], id=f"cg-new_program_beside_a_closed_program_still_listed_in_the_other_file-"
+          f"{'page_fails' if run == 'fails' else 'quick_run'}")
+
+
+def _beside_a_closed_program_listed_again_in_the_other_file(engine, run):
+    """The NOT_HELD scenario with the closed program retired in the other
+    file and listed there again."""
+    alpha, both = Config(open=(("alpha", "hub"),)), Config(campus=(("gamma", "hub"),), open=(("alpha", "hub"),))
+    return pytest.param(engine, [
+        Day(alpha, None, "deep", "closed", "alpha@national closed hidden"),
+        Day(Config(), True, "deep", "closed", "alpha@national closed retired"),
+        Day(both, False, run, "closed", "alpha@national closed retired"),
+        Day(both, False, "deep", "open", "alpha@national closed retired, gamma@home open listed"),
+    ], id=f"{engine}-new_program_beside_a_closed_program_listed_again_in_the_other_file-"
+          f"{'page_fails' if run == 'fails' else 'quick_run'}")
+
+
+WITHOUT_THE_OTHER_FILES_KEYS = [
+    _beside_a_closed_program_still_listed_in_the_other_file("quick"),
+    _beside_a_closed_program_still_listed_in_the_other_file("fails"),
+    _beside_a_closed_program_listed_again_in_the_other_file("cg", "quick"),
+    _beside_a_closed_program_listed_again_in_the_other_file("ucb", "fails"),
+]
+
+
+@pytest.mark.parametrize(("engine", "days"), WITHOUT_THE_OTHER_FILES_KEYS)
+def test_a_merge_not_given_the_other_files_keys_counts_every_closed_row_there(monkeypatch, tmp_path, engine, days):
+    monkeypatch.setitem(globals(), "_other_file", lambda evidence: {})
+    _play(monkeypatch, tmp_path, engine, days)
+
+
+def test_the_groups_hold_43_30_7_3_11_and_4_scenarios():
     assert (len(MOVES_AND_RENAMES), len(LANDING_DAYS), len(M98_PATHS), len(OTHER_FILE_UNDER_ANOTHER_KEY),
-            len(NOT_HELD)) == (43, 30, 7, 3, 11)
+            len(NOT_HELD), len(WITHOUT_THE_OTHER_FILES_KEYS)) == (43, 30, 7, 3, 11, 4)

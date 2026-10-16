@@ -59,22 +59,26 @@ with its URL waits the same way. If the page reopens before the old file's
 day, the program stays unlisted until the new file's first day after it, up to
 13 days after the edit, or later if that day's run cannot load the page. Its
 new source must crawl the page (list it in its `seeds`), or the program is
-never listed again. A record on a page its config shares with another program
-(`shared_program_page`) is never dropped as a near-duplicate, but a quick run
-or a failed load leaves it out all the same. So does a program renamed back to
-a key, or moved back to a file, where its row retired, or both in one edit:
-that row comes back only on a run that loads its page, even before the closed
-row in the other file retires. A closed row makes a record wait for a read
-only if it has the record's key, or it retired in a file the run writes, or it
-sits in the other file under a key that file's sources no longer list. So a
+never listed again. In a campus config (`campus_graph`), a record on a page
+its config shares with another program (`shared_program_page`) is never
+dropped as a near-duplicate, but a quick run or a failed load leaves it out
+all the same. So does a program renamed back to a key, or moved back to a
+file, where its row retired, or both in one edit: that row comes back only on
+a run that loads its page, even before the closed row in the other file
+retires. A closed row makes a record wait for a read only if it has the
+record's key, or it retired in a file the run writes, or it sits in the other
+file under a key that file's sources no longer list. So in a campus config a
 closed program still listed in the other file holds no other program back,
-even on a shared page, and neither does one retired there and listed there
-again. The wait does not look at how old the closed reading is: a program
-coming back to its own retired row waits for a run that loads its page if a
-row on that page retired closed in that file (another program's on a shared
-page, or its own under a key it has dropped), even if a later run read the
-page open. That is cautious, and a new program on that page waits the same
-way. The log counts the records left out to wait for a read in
+even on a shared page. UC Berkeley's registry (`ucb_campus`) has no
+shared-page exemption: there a record on the page of such a program is
+dropped as that row's near-duplicate, even on a run that reads the page open.
+In both, a closed program retired in the other file and listed there again
+holds no other program back. The wait does not look at how old the closed
+reading is: a program coming back to its own retired row waits for a run that
+loads its page if a row on that page retired closed in that file (another
+program's on a shared page, or its own under a key it has dropped), even if a
+later run read the page open. That is cautious, and a new program on that page
+waits the same way. The log counts the records left out to wait for a read in
 `suppressed N near-duplicate(s) vs corpus` too.
 
 To retire a config's open programs, empty the open source's `programs` and
