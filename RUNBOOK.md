@@ -138,9 +138,9 @@ workflow above also has a manual Run workflow button (**operator**).
 
 ## 4. Database migrations
 
-### Why the 49 names look different
+### Why the 52 names look different
 
-`supabase/migrations/` held 49 files on 2026-10-09. A migration's version is
+`supabase/migrations/` held 52 files on 2026-10-15. A migration's version is
 the part of its name before the first underscore. The Supabase CLI applies
 files in filename order and records each version once.
 
@@ -148,7 +148,7 @@ files in filename order and records each version once.
 |---|---|---|
 | `001`–`034` | 34 | The original three-digit sequence. `001` was written on 2026-07-24 (#646) to recreate tables first made in the dashboard. The last two, `033` (2026-08-27) and `034` (2026-09-05), landed after the first timestamp file. |
 | `0181_oauth_merge_secret`, `0201_usage_events` | 2 | Renamed from `018_` and `020_` in #646 because two files shared each version, which made `supabase db push` impossible. Content unchanged. In filename order `0181_` runs before `018_` and `0201_` before `020_`. |
-| `20260819164641_…` onward | 13 | `YYYYMMDDHHMMSS` UTC timestamps, the format `supabase migration new` writes. Every migration since 2026-09-24 uses it. |
+| `20260819164641_…` onward | 16 | `YYYYMMDDHHMMSS` UTC timestamps, the format `supabase migration new` writes. Every migration since 2026-09-24 uses it. |
 
 The replay in CI (`supabase/tests/run_supabase_cli_migration_test.sh`)
 applies every file into an empty database in that order.
@@ -158,7 +158,7 @@ applies every file into an empty database in that order.
 1. Create it with `supabase migration new <snake_case_name>`. It gets a UTC
    timestamp later than every existing file. Never use a three-digit name: a
    `035_` sorts before all the timestamp files, so a fresh replay would run it
-   before 13 migrations it may depend on. `tests/test_docs_current.py` fails on
+   before 16 migrations it may depend on. `tests/test_docs_current.py` fails on
    any new name that is not a 14-digit timestamp later than `20260930220000`,
    the newest version when the check was written.
 2. Never edit or rename a migration that production has run. Write a new one
@@ -240,19 +240,37 @@ Render, Vercel and the database, and the known weak spots.
 
 ## 8. Data export and deletion request
 
-> **Untested.** Written on 2026-10-12 from `supabase/migrations/` and the code
-> that reads it; it has not been run against production. Its SQL has run only
-> on a local PostgreSQL 16 replay of the migrations (all but the superseded
-> `004`) on top of `supabase/tests/_stubs.sql`. Those stubs lack the
+> **Partly run in production.** Written on 2026-10-12 from
+> `supabase/migrations/` and the code that reads it. Its SQL first ran on a
+> local PostgreSQL 16 replay of the migrations (all but the superseded `004`)
+> on top of `supabase/tests/_stubs.sql`, with a seed script adding the
 > `auth.users` columns `email`, `created_at` and `last_sign_in_at` and the
-> `auth.identities` table, so a seed script added minimal versions of them
-> before loading a test account, a guest merged into it and a second account.
-> There the SQL exported, deleted and re-exported the account and its guest
-> and left the second account untouched. Storage was simulated by deleting
-> `storage.objects` rows, auth users were deleted with SQL, and the token wait
-> in step 5 was not exercised. Before using it on a real request, the owner
-> runs it once end to end on a test account (checklist M20) and records the
-> counts here.
+> `auth.identities` table the stubs lack. There the SQL exported, deleted and
+> re-exported a test account and a guest merged into it and left a second
+> account untouched; Storage was simulated by deleting `storage.objects` rows,
+> auth users were deleted with SQL, and the token wait in step 5 was not
+> exercised.
+>
+> On 2026-10-13 the owner had it run on the production test account, through
+> the Supabase MCP connector (which runs as `postgres`, like the SQL editor):
+>
+> - the table check listed 25 tables with a `device_id` or `owner_id` column,
+>   all of them in the table below;
+> - the account had 4 uids: itself and 3 merged guests, all anonymous with no
+>   email;
+> - the export returned rows for `auth.users` 4, `auth.identities` 1,
+>   `profiles` 1, `profile_versions` 39, `favorites` 1, `analytics_events` 114,
+>   `target_resumes` 7, `target_resume_versions` 17, `private_import_targets` 1,
+>   `merge_grants` 3 and `merged_devices` 3 (about 627 KB of JSON), and 0 rows
+>   for every other table; the file listing was empty;
+> - step 2 deleted exactly the exported rows of its tables: `profiles` 1,
+>   `profile_versions` 39, `favorites` 1, `analytics_events` 114,
+>   `merge_grants` 3.
+>
+> Steps 3 to 6 were not run in production: the connector declined
+> `DELETE FROM auth.users`, so step 3 needs the dashboard (Authentication →
+> Users) as written below, and steps 4 to 6 come after it. Step 1 and the
+> material cleanup check have not run against real Storage anywhere.
 
 Privacy §7 (`frontend/src/app/privacy/page.tsx`) promises a full export or
 deletion within 30 days of an emailed request, after checking that the request
@@ -577,4 +595,4 @@ clear the site data in their browser.
 ## 9. Open work
 
 The single to-do list is the owner's MVP checklist (the private "OE todolist"
-Google Doc, MVP tab, items M01–M70). Work that is not in it is not planned.
+Google Doc, MVP tab, items numbered from M01). Work that is not in it is not planned.

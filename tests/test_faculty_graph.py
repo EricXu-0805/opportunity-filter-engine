@@ -4091,9 +4091,15 @@ def test_profile_text_without_chrome_reads_what_the_copy_read():
 
 
 def test_profile_text_without_chrome_is_read_in_linear_time():
+    # Eight times the page, not four: at four times a linear read measures
+    # about 4 and a quadratic one 16, and a CI runner measured 8.3 on main
+    # (2026-10-14) against a limit of 8. At eight times a linear read measures
+    # about 8.3 and a quadratic one 64, so 32 leaves room on both sides. The
+    # large page is already near the parser's size limit, so the small one
+    # shrinks instead.
     from src.collectors.ucb_common import _profile_page_text
     small, large = (parse_import_html(crawled_page("body", "<nav>" * (runs // 28) + "<b></b>x" * runs))
-                    for runs in (3_500, 14_000))
+                    for runs in (1_750, 14_000))
     assert _profile_page_text(large) == _page_text_by_copy(large)
     growth = _growth(_profile_page_text, small, large)
-    assert growth < 8, f"four times the page took {growth:.1f} times as long"
+    assert growth < 32, f"eight times the page took {growth:.1f} times as long"

@@ -365,7 +365,18 @@ SHA and confirm the previously-passing gates still pass.
   The script reports files production never ran, rows the repo does not have,
   and rows recorded twice, and exits 1 on any of them. It compares md5 where a
   row holds one statement. Run the query against production only with the
-  owner's OK (backlog Q4); it has not been run against production yet.
+  owner's OK (backlog Q4). Run on 2026-10-15 and 2026-10-16 with that OK.
+  Every row matched a file by name. One file had no row:
+  `20261011090000_tracker_attachments_require_signin.sql`, which the owner
+  ran by hand in the SQL editor on 2026-10-12 after the MCP connector declined
+  it. On 2026-10-16, after a read-only check that its policy is live as
+  written, the row was added with the file's exact text (owner's OK), and the
+  script now reports 52 rows for 52 files and exits 0. Of the 30
+  single-statement rows, 3 match their files byte for byte, 16 differ only in
+  leading and trailing whitespace, and 11 (`014`, `024`-`032`, `034`) match
+  once `--` comments are removed and whitespace is collapsed (md5 of the
+  normalized text, computed in the database and locally): the applied SQL
+  differs from the files only in comments and spacing.
 - **`/api/ready` is not wired to `render.yaml`'s `healthCheckPath`** on
   purpose. It gates on corpus freshness, and at the time of writing the corpus
   sat at 94h against a 96h stale bound — pointing the instance probe at it
