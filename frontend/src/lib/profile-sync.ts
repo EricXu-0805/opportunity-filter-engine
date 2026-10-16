@@ -88,9 +88,9 @@ export const CREATE_REQUIRED_KEYS: readonly ProfileKey[] = [
  *  Taking them from different revisions can attach claims to the wrong résumé.
  *  Staging any member stages the whole bundle. Courses are not in it: a
  *  course the student added or marked outlives the résumé (checklist M13),
- *  and a status click must not stage the résumé. A course's résumé line is
- *  shown back only, never a claim, and the two course keys are written
- *  together (lib/course-status.ts courseFields). */
+ *  and a status click must not stage the résumé. Nothing a course stores is
+ *  quoted from the résumé: its line and any status the résumé gives it are
+ *  read from the current text (lib/course-status.ts). */
 export const RESUME_BUNDLE: readonly ProfileKey[] = ['resume_text', 'experience_entries', 'resume_master'];
 
 /** The courses and their names: one list, written together, and one unit in
