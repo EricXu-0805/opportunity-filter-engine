@@ -28,6 +28,9 @@ import { STORAGE_KEYS, HOME_SCHOOL_EVENT } from '@/lib/storage-keys';
 import { bySlug } from '@/lib/schools';
 import { getDeviceId, onAuthChange } from '@/lib/supabase';
 import {
+  conflictHasAnotherTabsSide,
+  conflictHasThisTabsSide,
+  conflictTypedInThisTab,
   flushPendingProfileWrite,
   resolveProfileConflict,
   makeConflictPrompt,
@@ -45,6 +48,7 @@ import {
   readProfileSyncEnvelopeStrict,
   readWhetherStoredProfileIs,
   saveWholeProfile,
+  shownWithThisTabsLatestEdits,
   stageProfilePatch,
   storedProfileIs,
   type WholeProfileSaveOutcome,
@@ -432,6 +436,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         editEpochAtOperation: number;
       },
       ownsStatus: boolean,
+      context: 'save' | 'answer' | 'remainder',
     ) => void | ProfileDisposition | Promise<void | ProfileDisposition>)
     | null
   >(null);
@@ -1418,6 +1423,13 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
           showCoordinatorDocument(result.profile as unknown as Record<string, unknown>);
         }
         if (fromCoordinator) advanceAcceptedBase(result.profile, result.revision, token, generation);
+        // Beside a question another tab's edit is in, this write went through
+        // and the form is still not saved: that field is in dispute on this
+        // screen. Said so, and nothing goes ahead on it (see handleSubmit).
+        if (conflictsRef.current.some(conflictHasAnotherTabsSide)) {
+          say('conflict');
+          return STALE;
+        }
         armRetry(null);
         // The question on screen is NOT retired here. A successful write says
         // what the row now holds for the keys IT sent; it says nothing about
@@ -1497,7 +1509,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
           if (!isOwnerTokenValid(token, token.uid)) return;
           return applyConflictRefreshRef.current?.(
             refreshed, union, token, generation, intent,
-            { atOperation, atIssue, unrepresented, editEpochAtOperation }, ownsNow,
+            { atOperation, atIssue, unrepresented, editEpochAtOperation }, ownsNow, 'save',
           );
         }).then(() => STALE);
       }
@@ -1601,6 +1613,12 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
      *  intent — a shared draft — would otherwise let an old submit take the
      *  wording back. */
     ownsOperation: boolean,
+    /** What asked for it: a save that came back a conflict, an answer
+     *  refused as stale, or the rest of a question after an answer to part
+     *  of it. A question that has gone away means something different to
+     *  each, and saying "it was answered somewhere else, so nothing was
+     *  sent" is true only of an answer, and only when somebody answered. */
+    context: 'save' | 'answer' | 'remainder',
   ) => {
     // The helper's OWN fence, before any ref, state or status moves. A caller
     // that forgot one is not a contract; this is the last point at which a
@@ -1729,7 +1747,23 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
           fence.atOperation, fence.editEpochAtOperation,
         );
       }
-      tell('conflict-stale');
+      if (context === 'answer') {
+        // This click sent nothing either way.
+        tell(refreshed.answered ? 'conflict-stale' : 'conflict-gone');
+        return;
+      }
+      // A save's question, or the rest of one, went away while it was being
+      // rebuilt; nothing was answered or refused here. What is left to say
+      // is what the outbox holds now: an edit still owed is unsent, and
+      // Retry sends it.
+      if (refreshed.pendingKeys.length > 0) {
+        if (owns) armRetryable({ generation, token });
+        tell('cloud-failed');
+        return;
+      }
+      // Nothing is owed: what the save sent, or the part of the question
+      // this click answered, stands, and nothing is left in dispute.
+      tell(context === 'save' && refreshed.answered ? 'conflict-stale' : 'saved');
       return;
     }
     // A question about a field the person has since typed into describes a
@@ -1896,7 +1930,12 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       activeLoadRef.current = null;
       if (hydration.conflictKeys.length > 0) {
         setSaveStatus('conflict');
-        return;
+        // A question this tab has a side in waits for its answer. One whose
+        // every value another tab typed does not hold this tab's own unsent
+        // edits back: the flush below sends them, or queues behind a save
+        // still in flight from this page and reports what that save left
+        // (a remount of Home, see flushByMutation's continuedAs).
+        if (hydration.conflicts.length === 0 || hydration.conflicts.some(conflictHasThisTabsSide)) return;
       }
       // An edit from a PREVIOUS visit that never reached the cloud (the tab
       // was closed, the network was down). Without this, a transport failure
@@ -2417,9 +2456,13 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         const combined = { ...next } as unknown as Record<string, unknown>;
         const live = profileRef.current as unknown as Record<string, unknown>;
         const disputed = new Set(loaded.conflictKeys);
+        // A field whose question holds nothing typed in this tab shows the
+        // shared working copy, as the coordinator holds it, not the value
+        // this tab drew before another tab's edit.
+        const notTypedHere = new Set(loaded.conflicts.filter((q) => !conflictTypedInThisTab(q)).map((q) => q.key));
         const moved = (key: string) => (fieldEpochRef.current.get(key) ?? 0) !== atIssue.get(key);
         const preserve = new Set<string>(PROFILE_KEYS.filter((key) => moved(key)
-          || unrepresented.has(key) || owed.has(key) || disputed.has(key)));
+          || unrepresented.has(key) || owed.has(key) || (disputed.has(key) && !notTypedHere.has(key))));
         const sourceBundle = ['resume_text', 'coursework', 'experience_entries', 'resume_master'] as const;
         // The source and its confirmations are one revision, never a mixture
         // of the old editor's metadata with the newly read résumé text.
@@ -3482,6 +3525,19 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // and both run, the second intent suppresses the first's result, and the
     // stale refresh that follows can put a phantom question back on screen.
     if (activeResolveRef.current !== null) return;
+    // What was typed into the question's fields in the last moments of a
+    // typing burst is on screen but not yet in the journal, and "Keep what I
+    // typed" keeps what the journal says this tab typed. Written down first;
+    // the question is then the one on screen plus those keystrokes, and only
+    // that (see shownWithThisTabsLatestEdits). An answer that cannot be
+    // written down is not given.
+    const burst = answering.some((c) => unrecordedRef.current.has(c.key as keyof ProfileData));
+    if (!recordOutstandingIntents(profileRef.current)) {
+      setSaveStatus('error');
+      return;
+    }
+    const withLatest = burst ? shownWithThisTabsLatestEdits(answering, origin.token) : null;
+    const prompt = withLatest ? makeConflictPrompt(origin, withLatest) : asking;
     resolveSeqRef.current += 1;
     const resolveId = resolveSeqRef.current;
     activeResolveRef.current = resolveId;
@@ -3498,7 +3554,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       answering.map((c) => [c.key, fieldEpochRef.current.get(c.key) ?? 0]),
     );
     resolveProfileConflict({
-      prompt: asking, actionView, choice,
+      prompt, actionView, choice,
     }).then((result) => {
       if (generation !== identityGenerationRef.current) return;
       // The owner can move without this hook hearing about it, which leaves
@@ -3507,6 +3563,13 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       // resolved to describes a row the person at the keyboard does not own.
       if (!isTokenOwnerStillCurrent(token)) return;
       const ownsResolve = intent === saveIntentRef.current;
+      if (result.status === 'several-typed') {
+        // Nothing was decided or sent, and the question stays on screen,
+        // controls and all: it can still be answered with the other
+        // version, or where it was typed.
+        if (ownsResolve && editEpochAtClick === editEpochRef.current) setSaveStatus('conflict-several-typed');
+        return;
+      }
       if (result.status === 'stale-conflict') {
         // Handled HERE, where `answering` is still the immutable question this
         // click was about. Reading the keys from a ref inside the generic
@@ -3552,7 +3615,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
           return applyConflictRefresh(
             refreshed, asked, origin.token, generation, intent,
             { atOperation, atIssue, unrepresented, editEpochAtOperation: editEpochAtClick },
-            ownsResolve,
+            ownsResolve, 'answer',
           );
         });
       }
@@ -3623,7 +3686,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
           if (generation !== identityGenerationRef.current) return undefined;
           if (!isOwnerTokenValid(token, token.uid)) return undefined;
           return applyConflictRefresh(
-            refreshed, remaining, token, generation, intent, remainderFence, ownsResolve,
+            refreshed, remaining, token, generation, intent, remainderFence, ownsResolve, 'remainder',
           );
         })
       ));
@@ -3652,7 +3715,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     });
   }, [
     conflicts, advanceAcceptedBase, applyConflictRefresh, applySaveResult,
-    republishRendered, retireConflictKeys,
+    recordOutstandingIntents, republishRendered, retireConflictKeys,
     setSaveStatus,
   ]);
 

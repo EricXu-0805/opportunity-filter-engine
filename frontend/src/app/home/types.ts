@@ -80,11 +80,19 @@ export type SaveStatus =
   | 'idle' | 'saving' | 'saved' | 'error'
   | 'device-only' | 'cloud-failed' | 'device-failed'
   | 'conflict' | 'stale' | 'awaiting-required'
-  // The answer was about a question that no longer exists — the row moved, a
-  // candidate appeared or disappeared, another tab settled it. Nothing was
-  // written or sent; the current question is being shown instead. Distinct
-  // from 'cloud-failed', which says the network let the user down.
-  | 'conflict-stale';
+  // The answer was about a question that another tab (or an earlier screen)
+  // had already answered. Nothing was written or sent; what was kept is
+  // shown instead. Distinct from 'cloud-failed', which says the network let
+  // the user down.
+  | 'conflict-stale'
+  // The answer was about a question that no longer exists although nobody
+  // answered it — the row came to agree, a load settled it. Nothing was
+  // written or sent; the form shows the current version.
+  | 'conflict-gone'
+  // "Keep what I typed" in a tab that typed none of the question, whose
+  // values other tabs typed differently: nothing was decided or sent, and
+  // the question is still open.
+  | 'conflict-several-typed';
 
 // 'loading' → this identity's stored row has not come back yet
 // 'ready'   → it has (a row, or a confirmed-absent one); edits persist

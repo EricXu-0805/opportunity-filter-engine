@@ -465,15 +465,17 @@ describe('a merge that kept the account\'s own row', () => {
     const server = casServer(ACCOUNT, 1);
     commitMock.mockReset();
     commitMock.mockImplementation(async (intent) => server.handle(intent) as ProfilePatchOutcome);
-    const kept = await answerConflict(['grade'], 'local', owner, { ...ACCOUNT, grade: 'Senior' });
+    // Answered in the second tab, which shows the account's grade while both
+    // are asked: what it keeps is what it typed (M102), not what it shows.
+    const kept = await answerConflict(['grade'], 'local', owner, ACCOUNT);
     expect(kept.status).toBe('saved');
-    expect(server.seen).toEqual([{ expected: 1, patch: { grade: 'Senior' } }]);
+    expect(server.seen).toEqual([{ expected: 1, patch: { grade: 'Sophomore' } }]);
     expect(journalOps(), 'one answer settles both tabs\' operations').toEqual([]);
 
-    loadProfileMock.mockResolvedValue(cloud({ ...ACCOUNT, grade: 'Senior' }, 2));
+    loadProfileMock.mockResolvedValue(cloud({ ...ACCOUNT, grade: 'Sophomore' }, 2));
     const after = await hydrateProfile();
     expect(after.conflictKeys).toEqual([]);
-    expect(after.profile?.grade).toBe('Senior');
+    expect(after.profile?.grade).toBe('Sophomore');
   });
 
   it('keeps an unsent edit the journal never held alongside one it did', async () => {
@@ -1973,7 +1975,11 @@ describe('a real reload is a new document, and its edits continue the same draft
     expect(h.conflictKeys).toContain('skills');
     await flushPendingProfileWrite(captureOwnerToken());
 
-    // Answering the interests question does not answer skills.
+    // Answering the interests question does not answer skills. This visit
+    // typed none of the two interests (checklist M102), so it types the one
+    // it keeps.
+    expect(recordProfileIntent({ ...doc, skills: (h.profile?.skills ?? []) as ProfileData['skills'] },
+      ['research_interests'], captureOwnerToken(), { writer: HOME_FORM_WRITER })).toBe(true);
     expect(await answerConflict(['research_interests'], 'local', captureOwnerToken(),
       { ...doc, skills: (h.profile?.skills ?? []) as ProfileData['skills'] }))
       .toMatchObject({ status: 'conflict', conflictKeys: ['skills'] });
@@ -3148,8 +3154,14 @@ describe('a conflict is answered by a durable receipt, not by a special case', (
 
     commitMock.mockReset();
     commitMock.mockResolvedValueOnce(saved({ ...FULL, major: 'ECE' }, 8));
-    // This document owns neither value — both tabs are gone — so the answer
-    // has to say which one is on screen.
+    // This document typed neither value — both tabs are gone — so it has
+    // nothing of its own to keep, and keeping one of theirs would be a
+    // guess (checklist M102).
+    expect(await answerConflict(['major'], 'local', token, { ...FULL, major: 'ECE' }))
+      .toEqual({ status: 'several-typed' });
+    expect(commitMock).not.toHaveBeenCalled();
+    // Once it types one of them, that is what it keeps.
+    expect(recordProfileIntent({ ...FULL, major: 'ECE' }, ['major'], token)).toBe(true);
     const resolved = await answerConflict(
       ['major'], 'local', token, { ...FULL, major: 'ECE' },
     );
@@ -3312,6 +3324,89 @@ describe('an answer covers the disagreement that was SHOWN, and nothing else', (
     expect(remaining.map((c) => c.key)).toEqual(['grade']);
     expect(remaining[0].candidates[0].value).toBe('Senior');
     expect(remaining[0].remote).toBe('Masters');
+  });
+});
+
+// Checklist M102. Every tab of an account shares the outbox and the journal,
+// so a question one tab's edit raised is in front of the others too.
+describe('"Keep what I typed" keeps what this tab typed', () => {
+  /** Another tab's edit, as that tab writes it: its own lineage, made
+   *  against revision 7, written after everything on disk. */
+  function otherTabEdit(key: string, value: unknown, base: unknown, lineage = 'tab-b') {
+    const ops = readOutstandingOps();
+    const clock = Math.max(0, ...(ops.ok ? ops.value.map((o) => o.clock ?? 0) : [])) + 1;
+    const opId = crypto.randomUUID();
+    localStorage.setItem(`${STORAGE_KEYS.PROFILE_JOURNAL_PREFIX}op_${opId}`, JSON.stringify({
+      opId, originId: lineage, lineage,
+      fields: [{ key, base: { present: true, value: base }, desired: { present: true, value } }],
+      baseRevision: 7, writer: HOME_FORM_WRITER, mode: 'set', seq: 1, clock,
+    }));
+  }
+
+  it('in a tab that typed none of it, it keeps what the other tab typed, never this tab\'s old value', async () => {
+    loadProfileMock.mockResolvedValue(cloud(FULL, 7));
+    await hydrateProfile();
+    const token = captureOwnerToken();
+    // The other tab types, and its save meets a phone's newer interests.
+    otherTabEdit('research_interests', 'typed in the other tab', FULL.research_interests);
+    const phone = { ...FULL, research_interests: 'saved on the phone' };
+    commitMock.mockResolvedValueOnce(conflict(phone, 8));
+    expect(await stageProfilePatch({ ...FULL, research_interests: 'typed in the other tab' },
+      ['research_interests'], token)).toMatchObject({ status: 'conflict', conflictKeys: ['research_interests'] });
+
+    // This tab still shows what it rendered at revision 7.
+    const shown = readCurrentConflicts(['research_interests'], token);
+    expect(shown[0].candidates.map((c) => c.lineage)).toEqual(['tab-b']);
+    commitMock.mockReset();
+    commitMock.mockImplementation(async (intent) => saved({ ...phone, ...intent.patch } as ProfileData, 9));
+    const answered = await resolveProfileConflict(answerOn(viewOf(phone, 8, token), shown, 'local', FULL));
+    expect(answered.status).toBe('saved');
+    expect(commitMock.mock.calls.map(([intent]) => [intent.expectedRevision, intent.patch]))
+      .toEqual([[8, { research_interests: 'typed in the other tab' }]]);
+    expect(journalOps()).toEqual([]);
+  });
+
+  it('in a tab that typed none of it, when the tabs that did typed different values, it keeps neither and says so', async () => {
+    loadProfileMock.mockResolvedValue(cloud(FULL, 7));
+    await hydrateProfile();
+    const token = captureOwnerToken();
+    otherTabEdit('research_interests', 'typed in tab B', FULL.research_interests, 'tab-b');
+    otherTabEdit('research_interests', 'typed in tab C', FULL.research_interests, 'tab-c');
+    const h = await hydrateProfile();
+    expect(h.conflictKeys).toEqual(['research_interests']);
+    expect(h.profile?.research_interests, 'the saved row while it is asked').toBe(FULL.research_interests);
+
+    commitMock.mockReset();
+    commitMock.mockImplementation(async (intent) => saved({ ...FULL, ...intent.patch } as ProfileData, 8));
+    const answered = await resolveProfileConflict(answerOn(viewOf(FULL, 7, token), h.conflicts, 'local', h.profile!));
+    expect(answered).toEqual({ status: 'several-typed' });
+    expect(commitMock, 'nothing nobody typed is written').not.toHaveBeenCalled();
+    expect(journalOps().some((op) => op.mode === 'resolve'), 'and nothing is decided').toBe(false);
+    expect((await hydrateProfile()).conflictKeys, 'the question stands').toEqual(['research_interests']);
+  });
+
+  it('after a reload that shows the row for a field another tab also edited, it keeps what this tab typed', async () => {
+    loadProfileMock.mockResolvedValue(cloud({ ...FULL, major: 'CS' }, 7));
+    await hydrateProfile();
+    const token = captureOwnerToken();
+    expect(recordProfileIntent({ ...FULL, major: 'ECE' }, ['major'], token)).toBe(true);
+    otherTabEdit('major', 'Physics', 'CS');
+    // A reload inside the autosave debounce: nothing was staged.
+    startDocumentForTests('reload');
+    resetProfileDirtyLedger();
+    const h = await hydrateProfile();
+    expect(h.conflictKeys).toEqual(['major']);
+    expect(h.profile?.major, 'neither tab\'s value is shown while it is asked').toBe('CS');
+
+    commitMock.mockReset();
+    commitMock.mockResolvedValueOnce(saved({ ...FULL, major: 'ECE' }, 8));
+    const kept = await resolveProfileConflict(answerOn(
+      viewOf({ ...FULL, major: 'CS' }, 7, token), h.conflicts, 'local', h.profile!,
+    ));
+    expect(kept.status).toBe('saved');
+    expect(commitMock.mock.calls.map(([intent]) => [intent.expectedRevision, intent.patch]))
+      .toEqual([[7, { major: 'ECE' }]]);
+    expect(journalOps()).toEqual([]);
   });
 });
 

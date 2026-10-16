@@ -315,6 +315,11 @@ export type ProfileSaveResult =
    *  current state and ask again rather than apply a decision the person made
    *  about values that are no longer in dispute. */
   | { status: 'stale-conflict' }
+  /** "Keep what I typed" from a tab that typed none of the question, whose
+   *  values other tabs typed differently: there is no one value it could
+   *  keep. NOTHING was written or sent and the question stands, to be
+   *  answered where it was typed, or with the other version. */
+  | { status: 'several-typed' }
   /** Nothing was staged: no confirmed revision to patch against yet.
    *  `reason: 'incomplete-create'` means a create was refused only because
    *  the document is not complete (on the home form: college, major or grade
@@ -2099,6 +2104,11 @@ interface ProfileRefreshState {
   /** The flush this refresh continued once the last lock came off, if the
    *  repair left something safe to send. Null means none was needed. */
   flushed: ProfileSaveResult | null;
+  /** Whether an answer about one of the asked fields (a resolution receipt
+   *  from any screen) was waiting when this refresh began; the refresh may
+   *  have applied it since. False when the question went away without
+   *  anybody answering it: the row came to agree, or a load settled it. */
+  answered: boolean;
 }
 
 export type ProfileConflictRefresh =
@@ -3464,6 +3474,9 @@ export async function resolveProfileConflict(
   // the person chose over something that is no longer there, overwriting
   // whatever replaced it.
   if (written.value === 'stale') return { status: 'stale-conflict' };
+  // Kept in a tab that typed none of it, about values other tabs typed
+  // differently: nothing to keep, so nothing is decided and nothing is sent.
+  if (written.value === 'several') return { status: 'several-typed' };
   if (!written.value) return { status: 'device-failed', phase: 'stage' };
   const { desired } = written.value;
 
@@ -3651,6 +3664,9 @@ export async function refreshConflictQuestion(
       revision: number;
       conflicts: ProfileConflict[];
       pendingKeys: string[];
+      /** See ProfileRefreshState.answered: read before this pass applies
+       *  and retires anything. */
+      answered: boolean;
       /** Journal-plan keys whose chosen value is not in the outbox at all —
        *  a journal-only disagreement that has been answered. They still have
        *  to be staged and sent, outside the lock. */
@@ -3675,6 +3691,8 @@ export async function refreshConflictQuestion(
     // acknowledgements is how an answer gets retired before it has landed.
     const rebased = rebasedOps(answers.value);
     if (!rebased) return { failed: 'journal' };
+    const answered = answers.value.some((op) => op.mode === 'resolve'
+      && Object.keys(op.decisions ?? {}).some((k) => keys.includes(k)));
     const before = env?.pending ?? null;
     const applied = applyPendingResolutions(before, answers.value);
     const confirmed = env?.confirmed ?? null;
@@ -3794,6 +3812,7 @@ export async function refreshConflictQuestion(
         ? []
         : conflictsFor(stillLocked, journalPlan, repaired, remote, revision),
       pendingKeys: [...new Set([...(repaired?.dirtyKeys ?? []), ...planOwed])],
+      answered,
       planOwed,
       unlocked: repaired !== before
         && (before?.lockedKeys.length ?? 0) > 0
@@ -3857,6 +3876,9 @@ export async function refreshConflictQuestion(
     revision: final.revision,
     pendingKeys: final.pendingKeys,
     flushed,
+    // The first pass applies an answer and retires its receipt, so the
+    // second may no longer see it.
+    answered: repair.answered || final.answered,
   };
   return final.conflicts.length === 0
     ? { status: 'settled', conflicts: [], ...state }
@@ -3890,6 +3912,64 @@ export function readCurrentConflicts(
   // From THIS read. The row and the number that names it come out of one
   // envelope or they describe different moments.
   return conflictPayload(keys, pending, remote, env?.confirmed?.revision ?? pending?.baseRevision ?? 0);
+}
+
+/**
+ * Whether a value in `conflict` was typed in this tab in this visit (its
+ * journal lineage, which a reload keeps).
+ *
+ * Every tab of an account shares the outbox and the journal, so every tab
+ * shows every question. A field whose question holds nothing typed here
+ * shows the shared working copy on this tab's screen, never the value this
+ * tab drew before another tab's edit, and "Keep what I typed" keeps what the
+ * other tabs typed (see writeResolutionReceipt).
+ */
+export function conflictTypedInThisTab(conflict: ProfileConflict): boolean {
+  const mine = getJournalLineageId();
+  return conflict.candidates.some((c) => c.lineage === mine && c.opIds.length > 0);
+}
+
+/** Whether this tab has a side in `conflict`: a value typed here (see
+ *  conflictTypedInThisTab), or the outbox's working copy with no operation
+ *  behind it, which every tab holds as its own. */
+export function conflictHasThisTabsSide(conflict: ProfileConflict): boolean {
+  const mine = getJournalLineageId();
+  return conflict.candidates.some((c) => c.lineage === mine);
+}
+
+/** Whether a value in `conflict` was typed in another tab (or in this tab
+ *  before a navigation that started a new visit). */
+export function conflictHasAnotherTabsSide(conflict: ProfileConflict): boolean {
+  const mine = getJournalLineageId();
+  return conflict.candidates.some((c) => c.lineage !== mine);
+}
+
+/**
+ * `shown` as it stands now, when the only change since it was asked is what
+ * THIS tab typed meanwhile: the same row at the same revision, the same
+ * pending write, and the same values from every other tab. Null when
+ * anything else moved: then it is a question nobody on this screen has seen.
+ *
+ * For an answer given while typing: the last keystrokes of a burst reach the
+ * journal only when the typing pauses (see Home's typing burst), so the
+ * question on screen predates them, and "Keep what I typed" has to keep them.
+ */
+export function shownWithThisTabsLatestEdits(
+  shown: readonly ProfileConflict[],
+  token: OwnerToken,
+): ProfileConflict[] | null {
+  if (shown.length === 0) return null;
+  const now = readCurrentConflicts(shown.map((c) => c.key), token);
+  if (now.length !== shown.length) return null;
+  const mine = getJournalLineageId();
+  const others = (c: ProfileConflict) => c.candidates.filter((x) => x.lineage !== mine);
+  for (const [i, before] of shown.entries()) {
+    const after = now[i];
+    if (after.key !== before.key || !sameValue(after.remote, before.remote)
+      || after.remoteRevision !== before.remoteRevision || after.mutationId !== before.mutationId
+      || !sameCandidateSet(others(before), others(after))) return null;
+  }
+  return now;
 }
 
 /** Deep-equal for the plain values a row and a candidate hold. */
@@ -4002,7 +4082,7 @@ function writeResolutionReceipt(
   /** The disagreement AS RENDERED. Required: an answer computed from whatever
    *  is outstanding at click time decides about things nobody was shown. */
   rendered: readonly ProfileConflict[],
-): { desired: ProfileData } | null | 'stale' {
+): { desired: ProfileData } | null | 'stale' | 'several' {
   const effective = expandBundles(keys);
   if (effective.length === 0) return null;
   const journal = readOutstandingOps();
@@ -4022,6 +4102,7 @@ function writeResolutionReceipt(
   const result = { ...(env?.confirmed?.profile ?? {}) } as unknown as Record<string, unknown>;
 
   const live = new Set(journal.value.map((op) => op.opId));
+  const opsById = new Map(journal.value.map((op) => [op.opId, op]));
   // Keys answered against the pending instance rather than against operations.
   const pendingVersions = new Map<string, number>();
   // ONE revision for the whole question. A prompt whose fields were read at
@@ -4077,34 +4158,41 @@ function writeResolutionReceipt(
       if (!shown) return 'stale';
       value = shown.remote;
     } else {
-      // This device's value: what its OWN lineage last asked for, and failing
-      // that (the operations came from a tab that is gone) whatever the
-      // working copy on screen holds.
-      const ownLatest = journal.value
-        .filter((op) => op.lineage === mine && op.fields.some((f) => f.key === key))
-        .sort((a, b) => a.seq - b.seq)
-        .pop();
-      const ownField = ownLatest?.fields.find((f) => f.key === key);
-      const observedRec = observed as unknown as Record<string, unknown>;
-      // The rendered action document is the authority for "mine", including
-      // when the field is ABSENT from it — that is a deletion the person made,
-      // not a gap to fill from somewhere else. Falling through to the journal
-      // or the outbox here silently resurrects a value they removed, so the
-      // only two outcomes are the document's own answer or a refusal.
-      if (key in observedRec) {
-        // What the person SELECTED, and it wins outright. This document's own
-        // latest edit is not the same thing: they may be answering about two
-        // other tabs' values, and the form they are looking at is the only
-        // place "mine" is defined.
-        value = observedRec[key];
+      // "Mine" is what THIS tab typed in this visit: its own lineage's latest
+      // value in the question. Not its screen: a tab that has been open since
+      // before another tab's edit still shows the value that edit replaced,
+      // and a reload shows the row for a field two tabs disagree about.
+      // `seq` orders one lineage's operations, so the latest is per lineage.
+      const newest = (c: ProfileConflictCandidate) => Math.max(
+        -1, ...c.opIds.map((id) => opsById.get(id)?.seq ?? -1),
+      );
+      const typed = shown.candidates.filter((c) => c.opIds.length > 0);
+      const typedHere = typed.filter((c) => c.lineage === mine);
+      if (typedHere.length > 0) {
+        value = typedHere.reduce((a, b) => (newest(b) > newest(a) ? b : a)).value;
+      } else if (typed.length > 0) {
+        // This tab typed none of it, so what it can keep is what the other
+        // tabs last typed. When they typed different values there is no one
+        // value to keep, and this screen's own drawing (from before their
+        // edits) or the row would be a value nobody typed.
+        const latest = new Map<string, ProfileConflictCandidate>();
+        for (const c of typed) {
+          const held = latest.get(c.lineage);
+          if (!held || newest(c) > newest(held)) latest.set(c.lineage, c);
+        }
+        const values = [...latest.values()].map((c) => c.value);
+        if (values.some((v) => !sameValue(v, values[0]))) return 'several';
+        value = values[0];
       } else {
-        // Absent from the document the person acted on. That is their answer:
-        // the field is gone. Reaching for `ownField`, the plan or the outbox
-        // here is how a deletion turns back into the value it replaced.
-        void ownField;
+        // No operation stands behind it: a working copy from before the
+        // journal or the server's own disagreement, which every tab holds as
+        // its own, or a résumé field asked only because another part of the
+        // résumé is. The working copy on screen, as it always was, including
+        // a field ABSENT from it — a deletion the person made.
+        const observedRec = observed as unknown as Record<string, unknown>;
         void plans;
         void pendingDesired;
-        value = undefined;
+        value = key in observedRec ? observedRec[key] : undefined;
       }
     }
     result[key] = value;

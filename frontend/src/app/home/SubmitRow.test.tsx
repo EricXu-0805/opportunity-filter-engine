@@ -208,6 +208,24 @@ describe('SubmitRow — generating matches requires a loaded profile row', () =>
     expect(screen.queryByTestId('retry-sync')).toBeNull();
   });
 
+  it('a question that went away without an answer says so, and only so, with no controls behind it', () => {
+    renderRow({ saveStatus: 'conflict-gone', canRetrySync: true });
+    expect(screen.getByTestId('conflict-gone').textContent).toContain('home.actions.profileConflictGone');
+    expect(screen.queryByText('home.actions.profileConflictStale'), 'nobody is said to have answered it').toBeNull();
+    expect(screen.queryByTestId('conflict-keep-mine')).toBeNull();
+    expect(screen.queryByTestId('retry-sync')).toBeNull();
+  });
+
+  it('a Keep refused because other tabs typed different values keeps the question answerable', () => {
+    const onUseCloudVersion = vi.fn();
+    renderRow({ saveStatus: 'conflict-several-typed', hasConflict: true, onUseCloudVersion });
+    expect(screen.getByTestId('conflict-several-typed').textContent)
+      .toContain('home.actions.profileConflictSeveralTyped');
+    fireEvent.click(screen.getByTestId('conflict-use-cloud'));
+    expect(onUseCloudVersion).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('conflict-keep-mine')).toBeTruthy();
+  });
+
   it('is disabled and says it is working while a submit is in flight', () => {
     renderRow({ isSubmitting: true });
     expect(screen.getByTestId('generate-matches')).toBeDisabled();
