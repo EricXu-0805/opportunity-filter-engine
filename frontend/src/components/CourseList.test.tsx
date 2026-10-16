@@ -54,16 +54,16 @@ describe('CourseList (checklist M13)', () => {
     expect((screen.getByLabelText('Status of CS 374') as HTMLSelectElement).value).toBe('in_progress');
     expect((screen.getByLabelText('Status of CS 446') as HTMLSelectElement).value).toBe('planned');
     expect((screen.getByLabelText('Status of STAT 400') as HTMLSelectElement).value).toBe('completed');
-    // The same spelling as the skill rows on this form.
-    expect(screen.getAllByText('From your resume: “Relevant Coursework: CS 225, CS 446”')).toHaveLength(2);
-    expect(screen.getByText('From your resume: “Current courses: CS 374”')).toBeTruthy();
+    // The same spelling as the résumé removal note.
+    expect(screen.getAllByText('From your résumé: “Relevant Coursework: CS 225, CS 446”')).toHaveLength(2);
+    expect(screen.getByText('From your résumé: “Current courses: CS 374”')).toBeTruthy();
     // A course added on the form has no résumé line to show.
-    expect(screen.getAllByText(/^From your resume: /)).toHaveLength(3);
-    // Only the status read from the résumé asks to be checked.
-    expect(screen.getAllByText('From your resume — please check')).toHaveLength(1);
+    expect(screen.getAllByText(/^From your résumé: /)).toHaveLength(3);
+    // Only the status the résumé suggests asks to be checked.
+    expect(screen.getAllByText('From your résumé — please check')).toHaveLength(1);
     const left = screen.getByRole('status');
     expect(within(left).getByText('Not marked yet: 1. Until you mark a course, it is only listed as part of your coursework, never as completed.')).toBeTruthy();
-    expect(within(left).getByText('Read from your resume, still to check: 1.')).toBeTruthy();
+    expect(within(left).getByText('Suggested by your résumé, not used until you confirm: 1.')).toBeTruthy();
   });
 
   it('confirms a status read from the résumé as the student\'s own, and moves focus to its status', () => {
@@ -76,7 +76,7 @@ describe('CourseList (checklist M13)', () => {
       { name: 'CS 446', source: 'resume', status: 'planned' },
       { name: 'STAT 400', source: 'manual', status: 'completed' },
     ]);
-    expect(screen.queryByText('From your resume — please check')).toBeNull();
+    expect(screen.queryByText('From your résumé — please check')).toBeNull();
     expect(document.activeElement).toBe(screen.getByLabelText('Status of CS 374'));
   });
 
@@ -129,13 +129,37 @@ describe('CourseList (checklist M13)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove CS 225' }));
     fireEvent.click(screen.getByRole('button', { name: 'Remove CS 446' }));
-    expect(screen.getByText('No courses yet. Upload your resume, or add a course below.')).toBeTruthy();
+    expect(screen.getByText('No courses yet. Upload your résumé, or add a course below.')).toBeTruthy();
     expect(document.activeElement).toBe(screen.getByLabelText('Add a course'));
+  });
+
+  it('shows no résumé status for a label inside a sentence, after other words, mixing statuses, or past its field', () => {
+    // review-m13fe-a round 2: each of these marked courses that are not the
+    // student's current or planned ones.
+    const cases: Array<[string, string[]]> = [
+      ['Peer Mentor: advised 30 freshmen on courses to take: CS 124, CS 128, MATH 221', ['CS 124', 'CS 128', 'MATH 221']],
+      ['Tutor for students currently taking: CS 225, CS 374', ['CS 225', 'CS 374']],
+      ['Graded weekly homework for courses in progress: CS 173, CS 225', ['CS 173', 'CS 225']],
+      ['Designed new labs for upcoming courses: ECE 120, ECE 220', ['ECE 120', 'ECE 220']],
+      ['Course Assistant, Current courses: CS 124, CS 128', ['CS 124', 'CS 128']],
+      ['Completed/Current Coursework: CS 225, CS 374', ['CS 225', 'CS 374']],
+      ['Completed & Planned Courses: CS 225, CS 446', ['CS 225', 'CS 446']],
+      ['Current Coursework: CS 374, CS 411 | Completed: CS 225, CS 233', ['CS 225', 'CS 233']],
+      ['Currently taking: CS 374. Completed: CS 225, CS 233.', ['CS 225', 'CS 233']],
+      ['Current Courses: CS 374, CS 411\tCourse Assistant, CS 124 (Fall 2025)', ['CS 124']],
+      ['EDUCATION B.S. Computer Engineering, GPA 3.8 Current Coursework: CS 374 EXPERIENCE Course Assistant, CS 124', ['CS 124', 'CS 374']],
+    ];
+    for (const [line, names] of cases) {
+      render(<Harness initial={names.map((name) => ({ name, source: 'resume' }))} onChange={vi.fn()} resume={line} />);
+      for (const name of names) expect((screen.getByLabelText(`Status of ${name}`) as HTMLSelectElement).value, `${line} / ${name}`).toBe('unknown');
+      expect(screen.queryByText('From your résumé — please check'), line).toBeNull();
+      cleanup();
+    }
   });
 
   it('says so when there are no courses yet', () => {
     render(<Harness initial={[]} onChange={vi.fn()} />);
-    expect(screen.getByText('No courses yet. Upload your resume, or add a course below.')).toBeTruthy();
+    expect(screen.getByText('No courses yet. Upload your résumé, or add a course below.')).toBeTruthy();
     expect((screen.getByRole('button', { name: 'Add' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
@@ -149,8 +173,9 @@ describe('CourseList (checklist M13)', () => {
     expect(screen.getByText('据简历推断，请确认')).toBeTruthy();
     expect(screen.getByRole('button', { name: '确认 CS 374 为「在修」' })).toBeTruthy();
     const left = screen.getByRole('status');
-    expect(within(left).getByText('有 1 门课还未标注。标注之前，它们只会被列为你的课程之一，不会写成已修。')).toBeTruthy();
-    expect(within(left).getByText('有 1 门课的状态是据简历推断的，请确认。')).toBeTruthy();
+    // One course is not "它们".
+    expect(within(left).getByText('有 1 门课还未标注。未标注的课只会被列为你的课程之一，不会写成已修。')).toBeTruthy();
+    expect(within(left).getByText('有 1 门课的状态是据简历推断的，确认后才会使用。')).toBeTruthy();
     expect(screen.getByRole('button', { name: '移除 CS 446' })).toBeTruthy();
     expect((screen.getByLabelText('添加课程') as HTMLInputElement).placeholder).toBe('例如 CS 225 或数据结构');
   });

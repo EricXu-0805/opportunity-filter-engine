@@ -296,9 +296,18 @@ describe('parseResumePDF — courses under a status label (checklist M13)', () =
     expect(res).not.toHaveProperty('course_evidence');
   });
 
-  it('ends a list at the next list label on its line', async () => {
-    const res = await parse('Relevant Coursework: Databases, Algorithms Current courses: Compilers');
-    expect(res.extracted_coursework).toEqual(['Algorithms', 'Compilers', 'Databases']);
+  it('ends a list at "|", a tab or the next label on its line', async () => {
+    expect((await parse('Relevant Coursework: Databases, Algorithms Coursework: Compilers')).extracted_coursework)
+      .toEqual(['Algorithms', 'Compilers', 'Databases']);
+    expect((await parse('Relevant Coursework: Databases, Algorithms | Skills: Python, Java')).extracted_coursework)
+      .toEqual(['Algorithms', 'Databases']);
+    expect((await parse('Coursework: Data Mining\tCourse Assistant, Robotics Lab')).extracted_coursework).toEqual(['Data Mining']);
+    expect((await parse('Coursework: Compilers. Completed: Robotics, Vision')).extracted_coursework).toEqual(['Compilers']);
+  });
+
+  it('opens no list at a status phrase inside a sentence', async () => {
+    expect((await parse('Tutor for students currently taking: Data Mining, Robotics')).extracted_coursework).toEqual([]);
+    expect((await parse('Peer Mentor: advised freshmen on courses to take: Algorithms')).extracted_coursework).toEqual([]);
   });
 });
 

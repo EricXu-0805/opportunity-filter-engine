@@ -17,16 +17,20 @@ describe('Privacy page', () => {
   });
 
   // Checklist M13: a course is stored with a status only once the student sets
-  // one; its résumé line and any status read from the résumé are not stored,
-  // and removing the résumé keeps only the courses the student marked or added.
-  it('says what is stored of each course, what is read from the résumé instead, and what removing the résumé keeps', () => {
+  // one. A status a résumé label gives is only a suggestion on the form: never
+  // stored or sent. Removing the résumé keeps only the courses the student
+  // marked or added; an older app's removal hides the rest until the next
+  // change here deletes them.
+  it('says what is stored of each course, that a résumé status is only a suggestion, and what removing the résumé keeps', () => {
     const { container } = render(<PrivacyPage />);
     const text = container.textContent ?? '';
     expect(text).toContain('courses (for each one its name, whether it came from your résumé or you added it, and the status you set: completed, in progress, planned or not marked)');
     expect(text).toContain('Of each course found on the résumé we store its name; the line it was found on is not stored, and the form shows it from the stored résumé text.');
-    expect(text).toContain('A course listed under a résumé label that gives a status, such as “Current courses:” or “Planned courses:”, is shown and used as in progress or planned while that résumé is on your profile, until you confirm or change it; that status is read from the résumé text each time and is not stored.');
-    expect(text).toContain('together with the courses it found that you have not marked yourself, so no status read from it remains; courses you marked or added yourself stay');
-    expect(text).not.toContain('the coursework it extracted');
+    expect(text).toContain('Where a line of the résumé, or a column on it, starts with a label that gives a status, such as “Current courses:” or “Planned courses:”, the form suggests that status (in progress or planned) for the courses listed after it, for you to confirm or change.');
+    expect(text).toContain('A suggestion is read from the résumé text each time and is never stored or sent: until you confirm it or choose a status, the course is not marked, in matching and in generated text alike.');
+    expect(text).toContain('together with the courses it found that you have not marked yourself; courses you marked or added yourself stay.');
+    expect(text).toContain('If an older version of the app removes or replaces the résumé, the courses that résumé found and you had not marked are no longer shown or used, and are deleted from your profile the next time you change your courses or your résumé here.');
+    expect(text).not.toContain('is shown and used as in progress or planned');
     expect(text).not.toContain('store the résumé line');
   });
 

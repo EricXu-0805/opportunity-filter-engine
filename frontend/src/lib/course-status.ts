@@ -72,27 +72,47 @@ export function courseCodes(text: string): Array<{ name: string; index: number }
 
 type ResumeMark = 'in_progress' | 'planned';
 
-// A label that opens a list of courses, followed by ":", "-" or "—". Only the
-// status labels say what every course of their list is (checklist M13); a
-// coursework label, and anything else on a line ("Currently a teaching
-// assistant for CS 225", "Current Topics in AI", "expected May 2027"), says
-// nothing of it.
-const COURSE_LIST_LABEL = new RegExp(String.raw`\b(?:${[
+// A label that says what every course of its list is (checklist M13). It has
+// to open its field — the start of the line, or right after a column break
+// the page kept (a tab, "|" or "•") — and be followed by ":", "-" or "—". Said
+// inside a sentence ("advised freshmen on courses to take:"), after other words
+// ("Course Assistant, Current courses:"), or mixed with another status
+// ("Completed/Current Coursework:", "Current and Planned Courses:"), it is not
+// one; nor is anything else on a line ("Currently a teaching assistant for
+// CS 225", "Current Topics in AI", "expected May 2027").
+const STATUS_LABEL = new RegExp(String.raw`(?:^|(?<=[\t|•]))[ \t]*(?:${[
   String.raw`(?<in_progress>current\s+course\s?work|current\s+courses|courses\s+in[\s-]progress|in[\s-]progress\s+courses|currently\s+taking)`,
   String.raw`(?<planned>planned\s+course\s?work|planned\s+courses|future\s+course\s?work|future\s+courses|courses\s+to\s+take|upcoming\s+courses)`,
-  String.raw`(?:relevant\s+)?(?:course\s?work|courses)`,
-].join('|')})\b\s*[:\-—]\s*`, 'giu');
+].join('|')})\s*[:\-—]\s*`, 'giu');
+// A coursework label, anywhere on a line: its list is the student's courses,
+// with no status.
+const LIST_LABEL = /\b(?:relevant\s+)?(?:course\s?work|courses)\b\s*[:\-—]\s*/giu;
+// Any other label ("Completed:", "Skills:"): where a list stops. Its last
+// word is enough to stop at, and more could take in the course before it.
+const ANY_LABEL = /(?<![\p{L}\p{N}])\p{Lu}[\p{L}'’]*[ \t]*:/gu;
+const FIELD_BREAK = /[\t|]/gu;
 
 /** The course lists on one line of résumé text. Each starts after a label
  *  ("Coursework:", "Relevant Courses -", "Current courses:") and runs to the
- *  next such label or the end of the line; a status label's list carries its
- *  status. */
+ *  next label, a "|" or a tab, or the end of the line; a status label's list
+ *  carries its status. */
 export function courseLists(line: string): Array<{ start: number; end: number; status?: ResumeMark }> {
-  const labels = Array.from(line.matchAll(COURSE_LIST_LABEL));
-  return labels.map((m, i) => ({
-    start: m.index + m[0].length,
-    end: i + 1 < labels.length ? labels[i + 1].index : line.length,
-    ...(m.groups?.in_progress ? { status: 'in_progress' as const } : m.groups?.planned ? { status: 'planned' as const } : {}),
+  const opened: Array<{ at: number; start: number; status?: ResumeMark }> = Array.from(line.matchAll(STATUS_LABEL), (m) => ({
+    at: m.index, start: m.index + m[0].length, status: m.groups?.in_progress ? 'in_progress' as const : 'planned' as const,
+  }));
+  for (const m of line.matchAll(LIST_LABEL)) {
+    if (!opened.some((label) => m.index >= label.at && m.index < label.start)) opened.push({ at: m.index, start: m.index + m[0].length });
+  }
+  opened.sort((a, b) => a.at - b.at);
+  const stops = [
+    ...opened.map((label) => label.at),
+    ...Array.from(line.matchAll(ANY_LABEL), (m) => m.index),
+    ...Array.from(line.matchAll(FIELD_BREAK), (m) => m.index),
+  ];
+  return opened.map(({ start, status }) => ({
+    start,
+    end: Math.min(line.length, ...stops.filter((stop) => stop >= start)),
+    ...(status ? { status } : {}),
   }));
 }
 
@@ -129,8 +149,8 @@ let lastRead: { text: string; courses: Map<string, ResumeCourse> } | null = null
 
 /** What a résumé text says of each course it names, by courseKey: the status
  *  every status list naming it agrees on (none when they disagree, or when no
- *  status list names it), and the line it sits on — the status label's line
- *  if it has a status, else the first. */
+ *  status list names it) — a suggestion for the form only — and the line it
+ *  sits on: the status label's line if it has a status, else the first. */
 function readResume(text: string): Map<string, ResumeCourse> {
   if (lastRead?.text === text) return lastRead.courses;
   const found = new Map<string, Array<{ line: string; at: number; length: number; status?: ResumeMark }>>();
@@ -167,9 +187,12 @@ type CourseProfile = Pick<ProfileData, 'courses' | 'coursework' | 'resume_text'>
 
 /** A course as the form shows it. */
 export interface CourseRow extends CourseEntry {
-  /** The status the student set. Without one, a résumé course's `status` is
-   *  the one the current résumé text gives it, or not marked. */
+  /** The status the student set, which is `status`. */
   marked?: CourseStatus;
+  /** For a résumé course the student has not set: the status its line in the
+   *  current résumé text suggests. Shown on the form only, for the student to
+   *  confirm or change; `status` stays not marked until they do. */
+  suggested?: ResumeMark;
   /** A résumé course's line, found in the current résumé text. */
   line?: string;
 }
@@ -180,12 +203,13 @@ export interface CourseRow extends CourseEntry {
  * `courses` entries come first, the first of one name winning; a legacy
  * `coursework` name `courses` lacks is a résumé course not marked, so a
  * profile saved before statuses never reads as completed. A status is the one
- * the student set; a résumé course without one is read, every time, with the
- * status the current résumé text gives it (courseLists) — never stored, so a
- * removed or replaced résumé leaves none behind. A résumé course the student
- * has not marked counts only while `coursework` still names it: an older
- * client removes or replaces the résumé by writing `coursework` and the text,
- * and must not leave this build showing the old résumé's courses.
+ * the student set, and every other course is not marked. A résumé course
+ * without one gets the status the current résumé text suggests (courseLists),
+ * read every time and never stored or sent, so a removed or replaced résumé
+ * leaves none behind. A résumé course the student has not marked counts only
+ * while `coursework` still names it: an older client removes or replaces the
+ * résumé by writing `coursework` and the text, and must not leave this build
+ * showing the old résumé's courses.
  */
 export function courseRows(profile: CourseProfile): CourseRow[] {
   const resume = readResume(typeof profile.resume_text === 'string' ? profile.resume_text : '');
@@ -202,8 +226,9 @@ export function courseRows(profile: CourseProfile): CourseRow[] {
     }
     const found = resume.get(key);
     rows.push({
-      name, status: marked ?? found?.status ?? 'unknown', source,
-      ...(marked ? { marked } : {}), ...(found ? { line: found.line } : {}),
+      name, status: marked ?? 'unknown', source,
+      ...(marked ? { marked } : found?.status ? { suggested: found.status } : {}),
+      ...(found ? { line: found.line } : {}),
     });
   };
   for (const raw of Array.isArray(profile.courses) ? profile.courses : []) {
@@ -216,7 +241,8 @@ export function courseRows(profile: CourseProfile): CourseRow[] {
   return rows;
 }
 
-/** Every course the profile lists, each with exactly one status (courseRows). */
+/** Every course the profile lists, each with the status the student set or
+ *  not marked: what every request, email and quick action says (courseRows). */
 export function courseEntries(profile: CourseProfile): CourseEntry[] {
   return courseRows(profile).map(({ name, status, source }) => ({ name, status, source }));
 }
@@ -262,7 +288,7 @@ export function courseSentences(entries: readonly CourseEntry[], limit = 3): str
 /**
  * The courses after a résumé import, as the profile stores them. A course the
  * new résumé lists again keeps the status the student set, and one they never
- * set stays without one, to be read from the new text. A résumé course the
+ * set stays without one, the form suggesting one from the new text. A résumé course the
  * student has not marked goes with the old résumé when the new one no longer
  * lists it; one they marked stays. Courses added on the form are left as they
  * are. New courses follow, in the order found.
@@ -283,7 +309,7 @@ export function importResumeCourses(profile: CourseProfile, found: readonly stri
 }
 
 /** The courses once the résumé is removed: the ones added on the form and the
- *  ones the student marked. A status read from the résumé goes with it. */
+ *  ones the student marked. A status the résumé only suggested goes with it. */
 export function coursesWithoutResume(profile: CourseProfile): StoredCourse[] {
   return courseRows(profile).map(storedCourse).filter((course) => course.source === 'manual' || said(course.status));
 }

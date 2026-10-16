@@ -44,10 +44,10 @@ export type CourseStatus = 'completed' | 'in_progress' | 'planned' | 'unknown';
 /** Read from the résumé, or added on the form. */
 export type CourseSource = 'resume' | 'manual';
 
-/** A course as the profile stores it. It has a status only once the student
- *  sets one: a résumé course without one is read with the status the current
- *  résumé text gives it, which is never stored. Nor is the résumé line it was
- *  found on; the form finds that in the résumé text. */
+/** A course as the profile stores it, with a status only once the student
+ *  sets one. A résumé course without one is sent as not marked; the form may
+ *  suggest a status from the current résumé text, which is never stored. Nor
+ *  is the résumé line it was found on; the form finds that in the text. */
 export interface StoredCourse {
   name: string;
   source: CourseSource;

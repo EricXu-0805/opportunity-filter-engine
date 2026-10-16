@@ -1158,12 +1158,14 @@ describe('ColdEmailModal', () => {
           isOpen
           onClose={vi.fn()}
           profile={makeProfile({
+            // The résumé only suggests MATH 241 is in progress; nobody confirmed it.
+            resume_text: 'Current courses: MATH 241',
             coursework: ['CS 446', 'CS 225', 'CS 374', 'MATH 241', 'STAT 400'],
             courses: [
               { name: 'CS 446', status: 'planned', source: 'resume' },
               { name: 'CS 225', status: 'completed', source: 'resume' },
               { name: 'CS 374', status: 'in_progress', source: 'manual' },
-              { name: 'MATH 241', status: 'unknown', source: 'resume' },
+              { name: 'MATH 241', source: 'resume' },
             ],
           })}
           opportunityId="opp"
@@ -1176,7 +1178,8 @@ describe('ColdEmailModal', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Accept suggestion' }));
       await waitFor(() => expect(screen.getByDisplayValue(/CS 446/)).toBeInTheDocument());
       const body = (screen.getByLabelText('coldEmail.body') as HTMLTextAreaElement).value;
-      // STAT 400 is a legacy name with no status: listed, never completed.
+      // STAT 400 is a legacy name with no status, and MATH 241's status is
+      // only a suggestion on the form: both listed, never completed or taking.
       expect(body).toBe('Intro.\n\nI have completed CS 225. I am currently taking CS 374. '
         + 'My coursework includes MATH 241 and STAT 400. I plan to take CS 446.\n\nBest regards,\nAlex');
       // A planned course is never written as completed, taken or in progress.

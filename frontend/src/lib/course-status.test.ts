@@ -6,7 +6,10 @@ import {
 import type { CourseEntry, ProfileData, StoredCourse } from './types';
 
 type CourseProfile = Pick<ProfileData, 'courses' | 'coursework' | 'resume_text'>;
+/** What leaves the form: every request, email and quick action. */
 const statuses = (profile: CourseProfile) => Object.fromEntries(courseEntries(profile).map((course) => [course.name, course.status]));
+/** What the form only suggests, from the current résumé text. */
+const suggested = (profile: CourseProfile) => Object.fromEntries(courseRows(profile).map((row) => [row.name, row.suggested ?? null]));
 /** Each name as an import stores it: from the résumé, no status. */
 const imported = (text: string, names: string[]): CourseProfile => ({
   resume_text: text, courses: names.map((name) => ({ name, source: 'resume' as const })), coursework: names,
@@ -121,23 +124,30 @@ describe('courseEntries', () => {
   });
 });
 
-describe('a status is read from the current résumé text only after a label that says so (R2)', () => {
-  it('pre-marks every course of a list after an in-progress label', () => {
+describe('the résumé suggests a status only after a label that opens its line or a column (R2)', () => {
+  const names = ['CS 374', 'MATH 415'];
+  it('suggests in progress for every course of a list after an in-progress label', () => {
     for (const line of [
       'Current coursework: CS 374, MATH 415',
-      'Current Courses - CS 374, MATH 415',
+      '  Current Courses - CS 374, MATH 415',
       'CURRENT COURSES — CS 374, MATH 415',
       'Courses in progress: CS 374, MATH 415',
       'In-progress courses - CS 374, MATH 415',
       'Currently taking: CS 374, MATH 415',
+      // After a column break the page kept: a tab, "|" or "•".
+      'B.S. Computer Science, expected May 2027 | Current courses: CS 374, MATH 415',
+      'EDUCATION\tCurrent courses: CS 374, MATH 415',
+      '• Currently taking: CS 374, MATH 415',
     ]) {
-      expect(statuses(imported(line, ['CS 374', 'MATH 415'])), line).toEqual({ 'CS 374': 'in_progress', 'MATH 415': 'in_progress' });
+      expect(suggested(imported(line, names)), line).toEqual({ 'CS 374': 'in_progress', 'MATH 415': 'in_progress' });
+      // Only a suggestion: nothing leaves the form with it.
+      expect(statuses(imported(line, names)), line).toEqual({ 'CS 374': 'unknown', 'MATH 415': 'unknown' });
     }
-    expect(statuses(imported('Courses in progress - Machine Learning, Data Mining', ['Data Mining', 'Machine Learning'])))
+    expect(suggested(imported('Courses in progress - Machine Learning, Data Mining', ['Data Mining', 'Machine Learning'])))
       .toEqual({ 'Data Mining': 'in_progress', 'Machine Learning': 'in_progress' });
   });
 
-  it('pre-marks every course of a list after a planned label', () => {
+  it('suggests planned for every course of a list after a planned label', () => {
     for (const line of [
       'Planned coursework: CS 446, CS 411',
       'Planned Courses — CS 446, CS 411',
@@ -146,23 +156,52 @@ describe('a status is read from the current résumé text only after a label tha
       'Courses to take: CS 446, CS 411',
       'Upcoming courses: CS 446, CS 411',
     ]) {
-      expect(statuses(imported(line, ['CS 411', 'CS 446'])), line).toEqual({ 'CS 411': 'planned', 'CS 446': 'planned' });
+      expect(suggested(imported(line, ['CS 411', 'CS 446'])), line).toEqual({ 'CS 411': 'planned', 'CS 446': 'planned' });
     }
   });
 
-  it('reads a label anywhere on the line, its list running to the next list label or the end of the line', () => {
-    expect(statuses(imported('B.S. Computer Science, expected May 2027 | Current courses: CS 374', ['CS 374'])))
-      .toEqual({ 'CS 374': 'in_progress' });
-    expect(statuses(imported('Relevant Coursework: CS 225, CS 233 Current courses: CS 374', ['CS 225', 'CS 233', 'CS 374'])))
-      .toEqual({ 'CS 225': 'unknown', 'CS 233': 'unknown', 'CS 374': 'in_progress' });
-    expect(statuses(imported('Current courses: CS 374 Relevant Coursework: CS 225', ['CS 225', 'CS 374'])))
-      .toEqual({ 'CS 225': 'unknown', 'CS 374': 'in_progress' });
-    // The list ends with its line.
-    expect(statuses(imported('Current courses: CS 374\nTA for CS 225', ['CS 225', 'CS 374'])))
-      .toEqual({ 'CS 225': 'unknown', 'CS 374': 'in_progress' });
+  it('ends a list at "|", a tab or the next label, and with its line', () => {
+    const cases: Array<[string, Record<string, string | null>]> = [
+      ['Current Coursework: CS 374, CS 411 | Completed: CS 225, CS 233', { 'CS 225': null, 'CS 233': null, 'CS 374': 'in_progress', 'CS 411': 'in_progress' }],
+      ['Currently taking: CS 374. Completed: CS 225, CS 233.', { 'CS 225': null, 'CS 233': null, 'CS 374': 'in_progress' }],
+      ['Planned courses: CS 446 | Taken: CS 225, CS 233', { 'CS 225': null, 'CS 233': null, 'CS 446': 'planned' }],
+      ['Current Coursework: CS 374, MATH 415. Skills: Python, Java', { 'CS 374': 'in_progress', Java: null, 'MATH 415': 'in_progress' }],
+      // A two-column row: the page keeps the column gap as a tab.
+      ['Current Courses: CS 374, CS 411\tCourse Assistant, CS 124 (Fall 2025)', { 'CS 124': null, 'CS 374': 'in_progress', 'CS 411': 'in_progress' }],
+      ['Relevant Coursework: CS 225, CS 233 Current courses: CS 374', { 'CS 225': null, 'CS 233': null, 'CS 374': null }],
+      ['Current courses: CS 374 Relevant Coursework: CS 225', { 'CS 225': null, 'CS 374': 'in_progress' }],
+      ['Current courses: CS 374\nTA for CS 225', { 'CS 225': null, 'CS 374': 'in_progress' }],
+    ];
+    for (const [text, expected] of cases) {
+      expect(suggested(imported(text, Object.keys(expected))), text).toEqual(expected);
+    }
   });
 
-  it('pre-marks nothing else on a line', () => {
+  it('suggests nothing for a label inside a sentence or after other words, or one that mixes statuses', () => {
+    const lines: Array<[string, string[]]> = [
+      ['Peer Mentor: advised 30 freshmen on courses to take: CS 124, CS 128, MATH 221', ['CS 124', 'CS 128', 'MATH 221']],
+      ['Wrote a four-year planning guide of courses to take: CS 124, CS 128, CS 173', ['CS 124', 'CS 128', 'CS 173']],
+      ['Tutor for students currently taking: CS 225, CS 374', ['CS 225', 'CS 374']],
+      ['Graded weekly homework for courses in progress: CS 173, CS 225', ['CS 173', 'CS 225']],
+      ['Designed new labs for upcoming courses: ECE 120, ECE 220', ['ECE 120', 'ECE 220']],
+      ['Led a survey of students on their planned courses: CS 411, CS 412', ['CS 411', 'CS 412']],
+      ['Course Assistant, Current courses: CS 124, CS 128', ['CS 124', 'CS 128']],
+      ['Grader — current courses: CS 173', ['CS 173']],
+      ['Completed/Current Coursework: CS 225, CS 374', ['CS 225', 'CS 374']],
+      ['Past and Current Courses: CS 225, CS 374', ['CS 225', 'CS 374']],
+      ['Current and Planned Courses: CS 374, CS 446', ['CS 374', 'CS 446']],
+      ['Completed & Planned Courses: CS 225, CS 446', ['CS 225', 'CS 446']],
+      ['Relevant Completed and Upcoming Courses: CS 225, CS 411', ['CS 225', 'CS 411']],
+      // A résumé read as one run of text: the label opens no line.
+      ['EDUCATION University of Illinois Urbana-Champaign, B.S. Computer Engineering, GPA 3.8 Current Coursework: CS 374, MATH 415 '
+        + 'EXPERIENCE Course Assistant, CS 124, Aug 2025 - Present. Undergraduate Researcher, used CS 446 models', ['CS 124', 'CS 374', 'CS 446', 'MATH 415']],
+    ];
+    for (const [line, names] of lines) {
+      expect(Object.values(suggested(imported(line, names))), line).toEqual(names.map(() => null));
+    }
+  });
+
+  it('suggests nothing else on a line', () => {
     const lines: Array<[string, string[]]> = [
       ['Currently a teaching assistant for CS 225', ['CS 225']],
       ['Course Assistant, CS 124 (Current)', ['CS 124']],
@@ -191,48 +230,55 @@ describe('a status is read from the current résumé text only after a label tha
       ['Concurrent courses: CS 374', ['CS 374']],
     ];
     for (const [line, names] of lines) {
-      expect(Object.values(statuses(imported(line, names))), line).toEqual(names.map(() => 'unknown'));
+      expect(Object.values(suggested(imported(line, names))), line).toEqual(names.map(() => null));
     }
   });
 
-  it('reads no status where the lines disagree, and only a list label among lines that name the course', () => {
-    expect(statuses(imported('Current courses: CS 374\nPlanned courses: CS 374', ['CS 374']))).toEqual({ 'CS 374': 'unknown' });
-    expect(statuses(imported('Relevant Coursework: CS 225, CS 374, MATH 241\nCourse Assistant, CS 225 (Current)\nCurrent coursework: CS 374',
-      ['CS 225', 'CS 374', 'MATH 241']))).toEqual({ 'CS 225': 'unknown', 'CS 374': 'in_progress', 'MATH 241': 'unknown' });
+  it('suggests nothing where the lines disagree, and reads only status lists among the lines that name a course', () => {
+    expect(suggested(imported('Current courses: CS 374\nPlanned courses: CS 374', ['CS 374']))).toEqual({ 'CS 374': null });
+    expect(suggested(imported('Relevant Coursework: CS 225, CS 374, MATH 241\nCourse Assistant, CS 225 (Current)\nCurrent coursework: CS 374',
+      ['CS 225', 'CS 374', 'MATH 241']))).toEqual({ 'CS 225': null, 'CS 374': 'in_progress', 'MATH 241': null });
   });
 });
 
-describe('a status read from the résumé is never stored (R1)', () => {
+describe('a status read from the résumé is only a suggestion on the form (R1)', () => {
   const text = 'Current coursework: CS 374\nRelevant Coursework: CS 225';
 
-  it('reads a résumé course the student has not set with the status the current text gives it, every time', () => {
+  it('sends a résumé course as not marked until the student sets it; the suggestion follows the current text', () => {
     const profile = imported(text, ['CS 225', 'CS 374']);
-    expect(statuses(profile)).toEqual({ 'CS 225': 'unknown', 'CS 374': 'in_progress' });
-    // The same stored courses under another résumé text read from that text.
-    expect(statuses({ ...profile, resume_text: 'Relevant Coursework: CS 225, CS 374' })).toEqual({ 'CS 225': 'unknown', 'CS 374': 'unknown' });
-    expect(statuses({ ...profile, resume_text: 'Planned courses: CS 374' })).toEqual({ 'CS 225': 'unknown', 'CS 374': 'planned' });
+    expect(statuses(profile)).toEqual({ 'CS 225': 'unknown', 'CS 374': 'unknown' });
+    expect(suggested(profile)).toEqual({ 'CS 225': null, 'CS 374': 'in_progress' });
+    // The same stored courses under another résumé text: another suggestion.
+    expect(suggested({ ...profile, resume_text: 'Relevant Coursework: CS 225, CS 374' })).toEqual({ 'CS 225': null, 'CS 374': null });
+    expect(suggested({ ...profile, resume_text: 'Planned courses: CS 374' })).toEqual({ 'CS 225': null, 'CS 374': 'planned' });
     // Legacy names are résumé courses nobody set.
-    expect(statuses({ coursework: ['CS 374'], resume_text: text })).toEqual({ 'CS 374': 'in_progress' });
+    expect(suggested({ coursework: ['CS 374'], resume_text: text })).toEqual({ 'CS 374': 'in_progress' });
+    expect(statuses({ coursework: ['CS 374'], resume_text: text })).toEqual({ 'CS 374': 'unknown' });
+    // Once confirmed, it is the student's status.
+    expect(statuses({ ...profile, courses: [{ name: 'CS 225', source: 'resume' }, { name: 'CS 374', source: 'resume', status: 'in_progress' }] }))
+      .toEqual({ 'CS 225': 'unknown', 'CS 374': 'in_progress' });
   });
 
-  it('a status the student set always wins, "not marked" included; a course they added reads nothing from the résumé', () => {
-    expect(statuses({ resume_text: text, coursework: ['CS 374', 'CS 225', 'STAT 400'], courses: [
+  it('a status the student set always wins, "not marked" included; a course they added gets no suggestion', () => {
+    const profile: CourseProfile = { resume_text: text, coursework: ['CS 374', 'CS 225', 'STAT 400'], courses: [
       { name: 'CS 374', source: 'resume', status: 'unknown' },
       { name: 'CS 225', source: 'resume', status: 'completed' },
       { name: 'STAT 400', source: 'manual', status: 'unknown' },
-    ] })).toEqual({ 'CS 374': 'unknown', 'CS 225': 'completed', 'STAT 400': 'unknown' });
-    expect(statuses({ resume_text: 'Current courses: STAT 400', courses: [{ name: 'STAT 400', source: 'manual', status: 'unknown' }] }))
-      .toEqual({ 'STAT 400': 'unknown' });
+    ] };
+    expect(statuses(profile)).toEqual({ 'CS 374': 'unknown', 'CS 225': 'completed', 'STAT 400': 'unknown' });
+    expect(suggested(profile)).toEqual({ 'CS 374': null, 'CS 225': null, 'STAT 400': null });
+    expect(suggested({ resume_text: 'Current courses: STAT 400', courses: [{ name: 'STAT 400', source: 'manual', status: 'unknown' }] }))
+      .toEqual({ 'STAT 400': null });
   });
 
-  it('shows which status the student set and which the résumé gave, with the line found in the current text (R3)', () => {
+  it('shows the status the student set, the suggestion, and the line found in the current text (R3)', () => {
     const rows = courseRows({ resume_text: text, coursework: ['CS 374', 'CS 225', 'STAT 400'], courses: [
       { name: 'CS 374', source: 'resume' },
       { name: 'CS 225', source: 'resume', status: 'completed' },
       { name: 'STAT 400', source: 'manual', status: 'planned' },
     ] });
     expect(rows).toEqual([
-      { name: 'CS 374', status: 'in_progress', source: 'resume', line: 'Current coursework: CS 374' },
+      { name: 'CS 374', status: 'unknown', source: 'resume', suggested: 'in_progress', line: 'Current coursework: CS 374' },
       { name: 'CS 225', status: 'completed', source: 'resume', marked: 'completed', line: 'Relevant Coursework: CS 225' },
       { name: 'STAT 400', status: 'planned', source: 'manual', marked: 'planned' },
     ]);
@@ -270,7 +316,7 @@ describe('a status read from the résumé is never stored (R1)', () => {
     expect(importResumeCourses({}, ['CS 374'])).toEqual([{ name: 'CS 374', source: 'resume' }]);
   });
 
-  it('removing the résumé keeps only courses the student added or marked, so no status read from it stays', () => {
+  it('removing the résumé keeps only courses the student added or marked, so no suggestion stays', () => {
     const profile: CourseProfile = {
       resume_text: 'Current coursework: CS 374, CS 446\nRelevant Coursework: CS 125',
       courses: [
@@ -282,7 +328,7 @@ describe('a status read from the résumé is never stored (R1)', () => {
       ],
       coursework: ['CS 125', 'CS 374', 'CS 446', 'CS 233', 'STAT 400', 'ECE 110'],
     };
-    expect(statuses(profile)['CS 374']).toBe('in_progress');
+    expect(suggested(profile)['CS 374']).toBe('in_progress');
     expect(coursesWithoutResume(profile)).toEqual([
       { name: 'CS 446', source: 'resume', status: 'planned' },
       { name: 'STAT 400', source: 'manual', status: 'unknown' },
@@ -311,17 +357,18 @@ describe('a résumé course nobody marked counts only while the stored coursewor
       { name: 'MATH 257', status: 'completed', source: 'resume' },
       { name: 'STAT 400', status: 'unknown', source: 'manual' },
     ]);
-    expect(courseRows({ ...stored, resume_text: '', coursework: [] }).some((row) => row.line)).toBe(false);
+    expect(courseRows({ ...stored, resume_text: '', coursework: [] }).some((row) => row.line || row.suggested)).toBe(false);
   });
 
   it('honours a re-import by a tab on the previous build, which writes the new names and text', () => {
-    expect(courseEntries({ ...stored, resume_text: 'Relevant Coursework: CS 225\nPlanned courses: CS 411, CS 374', coursework: ['CS 225', 'CS 374', 'CS 411'] }))
-      .toEqual([
-        { name: 'CS 225', status: 'unknown', source: 'resume' },
-        { name: 'CS 374', status: 'planned', source: 'resume' },
-        { name: 'MATH 257', status: 'completed', source: 'resume' },
-        { name: 'STAT 400', status: 'unknown', source: 'manual' },
-        { name: 'CS 411', status: 'planned', source: 'resume' },
-      ]);
+    const reimported = { ...stored, resume_text: 'Relevant Coursework: CS 225\nPlanned courses: CS 411, CS 374', coursework: ['CS 225', 'CS 374', 'CS 411'] };
+    expect(courseEntries(reimported)).toEqual([
+      { name: 'CS 225', status: 'unknown', source: 'resume' },
+      { name: 'CS 374', status: 'unknown', source: 'resume' },
+      { name: 'MATH 257', status: 'completed', source: 'resume' },
+      { name: 'STAT 400', status: 'unknown', source: 'manual' },
+      { name: 'CS 411', status: 'unknown', source: 'resume' },
+    ]);
+    expect(suggested(reimported)).toEqual({ 'CS 225': null, 'CS 374': 'planned', 'MATH 257': null, 'STAT 400': null, 'CS 411': 'planned' });
   });
 });

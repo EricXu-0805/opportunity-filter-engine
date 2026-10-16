@@ -2988,8 +2988,8 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         resume_master: resumeMaster,
         // Merged by name: a status the student set survives a re-import, and
         // a course they added on the form is theirs, not the résumé's. A
-        // course found is stored without a status; the form reads one from
-        // the new text where its label gives one.
+        // course found is stored without a status; the form suggests one
+        // from the new text where its label gives one.
         ...courseFields(importResumeCourses(prev, data.extracted_coursework)),
         // Seed the interests box (the only semantic-match lever the form sends)
         // from the resume when the user hasn't typed their own — never overwrite.

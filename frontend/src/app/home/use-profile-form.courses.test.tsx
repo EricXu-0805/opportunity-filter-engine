@@ -33,7 +33,7 @@ vi.mock('pdfjs-dist', () => ({
 }));
 import { useProfileForm } from './use-profile-form';
 import { translate } from '@/i18n/translate';
-import { courseEntries } from '@/lib/course-status';
+import { courseEntries, courseRows, storedCourse } from '@/lib/course-status';
 import { parseResumePDF } from '@/lib/pdf-parser';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import { resetProfileDirtyLedger } from '@/lib/profile-sync';
@@ -119,8 +119,10 @@ async function removeResume() {
   await act(async () => { expect(form().handleResumeRemoved()).toBe(true); });
   await tick(1600);
 }
-/** What the form shows and every request sends of each course. */
+/** What every request, email and quick action says of each course. */
 const statuses = () => Object.fromEntries(courseEntries(form().profile).map((course) => [course.name, course.status]));
+/** What the form only suggests, from the current résumé text. */
+const suggestions = () => Object.fromEntries(courseRows(form().profile).map((row) => [row.name, row.suggested ?? null]));
 
 const SIGNED_UP: ProfileData = {
   name: '', institution: 'UIUC', home_school: 'uiuc', college: 'Grainger College of Engineering',
@@ -142,43 +144,47 @@ beforeEach(async () => {
 });
 afterEach(() => { cleanup(); vi.clearAllTimers(); vi.useRealTimers(); });
 
-describe('a résumé import pre-marks a course only in a list after a label that says so (R2)', () => {
-  it('pre-marks every course of such a list and nothing else on a line', async () => {
+describe('after a résumé import the form suggests a status only after a label opening a line or a column (R2)', () => {
+  it('suggests one for every course of such a list and nothing else, and nothing leaves the form with it', async () => {
     row = { revision: 1, profile: SIGNED_UP };
     await mount();
     await importResume(
       'Current courses - CS 374, MATH 415',
       'Planned Courses — CS 446, CS 411',
       'Courses in progress - Machine Learning, Data Mining',
-      'Currently a teaching assistant for CS 225',
-      'Course Assistant, CS 124 (Current)',
-      'GPA: 3.9/4.0 (current) Relevant Coursework: CS 357',
-      'Coursework: CS 498, Current Topics in AI',
+      'B.S. Computer Engineering | Currently taking: ECE 391 | Course Assistant, CS 124',
+      'Peer Mentor: advised freshmen on courses to take: CS 128, MATH 221',
+      'Completed/Current Coursework: CS 225, CS 233',
+      'Current Coursework: STAT 410 | Completed: CS 357',
       'University of Illinois, B.S. Computer Engineering (expected May 2027) Coursework: ECE 220, ECE 385',
-      'Research on future robotics using CS 445',
       'Coursework: CS 433 (Spring 2027)',
+      'Course Assistant, CS 173 (Current)',
     );
-    expect(statuses()).toEqual({
+    const none = ['CS 124', 'CS 128', 'MATH 221', 'CS 225', 'CS 233', 'CS 357', 'ECE 220', 'ECE 385', 'CS 433', 'CS 433 (Spring 2027)', 'CS 173'];
+    expect(suggestions()).toEqual({
       'CS 374': 'in_progress', 'MATH 415': 'in_progress', 'Machine Learning': 'in_progress', 'Data Mining': 'in_progress',
-      'CS 446': 'planned', 'CS 411': 'planned',
-      'CS 225': 'unknown', 'CS 124': 'unknown', 'CS 357': 'unknown', 'CS 498': 'unknown', 'Current Topics in AI': 'unknown',
-      'ECE 220': 'unknown', 'ECE 385': 'unknown', 'CS 445': 'unknown', 'CS 433': 'unknown', 'CS 433 (Spring 2027)': 'unknown',
+      'ECE 391': 'in_progress', 'STAT 410': 'in_progress', 'CS 446': 'planned', 'CS 411': 'planned',
+      ...Object.fromEntries(none.map((name) => [name, null])),
     });
+    // Requests, emails and the quick action: not marked until confirmed.
+    expect(Object.values(statuses()).every((status) => status === 'unknown')).toBe(true);
+    expect(Object.keys(statuses()).sort()).toEqual(Object.keys(suggestions()).sort());
   });
 });
 
-describe('a status read from the résumé is never stored (R1, R3)', () => {
-  it('stores the courses found without a status or a line, and the form reads the pre-mark from the text', async () => {
+describe('a status read from the résumé is only a suggestion, never stored (R1, R3)', () => {
+  it('stores the courses found without a status or a line, and sends them as not marked', async () => {
     row = { revision: 1, profile: SIGNED_UP };
     await mount();
     await importResume('Current Coursework: CS 374', 'Relevant Coursework: CS 225');
-    expect(statuses()).toEqual({ 'CS 225': 'unknown', 'CS 374': 'in_progress' });
+    expect(suggestions()).toEqual({ 'CS 225': null, 'CS 374': 'in_progress' });
+    expect(statuses()).toEqual({ 'CS 225': 'unknown', 'CS 374': 'unknown' });
     expect(row?.profile.courses).toEqual([{ name: 'CS 225', source: 'resume' }, { name: 'CS 374', source: 'resume' }]);
     expect(row?.profile.coursework).toEqual(['CS 225', 'CS 374']);
     expect(JSON.stringify(row?.profile.courses)).not.toContain('Coursework:');
   });
 
-  it('leaves no pre-mark behind when the résumé is removed', async () => {
+  it('leaves nothing of a suggestion behind when the résumé is removed', async () => {
     row = { revision: 1, profile: SIGNED_UP };
     await mount();
     await importResume('Current Coursework: CS 374', 'Relevant Coursework: CS 225');
@@ -186,30 +192,32 @@ describe('a status read from the résumé is never stored (R1, R3)', () => {
     expect(row?.profile.resume_text).toBe('');
     expect(row?.profile.courses).toEqual([]);
     expect(row?.profile.coursework).toEqual([]);
-    expect(statuses()).toEqual({});
+    expect(suggestions()).toEqual({});
   });
 
-  it('keeps a pre-mark the student confirmed, as their own mark, when the résumé is removed', async () => {
+  it('keeps a suggestion the student confirmed, as their own status, when the résumé is removed', async () => {
     row = { revision: 1, profile: SIGNED_UP };
     await mount();
     await importResume('Current Coursework: CS 374', 'Relevant Coursework: CS 225');
     await edit('courses', [{ name: 'CS 225', source: 'resume' }, { name: 'CS 374', source: 'resume', status: 'in_progress' }]);
+    expect(statuses()).toEqual({ 'CS 225': 'unknown', 'CS 374': 'in_progress' });
     await removeResume();
     expect(row?.profile.courses).toEqual([{ name: 'CS 374', source: 'resume', status: 'in_progress' }]);
     expect(statuses()).toEqual({ 'CS 374': 'in_progress' });
   });
 
-  it('reads the pre-marks again from the new text on a re-import', async () => {
+  it('reads the suggestions again from the new text on a re-import', async () => {
     row = { revision: 1, profile: SIGNED_UP };
     const view = await mount();
     await importResume('Current Coursework: CS 374');
-    expect(statuses()).toEqual({ 'CS 374': 'in_progress' });
+    expect(suggestions()).toEqual({ 'CS 374': 'in_progress' });
     await importResume('Relevant Coursework: CS 374', 'Planned courses: CS 446');
-    expect(statuses()).toEqual({ 'CS 374': 'unknown', 'CS 446': 'planned' });
+    expect(suggestions()).toEqual({ 'CS 374': null, 'CS 446': 'planned' });
+    expect(statuses()).toEqual({ 'CS 374': 'unknown', 'CS 446': 'unknown' });
     expect(row?.profile.courses).toEqual([{ name: 'CS 374', source: 'resume' }, { name: 'CS 446', source: 'resume' }]);
     // And after a reload, from the stored text.
     await reload(view);
-    expect(statuses()).toEqual({ 'CS 374': 'unknown', 'CS 446': 'planned' });
+    expect(suggestions()).toEqual({ 'CS 374': null, 'CS 446': 'planned' });
   });
 });
 
@@ -225,14 +233,24 @@ describe('a résumé course nobody marked counts only while the stored coursewor
     coursework: ['CS 225', 'CS 233', 'CS 374', 'MATH 257', 'STAT 400'],
   };
 
-  it('takes a removal made by a tab on the previous build', async () => {
+  it('takes a removal made by a tab on the previous build, and the next course edit stores only what is shown', async () => {
     row = { revision: 3, profile: STORED };
     const view = await mount();
-    expect(statuses()).toEqual({ 'CS 225': 'unknown', 'CS 233': 'unknown', 'CS 374': 'in_progress', 'MATH 257': 'completed', 'STAT 400': 'unknown' });
+    expect(statuses()).toEqual({ 'CS 225': 'unknown', 'CS 233': 'unknown', 'CS 374': 'unknown', 'MATH 257': 'completed', 'STAT 400': 'unknown' });
+    expect(suggestions()['CS 374']).toBe('in_progress');
     // 5181e8e8 use-profile-form.ts: removal writes these four keys only.
     previousBuildWrites({ resume_text: '', coursework: [], experience_entries: [], resume_master: null });
     await reload(view);
     expect(statuses()).toEqual({ 'MATH 257': 'completed', 'STAT 400': 'unknown' });
+    // The names the old tab left in `courses` stay hidden until the next
+    // course edit here, which writes the list the student sees.
+    expect(row?.profile.courses).toHaveLength(5);
+    await edit('courses', [...courseRows(form().profile).map(storedCourse), { name: 'ECE 110', source: 'manual', status: 'completed' }]);
+    expect(row?.profile.courses).toEqual([
+      { name: 'MATH 257', source: 'resume', status: 'completed' }, { name: 'STAT 400', source: 'manual', status: 'unknown' },
+      { name: 'ECE 110', source: 'manual', status: 'completed' },
+    ]);
+    expect(row?.profile.coursework).toEqual(['MATH 257', 'STAT 400', 'ECE 110']);
   });
 
   it('takes a re-import made by a tab on the previous build', async () => {
@@ -240,7 +258,8 @@ describe('a résumé course nobody marked counts only while the stored coursewor
     const view = await mount();
     previousBuildWrites({ resume_text: 'Relevant Coursework: CS 225, CS 411\nPlanned courses: CS 374', coursework: ['CS 225', 'CS 374', 'CS 411'] });
     await reload(view);
-    expect(statuses()).toEqual({ 'CS 225': 'unknown', 'CS 374': 'planned', 'MATH 257': 'completed', 'STAT 400': 'unknown', 'CS 411': 'unknown' });
+    expect(statuses()).toEqual({ 'CS 225': 'unknown', 'CS 374': 'unknown', 'MATH 257': 'completed', 'STAT 400': 'unknown', 'CS 411': 'unknown' });
+    expect(suggestions()).toEqual({ 'CS 225': null, 'CS 374': 'planned', 'MATH 257': null, 'STAT 400': null, 'CS 411': null });
     // The next course edit writes the list as the student set it.
     await edit('courses', [
       { name: 'CS 225', source: 'resume', status: 'completed' }, { name: 'CS 374', source: 'resume' },

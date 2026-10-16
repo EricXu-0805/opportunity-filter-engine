@@ -83,7 +83,8 @@ const NOT_COURSEWORK = new RegExp(String.raw`${LABEL_ROW.source}|\b(?:dean['’]
 
 /** Course codes anywhere, and named courses in a labeled list
  *  (course-status.ts courseLists: "Coursework:", "Relevant Courses -",
- *  "Current courses:"). The text keeps a list cut inside a name ("…, Data" /
+ *  "Current courses:", each list ending at the next label, "|" or a tab).
+ *  The text keeps a list cut inside a name ("…, Data" /
  *  "Structures and Algorithms, …") on two lines, since the row under a list is
  *  as often an organization or an honor. A coursework label says what the
  *  list is, so the list goes on across a break the page marks as a possible
@@ -100,7 +101,9 @@ function extractCoursework(text: string, possibleWraps: ReadonlySet<number> = ne
     // A label with nothing after it on its line opens no list.
     if (!found.some((list) => list.end > list.start)) continue;
     const lists = found.map((list) => lines[index].slice(list.start, list.end));
-    while (possibleWraps.has(end) && index + 1 < lines.length
+    // Only a list that runs to the end of its line can go on to the next.
+    const runsOn = found[found.length - 1].end === lines[index].length;
+    while (runsOn && possibleWraps.has(end) && index + 1 < lines.length
       && !NOT_COURSEWORK.test(lines[index + 1]) && !RESUME_ROLE.test(lines[index + 1])) {
       index += 1;
       end += lines[index].length + 1;

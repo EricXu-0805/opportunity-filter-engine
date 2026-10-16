@@ -505,11 +505,11 @@ describe('ResumeUpload — the copy matches what the code actually does', () => 
     const { dictionaries } = await import('@/i18n/dictionaries');
     const enNote = (dictionaries.en.resume as Record<string, string>).removeNote;
     const zhNote = (dictionaries.zh.resume as Record<string, string>).removeNote;
-    expect(enNote).toContain('together with the courses it found that you have not marked yourself (a status read from the résumé is not a mark)');
+    expect(enNote).toContain('together with the courses it found that you have not marked yourself (a status the résumé only suggests is not a mark)');
     expect(enNote).toContain('Courses you marked or added stay');
     // No course keeps a résumé line, so there is none to remove.
     expect(enNote).not.toContain('line');
-    expect(zhNote).toContain('连同它找到但你还没有亲自标注的课程（据简历推断的状态不算标注）');
+    expect(zhNote).toContain('连同它找到但你还没有亲自标注的课程（据简历推断、只作建议的状态不算标注）');
     expect(zhNote).toContain('你标注过或自己添加的课程会保留');
     expect(zhNote).not.toContain('原句');
   });

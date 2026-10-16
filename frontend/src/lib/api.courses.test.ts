@@ -12,9 +12,8 @@ import { hashProfile } from './match-utils';
 
 // Checklist M13: every request that sends the profile sends each course with
 // its status, so matching, cold email, Tailor, Renovate and Ask AI read one
-// set of statuses. A résumé course nobody marked goes with the status its
-// current résumé line gives it, and otherwise, legacy names included, as
-// unknown.
+// set of statuses. A course nobody marked, legacy names included, goes as
+// unknown, whatever its résumé line suggests on the form.
 const TOKEN = 'wt1:' + 'b'.repeat(64);
 const profile: ProfileData = {
   name: 'Student', institution: 'UIUC', college: 'Grainger', major: 'CS', grade: 'Sophomore',
@@ -30,7 +29,7 @@ const profile: ProfileData = {
 const SENT = [
   { name: 'CS 225', status: 'completed', source: 'resume' },
   { name: 'CS 446', status: 'planned', source: 'manual' },
-  { name: 'MATH 241', status: 'in_progress', source: 'resume' },
+  { name: 'MATH 241', status: 'unknown', source: 'resume' },
   { name: 'STAT 400', status: 'unknown', source: 'resume' },
 ];
 const routes = ['matches', 'email', 'stream', 'variants', 'refine', 'tailor', 'renovate', 'bullet', 'chat'] as const;
@@ -85,7 +84,7 @@ describe('the match cache key', () => {
     const planned = { ...profile, courses: [{ name: 'CS 225', status: 'planned' as const, source: 'resume' as const }] };
     const done = { ...profile, courses: [{ name: 'CS 225', status: 'completed' as const, source: 'resume' as const }] };
     expect(hashProfile(planned)).not.toBe(hashProfile(done));
-    // Also with a status read from a changed résumé text.
-    expect(hashProfile({ ...profile, resume_text: 'Planned courses: MATH 241' })).not.toBe(hashProfile(profile));
+    // A status the résumé only suggests is not sent, so it does not re-match.
+    expect(hashProfile({ ...profile, resume_text: 'Planned courses: MATH 241' })).toBe(hashProfile(profile));
   });
 });

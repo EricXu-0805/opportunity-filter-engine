@@ -297,8 +297,7 @@ export function hashProfile(profile: {
     // → secondary_interests: secondary-major + keyword matching signal.
     addl: profile.additional_majors ?? [],
     // → coursework / courses: scored in the readiness layer, which does not
-    // count a planned course as taken, so a status change re-matches too,
-    // including one read from a changed résumé text.
+    // count a planned course as taken, so a status change re-matches too.
     courses: courseEntries(profile).map((course) => `${course.name}:${course.status}`),
     // → experience_level: scored in the readiness layer.
     exp: profile.experience_level ?? 'beginner',

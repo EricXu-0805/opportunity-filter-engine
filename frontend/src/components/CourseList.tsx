@@ -16,8 +16,9 @@ const COURSE_TEXT_LIMIT = 1000;
  *  the focused control away. */
 type PendingFocus = { after: 'remove'; removed: string; index: number } | { after: 'confirm'; course: string };
 
-/** A status the student has not set, read from the résumé text. */
-const inferred = (course: CourseRow) => course.source === 'resume' && course.marked === undefined && course.status !== 'unknown';
+/** What the course's select shows: the student's status, else the one the
+ *  résumé suggests, else not marked. */
+const shown = (course: CourseRow): CourseStatus => course.marked ?? course.suggested ?? 'unknown';
 
 /**
  * The student's courses, one row each, with the status they give it.
@@ -25,8 +26,9 @@ const inferred = (course: CourseRow) => course.source === 'resume' && course.mar
  * A row per course rather than a chip: four statuses do not fit inside a chip
  * on a phone, and a native select is a full-size control there. A course read
  * from the résumé shows the line it sits on, so the student can see why it is
- * listed; a status read from that line is shown as one to check until the
- * student confirms or changes it, and only then stored.
+ * listed. A status that line suggests is shown as one to check: until the
+ * student confirms or changes it, it is not stored and the course goes out as
+ * not marked.
  */
 export default function CourseList({ courses, onChange }: {
   courses: CourseRow[];
@@ -38,8 +40,8 @@ export default function CourseList({ courses, onChange }: {
   const [status, setStatus] = useState<CourseStatus>('unknown');
   const [notice, setNotice] = useState<string | null>(null);
   const pendingFocus = useRef<PendingFocus | null>(null);
-  const unmarked = courses.filter((course) => course.status === 'unknown').length;
-  const toCheck = courses.filter(inferred).length;
+  const unmarked = courses.filter((course) => course.status === 'unknown' && !course.suggested).length;
+  const toCheck = courses.filter((course) => course.suggested).length;
 
   useEffect(() => {
     const focus = pendingFocus.current;
@@ -85,7 +87,7 @@ export default function CourseList({ courses, onChange }: {
         <ul className="mb-3 space-y-2">
           {courses.map((course, index) => {
             const selectId = `${id}-status-${index}`;
-            const toConfirm = inferred(course);
+            const { suggested } = course;
             return (
               <li key={courseKey(course.name)} className="rounded-xl border border-gray-200 bg-white px-3 py-2">
                 <div className="flex items-center gap-2">
@@ -93,10 +95,10 @@ export default function CourseList({ courses, onChange }: {
                   <label htmlFor={selectId} className="sr-only">{t('courses.statusOf', { course: course.name })}</label>
                   <select
                     id={selectId}
-                    value={course.status}
+                    value={shown(course)}
                     onChange={(e) => mark(index, e.target.value as CourseStatus)}
                     className={`h-9 shrink-0 rounded-lg border px-2 text-[13px] outline-none focus:ring-2 focus:ring-indigo-500/20 ${
-                      course.status === 'unknown' || toConfirm ? 'border-dashed border-amber-300 text-amber-800' : 'border-gray-200 text-gray-700'
+                      course.status === 'unknown' ? 'border-dashed border-amber-300 text-amber-800' : 'border-gray-200 text-gray-700'
                     }`}
                   >
                     {STATUS_CHOICES.map((choice) => (
@@ -115,16 +117,16 @@ export default function CourseList({ courses, onChange }: {
                     <X className="h-4 w-4" />
                   </button>
                 </div>
-                {toConfirm ? (
+                {suggested ? (
                   <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] leading-snug text-amber-800">
                     <span>{t('courses.inferred')}</span>
                     <button
                       type="button"
                       onClick={() => {
                         pendingFocus.current = { after: 'confirm', course: courseKey(course.name) };
-                        mark(index, course.status);
+                        mark(index, suggested);
                       }}
-                      aria-label={t('courses.confirmLabel', { course: course.name, status: t(`courses.status.${course.status}`) })}
+                      aria-label={t('courses.confirmLabel', { course: course.name, status: t(`courses.status.${suggested}`) })}
                       className="rounded-md border border-amber-300 px-2 py-0.5 font-medium hover:bg-amber-50 transition-colors"
                     >
                       {t('courses.confirm')}
