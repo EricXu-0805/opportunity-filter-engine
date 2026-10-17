@@ -213,6 +213,22 @@ def _naming_snippet() -> str:
     return textwrap.dedent(script[start:end])
 
 
+def _outputs(text: str) -> dict:
+    """A $GITHUB_OUTPUT file read as the runner reads it."""
+    values, lines = {}, text.splitlines()
+    while lines:
+        line = lines.pop(0)
+        if "<<" in line:
+            name, end = line.split("<<", 1)
+            body = lines[:lines.index(end)]
+            values[name] = "\n".join(body)
+            del lines[:len(body) + 1]
+        else:
+            name, value = line.split("=", 1)
+            values[name] = value
+    return values
+
+
 class TestThePrNamesWhatItPublishes:
     """The publish step's own lines, run under bash against a run's verdict."""
 
@@ -244,7 +260,16 @@ class TestThePrNamesWhatItPublishes:
             "Automated deep data refresh (shard: ucsb,umich,caltech). Merges automatically once "
             "Backend + Frontend checks pass.\n\n" + notes)
         # The alert step reads this output.
-        assert output == f"withheld<<WITHHELD_EOF\n{notes}\nWITHHELD_EOF\n"
+        assert _outputs(output) == {"withheld": notes}
+
+    def test_the_withheld_output_ends_at_a_marker_no_run_repeats(self, tmp_path):
+        # A fixed marker on a line of the verdict's error text would end the value there.
+        markers = set()
+        for attempt in ("a", "b"):
+            (tmp_path / attempt).mkdir()
+            _, output = self._run(tmp_path / attempt, PARTIAL)
+            markers.add(output.split("\n", 1)[0].split("<<", 1)[1])
+        assert len(markers) == 2 and "WITHHELD_EOF" not in markers
 
     def test_a_full_release_keeps_the_old_title_and_body_and_reports_nothing(self, tmp_path):
         read, output = self._run(tmp_path, _status(AUTHORIZED))

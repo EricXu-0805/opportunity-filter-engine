@@ -454,7 +454,9 @@ jobs:
             BODY="Automated ${MODE} data refresh (shard: ${SHARD:-full}). Merges automatically once Backend + Frontend checks pass."
             if [ -n "$NOTES" ]; then
               BODY="$BODY"$'\n\n'"$NOTES"
-              { echo "withheld<<WITHHELD_EOF"; echo "$NOTES"; echo "WITHHELD_EOF"; } >> "$GITHUB_OUTPUT"
+              # Random, so no line of the verdict's error text can end the value early.
+              END="WITHHELD_$(python3 -c 'import secrets; print(secrets.token_hex(16))')"
+              { echo "withheld<<$END"; echo "$NOTES"; echo "$END"; } >> "$GITHUB_OUTPUT"
             fi
             python3 scripts/shard_corpus.py split --only-shards "$TARGETS"
 
