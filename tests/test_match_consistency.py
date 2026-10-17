@@ -433,26 +433,31 @@ class TestExplainServesTheListConclusion:
         assert expected in prompts[0][1]["content"]
         assert "our reading of the page" in prompts[0][0]["content"]
 
-    def test_a_no_sponsorship_exclusion_says_the_listing_label(self, snapshot_env, monkeypatch):
-        """M110: a Simplify internship our collector labels "Does Not Offer
-        Sponsorship" (intl "no", no citizenship rule) still leaves an
-        international student's list, and explain says why as the collector
-        states that label, not "Requires US citizenship"."""
-        restricted = simplify_listing({
+    def test_a_no_sponsorship_listing_is_listed_and_explained_with_its_label(self, snapshot_env, monkeypatch):
+        """M121: a Simplify internship whose one restriction is its label "Does
+        Not Offer Sponsorship" stays in an international student's list, and
+        explain serves the list's line quoting that label (M110 excluded it and
+        explained why)."""
+        listing = simplify_listing({
             "id": "no-sponsor", "company_name": "Example", "title": "Software Intern",
             "url": "https://example.com/jobs/1", "locations": ["Remote"], "terms": ["Summer 2026"],
             "category": "Software", "sponsorship": "Does Not Offer Sponsorship",
         })
-        corpus = snapshot_env["corpus"] + [restricted]
+        corpus = snapshot_env["corpus"] + [listing]
         by_id = {o["id"]: o for o in corpus}
         ranker.register_corpus(corpus)
         monkeypatch.setattr(m_module, "load_opportunities_generation", lambda: (corpus, "no-sponsor"))
         monkeypatch.setattr(m_module, "load_opportunities_by_id", lambda: by_id)
         m_module._match_snapshots.clear()
 
-        body = client.post(f"/api/matches/{restricted['id']}/explain", json=_profile(international_student=True)).json()
-        assert body["excluded_reason"] == "citizenship_restricted"
-        assert body["reasons_gap"][0] == "Employer does not offer visa sponsorship — excluded from your results"
+        line = ('Listing says: "Does Not Offer Sponsorship" '
+                "(our note: CPT/OPT may still apply for internships; check with the employer)")
+        profile = _profile(international_student=True, seeking_type=["research", "internship"])
+        listed = {r["opportunity_id"]: r for r in client.post("/api/matches", json=profile).json()["results"]}
+        assert line in listed[listing["id"]]["reasons_gap"]
+        body = client.post(f"/api/matches/{listing['id']}/explain", json=profile).json()
+        assert body["in_results"] is True
+        assert body["reasons_gap"] == listed[listing["id"]]["reasons_gap"]
         assert not any("citizenship" in gap.lower() for gap in body["reasons_gap"])
 
     @pytest.mark.parametrize(

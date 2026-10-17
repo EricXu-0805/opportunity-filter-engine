@@ -263,7 +263,7 @@ class TestNoCollapse:
         # M110: Simplify's "Does Not Offer Sponsorship" is international_friendly
         # "no" with no citizenship rule, and those internships told an
         # international student they require US citizenship or permanent
-        # residency. The reason is that label as our collector states it.
+        # residency. The line quotes the listing's label (M121).
         profile = {"international_student": True, "year": "sophomore", "major": "Computer Science"}
         raw = {
             "id": "d07dc6c0-69ed-42e6-a0f0-732bbe5b72fc", "company_name": "Veeva",
@@ -273,7 +273,8 @@ class TestNoCollapse:
         }
         no_sponsorship = simplify_listing(raw)
         _, _, gaps = score_eligibility(profile, no_sponsorship)
-        assert "Employer does not offer visa sponsorship" in gaps
+        assert ('Listing says: "Does Not Offer Sponsorship" '
+                "(our note: CPT/OPT may still apply for internships; check with the employer)") in gaps
         assert not any("citizenship" in gap.lower() for gap in gaps)
         # A listing that states the citizenship rule keeps its line.
         required = simplify_listing(dict(raw, sponsorship="U.S. Citizenship is Required"))
@@ -282,7 +283,7 @@ class TestNoCollapse:
         no_sponsorship["metadata"]["inferred_fields"] = {"eligibility.international_friendly": "rule:text_scan"}
         assert self._READ_RESTRICTION in score_eligibility(profile, no_sponsorship)[2]
         # A sentence change the fingerprint cannot see.
-        assert int(MATCHER_VERSION.split(".")[0]) >= 25
+        assert int(MATCHER_VERSION.split(".")[0]) >= 27
 
     _READ_RESTRICTION = (
         "May require US citizenship or permanent residency, by our reading of the page"

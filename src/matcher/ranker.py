@@ -57,6 +57,7 @@ from .config import (
     IMPLICIT_MAJOR_PER_HIT,
     INTEREST_BONUS_CAP,
     INTEREST_BONUS_PER_HIT,
+    INTL_NO_SPONSORSHIP_INTERNSHIP_SCORE,
     INTL_UNKNOWN_INTERNSHIP_SCORE,
     INTL_UNKNOWN_SCORE,
     PROFICIENCY_WEIGHTS,
@@ -1843,8 +1844,30 @@ def _intl_terms_basis(opportunity: dict, fields: tuple[str, ...]) -> str | None:
 # Offer Sponsorship": an intl "no" with no citizenship rule (M110). Its reason
 # is that label as our collector states it, which the detail page shows as the
 # source's, not the employer page's words.
-_SIMPLIFY_NO_SPONSORSHIP_NOTE = _SIMPLIFY_SPONSORSHIP_MAP["Does Not Offer Sponsorship"][2]
+_SIMPLIFY_NO_SPONSORSHIP_LABEL = "Does Not Offer Sponsorship"
+_SIMPLIFY_NO_SPONSORSHIP_NOTE = _SIMPLIFY_SPONSORSHIP_MAP[_SIMPLIFY_NO_SPONSORSHIP_LABEL][2]
 _SIMPLIFY_NO_SPONSORSHIP_REASON = _SIMPLIFY_NO_SPONSORSHIP_NOTE.split(";", 1)[0]
+# The gap line such a listing gets in an international student's results
+# (M121): the listing's label in quotes, then what we add, marked as ours.
+_SIMPLIFY_NO_SPONSORSHIP_GAP = (
+    f'Listing says: "{_SIMPLIFY_NO_SPONSORSHIP_LABEL}" '
+    "(our note: CPT/OPT may still apply for internships; check with the employer)"
+)
+
+
+def _simplify_no_sponsorship_only(opportunity: dict, elig: dict) -> bool:
+    """A Simplify listing whose one restriction is its label "Does Not Offer
+    Sponsorship": the intl "no" our collector wrote for that label, with no
+    citizenship rule and no intl answer we configured or read off a page. It
+    is listed for an international student rather than excluded (M121)."""
+    return (
+        elig.get("international_friendly", "unknown") == "no"
+        and elig.get("citizenship_required") is not True
+        and opportunity.get("source") == "simplify_internships"
+        and elig.get("work_auth_notes") == _SIMPLIFY_NO_SPONSORSHIP_NOTE
+        and (opportunity.get("metadata") or {}).get("simplify_sponsorship") == _SIMPLIFY_NO_SPONSORSHIP_LABEL
+        and _intl_terms_basis(opportunity, ("international_friendly",)) is None
+    )
 
 
 def citizenship_restriction_reason(opportunity: dict) -> str:
@@ -2047,7 +2070,10 @@ def score_eligibility(
         # US-only posting shows an F-1 student a clean ~60 "verify" match instead
         # of a restricted one. Same restriction the 'no' branch applies; matters
         # as domestic / US-only sources enter the corpus.
-        if friendly == "no" or elig.get("citizenship_required") is True:
+        if _simplify_no_sponsorship_only(opportunity, elig):
+            intl_score = INTL_NO_SPONSORSHIP_INTERNSHIP_SCORE
+            reasons_gap.append(_SIMPLIFY_NO_SPONSORSHIP_GAP)
+        elif friendly == "no" or elig.get("citizenship_required") is True:
             intl_score = 0.0
             # The score is the record's either way; the sentence says whose
             # restriction it is when we, not the program, supplied it (M96).
@@ -4136,7 +4162,8 @@ def hard_exclusion(opp: dict, ctx: _FilterCtx) -> str | None:
 
     if ctx.international_student:
         elig = faculty_safe_eligibility(opp)
-        if elig.get("international_friendly") == "no" or elig.get("citizenship_required") is True:
+        restricted = elig.get("international_friendly") == "no" or elig.get("citizenship_required") is True
+        if restricted and not _simplify_no_sponsorship_only(opp, elig):
             if ctx.exclude_citizenship_restricted:
                 return "citizenship_restricted"
 

@@ -64,6 +64,12 @@ INTL_UNKNOWN_SCORE = _env_float("OFE_INTL_UNKNOWN", 60.0)
 # flat 60 over-deters F-1 students from their primary audience. Score "unknown"
 # internships higher than research/other postings — verify-don't-rule-out.
 INTL_UNKNOWN_INTERNSHIP_SCORE = _env_float("OFE_INTL_UNKNOWN_INTERNSHIP", 72.0)
+# A Simplify internship labelled "Does Not Offer Sponsorship" (M121) is listed
+# for an international student, not excluded: CPT/OPT may still cover it. The
+# label still says something against the student that a blank field does not,
+# so it scores below an unknown internship, at the "verify" level, and far
+# above the 0 of a stated citizenship rule.
+INTL_NO_SPONSORSHIP_INTERNSHIP_SCORE = _env_float("OFE_INTL_NO_SPONSORSHIP_INTERNSHIP", 60.0)
 
 # The score for a student who left the coursework field blank. It is a
 # neutral prior, and _coursework_score floors the count component at it so
@@ -343,7 +349,11 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # no "Missing skills", no "n/m required", no score below unknown requirements,
 # and an unstamped preferred list is "Skills mentioned in the description". A
 # formula and sentences no hashed knob sees.
-_MATCHER_VERSION_BASE = "26"
+# 27: a Simplify internship whose one restriction is its label "Does Not Offer
+# Sponsorship" is listed for an international student instead of excluded, with
+# a gap line quoting the label and intl score INTL_NO_SPONSORSHIP_INTERNSHIP_SCORE
+# instead of 0 (checklist M121). A filter and a sentence no hashed knob sees.
+_MATCHER_VERSION_BASE = "27"
 
 
 def _matcher_fingerprint() -> str:
@@ -352,6 +362,7 @@ def _matcher_fingerprint() -> str:
         "buckets": BUCKET_THRESHOLDS,
         "hp_target": HIGH_PRIORITY_TARGET_COUNT,
         "intl_unknown": (INTL_UNKNOWN_SCORE, INTL_UNKNOWN_INTERNSHIP_SCORE),
+        "intl_no_sponsorship": INTL_NO_SPONSORSHIP_INTERNSHIP_SCORE,
         "coursework": (COURSEWORK_UNKNOWN, COURSEWORK_PER_COURSE, COURSEWORK_MAX_FROM_COUNT,
                        COURSEWORK_RELEVANCE_BONUS),
         "bonuses": (INTEREST_BONUS_CAP, EMPTY_INTEREST_MAJOR_BONUS, INTEREST_BONUS_PER_HIT,
