@@ -172,7 +172,9 @@ function validateItem(prepared: PreparedTargetResumePlan, manifest: TargetResume
   if (value.section_id !== manifest.section_id || value.block_id !== manifest.block_id
     || !['keep', 'compress', 'omit'].includes(String(value.action))) fail('invalid_response');
   text(value.reason);
-  if (!value.reason.trim() || !Array.isArray(value.target_evidence) || !value.target_evidence.length
+  // Advice that claims no relevance to the opportunity may cite only the block's own lines (v6); the server
+  // requires an opportunity quote for the rest. Any opportunity quote given is checked here.
+  if (!value.reason.trim() || !Array.isArray(value.target_evidence)
     || !Array.isArray(value.source_evidence) || !value.source_evidence.length || !Array.isArray(value.rewrites)) fail('invalid_response');
   const target = prepared.draft.target_snapshot;
   for (const item of value.target_evidence) {

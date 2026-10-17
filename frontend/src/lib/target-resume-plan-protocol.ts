@@ -3,7 +3,7 @@ import type { TargetResumeV1 } from './target-resume';
 import type { TargetResumeAiEvidence } from './target-resume-ai-protocol';
 
 /** v5 proposes no wording: every line a student is shown passes the faithfulness review, and the plan has none. */
-export const TARGET_RESUME_PLAN_VERSION = 'full-target-plan-v5' as const;
+export const TARGET_RESUME_PLAN_VERSION = 'full-target-plan-v6' as const;
 export const TARGET_RESUME_PLAN_MAX_BODY_BYTES = 2 * 1024 * 1024 + 64 * 1024;
 export const TARGET_RESUME_PLAN_MAX_PROMPT_CHARACTERS = 120_000;
 export interface TargetResumePlanOptions { target_pages: 1 | 2 }

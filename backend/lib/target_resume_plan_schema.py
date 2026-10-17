@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 from backend.lib.request_body import known_keys
 from backend.lib.target_resume_support_schema import ResumeSupportGroup
 
-PIPELINE_VERSION = "full-target-plan-v5"
+PIPELINE_VERSION = "full-target-plan-v6"
 MAX_PROMPT_CHARACTERS = 120000
 MAX_BODY_BYTES = 2 * 1024 * 1024 + 64 * 1024
 

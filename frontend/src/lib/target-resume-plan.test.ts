@@ -34,7 +34,7 @@ async function make(texts = ['Built a Python parser with tests.', 'Analyzed 1000
 }
 const prepare = async (draft?: TargetResumeV1, target_pages: 1 | 2 = 1) => unwrap(await prepareTargetResumePlan(draft ?? await make(), { target_pages }));
 function response(prepared: PreparedTargetResumePlan): TargetResumePlanResponse {
-  return { version: 1, pipeline_version: 'full-target-plan-v5', request_id: 'request', document_id: prepared.draft.id,
+  return { version: 1, pipeline_version: 'full-target-plan-v6', request_id: 'request', document_id: prepared.draft.id,
     opportunity_id: prepared.draft.opportunity_id, document_signature: prepared.document_signature, base: clone(prepared.draft.base),
     options: clone(prepared.options), manifest: clone(prepared.manifest), scope: clone(prepared.scope), method: 'ai', complete: true,
     reason_code: null, logical_calls: 1, provider_attempts_upper_bound: 2,
@@ -151,6 +151,14 @@ describe('strict complete plan receipts', () => {
     result.items.reverse(); result.items[0].source_evidence.push(clone(result.items[0].source_evidence[0]));
     expect(validateTargetResumePlanResponse(prepared, request(result), result).ok).toBe(true);
   });
+  it('accepts an item that cites only its own line, but checks any opportunity quote it gives', async () => {
+    // Leave-out or background advice on a block the posting never mentions has nothing there to quote.
+    const prepared = await prepare(); const result = response(prepared);
+    result.items[1].action = 'omit'; result.items[1].target_evidence = [];
+    expect(validateTargetResumePlanResponse(prepared, request(result), result).ok).toBe(true);
+    result.items[1].target_evidence = [{ field: 'description', requirement_index: null, start: 0, end: 6, quote: 'Barist' }];
+    expect(validateTargetResumePlanResponse(prepared, request(result), result)).toEqual({ ok: false, code: 'invalid_response' });
+  });
   it.each([
     ['document identity', (r: TargetResumePlanResponse) => { r.document_id += 'other'; }],
     ['target identity', (r: TargetResumePlanResponse) => { r.opportunity_id += 'other'; }],
@@ -167,7 +175,6 @@ describe('strict complete plan receipts', () => {
     ['duplicate block', (r: TargetResumePlanResponse) => { r.items[1] = clone(r.items[0]); }],
     ['unknown block', (r: TargetResumePlanResponse) => { r.items[0].block_id = 'new'; }],
     ['wrong section', (r: TargetResumePlanResponse) => { r.items[0].section_id = 'basics'; }],
-    ['missing target quote', (r: TargetResumePlanResponse) => { r.items[0].target_evidence = []; }],
     ['missing source quote', (r: TargetResumePlanResponse) => { r.items[0].source_evidence = []; }],
     ['invented target quote', (r: TargetResumePlanResponse) => { r.items[0].target_evidence[0].quote = 'RUST!!'; }],
     ['cross-block source', (r: TargetResumePlanResponse) => { r.items[0].source_evidence[0] = clone(r.items[1].source_evidence[0]); }],
