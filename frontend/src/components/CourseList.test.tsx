@@ -63,7 +63,7 @@ describe('CourseList (checklist M13)', () => {
     expect(screen.getAllByText('From your résumé — please check')).toHaveLength(1);
     const left = screen.getByRole('status');
     expect(within(left).getByText('Not marked yet: 1. Until you mark a course, it is only listed as part of your coursework, never as completed.')).toBeTruthy();
-    expect(within(left).getByText('Suggested by your résumé, not used until you confirm: 1.')).toBeTruthy();
+    expect(within(left).getByText('Status suggested by your résumé: 1. A suggested status is not used until you confirm it.')).toBeTruthy();
   });
 
   it('describes a suggested status shown in a select as a suggestion to check, and no other status', () => {
@@ -195,7 +195,7 @@ describe('CourseList (checklist M13)', () => {
     const left = screen.getByRole('status');
     // One course is not "它们".
     expect(within(left).getByText('有 1 门课还未标注。未标注的课只会被列为你的课程之一，不会写成已修。')).toBeTruthy();
-    expect(within(left).getByText('有 1 门课的状态是据简历推断的，确认后才会使用。')).toBeTruthy();
+    expect(within(left).getByText('有 1 门课的状态是据简历推断的。推断的状态确认后才会使用。')).toBeTruthy();
     expect(screen.getByRole('button', { name: '移除 CS 446' })).toBeTruthy();
     expect((screen.getByLabelText('添加课程') as HTMLInputElement).placeholder).toBe('例如 CS 225 或数据结构');
   });

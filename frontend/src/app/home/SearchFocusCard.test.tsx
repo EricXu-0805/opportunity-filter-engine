@@ -127,7 +127,9 @@ describe('the slider names the signals it actually moves', () => {
       const copy = [cards.searchFocusSubtitle, form.searchWeightRight, form.searchWeightExperience, form.searchWeightBalanced].join(' ');
       expect(copy, locale).not.toMatch(/completed|have taken|已修|修过/i);
     }
-    expect(d.en.home.form.searchWeightExperience).toContain('plan');
-    expect(d.zh.home.form.searchWeightExperience).toContain('计划');
+    // Planned as the student marked it: a status the résumé only suggests is
+    // sent as not marked, and counted.
+    expect(d.en.home.form.searchWeightExperience).toContain('marked as planned');
+    expect(d.zh.home.form.searchWeightExperience).toContain('标为「计划修」');
   });
 });
