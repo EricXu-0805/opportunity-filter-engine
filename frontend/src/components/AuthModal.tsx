@@ -309,8 +309,9 @@ export default function AuthModal() {
       // goes while that session still exists.
       const pushReleased = await releasePushForSignOut();
       if (!(await signOutOfAccount())) {
-        // supabase-js keeps the account session when the logout request
-        // fails, so the modal stays on that account and says it failed.
+        // A failed logout request leaves the account session in place, but an
+        // expired session whose refresh is refused is dropped and the error
+        // still comes back; the message reads the live auth state for that.
         setSignOutFailed(true);
         return;
       }

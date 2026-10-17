@@ -1123,10 +1123,12 @@ function signOutFoundSessionGone(error: { status?: number }): boolean {
  * assume `ensureAnonSession` will succeed). Without the re-anon, the
  * user would be on a "no session" state until they reload.
  *
- * Resolves false when the sign-out did not happen. supabase-js keeps the
- * account session stored when the logout request itself fails (a network
- * error, a 5xx), so nothing else is touched then: a re-anon would only read
- * that account back, and the pending sign-in stashes still belong to it.
+ * Resolves false when supabase-js reports an error. It keeps the account
+ * session stored when the logout request itself fails (a network error, a
+ * 5xx), so nothing else is touched then: a re-anon would only read that
+ * account back, and the pending sign-in stashes still belong to it. An expired
+ * session whose refresh is refused is the exception: supabase-js drops it and
+ * still returns the error, so false does not always mean still signed in.
  */
 export async function signOutOfAccount(): Promise<boolean> {
   // scope:'local' — signing out THIS device must not revoke the account's
