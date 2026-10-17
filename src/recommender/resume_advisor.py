@@ -60,6 +60,7 @@ SKILL_TIMELINE = {
 }
 
 
+from backend.lib.opportunity_detail import skills_basis
 from src.matcher.ranker import _canonicalize_skill, _parse_skills
 
 
@@ -71,13 +72,24 @@ def _skill_name(s) -> str:
     return getattr(s, "name", str(s))
 
 
+def stated_skills(opportunity: dict, field: str) -> list:
+    """The program's own ``eligibility.<field>`` list, or [] when it is ours.
+
+    Outside hand-curated rows a list is a keyword bank or tagger read of
+    prose, stamped or not (``skills_basis``, the rule the detail facts and the
+    matcher use): never a skill the student is missing (M22).
+    """
+    if skills_basis(opportunity, f"eligibility.{field}") is not None:
+        return []
+    return (opportunity.get("eligibility") or {}).get(field, []) or []
+
+
 def analyze_gaps(profile: dict, opportunity: dict) -> dict:
     student_skill_map = _parse_skills(profile.get("hard_skills", []))
     student_skills = set(student_skill_map.keys())
-    elig = opportunity.get("eligibility", {})
 
-    required = elig.get("skills_required", []) or []
-    preferred = elig.get("skills_preferred", []) or []
+    required = stated_skills(opportunity, "skills_required")
+    preferred = stated_skills(opportunity, "skills_preferred")
 
     # Missing skills
     missing_required = [s for s in required if _canonicalize_skill(s) not in student_skills and s.lower() not in student_skills]
@@ -120,7 +132,6 @@ def _generate_resume_tips(profile: dict, opportunity: dict,
                           missing_req: list, missing_pref: list) -> list[str]:
     """Generate actionable resume tips based on the gap analysis."""
     tips = []
-    elig = opportunity.get("eligibility", {})
     opp_type = opportunity.get("opportunity_type", "")
 
     # Skill gap tips
@@ -134,7 +145,7 @@ def _generate_resume_tips(profile: dict, opportunity: dict,
         )
 
     all_student_skills = set(_parse_skills(profile.get("hard_skills", [])).keys())
-    required = elig.get("skills_required", []) or []
+    required = stated_skills(opportunity, "skills_required")
     matched = [s for s in required if _canonicalize_skill(s) in all_student_skills or s.lower() in all_student_skills]
     if matched:
         tips.append(

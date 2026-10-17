@@ -7,7 +7,7 @@ import {
   type TargetResumeV1,
 } from './target-resume';
 import {
-  TARGET_RESUME_PLAN_VERSION, TARGET_RESUME_PLAN_MAX_BODY_BYTES,
+  TARGET_RESUME_PLAN_ACCEPTED_VERSIONS, TARGET_RESUME_PLAN_MAX_BODY_BYTES,
   type PreparedTargetResumePlan, type TargetResumePlanOptions, type TargetResumePlanManifestItem,
   type TargetResumePlanScope, type TargetResumePlanRequest, type TargetResumePlanResponse,
   type ApplyTargetResumePlanOptions,
@@ -172,7 +172,9 @@ function validateItem(prepared: PreparedTargetResumePlan, manifest: TargetResume
   if (value.section_id !== manifest.section_id || value.block_id !== manifest.block_id
     || !['keep', 'compress', 'omit'].includes(String(value.action))) fail('invalid_response');
   text(value.reason);
-  if (!value.reason.trim() || !Array.isArray(value.target_evidence) || !value.target_evidence.length
+  // Advice that claims no relevance to the opportunity may cite only the block's own lines (v6); the server
+  // requires an opportunity quote for the rest. Any opportunity quote given is checked here.
+  if (!value.reason.trim() || !Array.isArray(value.target_evidence)
     || !Array.isArray(value.source_evidence) || !value.source_evidence.length || !Array.isArray(value.rewrites)) fail('invalid_response');
   const target = prepared.draft.target_snapshot;
   for (const item of value.target_evidence) {
@@ -210,7 +212,7 @@ export function validateTargetResumePlanResponse(prepared: PreparedTargetResumeP
     if (!same(value.support_groups ?? null,prepared.support_groups ?? null)) fail('invalid_response');
     if (checkKeys.length && value.check_version !== null
       && (typeof value.check_version !== 'string' || !/^target-resume-source-checks-v[1-9][0-9]{0,5}$/.test(value.check_version))) fail('invalid_response');
-    if (value.version !== 1 || value.pipeline_version !== TARGET_RESUME_PLAN_VERSION || value.request_id !== request.request_id
+    if (value.version !== 1 || !(TARGET_RESUME_PLAN_ACCEPTED_VERSIONS as readonly unknown[]).includes(value.pipeline_version) || value.request_id !== request.request_id
       || value.document_id !== prepared.draft.id || value.opportunity_id !== prepared.draft.opportunity_id
       || value.document_signature !== prepared.document_signature || !same(value.base, prepared.draft.base)
       || !same(value.options, prepared.options) || !same(value.manifest, prepared.manifest) || !same(value.scope, prepared.scope)

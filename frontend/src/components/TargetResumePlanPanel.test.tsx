@@ -21,7 +21,7 @@ const deferred = <T,>() => { let resolve!: (value: T) => void; const promise = n
 const shorter = 'I did not lead the team.';
 async function response(payload: TargetResumePlanRequest): Promise<TargetResumePlanResponse> {
   const p = await prepareTargetResumePlan(payload.draft, payload.options); if (!p.ok) throw new Error(p.code);
-  return { ...(payload.support_groups === undefined ? {} : {support_groups:payload.support_groups}), version: 1, pipeline_version: 'full-target-plan-v5', request_id: payload.request_id, document_id: payload.draft.id,
+  return { ...(payload.support_groups === undefined ? {} : {support_groups:payload.support_groups}), version: 1, pipeline_version: 'full-target-plan-v6', request_id: payload.request_id, document_id: payload.draft.id,
     opportunity_id: payload.draft.opportunity_id, document_signature: payload.document_signature, base: clone(payload.draft.base), options: payload.options,
     manifest: p.value.manifest, scope: p.value.scope, method: 'ai', complete: true, reason_code: null, logical_calls: 1, provider_attempts_upper_bound: 2,
     items: p.value.manifest.map(item => {
@@ -91,10 +91,21 @@ describe('whole draft content planning', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('could not be verified');
     expect(screen.queryByText(shorter)).toBeNull(); expect(screen.queryByRole('checkbox')).toBeNull(); expect(p.onApply).not.toHaveBeenCalled();
   });
-  it('refuses a plan stamped with the pre-review version', async () => {
-    mocked.generate.mockImplementation(async payload => ({ ...await response(payload), pipeline_version: 'full-target-plan-v4' }) as unknown as TargetResumePlanResponse);
+  it.each(['full-target-plan-v4', 'full-target-plan-v7'])('refuses a plan stamped %s', async version => {
+    mocked.generate.mockImplementation(async payload => ({ ...await response(payload), pipeline_version: version }) as unknown as TargetResumePlanResponse);
     const p = props(); render(<TargetResumePlanPanel {...p} />); await generate();
     expect(await screen.findByRole('alert')).toHaveTextContent('could not be verified'); expect(screen.queryByRole('checkbox')).toBeNull();
+  });
+  it('shows and applies a v5 server\'s plan as before, while the backend deploys after the frontend', async () => {
+    mocked.generate.mockImplementation(async payload => ({ ...await response(payload), pipeline_version: 'full-target-plan-v5' }));
+    const p = props(); render(<TargetResumePlanPanel {...p} />); await generate(); await reviewReady();
+    expect(screen.queryByRole('alert')).toBeNull(); expect(screen.getAllByRole('checkbox')).toHaveLength(5);
+    const card = document.querySelector('[data-plan-block-id="publication-one"]') as HTMLElement;
+    fireEvent.click(within(card).getByText('Review reason and sources'));
+    expect(within(card).getByText('Opportunity evidence')).toBeVisible(); expect(within(card).getByText(/: Python$/)).toBeVisible();
+    select('publication-one'); apply();
+    const next = vi.mocked(p.onApply).mock.calls[0][1];
+    expect(next.document.sections.find(section => section.id === 'publications')!.blocks[0].included).toBe(false);
   });
   it('keeps a hidden block, section and fields hidden while showing why', async () => {
     const p = props(); const section = p.draft.document.sections.find(section => section.id === 'activities')!;
@@ -255,6 +266,24 @@ describe('accepted content-plan operation records', () => {
     expect(changes[0].check).toBeNull(); expect(changes[0].after).toBe(false);
     expect(changes[0].reason).toContain('mentions Python'); expect(changes[0].target_evidence[0].quote).toBe('Python');
     expect(project(next).lines).toEqual(project(p.draft).lines);
+  });
+  it('shows no opportunity evidence heading for a block whose advice cites only its own line, and records the omission', async () => {
+    mocked.generate.mockImplementation(async payload => {
+      const value = await response(payload);
+      const item = value.items.find(item => item.block_id === 'publication-one')!;
+      item.reason = 'Omit suggestion: Review the cited material before giving this block less space.'; item.target_evidence = [];
+      return value;
+    });
+    const p = props(); render(<TargetResumePlanPanel {...p} />); await generate(); await reviewReady();
+    const card = document.querySelector('[data-plan-block-id="publication-one"]') as HTMLElement;
+    fireEvent.click(within(card).getByText('Review reason and sources'));
+    expect(within(card).queryByText('Opportunity evidence')).toBeNull(); expect(within(card).getByText('Source evidence')).toBeVisible();
+    const other = document.querySelector('[data-plan-block-id="project-one"]') as HTMLElement;
+    expect(within(other).getByText('Opportunity evidence')).toBeInTheDocument();
+    select('publication-one'); apply();
+    const [, next, action] = vi.mocked(p.onApply).mock.calls[0];
+    const changes = appendTargetResumeProvenance(null, p.draft, next, action)!.events[0].changes;
+    expect(changes).toHaveLength(1); expect(changes[0].block_id).toBe('publication-one'); expect(changes[0].target_evidence).toEqual([]);
   });
   it('does not create a record for an accepted choice that changes nothing', async () => {
     const p = props(); render(<TargetResumePlanPanel {...p} />); await generate(); await reviewReady(); select('project-one'); apply();

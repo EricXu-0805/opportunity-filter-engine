@@ -175,10 +175,11 @@ class TestAGuessedSkillListIsNotCalledARequirement:
     """
 
     @staticmethod
-    def _opp(inferred: bool) -> dict:
+    def _opp(inferred: bool, source: str = "manual") -> dict:
+        # A hand-curated row states its list; any other source's is ours.
         opp = {
             "id": "buffalo-reu", "title": "Summer REU in Biological Sciences",
-            "source_type": "summer_program",
+            "source": source, "source_type": "summer_program",
             "eligibility": {"skills_required": ["Python"]}, "metadata": {},
         }
         if inferred:
@@ -187,10 +188,33 @@ class TestAGuessedSkillListIsNotCalledARequirement:
             }
         return opp
 
-    def test_a_stated_requirement_is_still_called_one(self):
+    @staticmethod
+    def _plan_prompt(monkeypatch, opp: dict) -> str:
+        from backend.routes import tailor
+        from backend.schemas import ResumeBullet, ResumeSection
+
+        sent: list = []
+        monkeypatch.setattr(tailor, "chat_completion", lambda messages, **_: sent.append(messages) or None)
+        tailor._ai_renovation_plan([ResumeSection(id="s1", bullets=[ResumeBullet(id="b1", text="Ran PCR")])], opp)
+        return sent[0][1]["content"]
+
+    def test_a_stated_requirement_is_still_called_one(self, monkeypatch):
         from backend.routes.tailor import _skills_line
 
         assert _skills_line(self._opp(False), "Python") == "- Required skills: Python\n"
+        assert "- Required skills: Python\n" in self._plan_prompt(monkeypatch, self._opp(False))
+
+    def test_an_unstamped_list_outside_curated_rows_is_not_called_required(self, monkeypatch):
+        """M22: the NSF REU list is a keyword bank run over the award abstract,
+        stamped or not; the detail facts, the wire and the matcher call it ours
+        (`skills_basis`), and the renovation plan printed "Required skills"."""
+        from backend.routes.tailor import _snapshot_anchors
+
+        guessed = self._opp(False, source="nsf_reu")
+        prompt = self._plan_prompt(monkeypatch, guessed)
+        assert "Required skills" not in prompt
+        assert "- Skills mentioned in the posting text (not stated requirements): Python\n" in prompt
+        assert _snapshot_anchors(guessed, guessed) == []
 
     def test_a_tagger_written_list_says_where_it_came_from(self):
         from backend.routes.tailor import _skills_line

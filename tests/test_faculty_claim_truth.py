@@ -924,9 +924,12 @@ def _skills_profile(skills):
 
 
 def _skills_opportunity(*, inferred: bool):
+    # A curated row, so the list is the posting's until a stamp says otherwise
+    # (an unstamped list from any collector is ours, see test_inferred_match_signals).
     opp = {
         "id": "sro-invented",
         "title": "Summer Molecular Sciences REU",
+        "source": "manual",
         "source_type": "program",
         "organization": "Test University",
         "opportunity_type": "summer_program",

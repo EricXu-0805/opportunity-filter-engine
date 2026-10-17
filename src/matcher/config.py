@@ -337,7 +337,13 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # offer visa sponsorship", as the collector states that label, instead of
 # "Requires US citizenship or permanent residency" (checklist M110). A
 # sentence only, like 23.
-_MATCHER_VERSION_BASE = "25"
+# 26: a skill list with no inference stamp is ours outside hand-curated rows,
+# as the detail facts and the wire's skills_attribution already say (checklist
+# M22). An NSF REU or campus program list is no longer graded as a requirement:
+# no "Missing skills", no "n/m required", no score below unknown requirements,
+# and an unstamped preferred list is "Skills mentioned in the description". A
+# formula and sentences no hashed knob sees.
+_MATCHER_VERSION_BASE = "26"
 
 
 def _matcher_fingerprint() -> str:

@@ -7,15 +7,18 @@ knowledge base.
 """
 
 from src.matcher.ranker import SKILL_IMPLIES, _canonicalize_skill
-from src.recommender.resume_advisor import SKILL_COURSES, SKILL_TIMELINE, analyze_gaps
+from src.recommender.resume_advisor import SKILL_COURSES, SKILL_TIMELINE, analyze_gaps, stated_skills
 
 
 def _listed_skills(opportunity: dict, field: str) -> list[str]:
-    """Return normalized, usable skill strings from one evidence field."""
+    """Return normalized, usable skill strings from one evidence field.
+
+    A list that is ours (``stated_skills``) is no evidence of the target's.
+    """
     eligibility = opportunity.get("eligibility")
     if not isinstance(eligibility, dict):
         return []
-    skills = eligibility.get(field)
+    skills = stated_skills(opportunity, field)
     if not isinstance(skills, list):
         return []
     return [skill.strip() for skill in skills if isinstance(skill, str) and skill.strip()]

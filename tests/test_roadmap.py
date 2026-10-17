@@ -5,14 +5,18 @@ from fastapi.testclient import TestClient
 
 from backend.lib.blocking import BlockingWorkOverloaded
 from backend.main import app
+from backend.routes import matches as matches_module
 from backend.routes import roadmap as roadmap_route
+from src.recommender.resume_advisor import analyze_gaps
 from src.recommender.roadmap import prepare_roadmap
 
 client = TestClient(app)
 
 
-def _opp(required=None, preferred=None, *, is_active=True):
+def _opp(required=None, preferred=None, *, is_active=True, source="manual"):
+    # A hand-curated row states its lists; any other source's are ours (M22).
     return {
+        "source": source,
         "source_type": "campus_program",
         "eligibility": {"skills_required": required or [], "skills_preferred": preferred or []},
         "metadata": {"is_active": is_active},
@@ -106,6 +110,7 @@ def test_malformed_skill_members_do_not_become_evidence_or_break_valid_skills():
         {"hard_skills": []},
         [
             {
+                "source": "manual",
                 "eligibility": {
                     "skills_required": [None, {"name": "invented"}, " Python "],
                     "skills_preferred": "SQL",
@@ -398,3 +403,43 @@ def test_roadmap_bounded_worker_overload_is_retryable_503(monkeypatch):
 
     assert response.status_code == 503
     assert response.headers["retry-after"] == "5"
+
+
+def test_a_skill_list_that_is_ours_is_never_missing_or_listed_as_required(monkeypatch):
+    """M22: outside hand-curated rows a list is a keyword bank or tagger read of
+    prose, stamped or not (`skills_basis`, the detail facts' rule). The gap
+    analysis told a biology student to "Prioritize learning Python, MATLAB --
+    these are listed as required" for an NSF REU whose award abstract states
+    neither as a condition."""
+    profile = {"hard_skills": [], "home_school": "uiuc"}
+    stated = _opp(required=["Python", "MATLAB"])
+    unstamped = _opp(required=["Python", "MATLAB"], source="nsf_reu")
+    stamped = _opp(required=["Python", "MATLAB"])
+    stamped["metadata"]["inferred_fields"] = {"eligibility.skills_required": "rule:llm_tagger"}
+
+    gaps = analyze_gaps(profile, stated)
+    assert gaps["missing_skills"] == ["Python", "MATLAB"]
+    assert any("listed as required" in tip for tip in gaps["resume_tips"])
+    for ours in (unstamped, stamped):
+        gaps = analyze_gaps(profile, ours)
+        assert gaps["missing_skills"] == [] and gaps["preparation_timeline"] == []
+        assert gaps["suggested_coursework"] == []
+        assert not any("Python" in tip for tip in gaps["resume_tips"])
+
+    out = prepare_roadmap(profile, [stated, unstamped, stamped])
+    assert {s["skill"]: s["needed_by"] for s in out["skills"]} == {"Python": 1, "MATLAB": 1}
+    assert out["targets_with_skill_evidence"] == 1
+    assert out["targets_without_skill_evidence"] == 2
+
+    record = {**unstamped, "id": "nsf-reu-1", "source": "uiuc_sro", "title": "Summer research program",
+              "url": "https://example.edu/programs/summer", "source_url": "https://example.edu/programs/summer",
+              "description_clean": "A summer research program.", "deadline": "2099-12-31",
+              "application": {"application_url": "https://example.edu/programs/summer/apply"}}
+    monkeypatch.setattr(matches_module, "load_opportunities_by_id", lambda: {"nsf-reu-1": record})
+    response = client.post("/api/matches/nsf-reu-1/gaps", json=profile)
+    assert response.status_code == 200, response.text
+    assert response.json()["missing_skills"] == []
+    assert "listed as required" not in response.text
+    record["source"] = "manual"
+    response = client.post("/api/matches/nsf-reu-1/gaps", json=profile)
+    assert response.json()["missing_skills"] == ["Python", "MATLAB"]

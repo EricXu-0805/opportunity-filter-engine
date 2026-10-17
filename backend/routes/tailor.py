@@ -65,6 +65,7 @@ from backend.lib.evidence_map import (
 )
 from backend.lib.llm import chat_completion, is_configured, model_for
 from backend.lib.metering import metering_enabled, record_usage
+from backend.lib.opportunity_detail import skills_basis
 from backend.lib.prompt_budget import check_prompt_size
 from backend.lib.prompt_safety import sanitize_field as _sanitize_field
 from backend.lib.public_opportunity_detail import project_public_detail, writing_target_version
@@ -133,7 +134,10 @@ _MAX_SOURCE_TOTAL_CHARACTERS = _DEFAULT_BULLETS_PER_REQUEST * _MAX_BULLET_CHARAC
 # response with the target echo so a client can pair a suggestion set to the
 # exact target + code that produced it (W13; mirrors the W12 cold-email
 # provenance contract).
-TAILOR_PIPELINE_VERSION = "w14.2"
+# w14.3: a skill list with no inference stamp outside hand-curated rows is
+# no longer a requirement anchor or "Required skills" in the renovation plan
+# (M22).
+TAILOR_PIPELINE_VERSION = "w14.3"
 
 TAILOR_PROMPT_MAX_CHARACTERS = 120_000
 # The renovation plan is ID-only and must leave the rewrite and its review
@@ -296,8 +300,11 @@ def _skills_line(opp: dict, value: str) -> str:
     our guess a requirement steers the resume they actually send — a bench-and
     -field biology REU whose list reads "Python" pulls the rewrite toward one
     scripting course. Same wording the detail page uses for the same stamp.
+    Unstamped, the list is still ours outside hand-curated rows (M22): NSF REU
+    lists are a keyword bank run over the award abstract (``skills_basis``,
+    the rule the detail facts, the wire and the matcher use).
     """
-    if is_inferred(opp, "eligibility.skills_required"):
+    if skills_basis(opp, "eligibility.skills_required") is not None:
         return f"- Skills mentioned in the posting text (not stated requirements): {value}\n"
     return f"- Required skills: {value}\n"
 
@@ -343,12 +350,13 @@ def _student_context(profile_dict: dict) -> str:
 def _snapshot_anchors(source: dict, snapshot: dict) -> list[Anchor]:
     """Quotable target text for a writing snapshot, all from the same detached record.
 
-    Inferred skills are not requirements; a faculty "Research areas:" list counts
-    only as the record's own research_areas_raw; paper titles come only through
-    the publication trust gate (verified author id).
+    Inferred skills, stamped or not (``skills_basis``), are not requirements; a
+    faculty "Research areas:" list counts only as the record's own
+    research_areas_raw; paper titles come only through the publication trust
+    gate (verified author id).
     """
     eligibility = snapshot.get("eligibility") or {}
-    requirements = [] if is_inferred(source, "eligibility.skills_required") else [
+    requirements = [] if skills_basis(source, "eligibility.skills_required") is not None else [
         str(skill) for skill in eligibility.get("skills_required") or [] if str(skill).strip()]
     areas = (source.get("metadata") or {}).get("research_areas_raw")
     titles = [str(work.get("title") or "") for work in verified_recent_works(source) if isinstance(work, dict)]

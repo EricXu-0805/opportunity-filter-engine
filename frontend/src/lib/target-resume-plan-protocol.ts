@@ -3,7 +3,10 @@ import type { TargetResumeV1 } from './target-resume';
 import type { TargetResumeAiEvidence } from './target-resume-ai-protocol';
 
 /** v5 proposes no wording: every line a student is shown passes the faithfulness review, and the plan has none. */
-export const TARGET_RESUME_PLAN_VERSION = 'full-target-plan-v5' as const;
+export const TARGET_RESUME_PLAN_VERSION = 'full-target-plan-v6' as const;
+/** A v5 server refuses any block without an opportunity quote, so its plan is a v6 plan. The frontend deploys before
+ * the backend; v5 may be dropped once v6 has been live for a while. */
+export const TARGET_RESUME_PLAN_ACCEPTED_VERSIONS = [TARGET_RESUME_PLAN_VERSION, 'full-target-plan-v5'] as const;
 export const TARGET_RESUME_PLAN_MAX_BODY_BYTES = 2 * 1024 * 1024 + 64 * 1024;
 export const TARGET_RESUME_PLAN_MAX_PROMPT_CHARACTERS = 120_000;
 export interface TargetResumePlanOptions { target_pages: 1 | 2 }
@@ -49,7 +52,7 @@ export interface TargetResumePlanResponse {
   support_groups?: TargetResumeSupportGroup[];
   /** Absent in older responses; never infer it from pipeline_version. */
   check_version?: string | null;
-  version: 1; pipeline_version: typeof TARGET_RESUME_PLAN_VERSION;
+  version: 1; pipeline_version: typeof TARGET_RESUME_PLAN_ACCEPTED_VERSIONS[number];
   request_id: string; document_id: string; opportunity_id: string;
   document_signature: string; base: TargetResumeV1['base'];
   options: TargetResumePlanOptions;
