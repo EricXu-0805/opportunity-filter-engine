@@ -1496,7 +1496,7 @@ async def _scan_release_degradation(
 
 
 async def _scan_source_health(rec: _Recorder, summary: dict) -> None:
-    """source_health.json -> per-shard stale + fully-stale-school incidents.
+    """source_health.json -> per-shard stale, zero-output and fully-stale-school incidents.
 
     School-level freshness alone could not see this failure mode: UC Berkeley
     published a shard whose linguistics department had been dead for six
@@ -1506,7 +1506,7 @@ async def _scan_source_health(rec: _Recorder, summary: dict) -> None:
     healthy - and a school with no fresh source anywhere is escalated as its
     own incident rather than being averaged away.
 
-    Neither auto-resolves on a stale-age improvement alone: the ledger's
+    None of them auto-resolves on a stale-age improvement alone: the ledger's
     ``last_success_at`` only moves on a real successful harvest, so recovery
     is reported exactly when a source produced records again (the collector
     detector's job) - not because a clock rolled over.
@@ -1535,7 +1535,10 @@ async def _scan_source_health(rec: _Recorder, summary: dict) -> None:
 
     now = datetime.now(UTC)
     rows = source_health.source_rows(ledger, now)
-    stale_rows = [r for r in rows if r["freshness"] in ("stale", "unknown")]
+    # Only sources committed to rotation: a row no scheduled run reproduces
+    # (``eligible`` False, e.g. the ``manual`` seeds) ages without being broken.
+    stale_rows = [r for r in rows
+                  if r["eligible"] and r["freshness"] in ("stale", "unknown")]
     for row in stale_rows:
         summary["scanned"] += 1
         age = row["freshness_age_days"]
@@ -1570,6 +1573,51 @@ async def _scan_source_health(rec: _Recorder, summary: dict) -> None:
             failure_state="failed",
         )
 
+    # A declared-empty run is a success, so a source that keeps succeeding
+    # with nothing never reads stale above. Its last run that produced records
+    # (``last_nonzero_at``) is the evidence; a source with none recorded is
+    # left out rather than given an age nobody measured.
+    stale_days = source_health.staleness_thresholds()[1]
+    zero_rows = []
+    for row in rows:
+        nonzero_at = _parse_ts(row["last_nonzero_at"])
+        if not row["eligible"] or row["freshness"] not in ("fresh", "warn") \
+                or nonzero_at is None:
+            continue
+        age = (now - nonzero_at).total_seconds() / 86400.0
+        if age <= stale_days:
+            continue
+        zero_rows.append(row)
+        summary["scanned"] += 1
+        await rec.record(
+            kind="collector_failure",
+            dedup_key=f"collector_failure:zero_output:{row['source']}",
+            title=(
+                f"'{row['source']}' succeeds but has produced no records in "
+                f"{age:.0f} days"
+            ),
+            summary=(
+                f"last success {row['last_success_at']}; last run with records "
+                f"{row['last_nonzero_at']}; stale window {stale_days:g} days"
+            ),
+            detail={
+                "school": row["school"],
+                "source": row["source"],
+                "last_attempt_at": row["last_attempt_at"],
+                "last_success_at": row["last_success_at"],
+                "last_nonzero_at": row["last_nonzero_at"],
+                "current_record_count": row["current_record_count"],
+                "last_good_record_count": row["last_good_record_count"],
+                "zero_output_age_days": round(age, 2),
+                "stale_days": stale_days,
+                "status": row["status"],
+            },
+            scope=row["source"],
+            priority="normal",
+            # As for a suspicious zero: 'partial' would claim records arrived.
+            failure_state="failed",
+        )
+
     report = source_health.corpus_report(ledger, now)
     for school in report["fully_stale_schools"]:
         summary["scanned"] += 1
@@ -1590,6 +1638,7 @@ async def _scan_source_health(rec: _Recorder, summary: dict) -> None:
     summary["detectors"]["source_health"] = {
         "sources": len(rows),
         "stale": len(stale_rows),
+        "zero_output": len(zero_rows),
         "degraded": report["degraded_shard_count"],
         "failed": report["failed_shard_count"],
         "schools": report["school_count"],

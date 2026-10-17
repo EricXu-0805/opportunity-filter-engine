@@ -49,6 +49,15 @@ the old row until the old file's day retires it. A local run of every source
 school's own sources before its open ones, so a program moved out of the open
 bucket is missing after that run and lands on the next one.
 
+A program moved between a school's campus and lab sources stays in its file
+but gets another id. The run that writes the file retires its old row, and its
+new record takes the old row's place. If the old row was closed and shares the
+new record's URL or title, that happens once a run loads the record's page, as
+below; if both changed, the new record lands at once with its status unknown.
+A new record that is a near-duplicate of another row, even a retired one, is
+still dropped, so the program is not listed until that row stops matching
+(today only CMU's uro_getting_started would be affected if moved).
+
 A program whose page said applications are closed is not listed, so it holds
 nothing back, and its old row retires closed. A new record with the old row's
 URL is instead dropped as that row's near-duplicate (the log counts it in

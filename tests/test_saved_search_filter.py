@@ -21,6 +21,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from src.saved_searches.filter import (
     _matches_query,
+    _served_query_fields,
     days_until,
     filter_opportunities,
     match_filter,
@@ -306,6 +307,42 @@ class TestFilterOpportunities:
         opps = [_opp(id="a"), _opp(id="b")]
         out = filter_opportunities(opps, EMPTY_FILTERS)
         assert len(out) == 2
+
+
+class TestWebAddressesAreNotSearched:
+    """M104: the digest reads the words a student can read, as the results
+    page does, so a URL or bare domain in the description matches nothing."""
+
+    LINKED = "Details at https://croy.web.engr.illinois.edu/ and go.illinois.edu/FGSRP."
+
+    def test_a_web_address_in_the_description_matches_nothing(self):
+        opp = _opp(title="Robot Perception Lab", organization="Example University",
+                   keywords=["robotics"], description_clean=self.LINKED)
+        for query in ("illinois.edu", "illinois", "https", "croy", "fgsrp", "edu"):
+            assert _matches_query(opp, query) is False, query
+        assert _matches_query(opp, "details") is True
+
+    def test_a_word_beside_the_address_still_matches(self):
+        opp = _opp(description_clean="Field work across Illinois prairies; apply at go.illinois.edu/prairie.")
+        assert _matches_query(opp, "illinois") is True
+        assert _matches_query(opp, "illinois.edu") is False
+
+    def test_the_title_and_organization_still_match(self):
+        titled = _opp(title="Illinois Robotics Scholars", description_clean=self.LINKED)
+        organized = _opp(organization="University of Illinois", description_clean=self.LINKED)
+        assert _matches_query(titled, "illinois") is True
+        assert _matches_query(organized, "illinois") is True
+
+    def test_the_description_raw_fallback_is_read_the_same_way(self):
+        opp = _opp(description_clean=None, description_raw=self.LINKED)
+        assert _matches_query(opp, "illinois.edu") is False
+
+    def test_the_digest_and_the_results_page_agree(self):
+        from backend.routes.matches import _match_view_row
+
+        for text in (self.LINKED, "M.Phil and ASP.NET at lbl.gov's scintillator.lbl.gov site."):
+            listing = _opp(source="example_board", source_type="campus_program", description_clean=text)
+            assert _served_query_fields(listing)[3] == _match_view_row(listing).description
 
 
 class TestMatchingIds:

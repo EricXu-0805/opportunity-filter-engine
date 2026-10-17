@@ -1089,6 +1089,104 @@ class TestDroppedProgramRetirement:
         metadata = _stored(processed)[moved]["metadata"]
         assert (metadata["status"], metadata["is_active"]) == ("open", True)
 
+    @staticmethod
+    def _in_bucket(bucket, url):
+        """``alpha`` on ``url`` in the campus or the lab source of the school's
+        file, beside ``kept`` in the campus source."""
+        school = _listing_school("kept", *(["alpha"] if bucket == "campus" else []),
+                                 titles={"alpha": "Alpha Fellowship"}, urls={"alpha": url})
+        school["emit"]["lab"] = ("example_labs", "example", "unknown")
+        school["sources"][0]["seeds"] = [url]
+        school["sources"].append({"source_name": "example_labs", "source_type": cg.LAB, "emit": "lab",
+                                  "crawl": cg.STATIC, "seeds": [url], "programs": [
+                                      cg.program("alpha", "Alpha Fellowship", url, "Curated")] if bucket == "lab" else []})
+        return school
+
+    @pytest.mark.parametrize("before,after", [("campus", "lab"), ("lab", "campus")])
+    def test_a_closed_program_moved_between_the_campus_and_lab_sources_is_listed_when_its_page_reopens(
+            self, monkeypatch, processed, before, after):
+        """Moved between the campus and lab sources of its school's file, a
+        program keeps its key but gets a new id. Its old row, its key still
+        listed, never retired, and held its page against the new record as a
+        near-duplicate, so the program stayed hidden after its page reopened.
+        The new record replaces the old row, which retires, and waits for a run
+        that reads the page as a renamed one does."""
+        url = "https://example.edu/alpha/"
+        page = {"word": "Applications are now closed."}
+        monkeypatch.setattr(cg, "_fetch", lambda requested, **_: (
+            None if page["word"] is None else _StaticSoup(requested, page["word"])))
+        _refresh_school(self._in_bucket(before, url), deep=True)
+        old_id, new_id = _program_id(self._in_bucket(before, url), before, "alpha"), _program_id(
+            self._in_bucket(after, url), after, "alpha")
+
+        _refresh_school(self._in_bucket(after, url))
+
+        saved = _stored(processed)
+        assert new_id not in saved
+        old = saved[old_id]["metadata"]
+        assert (old["status"], old["is_active"], old["deactivation_reason"]) == ("closed", False, "no_longer_listed")
+        assert [row["id"] for row in saved.values() if row["metadata"].get("deactivation_reason")] == [old_id]
+
+        page["word"] = "Applications are now open!"
+        _refresh_school(self._in_bucket(after, url), deep=True)
+
+        saved = _stored(processed)
+        assert sorted((row["id"], row["metadata"]["status"]) for row in saved.values()
+                      if row["metadata"]["is_active"] and row["metadata"]["collector_key"] == "alpha") == [
+            (new_id, "open")]
+        assert [row["id"] for row in saved.values() if row["metadata"].get("deactivation_reason")] == [old_id]
+
+    @pytest.mark.parametrize("before,after", [("campus", "lab"), ("lab", "campus")])
+    def test_an_open_program_moved_between_the_campus_and_lab_sources_is_hidden_when_its_page_closes(
+            self, monkeypatch, processed, before, after):
+        """The old row stayed listed open after a deep run read the page
+        closed: the reading went to the new record, dropped as the old row's
+        near-duplicate."""
+        url = "https://example.edu/alpha/"
+        page = {"word": "Applications are now open!"}
+        monkeypatch.setattr(cg, "_fetch", lambda requested, **_: _StaticSoup(requested, page["word"]))
+        _refresh_school(self._in_bucket(before, url), deep=True)
+        old_id, new_id = _program_id(self._in_bucket(before, url), before, "alpha"), _program_id(
+            self._in_bucket(after, url), after, "alpha")
+
+        _refresh_school(self._in_bucket(after, url), deep=True)
+        page["word"] = "Applications are now closed."
+        _refresh_school(self._in_bucket(after, url), deep=True)
+
+        saved = _stored(processed)
+        assert not any(row["metadata"]["is_active"] for row in saved.values()
+                       if row["metadata"]["collector_key"] == "alpha")
+        assert (saved[new_id]["metadata"]["status"], saved[new_id]["metadata"]["is_active"]) == ("closed", False)
+        old = saved[old_id]["metadata"]
+        assert (old["status"], old["is_active"], old["deactivation_reason"]) == ("open", False, "no_longer_listed")
+        assert [row["id"] for row in saved.values() if row["metadata"].get("deactivation_reason")] == [old_id]
+
+    def test_a_near_duplicate_of_another_program_is_still_dropped_and_retires_nothing(self, processed):
+        """Only a record under a row's own key replaces it. A new key titled
+        like a program still listed in its source, or on another school's
+        page, is that row's near-duplicate, as before."""
+        url = "https://example.edu/alpha/"
+        before = self._in_bucket("lab", url)
+        _refresh_school(before)
+        other_school = {**before, "school_slug": "other", "emit": {"campus": ("other_programs", "other", "campus")}}
+        theirs = cg._normalize_program(other_school, other_school["sources"][0], cg.program(
+            "theirs", "Their Fellowship", "https://example.edu/theirs/", "Curated"))
+        rows = json.loads(processed.read_text(encoding="utf-8"))
+        processed.write_text(json.dumps([*rows, theirs]), encoding="utf-8")
+        after = self._in_bucket("lab", url)
+        after["sources"][1]["programs"].append(
+            cg.program("alpha_twin", "Alpha Fellowship", "https://example.edu/alpha-twin/", "Curated"))
+        after["sources"][1]["programs"].append(
+            cg.program("their_twin", "Twin Grant", theirs["url"], "Curated"))
+
+        _refresh_school(after)
+
+        saved = _stored(processed)
+        assert _program_id(after, "lab", "alpha_twin") not in saved
+        assert _program_id(after, "lab", "their_twin") not in saved
+        assert all(row["metadata"]["is_active"] and "deactivation_reason" not in row["metadata"]
+                   for row in saved.values())
+
     @pytest.mark.parametrize("unread", ["page_fails", "quick_run"])
     def test_a_program_renamed_back_after_its_page_closed_waits_for_a_run_that_reads_its_page(
             self, monkeypatch, processed, unread):

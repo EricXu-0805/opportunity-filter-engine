@@ -13,7 +13,8 @@ logic across these dimensions:
   - filters.onCampus in {'', 'yes', 'no'}
   - filters.deadline in {'', 'rolling', '7', '14', '30', 'passed'}
   - query text search across title/organization/keywords/description,
-    read as the card serves them (after the public contact boundary)
+    read as the card serves them (after the public contact boundary), with
+    web addresses in the description left out as the results page does
 
 Deliberately omitted: filters.minScore. Scoring requires the user's
 profile, which the cron doesn't have access to (and we don't want to
@@ -38,7 +39,7 @@ from datetime import date, datetime
 
 from backend.lib.public_projection import redact_embedded_emails
 from src.evidence import faculty_contact_claims_unverified
-from src.matcher.ranker import _word_re, expand_search_aliases
+from src.matcher.ranker import _word_re, expand_search_aliases, without_web_addresses
 
 
 def days_until(deadline: str | None) -> int | None:
@@ -118,7 +119,8 @@ def _served_query_fields(opp: dict) -> tuple:
     """The fields a query reads, as the record's card serves them.
 
     The card passes each of them through the public contact boundary, so the
-    query reads what that boundary returns rather than the stored text.
+    query reads what that boundary returns rather than the stored text. The
+    description's web addresses are left out, as on the results page (M104).
     """
     fields = [
         opp.get("title") or "",
@@ -127,7 +129,9 @@ def _served_query_fields(opp: dict) -> tuple:
         opp.get("description_clean") or opp.get("description_raw") or "",
     ]
     fields.extend(kw for kw in opp.get("keywords") or [] if isinstance(kw, str))
-    return tuple(redact_embedded_emails(field) for field in fields)
+    served = [redact_embedded_emails(field) for field in fields]
+    served[3] = without_web_addresses(served[3])
+    return tuple(served)
 
 
 def _query_fields(opp: dict, served: dict | None) -> tuple:
