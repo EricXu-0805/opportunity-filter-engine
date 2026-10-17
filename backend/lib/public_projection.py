@@ -39,20 +39,28 @@ _EMAIL_ADDRESS_LITERAL_RE = re.compile(
 )
 _CONTACT_AT_DELIMITER_RE = re.compile(
     r"(?<=\w)(?:\s*@\s*|\s*(?:\[|\(|\{)\s*at\s*(?:\]|\)|\})\s*|"
-    r"\s*/\s*at\s*/\s*|-at-|\s*艾特\s*)(?=\w)",
+    r"\s*/\s*at\s*/\s*|\s*艾特\s*)(?=\w)",
     flags=re.IGNORECASE,
 )
 _CONTACT_DOT_DELIMITER_RE = re.compile(
     r"(?<=\w)(?:\s*(?:\[|\(|\{)\s*(?:dot|\.)\s*(?:\]|\)|\})\s*|"
-    r"\s*/\s*(?:dot|\.)\s*/\s*|-dot-|\s*(?:点|。)\s*)(?=\w)",
+    r"\s*/\s*(?:dot|\.)\s*/\s*|\s*(?:点|。)\s*)(?=\w)",
     flags=re.IGNORECASE,
 )
-# An ``at`` or ``dot`` wrapped in angle brackets or hyphens is a delimiter like
-# the wrappings above ("jane <dot> 12 <at> osu <dot> edu" on an Ohio State
-# directory, "jane-at-usc-dot-edu" on a USC profile). The HTML parser would
-# drop ``<at>``/``<dot>`` as unknown tags, so they are read as
-# ``[at]``/``[dot]`` before it runs.
+# An ``at`` or ``dot`` wrapped in angle brackets is a delimiter like the
+# wrappings above ("jane <dot> 12 <at> osu <dot> edu" on an Ohio State
+# directory). The HTML parser drops ``<at>``/``<dot>`` as unknown tags, so the
+# text is also checked with them read as ``[at]``/``[dot]``.
 _CONTACT_ANGLE_DELIMITER_RE = re.compile(r"<\s*(at|dot)\s*>", flags=re.IGNORECASE)
+# Hyphens wrap ``at`` and ``dot`` only as a whole address, an ``-at-`` followed
+# by a host with a ``-dot-`` ("jane-at-usc-dot-edu" on a USC profile), so links
+# and file names such as "stay-at-home.com" or "Research-at-Rice.pdf" stay
+# as they are.
+_CONTACT_HYPHEN_ADDRESS_RE = re.compile(
+    r"(?<=\w)-at-(?=[A-Z0-9-]{0,63}?-dot-\w)[A-Z0-9-]+",
+    flags=re.IGNORECASE,
+)
+_CONTACT_HYPHEN_DOT_RE = re.compile(r"-dot-(?=\w)", flags=re.IGNORECASE)
 _PLAIN_WORD_DOT_EMAIL_RE = re.compile(
     r"(?<![\w.+-])(?P<local>[A-Z0-9._%+-]+)\s+at\s+"
     r"(?P<first_domain>[A-Z0-9-]+)\s+dot\s+"
@@ -201,15 +209,14 @@ def _format_control_views(text: str) -> tuple[str, str]:
     )
 
 
-def _contact_detection_view(
-    value: str,
-) -> tuple[str, str, str, str, str, str, bool]:
-    """Return a bounded normalization used only to detect hidden emails.
+def _decoded_contact_text(value: str) -> tuple[str, bool]:
+    """Return ``value`` decoded only to detect hidden emails, and whether the
+    bounded decoding reached a fixed point.
 
-    The original display value is never percent-decoded. This separate view
-    closes common scraper evasions (HTML entities, repeated percent encoding,
-    full-width forms, zero-width controls, and ``at``/``dot`` delimiters)
-    without rewriting ordinary public text that does not contain a contact.
+    The original display value is never percent-decoded. This separate text
+    closes common scraper evasions (HTML entities, repeated percent encoding
+    and full-width forms) without rewriting ordinary public text that does not
+    contain a contact.
     """
 
     text = value
@@ -227,7 +234,23 @@ def _contact_detection_view(
             reached_fixed_point = True
             break
         text = decoded
-    text = _CONTACT_ANGLE_DELIMITER_RE.sub(r"[\1]", text)
+    return text, reached_fixed_point
+
+
+def _contact_detection_view(
+    text: str,
+    reached_fixed_point: bool,
+) -> tuple[str, str, str, str, str, str, bool]:
+    """Return the views of decoded ``text`` used only to detect hidden emails.
+
+    They close markup splits, zero-width controls and ``at``/``dot``
+    delimiters on top of the decoding of ``_decoded_contact_text``.
+    """
+
+    text = _CONTACT_HYPHEN_ADDRESS_RE.sub(
+        lambda match: "@" + _CONTACT_HYPHEN_DOT_RE.sub(".", match.group()[4:]),
+        text,
+    )
     # Some directory pages split an address across presentational tags or
     # comments (``jane<span>@</span>example<span>.</span>edu``). Keep both
     # views: the markup-bearing form catches addresses inside tag attributes,
@@ -304,6 +327,18 @@ def contains_embedded_email(value: object) -> bool:
         )
     ):
         return False
+    decoded_text, reached_fixed_point = _decoded_contact_text(value)
+    # Check the text as the HTML parser reads it, where dropping a stray
+    # ``<at>`` tag joins "jane<at>@example.edu", and also with ``<at>`` and
+    # ``<dot>`` read as delimiters.
+    angle_text = _CONTACT_ANGLE_DELIMITER_RE.sub(r"[\1]", decoded_text)
+    return _decoded_text_has_contact(decoded_text, reached_fixed_point) or (
+        angle_text != decoded_text
+        and _decoded_text_has_contact(angle_text, reached_fixed_point)
+    )
+
+
+def _decoded_text_has_contact(text: str, reached_fixed_point: bool) -> bool:
     (
         detection_view,
         explicit_marker_view,
@@ -313,7 +348,7 @@ def contains_embedded_email(value: object) -> bool:
         markup_format_separator_view,
         unresolved_nested_escape,
     ) = (
-        _contact_detection_view(value)
+        _contact_detection_view(text, reached_fixed_point)
     )
     if unresolved_nested_escape:
         return True

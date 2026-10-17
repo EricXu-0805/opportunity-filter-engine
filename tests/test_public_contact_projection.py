@@ -82,6 +82,14 @@ CONTACT_VARIANTS = [
     # The shape of an Ohio State directory keyword (M119).
     "jane <dot> 244 <at> example <dot> edu",
     "jane-at-example-dot-edu",
+    "jane-at-cs-dot-example-dot-edu",
+    # A stray <at> or <dot> tag inside an address the HTML parser joins.
+    "jane<at>@example.edu",
+    "jane@<at>example.edu",
+    "jane<dot>@example.edu",
+    "jane@example<dot>.edu",
+    "jane<at>@</at>example.edu",
+    "jane&lt;at&gt;@example.edu",
 ]
 
 
@@ -169,6 +177,22 @@ def test_contact_detection_fails_closed_for_visible_encoded_and_obfuscated_forms
 def test_contact_detection_preserves_common_non_contact_phrases(value: str):
     assert not contains_embedded_email(value)
     assert redact_embedded_emails(value) == value
+
+
+@pytest.mark.parametrize(
+    "link",
+    [
+        "https://www.stay-at-home.com/",
+        "https://value-at-risk.org/",
+        "https://www.example.edu/news/life-at-penn.html",
+        "https://example.edu/files/Research-at-Rice.pdf",
+        "https://example.edu/files/Lab-at-a-glance.pdf",
+        "https://careers-at-example.com/jobs",
+    ],
+)
+def test_a_hyphen_wrapped_at_in_a_link_or_file_name_is_not_a_contact(link: str):
+    assert not contains_embedded_email(link)
+    assert safe_public_http_url(link) == link
 
 
 def test_oversized_text_has_an_explicit_fail_closed_policy():
