@@ -662,6 +662,47 @@ class TestMedicalSchoolDepartments:
         record = fg._normalize(jhu_faculty.SCHOOL, dept, spec)
         assert record["department"] == "School of Medicine — " + department
 
+    @pytest.mark.parametrize("title, department", [
+        # A second appointment after the first-listed department, as Feinberg
+        # files them; the harvest's five-word cut ends most of them mid-name.
+        ("Professor of Biomedical Engineering and Medicine", "Biomedical Engineering"),
+        ("Professor of Biomedical Engineering, Computer Science, and",
+         "Biomedical Engineering"),
+        ("Professor of Biomedical Engineering, Professor of Urology",
+         "Biomedical Engineering"),
+        ("Professor of Neuroscience and of Psychological and", "Neuroscience"),
+        ("Professor of Oncology and Associate", "Oncology"),
+        ("Professor of Orthopaedic Surgery, Professor of Physical", "Orthopaedic Surgery"),
+        ("Associate Professor of Psychiatry and Behavioral Sciences Clinical",
+         "Psychiatry and Behavioral Sciences"),
+    ])
+    def test_jhu_second_appointment_keeps_the_first_department(self, title, department):
+        from src.collectors.schools import jhu_faculty
+        dept = _dept(jhu_faculty, "SOM")
+        appointment = title.split(" of ", 1)[1]
+        row = {"name": "Dana Q. Example", "title": title,
+               "email": "dexample1@jh.edu",
+               "url": "https://profiles.hopkinsmedicine.org/provider/dana-example/1",
+               "department": "School of Medicine — " + appointment}
+        [spec] = fg._json_dir_records(dept, dept["json_dir"], [row])
+        record = fg._normalize(jhu_faculty.SCHOOL, dept, spec)
+        assert record["department"] == "School of Medicine — " + department
+
+    @pytest.mark.parametrize("appointment", [
+        # Another institution's title read off a biography.
+        "Neurology and Neurosciences at the",
+        "Dermatology, Dr. Example was the",
+        "Medicine, George Washington Univ. School",
+        "Surgery , Uniformed Services University,",
+        # The first-listed part is not a department #1062 files.
+        "Biophysics and Biophysical Chemistry, Professor of Medicine",
+        "Electrical Engineering and Medicine",
+    ])
+    def test_jhu_second_appointment_needs_an_accepted_first_department(self, appointment):
+        from src.collectors.schools import jhu_faculty
+        assert fg._json_department(
+            "School of Medicine — " + appointment, jhu_faculty._SOM_DEPARTMENTS) == ""
+
     def test_jhu_heading_word_inside_the_title_is_not_a_cut(self):
         from src.collectors.schools import jhu_faculty
         units = jhu_faculty._SOM_DEPARTMENTS
