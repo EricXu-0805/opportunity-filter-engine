@@ -152,6 +152,21 @@ describe('Home foreground reads with real profile coordination', () => {
     expect(result.current.viewSnapshot?.revision).toBe(2); expect(service.commit).not.toHaveBeenCalled();
   });
 
+  it('keeps a status click made during a read of replacement source text, and takes the new résumé with its names', async () => {
+    remote = { ...BASE, resume_text: 'Original exact resume source', coursework: ['Original course'],
+      courses: [{ name: 'Original course', source: 'resume' }], experience_entries: [], resume_master: null };
+    const { result } = await start(); const held = await holdPeriodic();
+    const marked = [{ name: 'Original course', status: 'completed' as const, source: 'resume' as const }];
+    act(() => { result.current.update('courses', marked, 'status'); });
+    publish({ resume_text: 'Replacement cloud resume source', coursework: ['Cloud replacement course'] });
+    held.resolve(row()); await drain();
+    // A status click writes the course list alone: the names stay the
+    // résumé's, so the new résumé comes with its own.
+    expect(result.current.profile).toMatchObject({ resume_text: 'Replacement cloud resume source',
+      courses: marked, coursework: ['Cloud replacement course'] });
+    expect(result.current.viewSnapshot?.renderedProfile).toMatchObject({ resume_text: 'Replacement cloud resume source', courses: marked, coursework: ['Cloud replacement course'] });
+  });
+
   it('starts the next interval after completion; unchanged reads preserve save status and never autosave', async () => {
     const { result } = await start(); const status = result.current.saveStatus;
     const profile = structuredClone(result.current.profile);

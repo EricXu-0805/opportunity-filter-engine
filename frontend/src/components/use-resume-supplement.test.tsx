@@ -49,14 +49,14 @@ describe('resume supplement controller with the real profile coordinator', () =>
     expect(hook.result.current.view).toMatchObject({ revision: 7, baseProfile: base, renderedProfile: base });
     expect(Object.isFrozen(hook.result.current.view?.renderedProfile)).toBe(true);
   });
-  it('commits one complete résumé bundle and accepts an exact confirmed entry and activity reference', async () => {
+  it('commits one complete four-field bundle and accepts an exact confirmed entry and activity reference', async () => {
     const { result, accepted } = await ready(); const before = result.current.view!;
     await act(async () => { await result.current.confirm(draft(), result.current.baseline('activity')!); });
     expect(result.current.phase).toBe('saved'); expect(result.current.confirmedEntryId).toBe('stable-entry');
     expect(commit).toHaveBeenCalledTimes(1);
     const intent = commit.mock.calls[0][0];
     expect(Object.keys(intent.patch).sort()).toEqual([...sync.RESUME_BUNDLE].sort());
-    expect(intent.patch.resume_text).toBe(base.resume_text); expect(intent.patch).not.toHaveProperty('coursework');
+    expect(intent.patch.resume_text).toBe(base.resume_text); expect(intent.patch.coursework).toEqual(base.coursework);
     expect(intent.patch.experience_entries).toEqual([{ id: 'stable-entry', revision: 1, status: 'confirmed',
       source: { kind: 'manual' }, text: 'Task: Built 中文 tooling\nI did not lead the team.' }]);
     expect((intent.patch.resume_master as ProfileData['resume_master'])?.activities[0].details).toEqual([{ id: 'stable-entry', revision: 1 }]);
@@ -115,11 +115,12 @@ describe('resume supplement controller with the real profile coordinator', () =>
     expect(result.current.phase).toBe('stale'); expect(accepted).not.toHaveBeenCalled();
     expect(result.current.confirmedEntryId).toBeNull();
   });
-  it.each(['resume_text', 'experience_entries', 'resume_master'] as const)(
+  it.each(['resume_text', 'coursework', 'experience_entries', 'resume_master'] as const)(
     'rejects confirmation after a change to bundle member %s', async (key) => {
       const { result } = await ready(); const against = result.current.baseline('activity')!;
       const changed = structuredClone(base);
       if (key === 'resume_text') changed.resume_text = '';
+      if (key === 'coursework') changed.coursework = ['Different course'];
       if (key === 'experience_entries') changed.experience_entries = [{ id: 'other', revision: 1, status: 'rejected', text: 'Other', source: { kind: 'manual' } }];
       if (key === 'resume_master') changed.resume_master!.activities = [];
       load.mockResolvedValue(cloud(changed, 8)); await sync.hydrateProfile();

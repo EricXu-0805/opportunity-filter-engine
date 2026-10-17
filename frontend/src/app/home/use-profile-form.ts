@@ -2487,13 +2487,14 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         const moved = (key: string) => (fieldEpochRef.current.get(key) ?? 0) !== atIssue.get(key);
         const preserve = new Set<string>(PROFILE_KEYS.filter((key) => moved(key)
           || unrepresented.has(key) || owed.has(key) || (disputed.has(key) && !notTypedHere.has(key))));
-        const sourceBundle = ['resume_text', 'experience_entries', 'resume_master'] as const;
+        const sourceBundle = ['resume_text', 'coursework', 'experience_entries', 'resume_master'] as const;
         // The source and its confirmations are one revision, never a mixture
         // of the old editor's metadata with the newly read résumé text.
         if (sourceBundle.some((key) => preserve.has(key))) for (const key of sourceBundle) preserve.add(key);
-        // A course list and its names are one edit (courseFields).
-        const courseKeys = ['courses', 'coursework'] as const;
-        if (courseKeys.some((key) => preserve.has(key))) for (const key of courseKeys) preserve.add(key);
+        // Names kept here keep the course list they were written with
+        // (courseFields). A status click writes the list alone, so the names
+        // and the résumé are taken from the read.
+        if (preserve.has('coursework')) preserve.add('courses');
         for (const key of preserve) {
           if (key in live) combined[key] = live[key]; else delete combined[key];
         }
