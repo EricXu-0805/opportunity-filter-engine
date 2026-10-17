@@ -20,7 +20,7 @@ env:
 
 jobs:
   refresh:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       # W15: the cron-response checker below lives in the repo, so this job

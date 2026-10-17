@@ -74,7 +74,7 @@ concurrency:
 
 jobs:
   refresh:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # The refresh step stops scraping at its source budget (below), but the
     # run is not done then: the PR step waits for the data PR's CI, 20-37 min
     # on most days and up to 67 when main moved and the PR was replayed
