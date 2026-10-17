@@ -68,6 +68,8 @@ from backend.schemas import (
 )
 from src import evidence as evidence_module
 from src.evidence import (
+    configured_note_last_date,
+    configured_note_window_passed,
     faculty_safe_eligibility,
     faculty_safe_public_record,
     record_kind,
@@ -307,7 +309,10 @@ def _match_view_row(
     which stays only on a listing target_truth calls actionable. A visible row
     is actionable on the day it is ranked, and a record the calendar closes
     never reopens, so a row built on an earlier day of the same corpus
-    generation carries the title its card would carry on the ranking day.
+    generation carries the title its card would carry on the ranking day. The
+    exception is a configured program whose deadline note's dates are still
+    ahead (M90): its suffix goes on a later day while the row stays visible,
+    so `_snapshot_view_rows` does not keep its row past the ranking.
     """
     safe = faculty_safe_public_record(opportunity)
     card = {
@@ -1207,6 +1212,11 @@ def _release_universe(corpus: list[dict]) -> list[dict]:
         return opportunities
 
 
+def _title_turns_later(opportunity: dict) -> bool:
+    """Whether a later UTC day can still drop this row's title suffix (M90)."""
+    return configured_note_last_date(opportunity) is not None and not configured_note_window_passed(opportunity)
+
+
 def _snapshot_view_rows(
     opportunities: list[dict],
     visible_ids: set[str],
@@ -1214,7 +1224,9 @@ def _snapshot_view_rows(
 ) -> dict[str, _MatchViewRow]:
     """View rows for a ranking's visible ids, built once per record and generation.
 
-    Keyed like the cards it replaces: the last record carrying an id wins.
+    Keyed like the cards it replaces: the last record carrying an id wins. A
+    row whose title a later day can change (`_title_turns_later`) is built for
+    each ranking instead.
     """
     with _match_inflight_lock:
         shared = _match_view_rows if corpus_identity == _active_corpus_identity else {}
@@ -1227,7 +1239,12 @@ def _snapshot_view_rows(
             continue
         row = shared.get(id(opportunity))
         if row is None or row.record is not opportunity:
-            row = built[id(opportunity)] = _match_view_row(opportunity, redacts)
+            # Asked before the build: dates only move forward, so a row whose
+            # window had ended is built without the suffix even across 00:00 UTC.
+            turns_later = _title_turns_later(opportunity)
+            row = _match_view_row(opportunity, redacts)
+            if not turns_later:
+                built[id(opportunity)] = row
         rows[opportunity_id] = row
     # A reload may have emptied the table for the next generation while these
     # were built. Share them only if this generation is still the active one,

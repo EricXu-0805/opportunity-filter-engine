@@ -99,6 +99,9 @@ def _records() -> list[dict]:
         _listing("suffix-open", title="Summer Lab (applications open)"),
         _listing("suffix-closed", title="Summer Lab (applications open)",
                  metadata={"is_active": True, "listing_status": "closed"}),
+        _listing("suffix-note-passed", title="Summer Lab (applications open)", source="jhu_research_programs",
+                 deadline=None, metadata={"is_active": True,
+                                          "deadline_note": "2025 cohort applications were due January 24, 2025"}),
         _listing("passed", deadline="2020-01-01"),
         _listing("estimate", deadline_is_estimate=True),
         _listing("inferred-deadline",
@@ -369,6 +372,37 @@ def test_rows_of_the_active_generation_are_built_once(view_row_table):
     assert all(first[record["id"]].record is record for record in corpus)
 
 
+def _petit_program() -> dict:
+    return _listing("petit", title="Petit Scholars (applications open)", source="gatech_research_programs",
+                    deadline=None, metadata={"is_active": True, "deadline_note": "2027 cohort applications were due "
+                                             "Sept. 15, 2026; dates for the next cohort are not posted yet"})
+
+
+def test_a_row_whose_note_window_ends_later_is_not_kept_past_its_day(view_row_table, monkeypatch):
+    """M90: a configured program's suffix goes once every date its deadline
+    note gives is two UTC days back, and the row stays visible. A row shared
+    from an earlier day of the generation would keep the suffix searchable
+    after the card dropped it."""
+    from src import evidence as evidence_module
+
+    utc = {"today": date(2026, 9, 16)}
+    monkeypatch.setattr(evidence_module, "_today", lambda: utc["today"])
+    program = _petit_program()
+    corpus = [program, _listing("kept")]
+    identity = m_module._activate_corpus_generation(corpus)
+    ids = {record["id"] for record in corpus}
+
+    assert m_module._snapshot_view_rows(corpus, ids, identity)["petit"].title == "Petit Scholars (applications open)"
+    utc["today"] = date(2026, 9, 17)
+    rows = m_module._snapshot_view_rows(corpus, ids, identity)
+
+    assert rows["petit"].title == "Petit Scholars"
+    # Only that row is built again, and once its window has ended it is shared.
+    assert view_row_table == ["petit", "kept", "petit"]
+    m_module._snapshot_view_rows(corpus, ids, identity)
+    assert view_row_table == ["petit", "kept", "petit"]
+
+
 def test_a_reload_during_a_build_leaves_no_old_row_in_the_table(view_row_table, monkeypatch):
     """The ranking keeps its rows, but a reload that emptied the table while
     they were built must not find them there: each one holds an old record."""
@@ -403,3 +437,28 @@ def test_no_ascii_character_is_a_format_control():
         spaced = "".join(" " if unicodedata.category(c) == "Cf" else c for c in text)
         removed = "".join(c for c in text if unicodedata.category(c) != "Cf")
         assert _format_control_views(text) == (spaced, removed)
+
+
+def test_a_row_built_across_midnight_utc_is_not_shared(view_row_table, monkeypatch):
+    """Whether a row's title can still change is asked before the row is
+    built: a row built on 16 Sept with the suffix and judged on 17 Sept would
+    be shared with it for the rest of the generation (review M90)."""
+    from src import evidence as evidence_module
+
+    utc = {"today": date(2026, 9, 16)}
+    monkeypatch.setattr(evidence_module, "_today", lambda: utc["today"])
+    recording = m_module._match_view_row
+
+    def build_then_midnight(opportunity, redacts=m_module.contains_embedded_email):
+        row = recording(opportunity, redacts)
+        utc["today"] = date(2026, 9, 17)
+        return row
+
+    monkeypatch.setattr(m_module, "_match_view_row", build_then_midnight)
+    corpus = [_petit_program()]
+    identity = m_module._activate_corpus_generation(corpus)
+    assert m_module._snapshot_view_rows(corpus, {"petit"}, identity)["petit"].title == (
+        "Petit Scholars (applications open)")
+    monkeypatch.setattr(m_module, "_match_view_row", recording)
+
+    assert m_module._snapshot_view_rows(corpus, {"petit"}, identity)["petit"].title == "Petit Scholars"
