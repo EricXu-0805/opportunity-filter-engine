@@ -906,6 +906,9 @@ def _common_parts(
         faculty_title=faculty_title, research_areas_raw=research_areas_raw,
         is_faculty=is_faculty,
         faculty_is_professor=faculty_is_professor,
+        # A listing whose source states no topics: the template opener names
+        # it by its title (_p1_research_hook). research_topic is unchanged.
+        opener_names_title=not is_faculty and not _topic_keywords(opportunity),
         # Internal callers supply already-admitted evidence. Public routes
         # populate this only after the structured confirmation/source gate.
         resume_bullets=[str(b) for b in (resume_bullets or []) if str(b).strip()],
@@ -1281,6 +1284,17 @@ def _p1_research_hook(p: dict) -> str:
         topic = ""
     if area and area.lower() in _BROAD_FIELDS:
         area = ""
+    # A listing with no source-stated topics has only its description's first
+    # sentence cut at 80 characters as a topic ("your work on SURF is an 8-week
+    # on-campus summer program (typically starting in early June) wh"). Name
+    # the posting by its own title instead; a title too long for the sentence
+    # is left out whole, never cut, and the opener falls back to the lab line.
+    # The area is a word picked out of that same title, so it is not used.
+    posting = ""
+    if p.get("opener_names_title"):
+        topic = area = ""
+        title = " ".join(str(p.get("title") or "").split())
+        posting = title if len(title) < 120 else ""
     target = topic if topic and len(topic) < 120 else area
     interest = _short_interest(p["research_interests"])
     lab = p["lab"]
@@ -1298,7 +1312,9 @@ def _p1_research_hook(p: dict) -> str:
             sentences.append(f'My research interest is: “{interest}{ending}”')
         else:
             sentences.append(f"I am interested in {interest}.")
-    if target:
+    if posting:
+        sentences.append(f"I would like to learn more about “{posting}”.")
+    elif target:
         where = f" in {lab_ref}" if lab_ref else ""
         sentences.append(f"I would like to learn more about your work on {target}{where}.")
     elif lab_ref:
@@ -1314,8 +1330,9 @@ def _chosen_paper_sentence(p: dict) -> str:
     verified work — 'Your recent paper "<title>" (2026) caught my attention.'
     — which states a reaction the student never reported. With no paper
     chosen nothing is added: the opening ends on ``_p1_research_hook``'s
-    research-direction sentence when the record has a usable topic, area or
-    lab name, and otherwise on the student's interest or introduction."""
+    research-direction sentence when the record has a usable topic, listing
+    title, area or lab name, and otherwise on the student's interest or
+    introduction."""
     reading = p.get("contact_paper_reading")
     return f" {reading}" if reading else ""
 
