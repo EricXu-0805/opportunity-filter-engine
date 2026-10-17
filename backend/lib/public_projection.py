@@ -53,14 +53,17 @@ _CONTACT_DOT_DELIMITER_RE = re.compile(
 # text is also checked with them read as ``[at]``/``[dot]``.
 _CONTACT_ANGLE_DELIMITER_RE = re.compile(r"<\s*(at|dot)\s*>", flags=re.IGNORECASE)
 # Hyphens wrap ``at`` and ``dot`` only as a whole address, an ``-at-`` followed
-# by a host with a ``-dot-`` ("jane-at-usc-dot-edu" on a USC profile), so links
-# and file names such as "stay-at-home.com" or "Research-at-Rice.pdf" stay
-# as they are.
+# by a host with a ``-dot-`` ("jane-at-usc-dot-edu" on a USC profile), and
+# only in free text: a link or path ("https://x.edu/look-at-the-dot-plot", a
+# word with a ``/``) is read as it stands, and so is a value that is one word
+# with ``://``, the shape of every URL field.
 _CONTACT_HYPHEN_ADDRESS_RE = re.compile(
     r"(?<=\w)-at-(?=[A-Z0-9-]{0,63}?-dot-\w)[A-Z0-9-]+",
     flags=re.IGNORECASE,
 )
 _CONTACT_HYPHEN_DOT_RE = re.compile(r"-dot-(?=\w)", flags=re.IGNORECASE)
+_CONTACT_HYPHEN_WORD_RE = re.compile(r"[^\s<>\"']+")
+_ONE_WORD_RE = re.compile(r"\S+")
 _PLAIN_WORD_DOT_EMAIL_RE = re.compile(
     r"(?<![\w.+-])(?P<local>[A-Z0-9._%+-]+)\s+at\s+"
     r"(?P<first_domain>[A-Z0-9-]+)\s+dot\s+"
@@ -247,10 +250,6 @@ def _contact_detection_view(
     delimiters on top of the decoding of ``_decoded_contact_text``.
     """
 
-    text = _CONTACT_HYPHEN_ADDRESS_RE.sub(
-        lambda match: "@" + _CONTACT_HYPHEN_DOT_RE.sub(".", match.group()[4:]),
-        text,
-    )
     # Some directory pages split an address across presentational tags or
     # comments (``jane<span>@</span>example<span>.</span>edu``). Keep both
     # views: the markup-bearing form catches addresses inside tag attributes,
@@ -330,12 +329,43 @@ def contains_embedded_email(value: object) -> bool:
     decoded_text, reached_fixed_point = _decoded_contact_text(value)
     # Check the text as the HTML parser reads it, where dropping a stray
     # ``<at>`` tag joins "jane<at>@example.edu", and also with ``<at>`` and
-    # ``<dot>`` read as delimiters.
+    # ``<dot>`` read as delimiters, and with a hyphen-written address in free
+    # text read as one. Each extra reading only adds to the first.
     angle_text = _CONTACT_ANGLE_DELIMITER_RE.sub(r"[\1]", decoded_text)
-    return _decoded_text_has_contact(decoded_text, reached_fixed_point) or (
-        angle_text != decoded_text
-        and _decoded_text_has_contact(angle_text, reached_fixed_point)
+    hyphen_text = (
+        decoded_text
+        if "://" in value and _ONE_WORD_RE.fullmatch(value)
+        else _free_text_hyphen_addresses(decoded_text)
     )
+    return (
+        _decoded_text_has_contact(decoded_text, reached_fixed_point)
+        or (
+            angle_text != decoded_text
+            and _decoded_text_has_contact(angle_text, reached_fixed_point)
+        )
+        or (
+            hyphen_text != decoded_text
+            and _decoded_text_has_contact(hyphen_text, reached_fixed_point)
+        )
+    )
+
+
+def _free_text_hyphen_addresses(text: str) -> str:
+    """``text`` with "jane-at-usc-dot-edu" read as "jane@usc.edu" in every
+    word that is not a link or path."""
+
+    if _CONTACT_HYPHEN_ADDRESS_RE.search(text) is None:
+        return text
+
+    def read_word(word: re.Match[str]) -> str:
+        if "/" in word.group():
+            return word.group()
+        return _CONTACT_HYPHEN_ADDRESS_RE.sub(
+            lambda match: "@" + _CONTACT_HYPHEN_DOT_RE.sub(".", match.group()[4:]),
+            word.group(),
+        )
+
+    return _CONTACT_HYPHEN_WORD_RE.sub(read_word, text)
 
 
 def _decoded_text_has_contact(text: str, reached_fixed_point: bool) -> bool:
