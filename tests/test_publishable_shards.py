@@ -93,6 +93,19 @@ class TestWithheld:
             ("ucsb", ["the release verdict records no reason"]),
         ]
 
+    def test_a_repeated_reason_is_listed_once_and_on_one_line(self):
+        # The 2026-09-05 verdict gave ucb this one reason five times.
+        partial = ("required faculty sources were partial: ['ucb_datascience_faculty', 'ucb_econ_faculty', "
+                   "'ucb_ling_faculty', 'ucb_scandinavian_faculty', 'ucb_soc_faculty']")
+        status = {"release": {"publishable": ["umich"], "by_unit": {"ucb": {"reasons": [
+            *[partial] * 5, "source ucb_ling_faculty reported error: HTTP 502\nBad Gateway\r\n",
+            "source ucb_ling_faculty reported error: HTTP 502 Bad Gateway", " \n ",
+        ]}}}}
+        assert _mod.withheld(["ucb", "umich"], status) == [
+            ("ucb", [partial, "source ucb_ling_faculty reported error: HTTP 502 Bad Gateway"]),
+        ]
+        assert _mod.notes(["ucb", "umich"], status).count("\n") == 2
+
     def test_only_authorized_shards_are_reported(self):
         # A unit outside this run's authorization was never this run's to publish.
         assert _mod.withheld(["umich"], PARTIAL) == []

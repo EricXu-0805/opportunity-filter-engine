@@ -53,6 +53,14 @@ def publishable(authorized: list[str], status: dict | None) -> list[str]:
     return [slug for slug in authorized if slug in allowed]
 
 
+def _reasons(value) -> list[str]:
+    """A verdict's reasons on one line each, each once: the verdict can repeat a
+    reason (ucb's, five times, on 2026-09-05), and error text can span lines."""
+
+    texts = [" ".join(text.split()) for text in value if isinstance(text, str)] if isinstance(value, list) else []
+    return list(dict.fromkeys(text for text in texts if text))
+
+
 def withheld(authorized: list[str], status: dict | None) -> list[tuple[str, list[str]]]:
     """The authorized shards the verdict did not earn, each with its reasons."""
 
@@ -60,15 +68,13 @@ def withheld(authorized: list[str], status: dict | None) -> list[tuple[str, list
     release = status.get("release") if isinstance(status, dict) else None
     release = release if isinstance(release, dict) else {}
     by_unit = release.get("by_unit") if isinstance(release.get("by_unit"), dict) else {}
-    structural = release.get("structural_reasons")
-    structural = [text for text in structural if isinstance(text, str)] if isinstance(structural, list) else []
+    structural = _reasons(release.get("structural_reasons"))
     held = []
     for slug in authorized:
         if slug in earned:
             continue
         verdict = by_unit.get(slug)
-        reasons = verdict.get("reasons") if isinstance(verdict, dict) else None
-        reasons = [text for text in reasons if isinstance(text, str)] if isinstance(reasons, list) else []
+        reasons = _reasons(verdict.get("reasons") if isinstance(verdict, dict) else None)
         held.append((slug, reasons or structural or ["the release verdict records no reason"]))
     return held
 
