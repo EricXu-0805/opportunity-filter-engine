@@ -1194,6 +1194,24 @@ describe('ColdEmailModal', () => {
       expect(body).not.toMatch(/completed[^.]*CS 446|taking[^.]*CS 446|includes[^.]*CS 446/);
     });
 
+    it.each([
+      ['without a course list, as b8602cb0 words it', { coursework: ['CS 225', 'CS225', 'LATE COURSE 5'] },
+        'My coursework includes CS 225, CS225, LATE COURSE 5.'],
+      ['with the course list another tab wrote, by status', { coursework: ['CS 225', 'CS 446'],
+        courses: [{ name: 'CS 225', source: 'resume' as const }, { name: 'CS 446', status: 'planned' as const, source: 'manual' as const }] },
+      'My coursework includes CS 225. I plan to take CS 446.'],
+    ])('"coursework" with the course list switched off: a profile %s', async (_label, courses, sentence) => {
+      release.courseStatus = false;
+      try {
+        mockGetVariants.mockResolvedValue({ variants: [makeVariant({ body: 'Intro.\n\nBest regards,\nAlex' })] });
+        render(<ColdEmailModal isOpen onClose={vi.fn()} profile={makeProfile(courses)} opportunityId="opp" opportunityTitle="REU" />);
+        await waitFor(() => expect(screen.getByDisplayValue(/Intro/)).toBeInTheDocument());
+        fireEvent.click(screen.getByText('coldEmail.quickActions.coursework'));
+        fireEvent.click(await screen.findByRole('button', { name: 'Accept suggestion' }));
+        await waitFor(() => expect(screen.getByLabelText('coldEmail.body')).toHaveValue(`Intro.\n\n${sentence}\n\nBest regards,\nAlex`));
+      } finally { release.courseStatus = true; }
+    });
+
     it('keeps the draft when complete coursework exceeds the email body limit', async () => {
       mockGetVariants.mockResolvedValue({ variants: [makeVariant({ body: 'Original draft.\n\nBest regards,\nAlex' })] });
       render(<ColdEmailModal isOpen onClose={vi.fn()} profile={makeProfile({ coursework: Array.from({length:110},(_,i)=>String(i)+'x'.repeat(990)) })} opportunityId="opp" opportunityTitle="REU" />);

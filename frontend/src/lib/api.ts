@@ -31,7 +31,7 @@ import { captureOwnerToken, isOwnerTokenValid, isTokenOwnerStillCurrent, type Ow
 import { FULL_TARGET_AI_MAX_BODY_BYTES, type TargetResumeAiRequest, type TargetResumeAiResponse } from './target-resume-ai-protocol';
 import { TARGET_RESUME_PLAN_MAX_BODY_BYTES, type TargetResumePlanRequest, type TargetResumePlanResponse } from './target-resume-plan-protocol';
 import { bySlug } from './schools';
-import { courseEntries } from './course-status';
+import { courseEntries, storedCourseEntries } from './course-status';
 import { isFellowshipPreference, RELEASE_SCOPE } from './release-scope';
 import { getRevealAccessToken, refreshRevealAccessToken } from './supabase';
 
@@ -383,7 +383,10 @@ export function toProfileRequest(profile: ProfileData): ProfileRequest {
   const acceptedSeekingTypes = requestedSeekingTypes.filter(
     (value) => RELEASE_SCOPE.fellowships || !isFellowshipPreference(value),
   );
-  const courses = courseEntries(profile);
+  // Off (RELEASE_SCOPE.courseStatus), the names go as stored, as the build
+  // before it sends them, and `courses` only when the profile holds the list
+  // another tab wrote.
+  const courses = RELEASE_SCOPE.courseStatus ? courseEntries(profile) : storedCourseEntries(profile);
   const request: ProfileRequest = {
     name: profile.name ?? '',
     // Free-text display name (cold-email "…student at {school}");
@@ -415,8 +418,8 @@ export function toProfileRequest(profile: ProfileData): ProfileRequest {
     // `coursework` for server code that reads names only. A course the student
     // has not marked goes as `unknown`, legacy names included, whatever status
     // its résumé line suggests on the form — never as completed.
-    coursework: courses.map((course) => course.name),
-    courses: courses.map(({ name, status, source }) => ({ name, status, source })),
+    coursework: RELEASE_SCOPE.courseStatus ? (courses ?? []).map((course) => course.name) : profile.coursework ?? [],
+    ...(courses ? { courses: courses.map(({ name, status, source }) => ({ name, status, source })) } : {}),
     experience_level: profile.experience_level ?? 'beginner',
     resume_ready: !!profile.resume_text,
     can_cold_email: true,

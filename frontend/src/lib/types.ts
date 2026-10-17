@@ -219,9 +219,11 @@ export interface ProfileRequest {
   seeking_type: string[];
   desired_fields: string[];
   hard_skills: SkillWithLevel[];
-  /** Every course name in `courses`, for server code that reads names only. */
+  /** Every course name in `courses`, for server code that reads names only
+   *  (off, RELEASE_SCOPE.courseStatus: the stored names). */
   coursework: string[];
-  courses: CourseEntry[];
+  /** Off: only when the profile stores a course list. */
+  courses?: CourseEntry[];
   experience_level: string;
   resume_ready: boolean;
   can_cold_email: boolean;

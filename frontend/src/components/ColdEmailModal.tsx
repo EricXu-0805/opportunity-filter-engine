@@ -329,11 +329,15 @@ function applyQuickEdit(
   switch (action) {
     case 'coursework': {
       const courses = courseEntries(profile);
-      if (courses.length === 0) {
+      // Off, a profile without the course list another tab wrote is worded
+      // as the build before it words it: its names as stored.
+      const legacy = !RELEASE_SCOPE.courseStatus && !Array.isArray(profile.courses);
+      const names = legacy ? profile.coursework ?? [] : courses.map((course) => course.name);
+      if (names.length === 0) {
         return { body, reply: t(RELEASE_SCOPE.courseStatus ? 'coldEmail.replies.courseworkNone' : 'coldEmail.replies.courseworkNoneOff') };
       }
-      const courseStr = courses.map((course) => course.name).join(', ');
-      const insertion = `\n\n${courseSentences(courses, courses.length)}`;
+      const courseStr = names.join(', ');
+      const insertion = `\n\n${legacy ? `My coursework includes ${courseStr}.` : courseSentences(courses, courses.length)}`;
       if (body.length + insertion.length > COLD_EMAIL_DRAFT_LIMITS.body) {
         return { body, reply: t('profileInput.courseworkTooLarge') };
       }

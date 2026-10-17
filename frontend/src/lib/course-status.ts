@@ -247,6 +247,14 @@ export function courseEntries(profile: CourseProfile): CourseEntry[] {
   return courseRows(profile).map(({ name, status, source }) => ({ name, status, source }));
 }
 
+/** The entries of the course list the profile stores, as courseEntries reads
+ *  them, without the names only `coursework` adds; null when it stores none. */
+export function storedCourseEntries(profile: CourseProfile): CourseEntry[] | null {
+  if (!Array.isArray(profile.courses)) return null;
+  const stored = new Set(profile.courses.map((course) => courseKey(course?.name)));
+  return courseEntries(profile).filter((entry) => stored.has(courseKey(entry.name)));
+}
+
 /** A course as the profile stores it: a status only if the student set one. */
 export function storedCourse(row: Pick<CourseRow, 'name' | 'source' | 'marked'>): StoredCourse {
   return { name: row.name, source: row.source, ...(row.marked ? { status: row.marked } : {}) };

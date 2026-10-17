@@ -4,6 +4,13 @@ import { advanceOwnerEpoch, syncLocalIdentityOwner } from './identity-owner';
 const auth = vi.hoisted(() => ({ token: vi.fn(), refresh: vi.fn() }));
 vi.mock('./supabase', () => ({ getRevealAccessToken: auth.token, refreshRevealAccessToken: auth.refresh }));
 vi.mock('./analytics', () => ({ track: vi.fn() }));
+// The course list's release switch, as this branch ships it unless a test
+// turns it off.
+const release = vi.hoisted(() => ({ courseStatus: true }));
+vi.mock('./release-scope', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./release-scope')>();
+  return { ...actual, RELEASE_SCOPE: { ...actual.RELEASE_SCOPE, get courseStatus() { return release.courseStatus; } } };
+});
 import {
   chatWithOpportunity, generateColdEmail, generateColdEmailStream, getEmailVariants, getMatches, optimizeBullet,
   refineEmail, renovateResume, tailorResume,
@@ -36,18 +43,18 @@ const routes = ['matches', 'email', 'stream', 'variants', 'refine', 'tailor', 'r
 type Route = typeof routes[number];
 const fetchMock = vi.fn();
 const json = (body: unknown) => new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' } });
-function call(route: Route) {
+function call(route: Route, from: ProfileData = profile) {
   const options = { expectedTargetVersion: TOKEN };
   switch (route) {
-    case 'matches': return getMatches(profile);
-    case 'email': return generateColdEmail(profile, 'target', { ...options, engine: 'ai' });
-    case 'stream': return generateColdEmailStream(profile, 'target', options);
-    case 'variants': return getEmailVariants(profile, 'target', undefined, options);
-    case 'refine': return refineEmail('Original body', 'Clearer', profile, 'target', options);
-    case 'tailor': return tailorResume(profile, 'target', ['Built a robot.'], { ...options, locale: 'en', expectedPipelineVersion: 'w14.1' });
-    case 'renovate': return renovateResume(profile, 'target', [], options);
-    case 'bullet': return optimizeBullet(profile, 'target', 'Current', 'Original', options);
-    case 'chat': return chatWithOpportunity('target', 'Is this a fit?', [], profile);
+    case 'matches': return getMatches(from);
+    case 'email': return generateColdEmail(from, 'target', { ...options, engine: 'ai' });
+    case 'stream': return generateColdEmailStream(from, 'target', options);
+    case 'variants': return getEmailVariants(from, 'target', undefined, options);
+    case 'refine': return refineEmail('Original body', 'Clearer', from, 'target', options);
+    case 'tailor': return tailorResume(from, 'target', ['Built a robot.'], { ...options, locale: 'en', expectedPipelineVersion: 'w14.1' });
+    case 'renovate': return renovateResume(from, 'target', [], options);
+    case 'bullet': return optimizeBullet(from, 'target', 'Current', 'Original', options);
+    case 'chat': return chatWithOpportunity('target', 'Is this a fit?', [], from);
   }
 }
 function reply(route: Route) {
@@ -62,7 +69,14 @@ beforeEach(async () => {
   auth.token.mockReset().mockResolvedValue('token'); auth.refresh.mockReset().mockResolvedValue('refreshed');
   fetchMock.mockReset(); vi.stubGlobal('fetch', fetchMock);
 });
-afterEach(() => { vi.unstubAllGlobals(); advanceOwnerEpoch(null); });
+afterEach(() => { vi.unstubAllGlobals(); advanceOwnerEpoch(null); release.courseStatus = true; });
+async function sentFor(route: Route, from: ProfileData) {
+  fetchMock.mockImplementation(async () => reply(route));
+  await call(route, from).catch(() => undefined);
+  expect(fetchMock).toHaveBeenCalled();
+  const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+  return route === 'matches' ? body : body.profile;
+}
 
 describe('every request that sends the profile sends the courses with their statuses (checklist M13)', () => {
   it.each(routes)('%s', async (route) => {
@@ -76,6 +90,26 @@ describe('every request that sends the profile sends the courses with their stat
     // No résumé line goes with a course.
     expect(JSON.stringify(sent)).not.toContain('Relevant Coursework');
     expect(JSON.stringify(sent)).not.toContain('Current courses');
+  });
+});
+
+// Off, a profile goes as b8602cb0 sends it: the names as stored, no
+// `courses`, unless the profile holds the list another tab wrote.
+describe('with the course list switched off', () => {
+  it.each(routes)('%s sends the names as stored and no course list when the profile holds none', async (route) => {
+    release.courseStatus = false;
+    const sent = await sentFor(route, { ...profile, courses: undefined, coursework: ['CS 225', 'CS225', 'MATH 241'] });
+    expect(sent.coursework).toEqual(['CS 225', 'CS225', 'MATH 241']);
+    expect(sent).not.toHaveProperty('courses');
+  });
+
+  it.each(routes)('%s sends the course list another tab wrote, without the names it lacks', async (route) => {
+    release.courseStatus = false;
+    // CS 233 is a résumé course nobody marked that the names no longer list
+    // (a résumé removed or replaced here): it goes with that résumé.
+    const sent = await sentFor(route, { ...profile, courses: [...profile.courses!, { name: 'CS 233', source: 'resume' }] });
+    expect(sent.courses).toEqual(SENT.slice(0, 3));
+    expect(sent.coursework).toEqual(['CS 225', 'CS 446', 'MATH 241', 'STAT 400']);
   });
 });
 

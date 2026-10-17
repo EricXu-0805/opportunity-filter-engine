@@ -40,8 +40,10 @@ export const RELEASE_SCOPE = Object.freeze({
   // course's status, and every write of `courses`. Off, Home shows no list and
   // writes the course names only, as the build before it does, but still
   // reads, sends and answers the `courses` other tabs wrote: turning it off is
-  // how the course-status build is rolled back. The server reads `courses`
-  // either way.
+  // how the course-status build is rolled back. Requests then carry the names
+  // as stored, and `courses` only when the profile holds them; the email's
+  // course quick action words a profile without them as that build does. The
+  // server reads `courses` either way.
   courseStatus: true,
 } as const);
 
