@@ -105,6 +105,7 @@ from src.matcher.ranker import (
     registered_corpus_identity,
     registered_corpus_identity_nowait,
     served_sort_key,
+    without_web_addresses,
 )
 from src.recommender.resume_advisor import analyze_gaps
 
@@ -203,7 +204,8 @@ class _MatchViewRow:
     one of these per row and projects cards only for the rows a response
     serves. Each value is the card's own, after the public contact and truth
     boundary, so a search reads exactly the redacted text the card shows.
-    ``record`` is the canonical record the card is projected from.
+    ``description`` is read only by the search and leaves out web addresses
+    (M104). ``record`` is the canonical record the card is projected from.
     """
 
     record: dict | None
@@ -255,9 +257,9 @@ def _view_row_from_card(card: dict, record: dict | None = None) -> _MatchViewRow
         organization=str(card.get("organization") or ""),
         department=str(card.get("department") or ""),
         keywords=tuple(str(keyword) for keyword in (card.get("keywords") or [])),
-        description=str(
+        description=without_web_addresses(str(
             description if description is not None else card.get("description_raw") or ""
-        ),
+        )),
     )
 
 
