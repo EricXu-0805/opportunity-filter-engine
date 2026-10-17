@@ -505,6 +505,9 @@ elif "/actions/workflows/refresh-data.yml/runs" in path:
     if scenario.get("list_fails"):
         print('{"message": "Server Error"}')
         sys.exit(1)
+    if scenario.get("list_hangs"):
+        import time
+        time.sleep(scenario["list_hangs"])
     json.dump(scenario["runs"], sys.stdout)
 elif path.endswith("/cancel"):
     sys.exit(1 if scenario.get("cancel_fails") else 0)
@@ -651,7 +654,8 @@ def _alert_script(run_id: str) -> str:
                               "github.run_id": run_id}.items():
         script = script.replace("${{ " + expression + " }}", value)
     assert "${{" not in script
-    return script
+    # A listing that hangs is cut off sooner here than on the runner.
+    return re.sub(r"\btimeout \d+ gh api ", "timeout 1 gh api ", script)
 
 
 def _mails(calls):
@@ -662,15 +666,16 @@ class TestAlertStep:
     """The alert step itself, as the runner runs it after a failure or a cancel."""
 
     def _run(self, fake_gh, tmp_path, *, event, run_id, status, guard, runs, guard_copy=True, withheld="",
-             **scenario):
+             extra_env=None, **scenario):
         if guard_copy:
             shutil.copy(_SCRIPT, tmp_path / "refresh_rotation.py")
         step = _workflow_step("Alert operator")
         env = {"EVENT": event, "RUN_ID": run_id, "JOB_STATUS": status, "GUARD": guard, "WITHHELD": withheld,
                "RESEND_API_KEY": "not-a-key", "OPERATOR_EMAIL": "operator@example.com", "SHARD": "uw"}
         assert set(step["env"]) <= {*env, "GH_TOKEN", "REPO"}
-        result, calls = fake_gh(_alert_script(run_id), {"runs": runs, **scenario}, **env)
+        result, calls = fake_gh(_alert_script(run_id), {"runs": runs, **scenario}, **env, **(extra_env or {}))
         assert result.returncode == 0, result.stdout + result.stderr
+        self.calls = calls
         return result, _mails(calls)
 
     def test_still_runs_on_failure_and_on_cancel(self):
@@ -711,11 +716,42 @@ class TestAlertStep:
         _, mails = self._run(fake_gh, tmp_path, event=SCHEDULED, run_id="200", status=status,
                              guard="cancel", runs=_runs((100, MANUAL), (200, SCHEDULED)))
         assert len(mails) == 1
+        # Nothing it could learn would stop the mail, so it asks nothing.
+        assert [call for call in self.calls if call[0] != "curl"] == []
 
     def test_a_failed_listing_mails(self, fake_gh, tmp_path):
         _, mails = self._run(fake_gh, tmp_path, event=MANUAL, run_id="300", status="failure",
                              guard="defer", runs=_runs((200, SCHEDULED)), list_fails=True)
         assert len(mails) == 1
+
+    def test_a_listing_that_hangs_is_cut_off_and_mails(self, fake_gh, tmp_path):
+        # Answered in time, this listing would show the deferral and send nothing.
+        _, mails = self._run(fake_gh, tmp_path, event=MANUAL, run_id="300", status="failure",
+                             guard="defer", runs=_runs((200, SCHEDULED), (300, MANUAL)), list_hangs=20)
+        assert len(mails) == 1
+
+    def _without_python3(self, tmp_path) -> dict:
+        """A PATH holding only what the step runs besides python3."""
+        bin_dir = tmp_path / "no-python3"
+        bin_dir.mkdir()
+        for name in ("gh", "curl"):
+            (bin_dir / name).symlink_to(tmp_path / "bin" / name)
+        for name in ("bash", "timeout", "env"):
+            (bin_dir / name).symlink_to(shutil.which(name))
+        return {"PATH": str(bin_dir)}
+
+    @pytest.mark.parametrize("event, status", [(SCHEDULED, "success"), (MANUAL, "failure")])
+    def test_without_python3_a_fixed_short_mail_still_goes(self, fake_gh, tmp_path, event, status):
+        result, mails = self._run(fake_gh, tmp_path, event=event, run_id="300", status=status, guard="defer",
+                                  runs=_runs((200, SCHEDULED), (300, MANUAL)), withheld=self._WITHHELD,
+                                  extra_env=self._without_python3(tmp_path))
+        assert "python3" in result.stderr
+        (mail,) = mails
+        assert mail["to"] == ["operator@example.com"] and mail["from"] == _SENDER
+        assert mail["subject"] == ("JoinALab: data refresh withheld schools (shard: uw)" if status == "success"
+                                   else "JoinALab: data refresh FAILED (shard: uw)")
+        assert mail["text"].startswith("This is the short form of the alert")
+        assert mail["text"].endswith("\n\nShard: uw\nRun: https://github.com/o/r/actions/runs/300")
 
     # What the publish step writes when the verdict withheld a school (see
     # tests/test_publishable_shards.py); the reason quotes the source's error.
