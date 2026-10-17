@@ -81,14 +81,22 @@ _SELECTORS = {
     "link": "h4 a",
     "title": ".field--name-field-body",
     "email": ".field--name-field-email a[href^='mailto:']",
+    # One rank line runs into the name ("Nadia Abu El-HajProfessor of
+    # Anthropology & Chair of Anthropology").
+    "title_unglue": r"Assistant|Associate|Senior|Visiting|Visting|Adjunct|Professor|Lecturer",
 }
 
-# Keep professorial + lecturer ranks; drop emeriti, visiting, and adjunct
-# appointments as well as the lab-instructional / coordinator / department
-# staff whose titles carry neither "professor" nor "lecturer".
+# Keep professorial + lecturer ranks; drop emeriti, visiting (and the page's
+# "Visting" typo), and adjunct appointments as well as the lab-instructional /
+# coordinator / department staff whose titles carry neither "professor" nor
+# "lecturer". A card with no rank line at all is dropped too: on 2026-10-17
+# those were History's emeriti ("Joel Kaye, Professor Emeritus" as the name),
+# Italian's "Maristella Lorch, Ph.D., 1951-1990" and English's "Barnard's
+# Tradition of Writers" list, 21 cards and no professor or lecturer among them.
 _LADDER = {
     "require": r"\bprofessor\b|\blecturer\b",
-    "drop": r"emerit|\bvisiting\b|\badjunct\b",
+    "drop": r"emerit|\bvisi?ting\b|\badjunct\b",
+    "require_present": True,
 }
 
 
@@ -113,6 +121,9 @@ def _dept(short: str, name: str, majors: list[str], path: str) -> dict:
                        "research_items_selector":
                            '.accordion-item h3:-soup-contains("Academic Focus") + .accordion-panel li',
                        "email_selector": ".f--email a[href^='mailto:']",
+                       # A card with no profile link points at this department
+                       # page, which is not a profile.
+                       "profile_url_re": r"https://barnard\.edu/profiles/",
                        "throttle": 0.2,
                    }},
     }
