@@ -6408,12 +6408,13 @@ describe('an edit made while this device\'s first create is unanswered', () => {
     server.elsewhere({ resume_text: 'Another device\'s résumé.' });
     commitMock.mockImplementation(async (intent) => server.handle(intent));
     const next = await stageProfilePatch(withResume, ['resume_text', 'coursework', 'skills'], token, { allowCreate: true });
-    expect(next).toMatchObject({ status: 'conflict', conflictKeys: ['resume_text', 'experience_entries', 'resume_master'] });
-    // The course names are not part of the résumé (checklist M13): they are
-    // saved with the skill, as a course added on the form would be.
-    expect(server.row).toMatchObject({ resume_text: 'Another device\'s résumé.', coursework: ['CS 225'],
+    expect(next).toMatchObject({ status: 'conflict', conflictKeys: ['resume_text', 'experience_entries', 'resume_master', 'coursework'] });
+    // The course names were written in the same operation as the résumé, so
+    // they are asked about with it (checklist M13): stored beside the other
+    // device's résumé they would be another résumé's names.
+    expect(server.row).toMatchObject({ resume_text: 'Another device\'s résumé.', coursework: [],
       skills: [{ name: 'PyTorch', level: 'beginner', source: 'resume' }] });
     const resumeKeys = ['coursework', 'experience_entries', 'resume_master', 'resume_text', 'skills'];
-    expect(server.seen.slice(1)).toEqual([{ expected: 1, keys: resumeKeys }, { expected: 2, keys: ['coursework', 'skills'] }]);
+    expect(server.seen.slice(1)).toEqual([{ expected: 1, keys: resumeKeys }, { expected: 2, keys: ['skills'] }]);
   });
 });

@@ -10730,7 +10730,7 @@ describe('useProfileForm — confirmed experience lifecycle', () => {
 describe('useProfileForm — courses keep the status the student set (checklist M13)', () => {
   const parse = (text: string, found: string[]) => ({ ...RESUME('', []), raw_text: text, extracted_coursework: found });
 
-  it('marks a course on a profile saved before statuses and saves the course with its names', async () => {
+  it('marks a course on a profile saved before statuses and saves the course list alone, the names as they are', async () => {
     mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'Old source', coursework: ['CS 225', 'CS 446'] }));
     const { result } = renderHook(() => useProfileForm(stableT));
     await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
@@ -10740,7 +10740,8 @@ describe('useProfileForm — courses keep the status the student set (checklist 
     ]));
     await waitFor(() => expect(serverRow?.courses).toBeDefined(), { timeout: 2500 });
     const patch = commitProfilePatch.mock.calls.at(-1)?.[0].patch;
-    expect(Object.keys(patch ?? {}).sort()).toEqual(['courses', 'coursework']);
+    // A status click changes no name, so it never disagrees about them.
+    expect(Object.keys(patch ?? {}).sort()).toEqual(['courses']);
     // Only the status the student set is stored.
     expect(serverRow?.courses).toEqual([
       { name: 'CS 225', status: 'completed', source: 'resume' },

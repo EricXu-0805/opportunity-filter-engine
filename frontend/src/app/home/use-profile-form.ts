@@ -2876,8 +2876,13 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // would wipe the user's input.
     const clearMajor =
       key === 'college' && bySlug(profileRef.current.home_school ?? 'uiuc')?.catalog != null;
-    // The course names old clients read are written with every course edit.
-    const courses = key === 'courses';
+    // The course names old clients read are written with every course edit
+    // that changes them. A status click leaves them as they are and writes
+    // the course list alone, so it never disagrees about the names with
+    // another tab or a row that has changed the résumé they came from.
+    const courses = key === 'courses' ? courseFields((value ?? []) as StoredCourse[]) : null;
+    const renamed = !!courses
+      && JSON.stringify(courses.coursework) !== JSON.stringify(profileRef.current.coursework ?? []);
     editProfile(
       (prev) => ({
         ...prev,
@@ -2885,11 +2890,11 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         // Additional majors are catalog-scoped like the primary, so a college
         // switch invalidates them too.
         ...(clearMajor ? { major: '', additional_majors: [] } : {}),
-        ...(courses ? courseFields((value ?? []) as StoredCourse[]) : {}),
+        ...(courses ? (renamed ? courses : { courses: courses.courses }) : {}),
       }),
       // The cascade is an intent even when the fields are already empty:
       // the row still loading must not put its own major back afterwards.
-      clearMajor ? [key, 'major', 'additional_majors'] : courses ? ['courses', 'coursework'] : [key],
+      clearMajor ? [key, 'major', 'additional_majors'] : renamed ? ['courses', 'coursework'] : [key],
       origin ?? undefined,
     );
   }, [editProfile, editingOrigin, screenOrigin]);
