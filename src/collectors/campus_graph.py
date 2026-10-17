@@ -948,7 +948,9 @@ def merge_into_processed(
     it, and is retired as ``no_longer_listed``, never deleted; a closed row
     keeps its closure. An empty listing retires every such row; the None
     default retires nothing. A retired row whose program is listed again comes
-    back as it was, closed if its page had closed it.
+    back as it was, closed if its page had closed it. A program moved between
+    sources of one file (campus and lab) keeps its key but gets another id:
+    its old row retires the same way, and its record replaces it.
 
     Each file is written only by its own scheduled run (refresh-data.yml
     splits --only-shards), so a program moved between the school's shard and
@@ -1003,8 +1005,9 @@ def merge_into_processed(
     # row (school None) lives in national.json, the school's other rows in
     # its own shard.
     published = {None, school_slug} if national is None else {None if national else school_slug}
-    # Each incoming program record by its key and the school value of its file.
-    arriving = {(opp["metadata"]["collector_key"], opp.get("school")) for opp in new_opps if _program_record(opp)}
+    # Each incoming program record's id by its key and the school value of its file.
+    arriving = {(opp["metadata"]["collector_key"], opp.get("school")): opp.get("id")
+                for opp in new_opps if _program_record(opp)}
     retired_programs = 0
     held: set[tuple[str, str | None]] = set()
     if listed_program_keys is not None:
@@ -1024,8 +1027,11 @@ def merge_into_processed(
                     held.add(moved)
                 continue
             # A key listed only because it moved to the other file, which the
-            # same call collected, is not listed for this one.
-            if key in listed_program_keys and moved not in arriving:
+            # same call collected, is not listed for this one. Nor is one that
+            # moved between sources of this file (campus and lab): its record
+            # has another id, and replaces this row as a renamed key's does.
+            if key in listed_program_keys and moved not in arriving and arriving.get(
+                    (key, opp.get("school")), opp.get("id")) == opp.get("id"):
                 continue
             opp["metadata"]["is_active"] = False
             opp["metadata"]["deactivated_at"] = deactivated_on
