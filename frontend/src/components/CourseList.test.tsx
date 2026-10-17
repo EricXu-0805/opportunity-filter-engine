@@ -25,7 +25,7 @@ const STORED: StoredCourse[] = [
 ];
 
 function Harness({ initial, onChange, resume = RESUME }: {
-  initial: StoredCourse[]; onChange: (courses: StoredCourse[]) => void; resume?: string;
+  initial: StoredCourse[]; onChange: (courses: StoredCourse[], how?: 'status') => void; resume?: string;
 }) {
   const [profile, setProfile] = useState<Pick<ProfileData, 'courses' | 'coursework' | 'resume_text'>>({
     courses: initial, coursework: initial.map((course) => course.name), resume_text: resume,
@@ -33,9 +33,9 @@ function Harness({ initial, onChange, resume = RESUME }: {
   return (
     <CourseList
       courses={courseRows(profile)}
-      onChange={(next) => {
+      onChange={(next, how) => {
         setProfile((prev) => ({ ...prev, courses: next, coursework: next.map((course) => course.name) }));
-        onChange(next);
+        onChange(next, how);
       }}
     />
   );
@@ -83,7 +83,7 @@ describe('CourseList (checklist M13)', () => {
       { name: 'CS 374', source: 'resume', status: 'in_progress' },
       { name: 'CS 446', source: 'resume', status: 'planned' },
       { name: 'STAT 400', source: 'manual', status: 'completed' },
-    ]);
+    ], 'status');
     expect(screen.queryByText('From your résumé — please check')).toBeNull();
     expect(document.activeElement).toBe(screen.getByLabelText('Status of CS 374'));
   });
@@ -92,19 +92,20 @@ describe('CourseList (checklist M13)', () => {
     const onChange = vi.fn();
     render(<Harness initial={STORED} onChange={onChange} />);
     fireEvent.change(screen.getByLabelText('Status of CS 374'), { target: { value: 'planned' } });
+    // A status click says it is one: the form writes it as the course list alone.
     expect(onChange).toHaveBeenLastCalledWith([
       { name: 'CS 225', source: 'resume' },
       { name: 'CS 374', source: 'resume', status: 'planned' },
       { name: 'CS 446', source: 'resume', status: 'planned' },
       { name: 'STAT 400', source: 'manual', status: 'completed' },
-    ]);
+    ], 'status');
 
     fireEvent.click(screen.getByRole('button', { name: 'Remove CS 446' }));
     expect(onChange).toHaveBeenLastCalledWith([
       { name: 'CS 225', source: 'resume' },
       { name: 'CS 374', source: 'resume', status: 'planned' },
       { name: 'STAT 400', source: 'manual', status: 'completed' },
-    ]);
+    ], undefined);
 
     fireEvent.change(screen.getByLabelText('Add a course'), { target: { value: '  ECE 220 ' } });
     fireEvent.change(screen.getByLabelText('Status of the new course'), { target: { value: 'in_progress' } });
@@ -114,7 +115,7 @@ describe('CourseList (checklist M13)', () => {
       { name: 'CS 374', source: 'resume', status: 'planned' },
       { name: 'STAT 400', source: 'manual', status: 'completed' },
       { name: 'ECE 220', source: 'manual', status: 'in_progress' },
-    ]);
+    ], undefined);
     expect((screen.getByLabelText('Add a course') as HTMLInputElement).value).toBe('');
     expect((screen.getByLabelText('Status of the new course') as HTMLSelectElement).value).toBe('unknown');
 

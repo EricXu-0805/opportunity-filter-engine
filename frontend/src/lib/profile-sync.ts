@@ -84,14 +84,15 @@ export const CREATE_REQUIRED_KEYS: readonly ProfileKey[] = [
 ];
 
 /** Fields that are one unit as far as conflict detection goes. The résumé
- *  text and the experience sources quoted from it must stay together.
+ *  text, extracted coursework and experience sources must stay together.
  *  Taking them from different revisions can attach claims to the wrong résumé.
- *  Staging any member stages the whole bundle. Courses are not in it: a
- *  course the student added or marked outlives the résumé (checklist M13),
- *  and a status click must not stage the résumé. Nothing a course stores is
- *  quoted from the résumé: its line and any status the résumé gives it are
- *  read from the current text (lib/course-status.ts). */
-export const RESUME_BUNDLE: readonly ProfileKey[] = ['resume_text', 'experience_entries', 'resume_master'];
+ *  Staging any member stages the whole bundle. The course names are the
+ *  résumé's in every older build, and a course edit that changes them writes
+ *  them with the résumé here too; a status click writes the course list
+ *  alone (use-profile-form.ts), so it never stages the résumé. Nothing a
+ *  course stores is quoted from the résumé: its line and any status the
+ *  résumé gives it are read from the current text (lib/course-status.ts). */
+export const RESUME_BUNDLE: readonly ProfileKey[] = ['resume_text', 'coursework', 'experience_entries', 'resume_master'];
 
 /** The courses and their names: one list, written together, and one unit in
  *  a conflict too. An older client removes or replaces the résumé by writing
@@ -100,7 +101,7 @@ const COURSE_BUNDLE: readonly ProfileKey[] = ['courses', 'coursework'];
 
 /** The résumé and the courses: the fields one conflict question holds whole
  *  for each operation behind it (see planKeysFromJournal). */
-const RESUME_AND_COURSES: readonly string[] = [...RESUME_BUNDLE, ...COURSE_BUNDLE];
+const RESUME_AND_COURSES: readonly string[] = [...RESUME_BUNDLE, 'courses'];
 
 /** Every key the app recognises. Declared as a Record<keyof ProfileData, …>
  *  so adding a profile field without listing it here is a COMPILE error — a
@@ -1082,9 +1083,8 @@ function planKeysFromJournal(
   // The résumé is one document: half of it agreeing does not make it
   // sendable. Nor does half of the course list. A bundle that shares a key
   // with another takes the other's question with it, and so does an
-  // operation: an answer keeps or drops it whole (see writeResolutionReceipt),
-  // so its other résumé and course fields are asked with it, never sent
-  // apart. An older build's résumé operation carries the course names.
+  // operation: its other résumé and course fields are asked with it, never
+  // sent apart. An older build's résumé operation carries the course names.
   const join = (k: string) => {
     const plan = plans.get(k);
     if (!plan || plan.kind === 'conflict') return false;
@@ -4242,23 +4242,6 @@ function writeResolutionReceipt(
   // A field that joined this question since it was drawn (see
   // planKeysFromJournal) would be left to send apart from the answer.
   if ([...plans].some(([key, plan]) => plan.kind === 'conflict' && !effective.includes(key as ProfileKey))) return 'stale';
-  // `seq` orders one lineage's operations, so the latest is per lineage.
-  const newest = (c: ProfileConflictCandidate) => Math.max(
-    -1, ...c.opIds.map((id) => opsById.get(id)?.seq ?? -1),
-  );
-  // What "Keep what I typed" keeps of this tab's own: its latest value of
-  // each field it typed in the question.
-  const keptHere = new Map<string, unknown>();
-  for (const shown of rendered) {
-    const here = shown.candidates.filter((c) => c.opIds.length > 0 && c.lineage === mine);
-    if (here.length > 0) keptHere.set(shown.key, here.reduce((a, b) => (newest(b) > newest(a) ? b : a)).value);
-  }
-  // An operation is kept or dropped whole: one of another tab's that
-  // disagrees with what this tab keeps gives none of its fields, so an older
-  // build's résumé removal never lands half beside a course list kept here.
-  const disagrees = (c: ProfileConflictCandidate) => c.opIds.some((id) => (opsById.get(id)?.fields ?? []).some(
-    (f) => keptHere.has(f.key) && !sameValue(f.desired.present ? f.desired.value : undefined, keptHere.get(f.key)),
-  ));
   for (const key of effective) {
     const shown = rendered.find((c) => c.key === key);
     // Required, not optional: an answer about a key nobody was shown is not
@@ -4299,23 +4282,21 @@ function writeResolutionReceipt(
       // value in the question. Not its screen: a tab that has been open since
       // before another tab's edit still shows the value that edit replaced,
       // and a reload shows the row for a field two tabs disagree about.
+      // `seq` orders one lineage's operations, so the latest is per lineage.
+      const newest = (c: ProfileConflictCandidate) => Math.max(
+        -1, ...c.opIds.map((id) => opsById.get(id)?.seq ?? -1),
+      );
       const typed = shown.candidates.filter((c) => c.opIds.length > 0);
-      // Of the other tabs' operations, only those that agree with what this
-      // tab keeps.
-      const others = typed.filter((c) => c.lineage !== mine && !disagrees(c));
-      if (keptHere.has(key)) {
-        value = keptHere.get(key);
-      } else if (typed.length > 0 && others.length === 0) {
-        // Every operation that typed it was dropped with the one this tab
-        // keeps: the row stands.
-        value = shown.remote;
-      } else if (others.length > 0) {
+      const typedHere = typed.filter((c) => c.lineage === mine);
+      if (typedHere.length > 0) {
+        value = typedHere.reduce((a, b) => (newest(b) > newest(a) ? b : a)).value;
+      } else if (typed.length > 0) {
         // This tab typed none of it, so what it can keep is what the other
         // tabs last typed. When they typed different values there is no one
         // value to keep, and this screen's own drawing (from before their
         // edits) or the row would be a value nobody typed.
         const latest = new Map<string, ProfileConflictCandidate>();
-        for (const c of others) {
+        for (const c of typed) {
           const held = latest.get(c.lineage);
           if (!held || newest(c) > newest(held)) latest.set(c.lineage, c);
         }

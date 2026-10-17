@@ -227,7 +227,9 @@ export interface UseProfileFormResult {
    * against, and callers must fail closed rather than invent a base.
    */
   viewSnapshot: ProfileViewSnapshot | null;
-  update: <K extends keyof ProfileData>(key: K, value: ProfileData[K]) => void;
+  /** `status`: a status click in the course list, which keeps every course
+   *  it lists and writes the course list alone. */
+  update: <K extends keyof ProfileData>(key: K, value: ProfileData[K], how?: 'status') => void;
   handleSubmit: () => void;
   handleShare: () => Promise<void>;
   handleResumeParsed: (data: ResumeParseResponse) => boolean;
@@ -2850,7 +2852,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     };
   }, [recordOutstandingIntents, ownsScreen, screenOrigin]);
 
-  const update = useCallback(<K extends keyof ProfileData>(key: K, value: ProfileData[K]) => {
+  const update = useCallback(<K extends keyof ProfileData>(key: K, value: ProfileData[K], how?: 'status') => {
     // BEFORE the skill ledger. The replace marker is sticky — it suppresses
     // every later addition until it lands — so a stale screen marking it is
     // not a cosmetic slip: it silently swallows the NEW owner's own imports.
@@ -2877,12 +2879,11 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     const clearMajor =
       key === 'college' && bySlug(profileRef.current.home_school ?? 'uiuc')?.catalog != null;
     // The course names old clients read are written with every course edit
-    // that changes them. A status click leaves them as they are and writes
-    // the course list alone, so it never disagrees about the names with
-    // another tab or a row that has changed the résumé they came from.
+    // but a status click (`how`), which lists the same courses and writes the
+    // course list alone: the names are one unit with the résumé
+    // (RESUME_BUNDLE), and a click must not stage it.
     const courses = key === 'courses' ? courseFields((value ?? []) as StoredCourse[]) : null;
-    const renamed = !!courses
-      && JSON.stringify(courses.coursework) !== JSON.stringify(profileRef.current.coursework ?? []);
+    const named = !!courses && how !== 'status';
     editProfile(
       (prev) => ({
         ...prev,
@@ -2890,11 +2891,11 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         // Additional majors are catalog-scoped like the primary, so a college
         // switch invalidates them too.
         ...(clearMajor ? { major: '', additional_majors: [] } : {}),
-        ...(courses ? (renamed ? courses : { courses: courses.courses }) : {}),
+        ...(courses ? (named ? courses : { courses: courses.courses }) : {}),
       }),
       // The cascade is an intent even when the fields are already empty:
       // the row still loading must not put its own major back afterwards.
-      clearMajor ? [key, 'major', 'additional_majors'] : renamed ? ['courses', 'coursework'] : [key],
+      clearMajor ? [key, 'major', 'additional_majors'] : named ? ['courses', 'coursework'] : [key],
       origin ?? undefined,
     );
   }, [editProfile, editingOrigin, screenOrigin]);

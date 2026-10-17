@@ -32,7 +32,8 @@ const shown = (course: CourseRow): CourseStatus => course.marked ?? course.sugge
  */
 export default function CourseList({ courses, onChange }: {
   courses: CourseRow[];
-  onChange: (courses: StoredCourse[]) => void;
+  /** `status`: a status click, which lists the same courses. */
+  onChange: (courses: StoredCourse[], how?: 'status') => void;
 }) {
   const { t } = useT();
   const id = useId();
@@ -59,7 +60,7 @@ export default function CourseList({ courses, onChange }: {
   }, [courses, id]);
 
   const mark = (index: number, value: CourseStatus) => {
-    onChange(courses.map((course, at) => storedCourse(at === index ? { ...course, marked: value } : course)));
+    onChange(courses.map((course, at) => storedCourse(at === index ? { ...course, marked: value } : course)), 'status');
   };
 
   const add = () => {

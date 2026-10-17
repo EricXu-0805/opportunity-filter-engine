@@ -10673,8 +10673,7 @@ describe('useProfileForm — confirmed experience lifecycle', () => {
     await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
     act(() => { expect(result.current.handleExperienceChange([manual], baseOf(result.current))).toBe(true); });
     await waitFor(() => expect(serverRow?.experience_entries).toEqual([manual]), { timeout: 2500 });
-    expect(commitProfilePatch.mock.calls.at(-1)?.[0].patch).toMatchObject({ resume_text: 'Old source', experience_entries: [manual] });
-    expect(commitProfilePatch.mock.calls.at(-1)?.[0].patch).not.toHaveProperty('coursework');
+    expect(commitProfilePatch.mock.calls.at(-1)?.[0].patch).toMatchObject({ resume_text: 'Old source', coursework: ['CS 225'], experience_entries: [manual] });
   });
   it('refuses a late review after another edit or source replacement', async () => {
     mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'Old source', experience_entries: [] }));
@@ -10737,10 +10736,11 @@ describe('useProfileForm — courses keep the status the student set (checklist 
     act(() => result.current.update('courses', [
       { name: 'CS 225', status: 'completed', source: 'resume' },
       { name: 'CS 446', source: 'resume' },
-    ]));
+    ], 'status'));
     await waitFor(() => expect(serverRow?.courses).toBeDefined(), { timeout: 2500 });
     const patch = commitProfilePatch.mock.calls.at(-1)?.[0].patch;
-    // A status click changes no name, so it never disagrees about them.
+    // A status click writes the course list alone, so it never stages the
+    // résumé the names belong to.
     expect(Object.keys(patch ?? {}).sort()).toEqual(['courses']);
     // Only the status the student set is stored.
     expect(serverRow?.courses).toEqual([
@@ -10803,8 +10803,7 @@ describe('useProfileForm — full resume master lifecycle', () => {
     await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
     act(() => { expect(result.current.handleResumeMasterChange(master(), baseOf(result.current))).toBe(true); });
     await waitFor(() => expect(serverRow?.resume_master).toEqual(master()), { timeout: 2500 });
-    expect(commitProfilePatch.mock.calls.at(-1)?.[0].patch).toMatchObject({ resume_text: 'Old source', experience_entries: [], resume_master: master() });
-    expect(commitProfilePatch.mock.calls.at(-1)?.[0].patch).not.toHaveProperty('coursework');
+    expect(commitProfilePatch.mock.calls.at(-1)?.[0].patch).toMatchObject({ resume_text: 'Old source', coursework: ['CS 225'], experience_entries: [], resume_master: master() });
   });
 
   it('refuses a stale editor after an experience edit, source replacement or another master edit', async () => {

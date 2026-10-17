@@ -135,7 +135,7 @@ describe('Home foreground reads with real profile coordination', () => {
     expect(remote?.research_interests).toBe('Latest unflushed typing'); expect(revision).toBe(3);
   });
 
-  it('keeps a course edit made during a read of replacement source text, with its names, and takes the new résumé', async () => {
+  it('keeps the local resume source bundle together when a course edit changes the names during a read of replacement source text', async () => {
     remote = { ...BASE, resume_text: 'Original exact resume source', coursework: ['Original course'],
       experience_entries: [], resume_master: null };
     const { result } = await start(); const held = await holdPeriodic();
@@ -143,11 +143,11 @@ describe('Home foreground reads with real profile coordination', () => {
     act(() => { result.current.update('courses', mine); });
     publish({ resume_text: 'Replacement cloud resume source', coursework: ['Cloud replacement course'] });
     held.resolve(row()); await drain();
-    // Courses are not part of the résumé (checklist M13): the course edit
-    // keeps both course keys, and the résumé read is taken whole.
-    expect(result.current.profile).toMatchObject({ resume_text: 'Replacement cloud resume source',
+    // The names are one unit with the résumé (RESUME_BUNDLE): the course
+    // edit keeps the résumé it was made on, with its courses.
+    expect(result.current.profile).toMatchObject({ resume_text: 'Original exact resume source',
       courses: mine, coursework: ['My course edit'], experience_entries: [], resume_master: null });
-    expect(result.current.viewSnapshot?.renderedProfile).toMatchObject({ resume_text: 'Replacement cloud resume source', courses: mine, coursework: ['My course edit'] });
+    expect(result.current.viewSnapshot?.renderedProfile).toMatchObject({ resume_text: 'Original exact resume source', courses: mine, coursework: ['My course edit'] });
     expect(result.current.viewSnapshot?.baseProfile).toMatchObject({ resume_text: 'Replacement cloud resume source', coursework: ['Cloud replacement course'] });
     expect(result.current.viewSnapshot?.revision).toBe(2); expect(service.commit).not.toHaveBeenCalled();
   });

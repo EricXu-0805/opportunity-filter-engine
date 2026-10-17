@@ -739,17 +739,17 @@ describe('conflicts', () => {
 });
 
 describe('the résumé bundle', () => {
-  it('staging one member stages the whole résumé, and no course key', async () => {
+  it('staging one half stages both', async () => {
     loadProfileMock.mockResolvedValue(cloud({ ...FULL, resume_text: 'old', coursework: ['ECE 220'] }, 7));
     await hydrateProfile();
-    commitMock.mockResolvedValue(saved({ ...FULL, resume_text: '' }, 8));
+    commitMock.mockResolvedValue(saved({ ...FULL, resume_text: '', coursework: [] }, 8));
     await stageProfilePatch(
-      { ...FULL, resume_text: '' }, ['resume_text'], captureOwnerToken(),
+      { ...FULL, resume_text: '', coursework: [] }, ['resume_text'], captureOwnerToken(),
     );
-    expect(Object.keys(commitMock.mock.calls[0][0].patch).sort()).toEqual(['experience_entries', 'resume_master', 'resume_text']);
+    expect(Object.keys(commitMock.mock.calls[0][0].patch).sort()).toEqual(['coursework', 'experience_entries', 'resume_master', 'resume_text']);
   });
 
-  it('a collision on one member conflicts every member', async () => {
+  it('a collision on either half conflicts BOTH — coursework never outlives its résumé', async () => {
     loadProfileMock.mockResolvedValue(cloud({ ...FULL, resume_text: 'old', coursework: ['ECE 220'] }, 7));
     await hydrateProfile();
     // The other device uploaded a NEW résumé while this one removed it.
@@ -757,11 +757,11 @@ describe('the résumé bundle', () => {
       conflict({ ...FULL, resume_text: 'brand new resume', coursework: ['ECE 220'] }, 8),
     );
     const result = await stageProfilePatch(
-      { ...FULL, resume_text: '' }, ['resume_text'], captureOwnerToken(),
+      { ...FULL, resume_text: '', coursework: [] }, ['resume_text', 'coursework'], captureOwnerToken(),
     );
     expect(result.status).toBe('conflict');
     expect((result as { conflictKeys: string[] }).conflictKeys.sort())
-      .toEqual(['experience_entries', 'resume_master', 'resume_text']);
+      .toEqual(['coursework', 'experience_entries', 'resume_master', 'resume_text']);
   });
 
   it('journals a second course edit on a profile saved before courses existed', async () => {
@@ -778,14 +778,20 @@ describe('the résumé bundle', () => {
     expect(commitMock.mock.calls[0][0].patch.courses).toEqual([{ name: 'ECE 220', status: 'completed', source: 'resume' }]);
   });
 
-  it('a course edit stages the two course keys and not the résumé (checklist M13)', async () => {
+  it('a status click stages the course list alone, and a course edit that changes the names stages them with the résumé (checklist M13)', async () => {
     loadProfileMock.mockResolvedValue(cloud({ ...FULL, resume_text: 'old', coursework: ['ECE 220'] }, 7));
     await hydrateProfile();
     const marked = { ...FULL, resume_text: 'old', coursework: ['ECE 220'],
       courses: [{ name: 'ECE 220', status: 'completed' as const, source: 'resume' as const }] };
     commitMock.mockResolvedValue(saved(marked, 8));
-    await stageProfilePatch(marked, ['courses', 'coursework'], captureOwnerToken());
-    expect(Object.keys(commitMock.mock.calls[0][0].patch).sort()).toEqual(['courses', 'coursework']);
+    await stageProfilePatch(marked, ['courses'], captureOwnerToken());
+    expect(Object.keys(commitMock.mock.calls[0][0].patch)).toEqual(['courses']);
+    const added = { ...marked, coursework: ['ECE 220', 'STAT 400'],
+      courses: [...marked.courses, { name: 'STAT 400', status: 'planned' as const, source: 'manual' as const }] };
+    commitMock.mockResolvedValue(saved(added, 9));
+    await stageProfilePatch(added, ['courses', 'coursework'], captureOwnerToken());
+    expect(Object.keys(commitMock.mock.calls[1][0].patch).sort())
+      .toEqual(['courses', 'coursework', 'experience_entries', 'resume_master', 'resume_text']);
   });
 });
 
@@ -6367,7 +6373,7 @@ describe('an edit made while this device\'s first create is unanswered', () => {
     commitMock.mockImplementation(async (intent) => server.handle(intent));
     const next = await stageProfilePatch(edited, ['resume_text'], token, { allowCreate: true });
     // The résumé and what was read from it are one question.
-    const resumeKeys = ['resume_text', 'experience_entries', 'resume_master'];
+    const resumeKeys = ['resume_text', 'coursework', 'experience_entries', 'resume_master'];
     expect(next).toMatchObject({ status: 'conflict', conflictKeys: resumeKeys });
     expect(server.seen.slice(1), 'no partial create goes out').toEqual([]);
 
@@ -6408,10 +6414,7 @@ describe('an edit made while this device\'s first create is unanswered', () => {
     server.elsewhere({ resume_text: 'Another device\'s résumé.' });
     commitMock.mockImplementation(async (intent) => server.handle(intent));
     const next = await stageProfilePatch(withResume, ['resume_text', 'coursework', 'skills'], token, { allowCreate: true });
-    expect(next).toMatchObject({ status: 'conflict', conflictKeys: ['resume_text', 'experience_entries', 'resume_master', 'coursework'] });
-    // The course names were written in the same operation as the résumé, so
-    // they are asked about with it (checklist M13): stored beside the other
-    // device's résumé they would be another résumé's names.
+    expect(next).toMatchObject({ status: 'conflict', conflictKeys: ['resume_text', 'coursework', 'experience_entries', 'resume_master'] });
     expect(server.row).toMatchObject({ resume_text: 'Another device\'s résumé.', coursework: [],
       skills: [{ name: 'PyTorch', level: 'beginner', source: 'resume' }] });
     const resumeKeys = ['coursework', 'experience_entries', 'resume_master', 'resume_text', 'skills'];

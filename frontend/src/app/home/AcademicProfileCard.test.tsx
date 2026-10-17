@@ -410,11 +410,12 @@ describe('AcademicProfileCard — courses (checklist M13)', () => {
     expect((screen.getByLabelText('courses.statusOf:CS 225') as HTMLSelectElement).value).toBe('unknown');
     expect((screen.getByLabelText('courses.statusOf:CS 446') as HTMLSelectElement).value).toBe('unknown');
     fireEvent.change(screen.getByLabelText('courses.statusOf:CS 446'), { target: { value: 'planned' } });
-    // Only the status the student set is written: CS 225 stays unset.
+    // Only the status the student set is written: CS 225 stays unset. A
+    // status click says so, and the form writes the course list alone.
     expect(update).toHaveBeenCalledWith('courses', [
       { name: 'CS 225', source: 'resume' },
       { name: 'CS 446', source: 'resume', status: 'planned' },
-    ]);
+    ], 'status');
   });
 
   it('shows the status the current résumé text gives a course nobody set, as one to check', () => {

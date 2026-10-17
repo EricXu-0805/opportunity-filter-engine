@@ -28,7 +28,7 @@ export function AcademicProfileCard({
   t,
 }: {
   profile: ProfileData;
-  update: <K extends keyof ProfileData>(key: K, value: ProfileData[K]) => void;
+  update: <K extends keyof ProfileData>(key: K, value: ProfileData[K], how?: 'status') => void;
   /**
    * The hydration this card is displaying: the row, the revision it is, and
    * the identity it was accepted for, all from one moment. Owned by the
@@ -387,7 +387,7 @@ export function AcademicProfileCard({
           <CourseList
             key={`courses-${identityGeneration}`}
             courses={courses}
-            onChange={(next) => update('courses', next)}
+            onChange={(next, how) => update('courses', next, how)}
           />
         )}
       </div>
