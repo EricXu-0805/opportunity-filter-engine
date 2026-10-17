@@ -3,6 +3,7 @@
 import { useId } from 'react';
 import { Compass, SlidersHorizontal } from 'lucide-react';
 import Card from '@/components/Card';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 import type { TFunc } from './types';
 
 export function SearchFocusCard({
@@ -19,10 +20,12 @@ export function SearchFocusCard({
   t: TFunc;
 }) {
   const headingId = useId();
+  // With the course list switched off, the card says what it said before it.
+  const courses = RELEASE_SCOPE.courseStatus;
   const emphasis = searchWeight < 40
     ? t('home.form.searchWeightInterests')
     : searchWeight > 60
-      ? t('home.form.searchWeightExperience')
+      ? t(courses ? 'home.form.searchWeightExperience' : 'home.form.searchWeightExperienceOff')
       : t('home.form.searchWeightBalanced');
   return (
     <Card>
@@ -32,7 +35,7 @@ export function SearchFocusCard({
         </div>
         <div>
           <h2 id={headingId} className="text-xl font-bold text-gray-900">{t('home.cards.searchFocusTitle')}</h2>
-          <p className="text-sm text-gray-500">{t('home.cards.searchFocusSubtitle')}</p>
+          <p className="text-sm text-gray-500">{t(courses ? 'home.cards.searchFocusSubtitle' : 'home.cards.searchFocusSubtitleOff')}</p>
         </div>
       </div>
 
@@ -42,7 +45,7 @@ export function SearchFocusCard({
             {t('home.form.searchWeightLeft')}
           </span>
           <span className={searchWeight > 50 ? 'text-indigo-600 font-semibold' : ''}>
-            {t('home.form.searchWeightRight')}
+            {t(courses ? 'home.form.searchWeightRight' : 'home.form.searchWeightRightOff')}
           </span>
         </div>
         <input

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { parseResumePDF } from '@/lib/pdf-parser';
 import type { ResumeParseResponse } from '@/lib/types';
 import { useT } from '@/i18n/client';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 
 interface ResumeUploadProps {
   onParsed: (data: ResumeParseResponse) => boolean | void;
@@ -299,7 +300,7 @@ export default function ResumeUpload({ onParsed, onRemove, alreadyUploaded }: Re
               {t('resume.textOnlyNote')}
             </p>
             <p className="text-[11px] text-gray-500 text-center max-w-[260px]">
-              {t('resume.removeNote')}{' '}
+              {t(RELEASE_SCOPE.courseStatus ? 'resume.removeNote' : 'resume.removeNoteOff')}{' '}
               <Link
                 href="/privacy"
                 onClick={(e) => e.stopPropagation()}

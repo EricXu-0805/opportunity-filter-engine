@@ -64,6 +64,7 @@ import { useAuthModal } from '@/lib/auth-modal-context';
 import { isActiveExperience, sourceDigest, validateExperienceEntries } from '@/lib/experience-evidence';
 import type { Opportunity, ProfileData, EmailVariant, LabType, EmailStyle, ColdEmailFallbackReason, ColdEmailResponse, ContactEmailStatus, ExperienceUsage } from '@/lib/types';
 import { useT } from '@/i18n/client';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 import type { ProfileRefreshState } from '@/lib/use-profile-refresh';
 import type { WritingTargetState } from '@/lib/use-writing-target';
 import { profileActionKey, useProfileAction } from '@/lib/use-profile-action';
@@ -329,7 +330,7 @@ function applyQuickEdit(
     case 'coursework': {
       const courses = courseEntries(profile);
       if (courses.length === 0) {
-        return { body, reply: t('coldEmail.replies.courseworkNone') };
+        return { body, reply: t(RELEASE_SCOPE.courseStatus ? 'coldEmail.replies.courseworkNone' : 'coldEmail.replies.courseworkNoneOff') };
       }
       const courseStr = courses.map((course) => course.name).join(', ');
       const insertion = `\n\n${courseSentences(courses, courses.length)}`;

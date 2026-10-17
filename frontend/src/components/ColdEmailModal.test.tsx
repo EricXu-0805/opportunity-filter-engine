@@ -19,6 +19,14 @@ vi.mock('@/i18n/client', () => {
   };
 });
 
+// The course list's release switch, as this branch ships it unless a test
+// turns it off.
+const release = vi.hoisted(() => ({ courseStatus: true }));
+vi.mock('@/lib/release-scope', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/release-scope')>();
+  return { ...actual, RELEASE_SCOPE: { ...actual.RELEASE_SCOPE, get courseStatus() { return release.courseStatus; } } };
+});
+
 const mockGetVariants = vi.fn();
 const mockGenerateColdEmail = vi.fn();
 const mockGenerateColdEmailStream = vi.fn();
@@ -1222,7 +1230,8 @@ describe('ColdEmailModal', () => {
       expect(value.indexOf('CS 225')).toBeLessThan(value.indexOf('Sincerely'));
     });
 
-    it('"coursework" with an empty coursework list does not insert anything', async () => {
+    it.each([true, false])('"coursework" with an empty coursework list does not insert anything, and says where courses come from (course list on: %s)', async (on) => {
+      release.courseStatus = on;
       mockGetVariants.mockResolvedValue({
         variants: [makeVariant({ body: 'Just an intro.\n\nBest,\nAlex' })],
       });
@@ -1240,6 +1249,9 @@ describe('ColdEmailModal', () => {
       fireEvent.click(screen.getByText('coldEmail.quickActions.coursework'));
       const after = (screen.getByDisplayValue(/Just an intro/) as HTMLTextAreaElement).value;
       expect(after).toBe(before);
+      // Off, there is no course list on the main page to point to.
+      expect(await screen.findByText(on ? 'coldEmail.replies.courseworkNone' : 'coldEmail.replies.courseworkNoneOff')).toBeInTheDocument();
+      release.courseStatus = true;
     });
   });
 

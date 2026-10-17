@@ -352,7 +352,7 @@ export function AcademicProfileCard({
             value={profile.research_interests}
             onChange={(e) => update('research_interests', e.target.value)}
             rows={4}
-            placeholder={t('home.form.interestsPlaceholder')}
+            placeholder={t(RELEASE_SCOPE.courseStatus ? 'home.form.interestsPlaceholder' : 'home.form.interestsPlaceholderOff')}
             className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none transition-all duration-300 resize-y leading-relaxed"
           />
           {remainingInterests.length > 0 && (

@@ -3,6 +3,14 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 
 import { SearchFocusCard } from './SearchFocusCard';
 
+// The course list's release switch, as this branch ships it unless a test
+// turns it off.
+const release = vi.hoisted(() => ({ courseStatus: true }));
+vi.mock('@/lib/release-scope', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/release-scope')>();
+  return { ...actual, RELEASE_SCOPE: { ...actual.RELEASE_SCOPE, get courseStatus() { return release.courseStatus; } } };
+});
+
 const t = (key: string, vars?: Record<string, string | number>) =>
   vars ? `${key}:${Object.values(vars).join(',')}` : key;
 
@@ -24,6 +32,29 @@ function renderCard(overrides: Partial<{ searchWeight: number; exploring: boolea
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  release.courseStatus = true;
+});
+
+describe('SearchFocusCard — the course list switched off', () => {
+  // Off, no course has a status, so the card says what it said before the
+  // course list (review p2-b, M1).
+  it.each([true, false])('says the subtitle and the experience end as the switch has them, on: %s', (on) => {
+    release.courseStatus = on;
+    renderCard({ searchWeight: 80 });
+    const off = on ? '' : 'Off';
+    for (const key of [`home.cards.searchFocusSubtitle${off}`, `home.form.searchWeightRight${off}`, `home.form.searchWeightExperience${off}`]) {
+      expect(screen.getAllByText(key).length, key).toBeGreaterThan(0);
+    }
+  });
+
+  it('keeps the words before the course list for the switched-off card, EN and ZH', async () => {
+    const { dictionaries } = await import('@/i18n/dictionaries');
+    const d = dictionaries as never as Record<string, { home: { form: Record<string, string>; cards: Record<string, string> } }>;
+    expect([d.en.home.cards.searchFocusSubtitleOff, d.en.home.form.searchWeightRightOff, d.en.home.form.searchWeightExperienceOff])
+      .toEqual(['Balance between what you want and what you have taken', 'Coursework', 'Leaning on the courses you have taken']);
+    expect([d.zh.home.cards.searchFocusSubtitleOff, d.zh.home.form.searchWeightRightOff, d.zh.home.form.searchWeightExperienceOff])
+      .toEqual(['在你想做的和你修过的之间取舍', '已修课程', '更看你修过的课']);
+  });
 });
 
 describe('SearchFocusCard — explore toggle', () => {

@@ -403,6 +403,8 @@ describe('AcademicProfileCard — courses (checklist M13)', () => {
     expect(screen.queryByText('courses.label') !== null).toBe(on);
     expect(screen.queryByLabelText('courses.statusOf:CS 225') !== null).toBe(on);
     expect(screen.queryByLabelText('courses.addLabel') !== null).toBe(on);
+    // Off, the interests box says what it said before the course list.
+    expect(screen.getByPlaceholderText(on ? 'home.form.interestsPlaceholder' : 'home.form.interestsPlaceholderOff')).toBeInTheDocument();
   });
 
   it('shows a profile saved before statuses as courses not marked, and marks one through the form update', () => {

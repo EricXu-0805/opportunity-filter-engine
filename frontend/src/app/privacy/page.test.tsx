@@ -1,9 +1,17 @@
 import { render } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { MATERIAL_MAX_BYTES } from '@/lib/material-core';
 import { MAX_RESUME_TEXT_CHARACTERS } from '@/lib/resume-input';
 import PrivacyPage from './page';
+
+// The course list's release switch, as this branch ships it unless a test
+// turns it off.
+const release = vi.hoisted(() => ({ courseStatus: true }));
+vi.mock('@/lib/release-scope', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/release-scope')>();
+  return { ...actual, RELEASE_SCOPE: { ...actual.RELEASE_SCOPE, get courseStatus() { return release.courseStatus; } } };
+});
 
 describe('Privacy page', () => {
   // The page said "up to ~8,000 characters" of résumé text for weeks after
@@ -32,6 +40,30 @@ describe('Privacy page', () => {
     expect(text).toContain('If an older version of the app removes or replaces the résumé, the courses that résumé found and you had not marked are no longer shown or used, and are deleted from your profile the next time you change your courses or your résumé here.');
     expect(text).not.toContain('is shown and used as in progress or planned');
     expect(text).not.toContain('store the résumé line');
+  });
+
+  // With the course list switched off, nothing deletes a course the résumé
+  // found or stores a status here, so the policy says what it said before
+  // the course list (review p2-b, M1).
+  it('says what it said before the course list while the switch is off', async () => {
+    release.courseStatus = false;
+    vi.resetModules();
+    try {
+      const { default: OffPage } = await import('./page');
+      const { container } = render(<OffPage />);
+      const text = container.textContent ?? '';
+      expect(text).toContain('Effective date: October 12, 2026');
+      expect(text).toContain('research interests, skills and proficiency levels, coursework, experience level.');
+      expect(text).toContain('to pre-fill skills, coursework, and interests.');
+      expect(text).toContain(`characters of extracted résumé text as part of your profile. The original PDF file is not stored on our servers. Removing the résumé from your profile clears that text and the coursework it extracted from your current profile, and future matching and generation stop using them. It does not change copies saved elsewhere`);
+      expect(text).toContain('skills, coursework, research interests, your own résumé bullet points');
+      for (const course of ['not marked yourself', 'the next time you change your courses', 'Of each course found', 'suggests that status', 'courses and their statuses']) {
+        expect(text).not.toContain(course);
+      }
+    } finally {
+      release.courseStatus = true;
+      vi.resetModules();
+    }
   });
 
   it('discloses the application and email PDF archive, its limit and how to remove it', () => {
