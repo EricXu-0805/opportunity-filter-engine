@@ -490,3 +490,24 @@ class TestWorkflow:
         assert "--json databaseId,createdAt,url" in listing["run"]
         assert '> "$RUNNER_TEMP/earlier-runs.json"' in listing["run"]
         assert '--earlier-runs "$RUNNER_TEMP/earlier-runs.json"' in check["run"]
+
+    def test_only_runs_on_main_count_as_the_weeks_check(self):
+        """A manual run from another branch reads that branch's snapshot, so
+        it is not this week's check of the one on main."""
+        doc = yaml.safe_load((REPO / ".github/workflows/snapshot-reminder.yml").read_text(encoding="utf-8"))
+        listing = next(s for s in doc["jobs"]["check"]["steps"] if "gh run list" in str(s.get("run", "")))
+        assert "--branch main" in listing["run"]
+
+    def test_a_failed_check_in_does_not_fail_a_run_that_made_the_check(self):
+        """Only successful runs count as the week's check. A check-in failing
+        after the reminder went out would fail the run, and the next day's run
+        would send the reminder again, every day the switch is unreachable."""
+        doc = yaml.safe_load((REPO / ".github/workflows/snapshot-reminder.yml").read_text(encoding="utf-8"))
+        steps = doc["jobs"]["check"]["steps"]
+        names = [s.get("name", "") for s in steps]
+        send = next(s for s in steps if "--data @" in str(s.get("run", "")))
+        heartbeat = next(s for s in steps if "/api/cron/heartbeat" in str(s.get("run", "")))
+        assert names.index(send["name"]) < names.index(heartbeat["name"])
+        assert heartbeat.get("continue-on-error") is True
+        # Every other step still fails the run.
+        assert [s.get("name") for s in steps if s.get("continue-on-error")] == [heartbeat["name"]]
