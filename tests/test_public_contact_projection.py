@@ -75,6 +75,13 @@ CONTACT_VARIANTS = [
     "ｊａｎｅ＠ｅｘａｍｐｌｅ．ｅｄｕ",
     "用户@例子.公司",
     "用户[at]例子[dot]公司",
+    "jane<at>example<dot>edu",
+    "jane <AT> example <DOT> edu",
+    "jane <at> example.edu",
+    "jane&lt;at&gt;example&lt;dot&gt;edu",
+    # The shape of an Ohio State directory keyword (M119).
+    "jane <dot> 244 <at> example <dot> edu",
+    "jane-at-example-dot-edu",
 ]
 
 
@@ -152,6 +159,11 @@ def test_contact_detection_fails_closed_for_visible_encoded_and_obfuscated_forms
         "Infrastructure at the Point Cloud Lab",
         "Fellowships at the dot institute open now",
         "React.js and C++",
+        "Meet at the lab",
+        "Dot product attention at scale",
+        "Stay-at-home orders, value-at-risk and polka-dot-free plots",
+        "U.S. Department of Transportation (DOT), Mozarteum Salzburg (AT)",
+        "ANCIENT MAYA SUSTAINABILITY AT CARACOL, BELIZE",
     ],
 )
 def test_contact_detection_preserves_common_non_contact_phrases(value: str):

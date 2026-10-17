@@ -39,14 +39,20 @@ _EMAIL_ADDRESS_LITERAL_RE = re.compile(
 )
 _CONTACT_AT_DELIMITER_RE = re.compile(
     r"(?<=\w)(?:\s*@\s*|\s*(?:\[|\(|\{)\s*at\s*(?:\]|\)|\})\s*|"
-    r"\s*/\s*at\s*/\s*|\s*艾特\s*)(?=\w)",
+    r"\s*/\s*at\s*/\s*|-at-|\s*艾特\s*)(?=\w)",
     flags=re.IGNORECASE,
 )
 _CONTACT_DOT_DELIMITER_RE = re.compile(
     r"(?<=\w)(?:\s*(?:\[|\(|\{)\s*(?:dot|\.)\s*(?:\]|\)|\})\s*|"
-    r"\s*/\s*(?:dot|\.)\s*/\s*|\s*(?:点|。)\s*)(?=\w)",
+    r"\s*/\s*(?:dot|\.)\s*/\s*|-dot-|\s*(?:点|。)\s*)(?=\w)",
     flags=re.IGNORECASE,
 )
+# An ``at`` or ``dot`` wrapped in angle brackets or hyphens is a delimiter like
+# the wrappings above ("jane <dot> 12 <at> osu <dot> edu" on an Ohio State
+# directory, "jane-at-usc-dot-edu" on a USC profile). The HTML parser would
+# drop ``<at>``/``<dot>`` as unknown tags, so they are read as
+# ``[at]``/``[dot]`` before it runs.
+_CONTACT_ANGLE_DELIMITER_RE = re.compile(r"<\s*(at|dot)\s*>", flags=re.IGNORECASE)
 _PLAIN_WORD_DOT_EMAIL_RE = re.compile(
     r"(?<![\w.+-])(?P<local>[A-Z0-9._%+-]+)\s+at\s+"
     r"(?P<first_domain>[A-Z0-9-]+)\s+dot\s+"
@@ -221,6 +227,7 @@ def _contact_detection_view(
             reached_fixed_point = True
             break
         text = decoded
+    text = _CONTACT_ANGLE_DELIMITER_RE.sub(r"[\1]", text)
     # Some directory pages split an address across presentational tags or
     # comments (``jane<span>@</span>example<span>.</span>edu``). Keep both
     # views: the markup-bearing form catches addresses inside tag attributes,
