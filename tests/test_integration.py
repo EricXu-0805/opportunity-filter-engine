@@ -851,6 +851,11 @@ class TestLabTypeAwareTemplates:
 
 
 class TestResumeAdvisor:
+    @pytest.fixture
+    def sample_opportunity(self, sample_opportunity):
+        # Gaps are read only off a list the program states: a hand-curated row's (M22).
+        return {**sample_opportunity, "source": "manual"}
+
     def test_identifies_missing_skills(self, sample_profile, sample_opportunity):
         gaps = analyze_gaps(sample_profile, sample_opportunity)
         assert isinstance(gaps["missing_skills"], list)
