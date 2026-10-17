@@ -164,17 +164,24 @@ function validResumeContent(profile: Pick<ProfileData, 'experience_entries' | 'r
     && validateResumeMaster(profile.resume_master).ok;
 }
 
+/** Whether this build leaves journal operations carrying `courses`, and the
+ *  outbox entries holding them, to the course-status build (checklist M13,
+ *  rollout phase 1; see courseStatusKeys). This is the course-status build:
+ *  it writes, sends and answers them itself, so it holds none. */
+const LEAVE_COURSE_STATUS_OPS = false;
+
 /** Complete a persisted partial bundle from its frozen base, or the empty
  *  value for a field introduced after that base was saved. Locks and mutation
  *  versions must cover every member even when the desired values already do. */
 function completeResumeBundle(pending: ProfilePendingWrite): ProfilePendingWrite {
   const present = RESUME_BUNDLE.filter((k) => pending.dirtyKeys.includes(k));
   // Partial locks must not allow the remaining bundle members to send alone.
-  // An entry carrying `courses` is left as written (see courseStatusKeys):
-  // the course-status build keeps the course names with the courses, so its
-  // entry holds no partial résumé, and this build writes `courses` only in a
-  // guest restore, whose entry already holds the whole résumé.
-  if (present.length === 0 || pending.dirtyKeys.includes('courses')) return pending;
+  // While LEAVE_COURSE_STATUS_OPS, an entry carrying `courses` is left as
+  // written (see courseStatusKeys): the course-status build keeps the course
+  // names with the courses, so its entry holds no partial résumé, and the
+  // build before it writes `courses` only in a guest restore, whose entry
+  // already holds the whole résumé.
+  if (present.length === 0 || (LEAVE_COURSE_STATUS_OPS && pending.dirtyKeys.includes('courses'))) return pending;
   const desired = { ...pending.desiredProfile } as unknown as Record<string, unknown>;
   const base = pending.baseProfile as unknown as Record<string, unknown>;
   const dirtyKeys = [...pending.dirtyKeys];
@@ -2119,8 +2126,10 @@ export function heldForNewerBuild(conflicts: readonly ProfileConflict[]): boolea
  *  outstanding operation carrying `courses`, with the résumé and the course
  *  list they are one question with here. This build neither stages nor
  *  answers them, so such an operation, and the outbox entry carrying it, stay
- *  as that build wrote them. Empty while there is no such operation. */
+ *  as that build wrote them. Empty while there is no such operation, and
+ *  always in this build (LEAVE_COURSE_STATUS_OPS). */
 function courseStatusKeys(ops: readonly JournalOp[]): Set<string> {
+  if (!LEAVE_COURSE_STATUS_OPS) return new Set();
   const fields = ops.filter((op) => op.mode !== 'resolve' && op.fields.some((f) => f.key === 'courses'))
     .flatMap((op) => op.fields.map((f) => f.key));
   return new Set(fields.length > 0 ? [...fields, ...COURSE_BUNDLE, ...RESUME_BUNDLE] : []);
