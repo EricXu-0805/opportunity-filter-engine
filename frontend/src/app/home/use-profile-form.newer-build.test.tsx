@@ -18,6 +18,13 @@ vi.mock('@/lib/supabase', () => ({
   getStorageStatus: () => ({ status: 'synced', error: null }),
   onAuthChange: (callback: typeof service.auth) => { service.auth = callback; return () => { service.auth = null; }; },
 }));
+// The course list's release switch, as this branch ships it unless a test
+// turns it off.
+const release = vi.hoisted(() => ({ courseStatus: true }));
+vi.mock('@/lib/release-scope', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/release-scope')>();
+  return { ...actual, RELEASE_SCOPE: { ...actual.RELEASE_SCOPE, get courseStatus() { return release.courseStatus; } } };
+});
 import { useProfileForm } from './use-profile-form';
 import { SubmitRow } from './SubmitRow';
 import { DEFAULT_PROFILE, FRESH_PROFILE } from './types';
@@ -32,7 +39,8 @@ import { writeLocalStorageJSON } from '@/lib/use-local-storage-json';
 // operation carrying `courses` for the course-status build: it says a newer
 // version of the page changed these fields and asks for a reload. This is the
 // course-status build: it writes those operations and answers their questions
-// itself, so no question here is held.
+// itself, so no question here is held, with its course list switched off too
+// (RELEASE_SCOPE.courseStatus), which is how that build is rolled back.
 const NAMES = ['CS 225', 'CS 233'];
 const LISTED = NAMES.map((name) => ({ name, source: 'resume', status: 'unknown' }));
 const MARKED = [LISTED[0], { ...LISTED[1], status: 'completed' }];
@@ -125,10 +133,11 @@ beforeEach(async () => {
   Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
   Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
 });
-afterEach(() => { cleanup(); vi.clearAllTimers(); vi.useRealTimers(); });
+afterEach(() => { cleanup(); vi.clearAllTimers(); vi.useRealTimers(); release.courseStatus = true; });
 
 describe('a conflict question holding an operation carrying `courses` (checklist M13)', () => {
-  it('gets its two buttons in this build, and keeping what was typed sends the course click', async () => {
+  it.each([true, false])('gets its two buttons in this build, and keeping what was typed sends the course click (course list on: %s)', async (on) => {
+    release.courseStatus = on;
     const { result } = await start();
     const PHONE = { coursework: [...NAMES, PHYS.name], courses: [...LISTED, PHYS] };
     remote = { ...remote, ...PHONE } as unknown as ProfileData; revision += 1;
@@ -150,6 +159,19 @@ describe('a conflict question holding an operation carrying `courses` (checklist
     expect(rendered.queryByTestId('conflict-newer-build')).toBeNull();
     act(() => { result.current.keepMyChanges(); }); await tick(3000);
     expect(remote.courses).toEqual(MARKED);
+    expect(result.current.conflicts).toEqual([]);
+  });
+});
+
+describe('an operation carrying `courses` that another tab left', () => {
+  it('is sent when a tab opens with the course list switched off', async () => {
+    release.courseStatus = false;
+    click(MARKED);
+    const { result } = await start();
+    await focus(); await tick(3000);
+    expect(sentSince(0)).toEqual([{ courses: MARKED, coursework: NAMES }]);
+    expect(remote.courses).toEqual(MARKED);
+    expect(result.current.profile.courses).toEqual(MARKED);
     expect(result.current.conflicts).toEqual([]);
   });
 });

@@ -1,6 +1,15 @@
-import { describe, it, expect } from 'vitest';
+import { afterEach, describe, it, expect, vi } from 'vitest';
 import { encodeProfile, decodeProfile, decodeProfileResult, buildShareUrl, profileShareUrlFits, PROFILE_SHARE_MAX_URL_CHARACTERS } from './profile-share';
 import type { ProfileData } from './types';
+
+// The course list's release switch, as this branch ships it unless a test
+// turns it off.
+const release = vi.hoisted(() => ({ courseStatus: true }));
+vi.mock('./release-scope', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./release-scope')>();
+  return { ...actual, RELEASE_SCOPE: { ...actual.RELEASE_SCOPE, get courseStatus() { return release.courseStatus; } } };
+});
+afterEach(() => { release.courseStatus = true; });
 
 const FULL_PROFILE: ProfileData = {
   institution: 'UIUC - University of Illinois Urbana-Champaign',
@@ -58,6 +67,16 @@ describe('profile-share encode/decode roundtrip', () => {
       { name: 'STAT 107', status: 'unknown', source: 'manual' },
     ]);
     expect(decoded.ok && decoded.profile.coursework).toEqual(['CS 124', 'CS 446', 'STAT 107']);
+  });
+
+  it('with the course list switched off, opens a shared course as a name only, as the build before this one', () => {
+    release.courseStatus = false;
+    const encoded = encodeProfile({ ...FULL_PROFILE, courses: [{ name: 'CS 446', status: 'planned', source: 'resume' }] });
+    const decoded = decodeProfileResult(encoded);
+    expect(decoded.ok && decoded.keys).toContain('coursework');
+    expect(decoded.ok && decoded.keys).not.toContain('courses');
+    expect(decoded.ok && decoded.profile.courses).toBeUndefined();
+    expect(decoded.ok && decoded.profile.coursework).toEqual(['CS 446', 'CS 124', 'STAT 107']);
   });
 
   it('produces URL-safe base64 (no +, /, =)', () => {

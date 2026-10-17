@@ -7,6 +7,14 @@ vi.mock('@/lib/school-confirmation', () => ({
 }));
 
 
+// The course list's release switch, as this branch ships it unless a test
+// turns it off.
+const release = vi.hoisted(() => ({ courseStatus: true }));
+vi.mock('@/lib/release-scope', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/release-scope')>();
+  return { ...actual, RELEASE_SCOPE: { ...actual.RELEASE_SCOPE, get courseStatus() { return release.courseStatus; } } };
+});
+
 vi.mock('@/i18n/client', () => ({
   useLocale: () => 'en',
   useT: () => ({
@@ -387,6 +395,16 @@ describe('AcademicProfileCard — international status switch', () => {
 });
 
 describe('AcademicProfileCard — courses (checklist M13)', () => {
+  afterEach(() => { release.courseStatus = true; });
+
+  it.each([true, false])('shows the course list only while RELEASE_SCOPE.courseStatus is on (%s)', (on) => {
+    release.courseStatus = on;
+    renderCard({ courses: [{ name: 'CS 225', source: 'manual', status: 'completed' }], coursework: ['CS 225'] });
+    expect(screen.queryByText('courses.label') !== null).toBe(on);
+    expect(screen.queryByLabelText('courses.statusOf:CS 225') !== null).toBe(on);
+    expect(screen.queryByLabelText('courses.addLabel') !== null).toBe(on);
+  });
+
   it('shows a profile saved before statuses as courses not marked, and marks one through the form update', () => {
     const { update } = renderCard({ coursework: ['CS 225', 'CS 446'] });
     expect((screen.getByLabelText('courses.statusOf:CS 225') as HTMLSelectElement).value).toBe('unknown');

@@ -1,5 +1,6 @@
 import { courseEntries, courseFields } from './course-status';
 import { assertProfileInput, ProfileInputError } from './profile-input';
+import { RELEASE_SCOPE } from './release-scope';
 import type { ProfileData } from './types';
 
 interface SharedProfile {
@@ -83,10 +84,12 @@ function fromShared(shared: SharedProfile): Partial<ProfileData> {
       : undefined,
     // Each shared course arrives not marked: the visitor marks their own. It
     // is theirs, as one added on the form is, not read from their résumé: a
-    // later removal or re-import of their résumé leaves it alone.
-    ...(Array.isArray(shared.courses)
-      ? courseFields(shared.courses.map((x) => ({ name: shareText(x), status: 'unknown' as const, source: 'manual' as const })))
-      : {}),
+    // later removal or re-import of their résumé leaves it alone. With the
+    // course list switched off, the names only, as the build before this one.
+    ...(!Array.isArray(shared.courses) ? {}
+      : RELEASE_SCOPE.courseStatus
+        ? courseFields(shared.courses.map((x) => ({ name: shareText(x), status: 'unknown' as const, source: 'manual' as const })))
+        : { coursework: shared.courses.map((x) => shareText(x)) }),
   };
 }
 

@@ -10,6 +10,7 @@ import UniversitySwitcherModal from '@/components/UniversitySwitcherModal';
 import { useLocale } from '@/i18n/client';
 import type { ProfileData } from '@/lib/types';
 import { courseRows } from '@/lib/course-status';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { GRADES } from '@/lib/colleges';
 import { loadCatalog } from '@/lib/catalogs';
 import { suggestInterests } from '@/lib/interest-suggestions';
@@ -382,11 +383,13 @@ export function AcademicProfileCard({
           />
         </div>
 
-        <CourseList
-          key={`courses-${identityGeneration}`}
-          courses={courses}
-          onChange={(next) => update('courses', next)}
-        />
+        {RELEASE_SCOPE.courseStatus && (
+          <CourseList
+            key={`courses-${identityGeneration}`}
+            courses={courses}
+            onChange={(next) => update('courses', next)}
+          />
+        )}
       </div>
     </Card>
   );

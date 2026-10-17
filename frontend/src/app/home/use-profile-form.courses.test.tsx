@@ -31,6 +31,13 @@ vi.mock('pdfjs-dist', () => ({
     getPage: async (n: number) => ({ cleanup: () => {}, getTextContent: async () => ({ items: [{ str: pdf.lines[n - 1] }] }) }),
   }) }),
 }));
+// The course list's release switch, as this branch ships it unless a test
+// turns it off.
+const release = vi.hoisted(() => ({ courseStatus: true }));
+vi.mock('@/lib/release-scope', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/release-scope')>();
+  return { ...actual, RELEASE_SCOPE: { ...actual.RELEASE_SCOPE, get courseStatus() { return release.courseStatus; } } };
+});
 import { useProfileForm } from './use-profile-form';
 import { translate } from '@/i18n/translate';
 import { courseEntries, courseRows, storedCourse } from '@/lib/course-status';
@@ -305,5 +312,33 @@ describe('courses on a never-created row keep the M109 guarantees', () => {
     expect(sends()[0].patch).toMatchObject({ courses: C('completed'), coursework: ['CS 225'] });
     expect(row?.profile).toMatchObject({ courses: C('completed'), coursework: ['CS 225'] });
     expect(form().saveStatus).toBe('saved');
+  });
+});
+
+describe('the course list release switch, RELEASE_SCOPE.courseStatus', () => {
+  afterEach(() => { release.courseStatus = true; });
+  // Another tab marked MATH 257 before this one opened.
+  const MARKED_ELSEWHERE: ProfileData = { ...SIGNED_UP, resume_text: 'Relevant Coursework: MATH 257',
+    courses: [{ name: 'MATH 257', source: 'resume', status: 'completed' }], coursework: ['MATH 257'] };
+
+  it.each([true, false])('on: %s. A résumé import and removal write `courses` only while it is on, and the status another tab set is kept and sent either way', async (on) => {
+    release.courseStatus = on;
+    row = { revision: 1, profile: MARKED_ELSEWHERE };
+    await mount();
+    expect(statuses()).toEqual({ 'MATH 257': 'completed' });
+    await importResume('Relevant Coursework: CS 225, MATH 257');
+    expect(statuses()).toEqual({ 'MATH 257': 'completed', 'CS 225': 'unknown' });
+    expect([...row!.profile.coursework!].sort()).toEqual(['CS 225', 'MATH 257']);
+    expect(row?.profile.courses).toEqual(on
+      ? expect.arrayContaining([...MARKED_ELSEWHERE.courses!, { name: 'CS 225', source: 'resume' }])
+      : MARKED_ELSEWHERE.courses);
+    await removeResume();
+    expect(row?.profile.resume_text).toBe('');
+    // Off, the names go as the build before this one removes them.
+    expect(row?.profile.coursework).toEqual(on ? ['MATH 257'] : []);
+    expect(row?.profile.courses).toEqual(MARKED_ELSEWHERE.courses);
+    expect(statuses()).toEqual({ 'MATH 257': 'completed' });
+    expect(sends().length).toBeGreaterThan(1);
+    expect(sends().some(({ patch }) => 'courses' in patch)).toBe(on);
   });
 });

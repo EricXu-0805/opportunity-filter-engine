@@ -25,6 +25,7 @@ ReleaseFeature = Literal[
     "payments",
     "microsoft_school_auth",
     "concierge_pay_qr",
+    "course_status",
 ]
 
 RELEASE_SCOPE = MappingProxyType(
@@ -71,6 +72,11 @@ RELEASE_SCOPE = MappingProxyType(
         #   must not mint orders even if payments is later switched on first.
         "microsoft_school_auth": False,
         "concierge_pay_qr": False,
+        # Checklist M13: the course list on Home, where a student marks each
+        # course's status. A frontend surface only: the server reads `courses`
+        # whichever way it is set, as it reads every profile field, and a
+        # student's own status is never a door to close.
+        "course_status": True,
     }
 )
 

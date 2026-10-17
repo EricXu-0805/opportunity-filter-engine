@@ -29,6 +29,7 @@ describe('MVP public release scope', () => {
       microsoftSchoolAuth: false,
       payments: false,
       conciergePayQr: false,
+      courseStatus: true,
     });
   });
 

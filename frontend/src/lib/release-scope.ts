@@ -36,6 +36,13 @@ export const RELEASE_SCOPE = Object.freeze({
   // alone yields an API that answers and a database that refuses.
   payments: false,
   conciergePayQr: false,
+  // Checklist M13: the course list on Home, where the student marks each
+  // course's status, and every write of `courses`. Off, Home shows no list and
+  // writes the course names only, as the build before it does, but still
+  // reads, sends and answers the `courses` other tabs wrote: turning it off is
+  // how the course-status build is rolled back. The server reads `courses`
+  // either way.
+  courseStatus: true,
 } as const);
 
 // Included in every server-side cached discovery URL. Bump whenever the public
