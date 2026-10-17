@@ -15,6 +15,7 @@ from datetime import UTC, date, datetime, timedelta
 from functools import lru_cache
 
 from backend.lib.contact_visibility import send_target_strength, verified_send_target
+from backend.lib.opportunity_detail import skills_basis
 
 from ..collectors.simplify_internships import _SPONSORSHIP_MAP as _SIMPLIFY_SPONSORSHIP_MAP
 from ..evidence import (
@@ -2085,7 +2086,7 @@ def score_eligibility(
     # A faculty directory contact is not a rolling posting and cannot earn this
     # boost merely because an old collector stamped is_rolling=True.
     required_skills_list = _bounded_skill_labels(elig.get("skills_required"))
-    requirements_are_ours = is_inferred(opportunity, "eligibility.skills_required")
+    requirements_are_ours = skills_basis(opportunity, "eligibility.skills_required") is not None
     stated_required_skills = [] if requirements_are_ours else required_skills_list
     # An SRO row whose deadline is the database's "Anticipated" date was
     # rolling only because that date did not parse. It keeps this boost until
@@ -2134,6 +2135,13 @@ def score_eligibility(
     # shortfall: "Missing skills: Stata" on a program whose own page lists only
     # timing and a deadline.
     #
+    # An unstamped list is ours too outside hand-curated rows (M22), by the
+    # rule the detail facts and the wire's skills_attribution use: NSF REU
+    # lists are a keyword bank run over the award abstract, campus program
+    # lists a scan of prose (99 of the 131 actionable rows with a required
+    # list on 2026-10-17, among them "Python, MATLAB" on Caltech's Amgen
+    # Scholars biology program).
+    #
     # Their overlap remains a positive signal, but a missing inferred skill
     # cannot reduce eligibility or be described as a program requirement.
 
@@ -2173,7 +2181,8 @@ def score_eligibility(
     if not stated_required_skills:
         already_shown = {_canonicalize_skill(skill) for skill in matched_skills}
         for labels, label in (
-            (preferred_skills, "Skills mentioned in the description" if is_inferred(opportunity, "eligibility.skills_preferred") else "Preferred skill overlap"),
+            (preferred_skills, "Skills mentioned in the description"
+             if skills_basis(opportunity, "eligibility.skills_preferred") is not None else "Preferred skill overlap"),
             (mentioned_skills, "Skills mentioned in the description"),
         ):
             matches = [skill for skill in labels if _canonicalize_skill(skill) in student_skill_map

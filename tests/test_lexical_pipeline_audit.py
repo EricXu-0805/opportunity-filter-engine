@@ -130,6 +130,8 @@ def test_missing_inferred_labels_cannot_reduce_score_and_do_not_claim_requiremen
 
 def test_optional_match_cannot_mask_explicit_hard_requirement():
     base = listing()
+    # Explicit: a person typed it in from the posting (a curated row).
+    base["source"] = "manual"
     base["eligibility"]["skills_required"] = ["SQL"]
     optional = deepcopy(base)
     optional["eligibility"]["skills_preferred"] = ["Python"]
