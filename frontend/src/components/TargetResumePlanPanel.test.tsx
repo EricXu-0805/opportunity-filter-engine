@@ -91,10 +91,21 @@ describe('whole draft content planning', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('could not be verified');
     expect(screen.queryByText(shorter)).toBeNull(); expect(screen.queryByRole('checkbox')).toBeNull(); expect(p.onApply).not.toHaveBeenCalled();
   });
-  it('refuses a plan stamped with the pre-review version', async () => {
-    mocked.generate.mockImplementation(async payload => ({ ...await response(payload), pipeline_version: 'full-target-plan-v4' }) as unknown as TargetResumePlanResponse);
+  it.each(['full-target-plan-v4', 'full-target-plan-v7'])('refuses a plan stamped %s', async version => {
+    mocked.generate.mockImplementation(async payload => ({ ...await response(payload), pipeline_version: version }) as unknown as TargetResumePlanResponse);
     const p = props(); render(<TargetResumePlanPanel {...p} />); await generate();
     expect(await screen.findByRole('alert')).toHaveTextContent('could not be verified'); expect(screen.queryByRole('checkbox')).toBeNull();
+  });
+  it('shows and applies a v5 server\'s plan as before, while the backend deploys after the frontend', async () => {
+    mocked.generate.mockImplementation(async payload => ({ ...await response(payload), pipeline_version: 'full-target-plan-v5' }));
+    const p = props(); render(<TargetResumePlanPanel {...p} />); await generate(); await reviewReady();
+    expect(screen.queryByRole('alert')).toBeNull(); expect(screen.getAllByRole('checkbox')).toHaveLength(5);
+    const card = document.querySelector('[data-plan-block-id="publication-one"]') as HTMLElement;
+    fireEvent.click(within(card).getByText('Review reason and sources'));
+    expect(within(card).getByText('Opportunity evidence')).toBeVisible(); expect(within(card).getByText(/: Python$/)).toBeVisible();
+    select('publication-one'); apply();
+    const next = vi.mocked(p.onApply).mock.calls[0][1];
+    expect(next.document.sections.find(section => section.id === 'publications')!.blocks[0].included).toBe(false);
   });
   it('keeps a hidden block, section and fields hidden while showing why', async () => {
     const p = props(); const section = p.draft.document.sections.find(section => section.id === 'activities')!;

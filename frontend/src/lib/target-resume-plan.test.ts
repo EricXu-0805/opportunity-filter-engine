@@ -159,7 +159,17 @@ describe('strict complete plan receipts', () => {
     result.items[1].target_evidence = [{ field: 'description', requirement_index: null, start: 0, end: 6, quote: 'Barist' }];
     expect(validateTargetResumePlanResponse(prepared, request(result), result)).toEqual({ ok: false, code: 'invalid_response' });
   });
+  it('accepts a v5 server\'s plan, as the browser meets it before the backend deploys, and applies it as before', async () => {
+    const prepared = await prepare(); const result = { ...response(prepared), pipeline_version: 'full-target-plan-v5' as const };
+    const checked = unwrap(validateTargetResumePlanResponse(prepared, request(result), result));
+    expect(checked.pipeline_version).toBe('full-target-plan-v5'); expect(checked.items[0].target_evidence[0].quote).toBe('Python');
+    const item = result.items[1]; item.action = 'omit';
+    const next = unwrap(applyTargetResumePlan(prepared, prepared.draft, result, selection(prepared, [item.block_id])));
+    expect(blocks(next).find(block => block.id === item.block_id)!.included).toBe(false);
+  });
   it.each([
+    ['pre-review version', (r: TargetResumePlanResponse) => { r.pipeline_version = 'full-target-plan-v4' as never; }],
+    ['unknown version', (r: TargetResumePlanResponse) => { r.pipeline_version = 'full-target-plan-v7' as never; }],
     ['document identity', (r: TargetResumePlanResponse) => { r.document_id += 'other'; }],
     ['target identity', (r: TargetResumePlanResponse) => { r.opportunity_id += 'other'; }],
     ['request identity', (r: TargetResumePlanResponse) => { r.request_id += 'other'; }],
