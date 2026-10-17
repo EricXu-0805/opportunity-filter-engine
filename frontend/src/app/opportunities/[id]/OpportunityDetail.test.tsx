@@ -471,6 +471,23 @@ describe('OpportunityDetail target-truth postures', () => {
     expect(screen.getByTestId('contact-reveal-sign-in')).toBeInTheDocument();
   });
 
+  // M45: a past application is the student's own record, so a closed listing
+  // still offers it, while the email window (and its back-record entry) does
+  // not open. The actionable render shows the email sentinel can turn true.
+  it('keeps the application record entry on a closed listing while offering no email entry', () => {
+    const { rerender } = render(<OpportunityDetail opp={targetWith(HISTORICAL)} />);
+    expect(screen.getByRole('button', { name: 'applicationRecord.open' })).toBeInTheDocument();
+    expect(screen.getByTestId('header-email-handler').textContent).toBe('false');
+    expect(screen.queryByTestId('cold-email-modal')).toBeNull();
+
+    rerender(<OpportunityDetail opp={targetWith({
+      listing_state: 'open', reference_only: false, actionable: true,
+      accepting_state: 'accepting', reason_code: null, verified_at: null, expires_at: null,
+    })} />);
+    expect(screen.getByRole('button', { name: 'applicationRecord.open' })).toBeInTheDocument();
+    expect(screen.getByTestId('header-email-handler').textContent).toBe('true');
+  });
+
   // -------------------------------------------------------------------
   // Which body sections exist at all
   // -------------------------------------------------------------------
