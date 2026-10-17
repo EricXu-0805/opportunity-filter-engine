@@ -3246,7 +3246,7 @@ describe('useProfileForm — "saved on this device" is only claimed when there i
     const { dictionaries } = await import('@/i18n/dictionaries');
     for (const locale of ['en', 'zh'] as const) {
       const actions = (dictionaries[locale].home as Record<string, unknown>).actions as Record<string, string>;
-      for (const key of ['profileSaved', 'profileSaveFailed', 'profileCloudFailed', 'profileDeviceOnly', 'profileAwaitingRequired', 'retrySync', 'profileLoading', 'profileLoadFailed', 'generating']) {
+      for (const key of ['profileSaved', 'profileSaveFailed', 'profileCloudFailed', 'profileDeviceOnly', 'profileAwaitingRequired', 'retrySync', 'profileLoading', 'profileLoadFailed', 'generating', 'profileConflictStale', 'profileConflictGone', 'profileConflictSeveralTyped']) {
         expect(actions[key], `${locale}.home.actions.${key}`).toBeTruthy();
       }
     }
@@ -5647,6 +5647,94 @@ describe('useProfileForm — a generic conflict is reconciled canonically, never
       'the question that is on screen stays there').toBe('major@10');
     expect(screen.getByTestId('save-status').textContent,
       'and it is reported as retryable, not settled').toBe('error');
+  });
+
+  // Checklist M102 (review M102b N5): "That question was already answered
+  // somewhere else, so nothing was sent" only when it was; otherwise what
+  // actually happened.
+  /** What the rebuild finds when the question has gone away: the row holds
+   *  the value on screen, so nothing is redrawn and no save is re-armed. */
+  function settledRebuild(opts: { answered: boolean; pendingKeys?: string[] }) {
+    syncOverrides.refreshConflictQuestion = (async () => ({
+      status: 'settled' as const,
+      profile: { ...ROW, major: 'ECE' },
+      baseProfile: { ...ROW, major: 'ECE' },
+      revision: 11,
+      conflicts: [],
+      pendingKeys: opts.pendingKeys ?? [],
+      flushed: null,
+      answered: opts.answered,
+    })) as never;
+  }
+
+  it('an answer refused because somebody else had answered the question says so', async () => {
+    await currentQuestionAtRev10();
+    syncOverrides.resolveProfileConflict = (async () => ({ status: 'stale-conflict' as const })) as never;
+    settledRebuild({ answered: true });
+    await act(async () => {
+      screen.getByTestId('keep-mine').click();
+      await new Promise((r) => setTimeout(r, 50));
+    });
+    expect(screen.getByTestId('conflict-keys').textContent).toBe('');
+    expect(screen.getByTestId('save-status').textContent).toBe('conflict-stale');
+  });
+
+  it('an answer refused because the question went away unanswered does not say somebody answered it', async () => {
+    await currentQuestionAtRev10();
+    syncOverrides.resolveProfileConflict = (async () => ({ status: 'stale-conflict' as const })) as never;
+    settledRebuild({ answered: false });
+    await act(async () => {
+      screen.getByTestId('keep-mine').click();
+      await new Promise((r) => setTimeout(r, 50));
+    });
+    expect(screen.getByTestId('conflict-keys').textContent).toBe('');
+    expect(screen.getByTestId('save-status').textContent).toBe('conflict-gone');
+  });
+
+  it('a save whose question went away unanswered while it was rebuilt, with nothing left unsent, says saved', async () => {
+    await currentQuestionAtRev10();
+    settledRebuild({ answered: false });
+    act(() => { screen.getByTestId('set-interests').click(); });
+    await act(async () => { await new Promise((r) => setTimeout(r, 1700)); });
+    expect(screen.getByTestId('conflict-keys').textContent).toBe('');
+    expect(screen.getByTestId('save-status').textContent, 'nobody answered anything and nothing was refused')
+      .toBe('saved');
+  });
+
+  it('a save whose question went away with an edit still unsent says so, and Retry sends it', async () => {
+    await currentQuestionAtRev10();
+    settledRebuild({ answered: false, pendingKeys: ['research_interests'] });
+    act(() => { screen.getByTestId('set-interests').click(); });
+    await act(async () => { await new Promise((r) => setTimeout(r, 1700)); });
+    expect(screen.getByTestId('conflict-keys').textContent).toBe('');
+    expect(screen.getByTestId('save-status').textContent).toBe('cloud-failed');
+
+    syncOverrides.flushPendingProfileWrite = async () => (
+      { status: 'saved' as const, revision: 12, profile: { ...ROW, major: 'ECE', research_interests: 'my interests' } }
+    );
+    syncOverrides.flushCalls = 0;
+    await act(async () => {
+      screen.getByTestId('retry-sync').click();
+      await new Promise((r) => setTimeout(r, 50));
+    });
+    expect(syncOverrides.flushCalls, 'Retry sends what is still unsent').toBe(1);
+    expect(screen.getByTestId('save-status').textContent).toBe('saved');
+  });
+
+  it('an answer to part of a question keeps its saved when the rest was answered elsewhere meanwhile', async () => {
+    await twoQuestionsAtRev10();
+    // The row comes back holding what is on screen, so the answer redraws
+    // nothing and arms no save: the badge is what is under test.
+    syncOverrides.resolveProfileConflict = (async () => ({
+      status: 'saved' as const, revision: 11, profile: { ...ROW, major: 'ECE' },
+    })) as never;
+    settledRebuild({ answered: true });
+    await act(async () => {
+      screen.getByTestId('keep-grade').click();
+      await new Promise((r) => setTimeout(r, 80));
+    });
+    expect(screen.getByTestId('conflict-keys').textContent).toBe('');
+    expect(screen.getByTestId('save-status').textContent, 'this click did send its answer').toBe('saved');
   });
 });
 
@@ -10244,7 +10332,8 @@ describe('useProfileForm — a question stays answerable in the UI the person is
       remoteRevision: revision,
       mutationId,
       keyVersion: 1,
-      candidates: [{ value: 'mine', lineage: 'lin-a', opIds: [`op-${key}-${revision}`] }],
+      // This tab's own edit, as the coordinator labels one: its lineage.
+      candidates: [{ value: 'mine', lineage: getJournalLineageId(), opIds: [`op-${key}-${revision}`] }],
     };
   }
 

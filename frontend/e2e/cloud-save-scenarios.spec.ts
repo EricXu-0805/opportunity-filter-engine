@@ -1253,5 +1253,131 @@ test.describe('M101 leaving Home and coming back in the same page', () => {
   });
 });
 
-// M102: a question one tab's edit raised is asked in that tab, not in another
-// tab of the account that typed nothing.
+// M102: every tab of an account shares the outbox and the journal, so every
+// tab asks about a question one tab's edit raised. A tab that typed none of it
+// shows what was typed and keeps that, never the value it drew before.
+test.describe('M102 two tabs of one account', () => {
+  test('a tab that typed nothing asks too, shows what the other tab typed, and keeps that, never its old value', async ({ page, context }) => {
+    const http = await apiRequest.newContext();
+    const typed = 'Typed in the second tab 王';
+    const phoneText = 'Saved on the phone meanwhile 王';
+    try {
+      const account = await seedAccount(http, mailbox('idle-tab'));
+      await englishOnly(page);
+      await signedIn(page, account);
+      const idleCas = recordCas(page);
+      await page.goto('/');
+      await waitForForm(page);
+      await expectForm(page, ACCOUNT_PROFILE);
+      const typing = await context.newPage();
+      await englishOnly(typing);
+      const typingCas = recordCas(typing);
+      await typing.goto('/');
+      await waitForForm(typing);
+      await expectForm(typing, ACCOUNT_PROFILE);
+
+      const phone = await http.post(new URL('/rest/v1/rpc/commit_profile_patch_cas', STUB).href, {
+        headers: bearer(account),
+        data: { p_expected_device_id: account.uid, p_expected_revision: 1, p_patch: { research_interests: phoneText } },
+      });
+      expect(await phone.json()).toMatchObject({ status: 'applied', revision: 2 });
+      await typing.bringToFront();
+      await typing.locator('#research_interests').fill(typed);
+      await expect(typing.getByTestId('conflict-keep-mine')).toBeVisible({ timeout: 15_000 });
+      expect(typingCas).toMatchObject([{ status: 'conflict', revision: 2, patch: { research_interests: typed } }]);
+
+      // The tab that typed is closed without answering; the other one is
+      // looked at again.
+      await typing.close();
+      await page.bringToFront();
+      await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+      await expect(page.getByTestId('conflict-keep-mine'), 'asked here too').toBeVisible({ timeout: 15_000 });
+      await expect(page.locator('#profile-save-status')).toContainText('Changed on another device');
+      await expect(page.locator('#research_interests'), 'what was typed, not the value it drew before').toHaveValue(typed);
+      expect(idleCas).toEqual([]);
+
+      await page.getByTestId('conflict-keep-mine').click();
+      await expect(page.locator('#profile-save-status')).toHaveText('Profile saved', { timeout: 15_000 });
+      await expect.poll(() => idleCas.length).toBe(1);
+      expect(idleCas[0]).toMatchObject({ status: 'applied', revision: 3, patch: { research_interests: typed } });
+      await expect(page.getByTestId('conflict-keep-mine')).toHaveCount(0);
+      expect(await profileRows(http, account.uid))
+        .toMatchObject([{ revision: 3, profile_data: { ...ACCOUNT_PROFILE, research_interests: typed } }]);
+    } finally {
+      await http.dispose();
+    }
+  });
+  test('after a guest profile is restored, a tab that typed nothing asks about another tab\'s edit and keeps what that tab typed, never the account\'s earlier interests', async ({ page, context }) => {
+    // Review M80 r5, T3b: the restore's answer is lost, and while it is read
+    // back another tab of the account, open on the account's row, types its
+    // interests.
+    const http = await apiRequest.newContext();
+    const email = mailbox('restore-idle-tab');
+    const guest: GuestDraft = {
+      name: 'Guest restored beside another tab', college: 'Grainger College of Engineering', major: 'Computer Science',
+      grade: 'Junior', research_interests: 'Guest draft about soft robotics 王',
+    };
+    const typed = 'Typed in the other tab during the restore 王';
+    try {
+      const account = await seedAccount(http, email);
+      await englishOnly(page);
+      await guestSignsInToAccount(page, http, email, guest);
+      const notice = page.getByTestId('merged-guest-notice');
+      await expect(page.getByTestId('restore-guest-profile')).toBeEnabled({ timeout: 15_000 });
+      const other = await context.newPage();
+      await englishOnly(other);
+      await other.goto('/');
+      await waitForForm(other);
+      await expectForm(other, ACCOUNT_PROFILE);
+
+      await page.bringToFront();
+      const attempts: Array<Partial<ProfileData>> = [];
+      page.on('request', (request) => {
+        if (isCas(request.url()) && request.method() === 'POST') attempts.push(request.postDataJSON().p_patch);
+      });
+      // The restore reaches the server and its answer is lost; reading the
+      // profile back is held until the test lets it through.
+      let releaseReads!: () => void;
+      const reads = new Promise<void>((resolve) => { releaseReads = resolve; });
+      let holdReads = false;
+      let first = true;
+      await page.route('**/rest/v1/rpc/commit_profile_patch_cas', async (route) => {
+        if (!first) { await route.continue(); return; }
+        first = false;
+        await route.fetch();
+        holdReads = true;
+        await route.abort('internetdisconnected');
+      });
+      await page.route('**/rest/v1/profiles?**', async (route) => {
+        if (holdReads && route.request().method() === 'GET') await reads;
+        await route.continue().catch(() => {});
+      });
+      await page.getByTestId('restore-guest-profile').click();
+      await expect(notice).toContainText('Checking whether your guest profile was restored', { timeout: 15_000 });
+
+      await other.bringToFront();
+      await other.locator('#research_interests').fill(typed);
+      await expect(other.getByTestId('conflict-keep-mine')).toBeVisible({ timeout: 15_000 });
+      await other.close();
+
+      await page.bringToFront();
+      releaseReads();
+      await expect(notice).toContainText('Your guest profile is restored.', { timeout: 15_000 });
+      await expect(page.getByTestId('conflict-keep-mine'), 'asked here too').toBeVisible({ timeout: 15_000 });
+      await expect(page.locator('#student_name')).toHaveValue(guest.name ?? '');
+      await expect(page.locator('#research_interests'), 'what was typed, not the account\'s earlier interests').toHaveValue(typed);
+      expect(attempts, 'this tab sent only the restore').toHaveLength(1);
+      expect(await profileRows(http, account.uid))
+        .toMatchObject([{ revision: 2, profile_data: { name: guest.name, research_interests: guest.research_interests } }]);
+
+      await page.getByTestId('conflict-keep-mine').click();
+      await expect(page.locator('#profile-save-status')).toHaveText('Profile saved', { timeout: 15_000 });
+      await expect.poll(() => attempts.length).toBe(2);
+      expect(attempts[1]).toEqual({ research_interests: typed });
+      expect(await profileRows(http, account.uid))
+        .toMatchObject([{ revision: 3, profile_data: { name: guest.name, research_interests: typed } }]);
+    } finally {
+      await http.dispose();
+    }
+  });
+});

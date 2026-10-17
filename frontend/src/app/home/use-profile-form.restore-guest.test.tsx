@@ -23,8 +23,9 @@ vi.mock('@/lib/supabase', () => ({
 import { useProfileForm, type GuestRestoreCheck, type GuestRestoreOutcome } from './use-profile-form';
 import { DEFAULT_PROFILE } from './types';
 import { advanceOwnerEpoch, captureOwnerToken, isOwnerTokenValid, syncLocalIdentityOwner } from '@/lib/identity-owner';
-import { PROFILE_KEYS, readProfileSyncEnvelope, resetProfileDirtyLedger, stageProfilePatch } from '@/lib/profile-sync';
+import { HOME_FORM_WRITER, PROFILE_KEYS, readProfileSyncEnvelope, resetProfileDirtyLedger, stageProfilePatch } from '@/lib/profile-sync';
 import { readOutstandingOps, resetJournalLaneForTests } from '@/lib/profile-journal';
+import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { clearMatchCache } from '@/lib/match-cache';
 
 const ACCOUNT: ProfileData = { ...DEFAULT_PROFILE, name: 'Account owner', home_school: 'uiuc', institution: 'UIUC',
@@ -498,6 +499,46 @@ describe('Home restores the guest profile a merge saved in the account history',
     expect(remote.grade).toBe('Senior');
     nothingPending();
     expect(result.current.guestRestoreBlocker(captureOwnerToken())).toBeNull();
+  });
+
+  it('a tab that typed nothing, whose restore another open tab\'s edit collided with, asks too and keeps what that tab typed, never the account\'s earlier interests', async () => {
+    // Checklist M102 (review M80 r5, T3b): the restore's answer is lost, and
+    // while it is read back another tab of the account, open on revision 3,
+    // types its interests.
+    const { result } = await start();
+    service.commit.mockImplementationOnce(async (intent) => {
+      await apply(intent);
+      return { status: 'transport-error', message: 'Failed to fetch' };
+    });
+    expect(await restore(result)).toBe('unknown');
+    expect(remote).toEqual(RESTORED);
+    const typed = 'Typed in the other tab during the restore';
+    const ops = readOutstandingOps();
+    const clock = Math.max(0, ...(ops.ok ? ops.value.map((o) => o.clock ?? 0) : [])) + 1;
+    const opId = crypto.randomUUID();
+    localStorage.setItem(`${STORAGE_KEYS.PROFILE_JOURNAL_PREFIX}op_${opId}`, JSON.stringify({
+      opId, originId: 'tab-b', lineage: 'tab-b',
+      fields: [{ key: 'research_interests', base: { present: true, value: ACCOUNT.research_interests },
+        desired: { present: true, value: typed } }],
+      baseRevision: 3, writer: HOME_FORM_WRITER, mode: 'set', seq: 1, clock,
+    }));
+    expect(await stageProfilePatch({ ...ACCOUNT, research_interests: typed }, ['research_interests'],
+      captureOwnerToken(), { allowCreate: true }))
+      .toMatchObject({ status: 'conflict', conflictKeys: ['research_interests'] });
+    const sends = service.commit.mock.calls.length;
+
+    expect(await confirm(result)).toBe('restored');
+    await drain();
+    expect(result.current.conflicts.map((c) => c.key)).toEqual(['research_interests']);
+    expect(result.current.saveStatus).toBe('conflict');
+    expect(result.current.profile, 'the restored profile, with the other tab\'s unsaved interests')
+      .toMatchObject({ name: GUEST.name, major: GUEST.major, research_interests: typed });
+    act(() => { result.current.keepMyChanges(); });
+    await tick(5000);
+    expect(service.commit.mock.calls.slice(sends).map(([intent]) => intent.patch),
+      'what the other tab typed, never the account\'s earlier interests').toEqual([{ research_interests: typed }]);
+    expect(remote).toMatchObject({ name: GUEST.name, major: GUEST.major, research_interests: typed });
+    expect(result.current.conflicts).toEqual([]);
   });
 
   it('is refused for a profile read under a different identity', async () => {

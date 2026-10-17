@@ -23,7 +23,8 @@ vi.mock('@/lib/supabase', () => ({
 import { useProfileForm } from './use-profile-form';
 import { DEFAULT_PROFILE } from './types';
 import { advanceOwnerEpoch, captureOwnerToken, isOwnerTokenValid, syncLocalIdentityOwner } from '@/lib/identity-owner';
-import { HOME_FORM_WRITER, hydrateProfile, readProfileSyncEnvelope, recordProfileIntent, resetProfileDirtyLedger } from '@/lib/profile-sync';
+import { HOME_FORM_WRITER, hydrateProfile, readProfileSyncEnvelope, recordProfileIntent, resetProfileDirtyLedger, stageProfilePatch } from '@/lib/profile-sync';
+import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { readOutstandingOps, resetJournalLaneForTests, startDocumentForTests } from '@/lib/profile-journal';
 
 // Edits a screen that is gone left unsent in the journal: a closed tab's, or
@@ -283,5 +284,42 @@ describe('a Home form remounted in the same page load', () => {
     nothingOutstanding();
     await tick(5000);
     expect(sends()).toHaveLength(3);
+  });
+
+  it('asks about its own save that came back a partial conflict when it lands, while another tab\'s question is open too', async () => {
+    // Review M102a R2: the load used to return before its recovery flush on
+    // any question, so nothing waited behind the save for its answer.
+    const first = await mount();
+    // Another tab's interests met another device's: its question is open.
+    const ops = readOutstandingOps();
+    const clock = Math.max(0, ...(ops.ok ? ops.value.map((o) => o.clock ?? 0) : [])) + 1;
+    const opId = crypto.randomUUID();
+    localStorage.setItem(`${STORAGE_KEYS.PROFILE_JOURNAL_PREFIX}op_${opId}`, JSON.stringify({
+      opId, originId: 'tab-b', lineage: 'tab-b',
+      fields: [{ key: 'research_interests', base: { present: true, value: ROW.research_interests },
+        desired: { present: true, value: 'Typed in the other tab' } }],
+      baseRevision: 3, writer: HOME_FORM_WRITER, mode: 'set', seq: 1, clock,
+    }));
+    rowOf(uid).profile = { ...rowOf(uid).profile, research_interests: 'Saved on the phone' }; rowOf(uid).revision = 4;
+    expect(await stageProfilePatch({ ...ROW, research_interests: 'Typed in the other tab' }, ['research_interests'],
+      captureOwnerToken(), { allowCreate: true })).toMatchObject({ status: 'conflict' });
+    act(() => { window.dispatchEvent(new Event('focus')); }); await drain();
+
+    let land: () => void = () => {};
+    service.commit.mockImplementationOnce((intent) => new Promise((resolve) => { land = () => resolve(apply(intent)); }));
+    act(() => {
+      first.result.current.setProfile((p) => ({ ...p, college: 'Liberal Arts', linkedin_url: 'https://linkedin.com/in/owner' }));
+    });
+    await tick(2000);
+    first.unmount();
+    await drain();
+    const second = await mount();
+    // Another device saves a different college before the held save lands.
+    rowOf(uid).profile = { ...rowOf(uid).profile, college: 'Business' }; rowOf(uid).revision = 5;
+    act(() => { land(); });
+    await drain();
+    expect(second.result.current.conflicts.map((c) => c.key), 'asked when the save lands').toContain('college');
+    expect(second.result.current.saveStatus).toBe('conflict');
+    expect(rowOf(uid).profile).toMatchObject({ college: 'Business', linkedin_url: 'https://linkedin.com/in/owner' });
   });
 });

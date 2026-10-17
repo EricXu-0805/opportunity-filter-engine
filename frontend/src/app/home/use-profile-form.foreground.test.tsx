@@ -24,7 +24,7 @@ import { useProfileForm } from './use-profile-form';
 import { DEFAULT_PROFILE } from './types';
 import { PROFILE_REFRESH_INTERVAL_MS } from '@/lib/use-profile-refresh';
 import { advanceOwnerEpoch, captureOwnerToken, isOwnerTokenValid, readUserScopedRaw, syncLocalIdentityOwner } from '@/lib/identity-owner';
-import { readProfileSyncEnvelope, resetProfileDirtyLedger } from '@/lib/profile-sync';
+import { HOME_FORM_WRITER, hydrateProfile, readProfileSyncEnvelope, resetProfileDirtyLedger, stageProfilePatch, type ProfileConflict } from '@/lib/profile-sync';
 import { readOutstandingOps, resetJournalLaneForTests, startDocumentForTests } from '@/lib/profile-journal';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { encodeProfile } from '@/lib/profile-share';
@@ -376,6 +376,250 @@ describe('Home foreground reads with real profile coordination', () => {
       expect(result.current.viewSnapshot?.token).toEqual(captureOwnerToken());
     }
     expect(service.commit).not.toHaveBeenCalled();
+  });
+});
+
+/** Another tab's edit, in the journal as that tab writes it: its own lineage,
+ *  made against the row at revision 1, written after everything on disk.
+ *  Without a clock it is what a build from before journal clocks wrote. */
+function otherTabEdit(key: keyof ProfileData, value: unknown, lineage = 'tab-b', clocked = true) {
+  const ops = readOutstandingOps();
+  const clock = Math.max(0, ...(ops.ok ? ops.value.map((o) => o.clock ?? 0) : [])) + 1;
+  const opId = crypto.randomUUID();
+  localStorage.setItem(`${STORAGE_KEYS.PROFILE_JOURNAL_PREFIX}op_${opId}`, JSON.stringify({
+    opId, originId: lineage, lineage,
+    fields: [{ key, base: { present: true, value: BASE[key] }, desired: { present: true, value } }],
+    baseRevision: 1, writer: HOME_FORM_WRITER, mode: 'set', seq: 1, ...(clocked ? { clock } : {}),
+  }));
+}
+/** The other tab types `value` and saves it after a phone has saved another
+ *  value: its save comes back a conflict, and the question is open there. */
+async function otherTabSavesIntoAConflict(value: string, lineage = 'tab-b', clocked = true) {
+  otherTabEdit('research_interests', value, lineage, clocked);
+  publish({ research_interests: 'Saved on the phone' });
+  expect(await stageProfilePatch({ ...BASE, research_interests: value }, ['research_interests'],
+    captureOwnerToken(), { allowCreate: true }))
+    .toMatchObject({ status: 'conflict', conflictKeys: ['research_interests'] });
+}
+const sentSince = (from: number) => service.commit.mock.calls.slice(from).map(([i]) => [i.expectedRevision, i.patch]);
+/** The other tab's "Keep what I typed" for `question`, as its receipt is written. */
+function otherTabKeeps(question: ProfileConflict, value: unknown) {
+  const ops = readOutstandingOps();
+  const clock = Math.max(0, ...(ops.ok ? ops.value.map((o) => o.clock ?? 0) : [])) + 1;
+  const opId = crypto.randomUUID();
+  localStorage.setItem(`${STORAGE_KEYS.PROFILE_JOURNAL_PREFIX}op_${opId}`, JSON.stringify({
+    opId, originId: 'tab-b', lineage: 'tab-b',
+    fields: [{ key: question.key, base: { present: true, value: question.remote }, desired: { present: true, value } }],
+    baseRevision: question.remoteRevision, writer: 'default', mode: 'resolve',
+    resolves: question.candidates.flatMap((c) => c.opIds), decisions: { [question.key]: 'local' }, seq: 2, clock,
+  }));
+}
+
+// Checklist M102 (review M80 r5 probes X and T3b; review M102a S1, L1, U1;
+// review M102b H3). Every tab of an account shares the outbox and the journal.
+describe('Home in a tab that typed nothing, beside a tab whose edit is in dispute', () => {
+  it('asks too, shows the value the other tab typed, and keeps that value, never its own old one', async () => {
+    const { result } = await start();
+    await otherTabSavesIntoAConflict('Typed in the other tab');
+    act(() => { window.dispatchEvent(new Event('focus')); }); await drain();
+    expect(result.current.conflicts.map((c) => c.key)).toEqual(['research_interests']);
+    expect(result.current.saveStatus).toBe('conflict');
+    expect(result.current.profile.research_interests, 'the shared working copy, not its old drawing')
+      .toBe('Typed in the other tab');
+
+    const sends = service.commit.mock.calls.length;
+    act(() => { result.current.keepMyChanges(); }); await tick(2000);
+    expect(sentSince(sends)).toEqual([[2, { research_interests: 'Typed in the other tab' }]]);
+    expect(remote?.research_interests).toBe('Typed in the other tab');
+    expect(result.current.conflicts).toEqual([]);
+  });
+
+  it('asks after the tab that typed is gone, and Generate does not go ahead while it is open', async () => {
+    const { result } = await start();
+    await otherTabSavesIntoAConflict('Typed in the other tab');
+    await tick(PROFILE_REFRESH_INTERVAL_MS);
+    act(() => { window.dispatchEvent(new Event('focus')); }); await drain();
+    expect(result.current.conflicts.map((c) => c.key)).toEqual(['research_interests']);
+
+    service.router.push.mockClear();
+    await act(async () => { await result.current.handleSubmit(); }); await drain();
+    expect(service.router.push).not.toHaveBeenCalled();
+    expect(result.current.saveStatus).toBe('conflict');
+    expect(remote?.research_interests).toBe('Saved on the phone');
+  });
+
+  it('opened after two other tabs typed different values, asks, keeps neither, says why, and writes nothing over a newer saved value', async () => {
+    otherTabEdit('research_interests', 'Typed in tab B', 'tab-b');
+    otherTabEdit('research_interests', 'Typed in tab C', 'tab-c');
+    const { result } = await start();
+    expect(result.current.conflicts.map((c) => c.key)).toEqual(['research_interests']);
+    publish({ research_interests: 'Saved on the phone' });
+    act(() => { window.dispatchEvent(new Event('focus')); }); await drain();
+    expect(result.current.profile.research_interests, 'the saved row, not the one drawn at load').toBe('Saved on the phone');
+
+    const sends = service.commit.mock.calls.length;
+    act(() => { result.current.keepMyChanges(); }); await tick(2000);
+    expect(sentSince(sends)).toEqual([]);
+    expect(remote?.research_interests).toBe('Saved on the phone');
+    expect(result.current.saveStatus).toBe('conflict-several-typed');
+    expect(result.current.conflicts.map((c) => c.key), 'still open, to answer where it was typed')
+      .toEqual(['research_interests']);
+  });
+
+  it('keeps what an earlier build\'s tab typed, never this tab\'s old value', async () => {
+    const { result } = await start();
+    await otherTabSavesIntoAConflict('Typed in an earlier build\'s tab', 'tab-old', false);
+    act(() => { window.dispatchEvent(new Event('focus')); }); await drain();
+    expect(result.current.profile.research_interests).toBe('Typed in an earlier build\'s tab');
+    const sends = service.commit.mock.calls.length;
+    act(() => { result.current.keepMyChanges(); }); await tick(2000);
+    expect(sentSince(sends)).toEqual([[2, { research_interests: 'Typed in an earlier build\'s tab' }]]);
+    expect(remote?.research_interests).toBe('Typed in an earlier build\'s tab');
+  });
+
+  it('shows what the other tab kept when its answer met the phone again, not the value it drew before', async () => {
+    // Review M102a Z1: the question that is left has no operation behind it.
+    const { result } = await start();
+    await otherTabSavesIntoAConflict('Typed in the other tab');
+    const first = readProfileSyncEnvelope()?.pending;
+    expect(first?.lockedKeys).toEqual(['research_interests']);
+    const asked = (await hydrateProfile()).conflicts;
+    otherTabKeeps(asked[0], 'Typed in the other tab');
+    publish({ research_interests: 'Saved on the phone again' });
+    expect((await stageProfilePatch({ ...(remote as ProfileData), research_interests: 'Typed in the other tab' },
+      ['research_interests'], captureOwnerToken())).status).toBe('conflict');
+    act(() => { window.dispatchEvent(new Event('focus')); }); await drain();
+    expect(result.current.conflicts.map((c) => c.key)).toEqual(['research_interests']);
+    expect(result.current.profile.research_interests, 'what the other tab kept, not this tab\'s old drawing')
+      .toBe('Typed in the other tab');
+    const sends = service.commit.mock.calls.length;
+    act(() => { result.current.keepMyChanges(); }); await tick(2000);
+    expect(sentSince(sends).map(([, patch]) => patch), 'never this tab\'s old value')
+      .not.toContainEqual({ research_interests: BASE.research_interests });
+    expect(remote?.research_interests).not.toBe(BASE.research_interests);
+  });
+
+  it('opened again in the same page, asks it too and shows the value the other tab typed', async () => {
+    const first = await start();
+    await otherTabSavesIntoAConflict('Typed in the other tab');
+    first.unmount();
+    const { result } = await start();
+    expect(result.current.conflicts.map((c) => c.key)).toEqual(['research_interests']);
+    expect(result.current.saveStatus).toBe('conflict');
+    expect(result.current.profile.research_interests).toBe('Typed in the other tab');
+  });
+
+  it('still asks, as before, about an edit that was already waiting when it loaded', async () => {
+    // A tab that has since closed (or crashed before answering) leaves its
+    // question to the next page the person opens.
+    await hydrateProfile();
+    await otherTabSavesIntoAConflict('Typed in a tab that is gone');
+    startDocumentForTests('other'); resetProfileDirtyLedger();
+    const { result } = await start();
+    expect(result.current.conflicts.map((c) => c.key)).toEqual(['research_interests']);
+    expect(result.current.saveStatus).toBe('conflict');
+    expect(result.current.profile.research_interests).toBe('Typed in a tab that is gone');
+    act(() => { result.current.keepMyChanges(); }); await drain();
+    expect(remote?.research_interests).toBe('Typed in a tab that is gone');
+    expect(result.current.conflicts).toEqual([]);
+  });
+
+  it('sends an edit of its own but says conflict, keeps Retry, and does not let Generate go ahead while the question is open', async () => {
+    const { result } = await start();
+    await otherTabSavesIntoAConflict('Typed in the other tab');
+    act(() => { result.current.update('grade', 'Senior'); }); await tick(2000);
+    // The save redraws the other tab's interests here, which arms one more
+    // save (refused by the server, as on 5181e8e8); its answer is in by now.
+    await tick(2000);
+    expect(remote).toMatchObject({ grade: 'Senior', research_interests: 'Saved on the phone' });
+    expect(result.current.conflicts.map((c) => c.key)).toEqual(['research_interests']);
+    expect(result.current.saveStatus).toBe('conflict');
+    expect(result.current.canRetrySync).toBe(true);
+
+    service.router.push.mockClear();
+    await act(async () => { await result.current.handleSubmit(); }); await drain();
+    expect(service.router.push).not.toHaveBeenCalled();
+    expect(remote?.research_interests, 'nothing of this tab\'s is written over it').toBe('Saved on the phone');
+  });
+
+  it('does not call its own edit saved while a second conflict left it unsent: Retry stays and the next profile check sends it', async () => {
+    // Review M102b H3: the row moves on an untouched field (one rebase), then
+    // on the other tab's field, which spends the rebase.
+    const { result } = await start();
+    otherTabEdit('research_interests', 'Typed in the other tab');
+    service.commit.mockImplementationOnce(async (intent) => { publish({ name: 'Name from the phone' }); return apply(intent); });
+    service.commit.mockImplementationOnce(async (intent) => { publish({ research_interests: 'Phone interests' }); return apply(intent); });
+    act(() => { result.current.update('grade', 'Senior'); }); await tick(1600);
+    expect(remote?.grade, 'not sent yet').toBe('Junior');
+    expect(result.current.saveStatus).not.toBe('saved');
+    expect(result.current.canRetrySync).toBe(true);
+    expect(result.current.conflicts.map((c) => c.key)).toEqual(['research_interests']);
+    await tick(PROFILE_REFRESH_INTERVAL_MS);
+    expect(remote?.grade).toBe('Senior');
+    expect(result.current.saveStatus).toBe('conflict');
+  });
+
+  it('answering its own question leaves the other tab\'s question on screen, and says conflict', async () => {
+    const { result } = await start();
+    act(() => { result.current.update('major', 'My major'); });
+    publish({ major: 'Phone major' }); await tick(1600);
+    expect(result.current.conflicts.map((c) => c.key)).toEqual(['major']);
+    otherTabEdit('research_interests', 'Typed in the other tab');
+    publish({ research_interests: 'Saved on the phone' });
+    const theirs = await stageProfilePatch({ ...BASE, research_interests: 'Typed in the other tab' },
+      ['research_interests'], captureOwnerToken(), { allowCreate: true });
+    expect(theirs.status === 'conflict' && theirs.conflictKeys).toContain('research_interests');
+    act(() => { window.dispatchEvent(new Event('focus')); }); await drain();
+    expect(result.current.conflicts.map((c) => c.key)).toEqual(['major', 'research_interests']);
+
+    act(() => { result.current.keepMyChanges(['major']); }); await tick(1600);
+    expect(remote).toMatchObject({ major: 'My major', research_interests: 'Saved on the phone' });
+    expect(result.current.conflicts.map((c) => c.key)).toEqual(['research_interests']);
+    expect(result.current.saveStatus).toBe('conflict');
+  });
+
+  it('sends its own edit left unsent by a reload beside two other tabs\' question, and still says conflict, not saved', async () => {
+    const first = await start();
+    service.commit.mockImplementationOnce(async () => ({ status: 'transport-error', message: 'Failed to fetch' }));
+    act(() => { first.result.current.update('grade', 'Senior'); }); await tick(1600);
+    expect(first.result.current.saveStatus).toBe('cloud-failed');
+    otherTabEdit('research_interests', 'Typed in tab B', 'tab-b');
+    otherTabEdit('research_interests', 'Typed in tab C', 'tab-c');
+    first.unmount();
+    startDocumentForTests('reload'); resetProfileDirtyLedger();
+
+    const { result } = await start(); await tick(100);
+    expect(remote?.grade, 'the load sends what it left unsent').toBe('Senior');
+    expect(result.current.conflicts.map((c) => c.key)).toEqual(['research_interests']);
+    expect(result.current.saveStatus, 'the interests are still in question').toBe('conflict');
+    service.router.push.mockClear();
+    await act(async () => { await result.current.handleSubmit(); }); await drain();
+    expect(service.router.push).not.toHaveBeenCalled();
+  });
+});
+
+describe('Home answering inside a typing burst', () => {
+  it('"Keep what I typed" keeps every keystroke typed so far', async () => {
+    // Review M102b H1: the last keystrokes of a burst are on screen only
+    // until the typing pauses.
+    const { result } = await start();
+    act(() => { result.current.update('research_interests', 'Mine'); });
+    publish({ research_interests: 'Phone' });
+    const held = deferred<ProfilePatchOutcome>();
+    service.commit.mockImplementationOnce(() => held.promise);
+    await tick(1500);
+    act(() => { result.current.update('research_interests', 'Mine a'); });
+    held.resolve({ status: 'conflict', profile: { ...structuredClone(remote!) }, revision });
+    await drain();
+    expect(result.current.conflicts.map((c) => c.key)).toEqual(['research_interests']);
+    act(() => { result.current.update('research_interests', 'Mine ab'); });
+    act(() => { result.current.keepMyChanges(); }); await drain();
+    expect(sentSince(0).at(-1)).toEqual([2, { research_interests: 'Mine ab' }]);
+    expect(remote?.research_interests).toBe('Mine ab');
+    expect(result.current.profile.research_interests).toBe('Mine ab');
+    await tick(5000);
+    expect(remote?.research_interests).toBe('Mine ab');
+    expect(result.current.conflicts).toEqual([]);
   });
 });
 

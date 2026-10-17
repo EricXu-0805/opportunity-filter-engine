@@ -209,11 +209,12 @@ export function SubmitRow({
             {t('home.actions.profileConflict')}
           </span>
         )}
-        {/* The question is gone — answered in another tab, or settled by a
-            reload. Nothing was sent and there is nothing to retry; what the
-            form shows IS the version that was kept, and saying so is the
-            difference between "your click did nothing" and "your click was
-            about something that had already been decided". */}
+        {/* The question is gone — answered in another tab ('conflict-stale'),
+            or settled without an answer, by the row coming to agree or a
+            load ('conflict-gone'). Nothing was sent and there is nothing to
+            retry; what the form shows IS the version that stands, and saying
+            so is the difference between "your click did nothing" and "your
+            click was about something that had already been decided". */}
         {saveStatus === 'conflict-stale' && (
           <span
             className="inline-flex items-center gap-1.5 text-[12px] text-slate-600"
@@ -221,6 +222,26 @@ export function SubmitRow({
           >
             <CloudOff className="w-3.5 h-3.5" aria-hidden="true" />
             {t('home.actions.profileConflictStale')}
+          </span>
+        )}
+        {saveStatus === 'conflict-gone' && (
+          <span
+            className="inline-flex items-center gap-1.5 text-[12px] text-slate-600"
+            data-testid="conflict-gone"
+          >
+            <CloudOff className="w-3.5 h-3.5" aria-hidden="true" />
+            {t('home.actions.profileConflictGone')}
+          </span>
+        )}
+        {/* The question stays open, with its controls below: it can be
+            answered with the other version, or in a tab where it was typed. */}
+        {saveStatus === 'conflict-several-typed' && (
+          <span
+            className="inline-flex items-center gap-1.5 text-[12px] text-amber-700"
+            data-testid="conflict-several-typed"
+          >
+            <CloudOff className="w-3.5 h-3.5" aria-hidden="true" />
+            {t('home.actions.profileConflictSeveralTyped')}
           </span>
         )}
         {/* No Retry: the row is gone, and re-sending would recreate a profile
