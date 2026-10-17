@@ -8,8 +8,10 @@ from src.recommender.cold_email import _common_parts, generate_cold_email, gener
 
 PROFILE = {'name': 'Alex Example', 'year': 'sophomore', 'major': 'Computer Science',
            'school': 'UIUC', 'research_interests_text': 'research tools', 'hard_skills': []}
+# An SRO row: its "Research Area" keywords are the source's own words, so the
+# opener may name them (M31).
 OPP = {'id': 'template-quality', 'title': 'Research Tools', 'pi_name': 'Pat Lee',
-       'source_type': 'campus_program', 'opportunity_type': 'research',
+       'source': 'uiuc_sro', 'source_type': 'campus_program', 'opportunity_type': 'research',
        'keywords': ['Python parser tools'], 'description_raw': 'Research on Python parser tools.',
        'eligibility': {'skills_required': []}, 'application': {}, 'metadata': {'is_active': True}}
 PAPER = {'title': 'Python Parser Tools for Research', 'year': 2025}

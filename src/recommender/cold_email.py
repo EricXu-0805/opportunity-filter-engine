@@ -4,6 +4,7 @@ from src.evidence import (
     faculty_contact_claims_unverified,
     inferred_method,
     is_professor_rank,
+    keywords_are_source_topics,
 )
 from src.lab_context import lab_context_for, validate_public_lab_context
 from src.matcher.ranker import _BAD_PI_NAMES, _BROAD_FIELDS
@@ -440,7 +441,13 @@ def _source_backed_faculty_research_text(opportunity: dict) -> str:
 
 
 def _stated_keywords(opportunity: dict) -> list[str]:
-    """The record's keywords, unless we inferred them rather than read them.
+    """The record's keywords, only when they are the source's own words.
+
+    The detail page's rule (`src.evidence.keywords_are_source_topics`): a
+    listing's keywords are ours unless it is an SRO row, stamped or not. A
+    category map, a config tag or a keyword-bank hit is not what the program
+    says it works on, and the opener and the brief would say it is. Its
+    description is still offered as the description.
 
     A keyword stamped ``derived:openalex_topics`` came from an OpenAlex author
     record this pipeline MATCHED to the professor by surname and institution.
@@ -454,7 +461,7 @@ def _stated_keywords(opportunity: dict) -> list[str]:
     specific opener claims. Same rule this module already applies to department
     names and to our own generated summary.
     """
-    if inferred_method(opportunity, "keywords"):
+    if not keywords_are_source_topics(opportunity):
         return []
     return opportunity.get("keywords") or []
 

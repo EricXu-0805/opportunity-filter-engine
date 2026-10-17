@@ -39,7 +39,10 @@ def _parts(*, skills=None, research_area="computer vision", matching=None):
         "school": "UIUC", "hard_skills": skills or ["Python", "C++"],
         "research_interests_text": research_area,
     }
+    # An SRO row: its "Research Area" is the only listing keyword list that
+    # is the source's own words (M31).
     opp = {
+        "source": "uiuc_sro", "source_type": "uiuc_research",
         "opportunity_type": "research", "title": "Undergraduate Research",
         "pi_name": "Jane Doe", "lab_or_program": "Prof. Jane Doe's Research Group",
         "department": "Computer Science", "keywords": [research_area],
@@ -366,8 +369,11 @@ class TestFacultyContactProfileTruth:
 
         monkeypatch.setenv("OFE_COLD_EMAIL_NDRAFT", "1")
         monkeypatch.setenv("OFE_COLD_EMAIL_CRITIQUE", "0")
+        # An SRO row, whose "Research Area" keywords are the source's own (M31):
+        # the draft below names that area, so no revise call replaces the
+        # first-draft prompt this test reads.
         ordinary = {
-            "source_type": "campus_program",
+            "source": "uiuc_sro", "source_type": "uiuc_research",
             "opportunity_type": "internship",
             "title": "Undergraduate Data Research Internship",
             "pi_name": "Unknown",
@@ -745,7 +751,7 @@ class TestInferResearchAreaNoDeptFallback_CE_C2:
 
     def test_specific_keyword_still_returned(self):
         area = _infer_research_area({
-            "keywords": ["computer vision", "robotics"],
+            "source_type": "faculty_research", "keywords": ["computer vision", "robotics"],
             "department": "Electrical and Computer Engineering",
         })
         assert area == "computer vision"
@@ -764,6 +770,7 @@ class TestTopicKeywordsNameResearchNotPeopleOrPlaces:
     deep learning for clinical decision-making, and medical physicist"."""
 
     _HUA_LI = {
+        "source_type": "faculty_research",
         "keywords": ["image-guided adaptive radiation therapy", "deep learning for clinical decision-making",
                      "medical physicist", "carle cancer center", "urbana",
                      "task-based medical imaging quality assessment", "early cancer detection"],
@@ -776,10 +783,11 @@ class TestTopicKeywordsNameResearchNotPeopleOrPlaces:
             "and task-based medical imaging quality assessment")
 
     def test_an_area_is_never_a_role(self):
-        assert _infer_research_area({"keywords": ["medical physicist", "radiation therapy"]}) == "radiation therapy"
+        assert _infer_research_area({"source_type": "faculty_research",
+                                     "keywords": ["medical physicist", "radiation therapy"]}) == "radiation therapy"
 
     def test_topics_about_people_or_places_stay_topics(self):
-        opp = {"keywords": ["technical communication for engineers", "data centers",
+        opp = {"source_type": "faculty_research", "keywords": ["technical communication for engineers", "data centers",
                             "hospital employment of physicians"]}
         assert _infer_research_topic(opp) == (
             "technical communication for engineers, data centers, and hospital employment of physicians")
@@ -787,7 +795,7 @@ class TestTopicKeywordsNameResearchNotPeopleOrPlaces:
     def test_a_role_or_place_after_a_function_word_is_still_a_topic(self):
         # Corpus topics that end in a role or an institution noun but name a
         # subject of study (reviewed 2026-09-30).
-        opp = {"keywords": ["board of directors", "sustainability in the laboratory",
+        opp = {"source_type": "faculty_research", "keywords": ["board of directors", "sustainability in the laboratory",
                             "learning in the laboratory"]}
         assert _infer_research_topic(opp) == (
             "board of directors, sustainability in the laboratory, and learning in the laboratory")
@@ -1418,7 +1426,7 @@ class TestColdEmailPipeline:
         assert surname_only["has_specific_prof_data"] is False
         assert surname_only["references_professor"] is True  # nothing to demand
 
-        opp = {"keywords": ["cell biology", "cell"], "metadata": {}}
+        opp = {"source_type": "faculty_research", "keywords": ["cell biology", "cell"], "metadata": {}}
         vacuous = ce._deterministic_findings(
             "Dear Professor,\nYour excellent lab stood out to me.\nBest,\nEric",
             "excellent lab stood out dear professor best eric", p, opp,
@@ -1658,7 +1666,7 @@ class TestSurnameNotAResearchAnchorEG1:
         "pi_name": "Huy Tran",
         "research_area": "", "research_topic": "", "research_areas_raw": "",
     }
-    _OPP = {"keywords": ["hypersonics", "reentry vehicles"], "metadata": {}}
+    _OPP = {"source_type": "faculty_research", "keywords": ["hypersonics", "reentry vehicles"], "metadata": {}}
 
     def test_salutation_alone_is_not_engagement(self):
         from backend.routes.cold_email import _deterministic_findings
@@ -2185,6 +2193,7 @@ class TestInsufficientEvidenceExplicitEG4:
     }
 
     _RICH_OPP = {
+        "source_type": "faculty_research",
         "opportunity_type": "research", "pi_name": "Jane Doe",
         "lab_or_program": "Prof. Jane Doe's Group",
         "department": "Computer Science", "keywords": ["computer vision"],

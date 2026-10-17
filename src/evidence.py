@@ -1436,6 +1436,30 @@ def record_kind(record: dict) -> str:
     return "unknown"
 
 
+# Listing sources whose keywords are a topic list the source published: the
+# SRO's "Research Area" field.
+KEYWORDS_FROM_SOURCE = frozenset({"uiuc_sro"})
+
+
+def keywords_are_source_topics(record: dict) -> bool:
+    """Whether a record's keywords are its source's own topic words.
+
+    A faculty row's keywords are curated off the profile or split from its
+    research text, unless a stamp says we derived them (an OpenAlex author
+    record matched by surname and institution). A listing's are ours on every
+    collector but the SRO, stamped or not: Simplify expands its category
+    through a map, campus program specs and manual rows carry tags a person
+    typed, NSF and the normalizer run a keyword bank over the text.
+
+    One rule for the detail page's topic row and the public
+    ``keywords_attribution`` (``backend.lib.opportunity_detail.keywords_basis``)
+    and for the cold-email paths that present keywords as the source's words.
+    """
+    if inferred_method(record, "keywords") is not None:
+        return False
+    return record_kind(record) == "faculty_contact" or str(record.get("source") or "") in KEYWORDS_FROM_SOURCE
+
+
 # Sources whose closed records are published as reference material, stated by
 # the collector itself ("Shown as a reference for the kind of undergraduate
 # research this lab offers"). Closedness alone does not earn this: a generic

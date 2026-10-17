@@ -11,6 +11,7 @@ Covers features added across recent iterations:
 import json
 import math
 import os
+import re
 import sys
 import time
 import types
@@ -24,11 +25,13 @@ from tests.experience_fixtures import confirmed_experience
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from backend import data_loader
+from backend.lib.public_opportunity_detail import project_public_detail
 from backend.lib.release_scope import opportunity_visible_in_release
 from backend.lib.supabase_auth import SessionIdentity
 from backend.main import app
 from backend.routes.cold_email import _local_refine
 from src.evidence import record_kind, target_truth
+from src.recommender.cold_email import _common_parts
 
 client = TestClient(app)
 
@@ -1235,10 +1238,11 @@ class TestColdEmailEngine:
             monkeypatch.delenv(var, raising=False)
         opp = data_loader.load_opportunities_by_id()[EMAIL_TARGET_ID]
         # Overlapping with the target's own words, since a bullet that speaks to
-        # nothing in the posting is deliberately left out.
-        term = next(
-            (k for k in (opp.get("keywords") or []) if len(str(k)) > 3), "research",
-        )
+        # nothing in the posting is deliberately left out. A listing's keywords
+        # are ours unless it is an SRO row (M31), so take two (the template's
+        # minimum overlap) from the topic it reads off the posting.
+        topic = _common_parts({}, project_public_detail(opp))["research_topic"]
+        term = " ".join(re.findall(r"[A-Za-z]{4,}", topic)[:2]) or "research"
         bullet = f"Built a {term} pipeline end to end"
         resp = client.post(path, json={**cold_email_body, "experience_evidence": confirmed_experience([bullet])})
         assert resp.status_code == 200, resp.text

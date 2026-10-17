@@ -77,7 +77,7 @@ from src.evidence import (
     configured_value_unstated,
     inferred_method,
     is_configured_program,
-    record_kind,
+    keywords_are_source_topics,
 )
 
 # v2 adds the `configured` basis. A v1 client would read that basis as
@@ -229,8 +229,6 @@ _CITIZENSHIP_FROM_FIELD = frozenset({"uiuc_sro"})
 # `source_url` is the paginated list it was found on, which moves as rows are
 # added and states none of the eligibility, pay or timing fields.
 _DETAIL_PAGE_SOURCES = frozenset({"uiuc_sro"})
-# Keywords that are the source's own topic list: the SRO "Research Area".
-_KEYWORDS_FROM_SOURCE = frozenset({"uiuc_sro"})
 # Collectors that write a listing's topics and majors through a map keyed on
 # the source's category (Simplify's "Software Engineering" becomes Computer
 # Science, Data Science, …): our tags, not words on the posting.
@@ -511,16 +509,15 @@ def keywords_basis(canonical: dict) -> str | None:
     detail facts' topic row cannot disagree.
     """
     stamped = _basis_for(canonical, "keywords")
-    if stamped is not None or record_kind(canonical) == "faculty_contact":
+    # The source's own topics (`src.evidence.keywords_are_source_topics`, the
+    # rule the cold-email paths share): an unstamped faculty row or the SRO.
+    if stamped is not None or keywords_are_source_topics(canonical):
         return stamped
     source = str(canonical.get("source") or "")
-    if source in _KEYWORDS_FROM_SOURCE:
-        return None
     # Listing keywords are ours on every other collector: Simplify expands
     # its category through a map, campus program specs and manual rows carry
     # tags a person typed (neither read off a page), NSF and the normalizer
-    # run a keyword bank over the text. Only the SRO's "Research Area" field
-    # is a topic list the source published.
+    # run a keyword bank over the text.
     if source in _CATEGORY_MAP_SOURCES or _is_curated_source(source) or is_configured_program(canonical):
         return BASIS_SYSTEM_TAG
     return BASIS_TEXT_SCAN
