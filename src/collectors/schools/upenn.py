@@ -401,7 +401,7 @@ SCHOOL: dict = {
                     eligibility_majors=["finance", "management", "marketing", "accounting", "statistics", "business economics"],
                     preferred_year=["sophomore", "junior"],
                     international_friendly="yes",
-                    deadline_note="Late March annually",
+                    deadline_note="Application deadline was March 25, 2026; the 2027 deadline is not posted yet",
                     keywords=["business research", "independent research", "summer", "paid", "Wharton"],
                 ),
                 program(
