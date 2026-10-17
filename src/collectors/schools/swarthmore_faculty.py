@@ -41,6 +41,14 @@ namespaced by department short-code. The engine's per-school email/name dedup
 collapses the handful of faculty cross-listed onto more than one department
 page (e.g. a language professor also under Comparative Literature).
 
+From GitHub's runners the site answers every roster with a page that has no
+cards, so each refresh run there has emitted 0 records (2026-08-15 to
+2026-10-10; the refresh holds the corpus rows as a suspicious zero), while a
+run from another machine reads the full roster (224 records on 2026-09-05).
+The markup above was still current on 2026-10-17
+(tests/test_swarthmore_faculty.py). It is a block on the runner's address and
+is not worked around here.
+
 Deferred (2026-07-21 recon):
 * Japanese and Film & Media Studies — no faculty-staff / faculty-and-staff
   page resolves (their instructors surface under Modern Languages and the
