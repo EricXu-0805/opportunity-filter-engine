@@ -2491,10 +2491,11 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         // The source and its confirmations are one revision, never a mixture
         // of the old editor's metadata with the newly read résumé text.
         if (sourceBundle.some((key) => preserve.has(key))) for (const key of sourceBundle) preserve.add(key);
-        // Names kept here keep the course list they were written with
-        // (courseFields). A status click writes the list alone, so the names
-        // and the résumé are taken from the read.
-        if (preserve.has('coursework')) preserve.add('courses');
+        // The course list is kept only when this tab changed it. A résumé
+        // edit keeps the names with the résumé but shows the list as read,
+        // since the next course edit is made on the list shown and must not
+        // undo another device's mark. A status click writes the list alone,
+        // so the names and the résumé are taken from the read.
         for (const key of preserve) {
           if (key in live) combined[key] = live[key]; else delete combined[key];
         }

@@ -28,6 +28,7 @@ import { HOME_FORM_WRITER, hydrateProfile, readProfileSyncEnvelope, resetProfile
 import { readOutstandingOps, resetJournalLaneForTests, startDocumentForTests } from '@/lib/profile-journal';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { encodeProfile } from '@/lib/profile-share';
+import { courseRows, storedCourse } from '@/lib/course-status';
 
 const BASE: ProfileData = { ...DEFAULT_PROFILE, name: 'Alex', home_school: 'uiuc', institution: 'UIUC',
   college: 'Engineering', major: 'Computer Science', grade: 'Junior', research_interests: 'Original research' };
@@ -165,6 +166,32 @@ describe('Home foreground reads with real profile coordination', () => {
     expect(result.current.profile).toMatchObject({ resume_text: 'Replacement cloud resume source',
       courses: marked, coursework: ['Cloud replacement course'] });
     expect(result.current.viewSnapshot?.renderedProfile).toMatchObject({ resume_text: 'Replacement cloud resume source', courses: marked, coursework: ['Cloud replacement course'] });
+  });
+
+  it.each(['status click', 'add', 'removal'] as const)('shows another device\'s mark read during an experience edit, and a %s made next keeps it', async (edit) => {
+    const listed = [{ name: 'CS 225', source: 'resume' as const }, { name: 'CS 233', source: 'resume' as const }];
+    const marked = [listed[0], { ...listed[1], status: 'completed' as const }];
+    remote = { ...BASE, resume_text: 'Relevant Coursework: CS 225, CS 233', coursework: ['CS 225', 'CS 233'],
+      courses: listed, experience_entries: [], resume_master: null };
+    const { result } = await start(); const held = await holdPeriodic();
+    const entry = { id: 'exp-1', revision: 1, status: 'confirmed' as const, text: 'Built a robot.', source: { kind: 'manual' as const } };
+    act(() => { result.current.update('experience_entries', [entry]); });
+    publish({ courses: marked }); held.resolve(row()); await drain();
+    // The experience edit keeps the résumé with its names, not the course
+    // list: the screen shows the other device's mark.
+    expect(result.current.profile).toMatchObject({ experience_entries: [entry], courses: marked });
+    // The course list builds every edit from the rows on screen.
+    const shown = courseRows(result.current.profile).map(storedCourse);
+    const stat = { name: 'STAT 400', source: 'manual' as const, status: 'in_progress' as const };
+    if (edit === 'status click') act(() => { result.current.update('courses', [{ ...shown[0], status: 'planned' }, ...shown.slice(1)], 'status'); });
+    else if (edit === 'add') act(() => { result.current.update('courses', [...shown, stat]); });
+    else act(() => { result.current.update('courses', shown.slice(1)); });
+    await tick(3000); await tick(3000);
+    expect(result.current.conflicts).toEqual([]); expect(readProfileSyncEnvelope()?.pending).toBeNull();
+    expect(remote?.experience_entries).toEqual([entry]);
+    expect(remote?.courses).toEqual(edit === 'status click' ? [{ ...marked[0], status: 'planned' }, marked[1]]
+      : edit === 'add' ? [...marked, stat] : marked.slice(1));
+    expect(result.current.profile.courses).toEqual(remote?.courses);
   });
 
   it('starts the next interval after completion; unchanged reads preserve save status and never autosave', async () => {
