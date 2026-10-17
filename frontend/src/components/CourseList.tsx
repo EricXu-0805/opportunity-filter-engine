@@ -96,6 +96,9 @@ export default function CourseList({ courses, onChange }: {
                   <select
                     id={selectId}
                     value={shown(course)}
+                    // A suggestion is shown as the value: its description says
+                    // it is one, and that it waits to be checked.
+                    aria-describedby={suggested ? `${selectId}-suggested ${selectId}-check` : undefined}
                     onChange={(e) => mark(index, e.target.value as CourseStatus)}
                     className={`h-9 shrink-0 rounded-lg border px-2 text-[13px] outline-none focus:ring-2 focus:ring-indigo-500/20 ${
                       course.status === 'unknown' ? 'border-dashed border-amber-300 text-amber-800' : 'border-gray-200 text-gray-700'
@@ -119,7 +122,10 @@ export default function CourseList({ courses, onChange }: {
                 </div>
                 {suggested ? (
                   <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] leading-snug text-amber-800">
-                    <span>{t('courses.inferred')}</span>
+                    <span id={`${selectId}-suggested`} hidden>
+                      {t('courses.suggested', { status: t(`courses.status.${suggested}`) })}
+                    </span>
+                    <span id={`${selectId}-check`}>{t('courses.inferred')}</span>
                     <button
                       type="button"
                       onClick={() => {

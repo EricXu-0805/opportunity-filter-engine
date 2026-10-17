@@ -66,6 +66,14 @@ describe('CourseList (checklist M13)', () => {
     expect(within(left).getByText('Suggested by your résumé, not used until you confirm: 1.')).toBeTruthy();
   });
 
+  it('describes a suggested status shown in a select as a suggestion to check, and no other status', () => {
+    render(<Harness initial={STORED} onChange={vi.fn()} />);
+    expect(screen.getByLabelText('Status of CS 374')).toHaveAccessibleDescription('Suggested: In progress. From your résumé — please check');
+    for (const name of ['CS 225', 'CS 446', 'STAT 400']) expect(screen.getByLabelText(`Status of ${name}`)).not.toHaveAccessibleDescription();
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm In progress for CS 374' }));
+    expect(screen.getByLabelText('Status of CS 374')).not.toHaveAccessibleDescription();
+  });
+
   it('confirms a status read from the résumé as the student\'s own, and moves focus to its status', () => {
     const onChange = vi.fn();
     render(<Harness initial={STORED} onChange={onChange} />);
@@ -171,6 +179,7 @@ describe('CourseList (checklist M13)', () => {
     expect(within(status).getAllByRole('option').map((option) => option.textContent)).toEqual(['已修', '在修', '计划修', '未标']);
     expect(screen.getByText('来自你的简历：「Current courses: CS 374」')).toBeTruthy();
     expect(screen.getByText('据简历推断，请确认')).toBeTruthy();
+    expect(screen.getByLabelText('CS 374 的状态')).toHaveAccessibleDescription('建议状态：「在修」。 据简历推断，请确认');
     expect(screen.getByRole('button', { name: '确认 CS 374 为「在修」' })).toBeTruthy();
     const left = screen.getByRole('status');
     // One course is not "它们".
