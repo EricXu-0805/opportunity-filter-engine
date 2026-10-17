@@ -35,6 +35,7 @@ from backend.main import app
 from backend.routes import responsiveness as resp_mod
 from backend.schemas import ProfileRequest
 from src import evidence as evidence_module
+from src.collectors.simplify_internships import normalize_listing as simplify_listing
 from src.matcher import ranker
 from src.matcher.config import MATCHER_VERSION
 from tests.test_responsiveness import (
@@ -431,6 +432,28 @@ class TestExplainServesTheListConclusion:
         _LLM_EXPLANATION(profile, restricted, body["reasons_fit"], body["reasons_gap"])
         assert expected in prompts[0][1]["content"]
         assert "our reading of the page" in prompts[0][0]["content"]
+
+    def test_a_no_sponsorship_exclusion_says_the_listing_label(self, snapshot_env, monkeypatch):
+        """M110: a Simplify internship our collector labels "Does Not Offer
+        Sponsorship" (intl "no", no citizenship rule) still leaves an
+        international student's list, and explain says why as the collector
+        states that label, not "Requires US citizenship"."""
+        restricted = simplify_listing({
+            "id": "no-sponsor", "company_name": "Example", "title": "Software Intern",
+            "url": "https://example.com/jobs/1", "locations": ["Remote"], "terms": ["Summer 2026"],
+            "category": "Software", "sponsorship": "Does Not Offer Sponsorship",
+        })
+        corpus = snapshot_env["corpus"] + [restricted]
+        by_id = {o["id"]: o for o in corpus}
+        ranker.register_corpus(corpus)
+        monkeypatch.setattr(m_module, "load_opportunities_generation", lambda: (corpus, "no-sponsor"))
+        monkeypatch.setattr(m_module, "load_opportunities_by_id", lambda: by_id)
+        m_module._match_snapshots.clear()
+
+        body = client.post(f"/api/matches/{restricted['id']}/explain", json=_profile(international_student=True)).json()
+        assert body["excluded_reason"] == "citizenship_restricted"
+        assert body["reasons_gap"][0] == "Employer does not offer visa sponsorship — excluded from your results"
+        assert not any("citizenship" in gap.lower() for gap in body["reasons_gap"])
 
     @pytest.mark.parametrize(
         ("source_text", "reason", "gap_text"),

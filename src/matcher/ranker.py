@@ -16,6 +16,7 @@ from functools import lru_cache
 
 from backend.lib.contact_visibility import send_target_strength, verified_send_target
 
+from ..collectors.simplify_internships import _SPONSORSHIP_MAP as _SIMPLIFY_SPONSORSHIP_MAP
 from ..evidence import (
     CONFIGURED_PROGRAM_METHOD,
     FACT_UNSTATED,
@@ -1837,9 +1838,18 @@ def _intl_terms_basis(opportunity: dict, fields: tuple[str, ...]) -> str | None:
     return "mixed" if any(configured) else "read"
 
 
+# The sentence our Simplify collector writes for the listing label "Does Not
+# Offer Sponsorship": an intl "no" with no citizenship rule (M110). Its reason
+# is that label as our collector states it, which the detail page shows as the
+# source's, not the employer page's words.
+_SIMPLIFY_NO_SPONSORSHIP_NOTE = _SIMPLIFY_SPONSORSHIP_MAP["Does Not Offer Sponsorship"][2]
+_SIMPLIFY_NO_SPONSORSHIP_REASON = _SIMPLIFY_NO_SPONSORSHIP_NOTE.split(";", 1)[0]
+
+
 def citizenship_restriction_reason(opportunity: dict) -> str:
     """The reason line for an intl "no" or a citizenship rule, said as whose
-    the restriction is (M96).
+    the restriction is (M96). A Simplify listing our collector labels "Does
+    Not Offer Sponsorship" says that label as the collector states it (M110).
 
     Shared with the explain route, whose line for a record it excluded from an
     international student's results must not state as the program's a
@@ -1859,6 +1869,9 @@ def citizenship_restriction_reason(opportunity: dict) -> str:
         return f"May require US citizenship or permanent residency{_OUR_READING}"
     if basis == "mixed":
         return f"May require US citizenship or permanent residency{_OUR_LISTING_AND_READING}"
+    if (restricted_by == ("international_friendly",) and opportunity.get("source") == "simplify_internships"
+            and elig.get("work_auth_notes") == _SIMPLIFY_NO_SPONSORSHIP_NOTE):
+        return _SIMPLIFY_NO_SPONSORSHIP_REASON
     return "Requires US citizenship or permanent residency"
 
 
