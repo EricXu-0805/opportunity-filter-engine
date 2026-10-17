@@ -40,7 +40,7 @@ would say nothing about what is actually running). `/api/health` and
 | `release_record` | the SHA `/api/health` reports, the `data-release-sha` on the frontend's HTML, and — derived from those two commits — each side's data version (last shard commit) and flag table | the gate itself with `--backend-url`/`--frontend-url`, or an operator |
 | `restore_drill` | `data/releases/drills/<drill_id>.json` | an operator, via `scripts/restore_drill.py` |
 | `ci:*` (4 required checks: Backend, Frontend, Migrations, E2E; branch protection requires all but Migrations) | `scripts/verify_refresh_pr.py`-shaped snapshot | CI, bound to the head SHA |
-| `open_incidents` | `GET /api/admin/ops/incidents?unresolved_only=true` → `rollup` (the gate counts `release_blocking_total`: every unresolved incident except a `manual_review:snapshot_refresh:*` reminder) | an operator with `ADMIN_TOKEN` |
+| `open_incidents` | `GET /api/admin/ops/incidents?unresolved_only=true` → `rollup` (the gate counts `release_blocking_total`: every unresolved incident except a `manual_review:snapshot_refresh:*` reminder and an `acknowledged` incident, which the gate lists beside its verdict without blocking) | an operator with `ADMIN_TOKEN` |
 | `provider_readiness` | `GET /api/ready` → `reported.providers` | an operator with `ADMIN_TOKEN` |
 | `api_ready` | `GET /api/ready` on the deployed instance | an operator |
 | `render_canary`, `vercel_canary`, `supabase_canary` | the deployed environments | an operator |

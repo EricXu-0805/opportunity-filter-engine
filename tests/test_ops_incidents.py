@@ -32,6 +32,7 @@ from fastapi.testclient import TestClient
 
 from backend.main import app
 from backend.routes import ops as ops_mod
+from scripts import release_gate
 from scripts.check_cron_response import check as check_cron_response
 
 client = TestClient(app)
@@ -182,7 +183,7 @@ def _install_supabase(
                 return _Resp(events)
             if "ops_incidents" in url:
                 select = (params or {}).get("select")
-                if select in ("kind,priority,dedup_key", "dedup_key"):
+                if select in ("kind,priority,dedup_key,status", "dedup_key"):
                     return _Resp(open_rows if open_rows is not None else incidents)
                 if select == "dedup_key,status,detail" and lookup_fails:
                     raise ConnectionError("connection reset by peer")
@@ -432,6 +433,41 @@ class TestIncidentList:
         assert rollup["open_total"] == 3
         assert rollup["open_snapshot_reminders"] == 1
         assert rollup["release_blocking_total"] == 2
+
+    def test_rollup_lists_acknowledged_incidents_apart_from_release_blocking_work(self, monkeypatch):
+        """Q11: an incident an operator has acknowledged is accepted pending
+        work. The release gate lists it beside its verdict and does not block
+        on it; an incident nobody has acknowledged still blocks."""
+        _admin_env(monkeypatch)
+        _install_supabase(monkeypatch, incidents=[_incident()], open_rows=[
+            {"kind": "collector_failure", "priority": "high", "status": "acknowledged",
+             "dedup_key": "collector_failure:stale_shard:uiuc_faculty"},
+        ])
+        rollup = client.get(
+            "/api/admin/ops/incidents", headers=_hdr(), params={"unresolved_only": "true"}
+        ).json()["rollup"]
+        assert rollup["open_total"] == 1
+        assert rollup["acknowledged"] == ["collector_failure:stale_shard:uiuc_faculty"]
+        assert rollup["release_blocking_total"] == 0
+        got = release_gate.check_open_incidents(
+            {"observed_at": datetime.now(UTC).isoformat(), "rollup": rollup})
+        assert got["status"] == release_gate.PASS
+        assert "1 acknowledged incident(s) pending" in got["detail"]
+        assert "collector_failure:stale_shard:uiuc_faculty" in got["detail"]
+
+        for status in ("open", "investigating"):
+            _install_supabase(monkeypatch, incidents=[_incident()], open_rows=[
+                {"kind": "collector_failure", "priority": "high", "status": status,
+                 "dedup_key": "collector_failure:stale_shard:uiuc_faculty"},
+            ])
+            rollup = client.get(
+                "/api/admin/ops/incidents", headers=_hdr(), params={"unresolved_only": "true"}
+            ).json()["rollup"]
+            assert (rollup["acknowledged"], rollup["release_blocking_total"]) == ([], 1), status
+            got = release_gate.check_open_incidents(
+                {"observed_at": datetime.now(UTC).isoformat(), "rollup": rollup})
+            assert got["status"] == release_gate.FAIL, status
+            assert got["detail"] == "1 unresolved incident(s)", status
 
     def test_the_snapshot_reminder_key_is_the_one_set_apart(self):
         from src.collectors import cmu_uro_projects

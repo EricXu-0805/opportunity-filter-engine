@@ -73,6 +73,12 @@ _NOT_TERMINAL = f"not.in.({','.join(TERMINAL_STATUSES)})"
 # ``open_incidents`` check reads.
 SNAPSHOT_REMINDER_PREFIX = "manual_review:snapshot_refresh:"
 
+# An operator who sets an incident to ``acknowledged`` has accepted it as
+# pending work. The rollup lists those rows by dedup_key and leaves them out of
+# ``release_blocking_total``, so the release gate reports them beside its
+# verdict instead of blocking on them.
+ACCEPTED_PENDING_STATUS = "acknowledged"
+
 # Kinds where "try it again" is a meaningful operator action at all.
 RETRYABLE_KINDS = ("notification_failure", "collector_failure")
 
@@ -279,7 +285,8 @@ async def list_incidents(
     The ``rollup`` block always counts UNRESOLVED incidents regardless of the
     caller's filters, so narrowing the list to one kind (or to closed rows)
     never hides that another kind is on fire. ``release_blocking_total`` is
-    ``open_total`` less the open snapshot reminders (``SNAPSHOT_REMINDER_PREFIX``).
+    ``open_total`` less the open snapshot reminders (``SNAPSHOT_REMINDER_PREFIX``)
+    and less the acknowledged rows, whose dedup_keys ``acknowledged`` lists.
     """
     _require_enum(kind, KINDS, "kind")
     _require_enum(status, STATUSES, "status")
@@ -323,7 +330,7 @@ async def list_incidents(
             rollup_resp = await client.get(
                 f"{base}/rest/v1/ops_incidents",
                 params={
-                    "select": "kind,priority,dedup_key",
+                    "select": "kind,priority,dedup_key,status",
                     "status": _NOT_TERMINAL,
                     "limit": str(_ROLLUP_LIMIT),
                 },
@@ -337,13 +344,17 @@ async def list_incidents(
     open_by_kind = {k: 0 for k in KINDS}
     open_by_priority = {p: 0 for p in PRIORITIES}
     snapshot_reminders = 0
+    acknowledged: list[str] = []
     for row in open_rows if isinstance(open_rows, list) else []:
         if not isinstance(row, dict):
             continue
         if row.get("kind") in open_by_kind:
             open_by_kind[row["kind"]] += 1
-            if str(row.get("dedup_key") or "").startswith(SNAPSHOT_REMINDER_PREFIX):
+            dedup_key = str(row.get("dedup_key") or "")
+            if dedup_key.startswith(SNAPSHOT_REMINDER_PREFIX):
                 snapshot_reminders += 1
+            elif row.get("status") == ACCEPTED_PENDING_STATUS:
+                acknowledged.append(dedup_key)
         if row.get("priority") in open_by_priority:
             open_by_priority[row["priority"]] += 1
     open_total = sum(open_by_kind.values())
@@ -357,7 +368,8 @@ async def list_incidents(
             "open_by_priority": open_by_priority,
             "open_total": open_total,
             "open_snapshot_reminders": snapshot_reminders,
-            "release_blocking_total": open_total - snapshot_reminders,
+            "acknowledged": acknowledged,
+            "release_blocking_total": open_total - snapshot_reminders - len(acknowledged),
             # The rollup reads at most _ROLLUP_LIMIT rows; say so rather than
             # letting a capped count masquerade as the true total.
             "truncated": isinstance(open_rows, list) and len(open_rows) >= _ROLLUP_LIMIT,

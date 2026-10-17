@@ -428,6 +428,35 @@ class TestIncidentGate:
                  "rollup": {"open_total": 1, "release_blocking_total": bogus, "truncated": False}})
             assert got["status"] == gate.FAIL, bogus
 
+    def test_acknowledged_incidents_are_listed_beside_the_verdict_and_do_not_block(self):
+        got = gate.check_open_incidents(
+            {"observed_at": _now_iso(),
+             "rollup": {"open_total": 2, "release_blocking_total": 0, "truncated": False,
+                        "acknowledged": ["collector_failure:stale_shard:a"],
+                        "open_snapshot_reminders": 1}})
+        assert got["status"] == gate.PASS
+        assert got["detail"] == (
+            "no release-blocking incidents; 1 snapshot reminder(s) open, which do not "
+            "block a release; 1 acknowledged incident(s) pending, which do not block a "
+            "release: collector_failure:stale_shard:a")
+
+    def test_an_unacknowledged_incident_still_blocks_beside_acknowledged_ones(self):
+        got = gate.check_open_incidents(
+            {"observed_at": _now_iso(),
+             "rollup": {"open_total": 2, "release_blocking_total": 1, "truncated": False,
+                        "acknowledged": ["data_drift:x:y"]}})
+        assert got["status"] == gate.FAIL
+        assert got["detail"].startswith("1 unresolved incident(s); 1 acknowledged")
+        assert got["evidence"]["acknowledged"] == ["data_drift:x:y"]
+
+    def test_an_acknowledged_list_the_counts_cannot_hold_is_not_believed(self):
+        got = gate.check_open_incidents(
+            {"observed_at": _now_iso(),
+             "rollup": {"open_total": 1, "release_blocking_total": 0, "truncated": False,
+                        "acknowledged": ["a", "b"]}})
+        assert got["status"] == gate.FAIL
+        assert got["detail"] == "1 unresolved incident(s)"
+
     def test_a_truncated_rollup_cannot_prove_zero_even_with_reminders_set_apart(self):
         got = gate.check_open_incidents(
             {"observed_at": _now_iso(),
