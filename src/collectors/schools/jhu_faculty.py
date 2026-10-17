@@ -94,7 +94,10 @@ def _wse(short: str, name: str, majors: list[str], url: str,
 # limit, running some into the next profile heading ("… Find a Clinical Trial",
 # "… Additional Academic Titles") and some into biography prose about other
 # institutions ("of Surgery, Georgetown University"); only the headings are
-# accepted after a name, so the prose cases stay "School of Medicine".
+# accepted after a name, so the prose cases stay "School of Medicine". The cut
+# keeps at most five words after "Professor of", so it can leave just a
+# heading's first word ("… Lab", "… Research") or a name without its last word
+# ("Art as Applied to").
 # Biophysics and Biophysical Chemistry (10 professors) is a department too, but
 # its name reads as Physics in the OpenAlex author gate (``openalex_enrich.
 # _DEPT_FIELDS``: "physic"), a family with no biomedical field at all, and the
@@ -126,12 +129,13 @@ _SOM_DEPARTMENTS = {
             "Radiation Oncology and Molecular Radiation Sciences",
         "Radiation Oncology and Molecular":
             "Radiation Oncology and Molecular Radiation Sciences",
+        "Art as Applied to": "Art as Applied to Medicine",
         "Pediatric Surgery": "Surgery",
         "Cardiac Surgery": "Surgery",
     },
     "boundary": (r"\s*$|\s+(?:Additional|Find|Centers|LinkedIn|Lab Website"
                  r"|Selected Publications|Recent|Honors|PubMed|Pure|X Profile"
-                 r"|Research Summary)\b"),
+                 r"|Research Summary)\b|\s+(?:Lab|Research)\s*$"),
 }
 
 

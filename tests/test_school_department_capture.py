@@ -638,6 +638,38 @@ class TestMedicalSchoolDepartments:
         assert fg._json_department(
             "School of Medicine — Biophysics and Biophysical Chemistry", units) == ""
 
+    @pytest.mark.parametrize("title, department", [
+        # The harvest kept at most five words after "Professor of", leaving
+        # only the first word of the "Research Summary" / "Lab Website"
+        # heading, or the department name without its last word.
+        ("Assistant Professor of Radiology and Radiological Science Research",
+         "Radiology and Radiological Science"),
+        ("Assistant Professor of Physical Medicine and Rehabilitation Research",
+         "Physical Medicine and Rehabilitation"),
+        ("Assistant Professor of Functional Anatomy and Evolution Lab",
+         "Functional Anatomy and Evolution"),
+        ("Professor of Clinical Art as Applied to", "Art as Applied to Medicine"),
+    ])
+    def test_jhu_title_cut_inside_a_heading_keeps_its_department(self, title, department):
+        from src.collectors.schools import jhu_faculty
+        dept = _dept(jhu_faculty, "SOM")
+        appointment = title.split(" of ", 1)[1]
+        row = {"name": "Dana Q. Example", "title": title,
+               "email": "dexample1@jh.edu",
+               "url": "https://profiles.hopkinsmedicine.org/provider/dana-example/1",
+               "department": "School of Medicine — " + appointment}
+        [spec] = fg._json_dir_records(dept, dept["json_dir"], [row])
+        record = fg._normalize(jhu_faculty.SCHOOL, dept, spec)
+        assert record["department"] == "School of Medicine — " + department
+
+    def test_jhu_heading_word_inside_the_title_is_not_a_cut(self):
+        from src.collectors.schools import jhu_faculty
+        units = jhu_faculty._SOM_DEPARTMENTS
+        assert fg._json_department(
+            "School of Medicine — Pediatrics Research Fellow at the", units) == ""
+        assert fg._json_department(
+            "School of Medicine — Art as Applied to Design", units) == ""
+
     def test_feinberg_first_appointment_wins_without_its_division(self):
         from src.collectors.schools import northwestern_faculty
         units = northwestern_faculty._FEINBERG_DEPARTMENTS
