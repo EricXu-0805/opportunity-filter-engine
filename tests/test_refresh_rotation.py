@@ -661,11 +661,12 @@ def _mails(calls):
 class TestAlertStep:
     """The alert step itself, as the runner runs it after a failure or a cancel."""
 
-    def _run(self, fake_gh, tmp_path, *, event, run_id, status, guard, runs, guard_copy=True, **scenario):
+    def _run(self, fake_gh, tmp_path, *, event, run_id, status, guard, runs, guard_copy=True, withheld="",
+             **scenario):
         if guard_copy:
             shutil.copy(_SCRIPT, tmp_path / "refresh_rotation.py")
         step = _workflow_step("Alert operator")
-        env = {"EVENT": event, "RUN_ID": run_id, "JOB_STATUS": status, "GUARD": guard,
+        env = {"EVENT": event, "RUN_ID": run_id, "JOB_STATUS": status, "GUARD": guard, "WITHHELD": withheld,
                "RESEND_API_KEY": "not-a-key", "OPERATOR_EMAIL": "operator@example.com", "SHARD": "uw"}
         assert set(step["env"]) <= {*env, "GH_TOKEN", "REPO"}
         result, calls = fake_gh(_alert_script(run_id), {"runs": runs, **scenario}, **env)
@@ -715,6 +716,43 @@ class TestAlertStep:
         _, mails = self._run(fake_gh, tmp_path, event=MANUAL, run_id="300", status="failure",
                              guard="defer", runs=_runs((200, SCHEDULED)), list_fails=True)
         assert len(mails) == 1
+
+    # What the publish step writes when the verdict withheld a school (see
+    # tests/test_publishable_shards.py); the reason quotes the source's error.
+    _WITHHELD = ('Publishable (1): wisc\nWithheld (1), each keeping the data last committed for it:\n'
+                 '- uw: source uw_faculty reported error: HTTP 500 "Service Unavailable" \\ retry')
+
+    def test_runs_when_the_publish_step_withheld_a_school(self):
+        step = _workflow_step("Alert operator")
+        assert "steps.publish.outputs.withheld != ''" in str(step["if"])
+        assert step["env"]["WITHHELD"] == "${{ steps.publish.outputs.withheld }}"
+
+    def test_a_run_that_succeeded_but_withheld_a_school_mails_its_reasons(self, fake_gh, tmp_path):
+        _, mails = self._run(fake_gh, tmp_path, event=SCHEDULED, run_id="200", status="success",
+                             guard="proceed", runs=_runs((200, SCHEDULED)), withheld=self._WITHHELD)
+        (mail,) = mails
+        assert "FAILED" not in mail["subject"] and "withheld" in mail["subject"]
+        assert mail["text"].endswith("\n\n" + self._WITHHELD)
+        assert "https://github.com/o/r/actions/runs/200" in mail["text"]
+
+    def test_a_failed_run_that_withheld_a_school_says_so_under_the_failure(self, fake_gh, tmp_path):
+        _, mails = self._run(fake_gh, tmp_path, event=SCHEDULED, run_id="200", status="failure",
+                             guard="proceed", runs=_runs((200, SCHEDULED)), withheld=self._WITHHELD)
+        (mail,) = mails
+        assert "FAILED" in mail["subject"]
+        assert mail["text"].startswith("The scheduled data refresh failed.")
+        assert mail["text"].endswith("\n" + self._WITHHELD)
+
+    def test_a_failure_without_withheld_schools_keeps_its_old_text(self, fake_gh, tmp_path):
+        _, mails = self._run(fake_gh, tmp_path, event=SCHEDULED, run_id="200", status="failure",
+                             guard="proceed", runs=_runs((200, SCHEDULED)))
+        (mail,) = mails
+        assert mail["subject"] == "JoinALab: data refresh FAILED (shard: uw)"
+        assert mail["text"] == (
+            "The scheduled data refresh failed.\n\nShard: uw\nRun: https://github.com/o/r/actions/runs/200\n\n"
+            "The corpus has not been updated. Only this shard's schools missed their refresh; the rotation "
+            "retries them next week. Repeated failures mean the pipeline is dead — check the Data-quality "
+            "gate step first (that is where the last 7-run outage lived).")
 
     def test_without_the_guards_copy_it_mails(self, fake_gh, tmp_path):
         # The guard could not fetch its script, so it decided nothing.
