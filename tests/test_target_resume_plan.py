@@ -436,3 +436,53 @@ def test_source_check_version_is_negotiated_and_server_owned(endpoint, monkeypat
     assert endpoint.client.post(PATH, json=forged).status_code == 422
     for value in ("true", 1, None):
         assert endpoint.client.post(PATH, json={**request, "include_check_version": value}).status_code == 422
+
+
+CAFE = "Made coffee and ran the register at a campus café."
+
+
+def _cafe_block(action, reason, target_evidence):
+    def mutate(result, data):
+        line = data["blocks"][1]["lines"][-1]
+        assert line["original"] == CAFE
+        result["items"][0]["reason"] = "method_relevance"
+        result["items"][1].update(action=action, reason=reason, target_evidence=target_evidence,
+                                  source_evidence=[{"unit_id": line["unit_id"], "start": 0, "end": len(CAFE), "quote": CAFE}])
+    return mutate
+
+
+@pytest.mark.parametrize("action,reason", [("omit", "limited_relevance"), ("keep", "supporting_context"),
+                                           ("compress", "space_tradeoff")])
+def test_a_block_whose_advice_claims_no_relevance_needs_only_its_own_quote(endpoint, action, reason):
+    # The 10/12 acceptance: one café block the posting cannot speak to made the whole plan no_target_evidence.
+    doc = endpoint.doc([ORIGINAL, CAFE])
+    doc["document"]["sections"][1]["blocks"][1]["included"] = False  # Hidden blocks get advice too.
+    endpoint.mutate = _cafe_block(action, reason, [])
+    relevant, cafe = completed(endpoint, endpoint.submit(doc), doc)["items"]
+    assert relevant["target_evidence"] == [{"field": "requirement", "requirement_index": 0, "start": 0, "end": 6, "quote": "Python"}]
+    assert 'Target original: "Python"' in relevant["reason"]
+    assert cafe["action"] == action and cafe["target_evidence"] == []
+    assert f"Student original: {json.dumps(CAFE, ensure_ascii=False)}" in cafe["reason"]
+    assert "Target original" not in cafe["reason"]
+    system = endpoint.calls[0][0][0]["content"]
+    assert "target_evidence: []" in system and reason in system
+
+
+@pytest.mark.parametrize("reason", ["method_relevance", "topic_relevance", "transferable_experience", "review_sources",
+                                    "Relevant to the published Python requirement."])
+@pytest.mark.parametrize("target", ["missing", "invented"])
+def test_a_block_whose_advice_claims_relevance_still_needs_a_real_opportunity_quote(endpoint, reason, target):
+    # Free prose renders as review_sources, so it may claim relevance as well.
+    doc = endpoint.doc([ORIGINAL, CAFE])
+    quotes = [] if target == "missing" else [{"field": "requirement", "requirement_index": 0, "start": 0, "end": 7, "quote": "Barista"}]
+    endpoint.mutate = _cafe_block("keep", reason, quotes)
+    body = unavailable(endpoint.submit(doc), "no_target_evidence")
+    assert len(body["manifest"]) == 2
+
+
+@pytest.mark.parametrize("quote", [{"field": "description", "requirement_index": None, "start": 0, "end": 12, "quote": "Serve coffee"},
+                                   {"field": "requirement", "requirement_index": 3, "start": 0, "end": 6, "quote": "Python"}])
+def test_an_opportunity_quote_on_advice_without_a_relevance_claim_must_still_be_real(endpoint, quote):
+    doc = endpoint.doc([ORIGINAL, CAFE])
+    endpoint.mutate = _cafe_block("omit", "limited_relevance", [quote])
+    unavailable(endpoint.submit(doc), "no_target_evidence")
