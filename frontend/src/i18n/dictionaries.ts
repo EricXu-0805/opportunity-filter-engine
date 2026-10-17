@@ -152,6 +152,8 @@ export const en = {
         bodySafe: 'Your favorites, profile, and tracker stay safe on your account.',
         bodyGuest: "This device will reset to guest mode until you sign back in — you'll see an empty app, but your data is not lost.",
         confirm: 'Sign out',
+        failedStillSignedIn: "Sign-out didn't finish. You're still signed in on this device. Try again.",
+        failed: "Sign-out didn't finish. Try again.",
       },
     },
     callback: {
@@ -5440,6 +5442,8 @@ export const zh = {
         bodySafe: '你的收藏、资料和申请追踪在账号里安全存着。',
         bodyGuest: '退出后这台设备会回到游客模式 —— 看起来"空了"，但数据没有丢，重新登录就能看到。',
         confirm: '退出',
+        failedStillSignedIn: '退出没有完成，你在这台设备上仍处于登录状态。请再试一次。',
+        failed: '退出没有完成。请再试一次。',
       },
     },
     callback: {

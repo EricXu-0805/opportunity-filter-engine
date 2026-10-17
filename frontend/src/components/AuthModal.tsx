@@ -675,9 +675,15 @@ export default function AuthModal() {
               {t('auth.modal.signOutConfirm.bodyGuest')}
             </p>
 
+            {/* From the live auth state, not from how the sign-out failed:
+                supabase-js drops an expired session whose refresh is refused
+                and still reports an error, and a re-anon can throw after the
+                logout went through. */}
             {signOutFailed && (
               <p role="alert" className="mb-4 text-[12px] text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                {t('common.error')}
+                {isSignedIn
+                  ? t('auth.modal.signOutConfirm.failedStillSignedIn')
+                  : t('auth.modal.signOutConfirm.failed')}
               </p>
             )}
 
