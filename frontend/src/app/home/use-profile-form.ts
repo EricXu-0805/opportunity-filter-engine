@@ -32,6 +32,7 @@ import {
   conflictHasThisTabsSide,
   conflictTypedInThisTab,
   flushPendingProfileWrite,
+  heldForNewerBuild,
   resolveProfileConflict,
   makeConflictPrompt,
   narrowConflictPrompt,
@@ -134,6 +135,12 @@ function restoredProfileFrom(archived: Record<string, unknown>): ProfileData & {
  *  about one is open; or the form is not known to show the stored profile (a
  *  profile check is running or failed). */
 export type GuestRestoreBlocker = 'offline' | 'saving' | 'refreshing';
+
+/** What the status line says while `question` is open. One this build
+ *  answers no field of (see heldForNewerBuild) asks for a reload instead. */
+function conflictWording(question: readonly ProfileConflict[]): SaveStatus {
+  return heldForNewerBuild(question) && question.every((c) => c.newerBuild) ? 'conflict-newer-build' : 'conflict';
+}
 
 /** How a guest-profile restore ended. `unknown`: sent, with no answer, so
  *  whether the server saved it is found out by reading it back. `skipped`:
@@ -1426,8 +1433,8 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         // Beside a question another tab's edit is in, this write went through
         // and the form is still not saved: that field is in dispute on this
         // screen. Said so, and nothing goes ahead on it (see handleSubmit).
-        if (conflictsRef.current.some(conflictHasAnotherTabsSide)) {
-          say('conflict');
+        if (conflictsRef.current.some(conflictHasAnotherTabsSide) || heldForNewerBuild(conflictsRef.current)) {
+          say(conflictWording(conflictsRef.current));
           return STALE;
         }
         armRetry(null);
@@ -1490,7 +1497,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         // a disagreement goes invisible — and the rebuilt answer is what
         // reaches the screen.
         armRetry({ generation, token });
-        say('conflict');
+        say(conflictWording([...conflictsRef.current, ...result.conflicts]));
         const union = [...new Set([
           ...conflictKeysRef.current,
           ...result.conflicts.map((c) => c.key),
@@ -1541,6 +1548,13 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         armRetry({ generation, token });
         say('error');
         return DEVICE_FAILED;
+      case 'newer-build':
+        // Every field of this write is one the course-status build has an
+        // operation for: nothing was staged, and a reload lets that build
+        // send it.
+        armRetry({ generation, token });
+        say('conflict-newer-build');
+        return STALE;
       case 'superseded':
         // A newer save owns the status; this one has nothing to say.
         return STALE;
@@ -1684,8 +1698,11 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       const row = (refreshed.profile ?? null) as unknown as Record<string, unknown> | null;
       const merged = { ...(profileRef.current as unknown as Record<string, unknown>) };
       let changed = false;
+      // A question this build does not answer leaves its fields as shown.
+      const held = new Set(refreshed.status === 'current'
+        ? refreshed.conflicts.filter((c) => c.newerBuild).map((c) => c.key) : []);
       for (const key of asked) {
-        if (movedSince(key)) continue;
+        if (movedSince(key) || held.has(key)) continue;
         if (!row || !(key in row)) {
           if (key in merged) { delete merged[key]; changed = true; }
         } else if (JSON.stringify(merged[key] ?? null) !== JSON.stringify(row[key] ?? null)) {
@@ -1774,7 +1791,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       refreshed.conflicts.filter((c) => !questionStale(c.key)),
       viewSnapshotRef.current,
     );
-    tell('conflict');
+    tell(conflictWording(refreshed.conflicts));
   }, [
     adoptAuthoritativeBase, applySaveResult, publishConflicts,
     republishRendered, retireConflictKeys,
@@ -1929,7 +1946,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       trace('ready');
       activeLoadRef.current = null;
       if (hydration.conflictKeys.length > 0) {
-        setSaveStatus('conflict');
+        setSaveStatus(conflictWording(hydration.conflicts));
         // A question this tab has a side in waits for its answer. One whose
         // every value another tab typed does not hold this tab's own unsent
         // edits back: the flush below sends them, or queues behind a save
@@ -2459,7 +2476,9 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         // A field whose question holds nothing typed in this tab shows the
         // shared working copy, as the coordinator holds it, not the value
         // this tab drew before another tab's edit.
-        const notTypedHere = new Set(loaded.conflicts.filter((q) => !conflictTypedInThisTab(q)).map((q) => q.key));
+        // Not one this build does not answer: its fields stay as shown.
+        const notTypedHere = new Set(loaded.conflicts.filter((q) => !q.newerBuild && !conflictTypedInThisTab(q))
+          .map((q) => q.key));
         const moved = (key: string) => (fieldEpochRef.current.get(key) ?? 0) !== atIssue.get(key);
         const preserve = new Set<string>(PROFILE_KEYS.filter((key) => moved(key)
           || unrepresented.has(key) || owed.has(key) || (disputed.has(key) && !notTypedHere.has(key))));
@@ -2493,7 +2512,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         viewSnapshotRef.current = accepted;
         setViewSnapshot(accepted); setProfile(rendered); setSearchWeight(weight);
         publishConflicts(questions, accepted);
-        if (questions.length) setSaveStatus('conflict');
+        if (questions.length) setSaveStatus(conflictWording(questions));
         if (loaded.source === 'cloud') backgroundAbsenceRef.current = null;
         publishProfileRefresh('ready'); trace('ready');
         if (resumeSave) setHydrationTick((value) => value + 1);
@@ -3500,9 +3519,18 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     if (profileRefreshStatusRef.current !== 'ready' || restoreHoldRef.current !== null) return;
     const published = conflictPromptRef.current;
     if (!published) return;
-    const asking = only ? narrowConflictPrompt(published, only) : published;
+    const shown = only ? narrowConflictPrompt(published, only) : published;
+    if (shown.conflicts.length === 0) return;
+    // A question this build does not answer is left for a reload, which loads
+    // the newer build (see heldForNewerBuild); a question beside it is
+    // answered. With nothing else asked, nothing is sent.
+    const asking = heldForNewerBuild(shown.conflicts)
+      ? narrowConflictPrompt(shown, shown.conflicts.filter((c) => !c.newerBuild).map((c) => c.key)) : shown;
     const answering = [...asking.conflicts];
-    if (answering.length === 0) return;
+    if (answering.length === 0) {
+      setSaveStatus('conflict-newer-build');
+      return;
+    }
     // The view that was on screen when this question was PUBLISHED, captured
     // then. Not a fresh token: a prompt retained across an identity switch
     // would otherwise hand U1's answer a currently-valid U2 token, and every
@@ -3568,6 +3596,10 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         // controls and all: it can still be answered with the other
         // version, or where it was typed.
         if (ownsResolve && editEpochAtClick === editEpochRef.current) setSaveStatus('conflict-several-typed');
+        return;
+      }
+      if (result.status === 'newer-build') {
+        if (ownsResolve && editEpochAtClick === editEpochRef.current) setSaveStatus('conflict-newer-build');
         return;
       }
       if (result.status === 'stale-conflict') {

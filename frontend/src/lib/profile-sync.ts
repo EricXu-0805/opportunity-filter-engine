@@ -39,6 +39,7 @@ import { assertProfileReadActive, awaitProfileRead } from './profile-read-abort'
 import type { ProfileReadObserver } from './profile-read-diagnostics';
 import { ExperienceEvidenceError, validateExperienceEntries } from './experience-evidence';
 import { validateResumeMaster } from './resume-master';
+import { isCourseList } from './course-status';
 import {
   appendJournalOp,
   getJournalOriginId,
@@ -88,6 +89,11 @@ export const CREATE_REQUIRED_KEYS: readonly ProfileKey[] = [
  *  Staging any member stages the whole bundle. */
 export const RESUME_BUNDLE: readonly ProfileKey[] = ['resume_text', 'coursework', 'experience_entries', 'resume_master'];
 
+/** The courses and their names: one list, written together, and one unit in
+ *  a conflict too. An older client removes or replaces the résumé by writing
+ *  the names alone, and the two must never resolve apart. */
+const COURSE_BUNDLE: readonly ProfileKey[] = ['courses', 'coursework'];
+
 /** Every key the app recognises. Declared as a Record<keyof ProfileData, …>
  *  so adding a profile field without listing it here is a COMPILE error — a
  *  runtime "unknown key" filter that silently drops new fields would be worse
@@ -96,7 +102,8 @@ export const RESUME_BUNDLE: readonly ProfileKey[] = ['resume_text', 'coursework'
 const KNOWN_PROFILE_KEYS: Record<ProfileKey, true> = {
   institution: true, home_school: true, college: true, major: true,
   additional_majors: true, grade: true, is_international: true,
-  research_interests: true, skills: true, resume_text: true, coursework: true, experience_entries: true, resume_master: true,
+  research_interests: true, skills: true, resume_text: true, coursework: true, courses: true,
+  experience_entries: true, resume_master: true,
   search_weight: true, exploring: true, include_cross_school: true,
   linkedin_url: true, github_url: true, scholar_url: true, seeking_types: true,
   name: true, experience_level: true, account_type: true,
@@ -143,7 +150,9 @@ function isProfileKey(key: string): key is ProfileKey {
 export const RESUME_BUNDLE_ID = 'resume';
 registerJournalKeyGuard(isProfileKey, [RESUME_BUNDLE_ID], (key, value) => (
   !value.present || (key === 'experience_entries' ? validateExperienceEntries(value.value).ok
-    : key === 'resume_master' ? validateResumeMaster(value.value).ok : true)
+    : key === 'resume_master' ? validateResumeMaster(value.value).ok
+      // Absent, as in a profile saved before courses had a status.
+      : key === 'courses' ? value.value === undefined || isCourseList(value.value) : true)
 ));
 
 function emptyResumeValue(key: ProfileKey): string | [] | null {
@@ -161,7 +170,11 @@ function validResumeContent(profile: Pick<ProfileData, 'experience_entries' | 'r
 function completeResumeBundle(pending: ProfilePendingWrite): ProfilePendingWrite {
   const present = RESUME_BUNDLE.filter((k) => pending.dirtyKeys.includes(k));
   // Partial locks must not allow the remaining bundle members to send alone.
-  if (present.length === 0) return pending;
+  // An entry carrying `courses` is left as written (see courseStatusKeys):
+  // the course-status build keeps the course names with the courses, so its
+  // entry holds no partial résumé, and this build writes `courses` only in a
+  // guest restore, whose entry already holds the whole résumé.
+  if (present.length === 0 || pending.dirtyKeys.includes('courses')) return pending;
   const desired = { ...pending.desiredProfile } as unknown as Record<string, unknown>;
   const base = pending.baseProfile as unknown as Record<string, unknown>;
   const dirtyKeys = [...pending.dirtyKeys];
@@ -320,6 +333,10 @@ export type ProfileSaveResult =
    *  keep. NOTHING was written or sent and the question stands, to be
    *  answered where it was typed, or with the other version. */
   | { status: 'several-typed' }
+  /** The question, or every field of the write, is one this build leaves to
+   *  the course-status build (see ProfileConflict.newerBuild). NOTHING was
+   *  written or sent; a reload lets that build answer or send it. */
+  | { status: 'newer-build' }
   /** Nothing was staged: no confirmed revision to patch against yet.
    *  `reason: 'incomplete-create'` means a create was refused only because
    *  the document is not complete (on the home form: college, major or grade
@@ -1035,16 +1052,19 @@ function planKeysFromJournal(
     });
   }
 
-  // The résumé is one document: half of it agreeing does not make it sendable.
-  if (RESUME_BUNDLE.some((k) => plans.get(k)?.kind === 'conflict')) {
-    for (const k of RESUME_BUNDLE) {
-      const plan = plans.get(k);
-      if (plan) {
-        plans.set(k, {
-          kind: 'conflict',
-          opIds: plan.opIds,
-          candidates: plan.kind === 'conflict' ? plan.candidates : [],
-        });
+  // The résumé is one document: half of it agreeing does not make it
+  // sendable. Nor does half of the course list. A bundle that shares a key
+  // with another takes the other's question with it.
+  for (let grew = true; grew;) {
+    grew = false;
+    for (const bundle of [RESUME_BUNDLE, COURSE_BUNDLE]) {
+      if (!bundle.some((k) => plans.get(k)?.kind === 'conflict')) continue;
+      for (const k of bundle) {
+        const plan = plans.get(k);
+        if (plan && plan.kind !== 'conflict') {
+          plans.set(k, { kind: 'conflict', opIds: plan.opIds, candidates: [] });
+          grew = true;
+        }
       }
     }
   }
@@ -2078,6 +2098,40 @@ export interface ProfileConflict {
    *  disagreement). Null means there is none, and an answer must fail closed
    *  rather than guess. */
   keyVersion: number | null;
+  /** Set on every field of a question that a journal operation carrying
+   *  `courses` touches (see courseStatusKeys), which only the course-status
+   *  build (checklist M13) writes. That build groups the course names with
+   *  the courses, this one with the résumé, so an answer planned here can
+   *  send the résumé that build's tab last saw over a newer one, or settle
+   *  nothing. This build answers no such question (see
+   *  writeResolutionReceipt): reloading the page loads the newer build,
+   *  which can. */
+  newerBuild?: true;
+}
+
+/** Whether `conflicts` is a question this build does not answer (see
+ *  ProfileConflict.newerBuild). */
+export function heldForNewerBuild(conflicts: readonly ProfileConflict[]): boolean {
+  return conflicts.some((c) => c.newerBuild === true);
+}
+
+/** The fields this build leaves to the course-status build: those of every
+ *  outstanding operation carrying `courses`, with the résumé and the course
+ *  list they are one question with here. This build neither stages nor
+ *  answers them, so such an operation, and the outbox entry carrying it, stay
+ *  as that build wrote them. Empty while there is no such operation. */
+function courseStatusKeys(ops: readonly JournalOp[]): Set<string> {
+  const fields = ops.filter((op) => op.mode !== 'resolve' && op.fields.some((f) => f.key === 'courses'))
+    .flatMap((op) => op.fields.map((f) => f.key));
+  return new Set(fields.length > 0 ? [...fields, ...COURSE_BUNDLE, ...RESUME_BUNDLE] : []);
+}
+
+/** `conflicts`, each field of a question such an operation touches marked
+ *  (see courseStatusKeys); a question beside it is not. */
+function markNewerBuildQuestion(conflicts: ProfileConflict[], ops: readonly JournalOp[]): ProfileConflict[] {
+  const held = courseStatusKeys(ops);
+  return held.size === 0 ? conflicts
+    : conflicts.map((c) => (held.has(c.key) ? { ...c, newerBuild: true as const } : c));
 }
 
 /**
@@ -2303,9 +2357,12 @@ export async function forgetMergedGuestRevision(token: OwnerToken): Promise<bool
 }
 
 /** Whether `stored` holds `profile`'s value in every profile field, object
- *  keys in any order (the server returns jsonb). */
+ *  keys in any order (the server returns jsonb). A row without `courses`,
+ *  as a build without the key restores it, holds none. */
 export function storedProfileIs(stored: Record<string, unknown> | null, profile: Record<string, unknown>): boolean {
-  return !!stored && PROFILE_KEYS.every((key) => sameValue(stored[key], profile[key]));
+  const value = (from: Record<string, unknown>, key: string) => (
+    key === 'courses' && from[key] === undefined ? [] : from[key]);
+  return !!stored && PROFILE_KEYS.every((key) => sameValue(value(stored, key), value(profile, key)));
 }
 
 /** What a whole-profile save made outside the form's edits came to (see
@@ -3053,6 +3110,12 @@ function prepareStagedWrite(
   if (tombstone?.reason === 'merged') {
     return { result: { status: 'missing', reason: 'merged_away' } };
   }
+  // The fields this build leaves to the course-status build are not staged
+  // (see courseStatusKeys): their operations and the entry carrying them stay
+  // as that build wrote them. A write of nothing else stages nothing.
+  const held = courseStatusKeys(receiptOps.value);
+  const keys = effectiveKeys.filter((k) => !held.has(k));
+  if (keys.length === 0) return { result: { status: 'newer-build' } };
 
   // The base is reconstructed from each field's FROZEN intent, not from
   // whatever the envelope holds now. Two tabs share this envelope: tab B may
@@ -3062,7 +3125,7 @@ function prepareStagedWrite(
   // server's CAS check would pass, because the CLIENT had silently agreed to
   // the overwrite. Using the frozen base makes it a conflict, which is what
   // it is.
-  const frozen = stagedIntentBase(effectiveKeys, existing, confirmed);
+  const frozen = stagedIntentBase(keys, existing, confirmed);
   const baseRevision = frozen.revision;
   const baseProfile = frozen.profile ?? existing?.baseProfile ?? confirmed?.profile ?? desired;
   const working = existing?.desiredProfile ?? confirmed?.profile ?? desired;
@@ -3090,7 +3153,7 @@ function prepareStagedWrite(
   }
   const stagedKeys = (isCompleteCreate
     ? (Object.keys(desired).filter(isProfileKey) as ProfileKey[])
-    : effectiveKeys);
+    : keys);
   const dirtyKeys = [...new Set([...(existing?.dirtyKeys ?? []), ...stagedKeys as string[]])];
   const next = { ...working, ...pick(desired, stagedKeys) } as ProfileData;
 
@@ -3105,7 +3168,10 @@ function prepareStagedWrite(
   // write, and its confirmation would then mark that newer edit as saved.
   markProfileFieldsDirty(stagedKeys, token);
   const keyVersions: Record<string, number> = { ...(existing?.keyVersions ?? {}) };
-  for (const key of dirtyKeys) keyVersions[key] = versionOf(key);
+  for (const key of dirtyKeys) {
+    // A held key's version is the one the course-status build gave it.
+    if (!held.has(key) || keyVersions[key] === undefined) keyVersions[key] = versionOf(key);
+  }
 
   // Additive semantics come from the recorded OPERATION, not from a caller
   // flag: `skills` is additive only while every change to it since the last
@@ -3477,6 +3543,7 @@ export async function resolveProfileConflict(
   // Kept in a tab that typed none of it, about values other tabs typed
   // differently: nothing to keep, so nothing is decided and nothing is sent.
   if (written.value === 'several') return { status: 'several-typed' };
+  if (written.value === 'newer-build') return { status: 'newer-build' };
   if (!written.value) return { status: 'device-failed', phase: 'stage' };
   const { desired } = written.value;
 
@@ -4082,11 +4149,15 @@ function writeResolutionReceipt(
   /** The disagreement AS RENDERED. Required: an answer computed from whatever
    *  is outstanding at click time decides about things nobody was shown. */
   rendered: readonly ProfileConflict[],
-): { desired: ProfileData } | null | 'stale' | 'several' {
+): { desired: ProfileData } | null | 'stale' | 'several' | 'newer-build' {
   const effective = expandBundles(keys);
   if (effective.length === 0) return null;
   const journal = readOutstandingOps();
   if (!journal.ok) return null;
+  // Not answered here, whether or not the question came marked: see
+  // ProfileConflict.newerBuild.
+  const held = courseStatusKeys(journal.value);
+  if (heldForNewerBuild(rendered) || effective.some((k) => held.has(k))) return 'newer-build';
   const env = readProfileSyncEnvelope();
   const confirmed = (env?.confirmed?.profile ?? {}) as unknown as Record<string, unknown>;
   const pendingDesired = (env?.pending?.desiredProfile ?? null) as unknown as Record<string, unknown> | null;
@@ -4410,7 +4481,7 @@ function conflictPayload(
   }
   const revision = remoteRevision;
 
-  return keys.map((key) => {
+  return markNewerBuildQuestion(keys.map((key) => {
     // Candidates come from the operations THEMSELVES: their own desired
     // values, their own lineages, and the complete set of ids asking for
     // each. Synthesizing one candidate out of the pending write's desired
@@ -4450,7 +4521,7 @@ function conflictPayload(
           }]
           : []),
     };
-  });
+  }), ops);
 }
 
 /**
@@ -4469,7 +4540,7 @@ function conflictsFor(
   revision: number,
 ): ProfileConflict[] {
   const remoteRec = (remote ?? {}) as unknown as Record<string, unknown>;
-  return conflictKeys.map((key) => {
+  const asked = conflictKeys.map((key): ProfileConflict => {
     const plan = journalPlan.get(key);
     if (plan?.kind === 'conflict') {
       return {
@@ -4487,6 +4558,9 @@ function conflictsFor(
     // nothing and the lock would survive being answered.
     return conflictPayload([key], pending, remote, revision)[0];
   });
+  if (asked.length === 0) return asked;
+  const journal = readOutstandingOps();
+  return markNewerBuildQuestion(asked, journal.ok ? journal.value : []);
 }
 
 /** Re-sends the unsent working copy. Returns 'blocked' when there is nothing
@@ -5196,15 +5270,22 @@ export function resolveConflict(
     conflictKeys.push(key as ProfileKey);
   }
 
-  // Bundle: if either half of the résumé collides, both do — applying only
-  // the non-colliding half is how coursework outlives the résumé it came from.
-  if (RESUME_BUNDLE.some((k) => conflictKeys.includes(k))) {
-    for (const k of RESUME_BUNDLE) {
-      if (pending.dirtyKeys.includes(k) && !conflictKeys.includes(k)) {
-        conflictKeys.push(k);
-        const at = applyKeys.indexOf(k);
-        if (at >= 0) applyKeys.splice(at, 1);
-        delete resolvedValues[k];
+  // Bundles: if one member of the résumé collides, every member does —
+  // applying only the non-colliding part is how coursework outlives the
+  // résumé it came from. The same holds for the courses and their names, and
+  // a bundle that shares a key with another takes the other's question too.
+  for (let grew = true; grew;) {
+    grew = false;
+    for (const bundle of [RESUME_BUNDLE, COURSE_BUNDLE]) {
+      if (!bundle.some((k) => conflictKeys.includes(k))) continue;
+      for (const k of bundle) {
+        if (pending.dirtyKeys.includes(k) && !conflictKeys.includes(k)) {
+          conflictKeys.push(k);
+          const at = applyKeys.indexOf(k);
+          if (at >= 0) applyKeys.splice(at, 1);
+          delete resolvedValues[k];
+          grew = true;
+        }
       }
     }
   }

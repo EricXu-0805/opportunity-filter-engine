@@ -14,6 +14,7 @@ export function SubmitRow({
   guestRestoreHeld = false,
   isSubmitting,
   hasConflict,
+  conflictHeldForNewerBuild = false,
   canRetrySync,
   onRetrySync,
   onRetryProfileLoad,
@@ -39,6 +40,10 @@ export function SubmitRow({
    *  unrelated clean save, or a rejected answer, moves the wording on while
    *  the question itself is exactly where it was. */
   hasConflict: boolean;
+  /** Whether that question is one this build does not answer: a newer
+   *  version of the page, open in another tab, changed its fields. It draws
+   *  the reload message instead of the two buttons. */
+  conflictHeldForNewerBuild?: boolean;
   /** Whether `onRetrySync` has a write to replay. False draws no button. */
   canRetrySync: boolean;
   onRetrySync: () => void;
@@ -244,6 +249,15 @@ export function SubmitRow({
             {t('home.actions.profileConflictSeveralTyped')}
           </span>
         )}
+        {saveStatus === 'conflict-newer-build' && (
+          <span
+            className="inline-flex items-center gap-1.5 text-[12px] text-amber-700"
+            data-testid="conflict-newer-build"
+          >
+            <CloudOff className="w-3.5 h-3.5" aria-hidden="true" />
+            {t('home.actions.profileConflictNewerBuild')}
+          </span>
+        )}
         {/* No Retry: the row is gone, and re-sending would recreate a profile
             the account no longer has. */}
         {saveStatus === 'stale' && (
@@ -280,8 +294,18 @@ export function SubmitRow({
             two seconds later 'idle'), a rejected answer says 'cloud-failed'.
             Every one of those used to take the only way out of the question
             off the screen and leave it unanswerable. The two can be true at
-            once, and are shown at once. */}
-        {hasConflict && (
+            once, and are shown at once.
+
+            A question this build does not answer has no buttons: the
+            message asks for a reload, here too when the status line has
+            moved on to something else. */}
+        {hasConflict && conflictHeldForNewerBuild && saveStatus !== 'conflict-newer-build' && (
+          <span className="inline-flex items-center gap-1.5 text-[12px] text-amber-700" data-testid="conflict-newer-build">
+            <CloudOff className="w-3.5 h-3.5" aria-hidden="true" />
+            {t('home.actions.profileConflictNewerBuild')}
+          </span>
+        )}
+        {hasConflict && !conflictHeldForNewerBuild && (
           <span className="inline-flex items-center gap-1.5 text-[12px] text-amber-700">
             <button
               type="button"

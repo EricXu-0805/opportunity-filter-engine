@@ -226,6 +226,23 @@ describe('SubmitRow — generating matches requires a loaded profile row', () =>
     expect(screen.getByTestId('conflict-keep-mine')).toBeTruthy();
   });
 
+  it('a question a newer version of the page asked shows the reload message, once, instead of the two buttons', () => {
+    renderRow({ saveStatus: 'conflict-newer-build', hasConflict: true, conflictHeldForNewerBuild: true, canRetrySync: true });
+    expect(screen.getAllByTestId('conflict-newer-build').map((node) => node.textContent))
+      .toEqual(['home.actions.profileConflictNewerBuild']);
+    expect(screen.queryByTestId('conflict-keep-mine')).toBeNull();
+    expect(screen.queryByTestId('conflict-use-cloud')).toBeNull();
+    expect(screen.queryByTestId('retry-sync')).toBeNull();
+  });
+
+  it('keeps the reload message on screen while the status line says something else', () => {
+    renderRow({ saveStatus: 'cloud-failed', hasConflict: true, conflictHeldForNewerBuild: true, canRetrySync: true });
+    expect(screen.getAllByTestId('conflict-newer-build').map((node) => node.textContent))
+      .toEqual(['home.actions.profileConflictNewerBuild']);
+    expect(screen.queryByTestId('conflict-keep-mine')).toBeNull();
+    expect(screen.queryByTestId('retry-sync')).toBeNull();
+  });
+
   it('is disabled and says it is working while a submit is in flight', () => {
     renderRow({ isSubmitting: true });
     expect(screen.getByTestId('generate-matches')).toBeDisabled();

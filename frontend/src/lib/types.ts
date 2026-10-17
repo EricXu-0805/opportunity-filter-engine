@@ -35,6 +35,23 @@ export interface SkillWithLevel {
   evidence?: string;
 }
 
+// ── Courses (checklist M13) ──────────────────────────────────────────
+/** What may be said of a course. `unknown` is a course not marked, including
+ *  every course stored before statuses existed: it may be named, never said
+ *  to be taken. */
+export type CourseStatus = 'completed' | 'in_progress' | 'planned' | 'unknown';
+
+/** Read from the résumé, or added on the form. */
+export type CourseSource = 'resume' | 'manual';
+
+/** A course as the profile stores it, with a status only once the student
+ *  sets one. */
+export interface StoredCourse {
+  name: string;
+  source: CourseSource;
+  status?: CourseStatus;
+}
+
 // ── Student-confirmed experience evidence ──────────────────────────
 export type ExperienceSource =
   | { kind: 'manual' }
@@ -148,6 +165,9 @@ export interface ProfileData {
   /** Missing/null means the student has not created a complete master yet. */
   resume_master?: ResumeMasterV1 | null;
   coursework?: string[];
+  /** Each course with the status the student set (checklist M13). A build
+   *  that does not edit courses keeps and sends what a newer one wrote. */
+  courses?: StoredCourse[];
   search_weight?: number;
   /** "I'm still exploring" — widens matching for undecided students. */
   exploring?: boolean;
