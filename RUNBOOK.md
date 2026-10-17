@@ -147,7 +147,7 @@ publish data through the workflow's PR, not a hand-committed shard.
 | Workflow | When (UTC) | What it does |
 |---|---|---|
 | `ops-scan.yml` | daily 11:13 | `POST /api/cron/ops-scan`: files collector and drift incidents |
-| `snapshot-reminder.yml` | Monday 13:23 | Emails the operator when a hand-exported snapshot (CMU) is due |
+| `snapshot-reminder.yml` | daily 13:23 | Once a week (the week's first good run) emails the operator when a hand-exported snapshot (CMU) is due |
 | `daily-reminders.yml` | daily 23:11 | `GET /api/cron/reminders` (Web Push, email fallback), then the data-quality check and the feedback and orders digests |
 | `saved-searches-refresh.yml` | daily 23:41 | `GET /api/cron/saved-searches/refresh`, then `/digest` |
 | `campus-seed-health.yml` | Sunday 12:19 | Probes configured seed and program URLs for dead pages |

@@ -210,6 +210,87 @@ class TestReminderChecker:
         assert snapshot_reminder.main(["--snapshot", str(broken)]) == 1
 
 
+def _runs(tmp_path, *runs: tuple[int, str]) -> Path:
+    """``gh run list --json databaseId,createdAt,url`` output for these runs."""
+    path = tmp_path / "earlier-runs.json"
+    path.write_text(json.dumps([
+        {"databaseId": run_id, "createdAt": created,
+         "url": f"https://github.com/o/r/actions/runs/{run_id}"} for run_id, created in runs
+    ]), encoding="utf-8")
+    return path
+
+
+class TestWeeklyCheckFromDailyRuns:
+    """GitHub has started the scheduled run hours late since 2026-10-02 and
+    did not run the 2026-10-05 one at all, so the workflow runs daily and the
+    first run of each week to succeed makes that week's check, as of Monday."""
+
+    def _check(self, tmp_path, today, runs_file=None):
+        out, payload = tmp_path / "out", tmp_path / "payload.json"
+        out.unlink(missing_ok=True)
+        payload.unlink(missing_ok=True)
+        argv = ["--today", today, "--github-output", str(out), "--email-payload", str(payload)]
+        if runs_file is not None:
+            argv += ["--earlier-runs", str(runs_file)]
+        assert snapshot_reminder.main(argv) == 0
+        return out.read_text(), payload.exists()
+
+    def test_a_run_after_this_weeks_check_does_nothing(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("GITHUB_RUN_ID", "300")
+        runs = _runs(tmp_path, (200, "2027-01-11T21:46:18Z"), (100, "2027-01-08T20:52:59Z"))
+        assert self._check(tmp_path, "2027-01-13", runs) == ("due=false\n", False)
+        assert "actions/runs/200" in capsys.readouterr().out
+
+    def test_a_week_whose_monday_run_was_lost_is_checked_on_tuesday(self, tmp_path, monkeypatch):
+        """Only last week's run succeeded (the 2026-10-05 failure shape)."""
+        monkeypatch.setenv("OPERATOR_EMAIL", "ops@example.org")
+        monkeypatch.setenv("GITHUB_RUN_ID", "300")
+        runs = _runs(tmp_path, (100, "2027-01-04T21:46:18Z"))
+        assert self._check(tmp_path, "2027-01-12", runs) == ("due=true\n", True)
+
+    def test_the_current_run_is_not_an_earlier_one(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("GITHUB_RUN_ID", "300")
+        runs = _runs(tmp_path, (300, "2027-01-11T13:30:00Z"))
+        assert self._check(tmp_path, "2027-01-11", runs) == ("due=true\n", True)
+
+    def test_a_late_run_sends_what_mondays_would_have(self, tmp_path, monkeypatch):
+        """The end date is Saturday 2027-05-15. The week of Monday 05-17 owes
+        the expired notice, and the next week owes nothing, whichever day of
+        either week the check is made."""
+        monkeypatch.setenv("OPERATOR_EMAIL", "ops@example.org")
+        assert self._check(tmp_path, "2027-05-20") == ("due=true\n", True)
+        assert self._check(tmp_path, "2027-05-23") == ("due=true\n", True)
+        assert self._check(tmp_path, "2027-05-25") == ("due=false\n", False)
+        # In the week the end date falls in, a run made after it is still
+        # that week's (as of Monday 05-10) and says the list expires soon.
+        self._check(tmp_path, "2027-05-16")
+        assert "expires on 2027-05-15" in json.loads((tmp_path / "payload.json").read_text())["subject"]
+
+    @pytest.mark.parametrize("weekday", range(7))
+    def test_the_cadence_after_the_end_date_does_not_depend_on_the_day_of_the_check(self, snapshot, weekday):
+        mondays = [date(2027, 5, 17) + timedelta(weeks=n) for n in range(30)]
+        on_monday = [uro.email_due(uro.refresh_status(snapshot, snapshot_reminder.week_start(d)))
+                     for d in mondays]
+        late = [uro.email_due(uro.refresh_status(snapshot, snapshot_reminder.week_start(d + timedelta(days=weekday))))
+                for d in mondays]
+        assert late == on_monday
+        assert on_monday[:6] == [True, False, False, False, False, True]
+
+    @pytest.mark.parametrize("content", ["", "{not json", '{"runs": 1}', '[{"databaseId": 1}]'])
+    def test_an_unreadable_run_list_makes_the_check(self, tmp_path, monkeypatch, capsys, content):
+        """A second email in a week costs less than none."""
+        monkeypatch.setenv("OPERATOR_EMAIL", "ops@example.org")
+        runs = tmp_path / "earlier-runs.json"
+        runs.write_text(content, encoding="utf-8")
+        assert self._check(tmp_path, "2027-01-12", runs) == ("due=true\n", True)
+        assert "::warning::" in capsys.readouterr().err
+
+    def test_a_manual_run_lists_nothing_and_makes_the_check(self, tmp_path, monkeypatch, capsys):
+        monkeypatch.setenv("OPERATOR_EMAIL", "ops@example.org")
+        assert self._check(tmp_path, "2027-01-12", tmp_path / "absent.json") == ("due=true\n", True)
+        assert "::warning::" not in capsys.readouterr().err
+
+
 class TestOpsScanDetector:
     """The operator queue half of the reminder (manual_review, not an alert)."""
 
@@ -391,3 +472,21 @@ class TestWorkflow:
         # Nothing but the failure alert and the due-gated send ever mails.
         mailers = [s for s in steps if "api.resend.com" in str(s.get("run", ""))]
         assert {s.get("if") for s in mailers} == {send["if"], "failure() || cancelled()"}
+
+    def test_it_runs_daily_and_a_scheduled_run_passes_this_weeks_earlier_runs(self):
+        doc = yaml.safe_load((REPO / ".github/workflows/snapshot-reminder.yml").read_text(encoding="utf-8"))
+        on = doc.get("on") or doc.get(True)
+        assert [c["cron"].split()[2:] for c in on["schedule"]] == [["*", "*", "*"]]
+        assert "workflow_dispatch" in on
+        assert doc["permissions"]["actions"] == "read"
+        steps = doc["jobs"]["check"]["steps"]
+        names = [s.get("name", "") for s in steps]
+        listing = next(s for s in steps if "gh run list" in str(s.get("run", "")))
+        check = next(s for s in steps if "snapshot_reminder.py" in str(s.get("run", "")))
+        assert names.index(listing["name"]) < names.index(check["name"])
+        assert listing["if"] == "github.event_name == 'schedule'"
+        assert "--workflow snapshot-reminder.yml" in listing["run"]
+        assert "--status success" in listing["run"]
+        assert "--json databaseId,createdAt,url" in listing["run"]
+        assert '> "$RUNNER_TEMP/earlier-runs.json"' in listing["run"]
+        assert '--earlier-runs "$RUNNER_TEMP/earlier-runs.json"' in check["run"]
