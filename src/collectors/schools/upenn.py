@@ -919,7 +919,7 @@ SCHOOL: dict = {
                     compensation="$17/hour for 300 hours (~$5,100)",
                     eligibility_majors=["anthropology", "art history", "history", "classical studies", "museum studies"],
                     preferred_year=["sophomore", "junior", "senior"],
-                    international_friendly="unknown",
+                    international_friendly="yes",
                     deadline_note="Summer 2027: applications open December 7, 2026 and close February 1, 2027 at "
                                   "11:59 PM; all applicants notified mid-April 2027",
                     keywords=["museum careers", "archaeology", "anthropology", "paid internship", "open to non-Penn"],
