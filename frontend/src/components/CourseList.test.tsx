@@ -125,6 +125,17 @@ describe('CourseList (checklist M13)', () => {
     expect(screen.getByRole('status').textContent).toBe('ECE 220 is already listed.');
   });
 
+  it('keeps focus in the form after Add from the button, in the name box ready for the next course', () => {
+    render(<Harness initial={STORED} onChange={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText('Add a course'), { target: { value: 'ECE 220' } });
+    const add = screen.getByRole('button', { name: 'Add' });
+    add.focus();
+    fireEvent.click(add);
+    expect(screen.getByLabelText('Status of ECE 220')).toBeTruthy();
+    expect((add as HTMLButtonElement).disabled).toBe(true);
+    expect(document.activeElement).toBe(screen.getByLabelText('Add a course'));
+  });
+
   it('after Remove, moves focus to the next row\'s status, or to the add field when no row follows', () => {
     render(<Harness initial={STORED} onChange={vi.fn()} />);
     screen.getByRole('button', { name: 'Remove CS 374' }).focus();

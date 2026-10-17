@@ -72,6 +72,9 @@ export default function CourseList({ courses, onChange }: {
     setName('');
     setStatus('unknown');
     setNotice(null);
+    // Back to the name box, from the Add button too: it is disabled once the
+    // name clears, and focus would drop to the page.
+    document.getElementById(`${id}-add`)?.focus();
   };
 
   return (
