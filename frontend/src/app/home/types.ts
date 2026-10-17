@@ -93,7 +93,11 @@ export type SaveStatus =
   // "Keep what I typed" in a tab that typed none of the question, whose
   // values other tabs typed differently: nothing was decided or sent, and
   // the question is still open.
-  | 'conflict-several-typed';
+  | 'conflict-several-typed'
+  // A question holding an edit only a newer version of the page makes, open
+  // in another tab. This build does not answer it: nothing is sent, the
+  // fields stay as shown, and a reload lets the student answer.
+  | 'conflict-newer-build';
 
 // 'loading' → this identity's stored row has not come back yet
 // 'ready'   → it has (a row, or a confirmed-absent one); edits persist

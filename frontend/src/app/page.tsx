@@ -174,6 +174,7 @@ function HomePageInner() {
         hydrationState={hydrationState}
         isSubmitting={isSubmitting}
         hasConflict={conflicts.length > 0}
+        conflictHeldForNewerBuild={conflicts.length > 0 && conflicts.every((c) => c.newerBuild === true)}
         canRetrySync={canRetrySync}
         onRetrySync={retryCloudSave}
         onRetryProfileLoad={retryProfileLoad}
