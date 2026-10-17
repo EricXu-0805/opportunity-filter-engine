@@ -1507,6 +1507,81 @@ def _today() -> date:
 # next UTC date.
 _DEADLINE_GRACE = timedelta(days=1)
 
+# A configured program's window is prose in `metadata.deadline_note`, never the
+# `deadline` field the closure above reads (campus_graph writes None there).
+# Words that leave the window open or undated whatever dates the note gives:
+# an opening (open, reopen, begin, launch, accept in any form), rolling
+# review, TBA, TBC or TBD (dotted or spelled "to be announced/confirmed/
+# determined"), "until ... filled", "no ... deadline", and a recurring cycle
+# (quarterly, each/every/per quarter, a deadline named for a quarter,
+# monthly, each/every month, annually, annual cycle, each/every year, one
+# cycle per year, year-round, ongoing): its next date may already be set.
+_NOTE_OPEN_WINDOW_RE = re.compile(
+    r"\b(?:re)?open(?:s|ed|ings?)?\b|\bbe(?:gins?|ginning|gan|gun)\b|\blaunch(?:es|ed|ing)?\b"
+    r"|\baccept(?:s|ed|ing)?\b|\brolling\b|\bt(?:\.\s?)?b(?:\.\s?)?[acd]\b"
+    r"|\bto be (?:announced|confirmed|determined)\b"
+    r"|\buntil\b[^.;\n]*\bfilled\b|\bno\s+(?:\w+\s+){0,2}deadlines?\b"
+    r"|\bquarterly\b|\b(?:each|every|per)\s+quarter\b|\b(?:autumn|fall|winter|spring|summer)[\s-]quarter\s+deadlines?\b"
+    r"|\bmonthly\b|\b(?:each|every)\s+month\b|\bannually\b|\bannual\s+cycle\b|\b(?:each|every)\s+year\b"
+    r"|\bone\s+cycle\s+per\s+year\b|\byear[\s-]round\b|\bongoing\b",
+    re.IGNORECASE,
+)
+_NOTE_FULL_DATE_RE = re.compile(rf"\b({'|'.join(_MONTH_NAMES)})\s+(\d{{1,2}})(?:st|nd|rd|th)?,?\s+(20\d{{2}})\b")
+# The only digits a note may hold outside a full date: a time of day ("11:59
+# PM", "5pm") and a year on its own ("2025 cohort", "summer 2026").
+_NOTE_TIME_OR_YEAR_RE = re.compile(
+    r"(?<![:\d])\d{1,2}:\d{2}(?![:\d])(?:\s*[ap]\.?m\b\.?)?|\b\d{1,2}\s*[ap]\.?m\b\.?|\b20\d{2}\b"
+)
+# Any month name, "may" included: outside a full date it is a date we cannot place.
+_NOTE_MONTH_RE = re.compile(rf"\b(?:{'|'.join(_MONTH_NAMES)})\b")
+
+
+def configured_note_dates(note: object) -> list[date] | None:
+    """The dates a deadline note gives, or None when its words leave a window open.
+
+    None unless the note uses none of the words above, and every month name in
+    it ("may" included, any case) is part of a date written in full (month
+    name, day and a year from 2000 to 2099) and every digit is part of such a
+    date, a time of day or a year on its own. "early March", "Friday, February
+    13", "close in May", "02/27", "1.3.2027" and "March 1, 1500 words" leave
+    None. A note this reads (an empty list aside) drops the suffix once its
+    dates pass: test_configured_deadline_open_claim lists every configured note
+    that does.
+    """
+    if not isinstance(note, str) or _NOTE_OPEN_WINDOW_RE.search(note):
+        return None
+    text = _spell_months(note)
+    rest = _NOTE_TIME_OR_YEAR_RE.sub(" ", _NOTE_FULL_DATE_RE.sub(" ", text))
+    if _NOTE_MONTH_RE.search(rest) or re.search(r"\d", rest):
+        return None
+    dates: list[date] = []
+    for full in _NOTE_FULL_DATE_RE.finditer(text):
+        try:
+            dates.append(date(int(full.group(3)), _MONTH_NAMES.index(full.group(1)) + 1, int(full.group(2))))
+        except ValueError:
+            return None
+    return dates
+
+
+def configured_note_last_date(record: dict) -> date | None:
+    """The last date a configured program's deadline note gives, or None.
+
+    Read only where `configured_note_dates` finds the note certain its window
+    has an end. The note is our config's words, which the page may not state,
+    so this decides what we stop claiming, never a closure.
+    """
+    if not is_configured_program(record) or record_kind(record) != "listing":
+        return None
+    metadata = record.get("metadata")
+    dates = configured_note_dates(metadata.get("deadline_note") if isinstance(metadata, dict) else None)
+    return max(dates or (), default=None)
+
+
+def configured_note_window_passed(record: dict) -> bool:
+    """Whether that last date is behind us, with the stated deadline's grace."""
+    last = configured_note_last_date(record)
+    return last is not None and last + _DEADLINE_GRACE < _today()
+
 
 def _listing_status(metadata: dict) -> tuple[str | None, str | None]:
     """The source-stated listing status and the key that decided it.

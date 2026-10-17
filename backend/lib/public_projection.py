@@ -12,6 +12,7 @@ from urllib.parse import unquote, urlsplit
 # Module import: opportunity_detail imports this module back.
 from backend.lib import opportunity_detail
 from src.evidence import (
+    configured_note_window_passed,
     configured_value_unstated,
     is_read_off_the_page,
     record_kind,
@@ -541,9 +542,24 @@ def neutralize_lifecycle_title(title: object, canonical_record: dict) -> str:
     strips punctuation and collapses whitespace. This removes one bounded
     suffix and touches nothing else, so "Open House", ordinary parentheses and
     a live listing's own suffix all survive untouched.
+
+    Nor does a configured program whose own deadline note mentions no opening
+    or reopening (open, reopen, begin, launch, accept), rolling review, TBA,
+    TBC or TBD, "until ... filled", "no ... deadline" or a recurring cycle
+    (quarterly, monthly, annually, year-round, ongoing...), has every month name
+    and digit inside a date written in full (month name, day, a year from 2000
+    to 2099), a time of day or a year on its own, and gives no date later than
+    two UTC days ago (M90, `configured_note_window_passed`). The page still
+    read as open (USTAR keeps an "APPLY NOW!" button), but a suffix that
+    outlives every date our own note gives is the claim this helper exists to
+    remove. Only the claim goes: the row stays actionable.
     """
     text = str(title or "")
-    if record_kind(canonical_record) == "listing" and target_truth(canonical_record).actionable:
+    if (
+        record_kind(canonical_record) == "listing"
+        and target_truth(canonical_record).actionable
+        and not configured_note_window_passed(canonical_record)
+    ):
         return text
     match = _TERMINAL_LIFECYCLE_SUFFIX_RE.search(text)
     # No suffix, no edit. Returned byte-for-byte, leading and trailing
