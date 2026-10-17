@@ -35,6 +35,7 @@ from src.collectors import campus_graph as cg
 from src.collectors import pi_enricher, ucb_campus, ucb_common, ucb_sources
 from src.collectors import uiuc_sro as sro
 from src.collectors.base import RawOpportunity
+from src.collectors.simplify_internships import normalize_listing as simplify_listing
 from src.contact_instructions import CAPTURE_KEY
 from src.evidence import (
     CONFIGURED_FACT_PATHS,
@@ -257,6 +258,53 @@ class TestNoCollapse:
             "May require US citizenship or permanent residency, per our listing and our reading of the page"
             " — not confirmed on the program page"
         )
+
+    def test_a_listing_our_collector_labels_no_sponsorship_is_not_said_to_require_citizenship(self):
+        # M110: Simplify's "Does Not Offer Sponsorship" is international_friendly
+        # "no" with no citizenship rule, and those internships told an
+        # international student they require US citizenship or permanent
+        # residency. The reason is that label as our collector states it.
+        profile = {"international_student": True, "year": "sophomore", "major": "Computer Science"}
+        raw = {
+            "id": "d07dc6c0-69ed-42e6-a0f0-732bbe5b72fc", "company_name": "Veeva",
+            "title": "Intern Software Engineer", "url": "https://example.com/jobs/1",
+            "locations": ["Remote"], "terms": ["Summer 2026"], "category": "Software",
+            "sponsorship": "Does Not Offer Sponsorship",
+        }
+        no_sponsorship = simplify_listing(raw)
+        _, _, gaps = score_eligibility(profile, no_sponsorship)
+        assert "Employer does not offer visa sponsorship" in gaps
+        assert not any("citizenship" in gap.lower() for gap in gaps)
+        # A listing that states the citizenship rule keeps its line.
+        required = simplify_listing(dict(raw, sponsorship="U.S. Citizenship is Required"))
+        assert "Requires US citizenship or permanent residency" in score_eligibility(profile, required)[2]
+        # A "no" a tagger read off the page keeps its hedge.
+        no_sponsorship["metadata"]["inferred_fields"] = {"eligibility.international_friendly": "rule:text_scan"}
+        assert self._READ_RESTRICTION in score_eligibility(profile, no_sponsorship)[2]
+        # A sentence change the fingerprint cannot see.
+        assert int(MATCHER_VERSION.split(".")[0]) >= 25
+
+    _READ_RESTRICTION = (
+        "May require US citizenship or permanent residency, by our reading of the page"
+        " — not confirmed on the program page"
+    )
+
+    @pytest.mark.parametrize(("text", "stamp", "gap"), [
+        ("We do not sponsor visas.", None, "Requires US citizenship or permanent residency"),
+        ("The program does not provide sponsorship for conference travel.", "rule:text_scan", _READ_RESTRICTION),
+        ("Employer does not offer visa sponsorship; CPT/OPT may still apply for internships.", None,
+         "Requires US citizenship or permanent residency"),
+    ])
+    def test_a_page_saying_it_sponsors_no_visa_keeps_its_line(self, text, stamp, gap):
+        # M110 recognises only our Simplify collector's row, not a page's
+        # wording: "sponsorship" elsewhere is travel, a mentor, a club.
+        profile = {"international_student": True, "year": "sophomore", "major": "Biology"}
+        restricted = _listing(description_clean=text, eligibility={"international_friendly": "no", "work_auth_notes": text})
+        if stamp:
+            restricted["metadata"]["inferred_fields"] = {"eligibility.international_friendly": stamp}
+        gaps = score_eligibility(profile, restricted)[2]
+        assert gap in gaps
+        assert not any("sponsor" in line.lower() for line in gaps)
 
     def test_citizenship_false_counts_only_beside_a_stated_welcome(self):
         stated = _fields(_listing(eligibility={

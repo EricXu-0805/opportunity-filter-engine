@@ -332,7 +332,12 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # M13), and the interest-similarity reason with no lab keywords says "Your
 # research interests align" instead of calling the interest text the
 # student's "research background". A formula and a sentence no knob sees.
-_MATCHER_VERSION_BASE = "24"
+# 25: a Simplify internship our collector labels "Does Not Offer Sponsorship"
+# (an international "no" with no citizenship rule) says "Employer does not
+# offer visa sponsorship", as the collector states that label, instead of
+# "Requires US citizenship or permanent residency" (checklist M110). A
+# sentence only, like 23.
+_MATCHER_VERSION_BASE = "25"
 
 
 def _matcher_fingerprint() -> str:
