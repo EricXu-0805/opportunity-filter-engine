@@ -1,9 +1,10 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { advanceOwnerEpoch, captureOwnerToken, isLocalOwnerReady, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import { createEmptyResumeMaster } from '@/lib/resume-master';
-import { readResumeSupplementDraft } from '@/lib/resume-supplement-draft';
+import { prepareConfirmedSupplement } from '@/lib/resume-supplement';
+import { readResumeSupplementDraft, resumeSupplementEditorLock, writeResumeSupplementDraft } from '@/lib/resume-supplement-draft';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import type { Opportunity, ProfileData } from '@/lib/types';
 import { DEFAULT_PROFILE } from '@/app/home/types';
@@ -97,7 +98,7 @@ describe('target résumé unfinished supplement answers', () => {
   });
   it('removes the stored answers once a confirmed save records them', async () => {
     mount(); await openSupplement(); answer(); await act(async () => {});
-    expect(readResumeSupplementDraft(captureOwnerToken(), opportunity.id)?.answers.task).toBe(TASK);
+    expect(readResumeSupplementDraft(captureOwnerToken(), opportunity.id)?.draft.answers.task).toBe(TASK);
     vi.mocked(controller().confirm).mockImplementation(async (draft) => {
       supplement.controller = { ...controller(), phase: 'saved', confirmedEntryId: draft.entryId };
       return { durable: true };
@@ -115,5 +116,59 @@ describe('target résumé unfinished supplement answers', () => {
     await waitFor(() => expect(task()).toHaveValue(''));
     expect(window.confirm).toHaveBeenCalledWith('Discard these recovered answers and start a new supplement? Your target résumé draft will be kept.');
     expect(storedKeys()).toEqual([]);
+  });
+  it('keeps each live editor on its own round, and both confirmations add separate entries', async () => {
+    let server = profile; const results: boolean[] = [];
+    vi.mocked(controller().confirm).mockImplementation(async (draft) => {
+      const prepared = prepareConfirmedSupplement(server, draft); results.push(prepared.ok);
+      if (prepared.ok) server = prepared.desired;
+      return { durable: prepared.ok };
+    });
+    const first = mount(); const one = within(first.container);
+    fireEvent.click(await one.findByRole('button', { name: 'Add experience details' }));
+    fireEvent.change(one.getByRole('combobox', { name: 'Project or experience in your master résumé' }), { target: { value: 'project-one' } });
+    fireEvent.change(one.getByLabelText('What was the task?'), { target: { value: 'First tab task' } }); fireEvent.click(one.getByLabelText('Include task'));
+    const second = mount(); const two = within(second.container); await act(async () => {});
+    // The first editor is still open, so its round is not offered to the second.
+    expect(two.queryByLabelText('What was the task?')).toBeNull(); expect(two.queryByTestId('supplement-recovery-review')).toBeNull();
+    const toggle = two.getByRole('button', { name: 'Add experience details' }); await waitFor(() => expect(toggle).toBeEnabled()); fireEvent.click(toggle);
+    expect(two.getByLabelText('What was the task?')).toHaveValue(''); expect(two.queryByTestId('supplement-recovery-review')).toBeNull();
+    fireEvent.change(two.getByRole('combobox', { name: 'Project or experience in your master résumé' }), { target: { value: 'project-one' } });
+    fireEvent.change(two.getByLabelText('What was the task?'), { target: { value: 'Second tab task' } }); fireEvent.click(two.getByLabelText('Include task'));
+    // The second editor's copy replaced the first's, so closing the first warns before its answers are lost.
+    fireEvent.click(one.getByRole('button', { name: 'Close target résumé' }));
+    expect(first.onClose).not.toHaveBeenCalled(); fireEvent.click(one.getByRole('button', { name: 'Keep editing' }));
+    for (const scope of [two, one]) {
+      fireEvent.click(scope.getByLabelText('I confirm the selected information is accurate.'));
+      fireEvent.click(scope.getByRole('button', { name: 'Confirm and add to my master résumé' })); await act(async () => {});
+    }
+    const ids = vi.mocked(controller().confirm).mock.calls.map(([draft]) => draft.entryId);
+    expect(ids).toHaveLength(2); expect(new Set(ids).size).toBe(2); expect(results).toEqual([true, true]);
+    expect(server.experience_entries?.map(entry => entry.text)).toEqual([expect.stringContaining('Second tab task'), expect.stringContaining('First tab task')]);
+  });
+  it('restores a copy whose editor crashed (lock released) but not one whose editor still holds its lock', async () => {
+    const answers = { task: TASK, method: '', personalRole: '', outcome: '', outcomeBasis: '' };
+    writeResumeSupplementDraft(captureOwnerToken(), opportunity.id, 'crashed-editor', { version: 1, opportunityId: opportunity.id, targetKey: 'old target', entryId: 'kept-entry', activityId: 'project-one', answers, selected: ['task'] });
+    const held: { name: string }[] = [{ name: resumeSupplementEditorLock('crashed-editor') }];
+    // The shared test LockManager has no query(); add one for this test only.
+    const locks = navigator.locks as unknown as { query?: () => Promise<{ held: { name: string }[]; pending: [] }> };
+    locks.query = async () => ({ held, pending: [] });
+    try {
+      const live = mount(); await act(async () => {}); await act(async () => {});
+      expect(screen.queryByLabelText('What was the task?')).toBeNull(); live.unmount();
+      held.length = 0; mount();
+      await waitFor(() => expect(task()).toHaveValue(TASK)); expect(screen.getByTestId('supplement-recovery-review')).toBeVisible();
+    } finally { delete locks.query; }
+  });
+  it('discarding at the leave prompt removes kept answers, so an older copy does not come back', async () => {
+    const view = mount(); await openSupplement(); answer(); await act(async () => {});
+    // Answers too large to keep leave the older copy and ask before leaving.
+    fireEvent.change(task(), { target: { value: 'x'.repeat(70_000) } });
+    fireEvent.click(screen.getByRole('button', { name: 'Close target résumé' }));
+    expect(view.onClose).not.toHaveBeenCalled(); expect(storedKeys()).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Discard unsaved edits and continue' }));
+    expect(view.onClose).toHaveBeenCalledOnce(); expect(storedKeys()).toEqual([]);
+    view.unmount(); mount(); await act(async () => {});
+    expect(screen.queryByLabelText('What was the task?')).toBeNull();
   });
 });

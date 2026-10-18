@@ -19,7 +19,7 @@ import ResumeSupplementPanel from './ResumeSupplementPanel';
 import ResumeExperienceAssignmentPanel from './ResumeExperienceAssignmentPanel';
 import TargetResumeSupportPanel from './TargetResumeSupportPanel';
 import type { TargetResumeSupportGroup } from '@/lib/target-resume-support';
-import { readResumeSupplementDraft, writeResumeSupplementDraft, type ResumeSupplementDraftSnapshot } from '@/lib/resume-supplement-draft';
+import { markResumeSupplementDraft, readResumeSupplementDraft, resumeSupplementEditorGone, resumeSupplementEditorLock, writeResumeSupplementDraft, type ResumeSupplementDraftSnapshot } from '@/lib/resume-supplement-draft';
 import TargetResumeAiPanel from './TargetResumeAiPanel';
 import TargetResumePlanPanel from './TargetResumePlanPanel';
 import TargetResumeCriteria from './TargetResumeCriteria';
@@ -115,6 +115,9 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
   const [supplementStored, setSupplementStored] = useState(false);
   const [supplementDraft, setSupplementDraft] = useState<ResumeSupplementDraftSnapshot | null>(null);
   const savedSupplementRef = useRef<string | null>(null);
+  // This editor's id in the stored copy. Another tab adopts the copy only after this editor closes.
+  const editorRef = useRef('');
+  const editorId = () => editorRef.current ||= crypto.randomUUID();
   const [aiDirty, setAiDirty] = useState(false);
   const [planDirty, setPlanDirty] = useState(false);
   const authorityRef = useRef<{ owner: string; context: string; code: string } | null>(null);
@@ -251,7 +254,9 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
   const acceptedCreation = activeSession?.scope.creation;
   const canEdit = ownerReady && !!doc && !creating && !activeSession?.reloading;
   const askLeave = useCallback((action: 'close' | 'legacy' | 'master') => {
-    if (assignmentDirty || supportDirty || (supplementDirty && !supplementStored) || aiDirty || planDirty || (session && (isDirty(session) || session.saving))) { setLeave(action); return false; }
+    // Another tab may have replaced this editor's copy since it was written.
+    const kept = supplementStored && !!session && readResumeSupplementDraft(session.scope.owner, session.scope.targetId)?.editor === editorRef.current;
+    if (assignmentDirty || supportDirty || (supplementDirty && !kept) || aiDirty || planDirty || (session && (isDirty(session) || session.saving))) { setLeave(action); return false; }
     exit(action); return true;
   }, [session, assignmentDirty, supportDirty, supplementDirty, supplementStored, aiDirty, planDirty, exit]);
 
@@ -259,23 +264,53 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
   useEffect(() => {
     if (!activeScope || !ownerReady || !profileAvailable || supplementMounted) return;
     // Reopening shows unsubmitted answers for review; restoring submits nothing.
+    // A round still open in another tab stays there: this editor starts its own.
     const stored = readResumeSupplementDraft(activeScope.owner, activeScope.targetId);
     if (!stored) return;
-    supplementInputRef.current = incomingProfileRef.current;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSupplementDraft(stored); setSupplementMounted(true); setSupplementOpen(true);
+    let active = true;
+    const adopt = (draft: ResumeSupplementDraftSnapshot) => {
+      if (!active) return;
+      supplementInputRef.current = incomingProfileRef.current;
+      setSupplementDraft(draft); setSupplementMounted(true); setSupplementOpen(true);
+    };
+    if (stored.closed || stored.editor === editorId()) adopt(stored.draft);
+    // An editor that never closed but no longer holds its lock was in a tab that crashed or was killed.
+    else void resumeSupplementEditorGone(stored.editor).then((gone) => {
+      const again = active && gone && readResumeSupplementDraft(activeScope.owner, activeScope.targetId);
+      if (again && again.editor === stored.editor && !again.closed) adopt(again.draft);
+    });
+    return () => { active = false; };
   }, [activeScope, ownerReady, profileAvailable, supplementMounted]);
+  useEffect(() => {
+    if (!isOpen) return;
+    const owner = captureOwnerToken(); const targetId = opportunity.id; const editor = editorId();
+    // Held while the editor is open; the browser releases it if the tab closes or crashes.
+    let released = false; let release = () => { released = true; };
+    if (typeof navigator !== 'undefined' && navigator.locks?.request) {
+      void navigator.locks.request(resumeSupplementEditorLock(editor), () => released ? undefined
+        : new Promise<void>((resolve) => { release = resolve; })).catch(() => {});
+    }
+    const hide = () => markResumeSupplementDraft(owner, targetId, editor, true);
+    const show = (event: PageTransitionEvent) => { if (event.persisted) markResumeSupplementDraft(owner, targetId, editor, false); };
+    window.addEventListener('pagehide', hide); window.addEventListener('pageshow', show);
+    // Closing or unmounting the editor makes its kept answers recoverable.
+    return () => { window.removeEventListener('pagehide', hide); window.removeEventListener('pageshow', show); hide(); release(); };
+  }, [isOpen, opportunity.id]);
   const storeSupplement = (scope: Scope, snapshot: ResumeSupplementDraftSnapshot | null) => {
     if (!current(scope)) return;
     // Answers too large to keep leave the previous copy and the leave warning in place.
     if (!snapshot) { setSupplementStored(false); return; }
     const saved = snapshot.entryId === savedSupplementRef.current;
-    setSupplementStored(writeResumeSupplementDraft(scope.owner, scope.targetId, saved ? null : snapshot) && !saved);
+    setSupplementStored(writeResumeSupplementDraft(scope.owner, scope.targetId, editorId(), saved ? null : snapshot) && !saved);
   };
   const settleSupplement = (scope: Scope, entryId: string) => {
     if (!current(scope)) return;
     // Answers left unselected by a confirmed save are not kept.
-    savedSupplementRef.current = entryId; writeResumeSupplementDraft(scope.owner, scope.targetId, null); setSupplementStored(false);
+    savedSupplementRef.current = entryId; writeResumeSupplementDraft(scope.owner, scope.targetId, editorId(), null); setSupplementStored(false);
+  };
+  // Discarding unsaved work at the leave prompt includes this editor's kept answers.
+  const discardSupplement = () => {
+    if (activeSession && current(activeSession.scope)) writeResumeSupplementDraft(activeSession.scope.owner, activeSession.scope.targetId, editorId(), null);
   };
   const leaveRef = useRef(askLeave);
   useLayoutEffect(() => { leaveRef.current = askLeave; }, [askLeave]);
@@ -510,7 +545,8 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
             onClick={() => {
               if (!supplementMounted) {
                 supplementInputRef.current = incomingProfileKey;
-                if (activeSession) setSupplementDraft(readResumeSupplementDraft(activeSession.scope.owner, activeSession.scope.targetId));
+                const stored = activeSession && readResumeSupplementDraft(activeSession.scope.owner, activeSession.scope.targetId);
+                setSupplementDraft(stored && (stored.closed || stored.editor === editorId()) ? stored.draft : null);
               }
               setSupplementMounted(true); setSupplementOpen((old) => !old);
             }}>
@@ -525,7 +561,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
             ? copy('Create a new draft from your current master? Existing edits will not carry over. Your latest 20 saved versions remain in history; any unsaved target edits will be replaced. Your answers in the side panel stay here.', '要根据当前母版创建新稿吗？原有手改不会自动带入；最近 20 个已保存版本仍在历史中，未保存的目标稿编辑将被替换。侧栏答案会保留。')
             : copy('You have unsaved edits, suggestions or answers. Keep editing, or discard them to leave. A save already in progress may still finish.', '有未保存的编辑、建议或答案。可以继续编辑，或放弃后离开；已经发出的保存仍可能完成。')}</p>
           <div className="mt-2 flex flex-wrap gap-2"><button type="button" className={button} onClick={() => { createAction.cancel(); setLeave(null); }}>{copy('Keep editing', '继续编辑')}</button>
-            <button type="button" className={button} disabled={leave === 'rebuild' && (createAction.busy || !sourceReady || !comparable?.canCreate || activeSession?.saving || activeSession?.reloading || !!activeSession?.conflict)} onClick={() => { if (leave === 'rebuild') createAction.request('create'); else exit(leave); }}>{leave === 'rebuild' ? copy('Create new draft', '创建新稿') : copy('Discard unsaved edits and continue', '放弃未保存编辑并继续')}</button></div>
+            <button type="button" className={button} disabled={leave === 'rebuild' && (createAction.busy || !sourceReady || !comparable?.canCreate || activeSession?.saving || activeSession?.reloading || !!activeSession?.conflict)} onClick={() => { if (leave === 'rebuild') createAction.request('create'); else { discardSupplement(); exit(leave); } }}>{leave === 'rebuild' ? copy('Create new draft', '创建新稿') : copy('Discard unsaved edits and continue', '放弃未保存编辑并继续')}</button></div>
         </div>}
       <div className={`min-h-0 overflow-y-auto p-4 sm:p-6 ${supplementOpen ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-6' : ''}`}>
         {supplementMounted && activeSession && <aside id={`${domId}-supplement`} hidden={!supplementOpen}
