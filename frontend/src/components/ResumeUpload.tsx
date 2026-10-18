@@ -208,6 +208,7 @@ export default function ResumeUpload({ onParsed, onRemove, alreadyUploaded }: Re
         onChange={handleSelect}
         className="sr-only"
         id="resume-upload"
+        aria-label={t('resume.uploadAria')}
       />
 
       {error && state !== 'error' && (

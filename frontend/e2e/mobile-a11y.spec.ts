@@ -61,11 +61,6 @@ interface Known {
 // Ratios are axe's, which truncates to two decimals.
 const BASELINE: readonly Known[] = [
   {
-    rule: 'label', impact: 'critical', steps: ['home'], target: '#resume-upload',
-    name: 'ResumeUpload.tsx\'s visually hidden PDF input has no accessible name. A real one ("Upload your résumé (PDF)") '
-      + 'is new copy in both languages, so it waits for the post-merge list.',
-  },
-  {
     rule: 'landmark-main-is-top-level', impact: 'moderate', steps: ['detail'],
     name: 'OpportunityDetail.tsx renders a <main> inside the layout\'s <main id="main-content">.',
   },

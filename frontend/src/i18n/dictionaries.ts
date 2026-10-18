@@ -4458,6 +4458,7 @@ export const en = {
   resume: {
     pdfOnly: 'PDF only · Max 5 MB · Up to 60,000 text characters',
     removeAria: 'Remove file',
+    uploadAria: 'Upload your résumé (PDF)',
     dropHere: 'Drop your resume here, or',
     browse: 'browse',
     savedFallback: 'Resume (saved)',
@@ -9771,6 +9772,7 @@ export const zh = {
   resume: {
     pdfOnly: '仅 PDF · 最大 5 MB · 最多 60,000 个文本字符',
     removeAria: '移除文件',
+    uploadAria: '上传简历（PDF）',
     dropHere: '将简历拖到这里，或',
     browse: '浏览',
     savedFallback: '简历（已保存）',

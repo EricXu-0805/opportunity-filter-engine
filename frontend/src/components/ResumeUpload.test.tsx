@@ -1,12 +1,19 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import axe from 'axe-core';
 import type { ResumeParseResponse } from '@/lib/types';
 
-vi.mock('@/i18n/client', () => ({
-  useT: () => ({
-    t: (key: string) => key,
-  }),
-}));
+// Keys come back as themselves unless a test picks a locale; then the real
+// dictionary answers.
+const i18n = vi.hoisted(() => ({ locale: null as 'en' | 'zh' | null }));
+vi.mock('@/i18n/client', async () => {
+  const { translate } = await import('@/i18n/translate');
+  return {
+    useT: () => ({
+      t: (key: string) => (i18n.locale ? translate(i18n.locale, key) : key),
+    }),
+  };
+});
 
 // The course list's release switch, as this branch ships it unless a test
 // turns it off.
@@ -37,6 +44,7 @@ function txtFile(name = 'note.txt', size = 200): File {
 
 beforeEach(() => {
   mockParse.mockReset();
+  i18n.locale = null;
 });
 
 afterEach(() => {
@@ -57,6 +65,19 @@ describe('ResumeUpload — idle state', () => {
     expect(input).not.toBeNull();
     expect(input.getAttribute('accept')).toBe('.pdf');
     expect(input.className).toContain('sr-only');
+  });
+
+  // M59: axe's 390 px scan found the hidden input nameless (rule `label`,
+  // critical), so a screen reader that lands on it said only "file upload".
+  it.each([
+    ['en', 'Upload your résumé (PDF)'],
+    ['zh', '上传简历（PDF）'],
+  ] as const)('names the hidden PDF input in %s, so axe finds no unlabelled field', async (locale, name) => {
+    i18n.locale = locale;
+    const { container } = render(<ResumeUpload onParsed={vi.fn()} onRemove={vi.fn()} />);
+    const { violations } = await axe.run(container, { runOnly: { type: 'rule', values: ['label'] } });
+    expect(violations.map(v => `${v.id}: ${v.nodes.map(n => n.target.join(' ')).join(', ')}`)).toEqual([]);
+    expect(screen.getByLabelText(name)).toBe(document.getElementById('resume-upload'));
   });
 
   it('clicking the dropzone forwards to the hidden file input', () => {
