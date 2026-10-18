@@ -422,6 +422,16 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     ...(shareDraftActiveRef.current ? draftTouchedRef.current : []),
     ...unrecordedRef.current,
   ] as string[]), []);
+  /** Whether an edit made in this tab is still unsent, from every place one
+   *  can wait (M117): an operation of this tab's in the journal that the
+   *  cloud has not confirmed — a field, the slider, the course list alike —
+   *  or an edit the journal does not have. A journal that cannot be read
+   *  counts as unsent. Neither the edited-field buffer nor the slider flag
+   *  can say this: both outlive the save that sent them. */
+  const unsentHere = useCallback((token: OwnerToken) => {
+    const own = getDirtyProfileKeys(token, HOME_FORM_WRITER, 'own');
+    return !own.ok || own.value.length > 0 || unrepresentedNow().size > 0;
+  }, [unrepresentedNow]);
   const epochsNow = useCallback(
     (keys: readonly string[]) => new Map(
       keys.map((k) => [k, fieldEpochRef.current.get(k) ?? 0] as const),
@@ -1512,6 +1522,13 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
               if (stillOwns) say(conflictWording(open));
               return STALE;
             }
+            // The question is gone, and an answer to it not yet sent, or any
+            // other edit of this tab's, is unsent: Retry sends it.
+            const owedNow = refreshed.status === 'device-failed' ? [] : refreshed.pendingKeys;
+            if (asked.some((key) => owedNow.includes(key)) || unsentHere(token)) {
+              if (stillOwns) { armRetry({ generation, token }); say('cloud-failed'); }
+              return STALE;
+            }
             return stillOwns ? saved() : ADOPTED;
           });
         }
@@ -1615,7 +1632,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         say('cloud-failed');
         return DEVICE_FAILED;
     }
-  }, [advanceAcceptedBase, epochsNow, publishConflicts, retireConflictQuestion, unrepresentedNow, armRetryable, setSaveStatus, republishRendered]);
+  }, [advanceAcceptedBase, epochsNow, publishConflicts, retireConflictQuestion, unrepresentedNow, unsentHere, armRetryable, setSaveStatus, republishRendered]);
 
   /**
    * Everything Home does with a conflict refresh, taken FROM the refresh.
@@ -1701,9 +1718,10 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     /**
      * After another tab's write: a question this tab showed that is gone, or
      * a failed save another tab has since sent, no longer says so. A question
-     * still open keeps its wording; an edit of this tab's still owed after
-     * its question went away is unsent, and Retry sends it; with nothing
-     * left owed, what this tab saved or showed is saved. Any other status
+     * still open keeps its wording; while any edit of this tab's is unsent —
+     * a field asked about still owed, or anything unsentHere finds — it is
+     * not saved, and Retry sends it; with nothing of this tab's unsent, what
+     * it saved or showed is saved. Any other status
      * is this tab's own operation's, and stays — 'error' included: a device
      * write or a submit that failed here is not put right by another tab's
      * send.
@@ -1713,7 +1731,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       const disputed = shown === 'conflict' || shown === 'conflict-several-typed' || shown === 'conflict-newer-build';
       if (!disputed && shown !== 'cloud-failed') return;
       if (conflictsRef.current.length > 0) return;
-      if (asked.some((key) => dirtyKeysRef.current.has(key as keyof ProfileData))) {
+      if (asked.some((key) => dirtyKeysRef.current.has(key as keyof ProfileData)) || unsentHere(token)) {
         if (disputed) { if (owns) armRetryable({ generation, token }); tell('cloud-failed'); }
         return;
       }
@@ -1867,7 +1885,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     tell(conflictWording(refreshed.conflicts));
   }, [
     adoptAuthoritativeBase, applySaveResult, publishConflicts,
-    republishRendered, retireConflictKeys,
+    republishRendered, retireConflictKeys, unsentHere,
     armRetryable, setSaveStatus,
   ]);
   // Same-tick latest-ref, deliberately written during render: the reader

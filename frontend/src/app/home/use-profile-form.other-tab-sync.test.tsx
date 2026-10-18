@@ -218,6 +218,26 @@ describe('another tab\'s answer and saves reach this tab without a reload (M117)
     expect(service.load.mock.calls.length).toBe(loads);
     expect(unattributed).toEqual([]);
   });
+
+  it('(d) an edit of this tab\'s still unsent keeps saying "Couldn\'t save" when the other tab writes', async () => {
+    const a = await open('A');
+    const b = await open('B');
+    await as(b, (f) => f.update('grade', 'Senior'));
+    expect(remote.grade).toBe('Senior');
+    online = false;
+    // The slider is not a field the form keeps among its edited fields.
+    await as(b, (f) => f.setSearchWeight(90));
+    expect(b.hook.result.current.saveStatus).toBe('cloud-failed');
+    const from = b.seen.length;
+    const heard = delivered.B ?? 0;
+    await as(a, (f) => f.update('name', 'Alex Kim'));
+    await tick(2000);
+    expect(delivered.B ?? 0).toBeGreaterThan(heard);
+    expect(remote.search_weight).toBe(50);
+    expect(b.seen.slice(from)).not.toContain('saved');
+    expect(b.hook.result.current.saveStatus).toBe('cloud-failed');
+    expect(b.hook.result.current.canRetrySync).toBe(true);
+  });
 });
 
 /** Locked reads of the profile storage from here on. The typing tab takes the
