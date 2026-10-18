@@ -804,6 +804,64 @@ def _match_skills_to_tasks(skills: list[str], opp: dict) -> list[str]:
     return matched
 
 
+# Words our collectors put into a title. A configured program's title is typed
+# into our config (campus_graph program(...), src/collectors/schools/*.py) with
+# a tag naming the school ("(UW)", " — Purdue University") and, for an office's
+# front page, a " — Hub" label; campus_graph.py and the fixed-title UIUC
+# collectors append the status the page showed; nsf_reu.py replaces the
+# award's "REU Site:" with "REU: ". The source's own words never match: a
+# crawl-discovered row is titled by the page's link text and is left alone.
+_FIXED_TITLE_SOURCES = frozenset({"uiuc_drp", "uiuc_other", "uiuc_ursa"})
+_STATUS_SUFFIX_RE = re.compile(r"\s*\(\s*applications?\s+(?:open|closed)\s*\)\s*$", re.IGNORECASE)
+_TAIL_PAREN_RE = re.compile(r"\s*\(([^()]+)\)$")
+_TAIL_DASH_RE = re.compile(r"\s+[—–]\s+([^—–]+)$")
+_HUB_RE = re.compile(r"\s+[—–]\s+Hub$")
+_INITIALS_SKIP = frozenset({"of", "the", "at", "in", "and", "for"})
+
+
+def _names_school(tag: str, opportunity: dict) -> bool:
+    """Whether a configured title's tail names the row's own school: its slug
+    (a national row's source still starts with it: "caltech_external_research"),
+    its organization ("Purdue University"), or a part of that organization in
+    full, by initials ("UW"), by its leading words ("Duke") or without
+    "University of" ("Michigan")."""
+    tag = " ".join(tag.split()).casefold()
+    if not tag:
+        return False
+    slugs = (opportunity.get("school"), str(opportunity.get("source") or "").split("_", 1)[0])
+    if tag in {str(slug or "").casefold() for slug in slugs}:
+        return True
+    org = re.sub(r"University of California,\s*", "UC ", str(opportunity.get("organization") or ""),
+                 flags=re.IGNORECASE)
+    for part in [org, *re.split(r"\s*[,/—–]\s*", org)]:
+        part = re.sub(r"^the\s+", "", " ".join(part.split()).casefold())
+        if not part:
+            continue
+        initials = "".join(w[0] for w in part.split() if w not in _INITIALS_SKIP)
+        if tag in (part, initials, re.sub(r"^university of\s+", "", part)) or part.startswith(tag + " "):
+            return True
+    return False
+
+
+def _posting_name(opportunity: dict) -> str:
+    """The title the opener quotes: the title without the words we added to it.
+    Empty when nothing of the source's naming is left."""
+    title = " ".join(str(opportunity.get("title") or "").split())
+    meta = opportunity.get("metadata") or {}
+    if opportunity.get("source") == "nsf_reu":
+        title = re.sub(r"^REU:\s*", "", title)
+    elif (meta.get("collector_key") and not meta.get("discovered")) or \
+            opportunity.get("source") in _FIXED_TITLE_SOURCES:
+        title = _STATUS_SUFFIX_RE.sub("", title)
+        for tail in (_TAIL_PAREN_RE, _TAIL_DASH_RE):
+            match = tail.search(title)
+            if match and _names_school(match.group(1), opportunity):
+                title = title[:match.start()]
+                break
+        title = _HUB_RE.sub("", title)
+    return title.strip() if re.search(r"\w", title) else ""
+
+
 def _common_parts(
     profile: dict, opportunity: dict, resume_bullets: list[str] | None = None
 ) -> dict:
@@ -909,6 +967,7 @@ def _common_parts(
         # A listing whose source states no topics: the template opener names
         # it by its title (_p1_research_hook). research_topic is unchanged.
         opener_names_title=not is_faculty and not _topic_keywords(opportunity),
+        posting_name=_posting_name(opportunity) if not is_faculty else "",
         # Internal callers supply already-admitted evidence. Public routes
         # populate this only after the structured confirmation/source gate.
         resume_bullets=[str(b) for b in (resume_bullets or []) if str(b).strip()],
@@ -1290,10 +1349,12 @@ def _p1_research_hook(p: dict) -> str:
     # the posting by its own title instead; a title too long for the sentence
     # is left out whole, never cut, and the opener falls back to the lab line.
     # The area is a word picked out of that same title, so it is not used.
+    # The title quoted is the source's naming, without words we added
+    # (_posting_name); a title that was only ours falls back the same way.
     posting = ""
     if p.get("opener_names_title"):
         topic = area = ""
-        title = " ".join(str(p.get("title") or "").split())
+        title = p.get("posting_name") or ""
         posting = title if len(title) < 120 else ""
     target = topic if topic and len(topic) < 120 else area
     interest = _short_interest(p["research_interests"])

@@ -45,7 +45,8 @@ LISTINGS = {
 @pytest.mark.parametrize("kind", sorted(LISTINGS))
 def test_a_listing_without_source_topics_is_named_by_its_title(kind):
     public = LISTINGS[kind]
-    title = public["title"]
+    # nsf_reu.py writes "REU: " in front of the award's title; it is not quoted (step 3).
+    title = public["title"].removeprefix("REU: ")
     for variant in generate_variants(PROFILE, public)[:2]:   # concise has no topic sentence
         text = variant["text"]
         assert f"I would like to learn more about “{title}”." in text, (kind, variant["id"])
