@@ -435,6 +435,22 @@ describe('a saved search\'s email state', () => {
     expect(screen.queryByText(/newBeforeMinScore/)).toBeNull();
   });
 
+  it.each([
+    [60.7, '{"min":60}'],
+    [150, '{"min":100}'],
+    ['60', '{"min":60}'],
+    ['high', null],
+    [-5, null],
+  ])('states a saved minimum score of %j as /results applies it', (saved, shown) => {
+    // The row's link carries the saved value; /results truncates it and holds
+    // it to 0..100 (use-results-url.ts), as the digest does.
+    const filters = { ...SEARCH.filters, minScore: saved as number };
+    renderRows({ ...SEARCH, filters, new_match_ids: ['a'] }, undefined);
+    const note = screen.queryByText(/newBeforeMinScore/);
+    if (shown === null) expect(note).toBeNull();
+    else expect(note).toHaveTextContent(`favorites.savedSearches.newBeforeMinScore:${shown}`);
+  });
+
   it('a retry that brings the list back reads the failed digest settings again', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.mocked(getDeviceId).mockResolvedValue('device-1');

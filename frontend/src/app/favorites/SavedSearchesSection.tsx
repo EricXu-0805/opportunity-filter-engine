@@ -237,8 +237,12 @@ export function SavedSearchesSection({
             const digestNotSent = !!digest?.optIn && !digestOn;
             const emailState = formatSavedSearchEmailState(digest, t);
             // The refresh does not score: new results are counted before the
-            // saved minimum score, which /results applies when they open.
-            const minScore = search.filters.minScore > 0 ? search.filters.minScore : 0;
+            // saved minimum score, which /results applies when they open. Read
+            // as /results reads the link's `min`: truncated and held to 0..100.
+            const savedMin = Number(String(search.filters.minScore ?? 0));
+            const minScore = Number.isFinite(savedMin)
+              ? Math.min(100, Math.max(0, Math.trunc(savedMin)))
+              : 0;
             return (
               <li
                 key={search.id}
