@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import gc
+import json
 import time
+from pathlib import Path
 
 import pytest
 
@@ -66,6 +68,34 @@ def test_legacy_coursework_is_unknown_and_courses_win_per_name():
 def test_an_unrecognised_status_is_never_read_as_completed():
     profile = ProfileRequest(name="S", courses=[{"name": "CS 225", "status": "done", "source": "import"}]).model_dump()
     assert profile["courses"][0]["status"] == "unknown" and profile["courses"][0]["source"] == "resume"
+
+
+# Shared with frontend/src/lib/course-status.test.ts, which reads every case the same way.
+REPEATS = json.loads((Path(__file__).parent / "fixtures" / "course_repeats_cases.json").read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize("case", REPEATS["cases"], ids=lambda case: case["why"])
+def test_a_resume_code_is_not_listed_again_beside_a_resume_course_that_opens_with_it(case):
+    """Checklist M130: "CS 173" beside "CS 173 Discrete Structures" is one course, read the same on both sides."""
+    profile = ProfileRequest(name="S", **case["profile"]).model_dump()
+    assert [[e["name"], e["status"], e["source"]] for e in course_entries(profile)] == case["entries"]
+
+
+@pytest.mark.parametrize("claim", [
+    "I have completed Data Structures.",
+    "I have taken CS 225.",
+    "I completed cs 225 last year.",
+])
+def test_a_course_listed_once_for_its_code_is_still_checked_by_its_code_and_its_title(claim):
+    """Checklist M130 keeps every title the course-claim check reads (review M123): the code goes, the title stays."""
+    profile = ProfileRequest(name="S", coursework=["CS 225", "CS 225 Data Structures"]).model_dump()
+    listed = course_entries(profile)
+    assert [entry["name"] for entry in listed] == ["CS 225 Data Structures"]
+    assert course_claim_violations(claim, listed) == ["unsupported course status: CS 225 Data Structures"]
+    assert course_claim_violations("My coursework includes CS 225 Data Structures.", listed) == []
+    done = course_entries(ProfileRequest(name="S", coursework=["CS 225"], courses=[
+        {"name": "CS 225 Data Structures", "status": "completed"}]).model_dump())
+    assert course_claim_violations(claim, done) == []
 
 
 @pytest.mark.parametrize("courses", ["CS 225", [3], [{"name": "x" * 1001}], [{"name": "CS 1", "status": 3}]])

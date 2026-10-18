@@ -176,6 +176,16 @@ def _course_status(raw: object) -> str:
     return status if isinstance(status, str) and status in COURSE_STATUSES else "unknown"
 
 
+# A course code a name opens with: "CS 173" alone, or "CS 173 Discrete Structures".
+_OPENING_CODE = re.compile(r"[A-Za-z]{2,4} *[0-9]{3,4}(?![^\W_])")
+
+
+def _opening_code(name: str) -> tuple[str, bool] | None:
+    """The course key of the code ``name`` opens with, and whether that code is all it names."""
+    m = _OPENING_CODE.match(name)
+    return None if m is None else (course_key(m.group()), course_key(name) == course_key(m.group()))
+
+
 def course_entries(profile: object) -> list[dict]:
     """Every course the profile lists, each with exactly one status.
 
@@ -184,6 +194,12 @@ def course_entries(profile: object) -> list[dict]:
     the same course: an old client's list never outranks the status the
     student chose, and is never read as completed. Legacy strings are kept as
     written and in order, so a profile without ``courses`` lists what it did.
+
+    The résumé parser stored "CS 173" beside "CS 173 Discrete Structures" for
+    one listed course (checklist M130). A résumé course the student has not
+    marked that is only a code is not listed beside a résumé course that opens
+    with that code: the titled course keeps the code and the title the course
+    claim check reads, and a code the student marked or added stays.
     """
     entries: list[dict] = []
     seen: set[str] = set()
@@ -205,7 +221,10 @@ def course_entries(profile: object) -> list[dict]:
         key = course_key(name)
         if key and key not in seen:
             entries.append({"name": name, "status": "unknown", "source": "resume"})
-    return entries
+    codes = [_opening_code(entry["name"]) if entry["source"] == "resume" else None for entry in entries]
+    titled = {code[0] for code in codes if code and not code[1]}
+    return [entry for entry, code in zip(entries, codes, strict=True)
+            if not (code and code[1] and code[0] in titled and entry["status"] == "unknown")]
 
 
 def courses_counted_as_taken(profile: object) -> list[str]:
