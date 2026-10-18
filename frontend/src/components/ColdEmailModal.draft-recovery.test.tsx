@@ -372,4 +372,81 @@ describe('persistent cold-email draft recovery', () => {
     await screen.findByDisplayValue(draft.body); expect(field('requestLabel')).toHaveValue('');
     expect(field('to')).toHaveValue(draft.recipient_email); expect(api.confirm).not.toHaveBeenCalled();
   });
+
+  describe('starting again gives the background panel a new draft\'s state', () => {
+    const paperTarget: Opportunity = { ...target, metadata: { ...target.metadata,
+      publication_attribution_status: 'verified_author_id', recent_works: [{ title: 'Verified sensor study', year: 2025 }] } };
+    const paper = () => screen.getByLabelText('Paper you looked at (optional)');
+    function choosePaper() {
+      openContext();
+      fireEvent.change(paper(), { target: { value: JSON.stringify(['Verified sensor study', 2025]) } });
+      fireEvent.change(screen.getByLabelText('How much did you read?'), { target: { value: 'abstract' } });
+    }
+    async function confirmAndApplyPaper() {
+      choosePaper();
+      fireEvent.click(screen.getByLabelText('I confirm this reading level for the selected paper.'));
+      fireEvent.click(screen.getByRole('button', { name: 'Apply background to this draft' }));
+      fireEvent.click(button('regenerateFromProfile'));
+      await waitFor(() => expect(screen.queryByRole('button', { name: 'coldEmail.regenerateFromProfile' })).toBeNull());
+      await waitFor(() => expect(button('generateAiDraft')).toBeEnabled()); await act(async () => {});
+      expect(screen.getByTestId('email-contact-context-panel').querySelector('summary')).toHaveTextContent('Applied');
+    }
+    async function startAgain() {
+      await waitFor(() => expect(screen.getByTestId('cold-email-draft-status')).toHaveTextContent(/Saved on this browser/));
+      vi.spyOn(window, 'confirm').mockReturnValue(true); clearCalls();
+      fireEvent.click(screen.getByTestId('cold-email-draft-clear'));
+      await waitFor(() => expect(api.variants).toHaveBeenCalledOnce()); await ready();
+      await waitFor(() => expect(screen.getByTestId('cold-email-draft-status')).toHaveTextContent(/Saved on this browser/));
+    }
+    function expectNewPanel() {
+      const panel = screen.getByTestId('email-contact-context-panel');
+      expect(panel.querySelector('summary')).toHaveTextContent('Applied');
+      expect(panel.querySelector('summary')).not.toHaveTextContent('Needs confirmation');
+      expect(panel).not.toHaveAttribute('open'); openContext();
+      expect(screen.getByLabelText('Contact purpose')).toHaveValue('first_contact');
+      expect(paper()).toHaveValue('');
+      expect(screen.queryByLabelText('I confirm this reading level for the selected paper.')).toBeNull();
+      expect(api.variants.mock.calls[0][3].contactContext.paper_reading).toBeUndefined();
+      // The new draft saved on this browser does not carry the deleted draft's panel.
+      const record = readColdEmailDraft(captureOwnerToken(), target.id); expect(record.status).toBe('present');
+      if (record.status === 'present') {
+        expect(record.draft.context).toEqual({ version: 1, purpose: 'first_contact' });
+        expect(record.draft.pendingPanel?.fields.paperKey ?? '').toBe('');
+      }
+    }
+
+    it('after a confirmed and applied paper', async () => {
+      mount({ target: paperTarget }); await ready(); await confirmAndApplyPaper();
+      await startAgain(); expectNewPanel();
+    });
+
+    it('after the server asked to review a confirmed paper', async () => {
+      mount({ target: paperTarget }); await ready(); await confirmAndApplyPaper();
+      api.refine.mockRejectedValue(Object.assign(new Error('changed'), { code: 'EMAIL_READING_CHANGED' }));
+      fireEvent.click(button('quickActions.formal')); expect(await screen.findByTestId('cold-email-reading-changed')).toBeVisible();
+      expect(screen.getByLabelText('I confirm this reading level for the selected paper.')).not.toBeChecked();
+      await startAgain(); expectNewPanel(); expect(screen.queryByTestId('cold-email-reading-changed')).toBeNull();
+    });
+
+    it('after a paper chosen but not confirmed', async () => {
+      mount({ target: paperTarget }); await ready(); choosePaper();
+      expect(screen.getByTestId('email-contact-context-status')).toHaveTextContent('Changes are not applied');
+      await startAgain(); expectNewPanel();
+    });
+
+    it('after no paper was chosen but other background was left unconfirmed', async () => {
+      mount({ target: paperTarget }); await ready(); edit(); openContext();
+      fireEvent.change(screen.getByLabelText('When could you participate? (optional)'), { target: { value: 'Possibly Tuesdays' } });
+      expect(screen.getByLabelText('I confirm this availability is accurate.')).not.toBeChecked();
+      await startAgain(); expectNewPanel(); expect(field('requestLabel')).toHaveValue('');
+      expect(screen.getByLabelText('When could you participate? (optional)')).toHaveValue('');
+    });
+
+    it('and the next AI draft is generated without the deleted draft\'s paper', async () => {
+      mount({ target: paperTarget }); await ready(); await confirmAndApplyPaper();
+      await startAgain();
+      fireEvent.click(button('generateAiDraft')); await waitFor(() => expect(api.stream).toHaveBeenCalledOnce());
+      expect(api.stream.mock.calls[0][2].contactContext).toEqual({ version: 1, purpose: 'first_contact' });
+    });
+  });
 });
