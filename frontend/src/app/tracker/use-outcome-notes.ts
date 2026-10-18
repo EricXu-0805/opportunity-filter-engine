@@ -14,8 +14,10 @@ import { captureOwnerToken } from '@/lib/identity-owner';
 export interface OutcomeDraft {
   body: string;
   outcome: OutcomeNoteOutcome | null;
-  /** Kept from the first save attempt until the text or outcome changes, so a
-   *  retry after an unknown result replays that note instead of adding one. */
+  /** Kept from the first save attempt until a save is confirmed or the text
+   *  changes, so a retry after an unknown result replays that note instead of
+   *  adding one. A changed status alone keeps it: if the first attempt was
+   *  saved, the server refuses the different status as a conflict. */
   noteId?: string;
 }
 
@@ -129,8 +131,9 @@ export function useOutcomeNotes({ identityGeneration, ready, runStatusWrite }: {
   const setDraft = useCallback((id: string, draft: Pick<OutcomeDraft, 'body' | 'outcome'>) => {
     if (pendingRef.current.has(id)) return;
     const prev = draftsRef.current.get(id);
-    const same = prev && prev.body === draft.body && prev.outcome === draft.outcome;
-    putDraft(id, { ...draft, noteId: same ? prev.noteId : undefined });
+    // submit sends the text trimmed, so padding alone is not a new text.
+    const sameText = prev && prev.body.trim() === draft.body.trim();
+    putDraft(id, { ...draft, noteId: sameText ? prev.noteId : undefined });
     setProblem(id, null);
   }, [putDraft, setProblem]);
 
@@ -178,6 +181,9 @@ export function useOutcomeNotes({ identityGeneration, ready, runStatusWrite }: {
         if (generationRef.current !== generation) return;
         const kind = error instanceof OutcomeNoteError ? error.kind : null;
         setProblem(id, kind === 'conflict' ? 'conflict' : kind === 'target_unavailable' ? 'target_unavailable' : 'failed');
+        // The conflict message points at the list: read it again so it shows
+        // the note an earlier attempt saved.
+        if (kind === 'conflict') setLoadRequest((n) => n + 1);
       } finally {
         if (generationRef.current === generation) setPending(id, false);
       }

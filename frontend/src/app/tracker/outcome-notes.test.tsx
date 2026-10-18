@@ -192,6 +192,75 @@ describe('outcome notes on a tracker card', () => {
     await waitFor(() => expect(screen.queryByText('Opp o1')).toBeNull());
   });
 
+  it('lists notes newest first by save time to the microsecond, then note id, whatever order they arrive in', async () => {
+    mocks.getOutcomeNotes.mockResolvedValue(new Map([['o1', [
+      note('00000000-0000-4000-8000-000000000009', 'Oldest.', '2026-10-10T12:00:00.000001Z'),
+      note('00000000-0000-4000-8000-000000000002', 'Same moment, lower id.', '2026-10-10T12:00:00.000002Z'),
+      note('00000000-0000-4000-8000-000000000001', 'Newest.', '2026-10-12T08:00:00+00:00'),
+      note('00000000-0000-4000-8000-000000000003', 'Same moment, higher id.', '2026-10-10T12:00:00.000002Z'),
+    ]]]));
+    await renderBoard();
+    await within(section()).findByText('Newest.');
+    expect(within(section()).getAllByRole('listitem').map((li) => li.querySelector('p:last-child')?.textContent)).toEqual([
+      'Newest.', 'Same moment, higher id.', 'Same moment, lower id.', 'Oldest.',
+    ]);
+  });
+
+  it('ignores Enter while an input method is composing, and saves on Enter once the composition ends', async () => {
+    mocks.appendOutcomeNote.mockImplementation(async (_id: string, input: { noteId: string; body: string }) => ({
+      note: note(input.noteId, input.body, '2026-10-18T12:00:00Z'), status: 'contacted', replayed: false,
+    }));
+    await renderBoard();
+    const input = screen.getByLabelText('tracker.outcomeNotes.addLabel');
+    fireEvent.compositionStart(input);
+    type('李教授hui');
+    fireEvent.keyDown(input, { key: 'Enter', isComposing: true });
+    fireEvent.keyDown(input, { key: 'Enter', keyCode: 229 });
+    expect(mocks.appendOutcomeNote).not.toHaveBeenCalled();
+    expect(input).toHaveValue('李教授hui');
+
+    type('李教授回复了。');
+    fireEvent.compositionEnd(input);
+    fireEvent.keyDown(input, { key: 'Enter', keyCode: 13 });
+    await within(section()).findByText('李教授回复了。', { selector: 'li p' });
+    expect(mocks.appendOutcomeNote).toHaveBeenCalledTimes(1);
+    expect(mocks.appendOutcomeNote.mock.calls[0][1].body).toBe('李教授回复了。');
+  });
+
+  it('after a failed save, changing only the status keeps the note id, so a save that had landed is not added twice', async () => {
+    mocks.appendOutcomeNote.mockRejectedValueOnce(new OutcomeNoteError('unavailable'));
+    await renderBoard();
+    type('Professor Lee replied.');
+    fireEvent.click(screen.getByRole('button', { name: 'tracker.outcomeNotes.save' }));
+    expect(await within(section()).findByRole('alert')).toHaveTextContent('tracker.outcomeNotes.errors.failed');
+    const firstId = mocks.appendOutcomeNote.mock.calls[0][1].noteId;
+
+    // The first attempt had in fact been saved: the server refuses the same id
+    // with another status, and the list is read again to show that note.
+    fireEvent.change(screen.getByLabelText('tracker.outcomeNotes.outcomeLabel'), { target: { value: 'replied' } });
+    type('Professor Lee replied. ');
+    mocks.appendOutcomeNote.mockRejectedValueOnce(new OutcomeNoteError('conflict'));
+    mocks.getOutcomeNotes.mockResolvedValueOnce(new Map([['o1', [note(firstId, 'Professor Lee replied.', '2026-10-18T12:00:00Z')]]]));
+    fireEvent.click(screen.getByRole('button', { name: 'tracker.outcomeNotes.save' }));
+    expect(await within(section()).findByRole('alert')).toHaveTextContent('tracker.outcomeNotes.errors.conflict');
+    expect(mocks.appendOutcomeNote.mock.calls[1][1]).toEqual({ noteId: firstId, body: 'Professor Lee replied.', outcome: 'replied' });
+    await within(section()).findByText('Professor Lee replied.', { selector: 'li p' });
+
+    // A changed text is a new note with a new id.
+    type('Professor Lee replied and asked to meet.');
+    mocks.appendOutcomeNote.mockRejectedValueOnce(new OutcomeNoteError('unavailable'));
+    fireEvent.click(screen.getByRole('button', { name: 'tracker.outcomeNotes.save' }));
+    await waitFor(() => expect(mocks.appendOutcomeNote).toHaveBeenCalledTimes(3));
+    expect(mocks.appendOutcomeNote.mock.calls[2][1].noteId).not.toBe(firstId);
+  });
+
+  it('says next to "No longer contacting" that it is saved as dismissed and leaves the board', async () => {
+    await renderBoard();
+    expect(within(section()).queryByText('tracker.outcomeNotes.dismissedHint')).toBeNull();
+    fireEvent.change(screen.getByLabelText('tracker.outcomeNotes.outcomeLabel'), { target: { value: 'dismissed' } });
+    expect(within(section()).getByText('tracker.outcomeNotes.dismissedHint')).toBeInTheDocument();
+  });
+
   it('a failed notes read says so with a retry, and the board still renders', async () => {
     mocks.getOutcomeNotes.mockRejectedValueOnce(new Error('read failed'));
     await renderBoard();

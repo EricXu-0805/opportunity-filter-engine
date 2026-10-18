@@ -6,6 +6,7 @@ import {
   type OutcomeNote,
   type OutcomeNoteOutcome,
 } from '@/lib/outcome-notes';
+import { contactTimestamp } from '@/lib/contact-ledger';
 import type { TFunc } from '@/app/favorites/types';
 
 import type { OutcomeDraft, OutcomeNoteProblem } from './use-outcome-notes';
@@ -14,6 +15,17 @@ import type { OutcomeDraft, OutcomeNoteProblem } from './use-outcome-notes';
 function savedOn(iso: string): string {
   const d = new Date(iso);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** Newest first, in the read's order: the database's save time to the
+ *  microsecond, then the note id, both descending. */
+function newestFirst(notes: OutcomeNote[]): OutcomeNote[] {
+  const at = (note: OutcomeNote) => contactTimestamp(note.recordedAt) ?? BigInt(0);
+  return [...notes].sort((a, b) => {
+    const x = at(a), y = at(b);
+    if (x !== y) return x < y ? 1 : -1;
+    return a.id < b.id ? 1 : a.id > b.id ? -1 : 0;
+  });
 }
 
 /**
@@ -58,7 +70,7 @@ export function OutcomeNotes({
           <p className="mt-1 text-[11px] text-gray-500">{t('tracker.outcomeNotes.empty')}</p>
         ) : (
           <ol className="mt-1 space-y-1.5" aria-label={t('tracker.outcomeNotes.title')}>
-            {notes.map((note) => (
+            {newestFirst(notes).map((note) => (
               <li key={note.id} className="text-xs text-gray-700">
                 <p className="text-[11px] text-gray-500">
                   <time dateTime={note.recordedAt}>
@@ -93,7 +105,14 @@ export function OutcomeNotes({
         type="text"
         value={draft.body}
         onChange={(e) => onDraftChange(opportunityId, { body: e.target.value, outcome: draft.outcome })}
-        onKeyDown={(e) => { if (e.key === 'Enter' && !locked) { e.preventDefault(); onSubmit(opportunityId); } }}
+        onKeyDown={(e) => {
+          // Enter that ends an input method's composition (pinyin, kana)
+          // picks the characters; saving then would keep a half-typed note
+          // that can never be edited or deleted.
+          if (e.key !== 'Enter' || locked || e.nativeEvent.isComposing || e.keyCode === 229) return;
+          e.preventDefault();
+          onSubmit(opportunityId);
+        }}
         placeholder={t('tracker.outcomeNotes.placeholder')}
         readOnly={locked}
         aria-invalid={problem === 'empty' || problem === 'too_long' || problem === 'not_one_line'}
@@ -128,6 +147,9 @@ export function OutcomeNotes({
         <span className={`text-[11px] ${count > OUTCOME_NOTE_MAX_LENGTH ? 'text-red-700' : 'text-gray-400'}`}>
           {t('tracker.outcomeNotes.count', { count, max: OUTCOME_NOTE_MAX_LENGTH })}
         </span>
+        {draft.outcome === 'dismissed' && (
+          <span className="basis-full text-[11px] text-gray-500">{t('tracker.outcomeNotes.dismissedHint')}</span>
+        )}
       </div>
       {problem && (
         <p role="alert" className="mt-1 text-[11px] text-red-700">
