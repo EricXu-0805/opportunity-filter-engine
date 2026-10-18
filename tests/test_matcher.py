@@ -2519,6 +2519,59 @@ class TestCorpusPrecomputeEquivalence:
         newest = rk._opp_static(corpus[-1])
         assert rk._opp_static(corpus[-1]) is newest
 
+    def test_full_traversals_hold_off_the_collector_and_restore_it(self, _isolated_precompute, monkeypatch):
+        import gc
+
+        import src.matcher.ranker as rk
+
+        corpus = self._mini_corpus()
+        rk.register_corpus(corpus)
+        profile = self._profiles()[0]
+        seen = []
+        real_rank = rk._rank_opportunity_unlocked
+
+        def recording_rank(*args, **kwargs):
+            seen.append(gc.isenabled())
+            return real_rank(*args, **kwargs)
+
+        monkeypatch.setattr(rk, "_rank_opportunity_unlocked", recording_rank)
+        assert gc.isenabled()
+        rk.rank_all(profile, corpus)
+        rk.rank_visible_universe(profile, corpus)
+        assert seen and not any(seen)
+        assert gc.isenabled()
+
+        # A failed traversal still hands the collector back.
+        def failing_rank(*_args, **_kwargs):
+            raise RuntimeError("boom")
+
+        monkeypatch.setattr(rk, "_rank_opportunity_unlocked", failing_rank)
+        with pytest.raises(RuntimeError):
+            rk.rank_visible_universe(profile, corpus)
+        assert gc.isenabled()
+
+        # Nor does a traversal switch on a collector someone else switched off.
+        monkeypatch.setattr(rk, "_rank_opportunity_unlocked", real_rank)
+        gc.disable()
+        try:
+            rk.rank_all(profile, corpus)
+            assert not gc.isenabled()
+        finally:
+            gc.enable()
+
+    def test_overlapping_traversals_resume_the_collector_only_after_the_last(self):
+        import gc
+
+        import src.matcher.ranker as rk
+
+        first, second = rk._collector_paused(), rk._collector_paused()
+        first.__enter__()
+        second.__enter__()
+        first.__exit__(None, None, None)
+        assert not gc.isenabled()
+        second.__exit__(None, None, None)
+        assert gc.isenabled()
+
 
 class TestInterestBonusNameLeakage:
     """Interest tokens must match research signal, not the professor's name.

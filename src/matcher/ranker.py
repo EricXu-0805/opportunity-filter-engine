@@ -6,10 +6,12 @@ SKILL_SYNONYMS, SKILL_IMPLIES) still live in this file because they're
 data, not policy — moving them to YAML is a separate refactor.
 """
 
+import gc
 import math
 import re
 import threading
 from collections import Counter, OrderedDict, defaultdict
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from functools import lru_cache
@@ -4269,6 +4271,38 @@ def _iter_scored_results(
         )
 
 
+_collector_pause_lock = threading.Lock()
+_collector_pause_depth = 0
+_collector_resume = False
+
+
+@contextmanager
+def _collector_paused():
+    """Hold off the cyclic garbage collector for one full score traversal.
+
+    A cross-school traversal allocates and keeps tens of thousands of results,
+    so the collector ran about 2,000 young and a dozen full collections during
+    it, each full one walking every result kept so far: 3 to 4 s of a 12 s
+    ranking. The results and statics form no reference cycles, so reference
+    counting frees what the traversal drops either way, and the collector
+    resumes, with its thresholds unchanged, when the last concurrent traversal
+    ends. Scores cannot change: the collector never touches a live object.
+    """
+    global _collector_pause_depth, _collector_resume
+    with _collector_pause_lock:
+        if _collector_pause_depth == 0:
+            _collector_resume = gc.isenabled()
+            gc.disable()
+        _collector_pause_depth += 1
+    try:
+        yield
+    finally:
+        with _collector_pause_lock:
+            _collector_pause_depth -= 1
+            if _collector_pause_depth == 0 and _collector_resume:
+                gc.enable()
+
+
 def _opportunity_lookup_for_results(
     opportunities: list[dict],
     results: list[MatchResult],
@@ -4287,7 +4321,8 @@ def rank_all(
     responsiveness: dict[str, dict] | None = None,
 ) -> list[MatchResult]:
     """Rank all opportunities for a profile, listed in served_sort_key order."""
-    results = list(_iter_scored_results(profile, opportunities, responsiveness))
+    with _collector_paused():
+        results = list(_iter_scored_results(profile, opportunities, responsiveness))
 
     # Deterministic tie-break: scores round to 0.1, so equal-score bands
     # (17-way ties were observed) otherwise reorder whenever corpus file
@@ -4332,10 +4367,11 @@ def rank_visible_universe(
     score_counts: defaultdict[str, Counter[float]] = defaultdict(Counter)
     retained: list[MatchResult] = []
 
-    for result in _iter_scored_results(profile, opportunities, responsiveness):
-        score_counts[result.opportunity_type][result.final_score] += 1
-        if result.final_score >= floor_reach:
-            retained.append(result)
+    with _collector_paused():
+        for result in _iter_scored_results(profile, opportunities, responsiveness):
+            score_counts[result.opportunity_type][result.final_score] += 1
+            if result.final_score >= floor_reach:
+                retained.append(result)
 
     result_count = sum(sum(counts.values()) for counts in score_counts.values())
     buckets = {"high_priority": 0, "good_match": 0, "reach": 0, "low_fit": 0}
