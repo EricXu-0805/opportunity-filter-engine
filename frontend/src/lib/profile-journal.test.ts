@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   appendJournalOp,
+  appendRebaseReceipt,
   clearJournal,
+  compactRebaseReceipts,
   encodeJournalValue,
   decodeJournalValue,
   hasCrossTabLock,
@@ -879,5 +881,104 @@ describe('an operation can never cross from one account to another', () => {
     expect(read.ok && read.value.some(
       (o) => o.fields.some((f) => f.desired.present && f.desired.value === 'u1 wrote this'),
     )).toBe(false);
+  });
+});
+
+describe('a rebase receipt is removed once nothing on disk can reach it (checklist M114)', () => {
+  let now = 0;
+  beforeEach(() => {
+    now = 1_000;
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
+  });
+  function receiptFor(o: JournalOp) {
+    return {
+      v: 1 as const, ancestorOpId: o.opId, ancestorLineage: o.lineage, revision: 8,
+      profile: { major: { present: true, value: o.fields[0].desired.value } }, confirmedKeys: ['major'],
+    };
+  }
+  /** What the coordinator does when an operation lands: receipt first, then the settle. */
+  function land(o: JournalOp, token: ReturnType<typeof captureOwnerToken>) {
+    expect(appendRebaseReceipt(receiptFor(o), token)).toBe(true);
+    expect(settleJournalOps([o.opId], token)).toBe(true);
+  }
+  function receiptIds(): string[] {
+    const read = readRebaseReceipts();
+    if (!read.ok) throw new Error(read.reason);
+    return [...read.value.keys()].sort();
+  }
+  const foreign = { originId: 'tab-t', lineage: 'lineage-t' };
+
+  it('removes this lineage\'s receipt at once, and keeps it while its own key is still on disk', () => {
+    const token = captureOwnerToken();
+    const a = appendJournalOp(op('major', 'ECE'), token)!;
+    // A crash between the receipt and the settle: the receipt is what hides
+    // the landed operation from every reader, so it stays.
+    expect(appendRebaseReceipt(receiptFor(a), token)).toBe(true);
+    expect(compactRebaseReceipts(token)).toBe(true);
+    expect(receiptIds()).toEqual([a.opId]);
+    expect(readOutstandingOps()).toEqual({ ok: true, value: [] });
+
+    expect(settleJournalOps([a.opId], token)).toBe(true);
+    expect(compactRebaseReceipts(token)).toBe(true);
+    expect(receiptIds()).toEqual([]);
+  });
+
+  it('keeps a receipt any operation on disk names in supersedes, whichever lineage it is', () => {
+    const token = captureOwnerToken();
+    const a = appendJournalOp(op('major', 'ECE'), token)!;
+    const t = appendJournalOp({ ...op('grade', 'Junior'), ...foreign }, token)!;
+    const b = appendJournalOp(op('major', 'Physics', { supersedes: [a.opId] }), token)!;
+    const u = appendJournalOp({ ...op('grade', 'Senior', { supersedes: [t.opId] }), ...foreign }, token)!;
+    land(a, token);
+    land(t, token);
+    now += 3_600_000;
+    expect(compactRebaseReceipts(token)).toBe(true);
+    expect(receiptIds(), 'an edit still on disk continues each').toEqual([a.opId, t.opId].sort());
+
+    // Once the descendants have landed too, nothing names either ancestor:
+    // ours goes at once, and so does the other lineage's, gone for an hour.
+    // The other lineage's descendant has only just gone, and waits.
+    land(b, token);
+    land(u, token);
+    expect(receiptIds()).toEqual([u.opId]);
+  });
+
+  it('removes another lineage\'s only after this document has known its operation gone for the grace', () => {
+    const token = captureOwnerToken();
+    const t = appendJournalOp({ ...op('major', 'ECE'), ...foreign }, token)!;
+    land(t, token);
+    expect(compactRebaseReceipts(token)).toBe(true);
+    expect(receiptIds()).toEqual([t.opId]);
+    now += 59_999;
+    expect(compactRebaseReceipts(token)).toBe(true);
+    expect(receiptIds(), 'a tab of that lineage may still be catching up').toEqual([t.opId]);
+    now += 1;
+    expect(compactRebaseReceipts(token)).toBe(true);
+    expect(receiptIds()).toEqual([]);
+  });
+
+  it('counts the grace from the first read that saw the operation gone, and a new document starts it again', () => {
+    const token = captureOwnerToken();
+    const t = appendJournalOp({ ...op('major', 'ECE'), ...foreign }, token)!;
+    land(t, token);
+    expect(readOutstandingOps().ok).toBe(true);
+    now += 60_000;
+    // A new document has no memory of when anything went.
+    startDocumentForTests('other');
+    expect(compactRebaseReceipts(token)).toBe(true);
+    expect(receiptIds()).toEqual([t.opId]);
+    expect(readOutstandingOps().ok).toBe(true);
+    now += 60_000;
+    expect(compactRebaseReceipts(token)).toBe(true);
+    expect(receiptIds()).toEqual([]);
+  });
+
+  it('removes nothing while any operation on disk cannot be read — it might name anything', () => {
+    const token = captureOwnerToken();
+    const a = appendJournalOp(op('major', 'ECE'), token)!;
+    localStorage.setItem(opKeyOf('from-a-newer-build'), JSON.stringify({ opId: 'from-a-newer-build', mode: 'rewrite' }));
+    land(a, token);
+    expect(compactRebaseReceipts(token)).toBe(false);
+    expect(localStorage.getItem(`${PREFIX}rebase_${a.opId}`)).not.toBeNull();
   });
 });

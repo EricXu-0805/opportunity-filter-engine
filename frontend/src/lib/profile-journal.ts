@@ -378,6 +378,7 @@ export function startDocumentForTests(kind: NavigationKind | null): void {
   laneSeq = null;
   originId = null;
   lineageId = null;
+  ancestorGoneSince.clear();
   setNavigationKindForTests(kind);
 }
 
@@ -633,7 +634,8 @@ export function appendJournalOp(
  * settled. Descendants derive their effective base by following their explicit
  * `supersedes` ancestry through these receipts, LAZILY — which is what makes a
  * descendant appended after the scan, or read after a reload by a different
- * document, come out correct anyway.
+ * document, come out correct anyway. A receipt is removed only once nothing
+ * on disk can reach it, under the rule in compactRebaseReceipts.
  */
 export interface RebaseReceipt {
   v: 1;
@@ -662,10 +664,9 @@ const REBASE_PREFIX = `${PREFIX}rebase_`;
 /** Receipts are bounded by the same cap as operations: one per landed
  *  ancestor, and a pathological writer must not be able to fill the origin's
  *  quota. Reaching it REPORTS failure — an ancestor whose receipt cannot be
- *  written is not settled, so nothing is lost, it simply stops. Normal
- *  compaction is deliberately deferred: a scan that sees no descendant cannot
- *  prove one is not being appended at that very moment, so the only safe
- *  bulk removal is a verified identity reset (see clearJournal). */
+ *  written is not settled, so nothing is lost, it simply stops. Ordinary use
+ *  stays far below it because every settle removes the receipts nothing can
+ *  need any more (see compactRebaseReceipts). */
 const MAX_REBASE_RECEIPTS = MAX_OUTSTANDING_OPS;
 
 /**
@@ -799,6 +800,111 @@ export function effectiveOpBase(
     })),
     baseRevision: snapshot.revision,
   };
+}
+
+/**
+ * How long this document must have known an operation of ANOTHER lineage to
+ * be gone before it removes that operation's receipt. Only a tab still
+ * continuing that lineage could need the receipt, and only if its view of
+ * storage is so far behind that it still shows the operation outstanding —
+ * see compactRebaseReceipts for why that takes a lag longer than this.
+ */
+const FOREIGN_RECEIPT_GRACE_MS = 60_000;
+
+/** When this document first saw each receipted operation's key gone, by
+ *  operation id. Memory only: a new document starts from nothing, which only
+ *  ever delays a removal. */
+const ancestorGoneSince = new Map<string, number>();
+
+/** Monotonic within this document; a wall clock moved forward would shorten
+ *  the grace. */
+function documentNow(): number {
+  return typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now();
+}
+
+function noteGoneAncestors(
+  receipts: ReadonlyMap<string, RebaseReceipt>,
+  present: ReadonlySet<string>,
+  now: number,
+): void {
+  for (const id of receipts.keys()) {
+    if (!present.has(id) && !ancestorGoneSince.has(id)) ancestorGoneSince.set(id, now);
+  }
+}
+
+/**
+ * Removes the rebase receipts nothing can need any more. MUST be called inside
+ * withProfileLock.
+ *
+ * THE RULE: a receipt goes once its operation's key is gone and no operation
+ * key on disk names it in `supersedes` — at once when the operation was this
+ * document's own lineage's, otherwise only after this document has known the
+ * operation to be gone for FOREIGN_RECEIPT_GRACE_MS.
+ *
+ * Why that is enough. A receipt is read for two things: it hides its own
+ * operation from readers (so that one is kept while its key exists — a crash
+ * between the receipt and the settle leaves exactly that), and an outstanding
+ * operation that names it, directly or through outstanding operations that
+ * name it, takes its base from it. Every link of that walk is a `supersedes`
+ * entry of an operation still on disk, so a receipt no such entry names is
+ * read by nothing that exists now. What remains is an operation not yet
+ * written. recordProfileIntent is the only writer of `supersedes`, and it
+ * names only operations of its own document's lineage that the same
+ * synchronous call has just read as outstanding — and an operation with a
+ * receipt, or with its key gone, does not read as outstanding.
+ *
+ *   * Own lineage: one document at a time continues a lineage (a reload
+ *     replaces it), and this is that document. Anything it appended before
+ *     this scan is in this scan; anything it appends after it reads the
+ *     journal this scan read, where the operation is already gone. There is
+ *     no window.
+ *   * Another lineage: its document may still be open, and may append from a
+ *     view of storage that does not yet show the receipt. That append names
+ *     the operation only while its view predates the receipt, and the
+ *     receipt went down before the operation's key was removed — before this
+ *     document could see the key gone. So for the removal to miss it, that
+ *     tab's view and this one's must between them lag by more than the
+ *     grace. If they ever do, the late operation is still on disk, still
+ *     outstanding and still the user's; it simply keeps its own frozen base,
+ *     its send meets the newer row, and the person is asked which value to
+ *     keep. Nothing is lost or overwritten without the question.
+ *
+ * Fails closed: an operation or receipt this build cannot read stops the
+ * whole pass, because an unreadable operation may name anything. Returns
+ * false when it could not run or a removal did not verify; nothing depends
+ * on it having run, and the next settle tries again.
+ */
+export function compactRebaseReceipts(token: OwnerToken): boolean {
+  if (!isOwnerTokenValid(token, token.uid)) return false;
+  const keys = opKeys();
+  if (!keys.ok) return false;
+  // EVERY operation key, acknowledged or receipted ones included: keeping a
+  // receipt something might name costs a few kilobytes, removing one it
+  // does name costs the person a question.
+  const present = new Set<string>();
+  const named = new Set<string>();
+  for (const storageKey of keys.value) {
+    const parsed = parseOp(readUserScopedRaw(storageKey), storageKey);
+    if (!parsed.ok) return false;
+    present.add(parsed.value.opId);
+    for (const id of parsed.value.supersedes ?? []) named.add(id);
+  }
+  const receipts = readRebaseReceipts();
+  if (!receipts.ok) return false;
+  const now = documentNow();
+  noteGoneAncestors(receipts.value, present, now);
+  const mine = getJournalLineageId();
+  let ok = true;
+  for (const [id, receipt] of receipts.value) {
+    if (present.has(id) || named.has(id)) continue;
+    if (receipt.ancestorLineage !== mine && now - ancestorGoneSince.get(id)! < FOREIGN_RECEIPT_GRACE_MS) continue;
+    if (removeUserScopedRaw(`${REBASE_PREFIX}${id}`, token)) ancestorGoneSince.delete(id);
+    else ok = false;
+  }
+  for (const id of [...ancestorGoneSince.keys()]) if (!receipts.value.has(id)) ancestorGoneSince.delete(id);
+  return ok;
 }
 
 /** Removes every rebase receipt. Called where the whole journal is being
@@ -971,12 +1077,18 @@ export function readOutstandingOps(): JournalResult<JournalOp[]> {
   const receipts = readRebaseReceipts();
   if (!receipts.ok) return receipts;
   const out: JournalOp[] = [];
+  const present = new Set<string>();
   for (const storageKey of keys.value) {
     const parsedOp = parseOp(readUserScopedRaw(storageKey), storageKey);
     if (!parsedOp.ok) return parsedOp;
     const id = parsedOp.value.opId;
+    present.add(id);
     if (!acked.value.has(id) && !receipts.value.has(id)) out.push(parsedOp.value);
   }
+  // Starts the grace for another lineage's receipts from the first time this
+  // document sees their operations gone — usually its load — rather than its
+  // first settle (see compactRebaseReceipts).
+  noteGoneAncestors(receipts.value, present, documentNow());
   if (!ancestryIsHonest(out)) {
     return { ok: false, reason: 'journal ancestry is not a history this writer could have produced' };
   }
@@ -992,7 +1104,9 @@ export function readOutstandingOps(): JournalResult<JournalOp[]> {
  * re-send a write that already landed.
  *
  * It only ever touches the keys it was given, so an operation another tab
- * appended a microsecond ago — a different key entirely — is untouched.
+ * appended a microsecond ago — a different key entirely — is untouched. Once
+ * they are all gone it also removes the rebase receipts nothing can reach any
+ * more (see compactRebaseReceipts).
  */
 export function settleJournalOps(opIds: readonly string[], token: OwnerToken): boolean {
   if (!isOwnerTokenValid(token, token.uid)) return false;
@@ -1026,7 +1140,16 @@ export function settleJournalOps(opIds: readonly string[], token: OwnerToken): b
   }
   // The ack is kept for exactly the operations that are still there; it is
   // only cleared once every one of them is verifiably gone.
-  if (stillPresent.size === 0) return removeUserScopedRaw(ACK_KEY, token);
+  if (stillPresent.size === 0) {
+    if (!removeUserScopedRaw(ACK_KEY, token)) return false;
+    // And the receipts this settle has made unreachable: the operations' own,
+    // unless an edit made while they were in flight names them. Without this
+    // every landed operation left one behind for good, and saving stopped at
+    // MAX_REBASE_RECEIPTS. Not part of the result: a receipt left over is only
+    // kept until the next settle.
+    compactRebaseReceipts(token);
+    return true;
+  }
   // Narrowed to what is left, so the next attempt knows exactly what it owes
   // — and REPORTED AS UNFINISHED. Returning the success of that bookkeeping
   // write would say the settlement is done while the operations it names are
@@ -1046,9 +1169,9 @@ export function clearJournal(token: OwnerToken): boolean {
   for (const storageKey of [...keys.value, ACK_KEY]) {
     if (!removeUserScopedRaw(storageKey, token)) ok = false;
   }
-  // The receipts go with it. This is the ONLY safe bulk removal: a scan that
-  // sees no descendant cannot prove one is not being appended at that instant,
-  // so nothing narrower than a verified identity reset may drop them.
+  // The receipts go with it, whoever might still name them: the operations
+  // that could are being abandoned too. Anything narrower goes through
+  // compactRebaseReceipts and its rule.
   if (!clearRebaseReceipts(token)) ok = false;
   return ok;
 }

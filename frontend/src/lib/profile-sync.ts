@@ -47,6 +47,7 @@ import {
   getJournalLineageId,
   clearJournal,
   appendRebaseReceipt,
+  compactRebaseReceipts,
   encodeJournalValue,
   type JournalValue,
   readOutstandingOps,
@@ -1390,6 +1391,9 @@ function ackConfirmedJournalOpsLocked(
   // unconfirmed fields together still describes one coherent moment.
   const rowAtRevision: Record<string, JournalValue> = {};
   for (const key of Object.keys(stored)) rowAtRevision[key] = encodeJournalValue(stored, key);
+  // Room first: what nothing can reach any more goes before more is written,
+  // so a device that reached the cap under an earlier build recovers here.
+  compactRebaseReceipts(token);
   for (const opId of landed) {
     const op = byId.get(opId);
     if (!op) continue;
@@ -1412,19 +1416,11 @@ function ackConfirmedJournalOpsLocked(
       return false;
     }
   }
-  // NOTHING is compacted here. Dropping a receipt requires proving no
-  // descendant can still reach it, and journal appends deliberately do not
-  // take this lock — so a writer that read the journal before the settle can
-  // append such a descendant after any scan, at which point the receipt it
-  // needs is gone and the user's own next keystroke becomes a conflict.
-  //
-  // Closing that needs a real writer/compactor fence: an append must commit
-  // only if it observes a stable epoch before AND after its own write, and
-  // the compactor must fence, rescan, delete and publish the next epoch. That
-  // is the shared journal lease, which this slice does not build. Until it
-  // exists the receipts are bounded by MAX_REBASE_RECEIPTS and the coordinator
-  // FAILS CLOSED at the cap — a visible, retryable stop, never a silent
-  // conflict manufactured out of a deleted acknowledgement.
+  // The settle also removes the receipts it makes unreachable — these ones
+  // too, unless an edit made while they were in flight names them. Appends do
+  // not take this lock; compactRebaseReceipts says why its rule is safe
+  // anyway, and what the person sees in the one case it bounds rather than
+  // closes.
   return settleJournalOps(landed, token);
 }
 

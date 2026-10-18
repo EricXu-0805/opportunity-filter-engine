@@ -2717,20 +2717,26 @@ describe('an acknowledgement rebases the edits that continue it', () => {
     loadProfileMock.mockResolvedValue(cloud({ ...FULL, major: 'CS' }, 1));
     const token = captureOwnerToken();
     await hydrateProfile();
+    // A is made in tab T…
+    expect(recordProfileIntent({ ...FULL, major: 'ECE' }, ['major'], token)).toBe(true);
+    const a = journalOps()[0];
 
+    // …and sent and fully settled by ANOTHER tab, S, before B exists. Appends
+    // do not take the lock, so no scan run during the acknowledgement could
+    // have seen B.
+    resetJournalLaneForTests();
+    resetProfileDirtyLedger();
+    await hydrateProfile();
     const server = casServer({ ...FULL, major: 'CS' }, 1);
     commitMock.mockReset();
     commitMock.mockImplementationOnce((intent) => Promise.resolve(server.handle(intent) as ProfilePatchOutcome));
-    expect(recordProfileIntent({ ...FULL, major: 'ECE' }, ['major'], token)).toBe(true);
-    // A goes out and is fully settled BEFORE B exists. Appends do not take
-    // the lock, so no scan run during the acknowledgement could have seen B.
     await stageProfilePatch({ ...FULL, major: 'ECE' }, ['major'], token);
     expect(server.rev).toBe(2);
 
-    // Now B is written, naming A — whose operation key is already gone.
+    // Now T, whose view of storage has not caught up with S's settle, writes
+    // B naming A — whose operation key is already gone.
     const settledA = readRebaseReceipts();
-    expect(settledA.ok && settledA.value.size, 'A left a receipt behind').toBeGreaterThan(0);
-    const ancestorId = [...(settledA.ok ? settledA.value.keys() : [])][0];
+    expect(settledA.ok && settledA.value.has(a.opId), 'A left a receipt behind').toBe(true);
     const b = appendJournalOp({
       fields: [{
         key: 'major',
@@ -2740,7 +2746,9 @@ describe('an acknowledgement rebases the edits that continue it', () => {
       baseRevision: 1,
       writer: 'home-form',
       mode: 'set',
-      supersedes: [ancestorId],
+      supersedes: [a.opId],
+      originId: a.originId,
+      lineage: a.lineage,
     }, token)!;
     expect(b).toBeTruthy();
 
@@ -2750,6 +2758,28 @@ describe('an acknowledgement rebases the edits that continue it', () => {
     const next = await flushPendingProfileWrite(token);
     expect(next.status).toBe('saved');
     expect(server.seen.at(-1)).toEqual({ expected: 2, patch: { major: 'Physics' } });
+  });
+
+  it('in the tab whose edit landed, nothing written afterwards can name it, so its receipt goes at once', async () => {
+    loadProfileMock.mockResolvedValue(cloud({ ...FULL, major: 'CS' }, 1));
+    const token = captureOwnerToken();
+    await hydrateProfile();
+    const server = casServer({ ...FULL, major: 'CS' }, 1);
+    commitMock.mockReset();
+    commitMock.mockImplementation((intent) => Promise.resolve(server.handle(intent) as ProfilePatchOutcome));
+    expect(recordProfileIntent({ ...FULL, major: 'ECE' }, ['major'], token)).toBe(true);
+    const a = journalOps()[0];
+    expect((await stageProfilePatch({ ...FULL, major: 'ECE' }, ['major'], token)).status).toBe('saved');
+
+    // Only this document continues its lineage, and it reads A as gone.
+    const receipts = readRebaseReceipts();
+    expect(receipts.ok && receipts.value.size).toBe(0);
+    expect(recordProfileIntent({ ...FULL, major: 'Physics' }, ['major'], token)).toBe(true);
+    const b = journalOps()[0];
+    expect(b.supersedes ?? [], 'the next edit does not name what has landed').not.toContain(a.opId);
+    expect((await flushPendingProfileWrite(token)).status).toBe('saved');
+    expect(server.seen.at(-1)).toEqual({ expected: 2, patch: { major: 'Physics' } });
+    expect(journalOps()).toEqual([]);
   });
 
   it('a receipt that cannot be written leaves the ancestor outstanding, never half-settled', async () => {
@@ -2790,53 +2820,47 @@ describe('an acknowledgement rebases the edits that continue it', () => {
     expect(journalOps().map((op) => op.opId), 'A is still outstanding').toEqual(opsBefore);
   });
 
-  it('receipts are BOUNDED and the coordinator fails closed at the cap — no silent loss', async () => {
-    // Interim contract, and the reason this slice is not done: receipts can
-    // only be dropped by a compactor that is fenced against lock-free appends,
-    // which is the shared journal lease. Until that exists they accumulate,
-    // and reaching the bound must STOP saving visibly rather than quietly
-    // delete an acknowledgement a descendant still needs.
+  it('receipts are BOUNDED: at the cap with nothing removable it fails closed, and recovers once they can go', async () => {
+    // A device that reached the cap under an earlier build: every receipt
+    // belongs to another lineage's operation, long gone. They may go only
+    // once this document has known that for the grace, and until then the
+    // bound must STOP saving visibly rather than quietly drop one.
+    let now = 1_000;
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
     loadProfileMock.mockResolvedValue(cloud({ ...FULL, major: 'CS' }, 1));
     const token = captureOwnerToken();
-    await hydrateProfile();
-
-    const server = casServer({ ...FULL, major: 'CS' }, 1);
-    commitMock.mockReset();
-    commitMock.mockImplementation((intent) => Promise.resolve(server.handle(intent) as ProfilePatchOutcome));
-
-    // Seed the store right up to the bound, then drive REAL saves into it.
-    for (let i = 0; i < 499; i += 1) {
+    for (let i = 0; i < 500; i += 1) {
       localStorage.setItem(
         `${STORAGE_KEYS.PROFILE_JOURNAL_PREFIX}rebase_seed-${i}`,
         JSON.stringify({
           v: 1,
           ancestorOpId: `seed-${i}`,
-          ancestorLineage: 'seed-lineage',
+          ancestorLineage: `seed-lineage-${i}`,
           revision: 1,
           profile: { major: { present: true, value: 'CS' } },
           confirmedKeys: ['major'],
         }),
       );
     }
+    await hydrateProfile();
 
-    let landed = 0;
-    let stopped: ProfileSaveResult | null = null;
-    for (let i = 0; i < 6; i += 1) {
-      const value = `major-${i}`;
-      if (!recordProfileIntent({ ...FULL, major: value }, ['major'], token)) break;
-      const result = await stageProfilePatch({ ...FULL, major: value }, ['major'], token);
-      if (result.status === 'saved') { landed += 1; continue; }
-      stopped = result;
-      break;
-    }
+    const server = casServer({ ...FULL, major: 'CS' }, 1);
+    commitMock.mockReset();
+    commitMock.mockImplementation((intent) => Promise.resolve(server.handle(intent) as ProfilePatchOutcome));
+    expect(recordProfileIntent({ ...FULL, major: 'ECE' }, ['major'], token)).toBe(true);
+    const stopped = await stageProfilePatch({ ...FULL, major: 'ECE' }, ['major'], token);
+    expect(stopped.status, 'the bound is reached').toBe('device-failed');
+    const held = readRebaseReceipts();
+    expect(held.ok && held.value.size, 'and every receipt is still there').toBe(500);
+    expect(journalOps().map((op) => op.fields[0].desired), 'the edit is still owed')
+      .toEqual([{ present: true, value: 'ECE' }]);
 
-    // It stops, and it says so. What it must never do is keep going by
-    // discarding a receipt.
-    expect(landed).toBeGreaterThan(0);
-    expect(stopped, 'the bound is reached').not.toBeNull();
-    expect(stopped!.status).toBe('device-failed');
-    const receipts = readRebaseReceipts();
-    expect(receipts.ok, 'and every receipt written is still readable').toBe(true);
+    now += 60_000;
+    const next = await flushPendingProfileWrite(token);
+    expect(['saved', 'already-saved']).toContain(next.status);
+    expect(journalOps()).toEqual([]);
+    const after = readRebaseReceipts();
+    expect(after.ok && after.value.size).toBe(0);
   });
 
   it('a crash between the receipt and the settle never re-sends the ancestor', async () => {
@@ -2849,15 +2873,32 @@ describe('an acknowledgement rebases the edits that continue it', () => {
     const server = casServer({ ...FULL, major: 'CS' }, 1);
     commitMock.mockReset();
     commitMock.mockImplementation((intent) => Promise.resolve(server.handle(intent) as ProfilePatchOutcome));
-    await stageProfilePatch({ ...FULL, major: 'ECE' }, ['major'], token);
+    // Simulate the crash: the receipt reaches disk and the settle never
+    // records anything — its first write, the acknowledgement, is refused —
+    // so A's operation key is still there.
+    const real = window.localStorage;
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: (k: string) => real.getItem(k),
+        setItem: (k: string, v: string) => {
+          if (k.includes('journal_v1_ack')) throw new Error('crashed');
+          real.setItem(k, v);
+        },
+        removeItem: (k: string) => real.removeItem(k),
+        clear: () => real.clear(),
+        key: (i: number) => real.key(i),
+        get length() { return real.length; },
+      },
+    });
+    try {
+      await stageProfilePatch({ ...FULL, major: 'ECE' }, ['major'], token);
+    } finally {
+      Object.defineProperty(window, 'localStorage', { configurable: true, value: real });
+    }
     expect(server.rev).toBe(2);
-
-    // Simulate the crash: the receipt is on disk, but A's operation key is
-    // put BACK, as it would still be if the process died before the delete.
-    localStorage.setItem(
-      `${STORAGE_KEYS.PROFILE_JOURNAL_PREFIX}op_${a.opId}`,
-      JSON.stringify(a),
-    );
+    expect(localStorage.getItem(`${STORAGE_KEYS.PROFILE_JOURNAL_PREFIX}op_${a.opId}`), 'A is still on disk')
+      .not.toBeNull();
     resetProfileDirtyLedger();
 
     // A already landed. Its receipt says so, and re-sending it would write a
@@ -2867,7 +2908,7 @@ describe('an acknowledgement rebases the edits that continue it', () => {
     const flushed = await flushPendingProfileWrite(token);
     expect(flushed.status).not.toBe('saved');
     expect(commitMock).not.toHaveBeenCalled();
-    // …and the receipt is still there for descendants.
+    // …and the receipt is still there, for as long as A's key is.
     const receipts = readRebaseReceipts();
     expect(receipts.ok && receipts.value.has(a.opId)).toBe(true);
   });
