@@ -787,6 +787,92 @@ class TestDroppedProgramRetirement:
         assert [(row["metadata"]["collector_key"], row["metadata"]["status"])
                 for row in _stored(processed).values() if row["metadata"]["is_active"]] == [("first_key", "open")]
 
+    URL = "https://example.berkeley.edu/alpha/"
+
+    @classmethod
+    def _in_emit(cls, emit, lab=()):
+        """``alpha`` on URL in the campus or the lab source of ucb.json, beside
+        ``kept`` in the campus source; ``lab`` adds (key, title, url) there."""
+        sources = _registry("kept", *(["alpha"] if emit == reg.EMIT_CAMPUS else []),
+                            titles={"alpha": "Alpha Fellowship"}, urls={"alpha": cls.URL})
+        sources[0]["seeds"] = [cls.URL]
+        sources.append({"source_name": "ucb_fixture_labs", "source_type": reg.LAB, "emit": reg.EMIT_LAB,
+                        "crawl": reg.STATIC, "crawl_depth": 1, "update": reg.WEEKLY, "seeds": [cls.URL],
+                        "programs": [reg._prog(key, title, url, "Curated") for key, title, url in (
+                            *([("alpha", "Alpha Fellowship", cls.URL)] if emit == reg.EMIT_LAB else []), *lab)]})
+        return sources
+
+    @pytest.mark.parametrize("before,after", [(reg.EMIT_CAMPUS, reg.EMIT_LAB), (reg.EMIT_LAB, reg.EMIT_CAMPUS)])
+    def test_a_closed_program_moved_between_the_campus_and_lab_sources_is_listed_when_its_page_reopens(
+            self, monkeypatch, processed, before, after):
+        """campus_graph's case for the registry: moved between the campus and
+        lab sources, a program keeps its key but gets a new id, and its old
+        row, never retired, held its page against the new record, hidden for
+        good. The new record replaces the old row and waits for a read."""
+        page = {"word": "Applications are now closed."}
+        monkeypatch.setattr(ucb_campus, "_fetch", lambda requested: (
+            None if page["word"] is None else _StaticSoup(page["word"])))
+        _refresh(monkeypatch, self._in_emit(before), deep=True)
+        old_id, new_id = _program_id(before, "alpha"), _program_id(after, "alpha")
+
+        _refresh(monkeypatch, self._in_emit(after))
+
+        saved = _stored(processed)
+        assert new_id not in saved
+        old = saved[old_id]["metadata"]
+        assert (old["status"], old["is_active"], old["deactivation_reason"]) == ("closed", False, "no_longer_listed")
+        assert [row["id"] for row in saved.values() if row["metadata"].get("deactivation_reason")] == [old_id]
+
+        page["word"] = "Applications are now open!"
+        _refresh(monkeypatch, self._in_emit(after), deep=True)
+
+        saved = _stored(processed)
+        assert sorted((row["id"], row["metadata"]["status"]) for row in saved.values()
+                      if row["metadata"]["is_active"] and row["metadata"]["collector_key"] == "alpha") == [
+            (new_id, "open")]
+        assert [row["id"] for row in saved.values() if row["metadata"].get("deactivation_reason")] == [old_id]
+
+    @pytest.mark.parametrize("before,after", [(reg.EMIT_CAMPUS, reg.EMIT_LAB), (reg.EMIT_LAB, reg.EMIT_CAMPUS)])
+    def test_an_open_program_moved_between_the_campus_and_lab_sources_is_hidden_when_its_page_closes(
+            self, monkeypatch, processed, before, after):
+        page = {"word": "Applications are now open!"}
+        monkeypatch.setattr(ucb_campus, "_fetch", lambda requested: _StaticSoup(page["word"]))
+        _refresh(monkeypatch, self._in_emit(before), deep=True)
+        old_id, new_id = _program_id(before, "alpha"), _program_id(after, "alpha")
+
+        _refresh(monkeypatch, self._in_emit(after), deep=True)
+        page["word"] = "Applications are now closed."
+        _refresh(monkeypatch, self._in_emit(after), deep=True)
+
+        saved = _stored(processed)
+        assert not any(row["metadata"]["is_active"] for row in saved.values()
+                       if row["metadata"]["collector_key"] == "alpha")
+        assert (saved[new_id]["metadata"]["status"], saved[new_id]["metadata"]["is_active"]) == ("closed", False)
+        old = saved[old_id]["metadata"]
+        assert (old["status"], old["is_active"], old["deactivation_reason"]) == ("open", False, "no_longer_listed")
+        assert [row["id"] for row in saved.values() if row["metadata"].get("deactivation_reason")] == [old_id]
+
+    def test_a_near_duplicate_of_another_program_is_still_dropped_and_retires_nothing(self, monkeypatch, processed):
+        """Only a record under a row's own key replaces it: a new key in the
+        lab source titled like a program still listed there, or on another
+        collector's page, is that row's near-duplicate, as before."""
+        _refresh(monkeypatch, self._in_emit(reg.EMIT_LAB))
+        faculty = {"id": "ucb-faculty-0001", "source": "ucb_eecs_faculty", "source_type": "faculty_research",
+                   "school": "ucb", "title": "Research with Prof. Example", "url": "https://eecs.berkeley.edu/x",
+                   "metadata": {"is_active": True}}
+        rows = json.loads(processed.read_text(encoding="utf-8"))
+        processed.write_text(json.dumps([*rows, faculty]), encoding="utf-8")
+
+        _refresh(monkeypatch, self._in_emit(reg.EMIT_LAB, lab=(
+            ("alpha_twin", "Alpha Fellowship", "https://example.berkeley.edu/alpha-twin/"),
+            ("faculty_twin", "Twin Grant", faculty["url"]))))
+
+        saved = _stored(processed)
+        assert _program_id(reg.EMIT_LAB, "alpha_twin") not in saved
+        assert _program_id(reg.EMIT_LAB, "faculty_twin") not in saved
+        assert all(row["metadata"]["is_active"] and "deactivation_reason" not in row["metadata"]
+                   for row in saved.values())
+
     def test_a_closed_program_listed_again_comes_back_closed(self, monkeypatch, processed):
         """Its row retired keeping its closure. A quick run reads no page and
         carries the row's state forward, so the closure comes back with it."""

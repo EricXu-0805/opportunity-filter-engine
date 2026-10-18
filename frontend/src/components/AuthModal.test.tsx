@@ -36,15 +36,21 @@ vi.mock('@/lib/push', () => ({
   dropBrowserPushSubscription: () => mockDropPush(),
 }));
 
-vi.mock('@/i18n/client', () => ({
-  useT: () => ({
-    locale: 'en',
-    t: (key: string, vars?: Record<string, string>) => {
-      if (vars?.email) return `${key}:${vars.email}`;
-      return key;
-    },
-  }),
-}));
+// null renders keys; a locale renders that language's dictionary text.
+let dictionaryLocale: 'en' | 'zh' | null = null;
+vi.mock('@/i18n/client', async () => {
+  const { translate } = await vi.importActual<typeof import('@/i18n/translate')>('@/i18n/translate');
+  return {
+    useT: () => ({
+      locale: dictionaryLocale ?? 'en',
+      t: (key: string, vars?: Record<string, string>) => {
+        if (dictionaryLocale) return translate(dictionaryLocale, key as Parameters<typeof translate>[1], vars);
+        if (vars?.email) return `${key}:${vars.email}`;
+        return key;
+      },
+    }),
+  };
+});
 
 // Closure-bound auth modal context state. Each test resets via
 // vi.clearAllMocks + sets initial phase via the wrapper.
@@ -64,6 +70,7 @@ vi.mock('@/lib/auth-modal-context', () => ({
 }));
 
 import AuthModal from './AuthModal';
+import { translate } from '@/i18n/translate';
 
 const ANON: unknown = {
   session: { user: { id: 'a', is_anonymous: true } },
@@ -88,6 +95,7 @@ afterEach(() => {
   vi.clearAllMocks();
   vi.unstubAllEnvs();
   mockOnAuthChange.mockImplementation(() => () => {});
+  dictionaryLocale = null;
 });
 
 describe('AuthModal — gating', () => {
@@ -608,7 +616,7 @@ describe('AuthModal — signout-confirm phase', () => {
     render(<AuthModal />);
     fireEvent.click(await screen.findByText('auth.modal.signOutConfirm.confirm'));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('common.error');
+    expect(await screen.findByRole('alert')).toHaveTextContent('auth.modal.signOutConfirm.failedStillSignedIn');
     expect(closeModalMock).not.toHaveBeenCalled();
     expect(sessionStorage.getItem('ofe_just_signed_out')).toBeNull();
     expect(screen.getByText('auth.modal.signOutConfirm.title:eric@illinois.edu')).toBeInTheDocument();
@@ -619,12 +627,46 @@ describe('AuthModal — signout-confirm phase', () => {
     expect(mockSignOut).toHaveBeenCalledTimes(2);
   });
 
+  it.each([
+    ['en', "Sign-out didn't finish. You're still signed in on this device. Try again.", 'Try again'],
+    ['zh', '退出没有完成，你在这台设备上仍处于登录状态。请再试一次。', '重试'],
+  ] as const)('tells the user in %s that a failed sign-out left them signed in', async (locale, message, retry) => {
+    dictionaryLocale = locale;
+    mockSignOut.mockResolvedValueOnce(false);
+    render(<AuthModal />);
+    fireEvent.click(await screen.findByText(translate(locale, 'auth.modal.signOutConfirm.confirm')));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(message);
+    expect(screen.getByRole('button', { name: retry })).not.toBeDisabled();
+    expect(closeModalMock).not.toHaveBeenCalled();
+  });
+
+  // The account session can be gone even though the flow failed: a re-anon
+  // that throws after the logout, or supabase-js dropping an expired session
+  // whose refresh is refused before it reports the error. Its SIGNED_OUT
+  // reaches the modal, which then must not say the user is still signed in.
+  it.each([
+    ['resolves false', async (signedOut: () => void) => { signedOut(); return false; }],
+    ['throws', async (signedOut: () => void) => { signedOut(); throw new Error('re-anon failed'); }],
+  ])('does not claim the account is still signed in when its session went before the sign-out %s', async (_name, signOut) => {
+    let notify!: (s: unknown) => void;
+    mockOnAuthChange.mockImplementation(cb => { notify = cb; return () => {}; });
+    mockSignOut.mockImplementationOnce(() => signOut(() => notify({ session: null, user: null, isAnonymous: false, email: null })));
+    render(<AuthModal />);
+    fireEvent.click(await screen.findByText('auth.modal.signOutConfirm.confirm'));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('auth.modal.signOutConfirm.failed');
+    expect(alert).not.toHaveTextContent('failedStillSignedIn');
+    expect(screen.getByText('common.tryAgain')).not.toBeDisabled();
+  });
+
   it('treats a sign-out that throws as failed and leaves the button usable', async () => {
     mockSignOut.mockRejectedValueOnce(new Error('re-anon failed'));
     render(<AuthModal />);
     fireEvent.click(await screen.findByText('auth.modal.signOutConfirm.confirm'));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('common.error');
+    expect(await screen.findByRole('alert')).toHaveTextContent('auth.modal.signOutConfirm.failedStillSignedIn');
     expect(screen.getByText('common.tryAgain')).not.toBeDisabled();
     expect(closeModalMock).not.toHaveBeenCalled();
     expect(sessionStorage.getItem('ofe_just_signed_out')).toBeNull();

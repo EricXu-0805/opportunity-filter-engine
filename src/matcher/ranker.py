@@ -3350,6 +3350,32 @@ def expand_search_aliases(query: str) -> list[str]:
     return terms
 
 
+# A web address in a description: a URL with a scheme or www., or a bare
+# domain (illinois.edu, go.illinois.edu/FGSRP) whose last label is a common
+# web suffix written in lower case. Measured 2026-10-17 on the served corpus,
+# a looser "any dotted word" rule also took degrees (M.Phil, D.Sc), ASP.NET,
+# C.elegans and sentences missing a space (biology.The), which a student reads.
+_WEB_ADDRESS_RE = re.compile(
+    r"(?i:https?://|www\.)\S+"
+    r"|(?<![\w@.-])(?:[A-Za-z0-9-]+\.)+"
+    r"(?:com|org|net|edu|gov|mil|int|info|io|ai|co|us|uk|ca|de|cn|me|ly|gl|gle|tv|dev|app)"
+    r"(?![\w-])(?:/\S*)?"
+)
+_WEB_ADDRESS_HINT_RE = re.compile(r"://|(?i:www)\.|\.[a-z]{2,4}(?![\w-])")
+
+
+def without_web_addresses(text: str) -> str:
+    """``text`` with its web addresses blanked, for the results search (M104).
+
+    The card does not show a description's homepage or short link, so a
+    search for "illinois.edu" matched rows for no reason the student could
+    see. The results page and the saved-search digest both read this.
+    """
+    if not _WEB_ADDRESS_HINT_RE.search(text):
+        return text
+    return _WEB_ADDRESS_RE.sub(" ", text)
+
+
 # Corpus-side intern table for keyword containment patterns — bounded by the
 # corpus keyword vocabulary, reset on corpus registration so it can't grow
 # across reloads.

@@ -32,6 +32,7 @@ from fastapi.testclient import TestClient
 
 from backend.main import app
 from backend.routes import ops as ops_mod
+from scripts import release_gate
 from scripts.check_cron_response import check as check_cron_response
 
 client = TestClient(app)
@@ -182,7 +183,7 @@ def _install_supabase(
                 return _Resp(events)
             if "ops_incidents" in url:
                 select = (params or {}).get("select")
-                if select in ("kind,priority,dedup_key", "dedup_key"):
+                if select in ("kind,priority,dedup_key,status", "dedup_key"):
                     return _Resp(open_rows if open_rows is not None else incidents)
                 if select == "dedup_key,status,detail" and lookup_fails:
                     raise ConnectionError("connection reset by peer")
@@ -432,6 +433,41 @@ class TestIncidentList:
         assert rollup["open_total"] == 3
         assert rollup["open_snapshot_reminders"] == 1
         assert rollup["release_blocking_total"] == 2
+
+    def test_rollup_lists_acknowledged_incidents_apart_from_release_blocking_work(self, monkeypatch):
+        """Q11: an incident an operator has acknowledged is accepted pending
+        work. The release gate lists it beside its verdict and does not block
+        on it; an incident nobody has acknowledged still blocks."""
+        _admin_env(monkeypatch)
+        _install_supabase(monkeypatch, incidents=[_incident()], open_rows=[
+            {"kind": "collector_failure", "priority": "high", "status": "acknowledged",
+             "dedup_key": "collector_failure:stale_shard:uiuc_faculty"},
+        ])
+        rollup = client.get(
+            "/api/admin/ops/incidents", headers=_hdr(), params={"unresolved_only": "true"}
+        ).json()["rollup"]
+        assert rollup["open_total"] == 1
+        assert rollup["acknowledged"] == ["collector_failure:stale_shard:uiuc_faculty"]
+        assert rollup["release_blocking_total"] == 0
+        got = release_gate.check_open_incidents(
+            {"observed_at": datetime.now(UTC).isoformat(), "rollup": rollup})
+        assert got["status"] == release_gate.PASS
+        assert "1 acknowledged incident(s) pending" in got["detail"]
+        assert "collector_failure:stale_shard:uiuc_faculty" in got["detail"]
+
+        for status in ("open", "investigating"):
+            _install_supabase(monkeypatch, incidents=[_incident()], open_rows=[
+                {"kind": "collector_failure", "priority": "high", "status": status,
+                 "dedup_key": "collector_failure:stale_shard:uiuc_faculty"},
+            ])
+            rollup = client.get(
+                "/api/admin/ops/incidents", headers=_hdr(), params={"unresolved_only": "true"}
+            ).json()["rollup"]
+            assert (rollup["acknowledged"], rollup["release_blocking_total"]) == ([], 1), status
+            got = release_gate.check_open_incidents(
+                {"observed_at": datetime.now(UTC).isoformat(), "rollup": rollup})
+            assert got["status"] == release_gate.FAIL, status
+            assert got["detail"] == "1 unresolved incident(s)", status
 
     def test_the_snapshot_reminder_key_is_the_one_set_apart(self):
         from src.collectors import cmu_uro_projects
@@ -1503,6 +1539,73 @@ class TestOpsScanSourceHealth:
         )
         _run_scan()
         assert _rpcs(calls, "record_ops_recovery") == []
+
+    def test_a_stale_source_outside_rotation_raises_nothing(self, monkeypatch, tmp_path):
+        """M63: a source no scheduled run reproduces (the manual seeds) ages
+        without being broken; a stale source in rotation still raises."""
+        from src.collectors import source_health
+
+        monkeypatch.setattr(source_health, "monitored_source_names",
+                            lambda: frozenset({"ucb_ling_faculty"}))
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls)
+        _write_artifacts(
+            monkeypatch, tmp_path,
+            source_health=_health_ledger({
+                "manual": ("national", "2026-07-01T06:00:00+00:00", "failed", 40),
+                "ucb_ling_faculty": ("ucb", "2026-07-21T07:08:46+00:00",
+                                     "suspicious_zero", 17),
+            }),
+        )
+        body = _run_scan().json()
+        assert body["detectors"]["source_health"]["stale"] == 1
+        _incident_for(calls, "collector_failure:stale_shard:ucb_ling_faculty")
+        assert not [p for p in _rpcs(calls, "record_ops_incident")
+                    if "manual" in p["p_dedup_key"]]
+
+    def test_a_source_succeeding_with_nothing_past_its_window_raises_zero_output(
+        self, monkeypatch, tmp_path,
+    ):
+        """M63: a declared-empty run is a success, so a source that keeps
+        succeeding with nothing never reads stale. last_nonzero_at older than
+        the stale window raises it; recent records, no recorded nonzero run, or
+        a source outside rotation do not."""
+        from src.collectors import source_health
+
+        monkeypatch.setattr(source_health, "monitored_source_names", lambda: frozenset(
+            {"ucb_eecs_faculty", "yale_faculty", "cmu_uro_projects"}))
+        _scan_env(monkeypatch)
+        calls: list = []
+        _install_supabase(monkeypatch, open_rows=[], calls=calls)
+        ledger = _health_ledger({
+            source: (school, "2026-09-02T06:00:00+00:00", "valid_zero", 30)
+            for source, school in (("ucb_eecs_faculty", "ucb"), ("yale_faculty", "yale"),
+                                   ("cmu_uro_projects", "cmu"), ("manual", "national"))
+        })
+        nonzero = {"ucb_eecs_faculty": "2026-07-01T06:00:00+00:00",
+                   "yale_faculty": "2026-08-26T06:00:00+00:00",
+                   "cmu_uro_projects": None,
+                   "manual": "2026-06-01T06:00:00+00:00"}
+        for source, at in nonzero.items():
+            ledger["sources"][source].update(
+                last_nonzero_at=at, consecutive_failures=0, failure_reason=None)
+        _write_artifacts(monkeypatch, tmp_path, source_health=ledger)
+        body = _run_scan().json()
+
+        detector = body["detectors"]["source_health"]
+        assert (detector["stale"], detector["zero_output"]) == (0, 1)
+        payload = _incident_for(calls, "collector_failure:zero_output:ucb_eecs_faculty")
+        assert payload["p_kind"] == "collector_failure"
+        assert payload["p_scope"] == "ucb_eecs_faculty"
+        assert payload["p_failure_state"] == "failed"
+        assert payload["p_title"] == (
+            "'ucb_eecs_faculty' succeeds but has produced no records in 64 days")
+        assert payload["p_detail"]["last_nonzero_at"] == "2026-07-01T06:00:00+00:00"
+        assert payload["p_detail"]["last_success_at"] == "2026-09-02T06:00:00+00:00"
+        assert payload["p_detail"]["stale_days"] == 17.0
+        assert [p["p_dedup_key"] for p in _rpcs(calls, "record_ops_incident")] == [
+            "collector_failure:zero_output:ucb_eecs_faculty"]
 
 
 class TestEveryFailureStateTheSchemaAccepts:

@@ -10,12 +10,24 @@ name: snapshot-reminder
 # fifth week. ops-scan files the same reminder in the incident queue, daily
 # before the end date and once after it.
 #
-# Monday 13:23 UTC: clear of the 06:07 refresh and the 11:13 ops-scan. :23,
-# not :00, because GitHub delays scheduled runs queued at the top of the hour.
+# Scheduled every day, though the check is weekly. Since 2026-10-02 GitHub
+# has started this repository's scheduled runs 2 to 9 hours late whatever the
+# minute, and sometimes not at all (refresh-data's scheduled run of
+# 2026-10-10 never came; that day's refresh was a manual run, 38056920532).
+# The Monday-only schedule's run of 2026-10-05 came at 20:52 and then got no
+# runner, so no check ran from 2026-10-01 to 2026-10-12. Now the first run of a
+# week (Monday 00:00 UTC on) to succeed makes the check, as of that Monday;
+# each later run that week finds it in the run list and only checks in, so a
+# lost Monday is made up on Tuesday. A manual run always makes the check.
+# 13:23 UTC: clear of the 06:07 refresh and the 11:13 ops-scan.
 on:
   schedule:
-    - cron: '23 13 * * 1'
+    - cron: '23 13 * * *'
   workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
 
 concurrency:
   group: snapshot-reminder
@@ -26,7 +38,7 @@ env:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
@@ -34,6 +46,21 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
+
+      # This workflow's successful runs on main, newest first; the check below
+      # stops if one was created this week. A manual run from another branch
+      # checked that branch's snapshot, so it does not count. If the list
+      # cannot be had, the check is made anyway: a second email in a week
+      # costs less than none.
+      - name: List this workflow's earlier successful runs
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh run list --repo "$GITHUB_REPOSITORY" --workflow snapshot-reminder.yml \
+            --branch main --status success --limit 20 --json databaseId,createdAt,url \
+            > "$RUNNER_TEMP/earlier-runs.json" \
+            || echo "::warning::cannot list earlier runs, so this run makes the check"
 
       # Standard library only, so nothing to install. Exits 0 whether or not
       # a refresh is due; a snapshot it cannot read fails the job instead.
@@ -46,6 +73,7 @@ jobs:
           python3 scripts/snapshot_reminder.py
           --github-output "$GITHUB_OUTPUT"
           --email-payload "$RUNNER_TEMP/snapshot-reminder.json"
+          --earlier-runs "$RUNNER_TEMP/earlier-runs.json"
 
       # Unlike the failure alert below, this email is the job's work, so
       # missing mail settings or a rejected send fail the run.
@@ -65,8 +93,14 @@ jobs:
             --data @"$RUNNER_TEMP/snapshot-reminder.json"
 
       # Dead man's switch (migration 032; this name is registered by
-      # 20260930220000). Only reached when every step above succeeded.
+      # 20260930220000, whose row still says weekly, Mon 13:00 UTC, 7 days and
+      # a day's grace; changing it needs a migration). Only reached when every
+      # step above succeeded. A failed check-in leaves the run green: the week's
+      # check is made, and a failed run would not count as it, so the next
+      # day's run would email the reminder again. The switch sees the missing
+      # check-in itself.
       - name: Check in to the dead man's switch
+        continue-on-error: true
         run: |
           curl -sfSL -X POST \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \

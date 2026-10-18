@@ -1146,6 +1146,15 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
                 t = re.sub(r"\s+", " ",
                            _html.unescape(_HTML_TAG_RE.sub(" ", m.group(1)))).strip()
                 title = t or title
+        if sel.get("title_unglue"):
+            # A rank line run into the name with no space (Barnard's "Nadia Abu
+            # El-HajProfessor of Anthropology") defeats every \b rank match.
+            # Split before a capitalised rank word that directly follows a
+            # lower-case letter; the part before is the card's name, so drop it.
+            m = re.search(rf"(?<=[a-z])(?:{sel['title_unglue']})\b", title)
+            if m:
+                head, rank = title[:m.start()].strip(), title[m.start():]
+                title = rank if head == name else f"{head} {rank}"
         if not _passes_ladder(title, ladder_filter):
             # An explicit non-faculty classification (emeritus, visiting,
             # staff): the row WAS read, it just is not ladder faculty.
@@ -2161,6 +2170,13 @@ def _digitalmeasures_identity_matches(
     )
 
 
+# One school run's profile results, keyed by page, person and config, so a
+# professor listed by several departments has their profile fetched once
+# (Barnard lists some under three). Set only for the length of a
+# fetch_and_normalize call; a module global for the reason _ACTIVE_COVERAGE is.
+_PROFILE_MEMO: dict | None = None
+
+
 def _apply_profile_enrich(people: list[dict], enr: dict | None) -> list[dict]:
     """Per-profile enrichment pass (gated): follow each faculty's own profile
     page to recover research areas / email / rank the directory listing omits.
@@ -2215,11 +2231,17 @@ def _apply_profile_enrich(people: list[dict], enr: dict | None) -> list[dict]:
         want_title = bool(enr.get("title_selector"))
         if not (want_research or want_email or want_title):
             continue
-        enrichment = _enrich_profile(
-            target,
-            enr,
-            expected_name=p.get("name"),
-        )
+        memo_key = (target, p.get("name"), repr(sorted(enr.items())))
+        enrichment = _PROFILE_MEMO.get(memo_key) if _PROFILE_MEMO is not None else None
+        requested = enrichment is None
+        if requested:
+            enrichment = _enrich_profile(
+                target,
+                enr,
+                expected_name=p.get("name"),
+            )
+            if _PROFILE_MEMO is not None:
+                _PROFILE_MEMO[memo_key] = enrichment
         pos, research, items, email, fetched = enrichment
         capture = getattr(enrichment, "contact_instruction_capture", None)
         if isinstance(capture, dict):
@@ -2235,7 +2257,7 @@ def _apply_profile_enrich(people: list[dict], enr: dict | None) -> list[dict]:
         if fetched:
             p["_verification_scope"] = "profile"
         if items and want_research:
-            p["keywords"] = items
+            p["keywords"] = list(items)
         elif research and want_research:
             p["research_areas"] = research
         if email and enr.get("email_drop") and re.search(enr["email_drop"], email, re.I):
@@ -2249,7 +2271,7 @@ def _apply_profile_enrich(people: list[dict], enr: dict | None) -> list[dict]:
             p["_email_source"] = "profile_page"
         if pos and (enr.get("use_position_title") or enr.get("title_selector")):
             p["title"] = pos
-        if throttle:
+        if throttle and requested:
             time.sleep(throttle)
     lr = enr.get("ladder_recheck")
     if lr:
@@ -4685,6 +4707,15 @@ def fetch_and_normalize(school: dict, deep: bool = False,
     parse failure surfaces as zero rows, and a coarse status can only
     ever WITHHOLD retirement authority, never grant it.
     """
+    global _PROFILE_MEMO
+    outer, _PROFILE_MEMO = _PROFILE_MEMO, {}
+    try:
+        return _fetch_and_normalize(school, deep, unit_ledger)
+    finally:
+        _PROFILE_MEMO = outer
+
+
+def _fetch_and_normalize(school: dict, deep: bool, unit_ledger: dict | None) -> list[dict]:
     errors = validate(school)
     if errors:
         raise ValueError(f"{school.get('school_slug')} faculty config invalid: " + "; ".join(errors))

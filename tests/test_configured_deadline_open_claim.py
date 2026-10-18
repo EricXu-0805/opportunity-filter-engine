@@ -390,6 +390,8 @@ class TestEveryConfiguredNoteTheRuleReads:
                               "is not posted yet",
         "uf/suirp":
             "Applications closed February 15, 2026 at 11:59 PM; dates for the next cycle are not posted yet.",
+        # Its page, read 2026-10-17, still gives only "The application deadline is March 25, 2026."
+        "upenn/wharton_spur": "Application deadline was March 25, 2026; the 2027 deadline is not posted yet",
         "utexas/ts_research_forum": "Next forum: April 16, 2027, Welch Hall Grand Concourse",
         "washu/dbbs_amgen_scholars": "2026 application deadline was February 2, 2026; the page has not posted a "
                                      "2027 Amgen Scholars application yet",

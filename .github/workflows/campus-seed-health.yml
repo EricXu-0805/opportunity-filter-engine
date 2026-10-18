@@ -26,7 +26,7 @@ env:
 
 jobs:
   probe:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # 1,083 pages (595 seeds, 488 program pages) at 8 workers took 2m18s on
     # 2026-09-30, but each page may take 20 seconds to time out, and every one
     # timing out once would take about 45 minutes. A run cut off here is

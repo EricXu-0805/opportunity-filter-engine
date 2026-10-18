@@ -43,7 +43,7 @@ env:
 
 jobs:
   scan:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       # check_cron_response.py is a repo file, so this job needs a working copy.

@@ -73,6 +73,12 @@ _NOT_TERMINAL = f"not.in.({','.join(TERMINAL_STATUSES)})"
 # ``open_incidents`` check reads.
 SNAPSHOT_REMINDER_PREFIX = "manual_review:snapshot_refresh:"
 
+# An operator who sets an incident to ``acknowledged`` has accepted it as
+# pending work. The rollup lists those rows by dedup_key and leaves them out of
+# ``release_blocking_total``, so the release gate reports them beside its
+# verdict instead of blocking on them.
+ACCEPTED_PENDING_STATUS = "acknowledged"
+
 # Kinds where "try it again" is a meaningful operator action at all.
 RETRYABLE_KINDS = ("notification_failure", "collector_failure")
 
@@ -279,7 +285,8 @@ async def list_incidents(
     The ``rollup`` block always counts UNRESOLVED incidents regardless of the
     caller's filters, so narrowing the list to one kind (or to closed rows)
     never hides that another kind is on fire. ``release_blocking_total`` is
-    ``open_total`` less the open snapshot reminders (``SNAPSHOT_REMINDER_PREFIX``).
+    ``open_total`` less the open snapshot reminders (``SNAPSHOT_REMINDER_PREFIX``)
+    and less the acknowledged rows, whose dedup_keys ``acknowledged`` lists.
     """
     _require_enum(kind, KINDS, "kind")
     _require_enum(status, STATUSES, "status")
@@ -323,7 +330,7 @@ async def list_incidents(
             rollup_resp = await client.get(
                 f"{base}/rest/v1/ops_incidents",
                 params={
-                    "select": "kind,priority,dedup_key",
+                    "select": "kind,priority,dedup_key,status",
                     "status": _NOT_TERMINAL,
                     "limit": str(_ROLLUP_LIMIT),
                 },
@@ -337,13 +344,17 @@ async def list_incidents(
     open_by_kind = {k: 0 for k in KINDS}
     open_by_priority = {p: 0 for p in PRIORITIES}
     snapshot_reminders = 0
+    acknowledged: list[str] = []
     for row in open_rows if isinstance(open_rows, list) else []:
         if not isinstance(row, dict):
             continue
         if row.get("kind") in open_by_kind:
             open_by_kind[row["kind"]] += 1
-            if str(row.get("dedup_key") or "").startswith(SNAPSHOT_REMINDER_PREFIX):
+            dedup_key = str(row.get("dedup_key") or "")
+            if dedup_key.startswith(SNAPSHOT_REMINDER_PREFIX):
                 snapshot_reminders += 1
+            elif row.get("status") == ACCEPTED_PENDING_STATUS:
+                acknowledged.append(dedup_key)
         if row.get("priority") in open_by_priority:
             open_by_priority[row["priority"]] += 1
     open_total = sum(open_by_kind.values())
@@ -357,7 +368,8 @@ async def list_incidents(
             "open_by_priority": open_by_priority,
             "open_total": open_total,
             "open_snapshot_reminders": snapshot_reminders,
-            "release_blocking_total": open_total - snapshot_reminders,
+            "acknowledged": acknowledged,
+            "release_blocking_total": open_total - snapshot_reminders - len(acknowledged),
             # The rollup reads at most _ROLLUP_LIMIT rows; say so rather than
             # letting a capped count masquerade as the true total.
             "truncated": isinstance(open_rows, list) and len(open_rows) >= _ROLLUP_LIMIT,
@@ -1496,7 +1508,7 @@ async def _scan_release_degradation(
 
 
 async def _scan_source_health(rec: _Recorder, summary: dict) -> None:
-    """source_health.json -> per-shard stale + fully-stale-school incidents.
+    """source_health.json -> per-shard stale, zero-output and fully-stale-school incidents.
 
     School-level freshness alone could not see this failure mode: UC Berkeley
     published a shard whose linguistics department had been dead for six
@@ -1506,7 +1518,7 @@ async def _scan_source_health(rec: _Recorder, summary: dict) -> None:
     healthy - and a school with no fresh source anywhere is escalated as its
     own incident rather than being averaged away.
 
-    Neither auto-resolves on a stale-age improvement alone: the ledger's
+    None of them auto-resolves on a stale-age improvement alone: the ledger's
     ``last_success_at`` only moves on a real successful harvest, so recovery
     is reported exactly when a source produced records again (the collector
     detector's job) - not because a clock rolled over.
@@ -1535,7 +1547,10 @@ async def _scan_source_health(rec: _Recorder, summary: dict) -> None:
 
     now = datetime.now(UTC)
     rows = source_health.source_rows(ledger, now)
-    stale_rows = [r for r in rows if r["freshness"] in ("stale", "unknown")]
+    # Only sources committed to rotation: a row no scheduled run reproduces
+    # (``eligible`` False, e.g. the ``manual`` seeds) ages without being broken.
+    stale_rows = [r for r in rows
+                  if r["eligible"] and r["freshness"] in ("stale", "unknown")]
     for row in stale_rows:
         summary["scanned"] += 1
         age = row["freshness_age_days"]
@@ -1570,6 +1585,51 @@ async def _scan_source_health(rec: _Recorder, summary: dict) -> None:
             failure_state="failed",
         )
 
+    # A declared-empty run is a success, so a source that keeps succeeding
+    # with nothing never reads stale above. Its last run that produced records
+    # (``last_nonzero_at``) is the evidence; a source with none recorded is
+    # left out rather than given an age nobody measured.
+    stale_days = source_health.staleness_thresholds()[1]
+    zero_rows = []
+    for row in rows:
+        nonzero_at = _parse_ts(row["last_nonzero_at"])
+        if not row["eligible"] or row["freshness"] not in ("fresh", "warn") \
+                or nonzero_at is None:
+            continue
+        age = (now - nonzero_at).total_seconds() / 86400.0
+        if age <= stale_days:
+            continue
+        zero_rows.append(row)
+        summary["scanned"] += 1
+        await rec.record(
+            kind="collector_failure",
+            dedup_key=f"collector_failure:zero_output:{row['source']}",
+            title=(
+                f"'{row['source']}' succeeds but has produced no records in "
+                f"{age:.0f} days"
+            ),
+            summary=(
+                f"last success {row['last_success_at']}; last run with records "
+                f"{row['last_nonzero_at']}; stale window {stale_days:g} days"
+            ),
+            detail={
+                "school": row["school"],
+                "source": row["source"],
+                "last_attempt_at": row["last_attempt_at"],
+                "last_success_at": row["last_success_at"],
+                "last_nonzero_at": row["last_nonzero_at"],
+                "current_record_count": row["current_record_count"],
+                "last_good_record_count": row["last_good_record_count"],
+                "zero_output_age_days": round(age, 2),
+                "stale_days": stale_days,
+                "status": row["status"],
+            },
+            scope=row["source"],
+            priority="normal",
+            # As for a suspicious zero: 'partial' would claim records arrived.
+            failure_state="failed",
+        )
+
     report = source_health.corpus_report(ledger, now)
     for school in report["fully_stale_schools"]:
         summary["scanned"] += 1
@@ -1590,6 +1650,7 @@ async def _scan_source_health(rec: _Recorder, summary: dict) -> None:
     summary["detectors"]["source_health"] = {
         "sources": len(rows),
         "stale": len(stale_rows),
+        "zero_output": len(zero_rows),
         "degraded": report["degraded_shard_count"],
         "failed": report["failed_shard_count"],
         "schools": report["school_count"],

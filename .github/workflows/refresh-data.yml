@@ -74,7 +74,7 @@ concurrency:
 
 jobs:
   refresh:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # The refresh step stops scraping at its source budget (below), but the
     # run is not done then: the PR step waits for the data PR's CI, 20-37 min
     # on most days and up to 67 when main moved and the PR was replayed
@@ -102,6 +102,7 @@ jobs:
       # read through the API at this run's commit: the step runs BEFORE the
       # checkout, so a deferral costs seconds, not the checkout's minute.
       - name: Keep refresh runs from overlapping
+        id: guard
         env:
           GH_TOKEN: ${{ github.token }}
           EVENT: ${{ github.event_name }}
@@ -112,9 +113,12 @@ jobs:
           set -uo pipefail
           GUARD="$RUNNER_TEMP/refresh_rotation.py"
           RUNS="$RUNNER_TEMP/refresh-runs-in-progress.json"
+          # The outcome output tells the alert step a deferral from a failure.
+          outcome() { echo "outcome=$1" >> "$GITHUB_OUTPUT"; }
           # Without an answer, production proceeds and a manual run defers,
           # as overlap_decision() does when the runs cannot be listed.
           undecided() {
+            outcome undecided
             if [ "$EVENT" = schedule ]; then
               echo "::warning::$1 The scheduled refresh proceeds."
               exit 0
@@ -132,9 +136,9 @@ jobs:
             || undecided "The overlap guard failed."
           read -r ACTION CANCEL <<< "$DECISION"
           case "$ACTION" in
-            proceed) exit 0 ;;
-            defer) exit 1 ;;
-            cancel) ;;
+            proceed) outcome proceed; exit 0 ;;
+            defer) outcome defer; exit 1 ;;
+            cancel) outcome cancel ;;
             *) undecided "The overlap guard answered '$DECISION'." ;;
           esac
           for ID in $CANCEL; do
@@ -328,6 +332,7 @@ jobs:
         run: echo "changed=true" >> $GITHUB_OUTPUT
 
       - name: Open data-refresh PR and merge once required checks pass
+        id: publish
         if: steps.changes.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.REFRESH_PAT }}
@@ -343,7 +348,7 @@ jobs:
           TOTAL=$(python3 -c "import json; print(len(json.load(open('data/processed/opportunities.json'))))")
           EMAILS=$(python3 -c "import json; d=json.load(open('data/processed/opportunities.json')); print(sum(1 for o in d if o.get('contact_email')))")
           INACTIVE=$(python3 -c "import json; d=json.load(open('data/processed/opportunities.json')); print(sum(1 for o in d if o.get('metadata',{}).get('is_active') is False))")
-          MSG="chore: auto-refresh opportunity data ($TOTAL total, $EMAILS emails, $INACTIVE inactive, $MODE mode, shard: ${SHARD:-full})"
+          COUNTS="$TOTAL total, $EMAILS emails, $INACTIVE inactive, $MODE mode"
           REMOTE="https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
 
           git config user.name "github-actions[bot]"
@@ -432,14 +437,27 @@ jobs:
             # records), with no conflict and a PR title naming only this shard.
             # refresh_rotation --targets answers exactly which committed shards a
             # run is authorized to replace.
-            TARGETS=$(python3 scripts/refresh_rotation.py \
+            AUTHORIZED=$(python3 scripts/refresh_rotation.py \
               --schools "$SHARD" --allow-full --targets)
             # ...and publishable_shards answers which of those it earned. The
             # verdict is per shard file now, so a school whose source errored
             # keeps its previously committed data while its siblings publish —
             # on 2026-08-08 one broken UCSB sitemap withheld fifteen schools'
             # entire refresh. This only ever narrows the authorized set.
-            TARGETS=$(python3 scripts/publishable_shards.py --authorized "$TARGETS")
+            TARGETS=$(python3 scripts/publishable_shards.py --authorized "$AUTHORIZED")
+            # The title and body name what this commit publishes; they used to
+            # name the requested shard, withheld schools included. The alert
+            # step mails the withheld ones with the verdict's reasons.
+            MSG="chore: auto-refresh opportunity data ($COUNTS, $(python3 scripts/publishable_shards.py \
+              --authorized "$AUTHORIZED" --label --shard "$SHARD"))"
+            NOTES=$(python3 scripts/publishable_shards.py --authorized "$AUTHORIZED" --notes)
+            BODY="Automated ${MODE} data refresh (shard: ${SHARD:-full}). Merges automatically once Backend + Frontend checks pass."
+            if [ -n "$NOTES" ]; then
+              BODY="$BODY"$'\n\n'"$NOTES"
+              # Random, so no line of the verdict's error text can end the value early.
+              END="WITHHELD_$(python3 -c 'import secrets; print(secrets.token_hex(16))')"
+              { echo "withheld<<$END"; echo "$NOTES"; echo "$END"; } >> "$GITHUB_OUTPUT"
+            fi
             python3 scripts/shard_corpus.py split --only-shards "$TARGETS"
 
             # ...and the cost of that guarantee, paid here. Deadlines pass on
@@ -492,8 +510,7 @@ jobs:
             # Push via PAT so the PR triggers CI (the default GITHUB_TOKEN does not).
             git push "$REMOTE" "$BRANCH"
 
-            gh pr create --base main --head "$BRANCH" --title "$MSG" \
-              --body "Automated ${MODE} data refresh (shard: ${SHARD:-full}). Merges automatically once Backend + Frontend checks pass."
+            gh pr create --base main --head "$BRANCH" --title "$MSG" --body "$BODY"
 
             # Wait for the required checks to register, then watch them to
             # completion. A red check fails this step (no retry: a data/DQ
@@ -546,24 +563,59 @@ jobs:
       # noticed — cron failures send no notification by default.
       # `failure()` alone still left one hole: hitting timeout-minutes cancels
       # the job rather than failing it, so the 5-hour timeouts on 08-01, 08-03
-      # and 08-07 alerted nobody either.
+      # and 08-07 alerted nobody either. A school the release verdict withheld
+      # is a failure too, though the run succeeds, and used to send nothing.
       - name: Alert operator on failure
-        if: failure() || cancelled()
+        if: failure() || cancelled() || steps.publish.outputs.withheld != ''
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           OPERATOR_EMAIL: ${{ secrets.OPERATOR_EMAIL }}
           SHARD: ${{ steps.shard.outputs.shard }}
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+          RUN_ID: ${{ github.run_id }}
+          REPO: ${{ github.repository }}
+          JOB_STATUS: ${{ job.status }}
+          GUARD: ${{ steps.guard.outputs.outcome }}
+          WITHHELD: ${{ steps.publish.outputs.withheld }}
         run: |
           if [ -z "$RESEND_API_KEY" ] || [ -z "$OPERATOR_EMAIL" ]; then
             echo "RESEND_API_KEY / OPERATOR_EMAIL not set — cannot alert"
             exit 0
           fi
+          # A manual run that deferred to a refresh in progress, or that a
+          # scheduled run's guard cancelled, did not fail. alert_decision() in
+          # the guard's copy of scripts/refresh_rotation.py (the checkout may
+          # never have run) tells those apart; any doubt sends the alert. A
+          # scheduled run always alerts, so it asks nothing.
+          GUARD_PY="$RUNNER_TEMP/refresh_rotation.py"
+          if [ "$EVENT" != schedule ] && [ -f "$GUARD_PY" ]; then
+            RUNS="$RUNNER_TEMP/refresh-runs-at-alert.json"
+            # A listing that fails or hangs is no listing, and that alerts.
+            timeout 30 gh api "repos/$REPO/actions/workflows/refresh-data.yml/runs?status=in_progress&per_page=100" \
+              > "$RUNS" || : > "$RUNS"
+            if [ "$(python3 "$GUARD_PY" --alert --event "$EVENT" --run-id "$RUN_ID" \
+                   --job-status "$JOB_STATUS" --guard "$GUARD" --runs "$RUNS")" = skip ]; then
+              exit 0
+            fi
+          fi
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          NL=$'\n'
+          SUBJECT="JoinALab: data refresh FAILED (shard: ${SHARD:-full})"
+          TEXT="The scheduled data refresh failed.${NL}${NL}Shard: ${SHARD:-full}${NL}Run: $RUN_URL${NL}${NL}The corpus has not been updated. Only this shard's schools missed their refresh; the rotation retries them next week. Repeated failures mean the pipeline is dead — check the Data-quality gate step first (that is where the last 7-run outage lived)."
+          if [ "$JOB_STATUS" = success ]; then
+            # Only withheld schools bring a run that succeeded here.
+            SUBJECT="JoinALab: data refresh withheld schools (shard: ${SHARD:-full})"
+            TEXT="The data refresh finished, but its release verdict withheld some of its schools, listed below. Each keeps the data last committed for it until a later refresh publishes it.${NL}${NL}Shard: ${SHARD:-full}${NL}Run: $RUN_URL${NL}${NL}$WITHHELD"
+          elif [ -n "$WITHHELD" ]; then
+            TEXT="$TEXT${NL}${NL}Its release verdict had also withheld schools:${NL}$WITHHELD"
+          fi
+          # The verdict's reasons are free text, so the payload is encoded, not
+          # spliced. If python3 cannot encode it, a fixed short form still goes.
+          MAIL_FROM="${{ vars.RESEND_FROM_EMAIL || 'JoinALab <onboarding@resend.dev>' }}"
+          PAYLOAD=$(MAIL_FROM="$MAIL_FROM" SUBJECT="$SUBJECT" TEXT="$TEXT" python3 -c 'import json, os; print(json.dumps({"from": os.environ["MAIL_FROM"], "to": [os.environ["OPERATOR_EMAIL"]], "subject": os.environ["SUBJECT"], "text": os.environ["TEXT"]}))') \
+            || PAYLOAD="{\"from\": \"$MAIL_FROM\", \"to\": [\"$OPERATOR_EMAIL\"], \"subject\": \"$SUBJECT\", \"text\": \"This is the short form of the alert: its full text could not be built. The run shows what failed or what the release verdict withheld.\n\nShard: ${SHARD:-full}\nRun: $RUN_URL\"}"
           curl -sf -X POST https://api.resend.com/emails \
             -H "Authorization: Bearer $RESEND_API_KEY" \
             -H "Content-Type: application/json" \
-            -d "{
-              \"from\": \"${{ vars.RESEND_FROM_EMAIL || 'JoinALab <onboarding@resend.dev>' }}\",
-              \"to\": [\"$OPERATOR_EMAIL\"],
-              \"subject\": \"JoinALab: data refresh FAILED (shard: ${SHARD:-full})\",
-              \"text\": \"The scheduled data refresh failed.\n\nShard: ${SHARD:-full}\nRun: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\n\nThe corpus has not been updated. Only this shard's schools missed their refresh; the rotation retries them next week. Repeated failures mean the pipeline is dead — check the Data-quality gate step first (that is where the last 7-run outage lived).\"
-            }" || true
+            -d "$PAYLOAD" || true

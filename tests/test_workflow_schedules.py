@@ -31,7 +31,9 @@ _KEPT = {
     "refresh-data.yml": "6 * * *",
     "ops-scan.yml": "11 * * *",
     "campus-seed-health.yml": "12 * * 0",
-    "snapshot-reminder.yml": "13 * * 1",
+    # Daily since GitHub began starting runs hours late and dropping some: its
+    # check is still weekly (scripts/snapshot_reminder.py).
+    "snapshot-reminder.yml": "13 * * *",
     "daily-reminders.yml": "23 * * *",
     "saved-searches-refresh.yml": "23 * * *",
 }

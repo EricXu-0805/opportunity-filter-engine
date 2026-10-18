@@ -20,7 +20,7 @@ env:
 jobs:
   backend:
     name: Backend (lint + pytest)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # PR #974 passed all 4,927 tests in 28m18s, but setup and cleanup
     # brought the job past its old 30-minute cap (run 35967896474).
     # Keep the full suite and leave measured runner/setup headroom. Durations
@@ -71,7 +71,7 @@ jobs:
 
   frontend:
     name: Frontend (typecheck + build)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # 10 was set when the unit suite was a fraction of its current size. The
     # suite is now 3,846 tests — 4.5 minutes of pure vitest on a warm laptop —
     # and this job also runs npm ci, tsc, lint and a full Next build on top.
@@ -116,7 +116,7 @@ jobs:
 
   migrations:
     name: Migrations (Flow B merge + CLI replay)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v6
@@ -152,7 +152,7 @@ jobs:
 
   e2e:
     name: E2E (Playwright)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Headroom over the typical run; the suite now boots a production server
     # (see the build step below + playwright.config webServer) instead of the
     # slow on-demand-compiling dev server, so it completes well inside this.
@@ -265,7 +265,7 @@ jobs:
     # success(): a needed job that failed, was cancelled or was skipped skips
     # the deploy.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     # Read access only, to look up the head of main.
     permissions:

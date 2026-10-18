@@ -309,8 +309,9 @@ export default function AuthModal() {
       // goes while that session still exists.
       const pushReleased = await releasePushForSignOut();
       if (!(await signOutOfAccount())) {
-        // supabase-js keeps the account session when the logout request
-        // fails, so the modal stays on that account and says it failed.
+        // A failed logout request leaves the account session in place, but an
+        // expired session whose refresh is refused is dropped and the error
+        // still comes back; the message reads the live auth state for that.
         setSignOutFailed(true);
         return;
       }
@@ -675,9 +676,15 @@ export default function AuthModal() {
               {t('auth.modal.signOutConfirm.bodyGuest')}
             </p>
 
+            {/* From the live auth state, not from how the sign-out failed:
+                supabase-js drops an expired session whose refresh is refused
+                and still reports an error, and a re-anon can throw after the
+                logout went through. */}
             {signOutFailed && (
               <p role="alert" className="mb-4 text-[12px] text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                {t('common.error')}
+                {isSignedIn
+                  ? t('auth.modal.signOutConfirm.failedStillSignedIn')
+                  : t('auth.modal.signOutConfirm.failed')}
               </p>
             )}
 

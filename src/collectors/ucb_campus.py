@@ -729,7 +729,8 @@ def merge_into_processed(
     key ``other_file_program_keys`` no longer lists (None: any key) makes a
     record wait. An empty listing retires every such row; the None default
     retires nothing. A retired row whose program is listed again comes back
-    as it was, closed if its page had closed it."""
+    as it was, closed if its page had closed it, and a program moved between
+    the campus and lab sources retires its old row for its new record."""
     if not PROCESSED_FILE.exists():
         return (0, 0)
     if any(
@@ -755,7 +756,8 @@ def merge_into_processed(
     }
     # campus_graph.merge_into_processed's file rule, for the registry's rows.
     published = {None, "ucb"} if national is None else {None if national else "ucb"}
-    arriving = {(opp["metadata"]["collector_key"], opp.get("school")) for opp in new_opps if _program_record(opp)}
+    arriving = {(opp["metadata"]["collector_key"], opp.get("school")): opp.get("id")
+                for opp in new_opps if _program_record(opp)}
     retired_programs = 0
     held: set[tuple[str, str | None]] = set()
     if listed_program_keys is not None:
@@ -769,7 +771,10 @@ def merge_into_processed(
                 if moved in arriving and opp["metadata"].get("is_active") is not False:
                     held.add(moved)
                 continue
-            if key in listed_program_keys and moved not in arriving:
+            # A key that moved between the campus and lab sources has a record
+            # with another id, which replaces this row (campus_graph's rule).
+            if key in listed_program_keys and moved not in arriving and arriving.get(
+                    (key, opp.get("school")), opp.get("id")) == opp.get("id"):
                 continue
             opp["metadata"]["is_active"] = False
             opp["metadata"]["deactivated_at"] = deactivated_on

@@ -246,6 +246,49 @@ def test_a_redacted_contact_is_not_searchable():
         assert found(query) == [], query
 
 
+# M104: "illinois.edu" found two results through a professor's homepage and a
+# program short link inside the description, neither of which the card shows.
+WEB_ADDRESS_RECORDS = [
+    _listing(
+        "linked",
+        title="Robot Perception Lab",
+        description_clean=(
+            "Details at https://croy.web.engr.illinois.edu/, www.cs.illinois.edu/robots "
+            "and go.illinois.edu/FGSRP. Robot perception projects."
+        ),
+    ),
+    _listing(
+        "worded",
+        title="Prairie Restoration",
+        description_clean="Field work across Illinois prairies; apply at go.illinois.edu/prairie.",
+    ),
+    _listing("titled", title="Illinois Robotics Scholars", description_clean="See https://illinois.edu/."),
+    _listing("organized", organization="University of Illinois Urbana-Champaign",
+             description_clean="Apply at go.illinois.edu/apply."),
+    _listing("degrees", description_clean="M.Phil and D.Sc holders who know ASP.NET and C.elegans biology.The lab"),
+]
+
+
+def test_a_web_address_in_the_description_is_not_searchable():
+    """Search reads words a student can read: a URL or bare domain in the
+    description is no reason to match, the rest of the card still is."""
+    rows = {record["id"]: m_module._match_view_row(record) for record in WEB_ADDRESS_RECORDS}
+    results = _results(WEB_ADDRESS_RECORDS)
+
+    def found(query: str) -> list[str]:
+        view = MatchViewState(today=_TODAY, tab="all", search_query=query)
+        filtered, *_ = m_module._apply_match_view_rows(results, rows, view, "uiuc")
+        return sorted(result.opportunity_id for result in filtered)
+
+    for query in ("illinois.edu", "go.illinois.edu", "https", "www", "croy", "fgsrp", "edu", "robots"):
+        assert found(query) == [], query
+    assert found("robot perception") == ["linked"]
+    assert found("illinois") == ["organized", "titled", "worded"]
+    assert found("prairies") == ["worded"]
+    for query in ("m.phil", "d.sc", "asp.net", "c.elegans", "biology.the"):
+        assert found(query) == ["degrees"], query
+
+
 @pytest.fixture
 def match_env(monkeypatch):
     from tests.test_match_consistency import _opp, _varied_corpus

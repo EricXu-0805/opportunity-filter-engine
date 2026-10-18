@@ -526,14 +526,15 @@ describe('signInExistingOAuth — forced sign-in-to-existing path', () => {
 describe('supabase-js 2.105.4 signOut({ scope: "local" }) against a failing logout request', () => {
   const STORAGE_KEY = 'ofe_auth_signout_characterization';
 
-  async function signOutAgainst(logout: () => Promise<Response>) {
+  async function signOutAgainst(logout: () => Promise<Response>, refresh?: () => Promise<Response>) {
     const { createClient: realCreateClient } = await vi.importActual<typeof import('@supabase/supabase-js')>('@supabase/supabase-js');
     const session = {
       access_token: 'header.payload.signature',
       refresh_token: 'refresh-token',
       token_type: 'bearer',
       expires_in: 3600,
-      expires_at: Math.floor(Date.now() / 1000) + 3600,
+      // An expired session is refreshed before the logout request is made.
+      expires_at: Math.floor(Date.now() / 1000) + (refresh ? -60 : 3600),
       user: { id: 'perm-uid', aud: 'authenticated', role: 'authenticated', email: 'eric@illinois.edu', is_anonymous: false },
     };
     const store = new Map<string, string>([[STORAGE_KEY, JSON.stringify(session)]]);
@@ -557,6 +558,7 @@ describe('supabase-js 2.105.4 signOut({ scope: "local" }) against a failing logo
             const url = String(input);
             requests.push(url);
             if (url.includes('/auth/v1/logout')) return logout();
+            if (refresh && url.includes('grant_type=refresh_token')) return refresh();
             throw new Error(`unexpected request ${url}`);
           },
         },
@@ -590,6 +592,16 @@ describe('supabase-js 2.105.4 signOut({ scope: "local" }) against a failing logo
   it.each([401, 403, 404])('drops the session and returns no error on a %s (the server no longer has it)', async (status) => {
     const out = await signOutAgainst(json(status));
     expect(out.error).toBeNull();
+    expect(out.stored).toBe(false);
+    expect(out.sessionUser).toBeNull();
+  });
+
+  // signOutOfAccount reports this as a failure, yet the account session is
+  // already gone, so the sign-out dialog must not say it is still signed in.
+  it('drops an expired session whose refresh is refused, and still returns the error', async () => {
+    const out = await signOutAgainst(json(500), json(400));
+    expect(out.requests).toEqual(['https://test.supabase.co/auth/v1/token?grant_type=refresh_token']);
+    expect(out.error).toMatchObject({ name: 'AuthApiError', status: 400 });
     expect(out.stored).toBe(false);
     expect(out.sessionUser).toBeNull();
   });

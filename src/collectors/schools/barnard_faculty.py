@@ -46,6 +46,19 @@ pass is needed (topics come from the specialization chips + OpenAlex).
 Single source ("barnard_faculty"); department rides each record, ids namespaced
 by department short-code. Audience "unknown".
 
+Moved 2026-10 (found 2026-10-17): every ``<dept>.barnard.edu`` roster above now
+redirects to a department page on the main site (``barnard.edu/<dept>``), and
+the person cards are gone. The 2026-10-10 refresh fetched all 22 pages (200,
+no fetch error) and parsed 0 rows. The roster is now a "department faculty
+grid": ``.paragraph--type--department-faculty`` cards, each an ``h4`` name
+(linked to ``/profiles/<slug>`` for faculty, ``/node/<n>`` or nothing for
+staff and emeriti), a ``.field--name-field-body`` rank line and, on a few
+cards only, a ``.field--name-field-email`` mailto. Specialization chips are no
+longer on the listing, so research areas and the email of record come from the
+profile page (``.f--email`` mailto, "Academic Focus" accordion), which the
+profile pass already fetched for research areas. Ids hash the department short
+code and the name, so the moved rows keep their ids.
+
 Deferred (2026-07-22 recon): the ~15 departments that still render their roster
 as hand-authored WYSIWYG prose (a ``field--name-field-description`` /
 ``c--body-wysiwyg`` block with inline mailtos rather than the shared person-card
@@ -61,34 +74,38 @@ from __future__ import annotations
 
 from .. import faculty_graph
 
-# Shared Drupal person-card component. Two container variants (faceted
-# directory view + curated featured grid) share identical inner markup.
+# The main site's department faculty grid (see "Moved 2026-10" above).
 _SELECTORS = {
-    "card": ".cc--filtered-person-card, .cc--featured-person",
-    "name": ".f--cta-title h3 a",
-    "link": ".f--cta-title h3 a",
-    "title": ".f--professional-title",
-    "research_items": ".f--specialization .field__item",
-    "email": ".f--email a[href^='mailto:']",
+    "card": ".paragraph--type--department-faculty",
+    "name": "h4 .field--name-field-title",
+    "link": "h4 a",
+    "title": ".field--name-field-body",
+    "email": ".field--name-field-email a[href^='mailto:']",
+    # One rank line runs into the name ("Nadia Abu El-HajProfessor of
+    # Anthropology & Chair of Anthropology").
+    "title_unglue": r"Assistant|Associate|Senior|Visiting|Visting|Adjunct|Professor|Lecturer",
 }
 
-# Keep professorial + lecturer ranks; drop emeriti, visiting, and adjunct
-# appointments as well as the lab-instructional / coordinator / department
-# staff whose titles carry neither "professor" nor "lecturer".
+# Keep professorial + lecturer ranks; drop emeriti, visiting (and the page's
+# "Visting" typo), and adjunct appointments as well as the lab-instructional /
+# coordinator / department staff whose titles carry neither "professor" nor
+# "lecturer". A card with no rank line at all is dropped too: on 2026-10-17
+# those were History's emeriti ("Joel Kaye, Professor Emeritus" as the name),
+# Italian's "Maristella Lorch, Ph.D., 1951-1990" and English's "Barnard's
+# Tradition of Writers" list, 21 cards and no professor or lecturer among them.
 _LADDER = {
     "require": r"\bprofessor\b|\blecturer\b",
-    "drop": r"emerit|\bvisiting\b|\badjunct\b",
+    "drop": r"emerit|\bvisi?ting\b|\badjunct\b",
+    "require_present": True,
 }
 
 
-def _dept(short: str, name: str, majors: list[str], sub: str, path: str) -> dict:
-    """A Barnard department on the shared person-card component.
+def _dept(short: str, name: str, majors: list[str], path: str) -> dict:
+    """A Barnard department's page on the main site, ``barnard.edu/<path>``.
 
-    ``sub`` is the department subdomain (``<sub>.barnard.edu``); ``path`` is the
-    faculty-listing path (it varies per department — /faculty, /faculty-staff,
-    /<dept>-faculty, /people, … — but the markup family is identical).
+    ``path`` is where the department's old subdomain roster now redirects.
     """
-    url = f"https://{sub}.barnard.edu{path}"
+    url = f"https://barnard.edu/{path}"
     return {
         "short": short,
         "name": name,
@@ -96,12 +113,17 @@ def _dept(short: str, name: str, majors: list[str], sub: str, path: str) -> dict
         "directory_url": url,
         "scrape": {"url": url, "selectors": _SELECTORS, "ladder_filter": _LADDER,
                    # Each profile's research areas live in an "Academic Focus"
-                   # accordion as a clean <ul><li>. No profile pass exists today,
-                   # so always:true (weekly refresh env-gates enrich off).
+                   # accordion as a clean <ul><li>, and its email under .f--email
+                   # (most grid cards carry none). always:true because the
+                   # weekly refresh env-gates enrich off.
                    "profile_enrich": {
                        "always": True,
                        "research_items_selector":
                            '.accordion-item h3:-soup-contains("Academic Focus") + .accordion-panel li',
+                       "email_selector": ".f--email a[href^='mailto:']",
+                       # A card with no profile link points at this department
+                       # page, which is not a profile.
+                       "profile_url_re": r"https://barnard\.edu/profiles/",
                        "throttle": 0.2,
                    }},
     }
@@ -121,52 +143,52 @@ SCHOOL: dict = {
     "departments": [
         # ---- Science & Mathematics ---------------------------------------
         _dept("BIOL", "Department of Biology", ["Biology"],
-              "biology", "/faculty-staff"),
+              "biology"),
         _dept("CHEM", "Department of Chemistry",
-              ["Chemistry", "Biochemistry"], "chemistry", "/faculty-and-staff-0"),
+              ["Chemistry", "Biochemistry"], "chemistry"),
         _dept("PHYS", "Department of Physics and Astronomy",
-              ["Physics", "Astronomy"], "physics", "/faculty-staff"),
+              ["Physics", "Astronomy"], "physics"),
         _dept("MATH", "Department of Mathematics",
-              ["Mathematics", "Statistics"], "math", "/mathematics-people"),
+              ["Mathematics", "Statistics"], "math"),
         _dept("CS", "Department of Computer Science", ["Computer Science"],
-              "cs", "/cs-faculty"),
+              "computerscience"),
         _dept("ENSC", "Department of Environmental Science",
-              ["Environmental Science"], "envsci", "/faculty-staff-es"),
+              ["Environmental Science"], "envsci"),
         _dept("PSYC", "Department of Psychology", ["Psychology"],
-              "psychology", "/psychology-people"),
+              "psychology"),
         _dept("NBB", "Neuroscience and Behavior Program",
-              ["Neuroscience and Behavior"], "neuroscience", "/people"),
+              ["Neuroscience and Behavior"], "neuroscience"),
         # ---- Social Sciences ---------------------------------------------
         _dept("ANTH", "Department of Anthropology", ["Anthropology"],
-              "anthropology", "/anthropology-faculty-staff"),
+              "anthropology"),
         _dept("SOCI", "Department of Sociology", ["Sociology"],
-              "sociology", "/faculty-staff-0"),
+              "sociology"),
         _dept("AMST", "Program in American Studies", ["American Studies"],
-              "americanstudies", "/faculty-3"),
+              "americanstudies"),
         _dept("EDUC", "Education Program", ["Education"],
-              "education", "/education-faculty"),
+              "Education"),
         # ---- Humanities --------------------------------------------------
         _dept("ENGL", "Department of English",
-              ["English", "Creative Writing"], "english", "/english-faculty"),
+              ["English", "Creative Writing"], "english"),
         _dept("HIST", "Department of History", ["History"],
-              "history", "/faculty"),
+              "history"),
         _dept("CPLT", "Department of Comparative Literature",
-              ["Comparative Literature"], "complit", "/people-1"),
+              ["Comparative Literature"], "complit"),
         _dept("FREN", "Department of French", ["French"],
-              "french", "/dept"),
+              "french"),
         _dept("ITAL", "Department of Italian", ["Italian"],
-              "italian", "/italian-faculty"),
+              "italian"),
         _dept("AMEC", "Department of Asian and Middle Eastern Cultures",
-              ["Asian and Middle Eastern Cultures"], "amec", "/faculty"),
+              ["Asian and Middle Eastern Cultures"], "amec"),
         _dept("AFRS", "Department of Africana Studies", ["Africana Studies"],
-              "africana", "/faculty-4"),
+              "africana-studies"),
         # ---- Arts --------------------------------------------------------
         _dept("ARCH", "Department of Architecture", ["Architecture"],
-              "architecture", "/faculty-profiles"),
+              "architecture"),
         _dept("DNCE", "Department of Dance", ["Dance"],
-              "dance", "/dance-faculty"),
+              "dance"),
         _dept("FILM", "Film Studies Program", ["Film Studies"],
-              "film", "/film/faculty"),
+              "film"),
     ],
 }
 

@@ -1187,8 +1187,11 @@ def check_open_incidents(evidence: dict | None) -> dict:
     The count that blocks is the rollup's ``release_blocking_total``: every
     unresolved incident except a reminder that a hand-exported snapshot needs
     a new export, which is work for whoever holds that source's login, not a
-    fault in what is deployed. A rollup without that count (an older backend),
-    or with one that cannot be true, is read as every open row blocking.
+    fault in what is deployed, and except an incident an operator has
+    acknowledged: an accepted pending state is listed beside the verdict
+    (``rollup.acknowledged``) and does not block. A rollup without that count
+    (an older backend), or with one that cannot be true, is read as every open
+    row blocking.
     """
     if not evidence:
         return _gate("open_incidents", BLOCKED,
@@ -1208,19 +1211,26 @@ def check_open_incidents(evidence: dict | None) -> dict:
                      "rollup truncated: a capped count cannot prove zero",
                      reason="evidence_truncated")
     blocking = rollup.get("release_blocking_total")
-    if type(blocking) is not int or not 0 <= blocking <= total:
-        blocking = total
-    reminders = total - blocking
+    acknowledged = rollup.get("acknowledged")
+    if not isinstance(acknowledged, list) or not all(isinstance(k, str) for k in acknowledged):
+        acknowledged = []
+    if type(blocking) is not int or not 0 <= blocking <= total - len(acknowledged):
+        blocking, acknowledged = total, []
+    reminders = total - blocking - len(acknowledged)
     aside = (f"; {reminders} snapshot reminder(s) open, which do not block a release"
              if reminders else "")
+    if acknowledged:
+        aside += (f"; {len(acknowledged)} acknowledged incident(s) pending, which do "
+                  f"not block a release: {', '.join(acknowledged)}")
     if blocking > 0:
         return _gate("open_incidents", FAIL, f"{blocking} unresolved incident(s){aside}",
                      {"open_by_kind": rollup.get("open_by_kind"),
                       "release_blocking_total": blocking,
+                      "acknowledged": acknowledged,
                       "observed_at": evidence.get("observed_at")},
                      reason="check_failed")
     return _gate("open_incidents", PASS,
-                 f"no release-blocking incidents{aside}" if reminders else "no unresolved incidents",
+                 f"no release-blocking incidents{aside}" if aside else "no unresolved incidents",
                  rollup)
 
 

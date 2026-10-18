@@ -75,6 +75,21 @@ CONTACT_VARIANTS = [
     "ｊａｎｅ＠ｅｘａｍｐｌｅ．ｅｄｕ",
     "用户@例子.公司",
     "用户[at]例子[dot]公司",
+    "jane<at>example<dot>edu",
+    "jane <AT> example <DOT> edu",
+    "jane <at> example.edu",
+    "jane&lt;at&gt;example&lt;dot&gt;edu",
+    # The shape of an Ohio State directory keyword (M119).
+    "jane <dot> 244 <at> example <dot> edu",
+    "jane-at-example-dot-edu",
+    "jane-at-cs-dot-example-dot-edu",
+    # A stray <at> or <dot> tag inside an address the HTML parser joins.
+    "jane<at>@example.edu",
+    "jane@<at>example.edu",
+    "jane<dot>@example.edu",
+    "jane@example<dot>.edu",
+    "jane<at>@</at>example.edu",
+    "jane&lt;at&gt;@example.edu",
 ]
 
 
@@ -152,11 +167,61 @@ def test_contact_detection_fails_closed_for_visible_encoded_and_obfuscated_forms
         "Infrastructure at the Point Cloud Lab",
         "Fellowships at the dot institute open now",
         "React.js and C++",
+        "Meet at the lab",
+        "Dot product attention at scale",
+        "Stay-at-home orders, value-at-risk and polka-dot-free plots",
+        "U.S. Department of Transportation (DOT), Mozarteum Salzburg (AT)",
+        "ANCIENT MAYA SUSTAINABILITY AT CARACOL, BELIZE",
     ],
 )
 def test_contact_detection_preserves_common_non_contact_phrases(value: str):
     assert not contains_embedded_email(value)
     assert redact_embedded_emails(value) == value
+
+
+HYPHEN_AT_LINKS = [
+    "https://www.stay-at-home.com/",
+    "https://value-at-risk.org/",
+    "https://www.example.edu/news/life-at-penn.html",
+    "https://example.edu/files/Research-at-Rice.pdf",
+    "https://example.edu/files/Lab-at-a-glance.pdf",
+    "https://careers-at-example.com/jobs",
+    # An -at- and a later -dot- in a link are a slug or a file name (M119).
+    "https://x.edu/people-at-a-glance-dot-pdf",
+    "https://x.edu/news/students-at-mit-dot-edu-launch",
+    "https://x.edu/fig/expression-at-24h-dot-plot.png",
+    "https://x.edu/2020/03/work-at-home-dot-com-era",
+    "https://x.edu/look-at-the-dot-plot",
+    "https://www.stay-at-home-dot-com.example.org/",
+]
+
+
+@pytest.mark.parametrize("link", HYPHEN_AT_LINKS)
+def test_a_hyphen_wrapped_at_in_a_link_or_file_name_is_not_a_contact(link: str):
+    assert not contains_embedded_email(link)
+    assert safe_public_http_url(link) == link
+    projected = redact_embedded_emails(sanitize_public_urls({"application_url": link}))
+    assert projected == {"application_url": link}
+    in_text = f'See {link} or <a href="{link}">the page</a>; {{"url": "{link}"}}'
+    assert redact_embedded_emails(in_text) == in_text
+
+
+def test_a_link_whose_encoded_space_precedes_a_hyphen_address_is_read_as_a_link():
+    link = "https://x.edu/a%20jane-at-usc-dot-edu"
+
+    assert not contains_embedded_email(link)
+    assert safe_public_http_url(link) == link
+    projected = redact_embedded_emails(sanitize_public_urls({"application_url": link}))
+    assert projected == {"application_url": link}
+
+
+def test_the_hyphen_reading_only_adds_to_the_plain_reading():
+    # A random string the plain-word rules flag; rewriting its hyphens first
+    # once lost it.
+    value = "jane dot  at 9-at--dot-x point  at "
+
+    assert contains_embedded_email(value)
+    assert redact_embedded_emails(value) == "[email redacted]"
 
 
 def test_oversized_text_has_an_explicit_fail_closed_policy():

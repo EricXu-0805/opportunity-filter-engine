@@ -1,6 +1,7 @@
 """Checklist M13: one set of course-status and interest rules for every student-voice consumer."""
 from __future__ import annotations
 
+import gc
 import time
 
 import pytest
@@ -28,6 +29,24 @@ COURSES = [
 
 def entries():
     return course_entries(ProfileRequest(name="Sample Student", courses=COURSES).model_dump())
+
+
+def timed(check):
+    """``check()`` and its wall time with the collector paused, as ``timeit`` times.
+
+    By the time the full suite reaches this file the process holds the corpus,
+    and a full collection that lands inside a check stalls it: 2.87 s for a
+    check of a few milliseconds in a CI run on 2026-10-17, 0.36 s locally with
+    the shards loaded. The bounds below are about the check's own cost.
+    """
+    gc.collect()
+    gc.disable()
+    try:
+        began = time.perf_counter()
+        result = check()
+        return result, time.perf_counter() - began
+    finally:
+        gc.enable()
 
 
 def test_courses_reach_every_consumer_with_their_status():
@@ -347,9 +366,9 @@ def test_a_word_split_at_every_letter_case_matching_reads_as_ascii_is_cheap():
     # U+212A KELVIN SIGN matches "k" in any case: each one is a place a name
     # could end, and reading up to it copies the word so far.
     text = "I took " + "K" * 4990
-    began = time.perf_counter()
-    found = course_claim_violations(text, [{"name": "CS 225", "status": "planned"}, {"name": "K", "status": "planned"}])
-    assert time.perf_counter() - began < 0.25
+    found, seconds = timed(lambda: course_claim_violations(
+        text, [{"name": "CS 225", "status": "planned"}, {"name": "K", "status": "planned"}]))
+    assert seconds < 0.25
     assert found == [COURSE_CHECK_TOO_COSTLY]
 
 
@@ -380,10 +399,10 @@ def test_a_refine_request_of_nested_names_takes_bounded_time():
         {"name": name, "status": "planned"} for name in names]).model_dump())
     body = "I took " + ("A " * 2500)[:4990]
     bullets = ["I took " + ("A " * 250)[:490]] * 12
-    began = time.perf_counter()
-    for _ in range(5):
+    _, seconds = timed(lambda: [
         course_claim_violations(body, listed, student_lines=bullets, student_draft=body[:2000] + " " + body)
-    assert time.perf_counter() - began < 0.75
+        for _ in range(5)])
+    assert seconds < 0.75
 
 
 @pytest.mark.parametrize("unit", ["Completed coursework, ", "I took "])
@@ -392,6 +411,5 @@ def test_the_course_check_takes_about_the_same_time_at_the_request_limits(unit):
     listed = full_profile_entries()
     assert len(listed) == 1024
     for checked in ({"text": text}, {"text": "Thank you.", "student_draft": text}):
-        began = time.perf_counter()
-        course_claim_violations(entries=listed, **checked)
-        assert time.perf_counter() - began < 0.5
+        _, seconds = timed(lambda checked=checked: course_claim_violations(entries=listed, **checked))
+        assert seconds < 0.5

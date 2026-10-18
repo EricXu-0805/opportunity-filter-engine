@@ -49,6 +49,15 @@ the old row until the old file's day retires it. A local run of every source
 school's own sources before its open ones, so a program moved out of the open
 bucket is missing after that run and lands on the next one.
 
+A program moved between a school's campus and lab sources stays in its file
+but gets another id. The run that writes the file retires its old row, and its
+new record takes the old row's place. If the old row was closed and shares the
+new record's URL or title, that happens once a run loads the record's page, as
+below; if both changed, the new record lands at once with its status unknown.
+A new record that is a near-duplicate of another row, even a retired one, is
+still dropped, so the program is not listed until that row stops matching
+(today only CMU's uro_getting_started would be affected if moved).
+
 A program whose page said applications are closed is not listed, so it holds
 nothing back, and its old row retires closed. A new record with the old row's
 URL is instead dropped as that row's near-duplicate (the log counts it in
@@ -138,7 +147,7 @@ publish data through the workflow's PR, not a hand-committed shard.
 | Workflow | When (UTC) | What it does |
 |---|---|---|
 | `ops-scan.yml` | daily 11:13 | `POST /api/cron/ops-scan`: files collector and drift incidents |
-| `snapshot-reminder.yml` | Monday 13:23 | Emails the operator when a hand-exported snapshot (CMU) is due |
+| `snapshot-reminder.yml` | daily 13:23 | Once a week (the week's first good run) emails the operator when a hand-exported snapshot (CMU) is due |
 | `daily-reminders.yml` | daily 23:11 | `GET /api/cron/reminders` (Web Push, email fallback), then the data-quality check and the feedback and orders digests |
 | `saved-searches-refresh.yml` | daily 23:41 | `GET /api/cron/saved-searches/refresh`, then `/digest` |
 | `campus-seed-health.yml` | Sunday 12:19 | Probes configured seed and program URLs for dead pages |

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -18,6 +19,7 @@ from refresh_rotation import (  # noqa: E402
     ISOLATED_WEEKLY_SHARDS,
     NATIONAL_SHARD,
     WEEKLY_ROTATION,
+    alert_decision,
     normalize_publication_unit,
     normalize_requested_shard,
     overlap_decision,
@@ -316,6 +318,61 @@ class TestOverlapDecision:
         assert overlap_decision(SCHEDULED, 300, _runs((200, "repository_dispatch"))).cancel == (200,)
 
 
+class TestAlertDecision:
+    """A run the overlap guard stood aside is not a failed refresh.
+
+    The guard step fails a deferring manual run, and a scheduled run cancels a
+    manual one; the alert step runs on failure() || cancelled(), so both sent
+    "data refresh FAILED" while the refresh they yielded to was running.
+    """
+
+    def test_a_manual_run_that_deferred_to_a_refresh_in_progress_does_not_alert(self):
+        decision = alert_decision(MANUAL, 300, "failure", "defer", _runs((200, SCHEDULED), (300, MANUAL)))
+        assert decision.send is False
+        assert "200" in decision.message
+
+    def test_a_manual_run_a_scheduled_run_cancelled_does_not_alert(self):
+        decision = alert_decision(MANUAL, 100, "cancelled", "proceed", _runs((100, MANUAL), (200, SCHEDULED)))
+        assert decision.send is False
+        assert "200" in decision.message
+        # The guard may have been cancelled before it wrote its outcome.
+        assert alert_decision(MANUAL, 100, "cancelled", "", _runs((200, SCHEDULED))).send is False
+
+    def test_a_real_failure_of_a_manual_run_alerts(self):
+        assert alert_decision(MANUAL, 300, "failure", "proceed", _runs((300, MANUAL))).send is True
+        # A scheduled run in progress does not excuse a failure the guard did
+        # not cause: only a cancellation is the guard's.
+        assert alert_decision(MANUAL, 300, "failure", "proceed", _runs((200, SCHEDULED))).send is True
+
+    def test_a_cancellation_that_is_not_the_guards_alerts(self):
+        # timeout-minutes or a person: no scheduled run is there to have done it.
+        assert alert_decision(MANUAL, 300, "cancelled", "proceed", _runs((300, MANUAL))).send is True
+        assert alert_decision(MANUAL, 300, "cancelled", "proceed", _runs()).send is True
+
+    def test_a_deferral_with_nothing_left_running_alerts(self):
+        # The guard deferred blind (it could not list the runs) or the refresh
+        # it yielded to has gone: the dispatch did not happen and nothing
+        # else is refreshing, so the operator must re-dispatch.
+        assert alert_decision(MANUAL, 300, "failure", "defer", _runs((300, MANUAL))).send is True
+
+    def test_a_guard_that_could_not_decide_alerts(self):
+        decision = alert_decision(MANUAL, 300, "failure", "undecided", _runs((200, SCHEDULED)))
+        assert decision.send is True
+
+    @pytest.mark.parametrize("payload", [None, {"message": "Server Error"}, []])
+    def test_an_unanswered_listing_alerts(self, payload):
+        assert alert_decision(MANUAL, 300, "failure", "defer", payload).send is True
+        assert alert_decision(MANUAL, 300, "cancelled", "proceed", payload).send is True
+
+    def test_a_scheduled_run_always_alerts(self):
+        # Production is never deferred or cancelled by the guard.
+        for status, outcome in (("failure", "proceed"), ("cancelled", "cancel"),
+                                ("failure", "defer"), ("cancelled", "proceed")):
+            decision = alert_decision(SCHEDULED, 200, status, outcome,
+                                      _runs((100, MANUAL), (200, SCHEDULED), (300, SCHEDULED)))
+            assert decision.send is True, (status, outcome)
+
+
 def _cli(*args, stdin=""):
     return subprocess.run(
         [sys.executable, str(_SCRIPT), *args], input=stdin, capture_output=True, text=True, cwd=_REPO,
@@ -362,6 +419,30 @@ class TestOverlapCli:
             capture_output=True, text=True, cwd=tmp_path,
         )
         assert (out.returncode, out.stdout) == (0, "cancel 100\n"), out.stderr
+
+
+class TestAlertCli:
+    def test_prints_send_or_skip(self, tmp_path):
+        runs = tmp_path / "runs.json"
+        runs.write_text(json.dumps(_runs((200, SCHEDULED), (300, MANUAL))))
+        args = ("--alert", "--event", MANUAL, "--run-id", "300", "--runs", str(runs))
+        out = _cli(*args, "--job-status", "failure", "--guard", "defer")
+        assert (out.returncode, out.stdout) == (0, "skip\n"), out.stderr
+        assert "200" in out.stderr
+        out = _cli(*args, "--job-status", "failure", "--guard", "proceed")
+        assert (out.returncode, out.stdout) == (0, "send\n"), out.stderr
+
+    def test_an_empty_or_unreadable_listing_sends(self, tmp_path):
+        runs = tmp_path / "runs.json"
+        runs.write_text("")
+        for path in (runs, tmp_path / "absent.json"):
+            out = _cli("--alert", "--event", MANUAL, "--run-id", "300", "--runs", str(path),
+                       "--job-status", "failure", "--guard", "defer")
+            assert (out.returncode, out.stdout) == (0, "send\n"), out.stderr
+
+    def test_needs_the_job_status(self, tmp_path):
+        out = _cli("--alert", "--event", MANUAL, "--run-id", "300", "--runs", str(tmp_path / "r.json"))
+        assert out.returncode != 0
 
 
 class TestSupersededRefreshPrs:
@@ -424,6 +505,9 @@ elif "/actions/workflows/refresh-data.yml/runs" in path:
     if scenario.get("list_fails"):
         print('{"message": "Server Error"}')
         sys.exit(1)
+    if scenario.get("list_hangs"):
+        import time
+        time.sleep(scenario["list_hangs"])
     json.dump(scenario["runs"], sys.stdout)
 elif path.endswith("/cancel"):
     sys.exit(1 if scenario.get("cancel_fails") else 0)
@@ -432,6 +516,13 @@ else:
     polls = sum(1 for call in earlier + [args] if call[:1] == ["api"] and call[-3:-2] == [path])
     after = scenario.get("completed_after", {}).get(run_id, 1)
     print("completed" if after is not None and polls >= after else "in_progress")
+'''
+
+
+_FAKE_CURL = f'''#!{sys.executable}
+import json, os, sys
+with open(os.environ["FAKE_GH_LOG"], "a") as handle:
+    handle.write(json.dumps(["curl", *sys.argv[1:]]) + "\\n")
 '''
 
 
@@ -449,6 +540,7 @@ def fake_gh(tmp_path):
         "gh": _FAKE_GH,
         "sleep": '#!/bin/sh\necho "[\\"sleep\\", \\"$1\\"]" >> "$FAKE_GH_LOG"\n',
         "python3": f'#!/bin/sh\nexec "{sys.executable}" "$@"\n',
+        "curl": _FAKE_CURL,
     }.items():
         (bin_dir / name).write_text(body)
         (bin_dir / name).chmod(0o755)
@@ -461,6 +553,7 @@ def fake_gh(tmp_path):
         result = subprocess.run(
             ["bash", "-e", "-c", script], cwd=cwd, capture_output=True, text=True,
             env={**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}", "RUNNER_TEMP": str(tmp_path),
+                 "GITHUB_OUTPUT": str(tmp_path / "github_output"),
                  "FAKE_GH_SCENARIO": str(scenario_path), "FAKE_GH_LOG": str(log),
                  "GH_TOKEN": "not-a-token", "REPO": "o/r", "SHA": "abc123", **env},
         )
@@ -536,6 +629,172 @@ class TestOverlapStep:
                                     EVENT=event, RUN_ID="200")
             assert result.returncode == 0, result.stderr
             assert _cancels(calls) == []
+
+    @pytest.mark.parametrize("event,scenario,outcome", [
+        (MANUAL, {"runs": _runs((200, SCHEDULED), (300, MANUAL))}, "defer"),
+        (MANUAL, {"runs": _runs((300, MANUAL))}, "proceed"),
+        (SCHEDULED, {"runs": _runs((100, MANUAL), (300, SCHEDULED))}, "cancel"),
+        (MANUAL, {"runs": _runs((300, MANUAL)), "fetch_fails": True}, "undecided"),
+        (SCHEDULED, {"runs": _runs((300, SCHEDULED)), "fetch_fails": True}, "undecided"),
+    ])
+    def test_the_step_reports_its_outcome_for_the_alert(self, fake_gh, tmp_path, event, scenario, outcome):
+        assert _workflow_step("overlapping")["id"] == "guard"
+        fake_gh(_workflow_step("overlapping")["run"], scenario, EVENT=event, RUN_ID="300")
+        assert (tmp_path / "github_output").read_text() == f"outcome={outcome}\n"
+
+
+_SENDER = "JoinALab <alerts@example.com>"
+
+
+def _alert_script(run_id: str) -> str:
+    """The alert step's script with the expressions GitHub fills in filled in."""
+    script = str(_workflow_step("Alert operator")["run"])
+    script = re.sub(r"\$\{\{ vars\.RESEND_FROM_EMAIL \|\| '[^']*' \}\}", _SENDER, script)
+    for expression, value in {"github.server_url": "https://github.com", "github.repository": "o/r",
+                              "github.run_id": run_id}.items():
+        script = script.replace("${{ " + expression + " }}", value)
+    assert "${{" not in script
+    # A listing that hangs is cut off sooner here than on the runner.
+    return re.sub(r"\btimeout \d+ gh api ", "timeout 1 gh api ", script)
+
+
+def _mails(calls):
+    return [json.loads(call[call.index("-d") + 1]) for call in calls if call[0] == "curl"]
+
+
+class TestAlertStep:
+    """The alert step itself, as the runner runs it after a failure or a cancel."""
+
+    def _run(self, fake_gh, tmp_path, *, event, run_id, status, guard, runs, guard_copy=True, withheld="",
+             extra_env=None, **scenario):
+        if guard_copy:
+            shutil.copy(_SCRIPT, tmp_path / "refresh_rotation.py")
+        step = _workflow_step("Alert operator")
+        env = {"EVENT": event, "RUN_ID": run_id, "JOB_STATUS": status, "GUARD": guard, "WITHHELD": withheld,
+               "RESEND_API_KEY": "not-a-key", "OPERATOR_EMAIL": "operator@example.com", "SHARD": "uw"}
+        assert set(step["env"]) <= {*env, "GH_TOKEN", "REPO"}
+        result, calls = fake_gh(_alert_script(run_id), {"runs": runs, **scenario}, **env, **(extra_env or {}))
+        assert result.returncode == 0, result.stdout + result.stderr
+        self.calls = calls
+        return result, _mails(calls)
+
+    def test_still_runs_on_failure_and_on_cancel(self):
+        condition = str(_workflow_step("Alert operator")["if"])
+        assert "failure()" in condition and "cancelled()" in condition
+        env = _workflow_step("Alert operator")["env"]
+        assert env["GUARD"] == "${{ steps.guard.outputs.outcome }}"
+        assert env["JOB_STATUS"] == "${{ job.status }}"
+
+    def test_a_manual_run_that_deferred_to_a_scheduled_one_sends_no_mail(self, fake_gh, tmp_path):
+        result, mails = self._run(fake_gh, tmp_path, event=MANUAL, run_id="300", status="failure",
+                                  guard="defer", runs=_runs((200, SCHEDULED), (300, MANUAL)))
+        assert mails == []
+        assert "200" in result.stdout + result.stderr
+
+    def test_a_manual_run_a_scheduled_run_cancelled_sends_no_mail(self, fake_gh, tmp_path):
+        # The scheduled guard waits for this run to complete, so it is still
+        # in progress while this step runs.
+        _, mails = self._run(fake_gh, tmp_path, event=MANUAL, run_id="100", status="cancelled",
+                             guard="proceed", runs=_runs((100, MANUAL), (200, SCHEDULED)))
+        assert mails == []
+
+    def test_a_real_failure_still_mails(self, fake_gh, tmp_path):
+        _, mails = self._run(fake_gh, tmp_path, event=MANUAL, run_id="300", status="failure",
+                             guard="proceed", runs=_runs((300, MANUAL)))
+        (mail,) = mails
+        assert mail["to"] == ["operator@example.com"] and mail["from"] == _SENDER
+        assert "FAILED" in mail["subject"] and "uw" in mail["subject"]
+        assert "https://github.com/o/r/actions/runs/300" in mail["text"]
+
+    def test_a_cancel_that_is_not_the_guards_still_mails(self, fake_gh, tmp_path):
+        _, mails = self._run(fake_gh, tmp_path, event=MANUAL, run_id="300", status="cancelled",
+                             guard="proceed", runs=_runs((300, MANUAL)))
+        assert len(mails) == 1
+
+    @pytest.mark.parametrize("status", ["failure", "cancelled"])
+    def test_a_scheduled_run_always_mails(self, fake_gh, tmp_path, status):
+        _, mails = self._run(fake_gh, tmp_path, event=SCHEDULED, run_id="200", status=status,
+                             guard="cancel", runs=_runs((100, MANUAL), (200, SCHEDULED)))
+        assert len(mails) == 1
+        # Nothing it could learn would stop the mail, so it asks nothing.
+        assert [call for call in self.calls if call[0] != "curl"] == []
+
+    def test_a_failed_listing_mails(self, fake_gh, tmp_path):
+        _, mails = self._run(fake_gh, tmp_path, event=MANUAL, run_id="300", status="failure",
+                             guard="defer", runs=_runs((200, SCHEDULED)), list_fails=True)
+        assert len(mails) == 1
+
+    def test_a_listing_that_hangs_is_cut_off_and_mails(self, fake_gh, tmp_path):
+        # Answered in time, this listing would show the deferral and send nothing.
+        _, mails = self._run(fake_gh, tmp_path, event=MANUAL, run_id="300", status="failure",
+                             guard="defer", runs=_runs((200, SCHEDULED), (300, MANUAL)), list_hangs=20)
+        assert len(mails) == 1
+
+    def _without_python3(self, tmp_path) -> dict:
+        """A PATH holding only what the step runs besides python3."""
+        bin_dir = tmp_path / "no-python3"
+        bin_dir.mkdir()
+        for name in ("gh", "curl"):
+            (bin_dir / name).symlink_to(tmp_path / "bin" / name)
+        for name in ("bash", "timeout", "env"):
+            (bin_dir / name).symlink_to(shutil.which(name))
+        return {"PATH": str(bin_dir)}
+
+    @pytest.mark.parametrize("event, status", [(SCHEDULED, "success"), (MANUAL, "failure")])
+    def test_without_python3_a_fixed_short_mail_still_goes(self, fake_gh, tmp_path, event, status):
+        result, mails = self._run(fake_gh, tmp_path, event=event, run_id="300", status=status, guard="defer",
+                                  runs=_runs((200, SCHEDULED), (300, MANUAL)), withheld=self._WITHHELD,
+                                  extra_env=self._without_python3(tmp_path))
+        assert "python3" in result.stderr
+        (mail,) = mails
+        assert mail["to"] == ["operator@example.com"] and mail["from"] == _SENDER
+        assert mail["subject"] == ("JoinALab: data refresh withheld schools (shard: uw)" if status == "success"
+                                   else "JoinALab: data refresh FAILED (shard: uw)")
+        assert mail["text"].startswith("This is the short form of the alert")
+        assert mail["text"].endswith("\n\nShard: uw\nRun: https://github.com/o/r/actions/runs/300")
+
+    # What the publish step writes when the verdict withheld a school (see
+    # tests/test_publishable_shards.py); the reason quotes the source's error.
+    _WITHHELD = ('Publishable (1): wisc\nWithheld (1), each keeping the data last committed for it:\n'
+                 '- uw: source uw_faculty reported error: HTTP 500 "Service Unavailable" \\ retry')
+
+    def test_runs_when_the_publish_step_withheld_a_school(self):
+        step = _workflow_step("Alert operator")
+        assert "steps.publish.outputs.withheld != ''" in str(step["if"])
+        assert step["env"]["WITHHELD"] == "${{ steps.publish.outputs.withheld }}"
+
+    def test_a_run_that_succeeded_but_withheld_a_school_mails_its_reasons(self, fake_gh, tmp_path):
+        _, mails = self._run(fake_gh, tmp_path, event=SCHEDULED, run_id="200", status="success",
+                             guard="proceed", runs=_runs((200, SCHEDULED)), withheld=self._WITHHELD)
+        (mail,) = mails
+        assert "FAILED" not in mail["subject"] and "withheld" in mail["subject"]
+        assert mail["text"].endswith("\n\n" + self._WITHHELD)
+        assert "https://github.com/o/r/actions/runs/200" in mail["text"]
+
+    def test_a_failed_run_that_withheld_a_school_says_so_under_the_failure(self, fake_gh, tmp_path):
+        _, mails = self._run(fake_gh, tmp_path, event=SCHEDULED, run_id="200", status="failure",
+                             guard="proceed", runs=_runs((200, SCHEDULED)), withheld=self._WITHHELD)
+        (mail,) = mails
+        assert "FAILED" in mail["subject"]
+        assert mail["text"].startswith("The scheduled data refresh failed.")
+        assert mail["text"].endswith("\n" + self._WITHHELD)
+
+    def test_a_failure_without_withheld_schools_keeps_its_old_text(self, fake_gh, tmp_path):
+        _, mails = self._run(fake_gh, tmp_path, event=SCHEDULED, run_id="200", status="failure",
+                             guard="proceed", runs=_runs((200, SCHEDULED)))
+        (mail,) = mails
+        assert mail["subject"] == "JoinALab: data refresh FAILED (shard: uw)"
+        assert mail["text"] == (
+            "The scheduled data refresh failed.\n\nShard: uw\nRun: https://github.com/o/r/actions/runs/200\n\n"
+            "The corpus has not been updated. Only this shard's schools missed their refresh; the rotation "
+            "retries them next week. Repeated failures mean the pipeline is dead — check the Data-quality "
+            "gate step first (that is where the last 7-run outage lived).")
+
+    def test_without_the_guards_copy_it_mails(self, fake_gh, tmp_path):
+        # The guard could not fetch its script, so it decided nothing.
+        _, mails = self._run(fake_gh, tmp_path, event=MANUAL, run_id="300", status="failure",
+                             guard="undecided", runs=_runs((200, SCHEDULED)), guard_copy=False)
+        assert len(mails) == 1
 
 
 def _stale_close_snippet() -> str:

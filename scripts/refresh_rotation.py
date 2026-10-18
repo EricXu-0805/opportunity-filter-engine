@@ -3,11 +3,12 @@
 
 The workflow delegates all shard selection to this module so collector
 registration and the weekly schedule cannot silently drift apart. It also
-decides whether a refresh run may start beside another one.
+decides whether a refresh run may start beside another one, and whether a run
+that one of those decisions stopped mails the operator.
 
 The workflow runs ``--overlap`` before it checks the repository out, from a
-copy of this file alone, so nothing here imports from the repository at load
-time.
+copy of this file alone, and ``--alert`` from the same copy, so nothing here
+imports from the repository at load time.
 """
 
 from __future__ import annotations
@@ -389,6 +390,43 @@ def overlap_decision(event_name: str, run_id: int, payload) -> OverlapDecision:
     return OverlapDecision("proceed", level="warning", message=beside)
 
 
+@dataclass(frozen=True)
+class AlertDecision:
+    send: bool
+    message: str = ""
+
+
+def alert_decision(event_name: str, run_id: int, job_status: str, guard_outcome: str,
+                   payload) -> AlertDecision:
+    """Whether refresh run ``run_id``, which failed or was cancelled, mails the operator.
+
+    The overlap guard stops a manual run on purpose two ways: the run defers
+    to a refresh in progress (its guard step reports ``defer`` and fails the
+    job), or a scheduled run's guard cancels it. Neither run failed, and the
+    refresh it stood aside for is running, so the "data refresh FAILED" mail
+    was false. ``payload`` is the in-progress listing taken when the alert
+    step runs: it must still show that other refresh, or the alert is sent,
+    as it is for a scheduled run, a guard that could not decide, and anything
+    the listing cannot answer.
+    """
+    if event_name == PRODUCTION_EVENT:
+        return AlertDecision(True)
+    runs = _runs_in_progress(payload)
+    if runs is None:
+        return AlertDecision(True, "Could not list the refresh runs in progress; alerting.")
+    others = [(other, event) for other, event in runs if other != run_id]
+    if guard_outcome == "defer" and others:
+        ids = ", ".join(str(other) for other, _ in others)
+        return AlertDecision(False, f"This manual run deferred to refresh run(s) {ids} in "
+                                    "progress; that is not a failed refresh, so no alert.")
+    scheduled = [other for other, event in others if event == PRODUCTION_EVENT]
+    if job_status == "cancelled" and scheduled:
+        ids = ", ".join(str(other) for other in scheduled)
+        return AlertDecision(False, f"Scheduled refresh run(s) {ids} cancelled this manual "
+                                    "run as the overlap guard does; no alert.")
+    return AlertDecision(True)
+
+
 def superseded_refresh_prs(prs: list, run_id: int) -> list[int]:
     """Open data-refresh PRs that runs older than ``run_id`` left behind.
 
@@ -427,6 +465,19 @@ def _overlap_cli(event_name: str, run_id: int, runs_path: str) -> int:
     return 0
 
 
+def _alert_cli(event_name: str, run_id: int, job_status: str, guard_outcome: str,
+               runs_path: str) -> int:
+    try:
+        payload = json.loads(Path(runs_path).read_text())
+    except (OSError, ValueError):
+        payload = None
+    decision = alert_decision(event_name, run_id, job_status, guard_outcome, payload)
+    if decision.message:
+        _annotate("info", decision.message)
+    print("send" if decision.send else "skip")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     group = parser.add_mutually_exclusive_group(required=True)
@@ -436,6 +487,12 @@ def main() -> int:
         "--overlap",
         action="store_true",
         help="Print proceed, defer or 'cancel <run ids>' for this run (needs --event, --run-id, --runs)",
+    )
+    group.add_argument(
+        "--alert",
+        action="store_true",
+        help="Print send or skip: does this failed or cancelled run mail the operator "
+             "(needs --event, --run-id, --job-status, --guard, --runs)",
     )
     group.add_argument(
         "--superseded-prs",
@@ -448,6 +505,8 @@ def main() -> int:
         "--runs",
         help="File holding the in-progress workflow-runs API response; empty or unreadable means the request failed",
     )
+    parser.add_argument("--job-status", help="This run's job.status: success, failure or cancelled")
+    parser.add_argument("--guard", help="The overlap guard step's outcome output; empty when it wrote none")
     parser.add_argument(
         "--allow-full",
         action="store_true",
@@ -479,6 +538,10 @@ def main() -> int:
         if not args.event or args.run_id is None or args.runs is None:
             parser.error("--overlap needs --event, --run-id and --runs")
         return _overlap_cli(args.event, args.run_id, args.runs)
+    if args.alert:
+        if not args.event or args.run_id is None or args.runs is None or args.job_status is None:
+            parser.error("--alert needs --event, --run-id, --job-status and --runs")
+        return _alert_cli(args.event, args.run_id, args.job_status, args.guard or "", args.runs)
     if args.superseded_prs:
         if args.run_id is None:
             parser.error("--superseded-prs needs --run-id")
