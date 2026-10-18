@@ -84,8 +84,18 @@ for (const locale of ['en', 'zh'] as const) {
     await page.getByRole('button', { name: copy('Add', '添加'), exact: true }).click();
     await expect(statusOf('STAT 400')).toHaveValue('in_progress');
     await expect(page.getByText(copy('not marked yet', '还未标注'), { exact: false })).toHaveCount(0);
-    // The rows fit a phone without scrolling sideways.
-    expect(await page.evaluate(() => document.body.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+    // The rows fit a phone without scrolling sideways; a failure names what sticks out.
+    const wide = await page.evaluate(() => {
+      const edge = document.documentElement.clientWidth;
+      return Array.from(document.querySelectorAll('body *'))
+        .map((el) => ({ el, right: el.getBoundingClientRect().right }))
+        .filter(({ right }) => right > edge + 0.5)
+        .slice(0, 12)
+        .map(({ el, right }) => `${el.tagName.toLowerCase()}${el.id ? `#${el.id}` : ''}`
+          + ` .${String(el.getAttribute('class') ?? '').split(/\s+/).slice(0, 5).join('.')}`
+          + ` right=${Math.round(right)} text="${(el.textContent ?? '').trim().slice(0, 40)}"`);
+    });
+    expect(await page.evaluate(() => document.body.scrollWidth <= document.documentElement.clientWidth), wide.join('\n')).toBe(true);
     await statusOf('STAT 400').scrollIntoViewIfNeeded();
     await page.screenshot({ path: info.outputPath(`course-status-${locale}.png`) });
 
