@@ -476,6 +476,7 @@ def source_rows(
             "last_publish_at": shard_row.get("last_publish_at"),
             "current_record_count": row.get("current_count"),
             "last_good_record_count": row.get("last_good_count"),
+            "baseline_record_count": row.get("baseline_count"),
             "freshness_age_days": _round(_age_days(row.get("last_success_at"), now)),
             "freshness": freshness_of(row, now),
             "status": row.get("status"),
@@ -494,6 +495,13 @@ def _round(value: float | None) -> float | None:
     return None if value is None else round(value, 2)
 
 
+def _count(value: object) -> int | None:
+    """A usable record count, or None for a missing or malformed one."""
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return None
+    return value
+
+
 def school_rows(
     ledger: dict,
     now: datetime | None = None,
@@ -510,6 +518,26 @@ def school_rows(
     The converse guard matters as much: a school is fully stale when every
     source is stale even if the shard file was rewritten today, because a
     rewrite that carried only retained records forward is not a refresh.
+
+    ``last_successful_school_activity`` is the NEWEST success over the
+    school's eligible sources, so on its own it overstates freshness: one
+    working source hides every dead sibling. ``oldest_success_at`` is the
+    other end - the oldest ``last_success_at`` among those sources - and is
+    None when any of them has never succeeded (no parseable
+    ``last_success_at``); ``never_succeeded_shard_count`` says how many.
+
+    Coverage change, over the same eligible sources:
+
+    * ``coverage_current_count`` - sum of each source's ``current_count``,
+      what its latest attempt emitted; an attempt with no usable count
+      (None) adds 0.
+    * ``coverage_last_good_count`` - sum of each source's
+      ``last_good_count``, what its last healthy attempt emitted; where none
+      is recorded, its ``baseline_count`` (the active records the corpus held
+      for it at its latest attempt), else 0.
+    * ``coverage_delta`` - current minus last good. A source whose latest
+      attempt was healthy adds 0 by construction, so a negative delta is the
+      records the school's degraded sources no longer confirm.
     """
     now = now.astimezone(UTC) if now is not None else datetime.now(UTC)
     shards = ledger.get("shards") or {}
@@ -541,6 +569,14 @@ def school_rows(
             _parse(r["last_success_at"]) for r in rows if r["last_success_at"]
         ]
         successes = [s for s in successes if s is not None]
+        never_succeeded = len(rows) - len(successes)
+        coverage_current = sum(_count(r["current_record_count"]) or 0 for r in rows)
+        coverage_last_good = 0
+        for r in rows:
+            good = _count(r["last_good_record_count"])
+            if good is None:
+                good = _count(r["baseline_record_count"]) or 0
+            coverage_last_good += good
         shard_row = shards.get(school)
         shard_row = shard_row if isinstance(shard_row, dict) else {}
         out.append({
@@ -555,6 +591,13 @@ def school_rows(
             "last_successful_school_activity": (
                 _iso(max(successes)) if successes else None
             ),
+            "oldest_success_at": (
+                _iso(min(successes)) if successes and not never_succeeded else None
+            ),
+            "never_succeeded_shard_count": never_succeeded,
+            "coverage_current_count": coverage_current,
+            "coverage_last_good_count": coverage_last_good,
+            "coverage_delta": coverage_current - coverage_last_good,
             "last_publish_at": shard_row.get("last_publish_at"),
             # No fresh source anywhere in the school. Note this is computed
             # from earned per-source successes, never from the publish

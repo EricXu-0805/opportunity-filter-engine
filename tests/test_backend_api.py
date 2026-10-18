@@ -7925,7 +7925,7 @@ class TestSourceHealthSurfaces:
         self, monkeypatch, tmp_path,
     ):
         monkeypatch.setenv("ADMIN_TOKEN", "ok")
-        self._install(monkeypatch, tmp_path)
+        ledger = self._install(monkeypatch, tmp_path)
         body = client.get(
             "/api/admin/source-health/schools", headers={"X-Admin-Token": "ok"},
         ).json()
@@ -7934,6 +7934,13 @@ class TestSourceHealthSurfaces:
         assert ucb["state"] == "partially_degraded"
         assert ucb["fresh_shard_count"] == 1
         assert ucb["stale_shard_count"] == 1
+        # The school's own oldest success, not its publish time or the newest.
+        sources = ledger["sources"]
+        assert ucb["oldest_success_at"] == (
+            sources["ucb_ling_faculty"]["last_success_at"])
+        assert ucb["last_successful_school_activity"] == (
+            sources["ucb_eecs_faculty"]["last_success_at"])
+        assert ucb["coverage_delta"] == -17
         assert body["report"]["fully_stale_school_count"] == 0
         assert body["report"]["partially_degraded_school_count"] == 1
 

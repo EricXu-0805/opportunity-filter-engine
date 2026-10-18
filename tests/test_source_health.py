@@ -286,6 +286,46 @@ class TestSchoolAggregation:
         assert school["last_publish_at"] == NOW.isoformat()
         assert school["fully_stale"] is True
 
+    def test_school_reports_its_oldest_success_and_coverage_change(self):
+        """The newest success alone is one healthy department hiding a dead
+        one, so the row also carries the oldest success and what the
+        degraded sources no longer confirm."""
+        ledger = _ledger_with({
+            "ucb_eecs_faculty": ("ucb", 2, sh.SUCCESS_NONZERO),
+            "ucb_ling_faculty": ("ucb", 44, sh.SUSPICIOUS_ZERO),
+        })
+        school = sh.school_rows(ledger, NOW, ALL)[0]
+        assert school["last_successful_school_activity"] == (
+            NOW - timedelta(days=2)).isoformat()
+        assert school["oldest_success_at"] == (
+            NOW - timedelta(days=44)).isoformat()
+        assert school["never_succeeded_shard_count"] == 0
+        # eecs emitted its 10 again; ling emitted 0 of the 10 seeded as its
+        # last good count from the corpus baseline.
+        assert school["coverage_current_count"] == 10
+        assert school["coverage_last_good_count"] == 20
+        assert school["coverage_delta"] == -10
+
+    def test_a_never_successful_source_leaves_no_oldest_success(self):
+        ledger = _ledger_with({
+            "ucb_eecs_faculty": ("ucb", 2, sh.SUCCESS_NONZERO),
+        })
+        # Failed with no usable count, no last good count and no success:
+        # it is measured against its baseline and counted as never succeeded.
+        ledger["sources"]["ucb_ling_faculty"] = {
+            "school": "ucb", "status": sh.FAILED, "current_count": None,
+            "baseline_count": 5, "last_good_count": None,
+            "last_success_at": None,
+        }
+        school = sh.school_rows(ledger, NOW, ALL)[0]
+        assert school["oldest_success_at"] is None
+        assert school["never_succeeded_shard_count"] == 1
+        assert school["last_successful_school_activity"] == (
+            NOW - timedelta(days=2)).isoformat()
+        assert school["coverage_current_count"] == 10
+        assert school["coverage_last_good_count"] == 15
+        assert school["coverage_delta"] == -5
+
     def test_corpus_report_counts_states_and_names_stale_schools(self):
         ledger = _ledger_with({
             "ucb_eecs_faculty": ("ucb", 2, sh.SUCCESS_NONZERO),
