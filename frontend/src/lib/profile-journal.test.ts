@@ -973,6 +973,18 @@ describe('a rebase receipt is removed once nothing on disk can reach it (checkli
     expect(receiptIds()).toEqual([]);
   });
 
+  it('starts the grace when a new document first reads the journal, not at its first settle', () => {
+    const token = captureOwnerToken();
+    const t = appendJournalOp({ ...op('major', 'ECE'), ...foreign }, token)!;
+    land(t, token);
+    startDocumentForTests('other');
+    // A page load reads the journal long before anything settles.
+    expect(readOutstandingOps().ok).toBe(true);
+    now += 60_000;
+    expect(compactRebaseReceipts(token)).toBe(true);
+    expect(receiptIds()).toEqual([]);
+  });
+
   it('removes nothing while any operation on disk cannot be read — it might name anything', () => {
     const token = captureOwnerToken();
     const a = appendJournalOp(op('major', 'ECE'), token)!;
