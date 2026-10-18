@@ -338,17 +338,27 @@ def _refresh(monkeypatch, tmp_path, today, page):
     return summary, json.loads(processed.read_text(encoding="utf-8"))
 
 
-def _directory_page(extra_rows=()):
+def _directory_page(edit=None):
+    """The fixture page, its people list passed through ``edit``."""
     from bs4 import BeautifulSoup
 
     page = BeautifulSoup((FIXTURES / "colby" / "people_directory.html").read_text(encoding="utf-8"),
                          "html.parser")
-    if extra_rows:
+    if edit is not None:
         app = page.select_one("#app[data-page]")
         data = json.loads(app["data-page"])
-        data["props"]["people"].extend(extra_rows)
+        data["props"]["people"] = edit(data["props"]["people"])
         app["data-page"] = json.dumps(data)
     return page
+
+
+def _relist_tate(department):
+    def edit(people):
+        for x in people:
+            if x["post_title"] == "Winifred Tate":
+                x["department"] = department
+        return people
+    return edit
 
 
 @pytest.mark.parametrize("today, retired", [
@@ -365,6 +375,13 @@ def test_the_colby_refresh_retires_the_people_the_directory_no_longer_lists(
     # The page lists every person, staff included, so each department's
     # roster is all of them, read to the last row.
     assert {e["coverage"]["raw_roster_rows"] for e in ledger.values()} == {1177}
+    # Together the 34 read 234 people for the 239 they hold active (Andie Wang
+    # merged in), above the 90% the shared page needs.
+    assert all(e["shared_roster"] == "https://www.colby.edu/people/people-directory/"
+               and e["shared_roster_check"] == {
+                   "units": 34, "incomplete_units": [], "observed_count": 234,
+                   "baseline_active_count": 239, "withheld": None}
+               for e in ledger.values())
     assert len(corpus) == 239
     inactive = [r for r in corpus if r["metadata"]["is_active"] is False]
     assert {r["pi_name"] for r in inactive} == retired
@@ -378,16 +395,106 @@ def test_the_colby_refresh_retires_the_people_the_directory_no_longer_lists(
     assert andie["metadata"]["is_active"] is True
 
 
-@pytest.mark.parametrize("unreadable_row", [False, True])
-def test_a_directory_not_read_whole_retires_no_one(monkeypatch, tmp_path, unreadable_row):
-    # A failed render reads as zero rows; a row the parse cannot read leaves
-    # every department's roster short of the page's.
-    page = _directory_page(["Catherine Besteman"]) if unreadable_row else None
-    summary, corpus = _refresh(monkeypatch, tmp_path, datetime(2026, 11, 7).date(), page)
+def test_a_failed_render_retires_no_one(monkeypatch, tmp_path):
+    # Zero rows in every department: the source reads as a suspicious zero,
+    # so the retirement pass never weighs its ledger.
+    summary, corpus = _refresh(monkeypatch, tmp_path, datetime(2026, 11, 7).date(), None)
 
-    ledger = summary["sources"]["colby_faculty"]["stale_unit_ledger"]
+    source = summary["sources"]["colby_faculty"]
+    assert source["status"] == "suspicious_zero"
+    ledger = source["stale_unit_ledger"]
+    assert {(e["parse_status"], e["coverage"]["unparsed_rows"], e["shared_roster"])
+            for e in ledger.values()} == {
+        ("zero_rows", 0, "https://www.colby.edu/people/people-directory/")}
     assert not any(e["retirement_authorized"] for e in ledger.values())
-    assert {(e["parse_status"], e["coverage"]["unparsed_rows"]) for e in ledger.values()} == (
-        {("ok", 1)} if unreadable_row else {("zero_rows", 0)})
+    assert summary["sources"]["deactivate_stale_faculty"]["newly_deactivated"] == 0
     assert all(r["metadata"]["is_active"] is True for r in corpus)
     assert {r["id"] for r in STORED} <= {r["id"] for r in corpus}
+
+
+def _drop_department(name):
+    return lambda people: [x for x in people if name not in str(x["department"])]
+
+
+_ANTH_ROW = {"post_name": "", "business_title": "Professor of Anthropology",
+             "department": "Anthropology"}
+
+
+@pytest.mark.parametrize("edit, incomplete", [
+    # A row that is not a person object, a person row with an empty name,
+    # an empty object: a row nobody can read could be any department's.
+    pytest.param(lambda people: [*people, "Catherine Besteman"], 34, id="not-an-object"),
+    pytest.param(lambda people: [*people, {**_ANTH_ROW, "post_title": ""}], 34, id="empty-name"),
+    pytest.param(lambda people: [*people, {}], 34, id="empty-object"),
+    # One department with no one listed; the list cut to its first half,
+    # which leaves two departments with no one.
+    pytest.param(_drop_department("Anthropology"), 1, id="department-empty"),
+    pytest.param(lambda people: people[:len(people) // 2], 2, id="first-half"),
+])
+def test_a_directory_not_read_whole_retires_no_one(monkeypatch, tmp_path, edit, incomplete):
+    # The 34 departments read one page, so each one's roster only shows the
+    # rows the page gave it. Unless every department read the page whole, none
+    # of them retires anyone, and every unit's ledger says why.
+    summary, corpus = _refresh(monkeypatch, tmp_path, datetime(2026, 11, 7).date(),
+                               _directory_page(edit))
+
+    ledger = summary["sources"]["colby_faculty"]["stale_unit_ledger"]
+    assert len(ledger) == 34
+    assert not any(e["retirement_authorized"] for e in ledger.values())
+    checks = [e["shared_roster_check"] for e in ledger.values()]
+    assert {c["withheld"] for c in checks} == {"shared_roster_unit_incomplete"}
+    assert {c["units"] for c in checks} == {34}
+    assert sum(e["completeness_status"] != "complete" for e in ledger.values()) == 34
+    assert sum(e["failure_reason"] != "shared_roster_unit_incomplete"
+               for e in ledger.values()) == incomplete
+    stale = summary["sources"]["deactivate_stale_faculty"]
+    assert stale["newly_deactivated"] == 0
+    assert all(r["metadata"]["is_active"] is True for r in corpus)
+    assert {r["id"] for r in STORED} <= {r["id"] for r in corpus}
+
+
+def test_a_page_that_lists_too_few_people_retires_no_one(monkeypatch, tmp_path, caplog):
+    # Every department still has someone, but together they read 144 people,
+    # fewer than 90% of the 239 they hold active.
+    def thin(people):
+        # Every second professor is left off, but never a department's first.
+        firsts: set = set()
+        kept = []
+        for i, x in enumerate(people):
+            professor = "Professor" in x["business_title"]
+            if professor and x["department"] in firsts and i % 2:
+                continue
+            if professor:
+                firsts.add(x["department"])
+            kept.append(x)
+        return kept
+
+    summary, corpus = _refresh(monkeypatch, tmp_path, datetime(2026, 11, 7).date(),
+                               _directory_page(thin))
+
+    ledger = summary["sources"]["colby_faculty"]["stale_unit_ledger"]
+    assert summary["sources"]["deactivate_stale_faculty"]["newly_deactivated"] == 0
+    assert all(r["metadata"]["is_active"] is True for r in corpus)
+    assert not any(e["retirement_authorized"] for e in ledger.values())
+    check = next(iter(ledger.values()))["shared_roster_check"]
+    assert check["incomplete_units"] == []
+    assert (check["observed_count"], check["baseline_active_count"]) == (144, 239)
+    assert {e["shared_roster_check"]["withheld"] for e in ledger.values()} == {"shared_roster_short"}
+    assert {e["failure_reason"] for e in ledger.values()} == {"shared_roster_short"}
+    assert "34 unit(s) reading https://www.colby.edu/people/people-directory/ retire " \
+           "nobody (shared_roster_short)" in caplog.text
+
+
+@pytest.mark.parametrize("department", [None, "", "Colby College"])
+def test_a_professor_still_listed_under_no_department_is_kept(monkeypatch, tmp_path, department):
+    # Winifred Tate is still listed as Professor of Anthropology, but the page
+    # no longer gives her a department any unit reads: no unit observes her,
+    # yet she is not gone. The five the page lost still retire.
+    summary, corpus = _refresh(monkeypatch, tmp_path, datetime(2026, 11, 7).date(),
+                               _directory_page(_relist_tate(department)))
+
+    tate = next(r for r in corpus if r["id"] == "faculty-colby-anth-1338c178")
+    assert tate["metadata"]["is_active"] is True
+    assert {r["pi_name"] for r in corpus if r["metadata"]["is_active"] is False} == GONE
+    stale = summary["sources"]["deactivate_stale_faculty"]
+    assert stale["records_preserved_still_listed"] == 1
