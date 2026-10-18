@@ -83,7 +83,7 @@ describe('match reasons on the zh interface (M107)', () => {
       localizeMatchReasons('zh', ['x'], [{ key: 'type_mismatch', params: { type } }])[0];
     expect(zh(byKey('type_mismatch'))).toBe('这是实习 —— 不是你的首选类型');
     expect(typeLine('research')).toBe('这是研究机会 —— 不是你的首选类型');
-    expect(typeLine('fellowship')).toBe('这是资助项目 —— 不是你的首选类型');
+    expect(typeLine('fellowship')).toBe('这是奖学金项目 —— 不是你的首选类型');
     expect(zh(byKey('type_match'))).toBe('符合你想找的类型：暑期项目');
   });
 

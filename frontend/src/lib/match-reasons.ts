@@ -46,7 +46,7 @@ const TYPES: Record<string, string> = {
   research: '研究机会',
   'summer program': '暑期项目',
   internship: '实习',
-  fellowship: '资助项目',
+  fellowship: '奖学金项目',
 };
 const type = (text: string): string | null => (text ? TYPES[text.toLowerCase()] ?? quote(text) : null);
 
