@@ -15,6 +15,7 @@ tests never touch the network. The core invariants pinned here:
 
 from __future__ import annotations
 
+import asyncio
 import os
 import re
 import sys
@@ -903,8 +904,107 @@ class TestRefreshAccumulatesNewMatches:
         assert body["new_match_ids"] == expected
         assert body["last_result_ids"] == expected
 
+    def test_a_campus_scope_filters_nothing_without_a_profile_row(self, monkeypatch):
+        """With no profile row the refresh does not know the student's school,
+        and it does not filter on a guess: the row matches as it did before
+        the scope was read."""
+        _set_digest_env(monkeypatch)
+        patches: list = []
+        row = self._refresh_row(device_id="device-unprofiled", filters_json={"scope": "campus"})
+        _install_stubs(
+            monkeypatch, rows=[row], patches=patches,
+            opportunities=[_night_opp("opp-here", "uiuc"), _night_opp("opp-there", "ucb")],
+        )
 
-SID ="11111111-2222-3333-4444-555555555555"
+        client.get("/api/cron/saved-searches/refresh", headers=AUTH)
+
+        body = patches[0]["json"]
+        assert body["new_match_ids"] == ["opp-here", "opp-there"]
+        assert body["last_result_ids"] == ["opp-here", "opp-there"]
+
+    def test_a_campus_scoped_search_drops_queued_records_from_other_campuses(
+        self, monkeypatch,
+    ):
+        """Records queued before the refresh read the scope would still be
+        counted on the New badge and mailed once. A queued record tonight's
+        data places outside the scope goes; one tonight's data does not hold
+        is unknown, not out of scope, and stays."""
+        _set_digest_env(monkeypatch)
+        patches: list = []
+        device = "device-scoped"
+        row = self._refresh_row(
+            device_id=device, filters_json={"scope": "campus"},
+            last_result_ids=["opp-here", "opp-there"],
+            new_match_ids=["opp-there", "opp-unloaded"],
+        )
+        _install_stubs(
+            monkeypatch, rows=[row], patches=patches,
+            opportunities=[_night_opp("opp-here", "uiuc"), _night_opp("opp-there", "ucb")],
+            profiles=[{"id": device, "profile_data": {
+                "home_school": "uiuc", "include_cross_school": True,
+            }}],
+        )
+
+        client.get("/api/cron/saved-searches/refresh", headers=AUTH)
+
+        assert patches[0]["json"]["new_match_ids"] == ["opp-unloaded"]
+
+    @pytest.mark.parametrize("bad_filters", ["oops", ["scope"]])
+    def test_a_row_with_unreadable_filters_fails_alone(self, monkeypatch, bad_filters):
+        """jsonb takes any value and a student writes their own rows. One row
+        whose filters are not an object is that row's error; the others still
+        refresh, a scoped one included."""
+        _set_digest_env(monkeypatch)
+        patches: list = []
+        device = "device-scoped"
+        rows = [
+            self._refresh_row(id="bad-row", device_id="device-bad", filters_json=bad_filters),
+            self._refresh_row(id="good-row", device_id=device, filters_json={"scope": "campus"}),
+        ]
+        _install_stubs(
+            monkeypatch, rows=rows, patches=patches,
+            opportunities=[_night_opp("opp-here", "uiuc"), _night_opp("opp-there", "ucb")],
+            profiles=[{"id": device, "profile_data": {
+                "home_school": "uiuc", "include_cross_school": True,
+            }}],
+        )
+
+        body = client.get("/api/cron/saved-searches/refresh", headers=AUTH).json()
+
+        assert body["status"] == "partial"
+        assert body["processed"] == 1
+        assert len(body["errors"]) == 1
+        assert body["errors"][0].startswith("bad-row:")
+        assert [patch["params"]["id"] for patch in patches] == ["eq.good-row"]
+        assert patches[0]["json"]["new_match_ids"] == ["opp-here"]
+
+    def test_the_scope_rows_are_built_off_the_event_loop(self, monkeypatch):
+        """A cold build covers every record (seconds over the full corpus);
+        the match view builds them in a worker thread, and so does this."""
+        _set_digest_env(monkeypatch)
+        patches: list = []
+        on_loop: list[bool] = []
+        build = ss_mod._snapshot_view_rows
+
+        def _recording_build(*args):
+            try:
+                asyncio.get_running_loop()
+                on_loop.append(True)
+            except RuntimeError:
+                on_loop.append(False)
+            return build(*args)
+
+        monkeypatch.setattr(ss_mod, "_snapshot_view_rows", _recording_build)
+        row = self._refresh_row(filters_json={"scope": "open"})
+        _install_stubs(monkeypatch, rows=[row], patches=patches)
+
+        client.get("/api/cron/saved-searches/refresh", headers=AUTH)
+
+        assert on_loop == [False]
+        assert len(patches) == 1
+
+
+SID = "11111111-2222-3333-4444-555555555555"
 
 
 def _unsub_url(sid: str = SID, ts: int | None = None, sig: str | None = None) -> str:

@@ -17,6 +17,7 @@ to add concurrency if scale ever requires it.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 import logging
@@ -57,7 +58,7 @@ from backend.routes.push import (
 )
 from src.evidence import is_actionable_target
 from src.matcher.ranker import _filter_context, hard_exclusion
-from src.saved_searches.filter import matching_ids
+from src.saved_searches.filter import matching_ids, out_of_scope_ids
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -542,14 +543,20 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
         # public contact boundary once tonight, not once per saved search.
         served: dict = {}
         # A saved scope reads the match view's own rows, shared with it for
-        # this corpus generation, so they are built at most once.
+        # this corpus generation, so they are built at most once, and off the
+        # event loop as the view builds them. Only an object's scope counts: a
+        # row whose filters are anything else fails alone, in the loop below.
         view_rows = (
-            _snapshot_view_rows(
+            await asyncio.to_thread(
+                _snapshot_view_rows,
                 opportunities,
                 {opportunity.get("id") for opportunity in opportunities},
                 id(corpus),
             )
-            if any((row.get("filters_json") or {}).get("scope") for row in rows)
+            if any(
+                isinstance(row.get("filters_json"), dict) and row["filters_json"].get("scope")
+                for row in rows
+            )
             else None
         )
 
@@ -562,25 +569,31 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
                     continue
                 filters = row.get("filters_json") or {}
                 query = row.get("query") or ""
+                # No profile row: None, and the campus scope is not applied on
+                # a guess, as the exclusions above are not.
+                home_school = home_schools.get(row.get("device_id") or "")
                 prior_result_ids = row.get("last_result_ids") or []
                 prior_ids = set(prior_result_ids)
+                queued_ids = row.get("new_match_ids") or []
+                # Queued before the refresh read the scope, or under another.
+                out_of_scope = out_of_scope_ids(
+                    queued_ids, filters, home_school=home_school, view_rows=view_rows,
+                )
                 pending_ids = [
                     opportunity_id
-                    for opportunity_id in (row.get("new_match_ids") or [])
+                    for opportunity_id in queued_ids
                     if opportunity_id not in hidden_opportunity_ids
                     # Positive set, same as hidden_opportunity_ids: an id this
                     # student's profile excludes goes, an id tonight's corpus
                     # simply could not see stays.
                     and opportunity_id not in ineligible
+                    and opportunity_id not in out_of_scope
                 ]
 
                 current_ids = [
                     oid for oid in matching_ids(
                         opportunities, filters, query, served=served,
-                        # No profile row: the match view's default school,
-                        # as for a profile that names none.
-                        home_school=home_schools.get(row.get("device_id") or "", "uiuc"),
-                        view_rows=view_rows,
+                        home_school=home_school, view_rows=view_rows,
                     )
                     if oid not in ineligible
                 ]
