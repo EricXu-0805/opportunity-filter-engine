@@ -28,13 +28,19 @@ _ATTACHMENT = re.compile(
     rf"\b(?:my\s+)?{_DOCUMENT}\s+(?:is|are|has\s+been|have\s+been)\s+included\s+with\s+this\s+email\b",
     re.IGNORECASE,
 )
+# "Went through" counts only for "your" or "this" paper or work: "I went
+# through a study abroad program" or "the research process" reads nothing.
 _READING = re.compile(
     r"\b(?:i(?:\s+have|['’]ve)?\s+(?:(?:carefully|thoroughly|closely|recently|already)\s+)?"
     r"(?:(?:finished|completed)\s+reading|read|reviewed|studied)|"
     r"(?:after|having)\s+(?:(?:carefully|thoroughly|closely)\s+)?(?:read|reading|reviewed|reviewing|studied|studying))\s+"
-    r"(?:through\s+)?(?:(?:all\s+of|the\s+full\s+text\s+of)\s+)?"
-    r"(?:(?:your|the|this|a)\s+)?(?:(?:recent|latest|full|entire|published)\s+){0,2}"
-    r"(?:papers?|articles?|publications?|manuscripts?|stud(?:y|ies)|work|research)\b",
+    r"(?:through\s+)?(?:(?:all\s+of|the\s+full\s+text\s+of|the\s+abstracts?\s+of)\s+)?"
+    r"(?:(?:your|the|this|a)\s+)?(?:(?:recent|latest|full|entire|whole|published)\s+){0,2}"
+    r"(?:papers?|articles?|publications?|manuscripts?|stud(?:y|ies)|work|research)\b|"
+    r"\b(?:i(?:\s+have|['’]ve)?\s+(?:(?:carefully|thoroughly|closely|recently|already)\s+)?(?:went|gone)|"
+    r"(?:after|having)\s+(?:(?:carefully|thoroughly|closely)\s+)?(?:going|gone))\s+through\s+"
+    r"(?:(?:the\s+full\s+text|the\s+abstracts?)\s+of\s+)?(?:your|this)\s+(?:(?:recent|latest|full|entire|whole|published)\s+){0,2}"
+    r"(?:papers?|articles?|publications?|manuscripts?|work)\b",
     re.IGNORECASE,
 )
 

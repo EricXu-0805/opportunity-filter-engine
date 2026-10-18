@@ -3,6 +3,7 @@
 import pytest
 
 from backend.lib.email_claims import skill_level_violations, unchosen_paper_claims, unsupported_action_claims
+from backend.lib.email_contact_context import paper_reading_sentence
 
 
 @pytest.mark.parametrize("text", [
@@ -53,6 +54,50 @@ def test_confirmed_reading_sentence_is_exempt_only_as_its_single_exact_occurrenc
     other = READ.replace("Grounded Models", "Another Paper")
     assert unsupported_action_claims(other, confirmed_reading_sentence=READ)
     assert unsupported_action_claims(READ + " I read your recent articles.", confirmed_reading_sentence=READ)
+
+
+# M129: reading the whole paper, going through it, or reading its abstract is
+# a reading claim too; a whole field, a lab or an abstract idea is not.
+@pytest.mark.parametrize("text", [
+    "After reading your whole paper, I have a question.", "I have read the abstract of your paper as well.",
+    "I read your whole paper.", "Having read your whole article, I am curious.",
+    "I have carefully read through your whole work.", "I've read the abstract of this paper.",
+    "I read the abstracts of your recent papers.", "I went through your entire paper.",
+    "I have gone through your whole article.", "After going through your full paper, I wondered.",
+    "I went through the full text of your paper.", "I went through the abstract of your work.",
+    "I went through your paper.",
+])
+def test_whole_paper_and_abstract_reading_are_completed_reading(text):
+    assert unsupported_action_claims(text) == ["unsupported completed-reading claim"]
+
+
+@pytest.mark.parametrize("text", [
+    "I have read about the whole field.", "I studied your entire lab website.", "I read an abstract idea.",
+    "I read the abstract submitted to the conference.", "I went through a study abroad program.",
+    "I went through the whole research process.", "I went through the entire application.",
+    "Your entire lab works on this.", "I am interested in the abstract of your paper.",
+    "I would like to read your whole paper.", "I will go through your entire paper.",
+    "I have not read the abstract of your paper.", "If I read your whole paper, I could ask more.",
+])
+def test_whole_and_abstract_phrases_that_claim_no_reading_are_accepted(text):
+    assert unsupported_action_claims(text) == []
+
+
+def _confirmed(level):
+    return paper_reading_sentence({"paper_reading": {"level": level, "title": "Grounded Models", "year": 2025}}) if level else None
+
+
+WHOLE = "After reading your whole paper, I have a question about its method."
+ABSTRACT_TOO = "I have read the abstract of your paper as well."
+
+
+@pytest.mark.parametrize("level,claim", [
+    (None, WHOLE), (None, ABSTRACT_TOO), ("title_only", WHOLE), ("title_only", ABSTRACT_TOO), ("abstract", WHOLE),
+])
+def test_a_reading_claim_above_the_confirmed_level_is_refused(level, claim):
+    sentence = _confirmed(level)
+    body = f"Dear Pat Lee,\n\n{sentence or ''} {claim}\n\nCould we talk?"
+    assert unsupported_action_claims(body, confirmed_reading_sentence=sentence) == ["unsupported completed-reading claim"]
 
 
 def test_confirmed_reading_exemption_never_covers_an_attachment_claim():
