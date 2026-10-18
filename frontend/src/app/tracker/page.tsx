@@ -10,7 +10,9 @@ import StorageStatusBanner from '@/components/StorageStatusBanner';
 import { useT } from '@/i18n/client';
 import type { InteractionType } from '@/lib/supabase';
 
+import { OutcomeNotes } from './OutcomeNotes';
 import { TrackerCard } from './TrackerCard';
+import { useOutcomeNotes } from './use-outcome-notes';
 import { TRACKER_COLUMNS, useTrackerData } from './use-tracker-data';
 
 const COLUMN_ACCENT: Record<InteractionType, string> = {
@@ -45,7 +47,9 @@ export default function TrackerPage() {
     changeStatus,
     saveNotes,
     setReminder,
+    runStatusWrite,
   } = useTrackerData();
+  const outcomeNotes = useOutcomeNotes({ identityGeneration, ready: !loading && !error, runStatusWrite });
 
   const byColumn = useMemo(() => {
     const map = new Map<InteractionType, typeof items>();
@@ -374,6 +378,21 @@ export default function TrackerPage() {
                           notesPending={notesPendingIds.has(it.opp.id)}
                           notesError={notesErrors.has(it.opp.id)}
                           onRetryNotes={retryNotesItem}
+                          outcomeNotes={(
+                            <OutcomeNotes
+                              opportunityId={it.opp.id}
+                              notes={outcomeNotes.notes?.get(it.opp.id) ?? (outcomeNotes.notes ? [] : undefined)}
+                              loadError={outcomeNotes.loadError}
+                              onRetryLoad={outcomeNotes.retryLoad}
+                              draft={outcomeNotes.drafts.get(it.opp.id) ?? { body: '', outcome: null }}
+                              onDraftChange={outcomeNotes.setDraft}
+                              onSubmit={outcomeNotes.submit}
+                              pending={outcomeNotes.pendingIds.has(it.opp.id)}
+                              problem={outcomeNotes.problems.get(it.opp.id)}
+                              disabled={statusPendingIds.has(it.opp.id) && !outcomeNotes.pendingIds.has(it.opp.id)}
+                              t={t}
+                            />
+                          )}
                           t={t}
                         />
                       ))}

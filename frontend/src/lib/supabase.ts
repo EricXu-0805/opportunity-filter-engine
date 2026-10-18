@@ -40,6 +40,8 @@ import { ApplicationEventError, ApplicationHistoryLoadError, APPLICATION_EVENT_U
   type ApplicationEvent, type ApplicationEventInput, type ApplicationEventCursor, type ApplicationEventsPage,
 } from './application-ledger';
 import { readPendingApplicationAttempts } from './application-attempt-storage';
+import { OUTCOME_NOTE_OUTCOMES, OutcomeNoteError, outcomeNoteBodyProblem,
+  type OutcomeNote, type OutcomeNoteOutcome } from './outcome-notes';
 
 export { OwnerMismatchError, OwnerNotReadyError } from './identity-owner';
 export type { OwnerToken } from './identity-owner';
@@ -2562,6 +2564,85 @@ export async function getApplicationEvent(opportunityId: string, id: string,
     if (error instanceof OwnerMismatchError) throw error;
     throw new ApplicationHistoryLoadError();
   }
+}
+
+function parseOutcomeNote(value: unknown, owner: string): OutcomeNote {
+  if (!contactRecord(value) || value.device_id !== owner || typeof value.note_id !== 'string'
+    || !APPLICATION_EVENT_UUID.test(value.note_id) || !validContactTarget(value.opportunity_id)
+    || typeof value.body !== 'string' || outcomeNoteBodyProblem(value.body) !== null
+    || (value.outcome !== null && !OUTCOME_NOTE_OUTCOMES.includes(value.outcome as OutcomeNoteOutcome))
+    || contactTimestamp(value.recorded_at) === null) throw new OutcomeNoteError('unavailable');
+  return { id: value.note_id, opportunityId: value.opportunity_id, body: value.body,
+    outcome: value.outcome as OutcomeNoteOutcome | null, recordedAt: value.recorded_at as string };
+}
+/** Appends one note. The same noteId with the same text replays the saved
+ *  note (no duplicate, outcome not applied again); `status` is the summary
+ *  status the server holds afterwards, null when there is no summary row. */
+export async function appendOutcomeNote(opportunityId: string,
+  input: { noteId: string; body: string; outcome: OutcomeNoteOutcome | null },
+  token: OwnerToken): Promise<{ note: OutcomeNote; status: InteractionType | null; replayed: boolean }> {
+  const origin = { ...token }; contactOwner(origin);
+  const snapshot = { ...input };
+  if (!validContactTarget(opportunityId) || !APPLICATION_EVENT_UUID.test(snapshot.noteId)
+    || outcomeNoteBodyProblem(snapshot.body) !== null
+    || (snapshot.outcome !== null && !OUTCOME_NOTE_OUTCOMES.includes(snapshot.outcome))) throw new OutcomeNoteError('invalid_input');
+  return enqueuePrivateWrite(origin, opportunityId, async () => {
+    try {
+      const deviceId = await ensureAnonSession();
+      contactOwner(origin);
+      if (!isOwnerTokenValid(origin, deviceId)) throw new OwnerMismatchError();
+      if (!deviceId) throw new OutcomeNoteError('unavailable');
+      const { data, error } = await supabase.rpc('append_outcome_note', {
+        p_expected_device_id: deviceId, p_note_id: snapshot.noteId, p_opportunity_id: opportunityId,
+        p_body: snapshot.body, p_outcome: snapshot.outcome,
+      });
+      contactOwner(origin);
+      if (error) {
+        if (error.code === '23505' && error.message === 'outcome_note_conflict') throw new OutcomeNoteError('conflict');
+        if (error.code === '42501' && error.message === 'identity_changed') throw new OwnerMismatchError();
+        if (error.code === '22023' && error.message === 'invalid_outcome_note') throw new OutcomeNoteError('invalid_input');
+        if (error.code === 'P0002' && error.message === 'private_target_unavailable') throw new OutcomeNoteError('target_unavailable');
+        throw new OutcomeNoteError('unavailable');
+      }
+      if (!contactRecord(data) || typeof data.replayed !== 'boolean') throw new OutcomeNoteError('unavailable');
+      const note = parseOutcomeNote(data.note, deviceId);
+      if (note.id !== snapshot.noteId || note.opportunityId !== opportunityId || note.body !== snapshot.body
+        || note.outcome !== snapshot.outcome) throw new OutcomeNoteError('unavailable');
+      const summary = data.interaction;
+      const statuses = new Set(['contacted', 'applied', 'replied', 'rejected', 'interviewing', 'dismissed']);
+      if (summary !== null && (!contactRecord(summary) || summary.device_id !== deviceId
+        || summary.opportunity_id !== opportunityId || !statuses.has(summary.interaction_type as string))) throw new OutcomeNoteError('unavailable');
+      const status = summary === null ? null : summary.interaction_type as InteractionType;
+      if (!data.replayed && snapshot.outcome !== null && status !== snapshot.outcome) throw new OutcomeNoteError('unavailable');
+      return { note, status, replayed: data.replayed };
+    } catch (error) {
+      contactOwner(origin);
+      if (error instanceof OwnerMismatchError || error instanceof OutcomeNoteError) throw error;
+      throw new OutcomeNoteError('unavailable');
+    }
+  });
+}
+/** Every outcome note of the current owner, newest first per target. A failed
+ *  or malformed read throws; it is never an empty list. */
+export async function getOutcomeNotes(token: OwnerToken): Promise<Map<string, OutcomeNote[]>> {
+  const origin = { ...token };
+  contactOwner(origin);
+  const deviceId = await ensureAnonSession();
+  contactOwner(origin);
+  if (!isOwnerTokenValid(origin, deviceId)) throw new OwnerMismatchError();
+  if (!deviceId) throw new OutcomeNoteError('unavailable');
+  const { data, error } = await supabase.from('outcome_notes')
+    .select('note_id, device_id, opportunity_id, body, outcome, recorded_at')
+    .eq('device_id', deviceId)
+    .order('recorded_at', { ascending: false }).order('note_id', { ascending: false });
+  contactOwner(origin);
+  if (error || !Array.isArray(data)) throw new OutcomeNoteError('unavailable');
+  const byTarget = new Map<string, OutcomeNote[]>();
+  for (const row of data) {
+    const note = parseOutcomeNote(row, deviceId);
+    byTarget.set(note.opportunityId, [...(byTarget.get(note.opportunityId) ?? []), note]);
+  }
+  return byTarget;
 }
 
 export interface StatusChange {
