@@ -582,7 +582,7 @@ def _explicit_activity_references(text: str) -> list[str]:
         # Avoid classifying an ordinary lowercase object/method phrase as a
         # named activity. Institutional labels and explicit years still count;
         # "the lab" alone names none ("We built an array for the lab").
-        if candidate != "the lab" and (
+        if candidate.lower() != "the lab" and (
                 candidate[:1].isupper() or re.search(r"\b(?:lab|laboratory|university|college|company|institute|project|study|experiment)\b", candidate, re.I)
                 or re.fullmatch(r"(?:19|20)\d{2}", candidate)):
             references.append(candidate)

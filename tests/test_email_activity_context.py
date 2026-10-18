@@ -359,6 +359,7 @@ def lab_envelope():
     "a low-cost microphone array and tested it with our graduate mentor over six weeks.",
     'My team built a low-cost microphone array for the lab and tested it with our graduate mentor over six weeks.',
     'Our team built a low-cost microphone array for the lab and tested it with our graduate mentor over six weeks.',
+    'Our team built a low-cost microphone array for the Lab and tested it with our graduate mentor over six weeks.',
 ])
 def test_for_the_lab_names_no_other_activity(claim):
     """Replayed drafts the check rejected: "for the lab" is who the array was built for."""
