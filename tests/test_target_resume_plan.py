@@ -511,7 +511,8 @@ def test_the_live_plan_no_longer_shows_this_reu_program_as_evidence():
 
 HAYSTACK = ("MIT Haystack Observatory REU. Radio astronomy at the Observatory. This REU program has been held for decades, and we have seen many of our student "
             "interns go on to rewarding careers in STEM research. The Haystack summer undergraduate internship is open to "
-            "students. This REU program in Python. 本暑期本科生科研项目要求熟悉信号处理。")
+            "students. This REU program in Python. 本暑期本科生科研项目要求熟悉信号处理。 Research Experience for Undergraduates (REU). "
+            "Research Experiences for Undergraduates. Programming experience, Research experience, Lab experience or Laboratory experience.")
 
 
 def _haystack(endpoint, reason, quotes, action="keep", title="MIT Haystack Observatory REU"):
@@ -526,7 +527,8 @@ def _haystack(endpoint, reason, quotes, action="keep", title="MIT Haystack Obser
 
 
 @pytest.mark.parametrize("quote", ["MIT Haystack Observatory REU", "This REU program", "The Haystack summer undergraduate internship",
-                                   "our student interns", "本暑期本科生科研项目"])
+                                   "our student interns", "本暑期本科生科研项目", "Research Experience for Undergraduates (REU)",
+                                   "Research Experiences for Undergraduates"])
 @pytest.mark.parametrize("action,motive", [("keep", "Retain background needed to understand this experience."),
                                            ("compress", "Reduce length toward the page goal while retaining supported content."),
                                            ("omit", "Review the cited material before giving this block less space.")])
@@ -548,6 +550,15 @@ def test_a_quote_with_a_word_beyond_the_posting_name_keeps_the_relevance_claim(e
     assert [row["quote"] for row in cafe["target_evidence"]] == [quote]
     assert cafe["reason"].split("\n")[0] == "Keep suggestion: Compare the stated methods with the target requirements."
     assert f"Target original: {json.dumps(quote, ensure_ascii=False)}" in cafe["reason"]
+
+
+@pytest.mark.parametrize("quote", ["Programming", "Programming experience", "Research experience", "Lab experience",
+                                   "Laboratory experience"])
+def test_a_requirement_that_shares_a_word_form_with_a_posting_kind_word_is_evidence(endpoint, quote):
+    # "Programming" was read as "program", and "experience" was a kind word for "Research Experiences for Undergraduates".
+    _, cafe = _haystack(endpoint, "method_relevance", [quote])
+    assert [row["quote"] for row in cafe["target_evidence"]] == [quote]
+    assert f"Target original: {json.dumps(quote)}" in cafe["reason"]
 
 
 def test_only_quotes_that_say_something_are_shown(endpoint):

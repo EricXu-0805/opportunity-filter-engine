@@ -55,10 +55,14 @@ OWN_SOURCE_REASONS = frozenset({"supporting_context", "space_tradeoff", "limited
 # (Bigelow Laboratory for Ocean Sciences), which a relevance quote should cite.
 # A quote that says nothing is dropped; advice that claimed relevance on such
 # quotes alone claims none, in the category of its action, and cites its own lines.
-_POSTING_KIND = frozenset(tokens(
-    "program programme REU research experiences for undergraduates site internship intern co-op fellowship fellow "
-    "scholar summer opportunity position project lab laboratory student undergraduate participant applicant "
-    "our we us you your they their will all each many"))
+# Kind words match as whole words, singular or plural: read as lemmas, "Programming"
+# was "program". "Experience" is one only inside the name "Research Experiences
+# for Undergraduates", so "Research experience" and "Lab experience" are evidence.
+_POSTING_KIND = re.compile(
+    r"(?<![A-Za-z])(?:research\s+experiences?\s+for\s+undergraduates|programs?|programmes?|REUs?|research|sites?|"
+    r"internships?|interns?|co-ops?|fellowships?|fellows?|scholars?|summers?|opportunity|opportunities|positions?|"
+    r"projects?|labs?|laboratory|laboratories|students?|undergraduates?|participants?|applicants?|"
+    r"our|we|us|you|your|they|their|will|all|each|many)(?![A-Za-z])", re.I)
 _POSTING_KIND_ZH = re.compile("本科生|实习生|课题组|实验室|申请人|申请者|本科|实习|科研|研究|项目|计划|暑期|暑假|夏季|机会|职位|岗位|"
                               "课题|学生|学员|我们|本|此")
 # Letters tokens() does not read (accented Latin, kana, Hangul, Cyrillic) are kept as words.
@@ -67,8 +71,8 @@ _NO_RELEVANCE = {"keep": "supporting_context", "compress": "space_tradeoff", "om
 
 
 def _says_something(quote, name):
-    rest = _POSTING_KIND_ZH.sub(" ", quote)
-    return bool(_UNREAD.search(rest) or set(tokens(rest)) - _POSTING_KIND - name)
+    rest = _POSTING_KIND.sub(" ", _POSTING_KIND_ZH.sub(" ", quote))
+    return bool(_UNREAD.search(rest) or set(tokens(rest)) - name)
 
 
 SYSTEM_PROMPT = REASON_PROMPT + """Propose a selection plan for the entire supplied current resume.
