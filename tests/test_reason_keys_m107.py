@@ -4,14 +4,17 @@ machine-readable key, and the English lines stay exactly as served before."""
 from __future__ import annotations
 
 import functools
+import gc
 import json
 import pathlib
+import re
+import time
 
 import pytest
 
 import backend.routes.matches as m
 from backend.lib.public_projection import redact_embedded_emails
-from backend.schemas import MatchResultResponse
+from backend.schemas import PROFILE_LIST_LIMITS, PROFILE_TEXT_LIMITS, MatchResultResponse
 from src.matcher import reason_keys as rk
 from src.matcher.ranker import (
     _NOT_ON_PAGE,
@@ -21,6 +24,7 @@ from src.matcher.ranker import (
     _SIMPLIFY_NO_SPONSORSHIP_REASON,
     MatchResult,
     rank_all,
+    rank_opportunity,
 )
 
 _SHARDS = pathlib.Path(__file__).resolve().parent.parent / "data" / "processed" / "shards"
@@ -234,3 +238,123 @@ def test_model_gap_line_from_the_rerank_is_served_unkeyed():
     served = m._match_result_response(result, {"m107": {}})
     assert served.reasons_gap == ["Prefers Biology", model]
     assert [key and key.key for key in served.reasons_gap_keys] == ["major_prefers", None]
+
+
+# --- Keying cost (review of M107) ---------------------------------------------
+# A served line can echo profile text: one desired-field chip may be 60,000
+# characters, and "Matches your interests: …" repeats it whole. The keyer runs
+# on every served card inside the async routes, so no line may cost it more
+# than a bounded, small time, whatever the line holds.
+_LARGEST_FIELD = max(
+    max(PROFILE_TEXT_LIMITS.values()), max(limit for _, limit in PROFILE_LIST_LIMITS.values()),
+)
+# Every literal piece of every template, so a parameter can hold the words
+# the patterns split on ("also works on", "'s work on", " — 1/2 required").
+_TEMPLATE_WORDS = sorted({
+    piece.replace("\\", "")
+    for _, pattern in rk._FIT_PATTERNS + rk._GAP_PATTERNS
+    for piece in re.split(r"\(\?P<\w+>[^)]*\)", pattern.pattern)
+    if piece.strip()
+})
+_PATTERN_CASES = [case for case in _CASES if case["key"] in {key for key, _ in rk._FIT_PATTERNS + rk._GAP_PATTERNS}]
+# One keying is a few regex steps per character after the fix, well under a
+# millisecond even at the length bound. 0.05 s leaves far more than 4x for a
+# slow runner; before the fix a 60,000-character line took 0.4 s to minutes.
+_PER_LINE_SECONDS = 0.05
+
+
+def _text_params(case: dict) -> tuple[re.Match, list[str]]:
+    """The case's line matched by its template, and the names of its text
+    parameters (not a count, not the skill level code) in line order."""
+    match = dict(rk._FIT_PATTERNS + rk._GAP_PATTERNS)[case["key"]].fullmatch(case["english"])
+    names = [name for name, value in match.groupdict().items() if name != "level" and not value.isdigit()]
+    return match, sorted(names, key=match.start)
+
+
+def _with_text_params(case: dict, grow) -> tuple[str, dict[str, str]]:
+    """The case's line and params with each text parameter replaced by ``grow(value)``."""
+    match, names = _text_params(case)
+    line, params = case["english"], dict(case["params"])
+    for name in reversed(names):
+        params[name] = grow(params[name])
+        line = line[: match.start(name)] + params[name] + line[match.end(name):]
+    return line, params
+
+
+def _adversarial_lines(case: dict, size: int) -> list[str]:
+    """The case's line with each text parameter grown to ``size`` characters:
+    one template word or separator repeated, or every template word in turn,
+    ending in a newline, a newline and a word, or neither. Each also cut off
+    after its first parameter: a line that opens like the template but that
+    no template wrote, which every pattern scans and rejects."""
+    match, names = _text_params(case)
+    runs = [*_TEMPLATE_WORDS, ", ", "".join(_TEMPLATE_WORDS), "\n".join(_TEMPLATE_WORDS)]
+    lines = []
+    for tail in ("", "\n", "\nx"):
+        for run in runs:
+            line, params = _with_text_params(
+                case, lambda value, run=run, tail=tail: (value + run * (size // len(run) + 1))[: size - len(tail)] + tail,
+            )
+            lines.append(line)
+            if names:
+                lines.append(case["english"][: match.start(names[0])] + params[names[0]])
+    return lines
+
+
+def _slowest_keying(lines: list[str], kind: str) -> tuple[float, int]:
+    """The longest time one line took to key, and that line's length, with the
+    collector paused (as tests/test_student_course_status.py times): the bound
+    is the keyer's own cost, not a collection of the corpus the suite holds."""
+    gc.collect()
+    gc.disable()
+    try:
+        slowest = (0.0, 0)
+        for line in lines:
+            began = time.perf_counter()
+            rk.reason_key(line, kind)
+            slowest = max(slowest, (time.perf_counter() - began, len(line)))
+        return slowest
+    finally:
+        gc.enable()
+
+
+@pytest.mark.parametrize("case", _PATTERN_CASES, ids=[case["key"] for case in _PATTERN_CASES])
+def test_keying_an_adversarial_line_at_the_largest_field_size_is_quick(case):
+    seconds, length = _slowest_keying(_adversarial_lines(case, _LARGEST_FIELD), case["kind"])
+    assert seconds < _PER_LINE_SECONDS, (length, f"{seconds:.3f}s")
+
+
+@pytest.mark.parametrize("case", _PATTERN_CASES, ids=[case["key"] for case in _PATTERN_CASES])
+def test_keying_an_adversarial_line_at_the_length_bound_is_quick(case):
+    """Just under the bound the patterns do run, so their own cost is bounded."""
+    fixed = len(case["english"]) - sum(len(value) for value in case["params"].values())
+    size = (rk.MAX_KEYED_REASON_CHARACTERS - fixed) // len(case["params"])
+    lines = _adversarial_lines(case, size)
+    assert max(map(len, lines)) <= rk.MAX_KEYED_REASON_CHARACTERS
+    seconds, length = _slowest_keying(lines, case["kind"])
+    assert seconds < _PER_LINE_SECONDS, (length, f"{seconds:.3f}s")
+
+
+def test_a_parameter_holding_a_newline_is_keyed_by_its_own_template():
+    for case in _PATTERN_CASES:
+        line, params = _with_text_params(case, lambda value: f"{value}\nx")
+        assert rk.reason_key(line, case["kind"]) == {"key": case["key"], "params": params}, line
+
+
+def test_a_long_interest_chip_with_a_newline_is_keyed_quickly_or_shown_in_english():
+    """The review's repro: the chip is echoed whole in "Matches your interests"."""
+    record = {"id": "r1", "title": "ML lab", "opportunity_type": "research",
+              "keywords": ["machine learning"], "description_clean": "We study machine learning.",
+              "eligibility": {}}
+    for repeats, keyed in ((100, True), (4000, False)):
+        chip = "machine learning" + " also works on" * repeats + "\nx"
+        profile = {"year": "junior", "major": "Computer Science", "desired_fields": [chip],
+                   "seeking_type": ["research"], "experience_level": "some"}
+        result = rank_opportunity(profile, record)
+        line = f"Matches your interests: {chip}"
+        assert line in result.reasons_fit
+        keys = rk.reason_keys(result.reasons_fit, "fit", record=record)
+        expected = {"key": "interests_match", "params": {"terms": chip}} if keyed else None
+        assert keys[result.reasons_fit.index(line)] == expected
+        seconds, _ = _slowest_keying(result.reasons_fit, "fit")
+        assert seconds < _PER_LINE_SECONDS, f"{seconds:.3f}s"

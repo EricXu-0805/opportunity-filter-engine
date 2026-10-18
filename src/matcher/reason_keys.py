@@ -12,7 +12,7 @@ that table exactly as the English sentence has it.
 Matching after the fact, rather than at each append site, leaves the
 ranker's strings and its hot path untouched. A template whose wording
 changes without its pattern here falls back to the English sentence, never
-to a blank line; tests/test_reason_keys.py keys every reason a varied set
+to a blank line; tests/test_reason_keys_m107.py keys every reason a varied set
 of profiles produces, so that drift fails a test.
 """
 
@@ -32,6 +32,14 @@ from .ranker import (
 )
 
 ReasonKey = dict  # {"key": str, "params": dict[str, str]}
+
+# A line can echo profile text whole (one desired-field chip may be 60,000
+# characters), and keying runs on every served card. The longest line the
+# ranker writes from the corpus is about 330 characters (a research summary
+# headline in "This lab focuses on …"), so this bound leaves six times
+# that. A longer line is not keyed and shows in English, so no line costs
+# the patterns below more than a bounded scan.
+MAX_KEYED_REASON_CHARACTERS = 2_000
 
 # Sentences with no variable part: sentence -> (key, fixed params).
 _FIT_EXACT: dict[str, tuple[str, dict[str, str]]] = {
@@ -100,8 +108,10 @@ _SKILL_LEVEL = "(?P<level>" + "|".join(map(re.escape, _SKILL_LEVELS)) + ")"
 _NOT_ON_PAGE_RE = re.escape(_NOT_ON_PAGE)
 
 # Sentences with a variable part, tried in order; the first full match wins.
+# DOTALL: a parameter can hold a newline, and a `.` that stops at one makes a
+# line fall through to later patterns that backtrack over the whole line.
 _FIT_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
-    (key, re.compile(pattern)) for key, pattern in (
+    (key, re.compile(pattern, re.DOTALL)) for key, pattern in (
         ("year_may_fit", r"Your class year \((?P<year>.+)\) may fit this program"),
         ("year_accepts", r"Accepts (?P<year>.+) students"),
         ("major_may_fit", r"Your major \((?P<major>.*)\) may fit this program"),
@@ -125,7 +135,7 @@ _FIT_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
 )
 
 _GAP_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
-    (key, re.compile(pattern)) for key, pattern in (
+    (key, re.compile(pattern, re.DOTALL)) for key, pattern in (
         ("year_targets", r"Typically targets (?P<years>.+)"),
         ("year_listing_targets", r"Our listing suggests (?P<years>.+) students" + _NOT_ON_PAGE_RE),
         ("major_listing", r"Our listing suggests (?P<majors>.+) majors" + _NOT_ON_PAGE_RE),
@@ -142,8 +152,9 @@ def _keyed(key: str, params: dict[str, str]) -> ReasonKey:
 
 def reason_key(reason: str, kind: str, *, research_summary: str = "") -> ReasonKey | None:
     """The template key and params of one fit (``kind="fit"``) or gap
-    (``kind="gap"``) sentence, or None when no template wrote it."""
-    if not isinstance(reason, str) or not reason:
+    (``kind="gap"``) sentence, or None when no template wrote it or the
+    sentence is longer than ``MAX_KEYED_REASON_CHARACTERS``."""
+    if not isinstance(reason, str) or not reason or len(reason) > MAX_KEYED_REASON_CHARACTERS:
         return None
     exact, patterns = (_FIT_EXACT, _FIT_PATTERNS) if kind == "fit" else (_GAP_EXACT, _GAP_PATTERNS)
     found = exact.get(reason)
