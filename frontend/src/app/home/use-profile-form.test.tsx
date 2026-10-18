@@ -1065,6 +1065,31 @@ describe('useProfileForm — imported skills are candidates until the student se
     expect(rust).toEqual({ name: 'Rust', level: 'beginner', source: 'github', evidence: 'repo engine: language Rust' });
   });
 
+  it('a re-import gives a GitHub skill saved before M12 the evidence it never had, and nothing else', async () => {
+    // A GitHub skill without evidence is not named in the student's voice
+    // (src/student_evidence.py). When a repo field names it again, the
+    // re-import keeps that field; one GitHub no longer states stays without.
+    githubReturns(['PyTorch', 'Python', 'Go'], [
+      { skill: 'PyTorch', repo: 'vision', field: 'topic', value: 'pytorch' },
+      { skill: 'Python', repo: 'engine', field: 'language', value: 'Python' },
+      { skill: 'Go', repo: 'cli', field: 'language', value: 'Go' },
+    ]);
+    const result = await readyForm();
+    act(() => result.current.update('skills', [
+      { name: 'PyTorch', level: 'beginner', source: 'github' },
+      { name: 'pandas', level: 'beginner', source: 'github' },
+      { name: 'Python', level: 'expert' },
+      { name: 'Go', level: 'beginner', source: 'resume' },
+    ]));
+    await importGitHub(result);
+    expect(result.current.profile.skills).toEqual([
+      { name: 'PyTorch', level: 'beginner', source: 'github', evidence: 'repo vision: topic pytorch' },
+      { name: 'pandas', level: 'beginner', source: 'github' },
+      { name: 'Python', level: 'expert' },
+      { name: 'Go', level: 'beginner', source: 'resume' },
+    ]);
+  });
+
   it('an import never relabels a skill the student typed', async () => {
     githubReturns(['Python']);
     const result = await readyForm();

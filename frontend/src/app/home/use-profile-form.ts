@@ -263,10 +263,20 @@ export interface UseProfileFormResult {
 
 /** Append skills whose names aren't already present (case-sensitive match,
  * mirroring the existing import handlers). Pure — defined at module scope so it
- * isn't a hook dependency. */
+ * isn't a hook dependency. A GitHub skill saved before M12 carries no evidence
+ * and is not named in the student's voice; when a GitHub import names it again
+ * it takes that import's evidence, and nothing else about it changes. */
 function mergeSkills(existing: SkillWithLevel[], incoming: SkillWithLevel[]): SkillWithLevel[] {
   const names = new Set(existing.map((s) => s.name));
-  return [...existing, ...incoming.filter((s) => !names.has(s.name))];
+  const githubEvidence = new Map(
+    incoming.filter((s) => s.source === 'github' && s.evidence).map((s) => [s.name, s.evidence]),
+  );
+  const kept = existing.map((s) => (
+    s.source === 'github' && !s.evidence?.trim() && githubEvidence.has(s.name)
+      ? { ...s, evidence: githubEvidence.get(s.name) }
+      : s
+  ));
+  return [...kept, ...incoming.filter((s) => !names.has(s.name))];
 }
 
 // Free-text fields where a person TYPES, one keystroke at a time. Every other
