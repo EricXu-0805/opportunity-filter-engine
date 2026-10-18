@@ -63,8 +63,9 @@ def unsupported_action_claims(text: str, *, confirmed_reading_sentence: str | No
         if attached and not re.search(r"\b(?:no|not|without)\s+(?:(?:a|any|my|the)\s+)?$", clause[:attached.start()], re.I):
             findings.add("unsupported attachment claim")
     for clause in _CLAUSES.split(reading_text):
-        read = _READING.search(clause)
-        if read:
+        # Every claim in the clause: skipping a first, conditional one must not
+        # skip a later one ("Once I went through your paper, I read your ...").
+        for read in _READING.finditer(clause):
             prefix = clause[:read.start()].lower()
             # "If/when I read ..." and "I will write after reading ..." do
             # not assert that reading has already happened.
@@ -75,6 +76,7 @@ def unsupported_action_claims(text: str, *, confirmed_reading_sentence: str | No
             if re.match(r"after\b", read.group(), re.I) and re.search(r"\bi\s+(?:will|plan\s+to)\b", clause[read.end():], re.I):
                 continue
             findings.add("unsupported completed-reading claim")
+            break
     return sorted(findings)
 
 

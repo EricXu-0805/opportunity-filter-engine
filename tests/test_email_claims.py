@@ -250,3 +250,21 @@ def test_a_title_inside_the_chosen_title_does_not_count():
     read = f"I have read the abstract of your paper “{inner}” (2026)."
     assert unchosen_paper_claims(read, titles, chosen_title=inner) == []
     assert unchosen_paper_claims(f"{read} Your “{titles[1]}” is related.", titles, chosen_title=inner) == UNCHOSEN
+
+
+@pytest.mark.parametrize("level", ["title_only", "abstract", "full_text"])
+@pytest.mark.parametrize("claim", [
+    "Once I went through your paper, I read your recent publications.",
+    "When I went through your paper, I studied your recent work closely.",
+    "When I read the abstract of your paper, I studied your recent work closely.",
+    "If I have read the abstract of your paper correctly, I have read your recent papers too.",
+    "Once I have gone through your whole paper, I read your recent articles.",
+    "After going through your paper, I read your recent publications, so I will ask.",
+    "When I also read your paper, I studied your recent work.",
+])
+def test_a_reading_claim_after_a_conditional_one_in_the_same_clause_is_still_checked(level, claim):
+    """Review M129 round 2: skipping a clause's first, conditional reading claim
+    must not skip a later claim in the same clause."""
+    sentence = _confirmed(level)
+    body = f"{sentence} {claim}"
+    assert unsupported_action_claims(body, confirmed_reading_sentence=sentence) == ["unsupported completed-reading claim"]
