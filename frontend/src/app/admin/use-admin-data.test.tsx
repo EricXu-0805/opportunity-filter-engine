@@ -44,6 +44,8 @@ let shardsStatus: { status: number; error?: string } | null;
 let shardReason: string;
 let holdShards: boolean;
 const heldShards: (() => void)[] = [];
+let holdMain: boolean;
+const heldMain: (() => void)[] = [];
 
 const lastCall = (predicate: (c: Call) => boolean) => [...calls].reverse().find(predicate);
 
@@ -56,8 +58,7 @@ function install() {
       return { status: 200, data: { history: historyRows } };
     }
     if (path.startsWith('/admin/data-quality')) {
-      if (mainStatus) return mainStatus;
-      return {
+      const answer = () => mainStatus ?? {
         status: 200,
         data: mainData ?? {
           total: 10,
@@ -67,6 +68,8 @@ function install() {
           generated_at: '2026-08-04T10:00:00+00:00',
         },
       };
+      if (holdMain) return new Promise((resolve) => { heldMain.push(() => resolve(answer())); });
+      return answer();
     }
     if (path.startsWith('/admin/health-check')) {
       return { status: 200, data: { ok: true, alerts: [], checked_at: '2026-08-04T10:00:00+00:00' } };
@@ -156,7 +159,7 @@ function install() {
       };
     }
     if (path.startsWith('/admin/source-health/shards')) {
-      if (shardsStatus) return shardsStatus;
+      if (shardsStatus && !holdShards) return shardsStatus;
       const school = new URLSearchParams(path.split('?')[1] ?? '').get('school');
       const res = {
         status: 200,
@@ -172,7 +175,8 @@ function install() {
           }] : [],
         },
       };
-      if (holdShards) return new Promise((resolve) => { heldShards.push(() => resolve(res)); });
+      // A held request answers with whatever status the test has set by the time it is released.
+      if (holdShards) return new Promise((resolve) => { heldShards.push(() => resolve(shardsStatus ?? res)); });
       return res;
     }
     return { status: 200, data: {} };
@@ -196,6 +200,8 @@ beforeEach(() => {
   shardReason = BARNARD_REASON;
   holdShards = false;
   heldShards.length = 0;
+  holdMain = false;
+  heldMain.length = 0;
   ticketRow = {
     id: 't1',
     created_at: '2026-08-01T10:00:00+00:00',
@@ -575,5 +581,33 @@ describe('per-school verification is fetched and drilled into through the hook',
     const row = within(await screen.findByTestId('school-row-barnard'));
     fireEvent.click(row.getByRole('button', { name: /barnard/ }));
     expect(await screen.findByText('Invalid admin token')).toBeInTheDocument();
+  });
+
+  it('a drill-down sent with a dead token cannot sign the next session out', async () => {
+    await mount();
+    holdShards = true;
+    fireEvent.click(
+      within(await screen.findByTestId('school-row-barnard')).getByRole('button', { name: /barnard/ }),
+    );
+    await waitFor(() => expect(heldShards).toHaveLength(1));
+
+    mainStatus = { status: 401, error: 'unauthorized' };
+    fireEvent.click(screen.getByText('admin.refresh'));
+    expect(await screen.findByText('Invalid admin token')).toBeInTheDocument();
+
+    // The new session's first load is still in flight when the old drill-down
+    // answers 401 for the dead token.
+    mainStatus = null;
+    holdMain = true;
+    fireEvent.change(screen.getByPlaceholderText('Admin token'), { target: { value: 'tok2' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Load' }));
+    await waitFor(() => expect(heldMain.length).toBeGreaterThan(0));
+    shardsStatus = { status: 401, error: 'unauthorized' };
+    await act(async () => { heldShards[0](); });
+    await act(async () => { heldMain.forEach((release) => release()); });
+
+    expect(await screen.findByText('uiuc_faculty collector failed')).toBeInTheDocument();
+    expect(screen.queryByText('Invalid admin token')).toBeNull();
+    expect(sessionStorage.getItem(SESSION_KEY)).toBe('tok2');
   });
 });

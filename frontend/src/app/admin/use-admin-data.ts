@@ -175,8 +175,11 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
     try { sessionStorage.removeItem(SESSION_KEY); } catch { /* private mode */ }
     setToken('');
     setData(null);
-    // The dashboard unmounts, and with it every open drill-down.
+    // The dashboard unmounts, and with it every open drill-down. A drill-down
+    // still in flight was sent with the dead token: drop its answer, so a 401
+    // arriving after the next sign-in cannot sign that session out.
     openSchools.current.clear();
+    schoolShardRequests.current = {};
   }, []);
 
   const setActor = useCallback((value: string) => {
