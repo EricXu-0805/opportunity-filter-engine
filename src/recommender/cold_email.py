@@ -33,12 +33,13 @@ def filter_course_entries(courses: list) -> list[str]:
     ]
 
 
-from src.student_evidence import claimable_skill_levels, course_entries, course_sentences
+from src.student_evidence import claimable_skill_levels, course_entries, course_sentences, nameable_skills
 
 
 def _extract_skill_names(raw_skills: list) -> list[str]:
+    """The names this email may use: a skill ``src.student_evidence`` holds back is never named."""
     result = []
-    for s in raw_skills:
+    for s in nameable_skills(raw_skills):
         if isinstance(s, dict):
             result.append(s.get("name", ""))
         elif isinstance(s, str):
