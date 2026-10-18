@@ -1,7 +1,7 @@
 import { importSourceInfo, type ImportSourceInfo } from '@/lib/import-source';
 import { importSuggestions } from '@/lib/import-suggestions';
 import type { CustomImport } from '@/lib/custom-imports';
-import type { SavedSearch } from '@/lib/saved-searches';
+import type { SavedSearch, SavedSearchDigest } from '@/lib/saved-searches';
 import { humanizeTime } from '@/lib/humanize-time';
 import type { FacultyAvailabilityStatus, PublicTargetTruth } from '@/lib/types';
 
@@ -112,8 +112,25 @@ export function summarizeSavedSearchFilters(search: SavedSearch, t: TFunc): stri
 }
 
 export function formatSavedSearchTimestamp(iso: string | null, t: TFunc): string {
+  const ago = savedSearchAgo(iso, t);
+  return ago === null ? t('favorites.savedSearches.pendingSync') : t('favorites.savedSearches.checkedAgo', { ago });
+}
+
+/** The row's latest email state: unsubscribed through the email's link, or
+ *  when the last digest went out. Null when neither has happened. */
+export function formatSavedSearchEmailState(
+  digest: SavedSearchDigest | undefined,
+  t: TFunc,
+): string | null {
+  if (!digest) return null;
+  if (digest.unsubscribedAt && !digest.optIn) return t('favorites.savedSearches.emailUnsubscribed');
+  const ago = savedSearchAgo(digest.lastSentAt ?? null, t);
+  return ago === null ? null : t('favorites.savedSearches.lastEmailedAgo', { ago });
+}
+
+function savedSearchAgo(iso: string | null, t: TFunc): string | null {
   const result = humanizeTime(iso);
-  if (!result) return t('favorites.savedSearches.pendingSync');
+  if (!result) return null;
   let ago: string;
   switch (result.kind) {
     case 'just-now':
@@ -132,5 +149,5 @@ export function formatSavedSearchTimestamp(iso: string | null, t: TFunc): string
       ago = t('favorites.savedSearches.onDate', { date: result.iso });
       break;
   }
-  return t('favorites.savedSearches.checkedAgo', { ago });
+  return ago;
 }

@@ -380,3 +380,138 @@ describe('saved searches that could not be read', () => {
     warn.mockRestore();
   });
 });
+
+// M50: the row carries the search's latest email state, and a retry that
+// brings the list back reads the digest settings again rather than leaving
+// every digest control hidden because the first digest read failed with it.
+describe('a saved search\'s email state', () => {
+  function renderRows(search: SavedSearch, digest: SavedSearchDigest | undefined) {
+    render(
+      <SavedSearchesSection
+        savedSearches={[search]}
+        digests={new Map(digest ? [[search.id, digest]] : [])}
+        onApplyOptimisticClear={vi.fn()}
+        onRemove={vi.fn()}
+        onDigestSave={vi.fn()}
+        accountEmail="me@example.com"
+        t={t}
+      />,
+    );
+  }
+  const lastEmailed = () => screen.queryByText(/favorites\.savedSearches\.lastEmailedAgo/);
+  const unsubscribed = () => screen.queryByText(/favorites\.savedSearches\.emailUnsubscribed/);
+
+  it('says when the last digest went out', () => {
+    const sentAt = new Date(Date.now() - 3 * 86_400_000).toISOString();
+    renderRows(SEARCH, { email: 'me@example.com', optIn: true, lastSentAt: sentAt, unsubscribedAt: null });
+    expect(lastEmailed()).toBeInTheDocument();
+    expect(unsubscribed()).toBeNull();
+  });
+
+  it('says the email was unsubscribed, which outranks the last send', () => {
+    renderRows(SEARCH, {
+      email: 'me@example.com', optIn: false,
+      lastSentAt: '2026-10-01T09:00:00Z', unsubscribedAt: '2026-10-02T09:00:00Z',
+    });
+    expect(unsubscribed()).toBeInTheDocument();
+    expect(lastEmailed()).toBeNull();
+  });
+
+  it('says nothing about email for a search that was never emailed', () => {
+    renderRows(SEARCH, { email: '', optIn: false, lastSentAt: null, unsubscribedAt: null });
+    expect(lastEmailed()).toBeNull();
+    expect(unsubscribed()).toBeNull();
+  });
+
+  it('says new results are counted before a saved minimum score', () => {
+    const note = () => screen.queryByText('favorites.savedSearches.newBeforeMinScore:{"min":60}');
+    renderRows({ ...SEARCH, filters: { ...SEARCH.filters, minScore: 60 }, new_match_ids: ['a'] }, undefined);
+    expect(note()).toBeInTheDocument();
+    cleanup();
+    renderRows({ ...SEARCH, filters: { ...SEARCH.filters, minScore: 60 } }, undefined);
+    expect(note()).toBeNull();
+    cleanup();
+    renderRows({ ...SEARCH, new_match_ids: ['a'] }, undefined);
+    expect(screen.queryByText(/newBeforeMinScore/)).toBeNull();
+  });
+
+  it('a retry that brings the list back reads the failed digest settings again', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.mocked(getDeviceId).mockResolvedValue('device-1');
+    const row = {
+      id: 'uuid-1', name: 'ML labs', query: 'ml', filters_json: SEARCH.filters,
+      sort_by: 'score', tab: 'all', created_at: SEARCH.created_at,
+      updated_at: SEARCH.updated_at, last_run_at: null, last_result_ids: [], new_match_ids: [],
+    };
+    const queue: Array<{ data: unknown; error: { message: string } | null }> = [
+      { data: null, error: { message: 'network down' } }, // list
+      { data: null, error: { message: 'network down' } }, // digests
+      { data: [row], error: null }, // retried list
+      {
+        data: [{
+          id: 'uuid-1', digest_email: 'me@example.com', digest_opt_in: true,
+          last_digest_sent_at: '2026-10-12T09:00:00Z', digest_unsubscribed_at: null,
+        }],
+        error: null,
+      },
+    ];
+    vi.mocked(supabase.from).mockImplementation(() => {
+      const result = queue.shift() ?? { data: [], error: null };
+      const builder = {
+        select: () => builder,
+        eq: () => builder,
+        order: () => Promise.resolve(result),
+        then: (resolve: (value: typeof result) => unknown) => Promise.resolve(result).then(resolve),
+      };
+      return builder as unknown as ReturnType<typeof supabase.from>;
+    });
+
+    const { result } = renderHook(() => useSavedSearches(t));
+    await waitFor(() => expect(result.current.loadError).toBe(true));
+    expect(result.current.digests).toBeNull();
+
+    await act(async () => { await result.current.retryLoad(); });
+    await waitFor(() => expect(result.current.digests).not.toBeNull(), { timeout: 2000 });
+    expect(result.current.digests?.get('uuid-1')).toEqual({
+      email: 'me@example.com', optIn: true,
+      lastSentAt: '2026-10-12T09:00:00Z', unsubscribedAt: null,
+    });
+    warn.mockRestore();
+  });
+
+  it('turning the digest on keeps the last send and clears the unsubscribe', async () => {
+    vi.mocked(getDeviceId).mockResolvedValue('device-1');
+    const queue: Array<{ data: unknown; error: { message: string } | null }> = [
+      { data: [], error: null },
+      {
+        data: [{
+          id: 'uuid-1', digest_email: 'me@example.com', digest_opt_in: false,
+          last_digest_sent_at: '2026-10-01T09:00:00Z', digest_unsubscribed_at: '2026-10-02T09:00:00Z',
+        }],
+        error: null,
+      },
+      { data: null, error: null }, // the update
+    ];
+    vi.mocked(supabase.from).mockImplementation(() => {
+      const result = queue.shift() ?? { data: [], error: null };
+      const builder = {
+        select: () => builder,
+        update: () => builder,
+        eq: () => builder,
+        order: () => Promise.resolve(result),
+        then: (resolve: (value: typeof result) => unknown) => Promise.resolve(result).then(resolve),
+      };
+      return builder as unknown as ReturnType<typeof supabase.from>;
+    });
+    const { result } = renderHook(() => useSavedSearches(t));
+    await waitFor(() => expect(result.current.digests?.get('uuid-1')).toBeDefined());
+
+    await act(async () => {
+      await result.current.handleDigestSave('uuid-1', { email: 'me@example.com', optIn: true });
+    });
+    expect(result.current.digests?.get('uuid-1')).toEqual({
+      email: 'me@example.com', optIn: true,
+      lastSentAt: '2026-10-01T09:00:00Z', unsubscribedAt: null,
+    });
+  });
+});

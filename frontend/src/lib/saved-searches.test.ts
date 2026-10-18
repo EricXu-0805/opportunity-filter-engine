@@ -705,8 +705,14 @@ describe('listSavedSearchDigests', () => {
   it('maps rows to a Map keyed by search id', async () => {
     const q = makeQuery({
       data: [
-        { id: 'a', digest_email: 'user@example.com', digest_opt_in: true },
-        { id: 'b', digest_email: null, digest_opt_in: false },
+        {
+          id: 'a', digest_email: 'user@example.com', digest_opt_in: true,
+          last_digest_sent_at: '2026-10-12T09:00:00Z', digest_unsubscribed_at: null,
+        },
+        {
+          id: 'b', digest_email: null, digest_opt_in: false,
+          last_digest_sent_at: null, digest_unsubscribed_at: '2026-10-13T09:00:00Z',
+        },
       ],
       error: null,
     });
@@ -715,9 +721,17 @@ describe('listSavedSearchDigests', () => {
     const result = await listSavedSearchDigests();
 
     expect(mockFrom).toHaveBeenCalledWith('saved_searches');
+    expect(q.select).toHaveBeenCalledWith(
+      'id, digest_email, digest_opt_in, last_digest_sent_at, digest_unsubscribed_at',
+    );
     expect(q.eq).toHaveBeenCalledWith('device_id', 'test-device-id');
-    expect(result?.get('a')).toEqual({ email: 'user@example.com', optIn: true });
-    expect(result?.get('b')).toEqual({ email: '', optIn: false });
+    expect(result?.get('a')).toEqual({
+      email: 'user@example.com', optIn: true,
+      lastSentAt: '2026-10-12T09:00:00Z', unsubscribedAt: null,
+    });
+    expect(result?.get('b')).toEqual({
+      email: '', optIn: false, lastSentAt: null, unsubscribedAt: '2026-10-13T09:00:00Z',
+    });
   });
 
   it('returns null when getDeviceId is null (signed out)', async () => {
