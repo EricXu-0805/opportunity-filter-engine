@@ -18,6 +18,14 @@
       }
     },
     {
+      "kind": "fit",
+      "english": "Accepts PhD students",
+      "key": "year_accepts",
+      "params": {
+        "year": "PhD"
+      }
+    },
+    {
       "kind": "gap",
       "english": "Add your class year to confirm year eligibility",
       "key": "year_missing",
@@ -49,6 +57,14 @@
       "key": "year_listing_targets",
       "params": {
         "years": "junior, senior"
+      }
+    },
+    {
+      "kind": "gap",
+      "english": "Our listing suggests senior, graduate students — not confirmed on the program page",
+      "key": "year_listing_targets",
+      "params": {
+        "years": "senior, graduate"
       }
     },
     {

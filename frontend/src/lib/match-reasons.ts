@@ -31,12 +31,22 @@ const YEARS: Record<string, string> = {
 };
 const year = (text: string): string => YEARS[text.trim().toLowerCase()] ?? quote(text);
 const years = (text: string): string => text.split(', ').map(year).join('、');
+// "<years> students": a label that already names students (硕士生) takes no
+// second 学生; a list of class years takes one for the whole list.
+const studentYears = (text: string): string => {
+  const labels = text.split(', ').map(year);
+  const named = labels.filter((label) => label.endsWith('生'));
+  if (named.length === labels.length) return labels.join('、');
+  if (named.length === 0) return `${labels.join('、')}学生`;
+  return labels.map((label) => (label.endsWith('生') ? label : `${label}学生`)).join('、');
+};
 
+// Nouns, so "这是{label}" reads as a kind of opportunity.
 const TYPES: Record<string, string> = {
-  research: '研究',
+  research: '研究机会',
   'summer program': '暑期项目',
   internship: '实习',
-  fellowship: '奖学金项目',
+  fellowship: '资助项目',
 };
 const type = (text: string): string | null => (text ? TYPES[text.toLowerCase()] ?? quote(text) : null);
 
@@ -64,12 +74,12 @@ const fixed = (text: string): Render => () => text;
 const ZH_REASONS: Record<string, Render> = {
   // Class year
   year_may_fit: (p) => `你的年级（${year(p.year)}）可能符合这个项目`,
-  year_accepts: (p) => `接受${year(p.year)}学生`,
+  year_accepts: (p) => `接受${studentYears(p.year)}`,
   year_missing: fixed('补充你的年级，才能确认年级是否符合'),
   year_undergrad_only: fixed('面向本科生 —— 不是研究生层次的机会'),
   year_listing_undergrad: fixed(`我们列表里的信息提示这个项目面向本科生${NOT_ON_PAGE}`),
   year_targets: (p) => `通常面向${years(p.years)}`,
-  year_listing_targets: (p) => `我们列表里的信息提示面向${years(p.years)}学生${NOT_ON_PAGE}`,
+  year_listing_targets: (p) => `我们列表里的信息提示面向${studentYears(p.years)}${NOT_ON_PAGE}`,
   // Major
   major_department_aligns: fixed('这位教师所在的院系与你的专业一致'),
   major_department_related: fixed('这位教师所在的院系与你的专业相关'),
@@ -81,7 +91,7 @@ const ZH_REASONS: Record<string, Render> = {
   major_may_relate: (p) => `你的专业${quote(p.major)}可能与这个项目相关`,
   major_direct: (p) => `你的专业${quote(p.major)}完全对口`,
   major_close: (p) => `你的专业${quote(p.major)}与要求密切相关`,
-  major_prefers: (p) => `偏好：${quoteList(p.majors)}`,
+  major_prefers: (p) => `偏好专业：${quoteList(p.majors)}`,
   major_listing: (p) => `我们列表里的信息提示偏向${quoteList(p.majors)}专业${NOT_ON_PAGE}`,
   // International students and citizenship
   intl_listing_no_sponsorship: (p) =>
@@ -114,11 +124,11 @@ const ZH_REASONS: Record<string, Render> = {
   },
   type_mismatch: (p) => {
     const label = type(p.type);
-    return label ? `这是${label}机会 —— 不是你的首选类型` : null;
+    return label ? `这是${label} —— 不是你的首选类型` : null;
   },
   // Readiness
   resume_required: fixed('需要简历 —— 申请前先准备好'),
-  experience_faculty: fixed('你的经历足以支撑一次用心的教师联系'),
+  experience_faculty: fixed('你的经历可以支撑你认真地联系这位教师'),
   experience_competitive: fixed('你的经验水平有竞争力'),
   experience_limited_faculty: fixed('你的经历信息有限 —— 可以问问需要哪些准备'),
   experience_limited: fixed('先前经验有限 —— 这个职位可能竞争激烈'),

@@ -32,7 +32,7 @@ describe('match reasons on the zh interface (M107)', () => {
       '列表标注：「Does Not Offer Sponsorship」（我们的说明：实习可能仍适用 CPT/OPT，请向雇主确认）',
     );
     expect(zh(byKey('major_direct'))).toBe('你的专业「Biology」完全对口');
-    expect(zh(byKey('major_prefers'))).toBe('偏好：「Biology」、「Chemistry」');
+    expect(zh(byKey('major_prefers'))).toBe('偏好专业：「Biology」、「Chemistry」');
     expect(zh(byKey('interest_lab_work'))).toBe(
       '你感兴趣的「genomics」与「Prof. Ada Lovelace」在「genomics」、「proteomics」方面的工作高度吻合',
     );
@@ -68,6 +68,27 @@ describe('match reasons on the zh interface (M107)', () => {
     expect(zh(byKey('citizenship_read'))).toBe(
       '可能需要美国公民或永久居民身份，这是我们对页面的理解 —— 项目页面未确认',
     );
+  });
+
+  it('names class years and opportunity types as students and kinds of opportunity', () => {
+    const lines = (key: string): string[] => CASES.filter((c) => c.key === key).map(zh);
+    expect(lines('year_accepts')).toEqual(['接受大三学生', '接受博士生']);
+    expect(lines('year_listing_targets')).toEqual([
+      '我们列表里的信息提示面向大三、大四学生 —— 项目页面未确认',
+      '我们列表里的信息提示面向大四学生、研究生 —— 项目页面未确认',
+    ]);
+    // A label that already names students (硕士生, 博士生) takes no second 学生.
+    for (const c of CASES) expect(zh(c)).not.toContain('生学生');
+    const typeLine = (type: string): string =>
+      localizeMatchReasons('zh', ['x'], [{ key: 'type_mismatch', params: { type } }])[0];
+    expect(zh(byKey('type_mismatch'))).toBe('这是实习 —— 不是你的首选类型');
+    expect(typeLine('research')).toBe('这是研究机会 —— 不是你的首选类型');
+    expect(typeLine('fellowship')).toBe('这是资助项目 —— 不是你的首选类型');
+    expect(zh(byKey('type_match'))).toBe('符合你想找的类型：暑期项目');
+  });
+
+  it('says what the experience can support, no more firmly than "can"', () => {
+    expect(zh(byKey('experience_faculty'))).toBe('你的经历可以支撑你认真地联系这位教师');
   });
 
   it('wraps an exclusion around its restriction with the same hedge', () => {
