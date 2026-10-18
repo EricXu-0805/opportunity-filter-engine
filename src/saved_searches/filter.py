@@ -1,25 +1,31 @@
-"""Pure-Python port of the /results frontend filter logic.
+"""The saved-search refresh's filter: the match view's predicates, in Python.
 
 Used by the cron route (backend/routes/saved_searches.py) to compute,
 server-side, the set of opportunities currently matching each saved
 search's filters_json. The match-set is diff'd against the prior cron
 run to populate saved_searches.new_match_ids.
 
-Mirrors frontend/src/app/results/page.tsx's `filtered = useMemo(...)`
-logic across these dimensions:
+The results page filters on the server: POST /matches/view applies
+``_apply_match_view_rows`` in backend/routes/matches.py. This module follows
+that function across these dimensions:
   - filters.paid in {'', 'yes', 'no'}
   - filters.intl in {'', 'yes', 'no'}
   - filters.source in {'', '<source-name>'}
   - filters.onCampus in {'', 'yes', 'no'}
   - filters.deadline in {'', 'rolling', '7', '14', '30', 'passed'}
+  - filters.scope in {'', 'campus', 'open'}, through the view's own
+    ``_in_view_scope`` and view rows, against the student's home school
   - query text search across title/organization/keywords/description,
     read as the card serves them (after the public contact boundary), with
     web addresses in the description left out as the results page does
 
-Deliberately omitted: filters.minScore. Scoring requires the user's
-profile, which the cron doesn't have access to (and we don't want to
-denormalise the profile into saved_searches). minScore is enforced
-client-side after the user opens the matched results page.
+Not applied: filters.minScore, nor the results page's low-fit cut (it leaves
+out records the ranking puts in its low_fit bucket). Both read the match
+view's ranking of the profile the browser sends, with or without the AI pass,
+and repeating it here would mean a full ranking per saved search on the API's
+one match thread. The route excludes what the student's stored profile rules
+out (hard_exclusion), and the match view applies both when the results open;
+the New badge and the digest say so for the minimum score.
 
 Filter input shape (from saved_searches.filters_json):
   {
@@ -28,16 +34,18 @@ Filter input shape (from saved_searches.filters_json):
     "source": str,
     "onCampus": "" | "yes" | "no",
     "deadline": "" | "rolling" | "7" | "14" | "30" | "passed",
-    "minScore": int   (ignored here)
+    "scope": "" | "campus" | "open"   (absent on rows saved before it),
+    "minScore": int   (not applied here)
   }
 """
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from datetime import date, datetime
 
 from backend.lib.public_projection import redact_embedded_emails
+from backend.routes.matches import _in_view_scope, _match_view_row
 from src.evidence import faculty_contact_claims_unverified
 from src.matcher.ranker import _word_re, expand_search_aliases, without_web_addresses
 
@@ -110,6 +118,55 @@ def _matches_deadline(opp: dict, want: str) -> bool:
     except ValueError:
         return True
     return d is not None and 0 <= d <= cutoff
+
+
+def _matches_scope(
+    opp: dict, want: str, home_school: str | None, view_rows: Mapping | None,
+) -> bool:
+    """The match view's scope rule over the view's own row for ``opp``.
+
+    The row, not the record: a faculty profile's card says audience
+    'unknown' and an unreviewed record's card carries no audience, whatever
+    the stored record holds. ``view_rows`` maps an id to its row as the view
+    keys them; a record it lacks gets its row built here.
+    """
+    if not _scope_applies(want, home_school):
+        return True
+    row = view_rows.get(opp.get("id")) if view_rows is not None else None
+    if row is None:
+        row = _match_view_row(opp)
+    return _in_view_scope(row, want, home_school)
+
+
+def _scope_applies(want: str, home_school: str | None) -> bool:
+    """Whether scope ``want`` filters anything for ``home_school``.
+
+    None means no stored profile: the campus scope is then left unapplied,
+    as the route's exclusions are, rather than applied to a guessed school.
+    """
+    return bool(want) and not (want == "campus" and home_school is None)
+
+
+def out_of_scope_ids(
+    ids: Iterable[str],
+    filters: dict,
+    *,
+    home_school: str | None,
+    view_rows: Mapping | None,
+) -> set[str]:
+    """Of ``ids``, those whose view row tonight is outside filters.scope.
+
+    For a queue built before the refresh read the scope. An id with no row
+    in ``view_rows`` is not in tonight's records, so it is unknown rather
+    than out of scope and is not returned.
+    """
+    scope = filters.get("scope") or ""
+    if view_rows is None or not _scope_applies(scope, home_school):
+        return set()
+    return {
+        oid for oid in ids
+        if oid in view_rows and not _in_view_scope(view_rows[oid], scope, home_school)
+    }
 
 
 _WORD_BOUNDARY_TERM_MAX_LEN = 3
@@ -212,6 +269,8 @@ def filter_opportunities(
     query: str = "",
     *,
     served: dict | None = None,
+    home_school: str | None = "uiuc",
+    view_rows: Mapping | None = None,
 ) -> list[dict]:
     """Return opportunities matching ``filters`` + ``query`` text search.
 
@@ -220,11 +279,17 @@ def filter_opportunities(
     (e.g. a future "show me what's in this saved search right now" route).
     ``served``: an empty dict shared by calls over the same records, so each
     record's served fields are read once (see ``_query_fields``).
+    ``home_school``: the student's school, as the match view reads it, for
+    filters.scope (None: unknown, see ``_scope_applies``); ``view_rows``: the
+    match view's rows by id, if built.
     """
     q = (query or "").strip().lower()
+    scope = filters.get("scope") or ""
     return [
         o for o in opportunities
-        if match_filter(o, filters) and _matches_query(o, q, served)
+        if match_filter(o, filters)
+        and _matches_scope(o, scope, home_school, view_rows)
+        and _matches_query(o, q, served)
     ]
 
 
@@ -234,6 +299,8 @@ def matching_ids(
     query: str = "",
     *,
     served: dict | None = None,
+    home_school: str | None = "uiuc",
+    view_rows: Mapping | None = None,
 ) -> list[str]:
     """Same as filter_opportunities but returns just the opportunity IDs.
 
@@ -242,6 +309,9 @@ def matching_ids(
     """
     return [
         str(o["id"])
-        for o in filter_opportunities(opportunities, filters, query, served=served)
+        for o in filter_opportunities(
+            opportunities, filters, query,
+            served=served, home_school=home_school, view_rows=view_rows,
+        )
         if o.get("id")
     ]

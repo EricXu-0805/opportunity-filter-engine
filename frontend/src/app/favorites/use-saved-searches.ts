@@ -45,40 +45,55 @@ export function useSavedSearches(t: TFunc): UseSavedSearchesResult {
   // Only the newest read may land: a retry clicked while the first read is
   // still out must not be overwritten by that read's late failure.
   const readRef = useRef(0);
+  // True until a digest read returns settings: a retry reads them again.
+  const digestsMissingRef = useRef(true);
 
-  const loadList = useCallback(async (isCurrent: () => boolean) => {
+  const loadList = useCallback(async (isCurrent: () => boolean): Promise<boolean> => {
     try {
       const data = await listSavedSearches();
       if (isCurrent()) {
         setSavedSearches(data);
         setLoadError(false);
       }
+      return true;
     } catch {
       // W14 truthful zero states: the user's saved searches exist but
       // could not be fetched — flag it instead of rendering nothing.
       if (isCurrent()) setLoadError(true);
+      return false;
     }
+  }, []);
+
+  const loadDigests = useCallback(async (isCurrent: () => boolean) => {
+    let data: Map<string, SavedSearchDigest> | null = null;
+    try {
+      data = await listSavedSearchDigests();
+    } catch {
+      // digests stay null → all digest UI hides (the documented degraded
+      // mode for an unapplied migration 013 or a failed load). The list
+      // itself still renders, so this is not a false-empty.
+    }
+    if (!isCurrent()) return;
+    digestsMissingRef.current = data === null;
+    setDigests(data);
   }, []);
 
   const retryLoad = useCallback(async () => {
     const read = ++readRef.current;
-    await loadList(() => read === readRef.current);
-  }, [loadList]);
+    const isCurrent = () => read === readRef.current;
+    const listed = await loadList(isCurrent);
+    // The digest read fails with the list. A retry that brings the list back
+    // reads the email settings again too, or every digest control on it stays
+    // hidden. Not awaited: the list is what the retry answers for.
+    if (listed && isCurrent() && digestsMissingRef.current) void loadDigests(isCurrent);
+  }, [loadList, loadDigests]);
 
   useEffect(() => {
     let cancelled = false;
     const read = ++readRef.current;
-    void loadList(() => !cancelled && read === readRef.current);
-    listSavedSearchDigests()
-      .then((data) => {
-        if (!cancelled) setDigests(data);
-      })
-      .catch(() => {
-        // digests stay null → all digest UI hides (the documented degraded
-        // mode for an unapplied migration 013 or a failed load). The list
-        // itself still renders, so this is not a false-empty.
-        if (!cancelled) setDigests(null);
-      });
+    const isCurrent = () => !cancelled && read === readRef.current;
+    void loadList(isCurrent);
+    void loadDigests(isCurrent);
     getAuthState()
       .then((auth) => {
         if (!cancelled) setAccountEmail(confirmedAccountEmail(auth));
@@ -88,7 +103,7 @@ export function useSavedSearches(t: TFunc): UseSavedSearchesResult {
         if (!cancelled) setAccountEmail(null);
       });
     return () => { cancelled = true; };
-  }, [loadList]);
+  }, [loadList, loadDigests]);
 
   const handleDigestSave = useCallback(
     async (id: string, digest: SavedSearchDigest): Promise<boolean> => {
@@ -97,7 +112,14 @@ export function useSavedSearches(t: TFunc): UseSavedSearchesResult {
         setDigests((prev) => {
           if (!prev) return prev;
           const next = new Map(prev);
-          next.set(id, digest);
+          const stored = prev.get(id);
+          // The send history stays; opting in clears the unsubscribe stamp,
+          // as setSavedSearchDigest does on the row.
+          next.set(id, {
+            ...digest,
+            lastSentAt: stored?.lastSentAt ?? null,
+            unsubscribedAt: digest.optIn ? null : stored?.unsubscribedAt ?? null,
+          });
           return next;
         });
       }

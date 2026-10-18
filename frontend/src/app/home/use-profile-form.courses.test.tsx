@@ -167,7 +167,8 @@ describe('after a résumé import the form suggests a status only after a label 
       'Coursework: CS 433 (Spring 2027)',
       'Course Assistant, CS 173 (Current)',
     );
-    const none = ['CS 124', 'CS 128', 'MATH 221', 'CS 225', 'CS 233', 'CS 357', 'ECE 220', 'ECE 385', 'CS 433', 'CS 433 (Spring 2027)', 'CS 173'];
+    // "CS 433" is the listed "CS 433 (Spring 2027)" again, and is not stored (checklist M130).
+    const none = ['CS 124', 'CS 128', 'MATH 221', 'CS 225', 'CS 233', 'CS 357', 'ECE 220', 'ECE 385', 'CS 433 (Spring 2027)', 'CS 173'];
     expect(suggestions()).toEqual({
       'CS 374': 'in_progress', 'MATH 415': 'in_progress', 'Machine Learning': 'in_progress', 'Data Mining': 'in_progress',
       'ECE 391': 'in_progress', 'STAT 410': 'in_progress', 'CS 446': 'planned', 'CS 411': 'planned',

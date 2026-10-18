@@ -31,18 +31,25 @@ function makeMemoryStorage(): Storage {
  * persistence at all" — the correct production rule, and a pure environment
  * artefact here. Supplying a real serial implementation keeps every suite
  * about its own subject; the fail-closed path has its own fixture that
- * deliberately removes this again.
+ * deliberately removes this again. As in the real API, each lock name is its
+ * own mutex and request takes (name, callback) or (name, options, callback).
  */
 function installWebLocks(): void {
-  let held = false;
-  const waiting: Array<() => void> = [];
+  const held = new Set<string>();
+  const waiting = new Map<string, Array<() => void>>();
   const start = (
+    name: string,
     fn: () => unknown,
     resolve: (v: unknown) => void,
     reject: (e: unknown) => void,
   ): void => {
-    held = true;
-    const done = (): void => { held = false; waiting.shift()?.(); };
+    held.add(name);
+    const done = (): void => {
+      held.delete(name);
+      const next = waiting.get(name)?.shift();
+      if (next) next();
+      else waiting.delete(name);
+    };
     let out: unknown;
     try {
       out = fn();
@@ -60,9 +67,13 @@ function installWebLocks(): void {
     configurable: true,
     writable: true,
     value: {
-      request: (_name: string, _opts: unknown, fn: () => unknown) => new Promise((resolve, reject) => {
-        if (held) waiting.push(() => start(fn, resolve, reject));
-        else start(fn, resolve, reject);
+      request: (name: string, optsOrFn: unknown, maybeFn?: () => unknown) => new Promise((resolve, reject) => {
+        const fn = (typeof optsOrFn === 'function' ? optsOrFn : maybeFn) as () => unknown;
+        if (held.has(name)) {
+          const queue = waiting.get(name) ?? [];
+          queue.push(() => start(name, fn, resolve, reject));
+          waiting.set(name, queue);
+        } else start(name, fn, resolve, reject);
       }),
     },
   });

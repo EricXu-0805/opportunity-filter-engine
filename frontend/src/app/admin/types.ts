@@ -504,6 +504,85 @@ export interface OpsWorkflow {
   errors: Record<string, string | null>;
 }
 
+// /admin/source-health/schools and /admin/source-health/shards, from the
+// per-source ledger (src/collectors/source_health.py). Every timestamp here is
+// the school's or source's own; none is the site-wide data_updated_at.
+export interface SchoolHealthRow {
+  school: string;
+  /** 'fully_fresh' | 'partially_degraded' | 'fully_stale'. */
+  state: string;
+  fully_stale: boolean;
+  fresh_shard_count: number;
+  warn_shard_count: number;
+  stale_shard_count: number;
+  failed_shard_count: number;
+  degraded_shard_count: number;
+  total_shard_count: number;
+  oldest_stale_age_days: number | null;
+  /** Newest last_success_at over the school's eligible sources. */
+  last_successful_school_activity: string | null;
+  // Optional: an older backend does not send these.
+  /** Oldest last_success_at; null when any eligible source never succeeded. */
+  oldest_success_at?: string | null;
+  never_succeeded_shard_count?: number;
+  coverage_current_count?: number;
+  coverage_last_good_count?: number;
+  coverage_delta?: number;
+  /** When the school's shard file was last written. Not a success. */
+  last_publish_at: string | null;
+}
+
+export interface SchoolHealthReport {
+  school_count: number;
+  fully_fresh_school_count: number;
+  partially_degraded_school_count: number;
+  fully_stale_school_count: number;
+  stale_shard_count: number;
+  failed_shard_count: number;
+  total_shard_count: number;
+  warn_days: number;
+  stale_days: number;
+}
+
+export interface SchoolHealthResponse {
+  schools: SchoolHealthRow[];
+  report: SchoolHealthReport | null;
+  available: boolean;
+}
+
+export interface SourceHealthRow {
+  school: string | null;
+  source: string;
+  last_attempt_at: string | null;
+  last_success_at: string | null;
+  last_publish_at: string | null;
+  current_record_count: number | null;
+  last_good_record_count: number | null;
+  /** 'fresh' | 'warn' | 'stale' | 'unknown'. */
+  freshness: string;
+  status: string | null;
+  failure_reason: string | null;
+  consecutive_failures: number;
+  /** False for carried data no scheduled run reproduces; never counted stale. */
+  eligible: boolean;
+}
+
+export interface SourceHealthShardsResponse {
+  rows: SourceHealthRow[];
+  available: boolean;
+  reason?: string;
+}
+
+export interface SchoolHealthWorkflow {
+  data: SchoolHealthResponse | null;
+  error: string | null;
+  shards: Record<string, SourceHealthRow[] | undefined>;
+  shardLoading: Record<string, boolean>;
+  shardErrors: Record<string, string | null>;
+  onOpen: (school: string) => void;
+  onClose: (school: string) => void;
+}
+
 export type TriggerStatus = {
   kind: 'idle' | 'busy' | 'ok' | 'err';
   message?: string;

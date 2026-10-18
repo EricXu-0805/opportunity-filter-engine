@@ -261,7 +261,7 @@ test.describe('Action-time profile checks without refresh events', () => {
     });
     try {
       await page.goto('/results?tab=all');
-      const opener = page.locator(`#match-card-${TARGET}`).getByRole('button', { name: 'Draft Email', exact: true });
+      const opener = page.locator(`#match-card-${TARGET}`).getByRole('button', { name: 'Draft email', exact: true });
       await expect(opener).toBeEnabled();
       await expect(page.getByTestId('profile-refresh-status')).toHaveCount(0);
       const nextEntries = [entry('current', NEW_FACT)];

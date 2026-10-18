@@ -23,6 +23,8 @@ export interface ResumeSupplementPanelProps {
   opportunityId?: string;
   initialDraft?: ResumeSupplementDraftSnapshot | null;
   onDraftSnapshotChange?: (snapshot: ResumeSupplementDraftSnapshot | null) => void;
+  /** This answer round is now in the current profile, by this confirmation or an earlier one. */
+  onDraftSaved?: (entryId: string) => void;
 }
 const emptyAnswers = (): SupplementAnswers => ({ task: '', method: '', personalRole: '', outcome: '', outcomeBasis: '' });
 const button = 'rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:opacity-40';
@@ -35,7 +37,7 @@ export default function ResumeSupplementPanel(props: ResumeSupplementPanelProps)
   return <SupplementSession key={ownerKey} {...props} />;
 }
 
-function SupplementSession({ owner, targetKey, purpose = 'resume', profileAvailable = true, onDirtyChange, onAcceptedProfile, onOpenProfile, opportunityId, initialDraft, onDraftSnapshotChange }: ResumeSupplementPanelProps) {
+function SupplementSession({ owner, targetKey, purpose = 'resume', profileAvailable = true, onDirtyChange, onAcceptedProfile, onOpenProfile, opportunityId, initialDraft, onDraftSnapshotChange, onDraftSaved }: ResumeSupplementPanelProps) {
   const locale = useLocale();
   const copy = (en: string, zh: string) => locale === 'zh' ? zh : en;
   const id = useId();
@@ -115,6 +117,10 @@ function SupplementSession({ owner, targetKey, purpose = 'resume', profileAvaila
   useLayoutEffect(() => { snapshotCallback.current = onDraftSnapshotChange; }, [onDraftSnapshotChange]);
   const snapshotKey = JSON.stringify(recoverySnapshot);
   useLayoutEffect(() => { if (opportunityId) snapshotCallback.current?.(parseResumeSupplementDraft(JSON.parse(snapshotKey))); }, [snapshotKey, opportunityId]);
+  const savedCallback = useRef(onDraftSaved);
+  useLayoutEffect(() => { savedCallback.current = onDraftSaved; }, [onDraftSaved]);
+  useLayoutEffect(() => { if (saved) savedCallback.current?.(entryId); }, [saved, entryId]);
+  const browserDraft = purpose === 'resume' && !!onDraftSnapshotChange;
   const questions: Record<SupplementAnswerKey, { question: string; include: string; label: string }> = {
     task: { question: copy('What was the task?', '当时要完成什么任务？'), include: copy('Include task', '纳入任务'), label: copy('Task', '任务') },
     method: { question: copy('What methods or tools did you use?', '用了哪些方法或工具？'), include: copy('Include method', '纳入方法'), label: copy('Method', '方法') },
@@ -168,7 +174,7 @@ function SupplementSession({ owner, targetKey, purpose = 'resume', profileAvaila
     <h3 id={`${id}-title`} className="font-semibold">{copy('Add experience details', '补充经历信息')}</h3>
     <p className="mt-2 text-sm text-gray-600">{copy('Answer what you know, choose what to include, then confirm it is accurate. Numbers and outcomes are optional. Nothing is inferred or added automatically.', '填写你知道的内容，选择要纳入的部分，再确认属实。不必写数字或结果，也不会自动推测或补写。')}</p>
     {purpose === 'cold_email' && <p className="mt-2 text-sm text-gray-600">{copy('Describe your own contribution, separately from the team’s result. Keep your original wording; you can skip any question. Only selected, confirmed answers are added to your profile for email and résumé drafts.', '把你本人做的部分与团队结果分开写。保留你的原话，可以跳过任何问题；只有勾选并确认的内容才会加入个人资料，供邮件和简历使用。')}</p>}
-    {recoveredRound && !wasRecorded && <p role="status" data-testid="supplement-recovery-review" className="mt-3 text-sm text-amber-900">{copy('Your unfinished answers were restored. Check the current project and profile, then confirm again before adding them. No answer was submitted by restoring it.', '已恢复未完成的答案。请核对当前项目及个人资料，再重新确认后添加；恢复不会提交答案。')}</p>}
+    {recoveredRound && !wasRecorded && <p role="status" data-testid="supplement-recovery-review" className="mt-3 text-sm text-amber-900">{browserDraft ? copy('Your unfinished answers were restored from this browser. Check the current project and profile, then confirm again before adding them to your master résumé. Restoring them submitted nothing.', '已从此浏览器恢复未完成的答案。请核对当前项目及个人资料，再重新确认后加入简历母版；恢复不会提交任何内容。') : copy('Your unfinished answers were restored. Check the current project and profile, then confirm again before adding them. No answer was submitted by restoring it.', '已恢复未完成的答案。请核对当前项目及个人资料，再重新确认后添加；恢复不会提交答案。')}</p>}
     {wasRecorded && <p role="status" className="mt-3 text-sm text-indigo-900">{copy('These selected answers are already recorded in your current profile. They will not be added again.', '这些所选答案已经保存在当前个人资料中，不会重复添加。')}</p>}
     {recoveredConflict && <p role="alert" className="mt-3 text-sm text-red-700">{copy('This saved entry has changed or belongs to another activity. Review it in your profile before continuing. Your answers are kept.', '这条已保存记录发生了变化，或属于其他经历。请先在个人资料中核对；答案仍保留。')}</p>}
     {messages[controller.phase] && <p role={['load-error', 'conflict', 'save-error'].includes(controller.phase) ? 'alert' : 'status'} className="mt-3 whitespace-pre-wrap text-sm text-indigo-900">{messages[controller.phase]}</p>}
@@ -211,7 +217,7 @@ function SupplementSession({ owner, targetKey, purpose = 'resume', profileAvaila
         {SUPPLEMENT_ANSWER_KEYS.filter((key) => selected.includes(key) && answers[key].length > 0).map((key) => <div key={key} className="mt-3"><p className="text-xs font-medium">{questions[key].label}</p><pre className="mt-1 max-h-80 overflow-auto whitespace-pre-wrap break-words font-sans text-sm">{answers[key]}</pre></div>)}
       </>}
     </section>
-    <p className="mt-2 text-xs text-gray-600">{purpose === 'cold_email' && onDraftSnapshotChange ? copy('Unselected answers are not added to your profile. Unsubmitted answers are saved only in this browser’s email draft. Your confirmation is not independent verification.', '未选答案不会加入个人资料。未提交回答仅保存在此浏览器的邮件草稿中；你的确认不代表独立核验。') : copy('This records your own confirmation, not an independent verification. Unselected answers are not saved.', '这里记录的是你本人的确认，不代表独立核验。未选答案不会保存。')}</p>
+    <p className="mt-2 text-xs text-gray-600">{purpose === 'cold_email' && onDraftSnapshotChange ? copy('Unselected answers are not added to your profile. Unsubmitted answers are saved only in this browser’s email draft. Your confirmation is not independent verification.', '未选答案不会加入个人资料。未提交回答仅保存在此浏览器的邮件草稿中；你的确认不代表独立核验。') : browserDraft ? copy('Unselected answers are not added to your profile. Unsubmitted answers are kept only in this browser, for this opportunity, until you add or discard them. Your confirmation is not independent verification.', '未选答案不会加入个人资料。未提交的回答仅为此机会保存在此浏览器中，直到你添加或放弃。你的确认不代表独立核验。') : copy('This records your own confirmation, not an independent verification. Unselected answers are not saved.', '这里记录的是你本人的确认，不代表独立核验。未选答案不会保存。')}</p>
     <label className="mt-3 flex items-start gap-2 text-sm"><input type="checkbox" checked={saved || confirmed} disabled={locked || !preview.ok || !activity || !ready || recoveredConflict} onChange={(event) => setConfirmedFor(event.target.checked ? fingerprint : null)} />{recoveredRound && !saved ? copy('I reviewed the current activity and profile, and confirm the selected information is accurate.', '我已核对当前经历和资料，确认所选内容属实。') : copy('I confirm the selected information is accurate.', '我确认所选内容属实。')}</label>
     <button type="button" className={`${button} mt-3 bg-indigo-600 text-white`} disabled={!canConfirm} onClick={() => {
       if (!canConfirm) return;
@@ -220,7 +226,8 @@ function SupplementSession({ owner, targetKey, purpose = 'resume', profileAvaila
       else setLocalError(true);
     }}>{saved ? copy('Added to master résumé', '已加入母版简历') : copy('Confirm and add to my master résumé', '确认并加入简历母版')}</button>
     {recoveredRound && !saved && <button type="button" className={`${button} mt-3 ml-2`} disabled={busy || locked || controller.operationLocked} onClick={() => {
-      if (!window.confirm(copy('Discard these recovered answers and start a new supplement? Your email draft will be kept.', '放弃这些恢复的答案，开始新的补充？邮件正文会保留。'))) return;
+      if (!window.confirm(browserDraft ? copy('Discard these recovered answers and start a new supplement? Your target résumé draft will be kept.', '放弃这些恢复的答案，开始新的补充？目标简历稿会保留。')
+        : copy('Discard these recovered answers and start a new supplement? Your email draft will be kept.', '放弃这些恢复的答案，开始新的补充？邮件正文会保留。'))) return;
       setConfirmedFor(null);
       setNextRound({ target: targetKey, entry: entryId, clearActivity: true }); void run(() => controller.acceptCurrent());
     }}>{copy('Discard recovered answers and start again', '放弃恢复的答案并重新补充')}</button>}

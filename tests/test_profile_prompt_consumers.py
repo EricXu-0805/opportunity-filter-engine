@@ -16,7 +16,9 @@ INTEREST = 'I want to study research tools. ' * 90 + 'Only nonclinical work; no 
 PROFILE = {
     'name': 'Student', 'major': 'Computer Science', 'year': 'junior',
     'research_interests_text': INTEREST,
-    'hard_skills': [{'name': f'Tool{i}', 'level': 'experienced', 'source': 'github'} for i in range(60)],
+    # M12-era imports: a GitHub skill without evidence is never named (M108).
+    'hard_skills': [{'name': f'Tool{i}', 'level': 'experienced', 'source': 'github', 'evidenced': True}
+                    for i in range(60)],
     'coursework': [f'CS {100+i}' for i in range(60)],
 }
 ORIGINAL = 'Built a parser in Python.'

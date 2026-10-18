@@ -218,7 +218,8 @@ export interface ProfileRequest {
   international_student: boolean;
   seeking_type: string[];
   desired_fields: string[];
-  hard_skills: SkillWithLevel[];
+  /** `evidenced`: the skill's import kept the line or repo field that named it. */
+  hard_skills: (Omit<SkillWithLevel, 'evidence'> & { evidenced?: true })[];
   /** Every course name in `courses`, for server code that reads names only
    *  (off, RELEASE_SCOPE.courseStatus: the stored names). */
   coursework: string[];

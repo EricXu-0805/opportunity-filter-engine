@@ -73,6 +73,8 @@ function seedDeviceScopedValues(): Record<string, string> {
   const seeded: Record<string, string> = {
     [STORAGE_KEYS.LOCALE]: 'zh',
     [STORAGE_KEYS.ONBOARDING_SEEN]: '1',
+    // M127: the school-confirmation prints outlive every identity switch.
+    [STORAGE_KEYS.SCHOOL_CONFIRMED_PRINTS]: '["12345"]',
     ofe_auth: '{"access_token":"jwt"}',
   };
   for (const [key, value] of Object.entries(seeded)) {

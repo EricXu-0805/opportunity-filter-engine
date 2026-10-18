@@ -174,7 +174,7 @@ async function setup(page: Page, info: TestInfo) {
   const suggestion = page.getByRole('region', { name: locale === 'zh' ? '待确认的修改建议' : 'Pending edit suggestion', exact: true });
   const open = async () => {
     await page.goto('/favorites');
-    await page.getByRole('button', { name: locale === 'zh' ? '起草邮件' : 'Draft Email', exact: true }).click();
+    await page.getByRole('button', { name: locale === 'zh' ? '起草邮件' : 'Draft email', exact: true }).click();
     await expect(body).toHaveValue(BODY);
     await expect(page.getByRole('button', { name: copy.generateAiDraft, exact: true })).toBeEnabled();
     // Give a request that opening starts a moment late the chance to show up.

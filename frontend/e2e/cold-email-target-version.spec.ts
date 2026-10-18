@@ -38,7 +38,7 @@ async function seed(page: Page, owner: Owner) {
 async function open(page: Page) {
   const read = page.waitForResponse(response => pathOf(response.url()) === '/rest/v1/profiles' && response.status() === 200);
   await page.goto('/favorites'); await read;
-  await page.getByRole('button', { name: 'Draft Email', exact: true }).click();
+  await page.getByRole('button', { name: 'Draft email', exact: true }).click();
 }
 function fields(page: Page) {
   const editor = page.getByTestId('cold-email-editor-fields');

@@ -10,6 +10,7 @@ import {
   type SavedSearchDigest,
 } from '@/lib/saved-searches';
 import {
+  formatSavedSearchEmailState,
   formatSavedSearchTimestamp,
   summarizeSavedSearchFilters,
   type TFunc,
@@ -234,6 +235,14 @@ export function SavedSearchesSection({
             // Only a row the cron will actually send is shown as on.
             const digestOn = digestWillSend(digest, accountEmail);
             const digestNotSent = !!digest?.optIn && !digestOn;
+            const emailState = formatSavedSearchEmailState(digest, t);
+            // The refresh does not score: new results are counted before the
+            // saved minimum score, which /results applies when they open. Read
+            // as /results reads the link's `min`: truncated and held to 0..100.
+            const savedMin = Number(String(search.filters.minScore ?? 0));
+            const minScore = Number.isFinite(savedMin)
+              ? Math.min(100, Math.max(0, Math.trunc(savedMin)))
+              : 0;
             return (
               <li
                 key={search.id}
@@ -272,7 +281,14 @@ export function SavedSearchesSection({
                       )}
                     </div>
                     <p className="text-[12px] text-gray-500 truncate mt-0.5">{summary}</p>
-                    <p className="text-[11px] text-gray-500 truncate mt-0.5 tabular-nums">{timestampLabel}</p>
+                    {hasNew && minScore > 0 && (
+                      <p className="text-[11px] text-amber-700 mt-0.5">
+                        {t('favorites.savedSearches.newBeforeMinScore', { min: minScore })}
+                      </p>
+                    )}
+                    <p className="text-[11px] text-gray-500 truncate mt-0.5 tabular-nums">
+                      {emailState ? `${timestampLabel} · ${emailState}` : timestampLabel}
+                    </p>
                   </Link>
                   {digests !== null && (
                     <button

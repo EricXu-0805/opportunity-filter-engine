@@ -98,6 +98,7 @@ from src.matcher.ranker import (
     expand_search_aliases,
     hard_exclusion,
     is_dated_fit_reason,
+    prepare_static_texts,
     rank_all,
     rank_opportunity,
     rank_visible_universe,
@@ -1317,7 +1318,8 @@ def prepare_match_views(corpus: list[dict]) -> None:
     """Build the active generation's view rows ahead of the first ranking.
 
     Called by the API's startup warmup, so the first cross-school page does
-    not pay for 130,000 rows. Rankings build any row still missing.
+    not pay for 130,000 rows, nor for the ranker's text scans of the records
+    it scores. Rankings build any row or scan still missing.
     """
     corpus_identity = _activate_corpus_generation(corpus)
     opportunities = _release_universe(corpus)
@@ -1326,6 +1328,7 @@ def prepare_match_views(corpus: list[dict]) -> None:
         {opportunity.get("id") for opportunity in opportunities},
         corpus_identity,
     )
+    prepare_static_texts(opportunities)
 
 
 def _snapshot_cards(snap: _MatchSnapshot, results: list[MatchResult]) -> dict[str, dict]:
@@ -1748,6 +1751,19 @@ def _apply_match_view(
     return _apply_match_view_rows(results, rows, view, home_school)
 
 
+def _in_view_scope(row: _MatchViewRow, scope: str, home_school: str) -> bool:
+    """Whether ``row`` is in the discovery scope ``scope`` for ``home_school``.
+
+    The saved-search refresh applies a saved scope with this same predicate
+    (src/saved_searches/filter.py), so its new results are the view's.
+    """
+    if scope == "campus":
+        return row.school == home_school
+    if scope == "open":
+        return row.audience in {"open", "unknown"}
+    return True
+
+
 def _apply_match_view_rows(
     results: list[MatchResult],
     rows: Mapping[str, _MatchViewRow],
@@ -1856,12 +1872,7 @@ def _apply_match_view_rows(
                 continue
         if view.min_score > 0 and math.floor(result.final_score + 0.5) < view.min_score:
             continue
-        if view.scope == "campus" and row.school != home_school:
-            continue
-        if view.scope == "open" and row.audience not in {
-            "open",
-            "unknown",
-        }:
+        if not _in_view_scope(row, view.scope, home_school):
             continue
 
         if search_matchers:

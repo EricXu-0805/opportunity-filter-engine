@@ -133,6 +133,27 @@ export function listedCourses(list: string): Array<{ name: string; index: number
   return named;
 }
 
+// A course code a name opens with: "CS 173" alone, or "CS 173 Discrete Structures".
+// At most one space, as the server's claim check reads a code inside a name:
+// a code is never hidden behind a titled name that check cannot read it in.
+const OPENING_CODE = /^[A-Za-z]{2,4} ?[0-9]{3,4}(?![\p{L}\p{N}])/u;
+
+/** The names that are only a course code another of `names` opens with, as
+ *  the same text but for case (space included): "CS 173" beside "CS 173
+ *  Discrete Structures" is that course named again (checklist M130), "CS 173"
+ *  beside "CS173 Discrete Structures" is not. Two titled courses of one code
+ *  are two courses. */
+export function repeatedCodes(names: readonly string[]): Set<string> {
+  const codes = names.map((name) => {
+    const code = OPENING_CODE.exec(name)?.[0];
+    // The code as written but for case, space included: the server's claim check
+    // reads "CS173" in a name only as "CS173", so "CS 173" stays beside it.
+    return code === undefined ? null : { name, key: code.toLowerCase(), only: courseKey(name) === courseKey(code) };
+  });
+  const titled = new Set(codes.flatMap((code) => (code && !code.only ? [code.key] : [])));
+  return new Set(codes.flatMap((code) => (code?.only && titled.has(code.key) ? [code.name] : [])));
+}
+
 /** The longest excerpt of a line shown with a course, as for a skill. */
 const LINE_CAP = 200;
 
@@ -209,7 +230,10 @@ export interface CourseRow extends CourseEntry {
  * leaves none behind. A résumé course the student has not marked counts only
  * while `coursework` still names it: an older client removes or replaces the
  * résumé by writing `coursework` and the text, and must not leave this build
- * showing the old résumé's courses.
+ * showing the old résumé's courses. Nor does one that is only a code a résumé
+ * course opens with (repeatedCodes): the titled course keeps the code and the
+ * title the server's course claim check reads, and the next course edit
+ * writes the list without it. A code the student marked or added stays.
  */
 export function courseRows(profile: CourseProfile): CourseRow[] {
   const resume = readResume(typeof profile.resume_text === 'string' ? profile.resume_text : '');
@@ -238,7 +262,8 @@ export function courseRows(profile: CourseProfile): CourseRow[] {
   for (const raw of Array.isArray(profile.coursework) ? profile.coursework : []) {
     add(typeof raw === 'string' ? raw.trim() : '', 'resume', undefined);
   }
-  return rows;
+  const repeated = repeatedCodes(rows.filter((row) => row.source === 'resume').map((row) => row.name));
+  return rows.filter((row) => row.source !== 'resume' || said(row.marked) || !repeated.has(row.name));
 }
 
 /** Every course the profile lists, each with the status the student set or

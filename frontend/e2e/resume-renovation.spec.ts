@@ -87,7 +87,7 @@ async function openRenovation(page: Page) {
     [STORAGE_KEYS.PROFILE, JSON.stringify(PROFILE)] as const,
   );
   await page.goto(`/opportunities/${KNOWN_ID}`);
-  await page.getByRole('button', { name: 'Renovate Resume' }).click();
+  await page.getByRole('button', { name: 'Renovate resume' }).click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.getByRole('button', { name: 'Edit résumé bullets', exact: true }).click();
 }
@@ -107,7 +107,7 @@ test.describe('Résumé renovation (real browser)', () => {
       [STORAGE_KEYS.PROFILE, JSON.stringify(PROFILE)] as const,
     );
     await page.goto(`/opportunities/${KNOWN_ID}`);
-    await expect(page.getByRole('button', { name: 'Renovate Resume' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Renovate resume' })).toBeVisible();
   });
 
   test('renovating keeps the student\'s own sentence one click away', async ({ page }) => {
@@ -158,7 +158,7 @@ test.describe('Résumé renovation (real browser)', () => {
         && response.request().postDataJSON()?.p_opportunity_id === KNOWN_ID
         && response.request().postDataJSON()?.p_expected_owner === savedRequest.p_expected_owner;
     });
-    await page.getByRole('button', { name: 'Renovate Resume', exact: true }).click();
+    await page.getByRole('button', { name: 'Renovate resume', exact: true }).click();
     await page.getByRole('button', { name: 'Edit résumé bullets', exact: true }).click();
     const restoreResponse = await restored;
     expect(restoreResponse.ok()).toBe(true);
@@ -198,7 +198,7 @@ test.describe('Résumé renovation (real browser)', () => {
     await page.getByRole('button', { name: 'Close renovation dialog', exact: true }).click();
     const finalRead = page.waitForResponse(response => new URL(response.url()).pathname === '/rest/v1/rpc/read_renovation'
       && response.request().postDataJSON()?.p_opportunity_id === KNOWN_ID);
-    await page.getByRole('button', { name: 'Renovate Resume', exact: true }).click();
+    await page.getByRole('button', { name: 'Renovate resume', exact: true }).click();
     await page.getByRole('button', { name: 'Edit résumé bullets', exact: true }).click();
     expect(await (await finalRead).json()).toEqual({ status: 'found', current: thirdReceipt.current });
     await expect(page.getByText(manual, { exact: true })).toBeVisible();
@@ -297,7 +297,7 @@ test.describe('Résumé renovation (real browser)', () => {
         [STORAGE_KEYS.PROFILE, JSON.stringify(noResume)] as const,
       );
       await page.goto(`/opportunities/${KNOWN_ID}`);
-      await page.getByRole('button', { name: 'Renovate Resume' }).click();
+      await page.getByRole('button', { name: 'Renovate resume' }).click();
 
       await page.getByRole('button', { name: 'Edit résumé bullets', exact: true }).click();
       await expect(page.getByText(/Save a résumé to your profile first/)).toBeVisible();
@@ -462,7 +462,7 @@ test.describe('Complete target résumé', () => {
   }
   async function open(page: Page) {
     await page.goto(`/opportunities/${KNOWN_ID}`);
-    await page.getByRole('button', { name: 'Renovate Resume', exact: true }).click();
+    await page.getByRole('button', { name: 'Renovate resume', exact: true }).click();
     await expect(page.getByRole('dialog', { name: 'Target résumé' })).toBeVisible();
   }
   async function create(page: Page, data = targetProfile()) {
@@ -655,7 +655,7 @@ test.describe('Complete target résumé', () => {
     expect(receipt.doc).toEqual(desired); expect(writes).toHaveLength(1);
     await unchangedMaster(page, data);
     await page.getByRole('button', { name: 'Close target résumé', exact: true }).click();
-    await page.reload(); await page.getByRole('button', { name: 'Renovate Resume', exact: true }).click();
+    await page.reload(); await page.getByRole('button', { name: 'Renovate resume', exact: true }).click();
     await expectDraftText(page, desired); await unchangedMaster(page, data);
   });
 
@@ -888,7 +888,7 @@ test.describe('Complete target résumé', () => {
     await unchangedMaster(page);
     await page.getByRole('button', { name: 'Close target résumé', exact: true }).click();
     await page.reload();
-    await page.getByRole('button', { name: 'Renovate Resume', exact: true }).click();
+    await page.getByRole('button', { name: 'Renovate resume', exact: true }).click();
     await expect(name).toHaveValue('Alex 王 — targeted');
     await expect(page.getByRole('textbox', { name: 'Edit Extended note', exact: true })).toHaveValue(longField);
     await expect(preview).toContainText(fullDetail);

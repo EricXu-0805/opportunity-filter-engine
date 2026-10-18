@@ -77,7 +77,7 @@ export default function SchoolConfirmGate() {
       // as UIUC all along (the api-layer default), so that is what the user
       // is asked to confirm or correct.
       const slug = typeof stored === 'string' && stored ? stored : 'uiuc';
-      if (isSchoolConfirmed(slug)) return null;
+      if (isSchoolConfirmed(slug, view.token)) return null;
       return { slug, view };
     } catch {
       return null;

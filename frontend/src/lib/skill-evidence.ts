@@ -32,3 +32,37 @@ export function skillNeedsConfirming(skill: SkillWithLevel): boolean {
   if (skillLevelIsTheStudentsOwn(skill)) return false;
   return !!skill.source || skill.level !== 'beginner';
 }
+
+/**
+ * The skills once the résumé on file is replaced by one that names `found`,
+ * or removed (`found` empty), and whether they are only the old ones plus the
+ * new names (checklist M18).
+ *
+ * A skill only the résumé named, which the student never settled, loses its
+ * basis with the résumé and goes. One the new résumé names again takes its
+ * new line. One the student settled stays theirs, quoting no résumé that is
+ * no longer on file. A skill from GitHub or typed by the student is not the
+ * résumé's to take; neither is one with no source, which may be either.
+ */
+export function skillsWithResume(
+  skills: readonly SkillWithLevel[],
+  found: readonly SkillWithLevel[],
+): { skills: SkillWithLevel[]; onlyAdds: boolean } {
+  const byName = new Map(found.map((skill) => [skill.name, skill]));
+  const kept: SkillWithLevel[] = [];
+  let onlyAdds = true;
+  for (const skill of skills) {
+    if (skill.source !== 'resume') { kept.push(skill); continue; }
+    const again = byName.get(skill.name);
+    if (!again && !skillLevelIsTheStudentsOwn(skill)) { onlyAdds = false; continue; }
+    const evidence = again?.evidence;
+    if (evidence === skill.evidence) { kept.push(skill); continue; }
+    onlyAdds = false;
+    const next: SkillWithLevel = { ...skill };
+    if (evidence) next.evidence = evidence;
+    else delete next.evidence;
+    kept.push(next);
+  }
+  const names = new Set(kept.map((skill) => skill.name));
+  return { skills: [...kept, ...found.filter((skill) => !names.has(skill.name))], onlyAdds };
+}

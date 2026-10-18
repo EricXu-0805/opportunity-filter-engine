@@ -56,6 +56,9 @@ export const STORAGE_KEYS = {
   LOCAL_IDENTITY_OWNER: 'ofe_local_identity_owner',
   TAILOR_DRAFT_PREFIX: 'ofe_tailor_draft_',
   COLD_EMAIL_DRAFT_PREFIX: 'ofe_cold_email_draft_v1_',
+  // Unsubmitted answers in the target résumé's supplement panel, one per owner
+  // uid and opportunity. Removed once the answers are added or discarded.
+  RESUME_SUPPLEMENT_DRAFT_PREFIX: 'ofe_resume_supplement_draft_v1_',
   ANCHOR_3FAV_DISMISSED: 'ofe_anchor_3fav_dismissed',
   JUST_SIGNED_OUT: 'ofe_just_signed_out',
   GUEST_BANNER_DISMISSED: 'ofe_guest_banner_dismissed',
@@ -68,6 +71,11 @@ export const STORAGE_KEYS = {
   // Value: JSON {slug, ts} — see lib/school-confirmation.ts. User-scoped in
   // the W6 registry (school choice is an account-level decision).
   SCHOOL_CONFIRMED: 'ofe_school_confirmed',
+  // DEVICE-scoped companion to SCHOOL_CONFIRMED, kept across sign-out so an
+  // account that signs back in here is not asked again. Value: JSON array of
+  // fingerprints, at most one per account — never a uid or a school. See
+  // lib/school-confirmation.ts.
+  SCHOOL_CONFIRMED_PRINTS: 'ofe_school_confirmed_prints',
   // Flow B: a merge-grant token minted on the anon (source) session right
   // before an existing-account sign-in redirect. Survives the redirect in
   // localStorage and is redeemed once on /auth/callback, then cleared.

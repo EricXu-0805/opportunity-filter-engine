@@ -109,7 +109,7 @@ async function setup(page: Page, info: TestInfo, locale: 'en' | 'zh' = 'en') {
     return route.fulfill({ json: { version: 1, items: [], next_cursor: null } });
   });
   const mutations: string[] = []; page.on('request', request => { if (request.method() !== 'GET' && /confirm_contact_event|commit_profile_patch_cas/.test(request.url())) mutations.push(pathOf(request.url())); });
-  const open = async () => { await page.goto('/favorites'); await page.getByRole('button', { name: locale === 'zh' ? '起草邮件' : 'Draft Email', exact: true }).click(); };
+  const open = async () => { await page.goto('/favorites'); await page.getByRole('button', { name: locale === 'zh' ? '起草邮件' : 'Draft email', exact: true }).click(); };
   const ready = async () => {
     await expect(page.locator('#cold-email-body')).toHaveValue(BODY);
     await expect(page.getByRole('button', { name: locale === 'zh' ? '生成 AI 草稿' : 'Generate AI draft', exact: true })).toBeEnabled();
@@ -383,7 +383,7 @@ test('B51 supplement draft survives close, reload and storage failure without re
     await page.locator('#cold-email-body').fill('Manual email kept 王');
     const close = page.getByRole('button', { name: copy('Close email editor', '关闭邮件编辑器'), exact: true });
     await close.click(); await expect(page.locator('#cold-email-body')).toHaveCount(0);
-    await page.getByRole('button', { name: copy('Draft Email', '起草邮件'), exact: true }).click();
+    await page.getByRole('button', { name: copy('Draft email', '起草邮件'), exact: true }).click();
     await expect(task).toHaveValue(original); await expect(method).toHaveValue('Unselected private method 王'); await expect(activity).toHaveValue('project-1');
     const review = panel.getByRole('checkbox', { name: copy('I reviewed the current activity and profile, and confirm the selected information is accurate.', '我已核对当前经历和资料，确认所选内容属实。'), exact: true });
     await expect(review).not.toBeChecked(); await expect(panel.getByRole('button', {name:copy('Confirm and add to my master résumé','确认并加入简历母版'),exact:true})).toBeDisabled();
@@ -407,7 +407,7 @@ test('B51 supplement draft survives close, reload and storage failure without re
     await review.scrollIntoViewIfNeeded(); await screenProof(page, info, 'b51-single-confirmation-' + locale + '.png');
     await task.scrollIntoViewIfNeeded(); await screenProof(page, info, 'b51-restored-' + locale + '.png');
     const generationCount = f.state.calls.filter(call=>call.path.endsWith('/stream')).length;
-    await page.reload(); await page.getByRole('button', { name: copy('Draft Email', '起草邮件'), exact: true }).click();
+    await page.reload(); await page.getByRole('button', { name: copy('Draft email', '起草邮件'), exact: true }).click();
     await expect(task).toHaveValue(original); await expect(method).toHaveValue('Unselected private method 王'); await expect(review).not.toBeChecked();
     await checkCurrent(false);
     expect(f.state.calls.filter(call=>call.path.endsWith('/stream'))).toHaveLength(generationCount);
@@ -423,7 +423,7 @@ test('B51 supplement draft survives close, reload and storage failure without re
     await task.scrollIntoViewIfNeeded(); await screenProof(page, info, 'b51-failed-close-kept-' + locale + '.png');
     await page.evaluate(() => (window as unknown as { __restoreB51Storage: () => void }).__restoreB51Storage());
     await page.getByTestId('cold-email-draft-retry').click(); await expect(page.getByTestId('cold-email-draft-status')).toContainText(copy('Saved on this browser', '已保存在此浏览器'));
-    await close.click(); await expect(page.locator('#cold-email-body')).toHaveCount(0); await page.getByRole('button', { name: copy('Draft Email', '起草邮件'), exact: true }).click();
+    await close.click(); await expect(page.locator('#cold-email-body')).toHaveCount(0); await page.getByRole('button', { name: copy('Draft email', '起草邮件'), exact: true }).click();
     await expect(task).toHaveValue('Latest unsaved task 王'); await expect(review).not.toBeChecked();
     page.once('dialog',dialog=>dialog.dismiss()); await panel.getByRole('button',{name:copy('Discard recovered answers and start again','放弃恢复的答案并重新补充'),exact:true}).click(); await expect(task).toHaveValue('Latest unsaved task 王');
     page.once('dialog',dialog=>dialog.accept()); await panel.getByRole('button',{name:copy('Discard recovered answers and start again','放弃恢复的答案并重新补充'),exact:true}).click(); await expect(task).toHaveValue(''); await expect(method).toHaveValue('');

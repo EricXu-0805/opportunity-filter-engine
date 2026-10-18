@@ -6,6 +6,7 @@ import {
   recordSchoolConfirmation,
 } from './school-confirmation';
 import { HOME_SCHOOL_EVENT, STORAGE_KEYS } from './storage-keys';
+import { writeLocalStorageJSON } from './use-local-storage-json';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner, type OwnerToken } from './identity-owner';
 import {
   hydrateProfile,
@@ -95,11 +96,89 @@ describe('recordSchoolConfirmation / readSchoolConfirmation', () => {
 
 describe('isSchoolConfirmed', () => {
   it('covers only the confirmed slug', () => {
-    expect(isSchoolConfirmed('uiuc')).toBe(false);
+    expect(isSchoolConfirmed('uiuc', token)).toBe(false);
     recordSchoolConfirmation('uiuc', token);
-    expect(isSchoolConfirmed('uiuc')).toBe(true);
+    expect(isSchoolConfirmed('uiuc', token)).toBe(true);
     // A school changed by a flow that skipped the receipt must re-confirm.
-    expect(isSchoolConfirmed('ucb')).toBe(false);
+    expect(isSchoolConfirmed('ucb', token)).toBe(false);
+  });
+});
+
+// Signing out re-anons the browser, and every change of hands sweeps the
+// previous account's namespace — the receipt included.
+describe('a confirmation across sign-out on this device', () => {
+  const ACCOUNT_A = 'school-confirmation-test-uid';
+  async function become(uid: string): Promise<OwnerToken> {
+    advanceOwnerEpoch(uid);
+    await syncLocalIdentityOwner(uid);
+    return captureOwnerToken();
+  }
+
+  it('does not ask the same account again once it signs back in', async () => {
+    expect(recordSchoolConfirmation('ucb', token)).toBe(true);
+    await become('anon-after-a');
+    await become('account-b');
+    await become('anon-after-b');
+    const back = await become(ACCOUNT_A);
+    // Sign-out still removed the account's own receipt.
+    expect(readSchoolConfirmation()).toBeNull();
+    expect(isSchoolConfirmed('ucb', back)).toBe(true);
+  });
+
+  it('keeps a confirmation written before prints existed across sign-out', async () => {
+    writeLocalStorageJSON(STORAGE_KEYS.SCHOOL_CONFIRMED, { slug: 'ucb', ts: 'x' }, token);
+    expect(isSchoolConfirmed('ucb', token)).toBe(true);
+    await become('anon-after-a');
+    const back = await become(ACCOUNT_A);
+    expect(isSchoolConfirmed('ucb', back)).toBe(true);
+  });
+
+  it('still asks another account on this device', async () => {
+    recordSchoolConfirmation('ucb', token);
+    await become('anon-after-a');
+    const b = await become('account-b');
+    expect(isSchoolConfirmed('ucb', b)).toBe(false);
+  });
+
+  it('leaves a guest as it was: its own receipt counts, and the next guest is asked', async () => {
+    const guest = await become('anon-guest-1');
+    expect(isSchoolConfirmed('uiuc', guest)).toBe(false);
+    recordSchoolConfirmation('uiuc', guest);
+    expect(isSchoolConfirmed('uiuc', guest)).toBe(true);
+    const a = await become(ACCOUNT_A);
+    expect(isSchoolConfirmed('uiuc', a)).toBe(false);
+    const nextGuest = await become('anon-guest-2');
+    expect(isSchoolConfirmed('uiuc', nextGuest)).toBe(false);
+  });
+
+  it('asks again when the profile now names a school other than the one last confirmed here', async () => {
+    recordSchoolConfirmation('uiuc', token);
+    recordSchoolConfirmation('ucb', token);
+    await become('anon-after-a');
+    const back = await become(ACCOUNT_A);
+    // e.g. an imported cloud profile brought a different campus.
+    expect(isSchoolConfirmed('umich', back)).toBe(false);
+    // Confirming ucb replaced uiuc: an earlier choice is not the last one.
+    expect(isSchoolConfirmed('uiuc', back)).toBe(false);
+  });
+
+  it('asks again once site data is cleared', async () => {
+    recordSchoolConfirmation('ucb', token);
+    await become('anon-after-a');
+    localStorage.clear();
+    const back = await become(ACCOUNT_A);
+    expect(isSchoolConfirmed('ucb', back)).toBe(false);
+  });
+
+  it('leaves nothing on the device that names the account or its school', async () => {
+    recordSchoolConfirmation('ucb', token);
+    await become('anon-after-a');
+    for (let i = 0; i < localStorage.length; i += 1) {
+      const key = localStorage.key(i)!;
+      expect(key).not.toContain(ACCOUNT_A);
+      expect(localStorage.getItem(key)).not.toContain(ACCOUNT_A);
+      expect(localStorage.getItem(key)).not.toContain('ucb');
+    }
   });
 });
 

@@ -309,7 +309,7 @@ test.describe('Results return context', () => {
     const net = await installNetwork(page);
     await seedProfile(page); await onSecondPage(page, net);
     const before = { url: page.url(), count: net.requests.length };
-    await card(page).getByRole('button', { name: 'Draft Email', exact: true }).click();
+    await card(page).getByRole('button', { name: 'Draft email', exact: true }).click();
     const fields = page.getByTestId('cold-email-editor-fields');
     await expect(fields.locator('#cold-email-subject')).toHaveValue('Navigation draft');
     await expect(fields.locator('#cold-email-body')).toHaveValue('Dear Professor,\n\nNavigation fixture.\n\nReturn Test Student');
@@ -453,7 +453,7 @@ test.describe('Results return context', () => {
     await onSecondPage(page, net);
     const url = page.url();
     const count = net.requests.length;
-    for (const [open, close] of [['Draft Email', 'Close email editor'], ['Tailor Resume', 'Close tailor panel'], ['Renovate Resume', 'Close target résumé']]) {
+    for (const [open, close] of [['Draft email', 'Close email editor'], ['Tailor resume', 'Close tailor panel'], ['Renovate resume', 'Close target résumé']]) {
       await card(page).getByRole('button', { name: open, exact: true }).click();
       await expect(page.getByRole('dialog')).toBeVisible();
       if (exit === 'close button') await page.getByRole('button', { name: close, exact: true }).click();
@@ -469,26 +469,25 @@ test.describe('Results return context', () => {
   });
   }
 
-  test('browser Back keeps supplemental answers until the user confirms leaving', async ({ page }) => {
+  test('browser Back keeps supplemental answers in this browser and restores them on reopening', async ({ page }) => {
     const net = await installNetwork(page); await seedProfile(page); await onSecondPage(page, net);
     const url = page.url(); const count = net.requests.length;
-    await card(page).getByRole('button', { name: 'Renovate Resume', exact: true }).click();
+    await card(page).getByRole('button', { name: 'Renovate resume', exact: true }).click();
     await page.getByRole('button', { name: 'Add experience details', exact: true }).click();
     const panel = page.getByRole('region', { name: 'Add experience details', exact: true });
     const answer = panel.getByRole('textbox', { name: 'What was the task?', exact: true });
-    await answer.fill('Keep this unconfirmed answer when Back is cancelled.');
+    await answer.fill('Keep this unconfirmed answer after Back.');
+    // Answers kept in this browser are not lost by leaving, so Back closes without a discard prompt.
     await page.goBack();
-    await expect(page.getByRole('dialog', { name: 'Target résumé', exact: true })).toBeVisible();
-    await expect(page.getByRole('dialog', { name: 'Target résumé', exact: true }).getByRole('alert')).toContainText('unsaved edits, suggestions or answers');
-    await page.getByRole('button', { name: 'Keep editing', exact: true }).click();
-    await expect(answer).toHaveValue('Keep this unconfirmed answer when Back is cancelled.');
-    expect(page.url()).toBe(url);
-    await page.goBack();
-    await expect(page.getByRole('dialog', { name: 'Target résumé', exact: true }).getByRole('alert')).toContainText('unsaved edits, suggestions or answers');
-    await page.getByRole('button', { name: 'Discard unsaved edits and continue', exact: true }).click();
     await expect(page.getByRole('dialog')).toBeHidden();
     await expect(page.getByText('2 / 2', { exact: true })).toBeVisible();
     await expect(title(page)).toBeInViewport();
+    expect(page.url()).toBe(url);
+    await card(page).getByRole('button', { name: 'Renovate resume', exact: true }).click();
+    await expect(answer).toHaveValue('Keep this unconfirmed answer after Back.');
+    await expect(panel.getByTestId('supplement-recovery-review')).toContainText('Your unfinished answers were restored from this browser.');
+    await page.getByRole('button', { name: 'Close target résumé', exact: true }).click();
+    await expect(page.getByRole('dialog')).toBeHidden();
     expect(page.url()).toBe(url); expect(net.requests).toHaveLength(count);
     expectPublicFilters(page.url());
     expect(net.writes.filter(write => /commit_profile_patch_cas|commit_target_resume(?:_with_provenance)?_cas/.test(write))).toEqual([]);
@@ -527,7 +526,7 @@ test.describe('Results return context', () => {
           opportunity_id: request.p_opportunity_id, revision: 1, updated_at, payload } } });
       });
       await onSecondPage(page, net);
-      await card(page).getByRole('button', { name: 'Renovate Resume', exact: true }).click();
+      await card(page).getByRole('button', { name: 'Renovate resume', exact: true }).click();
       await page.getByRole('button', { name: 'Edit résumé bullets', exact: true }).click();
       const dialog = page.getByRole('dialog', { name: 'Résumé bullets', exact: true });
       await expect(dialog.getByText(en.renovate.restoreFailed, { exact: true })).toBeVisible();

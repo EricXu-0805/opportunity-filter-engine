@@ -412,6 +412,9 @@ export function toProfileRequest(profile: ProfileData): ProfileRequest {
       level: s.level,
       ...(s.source !== undefined && s.source !== null ? { source: s.source } : {}),
       ...(s.confirmed === true ? { confirmed: true } : {}),
+      // Whether the import kept the line or repo field that named it, not the
+      // line: a GitHub skill without one predates M12 and is not named.
+      ...(s.evidence?.trim() ? { evidenced: true } : {}),
     })),
     // Each course with its status: the server words a course only as its
     // status allows (src/student_evidence.py). The names alone still go as

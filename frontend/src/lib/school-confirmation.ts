@@ -6,6 +6,8 @@
 // never asks again.
 
 import { clearMatchCache } from './match-cache';
+import { hashString } from './match-utils';
+import { SCHOOLS } from './schools';
 import { HOME_SCHOOL_EVENT, STORAGE_KEYS } from './storage-keys';
 import { writeLocalStorageJSON } from './use-local-storage-json';
 import { isOwnerTokenValid, readUserScopedRaw, type OwnerToken } from './identity-owner';
@@ -40,11 +42,64 @@ export function readSchoolConfirmation(): SchoolConfirmation | null {
   }
 }
 
-/** Whether the stored confirmation covers this campus. A confirmation for a
- *  DIFFERENT slug does not count — a school changed by a flow that skipped
- *  the receipt (e.g. an imported cloud profile) should be re-confirmed. */
-export function isSchoolConfirmed(slug: string): boolean {
-  return readSchoolConfirmation()?.slug === slug;
+// Signing out re-anons the browser and identity-owner sweeps the account's
+// namespace, receipt included, so without this an account that signs back in
+// here is asked again. Device-scoped and kept across sign-out: one
+// fingerprint of (uid, slug) per account, the school it last confirmed here.
+// Without the account's uid it reveals neither the uid nor the school; testing
+// a guessed school needs the uid, which nothing on this device keeps after
+// sign-out. ONE per account is load-bearing: hashString is Java's linear
+// String.hashCode, so two prints of the same uid could be linked with a table
+// over the listed schools.
+const CONFIRMATION_PRINTS_LIMIT = 20;
+
+function confirmationPrint(uid: string, slug: string): string {
+  return hashString(`${uid}\n${slug}`);
+}
+
+function readConfirmationPrints(): string[] {
+  try {
+    const parsed = JSON.parse(
+      window.localStorage.getItem(STORAGE_KEYS.SCHOOL_CONFIRMED_PRINTS) ?? '[]',
+    ) as unknown;
+    return Array.isArray(parsed) ? parsed.filter((p): p is string => typeof p === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Best effort: a print that is not written costs one more question, never a
+ *  wrong answer. */
+function rememberConfirmationPrint(uid: string, slug: string): void {
+  // The picker only confirms a school in SCHOOLS, so this drops the account's
+  // previous print whichever campus it was for.
+  const own = new Set([slug, ...SCHOOLS.map((s) => s.slug)].map((s) => confirmationPrint(uid, s)));
+  const prints = [
+    ...readConfirmationPrints().filter((p) => !own.has(p)),
+    confirmationPrint(uid, slug),
+  ].slice(-CONFIRMATION_PRINTS_LIMIT);
+  try {
+    window.localStorage.setItem(STORAGE_KEYS.SCHOOL_CONFIRMED_PRINTS, JSON.stringify(prints));
+  } catch { /* quota / private mode */ }
+}
+
+/** Whether `owner` confirmed this campus: the receipt in its namespace, or —
+ *  after a sign-out swept that — the print of the school it last confirmed on
+ *  this device. A confirmation for a DIFFERENT slug does not count — a school
+ *  changed by a flow that skipped the receipt (e.g. an imported cloud profile)
+ *  should be re-confirmed. Writes the account's print when the receipt has
+ *  none, so call it from an effect or a handler, never during render. */
+export function isSchoolConfirmed(slug: string, owner: OwnerToken): boolean {
+  const uid = owner.uid !== null && isOwnerTokenValid(owner, owner.uid) ? owner.uid : null;
+  if (readSchoolConfirmation()?.slug === slug) {
+    // A receipt written before prints existed gets its print here, so the
+    // account's next sign-out does not cost it the confirmation.
+    if (uid !== null && !readConfirmationPrints().includes(confirmationPrint(uid, slug))) {
+      rememberConfirmationPrint(uid, slug);
+    }
+    return true;
+  }
+  return uid !== null && readConfirmationPrints().includes(confirmationPrint(uid, slug));
 }
 
 // `token` MUST be captured (via captureOwnerToken()) at the moment the
@@ -55,11 +110,15 @@ export function isSchoolConfirmed(slug: string): boolean {
 // written, and showing success anyway would let the user believe a school
 // is confirmed when the gate will just ask again next visit.
 export function recordSchoolConfirmation(slug: string, token: OwnerToken): boolean {
-  return writeLocalStorageJSON(
+  const written = writeLocalStorageJSON(
     STORAGE_KEYS.SCHOOL_CONFIRMED,
     { slug, ts: new Date().toISOString() },
     token,
   );
+  // No await since the receipt's own token check, so token.uid is still the
+  // owner it landed for.
+  if (written && token.uid !== null) rememberConfirmationPrint(token.uid, slug);
+  return written;
 }
 
 export type PersistHomeSchoolResult =

@@ -67,7 +67,7 @@ export interface OpportunityCardProps {
   accountSaveDisabled?: boolean;
   onOpenEmailModal: (opp: Opp) => void;
   /**
-   * Optional — when omitted the "Tailor Resume" CTA is hidden. R71 PR-3
+   * Optional — when omitted the "Tailor resume" CTA is hidden. R71 PR-3
    * adds this entry point for the favorites page; the modal itself is
    * mounted at the parent so we don't pay the dynamic-import cost N
    * times across the saved list.
@@ -306,7 +306,7 @@ export function OpportunityCard({
                   className="inline-flex items-center gap-2 px-4 py-2 text-[13px] font-medium text-gray-600 bg-black/[0.04] rounded-xl hover:bg-black/[0.08] transition-colors duration-200"
                 >
                   {isCustom ? <ExternalLink className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
-                  {/* "View Details" promises the current details of an
+                  {/* "View details" promises the current details of an
                       opening. For a target we can no longer vouch for, the
                       link goes to a source page and says so. A faculty page
                       is a faculty page whatever the posture. */}

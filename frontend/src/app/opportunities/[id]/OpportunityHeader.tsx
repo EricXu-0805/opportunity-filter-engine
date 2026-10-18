@@ -88,7 +88,7 @@ export function OpportunityHeader({
   // grey. Absent = this target has no draft-email action.
   onOpenEmailModal?: () => void;
   /**
-   * Optional — when omitted the "Tailor Resume" CTA is hidden. R71 PR-3
+   * Optional — when omitted the "Tailor resume" CTA is hidden. R71 PR-3
    * passes it from `OpportunityDetail`; leaving it optional keeps the
    * existing call sites (none today, but a defensive API surface) from
    * breaking when this header is reused.
@@ -102,7 +102,7 @@ export function OpportunityHeader({
    *  caller can never forget it and end up silently fail-OPEN — every
    *  call site must make an explicit, considered choice. */
   tailorDisabled: boolean;
-  /** Optional — when omitted the "Renovate Resume" CTA is hidden. */
+  /** Optional — when omitted the "Renovate resume" CTA is hidden. */
   onOpenRenovationModal?: () => void;
   onShare: () => void;
   t: TFunc;
@@ -302,7 +302,7 @@ export function OpportunityHeader({
             {t('detail.draftEmail')}
           </button>
         )}
-        {/* Same gate as Draft Email. Both post to /api/tailor, which refuses a
+        {/* Same gate as Draft email. Both post to /api/tailor, which refuses a
             non-actionable target with a 409 — so without this the page offers
             two buttons whose only possible outcome is an error. */}
         {profile && onOpenTailorModal && posture === 'actionable' && (

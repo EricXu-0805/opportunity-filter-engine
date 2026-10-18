@@ -1,0 +1,91 @@
+{
+  "about": "Checklist M130: a stored profile's courses as both sides read them (src/student_evidence.py course_entries, frontend/src/lib/course-status.ts courseEntries). A résumé course the student has not marked that is only a code is not listed again beside a résumé course that opens with that code; every titled course stays, a marked or manual code stays. Each entry is [name, status, source].",
+  "cases": [
+    {
+      "why": "names only, as every profile saved before statuses",
+      "profile": {"coursework": ["CS 173", "CS 173 Discrete Structures", "MATH 241", "MATH 241 Calculus III"]},
+      "entries": [["CS 173 Discrete Structures", "unknown", "resume"], ["MATH 241 Calculus III", "unknown", "resume"]]
+    },
+    {
+      "why": "a course list nobody marked",
+      "profile": {
+        "courses": [{"name": "CS 173", "source": "resume"}, {"name": "CS 173 Discrete Structures", "source": "resume"}],
+        "coursework": ["CS 173", "CS 173 Discrete Structures"]
+      },
+      "entries": [["CS 173 Discrete Structures", "unknown", "resume"]]
+    },
+    {
+      "why": "a status click wrote the list without the code, and the names still hold it",
+      "profile": {
+        "courses": [{"name": "CS 173 Discrete Structures", "status": "completed", "source": "resume"}],
+        "coursework": ["CS 173", "CS 173 Discrete Structures"]
+      },
+      "entries": [["CS 173 Discrete Structures", "completed", "resume"]]
+    },
+    {
+      "why": "two courses of one code both stay",
+      "profile": {"coursework": ["CS 498", "CS 498 Cloud Computing Applications", "CS 498 Deep Learning for Healthcare"]},
+      "entries": [["CS 498 Cloud Computing Applications", "unknown", "resume"], ["CS 498 Deep Learning for Healthcare", "unknown", "resume"]]
+    },
+    {
+      "why": "a code no course opens with stays, and so does a title without a code",
+      "profile": {"coursework": ["CS 225", "Data Structures", "STAT 400", "CS 1730 Special Topics", "CS 173H Honors Seminar"]},
+      "entries": [["CS 225", "unknown", "resume"], ["Data Structures", "unknown", "resume"], ["STAT 400", "unknown", "resume"],
+                  ["CS 1730 Special Topics", "unknown", "resume"], ["CS 173H Honors Seminar", "unknown", "resume"]]
+    },
+    {
+      "why": "case is not part of the code, and a colon may follow it",
+      "profile": {"coursework": ["CS 173", "cs 173: Discrete Structures"]},
+      "entries": [["cs 173: Discrete Structures", "unknown", "resume"]]
+    },
+    {
+      "why": "a code the student marked stays beside the course",
+      "profile": {
+        "courses": [{"name": "CS 173", "status": "completed", "source": "resume"}, {"name": "CS 173 Discrete Structures", "source": "resume"}],
+        "coursework": ["CS 173", "CS 173 Discrete Structures"]
+      },
+      "entries": [["CS 173", "completed", "resume"], ["CS 173 Discrete Structures", "unknown", "resume"]]
+    },
+    {
+      "why": "a code added on the form stays",
+      "profile": {
+        "courses": [{"name": "CS 173", "source": "manual"}, {"name": "CS 173 Discrete Structures", "source": "resume"}],
+        "coursework": ["CS 173", "CS 173 Discrete Structures"]
+      },
+      "entries": [["CS 173", "unknown", "manual"], ["CS 173 Discrete Structures", "unknown", "resume"]]
+    },
+    {
+      "why": "only a résumé course hides the résumé's code",
+      "profile": {
+        "courses": [{"name": "CS 173 Discrete Structures", "status": "completed", "source": "manual"}, {"name": "CS 173", "source": "resume"}],
+        "coursework": ["CS 173 Discrete Structures", "CS 173"]
+      },
+      "entries": [["CS 173 Discrete Structures", "completed", "manual"], ["CS 173", "unknown", "resume"]]
+    },
+    {
+      "why": "two spaces in the titled name's code: the claim check reads no code there, so the bare code stays",
+      "profile": {"coursework": ["CS 173", "CS  173 Discrete Structures"]},
+      "entries": [["CS 173", "unknown", "resume"], ["CS  173 Discrete Structures", "unknown", "resume"]]
+    },
+    {
+      "why": "a hyphen in the titled name's code is not an opening code here, so the bare code stays",
+      "profile": {"coursework": ["CS 173", "CS-173 Discrete Structures"]},
+      "entries": [["CS 173", "unknown", "resume"], ["CS-173 Discrete Structures", "unknown", "resume"]]
+    },
+    {
+      "why": "the titled name writes the code without its space: the claim check reads only \"CS173\" there, so \"CS 173\" stays",
+      "profile": {"coursework": ["CS 173", "CS173 Discrete Structures"]},
+      "entries": [["CS 173", "unknown", "resume"], ["CS173 Discrete Structures", "unknown", "resume"]]
+    },
+    {
+      "why": "a bare code without its space beside a titled name with it: only the same text hides, so both stay",
+      "profile": {"coursework": ["CS173", "CS 173 Discrete Structures"]},
+      "entries": [["CS173", "unknown", "resume"], ["CS 173 Discrete Structures", "unknown", "resume"]]
+    },
+    {
+      "why": "the same code in another case still hides: case is not part of the code",
+      "profile": {"coursework": ["cs 173", "CS 173 Discrete Structures"]},
+      "entries": [["CS 173 Discrete Structures", "unknown", "resume"]]
+    }
+  ]
+}

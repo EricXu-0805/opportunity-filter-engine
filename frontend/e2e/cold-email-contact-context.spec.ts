@@ -120,7 +120,7 @@ function writing(page: Page, heldKind?: 'stream' | 'refine') {
 async function open(page: Page) {
   const profileRead = page.waitForResponse(response => pathOf(response.url()) === '/rest/v1/profiles' && response.status() === 200);
   await page.goto('/favorites'); await profileRead;
-  await page.getByRole('button', { name: 'Draft Email', exact: true }).click();
+  await page.getByRole('button', { name: 'Draft email', exact: true }).click();
 }
 // Opening shows the template; only the Generate control starts an AI draft.
 const generate = (page: Page) => page.getByRole('button', { name: 'Generate AI draft', exact: true });

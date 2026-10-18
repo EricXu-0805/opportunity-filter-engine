@@ -1,5 +1,7 @@
 import { SUPPLEMENT_ANSWER_KEYS, type SupplementAnswers, type SupplementAnswerKey } from './resume-supplement';
 import type { ProfileData } from './types';
+import { isOwnerTokenValid, readUserScopedEntry, removeUserScopedRaw, writeUserScopedRaw, type OwnerToken } from './identity-owner';
+import { STORAGE_KEYS } from './storage-keys';
 
 /** Local text recovery only. No confirmation, accepted profile or permission to submit. */
 export interface ResumeSupplementDraftSnapshot {
@@ -36,4 +38,56 @@ export function supplementRecorded(profile: ProfileData | null | undefined, draf
   const activity = profile?.resume_master?.activities.find(item => item.id === draft.activityId);
   return !!entry && entry.revision === 1 && entry.status === 'confirmed' && entry.source.kind === 'manual' && entry.text === preview
     && !!activity?.details.some(ref => ref.id === entry.id && ref.revision === entry.revision);
+}
+
+// The target résumé keeps one unsubmitted supplement per owner uid and opportunity.
+// The prefix is user-scoped, so an owner change or sign-out sweeps it with the
+// rest of that generation's private data; writes are bound to the owner token.
+// The copy names the editor that wrote it and whether that editor has closed, so
+// another tab never adopts a round that a live editor still owns.
+export interface StoredResumeSupplementDraft { draft: ResumeSupplementDraftSnapshot; editor: string; closed: boolean }
+function storageKey(owner: OwnerToken, opportunityId: string): string {
+  return STORAGE_KEYS.RESUME_SUPPLEMENT_DRAFT_PREFIX + encodeURIComponent(JSON.stringify([owner.uid, opportunityId]));
+}
+export function readResumeSupplementDraft(owner: OwnerToken, opportunityId: string): StoredResumeSupplementDraft | null {
+  if (!opportunityId || !isOwnerTokenValid(owner, owner.uid)) return null;
+  const entry = readUserScopedEntry(storageKey(owner, opportunityId));
+  if (entry.status !== 'present' || entry.value.length > 2 * RESUME_SUPPLEMENT_DRAFT_MAX_LENGTH) return null;
+  try {
+    const item: unknown = JSON.parse(entry.value);
+    if (!exact(item, ['version', 'ownerId', 'editor', 'closed', 'draft']) || item.version !== 1 || item.ownerId !== owner.uid
+      || !text(item.editor, 80) || typeof item.closed !== 'boolean') return null;
+    const draft = parseResumeSupplementDraft(item.draft);
+    return draft?.opportunityId === opportunityId ? { draft, editor: item.editor, closed: item.closed } : null;
+  } catch { return null; }
+}
+/** Stores answers worth recovering for a live editor. A snapshot without any
+ * answer text, or null, removes the copy only when this editor wrote it. */
+export function writeResumeSupplementDraft(owner: OwnerToken, opportunityId: string, editor: string, draft: ResumeSupplementDraftSnapshot | null): boolean {
+  if (!opportunityId || !isOwnerTokenValid(owner, owner.uid)) return false;
+  const key = storageKey(owner, opportunityId);
+  const copy = draft && parseResumeSupplementDraft(draft);
+  if (draft && (!copy || copy.opportunityId !== opportunityId)) return false;
+  if (!copy || !SUPPLEMENT_ANSWER_KEYS.some(name => copy.answers[name].length > 0)) {
+    const stored = readResumeSupplementDraft(owner, opportunityId);
+    return stored && stored.editor !== editor ? true : removeUserScopedRaw(key, owner);
+  }
+  return writeUserScopedRaw(key, JSON.stringify({ version: 1, ownerId: owner.uid, editor, closed: false, draft: copy }), owner);
+}
+/** Marks this editor's own copy closed (recoverable) or open again, e.g. after a page is restored from the back/forward cache. */
+export function markResumeSupplementDraft(owner: OwnerToken, opportunityId: string, editor: string, closed: boolean): void {
+  const stored = readResumeSupplementDraft(owner, opportunityId);
+  if (stored?.editor !== editor || stored.closed === closed) return;
+  writeUserScopedRaw(storageKey(owner, opportunityId), JSON.stringify({ version: 1, ownerId: owner.uid, editor, closed, draft: stored.draft }), owner);
+}
+/** The Web Lock a live editor holds; the browser releases it when the tab closes or crashes. */
+export const resumeSupplementEditorLock = (editor: string) => JSON.stringify(['ofe-resume-supplement-editor-v1', editor]);
+/** A copy left open by an editor whose tab no longer holds its lock (a crash or a killed tab) can be recovered. */
+export async function resumeSupplementEditorGone(editor: string): Promise<boolean> {
+  if (typeof navigator === 'undefined' || !navigator.locks?.query) return false;
+  try {
+    const { held = [], pending = [] } = await navigator.locks.query();
+    const name = resumeSupplementEditorLock(editor);
+    return ![...held, ...pending].some(lock => lock.name === name);
+  } catch { return false; }
 }

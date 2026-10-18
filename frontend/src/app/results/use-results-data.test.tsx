@@ -1,7 +1,7 @@
 import { act, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { Suspense, useCallback, useState } from 'react';
 import { translate } from '@/i18n/translate';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError, type MatchViewRequestState } from '@/lib/api';
 import type { MatchesResponse, ProfileData } from '@/lib/types';
 import { useResultsData } from './use-results-data';
@@ -916,6 +916,83 @@ function Harness() {
     </div>
   );
 }
+
+describe('the cross-school progress hint', () => {
+  const crossProfile: ProfileData = { ...profile, include_cross_school: true };
+
+  beforeEach(async () => {
+    advanceOwnerEpoch('results-data-owner'); await syncLocalIdentityOwner('results-data-owner');
+    mocks.getMatchView.mockReset();
+    mocks.readMatchCache.mockReturnValue(null);
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  // Every value the hook returned, so a hint that flashed for one render
+  // between two checks is still caught.
+  function track(p: ProfileData, page = 1) {
+    const seen: boolean[] = [];
+    const hook = renderHook(() => {
+      const state = useResultsData(p, false, baseView, page, t, true);
+      seen.push(state.showCrossSchoolHint);
+      return state;
+    });
+    return { ...hook, seen };
+  }
+
+  async function advance(ms: number) {
+    await act(async () => { await vi.advanceTimersByTimeAsync(ms); });
+  }
+
+  it('says so after a short delay while a cross-school first page loads, and stops when it lands', async () => {
+    let resolve!: (value: MatchesResponse) => void;
+    mocks.getMatchView.mockReturnValue(new Promise<MatchesResponse>((r) => { resolve = r; }));
+    const { result } = track(crossProfile);
+
+    await advance(1400);
+    expect(result.current.loading).toBe(true);
+    expect(result.current.showCrossSchoolHint).toBe(false);
+    await advance(200);
+    expect(result.current.showCrossSchoolHint).toBe(true);
+
+    await act(async () => { resolve(response('cross')); });
+    expect(result.current.data?.result_set_id).toBe('set-cross');
+    expect(result.current.showCrossSchoolHint).toBe(false);
+  });
+
+  it('never shows it for an own-school load, however slow', async () => {
+    mocks.getMatchView.mockReturnValue(new Promise<MatchesResponse>(() => {}));
+    const { result, seen } = track(profile);
+    await advance(7000);
+    expect(result.current.loading).toBe(true);
+    expect(seen).not.toContain(true);
+  });
+
+  it('never flashes it for a cross-school page that answers quickly', async () => {
+    mocks.getMatchView.mockImplementation(() => new Promise<MatchesResponse>((r) => {
+      setTimeout(() => r(response('warm')), 300);
+    }));
+    const { result, seen } = track(crossProfile);
+    await advance(300);
+    await advance(2700);
+    expect(result.current.data?.result_set_id).toBe('set-warm');
+    expect(seen).not.toContain(true);
+  });
+
+  it('removes it when the cross-school request fails', async () => {
+    let reject!: (error: unknown) => void;
+    mocks.getMatchView.mockReturnValue(new Promise<MatchesResponse>((_r, j) => { reject = j; }));
+    const { result } = track(crossProfile);
+    await advance(2000);
+    expect(result.current.showCrossSchoolHint).toBe(true);
+
+    await act(async () => { reject(new ApiError(503, 'MATCH_BUSY', 'busy', true)); });
+    expect(result.current.error).toBe('busy');
+    expect(result.current.showCrossSchoolHint).toBe(false);
+  });
+});
 
 describe('what a warm cache can put in front of a student', () => {
   // Its own reset: this block sits outside the `useResultsData` describe, so

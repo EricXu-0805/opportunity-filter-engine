@@ -52,6 +52,7 @@ export const USER_SCOPED_KEYS: readonly string[] = [
 export const USER_SCOPED_PREFIXES: readonly string[] = [
   STORAGE_KEYS.TAILOR_DRAFT_PREFIX, // resume-tailor drafts — user-written content
   STORAGE_KEYS.COLD_EMAIL_DRAFT_PREFIX, // unsent email text and context; no send receipts
+  STORAGE_KEYS.RESUME_SUPPLEMENT_DRAFT_PREFIX, // unsubmitted résumé supplement answers — user-written content
   // One lane per tab holding that tab's unsent profile edit operations, plus
   // the shared settled/claim lane. Same data as PROFILE/PROFILE_SYNC — an
   // operation staged by one account must never be replayed under another's.
@@ -67,6 +68,9 @@ export const USER_SCOPED_PREFIXES: readonly string[] = [
 //   LOCALE             — language is a device preference, not private data
 //   ONBOARDING_SEEN    — UI education; re-running the tour on every account
 //                        switch would punish switching, and it reveals nothing
+//   SCHOOL_CONFIRMED_PRINTS — fingerprints only, no uid and no school, so an
+//                        account signing back in is not asked again; see
+//                        school-confirmation.ts
 //   MERGE_GRANT        — owned by the Flow B merge flow; it must survive the
 //                        anon → account redirect to be redeemed on callback.
 //                        W14: it defers the clear below only while fresh

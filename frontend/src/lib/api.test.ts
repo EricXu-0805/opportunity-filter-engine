@@ -161,6 +161,27 @@ describe('getMatches', () => {
     ]);
   });
 
+  it('tells the server which skills carry evidence, without sending the line', async () => {
+    // A GitHub skill without evidence predates M12 and the server will not
+    // name it (src/student_evidence.py). Only whether there is a line goes.
+    fetchMock.mockResolvedValue(
+      okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),
+    );
+    const profile = makeProfile();
+    profile.skills = [
+      { name: 'PyTorch', level: 'beginner', source: 'github', evidence: 'repo engine: topic pytorch' },
+      { name: 'pandas', level: 'beginner', source: 'github' },
+      { name: 'Python', level: 'beginner', source: 'resume', evidence: '  ' },
+    ];
+    await getMatches(profile);
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(body.hard_skills).toEqual([
+      { name: 'PyTorch', level: 'beginner', source: 'github', evidenced: true },
+      { name: 'pandas', level: 'beginner', source: 'github' },
+      { name: 'Python', level: 'beginner', source: 'resume' },
+    ]);
+  });
+
   it('sends exploring=true when the profile opts into explore mode', async () => {
     fetchMock.mockResolvedValue(
       okJson({ total: 0, high_priority: 0, good_match: 0, reach: 0, low_fit: 0, results: [] }),

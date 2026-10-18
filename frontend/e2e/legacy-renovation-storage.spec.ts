@@ -65,7 +65,7 @@ async function setup(page: Page, account: Owner) {
 async function enter(page: Page) {
   const read = page.waitForResponse(response => pathOf(response.url()) === '/rest/v1/profiles' && response.status() === 200);
   await page.goto(`/opportunities/${TARGET}`); await read;
-  await page.getByRole('button', { name: 'Renovate Resume', exact: true }).click();
+  await page.getByRole('button', { name: 'Renovate resume', exact: true }).click();
   await page.getByRole('button', { name: 'Edit résumé bullets', exact: true }).click();
 }
 async function generate(page: Page): Promise<Receipt> {

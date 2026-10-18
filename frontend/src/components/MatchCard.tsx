@@ -67,10 +67,10 @@ export interface MatchCardProps {
   match: MatchResult;
   profile?: ProfileData | null;
   onDraftEmail: (opportunityId: string) => void;
-  /** True only while the page would open a draft for a Draft Email click (see
+  /** True only while the page would open a draft for a Draft email click (see
    *  writingEntryReady in results/page.tsx). Until then the button is disabled
    *  and busy, like Tailor before ownerReady, rather than live but ignored.
-   *  Renovate Resume waits for it too when the page opens that editor
+   *  Renovate resume waits for it too when the page opens that editor
    *  (onOpenResume). Defaults to false (fail-closed) when omitted. */
   draftEmailReady?: boolean;
   /** Results owns the persistent editor; other callers may retain the local fallback. */
@@ -271,7 +271,7 @@ export default function MatchCard({ detailHref, isViewed, onViewOpportunity, mat
 
   // A faculty record's application_url is a directory page, not an application
   // form. Keep drafting and opening that page as separate actions: neither one
-  // proves contact, and the page must never be labelled "Apply Now".
+  // proves contact, and the page must never be labelled "Apply now".
   // opportunityApplicationUrl folds in both facts: the record must be a
   // listing AND the server must still call it actionable. Faculty rows and
   // closed listings therefore fall through to the source link below.
@@ -562,7 +562,7 @@ export default function MatchCard({ detailHref, isViewed, onViewOpportunity, mat
               {t('card.renovateResume')}
             </button>
           )}
-          {/* Faculty: the directory page is a secondary "Faculty Page", not the
+          {/* Faculty: the directory page is a secondary "Faculty page", not the
               primary CTA. Non-faculty with no apply portal: source "Details". */}
           {isFaculty && facultyPageUrl ? (
             <a

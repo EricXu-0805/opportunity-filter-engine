@@ -6,10 +6,12 @@ SKILL_SYNONYMS, SKILL_IMPLIES) still live in this file because they're
 data, not policy — moving them to YAML is a separate refactor.
 """
 
+import gc
 import math
 import re
 import threading
 from collections import Counter, OrderedDict, defaultdict
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from functools import lru_cache
@@ -3094,22 +3096,8 @@ def _build_opp_static(opp: dict) -> _OppStatic:
             else "Prestigious institution — strong resume builder"
         )
 
-    # description_clean too: 7,537 of 8,361 listing records (90.1%) keep their
-    # prose there, and every other description reader in this file already
-    # falls back. Without it mentor and pathway — a quarter to a third of the
-    # upside layer for a listing — were the constants 35.0 and 40.0, and the
-    # "publication or long-term involvement" reason could never be produced.
-    desc = (opp.get("description_raw") or opp.get("description_clean") or "").lower()
-    # Every match of these patterns contains a fixed word (the stem, or
-    # "learning"), so a description without the word cannot match. Testing for
-    # it first skips scans that walked every position of the description,
-    # more than half of each static build, and changes no answer.
-    stem_scan = _ML_TOPIC_RE.sub(" ", desc) if "learning" in desc else desc
-    mentor_hits = sum(
-        1 for k in _MENTOR_KEYWORDS if k in stem_scan and _UPSIDE_STEM_RES[k].search(stem_scan)
-    )
-    pathway_hits = sum(
-        1 for k in _PATHWAY_KEYWORDS if k in stem_scan and _UPSIDE_STEM_RES[k].search(stem_scan)
+    mentor_hits, pathway_hits, requires_grad, topic_has_specific, research_summary, signal_text = (
+        _static_text(opp)
     )
 
     lab = faculty_safe_lab_or_program(opp)
@@ -3127,16 +3115,6 @@ def _build_opp_static(opp: dict) -> _OppStatic:
             if not is_faculty_contact or is_professor_rank(stated_rank)
             else clean_pi
         )
-
-    # Interest-bonus haystack. Two guards against name-luck ranking (a
-    # cancer-immunology student's "gene/genomics" tokens put Gene Fridman and
-    # THREE Eugenes in her top-15): the professor's name is cut out of the
-    # title/lab text, and the text is normalized to space-padded words so the
-    # bonus can require a word boundary at the start of each hit.
-    signal_parts = [opp.get("title", ""), " ".join(keywords), lab or ""]
-    if pi_name:
-        signal_parts = [_cut_name(part, pi_name) for part in signal_parts]
-    signal_joined = re.sub(r"[^a-z0-9]+", " ", " ".join(signal_parts).lower()).strip()
 
     deadline_date = _stated_deadline_date(opp)
 
@@ -3162,7 +3140,7 @@ def _build_opp_static(opp: dict) -> _OppStatic:
         has_desc=bool(opp.get("description_raw") or opp.get("description_clean") or ""),
         has_skill_signal=not is_faculty_contact and bool(elig.get("skills_required")),
         lab_label=lab_label,
-        signal_text=f" {signal_joined} " if signal_joined else "",
+        signal_text=signal_text,
         dept_lower=dept_lower,
         topic_candidates=tuple(
             (
@@ -3175,13 +3153,92 @@ def _build_opp_static(opp: dict) -> _OppStatic:
             )
             for kw in kw_lower if kw not in _BROAD_FIELDS
         ),
-        topic_has_specific=any(
-            k.lower() not in _BROAD_FIELDS for k in _extract_specific_keywords(opp)
-        ),
-        requires_grad=False if is_faculty_contact else _requires_graduate_standing(opp),
-        research_summary=_summarize_research(opp),
+        topic_has_specific=topic_has_specific,
+        requires_grad=requires_grad,
+        research_summary=research_summary,
         deadline_date=deadline_date,
     )
+
+
+def _build_static_text(opp: dict) -> tuple[int, int, bool, bool, str, str]:
+    """The parts of a record's static read off its free text.
+
+    (mentor hits, pathway hits, requires_grad, topic_has_specific,
+    research_summary, signal_text): two small counts, two flags and two short
+    strings, which take most of a static build's time and little of its room.
+    """
+    is_faculty_contact = faculty_contact_claims_unverified(opp)
+    # description_clean too: 7,537 of 8,361 listing records (90.1%) keep their
+    # prose there, and every other description reader in this file already
+    # falls back. Without it mentor and pathway — a quarter to a third of the
+    # upside layer for a listing — were the constants 35.0 and 40.0, and the
+    # "publication or long-term involvement" reason could never be produced.
+    desc = (opp.get("description_raw") or opp.get("description_clean") or "").lower()
+    # Every match of these patterns contains a fixed word (the stem, or
+    # "learning"), so a description without the word cannot match. Testing for
+    # it first skips scans that walked every position of the description,
+    # more than half of each static build, and changes no answer.
+    stem_scan = _ML_TOPIC_RE.sub(" ", desc) if "learning" in desc else desc
+    mentor_hits = sum(
+        1 for k in _MENTOR_KEYWORDS if k in stem_scan and _UPSIDE_STEM_RES[k].search(stem_scan)
+    )
+    pathway_hits = sum(
+        1 for k in _PATHWAY_KEYWORDS if k in stem_scan and _UPSIDE_STEM_RES[k].search(stem_scan)
+    )
+
+    # Interest-bonus haystack. Two guards against name-luck ranking (a
+    # cancer-immunology student's "gene/genomics" tokens put Gene Fridman and
+    # THREE Eugenes in her top-15): the professor's name is cut out of the
+    # title/lab text, and the text is normalized to space-padded words so the
+    # bonus can require a word boundary at the start of each hit.
+    keywords = opp.get("keywords", []) or []
+    pi_name = opp.get("pi_name", "")
+    signal_parts = [opp.get("title", ""), " ".join(keywords), faculty_safe_lab_or_program(opp) or ""]
+    if pi_name:
+        signal_parts = [_cut_name(part, pi_name) for part in signal_parts]
+    signal_joined = re.sub(r"[^a-z0-9]+", " ", " ".join(signal_parts).lower()).strip()
+
+    return (
+        mentor_hits,
+        pathway_hits,
+        False if is_faculty_contact else _requires_graduate_standing(opp),
+        any(k.lower() not in _BROAD_FIELDS for k in _extract_specific_keywords(opp)),
+        _summarize_research(opp),
+        f" {signal_joined} " if signal_joined else "",
+    )
+
+
+def _static_text(opp: dict) -> tuple[int, int, bool, bool, str, str]:
+    """_build_static_text, kept for every record of the registered corpus.
+
+    The whole static stays behind a small LRU (528 MB for the 137k records a
+    cross-school ranking scores, measured 2026-10-18), so a cross-school
+    ranking rebuilt every record's static and these scans with it. This part
+    keeps for the corpus generation in about 47 MB. Each entry holds its
+    record, so a reused object id can never read another record's entry.
+    """
+    row = _corpus_rows.get(id(opp))
+    cache = _static_texts
+    if row is not None and row < len(cache):
+        entry = cache[row]
+        if entry is not None and entry[0] is opp:
+            return entry[1]
+    derived = _build_static_text(opp)
+    if row is not None and row < len(cache):
+        cache[row] = (opp, derived)
+    return derived
+
+
+def prepare_static_texts(opportunities: list[dict]) -> None:
+    """Keep _static_text for these records of the registered corpus now.
+
+    The API's startup warmup calls this (through prepare_match_views) with
+    the records a ranking scores, so the first cross-school ranking after a
+    deploy does not derive 137k of them. Rankings derive any still missing.
+    """
+    with corpus_generation_lock:
+        for opp in opportunities:
+            _static_text(opp)
 
 
 _STATIC_CACHE_MAX = 8192
@@ -3194,6 +3251,8 @@ _corpus_ref: list[dict] | None = None
 # rebuilding 130k corpus strings on every request.
 _corpus_rows: dict[int, int] = {}
 _static_cache: "OrderedDict[int, _OppStatic]" = OrderedDict()
+# Corpus row -> (record, _build_static_text(record)); see _static_text.
+_static_texts: list[tuple[dict, tuple] | None] = []
 _sim_matrix = None
 # A hot corpus reload must never swap the TF-IDF vectorizer/matrix or static
 # identity map halfway through one score traversal. data_loader acquires this
@@ -3244,7 +3303,7 @@ def registered_corpus_identity_nowait() -> int | None:
 
 
 def _register_corpus_unlocked(opportunities: list[dict]) -> None:
-    global _corpus_ref, _corpus_rows, _static_cache, _sim_matrix
+    global _corpus_ref, _corpus_rows, _static_cache, _static_texts, _sim_matrix
     if opportunities is _corpus_ref:
         return
     # Build every potentially failing replacement before publishing any
@@ -3254,6 +3313,7 @@ def _register_corpus_unlocked(opportunities: list[dict]) -> None:
     replacement_matrix = _build_sim_matrix(opportunities)
     _corpus_rows = replacement_rows
     _static_cache = OrderedDict()
+    _static_texts = [None] * len(opportunities)
     _sim_matrix = replacement_matrix
     _corpus_ref = opportunities
     _kw_word_res.clear()
@@ -4269,6 +4329,38 @@ def _iter_scored_results(
         )
 
 
+_collector_pause_lock = threading.Lock()
+_collector_pause_depth = 0
+_collector_resume = False
+
+
+@contextmanager
+def _collector_paused():
+    """Hold off the cyclic garbage collector for one full score traversal.
+
+    A cross-school traversal allocates and keeps tens of thousands of results,
+    so the collector ran about 2,000 young and a dozen full collections during
+    it, each full one walking every result kept so far: 3 to 4 s of a 12 s
+    ranking. The results and statics form no reference cycles, so reference
+    counting frees what the traversal drops either way, and the collector
+    resumes, with its thresholds unchanged, when the last concurrent traversal
+    ends. Scores cannot change: the collector never touches a live object.
+    """
+    global _collector_pause_depth, _collector_resume
+    with _collector_pause_lock:
+        if _collector_pause_depth == 0:
+            _collector_resume = gc.isenabled()
+            gc.disable()
+        _collector_pause_depth += 1
+    try:
+        yield
+    finally:
+        with _collector_pause_lock:
+            _collector_pause_depth -= 1
+            if _collector_pause_depth == 0 and _collector_resume:
+                gc.enable()
+
+
 def _opportunity_lookup_for_results(
     opportunities: list[dict],
     results: list[MatchResult],
@@ -4287,7 +4379,8 @@ def rank_all(
     responsiveness: dict[str, dict] | None = None,
 ) -> list[MatchResult]:
     """Rank all opportunities for a profile, listed in served_sort_key order."""
-    results = list(_iter_scored_results(profile, opportunities, responsiveness))
+    with _collector_paused():
+        results = list(_iter_scored_results(profile, opportunities, responsiveness))
 
     # Deterministic tie-break: scores round to 0.1, so equal-score bands
     # (17-way ties were observed) otherwise reorder whenever corpus file
@@ -4332,10 +4425,11 @@ def rank_visible_universe(
     score_counts: defaultdict[str, Counter[float]] = defaultdict(Counter)
     retained: list[MatchResult] = []
 
-    for result in _iter_scored_results(profile, opportunities, responsiveness):
-        score_counts[result.opportunity_type][result.final_score] += 1
-        if result.final_score >= floor_reach:
-            retained.append(result)
+    with _collector_paused():
+        for result in _iter_scored_results(profile, opportunities, responsiveness):
+            score_counts[result.opportunity_type][result.final_score] += 1
+            if result.final_score >= floor_reach:
+                retained.append(result)
 
     result_count = sum(sum(counts.values()) for counts in score_counts.values())
     buckets = {"high_priority": 0, "good_match": 0, "reach": 0, "low_fit": 0}

@@ -15,6 +15,7 @@ tests never touch the network. The core invariants pinned here:
 
 from __future__ import annotations
 
+import asyncio
 import os
 import re
 import sys
@@ -871,6 +872,137 @@ class TestRefreshAccumulatesNewMatches:
         assert "pending-0" not in got  # oldest aged out
         assert got[-2:] == ["opp-a", "opp-b"]  # fresh matches kept
 
+    @pytest.mark.parametrize(("home_school", "expected"), [
+        (" UIUC ", ["opp-here"]),
+        ("ucb", ["opp-there"]),
+        (None, ["opp-here"]),
+    ])
+    def test_a_campus_scoped_search_counts_only_the_students_campus_as_new(
+        self, monkeypatch, home_school, expected,
+    ):
+        """The saved scope was restored on /results and ignored here, so a
+        campus-scoped search marked another campus's record new. The school is
+        the stored profile's, read as the match view reads it; a profile that
+        names none gets the view's default."""
+        _set_digest_env(monkeypatch)
+        patches: list = []
+        device = "device-scoped"
+        profile = {"include_cross_school": True}
+        if home_school is not None:
+            profile["home_school"] = home_school
+        row = self._refresh_row(device_id=device, filters_json={"scope": "campus"})
+        _install_stubs(
+            monkeypatch, rows=[row], patches=patches,
+            opportunities=[_night_opp("opp-here", "uiuc"), _night_opp("opp-there", "ucb")],
+            profiles=[{"id": device, "profile_data": profile}],
+        )
+
+        response = client.get("/api/cron/saved-searches/refresh", headers=AUTH)
+
+        assert response.json()["status"] == "ok"
+        body = patches[0]["json"]
+        assert body["new_match_ids"] == expected
+        assert body["last_result_ids"] == expected
+
+    def test_a_campus_scope_filters_nothing_without_a_profile_row(self, monkeypatch):
+        """With no profile row the refresh does not know the student's school,
+        and it does not filter on a guess: the row matches as it did before
+        the scope was read."""
+        _set_digest_env(monkeypatch)
+        patches: list = []
+        row = self._refresh_row(device_id="device-unprofiled", filters_json={"scope": "campus"})
+        _install_stubs(
+            monkeypatch, rows=[row], patches=patches,
+            opportunities=[_night_opp("opp-here", "uiuc"), _night_opp("opp-there", "ucb")],
+        )
+
+        client.get("/api/cron/saved-searches/refresh", headers=AUTH)
+
+        body = patches[0]["json"]
+        assert body["new_match_ids"] == ["opp-here", "opp-there"]
+        assert body["last_result_ids"] == ["opp-here", "opp-there"]
+
+    def test_a_campus_scoped_search_drops_queued_records_from_other_campuses(
+        self, monkeypatch,
+    ):
+        """Records queued before the refresh read the scope would still be
+        counted on the New badge and mailed once. A queued record tonight's
+        data places outside the scope goes; one tonight's data does not hold
+        is unknown, not out of scope, and stays."""
+        _set_digest_env(monkeypatch)
+        patches: list = []
+        device = "device-scoped"
+        row = self._refresh_row(
+            device_id=device, filters_json={"scope": "campus"},
+            last_result_ids=["opp-here", "opp-there"],
+            new_match_ids=["opp-there", "opp-unloaded"],
+        )
+        _install_stubs(
+            monkeypatch, rows=[row], patches=patches,
+            opportunities=[_night_opp("opp-here", "uiuc"), _night_opp("opp-there", "ucb")],
+            profiles=[{"id": device, "profile_data": {
+                "home_school": "uiuc", "include_cross_school": True,
+            }}],
+        )
+
+        client.get("/api/cron/saved-searches/refresh", headers=AUTH)
+
+        assert patches[0]["json"]["new_match_ids"] == ["opp-unloaded"]
+
+    @pytest.mark.parametrize("bad_filters", ["oops", ["scope"]])
+    def test_a_row_with_unreadable_filters_fails_alone(self, monkeypatch, bad_filters):
+        """jsonb takes any value and a student writes their own rows. One row
+        whose filters are not an object is that row's error; the others still
+        refresh, a scoped one included."""
+        _set_digest_env(monkeypatch)
+        patches: list = []
+        device = "device-scoped"
+        rows = [
+            self._refresh_row(id="bad-row", device_id="device-bad", filters_json=bad_filters),
+            self._refresh_row(id="good-row", device_id=device, filters_json={"scope": "campus"}),
+        ]
+        _install_stubs(
+            monkeypatch, rows=rows, patches=patches,
+            opportunities=[_night_opp("opp-here", "uiuc"), _night_opp("opp-there", "ucb")],
+            profiles=[{"id": device, "profile_data": {
+                "home_school": "uiuc", "include_cross_school": True,
+            }}],
+        )
+
+        body = client.get("/api/cron/saved-searches/refresh", headers=AUTH).json()
+
+        assert body["status"] == "partial"
+        assert body["processed"] == 1
+        assert len(body["errors"]) == 1
+        assert body["errors"][0].startswith("bad-row:")
+        assert [patch["params"]["id"] for patch in patches] == ["eq.good-row"]
+        assert patches[0]["json"]["new_match_ids"] == ["opp-here"]
+
+    def test_the_scope_rows_are_built_off_the_event_loop(self, monkeypatch):
+        """A cold build covers every record (seconds over the full corpus);
+        the match view builds them in a worker thread, and so does this."""
+        _set_digest_env(monkeypatch)
+        patches: list = []
+        on_loop: list[bool] = []
+        build = ss_mod._snapshot_view_rows
+
+        def _recording_build(*args):
+            try:
+                asyncio.get_running_loop()
+                on_loop.append(True)
+            except RuntimeError:
+                on_loop.append(False)
+            return build(*args)
+
+        monkeypatch.setattr(ss_mod, "_snapshot_view_rows", _recording_build)
+        row = self._refresh_row(filters_json={"scope": "open"})
+        _install_stubs(monkeypatch, rows=[row], patches=patches)
+
+        client.get("/api/cron/saved-searches/refresh", headers=AUTH)
+
+        assert on_loop == [False]
+        assert len(patches) == 1
+
 
 SID = "11111111-2222-3333-4444-555555555555"
 
@@ -1018,6 +1150,32 @@ class TestDigestRenderer:
         _, html, text = ss_mod._render_digest_email("X", [_OPP_A], "https://u")
         assert "more in the app" not in html
         assert "more in the app" not in text
+
+    @pytest.mark.parametrize(("filters", "noted"), [
+        ({"minScore": 60}, True),
+        ({"minScore": 0}, False),
+        ({}, False),
+        (None, False),
+        ({"minScore": "60"}, True),
+        ({"minScore": 60.7}, True),
+        ({"minScore": "high"}, False),
+    ])
+    def test_a_saved_minimum_score_is_said_to_be_applied_only_on_open(
+        self, monkeypatch, filters, noted,
+    ):
+        """The refresh does not score, so a digest for a search saved with a
+        minimum score can carry records below it. The email says so rather
+        than presenting them as passing every saved condition."""
+        _set_digest_env(monkeypatch)
+        sends: list = []
+        _install_stubs(monkeypatch, rows=[_digest_row(filters_json=filters)], sends=sends)
+
+        client.get("/api/cron/saved-searches/digest", headers=AUTH)
+
+        note = "Your minimum match score (60) is not applied to this email."
+        for body in (sends[0]["html"], sends[0]["text"]):
+            assert (note in body) is noted
+            assert ("applied when you open the results" in body) is noted
 
 
 # `src.evidence.target_truth` derives its answer from the record's OWN fields

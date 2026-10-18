@@ -1,5 +1,5 @@
 import type { ResumeParseResponse } from './types';
-import { courseCodes, courseLists, listedCourses, trimCourse } from './course-status';
+import { courseCodes, courseLists, listedCourses, repeatedCodes, trimCourse } from './course-status';
 import {
   BULLET_LINE, firstWord, glyphItemsEndWithStop, glyphLine, hangingRest, lineBreakText, lowercaseOpening,
   MAX_RESUME_TEXT_CHARACTERS, RESUME_ROLE, resumeTextCharacters, weakWrapEvidence, wrapEvidence, wrapJoin,
@@ -17,6 +17,19 @@ const KNOWN_SKILLS = [
   'React', 'Flask', 'FastAPI', 'Django', 'Node.js',
   'AWS', 'GCP', 'Azure',
   'LaTeX', 'Excel', 'SPSS', 'SAS', 'Stata',
+  // Laboratory techniques and instruments that biology, chemistry and
+  // neuroscience résumés list (checklist M125). A name also used outside the
+  // lab is left out: "ELISA" is a given name too, "Fiji" a country,
+  // "cloning" also voice cloning, "Prism" a product name of many kinds and
+  // "titration" a medication order.
+  'PCR', 'qPCR', 'Western blotting', 'SDS-PAGE', 'gel electrophoresis',
+  'cell culture', 'tissue culture', 'transfection', 'bacterial transformation',
+  'molecular cloning', 'plasmid preparation', 'DNA extraction', 'RNA extraction',
+  'immunofluorescence', 'immunohistochemistry', 'flow cytometry',
+  'fluorescence microscopy', 'confocal microscopy', 'ImageJ', 'CRISPR',
+  'HPLC', 'mass spectrometry', 'NMR', 'spectrophotometry', 'chromatography',
+  'Gram staining', 'sterile technique', 'aseptic technique', 'histology',
+  'EEG', 'patch clamp', 'GraphPad Prism',
 ];
 
 // A skill token must not be flanked by a letter or the tech punctuation
@@ -90,7 +103,10 @@ const NOT_COURSEWORK = new RegExp(String.raw`${LABEL_ROW.source}|\b(?:dean['’]
  *  list is, so the list goes on across a break the page marks as a possible
  *  wrap (`possibleWraps`, offsets of line breaks in `text`) unless the next
  *  line is a row of its own. Names only: what a course's status is, and the
- *  line it is on, are read from the stored text when needed (checklist M13). */
+ *  line it is on, are read from the stored text when needed (checklist M13).
+ *  A code a listed course opens with, as the same text (space included), is
+ *  that course, and is not stored again ("CS 173" beside "CS 173 Discrete
+ *  Structures", repeatedCodes). */
 function extractCoursework(text: string, possibleWraps: ReadonlySet<number> = new Set()): string[] {
   const courses = courseCodes(text).map((code) => code.name);
   const lines = text.split('\n');
@@ -111,7 +127,9 @@ function extractCoursework(text: string, possibleWraps: ReadonlySet<number> = ne
     }
     for (const list of lists) courses.push(...listedCourses(list).map((item) => item.name));
   }
-  return Array.from(new Set(courses)).sort();
+  const found = Array.from(new Set(courses));
+  const repeated = repeatedCodes(found);
+  return found.filter((name) => !repeated.has(name)).sort();
 }
 
 /** Capture a labeled research-interests line from a resume. The form's only
@@ -466,6 +484,18 @@ function pageText(items: readonly unknown[]): { text: string; possibleWraps: num
   const trimmed = texts.map((text) => text.trim());
   const edgeFound: boolean[] = [];
   const shown = (index: number) => (edgeFound[index] ??= edgeShown(shapes, index, trimmed, edges));
+  // A coursework list's line also has its column's edge shown by another
+  // line in its column that ran out of room before a lowercase word of its
+  // paragraph ("…into semesters" / "and flags…"): a break the text keeps
+  // until the page shows the edge (see wrapSeparator), and on a ragged page
+  // often the only wraps there are. Not by its own next line: a line that
+  // is only the widest in its column always seems to have run out of room.
+  const lowercaseFound: boolean[] = [];
+  const lowercaseWrap = (index: number) => (lowercaseFound[index] ??= index + 1 < texts.length
+    && lowercaseOpening(trimmed[index], trimmed[index + 1])
+    && wrapSeparator(shapes, index + 1, texts, pitch, false, column, () => true, hangs) !== null);
+  const listShown = (index: number) => shown(index) || shapes.some((other, at) => at !== index && !!other
+    && other.wrappable && sameColumn(other, shapes[index]!) && lowercaseWrap(at));
   let out = texts[0];
   let start = 0;
   let bulletItem = glyph[0];
@@ -480,7 +510,7 @@ function pageText(items: readonly unknown[]): { text: string; possibleWraps: num
     if (separator === null) {
       bulletItem = glyph[index];
       list = (list || courseLists(out.slice(start)).some((found) => found.end > found.start))
-        && possibleWrap(shapes, index, texts, pitch, column, shown);
+        && possibleWrap(shapes, index, texts, pitch, column, listShown);
       if (list) possibleWraps.push(out.length);
       start = out.length + 1;
     }

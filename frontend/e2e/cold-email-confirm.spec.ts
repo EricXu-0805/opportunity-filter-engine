@@ -184,7 +184,7 @@ async function openModal(page: Page, opts: { profile?: typeof PROFILE; locale?: 
     { profileKey: STORAGE_KEYS.PROFILE, profile: JSON.stringify(opts.profile ?? PROFILE), localeKey: STORAGE_KEYS.LOCALE, locale: opts.locale ?? 'en' },
   );
   await page.goto(`/opportunities/${KNOWN_ID}`);
-  await page.getByRole('button', { name: opts.locale === 'zh' ? '起草邮件' : 'Draft Email' }).click();
+  await page.getByRole('button', { name: opts.locale === 'zh' ? '起草邮件' : 'Draft email' }).click();
   const copy = opts.locale === 'zh' ? zh.coldEmail : en.coldEmail;
   const ready = opts.readyState === 'name-required'
     ? page.getByTestId('cold-email-name-required')
@@ -284,7 +284,7 @@ test.describe('Cold Email verified-send contract (real browser)', () => {
     await page.keyboard.press('Escape');
     await expect(page.getByRole('button', { name: 'Copy', exact: true })).toBeHidden();
 
-    await page.getByRole('button', { name: 'Draft Email' }).click();
+    await page.getByRole('button', { name: 'Draft email' }).click();
     await expect(page.getByRole('button', { name: 'Copy', exact: true })).toBeVisible({ timeout: 20_000 });
     await expect(remindPrompt(page), 'the previous confirmation did not survive').toBeHidden();
     await expect(page.getByText(en.coldEmail.confirmFailed, { exact: true }), 'nor the previous error').toBeHidden();

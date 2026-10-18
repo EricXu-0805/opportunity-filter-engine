@@ -28,13 +28,20 @@ _ATTACHMENT = re.compile(
     rf"\b(?:my\s+)?{_DOCUMENT}\s+(?:is|are|has\s+been|have\s+been)\s+included\s+with\s+this\s+email\b",
     re.IGNORECASE,
 )
+# "Went through" counts only for "your [whole|entire|full]" paper, article,
+# publication or manuscript: "a study abroad program", "this work experience"
+# and "your papers' reference list" are not reading the paper.
 _READING = re.compile(
-    r"\b(?:i(?:\s+have|['’]ve)?\s+(?:(?:carefully|thoroughly|closely|recently|already)\s+)?"
+    r"\b(?:i(?:\s+have|['’]ve)?\s+(?:(?:carefully|thoroughly|closely|recently|already|also)\s+)?"
     r"(?:(?:finished|completed)\s+reading|read|reviewed|studied)|"
     r"(?:after|having)\s+(?:(?:carefully|thoroughly|closely)\s+)?(?:read|reading|reviewed|reviewing|studied|studying))\s+"
-    r"(?:through\s+)?(?:(?:all\s+of|the\s+full\s+text\s+of)\s+)?"
-    r"(?:(?:your|the|this|a)\s+)?(?:(?:recent|latest|full|entire|published)\s+){0,2}"
-    r"(?:papers?|articles?|publications?|manuscripts?|stud(?:y|ies)|work|research)\b",
+    r"(?:through\s+)?(?:(?:all\s+of|the\s+full\s+text\s+of|the\s+abstracts?\s+of)\s+)?"
+    r"(?:(?:your|the|this|a)\s+)?(?:(?:recent|latest|full|entire|whole|published)\s+){0,2}"
+    r"(?:papers?|articles?|publications?|manuscripts?|stud(?:y|ies)|work|research)\b|"
+    r"\b(?:i(?:\s+have|['’]ve)?\s+(?:(?:carefully|thoroughly|closely|recently|already|also)\s+)?(?:went|gone)|"
+    r"(?:after|having)\s+(?:(?:carefully|thoroughly|closely)\s+)?(?:going|gone))\s+through\s+"
+    r"(?:(?:the\s+full\s+text|the\s+abstracts?)\s+of\s+)?your\s+(?:(?:whole|entire|full)\s+)?"
+    r"(?:paper|article|publication|manuscript)\b",
     re.IGNORECASE,
 )
 
@@ -56,8 +63,9 @@ def unsupported_action_claims(text: str, *, confirmed_reading_sentence: str | No
         if attached and not re.search(r"\b(?:no|not|without)\s+(?:(?:a|any|my|the)\s+)?$", clause[:attached.start()], re.I):
             findings.add("unsupported attachment claim")
     for clause in _CLAUSES.split(reading_text):
-        read = _READING.search(clause)
-        if read:
+        # Every claim in the clause: skipping a first, conditional one must not
+        # skip a later one ("Once I went through your paper, I read your ...").
+        for read in _READING.finditer(clause):
             prefix = clause[:read.start()].lower()
             # "If/when I read ..." and "I will write after reading ..." do
             # not assert that reading has already happened.
@@ -68,6 +76,7 @@ def unsupported_action_claims(text: str, *, confirmed_reading_sentence: str | No
             if re.match(r"after\b", read.group(), re.I) and re.search(r"\bi\s+(?:will|plan\s+to)\b", clause[read.end():], re.I):
                 continue
             findings.add("unsupported completed-reading claim")
+            break
     return sorted(findings)
 
 

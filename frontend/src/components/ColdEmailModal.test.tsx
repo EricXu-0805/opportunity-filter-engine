@@ -1194,6 +1194,17 @@ describe('ColdEmailModal', () => {
       expect(body).not.toMatch(/completed[^.]*CS 446|taking[^.]*CS 446|includes[^.]*CS 446/);
     });
 
+    it('"coursework" names a course the résumé stored by its code and its title once (checklist M130)', async () => {
+      mockGetVariants.mockResolvedValue({ variants: [makeVariant({ body: 'Intro.\n\nBest regards,\nAlex' })] });
+      const profile = makeProfile({ coursework: ['CS 173', 'CS 173 Discrete Structures', 'MATH 241', 'MATH 241 Calculus III'] });
+      render(<ColdEmailModal isOpen onClose={vi.fn()} profile={profile} opportunityId="opp" opportunityTitle="REU" />);
+      await waitFor(() => expect(screen.getByDisplayValue(/Intro/)).toBeInTheDocument());
+      fireEvent.click(screen.getByText('coldEmail.quickActions.coursework'));
+      fireEvent.click(await screen.findByRole('button', { name: 'Accept suggestion' }));
+      await waitFor(() => expect(screen.getByLabelText('coldEmail.body')).toHaveValue(
+        'Intro.\n\nMy coursework includes CS 173 Discrete Structures and MATH 241 Calculus III.\n\nBest regards,\nAlex'));
+    });
+
     it.each([
       ['without a course list, as b8602cb0 words it', { coursework: ['CS 225', 'CS225', 'LATE COURSE 5'] },
         'My coursework includes CS 225, CS225, LATE COURSE 5.'],

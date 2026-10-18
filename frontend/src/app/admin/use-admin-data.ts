@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
 import {
@@ -28,6 +28,10 @@ import type {
   OrdersInbox,
   ConciergeQueue,
   SavedSearchHealth,
+  SchoolHealthResponse,
+  SchoolHealthWorkflow,
+  SourceHealthRow,
+  SourceHealthShardsResponse,
   TFunc,
   TicketDetail,
   TicketFilters,
@@ -93,6 +97,7 @@ export interface UseAdminDataResult {
   filteredWorstFields: AdminResponse['worst_fields'];
   tickets: TicketWorkflow;
   ops: OpsWorkflow;
+  schoolHealth: SchoolHealthWorkflow;
   fetchAll: (tok: string) => Promise<void>;
   handleSubmitToken: (e: React.FormEvent) => void;
   handleLock: () => void;
@@ -146,6 +151,19 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
   const [opsPending, setOpsPending] = useState<Record<string, boolean>>({});
   const [opsErrors, setOpsErrors] = useState<Record<string, string | null>>({});
 
+  // Per-school source health
+  const [schoolHealthData, setSchoolHealthData] = useState<SchoolHealthResponse | null>(null);
+  const [schoolHealthError, setSchoolHealthError] = useState<string | null>(null);
+  const [schoolShards, setSchoolShards] = useState<Record<string, SourceHealthRow[] | undefined>>({});
+  const [schoolShardLoading, setSchoolShardLoading] = useState<Record<string, boolean>>({});
+  const [schoolShardErrors, setSchoolShardErrors] = useState<Record<string, string | null>>({});
+  // The schools whose drill-down is open, so a refresh reloads them instead of
+  // leaving them blank, and each school's latest drill-down request, so a
+  // response that a newer request or a refresh superseded is dropped.
+  const openSchools = useRef<Set<string>>(new Set());
+  const schoolShardRequests = useRef<Record<string, number>>({});
+  const schoolShardSeq = useRef(0);
+
   /**
    * A 401 from ANY admin call means the token is dead — not just the one on
    * /admin/data-quality. Silently rendering an empty section on a 401 (the
@@ -157,6 +175,11 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
     try { sessionStorage.removeItem(SESSION_KEY); } catch { /* private mode */ }
     setToken('');
     setData(null);
+    // The dashboard unmounts, and with it every open drill-down. A drill-down
+    // still in flight was sent with the dead token: drop its answer, so a 401
+    // arriving after the next sign-in cannot sign that session out.
+    openSchools.current.clear();
+    schoolShardRequests.current = {};
   }, []);
 
   const setActor = useCallback((value: string) => {
@@ -197,12 +220,30 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
     setOpsRollup(res.data?.rollup ?? {});
   }, [surfaceAuthFailure]);
 
+  const fetchSchoolShards = useCallback(async (tok: string, school: string) => {
+    const request = ++schoolShardSeq.current;
+    schoolShardRequests.current[school] = request;
+    setSchoolShardLoading((s) => ({ ...s, [school]: true }));
+    setSchoolShardErrors((s) => ({ ...s, [school]: null }));
+    const res = await adminFetch<SourceHealthShardsResponse>(
+      `/admin/source-health/shards?school=${encodeURIComponent(school)}`, tok,
+    );
+    if (schoolShardRequests.current[school] !== request) return;
+    setSchoolShardLoading((s) => ({ ...s, [school]: false }));
+    if (res.status === 401) { surfaceAuthFailure(); return; }
+    if (res.error) {
+      setSchoolShardErrors((s) => ({ ...s, [school]: res.error! }));
+      return;
+    }
+    setSchoolShards((s) => ({ ...s, [school]: res.data?.rows ?? [] }));
+  }, [surfaceAuthFailure]);
+
   const fetchAll = useCallback(async (tok: string) => {
     if (!tok) return;
     setLoading(true);
     setError(null);
     try {
-      const [main, hist, healthR, collector, collectorHist, ssHealth, fbInbox, ordInbox, opsRes, concierge] =
+      const [main, hist, healthR, collector, collectorHist, ssHealth, fbInbox, ordInbox, opsRes, concierge, schools] =
         await Promise.all([
           adminFetch<AdminResponse>(`/admin/data-quality`, tok),
           adminFetch<{ history: HistoryEntry[] }>(`/admin/data-quality/history?limit=30`, tok),
@@ -219,8 +260,9 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
             : Promise.resolve<Awaited<ReturnType<typeof adminFetch<OrdersInbox>>>>({ status: 200 }),
           adminFetch<OpsIncidentsResponse>(opsQuery(opsFilters), tok),
           adminFetch<ConciergeQueue>(`/admin/concierge-requests?limit=100`, tok),
+          adminFetch<SchoolHealthResponse>(`/admin/source-health/schools`, tok),
         ]);
-      const all = [main, hist, healthR, collector, collectorHist, ssHealth, fbInbox, ordInbox, opsRes, concierge];
+      const all = [main, hist, healthR, collector, collectorHist, ssHealth, fbInbox, ordInbox, opsRes, concierge, schools];
       if (all.some((r) => r.status === 401)) {
         surfaceAuthFailure();
         return;
@@ -251,10 +293,22 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
       setOpsError(sectionError(opsRes));
       setOpsIncidents(opsRes.data?.incidents ?? []);
       setOpsRollup(opsRes.data?.rollup ?? {});
+      setSchoolHealthError(sectionError(schools));
+      setSchoolHealthData(schools.error ? null : schools.data ?? null);
+      // Drill-downs describe the ledger as it was when opened; drop them, and
+      // any still in flight, so a refresh cannot pair new school rows with old
+      // source rows, then reload the ones still open.
+      schoolShardRequests.current = {};
+      setSchoolShards({});
+      setSchoolShardErrors({});
+      setSchoolShardLoading({});
+      if (!schools.error) {
+        openSchools.current.forEach((school) => { void fetchSchoolShards(tok, school); });
+      }
     } finally {
       setLoading(false);
     }
-  }, [ticketFilters, opsFilters, surfaceAuthFailure]);
+  }, [ticketFilters, opsFilters, surfaceAuthFailure, fetchSchoolShards]);
 
   useEffect(() => {
     // Never authenticate from the URL: a ?token= there lands in the server
@@ -312,6 +366,13 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
     setOpsError(null);
     setOpsDetails({});
     setTicketDetails({});
+    setSchoolHealthData(null);
+    setSchoolHealthError(null);
+    openSchools.current.clear();
+    schoolShardRequests.current = {};
+    setSchoolShards({});
+    setSchoolShardErrors({});
+    setSchoolShardLoading({});
     setError(null);
   }, []);
 
@@ -483,6 +544,18 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
     if (token) fetchOps(token, f);
   }, [token, fetchOps]);
 
+  // ---- per-school source health -------------------------------------------
+
+  const loadSchoolShards = useCallback(async (school: string) => {
+    if (!token) return;
+    openSchools.current.add(school);
+    await fetchSchoolShards(token, school);
+  }, [token, fetchSchoolShards]);
+
+  const closeSchoolShards = useCallback((school: string) => {
+    openSchools.current.delete(school);
+  }, []);
+
   // The last snapshot STRICTLY BEFORE the one on screen, in the current
   // scope. Two things make an index-based answer wrong. Scope: history[-2]
   // raw could be a legacy entry, so the first refresh after the boundary
@@ -546,6 +619,19 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
     opsDetailLoading, loadOpsDetail, handleOpsPatch, handleOpsRetry, opsPending, opsErrors,
   ]);
 
+  const schoolHealth = useMemo<SchoolHealthWorkflow>(() => ({
+    data: schoolHealthData,
+    error: schoolHealthError,
+    shards: schoolShards,
+    shardLoading: schoolShardLoading,
+    shardErrors: schoolShardErrors,
+    onOpen: loadSchoolShards,
+    onClose: closeSchoolShards,
+  }), [
+    schoolHealthData, schoolHealthError, schoolShards, schoolShardLoading, schoolShardErrors,
+    loadSchoolShards, closeSchoolShards,
+  ]);
+
   return {
     token,
     tokenInput,
@@ -570,6 +656,7 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
     filteredWorstFields,
     tickets,
     ops,
+    schoolHealth,
     fetchAll,
     handleSubmitToken,
     handleLock,

@@ -50,7 +50,7 @@ async function seed(page: Page, owner: Owner) {
 async function open(page: Page) {
   const read = page.waitForResponse(response => pathOf(response.url()) === '/rest/v1/profiles' && response.status() === 200);
   await page.goto('/favorites'); await read;
-  await page.getByRole('button', { name: 'Tailor Resume', exact: true }).click();
+  await page.getByRole('button', { name: 'Tailor resume', exact: true }).click();
   await expect(page.locator('#tailor-bullets-input')).toBeEditable();
 }
 const generate = (page: Page) => page.getByRole('button', { name: /^(Tailor with AI|Re-tailor)$/ });
@@ -277,7 +277,7 @@ test.describe('Saved Tailor draft provenance', () => {
       const school = page.getByRole('dialog', { name: 'Confirm your school', exact: true });
       await expect(school).toBeVisible(); await school.getByRole('button', { name: 'Close', exact: true }).click();
       await expect(school).toHaveCount(0);
-      const openTailor = page.getByRole('button', { name: 'Tailor Resume', exact: true });
+      const openTailor = page.getByRole('button', { name: 'Tailor resume', exact: true });
       await expect(openTailor).toBeEnabled(); await openTailor.click();
       await expect(page.locator('#tailor-bullets-input')).toBeEditable();
       await expect(page.locator('#tailor-bullets-input')).not.toHaveValue('PRIVATE first-owner manual text');

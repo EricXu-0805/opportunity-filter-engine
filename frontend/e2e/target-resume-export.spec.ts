@@ -66,7 +66,7 @@ async function openDraft(page: Page, value = profile()) {
     }
   }, { profileKey: STORAGE_KEYS.PROFILE, localeKey: STORAGE_KEYS.LOCALE, value });
   await page.goto(`/opportunities/${TARGET}`);
-  await page.getByRole('button', { name: 'Renovate Resume', exact: true }).click();
+  await page.getByRole('button', { name: 'Renovate resume', exact: true }).click();
   await expect(dialog(page)).toBeVisible();
   await dialog(page).getByRole('button', { name: 'Create from confirmed master', exact: true }).click();
   await expect(dialog(page).getByRole('textbox', { name: 'Edit Full name', exact: true })).toHaveValue(ORIGINAL_NAME);

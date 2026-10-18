@@ -9,6 +9,7 @@ import { courseFields, coursesWithoutResume, importResumeCourses } from '@/lib/c
 import { parseGitHubProfile } from '@/lib/api';
 import { removeResumeEntries, validateExperienceEntries, withdrawResumeEntries } from '@/lib/experience-evidence';
 import { removeResumeMasterSources, resumeMasterEditBase, validateResumeMaster, withdrawResumeMaster } from '@/lib/resume-master';
+import { skillsWithResume } from '@/lib/skill-evidence';
 import {
   browserMarkerNames,
   captureOwnerToken,
@@ -235,9 +236,9 @@ export interface UseProfileFormResult {
   handleResumeParsed: (data: ResumeParseResponse) => boolean;
   /** The user removed the résumé on file: its text and the coursework
    *  extracted from it stop being part of the profile (and therefore of
-   *  every match request). Skills and interests it contributed STAY —
-   *  they are indistinguishable from ones typed or imported from GitHub,
-   *  and silently deleting those would destroy the user's own work. */
+   *  every match request), and so do the skills only it named that the
+   *  student never settled (skillsWithResume). Interests it contributed
+   *  STAY: nothing marks them as the résumé's. */
   handleResumeRemoved: () => boolean;
   handleExperienceChange: (entries: ExperienceEntry[], expected: { resumeText: string; entriesJson: string }) => boolean;
   handleResumeMasterChange: (master: ResumeMasterV1, expected: { resumeText: string; entriesJson: string; masterJson: string }) => boolean;
@@ -263,10 +264,20 @@ export interface UseProfileFormResult {
 
 /** Append skills whose names aren't already present (case-sensitive match,
  * mirroring the existing import handlers). Pure — defined at module scope so it
- * isn't a hook dependency. */
+ * isn't a hook dependency. A GitHub skill saved before M12 carries no evidence
+ * and is not named in the student's voice; when a GitHub import names it again
+ * it takes that import's evidence, and nothing else about it changes. */
 function mergeSkills(existing: SkillWithLevel[], incoming: SkillWithLevel[]): SkillWithLevel[] {
   const names = new Set(existing.map((s) => s.name));
-  return [...existing, ...incoming.filter((s) => !names.has(s.name))];
+  const githubEvidence = new Map(
+    incoming.filter((s) => s.source === 'github' && s.evidence).map((s) => [s.name, s.evidence]),
+  );
+  const kept = existing.map((s) => (
+    s.source === 'github' && !s.evidence?.trim() && githubEvidence.has(s.name)
+      ? { ...s, evidence: githubEvidence.get(s.name) }
+      : s
+  ));
+  return [...kept, ...incoming.filter((s) => !names.has(s.name))];
 }
 
 // Free-text fields where a person TYPES, one keystroke at a time. Every other
@@ -2983,14 +2994,21 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       source: 'resume' as const,
       ...(evidenceFor.get(name) ? { evidence: evidenceFor.get(name) } : {}),
     }));
-    // An import ADDS names; it says nothing about the ones already there.
-    // Recorded as an operation so a conflict merges these into whatever the
-    // other device holds instead of pushing this whole list over it.
-    markSkillAdditions(newSkills, origin.token);
+    // The skills the résumé on file brought go with it unless the new one
+    // names them too or the student settled them (checklist M18).
+    const resumeSkills = skillsWithResume(profileRef.current.skills, newSkills);
+    // An import that only ADDS names says nothing about the ones already
+    // there. Recorded as an operation so a conflict merges these into
+    // whatever the other device holds instead of pushing this whole list over
+    // it. One that takes a skill away or changes its line is the whole list,
+    // as a hand edit is: merging its additions into the other device's list
+    // would put back the skills it took away.
+    if (resumeSkills.onlyAdds) markSkillAdditions(newSkills, origin.token);
+    else markSkillsReplaced(origin.token);
     editProfile((prev) => {
       return {
         ...prev,
-        skills: mergeSkills(prev.skills, newSkills),
+        skills: resumeSkills.skills,
         resume_text: data.raw_text,
         experience_entries: resumeEntries,
         resume_master: resumeMaster,
@@ -3039,16 +3057,25 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // removes them, and `courses` stays as other tabs wrote it.
     const retainedCourses: Pick<ProfileData, 'coursework'> & Partial<Pick<ProfileData, 'courses'>> = RELEASE_SCOPE.courseStatus
       ? courseFields(coursesWithoutResume(profileRef.current)) : { coursework: [] };
-    const removalKeys = RELEASE_SCOPE.courseStatus ? REMOVAL_KEYS : REMOVAL_KEYS.filter((key) => key !== 'courses');
+    // And the skills only the résumé named that the student never settled,
+    // written as the whole list (see handleResumeParsed).
+    const resumeSkills = skillsWithResume(profileRef.current.skills, []);
+    const retainedSkills: Partial<Pick<ProfileData, 'skills'>> = resumeSkills.onlyAdds ? {} : { skills: resumeSkills.skills };
+    const removalKeys = [
+      ...(RELEASE_SCOPE.courseStatus ? REMOVAL_KEYS : REMOVAL_KEYS.filter((key) => key !== 'courses')),
+      ...(resumeSkills.onlyAdds ? [] : ['skills' as const]),
+    ];
+    if (!resumeSkills.onlyAdds) markSkillsReplaced(origin.token);
     editProfile(
       (prev) => (
         (prev.resume_text ?? '') === ''
+          && resumeSkills.onlyAdds
           && JSON.stringify(prev.courses ?? []) === JSON.stringify(retainedCourses.courses ?? prev.courses ?? [])
           && JSON.stringify(prev.coursework ?? []) === JSON.stringify(retainedCourses.coursework)
           && !(prev.experience_entries ?? []).some((entry) => entry.source.kind === 'resume')
           && JSON.stringify(prev.resume_master ?? null) === JSON.stringify(retainedMaster)
           ? prev
-          : { ...prev, resume_text: '', ...retainedCourses, experience_entries: retainedEntries, resume_master: retainedMaster }
+          : { ...prev, resume_text: '', ...retainedCourses, ...retainedSkills, experience_entries: retainedEntries, resume_master: retainedMaster }
       ),
       // Record the whole source bundle, including an already-empty member.
       // Deletion must not revive old quoted evidence during reconciliation.
@@ -3071,6 +3098,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       ...profileRef.current,
       resume_text: '',
       ...retainedCourses,
+      ...retainedSkills,
       experience_entries: retainedEntries,
       resume_master: retainedMaster,
       search_weight: weightRef.current,

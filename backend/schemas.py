@@ -35,6 +35,9 @@ class SkillItem(BaseModel):
     level: str = "beginner"
     source: str | None = None
     confirmed: bool = False
+    # The import kept the line or repo field that named it. A GitHub skill
+    # without one predates M12 and is not named (src.student_evidence).
+    evidenced: bool = False
 
 
 class CourseEntry(BaseModel):
@@ -223,6 +226,7 @@ class ProfileRequest(BaseModel):
                 source = normalized.get("source")
                 normalized["source"] = source if source is None or (isinstance(source, str) and source in _SKILL_SOURCES) else "unknown"
                 normalized["confirmed"] = normalized.get("confirmed") is True
+                normalized["evidenced"] = normalized.get("evidenced") is True
                 result.append(SkillItem(**normalized))
         return result
 

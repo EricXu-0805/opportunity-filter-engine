@@ -32,6 +32,7 @@ function AdminInner() {
     ordersInbox,
     tickets,
     ops,
+    schoolHealth,
     actor,
     setActor,
     loading,
@@ -76,6 +77,7 @@ function AdminInner() {
       ordersInbox={ordersInbox}
       tickets={tickets}
       ops={ops}
+      schoolHealth={schoolHealth}
       actor={actor}
       onActorChange={setActor}
       loading={loading}

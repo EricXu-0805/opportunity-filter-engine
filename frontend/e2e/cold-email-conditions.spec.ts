@@ -86,7 +86,7 @@ test('B54 target conditions, manual review, backup, late response and restored d
   const body = page.locator('#cold-email-body'); const panel = page.getByTestId('email-target-conditions');
   const snapshot = async (name: string) => { expect(await page.evaluate(() => document.body.scrollWidth <= innerWidth)).toBe(true); await page.screenshot({ path: info.outputPath(name + '-' + locale + '.png') }); };
   try {
-    await page.goto('/favorites'); await page.getByRole('button', { name: pick('Draft Email', '起草邮件'), exact: true }).click(); await expect(body).toHaveValue(BODY);
+    await page.goto('/favorites'); await page.getByRole('button', { name: pick('Draft email', '起草邮件'), exact: true }).click(); await expect(body).toHaveValue(BODY);
     await expect(page.getByRole('button', { name: c.generateAiDraft, exact: true })).toBeEnabled();
     expect(state.calls.filter(x => x.path.endsWith('/stream'))).toEqual([]);
     await panel.locator('summary').first().click(); await expect(panel.getByText(pick('Deadline · Not verified', '截止日期 · 尚未核对'))).toBeVisible();
@@ -111,7 +111,7 @@ test('B54 target conditions, manual review, backup, late response and restored d
     await body.fill(BODY + '\nThe newer note is kept.'); state.hold.release(); state.hold = null;
     await expect.poll(async () => (await readAudit()).popups.at(-1)?.closed).toBe(true); expect((await readAudit()).popups.at(-1)?.location.href).toBe('about:blank');
     await page.getByRole('button', { name: c.closeAria, exact: true }).click(); await expect(page.getByRole('dialog')).toHaveCount(0);
-    await page.getByRole('button', { name: pick('Draft Email', '起草邮件'), exact: true }).click(); await expect(body).toHaveValue(BODY + '\nThe newer note is kept.');
+    await page.getByRole('button', { name: pick('Draft email', '起草邮件'), exact: true }).click(); await expect(body).toHaveValue(BODY + '\nThe newer note is kept.');
     await panel.locator('summary').first().click(); await expect(panel.getByRole('link')).toHaveCount(0); await expect(panel.getByText(source.quote)).toHaveCount(0);
     await panel.scrollIntoViewIfNeeded(); await snapshot('b54-restored-unverified');
     state.unknown = true; page.once('dialog', d => d.accept()); await page.getByTestId('cold-email-draft-clear').click(); await expect(body).toHaveValue(BODY);

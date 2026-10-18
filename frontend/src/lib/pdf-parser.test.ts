@@ -182,6 +182,72 @@ describe('parseResumePDF — skill extraction', () => {
   });
 });
 
+describe('parseResumePDF — laboratory techniques are known skills (checklist M125)', () => {
+  async function parse(...lines: string[]) {
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(fakePdf([lines.join('\n')])) });
+    return parseResumePDF(fakeFile());
+  }
+  const skills = async (...lines: string[]) => (await parse(...lines)).extracted_skills;
+  const LIVE = 'Mammalian cell culture; Western blotting; PCR; Agarose gel electrophoresis; Fluorescence microscopy; ImageJ/Fiji; R (basic)';
+
+  it('imports the techniques on the live biology résumé\'s skills line, each with that line', async () => {
+    // Live 2026-10-17: only R reached the profile.
+    const live = ['R', 'PCR', 'Western blotting', 'gel electrophoresis', 'cell culture', 'fluorescence microscopy', 'ImageJ'];
+    const res = await parse('SKILLS', LIVE);
+    expect(res.extracted_skills).toEqual(live);
+    expect(res.skill_evidence.map((hit) => hit.line)).toEqual(live.map(() => LIVE));
+    // The printed PDF breaks the line after "microscopy;".
+    expect(await skills('SKILLS', LIVE.replace('microscopy; ', 'microscopy;\n'))).toEqual(live);
+  });
+
+  it('imports the techniques biology, chemistry and neuroscience résumés list', async () => {
+    expect(await skills('Techniques: qPCR, SDS-PAGE, transfection, bacterial transformation, molecular cloning, plasmid preparation'))
+      .toEqual(['qPCR', 'SDS-PAGE', 'transfection', 'bacterial transformation', 'molecular cloning', 'plasmid preparation']);
+    expect(await skills('Lab: DNA extraction, RNA extraction, tissue culture, immunofluorescence, immunohistochemistry, flow cytometry, confocal microscopy'))
+      .toEqual(['tissue culture', 'DNA extraction', 'RNA extraction', 'immunofluorescence', 'immunohistochemistry', 'flow cytometry', 'confocal microscopy']);
+    expect(await skills('CRISPR-Cas9, HPLC, mass spectrometry, NMR, spectrophotometry, titration, chromatography'))
+      .toEqual(['CRISPR', 'HPLC', 'mass spectrometry', 'NMR', 'spectrophotometry', 'chromatography']);
+    expect(await skills('Gram staining, sterile technique, aseptic technique, histology, EEG, patch clamp, GraphPad Prism, SPSS'))
+      .toEqual(['SPSS', 'Gram staining', 'sterile technique', 'aseptic technique', 'histology', 'EEG', 'patch clamp', 'GraphPad Prism']);
+  });
+
+  it('finds no technique inside another one, a longer word or a name', async () => {
+    expect(await skills('qPCR and ddPCR; PCRs')).toEqual(['qPCR']);
+    expect(await skills('RT-PCR; RT-qPCR')).toEqual(['PCR', 'qPCR']);
+    expect(await skills('immunofluorescence microscopy')).toEqual(['immunofluorescence']);
+    expect(await skills('DNA/RNA extraction')).toEqual(['RNA extraction']);
+    // Words a technique shares with things outside the lab are not on the
+    // list: Elisa is a name, Fiji a country, cloning also a voice model's.
+    expect(await skills('Elisa Martinez', 'ELISA MARTINEZ', 'Study abroad, Fiji', 'Built a voice cloning demo', 'Prism'))
+      .toEqual([]);
+  });
+
+  it('imports nothing from the lines a skills-list rule took in, and only names from a phrase', async () => {
+    // Review of rounds 1-2: these were imported as skills.
+    expect(await skills(
+      'Jane Doe — Page 2', 'May 2025 – Aug 2025', 'VOLUNTEER WORK', 'Beckman Institute, Urbana, IL, June 2025',
+      'Carle Foundation Hospital', 'Advanced Microscopy Techniques', 'Strong attention to detail',
+      'Proficient in Microsoft Office', 'familiar with Tableau', 'Fluent in Spanish', '熟练掌握细胞培养',
+    )).toEqual([]);
+    expect(await skills('Proficient in PCR, ELISA, and Western blotting')).toEqual(['PCR', 'Western blotting']);
+  });
+
+  it('leaves the CS and engineering résumés\' skills and their order as they were', async () => {
+    // Profiles A and C of the live run.
+    expect(await skills(
+      'I built a course-planning web app with React and Flask that lets students drag courses into semesters',
+      'I trained a small convolutional neural network in PyTorch on the MNIST dataset, reached 98.9% test',
+      'I hold two office-hour shifts a week for CS 124 and help about 15 students per week debug their Java',
+      'and Kotlin assignments.', 'SKILLS', 'Python; Java; JavaScript; React; Flask; PyTorch; Git; SQL',
+    )).toEqual(['Python', 'Java', 'JavaScript', 'SQL', 'Kotlin', 'PyTorch', 'Git', 'React', 'Flask']);
+    expect(await skills(
+      'I implemented an FFT-based pitch detector in Python with NumPy and tested it on 20 recorded voice clips from classmates.',
+      'I wrote a spectral subtraction noise-reduction filter in MATLAB for our four-person team\'s hearing-aid prototype',
+      'SKILLS', 'MATLAB; Python; NumPy; C; Mandarin Chinese (native); English (fluent)',
+    )).toEqual(['Python', 'C', 'MATLAB', 'NumPy']);
+  });
+});
+
 describe('parseResumePDF — coursework extraction', () => {
   it('an address block is not coursework', async () => {
     // "APT 402" and "BLDG 210" have the exact shape of a course code, and a
@@ -267,6 +333,27 @@ describe('parseResumePDF — coursework extraction', () => {
     const res = await parseResumePDF(fakeFile());
     expect(res.extracted_coursework).toContain('CS 233');
     expect(res.extracted_coursework).toContain('Databases');
+  });
+
+  it('stores a course listed with its title once, not its code again (checklist M130)', async () => {
+    const parse = async (...pages: string[]) => {
+      mockGetDocument.mockReturnValue({ promise: Promise.resolve(fakePdf(pages)) });
+      return parseResumePDF(fakeFile());
+    };
+    const titled = await parse('Relevant Coursework: CS 173 Discrete Structures, MATH 241 Calculus III');
+    expect(titled.extracted_coursework).toEqual(['CS 173 Discrete Structures', 'MATH 241 Calculus III']);
+    // One row each on the form.
+    expect(courseRows({ coursework: titled.extracted_coursework, resume_text: titled.raw_text }).map((row) => row.name))
+      .toEqual(['CS 173 Discrete Structures', 'MATH 241 Calculus III']);
+    // The code said elsewhere on the résumé is the same course.
+    expect((await parse('Grader for CS 173', 'Relevant Coursework: CS 173 Discrete Structures')).extracted_coursework)
+      .toEqual(['CS 173 Discrete Structures']);
+    // Two titled courses of one code are two courses.
+    expect((await parse('Relevant Coursework: CS 498 Cloud Computing Applications, CS 498 Deep Learning for Healthcare'))
+      .extracted_coursework).toEqual(['CS 498 Cloud Computing Applications', 'CS 498 Deep Learning for Healthcare']);
+    // A code no listed course opens with stays, in the list or anywhere else.
+    expect((await parse('Relevant Coursework: CS 173 Discrete Structures, CS 225', 'Grader for STAT 400, CS 1730 Topics'))
+      .extracted_coursework).toEqual(['CS 173 Discrete Structures', 'CS 1730', 'CS 225', 'STAT 400']);
   });
 
   it('does not treat unlabeled prose as named courses', async () => {
@@ -1076,6 +1163,73 @@ describe('positioned text items', () => {
       [at('Robotics club member', 50, 100, 760, { hasEOL: true })],
       [...degree, at(line, 50, 497, 736, { hasEOL: true }), at(rest, 50, 210, 724)],
     ])).toEqual(whole);
+  });
+
+  describe('a coursework list on a ragged page (checklist M123)', () => {
+    // Profile A of the live run, printed by LibreOffice: Helvetica 11 pt,
+    // ragged right, at these positions and widths. Each line its own row.
+    const row = (str: string, width: number, y: number, fontName = 'f2') => ({
+      str, width, height: 11, transform: [11, 0, 0, 11, 56.8, y], fontName, dir: 'ltr', hasEOL: true,
+    });
+    const courses = async (...rows: Array<ReturnType<typeof row>>) => {
+      mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf(rows.map((item, index) =>
+        (index === rows.length - 1 ? { ...item, hasEOL: false } : item)))) });
+      return parseResumePDF(fakeFile());
+    };
+    const degree = [
+      row('University of Illinois Urbana-Champaign, Bachelor of Science, Computer Science, Aug 2025 to Expected', 507.81, 704.49),
+      row('May 2029', 48.27, 693.49),
+    ];
+    // The page's other wraps: the next line opens with a lowercase word.
+    const project = [
+      row('PROJECTS', 59.25, 632.19, 'f1'),
+      row('Course Planner Web App, personal project, Jan 2026 to Present', 313.47, 607.04),
+      row('I built a course-planning web app with React and Flask that lets students drag courses into semesters', 493.78, 581.89),
+      row('and flags missing prerequisites; about 40 classmates used it during spring registration.', 420.46, 570.89),
+    ];
+    const FIRST = 'Relevant coursework: CS 124 Introduction to Computer Science I; CS 128 Introduction to Computer';
+    const REST = 'Science II; CS 173 Discrete Structures; MATH 241 Calculus III';
+    // M130: a bare code is not stored beside a listed course that opens with the same code text.
+    const cut = ['CS 124', 'CS 128 Introduction to Computer', 'CS 173', 'MATH 241'];
+
+    it('reads the live list across its wrap, which the page shows by its other wrapped lines', async () => {
+      // Live 2026-10-17: "CS 128 Introduction to Computer" was stored and
+      // named in the email. A name over 40 characters is left to its code.
+      const whole = ['CS 124', 'CS 128', 'CS 173 Discrete Structures', 'MATH 241 Calculus III'];
+      const result = await courses(...degree, row(FIRST, 484.56, 668.34), row(REST, 303.62, 657.34), ...project);
+      expect(result.extracted_coursework).toEqual(whole);
+      // The text keeps the line break; only the list reads across it.
+      expect(result.raw_text.split('\n').slice(2, 4)).toEqual([FIRST, REST]);
+      // A role row right under the list's short last line stays apart.
+      expect((await courses(...degree, row(FIRST, 484.56, 668.34), row(REST, 303.62, 657.34),
+        row('Course Staff, CS 124 (Spring 2026)', 173.63, 646.34), ...project)).extracted_coursework).toEqual(whole);
+    });
+
+    it('does not read across where no other line shows the edge', async () => {
+      // The degree line is only the widest line; it wraps before a capital.
+      expect((await courses(...degree, row(FIRST, 484.56, 668.34), row(REST, 303.62, 657.34))).extracted_coursework)
+        .toEqual(cut);
+      // A list line cannot show its own edge by the lowercase line under it.
+      expect((await courses(
+        row('Relevant Coursework: Data Structures, Algorithms, Linear Algebra, Computer Architecture', 439.54, 668.34),
+        row('see transcript for grades and course descriptions', 237.82, 657.34),
+      )).extracted_coursework).toEqual(['Algorithms', 'Computer Architecture', 'Data Structures', 'Linear Algebra']);
+    });
+
+    it('keeps a role, project, organization or place row under a short complete list apart', async () => {
+      // Review of round 2: a text join glued these onto the list's last course.
+      const list = 'Relevant coursework: CS 124 Intro to Computer Science I; CS 173 Discrete Structures';
+      for (const next of [
+        'Course Staff, CS 124 (Spring 2026)', 'Undergraduate TA, CS 173', 'CA, CS 128; CS 124',
+        'Course Scheduler App, CS 222; CS 225', 'Machine Learning Lab, CS 446; CS 546',
+        'London School of Economics, EC 201; EC 202', 'Siebel School of Computing and Data Science, Urbana, IL',
+      ]) {
+        const found = (await courses(...degree, row(list, 421.83, 668.34), row(next, 5.5 * next.length, 657.34), ...project))
+          .extracted_coursework;
+        expect(found.filter((name) => !/^[A-Z]{2,4} \d{3}$/.test(name)), next)
+          .toEqual(['CS 124 Intro to Computer Science I', 'CS 173 Discrete Structures']);
+      }
+    });
   });
 
   it('keeps a line that opens with a mixed-case name, an ordinal or a model number apart', async () => {

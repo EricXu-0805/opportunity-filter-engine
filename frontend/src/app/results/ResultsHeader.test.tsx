@@ -349,3 +349,25 @@ describe('ResultsHeader refine state', () => {
     expect(screen.getByTestId('semantic-toggle')).toBeDisabled();
   });
 });
+
+describe('ResultsHeader cross-school progress hint', () => {
+  it('announces the cross-school wait in a status region instead of the generic slow hint', () => {
+    renderHeader(0, { loading: true, data: null, showSlowHint: true, showCrossSchoolHint: true });
+    expect(screen.getByRole('status')).toHaveTextContent('results.crossSchoolSlowHint');
+    expect(screen.queryByText('results.slowHint')).not.toBeInTheDocument();
+  });
+
+  it('keeps the status region empty when the hint is off or the list has loaded', () => {
+    const { rerender } = renderHeader(0, { loading: true, data: null, showSlowHint: false, showCrossSchoolHint: false });
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    rerender(
+      <ResultsHeader
+        loading={false} showSlowHint={false} showCrossSchoolHint refining={false} refined={false}
+        refineFailed={false} data={null} filteredTotal={0} counts={{ all: 0 }} favs={new Set<string>()}
+        activeTab="all" semanticRerank={false} onSemanticChange={() => {}} onOpenHelp={() => {}}
+        onExport={() => {}} loadEmailMatches={async () => []} t={t}
+      />,
+    );
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+  });
+});

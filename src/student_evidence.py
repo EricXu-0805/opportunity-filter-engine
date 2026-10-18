@@ -81,6 +81,23 @@ def skill_level_is_the_students_own(raw: object) -> bool:
     return str(_field(raw, "level") or "") == _PROVABLY_CHOSEN_LEGACY_LEVEL
 
 
+def skill_may_be_named(raw: object) -> bool:
+    """Whether a writer in the student's voice may name this skill at all.
+
+    A GitHub skill imported before M12 carries no evidence: that import mapped
+    the topics machine-learning and deep-learning to PyTorch and data-science
+    to pandas, so it may name a library no repo states. Since M12 each GitHub
+    skill keeps the repo field that named it (``evidence`` as the profile
+    stores it, ``evidenced`` as the browser sends it). Until the student
+    confirms one without it, it is still scored but never named. A
+    re-import that names it again attaches its evidence.
+    """
+    if isinstance(raw, str) or _field(raw, "source") != "github" or _field(raw, "confirmed") is True:
+        return True
+    evidence = _field(raw, "evidence")
+    return _field(raw, "evidenced") is True or (isinstance(evidence, str) and bool(evidence.strip()))
+
+
 def claimable_skill_level(raw: object) -> str:
     """The level this skill may be spoken at, which is not always the one stored.
 
@@ -101,11 +118,16 @@ def skill_name(raw: object) -> str:
     return str(name) if name else str(raw)
 
 
+def nameable_skills(raw_skills: list) -> list:
+    """The skills a writer in the student's voice may name, as given."""
+    return [s for s in (raw_skills or []) if skill_may_be_named(s)]
+
+
 def claimable_skill_levels(raw_skills: list) -> dict[str, str]:
     """``{name: level}`` for every generator that speaks in the student's voice."""
     return {
         skill_name(s): claimable_skill_level(s)
-        for s in (raw_skills or [])
+        for s in nameable_skills(raw_skills)
         if skill_name(s)
     }
 
@@ -154,6 +176,22 @@ def _course_status(raw: object) -> str:
     return status if isinstance(status, str) and status in COURSE_STATUSES else "unknown"
 
 
+# A course code a name opens with: "CS 173" alone, or "CS 173 Discrete Structures".
+# At most one space, so it is a code _LISTED_CODE also reads inside the titled
+# name: hiding the bare code must never hide a code the claim check cannot see.
+_OPENING_CODE = re.compile(r"[A-Za-z]{2,4} ?[0-9]{3,4}(?![^\W_])")
+
+
+def _opening_code(name: str) -> tuple[str, bool] | None:
+    """The code ``name`` opens with, as written but for case, and whether that code is all it names.
+
+    As written, space included: the claim check reads "CS173" in a name only as
+    "CS173", so a bare "CS 173" stays beside "CS173 Discrete Structures".
+    """
+    m = _OPENING_CODE.match(name)
+    return None if m is None else (m.group().lower(), course_key(name) == course_key(m.group()))
+
+
 def course_entries(profile: object) -> list[dict]:
     """Every course the profile lists, each with exactly one status.
 
@@ -162,6 +200,14 @@ def course_entries(profile: object) -> list[dict]:
     the same course: an old client's list never outranks the status the
     student chose, and is never read as completed. Legacy strings are kept as
     written and in order, so a profile without ``courses`` lists what it did.
+
+    The résumé parser stored "CS 173" beside "CS 173 Discrete Structures" for
+    one listed course (checklist M130). A résumé course the student has not
+    marked that is only a code is not listed beside a résumé course that opens
+    with that code as the same text, space included: the titled course keeps
+    the code and the title the course claim check reads, and a code the student
+    marked or added stays. The unmarked code then gives way to the status the
+    student set on the titled course.
     """
     entries: list[dict] = []
     seen: set[str] = set()
@@ -183,7 +229,10 @@ def course_entries(profile: object) -> list[dict]:
         key = course_key(name)
         if key and key not in seen:
             entries.append({"name": name, "status": "unknown", "source": "resume"})
-    return entries
+    codes = [_opening_code(entry["name"]) if entry["source"] == "resume" else None for entry in entries]
+    titled = {code[0] for code in codes if code and not code[1]}
+    return [entry for entry, code in zip(entries, codes, strict=True)
+            if not (code and code[1] and code[0] in titled and entry["status"] == "unknown")]
 
 
 def courses_counted_as_taken(profile: object) -> list[str]:

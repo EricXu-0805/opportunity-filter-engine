@@ -62,6 +62,7 @@ SKILL_TIMELINE = {
 
 from backend.lib.opportunity_detail import skills_basis
 from src.matcher.ranker import _canonicalize_skill, _parse_skills
+from src.student_evidence import nameable_skills
 
 
 def _skill_name(s) -> str:
@@ -144,7 +145,8 @@ def _generate_resume_tips(profile: dict, opportunity: dict,
             f"Consider picking up {', '.join(missing_pref)} to strengthen your application."
         )
 
-    all_student_skills = set(_parse_skills(profile.get("hard_skills", [])).keys())
+    # Only skills the student may be told to claim (src.student_evidence).
+    all_student_skills = set(_parse_skills(nameable_skills(profile.get("hard_skills", []))).keys())
     required = stated_skills(opportunity, "skills_required")
     matched = [s for s in required if _canonicalize_skill(s) in all_student_skills or s.lower() in all_student_skills]
     if matched:

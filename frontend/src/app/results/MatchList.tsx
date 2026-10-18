@@ -91,7 +91,7 @@ export interface MatchListProps {
    *  Disables every status control until a confirmed read lands. */
   interactionsUnready: boolean;
   feedback: Map<string, MatchVerdict>;
-  /** True only while the page would open a draft for a Draft Email click —
+  /** True only while the page would open a draft for a Draft email click —
    *  see writingEntryReady in page.tsx. Each card disables the button until
    *  then, so an early click is never silently dropped. */
   draftEmailReady: boolean;

@@ -97,7 +97,7 @@ test.describe('Profile readiness and same-account writing preservation', () => {
     const value = await establishCloudProfile(page, request);
     const writes = mutationLog(context);
     await page.goto(`/opportunities/${TARGET}`);
-    await page.getByRole('button', { name: 'Renovate Resume', exact: true }).click();
+    await page.getByRole('button', { name: 'Renovate resume', exact: true }).click();
     await targetDialog(page).getByRole('button', { name: 'Create from confirmed master', exact: true }).click();
     const name = targetDialog(page).getByRole('textbox', { name: 'Edit Full name', exact: true });
     await name.fill(TARGET_EDIT);

@@ -5,7 +5,10 @@ import golden from '../../../tests/fixtures/target-resume-context-v4-golden.json
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import { appendTargetResumeProvenance } from '@/lib/target-resume-provenance';
 import { prepareTargetResumeAI } from '@/lib/target-resume-ai';
-import { createTargetResume, type TargetResumeV1 } from '@/lib/target-resume';
+import { createTargetResume, type TargetResumeContext, type TargetResumeV1 } from '@/lib/target-resume';
+import { createEmptyResumeMaster } from '@/lib/resume-master';
+import { targetResumeSupportEvidence, type TargetResumeSupportGroup } from '@/lib/target-resume-support';
+import type { ExperienceEntry, ProfileData, ResumeFact } from '@/lib/types';
 import type { ProfileActionReceipt } from '@/lib/use-profile-refresh';
 import { DEFAULT_PROFILE } from '@/app/home/types';
 import type { PreparedTargetResumeAi, TargetResumeAiLink, TargetResumeAiRequest, TargetResumeAiResponse, TargetResumeAiUnit } from '@/lib/target-resume-ai-protocol';
@@ -345,5 +348,50 @@ describe('evidence-mapped receipts (full-target-v6)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Continue remaining suggestions' })); await reviewReady();
     expect(mocked.generate.mock.calls[1][0].selected_unit_ids).toEqual([experience().unit_id]);
     expect(screen.getByRole('checkbox', { name: `Use rewrite: ${experience().unit_id}` })).toBeEnabled();
+  });
+});
+
+describe('applied rewrite with supporting entries', () => {
+  const SUPPORT = 'I wrote Python scripts to compare the recorded trials. I did not design the experiment.';
+  const MERGED = 'Measured robot trials; wrote Python scripts to compare the recorded trials. I did not lead the team. I did not design the experiment.';
+  it('names the supporting entries after applying, and leaves them separate and selected', async () => {
+    const fact = (id: string, value: string): ResumeFact => ({ id, value, revision: 1, status: 'confirmed', source: { kind: 'manual' } });
+    const entry = (id: string, text: string): ExperienceEntry => ({ id, text, revision: 1, status: 'confirmed', source: { kind: 'manual' } });
+    const master = createEmptyResumeMaster('support-master'); master.basics.name = fact('name', 'Alex 王');
+    master.activities = [{ id: 'robot', kind: 'research', title: fact('title', 'Robot trials'), details: [{ id: 'original', revision: 1 }, { id: 'support', revision: 1 }] }];
+    const profile: ProfileData = { ...DEFAULT_PROFILE, resume_master: master,
+      experience_entries: [entry('original', 'Measured robot trials; I did not lead the team.'), entry('support', SUPPORT)] };
+    const draft = await createTargetResume(profile, clone(golden.draft.target_snapshot) as TargetResumeContext, 'support-draft');
+    const line = (d: TargetResumeV1, id: string) => d.document.sections.flatMap((section) => section.blocks.flatMap((block) => block.lines))
+      .find((item) => item.evidence.kind === 'experience' && item.evidence.id === id)!;
+    const groups: TargetResumeSupportGroup[] = [{ unit_id: line(draft, 'original').id, support_unit_ids: [line(draft, 'support').id], confirmed: true }];
+    const ready = await prepareTargetResumeAI(draft, groups); if (!ready.ok) throw new Error(ready.code); const prep = ready.value;
+    mocked.generate.mockImplementation(async (payload: TargetResumeAiRequest): Promise<TargetResumeAiResponse> => ({
+      ...(payload.support_groups === undefined ? {} : { support_groups: payload.support_groups }), version: 1, pipeline_version: 'full-target-v6',
+      request_id: payload.request_id, document_id: payload.draft.id, opportunity_id: payload.draft.opportunity_id, document_signature: payload.document_signature,
+      base: clone(payload.draft.base), manifest: { unit_ids: prep.units.map((unit) => unit.unit_id), protected_unit_count: prep.protected_unit_count },
+      method: 'ai', logical_calls: 2, provider_attempts_upper_bound: 4,
+      receipts: prep.units.filter((unit) => payload.selected_unit_ids.includes(unit.unit_id)).map((unit) => {
+        const group = groups.find((item) => item.unit_id === unit.unit_id), suggested = !!group || unit.evidence.kind !== 'experience';
+        return { unit_id: unit.unit_id, section_id: unit.section_id, block_id: unit.block_id, evidence: clone(unit.evidence), before_text: unit.before_text,
+          status: suggested ? 'suggested' : 'unchanged', reason_code: suggested ? null : 'no_link',
+          suggestion: { priority: 'normal', reason: 'Review the original trial work and confirmed Python contribution.', target_evidence: [], links: [],
+            ops: group ? ['personal_first'] : [], alternative_text: null, proposed_text: group ? MERGED : null,
+            ...(group ? { source_evidence: targetResumeSupportEvidence(prep.draft, group) } : {}) } };
+      }) }));
+    const p = { ...props(), profile, draft, supportGroups: groups,
+      currentContext: { profile_signature: draft.base.profile_signature, source_signature: draft.base.source_signature, target_signature: draft.base.target_signature } };
+    const view = render(<TargetResumeAiPanel {...p} />); await generate();
+    const use = await screen.findByRole('checkbox', { name: `Use rewrite: ${groups[0].unit_id}` });
+    expect(screen.queryByTestId('target-resume-support-applied')).toBeNull();
+    fireEvent.click(use); fireEvent.click(screen.getByRole('button', { name: 'Apply selected suggestions' }));
+    expect(p.onApply).toHaveBeenCalledTimes(1); const next = vi.mocked(p.onApply).mock.calls[0][1];
+    expect(line(next, 'original').text).toBe(MERGED);
+    expect(line(next, 'support')).toMatchObject({ text: SUPPORT, included: true });
+    // The parent applies the rewrite; its source choices belonged to the old draft.
+    view.rerender(<TargetResumeAiPanel {...p} draft={next} supportGroups={[]} />);
+    const notice = screen.getByTestId('target-resume-support-applied');
+    expect(notice).toHaveTextContent('check for repetition and deselect any you no longer need. Nothing was deselected automatically.');
+    expect(notice).toHaveTextContent(SUPPORT); expect(notice).not.toHaveTextContent(MERGED);
   });
 });

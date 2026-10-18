@@ -13,8 +13,8 @@ export interface SavedSearchFilters {
   deadline: DeadlineFilterValue;
   minScore: number;
   // Optional: rows saved before the discovery-scope facet shipped lack it.
-  // Like minScore, scope is enforced client-side only — the cron-side
-  // matcher (src/saved_searches/filter.py) ignores it.
+  // The nightly refresh (src/saved_searches/filter.py) applies it with the
+  // match view's own rule; minScore it leaves to the view when results open.
   scope?: '' | 'campus' | 'open';
 }
 
@@ -228,6 +228,11 @@ export async function removeSavedSearch(id: string): Promise<boolean> {
 export interface SavedSearchDigest {
   email: string;
   optIn: boolean;
+  /** When the cron last sent this search's digest (last_digest_sent_at). */
+  lastSentAt?: string | null;
+  /** When the email's unsubscribe link turned it off (digest_unsubscribed_at);
+   *  cleared when the student turns it on again. */
+  unsubscribedAt?: string | null;
 }
 
 // Mirrors backend/routes/email.py's _EMAIL_RE so an opt-in the digest cron
@@ -273,7 +278,7 @@ export async function listSavedSearchDigests(): Promise<Map<string, SavedSearchD
 
   const { data, error } = await supabase
     .from('saved_searches')
-    .select('id, digest_email, digest_opt_in')
+    .select('id, digest_email, digest_opt_in, last_digest_sent_at, digest_unsubscribed_at')
     .eq('device_id', deviceId);
 
   if (error || !data) {
@@ -284,9 +289,18 @@ export async function listSavedSearchDigests(): Promise<Map<string, SavedSearchD
   }
 
   return new Map(
-    (data as Array<{ id: string; digest_email: string | null; digest_opt_in: boolean | null }>).map(
-      (r) => [r.id, { email: r.digest_email ?? '', optIn: !!r.digest_opt_in }],
-    ),
+    (data as Array<{
+      id: string;
+      digest_email: string | null;
+      digest_opt_in: boolean | null;
+      last_digest_sent_at?: string | null;
+      digest_unsubscribed_at?: string | null;
+    }>).map((r) => [r.id, {
+      email: r.digest_email ?? '',
+      optIn: !!r.digest_opt_in,
+      lastSentAt: r.last_digest_sent_at ?? null,
+      unsubscribedAt: r.digest_unsubscribed_at ?? null,
+    }]),
   );
 }
 

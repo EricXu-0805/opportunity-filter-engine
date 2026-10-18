@@ -103,7 +103,7 @@ from backend.schemas import (
 )
 from src.evidence import is_inferred
 from src.recommender.cold_email import filter_course_entries
-from src.student_evidence import claimable_skill_level, course_context_line, course_entries
+from src.student_evidence import claimable_skill_level, course_context_line, course_entries, nameable_skills
 
 logger = logging.getLogger("ofe.tailor")
 
@@ -317,7 +317,8 @@ def _student_context(profile_dict: dict) -> str:
     research = _sanitize_field(profile_dict.get("research_interests_text", ""), max_len=None) or "(none stated)"
 
     skills_lines: list[str] = []
-    for skill in profile_dict.get("hard_skills") or []:
+    # A skill src.student_evidence holds back is not handed over even as direction.
+    for skill in nameable_skills(profile_dict.get("hard_skills") or []):
         if isinstance(skill, dict):
             n = _sanitize_field(skill.get("name", ""), max_len=None)
             if n:

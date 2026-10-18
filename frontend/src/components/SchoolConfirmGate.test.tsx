@@ -178,6 +178,34 @@ describe('gate visibility', () => {
     render(<SchoolConfirmGate />);
     expect(screen.queryByText('schoolConfirm.title')).not.toBeInTheDocument();
   });
+
+  it('does not ask an account that confirmed here again after another account used this browser', async () => {
+    seedExistingUser('uiuc');
+    const first = render(<SchoolConfirmGate />);
+    fireEvent.click(await screen.findByText('schoolConfirm.confirm'));
+    await waitFor(() => {
+      expect(screen.queryByText('schoolConfirm.title')).not.toBeInTheDocument();
+    });
+    first.unmount();
+
+    // A signs out (re-anon), B signs in, confirms nothing and signs out.
+    for (const uid of ['school-confirm-gate-anon-1', 'school-confirm-gate-b']) {
+      advanceOwnerEpoch(uid);
+      await syncLocalIdentityOwner(uid);
+    }
+    seedPrivate(STORAGE_KEYS.PROFILE, JSON.stringify({ home_school: 'uiuc' }));
+    const b = render(<SchoolConfirmGate />);
+    expect(screen.getByText('schoolConfirm.title')).toBeInTheDocument();
+    b.unmount();
+    for (const uid of ['school-confirm-gate-anon-2', 'school-confirm-gate-test-uid']) {
+      advanceOwnerEpoch(uid);
+      await syncLocalIdentityOwner(uid);
+    }
+    // A's profile comes back from the cloud; its receipt does not.
+    seedPrivate(STORAGE_KEYS.PROFILE, JSON.stringify({ major: 'CS', home_school: 'uiuc' }));
+    render(<SchoolConfirmGate />);
+    expect(screen.queryByText('schoolConfirm.title')).not.toBeInTheDocument();
+  });
 });
 
 describe('confirming', () => {

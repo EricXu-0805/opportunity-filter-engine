@@ -55,6 +55,9 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<'stale' | 'applied' | 'cancelled' | null>(null);
+  // Supporting entries an applied merged rewrite drew on; they stay in the draft.
+  const [appliedSupport, setAppliedSupport] = useState<string[]>([]);
+  const appliedSupportRef = useRef<string[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   // Rewrites the student chose to use without the posting's terms.
   const [plain, setPlain] = useState<Set<string>>(new Set());
@@ -84,6 +87,7 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
     // Actual source/document/availability changes invalidate the old advice.
     setRun(null); runRef.current = null; setSelected(new Set()); setPlain(new Set()); setDismissed(new Set()); setOrder(false); setError(null);
     setNotice(appliedKey.current === draftKey ? 'applied' : hadWork ? 'stale' : null);
+    setAppliedSupport(appliedKey.current === draftKey ? appliedSupportRef.current : []);
     appliedKey.current = null;
   }, [binding, currentContext, draftKey, enabled, owner, profileAvailable]);
 
@@ -231,7 +235,11 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
       { rewriteUnitIds: [...selected], alternativeUnitIds: alternativeUnitIds(), applyStructure: order, currentContext, supportGroups });
     if (!result.ok) { setError(result.code); return; }
     appliedKey.current = JSON.stringify(result.value);
-    if (appliedKey.current === draftKey) { setNotice('applied'); setRun(null); runRef.current = null; setSelected(new Set()); setOrder(false); }
+    const included = new Map(result.value.document.sections.flatMap((section) => section.blocks.flatMap((block) => block.lines
+      .map((line) => [line.id, section.included && block.included && line.included ? line.text : null] as const))));
+    appliedSupportRef.current = [...new Set(supportGroupsForUnits(run.prepared.support_groups, [...selected]).flatMap((group) => group.support_unit_ids))]
+      .map((id) => included.get(id)).filter((text): text is string => !!text);
+    if (appliedKey.current === draftKey) { setNotice('applied'); setAppliedSupport(appliedSupportRef.current); setRun(null); runRef.current = null; setSelected(new Set()); setOrder(false); }
     const annotations: TargetResumeProvenanceAnnotation[] = [];
     for (const unitId of selected) {
       // Match the accepted unit to its successful response, not the last batch.
@@ -287,6 +295,10 @@ export default function TargetResumeAiPanel({ supportGroups, draft, profile, pro
       ? copy('Selected changes applied locally. Review the complete draft and save when ready.', '已将所选修改应用到本地稿。核对全文后再保存。')
       : notice === 'stale' ? copy('Your draft, profile or target changed. Earlier suggestions were discarded; your edits are kept.', '文稿、资料或目标已变更，旧建议已作废，手动编辑保留。')
         : copy('Generation stopped. Your draft and completed suggestions are kept.', '已停止生成，原稿及已完成建议保留。')}</p>}
+    {notice === 'applied' && appliedSupport.length > 0 && <div role="status" className="mt-2 text-sm text-indigo-900" data-testid="target-resume-support-applied">
+      <p>{copy('The applied rewrite drew on these supporting entries. They are still separate entries in your draft, so check for repetition and deselect any you no longer need. Nothing was deselected automatically.', '已应用的改写使用了以下补充条目。它们仍是稿件中的独立条目，请检查是否重复，并按需自行取消选用；系统不会自动取消。')}</p>
+      <ul className="mt-1 list-inside list-disc">{appliedSupport.map((text, index) => <li key={index} className="whitespace-pre-wrap break-words">{text}</li>)}</ul>
+    </div>}
     {review && <>
       <p role="status" className="mt-3 text-sm">{copy(`Suggested ${review.coverage.rewrites} rewrites · ${review.coverage.advice} advice-only · ${review.coverage.unchanged} no change · ${review.coverage.pending} pending · ${review.coverage.skipped} unprocessed`,
         `建议改写 ${review.coverage.rewrites} 条 · 仅供参考 ${review.coverage.advice} 条 · 保留原文 ${review.coverage.unchanged} 条 · 待处理 ${review.coverage.pending} 条 · 未完成 ${review.coverage.skipped} 条`)}</p>

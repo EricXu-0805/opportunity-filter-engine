@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import AdminPage from './page';
 import { SESSION_KEY } from './admin-api';
 import type { OpsIncident, Ticket } from './types';
@@ -37,6 +37,15 @@ let historyRows: Record<string, unknown>[];
 let mainData: Record<string, unknown> | null;
 let feedbackListStatus: { status: number; error?: string } | null;
 let ticketPatchStatus: { status: number; error?: string } | null;
+let schoolsStatus: { status: number; error?: string } | null;
+let shardsStatus: { status: number; error?: string } | null;
+// What the drill-down reports when the request is made, and whether its
+// response waits for the test to release it.
+let shardReason: string;
+let holdShards: boolean;
+const heldShards: (() => void)[] = [];
+let holdMain: boolean;
+const heldMain: (() => void)[] = [];
 
 const lastCall = (predicate: (c: Call) => boolean) => [...calls].reverse().find(predicate);
 
@@ -49,8 +58,7 @@ function install() {
       return { status: 200, data: { history: historyRows } };
     }
     if (path.startsWith('/admin/data-quality')) {
-      if (mainStatus) return mainStatus;
-      return {
+      const answer = () => mainStatus ?? {
         status: 200,
         data: mainData ?? {
           total: 10,
@@ -60,6 +68,8 @@ function install() {
           generated_at: '2026-08-04T10:00:00+00:00',
         },
       };
+      if (holdMain) return new Promise((resolve) => { heldMain.push(() => resolve(answer())); });
+      return answer();
     }
     if (path.startsWith('/admin/health-check')) {
       return { status: 200, data: { ok: true, alerts: [], checked_at: '2026-08-04T10:00:00+00:00' } };
@@ -127,9 +137,56 @@ function install() {
         },
       };
     }
+    if (path.startsWith('/admin/source-health/schools')) {
+      if (schoolsStatus) return schoolsStatus;
+      return {
+        status: 200,
+        data: {
+          available: true,
+          report: null,
+          schools: [{
+            school: 'barnard', state: 'fully_stale', fully_stale: true,
+            fresh_shard_count: 0, warn_shard_count: 0, stale_shard_count: 2,
+            failed_shard_count: 1, degraded_shard_count: 2, total_shard_count: 2,
+            oldest_stale_age_days: 49.3,
+            last_successful_school_activity: '2026-08-29T08:10:26+00:00',
+            oldest_success_at: '2026-08-29T06:09:04+00:00',
+            never_succeeded_shard_count: 0,
+            coverage_current_count: 9, coverage_last_good_count: 221, coverage_delta: -212,
+            last_publish_at: SITE_UPDATED_AT,
+          }],
+        },
+      };
+    }
+    if (path.startsWith('/admin/source-health/shards')) {
+      if (shardsStatus && !holdShards) return shardsStatus;
+      const school = new URLSearchParams(path.split('?')[1] ?? '').get('school');
+      const res = {
+        status: 200,
+        data: {
+          available: true,
+          rows: school === 'barnard' ? [{
+            school: 'barnard', source: 'barnard_faculty',
+            last_attempt_at: SITE_UPDATED_AT, last_success_at: '2026-08-29T08:10:26+00:00',
+            last_publish_at: SITE_UPDATED_AT, current_record_count: 0, last_good_record_count: 212,
+            freshness: 'stale', status: 'suspicious_zero',
+            failure_reason: shardReason,
+            consecutive_failures: 3, eligible: true,
+          }] : [],
+        },
+      };
+      // A held request answers with whatever status the test has set by the time it is released.
+      if (holdShards) return new Promise((resolve) => { heldShards.push(() => resolve(shardsStatus ?? res)); });
+      return res;
+    }
     return { status: 200, data: {} };
   });
 }
+
+// The site-wide update time, which is also Barnard's shard publish time here.
+const SITE_UPDATED_AT = '2026-10-17T13:34:19+00:00';
+const BARNARD_REASON = 'emitted 0 records against a baseline of 212 active record(s)';
+const LATER_REASON = 'emitted 0 records against a baseline of 230 active record(s)';
 
 beforeEach(() => {
   calls.length = 0;
@@ -138,6 +195,13 @@ beforeEach(() => {
   mainData = null;
   feedbackListStatus = null;
   ticketPatchStatus = null;
+  schoolsStatus = null;
+  shardsStatus = null;
+  shardReason = BARNARD_REASON;
+  holdShards = false;
+  heldShards.length = 0;
+  holdMain = false;
+  heldMain.length = 0;
   ticketRow = {
     id: 't1',
     created_at: '2026-08-01T10:00:00+00:00',
@@ -423,5 +487,127 @@ describe('previousSnapshot is wired through the hook, not just implemented in ut
     // other baseline cannot slip past a single hard-coded number.
     expect(screen.queryByText('▲ +3')).not.toBeInTheDocument();
     expect(screen.queryByText(/^[▲▼]/)).not.toBeInTheDocument();
+  });
+});
+
+describe('per-school verification is fetched and drilled into through the hook', () => {
+  it('shows a school its own successes, not the site-wide time, and opens its sources', async () => {
+    mainData = {
+      total: 10,
+      global: {},
+      sources: [],
+      worst_fields: [],
+      generated_at: SITE_UPDATED_AT,
+      data_updated_at: SITE_UPDATED_AT,
+    };
+    await mount();
+    expect(calls.some((c) => c.path === '/admin/source-health/schools')).toBe(true);
+
+    const row = within(await screen.findByTestId('school-row-barnard'));
+    expect(row.getByTestId('oldest-success')).toHaveTextContent('2026-08-29 06:09 UTC');
+    expect(row.getByTestId('newest-success')).toHaveTextContent('2026-08-29 08:10 UTC');
+    expect(row.getByTestId('oldest-success')).not.toHaveTextContent('2026-10-17');
+    expect(row.getByTestId('newest-success')).not.toHaveTextContent('2026-10-17');
+    expect(row.getByTestId('last-publish')).toHaveTextContent('2026-10-17 13:34 UTC');
+
+    fireEvent.click(row.getByRole('button', { name: /barnard/ }));
+    expect(
+      await screen.findByText('emitted 0 records against a baseline of 212 active record(s)'),
+    ).toBeInTheDocument();
+    expect(lastCall((c) => c.path.startsWith('/admin/source-health/shards'))?.path)
+      .toBe('/admin/source-health/shards?school=barnard');
+  });
+
+  it('reports a failed school-health load and keeps the rest of the console', async () => {
+    schoolsStatus = { status: 500, error: 'ledger exploded' };
+    await mount();
+    expect(screen.getByText('admin.schoolHealth.loadFailed')).toBeInTheDocument();
+    expect(screen.queryByTestId('school-row-barnard')).toBeNull();
+    expect(screen.getByText('Broken compare page')).toBeInTheDocument();
+  });
+
+  it('reloads an open school on a refresh instead of leaving it blank', async () => {
+    await mount();
+    const row = within(await screen.findByTestId('school-row-barnard'));
+    fireEvent.click(row.getByRole('button', { name: /barnard/ }));
+    expect(await screen.findByText(BARNARD_REASON)).toBeInTheDocument();
+
+    shardReason = LATER_REASON;
+    fireEvent.click(screen.getByText('admin.refresh'));
+    expect(await screen.findByText(LATER_REASON)).toBeInTheDocument();
+    expect(screen.queryByText(BARNARD_REASON)).toBeNull();
+    expect(calls.filter((c) => c.path === '/admin/source-health/shards?school=barnard'))
+      .toHaveLength(2);
+  });
+
+  it('does not reload a school that was closed before the refresh', async () => {
+    await mount();
+    const button = within(await screen.findByTestId('school-row-barnard'))
+      .getByRole('button', { name: /barnard/ });
+    fireEvent.click(button);
+    await screen.findByText(BARNARD_REASON);
+    fireEvent.click(button);
+    fireEvent.click(screen.getByText('admin.refresh'));
+    await waitFor(() => expect(
+      calls.filter((c) => c.path === '/admin/source-health/schools'),
+    ).toHaveLength(2));
+    await waitFor(() => expect(screen.getByText('admin.refresh')).not.toBeDisabled());
+    expect(calls.filter((c) => c.path.startsWith('/admin/source-health/shards'))).toHaveLength(1);
+  });
+
+  it('drops a drill-down response that a refresh superseded', async () => {
+    await mount();
+    holdShards = true;
+    fireEvent.click(
+      within(await screen.findByTestId('school-row-barnard')).getByRole('button', { name: /barnard/ }),
+    );
+    await waitFor(() => expect(heldShards).toHaveLength(1));
+
+    shardReason = LATER_REASON;
+    fireEvent.click(screen.getByText('admin.refresh'));
+    await waitFor(() => expect(heldShards).toHaveLength(2));
+    await act(async () => { heldShards[1](); });
+    expect(await screen.findByText(LATER_REASON)).toBeInTheDocument();
+
+    // The request made before the refresh answers last, with the old rows.
+    await act(async () => { heldShards[0](); });
+    expect(screen.getByText(LATER_REASON)).toBeInTheDocument();
+    expect(screen.queryByText(BARNARD_REASON)).toBeNull();
+  });
+
+  it('treats a 401 from the drill-down as a dead session', async () => {
+    await mount();
+    shardsStatus = { status: 401, error: 'unauthorized' };
+    const row = within(await screen.findByTestId('school-row-barnard'));
+    fireEvent.click(row.getByRole('button', { name: /barnard/ }));
+    expect(await screen.findByText('Invalid admin token')).toBeInTheDocument();
+  });
+
+  it('a drill-down sent with a dead token cannot sign the next session out', async () => {
+    await mount();
+    holdShards = true;
+    fireEvent.click(
+      within(await screen.findByTestId('school-row-barnard')).getByRole('button', { name: /barnard/ }),
+    );
+    await waitFor(() => expect(heldShards).toHaveLength(1));
+
+    mainStatus = { status: 401, error: 'unauthorized' };
+    fireEvent.click(screen.getByText('admin.refresh'));
+    expect(await screen.findByText('Invalid admin token')).toBeInTheDocument();
+
+    // The new session's first load is still in flight when the old drill-down
+    // answers 401 for the dead token.
+    mainStatus = null;
+    holdMain = true;
+    fireEvent.change(screen.getByPlaceholderText('Admin token'), { target: { value: 'tok2' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Load' }));
+    await waitFor(() => expect(heldMain.length).toBeGreaterThan(0));
+    shardsStatus = { status: 401, error: 'unauthorized' };
+    await act(async () => { heldShards[0](); });
+    await act(async () => { heldMain.forEach((release) => release()); });
+
+    expect(await screen.findByText('uiuc_faculty collector failed')).toBeInTheDocument();
+    expect(screen.queryByText('Invalid admin token')).toBeNull();
+    expect(sessionStorage.getItem(SESSION_KEY)).toBe('tok2');
   });
 });

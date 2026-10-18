@@ -480,7 +480,7 @@ describe('OpportunityCard — a saved target we can no longer vouch for', () => 
     // Where it came from, and the student's own control over their list.
     expect(screen.getByText('campus_scrape')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'favorites.removeAria' })).toBeInTheDocument();
-    // The link goes to a source page and says so — not "View Details",
+    // The link goes to a source page and says so — not "View details",
     // which promises the current details of an opening. A faculty page is a
     // faculty page whatever the posture.
     const isFacultyRow = kind.source_type === 'faculty_research';

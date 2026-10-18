@@ -9,6 +9,7 @@ import {
   type MatchViewRequestState,
 } from '@/lib/api';
 import { trackOnce } from '@/lib/analytics';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { captureOwnerToken, isOwnerTokenValid, type OwnerToken } from '@/lib/identity-owner';
 import { resultRequestKey, sessionBelongsToOwner, type ResultCursorState, type ResultSession } from '@/lib/result-session';
 import {
@@ -29,6 +30,9 @@ const INTERIM_PAINT_AFTER_MS = 600;
  *  request on a route limited to 60 a minute; past this the student gets
  *  page one and the notice instead. */
 const MAX_REBUILT_PAGE = 10;
+/** How long a cross-school first page loads before the page says why it is
+ *  slow. A warm snapshot answers well inside this, so it never flashes. */
+const CROSS_SCHOOL_HINT_AFTER_MS = 1500;
 
 interface UseResultsDataResult {
   data: MatchesResponse | null;
@@ -38,6 +42,8 @@ interface UseResultsDataResult {
   /** Retain the structured failure for recovery actions; never render the code. */
   errorCode: string | null;
   showSlowHint: boolean;
+  /** A cross-school first page has been loading past CROSS_SCHOOL_HINT_AFTER_MS. */
+  showCrossSchoolHint: boolean;
   paginationReady: boolean;
   /** A rule-ranked list is on screen and the paid refine is still running. */
   refining: boolean;
@@ -106,6 +112,7 @@ export function useResultsData(
   const [error, setError] = useState<string | null>(null);
   const [errorCode, setErrorCode] = useState<string | null>(null);
   const [showSlowHint, setShowSlowHint] = useState(false);
+  const [showCrossSchoolHint, setShowCrossSchoolHint] = useState(false);
   const [paginationReady, setPaginationReady] = useState(false);
   const [refining, setRefining] = useState(false);
   const [refined, setRefined] = useState(false);
@@ -170,6 +177,20 @@ export function useResultsData(
     const timer = setTimeout(() => setShowSlowHint(true), 8000);
     return () => clearTimeout(timer);
   }, [loading]);
+
+  // The same switch toProfileRequest reads, so the hint names only a request
+  // that really searches every school. A new request restarts the delay.
+  const crossSchoolFirstPage = page === 1 && !!requestKey
+    && RELEASE_SCOPE.crossSchoolMatching && !!profile?.include_cross_school;
+  useEffect(() => {
+    if (!loading || !crossSchoolFirstPage) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- drop the hint as soon as the cross-school request settles
+      setShowCrossSchoolHint(false);
+      return;
+    }
+    const timer = setTimeout(() => setShowCrossSchoolHint(true), CROSS_SCHOOL_HINT_AFTER_MS);
+    return () => clearTimeout(timer);
+  }, [loading, crossSchoolFirstPage, requestKey]);
 
   useEffect(() => {
     // requestKey is '' whenever profile is null, so this covers both.
@@ -448,6 +469,10 @@ export function useResultsData(
   }, [semanticRerank, page, requestKey, acceptedOwnerKey, t, onCursorReset]);
 
   return {
-    data, setData, loading, error, errorCode, showSlowHint, paginationReady, refining, refined, refineFailed,
+    data, setData, loading, error, errorCode, showSlowHint,
+    // Not the bare state: it is reset in an effect, one render after the
+    // request settles or stops being cross-school.
+    showCrossSchoolHint: showCrossSchoolHint && loading && crossSchoolFirstPage,
+    paginationReady, refining, refined, refineFailed,
   };
 }

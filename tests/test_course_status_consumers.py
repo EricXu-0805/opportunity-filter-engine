@@ -64,6 +64,26 @@ def test_template_mentions_legacy_coursework_only_neutrally():
         assert "My coursework includes CS 225 and BIOE 498 Brain-Computer Interfaces." in email
 
 
+# Checklist M130: what the résumé parser stored for "Relevant Coursework: CS 173
+# Discrete Structures, MATH 241 Calculus III" before it stopped storing a code
+# again beside its titled course.
+REPEATED = {**BASE, "coursework": ["CS 173", "CS 173 Discrete Structures", "MATH 241", "MATH 241 Calculus III"]}
+REPEATED_LIST = {**REPEATED, "courses": [{"name": name, "source": "resume"} for name in REPEATED["coursework"]]}
+
+
+@pytest.mark.parametrize("profile", [REPEATED, REPEATED_LIST], ids=["names", "course list"])
+def test_template_names_a_course_stored_by_its_code_and_its_title_once(email_client, profile):  # noqa: F811
+    emails = [generate_cold_email(profile, OPP), *(v["text"] for v in generate_variants(profile, OPP))]
+    response = email_client.post("/api/cold-email", json={"profile": profile, "opportunity_id": OPP["id"],
+                                                           "engine": "template"})
+    assert response.status_code == 200, response.text
+    stated = [email for email in [*emails, response.json()["body"]] if "CS 173" in email]
+    assert stated
+    for email in stated:
+        assert "My coursework includes CS 173 Discrete Structures and MATH 241 Calculus III." in email
+        assert email.count("CS 173") == 1 and email.count("MATH 241") == 1, email
+
+
 @pytest.mark.parametrize("profile", [PROFILE, LEGACY], ids=["statuses", "legacy"])
 def test_template_route_serves_the_status_sentences_through_its_own_gate(email_client, profile):  # noqa: F811
     response = email_client.post("/api/cold-email", json={"profile": profile, "opportunity_id": OPP["id"],
@@ -112,6 +132,15 @@ def test_ai_gate_refuses_a_course_claimed_beyond_its_status_or_an_interest_as_ex
         email_client, monkeypatch, route, profile, claim):  # noqa: F811
     out = request(email_client, monkeypatch, route, claim, profile)
     assert out["method"] in ("local", "template")
+    assert out["fallback_reason"] == "fabrication"
+    assert claim not in out["body"]
+
+
+@pytest.mark.parametrize("route", ["/cold-email", "/cold-email/refine"])
+@pytest.mark.parametrize("claim", ["I have completed Discrete Structures.", "I took CS 173 last year."])
+def test_ai_gate_still_reads_a_course_stored_twice_by_its_title_and_its_code(email_client, monkeypatch, route, claim):  # noqa: F811
+    """Checklist M130 names the course once and keeps its title, which the claim check reads (review M123)."""
+    out = request(email_client, monkeypatch, route, claim, REPEATED_LIST)
     assert out["fallback_reason"] == "fabrication"
     assert claim not in out["body"]
 
@@ -232,6 +261,15 @@ def test_ranker_counts_legacy_coursework_as_it_did():
     unmarked = {"search_weight": 100, "courses": [{"name": "CS 446 Machine Learning", "status": "unknown"}]}
     assert score_readiness(legacy, lab)[0] == score_readiness(unmarked, lab)[0]
     assert _coursework_focus_bonus(legacy, lab) == _coursework_focus_bonus(unmarked, lab) > 0.0
+
+
+def test_ranker_counts_a_course_stored_by_its_code_and_its_title_once():
+    """Checklist M130: the course the résumé named twice is the one course a new import stores."""
+    lab = _lab("discrete mathematics", "computer science")
+    twice = {**REPEATED, "search_weight": 100}
+    once = {**twice, "coursework": ["CS 173 Discrete Structures", "MATH 241 Calculus III"]}
+    assert score_readiness(twice, lab)[0] == score_readiness(once, lab)[0]
+    assert _coursework_focus_bonus(twice, lab) == _coursework_focus_bonus(once, lab) > 0.0
 
 
 def test_match_snapshot_moves_when_only_a_course_status_changes():
