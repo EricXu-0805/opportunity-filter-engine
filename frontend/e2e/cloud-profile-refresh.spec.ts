@@ -156,7 +156,7 @@ test.describe('Server-only profile refresh', () => {
     });
     try {
       await page.goto('/results?tab=all');
-      await page.locator(`#match-card-${TARGET}`).getByRole('button', { name: 'Renovate Resume', exact: true }).click();
+      await page.locator(`#match-card-${TARGET}`).getByRole('button', { name: 'Renovate resume', exact: true }).click();
       const fields = await createLocalTarget(page);
       const close = dialog(page).getByRole('button', { name: 'Close target résumé', exact: true });
       await close.focus(); await page.keyboard.press('/'); await expect(close).toBeFocused();
@@ -256,7 +256,7 @@ test.describe('Server-only profile refresh', () => {
     });
     try {
       await page.goto(`/opportunities/${TARGET}`);
-      await page.getByRole('button', { name: 'Renovate Resume', exact: true }).click();
+      await page.getByRole('button', { name: 'Renovate resume', exact: true }).click();
       const fields = await createLocalTarget(page);
       other = await background(page);
       await updateCloud(owner, { coursework: ['CS 374'] });

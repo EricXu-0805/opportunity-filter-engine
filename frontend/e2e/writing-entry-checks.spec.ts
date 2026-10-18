@@ -110,7 +110,7 @@ async function enter(page: Page, surface: 'favorites' | 'detail') {
 }
 async function openLegacy(page: Page) {
   await enter(page, 'detail');
-  await page.getByRole('button', { name: 'Renovate Resume', exact: true }).click();
+  await page.getByRole('button', { name: 'Renovate resume', exact: true }).click();
   await page.getByRole('button', { name: 'Edit résumé bullets', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Renovate with AI', exact: true })).toBeEnabled();
 }
@@ -203,7 +203,7 @@ test.describe('Writing entry checks use current profiles', () => {
     const owner = await seed(page), writes = profileWrites(page), requests = await installWriting(page);
     let gate: Awaited<ReturnType<typeof gateProfileRead>> | undefined;
     try {
-      await enter(page, 'favorites'); await page.getByRole('button', { name: 'Tailor Resume', exact: true }).click();
+      await enter(page, 'favorites'); await page.getByRole('button', { name: 'Tailor resume', exact: true }).click();
       const input = page.locator('#tailor-bullets-input'); await input.fill(MANUAL);
       const skills: ProfileData['skills'] = [{ name: 'R', level: 'beginner' }];
       await commit(owner, { name: NEW_NAME, skills, coursework: ['STAT 400'] });
@@ -453,7 +453,7 @@ test.describe('Writing entry checks use current authoritative targets', () => {
     const owner = await seed(page), writes = profileWrites(page), requests = await installWriting(page);
     try {
       const target = await installControlledWritingTarget(page);
-      await enter(page, 'detail'); await page.getByRole('button', { name: 'Renovate Resume', exact: true }).click();
+      await enter(page, 'detail'); await page.getByRole('button', { name: 'Renovate resume', exact: true }).click();
       const dialog = page.getByRole('dialog', { name: 'Target résumé', exact: true });
       await dialog.getByRole('button', { name: 'Create from confirmed master', exact: true }).click();
       const name = dialog.getByRole('textbox', { name: 'Edit Full name', exact: true });
@@ -495,7 +495,7 @@ test.describe('Saved opportunity requirements', () => {
   }
   async function newDraft(page: Page) {
     await enter(page, 'detail');
-    await page.getByRole('button', { name: 'Renovate Resume', exact: true }).click();
+    await page.getByRole('button', { name: 'Renovate resume', exact: true }).click();
     await page.getByRole('button', { name: 'Create from confirmed master', exact: true }).click();
     await expect(page.getByRole('textbox', { name: 'Edit Full name', exact: true })).toHaveValue(OLD_NAME);
   }
@@ -522,7 +522,7 @@ test.describe('Saved opportunity requirements', () => {
       target.respond(200, { ...target.base, deadline: '2027-01-31',
         eligibility: { ...target.base.eligibility, citizenship_required: true },
         application: { ...target.base.application, requires_transcript: 'yes' } });
-      await page.getByRole('button', { name: 'Renovate Resume', exact: true }).click();
+      await page.getByRole('button', { name: 'Renovate resume', exact: true }).click();
       await expect(page.getByText(/This draft was created from different profile or target materials/)).toBeVisible();
       await expect(page.getByRole('button', { name: 'Generate AI suggestions', exact: true })).toBeDisabled();
       await expect(page.getByRole('textbox', { name: 'Edit Full name', exact: true })).toHaveValue(MANUAL);
@@ -569,7 +569,7 @@ test.describe('Saved opportunity requirements', () => {
           p_opportunity_id: TARGET, p_expected_revision: 1, p_doc: legacy },
       });
       expect(seeded.status()).toBe(200); expect(await seeded.json()).toMatchObject({ status: 'saved', revision: 2 });
-      await page.getByRole('button', { name: 'Renovate Resume', exact: true }).click();
+      await page.getByRole('button', { name: 'Renovate resume', exact: true }).click();
       await expect(page.getByText(legacyNotice, { exact: true })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Generate AI suggestions', exact: true })).toBeDisabled();
       await page.getByRole('textbox', { name: 'Edit Full name', exact: true }).fill('Legacy hand edit 王');

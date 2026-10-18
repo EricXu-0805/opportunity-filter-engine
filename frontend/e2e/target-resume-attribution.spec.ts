@@ -176,7 +176,7 @@ async function setup(page: Page, info: TestInfo, research?: 'available' | 'stale
   const open = async () => {
     await page.goto(`/opportunities/${TARGET}`);
     if (research) await expect(page.getByRole('link', { name: RESEARCH_TITLE, exact: true }).first()).toHaveAttribute('href', 'https://doi.org/10.1234/synthetic-instrument-study');
-    await page.getByRole('button', { name: copy('Renovate Resume', '简历翻新'), exact: true }).click();
+    await page.getByRole('button', { name: copy('Renovate resume', '简历翻新'), exact: true }).click();
     await expect(modal).toBeVisible();
     await modal.getByRole('button', { name: copy('Create from confirmed master', '从已确认母版创建'), exact: true }).click();
     await expect(modal.getByRole('textbox', { name: copy('Edit Full name', '编辑 姓名'), exact: true })).toHaveValue(NAME);

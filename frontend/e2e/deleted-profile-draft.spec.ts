@@ -128,7 +128,7 @@ async function installNetwork(page: Page) {
 async function openDraft(page: Page, surface: Surface, editor: Editor): Promise<Draft> {
   await page.goto(surface === 'Detail' ? `/opportunities/${TARGET}` : '/results?tab=all');
   const entry = surface === 'Detail' ? page : page.locator(`#match-card-${TARGET}`);
-  const actionName = editor === 'email' ? 'Draft email' : 'Renovate Resume';
+  const actionName = editor === 'email' ? 'Draft email' : 'Renovate resume';
   // Results paints the card before the page can open an editor (its owner
   // waits on the favorites read). Draft Email and Renovate Resume both stay
   // disabled until the page can, so wait for the one about to be clicked.
@@ -206,14 +206,14 @@ async function verifyAbsentAfterExit(page: Page, surface: Surface, owner: Owner)
   if (surface === 'Results') await expect(page).toHaveURL(/\/$/);
   else {
     await expect(page.getByRole('button', { name: 'Draft email', exact: true })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Renovate Resume', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Renovate resume', exact: true })).toHaveCount(0);
   }
   // A fresh entry cannot use the closed session's held profile as a source.
   await page.goto(surface === 'Detail' ? `/opportunities/${TARGET}` : '/results?tab=all');
   if (surface === 'Results') await expect(page).toHaveURL(/\/$/);
   else {
     await expect(page.getByRole('button', { name: 'Draft email', exact: true })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Renovate Resume', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Renovate resume', exact: true })).toHaveCount(0);
   }
   // Leave that page before arming the read below: it can still have its own
   // profile read in flight (Results has client-redirected to a home page that

@@ -138,7 +138,7 @@ async function setup(page: Page, info: TestInfo, denial?: { code: string; status
   const editor = (id: string) => modal.locator(`textarea[id$="-${id}"]`);
   const open = async () => {
     await page.goto(`/opportunities/${TARGET}`);
-    await page.getByRole('button', { name: copy('Renovate Resume', '简历翻新'), exact: true }).click();
+    await page.getByRole('button', { name: copy('Renovate resume', '简历翻新'), exact: true }).click();
     await expect(modal).toBeVisible();
     await modal.getByRole('button', { name: copy('Create from confirmed master', '从已确认母版创建'), exact: true }).click();
     await expect(modal.getByRole('textbox', { name: copy('Edit Full name', '编辑 姓名'), exact: true })).toHaveValue(NAME);
@@ -412,7 +412,7 @@ test('an authoritative target refusal retires an earlier selected plan without c
     await expect(f.modal.getByRole('region', { name: 'AI adaptation suggestions', exact: true }).getByRole('button', { name: f.copy('Generate AI suggestions', '生成 AI 建议'), exact: true })).toBeDisabled();
     await f.modal.getByRole('button', { name: f.copy('Close target résumé', '关闭目标简历'), exact: true }).click();
     await expect(f.modal).not.toBeVisible();
-    await page.getByRole('button', { name: f.copy('Renovate Resume', '简历翻新'), exact: true }).click();
+    await page.getByRole('button', { name: f.copy('Renovate resume', '简历翻新'), exact: true }).click();
     await expect(f.modal).toBeVisible();
     await panel.getByRole('button', { name: f.copy('Generate content plan', '生成选材建议'), exact: true }).click();
     await expect(panel.locator('[data-plan-block-id]')).toHaveCount(4);
@@ -452,7 +452,7 @@ test('provenance stays paired through in-flight edits, two-window conflict and h
     await other.route('**/auth/v1/user', route => route.fulfill({ json: f.owner.session.user }));
     await other.route('**/auth/v1/token?grant_type=refresh_token', route => route.fulfill({ json: f.owner.session }));
     await other.goto(`/opportunities/${TARGET}`);
-    await other.getByRole('button', { name: f.copy('Renovate Resume', '简历翻新'), exact: true }).click();
+    await other.getByRole('button', { name: f.copy('Renovate resume', '简历翻新'), exact: true }).click();
     const secondModal = other.getByRole('dialog', { name: f.copy('Target résumé', '目标简历'), exact: true });
     const secondEditor = secondModal.locator(`textarea[id$="-${unit.line.id}"]`);
     await expect(secondEditor).toHaveValue(ORIGINAL['calibration-role']);

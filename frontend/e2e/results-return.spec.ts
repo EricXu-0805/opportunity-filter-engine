@@ -453,7 +453,7 @@ test.describe('Results return context', () => {
     await onSecondPage(page, net);
     const url = page.url();
     const count = net.requests.length;
-    for (const [open, close] of [['Draft email', 'Close email editor'], ['Tailor Resume', 'Close tailor panel'], ['Renovate Resume', 'Close target résumé']]) {
+    for (const [open, close] of [['Draft email', 'Close email editor'], ['Tailor resume', 'Close tailor panel'], ['Renovate resume', 'Close target résumé']]) {
       await card(page).getByRole('button', { name: open, exact: true }).click();
       await expect(page.getByRole('dialog')).toBeVisible();
       if (exit === 'close button') await page.getByRole('button', { name: close, exact: true }).click();
@@ -472,7 +472,7 @@ test.describe('Results return context', () => {
   test('browser Back keeps supplemental answers in this browser and restores them on reopening', async ({ page }) => {
     const net = await installNetwork(page); await seedProfile(page); await onSecondPage(page, net);
     const url = page.url(); const count = net.requests.length;
-    await card(page).getByRole('button', { name: 'Renovate Resume', exact: true }).click();
+    await card(page).getByRole('button', { name: 'Renovate resume', exact: true }).click();
     await page.getByRole('button', { name: 'Add experience details', exact: true }).click();
     const panel = page.getByRole('region', { name: 'Add experience details', exact: true });
     const answer = panel.getByRole('textbox', { name: 'What was the task?', exact: true });
@@ -526,7 +526,7 @@ test.describe('Results return context', () => {
           opportunity_id: request.p_opportunity_id, revision: 1, updated_at, payload } } });
       });
       await onSecondPage(page, net);
-      await card(page).getByRole('button', { name: 'Renovate Resume', exact: true }).click();
+      await card(page).getByRole('button', { name: 'Renovate resume', exact: true }).click();
       await page.getByRole('button', { name: 'Edit résumé bullets', exact: true }).click();
       const dialog = page.getByRole('dialog', { name: 'Résumé bullets', exact: true });
       await expect(dialog.getByText(en.renovate.restoreFailed, { exact: true })).toBeVisible();

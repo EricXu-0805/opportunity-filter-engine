@@ -3244,12 +3244,12 @@ export const en = {
   // the full opportunity-detail page.
   card: {
     viewed: 'Viewed this session',
-    applyNow: 'Apply Now',
+    applyNow: 'Apply now',
     emailProfessor: 'Email faculty member',
-    viewFacultyPage: 'Faculty Page',
+    viewFacultyPage: 'Faculty page',
     draftEmail: 'Draft email',
-    tailorResume: 'Tailor Resume',
-    viewDetails: 'View Details',
+    tailorResume: 'Tailor resume',
+    viewDetails: 'View details',
     showDetails: 'Show details',
     whyItFits: 'Why it fits',
     potentialConcerns: 'Potential concerns',
@@ -3261,7 +3261,7 @@ export const en = {
     resumeRequired: 'Resume required',
     compensationInferred: '{compensation} (inferred)',
     recLetterNeeded: 'Rec. letter needed',
-    renovateResume: 'Renovate Resume',
+    renovateResume: 'Renovate resume',
     recentWork: 'Recent work',
     facultyContactUnconfirmed: 'Faculty contact · openings not confirmed',
     // Neither a confirmed listing nor a faculty profile. Says what we do not
@@ -3674,7 +3674,7 @@ export const en = {
     customSource: 'Imported',
     facultyAffiliationLocation: 'Faculty affiliation: {location}',
     openSource: 'Open source',
-    // For a saved target we can no longer vouch for. "View Details" reads as
+    // For a saved target we can no longer vouch for. "View details" reads as
     // "the current details of this opening", which is the one thing the link
     // does not lead to.
     viewSourceRecord: 'View the source page',
