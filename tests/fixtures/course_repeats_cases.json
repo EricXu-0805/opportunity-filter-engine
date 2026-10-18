@@ -34,8 +34,8 @@
                   ["CS 1730 Special Topics", "unknown", "resume"], ["CS 173H Honors Seminar", "unknown", "resume"]]
     },
     {
-      "why": "spacing and case are the course's key, and a colon may follow the code",
-      "profile": {"coursework": ["CS173", "cs 173: Discrete Structures"]},
+      "why": "case is not part of the code, and a colon may follow it",
+      "profile": {"coursework": ["CS 173", "cs 173: Discrete Structures"]},
       "entries": [["cs 173: Discrete Structures", "unknown", "resume"]]
     },
     {
@@ -71,6 +71,21 @@
       "why": "a hyphen in the titled name's code is not an opening code here, so the bare code stays",
       "profile": {"coursework": ["CS 173", "CS-173 Discrete Structures"]},
       "entries": [["CS 173", "unknown", "resume"], ["CS-173 Discrete Structures", "unknown", "resume"]]
+    },
+    {
+      "why": "the titled name writes the code without its space: the claim check reads only \"CS173\" there, so \"CS 173\" stays",
+      "profile": {"coursework": ["CS 173", "CS173 Discrete Structures"]},
+      "entries": [["CS 173", "unknown", "resume"], ["CS173 Discrete Structures", "unknown", "resume"]]
+    },
+    {
+      "why": "a bare code without its space beside a titled name with it: only the same text hides, so both stay",
+      "profile": {"coursework": ["CS173", "CS 173 Discrete Structures"]},
+      "entries": [["CS173", "unknown", "resume"], ["CS 173 Discrete Structures", "unknown", "resume"]]
+    },
+    {
+      "why": "the same code in another case still hides: case is not part of the code",
+      "profile": {"coursework": ["cs 173", "CS 173 Discrete Structures"]},
+      "entries": [["CS 173 Discrete Structures", "unknown", "resume"]]
     }
   ]
 }

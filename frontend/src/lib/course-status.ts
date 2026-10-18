@@ -144,7 +144,9 @@ const OPENING_CODE = /^[A-Za-z]{2,4} ?[0-9]{3,4}(?![\p{L}\p{N}])/u;
 export function repeatedCodes(names: readonly string[]): Set<string> {
   const codes = names.map((name) => {
     const code = OPENING_CODE.exec(name)?.[0];
-    return code === undefined ? null : { name, key: courseKey(code), only: courseKey(name) === courseKey(code) };
+    // The code as written but for case, space included: the server's claim check
+    // reads "CS173" in a name only as "CS173", so "CS 173" stays beside it.
+    return code === undefined ? null : { name, key: code.toLowerCase(), only: courseKey(name) === courseKey(code) };
   });
   const titled = new Set(codes.flatMap((code) => (code && !code.only ? [code.key] : [])));
   return new Set(codes.flatMap((code) => (code?.only && titled.has(code.key) ? [code.name] : [])));

@@ -112,6 +112,19 @@ def test_a_code_the_claim_check_cannot_read_in_the_titled_name_is_not_hidden(cla
     assert course_claim_violations(claim, listed)
 
 
+@pytest.mark.parametrize("claim", [
+    "I have completed CS 173.",
+    "I am currently taking CS 173.",
+    "I took CS 173 last year.",
+])
+def test_a_spaced_code_is_not_hidden_behind_a_titled_name_that_writes_it_without_the_space(claim):
+    """Review M130 round 2: the claim check reads "CS173 Discrete Structures" only as "CS173",
+    so hiding "CS 173" beside it would let a false claim about "CS 173" through."""
+    listed = course_entries({"coursework": ["CS 173", "CS173 Discrete Structures"]})
+    assert [entry["name"] for entry in listed] == ["CS 173", "CS173 Discrete Structures"]
+    assert course_claim_violations(claim, listed)
+
+
 @pytest.mark.parametrize("courses", ["CS 225", [3], [{"name": "x" * 1001}], [{"name": "CS 1", "status": 3}]])
 def test_course_input_is_bounded_and_typed(courses):
     with pytest.raises(ValueError):

@@ -183,9 +183,13 @@ _OPENING_CODE = re.compile(r"[A-Za-z]{2,4} ?[0-9]{3,4}(?![^\W_])")
 
 
 def _opening_code(name: str) -> tuple[str, bool] | None:
-    """The course key of the code ``name`` opens with, and whether that code is all it names."""
+    """The code ``name`` opens with, as written but for case, and whether that code is all it names.
+
+    As written, space included: the claim check reads "CS173" in a name only as
+    "CS173", so a bare "CS 173" stays beside "CS173 Discrete Structures".
+    """
     m = _OPENING_CODE.match(name)
-    return None if m is None else (course_key(m.group()), course_key(name) == course_key(m.group()))
+    return None if m is None else (m.group().lower(), course_key(name) == course_key(m.group()))
 
 
 def course_entries(profile: object) -> list[dict]:
