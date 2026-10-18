@@ -289,3 +289,99 @@ def test_a_render_json_dir_without_its_attribute_is_rejected():
     school = {"school_slug": "x", "source": "x_faculty", "organization": "X", "id_prefix": "x",
               "departments": [{"short": "A", "name": "A", "json_dir": {"url": "u", "render": True}}]}
     assert "A: json_dir render needs attr_json" in faculty_graph.validate(school)
+
+
+# --- The next Colby refresh, replayed through refresh_all ---
+#
+# The stored rows were last seen on 2026-10-17, and the retirement pass keeps a
+# row seen within its 14-day grace period, so the weekly Colby run that first
+# retires anyone is 2026-11-07's.
+
+GONE = {"Catherine Besteman", "Yuri Funahashi",            # now titled Emerita
+        "Chaoran Wang", "Fang Wang", "Tiffany Miller"}     # no longer listed
+
+
+def _refresh(monkeypatch, tmp_path, today, page):
+    """refresh_all for the colby shard over the stored rows, with only the
+    network replaced and the retirement pass run on ``today``."""
+    import copy
+    import functools
+
+    import requests
+
+    import src.collectors.refresh_all as refresh_all
+    import src.normalizers.deactivate_stale_faculty as deactivate
+    from src.collectors import ucb_common
+    from src.collectors.schools import colby_faculty
+    from tests.test_refresh_all import _stub_with_processed_file
+
+    processed = _stub_with_processed_file(monkeypatch, tmp_path, copy.deepcopy(STORED))
+    monkeypatch.setattr(refresh_all, "fetch_colby_faculty", colby_faculty.fetch_and_normalize)
+    monkeypatch.setattr(refresh_all, "merge_colby_faculty", colby_faculty.merge_into_processed)
+    monkeypatch.setattr(ucb_common, "PROCESSED_FILE", processed)
+    monkeypatch.setattr(refresh_all, "deactivate_stale_faculty",
+                        functools.partial(deactivate.deactivate_stale_faculty, today=today))
+    monkeypatch.setattr(faculty_graph, "_render_soup", lambda *a, **k: page)
+
+    def post(url, **_kwargs):
+        raise requests.ConnectionError(url)
+
+    monkeypatch.setattr(requests, "get", lambda url, **_kwargs: _Challenge())
+    monkeypatch.setattr(requests, "post", post)
+    summary = refresh_all.refresh_all(deep=True, schools={"colby"})
+    return summary, json.loads(processed.read_text(encoding="utf-8"))
+
+
+def _directory_page(extra_rows=()):
+    from bs4 import BeautifulSoup
+
+    page = BeautifulSoup((FIXTURES / "colby" / "people_directory.html").read_text(encoding="utf-8"),
+                         "html.parser")
+    if extra_rows:
+        app = page.select_one("#app[data-page]")
+        data = json.loads(app["data-page"])
+        data["props"]["people"].extend(extra_rows)
+        app["data-page"] = json.dumps(data)
+    return page
+
+
+@pytest.mark.parametrize("today, retired", [
+    (datetime(2026, 10, 31).date(), set()),
+    (datetime(2026, 11, 7).date(), GONE),
+])
+def test_the_colby_refresh_retires_the_people_the_directory_no_longer_lists(
+        monkeypatch, tmp_path, today, retired):
+    summary, corpus = _refresh(monkeypatch, tmp_path, today, _directory_page())
+
+    ledger = summary["sources"]["colby_faculty"]["stale_unit_ledger"]
+    assert len(ledger) == 34
+    assert {e["completeness_status"] for e in ledger.values()} == {"complete"}
+    # The page lists every person, staff included, so each department's
+    # roster is all of them, read to the last row.
+    assert {e["coverage"]["raw_roster_rows"] for e in ledger.values()} == {1177}
+    assert len(corpus) == 239
+    inactive = [r for r in corpus if r["metadata"]["is_active"] is False]
+    assert {r["pi_name"] for r in inactive} == retired
+    assert all(r["metadata"]["deactivation_reason"] == "absent_from_directory_rescrape"
+               and r["metadata"]["deactivated_at"] == today.isoformat() for r in inactive)
+    assert summary["sources"]["deactivate_stale_faculty"]["newly_deactivated"] == len(retired)
+    # Andie Wang, new in East Asian Languages and Cultures, where Fang Wang
+    # (the same title) is no longer listed: perhaps one person renamed.
+    andie = next(r for r in corpus if r["pi_name"] == "Andie Wang")
+    assert andie["id"] == "faculty-colby-ealc-7a1ebe0c"
+    assert andie["metadata"]["is_active"] is True
+
+
+@pytest.mark.parametrize("unreadable_row", [False, True])
+def test_a_directory_not_read_whole_retires_no_one(monkeypatch, tmp_path, unreadable_row):
+    # A failed render reads as zero rows; a row the parse cannot read leaves
+    # every department's roster short of the page's.
+    page = _directory_page(["Catherine Besteman"]) if unreadable_row else None
+    summary, corpus = _refresh(monkeypatch, tmp_path, datetime(2026, 11, 7).date(), page)
+
+    ledger = summary["sources"]["colby_faculty"]["stale_unit_ledger"]
+    assert not any(e["retirement_authorized"] for e in ledger.values())
+    assert {(e["parse_status"], e["coverage"]["unparsed_rows"]) for e in ledger.values()} == (
+        {("ok", 1)} if unreadable_row else {("zero_rows", 0)})
+    assert all(r["metadata"]["is_active"] is True for r in corpus)
+    assert {r["id"] for r in STORED} <= {r["id"] for r in corpus}

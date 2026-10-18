@@ -17,7 +17,11 @@ of its 238 rows under the same ids. The other five are the page's changes: two
 professors now titled Emerita and three people no longer listed. One name is
 new (Andie Wang, EALC) and two titles changed. Kerill O'Neill and Liam O'Brien
 keep their ids because the page's ``&#8217;`` is read as a plain apostrophe,
-as the harvest stored it.
+as the harvest stored it. The page's JSON parses whole or not at all, so each
+department reports its whole roster, and the retirement pass retires a stored
+professor the page no longer lists as faculty once the grace period has passed
+(the five above: on the 2026-11-07 run at the earliest); a failed render reads
+as zero rows and retires no one.
 
 Emails are not published anywhere in the directory payload, so each record
 carries the professor's public People Directory profile URL as the contact

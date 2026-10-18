@@ -3091,6 +3091,10 @@ def _fetch_cola(dept: dict) -> list[dict]:
 #     "url": "https://www.colby.edu/people/people-directory/",
 #     "render": True, "attr_json": {"selector": "#app[data-page]", "attr": "data-page"},
 #     "records_key": "props.people",
+# The attribute parses whole or not at all, so such a unit reports roster
+# coverage like a walk that matched its stated total, and can retire a stored
+# person it no longer reads from the page. A failed render, or a page whose
+# JSON holds no list at ``records_key``, reads as zero rows and retires no one.
 # ``ascii_apostrophe`` reads a name's typographic apostrophe as a plain one.
 def _dig(record: dict, path: str):
     """Read a field by name, or by dotted path for nested feeds.
@@ -3142,6 +3146,7 @@ def _fetch_json_dir(dept: dict, walks: dict | None = None) -> list[dict]:
     if cfg.get("render"):
         # One render serves every unit that reads the same page, and a failed
         # one is not retried per unit: 34 Colby departments share one page.
+        # Its JSON parses whole or not at all, so its rows are the whole roster.
         attr = cfg["attr_json"]
         key = ("render", cfg["url"], attr["selector"], attr["attr"], cfg.get("records_key"))
         if walks is not None and key in walks:
@@ -3151,7 +3156,7 @@ def _fetch_json_dir(dept: dict, walks: dict | None = None) -> list[dict]:
                                        cfg.get("records_key"))
             if walks is not None:
                 walks[key] = recs
-        return [] if recs is None else _json_dir_records(dept, cfg, recs)
+        return [] if recs is None else _json_dir_records(dept, cfg, recs, roster=True)
     try:
         import requests
     except Exception:  # noqa: BLE001
@@ -3297,7 +3302,8 @@ def _json_dir_records(dept: dict, cfg: dict, recs, *, roster: bool = False) -> l
     into faculty specs, honouring the field-name / filter / title-map options.
 
     ``roster`` counts every row into the unit's roster coverage; only a live
-    walk that matched the feed's stated total passes it (see ``total_key``)."""
+    walk that matched the feed's stated total passes it (see ``total_key``),
+    and a rendered page's attribute JSON, which parses whole or not at all."""
     def cover(bucket: str) -> None:
         if roster:
             _cover(bucket)
