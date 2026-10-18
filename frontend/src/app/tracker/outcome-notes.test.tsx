@@ -280,3 +280,26 @@ describe('outcomeNoteBodyProblem matches the SQL CHECK', () => {
     expect(outcomeNoteBodyProblem(' \t ')).toBe('empty');
   });
 });
+
+it('keeps a note saved while the list is being read again after a conflict, and reads the list once more', async () => {
+  await renderBoard();
+  type('First.');
+  mocks.appendOutcomeNote.mockRejectedValueOnce(new OutcomeNoteError('conflict'));
+  let release: (v: Map<string, unknown>) => void = () => {};
+  mocks.getOutcomeNotes.mockImplementationOnce(() => new Promise((r) => { release = r; }));
+  fireEvent.click(screen.getByRole('button', { name: 'tracker.outcomeNotes.save' }));
+  expect(await within(section()).findByRole('alert')).toHaveTextContent('tracker.outcomeNotes.errors.conflict');
+  type('Second, a new note.');
+  mocks.appendOutcomeNote.mockImplementationOnce(async (_id: string, input: { noteId: string; body: string }) => {
+    const saved = note(input.noteId, input.body, '2026-10-18T12:00:01Z');
+    // The server now holds it, so a read that starts after this save lists it.
+    mocks.getOutcomeNotes.mockResolvedValue(new Map([['o1', [saved]]]));
+    return { note: saved, status: 'contacted', replayed: false };
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'tracker.outcomeNotes.save' }));
+  await within(section()).findByText('Second, a new note.', { selector: 'li p' });
+  release(new Map()); // the conflict read, which ran before the second insert, lands last
+  await waitFor(() => expect(mocks.getOutcomeNotes.mock.calls.length).toBeGreaterThanOrEqual(3));
+  await new Promise((r) => setTimeout(r, 50));
+  expect(within(section()).queryByText('Second, a new note.', { selector: 'li p' })).not.toBeNull();
+});
