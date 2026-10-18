@@ -126,6 +126,34 @@ def test_prompt_carries_accepted_skills_and_courses_with_status(monkeypatch, bui
     assert "never as taken" in planned
 
 
+LEGACY_SKILLS = [
+    # No source and a level above beginner: the old importers stamped exactly
+    # this, and the form asks the student to confirm it (skillNeedsConfirming).
+    {"name": "LabVIEW", "level": "experienced"},
+    {"name": "Simulink", "level": "intermediate"},
+    # No source at beginner, or with no level, claims nothing: settled.
+    {"name": "ROS", "level": "beginner"},
+    {"name": "Git"},
+    # Settled above beginner: the legacy "expert" only the badge writes, and
+    # a level the student confirmed with or without a source.
+    {"name": "OpenCV", "level": "expert"},
+    {"name": "CUDA", "level": "intermediate", "confirmed": True},
+    {"name": "PyTorch", "level": "experienced", "source": "resume", "confirmed": True},
+]
+
+
+@pytest.mark.parametrize("build", [_rerank_user, _explain_user], ids=["rerank", "explain"])
+def test_legacy_skill_the_form_asks_to_confirm_is_left_out(monkeypatch, build):
+    user = build(monkeypatch, {**PROFILE, "hard_skills": LEGACY_SKILLS})
+    assert _student(user)["skills"] == [{"name": "ROS", "level": "beginner"},
+                                        {"name": "Git", "level": "beginner"},
+                                        {"name": "OpenCV", "level": "expert"},
+                                        {"name": "CUDA", "level": "intermediate"},
+                                        {"name": "PyTorch", "level": "experienced"}]
+    assert "LabVIEW" not in user
+    assert "Simulink" not in user
+
+
 def test_semantic_rerank_query_is_unchanged():
     # The embedding rerank keeps reading every skill name; only the model
     # prompts read the accepted set.

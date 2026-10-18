@@ -108,7 +108,13 @@ from src.matcher.ranker import (
 )
 from src.recommender.cold_email import filter_course_entries
 from src.recommender.resume_advisor import analyze_gaps
-from src.student_evidence import claimable_skill_level, course_brief, course_entries
+from src.student_evidence import (
+    DEFAULT_LEVEL,
+    claimable_skill_level,
+    course_brief,
+    course_entries,
+    skill_level_is_the_students_own,
+)
 
 router = APIRouter(route_class=BoundedJSONRoute)
 
@@ -536,10 +542,15 @@ def _parse_score_map(reply: str | None, n: int) -> dict[int, dict] | None:
 def _accepted_student_inputs(profile: dict) -> dict:
     """The student's accepted interests, skills and courses, whole, for both AI passes (M22).
 
-    A skill is the student's when they typed it or confirmed it, the
-    provenance ``skill_level_is_the_students_own`` reads; an import from their
-    résumé or GitHub that they have not confirmed is left out. Each goes at
-    the level the writers may claim (``claimable_skill_level``). Every
+    A skill goes in when the form treats it as settled, the mirror of
+    ``not skillNeedsConfirming`` (frontend/src/lib/skill-evidence.ts): a bare
+    string; a level the student stands behind
+    (``skill_level_is_the_students_own``: confirmed, or no source and the
+    legacy "expert"); or no source at ``beginner`` or with no level, which
+    claims nothing. Left out are every unconfirmed import and a no-source
+    level above beginner other than "expert", which the old importers stamped
+    and the form asks the student to confirm. Each goes at the level the
+    writers may claim (``claimable_skill_level``). Every
     course goes with its status, grouped under the rule for stating it
     (``course_brief``, the cold email's brief), so a planned or status-unknown
     course never reads as taken; venue/date shapes are dropped as the writers
@@ -550,7 +561,10 @@ def _accepted_student_inputs(profile: dict) -> dict:
     for raw in profile.get("hard_skills") or []:
         if isinstance(raw, str):
             name = raw
-        elif isinstance(raw, dict) and (raw.get("confirmed") is True or raw.get("source") is None):
+        elif isinstance(raw, dict) and (
+            skill_level_is_the_students_own(raw)
+            or (raw.get("source") is None and str(raw.get("level") or DEFAULT_LEVEL) == DEFAULT_LEVEL)
+        ):
             name = str(raw.get("name") or "")
         else:
             continue
