@@ -178,7 +178,7 @@ async function setup(page: Page, info: TestInfo, sharedOwner?: Fixture) {
   const open = async (expectedBody = BODY, navigate = true) => {
     if (navigate) await page.goto('/favorites');
     const streams = state.calls.filter(path => path.endsWith('/stream')).length;
-    await page.getByRole('button', { name: locale === 'zh' ? '起草邮件' : 'Draft Email', exact: true }).click();
+    await page.getByRole('button', { name: locale === 'zh' ? '起草邮件' : 'Draft email', exact: true }).click();
     await expect(body).toHaveValue(expectedBody);
     await expect(page.getByRole('button', { name: copy.generateAiDraft, exact: true })).toBeEnabled();
     // Give a request that opening starts a moment late the chance to show up.

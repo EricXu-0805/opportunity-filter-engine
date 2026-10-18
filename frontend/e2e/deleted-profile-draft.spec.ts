@@ -128,7 +128,7 @@ async function installNetwork(page: Page) {
 async function openDraft(page: Page, surface: Surface, editor: Editor): Promise<Draft> {
   await page.goto(surface === 'Detail' ? `/opportunities/${TARGET}` : '/results?tab=all');
   const entry = surface === 'Detail' ? page : page.locator(`#match-card-${TARGET}`);
-  const actionName = editor === 'email' ? (surface === 'Results' ? 'Draft Email' : 'Draft email') : 'Renovate Resume';
+  const actionName = editor === 'email' ? 'Draft email' : 'Renovate Resume';
   // Results paints the card before the page can open an editor (its owner
   // waits on the favorites read). Draft Email and Renovate Resume both stay
   // disabled until the page can, so wait for the one about to be clicked.

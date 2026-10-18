@@ -105,7 +105,7 @@ async function gateProfileRead(page: Page) {
 async function enter(page: Page, surface: 'favorites' | 'detail') {
   const read = page.waitForResponse(response => isProfile(response.url()) && response.status() === 200);
   await page.goto(surface === 'favorites' ? '/favorites' : `/opportunities/${TARGET}`); await read;
-  await expect(page.getByRole('button', { name: surface === 'favorites' ? 'Draft Email' : 'Draft email', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Draft email', exact: true })).toBeEnabled();
   await expect(page.getByTestId('profile-refresh-status')).toHaveCount(0);
 }
 async function openLegacy(page: Page) {
@@ -164,7 +164,7 @@ test.describe('Writing entry checks use current profiles', () => {
       await commit(owner, { name: NEW_NAME, experience_entries: nextEntries });
       expect((await localProfile(page))!.name).toBe(OLD_NAME);
       gate = await gateProfileRead(page);
-      await page.getByRole('button', { name: 'Draft Email', exact: true }).click();
+      await page.getByRole('button', { name: 'Draft email', exact: true }).click();
       await expect.poll(gate.started).toBe(true); expect(requests).toEqual([]);
       gate.release();
       const fields = emailFields(page);
@@ -321,7 +321,7 @@ async function installControlledWritingTarget(page: Page) {
 }
 async function openTargetCheckedEmail(page: Page, requests: WritingRequest[]) {
   await enter(page, 'favorites');
-  await page.getByRole('button', { name: 'Draft Email', exact: true }).click();
+  await page.getByRole('button', { name: 'Draft email', exact: true }).click();
   await expect(emailFields(page).body).toHaveValue(`Draft for ${OLD_NAME}\n${OLD_BULLET}`);
   await expect(page.getByRole('button', { name: 'Generate AI draft', exact: true })).toBeEnabled();
   expect(requests.filter(request => request.path === '/api/cold-email/stream')).toEqual([]);
@@ -422,7 +422,7 @@ test.describe('Writing entry checks use current authoritative targets', () => {
     });
     try {
       const target = await installControlledWritingTarget(page);
-      await enter(page, 'favorites'); await page.getByRole('button', { name: 'Draft Email', exact: true }).click();
+      await enter(page, 'favorites'); await page.getByRole('button', { name: 'Draft email', exact: true }).click();
       await expect(emailFields(page).body).toHaveValue(`Draft for ${OLD_NAME}\n${OLD_BULLET}`);
       expect(streamStarted).toBe(false);
       await page.getByRole('button', { name: 'Generate AI draft', exact: true }).click();
@@ -615,7 +615,7 @@ test('an interrupted email stream keeps manual text and does not make a second g
     await route.fulfill({ status: 503, contentType: 'text/plain', body: 'Private upstream details must not appear' });
   });
   try {
-    await enter(page, 'favorites'); await page.getByRole('button', { name: 'Draft Email', exact: true }).click();
+    await enter(page, 'favorites'); await page.getByRole('button', { name: 'Draft email', exact: true }).click();
     await expect(emailFields(page).body).toHaveValue(`Draft for ${OLD_NAME}\n${OLD_BULLET}`);
     expect(started).toBe(false);
     await page.getByRole('button', { name: 'Generate AI draft', exact: true }).click();

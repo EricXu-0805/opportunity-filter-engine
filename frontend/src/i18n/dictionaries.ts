@@ -3247,7 +3247,7 @@ export const en = {
     applyNow: 'Apply Now',
     emailProfessor: 'Email faculty member',
     viewFacultyPage: 'Faculty Page',
-    draftEmail: 'Draft Email',
+    draftEmail: 'Draft email',
     tailorResume: 'Tailor Resume',
     viewDetails: 'View Details',
     showDetails: 'Show details',

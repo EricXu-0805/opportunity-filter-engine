@@ -99,7 +99,7 @@ async function setup(page: Page, info: TestInfo) {
     expect(request.headers().authorization).toBe(`Bearer ${match!.session.access_token}`);
     return route.fulfill({ json: { version: 1, items: [], next_cursor: null } });
   });
-  const open = async (navigate = true) => { if (navigate) await page.goto('/favorites'); await page.getByRole('button', { name: locale === 'zh' ? '起草邮件' : 'Draft Email', exact: true }).click(); };
+  const open = async (navigate = true) => { if (navigate) await page.goto('/favorites'); await page.getByRole('button', { name: locale === 'zh' ? '起草邮件' : 'Draft email', exact: true }).click(); };
   const ready = async () => {
     await expect(page.locator('#cold-email-body')).toHaveValue(BODY);
     await expect(page.getByRole('button', { name: copy.generateAiDraft, exact: true })).toBeEnabled();

@@ -309,7 +309,7 @@ test.describe('Results return context', () => {
     const net = await installNetwork(page);
     await seedProfile(page); await onSecondPage(page, net);
     const before = { url: page.url(), count: net.requests.length };
-    await card(page).getByRole('button', { name: 'Draft Email', exact: true }).click();
+    await card(page).getByRole('button', { name: 'Draft email', exact: true }).click();
     const fields = page.getByTestId('cold-email-editor-fields');
     await expect(fields.locator('#cold-email-subject')).toHaveValue('Navigation draft');
     await expect(fields.locator('#cold-email-body')).toHaveValue('Dear Professor,\n\nNavigation fixture.\n\nReturn Test Student');
@@ -453,7 +453,7 @@ test.describe('Results return context', () => {
     await onSecondPage(page, net);
     const url = page.url();
     const count = net.requests.length;
-    for (const [open, close] of [['Draft Email', 'Close email editor'], ['Tailor Resume', 'Close tailor panel'], ['Renovate Resume', 'Close target résumé']]) {
+    for (const [open, close] of [['Draft email', 'Close email editor'], ['Tailor Resume', 'Close tailor panel'], ['Renovate Resume', 'Close target résumé']]) {
       await card(page).getByRole('button', { name: open, exact: true }).click();
       await expect(page.getByRole('dialog')).toBeVisible();
       if (exit === 'close button') await page.getByRole('button', { name: close, exact: true }).click();
