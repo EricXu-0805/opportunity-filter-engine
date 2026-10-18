@@ -137,6 +137,15 @@ function physicalKey(logicalKey: string, generation: number): string {
   return `${namespaceFor(generation)}${logicalKey}`;
 }
 
+/** The logical key a physical one names, in whichever generation's
+ *  namespace it is: for telling what a 'storage' event is about. */
+export function logicalStorageKey(key: string): string {
+  if (!key.startsWith(NAMESPACE_PREFIX)) return key;
+  const sep = key.indexOf(NAMESPACE_SEPARATOR);
+  return sep > NAMESPACE_PREFIX.length && Number.isInteger(Number(key.slice(NAMESPACE_PREFIX.length, sep)))
+    ? key.slice(sep + 1) : key;
+}
+
 /** A pre-D1 marker was the bare uid string. It names the unprefixed keys that
  *  browser is already using, which is exactly generation 0 — so the migration
  *  is a reinterpretation, not a copy. Nothing moves, nothing can be lost
