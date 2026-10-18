@@ -478,6 +478,18 @@ function pageText(items: readonly unknown[]): { text: string; possibleWraps: num
   const trimmed = texts.map((text) => text.trim());
   const edgeFound: boolean[] = [];
   const shown = (index: number) => (edgeFound[index] ??= edgeShown(shapes, index, trimmed, edges));
+  // A coursework list's line also has its column's edge shown by another
+  // line in its column that ran out of room before a lowercase word of its
+  // paragraph ("…into semesters" / "and flags…"): a break the text keeps
+  // until the page shows the edge (see wrapSeparator), and on a ragged page
+  // often the only wraps there are. Not by its own next line: a line that
+  // is only the widest in its column always seems to have run out of room.
+  const lowercaseFound: boolean[] = [];
+  const lowercaseWrap = (index: number) => (lowercaseFound[index] ??= index + 1 < texts.length
+    && lowercaseOpening(trimmed[index], trimmed[index + 1])
+    && wrapSeparator(shapes, index + 1, texts, pitch, false, column, () => true, hangs) !== null);
+  const listShown = (index: number) => shown(index) || shapes.some((other, at) => at !== index && !!other
+    && other.wrappable && sameColumn(other, shapes[index]!) && lowercaseWrap(at));
   let out = texts[0];
   let start = 0;
   let bulletItem = glyph[0];
@@ -492,7 +504,7 @@ function pageText(items: readonly unknown[]): { text: string; possibleWraps: num
     if (separator === null) {
       bulletItem = glyph[index];
       list = (list || courseLists(out.slice(start)).some((found) => found.end > found.start))
-        && possibleWrap(shapes, index, texts, pitch, column, shown);
+        && possibleWrap(shapes, index, texts, pitch, column, listShown);
       if (list) possibleWraps.push(out.length);
       start = out.length + 1;
     }

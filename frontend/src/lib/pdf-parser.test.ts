@@ -1144,6 +1144,72 @@ describe('positioned text items', () => {
     ])).toEqual(whole);
   });
 
+  describe('a coursework list on a ragged page (checklist M123)', () => {
+    // Profile A of the live run, printed by LibreOffice: Helvetica 11 pt,
+    // ragged right, at these positions and widths. Each line its own row.
+    const row = (str: string, width: number, y: number, fontName = 'f2') => ({
+      str, width, height: 11, transform: [11, 0, 0, 11, 56.8, y], fontName, dir: 'ltr', hasEOL: true,
+    });
+    const courses = async (...rows: Array<ReturnType<typeof row>>) => {
+      mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf(rows.map((item, index) =>
+        (index === rows.length - 1 ? { ...item, hasEOL: false } : item)))) });
+      return parseResumePDF(fakeFile());
+    };
+    const degree = [
+      row('University of Illinois Urbana-Champaign, Bachelor of Science, Computer Science, Aug 2025 to Expected', 507.81, 704.49),
+      row('May 2029', 48.27, 693.49),
+    ];
+    // The page's other wraps: the next line opens with a lowercase word.
+    const project = [
+      row('PROJECTS', 59.25, 632.19, 'f1'),
+      row('Course Planner Web App, personal project, Jan 2026 to Present', 313.47, 607.04),
+      row('I built a course-planning web app with React and Flask that lets students drag courses into semesters', 493.78, 581.89),
+      row('and flags missing prerequisites; about 40 classmates used it during spring registration.', 420.46, 570.89),
+    ];
+    const FIRST = 'Relevant coursework: CS 124 Introduction to Computer Science I; CS 128 Introduction to Computer';
+    const REST = 'Science II; CS 173 Discrete Structures; MATH 241 Calculus III';
+    const cut = ['CS 124', 'CS 128', 'CS 128 Introduction to Computer', 'CS 173', 'MATH 241'];
+
+    it('reads the live list across its wrap, which the page shows by its other wrapped lines', async () => {
+      // Live 2026-10-17: "CS 128 Introduction to Computer" was stored and
+      // named in the email. A name over 40 characters is left to its code.
+      const whole = ['CS 124', 'CS 128', 'CS 173', 'CS 173 Discrete Structures', 'MATH 241', 'MATH 241 Calculus III'];
+      const result = await courses(...degree, row(FIRST, 484.56, 668.34), row(REST, 303.62, 657.34), ...project);
+      expect(result.extracted_coursework).toEqual(whole);
+      // The text keeps the line break; only the list reads across it.
+      expect(result.raw_text.split('\n').slice(2, 4)).toEqual([FIRST, REST]);
+      // A role row right under the list's short last line stays apart.
+      expect((await courses(...degree, row(FIRST, 484.56, 668.34), row(REST, 303.62, 657.34),
+        row('Course Staff, CS 124 (Spring 2026)', 173.63, 646.34), ...project)).extracted_coursework).toEqual(whole);
+    });
+
+    it('does not read across where no other line shows the edge', async () => {
+      // The degree line is only the widest line; it wraps before a capital.
+      expect((await courses(...degree, row(FIRST, 484.56, 668.34), row(REST, 303.62, 657.34))).extracted_coursework)
+        .toEqual(cut);
+      // A list line cannot show its own edge by the lowercase line under it.
+      expect((await courses(
+        row('Relevant Coursework: Data Structures, Algorithms, Linear Algebra, Computer Architecture', 439.54, 668.34),
+        row('see transcript for grades and course descriptions', 237.82, 657.34),
+      )).extracted_coursework).toEqual(['Algorithms', 'Computer Architecture', 'Data Structures', 'Linear Algebra']);
+    });
+
+    it('keeps a role, project, organization or place row under a short complete list apart', async () => {
+      // Review of round 2: a text join glued these onto the list's last course.
+      const list = 'Relevant coursework: CS 124 Intro to Computer Science I; CS 173 Discrete Structures';
+      for (const next of [
+        'Course Staff, CS 124 (Spring 2026)', 'Undergraduate TA, CS 173', 'CA, CS 128; CS 124',
+        'Course Scheduler App, CS 222; CS 225', 'Machine Learning Lab, CS 446; CS 546',
+        'London School of Economics, EC 201; EC 202', 'Siebel School of Computing and Data Science, Urbana, IL',
+      ]) {
+        const found = (await courses(...degree, row(list, 421.83, 668.34), row(next, 5.5 * next.length, 657.34), ...project))
+          .extracted_coursework;
+        expect(found.filter((name) => !/^[A-Z]{2,4} \d{3}$/.test(name)), next)
+          .toEqual(['CS 124 Intro to Computer Science I', 'CS 173 Discrete Structures']);
+      }
+    });
+  });
+
   it('keeps a line that opens with a mixed-case name, an ordinal or a model number apart', async () => {
     mockGetDocument.mockReturnValue({ promise: Promise.resolve(pdfOf([
       at('Ported a legacy spreadsheet of lab inventory into a searchable web page for four research groups', 50, 500, 712, { hasEOL: true }),
