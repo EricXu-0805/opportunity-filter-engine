@@ -177,7 +177,9 @@ def _course_status(raw: object) -> str:
 
 
 # A course code a name opens with: "CS 173" alone, or "CS 173 Discrete Structures".
-_OPENING_CODE = re.compile(r"[A-Za-z]{2,4} *[0-9]{3,4}(?![^\W_])")
+# At most one space, so it is a code _LISTED_CODE also reads inside the titled
+# name: hiding the bare code must never hide a code the claim check cannot see.
+_OPENING_CODE = re.compile(r"[A-Za-z]{2,4} ?[0-9]{3,4}(?![^\W_])")
 
 
 def _opening_code(name: str) -> tuple[str, bool] | None:

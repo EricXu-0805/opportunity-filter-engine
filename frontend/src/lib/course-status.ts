@@ -134,7 +134,9 @@ export function listedCourses(list: string): Array<{ name: string; index: number
 }
 
 // A course code a name opens with: "CS 173" alone, or "CS 173 Discrete Structures".
-const OPENING_CODE = /^[A-Za-z]{2,4} *[0-9]{3,4}(?![\p{L}\p{N}])/u;
+// At most one space, as the server's claim check reads a code inside a name:
+// a code is never hidden behind a titled name that check cannot read it in.
+const OPENING_CODE = /^[A-Za-z]{2,4} ?[0-9]{3,4}(?![\p{L}\p{N}])/u;
 
 /** The names that are only a course code another of `names` opens with:
  *  "CS 173" beside "CS 173 Discrete Structures" is that course named again

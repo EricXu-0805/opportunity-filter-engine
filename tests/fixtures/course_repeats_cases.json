@@ -61,6 +61,16 @@
         "coursework": ["CS 173 Discrete Structures", "CS 173"]
       },
       "entries": [["CS 173 Discrete Structures", "completed", "manual"], ["CS 173", "unknown", "resume"]]
+    },
+    {
+      "why": "two spaces in the titled name's code: the claim check reads no code there, so the bare code stays",
+      "profile": {"coursework": ["CS 173", "CS  173 Discrete Structures"]},
+      "entries": [["CS 173", "unknown", "resume"], ["CS  173 Discrete Structures", "unknown", "resume"]]
+    },
+    {
+      "why": "a hyphen in the titled name's code is not an opening code here, so the bare code stays",
+      "profile": {"coursework": ["CS 173", "CS-173 Discrete Structures"]},
+      "entries": [["CS 173", "unknown", "resume"], ["CS-173 Discrete Structures", "unknown", "resume"]]
     }
   ]
 }
