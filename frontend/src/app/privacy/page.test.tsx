@@ -95,6 +95,7 @@ describe('Privacy page', () => {
     expect(text).toContain('keep their content until you delete them in the app; an empty entry with its dates then stays until your account is deleted');
     expect(text).toContain('the target résumés and résumé bullet-editor drafts you save');
     expect(text).toContain('target résumés and bullet-editor drafts; imports you save');
-    expect(text).toContain('Application and email records, target résumés and bullet-editor drafts are kept until your account is deleted');
+    expect(text).toContain('Application and email records, outcome notes, target résumés and bullet-editor drafts are kept until your account is deleted');
+    expect(text).toContain('So is each outcome note you add on a tracker card (one sentence you write, the status you chose with it, if any, and when it was saved). Records and notes cannot be edited or deleted in the app; they are removed when your account is deleted (§7).');
   });
 });

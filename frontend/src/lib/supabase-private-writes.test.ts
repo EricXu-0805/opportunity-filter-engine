@@ -84,7 +84,10 @@ import {
   uploadAttachment,
   deleteAttachment,
   markProfessorUpdatesRead,
+  appendOutcomeNote,
+  getOutcomeNotes,
 } from './supabase';
+import { OutcomeNoteError } from './outcome-notes';
 
 const U1 = '11111111-1111-4111-8111-111111111111';
 const U2 = '22222222-2222-4222-8222-222222222222';
@@ -947,5 +950,67 @@ describe('every tokenless writer now refuses an account that changed under it', 
     // inside it must not be swallowed as success.
     await expect(raceAsU1((t) => unsubscribeFromPush(t))).rejects.toBeInstanceOf(OwnerMismatchError);
     expect(del).not.toHaveBeenCalled();
+  });
+});
+
+describe('outcome notes (checklist M49)', () => {
+  const NOTE = '49000000-0000-4000-8000-000000000001';
+  const row = (over: Record<string, unknown> = {}) => ({
+    note_id: NOTE, device_id: U1, opportunity_id: OPP, body: 'Professor Lee replied.',
+    outcome: 'replied', recorded_at: '2026-10-18T12:00:00.123456+00:00', ...over,
+  });
+  const summary = (type: string) => ({ id: 'x', device_id: U1, opportunity_id: OPP, interaction_type: type });
+
+  it('appends through append_outcome_note with the owner, note id and the exact text, and returns the server status', async () => {
+    const token = establishIdentity(U1);
+    mockRpc.mockResolvedValue({ data: { note: row(), interaction: summary('replied'), replayed: false }, error: null });
+    const result = await appendOutcomeNote(OPP, { noteId: NOTE, body: 'Professor Lee replied.', outcome: 'replied' }, token);
+    expect(mockRpc).toHaveBeenCalledWith('append_outcome_note', {
+      p_expected_device_id: U1, p_note_id: NOTE, p_opportunity_id: OPP, p_body: 'Professor Lee replied.', p_outcome: 'replied',
+    });
+    expect(result).toEqual({ status: 'replied', replayed: false, note: {
+      id: NOTE, opportunityId: OPP, body: 'Professor Lee replied.', outcome: 'replied', recordedAt: '2026-10-18T12:00:00.123456+00:00',
+    } });
+  });
+
+  it('refuses an empty or over-long note before any request', async () => {
+    const token = establishIdentity(U1);
+    for (const body of ['  ', 'a'.repeat(301), 'two\nlines']) {
+      await expect(appendOutcomeNote(OPP, { noteId: NOTE, body, outcome: null }, token))
+        .rejects.toMatchObject({ kind: 'invalid_input' });
+    }
+    expect(mockRpc).not.toHaveBeenCalled();
+  });
+
+  it('maps a server conflict, and treats a receipt that does not match what was sent as unconfirmed', async () => {
+    const token = establishIdentity(U1);
+    mockRpc.mockResolvedValueOnce({ data: null, error: { code: '23505', message: 'outcome_note_conflict' } });
+    await expect(appendOutcomeNote(OPP, { noteId: NOTE, body: 'Professor Lee replied.', outcome: 'replied' }, token))
+      .rejects.toMatchObject({ kind: 'conflict' });
+    mockRpc.mockResolvedValueOnce({ data: { note: row({ body: 'Something else.' }), interaction: summary('replied'), replayed: false }, error: null });
+    await expect(appendOutcomeNote(OPP, { noteId: NOTE, body: 'Professor Lee replied.', outcome: 'replied' }, token))
+      .rejects.toBeInstanceOf(OutcomeNoteError);
+    mockRpc.mockResolvedValueOnce({ data: { note: row(), interaction: summary('contacted'), replayed: false }, error: null });
+    await expect(appendOutcomeNote(OPP, { noteId: NOTE, body: 'Professor Lee replied.', outcome: 'replied' }, token))
+      .rejects.toMatchObject({ kind: 'unavailable' });
+  });
+
+  it('reads the owner\'s notes newest first per target, and a failed read throws instead of returning none', async () => {
+    const token = establishIdentity(U1);
+    const query = { select: vi.fn(), eq: vi.fn(), order: vi.fn() };
+    query.select.mockReturnValue(query);
+    query.eq.mockReturnValue(query);
+    let orders = 0;
+    query.order.mockImplementation(() => (++orders % 2 === 0
+      ? Promise.resolve({ data: [row({ note_id: '49000000-0000-4000-8000-000000000002', outcome: null }), row()], error: null })
+      : query));
+    mockFrom.mockReturnValue(query);
+    const notes = await getOutcomeNotes(token);
+    expect(mockFrom).toHaveBeenCalledWith('outcome_notes');
+    expect(query.eq).toHaveBeenCalledWith('device_id', U1);
+    expect(notes.get(OPP)?.map((n) => n.id)).toEqual(['49000000-0000-4000-8000-000000000002', NOTE]);
+
+    query.order.mockImplementation(() => (++orders % 2 === 0 ? Promise.resolve({ data: null, error: { message: 'down' } }) : query));
+    await expect(getOutcomeNotes(token)).rejects.toBeInstanceOf(OutcomeNoteError);
   });
 });
