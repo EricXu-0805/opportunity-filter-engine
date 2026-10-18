@@ -56,6 +56,9 @@ export const STORAGE_KEYS = {
   LOCAL_IDENTITY_OWNER: 'ofe_local_identity_owner',
   TAILOR_DRAFT_PREFIX: 'ofe_tailor_draft_',
   COLD_EMAIL_DRAFT_PREFIX: 'ofe_cold_email_draft_v1_',
+  // Unsubmitted answers in the target résumé's supplement panel, one per owner
+  // uid and opportunity. Removed once the answers are added or discarded.
+  RESUME_SUPPLEMENT_DRAFT_PREFIX: 'ofe_resume_supplement_draft_v1_',
   ANCHOR_3FAV_DISMISSED: 'ofe_anchor_3fav_dismissed',
   JUST_SIGNED_OUT: 'ofe_just_signed_out',
   GUEST_BANNER_DISMISSED: 'ofe_guest_banner_dismissed',

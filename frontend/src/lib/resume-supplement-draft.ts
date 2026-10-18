@@ -1,5 +1,7 @@
 import { SUPPLEMENT_ANSWER_KEYS, type SupplementAnswers, type SupplementAnswerKey } from './resume-supplement';
 import type { ProfileData } from './types';
+import { isOwnerTokenValid, readUserScopedEntry, removeUserScopedRaw, writeUserScopedRaw, type OwnerToken } from './identity-owner';
+import { STORAGE_KEYS } from './storage-keys';
 
 /** Local text recovery only. No confirmation, accepted profile or permission to submit. */
 export interface ResumeSupplementDraftSnapshot {
@@ -36,4 +38,31 @@ export function supplementRecorded(profile: ProfileData | null | undefined, draf
   const activity = profile?.resume_master?.activities.find(item => item.id === draft.activityId);
   return !!entry && entry.revision === 1 && entry.status === 'confirmed' && entry.source.kind === 'manual' && entry.text === preview
     && !!activity?.details.some(ref => ref.id === entry.id && ref.revision === entry.revision);
+}
+
+// The target résumé keeps one unsubmitted supplement per owner uid and opportunity.
+// The prefix is user-scoped, so an owner change or sign-out sweeps it with the
+// rest of that generation's private data; writes are bound to the owner token.
+function storageKey(owner: OwnerToken, opportunityId: string): string {
+  return STORAGE_KEYS.RESUME_SUPPLEMENT_DRAFT_PREFIX + encodeURIComponent(JSON.stringify([owner.uid, opportunityId]));
+}
+export function readResumeSupplementDraft(owner: OwnerToken, opportunityId: string): ResumeSupplementDraftSnapshot | null {
+  if (!opportunityId || !isOwnerTokenValid(owner, owner.uid)) return null;
+  const entry = readUserScopedEntry(storageKey(owner, opportunityId));
+  if (entry.status !== 'present' || entry.value.length > 2 * RESUME_SUPPLEMENT_DRAFT_MAX_LENGTH) return null;
+  try {
+    const item: unknown = JSON.parse(entry.value);
+    if (!exact(item, ['version', 'ownerId', 'draft']) || item.version !== 1 || item.ownerId !== owner.uid) return null;
+    const draft = parseResumeSupplementDraft(item.draft);
+    return draft?.opportunityId === opportunityId ? draft : null;
+  } catch { return null; }
+}
+/** Stores answers worth recovering; a snapshot without any answer text, or null, removes the copy. */
+export function writeResumeSupplementDraft(owner: OwnerToken, opportunityId: string, draft: ResumeSupplementDraftSnapshot | null): boolean {
+  if (!opportunityId || !isOwnerTokenValid(owner, owner.uid)) return false;
+  const key = storageKey(owner, opportunityId);
+  const copy = draft && parseResumeSupplementDraft(draft);
+  if (draft && (!copy || copy.opportunityId !== opportunityId)) return false;
+  if (!copy || !SUPPLEMENT_ANSWER_KEYS.some(name => copy.answers[name].length > 0)) return removeUserScopedRaw(key, owner);
+  return writeUserScopedRaw(key, JSON.stringify({ version: 1, ownerId: owner.uid, draft: copy }), owner);
 }

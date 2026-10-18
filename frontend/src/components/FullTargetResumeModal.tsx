@@ -19,6 +19,7 @@ import ResumeSupplementPanel from './ResumeSupplementPanel';
 import ResumeExperienceAssignmentPanel from './ResumeExperienceAssignmentPanel';
 import TargetResumeSupportPanel from './TargetResumeSupportPanel';
 import type { TargetResumeSupportGroup } from '@/lib/target-resume-support';
+import { readResumeSupplementDraft, writeResumeSupplementDraft, type ResumeSupplementDraftSnapshot } from '@/lib/resume-supplement-draft';
 import TargetResumeAiPanel from './TargetResumeAiPanel';
 import TargetResumePlanPanel from './TargetResumePlanPanel';
 import TargetResumeCriteria from './TargetResumeCriteria';
@@ -110,6 +111,10 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
   const [supportDirty, setSupportDirty] = useState(false);
   const [supportSelection, setSupportSelection] = useState<{key:string;groups:TargetResumeSupportGroup[]} | null>(null);
   const [supplementDirty, setSupplementDirty] = useState(false);
+  // Unsubmitted answers recoverable from this browser need no leave warning.
+  const [supplementStored, setSupplementStored] = useState(false);
+  const [supplementDraft, setSupplementDraft] = useState<ResumeSupplementDraftSnapshot | null>(null);
+  const savedSupplementRef = useRef<string | null>(null);
   const [aiDirty, setAiDirty] = useState(false);
   const [planDirty, setPlanDirty] = useState(false);
   const authorityRef = useRef<{ owner: string; context: string; code: string } | null>(null);
@@ -164,7 +169,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
       // Closing the whole workspace retires its private answer buffer.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setSupplementDirty(false); setAssignmentDirty(false); setSupportDirty(false); setSupportSelection(null); setAiDirty(false); setPlanDirty(false); authorityRef.current = null; setAuthorityRefusal(null); setSupplementMounted(false); setSupplementOpen(false);
-      supplementInputRef.current = null;
+      supplementInputRef.current = null; setSupplementStored(false); setSupplementDraft(null); savedSupplementRef.current = null;
       return;
     }
     const previous = scopeRef.current;
@@ -175,7 +180,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
     if (!previous || previous.targetId !== scope.targetId || previous.owner.uid !== scope.owner.uid
       || previous.owner.epoch !== scope.owner.epoch || previous.owner.generation !== scope.owner.generation) {
       setSupplementDirty(false); setAssignmentDirty(false); setSupportDirty(false); setSupportSelection(null); setAiDirty(false); setPlanDirty(false); authorityRef.current = null; setAuthorityRefusal(null); setSupplementMounted(false); setSupplementOpen(false);
-      supplementInputRef.current = null;
+      supplementInputRef.current = null; setSupplementStored(false); setSupplementDraft(null); savedSupplementRef.current = null;
     }
     // Pending plans belong to the document workspace being replaced.
     setPlanDirty(false);
@@ -246,10 +251,32 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
   const acceptedCreation = activeSession?.scope.creation;
   const canEdit = ownerReady && !!doc && !creating && !activeSession?.reloading;
   const askLeave = useCallback((action: 'close' | 'legacy' | 'master') => {
-    if (assignmentDirty || supportDirty || supplementDirty || aiDirty || planDirty || (session && (isDirty(session) || session.saving))) { setLeave(action); return false; }
+    if (assignmentDirty || supportDirty || (supplementDirty && !supplementStored) || aiDirty || planDirty || (session && (isDirty(session) || session.saving))) { setLeave(action); return false; }
     exit(action); return true;
-  }, [session, assignmentDirty, supportDirty, supplementDirty, aiDirty, planDirty, exit]);
+  }, [session, assignmentDirty, supportDirty, supplementDirty, supplementStored, aiDirty, planDirty, exit]);
 
+  const activeScope = activeSession?.scope ?? null;
+  useEffect(() => {
+    if (!activeScope || !ownerReady || !profileAvailable || supplementMounted) return;
+    // Reopening shows unsubmitted answers for review; restoring submits nothing.
+    const stored = readResumeSupplementDraft(activeScope.owner, activeScope.targetId);
+    if (!stored) return;
+    supplementInputRef.current = incomingProfileRef.current;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSupplementDraft(stored); setSupplementMounted(true); setSupplementOpen(true);
+  }, [activeScope, ownerReady, profileAvailable, supplementMounted]);
+  const storeSupplement = (scope: Scope, snapshot: ResumeSupplementDraftSnapshot | null) => {
+    if (!current(scope)) return;
+    // Answers too large to keep leave the previous copy and the leave warning in place.
+    if (!snapshot) { setSupplementStored(false); return; }
+    const saved = snapshot.entryId === savedSupplementRef.current;
+    setSupplementStored(writeResumeSupplementDraft(scope.owner, scope.targetId, saved ? null : snapshot) && !saved);
+  };
+  const settleSupplement = (scope: Scope, entryId: string) => {
+    if (!current(scope)) return;
+    // Answers left unselected by a confirmed save are not kept.
+    savedSupplementRef.current = entryId; writeResumeSupplementDraft(scope.owner, scope.targetId, null); setSupplementStored(false);
+  };
   const leaveRef = useRef(askLeave);
   useLayoutEffect(() => { leaveRef.current = askLeave; }, [askLeave]);
   useLayoutEffect(() => {
@@ -480,7 +507,13 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
         <div className="min-w-0"><h2 id={`${domId}-title`} className="text-lg font-bold">{copy('Target résumé', '目标简历')}</h2><p className="mt-1 break-words text-sm text-gray-600">{opportunity.title}</p></div>
         <div className="ml-3 flex shrink-0 items-start gap-2">
           <button type="button" className={button} disabled={!ownerReady || (!profileAvailable && !supplementMounted)} aria-expanded={supplementOpen} aria-controls={`${domId}-supplement`}
-            onClick={() => { if (!supplementMounted) supplementInputRef.current = incomingProfileKey; setSupplementMounted(true); setSupplementOpen((old) => !old); }}>
+            onClick={() => {
+              if (!supplementMounted) {
+                supplementInputRef.current = incomingProfileKey;
+                if (activeSession) setSupplementDraft(readResumeSupplementDraft(activeSession.scope.owner, activeSession.scope.targetId));
+              }
+              setSupplementMounted(true); setSupplementOpen((old) => !old);
+            }}>
             {copy('Add experience details', '补充经历')}
           </button>
           <button type="button" className={button} onClick={() => askLeave('close')} aria-label={copy('Close target résumé', '关闭目标简历')}>×</button>
@@ -513,6 +546,9 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
             }} />
           <ResumeSupplementPanel key={`${activeSession.scope.owner.uid}:${activeSession.scope.owner.epoch}:${activeSession.scope.owner.generation}`}
             owner={activeSession.scope.owner} targetKey={targetKey} profileAvailable={profileAvailable}
+            opportunityId={activeSession.scope.targetId} initialDraft={supplementDraft}
+            onDraftSnapshotChange={(snapshot) => storeSupplement(activeSession.scope, snapshot)}
+            onDraftSaved={(entryId) => settleSupplement(activeSession.scope, entryId)}
             onDirtyChange={(value) => { if (current(activeSession.scope)) setSupplementDirty(value); }}
             onOpenProfile={() => askLeave('master')}
             onAcceptedProfile={(view, againstView) => {
@@ -560,7 +596,7 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
         {activeSession && activeSession.phase !== 'loading' && activeSession.phase !== 'load-error' && <div className="mt-4 flex flex-wrap items-center gap-3">
           <button type="button" className={`${button} bg-indigo-600 text-white`} disabled={createAction.busy || !sourceReady || !ownerReady || !comparable?.canCreate || creating || activeSession.saving || activeSession.reloading || !!activeSession.conflict}
             onClick={() => { if (doc) setLeave('rebuild'); else createAction.request('create'); }}>{creating ? copy('Creating draft…', '正在创建文稿…') : doc ? copy('Rebuild from current confirmed master', '从当前已确认母版重新创建') : copy('Create from confirmed master', '从已确认母版创建')}</button>
-          {profileAvailable && !comparable?.canCreate && ((dirty || supplementDirty)
+          {profileAvailable && !comparable?.canCreate && ((dirty || (supplementDirty && !supplementStored))
             ? <p className="text-sm text-amber-800">{copy('Save this draft or close it before opening the master résumé, so your local edits are not lost.', '请先保存或关闭此稿，再打开简历母版，以免丢失本地编辑。')}</p>
             : <Link href="/#resume-master" className="text-sm text-indigo-700 underline">{copy('Confirm your master résumé first', '先确认简历母版')}</Link>)}
         </div>}

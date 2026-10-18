@@ -107,6 +107,10 @@ describe('USER_SCOPED_KEYS/PREFIXES — static raw-bypass contract (A5)', () => 
     expect(TRACKED_PREFIX_NAMES.length).toBe(USER_SCOPED_PREFIXES.length);
   });
 
+  it('registers unsubmitted résumé supplement answers as user-scoped, so an owner change or sign-out sweeps them', () => {
+    expect(USER_SCOPED_PREFIXES).toContain(STORAGE_KEYS.RESUME_SUPPLEMENT_DRAFT_PREFIX);
+  });
+
   it('no non-gateway, non-allowlisted source file passes a tracked STORAGE_KEYS name (direct or via a local alias) as the key argument to a raw localStorage.getItem/setItem/removeItem call', () => {
     const offenders: string[] = [];
     for (const file of SOURCE_FILES) {

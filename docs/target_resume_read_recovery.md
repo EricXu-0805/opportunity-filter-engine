@@ -20,4 +20,10 @@ Source checks use the exact current résumé text. A source change retires the u
 
 Local tests cover held identity/storage/signature reads, cancellation, late results, safe retry, source status, exact experience revision and shared email-panel compatibility. These checks use synthetic profiles and storage responses, with no live model, email or database calls.
 
-Unsubmitted answers in the full résumé panel still do not survive closing and reopening the editor. The existing leave confirmation remains. Adding owner/target-bound draft persistence is a separate task. This change does not prove the quality of a generated résumé, cloud deployment or Word editing fidelity.
+This change does not prove the quality of a generated résumé, cloud deployment or Word editing fidelity.
+
+## Unsubmitted supplement answers
+
+Unsubmitted answers in the full résumé panel, with the chosen activity and the selected answers, are kept in this browser's user-scoped storage, one copy per owner uid and opportunity. They are written as they are typed. Reopening the editor for the same owner and opportunity opens the panel with the answers restored and says so. The truth confirmation is not restored, and restoring submits nothing. Another opportunity or owner starts empty.
+
+The copy is removed when a confirmed save records the answers (answers left unselected are not kept), when recovered answers are explicitly discarded, and when every answer is cleared. An owner change or sign-out sweeps it with the rest of that owner's private browser data, and a write from a superseded owner token is refused. Answers that are kept do not trigger the leave confirmation. Answers too large to keep, a refused write, or answers left after a save still do. There is one copy per owner and opportunity, so when two tabs edit the same supplement the last edit wins. Nothing is sent to the server until the user confirms.
