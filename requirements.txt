@@ -36,8 +36,9 @@ idna==3.20
 beautifulsoup4==4.14.3
 # soupsieve 3 rejects complex selectors inside :has(), which 52 card selectors
 # in school configs still use (tests/test_css_selector_strict.py lists them);
-# unpinned, the refresh runner picked up 3.0.3 and those departments came back empty.
-soupsieve==2.8.4
+# unpinned, the refresh runner picked up 3.0 on 10-10 and those departments came
+# back empty. 2.9.2 is what the runner installed before that (08-29 log).
+soupsieve==2.9.2
 lxml==6.1.0
 # Deadline normalization (src/normalizers/deadlines.py). dateutil's
 # fuzzy-but-strict mode is the only sane way to handle the MM/DD/YY,
