@@ -340,3 +340,35 @@ def test_original_method_does_not_become_an_activity_alias():
     data=envelope();data['entries'][0]['text']='I built the parser in Rust.'
     assert violations('I built the parser at Rust.',data)
     assert violations('At Rust, I built the parser.',data)
+
+
+def lab_envelope():
+    """M111: the research entry of the 10/13 M33 replay, bound to its activity."""
+    data = envelope()
+    data['entries'][0]['text'] = ('We built a low-cost microphone array for the lab and tested it with our '
+                                  'graduate mentor over six weeks.')
+    activity = data['resume_master']['activities'][0]
+    for key, value in [('title', 'Undergraduate Research Assistant'), ('organization', 'Signal Processing Lab, UIUC'),
+                       ('start', 'Jan 2026'), ('end', 'Present')]:
+        activity[key]['value'] = value
+    return data
+
+
+@pytest.mark.parametrize('claim', [
+    "Since January 2026 I've been an undergraduate research assistant in the Signal Processing Lab, where we built "
+    "a low-cost microphone array and tested it with our graduate mentor over six weeks.",
+    'My team built a low-cost microphone array for the lab and tested it with our graduate mentor over six weeks.',
+    'Our team built a low-cost microphone array for the lab and tested it with our graduate mentor over six weeks.',
+])
+def test_for_the_lab_names_no_other_activity(claim):
+    """Replayed drafts the check rejected: "for the lab" is who the array was built for."""
+    assert violations(claim, lab_envelope()) == []
+
+
+@pytest.mark.parametrize('claim', [
+    'There, our team built a low-cost microphone array with our graduate mentor and tested it over six weeks.',
+    'At Beta Lab, we built a low-cost microphone array for the lab.',
+    'We built a low-cost microphone array at the Smith lab.',
+])
+def test_for_the_lab_still_cannot_move_the_mentor_or_the_activity(claim):
+    assert violations(claim, lab_envelope())
