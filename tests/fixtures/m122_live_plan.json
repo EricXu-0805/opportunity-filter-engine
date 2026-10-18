@@ -1,0 +1,319 @@
+{
+ "_note": "M122, 2026-10-17 live selection plan for the MIT Haystack Observatory REU (sro-05b3696a) on a test account. model_output is the accepted plan with each reason code read back from its rendered motive line; a line the plan did not quote holds a placeholder.",
+ "target": {
+  "title": "MIT Haystack Observatory REU",
+  "organization": "MIT Haystack Observatory",
+  "description": "This REU program has been held for decades, and we have seen many of our student interns go on to rewarding careers in STEM research. Potential projects for each summer vary.\nThe Haystack summer undergraduate internship includes participation in the following:\nScience discussions:\nHaystack staff members lead discussions on numerous current research subjects, which include introductory information for all students, as well as a chance for active conversation with scientists, engineers, and other staff.\nTours:\nStudents will attend tours of the various Observatory facilities to learn about the extensive state-of-the-art instrumentation at Haystack.\nGroup meetings:\nIn addition to the frequent meetings between the sponsoring staff member and the student, several meetings with all students are held to review project status and encourage interactions among the students.\nFinal reports and seminar:\nStudents prepare brief final reports and create presentations on their projects to teach the Haystack community about their summer work.\nAttendance at conferences:\nDepending on available funds and meeting schedules, there are opportunities for students to participate in national conferences.\nFollow-up academic year program:\nDepending on available funds, interest, and project status, a student may continue the summer project during the following academic year.\nTravel support\n: Limited travel support is available for those students whose homes and colleges are more than 100 miles away from Ha",
+  "requirements": []
+ },
+ "blocks": [
+  {
+   "section_id": "education",
+   "block_id": "74b104df-46cb-49f7-93b9-2b7d81710690",
+   "lines": [
+    {
+     "unit_id": "line-6",
+     "original": "Other line line-6.",
+     "evidence": {
+      "kind": "fact"
+     }
+    },
+    {
+     "unit_id": "line-7",
+     "original": "Other line line-7.",
+     "evidence": {
+      "kind": "fact"
+     }
+    },
+    {
+     "unit_id": "line-8",
+     "original": "Electrical Engineering",
+     "evidence": {
+      "kind": "fact"
+     }
+    },
+    {
+     "unit_id": "line-9",
+     "original": "Other line line-9.",
+     "evidence": {
+      "kind": "fact"
+     }
+    },
+    {
+     "unit_id": "line-10",
+     "original": "Other line line-10.",
+     "evidence": {
+      "kind": "fact"
+     }
+    }
+   ]
+  },
+  {
+   "section_id": "activities",
+   "block_id": "67bec70d-0fb1-47e3-bbcb-4be43ec31f2b",
+   "lines": [
+    {
+     "unit_id": "line-11",
+     "original": "Other line line-11.",
+     "evidence": {
+      "kind": "fact"
+     }
+    },
+    {
+     "unit_id": "line-12",
+     "original": "Other line line-12.",
+     "evidence": {
+      "kind": "fact"
+     }
+    },
+    {
+     "unit_id": "line-13",
+     "original": "Other line line-13.",
+     "evidence": {
+      "kind": "fact"
+     }
+    },
+    {
+     "unit_id": "line-14",
+     "original": "Other line line-14.",
+     "evidence": {
+      "kind": "fact"
+     }
+    },
+    {
+     "unit_id": "line-15",
+     "original": "We built a low-cost microphone array for the lab a",
+     "evidence": {
+      "kind": "fact"
+     }
+    },
+    {
+     "unit_id": "line-16",
+     "original": "Other line line-16.",
+     "evidence": {
+      "kind": "fact"
+     }
+    }
+   ]
+  },
+  {
+   "section_id": "activities",
+   "block_id": "731d3a3a-2489-479d-b8b2-6a21f90c1247",
+   "lines": [
+    {
+     "unit_id": "line-17",
+     "original": "Other line line-17.",
+     "evidence": {
+      "kind": "fact"
+     }
+    },
+    {
+     "unit_id": "line-18",
+     "original": "Other line line-18.",
+     "evidence": {
+      "kind": "fact"
+     }
+    },
+    {
+     "unit_id": "line-19",
+     "original": "I soldered and tested the motor driver board ",
+     "evidence": {
+      "kind": "fact"
+     }
+    }
+   ]
+  },
+  {
+   "section_id": "skills",
+   "block_id": "d807fca4-da25-4070-ad17-83d4222f8a01",
+   "lines": [
+    {
+     "unit_id": "line-20",
+     "original": "Python",
+     "evidence": {
+      "kind": "fact"
+     }
+    }
+   ]
+  },
+  {
+   "section_id": "skills",
+   "block_id": "2b01fec0-e954-447d-a93e-43ad54dfebec",
+   "lines": [
+    {
+     "unit_id": "line-21",
+     "original": "MATLAB",
+     "evidence": {
+      "kind": "fact"
+     }
+    }
+   ]
+  },
+  {
+   "section_id": "skills",
+   "block_id": "844f4dc4-a36b-4741-95be-742bfdb77b48",
+   "lines": [
+    {
+     "unit_id": "line-22",
+     "original": "信号处理",
+     "evidence": {
+      "kind": "fact"
+     }
+    }
+   ]
+  },
+  {
+   "section_id": "53dec088-b503-4e0f-bf14-5166c96ee47a",
+   "block_id": "0c5a22f0-25e8-4987-866a-ab13b00e57e8",
+   "lines": [
+    {
+     "unit_id": "line-23",
+     "original": "Weekend barista at a campus coffee shop, 2024 to 2025.",
+     "evidence": {
+      "kind": "fact"
+     }
+    }
+   ]
+  }
+ ],
+ "model_output": {
+  "items": [
+   {
+    "section_id": "education",
+    "block_id": "74b104df-46cb-49f7-93b9-2b7d81710690",
+    "action": "keep",
+    "reason": "supporting_context",
+    "target_evidence": [
+     {
+      "field": "description",
+      "requirement_index": null,
+      "start": 0,
+      "end": 16,
+      "quote": "This REU program"
+     }
+    ],
+    "source_evidence": [
+     {
+      "unit_id": "line-8",
+      "start": 0,
+      "end": 22,
+      "quote": "Electrical Engineering"
+     }
+    ],
+    "rewrites": []
+   },
+   {
+    "section_id": "activities",
+    "block_id": "67bec70d-0fb1-47e3-bbcb-4be43ec31f2b",
+    "action": "keep",
+    "reason": "method_relevance",
+    "target_evidence": [
+     {
+      "field": "description",
+      "requirement_index": null,
+      "start": 0,
+      "end": 16,
+      "quote": "This REU program"
+     }
+    ],
+    "source_evidence": [
+     {
+      "unit_id": "line-15",
+      "start": 0,
+      "end": 50,
+      "quote": "We built a low-cost microphone array for the lab a"
+     }
+    ],
+    "rewrites": []
+   },
+   {
+    "section_id": "activities",
+    "block_id": "731d3a3a-2489-479d-b8b2-6a21f90c1247",
+    "action": "compress",
+    "reason": "transferable_experience",
+    "target_evidence": [
+     {
+      "field": "description",
+      "requirement_index": null,
+      "start": 0,
+      "end": 16,
+      "quote": "This REU program"
+     }
+    ],
+    "source_evidence": [
+     {
+      "unit_id": "line-19",
+      "start": 0,
+      "end": 45,
+      "quote": "I soldered and tested the motor driver board "
+     }
+    ],
+    "rewrites": []
+   },
+   {
+    "section_id": "skills",
+    "block_id": "d807fca4-da25-4070-ad17-83d4222f8a01",
+    "action": "keep",
+    "reason": "supporting_context",
+    "target_evidence": [],
+    "source_evidence": [
+     {
+      "unit_id": "line-20",
+      "start": 0,
+      "end": 6,
+      "quote": "Python"
+     }
+    ],
+    "rewrites": []
+   },
+   {
+    "section_id": "skills",
+    "block_id": "2b01fec0-e954-447d-a93e-43ad54dfebec",
+    "action": "keep",
+    "reason": "supporting_context",
+    "target_evidence": [],
+    "source_evidence": [
+     {
+      "unit_id": "line-21",
+      "start": 0,
+      "end": 6,
+      "quote": "MATLAB"
+     }
+    ],
+    "rewrites": []
+   },
+   {
+    "section_id": "skills",
+    "block_id": "844f4dc4-a36b-4741-95be-742bfdb77b48",
+    "action": "keep",
+    "reason": "supporting_context",
+    "target_evidence": [],
+    "source_evidence": [
+     {
+      "unit_id": "line-22",
+      "start": 0,
+      "end": 4,
+      "quote": "信号处理"
+     }
+    ],
+    "rewrites": []
+   },
+   {
+    "section_id": "53dec088-b503-4e0f-bf14-5166c96ee47a",
+    "block_id": "0c5a22f0-25e8-4987-866a-ab13b00e57e8",
+    "action": "omit",
+    "reason": "space_tradeoff",
+    "target_evidence": [],
+    "source_evidence": [
+     {
+      "unit_id": "line-23",
+      "start": 0,
+      "end": 54,
+      "quote": "Weekend barista at a campus coffee shop, 2024 to 2025."
+     }
+    ],
+    "rewrites": []
+   }
+  ]
+ }
+}

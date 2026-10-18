@@ -5,6 +5,7 @@ import asyncio
 import json
 from copy import deepcopy
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -374,7 +375,8 @@ def test_new_path_feature_private_and_body_cap_are_registered(endpoint):
 
 @pytest.mark.parametrize("kind,skill,locale", [("research", "Python", "en"), ("internship", "MATLAB", "zh")])
 def test_two_authoritative_contexts_and_locales_reach_the_model_in_full(endpoint, kind, skill, locale):
-    endpoint.opportunity.update(opportunity_type=kind, title=f"{skill} {kind}", organization=f"{skill} Laboratory",
+    # The organization is not named after the skill: a word its title and organization share is its name.
+    endpoint.opportunity.update(opportunity_type=kind, title=f"{skill} {kind}", organization="Example Laboratory",
                                 description_clean=f"研究 {skill} 工具与数据 🧪.")
     endpoint.opportunity["eligibility"]["skills_required"] = [skill]
     doc = endpoint.doc([f"I wrote tests using {skill}."])
@@ -424,13 +426,13 @@ def test_source_check_version_is_negotiated_and_server_owned(endpoint, monkeypat
     request["include_check_version"] = True
     response = endpoint.client.post(PATH, json=request)
     assert response.status_code == 200
-    assert response.json()["check_version"] == "target-resume-source-checks-v5"
+    assert response.json()["check_version"] == "target-resume-source-checks-v6"
     assert response.json()["pipeline_version"] != response.json()["check_version"]
     # Available rules do not turn skipped/failed work into a checked rewrite.
     monkeypatch.setattr(route, "is_configured", lambda: False)
     failed = endpoint.client.post(PATH, json=request)
     assert failed.status_code == 200
-    assert failed.json()["check_version"] == "target-resume-source-checks-v5"
+    assert failed.json()["check_version"] == "target-resume-source-checks-v6"
     assert failed.json()["method"] == "unavailable"
     forged = {**request, "check_version": "target-resume-source-checks-v999"}
     assert endpoint.client.post(PATH, json=forged).status_code == 422
@@ -486,3 +488,85 @@ def test_an_opportunity_quote_on_advice_without_a_relevance_claim_must_still_be_
     doc = endpoint.doc([ORIGINAL, CAFE])
     endpoint.mutate = _cafe_block("omit", "limited_relevance", [quote])
     unavailable(endpoint.submit(doc), "no_target_evidence")
+
+
+LIVE_PLAN = json.loads((Path(__file__).parent / "fixtures" / "m122_live_plan.json").read_text(encoding="utf-8"))
+
+
+def test_the_live_plan_no_longer_shows_this_reu_program_as_evidence():
+    # M122, 10/17: three blocks cited only "This REU program", which is in the posting and bears on nothing.
+    items, reason = plan.parse_plan_output(json.dumps(LIVE_PLAN["model_output"]), LIVE_PLAN["blocks"], LIVE_PLAN["target"])
+    assert reason is None and len(items) == 7
+    for item in items:
+        assert item["target_evidence"] == [] and "This REU program" not in item["reason"]
+        assert "Target original" not in item["reason"]
+    education, method, transfer = (item["reason"].split("\n")[0] for item in items[:3])
+    assert education == "Keep suggestion: Retain background needed to understand this experience."
+    # A relevance claim left with no quote that says anything claims none, in the words of its action.
+    assert method == "Keep suggestion: Retain background needed to understand this experience."
+    assert transfer == "Compress suggestion: Reduce length toward the page goal while retaining supported content."
+    assert [item["action"] for item in items] == [row["action"] for row in LIVE_PLAN["model_output"]["items"]]
+    assert 'Student original: "We built a low-cost microphone array for the lab a"' in items[1]["reason"]
+
+
+HAYSTACK = ("MIT Haystack Observatory REU. Radio astronomy at the Observatory. This REU program has been held for decades, and we have seen many of our student "
+            "interns go on to rewarding careers in STEM research. The Haystack summer undergraduate internship is open to "
+            "students. This REU program in Python. 本暑期本科生科研项目要求熟悉信号处理。")
+
+
+def _haystack(endpoint, reason, quotes, action="keep", title="MIT Haystack Observatory REU"):
+    endpoint.opportunity.update(title=title, organization="MIT Haystack Observatory", description_clean=HAYSTACK)
+    doc = endpoint.doc([ORIGINAL, CAFE])
+    evidence = []
+    for quote in quotes:
+        start = HAYSTACK.index(quote)
+        evidence.append({"field": "description", "requirement_index": None, "start": start, "end": start + len(quote), "quote": quote})
+    endpoint.mutate = _cafe_block(action, reason, evidence)
+    return completed(endpoint, endpoint.submit(doc), doc)["items"]
+
+
+@pytest.mark.parametrize("quote", ["MIT Haystack Observatory REU", "This REU program", "The Haystack summer undergraduate internship",
+                                   "our student interns", "本暑期本科生科研项目"])
+@pytest.mark.parametrize("action,motive", [("keep", "Retain background needed to understand this experience."),
+                                           ("compress", "Reduce length toward the page goal while retaining supported content."),
+                                           ("omit", "Review the cited material before giving this block less space.")])
+def test_a_quote_that_only_names_the_posting_is_no_evidence_of_relevance(endpoint, quote, action, motive):
+    relevant, cafe = _haystack(endpoint, "method_relevance", [quote], action)
+    assert relevant["target_evidence"][0]["quote"] == "Python"
+    assert cafe["action"] == action and cafe["target_evidence"] == []
+    assert cafe["reason"].split("\n")[0] == f"{action.capitalize()} suggestion: {motive}"
+    assert "Target original" not in cafe["reason"] and quote not in cafe["reason"]
+
+
+@pytest.mark.parametrize("quote", ["This REU program in Python", "要求熟悉信号处理",
+                                   # A sentence with words of its own is evidence: whether it bears on the claim is the
+                                   # student's call, as for any quote (advice, not proven fit).
+                                   "This REU program has been held for decades, and we have seen many of our student interns "
+                                   "go on to rewarding careers in STEM research."])
+def test_a_quote_with_a_word_beyond_the_posting_name_keeps_the_relevance_claim(endpoint, quote):
+    _, cafe = _haystack(endpoint, "method_relevance", [quote])
+    assert [row["quote"] for row in cafe["target_evidence"]] == [quote]
+    assert cafe["reason"].split("\n")[0] == "Keep suggestion: Compare the stated methods with the target requirements."
+    assert f"Target original: {json.dumps(quote, ensure_ascii=False)}" in cafe["reason"]
+
+
+def test_only_quotes_that_say_something_are_shown(endpoint):
+    _, cafe = _haystack(endpoint, "topic_relevance", ["This REU program", "要求熟悉信号处理"])
+    assert [row["quote"] for row in cafe["target_evidence"]] == ["要求熟悉信号处理"]
+    assert cafe["reason"].split("\n")[0] == "Keep suggestion: Compare the research topic with the target direction."
+    assert "This REU program" not in cafe["reason"]
+
+
+def test_a_contentless_quote_on_advice_without_a_relevance_claim_is_dropped(endpoint):
+    _, cafe = _haystack(endpoint, "supporting_context", ["This REU program"])
+    assert cafe["target_evidence"] == [] and "Target original" not in cafe["reason"]
+    assert '"This REU program") supports no advice' in endpoint.calls[0][0][0]["content"]
+    assert cafe["reason"].split("\n")[0] == "Keep suggestion: Retain background needed to understand this experience."
+
+
+@pytest.mark.parametrize("title,quote", [("Radio Astronomy REU", "Radio astronomy"),
+                                         # The organization alone may name the field.
+                                         ("Summer REU", "Observatory")])
+def test_a_title_or_organization_word_alone_is_not_the_posting_name(endpoint, title, quote):
+    _, cafe = _haystack(endpoint, "topic_relevance", [quote], title=title)
+    assert [row["quote"] for row in cafe["target_evidence"]] == [quote]

@@ -16,7 +16,7 @@ from backend.lib.email_experience_attribution import (
 )
 
 # Bump independently of the wire/pipeline version when source checks change.
-SOURCE_CHECK_VERSION = "target-resume-source-checks-v5"
+SOURCE_CHECK_VERSION = "target-resume-source-checks-v6"
 
 # Ordinary entries stay below this ceiling: at 6000 characters, English bullets
 # give about 80 clauses, Chinese prose about 130 and very short Chinese

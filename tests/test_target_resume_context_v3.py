@@ -110,7 +110,7 @@ def test_available_exact_codepoint_quotes_survive_both_real_routes(endpoint, pat
     response = submit(client, path, doc)
     assert response.status_code == 200, response.text
     assert response.json()['method'] == 'ai'
-    assert response.json()['check_version'] == 'target-resume-source-checks-v5'
+    assert response.json()['check_version'] == 'target-resume-source-checks-v6'
     assert len(state['calls']) == 1 and doc == before
     prompt = json.loads(state['calls'][0][1]['content'])
     if path.endswith('selection-plan'):
@@ -183,7 +183,8 @@ def test_a_bad_research_link_is_dropped_and_the_line_kept(endpoint, link):
 
 
 @pytest.mark.parametrize('path', PATHS[1:])  # v6 suggestions never take offsets from the model
-@pytest.mark.parametrize('quote,start', [(dict(PAPER, end=7), 0), (dict(PAPER, field='paper_abstract', start=0, end=2, quote='研究😀'), 25)])
+# "研究😀" alone says only "research", which the plan does not show as evidence.
+@pytest.mark.parametrize('quote,start', [(dict(PAPER, end=7), 0), (dict(PAPER, field='paper_abstract', start=0, end=4, quote='研究😀证据'), 25)])
 def test_miscounted_research_quote_is_reanchored_in_both_routes(endpoint, path, quote, start):
     client, opp, state = endpoint
     state['quote'] = quote
