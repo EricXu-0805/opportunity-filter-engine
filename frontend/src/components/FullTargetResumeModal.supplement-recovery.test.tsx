@@ -35,18 +35,18 @@ const opportunityFor = (id: string): Opportunity => ({
 const opportunity = opportunityFor('opportunity-one');
 const TASK = 'Exact unsubmitted task 王';
 
-async function useOwner(uid: string) {
+async function useOwner(uid: string, base = profile) {
   advanceOwnerEpoch(uid); await syncLocalIdentityOwner(uid);
   await waitFor(() => expect(isLocalOwnerReady(uid)).toBe(true));
   const token = captureOwnerToken();
-  const view = { viewId: 'fresh-view', baseProfile: profile, renderedProfile: profile, revision: 1, token, identityGeneration: token.epoch, source: 'hydration' as const };
+  const view = { viewId: 'fresh-view', baseProfile: base, renderedProfile: base, revision: 1, token, identityGeneration: token.epoch, source: 'hydration' as const };
   supplement.controller = { view, acceptedView: view, phase: 'ready', error: null, ownerScopeKey: 'scope', operationLocked: false, confirmedEntryId: null,
     acceptCurrent: vi.fn().mockResolvedValue(undefined), assign: vi.fn(), confirm: vi.fn(), retryRecorded: vi.fn(),
     baseline: vi.fn((activityId: string) => ({ view, activityId, targetKey: (supplement.options as ResumeSupplementOptions).targetKey })) } satisfies Controller;
 }
-function mount(target = opportunity) {
+function mount(target = opportunity, base = profile) {
   const onClose = vi.fn();
-  return { ...render(<FullTargetResumeModal isOpen onClose={onClose} profile={profile} opportunity={target} />), onClose };
+  return { ...render(<FullTargetResumeModal isOpen onClose={onClose} profile={base} opportunity={target} />), onClose };
 }
 const task = () => screen.getByLabelText('What was the task?');
 const method = () => screen.getByLabelText('What methods or tools did you use?');
@@ -170,5 +170,50 @@ describe('target résumé unfinished supplement answers', () => {
     expect(view.onClose).toHaveBeenCalledOnce(); expect(storedKeys()).toEqual([]);
     view.unmount(); mount(); await act(async () => {});
     expect(screen.queryByLabelText('What was the task?')).toBeNull();
+  });
+  it('asks before following the master-résumé link once another tab has replaced this editor\'s kept answers', async () => {
+    // An unconfirmed activity title gives nothing to create from, so the master-résumé link is offered.
+    const unconfirmed: ProfileData = { ...profile, resume_master: { ...master, activities: [{ ...master.activities[0], title: { ...master.activities[0].title!, status: 'candidate' } }] } };
+    await useOwner(captureOwnerToken().uid!, unconfirmed);
+    const first = mount(opportunity, unconfirmed); const one = within(first.container); await openSupplement(); answer(); await act(async () => {});
+    const link = one.getByRole('link', { name: 'Confirm your master résumé first' });
+    const second = mount(opportunity, unconfirmed); const two = within(second.container);
+    const toggle = two.getByRole('button', { name: 'Add experience details' }); await waitFor(() => expect(toggle).toBeEnabled()); fireEvent.click(toggle);
+    fireEvent.change(two.getByRole('combobox', { name: 'Project or experience in your master résumé' }), { target: { value: 'project-one' } });
+    fireEvent.change(two.getByLabelText('What was the task?'), { target: { value: 'Second tab task' } });
+    // The first editor has not re-rendered since its copy was replaced.
+    fireEvent.click(link);
+    expect(first.onClose).not.toHaveBeenCalled(); expect(one.getByRole('alert')).toHaveTextContent('unsaved edits');
+    fireEvent.click(one.getByRole('button', { name: 'Keep editing' })); expect(one.getByLabelText('What was the task?')).toHaveValue(TASK);
+  });
+  it('marks its copy closed under the owner generation current at close, after a same-owner generation change', async () => {
+    const view = mount(); await act(async () => {});
+    const uid = captureOwnerToken().uid!; const before = captureOwnerToken().generation; const locks = navigator.locks;
+    await act(async () => {
+      // Lose and regain readiness while the owner marker moves to a new generation for the same uid.
+      Object.defineProperty(navigator, 'locks', { configurable: true, writable: true, value: undefined });
+      try { await syncLocalIdentityOwner(uid); } finally { Object.defineProperty(navigator, 'locks', { configurable: true, writable: true, value: locks }); }
+      const marker = JSON.parse(localStorage.getItem(STORAGE_KEYS.LOCAL_IDENTITY_OWNER)!);
+      localStorage.setItem(STORAGE_KEYS.LOCAL_IDENTITY_OWNER, JSON.stringify({ ...marker, generation: marker.generation + 1, phase: 'switching' }));
+      await useOwner(uid);
+    });
+    expect(captureOwnerToken()).toMatchObject({ uid, generation: before + 1 });
+    view.rerender(<FullTargetResumeModal isOpen onClose={view.onClose} profile={profile} opportunity={opportunity} />);
+    await openSupplement(); answer(); await act(async () => {});
+    expect(readResumeSupplementDraft(captureOwnerToken(), opportunity.id)?.closed).toBe(false);
+    view.rerender(<FullTargetResumeModal isOpen={false} onClose={view.onClose} profile={profile} opportunity={opportunity} />); await act(async () => {});
+    expect(readResumeSupplementDraft(captureOwnerToken(), opportunity.id)?.closed).toBe(true);
+  });
+  it('holds its editor lock while open and releases it on close and on unmount', async () => {
+    const view = mount(); await openSupplement(); answer(); await act(async () => {});
+    const name = resumeSupplementEditorLock(readResumeSupplementDraft(captureOwnerToken(), opportunity.id)!.editor);
+    const waitForLock = () => { const probe = { granted: false, done: Promise.resolve() as Promise<unknown> };
+      probe.done = navigator.locks.request(name, { mode: 'exclusive' }, () => { probe.granted = true; }); return probe; };
+    const whileOpen = waitForLock(); await act(async () => {}); expect(whileOpen.granted).toBe(false);
+    view.rerender(<FullTargetResumeModal isOpen={false} onClose={view.onClose} profile={profile} opportunity={opportunity} />);
+    await act(async () => { await whileOpen.done; }); expect(whileOpen.granted).toBe(true);
+    view.rerender(<FullTargetResumeModal isOpen onClose={view.onClose} profile={profile} opportunity={opportunity} />); await act(async () => {});
+    const reopened = waitForLock(); await act(async () => {}); expect(reopened.granted).toBe(false);
+    view.unmount(); await act(async () => { await reopened.done; }); expect(reopened.granted).toBe(true);
   });
 });

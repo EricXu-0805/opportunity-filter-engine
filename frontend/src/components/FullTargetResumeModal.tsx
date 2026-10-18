@@ -253,12 +253,13 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
   const creating = activeSession?.phase === 'creating';
   const acceptedCreation = activeSession?.scope.creation;
   const canEdit = ownerReady && !!doc && !creating && !activeSession?.reloading;
+  // Another tab may have replaced this editor's copy since it was written.
+  const supplementKept = useCallback(() => supplementStored && !!session
+    && readResumeSupplementDraft(session.scope.owner, session.scope.targetId)?.editor === editorRef.current, [session, supplementStored]);
   const askLeave = useCallback((action: 'close' | 'legacy' | 'master') => {
-    // Another tab may have replaced this editor's copy since it was written.
-    const kept = supplementStored && !!session && readResumeSupplementDraft(session.scope.owner, session.scope.targetId)?.editor === editorRef.current;
-    if (assignmentDirty || supportDirty || (supplementDirty && !kept) || aiDirty || planDirty || (session && (isDirty(session) || session.saving))) { setLeave(action); return false; }
+    if (assignmentDirty || supportDirty || (supplementDirty && !supplementKept()) || aiDirty || planDirty || (session && (isDirty(session) || session.saving))) { setLeave(action); return false; }
     exit(action); return true;
-  }, [session, assignmentDirty, supportDirty, supplementDirty, supplementStored, aiDirty, planDirty, exit]);
+  }, [session, assignmentDirty, supportDirty, supplementDirty, supplementKept, aiDirty, planDirty, exit]);
 
   const activeScope = activeSession?.scope ?? null;
   useEffect(() => {
@@ -283,15 +284,17 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
   }, [activeScope, ownerReady, profileAvailable, supplementMounted]);
   useEffect(() => {
     if (!isOpen) return;
-    const owner = captureOwnerToken(); const targetId = opportunity.id; const editor = editorId();
+    const targetId = opportunity.id; const editor = editorId();
     // Held while the editor is open; the browser releases it if the tab closes or crashes.
     let released = false; let release = () => { released = true; };
     if (typeof navigator !== 'undefined' && navigator.locks?.request) {
       void navigator.locks.request(resumeSupplementEditorLock(editor), () => released ? undefined
         : new Promise<void>((resolve) => { release = resolve; })).catch(() => {});
     }
-    const hide = () => markResumeSupplementDraft(owner, targetId, editor, true);
-    const show = (event: PageTransitionEvent) => { if (event.persisted) markResumeSupplementDraft(owner, targetId, editor, false); };
+    // Marks under the current scope's owner, which follows a same-owner generation change while open.
+    const mark = (closed: boolean) => { const scope = scopeRef.current; if (scope) markResumeSupplementDraft(scope.owner, targetId, editor, closed); };
+    const hide = () => mark(true);
+    const show = (event: PageTransitionEvent) => { if (event.persisted) mark(false); };
     window.addEventListener('pagehide', hide); window.addEventListener('pageshow', show);
     // Closing or unmounting the editor makes its kept answers recoverable.
     return () => { window.removeEventListener('pagehide', hide); window.removeEventListener('pageshow', show); hide(); release(); };
@@ -634,7 +637,9 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
             onClick={() => { if (doc) setLeave('rebuild'); else createAction.request('create'); }}>{creating ? copy('Creating draft…', '正在创建文稿…') : doc ? copy('Rebuild from current confirmed master', '从当前已确认母版重新创建') : copy('Create from confirmed master', '从已确认母版创建')}</button>
           {profileAvailable && !comparable?.canCreate && ((dirty || (supplementDirty && !supplementStored))
             ? <p className="text-sm text-amber-800">{copy('Save this draft or close it before opening the master résumé, so your local edits are not lost.', '请先保存或关闭此稿，再打开简历母版，以免丢失本地编辑。')}</p>
-            : <Link href="/#resume-master" className="text-sm text-indigo-700 underline">{copy('Confirm your master résumé first', '先确认简历母版')}</Link>)}
+            : <Link href="/#resume-master" className="text-sm text-indigo-700 underline"
+              // Checked on use: another tab may have replaced this editor's copy since the last render.
+              onClick={(event) => { if (supplementDirty && !supplementKept()) { event.preventDefault(); setLeave('master'); } }}>{copy('Confirm your master résumé first', '先确认简历母版')}</Link>)}
         </div>}
         {doc && activeSession && <>
           <div className="my-4 flex flex-wrap items-center gap-3">
