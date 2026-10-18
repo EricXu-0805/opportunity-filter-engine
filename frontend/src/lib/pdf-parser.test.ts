@@ -182,6 +182,72 @@ describe('parseResumePDF — skill extraction', () => {
   });
 });
 
+describe('parseResumePDF — laboratory techniques are known skills (checklist M125)', () => {
+  async function parse(...lines: string[]) {
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(fakePdf([lines.join('\n')])) });
+    return parseResumePDF(fakeFile());
+  }
+  const skills = async (...lines: string[]) => (await parse(...lines)).extracted_skills;
+  const LIVE = 'Mammalian cell culture; Western blotting; PCR; Agarose gel electrophoresis; Fluorescence microscopy; ImageJ/Fiji; R (basic)';
+
+  it('imports the techniques on the live biology résumé\'s skills line, each with that line', async () => {
+    // Live 2026-10-17: only R reached the profile.
+    const live = ['R', 'PCR', 'Western blotting', 'gel electrophoresis', 'cell culture', 'fluorescence microscopy', 'ImageJ'];
+    const res = await parse('SKILLS', LIVE);
+    expect(res.extracted_skills).toEqual(live);
+    expect(res.skill_evidence.map((hit) => hit.line)).toEqual(live.map(() => LIVE));
+    // The printed PDF breaks the line after "microscopy;".
+    expect(await skills('SKILLS', LIVE.replace('microscopy; ', 'microscopy;\n'))).toEqual(live);
+  });
+
+  it('imports the techniques biology, chemistry and neuroscience résumés list', async () => {
+    expect(await skills('Techniques: qPCR, SDS-PAGE, transfection, bacterial transformation, molecular cloning, plasmid preparation'))
+      .toEqual(['qPCR', 'SDS-PAGE', 'transfection', 'bacterial transformation', 'molecular cloning', 'plasmid preparation']);
+    expect(await skills('Lab: DNA extraction, RNA extraction, tissue culture, immunofluorescence, immunohistochemistry, flow cytometry, confocal microscopy'))
+      .toEqual(['tissue culture', 'DNA extraction', 'RNA extraction', 'immunofluorescence', 'immunohistochemistry', 'flow cytometry', 'confocal microscopy']);
+    expect(await skills('CRISPR-Cas9, HPLC, mass spectrometry, NMR, spectrophotometry, titration, chromatography'))
+      .toEqual(['CRISPR', 'HPLC', 'mass spectrometry', 'NMR', 'spectrophotometry', 'titration', 'chromatography']);
+    expect(await skills('Gram staining, sterile technique, aseptic technique, histology, EEG, patch clamp, GraphPad Prism, SPSS'))
+      .toEqual(['SPSS', 'Gram staining', 'sterile technique', 'aseptic technique', 'histology', 'EEG', 'patch clamp', 'GraphPad Prism']);
+  });
+
+  it('finds no technique inside another one, a longer word or a name', async () => {
+    expect(await skills('qPCR and ddPCR; PCRs')).toEqual(['qPCR']);
+    expect(await skills('RT-PCR; RT-qPCR')).toEqual(['PCR', 'qPCR']);
+    expect(await skills('immunofluorescence microscopy')).toEqual(['immunofluorescence']);
+    expect(await skills('DNA/RNA extraction')).toEqual(['RNA extraction']);
+    // Words a technique shares with things outside the lab are not on the
+    // list: Elisa is a name, Fiji a country, cloning also a voice model's.
+    expect(await skills('Elisa Martinez', 'ELISA MARTINEZ', 'Study abroad, Fiji', 'Built a voice cloning demo', 'Prism'))
+      .toEqual([]);
+  });
+
+  it('imports nothing from the lines a skills-list rule took in, and only names from a phrase', async () => {
+    // Review of rounds 1-2: these were imported as skills.
+    expect(await skills(
+      'Jane Doe — Page 2', 'May 2025 – Aug 2025', 'VOLUNTEER WORK', 'Beckman Institute, Urbana, IL, June 2025',
+      'Carle Foundation Hospital', 'Advanced Microscopy Techniques', 'Strong attention to detail',
+      'Proficient in Microsoft Office', 'familiar with Tableau', 'Fluent in Spanish', '熟练掌握细胞培养',
+    )).toEqual([]);
+    expect(await skills('Proficient in PCR, ELISA, and Western blotting')).toEqual(['PCR', 'Western blotting']);
+  });
+
+  it('leaves the CS and engineering résumés\' skills and their order as they were', async () => {
+    // Profiles A and C of the live run.
+    expect(await skills(
+      'I built a course-planning web app with React and Flask that lets students drag courses into semesters',
+      'I trained a small convolutional neural network in PyTorch on the MNIST dataset, reached 98.9% test',
+      'I hold two office-hour shifts a week for CS 124 and help about 15 students per week debug their Java',
+      'and Kotlin assignments.', 'SKILLS', 'Python; Java; JavaScript; React; Flask; PyTorch; Git; SQL',
+    )).toEqual(['Python', 'Java', 'JavaScript', 'SQL', 'Kotlin', 'PyTorch', 'Git', 'React', 'Flask']);
+    expect(await skills(
+      'I implemented an FFT-based pitch detector in Python with NumPy and tested it on 20 recorded voice clips from classmates.',
+      'I wrote a spectral subtraction noise-reduction filter in MATLAB for our four-person team\'s hearing-aid prototype',
+      'SKILLS', 'MATLAB; Python; NumPy; C; Mandarin Chinese (native); English (fluent)',
+    )).toEqual(['Python', 'C', 'MATLAB', 'NumPy']);
+  });
+});
+
 describe('parseResumePDF — coursework extraction', () => {
   it('an address block is not coursework', async () => {
     // "APT 402" and "BLDG 210" have the exact shape of a course code, and a

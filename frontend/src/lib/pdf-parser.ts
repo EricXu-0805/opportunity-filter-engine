@@ -17,6 +17,18 @@ const KNOWN_SKILLS = [
   'React', 'Flask', 'FastAPI', 'Django', 'Node.js',
   'AWS', 'GCP', 'Azure',
   'LaTeX', 'Excel', 'SPSS', 'SAS', 'Stata',
+  // Laboratory techniques and instruments that biology, chemistry and
+  // neuroscience résumés list (checklist M125). A name also used outside the
+  // lab is left out: "ELISA" is a given name too, "Fiji" a country,
+  // "cloning" also voice cloning and "Prism" a product name of many kinds.
+  'PCR', 'qPCR', 'Western blotting', 'SDS-PAGE', 'gel electrophoresis',
+  'cell culture', 'tissue culture', 'transfection', 'bacterial transformation',
+  'molecular cloning', 'plasmid preparation', 'DNA extraction', 'RNA extraction',
+  'immunofluorescence', 'immunohistochemistry', 'flow cytometry',
+  'fluorescence microscopy', 'confocal microscopy', 'ImageJ', 'CRISPR',
+  'HPLC', 'mass spectrometry', 'NMR', 'spectrophotometry', 'titration', 'chromatography',
+  'Gram staining', 'sterile technique', 'aseptic technique', 'histology',
+  'EEG', 'patch clamp', 'GraphPad Prism',
 ];
 
 // A skill token must not be flanked by a letter or the tech punctuation
