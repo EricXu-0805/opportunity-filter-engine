@@ -2913,6 +2913,109 @@ describe('an acknowledgement rebases the edits that continue it', () => {
     expect(receipts.ok && receipts.value.has(a.opId)).toBe(true);
   });
 
+  it('well past the old cap, an edit made while the last save was in flight still rebases onto it (checklist M114)', async () => {
+    loadProfileMock.mockResolvedValue(cloud({ ...FULL, major: 'CS' }, 1));
+    const token = captureOwnerToken();
+    await hydrateProfile();
+    const server = casServer({ ...FULL, major: 'CS' }, 1);
+    commitMock.mockReset();
+    commitMock.mockImplementation((intent) => Promise.resolve(server.handle(intent) as ProfilePatchOutcome));
+    // Each save lands one operation and used to leave its receipt behind for
+    // good: saving stopped at the 500th.
+    for (let i = 0; i < 520; i += 1) {
+      const value = `major-${i}`;
+      expect(recordProfileIntent({ ...FULL, major: value }, ['major'], token)).toBe(true);
+      expect((await stageProfilePatch({ ...FULL, major: value }, ['major'], token)).status, `save ${i + 1}`).toBe('saved');
+    }
+    expect(server.rev).toBe(521);
+
+    let release: (() => void) | undefined;
+    commitMock.mockImplementationOnce((intent) => new Promise<ProfilePatchOutcome>((resolve) => {
+      release = () => resolve(server.handle(intent) as ProfilePatchOutcome);
+    }));
+    expect(recordProfileIntent({ ...FULL, major: 'ECE' }, ['major'], token)).toBe(true);
+    const a = journalOps()[0];
+    const inFlight = stageProfilePatch({ ...FULL, major: 'ECE' }, ['major'], token);
+    for (let i = 0; i < 50 && !release; i += 1) await Promise.resolve();
+    expect(release, 'A must actually be in flight').toBeDefined();
+    expect(recordProfileIntent({ ...FULL, major: 'Physics' }, ['major'], token)).toBe(true);
+    const b = journalOps().find((op) => op.opId !== a.opId)!;
+    expect(b.supersedes).toEqual([a.opId]);
+    release!();
+    await inFlight;
+
+    // The settle removed what nothing reaches and kept what B names.
+    const receipts = readRebaseReceipts();
+    expect(receipts.ok && [...receipts.value.keys()]).toEqual([a.opId]);
+    const effective = effectiveOpBase(b, receipts.ok ? receipts.value : new Map());
+    expect(effective.baseRevision).toBe(522);
+    expect(effective.fields[0].base).toEqual({ present: true, value: 'ECE' });
+
+    const next = await flushPendingProfileWrite(token);
+    expect(next.status, 'no conflict with the person\'s own edit').toBe('saved');
+    expect(server.seen.at(-1)).toEqual({ expected: 522, patch: { major: 'Physics' } });
+    expect(journalOps()).toEqual([]);
+    const after = readRebaseReceipts();
+    expect(after.ok && after.value.size).toBe(0);
+  }, 60_000);
+
+  it('another tab\'s receipt is kept for the grace; an edit naming it after that is asked about, never lost (checklist M114)', async () => {
+    let now = 1_000;
+    vi.spyOn(performance, 'now').mockImplementation(() => now);
+    loadProfileMock.mockResolvedValue(cloud({ ...FULL, major: 'CS' }, 1));
+    const token = captureOwnerToken();
+    await hydrateProfile();
+    // Tab T makes A.
+    expect(recordProfileIntent({ ...FULL, major: 'ECE' }, ['major'], token)).toBe(true);
+    const a = journalOps()[0];
+
+    // Tab S sends it and settles it, then keeps saving its own edits.
+    resetJournalLaneForTests();
+    resetProfileDirtyLedger();
+    await hydrateProfile();
+    const server = casServer({ ...FULL, major: 'CS' }, 1);
+    commitMock.mockReset();
+    commitMock.mockImplementation((intent) => Promise.resolve(server.handle(intent) as ProfilePatchOutcome));
+    expect((await stageProfilePatch({ ...FULL, major: 'ECE' }, ['major'], token)).status).toBe('saved');
+    const has = (id: string) => { const r = readRebaseReceipts(); return r.ok && r.value.has(id); };
+    expect(has(a.opId)).toBe(true);
+    now += 59_999;
+    expect(recordProfileIntent({ ...FULL, major: 'ECE', grade: 'Senior' }, ['grade'], token)).toBe(true);
+    expect((await stageProfilePatch({ ...FULL, major: 'ECE', grade: 'Senior' }, ['grade'], token)).status).toBe('saved');
+    expect(has(a.opId), 'inside the grace T may still continue A').toBe(true);
+    now += 1;
+    expect(recordProfileIntent({ ...FULL, major: 'ECE', grade: 'Sophomore' }, ['grade'], token)).toBe(true);
+    expect((await stageProfilePatch({ ...FULL, major: 'ECE', grade: 'Sophomore' }, ['grade'], token)).status).toBe('saved');
+    expect(has(a.opId), 'past it, the next settle removes it').toBe(false);
+    expect(server.rev).toBe(4);
+
+    // T's view of storage is more than the grace behind: it still shows A
+    // outstanding, and it writes B naming A.
+    const b = appendJournalOp({
+      fields: [{ key: 'major', base: { present: true, value: 'CS' }, desired: { present: true, value: 'Physics' } }],
+      baseRevision: 1,
+      writer: 'home-form',
+      mode: 'set',
+      supersedes: [a.opId],
+      originId: a.originId,
+      lineage: a.lineage,
+    }, token)!;
+    expect(b).toBeTruthy();
+    const sent = server.seen.length;
+    const result = await flushPendingProfileWrite(token);
+
+    // B keeps its own base, meets the newer row, and the person is asked.
+    expect(result.status).toBe('conflict');
+    expect(server.seen.slice(sent).every((s) => s.expected === 1), 'no send aimed past the question').toBe(true);
+    expect(server.row.major, 'nothing overwritten').toBe('ECE');
+    expect(server.rev).toBe(4);
+    expect(journalOps().map((op) => op.opId), 'B is still there').toContain(b.opId);
+    const asked = readCurrentConflicts(['major'], token);
+    expect(asked.map((q) => q.key)).toEqual(['major']);
+    expect(asked[0].remote).toBe('ECE');
+    expect(asked[0].candidates.map((c) => c.value)).toContain('Physics');
+  });
+
   it('C reaches A\'s receipt through a still-live B', async () => {
     loadProfileMock.mockResolvedValue(cloud({ ...FULL, major: 'CS' }, 1));
     const token = captureOwnerToken();
