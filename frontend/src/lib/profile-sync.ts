@@ -766,10 +766,14 @@ function markProfileFieldsDirty(
  * for the window before the guard is registered or when enumeration fails:
  * another tab's unsent edit is not in this process's memory, and a reload
  * has no memory at all.
+ *
+ * `own`: only this tab's operations — its lineage's, which no other tab
+ * continues (M117).
  */
 export function getDirtyProfileKeys(
   token: OwnerToken,
   writer: string = DEFAULT_WRITER,
+  lineage: 'any' | 'own' = 'any',
 ): JournalResult<ProfileKey[]> {
   // BEFORE ensureScope and before the journal read — same reasoning as
   // recordProfileIntent. A superseded caller must learn nothing about the
@@ -784,9 +788,11 @@ export function getDirtyProfileKeys(
   // instead.
   const journal = readOutstandingOps();
   if (!journal.ok) return journal;
+  const mine = lineage === 'own' ? getJournalLineageId() : null;
   const out = new Set<ProfileKey>();
   for (const op of journal.value) {
     if (op.writer !== writer) continue;
+    if (mine !== null && op.lineage !== mine) continue;
     for (const field of op.fields) if (isProfileKey(field.key)) out.add(field.key);
   }
   return { ok: true, value: [...out] };
