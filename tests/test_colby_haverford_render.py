@@ -157,9 +157,11 @@ def test_the_shard_runs_install_chromium_for_both_schools():
 #
 # people_directory.html is the rendered directory with its #app[data-page]
 # JSON cut to the four fields the config reads (all 1,177 people kept) and the
-# 100-card DOM grid and page chrome dropped.
+# 100-card DOM grid and page chrome dropped. stored_faculty.json holds the
+# identity, contact and activity fields of the 238 colby_faculty rows of
+# data/processed/shards/colby.json on 2026-10-17, the curated July harvest.
 
-SHARD = Path(__file__).resolve().parents[1] / "data" / "processed" / "shards" / "colby.json"
+STORED = json.loads((FIXTURES / "colby" / "stored_faculty.json").read_text(encoding="utf-8"))
 
 
 @pytest.fixture
@@ -232,10 +234,9 @@ def test_colby_keeps_its_ladder_gate_and_home_departments(directory):
 def test_colby_rows_stored_before_the_render_keep_their_ids(directory):
     colby_faculty, _ = directory
     produced = {r["id"] for r in colby_faculty.fetch_and_normalize(deep=True)}
-    stored = {r["id"]: r["pi_name"] for r in json.loads(SHARD.read_text(encoding="utf-8"))
-              if r["source"] == "colby_faculty"
-              and r["metadata"]["first_seen_at"] < "2026-10-18"}
+    stored = {r["id"]: r["pi_name"] for r in STORED}
 
+    assert len(stored) == 238
     assert {stored[i] for i in set(stored) - produced} == {
         "Catherine Besteman", "Yuri Funahashi",            # now titled Emerita
         "Chaoran Wang", "Fang Wang", "Tiffany Miller",     # no longer listed
