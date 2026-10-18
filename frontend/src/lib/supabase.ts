@@ -2622,8 +2622,12 @@ export async function appendOutcomeNote(opportunityId: string,
     }
   });
 }
-/** Every outcome note of the current owner, newest first per target. A failed
- *  or malformed read throws; it is never an empty list. */
+const OUTCOME_NOTE_PAGE_SIZE = 1000;
+
+/** Every outcome note of the current owner, newest first per target, paged
+ *  past PostgREST's 1000-row default cap. A failed page throws; the read is
+ *  never a partial or empty list. A row this browser cannot show is skipped
+ *  alone rather than failing the list. */
 export async function getOutcomeNotes(token: OwnerToken): Promise<Map<string, OutcomeNote[]>> {
   const origin = { ...token };
   contactOwner(origin);
@@ -2631,18 +2635,27 @@ export async function getOutcomeNotes(token: OwnerToken): Promise<Map<string, Ou
   contactOwner(origin);
   if (!isOwnerTokenValid(origin, deviceId)) throw new OwnerMismatchError();
   if (!deviceId) throw new OutcomeNoteError('unavailable');
-  const { data, error } = await supabase.from('outcome_notes')
-    .select('note_id, device_id, opportunity_id, body, outcome, recorded_at')
-    .eq('device_id', deviceId)
-    .order('recorded_at', { ascending: false }).order('note_id', { ascending: false });
-  contactOwner(origin);
-  if (error || !Array.isArray(data)) throw new OutcomeNoteError('unavailable');
   const byTarget = new Map<string, OutcomeNote[]>();
-  for (const row of data) {
-    const note = parseOutcomeNote(row, deviceId);
-    byTarget.set(note.opportunityId, [...(byTarget.get(note.opportunityId) ?? []), note]);
+  const seen = new Set<string>();
+  for (let offset = 0; ; offset += OUTCOME_NOTE_PAGE_SIZE) {
+    const { data, error } = await supabase.from('outcome_notes')
+      .select('note_id, device_id, opportunity_id, body, outcome, recorded_at')
+      .eq('device_id', deviceId)
+      .order('recorded_at', { ascending: false }).order('note_id', { ascending: false })
+      .range(offset, offset + OUTCOME_NOTE_PAGE_SIZE - 1);
+    contactOwner(origin);
+    if (error || !Array.isArray(data)) throw new OutcomeNoteError('unavailable');
+    for (const row of data) {
+      let note: OutcomeNote;
+      try { note = parseOutcomeNote(row, deviceId); } catch { continue; }
+      // A note saved in another tab while paging pushes the rows down one,
+      // so the next page repeats the last row of this one.
+      if (seen.has(note.id)) continue;
+      seen.add(note.id);
+      byTarget.set(note.opportunityId, [...(byTarget.get(note.opportunityId) ?? []), note]);
+    }
+    if (data.length < OUTCOME_NOTE_PAGE_SIZE) return byTarget;
   }
-  return byTarget;
 }
 
 export interface StatusChange {
