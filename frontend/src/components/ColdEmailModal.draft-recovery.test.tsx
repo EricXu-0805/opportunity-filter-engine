@@ -442,6 +442,17 @@ describe('persistent cold-email draft recovery', () => {
       expect(screen.getByLabelText('When could you participate? (optional)')).toHaveValue('');
     });
 
+    it('after a draft restored from this browser with its paper chosen but not confirmed', async () => {
+      const view = mount({ target: paperTarget }); await ready(); edit(); choosePaper();
+      fireEvent.change(screen.getByLabelText('When could you participate? (optional)'), { target: { value: 'Possibly Tuesdays' } });
+      await close(view); clearCalls(); mount({ target: paperTarget });
+      await waitFor(() => expect(field('body')).toHaveValue(edits.body)); await act(async () => {});
+      expect(paper()).toHaveValue(JSON.stringify(['Verified sensor study', 2025]));
+      await startAgain(); expect(api.variants).toHaveBeenCalledOnce(); expectNewPanel();
+      expect(screen.getByTestId('cold-email-draft-status')).not.toHaveTextContent(/Restored/);
+      expect(field('requestLabel')).toHaveValue('');
+    });
+
     it('and the next AI draft is generated without the deleted draft\'s paper', async () => {
       mount({ target: paperTarget }); await ready(); await confirmAndApplyPaper();
       await startAgain();

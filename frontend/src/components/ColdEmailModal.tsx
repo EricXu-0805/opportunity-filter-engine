@@ -1377,7 +1377,10 @@ export default function ColdEmailModal({
     sendSessionRef.current += 1;
     // The panel's new session reads its inputs in this render, before the reset
     // cleanup runs, so it gets a new draft's panel here, not the deleted one's.
+    // The draft is no longer the restored one in that same render, or the
+    // restored-draft refresh runs once more and cancels the new draft's request.
     setPendingPanel(null); setContactState({ id: opportunityId, value: defaultEmailContactContext(), revision: 0, dirty: false });
+    setDraftRestored(false);
     setDraftResetKey(value => value + 1);
   }
 
