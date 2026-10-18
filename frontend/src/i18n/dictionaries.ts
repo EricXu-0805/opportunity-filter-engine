@@ -3662,6 +3662,7 @@ export const en = {
   },
   favorites: {
     title: 'Favorites',
+    listHeading: 'Saved opportunities',
     loading: 'Loading favorites...',
     unavailableWarning: '{count} saved item(s) could not be loaded right now.',
     empty: "You haven't starred any opportunities yet.",
@@ -9009,6 +9010,7 @@ export const zh = {
   },
   favorites: {
     title: '我的收藏',
+    listHeading: '收藏的机会',
     loading: '加载收藏中...',
     unavailableWarning: '有 {count} 条收藏暂时无法加载。',
     empty: '你还没有收藏任何机会。',
