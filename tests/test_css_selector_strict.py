@@ -53,8 +53,6 @@ _KNOWN_REJECTED: dict[str, str] = {
     **_cards("purdue_faculty", "ACCT ECON FIN MIS MKTG OBHR QM SCMO STRAT", _UNVERIFIED),
     **_cards("stanford_faculty", "COMPLIT FRENCHITAL GERMAN IBERLAC SLAVIC", _UNVERIFIED),
     **_cards("udel_faculty", "BME MSEG", _UNVERIFIED),
-    **_cards("utdallas_faculty", "ECE ECE2 PHYS BIO CHEM MATH PSY NSCI SLH ECON POLS "
-             "SOC CRIM GIS PA ATEC HIST PHIL LIT VPA", _UNVERIFIED),
     **_cards("utk_faculty", "ADPR CSW MABE SIS", _UNVERIFIED),
     **_cards("vt_faculty", "ENGE FREC GEOG SBIO", _UNVERIFIED),
 }

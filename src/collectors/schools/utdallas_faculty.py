@@ -90,8 +90,13 @@ _CS_SEL = {
 # (``<a href="mailto:poras@utdallas.edu"></a><a href="mailto:sxa176730@…">…</a>``)
 # — taking the first mailto there hands a student a different professor's
 # address, so only anchors that actually render an address qualify.
+# A card is a column whose own list holds a mailto:. soupsieve 3 rejects a
+# multi-step path inside :has() ("> ul a"), so the path moves into :is(), and the
+# column must hold no column: the whole roster sits in one wrapper column that
+# would otherwise match as a card too.
 _ECE_SEL = {
-    "card": 'div.wp-block-column:has(> ul.wp-block-list a[href^="mailto:"])',
+    "card": ('div.wp-block-column:not(:has(div.wp-block-column))'
+             ':has(a[href^="mailto:"]:is(div.wp-block-column > ul.wp-block-list a))'),
     "name": "ul.wp-block-list > li:first-child",
     "link": "ul.wp-block-list > li:first-child a",
     "title": "ul.wp-block-list > li:nth-of-type(2)",
@@ -214,8 +219,9 @@ _PROF_LADDER = {"require": r"profe?ss?or|prof\.|lecturer|instruct",
 
 # A hire announced before they arrive is listed with the start date inside the
 # name ("Ioulia Kovelman (Starts Fall 2026)") — not yet a contactable UT Dallas
-# lab, and the parenthetical would ride into pi_name.
-_NOT_ARRIVED = ':not(:has(.profile-name a:-soup-contains("(Starts")))'
+# lab, and the parenthetical would ride into pi_name. The name link is matched as
+# ``a:is(.profile-name a)`` because soupsieve 3 rejects ``:has(.profile-name a)``.
+_NOT_ARRIVED = ':not(:has(a:is(.profile-name a):-soup-contains("(Starts")))'
 
 # The NSM department pages stack several rosters on one URL, each an h2/h3
 # heading followed by its own ``.profiles-container`` grid — active ranks first,
