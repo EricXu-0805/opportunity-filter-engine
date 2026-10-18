@@ -474,6 +474,7 @@ export default function ColdEmailModal({
   const [draftRestored, setDraftRestored] = useState(false);
   const [metadataRefreshing, setMetadataRefreshing] = useState(false);
   const metadataRefreshingRef = useRef(false);
+  const restoredMetadataRef = useRef(false);
   const [savedVersions, setSavedVersions] = useState<ColdEmailDraftVersion[]>([]);
   const [versionBusy, setVersionBusy] = useState(false);
   const versionBusyRef = useRef(false);
@@ -946,7 +947,11 @@ export default function ColdEmailModal({
           setSendError(null);
         }
       }
-      if (preserveDraft && !recipientEditedRef.current) setRecipient(data.variants[0]?.recipient_email ?? '');
+      // Rebuilding a restored draft is also its metadata refresh, so that
+      // refresh must not send a second request once the banner closes.
+      const restoredRefresh = keepEditor && draftRestored && !restoredMetadataRef.current;
+      if (restoredRefresh) restoredMetadataRef.current = true;
+      if ((preserveDraft || restoredRefresh) && !recipientEditedRef.current) setRecipient(data.variants[0]?.recipient_email ?? '');
       if (!preserveDraft) setChatMessages([
         { role: 'assistant', content: t('coldEmail.generated', { count: data.variants.length }) },
       ]);
@@ -978,7 +983,7 @@ export default function ColdEmailModal({
         else if (!preserveDraft) setLoading(false);
       }
     }
-  }, [privateMode, privateContext, contactPolicyBlock, paperReadingCurrent, locale, requestProfile, requestContactContext, opportunityId, expectedTargetVersion, t, missingStudentName, captureDraftSession, reportTargetVersionFailure, reportReadingChange, setSendError]);
+  }, [privateMode, privateContext, contactPolicyBlock, paperReadingCurrent, locale, requestProfile, requestContactContext, opportunityId, expectedTargetVersion, t, missingStudentName, draftRestored, captureDraftSession, reportTargetVersionFailure, reportReadingChange, setSendError]);
 
   type WritingIntent = { kind: 'variants'; preserveDraft?: boolean; keepEditor?: boolean }
     | { kind: 'ai'; style: EmailStyle }
@@ -1210,7 +1215,6 @@ export default function ColdEmailModal({
     return () => { live = false; };
   }, [isOpen, sourceReady, restoredSources, profileFingerprint, contactSerialized, expectedTargetVersion]);
 
-  const restoredMetadataRef = useRef(false);
   useEffect(() => {
     if (!draftRestored) { restoredMetadataRef.current = false; return; }
     if (!isOpen || !sourceReady || contextDirty || profileChanged || !paperReadingCurrent || restoredMetadataRef.current) return;
@@ -1222,7 +1226,11 @@ export default function ColdEmailModal({
   const panelSnapshotChanged = useCallback((snapshot: EmailContactDraftSnapshot | null) => {
     setPanelSavable(snapshot !== null);
     if (snapshot?.pending && !contextDirtyRef.current) retireContactDraftRef.current();
-    if (snapshot) setPendingPanel({ ...snapshot, opportunityId });
+    // The paper source is read back only with a chosen paper. Without one, a
+    // target still loading on open changes nothing saved, so it writes nothing.
+    if (snapshot) setPendingPanel(previous => previous && !previous.fields.paperKey && !snapshot.fields.paperKey
+      && JSON.stringify({ ...previous, paperSourceKey: '' }) === JSON.stringify({ ...snapshot, opportunityId, paperSourceKey: '' })
+      ? previous : { ...snapshot, opportunityId });
     else markDraftUnsaved('too_large');
   }, [markDraftUnsaved, opportunityId]);
   const supplementSnapshotChanged = useCallback((snapshot: ResumeSupplementDraftSnapshot | null) => {
@@ -2496,7 +2504,8 @@ export default function ColdEmailModal({
                 </div>}
 
                 <div className={`${styles.editorFields} px-5 pb-4 space-y-4`} data-testid="cold-email-editor-fields">
-                  {!privateMode && <EmailContactContextPanel initialDraft={pendingPanel} onDraftSnapshotChange={panelSnapshotChanged} opportunity={target} targetKey={expectedTargetVersion ?? targetFingerprint} reviewRequested={readingReview} context={requestContactContext} resetKey={`${opportunityId}:${isOpen}:${draftResetKey}`}
+                  {!privateMode && <EmailContactContextPanel initialDraft={pendingPanel} onDraftSnapshotChange={panelSnapshotChanged} opportunity={target} targetKey={expectedTargetVersion ?? targetFingerprint}
+                    targetLoading={!targetReady || (!!targetRefresh && targetRefresh.status !== 'ready')} reviewRequested={readingReview} context={requestContactContext} resetKey={`${opportunityId}:${isOpen}:${draftResetKey}`}
                     language={locale === 'zh' ? 'zh' : 'en'} onDraftChange={retireContactDraft} onApply={applyContactContext} />}
                   {!privateMode && <details className="rounded-xl border border-gray-200 bg-gray-50 p-3" data-testid="cold-email-supplement" open={supplementExpanded}
                     onToggle={(event) => { setSupplementExpanded(event.currentTarget.open); if (event.currentTarget.open && !supplementSession) setSupplementSession({ owner: captureOwnerToken(), targetId: opportunityId, inputKey: incomingProfileKey }); }}>

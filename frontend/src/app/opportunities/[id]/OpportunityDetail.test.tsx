@@ -11,6 +11,7 @@ import type { Opportunity, ProfileData } from '@/lib/types';
 import type { ProfileHydration } from '@/lib/profile-sync';
 import type { ProfileRefreshState } from '@/lib/use-profile-refresh';
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
+import axe from 'axe-core';
 
 // Echoing only the key made every interpolated value invisible: "Source:
 // jhu_faculty" and "Source: Johns Hopkins Faculty" both rendered as
@@ -273,6 +274,22 @@ describe('OpportunityDetail — MVP capability surface', () => {
     expect(screen.queryByTestId('opportunity-chatbot')).not.toBeInTheDocument();
     expect(screen.queryByTestId('chat-drawer')).not.toBeInTheDocument();
     expect(screen.queryByTestId('professor-follow')).not.toBeInTheDocument();
+  });
+});
+
+// M59: the root layout already wraps every page in <main id="main-content">,
+// the skip link's target. A second <main> here was, to axe's 390 px scan, a
+// main nested in a landmark, a duplicate main, and two mains with no name to
+// tell them apart.
+describe('OpportunityDetail — landmarks under the layout\'s main', () => {
+  it('adds no main landmark of its own', async () => {
+    mockHookState.current = baseHookResult();
+    render(<main id="main-content"><OpportunityDetail opp={opp} /></main>);
+    const { violations } = await axe.run(document, { runOnly: { type: 'rule', values: [
+      'landmark-main-is-top-level', 'landmark-no-duplicate-main', 'landmark-unique',
+    ] } });
+    expect(violations.map(v => `${v.id}: ${v.nodes.map(n => n.target.join(' ')).join(', ')}`)).toEqual([]);
+    expect(screen.getAllByRole('main').map(main => main.id)).toEqual(['main-content']);
   });
 });
 

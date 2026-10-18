@@ -1,6 +1,7 @@
 import type { EmailTargetConditions, EmailConditionIssue } from './email-target-conditions';
 import { assertProfileInput, ProfileInputError } from './profile-input';
 import type { EmailTextSelection } from './email-revision';
+import type { MatchReasonKey } from './match-reasons';
 import { validateResumeMaster } from './resume-master';
 import type {
   ProfileData,
@@ -606,6 +607,9 @@ export interface MatchExplanationResponse {
   bucket: string;
   reasons_fit: string[];
   reasons_gap: string[];
+  /** Reason keys (see MatchResult.reasons_fit_keys); absent on older backends. */
+  reasons_fit_keys?: (MatchReasonKey | null)[] | null;
+  reasons_gap_keys?: (MatchReasonKey | null)[] | null;
   eligibility_score: number;
   readiness_score: number;
   upside_score: number;

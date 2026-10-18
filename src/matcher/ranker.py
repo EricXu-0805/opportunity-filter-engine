@@ -188,6 +188,10 @@ class MatchResult:
     # card's lead line for top-K results). None outside the reranked window or
     # when the rerank is unavailable — the rule reasons are always the floor.
     ai_reason: str | None = None
+    # The rerank's sentence for a candidate it rated low, appended to
+    # reasons_gap. Marked so the served reason keys (M107) leave model output
+    # unkeyed: it is never rendered from our translation table.
+    ai_gap_reason: str | None = None
     # Canonical unknown semantics: the inputs whose missing/unknown state left
     # this decision less certain (dotted "profile.*" / "opportunity.*" names).
     # Unknown NEVER silently becomes eligible/ineligible — each listed field was

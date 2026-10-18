@@ -292,7 +292,11 @@ export default function FavoritesPage() {
 
       {opportunities.length === 0 && !error && unavailableCount === 0 && customStorage.status === 'ready' ? (
         <FavoritesEmptyState t={t} />
-      ) : (
+      ) : (<>
+        {/* The card titles are h3. The h2s above head other sections (saved
+            searches, private imports) and may not render; this one heads the
+            cards. Outside the space-y list, so no gap. */}
+        <h2 className="sr-only">{t('favorites.listHeading')}</h2>
         <div className="space-y-4">
           {error && (
             <div role="alert" className="flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
@@ -344,7 +348,7 @@ export default function FavoritesPage() {
             />
           ))}
         </div>
-      )}
+      </>)}
 
       {RELEASE_SCOPE.compare && selectionMode && (
         <SelectionFooter

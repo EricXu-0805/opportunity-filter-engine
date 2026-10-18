@@ -25,6 +25,9 @@ export interface CanonicalMatchSummary {
   bucket: string;
   reasons_fit: string[];
   reasons_gap: string[];
+  /** Reason keys for the zh lines (M107); absent from an older backend. */
+  reasons_fit_keys?: unknown;
+  reasons_gap_keys?: unknown;
   explanation: string;
   method: 'llm' | 'local';
   /**

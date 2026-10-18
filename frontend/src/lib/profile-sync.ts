@@ -47,6 +47,7 @@ import {
   getJournalLineageId,
   clearJournal,
   appendRebaseReceipt,
+  compactRebaseReceipts,
   encodeJournalValue,
   type JournalValue,
   readOutstandingOps,
@@ -714,7 +715,7 @@ export function recordProfileIntent(
     ...(supersedes.length > 0 ? { supersedes } : {}),
   }, token);
   if (!op) return false;
-  markProfileFieldsDirty(effective, token, writer);
+  markProfileFieldsDirty(effective, token, writer, op);
   return true;
 }
 
@@ -726,6 +727,8 @@ function markProfileFieldsDirty(
   keys: readonly ProfileKey[],
   token: OwnerToken,
   writer: string = DEFAULT_WRITER,
+  /** The operation just recorded for these keys, when there is one. */
+  recorded?: JournalOp,
 ): void {
   ensureScope(token);
   const confirmed = readProfileSyncEnvelope()?.confirmed ?? null;
@@ -739,9 +742,14 @@ function markProfileFieldsDirty(
       existing.writers.add(writer);
       continue;
     }
+    // A chain starts where its first operation says it did: what THIS tab
+    // showed. The shared confirmed row may already hold another tab's save,
+    // and a second keystroke carrying that as its base turns the server's
+    // refusal into "nothing changed here" and a silent retry over it (M115).
+    const field = recorded?.fields.find((f) => f.key === key);
     fieldIntents.set(key, {
-      baseValue: base[key],
-      baseRevision: confirmed?.revision ?? 0,
+      baseValue: field ? (field.base.present ? field.base.value : undefined) : base[key],
+      baseRevision: field ? recorded!.baseRevision : confirmed?.revision ?? 0,
       version: 1,
       writers: new Set([writer]),
       hasUnstaged: false,
@@ -859,6 +867,101 @@ function rowNeverCreated(env: ProfileSyncEnvelope | null, token: OwnerToken): bo
     && lastLoadSource?.scope === scopeOf(token) && lastLoadSource.source === 'cloud-absent';
 }
 
+/** Which keys each operation has been ANSWERED for, by the receipts among
+ *  `ops`: operation id -> the keys a receipt naming it decides. */
+function answeredOps(ops: readonly JournalOp[]): Map<string, Set<string>> {
+  // What a person has already ANSWERED. A receipt speaks for every operation
+  // it names, in every field it decides — across lineages, which is the whole
+  // point of answering a disagreement between two tabs. Honoured here, before
+  // any of those operations are cleaned up: the decision is the receipt, and
+  // removing what it answers is housekeeping that may fail or come much later.
+  const answered = new Map<string, Set<string>>();
+  for (const op of ops) {
+    if (op.mode !== 'resolve') continue;
+    for (const id of op.resolves ?? []) {
+      const forKeys = answered.get(id) ?? new Set<string>();
+      for (const k of Object.keys(op.decisions ?? {})) forKeys.add(k);
+      answered.set(id, forKeys);
+    }
+  }
+  return answered;
+}
+
+/**
+ * The chains of edits asking for `key`: one per origin (a tab's document),
+ * in its own sequence order, and one per recorded answer, each with its
+ * latest value. What the planner sends or asks about, and the candidates of
+ * every question about the field: built anywhere else, the question an
+ * answer is checked against differs from the one it answers.
+ */
+function keyChains(
+  ops: readonly JournalOp[],
+  key: string,
+  answered: ReadonlyMap<string, ReadonlySet<string>>,
+  byId: ReadonlyMap<string, JournalOp>,
+) {
+  // One chain per origin, in that origin's own sequence order.
+  const byOrigin = new Map<string, { fields: JournalField[]; ops: JournalOp[] }>();
+  for (const op of ops) {
+    const field = op.fields.find((f) => f.key === key);
+    if (!field) continue;
+    if (answered.get(op.opId)?.has(key)) continue; // spoken for by a receipt
+    // A PENDING-BOUND answer is not a generic edit. It reaches the row only
+    // by matching its exact tuple in applyPendingResolutions; letting its
+    // fields into the plan as an ordinary value chain means a stale one —
+    // the row moved on and it was correctly refused — competes with the
+    // answer to the CURRENT question, and the person can never close it.
+    // PER KEY, not per operation. One receipt can legitimately answer key A
+    // through the operations it acknowledges (`resolves`) and key B through
+    // the pending instance (`resolvesPending.keyVersions`). Only the
+    // tuple-bound key is excluded here: skipping the whole receipt would
+    // drop A's perfectly good answer along with B's stale one.
+    if (op.resolvesPending?.keyVersions[key] !== undefined) continue;
+    // A receipt is its OWN chain, never folded into the document that wrote
+    // it. Otherwise answering one disagreement would quietly swallow an
+    // unrelated edit made in the same tab — later in sequence, never part
+    // of the question, and never answered by anyone.
+    const chainKey = op.mode === 'resolve' ? `receipt:${op.opId}` : op.originId;
+    const chain = byOrigin.get(chainKey) ?? { fields: [], ops: [] };
+    chain.fields.push(field);
+    chain.ops.push(op);
+    byOrigin.set(chainKey, chain);
+  }
+  return [...byOrigin.values()].map((chain) => {
+    const ordered = chain.ops
+      .map((op, i) => ({ op, field: chain.fields[i] }))
+      .sort((a, b) => a.op.seq - b.op.seq);
+    // An operation this chain explicitly REPLACES is gone from it — not
+    // merely later in it. "Keep what I typed" records a new intent against
+    // what is stored today and says which operation it supersedes; letting
+    // the replaced one keep contributing its base would send the answer
+    // against the revision the user has already looked at and rejected, and
+    // collide all over again.
+    const replaced = new Set(ordered.flatMap((o) => [...replacedThroughChain(o.op, byId)]));
+    const order = ordered.filter((o) => !replaced.has(o.op.opId));
+    if (order.length === 0) return null;
+    return {
+      // Latest desired, earliest base: the user's most recent intention,
+      // resolved against where their editing actually began. Within one
+      // origin the two are usually the same value anyway — recordProfileIntent
+      // carries a field's first base forward through the chain — so this is
+      // belt-and-braces for a chain assembled any other way (a draft
+      // restored across a reload, a future writer).
+      desired: order[order.length - 1].field.desired,
+      baseValue: order[0].field.base.present ? order[0].field.base.value : undefined,
+      baseRevision: Math.min(...order.map((o) => o.op.baseRevision)),
+      // Every operation the chain OWNS, replaced ones included: they are
+      // acknowledged together, so a superseded keystroke is not left behind
+      // to be re-sent as if nobody had answered it.
+      opIds: ordered.map((o) => o.op.opId),
+      lineage: order[0].op.lineage,
+      supersedes: new Set(ordered.flatMap((o) => [...replacedThroughChain(o.op, byId)])),
+      additive: order.every((o) => o.op.mode === 'add-skills'),
+      newest: order[order.length - 1].op,
+    };
+  }).filter((c): c is NonNullable<typeof c> => c !== null);
+}
+
 function planKeysFromJournal(
   askedOps: readonly JournalOp[],
   askedKeys: readonly string[],
@@ -885,83 +988,10 @@ function planKeysFromJournal(
   const keys = unitAsked ? [...new Set([...askedKeys, ...RESUME_AND_COURSES])] : askedKeys;
   const byId = new Map(ops.map((op) => [op.opId, op]));
   const everyById = new Map(everyOp.map((op) => [op.opId, op]));
-  // What a person has already ANSWERED. A receipt speaks for every operation
-  // it names, in every field it decides — across lineages, which is the whole
-  // point of answering a disagreement between two tabs. Honoured here, before
-  // any of those operations are cleaned up: the decision is the receipt, and
-  // removing what it answers is housekeeping that may fail or come much later.
-  const answered = new Map<string, Set<string>>();
-  for (const op of ops) {
-    if (op.mode !== 'resolve') continue;
-    for (const id of op.resolves ?? []) {
-      const forKeys = answered.get(id) ?? new Set<string>();
-      for (const k of Object.keys(op.decisions ?? {})) forKeys.add(k);
-      answered.set(id, forKeys);
-    }
-  }
+  const answered = answeredOps(ops);
   for (const key of keys) {
-    // One chain per origin, in that origin's own sequence order.
-    const byOrigin = new Map<string, { fields: JournalField[]; ops: JournalOp[] }>();
-    for (const op of ops) {
-      const field = op.fields.find((f) => f.key === key);
-      if (!field) continue;
-      if (answered.get(op.opId)?.has(key)) continue; // spoken for by a receipt
-      // A PENDING-BOUND answer is not a generic edit. It reaches the row only
-      // by matching its exact tuple in applyPendingResolutions; letting its
-      // fields into the plan as an ordinary value chain means a stale one —
-      // the row moved on and it was correctly refused — competes with the
-      // answer to the CURRENT question, and the person can never close it.
-      // PER KEY, not per operation. One receipt can legitimately answer key A
-      // through the operations it acknowledges (`resolves`) and key B through
-      // the pending instance (`resolvesPending.keyVersions`). Only the
-      // tuple-bound key is excluded here: skipping the whole receipt would
-      // drop A's perfectly good answer along with B's stale one.
-      if (op.resolvesPending?.keyVersions[key] !== undefined) continue;
-      // A receipt is its OWN chain, never folded into the document that wrote
-      // it. Otherwise answering one disagreement would quietly swallow an
-      // unrelated edit made in the same tab — later in sequence, never part
-      // of the question, and never answered by anyone.
-      const chainKey = op.mode === 'resolve' ? `receipt:${op.opId}` : op.originId;
-      const chain = byOrigin.get(chainKey) ?? { fields: [], ops: [] };
-      chain.fields.push(field);
-      chain.ops.push(op);
-      byOrigin.set(chainKey, chain);
-    }
-    if (byOrigin.size === 0) continue;
-
-    const chains = [...byOrigin.values()].map((chain) => {
-      const ordered = chain.ops
-        .map((op, i) => ({ op, field: chain.fields[i] }))
-        .sort((a, b) => a.op.seq - b.op.seq);
-      // An operation this chain explicitly REPLACES is gone from it — not
-      // merely later in it. "Keep what I typed" records a new intent against
-      // what is stored today and says which operation it supersedes; letting
-      // the replaced one keep contributing its base would send the answer
-      // against the revision the user has already looked at and rejected, and
-      // collide all over again.
-      const replaced = new Set(ordered.flatMap((o) => [...replacedThroughChain(o.op, byId)]));
-      const order = ordered.filter((o) => !replaced.has(o.op.opId));
-      if (order.length === 0) return null;
-      return {
-        // Latest desired, earliest base: the user's most recent intention,
-        // resolved against where their editing actually began. Within one
-        // origin the two are usually the same value anyway — recordProfileIntent
-        // carries a field's first base forward through the chain — so this is
-        // belt-and-braces for a chain assembled any other way (a draft
-        // restored across a reload, a future writer).
-        desired: order[order.length - 1].field.desired,
-        baseValue: order[0].field.base.present ? order[0].field.base.value : undefined,
-        baseRevision: Math.min(...order.map((o) => o.op.baseRevision)),
-        // Every operation the chain OWNS, replaced ones included: they are
-        // acknowledged together, so a superseded keystroke is not left behind
-        // to be re-sent as if nobody had answered it.
-        opIds: ordered.map((o) => o.op.opId),
-        lineage: order[0].op.lineage,
-        supersedes: new Set(ordered.flatMap((o) => [...replacedThroughChain(o.op, byId)])),
-        additive: order.every((o) => o.op.mode === 'add-skills'),
-        newest: order[order.length - 1].op,
-      };
-    }).filter((c): c is NonNullable<typeof c> => c !== null);
+    const chains = keyChains(ops, key, answered, byId);
+    if (chains.length === 0) continue;
 
     const allOpIds = chains.flatMap((c) => c.opIds);
     if (chains.length === 1) {
@@ -1390,6 +1420,9 @@ function ackConfirmedJournalOpsLocked(
   // unconfirmed fields together still describes one coherent moment.
   const rowAtRevision: Record<string, JournalValue> = {};
   for (const key of Object.keys(stored)) rowAtRevision[key] = encodeJournalValue(stored, key);
+  // Room first: what nothing can reach any more goes before more is written,
+  // so a device that reached the cap under an earlier build recovers here.
+  compactRebaseReceipts(token);
   for (const opId of landed) {
     const op = byId.get(opId);
     if (!op) continue;
@@ -1412,19 +1445,11 @@ function ackConfirmedJournalOpsLocked(
       return false;
     }
   }
-  // NOTHING is compacted here. Dropping a receipt requires proving no
-  // descendant can still reach it, and journal appends deliberately do not
-  // take this lock — so a writer that read the journal before the settle can
-  // append such a descendant after any scan, at which point the receipt it
-  // needs is gone and the user's own next keystroke becomes a conflict.
-  //
-  // Closing that needs a real writer/compactor fence: an append must commit
-  // only if it observes a stable epoch before AND after its own write, and
-  // the compactor must fence, rescan, delete and publish the next epoch. That
-  // is the shared journal lease, which this slice does not build. Until it
-  // exists the receipts are bounded by MAX_REBASE_RECEIPTS and the coordinator
-  // FAILS CLOSED at the cap — a visible, retryable stop, never a silent
-  // conflict manufactured out of a deleted acknowledgement.
+  // The settle also removes the receipts it makes unreachable — these ones
+  // too, unless an edit made while they were in flight names them. Appends do
+  // not take this lock; compactRebaseReceipts says why its rule is safe
+  // anyway, and what the person sees in the one case it bounds rather than
+  // closes.
   return settleJournalOps(landed, token);
 }
 
@@ -4518,15 +4543,8 @@ function conflictPayload(
   // receipt that answered it for `major` says nothing about the `college` half
   // of the same operation — that disagreement is still open and still has to
   // be askable.
-  const answeredOps = new Map<string, Set<string>>();
-  for (const op of ops) {
-    if (op.mode !== 'resolve') continue;
-    for (const decidedKey of Object.keys(op.decisions ?? {})) {
-      const forKey = answeredOps.get(decidedKey) ?? new Set<string>();
-      for (const id of op.resolves ?? []) forKey.add(id);
-      answeredOps.set(decidedKey, forKey);
-    }
-  }
+  const answered = answeredOps(ops);
+  const byId = new Map(ops.map((op) => [op.opId, op]));
   const revision = remoteRevision;
 
   return markNewerBuildQuestion(keys.map((key) => {
@@ -4537,19 +4555,15 @@ function conflictPayload(
     // collapsed to, and every operation gets relabelled with the current
     // document's lineage, which is exactly the provenance a person needs in
     // order to tell two tabs apart.
-    const grouped = new Map<string, ProfileConflictCandidate>();
-    for (const op of ops) {
-      if (op.mode === 'resolve') continue;
-      if (answeredOps.get(key)?.has(op.opId)) continue;
-      const field = op.fields.find((f) => f.key === key);
-      if (!field) continue;
-      const value = field.desired.present ? field.desired.value : undefined;
-      const groupKey = `${op.lineage}\u0000${stableStringify(value)}`;
-      const held = grouped.get(groupKey);
-      if (held) held.opIds.push(op.opId);
-      else grouped.set(groupKey, { value, lineage: op.lineage, opIds: [op.opId] });
-    }
-    const candidates = [...grouped.values()];
+    // One per chain, as the planner sends them, a recorded answer included:
+    // a question read any other way is not the one published, so every
+    // answer to it is stale, and an answer the row refused would be asked
+    // about as nobody's edit, which no later answer can name.
+    const candidates: ProfileConflictCandidate[] = keyChains(ops, key, answered, byId).map((c) => ({
+      value: c.desired.present ? c.desired.value : undefined,
+      lineage: c.lineage,
+      opIds: c.opIds,
+    }));
     return {
       key,
       remote: remoteRec[key],

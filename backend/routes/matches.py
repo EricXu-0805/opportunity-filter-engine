@@ -107,6 +107,7 @@ from src.matcher.ranker import (
     served_sort_key,
     without_web_addresses,
 )
+from src.matcher.reason_keys import reason_key, reason_keys
 from src.recommender.cold_email import filter_course_entries
 from src.recommender.resume_advisor import analyze_gaps
 from src.student_evidence import (
@@ -786,6 +787,7 @@ def llm_rerank(profile, results, opportunities_by_id, top_k=_LLM_RERANK_TOPK,
             if llm["s"] < _LLM_REASON_POSITIVE_MIN:
                 if reason not in r.reasons_gap:
                     r.reasons_gap.append(reason)
+                    r.ai_gap_reason = reason
             else:
                 r.ai_reason = reason
 
@@ -1676,7 +1678,11 @@ async def _get_or_compute_snapshot(profile_dict: dict, llm: bool) -> _MatchSnaps
 def _match_result_response(
     result: MatchResult,
     opportunities_by_id: dict[str, dict],
+    view_rows: Mapping[str, _MatchViewRow] | None = None,
 ) -> MatchResultResponse:
+    row = (view_rows or {}).get(result.opportunity_id)
+    reasons_fit = redact_embedded_emails(result.reasons_fit)
+    reasons_gap = redact_embedded_emails(result.reasons_gap)
     payload = _public_match_payload({
         "opportunity_id": result.opportunity_id,
         "eligibility_score": result.eligibility_score,
@@ -1684,8 +1690,9 @@ def _match_result_response(
         "upside_score": result.upside_score,
         "final_score": result.final_score,
         "bucket": result.bucket,
-        "reasons_fit": result.reasons_fit,
-        "reasons_gap": result.reasons_gap,
+        "reasons_fit": reasons_fit,
+        "reasons_gap": reasons_gap,
+        **_served_reason_keys(result, reasons_fit, reasons_gap, row.record if row else None),
         "next_steps": result.next_steps,
         "ai_reason": result.ai_reason,
         "unknowns": result.unknowns,
@@ -1723,6 +1730,26 @@ def _search_matcher(term: str) -> Callable[[str], bool]:
 @lru_cache(maxsize=1 << 16)
 def _served_fit_reason(reason: str) -> str:
     return redact_embedded_emails(reason)
+
+
+def _served_reason_keys(
+    result: MatchResult,
+    reasons_fit: list[str],
+    reasons_gap: list[str],
+    record: dict | None,
+) -> dict[str, list]:
+    """The reason keys (M107) for the served, redacted reason lines."""
+    return {
+        "reasons_fit_keys": reason_keys(reasons_fit, "fit", record=record),
+        "reasons_gap_keys": [
+            _exclusion_gap_key(reason) or key
+            for reason, key in zip(
+                reasons_gap,
+                reason_keys(reasons_gap, "gap", model_reason=result.ai_gap_reason),
+                strict=True,
+            )
+        ],
+    }
 
 
 def _calendar_days_until(row: _MatchViewRow, today: date) -> int | None:
@@ -2055,7 +2082,7 @@ async def get_matches(
             )
     page = visible_results[page_offset:page_offset + limit]
     cards = _snapshot_cards(snap, page)
-    page_response = [_match_result_response(r, cards) for r in page]
+    page_response = [_match_result_response(r, cards, snap.view_rows) for r in page]
     next_offset = page_offset + len(page_response)
     has_more = next_offset < len(visible_results)
 
@@ -2159,7 +2186,7 @@ async def get_match_view(
     )
     page = filtered[page_offset:page_offset + body.page_size]
     cards = _snapshot_cards(snap, page)
-    page_response = [_match_result_response(result, cards) for result in page]
+    page_response = [_match_result_response(result, cards, snap.view_rows) for result in page]
     next_offset = page_offset + len(page_response)
     has_more = next_offset < len(filtered)
 
@@ -2360,7 +2387,36 @@ def _exclusion_gap_text(excluded_reason: str, opp: dict) -> str:
         # A hedged reason ends "— not confirmed on the program page": lead
         # with the exclusion so the line keeps one dash.
         return f"Excluded from your results: {reason[0].lower()}{reason[1:]}"
-    return _EXCLUSION_GAP_TEXT.get(excluded_reason, "Not part of your current results")
+    return _EXCLUSION_GAP_TEXT.get(excluded_reason, _EXCLUSION_GAP_DEFAULT)
+
+
+_EXCLUSION_GAP_DEFAULT = "Not part of your current results"
+_EXCLUSION_GAP_KEYS = {text: f"excluded_{code}" for code, text in _EXCLUSION_GAP_TEXT.items()}
+_EXCLUSION_SUFFIX = " — excluded from your results"
+_EXCLUSION_PREFIX = "Excluded from your results: "
+
+
+def _exclusion_gap_key(line: str) -> dict | None:
+    """The reason key (M107) of a line `_exclusion_gap_text` wrote, or None.
+
+    A citizenship exclusion carries the key of the restriction it wraps, so
+    the line is translated with the same hedge the ranker's line has.
+    """
+    if line == _EXCLUSION_GAP_DEFAULT:
+        return {"key": "excluded_other", "params": {}}
+    key = _EXCLUSION_GAP_KEYS.get(line)
+    if key is not None:
+        return {"key": key, "params": {}}
+    restriction = ""
+    if line.endswith(_EXCLUSION_SUFFIX):
+        restriction = line[:-len(_EXCLUSION_SUFFIX)]
+    elif line.startswith(_EXCLUSION_PREFIX) and len(line) > len(_EXCLUSION_PREFIX):
+        rest = line[len(_EXCLUSION_PREFIX):]
+        restriction = rest[0].upper() + rest[1:]
+    inner = reason_key(restriction, "gap") if restriction else None
+    if inner is None or not inner["key"].startswith("citizenship_"):
+        return None
+    return {"key": "excluded_restriction", "params": {"restriction": inner["key"]}}
 
 
 @router.post("/matches/{opportunity_id}/explain")
@@ -2401,10 +2457,16 @@ async def get_match_explanation(
     snap = await _get_or_compute_snapshot(profile_dict, use_llm)
     result = snap.by_id.get(opportunity_id)
     excluded_reason = None
+    # The reason keys are read from the full record, as /matches reads them:
+    # the research-summary line is the record's headline, not the card's.
+    record = opp
     if result is not None:
         # Render/explain from the exact corpus generation that produced the
         # visible result, even if a data refresh landed between lookup and
         # snapshot resolution.
+        row = snap.view_rows.get(opportunity_id)
+        if row is not None and row.record is not None:
+            record = row.record
         opp = _snapshot_cards(snap, [result]).get(opportunity_id, opp)
     else:
         # Not in the profile's result universe. Same shared hard filter the
@@ -2451,6 +2513,7 @@ async def get_match_explanation(
         "bucket": result.bucket,
         "reasons_fit": public_reasons_fit,
         "reasons_gap": public_reasons_gap,
+        **_served_reason_keys(result, public_reasons_fit, public_reasons_gap, record),
         "eligibility_score": result.eligibility_score,
         "readiness_score": result.readiness_score,
         "upside_score": result.upside_score,

@@ -1,7 +1,10 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
+import { LanguageProvider } from '@/i18n/client';
 import type { Opportunity } from '@/lib/types';
 import BucketCards from './BucketCards';
+
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 import type { CompareRow } from './scores';
 
 const FACTORS = {
@@ -62,6 +65,26 @@ describe('BucketCards — canonical match truth', () => {
     expect(screen.getByText('Canonical coursework gap')).toBeInTheDocument();
     expect(screen.getByText('AI-adjusted')).toBeInTheDocument();
     expect(screen.queryByText('7%')).not.toBeInTheDocument();
+  });
+
+  it('renders keyed reasons in Chinese on the zh interface and leaves unkeyed ones as served (M107)', () => {
+    const row = readyRow();
+    row.match = {
+      ...row.match!,
+      reasons_fit: ['Paid opportunity', 'Canonical strong ML background'],
+      reasons_fit_keys: [{ key: 'paid', params: {} }, null],
+      reasons_gap: [
+        'Our listing suggests junior, senior students — not confirmed on the program page',
+      ],
+      reasons_gap_keys: [{ key: 'year_listing_targets', params: { years: 'junior, senior' } }],
+    };
+    render(<LanguageProvider initialLocale="zh"><BucketCards rows={[row]} /></LanguageProvider>);
+    expect(screen.getByText('有报酬')).toBeInTheDocument();
+    expect(screen.getByText('Canonical strong ML background')).toBeInTheDocument();
+    expect(screen.getByText('我们列表里的信息提示面向大三、大四学生 —— 项目页面未确认')).toBeInTheDocument();
+    cleanup();
+    render(<BucketCards rows={[row]} />);
+    expect(screen.getByText('Paid opportunity')).toBeInTheDocument();
   });
 
   it('states that the remaining decision factors are estimates when canonical explanation fails', () => {

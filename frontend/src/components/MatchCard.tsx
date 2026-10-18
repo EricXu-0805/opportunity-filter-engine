@@ -36,6 +36,7 @@ import type { MatchResult, ProfileData } from '@/lib/types';
 import type { InteractionType } from '@/lib/supabase';
 import type { MatchVerdict, MatchFeedbackContext } from '@/lib/match-feedback';
 import { useT } from '@/i18n/client';
+import { localizeMatchReasons } from '@/lib/match-reasons';
 import { getIntlBadge, getPaidBadge } from '@/lib/badge-utils';
 import { sourceLabel, typeLabel } from '@/app/results/types';
 import { homeSchoolOf, scopeChipFor, type ScopeChip } from '@/lib/discovery-scope';
@@ -219,7 +220,10 @@ export default function MatchCard({ detailHref, isViewed, onViewOpportunity, mat
     return true;
   });
 
-  const { t } = useT();
+  const { t, locale } = useT();
+  // The served English lines, or the zh lines rendered from their keys (M107).
+  const fitLines = localizeMatchReasons(locale, match.reasons_fit, match.reasons_fit_keys);
+  const gapLines = localizeMatchReasons(locale, match.reasons_gap, match.reasons_gap_keys);
 
   const { opportunity: opp } = match;
   // Three kinds, not two. `!isFaculty` treated an unreviewed source_type as a
@@ -639,13 +643,13 @@ export default function MatchCard({ detailHref, isViewed, onViewOpportunity, mat
 
         {expanded && (
           <div className="px-4 sm:px-6 pb-5 sm:pb-6 space-y-5 animate-in">
-            {match.reasons_fit.length > 0 && (
+            {fitLines.length > 0 && (
               <div>
                 <h4 className="text-xs font-semibold text-emerald-700 uppercase tracking-widest mb-2.5">
                   {t('card.whyItFits')}
                 </h4>
                 <ul className="space-y-2">
-                  {match.reasons_fit.map((s, i) => (
+                  {fitLines.map((s, i) => (
                     <li key={i} className="flex items-start gap-2.5 text-[13px] text-gray-600 leading-relaxed">
                       <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
                       <span>{s}</span>
@@ -655,13 +659,13 @@ export default function MatchCard({ detailHref, isViewed, onViewOpportunity, mat
               </div>
             )}
 
-            {match.reasons_gap.length > 0 && (
+            {gapLines.length > 0 && (
               <div>
                 <h4 className="text-xs font-semibold text-amber-700 uppercase tracking-widest mb-2.5">
                   {t('card.potentialConcerns')}
                 </h4>
                 <ul className="space-y-2">
-                  {match.reasons_gap.map((c, i) => (
+                  {gapLines.map((c, i) => (
                     <li key={i} className="flex items-start gap-2.5 text-[13px] text-gray-600 leading-relaxed">
                       <AlertTriangle className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
                       <span>{c}</span>

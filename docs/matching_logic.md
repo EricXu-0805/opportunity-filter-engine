@@ -160,6 +160,13 @@ matcher version, llm flag). Enforced by the snapshot pipeline in
   bucket, reasons_fit, reasons_gap, next_steps, ai_reason, unknowns`; the
   response carries `matcher_version` and the count invariant
   `total == high_priority + good_match + reach` (the pageable universe).
+- `reasons_fit_keys` / `reasons_gap_keys` (M107, /matches, /matches/view and
+  explain): one `{key, params}` per reason line, index-aligned, null where no
+  template wrote the line (the rerank's own gap sentence) or the line is
+  longer than 2,000 characters (a long profile entry echoed whole). They are matched
+  from the served English lines (`src/matcher/reason_keys.py`), which stay the
+  reasons; the zh interface renders from them (`frontend/src/lib/match-reasons.ts`)
+  and shows the English line for a null, unknown or misaligned key.
 
 **Matcher versioning:** `src/matcher/config.py::MATCHER_VERSION` =
 hand-bumped base + a fingerprint hash over every tunable (weights, bucket

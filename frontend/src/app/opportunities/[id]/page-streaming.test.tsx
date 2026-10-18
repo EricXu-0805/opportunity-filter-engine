@@ -12,7 +12,7 @@ vi.mock('@/lib/api-server', async (importOriginal) => ({
 }));
 vi.mock('next/navigation', () => ({ notFound: () => { throw new Error('REAL_NOT_FOUND'); } }));
 vi.mock('./OpportunityDetail', () => ({ default: ({ opp, similarContent }: { opp: { title: string }; similarContent?: ReactNode }) =>
-  <main><a href="/results">Back to matches</a><h1>{opp.title}</h1><p>Primary content</p>{similarContent}<footer>Source footer</footer></main> }));
+  <div><a href="/results">Back to matches</a><h1>{opp.title}</h1><p>Primary content</p>{similarContent}<footer>Source footer</footer></div> }));
 vi.mock('./OpportunityUnavailable', () => ({ default: () => <p>Opportunity temporarily unavailable</p> }));
 vi.mock('./json-ld', () => ({ buildOpportunityJsonLd: () => null }));
 vi.mock('next/link', () => ({ default: ({ href, children }: { href: string; children: ReactNode }) => <a href={href}>{children}</a> }));

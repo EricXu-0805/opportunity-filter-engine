@@ -165,7 +165,8 @@ export default function OpportunityDetail({
       <ProfileRefreshBanner locale={locale} refresh={profileRefresh} />
 
       <div className="flex flex-col lg:flex-row lg:gap-6 lg:items-start">
-        <main className="flex-1 min-w-0 lg:max-w-3xl">
+        {/* A div: the layout's <main id="main-content"> is the page's one main landmark. */}
+        <div className="flex-1 min-w-0 lg:max-w-3xl">
           <div className="bg-white rounded-2xl shadow-[0_1px_8px_rgba(0,0,0,0.05)] overflow-hidden mb-6">
             <OpportunityHeader
               opp={opp}
@@ -317,7 +318,7 @@ export default function OpportunityDetail({
               <p>{t('detail.lastVerified', { date: opp.target_truth.verified_at })}</p>
             )}
           </div>
-        </main>
+        </div>
 
         {RELEASE_SCOPE.askAi && actionable && (
           <aside className="hidden lg:block lg:w-[360px] xl:w-[400px] lg:sticky lg:top-[4.5rem] lg:self-start lg:shrink-0">

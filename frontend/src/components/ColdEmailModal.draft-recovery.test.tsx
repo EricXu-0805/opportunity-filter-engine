@@ -1,6 +1,6 @@
 import { emailValidationReceipt } from './ColdEmailModal.test-fixtures';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { advanceOwnerEpoch, captureOwnerToken, PRIVATE_STORAGE_LOCK, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import { createColdEmailDraftWriter, readColdEmailDraft } from '@/lib/cold-email-draft';
@@ -184,6 +184,20 @@ describe('persistent cold-email draft recovery', () => {
       expect(window.open).not.toHaveBeenCalled();
     });
   }
+
+  it('sends one template request when a restored draft is rebuilt from changed materials', async () => {
+    const view = mount(); await ready(); change('body', edits.body); await close(view); clearCalls();
+    mount({ profile: { ...profile, research_interests: 'A different research direction' } });
+    await waitFor(() => expect(field('body')).toHaveValue(edits.body));
+    await waitFor(() => expect(button('regenerateFromProfile')).toBeEnabled()); await act(async () => {});
+    expect(api.variants).not.toHaveBeenCalled(); expect(field('to')).toHaveValue('');
+    fireEvent.click(button('regenerateFromProfile'));
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'coldEmail.regenerateFromProfile' })).toBeNull());
+    await waitFor(() => expect(button('generateAiDraft')).toBeEnabled()); await act(async () => {});
+    expect(api.variants).toHaveBeenCalledOnce();
+    // The rebuild also fills the server recipient that the restored draft's metadata refresh would have filled.
+    expect(field('body')).toHaveValue(draft.body); expect(field('to')).toHaveValue(draft.recipient_email);
+  });
 
   it('allows an explicit refine of a recovered draft whose source versions still match', async () => {
     const view = mount(); await ready(); edit(); await close(view); clearCalls(); mount(); await restored();
@@ -458,6 +472,195 @@ describe('persistent cold-email draft recovery', () => {
       await startAgain();
       fireEvent.click(button('generateAiDraft')); await waitFor(() => expect(api.stream).toHaveBeenCalledOnce());
       expect(api.stream.mock.calls[0][2].contactContext).toEqual({ version: 1, purpose: 'first_contact' });
+    });
+  });
+
+  describe('two tabs editing one saved draft', () => {
+    // Both editors share this browser's storage. Labels repeat across them, so
+    // fields are found inside each editor. A draft write tells other tabs, as the browser does.
+    const textField = (view: ReturnType<typeof render>, id: string) => view.container.querySelector(`[id="${id}"]`) as HTMLTextAreaElement;
+    const status = (view: ReturnType<typeof render>) => within(view.container).getByTestId('cold-email-draft-status');
+    let draftWrites = 0;
+    function shareDraftWrites() {
+      const storage = window.localStorage; const write = storage.setItem.bind(storage);
+      vi.spyOn(storage, 'setItem').mockImplementation((key: string, value: string) => {
+        const oldValue = storage.getItem(key); write(key, value);
+        if (!key.startsWith(STORAGE_KEYS.COLD_EMAIL_DRAFT_PREFIX)) return;
+        draftWrites += 1; window.dispatchEvent(new StorageEvent('storage', { key, oldValue, newValue: value }));
+      });
+    }
+    async function firstTab() {
+      const one = mount(); await waitFor(() => expect(textField(one, 'cold-email-body')).toHaveValue(draft.body));
+      fireEvent.change(textField(one, 'cold-email-body'), { target: { value: 'Edited in the first tab' } });
+      await waitFor(() => expect(status(one)).toHaveTextContent(/^Saved on this browser/)); await act(async () => {});
+      shareDraftWrites(); draftWrites = 0;
+      return one;
+    }
+    // As CheckedColdEmailModal does, the second tab shows the list card until the target's detail loads.
+    async function secondTab() {
+      const card = { ...target, writing_target_version: undefined };
+      const props: Props = { isOpen: true, onClose: vi.fn(), profile, opportunityId: target.id, opportunityTitle: 'Lab', target: card, targetReady: false, targetChecking: true };
+      const two = render(<ColdEmailModal {...props} />);
+      await waitFor(() => expect(textField(two, 'cold-email-body')).toHaveValue('Edited in the first tab')); await act(async () => {});
+      two.rerender(<ColdEmailModal {...props} target={target} targetReady targetChecking={false} />);
+      await waitFor(() => expect(api.variants).toHaveBeenCalledTimes(2)); await act(async () => {});
+      expect(status(two)).toHaveTextContent(/^Restored draft. Saved on this browser/);
+      return two;
+    }
+
+    it('a tab that only opens the saved draft writes nothing, so the first tab saves without a conflict notice', async () => {
+      const one = await firstTab(); await secondTab();
+      fireEvent.change(textField(one, 'cold-email-body'), { target: { value: 'Edited again in the first tab' } });
+      await waitFor(() => expect(status(one)).not.toHaveTextContent(/Saving/));
+      expect(status(one)).not.toHaveTextContent('Another window changed the saved draft');
+      expect(status(one)).toHaveTextContent(/^Saved on this browser/);
+      const record = readColdEmailDraft(captureOwnerToken(), target.id);
+      expect(record.status === 'present' && record.draft.body).toBe('Edited again in the first tab');
+      expect(draftWrites).toBe(1);
+    });
+
+    it('a real edit in the second tab still makes the first tab report the change', async () => {
+      const one = await firstTab(); const two = await secondTab();
+      fireEvent.change(textField(two, 'cold-email-body'), { target: { value: 'Edited in the second tab' } });
+      await waitFor(() => expect(readColdEmailDraft(captureOwnerToken(), target.id)).toMatchObject({ draft: { body: 'Edited in the second tab' } }));
+      await waitFor(() => expect(status(two)).toHaveTextContent(/Saved on this browser/));
+      fireEvent.change(textField(one, 'cold-email-body'), { target: { value: 'Edited again in the first tab' } });
+      await waitFor(() => expect(status(one)).toHaveTextContent('Another window changed the saved draft'));
+      expect(textField(one, 'cold-email-body')).toHaveValue('Edited again in the first tab');
+      const record = readColdEmailDraft(captureOwnerToken(), target.id);
+      expect(record.status === 'present' && record.draft.body).toBe('Edited in the second tab');
+    });
+  });
+
+  describe('a confirmed paper reading restored while the target loads', () => {
+    const works = [{ title: 'First sensor study', year: 2025 }, { title: 'Verified sensor study', year: 2024 }];
+    const paperTarget: Opportunity = { ...target, metadata: { ...target.metadata, publication_attribution_status: 'verified_author_id', recent_works: works } };
+    const confirmation = () => screen.getByLabelText('I confirm this reading level for the selected paper.');
+    const storedPanel = () => { const record = readColdEmailDraft(captureOwnerToken(), target.id); return record.status === 'present' ? record.draft.pendingPanel : undefined; };
+    let draftWrites = 0;
+    async function saveConfirmedReading() {
+      const view = mount({ target: paperTarget }); await ready(); openContext();
+      fireEvent.change(screen.getByLabelText('Paper you looked at (optional)'), { target: { value: JSON.stringify(['Verified sensor study', 2024]) } });
+      fireEvent.change(screen.getByLabelText('How much did you read?'), { target: { value: 'abstract' } });
+      fireEvent.click(confirmation());
+      fireEvent.click(screen.getByRole('button', { name: 'Apply background to this draft' }));
+      fireEvent.click(button('regenerateFromProfile'));
+      await waitFor(() => expect(screen.queryByRole('button', { name: 'coldEmail.regenerateFromProfile' })).toBeNull());
+      await waitFor(() => expect(button('generateAiDraft')).toBeEnabled()); await act(async () => {});
+      change('body', edits.body); await close(view); clearCalls();
+      expect(storedPanel()).toMatchObject({ confirmed: { paper: true }, pending: false });
+      const storage = window.localStorage; const write = storage.setItem.bind(storage); draftWrites = 0;
+      vi.spyOn(storage, 'setItem').mockImplementation((key: string, value: string) => {
+        if (key.startsWith(STORAGE_KEYS.COLD_EMAIL_DRAFT_PREFIX)) draftWrites += 1;
+        write(key, value);
+      });
+    }
+    // As CheckedColdEmailModal does, the editor shows the list card until the target's detail loads.
+    async function openWhileLoading(card: Opportunity, detail: Opportunity) {
+      const props: Props = { isOpen: true, onClose: vi.fn(), profile, opportunityId: target.id, opportunityTitle: 'Lab', target: card, targetReady: false, targetChecking: true };
+      const view = render(<ColdEmailModal {...props} />);
+      await waitFor(() => expect(field('body')).toHaveValue(edits.body)); await act(async () => {});
+      view.rerender(<ColdEmailModal {...props} target={detail} targetReady targetChecking={false} />);
+      await act(async () => {}); await act(async () => {});
+    }
+    const cards = {
+      'the same papers': { ...paperTarget, writing_target_version: undefined },
+      'only its first paper': { ...paperTarget, writing_target_version: undefined, metadata: { ...paperTarget.metadata, recent_works: works.slice(0, 1) } },
+    };
+    for (const [name, card] of Object.entries(cards)) {
+      it(`keeps the confirmation and writes nothing when the list card shows ${name} and the detail names the saved source`, async () => {
+        await saveConfirmedReading(); await openWhileLoading(card, paperTarget);
+        expect(screen.getByLabelText('How much did you read?')).toHaveValue('abstract');
+        expect(confirmation()).toBeChecked();
+        expect(screen.getByTestId('email-contact-context-status')).toHaveTextContent('Background confirmed for the next draft.');
+        // The restored draft's metadata refresh still runs once the detail has loaded.
+        await waitFor(() => expect(api.variants).toHaveBeenCalledOnce()); await act(async () => {});
+        expect(storedPanel()).toMatchObject({ confirmed: { paper: true }, pending: false });
+        expect(draftWrites).toBe(0);
+        expect(field('body')).toHaveValue(edits.body); expect(button('generateAiDraft')).toBeEnabled();
+      });
+    }
+
+    const lackingCards = { 'only its first paper': cards['only its first paper'], 'no papers': { ...cards['the same papers'], metadata: { ...paperTarget.metadata, recent_works: [] } } };
+    const chosenOption = 'The paper you chose (checked once the opportunity details load)';
+    const notChecked = 'The paper will be checked once the opportunity details load; your saved answers are kept.';
+    const panelStatus = () => screen.getByTestId('email-contact-context-status');
+    const badge = () => screen.getByTestId('email-contact-context-panel').querySelector('summary')!.textContent;
+    const applyButton = () => screen.getByRole('button', { name: 'Apply background to this draft' });
+    async function openNeverLoading(overrides: Partial<Props> = {}) {
+      render(<ColdEmailModal isOpen onClose={vi.fn()} profile={profile} opportunityId={target.id} opportunityTitle="Lab" target={cards['only its first paper']} targetReady={false} targetChecking {...overrides} />);
+      await waitFor(() => expect(field('body')).toHaveValue(edits.body)); await act(async () => {});
+    }
+    for (const [name, card] of Object.entries(lackingCards)) {
+      it(`says the paper is not checked yet, not that it is gone, while the detail never loads and the list card shows ${name}`, async () => {
+        await saveConfirmedReading(); await openNeverLoading({ target: card });
+        expect(screen.queryByText('Previous paper is no longer available')).toBeNull();
+        expect(screen.getByRole('option', { name: chosenOption })).toBeInTheDocument();
+        expect(screen.queryByText('Needs confirmation')).toBeNull(); expect(badge()).toContain('Not checked yet');
+        expect(screen.queryByText(/No papers matched to this researcher/)).toBeNull();
+        expect(panelStatus()).not.toHaveTextContent('Changes are not applied');
+        expect(panelStatus()).toHaveTextContent(notChecked);
+        expect(applyButton()).toBeDisabled();
+        expect(confirmation()).toBeChecked(); expect(screen.getByLabelText('How much did you read?')).toHaveValue('abstract');
+        expect(storedPanel()).toMatchObject({ confirmed: { paper: true }, pending: false }); expect(draftWrites).toBe(0);
+      });
+    }
+
+    it('does not say it is checking the paper while the banner says the opportunity could not be found', async () => {
+      await saveConfirmedReading();
+      await openNeverLoading({ targetChecking: false, targetRefresh: { status: 'missing', target: null, reason: 'not_found', refresh: vi.fn(), checkForAction: vi.fn() } });
+      expect(screen.getByText(/This opportunity could not be found/)).toBeInTheDocument();
+      const panel = screen.getByTestId('email-contact-context-panel');
+      expect(within(panel).queryByText(/Checking/)).toBeNull();
+      expect(within(panel).getByRole('option', { name: chosenOption })).toBeInTheDocument();
+      expect(badge()).toContain('Not checked yet'); expect(panelStatus()).toHaveTextContent(notChecked);
+      expect(confirmation()).toBeChecked(); expect(draftWrites).toBe(0);
+    });
+
+    it('says the changes are not applied once the reading confirmation is unticked or ticked again while the detail loads', async () => {
+      await saveConfirmedReading(); await openNeverLoading();
+      for (const paper of [false, true]) {
+        fireEvent.click(confirmation());
+        await waitFor(() => expect(storedPanel()).toMatchObject({ confirmed: { paper }, pending: true }));
+        expect(panelStatus()).toHaveTextContent('Changes are not applied'); expect(panelStatus()).not.toHaveTextContent('your saved answers are kept');
+        expect(badge()).toContain('Needs confirmation'); expect(badge()).not.toContain('Not checked yet');
+        expect(screen.getByRole('option', { name: chosenOption })).toBeInTheDocument(); expect(applyButton()).toBeDisabled();
+      }
+    });
+
+    it('says the changes are not applied once another answer is changed while the detail loads', async () => {
+      await saveConfirmedReading(); await openNeverLoading();
+      fireEvent.change(screen.getByLabelText('When could you participate? (optional)'), { target: { value: 'Tuesdays' } });
+      await waitFor(() => expect(storedPanel()).toMatchObject({ fields: { availability: 'Tuesdays' }, pending: true }));
+      expect(panelStatus()).toHaveTextContent('Changes are not applied'); expect(panelStatus()).not.toHaveTextContent('your saved answers are kept');
+      expect(badge()).toContain('Needs confirmation'); expect(screen.getByRole('option', { name: chosenOption })).toBeInTheDocument();
+    });
+
+    const changedDetails = {
+      'names a different source for the paper': { ...paperTarget, writing_target_version: `wt1:${'b'.repeat(64)}` },
+      'no longer lists the paper': { ...paperTarget, metadata: { ...paperTarget.metadata, recent_works: works.slice(0, 1) } },
+    };
+    for (const [name, detail] of Object.entries(changedDetails)) {
+      it(`still asks for the reading again when the loaded detail ${name}`, async () => {
+        await saveConfirmedReading(); await openWhileLoading(cards['the same papers'], detail);
+        await waitFor(() => expect(storedPanel()).toMatchObject({ confirmed: { paper: false }, pending: true }));
+        expect(confirmation()).not.toBeChecked();
+        expect(screen.getByTestId('email-contact-context-status')).toHaveTextContent('Changes are not applied');
+        expect(button('gmail')).toBeDisabled(); expect(api.stream).not.toHaveBeenCalled();
+      });
+    }
+
+    it('saves a change made while the target loads and keeps it once the detail loads', async () => {
+      await saveConfirmedReading();
+      const props: Props = { isOpen: true, onClose: vi.fn(), profile, opportunityId: target.id, opportunityTitle: 'Lab', target: cards['the same papers'], targetReady: false, targetChecking: true };
+      const view = render(<ColdEmailModal {...props} />);
+      await waitFor(() => expect(field('body')).toHaveValue(edits.body)); await act(async () => {});
+      const availability = () => screen.getByLabelText('When could you participate? (optional)');
+      fireEvent.change(availability(), { target: { value: 'Tuesday afternoons' } });
+      await waitFor(() => expect(storedPanel()).toMatchObject({ fields: { availability: 'Tuesday afternoons' }, pending: true }));
+      view.rerender(<ColdEmailModal {...props} target={paperTarget} targetReady targetChecking={false} />); await act(async () => {});
+      expect(availability()).toHaveValue('Tuesday afternoons'); expect(confirmation()).not.toBeChecked();
+      expect(storedPanel()).toMatchObject({ fields: { availability: 'Tuesday afternoons' }, confirmed: { paper: false }, pending: true });
     });
   });
 });

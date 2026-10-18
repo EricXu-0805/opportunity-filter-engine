@@ -2932,6 +2932,7 @@ export const en = {
       dismiss: 'Dismiss',
     },
     title: 'Your Matches',
+    listHeading: 'Match list',
     analyzing: 'Analyzing your profile...',
     analyzingAi: 'Analyzing with AI smart match...',
     loadingPhases: {
@@ -3661,6 +3662,7 @@ export const en = {
   },
   favorites: {
     title: 'Favorites',
+    listHeading: 'Saved opportunities',
     loading: 'Loading favorites...',
     unavailableWarning: '{count} saved item(s) could not be loaded right now.',
     empty: "You haven't starred any opportunities yet.",
@@ -4458,6 +4460,7 @@ export const en = {
   resume: {
     pdfOnly: 'PDF only · Max 5 MB · Up to 60,000 text characters',
     removeAria: 'Remove file',
+    uploadAria: 'Upload your résumé (PDF)',
     dropHere: 'Drop your resume here, or',
     browse: 'browse',
     savedFallback: 'Resume (saved)',
@@ -8301,6 +8304,7 @@ export const zh = {
       dismiss: '关闭',
     },
     title: '你的匹配',
+    listHeading: '匹配列表',
     analyzing: '正在分析你的档案...',
     analyzingAi: '正在进行 AI 智能匹配...',
     loadingPhases: {
@@ -9006,6 +9010,7 @@ export const zh = {
   },
   favorites: {
     title: '我的收藏',
+    listHeading: '收藏的机会',
     loading: '加载收藏中...',
     unavailableWarning: '有 {count} 条收藏暂时无法加载。',
     empty: '你还没有收藏任何机会。',
@@ -9771,6 +9776,7 @@ export const zh = {
   resume: {
     pdfOnly: '仅 PDF · 最大 5 MB · 最多 60,000 个文本字符',
     removeAria: '移除文件',
+    uploadAria: '上传简历（PDF）',
     dropHere: '将简历拖到这里，或',
     browse: '浏览',
     savedFallback: '简历（已保存）',

@@ -11,7 +11,8 @@ import { en, zh } from '../src/i18n/dictionaries';
  * A finding fails the run when it is serious or critical and BASELINE does not
  * name it. Unnamed moderate and minor findings are annotated and never fail.
  * Every finding, named or not, is in the attached axe-<locale>.json. BASELINE
- * is what was still open on 2026-10-09: a list of debts, not acceptable things.
+ * is what is still open (nothing since 2026-10-18): a list of debts, not
+ * acceptable things.
  * An entry that a run no longer sees fails the run too, so it is deleted when
  * its fix lands; only entries marked mayBeAbsent are exempt.
  *
@@ -59,29 +60,7 @@ interface Known {
 // from live data, so which card badges and backgrounds appear moves with every
 // refresh; a pair-exact key would turn a data PR red without any code change.
 // Ratios are axe's, which truncates to two decimals.
-const BASELINE: readonly Known[] = [
-  {
-    rule: 'label', impact: 'critical', steps: ['home'], target: '#resume-upload',
-    name: 'ResumeUpload.tsx\'s visually hidden PDF input has no accessible name. A real one ("Upload your résumé (PDF)") '
-      + 'is new copy in both languages, so it waits for the post-merge list.',
-  },
-  {
-    rule: 'landmark-main-is-top-level', impact: 'moderate', steps: ['detail'],
-    name: 'OpportunityDetail.tsx renders a <main> inside the layout\'s <main id="main-content">.',
-  },
-  {
-    rule: 'landmark-no-duplicate-main', impact: 'moderate', steps: ['detail'],
-    name: 'Same nested <main> as above, seen as a second main landmark.',
-  },
-  {
-    rule: 'landmark-unique', impact: 'moderate', steps: ['detail'],
-    name: 'Same nested <main> as above: two main landmarks with no distinguishing name.',
-  },
-  {
-    rule: 'heading-order', impact: 'moderate', steps: ['results'],
-    name: 'Match card titles are <h3> straight after the page <h1>.',
-  },
-];
+const BASELINE: readonly Known[] = [];
 
 function knownFor(finding: Finding): Known | undefined {
   return BASELINE.find(k => k.rule === finding.rule && k.impact === finding.impact

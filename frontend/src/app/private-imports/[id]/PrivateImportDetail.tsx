@@ -66,7 +66,8 @@ export default function PrivateImportDetail({ id }: { id: string }) {
       return false;
     }
   };
-  return <main className="mx-auto max-w-4xl space-y-6 px-4 py-8">
+  // A div: the layout's <main id="main-content"> is the page's one main landmark.
+  return <div className="mx-auto max-w-4xl space-y-6 px-4 py-8">
     <Link href="/favorites" className="inline-flex min-h-10 items-center text-sm text-indigo-700 underline">{text.back}</Link>
     <h1 className="break-words text-2xl font-semibold">{content?.title || text.title}</h1>
     {unreadyOwner || view?.status === 'sign_in' ? <p role="status">{text.signIn}</p>
@@ -89,5 +90,5 @@ export default function PrivateImportDetail({ id }: { id: string }) {
       <ContactHistory opportunityId={id} refreshKey={String(historyEpoch)} />
       <ApplicationHistory opportunityId={id} refreshKey={String(historyEpoch)} />
     </section>}
-  </main>;
+  </div>;
 }
