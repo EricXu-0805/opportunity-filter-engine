@@ -64,7 +64,7 @@ def test_confirmed_reading_sentence_is_exempt_only_as_its_single_exact_occurrenc
     "I have carefully read through your whole work.", "I've read the abstract of this paper.",
     "I read the abstracts of your recent papers.", "I went through your entire paper.",
     "I have gone through your whole article.", "After going through your full paper, I wondered.",
-    "I went through the full text of your paper.", "I went through the abstract of your work.",
+    "I went through the full text of your paper.", "I went through the abstract of your paper.",
     "I went through your paper.", "I have also read the abstract of your paper.", "I also went through your whole paper.",
 ])
 def test_whole_paper_and_abstract_reading_are_completed_reading(text):
@@ -78,7 +78,8 @@ def test_whole_paper_and_abstract_reading_are_completed_reading(text):
     "Your entire lab works on this.", "I am interested in the abstract of your paper.",
     "I would like to read your whole paper.", "I will go through your entire paper.",
     "I have not read the abstract of your paper.", "If I read your whole paper, I could ask more.",
-    "I would also like to read your whole paper.",
+    "I would also like to read your whole paper.", "I went through this work experience.",
+    "I have gone through this publication process before.", "I went through your papers' reference list.",
 ])
 def test_whole_and_abstract_phrases_that_claim_no_reading_are_accepted(text):
     assert unsupported_action_claims(text) == []

@@ -28,8 +28,9 @@ _ATTACHMENT = re.compile(
     rf"\b(?:my\s+)?{_DOCUMENT}\s+(?:is|are|has\s+been|have\s+been)\s+included\s+with\s+this\s+email\b",
     re.IGNORECASE,
 )
-# "Went through" counts only for "your" or "this" paper or work: "I went
-# through a study abroad program" or "the research process" reads nothing.
+# "Went through" counts only for "your [whole|entire|full]" paper, article,
+# publication or manuscript: "a study abroad program", "this work experience"
+# and "your papers' reference list" are not reading the paper.
 _READING = re.compile(
     r"\b(?:i(?:\s+have|['’]ve)?\s+(?:(?:carefully|thoroughly|closely|recently|already|also)\s+)?"
     r"(?:(?:finished|completed)\s+reading|read|reviewed|studied)|"
@@ -39,8 +40,8 @@ _READING = re.compile(
     r"(?:papers?|articles?|publications?|manuscripts?|stud(?:y|ies)|work|research)\b|"
     r"\b(?:i(?:\s+have|['’]ve)?\s+(?:(?:carefully|thoroughly|closely|recently|already|also)\s+)?(?:went|gone)|"
     r"(?:after|having)\s+(?:(?:carefully|thoroughly|closely)\s+)?(?:going|gone))\s+through\s+"
-    r"(?:(?:the\s+full\s+text|the\s+abstracts?)\s+of\s+)?(?:your|this)\s+(?:(?:recent|latest|full|entire|whole|published)\s+){0,2}"
-    r"(?:papers?|articles?|publications?|manuscripts?|work)\b",
+    r"(?:(?:the\s+full\s+text|the\s+abstracts?)\s+of\s+)?your\s+(?:(?:whole|entire|full)\s+)?"
+    r"(?:paper|article|publication|manuscript)\b",
     re.IGNORECASE,
 )
 
