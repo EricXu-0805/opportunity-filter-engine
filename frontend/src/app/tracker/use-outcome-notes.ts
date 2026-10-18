@@ -64,6 +64,8 @@ export function useOutcomeNotes({ identityGeneration, ready, runStatusWrite }: {
   const [problems, setProblems] = useState<Map<string, OutcomeNoteProblem>>(new Map());
   const generationRef = useRef(identityGeneration);
   const loadAttemptRef = useRef(0);
+  // Whether the latest notes read is still in flight.
+  const readingRef = useRef(false);
   const [loadRequest, setLoadRequest] = useState(0);
 
   const setProblem = useCallback((id: string, problem: OutcomeNoteProblem | null) => {
@@ -110,14 +112,17 @@ export function useOutcomeNotes({ identityGeneration, ready, runStatusWrite }: {
     const generation = identityGeneration;
     const stale = () => generationRef.current !== generation || loadAttemptRef.current !== attempt;
     const token = captureOwnerToken();
+    readingRef.current = true;
     (async () => {
       try {
         const loaded = await getOutcomeNotes(token);
         if (stale()) return;
+        readingRef.current = false;
         setNotes(loaded);
         setLoadError(false);
       } catch {
         if (stale()) return;
+        readingRef.current = false;
         setLoadError(true);
       }
     })();
@@ -171,6 +176,12 @@ export function useOutcomeNotes({ identityGeneration, ready, runStatusWrite }: {
           const list = (notesRef.current.get(id) ?? []).filter((n) => n.id !== note.id);
           notesRef.current = new Map(notesRef.current).set(id, [note, ...list]);
           setNotes(notesRef.current);
+          // A read still in flight began before this save and would land without
+          // the note: drop it and read again.
+          if (readingRef.current) {
+            loadAttemptRef.current++;
+            setLoadRequest((n) => n + 1);
+          }
         } else if (note) {
           setLoadRequest((n) => n + 1);
         }
