@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import axe from 'axe-core';
 vi.mock('@/i18n/client', () => ({ useT: () => ({ locale: 'en' }) }));
 vi.mock('@/lib/private-import-target-api', async original => {
   const importedModule = await original<typeof import('@/lib/private-import-target-api')>();
@@ -95,4 +96,16 @@ it('opens the import named by the route segment, which Next hands the page perce
   await screen.findByText('Private test title');
   expect(raw).toHaveBeenCalledOnce(); expect(raw.mock.calls[0][0]).toBe(id); expect(resolved.mock.calls[0][0]).toBe(id);
   expect(screen.getByText('Contact history ' + id)).toBeInTheDocument();
+});
+
+it('adds no main landmark of its own under the layout\'s main', async () => {
+  // M59: the root layout already wraps every page in <main id="main-content">. A second <main>
+  // here was a main nested in a landmark, a duplicate main, and two mains with no name apart.
+  render(<main id="main-content"><PrivateImportDetail id={id} /></main>);
+  await screen.findByText('Private test title');
+  const { violations } = await axe.run(document, { runOnly: { type: 'rule', values: [
+    'landmark-main-is-top-level', 'landmark-no-duplicate-main', 'landmark-unique',
+  ] } });
+  expect(violations.map(v => `${v.id}: ${v.nodes.map(n => n.target.join(' ')).join(', ')}`)).toEqual([]);
+  expect(screen.getAllByRole('main').map(main => main.id)).toEqual(['main-content']);
 });
