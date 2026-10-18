@@ -73,8 +73,12 @@ vi.mock('./DetailSections', () => ({
   KeywordsSection: () => <div data-testid="section-keywords" />,
 }));
 vi.mock('./DetailFactsSection', () => ({
-  DetailFactsSection: (props: { isFaculty: boolean }) => (
-    <div data-testid="section-facts" data-faculty={String(props.isFaculty)} />
+  DetailFactsSection: (props: { isFaculty: boolean; noSponsorship?: boolean }) => (
+    <div
+      data-testid="section-facts"
+      data-faculty={String(props.isFaculty)}
+      data-no-sponsorship={String(Boolean(props.noSponsorship))}
+    />
   ),
 }));
 vi.mock('./OpportunityHeader', () => ({
@@ -867,6 +871,19 @@ describe('OpportunityDetail — M03 detail facts', () => {
     render(<OpportunityDetail opp={opp} />);
     expect(screen.queryByTestId('section-facts')).not.toBeInTheDocument();
     expect(screen.getByTestId('section-at-a-glance')).toBeInTheDocument();
+  });
+
+  it('tells the facts a Simplify listing\'s "Does Not Offer Sponsorship" label where the server marks it', () => {
+    const simplify = {
+      ...withFacts,
+      source_type: 'internship',
+      eligibility: { international_friendly: 'no', citizenship_required: null },
+    };
+    const { unmount } = render(<OpportunityDetail opp={{ ...simplify, international_basis: 'no_sponsorship' } as never} />);
+    expect(screen.getByTestId('section-facts')).toHaveAttribute('data-no-sponsorship', 'true');
+    unmount();
+    render(<OpportunityDetail opp={simplify as never} />);
+    expect(screen.getByTestId('section-facts')).toHaveAttribute('data-no-sponsorship', 'false');
   });
 
   it('falls back on an unrecognised version rather than guessing at it', () => {

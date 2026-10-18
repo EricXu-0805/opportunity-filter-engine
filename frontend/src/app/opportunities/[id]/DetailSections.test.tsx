@@ -365,6 +365,32 @@ describe('EligibilitySection skills provenance', () => {
     expect(screen.getByText('detail.fields.preferredYear')).toBeInTheDocument();
   });
 
+  it('says a Simplify listing\'s "Does Not Offer Sponsorship" label rather than "No"', () => {
+    // M121: the server marks it `international_basis: "no_sponsorship"`.
+    const elig = {
+      majors: [], international_friendly: 'no', citizenship_required: null,
+      preferred_year: [], skills_required: [],
+    } as unknown as Opportunity['eligibility'];
+    render(
+      <EligibilitySection
+        opp={opp({}, { source_type: 'internship', eligibility: elig, international_basis: 'no_sponsorship' })}
+        t={tFn}
+      />,
+    );
+    expect(screen.getByText('detail.facts.values.intlNoSponsorship')).toBeInTheDocument();
+    expect(screen.queryByText('common.no')).not.toBeInTheDocument();
+  });
+
+  it('keeps "No" for a "U.S. Citizenship is Required" listing', () => {
+    const elig = {
+      majors: [], international_friendly: 'no', citizenship_required: true,
+      preferred_year: [], skills_required: [],
+    } as unknown as Opportunity['eligibility'];
+    render(<EligibilitySection opp={opp({}, { source_type: 'internship', eligibility: elig })} t={tFn} />);
+    expect(screen.getByText('common.no')).toBeInTheDocument();
+    expect(screen.queryByText('detail.facts.values.intlNoSponsorship')).not.toBeInTheDocument();
+  });
+
   it('says a major list is approximate when we wrote it', () => {
     const elig = {
       majors: ['Biology', 'Chemistry'], international_friendly: 'unknown',

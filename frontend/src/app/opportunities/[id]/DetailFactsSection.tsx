@@ -54,7 +54,7 @@ export function basisKey(facet: string, basis: string): string {
   return (basis === 'configured' && CONFIGURED_BASIS_KEYS[facet]) || `detail.facts.basis.${basis}`;
 }
 
-function formatValue(facet: string, value: FacetValue, t: TFunc): string {
+function formatValue(facet: string, value: FacetValue, t: TFunc, noSponsorship = false): string {
   if (typeof value === 'boolean') {
     // The only boolean facet is `rolling`, and the server sends it only as
     // true. A false here would be a claim the server never makes.
@@ -63,6 +63,11 @@ function formatValue(facet: string, value: FacetValue, t: TFunc): string {
   if (Array.isArray(value)) {
     const keys = LIST_VALUE_KEYS[facet];
     return value.map((v) => (keys?.[v] ? t(`detail.facts.values.${keys[v]}`) : v)).join(', ');
+  }
+  // A Simplify listing's "Does Not Offer Sponsorship" label is not "not open
+  // to international students" (M121); the row keeps its state and basis.
+  if (facet === 'international_students' && value === 'no' && noSponsorship) {
+    return t('detail.facts.values.intlNoSponsorship');
   }
   const key = VALUE_KEYS[facet]?.[String(value)];
   return key ? t(`detail.facts.values.${key}`) : String(value);
@@ -87,16 +92,17 @@ const UNKNOWN_HINT_FACETS = new Set([
   'location',
 ]);
 
-function FacetRow({ field, facet, truth, t }: {
+function FacetRow({ field, facet, truth, noSponsorship, t }: {
   field: string;
   facet: string;
   truth: FacetTruth;
+  noSponsorship: boolean;
   t: TFunc;
 }) {
   const label = t(`detail.facts.facets.${facet}`);
   const isLink = facet === 'application_url' && truth.state !== 'unknown';
   const href = isLink && typeof truth.value === 'string' ? safeHttpUrl(truth.value) : null;
-  const text = truth.state === 'unknown' ? null : formatValue(facet, truth.value, t);
+  const text = truth.state === 'unknown' ? null : formatValue(facet, truth.value, t, noSponsorship);
   const quote = truth.state === 'source' ? truth.quote : undefined;
   const quoteHref = quote?.sourceUrl ? safeHttpUrl(quote.sourceUrl) : null;
   return (
@@ -165,10 +171,13 @@ function FacetRow({ field, facet, truth, t }: {
 export function DetailFactsSection({
   fields,
   isFaculty,
+  noSponsorship = false,
   t,
 }: {
   fields: DetailFields;
   isFaculty: boolean;
+  // The record's `international_basis` is "no_sponsorship" (M121).
+  noSponsorship?: boolean;
   t: TFunc;
 }) {
   return (
@@ -195,6 +204,7 @@ export function DetailFactsSection({
                     field={name}
                     facet={facet}
                     truth={truth}
+                    noSponsorship={noSponsorship}
                     t={t}
                   />
                 ))}

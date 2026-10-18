@@ -184,7 +184,10 @@ meta tag); an `institution` location is never shown as a listing's location.
 `international_basis: "no_sponsorship"` marks an intl "no" that is only a
 Simplify listing's label "Does Not Offer Sponsorship" (the ranker's own rule,
 `opportunity_detail.simplify_no_sponsorship_only`, M121): the results and
-favorites cards say "No visa sponsorship" there instead of "US Only".
+favorites cards say "No visa sponsorship" there instead of "US Only", and the
+detail facts, the older eligibility section, the compare cell and the CSV say
+"No visa sponsorship (listing label)" instead of "No" / "Not open to
+international students" (the facts row stays a system inference).
 `frontend/src/lib/attribution-sites.contract.test.ts` fails when a source
 file renders one of these values without reading its flag, or when the saved
 résumé target drops a flag of a value it saves.

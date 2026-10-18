@@ -219,6 +219,21 @@ describe('matchesToCSV', () => {
     expect(unknown).not.toContain('(inferred)');
   });
 
+  it('says a Simplify listing\'s "Does Not Offer Sponsorship" label, and "no" for a citizenship rule', () => {
+    // M121: the server marks the label `international_basis: "no_sponsorship"`.
+    const listing = { source: 'simplify_internships', source_type: 'internship', target_truth: { ...LIVE_TRUTH } };
+    const label = matchesToCSV([makeMatch({
+      ...listing, eligibility: { international_friendly: 'no', citizenship_required: null },
+      international_basis: 'no_sponsorship',
+    } as never)]).split('\n')[1];
+    expect(label).toContain('"No visa sponsorship (listing label)"');
+    const citizens = matchesToCSV([makeMatch({
+      ...listing, eligibility: { international_friendly: 'no', citizenship_required: true },
+    } as never)]).split('\n')[1];
+    expect(citizens).toContain(',"no",');
+    expect(citizens).not.toContain('sponsorship');
+  });
+
   it("leaves a listing's host-school city out of Location and marks one we inferred", () => {
     const listing = { source_type: 'campus_program', target_truth: { ...LIVE_TRUTH } };
     const campus = matchesToCSV([makeMatch({
