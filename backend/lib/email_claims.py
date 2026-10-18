@@ -80,6 +80,58 @@ def unsupported_action_claims(text: str, *, confirmed_reading_sentence: str | No
     return sorted(findings)
 
 
+# M30: a faculty contact profile is not a posting, so a draft to one may ask
+# whether an opening exists but may not refer to a specific opening as existing
+# ("your open position", "the RA position in your lab", "the position you
+# posted", "your job posting") or say the student is applying for a position.
+_ROLE = r"(?:positions?|openings?|vacanc(?:y|ies)|roles?|jobs?|assistantships?)"
+# Up to three modifiers ("undergraduate research assistant"), never a
+# preposition or clause word that would carry the match into another phrase.
+_MODIFIERS = r"(?:(?!(?:of|in|on|at|for|with|about|and|or|to|that|which|is|are|you|your)\b)[a-z][\w'’-]*\s+){0,3}"
+_LAB = r"(?:your|the)\s+(?:research\s+)?(?:lab|laboratory|group|team)\b"
+_OPENING_CLAIM = re.compile(
+    rf"\b(?:your|the|this)\s+(?:(?:lab|group|team)['’]s\s+)?(?:(?:recently|newly|currently|still)\s+)?"
+    rf"(?:open|posted|advertised|listed|announced|available|vacant)\s+{_MODIFIERS}{_ROLE}\b|"
+    rf"\b(?:your|the|this)\s+{_MODIFIERS}{_ROLE}\s+(?:(?:that|which)\s+)?(?:you|{_LAB})\s+"
+    r"(?:(?:have|has|had|recently|just)\s+)*(?:posted|advertised|listed|announced|opened)\b|"
+    rf"\b(?:the|this)\s+{_MODIFIERS}(?:positions?|openings?|vacanc(?:y|ies))\s+(?:(?:available|open)\s+)?"
+    rf"(?:in|at|with|on)\s+{_LAB}|"
+    r"\b(?:your|the|this|a|an)\s+(?:(?:recent|lab['’]s|group['’]s)\s+)?"
+    r"(?:job|position|opening|vacancy|hiring|recruitment|recruiting|ra|research\s+assistant)\s+"
+    r"(?:posting|post|advertisement|advert|ad|announcement|listing)s?\b|"
+    r"\byour\s+(?:(?:lab|group|team)['’]s\s+)?(?:(?:open|current|new|recent)\s+)?(?:research\s+)?(?:opening|vacancy)\b"
+    r"(?!\s+(?:remarks?|talk|lecture|keynote|statement|paragraph|of)\b)|"
+    r"\b(?:i(?:\s+am|['’]m)\s+(?:(?:writing|reaching\s+out|contacting\s+you|emailing\s+you)\s+to\s+apply|applying|"
+    r"interested\s+in\s+applying)|i\s+(?:would\s+like|wish|want)\s+to\s+apply|i\s+hereby\s+apply|my\s+application)\s+"
+    rf"(?:for|to)\s+(?:(?:the|your|this)\s+{_MODIFIERS}{_ROLE}\b|an?\s+{_MODIFIERS}{_ROLE}\s+(?:in|at|with|on)\s+{_LAB})",
+    re.IGNORECASE,
+)
+_QUESTION = re.compile(
+    r"^\W*(?:(?:and|so|also|then|finally|lastly)\b\W*)?(?:do|does|did|is|are|was|were|could|would|can|will|may|might|"
+    r"should|have|has|how|what|when|where|which|who|why|i\s+wonder|i\s+was\s+wondering)\b",
+    re.IGNORECASE,
+)
+_OPENING_CLAUSES = re.compile(r"[;:—]|,\s*(?:and|so)\b|\b(?:but|however|whereas|although|though)\b", re.IGNORECASE)
+
+
+def unsupported_opening_claims(text: str) -> list[str]:
+    """Reject a stated opening or application in a draft to a target with no posting.
+
+    A question ("Do you have any openings?") and a clause under if, whether,
+    unless or a negation ("whether you are taking students", "I did not see a
+    posting") assert nothing and pass. The caller decides the target has no
+    posted opening; this is a bounded English check, not semantic entailment.
+    """
+    for sentence in re.finditer(r"[^.!?\n]+[.!?]*", text):
+        if sentence.group().rstrip().endswith("?") and _QUESTION.match(sentence.group()):
+            continue
+        for clause in _OPENING_CLAUSES.split(sentence.group()):
+            for claim in _OPENING_CLAIM.finditer(clause):
+                if not re.search(r"\b(?:if|whether|unless|no|not|never|without)\b|n['’]t\b", clause[:claim.start()], re.I):
+                    return ["unsupported opening claim"]
+    return []
+
+
 # M33 (owner decision 2026-10-12): a paper is named only when the student chose
 # it. The reply check is one rule: a reply may not quote the full title of an
 # unchosen verified paper unless the student supplied that title for this
