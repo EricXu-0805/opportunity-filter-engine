@@ -995,22 +995,93 @@ describe('outcome notes (checklist M49)', () => {
       .rejects.toMatchObject({ kind: 'unavailable' });
   });
 
-  it('reads the owner\'s notes newest first per target, and a failed read throws instead of returning none', async () => {
-    const token = establishIdentity(U1);
-    const query = { select: vi.fn(), eq: vi.fn(), order: vi.fn() };
-    query.select.mockReturnValue(query);
-    query.eq.mockReturnValue(query);
-    let orders = 0;
-    query.order.mockImplementation(() => (++orders % 2 === 0
-      ? Promise.resolve({ data: [row({ note_id: '49000000-0000-4000-8000-000000000002', outcome: null }), row()], error: null })
-      : query));
-    mockFrom.mockReturnValue(query);
-    const notes = await getOutcomeNotes(token);
-    expect(mockFrom).toHaveBeenCalledWith('outcome_notes');
-    expect(query.eq).toHaveBeenCalledWith('device_id', U1);
-    expect(notes.get(OPP)?.map((n) => n.id)).toEqual(['49000000-0000-4000-8000-000000000002', NOTE]);
+  // A stand-in for PostgREST over outcome_notes: it filters, sorts as the
+  // order() calls say, and returns at most 1000 rows per request, the
+  // project's max-rows, whatever range() asks for.
+  const noteId = (i: number) => `49000000-0000-4000-8000-${String(i).padStart(12, '0')}`;
+  const stamp = (i: number) => `2026-10-18T12:00:00.${String(i).padStart(6, '0')}+00:00`;
+  function fakeNotesTable(rows: Record<string, unknown>[], hooks: { pageError?: number; afterPage?: (page: number) => void } = {}) {
+    const requests: { eq: unknown[]; orders: [string, boolean][]; range?: [number, number] }[] = [];
+    mockFrom.mockImplementation((table: string) => {
+      expect(table).toBe('outcome_notes');
+      const request: (typeof requests)[number] = { eq: [], orders: [] };
+      requests.push(request);
+      const run = () => {
+        if (hooks.pageError === requests.length) return { data: null, error: { message: 'down' } };
+        const [col, value] = request.eq as [string, unknown];
+        const sorted = rows.filter((r) => r[col] === value).sort((a, b) => {
+          for (const [key, ascending] of request.orders) {
+            const c = String(a[key]).localeCompare(String(b[key]));
+            if (c) return ascending ? c : -c;
+          }
+          return 0;
+        });
+        const [from, to] = request.range ?? [0, 999];
+        const data = sorted.slice(from, Math.min(to + 1, from + 1000));
+        hooks.afterPage?.(requests.length);
+        return { data, error: null };
+      };
+      const query = {
+        select: () => query,
+        eq: (...args: unknown[]) => { request.eq = args; return query; },
+        order: (key: string, opts: { ascending: boolean }) => { request.orders.push([key, opts.ascending]); return query; },
+        range: (from: number, to: number) => { request.range = [from, to]; return query; },
+        then: (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) => Promise.resolve().then(run).then(resolve, reject),
+      };
+      return query;
+    });
+    return requests;
+  }
 
-    query.order.mockImplementation(() => (++orders % 2 === 0 ? Promise.resolve({ data: null, error: { message: 'down' } }) : query));
+  it('reads every note of the owner newest first per target, past the 1000-row cap, and a failed page throws instead of returning part', async () => {
+    const token = establishIdentity(U1);
+    const OTHER = 'faculty-def-87654321';
+    // 2,345 notes over two targets, shuffled, with another account's notes mixed in.
+    const rows = Array.from({ length: 2345 }, (_, i) => row({
+      note_id: noteId(i + 1), recorded_at: stamp(i + 1), opportunity_id: i % 3 ? OPP : OTHER, outcome: null,
+    }));
+    rows.push(row({ device_id: U2, note_id: noteId(9999) }));
+    rows.sort((a, b) => (Number(String(a.note_id).slice(-4)) * 7919) % 2347 - (Number(String(b.note_id).slice(-4)) * 7919) % 2347);
+    const requests = fakeNotesTable(rows);
+
+    const notes = await getOutcomeNotes(token);
+    const newestFirst = (target: string) => Array.from({ length: 2345 }, (_, i) => i + 1)
+      .filter((i) => ((i - 1) % 3 ? OPP : OTHER) === target).reverse().map(noteId);
+    expect(notes.get(OPP)?.map((n) => n.id)).toEqual(newestFirst(OPP));
+    expect(notes.get(OTHER)?.map((n) => n.id)).toEqual(newestFirst(OTHER));
+    expect(requests.map((r) => r.range)).toEqual([[0, 999], [1000, 1999], [2000, 2999]]);
+    for (const r of requests) {
+      expect(r.eq).toEqual(['device_id', U1]);
+      expect(r.orders).toEqual([['recorded_at', false], ['note_id', false]]);
+    }
+
+    fakeNotesTable(rows, { pageError: 2 });
     await expect(getOutcomeNotes(token)).rejects.toBeInstanceOf(OutcomeNoteError);
+  });
+
+  it('shows a note once when one saved during the read pushes it onto the next page', async () => {
+    const token = establishIdentity(U1);
+    const rows = Array.from({ length: 1000 }, (_, i) => row({ note_id: noteId(i + 1), recorded_at: stamp(i + 1), outcome: null }));
+    fakeNotesTable(rows, {
+      afterPage: (page) => { if (page === 1) rows.push(row({ note_id: noteId(1001), recorded_at: stamp(1001), outcome: null })); },
+    });
+    const ids = (await getOutcomeNotes(token)).get(OPP)?.map((n) => n.id) ?? [];
+    expect(ids.length).toBe(1000);
+    expect(new Set(ids).size).toBe(1000);
+  });
+
+  it('skips a row this browser cannot show and still shows the rest', async () => {
+    const token = establishIdentity(U1);
+    fakeNotesTable([
+      row({ note_id: noteId(1), recorded_at: stamp(1), outcome: null }),
+      row({ note_id: noteId(2), recorded_at: stamp(2), body: '﻿' }),
+      row({ note_id: noteId(3), recorded_at: stamp(3), body: 'a b' }),
+      row({ note_id: noteId(4), recorded_at: stamp(4), opportunity_id: ' ' }),
+      row({ note_id: noteId(5), recorded_at: stamp(5), outcome: 'hired' }),
+      row({ note_id: noteId(6), recorded_at: stamp(6) }),
+    ]);
+    const notes = await getOutcomeNotes(token);
+    expect([...notes.keys()]).toEqual([OPP]);
+    expect(notes.get(OPP)?.map((n) => n.id)).toEqual([noteId(6), noteId(1)]);
   });
 });
