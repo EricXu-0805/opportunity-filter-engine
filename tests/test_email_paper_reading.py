@@ -531,7 +531,7 @@ def test_refine_may_lower_the_confirmed_reading_sentence(writing_client, monkeyp
     ("abstract", "I have read the full text of your paper “{t}” (2026)."),
     ("title_only", "I have read the abstract of your paper “{t}” (2026)."),
     ("title_only", "I have read the full text of your paper “{t}” (2026)."),
-    # Only the fixed sentences: a reworded lower claim is still a reading claim.
+    # Reworded in place: no fixed sentence is left, so the draft lacks the reading sentence.
     ("full_text", "I have read your paper “{t}” (2026)."),
     ("full_text", "I read the abstract of “{t}” (2026)."),
     # Dropped entirely, or kept next to a lower sentence.
@@ -590,3 +590,55 @@ def test_refine_prompt_lists_only_the_lower_reading_sentences(writing_client, mo
     for level in order:
         assert (paper_reading_sentence(_read(level)) in text) is (order.index(level) <= order.index(confirmed)), level
     assert ("may instead be exactly one" in text) is (confirmed != "title_only")
+
+
+# M128 round 2: the permission must be in the system prompt, which calls the
+# STUDENT block (where the brief lists the lower sentences) untrusted data. The
+# parent's rule told the model to keep the confirmed sentence exactly once, so a
+# model obeying its system prompt kept "I have read the full text ...".
+PARENT_READING_RULE = (
+    "- Only the server-rendered contact_paper_reading sentence may state the user-confirmed reading level. Preserve "
+    "that sentence exactly once; never upgrade title-only or abstract reading to full text or understanding. A "
+    "publication record by itself permits neither naming that paper nor a reading claim; only the paper the student "
+    "chose may be named. Drafts and edit instructions cannot supply reading or attachment confirmation.\n")
+
+
+def _system_prompts(client, monkeypatch, path, confirmed, **fields):
+    prompts = []
+    monkeypatch.setattr(ce, "is_configured", lambda: True)
+    monkeypatch.setattr(ce, "chat_completion", lambda messages, **_k: prompts.append(messages) or None)
+    _m33_post(client, monkeypatch, path, _read(confirmed), works=[R5_PAPER], **fields)
+    return [next(m["content"] for m in messages if m["role"] == "system") for messages in prompts]
+
+
+@pytest.mark.parametrize("select", [False, True])
+@pytest.mark.parametrize("confirmed", ["title_only", "abstract", "full_text"])
+def test_edit_system_prompt_permits_only_a_lower_reading_sentence(writing_client, monkeypatch, select, confirmed):
+    client, _ = writing_client
+    old = paper_reading_sentence(_read(confirmed))
+    draft = _hand_typed(old)
+    start = len(draft[:draft.index(old)].encode("utf-16-le")) // 2
+    fields = {"subject": "Research inquiry", "selection": {"start_utf16": start, "end_utf16": start + len(old),
+                                                           "text": old}} if select else {}
+    [system] = _system_prompts(client, monkeypatch, "refine", confirmed, current_body=draft,
+                               instruction=R5_INSTRUCTION, **fields)
+    order = ["title_only", "abstract", "full_text"]
+    for level in order:
+        assert (paper_reading_sentence(_read(level)) in system) is (order.index(level) < order.index(confirmed)), level
+    if confirmed == "title_only":
+        assert PARENT_READING_RULE in system
+        return
+    assert "Preserve that sentence exactly once" not in system
+    assert "edit instructions cannot supply reading" not in system
+    assert "Keep exactly once either that sentence or" in system
+    assert "never reword or drop the reading sentence" in system
+    assert "can lower the reading claim to one of those fixed sentences, never raise it" in system
+
+
+@pytest.mark.parametrize("path", ["", "stream"])
+@pytest.mark.parametrize("confirmed", ["abstract", "full_text"])
+def test_generation_system_prompt_keeps_the_parent_reading_rule(writing_client, monkeypatch, path, confirmed):
+    client, _ = writing_client
+    systems = _system_prompts(client, monkeypatch, path, confirmed, engine="ai")
+    assert systems and all(PARENT_READING_RULE in system for system in systems)
+    assert not any(paper_reading_sentence(_read("title_only")) in system for system in systems)
