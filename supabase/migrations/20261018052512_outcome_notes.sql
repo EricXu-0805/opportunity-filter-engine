@@ -5,11 +5,20 @@
 -- only writer and only INSERTs. The shared snapshot trigger refuses UPDATE and
 -- DELETE from every role, except a Flow B ownership move and the cleanup that
 -- follows auth-account deletion. Nothing is backfilled from interactions.notes.
+-- Text rules are the browser's (frontend/src/lib/outcome-notes.ts and
+-- validContactTarget), written as code points rather than [[:space:]] and
+-- [[:cntrl:]], whose members depend on the server's locale: the browser drops
+-- a row it would refuse, so the server refuses it first. Not blank means a
+-- character JavaScript's trim() keeps; one line means no C0 or C1 control
+-- and no U+2028/U+2029.
 CREATE TABLE public.outcome_notes (
   device_id text NOT NULL,
   note_id uuid NOT NULL,
-  opportunity_id text NOT NULL CHECK (length(opportunity_id) BETWEEN 1 AND 200 AND btrim(opportunity_id) <> ''),
-  body text NOT NULL CHECK (length(body) BETWEEN 1 AND 300 AND body ~ '[^[:space:]]' AND body !~ '[[:cntrl:]]'),
+  opportunity_id text NOT NULL CHECK (length(opportunity_id) BETWEEN 1 AND 200
+    AND opportunity_id ~ '[^\u0009-\u000d\u0020\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]'),
+  body text NOT NULL CHECK (length(body) BETWEEN 1 AND 300
+    AND body ~ '[^\u0009-\u000d\u0020\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]'
+    AND body !~ '[\u0001-\u001f\u007f-\u009f\u2028\u2029]'),
   outcome text CHECK (outcome IN ('replied','interviewing','rejected','dismissed')),
   recorded_at timestamptz NOT NULL DEFAULT clock_timestamp(),
   PRIMARY KEY (device_id,note_id)
@@ -41,9 +50,12 @@ BEGIN
   IF uid IS NULL OR p_expected_device_id IS DISTINCT FROM uid::text THEN
     RAISE EXCEPTION 'identity_changed' USING ERRCODE = '42501';
   END IF;
+  -- The table's CHECKs, refused with the RPC's own error.
   IF p_note_id IS NULL OR p_opportunity_id IS NULL OR length(p_opportunity_id) NOT BETWEEN 1 AND 200
-    OR p_opportunity_id !~ '[^[:space:]]' OR p_body IS NULL OR length(p_body) NOT BETWEEN 1 AND 300
-    OR p_body !~ '[^[:space:]]' OR p_body ~ '[[:cntrl:]]'
+    OR p_opportunity_id !~ '[^\u0009-\u000d\u0020\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]'
+    OR p_body IS NULL OR length(p_body) NOT BETWEEN 1 AND 300
+    OR p_body !~ '[^\u0009-\u000d\u0020\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]'
+    OR p_body ~ '[\u0001-\u001f\u007f-\u009f\u2028\u2029]'
     OR (p_outcome IS NOT NULL AND p_outcome NOT IN ('replied','interviewing','rejected','dismissed')) THEN
     RAISE EXCEPTION 'invalid_outcome_note' USING ERRCODE = '22023';
   END IF;

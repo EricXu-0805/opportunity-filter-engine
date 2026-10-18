@@ -1074,9 +1074,9 @@ describe('outcome notes (checklist M49)', () => {
     const token = establishIdentity(U1);
     fakeNotesTable([
       row({ note_id: noteId(1), recorded_at: stamp(1), outcome: null }),
-      row({ note_id: noteId(2), recorded_at: stamp(2), body: '﻿' }),
-      row({ note_id: noteId(3), recorded_at: stamp(3), body: 'a b' }),
-      row({ note_id: noteId(4), recorded_at: stamp(4), opportunity_id: ' ' }),
+      row({ note_id: noteId(2), recorded_at: stamp(2), body: '\ufeff' }),
+      row({ note_id: noteId(3), recorded_at: stamp(3), body: 'a\u2028b' }),
+      row({ note_id: noteId(4), recorded_at: stamp(4), opportunity_id: '\u00a0' }),
       row({ note_id: noteId(5), recorded_at: stamp(5), outcome: 'hired' }),
       row({ note_id: noteId(6), recorded_at: stamp(6) }),
     ]);
