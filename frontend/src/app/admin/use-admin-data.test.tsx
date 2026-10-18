@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import AdminPage from './page';
 import { SESSION_KEY } from './admin-api';
 import type { OpsIncident, Ticket } from './types';
@@ -39,6 +39,11 @@ let feedbackListStatus: { status: number; error?: string } | null;
 let ticketPatchStatus: { status: number; error?: string } | null;
 let schoolsStatus: { status: number; error?: string } | null;
 let shardsStatus: { status: number; error?: string } | null;
+// What the drill-down reports when the request is made, and whether its
+// response waits for the test to release it.
+let shardReason: string;
+let holdShards: boolean;
+const heldShards: (() => void)[] = [];
 
 const lastCall = (predicate: (c: Call) => boolean) => [...calls].reverse().find(predicate);
 
@@ -153,7 +158,7 @@ function install() {
     if (path.startsWith('/admin/source-health/shards')) {
       if (shardsStatus) return shardsStatus;
       const school = new URLSearchParams(path.split('?')[1] ?? '').get('school');
-      return {
+      const res = {
         status: 200,
         data: {
           available: true,
@@ -162,11 +167,13 @@ function install() {
             last_attempt_at: SITE_UPDATED_AT, last_success_at: '2026-08-29T08:10:26+00:00',
             last_publish_at: SITE_UPDATED_AT, current_record_count: 0, last_good_record_count: 212,
             freshness: 'stale', status: 'suspicious_zero',
-            failure_reason: 'emitted 0 records against a baseline of 212 active record(s)',
+            failure_reason: shardReason,
             consecutive_failures: 3, eligible: true,
           }] : [],
         },
       };
+      if (holdShards) return new Promise((resolve) => { heldShards.push(() => resolve(res)); });
+      return res;
     }
     return { status: 200, data: {} };
   });
@@ -174,6 +181,8 @@ function install() {
 
 // The site-wide update time, which is also Barnard's shard publish time here.
 const SITE_UPDATED_AT = '2026-10-17T13:34:19+00:00';
+const BARNARD_REASON = 'emitted 0 records against a baseline of 212 active record(s)';
+const LATER_REASON = 'emitted 0 records against a baseline of 230 active record(s)';
 
 beforeEach(() => {
   calls.length = 0;
@@ -184,6 +193,9 @@ beforeEach(() => {
   ticketPatchStatus = null;
   schoolsStatus = null;
   shardsStatus = null;
+  shardReason = BARNARD_REASON;
+  holdShards = false;
+  heldShards.length = 0;
   ticketRow = {
     id: 't1',
     created_at: '2026-08-01T10:00:00+00:00',
@@ -506,6 +518,55 @@ describe('per-school verification is fetched and drilled into through the hook',
     expect(screen.getByText('admin.schoolHealth.loadFailed')).toBeInTheDocument();
     expect(screen.queryByTestId('school-row-barnard')).toBeNull();
     expect(screen.getByText('Broken compare page')).toBeInTheDocument();
+  });
+
+  it('reloads an open school on a refresh instead of leaving it blank', async () => {
+    await mount();
+    const row = within(await screen.findByTestId('school-row-barnard'));
+    fireEvent.click(row.getByRole('button', { name: /barnard/ }));
+    expect(await screen.findByText(BARNARD_REASON)).toBeInTheDocument();
+
+    shardReason = LATER_REASON;
+    fireEvent.click(screen.getByText('admin.refresh'));
+    expect(await screen.findByText(LATER_REASON)).toBeInTheDocument();
+    expect(screen.queryByText(BARNARD_REASON)).toBeNull();
+    expect(calls.filter((c) => c.path === '/admin/source-health/shards?school=barnard'))
+      .toHaveLength(2);
+  });
+
+  it('does not reload a school that was closed before the refresh', async () => {
+    await mount();
+    const button = within(await screen.findByTestId('school-row-barnard'))
+      .getByRole('button', { name: /barnard/ });
+    fireEvent.click(button);
+    await screen.findByText(BARNARD_REASON);
+    fireEvent.click(button);
+    fireEvent.click(screen.getByText('admin.refresh'));
+    await waitFor(() => expect(
+      calls.filter((c) => c.path === '/admin/source-health/schools'),
+    ).toHaveLength(2));
+    await waitFor(() => expect(screen.getByText('admin.refresh')).not.toBeDisabled());
+    expect(calls.filter((c) => c.path.startsWith('/admin/source-health/shards'))).toHaveLength(1);
+  });
+
+  it('drops a drill-down response that a refresh superseded', async () => {
+    await mount();
+    holdShards = true;
+    fireEvent.click(
+      within(await screen.findByTestId('school-row-barnard')).getByRole('button', { name: /barnard/ }),
+    );
+    await waitFor(() => expect(heldShards).toHaveLength(1));
+
+    shardReason = LATER_REASON;
+    fireEvent.click(screen.getByText('admin.refresh'));
+    await waitFor(() => expect(heldShards).toHaveLength(2));
+    await act(async () => { heldShards[1](); });
+    expect(await screen.findByText(LATER_REASON)).toBeInTheDocument();
+
+    // The request made before the refresh answers last, with the old rows.
+    await act(async () => { heldShards[0](); });
+    expect(screen.getByText(LATER_REASON)).toBeInTheDocument();
+    expect(screen.queryByText(BARNARD_REASON)).toBeNull();
   });
 
   it('treats a 401 from the drill-down as a dead session', async () => {

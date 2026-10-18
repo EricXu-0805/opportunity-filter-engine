@@ -63,6 +63,7 @@ export function SchoolHealthSection({ health, t }: { health: SchoolHealthWorkflo
     const open = !expanded[school];
     setExpanded((s) => ({ ...s, [school]: open }));
     if (open) health.onOpen(school);
+    else health.onClose(school);
   };
   const report = data?.report;
 

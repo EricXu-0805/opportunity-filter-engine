@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
 import {
@@ -157,6 +157,12 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
   const [schoolShards, setSchoolShards] = useState<Record<string, SourceHealthRow[] | undefined>>({});
   const [schoolShardLoading, setSchoolShardLoading] = useState<Record<string, boolean>>({});
   const [schoolShardErrors, setSchoolShardErrors] = useState<Record<string, string | null>>({});
+  // The schools whose drill-down is open, so a refresh reloads them instead of
+  // leaving them blank, and each school's latest drill-down request, so a
+  // response that a newer request or a refresh superseded is dropped.
+  const openSchools = useRef<Set<string>>(new Set());
+  const schoolShardRequests = useRef<Record<string, number>>({});
+  const schoolShardSeq = useRef(0);
 
   /**
    * A 401 from ANY admin call means the token is dead — not just the one on
@@ -169,6 +175,8 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
     try { sessionStorage.removeItem(SESSION_KEY); } catch { /* private mode */ }
     setToken('');
     setData(null);
+    // The dashboard unmounts, and with it every open drill-down.
+    openSchools.current.clear();
   }, []);
 
   const setActor = useCallback((value: string) => {
@@ -207,6 +215,24 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
     setOpsError(null);
     setOpsIncidents(res.data?.incidents ?? []);
     setOpsRollup(res.data?.rollup ?? {});
+  }, [surfaceAuthFailure]);
+
+  const fetchSchoolShards = useCallback(async (tok: string, school: string) => {
+    const request = ++schoolShardSeq.current;
+    schoolShardRequests.current[school] = request;
+    setSchoolShardLoading((s) => ({ ...s, [school]: true }));
+    setSchoolShardErrors((s) => ({ ...s, [school]: null }));
+    const res = await adminFetch<SourceHealthShardsResponse>(
+      `/admin/source-health/shards?school=${encodeURIComponent(school)}`, tok,
+    );
+    if (schoolShardRequests.current[school] !== request) return;
+    setSchoolShardLoading((s) => ({ ...s, [school]: false }));
+    if (res.status === 401) { surfaceAuthFailure(); return; }
+    if (res.error) {
+      setSchoolShardErrors((s) => ({ ...s, [school]: res.error! }));
+      return;
+    }
+    setSchoolShards((s) => ({ ...s, [school]: res.data?.rows ?? [] }));
   }, [surfaceAuthFailure]);
 
   const fetchAll = useCallback(async (tok: string) => {
@@ -266,14 +292,20 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
       setOpsRollup(opsRes.data?.rollup ?? {});
       setSchoolHealthError(sectionError(schools));
       setSchoolHealthData(schools.error ? null : schools.data ?? null);
-      // Drill-downs describe the ledger as it was when opened; drop them so a
-      // refresh cannot pair new school rows with old source rows.
+      // Drill-downs describe the ledger as it was when opened; drop them, and
+      // any still in flight, so a refresh cannot pair new school rows with old
+      // source rows, then reload the ones still open.
+      schoolShardRequests.current = {};
       setSchoolShards({});
       setSchoolShardErrors({});
+      setSchoolShardLoading({});
+      if (!schools.error) {
+        openSchools.current.forEach((school) => { void fetchSchoolShards(tok, school); });
+      }
     } finally {
       setLoading(false);
     }
-  }, [ticketFilters, opsFilters, surfaceAuthFailure]);
+  }, [ticketFilters, opsFilters, surfaceAuthFailure, fetchSchoolShards]);
 
   useEffect(() => {
     // Never authenticate from the URL: a ?token= there lands in the server
@@ -333,8 +365,11 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
     setTicketDetails({});
     setSchoolHealthData(null);
     setSchoolHealthError(null);
+    openSchools.current.clear();
+    schoolShardRequests.current = {};
     setSchoolShards({});
     setSchoolShardErrors({});
+    setSchoolShardLoading({});
     setError(null);
   }, []);
 
@@ -510,19 +545,13 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
 
   const loadSchoolShards = useCallback(async (school: string) => {
     if (!token) return;
-    setSchoolShardLoading((s) => ({ ...s, [school]: true }));
-    setSchoolShardErrors((s) => ({ ...s, [school]: null }));
-    const res = await adminFetch<SourceHealthShardsResponse>(
-      `/admin/source-health/shards?school=${encodeURIComponent(school)}`, token,
-    );
-    setSchoolShardLoading((s) => ({ ...s, [school]: false }));
-    if (res.status === 401) { surfaceAuthFailure(); return; }
-    if (res.error) {
-      setSchoolShardErrors((s) => ({ ...s, [school]: res.error! }));
-      return;
-    }
-    setSchoolShards((s) => ({ ...s, [school]: res.data?.rows ?? [] }));
-  }, [token, surfaceAuthFailure]);
+    openSchools.current.add(school);
+    await fetchSchoolShards(token, school);
+  }, [token, fetchSchoolShards]);
+
+  const closeSchoolShards = useCallback((school: string) => {
+    openSchools.current.delete(school);
+  }, []);
 
   // The last snapshot STRICTLY BEFORE the one on screen, in the current
   // scope. Two things make an index-based answer wrong. Scope: history[-2]
@@ -594,9 +623,10 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
     shardLoading: schoolShardLoading,
     shardErrors: schoolShardErrors,
     onOpen: loadSchoolShards,
+    onClose: closeSchoolShards,
   }), [
     schoolHealthData, schoolHealthError, schoolShards, schoolShardLoading, schoolShardErrors,
-    loadSchoolShards,
+    loadSchoolShards, closeSchoolShards,
   ]);
 
   return {

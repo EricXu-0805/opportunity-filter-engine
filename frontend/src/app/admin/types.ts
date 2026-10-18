@@ -580,6 +580,7 @@ export interface SchoolHealthWorkflow {
   shardLoading: Record<string, boolean>;
   shardErrors: Record<string, string | null>;
   onOpen: (school: string) => void;
+  onClose: (school: string) => void;
 }
 
 export type TriggerStatus = {

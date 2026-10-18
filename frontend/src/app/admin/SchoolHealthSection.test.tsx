@@ -85,6 +85,7 @@ function workflow(overrides: Partial<SchoolHealthWorkflow> = {}): SchoolHealthWo
     shardLoading: {},
     shardErrors: {},
     onOpen: vi.fn(),
+    onClose: vi.fn(),
     ...overrides,
   };
 }
@@ -170,12 +171,16 @@ describe('SchoolHealthSection', () => {
 
   it('opens a school into its sources, failing ones first, with their reasons', () => {
     const onOpen = vi.fn();
-    const { rerender } = render(<SchoolHealthSection health={workflow({ onOpen })} t={t} />);
+    const onClose = vi.fn();
+    const { rerender } = render(<SchoolHealthSection health={workflow({ onOpen, onClose })} t={t} />);
     fireEvent.click(within(row('barnard')).getByRole('button', { name: /barnard/ }));
     expect(onOpen).toHaveBeenCalledWith('barnard');
 
     rerender(
-      <SchoolHealthSection health={workflow({ onOpen, shardLoading: { barnard: true } })} t={t} />,
+      <SchoolHealthSection
+        health={workflow({ onOpen, onClose, shardLoading: { barnard: true } })}
+        t={t}
+      />,
     );
     expect(screen.getByText('Loading sources…')).toBeInTheDocument();
 
@@ -183,6 +188,7 @@ describe('SchoolHealthSection', () => {
       <SchoolHealthSection
         health={workflow({
           onOpen,
+          onClose,
           shards: {
             barnard: [
               source({
@@ -209,8 +215,11 @@ describe('SchoolHealthSection', () => {
     expect(broken.getByText('emitted 0 records against a baseline of 212 active record(s)'))
       .toBeInTheDocument();
 
+    expect(onClose).not.toHaveBeenCalled();
     fireEvent.click(within(row('barnard')).getByRole('button', { name: /barnard/ }));
     expect(screen.queryByTestId('source-row-barnard_faculty')).toBeNull();
+    // Closed, so the hook stops reloading it on a refresh.
+    expect(onClose).toHaveBeenCalledWith('barnard');
   });
 
   it('says when a school\'s sources could not be loaded', () => {
