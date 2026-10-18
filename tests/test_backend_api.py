@@ -2537,6 +2537,34 @@ class TestExplainPromptSanitization:
         assert "never restated as the program's own requirement" in system
 
 
+class TestServedReasonKeys:
+    """M107: each served reason line carries its template key beside it, so
+    the zh interface can render it; the lines themselves stay English."""
+
+    @staticmethod
+    def _assert_keyed(body):
+        for kind in ("fit", "gap"):
+            lines, keys = body[f"reasons_{kind}"], body[f"reasons_{kind}_keys"]
+            assert len(keys) == len(lines)
+            assert all(isinstance(line, str) and line for line in lines)
+            assert all(key is not None and key["key"] for key in keys), (lines, keys)
+
+    def test_matches_page_serves_a_key_for_every_reason(self, sample_profile_req):
+        resp = client.post("/api/matches?limit=20", json=sample_profile_req)
+        assert resp.status_code == 200
+        results = resp.json()["results"]
+        assert results
+        for result in results:
+            self._assert_keyed(result)
+
+    def test_explain_serves_a_key_for_every_reason(self, sample_profile_req):
+        resp = client.post(f"/api/matches/{EMAIL_TARGET_ID}/explain", json=sample_profile_req)
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["reasons_fit"] or body["reasons_gap"]
+        self._assert_keyed(body)
+
+
 class TestExplainServerCache:
     """The compare page fires one explain LLM call per card; sessionStorage only
     dedupes within a single browser session. The server-side TTL cache must make
