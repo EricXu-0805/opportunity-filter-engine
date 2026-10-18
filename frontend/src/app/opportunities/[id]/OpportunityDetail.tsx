@@ -18,7 +18,7 @@ import { sourceLabel } from '@/app/results/types';
 import type { SimilarOpportunity } from '@/lib/api-server';
 import { useT } from '@/i18n/client';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
-import { opportunityRecordKind } from '@/lib/match-utils';
+import { isNoSponsorshipListing, opportunityRecordKind } from '@/lib/match-utils';
 import { canDeliverReminder } from '@/lib/reminders';
 import { targetPosture } from '@/lib/target-truth';
 import { contactEmailBlock } from '@/lib/contact-instructions';
@@ -281,6 +281,7 @@ export default function OpportunityDetail({
             <DetailFactsSection
               fields={detailFields}
               isFaculty={recordKind === 'faculty_contact'}
+              noSponsorship={isNoSponsorshipListing(opp)}
               t={t}
             />
           )}

@@ -147,6 +147,28 @@ describe('DifferencesSection marks pay, eligibility, skills and location we infe
   });
 });
 
+describe('DifferencesSection on a Simplify "Does Not Offer Sponsorship" listing', () => {
+  // M121: the server marks it `international_basis: "no_sponsorship"`.
+  const listing = (id: string, citizenship: boolean | null, basis?: 'no_sponsorship') => ({
+    ...opportunity(id),
+    source_type: 'internship',
+    eligibility: { ...opportunity(id).eligibility, international_friendly: 'no', citizenship_required: citizenship },
+    international_basis: basis,
+  }) as unknown as Opportunity;
+
+  it("says the listing's label, and a citizenship rule stays \"No\"", () => {
+    render(
+      <DifferencesSection
+        rows={[{ opp: listing('label', null, 'no_sponsorship') }, { opp: listing('citizens', true) }]}
+        profile={null}
+      />,
+    );
+    expect(screen.getByTestId('compare-value-international-label'))
+      .toHaveTextContent('No visa sponsorship (listing label)');
+    expect(screen.getByTestId('compare-value-international-citizens')).toHaveTextContent(/^citizensNo$/);
+  });
+});
+
 describe('DifferencesSection compensation prose from our listing', () => {
   it('notes a program spec\'s compensation the page does not state', () => {
     const configured = {

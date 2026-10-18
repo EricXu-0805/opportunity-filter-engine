@@ -630,6 +630,17 @@ describe('OpportunityCard — values we did not read off the page say so', () =>
     },
   };
 
+  it('names a Simplify "Does Not Offer Sponsorship" label, not "US Only" (M121)', () => {
+    renderCard({ ...OPEN, eligibility: { international_friendly: 'no' }, international_basis: 'no_sponsorship' });
+    expect(screen.getByText('badges.intlNoSponsorship')).toBeInTheDocument();
+    expect(screen.queryByText('badges.intlUsOnly')).toBeNull();
+  });
+
+  it('keeps "US Only" for a stated citizenship rule', () => {
+    renderCard({ ...OPEN, eligibility: { international_friendly: 'no' } });
+    expect(screen.getByText('badges.intlUsOnly')).toBeInTheDocument();
+  });
+
   it("leaves a listing's host-school city off, as the header does", () => {
     renderCard({ ...OPEN, location: 'Urbana, IL', location_attribution: 'institution' });
     expect(screen.queryByText('Urbana, IL')).toBeNull();

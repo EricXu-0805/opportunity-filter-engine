@@ -307,6 +307,9 @@ export interface OpportunityMetadata {
 
   paid_attribution?: 'inferred' | null;
   international_attribution?: 'inferred' | null;
+  // 'no_sponsorship': the intl "no" is a Simplify listing's label "Does Not
+  // Offer Sponsorship" and nothing else (M121). The badge names that label.
+  international_basis?: 'no_sponsorship' | null;
   citizenship_attribution?: 'inferred' | null;
   preferred_year_attribution?: 'inferred' | null;
   preferred_year_basis?: 'configured' | null;
@@ -421,6 +424,9 @@ export interface Opportunity {
   // page text the row carries does not state. Absent = stated.
   compensation_attribution?: 'inferred' | null;
   international_attribution?: 'inferred' | null;
+  // 'no_sponsorship': the intl "no" is a Simplify listing's label "Does Not
+  // Offer Sponsorship" and nothing else (M121). The badge names that label.
+  international_basis?: 'no_sponsorship' | null;
   citizenship_attribution?: 'inferred' | null;
   preferred_year_attribution?: 'inferred' | null;
   preferred_year_basis?: 'configured' | null;

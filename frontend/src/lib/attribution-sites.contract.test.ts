@@ -134,6 +134,7 @@ describe('the saved résumé target carries and labels every flag of a value it 
     keywords_attribution: 'research topics are not saved in the target',
     majors_basis: 'majors_attribution carries the same answer into the target',
     preferred_year_basis: 'preferred_year_attribution carries the same answer into the target',
+    international_basis: 'names a card badge; the target saves work_auth_notes, the collector sentence for the label',
   };
   const schema = SOURCES.get('lib/target-resume.ts')!;
   const saved = [...schema.slice(schema.indexOf('const CRITERIA_FIELDS'))

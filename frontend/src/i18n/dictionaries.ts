@@ -82,6 +82,9 @@ export const en = {
     intlOk: 'Intl OK',
     intlOkInferred: 'Intl OK (inferred)',
     intlUsOnly: 'US Only',
+    // M121: a Simplify listing's label "Does Not Offer Sponsorship", which is
+    // not "US only" (CPT/OPT may still apply to an internship).
+    intlNoSponsorship: 'No visa sponsorship',
     intlVerify: 'Verify',
     onCampus: 'On campus',
     remoteOk: 'Remote OK',
@@ -3420,6 +3423,8 @@ export const en = {
         paidNo: 'Unpaid',
         intlYes: 'Open to international students',
         intlNo: 'Not open to international students',
+        // M121: a Simplify listing's label "Does Not Offer Sponsorship".
+        intlNoSponsorship: 'No visa sponsorship (listing label)',
         citizenshipRequired: 'U.S. citizenship or permanent residency required',
         citizenshipNotRequired: 'No citizenship requirement',
         rolling: 'Applications reviewed on a rolling basis',
@@ -5373,6 +5378,7 @@ export const zh = {
     intlOk: '接受国际生',
     intlOkInferred: '接受国际生（推断）',
     intlUsOnly: '仅限美国',
+    intlNoSponsorship: '不提供签证担保',
     intlVerify: '需确认',
     onCampus: '校内',
     remoteOk: '支持远程',
@@ -8676,6 +8682,7 @@ export const zh = {
         paidNo: '无报酬',
         intlYes: '接受国际学生',
         intlNo: '不接受国际学生',
+        intlNoSponsorship: '不提供签证担保（职位信息标注）',
         citizenshipRequired: '需要美国公民或永久居民身份',
         citizenshipNotRequired: '无公民身份要求',
         rolling: '滚动审核申请',

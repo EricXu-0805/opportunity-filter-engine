@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { Check, X, ChevronDown } from 'lucide-react';
 import type { Opportunity, ProfileData } from '@/lib/types';
-import { facultySafeInternational } from '@/lib/match-utils';
+import { facultySafeInternational, isNoSponsorshipListing } from '@/lib/match-utils';
 import { useT } from '@/i18n/client';
 import { cleanCompensation, noDeadlineKind } from '@/app/opportunities/[id]/detail-utils';
 
@@ -40,7 +40,8 @@ interface FieldSpec {
 const FIELDS: FieldSpec[] = [
   { key: 'compensation', labelKey: 'compare.fields.compensation', value: (o) => openingValue(o, cleanCompensation(o.compensation_details) || (o.paid && o.paid !== 'unknown' ? o.paid : undefined)) },
   { key: 'paid', labelKey: 'compare.fields.paid', value: (o) => openingValue(o, o.paid) },
-  { key: 'international', labelKey: 'compare.fields.international', value: facultySafeInternational },
+  // A Simplify listing's "Does Not Offer Sponsorship" label is not a "No" (M121).
+  { key: 'international', labelKey: 'compare.fields.international', value: (o) => (isNoSponsorshipListing(o) ? 'no_sponsorship' : facultySafeInternational(o)) },
   { key: 'citizenship', labelKey: 'compare.fields.citizenship', value: facultySafeCitizenship },
   // A listed date beats the `is_rolling` flag (a blanket collector default,
   // not scraped evidence); the 'rolling' sentinel is emitted only on actual
@@ -358,6 +359,7 @@ function CellContent({
   if (Array.isArray(value)) return <span>{value.join(', ')}</span>;
   if (value === 'yes') return <span>{t('common.yes')}</span>;
   if (value === 'no') return <span>{t('common.no')}</span>;
+  if (value === 'no_sponsorship') return <span>{t('detail.facts.values.intlNoSponsorship')}</span>;
   if (value === 'unknown') return <span className="text-gray-400">{t('common.notSpecified')}</span>;
   if (value === 'rolling') return <span>{t('compare.rolling')}</span>;
   if (value === 'no_deadline') return <span className="text-gray-400">{t('compare.noDeadline')}</span>;

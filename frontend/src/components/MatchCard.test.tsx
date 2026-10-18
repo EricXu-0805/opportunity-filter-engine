@@ -208,6 +208,21 @@ describe('MatchCard', () => {
       expect(screen.getByText('badges.intlUsOnly')).toBeInTheDocument();
     });
 
+    it('names a Simplify "Does Not Offer Sponsorship" label, not "US Only", for every student (M121)', () => {
+      const match = makeMatch({
+        eligibility: { ...makeOpp().eligibility, international_friendly: 'no' },
+        international_basis: 'no_sponsorship',
+      });
+      for (const isInternational of [true, false]) {
+        const { unmount } = render(
+          <MatchCard match={match} profile={{ ...PROFILE, is_international: isInternational }} onDraftEmail={() => {}} />,
+        );
+        expect(screen.getByText('badges.intlNoSponsorship')).toBeInTheDocument();
+        expect(screen.queryByText('badges.intlUsOnly')).toBeNull();
+        unmount();
+      }
+    });
+
     it('renders badges.intlVerify key (orange) when status is anything else', () => {
       const match = makeMatch({ eligibility: { ...makeOpp().eligibility, international_friendly: 'unknown' } });
       render(<MatchCard match={match} onDraftEmail={() => {}} />);

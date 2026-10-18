@@ -4,6 +4,7 @@ from src.evidence import (
     faculty_contact_claims_unverified,
     inferred_method,
     is_professor_rank,
+    keywords_are_source_topics,
 )
 from src.lab_context import lab_context_for, validate_public_lab_context
 from src.matcher.ranker import _BAD_PI_NAMES, _BROAD_FIELDS
@@ -440,7 +441,13 @@ def _source_backed_faculty_research_text(opportunity: dict) -> str:
 
 
 def _stated_keywords(opportunity: dict) -> list[str]:
-    """The record's keywords, unless we inferred them rather than read them.
+    """The record's keywords, only when they are the source's own words.
+
+    The detail page's rule (`src.evidence.keywords_are_source_topics`): a
+    listing's keywords are ours unless it is an SRO row, stamped or not. A
+    category map, a config tag or a keyword-bank hit is not what the program
+    says it works on, and the opener and the brief would say it is. Its
+    description is still offered as the description.
 
     A keyword stamped ``derived:openalex_topics`` came from an OpenAlex author
     record this pipeline MATCHED to the professor by surname and institution.
@@ -454,7 +461,7 @@ def _stated_keywords(opportunity: dict) -> list[str]:
     specific opener claims. Same rule this module already applies to department
     names and to our own generated summary.
     """
-    if inferred_method(opportunity, "keywords"):
+    if not keywords_are_source_topics(opportunity):
         return []
     return opportunity.get("keywords") or []
 
@@ -797,6 +804,64 @@ def _match_skills_to_tasks(skills: list[str], opp: dict) -> list[str]:
     return matched
 
 
+# Words our collectors put into a title. A configured program's title is typed
+# into our config (campus_graph program(...), src/collectors/schools/*.py) with
+# a tag naming the school ("(UW)", " — Purdue University") and, for an office's
+# front page, a " — Hub" label; campus_graph.py and the fixed-title UIUC
+# collectors append the status the page showed; nsf_reu.py replaces the
+# award's "REU Site:" with "REU: ". The source's own words never match: a
+# crawl-discovered row is titled by the page's link text and is left alone.
+_FIXED_TITLE_SOURCES = frozenset({"uiuc_drp", "uiuc_other", "uiuc_ursa"})
+_STATUS_SUFFIX_RE = re.compile(r"\s*\(\s*applications?\s+(?:open|closed)\s*\)\s*$", re.IGNORECASE)
+_TAIL_PAREN_RE = re.compile(r"\s*\(([^()]+)\)$")
+_TAIL_DASH_RE = re.compile(r"\s+[—–]\s+([^—–]+)$")
+_HUB_RE = re.compile(r"\s+[—–]\s+Hub$")
+_INITIALS_SKIP = frozenset({"of", "the", "at", "in", "and", "for"})
+
+
+def _names_school(tag: str, opportunity: dict) -> bool:
+    """Whether a configured title's tail names the row's own school: its slug
+    (a national row's source still starts with it: "caltech_external_research"),
+    its organization ("Purdue University"), or a part of that organization in
+    full, by initials ("UW"), by its leading words ("Duke") or without
+    "University of" ("Michigan")."""
+    tag = " ".join(tag.split()).casefold()
+    if not tag:
+        return False
+    slugs = (opportunity.get("school"), str(opportunity.get("source") or "").split("_", 1)[0])
+    if tag in {str(slug or "").casefold() for slug in slugs}:
+        return True
+    org = re.sub(r"University of California,\s*", "UC ", str(opportunity.get("organization") or ""),
+                 flags=re.IGNORECASE)
+    for part in [org, *re.split(r"\s*[,/—–]\s*", org)]:
+        part = re.sub(r"^the\s+", "", " ".join(part.split()).casefold())
+        if not part:
+            continue
+        initials = "".join(w[0] for w in part.split() if w not in _INITIALS_SKIP)
+        if tag in (part, initials, re.sub(r"^university of\s+", "", part)) or part.startswith(tag + " "):
+            return True
+    return False
+
+
+def _posting_name(opportunity: dict) -> str:
+    """The title the opener quotes: the title without the words we added to it.
+    Empty when nothing of the source's naming is left."""
+    title = " ".join(str(opportunity.get("title") or "").split())
+    meta = opportunity.get("metadata") or {}
+    if opportunity.get("source") == "nsf_reu":
+        title = re.sub(r"^REU:\s*", "", title)
+    elif (meta.get("collector_key") and not meta.get("discovered")) or \
+            opportunity.get("source") in _FIXED_TITLE_SOURCES:
+        title = _STATUS_SUFFIX_RE.sub("", title)
+        for tail in (_TAIL_PAREN_RE, _TAIL_DASH_RE):
+            match = tail.search(title)
+            if match and _names_school(match.group(1), opportunity):
+                title = title[:match.start()]
+                break
+        title = _HUB_RE.sub("", title)
+    return title.strip() if re.search(r"\w", title) else ""
+
+
 def _common_parts(
     profile: dict, opportunity: dict, resume_bullets: list[str] | None = None
 ) -> dict:
@@ -899,6 +964,10 @@ def _common_parts(
         faculty_title=faculty_title, research_areas_raw=research_areas_raw,
         is_faculty=is_faculty,
         faculty_is_professor=faculty_is_professor,
+        # A listing whose source states no topics: the template opener names
+        # it by its title (_p1_research_hook). research_topic is unchanged.
+        opener_names_title=not is_faculty and not _topic_keywords(opportunity),
+        posting_name=_posting_name(opportunity) if not is_faculty else "",
         # Internal callers supply already-admitted evidence. Public routes
         # populate this only after the structured confirmation/source gate.
         resume_bullets=[str(b) for b in (resume_bullets or []) if str(b).strip()],
@@ -1274,6 +1343,19 @@ def _p1_research_hook(p: dict) -> str:
         topic = ""
     if area and area.lower() in _BROAD_FIELDS:
         area = ""
+    # A listing with no source-stated topics has only its description's first
+    # sentence cut at 80 characters as a topic ("your work on SURF is an 8-week
+    # on-campus summer program (typically starting in early June) wh"). Name
+    # the posting by its own title instead; a title too long for the sentence
+    # is left out whole, never cut, and the opener falls back to the lab line.
+    # The area is a word picked out of that same title, so it is not used.
+    # The title quoted is the source's naming, without words we added
+    # (_posting_name); a title that was only ours falls back the same way.
+    posting = ""
+    if p.get("opener_names_title"):
+        topic = area = ""
+        title = p.get("posting_name") or ""
+        posting = title if len(title) < 120 else ""
     target = topic if topic and len(topic) < 120 else area
     interest = _short_interest(p["research_interests"])
     lab = p["lab"]
@@ -1291,7 +1373,9 @@ def _p1_research_hook(p: dict) -> str:
             sentences.append(f'My research interest is: “{interest}{ending}”')
         else:
             sentences.append(f"I am interested in {interest}.")
-    if target:
+    if posting:
+        sentences.append(f"I would like to learn more about “{posting}”.")
+    elif target:
         where = f" in {lab_ref}" if lab_ref else ""
         sentences.append(f"I would like to learn more about your work on {target}{where}.")
     elif lab_ref:
@@ -1307,8 +1391,9 @@ def _chosen_paper_sentence(p: dict) -> str:
     verified work — 'Your recent paper "<title>" (2026) caught my attention.'
     — which states a reaction the student never reported. With no paper
     chosen nothing is added: the opening ends on ``_p1_research_hook``'s
-    research-direction sentence when the record has a usable topic, area or
-    lab name, and otherwise on the student's interest or introduction."""
+    research-direction sentence when the record has a usable topic, listing
+    title, area or lab name, and otherwise on the student's interest or
+    introduction."""
     reading = p.get("contact_paper_reading")
     return f" {reading}" if reading else ""
 

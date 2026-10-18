@@ -97,6 +97,21 @@ export function facultySafeInternational(
 }
 
 /**
+ * A Simplify listing whose one restriction is its label "Does Not Offer
+ * Sponsorship": the server's `international_basis` (the ranker's own rule,
+ * M121). Every surface that prints the intl answer says that label for it,
+ * not "No" / "Not open to international students".
+ */
+export function isNoSponsorshipListing(
+  opp: Parameters<typeof facultySafeInternational>[0] & { international_basis?: string | null },
+): boolean {
+  return opp.international_basis === 'no_sponsorship' && facultySafeInternational(opp) === 'no';
+}
+
+// The export is English-only, like its headers.
+const NO_SPONSORSHIP_CELL = 'No visa sponsorship (listing label)';
+
+/**
  * Return the only honest external destination for an opportunity. Faculty
  * rows are directory/contact profiles, so a stale `application_url` must
  * never outrank their canonical profile URL at any client boundary.
@@ -210,7 +225,10 @@ export function matchesToCSV(matches: MatchResult[]): string {
       // "2025-02-15 · estimated" and refuses to call it passed; the CSV said
       // Deadline=2025-02-15 with Status=Open listing on the same row.
       openListing ? deadlineCell(m.opportunity) : '',
-      inferredCell(facultySafeInternational(m.opportunity), m.opportunity.international_attribution),
+      inferredCell(
+        isNoSponsorshipListing(m.opportunity) ? NO_SPONSORSHIP_CELL : facultySafeInternational(m.opportunity),
+        m.opportunity.international_attribution,
+      ),
       m.final_score.toFixed(1),
       m.bucket,
       status,

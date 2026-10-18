@@ -175,6 +175,36 @@ describe('DetailFactsSection', () => {
     expect(within(paid).queryByText('detail.facts.state.source')).not.toBeInTheDocument();
   });
 
+  it('says a Simplify listing\'s "Does Not Offer Sponsorship" label, still as our inference', () => {
+    // M121: the label is not "not open to international students".
+    const c = contract.cases.find((x) => x.name === 'simplify_internship_template')!;
+    const fields = readDetailFields({ detail_fields: c.detail_fields })!;
+    const { unmount } = render(<DetailFactsSection fields={fields} isFaculty={false} noSponsorship t={t} />);
+    const intl = row('eligibility', 'international_students', 'inferred');
+    expect(within(intl).getByText('detail.facts.values.intlNoSponsorship')).toBeInTheDocument();
+    expect(within(intl).getByText('detail.facts.state.inferred')).toBeInTheDocument();
+    expect(within(intl).getByText('detail.facts.basis.derived_from_source')).toBeInTheDocument();
+    expect(screen.queryByText('detail.facts.values.intlNo')).not.toBeInTheDocument();
+    unmount();
+    for (const [locale, text] of [['en', 'No visa sponsorship (listing label)'], ['zh', '不提供签证担保（职位信息标注）']] as const) {
+      const view = render(
+        <DetailFactsSection fields={fields} isFaculty={false} noSponsorship t={(key) => translate(locale, key)} />,
+      );
+      expect(row('eligibility', 'international_students', 'inferred')).toHaveTextContent(text);
+      view.unmount();
+    }
+  });
+
+  it('keeps "Not open to international students" for every other "no"', () => {
+    for (const name of ['simplify_internship_template', 'sro_structured_listing', 'nsf_reu_policy']) {
+      const view = renderCase(name);
+      const intl = row('eligibility', 'international_students', 'inferred');
+      expect(within(intl).getByText('detail.facts.values.intlNo'), name).toBeInTheDocument();
+      expect(screen.queryByText('detail.facts.values.intlNoSponsorship'), name).not.toBeInTheDocument();
+      view.unmount();
+    }
+  });
+
   it('shows a missing field as "Not provided"', () => {
     renderCase('legacy_sparse');
     const dept = row('department', 'department');

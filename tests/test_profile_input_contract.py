@@ -206,11 +206,11 @@ def test_rerank_preflights_all_batches_before_first_provider(monkeypatch):
         calls.append(messages)
         return '{"0":{"s":50,"r":"controlled fit"}}'
     monkeypatch.setattr(matches, 'chat_completion', provider)
-    assert REAL_RERANK('Q' * 119000, [('a', 'A')]) is not None
+    assert REAL_RERANK('Q' * 118500, [('a', 'A')]) is not None
     assert len(calls) == 1
     calls.clear()
     with pytest.raises(HTTPException) as error:
-        REAL_RERANK('Q' * 119000, [('a', 'A'), ('b', 'B' * 2000)])
+        REAL_RERANK('Q' * 118500, [('a', 'A'), ('b', 'B' * 2000)])
     assert error.value.status_code == 413
     assert error.value.detail['code'] == 'MATCH_RERANK_INPUT_TOO_LARGE'
     assert calls == []

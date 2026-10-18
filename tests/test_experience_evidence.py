@@ -16,7 +16,9 @@ from tests.experience_fixtures import confirmed_experience, resume_line_experien
 
 PROFILE = {"name": "Audit Student", "school": "UIUC", "year": "sophomore",
            "major": "Computer Science", "hard_skills": [], "coursework": []}
-OPP = {"id": "experience-test", "source_type": "campus_program", "opportunity_type": "research",
+# An SRO row: its "Research Area" keywords are the source's own words, so a
+# draft that names them engages with the target (M31).
+OPP = {"id": "experience-test", "source": "uiuc_sro", "source_type": "campus_program", "opportunity_type": "research",
        "title": "Renaissance research", "pi_name": "Pat Lee", "organization": "Test University",
        "keywords": ["Renaissance", "cultural history"],
        "description_raw": "Research on Renaissance cultural history.",

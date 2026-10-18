@@ -68,6 +68,7 @@ from collections.abc import Iterable
 # for `paid_basis`/`location_basis`/`keywords_basis`/`skills_basis`, and a name
 # import would fail on whichever side of that cycle loads second.
 from backend.lib import public_projection
+from src.collectors.simplify_internships import _SPONSORSHIP_MAP as _SIMPLIFY_SPONSORSHIP_MAP
 from src.evidence import (
     CAMPUS_PROGRAM_SUFFIXES,
     CONFIGURED_PROGRAM_METHOD,
@@ -77,7 +78,8 @@ from src.evidence import (
     configured_value_unstated,
     inferred_method,
     is_configured_program,
-    record_kind,
+    is_read_off_the_page,
+    keywords_are_source_topics,
 )
 
 # v2 adds the `configured` basis. A v1 client would read that basis as
@@ -221,6 +223,31 @@ _INTL_TEMPLATES = {
     "uiuc_sro": BASIS_DERIVED,
 }
 _CITIZENSHIP_TEMPLATES = {"nsf_reu": BASIS_PROGRAM_POLICY}
+
+# The sentence our Simplify collector writes for the listing label "Does Not
+# Offer Sponsorship": an intl "no" with no citizenship rule (M110).
+SIMPLIFY_NO_SPONSORSHIP_LABEL = "Does Not Offer Sponsorship"
+SIMPLIFY_NO_SPONSORSHIP_NOTE = _SIMPLIFY_SPONSORSHIP_MAP[SIMPLIFY_NO_SPONSORSHIP_LABEL][2]
+
+
+def simplify_no_sponsorship_only(opportunity: dict, elig: dict) -> bool:
+    """A Simplify listing whose one restriction is its label "Does Not Offer
+    Sponsorship": the intl "no" our collector wrote for that label, with no
+    citizenship rule and no intl answer we configured or read off a page.
+
+    One rule for two readers (M121): the ranker lists such a listing for an
+    international student rather than excluding it, and the public projector
+    marks it `international_basis: "no_sponsorship"` so the card's badge says
+    the label rather than "US Only".
+    """
+    return (
+        elig.get("international_friendly", "unknown") == "no"
+        and elig.get("citizenship_required") is not True
+        and opportunity.get("source") == "simplify_internships"
+        and elig.get("work_auth_notes") == SIMPLIFY_NO_SPONSORSHIP_NOTE
+        and (opportunity.get("metadata") or {}).get("simplify_sponsorship") == SIMPLIFY_NO_SPONSORSHIP_LABEL
+        and not is_read_off_the_page(opportunity, "eligibility.international_friendly")
+    )
 # Collectors that read citizenship off a labelled field, so a False is the
 # page's "No Citizenship Requirements" rather than a template.
 _CITIZENSHIP_FROM_FIELD = frozenset({"uiuc_sro"})
@@ -229,8 +256,6 @@ _CITIZENSHIP_FROM_FIELD = frozenset({"uiuc_sro"})
 # `source_url` is the paginated list it was found on, which moves as rows are
 # added and states none of the eligibility, pay or timing fields.
 _DETAIL_PAGE_SOURCES = frozenset({"uiuc_sro"})
-# Keywords that are the source's own topic list: the SRO "Research Area".
-_KEYWORDS_FROM_SOURCE = frozenset({"uiuc_sro"})
 # Collectors that write a listing's topics and majors through a map keyed on
 # the source's category (Simplify's "Software Engineering" becomes Computer
 # Science, Data Science, …): our tags, not words on the posting.
@@ -511,16 +536,15 @@ def keywords_basis(canonical: dict) -> str | None:
     detail facts' topic row cannot disagree.
     """
     stamped = _basis_for(canonical, "keywords")
-    if stamped is not None or record_kind(canonical) == "faculty_contact":
+    # The source's own topics (`src.evidence.keywords_are_source_topics`, the
+    # rule the cold-email paths share): an unstamped faculty row or the SRO.
+    if stamped is not None or keywords_are_source_topics(canonical):
         return stamped
     source = str(canonical.get("source") or "")
-    if source in _KEYWORDS_FROM_SOURCE:
-        return None
     # Listing keywords are ours on every other collector: Simplify expands
     # its category through a map, campus program specs and manual rows carry
     # tags a person typed (neither read off a page), NSF and the normalizer
-    # run a keyword bank over the text. Only the SRO's "Research Area" field
-    # is a topic list the source published.
+    # run a keyword bank over the text.
     if source in _CATEGORY_MAP_SOURCES or _is_curated_source(source) or is_configured_program(canonical):
         return BASIS_SYSTEM_TAG
     return BASIS_TEXT_SCAN

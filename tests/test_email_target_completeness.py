@@ -56,7 +56,10 @@ def assert_complete(content, public):
     assert target_field(content, "Contact's stated research areas") == public['metadata']['research_areas_raw']
     assert target_field(content, 'Recorded skills (check application-condition evidence)') == public['eligibility']['skills_required']
     assert target_field(content, 'Description') == public['description_raw']
-    assert target_field(content, 'Source-stated keywords') == public['keywords']
+    # A manual row's keywords are tags a person typed, not the posting's words
+    # (`opportunity_detail.keywords_basis`), so none is offered as stated (M31).
+    assert public['keywords_attribution'] == 'inferred'
+    assert target_field(content, 'Source-stated keywords') == []
     assert target_field(content, 'Recorded application URL (not proof of submission)') == public['application']['application_url']
     assert target_field(content, 'Organization') == public['organization']
     assert target_field(content, 'Department') == public['department']
@@ -83,7 +86,16 @@ def test_full_target_reaches_actual_generation_and_refinement_routes(writing_cli
     assert_complete(calls[0][1]['content'], public)
     parts = _common_parts(PROFILE, public)
     corpus = ce._build_email_corpus(parts, public)
-    assert 'requirement_end' in corpus and 'description_end' in corpus and 'last_keyword' in corpus
+    assert 'requirement_end' in corpus and 'description_end' in corpus and 'last_keyword' not in corpus
+
+
+def test_full_source_keyword_list_reaches_the_brief_and_corpus():
+    # The SRO's "Research Area" list is the source's own: all of it, uncapped.
+    opp = full_target(deepcopy(OPP)); opp['source'] = 'uiuc_sro'
+    public = project_public_detail(opp); parts = _common_parts(PROFILE, public)
+    assert len(public['keywords']) == 25 and 'keywords_attribution' not in public
+    assert target_field(ce._render_professor_brief(parts, public), 'Source-stated keywords') == public['keywords']
+    assert 'last_keyword' in ce._build_email_corpus(parts, public)
 
 
 @pytest.mark.parametrize('stage', ['judge', 'critique', 'revise'])
@@ -109,7 +121,7 @@ def test_oversized_legacy_target_is_explicitly_rejected_before_first_provider(wr
     if field == 'description': opp['description_raw'] = huge
     elif field == 'requirements': opp.update(source='manual'); opp['eligibility']['skills_required'] = ['Python', huge]
     elif field == 'research_areas': opp['metadata']['research_areas_raw'] = huge
-    elif field == 'keywords': opp['keywords'] = ['Python parser', huge]
+    elif field == 'keywords': opp.update(source='uiuc_sro'); opp['keywords'] = ['Python parser', huge]
     else: opp['metadata']['recent_works'] = [{'title': huge, 'year': 2025}]
     monkeypatch.setattr(ce, 'is_configured', lambda: True)
     def forbidden(*_args, **_kwargs): pytest.fail('Oversized target must not produce a successful fallback')

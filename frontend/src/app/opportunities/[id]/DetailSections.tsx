@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { parseResearchContext } from '@/lib/research-context';
 import type { Opportunity } from '@/lib/types';
-import { facultySafeInternational, opportunityRecordKind } from '@/lib/match-utils';
+import { facultySafeInternational, isNoSponsorshipListing, opportunityRecordKind } from '@/lib/match-utils';
 import {
   allowsProfessorFraming,
   cleanCompensation,
@@ -203,11 +203,15 @@ export function EligibilitySection({ opp, t }: { opp: Opportunity; t: TFunc }) {
             open to international students" self-selects out and never
             applies. 32 live listings carry that value because the tagger
             matched a federal-organisation or title substring. NSF Sites are
-            not marked — their solicitation really does restrict eligibility. */}
+            not marked — their solicitation really does restrict eligibility.
+            A Simplify listing's "Does Not Offer Sponsorship" label is not a
+            "No" either (M121). */}
         <DetailRow
           icon={<Globe />}
           label={t('detail.fields.international')}
-          value={friendlyLabel(effectiveIntl ?? 'unknown', t)}
+          value={isNoSponsorshipListing(opp)
+            ? t('detail.facts.values.intlNoSponsorship')
+            : friendlyLabel(effectiveIntl ?? 'unknown', t)}
           note={opp.international_attribution === 'inferred' ? t('detail.eligibilityInferred') : undefined}
           noteTestId="international-inferred-note"
         />
