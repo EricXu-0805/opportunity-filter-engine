@@ -97,6 +97,14 @@ async function freshSavesThenStale(saved: Partial<ProfileData>) {
   return { fresh, stale };
 }
 
+/** The student's answer to the question a save came back with. */
+function answer(tab: Tab, result: Awaited<ReturnType<Tab['sync']['stageProfilePatch']>>, choice: 'local' | 'cloud') {
+  if (result.status !== 'conflict') throw new Error(`no question: ${result.status}`);
+  return tab.sync.resolveProfileConflict({
+    prompt: tab.sync.makeConflictPrompt(tab.view, result.conflicts), actionView: tab.view, choice,
+  });
+}
+
 const sends = () => server.sent.map((s) => [s.expectedRevision, Object.keys(s.patch).sort()]);
 
 beforeEach(() => {
@@ -120,10 +128,7 @@ it('two quick changes to the year in a stale tab are asked about, and the other 
   expect([server.revision, server.profile.grade]).toEqual([8, 'Junior']);
 
   // The student answers: keeping what they typed saves it.
-  const answer = await stale.sync.resolveProfileConflict({
-    prompt: stale.sync.makeConflictPrompt(stale.view, result.conflicts), actionView: stale.view, choice: 'local',
-  });
-  expect(answer.status).toBe('saved');
+  expect((await answer(stale, result, 'local')).status).toBe('saved');
   expect([server.revision, server.profile.grade]).toEqual([9, 'Freshman']);
 });
 
@@ -153,6 +158,9 @@ it('two quick course status clicks in a stale tab do not reset a status the othe
   expect(result.status).toBe('conflict');
   expect(server.revision).toBe(8);
   expect(server.profile.courses).toEqual(marked);
+  // "Use the other version" keeps it.
+  expect((await answer(stale, result, 'cloud')).status).toBe('already-saved');
+  expect([server.revision, server.profile.courses]).toEqual([8, marked]);
 });
 
 const OLD_BUILD_REMOVAL: Partial<ProfileData> = { resume_text: '', coursework: [], experience_entries: [], resume_master: null };
@@ -172,6 +180,9 @@ it('two quick course additions in a stale tab do not undo an older build\'s rés
   expect(result.status).toBe('conflict');
   expect(server.revision).toBe(8);
   expect([server.profile.resume_text, server.profile.coursework]).toEqual(['', []]);
+  // Only the student's answer brings the résumé back.
+  expect((await answer(stale, result, 'local')).status).toBe('saved');
+  expect([server.revision, server.profile.resume_text]).toEqual([9, base.resume_text]);
 });
 
 it('two quick status clicks in a stale tab do not bring back the courses a résumé removal took', async () => {
