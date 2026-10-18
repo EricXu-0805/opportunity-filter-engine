@@ -43,6 +43,19 @@ _READING = re.compile(
     r"(?:papers?|articles?|publications?|manuscripts?|work)\b",
     re.IGNORECASE,
 )
+# M129: a claim about the one paper ("your/the/this [whole|entire|full] paper",
+# its full text or its abstract) that claims no more than the confirmed
+# sentence repeats the student's attestation; reading an abstract is below
+# reading the paper. Other papers, "recent" ones and a body of work never are.
+_ONE_PAPER = re.compile(
+    r"\s(?:the\s+(?:full\s+text|abstract)\s+of\s+)?(?:your|the|this)\s+(?:(?:whole|entire|full)\s+)?"
+    r"(?:paper|article|manuscript|publication|study)$",
+    re.IGNORECASE,
+)
+
+
+def _reading_rank(claim: str) -> int:
+    return 1 if re.search(r"\babstracts?\s+of\b", claim, re.I) else 2
 
 
 def unsupported_action_claims(text: str, *, confirmed_reading_sentence: str | None = None) -> list[str]:
@@ -50,30 +63,38 @@ def unsupported_action_claims(text: str, *, confirmed_reading_sentence: str | No
 
     Attachment claims remain unsupported. A server-rendered, target-validated
     reading sentence may be supplied separately; only its exact single occurrence
-    is exempt from the reading check, never from attachment checks. The checked reading objects are scholarly works, not
-    ordinary descriptions or future plans to read them.
+    is exempt from the reading check, never from attachment checks, and only
+    then may a claim about that one paper repeat its level or a lower one. The
+    checked reading objects are scholarly works, not ordinary descriptions or
+    future plans to read them.
     """
     findings: set[str] = set()
-    reading_text = text
+    reading_text, ceiling = text, 0
     if confirmed_reading_sentence and text.count(confirmed_reading_sentence) == 1:
         reading_text = text.replace(confirmed_reading_sentence, "", 1)
+        # The fixed prefix states the level; the quoted title never does.
+        confirmed = _READING.match(confirmed_reading_sentence)
+        if confirmed and _ONE_PAPER.search(confirmed.group()):
+            ceiling = _reading_rank(confirmed.group())
     for clause in _CLAUSES.split(text):
         attached = _ATTACHMENT.search(clause)
         if attached and not re.search(r"\b(?:no|not|without)\s+(?:(?:a|any|my|the)\s+)?$", clause[:attached.start()], re.I):
             findings.add("unsupported attachment claim")
     for clause in _CLAUSES.split(reading_text):
-        read = _READING.search(clause)
-        if read:
+        for read in _READING.finditer(clause):
             prefix = clause[:read.start()].lower()
             # "If/when I read ..." and "I will write after reading ..." do
             # not assert that reading has already happened.
             if re.search(r"\b(?:if|when|once|unless)\s*$", prefix):
-                continue
+                break
             if re.search(r"\bi\s+(?:will|would|can|could|plan\s+to|hope\s+to)\b", prefix):
-                continue
+                break
             if re.match(r"after\b", read.group(), re.I) and re.search(r"\bi\s+(?:will|plan\s+to)\b", clause[read.end():], re.I):
+                break
+            if _ONE_PAPER.search(read.group()) and _reading_rank(read.group()) <= ceiling:
                 continue
             findings.add("unsupported completed-reading claim")
+            break
     return sorted(findings)
 
 

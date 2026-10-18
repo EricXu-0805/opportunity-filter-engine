@@ -375,18 +375,25 @@ def test_with_a_chosen_paper_only_that_title_may_be_quoted(writing_client, monke
 
 
 # M129: a model draft or edit may not add a reading claim above the confirmed
-# level, such as reading the whole paper or its abstract after title only.
+# level, such as reading the whole paper or its abstract after title only. A
+# claim about that paper at or below the confirmed level is served.
 @pytest.mark.parametrize("path", ["", "stream", "refine"])
-@pytest.mark.parametrize("level,claim", [
-    ("title_only", "After reading your whole paper, I have a question about its method."),
-    ("title_only", "I have read the abstract of your paper as well."),
-    ("abstract", "After reading your whole paper, I have a question about its method."),
+@pytest.mark.parametrize("level,claim,allowed", [
+    ("title_only", "After reading your whole paper, I have a question about its method.", False),
+    ("title_only", "I have read the abstract of your paper as well.", False),
+    ("abstract", "After reading your whole paper, I have a question about its method.", False),
+    ("abstract", "I have read the abstract of your paper as well.", True),
+    ("full_text", "After reading your whole paper, I have a question about its method.", True),
+    ("full_text", "I have read the abstract of your paper as well.", True),
 ])
-def test_model_reply_reading_more_than_confirmed_is_sent_back(writing_client, monkeypatch, path, level, claim):
+def test_model_reply_reading_more_than_confirmed_is_sent_back(writing_client, monkeypatch, path, level, claim, allowed):
     client, _ = writing_client
     value = {**CHOSEN, "paper_reading": {**CHOSEN["paper_reading"], "level": level}}
     reply = _model_reply(path, paper_reading_sentence(value), claim)
     out = _m33_post(client, monkeypatch, path, value, reply=reply, **({} if path == "refine" else {"engine": "ai"}))
+    if allowed:
+        assert _served(out, path) and out["body"] in reply, out
+        return
     assert not _served(out, path) and out["fallback_reason"] == "fabrication", out
     assert claim not in out["body"] and out["body"].count(paper_reading_sentence(value)) == 1
 
