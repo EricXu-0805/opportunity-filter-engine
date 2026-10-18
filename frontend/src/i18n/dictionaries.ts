@@ -2942,6 +2942,7 @@ export const en = {
       polishing: 'Almost there — polishing results...',
     },
     slowHint: 'Still working — our free-tier backend takes ~30s to wake up on first use.',
+    crossSchoolSlowHint: "Searching all schools' records; the first search can take about half a minute.",
     completeness: {
       summary: 'Profile {complete}/{total} complete — add {missing} for sharper matches.',
       edit: 'Edit profile',
@@ -8310,6 +8311,7 @@ export const zh = {
       polishing: '快好了 —— 正在打磨结果...',
     },
     slowHint: '仍在处理中 —— 免费后端首次唤醒大约需要 30 秒。',
+    crossSchoolSlowHint: '正在检索所有学校的记录；首次搜索可能需要约半分钟。',
     completeness: {
       summary: '档案完成度 {complete}/{total} —— 补上{missing}可让匹配更精准。',
       edit: '编辑档案',

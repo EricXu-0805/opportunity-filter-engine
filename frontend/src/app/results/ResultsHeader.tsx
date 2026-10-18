@@ -13,6 +13,8 @@ import type { Tab, TFunc } from './types';
 export interface ResultsHeaderProps {
   loading: boolean;
   showSlowHint: boolean;
+  /** A cross-school first page is still loading after a short delay. */
+  showCrossSchoolHint?: boolean;
   /** Rule-ranked list on screen, paid refine still running. */
   refining: boolean;
   /** The list on screen came back refined. */
@@ -36,6 +38,7 @@ export interface ResultsHeaderProps {
 export function ResultsHeader({
   loading,
   showSlowHint,
+  showCrossSchoolHint = false,
   refining,
   refined,
   refineFailed,
@@ -109,7 +112,17 @@ export function ResultsHeader({
             {t('results.refineFailed')}
           </p>
         )}
-        {loading && showSlowHint && (
+        {/* Mounted empty before the hint fills it, so the live region exists
+            when its text arrives and screen readers announce it. */}
+        <div role="status" data-testid="results-cross-school-hint">
+          {loading && showCrossSchoolHint && (
+            <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-full px-2.5 py-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse" aria-hidden="true" />
+              {t('results.crossSchoolSlowHint')}
+            </p>
+          )}
+        </div>
+        {loading && showSlowHint && !showCrossSchoolHint && (
           <p className="mt-2 inline-flex items-center gap-1.5 text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-1">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" aria-hidden="true" />
             {t('results.slowHint')}

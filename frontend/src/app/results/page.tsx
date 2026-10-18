@@ -391,6 +391,7 @@ function ResultsContent() {
     error,
     errorCode,
     showSlowHint,
+    showCrossSchoolHint,
     paginationReady,
     refining,
     refined,
@@ -961,6 +962,7 @@ function ResultsContent() {
       <ResultsHeader
         loading={loading}
         showSlowHint={showSlowHint}
+        showCrossSchoolHint={showCrossSchoolHint}
         refining={refining}
         refined={refined}
         refineFailed={refineFailed}
