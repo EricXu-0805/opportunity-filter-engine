@@ -28,7 +28,12 @@ from backend.lib.blocking import (
     run_request_work,
 )
 from backend.lib.contact_visibility import contact_email_status
-from backend.lib.email_claims import skill_level_violations, unchosen_paper_claims, unsupported_action_claims
+from backend.lib.email_claims import (
+    skill_level_violations,
+    unchosen_paper_claims,
+    unsupported_action_claims,
+    unsupported_opening_claims,
+)
 from backend.lib.email_contact_context import (
     contact_claim_violations,
     contact_context_brief,
@@ -1646,6 +1651,10 @@ _REVISION_FIXES: tuple[tuple[tuple[str, ...], str], ...] = (
      "Remove any statement that the student has already met, written to, spoken "
      "with, or been referred to this person unless the STUDENT brief states it; "
      "keep a confirmed contact sentence exactly once."),
+    (("unsupported opening claim",),
+     "No opening is confirmed for this faculty member. Do not mention an open position, posting or "
+     "vacancy or say the student is applying for one; ask whether they have any current or upcoming "
+     "research openings instead."),
     (("unsupported skill level", "unsupported expertise level"),
      "Describe each skill no more strongly than the level the student listed"),
     (("unsupported course status",),
@@ -2188,6 +2197,10 @@ def _email_grounding_findings(
         text, confirmed_reading_sentence=next(
             (s for s in parts.get("contact_paper_reading_lower") or [] if s in text), parts.get("contact_paper_reading")),
     ))
+    if parts.get("is_faculty"):
+        # M30: a faculty profile is never a posting ("Current opening
+        # confirmed: NO"); the draft may ask about an opening, not claim one.
+        fabricated.extend(unsupported_opening_claims(text))
     if not deterministic:
         # M33: only the paper the student chose (validated against these works
         # before any route builds parts) may be quoted by title, unless the
