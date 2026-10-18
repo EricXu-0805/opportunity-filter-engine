@@ -238,6 +238,35 @@ describe('another tab\'s answer and saves reach this tab without a reload (M117)
     expect(b.hook.result.current.saveStatus).toBe('cloud-failed');
     expect(b.hook.result.current.canRetrySync).toBe(true);
   });
+
+  it('(e) a slider move the other tab already sent stops saying "Couldn\'t save"', async () => {
+    const a = await open('A');
+    const b = await open('B');
+    online = false;
+    await as(b, (f) => f.setSearchWeight(90));
+    expect(b.hook.result.current.saveStatus).toBe('cloud-failed');
+    online = true;
+    await as(a, (f) => f.update('name', 'Alex Kim'));
+    expect(remote).toMatchObject({ search_weight: 90, name: 'Alex Kim' });
+    const sent = service.commit.mock.calls.length;
+    await tick(2000);
+    expect(b.hook.result.current.saveStatus).toBe('saved');
+    expect(b.hook.result.current.canRetrySync).toBe(false);
+    expect(b.hook.result.current.searchWeight).toBe(b.hook.result.current.profile.search_weight);
+    expect(service.commit.mock.calls.length).toBe(sent);
+  });
+
+  it('(f) a tab whose slider move was saved starts no save when the other tab moves the slider', async () => {
+    const a = await open('A');
+    const b = await open('B');
+    await as(b, (f) => f.setSearchWeight(90));
+    expect(remote.search_weight).toBe(90);
+    online = false;
+    await as(a, (f) => f.setSearchWeight(30));
+    await tick(5000);
+    expect(b.seen).toEqual(['idle', 'saving', 'saved', 'idle']);
+    expect(b.hook.result.current.searchWeight).toBe(b.hook.result.current.profile.search_weight);
+  });
 });
 
 /** Locked reads of the profile storage from here on. The typing tab takes the
