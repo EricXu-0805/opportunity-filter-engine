@@ -335,6 +335,27 @@ describe('parseResumePDF — coursework extraction', () => {
     expect(res.extracted_coursework).toContain('Databases');
   });
 
+  it('stores a course listed with its title once, not its code again (checklist M130)', async () => {
+    const parse = async (...pages: string[]) => {
+      mockGetDocument.mockReturnValue({ promise: Promise.resolve(fakePdf(pages)) });
+      return parseResumePDF(fakeFile());
+    };
+    const titled = await parse('Relevant Coursework: CS 173 Discrete Structures, MATH 241 Calculus III');
+    expect(titled.extracted_coursework).toEqual(['CS 173 Discrete Structures', 'MATH 241 Calculus III']);
+    // One row each on the form.
+    expect(courseRows({ coursework: titled.extracted_coursework, resume_text: titled.raw_text }).map((row) => row.name))
+      .toEqual(['CS 173 Discrete Structures', 'MATH 241 Calculus III']);
+    // The code said elsewhere on the résumé is the same course.
+    expect((await parse('Grader for CS 173', 'Relevant Coursework: CS 173 Discrete Structures')).extracted_coursework)
+      .toEqual(['CS 173 Discrete Structures']);
+    // Two titled courses of one code are two courses.
+    expect((await parse('Relevant Coursework: CS 498 Cloud Computing Applications, CS 498 Deep Learning for Healthcare'))
+      .extracted_coursework).toEqual(['CS 498 Cloud Computing Applications', 'CS 498 Deep Learning for Healthcare']);
+    // A code no listed course opens with stays, in the list or anywhere else.
+    expect((await parse('Relevant Coursework: CS 173 Discrete Structures, CS 225', 'Grader for STAT 400, CS 1730 Topics'))
+      .extracted_coursework).toEqual(['CS 173 Discrete Structures', 'CS 1730', 'CS 225', 'STAT 400']);
+  });
+
   it('does not treat unlabeled prose as named courses', async () => {
     mockGetDocument.mockReturnValue({
       promise: Promise.resolve(fakePdf(['I enjoy data structures and building things'])),

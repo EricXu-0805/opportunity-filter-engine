@@ -93,6 +93,32 @@ describe('every request that sends the profile sends the courses with their stat
   });
 });
 
+// Checklist M130: what the résumé parser stored for "Relevant Coursework: CS
+// 173 Discrete Structures, MATH 241 Calculus III" before it stopped storing a
+// code again beside its titled course.
+describe('a course the résumé stored by its code and its title goes once', () => {
+  const repeated = ['CS 173', 'CS 173 Discrete Structures', 'MATH 241', 'MATH 241 Calculus III'];
+  const once = [
+    { name: 'CS 173 Discrete Structures', status: 'unknown', source: 'resume' },
+    { name: 'MATH 241 Calculus III', status: 'unknown', source: 'resume' },
+  ];
+  it.each(routes)('%s', async (route) => {
+    for (const courses of [undefined, repeated.map((name) => ({ name, source: 'resume' as const }))]) {
+      const sent = await sentFor(route, { ...profile, courses, coursework: repeated });
+      expect(sent.courses).toEqual(once);
+      expect(sent.coursework).toEqual(['CS 173 Discrete Structures', 'MATH 241 Calculus III']);
+      fetchMock.mockClear();
+    }
+  });
+
+  it.each(routes)('%s with the course list switched off sends the names as stored and the list once', async (route) => {
+    release.courseStatus = false;
+    const sent = await sentFor(route, { ...profile, courses: repeated.map((name) => ({ name, source: 'resume' as const })), coursework: repeated });
+    expect(sent.courses).toEqual(once);
+    expect(sent.coursework).toEqual(repeated);
+  });
+});
+
 // Off, a profile goes as b8602cb0 sends it: the names as stored, no
 // `courses`, unless the profile holds the list another tab wrote.
 describe('with the course list switched off', () => {

@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   COURSE_STATEMENTS, courseEntries, courseFields, courseKey, courseRows, courseSentences, coursesWithoutResume,
-  importResumeCourses, isCourseList,
+  importResumeCourses, isCourseList, storedCourse,
 } from './course-status';
 import type { CourseEntry, ProfileData, StoredCourse } from './types';
+import repeats from '../../../tests/fixtures/course_repeats_cases.json';
 
 type CourseProfile = Pick<ProfileData, 'courses' | 'coursework' | 'resume_text'>;
 /** What leaves the form: every request, email and quick action. */
@@ -124,6 +125,58 @@ describe('courseEntries', () => {
   });
 });
 
+describe('a résumé code nobody marked is not listed again beside a résumé course that opens with it (checklist M130)', () => {
+  // The cases tests/test_student_course_status.py reads too.
+  it.each(repeats.cases.map((item) => [item.why, item] as const))('as the server reads it: %s', (_why, item) => {
+    expect(courseEntries(item.profile as unknown as CourseProfile).map(({ name, status, source }) => [name, status, source]))
+      .toEqual(item.entries);
+  });
+
+  // What the résumé parser stored before it stopped storing the code again.
+  const text = 'Relevant Coursework: CS 173 Discrete Structures, MATH 241 Calculus III\nCurrent courses: CS 374 Algorithms';
+  const names = ['CS 173', 'CS 173 Discrete Structures', 'CS 374', 'CS 374 Algorithms', 'MATH 241', 'MATH 241 Calculus III'];
+
+  it('shows one row for the course, with its line and suggestion', () => {
+    for (const profile of [{ resume_text: text, coursework: names }, imported(text, names)]) {
+      expect(courseRows(profile)).toEqual([
+        { name: 'CS 173 Discrete Structures', status: 'unknown', source: 'resume', line: text.split('\n')[0] },
+        { name: 'CS 374 Algorithms', status: 'unknown', source: 'resume', suggested: 'in_progress', line: 'Current courses: CS 374 Algorithms' },
+        { name: 'MATH 241 Calculus III', status: 'unknown', source: 'resume', line: text.split('\n')[0] },
+      ]);
+    }
+  });
+
+  it('keeps a code the student marked, with the course beside it', () => {
+    const profile: CourseProfile = { resume_text: text, coursework: names, courses: [
+      { name: 'CS 173', source: 'resume', status: 'completed' },
+      { name: 'CS 374', source: 'resume', status: 'unknown' },
+    ] };
+    expect(statuses(profile)).toEqual({
+      'CS 173': 'completed', 'CS 173 Discrete Structures': 'unknown', 'CS 374 Algorithms': 'unknown', 'MATH 241 Calculus III': 'unknown',
+    });
+  });
+
+  it('writes the list without the code on the next course edit, and nothing brings it back', () => {
+    const profile = imported(text, names);
+    const rows = courseRows(profile);
+    // A status click writes the course list alone; the names keep the code.
+    const clicked = { ...profile, courses: courseFields(rows.map((row, at) => storedCourse(at === 0 ? { ...row, marked: 'completed' } : row))).courses };
+    expect(clicked.courses).toEqual([
+      { name: 'CS 173 Discrete Structures', source: 'resume', status: 'completed' },
+      { name: 'CS 374 Algorithms', source: 'resume' },
+      { name: 'MATH 241 Calculus III', source: 'resume' },
+    ]);
+    expect(courseEntries(clicked).map((entry) => entry.name)).toEqual(['CS 173 Discrete Structures', 'CS 374 Algorithms', 'MATH 241 Calculus III']);
+    // Removing the course removes it, code and all.
+    expect(courseFields(rows.slice(1).map(storedCourse)).coursework).toEqual(['CS 374 Algorithms', 'MATH 241 Calculus III']);
+    expect(importResumeCourses(clicked, ['CS 173 Discrete Structures', 'MATH 241 Calculus III'])).toEqual([
+      { name: 'CS 173 Discrete Structures', source: 'resume', status: 'completed' },
+      { name: 'MATH 241 Calculus III', source: 'resume' },
+    ]);
+    expect(coursesWithoutResume(clicked)).toEqual([{ name: 'CS 173 Discrete Structures', source: 'resume', status: 'completed' }]);
+  });
+});
+
 describe('the résumé suggests a status only after a label that opens its line or a column (R2)', () => {
   const names = ['CS 374', 'MATH 415'];
   it('suggests in progress for every course of a list after an in-progress label', () => {
@@ -209,7 +262,7 @@ describe('the résumé suggests a status only after a label that opens its line 
       ['Current Role: TA for CS 225', ['CS 225']],
       ['Current Projects: Built a compiler for CS 426', ['CS 426']],
       ['Coursework: CS 225, Current Topics in AI (CS 498)', ['CS 225', 'CS 498', 'Current Topics in AI (CS 498)']],
-      ['Relevant Coursework: ECE 598 - Current Topics in Machine Learning', ['ECE 598', 'ECE 598 - Current Topics in Machine Learning']],
+      ['Relevant Coursework: ECE 598 - Current Topics in Machine Learning', ['ECE 598 - Current Topics in Machine Learning']],
       ['CS 598 - Current Research in NLP', ['CS 598']],
       ['Ongoing research: applying CS 446 methods to robot grasping', ['CS 446']],
       ['Grader for CS 173 (current semester)', ['CS 173']],

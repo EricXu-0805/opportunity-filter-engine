@@ -1,5 +1,5 @@
 import type { ResumeParseResponse } from './types';
-import { courseCodes, courseLists, listedCourses, trimCourse } from './course-status';
+import { courseCodes, courseLists, listedCourses, repeatedCodes, trimCourse } from './course-status';
 import {
   BULLET_LINE, firstWord, glyphItemsEndWithStop, glyphLine, hangingRest, lineBreakText, lowercaseOpening,
   MAX_RESUME_TEXT_CHARACTERS, RESUME_ROLE, resumeTextCharacters, weakWrapEvidence, wrapEvidence, wrapJoin,
@@ -103,7 +103,9 @@ const NOT_COURSEWORK = new RegExp(String.raw`${LABEL_ROW.source}|\b(?:dean['’]
  *  list is, so the list goes on across a break the page marks as a possible
  *  wrap (`possibleWraps`, offsets of line breaks in `text`) unless the next
  *  line is a row of its own. Names only: what a course's status is, and the
- *  line it is on, are read from the stored text when needed (checklist M13). */
+ *  line it is on, are read from the stored text when needed (checklist M13).
+ *  A code a listed course opens with is that course, and is not stored again
+ *  ("CS 173" beside "CS 173 Discrete Structures", repeatedCodes). */
 function extractCoursework(text: string, possibleWraps: ReadonlySet<number> = new Set()): string[] {
   const courses = courseCodes(text).map((code) => code.name);
   const lines = text.split('\n');
@@ -124,7 +126,9 @@ function extractCoursework(text: string, possibleWraps: ReadonlySet<number> = ne
     }
     for (const list of lists) courses.push(...listedCourses(list).map((item) => item.name));
   }
-  return Array.from(new Set(courses)).sort();
+  const found = Array.from(new Set(courses));
+  const repeated = repeatedCodes(found);
+  return found.filter((name) => !repeated.has(name)).sort();
 }
 
 /** Capture a labeled research-interests line from a resume. The form's only
