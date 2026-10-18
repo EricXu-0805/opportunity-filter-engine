@@ -61,18 +61,6 @@ interface Known {
 // Ratios are axe's, which truncates to two decimals.
 const BASELINE: readonly Known[] = [
   {
-    rule: 'landmark-main-is-top-level', impact: 'moderate', steps: ['detail'],
-    name: 'OpportunityDetail.tsx renders a <main> inside the layout\'s <main id="main-content">.',
-  },
-  {
-    rule: 'landmark-no-duplicate-main', impact: 'moderate', steps: ['detail'],
-    name: 'Same nested <main> as above, seen as a second main landmark.',
-  },
-  {
-    rule: 'landmark-unique', impact: 'moderate', steps: ['detail'],
-    name: 'Same nested <main> as above: two main landmarks with no distinguishing name.',
-  },
-  {
     rule: 'heading-order', impact: 'moderate', steps: ['results'],
     name: 'Match card titles are <h3> straight after the page <h1>.',
   },
