@@ -365,6 +365,47 @@ class TestSchoolAggregation:
         assert report["fully_stale_schools"] == ["colgate"]
         assert report["stale_shard_count"] == 2
 
+    def test_fresh_campus_programs_do_not_stand_in_for_a_dead_faculty_roster(self):
+        """Barnard on 2026-10-17: every faculty roster parsed zero rows for
+        weeks while its campus programs kept a fresh check."""
+        ledger = _ledger_with({
+            "barnard_faculty": ("barnard", 50, sh.SUSPICIOUS_ZERO),
+            "campus_graph:barnard": ("barnard", 1, sh.SUCCESS_NONZERO),
+        })
+        school = sh.school_rows(ledger, NOW, ALL)[0]
+        assert school["fully_stale"] is False
+        assert school["no_fresh_faculty"] is True
+        assert school["faculty_shard_count"] == 1
+        assert school["fresh_faculty_shard_count"] == 0
+        report = sh.corpus_report(ledger, NOW, ALL)
+        assert report["fully_stale_schools"] == []
+        assert report["no_fresh_faculty_schools"] == ["barnard"]
+        assert report["no_fresh_faculty_school_count"] == 1
+
+    def test_a_zero_row_faculty_run_is_no_fresh_faculty_inside_the_window(self):
+        """A zero keeps the last success, so the source still reads fresh."""
+        ledger = _ledger_with({
+            "swarthmore_faculty": ("swarthmore", 3, sh.SUSPICIOUS_ZERO),
+            "campus_graph:swarthmore": ("swarthmore", 1, sh.SUCCESS_NONZERO),
+        })
+        rows = {r["source"]: r for r in sh.source_rows(ledger, NOW, ALL)}
+        assert rows["swarthmore_faculty"]["freshness"] == "fresh"
+        school = sh.school_rows(ledger, NOW, ALL)[0]
+        assert school["no_fresh_faculty"] is True
+
+    def test_one_faculty_source_with_fresh_rows_is_enough(self):
+        ledger = _ledger_with({
+            "ucb_ling_faculty": ("ucb", 44, sh.SUSPICIOUS_ZERO),
+            "ucb_eecs_faculty": ("ucb", 2, sh.SUCCESS_NONZERO),
+            "nsf_reu": ("national", 4, sh.SUCCESS_NONZERO),
+        })
+        schools = {s["school"]: s for s in sh.school_rows(ledger, NOW, ALL)}
+        assert schools["ucb"]["no_fresh_faculty"] is False
+        assert schools["ucb"]["fresh_faculty_shard_count"] == 1
+        # A shard with no faculty source has nothing to judge.
+        assert schools["national"]["faculty_shard_count"] == 0
+        assert schools["national"]["no_fresh_faculty"] is False
+
     def test_unscheduled_sources_are_shown_but_never_counted_stale(self):
         """``manual`` seeds are carried data, not weekly producers. Judging
         them on a weekly clock reported the national shard permanently
