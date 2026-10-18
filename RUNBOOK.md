@@ -318,7 +318,7 @@ list.
 | Keyed by | Tables |
 |---|---|
 | `id` (the uid) | `profiles` |
-| `device_id` | `profile_versions`, `favorites`, `interactions`, `interaction_status_changes`, `interaction_merge_archive` (also `source_device_id`), `saved_searches`, `match_feedback`, `push_subscriptions`, `analytics_events`, `waitlist`, `feedback`, `orders`, `usage_events`, `resume_renovations` and `resume_renovation_versions` (also `owner_id`), `professor_follows`, `professor_update_reads`, `contact_events`, `application_events` |
+| `device_id` | `profile_versions`, `favorites`, `interactions`, `interaction_status_changes`, `interaction_merge_archive` (also `source_device_id`), `saved_searches`, `match_feedback`, `push_subscriptions`, `analytics_events`, `waitlist`, `feedback`, `orders`, `usage_events`, `resume_renovations` and `resume_renovation_versions` (also `owner_id`), `professor_follows`, `professor_update_reads`, `contact_events`, `application_events`, `outcome_notes` |
 | `owner_id` (uuid) | `target_resumes`, `target_resume_versions`, `private_import_targets`, `material_artifacts`, `application_material_records`, `contact_material_records` |
 | something else | `feedback_events` (`ticket_id` of the student's `feedback`); `ops_incidents` (a reminder or digest failure names the uid or a saved search id in `dedup_key`); `merge_grants` (`source_device_id`, `redeemed_by`, `target_email`); `merged_devices` |
 | Storage | `tracker-attachments`: objects named `<device_id>/<opportunity_id>/<file>`. `application-materials`: objects named `pdf/<material_id>.pdf`, found through `material_artifacts.object_key` |
@@ -437,6 +437,7 @@ export(source, rows) AS (
   UNION ALL SELECT 'professor_update_reads', (SELECT jsonb_agg(t) FROM public.professor_update_reads t, ids WHERE t.device_id = ANY (ids.a))
   UNION ALL SELECT 'contact_events', (SELECT jsonb_agg(t) FROM public.contact_events t, ids WHERE t.device_id = ANY (ids.a))
   UNION ALL SELECT 'application_events', (SELECT jsonb_agg(t) FROM public.application_events t, ids WHERE t.device_id = ANY (ids.a))
+  UNION ALL SELECT 'outcome_notes', (SELECT jsonb_agg(t) FROM public.outcome_notes t, ids WHERE t.device_id = ANY (ids.a))
   UNION ALL SELECT 'target_resumes', (SELECT jsonb_agg(t) FROM public.target_resumes t, ids WHERE t.owner_id::text = ANY (ids.a))
   UNION ALL SELECT 'target_resume_versions', (SELECT jsonb_agg(t) FROM public.target_resume_versions t, ids WHERE t.owner_id::text = ANY (ids.a))
   UNION ALL SELECT 'private_import_targets', (SELECT jsonb_agg(t) FROM public.private_import_targets t, ids WHERE t.owner_id::text = ANY (ids.a))
@@ -487,8 +488,8 @@ Export first, so the counts can be compared afterwards. Then, in this order:
    the student.** One statement; it returns how many rows it deleted from each
    table. `feedback_events` go with their `feedback` (`ON DELETE CASCADE`),
    and `ops_incident_events` with their `ops_incidents`. It leaves
-   `contact_events` and `application_events` alone: their trigger refuses a
-   delete while the auth user exists.
+   `contact_events`, `application_events` and `outcome_notes` alone: their
+   trigger refuses a delete while the auth user exists.
 
    ```sql
    WITH ids AS (SELECT '{00000000-0000-0000-0000-000000000000}'::text[] AS a, lower('student@example.edu') AS email),
@@ -548,9 +549,10 @@ Export first, so the counts can be compared afterwards. Then, in this order:
    signed-in account that was left out of the list. The triggers below fire
    only when the `auth.users` row is really deleted, so a soft delete is not
    enough. For each deleted user:
-   - `auth_user_delete_contact_events` and
-     `auth_user_delete_application_events` delete its `contact_events` and
-     `application_events`;
+   - `auth_user_delete_contact_events`,
+     `auth_user_delete_application_events` and
+     `auth_user_delete_outcome_notes` delete its `contact_events`,
+     `application_events` and `outcome_notes`;
    - `auth_user_delete_materials` queues every `material_artifacts` object key
      in `private.material_cleanup_outbox` and deletes the artifacts; their
      `application_material_records` and `contact_material_records` go with
