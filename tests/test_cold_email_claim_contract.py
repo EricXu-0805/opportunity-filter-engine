@@ -222,6 +222,9 @@ OPENING_CLAIM = "I am writing to apply for the open position in your lab."
     (FACULTY, "Do you have any openings?", False),
     (FACULTY, "I would be glad to help if you have any openings.", False),
     (FACULTY, "I am writing to ask whether you are taking students.", False),
+    (FACULTY, "I would like to apply for a research position in your lab if one is available.", False),
+    (FACULTY, "I am interested in applying for a research position in your lab and wanted to ask whether you "
+              "have any openings.", False),
     (OPP, OPENING_CLAIM, False),
 ])
 def test_faculty_drafts_may_ask_about_but_not_claim_an_opening(client, monkeypatch, path, target, claim, rejected):
@@ -233,6 +236,15 @@ def test_faculty_drafts_may_ask_about_but_not_claim_an_opening(client, monkeypat
     else:
         assert out["method"] == {"initial": "ai", "refine": "llm"}[path], out
         assert claim in out["body"]
+
+
+@pytest.mark.parametrize("path", ["initial", "refine"])
+def test_a_job_posting_in_the_students_own_work_is_not_an_opening_claim(client, monkeypatch, path):
+    project = "I built a Python parser that turns a job posting into structured fields."
+    monkeypatch.setattr(ce, "load_opportunities_by_id", lambda: {OPP["id"]: OPP, FACULTY["id"]: FACULTY})
+    out = request(client, monkeypatch, path, project, bullets=(project,), opportunity_id=FACULTY["id"])
+    assert out["method"] == {"initial": "ai", "refine": "llm"}[path], out
+    assert project in out["body"]
 
 
 def test_pipeline_critique_names_the_opening_claim_for_the_reviser():
