@@ -18,6 +18,9 @@ export interface EmailContactContextPanelProps {
   opportunity?: Opportunity | null;
   /** Current writing target version/fingerprint. Changes require a fresh reading confirmation. */
   targetKey?: string;
+  /** True until the target's detail loads. A key built from the list card is
+   * provisional: a paper confirmation is neither compared with nor recorded against it. */
+  targetLoading?: boolean;
   /** Increase after a server rejection; preserve answers and ask for a fresh confirmation. */
   reviewRequested?: number;
   onDraftChange: () => void;
@@ -44,6 +47,8 @@ type State = {
   expanded: boolean;
   appliedKey: string | null;
   error: PanelError | null;
+  /** Restored while the target loads: shown and kept as saved until its detail loads. */
+  held: EmailContactDraftSnapshot | null;
 };
 const unconfirmed = (): Confirmations => ({ referral: false, sent: false, availability: false, paper: false });
 
@@ -84,6 +89,7 @@ function fromSupplied(source: Supplied, paperSourceKey: string, reviewRequested:
     expanded: value.purpose !== 'first_contact',
     appliedKey: source.valid ? source.key : null,
     error: source.valid ? null : 'invalid',
+    held: null,
   };
 }
 
@@ -122,18 +128,19 @@ function prepare(fields: Fields, confirmed: Confirmations, papers: EmailPaperOpt
 }
 
 function fromInitialDraft(source: Supplied, paperSourceKey: string, reviewRequested: number,
-  papers: EmailPaperOption[], opportunityId: string | null, initialDraft: unknown): State {
+  papers: EmailPaperOption[], opportunityId: string | null, initialDraft: unknown, targetLoading = false): State {
   const fallback = fromSupplied(source, paperSourceKey, reviewRequested);
   const draft = parseEmailContactDraftSnapshot(initialDraft);
   if (!draft || draft.opportunityId !== opportunityId) return fallback;
-  const staleReading = !!draft.fields.paperKey && draft.paperSourceKey !== paperSourceKey;
+  // Until the detail loads, the saved snapshot is held as it is and compared afterwards.
+  const staleReading = !targetLoading && !!draft.fields.paperKey && draft.paperSourceKey !== paperSourceKey;
   const confirmed = { ...draft.confirmed, ...(staleReading ? { paper: false } : {}) };
   const prepared = prepare(draft.fields, confirmed, papers);
   // A stored "applied" marker is not authority: the current accepted context
   // must independently agree. Pending edits never become accepted on restore.
   const applied = !draft.pending && !staleReading && source.valid
     && prepared.error === null && prepared.key === source.key;
-  return { ...fallback, fields: draft.fields, confirmed, expanded: draft.expanded,
+  return { ...fallback, ...(targetLoading ? { paperSourceKey: draft.paperSourceKey, held: draft } : {}), fields: draft.fields, confirmed, expanded: draft.expanded,
     dirty: !applied, appliedKey: applied ? source.key : null, error: null };
 }
 
@@ -143,22 +150,27 @@ export default function EmailContactContextPanel(props: EmailContactContextPanel
   return <ContextSession key={props.resetKey} {...props} />;
 }
 
-function ContextSession({ context, initialDraft, onDraftSnapshotChange, opportunity, targetKey, reviewRequested = 0, onDraftChange, onApply, disabled = false, language }: EmailContactContextPanelProps) {
+function ContextSession({ context, initialDraft, onDraftSnapshotChange, opportunity, targetKey, targetLoading = false, reviewRequested = 0, onDraftChange, onApply, disabled = false, language }: EmailContactContextPanelProps) {
   const copy = (en: string, zh: string) => language === 'zh' ? zh : en;
   const id = useId();
   const source = supplied(context);
   const papers = emailPaperOptions(opportunity);
-  const paperSourceKey = JSON.stringify([opportunity?.id ?? null, targetKey ?? null, papers]);
+  const currentSourceKey = JSON.stringify([opportunity?.id ?? null, targetKey ?? null, papers]);
+  const [state, setState] = useState(() => fromInitialDraft(source, currentSourceKey, reviewRequested, papers, opportunity?.id ?? null, initialDraft, targetLoading));
+  // While the target loads, the paper source stays the last one recorded.
+  const paperSourceKey = targetLoading ? state.paperSourceKey : currentSourceKey;
   const previousPaperSource = useRef(paperSourceKey);
-  const [state, setState] = useState(() => fromInitialDraft(source, paperSourceKey, reviewRequested, papers, opportunity?.id ?? null, initialDraft));
-  // Adopt an external accepted context only when it cannot erase unfinished
-  // answers. A real owner/target reset uses the keyed session above.
-  if (state.sourceKey !== source.key || state.paperSourceKey !== paperSourceKey || state.reviewRequested !== reviewRequested) {
+  if (state.held && !targetLoading) {
+    // Restore as an open on the loaded detail does, so only a real source change asks again.
+    setState({ ...fromInitialDraft(source, paperSourceKey, state.reviewRequested, papers, opportunity?.id ?? null, state.held), expanded: state.expanded });
+  } else if (state.sourceKey !== source.key || state.paperSourceKey !== paperSourceKey || state.reviewRequested !== reviewRequested) {
+    // Adopt an external accepted context only when it cannot erase unfinished
+    // answers. A real owner/target reset uses the keyed session above.
     const adopted = state.sourceKey !== source.key
       ? (!state.dirty || state.appliedKey === source.key ? { ...fromSupplied(source, paperSourceKey, reviewRequested), expanded: state.expanded } : { ...state, sourceKey: source.key, appliedKey: null })
       : state;
     const reviewing = state.reviewRequested !== reviewRequested;
-    setState({ ...adopted, paperSourceKey, reviewRequested, ...(reviewing ? { expanded: true } : {}),
+    setState({ ...adopted, paperSourceKey, reviewRequested, held: null, ...(reviewing ? { expanded: true } : {}),
       ...((state.paperSourceKey !== paperSourceKey || reviewing) && adopted.fields.paperKey
         ? { confirmed: { ...adopted.confirmed, paper: false }, dirty: true, appliedKey: null, error: null } : {}),
     });
@@ -178,6 +190,7 @@ function ContextSession({ context, initialDraft, onDraftSnapshotChange, opportun
   const blocked = prepared.error === 'blocked';
   const applied = !state.dirty && state.appliedKey !== null && prepared.error === null && state.appliedKey === prepared.key;
   useLayoutEffect(() => {
+    if (state.held) return;
     onDraftSnapshotChange?.(parseEmailContactDraftSnapshot({
       version: 1, opportunityId: opportunity?.id ?? null, paperSourceKey: state.paperSourceKey,
       fields: state.fields, confirmed: state.confirmed, pending: !applied, expanded: state.expanded,
@@ -196,13 +209,13 @@ function ContextSession({ context, initialDraft, onDraftSnapshotChange, opportun
     if (disabled) return;
     onDraftChange();
     setState(previous => ({ ...previous, fields: { ...previous.fields, [key]: value, ...(key === 'paperKey' ? { readingLevel: '' as const } : {}) },
-      confirmed: unconfirmed(), dirty: true, appliedKey: null, error: null }));
+      confirmed: unconfirmed(), dirty: true, appliedKey: null, error: null, held: null }));
   };
   const confirm = (key: keyof Confirmations, value: boolean) => {
     if (disabled) return;
     onDraftChange();
     setState(previous => ({ ...previous, confirmed: { ...previous.confirmed, [key]: value },
-      dirty: true, appliedKey: null, error: null }));
+      dirty: true, appliedKey: null, error: null, held: null }));
   };
   const apply = () => {
     if (disabled || applied) return;
@@ -210,7 +223,7 @@ function ContextSession({ context, initialDraft, onDraftSnapshotChange, opportun
     if (result.error !== null) { setState(previous => ({ ...previous, error: result.error })); return; }
     try {
       onApply(result.value);
-      setState(previous => ({ ...previous, dirty: false, appliedKey: result.key, error: null }));
+      setState(previous => ({ ...previous, dirty: false, appliedKey: result.key, error: null, held: null }));
     } catch {
       setState(previous => ({ ...previous, error: 'apply' }));
     }

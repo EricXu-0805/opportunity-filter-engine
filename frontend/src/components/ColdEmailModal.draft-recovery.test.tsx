@@ -531,4 +531,81 @@ describe('persistent cold-email draft recovery', () => {
       expect(record.status === 'present' && record.draft.body).toBe('Edited in the second tab');
     });
   });
+
+  describe('a confirmed paper reading restored while the target loads', () => {
+    const works = [{ title: 'First sensor study', year: 2025 }, { title: 'Verified sensor study', year: 2024 }];
+    const paperTarget: Opportunity = { ...target, metadata: { ...target.metadata, publication_attribution_status: 'verified_author_id', recent_works: works } };
+    const confirmation = () => screen.getByLabelText('I confirm this reading level for the selected paper.');
+    const storedPanel = () => { const record = readColdEmailDraft(captureOwnerToken(), target.id); return record.status === 'present' ? record.draft.pendingPanel : undefined; };
+    let draftWrites = 0;
+    async function saveConfirmedReading() {
+      const view = mount({ target: paperTarget }); await ready(); openContext();
+      fireEvent.change(screen.getByLabelText('Paper you looked at (optional)'), { target: { value: JSON.stringify(['Verified sensor study', 2024]) } });
+      fireEvent.change(screen.getByLabelText('How much did you read?'), { target: { value: 'abstract' } });
+      fireEvent.click(confirmation());
+      fireEvent.click(screen.getByRole('button', { name: 'Apply background to this draft' }));
+      fireEvent.click(button('regenerateFromProfile'));
+      await waitFor(() => expect(screen.queryByRole('button', { name: 'coldEmail.regenerateFromProfile' })).toBeNull());
+      await waitFor(() => expect(button('generateAiDraft')).toBeEnabled()); await act(async () => {});
+      change('body', edits.body); await close(view); clearCalls();
+      expect(storedPanel()).toMatchObject({ confirmed: { paper: true }, pending: false });
+      const storage = window.localStorage; const write = storage.setItem.bind(storage); draftWrites = 0;
+      vi.spyOn(storage, 'setItem').mockImplementation((key: string, value: string) => {
+        if (key.startsWith(STORAGE_KEYS.COLD_EMAIL_DRAFT_PREFIX)) draftWrites += 1;
+        write(key, value);
+      });
+    }
+    // As CheckedColdEmailModal does, the editor shows the list card until the target's detail loads.
+    async function openWhileLoading(card: Opportunity, detail: Opportunity) {
+      const props: Props = { isOpen: true, onClose: vi.fn(), profile, opportunityId: target.id, opportunityTitle: 'Lab', target: card, targetReady: false, targetChecking: true };
+      const view = render(<ColdEmailModal {...props} />);
+      await waitFor(() => expect(field('body')).toHaveValue(edits.body)); await act(async () => {});
+      view.rerender(<ColdEmailModal {...props} target={detail} targetReady targetChecking={false} />);
+      await act(async () => {}); await act(async () => {});
+    }
+    const cards = {
+      'the same papers': { ...paperTarget, writing_target_version: undefined },
+      'only its first paper': { ...paperTarget, writing_target_version: undefined, metadata: { ...paperTarget.metadata, recent_works: works.slice(0, 1) } },
+    };
+    for (const [name, card] of Object.entries(cards)) {
+      it(`keeps the confirmation and writes nothing when the list card shows ${name} and the detail names the saved source`, async () => {
+        await saveConfirmedReading(); await openWhileLoading(card, paperTarget);
+        expect(screen.getByLabelText('How much did you read?')).toHaveValue('abstract');
+        expect(confirmation()).toBeChecked();
+        expect(screen.getByTestId('email-contact-context-status')).toHaveTextContent('Background confirmed for the next draft.');
+        // The restored draft's metadata refresh still runs once the detail has loaded.
+        await waitFor(() => expect(api.variants).toHaveBeenCalledOnce()); await act(async () => {});
+        expect(storedPanel()).toMatchObject({ confirmed: { paper: true }, pending: false });
+        expect(draftWrites).toBe(0);
+        expect(field('body')).toHaveValue(edits.body); expect(button('generateAiDraft')).toBeEnabled();
+      });
+    }
+
+    const changedDetails = {
+      'names a different source for the paper': { ...paperTarget, writing_target_version: `wt1:${'b'.repeat(64)}` },
+      'no longer lists the paper': { ...paperTarget, metadata: { ...paperTarget.metadata, recent_works: works.slice(0, 1) } },
+    };
+    for (const [name, detail] of Object.entries(changedDetails)) {
+      it(`still asks for the reading again when the loaded detail ${name}`, async () => {
+        await saveConfirmedReading(); await openWhileLoading(cards['the same papers'], detail);
+        await waitFor(() => expect(storedPanel()).toMatchObject({ confirmed: { paper: false }, pending: true }));
+        expect(confirmation()).not.toBeChecked();
+        expect(screen.getByTestId('email-contact-context-status')).toHaveTextContent('Changes are not applied');
+        expect(button('gmail')).toBeDisabled(); expect(api.stream).not.toHaveBeenCalled();
+      });
+    }
+
+    it('saves a change made while the target loads and keeps it once the detail loads', async () => {
+      await saveConfirmedReading();
+      const props: Props = { isOpen: true, onClose: vi.fn(), profile, opportunityId: target.id, opportunityTitle: 'Lab', target: cards['the same papers'], targetReady: false, targetChecking: true };
+      const view = render(<ColdEmailModal {...props} />);
+      await waitFor(() => expect(field('body')).toHaveValue(edits.body)); await act(async () => {});
+      const availability = () => screen.getByLabelText('When could you participate? (optional)');
+      fireEvent.change(availability(), { target: { value: 'Tuesday afternoons' } });
+      await waitFor(() => expect(storedPanel()).toMatchObject({ fields: { availability: 'Tuesday afternoons' }, pending: true }));
+      view.rerender(<ColdEmailModal {...props} target={paperTarget} targetReady targetChecking={false} />); await act(async () => {});
+      expect(availability()).toHaveValue('Tuesday afternoons'); expect(confirmation()).not.toBeChecked();
+      expect(storedPanel()).toMatchObject({ fields: { availability: 'Tuesday afternoons' }, confirmed: { paper: false }, pending: true });
+    });
+  });
 });
