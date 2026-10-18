@@ -14,8 +14,8 @@ The weekly refresh renders every page too (``render``). Measured 2026-10-17:
 a plain GET of the hub and of each program page on www, afa and davisconnects
 returned 403 ``cf-mitigated: challenge``, and the headless render returned
 each real page. A program record is verified only from its own page, so every
-program URL is a seed; ``/research/`` is not, as it now redirects to the
-``/academics/research/`` hub.
+program URL is a seed and nothing else is: no record is read from the
+``/academics/research/`` hub, and ``/research/`` now redirects there.
 
 Emit buckets -> (source, school, audience), kept in lockstep with
 school_audience.SOURCE_DEFAULTS:
@@ -43,7 +43,6 @@ SCHOOL: dict = {
             "crawl": STATIC,
             "render": True,
             "seeds": [
-                f"{_RES}/",
                 f"{_RES}/colby-undergraduate-summer-research-retreat/",
                 f"{_RES}/colby-achievement-program-in-the-sciences/",
                 "https://www.colby.edu/academics/departments-and-programs/"

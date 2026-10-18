@@ -91,7 +91,7 @@ def pages(monkeypatch):
     return gets, renders
 
 
-@pytest.mark.parametrize("module, seeds, programs", [(colby, 9, 8), (haverford, 5, 9)])
+@pytest.mark.parametrize("module, seeds, programs", [(colby, 8, 8), (haverford, 5, 9)])
 def test_every_program_page_is_read_through_the_render(pages, module, seeds, programs):
     gets, renders = pages
     records, evidence = campus_graph.fetch_and_normalize_with_evidence(module.SCHOOL, deep=True)
@@ -145,6 +145,12 @@ def test_an_address_that_redirects_counts_as_a_failed_page(pages, old):
     assert evidence["seed_pages_loaded"] == 0
     assert all(old not in s for src in (colby.SCHOOL, haverford.SCHOOL)
                for s in src["sources"][0]["seeds"])
+
+
+def test_every_colby_seed_backs_a_program():
+    # A seed no record is read from costs a render a week for nothing.
+    source = colby.SCHOOL["sources"][0]
+    assert set(source["seeds"]) == {spec["url"] for spec in source["programs"]}
 
 
 def test_the_shard_runs_install_chromium_for_both_schools():
