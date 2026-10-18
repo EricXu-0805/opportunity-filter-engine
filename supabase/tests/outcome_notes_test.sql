@@ -85,12 +85,22 @@ BEGIN
  BEGIN PERFORM public.append_outcome_note(u,gen_random_uuid(),'opp','Fine.','applied'); RAISE EXCEPTION 'applied outcome'; EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
  BEGIN PERFORM public.append_outcome_note(u,NULL,'opp','Fine.'); RAISE EXCEPTION 'null id'; EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
  BEGIN PERFORM public.append_outcome_note(u,gen_random_uuid(),'  ','Fine.'); RAISE EXCEPTION 'blank target'; EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ -- What the browser would refuse on read (JavaScript trim() and its one-line
+ -- rule), whatever this server's locale puts in [[:space:]] or [[:cntrl:]].
+ FOREACH bad IN ARRAY ARRAY[U&'\FEFF',U&'\00A0\3000',U&'\2003\202F',U&'a\2028b',U&'a\2029b',U&'a\0085b',U&'a\0001b',U&'a\007Fb'] LOOP
+  BEGIN PERFORM public.append_outcome_note(u,gen_random_uuid(),'opp',bad); RAISE EXCEPTION 'browser-refused body accepted %',encode(convert_to(bad,'UTF8'),'hex'); EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ END LOOP;
+ FOREACH bad IN ARRAY ARRAY[U&'\FEFF',U&'\00A0',U&'\3000\1680'] LOOP
+  BEGIN PERFORM public.append_outcome_note(u,gen_random_uuid(),bad,'Fine.'); RAISE EXCEPTION 'browser-refused target accepted %',encode(convert_to(bad,'UTF8'),'hex'); EXCEPTION WHEN invalid_parameter_value THEN NULL; END;
+ END LOOP;
+ -- The same characters inside a sentence are the student's words.
+ PERFORM public.append_outcome_note(u,gen_random_uuid(),'opp',U&'Prof.\00A0Lee replied\3000\FEFF.');
  BEGIN PERFORM public.append_outcome_note('49000000-0000-4000-8000-000000000002',gen_random_uuid(),'opp','Fine.'); RAISE EXCEPTION 'wrong owner'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  PERFORM set_config('test.uid','',false);
  BEGIN PERFORM public.append_outcome_note(NULL,gen_random_uuid(),'opp','Fine.'); RAISE EXCEPTION 'null owner'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
  PERFORM set_config('test.uid','49000000-0000-4000-8000-000000000099',false);
  BEGIN PERFORM public.append_outcome_note('49000000-0000-4000-8000-000000000099',gen_random_uuid(),'opp','Fine.'); RAISE EXCEPTION 'unknown auth owner'; EXCEPTION WHEN insufficient_privilege THEN NULL; END;
- RAISE WARNING 'PASS outcome note empty, blank, overlong, multi-line, outcome and identity guards';
+ RAISE WARNING 'PASS outcome note empty, blank, overlong, multi-line, browser-refused text, outcome and identity guards';
 END $$;
 SELECT set_config('test.uid','49000000-0000-4000-8000-000000000002',false);
 DO $$ BEGIN
@@ -106,6 +116,18 @@ DO $$ BEGIN
  RAISE WARNING 'PASS owner reads own notes; direct insert, edit, delete and truncate denied';
 END $$;
 RESET ROLE;
+-- The table's CHECKs hold the same rules for a writer that skips the RPC.
+DO $$
+DECLARE u text:='49000000-0000-4000-8000-000000000001'; bad text[];
+BEGIN
+ FOREACH bad SLICE 1 IN ARRAY ARRAY[[U&'\FEFF','Fine.'],[U&'\00A0','Fine.'],['opp',U&'\FEFF'],['opp',U&'a\2028b'],['opp',U&'a\0085b']] LOOP
+  BEGIN
+   INSERT INTO public.outcome_notes(device_id,note_id,opportunity_id,body) VALUES(u,gen_random_uuid(),bad[1],bad[2]);
+   RAISE EXCEPTION 'table accepted browser-refused text %',encode(convert_to(bad[1]||'|'||bad[2],'UTF8'),'hex');
+  EXCEPTION WHEN check_violation THEN NULL; END;
+ END LOOP;
+ RAISE WARNING 'PASS outcome_notes CHECKs refuse what the browser would refuse';
+END $$;
 DO $$
 DECLARE role_name text; ns text; sig text;
 BEGIN
