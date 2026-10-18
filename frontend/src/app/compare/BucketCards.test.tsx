@@ -81,7 +81,7 @@ describe('BucketCards — canonical match truth', () => {
     render(<LanguageProvider initialLocale="zh"><BucketCards rows={[row]} /></LanguageProvider>);
     expect(screen.getByText('有报酬')).toBeInTheDocument();
     expect(screen.getByText('Canonical strong ML background')).toBeInTheDocument();
-    expect(screen.getByText('我们列表里的信息显示面向大三、大四学生 —— 项目页面未确认')).toBeInTheDocument();
+    expect(screen.getByText('我们列表里的信息提示面向大三、大四学生 —— 项目页面未确认')).toBeInTheDocument();
     cleanup();
     render(<BucketCards rows={[row]} />);
     expect(screen.getByText('Paid opportunity')).toBeInTheDocument();

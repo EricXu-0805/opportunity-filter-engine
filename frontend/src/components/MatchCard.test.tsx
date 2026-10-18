@@ -693,7 +693,7 @@ describe('MatchCard', () => {
       expect(screen.getByText('你的专业「Biology」可能适合这个项目')).toBeInTheDocument();
       expect(screen.getByText('A line a newer backend wrote')).toBeInTheDocument();
       expect(screen.getByText(
-        '列表标注：「Does Not Offer Sponsorship」（我们的说明：实习可能仍可使用 CPT/OPT，请向雇主确认）',
+        '列表标注：「Does Not Offer Sponsorship」（我们的说明：实习可能仍适用 CPT/OPT，请向雇主确认）',
       )).toBeInTheDocument();
       expect(screen.getByText('Focuses on GPU systems, not medical imaging')).toBeInTheDocument();
       expect(screen.queryByText('Your major (Biology) may fit this program')).toBeNull();

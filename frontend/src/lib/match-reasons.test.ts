@@ -29,7 +29,7 @@ describe('match reasons on the zh interface (M107)', () => {
 
   it('keeps quoted source text and names exactly as given, in 「」', () => {
     expect(zh(byKey('intl_listing_no_sponsorship'))).toBe(
-      '列表标注：「Does Not Offer Sponsorship」（我们的说明：实习可能仍可使用 CPT/OPT，请向雇主确认）',
+      '列表标注：「Does Not Offer Sponsorship」（我们的说明：实习可能仍适用 CPT/OPT，请向雇主确认）',
     );
     expect(zh(byKey('major_direct'))).toBe('你的专业「Biology」完全对口');
     expect(zh(byKey('major_prefers'))).toBe('偏好：「Biology」、「Chemistry」');
@@ -62,7 +62,7 @@ describe('match reasons on the zh interface (M107)', () => {
       expect(zh(byKey(key))).toContain('可能');
     }
     for (const c of CASES.filter((x) => x.english.startsWith('Our listing suggests'))) {
-      expect(zh(c)).toContain('我们列表里的信息显示');
+      expect(zh(c)).toContain('我们列表里的信息提示');
     }
     expect(zh(byKey('year_may_fit'))).toBe('你的年级（大三）可能符合这个项目');
     expect(zh(byKey('citizenship_read'))).toBe(

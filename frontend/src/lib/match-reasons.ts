@@ -67,9 +67,9 @@ const ZH_REASONS: Record<string, Render> = {
   year_accepts: (p) => `接受${year(p.year)}学生`,
   year_missing: fixed('补充你的年级，才能确认年级是否符合'),
   year_undergrad_only: fixed('面向本科生 —— 不是研究生层次的机会'),
-  year_listing_undergrad: fixed(`我们列表里的信息显示这个项目面向本科生${NOT_ON_PAGE}`),
+  year_listing_undergrad: fixed(`我们列表里的信息提示这个项目面向本科生${NOT_ON_PAGE}`),
   year_targets: (p) => `通常面向${years(p.years)}`,
-  year_listing_targets: (p) => `我们列表里的信息显示面向${years(p.years)}学生${NOT_ON_PAGE}`,
+  year_listing_targets: (p) => `我们列表里的信息提示面向${years(p.years)}学生${NOT_ON_PAGE}`,
   // Major
   major_department_aligns: fixed('这位教师所在的院系与你的专业一致'),
   major_department_related: fixed('这位教师所在的院系与你的专业相关'),
@@ -82,10 +82,10 @@ const ZH_REASONS: Record<string, Render> = {
   major_direct: (p) => `你的专业${quote(p.major)}完全对口`,
   major_close: (p) => `你的专业${quote(p.major)}与要求密切相关`,
   major_prefers: (p) => `偏好：${quoteList(p.majors)}`,
-  major_listing: (p) => `我们列表里的信息显示偏向${quoteList(p.majors)}专业${NOT_ON_PAGE}`,
+  major_listing: (p) => `我们列表里的信息提示偏向${quoteList(p.majors)}专业${NOT_ON_PAGE}`,
   // International students and citizenship
   intl_listing_no_sponsorship: (p) =>
-    `列表标注：${quote(p.label)}（我们的说明：实习可能仍可使用 CPT/OPT，请向雇主确认）`,
+    `列表标注：${quote(p.label)}（我们的说明：实习可能仍适用 CPT/OPT，请向雇主确认）`,
   citizenship_listing: fixed(`我们列表里写着需要美国公民或永久居民身份${NOT_ON_PAGE}`),
   citizenship_read: fixed(`可能需要美国公民或永久居民身份，这是我们对页面的理解${NOT_ON_PAGE}`),
   citizenship_listing_and_read: fixed(
@@ -93,7 +93,7 @@ const ZH_REASONS: Record<string, Render> = {
   ),
   citizenship_no_sponsorship: fixed('雇主不提供签证担保'),
   citizenship_required: fixed('需要美国公民或永久居民身份'),
-  intl_unclear_internship: fixed('国际学生资格不明确 —— 很多实习可以使用 CPT/OPT，请向雇主确认'),
+  intl_unclear_internship: fixed('国际学生资格不明确 —— 很多实习符合 CPT/OPT 的条件，请向雇主确认'),
   intl_unstated_faculty: fixed('未注明是否接受国际学生 —— 联系教师时请确认'),
   intl_unclear: fixed('国际学生资格不明确 —— 申请前请核实'),
   intl_open_listing: fixed(`我们列表里写着接受国际学生${NOT_ON_PAGE}`),
