@@ -391,6 +391,29 @@ def test_model_reply_reading_more_than_confirmed_is_sent_back(writing_client, mo
     assert claim not in out["body"] and out["body"].count(paper_reading_sentence(value)) == 1
 
 
+# Review of a level limit (reverted): a claim about the chosen paper at or below
+# the confirmed level left the rest of its clause unchecked, so these were served.
+BESIDE_CONFIRMED = [
+    "After reading your whole paper, I have a question about its method.",
+    "I have read the abstract of your paper as well.", "I have read your paper and your other publications.",
+    "I have read the abstract of your paper and then the whole paper.", "I have thoroughly studied your paper.",
+    f"I have read your paper on {SECOND_PAPER['title'].lower()}.",
+]
+
+
+@pytest.mark.parametrize("path", ["", "stream", "refine"])
+@pytest.mark.parametrize("level", ["abstract", "full_text"])
+@pytest.mark.parametrize("claim", BESIDE_CONFIRMED)
+def test_model_reply_reading_claim_beside_the_confirmed_sentence_is_sent_back(writing_client, monkeypatch, path,
+                                                                             level, claim):
+    client, _ = writing_client
+    value = {**CHOSEN, "paper_reading": {**CHOSEN["paper_reading"], "level": level}}
+    reply = _model_reply(path, paper_reading_sentence(value), claim)
+    out = _m33_post(client, monkeypatch, path, value, reply=reply, **({} if path == "refine" else {"engine": "ai"}))
+    assert not _served(out, path) and out["fallback_reason"] == "fabrication", out
+    assert claim not in out["body"] and out["body"].count(paper_reading_sentence(value)) == 1
+
+
 # Review of the first version of this check (which matched any unquoted title
 # and a list of reaction phrases) found it discarded the student's own words.
 @pytest.mark.parametrize("path,engine", [("", "template"), ("stream", "template"), ("variants", "template"),
@@ -580,6 +603,31 @@ def test_a_later_edit_keeps_a_lowered_reading_sentence(writing_client, monkeypat
                     instruction="Make this more formal", reply=draft.replace("Could I ask", "May I ask") if provider else None)
     assert out["method"] == ("llm" if provider else "local") and out.get("fallback_reason") is None, out
     assert out["body"].count(lowered) == 1 and "read the full text" not in out["body"]
+
+
+@pytest.mark.parametrize("select", [False, True])
+@pytest.mark.parametrize("claim", BESIDE_CONFIRMED)
+def test_a_lowered_reading_sentence_never_carries_another_reading_claim(writing_client, monkeypatch, select, claim):
+    # M129: lowering lets the edit state the lower fixed sentence, nothing more.
+    client, _ = writing_client
+    out = _refine_reading(client, monkeypatch, "full_text", f"{paper_reading_sentence(_read('abstract'))} {claim}",
+                          select=select)
+    if select:
+        assert out["outcome"] == "no_change" and out["reason"] == "fabrication", out
+        return
+    assert not _served(out, "refine") and out["fallback_reason"] == "fabrication", out
+    assert claim not in out["body"] and out["body"].count(paper_reading_sentence(_read("full_text"))) == 1
+
+
+@pytest.mark.parametrize("claim", BESIDE_CONFIRMED)
+def test_a_later_edit_never_adds_a_reading_claim_beside_a_lowered_sentence(writing_client, monkeypatch, claim):
+    client, _ = writing_client
+    lowered = paper_reading_sentence(_read("abstract"))
+    draft = _hand_typed(lowered)
+    out = _m33_post(client, monkeypatch, "refine", _read("full_text"), works=[R5_PAPER], current_body=draft,
+                    instruction="Make this more formal", reply=_hand_typed(lowered, claim))
+    assert not _served(out, "refine") and out["fallback_reason"] == "fabrication", out
+    assert claim not in out["body"] and out["body"].count(lowered) == 1
 
 
 @pytest.mark.parametrize("path", ["", "stream"])

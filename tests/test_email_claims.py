@@ -102,6 +102,26 @@ def test_a_reading_claim_above_the_confirmed_level_is_refused(level, claim):
     assert unsupported_action_claims(body, confirmed_reading_sentence=sentence) == ["unsupported completed-reading claim"]
 
 
+# Review of a level limit (reverted): once a claim about the chosen paper at or
+# below the confirmed level was accepted, the rest of its clause went unchecked.
+# Beside the confirmed sentence, every reading claim is refused at every level.
+@pytest.mark.parametrize("level", ["title_only", "abstract", "full_text"])
+@pytest.mark.parametrize("claim", [
+    WHOLE, ABSTRACT_TOO, "I have read your paper and your recent papers.", "I have read your paper.",
+    "After reading your paper and your other publications, I have a question.",
+    "I have read your paper and all of your publications.", "I have read your paper and your 2025 paper on pruning.",
+    "I have read your paper on pruning large language models without retraining.",
+    "I have read the abstract of your paper and then the whole paper.",
+    "After reading the abstract of your paper and the full text, I have a question.",
+    "I have thoroughly studied your paper.", "I have reviewed your paper.",
+    "I have carefully studied the abstract of your paper.", "I went through your entire article.",
+])
+def test_a_reading_claim_beside_the_confirmed_sentence_is_refused_at_every_level(level, claim):
+    sentence = _confirmed(level)
+    body = f"Dear Pat Lee,\n\n{sentence} {claim}\n\nCould we talk?"
+    assert unsupported_action_claims(body, confirmed_reading_sentence=sentence) == ["unsupported completed-reading claim"]
+
+
 def test_confirmed_reading_exemption_never_covers_an_attachment_claim():
     exempted = READ + " I have attached my CV."
     assert unsupported_action_claims(exempted, confirmed_reading_sentence=exempted) == ["unsupported attachment claim"]
