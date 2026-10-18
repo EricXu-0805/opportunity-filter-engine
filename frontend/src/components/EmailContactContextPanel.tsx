@@ -189,6 +189,8 @@ function ContextSession({ context, initialDraft, onDraftSnapshotChange, opportun
   const prepared = prepare(fields, state.confirmed, papers);
   const blocked = prepared.error === 'blocked';
   const applied = !state.dirty && state.appliedKey !== null && prepared.error === null && state.appliedKey === prepared.key;
+  // The list card may not list the chosen paper; whether it is still available is known only once the detail loads.
+  const checkingPaper = targetLoading && !!fields.paperKey && !selectedPaper;
   useLayoutEffect(() => {
     if (state.held) return;
     onDraftSnapshotChange?.(parseEmailContactDraftSnapshot({
@@ -246,7 +248,7 @@ function ContextSession({ context, initialDraft, onDraftSnapshotChange, opportun
     data-testid="email-contact-context-panel">
     <summary className={styles.summary}>
       <span>{copy('Contact purpose and background', '联系目的与背景')}</span>
-      <span className={styles.badge}>{applied ? copy('Applied', '已应用') : copy('Needs confirmation', '待确认')}</span>
+      <span className={styles.badge}>{applied ? copy('Applied', '已应用') : checkingPaper ? copy('Checking', '核对中') : copy('Needs confirmation', '待确认')}</span>
     </summary>
     <div className={styles.content}>
       <p className={styles.help}>{copy('Use only details you know are accurate. Applying background prepares this draft; it does not generate or send an email, or mark anyone as contacted.', '只填写你确认属实的信息。应用背景仅用于准备这份草稿，不会生成或发送邮件，也不会标记已联系。')}</p>
@@ -302,10 +304,12 @@ function ContextSession({ context, initialDraft, onDraftSnapshotChange, opportun
           <select id={id + '-paper'} value={fields.paperKey} disabled={!papers.length && !fields.paperKey}
             onChange={event => update('paperKey', event.target.value)}>
             <option value="">{copy('Skip paper reading', '跳过论文阅读')}</option>
-            {fields.paperKey && !selectedPaper && <option value={fields.paperKey} disabled>{copy('Previous paper is no longer available', '之前选择的论文已不可用')}</option>}
+            {fields.paperKey && !selectedPaper && <option value={fields.paperKey} disabled>{checkingPaper
+              ? copy('Checking the paper you chose…', '正在核对你选择的论文…')
+              : copy('Previous paper is no longer available', '之前选择的论文已不可用')}</option>}
             {papers.map(paper => <option key={emailPaperKey(paper)} value={emailPaperKey(paper)}>{paper.title}{paper.year != null ? ` (${paper.year})` : ''}</option>)}
           </select>
-          <p className={styles.help}>{papers.length
+          <p className={styles.help}>{papers.length || checkingPaper
             ? copy('Choose from papers attributed to this researcher. Confirm only what you actually read; this does not claim understanding or expertise.', '只能选择已核对作者归属的论文资料。按实际阅读程度确认，不据此宣称理解或掌握。')
             : copy('No papers matched to this researcher are available. You can continue without a reading claim.', '当前没有可选的已核对作者归属的论文资料。可以继续，不写阅读声明。')}</p>
           {research?.status === 'stale' && <p role="status" data-testid="email-research-stale" className={styles.help}>
@@ -347,10 +351,11 @@ function ContextSession({ context, initialDraft, onDraftSnapshotChange, opportun
       </fieldset>
       <p role="status" data-testid="email-contact-context-status" className={styles.help}>{applied
         ? copy('Background confirmed for the next draft.', '背景已确认，生成新稿时使用。')
+        : checkingPaper ? copy('Checking the opportunity details; your saved answers are kept.', '正在核对机会详情，已保存的填写内容仍保留。')
         : copy('Changes are not applied. Your current email is kept; confirm and apply the background before generating again.', '改动尚未应用。当前邮件仍保留，请确认并应用背景后再生成。')}</p>
       {disabled && <p className={styles.help}>{copy('Background changes are paused. Your answers are kept.', '背景修改暂时暂停，填写内容仍保留。')}</p>}
       {error && <p role="alert" className={styles.error}>{errors[error]}</p>}
-      <button type="button" className={styles.apply} disabled={disabled || applied || blocked} onClick={apply}>
+      <button type="button" className={styles.apply} disabled={disabled || applied || blocked || checkingPaper} onClick={apply}>
         {copy('Apply background to this draft', '将背景应用于草稿')}
       </button>
     </div>

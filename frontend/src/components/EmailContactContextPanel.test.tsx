@@ -452,6 +452,22 @@ describe('pending contact draft restoration', () => {
     fireEvent.click(apply()); expect(restored.props.onApply).not.toHaveBeenCalled();
   });
 
+  it('says it is checking a restored paper the loading target does not list yet, and only after the load that it is gone', () => {
+    const snapshots = snapshotSpy(); const first = mount({ opportunity: paperTarget(), targetKey: 'v1', onDraftSnapshotChange: snapshots });
+    selectReading(); fireEvent.click(readingConfirm()); const saved = lastSnapshot(snapshots); first.unmount();
+    const restored = mount({ initialDraft: saved, onDraftSnapshotChange: snapshots, opportunity: paperTarget([paperTwo]), targetLoading: true });
+    restored.rerender(<EmailContactContextPanel {...restored.props} language="zh" />);
+    const confirmZh = () => screen.getByRole('checkbox', { name: '我确认自己对这篇论文的阅读程度。' });
+    expect(screen.getByRole('option', { name: '正在核对你选择的论文…' })).toBeInTheDocument();
+    expect(screen.queryByText('之前选择的论文已不可用')).toBeNull(); expect(screen.queryByText('待确认')).toBeNull();
+    expect(screen.getByText('核对中')).toBeInTheDocument(); expect(confirmZh()).toBeChecked();
+    expect(screen.getByTestId('email-contact-context-status')).toHaveTextContent('正在核对机会详情，已保存的填写内容仍保留。');
+    restored.rerender(<EmailContactContextPanel {...restored.props} language="zh" targetLoading={false} />);
+    expect(screen.getByRole('option', { name: '之前选择的论文已不可用' })).toBeInTheDocument();
+    expect(screen.getByText('待确认')).toBeInTheDocument(); expect(confirmZh()).not.toBeChecked();
+    expect(screen.getByTestId('email-contact-context-status')).toHaveTextContent('改动尚未应用');
+  });
+
   it('does not trust a stored applied marker when the separately accepted context is different', () => {
     const snapshots = snapshotSpy(); const first = mount({ onDraftSnapshotChange: snapshots });
     referral(); fireEvent.click(referralConfirm()); fireEvent.click(apply());

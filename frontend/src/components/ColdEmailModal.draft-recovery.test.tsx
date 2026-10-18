@@ -581,6 +581,25 @@ describe('persistent cold-email draft recovery', () => {
       });
     }
 
+    const lackingCards = { 'only its first paper': cards['only its first paper'], 'no papers': { ...cards['the same papers'], metadata: { ...paperTarget.metadata, recent_works: [] } } };
+    for (const [name, card] of Object.entries(lackingCards)) {
+      it(`says it is checking, not that the paper is gone, while the detail never loads and the list card shows ${name}`, async () => {
+        await saveConfirmedReading();
+        render(<ColdEmailModal isOpen onClose={vi.fn()} profile={profile} opportunityId={target.id} opportunityTitle="Lab" target={card} targetReady={false} targetChecking />);
+        await waitFor(() => expect(field('body')).toHaveValue(edits.body)); await act(async () => {});
+        expect(screen.queryByText('Previous paper is no longer available')).toBeNull();
+        expect(screen.getByRole('option', { name: 'Checking the paper you chose…' })).toBeInTheDocument();
+        expect(screen.queryByText('Needs confirmation')).toBeNull();
+        expect(screen.queryByText(/No papers matched to this researcher/)).toBeNull();
+        const status = screen.getByTestId('email-contact-context-status');
+        expect(status).not.toHaveTextContent('Changes are not applied');
+        expect(status).toHaveTextContent('Checking the opportunity details; your saved answers are kept.');
+        expect(screen.getByRole('button', { name: 'Apply background to this draft' })).toBeDisabled();
+        expect(confirmation()).toBeChecked(); expect(screen.getByLabelText('How much did you read?')).toHaveValue('abstract');
+        expect(storedPanel()).toMatchObject({ confirmed: { paper: true }, pending: false }); expect(draftWrites).toBe(0);
+      });
+    }
+
     const changedDetails = {
       'names a different source for the paper': { ...paperTarget, writing_target_version: `wt1:${'b'.repeat(64)}` },
       'no longer lists the paper': { ...paperTarget, metadata: { ...paperTarget.metadata, recent_works: works.slice(0, 1) } },
