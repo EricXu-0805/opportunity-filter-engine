@@ -87,7 +87,8 @@ function rememberConfirmationPrint(uid: string, slug: string): void {
  *  after a sign-out swept that — the print of the school it last confirmed on
  *  this device. A confirmation for a DIFFERENT slug does not count — a school
  *  changed by a flow that skipped the receipt (e.g. an imported cloud profile)
- *  should be re-confirmed. */
+ *  should be re-confirmed. Writes the account's print when the receipt has
+ *  none, so call it from an effect or a handler, never during render. */
 export function isSchoolConfirmed(slug: string, owner: OwnerToken): boolean {
   const uid = owner.uid !== null && isOwnerTokenValid(owner, owner.uid) ? owner.uid : null;
   if (readSchoolConfirmation()?.slug === slug) {
