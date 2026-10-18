@@ -302,7 +302,7 @@ export function OpportunityHeader({
             {t('detail.draftEmail')}
           </button>
         )}
-        {/* Same gate as Draft Email. Both post to /api/tailor, which refuses a
+        {/* Same gate as Draft email. Both post to /api/tailor, which refuses a
             non-actionable target with a 409 — so without this the page offers
             two buttons whose only possible outcome is an error. */}
         {profile && onOpenTailorModal && posture === 'actionable' && (

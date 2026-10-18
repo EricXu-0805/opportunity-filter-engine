@@ -67,10 +67,10 @@ export interface MatchCardProps {
   match: MatchResult;
   profile?: ProfileData | null;
   onDraftEmail: (opportunityId: string) => void;
-  /** True only while the page would open a draft for a Draft Email click (see
+  /** True only while the page would open a draft for a Draft email click (see
    *  writingEntryReady in results/page.tsx). Until then the button is disabled
    *  and busy, like Tailor before ownerReady, rather than live but ignored.
-   *  Renovate Resume waits for it too when the page opens that editor
+   *  Renovate resume waits for it too when the page opens that editor
    *  (onOpenResume). Defaults to false (fail-closed) when omitted. */
   draftEmailReady?: boolean;
   /** Results owns the persistent editor; other callers may retain the local fallback. */

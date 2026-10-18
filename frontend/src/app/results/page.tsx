@@ -662,7 +662,7 @@ function ResultsContent() {
   }, []);
 
   // Every page-level check openWritingSession makes before it opens an editor.
-  // The cards disable Draft Email and Renovate Resume on this same value, so
+  // The cards disable Draft email and Renovate resume on this same value, so
   // neither click is live while it would be dropped. An open editor is not part
   // of it: its dialog already covers the list.
   const writingEntryReady = ownerReady && profileAvailable && !!profile
