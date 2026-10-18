@@ -483,7 +483,7 @@ test.describe('Results return context', () => {
     await expect(page.getByText('2 / 2', { exact: true })).toBeVisible();
     await expect(title(page)).toBeInViewport();
     expect(page.url()).toBe(url);
-    await card(page).getByRole('button', { name: 'Renovate Resume', exact: true }).click();
+    await card(page).getByRole('button', { name: 'Renovate resume', exact: true }).click();
     await expect(answer).toHaveValue('Keep this unconfirmed answer after Back.');
     await expect(panel.getByTestId('supplement-recovery-review')).toContainText('Your unfinished answers were restored from this browser.');
     await page.getByRole('button', { name: 'Close target résumé', exact: true }).click();
