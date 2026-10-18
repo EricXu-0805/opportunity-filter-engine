@@ -3143,11 +3143,12 @@ def _fetch_json_dir(dept: dict, walks: dict | None = None) -> list[dict]:
         # One render serves every unit that reads the same page, and a failed
         # one is not retried per unit: 34 Colby departments share one page.
         attr = cfg["attr_json"]
-        key = ("render", cfg["url"], attr["selector"], attr["attr"])
+        key = ("render", cfg["url"], attr["selector"], attr["attr"], cfg.get("records_key"))
         if walks is not None and key in walks:
             recs = walks[key]
         else:
-            recs = _rendered_attr_json(cfg["url"], attr["selector"], attr["attr"])
+            recs = _rendered_attr_json(cfg["url"], attr["selector"], attr["attr"],
+                                       cfg.get("records_key"))
             if walks is not None:
                 walks[key] = recs
         return [] if recs is None else _json_dir_records(dept, cfg, recs)
@@ -3193,20 +3194,26 @@ def _fetch_json_dir(dept: dict, walks: dict | None = None) -> list[dict]:
     return _json_dir_records(dept, cfg, recs)
 
 
-def _rendered_attr_json(url: str, selector: str, attr: str):
-    """The JSON in ``attr`` of the first ``selector`` element of the rendered page.
+def _rendered_attr_json(url: str, selector: str, attr: str, records_key: str | None):
+    """The rows at ``records_key`` of the JSON in ``attr`` of the first
+    ``selector`` element of the rendered page.
 
-    None when the render fails or the page no longer carries that JSON.
+    None when the render fails or the page no longer carries those rows as a list.
     """
     import json as _json
 
     soup = _render_soup(url, expect_selector=selector)
     el = soup.select_one(selector) if soup is not None else None
     try:
-        return _json.loads(el[attr]) if el is not None else None
+        data = _json.loads(el[attr]) if el is not None else None
     except (KeyError, TypeError, ValueError):
-        logger.warning("faculty_graph: %s carries no JSON in %s[%s]", url, selector, attr)
+        data = None
+    rows = _dig(data, records_key) if records_key else data
+    if not isinstance(rows, list):
+        logger.warning("faculty_graph: %s carries no %s list in %s[%s]",
+                       url, records_key or "JSON", selector, attr)
         return None
+    return rows
 
 
 def _walk_json_pages(cfg: dict, pag: dict, hdrs: dict, requests) -> tuple[list, list]:

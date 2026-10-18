@@ -267,6 +267,24 @@ def test_a_failed_colby_render_is_tried_once_and_reads_as_zero_rows(monkeypatch)
     assert len(ledger) == len(colby_faculty.SCHOOL["departments"])
 
 
+@pytest.mark.parametrize("data_page", ['{"props": {}}', '{"props": {"people": null}}'])
+def test_a_directory_page_without_its_people_reads_as_zero_rows(monkeypatch, data_page):
+    # The page renders, but its JSON no longer holds the people list.
+    from bs4 import BeautifulSoup
+
+    from src.collectors.schools import colby_faculty
+
+    page = BeautifulSoup(f"<div id='app' data-page='{data_page}'></div>", "html.parser")
+    renders: list[str] = []
+    monkeypatch.setattr(faculty_graph, "_render_soup",
+                        lambda url, *a, **k: renders.append(url) or page)
+    ledger: dict = {}
+
+    assert colby_faculty.fetch_and_normalize(deep=True, unit_ledger=ledger) == []
+    assert len(renders) == 1
+    assert {u["parse_status"] for u in ledger.values()} == {"zero_rows"}
+
+
 def test_a_render_json_dir_without_its_attribute_is_rejected():
     school = {"school_slug": "x", "source": "x_faculty", "organization": "X", "id_prefix": "x",
               "departments": [{"short": "A", "name": "A", "json_dir": {"url": "u", "render": True}}]}
