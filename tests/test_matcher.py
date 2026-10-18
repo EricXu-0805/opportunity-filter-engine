@@ -2196,10 +2196,10 @@ class TestCorpusPrecomputeEquivalence:
         import src.matcher.embeddings as emb
         import src.matcher.ranker as rk
         saved = (emb._tfidf_vectorizer, emb._tfidf_fitted, rk._corpus_ref,
-                 rk._corpus_rows, rk._static_cache, rk._sim_matrix)
+                 rk._corpus_rows, rk._static_cache, rk._static_texts, rk._sim_matrix)
         yield
         (emb._tfidf_vectorizer, emb._tfidf_fitted, rk._corpus_ref,
-         rk._corpus_rows, rk._static_cache, rk._sim_matrix) = saved
+         rk._corpus_rows, rk._static_cache, rk._static_texts, rk._sim_matrix) = saved
 
     def test_top20_byte_identical_with_and_without_precompute(self, _isolated_precompute):
         from dataclasses import asdict
@@ -2518,6 +2518,50 @@ class TestCorpusPrecomputeEquivalence:
         assert len(rk._static_cache) == 3
         newest = rk._opp_static(corpus[-1])
         assert rk._opp_static(corpus[-1]) is newest
+
+    def test_text_scans_keep_for_the_corpus_generation_past_the_static_lru(
+        self, _isolated_precompute, monkeypatch,
+    ):
+        from dataclasses import asdict
+
+        import src.matcher.ranker as rk
+
+        corpus = self._mini_corpus()
+        profile = self._profiles()[0]
+        rk.register_corpus([])
+        baseline = [asdict(r) for r in rank_all(profile, corpus)]
+
+        # A corpus far past the LRU: every ranking rebuilds every static.
+        monkeypatch.setattr(rk, "_STATIC_CACHE_MAX", 0)
+        derived = []
+        real_build = rk._build_static_text
+        monkeypatch.setattr(rk, "_build_static_text", lambda opp: derived.append(opp["id"]) or real_build(opp))
+        rk.register_corpus(corpus)
+        rk.prepare_static_texts(corpus)
+        assert sorted(derived) == sorted(o["id"] for o in corpus)
+        derived.clear()
+        assert [asdict(r) for r in rank_all(profile, corpus)] == baseline
+        assert [asdict(r) for r in rank_all(profile, corpus)] == baseline
+        assert derived == []
+
+        # A new generation starts empty, and an unregistered record is never kept.
+        reloaded = [dict(o) for o in corpus]
+        rk.register_corpus(reloaded)
+        assert rk._static_texts == [None] * len(reloaded)
+        rk._static_text(dict(corpus[0]))
+        assert rk._static_texts == [None] * len(reloaded)
+
+    def test_a_text_scan_entry_answers_only_its_own_record(self, _isolated_precompute):
+        import src.matcher.ranker as rk
+
+        corpus = self._mini_corpus()
+        rk.register_corpus(corpus)
+        kept = rk._static_text(corpus[0])
+        stranger = {**corpus[3], "id": "stranger"}
+        # As if the stranger had taken over a released record's object id.
+        rk._corpus_rows[id(stranger)] = rk._corpus_rows[id(corpus[0])]
+        assert rk._static_text(stranger) == rk._build_static_text(stranger)
+        assert rk._static_text(stranger) != kept
 
     def test_full_traversals_hold_off_the_collector_and_restore_it(self, _isolated_precompute, monkeypatch):
         import gc
