@@ -91,3 +91,26 @@ describe('a card hedges exactly what the detail page hedges', () => {
     expect(getIntlBadge('yes', en).label).toBe('Intl OK');
   });
 });
+
+describe('a Simplify "Does Not Offer Sponsorship" listing says what the listing says (M121)', () => {
+  it('names the label instead of "US Only", which the listing does not say', () => {
+    // 12 live Simplify internships whose one restriction is that label: an
+    // international student now sees them, with "CPT/OPT may still apply".
+    expect(getIntlBadge('no', t, undefined, 'no_sponsorship')).toEqual({
+      label: 'badges.intlNoSponsorship', variant: 'orange',
+    });
+    expect(getIntlBadge('no', t, null, 'no_sponsorship').label).toBe('badges.intlNoSponsorship');
+  });
+
+  it('keeps "US Only" for a stated citizenship rule', () => {
+    expect(getIntlBadge('no', t, undefined, null)).toEqual({ label: 'badges.intlUsOnly', variant: 'red' });
+    expect(getIntlBadge('no', t)).toEqual({ label: 'badges.intlUsOnly', variant: 'red' });
+  });
+
+  it('has the words in both languages', () => {
+    const en = (key: string) => translate('en', key);
+    const zh = (key: string) => translate('zh', key);
+    expect(getIntlBadge('no', en, undefined, 'no_sponsorship').label).toBe('No visa sponsorship');
+    expect(getIntlBadge('no', zh, undefined, 'no_sponsorship').label).toBe('不提供签证担保');
+  });
+});

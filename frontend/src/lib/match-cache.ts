@@ -122,7 +122,8 @@ const OPP_FIELDS = [
   // Where a value came from. The card and the CSV hedge a value flagged
   // 'inferred' (and hide an 'institution' location); without these a cache
   // hit renders the same record as though the program had stated it all.
-  'paid_attribution', 'compensation_attribution', 'international_attribution', 'citizenship_attribution',
+  'paid_attribution', 'compensation_attribution', 'international_attribution', 'international_basis',
+  'citizenship_attribution',
   'location_attribution', 'skills_attribution', 'keywords_attribution',
   'majors_attribution', 'majors_basis', 'preferred_year_attribution',
   'preferred_year_basis', 'deadline_note_attribution',

@@ -82,6 +82,9 @@ export const en = {
     intlOk: 'Intl OK',
     intlOkInferred: 'Intl OK (inferred)',
     intlUsOnly: 'US Only',
+    // M121: a Simplify listing's label "Does Not Offer Sponsorship", which is
+    // not "US only" (CPT/OPT may still apply to an internship).
+    intlNoSponsorship: 'No visa sponsorship',
     intlVerify: 'Verify',
     onCampus: 'On campus',
     remoteOk: 'Remote OK',
@@ -5373,6 +5376,7 @@ export const zh = {
     intlOk: '接受国际生',
     intlOkInferred: '接受国际生（推断）',
     intlUsOnly: '仅限美国',
+    intlNoSponsorship: '不提供签证担保',
     intlVerify: '需确认',
     onCampus: '校内',
     remoteOk: '支持远程',

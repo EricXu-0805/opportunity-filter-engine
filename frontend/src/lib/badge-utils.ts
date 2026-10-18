@@ -30,6 +30,7 @@ export function getIntlBadge(
   friendly: string | undefined,
   t: (key: string) => string,
   attribution?: Attribution,
+  basis?: 'no_sponsorship' | null,
 ): BadgeResult<IntlBadgeVariant> {
   // A welcome we inferred (a configured program's answer, a keyword scan of
   // the page) is ours, not the program's: the detail page calls it a system
@@ -42,6 +43,12 @@ export function getIntlBadge(
   // records say 'no' only because the tagger matched a federal-organisation
   // name or a title substring, and a red "US only" chip is what makes an
   // international student close the tab on a program that would take them.
+  // A Simplify listing whose one restriction is its label "Does Not Offer
+  // Sponsorship" says that, not "US only": the server's `international_basis`
+  // (the ranker's own rule, M121). The verify tone, as CPT/OPT may still apply.
+  if (friendly === 'no' && basis === 'no_sponsorship') {
+    return { label: t('badges.intlNoSponsorship'), variant: 'orange' };
+  }
   if (friendly === 'no' && attribution !== 'inferred') {
     return { label: t('badges.intlUsOnly'), variant: 'red' };
   }

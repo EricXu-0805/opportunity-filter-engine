@@ -17,6 +17,7 @@ export interface Opp {
    *  detail page does. */
   paid_attribution?: 'inferred' | null;
   international_attribution?: 'inferred' | null;
+  international_basis?: 'no_sponsorship' | null;
   skills_attribution?: 'inferred' | null;
   keywords_attribution?: 'inferred' | null;
   // 'institution': the host school's city, not where the work happens.

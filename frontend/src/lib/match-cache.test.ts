@@ -393,7 +393,7 @@ describe('match-cache', () => {
     // the program's own terms.
     const flags = {
       paid_attribution: 'inferred', international_attribution: 'inferred',
-      citizenship_attribution: 'inferred', location_attribution: 'institution',
+      international_basis: 'no_sponsorship', citizenship_attribution: 'inferred', location_attribution: 'institution',
       skills_attribution: 'inferred', keywords_attribution: 'inferred',
       majors_attribution: 'inferred', majors_basis: 'configured',
       preferred_year_attribution: 'inferred', preferred_year_basis: 'configured',

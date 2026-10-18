@@ -14,6 +14,7 @@ from backend.lib import opportunity_detail
 from src.evidence import (
     configured_note_window_passed,
     configured_value_unstated,
+    faculty_safe_eligibility,
     is_read_off_the_page,
     record_kind,
     target_truth,
@@ -1004,6 +1005,14 @@ def project_public_opportunity_payload(payload: dict, canonical_record: dict) ->
             ):
                 projected[wire_key] = "inferred"
                 projected["preferred_year_basis"] = "configured"
+        # A Simplify listing whose one restriction is its label "Does Not
+        # Offer Sponsorship" does not say "US only", and the ranker lists it
+        # for an international student (M121). The card's badge names the
+        # label; the ranker's own rule decides, so the two cannot disagree.
+        if restricted.get("international_friendly") == "no" and opportunity_detail.simplify_no_sponsorship_only(
+            canonical_record, faculty_safe_eligibility(canonical_record)
+        ):
+            projected["international_basis"] = "no_sponsorship"
 
     # A green "Paid" badge on "in many cases, funding or a stipend" is a
     # student planning a summer around money we guessed at: 220 records carry a

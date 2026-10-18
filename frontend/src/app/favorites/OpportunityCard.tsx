@@ -134,7 +134,7 @@ export function OpportunityCard({
   const intlFriendly = isCustom
     ? opp.eligibility?.international_friendly
     : facultySafeInternational(opp);
-  const intlBadge = showsOfferTerms && intlFriendly ? getIntlBadge(intlFriendly, t, opp.international_attribution) : null;
+  const intlBadge = showsOfferTerms && intlFriendly ? getIntlBadge(intlFriendly, t, opp.international_attribution, opp.international_basis) : null;
   const paidBadge = showsOfferTerms && opp.paid ? getPaidBadge(opp.paid, t, opp.paid_attribution) : null;
   // A faculty profile's description is profile text, already projected
   // server-side; a listing's is a pitch for something on offer. Both are

@@ -113,3 +113,34 @@ def test_every_other_citizenship_restriction_stays_excluded(build):
     assert hard_exclusion(listing, _filter_context(_profile(True))) == "citizenship_restricted"
     assert rank_all(_profile(True), [listing]) == []
     assert LABEL_LINE not in score_eligibility(_profile(True), listing)[2]
+
+
+# The card's badge (M121 step 2). The listing says "Does Not Offer
+# Sponsorship", not "US only": the card and favorites badge read one field the
+# public projector sets with the ranker's own rule, for every student.
+_OTHER_RESTRICTIONS = [
+    _citizens_only, _label_and_read_citizenship, _label_read_off_the_page, _label_configured,
+    _sentence_on_another_source, _sentence_without_the_label,
+]
+
+
+@pytest.mark.parametrize("international", [True, False])
+def test_the_card_names_the_label_for_every_student(international):
+    from backend.routes.matches import _match_card
+    from backend.routes.opportunities import _list_card
+
+    listing = _listing()
+    [result] = rank_all(_profile(international), [listing])
+    assert result.opportunity_id == listing["id"]
+    assert _match_card(listing)["international_basis"] == "no_sponsorship"
+    assert _list_card(listing)["international_basis"] == "no_sponsorship"
+
+
+@pytest.mark.parametrize("build", _OTHER_RESTRICTIONS)
+def test_a_card_whose_restriction_is_not_the_label_keeps_no_basis(build):
+    from backend.routes.matches import _match_card
+    from backend.routes.opportunities import _list_card
+
+    listing = build()
+    assert "international_basis" not in _match_card(listing)
+    assert "international_basis" not in _list_card(listing)
