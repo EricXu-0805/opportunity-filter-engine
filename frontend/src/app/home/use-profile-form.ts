@@ -2653,7 +2653,10 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         return;
       }
       const asked = [...new Set<string>([...conflictKeysRef.current, ...dirtyKeysRef.current])];
-      if (asked.length === 0) return;
+      // A tab saying "Couldn't save" reads even with no field to ask about: its
+      // unsent edit may be the slider, which another tab can send for it. Such a
+      // read changes no field, only whether "Couldn't save" still holds.
+      if (asked.length === 0 && saveStatusRef.current !== 'cloud-failed') return;
       const atIssue = epochsNow(asked);
       const fence = { atOperation: atIssue, atIssue, unrepresented: unrepresentedNow(), editEpochAtOperation: editEpochRef.current };
       const intent = saveIntentRef.current;
