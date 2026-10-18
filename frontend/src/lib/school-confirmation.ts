@@ -46,10 +46,11 @@ export function readSchoolConfirmation(): SchoolConfirmation | null {
 // namespace, receipt included, so without this an account that signs back in
 // here is asked again. Device-scoped and kept across sign-out: one
 // fingerprint of (uid, slug) per account, the school it last confirmed here.
-// It holds neither the uid nor the school, and testing a guessed school needs
-// the uid, which nothing on this device keeps after sign-out. ONE per account
-// is load-bearing: the hash is 32-bit and not cryptographic, so two prints of
-// the same uid could be brute-forced against each other.
+// Without the account's uid it reveals neither the uid nor the school; testing
+// a guessed school needs the uid, which nothing on this device keeps after
+// sign-out. ONE per account is load-bearing: hashString is Java's linear
+// String.hashCode, so two prints of the same uid could be linked with a table
+// over the listed schools.
 const CONFIRMATION_PRINTS_LIMIT = 20;
 
 function confirmationPrint(uid: string, slug: string): string {
@@ -88,9 +89,16 @@ function rememberConfirmationPrint(uid: string, slug: string): void {
  *  changed by a flow that skipped the receipt (e.g. an imported cloud profile)
  *  should be re-confirmed. */
 export function isSchoolConfirmed(slug: string, owner: OwnerToken): boolean {
-  if (readSchoolConfirmation()?.slug === slug) return true;
-  return owner.uid !== null && isOwnerTokenValid(owner, owner.uid)
-    && readConfirmationPrints().includes(confirmationPrint(owner.uid, slug));
+  const uid = owner.uid !== null && isOwnerTokenValid(owner, owner.uid) ? owner.uid : null;
+  if (readSchoolConfirmation()?.slug === slug) {
+    // A receipt written before prints existed gets its print here, so the
+    // account's next sign-out does not cost it the confirmation.
+    if (uid !== null && !readConfirmationPrints().includes(confirmationPrint(uid, slug))) {
+      rememberConfirmationPrint(uid, slug);
+    }
+    return true;
+  }
+  return uid !== null && readConfirmationPrints().includes(confirmationPrint(uid, slug));
 }
 
 // `token` MUST be captured (via captureOwnerToken()) at the moment the

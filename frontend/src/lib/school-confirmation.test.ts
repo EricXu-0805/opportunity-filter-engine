@@ -6,6 +6,7 @@ import {
   recordSchoolConfirmation,
 } from './school-confirmation';
 import { HOME_SCHOOL_EVENT, STORAGE_KEYS } from './storage-keys';
+import { writeLocalStorageJSON } from './use-local-storage-json';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner, type OwnerToken } from './identity-owner';
 import {
   hydrateProfile,
@@ -121,6 +122,14 @@ describe('a confirmation across sign-out on this device', () => {
     const back = await become(ACCOUNT_A);
     // Sign-out still removed the account's own receipt.
     expect(readSchoolConfirmation()).toBeNull();
+    expect(isSchoolConfirmed('ucb', back)).toBe(true);
+  });
+
+  it('keeps a confirmation written before prints existed across sign-out', async () => {
+    writeLocalStorageJSON(STORAGE_KEYS.SCHOOL_CONFIRMED, { slug: 'ucb', ts: 'x' }, token);
+    expect(isSchoolConfirmed('ucb', token)).toBe(true);
+    await become('anon-after-a');
+    const back = await become(ACCOUNT_A);
     expect(isSchoolConfirmed('ucb', back)).toBe(true);
   });
 
