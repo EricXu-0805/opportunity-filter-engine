@@ -104,8 +104,9 @@ const NOT_COURSEWORK = new RegExp(String.raw`${LABEL_ROW.source}|\b(?:dean['’]
  *  wrap (`possibleWraps`, offsets of line breaks in `text`) unless the next
  *  line is a row of its own. Names only: what a course's status is, and the
  *  line it is on, are read from the stored text when needed (checklist M13).
- *  A code a listed course opens with is that course, and is not stored again
- *  ("CS 173" beside "CS 173 Discrete Structures", repeatedCodes). */
+ *  A code a listed course opens with, as the same text (space included), is
+ *  that course, and is not stored again ("CS 173" beside "CS 173 Discrete
+ *  Structures", repeatedCodes). */
 function extractCoursework(text: string, possibleWraps: ReadonlySet<number> = new Set()): string[] {
   const courses = courseCodes(text).map((code) => code.name);
   const lines = text.split('\n');

@@ -204,8 +204,10 @@ def course_entries(profile: object) -> list[dict]:
     The résumé parser stored "CS 173" beside "CS 173 Discrete Structures" for
     one listed course (checklist M130). A résumé course the student has not
     marked that is only a code is not listed beside a résumé course that opens
-    with that code: the titled course keeps the code and the title the course
-    claim check reads, and a code the student marked or added stays.
+    with that code as the same text, space included: the titled course keeps
+    the code and the title the course claim check reads, and a code the student
+    marked or added stays. The unmarked code then gives way to the status the
+    student set on the titled course.
     """
     entries: list[dict] = []
     seen: set[str] = set()

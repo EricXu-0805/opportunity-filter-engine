@@ -138,9 +138,11 @@ export function listedCourses(list: string): Array<{ name: string; index: number
 // a code is never hidden behind a titled name that check cannot read it in.
 const OPENING_CODE = /^[A-Za-z]{2,4} ?[0-9]{3,4}(?![\p{L}\p{N}])/u;
 
-/** The names that are only a course code another of `names` opens with:
- *  "CS 173" beside "CS 173 Discrete Structures" is that course named again
- *  (checklist M130). Two titled courses of one code are two courses. */
+/** The names that are only a course code another of `names` opens with, as
+ *  the same text but for case (space included): "CS 173" beside "CS 173
+ *  Discrete Structures" is that course named again (checklist M130), "CS 173"
+ *  beside "CS173 Discrete Structures" is not. Two titled courses of one code
+ *  are two courses. */
 export function repeatedCodes(names: readonly string[]): Set<string> {
   const codes = names.map((name) => {
     const code = OPENING_CODE.exec(name)?.[0];
