@@ -206,7 +206,7 @@ describe('parseResumePDF — laboratory techniques are known skills (checklist M
     expect(await skills('Lab: DNA extraction, RNA extraction, tissue culture, immunofluorescence, immunohistochemistry, flow cytometry, confocal microscopy'))
       .toEqual(['tissue culture', 'DNA extraction', 'RNA extraction', 'immunofluorescence', 'immunohistochemistry', 'flow cytometry', 'confocal microscopy']);
     expect(await skills('CRISPR-Cas9, HPLC, mass spectrometry, NMR, spectrophotometry, titration, chromatography'))
-      .toEqual(['CRISPR', 'HPLC', 'mass spectrometry', 'NMR', 'spectrophotometry', 'titration', 'chromatography']);
+      .toEqual(['CRISPR', 'HPLC', 'mass spectrometry', 'NMR', 'spectrophotometry', 'chromatography']);
     expect(await skills('Gram staining, sterile technique, aseptic technique, histology, EEG, patch clamp, GraphPad Prism, SPSS'))
       .toEqual(['SPSS', 'Gram staining', 'sterile technique', 'aseptic technique', 'histology', 'EEG', 'patch clamp', 'GraphPad Prism']);
   });

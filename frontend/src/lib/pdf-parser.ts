@@ -20,13 +20,14 @@ const KNOWN_SKILLS = [
   // Laboratory techniques and instruments that biology, chemistry and
   // neuroscience résumés list (checklist M125). A name also used outside the
   // lab is left out: "ELISA" is a given name too, "Fiji" a country,
-  // "cloning" also voice cloning and "Prism" a product name of many kinds.
+  // "cloning" also voice cloning, "Prism" a product name of many kinds and
+  // "titration" a medication order.
   'PCR', 'qPCR', 'Western blotting', 'SDS-PAGE', 'gel electrophoresis',
   'cell culture', 'tissue culture', 'transfection', 'bacterial transformation',
   'molecular cloning', 'plasmid preparation', 'DNA extraction', 'RNA extraction',
   'immunofluorescence', 'immunohistochemistry', 'flow cytometry',
   'fluorescence microscopy', 'confocal microscopy', 'ImageJ', 'CRISPR',
-  'HPLC', 'mass spectrometry', 'NMR', 'spectrophotometry', 'titration', 'chromatography',
+  'HPLC', 'mass spectrometry', 'NMR', 'spectrophotometry', 'chromatography',
   'Gram staining', 'sterile technique', 'aseptic technique', 'histology',
   'EEG', 'patch clamp', 'GraphPad Prism',
 ];
