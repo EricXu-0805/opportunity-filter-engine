@@ -557,6 +557,14 @@ def unit_retirement_authority(entry: object, baseline_active: int) -> tuple[bool
     if not complete:
         return False, reason
 
+    if entry.get("shared_roster") is not None:
+        # Decided for all the units reading the page (_weigh_shared_rosters).
+        check = entry.get("shared_roster_check")
+        if not isinstance(check, dict):
+            return False, "shared_roster_unchecked"
+        if check.get("withheld"):
+            return False, str(check["withheld"])
+
     if not isinstance(entry.get("observed_identities"),
                       list | tuple | set | frozenset):
         return False, "observed_identities_missing"
@@ -680,7 +688,60 @@ def finalize_unit_ledger(ledger: dict[str, dict], opps: list[dict],
             continue
         entry["completeness_status"] = COMPLETE
         entry["retirement_authorized"] = True
+    _weigh_shared_rosters(ledger)
     return ledger
+
+
+# Units that split one page between them (Colby's 34 departments read one
+# People Directory) only read what the page gave each of them: a page that lost
+# one department's people, or the back half of its list, still reads whole to
+# every other department. So they stand or fall together, and together must
+# read at least this share of the people they hold active.
+SHARED_ROSTER_MIN_RATIO = 0.9
+
+
+def _weigh_shared_rosters(ledger: dict[str, dict]) -> None:
+    """Withhold every unit reading a shared page unless all of them read it whole.
+
+    Whole means every unit is complete on its own (it read at least one faculty
+    row and the page had no row anyone failed to read) and together they read
+    at least ``SHARED_ROSTER_MIN_RATIO`` of their stored active rows.
+    """
+    pages: dict[str, list[dict]] = {}
+    for entry in ledger.values():
+        if isinstance(entry, dict) and isinstance(entry.get("shared_roster"), str):
+            pages.setdefault(entry["shared_roster"], []).append(entry)
+    for page, entries in pages.items():
+        incomplete = sorted(str(e.get("unit_id")) for e in entries
+                            if e.get("completeness_status") != COMPLETE)
+        observed = sum(n for e in entries if isinstance(n := e.get("observed_count"), int))
+        baseline = sum(n for e in entries
+                       if isinstance(n := e.get("baseline_active_count"), int))
+        if incomplete:
+            withheld = "shared_roster_unit_incomplete"
+        elif observed < SHARED_ROSTER_MIN_RATIO * baseline:
+            withheld = "shared_roster_short"
+        else:
+            withheld = None
+        if withheld:
+            logger.warning(
+                "deactivate_stale_faculty: %d unit(s) reading %s retire nobody "
+                "(%s): %d incomplete %s; %d rows read for %d stored active",
+                len(entries), page, withheld, len(incomplete), incomplete[:10],
+                observed, baseline,
+            )
+        for entry in entries:
+            entry["shared_roster_check"] = {
+                "units": len(entries),
+                "incomplete_units": incomplete[:10],
+                "observed_count": observed,
+                "baseline_active_count": baseline,
+                "withheld": withheld,
+            }
+            if withheld and entry.get("retirement_authorized") is True:
+                entry["completeness_status"] = "partial"
+                entry["retirement_authorized"] = False
+                entry["failure_reason"] = withheld
 
 
 def _bucket_for(reason: str) -> tuple[str, str]:
@@ -708,6 +769,8 @@ def _bucket_for(reason: str) -> tuple[str, str]:
             "roster_source_unconfirmed", "producer_withheld_authority",
             "unrecognised_ledger_entry"):
         return "records_preserved_failed_source", "units_blocked_missing_lineage"
+    if reason.startswith("shared_roster_"):
+        return "records_preserved_partial", "units_blocked_partial_fetch"
     if reason in ("partial_scrape",) or reason.startswith("completeness_"):
         return "records_preserved_partial", "units_blocked_unparsed_rows"
     return "records_preserved_failed_source", "units_blocked_partial_fetch"

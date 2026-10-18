@@ -14,6 +14,12 @@ challenge) and returned HTTP 200 on 2026-07-23; deeper program URLs are not
 guessable, so each program is anchored to its administering center's verified
 page.
 
+The weekly refresh renders them too (``render``). Measured 2026-10-17: a plain
+GET of each returned 403 ``cf-mitigated: challenge`` and the headless render
+returned the real page, but ``/kinsc``, ``/cpgc`` and ``/philly-program`` now
+redirect, which the crawl counts as a failed page, so those three point at the
+pages they redirect to.
+
 Emit buckets → (source, school, audience), kept in lockstep with
 school_audience.SOURCE_DEFAULTS:
     campus → haverford_research_programs (haverford / campus)
@@ -24,11 +30,11 @@ from __future__ import annotations
 from ..campus_graph import PROGRAM, STATIC, program
 
 _B = "https://www.haverford.edu"
-_KINSC = _B + "/kinsc"
-_CPGC = _B + "/cpgc"
+_KINSC = _B + "/integrated-natural-sciences-center"
+_CPGC = _B + "/peace-and-global-citizenship"
 _HCAH = _B + "/hcah"
 _PROVOST = _B + "/provost"
-_PHILLY = _B + "/philly-program"
+_PHILLY = _B + "/tri-co-philly-program"
 
 SCHOOL: dict = {
     "school_slug": "haverford",
@@ -43,6 +49,7 @@ SCHOOL: dict = {
             "source_type": PROGRAM,
             "emit": "campus",
             "crawl": STATIC,
+            "render": True,
             "seeds": [_KINSC, _CPGC, _HCAH, _PROVOST, _PHILLY],
             "programs": [
                 program(

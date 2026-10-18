@@ -216,6 +216,8 @@ def validate(school: dict) -> list[str]:
             if not person.get("name"):
                 errors.append(f"{short}: faculty entry missing name")
         jd = dept.get("json_dir")
+        if isinstance(jd, dict) and jd.get("render") and not isinstance(jd.get("attr_json"), dict):
+            errors.append(f"{short}: json_dir render needs attr_json")
         if isinstance(jd, dict) and jd.get("total_key"):
             # Only a paged walk reads the total; without a row key a repeated
             # row would pass for the one it displaced.
@@ -1016,7 +1018,8 @@ def _cover(bucket: str, n: int = 1) -> None:
 
 def _cover_listed(email: object, link: object, name: str) -> None:
     """Note a roster row's address, profile link and name as still listed, kept
-    or dropped by the title gate (a json_dir walk with a stated total)."""
+    or dropped by the title gate (a json_dir walk with a stated total), or a
+    rendered json_dir page's row that its title gates keep."""
     if _ACTIVE_COVERAGE is None:
         return
     _ACTIVE_COVERAGE.setdefault("_listed_rows", []).append((
@@ -3084,6 +3087,22 @@ def _fetch_cola(dept: dict) -> list[dict]:
 #     # or, when the microsite host isn't resolvable, pull a stable link from a list:
 #     "link_list": {"field": "websites", "match_key": "name",
 #                   "match_value": "Research Network Profile", "url_key": "url"},
+# A page that carries its roster as JSON in an element attribute, behind a wall
+# only a browser passes (Colby's People Directory, an Inertia.js page):
+#     "url": "https://www.colby.edu/people/people-directory/",
+#     "render": True, "attr_json": {"selector": "#app[data-page]", "attr": "data-page"},
+#     "records_key": "props.people",
+# The attribute parses whole or not at all, so such a unit reports roster
+# coverage like a walk that matched its stated total. The units reading one
+# page stand or fall together: they can retire a stored person none of them
+# reads from it only when each read at least one faculty row, no row on the
+# page was unreadable, and together they read at least 90% as many people as
+# they hold active (deactivate_stale_faculty.finalize_unit_ledger). A stored
+# person the page still lists under a title the unit's title gates keep is
+# kept, whatever department the page gives them. A failed render, or a page
+# whose JSON holds no list at ``records_key``, reads as zero rows and retires
+# no one.
+# ``ascii_apostrophe`` reads a name's typographic apostrophe as a plain one.
 def _dig(record: dict, path: str):
     """Read a field by name, or by dotted path for nested feeds.
 
@@ -3131,6 +3150,42 @@ def _fetch_json_dir(dept: dict, walks: dict | None = None) -> list[dict]:
                            dept.get("short"), cfg["file"])
             return []
         return _json_dir_records(dept, cfg, recs)
+    if cfg.get("render"):
+        # One render serves every unit that reads the same page, and a failed
+        # one is not retried per unit: 34 Colby departments share one page.
+        # Its JSON parses whole or not at all, so its rows are the whole roster.
+        attr = cfg["attr_json"]
+        key = ("render", cfg["url"], attr["selector"], attr["attr"], cfg.get("records_key"))
+        if walks is not None and key in walks:
+            recs = walks[key]
+        else:
+            recs = _rendered_attr_json(cfg["url"], attr["selector"], attr["attr"],
+                                       cfg.get("records_key"))
+            if walks is not None:
+                walks[key] = recs
+        # The units split the page between them, so a page that lost one
+        # unit's people still reads whole to the others: the retirement pass
+        # weighs their coverage together (finalize_unit_ledger).
+        if _ACTIVE_COVERAGE is not None:
+            _ACTIVE_COVERAGE["_shared_roster"] = cfg["url"]
+        if recs is None:
+            return []
+        # A row no one can read could be any unit's, so it counts against each.
+        readable = [x for x in recs
+                    if isinstance(x, dict) and _is_person_name(_json_name(x, cfg))]
+        if len(readable) < len(recs):
+            _cover("raw_roster_rows", len(recs) - len(readable))
+            _cover("unparsed_rows", len(recs) - len(readable))
+        # A stored professor the page still lists under a title the unit's
+        # title gates keep is not gone, whatever department the page now gives
+        # them; one now listed as Emerita or visiting is.
+        tf = cfg.get("title_field", "title")
+        titled = {**cfg, "filter_field": None,
+                  "field_filters": [ff for ff in cfg.get("field_filters", [])
+                                    if ff.get("field") == tf]}
+        for spec in _json_dir_records(dept, titled, readable):
+            _cover_listed(spec["email"], spec["url"], spec["name"])
+        return _json_dir_records(dept, cfg, readable, roster=True)
     try:
         import requests
     except Exception:  # noqa: BLE001
@@ -3171,6 +3226,28 @@ def _fetch_json_dir(dept: dict, walks: dict | None = None) -> list[dict]:
     except Exception:  # noqa: BLE001
         return []
     return _json_dir_records(dept, cfg, recs)
+
+
+def _rendered_attr_json(url: str, selector: str, attr: str, records_key: str | None):
+    """The rows at ``records_key`` of the JSON in ``attr`` of the first
+    ``selector`` element of the rendered page.
+
+    None when the render fails or the page no longer carries those rows as a list.
+    """
+    import json as _json
+
+    soup = _render_soup(url, expect_selector=selector)
+    el = soup.select_one(selector) if soup is not None else None
+    try:
+        data = _json.loads(el[attr]) if el is not None else None
+    except (KeyError, TypeError, ValueError):
+        data = None
+    rows = _dig(data, records_key) if records_key else data
+    if not isinstance(rows, list):
+        logger.warning("faculty_graph: %s carries no %s list in %s[%s]",
+                       url, records_key or "JSON", selector, attr)
+        return None
+    return rows
 
 
 def _walk_json_pages(cfg: dict, pag: dict, hdrs: dict, requests) -> tuple[list, list]:
@@ -3254,7 +3331,9 @@ def _json_dir_records(dept: dict, cfg: dict, recs, *, roster: bool = False) -> l
     into faculty specs, honouring the field-name / filter / title-map options.
 
     ``roster`` counts every row into the unit's roster coverage; only a live
-    walk that matched the feed's stated total passes it (see ``total_key``)."""
+    walk that matched the feed's stated total passes it (see ``total_key``),
+    and a rendered page's attribute JSON, which parses whole or not at all
+    (the units reading one such page are weighed together)."""
     def cover(bucket: str) -> None:
         if roster:
             _cover(bucket)
@@ -3264,7 +3343,6 @@ def _json_dir_records(dept: dict, cfg: dict, recs, *, roster: bool = False) -> l
                 else next((v for v in recs.values() if isinstance(v, list)), []))
     lf = cfg.get("ladder_filter") or {}
     require_re, drop_re = lf.get("require"), lf.get("drop")
-    name_fields = cfg.get("name_fields", ["firstName", "lastName"])
     filt_field, filt_value = cfg.get("filter_field"), cfg.get("filter_value")
     filt_index = cfg.get("filter_index")
     status_field, status_value = cfg.get("status_field"), cfg.get("status_value")
@@ -3290,9 +3368,9 @@ def _json_dir_records(dept: dict, cfg: dict, recs, *, roster: bool = False) -> l
         # Rows another department owns on a shared feed (above) are outside
         # this unit's roster; every row from here on is one of its rows.
         cover("raw_roster_rows")
-        name = re.sub(r"\s+", " ",
-                      " ".join(str(_dig(x, f) or "").strip() for f in name_fields)).strip()
-        if roster:
+        name = _json_name(x, cfg)
+        if roster and not cfg.get("render"):
+            # (A rendered page lists its rows in _fetch_json_dir.)
             _cover_listed(_dig(x, cfg.get("email_field", "email")),
                           _dig(x, cfg["link_field"]) if cfg.get("link_field") else None,
                           name)
@@ -3445,6 +3523,18 @@ def _json_dir_records(dept: dict, cfg: dict, recs, *, roster: bool = False) -> l
                              research_areas=research, keywords=keywords,
                              department=department))
     return specs
+
+
+def _json_name(record: dict, cfg: dict) -> str:
+    """A json_dir row's name, its ``name_fields`` joined."""
+    name = re.sub(r"\s+", " ", " ".join(
+        str(_dig(record, f) or "").strip()
+        for f in cfg.get("name_fields", ["firstName", "lastName"]))).strip()
+    if cfg.get("ascii_apostrophe"):
+        # Ids hash the name: a roster first stored with a typed "'" keeps
+        # its ids when the feed later sends WordPress's &#8217; (Colby).
+        name = html.unescape(name).replace("\u2019", "'")
+    return name
 
 
 def _json_link_template(record: dict, template: str) -> str:
@@ -4611,6 +4701,7 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
     document_identities: list = []
     listed_identities: list | None = None
     listed_rows = 0
+    shared_roster = None
     if cov is not None:
         from src.normalizers.deactivate_stale_faculty import (  # noqa: PLC0415
             canonical_profile_url,
@@ -4623,6 +4714,7 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
             if canon and canon not in seen_doc:
                 seen_doc.add(canon)
                 document_identities.append(["url", canon])
+        shared_roster = cov.pop("_shared_roster", None)
         listed = cov.pop("_listed_rows", None)
         if listed is not None:
             # A link that is a directory page is everyone's, not a person's.
@@ -4686,6 +4778,9 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
         # read them, and the committed summary keeps only the row count.
         observation["listed_identities"] = listed_identities
         observation["listed_rows"] = listed_rows
+    if shared_roster:
+        # The page this unit shares with others (see finalize_unit_ledger).
+        observation["shared_roster"] = shared_roster
     return observation
 
 

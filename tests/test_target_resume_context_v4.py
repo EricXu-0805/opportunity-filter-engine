@@ -25,6 +25,7 @@ QUOTE = {'field': 'lab_heading', 'page_index': 0, 'section_index': 0, 'start': 0
 # The selection plan (full-target-plan-v6) still quotes target fields by offset (QUOTE).
 LINK = {'anchor_text': '实验室😀研究', 'term': '实验室😀研究', 'source': 'Python', 'relation': 'broader'}
 SENTENCE = 'We study Python sensors. 实验室方法😀仅用于相关性'
+TEXT = {**QUOTE, 'field': 'lab_text', 'start': 25, 'end': 31, 'quote': '实验室方法😀'}
 
 
 def v6_row(unit, anchors, state):
@@ -100,7 +101,7 @@ def test_both_routes_use_available_exact_unicode_quotes_without_applying(endpoin
     state['quote'] = {**QUOTE, 'field': field, 'start': start, 'end': end, 'quote': quote}
     state['link'] = dict(LINK, anchor_text='实验室😀研究' if field == 'lab_heading' else SENTENCE, term=quote)
     response = submit(client, path, doc); assert response.status_code == 200, response.text
-    assert response.json()['method'] == 'ai' and response.json()['check_version'] == 'target-resume-source-checks-v5'
+    assert response.json()['method'] == 'ai' and response.json()['check_version'] == 'target-resume-source-checks-v6'
     assert len(state['calls']) == 1 and doc == before
     prompt = json.loads(state['calls'][0][1]['content'])
     if path.endswith('selection-plan'):
@@ -143,8 +144,8 @@ def test_invalid_lab_link_is_dropped_and_the_line_kept(endpoint, link):
 
 
 @pytest.mark.parametrize('path', PATHS[1:])  # v6 suggestions never take offsets from the model
-@pytest.mark.parametrize('quote,start', [({**QUOTE, 'start': 1}, 0), ({**QUOTE, 'end': 7}, 0),
-    ({**QUOTE, 'field': 'lab_text', 'start': 0, 'end': 6, 'quote': '实验室方法😀'}, 25)])
+# The heading "实验室😀研究" names only a lab and research, which the plan does not show as evidence.
+@pytest.mark.parametrize('quote,start', [({**TEXT, 'start': 26}, 25), ({**TEXT, 'end': 32}, 25), ({**TEXT, 'start': 0, 'end': 6}, 25)])
 def test_miscounted_lab_quote_is_reanchored_in_both_routes(endpoint, path, quote, start):
     client, opp, state = endpoint; state['quote'] = quote
     result = submit(client, path, document(opp)).json(); assert result['method'] == 'ai'
