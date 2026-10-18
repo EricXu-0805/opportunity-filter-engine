@@ -2457,10 +2457,16 @@ async def get_match_explanation(
     snap = await _get_or_compute_snapshot(profile_dict, use_llm)
     result = snap.by_id.get(opportunity_id)
     excluded_reason = None
+    # The reason keys are read from the full record, as /matches reads them:
+    # the research-summary line is the record's headline, not the card's.
+    record = opp
     if result is not None:
         # Render/explain from the exact corpus generation that produced the
         # visible result, even if a data refresh landed between lookup and
         # snapshot resolution.
+        row = snap.view_rows.get(opportunity_id)
+        if row is not None and row.record is not None:
+            record = row.record
         opp = _snapshot_cards(snap, [result]).get(opportunity_id, opp)
     else:
         # Not in the profile's result universe. Same shared hard filter the
@@ -2507,7 +2513,7 @@ async def get_match_explanation(
         "bucket": result.bucket,
         "reasons_fit": public_reasons_fit,
         "reasons_gap": public_reasons_gap,
-        **_served_reason_keys(result, public_reasons_fit, public_reasons_gap, opp),
+        **_served_reason_keys(result, public_reasons_fit, public_reasons_gap, record),
         "eligibility_score": result.eligibility_score,
         "readiness_score": result.readiness_score,
         "upside_score": result.upside_score,

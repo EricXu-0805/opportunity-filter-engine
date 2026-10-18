@@ -2564,6 +2564,36 @@ class TestServedReasonKeys:
         assert body["reasons_fit"] or body["reasons_gap"]
         self._assert_keyed(body)
 
+    def test_explain_keys_a_listed_result_as_the_list_does(self, sample_profile_req):
+        """The research-summary line is the record's own headline, so explain
+        keys it from the full record, not from the card it serves (on a CMU
+        project-list row the card's headline is not the record's)."""
+        import backend.routes.matches as m_module
+        from src.matcher.ranker import _summarize_research
+
+        records = data_loader.load_opportunities_by_id()
+        profile = {**sample_profile_req, "school": "Carnegie Mellon University", "home_school": "cmu",
+                   "research_interests_text": "natural language processing", "desired_fields": ["NLP"]}
+        listed = None
+        for offset in range(0, 1000, 100):
+            resp = client.post(f"/api/matches?limit=100&offset={offset}", json=profile)
+            assert resp.status_code == 200
+            listed = next((
+                result for result in resp.json()["results"]
+                if any(key and key["key"] == "research_summary" for key in result["reasons_fit_keys"])
+                and _summarize_research(m_module._match_card(record := records[result["opportunity_id"]]))
+                != _summarize_research(record)
+            ), None)
+            if listed is not None or not resp.json()["has_more"]:
+                break
+        assert listed is not None
+        resp = client.post(f"/api/matches/{listed['opportunity_id']}/explain", json=profile)
+        assert resp.status_code == 200
+        body = resp.json()
+        assert body["in_results"] is True
+        for field in ("reasons_fit", "reasons_gap", "reasons_fit_keys", "reasons_gap_keys"):
+            assert body[field] == listed[field], field
+
 
 class TestExplainServerCache:
     """The compare page fires one explain LLM call per card; sessionStorage only
