@@ -115,3 +115,25 @@ def test_paths_and_modules_the_docs_name_exist():
             if not (base.with_suffix(".py").exists() or (base / "__init__.py").exists()):
                 missing.append(f"{doc}: python -m {module}")
     assert not missing, missing
+
+
+_OWNER_KEYED_TABLE = re.compile(
+    r"CREATE TABLE (?:IF NOT EXISTS )?(?:public\.)?(\w+)\s*\((.*?)\n\);", re.S | re.I
+)
+
+
+def test_runbook_export_reads_every_owner_keyed_table():
+    """RUNBOOK section 8's export must return every table a migration keys by owner.
+
+    A new per-student table (M49's outcome notes) that the export query leaves
+    out is missing from the student's data export, with every check green.
+    """
+    tables = set()
+    for path in sorted((ROOT / "supabase" / "migrations").glob("*.sql")):
+        for name, body in _OWNER_KEYED_TABLE.findall(path.read_text(encoding="utf-8")):
+            if re.search(r"^\s*(device_id|owner_id)\b", body, re.M):
+                tables.add(name)
+    runbook = _doc("RUNBOOK.md")
+    export = runbook[runbook.index("### Export (SELECT only)"):runbook.index("### Deletion")]
+    missing = sorted(tables - set(re.findall(r"FROM public\.(\w+) t\b", export)))
+    assert not missing, f"RUNBOOK.md section 8 export omits: {missing}"
