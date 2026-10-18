@@ -12,7 +12,8 @@ export const metadata: Metadata = {
 // With the course list switched off (RELEASE_SCOPE.courseStatus), the policy
 // says what it said before it.
 const COURSES = RELEASE_SCOPE.courseStatus;
-const EFFECTIVE_DATE = COURSES ? 'October 16, 2026' : 'October 12, 2026';
+// Outcome notes (M49) changed the policy on both sides of the course-status switch.
+const EFFECTIVE_DATE = 'October 18, 2026';
 const RESUME_TEXT_LIMIT = MAX_RESUME_TEXT_CHARACTERS.toLocaleString('en-US');
 
 const CONTENT = `# Privacy Policy
