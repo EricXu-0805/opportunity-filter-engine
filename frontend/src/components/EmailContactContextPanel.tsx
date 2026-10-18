@@ -191,6 +191,8 @@ function ContextSession({ context, initialDraft, onDraftSnapshotChange, opportun
   const applied = !state.dirty && state.appliedKey !== null && prepared.error === null && state.appliedKey === prepared.key;
   // The list card may not list the chosen paper; whether it is still available is known only once the detail loads.
   const checkingPaper = targetLoading && !!fields.paperKey && !selectedPaper;
+  // Only a restored draft that was applied and is untouched since waits for that check; any other draft has changes not applied.
+  const awaitingCheck = checkingPaper && !!state.held && !state.held.pending;
   useLayoutEffect(() => {
     if (state.held) return;
     onDraftSnapshotChange?.(parseEmailContactDraftSnapshot({
@@ -248,7 +250,7 @@ function ContextSession({ context, initialDraft, onDraftSnapshotChange, opportun
     data-testid="email-contact-context-panel">
     <summary className={styles.summary}>
       <span>{copy('Contact purpose and background', '联系目的与背景')}</span>
-      <span className={styles.badge}>{applied ? copy('Applied', '已应用') : checkingPaper ? copy('Checking', '核对中') : copy('Needs confirmation', '待确认')}</span>
+      <span className={styles.badge}>{applied ? copy('Applied', '已应用') : awaitingCheck ? copy('Not checked yet', '尚未核对') : copy('Needs confirmation', '待确认')}</span>
     </summary>
     <div className={styles.content}>
       <p className={styles.help}>{copy('Use only details you know are accurate. Applying background prepares this draft; it does not generate or send an email, or mark anyone as contacted.', '只填写你确认属实的信息。应用背景仅用于准备这份草稿，不会生成或发送邮件，也不会标记已联系。')}</p>
@@ -305,7 +307,7 @@ function ContextSession({ context, initialDraft, onDraftSnapshotChange, opportun
             onChange={event => update('paperKey', event.target.value)}>
             <option value="">{copy('Skip paper reading', '跳过论文阅读')}</option>
             {fields.paperKey && !selectedPaper && <option value={fields.paperKey} disabled>{checkingPaper
-              ? copy('Checking the paper you chose…', '正在核对你选择的论文…')
+              ? copy('The paper you chose (checked once the opportunity details load)', '你选择的论文（机会详情加载后核对）')
               : copy('Previous paper is no longer available', '之前选择的论文已不可用')}</option>}
             {papers.map(paper => <option key={emailPaperKey(paper)} value={emailPaperKey(paper)}>{paper.title}{paper.year != null ? ` (${paper.year})` : ''}</option>)}
           </select>
@@ -351,7 +353,7 @@ function ContextSession({ context, initialDraft, onDraftSnapshotChange, opportun
       </fieldset>
       <p role="status" data-testid="email-contact-context-status" className={styles.help}>{applied
         ? copy('Background confirmed for the next draft.', '背景已确认，生成新稿时使用。')
-        : checkingPaper ? copy('Checking the opportunity details; your saved answers are kept.', '正在核对机会详情，已保存的填写内容仍保留。')
+        : awaitingCheck ? copy('The paper will be checked once the opportunity details load; your saved answers are kept.', '机会详情加载后会核对论文，已保存的填写内容仍保留。')
         : copy('Changes are not applied. Your current email is kept; confirm and apply the background before generating again.', '改动尚未应用。当前邮件仍保留，请确认并应用背景后再生成。')}</p>
       {disabled && <p className={styles.help}>{copy('Background changes are paused. Your answers are kept.', '背景修改暂时暂停，填写内容仍保留。')}</p>}
       {error && <p role="alert" className={styles.error}>{errors[error]}</p>}

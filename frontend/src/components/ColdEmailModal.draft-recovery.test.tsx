@@ -582,23 +582,59 @@ describe('persistent cold-email draft recovery', () => {
     }
 
     const lackingCards = { 'only its first paper': cards['only its first paper'], 'no papers': { ...cards['the same papers'], metadata: { ...paperTarget.metadata, recent_works: [] } } };
+    const chosenOption = 'The paper you chose (checked once the opportunity details load)';
+    const notChecked = 'The paper will be checked once the opportunity details load; your saved answers are kept.';
+    const panelStatus = () => screen.getByTestId('email-contact-context-status');
+    const badge = () => screen.getByTestId('email-contact-context-panel').querySelector('summary')!.textContent;
+    const applyButton = () => screen.getByRole('button', { name: 'Apply background to this draft' });
+    async function openNeverLoading(overrides: Partial<Props> = {}) {
+      render(<ColdEmailModal isOpen onClose={vi.fn()} profile={profile} opportunityId={target.id} opportunityTitle="Lab" target={cards['only its first paper']} targetReady={false} targetChecking {...overrides} />);
+      await waitFor(() => expect(field('body')).toHaveValue(edits.body)); await act(async () => {});
+    }
     for (const [name, card] of Object.entries(lackingCards)) {
-      it(`says it is checking, not that the paper is gone, while the detail never loads and the list card shows ${name}`, async () => {
-        await saveConfirmedReading();
-        render(<ColdEmailModal isOpen onClose={vi.fn()} profile={profile} opportunityId={target.id} opportunityTitle="Lab" target={card} targetReady={false} targetChecking />);
-        await waitFor(() => expect(field('body')).toHaveValue(edits.body)); await act(async () => {});
+      it(`says the paper is not checked yet, not that it is gone, while the detail never loads and the list card shows ${name}`, async () => {
+        await saveConfirmedReading(); await openNeverLoading({ target: card });
         expect(screen.queryByText('Previous paper is no longer available')).toBeNull();
-        expect(screen.getByRole('option', { name: 'Checking the paper you chose…' })).toBeInTheDocument();
-        expect(screen.queryByText('Needs confirmation')).toBeNull();
+        expect(screen.getByRole('option', { name: chosenOption })).toBeInTheDocument();
+        expect(screen.queryByText('Needs confirmation')).toBeNull(); expect(badge()).toContain('Not checked yet');
         expect(screen.queryByText(/No papers matched to this researcher/)).toBeNull();
-        const status = screen.getByTestId('email-contact-context-status');
-        expect(status).not.toHaveTextContent('Changes are not applied');
-        expect(status).toHaveTextContent('Checking the opportunity details; your saved answers are kept.');
-        expect(screen.getByRole('button', { name: 'Apply background to this draft' })).toBeDisabled();
+        expect(panelStatus()).not.toHaveTextContent('Changes are not applied');
+        expect(panelStatus()).toHaveTextContent(notChecked);
+        expect(applyButton()).toBeDisabled();
         expect(confirmation()).toBeChecked(); expect(screen.getByLabelText('How much did you read?')).toHaveValue('abstract');
         expect(storedPanel()).toMatchObject({ confirmed: { paper: true }, pending: false }); expect(draftWrites).toBe(0);
       });
     }
+
+    it('does not say it is checking the paper while the banner says the opportunity could not be found', async () => {
+      await saveConfirmedReading();
+      await openNeverLoading({ targetChecking: false, targetRefresh: { status: 'missing', target: null, reason: 'not_found', refresh: vi.fn(), checkForAction: vi.fn() } });
+      expect(screen.getByText(/This opportunity could not be found/)).toBeInTheDocument();
+      const panel = screen.getByTestId('email-contact-context-panel');
+      expect(within(panel).queryByText(/Checking/)).toBeNull();
+      expect(within(panel).getByRole('option', { name: chosenOption })).toBeInTheDocument();
+      expect(badge()).toContain('Not checked yet'); expect(panelStatus()).toHaveTextContent(notChecked);
+      expect(confirmation()).toBeChecked(); expect(draftWrites).toBe(0);
+    });
+
+    it('says the changes are not applied once the reading confirmation is unticked or ticked again while the detail loads', async () => {
+      await saveConfirmedReading(); await openNeverLoading();
+      for (const paper of [false, true]) {
+        fireEvent.click(confirmation());
+        await waitFor(() => expect(storedPanel()).toMatchObject({ confirmed: { paper }, pending: true }));
+        expect(panelStatus()).toHaveTextContent('Changes are not applied'); expect(panelStatus()).not.toHaveTextContent('your saved answers are kept');
+        expect(badge()).toContain('Needs confirmation'); expect(badge()).not.toContain('Not checked yet');
+        expect(screen.getByRole('option', { name: chosenOption })).toBeInTheDocument(); expect(applyButton()).toBeDisabled();
+      }
+    });
+
+    it('says the changes are not applied once another answer is changed while the detail loads', async () => {
+      await saveConfirmedReading(); await openNeverLoading();
+      fireEvent.change(screen.getByLabelText('When could you participate? (optional)'), { target: { value: 'Tuesdays' } });
+      await waitFor(() => expect(storedPanel()).toMatchObject({ fields: { availability: 'Tuesdays' }, pending: true }));
+      expect(panelStatus()).toHaveTextContent('Changes are not applied'); expect(panelStatus()).not.toHaveTextContent('your saved answers are kept');
+      expect(badge()).toContain('Needs confirmation'); expect(screen.getByRole('option', { name: chosenOption })).toBeInTheDocument();
+    });
 
     const changedDetails = {
       'names a different source for the paper': { ...paperTarget, writing_target_version: `wt1:${'b'.repeat(64)}` },
