@@ -483,3 +483,110 @@ def test_a_title_quoted_in_the_students_own_subject_counts_as_supplied(writing_c
     out = _m33_post(client, monkeypatch, "refine", reply=_hand_typed(sentence), current_body=draft, subject=subject)
     assert out["method"] == "llm" and out.get("fallback_reason") is None, out
     assert sentence in out["body"]
+
+
+# M128 (live 2026-10-18, sample R5): the student confirmed "full text", then asked
+# the editor "I only read the abstract of this paper ...". The suggestion kept
+# "I have read the full text of your paper ..." because the prompt and the check
+# allowed only the confirmed sentence. An edit may now lower the claim to the
+# fixed sentence of a lower level, never raise it, reword it or drop it.
+R5_PAPER = {"title": "More memorable scenes and faces are learned better and forgotten more slowly.", "year": 2026}
+R5_INSTRUCTION = ("I only read the abstract of this paper, not the whole thing. Make sure the email doesn't "
+                  "sound like I read all of it, and keep it under 180 words.")
+
+
+def _read(level):
+    return {**SKIPPED, "paper_reading": {**R5_PAPER, "level": level, "confirmed": True}}
+
+
+def _refine_reading(client, monkeypatch, confirmed, sentence, *, select=False):
+    draft = _hand_typed(paper_reading_sentence(_read(confirmed)))
+    fields = {"current_body": draft, "instruction": R5_INSTRUCTION, "works": [R5_PAPER]}
+    if not select:
+        return _m33_post(client, monkeypatch, "refine", _read(confirmed),
+                         reply=_hand_typed(*([sentence] if sentence else [])), **fields)
+    old = paper_reading_sentence(_read(confirmed))
+    start = len(draft[:draft.index(old)].encode("utf-16-le")) // 2
+    return _m33_post(client, monkeypatch, "refine", _read(confirmed), reply=json.dumps({"replacement": sentence}),
+                     subject="Research inquiry", selection={"start_utf16": start, "end_utf16": start + len(old),
+                                                            "text": old}, **fields)
+
+
+@pytest.mark.parametrize("select", [False, True])
+@pytest.mark.parametrize("confirmed,lower", [("full_text", "abstract"), ("full_text", "title_only"),
+                                             ("abstract", "title_only")])
+def test_refine_may_lower_the_confirmed_reading_sentence(writing_client, monkeypatch, select, confirmed, lower):
+    client, _ = writing_client
+    sentence = paper_reading_sentence(_read(lower))
+    out = _refine_reading(client, monkeypatch, confirmed, sentence, select=select)
+    if select:
+        assert out["outcome"] == "proposal" and out["proposal"]["replacement"] == sentence, out
+        return
+    assert _served(out, "refine"), out
+    assert out["body"].count(sentence) == 1 and paper_reading_sentence(_read(confirmed)) not in out["body"]
+
+
+@pytest.mark.parametrize("select", [False, True])
+@pytest.mark.parametrize("confirmed,reply", [
+    ("abstract", "I have read the full text of your paper “{t}” (2026)."),
+    ("title_only", "I have read the abstract of your paper “{t}” (2026)."),
+    ("title_only", "I have read the full text of your paper “{t}” (2026)."),
+    # Only the fixed sentences: a reworded lower claim is still a reading claim.
+    ("full_text", "I have read your paper “{t}” (2026)."),
+    ("full_text", "I read the abstract of “{t}” (2026)."),
+    # Dropped entirely, or kept next to a lower sentence.
+    ("full_text", ""),
+    ("full_text", "I have read the full text of your paper “{t}” (2026). I have read the abstract of your paper “{t}” (2026)."),
+])
+def test_refine_never_raises_rewords_or_drops_the_reading_sentence(writing_client, monkeypatch, select, confirmed,
+                                                                   reply):
+    client, _ = writing_client
+    sentence = reply.format(t=R5_PAPER["title"])
+    out = _refine_reading(client, monkeypatch, confirmed, sentence, select=select)
+    if select:
+        assert out["outcome"] == "no_change" and out["reason"] == "fabrication", out
+        return
+    assert not _served(out, "refine") and out["fallback_reason"] == "fabrication", out
+    assert out["body"].count(paper_reading_sentence(_read(confirmed))) == 1
+    if confirmed != "full_text":
+        assert "read the full text" not in out["body"]
+
+
+@pytest.mark.parametrize("provider", [False, True])
+def test_a_later_edit_keeps_a_lowered_reading_sentence(writing_client, monkeypatch, provider):
+    # Once accepted, the lowered sentence is the student's draft: a later basic
+    # edit, or a model edit that keeps it, must not restore the confirmed level.
+    client, _ = writing_client
+    lowered = paper_reading_sentence(_read("abstract"))
+    draft = _hand_typed(lowered)
+    out = _m33_post(client, monkeypatch, "refine", _read("full_text"), works=[R5_PAPER], current_body=draft,
+                    instruction="Make this more formal", reply=draft.replace("Could I ask", "May I ask") if provider else None)
+    assert out["method"] == ("llm" if provider else "local") and out.get("fallback_reason") is None, out
+    assert out["body"].count(lowered) == 1 and "read the full text" not in out["body"]
+
+
+@pytest.mark.parametrize("path", ["", "stream"])
+def test_a_generated_draft_still_keeps_the_confirmed_reading_sentence(writing_client, monkeypatch, path):
+    # Lowering is an edit the student asks for; a new draft states what they confirmed.
+    client, _ = writing_client
+    reply = _model_reply(path, paper_reading_sentence(_read("abstract")))
+    out = _m33_post(client, monkeypatch, path, _read("full_text"), reply=reply, works=[R5_PAPER], engine="ai")
+    assert not _served(out, path) and out["fallback_reason"] == "fabrication", out
+
+
+@pytest.mark.parametrize("select", [False, True])
+@pytest.mark.parametrize("confirmed", ["title_only", "abstract", "full_text"])
+def test_refine_prompt_lists_only_the_lower_reading_sentences(writing_client, monkeypatch, select, confirmed):
+    client, _ = writing_client
+    prompts = []
+    monkeypatch.setattr(ce, "is_configured", lambda: True)
+    monkeypatch.setattr(ce, "chat_completion", lambda messages, **_k: prompts.append(messages) or None)
+    draft = _hand_typed(paper_reading_sentence(_read(confirmed)))
+    fields = {"subject": "Research inquiry", "selection": {"start_utf16": 0, "end_utf16": 5, "text": "Dear "}} if select else {}
+    _m33_post(client, monkeypatch, "refine", _read(confirmed), works=[R5_PAPER], current_body=draft,
+              instruction=R5_INSTRUCTION, **fields)
+    text = "\n".join(m["content"] for m in prompts[-1])
+    order = ["title_only", "abstract", "full_text"]
+    for level in order:
+        assert (paper_reading_sentence(_read(level)) in text) is (order.index(level) <= order.index(confirmed)), level
+    assert ("may instead be exactly one" in text) is (confirmed != "title_only")

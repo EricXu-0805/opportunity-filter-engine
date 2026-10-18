@@ -38,6 +38,7 @@ from backend.lib.email_contact_context import (
     email_lab_context,
     email_research_context,
     email_research_works,
+    lower_paper_reading_sentences,
     unsupported_website_reading_claims,
     validate_paper_reading,
 )
@@ -2158,7 +2159,8 @@ def _email_grounding_findings(
     fabricated.extend(_email_condition_findings(text, parts, opp))
     fabricated.extend(unsupported_website_reading_claims(text))
     fabricated.extend(unsupported_action_claims(
-        text, confirmed_reading_sentence=parts.get("contact_paper_reading"),
+        text, confirmed_reading_sentence=next(
+            (s for s in parts.get("contact_paper_reading_lower") or [] if s in text), parts.get("contact_paper_reading")),
     ))
     if not deterministic:
         # M33: only the paper the student chose (validated against these works
@@ -2778,6 +2780,9 @@ def _refine_context(request: EmailRefineRequest, opp: dict | None) -> dict | Non
     # being edited is the student's own text, not the model's; the instruction
     # is not draft text. Generation sets no draft, so there every claim counts.
     parts["refine_draft"] = f"{request.subject}\n{request.current_body}"
+    # M128: an edit may lower the confirmed paper-reading claim, never raise it.
+    # Generation sets none, so a new draft states the confirmed level.
+    parts["contact_paper_reading_lower"] = lower_paper_reading_sentences(parts["contact_context"])
     return {
         "safe_opp": safe_opp,
         "profile_dict": profile_dict,
