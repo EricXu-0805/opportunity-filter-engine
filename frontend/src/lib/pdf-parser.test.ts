@@ -1189,12 +1189,13 @@ describe('positioned text items', () => {
     ];
     const FIRST = 'Relevant coursework: CS 124 Introduction to Computer Science I; CS 128 Introduction to Computer';
     const REST = 'Science II; CS 173 Discrete Structures; MATH 241 Calculus III';
-    const cut = ['CS 124', 'CS 128', 'CS 128 Introduction to Computer', 'CS 173', 'MATH 241'];
+    // M130: a bare code is not stored beside a listed course that opens with the same code text.
+    const cut = ['CS 124', 'CS 128 Introduction to Computer', 'CS 173', 'MATH 241'];
 
     it('reads the live list across its wrap, which the page shows by its other wrapped lines', async () => {
       // Live 2026-10-17: "CS 128 Introduction to Computer" was stored and
       // named in the email. A name over 40 characters is left to its code.
-      const whole = ['CS 124', 'CS 128', 'CS 173', 'CS 173 Discrete Structures', 'MATH 241', 'MATH 241 Calculus III'];
+      const whole = ['CS 124', 'CS 128', 'CS 173 Discrete Structures', 'MATH 241 Calculus III'];
       const result = await courses(...degree, row(FIRST, 484.56, 668.34), row(REST, 303.62, 657.34), ...project);
       expect(result.extracted_coursework).toEqual(whole);
       // The text keeps the line break; only the list reads across it.
