@@ -167,6 +167,11 @@ export function MatchList({
         users object.
       */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 items-start">
+        {/* The card titles are h3 and their sections h4; without this the
+            outline jumps from the page's h1 to h3 (M59). sr-only is absolute,
+            so inside the grid it takes no cell or gap; as a sibling it would
+            pick up the parent's space-y margin and move the list. */}
+        <h2 className="sr-only">{t('results.listHeading')}</h2>
         {matches.map((match: MatchResult, idx: number) => {
           const isNew = highlightSet.has(match.opportunity.id);
           const ringClass = focusedIdx === idx

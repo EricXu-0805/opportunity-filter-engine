@@ -2932,6 +2932,7 @@ export const en = {
       dismiss: 'Dismiss',
     },
     title: 'Your Matches',
+    listHeading: 'Match list',
     analyzing: 'Analyzing your profile...',
     analyzingAi: 'Analyzing with AI smart match...',
     loadingPhases: {
@@ -8302,6 +8303,7 @@ export const zh = {
       dismiss: '关闭',
     },
     title: '你的匹配',
+    listHeading: '匹配列表',
     analyzing: '正在分析你的档案...',
     analyzingAi: '正在进行 AI 智能匹配...',
     loadingPhases: {

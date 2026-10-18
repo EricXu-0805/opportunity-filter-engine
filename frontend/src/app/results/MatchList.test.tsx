@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { useRef } from 'react';
 import { render, screen, within, fireEvent, waitFor } from '@testing-library/react';
+import axe from 'axe-core';
 
 vi.mock('@/i18n/client', () => ({
   useT: () => ({
@@ -604,5 +605,28 @@ describe('MatchList — tier legend: shown only when the visible list mixes oppo
   it('omits the legend when every row has the same type', () => {
     renderWithTypes(['Research', 'research', 'Research']);
     expect(screen.queryByTestId('results-tier-legend')).toBeNull();
+  });
+});
+
+// M59: on /results the card titles (h3) came straight after the page's h1,
+// a skipped level to axe's heading-order rule and to anyone moving through
+// the page by heading.
+describe('MatchList — heading outline under the results page h1', () => {
+  it('heads the list with an h2, so the h3 card titles and their h4 sections skip no level', async () => {
+    const fits = makeMatch('opp-a', 'Opportunity A');
+    fits.reasons_fit = ['Matches your interest in machine learning'];
+    const { container } = render(
+      <>
+        <h1>results.title</h1>
+        <MatchList {...baseListProps({ matches: [fits, makeMatch('opp-b', 'Opportunity B')] })} />
+      </>,
+    );
+    fireEvent.click(within(document.getElementById('match-card-opp-a')!).getByText('card.showDetails'));
+    expect(screen.getByRole('heading', { level: 4, name: 'card.whyItFits' })).toBeInTheDocument();
+
+    const { violations } = await axe.run(container, { runOnly: { type: 'rule', values: ['heading-order'] } });
+    expect(violations.map(v => `${v.id}: ${v.nodes.map(n => n.target.join(' ')).join(', ')}`)).toEqual([]);
+    expect(screen.getByRole('heading', { level: 2, name: 'results.listHeading' })).toHaveClass('sr-only');
+    expect(screen.getAllByRole('heading', { level: 3 }).map(h => h.textContent)).toEqual(['Opportunity A', 'Opportunity B']);
   });
 });
