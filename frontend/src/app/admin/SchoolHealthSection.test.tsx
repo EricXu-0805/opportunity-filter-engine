@@ -112,7 +112,7 @@ describe('SchoolHealthSection', () => {
     expect(within(b.getByTestId('newest-success')).getByText('2026-08-29 08:10 UTC')).toBeInTheDocument();
     expect(b.getByText('1 failed · 2 stale')).toBeInTheDocument();
     expect(within(b.getByTestId('coverage')).getByText('-212')).toBeInTheDocument();
-    expect(b.getByText('9 now / 221 last good')).toBeInTheDocument();
+    expect(b.getByText('9 in latest run / 221 last good')).toBeInTheDocument();
     expect(within(b.getByTestId('last-publish')).getByText('2026-10-17 13:34 UTC')).toBeInTheDocument();
     expect(screen.getByText(/2 schools: 1 fully fresh, 0 partially degraded, 1 fully stale/))
       .toBeInTheDocument();
