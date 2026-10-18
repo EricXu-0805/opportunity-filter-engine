@@ -318,6 +318,17 @@ Both are SHA-identifiable via `/api/health`, so a rollback can be *verified*
 rather than assumed: re-read `release_sha` after the rollback and confirm it
 matches the intended previous SHA.
 
+**Course-status build (checklist M13): roll back with the switch, never by
+redeploying.** To withdraw the course list, set `courseStatus` to `false` in
+`frontend/src/lib/release-scope.ts` (and `course_status` in
+`backend/lib/release_scope.py`, which only reports the state) and deploy that.
+The build with the switch off still reads, sends and answers the `courses`
+that other tabs and devices wrote. Do not promote or redeploy the earlier
+frontend build that only knew `courses` (b8602cb0 and before): it refuses
+every profile question holding a `courses` operation and asks for a reload,
+so once students have saved course statuses those questions could never be
+answered there.
+
 **Migration recovery — read this before releasing anything with a migration.**
 Migrations in this repo are **forward-only**: 0 of 33 carry a down script,
 and the pattern is supersession (006 supersedes 004; 026 revokes what 019
