@@ -185,6 +185,20 @@ describe('persistent cold-email draft recovery', () => {
     });
   }
 
+  it('sends one template request when a restored draft is rebuilt from changed materials', async () => {
+    const view = mount(); await ready(); change('body', edits.body); await close(view); clearCalls();
+    mount({ profile: { ...profile, research_interests: 'A different research direction' } });
+    await waitFor(() => expect(field('body')).toHaveValue(edits.body));
+    await waitFor(() => expect(button('regenerateFromProfile')).toBeEnabled()); await act(async () => {});
+    expect(api.variants).not.toHaveBeenCalled(); expect(field('to')).toHaveValue('');
+    fireEvent.click(button('regenerateFromProfile'));
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'coldEmail.regenerateFromProfile' })).toBeNull());
+    await waitFor(() => expect(button('generateAiDraft')).toBeEnabled()); await act(async () => {});
+    expect(api.variants).toHaveBeenCalledOnce();
+    // The rebuild also fills the server recipient that the restored draft's metadata refresh would have filled.
+    expect(field('body')).toHaveValue(draft.body); expect(field('to')).toHaveValue(draft.recipient_email);
+  });
+
   it('allows an explicit refine of a recovered draft whose source versions still match', async () => {
     const view = mount(); await ready(); edit(); await close(view); clearCalls(); mount(); await restored();
     api.refine.mockImplementation((_body, _instruction, _profile, id, options) => emailReceipt(
