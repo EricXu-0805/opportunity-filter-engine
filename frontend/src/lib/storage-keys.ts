@@ -71,6 +71,11 @@ export const STORAGE_KEYS = {
   // Value: JSON {slug, ts} — see lib/school-confirmation.ts. User-scoped in
   // the W6 registry (school choice is an account-level decision).
   SCHOOL_CONFIRMED: 'ofe_school_confirmed',
+  // DEVICE-scoped companion to SCHOOL_CONFIRMED, kept across sign-out so an
+  // account that signs back in here is not asked again. Value: JSON array of
+  // fingerprints, at most one per account — never a uid or a school. See
+  // lib/school-confirmation.ts.
+  SCHOOL_CONFIRMED_PRINTS: 'ofe_school_confirmed_prints',
   // Flow B: a merge-grant token minted on the anon (source) session right
   // before an existing-account sign-in redirect. Survives the redirect in
   // localStorage and is redeemed once on /auth/callback, then cleared.
