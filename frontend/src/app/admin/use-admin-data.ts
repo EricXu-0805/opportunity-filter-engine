@@ -28,6 +28,10 @@ import type {
   OrdersInbox,
   ConciergeQueue,
   SavedSearchHealth,
+  SchoolHealthResponse,
+  SchoolHealthWorkflow,
+  SourceHealthRow,
+  SourceHealthShardsResponse,
   TFunc,
   TicketDetail,
   TicketFilters,
@@ -93,6 +97,7 @@ export interface UseAdminDataResult {
   filteredWorstFields: AdminResponse['worst_fields'];
   tickets: TicketWorkflow;
   ops: OpsWorkflow;
+  schoolHealth: SchoolHealthWorkflow;
   fetchAll: (tok: string) => Promise<void>;
   handleSubmitToken: (e: React.FormEvent) => void;
   handleLock: () => void;
@@ -145,6 +150,13 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
   const [opsDetailLoading, setOpsDetailLoading] = useState<Record<string, boolean>>({});
   const [opsPending, setOpsPending] = useState<Record<string, boolean>>({});
   const [opsErrors, setOpsErrors] = useState<Record<string, string | null>>({});
+
+  // Per-school source health
+  const [schoolHealthData, setSchoolHealthData] = useState<SchoolHealthResponse | null>(null);
+  const [schoolHealthError, setSchoolHealthError] = useState<string | null>(null);
+  const [schoolShards, setSchoolShards] = useState<Record<string, SourceHealthRow[] | undefined>>({});
+  const [schoolShardLoading, setSchoolShardLoading] = useState<Record<string, boolean>>({});
+  const [schoolShardErrors, setSchoolShardErrors] = useState<Record<string, string | null>>({});
 
   /**
    * A 401 from ANY admin call means the token is dead — not just the one on
@@ -202,7 +214,7 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
     setLoading(true);
     setError(null);
     try {
-      const [main, hist, healthR, collector, collectorHist, ssHealth, fbInbox, ordInbox, opsRes, concierge] =
+      const [main, hist, healthR, collector, collectorHist, ssHealth, fbInbox, ordInbox, opsRes, concierge, schools] =
         await Promise.all([
           adminFetch<AdminResponse>(`/admin/data-quality`, tok),
           adminFetch<{ history: HistoryEntry[] }>(`/admin/data-quality/history?limit=30`, tok),
@@ -219,8 +231,9 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
             : Promise.resolve<Awaited<ReturnType<typeof adminFetch<OrdersInbox>>>>({ status: 200 }),
           adminFetch<OpsIncidentsResponse>(opsQuery(opsFilters), tok),
           adminFetch<ConciergeQueue>(`/admin/concierge-requests?limit=100`, tok),
+          adminFetch<SchoolHealthResponse>(`/admin/source-health/schools`, tok),
         ]);
-      const all = [main, hist, healthR, collector, collectorHist, ssHealth, fbInbox, ordInbox, opsRes, concierge];
+      const all = [main, hist, healthR, collector, collectorHist, ssHealth, fbInbox, ordInbox, opsRes, concierge, schools];
       if (all.some((r) => r.status === 401)) {
         surfaceAuthFailure();
         return;
@@ -251,6 +264,12 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
       setOpsError(sectionError(opsRes));
       setOpsIncidents(opsRes.data?.incidents ?? []);
       setOpsRollup(opsRes.data?.rollup ?? {});
+      setSchoolHealthError(sectionError(schools));
+      setSchoolHealthData(schools.error ? null : schools.data ?? null);
+      // Drill-downs describe the ledger as it was when opened; drop them so a
+      // refresh cannot pair new school rows with old source rows.
+      setSchoolShards({});
+      setSchoolShardErrors({});
     } finally {
       setLoading(false);
     }
@@ -312,6 +331,10 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
     setOpsError(null);
     setOpsDetails({});
     setTicketDetails({});
+    setSchoolHealthData(null);
+    setSchoolHealthError(null);
+    setSchoolShards({});
+    setSchoolShardErrors({});
     setError(null);
   }, []);
 
@@ -483,6 +506,24 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
     if (token) fetchOps(token, f);
   }, [token, fetchOps]);
 
+  // ---- per-school source health -------------------------------------------
+
+  const loadSchoolShards = useCallback(async (school: string) => {
+    if (!token) return;
+    setSchoolShardLoading((s) => ({ ...s, [school]: true }));
+    setSchoolShardErrors((s) => ({ ...s, [school]: null }));
+    const res = await adminFetch<SourceHealthShardsResponse>(
+      `/admin/source-health/shards?school=${encodeURIComponent(school)}`, token,
+    );
+    setSchoolShardLoading((s) => ({ ...s, [school]: false }));
+    if (res.status === 401) { surfaceAuthFailure(); return; }
+    if (res.error) {
+      setSchoolShardErrors((s) => ({ ...s, [school]: res.error! }));
+      return;
+    }
+    setSchoolShards((s) => ({ ...s, [school]: res.data?.rows ?? [] }));
+  }, [token, surfaceAuthFailure]);
+
   // The last snapshot STRICTLY BEFORE the one on screen, in the current
   // scope. Two things make an index-based answer wrong. Scope: history[-2]
   // raw could be a legacy entry, so the first refresh after the boundary
@@ -546,6 +587,18 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
     opsDetailLoading, loadOpsDetail, handleOpsPatch, handleOpsRetry, opsPending, opsErrors,
   ]);
 
+  const schoolHealth = useMemo<SchoolHealthWorkflow>(() => ({
+    data: schoolHealthData,
+    error: schoolHealthError,
+    shards: schoolShards,
+    shardLoading: schoolShardLoading,
+    shardErrors: schoolShardErrors,
+    onOpen: loadSchoolShards,
+  }), [
+    schoolHealthData, schoolHealthError, schoolShards, schoolShardLoading, schoolShardErrors,
+    loadSchoolShards,
+  ]);
+
   return {
     token,
     tokenInput,
@@ -570,6 +623,7 @@ export function useAdminData(t: TFunc): UseAdminDataResult {
     filteredWorstFields,
     tickets,
     ops,
+    schoolHealth,
     fetchAll,
     handleSubmitToken,
     handleLock,

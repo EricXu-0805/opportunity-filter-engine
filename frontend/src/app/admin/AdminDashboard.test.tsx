@@ -17,6 +17,7 @@ vi.mock('./FeedbackSection', () => ({ FeedbackSection: () => null }));
 vi.mock('./OpsIncidentsSection', () => ({ OpsIncidentsSection: () => null }));
 vi.mock('./OrdersSection', () => ({ OrdersSection: () => null }));
 vi.mock('./SavedSearchHealthSection', () => ({ SavedSearchHealthSection: () => null }));
+vi.mock('./SchoolHealthSection', () => ({ SchoolHealthSection: () => null }));
 vi.mock('./RefreshTriggerSection', () => ({ RefreshTriggerSection: () => null }));
 vi.mock('./AlertList', () => ({ AlertList: () => null }));
 vi.mock('./FreshnessBanner', () => ({ FreshnessBanner: () => null }));
@@ -73,6 +74,7 @@ function renderDashboard(
       ordersInbox={null}
       tickets={{} as never}
       ops={{} as never}
+      schoolHealth={{} as never}
       actor="op"
       onActorChange={() => {}}
       loading={false}

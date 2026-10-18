@@ -37,6 +37,8 @@ let historyRows: Record<string, unknown>[];
 let mainData: Record<string, unknown> | null;
 let feedbackListStatus: { status: number; error?: string } | null;
 let ticketPatchStatus: { status: number; error?: string } | null;
+let schoolsStatus: { status: number; error?: string } | null;
+let shardsStatus: { status: number; error?: string } | null;
 
 const lastCall = (predicate: (c: Call) => boolean) => [...calls].reverse().find(predicate);
 
@@ -127,9 +129,51 @@ function install() {
         },
       };
     }
+    if (path.startsWith('/admin/source-health/schools')) {
+      if (schoolsStatus) return schoolsStatus;
+      return {
+        status: 200,
+        data: {
+          available: true,
+          report: null,
+          schools: [{
+            school: 'barnard', state: 'fully_stale', fully_stale: true,
+            fresh_shard_count: 0, warn_shard_count: 0, stale_shard_count: 2,
+            failed_shard_count: 1, degraded_shard_count: 2, total_shard_count: 2,
+            oldest_stale_age_days: 49.3,
+            last_successful_school_activity: '2026-08-29T08:10:26+00:00',
+            oldest_success_at: '2026-08-29T06:09:04+00:00',
+            never_succeeded_shard_count: 0,
+            coverage_current_count: 9, coverage_last_good_count: 221, coverage_delta: -212,
+            last_publish_at: SITE_UPDATED_AT,
+          }],
+        },
+      };
+    }
+    if (path.startsWith('/admin/source-health/shards')) {
+      if (shardsStatus) return shardsStatus;
+      const school = new URLSearchParams(path.split('?')[1] ?? '').get('school');
+      return {
+        status: 200,
+        data: {
+          available: true,
+          rows: school === 'barnard' ? [{
+            school: 'barnard', source: 'barnard_faculty',
+            last_attempt_at: SITE_UPDATED_AT, last_success_at: '2026-08-29T08:10:26+00:00',
+            last_publish_at: SITE_UPDATED_AT, current_record_count: 0, last_good_record_count: 212,
+            freshness: 'stale', status: 'suspicious_zero',
+            failure_reason: 'emitted 0 records against a baseline of 212 active record(s)',
+            consecutive_failures: 3, eligible: true,
+          }] : [],
+        },
+      };
+    }
     return { status: 200, data: {} };
   });
 }
+
+// The site-wide update time, which is also Barnard's shard publish time here.
+const SITE_UPDATED_AT = '2026-10-17T13:34:19+00:00';
 
 beforeEach(() => {
   calls.length = 0;
@@ -138,6 +182,8 @@ beforeEach(() => {
   mainData = null;
   feedbackListStatus = null;
   ticketPatchStatus = null;
+  schoolsStatus = null;
+  shardsStatus = null;
   ticketRow = {
     id: 't1',
     created_at: '2026-08-01T10:00:00+00:00',
@@ -423,5 +469,50 @@ describe('previousSnapshot is wired through the hook, not just implemented in ut
     // other baseline cannot slip past a single hard-coded number.
     expect(screen.queryByText('▲ +3')).not.toBeInTheDocument();
     expect(screen.queryByText(/^[▲▼]/)).not.toBeInTheDocument();
+  });
+});
+
+describe('per-school verification is fetched and drilled into through the hook', () => {
+  it('shows a school its own successes, not the site-wide time, and opens its sources', async () => {
+    mainData = {
+      total: 10,
+      global: {},
+      sources: [],
+      worst_fields: [],
+      generated_at: SITE_UPDATED_AT,
+      data_updated_at: SITE_UPDATED_AT,
+    };
+    await mount();
+    expect(calls.some((c) => c.path === '/admin/source-health/schools')).toBe(true);
+
+    const row = within(await screen.findByTestId('school-row-barnard'));
+    expect(row.getByTestId('oldest-success')).toHaveTextContent('2026-08-29 06:09 UTC');
+    expect(row.getByTestId('newest-success')).toHaveTextContent('2026-08-29 08:10 UTC');
+    expect(row.getByTestId('oldest-success')).not.toHaveTextContent('2026-10-17');
+    expect(row.getByTestId('newest-success')).not.toHaveTextContent('2026-10-17');
+    expect(row.getByTestId('last-publish')).toHaveTextContent('2026-10-17 13:34 UTC');
+
+    fireEvent.click(row.getByRole('button', { name: /barnard/ }));
+    expect(
+      await screen.findByText('emitted 0 records against a baseline of 212 active record(s)'),
+    ).toBeInTheDocument();
+    expect(lastCall((c) => c.path.startsWith('/admin/source-health/shards'))?.path)
+      .toBe('/admin/source-health/shards?school=barnard');
+  });
+
+  it('reports a failed school-health load and keeps the rest of the console', async () => {
+    schoolsStatus = { status: 500, error: 'ledger exploded' };
+    await mount();
+    expect(screen.getByText('admin.schoolHealth.loadFailed')).toBeInTheDocument();
+    expect(screen.queryByTestId('school-row-barnard')).toBeNull();
+    expect(screen.getByText('Broken compare page')).toBeInTheDocument();
+  });
+
+  it('treats a 401 from the drill-down as a dead session', async () => {
+    await mount();
+    shardsStatus = { status: 401, error: 'unauthorized' };
+    const row = within(await screen.findByTestId('school-row-barnard'));
+    fireEvent.click(row.getByRole('button', { name: /barnard/ }));
+    expect(await screen.findByText('Invalid admin token')).toBeInTheDocument();
   });
 });

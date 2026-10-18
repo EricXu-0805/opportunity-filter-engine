@@ -12,6 +12,7 @@ import { FeedbackSection } from './FeedbackSection';
 import { OpsIncidentsSection } from './OpsIncidentsSection';
 import { OrdersSection } from './OrdersSection';
 import { SavedSearchHealthSection } from './SavedSearchHealthSection';
+import { SchoolHealthSection } from './SchoolHealthSection';
 import { SourceFreshnessChart } from './SourceFreshnessChart';
 import { SourceTable } from './SourceTable';
 import { StatCard } from './StatCard';
@@ -30,6 +31,7 @@ import type {
   OrdersInbox,
   ConciergeQueue,
   SavedSearchHealth,
+  SchoolHealthWorkflow,
   TFunc,
   TicketWorkflow,
   TriggerStatus,
@@ -48,6 +50,7 @@ export function AdminDashboard({
   ordersInbox,
   tickets,
   ops,
+  schoolHealth,
   actor,
   onActorChange,
   loading,
@@ -75,6 +78,7 @@ export function AdminDashboard({
   ordersInbox: OrdersInbox | null;
   tickets: TicketWorkflow;
   ops: OpsWorkflow;
+  schoolHealth: SchoolHealthWorkflow;
   actor: string;
   onActorChange: (v: string) => void;
   loading: boolean;
@@ -172,6 +176,7 @@ export function AdminDashboard({
         {RELEASE_SCOPE.payments && (
           <OrdersSection inbox={ordersInbox} onConfirm={onConfirmOrder} t={t} />
         )}
+        <SchoolHealthSection health={schoolHealth} t={t} />
 
         {data && (
           <>
