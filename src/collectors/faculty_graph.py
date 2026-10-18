@@ -216,6 +216,8 @@ def validate(school: dict) -> list[str]:
             if not person.get("name"):
                 errors.append(f"{short}: faculty entry missing name")
         jd = dept.get("json_dir")
+        if isinstance(jd, dict) and jd.get("render") and not isinstance(jd.get("attr_json"), dict):
+            errors.append(f"{short}: json_dir render needs attr_json")
         if isinstance(jd, dict) and jd.get("total_key"):
             # Only a paged walk reads the total; without a row key a repeated
             # row would pass for the one it displaced.
@@ -3084,6 +3086,12 @@ def _fetch_cola(dept: dict) -> list[dict]:
 #     # or, when the microsite host isn't resolvable, pull a stable link from a list:
 #     "link_list": {"field": "websites", "match_key": "name",
 #                   "match_value": "Research Network Profile", "url_key": "url"},
+# A page that carries its roster as JSON in an element attribute, behind a wall
+# only a browser passes (Colby's People Directory, an Inertia.js page):
+#     "url": "https://www.colby.edu/people/people-directory/",
+#     "render": True, "attr_json": {"selector": "#app[data-page]", "attr": "data-page"},
+#     "records_key": "props.people",
+# ``ascii_apostrophe`` reads a name's typographic apostrophe as a plain one.
 def _dig(record: dict, path: str):
     """Read a field by name, or by dotted path for nested feeds.
 
@@ -3131,6 +3139,18 @@ def _fetch_json_dir(dept: dict, walks: dict | None = None) -> list[dict]:
                            dept.get("short"), cfg["file"])
             return []
         return _json_dir_records(dept, cfg, recs)
+    if cfg.get("render"):
+        # One render serves every unit that reads the same page, and a failed
+        # one is not retried per unit: 34 Colby departments share one page.
+        attr = cfg["attr_json"]
+        key = ("render", cfg["url"], attr["selector"], attr["attr"])
+        if walks is not None and key in walks:
+            recs = walks[key]
+        else:
+            recs = _rendered_attr_json(cfg["url"], attr["selector"], attr["attr"])
+            if walks is not None:
+                walks[key] = recs
+        return [] if recs is None else _json_dir_records(dept, cfg, recs)
     try:
         import requests
     except Exception:  # noqa: BLE001
@@ -3171,6 +3191,22 @@ def _fetch_json_dir(dept: dict, walks: dict | None = None) -> list[dict]:
     except Exception:  # noqa: BLE001
         return []
     return _json_dir_records(dept, cfg, recs)
+
+
+def _rendered_attr_json(url: str, selector: str, attr: str):
+    """The JSON in ``attr`` of the first ``selector`` element of the rendered page.
+
+    None when the render fails or the page no longer carries that JSON.
+    """
+    import json as _json
+
+    soup = _render_soup(url, expect_selector=selector)
+    el = soup.select_one(selector) if soup is not None else None
+    try:
+        return _json.loads(el[attr]) if el is not None else None
+    except (KeyError, TypeError, ValueError):
+        logger.warning("faculty_graph: %s carries no JSON in %s[%s]", url, selector, attr)
+        return None
 
 
 def _walk_json_pages(cfg: dict, pag: dict, hdrs: dict, requests) -> tuple[list, list]:
@@ -3292,6 +3328,10 @@ def _json_dir_records(dept: dict, cfg: dict, recs, *, roster: bool = False) -> l
         cover("raw_roster_rows")
         name = re.sub(r"\s+", " ",
                       " ".join(str(_dig(x, f) or "").strip() for f in name_fields)).strip()
+        if cfg.get("ascii_apostrophe"):
+            # Ids hash the name: a roster first stored with a typed "'" keeps
+            # its ids when the feed later sends WordPress's &#8217; (Colby).
+            name = html.unescape(name).replace("\u2019", "'")
         if roster:
             _cover_listed(_dig(x, cfg.get("email_field", "email")),
                           _dig(x, cfg["link_field"]) if cfg.get("link_field") else None,
