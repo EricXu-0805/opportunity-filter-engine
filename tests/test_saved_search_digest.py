@@ -871,8 +871,40 @@ class TestRefreshAccumulatesNewMatches:
         assert "pending-0" not in got  # oldest aged out
         assert got[-2:] == ["opp-a", "opp-b"]  # fresh matches kept
 
+    @pytest.mark.parametrize(("home_school", "expected"), [
+        (" UIUC ", ["opp-here"]),
+        ("ucb", ["opp-there"]),
+        (None, ["opp-here"]),
+    ])
+    def test_a_campus_scoped_search_counts_only_the_students_campus_as_new(
+        self, monkeypatch, home_school, expected,
+    ):
+        """The saved scope was restored on /results and ignored here, so a
+        campus-scoped search marked another campus's record new. The school is
+        the stored profile's, read as the match view reads it; a profile that
+        names none gets the view's default."""
+        _set_digest_env(monkeypatch)
+        patches: list = []
+        device = "device-scoped"
+        profile = {"include_cross_school": True}
+        if home_school is not None:
+            profile["home_school"] = home_school
+        row = self._refresh_row(device_id=device, filters_json={"scope": "campus"})
+        _install_stubs(
+            monkeypatch, rows=[row], patches=patches,
+            opportunities=[_night_opp("opp-here", "uiuc"), _night_opp("opp-there", "ucb")],
+            profiles=[{"id": device, "profile_data": profile}],
+        )
 
-SID = "11111111-2222-3333-4444-555555555555"
+        response = client.get("/api/cron/saved-searches/refresh", headers=AUTH)
+
+        assert response.json()["status"] == "ok"
+        body = patches[0]["json"]
+        assert body["new_match_ids"] == expected
+        assert body["last_result_ids"] == expected
+
+
+SID ="11111111-2222-3333-4444-555555555555"
 
 
 def _unsub_url(sid: str = SID, ts: int | None = None, sig: str | None = None) -> str:

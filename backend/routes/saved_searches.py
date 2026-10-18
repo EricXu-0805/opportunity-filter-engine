@@ -46,6 +46,7 @@ from backend.routes.email import (
     build_idempotency_key,
     classify_send_failure,
 )
+from backend.routes.matches import _snapshot_view_rows
 from backend.routes.push import (
     AccountLookupError,
     _account_email,
@@ -331,6 +332,7 @@ def _stored_profile_for_filters(profile: dict) -> dict | None:
 # can read the profile it needs with one keyed lookup and no new column.
 async def _ineligible_ids_by_device(
     client, supabase_url: str, headers: dict, corpus: list[dict], device_ids: list[str],
+    home_schools: dict[str, str] | None = None,
 ) -> dict[str, set[str] | None] | None:
     """For each device, excluded corpus ids; None pauses an invalid selection.
 
@@ -347,6 +349,10 @@ async def _ineligible_ids_by_device(
     None for the whole map, so each caller decides what an unknown exclusion
     set means for it: the digest sends the queue it already has, the refresh
     must not diff an unfiltered universe against a filtered baseline.
+
+    ``home_schools``, if given, receives each profiled device's home school
+    as the match view reads it (``_filter_context`` normalizes it the way
+    ProfileRequest does), for a saved search's scope.
     """
     wanted = sorted({d for d in device_ids if d})
     if not wanted:
@@ -380,6 +386,8 @@ async def _ineligible_ids_by_device(
             out[device_id] = None
             continue
         ctx = _filter_context(adapted)
+        if home_schools is not None:
+            home_schools[device_id] = ctx.home_school
         key = (
             ctx.home_school, ctx.hide_cross_school, ctx.exclude_citizenship_restricted,
             ctx.international_student, frozenset(ctx.seeking),
@@ -468,9 +476,11 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
         if not rows:
             return {"status": "ok", "processed": 0, "new_matches": 0}
 
+        home_schools: dict[str, str] = {}
         ineligible_by_device = await _ineligible_ids_by_device(
             client, supabase_url, headers, corpus,
             [row.get("device_id") for row in rows],
+            home_schools,
         )
         if ineligible_by_device is None:
             # The baseline was written with each student's exclusions applied.
@@ -496,6 +506,17 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
         # Every row searches the same records: each is read through the
         # public contact boundary once tonight, not once per saved search.
         served: dict = {}
+        # A saved scope reads the match view's own rows, shared with it for
+        # this corpus generation, so they are built at most once.
+        view_rows = (
+            _snapshot_view_rows(
+                opportunities,
+                {opportunity.get("id") for opportunity in opportunities},
+                id(corpus),
+            )
+            if any((row.get("filters_json") or {}).get("scope") for row in rows)
+            else None
+        )
 
         for row in rows:
             try:
@@ -519,7 +540,13 @@ async def saved_searches_refresh(authorization: str | None = Header(default=None
                 ]
 
                 current_ids = [
-                    oid for oid in matching_ids(opportunities, filters, query, served=served)
+                    oid for oid in matching_ids(
+                        opportunities, filters, query, served=served,
+                        # No profile row: the match view's default school,
+                        # as for a profile that names none.
+                        home_school=home_schools.get(row.get("device_id") or "", "uiuc"),
+                        view_rows=view_rows,
+                    )
                     if oid not in ineligible
                 ]
                 # A search that has never run has no prior set to diff against

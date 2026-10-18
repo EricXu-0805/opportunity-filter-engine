@@ -382,3 +382,58 @@ class TestTheDigestMatchesWhatTheSiteShowed:
         assert route_expand is shared_expand
         for query in ("ml", "ai", "nlp", "hci", "cs", "ml robotics"):
             assert shared_expand(query) == route_expand(query)
+
+
+class TestTheSavedScopeIsTheMatchViews:
+    """filters.scope was saved and restored on /results but ignored here, so a
+    campus-scoped search counted every other campus's record as new."""
+
+    SCOPED = {**EMPTY_FILTERS, "scope": "campus"}
+
+    def _listing(self, opportunity_id: str, **overrides) -> dict:
+        return _opp(id=opportunity_id, source_type="campus_program", **overrides)
+
+    def test_a_campus_scope_keeps_only_the_students_own_school(self):
+        opps = [
+            self._listing("here", school="uiuc"),
+            self._listing("there", school="ucb"),
+            self._listing("national"),
+        ]
+        assert matching_ids(opps, self.SCOPED, home_school="uiuc") == ["here"]
+        assert matching_ids(opps, self.SCOPED, home_school="ucb") == ["there"]
+
+    def test_an_open_scope_drops_campus_only_records(self):
+        opps = [
+            self._listing("open", audience="open"),
+            self._listing("unknown", audience="unknown"),
+            self._listing("campus", audience="campus"),
+        ]
+        assert matching_ids(opps, {**EMPTY_FILTERS, "scope": "open"}) == ["open", "unknown"]
+
+    def test_the_scope_reads_the_card_not_the_stored_record(self):
+        """The view reads the card: a faculty profile's says audience
+        'unknown', and an unreviewed record's carries none at all."""
+        faculty = _opp(id="faculty", source_type="faculty_research", audience="campus")
+        unreviewed = _opp(id="unreviewed", audience="open")
+        assert matching_ids(
+            [faculty, unreviewed], {**EMPTY_FILTERS, "scope": "open"},
+        ) == ["faculty"]
+
+    def test_a_search_saved_before_the_scope_existed_is_unscoped(self):
+        opps = [self._listing("here", school="uiuc"), self._listing("there", school="ucb")]
+        assert matching_ids(opps, EMPTY_FILTERS, home_school="uiuc") == ["here", "there"]
+
+    def test_the_view_rows_given_are_the_ones_read(self):
+        from backend.routes.matches import _match_view_row
+
+        there = self._listing("there", school="ucb")
+        rows = {"there": _match_view_row(self._listing("there", school="uiuc"))}
+        assert matching_ids([there], self.SCOPED, home_school="uiuc", view_rows=rows) == ["there"]
+
+    def test_the_refresh_and_the_view_share_one_scope_rule(self):
+        """One predicate. A second copy is how the query search drifted."""
+        from backend.routes import matches
+        from src.saved_searches import filter as filter_module
+
+        assert filter_module._in_view_scope is matches._in_view_scope
+        assert filter_module._match_view_row is matches._match_view_row

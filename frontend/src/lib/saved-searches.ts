@@ -13,8 +13,8 @@ export interface SavedSearchFilters {
   deadline: DeadlineFilterValue;
   minScore: number;
   // Optional: rows saved before the discovery-scope facet shipped lack it.
-  // Like minScore, scope is enforced client-side only — the cron-side
-  // matcher (src/saved_searches/filter.py) ignores it.
+  // The nightly refresh (src/saved_searches/filter.py) applies it with the
+  // match view's own rule; minScore it leaves to the view when results open.
   scope?: '' | 'campus' | 'open';
 }
 
