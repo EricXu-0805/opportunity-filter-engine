@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { skillLevelIsTheStudentsOwn, skillNeedsConfirming } from './skill-evidence';
+import { skillLevelIsTheStudentsOwn, skillNeedsConfirming, skillsWithResume } from './skill-evidence';
 import type { SkillWithLevel } from './types';
 
 const s = (o: Partial<SkillWithLevel> & { name?: string }): SkillWithLevel =>
@@ -52,5 +52,20 @@ describe('skillNeedsConfirming — who gets asked, and who is left alone', () =>
     expect(skillNeedsConfirming(
       s({ level: 'experienced', source: 'resume', confirmed: true }),
     )).toBe(false);
+  });
+});
+
+describe('skillsWithResume — checklist M18', () => {
+  it('leaves a skill with no source alone: it may have been typed', () => {
+    const legacy = s({ name: 'MATLAB', level: 'experienced' });
+    expect(skillsWithResume([legacy], [])).toEqual({ skills: [legacy], onlyAdds: true });
+  });
+
+  it('is only additions when the same résumé is read again, keeping each skill as stored', () => {
+    const python = s({ source: 'resume', evidence: 'Skills: Python' });
+    const result = skillsWithResume([python], [s({ source: 'resume', evidence: 'Skills: Python' }), s({ name: 'Java', source: 'resume' })]);
+    expect(result.onlyAdds).toBe(true);
+    expect(result.skills[0]).toBe(python);
+    expect(result.skills.map((skill) => skill.name)).toEqual(['Python', 'Java']);
   });
 });
