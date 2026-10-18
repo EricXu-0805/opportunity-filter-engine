@@ -1226,7 +1226,11 @@ export default function ColdEmailModal({
   const panelSnapshotChanged = useCallback((snapshot: EmailContactDraftSnapshot | null) => {
     setPanelSavable(snapshot !== null);
     if (snapshot?.pending && !contextDirtyRef.current) retireContactDraftRef.current();
-    if (snapshot) setPendingPanel({ ...snapshot, opportunityId });
+    // The paper source is read back only with a chosen paper. Without one, a
+    // target still loading on open changes nothing saved, so it writes nothing.
+    if (snapshot) setPendingPanel(previous => previous && !previous.fields.paperKey && !snapshot.fields.paperKey
+      && JSON.stringify({ ...previous, paperSourceKey: '' }) === JSON.stringify({ ...snapshot, opportunityId, paperSourceKey: '' })
+      ? previous : { ...snapshot, opportunityId });
     else markDraftUnsaved('too_large');
   }, [markDraftUnsaved, opportunityId]);
   const supplementSnapshotChanged = useCallback((snapshot: ResumeSupplementDraftSnapshot | null) => {

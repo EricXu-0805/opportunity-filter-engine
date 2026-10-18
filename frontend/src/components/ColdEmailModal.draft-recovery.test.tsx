@@ -1,6 +1,6 @@
 import { emailValidationReceipt } from './ColdEmailModal.test-fixtures';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { ComponentProps } from 'react';
 import { advanceOwnerEpoch, captureOwnerToken, PRIVATE_STORAGE_LOCK, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import { createColdEmailDraftWriter, readColdEmailDraft } from '@/lib/cold-email-draft';
@@ -472,6 +472,63 @@ describe('persistent cold-email draft recovery', () => {
       await startAgain();
       fireEvent.click(button('generateAiDraft')); await waitFor(() => expect(api.stream).toHaveBeenCalledOnce());
       expect(api.stream.mock.calls[0][2].contactContext).toEqual({ version: 1, purpose: 'first_contact' });
+    });
+  });
+
+  describe('two tabs editing one saved draft', () => {
+    // Both editors share this browser's storage. Labels repeat across them, so
+    // fields are found inside each editor. A draft write tells other tabs, as the browser does.
+    const textField = (view: ReturnType<typeof render>, id: string) => view.container.querySelector(`[id="${id}"]`) as HTMLTextAreaElement;
+    const status = (view: ReturnType<typeof render>) => within(view.container).getByTestId('cold-email-draft-status');
+    let draftWrites = 0;
+    function shareDraftWrites() {
+      const storage = window.localStorage; const write = storage.setItem.bind(storage);
+      vi.spyOn(storage, 'setItem').mockImplementation((key: string, value: string) => {
+        const oldValue = storage.getItem(key); write(key, value);
+        if (!key.startsWith(STORAGE_KEYS.COLD_EMAIL_DRAFT_PREFIX)) return;
+        draftWrites += 1; window.dispatchEvent(new StorageEvent('storage', { key, oldValue, newValue: value }));
+      });
+    }
+    async function firstTab() {
+      const one = mount(); await waitFor(() => expect(textField(one, 'cold-email-body')).toHaveValue(draft.body));
+      fireEvent.change(textField(one, 'cold-email-body'), { target: { value: 'Edited in the first tab' } });
+      await waitFor(() => expect(status(one)).toHaveTextContent(/^Saved on this browser/)); await act(async () => {});
+      shareDraftWrites(); draftWrites = 0;
+      return one;
+    }
+    // As CheckedColdEmailModal does, the second tab shows the list card until the target's detail loads.
+    async function secondTab() {
+      const card = { ...target, writing_target_version: undefined };
+      const props: Props = { isOpen: true, onClose: vi.fn(), profile, opportunityId: target.id, opportunityTitle: 'Lab', target: card, targetReady: false, targetChecking: true };
+      const two = render(<ColdEmailModal {...props} />);
+      await waitFor(() => expect(textField(two, 'cold-email-body')).toHaveValue('Edited in the first tab')); await act(async () => {});
+      two.rerender(<ColdEmailModal {...props} target={target} targetReady targetChecking={false} />);
+      await waitFor(() => expect(api.variants).toHaveBeenCalledTimes(2)); await act(async () => {});
+      expect(status(two)).toHaveTextContent(/^Restored draft. Saved on this browser/);
+      return two;
+    }
+
+    it('a tab that only opens the saved draft writes nothing, so the first tab saves without a conflict notice', async () => {
+      const one = await firstTab(); await secondTab();
+      fireEvent.change(textField(one, 'cold-email-body'), { target: { value: 'Edited again in the first tab' } });
+      await waitFor(() => expect(status(one)).not.toHaveTextContent(/Saving/));
+      expect(status(one)).not.toHaveTextContent('Another window changed the saved draft');
+      expect(status(one)).toHaveTextContent(/^Saved on this browser/);
+      const record = readColdEmailDraft(captureOwnerToken(), target.id);
+      expect(record.status === 'present' && record.draft.body).toBe('Edited again in the first tab');
+      expect(draftWrites).toBe(1);
+    });
+
+    it('a real edit in the second tab still makes the first tab report the change', async () => {
+      const one = await firstTab(); const two = await secondTab();
+      fireEvent.change(textField(two, 'cold-email-body'), { target: { value: 'Edited in the second tab' } });
+      await waitFor(() => expect(readColdEmailDraft(captureOwnerToken(), target.id)).toMatchObject({ draft: { body: 'Edited in the second tab' } }));
+      await waitFor(() => expect(status(two)).toHaveTextContent(/Saved on this browser/));
+      fireEvent.change(textField(one, 'cold-email-body'), { target: { value: 'Edited again in the first tab' } });
+      await waitFor(() => expect(status(one)).toHaveTextContent('Another window changed the saved draft'));
+      expect(textField(one, 'cold-email-body')).toHaveValue('Edited again in the first tab');
+      const record = readColdEmailDraft(captureOwnerToken(), target.id);
+      expect(record.status === 'present' && record.draft.body).toBe('Edited in the second tab');
     });
   });
 });
