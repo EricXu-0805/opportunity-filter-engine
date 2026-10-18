@@ -10,6 +10,13 @@ on 2026-07-23 via a single headless render (the colby.edu site is fully
 Cloudflare-walled to plain HTTP requests, so plain curl returns a 403
 interstitial; the rendered pages resolve to real 200s).
 
+The weekly refresh renders every page too (``render``). Measured 2026-10-17:
+a plain GET of the hub and of each program page on www, afa and davisconnects
+returned 403 ``cf-mitigated: challenge``, and the headless render returned
+each real page. A program record is verified only from its own page, so every
+program URL is a seed; ``/research/`` is not, as it now redirects to the
+``/academics/research/`` hub.
+
 Emit buckets -> (source, school, audience), kept in lockstep with
 school_audience.SOURCE_DEFAULTS:
     campus -> colby_research_programs (colby / campus)
@@ -34,9 +41,21 @@ SCHOOL: dict = {
             "source_type": PROGRAM,
             "emit": "campus",
             "crawl": STATIC,
+            "render": True,
             "seeds": [
-                "https://www.colby.edu/research/",
                 f"{_RES}/",
+                f"{_RES}/colby-undergraduate-summer-research-retreat/",
+                f"{_RES}/colby-achievement-program-in-the-sciences/",
+                "https://www.colby.edu/academics/departments-and-programs/"
+                "independent-major/senior-scholars/",
+                f"{_RES}/colby-liberal-arts-symposium/",
+                "https://afa.colby.edu/academics/scholar-programs/"
+                "bunche-scholars/",
+                "https://afa.colby.edu/academics/scholar-programs/"
+                "presidential-scholars/",
+                "https://afa.colby.edu/academics/scholar-programs/"
+                "pulver-science-scholars/",
+                "https://davisconnects.colby.edu/",
             ],
             "programs": [
                 program(
