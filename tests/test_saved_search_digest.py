@@ -1051,6 +1051,32 @@ class TestDigestRenderer:
         assert "more in the app" not in html
         assert "more in the app" not in text
 
+    @pytest.mark.parametrize(("filters", "noted"), [
+        ({"minScore": 60}, True),
+        ({"minScore": 0}, False),
+        ({}, False),
+        (None, False),
+        ({"minScore": "60"}, True),
+        ({"minScore": 60.7}, True),
+        ({"minScore": "high"}, False),
+    ])
+    def test_a_saved_minimum_score_is_said_to_be_applied_only_on_open(
+        self, monkeypatch, filters, noted,
+    ):
+        """The refresh does not score, so a digest for a search saved with a
+        minimum score can carry records below it. The email says so rather
+        than presenting them as passing every saved condition."""
+        _set_digest_env(monkeypatch)
+        sends: list = []
+        _install_stubs(monkeypatch, rows=[_digest_row(filters_json=filters)], sends=sends)
+
+        client.get("/api/cron/saved-searches/digest", headers=AUTH)
+
+        note = "Your minimum match score (60) is not applied to this email."
+        for body in (sends[0]["html"], sends[0]["text"]):
+            assert (note in body) is noted
+            assert ("applied when you open the results" in body) is noted
+
 
 # `src.evidence.target_truth` derives its answer from the record's OWN fields
 # — a wire `target_truth` key on a synthetic fixture is inert and would make

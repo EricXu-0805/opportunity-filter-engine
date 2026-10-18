@@ -20,6 +20,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import logging
+import math
 import os
 import re
 import time
@@ -181,8 +182,34 @@ def _digest_footer_text(search_name: str, unsubscribe_url: str) -> str:
     )
 
 
+def _saved_min_score(filters: object) -> int:
+    """The minimum score /results applies when this search opens, else 0.
+
+    Read as use-results-url.ts reads the ``min`` the saved search's link
+    carries: a number, truncated and held to 0..100.
+    """
+    value = filters.get("minScore") if isinstance(filters, dict) else None
+    if isinstance(value, bool) or not isinstance(value, int | float | str):
+        return 0
+    try:
+        number = float(value)
+    except ValueError:
+        return 0
+    return min(100, max(0, math.trunc(number))) if math.isfinite(number) else 0
+
+
+def _min_score_note(min_score: int) -> str:
+    # The refresh does not score (src/saved_searches/filter.py says why), so
+    # these ids passed every saved condition except this one.
+    return (
+        f"Your minimum match score ({min_score}) is not applied to this email. "
+        "It is applied when you open the results, so some of these may not appear there."
+    )
+
+
 def _render_digest_email(
     search_name: str, items: list[dict], unsubscribe_url: str, overflow: int = 0,
+    min_score: int = 0,
 ) -> tuple[str, str, str]:
     # Subject counts the whole batch, not just the rendered rows — a week can
     # accumulate more matches than the email shows.
@@ -260,6 +287,12 @@ def _render_digest_email(
         if overflow > 0 else ""
     )
     overflow_text = f"+{overflow} more in the app\n" if overflow > 0 else ""
+    min_score_html = (
+        f'<p style="color:#6b7280;font-size:13px;margin:0 0 18px">'
+        f'{_html_escape(_min_score_note(min_score))}</p>'
+        if min_score > 0 else ""
+    )
+    min_score_text = f"{_min_score_note(min_score)}\n\n" if min_score > 0 else ""
 
     html = f"""<!doctype html><html><body style="margin:0;padding:0;background:#fafafa;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
 <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;max-width:640px;margin:0 auto;background:white">
@@ -271,6 +304,7 @@ def _render_digest_email(
     <p style="color:#6b7280;font-size:14px;margin:0 0 18px">
       New listings and faculty contact profiles that started matching your saved search since we last checked. Faculty profiles do not confirm a current opening.
     </p>
+    {min_score_html}
     <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%">
       {''.join(rows_html)}
     </table>
@@ -283,6 +317,7 @@ def _render_digest_email(
 
     text = (
         f"{subject}\n\n"
+        + min_score_text
         + "".join(rows_text)
         + overflow_text
         + f"\nView all: {FRONTEND_BASE}/favorites\n"
@@ -704,7 +739,7 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
         list_resp = await client.get(
             f"{supabase_url}/rest/v1/saved_searches",
             params={
-                "select": "id,device_id,name,digest_email,new_match_ids,last_digest_sent_at",
+                "select": "id,device_id,name,digest_email,new_match_ids,last_digest_sent_at,filters_json",
                 "digest_opt_in": "eq.true",
                 "digest_unsubscribed_at": "is.null",
                 "digest_email": "not.is.null",
@@ -829,6 +864,7 @@ async def saved_searches_digest(authorization: str | None = Header(default=None)
                 subject, html, text = _render_digest_email(
                     row.get("name") or "Saved search", items, unsubscribe_url,
                     overflow=overflow,
+                    min_score=_saved_min_score(row.get("filters_json")),
                 )
                 # Same key on every attempt at this search's digest today —
                 # that is the whole point. A freshly generated key per attempt
