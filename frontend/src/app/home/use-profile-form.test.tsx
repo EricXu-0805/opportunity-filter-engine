@@ -170,6 +170,7 @@ import {
 } from '@/lib/identity-owner';
 import { DEFAULT_PROFILE } from './types';
 import { skillLevelIsTheStudentsOwn, skillNeedsConfirming } from '@/lib/skill-evidence';
+import { courseEntries, courseRows } from '@/lib/course-status';
 import type { LoadedProfile, ProfilePatchIntent, ProfilePatchOutcome } from '@/lib/supabase';
 import {
   resetProfileDirtyLedger,
@@ -3453,7 +3454,7 @@ describe('useProfileForm — a save that half-landed is never a dead end', () =>
     const loaded = { ...DEFAULT_PROFILE, major: 'Computer Engineering', research_interests: 'Keep this independent interest',
       skills: [{ name: 'Python', level: 'beginner', confirmed: true }],
       resume_text: 'old text', coursework: ['ECE 220'], experience_entries: [sourced, manual], resume_master: master };
-    const removalPatch = { resume_text: '', coursework: [], experience_entries: [manual], resume_master: master };
+    const removalPatch = { resume_text: '', courses: [], coursework: [], experience_entries: [manual], resume_master: master };
     let releaseFirst!: (outcome: ProfilePatchOutcome) => void;
     const firstOutcome = new Promise<ProfilePatchOutcome>(resolve => { releaseFirst = resolve; });
     let releaseRetry!: () => void;
@@ -3486,7 +3487,7 @@ describe('useProfileForm — a save that half-landed is never a dead end', () =>
     expect(screen.getByTestId('coursework').textContent).toBe('');
 
     // Restoring local storage alone does not send anything. Retry records the
-    // same four-field source bundle, preserving independent data and ownership.
+    // same source bundle and courses, preserving independent data and ownership.
     setItemSpy.mockRestore();
     expect(commitProfilePatch).not.toHaveBeenCalled();
     phase = 'retry-to-held-cas';
@@ -3500,7 +3501,7 @@ describe('useProfileForm — a save that half-landed is never a dead end', () =>
     expect(serverRevision).toBe(1);
     expect(readProfileSyncEnvelope()).toMatchObject({
       confirmed: { revision: 1 }, pending: { baseRevision: 1, desiredProfile: removalPatch,
-        dirtyKeys: ['resume_text', 'coursework', 'experience_entries', 'resume_master'] }, tombstone: null,
+        dirtyKeys: ['resume_text', 'experience_entries', 'resume_master', 'courses', 'coursework'] }, tombstone: null,
     });
 
     // This time a real CAS attempt reports a typed transport failure. Unlike
@@ -7631,9 +7632,12 @@ describe('useProfileForm — every action is bound to the capability the screen 
     waitFor(() => expect(sentPatches().length, 'the removal is sent at once')
       .toBeGreaterThan(0));
     const patch = await sentPatches()[0];
-    expect(Object.keys(patch).sort(), 'and it is exactly the résumé bundle')
-      .toEqual(['coursework', 'experience_entries', 'resume_master', 'resume_text']);
+    expect(Object.keys(patch).sort(), 'and it is exactly the résumé bundle and the courses that outlive it')
+      .toEqual(['courses', 'coursework', 'experience_entries', 'resume_master', 'resume_text']);
     expect(patch.resume_text).toBe('');
+    // A course nobody marked came from the résumé and goes with it.
+    expect(patch.courses).toEqual([]);
+    expect(patch.coursework).toEqual([]);
   });
 
   async function staleResumeRemoval(move: () => Promise<void>) {
@@ -10721,6 +10725,69 @@ describe('useProfileForm — confirmed experience lifecycle', () => {
   });
 });
 
+
+describe('useProfileForm — courses keep the status the student set (checklist M13)', () => {
+  const parse = (text: string, found: string[]) => ({ ...RESUME('', []), raw_text: text, extracted_coursework: found });
+
+  it('marks a course on a profile saved before statuses and saves the course list alone, the names as they are', async () => {
+    mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'Old source', coursework: ['CS 225', 'CS 446'] }));
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    act(() => result.current.update('courses', [
+      { name: 'CS 225', status: 'completed', source: 'resume' },
+      { name: 'CS 446', source: 'resume' },
+    ], 'status'));
+    await waitFor(() => expect(serverRow?.courses).toBeDefined(), { timeout: 2500 });
+    const patch = commitProfilePatch.mock.calls.at(-1)?.[0].patch;
+    // A status click writes the course list alone, so it never stages the
+    // résumé the names belong to.
+    expect(Object.keys(patch ?? {}).sort()).toEqual(['courses']);
+    // Only the status the student set is stored.
+    expect(serverRow?.courses).toEqual([
+      { name: 'CS 225', status: 'completed', source: 'resume' },
+      { name: 'CS 446', source: 'resume' },
+    ]);
+    expect(serverRow?.coursework).toEqual(['CS 225', 'CS 446']);
+    expect(serverRow?.resume_text).toBe('Old source');
+  });
+
+  it('a re-import merges by name, keeps a status the student set and suggests the rest from the new text', async () => {
+    mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'Old source', coursework: ['CS 225', 'CS 125', 'STAT 400'], courses: [
+      { name: 'CS 225', status: 'completed', source: 'resume' },
+      { name: 'CS 125', source: 'resume' },
+      { name: 'STAT 400', status: 'unknown', source: 'manual' },
+    ] }));
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    act(() => { result.current.handleResumeParsed(parse('Coursework: CS 225\nPlanned courses: CS 446', ['CS 225', 'CS 446'])); });
+    expect(result.current.profile.courses).toEqual([
+      { name: 'CS 225', status: 'completed', source: 'resume' },
+      { name: 'STAT 400', status: 'unknown', source: 'manual' },
+      { name: 'CS 446', source: 'resume' },
+    ]);
+    expect(result.current.profile.coursework).toEqual(['CS 225', 'STAT 400', 'CS 446']);
+    // CS 446's planned status is only suggested on the form: sent as not marked.
+    expect(courseEntries(result.current.profile).map((course) => course.status)).toEqual(['completed', 'unknown', 'unknown']);
+    expect(courseRows(result.current.profile).map((course) => course.suggested ?? null)).toEqual([null, null, 'planned']);
+  });
+
+  it('removing the résumé drops only its courses nobody marked', async () => {
+    mockLoadProfile = () => Promise.resolve(cloudRow({ resume_text: 'Current courses: CS 125', coursework: ['CS 125', 'CS 225', 'STAT 400', 'ECE 110'], courses: [
+      { name: 'CS 125', source: 'resume' },
+      { name: 'CS 225', status: 'completed', source: 'resume' },
+      { name: 'STAT 400', status: 'unknown', source: 'manual' },
+    ] }));
+    const { result } = renderHook(() => useProfileForm(stableT));
+    await waitFor(() => expect(result.current.hydrationState).toBe('ready'));
+    await act(async () => { expect(result.current.handleResumeRemoved()).toBe(true); });
+    await waitFor(() => expect(serverRow?.resume_text).toBe(''));
+    expect(serverRow?.courses).toEqual([
+      { name: 'CS 225', status: 'completed', source: 'resume' },
+      { name: 'STAT 400', status: 'unknown', source: 'manual' },
+    ]);
+    expect(serverRow?.coursework).toEqual(['CS 225', 'STAT 400']);
+  });
+});
 
 describe('useProfileForm — full resume master lifecycle', () => {
   const manual = { id: 'name', revision: 1, status: 'confirmed' as const, value: 'Alex 王', source: { kind: 'manual' as const } };

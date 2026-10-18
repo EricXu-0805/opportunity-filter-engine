@@ -8,6 +8,14 @@ vi.mock('@/i18n/client', () => ({
   }),
 }));
 
+// The course list's release switch, as this branch ships it unless a test
+// turns it off.
+const release = vi.hoisted(() => ({ courseStatus: true }));
+vi.mock('@/lib/release-scope', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/release-scope')>();
+  return { ...actual, RELEASE_SCOPE: { ...actual.RELEASE_SCOPE, get courseStatus() { return release.courseStatus; } } };
+});
+
 const mockParse = vi.fn<(file: File) => Promise<ResumeParseResponse>>();
 vi.mock('@/lib/pdf-parser', () => ({
   parseResumePDF: (file: File) => mockParse(file),
@@ -434,9 +442,14 @@ describe('ResumeUpload — Remove is a real removal, not a UI reset', () => {
     expect(screen.getByText('resume.dropHere')).toBeInTheDocument();
   });
 
-  it('states what removal actually does while a résumé is on file', () => {
-    render(<ResumeUpload onParsed={vi.fn()} onRemove={vi.fn()} alreadyUploaded />);
-    expect(screen.getByText('resume.removeNote')).toBeInTheDocument();
+  it.each([true, false])('states what removal actually does while a résumé is on file, course list on: %s', (on) => {
+    release.courseStatus = on;
+    try {
+      render(<ResumeUpload onParsed={vi.fn()} onRemove={vi.fn()} alreadyUploaded />);
+      // Off, nothing here deletes courses: the note says what it said before
+      // the course list (review p2-b, M1).
+      expect(screen.getByText(on ? 'resume.removeNote' : 'resume.removeNoteOff')).toBeInTheDocument();
+    } finally { release.courseStatus = true; }
   });
 
   // The badge shows a file icon and "Resume (saved)", but parseResumePDF reads
@@ -490,6 +503,9 @@ describe('ResumeUpload — the copy matches what the code actually does', () => 
     expect(enNote).not.toMatch(/permanently|all copies|erase everything/i);
     expect(zhNote).toContain('当前的档案');
     expect(zhNote).toContain('历史版本');
+    // With the course list off, the words before it: the résumé and its coursework.
+    expect((en.resume as Record<string, string>).removeNoteOff).toMatch(/^Remove clears the résumé text and its coursework from your current profile, so future matching and generation stop using them\. Skills and interests it added stay/);
+    expect((zh.resume as Record<string, string>).removeNoteOff).toMatch(/^移除会把简历原文和它提取的课程从你当前的档案里清掉，之后的匹配与生成不再使用它们。它带来的技能和兴趣会保留/);
 
     const enPrivacy = ((en.home as Record<string, unknown>).cards as Record<string, string>).resumePrivacy;
     const zhPrivacy = ((zh.home as Record<string, unknown>).cards as Record<string, string>).resumePrivacy;
@@ -499,6 +515,19 @@ describe('ResumeUpload — the copy matches what the code actually does', () => 
     expect(enPrivacy).toContain('saved with your profile');
     expect(zhPrivacy).not.toContain('永不永久存储');
     expect(zhPrivacy).toContain('随档案一起保存');
+  });
+
+  it('EN and ZH say which courses go with the résumé, and that no status read from it stays (checklist M13)', async () => {
+    const { dictionaries } = await import('@/i18n/dictionaries');
+    const enNote = (dictionaries.en.resume as Record<string, string>).removeNote;
+    const zhNote = (dictionaries.zh.resume as Record<string, string>).removeNote;
+    expect(enNote).toContain('together with the courses it found that you have not marked yourself (a status the résumé only suggests is not a mark)');
+    expect(enNote).toContain('Courses you marked or added stay');
+    // No course keeps a résumé line, so there is none to remove.
+    expect(enNote).not.toContain('line');
+    expect(zhNote).toContain('连同它找到但你还没有亲自标注的课程（据简历推断、只作建议的状态不算标注）');
+    expect(zhNote).toContain('你标注过或自己添加的课程会保留');
+    expect(zhNote).not.toContain('原句');
   });
 
   it('EN and ZH say only the extracted text is saved and the PDF file is not', async () => {

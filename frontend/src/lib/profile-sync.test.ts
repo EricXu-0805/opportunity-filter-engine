@@ -763,6 +763,36 @@ describe('the résumé bundle', () => {
     expect((result as { conflictKeys: string[] }).conflictKeys.sort())
       .toEqual(['coursework', 'experience_entries', 'resume_master', 'resume_text']);
   });
+
+  it('journals a second course edit on a profile saved before courses existed', async () => {
+    loadProfileMock.mockResolvedValue(cloud({ ...FULL, coursework: ['ECE 220'] }, 7));
+    await hydrateProfile();
+    const token = captureOwnerToken();
+    const course = (status: 'completed' | 'planned') => ({ ...FULL, coursework: ['ECE 220'],
+      courses: [{ name: 'ECE 220', status, source: 'resume' as const }] });
+    // The second edit continues the first, whose base held no courses at all.
+    expect(recordProfileIntent(course('planned'), ['courses', 'coursework'], token)).toBe(true);
+    expect(recordProfileIntent(course('completed'), ['courses', 'coursework'], token)).toBe(true);
+    commitMock.mockResolvedValue(saved(course('completed'), 8));
+    await stageProfilePatch(course('completed'), ['courses', 'coursework'], token);
+    expect(commitMock.mock.calls[0][0].patch.courses).toEqual([{ name: 'ECE 220', status: 'completed', source: 'resume' }]);
+  });
+
+  it('a status click stages the course list alone, and a course edit that changes the names stages them with the résumé (checklist M13)', async () => {
+    loadProfileMock.mockResolvedValue(cloud({ ...FULL, resume_text: 'old', coursework: ['ECE 220'] }, 7));
+    await hydrateProfile();
+    const marked = { ...FULL, resume_text: 'old', coursework: ['ECE 220'],
+      courses: [{ name: 'ECE 220', status: 'completed' as const, source: 'resume' as const }] };
+    commitMock.mockResolvedValue(saved(marked, 8));
+    await stageProfilePatch(marked, ['courses'], captureOwnerToken());
+    expect(Object.keys(commitMock.mock.calls[0][0].patch)).toEqual(['courses']);
+    const added = { ...marked, coursework: ['ECE 220', 'STAT 400'],
+      courses: [...marked.courses, { name: 'STAT 400', status: 'planned' as const, source: 'manual' as const }] };
+    commitMock.mockResolvedValue(saved(added, 9));
+    await stageProfilePatch(added, ['courses', 'coursework'], captureOwnerToken());
+    expect(Object.keys(commitMock.mock.calls[1][0].patch).sort())
+      .toEqual(['courses', 'coursework', 'experience_entries', 'resume_master', 'resume_text']);
+  });
 });
 
 describe('skills are an operation, not a list', () => {

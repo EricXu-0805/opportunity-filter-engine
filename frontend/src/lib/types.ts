@@ -38,18 +38,27 @@ export interface SkillWithLevel {
 // ── Courses (checklist M13) ──────────────────────────────────────────
 /** What may be said of a course. `unknown` is a course not marked, including
  *  every course stored before statuses existed: it may be named, never said
- *  to be taken. */
+ *  to be taken. lib/course-status.ts holds the rules. */
 export type CourseStatus = 'completed' | 'in_progress' | 'planned' | 'unknown';
 
 /** Read from the résumé, or added on the form. */
 export type CourseSource = 'resume' | 'manual';
 
 /** A course as the profile stores it, with a status only once the student
- *  sets one. */
+ *  sets one. A résumé course without one is sent as not marked; the form may
+ *  suggest a status from the current résumé text, which is never stored. Nor
+ *  is the résumé line it was found on; the form finds that in the text. */
 export interface StoredCourse {
   name: string;
   source: CourseSource;
   status?: CourseStatus;
+}
+
+/** A course as it is read and sent: always exactly one status. */
+export interface CourseEntry {
+  name: string;
+  status: CourseStatus;
+  source: CourseSource;
 }
 
 // ── Student-confirmed experience evidence ──────────────────────────
@@ -164,9 +173,13 @@ export interface ProfileData {
   experience_entries?: ExperienceEntry[];
   /** Missing/null means the student has not created a complete master yet. */
   resume_master?: ResumeMasterV1 | null;
+  /** Course names only, written with `courses` for clients older than it. A
+   *  name `courses` lacks is a résumé course not marked; a résumé course the
+   *  student has not marked counts only while this list names it, since an
+   *  older client's résumé removal or re-import writes only this list. */
   coursework?: string[];
-  /** Each course with the status the student set (checklist M13). A build
-   *  that does not edit courses keeps and sends what a newer one wrote. */
+  /** Each course as the student set it; read through lib/course-status.ts
+   *  (courseEntries, courseRows), never directly. */
   courses?: StoredCourse[];
   search_weight?: number;
   /** "I'm still exploring" — widens matching for undecided students. */
@@ -206,7 +219,11 @@ export interface ProfileRequest {
   seeking_type: string[];
   desired_fields: string[];
   hard_skills: SkillWithLevel[];
+  /** Every course name in `courses`, for server code that reads names only
+   *  (off, RELEASE_SCOPE.courseStatus: the stored names). */
   coursework: string[];
+  /** Off: only when the profile stores a course list. */
+  courses?: CourseEntry[];
   experience_level: string;
   resume_ready: boolean;
   can_cold_email: boolean;

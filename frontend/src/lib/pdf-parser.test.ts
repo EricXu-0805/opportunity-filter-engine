@@ -20,6 +20,7 @@ vi.mock('pdfjs-dist', () => ({
 
 import { parseResumePDF } from './pdf-parser';
 import { MAX_RESUME_TEXT_CHARACTERS, weakWrapEvidence, wrapEvidence } from './resume-input';
+import { courseRows } from './course-status';
 
 type MockPdf = {
   numPages: number;
@@ -274,6 +275,39 @@ describe('parseResumePDF — coursework extraction', () => {
     });
     const res = await parseResumePDF(fakeFile());
     expect(res.extracted_coursework).toEqual([]);
+  });
+});
+
+describe('parseResumePDF — courses under a status label (checklist M13)', () => {
+  async function parse(...pages: string[]) {
+    mockGetDocument.mockReturnValue({ promise: Promise.resolve(fakePdf(pages)) });
+    return parseResumePDF(fakeFile());
+  }
+
+  it('reads the named courses of a list after a status label as well, and returns names only', async () => {
+    const res = await parse(
+      'Courses in progress - Machine Learning, Data Mining',
+      'Currently taking: Operating Systems',
+      'Courses to take: Compilers; Robotics',
+    );
+    expect(res.extracted_coursework).toEqual(['Compilers', 'Data Mining', 'Machine Learning', 'Operating Systems', 'Robotics']);
+    // What a course's status is, and the line it is on, are read from the
+    // stored text when they are needed (lib/course-status.ts), never stored.
+    expect(res).not.toHaveProperty('course_evidence');
+  });
+
+  it('ends a list at "|", a tab or the next label on its line', async () => {
+    expect((await parse('Relevant Coursework: Databases, Algorithms Coursework: Compilers')).extracted_coursework)
+      .toEqual(['Algorithms', 'Compilers', 'Databases']);
+    expect((await parse('Relevant Coursework: Databases, Algorithms | Skills: Python, Java')).extracted_coursework)
+      .toEqual(['Algorithms', 'Databases']);
+    expect((await parse('Coursework: Data Mining\tCourse Assistant, Robotics Lab')).extracted_coursework).toEqual(['Data Mining']);
+    expect((await parse('Coursework: Compilers. Completed: Robotics, Vision')).extracted_coursework).toEqual(['Compilers']);
+  });
+
+  it('opens no list at a status phrase inside a sentence', async () => {
+    expect((await parse('Tutor for students currently taking: Data Mining, Robotics')).extracted_coursework).toEqual([]);
+    expect((await parse('Peer Mentor: advised freshmen on courses to take: Algorithms')).extracted_coursework).toEqual([]);
   });
 });
 
@@ -533,6 +567,20 @@ describe('real résumé PDFs keep every word and bullet intact', () => {
     // open with a number ("25% fewer tickets…"), so the line stays split.
     expect(await parseFixture('resume-renovate.pdf'))
       .toBe(PERSONA.replace('BERT on 3,000 labeled tweets', 'BERT on\n3,000 labeled tweets'));
+  });
+
+  it('reads each course of a printed résumé with the line it is on, and its degree line\'s expected date marks no course', async () => {
+    const result = await readFixture('resume-ce2.pdf');
+    const rows = PERSONA.split('\n');
+    const read = courseRows({ coursework: result.extracted_coursework, resume_text: result.raw_text });
+    expect(read.length).toBeGreaterThan(0);
+    for (const course of read) {
+      expect(course.status, course.name).toBe('unknown');
+      expect(rows.some((row) => row.includes(course.line ?? '\u0000')), course.name).toBe(true);
+    }
+    // A course code on a project line shows that line, so the student sees
+    // the course came from a project and not from a coursework list.
+    expect(read.find((course) => course.name === 'CS 446')?.line).toMatch(/^Swahili-English Sentiment Classifier \(course project, CS 446\)/);
   });
 
   it('offers the tailor prefill the four complete bullets', async () => {

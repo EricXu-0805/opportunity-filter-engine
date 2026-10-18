@@ -1,4 +1,6 @@
+import { courseEntries, courseFields } from './course-status';
 import { assertProfileInput, ProfileInputError } from './profile-input';
+import { RELEASE_SCOPE } from './release-scope';
 import type { ProfileData } from './types';
 
 interface SharedProfile {
@@ -25,7 +27,10 @@ function toShared(profile: ProfileData): SharedProfile {
     skills: profile.skills.map(s => ({ n: s.name, l: s.level })),
     seeking: profile.seeking_types,
     weight: profile.search_weight,
-    courses: profile.coursework,
+    // Names only. A status is the sharer's word about their own courses and
+    // stays with them, as a shared skill level never counts as confirmed.
+    courses: profile.courses === undefined && profile.coursework === undefined
+      ? undefined : courseEntries(profile).map((course) => course.name),
   };
 }
 
@@ -77,10 +82,14 @@ function fromShared(shared: SharedProfile): Partial<ProfileData> {
     search_weight: typeof shared.weight === 'number' && shared.weight >= 0 && shared.weight <= 100
       ? shared.weight
       : undefined,
-    coursework: Array.isArray(shared.courses)
-      ? shared.courses
-          .map(x => shareText(x))
-      : undefined,
+    // Each shared course arrives not marked: the visitor marks their own. It
+    // is theirs, as one added on the form is, not read from their résumé: a
+    // later removal or re-import of their résumé leaves it alone. With the
+    // course list switched off, the names only, as the build before this one.
+    ...(!Array.isArray(shared.courses) ? {}
+      : RELEASE_SCOPE.courseStatus
+        ? courseFields(shared.courses.map((x) => ({ name: shareText(x), status: 'unknown' as const, source: 'manual' as const })))
+        : { coursework: shared.courses.map((x) => shareText(x)) }),
   };
 }
 
@@ -108,7 +117,7 @@ export function encodeProfile(profile: ProfileData): string {
  *  really contained, never from Object.keys() of the decoded object. */
 export const SHARE_WIRE_KEYS = [
   'college', 'major', 'grade', 'is_international', 'research_interests',
-  'skills', 'seeking_types', 'search_weight', 'coursework',
+  'skills', 'seeking_types', 'search_weight', 'coursework', 'courses',
 ] as const satisfies readonly (keyof ProfileData)[];
 
 /** The decoded draft PLUS exactly which of SHARE_WIRE_KEYS the payload

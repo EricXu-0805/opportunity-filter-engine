@@ -28,6 +28,7 @@ import { HOME_FORM_WRITER, hydrateProfile, readProfileSyncEnvelope, resetProfile
 import { readOutstandingOps, resetJournalLaneForTests, startDocumentForTests } from '@/lib/profile-journal';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { encodeProfile } from '@/lib/profile-share';
+import { courseRows, storedCourse } from '@/lib/course-status';
 
 const BASE: ProfileData = { ...DEFAULT_PROFILE, name: 'Alex', home_school: 'uiuc', institution: 'UIUC',
   college: 'Engineering', major: 'Computer Science', grade: 'Junior', research_interests: 'Original research' };
@@ -135,18 +136,62 @@ describe('Home foreground reads with real profile coordination', () => {
     expect(remote?.research_interests).toBe('Latest unflushed typing'); expect(revision).toBe(3);
   });
 
-  it('keeps the local resume source bundle together when coursework changes during a read of replacement source text', async () => {
+  it('keeps the local resume source bundle together when a course edit changes the names during a read of replacement source text', async () => {
     remote = { ...BASE, resume_text: 'Original exact resume source', coursework: ['Original course'],
       experience_entries: [], resume_master: null };
     const { result } = await start(); const held = await holdPeriodic();
-    act(() => { result.current.update('coursework', ['My course edit']); });
+    const mine = [{ name: 'My course edit', status: 'completed' as const, source: 'manual' as const }];
+    act(() => { result.current.update('courses', mine); });
     publish({ resume_text: 'Replacement cloud resume source', coursework: ['Cloud replacement course'] });
     held.resolve(row()); await drain();
+    // The names are one unit with the résumé (RESUME_BUNDLE): the course
+    // edit keeps the résumé it was made on, with its courses.
     expect(result.current.profile).toMatchObject({ resume_text: 'Original exact resume source',
-      coursework: ['My course edit'], experience_entries: [], resume_master: null });
-    expect(result.current.viewSnapshot?.renderedProfile).toMatchObject({ resume_text: 'Original exact resume source', coursework: ['My course edit'] });
+      courses: mine, coursework: ['My course edit'], experience_entries: [], resume_master: null });
+    expect(result.current.viewSnapshot?.renderedProfile).toMatchObject({ resume_text: 'Original exact resume source', courses: mine, coursework: ['My course edit'] });
     expect(result.current.viewSnapshot?.baseProfile).toMatchObject({ resume_text: 'Replacement cloud resume source', coursework: ['Cloud replacement course'] });
     expect(result.current.viewSnapshot?.revision).toBe(2); expect(service.commit).not.toHaveBeenCalled();
+  });
+
+  it('keeps a status click made during a read of replacement source text, and takes the new résumé with its names', async () => {
+    remote = { ...BASE, resume_text: 'Original exact resume source', coursework: ['Original course'],
+      courses: [{ name: 'Original course', source: 'resume' }], experience_entries: [], resume_master: null };
+    const { result } = await start(); const held = await holdPeriodic();
+    const marked = [{ name: 'Original course', status: 'completed' as const, source: 'resume' as const }];
+    act(() => { result.current.update('courses', marked, 'status'); });
+    publish({ resume_text: 'Replacement cloud resume source', coursework: ['Cloud replacement course'] });
+    held.resolve(row()); await drain();
+    // A status click writes the course list alone: the names stay the
+    // résumé's, so the new résumé comes with its own.
+    expect(result.current.profile).toMatchObject({ resume_text: 'Replacement cloud resume source',
+      courses: marked, coursework: ['Cloud replacement course'] });
+    expect(result.current.viewSnapshot?.renderedProfile).toMatchObject({ resume_text: 'Replacement cloud resume source', courses: marked, coursework: ['Cloud replacement course'] });
+  });
+
+  it.each(['status click', 'add', 'removal'] as const)('shows another device\'s mark read during an experience edit, and a %s made next keeps it', async (edit) => {
+    const listed = [{ name: 'CS 225', source: 'resume' as const }, { name: 'CS 233', source: 'resume' as const }];
+    const marked = [listed[0], { ...listed[1], status: 'completed' as const }];
+    remote = { ...BASE, resume_text: 'Relevant Coursework: CS 225, CS 233', coursework: ['CS 225', 'CS 233'],
+      courses: listed, experience_entries: [], resume_master: null };
+    const { result } = await start(); const held = await holdPeriodic();
+    const entry = { id: 'exp-1', revision: 1, status: 'confirmed' as const, text: 'Built a robot.', source: { kind: 'manual' as const } };
+    act(() => { result.current.update('experience_entries', [entry]); });
+    publish({ courses: marked }); held.resolve(row()); await drain();
+    // The experience edit keeps the résumé with its names, not the course
+    // list: the screen shows the other device's mark.
+    expect(result.current.profile).toMatchObject({ experience_entries: [entry], courses: marked });
+    // The course list builds every edit from the rows on screen.
+    const shown = courseRows(result.current.profile).map(storedCourse);
+    const stat = { name: 'STAT 400', source: 'manual' as const, status: 'in_progress' as const };
+    if (edit === 'status click') act(() => { result.current.update('courses', [{ ...shown[0], status: 'planned' }, ...shown.slice(1)], 'status'); });
+    else if (edit === 'add') act(() => { result.current.update('courses', [...shown, stat]); });
+    else act(() => { result.current.update('courses', shown.slice(1)); });
+    await tick(3000); await tick(3000);
+    expect(result.current.conflicts).toEqual([]); expect(readProfileSyncEnvelope()?.pending).toBeNull();
+    expect(remote?.experience_entries).toEqual([entry]);
+    expect(remote?.courses).toEqual(edit === 'status click' ? [{ ...marked[0], status: 'planned' }, marked[1]]
+      : edit === 'add' ? [...marked, stat] : marked.slice(1));
+    expect(result.current.profile.courses).toEqual(remote?.courses);
   });
 
   it('starts the next interval after completion; unchanged reads preserve save status and never autosave', async () => {

@@ -272,7 +272,7 @@ export default function SkillTags({ selected, onChange }: SkillTagsProps) {
               }
             }}
             placeholder={selected.length === 0 ? t('skills.searchPlaceholder') : t('skills.addMorePlaceholder')}
-            className="flex-1 text-sm bg-transparent outline-none placeholder:text-gray-400"
+            className="min-w-[6rem] flex-1 text-sm bg-transparent outline-none placeholder:text-gray-400"
           />
         </div>
       </div>

@@ -43,16 +43,18 @@ beforeEach(async () => {
 afterEach(() => { vi.unstubAllGlobals(); advanceOwnerEpoch(null); });
 
 describe('Tailor request bodies at the input limits', () => {
-  it('hold 521, 519 and 650 lists and objects on the three writing routes', async () => {
+  // 512 courses, each an object with its status, are 513 of them.
+  it('hold 1,034, 1,032 and 1,163 lists and objects on the three writing routes', async () => {
     const bullets = many(12, 'Built [a] robot');
     await tailorResume(profile, 'target', bullets, { sourceBullets: bullets, locale: 'en', expectedPipelineVersion: 'w14.1', expectedTargetVersion: TOKEN });
     await optimizeBullet(profile, 'target', 'Built a robot.', 'Built a robot.', { instruction: 'Lead with the method.', locale: 'en', expectedTargetVersion: TOKEN });
     await renovateResume(profile, 'target', sections, { locale: 'en', expectedTargetVersion: TOKEN });
     const tailor = JSON.parse(sent('/tailor'));
     expect(tailor.profile.hard_skills).toHaveLength(512);
-    expect(containers(tailor)).toBe(521);
-    expect(containers(JSON.parse(sent('/tailor/bullet')))).toBe(519);
-    expect(containers(JSON.parse(sent('/tailor/renovate')))).toBe(650);
+    expect(tailor.profile.courses).toHaveLength(512);
+    expect(containers(tailor)).toBe(1034);
+    expect(containers(JSON.parse(sent('/tailor/bullet')))).toBe(1032);
+    expect(containers(JSON.parse(sent('/tailor/renovate')))).toBe(1163);
   });
 
   it('hold one object on the two extraction routes, and one comma more than the résumé', async () => {

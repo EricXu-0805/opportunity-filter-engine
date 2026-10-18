@@ -59,6 +59,7 @@ def scope_closed(monkeypatch):
 ACCEPTED_FEATURES = frozenset({
     "cross_school_matching",
     "resume_renovate",
+    "course_status",
 })
 UNACCEPTED_FEATURES = frozenset({
     "match_ai_refine",

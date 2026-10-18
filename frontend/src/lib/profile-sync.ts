@@ -86,13 +86,22 @@ export const CREATE_REQUIRED_KEYS: readonly ProfileKey[] = [
 /** Fields that are one unit as far as conflict detection goes. The résumé
  *  text, extracted coursework and experience sources must stay together.
  *  Taking them from different revisions can attach claims to the wrong résumé.
- *  Staging any member stages the whole bundle. */
+ *  Staging any member stages the whole bundle. The course names are the
+ *  résumé's in every older build, and a course edit that changes them writes
+ *  them with the résumé here too; a status click writes the course list
+ *  alone (use-profile-form.ts), so it never stages the résumé. Nothing a
+ *  course stores is quoted from the résumé: its line and any status the
+ *  résumé gives it are read from the current text (lib/course-status.ts). */
 export const RESUME_BUNDLE: readonly ProfileKey[] = ['resume_text', 'coursework', 'experience_entries', 'resume_master'];
 
 /** The courses and their names: one list, written together, and one unit in
  *  a conflict too. An older client removes or replaces the résumé by writing
  *  the names alone, and the two must never resolve apart. */
 const COURSE_BUNDLE: readonly ProfileKey[] = ['courses', 'coursework'];
+
+/** The résumé and the courses: the fields one conflict question holds whole
+ *  for each operation behind it (see planKeysFromJournal). */
+const RESUME_AND_COURSES: readonly string[] = [...RESUME_BUNDLE, 'courses'];
 
 /** Every key the app recognises. Declared as a Record<keyof ProfileData, …>
  *  so adding a profile field without listing it here is a COMPILE error — a
@@ -164,17 +173,24 @@ function validResumeContent(profile: Pick<ProfileData, 'experience_entries' | 'r
     && validateResumeMaster(profile.resume_master).ok;
 }
 
+/** Whether this build leaves journal operations carrying `courses`, and the
+ *  outbox entries holding them, to the course-status build (checklist M13,
+ *  rollout phase 1; see courseStatusKeys). This is the course-status build:
+ *  it writes, sends and answers them itself, so it holds none. */
+const LEAVE_COURSE_STATUS_OPS = false;
+
 /** Complete a persisted partial bundle from its frozen base, or the empty
  *  value for a field introduced after that base was saved. Locks and mutation
  *  versions must cover every member even when the desired values already do. */
 function completeResumeBundle(pending: ProfilePendingWrite): ProfilePendingWrite {
   const present = RESUME_BUNDLE.filter((k) => pending.dirtyKeys.includes(k));
   // Partial locks must not allow the remaining bundle members to send alone.
-  // An entry carrying `courses` is left as written (see courseStatusKeys):
-  // the course-status build keeps the course names with the courses, so its
-  // entry holds no partial résumé, and this build writes `courses` only in a
-  // guest restore, whose entry already holds the whole résumé.
-  if (present.length === 0 || pending.dirtyKeys.includes('courses')) return pending;
+  // While LEAVE_COURSE_STATUS_OPS, an entry carrying `courses` is left as
+  // written (see courseStatusKeys): the course-status build keeps the course
+  // names with the courses, so its entry holds no partial résumé, and the
+  // build before it writes `courses` only in a guest restore, whose entry
+  // already holds the whole résumé.
+  if (present.length === 0 || (LEAVE_COURSE_STATUS_OPS && pending.dirtyKeys.includes('courses'))) return pending;
   const desired = { ...pending.desiredProfile } as unknown as Record<string, unknown>;
   const base = pending.baseProfile as unknown as Record<string, unknown>;
   const dirtyKeys = [...pending.dirtyKeys];
@@ -844,17 +860,29 @@ function rowNeverCreated(env: ProfileSyncEnvelope | null, token: OwnerToken): bo
 }
 
 function planKeysFromJournal(
-  ops: readonly JournalOp[],
-  keys: readonly string[],
+  askedOps: readonly JournalOp[],
+  askedKeys: readonly string[],
   /** See rowNeverCreated. Callers that cannot say pass nothing, and keep
    *  every disagreement a question. */
   neverCreated = false,
-  /** Every outstanding operation, rebased like `ops`, where `ops` holds only
-   *  those touching `keys`: the latest-edit rule looks past the keys asked
-   *  about. */
-  everyOp: readonly JournalOp[] = ops,
+  /** Every outstanding operation, rebased like `askedOps`, where `askedOps`
+   *  holds only those touching `askedKeys`: the latest-edit rule and a
+   *  résumé or course question look past the keys asked about. */
+  everyOp: readonly JournalOp[] = askedOps,
+  /** The fields the row disputes (the outbox's locked keys): a question of
+   *  their own, which an operation behind them joins like one between tabs. */
+  disputed: readonly string[] = [],
 ): Map<string, KeyPlan> {
   const plans = new Map<string, KeyPlan>();
+  // A question about the résumé or the courses holds every résumé and course
+  // field of each operation behind it (see the loop at the end), so all of
+  // them are planned, from every operation carrying one.
+  const unitAsked = askedKeys.some((k) => RESUME_AND_COURSES.includes(k));
+  const seen = new Set(askedOps.map((op) => op.opId));
+  const ops = unitAsked ? [...askedOps, ...everyOp.filter((op) => !seen.has(op.opId)
+    && op.fields.some((f) => RESUME_AND_COURSES.includes(f.key)))] : askedOps;
+  const asked = new Set(askedKeys);
+  const keys = unitAsked ? [...new Set([...askedKeys, ...RESUME_AND_COURSES])] : askedKeys;
   const byId = new Map(ops.map((op) => [op.opId, op]));
   const everyById = new Map(everyOp.map((op) => [op.opId, op]));
   // What a person has already ANSWERED. A receipt speaks for every operation
@@ -1054,20 +1082,32 @@ function planKeysFromJournal(
 
   // The résumé is one document: half of it agreeing does not make it
   // sendable. Nor does half of the course list. A bundle that shares a key
-  // with another takes the other's question with it.
+  // with another takes the other's question with it, and so does an
+  // operation: its other résumé and course fields are asked with it, never
+  // sent apart. An older build's résumé operation carries the course names.
+  const join = (k: string) => {
+    const plan = plans.get(k);
+    if (!plan || plan.kind === 'conflict') return false;
+    plans.set(k, { kind: 'conflict', opIds: plan.opIds, candidates: [] });
+    return true;
+  };
   for (let grew = true; grew;) {
     grew = false;
     for (const bundle of [RESUME_BUNDLE, COURSE_BUNDLE]) {
       if (!bundle.some((k) => plans.get(k)?.kind === 'conflict')) continue;
-      for (const k of bundle) {
-        const plan = plans.get(k);
-        if (plan && plan.kind !== 'conflict') {
-          plans.set(k, { kind: 'conflict', opIds: plan.opIds, candidates: [] });
-          grew = true;
+      for (const k of bundle) grew = join(k) || grew;
+    }
+    for (const [key, plan] of plans) {
+      if (!RESUME_AND_COURSES.includes(key) || (plan.kind !== 'conflict' && !disputed.includes(key))) continue;
+      for (const id of plan.opIds) {
+        for (const { key: k } of byId.get(id)?.fields ?? []) {
+          if (RESUME_AND_COURSES.includes(k)) grew = join(k) || grew;
         }
       }
     }
   }
+  // Only what was asked about, and what joined its question.
+  for (const [key, plan] of plans) if (!asked.has(key) && plan.kind !== 'conflict') plans.delete(key);
   return plans;
 }
 
@@ -2119,8 +2159,10 @@ export function heldForNewerBuild(conflicts: readonly ProfileConflict[]): boolea
  *  outstanding operation carrying `courses`, with the résumé and the course
  *  list they are one question with here. This build neither stages nor
  *  answers them, so such an operation, and the outbox entry carrying it, stay
- *  as that build wrote them. Empty while there is no such operation. */
+ *  as that build wrote them. Empty while there is no such operation, and
+ *  always in this build (LEAVE_COURSE_STATUS_OPS). */
 function courseStatusKeys(ops: readonly JournalOp[]): Set<string> {
+  if (!LEAVE_COURSE_STATUS_OPS) return new Set();
   const fields = ops.filter((op) => op.mode !== 'resolve' && op.fields.some((f) => f.key === 'courses'))
     .flatMap((op) => op.fields.map((f) => f.key));
   return new Set(fields.length > 0 ? [...fields, ...COURSE_BUNDLE, ...RESUME_BUNDLE] : []);
@@ -2320,7 +2362,9 @@ export async function forgetMergedGuestRevision(token: OwnerToken): Promise<bool
     const keys = [...new Set(journal.value.flatMap((op) => op.fields.map((f) => f.key)))].filter(isProfileKey);
     // Two origins that disagree stay a journal conflict, which is asked about
     // anyway; only a settled value can be folded into the working copy.
-    const loose = [...planKeysFromJournal(journal.value, keys)].flatMap(([key, plan]) => (
+    const loose = [...planKeysFromJournal(
+      journal.value, keys, false, journal.value, envelope?.pending?.lockedKeys,
+    )].flatMap(([key, plan]) => (
       plan.kind === 'value' ? [{ key, value: plan.value }] : []
     ));
     if (!envelope && loose.length === 0) return true;
@@ -2861,7 +2905,7 @@ function reconcileLoadedProfile(
     };
   }
   const neverCreated = rowNeverCreated({ v: 1, confirmed, pending, tombstone }, token);
-  const journalPlan = planKeysFromJournal(journalRebased, journalKeys, neverCreated);
+  const journalPlan = planKeysFromJournal(journalRebased, journalKeys, neverCreated, journalRebased, pending?.lockedKeys);
   if (neverCreated && pending?.lockedKeys.some((k) => journalPlan.get(k)?.kind === 'value')) {
     // Before any row exists, a lock in the outbox can only be an earlier
     // disagreement between this browser's own sessions — and the plan has
@@ -3202,9 +3246,9 @@ function prepareStagedWrite(
   const everything = readOutstandingOps();
   if (!everything.ok) return { result: { status: 'device-failed', phase: 'stage' } };
   const neverCreated = rowNeverCreated(env ?? null, token);
-  const everyRebased = neverCreated ? rebasedOps(everything.value) : outstandingRebased;
+  const everyRebased = rebasedOps(everything.value);
   if (!everyRebased) return { result: { status: 'device-failed', phase: 'stage' } };
-  const plans = planKeysFromJournal(outstandingRebased, dirtyKeys, neverCreated, everyRebased);
+  const plans = planKeysFromJournal(outstandingRebased, dirtyKeys, neverCreated, everyRebased, lockedKeys);
   // A SET: one operation carrying three fields is reached once per field,
   // and every settle path (ack, abandon, survivor) treats these as the ops
   // this write owns — a duplicate id would be acknowledged twice.
@@ -3215,6 +3259,8 @@ function prepareStagedWrite(
   const plannedBase = { ...baseProfile } as unknown as Record<string, unknown>;
   let plannedRevision = baseRevision;
   for (const [key, plan] of plans) {
+    // A field this write does not stage is asked by the next refresh.
+    if (!dirtyKeys.includes(key)) continue;
     for (const id of plan.opIds) journalOpIds.add(id);
     if (plan.kind === 'conflict') { journalConflicts.push(key); continue; }
     journalPlan[key] = plan.opIds;
@@ -3788,7 +3834,7 @@ export async function refreshConflictQuestion(
         tombstone: env?.tombstone ?? null,
       }, token)) return { failed: 'envelope' };
     }
-    const journalPlan = planKeysFromJournal(rebased, keys, rowNeverCreated(env, token));
+    const journalPlan = planKeysFromJournal(rebased, keys, rowNeverCreated(env, token), rebased, repaired?.lockedKeys);
     const journalConflicts = [...journalPlan]
       .filter(([, plan]) => plan.kind === 'conflict')
       .map(([key]) => key);
@@ -4165,7 +4211,7 @@ function writeResolutionReceipt(
   // Everything still asking about these fields, whoever wrote it. A receipt
   // that named only this tab's operations would leave the other tab's asking
   // for the same field, and the disagreement would come straight back.
-  const plans = planKeysFromJournal(journal.value, effective as string[]);
+  const plans = planKeysFromJournal(journal.value, effective as string[], false, journal.value, env?.pending?.lockedKeys);
   const covered: string[] = [];
   const fields: JournalField[] = [];
   const decisions: Record<string, 'local' | 'cloud'> = {};
@@ -4193,6 +4239,9 @@ function writeResolutionReceipt(
   // that no longer exists, and applying their choice sends it as a clean
   // patch over whatever is actually there now.
   if (!sameQuestion(rendered, effective as string[], journal.value, env)) return 'stale';
+  // A field that joined this question since it was drawn (see
+  // planKeysFromJournal) would be left to send apart from the answer.
+  if ([...plans].some(([key, plan]) => plan.kind === 'conflict' && !effective.includes(key as ProfileKey))) return 'stale';
   for (const key of effective) {
     const shown = rendered.find((c) => c.key === key);
     // Required, not optional: an answer about a key nobody was shown is not
@@ -4261,7 +4310,6 @@ function writeResolutionReceipt(
         // résumé is. The working copy on screen, as it always was, including
         // a field ABSENT from it — a deletion the person made.
         const observedRec = observed as unknown as Record<string, unknown>;
-        void plans;
         void pendingDesired;
         value = key in observedRec ? observedRec[key] : undefined;
       }
@@ -4542,7 +4590,11 @@ function conflictsFor(
   const remoteRec = (remote ?? {}) as unknown as Record<string, unknown>;
   const asked = conflictKeys.map((key): ProfileConflict => {
     const plan = journalPlan.get(key);
-    if (plan?.kind === 'conflict') {
+    // A field that only joined another's question (see planKeysFromJournal)
+    // is asked like one the row disagrees with: its own operations'
+    // candidates, which an answer names, and which the freshness check
+    // recomputes the same way. With none, every answer was stale.
+    if (plan?.kind === 'conflict' && plan.candidates.length > 0) {
       return {
         key,
         remote: remoteRec[key],
@@ -4660,7 +4712,7 @@ export async function flushPendingProfileWrite(token: OwnerToken): Promise<Profi
       journal.value.flatMap((op) => op.fields.map((f) => f.key)),
     )].filter(isProfileKey);
     if (keys.length === 0) return { status: 'blocked' };
-    const plan = planKeysFromJournal(journal.value, keys, rowNeverCreated(env, token));
+    const plan = planKeysFromJournal(journal.value, keys, rowNeverCreated(env, token), journal.value, env?.pending?.lockedKeys);
     const sendable = keys.filter((k) => plan.get(k)?.kind === 'value');
     if (sendable.length === 0) return { status: 'blocked' }; // all conflicted
     const base = env?.confirmed?.profile ?? readRawProfileMirror();
@@ -4701,8 +4753,29 @@ export async function flushPendingProfileWrite(token: OwnerToken): Promise<Profi
   if (!repaired.ok) return repaired.result;
   if (!repaired.value.ok) return { status: 'device-failed', phase: 'stage' };
   if (!repaired.value.pending) return { status: 'blocked' };
-  adoptPendingIntoLedger(repaired.value.pending);
-  return flushByMutation(repaired.value.pending.mutationId, token);
+  const entry = repaired.value.pending;
+  adoptPendingIntoLedger(entry);
+  // The journal can hold what the entry does not: an operation recorded and
+  // never staged, which an older build's tab does with the résumé while a
+  // course edit is outstanding (checklist M13), or one that has disagreed
+  // with the entry since it was staged. Staged again with them, the entry
+  // sends what is agreed, with the rest, and asks about what is not.
+  const journal = readOutstandingOps();
+  if (!journal.ok) return { status: 'device-failed', phase: 'stage' };
+  const journalKeys = [...new Set(journal.value.flatMap((op) => op.fields.map((f) => f.key)))].filter(isProfileKey);
+  const plan = planKeysFromJournal(journal.value, journalKeys, rowNeverCreated(env, token), journal.value, entry.lockedKeys);
+  const row = (env.confirmed?.profile ?? {}) as unknown as Record<string, unknown>;
+  const more = journalKeys.filter((k) => !entry.dirtyKeys.includes(k) && (() => {
+    const p = plan.get(k);
+    return p?.kind === 'value' && !sameValue(p.value, row[k]);
+  })());
+  const asked = entry.dirtyKeys.some((k) => !entry.lockedKeys.includes(k) && plan.get(k)?.kind === 'conflict');
+  if (more.length > 0 || asked) {
+    const desired = { ...entry.desiredProfile } as unknown as Record<string, unknown>;
+    for (const k of more) desired[k] = (plan.get(k) as Extract<KeyPlan, { kind: 'value' }>).value;
+    return stageProfilePatch(desired as unknown as ProfileData, [...entry.dirtyKeys, ...more] as ProfileKey[], token);
+  }
+  return flushByMutation(entry.mutationId, token);
 }
 
 /**
@@ -5273,19 +5346,24 @@ export function resolveConflict(
   // Bundles: if one member of the résumé collides, every member does —
   // applying only the non-colliding part is how coursework outlives the
   // résumé it came from. The same holds for the courses and their names, and
-  // a bundle that shares a key with another takes the other's question too.
+  // a bundle that shares a key with another takes the other's question too,
+  // and so does an operation's other résumé and course fields (see
+  // planKeysFromJournal): an older build's résumé carries the course names.
+  const opsOf = (k: string) => pending.journalPlan[k] ?? [];
   for (let grew = true; grew;) {
     grew = false;
-    for (const bundle of [RESUME_BUNDLE, COURSE_BUNDLE]) {
-      if (!bundle.some((k) => conflictKeys.includes(k))) continue;
-      for (const k of bundle) {
-        if (pending.dirtyKeys.includes(k) && !conflictKeys.includes(k)) {
-          conflictKeys.push(k);
-          const at = applyKeys.indexOf(k);
-          if (at >= 0) applyKeys.splice(at, 1);
-          delete resolvedValues[k];
-          grew = true;
-        }
+    const asked = conflictKeys.filter((k) => RESUME_AND_COURSES.includes(k));
+    const joined = [RESUME_BUNDLE, COURSE_BUNDLE]
+      .filter((bundle) => bundle.some((k) => conflictKeys.includes(k)))
+      .flat()
+      .concat(RESUME_AND_COURSES.filter((k) => asked.some((a) => opsOf(k).some((id) => opsOf(a).includes(id)))) as ProfileKey[]);
+    for (const k of joined) {
+      if (pending.dirtyKeys.includes(k) && !conflictKeys.includes(k)) {
+        conflictKeys.push(k);
+        const at = applyKeys.indexOf(k);
+        if (at >= 0) applyKeys.splice(at, 1);
+        delete resolvedValues[k];
+        grew = true;
       }
     }
   }

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import MarkdownPreview from '@/components/MarkdownPreview';
 import { MAX_RESUME_TEXT_CHARACTERS } from '@/lib/resume-input';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy',
@@ -8,7 +9,10 @@ export const metadata: Metadata = {
     'How JoinALab collects, uses, stores, and shares your information, including AI-provider processing and your data rights.',
 };
 
-const EFFECTIVE_DATE = 'October 12, 2026';
+// With the course list switched off (RELEASE_SCOPE.courseStatus), the policy
+// says what it said before it.
+const COURSES = RELEASE_SCOPE.courseStatus;
+const EFFECTIVE_DATE = COURSES ? 'October 16, 2026' : 'October 12, 2026';
 const RESUME_TEXT_LIMIT = MAX_RESUME_TEXT_CHARACTERS.toLocaleString('en-US');
 
 const CONTENT = `# Privacy Policy
@@ -31,9 +35,9 @@ Only school, college, major, and academic year are required; everything else is 
 
 - **Identity / academic:** name (optional), institution, college, major, academic year.
 - **International-student status:** an optional flag indicating whether you are an international student. We use this only to assess which opportunities are realistically open to you (e.g. work-authorization or on-campus constraints). You may leave it blank.
-- **Background:** research interests, skills and proficiency levels, coursework, experience level.
+- **Background:** research interests, skills and proficiency levels, ${COURSES ? 'courses (for each one its name, whether it came from your résumé or you added it, and the status you set: completed, in progress, planned or not marked)' : 'coursework'}, experience level.
 - **Links:** LinkedIn and GitHub URLs (optional).
-- **Résumé text:** if you upload a PDF résumé, we extract text from it in your browser session to pre-fill skills, coursework, and interests. We store up to ${RESUME_TEXT_LIMIT} characters of extracted résumé text as part of your profile. **The original PDF file is not stored on our servers.** Removing the résumé from your profile clears that text and the coursework it extracted from your current profile, and future matching and generation stop using them. It does not change copies saved elsewhere: earlier saved versions of your profile (§4, profile history) still contain the text, every target résumé you saved and each of its saved versions holds a full copy of the résumé text, and a bullet-editor draft keeps the résumé sections and bullet points it was built from (§4). None of these copies can be deleted in the app; they are removed when you request a full data deletion under §7.
+- **Résumé text:** if you upload a PDF résumé, we extract text from it in your browser session to pre-fill skills, ${COURSES ? 'courses' : 'coursework'}, and interests. We store up to ${RESUME_TEXT_LIMIT} characters of extracted résumé text as part of your profile. ${COURSES ? `Of each course found on the résumé we store its name; the line it was found on is not stored, and the form shows it from the stored résumé text. Where a line of the résumé, or a column on it, starts with a label that gives a status, such as “Current courses:” or “Planned courses:”, the form suggests that status (in progress or planned) for the courses listed after it, for you to confirm or change. A suggestion is read from the résumé text each time and is never stored or sent: until you confirm it or choose a status, the course is not marked, in matching and in generated text alike. ` : ''}**The original PDF file is not stored on our servers.** Removing the résumé from your profile clears that text${COURSES ? ` from your current profile, together with the courses it found that you have not marked yourself; courses you marked or added yourself stay. If an older version of the app removes or replaces the résumé, the courses that résumé found and you had not marked are no longer shown or used, and are deleted from your profile the next time you change your courses or your résumé here. Future matching and generation stop using what was removed.` : ' and the coursework it extracted from your current profile, and future matching and generation stop using them.'} It does not change copies saved elsewhere: earlier saved versions of your profile (§4, profile history) still contain the text, every target résumé you saved and each of its saved versions holds a full copy of the résumé text, and a bullet-editor draft keeps the résumé sections and bullet points it was built from (§4). None of these copies can be deleted in the app; they are removed when you request a full data deletion under §7.
 - **Preferences:** the kinds of opportunities you are seeking, search weighting, saved searches, filters.
 
 ### 2.2 Activity information
@@ -98,7 +102,7 @@ We rely on the following service providers. We share only what each needs to per
 | **Supabase** (US) | Authentication, database, file storage | Your profile, favorites, tracking, saved searches, attachments; application and email records and the PDFs you add to them; target résumés and bullet-editor drafts; imports you save to your account; your email / linked-account identifier for sign-in; a digest email address if you enable a saved-search email digest; product-analytics events; any "apply for me" interest you register (with the contact email you provide); and feedback you submit (with the optional reply email) |
 | **Vercel** (US) | Frontend hosting | Standard request logs (IP, user-agent, path) |
 | **Render** (US) | Backend hosting | API request contents and server logs |
-| **AI language-model provider** — **OpenAI**, **Google (Gemini)**, and/or **Anthropic (Claude)**, reached either directly or through **OpenRouter** (a routing gateway to those providers), depending on configuration. The exact models used are operator-configurable and chosen per task for quality. | Generating résumé and cold-email drafts | The relevant profile fields (e.g. name, year, major, skills, coursework, research interests, your own résumé bullet points, LinkedIn/GitHub URLs) **plus** the opportunity's public details, **only for the specific item you ask us to generate** |
+| **AI language-model provider** — **OpenAI**, **Google (Gemini)**, and/or **Anthropic (Claude)**, reached either directly or through **OpenRouter** (a routing gateway to those providers), depending on configuration. The exact models used are operator-configurable and chosen per task for quality. | Generating résumé and cold-email drafts | The relevant profile fields (e.g. name, year, major, skills, ${COURSES ? 'courses and their statuses' : 'coursework'}, research interests, your own résumé bullet points, LinkedIn/GitHub URLs) **plus** the opportunity's public details, **only for the specific item you ask us to generate** |
 | **Resend** (US) | Sending transactional email | The recipient email address you provide and the content of that email (including the weekly saved-search digest, if you enable it) |
 | **GitHub API** | Importing your public GitHub profile (only if you use that feature) | The public GitHub username you enter |
 | **Sentry** (US, optional) | Error monitoring | Error diagnostics with personal data masking enabled (request bodies, IPs, and cookies are not captured) |

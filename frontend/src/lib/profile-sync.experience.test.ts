@@ -88,9 +88,9 @@ describe('experience profile persistence', () => {
     const env = readProfileSyncEnvelope()!;
     localStorage.setItem(STORAGE_KEYS.PROFILE_SYNC, JSON.stringify({ ...env, pending: {
       mutationId: 'legacy-resume', baseRevision: 7, baseProfile: WITH_RESUME,
-      desiredProfile: { ...BASE, resume_text: 'replacement', coursework: [] },
-      dirtyKeys: ['coursework', 'resume_text'], keyVersions: { coursework: 9, resume_text: 2 },
-      lockedKeys: ['coursework'], additiveKeys: [], skillAdditions: [], skillsReplaced: false,
+      desiredProfile: { ...BASE, resume_text: 'replacement', resume_master: null },
+      dirtyKeys: ['resume_master', 'resume_text'], keyVersions: { resume_master: 9, resume_text: 2 },
+      lockedKeys: ['resume_master'], additiveKeys: [], skillAdditions: [], skillsReplaced: false,
       skillOps: [], conflictRemote: WITH_RESUME, legacy: false, deferredCreate: false, journalOpIds: [], journalPlan: {},
     } }));
     const pending = readProfileSyncEnvelope()!.pending!;

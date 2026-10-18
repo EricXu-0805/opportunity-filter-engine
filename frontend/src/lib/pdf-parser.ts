@@ -1,4 +1,5 @@
 import type { ResumeParseResponse } from './types';
+import { courseCodes, courseLists, listedCourses, trimCourse } from './course-status';
 import {
   BULLET_LINE, firstWord, glyphItemsEndWithStop, glyphLine, hangingRest, lineBreakText, lowercaseOpening,
   MAX_RESUME_TEXT_CHARACTERS, RESUME_ROLE, resumeTextCharacters, weakWrapEvidence, wrapEvidence, wrapJoin,
@@ -31,13 +32,6 @@ const SKILL_PATTERNS = KNOWN_SKILLS.map((skill) => ({
     'i',
   ),
 }));
-
-const COURSE_PATTERN = /\b([A-Z]{2,4})\s+(\d{3,4})\b/g;
-
-// Matches a "Coursework:" / "Relevant Courses -" label and captures the rest
-// of the line, so named courses ("Data Structures") are extracted, not just
-// department codes ("CS 124"). Requires the label to be followed by : - or —.
-const COURSEWORK_LABEL = /\b(?:relevant\s+)?(?:course\s?work|courses)\b\s*[:\-—]\s*(.+)/i;
 
 // Matches an "Areas of Interest" / "Research Interests" / "Research Areas" label.
 // PDF extraction often flattens the whole resume onto one line, so the value is
@@ -81,64 +75,41 @@ function extractSkills(text: string): { skill: string; line: string }[] {
   return hits;
 }
 
-// A résumé's address block and grant citations have the same shape as a course
-// code, so "Urbana IL 61801 / APT 402" was reaching a student's profile as
-// coursework and from there into the sentence a cold email makes about what
-// they have studied. These prefixes are never a department.
-const NOT_A_DEPARTMENT = new Set([
-  'APT', 'STE', 'RM', 'BOX', 'PO', 'POB', 'FL', 'UNIT', 'NO', 'BLDG', 'DEPT',
-  'EXT', 'TEL', 'FAX', 'ISBN', 'DOI', 'GPA', 'ID', 'SSN', 'ZIP',
-]);
-
-function trimCourse(s: string): string {
-  return s.replace(/^[ .\t]+/, '').replace(/[ .\t]+$/, '');
-}
-
 // A label that opens a row of its own ("Honors: Dean's List", "Tools: PyTorch").
 const LABEL_ROW = /^[^,:：]{1,40}(?::\s|：)/u;
 // A row under a coursework list or under an item's text that starts
 // something of its own: a label or an honor ("Dean's List, James Scholar").
 const NOT_COURSEWORK = new RegExp(String.raw`${LABEL_ROW.source}|\b(?:dean['’]?s list|scholars?|scholarships?|honou?rs?|awards?|prizes?|fellowships?|medal(?:ist)?|cum laude|finalist|winner|recipient)\b`, 'iu');
 
-/** Course codes anywhere, and named courses on a labeled coursework line.
- *  The text keeps a list cut inside a name ("…, Data" / "Structures and
- *  Algorithms, …") on two lines, since the row under a list is as often an
- *  organization or an honor. A coursework label says what the list is, so
- *  the list goes on across a break the page marks as a possible wrap
- *  (`possibleWraps`, offsets of line breaks in `text`) unless the next line
- *  is a row of its own. */
+/** Course codes anywhere, and named courses in a labeled list
+ *  (course-status.ts courseLists: "Coursework:", "Relevant Courses -",
+ *  "Current courses:", each list ending at the next label, "|" or a tab).
+ *  The text keeps a list cut inside a name ("…, Data" /
+ *  "Structures and Algorithms, …") on two lines, since the row under a list is
+ *  as often an organization or an honor. A coursework label says what the
+ *  list is, so the list goes on across a break the page marks as a possible
+ *  wrap (`possibleWraps`, offsets of line breaks in `text`) unless the next
+ *  line is a row of its own. Names only: what a course's status is, and the
+ *  line it is on, are read from the stored text when needed (checklist M13). */
 function extractCoursework(text: string, possibleWraps: ReadonlySet<number> = new Set()): string[] {
-  const courses: string[] = [];
-  for (const m of text.matchAll(COURSE_PATTERN)) {
-    // A number in the calendar band is a venue or a date ("CVPR 2026",
-    // "MAY 2027"), not a catalog number — publications and graduation dates
-    // share the course-code shape, and a venue cited as coursework becomes a
-    // false claim in generated emails. Catalog numbers in the band ("CS 2050")
-    // are sacrificed; a labeled "Coursework:" line still captures them below.
-    const num = Number(m[2]);
-    if (num >= 1950 && num <= 2049) continue;
-    if (NOT_A_DEPARTMENT.has(m[1].toUpperCase())) continue;
-    courses.push(`${m[1]} ${m[2]}`);
-  }
+  const courses = courseCodes(text).map((code) => code.name);
   const lines = text.split('\n');
   let end = -1;
   for (let index = 0; index < lines.length; index++) {
     end += lines[index].length + 1;
-    const label = COURSEWORK_LABEL.exec(lines[index]);
-    if (!label) continue;
-    let list = label[1];
-    while (possibleWraps.has(end) && index + 1 < lines.length
+    const found = courseLists(lines[index]);
+    // A label with nothing after it on its line opens no list.
+    if (!found.some((list) => list.end > list.start)) continue;
+    const lists = found.map((list) => lines[index].slice(list.start, list.end));
+    // Only a list that runs to the end of its line can go on to the next.
+    const runsOn = found[found.length - 1].end === lines[index].length;
+    while (runsOn && possibleWraps.has(end) && index + 1 < lines.length
       && !NOT_COURSEWORK.test(lines[index + 1]) && !RESUME_ROLE.test(lines[index + 1])) {
       index += 1;
       end += lines[index].length + 1;
-      list += wrapJoin(list, lines[index]) + lines[index];
+      lists[lists.length - 1] += wrapJoin(lists[lists.length - 1], lines[index]) + lines[index];
     }
-    for (const item of list.split(/[;,]/)) {
-      const name = trimCourse(item);
-      if (name && /[A-Za-z]/.test(name) && name.length >= 3 && name.length <= 40) {
-        courses.push(name);
-      }
-    }
+    for (const list of lists) courses.push(...listedCourses(list).map((item) => item.name));
   }
   return Array.from(new Set(courses)).sort();
 }
@@ -508,7 +479,8 @@ function pageText(items: readonly unknown[]): { text: string; possibleWraps: num
     // A joined line stays in the item it continues; any other line opens one.
     if (separator === null) {
       bulletItem = glyph[index];
-      list = (list || COURSEWORK_LABEL.test(out.slice(start))) && possibleWrap(shapes, index, texts, pitch, column, shown);
+      list = (list || courseLists(out.slice(start)).some((found) => found.end > found.start))
+        && possibleWrap(shapes, index, texts, pitch, column, shown);
       if (list) possibleWraps.push(out.length);
       start = out.length + 1;
     }

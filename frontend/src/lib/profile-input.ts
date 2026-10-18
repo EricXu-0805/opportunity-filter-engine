@@ -7,7 +7,7 @@ const strings: Record<string, number> = {
 };
 const lists: Record<string, [number, number]> = {
   secondary_interests: [512, 1000], desired_fields: [512, 60_000],
-  hard_skills: [512, 1000], coursework: [512, 1000], seeking_type: [20, 100],
+  hard_skills: [512, 1000], coursework: [512, 1000], courses: [512, 1000], seeking_type: [20, 100],
 };
 export type ProfileInputIssue = {
   code: 'PROFILE_INPUT_LIMIT_EXCEEDED' | 'PROFILE_INPUT_INVALID';
@@ -44,7 +44,10 @@ export function assertProfileInput(profile: object, checkShareSize = false): voi
     limit(`profile.${key}`, values.length, count, 'items');
     values.forEach((value, index) => {
       const field = `profile.${key}.${index}`;
-      if (key === 'hard_skills') {
+      if (key === 'courses') {
+        if (!value || typeof value !== 'object') invalid(field);
+        text(value.name, `${field}.name`, max);
+      } else if (key === 'hard_skills') {
         if (!value || typeof value !== 'object') invalid(field);
         text(value.name, `${field}.name`, max);
         text(value.level, `${field}.level`, max);
@@ -60,7 +63,7 @@ const fieldKeys: Record<string, string> = {
   international_student: 'international', search_weight: 'weight', profile: 'all', name: 'name', school: 'school', home_school: 'school', college: 'college',
   major: 'major', secondary_interests: 'majors', year: 'year', seeking_type: 'types',
   desired_fields: 'interests', research_interests_text: 'interests', hard_skills: 'skills',
-  coursework: 'courses', experience_level: 'experience', linkedin_url: 'linkedin',
+  coursework: 'courses', courses: 'courses', experience_level: 'experience', linkedin_url: 'linkedin',
   github_url: 'github', scholar_url: 'scholar',
 };
 /** Only allowlisted labels and numeric counts reach UI; never echo server input/message. */

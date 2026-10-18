@@ -3,6 +3,7 @@
 import { privateEmailKey, privateEmailVariants, validatePrivateEmail, type PrivateEmailIssue } from '@/lib/private-email';
 import type { PrivateEmailTargetState } from '@/lib/use-private-email-target';
 import { profileInputMessage } from '@/lib/profile-input';
+import { courseEntries, courseSentences } from '@/lib/course-status';
 
 import { applyEmailReplacement, captureTextareaSelection, type EmailTextSelection } from '@/lib/email-revision';
 import { canFallbackColdEmailStream, emailInputTooLargeMessage, isEmailInputTooLarge } from '@/lib/cold-email-stream';
@@ -63,6 +64,7 @@ import { useAuthModal } from '@/lib/auth-modal-context';
 import { isActiveExperience, sourceDigest, validateExperienceEntries } from '@/lib/experience-evidence';
 import type { Opportunity, ProfileData, EmailVariant, LabType, EmailStyle, ColdEmailFallbackReason, ColdEmailResponse, ContactEmailStatus, ExperienceUsage } from '@/lib/types';
 import { useT } from '@/i18n/client';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 import type { ProfileRefreshState } from '@/lib/use-profile-refresh';
 import type { WritingTargetState } from '@/lib/use-writing-target';
 import { profileActionKey, useProfileAction } from '@/lib/use-profile-action';
@@ -314,10 +316,10 @@ function statusOf(
 }
 
 // Coursework stays client-side: it inserts the student's own courses verbatim
-// (naturally grounded), so a network round-trip buys nothing. It lists them
-// neutrally, the one wording every course status allows (checklist M13): this
-// list carries no status, so "I have completed" would claim what the student
-// never said, and the server refuses it.
+// (naturally grounded), so a network round-trip buys nothing. Each course is
+// stated only as its status allows, in the server's own words (checklist M13,
+// lib/course-status.ts): "I have completed" only for a course the student
+// marked completed, and a course not marked only as "My coursework includes".
 function applyQuickEdit(
   body: string,
   action: QuickActionKey,
@@ -326,12 +328,16 @@ function applyQuickEdit(
 ): { body: string; reply: string } {
   switch (action) {
     case 'coursework': {
-      const courses = profile.coursework ?? [];
-      if (courses.length === 0) {
-        return { body, reply: t('coldEmail.replies.courseworkNone') };
+      const courses = courseEntries(profile);
+      // Off, a profile without the course list another tab wrote is worded
+      // as the build before it words it: its names as stored.
+      const legacy = !RELEASE_SCOPE.courseStatus && !Array.isArray(profile.courses);
+      const names = legacy ? profile.coursework ?? [] : courses.map((course) => course.name);
+      if (names.length === 0) {
+        return { body, reply: t(RELEASE_SCOPE.courseStatus ? 'coldEmail.replies.courseworkNone' : 'coldEmail.replies.courseworkNoneOff') };
       }
-      const courseStr = courses.join(', ');
-      const insertion = `\n\nMy coursework includes ${courseStr}.`;
+      const courseStr = names.join(', ');
+      const insertion = `\n\n${legacy ? `My coursework includes ${courseStr}.` : courseSentences(courses, courses.length)}`;
       if (body.length + insertion.length > COLD_EMAIL_DRAFT_LIMITS.body) {
         return { body, reply: t('profileInput.courseworkTooLarge') };
       }

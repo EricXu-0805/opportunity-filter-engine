@@ -113,7 +113,7 @@ export default function MajorTags({ selected, options, onChange, translate }: Ma
                 ? t('home.form.additionalMajorsPlaceholder')
                 : t('home.form.additionalMajorsAddMore')
             }
-            className="flex-1 text-sm bg-transparent outline-none placeholder:text-gray-400"
+            className="min-w-[6rem] flex-1 text-sm bg-transparent outline-none placeholder:text-gray-400"
           />
         </div>
       </div>

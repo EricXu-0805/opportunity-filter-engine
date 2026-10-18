@@ -4,7 +4,8 @@ import { profileInputMessage } from '@/lib/profile-input';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import type { ExperienceEntry, ResumeMasterV1, ProfileData, ResumeParseResponse, SkillWithLevel } from '@/lib/types';
+import type { ExperienceEntry, ResumeMasterV1, ProfileData, ResumeParseResponse, SkillWithLevel, StoredCourse } from '@/lib/types';
+import { courseFields, coursesWithoutResume, importResumeCourses } from '@/lib/course-status';
 import { parseGitHubProfile } from '@/lib/api';
 import { removeResumeEntries, validateExperienceEntries, withdrawResumeEntries } from '@/lib/experience-evidence';
 import { removeResumeMasterSources, resumeMasterEditBase, validateResumeMaster, withdrawResumeMaster } from '@/lib/resume-master';
@@ -21,7 +22,7 @@ import {
 } from '@/lib/identity-owner';
 import { clearMatchCache } from '@/lib/match-cache';
 import { createProfileReadTrace, type ProfileReadObserver } from '@/lib/profile-read-diagnostics';
-import { normalizeProfileForRelease } from '@/lib/release-scope';
+import { normalizeProfileForRelease, RELEASE_SCOPE } from '@/lib/release-scope';
 import { migrateProfile } from '@/lib/profile-compat';
 import { PROFILE_REFRESH_INTERVAL_MS, PROFILE_REFRESH_DEADLINE_MS } from '@/lib/use-profile-refresh';
 import { STORAGE_KEYS, HOME_SCHOOL_EVENT } from '@/lib/storage-keys';
@@ -226,7 +227,9 @@ export interface UseProfileFormResult {
    * against, and callers must fail closed rather than invent a base.
    */
   viewSnapshot: ProfileViewSnapshot | null;
-  update: <K extends keyof ProfileData>(key: K, value: ProfileData[K]) => void;
+  /** `status`: a status click in the course list, which keeps every course
+   *  it lists and writes the course list alone. */
+  update: <K extends keyof ProfileData>(key: K, value: ProfileData[K], how?: 'status') => void;
   handleSubmit: () => void;
   handleShare: () => Promise<void>;
   handleResumeParsed: (data: ResumeParseResponse) => boolean;
@@ -270,6 +273,8 @@ function mergeSkills(existing: SkillWithLevel[], incoming: SkillWithLevel[]): Sk
 // field changes in one action — a select, a chip, a slider, a pasted URL —
 // and records one operation per action as it always has.
 const TYPED_KEYS: ReadonlySet<keyof ProfileData> = new Set<keyof ProfileData>(['research_interests']);
+/** What removing the résumé writes: its bundle and the courses that outlive it. */
+const REMOVAL_KEYS: readonly (keyof ProfileData)[] = ['resume_text', 'experience_entries', 'resume_master', 'courses', 'coursework'];
 // How long the typing has to pause before the burst's final value is written
 // down. Shorter than the 1.5 s autosave debounce by design: the journal is
 // the crash record, the autosave is the send.
@@ -2486,6 +2491,11 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         // The source and its confirmations are one revision, never a mixture
         // of the old editor's metadata with the newly read résumé text.
         if (sourceBundle.some((key) => preserve.has(key))) for (const key of sourceBundle) preserve.add(key);
+        // The course list is kept only when this tab changed it. A résumé
+        // edit keeps the names with the résumé but shows the list as read,
+        // since the next course edit is made on the list shown and must not
+        // undo another device's mark. A status click writes the list alone,
+        // so the names and the résumé are taken from the read.
         for (const key of preserve) {
           if (key in live) combined[key] = live[key]; else delete combined[key];
         }
@@ -2844,7 +2854,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     };
   }, [recordOutstandingIntents, ownsScreen, screenOrigin]);
 
-  const update = useCallback(<K extends keyof ProfileData>(key: K, value: ProfileData[K]) => {
+  const update = useCallback(<K extends keyof ProfileData>(key: K, value: ProfileData[K], how?: 'status') => {
     // BEFORE the skill ledger. The replace marker is sticky — it suppresses
     // every later addition until it lands — so a stale screen marking it is
     // not a cosmetic slip: it silently swallows the NEW owner's own imports.
@@ -2870,6 +2880,12 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // would wipe the user's input.
     const clearMajor =
       key === 'college' && bySlug(profileRef.current.home_school ?? 'uiuc')?.catalog != null;
+    // The course names old clients read are written with every course edit
+    // but a status click (`how`), which lists the same courses and writes the
+    // course list alone: the names are one unit with the résumé
+    // (RESUME_BUNDLE), and a click must not stage it.
+    const courses = key === 'courses' ? courseFields((value ?? []) as StoredCourse[]) : null;
+    const named = !!courses && how !== 'status';
     editProfile(
       (prev) => ({
         ...prev,
@@ -2877,10 +2893,11 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         // Additional majors are catalog-scoped like the primary, so a college
         // switch invalidates them too.
         ...(clearMajor ? { major: '', additional_majors: [] } : {}),
+        ...(courses ? (named ? courses : { courses: courses.courses }) : {}),
       }),
       // The cascade is an intent even when the fields are already empty:
       // the row still loading must not put its own major back afterwards.
-      clearMajor ? [key, 'major', 'additional_majors'] : [key],
+      clearMajor ? [key, 'major', 'additional_majors'] : named ? ['courses', 'coursework'] : [key],
       origin ?? undefined,
     );
   }, [editProfile, editingOrigin, screenOrigin]);
@@ -2977,7 +2994,14 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         resume_text: data.raw_text,
         experience_entries: resumeEntries,
         resume_master: resumeMaster,
-        coursework: data.extracted_coursework,
+        // Merged by name: a status the student set survives a re-import, and
+        // a course they added on the form is theirs, not the résumé's. A
+        // course found is stored without a status; the form suggests one
+        // from the new text where its label gives one. With the course list
+        // switched off, the names only, as the build before this one.
+        ...(RELEASE_SCOPE.courseStatus
+          ? courseFields(importResumeCourses(prev, data.extracted_coursework))
+          : { coursework: data.extracted_coursework }),
         // Seed the interests box (the only semantic-match lever the form sends)
         // from the resume when the user hasn't typed their own — never overwrite.
         research_interests: prev.research_interests?.trim()
@@ -3010,17 +3034,25 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       setSaveStatus('error');
       return false;
     }
+    // Only the courses the résumé brought and nobody marked go with it. With
+    // the course list switched off, the names go as the build before this one
+    // removes them, and `courses` stays as other tabs wrote it.
+    const retainedCourses: Pick<ProfileData, 'coursework'> & Partial<Pick<ProfileData, 'courses'>> = RELEASE_SCOPE.courseStatus
+      ? courseFields(coursesWithoutResume(profileRef.current)) : { coursework: [] };
+    const removalKeys = RELEASE_SCOPE.courseStatus ? REMOVAL_KEYS : REMOVAL_KEYS.filter((key) => key !== 'courses');
     editProfile(
       (prev) => (
-        (prev.resume_text ?? '') === '' && (prev.coursework?.length ?? 0) === 0
+        (prev.resume_text ?? '') === ''
+          && JSON.stringify(prev.courses ?? []) === JSON.stringify(retainedCourses.courses ?? prev.courses ?? [])
+          && JSON.stringify(prev.coursework ?? []) === JSON.stringify(retainedCourses.coursework)
           && !(prev.experience_entries ?? []).some((entry) => entry.source.kind === 'resume')
           && JSON.stringify(prev.resume_master ?? null) === JSON.stringify(retainedMaster)
           ? prev
-          : { ...prev, resume_text: '', coursework: [], experience_entries: retainedEntries, resume_master: retainedMaster }
+          : { ...prev, resume_text: '', ...retainedCourses, experience_entries: retainedEntries, resume_master: retainedMaster }
       ),
       // Record the whole source bundle, including an already-empty member.
       // Deletion must not revive old quoted evidence during reconciliation.
-      ['resume_text', 'coursework', 'experience_entries', 'resume_master'],
+      removalKeys,
       origin,
     );
     // Removal does not wait for the 1.5s debounce: until it is persisted,
@@ -3038,7 +3070,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     const cleansed = normalizeProfileForRelease({
       ...profileRef.current,
       resume_text: '',
-      coursework: [],
+      ...retainedCourses,
       experience_entries: retainedEntries,
       resume_master: retainedMaster,
       search_weight: weightRef.current,
@@ -3063,7 +3095,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // action with a specific meaning, and folding an unrelated half-typed
     // field into it would make the removal fail for a reason the user cannot
     // connect to what they clicked.
-    commitSave(cleansed, ['resume_text', 'coursework', 'experience_entries', 'resume_master'], origin, saveIntentRef.current);
+    commitSave(cleansed, removalKeys, origin, saveIntentRef.current);
     return true;
   }, [identityGeneration, editProfile, commitSave, editingOrigin, setSaveStatus]);
 

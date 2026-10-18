@@ -4,10 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, Globe, GraduationCap } from 'lucide-react';
 import Card from '@/components/Card';
 import SkillTags from '@/components/SkillTags';
+import CourseList from '@/components/CourseList';
 import MajorTags from '@/components/MajorTags';
 import UniversitySwitcherModal from '@/components/UniversitySwitcherModal';
 import { useLocale } from '@/i18n/client';
 import type { ProfileData } from '@/lib/types';
+import { courseRows } from '@/lib/course-status';
+import { RELEASE_SCOPE } from '@/lib/release-scope';
 import { GRADES } from '@/lib/colleges';
 import { loadCatalog } from '@/lib/catalogs';
 import { suggestInterests } from '@/lib/interest-suggestions';
@@ -25,7 +28,7 @@ export function AcademicProfileCard({
   t,
 }: {
   profile: ProfileData;
-  update: <K extends keyof ProfileData>(key: K, value: ProfileData[K]) => void;
+  update: <K extends keyof ProfileData>(key: K, value: ProfileData[K], how?: 'status') => void;
   /**
    * The hydration this card is displaying: the row, the revision it is, and
    * the identity it was accepted for, all from one moment. Owned by the
@@ -114,6 +117,13 @@ export function AcademicProfileCard({
     [profile.major, profile.college],
   );
   const remainingInterests = suggested.filter((s) => !have.has(s.toLowerCase()));
+  // Each course's status and résumé line are read from the stored résumé
+  // text, so the rows follow it as well as the courses.
+  const { courses: storedCourses, coursework, resume_text: resumeText } = profile;
+  const courses = useMemo(
+    () => courseRows({ courses: storedCourses, coursework, resume_text: resumeText }),
+    [storedCourses, coursework, resumeText],
+  );
   const addInterest = (term: string) => {
     const base = (profile.research_interests || '').replace(/[,\s]+$/, '');
     update('research_interests', base ? `${base}, ${term}` : term);
@@ -342,7 +352,7 @@ export function AcademicProfileCard({
             value={profile.research_interests}
             onChange={(e) => update('research_interests', e.target.value)}
             rows={4}
-            placeholder={t('home.form.interestsPlaceholder')}
+            placeholder={t(RELEASE_SCOPE.courseStatus ? 'home.form.interestsPlaceholder' : 'home.form.interestsPlaceholderOff')}
             className="w-full px-4 py-3 border border-gray-200 rounded-2xl text-sm text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none transition-all duration-300 resize-y leading-relaxed"
           />
           {remainingInterests.length > 0 && (
@@ -372,6 +382,14 @@ export function AcademicProfileCard({
             onChange={(skills) => update('skills', skills)}
           />
         </div>
+
+        {RELEASE_SCOPE.courseStatus && (
+          <CourseList
+            key={`courses-${identityGeneration}`}
+            courses={courses}
+            onChange={(next, how) => update('courses', next, how)}
+          />
+        )}
       </div>
     </Card>
   );

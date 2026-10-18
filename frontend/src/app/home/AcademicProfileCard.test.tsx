@@ -7,6 +7,14 @@ vi.mock('@/lib/school-confirmation', () => ({
 }));
 
 
+// The course list's release switch, as this branch ships it unless a test
+// turns it off.
+const release = vi.hoisted(() => ({ courseStatus: true }));
+vi.mock('@/lib/release-scope', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/release-scope')>();
+  return { ...actual, RELEASE_SCOPE: { ...actual.RELEASE_SCOPE, get courseStatus() { return release.courseStatus; } } };
+});
+
 vi.mock('@/i18n/client', () => ({
   useLocale: () => 'en',
   useT: () => ({
@@ -383,5 +391,43 @@ describe('AcademicProfileCard — international status switch', () => {
     expect(toggle).toHaveAccessibleDescription('home.form.internationalHint');
     fireEvent.click(toggle);
     expect(update).toHaveBeenCalledWith('is_international', true);
+  });
+});
+
+describe('AcademicProfileCard — courses (checklist M13)', () => {
+  afterEach(() => { release.courseStatus = true; });
+
+  it.each([true, false])('shows the course list only while RELEASE_SCOPE.courseStatus is on (%s)', (on) => {
+    release.courseStatus = on;
+    renderCard({ courses: [{ name: 'CS 225', source: 'manual', status: 'completed' }], coursework: ['CS 225'] });
+    expect(screen.queryByText('courses.label') !== null).toBe(on);
+    expect(screen.queryByLabelText('courses.statusOf:CS 225') !== null).toBe(on);
+    expect(screen.queryByLabelText('courses.addLabel') !== null).toBe(on);
+    // Off, the interests box says what it said before the course list.
+    expect(screen.getByPlaceholderText(on ? 'home.form.interestsPlaceholder' : 'home.form.interestsPlaceholderOff')).toBeInTheDocument();
+  });
+
+  it('shows a profile saved before statuses as courses not marked, and marks one through the form update', () => {
+    const { update } = renderCard({ coursework: ['CS 225', 'CS 446'] });
+    expect((screen.getByLabelText('courses.statusOf:CS 225') as HTMLSelectElement).value).toBe('unknown');
+    expect((screen.getByLabelText('courses.statusOf:CS 446') as HTMLSelectElement).value).toBe('unknown');
+    fireEvent.change(screen.getByLabelText('courses.statusOf:CS 446'), { target: { value: 'planned' } });
+    // Only the status the student set is written: CS 225 stays unset. A
+    // status click says so, and the form writes the course list alone.
+    expect(update).toHaveBeenCalledWith('courses', [
+      { name: 'CS 225', source: 'resume' },
+      { name: 'CS 446', source: 'resume', status: 'planned' },
+    ], 'status');
+  });
+
+  it('shows the status the current résumé text gives a course nobody set, as one to check', () => {
+    renderCard({
+      resume_text: 'Current courses: CS 374\nRelevant Coursework: CS 225',
+      courses: [{ name: 'CS 225', source: 'resume' }, { name: 'CS 374', source: 'resume' }],
+      coursework: ['CS 225', 'CS 374'],
+    });
+    expect((screen.getByLabelText('courses.statusOf:CS 374') as HTMLSelectElement).value).toBe('in_progress');
+    expect((screen.getByLabelText('courses.statusOf:CS 225') as HTMLSelectElement).value).toBe('unknown');
+    expect(screen.getAllByText('courses.inferred')).toHaveLength(1);
   });
 });

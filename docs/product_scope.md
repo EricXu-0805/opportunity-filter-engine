@@ -46,6 +46,7 @@ their API routes answer 404 from `ReleaseScopeMiddleware` in
 |---|---|---|---|---|
 | `cross_school_matching` | `crossSchoolMatching` | on | The "include other schools" control on `/results` and cross-school ranking | |
 | `resume_renovate` | `resumeRenovate` | on | Résumé renovation on the opportunity page and its routes: `/api/tailor/structure`, `/renovate`, `/bullet`, `/full-target/suggestions`, `/full-target/selection-plan` and `/api/resume/full-target/export`. Single-target tailoring (`/api/tailor`, `/api/tailor/extract-bullets`, `/api/tailor/status`) stays public either way | |
+| `course_status` | `courseStatus` | on | The course list on Home, where the student marks each course's status, and every write of `courses`. Off, Home writes the course names only and still reads, sends and answers the `courses` other tabs wrote. The server reads `courses` either way | |
 | `match_ai_refine` | `matchAiRefine` | off | The AI re-ranking pass on `/results` | When it was on, it changed the URL and badges but not the `/matches/view` ranking. It reopens only with server-side mode attestation and bounded paid concurrency. |
 | `compare` | `compare` | off | `/compare`, compare selection in favorites, `/api/matches/{id}/explain` | Outside the accepted MVP surface |
 | `fellowships` | `fellowships` | off | Fellowship records on every public surface, `/fellowships`, the Fellowship preference | Outside the accepted MVP surface |

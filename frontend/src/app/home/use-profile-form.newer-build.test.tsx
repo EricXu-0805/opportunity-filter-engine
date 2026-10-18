@@ -1,4 +1,4 @@
-import { act, cleanup, renderHook } from '@testing-library/react';
+import { act, cleanup, render, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { LoadedProfile, ProfilePatchIntent, ProfilePatchOutcome } from '@/lib/supabase';
 import type { ProfileData } from '@/lib/types';
@@ -18,27 +18,33 @@ vi.mock('@/lib/supabase', () => ({
   getStorageStatus: () => ({ status: 'synced', error: null }),
   onAuthChange: (callback: typeof service.auth) => { service.auth = callback; return () => { service.auth = null; }; },
 }));
+// The course list's release switch, as this branch ships it unless a test
+// turns it off.
+const release = vi.hoisted(() => ({ courseStatus: true }));
+vi.mock('@/lib/release-scope', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/release-scope')>();
+  return { ...actual, RELEASE_SCOPE: { ...actual.RELEASE_SCOPE, get courseStatus() { return release.courseStatus; } } };
+});
 import { useProfileForm } from './use-profile-form';
-import { DEFAULT_PROFILE, FRESH_PROFILE, hasSelectedSeekingType } from './types';
+import { SubmitRow } from './SubmitRow';
+import { DEFAULT_PROFILE, FRESH_PROFILE } from './types';
 import { advanceOwnerEpoch, captureOwnerToken, isOwnerTokenValid, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import { HOME_FORM_WRITER, resetProfileDirtyLedger } from '@/lib/profile-sync';
 import { readOutstandingOps, resetJournalLaneForTests } from '@/lib/profile-journal';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import { writeLocalStorageJSON } from '@/lib/use-local-storage-json';
 
-// Checklist M13 ships in two builds. The course-status build writes journal
-// operations carrying `courses` and groups the course names with the courses
-// rather than with the résumé; this build groups them with the résumé. A
-// question holding such an operation, planned here, pulls the résumé in with
-// the clicking tab's old copy of it (review batch P, F1) or cannot be answered
-// at all (F2; review m13fe-b round 3, F4b-d). So this build answers none: it
-// says a newer version of the page changed these fields and a reload lets the
-// student answer, keeps the screen, and sends nothing.
+// Checklist M13 ships in two builds. The build before this one groups the
+// course names with the résumé, and holds every question with a journal
+// operation carrying `courses` for the course-status build: it says a newer
+// version of the page changed these fields and asks for a reload. This is the
+// course-status build: it writes those operations and answers their questions
+// itself, so no question here is held, with its course list switched off too
+// (RELEASE_SCOPE.courseStatus), which is how that build is rolled back.
 const NAMES = ['CS 225', 'CS 233'];
 const LISTED = NAMES.map((name) => ({ name, source: 'resume', status: 'unknown' }));
 const MARKED = [LISTED[0], { ...LISTED[1], status: 'completed' }];
 const PHYS = { name: 'PHYS 211', source: 'manual', status: 'unknown' };
-const STAT = { name: 'STAT 400', source: 'manual', status: 'in_progress' };
 const RT0 = 'Relevant Coursework: CS 225, CS 233';
 const BASE = { ...DEFAULT_PROFILE, name: 'Alex', home_school: 'uiuc', institution: 'UIUC',
   college: 'Engineering', major: 'Computer Science', grade: 'Junior', research_interests: 'Original research',
@@ -81,17 +87,14 @@ function op(lineage: string, fields: [string, unknown, unknown][], baseRevision 
   }));
   return opId;
 }
-/** A status click (or a course added) in a tab of the course-status build:
- *  the course list and its names, in one operation. */
+/** A status click (or a course added) in another tab of this build: the
+ *  course list and its names, in one operation. */
 const click = (courses: unknown[], { baseRevision = 1, seq = 1, base = LISTED as unknown[] } = {}) => op('course-status-tab', [
   ['courses', base, courses], ['coursework', base.map((c) => (c as { name: string }).name), courses.map((c) => (c as { name: string }).name)],
 ], baseRevision, seq);
-/** A résumé removal in a tab of this build that is gone now. */
-const removal = (lineage: string) => op(lineage, [['resume_text', RT0, ''], ['coursework', NAMES, []],
-  ['experience_entries', undefined, []], ['resume_master', undefined, null]]);
-/** The course-status tab saves its click (operation `opId`) into a conflict
- *  with the stored row, and its outbox entry is stored as that build writes
- *  it (review m13p1v3-a, dump s1): the two course keys only, locked, over the
+/** That tab saves its click (operation `opId`) into a conflict with the
+ *  stored row, and its outbox entry is stored as this build writes it
+ *  (review m13p1v3-a, dump s1): the two course keys only, locked, over the
  *  row that refused them, with the rest of that tab's form as it last drew
  *  it, the old résumé included. */
 function courseTabSaves(courses: unknown[], opId: string, extra: Record<string, unknown> = {}, extraOps: string[] = []) {
@@ -113,42 +116,7 @@ function courseTabSaves(courses: unknown[], opId: string, extra: Record<string, 
 const storedEntry = () => (JSON.parse(localStorage.getItem(STORAGE_KEYS.PROFILE_SYNC) ?? 'null') as { pending: Record<string, unknown> | null } | null)?.pending ?? null;
 
 type R = { current: ReturnType<typeof useProfileForm> };
-const KEYS = ['resume_text', 'coursework', 'courses', 'experience_entries', 'resume_master'] as const;
-const screen = (result: R) => Object.fromEntries(KEYS.map((k) => [k, structuredClone((result.current.profile as unknown as Record<string, unknown>)[k])]));
-const outstanding = () => { const read = readOutstandingOps(); return read.ok ? read.value.filter((o) => o.mode !== 'resolve').length : -1; };
 const sentSince = (from: number) => service.commit.mock.calls.slice(from).map(([intent]) => intent.patch);
-
-/** This build's answer to the question: the reload message, no way to answer
- *  it here, the screen as it was, and nothing sent. */
-async function expectHeld(result: R, shown: ReturnType<typeof screen>) {
-  expect(result.current.conflicts.length, 'the question is still open').toBeGreaterThan(0);
-  expect(screen(result), 'the fields stay as they are on screen').toEqual(shown);
-  const atRevision = revision;
-  const stored = structuredClone(remote);
-  const ops = outstanding();
-  const said = [result.current.saveStatus];
-  for (const answer of ['keepMyChanges', 'useCloudVersion'] as const) {
-    const before = service.commit.mock.calls.length;
-    act(() => { result.current[answer](); }); await tick(3000);
-    expect(sentSince(before), `${answer} sends nothing`).toEqual([]);
-    expect(result.current.conflicts.length).toBeGreaterThan(0);
-    expect(screen(result)).toEqual(shown);
-    said.push(result.current.saveStatus);
-  }
-  // Generate does not go past the question.
-  expect(hasSelectedSeekingType(result.current.profile)).toBe(true);
-  const before = service.commit.mock.calls.length;
-  await act(async () => { result.current.handleSubmit(); }); await tick(4000);
-  expect(service.router.push, 'Generate stays on the form').not.toHaveBeenCalled();
-  expect(sentSince(before), 'Generate sends nothing').toEqual([]);
-  expect(screen(result)).toEqual(shown);
-  expect(revision).toBe(atRevision);
-  expect(remote).toEqual(stored);
-  expect(outstanding(), 'nothing typed is dropped').toBe(ops);
-  said.push(result.current.saveStatus);
-  expect(said, 'shown, after each answer and after Generate').toEqual(Array(4).fill('conflict-newer-build'));
-  expect(result.current.conflicts.every((c) => c.newerBuild === true), 'asked as a newer build\'s question').toBe(true);
-}
 
 beforeEach(async () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
@@ -165,150 +133,52 @@ beforeEach(async () => {
   Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
   Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
 });
-afterEach(() => { cleanup(); vi.clearAllTimers(); vi.useRealTimers(); });
+afterEach(() => { cleanup(); vi.clearAllTimers(); vi.useRealTimers(); release.courseStatus = true; });
 
-describe('a conflict question holding an operation of the course-status build (checklist M13)', () => {
-  it('F1: a tab that typed nothing keeps the newer résumé it shows and sends nothing', async () => {
+describe('a conflict question holding an operation carrying `courses` (checklist M13)', () => {
+  it.each([true, false])('gets its two buttons in this build, and keeping what was typed sends the course click (course list on: %s)', async (on) => {
+    release.courseStatus = on;
     const { result } = await start();
-    const PHONE = { resume_text: 'Phone résumé: PHYS 211', coursework: ['PHYS 211'], courses: [{ ...PHYS, source: 'resume' }] };
+    const PHONE = { coursework: [...NAMES, PHYS.name], courses: [...LISTED, PHYS] };
     remote = { ...remote, ...PHONE } as unknown as ProfileData; revision += 1;
     await focus();
-    expect(result.current.profile.resume_text).toBe(PHONE.resume_text);
-    const shown = screen(result);
-    // A tab of the course-status build, open on revision 1, marks a course.
+    // Another tab, open on revision 1, marks a course and saves into a conflict.
     courseTabSaves(MARKED, click(MARKED));
     await focus();
-    await expectHeld(result, shown);
-    expect(remote.resume_text, 'nobody typed the old résumé over the phone\'s').toBe(PHONE.resume_text);
-    // A field outside the question still saves, alone, and the message stays.
-    const before = service.commit.mock.calls.length;
-    act(() => { result.current.update('research_interests', 'Robotics'); }); await tick(3000);
-    expect(sentSince(before).length).toBeGreaterThan(0);
-    expect(sentSince(before).every((patch) => JSON.stringify(patch) === '{"research_interests":"Robotics"}')).toBe(true);
-    expect(remote.research_interests).toBe('Robotics');
-    expect(result.current.saveStatus).toBe('conflict-newer-build');
-    expect(screen(result)).toEqual(shown);
-    expect(remote.resume_text).toBe(PHONE.resume_text);
-  });
-
-  it('F2: an older tab\'s résumé removal beside a status click is not answered here', async () => {
-    const { result } = await start();
-    const shown = screen(result);
-    removal('closed-tab');
-    click(MARKED);
-    await focus();
-    await expectHeld(result, shown);
-  });
-
-  it('F4b: a résumé removal typed here while the course question is open is held, not lost', async () => {
-    // Another device added a course (revision 2); the course-status tab, open
-    // on revision 1, marks one and saves into a conflict.
-    remote = { ...remote, coursework: [...NAMES, PHYS.name], courses: [...LISTED, PHYS] } as unknown as ProfileData; revision += 1;
-    const { result } = await start();
-    courseTabSaves(MARKED, click(MARKED));
-    await focus();
-    expect(result.current.conflicts.length).toBeGreaterThan(0);
-    const before = service.commit.mock.calls.length;
-    act(() => { expect(result.current.handleResumeRemoved()).toBe(true); }); await tick(3000);
-    expect(result.current.profile.resume_text).toBe('');
-    expect(sentSince(before), 'the removal is held with the question').toEqual([]);
-    await expectHeld(result, screen(result));
-    expect(outstanding(), 'the course click and the removal').toBe(2);
-  });
-
-  it('F4c: after a reload, with the newer tab\'s partial answer stored, still nothing is answered here', async () => {
-    remote = { ...remote, coursework: [...NAMES, PHYS.name], courses: [...LISTED, PHYS] } as unknown as ProfileData; revision += 1;
-    const first = await start();
-    courseTabSaves(MARKED, click(MARKED));
-    await focus();
-    act(() => { first.result.current.handleResumeRemoved(); }); await tick(3000);
-    first.unmount();
-    // The course-status tab answered and stored only the résumé text.
-    remote = { ...remote, resume_text: '' } as ProfileData; revision += 1;
-    const { result } = await start();
-    await focus();
-    await expectHeld(result, screen(result));
-  });
-
-  it('F4d: a tab opened after the removing tab closed, with a course added while asked, sends nothing', async () => {
-    remote = { ...remote, coursework: [...NAMES, PHYS.name], courses: [...LISTED, PHYS] } as unknown as ProfileData; revision += 1;
-    courseTabSaves(MARKED, click(MARKED));
-    removal('closed-tab');
-    click([...MARKED, STAT], { base: MARKED, seq: 2 });
-    const { result } = await start();
-    await focus();
-    await expectHeld(result, screen(result));
-    expect(outstanding()).toBe(3);
+    const { conflicts, saveStatus } = result.current;
+    expect(conflicts.map((c) => c.key)).toEqual(expect.arrayContaining(['courses', 'coursework']));
+    expect(conflicts.some((c) => 'newerBuild' in c), 'no field is held for another build').toBe(false);
+    expect(saveStatus).toBe('conflict');
+    // The props Home draws the status line with (app/page.tsx).
+    const rendered = render(<SubmitRow isValid shareCopied={false} saveStatus={saveStatus} hydrationState="ready" isSubmitting={false}
+      hasConflict={conflicts.length > 0} conflictHeldForNewerBuild={conflicts.length > 0 && conflicts.every((c) => c.newerBuild === true)}
+      canRetrySync={false} onRetrySync={vi.fn()} onRetryProfileLoad={vi.fn()} onKeepMyChanges={vi.fn()}
+      onUseCloudVersion={vi.fn()} onSubmit={vi.fn()} onShare={vi.fn()} t={t as never} />);
+    expect(rendered.getByTestId('conflict-keep-mine')).toBeTruthy();
+    expect(rendered.getByTestId('conflict-use-cloud')).toBeTruthy();
+    expect(rendered.queryByTestId('conflict-newer-build')).toBeNull();
+    act(() => { result.current.keepMyChanges(); }); await tick(3000);
+    expect(remote.courses).toEqual(MARKED);
+    expect(result.current.conflicts).toEqual([]);
   });
 });
 
-describe('what this build leaves to the course-status build (review m13p1v3-a)', () => {
+describe('an operation carrying `courses` that another tab left', () => {
+  it('is sent when a tab opens with the course list switched off', async () => {
+    release.courseStatus = false;
+    click(MARKED);
+    const { result } = await start();
+    await focus(); await tick(3000);
+    // The names go with the résumé they belong to (RESUME_BUNDLE), unchanged.
+    expect(sentSince(0)).toEqual([{ courses: MARKED, coursework: NAMES, resume_text: RT0, experience_entries: [], resume_master: null }]);
+    expect(remote.courses).toEqual(MARKED);
+    expect(result.current.profile.courses).toEqual(MARKED);
+    expect(result.current.conflicts).toEqual([]);
+  });
+});
+
+describe('a locked field typed again (review m13p1v3-a, item 3)', () => {
   const PHONE = { resume_text: 'Phone résumé: PHYS 211', coursework: ['PHYS 211'], courses: [{ ...PHYS, source: 'resume' }] };
-  /** The course-status tab's part of an outbox entry: its keys, their locks,
-   *  values, versions and operations. */
-  const coursePart = (entry: Record<string, unknown> | null) => {
-    const keys = ['courses', 'coursework'];
-    const pick = (record: unknown) => Object.fromEntries(keys.map((k) => [k, (record as Record<string, unknown>)?.[k]]));
-    return { dirtyKeys: entry?.dirtyKeys, lockedKeys: entry?.lockedKeys, desired: pick(entry?.desiredProfile),
-      keyVersions: pick(entry?.keyVersions), journalPlan: pick(entry?.journalPlan) };
-  };
-
-  /** An outbox entry with only the values it would send: a load moves the
-   *  rest of its working copy onto the stored row, in every build. */
-  const unsent = (entry: Record<string, unknown> | null) => entry && { ...entry,
-    desiredProfile: Object.fromEntries((entry.dirtyKeys as string[]).map((k) => [k, (entry.desiredProfile as Record<string, unknown>)[k]])) };
-
-  it('MF1: a tab opened here neither completes nor re-stages the course tab\'s unsent entry, and shows the newer résumé', async () => {
-    remote = { ...remote, ...PHONE } as unknown as ProfileData; revision += 1;
-    const written = structuredClone(courseTabSaves(MARKED, click(MARKED)));
-    const { result } = await start();
-    await focus();
-    expect(unsent(storedEntry()), 'the entry as the course-status build wrote it').toEqual(unsent(written));
-    expect(result.current.profile.resume_text, 'the phone\'s résumé, not the course tab\'s old copy').toBe(PHONE.resume_text);
-    expect(result.current.saveStatus).toBe('conflict-newer-build');
-    expect(result.current.conflicts.map((c) => c.key).sort()).toEqual(['courses', 'coursework']);
-    // An autosave of another field sends that field alone and leaves the
-    // course tab's part of the entry as it was.
-    act(() => { result.current.update('research_interests', 'Robotics'); }); await tick(3000);
-    expect(sentSince(0)).toEqual(sentSince(0).map(() => ({ research_interests: 'Robotics' })));
-    expect(remote.research_interests).toBe('Robotics');
-    expect(coursePart(storedEntry())).toEqual(coursePart(written));
-    expect(result.current.profile.resume_text).toBe(PHONE.resume_text);
-    expect(remote.resume_text).toBe(PHONE.resume_text);
-    expect(result.current.saveStatus).toBe('conflict-newer-build');
-  });
-
-  it('item 2: a question the course operation reaches only through fields pulled into it is held', async () => {
-    const EA = { id: 'ea', revision: 1, status: 'confirmed', text: 'Lab A', source: { kind: 'manual' } };
-    const EC = { id: 'ec', revision: 1, status: 'confirmed', text: 'Lab C', source: { kind: 'manual' } };
-    const experience = (lineage: string, entry: unknown) => op(lineage, [['resume_text', RT0, RT0],
-      ['coursework', NAMES, NAMES], ['experience_entries', [], [entry]], ['resume_master', null, null]]);
-    remote = { ...remote, experience_entries: [] } as unknown as ProfileData;
-    experience('tab-a', EA); experience('tab-c', EC); click(MARKED);
-    const { result } = await start();
-    await focus();
-    expect(result.current.conflicts.map((c) => c.key)).toContain('courses');
-    await expectHeld(result, screen(result));
-  });
-
-  it('item 3: an unrelated question shown beside a held one is answered as without it', async () => {
-    op('t1', [['research_interests', 'Original research', 'Bio']]);
-    op('t2', [['research_interests', 'Original research', 'Chem']]);
-    removal('closed-tab'); click(MARKED);
-    const { result } = await start();
-    await focus();
-    const marked = (c: { newerBuild?: true }) => c.newerBuild === true;
-    expect(result.current.conflicts.filter((c) => !marked(c)).map((c) => c.key)).toEqual(['research_interests']);
-    expect(result.current.conflicts.filter(marked).map((c) => c.key)).toContain('courses');
-    expect(result.current.saveStatus, 'the unrelated question can be answered').toBe('conflict');
-    const shown = screen(result);
-    act(() => { result.current.useCloudVersion(); }); await tick(3000);
-    expect(sentSince(0), 'the other version is the stored one').toEqual([]);
-    expect(result.current.conflicts.map((c) => c.key)).not.toContain('research_interests');
-    expect(result.current.profile.research_interests).toBe('Original research');
-    expect(outstanding(), 'only the two research-interest edits were settled').toBe(2);
-    await expectHeld(result, shown);
-  });
 
   /** This tab types a research interest while a phone stores a new résumé
    *  and research interest: the save comes back a conflict, locked. */
@@ -334,28 +204,6 @@ describe('what this build leaves to the course-status build (review m13p1v3-a)',
     const { result } = await lockedHere();
     await focus();
     await typedAgain(result);
-  });
-
-  it('item 3: a locked field outside the held question, typed again, unlocks and is sent as without it', async () => {
-    const { result } = await lockedHere();
-    // The course-status tab's click is refused too, and staged into the same
-    // outbox entry, as that build layers it.
-    const opId = click(MARKED);
-    const entry = storedEntry()!;
-    const desired = entry.desiredProfile as Record<string, unknown>;
-    expect(writeLocalStorageJSON(STORAGE_KEYS.PROFILE_SYNC, { ...JSON.parse(localStorage.getItem(STORAGE_KEYS.PROFILE_SYNC)!), pending: {
-      ...entry, desiredProfile: { ...desired, courses: MARKED, coursework: NAMES },
-      dirtyKeys: [...entry.dirtyKeys as string[], 'courses', 'coursework'], lockedKeys: [...entry.lockedKeys as string[], 'courses', 'coursework'],
-      keyVersions: { ...entry.keyVersions as object, courses: 2, coursework: 2 },
-      journalOpIds: [...entry.journalOpIds as string[], opId],
-      journalPlan: { ...entry.journalPlan as object, courses: [opId], coursework: [opId] },
-    } }, captureOwnerToken())).toBe(true);
-    await focus();
-    expect(result.current.conflicts.filter((c) => !c.newerBuild).map((c) => c.key)).toEqual(['research_interests']);
-    await typedAgain(result);
-    expect(result.current.conflicts.map((c) => c.key).sort()).toEqual(['courses', 'coursework']);
-    expect(result.current.saveStatus).toBe('conflict-newer-build');
-    expect(remote.resume_text).toBe(PHONE.resume_text);
   });
 });
 
