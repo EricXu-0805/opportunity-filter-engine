@@ -329,6 +329,11 @@ class MatchViewRequest(BaseModel):
     cursor: str | None = Field(default=None, max_length=768)
 
 
+class MatchReasonKey(BaseModel):
+    key: str
+    params: dict[str, str] = Field(default_factory=dict)
+
+
 class MatchResultResponse(BaseModel):
     opportunity_id: str
     eligibility_score: float
@@ -338,6 +343,12 @@ class MatchResultResponse(BaseModel):
     bucket: str
     reasons_fit: list[str]
     reasons_gap: list[str]
+    # The template key and params of each reason line, index-aligned with the
+    # list above (None where no template wrote the line), for an interface in
+    # another language to render the line from its own table (M107). The
+    # English lines above stay the reasons; an older backend omits these.
+    reasons_fit_keys: list[MatchReasonKey | None] | None = None
+    reasons_gap_keys: list[MatchReasonKey | None] | None = None
     next_steps: list[str]
     # One concrete, student-specific sentence from the LLM rerank pass — the
     # card's lead line for top-K results; None outside the reranked window.
