@@ -25,92 +25,12 @@ from src.matcher.ranker import (
 
 _SHARDS = pathlib.Path(__file__).resolve().parent.parent / "data" / "processed" / "shards"
 
-# One sentence per template, as the ranker writes it, with its key and params.
-TEMPLATE_SAMPLES: list[tuple[str, str, str, dict[str, str]]] = [
-    ("fit", "Your class year (junior) may fit this program", "year_may_fit", {"year": "junior"}),
-    ("fit", "Accepts junior students", "year_accepts", {"year": "junior"}),
-    ("gap", "Add your class year to confirm year eligibility", "year_missing", {}),
-    ("gap", "For undergraduates — not a graduate-level opening", "year_undergrad_only", {}),
-    ("gap", f"Our listing suggests this is for undergraduates{_NOT_ON_PAGE}", "year_listing_undergrad", {}),
-    ("gap", "Typically targets junior, senior", "year_targets", {"years": "junior, senior"}),
-    ("gap", f"Our listing suggests junior, senior students{_NOT_ON_PAGE}", "year_listing_targets",
-     {"years": "junior, senior"}),
-    ("fit", "This faculty member's department aligns with your major", "major_department_aligns", {}),
-    ("fit", "This faculty member's department is related to your major", "major_department_related", {}),
-    ("fit", "Your major may fit this field", "major_field_may_fit", {}),
-    ("fit", "Your major may be related to this field", "major_field_may_relate", {}),
-    ("fit", f"Our listing says this is open to all majors{_NOT_ON_PAGE}", "major_all_listing", {}),
-    ("fit", "Open to all majors", "major_all", {}),
-    ("fit", "Your major (Biology) may fit this program", "major_may_fit", {"major": "Biology"}),
-    ("fit", "Your major (Biology) may be related to this program", "major_may_relate", {"major": "Biology"}),
-    ("fit", "Your major (Biology) is a direct match", "major_direct", {"major": "Biology"}),
-    ("fit", "Your major (Biology) is closely related to requirements", "major_close", {"major": "Biology"}),
-    ("gap", "Prefers Biology, Chemistry", "major_prefers", {"majors": "Biology, Chemistry"}),
-    ("gap", f"Our listing suggests Biology, Chemistry majors{_NOT_ON_PAGE}", "major_listing",
-     {"majors": "Biology, Chemistry"}),
-    ("gap", _SIMPLIFY_NO_SPONSORSHIP_GAP, "intl_listing_no_sponsorship", {"label": "Does Not Offer Sponsorship"}),
-    ("gap", f"Our listing says this requires US citizenship or permanent residency{_NOT_ON_PAGE}",
-     "citizenship_listing", {}),
-    ("gap", f"May require US citizenship or permanent residency{_OUR_READING}", "citizenship_read", {}),
-    ("gap", f"May require US citizenship or permanent residency{_OUR_LISTING_AND_READING}",
-     "citizenship_listing_and_read", {}),
-    ("gap", _SIMPLIFY_NO_SPONSORSHIP_REASON, "citizenship_no_sponsorship", {}),
-    ("gap", "Requires US citizenship or permanent residency", "citizenship_required", {}),
-    ("gap", "International eligibility unclear — many internships qualify for CPT/OPT; confirm with the employer",
-     "intl_unclear_internship", {}),
-    ("gap", "International eligibility is not stated — confirm when contacting the faculty member",
-     "intl_unstated_faculty", {}),
-    ("gap", "International eligibility unclear — verify before applying", "intl_unclear", {}),
-    ("fit", f"Our listing says this is open to international students{_NOT_ON_PAGE}", "intl_open_listing", {}),
-    ("fit", f"Open to international students{_OUR_READING}", "intl_open_read", {}),
-    ("fit", "Open to international students", "intl_open", {}),
-    ("fit", "Strong tech stack fit: Python (expert), SQL (experienced) — 2/3 required", "skills_fit_required",
-     {"level": "strong", "skills": "Python (expert), SQL (experienced)", "matched": "2", "required": "3"}),
-    ("fit", "Partial skill match: Python", "skills_fit", {"level": "partial", "skills": "Python"}),
-    ("fit", "Tech stack overlap: Python, R", "skills_fit", {"level": "overlap", "skills": "Python, R"}),
-    ("gap", "Missing skills: MATLAB, Stata", "skills_missing", {"skills": "MATLAB, Stata"}),
-    ("fit", "Skills mentioned in the description: Python", "skills_mentioned", {"skills": "Python"}),
-    ("fit", "Preferred skill overlap: R", "skills_preferred", {"skills": "R"}),
-    ("fit", "Matches your interest in summer program", "type_match", {"type": "summer program"}),
-    ("gap", "This is a internship — not your primary target type", "type_mismatch", {"type": "internship"}),
-    ("gap", "Resume required — prepare one before applying", "resume_required", {}),
-    ("fit", "Your experience can support a thoughtful faculty outreach", "experience_faculty", {}),
-    ("fit", "Your experience level is competitive", "experience_competitive", {}),
-    ("gap", "Your experience signal is limited — ask what preparation would help", "experience_limited_faculty", {}),
-    ("gap", "Limited prior experience — position may be competitive", "experience_limited", {}),
-    ("fit", "You're comfortable with direct outreach", "outreach_comfortable", {}),
-    ("fit", "Low application effort — quick to apply", "effort_low", {}),
-    ("gap", "High application effort — plan time for materials", "effort_high", {}),
-    ("fit", "Paid opportunity", "paid", {}),
-    ("fit", "Includes stipend", "stipend", {}),
-    ("fit", "Explicitly welcomes first-time researchers", "first_time_welcome", {}),
-    ("fit", "At your university", "at_your_university", {}),
-    ("fit", "Faculty profile from a major research university", "brand_faculty_university", {}),
-    ("fit", "Major research university — strong resume builder", "brand_university", {}),
-    ("fit", "Faculty profile from a recognized research institution", "brand_faculty_institution", {}),
-    ("fit", "Prestigious institution — strong resume builder", "brand_institution", {}),
-    ("fit", "Potential for publication or long-term involvement", "publication_pathway", {}),
-    ("fit", "Matches your interests: genomics, machine learning", "interests_match",
-     {"terms": "genomics, machine learning"}),
-    ("fit", "Your interest in genomics closely matches Prof. Ada Lovelace's work on genomics, proteomics",
-     "interest_lab_work", {"interest": "genomics", "lab": "Prof. Ada Lovelace", "work": "genomics, proteomics"}),
-    ("fit", "Prof. Ada Lovelace also works on genomics, proteomics", "lab_also_works",
-     {"lab": "Prof. Ada Lovelace", "work": "genomics, proteomics"}),
-    ("fit", "Your interest in genomics closely matches their work on genomics", "interest_their_work",
-     {"interest": "genomics", "work": "genomics"}),
-    ("fit", "They also work on genomics", "they_also_work", {"work": "genomics"}),
-    ("fit", "Your research interests align with Prof. Ada Lovelace's focus area", "interests_lab_focus",
-     {"lab": "Prof. Ada Lovelace"}),
-    ("gap", "Research area looks different from your stated interests", "topic_mismatch", {}),
-    ("gap", "Deadline has passed — verify if still accepting applications", "deadline_passed", {}),
-    ("fit", "Deadline in 3 days — apply soon", "deadline_soon", {"days": "3"}),
-    ("gap", "This program's start date has passed — check whether a new cycle is open", "start_passed", {}),
-    ("gap", "Targets graduate / PhD students — a reach for undergraduates", "grad_level_reach", {}),
-    ("fit", "Summer research — in season; applications are typically active now", "summer_in_season", {}),
-    ("gap", "Faculty availability and eligibility are not confirmed — verify when you contact them",
-     "faculty_unconfirmed", {}),
-    ("fit", "This lab focuses on Genomics Lab — sequencing", "lab_focus", {"summary": "Genomics Lab — sequencing"}),
-]
+# One served line per template, with the key and params served beside it.
+# The frontend renders every case in zh (frontend/src/lib/match-reasons.test.ts).
+_FIXTURE = (
+    pathlib.Path(__file__).resolve().parents[1] / "frontend/src/lib/__fixtures__/match-reason-keys.json"
+)
+_CASES = json.loads(_FIXTURE.read_text(encoding="utf-8"))["cases"]
 
 _RESEARCH_SUMMARY_RECORD = {
     "id": "m107-summary",
@@ -128,14 +48,34 @@ def _known_keys() -> set[str]:
     return keys | {"research_summary"}
 
 
-@pytest.mark.parametrize(("kind", "sentence", "key", "params"), TEMPLATE_SAMPLES)
-def test_every_template_sentence_is_keyed(kind, sentence, key, params):
-    assert rk.reason_key(sentence, kind) == {"key": key, "params": params}
+@pytest.mark.parametrize("case", _CASES, ids=[case["english"][:60] for case in _CASES])
+def test_every_template_line_is_keyed_as_the_fixture_says(case):
+    expected = {"key": case["key"], "params": case["params"]}
+    if case["key"].startswith("excluded_"):
+        assert m._exclusion_gap_key(case["english"]) == expected
+    else:
+        summary = case["english"] if case["key"] == "research_summary" else ""
+        assert rk.reason_key(case["english"], case["kind"], research_summary=summary) == expected
 
 
-def test_the_samples_walk_every_template():
-    walked = {key for _, _, key, _ in TEMPLATE_SAMPLES} | {"research_summary"}
-    assert walked == _known_keys()
+def test_the_fixture_walks_every_template():
+    exclusion_keys = {f"excluded_{code}" for code in m._EXCLUSION_GAP_TEXT}
+    exclusion_keys |= {"excluded_other", "excluded_restriction"}
+    assert {case["key"] for case in _CASES} == _known_keys() | exclusion_keys
+    restrictions = {case["params"]["restriction"] for case in _CASES if case["key"] == "excluded_restriction"}
+    assert restrictions == {key for key in _known_keys() if key.startswith("citizenship_")}
+
+
+def test_the_fixture_lines_are_the_ones_the_code_writes():
+    lines = {case["english"] for case in _CASES}
+    assert set(m._EXCLUSION_GAP_TEXT.values()) <= lines
+    for constant in (_SIMPLIFY_NO_SPONSORSHIP_GAP, _SIMPLIFY_NO_SPONSORSHIP_REASON):
+        assert constant in lines
+    assert any(_NOT_ON_PAGE in line for line in lines)
+    assert any(_OUR_READING in line for line in lines)
+    assert any(_OUR_LISTING_AND_READING in line for line in lines)
+    summary = rk._summarize_research(_RESEARCH_SUMMARY_RECORD)
+    assert {"kind": "fit", "english": summary, "key": "research_summary", "params": {"text": summary}} in _CASES
 
 
 def test_research_summary_headline_is_keyed_as_the_records_own_text():

@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
+const i18n = vi.hoisted(() => ({ locale: 'en' as 'en' | 'zh' }));
+
 vi.mock('@/i18n/client', () => ({
   useT: () => ({
     t: (key: string, vars?: Record<string, string | number>) => {
@@ -8,6 +10,7 @@ vi.mock('@/i18n/client', () => ({
       if (vars && 'host' in vars) return `${key}:${vars.host}`;
       return key;
     },
+    locale: i18n.locale,
   }),
 }));
 
@@ -100,6 +103,7 @@ const PROFILE: ProfileData = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  i18n.locale = 'en';
 });
 
 describe('MatchCard', () => {
@@ -665,6 +669,51 @@ describe('MatchCard', () => {
       for (const english of ['Why it fits', 'Potential concerns', 'Next steps']) {
         expect(screen.queryByText(english)).toBeNull();
       }
+    });
+  });
+
+  describe('match reasons follow the reader language (M107)', () => {
+    const keyed = (): MatchResult => makeMatch({}, {
+      reasons_fit: ['Your major (Biology) may fit this program', 'A line a newer backend wrote'],
+      reasons_gap: [
+        'Listing says: "Does Not Offer Sponsorship" (our note: CPT/OPT may still apply for internships; check with the employer)',
+        'Focuses on GPU systems, not medical imaging',
+      ],
+      reasons_fit_keys: [
+        { key: 'major_may_fit', params: { major: 'Biology' } },
+        { key: 'not_in_this_client', params: {} },
+      ],
+      reasons_gap_keys: [{ key: 'intl_listing_no_sponsorship', params: { label: 'Does Not Offer Sponsorship' } }, null],
+    });
+
+    it('renders keyed lines in Chinese and keeps the rest as served', () => {
+      i18n.locale = 'zh';
+      render(<MatchCard match={keyed()} profile={PROFILE} onDraftEmail={() => {}} />);
+      fireEvent.click(screen.getByText('card.showDetails'));
+      expect(screen.getByText('你的专业「Biology」可能适合这个项目')).toBeInTheDocument();
+      expect(screen.getByText('A line a newer backend wrote')).toBeInTheDocument();
+      expect(screen.getByText(
+        '列表标注：「Does Not Offer Sponsorship」（我们的说明：实习可能仍可使用 CPT/OPT，请向雇主确认）',
+      )).toBeInTheDocument();
+      expect(screen.getByText('Focuses on GPU systems, not medical imaging')).toBeInTheDocument();
+      expect(screen.queryByText('Your major (Biology) may fit this program')).toBeNull();
+    });
+
+    it('shows the English lines unchanged in English', () => {
+      render(<MatchCard match={keyed()} profile={PROFILE} onDraftEmail={() => {}} />);
+      fireEvent.click(screen.getByText('card.showDetails'));
+      expect(screen.getByText('Your major (Biology) may fit this program')).toBeInTheDocument();
+      expect(screen.queryByText('你的专业「Biology」可能适合这个项目')).toBeNull();
+    });
+
+    it('shows the English lines in Chinese when an older backend sends no keys', () => {
+      i18n.locale = 'zh';
+      const match = keyed();
+      delete match.reasons_fit_keys;
+      delete match.reasons_gap_keys;
+      render(<MatchCard match={match} profile={PROFILE} onDraftEmail={() => {}} />);
+      fireEvent.click(screen.getByText('card.showDetails'));
+      expect(screen.getByText('Your major (Biology) may fit this program')).toBeInTheDocument();
     });
   });
 

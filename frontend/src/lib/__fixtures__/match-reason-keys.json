@@ -1,0 +1,590 @@
+{
+  "_comment": "M107: one served match reason line per template, with the key and params the backend serves beside it. tests/test_reason_keys_m107.py checks the backend keys each line so; frontend/src/lib/match-reasons.test.ts renders each key in zh.",
+  "cases": [
+    {
+      "kind": "fit",
+      "english": "Your class year (junior) may fit this program",
+      "key": "year_may_fit",
+      "params": {
+        "year": "junior"
+      }
+    },
+    {
+      "kind": "fit",
+      "english": "Accepts junior students",
+      "key": "year_accepts",
+      "params": {
+        "year": "junior"
+      }
+    },
+    {
+      "kind": "gap",
+      "english": "Add your class year to confirm year eligibility",
+      "key": "year_missing",
+      "params": {}
+    },
+    {
+      "kind": "gap",
+      "english": "For undergraduates — not a graduate-level opening",
+      "key": "year_undergrad_only",
+      "params": {}
+    },
+    {
+      "kind": "gap",
+      "english": "Our listing suggests this is for undergraduates — not confirmed on the program page",
+      "key": "year_listing_undergrad",
+      "params": {}
+    },
+    {
+      "kind": "gap",
+      "english": "Typically targets junior, senior",
+      "key": "year_targets",
+      "params": {
+        "years": "junior, senior"
+      }
+    },
+    {
+      "kind": "gap",
+      "english": "Our listing suggests junior, senior students — not confirmed on the program page",
+      "key": "year_listing_targets",
+      "params": {
+        "years": "junior, senior"
+      }
+    },
+    {
+      "kind": "fit",
+      "english": "This faculty member's department aligns with your major",
+      "key": "major_department_aligns",
+      "params": {}
+    },
+    {
+      "kind": "fit",
+      "english": "This faculty member's department is related to your major",
+      "key": "major_department_related",
+      "params": {}
+    },
+    {
+      "kind": "fit",
+      "english": "Your major may fit this field",
+      "key": "major_field_may_fit",
+      "params": {}
+    },
+    {
+      "kind": "fit",
+      "english": "Your major may be related to this field",
+      "key": "major_field_may_relate",
+      "params": {}
+    },
+    {
+      "kind": "fit",
+      "english": "Our listing says this is open to all majors — not confirmed on the program page",
+      "key": "major_all_listing",
+      "params": {}
+    },
+    {
+      "kind": "fit",
+      "english": "Open to all majors",
+      "key": "major_all",
+      "params": {}
+    },
+    {
+      "kind": "fit",
+      "english": "Your major (Biology) may fit this program",
+      "key": "major_may_fit",
+      "params": {
+        "major": "Biology"
+      }
+    },
+    {
+      "kind": "fit",
+      "english": "Your major (Biology) may be related to this program",
+      "key": "major_may_relate",
+      "params": {
+        "major": "Biology"
+      }
+    },
+    {
+      "kind": "fit",
+      "english": "Your major (Biology) is a direct match",
+      "key": "major_direct",
+      "params": {
+        "major": "Biology"
+      }
+    },
+    {
+      "kind": "fit",
+      "english": "Your major (Biology) is closely related to requirements",
+      "key": "major_close",
+      "params": {
+        "major": "Biology"
+      }
+    },
+    {
+      "kind": "gap",
+      "english": "Prefers Biology, Chemistry",
+      "key": "major_prefers",
+      "params": {
+        "majors": "Biology, Chemistry"
+      }
+    },
+    {
+      "kind": "gap",
+      "english": "Our listing suggests Biology, Chemistry majors — not confirmed on the program page",
+      "key": "major_listing",
+      "params": {
+        "majors": "Biology, Chemistry"
+      }
+    },
+    {
+      "kind": "gap",
+      "english": "Listing says: \"Does Not Offer Sponsorship\" (our note: CPT/OPT may still apply for internships; check with the employer)",
+      "key": "intl_listing_no_sponsorship",
+      "params": {
+        "label": "Does Not Offer Sponsorship"
+      }
+    },
+    {
+      "kind": "gap",
+      "english": "Our listing says this requires US citizenship or permanent residency — not confirmed on the program page",
+      "key": "citizenship_listing",
+      "params": {}
+    },
+    {
+      "kind": "gap",
+      "english": "May require US citizenship or permanent residency, by our reading of the page — not confirmed on the program page",
+      "key": "citizenship_read",
+      "params": {}
+    },
+    {
+      "kind": "gap",
+      "english": "May require US citizenship or permanent residency, per our listing and our reading of the page — not confirmed on the program page",
+      "key": "citizenship_listing_and_read",
+      "params": {}
+    },
+    {
+      "kind": "gap",
+      "english": "Employer does not offer visa sponsorship",
+      "key": "citizenship_no_sponsorship",
+      "params": {}
+    },
+    {
+      "kind": "gap",
+      "english": "Requires US citizenship or permanent residency",
+      "key": "citizenship_required",
+      "params": {}
+    },
+    {
+      "kind": "gap",
+      "english": "International eligibility unclear — many internships qualify for CPT/OPT; confirm with the employer",
+      "key": "intl_unclear_internship",
+      "params": {}
+    },
+    {
+      "kind": "gap",
+      "english": "International eligibility is not stated — confirm when contacting the faculty member",
+      "key": "intl_unstated_faculty",
+      "params": {}
+    },
+    {
+      "kind": "gap",
+      "english": "International eligibility unclear — verify before applying",
+      "key": "intl_unclear",
+      "params": {}
+    },
+    {
+      "kind": "fit",
+      "english": "Our listing says this is open to international students — not confirmed on the program page",
+      "key": "intl_open_listing",
+      "params": {}
+    },
+    {
+      "kind": "fit",
+      "english": "Open to international students, by our reading of the page — not confirmed on the program page",
+      "key": "intl_open_read",
+      "params": {}
+    },
+    {
+      "kind": "fit",
+      "english": "Open to international students",
+      "key": "intl_open",
+      "params": {}
+    },
+    {
+      "kind": "fit",
+      "english": "Strong tech stack fit: Python (expert), SQL (experienced) — 2/3 required",
+      "key": "skills_fit_required",
+      "params": {
+        "level": "strong",
+        "skills": "Python (expert), SQL (experienced)",
+        "matched": "2",
+        "required": "3"
+      }
+    },
+    {
+      "kind": "fit",
+      "english": "Partial skill match: Python",
+      "key": "skills_fit",
+      "params": {
+        "level": "partial",
+        "skills": "Python"
+      }
+    },
+    {
+      "kind": "fit",
+      "english": "Tech stack overlap: Python, R",
+      "key": "skills_fit",
+      "params": {
+        "level": "overlap",
+        "skills": "Python, R"
+      }
+    },
+    {
+      "kind": "gap",
+      "english": "Missing skills: MATLAB, Stata",
+      "key": "skills_missing",
+      "params": {
+        "skills": "MATLAB, Stata"
+      }
+    },
+    {
+      "kind": "fit",
+      "english": "Skills mentioned in the description: Python",
+      "key": "skills_mentioned",
+      "params": {
+        "skills": "Python"
+      }
+    },
+    {
+      "kind": "fit",
+      "english": "Preferred skill overlap: R",
+      "key": "skills_preferred",
+      "params": {
+        "skills": "R"
+      }
+    },
+    {
+      "kind": "fit",
+      "english": "Matches your interest in summer program",
+      "key": "type_match",
+      "params": {
+        "type": "summer program"
+      }
+    },
+    {
+      "kind": "gap",
+      "english": "This is a internship — not your primary target type",
+      "key": "type_mismatch",
+      "params": {
+        "type": "internship"
+      }
+    },
+    {
+      "kind": "gap",
+      "english": "Resume required — prepare one before applying",
+      "key": "resume_required",
+      "params": {}
+    },
+    {
+      "kind": "fit",
+      "english": "Your experience can support a thoughtful faculty outreach",
+      "key": "experience_faculty",
+      "params": {}
+    },
+    {
+      "kind": "fit",
+      "english": "Your experience level is competitive",
+      "key": "experience_competitive",
+      "params": {}
+    },
+    {
+      "kind": "gap",
+      "english": "Your experience signal is limited — ask what preparation would help",
+      "key": "experience_limited_faculty",
+      "params": {}
+    },
+    {
+      "kind": "gap",
+      "english": "Limited prior experience — position may be competitive",
+      "key": "experience_limited",
+      "params": {}
+    },
+    {
+      "kind": "fit",
+      "english": "You're comfortable with direct outreach",
+      "key": "outreach_comfortable",
+      "params": {}
+    },
+    {
+      "kind": "fit",
+      "english": "Low application effort — quick to apply",
+      "key": "effort_low",
+      "params": {}
+    },
+    {
+      "kind": "gap",
+      "english": "High application effort — plan time for materials",
+      "key": "effort_high",
+      "params": {}
+    },
+    {
+      "kind": "fit",
+      "english": "Paid opportunity",
+      "key": "paid",
+      "params": {}
+    },
+    {
+      "kind": "fit",
+      "english": "Includes stipend",
+      "key": "stipend",
+      "params": {}
+    },
+    {
+      "kind": "fit",
+      "english": "Explicitly welcomes first-time researchers",
+      "key": "first_time_welcome",
+      "params": {}
+    },
+    {
+      "kind": "fit",
+      "english": "At your university",
+      "key": "at_your_university",
+      "params": {}
+    },
+    {
+      "kind": "fit",
+      "english": "Faculty profile from a major research university",
+      "key": "brand_faculty_university",
+      "params": {}
+    },
+    {
+      "kind": "fit",
+      "english": "Major research university — strong resume builder",
+      "key": "brand_university",
+      "params": {}
+    },
+    {
+      "kind": "fit",
+      "english": "Faculty profile from a recognized research institution",
+      "key": "brand_faculty_institution",
+      "params": {}
+    },
+    {
+      "kind": "fit",
+      "english": "Prestigious institution — strong resume builder",
+      "key": "brand_institution",
+      "params": {}
+    },
+    {
+      "kind": "fit",
+      "english": "Potential for publication or long-term involvement",
+      "key": "publication_pathway",
+      "params": {}
+    },
+    {
+      "kind": "fit",
+      "english": "Matches your interests: genomics, machine learning",
+      "key": "interests_match",
+      "params": {
+        "terms": "genomics, machine learning"
+      }
+    },
+    {
+      "kind": "fit",
+      "english": "Your interest in genomics closely matches Prof. Ada Lovelace's work on genomics, proteomics",
+      "key": "interest_lab_work",
+      "params": {
+        "interest": "genomics",
+        "lab": "Prof. Ada Lovelace",
+        "work": "genomics, proteomics"
+      }
+    },
+    {
+      "kind": "fit",
+      "english": "Prof. Ada Lovelace also works on genomics, proteomics",
+      "key": "lab_also_works",
+      "params": {
+        "lab": "Prof. Ada Lovelace",
+        "work": "genomics, proteomics"
+      }
+    },
+    {
+      "kind": "fit",
+      "english": "Your interest in genomics closely matches their work on genomics",
+      "key": "interest_their_work",
+      "params": {
+        "interest": "genomics",
+        "work": "genomics"
+      }
+    },
+    {
+      "kind": "fit",
+      "english": "They also work on genomics",
+      "key": "they_also_work",
+      "params": {
+        "work": "genomics"
+      }
+    },
+    {
+      "kind": "fit",
+      "english": "Your research interests align with Prof. Ada Lovelace's focus area",
+      "key": "interests_lab_focus",
+      "params": {
+        "lab": "Prof. Ada Lovelace"
+      }
+    },
+    {
+      "kind": "gap",
+      "english": "Research area looks different from your stated interests",
+      "key": "topic_mismatch",
+      "params": {}
+    },
+    {
+      "kind": "gap",
+      "english": "Deadline has passed — verify if still accepting applications",
+      "key": "deadline_passed",
+      "params": {}
+    },
+    {
+      "kind": "fit",
+      "english": "Deadline in 3 days — apply soon",
+      "key": "deadline_soon",
+      "params": {
+        "days": "3"
+      }
+    },
+    {
+      "kind": "gap",
+      "english": "This program's start date has passed — check whether a new cycle is open",
+      "key": "start_passed",
+      "params": {}
+    },
+    {
+      "kind": "gap",
+      "english": "Targets graduate / PhD students — a reach for undergraduates",
+      "key": "grad_level_reach",
+      "params": {}
+    },
+    {
+      "kind": "fit",
+      "english": "Summer research — in season; applications are typically active now",
+      "key": "summer_in_season",
+      "params": {}
+    },
+    {
+      "kind": "gap",
+      "english": "Faculty availability and eligibility are not confirmed — verify when you contact them",
+      "key": "faculty_unconfirmed",
+      "params": {}
+    },
+    {
+      "kind": "fit",
+      "english": "This lab focuses on Genomics Lab — sequencing",
+      "key": "lab_focus",
+      "params": {
+        "summary": "Genomics Lab — sequencing"
+      }
+    },
+    {
+      "kind": "fit",
+      "english": "Lovelace Lab (Biology)",
+      "key": "research_summary",
+      "params": {
+        "text": "Lovelace Lab (Biology)"
+      }
+    },
+    {
+      "kind": "gap",
+      "english": "Below your minimum match threshold — not shown in your results",
+      "key": "excluded_below_threshold",
+      "params": {}
+    },
+    {
+      "kind": "gap",
+      "english": "Hosted at another school — enable cross-school results to include it",
+      "key": "excluded_cross_school_hidden",
+      "params": {}
+    },
+    {
+      "kind": "gap",
+      "english": "Source profile states this faculty member is not currently accepting undergraduate students — excluded from your results",
+      "key": "excluded_faculty_not_accepting",
+      "params": {}
+    },
+    {
+      "kind": "gap",
+      "english": "No longer active — retired from your results",
+      "key": "excluded_inactive",
+      "params": {}
+    },
+    {
+      "kind": "gap",
+      "english": "This listing is closed and no longer recruiting — kept as reference, not in your results",
+      "key": "excluded_listing_closed",
+      "params": {}
+    },
+    {
+      "kind": "gap",
+      "english": "Restricted to another school's own students — not in your results",
+      "key": "excluded_other_school_campus",
+      "params": {}
+    },
+    {
+      "kind": "gap",
+      "english": "Published as reference material rather than an open listing — not in your results",
+      "key": "excluded_reference_only",
+      "params": {}
+    },
+    {
+      "kind": "gap",
+      "english": "Outside your selected opportunity types — not in your results",
+      "key": "excluded_seeking_type_mismatch",
+      "params": {}
+    },
+    {
+      "kind": "gap",
+      "english": "Not part of your current results",
+      "key": "excluded_other",
+      "params": {}
+    },
+    {
+      "kind": "gap",
+      "english": "Excluded from your results: our listing says this requires US citizenship or permanent residency — not confirmed on the program page",
+      "key": "excluded_restriction",
+      "params": {
+        "restriction": "citizenship_listing"
+      }
+    },
+    {
+      "kind": "gap",
+      "english": "Excluded from your results: may require US citizenship or permanent residency, by our reading of the page — not confirmed on the program page",
+      "key": "excluded_restriction",
+      "params": {
+        "restriction": "citizenship_read"
+      }
+    },
+    {
+      "kind": "gap",
+      "english": "Excluded from your results: may require US citizenship or permanent residency, per our listing and our reading of the page — not confirmed on the program page",
+      "key": "excluded_restriction",
+      "params": {
+        "restriction": "citizenship_listing_and_read"
+      }
+    },
+    {
+      "kind": "gap",
+      "english": "Employer does not offer visa sponsorship — excluded from your results",
+      "key": "excluded_restriction",
+      "params": {
+        "restriction": "citizenship_no_sponsorship"
+      }
+    },
+    {
+      "kind": "gap",
+      "english": "Requires US citizenship or permanent residency — excluded from your results",
+      "key": "excluded_restriction",
+      "params": {
+        "restriction": "citizenship_required"
+      }
+    }
+  ]
+}

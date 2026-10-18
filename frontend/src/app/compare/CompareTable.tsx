@@ -137,6 +137,8 @@ function toCanonicalSummary(
     bucket: resp.bucket,
     reasons_fit: Array.isArray(resp.reasons_fit) ? resp.reasons_fit : [],
     reasons_gap: Array.isArray(resp.reasons_gap) ? resp.reasons_gap : [],
+    reasons_fit_keys: resp.reasons_fit_keys,
+    reasons_gap_keys: resp.reasons_gap_keys,
     explanation: typeof resp.explanation === 'string' ? resp.explanation : '',
     method: resp.method === 'llm' ? 'llm' : 'local',
     matcher_version: resp.matcher_version,

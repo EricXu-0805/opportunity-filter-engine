@@ -1,4 +1,5 @@
 import type { EmailTargetConditions } from './email-target-conditions';
+import type { MatchReasonKey } from './match-reasons';
 import type { ResearchContext } from './research-context';
 
 // ── Filter values shared across surfaces ─────────────────────────────
@@ -493,6 +494,11 @@ export interface MatchResult {
   bucket: MatchBucket;
   reasons_fit: string[];
   reasons_gap: string[];
+  // Each reason line's template key and params, index-aligned with the lists
+  // above (null where no template wrote the line) — what a zh card renders
+  // from (M107). Absent from an older backend: the lines then show as served.
+  reasons_fit_keys?: (MatchReasonKey | null)[] | null;
+  reasons_gap_keys?: (MatchReasonKey | null)[] | null;
   next_steps: string[];
   // One concrete, student-specific sentence from the LLM rerank — the card's
   // lead line for top-K results; absent outside the reranked window.

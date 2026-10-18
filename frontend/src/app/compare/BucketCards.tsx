@@ -3,6 +3,7 @@
 import { ExternalLink, Sparkles, Star, Shield, Mountain } from 'lucide-react';
 import type { CompareRow } from './scores';
 import { useT } from '@/i18n/client';
+import { localizeMatchReasons } from '@/lib/match-reasons';
 import { noDeadlineKind } from '@/app/opportunities/[id]/detail-utils';
 import type { Opportunity } from '@/lib/types';
 import {
@@ -156,7 +157,7 @@ function ScoreBars({ overall, color }: { overall: number; color: string }) {
 }
 
 export default function BucketCards({ rows }: Props) {
-  const { t } = useT();
+  const { t, locale } = useT();
 
   const colsClass = rows.length === 2 ? 'md:grid-cols-2' : rows.length === 3 ? 'md:grid-cols-3' : 'md:grid-cols-4';
 
@@ -188,8 +189,8 @@ export default function BucketCards({ rows }: Props) {
           const bucket = displayBucket(match?.bucket);
           const style = BUCKET_STYLE[bucket];
           const isError = status === 'error' || !match;
-          const fits = match?.reasons_fit ?? [];
-          const gaps = match?.reasons_gap ?? [];
+          const fits = localizeMatchReasons(locale, match?.reasons_fit ?? [], match?.reasons_fit_keys);
+          const gaps = localizeMatchReasons(locale, match?.reasons_gap ?? [], match?.reasons_gap_keys);
           const isFacultyProfile = Boolean(
             opp.id.startsWith('faculty-')
             || (opp.source ?? '').toLowerCase().includes('faculty')
