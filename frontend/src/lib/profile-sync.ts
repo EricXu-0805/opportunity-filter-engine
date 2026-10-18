@@ -715,7 +715,7 @@ export function recordProfileIntent(
     ...(supersedes.length > 0 ? { supersedes } : {}),
   }, token);
   if (!op) return false;
-  markProfileFieldsDirty(effective, token, writer);
+  markProfileFieldsDirty(effective, token, writer, op);
   return true;
 }
 
@@ -727,6 +727,8 @@ function markProfileFieldsDirty(
   keys: readonly ProfileKey[],
   token: OwnerToken,
   writer: string = DEFAULT_WRITER,
+  /** The operation just recorded for these keys, when there is one. */
+  recorded?: JournalOp,
 ): void {
   ensureScope(token);
   const confirmed = readProfileSyncEnvelope()?.confirmed ?? null;
@@ -740,9 +742,14 @@ function markProfileFieldsDirty(
       existing.writers.add(writer);
       continue;
     }
+    // A chain starts where its first operation says it did: what THIS tab
+    // showed. The shared confirmed row may already hold another tab's save,
+    // and a second keystroke carrying that as its base turns the server's
+    // refusal into "nothing changed here" and a silent retry over it (M115).
+    const field = recorded?.fields.find((f) => f.key === key);
     fieldIntents.set(key, {
-      baseValue: base[key],
-      baseRevision: confirmed?.revision ?? 0,
+      baseValue: field ? (field.base.present ? field.base.value : undefined) : base[key],
+      baseRevision: field ? recorded!.baseRevision : confirmed?.revision ?? 0,
       version: 1,
       writers: new Set([writer]),
       hasUnstaged: false,
