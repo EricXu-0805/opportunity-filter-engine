@@ -326,6 +326,30 @@ class TestSchoolAggregation:
         assert school["coverage_last_good_count"] == 15
         assert school["coverage_delta"] == -5
 
+    def test_a_healthy_latest_attempt_adds_nothing_to_the_coverage_change(self):
+        """Neither a corpus baseline nor an older last good count may turn a
+        healthy attempt into lost coverage."""
+        ledger = _ledger_with({
+            "ucb_eecs_faculty": ("ucb", 2, sh.SUCCESS_NONZERO),
+        })
+        # Healthy with no last good count on record, measured before against
+        # the 12 records the corpus held.
+        ledger["sources"]["ucb_math_faculty"] = {
+            "school": "ucb", "status": sh.SUCCESS_NONZERO, "current_count": 4,
+            "baseline_count": 12, "last_good_count": None,
+            "last_success_at": (NOW - timedelta(days=1)).isoformat(),
+        }
+        # Healthy with no usable count, measured before against its last 30.
+        ledger["sources"]["ucb_ling_faculty"] = {
+            "school": "ucb", "status": sh.VALID_ZERO, "current_count": None,
+            "baseline_count": 30, "last_good_count": 30,
+            "last_success_at": (NOW - timedelta(days=1)).isoformat(),
+        }
+        school = sh.school_rows(ledger, NOW, ALL)[0]
+        assert school["coverage_current_count"] == 14
+        assert school["coverage_last_good_count"] == 14
+        assert school["coverage_delta"] == 0
+
     def test_corpus_report_counts_states_and_names_stale_schools(self):
         ledger = _ledger_with({
             "ucb_eecs_faculty": ("ucb", 2, sh.SUCCESS_NONZERO),

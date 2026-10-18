@@ -531,13 +531,16 @@ def school_rows(
     * ``coverage_current_count`` - sum of each source's ``current_count``,
       what its latest attempt emitted; an attempt with no usable count
       (None) adds 0.
-    * ``coverage_last_good_count`` - sum of each source's
-      ``last_good_count``, what its last healthy attempt emitted; where none
-      is recorded, its ``baseline_count`` (the active records the corpus held
-      for it at its latest attempt), else 0.
+    * ``coverage_last_good_count`` - for a source whose latest attempt was
+      healthy, that attempt's own count (the same number it adds to the
+      current count); otherwise its ``last_good_count``, what its last
+      healthy attempt emitted, and where none is recorded its
+      ``baseline_count`` (the active records the corpus held for it at its
+      latest attempt), else 0.
     * ``coverage_delta`` - current minus last good. A source whose latest
-      attempt was healthy adds 0 by construction, so a negative delta is the
-      records the school's degraded sources no longer confirm.
+      attempt was healthy adds 0 whatever its recorded counts say, so a
+      negative delta is the records the school's degraded sources no longer
+      confirm.
     """
     now = now.astimezone(UTC) if now is not None else datetime.now(UTC)
     shards = ledger.get("shards") or {}
@@ -570,12 +573,18 @@ def school_rows(
         ]
         successes = [s for s in successes if s is not None]
         never_succeeded = len(rows) - len(successes)
-        coverage_current = sum(_count(r["current_record_count"]) or 0 for r in rows)
+        coverage_current = 0
         coverage_last_good = 0
         for r in rows:
-            good = _count(r["last_good_record_count"])
-            if good is None:
-                good = _count(r["baseline_record_count"]) or 0
+            current = _count(r["current_record_count"]) or 0
+            if r["status"] in HEALTHY_OUTCOMES:
+                # What a healthy attempt emitted is its own last good count.
+                good = current
+            else:
+                good = _count(r["last_good_record_count"])
+                if good is None:
+                    good = _count(r["baseline_record_count"]) or 0
+            coverage_current += current
             coverage_last_good += good
         shard_row = shards.get(school)
         shard_row = shard_row if isinstance(shard_row, dict) else {}
