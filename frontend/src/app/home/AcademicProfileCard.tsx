@@ -1,12 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { ChevronDown, Globe, GraduationCap } from 'lucide-react';
 import Card from '@/components/Card';
 import SkillTags from '@/components/SkillTags';
 import CourseList from '@/components/CourseList';
 import MajorTags from '@/components/MajorTags';
 import UniversitySwitcherModal from '@/components/UniversitySwitcherModal';
+import { SchoolFreshnessNote } from '@/components/SchoolFreshnessNote';
 import { useLocale } from '@/i18n/client';
 import type { ProfileData } from '@/lib/types';
 import { courseRows } from '@/lib/course-status';
@@ -157,7 +158,7 @@ export function AcademicProfileCard({
         </div>
 
         <AcademicSchoolPicker key={identityGeneration} homeSchool={homeSchool}
-          schoolName={schoolName} viewSnapshot={viewSnapshot} t={t} />
+          schoolName={schoolName} viewSnapshot={viewSnapshot} t={t} locale={locale} />
 
         <div>
           <label htmlFor="college" className="block text-sm font-medium text-gray-700 mb-2">
@@ -395,12 +396,15 @@ export function AcademicProfileCard({
   );
 }
 
-function AcademicSchoolPicker({ homeSchool, schoolName, viewSnapshot, t }: {
-  homeSchool: string; schoolName: string; viewSnapshot: ProfileViewSnapshot | null; t: TFunc;
+function AcademicSchoolPicker({ homeSchool, schoolName, viewSnapshot, t, locale }: {
+  homeSchool: string; schoolName: string; viewSnapshot: ProfileViewSnapshot | null; t: TFunc; locale: string;
 }) {
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const [switching, setSwitching] = useState(false);
   const [switchError, setSwitchError] = useState(false);
+  // Read with the Change button, the one control on this row, so the date is
+  // heard by someone tabbing through the form and not only by someone reading it.
+  const freshnessId = useId();
   // Synchronous double-click gate. `switching` is state: two clicks in the
   // same tick both read the old value and both start a confirm.
   const switchInFlightRef = useRef(false);
@@ -454,11 +458,13 @@ function AcademicSchoolPicker({ homeSchool, schoolName, viewSnapshot, t }: {
         <button
           type="button"
           onClick={openSwitcher}
+          aria-describedby={freshnessId}
           className="ml-auto shrink-0 text-[13px] font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
         >
           {t('home.form.changeSchool')}
         </button>
       </div>
+      <SchoolFreshnessNote id={freshnessId} slug={homeSchool} t={t} locale={locale} />
       {switcherOpen && (
         <UniversitySwitcherModal
           initialSelectedSlug={homeSchool}

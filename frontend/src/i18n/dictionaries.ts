@@ -2801,6 +2801,20 @@ export const en = {
     confirm: 'Yes, this is my school',
     failed: "We couldn't save that school. Nothing was changed — please try again.",
   },
+  // "Last checked" is the newest date any of the school's pages was read
+  // successfully, not a date every record was verified; the hints qualify it.
+  // The picker hints stay short enough for one line on a 375px phone.
+  schoolFreshness: {
+    lastChecked: 'Last checked: {date}',
+    neverChecked: 'No successful check on record',
+    partlyUnchecked: "Some pages couldn't be read in recent checks.",
+    stale: 'Professor pages failed recent checks.',
+    resultsLastChecked: '{school}: last checked {date}.',
+    resultsNeverChecked: '{school}: no successful check on record.',
+    resultsOtherStale: 'Also in these results: {schools}. Recent checks of their professor pages failed, so their data may be out of date.',
+    resultsOtherStaleOne: 'Also in these results: {schools}. Recent checks of its professor pages failed, so its data may be out of date.',
+    moreSchools: '{count} more',
+  },
   fellowships: {
     title: 'Research fellowships & summer programs',
     subtitle: 'Discover undergraduate fellowships, REUs, and funded summer programs across top universities. Filter by program type, international friendliness, funding, and deadline.',
@@ -8176,6 +8190,17 @@ export const zh = {
     note: '一次性确认：匹配结果和校园数据都以这所学校为准。确认或改选正确的学校后不会再问。之后仍可随时在个人资料里更改。',
     confirm: '对，就是这所',
     failed: '没能保存这所学校，什么都没有改动，请再试一次。',
+  },
+  schoolFreshness: {
+    lastChecked: '最近成功检查：{date}',
+    neverChecked: '尚无成功检查的记录',
+    partlyUnchecked: '部分页面在最近的检查中未能读取。',
+    stale: '教授页面在最近的检查中未能读取。',
+    resultsLastChecked: '{school}：最近成功检查 {date}。',
+    resultsNeverChecked: '{school}：尚无成功检查的记录。',
+    resultsOtherStale: '结果中还有 {schools}：最近的检查未能读取它们的教授页面，数据可能已过时。',
+    resultsOtherStaleOne: '结果中还有 {schools}：最近的检查未能读取它的教授页面，数据可能已过时。',
+    moreSchools: '另外 {count} 所',
   },
   fellowships: {
     title: '研究奖学金与暑期项目',

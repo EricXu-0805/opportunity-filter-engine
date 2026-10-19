@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 vi.mock('@/lib/school-confirmation', () => ({
@@ -30,6 +30,7 @@ import { DEFAULT_PROFILE } from './types';
 import { translate } from '@/i18n/translate';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import { makeProfileViewSnapshot, type ProfileViewSnapshot } from '@/lib/profile-sync';
+import { SCHOOL_FRESHNESS_SCHEMA, resetSchoolFreshnessForTests } from '@/lib/school-freshness';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
 import type { ProfileData } from '@/lib/types';
 
@@ -128,6 +129,47 @@ describe('AcademicProfileCard — school row + switcher entry', () => {
     fireEvent.click(screen.getByText('common.cancel'));
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(update).not.toHaveBeenCalled();
+  });
+});
+
+describe('AcademicProfileCard — when the selected school was last checked (checklist M10)', () => {
+  const FRESHNESS = {
+    schema: SCHOOL_FRESHNESS_SCHEMA,
+    schools: {
+      uiuc: { last_checked_at: '2026-10-12T12:00:00+00:00', status: 'partly_unchecked' },
+      swarthmore: { last_checked_at: '2026-09-05T12:00:00+00:00', status: 'stale' },
+    },
+  };
+
+  beforeEach(() => {
+    resetSchoolFreshnessForTests();
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => FRESHNESS }) as unknown as Response));
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    resetSchoolFreshnessForTests();
+  });
+
+  it('shows the date and hint under the picker, before the next field', async () => {
+    renderCard();
+    const note = screen.getByTestId('school-freshness');
+    await waitFor(() => expect(note).toHaveTextContent('schoolFreshness.lastChecked:Oct 12, 2026'));
+    expect(note).toHaveTextContent('schoolFreshness.partlyUnchecked');
+    const change = screen.getByText('home.form.changeSchool');
+    const college = document.querySelector('label[for="college"]')!;
+    expect(change.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(note.compareDocumentPosition(college) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(fetch).toHaveBeenCalledWith('/api/opportunities/freshness');
+    // Someone tabbing through the form hears it with the one control on the row.
+    expect(screen.getByRole('button', { name: 'home.form.changeSchool' })).toHaveAccessibleDescription(
+      'schoolFreshness.lastChecked:Oct 12, 2026 schoolFreshness.partlyUnchecked');
+  });
+
+  it('follows the selected school: Swarthmore keeps its real date with the stale hint', async () => {
+    renderCard({ home_school: 'swarthmore' });
+    const note = screen.getByTestId('school-freshness');
+    await waitFor(() => expect(note).toHaveTextContent('schoolFreshness.lastChecked:Sep 5, 2026'));
+    expect(note).toHaveTextContent('schoolFreshness.stale');
   });
 });
 
