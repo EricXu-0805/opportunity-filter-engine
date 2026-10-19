@@ -160,9 +160,11 @@ describe('AcademicProfileCard — when the selected school was last checked (che
     expect(change.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(note.compareDocumentPosition(college) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(fetch).toHaveBeenCalledWith('/api/opportunities/freshness');
-    // Someone tabbing through the form hears it with the one control on the row.
+    // Someone tabbing through the form hears it with the one control on the
+    // row, after the name of the school it is about.
     expect(screen.getByRole('button', { name: 'home.form.changeSchool' })).toHaveAccessibleDescription(
-      'schoolFreshness.lastChecked:Oct 12, 2026 schoolFreshness.partlyUnchecked');
+      'University of Illinois Urbana-Champaign schoolFreshness.lastChecked:Oct 12, 2026 '
+      + 'schoolFreshness.partlyUnchecked');
   });
 
   it('follows the selected school: Swarthmore keeps its real date with the stale hint', async () => {
@@ -170,6 +172,21 @@ describe('AcademicProfileCard — when the selected school was last checked (che
     const note = screen.getByTestId('school-freshness');
     await waitFor(() => expect(note).toHaveTextContent('schoolFreshness.lastChecked:Sep 5, 2026'));
     expect(note).toHaveTextContent('schoolFreshness.stale');
+    expect(screen.getByRole('button', { name: 'home.form.changeSchool' })).toHaveAccessibleDescription(
+      /^Swarthmore College schoolFreshness\.lastChecked/);
+  });
+
+  it.each([
+    ['uiuc', 'bg-gray-400'],
+    ['swarthmore', 'bg-amber-500'],
+  ])('does not leave the dot beside %s green once the hint qualifies it', async (school, colour) => {
+    renderCard({ home_school: school });
+    const dot = screen.getByTestId('school-freshness-dot');
+    await waitFor(() => expect(dot).toHaveClass(colour));
+    expect(dot).not.toHaveClass('bg-emerald-500');
+    const name = screen.getByText(school === 'uiuc'
+      ? 'University of Illinois Urbana-Champaign' : 'Swarthmore College');
+    expect(dot.nextElementSibling).toBe(name);
   });
 });
 

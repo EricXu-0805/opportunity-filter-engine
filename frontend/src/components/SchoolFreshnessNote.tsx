@@ -6,18 +6,48 @@ import {
   useSchoolFreshness,
   type SchoolFreshness,
   type SchoolFreshnessState,
+  type SchoolFreshnessStatus,
 } from '@/lib/school-freshness';
 import { bySlug } from '@/lib/schools';
 
 type T = (path: string, vars?: Record<string, string | number>) => string;
 
-const HINT = {
-  partly_unchecked: 'schoolFreshness.partlyUnchecked',
-  stale: 'schoolFreshness.stale',
-} as const;
-
 function checkedDate(entry: SchoolFreshness, locale: string): string | null {
   return entry.lastCheckedAt ? formatCheckedDate(entry.lastCheckedAt, locale) : null;
+}
+
+/**
+ * The hint after a school's date, or null for a current school.
+ *
+ * A hint says only what the ledger holds. A school goes stale by age alone
+ * when refreshes stop, with no attempt after its last success, so no hint
+ * claims that a check failed. The stale hint's "since" is the date shown
+ * before it; a school with no successful check has no date to be read since.
+ */
+function hintKey(entry: SchoolFreshness, date: string | null): string | null {
+  if (entry.status === 'partly_unchecked') return 'schoolFreshness.partlyUnchecked';
+  if (entry.status === 'stale') return date ? 'schoolFreshness.stale' : 'schoolFreshness.staleNeverChecked';
+  return null;
+}
+
+const DOT: Record<SchoolFreshnessStatus, string> = {
+  current: 'bg-emerald-500',
+  partly_unchecked: 'bg-gray-400',
+  stale: 'bg-amber-500',
+};
+
+/**
+ * The dot beside the selected school's name: green, as it was before the
+ * school had a date, unless the answer qualifies the school. Then it takes
+ * the colour of the hint under it.
+ */
+export function SchoolFreshnessDot({ slug }: { slug: string }) {
+  const freshness = useSchoolFreshness();
+  const status = freshness.status === 'ready' ? freshness.schools.get(slug)?.status : undefined;
+  return (
+    <span data-testid="school-freshness-dot"
+      className={`w-2.5 h-2.5 rounded-full shrink-0 ${DOT[status ?? 'current']}`} />
+  );
 }
 
 /**
@@ -34,24 +64,29 @@ export function SchoolFreshnessNote({ slug, t, locale, id }: {
   const freshness = useSchoolFreshness();
   const entry = freshness.status === 'ready' ? freshness.schools.get(slug) : undefined;
   const date = entry ? checkedDate(entry, locale) : null;
+  const hint = entry ? hintKey(entry, date) : null;
   return (
     <div id={id} data-testid="school-freshness" className="mt-2 min-h-[2rem] text-xs leading-4 text-gray-500">
       {entry && (
         <p>{date ? t('schoolFreshness.lastChecked', { date }) : t('schoolFreshness.neverChecked')}</p>
       )}
-      {entry && entry.status !== 'current' && (
-        <p className={entry.status === 'stale' ? 'text-amber-700' : undefined}>{t(HINT[entry.status])}</p>
+      {entry && hint && (
+        <p className={entry.status === 'stale' ? 'text-amber-700' : undefined}>{t(hint)}</p>
       )}
     </div>
   );
 }
 
-/** Up to three names, then "N more", joined the way the reader's language joins a list. */
+/**
+ * Up to three names, then "N more". Chinese lists Latin names with 、:
+ * Intl's Chinese list runs them into 和 ("Barnard和Swarthmore").
+ */
 function schoolList(names: string[], locale: string, t: T): string {
-  const parts = names.length > 3
-    ? [...names.slice(0, 3), t('schoolFreshness.moreSchools', { count: names.length - 3 })]
-    : names;
-  return new Intl.ListFormat(locale, { style: 'long', type: 'conjunction' }).format(parts);
+  const shown = names.slice(0, 3);
+  const more = names.length > 3 ? t('schoolFreshness.moreSchools', { count: names.length - 3 }) : null;
+  if (locale.startsWith('zh')) return more ? `${shown.join('、')} ${more}` : shown.join('、');
+  return new Intl.ListFormat(locale, { style: 'long', type: 'conjunction' })
+    .format(more ? [...shown, more] : shown);
 }
 
 /**
@@ -85,6 +120,7 @@ export function ResultsSchoolFreshness({ freshness, homeSchool, shownSchools, t,
   const name = (slug: string) => bySlug(slug)?.shortName ?? slug;
   const home = state.schools.get(homeSchool);
   const date = home ? checkedDate(home, locale) : null;
+  const hint = home ? hintKey(home, date) : null;
   const otherStale = shownSchools
     .filter((slug) => slug !== homeSchool && state.schools.get(slug)?.status === 'stale')
     .map(name);
@@ -96,11 +132,12 @@ export function ResultsSchoolFreshness({ freshness, homeSchool, shownSchools, t,
           {date
             ? t('schoolFreshness.resultsLastChecked', { school: name(homeSchool), date })
             : t('schoolFreshness.resultsNeverChecked', { school: name(homeSchool) })}
-          {home.status !== 'current' && (
+          {hint && (
             <>
-              {' '}
+              {/* A Chinese sentence ends in a full-width 。, which carries its own space. */}
+              {locale.startsWith('zh') ? '' : ' '}
               <span className={home.status === 'stale' ? 'text-amber-700' : undefined}>
-                {t(HINT[home.status])}
+                {t(hint)}
               </span>
             </>
           )}

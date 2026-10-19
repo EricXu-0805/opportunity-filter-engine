@@ -8176,6 +8176,27 @@ class TestPublicSchoolFreshness:
             "schools"]["yale"]["status"] == "stale"
         assert len(calls) == 2
 
+    def test_an_answer_computed_exactly_at_the_stale_bound_is_not_kept_past_it(
+        self, monkeypatch, tmp_path,
+    ):
+        """yale's roster is exactly 17 days old when the first request comes:
+        still current, stale one second later. The answer from that first
+        request must not be kept until the next bound."""
+        from src.collectors import source_health
+
+        start = datetime(2026, 10, 18, 12, 0, tzinfo=UTC)
+        clock = self._clock(monkeypatch, start)
+        ledger = self._ledger(start)
+        _warn_days, stale_days = source_health.staleness_thresholds()
+        ledger["sources"]["yale_faculty"]["last_success_at"] = self._at(start, days=stale_days)
+        self._install(monkeypatch, tmp_path, ledger)
+
+        assert client.get("/api/opportunities/freshness").json()[
+            "schools"]["yale"]["status"] == "current"
+        clock.current = start + timedelta(seconds=1)
+        assert client.get("/api/opportunities/freshness").json()[
+            "schools"]["yale"]["status"] == "stale"
+
 
 class TestGitHubImportDoesNotReFetchTheSameUser:
     """Unauthenticated GitHub allows 60 requests an hour for the whole service

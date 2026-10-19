@@ -23,7 +23,7 @@ vi.mock('@/i18n/client', () => {
   // Production keeps t stable within a locale; a fresh function on every
   // render would repeatedly restart the results request during an error.
   const t = (key: string) => key;
-  return { useT: () => ({ t }) };
+  return { useT: () => ({ t, locale: 'en' }) };
 });
 
 const routerRef = { replace: vi.fn(), refresh: vi.fn(), push: vi.fn() };

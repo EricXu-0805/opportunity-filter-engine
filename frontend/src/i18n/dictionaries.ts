@@ -2803,16 +2803,19 @@ export const en = {
   },
   // "Last checked" is the newest date any of the school's pages was read
   // successfully, not a date every record was verified; the hints qualify it.
-  // The picker hints stay short enough for one line on a 375px phone.
+  // No hint says a check failed: a school also goes stale by age alone, when
+  // no run has come since its last success. The picker hints fit one line of
+  // the note at 360px (264px; 12px Inter measured 236px stale, 229px partly).
   schoolFreshness: {
     lastChecked: 'Last checked: {date}',
     neverChecked: 'No successful check on record',
-    partlyUnchecked: "Some pages couldn't be read in recent checks.",
-    stale: 'Professor pages failed recent checks.',
+    partlyUnchecked: "Some pages haven't been read recently.",
+    stale: "Professor pages haven't been read since.",
+    staleNeverChecked: 'Details may be out of date.',
     resultsLastChecked: '{school}: last checked {date}.',
     resultsNeverChecked: '{school}: no successful check on record.',
-    resultsOtherStale: 'Also in these results: {schools}. Recent checks of their professor pages failed, so their data may be out of date.',
-    resultsOtherStaleOne: 'Also in these results: {schools}. Recent checks of its professor pages failed, so its data may be out of date.',
+    resultsOtherStale: "Also in these results: {schools}. Their professor pages haven't been read successfully recently, so their data may be out of date.",
+    resultsOtherStaleOne: "Also in these results: {schools}. Its professor pages haven't been read successfully recently, so its data may be out of date.",
     moreSchools: '{count} more',
   },
   fellowships: {
@@ -8194,13 +8197,14 @@ export const zh = {
   schoolFreshness: {
     lastChecked: '最近成功检查：{date}',
     neverChecked: '尚无成功检查的记录',
-    partlyUnchecked: '部分页面在最近的检查中未能读取。',
-    stale: '教授页面在最近的检查中未能读取。',
+    partlyUnchecked: '这所学校有些页面最近没有成功读取。',
+    stale: '此后教授页面没有成功读取。',
+    staleNeverChecked: '信息可能已过时。',
     resultsLastChecked: '{school}：最近成功检查 {date}。',
     resultsNeverChecked: '{school}：尚无成功检查的记录。',
-    resultsOtherStale: '结果中还有 {schools}：最近的检查未能读取它们的教授页面，数据可能已过时。',
-    resultsOtherStaleOne: '结果中还有 {schools}：最近的检查未能读取它的教授页面，数据可能已过时。',
-    moreSchools: '另外 {count} 所',
+    resultsOtherStale: '结果中还有 {schools}：它们的教授页面最近没有成功读取，数据可能已过时。',
+    resultsOtherStaleOne: '结果中还有 {schools}：它的教授页面最近没有成功读取，数据可能已过时。',
+    moreSchools: '和另外 {count} 所',
   },
   fellowships: {
     title: '研究奖学金与暑期项目',

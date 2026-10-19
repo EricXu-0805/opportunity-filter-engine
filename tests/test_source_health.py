@@ -663,8 +663,56 @@ class TestPublicSchoolFreshness:
         assert before["yale"]["status"] == sh.PUBLIC_CURRENT
         assert after["yale"]["status"] == sh.PUBLIC_STALE
         # The campus check's own warn bound is the next change after that.
-        assert sh.next_freshness_change(ledger, change, eligible) == (
-            OCT18 + timedelta(days=warn_days))
+        assert sh.next_freshness_change(
+            ledger, change + timedelta(seconds=1), eligible) == OCT18 + timedelta(days=warn_days)
+
+    def test_an_answer_computed_at_a_bound_ends_at_that_bound(self):
+        """A source exactly at its stale bound still reads warn and turns stale
+        the moment after, so the answer computed then must not be valid until
+        the next bound: it would keep the school current for days."""
+        ledger = sh.empty_ledger()
+        _attempt(ledger, "yale_faculty", "yale", sh.SUCCESS_NONZERO, 1500,
+                 OCT18 - timedelta(days=16), 1500)
+        _attempt(ledger, "campus_graph:yale", "yale", sh.SUCCESS_NONZERO, 12, OCT18, 12)
+        eligible = monitored_sources()
+        bound = sh.next_freshness_change(ledger, OCT18, eligible)
+        assert sh.public_school_freshness(ledger, bound, eligible)["yale"]["status"] == (
+            sh.PUBLIC_CURRENT)
+        assert sh.next_freshness_change(ledger, bound, eligible) == bound
+
+    def test_a_school_turns_stale_by_age_alone_with_no_failed_attempt(self):
+        """When refreshes stop, nothing fails: each source's latest attempt
+        succeeded, and the school is stale once that success is older than
+        the stale bound. So the public hint may say the pages have not been
+        read since, never that a check failed (SchoolFreshnessNote.test.tsx,
+        "stale by age alone")."""
+        ledger = sh.empty_ledger()
+        last = OCT18 - timedelta(days=20)
+        _attempt(ledger, "yale_faculty", "yale", sh.SUCCESS_NONZERO, 1500, last, 1500)
+        _attempt(ledger, "campus_graph:yale", "yale", sh.SUCCESS_NONZERO, 12, last, 12)
+        assert all(row["status"] == sh.SUCCESS_NONZERO and row["consecutive_failures"] == 0
+                   for row in ledger["sources"].values())
+        public = sh.public_school_freshness(ledger, OCT18, monitored_sources())
+        assert public["yale"] == {
+            "last_checked_at": last.isoformat(timespec="seconds"), "status": sh.PUBLIC_STALE}
+
+    def test_a_source_never_read_successfully_leaves_its_school_partly_unchecked(self):
+        """Unknown, not recently failed: the one attempt on record for the
+        campus check is 40 days old. The hint may say some pages have not been
+        read recently, never that recent checks failed."""
+        ledger = sh.empty_ledger()
+        _attempt(ledger, "yale_faculty", "yale", sh.SUCCESS_NONZERO, 1500,
+                 OCT18 - timedelta(days=1), 1500)
+        _attempt(ledger, "campus_graph:yale", "yale", sh.SUSPICIOUS_ZERO, 0,
+                 OCT18 - timedelta(days=40))
+        eligible = monitored_sources()
+        campus = next(r for r in sh.source_rows(ledger, OCT18, eligible)
+                      if r["source"] == "campus_graph:yale")
+        assert campus["freshness"] == "unknown"
+        assert sh.public_school_freshness(ledger, OCT18, eligible)["yale"] == {
+            "last_checked_at": (OCT18 - timedelta(days=1)).isoformat(),
+            "status": sh.PUBLIC_PARTLY_UNCHECKED,
+        }
 
     def test_no_change_is_due_once_every_bound_has_passed_or_the_source_is_unmonitored(self):
         ledger = sh.empty_ledger()

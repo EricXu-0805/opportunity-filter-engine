@@ -754,14 +754,16 @@ def next_freshness_change(
     now: datetime,
     eligible: frozenset[str] | set[str],
 ) -> datetime | None:
-    """The first moment after ``now`` at which a monitored source's freshness
-    label changes, or None when none will without a new run.
+    """The first warn or stale bound of a monitored source at or after
+    ``now``: the label changes just past it. None when none will without a
+    new run.
 
     Freshness is an age, so an answer computed from this ledger stays true
     only until a source crosses the warn or stale bound. A cache keyed on the
     ledger file alone would keep calling a school current after its sources
     went stale with no run to rewrite the file, which is exactly when the
-    answer matters.
+    answer matters. A bound equal to ``now`` counts: the source still has its
+    old label then and a new one a moment later.
     """
     warn_days, stale_days = staleness_thresholds()
     bounds = []
@@ -773,7 +775,7 @@ def next_freshness_change(
             continue
         for days in (warn_days, stale_days):
             bound = success + timedelta(days=days)
-            if bound > now:
+            if bound >= now:
                 bounds.append(bound)
     return min(bounds) if bounds else None
 

@@ -7,7 +7,7 @@ import SkillTags from '@/components/SkillTags';
 import CourseList from '@/components/CourseList';
 import MajorTags from '@/components/MajorTags';
 import UniversitySwitcherModal from '@/components/UniversitySwitcherModal';
-import { SchoolFreshnessNote } from '@/components/SchoolFreshnessNote';
+import { SchoolFreshnessDot, SchoolFreshnessNote } from '@/components/SchoolFreshnessNote';
 import { useLocale } from '@/i18n/client';
 import type { ProfileData } from '@/lib/types';
 import { courseRows } from '@/lib/course-status';
@@ -403,7 +403,9 @@ function AcademicSchoolPicker({ homeSchool, schoolName, viewSnapshot, t, locale 
   const [switching, setSwitching] = useState(false);
   const [switchError, setSwitchError] = useState(false);
   // Read with the Change button, the one control on this row, so the date is
-  // heard by someone tabbing through the form and not only by someone reading it.
+  // heard by someone tabbing through the form and not only by someone reading
+  // it, after the name of the school it is about.
+  const schoolNameId = useId();
   const freshnessId = useId();
   // Synchronous double-click gate. `switching` is state: two clicks in the
   // same tick both read the old value and both start a confirm.
@@ -451,14 +453,14 @@ function AcademicSchoolPicker({ homeSchool, schoolName, viewSnapshot, t, locale 
         {t('home.form.institutionLabel')}
       </label>
       <div className="flex items-center gap-3 px-4 py-3 border border-gray-200 rounded-xl bg-gray-50">
-        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
-        <span className="text-sm font-medium text-gray-700 truncate">
+        <SchoolFreshnessDot slug={homeSchool} />
+        <span id={schoolNameId} className="text-sm font-medium text-gray-700 truncate">
           {schoolName}
         </span>
         <button
           type="button"
           onClick={openSwitcher}
-          aria-describedby={freshnessId}
+          aria-describedby={`${schoolNameId} ${freshnessId}`}
           className="ml-auto shrink-0 text-[13px] font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
         >
           {t('home.form.changeSchool')}
