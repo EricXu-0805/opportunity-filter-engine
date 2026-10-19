@@ -19,6 +19,8 @@ replaced by a placeholder. No test here touches the network.
 from __future__ import annotations
 
 import json
+import re
+import time
 from pathlib import Path
 
 import pytest
@@ -87,6 +89,16 @@ def test_eecs_keeps_its_professors_and_drops_teaching_and_adjunct_ranks(run):
         "Nicolaos G. and Sue Curtis Alexopoulos Presidential Chair and")
     assert lee["keywords"][:2] == ["Signal processing", "estimation and detection theory"]
     assert lee["contact_email"] == "person1@uci.edu"
+
+
+def test_the_rank_pattern_stays_fast_on_a_card_built_to_stall_it():
+    """A long run of degrees after the name link, with no label after it, took
+    8.5 s with a backtracking pattern; the rank pattern reads every card."""
+    pattern = re.compile(uci_faculty._ENG["title_html_re"], re.I | re.S)
+    card = '<a href="/directory/x.php">A</a>' + ", Ph.D" * 20000
+    started = time.perf_counter()
+    assert pattern.search(card) is None
+    assert time.perf_counter() - started < 1.0
 
 
 def test_a_degree_left_outside_the_name_link_stays_out_of_the_rank(run):

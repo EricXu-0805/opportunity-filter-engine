@@ -79,9 +79,10 @@ _ENG = {
     "name": 'a[href*="/directory/"]',
     "link": 'a[href*="/directory/"]',
     "title": 'p span:not(:has(img, a)):not(:-soup-contains("Research Interests", "Email", "E-mail"))',
+    # Atomic degree run and a bounded rank keep this linear on any card.
     "title_html_re": (r'href="/directory/[^"]*"[^>]*>[^<]*</a>'
-                      r"(?:\s*,\s*(?:Ph\.?\s?D|Sc\.?\s?D|M\.?\s?D|P\.?\s?E)\.?)*"
-                      r"(.*?)<strong>\s*(?:Research Interests|E-?mail)"),
+                      r"(?>(?:\s*,\s*(?:Ph\.?\s?D|Sc\.?\s?D|M\.?\s?D|P\.?\s?E)\.?)*)"
+                      r"(.{0,1500}?)<strong>\s*(?:Research Interests|E-?mail)"),
     "email": "a[href^='mailto:']",
     "research_re": r"Research Interests\s*:?\s*(?:<[^>]*>\s*)*:?\s*([^<]{4,400})",
 }
