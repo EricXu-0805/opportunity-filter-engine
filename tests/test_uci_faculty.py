@@ -1,4 +1,4 @@
-"""UC Irvine's Engineering rosters moved; fixture replays of the new pages.
+"""UC Irvine's Engineering and Mathematics rosters moved; fixture replays of the new pages.
 
 engineering.uci.edu left Drupal between the 2026-10-10 and 2026-10-17 refreshes.
 The 2026-10-17 run got a 404 for every ``/dept/<short>/faculty-staff/faculty``
@@ -6,6 +6,11 @@ roster, so EECS, MAE, BME, CBE, CEE and MSE read zero rows and their rows were
 last seen 2026-10-10. Each department now lists its faculty at
 ``/dept/<short>/people/faculty.php`` as hand-edited cards, and each person links
 to ``/directory/<last>_<first>.php`` instead of ``/users/<slug>``.
+
+math.uci.edu moved to WordPress. ``/people`` answered 404 on the 2026-08-22,
+10-10 and 10-17 refreshes (no Mathematics row has been seen since 2026-08-15),
+and the core faculty are a paged ``/role/core-faculty/`` archive that writes six
+names without the middle initial or second surname their rows were stored under.
 
 The fixtures are cards copied from those pages on 2026-10-18, every address
 replaced by a placeholder. No test here touches the network.
@@ -29,8 +34,10 @@ PAGES = {
     "https://engineering.uci.edu/dept/cbe/people/faculty.php": "cbe_faculty.html",
     "https://engineering.uci.edu/dept/cee/people/faculty.php": "cee_faculty.html",
     "https://engineering.uci.edu/dept/mse/people/faculty.php": "mse_faculty.html",
+    "https://math.uci.edu/role/core-faculty/": "math_core_faculty.html",
+    "https://math.uci.edu/role/core-faculty/page/2/": "math_core_faculty_2.html",
 }
-UNITS = {"EECS", "CBE", "CEE", "MSE"}
+UNITS = {"EECS", "CBE", "CEE", "MSE", "MATH"}
 SHARD = Path(__file__).resolve().parents[1] / "data" / "processed" / "shards" / "uci.json"
 
 
@@ -64,7 +71,7 @@ def test_every_samueli_department_reads_its_people_page():
 
 
 def test_the_new_selectors_are_strictly_valid():
-    for short in ("EECS",):
+    for short in ("EECS", "MATH"):
         sel = next(d for d in uci_faculty.SCHOOL["departments"]
                    if d["short"] == short)["scrape"]["selectors"]
         for key in ("card", "name", "link", "title", "email"):
@@ -122,6 +129,14 @@ def test_materials_drops_its_emeriti_visitors_and_lecturers(run):
     assert "Distinguished Professor" in records["Xiaoqing Pan"]["metadata"]["faculty_title"]
 
 
+def test_mathematics_walks_the_core_faculty_archive_past_teaching_ranks(run):
+    records, _ = run
+    assert _unit(records, "MATH") == {"Jun Allard", "Michael Cranston", "German Enciso",
+                                      "Isaac Goldbring", "Zhiqin Lu"}
+    assert records["Zhiqin Lu"]["metadata"]["faculty_title"] == "Department Chair & Professor"
+    assert records["Isaac Goldbring"]["url"] == "https://math.uci.edu/person/goldbring-isaac/"
+
+
 def test_every_unit_accounts_for_every_card(run):
     _, ledger = run
     counts = {u: {k: e["coverage"][k] for k in (
@@ -136,6 +151,8 @@ def test_every_unit_accounts_for_every_card(run):
                 "classified_nonfaculty_rows": 1, "unparsed_rows": 0},
         "mse": {"raw_roster_rows": 7, "parsed_faculty_rows": 4,
                 "classified_nonfaculty_rows": 3, "unparsed_rows": 0},
+        "math": {"raw_roster_rows": 7, "parsed_faculty_rows": 5,
+                 "classified_nonfaculty_rows": 2, "unparsed_rows": 0},
     }
 
 
@@ -155,4 +172,7 @@ def test_the_moved_rows_keep_their_corpus_ids(run):
                if r["id"] in stored and stored[r["id"]] != n}
     assert renamed == {
         "Amir Aghakouchak": "Amir Aghakouchak, Ph.D., P.E.",
+        "Michael Cranston": "Michael C. Cranston",
+        "German Enciso": "German A. Enciso Ruiz",
+        "Isaac Goldbring": "Isaac M. Goldbring",
     }

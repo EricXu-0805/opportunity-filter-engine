@@ -10,9 +10,10 @@ Second UC-system rollout school after UCSD. Directory markup by family
   pages; Materials lists its emeriti, visitors and lecturers below the core
   faculty, and the ladder filter drops them). Emails and a "Research Interests:"
   line are on the listing card.
-- **Physical Sciences** (Drupal Views, but a different field schema per dept):
-  Chemistry and Mathematics are ``tr``-row tables gated to the "Faculty" position
-  section; Earth System Science is a ``div.views-row`` grid. Physics & Astronomy
+- **Physical Sciences** (a different schema per dept): Chemistry is a Drupal
+  ``tr``-row table gated to the "Faculty" position section; Mathematics (WordPress)
+  lists its core faculty on a paged ``/role/core-faculty/`` archive; Earth System
+  Science is a ``div.views-row`` grid. Physics & Astronomy
   serves its faculty listing under an HTTP 404 status (a Drupal soft-404 that a
   strict GET rejects), so it fetches through the headless browser
   (``scrape.render``), which ignores the status line; the dedicated
@@ -49,10 +50,13 @@ ids namespaced by department short-code. Audience "unknown".
 Moved 2026 (found 2026-10-18): engineering.uci.edu left Drupal between the
 2026-10-10 and 2026-10-17 refreshes. The old ``/dept/<short>/faculty-staff/
 faculty`` rosters answer 404 and profile links went from ``/users/<slug>`` to
-``/directory/<last>_<first>.php``. Ids hash the department and the name, so a
-moved person keeps their id wherever the new page writes the name as before;
-``id_names`` maps the one Civil & Environmental row stored with its credentials
-in the name.
+``/directory/<last>_<first>.php``. math.uci.edu moved to WordPress: the
+2026-08-22, 10-10 and 10-17 refreshes read a 404 at ``/people``, and no
+Mathematics row has been seen since 2026-08-15. Ids hash the department and the
+name, so a moved person keeps their id wherever the new page writes the name as
+before; ``id_names`` maps the seven it writes another way (six Mathematics names
+without a middle initial or second surname, and one Civil & Environmental row
+stored with its credentials in the name).
 """
 
 from __future__ import annotations
@@ -210,7 +214,7 @@ SCHOOL: dict = {
          "id_names": {"Amir Aghakouchak": "Amir Aghakouchak, Ph.D., P.E."}},
         _eng("MSE", "Department of Materials Science & Engineering",
              ["Materials Science & Engineering"], "mse"),
-        # ---- Physical Sciences (Drupal Views, per-dept field schema) --------
+        # ---- Physical Sciences (per-dept schema) ----------------------------
         _dept(
             "CHEM", "Department of Chemistry",
             ["Chemistry", "Chemistry (BS)", "Pharmaceutical Sciences"],
@@ -239,24 +243,35 @@ SCHOOL: dict = {
                 },
             },
         ),
-        _dept(
+        {**_dept(
             "MATH", "Department of Mathematics",
             ["Mathematics", "Applied Mathematics", "Data Science"],
-            "https://www.math.uci.edu/people",
+            "https://math.uci.edu/role/core-faculty/",
             {
+                # WordPress "person" posts, twelve to a page; this role archive
+                # holds the core faculty only. The rank is the field after the
+                # <hr> under the name.
                 "selectors": {
-                    "card": "tr.odd, tr.even",
-                    "name": "td.views-field-field-name a",
-                    "title": "td.views-field-field-job-title",
-                    "email": "td.views-field-field-email",
-                    "link": "td.views-field-field-name a",
-                    "research_re": r"views-field-field-research-area[^>]*>\s*(?:<[^>]+>\s*)*([^<]{3,200})",
+                    "card": "li.wp-block-post.person",
+                    "name": "h3 .value",
+                    "link": "a[href*='/person/']",
+                    "title": "hr + div .value",
+                    "email": "a[href^='mailto:']",
                 },
-                "field_filter": {"selector": "td.views-field-field-position",
-                                 "include": r"^\s*Faculty\s*$"},
                 "ladder_filter": _LADDER,
+                "paginate": {"mode": "path", "param": "page", "start": 2, "max": 8},
             },
         ),
+         # The WordPress site writes these names without the middle initial
+         # (or second surname) the Drupal site gave them.
+         "id_names": {
+             "German Enciso": "German A. Enciso Ruiz",
+             "Isaac Goldbring": "Isaac M. Goldbring",
+             "Jeffrey Streets": "Jeffrey D. Streets",
+             "Matthew Foreman": "Matthew D. Foreman",
+             "Michael Cranston": "Michael C. Cranston",
+             "Patrick Guidotti": "Patrick Q. Guidotti",
+         }},
         _dept(
             "PHYS", "Department of Physics & Astronomy",
             ["Physics", "Applied Physics", "Astrophysics"],
