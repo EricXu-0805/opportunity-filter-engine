@@ -2,7 +2,12 @@
 
 import pytest
 
-from backend.lib.email_claims import skill_level_violations, unchosen_paper_claims, unsupported_action_claims
+from backend.lib.email_claims import (
+    skill_level_violations,
+    unchosen_paper_claims,
+    unsupported_action_claims,
+    unsupported_opening_claims,
+)
 from backend.lib.email_contact_context import paper_reading_sentence
 
 
@@ -268,3 +273,43 @@ def test_a_reading_claim_after_a_conditional_one_in_the_same_clause_is_still_che
     sentence = _confirmed(level)
     body = f"{sentence} {claim}"
     assert unsupported_action_claims(body, confirmed_reading_sentence=sentence) == ["unsupported completed-reading claim"]
+
+
+# M30: for a target with no posted opening, a sentence naming a specific
+# opening of the professor is rejected; a sentence with a question mark or
+# if/whether/unless anywhere is a hedge, and other senses of the words pass.
+@pytest.mark.parametrize("text", [
+    "I am writing to apply for the open position in your lab.", "I saw your open position.",
+    "I am responding to the position you posted.", "The position you advertised fits my background.",
+    "I found your job posting on Handshake.", "I saw your lab's opening.",
+    "I am writing in response to your recent job posting.",
+    "Your group's available research positions match my background.",
+    "I am applying for the advertised RA position in your group.",
+])
+def test_a_named_opening_is_an_opening_claim(text):
+    assert unsupported_opening_claims(text) == ["unsupported opening claim"]
+
+
+@pytest.mark.parametrize("text", [
+    "Do you have any openings?", "If you have any openings, I would be glad to help.",
+    "I am writing to ask whether you are taking students.",
+    "Could I ask whether you have any current or upcoming research openings for a student?",
+    "I am writing to ask whether you have a research opening in your work.",
+    "Is the position you posted still open?", "I wonder if you have any open positions.",
+    "I would like to know whether the position you posted is still available.",
+    "I did not see a job posting on your site.", "Your position on sparse training interests me.",
+    "I am interested in the role of microglia in your lab's models.", "Your opening remarks were helpful.",
+    "I would like to apply my Python skills to your research.", "I hope to apply to graduate programs.",
+    "I know that open problems remain.", "I measured the position of the probe in the lab.",
+    # Review of round 1: a trailing hedge, the student's own job-posting
+    # work, and other senses of opening, vacancy and position.
+    "I would like to apply for a research position in your lab if one is available.",
+    "I am interested in applying for a research position in your lab and wanted to ask whether you have any openings.",
+    "I built a Python parser that turns a job posting into structured fields.",
+    "I labeled the job posting data by hand.", "Your opening chapter on graph search was clear.",
+    "The oxygen vacancies in your group's samples interested me.",
+    "The atomic positions in your group's crystal structure paper were striking.",
+    "I saw the open source job scheduler your lab posted on GitHub.",
+])
+def test_hedges_and_other_senses_are_not_opening_claims(text):
+    assert unsupported_opening_claims(text) == []

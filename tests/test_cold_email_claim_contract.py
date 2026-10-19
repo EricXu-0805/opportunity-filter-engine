@@ -43,11 +43,12 @@ def client(monkeypatch):
     return TestClient(app)
 
 
-def request(client, monkeypatch, path, claim, profile=None, bullets=()):
+def request(client, monkeypatch, path, claim, profile=None, bullets=(), opportunity_id=OPP["id"]):
     monkeypatch.setattr(ce, "is_configured", lambda: path != "local-unconfigured")
     monkeypatch.setattr(ce, "chat_completion", lambda *_a, **_k: None if path == "local-failed" else body(claim))
     monkeypatch.setattr(ce, "_pipeline_generate", lambda *_a, **_k: f"Subject: Research inquiry\n\n{body(claim)}")
-    payload = {"profile": profile or PROFILE, "opportunity_id": OPP["id"], "experience_evidence": confirmed_experience(list(bullets))}
+    payload = {"profile": profile or PROFILE, "opportunity_id": opportunity_id,
+               "experience_evidence": confirmed_experience(list(bullets))}
     if path == "initial":
         payload["engine"] = "ai"
         endpoint = "/cold-email"
@@ -206,3 +207,49 @@ def test_template_example_label_does_not_hide_an_unsupported_achievement():
     fabricated, _borrowed = ce._email_grounding_findings(
         "One example of my experience: I improved throughput by 45%.", parts, OPP)
     assert fabricated  # only the label is exempt, not the claim after it
+
+
+# M30: a faculty contact profile is not a posting. A draft to one may ask about
+# an opening but may not claim one exists or that the student is applying.
+FACULTY = {**OPP, "id": "claim-contract-faculty", "source_type": "faculty_research",
+           "metadata": {"is_active": True, "research_areas_raw": "Python parser research"}}
+OPENING_CLAIM = "I am writing to apply for the open position in your lab."
+
+
+@pytest.mark.parametrize("path", ["initial", "refine"])
+@pytest.mark.parametrize("target,claim,rejected", [
+    (FACULTY, OPENING_CLAIM, True),
+    (FACULTY, "Do you have any openings?", False),
+    (FACULTY, "I would be glad to help if you have any openings.", False),
+    (FACULTY, "I am writing to ask whether you are taking students.", False),
+    (FACULTY, "I would like to apply for a research position in your lab if one is available.", False),
+    (FACULTY, "I am interested in applying for a research position in your lab and wanted to ask whether you "
+              "have any openings.", False),
+    (OPP, OPENING_CLAIM, False),
+])
+def test_faculty_drafts_may_ask_about_but_not_claim_an_opening(client, monkeypatch, path, target, claim, rejected):
+    monkeypatch.setattr(ce, "load_opportunities_by_id", lambda: {OPP["id"]: OPP, FACULTY["id"]: FACULTY})
+    out = request(client, monkeypatch, path, claim, opportunity_id=target["id"])
+    if rejected:
+        assert out["fallback_reason"] == "fabrication", out
+        assert claim not in out["body"]
+    else:
+        assert out["method"] == {"initial": "ai", "refine": "llm"}[path], out
+        assert claim in out["body"]
+
+
+@pytest.mark.parametrize("path", ["initial", "refine"])
+def test_a_job_posting_in_the_students_own_work_is_not_an_opening_claim(client, monkeypatch, path):
+    project = "I built a Python parser that turns a job posting into structured fields."
+    monkeypatch.setattr(ce, "load_opportunities_by_id", lambda: {OPP["id"]: OPP, FACULTY["id"]: FACULTY})
+    out = request(client, monkeypatch, path, project, bullets=(project,), opportunity_id=FACULTY["id"])
+    assert out["method"] == {"initial": "ai", "refine": "llm"}[path], out
+    assert project in out["body"]
+
+
+def test_pipeline_critique_names_the_opening_claim_for_the_reviser():
+    parts = _common_parts(PROFILE, FACULTY)
+    findings = ce._deterministic_findings(body(OPENING_CLAIM), corpus=ce._build_email_corpus(parts, FACULTY),
+                                          p=parts, opp=FACULTY)
+    assert findings["unsupported"] == ["unsupported opening claim"]
+    assert "No opening is confirmed for this faculty member" in ce._revision_notes(findings)

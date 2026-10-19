@@ -80,6 +80,43 @@ def unsupported_action_claims(text: str, *, confirmed_reading_sentence: str | No
     return sorted(findings)
 
 
+# M30: a faculty contact profile is not a posting, so a draft to one may ask
+# whether an opening exists but may not name a specific opening of this
+# professor as existing: "your (lab's) open/available/advertised position",
+# "your (current/recent) opening/vacancy/(job) posting" when the noun ends
+# its phrase ("your opening chapter" is not one), "the position you posted"
+# or "the open position in your lab". "A job posting" or "applying for a
+# research position in your lab" names no specific opening and is not checked.
+_PHRASE_END = r"(?=\s*(?:[^\w\s-]|$)|\s+(?:in|at|on|for|from|with|that|which|you|and|or|is|was|has|had)\b)"
+_OPENING_CLAIM = re.compile(
+    r"\byour\s+(?:(?:lab|group)['’]s\s+)?(?:"
+    r"(?:open|available|advertised)\s+(?:research\s+)?(?:positions?|openings?|vacanc(?:y|ies)|postings?)\b|"
+    rf"(?:(?:current|recent)\s+)?(?:research\s+)?(?:openings?|vacanc(?:y|ies)|(?:job\s+)?postings?){_PHRASE_END})|"
+    r"\bthe\s+(?:research\s+|ra\s+|research\s+assistant\s+)?positions?\s+(?:that\s+)?you\s+"
+    r"(?:posted|advertised|listed)\b|"
+    r"\bthe\s+(?:open|advertised|posted)\s+(?:research\s+|ra\s+|research\s+assistant\s+)?positions?\s+"
+    r"in\s+your\s+(?:lab|laboratory|group)\b(?!['’])",
+    re.IGNORECASE,
+)
+
+
+def unsupported_opening_claims(text: str) -> list[str]:
+    """Reject a named opening in a draft to a target with no posting.
+
+    A sentence with a question mark or with if, whether or unless anywhere
+    ("I would like to apply for a position in your lab if one is available")
+    is a hedge and passes. The caller decides the target has no posted
+    opening. Each sentence is scanned a fixed number of times, so the cost is
+    linear in the text; this is a bounded English check, not entailment.
+    """
+    for sentence in re.finditer(r"[^.!?\n]+[.!?]*", text):
+        if "?" in sentence.group() or re.search(r"\b(?:if|whether|unless)\b", sentence.group(), re.I):
+            continue
+        if _OPENING_CLAIM.search(sentence.group()):
+            return ["unsupported opening claim"]
+    return []
+
+
 # M33 (owner decision 2026-10-12): a paper is named only when the student chose
 # it. The reply check is one rule: a reply may not quote the full title of an
 # unchosen verified paper unless the student supplied that title for this

@@ -64,6 +64,7 @@ import {
   isOwnerScopedLoadError,
   isOwnerTokenValid,
   isTokenOwnerStillCurrent,
+  logicalStorageKey,
   OwnerNotReadyError,
   OwnerScopedLoadError,
   readUserScopedEntry,
@@ -765,10 +766,14 @@ function markProfileFieldsDirty(
  * for the window before the guard is registered or when enumeration fails:
  * another tab's unsent edit is not in this process's memory, and a reload
  * has no memory at all.
+ *
+ * `own`: only this tab's operations — its lineage's, which no other tab
+ * continues (M117).
  */
 export function getDirtyProfileKeys(
   token: OwnerToken,
   writer: string = DEFAULT_WRITER,
+  lineage: 'any' | 'own' = 'any',
 ): JournalResult<ProfileKey[]> {
   // BEFORE ensureScope and before the journal read — same reasoning as
   // recordProfileIntent. A superseded caller must learn nothing about the
@@ -783,9 +788,11 @@ export function getDirtyProfileKeys(
   // instead.
   const journal = readOutstandingOps();
   if (!journal.ok) return journal;
+  const mine = lineage === 'own' ? getJournalLineageId() : null;
   const out = new Set<ProfileKey>();
   for (const op of journal.value) {
     if (op.writer !== writer) continue;
+    if (mine !== null && op.lineage !== mine) continue;
     for (const field of op.fields) if (isProfileKey(field.key)) out.add(field.key);
   }
   return { ok: true, value: [...out] };
@@ -3770,6 +3777,15 @@ export function planKeysFromJournalForTests(
   return planKeysFromJournal(ops, keys);
 }
 
+/** Whether a 'storage' event's key is this module's outbox or the journal,
+ *  in any generation's namespace: another tab's write a screen may need to
+ *  read again (M117). */
+export function isProfileOutboxStorageKey(key: string | null): boolean {
+  if (key === null) return false;
+  const logical = logicalStorageKey(key);
+  return logical === STORAGE_KEYS.PROFILE_SYNC || logical.startsWith(STORAGE_KEYS.PROFILE_JOURNAL_PREFIX);
+}
+
 /**
  * The current question, after applying and PERSISTING anything already
  * answered. Token-fenced, and the only refresh a UI may use.
@@ -3784,11 +3800,18 @@ export function planKeysFromJournalForTests(
  * This takes the lock, repairs the pending write from any exact receipt,
  * writes the repair back, and then reports only what is genuinely still
  * locked. Keys with nothing behind them are simply absent.
+ *
+ * `read`: the same locked description, with nothing written and nothing
+ * sent — for a tab told that ANOTHER tab changed the outbox or the journal.
+ * That tab owns its own repair and send; this one only learns what the
+ * question and the outbox say now.
  */
 export async function refreshConflictQuestion(
   keys: readonly string[],
   token: OwnerToken,
+  mode: 'repair' | 'read' = 'repair',
 ): Promise<ProfileConflictRefresh> {
+  const persist = mode === 'repair';
   // Before the first read, and the full gate: a retained handler from a
   // previous account must reach storage for nothing at all.
   if (!isOwnerTokenValid(token, token.uid)) return { status: 'abandoned' };
@@ -3851,7 +3874,7 @@ export async function refreshConflictQuestion(
       }
     }
     let working = workingCopy(confirmed, repaired, null);
-    if (repaired !== before) {
+    if (persist && repaired !== before) {
       if (!writeEnvelope({
         v: 1,
         confirmed,
@@ -3882,7 +3905,7 @@ export async function refreshConflictQuestion(
     // correct and the mirror still showing the disputed value; skipping it
     // because "nothing changed here" leaves every other screen wrong for good.
     // A fenced row is left alone — its mirror is quarantined on purpose.
-    if (!env?.tombstone) {
+    if (persist && !env?.tombstone) {
       if (working) {
         if (!sameValue(working, readRawProfileMirror())
           && !writeRawMirror(working, token)) return { failed: 'mirror' };
@@ -3935,12 +3958,12 @@ export async function refreshConflictQuestion(
     // key removal failed is invisible to `finished` — readers already skip
     // acked ids — so nothing would ever rediscover it, and a settled prompt
     // would sit in the cap for good while every retry reported success.
-    if (!settleJournalOps(finished, token)) return { failed: 'settle' };
+    if (persist && !settleJournalOps(finished, token)) return { failed: 'settle' };
     // A field this repair CONFIRMED is no longer an unsent edit. Leaving its
     // per-field intent behind pins the next edit on that field to the revision
     // the question was asked at — and the person's own next keystroke comes
     // back as a conflict with themselves.
-    for (const key of confirmedKeys) fieldIntents.delete(key);
+    if (persist) for (const key of confirmedKeys) fieldIntents.delete(key);
     return {
       failed: null,
       profile: working,
@@ -3967,6 +3990,13 @@ export async function refreshConflictQuestion(
   }
   const repair = settled.value;
   if (repair.failed) return { status: 'device-failed', phase: repair.failed, retryable: true };
+  if (!persist) {
+    const state: ProfileRefreshState = { profile: repair.profile, baseProfile: repair.baseProfile,
+      revision: repair.revision, pendingKeys: repair.pendingKeys, flushed: null, answered: repair.answered };
+    return repair.conflicts.length === 0
+      ? { status: 'settled', conflicts: [], ...state }
+      : { status: 'current', conflicts: repair.conflicts, ...state };
+  }
   // The repair took the last lock off a write the cloud still does not have.
   // Continuing it HERE — outside the lock, through the ordinary fenced flush —
   // is what makes an answer given in another tab actually reach the server

@@ -43,6 +43,7 @@ import {
   HOME_FORM_WRITER,
   recordProfileIntent,
   hydrateProfile,
+  isProfileOutboxStorageKey,
   readDocumentOpIds,
   markSkillAdditions,
   refreshConflictQuestion,
@@ -290,6 +291,9 @@ const REMOVAL_KEYS: readonly (keyof ProfileData)[] = ['resume_text', 'experience
 // down. Shorter than the 1.5 s autosave debounce by design: the journal is
 // the crash record, the autosave is the send.
 const TYPING_BURST_MS = 400;
+// The least time between two reads of storage made because another tab wrote
+// the outbox or the journal (see the background check's 'storage' listener).
+const OTHER_TAB_READ_MS = 1000;
 
 export function useProfileForm(t: TFunc): UseProfileFormResult {
   const router = useRouter();
@@ -418,6 +422,16 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     ...(shareDraftActiveRef.current ? draftTouchedRef.current : []),
     ...unrecordedRef.current,
   ] as string[]), []);
+  /** Whether an edit made in this tab is still unsent, from every place one
+   *  can wait (M117): an operation of this tab's in the journal that the
+   *  cloud has not confirmed — a field, the slider, the course list alike —
+   *  or an edit the journal does not have. A journal that cannot be read
+   *  counts as unsent. Neither the edited-field buffer nor the slider flag
+   *  can say this: both outlive the save that sent them. */
+  const unsentHere = useCallback((token: OwnerToken) => {
+    const own = getDirtyProfileKeys(token, HOME_FORM_WRITER, 'own');
+    return !own.ok || own.value.length > 0 || unrepresentedNow().size > 0;
+  }, [unrepresentedNow]);
   const epochsNow = useCallback(
     (keys: readonly string[]) => new Map(
       keys.map((k) => [k, fieldEpochRef.current.get(k) ?? 0] as const),
@@ -459,7 +473,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         editEpochAtOperation: number;
       },
       ownsStatus: boolean,
-      context: 'save' | 'answer' | 'remainder',
+      context: 'save' | 'answer' | 'remainder' | 'other-tab',
     ) => void | ProfileDisposition | Promise<void | ProfileDisposition>)
     | null
   >(null);
@@ -1446,48 +1460,79 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
           showCoordinatorDocument(result.profile as unknown as Record<string, unknown>);
         }
         if (fromCoordinator) advanceAcceptedBase(result.profile, result.revision, token, generation);
+        const saved = (): ProfileDisposition => {
+          armRetry(null);
+          // The question on screen is NOT retired here. A successful write says
+          // what the row now holds for the keys IT sent; it says nothing about
+          // a disagreement nobody has answered, and a revision comparison
+          // cannot stand in for that — a clean save at revision 9 is no verdict
+          // on an unresolved question about revision 8. Retirement belongs to
+          // the paths that own the exact lifecycle: the explicit resolution, an
+          // authoritative hydration, and the same-snapshot refresh.
+          say('saved');
+          // The exact statement this badge is for. Two seconds is a long time
+          // for ONE operation as well as for the owner: the submit that just
+          // saved can still fail to clear its cache, and a partial answer's
+          // remainder can still come back a conflict — both under this very
+          // intent and edit clock. Clearing then would retire a failure the
+          // person is being shown.
+          //
+          // The version is the whole test, and a separate "is it still 'saved'"
+          // re-read would add nothing: this is captured immediately after the
+          // publish above, so an unchanged version means nothing has been said
+          // since — and if `say` declined to publish at all, the intent and
+          // edit-epoch checks below have already returned.
+          const armedAtVersion = saveStatusVersionRef.current;
+          setTimeout(() => {
+            if (generation !== identityGenerationRef.current) return;
+            // Two seconds is long enough for the owner to change. This badge
+            // belongs to the screen that saved, and clearing it on a screen
+            // that is no longer theirs is still a write onto it.
+            if (!isTokenOwnerStillCurrent(token)) return;
+            if (intent !== saveIntentRef.current) return;
+            if (editEpochAtStart !== undefined && editEpochAtStart !== editEpochRef.current) return;
+            // Something has spoken since — including this same operation.
+            if (saveStatusVersionRef.current !== armedAtVersion) return;
+            setSaveStatus('idle');
+          }, 2000);
+          return ADOPTED;
+        };
         // Beside a question another tab's edit is in, this write went through
         // and the form is still not saved: that field is in dispute on this
         // screen. Said so, and nothing goes ahead on it (see handleSubmit).
+        // The question on screen is this tab's copy, which another tab may
+        // have answered since (M117): it is read again from storage, writing
+        // and sending nothing, and only a question still open there says so.
         if (conflictsRef.current.some(conflictHasAnotherTabsSide) || heldForNewerBuild(conflictsRef.current)) {
-          say(conflictWording(conflictsRef.current));
-          return STALE;
+          const asked = conflictsRef.current.map((c) => c.key);
+          const atIssue = epochsNow(asked);
+          const fence = { atOperation: new Map([...atIssue, ...(epochsAtStart ?? new Map())]), atIssue,
+            unrepresented: unrepresentedNow(), editEpochAtOperation: editEpochAtStart ?? editEpochRef.current };
+          return refreshConflictQuestion(asked, token, 'read').then((refreshed) => {
+            if (generation !== identityGenerationRef.current || !isOwnerTokenValid(token, token.uid)) return STALE;
+            if (refreshed.status === 'abandoned') return STALE;
+            // The facts either way; the wording is this save's, unless an
+            // answer, a save or typing since the read began has taken it.
+            void applyConflictRefreshRef.current?.(refreshed, asked, token, generation, intent, fence, false, 'other-tab');
+            const open = refreshed.status === 'current' ? refreshed.conflicts
+              : refreshed.status === 'settled' ? [] : conflictsRef.current;
+            const stillOwns = intent === saveIntentRef.current
+              && (editEpochAtStart === undefined || editEpochAtStart === editEpochRef.current);
+            if (open.some(conflictHasAnotherTabsSide) || heldForNewerBuild(open)) {
+              if (stillOwns) say(conflictWording(open));
+              return STALE;
+            }
+            // The question is gone, and an answer to it not yet sent, or any
+            // other edit of this tab's, is unsent: Retry sends it.
+            const owedNow = refreshed.status === 'device-failed' ? [] : refreshed.pendingKeys;
+            if (asked.some((key) => owedNow.includes(key)) || unsentHere(token)) {
+              if (stillOwns) { armRetry({ generation, token }); say('cloud-failed'); }
+              return STALE;
+            }
+            return stillOwns ? saved() : ADOPTED;
+          });
         }
-        armRetry(null);
-        // The question on screen is NOT retired here. A successful write says
-        // what the row now holds for the keys IT sent; it says nothing about
-        // a disagreement nobody has answered, and a revision comparison
-        // cannot stand in for that — a clean save at revision 9 is no verdict
-        // on an unresolved question about revision 8. Retirement belongs to
-        // the paths that own the exact lifecycle: the explicit resolution, an
-        // authoritative hydration, and the same-snapshot refresh.
-        say('saved');
-        // The exact statement this badge is for. Two seconds is a long time
-        // for ONE operation as well as for the owner: the submit that just
-        // saved can still fail to clear its cache, and a partial answer's
-        // remainder can still come back a conflict — both under this very
-        // intent and edit clock. Clearing then would retire a failure the
-        // person is being shown.
-        //
-        // The version is the whole test, and a separate "is it still 'saved'"
-        // re-read would add nothing: this is captured immediately after the
-        // publish above, so an unchanged version means nothing has been said
-        // since — and if `say` declined to publish at all, the intent and
-        // edit-epoch checks below have already returned.
-        const armedAtVersion = saveStatusVersionRef.current;
-        setTimeout(() => {
-          if (generation !== identityGenerationRef.current) return;
-          // Two seconds is long enough for the owner to change. This badge
-          // belongs to the screen that saved, and clearing it on a screen
-          // that is no longer theirs is still a write onto it.
-          if (!isTokenOwnerStillCurrent(token)) return;
-          if (intent !== saveIntentRef.current) return;
-          if (editEpochAtStart !== undefined && editEpochAtStart !== editEpochRef.current) return;
-          // Something has spoken since — including this same operation.
-          if (saveStatusVersionRef.current !== armedAtVersion) return;
-          setSaveStatus('idle');
-        }, 2000);
-        return ADOPTED;
+        return saved();
       case 'local-only':
       case 'staged-local':
         // Durably on this device, and honestly labelled as such: there is
@@ -1587,7 +1632,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         say('cloud-failed');
         return DEVICE_FAILED;
     }
-  }, [advanceAcceptedBase, epochsNow, publishConflicts, retireConflictQuestion, unrepresentedNow, armRetryable, setSaveStatus, republishRendered]);
+  }, [advanceAcceptedBase, epochsNow, publishConflicts, retireConflictQuestion, unrepresentedNow, unsentHere, armRetryable, setSaveStatus, republishRendered]);
 
   /**
    * Everything Home does with a conflict refresh, taken FROM the refresh.
@@ -1647,8 +1692,11 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
      *  refused as stale, or the rest of a question after an answer to part
      *  of it. A question that has gone away means something different to
      *  each, and saying "it was answered somewhere else, so nothing was
-     *  sent" is true only of an answer, and only when somebody answered. */
-    context: 'save' | 'answer' | 'remainder',
+     *  sent" is true only of an answer, and only when somebody answered.
+     *  `other-tab`: a read made because another tab wrote the outbox or the
+     *  journal (M117). Nothing was sent from here, so it speaks only to put
+     *  right a status that what it read shows false. */
+    context: 'save' | 'answer' | 'remainder' | 'other-tab',
   ) => {
     // The helper's OWN fence, before any ref, state or status moves. A caller
     // that forgot one is not a contract; this is the last point at which a
@@ -1667,6 +1715,31 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       && intent === saveIntentRef.current
       && fence.editEpochAtOperation === editEpochRef.current;
     const tell = (status: SaveStatus) => { if (owns) setSaveStatus(status); };
+    /**
+     * After another tab's write: a question this tab showed that is gone, or
+     * a failed save another tab has since sent, no longer says so. A question
+     * still open keeps its wording; while any edit of this tab's is unsent —
+     * a field asked about still owed, or anything unsentHere finds — it is
+     * not saved, and Retry sends it; with nothing of this tab's unsent, what
+     * it saved or showed is saved. Any other status
+     * is this tab's own operation's, and stays — 'error' included: a device
+     * write or a submit that failed here is not put right by another tab's
+     * send.
+     */
+    const tellAfterOtherTab = () => {
+      const shown = saveStatusRef.current;
+      const disputed = shown === 'conflict' || shown === 'conflict-several-typed' || shown === 'conflict-newer-build';
+      if (!disputed && shown !== 'cloud-failed') return;
+      if (conflictsRef.current.length > 0) return;
+      if (asked.some((key) => dirtyKeysRef.current.has(key as keyof ProfileData)) || unsentHere(token)) {
+        if (disputed) { if (owns) armRetryable({ generation, token }); tell('cloud-failed'); }
+        return;
+      }
+      if (owns) armRetryable(null);
+      tell('saved');
+    };
+    // This tab's own work is unaffected by a read it could not make.
+    if (refreshed.status === 'device-failed' && context === 'other-tab') return;
     if (refreshed.status === 'device-failed') {
       // The durable proof is intact and the question is exactly what it was.
       // The controls and the retry both stay: this is the case the empty
@@ -1766,6 +1839,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       // there is nothing left — keeping a stale entry beside it would show a
       // disagreement the canonical state says is gone.
       retireConflictKeys(asked);
+      if (context === 'other-tab') { tellAfterOtherTab(); return; }
       // Only the owner may disarm Retry. An older rebuild clearing it takes
       // away the newer failure's only way back.
       if (owns) armRetryable(null);
@@ -1807,10 +1881,11 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       refreshed.conflicts.filter((c) => !questionStale(c.key)),
       viewSnapshotRef.current,
     );
+    if (context === 'other-tab') { tellAfterOtherTab(); return; }
     tell(conflictWording(refreshed.conflicts));
   }, [
     adoptAuthoritativeBase, applySaveResult, publishConflicts,
-    republishRendered, retireConflictKeys,
+    republishRendered, retireConflictKeys, unsentHere,
     armRetryable, setSaveStatus,
   ]);
   // Same-tick latest-ref, deliberately written during render: the reader
@@ -2558,16 +2633,56 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
           && held.token.generation === origin.token.generation) publishProfileRefresh('failed');
       }
     };
+    // Another tab wrote the outbox or the journal (M117): the question and the
+    // save status shown here are read again from storage, with no request
+    // and nothing written, so a question answered there leaves this screen
+    // and an edit sent from there stops saying it failed. At most one read
+    // per OTHER_TAB_READ_MS however many writes arrive — a burst of N writes
+    // over T ms reads at most ceil(T / OTHER_TAB_READ_MS) + 1 times — and
+    // none while this tab's own save, submit, answer or load is running: that
+    // reports for itself, and the read follows it. A tab of an earlier build
+    // writes the same keys; reading is all that its writes cause here.
+    let otherTabTimer: ReturnType<typeof setTimeout> | null = null;
+    let otherTabReading = false;
+    const readOtherTabs = () => {
+      otherTabTimer = null;
+      if (!current()) return;
+      if (otherTabReading || active || activeLoadRef.current || submittingRef.current
+        || activeResolveRef.current !== null || pendingSaveRef.current !== null || saveStatusRef.current === 'saving') {
+        otherTabTimer = setTimeout(readOtherTabs, OTHER_TAB_READ_MS);
+        return;
+      }
+      const asked = [...new Set<string>([...conflictKeysRef.current, ...dirtyKeysRef.current])];
+      // A tab saying "Couldn't save" reads even with no field to ask about: its
+      // unsent edit may be the slider, which another tab can send for it. Such a
+      // read changes no field (it adopts the base it read, as every read does),
+      // only whether "Couldn't save" still holds.
+      if (asked.length === 0 && saveStatusRef.current !== 'cloud-failed') return;
+      const atIssue = epochsNow(asked);
+      const fence = { atOperation: atIssue, atIssue, unrepresented: unrepresentedNow(), editEpochAtOperation: editEpochRef.current };
+      const intent = saveIntentRef.current;
+      otherTabReading = true;
+      void refreshConflictQuestion(asked, origin.token, 'read').then((refreshed) => {
+        if (!current()) return;
+        return applyConflictRefreshRef.current?.(refreshed, asked, origin.token, origin.generation, intent, fence, true, 'other-tab');
+      }).catch(() => undefined).finally(() => { otherTabReading = false; });
+    };
+    const storageChanged = (event: StorageEvent) => {
+      ownerChanged();
+      if (!isProfileOutboxStorageKey(event.key)) return;
+      if (otherTabTimer === null) otherTabTimer = setTimeout(readOtherTabs, OTHER_TAB_READ_MS);
+    };
     const stopOwner = onLocalOwnerStateChange(ownerChanged);
-    window.addEventListener('storage', ownerChanged);
+    window.addEventListener('storage', storageChanged);
     window.addEventListener('focus', recheck); window.addEventListener('online', recheck);
     window.addEventListener('offline', recheck); document.addEventListener('visibilitychange', recheck);
     schedule(); // The initial load just completed; do not duplicate it.
     return () => {
       disposed = true; retire(); stopOwner();
+      if (otherTabTimer !== null) clearTimeout(otherTabTimer);
       if (backgroundReadRef.current === run) backgroundReadRef.current = null;
       if (stopBackgroundReadRef.current === retire) stopBackgroundReadRef.current = null;
-      window.removeEventListener('storage', ownerChanged);
+      window.removeEventListener('storage', storageChanged);
       window.removeEventListener('focus', recheck); window.removeEventListener('online', recheck);
       window.removeEventListener('offline', recheck); document.removeEventListener('visibilitychange', recheck);
     };
