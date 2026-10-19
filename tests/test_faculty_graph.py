@@ -2932,6 +2932,18 @@ class TestUchicagoConfig:
         b = fg._normalize(UC, micro, spec)
         assert a["id"] == b["id"] == "faculty-uchicago-micro-42a25379"
 
+    def test_id_names_keeps_the_id_a_stored_name_minted(self):
+        """A page that now writes a stored person's name another way keeps that
+        person's row: the id hashes the stored name, the row shows today's."""
+        from src.collectors.schools.uchicago_faculty import SCHOOL as UC
+        micro = next(d for d in UC["departments"] if d["short"] == "MICRO")
+        renamed = {**micro, "id_names": {"Tatyana A. Golovkina": "Tatyana Golovkina"}}
+        rec = fg._normalize(UC, renamed, fg.faculty("Tatyana A. Golovkina", title="Professor"))
+        assert rec["id"] == "faculty-uchicago-micro-42a25379"
+        assert rec["pi_name"] == "Tatyana A. Golovkina"
+        other = fg._normalize(UC, renamed, fg.faculty("Jane Roe", title="Professor"))
+        assert other["id"] == fg._normalize(UC, micro, fg.faculty("Jane Roe"))["id"]
+
 
 class TestUciConfig:
     def test_uci_config_valid(self):
