@@ -40,6 +40,7 @@ import {
   narrowConflictPrompt,
   getDirtyProfileKeys,
   hasConfirmedProfileRevision,
+  hasOutstandingProfileOps,
   HOME_FORM_WRITER,
   recordProfileIntent,
   hydrateProfile,
@@ -3369,6 +3370,25 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       .then((result) => {
         if (generation !== identityGenerationRef.current) return;
         if (!ownsScreen(origin)) return;
+        // A bare 'blocked' is the coordinator finding nothing to send: another
+        // tab's resend can carry this form's edit and record the answer before
+        // this flush reads the outbox (M136). With no operation of any writer
+        // left and a row on record, that is the autosave's nothing-left-to-send,
+        // said locally. Every field in dispute, or a journal this tab cannot
+        // read, is still an error.
+        if (result.status === 'blocked' && !result.reason) {
+          const outstanding = hasOutstandingProfileOps(token);
+          if (outstanding.ok && !outstanding.value && hasConfirmedProfileRevision()) {
+            return applySaveResult(
+              {
+                status: 'already-saved',
+                revision: 0,
+                profile: normalizeProfileForRelease({ ...profileRef.current, search_weight: weightRef.current }),
+              },
+              token, generation, intent, false, intent === saveIntentRef.current, retryEpochs, retryEditEpoch,
+            );
+          }
+        }
         // Facts always; the wording only if this intent still owns it.
         return applySaveResult(
           result, token, generation, intent, true, intent === saveIntentRef.current,
