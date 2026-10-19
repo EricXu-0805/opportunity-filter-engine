@@ -12,8 +12,8 @@ math.uci.edu moved to WordPress. ``/people`` answered 404 on the 2026-08-22,
 and the core faculty are a paged ``/role/core-faculty/`` archive that writes six
 names without the middle initial or second surname their rows were stored under.
 
-The fixtures are cards copied from those pages on 2026-10-18, every address
-replaced by a placeholder. No test here touches the network.
+The page fixtures are cards copied from those pages on 2026-10-18, every
+address replaced by a placeholder. No test here touches the network.
 """
 
 from __future__ import annotations
@@ -40,7 +40,12 @@ PAGES = {
     "https://math.uci.edu/role/core-faculty/page/2/": "math_core_faculty_2.html",
 }
 UNITS = {"EECS", "CBE", "CEE", "MSE", "MATH"}
-SHARD = Path(__file__).resolve().parents[1] / "data" / "processed" / "shards" / "uci.json"
+# The id and name of each stored row these tests look up, as
+# data/processed/shards/uci.json held them after the 2026-10-17 refresh. A
+# refresh writes today's name into every row it sees again, so the shard
+# itself stops recording the spelling an id was minted from.
+STORED = {r["id"]: r["pi_name"] for r in json.loads(
+    (FIXTURES / "stored_faculty.json").read_text(encoding="utf-8"))}
 
 
 def _soup(url, *args, **kwargs):
@@ -173,15 +178,13 @@ def test_the_moved_rows_keep_their_corpus_ids(run):
     Where the new page writes a stored name another way, ``id_names`` maps it
     back, and the row takes the name the page writes now."""
     records, _ = run
-    rows = json.loads(SHARD.read_text(encoding="utf-8"))
-    stored = {r["id"]: r["pi_name"] for r in rows if r.get("source") == "uci_faculty"}
     # Her row left the corpus on 2026-10-17, when CEE read nothing and the
     # Public Health row on her address absorbed it; this was its id until then.
     assert records["Sunny Jiang"]["id"] == "faculty-uci-cee-f207b79c"
     assert {n: r["id"] for n, r in records.items()
-            if n != "Sunny Jiang" and r["id"] not in stored} == {}
-    renamed = {n: stored[r["id"]] for n, r in records.items()
-               if r["id"] in stored and stored[r["id"]] != n}
+            if n != "Sunny Jiang" and r["id"] not in STORED} == {}
+    renamed = {n: STORED[r["id"]] for n, r in records.items()
+               if r["id"] in STORED and STORED[r["id"]] != n}
     assert renamed == {
         "Amir Aghakouchak": "Amir Aghakouchak, Ph.D., P.E.",
         "Michael Cranston": "Michael C. Cranston",
@@ -194,15 +197,13 @@ def test_rows_stored_under_an_older_spelling_keep_their_ids():
     """Each page wrote these names on 2026-10-17. The fresh row each minted was
     folded into the stored one, which kept its old name and a last sighting
     from July."""
-    rows = json.loads(SHARD.read_text(encoding="utf-8"))
-    stored = {r["id"]: r["pi_name"] for r in rows if r.get("source") == "uci_faculty"}
     depts = {d["short"]: d for d in uci_faculty.SCHOOL["departments"]}
     seen = {}
     for short, name in (("ANTHRO", "António Tomás"), ("SOC", "Rocío Rosales"),
                         ("PHYS", "Pedro Ochoa-Ricoux")):
         rec = faculty_graph._normalize(uci_faculty.SCHOOL, depts[short],
                                        faculty_graph.faculty(name, title="Professor"))
-        seen[name] = (stored.get(rec["id"]), rec["pi_name"])
+        seen[name] = (STORED.get(rec["id"]), rec["pi_name"])
     assert seen == {
         "António Tomás": ("Ant&oacute;nio Tom&aacute;s", "António Tomás"),
         "Rocío Rosales": ("Roc&iacute;o Rosales", "Rocío Rosales"),
