@@ -160,7 +160,7 @@ SCHOOL: dict = {
             "emit": "campus",
             "seeds": [
                 "https://undergraduate.bio.uci.edu/research/",
-                "https://engineering.uci.edu/research/undergraduate",
+                "https://undergraduate.eng.uci.edu/undergraduate-programs/research-2/",
                 "https://ps.uci.edu/research",
                 "https://socialecology.uci.edu/pages/research-social-ecology",
             ],
@@ -178,10 +178,13 @@ SCHOOL: dict = {
                     international_friendly="yes",
                     keywords=["biology research", "BIO 199"],
                 ),
+                # engineering.uci.edu/research/undergraduate answered 404 on
+                # 2026-10-18. The school's Undergraduate Student Affairs site
+                # says how to find a lab and enroll in a 199 research course.
                 program(
                     "engineering_ugresearch",
                     "Samueli School of Engineering — Undergraduate Research (UC Irvine)",
-                    "https://engineering.uci.edu/research/undergraduate",
+                    "https://undergraduate.eng.uci.edu/undergraduate-programs/research-2/",
                     "The Henry Samueli School of Engineering's undergraduate-research "
                     "information and opportunities page — how to find a faculty lab and "
                     "join engineering research as an undergraduate.",
