@@ -731,10 +731,15 @@ def check_no_fully_stale_school() -> dict:
         failures.append(
             f"{count} school(s) have no fresh source at all: "
             f"{', '.join(report['fully_stale_schools'][:10])}")
-    if no_faculty:
+    # A school with no fresh source has no fresh faculty source either and is
+    # already named above.
+    faculty_only = [s for s in no_faculty
+                    if s not in report["fully_stale_schools"]]
+    if faculty_only:
         failures.append(
-            f"{len(no_faculty)} school(s) have no faculty source that is "
-            f"fresh with rows on its latest run: {', '.join(no_faculty[:10])}")
+            f"{len(faculty_only)} school(s) with a fresh source have every "
+            f"faculty source stale or empty on its latest run: "
+            f"{', '.join(faculty_only[:10])}")
     if failures:
         return _gate("no_fully_stale_school", FAIL, "; ".join(failures), detail)
     return _gate(
@@ -935,11 +940,13 @@ def check_corpus_freshness() -> dict:
         failures.append(
             f"{report['fully_stale_school_count']} school(s) have no fresh "
             f"record at all: {', '.join(report['fully_stale_schools'][:10])}")
-    if report["no_fresh_faculty_school_count"]:
+    faculty_only = [s for s in report["no_fresh_faculty_schools"]
+                    if s not in report["fully_stale_schools"]]
+    if faculty_only:
         failures.append(
-            f"{report['no_fresh_faculty_school_count']} school(s) have no "
+            f"{len(faculty_only)} school(s) with a fresh record have no "
             f"faculty record re-observed within {report['stale_days']:.0f}d: "
-            f"{', '.join(report['no_fresh_faculty_schools'][:10])}")
+            f"{', '.join(faculty_only[:10])}")
     if report["unexplained_empty_schools"]:
         failures.append(
             f"{len(report['unexplained_empty_schools'])} school(s) have no active "

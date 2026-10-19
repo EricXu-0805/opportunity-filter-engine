@@ -453,14 +453,17 @@ def faculty_source_names() -> frozenset[str]:
 
 
 def _delivers_faculty(row: dict) -> bool:
-    """A faculty source row whose data is fresh AND whose latest run had rows.
+    """A faculty source not yet stale whose latest run did not come back empty.
 
     A zero-row attempt keeps the source's last success, so for up to the
     stale bound it still reads fresh while its school's roster has stopped
-    being observed.
+    being observed. Only a counted zero says that. An attempt with no count
+    was deferred by the run clock before it started, or raised before it
+    counted anything; it says nothing about the roster, so the last success
+    alone decides, as it does for the records that success last saw.
     """
     return (row["freshness"] in {"fresh", "warn"}
-            and (_count(row["current_record_count"]) or 0) > 0)
+            and _count(row["current_record_count"]) != 0)
 
 
 
@@ -524,7 +527,6 @@ def school_rows(
     ledger: dict,
     now: datetime | None = None,
     eligible: frozenset[str] | set[str] | None = None,
-    faculty: frozenset[str] | set[str] | None = None,
 ) -> list[dict]:
     """Per-school aggregate rows: shard health, not one school-wide boolean.
 
@@ -539,12 +541,13 @@ def school_rows(
     rewrite that carried only retained records forward is not a refresh.
 
     ``no_fresh_faculty`` is the same question asked of the school's faculty
-    sources (``faculty``, default :func:`faculty_source_names`) alone: true
-    when it has at least one and every one is stale or emitted zero rows on
-    its latest attempt. A fresh campus-program or listing source keeps a
-    school out of ``fully_stale`` but cannot stand in for its professors:
-    Barnard and Swarthmore had 4% of their records fresh, all campus
-    programs, after every faculty roster parsed zero rows for weeks.
+    sources (:func:`faculty_source_names`) alone: true when it has at least
+    one and every one is stale or emitted zero rows on its latest attempt.
+    An attempt that reported no count (deferred, or raised first) is judged
+    by its last success alone. A fresh campus-program or listing source
+    keeps a school out of ``fully_stale`` but cannot stand in for its
+    professors: Barnard and Swarthmore had 4% of their records fresh, all
+    campus programs, after every faculty roster parsed zero rows for weeks.
 
     ``last_successful_school_activity`` is the NEWEST success over the
     school's eligible sources, so on its own it overstates freshness: one
@@ -571,7 +574,7 @@ def school_rows(
     """
     now = now.astimezone(UTC) if now is not None else datetime.now(UTC)
     shards = ledger.get("shards") or {}
-    faculty = faculty_source_names() if faculty is None else faculty
+    faculty = faculty_source_names()
     by_school: dict[str, list[dict]] = {}
     for row in source_rows(ledger, now, eligible):
         school = row["school"]
@@ -658,10 +661,9 @@ def corpus_report(
     ledger: dict,
     now: datetime | None = None,
     eligible: frozenset[str] | set[str] | None = None,
-    faculty: frozenset[str] | set[str] | None = None,
 ) -> dict:
     """Corpus-wide freshness roll-up — the production acceptance numbers."""
-    schools = school_rows(ledger, now, eligible, faculty)
+    schools = school_rows(ledger, now, eligible)
     return {
         "generated_at": _iso(
             now.astimezone(UTC) if now is not None else datetime.now(UTC)
