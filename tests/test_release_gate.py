@@ -1341,6 +1341,9 @@ class TestFullyStaleSchoolGate:
         assert result["status"] == gate.FAIL
         assert result["evidence"]["fully_stale_school_count"] == 1
         assert result["evidence"]["fully_stale_schools"] == ["ucb"]
+        # No fresh source means no fresh faculty source either; named once.
+        assert result["evidence"]["no_fresh_faculty_schools"] == ["ucb"]
+        assert result["detail"].count("ucb") == 1
 
     def test_one_stale_department_among_fresh_ones_passes(
         self, monkeypatch, tmp_path,
@@ -1357,6 +1360,42 @@ class TestFullyStaleSchoolGate:
         assert result["evidence"]["fully_stale_school_count"] == 0
         assert result["evidence"]["partially_degraded_school_count"] == 1
         assert result["evidence"]["stale_shard_count"] == 1
+
+    def test_fresh_campus_programs_do_not_hide_a_school_with_no_fresh_faculty(
+        self, monkeypatch, tmp_path,
+    ):
+        """Barnard and Swarthmore once their campus checks succeed again. On
+        the 2026-10-17 ledger those checks had not succeeded since 08-29 and
+        09-05, so fully_stale already failed both; a fresh campus check would
+        have passed them while every faculty roster still parsed zero rows."""
+        result = self._run(monkeypatch, tmp_path, _health({
+            "barnard_faculty": _row("barnard", 50, "suspicious_zero"),
+            "campus_graph:barnard": _row("barnard", 1),
+            "swarthmore_faculty": _row("swarthmore", 3, "suspicious_zero"),
+            "campus_graph:swarthmore": _row("swarthmore", 1),
+            "yale_faculty": _row("yale", 1),
+        }))
+        assert result["status"] == gate.FAIL
+        assert result["evidence"]["fully_stale_school_count"] == 0
+        assert result["evidence"]["no_fresh_faculty_schools"] == [
+            "barnard", "swarthmore"]
+        assert "barnard, swarthmore" in result["detail"]
+
+    def test_a_faculty_run_deferred_by_the_run_clock_does_not_fail_its_school(
+        self, monkeypatch, tmp_path,
+    ):
+        """yale_faculty deferred at the run time budget today, 8 days after a
+        healthy run: no count is not zero rows."""
+        deferred = {
+            **_row("yale", 8, "failed"), "current_count": None,
+            "failure_reason": "stopped at the run time budget (deferred_deadline)",
+        }
+        result = self._run(monkeypatch, tmp_path, _health({
+            "yale_faculty": deferred,
+            "campus_graph:yale": _row("yale", 1),
+        }))
+        assert result["status"] == gate.PASS
+        assert result["evidence"]["no_fresh_faculty_schools"] == []
 
     def test_all_fresh_passes_cleanly(self, monkeypatch, tmp_path):
         result = self._run(monkeypatch, tmp_path, _health({
@@ -1437,6 +1476,46 @@ class TestCorpusFreshnessIsEnforced:
         assert got["status"] == gate.FAIL
         assert got["evidence"]["fully_stale_school_count"] == 1
         assert got["evidence"]["fully_stale_schools"] == ["dead"]
+
+    def test_fresh_campus_records_do_not_hide_stale_faculty_records(
+            self, monkeypatch, tmp_path):
+        """Barnard's 4%: nine fresh campus programs, every professor stale."""
+        _write_shard(tmp_path, monkeypatch, {"big": [(True, 1)] * 5000})
+        now = datetime.now(UTC)
+        records = [
+            {"id": f"f{i}", "source": "barnard_faculty",
+             "metadata": {"is_active": True,
+                          "last_seen_at": (now - timedelta(days=50)).isoformat()}}
+            for i in range(21)
+        ] + [
+            {"id": f"c{i}", "source": "campus_graph",
+             "metadata": {"is_active": True,
+                          "last_seen_at": (now - timedelta(days=1)).isoformat()}}
+            for i in range(9)
+        ]
+        (tmp_path / "data" / "processed" / "shards" / "barnard.json").write_text(
+            json.dumps(records))
+        got = gate.check_corpus_freshness()
+        assert got["evidence"]["freshness_percent"] > 99
+        assert got["evidence"]["fully_stale_school_count"] == 0
+        assert got["status"] == gate.FAIL
+        assert got["reason"] == "no_fresh_faculty_schools"
+        assert got["evidence"]["no_fresh_faculty_schools"] == ["barnard"]
+
+    def test_a_school_with_no_fresh_record_is_named_once(
+            self, monkeypatch, tmp_path):
+        """No fresh record means no fresh faculty record either."""
+        _write_shard(tmp_path, monkeypatch, {"big": [(True, 1)] * 5000})
+        seen = (datetime.now(UTC) - timedelta(days=50)).isoformat()
+        (tmp_path / "data" / "processed" / "shards" / "barnard.json").write_text(
+            json.dumps([{"id": f"f{i}", "source": "barnard_faculty",
+                         "metadata": {"is_active": True, "last_seen_at": seen}}
+                        for i in range(21)]))
+        got = gate.check_corpus_freshness()
+        assert got["status"] == gate.FAIL
+        assert got["evidence"]["fully_stale_schools"] == ["barnard"]
+        assert got["evidence"]["no_fresh_faculty_schools"] == ["barnard"]
+        assert got["detail"].count("barnard") == 1
 
     def test_at_or_above_the_floor_with_no_dead_school_passes(
             self, monkeypatch, tmp_path):

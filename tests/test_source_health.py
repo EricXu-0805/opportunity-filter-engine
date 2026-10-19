@@ -365,6 +365,143 @@ class TestSchoolAggregation:
         assert report["fully_stale_schools"] == ["colgate"]
         assert report["stale_shard_count"] == 2
 
+    def test_fresh_campus_programs_do_not_stand_in_for_a_dead_faculty_roster(self):
+        """Barnard once its campus check succeeds again. On the 2026-10-17
+        ledger barnard_faculty had parsed zero rows since 08-29 and
+        campus_graph:barnard had not succeeded since 08-29 either, so
+        fully_stale already named the school; one fresh campus check would
+        have cleared that while the roster stayed at zero."""
+        ledger = _ledger_with({
+            "barnard_faculty": ("barnard", 50, sh.SUSPICIOUS_ZERO),
+            "campus_graph:barnard": ("barnard", 1, sh.SUCCESS_NONZERO),
+        })
+        school = sh.school_rows(ledger, NOW, ALL)[0]
+        assert school["fully_stale"] is False
+        assert school["no_fresh_faculty"] is True
+        assert school["faculty_shard_count"] == 1
+        assert school["fresh_faculty_shard_count"] == 0
+        report = sh.corpus_report(ledger, NOW, ALL)
+        assert report["fully_stale_schools"] == []
+        assert report["no_fresh_faculty_schools"] == ["barnard"]
+        assert report["no_fresh_faculty_school_count"] == 1
+
+    def test_a_zero_row_faculty_run_is_no_fresh_faculty_inside_the_window(self):
+        """A zero keeps the last success, so the source still reads fresh."""
+        ledger = _ledger_with({
+            "swarthmore_faculty": ("swarthmore", 3, sh.SUSPICIOUS_ZERO),
+            "campus_graph:swarthmore": ("swarthmore", 1, sh.SUCCESS_NONZERO),
+        })
+        rows = {r["source"]: r for r in sh.source_rows(ledger, NOW, ALL)}
+        assert rows["swarthmore_faculty"]["freshness"] == "fresh"
+        school = sh.school_rows(ledger, NOW, ALL)[0]
+        assert school["no_fresh_faculty"] is True
+
+    def test_one_faculty_source_with_fresh_rows_is_enough(self):
+        ledger = _ledger_with({
+            "ucb_ling_faculty": ("ucb", 44, sh.SUSPICIOUS_ZERO),
+            "ucb_eecs_faculty": ("ucb", 2, sh.SUCCESS_NONZERO),
+            "nsf_reu": ("national", 4, sh.SUCCESS_NONZERO),
+        })
+        schools = {s["school"]: s for s in sh.school_rows(ledger, NOW, ALL)}
+        assert schools["ucb"]["no_fresh_faculty"] is False
+        assert schools["ucb"]["fresh_faculty_shard_count"] == 1
+        # A shard with no faculty source has nothing to judge.
+        assert schools["national"]["faculty_shard_count"] == 0
+        assert schools["national"]["no_fresh_faculty"] is False
+
+    def test_a_faculty_run_deferred_by_the_run_clock_is_judged_by_its_last_success(self):
+        """refresh_all records a source deferred at the run time budget as
+        failed with no count. Yale's only faculty source found 1,500
+        professors 8 days ago and was deferred yesterday: those records are
+        still fresh, and a missing count is not zero rows."""
+        ledger = sh.empty_ledger()
+        sh.record_attempt(
+            ledger, source="yale_faculty", school="yale",
+            outcome=sh.SUCCESS_NONZERO, emitted=1500, baseline=1500,
+            now=NOW - timedelta(days=8))
+        sh.record_attempt(
+            ledger, source="yale_faculty", school="yale", outcome=sh.FAILED,
+            emitted=None, baseline=1500, now=NOW - timedelta(days=1),
+            failure_reason="stopped at the run time budget (deferred_deadline)")
+        sh.record_attempt(
+            ledger, source="campus_graph:yale", school="yale",
+            outcome=sh.SUCCESS_NONZERO, emitted=12, baseline=12,
+            now=NOW - timedelta(days=1))
+        rows = {r["source"]: r for r in sh.source_rows(ledger, NOW, ALL)}
+        assert rows["yale_faculty"]["current_record_count"] is None
+        assert rows["yale_faculty"]["freshness"] == "fresh"
+        school = sh.school_rows(ledger, NOW, ALL)[0]
+        assert school["no_fresh_faculty"] is False
+        assert school["fresh_faculty_shard_count"] == 1
+
+    def test_a_faculty_run_that_raised_before_counting_is_judged_by_its_last_success(self):
+        """A collector that raises leaves ``{"status": "error"}`` with no
+        ``fetched``, so the ledger holds no count. Inside the stale bound the
+        school keeps its faculty; past it, the missing count keeps nothing
+        alive."""
+        ledger = sh.empty_ledger()
+        for school, age in (("nyu", 5), ("utah", 20)):
+            sh.record_attempt(
+                ledger, source=f"{school}_faculty", school=school,
+                outcome=sh.SUCCESS_NONZERO, emitted=900, baseline=900,
+                now=NOW - timedelta(days=age))
+            sh.record_attempt(
+                ledger, source=f"{school}_faculty", school=school,
+                outcome=sh.FAILED, emitted=None, baseline=900,
+                now=NOW - timedelta(days=1),
+                failure_reason="ReadTimeout: the listing page timed out")
+        schools = {s["school"]: s for s in sh.school_rows(ledger, NOW, ALL)}
+        assert schools["nyu"]["no_fresh_faculty"] is False
+        assert schools["utah"]["no_fresh_faculty"] is True
+
+    def test_rows_from_a_stale_faculty_source_do_not_count(self):
+        """A run that fails with rows (refresh_all records the ``fetched`` of
+        an error or partial run) keeps the source's old last success. Past
+        the stale bound those rows prove nothing, however fresh the campus
+        check beside them."""
+        ledger = sh.empty_ledger()
+        sh.record_attempt(
+            ledger, source="barnard_faculty", school="barnard",
+            outcome=sh.SUCCESS_NONZERO, emitted=212, baseline=212,
+            now=NOW - timedelta(days=30))
+        sh.record_attempt(
+            ledger, source="barnard_faculty", school="barnard",
+            outcome=sh.FAILED, emitted=40, baseline=212,
+            now=NOW - timedelta(days=1),
+            failure_reason="Source check incomplete: list_pages_failed")
+        sh.record_attempt(
+            ledger, source="campus_graph:barnard", school="barnard",
+            outcome=sh.SUCCESS_NONZERO, emitted=9, baseline=9,
+            now=NOW - timedelta(days=1))
+        rows = {r["source"]: r for r in sh.source_rows(ledger, NOW, ALL)}
+        assert rows["barnard_faculty"]["current_record_count"] == 40
+        assert rows["barnard_faculty"]["freshness"] == "stale"
+        school = sh.school_rows(ledger, NOW, ALL)[0]
+        assert school["fully_stale"] is False
+        assert school["no_fresh_faculty"] is True
+
+    def test_a_faculty_source_in_the_warn_band_still_delivers(self):
+        """10 to 17 days is ``warn``, one missed weekly slot, which already
+        keeps a school out of fully_stale. uiuc_faculty sat there on
+        2026-10-18: last success 3,790 rows on 10-05, then failed with 3,731
+        rows on 10-12 over two empty departments."""
+        ledger = sh.empty_ledger()
+        sh.record_attempt(
+            ledger, source="uiuc_faculty", school="uiuc",
+            outcome=sh.SUCCESS_NONZERO, emitted=3790, baseline=3304,
+            now=NOW - timedelta(days=13))
+        sh.record_attempt(
+            ledger, source="uiuc_faculty", school="uiuc", outcome=sh.FAILED,
+            emitted=3731, baseline=3305, now=NOW - timedelta(days=6),
+            failure_reason=(
+                "empty departments: ['Department of Atmospheric Sciences', "
+                "'Department of Earth Science & Environmental Change']"))
+        rows = {r["source"]: r for r in sh.source_rows(ledger, NOW, ALL)}
+        assert rows["uiuc_faculty"]["freshness"] == "warn"
+        school = sh.school_rows(ledger, NOW, ALL)[0]
+        assert school["no_fresh_faculty"] is False
+        assert school["fresh_faculty_shard_count"] == 1
+
     def test_unscheduled_sources_are_shown_but_never_counted_stale(self):
         """``manual`` seeds are carried data, not weekly producers. Judging
         them on a weekly clock reported the national shard permanently

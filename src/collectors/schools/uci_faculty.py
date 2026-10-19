@@ -3,15 +3,17 @@
 Second UC-system rollout school after UCSD. Directory markup by family
 (selectors verified against live HTML, Jul 2026):
 
-- **Samueli School of Engineering** (Drupal 7 "Mothership"): one shared selector
-  set across all six departments — EECS, Mechanical & Aerospace, Biomedical,
-  Chemical & Biomolecular, Civil & Environmental, and Materials — each on its own
-  ``/dept/<short>/faculty-staff/faculty`` page (emeritus/affiliated/staff live on
-  separate sibling URLs, so the ladder page is already role-scoped). Emails and a
-  "Research Interests:" line are on the listing card.
-- **Physical Sciences** (Drupal Views, but a different field schema per dept):
-  Chemistry and Mathematics are ``tr``-row tables gated to the "Faculty" position
-  section; Earth System Science is a ``div.views-row`` grid. Physics & Astronomy
+- **Samueli School of Engineering** (OmniUpdate): one shared selector set across
+  all six departments — EECS, Mechanical & Aerospace, Biomedical, Chemical &
+  Biomolecular, Civil & Environmental, and Materials — each on its own
+  ``/dept/<short>/people/faculty.php`` page (affiliated/emeritus/staff are sibling
+  pages; Materials lists its emeriti, visitors and lecturers below the core
+  faculty, and the ladder filter drops them). Emails and a "Research Interests:"
+  line are on the listing card.
+- **Physical Sciences** (a different schema per dept): Chemistry is a Drupal
+  ``tr``-row table gated to the "Faculty" position section; Mathematics (WordPress)
+  lists its core faculty on a paged ``/role/core-faculty/`` archive; Earth System
+  Science is a ``div.views-row`` grid. Physics & Astronomy
   serves its faculty listing under an HTTP 404 status (a Drupal soft-404 that a
   strict GET rejects), so it fetches through the headless browser
   (``scrape.render``), which ignores the status line; the dedicated
@@ -44,6 +46,17 @@ Deferred departments (each needs a mechanism this engine can't apply cleanly):
 
 Single source ("uci_faculty"); department rides each record's ``department``,
 ids namespaced by department short-code. Audience "unknown".
+
+Moved 2026 (found 2026-10-18): engineering.uci.edu left Drupal between the
+2026-10-10 and 2026-10-17 refreshes. The old ``/dept/<short>/faculty-staff/
+faculty`` rosters answer 404 and profile links went from ``/users/<slug>`` to
+``/directory/<last>_<first>.php``. math.uci.edu moved to WordPress: the
+2026-08-22, 10-10 and 10-17 refreshes read a 404 at ``/people``, and no
+Mathematics row has been seen since 2026-08-15. Ids hash the department and the
+name, so a moved person keeps their id wherever the new page writes the name as
+before; ``id_names`` maps the seven it writes another way (six Mathematics names
+without a middle initial or second surname, and one Civil & Environmental row
+stored with its credentials in the name).
 """
 
 from __future__ import annotations
@@ -55,17 +68,23 @@ from .. import faculty_graph
 _LADDER = {"require": r"\bprofessor\b",
            "drop": r"\bemerit|\badjunct|\bvisiting|of teaching|professor of teaching"}
 
-# Samueli Engineering — Drupal 7 bean cards, one selector set for all six depts.
-# Rank shares the body <p> with endowed-chair/center text; the "Research
-# Interests:" label follows it on the same card.
+# Samueli Engineering — hand-edited OmniUpdate grids, one selector set for all
+# six depts. A card's name links to its school-directory page from an <h4> or a
+# <p>. The rank is the text between that link (and a degree left outside it) and
+# the first bold "Research Interests"/"Email" label, in a <span> or bare; a card
+# with no label falls back to the first <span> holding no image, link or label.
+# The labels put their colon inside or outside the <strong>.
 _ENG = {
-    "card": "div.bean-call-to-action-block",
-    "name": ".field_body h4 a",
-    "link": ".field_body h4 a",
-    "title": ".field_body p",
-    "title_strip_after": r"\s+Research Interests:|\s+\S+@",
-    "email": ".field_body a[href^='mailto:']",
-    "research_re": r"Research Interests:\s*(?:</strong>)?\s*([^<]{4,400})",
+    "card": 'div.showcase-grid:has(a[href*="/directory/"])',
+    "name": 'a[href*="/directory/"]',
+    "link": 'a[href*="/directory/"]',
+    "title": 'p span:not(:has(img, a)):not(:-soup-contains("Research Interests", "Email", "E-mail"))',
+    # Atomic degree run and a bounded rank keep this linear on any card.
+    "title_html_re": (r'href="/directory/[^"]*"[^>]*>[^<]*</a>'
+                      r"(?>(?:\s*,\s*(?:Ph\.?\s?D|Sc\.?\s?D|M\.?\s?D|P\.?\s?E)\.?)*)"
+                      r"(.{0,1500}?)<strong>\s*(?:Research Interests|E-?mail)"),
+    "email": "a[href^='mailto:']",
+    "research_re": r"Research Interests\s*:?\s*(?:<[^>]*>\s*)*:?\s*([^<]{4,400})",
 }
 
 
@@ -75,7 +94,7 @@ def _dept(short: str, name: str, majors: list[str], url: str, scrape: dict) -> d
 
 
 def _eng(short: str, name: str, majors: list[str], dept_slug: str) -> dict:
-    url = f"https://engineering.uci.edu/dept/{dept_slug}/faculty-staff/faculty"
+    url = f"https://engineering.uci.edu/dept/{dept_slug}/people/faculty.php"
     return _dept(short, name, majors, url,
                  {"selectors": dict(_ENG), "ladder_filter": _LADDER})
 
@@ -135,7 +154,10 @@ def _hum(short: str, name: str, majors: list[str], url: str) -> dict:
 # School of Biological Sciences — the central www.bio.uci.edu/academics/faculty/
 # <slug>/ pages are server-rendered `bs-staff` cards (T5) with rank + email on
 # the listing (the dept SUBDOMAINS are JS-only, so use these). Emeriti/
-# in-memoriam are separate slugs, so the roster is clean.
+# in-memoriam are separate slugs, so the roster is clean. Since the 2026-10-17
+# refresh www.bio.uci.edu answers with a Cloudflare challenge (403 "Just a
+# moment..."), so these units read zero rows and retire no one; nothing here
+# tries to get past it.
 def _bio(short: str, name: str, majors: list[str], slug: str) -> dict:
     url = f"https://www.bio.uci.edu/academics/faculty/{slug}/"
     return _dept(short, name, majors, url, {
@@ -179,7 +201,7 @@ SCHOOL: dict = {
         "arrangement; ask the professor."
     ),
     "departments": [
-        # ---- Samueli School of Engineering (shared Drupal-7 selectors) ------
+        # ---- Samueli School of Engineering (shared OmniUpdate selectors) ----
         _eng("EECS", "Department of Electrical Engineering & Computer Science",
              ["Electrical Engineering", "Computer Engineering", "Computer Science & Engineering"],
              "eecs"),
@@ -189,11 +211,14 @@ SCHOOL: dict = {
              ["Biomedical Engineering"], "bme"),
         _eng("CBE", "Department of Chemical & Biomolecular Engineering",
              ["Chemical Engineering"], "cbe"),
-        _eng("CEE", "Department of Civil & Environmental Engineering",
-             ["Civil Engineering", "Environmental Engineering"], "cee"),
+        {**_eng("CEE", "Department of Civil & Environmental Engineering",
+                ["Civil Engineering", "Environmental Engineering"], "cee"),
+         # Stored before 2026-07-19, when a trailing ", P.E." was not yet
+         # stripped from names; the page writes "Amir Aghakouchak, Ph.D., P.E.".
+         "id_names": {"Amir Aghakouchak": "Amir Aghakouchak, Ph.D., P.E."}},
         _eng("MSE", "Department of Materials Science & Engineering",
              ["Materials Science & Engineering"], "mse"),
-        # ---- Physical Sciences (Drupal Views, per-dept field schema) --------
+        # ---- Physical Sciences (per-dept schema) ----------------------------
         _dept(
             "CHEM", "Department of Chemistry",
             ["Chemistry", "Chemistry (BS)", "Pharmaceutical Sciences"],
@@ -222,25 +247,36 @@ SCHOOL: dict = {
                 },
             },
         ),
-        _dept(
+        {**_dept(
             "MATH", "Department of Mathematics",
             ["Mathematics", "Applied Mathematics", "Data Science"],
-            "https://www.math.uci.edu/people",
+            "https://math.uci.edu/role/core-faculty/",
             {
+                # WordPress "person" posts, twelve to a page; this role archive
+                # holds the core faculty only. The rank is the field after the
+                # <hr> under the name.
                 "selectors": {
-                    "card": "tr.odd, tr.even",
-                    "name": "td.views-field-field-name a",
-                    "title": "td.views-field-field-job-title",
-                    "email": "td.views-field-field-email",
-                    "link": "td.views-field-field-name a",
-                    "research_re": r"views-field-field-research-area[^>]*>\s*(?:<[^>]+>\s*)*([^<]{3,200})",
+                    "card": "li.wp-block-post.person",
+                    "name": "h3 .value",
+                    "link": "a[href*='/person/']",
+                    "title": "hr + div .value",
+                    "email": "a[href^='mailto:']",
                 },
-                "field_filter": {"selector": "td.views-field-field-position",
-                                 "include": r"^\s*Faculty\s*$"},
                 "ladder_filter": _LADDER,
+                "paginate": {"mode": "path", "param": "page", "start": 2, "max": 8},
             },
         ),
-        _dept(
+         # The WordPress site writes these names without the middle initial
+         # (or second surname) the Drupal site gave them.
+         "id_names": {
+             "German Enciso": "German A. Enciso Ruiz",
+             "Isaac Goldbring": "Isaac M. Goldbring",
+             "Jeffrey Streets": "Jeffrey D. Streets",
+             "Matthew Foreman": "Matthew D. Foreman",
+             "Michael Cranston": "Michael C. Cranston",
+             "Patrick Guidotti": "Patrick Q. Guidotti",
+         }},
+        {**_dept(
             "PHYS", "Department of Physics & Astronomy",
             ["Physics", "Applied Physics", "Astrophysics"],
             "https://www.physics.uci.edu/people/faculty",
@@ -258,6 +294,8 @@ SCHOOL: dict = {
                 },
             },
         ),
+         # Stored in July as "Juan Pedro Ochoa-Ricoux"; the page now omits "Juan".
+         "id_names": {"Pedro Ochoa-Ricoux": "Juan Pedro Ochoa-Ricoux"}},
         # ---- Bren School of ICS: Computer Science (WordPress, rendered) -----
         _dept(
             "CS", "Department of Computer Science",
@@ -312,14 +350,18 @@ SCHOOL: dict = {
             },
         ),
         # ---- School of Social Sciences (one shared DataTable) ---------------
-        _socsci("ANTHRO", "Department of Anthropology",
-                ["Anthropology"], r"Anthropology"),
+        {**_socsci("ANTHRO", "Department of Anthropology",
+                   ["Anthropology"], r"Anthropology"),
+         # Stored in July with the accents written as HTML entities.
+         "id_names": {"António Tomás": "Ant&oacute;nio Tom&aacute;s"}},
         _socsci("COGSCI", "Department of Cognitive Sciences",
                 ["Cognitive Sciences", "Psychology"], r"Cognitive Sciences"),
         _socsci("POLISCI", "Department of Political Science",
                 ["Political Science", "Public Policy"], r"Political Science"),
-        _socsci("SOC", "Department of Sociology",
-                ["Sociology"], r"Sociology"),
+        {**_socsci("SOC", "Department of Sociology",
+                   ["Sociology"], r"Sociology"),
+         # Stored in July with the accent written as an HTML entity.
+         "id_names": {"Rocío Rosales": "Roc&iacute;o Rosales"}},
         _socsci("LANGSCI", "Department of Language Science",
                 ["Language Science"], r"Language Science"),
         _socsci("LPS", "Department of Logic & Philosophy of Science",

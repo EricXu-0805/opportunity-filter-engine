@@ -215,6 +215,37 @@ class TestSeedInventory:
             "academic-year-research-grant-information/bates-student-research-fund/"
         )
 
+    def test_uci_engineering_research_moves_to_the_student_affairs_page(self):
+        """campus-seed-health run 39142563102 (2026-10-18) found this seed gone.
+
+        engineering.uci.edu/research/undergraduate answers 404. The school's
+        Research menu now lists its associate dean's message, research
+        thrusts, centers, e+ institutes and the Office for Experiential
+        Learning, whose research section still links to the dead page. The
+        Research page of the school's Undergraduate Student Affairs site says
+        "To enroll in a 199 section, please contact the instructor directly to
+        discuss the research you will be participating in and to obtain the
+        4-digit authorization code", after steps to find a lab and email its
+        group. The seed and the engineering_ugresearch record move there
+        together.
+        """
+        from src.collectors.schools import SCHOOL_CONFIGS
+
+        dead = "https://engineering.uci.edu/research/undergraduate"
+        page = "https://undergraduate.eng.uci.edu/undergraduate-programs/research-2/"
+        seeds = {url for _slug, _src, url in _checker.configured_seeds()}
+        programs = {
+            (config["school_slug"], spec["key"]): spec["url"]
+            for config in SCHOOL_CONFIGS
+            for source in config.get("sources", [])
+            for spec in source.get("programs", [])
+        }
+
+        assert dead not in seeds
+        assert dead not in set(programs.values())
+        assert programs[("uci", "engineering_ugresearch")] == page
+        assert page in seeds
+
 
 class TestProgramPages:
     """A program record's URL is the page a student lands on.

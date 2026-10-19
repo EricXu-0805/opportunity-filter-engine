@@ -689,6 +689,13 @@ def check_no_fully_stale_school() -> dict:
     the release for it would re-create the veto from the other direction.
     A school with NO fresh source has stopped refreshing, and that is a
     release blocker.
+
+    So is a school whose every faculty source is stale or returned zero rows
+    on its latest run (``no_fresh_faculty_schools``): a fresh campus-program
+    or listing source keeps it out of ``fully_stale``, but students come for
+    its professors and those have stopped being observed. The faculty rule is
+    a separate field so ``fully_stale`` keeps its school-wide meaning for the
+    alerts, admin page and refresh report that also read it.
     """
     path = _SOURCE_HEALTH_PATH
     if not path.exists():
@@ -705,9 +712,12 @@ def check_no_fully_stale_school() -> dict:
         return _gate("no_fully_stale_school", CANNOT_VERIFY,
                      f"could not evaluate: {exc}", reason="ledger_unreadable")
     count = report["fully_stale_school_count"]
+    no_faculty = report["no_fresh_faculty_schools"]
     detail = {
         "fully_stale_school_count": count,
         "fully_stale_schools": report["fully_stale_schools"][:20],
+        "no_fresh_faculty_school_count": len(no_faculty),
+        "no_fresh_faculty_schools": no_faculty[:20],
         "school_count": report["school_count"],
         "partially_degraded_school_count": report[
             "partially_degraded_school_count"
@@ -716,13 +726,22 @@ def check_no_fully_stale_school() -> dict:
         "failed_shard_count": report["failed_shard_count"],
         "stale_days": report["stale_days"],
     }
+    failures = []
     if count:
-        return _gate(
-            "no_fully_stale_school", FAIL,
+        failures.append(
             f"{count} school(s) have no fresh source at all: "
-            f"{', '.join(report['fully_stale_schools'][:10])}",
-            detail,
-        )
+            f"{', '.join(report['fully_stale_schools'][:10])}")
+    # A school with no fresh source has no fresh faculty source either and is
+    # already named above.
+    faculty_only = [s for s in no_faculty
+                    if s not in report["fully_stale_schools"]]
+    if faculty_only:
+        failures.append(
+            f"{len(faculty_only)} school(s) with a fresh source have every "
+            f"faculty source stale or empty on its latest run: "
+            f"{', '.join(faculty_only[:10])}")
+    if failures:
+        return _gate("no_fully_stale_school", FAIL, "; ".join(failures), detail)
     return _gate(
         "no_fully_stale_school", PASS,
         f"every one of {report['school_count']} school(s) has fresh data "
@@ -773,25 +792,34 @@ def corpus_freshness_report(now: datetime | None = None) -> dict:
     if not shard_dir.is_dir():
         raise FileNotFoundError("data/processed/shards is missing")
 
+    sys.path.insert(0, str(_REPO))
+    from src.normalizers.deactivate_stale_faculty import (  # noqa: PLC0415
+        FACULTY_SOURCES,
+    )
+
     active = fresh = inactive = 0
     schools: dict[str, dict] = {}
     for path in sorted(shard_dir.glob("*.json")):
         school = path.stem
         with path.open(encoding="utf-8") as handle:
             records = json.load(handle)
-        row = {"active": 0, "fresh": 0, "last_seen_at": None}
+        row = {"active": 0, "fresh": 0, "faculty_active": 0,
+               "faculty_fresh": 0, "last_seen_at": None}
         for record in records:
             meta = record.get("metadata") or {}
             if not meta.get("is_active"):
                 inactive += 1
                 continue
             row["active"] += 1
+            faculty = record.get("source") in FACULTY_SOURCES
+            row["faculty_active"] += faculty
             seen = _parse_stamp(meta.get("last_seen_at"))
             if seen is not None and (row["last_seen_at"] is None
                                      or seen > row["last_seen_at"]):
                 row["last_seen_at"] = seen
             if seen is not None and seen >= cutoff:
                 row["fresh"] += 1
+                row["faculty_fresh"] += faculty
         active += row["active"]
         fresh += row["fresh"]
         schools[school] = row
@@ -805,6 +833,11 @@ def corpus_freshness_report(now: datetime | None = None) -> dict:
 
     states = {name: _state(row) for name, row in schools.items()}
     fully_stale = sorted(n for n, st in states.items() if st == "fully_stale")
+    # The faculty rule of check_no_fully_stale_school, read from the records:
+    # a school holding faculty records none of which was re-observed has no
+    # fresh faculty data, however fresh its campus-program records are.
+    no_fresh_faculty = sorted(n for n, row in schools.items()
+                              if row["faculty_active"] and not row["faculty_fresh"])
     # A school with no active records at all is either a product decision or a
     # school that silently lost its corpus. Those must not read the same, so
     # the declared-unsupported set is subtracted and whatever is left is a
@@ -834,6 +867,8 @@ def corpus_freshness_report(now: datetime | None = None) -> dict:
             1 for v in states.values() if v == "partially_stale"),
         "fully_stale_school_count": len(fully_stale),
         "fully_stale_schools": fully_stale,
+        "no_fresh_faculty_school_count": len(no_fresh_faculty),
+        "no_fresh_faculty_schools": no_fresh_faculty,
         "no_active_record_school_count": len(no_active),
         "no_active_record_schools": no_active,
         "unsupported_schools": unsupported,
@@ -842,6 +877,8 @@ def corpus_freshness_report(now: datetime | None = None) -> dict:
             name: {
                 "active": row["active"],
                 "fresh": row["fresh"],
+                "faculty_active": row["faculty_active"],
+                "faculty_fresh": row["faculty_fresh"],
                 "state": states[name],
                 "last_seen_at": (row["last_seen_at"].isoformat()
                                  if row["last_seen_at"] else None),
@@ -878,6 +915,7 @@ def check_corpus_freshness() -> dict:
     # see WHY the denominator is what it is without leaving the ledger.
     evidence["unsupported_schools"] = report["unsupported_schools"]
     evidence["fully_stale_schools"] = report["fully_stale_schools"][:20]
+    evidence["no_fresh_faculty_schools"] = report["no_fresh_faculty_schools"][:20]
     evidence["worst_schools"] = sorted(
         ({"school": name, **row} for name, row in report["schools"].items()
          if row["state"] != "fully_fresh"),
@@ -902,6 +940,13 @@ def check_corpus_freshness() -> dict:
         failures.append(
             f"{report['fully_stale_school_count']} school(s) have no fresh "
             f"record at all: {', '.join(report['fully_stale_schools'][:10])}")
+    faculty_only = [s for s in report["no_fresh_faculty_schools"]
+                    if s not in report["fully_stale_schools"]]
+    if faculty_only:
+        failures.append(
+            f"{len(faculty_only)} school(s) with a fresh record have no "
+            f"faculty record re-observed within {report['stale_days']:.0f}d: "
+            f"{', '.join(faculty_only[:10])}")
     if report["unexplained_empty_schools"]:
         failures.append(
             f"{len(report['unexplained_empty_schools'])} school(s) have no active "
@@ -912,6 +957,8 @@ def check_corpus_freshness() -> dict:
                      reason="below_threshold" if pct < threshold
                      else "fully_stale_schools"
                      if report["fully_stale_school_count"]
+                     else "no_fresh_faculty_schools"
+                     if report["no_fresh_faculty_school_count"]
                      else "unexplained_empty_school")
     return _gate("corpus_freshness", PASS,
                  f"{pct:.2f}% >= {threshold}% across "

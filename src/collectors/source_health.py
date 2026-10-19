@@ -445,6 +445,27 @@ def monitored_source_names() -> frozenset[str] | None:
     return monitored_sources()
 
 
+def faculty_source_names() -> frozenset[str]:
+    """The faculty collectors, from the one list refresh_all and retirement share."""
+    from src.normalizers.deactivate_stale_faculty import FACULTY_SOURCES
+
+    return FACULTY_SOURCES
+
+
+def _delivers_faculty(row: dict) -> bool:
+    """A faculty source not yet stale whose latest run did not come back empty.
+
+    A zero-row attempt keeps the source's last success, so for up to the
+    stale bound it still reads fresh while its school's roster has stopped
+    being observed. Only a counted zero says that. An attempt with no count
+    was deferred by the run clock before it started, or raised before it
+    counted anything; it says nothing about the roster, so the last success
+    alone decides, as it does for the records that success last saw.
+    """
+    return (row["freshness"] in {"fresh", "warn"}
+            and _count(row["current_record_count"]) != 0)
+
+
 
 def source_rows(
     ledger: dict,
@@ -519,6 +540,15 @@ def school_rows(
     source is stale even if the shard file was rewritten today, because a
     rewrite that carried only retained records forward is not a refresh.
 
+    ``no_fresh_faculty`` is the same question asked of the school's faculty
+    sources (:func:`faculty_source_names`) alone: true when it has at least
+    one and every one is stale or emitted zero rows on its latest attempt.
+    An attempt that reported no count (deferred, or raised first) is judged
+    by its last success alone. A fresh campus-program or listing source
+    keeps a school out of ``fully_stale`` but cannot stand in for its
+    professors: Barnard and Swarthmore had 4% of their records fresh, all
+    campus programs, after every faculty roster parsed zero rows for weeks.
+
     ``last_successful_school_activity`` is the NEWEST success over the
     school's eligible sources, so on its own it overstates freshness: one
     working source hides every dead sibling. ``oldest_success_at`` is the
@@ -544,6 +574,7 @@ def school_rows(
     """
     now = now.astimezone(UTC) if now is not None else datetime.now(UTC)
     shards = ledger.get("shards") or {}
+    faculty = faculty_source_names()
     by_school: dict[str, list[dict]] = {}
     for row in source_rows(ledger, now, eligible):
         school = row["school"]
@@ -573,6 +604,8 @@ def school_rows(
         ]
         successes = [s for s in successes if s is not None]
         never_succeeded = len(rows) - len(successes)
+        faculty_rows = [r for r in rows if r["source"] in faculty]
+        fresh_faculty = sum(1 for r in faculty_rows if _delivers_faculty(r))
         coverage_current = 0
         coverage_last_good = 0
         for r in rows:
@@ -617,6 +650,9 @@ def school_rows(
                 else "partially_degraded" if stale or degraded
                 else "fully_fresh"
             ),
+            "faculty_shard_count": len(faculty_rows),
+            "fresh_faculty_shard_count": fresh_faculty,
+            "no_fresh_faculty": bool(faculty_rows) and fresh_faculty == 0,
         })
     return out
 
@@ -642,6 +678,12 @@ def corpus_report(
         "fully_stale_school_count": sum(1 for s in schools if s["fully_stale"]),
         "fully_stale_schools": sorted(
             s["school"] for s in schools if s["fully_stale"]
+        ),
+        "no_fresh_faculty_school_count": sum(
+            1 for s in schools if s["no_fresh_faculty"]
+        ),
+        "no_fresh_faculty_schools": sorted(
+            s["school"] for s in schools if s["no_fresh_faculty"]
         ),
         "stale_shard_count": sum(s["stale_shard_count"] for s in schools),
         "failed_shard_count": sum(s["failed_shard_count"] for s in schools),

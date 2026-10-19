@@ -184,6 +184,7 @@ class TestTheDenominatorFollowsTheDecision:
             "inactive_records": 7, "school_count": 2,
             "fully_fresh_school_count": 1, "partially_stale_school_count": 1,
             "fully_stale_school_count": 0, "fully_stale_schools": [],
+            "no_fresh_faculty_school_count": 0, "no_fresh_faculty_schools": [],
             "no_active_record_school_count": 1,
             "no_active_record_schools": ["ucd"],
             "unsupported_schools": ["ucd"],

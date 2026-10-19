@@ -536,7 +536,12 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
     research_areas = _strip_nav_furniture(person.get("research_areas", ""))
     keywords = _clean_keywords(person)
     now = datetime.now(UTC).replace(tzinfo=None).isoformat()
-    name_hash = hashlib.md5(f"{short}-{name}".encode()).hexdigest()[:8]
+    # A unit whose page now writes a stored person's name another way (a
+    # dropped middle initial) maps today's name to the stored one in
+    # ``id_names``, so the record keeps its id rather than being retired and
+    # minted again.
+    id_name = (dept.get("id_names") or {}).get(name, name)
+    name_hash = hashlib.md5(f"{short}-{id_name}".encode()).hexdigest()[:8]
     opp_id = f"faculty-{school['id_prefix']}-{short.lower()}-{name_hash}"
 
     # Rank-neutral prose when the source stated no rank or a non-professor
