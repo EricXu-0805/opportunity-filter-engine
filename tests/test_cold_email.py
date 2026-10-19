@@ -1381,9 +1381,10 @@ class TestColdEmailPipeline:
         return ce._pipeline_generate(self._profile(), self._opp(), None), notes
 
     _ATTRIBUTION = {"banned_filler": [], "unsupported": ["unsupported experience attribution: personal build"],
-                    "attribution_clauses": ["I built X using Rust"], "borrowed_competence": [],
-                    "references_professor": True, "has_specific_prof_data": False}
-    _CLEAN = {**_ATTRIBUTION, "unsupported": [], "attribution_clauses": []}
+                    "attribution_clauses": ["I built X using Rust"],
+                    "attribution_sources": [{"clauses": ["I built X using Rust"], "excerpt": "I built X."}],
+                    "borrowed_competence": [], "references_professor": True, "has_specific_prof_data": False}
+    _CLEAN = {**_ATTRIBUTION, "unsupported": [], "attribution_clauses": [], "attribution_sources": []}
 
     def test_a_revision_that_still_fails_grounding_gets_one_repair_naming_the_sentence(self, monkeypatch):
         out, notes = self._staged_revisions(
@@ -1391,7 +1392,8 @@ class TestColdEmailPipeline:
             ["revised", "repaired"])
         assert out == "repaired"
         assert len(notes) == 2
-        assert 'Rewrite: "I built X using Rust"' in notes[1]
+        assert '- Replace the sentence containing "I built X using Rust" with this confirmed sentence: "I built X."' in (
+            notes[1].splitlines())
 
     def test_a_repair_that_does_not_improve_is_not_used(self, monkeypatch):
         out, notes = self._staged_revisions(
