@@ -2956,13 +2956,13 @@ class TestUciConfig:
         assert UCI["source"] in FACULTY_SOURCES
 
     def test_uci_engineering_shares_one_selector_set(self):
-        """The six Samueli departments reuse the Drupal-7 bean-card selectors."""
+        """The six Samueli departments reuse the OmniUpdate showcase-card selectors."""
         from src.collectors.schools.uci_faculty import SCHOOL as UCI
         eng = [d for d in UCI["departments"]
                if d.get("directory_url", "").startswith("https://engineering.uci.edu/dept/")]
         assert {d["short"] for d in eng} == {"EECS", "MAE", "BME", "CBE", "CEE", "MSE"}
         cards = {d["scrape"]["selectors"]["card"] for d in eng}
-        assert cards == {"div.bean-call-to-action-block"}
+        assert cards == {'div.showcase-grid:has(a[href*="/directory/"])'}
 
     def test_uci_socsci_field_filter_anchors_on_primary_department(self):
         """The shared social-sciences table concatenates the primary department
