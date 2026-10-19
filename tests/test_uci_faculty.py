@@ -176,3 +176,23 @@ def test_the_moved_rows_keep_their_corpus_ids(run):
         "German Enciso": "German A. Enciso Ruiz",
         "Isaac Goldbring": "Isaac M. Goldbring",
     }
+
+
+def test_rows_stored_under_an_older_spelling_keep_their_ids():
+    """Each page wrote these names on 2026-10-17. The fresh row each minted was
+    folded into the stored one, which kept its old name and a last sighting
+    from July."""
+    rows = json.loads(SHARD.read_text(encoding="utf-8"))
+    stored = {r["id"]: r["pi_name"] for r in rows if r.get("source") == "uci_faculty"}
+    depts = {d["short"]: d for d in uci_faculty.SCHOOL["departments"]}
+    seen = {}
+    for short, name in (("ANTHRO", "António Tomás"), ("SOC", "Rocío Rosales"),
+                        ("PHYS", "Pedro Ochoa-Ricoux")):
+        rec = faculty_graph._normalize(uci_faculty.SCHOOL, depts[short],
+                                       faculty_graph.faculty(name, title="Professor"))
+        seen[name] = (stored.get(rec["id"]), rec["pi_name"])
+    assert seen == {
+        "António Tomás": ("Ant&oacute;nio Tom&aacute;s", "António Tomás"),
+        "Rocío Rosales": ("Roc&iacute;o Rosales", "Rocío Rosales"),
+        "Pedro Ochoa-Ricoux": ("Juan Pedro Ochoa-Ricoux", "Pedro Ochoa-Ricoux"),
+    }

@@ -275,7 +275,7 @@ SCHOOL: dict = {
              "Michael Cranston": "Michael C. Cranston",
              "Patrick Guidotti": "Patrick Q. Guidotti",
          }},
-        _dept(
+        {**_dept(
             "PHYS", "Department of Physics & Astronomy",
             ["Physics", "Applied Physics", "Astrophysics"],
             "https://www.physics.uci.edu/people/faculty",
@@ -293,6 +293,8 @@ SCHOOL: dict = {
                 },
             },
         ),
+         # Stored in July as "Juan Pedro Ochoa-Ricoux"; the page now omits "Juan".
+         "id_names": {"Pedro Ochoa-Ricoux": "Juan Pedro Ochoa-Ricoux"}},
         # ---- Bren School of ICS: Computer Science (WordPress, rendered) -----
         _dept(
             "CS", "Department of Computer Science",
@@ -347,14 +349,18 @@ SCHOOL: dict = {
             },
         ),
         # ---- School of Social Sciences (one shared DataTable) ---------------
-        _socsci("ANTHRO", "Department of Anthropology",
-                ["Anthropology"], r"Anthropology"),
+        {**_socsci("ANTHRO", "Department of Anthropology",
+                   ["Anthropology"], r"Anthropology"),
+         # Stored in July with the accents written as HTML entities.
+         "id_names": {"António Tomás": "Ant&oacute;nio Tom&aacute;s"}},
         _socsci("COGSCI", "Department of Cognitive Sciences",
                 ["Cognitive Sciences", "Psychology"], r"Cognitive Sciences"),
         _socsci("POLISCI", "Department of Political Science",
                 ["Political Science", "Public Policy"], r"Political Science"),
-        _socsci("SOC", "Department of Sociology",
-                ["Sociology"], r"Sociology"),
+        {**_socsci("SOC", "Department of Sociology",
+                   ["Sociology"], r"Sociology"),
+         # Stored in July with the accent written as an HTML entity.
+         "id_names": {"Rocío Rosales": "Roc&iacute;o Rosales"}},
         _socsci("LANGSCI", "Department of Language Science",
                 ["Language Science"], r"Language Science"),
         _socsci("LPS", "Department of Logic & Philosophy of Science",
