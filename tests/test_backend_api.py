@@ -8002,6 +8002,181 @@ class TestSourceHealthSurfaces:
         assert body["report"]["fully_stale_school_count"] == 0
         assert body["report"]["partially_degraded_school_count"] == 1
 
+
+class TestPublicSchoolFreshness:
+    """GET /api/opportunities/freshness: the "last checked" date and status the
+    school picker and results page show, from the per-source ledger alone."""
+
+    @staticmethod
+    def _at(now, **ago):
+        return (now - timedelta(**ago)).isoformat()
+
+    def _ledger(self, now):
+        def source(school, success_days, status="success_nonzero", count=10,
+                   reason=None):
+            return {
+                "school": school,
+                "last_attempt_at": self._at(now, days=1),
+                "last_success_at": self._at(now, days=success_days),
+                "status": status, "current_count": count, "last_good_count": 224,
+                "baseline_count": 231, "consecutive_failures": 0 if reason is None else 3,
+                "failure_reason": reason,
+            }
+
+        refused = "Source check incomplete: https://www.swarthmore.edu/ returned no links"
+        return {
+            "schema_version": 1,
+            "sources": {
+                # The site turns the runner away: every source has failed for weeks.
+                "swarthmore_faculty": source("swarthmore", 43, "suspicious_zero", 0, refused),
+                "campus_graph:swarthmore": source("swarthmore", 43, "failed", 10, refused),
+                # Rosters moved; a campus check that works again does not lift it.
+                "barnard_faculty": source("barnard", 50, "suspicious_zero", 0,
+                                          "emitted 0 against a baseline of 212"),
+                "campus_graph:barnard": source("barnard", 2),
+                "uiuc_faculty": source("uiuc", 13, "failed", 3731,
+                                       "empty departments: ['Atmospheric Sciences']"),
+                "uiuc_our_rss": source("uiuc", 6),
+                "yale_faculty": source("yale", 1),
+                "campus_graph:yale": source("yale", 1),
+                # Declared unsupported: monitored nowhere.
+                "campus_graph:ucd": source("ucd", 89),
+                "nsf_reu": source("national", 1),
+            },
+            "shards": {"swarthmore": {"last_publish_at": self._at(now, hours=30)}},
+        }
+
+    @pytest.fixture(autouse=True)
+    def _fresh_cache(self, monkeypatch):
+        from backend.routes import opportunities as routes
+        monkeypatch.setattr(routes, "_freshness_cache", None, raising=False)
+
+    def _install(self, monkeypatch, tmp_path, ledger):
+        from backend.routes import opportunities as routes
+        path = tmp_path / "source_health.json"
+        path.write_text(json.dumps(ledger), encoding="utf-8")
+        monkeypatch.setattr(routes, "_SOURCE_HEALTH_PATH", path)
+        return path
+
+    def _clock(self, monkeypatch, start):
+        from backend.routes import opportunities as routes
+
+        class Clock(datetime):
+            current = start
+
+            @classmethod
+            def now(cls, tz=None):
+                return cls.current
+
+        monkeypatch.setattr(routes, "datetime", Clock)
+        return Clock
+
+    def _count_computations(self, monkeypatch):
+        from backend.routes import opportunities as routes
+        real = routes._school_freshness_payload
+        calls = []
+
+        def counted(now):
+            calls.append(now)
+            return real(now)
+
+        monkeypatch.setattr(routes, "_school_freshness_payload", counted)
+        return calls
+
+    def test_serves_each_school_its_date_and_status_and_nothing_else(
+        self, monkeypatch, tmp_path,
+    ):
+        now = datetime.now(UTC)
+        ledger = self._ledger(now)
+        self._install(monkeypatch, tmp_path, ledger)
+        response = client.get("/api/opportunities/freshness")
+        assert response.status_code == 200
+        body = response.json()
+        assert set(body) == {"schema", "schools"}
+        assert body["schema"] == "school-freshness-v1"
+        schools = body["schools"]
+
+        def second(source):
+            return datetime.fromisoformat(
+                ledger["sources"][source]["last_success_at"]).isoformat(timespec="seconds")
+
+        assert schools["swarthmore"] == {
+            "last_checked_at": second("swarthmore_faculty"), "status": "stale"}
+        assert schools["barnard"] == {
+            "last_checked_at": second("campus_graph:barnard"), "status": "stale"}
+        assert schools["uiuc"] == {
+            "last_checked_at": second("uiuc_our_rss"), "status": "partly_unchecked"}
+        assert schools["yale"]["status"] == "current"
+        assert set(schools) == {"swarthmore", "barnard", "uiuc", "yale"}
+        for leaked in ("faculty", "campus_graph", "swarthmore.edu", "baseline",
+                       "Atmospheric", "3731", "last_publish"):
+            assert leaked not in response.text
+
+    def test_an_absent_ledger_names_no_school(self, monkeypatch, tmp_path):
+        from backend.routes import opportunities as routes
+        monkeypatch.setattr(routes, "_SOURCE_HEALTH_PATH", tmp_path / "absent.json")
+        body = client.get("/api/opportunities/freshness").json()
+        assert body == {"schema": "school-freshness-v1", "schools": {}}
+
+    def test_an_unknown_monitored_set_names_no_school_and_is_not_kept(
+        self, monkeypatch, tmp_path,
+    ):
+        from src.collectors import source_health
+        self._install(monkeypatch, tmp_path, self._ledger(datetime.now(UTC)))
+        known = source_health.monitored_source_names
+        unavailable = [True]
+        monkeypatch.setattr(source_health, "monitored_source_names",
+                            lambda: None if unavailable[0] else known())
+        assert client.get("/api/opportunities/freshness").json()["schools"] == {}
+        # Same ledger file: only an answer that was not kept can change now.
+        unavailable[0] = False
+        assert client.get("/api/opportunities/freshness").json()["schools"]["uiuc"]
+
+    def test_computed_once_per_ledger_version(self, monkeypatch, tmp_path):
+        now = datetime.now(UTC)
+        path = self._install(monkeypatch, tmp_path, self._ledger(now))
+        calls = self._count_computations(monkeypatch)
+        first = client.get("/api/opportunities/freshness").json()
+        assert client.get("/api/opportunities/freshness").json() == first
+        assert len(calls) == 1
+
+        ledger = self._ledger(now)
+        ledger["sources"]["swarthmore_faculty"].update(
+            status="success_nonzero", current_count=224,
+            last_success_at=self._at(now, hours=1), failure_reason=None)
+        ledger["sources"]["campus_graph:swarthmore"].update(
+            status="success_nonzero", last_success_at=self._at(now, hours=1),
+            failure_reason=None)
+        path.write_text(json.dumps(ledger), encoding="utf-8")
+        second = client.get("/api/opportunities/freshness").json()
+        assert len(calls) == 2
+        assert second["schools"]["swarthmore"]["status"] == "current"
+
+    def test_a_kept_answer_ends_when_a_source_crosses_the_stale_bound(
+        self, monkeypatch, tmp_path,
+    ):
+        """Nobody rewrites the ledger while refreshes are down, which is when
+        the status matters: yale's one roster turns stale 17 days after its
+        last success whatever the file says."""
+        start = datetime(2026, 10, 18, 12, 0, tzinfo=UTC)
+        clock = self._clock(monkeypatch, start)
+        ledger = self._ledger(start)
+        ledger["sources"]["yale_faculty"]["last_success_at"] = self._at(start, days=16)
+        self._install(monkeypatch, tmp_path, ledger)
+        calls = self._count_computations(monkeypatch)
+
+        assert client.get("/api/opportunities/freshness").json()[
+            "schools"]["yale"]["status"] == "current"
+        clock.current = start + timedelta(hours=23)
+        assert client.get("/api/opportunities/freshness").json()[
+            "schools"]["yale"]["status"] == "current"
+        assert len(calls) == 1
+        clock.current = start + timedelta(days=1, seconds=1)
+        assert client.get("/api/opportunities/freshness").json()[
+            "schools"]["yale"]["status"] == "stale"
+        assert len(calls) == 2
+
+
 class TestGitHubImportDoesNotReFetchTheSameUser:
     """Unauthenticated GitHub allows 60 requests an hour for the whole service
     — one egress IP — and GITHUB_TOKEN is set nowhere. `_billable_class`

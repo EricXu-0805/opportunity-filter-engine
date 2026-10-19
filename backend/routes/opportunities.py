@@ -6,7 +6,8 @@ import logging
 import time
 from collections import Counter
 from collections.abc import Iterator
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
+from typing import Literal
 
 from fastapi import APIRouter, Header, HTTPException, Query, Request, Response
 from fastapi.responses import StreamingResponse
@@ -65,6 +66,7 @@ from backend.lib.target_actionability import (
 )
 from backend.routes.cold_email import _format_recent_works
 from backend.schemas import ProfileRequest
+from src.collectors import source_health
 from src.evidence import (
     CONFIGURED_FACT_PATHS,
     configured_value_unstated,
@@ -375,6 +377,95 @@ async def opportunity_coverage() -> dict:
     # stalled every other request on this worker; the hit above stays here.
     payload = await asyncio.to_thread(lambda: coverage_payload(load_opportunities()))
     _coverage_cache = (version, payload)
+    return payload
+
+
+#: Mirrored in frontend/src/lib/school-freshness.ts. Bumped when the meaning of
+#: a status or of ``last_checked_at`` changes.
+SCHOOL_FRESHNESS_SCHEMA = "school-freshness-v1"
+
+
+class SchoolFreshness(BaseModel):
+    """What the school picker and results page may say about one school.
+
+    Declared field by field so the response can carry nothing else: no source
+    name, URL, count or failure reason reaches a public page.
+    """
+
+    #: The newest successful read among the school's monitored sources. Not a
+    #: claim that every record was re-verified then; ``status`` says how much
+    #: of the school that read covers.
+    last_checked_at: str | None
+    status: Literal["current", "partly_unchecked", "stale"]
+
+
+class SchoolFreshnessResponse(BaseModel):
+    """Response for ``/opportunities/freshness``. A school with no monitored
+    source is absent, which clients render as nothing at all."""
+
+    schema_: str = Field(default=SCHOOL_FRESHNESS_SCHEMA, alias="schema")
+    schools: dict[str, SchoolFreshness]
+
+    model_config = {"populate_by_name": True}
+
+
+# (ledger file version + thresholds, payload, valid until). The statuses are
+# ages, so a hit also has to be younger than the first moment a source crosses
+# a bound: a ledger nobody rewrites must still turn a school stale on time.
+_freshness_cache: tuple[tuple, dict, datetime | None] | None = None
+_SOURCE_HEALTH_PATH = source_health.LEDGER_FILE
+
+
+def _ledger_version() -> tuple[int, int] | None:
+    try:
+        stat = _SOURCE_HEALTH_PATH.stat()
+    except OSError:
+        return None
+    return stat.st_mtime_ns, stat.st_size
+
+
+def _school_freshness_payload(now: datetime) -> tuple[dict, datetime | None, bool]:
+    """``(payload, valid_until, cacheable)`` from the committed ledger."""
+    ledger = source_health.load_ledger(_SOURCE_HEALTH_PATH)
+    eligible = source_health.monitored_source_names()
+    if eligible is None:
+        # Without the monitored set every carried row would be judged on the
+        # weekly clock. Say nothing rather than that, and ask again next time.
+        return {"schema": SCHOOL_FRESHNESS_SCHEMA, "schools": {}}, None, False
+    return (
+        {
+            "schema": SCHOOL_FRESHNESS_SCHEMA,
+            "schools": source_health.public_school_freshness(ledger, now, eligible),
+        },
+        source_health.next_freshness_change(ledger, now, eligible),
+        True,
+    )
+
+
+@router.get("/opportunities/freshness", response_model=SchoolFreshnessResponse)
+async def school_freshness() -> dict:
+    """Per-school "last checked" date and status for the public pages.
+
+    Computed only from the committed per-source ledger
+    (``data/processed/source_health.json``), never from the corpus-wide update
+    time: one school publishing says nothing about another, and one working
+    department says nothing about its dead siblings, which is what ``status``
+    is for. Definitions live in ``source_health.public_school_freshness``.
+    """
+    global _freshness_cache
+
+    now = datetime.now(UTC)
+    key = (_ledger_version(), source_health.staleness_thresholds())
+    if _freshness_cache is not None:
+        cached_key, payload, valid_until = _freshness_cache
+        if cached_key == key and (valid_until is None or now < valid_until):
+            return payload
+
+    # A miss parses the whole ledger and judges every source in it.
+    payload, valid_until, cacheable = await asyncio.to_thread(
+        _school_freshness_payload, now)
+    if cacheable:
+        _freshness_cache = (key, payload, valid_until)
     return payload
 
 

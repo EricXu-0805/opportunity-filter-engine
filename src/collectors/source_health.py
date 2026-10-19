@@ -51,7 +51,7 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -692,6 +692,90 @@ def corpus_report(
         "warn_days": staleness_thresholds()[0],
         "stale_days": staleness_thresholds()[1],
     }
+
+
+# --- what a public page may say about a school ------------------------------
+PUBLIC_CURRENT = "current"
+PUBLIC_PARTLY_UNCHECKED = "partly_unchecked"
+PUBLIC_STALE = "stale"
+
+
+def public_school_freshness(
+    ledger: dict,
+    now: datetime,
+    eligible: frozenset[str] | set[str],
+) -> dict[str, dict]:
+    """``{school: {"last_checked_at", "status"}}`` for the public pages.
+
+    ``last_checked_at`` is the newest ``last_success_at`` among the school's
+    monitored sources: the last time any of its pages was read successfully.
+    It does not say every record was re-verified then, which is what
+    ``status`` qualifies:
+
+    * ``stale`` - the release gate's rule: ``fully_stale`` or
+      ``no_fresh_faculty``.
+    * ``partly_unchecked`` - not stale, but at least one monitored source is
+      stale or degraded on its latest attempt (``partially_degraded``).
+    * ``current`` - otherwise.
+
+    A school with no monitored source is absent (ucd, whose collectors are
+    declared unsupported), and so is the national shard, which is the open
+    pool rather than a school. ``eligible`` is required: with the monitored
+    set unknown, carried data would be judged on the weekly clock, and a
+    public page should then say nothing instead.
+
+    Nothing about an individual source leaves this function.
+    """
+    from .refresh_contract import NATIONAL_SHARD
+
+    out: dict[str, dict] = {}
+    for row in school_rows(ledger, now, eligible):
+        if row["school"] == NATIONAL_SHARD:
+            continue
+        if row["fully_stale"] or row["no_fresh_faculty"]:
+            status = PUBLIC_STALE
+        elif row["state"] == "partially_degraded":
+            status = PUBLIC_PARTLY_UNCHECKED
+        else:
+            status = PUBLIC_CURRENT
+        checked = _parse(row["last_successful_school_activity"])
+        out[row["school"]] = {
+            # Whole seconds: the form every browser's Date parser accepts.
+            "last_checked_at": (
+                checked.isoformat(timespec="seconds") if checked else None
+            ),
+            "status": status,
+        }
+    return out
+
+
+def next_freshness_change(
+    ledger: dict,
+    now: datetime,
+    eligible: frozenset[str] | set[str],
+) -> datetime | None:
+    """The first moment after ``now`` at which a monitored source's freshness
+    label changes, or None when none will without a new run.
+
+    Freshness is an age, so an answer computed from this ledger stays true
+    only until a source crosses the warn or stale bound. A cache keyed on the
+    ledger file alone would keep calling a school current after its sources
+    went stale with no run to rewrite the file, which is exactly when the
+    answer matters.
+    """
+    warn_days, stale_days = staleness_thresholds()
+    bounds = []
+    for source, row in (ledger.get("sources") or {}).items():
+        if source not in eligible or not isinstance(row, dict):
+            continue
+        success = _parse(row.get("last_success_at"))
+        if success is None:
+            continue
+        for days in (warn_days, stale_days):
+            bound = success + timedelta(days=days)
+            if bound > now:
+                bounds.append(bound)
+    return min(bounds) if bounds else None
 
 
 def active_baselines(opps: list[dict[str, Any]]) -> dict[str, int]:

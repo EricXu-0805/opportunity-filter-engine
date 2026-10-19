@@ -538,6 +538,142 @@ class TestSchoolAggregation:
         assert school["total_shard_count"] == 3
 
 
+# ------------------------------------------------- public school freshness --
+OCT18 = datetime(2026, 10, 18, 12, 0, tzinfo=UTC)
+
+
+def _attempt(ledger, source, school, outcome, emitted, at, baseline=0, reason=None):
+    sh.record_attempt(
+        ledger, source=source, school=school, outcome=outcome, emitted=emitted,
+        baseline=baseline, now=at, failure_reason=reason)
+
+
+def _committed_like_ledger() -> dict:
+    """The shapes the 2026-10-17 committed ledger holds for these schools.
+
+    Swarthmore's site has turned the runner away since 09-05 and Barnard's
+    rosters moved on 08-29: every source of both has kept failing since.
+    UIUC's roster missed two departments in its latest run. ucd's only
+    collector is declared unsupported, so nothing of it is monitored.
+    """
+    ledger = sh.empty_ledger()
+    sept5 = datetime(2026, 9, 5, 3, 45, 0, 802770, tzinfo=UTC)
+    aug29 = datetime(2026, 8, 29, 8, 10, 26, 800836, tzinfo=UTC)
+    oct17 = datetime(2026, 10, 17, 13, 30, 52, tzinfo=UTC)
+    for school, last in (("swarthmore", sept5), ("barnard", aug29)):
+        _attempt(ledger, f"{school}_faculty", school, sh.SUCCESS_NONZERO, 224, last, 224)
+        _attempt(ledger, f"campus_graph:{school}", school, sh.SUCCESS_NONZERO, 9,
+                 last - timedelta(hours=2))
+        _attempt(ledger, f"{school}_faculty", school, sh.SUSPICIOUS_ZERO, 0, oct17, 231)
+        _attempt(ledger, f"campus_graph:{school}", school, sh.FAILED, 9, oct17,
+                 reason="Source check incomplete: seed_pages_failed")
+    _attempt(ledger, "uiuc_faculty", "uiuc", sh.SUCCESS_NONZERO, 3790,
+             datetime(2026, 10, 5, 16, 24, 8, tzinfo=UTC), 3304)
+    _attempt(ledger, "uiuc_faculty", "uiuc", sh.FAILED, 3731,
+             datetime(2026, 10, 12, 19, 13, 14, tzinfo=UTC), 3305,
+             reason="empty departments: ['Department of Atmospheric Sciences']")
+    _attempt(ledger, "uiuc_our_rss", "uiuc", sh.SUCCESS_NONZERO, 25,
+             datetime(2026, 10, 12, 19, 13, 14, 49438, tzinfo=UTC), 17)
+    _attempt(ledger, "yale_faculty", "yale", sh.SUCCESS_NONZERO, 1500, oct17, 1500)
+    _attempt(ledger, "campus_graph:yale", "yale", sh.SUCCESS_NONZERO, 12, oct17, 12)
+    _attempt(ledger, "campus_graph:ucd", "ucd", sh.SUCCESS_NONZERO, 7,
+             datetime(2026, 7, 21, 12, 34, 51, tzinfo=UTC), 7)
+    _attempt(ledger, "nsf_reu", "national", sh.SUCCESS_NONZERO, 300, oct17, 300)
+    return ledger
+
+
+class TestPublicSchoolFreshness:
+    def test_a_school_whose_site_refuses_the_runner_is_stale_with_its_real_date(self):
+        public = sh.public_school_freshness(
+            _committed_like_ledger(), OCT18, monitored_sources())
+        assert public["swarthmore"] == {
+            "last_checked_at": "2026-09-05T03:45:00+00:00", "status": sh.PUBLIC_STALE}
+        assert public["barnard"] == {
+            "last_checked_at": "2026-08-29T08:10:26+00:00", "status": sh.PUBLIC_STALE}
+
+    def test_a_fresh_campus_check_does_not_lift_a_school_whose_roster_is_empty(self):
+        """The gate's faculty rule, not only fully_stale: Barnard once its
+        campus check works again while every roster still parses zero."""
+        ledger = _committed_like_ledger()
+        _attempt(ledger, "campus_graph:barnard", "barnard", sh.SUCCESS_NONZERO, 9,
+                 OCT18 - timedelta(hours=3))
+        row = next(r for r in sh.school_rows(ledger, OCT18, monitored_sources())
+                   if r["school"] == "barnard")
+        assert row["fully_stale"] is False and row["no_fresh_faculty"] is True
+        public = sh.public_school_freshness(ledger, OCT18, monitored_sources())
+        assert public["barnard"] == {
+            "last_checked_at": (OCT18 - timedelta(hours=3)).isoformat(),
+            "status": sh.PUBLIC_STALE,
+        }
+
+    def test_a_school_with_one_failing_source_is_partly_unchecked(self):
+        public = sh.public_school_freshness(
+            _committed_like_ledger(), OCT18, monitored_sources())
+        # The newest success among its sources, not the failed roster's.
+        assert public["uiuc"] == {
+            "last_checked_at": "2026-10-12T19:13:14+00:00",
+            "status": sh.PUBLIC_PARTLY_UNCHECKED,
+        }
+        assert public["yale"] == {
+            "last_checked_at": "2026-10-17T13:30:52+00:00", "status": sh.PUBLIC_CURRENT}
+
+    def test_a_source_past_the_stale_bound_alone_makes_a_school_partly_unchecked(self):
+        ledger = _committed_like_ledger()
+        _attempt(ledger, "campus_graph:yale", "yale", sh.SUCCESS_NONZERO, 12,
+                 OCT18 - timedelta(days=30), 12)
+        public = sh.public_school_freshness(ledger, OCT18, monitored_sources())
+        assert public["yale"]["status"] == sh.PUBLIC_PARTLY_UNCHECKED
+
+    def test_a_school_with_no_monitored_source_and_the_national_pool_are_absent(self):
+        public = sh.public_school_freshness(
+            _committed_like_ledger(), OCT18, monitored_sources())
+        assert "ucd" not in public
+        assert "national" not in public
+        assert set(public) == {"swarthmore", "barnard", "uiuc", "yale"}
+
+    def test_a_school_that_never_succeeded_is_stale_without_a_date(self):
+        ledger = sh.empty_ledger()
+        _attempt(ledger, "yale_faculty", "yale", sh.FAILED, None, OCT18, 0,
+                 reason="ReadTimeout")
+        public = sh.public_school_freshness(ledger, OCT18, monitored_sources())
+        assert public == {"yale": {"last_checked_at": None, "status": sh.PUBLIC_STALE}}
+
+    def test_nothing_about_an_individual_source_leaves(self):
+        public = sh.public_school_freshness(
+            _committed_like_ledger(), OCT18, monitored_sources())
+        assert all(set(entry) == {"last_checked_at", "status"} for entry in public.values())
+        text = json.dumps(public)
+        for leaked in ("faculty", "campus_graph", "seed_pages_failed", "Atmospheric", "3731"):
+            assert leaked not in text
+
+    def test_the_answer_holds_until_the_first_source_crosses_a_bound(self):
+        """A ledger nobody rewrites still ages: yale_faculty, the school's one
+        roster, goes stale 17 days after its last success, and an answer
+        computed before then must not outlive it."""
+        ledger = sh.empty_ledger()
+        last = OCT18 - timedelta(days=16)
+        _attempt(ledger, "yale_faculty", "yale", sh.SUCCESS_NONZERO, 1500, last, 1500)
+        _attempt(ledger, "campus_graph:yale", "yale", sh.SUCCESS_NONZERO, 12, OCT18, 12)
+        eligible = monitored_sources()
+        warn_days, stale_days = sh.staleness_thresholds()
+        change = sh.next_freshness_change(ledger, OCT18, eligible)
+        assert change == last + timedelta(days=stale_days)
+        before = sh.public_school_freshness(ledger, change, eligible)
+        after = sh.public_school_freshness(ledger, change + timedelta(seconds=1), eligible)
+        assert before["yale"]["status"] == sh.PUBLIC_CURRENT
+        assert after["yale"]["status"] == sh.PUBLIC_STALE
+        # The campus check's own warn bound is the next change after that.
+        assert sh.next_freshness_change(ledger, change, eligible) == (
+            OCT18 + timedelta(days=warn_days))
+
+    def test_no_change_is_due_once_every_bound_has_passed_or_the_source_is_unmonitored(self):
+        ledger = sh.empty_ledger()
+        _attempt(ledger, "yale_faculty", "yale", sh.SUCCESS_NONZERO, 1500,
+                 OCT18 - timedelta(days=40), 1500)
+        _attempt(ledger, "campus_graph:ucd", "ucd", sh.SUCCESS_NONZERO, 7, OCT18, 7)
+        assert sh.next_freshness_change(ledger, OCT18, monitored_sources()) is None
+
+
 class TestLedgerIO:
     def test_absent_ledger_reads_as_empty(self, tmp_path):
         assert sh.load_ledger(tmp_path / "nope.json") == sh.empty_ledger()
