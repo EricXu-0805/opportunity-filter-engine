@@ -153,7 +153,10 @@ def _hum(short: str, name: str, majors: list[str], url: str) -> dict:
 # School of Biological Sciences — the central www.bio.uci.edu/academics/faculty/
 # <slug>/ pages are server-rendered `bs-staff` cards (T5) with rank + email on
 # the listing (the dept SUBDOMAINS are JS-only, so use these). Emeriti/
-# in-memoriam are separate slugs, so the roster is clean.
+# in-memoriam are separate slugs, so the roster is clean. Since the 2026-10-17
+# refresh www.bio.uci.edu answers with a Cloudflare challenge (403 "Just a
+# moment..."), so these units read zero rows and retire no one; nothing here
+# tries to get past it.
 def _bio(short: str, name: str, majors: list[str], slug: str) -> dict:
     url = f"https://www.bio.uci.edu/academics/faculty/{slug}/"
     return _dept(short, name, majors, url, {
