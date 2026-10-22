@@ -2801,22 +2801,26 @@ export const en = {
     confirm: 'Yes, this is my school',
     failed: "We couldn't save that school. Nothing was changed — please try again.",
   },
-  // "Last checked" is the newest date any of the school's pages was read
-  // successfully, not a date every record was verified; the hints qualify it.
+  // The date is the newest successful read of any of the school's pages: not a
+  // date every record was verified, which the hints qualify, and not the latest
+  // check, since later reads can fail, even ones that bring records back
+  // (Barnard in the ledger at f9f8df7f: newest success Aug 29, both sources
+  // read again on Oct 17 and failed). So the date lines say "successful check".
   // A hint says only that no recent read succeeded: not that a check failed (a
   // school also goes stale by age alone, when no run has come since its last
   // success), not that pages went unread (a read can bring records back and
   // still not succeed), and nothing about the date above it (a campus page can
   // set that date while the professor pages last succeeded weeks earlier). The
-  // picker hints fit one line of the note at 360px (264px; 12px Inter measured
-  // 251px stale, 244px partly).
+  // picker lines fit one line of the note at 360px (264px; 12px Inter measured
+  // 251px stale, 244px partly, and at most 214px for the date line over every
+  // day of 2026-27 in 18 English locales, en-PK "04-Sept-2026" widest).
   schoolFreshness: {
-    lastChecked: 'Last checked: {date}',
+    lastChecked: 'Last successful check: {date}',
     neverChecked: 'No successful check on record',
     partlyUnchecked: 'Some pages lack a recent successful read.',
     stale: 'Professor pages: no recent successful read.',
     staleNeverChecked: 'Details may be out of date.',
-    resultsLastChecked: '{school}: last checked {date}.',
+    resultsLastChecked: '{school}: last successful check {date}.',
     resultsNeverChecked: '{school}: no successful check on record.',
     resultsOtherStale: "Also in these results: {schools}. Their professor pages haven't been read successfully recently, so their data may be out of date.",
     resultsOtherStaleOne: "Also in these results: {schools}. Its professor pages haven't been read successfully recently, so its data may be out of date.",

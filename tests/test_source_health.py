@@ -766,6 +766,54 @@ class TestPublicSchoolFreshness:
         assert sh.public_school_freshness(ledger, OCT18, eligible)["brown"] == {
             "last_checked_at": run.isoformat(), "status": sh.PUBLIC_PARTLY_UNCHECKED}
 
+    def test_a_school_is_dated_by_its_newest_success_not_by_later_reads_that_failed(self):
+        """Barnard's two rows as the ledger committed at f9f8df7f holds them,
+        read on Oct 19: both sources were read again on Oct 17, the campus
+        read brought 9 records back, and neither succeeded after Aug 29. The
+        date the school shows is that Aug 29 success, so the label must say
+        last successful check, never last checked
+        (SchoolFreshnessNote.test.tsx, "not as last checked then")."""
+        ledger = sh.empty_ledger()
+        ledger["sources"] = {
+            "barnard_faculty": {
+                "baseline_count": 212,
+                "bootstrapped_from": "corpus_last_seen_at",
+                "consecutive_failures": 3,
+                "current_count": 0,
+                "failure_reason": "emitted 0 records against a baseline of 212 active record(s)",
+                "last_attempt_at": "2026-10-17T13:30:52.790401+00:00",
+                "last_good_count": 212,
+                "last_nonzero_at": None,
+                "last_success_at": "2026-08-29T08:10:26.800836+00:00",
+                "school": "barnard",
+                "status": "suspicious_zero",
+            },
+            "campus_graph:barnard": {
+                "baseline_count": 0,
+                "bootstrapped_from": "corpus_last_seen_at",
+                "consecutive_failures": 3,
+                "current_count": 9,
+                "failure_reason": (
+                    "Source check incomplete: condition_capture_failed, "
+                    "live_pages_loaded_incomplete, seed_pages_failed, crawl_errors"),
+                "last_attempt_at": "2026-10-17T13:30:52.790401+00:00",
+                "last_good_count": 9,
+                "last_nonzero_at": None,
+                "last_success_at": "2026-08-29T06:09:04.593969+00:00",
+                "school": "barnard",
+                "status": "failed",
+            },
+        }
+        now = datetime(2026, 10, 19, 2, 12, tzinfo=UTC)
+        eligible = monitored_sources()
+        rows = sh.source_rows(ledger, now, eligible)
+        newest_success = max(datetime.fromisoformat(r["last_success_at"]) for r in rows)
+        assert all(datetime.fromisoformat(r["last_attempt_at"]) > newest_success for r in rows)
+        campus = next(r for r in rows if r["source"] == "campus_graph:barnard")
+        assert campus["status"] == sh.FAILED and campus["current_record_count"] == 9
+        assert sh.public_school_freshness(ledger, now, eligible) == {"barnard": {
+            "last_checked_at": "2026-08-29T08:10:26+00:00", "status": sh.PUBLIC_STALE}}
+
     def test_no_change_is_due_once_every_bound_has_passed_or_the_source_is_unmonitored(self):
         ledger = sh.empty_ledger()
         _attempt(ledger, "yale_faculty", "yale", sh.SUCCESS_NONZERO, 1500,

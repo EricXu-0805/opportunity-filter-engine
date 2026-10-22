@@ -8004,8 +8004,9 @@ class TestSourceHealthSurfaces:
 
 
 class TestPublicSchoolFreshness:
-    """GET /api/opportunities/freshness: the "last checked" date and status the
-    school picker and results page show, from the per-source ledger alone."""
+    """GET /api/opportunities/freshness: the "last successful check" date and
+    status the school picker and results page show, from the per-source ledger
+    alone."""
 
     @staticmethod
     def _at(now, **ago):

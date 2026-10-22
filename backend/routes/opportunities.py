@@ -444,7 +444,7 @@ def _school_freshness_payload(now: datetime) -> tuple[dict, datetime | None, boo
 
 @router.get("/opportunities/freshness", response_model=SchoolFreshnessResponse)
 async def school_freshness() -> dict:
-    """Per-school "last checked" date and status for the public pages.
+    """Per-school "last successful check" date and status for the public pages.
 
     Computed only from the committed per-source ledger
     (``data/processed/source_health.json``), never from the corpus-wide update
