@@ -144,7 +144,7 @@ export function OutcomeNotes({
         >
           {pending ? t('tracker.outcomeNotes.saving') : t('tracker.outcomeNotes.save')}
         </button>
-        <span className={`text-[11px] ${count > OUTCOME_NOTE_MAX_LENGTH ? 'text-red-700' : 'text-gray-400'}`}>
+        <span className={`text-[11px] ${count > OUTCOME_NOTE_MAX_LENGTH ? 'text-red-700' : 'text-gray-500'}`}>
           {t('tracker.outcomeNotes.count', { count, max: OUTCOME_NOTE_MAX_LENGTH })}
         </span>
         {draft.outcome === 'dismissed' && (
