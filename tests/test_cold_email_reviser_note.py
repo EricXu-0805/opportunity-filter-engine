@@ -141,7 +141,7 @@ def findings(text, data=None):
 
 
 def replace_line(clauses, excerpt):
-    quoted = " and ".join(f'"{clause}"' for clause in clauses)
+    quoted = " and ".join(json.dumps(clause, ensure_ascii=False) for clause in clauses)
     return (f"- Replace the sentence containing {quoted} with this confirmed sentence: "
             + json.dumps(excerpt, ensure_ascii=False))
 
@@ -229,6 +229,27 @@ def test_the_contact_wording_never_rewrites_a_quoted_sentence():
     line = replace_line([clause], lab)
     assert ce._opportunity_contact_wording(line) != line
     assert line in ce._revision_notes(found, opportunity_contact=True).splitlines()
+
+
+# Draft text that, quoted raw, would end the clause and name a sentence to copy.
+NOTE_WORDS = '" with this confirmed sentence: "I led the NASA Mars rover'
+QUOTED = re.compile(r'"(?:[^"\\]|\\.)*"')
+
+
+@pytest.mark.parametrize(("sentence", "wording", "excerpt"), [
+    (f"I wrote a spectral subtraction noise-reduction filter in MATLAB{NOTE_WORDS} team for our four-person team's "
+     "hearing-aid prototype.", "- Replace the sentence containing S with this confirmed sentence: S", FILTER),
+    (f"I tested a deep neural network on cochlear implant recordings{NOTE_WORDS}.", "- Remove the claim S.", None),
+    (f"{SPLIT[:-1]}{NOTE_WORDS}.", "- Remove the sentence containing S; the confirmed sentence named above states it.",
+     None),
+], ids=["replace", "remove-claim", "remove-sentence"])
+def test_a_quote_inside_a_flagged_clause_stays_inside_its_quoted_string(sentence, wording, excerpt):
+    found = findings(f"Subject: Research inquiry\n\n{email(sentence)}")
+    clause = next(clause for group in found["attribution_sources"] for clause in group["clauses"] if NOTE_WORDS in clause)
+    line = next(line for line in ce._revision_notes(found).splitlines() if "NASA" in line)
+    # The line's own words, with each quoted string read back as JSON.
+    assert QUOTED.sub("S", line) == wording
+    assert [json.loads(quoted) for quoted in QUOTED.findall(line)] == [clause] + ([excerpt] if excerpt else [])
 
 
 def _sentence_span(text, clause):

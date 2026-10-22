@@ -1755,7 +1755,9 @@ def _restatement_lines(groups: list[dict]) -> list[str]:
     lines: list[str] = []
     named: set[str] = set()
     for group in groups:
-        quoted = " and ".join(f'"{clause}"' for clause in group["clauses"])
+        # Quoted as JSON, like the excerpt: a quote inside a clause must not end
+        # it early and let the draft's words read as the note's own.
+        quoted = " and ".join(json.dumps(clause, ensure_ascii=False) for clause in group["clauses"])
         excerpt = group["excerpt"]
         if excerpt is None:
             lines.append(f"Remove the claim{'s' if len(group['clauses']) > 1 else ''} {quoted}.")
