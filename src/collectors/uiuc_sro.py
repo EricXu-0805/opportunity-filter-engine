@@ -103,7 +103,8 @@ class UIUCSROCollector(BaseCollector):
             if not same_source_page(url, getattr(resp, "url", None)):
                 self._list_failure(url, "redirect_mismatch" if isinstance(getattr(resp, "url", None), str) else "fetch_metadata_missing")
                 continue
-            table = BeautifulSoup(resp.text, "html.parser").select_one("table.views-table")
+            soup = BeautifulSoup(resp.text, "html.parser")
+            table = soup.select_one("table.views-table")
             if table is None or table.select_one("tbody") is None:
                 self._list_failure(url, "unsupported_list")
                 break
@@ -114,7 +115,9 @@ class UIUCSROCollector(BaseCollector):
                 self._list_failure(url, "unparsed_rows")
             else:
                 self.evidence["list_pages_loaded"] += 1
-            if not rows:
+            # The page after the last one has no table at all, so reading it
+            # was a failed page on every run; the pager says where the end is.
+            if not rows or _pager_marks_last(soup, page):
                 self.evidence["list_complete"] = self.evidence["list_pages_failed"] == 0
                 break
             self._rate_limit()
@@ -153,11 +156,14 @@ class UIUCSROCollector(BaseCollector):
         sections = []
         # A layout region repeats a field without its label. Only a copy that
         # says exactly what a labelled field of the same name says is dropped;
-        # anything else stays in the page and keeps it unsupported.
+        # anything else stays in the page and keeps it unsupported. A link's
+        # labelled field shows Drupal's trimmed "…" text, so a link copy says
+        # the same when it shows nothing but the links its twin points to.
         for node in list(body.select("div.field--label-hidden")):
             name = next((c for c in node.get("class", []) if c.startswith("field--name-field-")), None)
             twin = body.select_one(f"div.{name}.field--label-inline .field__item") if name else None
-            if twin is not None and twin.get_text(" ", strip=True) == node.get_text(" ", strip=True):
+            if twin is not None and (twin.get_text(" ", strip=True) == node.get_text(" ", strip=True)
+                                     or _same_links(twin, node)):
                 node.decompose()
         # "This opportunity was last updated on <date>": page bookkeeping.
         for node in list(body.select(".views-field-changed")):
@@ -478,6 +484,23 @@ def _field_value(soup, name: str) -> str:
         return ""
     items = [item.get_text(" ", strip=True) for item in node.select(".field__item")]
     return ", ".join(item for item in items if item)
+
+
+def _pager_marks_last(soup, page: int) -> bool:
+    """Whether the listing's pager names ``?page=<page>`` current and offers no next page."""
+    pager = soup.select_one("nav.pager")
+    if pager is None:
+        return False
+    current = pager.select_one('a[aria-current="page"][href]')
+    return (current is not None and current["href"] == f"?page={page}"
+            and pager.select_one('a[rel="next"]') is None)
+
+
+def _same_links(twin, node) -> bool:
+    """Whether ``node`` shows nothing but its links, and they are ``twin``'s links."""
+    links = [a["href"] for a in node.select("a[href]")]
+    return (bool(links) and links == [a["href"] for a in twin.select("a[href]")]
+            and node.get_text(" ", strip=True) == " ".join(links))
 
 
 def _detect_international_friendly(text: str) -> str:
