@@ -31,6 +31,13 @@ const BODY = {
     // Partly unchecked by a source never read successfully, whose one attempt
     // on record is 40 days old (test_a_source_never_read_successfully_...).
     dartmouth: { last_checked_at: '2026-10-17T12:00:00+00:00', status: 'partly_unchecked' },
+    // Stale while its campus page was read on Oct 5, the date shown: the
+    // professor pages last succeeded on Aug 31 and the latest roster run was
+    // deferred (test_a_campus_check_dates_a_school_stale_behind_a_deferred_roster_run).
+    amherst: { last_checked_at: '2026-10-05T12:00:00+00:00', status: 'stale' },
+    // Partly unchecked by a read that brought records back and still failed
+    // (test_a_read_that_brought_records_back_and_failed_leaves_its_school_partly_unchecked).
+    brown: { last_checked_at: '2026-10-15T12:00:00+00:00', status: 'partly_unchecked' },
   },
 };
 const READY: SchoolFreshnessState = { status: 'ready', schools: parseSchoolFreshness(BODY)! };
@@ -55,31 +62,47 @@ describe('SchoolFreshnessNote — under the school picker', () => {
     answer(BODY);
     const note = renderNote('uiuc');
     await waitFor(() => expect(note).toHaveTextContent('Last checked: Oct 12, 2026'));
-    expect(note).toHaveTextContent("Some pages haven't been read recently.");
+    expect(note).toHaveTextContent('Some pages lack a recent successful read.');
   });
 
   it('shows a school the runner is refused by with its real date and the stale hint', async () => {
     answer(BODY);
     const note = renderNote('swarthmore');
     await waitFor(() => expect(note).toHaveTextContent('Last checked: Sep 5, 2026'));
-    const hint = screen.getByText("Professor pages haven't been read since.");
+    const hint = screen.getByText('Professor pages: no recent successful read.');
     expect(hint).toHaveClass('text-amber-700');
   });
 
-  it('says only what the ledger holds of a school stale by age alone: not read since, nothing failed', async () => {
+  it('says only what the ledger holds of a school stale by age alone: no recent successful read, nothing failed', async () => {
     answer(BODY);
     const note = renderNote('cornell');
     await waitFor(() => expect(note).toHaveTextContent('Last checked: Sep 20, 2026'));
-    expect(note).toHaveTextContent("Professor pages haven't been read since.");
+    expect(note).toHaveTextContent('Professor pages: no recent successful read.');
     expect(note).not.toHaveTextContent(/fail|couldn't|could not/i);
+  });
+
+  it('ties nothing about the professor pages to a date a campus page set', async () => {
+    answer(BODY);
+    const note = renderNote('amherst');
+    await waitFor(() => expect(note).toHaveTextContent('Last checked: Oct 5, 2026'));
+    expect(note).toHaveTextContent('Professor pages: no recent successful read.');
+    expect(note).not.toHaveTextContent(/since/i);
   });
 
   it('claims no failed check for a school partly unchecked by a source never read', async () => {
     answer(BODY);
     const note = renderNote('dartmouth');
     await waitFor(() => expect(note).toHaveTextContent('Last checked: Oct 17, 2026'));
-    expect(note).toHaveTextContent("Some pages haven't been read recently.");
+    expect(note).toHaveTextContent('Some pages lack a recent successful read.');
     expect(note).not.toHaveTextContent(/fail|couldn't|could not/i);
+  });
+
+  it('does not say pages went unread when a read brought records back and still failed', async () => {
+    answer(BODY);
+    const note = renderNote('brown');
+    await waitFor(() => expect(note).toHaveTextContent('Last checked: Oct 15, 2026'));
+    expect(note).toHaveTextContent('Some pages lack a recent successful read.');
+    expect(note).not.toHaveTextContent(/(haven't|not) been read(?! successfully)|unread/i);
   });
 
   it('adds no hint to a current school', async () => {
@@ -94,9 +117,8 @@ describe('SchoolFreshnessNote — under the school picker', () => {
     const note = renderNote('mit');
     await waitFor(() => expect(note).toHaveTextContent('No successful check on record'));
     expect(note).not.toHaveTextContent('Last checked');
-    // No date above it, so no "since": nothing has been read to be read since.
+    // Its first line already says no check succeeded; the hint says what that means.
     expect(note).toHaveTextContent('Details may be out of date.');
-    expect(note).not.toHaveTextContent('since');
   });
 
   it('reads in Chinese with a Chinese date', async () => {
@@ -110,14 +132,22 @@ describe('SchoolFreshnessNote — under the school picker', () => {
     answer(BODY);
     const stale = renderNote('barnard', 'zh');
     await waitFor(() => expect(stale).toHaveTextContent('最近成功检查：2026年8月29日'));
-    expect(stale).toHaveTextContent('此后教授页面没有成功读取。');
+    expect(stale).toHaveTextContent('教授页面最近没有成功读取。');
+  });
+
+  it('ties nothing about the professor pages to a date a campus page set, in Chinese', async () => {
+    answer(BODY);
+    const stale = renderNote('amherst', 'zh');
+    await waitFor(() => expect(stale).toHaveTextContent('最近成功检查：2026年10月5日'));
+    expect(stale).toHaveTextContent('教授页面最近没有成功读取。');
+    expect(stale).not.toHaveTextContent('此后');
   });
 
   it('reads a school stale by age alone in Chinese without claiming a failure', async () => {
     answer(BODY);
     const stale = renderNote('cornell', 'zh');
     await waitFor(() => expect(stale).toHaveTextContent('最近成功检查：2026年9月20日'));
-    expect(stale).toHaveTextContent('此后教授页面没有成功读取。');
+    expect(stale).toHaveTextContent('教授页面最近没有成功读取。');
     expect(stale).not.toHaveTextContent(/未能|失败/);
   });
 
@@ -157,6 +187,19 @@ describe('the hint wording', () => {
     expect(dictionaries.en.schoolFreshness[key]).not.toMatch(/fail|couldn't|could not|error/i);
     expect(dictionaries.zh.schoolFreshness[key]).not.toMatch(/未能|失败|错误/);
   });
+
+  it.each(HINTS)('%s is not tied to the date before it: a campus page can set that date', (key) => {
+    expect(dictionaries.en.schoolFreshness[key]).not.toMatch(/\bsince\b/i);
+    expect(dictionaries.zh.schoolFreshness[key]).not.toMatch(/此后/);
+  });
+
+  it.each(['partlyUnchecked', 'stale', 'resultsOtherStale', 'resultsOtherStaleOne'] as const)(
+    '%s says no recent read succeeded, not that pages went unread: a read can bring records back and still fail',
+    (key) => {
+      expect(dictionaries.en.schoolFreshness[key]).toMatch(/\bsuccessful(ly)?\b/);
+      expect(dictionaries.zh.schoolFreshness[key]).toMatch(/成功读取/);
+    },
+  );
 });
 
 describe('SchoolFreshnessDot — beside the school name', () => {
@@ -197,7 +240,20 @@ describe('ResultsSchoolFreshness — on the results page', () => {
   it('gives the home school its date and hint in one line', () => {
     renderResults({ shownSchools: ['uiuc'] });
     expect(screen.getByTestId('results-school-freshness')).toHaveTextContent(
-      "UIUC: last checked Oct 12, 2026. Some pages haven't been read recently.");
+      'UIUC: last checked Oct 12, 2026. Some pages lack a recent successful read.');
+  });
+
+  it.each([
+    ['amherst', 'Amherst: last checked Oct 5, 2026. Professor pages: no recent successful read.',
+      'Amherst：最近成功检查 2026年10月5日。教授页面最近没有成功读取。'],
+    ['brown', 'Brown: last checked Oct 15, 2026. Some pages lack a recent successful read.',
+      'Brown：最近成功检查 2026年10月15日。这所学校有些页面最近没有成功读取。'],
+  ])('makes the same claims for the home school %s as the picker does', (school, en, zh) => {
+    const { unmount } = renderResults({ homeSchool: school, shownSchools: [school] });
+    expect(screen.getByTestId('results-school-freshness').textContent).toBe(en);
+    unmount();
+    renderResults({ homeSchool: school, shownSchools: [school] }, 'zh');
+    expect(screen.getByTestId('results-school-freshness').textContent).toBe(zh);
   });
 
   it('reads in Chinese, with no space after the full-width 。', () => {
@@ -217,10 +273,10 @@ describe('ResultsSchoolFreshness — on the results page', () => {
       '结果中还有 Swarthmore、Barnard、MIT 和另外 2 所：');
   });
 
-  it('gives a stale home school its date and the hint that needs it, in Chinese', () => {
+  it('gives a stale home school its date and the stale hint, in Chinese', () => {
     renderResults({ homeSchool: 'swarthmore', shownSchools: ['swarthmore'] }, 'zh');
     expect(screen.getByTestId('results-school-freshness').textContent).toBe(
-      'Swarthmore：最近成功检查 2026年9月5日。此后教授页面没有成功读取。');
+      'Swarthmore：最近成功检查 2026年9月5日。教授页面最近没有成功读取。');
   });
 
   it('names the stale schools among the results, and only those', () => {

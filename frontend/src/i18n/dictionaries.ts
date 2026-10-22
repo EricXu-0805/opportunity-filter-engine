@@ -2803,14 +2803,18 @@ export const en = {
   },
   // "Last checked" is the newest date any of the school's pages was read
   // successfully, not a date every record was verified; the hints qualify it.
-  // No hint says a check failed: a school also goes stale by age alone, when
-  // no run has come since its last success. The picker hints fit one line of
-  // the note at 360px (264px; 12px Inter measured 236px stale, 229px partly).
+  // A hint says only that no recent read succeeded: not that a check failed (a
+  // school also goes stale by age alone, when no run has come since its last
+  // success), not that pages went unread (a read can bring records back and
+  // still not succeed), and nothing about the date above it (a campus page can
+  // set that date while the professor pages last succeeded weeks earlier). The
+  // picker hints fit one line of the note at 360px (264px; 12px Inter measured
+  // 251px stale, 244px partly).
   schoolFreshness: {
     lastChecked: 'Last checked: {date}',
     neverChecked: 'No successful check on record',
-    partlyUnchecked: "Some pages haven't been read recently.",
-    stale: "Professor pages haven't been read since.",
+    partlyUnchecked: 'Some pages lack a recent successful read.',
+    stale: 'Professor pages: no recent successful read.',
     staleNeverChecked: 'Details may be out of date.',
     resultsLastChecked: '{school}: last checked {date}.',
     resultsNeverChecked: '{school}: no successful check on record.',
@@ -8198,7 +8202,7 @@ export const zh = {
     lastChecked: '最近成功检查：{date}',
     neverChecked: '尚无成功检查的记录',
     partlyUnchecked: '这所学校有些页面最近没有成功读取。',
-    stale: '此后教授页面没有成功读取。',
+    stale: '教授页面最近没有成功读取。',
     staleNeverChecked: '信息可能已过时。',
     resultsLastChecked: '{school}：最近成功检查 {date}。',
     resultsNeverChecked: '{school}：尚无成功检查的记录。',

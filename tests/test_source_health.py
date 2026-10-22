@@ -683,9 +683,9 @@ class TestPublicSchoolFreshness:
     def test_a_school_turns_stale_by_age_alone_with_no_failed_attempt(self):
         """When refreshes stop, nothing fails: each source's latest attempt
         succeeded, and the school is stale once that success is older than
-        the stale bound. So the public hint may say the pages have not been
-        read since, never that a check failed (SchoolFreshnessNote.test.tsx,
-        "stale by age alone")."""
+        the stale bound. So the public hint may say the professor pages have
+        no recent successful read, never that a check failed
+        (SchoolFreshnessNote.test.tsx, "stale by age alone")."""
         ledger = sh.empty_ledger()
         last = OCT18 - timedelta(days=20)
         _attempt(ledger, "yale_faculty", "yale", sh.SUCCESS_NONZERO, 1500, last, 1500)
@@ -698,8 +698,8 @@ class TestPublicSchoolFreshness:
 
     def test_a_source_never_read_successfully_leaves_its_school_partly_unchecked(self):
         """Unknown, not recently failed: the one attempt on record for the
-        campus check is 40 days old. The hint may say some pages have not been
-        read recently, never that recent checks failed."""
+        campus check is 40 days old. The hint may say some pages lack a recent
+        successful read, never that recent checks failed."""
         ledger = sh.empty_ledger()
         _attempt(ledger, "yale_faculty", "yale", sh.SUCCESS_NONZERO, 1500,
                  OCT18 - timedelta(days=1), 1500)
@@ -713,6 +713,58 @@ class TestPublicSchoolFreshness:
             "last_checked_at": (OCT18 - timedelta(days=1)).isoformat(),
             "status": sh.PUBLIC_PARTLY_UNCHECKED,
         }
+
+    def test_a_campus_check_dates_a_school_stale_behind_a_deferred_roster_run(self):
+        """Amherst in the ledger committed on 2026-10-05 (3886a6f2), read the
+        next day: its campus page was read on Oct 5, the date the school shows,
+        while its roster last succeeded on Aug 31 and the Oct 5 roster run was
+        deferred by the run clock before it counted anything. So the stale hint
+        may say the professor pages have no recent successful read, never
+        anything tied to that date (SchoolFreshnessNote.test.tsx, "a date a
+        campus page set")."""
+        ledger = sh.empty_ledger()
+        run = datetime(2026, 10, 5, 16, 24, 8, 608, tzinfo=UTC)
+        now = datetime(2026, 10, 6, 15, 0, tzinfo=UTC)
+        _attempt(ledger, "amherst_faculty", "amherst", sh.SUCCESS_NONZERO, 266,
+                 datetime(2026, 8, 31, 8, 38, 37, 634438, tzinfo=UTC), 266)
+        _attempt(ledger, "amherst_faculty", "amherst", sh.FAILED, None, run, 266,
+                 reason="stopped at the run time budget (deferred_deadline)")
+        _attempt(ledger, "campus_graph:amherst", "amherst", sh.SUCCESS_NONZERO, 9, run)
+        eligible = monitored_sources()
+        roster = next(r for r in sh.source_rows(ledger, now, eligible)
+                      if r["source"] == "amherst_faculty")
+        assert roster["current_record_count"] is None
+        assert roster["freshness"] == "stale"
+        assert roster["last_success_at"].startswith("2026-08-31")
+        row = next(r for r in sh.school_rows(ledger, now, eligible)
+                   if r["school"] == "amherst")
+        assert row["fully_stale"] is False and row["no_fresh_faculty"] is True
+        assert sh.public_school_freshness(ledger, now, eligible)["amherst"] == {
+            "last_checked_at": "2026-10-05T16:24:08+00:00", "status": sh.PUBLIC_STALE}
+
+    def test_a_read_that_brought_records_back_and_failed_leaves_its_school_partly_unchecked(self):
+        """A read can bring records back and still fail: Brown's campus check
+        on Oct 15 (ledger f9f8df7f) emitted four records and was judged failed
+        because the check was incomplete. Its last success is put five days
+        before that run here, so age alone would not qualify the school; the
+        failed read does. So the hint may say some pages lack a recent
+        successful read, never that they have not been read
+        (SchoolFreshnessNote.test.tsx, "brought records back and still failed")."""
+        ledger = sh.empty_ledger()
+        run = OCT18 - timedelta(days=3)
+        _attempt(ledger, "brown_faculty", "brown", sh.SUCCESS_NONZERO, 1169, run, 1206)
+        _attempt(ledger, "campus_graph:brown", "brown", sh.SUCCESS_NONZERO, 4,
+                 OCT18 - timedelta(days=8))
+        _attempt(ledger, "campus_graph:brown", "brown", sh.FAILED, 4, run, 4,
+                 reason="Source check incomplete: condition_capture_failed, seed_pages_failed")
+        eligible = monitored_sources()
+        campus = next(r for r in sh.source_rows(ledger, OCT18, eligible)
+                      if r["source"] == "campus_graph:brown")
+        assert campus["status"] == sh.FAILED and campus["current_record_count"] == 4
+        assert campus["last_attempt_at"] == run.isoformat()
+        assert campus["freshness"] == "fresh"
+        assert sh.public_school_freshness(ledger, OCT18, eligible)["brown"] == {
+            "last_checked_at": run.isoformat(), "status": sh.PUBLIC_PARTLY_UNCHECKED}
 
     def test_no_change_is_due_once_every_bound_has_passed_or_the_source_is_unmonitored(self):
         ledger = sh.empty_ledger()

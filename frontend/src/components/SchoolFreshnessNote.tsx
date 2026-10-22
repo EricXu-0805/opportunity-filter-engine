@@ -19,10 +19,13 @@ function checkedDate(entry: SchoolFreshness, locale: string): string | null {
 /**
  * The hint after a school's date, or null for a current school.
  *
- * A hint says only what the ledger holds. A school goes stale by age alone
- * when refreshes stop, with no attempt after its last success, so no hint
- * claims that a check failed. The stale hint's "since" is the date shown
- * before it; a school with no successful check has no date to be read since.
+ * A hint says only what the ledger holds: no recent read succeeded. A school
+ * goes stale by age alone when refreshes stop, so no hint claims a check
+ * failed. A read can bring records back and still not succeed, so none claims
+ * pages went unread. The date before it can come from a campus page read
+ * weeks after the professor pages last were, so none is tied to that date.
+ * A school with no successful check says so in its first line; its hint says
+ * what that means instead of repeating it.
  */
 function hintKey(entry: SchoolFreshness, date: string | null): string | null {
   if (entry.status === 'partly_unchecked') return 'schoolFreshness.partlyUnchecked';
