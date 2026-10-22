@@ -48,7 +48,8 @@ TARGET_DEPARTMENTS = frozenset({
     # ACES + geosciences + veterinary research (the first cohort)
     "Department of Animal Sciences", "Department of Crop Sciences",
     "Food Science & Human Nutrition", "Natural Resources & Environmental Sciences",
-    "Department of Atmospheric Sciences", "Department of Earth Science & Environmental Change",
+    "Department of Climate, Meteorology & Atmospheric Sciences",
+    "Department of Earth Science & Environmental Change",
     "Department of Veterinary Clinical Medicine", "Department of Pathobiology",
     "Department of Comparative Biosciences",
     # research-active STEM / social-science departments with broad-only faculty

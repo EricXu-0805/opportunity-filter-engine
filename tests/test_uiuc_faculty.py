@@ -6,9 +6,12 @@ scrape runs in the refresh pipeline, not in CI.
 
 from __future__ import annotations
 
+import json
 import re
+from pathlib import Path
 
 import pytest
+from bs4 import BeautifulSoup
 
 from src.collectors.uiuc_faculty import (
     DEPARTMENTS,
@@ -2016,3 +2019,114 @@ def test_dedup_decredentialed_faculty_keeps_namesakes_on_a_listing_page():
     kept, dropped = _dedup_decredentialed_faculty(opps)
     assert dropped == 0
     assert len(kept) == 2
+
+
+# --- Atmospheric Sciences and Earth Science moved hosts. The 2026-10-12 and
+# 10-19 refreshes read zero rows from them (and on 10-19 from iSchool) because
+# the list fetch failed TLS verification on the runner, not because a page
+# changed shape: atmos.illinois.edu and geology.illinois.edu share a host whose
+# certificate had lapsed on 10-12, and on 10-19 the runner's certifi 2026.10.18
+# lacked the emSign root that host's and iSchool's InCommon chain ends at. Both
+# old addresses now redirect to climas.illinois.edu / esec.illinois.edu, which
+# have their own certificates. The page fixtures are trimmed copies of the three
+# list pages saved 2026-10-22, every address replaced by a placeholder. ---
+
+UIUC_FIXTURES = Path(__file__).parent / "fixtures" / "uiuc"
+MOVED_UNIT_PAGES = {
+    "https://climas.illinois.edu/directory/faculty": "climas_faculty.html",
+    "https://esec.illinois.edu/directory/faculty": "esec_faculty.html",
+    "https://ischool.illinois.edu/people/faculty": "ischool_faculty.html",
+}
+# The id and name of every row these three units held in
+# data/processed/shards/uiuc.json after the 2026-10-05 refresh, the last one
+# that read them. A refresh writes today's row back, so these tests read the
+# ids from this frozen copy, never from the shard.
+MOVED_UNITS_STORED = {r["id"]: r["pi_name"] for r in json.loads(
+    (UIUC_FIXTURES / "stored_faculty.json").read_text(encoding="utf-8"))}
+# Stored iSchool rows whose person today's page does not list: three last seen
+# 2026-07-27 and two already inactive.
+ISCHOOL_NOT_LISTED = {
+    "faculty-ischool-31477607", "faculty-ischool-8e4c484c", "faculty-ischool-ef0622f9",
+    "faculty-ischool-0f911cb7", "faculty-ischool-109aa653",
+}
+
+
+@pytest.fixture
+def moved_units(monkeypatch) -> dict[str, list[dict]]:
+    import src.collectors.uiuc_faculty as f
+
+    def fetch(url):
+        name = MOVED_UNIT_PAGES.get(url)
+        return BeautifulSoup((UIUC_FIXTURES / name).read_text(encoding="utf-8"),
+                             "html.parser") if name else None
+
+    monkeypatch.setattr(f, "_fetch_soup", fetch)
+    monkeypatch.setattr(f, "_scrape_individual_page_keywords", lambda url: [])
+    return {key: f.fetch_department(key, enrich=False)
+            for key in ("atmos", "geology", "ischool")}
+
+
+def _stored_ids(short: str) -> set[str]:
+    return {i for i in MOVED_UNITS_STORED if i.startswith(f"faculty-{short.lower()}-")}
+
+
+def test_atmos_and_geology_read_the_hosts_their_old_addresses_redirect_to():
+    assert {k: (DEPARTMENTS[k]["url"], DEPARTMENTS[k]["base"], DEPARTMENTS[k]["short"])
+            for k in ("atmos", "geology")} == {
+        "atmos": ("https://climas.illinois.edu/directory/faculty",
+                  "https://climas.illinois.edu", "Atmos"),
+        "geology": ("https://esec.illinois.edu/directory/faculty",
+                    "https://esec.illinois.edu", "Geology"),
+    }
+
+
+def test_atmos_carries_the_name_its_site_now_gives_itself():
+    from src.collectors.uiuc_experts import TARGET_DEPARTMENTS
+
+    for key, page in (("atmos", "climas_faculty.html"), ("geology", "esec_faculty.html")):
+        site = BeautifulSoup((UIUC_FIXTURES / page).read_text(encoding="utf-8"), "html.parser")
+        assert DEPARTMENTS[key]["name"] == site.select_one('a[slot="site-name"]').get_text(strip=True)
+        # The monthly Illinois Experts pass selects rows by this exact string.
+        assert DEPARTMENTS[key]["name"] in TARGET_DEPARTMENTS
+
+
+def test_every_stored_professor_the_moved_pages_list_keeps_their_id(moved_units):
+    for key, missing in (("atmos", set()), ("geology", set()), ("ischool", ISCHOOL_NOT_LISTED)):
+        stored = _stored_ids(DEPARTMENTS[key]["short"])
+        fresh = {r["id"]: r["pi_name"] for r in moved_units[key]}
+        assert missing <= stored
+        assert stored - set(fresh) == missing, key
+        assert {i: fresh[i] for i in stored - missing} == {
+            i: MOVED_UNITS_STORED[i] for i in stored - missing}
+
+
+def test_the_moved_units_read_every_person_their_pages_list(moved_units):
+    atmos, geology, ischool = (moved_units[k] for k in ("atmos", "geology", "ischool"))
+    # Lei Zhao is listed under Affiliate and again under Adjunct Faculty.
+    assert (len(atmos), len({r["id"] for r in atmos})) == (39, 38)
+    assert len(geology) == 21
+    assert len(ischool) == 78
+    for rows, host in ((atmos, "https://climas.illinois.edu/directory/profile/"),
+                       (geology, "https://esec.illinois.edu/directory/profile/")):
+        assert all(r["url"].startswith(host) and r["contact_email"] for r in rows)
+    assert {r["department"] for r in atmos} == {
+        "Department of Climate, Meteorology & Atmospheric Sciences"}
+    assert not {"Dean's Cabinet", "Adjuncts & Affiliates", "Doctoral Students",
+                "Committees"} & {r["pi_name"] for r in ischool}
+    assert missing_departments([*atmos, *geology, *ischool],
+                               departments=["atmos", "geology", "ischool"]) == []
+
+
+def test_the_people_new_to_atmos_and_geology_are_stored_under_other_departments(moved_units):
+    """Each of these shares an address and a surname with a row another UIUC
+    department already holds (Proistosescu under Geology, Fouke under IB,
+    Killeen under ECE, Lombardo and Zhao under CEE, Trujillo-Falcón under
+    Communication), so the email dedup keeps one row per person."""
+    new = {key: {r["pi_name"] for r in moved_units[key]
+                 if r["id"] not in _stored_ids(DEPARTMENTS[key]["short"])}
+           for key in ("atmos", "geology")}
+    assert new == {
+        "atmos": {"Cristian Proistosescu", "Joseph Trujillo-Falcón", "Franklin Lombardo",
+                  "Lei Zhao", "Timothy Killeen"},
+        "geology": {"Bruce W Fouke"},
+    }

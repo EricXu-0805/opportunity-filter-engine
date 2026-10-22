@@ -292,10 +292,16 @@ DEPARTMENTS = {
                       "cultural anthropology", "linguistic anthropology"],
     },
     "atmos": {
-        "name": "Department of Atmospheric Sciences",
+        # The department renamed itself and moved to climas.illinois.edu;
+        # atmos.illinois.edu and geology.illinois.edu now only 302 there, from a
+        # shared host whose certificate lapsed before the 2026-10-12 refresh and
+        # whose InCommon chain ends at an emSign root that certifi 2026.10.18
+        # dropped (10-19 refresh). Either way the list fetch failed and the unit
+        # read zero rows. "short" stays: it is hashed into every record id.
+        "name": "Department of Climate, Meteorology & Atmospheric Sciences",
         "short": "Atmos",
-        "url": "https://atmos.illinois.edu/directory/faculty",
-        "base": "https://atmos.illinois.edu",
+        "url": "https://climas.illinois.edu/directory/faculty",
+        "base": "https://climas.illinois.edu",
         "majors": ["Atmospheric Sciences"],
         "keywords": ["atmospheric sciences", "meteorology", "climate",
                       "weather", "atmospheric dynamics", "remote sensing"],
@@ -311,10 +317,11 @@ DEPARTMENTS = {
                       "social movements"],
     },
     "geology": {
+        # Moved to esec.illinois.edu; the old host fails the same way as atmos.
         "name": "Department of Earth Science & Environmental Change",
         "short": "Geology",
-        "url": "https://geology.illinois.edu/directory/faculty",
-        "base": "https://geology.illinois.edu",
+        "url": "https://esec.illinois.edu/directory/faculty",
+        "base": "https://esec.illinois.edu",
         "majors": ["Geology", "Earth Science"],
         "keywords": ["geology", "earth science", "geochemistry", "geophysics",
                       "paleontology", "environmental change"],
