@@ -517,8 +517,9 @@ export default function FullTargetResumeModal({ isOpen, onClose, profile, opport
             <p className="whitespace-pre-wrap break-words text-xs">{copy('Before', '修改前')}: {value(change.before)}</p>
             <p className="whitespace-pre-wrap break-words text-xs">{copy('After', '修改后')}: {value(change.after)}</p>
             {change.reason && <p className="whitespace-pre-wrap break-words text-sm">{copy('Reason', '理由')}: {change.reason}</p>}
-            {event.kind === 'plan' && change.target_evidence.length > 0 && <p className="text-xs font-medium">{copy('AI-linked text from the posting', 'AI 关联的岗位原文')}</p>}
+            {event.kind === 'plan' && change.target_evidence.length > 0 && <p className="text-xs font-medium">{copy('AI-linked text from the opportunity', 'AI 关联的机会原文')}</p>}
             {change.target_evidence.map((quote, i) => <p key={`target-${i}`} className="whitespace-pre-wrap break-words text-xs">{targetResumeEvidenceLabel(quote, locale)}: {quote.quote}</p>)}
+            {event.kind === 'plan' && change.source_evidence.length > 0 && <p className="text-xs font-medium">{copy('Student original', '学生原文')}</p>}
             {change.source_evidence.map((quote, i) => <p key={`source-${i}`} className="whitespace-pre-wrap break-words text-xs">{copy('Source citation', '原文引用')}: {quote.quote}</p>)}
             {change.check && <p className="break-words text-xs text-gray-600">{copy('Recorded check version', '记录的检查版本')}: {change.check.version}</p>}
             {!change.check && change.field === 'text' && event.kind !== 'manual' && <p className="text-xs text-gray-600">{copy('Check version unknown.', '检查版本未知。')}</p>}

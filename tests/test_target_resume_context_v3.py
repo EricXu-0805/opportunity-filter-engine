@@ -89,8 +89,8 @@ def document(opp):
     return _document(['I wrote parser tests using Python.'], opp)
 
 
-def submit(client, path, doc):
-    request = {'version': 1, 'request_id': 'research-resume', 'locale': 'zh', 'include_check_version': True, 'draft': doc, 'document_signature': fingerprint(doc)}
+def submit(client, path, doc, locale='zh'):
+    request = {'version': 1, 'request_id': 'research-resume', 'locale': locale, 'include_check_version': True, 'draft': doc, 'document_signature': fingerprint(doc)}
     if path.endswith('suggestions'):
         request['selected_unit_ids'] = [unit['unit_id'] for unit in ai.units_for(doc)[0]]
     else:
@@ -125,6 +125,23 @@ def test_available_exact_codepoint_quotes_survive_both_real_routes(endpoint, pat
     expected = [state['quote']] if field == 'paper_title' else []
     assert experience['suggestion']['target_evidence'] == expected
     assert experience['suggestion']['priority'] == ('high' if expected else 'normal')
+
+
+@pytest.mark.parametrize('locale,first,student,linked', [
+    ('en', 'Keep suggestion: Compare the student and target originals before accepting this advice.', 'Student original',
+     'AI-linked text from the opportunity'),
+    ('zh', '建议保留: 请对照学生材料与目标原文，再决定是否采用。', '学生原文', 'AI 关联的机会原文'),
+])
+def test_the_plan_labels_a_paper_title_quote_without_calling_it_posting_text(endpoint, locale, first, student, linked):
+    # M133: the plan's label for its quotes once said "from the posting"; a paper title is not posting text.
+    client, opp, state = endpoint
+    doc = document(opp)
+    response = submit(client, PATHS[1], doc, locale)
+    assert response.status_code == 200, response.text
+    [item] = response.json()['items']
+    assert item['target_evidence'] == [PAPER]
+    assert item['reason'].split('\n') == [first, f'{student}: "Research project 0"', f'{linked}: "机器人😀研究"']
+    assert 'posting' not in item['reason'] and '岗位' not in item['reason']
 
 
 @pytest.mark.parametrize('path', PATHS)

@@ -813,9 +813,11 @@ describe('saved operation records', () => {
     expect(record.events.map(item => item.kind)).toEqual(['ai_rewrite', 'manual']);
     expect(record.events[0].changes[0].check?.version).toBe('target-resume-source-checks-v1'); expect(record.events[1].changes[0].check).toBeNull();
   });
-  it.each([['en', 'Change records', 'AI-linked text from the posting', 'Opportunity citation'], ['zh', '修改记录', 'AI 关联的岗位原文', '机会引用']] as const)(
-    'records an accepted content choice\'s posting quote as text the AI linked, not as support for its reason (%s)', async (locale, records, label, citation) => {
-      // M133: the plan's quote is only checked to be in the posting; it can bear on nothing in the block.
+  it.each([['en', 'Change records', 'AI-linked text from the opportunity', 'Opportunity citation', 'Student original', 'Source citation'],
+    ['zh', '修改记录', 'AI 关联的机会原文', '机会引用', '学生原文', '原文引用']] as const)(
+    'records an accepted content choice\'s opportunity quote as text the AI linked, with the student\'s line under its own heading (%s)', async (locale, records, label, citation, student, source) => {
+      // M133: the plan's quote is only checked to be in the opportunity's text; it can bear on nothing in the block.
+      // Round 2: under the quote's heading alone, the student's own line read as opportunity text.
       i18n.locale = locale;
       const p = profile(), doc = await docFor(p); storage.load.mockResolvedValue(loaded(doc)); renderModal(p);
       await waitFor(() => expect(plan.props?.enabled).toBe(true));
@@ -830,7 +832,9 @@ describe('saved operation records', () => {
         source_evidence: [{ unit_id: line.id, start: 0, end: Array.from(line.original).length, quote: line.original }] }] };
       act(() => plan.props!.onApply(prepared.value.canonical_draft, next, action));
       fireEvent.click(screen.getByText(records));
-      expect(screen.getByText(label)).toBeVisible(); expect(screen.getByText(`${citation}: ${quote}`)).toBeVisible();
+      const rows = [screen.getByText(label), screen.getByText(`${citation}: ${quote}`), screen.getByText(student), screen.getByText(`${source}: ${line.original}`)];
+      for (const row of rows) expect(row).toBeVisible();
+      for (let i = 1; i < rows.length; i += 1) expect(rows[i - 1].compareDocumentPosition(rows[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
   it.each([['full-target-v5', true], ['full-target-v2', true], ['full-target-v6', false]] as const)(
     'says whether a saved line an AI step wrote under %s was fact-checked (flagged: %s)', async (pipeline, flagged) => {

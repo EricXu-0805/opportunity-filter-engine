@@ -66,8 +66,9 @@ def why_lines(links=(), ops=(), keep_code=None, locale='en'):
 
 def render_reason(value, recommendation, source_quotes, target_quotes, locale='en', *, links=(), ops=(),
                   keep_code=None, ai_linked=False):
-    # The selection plan's target quotes are checked to be in the posting, not to bear on the block (M133: a tour
-    # sentence beside an FFT project), so ai_linked names them as text the AI linked, not as support for the reason.
+    # The selection plan's target quotes are checked to be in the opportunity's text (description, requirements,
+    # papers or lab pages), not to bear on the block (M133: a tour sentence beside an FFT project), so ai_linked
+    # names them as text the AI linked, not as support for the reason, and names no one source.
     code = value if value in REASON_TYPES else 'review_sources'
     if locale == 'zh':
         action = {'keep': '建议保留', 'compress': '建议压缩', 'omit': '建议省略',
@@ -81,7 +82,7 @@ def render_reason(value, recommendation, source_quotes, target_quotes, locale='e
             'limited_relevance': '依据下列原文核对是否需要降低这部分篇幅。',
             'review_sources': '请对照学生材料与目标原文，再决定是否采用。',
         }[code]
-        labels = ('学生原文', 'AI 关联的岗位原文' if ai_linked else '目标原文')
+        labels = ('学生原文', 'AI 关联的机会原文' if ai_linked else '目标原文')
     else:
         action = {'keep': 'Keep suggestion', 'compress': 'Compress suggestion', 'omit': 'Omit suggestion',
                   'high': 'Higher-priority suggestion', 'normal': 'Normal-priority suggestion', 'low': 'Lower-priority suggestion'}[recommendation]
@@ -94,7 +95,7 @@ def render_reason(value, recommendation, source_quotes, target_quotes, locale='e
             'limited_relevance': 'Review the cited material before giving this block less space.',
             'review_sources': 'Compare the student and target originals before accepting this advice.',
         }[code]
-        labels = ('Student original', 'AI-linked text from the posting' if ai_linked else 'Target original')
+        labels = ('Student original', 'AI-linked text from the opportunity' if ai_linked else 'Target original')
     rows = [f'{action}: {motive}']
     for label, quotes in zip(labels, (source_quotes, target_quotes), strict=True):
         rows.extend(f'{label}: {json.dumps(quote["quote"], ensure_ascii=False)}' for quote in quotes)

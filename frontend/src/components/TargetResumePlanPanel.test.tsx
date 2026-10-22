@@ -2,11 +2,12 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { webcrypto } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import golden from '../../../tests/fixtures/target-resume-context-v4-golden.json';
+import withResearch from '../../../tests/fixtures/target-resume-context-v3-golden.json';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
 import { targetResumeSupportEvidence } from '@/lib/target-resume-support';
 import { appendTargetResumeProvenance } from '@/lib/target-resume-provenance';
 import { prepareTargetResumePlan, measureTargetResumeLength } from '@/lib/target-resume-plan';
-import { createTargetResume, type TargetResumeV1 } from '@/lib/target-resume';
+import { createTargetResume, targetResumeContextSignature, type TargetResumeContextV4, type TargetResumeV1 } from '@/lib/target-resume';
 import type { ProfileActionReceipt } from '@/lib/use-profile-refresh';
 import { DEFAULT_PROFILE } from '@/app/home/types';
 import type { TargetResumePlanRequest, TargetResumePlanResponse } from '@/lib/target-resume-plan-protocol';
@@ -39,6 +40,12 @@ function props(): TargetResumePlanPanelProps {
   const draft = clone(golden.draft) as TargetResumeV1;
   return { profile: { ...DEFAULT_PROFILE, ...draft.base_snapshot }, draft, owner: captureOwnerToken(), contextKey: 'source-and-target', currentContext: { profile_signature: draft.base.profile_signature, source_signature: draft.base.source_signature, target_signature: draft.base.target_signature }, enabled: true, onApply: vi.fn(), onDirtyChange: vi.fn(), onAuthorityRefusal: vi.fn() };
 }
+// The v4 golden target has no papers; this gives it the v3 golden's available research snapshot and signs it again.
+async function withPapers(p: TargetResumePlanPanelProps) {
+  const target: TargetResumeContextV4 = { ...p.draft.target_snapshot as TargetResumeContextV4, research: clone(withResearch.draft.target_snapshot.research) as TargetResumeContextV4['research'] };
+  p.draft.target_snapshot = target; p.draft.base.target_signature = await targetResumeContextSignature(target);
+  p.currentContext = { ...p.currentContext!, target_signature: p.draft.base.target_signature };
+}
 const generate = async () => { fireEvent.click(screen.getByRole('button', { name: 'Generate content plan' })); await waitFor(() => expect(mocked.generate).toHaveBeenCalled()); };
 const reviewReady = () => screen.findByText('All 5 content blocks in this draft were reviewed. Nothing has been applied.');
 const select = (id: string) => fireEvent.click(screen.getByRole('checkbox', { name: `Use content choice: ${id}` }));
@@ -65,8 +72,8 @@ describe('whole draft content planning', () => {
     fireEvent.click(within(card).getByText('Read complete original and current text'));
     expect(within(card).getByText(project(p.draft).lines[1].original)).toBeVisible();
     expect(within(card).getByText(project(p.draft).lines[1].text)).toBeVisible();
-    expect(within(card).getByText('AI-linked text from the posting')).not.toBeVisible(); fireEvent.click(within(card).getByText('Review reason and quoted text')); expect(within(card).getByText('AI-linked text from the posting')).toBeVisible();
-    // M133: the quote is only checked to be in the posting, so it is not presented as evidence for the reason.
+    expect(within(card).getByText('AI-linked text from the opportunity')).not.toBeVisible(); fireEvent.click(within(card).getByText('Review reason and quoted text')); expect(within(card).getByText('AI-linked text from the opportunity')).toBeVisible();
+    // M133: the quote is only checked to be in the opportunity's text, so it is not presented as evidence for the reason.
     expect(screen.queryByText('Opportunity evidence')).toBeNull(); expect(screen.queryByText('Review reason and sources')).toBeNull();
     expect(p.onApply).not.toHaveBeenCalled(); expect(JSON.stringify(p.draft)).toBe(before); expect(p.onDirtyChange).toHaveBeenLastCalledWith(true);
   });
@@ -104,7 +111,7 @@ describe('whole draft content planning', () => {
     expect(screen.queryByRole('alert')).toBeNull(); expect(screen.getAllByRole('checkbox')).toHaveLength(5);
     const card = document.querySelector('[data-plan-block-id="publication-one"]') as HTMLElement;
     fireEvent.click(within(card).getByText('Review reason and quoted text'));
-    expect(within(card).getByText('AI-linked text from the posting')).toBeVisible(); expect(within(card).getByText(/: Python$/)).toBeVisible();
+    expect(within(card).getByText('AI-linked text from the opportunity')).toBeVisible(); expect(within(card).getByText(/: Python$/)).toBeVisible();
     select('publication-one'); apply();
     const next = vi.mocked(p.onApply).mock.calls[0][1];
     expect(next.document.sections.find(section => section.id === 'publications')!.blocks[0].included).toBe(false);
@@ -246,7 +253,7 @@ describe('whole draft content planning', () => {
   it.each([
     ['en', 'The plan lacks a verifiable opportunity citation. Your draft is unchanged.'],
     ['zh', '选材缺少可核对的机会引文，文稿未变。'],
-  ] as const)('reports a missing posting quote without calling it evidence (%s)', async (locale, text) => {
+  ] as const)('reports a missing opportunity quote without calling it evidence (%s)', async (locale, text) => {
     mocked.locale = locale;
     mocked.generate.mockImplementation(async payload => ({ ...await response(payload), method: 'unavailable', complete: false, reason_code: 'no_target_evidence', items: [] }));
     const p = props(); render(<TargetResumePlanPanel {...p} />);
@@ -259,10 +266,34 @@ describe('whole draft content planning', () => {
     fireEvent.click(screen.getByRole('button', { name: '生成选材建议' }));
     await screen.findByText('已覆盖本稿全部 5 个内容块，尚未应用。');
     const card = document.querySelector('[data-plan-block-id="project-one"]') as HTMLElement;
-    expect(within(card).getByText('AI 关联的岗位原文')).not.toBeVisible();
+    expect(within(card).getByText('AI 关联的机会原文')).not.toBeVisible();
     fireEvent.click(within(card).getByText('查看理由和引用原文'));
-    expect(within(card).getByText('AI 关联的岗位原文')).toBeVisible(); expect(within(card).getByText('机会引用: Python')).toBeVisible();
+    expect(within(card).getByText('AI 关联的机会原文')).toBeVisible(); expect(within(card).getByText('机会引用: Python')).toBeVisible();
     expect(screen.queryByText('机会依据')).toBeNull(); expect(screen.queryByText('查看理由和依据')).toBeNull();
+  });
+  it.each([
+    ['en', 'lab_text', 'AI-linked text from the opportunity', 'Official page 1, section 2 text: Causal inference'],
+    ['zh', 'lab_text', 'AI 关联的机会原文', '官网第 1 页，第 2 节正文: Causal inference'],
+    ['en', 'paper_title', 'AI-linked text from the opportunity', 'Paper 1 title: 机器人😀研究'],
+    ['zh', 'paper_title', 'AI 关联的机会原文', '论文 1 标题: 机器人😀研究'],
+  ] as const)('(%s) heads a %s quote as AI-linked opportunity text, never as posting text', async (locale, field, heading, cited) => {
+    // M133 round 2: plan quotes also come from official lab pages and papers, which "from the posting" misnamed.
+    mocked.locale = locale; const p = props();
+    if (field === 'paper_title') await withPapers(p);
+    const quote = field === 'lab_text' ? { field, page_index: 0, section_index: 1, start: 0, end: 16, quote: 'Causal inference' }
+      : { field, paper_index: 0, start: 0, end: 6, quote: '机器人😀研究' };
+    mocked.generate.mockImplementation(async payload => {
+      const value = await response(payload); value.items.find(item => item.block_id === 'project-one')!.target_evidence = [quote]; return value;
+    });
+    render(<TargetResumePlanPanel {...p} />);
+    fireEvent.click(screen.getByRole('button', { name: locale === 'zh' ? '生成选材建议' : 'Generate content plan' }));
+    await screen.findByText(locale === 'zh' ? '已覆盖本稿全部 5 个内容块，尚未应用。' : 'All 5 content blocks in this draft were reviewed. Nothing has been applied.');
+    const card = document.querySelector('[data-plan-block-id="project-one"]') as HTMLElement;
+    fireEvent.click(within(card).getByText(locale === 'zh' ? '查看理由和引用原文' : 'Review reason and quoted text'));
+    const rows = [within(card).getByText(heading), within(card).getByText(cited), within(card).getByText(locale === 'zh' ? '原文依据' : 'Source evidence')];
+    for (const row of rows) expect(row).toBeVisible();
+    for (let i = 1; i < rows.length; i += 1) expect(rows[i - 1].compareDocumentPosition(rows[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(card.textContent).not.toMatch(/posting|岗位/);
   });
   it('uses Chinese visible copy and clears dirty review state only after explicit dismissal', async () => {
     mocked.locale = 'zh'; const p = props(); render(<TargetResumePlanPanel {...p} />);
@@ -290,7 +321,7 @@ describe('accepted content-plan operation records', () => {
     expect(changes[0].reason).toContain('mentions Python'); expect(changes[0].target_evidence[0].quote).toBe('Python');
     expect(project(next).lines).toEqual(project(p.draft).lines);
   });
-  it('shows no AI-linked posting text heading for a block whose advice cites only its own line, and records the omission', async () => {
+  it('shows no AI-linked opportunity text heading for a block whose advice cites only its own line, and records the omission', async () => {
     mocked.generate.mockImplementation(async payload => {
       const value = await response(payload);
       const item = value.items.find(item => item.block_id === 'publication-one')!;
@@ -300,9 +331,9 @@ describe('accepted content-plan operation records', () => {
     const p = props(); render(<TargetResumePlanPanel {...p} />); await generate(); await reviewReady();
     const card = document.querySelector('[data-plan-block-id="publication-one"]') as HTMLElement;
     fireEvent.click(within(card).getByText('Review reason and quoted text'));
-    expect(within(card).queryByText('AI-linked text from the posting')).toBeNull(); expect(within(card).getByText('Source evidence')).toBeVisible();
+    expect(within(card).queryByText('AI-linked text from the opportunity')).toBeNull(); expect(within(card).getByText('Source evidence')).toBeVisible();
     const other = document.querySelector('[data-plan-block-id="project-one"]') as HTMLElement;
-    expect(within(other).getByText('AI-linked text from the posting')).toBeInTheDocument();
+    expect(within(other).getByText('AI-linked text from the opportunity')).toBeInTheDocument();
     select('publication-one'); apply();
     const [, next, action] = vi.mocked(p.onApply).mock.calls[0];
     const changes = appendTargetResumeProvenance(null, p.draft, next, action)!.events[0].changes;

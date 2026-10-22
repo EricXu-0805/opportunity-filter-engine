@@ -114,6 +114,21 @@ def test_both_routes_use_available_exact_unicode_quotes_without_applying(endpoin
     assert experience['suggestion']['target_evidence'] == [state['quote']] and experience['suggestion']['priority'] == 'high'
 
 
+@pytest.mark.parametrize('locale,first,student,linked', [
+    ('en', 'Keep suggestion: Compare the student and target originals before accepting this advice.', 'Student original',
+     'AI-linked text from the opportunity'),
+    ('zh', '建议保留: 请对照学生材料与目标原文，再决定是否采用。', '学生原文', 'AI 关联的机会原文'),
+])
+def test_the_plan_labels_a_lab_page_quote_without_calling_it_posting_text(endpoint, locale, first, student, linked):
+    # M133: the plan's label for its quotes once said "from the posting"; an official lab page is not posting text.
+    client, opp, state = endpoint; doc = document(opp); state['quote'] = deepcopy(TEXT)
+    response = submit(client, PATHS[1], doc, locale); assert response.status_code == 200, response.text
+    [item] = response.json()['items']
+    assert item['target_evidence'] == [TEXT]
+    assert item['reason'].split('\n') == [first, f'{student}: "Research project 0"', f'{linked}: "实验室方法😀"']
+    assert 'posting' not in item['reason'] and '岗位' not in item['reason']
+
+
 @pytest.mark.parametrize('path', PATHS[1:])  # the suggestions route's links: see the next test
 @pytest.mark.parametrize('quote', [{**QUOTE, 'page_index': 1}, {**QUOTE, 'section_index': 1}, {**QUOTE, 'page_index': True},
     {**QUOTE, 'section_index': -1}, {**QUOTE, 'field': 'lab_text', 'section_index': 1, 'quote': '实验室方法😀'}, {**QUOTE, 'quote': 'Invented'},
