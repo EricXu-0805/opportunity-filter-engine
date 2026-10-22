@@ -799,6 +799,21 @@ export function getDirtyProfileKeys(
 }
 
 /**
+ * Whether the journal holds any operation the cloud has not confirmed, of ANY
+ * writer: another page's, another build's, every tab's. Gated and read like
+ * getDirtyProfileKeys, and a journal that cannot be read is not an empty one.
+ */
+export function hasOutstandingProfileOps(token: OwnerToken): JournalResult<boolean> {
+  if (!isOwnerTokenValid(token, token.uid)) {
+    return { ok: false, reason: 'owner superseded' };
+  }
+  ensureScope(token);
+  const journal = readOutstandingOps();
+  if (!journal.ok) return journal;
+  return { ok: true, value: journal.value.length > 0 };
+}
+
+/**
  * What the journal says one field should become, and what it was.
  *
  * Two tabs editing the SAME field are not merged by taking whichever

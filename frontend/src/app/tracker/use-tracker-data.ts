@@ -109,6 +109,11 @@ export interface UseTrackerDataResult {
   changeStatus: (id: string, type: InteractionType) => void;
   saveNotes: (id: string, notes: string) => void;
   setReminder: (id: string, date: string | null) => void;
+  /** Runs a write that sets this id's status on the server (an outcome note,
+   *  see use-outcome-notes.ts) in the exclusive slot, then shows the status
+   *  it returns. Resolves false, without calling `write`, when the slot is
+   *  busy or the card is gone; a rejected `write` rejects here unchanged. */
+  runStatusWrite: (id: string, leaving: boolean, write: () => Promise<InteractionType | null>) => Promise<boolean>;
 }
 
 // Trim-based equivalence, matching what actually gets persisted
@@ -854,6 +859,35 @@ export function useTrackerData(): UseTrackerDataResult {
     saveNotes(id, draft);
   }, [saveNotes]);
 
+  // Holds the same exclusive slot as a status click, so neither a click nor a
+  // reminder write can land between this write and the status it reports.
+  // Nothing is optimistic: the card shows the server's status, or none
+  // changes. `leaving` (a dismiss) also holds the notes textarea, as there.
+  const runStatusWrite = useCallback(async (id: string, leaving: boolean,
+    write: () => Promise<InteractionType | null>): Promise<boolean> => {
+    if (statusPendingRef.current.has(id) || !itemsRef.current.some((it) => it.opp.id === id)) return false;
+    const generation = identityGenerationRef.current;
+    const current = () => identityGenerationRef.current === generation && mountedRef.current;
+    addStatusPending(id);
+    if (leaving) addLeavingPending(id);
+    try {
+      const type = await write();
+      if (current() && type) {
+        itemsRef.current = itemsRef.current.map((it) =>
+          it.opp.id === id ? { ...it, record: { ...it.record, type } } : it,
+        );
+        setItems(itemsRef.current);
+        clearStatusFailed(id);
+      }
+      return true;
+    } finally {
+      if (current()) {
+        removeStatusPending(id);
+        if (leaving) removeLeavingPending(id);
+      }
+    }
+  }, [addStatusPending, removeStatusPending, addLeavingPending, removeLeavingPending, clearStatusFailed]);
+
   return {
     items,
     unavailableItems,
@@ -874,6 +908,7 @@ export function useTrackerData(): UseTrackerDataResult {
     changeStatus,
     saveNotes,
     setReminder,
+    runStatusWrite,
   };
 }
 

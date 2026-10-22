@@ -115,3 +115,57 @@ def test_paths_and_modules_the_docs_name_exist():
             if not (base.with_suffix(".py").exists() or (base / "__init__.py").exists()):
                 missing.append(f"{doc}: python -m {module}")
     assert not missing, missing
+
+
+_OWNER_KEYED_TABLE = re.compile(
+    r"CREATE TABLE (?:IF NOT EXISTS )?(?:public\.)?(\w+)\s*\((.*?)\n\);", re.S | re.I
+)
+
+
+def _migrations() -> list[str]:
+    return [
+        path.read_text(encoding="utf-8")
+        for path in sorted((ROOT / "supabase" / "migrations").glob("*.sql"))
+    ]
+
+
+def _owner_keyed_tables() -> set[str]:
+    return {
+        name
+        for sql in _migrations()
+        for name, body in _OWNER_KEYED_TABLE.findall(sql)
+        if re.search(r"^\s*(device_id|owner_id)\b", body, re.M)
+    }
+
+
+def test_runbook_export_reads_every_owner_keyed_table():
+    """RUNBOOK section 8's export must return every table a migration keys by owner.
+
+    A new per-student table (M49's outcome notes) that the export query leaves
+    out is missing from the student's data export, with every check green.
+    """
+    runbook = _doc("RUNBOOK.md")
+    export = runbook[runbook.index("### Export (SELECT only)"):runbook.index("### Deletion")]
+    missing = sorted(_owner_keyed_tables() - set(re.findall(r"FROM public\.(\w+) t\b", export)))
+    assert not missing, f"RUNBOOK.md section 8 export omits: {missing}"
+
+
+def test_runbook_deletion_removes_every_owner_keyed_table():
+    """Every owner-keyed table is deleted by step 2's statement or named in step 3.
+
+    Step 3 lists what goes with the auth user (a trigger or ON DELETE CASCADE);
+    each trigger it names must exist in a migration. A table in neither step
+    stays behind after a deletion request, and step 6 sends the operator to
+    find out why only after the fact.
+    """
+    runbook = _doc("RUNBOOK.md")
+    deletion = runbook[runbook.index("### Deletion"):runbook.index("## 9.")]
+    step2 = deletion[deletion.index("2. **Rows keyed by"):deletion.index("3. **The auth users.**")]
+    step3 = deletion[deletion.index("3. **The auth users.**"):deletion.index("4. **The merge tombstones**")]
+    deleted = set(re.findall(r"DELETE FROM public\.(\w+) t\b", step2))
+    named = set(re.findall(r"`(\w+)`", step3))
+    missing = sorted(_owner_keyed_tables() - deleted - named)
+    assert not missing, f"RUNBOOK.md section 8 deletion leaves: {missing}"
+    triggers = {t for sql in _migrations() for t in re.findall(r"CREATE TRIGGER (\w+)", sql)}
+    unknown = sorted(t for t in named if t.startswith("auth_user_delete_") and t not in triggers)
+    assert not unknown, f"RUNBOOK.md section 8 step 3 names triggers no migration creates: {unknown}"
