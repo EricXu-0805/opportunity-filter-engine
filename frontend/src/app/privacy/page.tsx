@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 // says what it said before it.
 const COURSES = RELEASE_SCOPE.courseStatus;
 // Outcome notes (M49) changed the policy on both sides of the course-status switch.
-const EFFECTIVE_DATE = 'October 18, 2026';
+const EFFECTIVE_DATE = 'October 22, 2026';
 const RESUME_TEXT_LIMIT = MAX_RESUME_TEXT_CHARACTERS.toLocaleString('en-US');
 
 const CONTENT = `# Privacy Policy

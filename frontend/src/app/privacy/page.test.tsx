@@ -53,7 +53,7 @@ describe('Privacy page', () => {
       const { default: OffPage } = await import('./page');
       const { container } = render(<OffPage />);
       const text = container.textContent ?? '';
-      expect(text).toContain('Effective date: October 18, 2026');
+      expect(text).toContain('Effective date: October 22, 2026');
       expect(text).toContain('research interests, skills and proficiency levels, coursework, experience level.');
       expect(text).toContain('to pre-fill skills, coursework, and interests.');
       expect(text).toContain(`characters of extracted résumé text as part of your profile. The original PDF file is not stored on our servers. Removing the résumé from your profile clears that text and the coursework it extracted from your current profile, and future matching and generation stop using them. It does not change copies saved elsewhere`);
