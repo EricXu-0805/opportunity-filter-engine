@@ -114,3 +114,85 @@ def test_a_detail_page_past_the_limits_is_a_failed_check(monkeypatch, markup):
     assert "deep_scraped" not in record.extra_fields and "eligibility_text" not in record.extra_fields
     assert evidence["detail_errors"] == [{"source_url": _DETAIL, "reason": "too_large"}]
     assert evidence["condition_capture_counts"]["failed"] == 1
+
+
+# ── a full harvest is a complete source check ──────────────────────────────
+# Every national refresh since the source started recording its evidence has
+# ended "Source check incomplete" with two causes, both ours. The listing was
+# read one page too far: ?page=12 is past the end, so Drupal renders "No
+# results found" and no table, which the collector counted as a failed page.
+# And five detail pages repeat their "Link to Opportunity" field in a hidden
+# copy that shows the whole URL, while the labelled field shows Drupal's
+# trimmed "…" text; the copy did not read the same, stayed unparsed, and a URL
+# containing "email" or "apply" (or a page with an Eligibility heading) made
+# the page unsupported. The fixtures are trimmed copies of pages saved
+# 2026-10-22; contact addresses are placeholders.
+
+_FIXTURES = os.path.join(os.path.dirname(__file__), "fixtures", "uiuc")
+
+
+def _fixture(name):
+    with open(os.path.join(_FIXTURES, name), encoding="utf-8") as f:
+        return f.read()
+
+
+class _Page:
+    def __init__(self, url, html):
+        self.url, self.text = url, html
+
+    def raise_for_status(self):
+        pass
+
+
+def test_the_listing_stops_at_the_page_its_pager_marks_last(monkeypatch):
+    # The pager of ?page=10 names ?page=10 current and links a next page, so
+    # serving it for the earlier pages never reads as an end either.
+    pages = {UIUCSROCollector.BASE_URL + f"?page={n}": "sro_list_page10.html" for n in range(11)}
+    pages[UIUCSROCollector.BASE_URL + "?page=11"] = "sro_list_page11.html"
+    pages[UIUCSROCollector.BASE_URL + "?page=12"] = "sro_list_page12.html"
+    requested = []
+
+    def get(url, *_a, **_k):
+        requested.append(url)
+        return _Page(url, _fixture(pages[url]))
+
+    monkeypatch.setattr(uiuc_sro.requests, "get", get)
+    collector = UIUCSROCollector(config={"rate_limit_delay": 0})
+    records = collector.collect()
+    evidence = collector.evidence
+    assert requested[-1] == UIUCSROCollector.BASE_URL + "?page=11"
+    assert len(requested) == 12 and len(records) == 11 * 2 + 4
+    assert (evidence["list_pages_attempted"], evidence["list_pages_loaded"],
+            evidence["list_pages_failed"]) == (12, 12, 0)
+    assert evidence["list_complete"] is True and evidence["list_errors"] == []
+
+
+def test_a_page_past_the_end_still_is_not_a_listing(monkeypatch):
+    """If the pager is ever unreadable, reading past the end stays a failure."""
+    page = _fixture("sro_list_page12.html")
+    monkeypatch.setattr(uiuc_sro.requests, "get", lambda url, *_a, **_k: _Page(url, page))
+    collector = UIUCSROCollector(config={"rate_limit_delay": 0})
+    assert collector.collect() == []
+    assert collector.evidence["list_complete"] is False
+    assert collector.evidence["list_errors"] == [
+        {"reason": "unsupported_list", "source_url": UIUCSROCollector.BASE_URL + "?page=0"}]
+
+
+@pytest.mark.parametrize("name", ["sro_detail_chbsp.html", "sro_detail_lurie.html"])
+def test_a_hidden_copy_of_a_trimmed_link_field_is_the_same_field(monkeypatch, name):
+    monkeypatch.setattr(uiuc_sro.requests, "get", lambda *_a, **_k: _Detail(_fixture(name)))
+    record, evidence = _scrape()
+    assert record.extra_fields[CAPTURE_KEY]["status"] == "captured"
+    assert evidence["detail_errors"] == []
+    assert record.extra_fields["program_url"].startswith("https://www.")
+
+
+def test_a_hidden_link_copy_that_points_elsewhere_keeps_the_page_unsupported(monkeypatch):
+    page = _fixture("sro_detail_chbsp.html")
+    hidden = page.index("field--name-field-link-to-opportunity field--type-link field--label-hidden")
+    page = page[:hidden] + page[hidden:].replace("https://www.mskcc.org/", "https://example.org/", 2)
+    assert page.count("https://example.org/") == 2
+    monkeypatch.setattr(uiuc_sro.requests, "get", lambda *_a, **_k: _Detail(page))
+    record, evidence = _scrape()
+    assert record.extra_fields[CAPTURE_KEY]["status"] == "unsupported"
+    assert evidence["detail_errors"] == [{"source_url": _DETAIL, "reason": "unparsed_relevant_content"}]
