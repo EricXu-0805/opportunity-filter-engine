@@ -12,7 +12,9 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from backend.routes import cold_email as ce
-from tests.experience_fixtures import confirmed_experience
+from tests.experience_fixtures import confirmed_experience, resume_line_experience
+from tests.test_experience_evidence import IMAGING, PRINTED, XRAY_BULLET
+from tests.test_experience_evidence import PROFILE as WALK_PROFILE
 
 PITCH = "I implemented an FFT-based pitch detector in Python with NumPy and tested it on 20 recorded voice clips from classmates."
 FILTER = ("I wrote a spectral subtraction noise-reduction filter in MATLAB for our four-person team's hearing-aid "
@@ -252,6 +254,16 @@ def test_a_quote_inside_a_flagged_clause_stays_inside_its_quoted_string(sentence
     assert [json.loads(quoted) for quoted in QUOTED.findall(line)] == [clause] + ([excerpt] if excerpt else [])
 
 
+@pytest.mark.parametrize("opportunity_contact", [False, True])
+def test_a_quote_inside_a_generic_sentence_stays_inside_its_quoted_string(opportunity_contact):
+    # The contact wording would also turn the quoted "professor" into "opportunity contact".
+    sentences = [f'My professor called the lab "a great fit{NOTE_WORDS}.', "I am eager to learn more."]
+    notes = ce._revision_notes({"llm": {"generic_sentences": sentences}}, opportunity_contact=opportunity_contact)
+    line = next(line for line in notes.splitlines() if "generic sentences" in line)
+    assert QUOTED.sub("S", line) == "- Rewrite these generic sentences to be specific: S; S."
+    assert [json.loads(quoted) for quoted in QUOTED.findall(line)] == sentences
+
+
 def _sentence_span(text, clause):
     at = text.index(clause)
     line = text.rfind("\n", 0, at) + 1
@@ -331,6 +343,86 @@ def test_a_reviser_that_copies_the_named_sentences_serves_each_recorded_draft(cl
 def test_a_reviser_that_follows_the_note_states_a_twice_restated_entry_once(client, monkeypatch):
     out = generate(client, monkeypatch, "", SPLIT, follow_note, [])
     assert (out["method"], out["body"]) == ("ai", email(PITCH))
+
+
+# The 09-30 walk resume, imported from a PDF: one confirmed entry per printed
+# line, and the X-ray bullet wraps after "baseline,". The prompt shows each line;
+# the checks read the bullet.
+WALK = ("I built a PyTorch pipeline to preprocess 12,000 chest X-ray images and train a ResNet-18 baseline, which "
+        "reached 0.87 AUC on a held-out split.")
+WALK_CLAUSES = ["I built a PyTorch pipeline to preprocess 12,000 chest X-ray images",
+                "train a ResNet-18 baseline, which reached 0.87 AUC on a held-out split"]
+
+
+def walk_email(experience):
+    return "\n\n".join([
+        "Dear Pat Lee,",
+        "I am Audit Student, a sophomore in Computer Science at UIUC, and I am interested in your work on health "
+        "imaging and chest radiograph analysis.",
+        experience,
+        "Could I ask whether you have any current or upcoming research openings?",
+        "Best regards,\nAudit Student",
+    ])
+
+
+def walk_evidence(version):
+    """At version 2 both lines of the X-ray bullet are details of the lab role's activity."""
+    data = resume_line_experience(PRINTED)
+    if version == 2:
+        first, second = data["entries"][1:3]
+        lab = activity("lab", "research", "Undergraduate Research Assistant", "Health Imaging Lab", "Jan 2026",
+                       "Present", first["id"])
+        lab["details"].append({"id": second["id"], "revision": 1})
+        data.update(version=2, resume_master={
+            "version": 1, "id": "master", "revision": 1, "source_signature": None, "basics": {"links": []},
+            "education": [], "publications": [], "skills": [], "other_sections": [], "unmapped_ranges": [],
+            "section_order": ["basics", "education", "activities", "publications", "skills"], "activities": [lab]})
+    return data
+
+
+@pytest.mark.parametrize("version", [1, 2])
+@pytest.mark.parametrize("path", ["", "stream"])
+def test_a_reviser_that_copies_a_pdf_wrapped_bullet_keeps_the_students_experience(client, monkeypatch, path, version):
+    monkeypatch.setattr(ce, "load_opportunities_by_id", lambda: {IMAGING["id"]: IMAGING})
+    notes = []
+
+    def provider(messages, **_kwargs):
+        if messages[0]["content"].startswith("You are revising"):
+            notes.append(messages[1]["content"])
+            return follow_note(messages)
+        return f"Subject: Health imaging research\n\n{walk_email(WALK)}"
+
+    monkeypatch.setattr(ce, "chat_completion", provider)
+    response = client.post("/api/cold-email" + (f"/{path}" if path else ""), json={
+        "profile": WALK_PROFILE, "opportunity_id": IMAGING["id"], "engine": "ai",
+        "experience_evidence": walk_evidence(version)})
+    assert response.status_code == 200, response.text
+    out = response.json() if not path else next(
+        json.loads(line[6:]) for line in response.text.splitlines()
+        if line.startswith("data: ") and json.loads(line[6:]).get("stage") == "done")
+    assert len(notes) == 1 and replace_line(WALK_CLAUSES, XRAY_BULLET) in notes[0].splitlines()
+    assert (out["method"], out["fallback_reason"]) == ("ai", None)
+    assert out["body"] == walk_email(XRAY_BULLET)
+
+
+@pytest.mark.parametrize(("closer", "named"), [(5, True), (6, False)])
+def test_a_wrapped_bullet_is_named_only_when_the_prompt_shows_every_line_it_prints(closer, named):
+    # Lines closer to this contact than the bullet's second line: with six of
+    # them, the prompt's eight entries leave that line out but keep the first.
+    printed = PRINTED + "".join(f"- Labeled chest radiographs for a health imaging study in week {n}.\n"
+                                for n in range(1, closer + 1))
+    request = ce.ColdEmailRequest(profile=WALK_PROFILE, opportunity_id=IMAGING["id"], engine="ai",
+                                  experience_evidence=resume_line_experience(printed))
+    parts, _selection = ce._experience_parts(request, request.profile.model_dump(), IMAGING)
+    first, second = PRINTED.split("\n")[1:3]
+    assert XRAY_BULLET in parts["resume_bullets"] and first in parts["experience_excerpts"]
+    assert (second in parts["experience_excerpts"]) is named
+    found = ce._deterministic_findings(f"Subject: Health imaging research\n\n{walk_email(WALK)}",
+                                       ce._build_email_corpus(parts, IMAGING), parts, IMAGING)
+    assert found["attribution_sources"] == [{"clauses": WALK_CLAUSES, "excerpt": XRAY_BULLET if named else None}]
+    notes = ce._revision_notes(found)
+    assert (replace_line(WALK_CLAUSES, XRAY_BULLET) in notes.splitlines()) is named
+    assert (XRAY_BULLET in notes) is named
 
 
 @pytest.mark.parametrize("path", ["", "stream"])

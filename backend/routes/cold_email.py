@@ -1538,22 +1538,24 @@ def _restated_sentences(text: str, clauses: list[str], p: dict) -> list[dict]:
     when no other entry ties it, it shares at least two words and at least half
     of the sentence's, the sentence has no word that only other entries have (a
     sentence placing one entry's work in another's activity restates neither),
-    and its excerpt is one the prompt showed the model. The student's name,
-    school, major and year count for no entry. Otherwise the excerpt is None
-    and the claim is to be removed.
+    and the prompt showed the model every line the excerpt prints (a PDF-wrapped
+    bullet is one excerpt, but the prompt shows each of its lines as its own
+    entry). The student's name, school, major and year count for no entry.
+    Otherwise the excerpt is None and the claim is to be removed.
     """
     if not clauses:
         return []
     eligible = p.get("experience_materials_all")
     if eligible is None:
         eligible = [{"excerpt": str(bullet)} for bullet in p.get("resume_bullets") or []]
+    printed = p.get("resume_bullet_lines") or [[item["excerpt"]] for item in eligible]
+    shown = {item["excerpt"] if isinstance(item, dict) else str(item) for item in _prompt_experience(p)}
     entries = []
-    for item in eligible:
+    for item, lines in zip(eligible, printed, strict=True):
         fields = (item.get("context") or {}).get("fields") or {}
         names = " ".join(str(fact["value"]) for field, fact in fields.items() if field in _ACTIVITY_NAME_FIELDS)
-        entries.append((item["excerpt"], _content_words(f"{item['excerpt']} {names}")))
-    vocabulary = set().union(*(own for _excerpt, own in entries))
-    shown = {item["excerpt"] if isinstance(item, dict) else str(item) for item in _prompt_experience(p)}
+        entries.append((item["excerpt"], _content_words(f"{item['excerpt']} {names}"), set(lines) <= shown))
+    vocabulary = set().union(*(own for _excerpt, own, _shown in entries))
     identity = _content_words(" ".join(str(p.get(key) or "") for key in ("name", "school", "major", "year")))
     sentences = _attribution_sentences(text)
     groups: dict[str, dict] = {}
@@ -1561,12 +1563,12 @@ def _restated_sentences(text: str, clauses: list[str], p: dict) -> list[dict]:
         sentence = next((candidate for candidate in sentences if clause in candidate), clause)
         if sentence not in groups:
             words = _content_words(sentence) - identity
-            shared = [len(words & own) for _excerpt, own in entries]
+            shared = [len(words & own) for _excerpt, own, _shown in entries]
             best = max(shared, default=0)
             excerpt = None
             if best >= 2 and 2 * best >= len(words) and shared.count(best) == 1:
-                named, own = entries[shared.index(best)]
-                if named in shown and not (words & vocabulary) - own:
+                named, own, in_prompt = entries[shared.index(best)]
+                if in_prompt and not (words & vocabulary) - own:
                     excerpt = named
             groups[sentence] = {"clauses": [], "excerpt": excerpt}
         groups[sentence]["clauses"].append(clause)
@@ -1831,7 +1833,9 @@ def _revision_notes(findings: dict, *, opportunity_contact: bool = False) -> str
         )
     llm = findings.get("llm") or {}
     if llm.get("generic_sentences"):
-        gs = "; ".join(str(s) for s in llm["generic_sentences"][:3])
+        # Quoted as JSON, like the attribution lines, so each sentence ends where the email's does.
+        gs = "; ".join(json.dumps(str(s), ensure_ascii=False) for s in llm["generic_sentences"][:3])
+        verbatim.add(len(parts))
         parts.append(f"Rewrite these generic sentences to be specific: {gs}.")
     if llm.get("revision_notes"):
         parts.append(str(llm["revision_notes"]))
@@ -2451,6 +2455,7 @@ def _experience_parts(request, profile_dict: dict, safe_opp: dict) -> tuple[dict
     # projection may enter a provider prompt.
     facts = selection.materials()
     parts["resume_bullets"] = [item["excerpt"] for item in facts]
+    parts["resume_bullet_lines"] = selection.printed_lines()
     if selection.contexts is not None:
         parts["experience_materials"] = selection.selected
         parts["experience_materials_all"] = facts
