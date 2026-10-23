@@ -2266,3 +2266,265 @@ def test_a_title_is_not_read_as_a_research_area(monkeypatch):
                              "title": "Professor, Evolution, Ecology, and Behavior"}, cfg)
     assert rec["metadata"]["faculty_title"] == "Professor, Evolution, Ecology, and Behavior"
     assert rec["keywords"] == cfg["keywords"][:1]
+
+
+# --- M148: DirectoryCore list pages group their cards under section headings
+# (Faculty, Affiliate Faculty, Emeritus Faculty, In Memoriam). A card under the
+# In Memoriam heading was stored as an active professor with a contact email,
+# and the card-name skip list matched substrings, so a surname containing
+# "school" was dropped. Synthetic people, placeholder addresses. ---
+
+def _section_card(slug: str, name: str, title: str | None) -> str:
+    title_field = (
+        '<div class="field field-name-field-dircore-appt-title"><div class="field__items">'
+        f'<div class="field__item">{title}</div></div></div>' if title else "")
+    return f"""<div><article class="profile-card">
+      <a href="/directory/profile/{slug}" class="profile-card__link">
+        <div class="field field-name-field-dircore-display-name"><div class="field__items">
+        <div class="field__item">{name}</div></div></div></a>
+      <div class="profile-card__info">{title_field}
+        <div class="field field-name-field-dircore-email"><div class="field__items"><div class="field__item">
+        <a href="mailto:{slug}@illinois.edu">{slug}@illinois.edu</a></div></div></div></div>
+    </article></div>"""
+
+
+def _sectioned_page(sections: list[tuple[str | None, list[tuple[str, str, str | None]]]]) -> str:
+    """A DirectoryCore list page: the page's h1, then one view per section with
+    its heading in the view header (the first section has none)."""
+    views = "".join(
+        '<div class="views-element-container"><div class="js-view-dom-id-x">'
+        + (f'<header><h2 style="clear: both;">{heading}</h2></header>' if heading else "")
+        + "".join(_section_card(*card) for card in cards)
+        + "</div></div>"
+        for heading, cards in sections)
+    return f"""<html><body><header><h2>Site menu</h2></header>
+      <main id="main-content"><h1>Faculty</h1>{views}</main></body></html>"""
+
+
+MEMORIAL_PAGE = _sectioned_page([
+    (None, [("person1", "Avery Example", "Professor"),
+            ("person2", "Blair Sample", "Associate Professor"),
+            ("person3", "Casey Placeholder", "Lecturer")]),
+    ("Emeritus Faculty", [("person4", "Devon Example", None)]),
+    ("In Memoriam", [("person5", "Morgan Example", None)]),
+])
+
+
+def _fetch_psych(monkeypatch, html: str | None) -> list[dict]:
+    import src.collectors.uiuc_faculty as f
+
+    page = DEPARTMENTS["psych"]["url"]
+    monkeypatch.setattr(f, "_fetch_soup", lambda url: (
+        BeautifulSoup(html, "html.parser") if html is not None and url == page else None))
+    monkeypatch.setattr(f, "_scrape_individual_page_keywords", lambda url: [])
+    return f.fetch_department("psych", enrich=False)
+
+
+def _stored_psych_row(name: str, slug: str, **extra) -> dict:
+    """The row an earlier refresh stored for this card: active, with its address."""
+    row = normalize_faculty({"name": name, "email": f"{slug}@illinois.edu",
+                             "url": f"{DEPARTMENTS['psych']['base']}/directory/profile/{slug}"},
+                            DEPARTMENTS["psych"], keywords=["psychology"])
+    row["metadata"].update(last_seen_at="2026-10-05T14:18:05", last_verified="2026-10-05T14:18:05",
+                           first_seen_at="2026-01-10T00:00:00")
+    for key, value in extra.items():
+        row[key] = value
+    return row
+
+
+def _merge(tmp_path, stored: list[dict], fresh: list[dict]) -> dict[str, dict]:
+    from src.collectors.uiuc_faculty import merge_into_processed
+
+    path = tmp_path / "uiuc.json"
+    path.write_text(json.dumps(stored), encoding="utf-8")
+    merge_into_processed(fresh, str(path))
+    return {r["pi_name"]: r for r in json.loads(path.read_text(encoding="utf-8"))}
+
+
+def test_a_card_under_in_memoriam_retires_the_stored_row_and_drops_its_address(tmp_path, monkeypatch):
+    fresh = _fetch_psych(monkeypatch, MEMORIAL_PAGE)
+    rows = _merge(tmp_path, [_stored_psych_row("Morgan Example", "person5")], fresh)
+    row = rows["Morgan Example"]
+    assert row["metadata"]["is_active"] is False
+    assert row["metadata"].get("deactivation_reason") == "listed_in_memoriam"
+    assert row["metadata"].get("deactivated_at")
+    # Neither the card's mailto, nor its profile netid, nor the stored address.
+    assert row["contact_email"] is None
+    assert row["metadata"]["first_seen_at"] == "2026-01-10T00:00:00"
+
+
+def test_a_row_already_retired_as_in_memoriam_keeps_the_day_it_was_first_read(tmp_path, monkeypatch):
+    stored = _stored_psych_row("Morgan Example", "person5", contact_email=None)
+    stored["metadata"].update(is_active=False, deactivated_at="2026-10-12",
+                              deactivation_reason="listed_in_memoriam")
+    row = _merge(tmp_path, [stored], _fetch_psych(monkeypatch, MEMORIAL_PAGE))["Morgan Example"]
+    assert (row["metadata"]["is_active"], row["metadata"].get("deactivated_at"), row["contact_email"]) == \
+        (False, "2026-10-12", None)
+
+
+def test_a_richer_duplicate_of_an_in_memoriam_card_is_retired_with_it(tmp_path, monkeypatch):
+    # Same profile page, a name variant stored under another id: the row dedup
+    # keeps the keyword-richer stored copy, which must not stay contactable.
+    variant = _stored_psych_row("Morgan Q. Example", "person5")
+    variant["keywords"] = ["implicit memory", "attitude formation", "social cognition"]
+    rows = _merge(tmp_path, [variant], _fetch_psych(monkeypatch, MEMORIAL_PAGE))
+    assert "Morgan Example" not in rows
+    row = rows["Morgan Q. Example"]
+    assert row["metadata"]["is_active"] is False
+    assert row["metadata"]["deactivation_reason"] == "listed_in_memoriam"
+    assert row["contact_email"] is None
+    # The same card, so the surviving row records the section it was read under.
+    assert row["metadata"].get("directory_section") == "In Memoriam"
+
+
+def test_every_directory_row_records_the_section_heading_it_was_listed_under(monkeypatch):
+    sections = {r["pi_name"]: r["metadata"].get("directory_section")
+                for r in _fetch_psych(monkeypatch, MEMORIAL_PAGE)}
+    # The page's own h1 heads the first view; the site menu above <main> is no section.
+    assert sections == {"Avery Example": "Faculty", "Blair Sample": "Faculty",
+                        "Casey Placeholder": "Faculty", "Devon Example": "Emeritus Faculty",
+                        "Morgan Example": "In Memoriam"}
+
+
+def test_an_ordinary_faculty_card_and_an_emeritus_card_are_unchanged(tmp_path, monkeypatch):
+    # Guard (holds before the In Memoriam rule too): the rule touches no one else.
+    fresh = _fetch_psych(monkeypatch, MEMORIAL_PAGE)
+    stored = [_stored_psych_row("Avery Example", "person1"), _stored_psych_row("Devon Example", "person4")]
+    rows = _merge(tmp_path, stored, fresh)
+    for name, slug, title in (("Avery Example", "person1", "Professor"),
+                              ("Blair Sample", "person2", "Associate Professor"),
+                              ("Devon Example", "person4", "Professor")):
+        row = rows[name]
+        assert row["metadata"]["is_active"] is True, name
+        assert row["contact_email"] == f"{slug}@illinois.edu", name
+        assert row["metadata"]["faculty_title"] == title, name
+        assert "deactivation_reason" not in row["metadata"], name
+
+
+def test_a_page_read_that_failed_changes_nobody(tmp_path, monkeypatch):
+    # Guard (holds before the In Memoriam rule too): only a page that was read retires anyone.
+    stored = [_stored_psych_row("Morgan Example", "person5"), _stored_psych_row("Avery Example", "person1")]
+    fresh = _fetch_psych(monkeypatch, None)
+    assert fresh == []
+    rows = _merge(tmp_path, stored, fresh)
+    for name, slug in (("Morgan Example", "person5"), ("Avery Example", "person1")):
+        assert rows[name]["metadata"]["is_active"] is True
+        assert rows[name]["metadata"]["last_seen_at"] == "2026-10-05T14:18:05"
+        assert rows[name]["contact_email"] == f"{slug}@illinois.edu"
+
+
+def test_a_page_mostly_under_an_in_memoriam_heading_retires_no_one(monkeypatch):
+    # Guard (holds before the In Memoriam rule too): a memorial block above a
+    # list without its own heading is not this list's heading, so reading it
+    # as one would retire the whole unit.
+    page = _sectioned_page([("In Memoriam", [("person1", "Avery Example", "Professor"),
+                                             ("person2", "Blair Sample", "Professor"),
+                                             ("person3", "Casey Placeholder", None)])])
+    for row in _fetch_psych(monkeypatch, page):
+        assert row["metadata"]["is_active"] is True, row["pi_name"]
+        assert row["contact_email"], row["pi_name"]
+
+
+def test_a_surname_containing_a_skip_word_is_kept_and_role_cards_still_are_not(monkeypatch):
+    # A name with no skip word: a filter that drops every other card still
+    # leaves one, so the page never falls through to the broad extractor.
+    people = [("person0", "Avery Example", "Professor"),
+              ("person1", "Robin Schoolfield", "Professor"), ("person2", "Dana Demeritt", "Professor"),
+              ("person3", "Alex Officer", "Lecturer"), ("person4", "Kim Staffieri", "Professor"),
+              ("person5", "Jo Collegeman", "Professor"), ("person6", "Lee Centerwall", "Professor"),
+              ("person7", "Lane Overschool", "Professor"), ("person8", "Jo MacStafford", "Professor")]
+    # Plurals, and words run together: "Faculty<br>Directory" reads "FacultyDirectory".
+    roles = [("office1", "Department Office", None), ("office2", "School of Example Studies", None),
+             ("office3", "Emeritus Faculty", None), ("office4", "Example Research Center", None),
+             ("office5", "Departments", None), ("office6", "Offices", None),
+             ("office7", "Colleges", None), ("office8", "Schools of Example Studies", None),
+             ("office9", "Research Centers", None), ("office10", "Faculty<br/>Directory", None),
+             ("office11", "Research<br/>Centers", None), ("office12", "FACULTYDIRECTORY", None)]
+    names = {r["pi_name"] for r in _fetch_psych(monkeypatch, _sectioned_page([(None, people + roles)]))}
+    assert names == {name for _, name, _ in people}
+
+
+def test_a_lower_level_heading_after_in_memoriam_starts_a_section_of_its_own(monkeypatch):
+    # Eight cards under the page's h1, one under an h2 "In Memoriam", three
+    # under an h4: the nearest heading of any level is the card's section.
+    faculty = [(f"person{i}", name, "Professor") for i, name in enumerate(
+        ("Avery Example", "Blair Sample", "Casey Placeholder", "Devon Example", "Emery Sample",
+         "Finley Placeholder", "Gray Example", "Harper Sample"), start=1)]
+    affiliates = [("person10", "Quinn Sample", "Affiliate Professor"),
+                  ("person11", "Reese Placeholder", "Affiliate Professor"),
+                  ("person12", "Sage Example", "Affiliate Professor")]
+    page = _sectioned_page([(None, faculty), ("In Memoriam", [("person9", "Morgan Example", None)]),
+                            ("Affiliate Faculty", affiliates)])
+    page = page.replace('<h2 style="clear: both;">Affiliate Faculty</h2>', "<h4>Affiliate Faculty</h4>")
+    assert "<h4>Affiliate Faculty</h4>" in page
+    rows = {r["pi_name"]: r for r in _fetch_psych(monkeypatch, page)}
+    assert len(rows) == 12
+    assert {n for n, r in rows.items() if r["metadata"]["is_active"] is False} == {"Morgan Example"}
+    for _, name, _ in affiliates:
+        assert rows[name]["metadata"].get("directory_section") == "Affiliate Faculty", name
+        assert rows[name]["contact_email"], name
+
+
+def _heading_card(slug: str, name: str) -> str:
+    """A card that carries its own name and title as headings."""
+    return (f'<div class="views-row"><h3><a href="/directory/profile/{slug}">{name}</a></h3>'
+            f'<h5>Professor</h5><a href="mailto:{slug}@illinois.edu">{slug}@illinois.edu</a></div>')
+
+
+def test_a_cards_own_headings_are_never_read_as_a_section(monkeypatch):
+    page = ("<html><body><main><h1>People</h1><h2>Faculty</h2>"
+            + _heading_card("person1", "Avery Example") + _heading_card("person2", "Blair Sample")
+            + _heading_card("person3", "Casey Placeholder")
+            + "<h2>In Memoriam</h2>" + _heading_card("person4", "Morgan Example")
+            + "<h4>Affiliate Faculty</h4>" + _heading_card("person5", "Quinn Sample")
+            + _heading_card("person6", "Reese Placeholder") + "</main></body></html>")
+    rows = {r["pi_name"]: r for r in _fetch_psych(monkeypatch, page)}
+    assert {n: r["metadata"].get("directory_section") for n, r in rows.items()} == {
+        "Avery Example": "Faculty", "Blair Sample": "Faculty", "Casey Placeholder": "Faculty",
+        "Morgan Example": "In Memoriam",
+        "Quinn Sample": "Affiliate Faculty", "Reese Placeholder": "Affiliate Faculty"}
+    assert {n for n, r in rows.items() if r["metadata"]["is_active"] is False} == {"Morgan Example"}
+
+
+def test_a_richer_duplicate_holding_a_verified_address_keeps_no_trace_of_it(tmp_path, monkeypatch):
+    from backend.lib.contact_visibility import build_identity_bound_contact_evidence
+
+    variant = _stored_psych_row("Morgan Q. Example", "person5")
+    variant["keywords"] = ["implicit memory", "attitude formation", "social cognition"]
+    evidence = build_identity_bound_contact_evidence(
+        email="person5@illinois.edu", email_source="bound_directory_card",
+        contact_source_url=variant["source_url"], contact_verified_at="2026-10-05T14:18:05+00:00")
+    assert evidence
+    variant["metadata"].update(evidence)
+    rows = _merge(tmp_path, [variant], _fetch_psych(monkeypatch, MEMORIAL_PAGE))
+    assert "Morgan Example" not in rows
+    row = rows["Morgan Q. Example"]
+    assert row["metadata"].get("deactivation_reason") == "listed_in_memoriam"
+    # Neither the address field nor the proof that named it.
+    assert "person5@illinois.edu" not in json.dumps(row)
+
+
+def test_the_enrichment_pass_after_the_merge_never_puts_the_address_back(tmp_path, monkeypatch):
+    # refresh_all runs pi_enricher over the merged corpus. It fills an address
+    # into a faculty row without one from that row's profile page, and the
+    # In Memoriam person's page still shows theirs.
+    from src.collectors import pi_enricher
+
+    stored = [_stored_psych_row("Morgan Example", "person5"),
+              _stored_psych_row("Jordan Sample", "person6", contact_email=None)]
+    rows = _merge(tmp_path, stored, _fetch_psych(monkeypatch, MEMORIAL_PAGE))
+    fetched: list[str] = []
+
+    def profile_page(url):
+        fetched.append(url)
+        slug = url.rstrip("/").rsplit("/", 1)[-1]
+        return BeautifulSoup(f'<a href="mailto:{slug}@illinois.edu">{slug}@illinois.edu</a>', "html.parser")
+
+    monkeypatch.setattr(pi_enricher, "_fetch_soup", profile_page)
+    monkeypatch.setattr(pi_enricher, "DELAY", 0)
+    pi_enricher.enrich_opportunities(list(rows.values()))
+    assert rows["Morgan Example"]["contact_email"] is None
+    assert "person5@illinois.edu" not in json.dumps(rows["Morgan Example"])
+    assert not any(url.endswith("/person5") for url in fetched)
+    # The same pass still finds the address of a current professor without one.
+    assert rows["Jordan Sample"]["contact_email"] == "person6@illinois.edu"

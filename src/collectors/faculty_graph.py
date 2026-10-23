@@ -61,6 +61,7 @@ import logging
 import os
 import re
 import time
+import unicodedata
 from collections import Counter, defaultdict
 from contextlib import contextmanager
 from copy import deepcopy
@@ -70,7 +71,12 @@ from urllib.parse import parse_qs, quote, unquote, urljoin, urlsplit
 from backend.lib.contact_visibility import carries_contact_evidence
 from src.normalizers.deactivate_stale_faculty import (
     UNIT_LEDGER_VERSION,
+    _unit_id_of,
+    canonical_listing_urls,
+    canonical_profile_url,
     identity_key,
+    listed_name_key,
+    page_name_keys,
 )
 
 from ..contact_instructions import (
@@ -1031,6 +1037,52 @@ def _cover_listed(email: object, link: object, name: str) -> None:
         email.strip().lower() if isinstance(email, str) and "@" in email else None,
         link.strip() if isinstance(link, str) and link.strip() else None,
         name))
+    shown = _ACTIVE_COVERAGE.setdefault("_page_people", set())
+    if isinstance(email, str) and "@" in email:
+        shown.add(("mail", email.strip().lower()))
+    if (person := listed_name_key(name)):
+        shown.add(("name", person))
+
+
+_EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
+
+
+def _page_people(soup) -> set[tuple[str, str]]:
+    """Every address and name a fetched page shows, whatever its cards and
+    title gates made of them: ``("mail", address)`` from its mailto links and
+    text, ``("name", key)`` (``page_name_keys``) from each text and each short
+    element's text (a name split over two spans). A name the page has commented
+    out (``<!-- Jane Doe -->``) is not shown."""
+    from bs4.element import PreformattedString  # noqa: PLC0415
+
+    shown: set[tuple[str, str]] = set()
+    for a in soup.select("a[href]"):
+        href = a["href"].strip()
+        if href[:7].lower() == "mailto:":
+            address = unquote(href[7:]).split("?")[0].strip().lower()
+            if "@" in address:
+                shown.add(("mail", address))
+    short: dict[int, str | None] = {}
+    for text in soup.find_all(string=True):
+        if isinstance(text, PreformattedString):
+            continue
+        if text.parent is None or text.parent.name in ("script", "style", "noscript"):
+            continue
+        if not text.strip():
+            continue
+        shown.update(("mail", m.lower()) for m in _EMAIL_RE.findall(text))
+        shown.update(("name", k) for k in page_name_keys(text))
+        # Up to three enclosing elements, while their text stays name-sized.
+        for parent in list(text.parents)[:3]:
+            key = id(parent)
+            if key not in short:
+                joined = parent.get_text(" ", strip=True)
+                short[key] = joined if len(joined) <= 120 else None
+                if short[key]:
+                    shown.update(("name", k) for k in page_name_keys(short[key]))
+            if short[key] is None:
+                break
+    return shown
 
 
 def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = None,
@@ -1057,6 +1109,8 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
             _ACTIVE_COVERAGE["_document_hrefs"].update(
                 urljoin(base_url, a["href"]) for a in soup.select("a[href]")
             )
+            _ACTIVE_COVERAGE.setdefault("_page_people", set()).update(
+                _page_people(soup))
         except Exception:  # noqa: BLE001 — diagnostics must never break a scrape
             _cover("parser_errors")
     for card in soup.select(sel.get("card", "")):
@@ -3786,9 +3840,71 @@ def _norm_faculty_url(o: dict) -> str:
     return (o.get("url") or o.get("source_url") or "").strip().rstrip("/").lower()
 
 
-def _merge_faculty_fields(survivor: dict, loser: dict) -> None:
+def _person_words(name: str) -> frozenset[str]:
+    """``_name_tokens`` after decoding HTML entities and folding accents, so
+    "Jos&eacute; Ib&aacute;&ntilde;ez" and "José Ibáñez" have the same words."""
+    folded = unicodedata.normalize("NFKD", html.unescape(name or ""))
+    return frozenset(_name_tokens("".join(c for c in folded if not unicodedata.combining(c))))
+
+
+def _one_person(names: list) -> bool:
+    """Whether these spellings name one person: one of them, of two words or
+    more, has each of its words in every other ("Dana Ellis" and "Dana Ellis
+    DNP" or "Dana R. Ellis", not "John Smith" and "John Doe")."""
+    words = [_person_words(n) for n in names]
+    core = frozenset.intersection(*words)
+    return len(core) >= 2 and core in words
+
+
+def _one_person_pages(rows: list[dict], pages: frozenset[str]) -> frozenset[str]:
+    """The pages among ``pages`` whose faculty rows all name one person. A
+    directory page that several people's rows link is nobody's profile."""
+    if not pages:
+        return frozenset()
+    names: dict[str, list] = defaultdict(list)
+    for o in rows:
+        if o.get("source_type") != "faculty_research":
+            continue
+        page = canonical_profile_url(o.get("url") or o.get("source_url"))
+        if page in pages:
+            names[page].append(o.get("pi_name"))
+    return frozenset(page for page, ns in names.items() if _one_person(ns))
+
+
+def _carry_sighting(survivor: dict, loser: dict,
+                    person_pages: frozenset[str] = frozenset()) -> None:
+    """Give the survivor the dropped row's newer sighting (the uiuc dedups' #815
+    rule) when that sighting is the survivor's own: both rows come from one
+    scrape unit under one person's name, or both link a page in
+    ``person_pages``, profile pages this run observed as one person's identity.
+
+    deactivate_stale_faculty runs before the collapse and keeps a row its own
+    unit no longer lists only while its profile page is observed somewhere in
+    the run, or while its date is inside the grace window. A sighting carried
+    every week from another unit through a directory page or a page the run
+    did not observe, or from another person on a shared inbox, would keep
+    that row inside the window for ever."""
+    page = canonical_profile_url(survivor.get("url") or survivor.get("source_url"))
+    same_page = page in person_pages and page == canonical_profile_url(
+        loser.get("url") or loser.get("source_url"))
+    same_unit = all(survivor.get(k) == loser.get(k) for k in ("source", "department")) \
+        and _unit_id_of(survivor) == _unit_id_of(loser) \
+        and _one_person([survivor.get("pi_name"), loser.get("pi_name")])
+    if same_page or same_unit:
+        from .uiuc_faculty import _carry_newest_liveness
+        _carry_newest_liveness(survivor, loser)
+
+
+def _merge_faculty_fields(survivor: dict, loser: dict,
+                          person_pages: frozenset[str] = frozenset()) -> None:
     """Fill the survivor's missing contact fields (email / profile link) from the
-    dropped duplicate, so collapsing never loses a usable address or URL."""
+    dropped duplicate, so collapsing never loses a usable address or URL.
+
+    The survivor also takes the newer sighting when it is the survivor's own
+    (``_carry_sighting``): it is chosen for richness, so an old row under a
+    spelling the page no longer writes would otherwise keep its old
+    ``last_seen_at`` after every refresh."""
+    _carry_sighting(survivor, loser, person_pages)
     if not (survivor.get("contact_email") or "").strip() and (loser.get("contact_email") or "").strip():
         survivor["contact_email"] = loser["contact_email"]
         # This cross-record dedup is weaker than the stable-id carry path. Move
@@ -3829,7 +3945,8 @@ def _pick_richer(group: list[dict], umbrella: frozenset[str]) -> dict:
     return best
 
 
-def collapse_same_person_faculty(opps: list[dict]) -> dict:
+def collapse_same_person_faculty(opps: list[dict],
+                                 person_pages: frozenset[str] = frozenset()) -> dict:
     """Collapse duplicate ACTIVE faculty for the same person at one school and
     prevent recreation on the next merge.
 
@@ -3849,8 +3966,14 @@ def collapse_same_person_faculty(opps: list[dict]) -> dict:
       genuine joint appointments across two peer departments (Stanford Applied
       Physics + Physics) are left as two records.
 
+    A kept row takes a dropped row's newer sighting only when it is its own
+    (``_carry_sighting``). ``person_pages`` are the profile pages the refresh
+    observed as a person's identity (``observed_profile_pages``); without them
+    no sighting crosses units.
+
     Mutates ``opps`` in place (nulls shared inboxes) and returns
     ``{"kept": [...], "removed_by_school": {...}, "nulled_by_school": {...}}``."""
+    pages = _one_person_pages(opps, frozenset(person_pages))
     active = [o for o in opps if _is_active_faculty(o)]
     remove: set[int] = set()
     removed_by_school: Counter = Counter()
@@ -3879,7 +4002,7 @@ def collapse_same_person_faculty(opps: list[dict]) -> dict:
         for o in group:
             if o is survivor:
                 continue
-            _merge_faculty_fields(survivor, o)
+            _merge_faculty_fields(survivor, o, pages)
             remove.add(id(o))
             removed_by_school[school] += 1
 
@@ -3917,7 +4040,7 @@ def collapse_same_person_faculty(opps: list[dict]) -> dict:
             # keyword-less records on different hosts (Stanford ME + BioE
             # stubs) carry no evidence either way and stay.
             if skw and okw <= skw:
-                _merge_faculty_fields(survivor, o)
+                _merge_faculty_fields(survivor, o, pages)
                 remove.add(id(o))
                 removed_by_school[school] += 1
 
@@ -3937,7 +4060,7 @@ def collapse_same_person_faculty(opps: list[dict]) -> dict:
             for o in group:
                 if o is survivor:
                     continue
-                _merge_faculty_fields(survivor, o)
+                _merge_faculty_fields(survivor, o, pages)
                 remove.add(id(o))
                 removed_by_school[school] += 1
         else:
@@ -3971,7 +4094,7 @@ def collapse_same_person_faculty(opps: list[dict]) -> dict:
         survivor, loser = roster, seed
         if len(_faculty_specific_keywords(seed)) > len(_faculty_specific_keywords(roster)):
             survivor, loser = seed, roster
-        _merge_faculty_fields(survivor, loser)
+        _merge_faculty_fields(survivor, loser, pages)
         labels = list((survivor.get("metadata") or {}).get(FACULTY_MAJOR_LABELS_MARKER) or [])
         for label in (loser.get("metadata") or {}).get(FACULTY_MAJOR_LABELS_MARKER) or []:
             if label not in labels:
@@ -4011,7 +4134,7 @@ def collapse_same_person_faculty(opps: list[dict]) -> dict:
             for o in dgroup:
                 if o is survivor:
                     continue
-                _merge_faculty_fields(survivor, o)
+                _merge_faculty_fields(survivor, o, pages)
                 remove.add(id(o))
                 removed_by_school[school] += 1
         group = [o for o in group if id(o) not in remove]
@@ -4030,7 +4153,7 @@ def collapse_same_person_faculty(opps: list[dict]) -> dict:
             continue
         survivor = _pick_richer(specific_recs, umbrella)
         for o in umbrella_recs:
-            _merge_faculty_fields(survivor, o)
+            _merge_faculty_fields(survivor, o, pages)
             remove.add(id(o))
             removed_by_school[school] += 1
 
@@ -4044,11 +4167,11 @@ def collapse_same_person_faculty(opps: list[dict]) -> dict:
     # cruft; dropping it never removes a shown record.
     kept_active = [o for o in active if id(o) not in remove]
     live_email_keys = {
-        (o.get("school"), (o.get("contact_email") or "").strip().lower())
+        (o.get("school"), (o.get("contact_email") or "").strip().lower()): o
         for o in kept_active if (o.get("contact_email") or "").strip()
     }
     live_url_name_keys = {
-        (o.get("school"), _norm_faculty_url(o), _norm_person_name(o.get("pi_name")))
+        (o.get("school"), _norm_faculty_url(o), _norm_person_name(o.get("pi_name"))): o
         for o in kept_active if _norm_faculty_url(o) and _norm_person_name(o.get("pi_name"))
     }
     for o in opps:
@@ -4057,9 +4180,12 @@ def collapse_same_person_faculty(opps: list[dict]) -> dict:
         school = o.get("school")
         em = (o.get("contact_email") or "").strip().lower()
         url, nn = _norm_faculty_url(o), _norm_person_name(o.get("pi_name"))
-        if (em and (school, em) in live_email_keys) or (
-            url and nn and (school, url, nn) in live_url_name_keys
-        ):
+        by_email = live_email_keys.get((school, em)) if em else None
+        by_url_name = live_url_name_keys.get((school, url, nn)) if url and nn else None
+        if by_email is not None or by_url_name is not None:
+            # A tombstone's sighting is still the person's, its retirement is
+            # not; _carry_sighting refuses another person's row on a shared inbox.
+            _carry_sighting(by_url_name or by_email, o, pages)
             remove.add(id(o))
             removed_by_school[school] += 1
 
@@ -4688,8 +4814,10 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
     identities, unresolved = [], 0
     seen_identity = set()
     duplicates = 0
+    # Config URLs are raw; a row's url is compared reduced. Reduce both alike.
+    listing = canonical_listing_urls(listing_urls)
     for r in produced:
-        key = identity_key(r, listing_urls)
+        key = identity_key(r, listing)
         if key is None:
             unresolved += 1
             continue
@@ -4704,13 +4832,13 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
         parse_status = "ok" if ids else "zero_rows"
     cov = dict(coverage) if isinstance(coverage, dict) else None
     document_identities: list = []
+    page_people: list | None = None
     listed_identities: list | None = None
     listed_rows = 0
     shared_roster = None
     if cov is not None:
         from src.normalizers.deactivate_stale_faculty import (  # noqa: PLC0415
             canonical_profile_url,
-            listed_name_key,
             listed_token,
         )
         seen_doc = set()
@@ -4720,10 +4848,12 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
                 seen_doc.add(canon)
                 document_identities.append(["url", canon])
         shared_roster = cov.pop("_shared_roster", None)
+        shown = cov.pop("_page_people", None)
+        if shown is not None:
+            page_people = sorted({listed_token(kind, value) for kind, value in shown})
         listed = cov.pop("_listed_rows", None)
         if listed is not None:
             # A link that is a directory page is everyone's, not a person's.
-            listing = {canonical_profile_url(u) for u in listing_urls or ()}
             # An address is a person's only when one row carries it (a row
             # served twice is still one) and that row reads as a name; it then
             # counts together with the name, so a staff row on an office or
@@ -4758,6 +4888,11 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
         "observed_count": len(ids),
         "observed_entity_ids": ids,
         "observed_identities": identities,
+        # This unit's own listing pages, reduced: a row whose url is one of
+        # them is judged by name and address (identity_key), here and at the
+        # retirement pass alike.
+        "listing_urls": sorted(canonical_listing_urls(_listing_urls(
+            {"departments": [dept]}))),
         # What the PAGE contained, not what the selector matched. A baseline
         # identity present here but absent from observed_identities is parser
         # loss, and must block the unit rather than retire the person.
@@ -4786,6 +4921,12 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
     if shared_roster:
         # The page this unit shares with others (see finalize_unit_ledger).
         observation["shared_roster"] = shared_roster
+    if page_people is not None:
+        # Every address and name the page showed, as run-keyed tokens: a
+        # list-page professor shown there is not retired
+        # (deactivate_stale_faculty._shown_on_page). Dropped by refresh_all
+        # with the listed tokens.
+        observation["page_people"] = page_people
     return observation
 
 

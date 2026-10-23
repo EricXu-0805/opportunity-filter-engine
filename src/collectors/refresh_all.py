@@ -22,6 +22,7 @@ from src.normalizers.deactivate_stale_faculty import (
     FACULTY_SOURCES,
     deactivate_stale_faculty,
     finalize_unit_ledger,
+    observed_profile_pages,
 )
 from src.school_scope import deactivate_unsupported_schools
 
@@ -1895,7 +1896,10 @@ def refresh_all(
             collapse_same_person_faculty,
         )
         kw_cleaned = clean_corpus_faculty_keywords(all_opps)
-        collapse = collapse_same_person_faculty(all_opps)
+        # A kept row takes another unit's sighting only through a profile page
+        # the retirement pass above counted as observed.
+        collapse = collapse_same_person_faculty(
+            all_opps, person_pages=observed_profile_pages(faculty_fetched))
         all_opps = collapse["kept"]
         removed_dupes = sum(collapse["removed_by_school"].values())
         final_uiuc_dq = enforce_final_shared_keyword_invariant(all_opps)
@@ -2007,15 +2011,17 @@ def refresh_all(
     else:
         summary["total_in_file"] = 0
 
-    # The digests of the rows a walk listed are for deactivate_stale_faculty
-    # alone, and most of those rows are staff and students. The summary is
-    # committed, so each unit keeps only its ``listed_rows`` count, whether or
-    # not the pass ran (it does not without a corpus file).
+    # The digests of the rows a walk listed, and of the names and addresses a
+    # page showed, are for deactivate_stale_faculty alone, and most of those
+    # rows are staff and students. The summary is committed, so each unit keeps
+    # only its ``listed_rows`` count, whether or not the pass ran (it does not
+    # without a corpus file).
     for info in summary["sources"].values():
         ledger = info.get("stale_unit_ledger") if isinstance(info, dict) else None
         for entry in ledger.values() if isinstance(ledger, dict) else ():
             if isinstance(entry, dict):
                 entry.pop("listed_identities", None)
+                entry.pop("page_people", None)
 
     # Hosts whose certificate failed verification this run, with the fetches
     # skipped after the first failure (the PI pass's included).

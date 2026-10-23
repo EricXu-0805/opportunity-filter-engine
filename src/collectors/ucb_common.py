@@ -1996,7 +1996,12 @@ def drop_joint_appointment_duplicates(
 
     Same-source existing records are ignored: a re-scrape of one department
     matches its own previous records by id (upsert), and must not be skipped
-    here.
+    here. So are retired ones: a row its own department no longer lists does
+    not cover the person, and the department that lists them is kept.
+
+    The stored row keeps its own ``last_seen_at``: a ucb department retires a
+    row by that date alone, so this run's sighting from another department
+    would keep a row its own department dropped for ever.
     """
     new_sources = {o.get("source") for o in new_opps}
     emails: set[str] = set()
@@ -2004,6 +2009,8 @@ def drop_joint_appointment_duplicates(
     for opp in existing:
         source = opp.get("source") or ""
         if not source.startswith("ucb_") or source in new_sources:
+            continue
+        if (opp.get("metadata") or {}).get("is_active") is False:
             continue
         if email := _dedup_email(opp):
             emails.add(email)
@@ -2149,7 +2156,10 @@ def collapse_ucb_joint_appointments(opps: list[dict]) -> dict:
         # a within-directory listing dup handled at scrape time (dedup_by_profile_url).
         if len(group) < 2 or len({o.get("source") for o in group}) < 2:
             return
-        survivor = _pick_richer(group, frozenset())
+        # A retired row never outlives a listed one: the person stays shown
+        # under the department that lists them.
+        live = [o for o in group if (o.get("metadata") or {}).get("is_active") is not False]
+        survivor = _pick_richer(live or group, frozenset())
         for o in group:
             if o is survivor:
                 continue

@@ -513,6 +513,44 @@ def test_partial_scrape_gate_surfaces_in_summary(monkeypatch, tmp_path):
     assert pass_info["skipped_partial_scrape"] == ["umich_faculty"]
 
 
+@pytest.mark.parametrize("identity,carried", [
+    (["url", "testu.edu/users/ana-belmonte"], True),
+    (["email", "person1@testu.edu"], False),
+], ids=["page_observed", "address_observed"])
+def test_a_kept_row_takes_another_units_date_only_through_an_observed_page(
+    monkeypatch, tmp_path, identity, carried,
+):
+    """The same-person collapse after the retirement pass is handed the
+    profile pages the run's unit ledgers observed: one person's two rows on
+    one such page leave the kept row with the newer date; a page the run did
+    not observe moves nothing across units."""
+    def row(rid, name, dept, url, days_ago, keywords=()):
+        seeded = _seed_faculty("umich_faculty", rid, days_ago)
+        seeded.update(school="umich", department=dept, pi_name=name, url=url,
+                      contact_email="person1@testu.edu", keywords=list(keywords))
+        return seeded
+
+    stale = row("faculty-umich-cse-0000aaaa", "Ana Belmonte, Ph.D.", "Computer Science",
+                "https://www.testu.edu/users/Ana-Belmonte/", 30, ["hydrology", "climate"])
+    fresh = row("faculty-umich-ece-0000bbbb", "Ana Belmonte", "Electrical Engineering",
+                "https://www.testu.edu/users/ana-belmonte", 0)
+    processed = _stub_with_processed_file(monkeypatch, tmp_path, [stale, fresh])
+
+    def fetch(unit_ledger):
+        unit_ledger["ece"] = {"unit_id": "ece", "observed_entity_ids": [fresh["id"]],
+                              "observed_identities": [identity],
+                              "unit_url": "https://ece.testu.edu/people/"}
+        return [dict(fresh)]
+
+    monkeypatch.setattr(refresh_all, "fetch_umich_faculty", fetch)
+    refresh_all.refresh_all(deep=True, schools={"umich"})
+
+    saved = json.loads(processed.read_text(encoding="utf-8"))
+    assert [r["id"] for r in saved] == [stale["id"]]
+    expected = fresh if carried else stale
+    assert saved[0]["metadata"]["last_seen_at"] == expected["metadata"]["last_seen_at"]
+
+
 def test_missing_unit_ledger_surfaces_for_aggregate_faculty_source(
     monkeypatch,
     tmp_path,

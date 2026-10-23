@@ -370,6 +370,14 @@ def canonical_profile_url(url: object) -> str | None:
     return f"{host}{path}"
 
 
+def canonical_listing_urls(urls) -> frozenset[str]:
+    """Listing page URLs reduced the way a row's own url is, so a raw config URL
+    and a stored row's url compare the same way. Already-reduced values pass
+    through unchanged."""
+    return frozenset(canonical_profile_url(u) or u for u in urls or ()
+                     if isinstance(u, str) and u.strip())
+
+
 def identity_key(record: dict, listing_urls: frozenset[str] | set[str] | None = None
                  ) -> tuple[str, str] | None:
     """``(kind, value)`` identifying the person, or None when unresolvable.
@@ -377,14 +385,21 @@ def identity_key(record: dict, listing_urls: frozenset[str] | set[str] | None = 
     Precedence is by how strongly the SOURCE owns the value. A listing URL is
     explicitly rejected: several collectors fall back to the directory URL when
     a card has no profile link, and treating that as identity would collapse
-    every such person in a unit into one.
+    every such person in a unit into one. Such a row is the person on that page:
+    their name together with their address, if any.
     """
     url = canonical_profile_url(record.get("url") or record.get("source_url"))
-    if url and (not listing_urls or url not in listing_urls):
+    listed_page = bool(url) and url in canonical_listing_urls(listing_urls)
+    if url and not listed_page:
         return ("url", url)
     email = record.get("contact_email")
-    if isinstance(email, str) and "@" in email:
-        return ("email", email.strip().lower())
+    email = email.strip().lower() if isinstance(email, str) and "@" in email else ""
+    person = listed_name_key(record.get("pi_name")) if listed_page else None
+    if person:
+        return ("person", listed_token(
+            "person", f"{record.get('school') or ''} {person} {email}"))
+    if email:
+        return ("email", email)
     return None
 
 
@@ -397,26 +412,74 @@ _LISTED_KEY = secrets.token_bytes(16)
 
 
 def listed_token(kind: str, value: str) -> str:
-    """A run-keyed digest of one listed row's ``("email" | "url", value)``."""
+    """A run-keyed digest of one listed row's ``("email" | "url", value)``, or
+    of one address or name a list page shows (``"mail"`` | ``"name"``)."""
     return hmac.new(_LISTED_KEY, f"{kind}:{value}".encode(),
                     hashlib.sha256).hexdigest()[:16]
 
 
 _NAME_SUFFIXES = frozenset({"jr", "sr", "ii", "iii", "iv"})
+_HONORIFICS = frozenset({"dr", "prof", "professor", "mr", "mrs", "ms", "mx"})
+
+
+def _name_words(text: str) -> list[str]:
+    folded = "".join(c for c in unicodedata.normalize("NFKD", text)
+                     if not unicodedata.combining(c)).casefold()
+    return [w for w in re.findall(r"[^\W\d_]+(?:['-][^\W\d_]+)*", folded)
+            if w not in _NAME_SUFFIXES]
+
+
+def _listed_name_words(name: object) -> list[str] | None:
+    if not isinstance(name, str):
+        return None
+    for text in (name.rsplit(":", 1)[-1], name.split(":", 1)[0]):
+        words = _name_words(text.split(",")[0])
+        if len(words) >= 2:
+            return words
+    return None
 
 
 def listed_name_key(name: object) -> str | None:
     """A name's surname and first initial, case- and accent-insensitive
     ("Thomas A Pearson" -> "pearson t"), or None without both. Only the part
-    before a comma counts (", MD", ", Jr."), so "Pearson, Thomas" has none."""
-    if not isinstance(name, str):
-        return None
-    folded = "".join(c for c in unicodedata.normalize("NFKD", name)
-                     if not unicodedata.combining(c)).casefold()
-    words = [w for w in re.findall(r"[^\W\d_]+(?:['-][^\W\d_]+)*",
-                                   folded.split(",")[0])
-             if w not in _NAME_SUFFIXES]
-    return f"{words[-1]} {words[0][0]}" if len(words) >= 2 else None
+    before a comma counts (", MD", ", Jr."), so "Pearson, Thomas" has none; a
+    label before a colon is not the name ("Associated appointment, by
+    courtesy: Jane Doe" is "doe j")."""
+    words = _listed_name_words(name)
+    return f"{words[-1]} {words[0][0]}" if words else None
+
+
+def page_name_keys(text: str) -> set[str]:
+    """Every name key a piece of page text could be showing: each phrase between
+    separators read as "First ... Last" (an honorific dropped), each "Last,
+    First" pair, and inside longer text ("Domnica Radulescu Headlines First
+    ...") each two to four capitalised words in a row. Read twice: once with
+    line breaks and brackets as separators, once with a line break as the space
+    it renders as and a bracketed nickname inside the name ("Ellie\\n
+    Pavlick", "Amritanshu (Amrit) Pandey"). Deliberately generous: a key here
+    only ever keeps."""
+    keys: set[str] = set()
+    for raw in (re.split(r"[,;:|/()\[\]\n\t•·–—]+", text),
+                re.split(r"[,;:|/\[\]•·–—]+", text)):
+        parts = [_name_words(p) for p in raw]
+        for i, words in enumerate(parts):
+            if 2 <= len(words) <= 6:
+                keys.add(f"{words[-1]} {words[0][0]}")
+                if words[0] in _HONORIFICS and len(words) >= 3:
+                    keys.add(f"{words[-1]} {words[1][0]}")
+            if 1 <= len(words) <= 3 and i + 1 < len(parts) and parts[i + 1]:
+                keys.add(f"{words[-1]} {parts[i + 1][0][0]}")
+        for part in raw:
+            run: list[str] = []
+            for word in [*re.findall(r"[^\W\d_]+(?:['’-][^\W\d_]+)*", part), ""]:
+                if word[:1].isupper():
+                    run.extend(_name_words(word)[:1])
+                    continue
+                for a in range(len(run)):
+                    for b in range(a + 1, min(a + 4, len(run))):
+                        keys.add(f"{run[b]} {run[a][0]}")
+                run = []
+    return keys
 
 
 def _listed_tokens_of(record: dict) -> set[str]:
@@ -431,6 +494,65 @@ def _listed_tokens_of(record: dict) -> set[str]:
     if isinstance(email, str) and "@" in email and person:
         tokens.add(listed_token("email", f"{email.strip().lower()} {person}"))
     return tokens
+
+
+def _shown_on_page(record: dict, ledger: dict, unit: str,
+                   read: tuple[set, set]) -> bool:
+    """Whether the page a list-page row came from still shows the person
+    (``page_people`` in ``_unit_observation``): their address, or their name,
+    that no row read this run accounts for (``read``). A title gate that skips
+    a listed "Director of Graduate Studies", or a card the selector does not
+    match, leaves the person on the page and so keeps them. A row read this run
+    accounts for the address it carries, and for the name only when it is the
+    same person (the same first name, or the same address): one read under a
+    new id is live in that row, and the stored copy is folded away as a
+    tombstone. A namesake (Lisa beside Lee Sample) accounts for nothing. A page
+    the run did not record is not evidence of absence."""
+    url = canonical_profile_url(record.get("url") or record.get("source_url"))
+    pages = [e.get("page_people") for key, e in ledger.items()
+             if isinstance(e, dict) and (key == unit or url in (
+                 e.get("listing_urls") or ()))]
+    pages = [p for p in pages if isinstance(p, list | tuple)]
+    if not pages:
+        return True
+    shown = set().union(*pages)
+    mails, people = read
+    email = record.get("contact_email")
+    email = email.strip().lower() if isinstance(email, str) and "@" in email else ""
+    if email and email not in mails and listed_token("mail", email) in shown:
+        return True
+    words = _listed_name_words(record.get("pi_name"))
+    if not words:
+        return True
+    person = f"{words[-1]} {words[0][0]}"
+    if listed_token("name", person) not in shown:
+        return False
+    return ((person, "first", words[0]) not in people
+            and (person, "mail", email) not in people)
+
+
+def _read_on_pages(records: list[dict], ledger: dict, listing) -> tuple[set, set]:
+    """Who the rows read this run are, wherever in the source they were read
+    (units can split one page): their addresses, and each one's name key with
+    their first name and with their address."""
+    observed: set = set()
+    for entry in ledger.values():
+        observed |= _observed_identities(entry) or set()
+    mails: set = set()
+    people: set = set()
+    for record in records:
+        if identity_key(record, listing) not in observed:
+            continue
+        email = record.get("contact_email")
+        email = email.strip().lower() if isinstance(email, str) and "@" in email else ""
+        if email:
+            mails.add(email)
+        if words := _listed_name_words(record.get("pi_name")):
+            person = f"{words[-1]} {words[0][0]}"
+            people.add((person, "first", words[0]))
+            if email:
+                people.add((person, "mail", email))
+    return mails, people
 
 
 def _identity_index(records, listing_urls=None) -> tuple[dict, list]:
@@ -591,6 +713,27 @@ def _observed_identities(entry: object) -> set | None:
     return out
 
 
+def observed_profile_pages(fetched_counts: dict) -> frozenset[str]:
+    """The profile pages this run's unit ledgers observed as a person's
+    identity, less every unit's own directory page (a linkless row's url).
+
+    A ledgered source's row whose page is among them is kept by
+    ``deactivate_stale_faculty`` whatever its date, as observed in its own unit
+    or moved to another."""
+    pages: set[str] = set()
+    directories: set[str] = set()
+    for entry_map in fetched_counts.values():
+        if not isinstance(entry_map, dict):
+            continue
+        for entry in entry_map.values():
+            pages |= {value for kind, value in _observed_identities(entry) or ()
+                      if kind == "url"}
+            if isinstance(entry, dict) and (
+                    page := canonical_profile_url(entry.get("unit_url"))):
+                directories.add(page)
+    return frozenset(pages - directories)
+
+
 def _observed_ids(entry: object) -> frozenset[str] | None:
     """The entity ids this unit observation actually saw, when it recorded them."""
     if not isinstance(entry, dict):
@@ -599,6 +742,17 @@ def _observed_ids(entry: object) -> frozenset[str] | None:
     if not isinstance(ids, list | tuple | set | frozenset):
         return None
     return frozenset(str(i) for i in ids)
+
+
+def _ledger_listing_urls(ledger: object) -> frozenset[str]:
+    """The listing pages a source's units read (each unit records its own)."""
+    urls: set[str] = set()
+    if isinstance(ledger, dict):
+        for entry in ledger.values():
+            if isinstance(entry, dict) and isinstance(
+                    entry.get("listing_urls"), list | tuple):
+                urls.update(u for u in entry["listing_urls"] if isinstance(u, str))
+    return frozenset(urls)
 
 
 def finalize_unit_ledger(ledger: dict[str, dict], opps: list[dict],
@@ -615,6 +769,7 @@ def finalize_unit_ledger(ledger: dict[str, dict], opps: list[dict],
     """
     baseline_ids: dict[str, set[str]] = {}
     baseline_identities: dict[str, set] = {}
+    listing = _ledger_listing_urls(ledger)
     for opp in opps:
         if opp.get("source") != source:
             continue
@@ -626,7 +781,7 @@ def finalize_unit_ledger(ledger: dict[str, dict], opps: list[dict],
         if not unit:
             continue
         baseline_ids.setdefault(unit, set()).add(str(opp.get("id")))
-        ident = identity_key(opp)
+        ident = identity_key(opp, listing)
         if ident:
             baseline_identities.setdefault(unit, set()).add(ident)
 
@@ -878,6 +1033,8 @@ def deactivate_stale_faculty(
 
         if isinstance(ledger, dict):
             rich = any(isinstance(v, dict) for v in ledger.values())
+            listing = _ledger_listing_urls(ledger)
+            read = _read_on_pages(active, ledger, listing)
             by_unit: dict[str | None, list[dict]] = {}
             for record in active:
                 key = _unit_id_of(record) if rich else _unit_of(record)
@@ -902,7 +1059,7 @@ def deactivate_stale_faculty(
                 for entry in ledger.values():
                     observed_here |= _observed_identities(entry) or set()
                 for record in active:
-                    if identity_key(record) in observed_here:
+                    if identity_key(record, listing) in observed_here:
                         listed -= _listed_tokens_of(record)
 
             for unit, unit_records in sorted(
@@ -961,7 +1118,7 @@ def deactivate_stale_faculty(
                 seen_identities = _observed_identities(entry) or set()
                 for opp in unit_records:
                     seen = _seen_date(opp)
-                    identity = identity_key(opp)
+                    identity = identity_key(opp, listing)
                     if identity is None:
                         # No stable identity: a rename or a relocated profile
                         # would be indistinguishable from a departure.
@@ -988,6 +1145,10 @@ def deactivate_stale_faculty(
                         counts["kept_fresh"] += 1
                         continue
                     if unit in listed_units and listed & _listed_tokens_of(opp):
+                        counts["records_preserved_still_listed"] += 1
+                        counts["kept_fresh"] += 1
+                        continue
+                    if identity[0] == "person" and _shown_on_page(opp, ledger, unit, read):
                         counts["records_preserved_still_listed"] += 1
                         counts["kept_fresh"] += 1
                         continue
