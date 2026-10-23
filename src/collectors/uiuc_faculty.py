@@ -564,11 +564,14 @@ def _parse_faculty_card(element, base_url: str, dept: str) -> dict | None:
         if valid:
             result["email"] = valid[0]
 
+    # DirectoryCore cards mark the appointment title "field-name-field-dircore-
+    # appt-title"; the class this selector used to name appears on no card, so
+    # every person on those directories fell to the "Professor" default.
     title_el = element.select_one(
         "div.directory-item__title, "
         "span.person-title, "
         "div.field-name-field-title, "
-        "div.field-dircore-appt-title .field__item, "
+        "div.field-name-field-dircore-appt-title .field__item, "
         "p.card-text, "
         "div.views-field-field-title span"
     )
@@ -741,10 +744,12 @@ def _scrape_individual_page_keywords(url: str) -> list[str]:
 
 
 def _extract_research_keywords(person: dict, dept_config: dict) -> list[str]:
+    # Not the title: it names a post, and since directory cards' titles are
+    # read, "Professor, Evolution, Ecology, and Behavior" would tag a whole
+    # unit "ecology" and skip each person's profile-page topics.
     text = " ".join([
         person.get("research_areas", ""),
         person.get("research_description", ""),
-        person.get("title", ""),
     ]).lower()
 
     KEYWORD_BANK = [
@@ -1251,6 +1256,23 @@ def carry_forward_contact_instruction_sources(existing: dict, incoming: dict) ->
     merge_contact_instruction_sources(existing, incoming)
 
 
+# Header-menu entries of the CLIMAS and ESEC sites. Before the research-area
+# marker scan skipped link text, it stored the entries after the "Research
+# Areas" link as the research areas of 27 CLIMAS and 10 ESEC rows (and the
+# same "Undergraduate Research" on 15 Communication rows). Such a value is no
+# one's statement, so it is never carried onto a fresh row.
+_SITE_MENU_LABELS = frozenset({
+    "research equipment", "undergraduate research", "labs & facilities",
+    "field research", "related research programs", "colloquium",
+    "directions to the department & colloquia",
+})
+
+
+def _is_site_menu_text(text: str) -> bool:
+    items = [i.strip().lower() for i in (text or "").split(",") if i.strip()]
+    return bool(items) and all(i in _SITE_MENU_LABELS for i in items)
+
+
 def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
     """When a re-scrape upserts over a committed record by stable id, keep the
     committed record's enrichment if it is keyword-richer than the fresh scrape:
@@ -1376,6 +1398,7 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
     if (
         isinstance(areas, str)
         and areas.strip()
+        and not _is_site_menu_text(areas)
         and not str((incoming.get("metadata") or {}).get("research_areas_raw") or "").strip()
     ):
         md = incoming.setdefault("metadata", {})
@@ -2299,6 +2322,11 @@ _RESEARCH_SELECTORS = [
     "div.research-areas",
     "section.research",
     "#research",
+    # Illinois DirectoryCore profiles (CLIMAS, ESEC and the other
+    # /directory/profile/ sites): the person's own interests, then the areas
+    # they picked from the site's list.
+    "div.field-name-field-dircore-rinterests",
+    "div.field-name-field-dircore-research-areas",
 ]
 
 
@@ -2364,6 +2392,12 @@ def _trim_research_areas(text: str, cap: int = 300) -> str:
     return out[:cut].rstrip(" ,") if cut > 0 else out[:cap]
 
 
+def _links_elsewhere(string) -> bool:
+    a = string.find_parent("a")
+    href = (a.get("href") or "").strip() if a else ""
+    return bool(href) and not re.match(r"#[\w-]", href)
+
+
 def _research_areas_from_soup(soup) -> str:
     """Comma-separated research-area text from a labelled section or a 'Research
     Interests/Areas/Focus' text marker. Returns '' when none is present. (Prose
@@ -2374,9 +2408,18 @@ def _research_areas_from_soup(soup) -> str:
             txt = el.get_text(separator=", ", strip=True)
             if len(txt) > 20:
                 return _trim_research_areas(txt)
-    page_text = soup.get_text("\n")
+    strings = list(soup.strings)
+    page_text = "\n".join(strings)
+    # A marker inside a link to another page is a menu entry, not a section
+    # title: the DirectoryCore site header links "Research Areas", and the
+    # lines after it are the rest of the menu ("Research Equipment,
+    # Undergraduate Research"), which was stored as the research areas of 37
+    # CLIMAS and ESEC rows. A heading's own anchor (<a name>) or an accordion's
+    # in-page link (#id) is still a title. The search runs on a copy with those
+    # link texts blanked, so offsets still match.
+    marker_text = "\n".join(" " * len(s) if _links_elsewhere(s) else s for s in strings)
     for marker in ("Research Interests", "Research Areas", "Research Focus"):
-        idx = page_text.find(marker)
+        idx = marker_text.find(marker)
         if idx != -1:
             chunk = page_text[idx + len(marker):idx + len(marker) + 400]
             lines = [ln.strip() for ln in chunk.split("\n") if ln.strip()][:8]

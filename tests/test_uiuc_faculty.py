@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections import Counter
 from pathlib import Path
 
 import pytest
@@ -2130,3 +2131,138 @@ def test_the_people_new_to_atmos_and_geology_are_stored_under_other_departments(
                   "Lei Zhao", "Timothy Killeen"},
         "geology": {"Bruce W Fouke"},
     }
+
+
+# --- M143: CLIMAS and ESEC (Illinois DirectoryCore) titles and research areas.
+# Every person on these directories was stored as "Professor" because the card
+# title selector named a class no card carries, and 37 of their 53 rows stored
+# the site's header menu as research areas: the profile pages match none of the
+# research selectors, so the "Research Areas" text marker was searched on the
+# whole page and first found the menu link of that name. ---
+
+def _card_titles(page: str) -> list[str]:
+    soup = BeautifulSoup((UIUC_FIXTURES / page).read_text(encoding="utf-8"), "html.parser")
+    out = []
+    for card in soup.select("article.profile-card"):
+        el = card.select_one("div.field-name-field-dircore-appt-title .field__item")
+        out.append(el.get_text(strip=True) if el else None)
+    return out
+
+
+def test_directorycore_cards_give_each_person_the_title_their_card_states(moved_units):
+    for key, page in (("atmos", "climas_faculty.html"), ("geology", "esec_faculty.html")):
+        titles = [r["metadata"]["faculty_title"] for r in moved_units[key]]
+        # One card has no title field; it keeps the collector's default.
+        assert titles == [t or "Professor" for t in _card_titles(page)], key
+    atmos = Counter(r["metadata"]["faculty_title"] for r in moved_units["atmos"])
+    geology = Counter(r["metadata"]["faculty_title"] for r in moved_units["geology"])
+    assert atmos["Professor Emeritus"] == 3 and atmos["Director Emeritus"] == 1
+    assert atmos["Harry E. Preble Professor Emeritus"] == 1
+    assert {"Lecturer", "Senior Lecturer", "Geochemistry Lab Coordinator"} <= set(geology)
+
+
+def _directorycore_profile(main_fields: str) -> BeautifulSoup:
+    """A DirectoryCore profile page: the site header menu links "Research Areas"
+    and its entries, then the person's fields inside <main>."""
+    return BeautifulSoup(f"""<html><body><ilw-page><ilw-header><ilw-header-menu><ul>
+      <li><ilw-header-menu-section><a href="/research">Research</a><ul>
+        <li><a href="/research/areas">Research Areas</a></li>
+        <li><a href="/research/equipment">Research Equipment</a></li>
+        <li><a href="/research/undergraduate">Undergraduate Research</a></li>
+      </ul></ilw-header-menu-section></li>
+      <li><ilw-header-menu-section><a href="/resources">Resources</a><ul>
+        <li><a href="/about">About the Department</a></li>
+      </ul></ilw-header-menu-section></li>
+    </ul></ilw-header-menu></ilw-header>
+    <main id="main-content"><article class="profile fixed-width">
+      <h1>Person Example</h1>
+      <div class="field field-name-field-dircore-appt-title"><div class="field__item">Professor</div></div>
+      {main_fields}
+      <div class="field field-name-field-dircore-biography"><h2 class="profile-label">Biography</h2>
+        <p>Studies clouds.</p></div>
+    </article></main></ilw-page></body></html>""", "html.parser")
+
+
+def test_a_directorycore_profile_gives_its_research_fields_never_its_menu():
+    areas = """<div class="field field-name-field-dircore-research-areas">
+      <h2 class="profile-label">Research Areas</h2>
+      <div class="field__items"><div class="field__item"><a href="/research/areas/aerosols">Aerosols</a></div>
+      <div class="field__item"><a href="/research/areas/cloud-physics">Cloud Physics</a></div></div></div>"""
+    interests = """<div class="field field-name-field-dircore-rinterests">
+      <h2 class="profile-label">Research Interests</h2>
+      <div class="field__item"><p>aerosol mixing state</p><p>particle-resolved modelling</p></div></div>"""
+    assert _research_areas_from_soup(_directorycore_profile(areas)) == "Aerosols, Cloud Physics"
+    assert _research_areas_from_soup(_directorycore_profile(areas + interests)) == \
+        "aerosol mixing state, particle-resolved modelling"
+    # A profile with neither field states no research areas; the menu entries
+    # after the "Research Areas" link are not read as its areas, and a heading
+    # of that name in the page body is read in the link's place.
+    assert _research_areas_from_soup(_directorycore_profile("")) == ""
+    assert _research_areas_from_soup(_directorycore_profile(
+        "<h2>Research Areas</h2><p>Mesoscale meteorology</p>")) == "Mesoscale meteorology"
+
+
+def test_a_research_heading_is_still_read_when_the_menu_also_links_one():
+    page = _directorycore_profile(
+        "<h2>Research Interests</h2><p>Severe convective storms</p><p>Radar meteorology</p>"
+        "<h2>Courses Taught</h2><p>ATMS 100</p>")
+    assert _research_areas_from_soup(page) == "Severe convective storms, Radar meteorology"
+
+
+def test_each_directorycore_research_field_is_read_by_its_own_selector():
+    # The office line after the field is no section title, so a text-marker
+    # scan from the field's heading would run on into it.
+    office = """<div class="field field-name-field-dircore-office"><div class="field__item">3074 Example Hall</div></div>"""
+    areas = """<div class="field field-name-field-dircore-research-areas">
+      <h2 class="profile-label">Research Areas</h2>
+      <div class="field__items"><div class="field__item"><a href="/research/areas/aerosols">Aerosols</a></div>
+      <div class="field__item"><a href="/research/areas/cloud-physics">Cloud Physics</a></div></div></div>"""
+    interests = """<div class="field field-name-field-dircore-rinterests">
+      <h2 class="profile-label">Research Interests</h2>
+      <div class="field__item"><p>aerosol mixing state</p><p>particle-resolved modelling</p></div></div>"""
+    assert _research_areas_from_soup(_directorycore_profile(areas + office)) == "Aerosols, Cloud Physics"
+    assert _research_areas_from_soup(_directorycore_profile(interests + office)) == \
+        "aerosol mixing state, particle-resolved modelling"
+
+
+def test_a_heading_that_is_its_own_anchor_or_an_in_page_toggle_is_still_a_title():
+    for heading in ('<h3><a name="ri">Research Interests</a></h3>',
+                    '<a href="#ri" class="accordion-toggle">Research Interests</a>'):
+        page = _directorycore_profile(
+            heading + '<div id="ri"><p>Neural coding</p><p>Decision making</p></div>'
+            "<h2>Courses Taught</h2><p>ATMS 100</p>")
+        assert _research_areas_from_soup(page) == "Neural coding, Decision making", heading
+
+
+def test_stored_site_menu_text_is_not_carried_onto_a_fresh_row():
+    for menu in ("Research Equipment, Undergraduate Research",
+                 "Labs & Facilities, Field Research, Related Research Programs, Colloquium, "
+                 "Directions to the Department & Colloquia, Undergraduate Research"):
+        existing = {"pi_name": "A B", "department": "Department of Example",
+                    "metadata": {"research_areas_raw": menu, "last_verified": "2026-10-05T06:00:00"}}
+        incoming = {"pi_name": "A B", "department": "Department of Example",
+                    "metadata": {"research_areas_raw": ""}}
+        _carry_forward_enrichment(existing, incoming)
+        assert incoming["metadata"]["research_areas_raw"] == ""
+        assert "research_areas_verified_at" not in incoming["metadata"]
+
+
+def test_a_stated_research_line_with_a_menu_word_in_it_is_still_carried():
+    line = "Sediment transport, Field Research, Undergraduate Research"
+    existing = {"pi_name": "A B", "department": "Department of Example",
+                "metadata": {"research_areas_raw": line, "last_verified": "2026-10-05T06:00:00"}}
+    incoming = {"pi_name": "A B", "department": "Department of Example", "metadata": {}}
+    _carry_forward_enrichment(existing, incoming)
+    assert incoming["metadata"]["research_areas_raw"] == line
+    assert incoming["metadata"]["research_areas_verified_at"] == "2026-10-05T06:00:00"
+
+
+def test_a_title_is_not_read_as_a_research_area(monkeypatch):
+    import src.collectors.uiuc_faculty as f
+
+    monkeypatch.setattr(f, "_scrape_individual_page_keywords", lambda url: [])
+    cfg = DEPARTMENTS["ib"]
+    rec = normalize_faculty({"name": "Ann Example", "email": "person1@illinois.edu",
+                             "title": "Professor, Evolution, Ecology, and Behavior"}, cfg)
+    assert rec["metadata"]["faculty_title"] == "Professor, Evolution, Ecology, and Behavior"
+    assert rec["keywords"] == cfg["keywords"][:1]
