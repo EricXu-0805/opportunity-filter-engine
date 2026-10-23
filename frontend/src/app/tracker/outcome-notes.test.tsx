@@ -93,7 +93,7 @@ describe('outcome notes on a tracker card', () => {
     const items = await within(section()).findAllByRole('listitem');
     expect(items.map((li) => li.textContent)).toEqual([
       'tracker.outcomeNotes.notedOn(date=2026-10-12)Correction: it was the lab manager who replied.',
-      'tracker.outcomeNotes.notedOn(date=2026-10-10) · tracker.outcomeNotes.statusSet(status=tracker.outcomeNotes.outcome.replied)Professor Lee replied.',
+      'tracker.outcomeNotes.notedOn(date=2026-10-10) · tracker.outcomeNotes.statusSet(status=detail.tracker.statusLabels.replied)Professor Lee replied.',
     ]);
     expect(within(section()).getAllByRole('button').map((b) => b.textContent)).toEqual(['tracker.outcomeNotes.save']);
   });
@@ -254,8 +254,17 @@ describe('outcome notes on a tracker card', () => {
     expect(mocks.appendOutcomeNote.mock.calls[2][1].noteId).not.toBe(firstId);
   });
 
-  it('says next to "No longer contacting" that it is saved as dismissed and leaves the board', async () => {
+  it('says next to "Not interested" that it is saved as dismissed and leaves the board', async () => {
     await renderBoard();
+    // The options carry the card's status-button labels (M146).
+    const options = Array.from((screen.getByLabelText('tracker.outcomeNotes.outcomeLabel') as HTMLSelectElement).options);
+    expect(options.map((o) => [o.value, o.textContent])).toEqual([
+      ['', 'tracker.outcomeNotes.outcomeNone'],
+      ['replied', 'detail.tracker.statusLabels.replied'],
+      ['interviewing', 'detail.tracker.statusLabels.interviewing'],
+      ['rejected', 'detail.tracker.statusLabels.rejected'],
+      ['dismissed', 'detail.tracker.statusLabels.dismissed'],
+    ]);
     expect(within(section()).queryByText('tracker.outcomeNotes.dismissedHint')).toBeNull();
     fireEvent.change(screen.getByLabelText('tracker.outcomeNotes.outcomeLabel'), { target: { value: 'dismissed' } });
     expect(within(section()).getByText('tracker.outcomeNotes.dismissedHint')).toBeInTheDocument();

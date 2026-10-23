@@ -12,6 +12,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { INTERACTION_OPTIONS } from '@/app/opportunities/[id]/types';
+import { OUTCOME_NOTE_OUTCOMES } from '@/lib/outcome-notes';
 import { dictionaries } from './dictionaries';
 
 const en = dictionaries.en;
@@ -210,5 +211,28 @@ describe('the field-relevance line says what it counts', () => {
       expect(label).not.toMatch(/strong|强匹配|优质/i);
     }
     expect(fieldMatches).toMatch(/\{count\}/);
+  });
+});
+
+describe('an outcome note names its status the way the card does', () => {
+  // Checklist M146. The note said "Status set to Replied" and offered
+  // "No longer contacting" while the same card's status button, which the
+  // note's own transaction sets, said "Got reply" and "Not interested".
+  it.each(['en', 'zh'] as const)('%s', (locale) => {
+    const d = dictionaries[locale];
+    expect(d.tracker.outcomeNotes).not.toHaveProperty('outcome');
+    for (const outcome of OUTCOME_NOTE_OUTCOMES) {
+      expect(d.detail.tracker.statusLabels[outcome]).toBeTruthy();
+    }
+    expect(d.tracker.outcomeNotes.dismissedHint).toContain(d.detail.tracker.statusLabels.dismissed);
+  });
+
+  it('the exact words', () => {
+    expect(en.tracker.outcomeNotes.statusSet).toBe('Status set to “{status}”');
+    expect(en.detail.tracker.statusLabels.replied).toBe('Got reply');
+    expect(en.tracker.outcomeNotes.dismissedHint)
+      .toBe('Saved as “Not interested”: the card leaves this board, and results hide it by default.');
+    expect(zh.tracker.outcomeNotes.statusSet).toBe('状态改为「{status}」');
+    expect(zh.tracker.outcomeNotes.dismissedHint).toBe('将保存为「不感兴趣」：卡片会离开追踪板，结果页默认隐藏它。');
   });
 });

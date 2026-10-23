@@ -77,7 +77,7 @@ export function OutcomeNotes({
                     {t('tracker.outcomeNotes.notedOn', { date: savedOn(note.recordedAt) })}
                   </time>
                   {note.outcome && (
-                    <> · {t('tracker.outcomeNotes.statusSet', { status: t(`tracker.outcomeNotes.outcome.${note.outcome}`) })}</>
+                    <> · {t('tracker.outcomeNotes.statusSet', { status: t(`detail.tracker.statusLabels.${note.outcome}`) })}</>
                   )}
                 </p>
                 <p className="whitespace-pre-wrap break-words">{note.body}</p>
@@ -132,7 +132,7 @@ export function OutcomeNotes({
           >
             <option value="">{t('tracker.outcomeNotes.outcomeNone')}</option>
             {OUTCOME_NOTE_OUTCOMES.map((outcome) => (
-              <option key={outcome} value={outcome}>{t(`tracker.outcomeNotes.outcome.${outcome}`)}</option>
+              <option key={outcome} value={outcome}>{t(`detail.tracker.statusLabels.${outcome}`)}</option>
             ))}
           </select>
         </label>
