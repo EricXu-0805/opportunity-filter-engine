@@ -9,6 +9,7 @@ import { advanceOwnerEpoch, captureOwnerToken, isLocalOwnerReady, syncLocalIdent
 import type { ProfileViewSnapshot } from '@/lib/profile-sync';
 import type { ProfileActionReceipt } from '@/lib/use-profile-refresh';
 import { prepareTargetResumeAI } from '@/lib/target-resume-ai';
+import { prepareTargetResumePlan } from '@/lib/target-resume-plan';
 import type { TargetResumeAiPanelProps } from './TargetResumeAiPanel';
 import type { TargetResumePlanPanelProps } from './TargetResumePlanPanel';
 import type { ResumeSupplementPanelProps } from './ResumeSupplementPanel';
@@ -812,6 +813,29 @@ describe('saved operation records', () => {
     expect(record.events.map(item => item.kind)).toEqual(['ai_rewrite', 'manual']);
     expect(record.events[0].changes[0].check?.version).toBe('target-resume-source-checks-v1'); expect(record.events[1].changes[0].check).toBeNull();
   });
+  it.each([['en', 'Change records', 'AI-linked text from the opportunity', 'Opportunity citation', 'Student original', 'Source citation'],
+    ['zh', '修改记录', 'AI 关联的机会原文', '机会引用', '学生原文', '原文引用']] as const)(
+    'records an accepted content choice\'s opportunity quote as text the AI linked, with the student\'s line under its own heading (%s)', async (locale, records, label, citation, student, source) => {
+      // M133: the plan's quote is only checked to be in the opportunity's text; it can bear on nothing in the block.
+      // Round 2: under the quote's heading alone, the student's own line read as opportunity text.
+      i18n.locale = locale;
+      const p = profile(), doc = await docFor(p); storage.load.mockResolvedValue(loaded(doc)); renderModal(p);
+      await waitFor(() => expect(plan.props?.enabled).toBe(true));
+      const prepared = await prepareTargetResumePlan(doc, { target_pages: 1 }); if (!prepared.ok) throw new Error(prepared.code);
+      const block = doc.document.sections.flatMap(s => s.blocks.map(b => ({ s, b }))).find(({ b }) => b.lines.some(l => l.role === 'experience'))!;
+      const line = block.b.lines.find(l => l.role === 'experience')!, quote = doc.target_snapshot.description;
+      expect(quote).toBe('Work on robotics with Python.');
+      const next = clone(doc); next.document.sections.find(s => s.id === block.s.id)!.blocks.find(b => b.id === block.b.id)!.included = false;
+      const action: TargetResumeProvenanceAction = { kind: 'plan', annotations: [{ section_id: block.s.id, block_id: block.b.id, line_id: null, field: 'included',
+        reason: 'Omit suggestion: Review the cited material before giving this block less space.', check: null,
+        target_evidence: [{ field: 'description', requirement_index: null, start: 0, end: Array.from(quote).length, quote }],
+        source_evidence: [{ unit_id: line.id, start: 0, end: Array.from(line.original).length, quote: line.original }] }] };
+      act(() => plan.props!.onApply(prepared.value.canonical_draft, next, action));
+      fireEvent.click(screen.getByText(records));
+      const rows = [screen.getByText(label), screen.getByText(`${citation}: ${quote}`), screen.getByText(student), screen.getByText(`${source}: ${line.original}`)];
+      for (const row of rows) expect(row).toBeVisible();
+      for (let i = 1; i < rows.length; i += 1) expect(rows[i - 1].compareDocumentPosition(rows[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
   it.each([['full-target-v5', true], ['full-target-v2', true], ['full-target-v6', false]] as const)(
     'says whether a saved line an AI step wrote under %s was fact-checked (flagged: %s)', async (pipeline, flagged) => {
       // Round-2 review (criteria 1 and 3): wording applied from a pre-v6 suggestion had no faithfulness review.

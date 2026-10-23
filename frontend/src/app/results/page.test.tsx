@@ -16,14 +16,14 @@
  * the ONE hop each page owns) — real MatchList/MatchCard are exercised in
  * their own test file, not re-tested here.
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 vi.mock('@/i18n/client', () => {
   // Production keeps t stable within a locale; a fresh function on every
   // render would repeatedly restart the results request during an error.
   const t = (key: string) => key;
-  return { useT: () => ({ t }) };
+  return { useT: () => ({ t, locale: 'en' }) };
 });
 
 const routerRef = { replace: vi.fn(), refresh: vi.fn(), push: vi.fn() };
@@ -202,6 +202,7 @@ import ResultsPage from './page';
 import { ApiError } from '@/lib/api';
 import { getMatchFeedback, setMatchFeedback } from '@/lib/match-feedback';
 import { getAuthState } from '@/lib/supabase';
+import { SCHOOL_FRESHNESS_SCHEMA, loadSchoolFreshness, resetSchoolFreshnessForTests } from '@/lib/school-freshness';
 import { OwnerMismatchError, advanceOwnerEpoch, captureOwnerToken, enterLocalOnlyMode } from '@/lib/identity-owner';
 
 function baseInteractions(overrides: Record<string, unknown> = {}) {
@@ -500,5 +501,46 @@ describe('ResultsPage — recover from an old explicit empty type selection', ()
     expect(await screen.findByText(message as string)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'common.retry' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'results.chooseOpportunityTypes' })).not.toBeInTheDocument();
+  });
+});
+
+
+describe('ResultsPage — when the schools on screen were last checked (checklist M10)', () => {
+  const FRESHNESS = {
+    schema: SCHOOL_FRESHNESS_SCHEMA,
+    schools: {
+      uiuc: { last_checked_at: '2026-10-12T12:00:00+00:00', status: 'partly_unchecked' },
+      swarthmore: { last_checked_at: '2026-09-05T12:00:00+00:00', status: 'stale' },
+    },
+  };
+
+  beforeEach(() => resetSchoolFreshnessForTests());
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    resetSchoolFreshnessForTests();
+  });
+
+  it('says when the home school was last checked, and names a stale school among the results', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, json: async () => FRESHNESS }) as unknown as Response));
+    // Already asked for on the profile page, as for a student arriving from it.
+    await loadSchoolFreshness();
+    mockGetMatchView.mockResolvedValue({
+      ...MATCH_VIEW_RESPONSE,
+      results: [{ ...MATCH_VIEW_RESPONSE.results[0], opportunity: { ...TEST_OPPORTUNITY, school: 'swarthmore' } }],
+    });
+    render(<ResultsPage />);
+    const block = await screen.findByTestId('results-school-freshness');
+    expect(block).toHaveTextContent('schoolFreshness.resultsLastChecked');
+    expect(block).toHaveTextContent('schoolFreshness.partlyUnchecked');
+    expect(block).toHaveTextContent('schoolFreshness.resultsOtherStaleOne');
+  });
+
+  it('shows the results and no freshness line when the read fails', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, json: async () => null }) as unknown as Response));
+    render(<ResultsPage />);
+    await waitFor(() => expect(screen.getByTestId('mock-match-list')).toBeInTheDocument());
+    await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/opportunities/freshness'));
+    await act(async () => {});
+    expect(screen.queryByTestId('results-school-freshness')).toBeNull();
   });
 });

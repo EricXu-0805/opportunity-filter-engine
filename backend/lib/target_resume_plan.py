@@ -226,7 +226,8 @@ def parse_plan_output(raw, blocks, target, locale="en"):
                 return [], "no_source_evidence"
             rewrites = _rewrite_results(row["rewrites"], row["action"], lines)
             items.append({**deepcopy(row), "target_evidence": target_evidence, "source_evidence": source_evidence, "rewrites": rewrites,
-                          "reason": render_reason(reason, row["action"], source_evidence, target_evidence, locale)})
+                          "reason": render_reason(reason, row["action"], source_evidence, target_evidence, locale,
+                                                  ai_linked=True)})
         return items, None
     except (InvalidTargetResume, KeyError, TypeError, ValueError, RecursionError):
         return [], "invalid_model_response"

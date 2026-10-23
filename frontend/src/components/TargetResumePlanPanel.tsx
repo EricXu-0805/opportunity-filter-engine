@@ -78,7 +78,7 @@ export default function TargetResumePlanPanel({ supportGroups, draft, profile, p
     timeout: copy('The plan did not finish in time. Your draft and any earlier plan are kept.', '选材未及时完成，原稿及已有安排保留。'),
     invalid_response: copy('The complete plan could not be verified. Your draft is unchanged.', '无法核对完整选材安排，文稿未变。'),
     invalid_model_response: copy('The complete plan could not be verified. Your draft is unchanged.', '无法核对完整选材安排，文稿未变。'),
-    no_target_evidence: copy('The plan lacks a verifiable opportunity citation. Your draft is unchanged.', '选材缺少可核对的机会依据，文稿未变。'),
+    no_target_evidence: copy('The plan lacks a verifiable opportunity citation. Your draft is unchanged.', '选材缺少可核对的机会引文，文稿未变。'),
     no_source_evidence: copy('The plan lacks a verifiable source citation. Your draft is unchanged.', '选材缺少可核对的经历原文，文稿未变。'),
     stale_document: copy('Your draft changed. Generate a plan for the current version.', '文稿已修改，请基于当前版本重新生成选材安排。'),
     stale_context: copy('Your materials or target changed. Review them before generating again.', '资料或目标已变更，请核对后重新生成。'),
@@ -203,10 +203,11 @@ export default function TargetResumePlanPanel({ supportGroups, draft, profile, p
         return <article key={item.block_id} data-plan-block-id={item.block_id} className="mt-4 min-w-0 rounded-lg border p-3">
           <h4 className="break-words font-medium">{title}</h4>
           <p className="mt-1 text-sm font-medium">{copy('Suggestion', '建议')}：{item.action === 'keep' ? copy('Keep', '保留') : item.action === 'compress' ? copy('Shorten', '压缩') : copy('Leave out for now', '暂不选用')}</p>
-          <details className="mt-2 text-sm"><summary className="cursor-pointer">{copy('Review reason and sources', '查看理由和依据')}</summary>
+          <details className="mt-2 text-sm"><summary className="cursor-pointer">{copy('Review reason and quoted text', '查看理由和引用原文')}</summary>
           <p className="mt-2 whitespace-pre-wrap break-words text-sm">{item.reason}</p>
           <div className="mt-2 space-y-2 text-sm">
-            {item.target_evidence.length > 0 && <p className="font-medium">{copy('Opportunity evidence', '机会依据')}</p>}
+            {/* Only its presence in the opportunity's text is checked, so the quote is not shown as support for the reason (M133). */}
+            {item.target_evidence.length > 0 && <p className="font-medium">{copy('AI-linked text from the opportunity', 'AI 关联的机会原文')}</p>}
             {item.target_evidence.map((evidence, index) => <blockquote key={index} className="whitespace-pre-wrap break-words border-l-2 border-indigo-200 pl-2">{targetResumeEvidenceLabel(evidence, locale)}: {evidence.quote}</blockquote>)}
             <p className="font-medium">{copy('Source evidence', '原文依据')}</p>
             {item.source_evidence.map((evidence, index) => <blockquote key={index} className="whitespace-pre-wrap break-words border-l-2 border-gray-200 pl-2">{evidence.quote}</blockquote>)}
