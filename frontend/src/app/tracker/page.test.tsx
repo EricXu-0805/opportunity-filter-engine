@@ -32,6 +32,8 @@ vi.mock('@/lib/supabase', () => ({
   // page.tsx renders <StorageStatusBanner /> unconditionally.
   getStorageStatus: () => ({ status: 'synced', error: null }),
   onStorageStatusChange: () => () => {},
+  getOutcomeNotes: async () => new Map(),
+  appendOutcomeNote: vi.fn(),
 }));
 
 vi.mock('@/lib/api', () => ({

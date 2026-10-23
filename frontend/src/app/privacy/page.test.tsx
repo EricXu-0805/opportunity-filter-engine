@@ -44,7 +44,8 @@ describe('Privacy page', () => {
 
   // With the course list switched off, nothing deletes a course the résumé
   // found or stores a status here, so the policy says what it said before
-  // the course list (review p2-b, M1).
+  // the course list (review p2-b, M1), dated with the outcome notes (M49),
+  // which do not depend on the switch.
   it('says what it said before the course list while the switch is off', async () => {
     release.courseStatus = false;
     vi.resetModules();
@@ -52,7 +53,7 @@ describe('Privacy page', () => {
       const { default: OffPage } = await import('./page');
       const { container } = render(<OffPage />);
       const text = container.textContent ?? '';
-      expect(text).toContain('Effective date: October 12, 2026');
+      expect(text).toContain('Effective date: October 22, 2026');
       expect(text).toContain('research interests, skills and proficiency levels, coursework, experience level.');
       expect(text).toContain('to pre-fill skills, coursework, and interests.');
       expect(text).toContain(`characters of extracted résumé text as part of your profile. The original PDF file is not stored on our servers. Removing the résumé from your profile clears that text and the coursework it extracted from your current profile, and future matching and generation stop using them. It does not change copies saved elsewhere`);
@@ -95,6 +96,7 @@ describe('Privacy page', () => {
     expect(text).toContain('keep their content until you delete them in the app; an empty entry with its dates then stays until your account is deleted');
     expect(text).toContain('the target résumés and résumé bullet-editor drafts you save');
     expect(text).toContain('target résumés and bullet-editor drafts; imports you save');
-    expect(text).toContain('Application and email records, target résumés and bullet-editor drafts are kept until your account is deleted');
+    expect(text).toContain('Application and email records, outcome notes, target résumés and bullet-editor drafts are kept until your account is deleted');
+    expect(text).toContain('So is each outcome note you add on a tracker card (one sentence you write, the status you chose with it, if any, and when it was saved). Records and notes cannot be edited or deleted in the app; they are removed when your account is deleted (§7).');
   });
 });

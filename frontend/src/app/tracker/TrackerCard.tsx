@@ -2,6 +2,7 @@
 
 import { BellRing, Calendar, ExternalLink, X } from 'lucide-react';
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 
 import { InteractionStatusMenu } from '@/components/InteractionStatusMenu';
 import { opportunityRecordKind } from '@/lib/match-utils';
@@ -47,6 +48,7 @@ export function TrackerCard({
   notesPending = false,
   notesError = false,
   onRetryNotes,
+  outcomeNotes,
   t,
 }: {
   opp: Opp;
@@ -83,6 +85,8 @@ export function TrackerCard({
   notesPending?: boolean;
   notesError?: boolean;
   onRetryNotes?: (id: string) => void;
+  /** The target's append-only outcome notes (OutcomeNotes), shown last. */
+  outcomeNotes?: ReactNode;
   t: TFunc;
 }) {
   const lab = opp.lab_or_program || opp.organization || opp.department || '';
@@ -292,6 +296,7 @@ export function TrackerCard({
           </button>
         </p>
       )}
+      {outcomeNotes}
     </div>
   );
 }

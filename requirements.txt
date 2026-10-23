@@ -50,7 +50,8 @@ python-dateutil==2.9.0
 fpdf2==2.8.8
 python-docx==1.2.0
 fonttools==4.66.0
-Pillow==12.3.0
+# Only fpdf2 requires Pillow (>=8.3.2, no upper bound); the export draws no images.
+Pillow==13.0.0
 defusedxml==0.7.1
 uharfbuzz==0.56.2
 
@@ -68,5 +69,6 @@ sentry-sdk[fastapi]==2.60.0
 # Testing (kept in production set so Render-built images can run /api/health
 # style smoke tests; very small footprint)
 pytest==9.0.3
-# Real PDF extraction checks for the export contract.
-pypdf==6.19.0
+# Real PDF extraction checks for the export contract, and at runtime the
+# structure check on uploaded material PDFs (backend/lib/material_pdf_check.py).
+pypdf==6.21.2
