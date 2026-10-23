@@ -105,6 +105,15 @@ const COURSE_BUNDLE: readonly ProfileKey[] = ['courses', 'coursework'];
  *  for each operation behind it (see planKeysFromJournal). */
 const RESUME_AND_COURSES: readonly string[] = [...RESUME_BUNDLE, 'courses'];
 
+/** `keys` and every other field a question about one of them can hold: one
+ *  about the résumé or the courses can hold all of RESUME_AND_COURSES. A
+ *  refresh reports only the fields it is asked about (see
+ *  refreshConflictQuestion), so a read naming part of such a question has to
+ *  name all of it. */
+export function withQuestionFields(keys: readonly string[]): string[] {
+  return keys.some((k) => RESUME_AND_COURSES.includes(k)) ? [...new Set([...keys, ...RESUME_AND_COURSES])] : [...keys];
+}
+
 /** Every key the app recognises. Declared as a Record<keyof ProfileData, …>
  *  so adding a profile field without listing it here is a COMPILE error — a
  *  runtime "unknown key" filter that silently drops new fields would be worse

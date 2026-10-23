@@ -333,3 +333,172 @@ describe('reads made for another tab\'s writes (M117)', () => {
     }
   });
 });
+
+describe('a question still open when another tab writes (M137)', () => {
+  it('keeps the value this tab typed in the field, and this tab starts no save of the other tab\'s value', async () => {
+    const a = await open('A');
+    const b = await open('B');
+    online = false;
+    await as(a, (f) => f.update('research_interests', 'From tab A'));
+    expect(a.hook.result.current.saveStatus).toBe('cloud-failed');
+    const seenFrom = a.seen.length;
+    // Tab B types its own value; its writes reach tab A, which reads the
+    // question again and finds it open.
+    await as(b, (f) => f.update('research_interests', 'From tab B'));
+    await tick(2000);
+    expect({
+      field: a.hook.result.current.profile.research_interests,
+      asked: a.hook.result.current.conflicts.map((q) => q.key),
+      seen: a.seen.slice(seenFrom),
+    }).toEqual({ field: 'From tab A', asked: ['research_interests'], seen: [] });
+    expect(b.hook.result.current.profile.research_interests).toBe('From tab B');
+  });
+
+  /** The browser going off or on line, as every tab's window hears it. */
+  function network(on: boolean, who: string | null) {
+    online = on;
+    Object.defineProperty(navigator, 'onLine', { configurable: true, value: on });
+    writer = who;
+    act(() => { window.dispatchEvent(new Event(on ? 'online' : 'offline')); });
+    writer = null;
+  }
+  /** Time passing, with `who` as the tab behind anything written meanwhile. */
+  async function wait(ms: number, who: string | null = null) { writer = who; await tick(ms); writer = null; await drain(); }
+  async function close(tab: Tab) { writer = tab.name; act(() => { tab.hook.unmount(); }); await tick(500); writer = null; await drain(); }
+  const course = (name: string, status?: string) => ({ name, source: 'manual', ...(status ? { status } : {}) });
+  const names = (list: unknown) => ((list ?? []) as Array<{ name: string }>).map((c) => c.name);
+  const RESUME_AND_COURSES = ['courses', 'coursework', 'experience_entries', 'resume_master', 'resume_text'];
+  const withCourses = () => {
+    remote = { ...remote, coursework: ['CS 124'], courses: [course('CS 124')], resume_text: '' } as unknown as ProfileData;
+  };
+  const experience = { id: 'exp-1', revision: 1, status: 'confirmed', text: 'Built a robot arm controller', source: { kind: 'manual' } };
+  /** An entry added on the Experience Library card: the whole résumé is sent with it, from the form. */
+  function addExperience(form: Tab['hook']['result']['current']) {
+    const p = form.profile;
+    return form.handleExperienceChange([experience] as never, { resumeText: p.resume_text ?? '', entriesJson: JSON.stringify(p.experience_entries ?? []) });
+  }
+
+  it('offline, a course-list question learned from the other tab is asked whole, and the first "Keep what I typed" answers it', async () => {
+    withCourses();
+    const a = await open('A');
+    const b = await open('B');
+    network(false, null);
+    await wait(1500);
+    await as(a, (f) => f.update('courses', [course('CS 124'), course('CS 173')] as never));
+    await as(b, (f) => f.update('courses', [course('CS 124'), course('CS 225')] as never));
+    await wait(2000);
+    // The course names are one unit with the résumé, so the question holds
+    // all of it, as the answer will write it; the list stays as tab A drew it.
+    expect(a.hook.result.current.conflicts.map((q) => q.key).sort()).toEqual(RESUME_AND_COURSES);
+    expect(names(a.hook.result.current.profile.courses)).toEqual(['CS 124', 'CS 173']);
+    await as(a, (f) => f.keepMyChanges());
+    await wait(2000);
+    expect({ shown: names(a.hook.result.current.profile.courses), askedInB: b.hook.result.current.conflicts })
+      .toEqual({ shown: ['CS 124', 'CS 173'], askedInB: [] });
+    network(true, 'A');
+    await wait(4000, 'A');
+    expect(names(remote.courses)).toEqual(['CS 124', 'CS 173']);
+  });
+
+  it('after the other tab keeps its résumé and course list, this tab shows all of it, and its next experience edit sends nothing it drew before', async () => {
+    withCourses();
+    const a = await open('A');
+    const b = await open('B');
+    network(false, null);
+    await wait(1500);
+    // Tab A marks a status, which writes the course list alone; tab B puts in
+    // a résumé and a course from it.
+    await as(a, (f) => f.update('courses', [course('CS 124', 'completed')] as never, 'status'));
+    await as(b, (f) => f.update('resume_text', 'NEW RESUME: CS 124, CS 225'));
+    await as(b, (f) => f.update('courses', [course('CS 124'), { name: 'CS 225', source: 'resume' }] as never));
+    await wait(2000);
+    // The network returns while neither tab is in front: no load, no resend.
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+    network(true, null);
+    await wait(1000);
+    Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'visible' });
+    await as(b, (f) => f.retryCloudSave());
+    await as(b, (f) => f.keepMyChanges());
+    await wait(3000);
+    expect(remote.resume_text).toBe('NEW RESUME: CS 124, CS 225');
+    const p = a.hook.result.current.profile;
+    expect({ resume: p.resume_text, coursework: p.coursework, courses: names(p.courses) })
+      .toEqual({ resume: 'NEW RESUME: CS 124, CS 225', coursework: ['CS 124', 'CS 225'], courses: ['CS 124', 'CS 225'] });
+    let accepted = false;
+    await as(a, (f) => { accepted = addExperience(f); });
+    await wait(3000);
+    expect({ accepted, resume: remote.resume_text, coursework: remote.coursework, entries: (remote.experience_entries ?? []).length })
+      .toEqual({ accepted: true, resume: 'NEW RESUME: CS 124, CS 225', coursework: ['CS 124', 'CS 225'], entries: 1 });
+  });
+
+  it('a second "Keep what I typed" made offline, with the other tab closed, leaves the answer to send when the network returns', async () => {
+    const a = await open('A');
+    const b = await open('B');
+    network(false, null);
+    await wait(1500);
+    await as(a, (f) => f.update('research_interests', 'From tab A'));
+    await as(b, (f) => f.update('research_interests', 'From tab B'));
+    await wait(2000);
+    await close(b);
+    // Offline, the answer is written down and not sent, and the question
+    // stays on screen; pressed again, it is found answered.
+    await as(a, (f) => f.keepMyChanges());
+    expect(a.hook.result.current.conflicts.map((q) => q.key)).toEqual(['research_interests']);
+    await as(a, (f) => f.keepMyChanges());
+    await wait(2000);
+    expect({ status: a.hook.result.current.saveStatus, retry: a.hook.result.current.canRetrySync, asked: a.hook.result.current.conflicts })
+      .toEqual({ status: 'cloud-failed', retry: true, asked: [] });
+    expect(remote.research_interests).toBe('Original research');
+    network(true, 'A');
+    await wait(4000, 'A');
+    expect({ stored: remote.research_interests, retry: a.hook.result.current.canRetrySync })
+      .toEqual({ stored: 'From tab A', retry: false });
+  });
+
+  it('an answer refused because the other tab answered first does not say "Couldn\'t save" for that tab\'s unsent edit', async () => {
+    const a = await open('A');
+    const b = await open('B');
+    online = false;
+    await as(a, (f) => f.update('research_interests', 'From tab A'));
+    await as(b, (f) => f.update('research_interests', 'From tab B'));
+    online = true;
+    await as(a, (f) => f.retryCloudSave());
+    await wait(3000, 'A');
+    await as(b, (f) => f.retryCloudSave());
+    await wait(3000, 'B');
+    // Tab A hears nothing more, so its question stays on screen.
+    deliver = false;
+    await as(b, (f) => f.keepMyChanges());
+    expect(remote.research_interests).toBe('From tab B');
+    online = false;
+    await as(b, (f) => f.update('grade', 'Senior'));
+    await as(a, (f) => f.keepMyChanges());
+    expect({ status: a.hook.result.current.saveStatus, retry: a.hook.result.current.canRetrySync, asked: a.hook.result.current.conflicts })
+      .toEqual({ status: 'conflict-gone', retry: false, asked: [] });
+  });
+
+  it('beside its own unsent course edit, shows the other tab\'s résumé once it is saved and not before, and its next experience edit keeps it', async () => {
+    withCourses();
+    const a = await open('A');
+    const b = await open('B');
+    network(false, null);
+    await wait(1500);
+    await as(a, (f) => f.update('courses', [course('CS 124', 'completed')] as never, 'status'));
+    const seenFrom = a.seen.length;
+    await as(b, (f) => f.update('resume_text', 'From tab B'));
+    await wait(2000);
+    // Unsent, it is tab B's alone: nothing of it is drawn here, and no save starts.
+    expect({ resume: a.hook.result.current.profile.resume_text, seen: a.seen.slice(seenFrom) })
+      .toEqual({ resume: '', seen: [] });
+    // Back online with no event: tab B's next edit sends everything unsent.
+    online = true;
+    await as(b, (f) => f.update('grade', 'Senior'));
+    await wait(3000, 'B');
+    expect(remote.resume_text).toBe('From tab B');
+    expect(a.hook.result.current.profile.resume_text).toBe('From tab B');
+    await as(a, (f) => { addExperience(f); });
+    await wait(3000, 'A');
+    expect({ resume: remote.resume_text, entries: (remote.experience_entries ?? []).length })
+      .toEqual({ resume: 'From tab B', entries: 1 });
+  });
+});
