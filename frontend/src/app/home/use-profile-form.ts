@@ -65,6 +65,7 @@ import {
   type ProfileSaveResult,
   type ProfileViewSnapshot,
   type ProfileConflictPrompt,
+  withQuestionFields,
 } from '@/lib/profile-sync';
 import { decodeProfileResult, buildShareUrl } from '@/lib/profile-share';
 import { DEFAULT_PROFILE, FRESH_PROFILE, hasSelectedSeekingType, SEEKING_TYPES, type HydrationState, type HomeProfileRefreshStatus, type SaveStatus, type TFunc } from './types';
@@ -1788,9 +1789,13 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       const row = (refreshed.profile ?? null) as unknown as Record<string, unknown> | null;
       const merged = { ...(profileRef.current as unknown as Record<string, unknown>) };
       let changed = false;
-      // A question this build does not answer leaves its fields as shown.
+      // A question this build does not answer leaves its fields as shown, and
+      // so does, after another tab's write, a question still open: the field
+      // keeps what this tab shows until the question is settled, rather than
+      // taking the shared working copy's value, which can be another tab's,
+      // and autosaving it (M137).
       const held = new Set(refreshed.status === 'current'
-        ? refreshed.conflicts.filter((c) => c.newerBuild).map((c) => c.key) : []);
+        ? refreshed.conflicts.filter((c) => c.newerBuild || context === 'other-tab').map((c) => c.key) : []);
       for (const key of asked) {
         if (movedSince(key) || held.has(key)) continue;
         if (!row || !(key in row)) {
@@ -1856,7 +1861,15 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         );
       }
       if (context === 'answer') {
-        // This click sent nothing either way.
+        // This click sent nothing either way. When an answer to a field it
+        // asked about is still owed (given offline, here or in another tab),
+        // it is unsent, and Retry and the reconnect resend send it: the field
+        // can show it already, and then no repaint arms an autosave (M137).
+        if (refreshed.pendingKeys.some((key) => asked.includes(key))) {
+          if (owns) armRetryable({ generation, token });
+          tell('cloud-failed');
+          return;
+        }
         tell(refreshed.answered ? 'conflict-stale' : 'conflict-gone');
         return;
       }
@@ -2659,13 +2672,24 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       // read changes no field (it adopts the base it read, as every read does),
       // only whether "Couldn't save" still holds.
       if (asked.length === 0 && saveStatusRef.current !== 'cloud-failed') return;
-      const atIssue = epochsNow(asked);
+      // A field of the résumé or the course list is read with all of them
+      // (M137). A question about one holds every field of the operations
+      // behind it, and a read reports only the fields it names: read in part,
+      // the question shown is narrower than an answer writes, which refuses it
+      // as stale. The fields this tab did not ask about are drawn from the row
+      // where nothing is owed for them, since the base they are measured
+      // against moves with this read and the next résumé edit sends them as
+      // shown; another tab's unsent edit of one is not drawn into this form.
+      const whole = withQuestionFields(asked);
+      const atIssue = epochsNow(whole);
       const fence = { atOperation: atIssue, atIssue, unrepresented: unrepresentedNow(), editEpochAtOperation: editEpochRef.current };
       const intent = saveIntentRef.current;
       otherTabReading = true;
-      void refreshConflictQuestion(asked, origin.token, 'read').then((refreshed) => {
+      void refreshConflictQuestion(whole, origin.token, 'read').then((refreshed) => {
         if (!current()) return;
-        return applyConflictRefreshRef.current?.(refreshed, asked, origin.token, origin.generation, intent, fence, true, 'other-tab');
+        const owed = refreshed.status === 'current' || refreshed.status === 'settled' ? refreshed.pendingKeys : [];
+        const drawn = whole.filter((key) => asked.includes(key) || !owed.includes(key));
+        return applyConflictRefreshRef.current?.(refreshed, drawn, origin.token, origin.generation, intent, fence, true, 'other-tab');
       }).catch(() => undefined).finally(() => { otherTabReading = false; });
     };
     const storageChanged = (event: StorageEvent) => {
