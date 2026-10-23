@@ -61,6 +61,7 @@ import logging
 import os
 import re
 import time
+import unicodedata
 from collections import Counter, defaultdict
 from contextlib import contextmanager
 from copy import deepcopy
@@ -70,6 +71,8 @@ from urllib.parse import parse_qs, quote, unquote, urljoin, urlsplit
 from backend.lib.contact_visibility import carries_contact_evidence
 from src.normalizers.deactivate_stale_faculty import (
     UNIT_LEDGER_VERSION,
+    _unit_id_of,
+    canonical_profile_url,
     identity_key,
 )
 
@@ -3786,9 +3789,71 @@ def _norm_faculty_url(o: dict) -> str:
     return (o.get("url") or o.get("source_url") or "").strip().rstrip("/").lower()
 
 
-def _merge_faculty_fields(survivor: dict, loser: dict) -> None:
+def _person_words(name: str) -> frozenset[str]:
+    """``_name_tokens`` after decoding HTML entities and folding accents, so
+    "Jos&eacute; Ib&aacute;&ntilde;ez" and "José Ibáñez" have the same words."""
+    folded = unicodedata.normalize("NFKD", html.unescape(name or ""))
+    return frozenset(_name_tokens("".join(c for c in folded if not unicodedata.combining(c))))
+
+
+def _one_person(names: list) -> bool:
+    """Whether these spellings name one person: one of them, of two words or
+    more, has each of its words in every other ("Dana Ellis" and "Dana Ellis
+    DNP" or "Dana R. Ellis", not "John Smith" and "John Doe")."""
+    words = [_person_words(n) for n in names]
+    core = frozenset.intersection(*words)
+    return len(core) >= 2 and core in words
+
+
+def _one_person_pages(rows: list[dict], pages: frozenset[str]) -> frozenset[str]:
+    """The pages among ``pages`` whose faculty rows all name one person. A
+    directory page that several people's rows link is nobody's profile."""
+    if not pages:
+        return frozenset()
+    names: dict[str, list] = defaultdict(list)
+    for o in rows:
+        if o.get("source_type") != "faculty_research":
+            continue
+        page = canonical_profile_url(o.get("url") or o.get("source_url"))
+        if page in pages:
+            names[page].append(o.get("pi_name"))
+    return frozenset(page for page, ns in names.items() if _one_person(ns))
+
+
+def _carry_sighting(survivor: dict, loser: dict,
+                    person_pages: frozenset[str] = frozenset()) -> None:
+    """Give the survivor the dropped row's newer sighting (the uiuc dedups' #815
+    rule) when that sighting is the survivor's own: both rows come from one
+    scrape unit under one person's name, or both link a page in
+    ``person_pages``, profile pages this run observed as one person's identity.
+
+    deactivate_stale_faculty runs before the collapse and keeps a row its own
+    unit no longer lists only while its profile page is observed somewhere in
+    the run, or while its date is inside the grace window. A sighting carried
+    every week from another unit through a directory page or a page the run
+    did not observe, or from another person on a shared inbox, would keep
+    that row inside the window for ever."""
+    page = canonical_profile_url(survivor.get("url") or survivor.get("source_url"))
+    same_page = page in person_pages and page == canonical_profile_url(
+        loser.get("url") or loser.get("source_url"))
+    same_unit = all(survivor.get(k) == loser.get(k) for k in ("source", "department")) \
+        and _unit_id_of(survivor) == _unit_id_of(loser) \
+        and _one_person([survivor.get("pi_name"), loser.get("pi_name")])
+    if same_page or same_unit:
+        from .uiuc_faculty import _carry_newest_liveness
+        _carry_newest_liveness(survivor, loser)
+
+
+def _merge_faculty_fields(survivor: dict, loser: dict,
+                          person_pages: frozenset[str] = frozenset()) -> None:
     """Fill the survivor's missing contact fields (email / profile link) from the
-    dropped duplicate, so collapsing never loses a usable address or URL."""
+    dropped duplicate, so collapsing never loses a usable address or URL.
+
+    The survivor also takes the newer sighting when it is the survivor's own
+    (``_carry_sighting``): it is chosen for richness, so an old row under a
+    spelling the page no longer writes would otherwise keep its old
+    ``last_seen_at`` after every refresh."""
+    _carry_sighting(survivor, loser, person_pages)
     if not (survivor.get("contact_email") or "").strip() and (loser.get("contact_email") or "").strip():
         survivor["contact_email"] = loser["contact_email"]
         # This cross-record dedup is weaker than the stable-id carry path. Move
@@ -3829,7 +3894,8 @@ def _pick_richer(group: list[dict], umbrella: frozenset[str]) -> dict:
     return best
 
 
-def collapse_same_person_faculty(opps: list[dict]) -> dict:
+def collapse_same_person_faculty(opps: list[dict],
+                                 person_pages: frozenset[str] = frozenset()) -> dict:
     """Collapse duplicate ACTIVE faculty for the same person at one school and
     prevent recreation on the next merge.
 
@@ -3849,8 +3915,14 @@ def collapse_same_person_faculty(opps: list[dict]) -> dict:
       genuine joint appointments across two peer departments (Stanford Applied
       Physics + Physics) are left as two records.
 
+    A kept row takes a dropped row's newer sighting only when it is its own
+    (``_carry_sighting``). ``person_pages`` are the profile pages the refresh
+    observed as a person's identity (``observed_profile_pages``); without them
+    no sighting crosses units.
+
     Mutates ``opps`` in place (nulls shared inboxes) and returns
     ``{"kept": [...], "removed_by_school": {...}, "nulled_by_school": {...}}``."""
+    pages = _one_person_pages(opps, frozenset(person_pages))
     active = [o for o in opps if _is_active_faculty(o)]
     remove: set[int] = set()
     removed_by_school: Counter = Counter()
@@ -3879,7 +3951,7 @@ def collapse_same_person_faculty(opps: list[dict]) -> dict:
         for o in group:
             if o is survivor:
                 continue
-            _merge_faculty_fields(survivor, o)
+            _merge_faculty_fields(survivor, o, pages)
             remove.add(id(o))
             removed_by_school[school] += 1
 
@@ -3917,7 +3989,7 @@ def collapse_same_person_faculty(opps: list[dict]) -> dict:
             # keyword-less records on different hosts (Stanford ME + BioE
             # stubs) carry no evidence either way and stay.
             if skw and okw <= skw:
-                _merge_faculty_fields(survivor, o)
+                _merge_faculty_fields(survivor, o, pages)
                 remove.add(id(o))
                 removed_by_school[school] += 1
 
@@ -3937,7 +4009,7 @@ def collapse_same_person_faculty(opps: list[dict]) -> dict:
             for o in group:
                 if o is survivor:
                     continue
-                _merge_faculty_fields(survivor, o)
+                _merge_faculty_fields(survivor, o, pages)
                 remove.add(id(o))
                 removed_by_school[school] += 1
         else:
@@ -3971,7 +4043,7 @@ def collapse_same_person_faculty(opps: list[dict]) -> dict:
         survivor, loser = roster, seed
         if len(_faculty_specific_keywords(seed)) > len(_faculty_specific_keywords(roster)):
             survivor, loser = seed, roster
-        _merge_faculty_fields(survivor, loser)
+        _merge_faculty_fields(survivor, loser, pages)
         labels = list((survivor.get("metadata") or {}).get(FACULTY_MAJOR_LABELS_MARKER) or [])
         for label in (loser.get("metadata") or {}).get(FACULTY_MAJOR_LABELS_MARKER) or []:
             if label not in labels:
@@ -4011,7 +4083,7 @@ def collapse_same_person_faculty(opps: list[dict]) -> dict:
             for o in dgroup:
                 if o is survivor:
                     continue
-                _merge_faculty_fields(survivor, o)
+                _merge_faculty_fields(survivor, o, pages)
                 remove.add(id(o))
                 removed_by_school[school] += 1
         group = [o for o in group if id(o) not in remove]
@@ -4030,7 +4102,7 @@ def collapse_same_person_faculty(opps: list[dict]) -> dict:
             continue
         survivor = _pick_richer(specific_recs, umbrella)
         for o in umbrella_recs:
-            _merge_faculty_fields(survivor, o)
+            _merge_faculty_fields(survivor, o, pages)
             remove.add(id(o))
             removed_by_school[school] += 1
 
@@ -4044,11 +4116,11 @@ def collapse_same_person_faculty(opps: list[dict]) -> dict:
     # cruft; dropping it never removes a shown record.
     kept_active = [o for o in active if id(o) not in remove]
     live_email_keys = {
-        (o.get("school"), (o.get("contact_email") or "").strip().lower())
+        (o.get("school"), (o.get("contact_email") or "").strip().lower()): o
         for o in kept_active if (o.get("contact_email") or "").strip()
     }
     live_url_name_keys = {
-        (o.get("school"), _norm_faculty_url(o), _norm_person_name(o.get("pi_name")))
+        (o.get("school"), _norm_faculty_url(o), _norm_person_name(o.get("pi_name"))): o
         for o in kept_active if _norm_faculty_url(o) and _norm_person_name(o.get("pi_name"))
     }
     for o in opps:
@@ -4057,9 +4129,12 @@ def collapse_same_person_faculty(opps: list[dict]) -> dict:
         school = o.get("school")
         em = (o.get("contact_email") or "").strip().lower()
         url, nn = _norm_faculty_url(o), _norm_person_name(o.get("pi_name"))
-        if (em and (school, em) in live_email_keys) or (
-            url and nn and (school, url, nn) in live_url_name_keys
-        ):
+        by_email = live_email_keys.get((school, em)) if em else None
+        by_url_name = live_url_name_keys.get((school, url, nn)) if url and nn else None
+        if by_email is not None or by_url_name is not None:
+            # A tombstone's sighting is still the person's, its retirement is
+            # not; _carry_sighting refuses another person's row on a shared inbox.
+            _carry_sighting(by_url_name or by_email, o, pages)
             remove.add(id(o))
             removed_by_school[school] += 1
 

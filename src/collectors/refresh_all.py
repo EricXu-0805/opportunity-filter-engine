@@ -22,6 +22,7 @@ from src.normalizers.deactivate_stale_faculty import (
     FACULTY_SOURCES,
     deactivate_stale_faculty,
     finalize_unit_ledger,
+    observed_profile_pages,
 )
 from src.school_scope import deactivate_unsupported_schools
 
@@ -1895,7 +1896,10 @@ def refresh_all(
             collapse_same_person_faculty,
         )
         kw_cleaned = clean_corpus_faculty_keywords(all_opps)
-        collapse = collapse_same_person_faculty(all_opps)
+        # A kept row takes another unit's sighting only through a profile page
+        # the retirement pass above counted as observed.
+        collapse = collapse_same_person_faculty(
+            all_opps, person_pages=observed_profile_pages(faculty_fetched))
         all_opps = collapse["kept"]
         removed_dupes = sum(collapse["removed_by_school"].values())
         final_uiuc_dq = enforce_final_shared_keyword_invariant(all_opps)

@@ -591,6 +591,27 @@ def _observed_identities(entry: object) -> set | None:
     return out
 
 
+def observed_profile_pages(fetched_counts: dict) -> frozenset[str]:
+    """The profile pages this run's unit ledgers observed as a person's
+    identity, less every unit's own directory page (a linkless row's url).
+
+    A ledgered source's row whose page is among them is kept by
+    ``deactivate_stale_faculty`` whatever its date, as observed in its own unit
+    or moved to another."""
+    pages: set[str] = set()
+    directories: set[str] = set()
+    for entry_map in fetched_counts.values():
+        if not isinstance(entry_map, dict):
+            continue
+        for entry in entry_map.values():
+            pages |= {value for kind, value in _observed_identities(entry) or ()
+                      if kind == "url"}
+            if isinstance(entry, dict) and (
+                    page := canonical_profile_url(entry.get("unit_url"))):
+                directories.add(page)
+    return frozenset(pages - directories)
+
+
 def _observed_ids(entry: object) -> frozenset[str] | None:
     """The entity ids this unit observation actually saw, when it recorded them."""
     if not isinstance(entry, dict):
