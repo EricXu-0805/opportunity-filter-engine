@@ -72,8 +72,11 @@ from backend.lib.contact_visibility import carries_contact_evidence
 from src.normalizers.deactivate_stale_faculty import (
     UNIT_LEDGER_VERSION,
     _unit_id_of,
+    canonical_listing_urls,
     canonical_profile_url,
     identity_key,
+    listed_name_key,
+    page_name_keys,
 )
 
 from ..contact_instructions import (
@@ -1034,6 +1037,52 @@ def _cover_listed(email: object, link: object, name: str) -> None:
         email.strip().lower() if isinstance(email, str) and "@" in email else None,
         link.strip() if isinstance(link, str) and link.strip() else None,
         name))
+    shown = _ACTIVE_COVERAGE.setdefault("_page_people", set())
+    if isinstance(email, str) and "@" in email:
+        shown.add(("mail", email.strip().lower()))
+    if (person := listed_name_key(name)):
+        shown.add(("name", person))
+
+
+_EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
+
+
+def _page_people(soup) -> set[tuple[str, str]]:
+    """Every address and name a fetched page shows, whatever its cards and
+    title gates made of them: ``("mail", address)`` from its mailto links and
+    text, ``("name", key)`` (``page_name_keys``) from each text and each short
+    element's text (a name split over two spans). A name the page has commented
+    out (``<!-- Jane Doe -->``) is not shown."""
+    from bs4.element import PreformattedString  # noqa: PLC0415
+
+    shown: set[tuple[str, str]] = set()
+    for a in soup.select("a[href]"):
+        href = a["href"].strip()
+        if href[:7].lower() == "mailto:":
+            address = unquote(href[7:]).split("?")[0].strip().lower()
+            if "@" in address:
+                shown.add(("mail", address))
+    short: dict[int, str | None] = {}
+    for text in soup.find_all(string=True):
+        if isinstance(text, PreformattedString):
+            continue
+        if text.parent is None or text.parent.name in ("script", "style", "noscript"):
+            continue
+        if not text.strip():
+            continue
+        shown.update(("mail", m.lower()) for m in _EMAIL_RE.findall(text))
+        shown.update(("name", k) for k in page_name_keys(text))
+        # Up to three enclosing elements, while their text stays name-sized.
+        for parent in list(text.parents)[:3]:
+            key = id(parent)
+            if key not in short:
+                joined = parent.get_text(" ", strip=True)
+                short[key] = joined if len(joined) <= 120 else None
+                if short[key]:
+                    shown.update(("name", k) for k in page_name_keys(short[key]))
+            if short[key] is None:
+                break
+    return shown
 
 
 def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = None,
@@ -1060,6 +1109,8 @@ def _parse_cards(soup, sel: dict, base_url: str, ladder_filter: dict | None = No
             _ACTIVE_COVERAGE["_document_hrefs"].update(
                 urljoin(base_url, a["href"]) for a in soup.select("a[href]")
             )
+            _ACTIVE_COVERAGE.setdefault("_page_people", set()).update(
+                _page_people(soup))
         except Exception:  # noqa: BLE001 — diagnostics must never break a scrape
             _cover("parser_errors")
     for card in soup.select(sel.get("card", "")):
@@ -4763,8 +4814,10 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
     identities, unresolved = [], 0
     seen_identity = set()
     duplicates = 0
+    # Config URLs are raw; a row's url is compared reduced. Reduce both alike.
+    listing = canonical_listing_urls(listing_urls)
     for r in produced:
-        key = identity_key(r, listing_urls)
+        key = identity_key(r, listing)
         if key is None:
             unresolved += 1
             continue
@@ -4779,13 +4832,13 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
         parse_status = "ok" if ids else "zero_rows"
     cov = dict(coverage) if isinstance(coverage, dict) else None
     document_identities: list = []
+    page_people: list | None = None
     listed_identities: list | None = None
     listed_rows = 0
     shared_roster = None
     if cov is not None:
         from src.normalizers.deactivate_stale_faculty import (  # noqa: PLC0415
             canonical_profile_url,
-            listed_name_key,
             listed_token,
         )
         seen_doc = set()
@@ -4795,10 +4848,12 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
                 seen_doc.add(canon)
                 document_identities.append(["url", canon])
         shared_roster = cov.pop("_shared_roster", None)
+        shown = cov.pop("_page_people", None)
+        if shown is not None:
+            page_people = sorted({listed_token(kind, value) for kind, value in shown})
         listed = cov.pop("_listed_rows", None)
         if listed is not None:
             # A link that is a directory page is everyone's, not a person's.
-            listing = {canonical_profile_url(u) for u in listing_urls or ()}
             # An address is a person's only when one row carries it (a row
             # served twice is still one) and that row reads as a name; it then
             # counts together with the name, so a staff row on an office or
@@ -4833,6 +4888,11 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
         "observed_count": len(ids),
         "observed_entity_ids": ids,
         "observed_identities": identities,
+        # This unit's own listing pages, reduced: a row whose url is one of
+        # them is judged by name and address (identity_key), here and at the
+        # retirement pass alike.
+        "listing_urls": sorted(canonical_listing_urls(_listing_urls(
+            {"departments": [dept]}))),
         # What the PAGE contained, not what the selector matched. A baseline
         # identity present here but absent from observed_identities is parser
         # loss, and must block the unit rather than retire the person.
@@ -4861,6 +4921,12 @@ def _unit_observation(school: dict, dept: dict, produced: list[dict],
     if shared_roster:
         # The page this unit shares with others (see finalize_unit_ledger).
         observation["shared_roster"] = shared_roster
+    if page_people is not None:
+        # Every address and name the page showed, as run-keyed tokens: a
+        # list-page professor shown there is not retired
+        # (deactivate_stale_faculty._shown_on_page). Dropped by refresh_all
+        # with the listed tokens.
+        observation["page_people"] = page_people
     return observation
 
 

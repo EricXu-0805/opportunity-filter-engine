@@ -2011,15 +2011,17 @@ def refresh_all(
     else:
         summary["total_in_file"] = 0
 
-    # The digests of the rows a walk listed are for deactivate_stale_faculty
-    # alone, and most of those rows are staff and students. The summary is
-    # committed, so each unit keeps only its ``listed_rows`` count, whether or
-    # not the pass ran (it does not without a corpus file).
+    # The digests of the rows a walk listed, and of the names and addresses a
+    # page showed, are for deactivate_stale_faculty alone, and most of those
+    # rows are staff and students. The summary is committed, so each unit keeps
+    # only its ``listed_rows`` count, whether or not the pass ran (it does not
+    # without a corpus file).
     for info in summary["sources"].values():
         ledger = info.get("stale_unit_ledger") if isinstance(info, dict) else None
         for entry in ledger.values() if isinstance(ledger, dict) else ():
             if isinstance(entry, dict):
                 entry.pop("listed_identities", None)
+                entry.pop("page_people", None)
 
     # Hosts whose certificate failed verification this run, with the fetches
     # skipped after the first failure (the PI pass's included).
