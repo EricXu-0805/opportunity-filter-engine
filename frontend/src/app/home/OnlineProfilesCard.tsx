@@ -61,7 +61,7 @@ export function OnlineProfilesCard({
               value={profile.github_url ?? ''}
               onChange={(e) => update('github_url', e.target.value)}
               placeholder={t('home.form.githubPlaceholder')}
-              className="flex-1 px-4 py-3 border border-gray-200 rounded-2xl text-sm text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none transition-all duration-300"
+              className="flex-1 min-w-0 px-4 py-3 border border-gray-200 rounded-2xl text-sm text-gray-700 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 outline-none transition-all duration-300"
             />
             <button
               type="button"

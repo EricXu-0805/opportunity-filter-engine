@@ -350,7 +350,7 @@ export default function ImportPanel() {
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder={t('import.urlPlaceholder')}
                 disabled={loading}
-                className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-[14px] focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none disabled:bg-gray-50"
+                className="flex-1 min-w-0 px-4 py-2.5 border border-gray-200 rounded-xl text-[14px] focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 outline-none disabled:bg-gray-50"
                 autoFocus
               />
               <button
