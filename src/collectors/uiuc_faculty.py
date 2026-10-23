@@ -447,6 +447,40 @@ def _is_section_label(name: str) -> bool:
     return bool(_NON_PERSON_NAME_RE.search(name or ""))
 
 
+# Card "names" that are a unit, an office or a heading rather than a person.
+# Whole words: as substrings they dropped a real surname containing "school".
+_NON_PERSON_CARD_NAME_RE = re.compile(
+    r"\b(?:faculty|staff|emerit(?:us|a|i|ae)|office|department|school|college|"
+    r"directory|center)\b",
+    re.IGNORECASE,
+)
+
+# DirectoryCore list pages group their cards under section headings ("Faculty",
+# "Affiliate Faculty", "Emeritus Faculty", "In Memoriam"). A card under an
+# In Memoriam heading is someone the unit remembers, never a contact.
+_IN_MEMORIAM_RE = re.compile(r"\bin\s+memoriam\b", re.IGNORECASE)
+IN_MEMORIAM_REASON = "listed_in_memoriam"
+_SECTION_HEADING_TAGS = ("h1", "h2", "h3")
+
+
+def _card_sections(content, cards) -> dict[int, str | None]:
+    """The section heading each card sits under, keyed by ``id(card)``: the
+    nearest h1-h3 before it on the page that is not inside a card (a card's own
+    name heading is not a section). None when no heading precedes the card."""
+    card_ids = {id(c) for c in cards}
+    in_cards = {id(h) for c in cards for h in c.find_all(_SECTION_HEADING_TAGS)}
+    sections: dict[int, str | None] = {}
+    current = None
+    for el in content.find_all(True):
+        if id(el) in card_ids:
+            sections[id(el)] = current
+        elif el.name in _SECTION_HEADING_TAGS and id(el) not in in_cards:
+            text = " ".join(el.get_text(" ", strip=True).split())
+            if text:
+                current = text
+    return sections
+
+
 def _get_main_content(soup: BeautifulSoup) -> BeautifulSoup:
     """Extract the main content area, stripping header/nav/footer noise."""
     for selector in ["main", "#content", "div.main-content", "div#page-content",
@@ -488,13 +522,30 @@ def _scrape_grainger_faculty_list(dept_config: dict) -> list[dict]:
     if not cards:
         cards = _find_faculty_links(content, base)
 
+    sections = _card_sections(content, cards)
     for card in cards:
         person = _parse_faculty_card(card, base, dept_name)
         if person:
+            person["directory_section"] = sections.get(id(card))
             faculty.append(person)
+
+    # Read only off a page whose other cards sit under other headings: when
+    # most of a page falls under an In Memoriam heading, that heading is not
+    # this list's (a memorial block above it), so no one is retired by it.
+    memorial = [p for p in faculty if _IN_MEMORIAM_RE.search(p["directory_section"] or "")]
+    if memorial and 2 * len(memorial) < len(faculty):
+        for person in memorial:
+            person["in_memoriam"] = True
+    elif memorial:
+        logger.warning(
+            f"  {dept_name}: {len(memorial)} of {len(faculty)} cards under an "
+            "In Memoriam heading; not read as a memorial section"
+        )
 
     if not faculty:
         faculty = _broad_faculty_extraction(content, base, dept_name)
+        for person in faculty:
+            person["directory_section"] = None
 
     logger.info(f"  Found {len(faculty)} faculty in {dept_name}")
     return faculty
@@ -541,10 +592,7 @@ def _parse_faculty_card(element, base_url: str, dept: str) -> dict | None:
     name = _clean_name(name)
     if not name or len(name) < 3 or len(name) > 60:
         return None
-    if any(skip in name.lower() for skip in [
-        "faculty", "staff", "emerit", "office", "department",
-        "school", "college", "directory", "center"
-    ]):
+    if _NON_PERSON_CARD_NAME_RE.search(name):
         return None
 
     result["name"] = name
@@ -813,6 +861,9 @@ def normalize_faculty(
         netid_match = re.search(r"/([a-z][a-z0-9]{1,10})/?$", person.get("url", ""))
         if netid_match:
             email = f"{netid_match.group(1)}@illinois.edu"
+    in_memoriam = bool(person.get("in_memoriam"))
+    if in_memoriam:
+        email = ""
     dept_short = dept_config["short"]
     dept_name = dept_config["name"]
     profile_url = person.get("url", "")
@@ -842,7 +893,7 @@ def normalize_faculty(
         research_summary = f" ({', '.join(keywords[:3])})"
     opp_title = f"Prof. {name} — {dept_short}{research_summary}"
 
-    return {
+    opp = {
         "id": opp_id,
         "source": "uiuc_faculty",
         "source_url": profile_url,
@@ -908,6 +959,16 @@ def normalize_faculty(
             FACULTY_MAJOR_LABELS_MARKER: list(dept_config.get("majors") or []),
         },
     }
+    metadata = opp["metadata"]
+    if "directory_section" in person:
+        metadata["directory_section"] = person["directory_section"]
+    if in_memoriam:
+        # Stated by the page that was read: the card sits under its
+        # In Memoriam heading. The stored row is retired by this one.
+        metadata["is_active"] = False
+        metadata["deactivated_at"] = now[:10]
+        metadata["deactivation_reason"] = IN_MEMORIAM_REASON
+    return opp
 
 
 def fetch_department(dept_key: str, enrich: bool = True) -> list[dict]:
@@ -1425,6 +1486,9 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
     # college's ciwebmanager@ box). Let those decay instead of resurrecting them.
     if email and _ROLE_MAILBOX.match(email) and incoming.get("pi_name"):
         email = None
+    # Nor onto a card read under its directory's In Memoriam heading.
+    if (incoming.get("metadata") or {}).get("deactivation_reason") == IN_MEMORIAM_REASON:
+        email = None
     incoming_email = incoming.get("contact_email")
     same_email = bool(
         email
@@ -1518,7 +1582,19 @@ def _carry_newest_liveness(survivor: dict, dropped: dict) -> None:
         return
     meta = survivor.setdefault("metadata", {})
     meta["last_seen_at"] = dropped["metadata"]["last_seen_at"]
-    if (dropped.get("metadata") or {}).get("is_active") is not False:
+    if ("directory_section" in dropped["metadata"]
+            and (dropped.get("source_url") or "") == (survivor.get("source_url") or "")):
+        # The same directory card, so the section it was read under this run.
+        meta["directory_section"] = dropped["metadata"]["directory_section"]
+    if dropped["metadata"].get("deactivation_reason") == IN_MEMORIAM_REASON:
+        # The same person's newer card sits under the directory's In Memoriam
+        # heading, so the surviving row is retired with it and loses its address.
+        meta["is_active"] = False
+        meta["deactivated_at"] = dropped["metadata"].get("deactivated_at")
+        meta["deactivation_reason"] = IN_MEMORIAM_REASON
+        clear_contact_evidence(survivor, tombstone=carries_contact_evidence(survivor))
+        survivor["contact_email"] = None
+    elif (dropped.get("metadata") or {}).get("is_active") is not False:
         # Observed after the retirement that removed it: absence is disproven,
         # so the retirement stamp goes with the timestamp it contradicted.
         meta["is_active"] = True
@@ -2656,6 +2732,11 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
             opp["metadata"]["first_seen_at"] = cur.get(
                 "metadata", {}
             ).get("first_seen_at", opp["metadata"]["first_seen_at"])
+            prior = cur.get("metadata") or {}
+            if (opp["metadata"].get("deactivation_reason") == IN_MEMORIAM_REASON
+                    and prior.get("deactivation_reason") == IN_MEMORIAM_REASON
+                    and prior.get("deactivated_at")):
+                opp["metadata"]["deactivated_at"] = prior["deactivated_at"]
             # Don't let a broad/empty re-scrape clobber committed OpenAlex/LLM
             # enrichment on the same stable id.
             _carry_forward_enrichment(cur, opp)
