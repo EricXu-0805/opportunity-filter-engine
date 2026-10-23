@@ -66,6 +66,7 @@ import {
   type ProfileViewSnapshot,
   type ProfileConflictPrompt,
   withQuestionFields,
+  RESUME_BUNDLE,
 } from '@/lib/profile-sync';
 import { decodeProfileResult, buildShareUrl } from '@/lib/profile-share';
 import { DEFAULT_PROFILE, FRESH_PROFILE, hasSelectedSeekingType, SEEKING_TYPES, type HydrationState, type HomeProfileRefreshStatus, type SaveStatus, type TFunc } from './types';
@@ -1258,6 +1259,50 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     setSearchWeight(value);
   }, [recordIntent, republishRendered, editingOrigin, screenOrigin]);
 
+  /**
+   * Shows the résumé fields, and apart from them the course list, as `row`
+   * holds them, when the base moves onto it (M147). Neither moves while an
+   * edit of one is unsent in any tab, a question holds one, or this form has
+   * one it has not written down. An edit of one résumé field sends all of
+   * them, from this form and measured against the base: shown from an older
+   * row, the ones the person did not touch would undo what another tab saved
+   * since.
+   */
+  const showResumeAsRow = useCallback((row: ProfileData | null, token: OwnerToken) => {
+    const shown = profileRef.current;
+    if (!row || shareDraftActiveRef.current) return;
+    const dirty = getDirtyProfileKeys(token, HOME_FORM_WRITER);
+    if (!dirty.ok) return;
+    const busy = new Set<string>([...dirty.value, ...unrepresentedNow(), ...conflictKeysRef.current]);
+    const read = normalizeProfileForRelease({ ...DEFAULT_PROFILE, ...(migrateProfile(row) ?? {}) } as ProfileData) as unknown as Record<string, unknown>;
+    const merged = { ...(shown as unknown as Record<string, unknown>) };
+    const empty = (v: unknown) => v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0);
+    let moved = false;
+    for (const unit of [RESUME_BUNDLE, ['courses']]) {
+      if (unit.some((key) => busy.has(key))) continue;
+      for (const key of unit) {
+        if ((empty(merged[key]) && empty(read[key])) || JSON.stringify(merged[key]) === JSON.stringify(read[key])) continue;
+        merged[key] = read[key];
+        moved = true;
+      }
+    }
+    if (!moved) return;
+    const next = merged as unknown as ProfileData;
+    // Not an edit of the person's, so it arms no autosave: a form the
+    // autosave held as stored still is, and so is one with no save waiting
+    // and nothing of this tab's unsent that a save could send (an edit in the
+    // question waits for its answer).
+    const stored = hydratedProfileRef.current === shown && hydratedWeightRef.current === weightRef.current;
+    const own = getDirtyProfileKeys(token, HOME_FORM_WRITER, 'own');
+    const sendable = !own.ok || own.value.some((key) => !conflictKeysRef.current.includes(key)) || unrepresentedNow().size > 0;
+    if (stored || (pendingSaveRef.current === null && !sendable)) {
+      hydratedProfileRef.current = next;
+      hydratedWeightRef.current = weightRef.current;
+    }
+    profileRef.current = next;
+    setProfile(next);
+  }, [unrepresentedNow]);
+
   // R67 problem #4 (cross-device sync, code-side portion) + C1-R2B:
   //
   // Without this effect, the home form snapshots whatever the database
@@ -1318,6 +1363,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
   ) => {
     if (generation !== identityGenerationRef.current) return;
     if (!isOwnerTokenValid(token, token.uid)) return;
+    if (revision > (viewSnapshotRef.current?.revision ?? 0)) showResumeAsRow(profile, token);
     const adopted = makeProfileViewSnapshot({
       baseProfile: profile,
       renderedProfile: profileRef.current,
@@ -1328,7 +1374,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     });
     viewSnapshotRef.current = adopted;
     setViewSnapshot(adopted);
-  }, []);
+  }, [showResumeAsRow]);
 
   const advanceAcceptedBase = useCallback((
     profile: ProfileData | null,
@@ -1342,6 +1388,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // acknowledgement can use to re-open a conflict the user already settled.
     const held = viewSnapshotRef.current;
     if (held && revision < held.revision) return;
+    if (revision > (held?.revision ?? 0)) showResumeAsRow(profile, token);
     const advanced = makeProfileViewSnapshot({
       baseProfile: profile,
       renderedProfile: profileRef.current,
@@ -1352,7 +1399,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     });
     viewSnapshotRef.current = advanced;
     setViewSnapshot(advanced);
-  }, []);
+  }, [showResumeAsRow]);
 
   const applySaveResult = useCallback((
     result: ProfileSaveResult,
