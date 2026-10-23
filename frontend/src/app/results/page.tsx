@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { AlertCircle, ArrowLeft } from 'lucide-react';
 
 import StorageStatusBanner from '@/components/StorageStatusBanner';
+import { ResultsSchoolFreshness } from '@/components/SchoolFreshnessNote';
 import { KeyboardHelpDialog } from '@/components/KeyboardHelpDialog';
 import { useDebounce } from '@/lib/use-debounce';
 import { useLoadingNarrative } from '@/lib/use-loading-narrative';
@@ -48,6 +49,7 @@ import {
 } from '@/lib/match-feedback';
 import { mergeHydratedFeedback } from './feedback-hydration';
 import { homeSchoolOf } from '@/lib/discovery-scope';
+import { useSchoolFreshness } from '@/lib/school-freshness';
 import { bySlug } from '@/lib/schools';
 import type { MatchResult } from '@/lib/types';
 import { STORAGE_KEYS } from '@/lib/storage-keys';
@@ -158,6 +160,9 @@ function ResultsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { t, locale } = useT();
+  // Asked for on arrival, not when the list paints: the line is shown with a
+  // page of results only if the answer is already here (ResultsSchoolFreshness).
+  const schoolFreshness = useSchoolFreshness();
   // R66: openAuthModal is renamed locally to avoid shadowing the email
   // modal's own "open" state names elsewhere in this large component.
   const { openModal: openAuthModal } = useAuthModal();
@@ -563,6 +568,10 @@ function ResultsContent() {
   }, [setData]);
 
   const paginated = useMemo(() => data?.results ?? [], [data?.results]);
+  const shownSchools = useMemo(
+    () => [...new Set(paginated.flatMap((match) => match.opportunity.school || []))],
+    [paginated],
+  );
   const filteredTotal = data?.filtered_total ?? 0;
   const totalPages = Math.ceil(filteredTotal / PAGE_SIZE);
   const effectivePage = Math.min(Math.max(1, page), Math.max(1, totalPages));
@@ -1049,6 +1058,13 @@ function ResultsContent() {
           {RELEASE_SCOPE.crossSchoolMatching && (
             <p className="text-[12px] text-gray-600">{crossSchoolHint}</p>
           )}
+          <ResultsSchoolFreshness
+            freshness={schoolFreshness}
+            homeSchool={homeSchool}
+            shownSchools={shownSchools}
+            t={t}
+            locale={locale}
+          />
         </div>
       )}
 

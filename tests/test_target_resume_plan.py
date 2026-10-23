@@ -462,12 +462,33 @@ def test_a_block_whose_advice_claims_no_relevance_needs_only_its_own_quote(endpo
     endpoint.mutate = _cafe_block(action, reason, [])
     relevant, cafe = completed(endpoint, endpoint.submit(doc), doc)["items"]
     assert relevant["target_evidence"] == [{"field": "requirement", "requirement_index": 0, "start": 0, "end": 6, "quote": "Python"}]
-    assert 'Target original: "Python"' in relevant["reason"]
+    assert 'AI-linked text from the opportunity: "Python"' in relevant["reason"]
     assert cafe["action"] == action and cafe["target_evidence"] == []
     assert f"Student original: {json.dumps(CAFE, ensure_ascii=False)}" in cafe["reason"]
-    assert "Target original" not in cafe["reason"]
+    assert "AI-linked text from the opportunity" not in cafe["reason"]
     system = endpoint.calls[0][0][0]["content"]
     assert "target_evidence: []" in system and reason in system
+
+
+@pytest.mark.parametrize("locale,first,student,linked,old", [
+    ("en", "Keep suggestion: Compare the stated methods with the target requirements.", "Student original",
+     "AI-linked text from the opportunity", "Target original"),
+    ("zh", "建议保留: 比较所述方法与目标需要的关联。", "学生原文", "AI 关联的机会原文", "目标原文"),
+])
+def test_the_plan_names_its_posting_quote_as_text_the_ai_linked(endpoint, locale, first, student, linked, old):
+    # M133, 10/18: a quote is checked to be in the opportunity's text, not to bear on the block, and a tour sentence
+    # stood beside an FFT project. The plan names the quote as text the AI linked, not as the target's support.
+    doc = endpoint.doc([ORIGINAL])
+
+    def method_advice(result, data):
+        line = data["blocks"][0]["lines"][-1]
+        result["items"][0].update(reason="method_relevance", source_evidence=[
+            {"unit_id": line["unit_id"], "start": 0, "end": len(line["original"]), "quote": line["original"]}])
+    endpoint.mutate = method_advice
+    item = completed(endpoint, endpoint.client.post(PATH, json={**payload(doc), "locale": locale}), doc)["items"][0]
+    assert item["target_evidence"] == [{"field": "requirement", "requirement_index": 0, "start": 0, "end": 6, "quote": "Python"}]
+    assert item["reason"].split("\n") == [first, f"{student}: {json.dumps(ORIGINAL)}", f'{linked}: "Python"']
+    assert old not in item["reason"]
 
 
 @pytest.mark.parametrize("reason", ["method_relevance", "topic_relevance", "transferable_experience", "review_sources",
@@ -499,7 +520,7 @@ def test_the_live_plan_no_longer_shows_this_reu_program_as_evidence():
     assert reason is None and len(items) == 7
     for item in items:
         assert item["target_evidence"] == [] and "This REU program" not in item["reason"]
-        assert "Target original" not in item["reason"]
+        assert "AI-linked text from the opportunity" not in item["reason"]
     education, method, transfer = (item["reason"].split("\n")[0] for item in items[:3])
     assert education == "Keep suggestion: Retain background needed to understand this experience."
     # A relevance claim left with no quote that says anything claims none, in the words of its action.
@@ -537,7 +558,7 @@ def test_a_quote_that_only_names_the_posting_is_no_evidence_of_relevance(endpoin
     assert relevant["target_evidence"][0]["quote"] == "Python"
     assert cafe["action"] == action and cafe["target_evidence"] == []
     assert cafe["reason"].split("\n")[0] == f"{action.capitalize()} suggestion: {motive}"
-    assert "Target original" not in cafe["reason"] and quote not in cafe["reason"]
+    assert "AI-linked text from the opportunity" not in cafe["reason"] and quote not in cafe["reason"]
 
 
 @pytest.mark.parametrize("quote", ["This REU program in Python", "要求熟悉信号处理",
@@ -549,7 +570,7 @@ def test_a_quote_with_a_word_beyond_the_posting_name_keeps_the_relevance_claim(e
     _, cafe = _haystack(endpoint, "method_relevance", [quote])
     assert [row["quote"] for row in cafe["target_evidence"]] == [quote]
     assert cafe["reason"].split("\n")[0] == "Keep suggestion: Compare the stated methods with the target requirements."
-    assert f"Target original: {json.dumps(quote, ensure_ascii=False)}" in cafe["reason"]
+    assert f"AI-linked text from the opportunity: {json.dumps(quote, ensure_ascii=False)}" in cafe["reason"]
 
 
 @pytest.mark.parametrize("quote", ["Programming", "Programming experience", "Research experience", "Lab experience",
@@ -558,7 +579,7 @@ def test_a_requirement_that_shares_a_word_form_with_a_posting_kind_word_is_evide
     # "Programming" was read as "program", and "experience" was a kind word for "Research Experiences for Undergraduates".
     _, cafe = _haystack(endpoint, "method_relevance", [quote])
     assert [row["quote"] for row in cafe["target_evidence"]] == [quote]
-    assert f"Target original: {json.dumps(quote)}" in cafe["reason"]
+    assert f"AI-linked text from the opportunity: {json.dumps(quote)}" in cafe["reason"]
 
 
 def test_only_quotes_that_say_something_are_shown(endpoint):
@@ -570,7 +591,7 @@ def test_only_quotes_that_say_something_are_shown(endpoint):
 
 def test_a_contentless_quote_on_advice_without_a_relevance_claim_is_dropped(endpoint):
     _, cafe = _haystack(endpoint, "supporting_context", ["This REU program"])
-    assert cafe["target_evidence"] == [] and "Target original" not in cafe["reason"]
+    assert cafe["target_evidence"] == [] and "AI-linked text from the opportunity" not in cafe["reason"]
     assert '"This REU program") supports no advice' in endpoint.calls[0][0][0]["content"]
     assert cafe["reason"].split("\n")[0] == "Keep suggestion: Retain background needed to understand this experience."
 

@@ -135,6 +135,8 @@ def _post(path: str, payload: dict):
         ("/api/opportunities/upcoming?days=30", "actionable_opportunities"),
         ("/api/opportunities/stats/summary", "countable_opportunities"),
         ("/api/opportunities/coverage", "coverage_payload"),
+        # A miss parses the whole per-source ledger and judges every source.
+        ("/api/opportunities/freshness", "_school_freshness_payload"),
     ],
 )
 def test_public_corpus_scans_do_not_block_live(monkeypatch, path, scan_name):
@@ -153,6 +155,7 @@ def test_public_corpus_scans_do_not_block_live(monkeypatch, path, scan_name):
     monkeypatch.setattr(opportunities, "load_opportunities", lambda: corpus)
     monkeypatch.setattr(opportunities, "_stats_cache", None)
     monkeypatch.setattr(opportunities, "_coverage_cache", None)
+    monkeypatch.setattr(opportunities, "_freshness_cache", None, raising=False)
     scan, gate = _gated(getattr(opportunities, scan_name))
     monkeypatch.setattr(opportunities, scan_name, scan)
 

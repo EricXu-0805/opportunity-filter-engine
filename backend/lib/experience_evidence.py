@@ -110,6 +110,11 @@ class ExperienceSelection:
         return [_fact_receipt(bullet, self.contexts)
                 for bullet in _printed_bullets(self.eligible, self.resume_text, self.contexts)]
 
+    def printed_lines(self) -> list[list[str]]:
+        """For each fact of ``materials()``, the confirmed entry texts it joins."""
+        return [[entry.text for entry in bullet]
+                for bullet in _printed_bullets(self.eligible, self.resume_text, self.contexts)]
+
     def usage(self, selected: list[dict] | None = None, *, mode: str = "ai") -> dict:
         review = any(item["reason"] in {
             "candidate", "source_signature_mismatch", "source_quote_mismatch",
