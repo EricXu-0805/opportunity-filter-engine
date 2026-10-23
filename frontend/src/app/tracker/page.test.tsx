@@ -7,7 +7,7 @@
  * reconciliation behavior across a status-triggered column move.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 const mocks = vi.hoisted(() => ({
@@ -86,7 +86,9 @@ beforeEach(() => {
 
 async function openStatusMenuAndPick(title: string, optionKey: string) {
   fireEvent.click(screen.getByRole('button', { name: new RegExp(`statusMenu\\.ariaTrigger:${title}`) }));
-  fireEvent.click(await screen.findByText(`detail.tracker.statusLabels.${optionKey}`));
+  // Scoped to the status dialog: the card's note field offers the same status
+  // labels (M146), and the mocked t renders both as the same key.
+  fireEvent.click(within(await screen.findByRole('dialog')).getByText(`detail.tracker.statusLabels.${optionKey}`));
 }
 
 // Re-clicking the currently-active status option is now a no-op —
@@ -577,7 +579,7 @@ describe('TrackerPage — DOM: an ordinary cross-column SET (a MOVE, not a REMOV
     await screen.findByText('Opp o2');
 
     await user.click(screen.getByRole('button', { name: /statusMenu\.ariaTrigger:Opp o1/ }));
-    await user.click(screen.getByText('detail.tracker.statusLabels.interviewing'));
+    await user.click(within(screen.getByRole('dialog')).getByText('detail.tracker.statusLabels.interviewing'));
 
     await waitFor(() => expect(mocks.trackInteraction).toHaveBeenCalledWith('o1', 'interviewing', expect.anything()));
     // o1's trigger in the "applied" section was unmounted (a real remount

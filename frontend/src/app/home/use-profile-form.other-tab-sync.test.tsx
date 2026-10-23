@@ -501,4 +501,97 @@ describe('a question still open when another tab writes (M137)', () => {
     expect({ resume: remote.resume_text, entries: (remote.experience_entries ?? []).length })
       .toEqual({ resume: 'From tab B', entries: 1 });
   });
+
+  describe('with nothing of the résumé unsent or asked in this tab, after the other tab saves one (M147)', () => {
+    /** Offline, tab A leaves `unsent` outside the résumé; back online with no
+     *  event, tab B saves a résumé, then tab A adds an experience entry. */
+    async function addAfterOtherTabsResume(unsent: (a: Tab, b: Tab) => Promise<void>, resume = 'Resume saved by B', withEntry = false) {
+      withCourses();
+      const a = await open('A');
+      const b = await open('B');
+      online = false;
+      await unsent(a, b);
+      await wait(2000);
+      online = true;
+      await as(b, (f) => f.update('resume_text', resume), withEntry ? 100 : 3000);
+      // In the same save, tab B adds an experience entry of its own.
+      if (withEntry) await as(b, (f) => { f.handleExperienceChange([{ ...experience, id: 'exp-B' }] as never, { resumeText: resume, entriesJson: '[]' }); });
+      await wait(3000, 'B');
+      expect(remote.resume_text).toBe(resume);
+      let accepted = false;
+      await as(a, (f) => { accepted = addToShown(f); });
+      await wait(3000, 'A');
+      const p = a.hook.result.current.profile;
+      return { accepted, stored: remote.resume_text, entries: (remote.experience_entries ?? []).length, shown: p.resume_text };
+    }
+    /** An entry added to the entries the card shows. */
+    function addToShown(form: Tab['hook']['result']['current']) {
+      const shown = form.profile.experience_entries ?? [];
+      return form.handleExperienceChange([...shown, experience] as never, { resumeText: form.profile.resume_text ?? '', entriesJson: JSON.stringify(shown) });
+    }
+    const kept = (resume = 'Resume saved by B') => ({ accepted: true, stored: resume, entries: 1, shown: resume });
+
+    it('an open research-interests question: the experience edit keeps the other tab\'s résumé', async () => {
+      let seen: string[] = [];
+      expect(await addAfterOtherTabsResume(async (a, b) => {
+        seen = a.seen;
+        await as(a, (f) => f.update('research_interests', 'From tab A'));
+        await as(b, (f) => f.update('research_interests', 'From tab B'));
+      })).toEqual(kept());
+      // Showing the other tab's résumé starts no save of its own.
+      expect(seen).toEqual(['idle', 'saving', 'cloud-failed', 'saving', 'conflict']);
+    });
+
+    it('an unsent slider move: the experience edit keeps the other tab\'s résumé', async () => {
+      expect(await addAfterOtherTabsResume(async (a) => {
+        await as(a, (f) => f.setSearchWeight(30));
+      })).toEqual(kept());
+    });
+
+    it('an unsent grade: the experience edit keeps the other tab\'s résumé', async () => {
+      expect(await addAfterOtherTabsResume(async (a) => {
+        await as(a, (f) => f.update('grade', 'Senior'));
+      })).toEqual(kept());
+    });
+
+    it('an unsent course status (a guard; already so since M137): the experience edit keeps the other tab\'s résumé', async () => {
+      // Passes without the M147 change too: kept so this case stays covered.
+      expect(await addAfterOtherTabsResume(async (a) => {
+        await as(a, (f) => f.update('courses', [course('CS 124', 'completed')] as never, 'status'));
+      })).toEqual(kept());
+    });
+
+    it('a grade the other tab sent with its résumé: the experience edit keeps the résumé', async () => {
+      expect(await addAfterOtherTabsResume(async (a) => {
+        await as(a, (f) => f.update('grade', 'Senior'));
+        await wait(2000, 'A');
+        expect(a.hook.result.current.saveStatus).toBe('cloud-failed');
+      }, 'From tab B')).toEqual(kept('From tab B'));
+      expect(remote.grade).toBe('Senior');
+    });
+
+    it('an unsent grade, and an experience entry saved with the other tab\'s résumé: this tab\'s entry is added beside it', async () => {
+      expect(await addAfterOtherTabsResume(async (a) => {
+        await as(a, (f) => f.update('grade', 'Senior'));
+      }, 'Resume saved by B', true)).toEqual({ ...kept(), entries: 2 });
+      expect((remote.experience_entries ?? []).map((e) => e.id).sort()).toEqual(['exp-1', 'exp-B']);
+    });
+
+    it('another device\'s résumé, learned only from this tab\'s own save: the experience edit keeps it', async () => {
+      withCourses();
+      const a = await open('A');
+      // Saved on a phone: no tab hears of it.
+      remote = { ...remote, resume_text: 'Resume saved on phone' } as ProfileData; revision += 1;
+      // The grade's save is answered with the phone's résumé in the revision after it.
+      await as(a, (f) => f.update('grade', 'Senior'));
+      await wait(3000, 'A');
+      let accepted = false;
+      await as(a, (f) => { accepted = addToShown(f); });
+      await wait(3000, 'A');
+      expect({ accepted, stored: remote.resume_text, entries: (remote.experience_entries ?? []).length, shown: a.hook.result.current.profile.resume_text })
+        .toEqual(kept('Resume saved on phone'));
+      // Two saves, the grade's and the entry's: showing the résumé starts none.
+      expect(a.seen).toEqual(['idle', 'saving', 'saved', 'idle', 'saving', 'saved', 'idle']);
+    });
+  });
 });
