@@ -48,6 +48,7 @@ import {
   clearJournal,
   appendRebaseReceipt,
   compactRebaseReceipts,
+  removeRebaseReceipt,
   encodeJournalValue,
   type JournalValue,
   readOutstandingOps,
@@ -659,9 +660,35 @@ export function recordProfileIntent(
   // The disagreement itself stays locked until somebody answers it; only the
   // baseline of the NEW action moves.
   const locked = new Set(readProfileSyncEnvelope()?.pending?.lockedKeys ?? []);
+  const outstanding = readOutstandingOps();
+  const liveOps = outstanding.ok ? outstanding.value : [];
+  const mine = getJournalLineageId();
+  // A field whose edit chain has ENDED: this process still holds a base for
+  // it, but no operation of this lineage carrying it is outstanding any more
+  // — another tab's acknowledgement or answer settled them, or the base came
+  // from another tab's operations. Only this lineage's own outstanding
+  // operations are a chain this edit continues (see `supersedes` below). A
+  // base held from before an answer's settle measures the next edit against
+  // a row the answer has replaced, and the three-way merge then sends it over
+  // another device's later change without asking (M135). The edit starts a
+  // new chain as a field with no chain does: from `base` at `baseRevision`,
+  // the base the caller's view accepted (`observedBase`, else the confirmed
+  // row). The home form shows a field as that base holds it whenever the base
+  // moves on, unless an edit of it is unsent in any tab, a question holds it,
+  // or the form owes one (showRowWhereIdle in use-profile-form.ts). Only when
+  // the journal could be read: an unreadable one proves nothing ended.
+  const ended = new Map<string, number>();
+  if (outstanding.ok) {
+    for (const key of effective) {
+      const held = fieldIntents.get(key);
+      if (held && !liveOps.some((o) => o.lineage === mine && o.fields.some((f) => f.key === key))) {
+        ended.set(key, held.version);
+      }
+    }
+  }
   const fields: JournalField[] = [];
   for (const key of effective) {
-    const held = fieldIntents.get(key);
+    const held = ended.has(key) ? undefined : fieldIntents.get(key);
     const continues = held && !locked.has(key);
     if (continues) baseRevision = Math.min(baseRevision, held.baseRevision);
     fields.push({
@@ -705,9 +732,6 @@ export function recordProfileIntent(
   // origin. So the first post-reload edit names all of them, once, and the
   // next edit names only that one; the ancestry walked from the new chain
   // still covers the old one, even when that first edit carried another field.
-  const outstanding = readOutstandingOps();
-  const liveOps = outstanding.ok ? outstanding.value : [];
-  const mine = getJournalLineageId();
   const origin = getJournalOriginId();
   const continued = liveOps.filter(
     (o) => o.lineage === mine && o.fields.some((f) => effective.includes(f.key as ProfileKey)),
@@ -725,7 +749,14 @@ export function recordProfileIntent(
     ...(supersedes.length > 0 ? { supersedes } : {}),
   }, token);
   if (!op) return false;
+  for (const key of ended.keys()) fieldIntents.delete(key);
   markProfileFieldsDirty(effective, token, writer, op);
+  // The new chain's count goes on from the ended one's: an acknowledgement
+  // still in flight compares against the count it staged.
+  for (const [key, version] of ended) {
+    const intent = fieldIntents.get(key);
+    if (intent) intent.version = version + 1;
+  }
   return true;
 }
 
@@ -777,11 +808,11 @@ function markProfileFieldsDirty(
  * has no memory at all.
  *
  * `own`: only this tab's operations — its lineage's, which no other tab
- * continues (M117).
+ * continues (M117). A `writer` of null: every writer's.
  */
 export function getDirtyProfileKeys(
   token: OwnerToken,
-  writer: string = DEFAULT_WRITER,
+  writer: string | null = DEFAULT_WRITER,
   lineage: 'any' | 'own' = 'any',
 ): JournalResult<ProfileKey[]> {
   // BEFORE ensureScope and before the journal read — same reasoning as
@@ -800,7 +831,7 @@ export function getDirtyProfileKeys(
   const mine = lineage === 'own' ? getJournalLineageId() : null;
   const out = new Set<ProfileKey>();
   for (const op of journal.value) {
-    if (op.writer !== writer) continue;
+    if (writer !== null && op.writer !== writer) continue;
     if (mine !== null && op.lineage !== mine) continue;
     for (const field of op.fields) if (isProfileKey(field.key)) out.add(field.key);
   }
@@ -1315,6 +1346,9 @@ function finishedClosures(
   /** What this write actually SENT for a key, where that differs from what
    *  the operation itself asked for (a chain collapses to its latest value). */
   sentValue: (key: string) => { known: boolean; value?: unknown },
+  /** Settling with no response to go by: the lineage whose answers alone may
+   *  finish a field several operations own. Omitted in an acknowledgement. */
+  answeredBy?: string,
 ): string[] {
   const seeded = new Set([...seeds].filter((id) => byId.has(id)));
   const members = [...byId.keys()];
@@ -1363,19 +1397,35 @@ function finishedClosures(
 
     const keys = new Set<string>();
     for (const member of closure) for (const f of byId.get(member)!.fields) keys.add(f.key);
+    // Only an answer joins operations of several lineages into one closure
+    // (`supersedes` stays inside a lineage), so several owners are always an
+    // answered disagreement. With no response to go by, another tab's answer
+    // can still be in flight: settled then, that tab's edit made before the
+    // response is measured against the row from before its answer and is
+    // asked about the answer itself (M135, review round 2, A1). Such a closure
+    // waits for an acknowledgement, that response's or a later write's. This
+    // tab's own answers settle here as before: "Use the other version" sends
+    // nothing, so nothing acknowledges it.
+    const mayFinishSeveral = answeredBy === undefined
+      || [...closure].every((m) => byId.get(m)!.mode !== 'resolve' || byId.get(m)!.lineage === answeredBy);
     const satisfied = [...keys].every((key) => {
       const owners = [...closure]
         .filter((m) => !spokenFor.get(m)?.has(key))
         .map((m) => byId.get(m)!)
         .filter((op) => op.fields.some((f) => f.key === key));
-      // Two owners means two lineages still disagree about it.
-      if (owners.length !== 1) return false;
-      const field = owners[0].fields.find((f) => f.key === key)!;
+      const desired = (op: JournalOp) => {
+        const field = op.fields.find((f) => f.key === key)!;
+        return field.desired.present ? field.desired.value : undefined;
+      };
       const sent = sentValue(key);
-      return sameValue(
-        sent.known ? sent.value : (field.desired.present ? field.desired.value : undefined),
-        stored[key],
-      );
+      if (owners.length === 1) return sameValue(sent.known ? sent.value : desired(owners[0]), stored[key]);
+      // Several owners — two tabs' college switches that both cleared the
+      // additional majors, which the answer did not decide — are finished
+      // only when every one of them, and what this write sent, is what the
+      // row holds. Any other value is a disagreement still open (M135).
+      return owners.length > 1 && mayFinishSeveral
+        && owners.every((op) => sameValue(desired(op), stored[key]))
+        && (!sent.known || sameValue(sent.value, stored[key]));
     });
     if (satisfied) finished.push(...closure);
   }
@@ -1445,8 +1495,14 @@ function ackConfirmedJournalOpsLocked(
   // The receipts go down FIRST, before anything is settled or deleted. An
   // ancestor that disappears without its receipt is one no descendant can
   // ever rebase onto — the ancestry it names is gone and no later pass can
-  // reconstruct it. A receipt that cannot be written therefore means the
-  // ancestor is NOT settled: the caller retries, and nothing is half-done.
+  // reconstruct it. A receipt that cannot be written therefore means NOTHING
+  // here is settled, and the receipts already written for the others are
+  // taken back: a receipt hides its operation from every reader, and half a
+  // closure hidden can be an answer gone while an edit it decided against is
+  // outstanding again, which the next send carries over the answer with no
+  // question. Every operation here was read as outstanding, so each receipt
+  // that went down was written by this call. Taking one back can fail too;
+  // the settle is reported as failed either way, and the caller retries.
   // The WHOLE row at this revision, so a descendant carrying confirmed and
   // unconfirmed fields together still describes one coherent moment.
   const rowAtRevision: Record<string, JournalValue> = {};
@@ -1454,6 +1510,7 @@ function ackConfirmedJournalOpsLocked(
   // Room first: what nothing can reach any more goes before more is written,
   // so a device that reached the cap under an earlier build recovers here.
   compactRebaseReceipts(token);
+  const written: string[] = [];
   for (const opId of landed) {
     const op = byId.get(opId);
     if (!op) continue;
@@ -1473,8 +1530,10 @@ function ackConfirmedJournalOpsLocked(
       profile: rowAtRevision,
       confirmedKeys: settledKeys,
     }, token)) {
+      for (const id of written) removeRebaseReceipt(id, token);
       return false;
     }
+    written.push(op.opId);
   }
   // The settle also removes the receipts it makes unreachable — these ones
   // too, unless an edit made while they were in flight names them. Appends do
@@ -1576,11 +1635,26 @@ function consumeUnstaged(keys: readonly ProfileKey[], token: OwnerToken): void {
  * and revision frozen when that field's edit BEGAN. The revision is the OLDEST
  * of them — a write that carries an edit started at revision 7 is a write
  * against revision 7, whatever else has landed since.
+ *
+ * Only for a key `own` names: one an outstanding operation of this tab's
+ * lineage carries. Another key's base held in memory is no edit of this tab
+ * in progress — its chain ended when another tab's acknowledgement or answer
+ * settled it (M135), or it came from another tab's operations, whose bases
+ * the plan takes from the journal itself.
+ *
+ * Except an edit whose stage this device could not write (`hasUnstaged`): it
+ * is still this tab's, waiting for Retry to stage it again from memory, even
+ * after another tab's save has carried its operation and settled it. Aimed at
+ * the current revision, that Retry writes over a value stored after the
+ * other tab's save with no question; from where the edit began, the server
+ * reports the change and the three-way merge asks about it (M135, review
+ * round 3).
  */
 function stagedIntentBase(
   keys: readonly ProfileKey[],
   existing: ProfilePendingWrite | null,
   confirmed: { revision: number; profile: ProfileData } | null,
+  own: ReadonlySet<string>,
 ): { revision: number; profile: ProfileData | null } {
   const start = existing?.baseProfile ?? confirmed?.profile ?? null;
   const merged = start ? { ...(start as unknown as Record<string, unknown>) } : null;
@@ -1588,7 +1662,7 @@ function stagedIntentBase(
   let sawIntent = existing != null;
   for (const key of keys) {
     const intent = fieldIntents.get(key as string);
-    if (!intent) continue;
+    if (!intent || (!own.has(key as string) && !intent.hasUnstaged)) continue;
     if (merged) merged[key as string] = intent.baseValue;
     revision = sawIntent ? Math.min(revision, intent.baseRevision) : intent.baseRevision;
     sawIntent = true;
@@ -3225,7 +3299,9 @@ function prepareStagedWrite(
   // server's CAS check would pass, because the CLIENT had silently agreed to
   // the overwrite. Using the frozen base makes it a conflict, which is what
   // it is.
-  const frozen = stagedIntentBase(keys, existing, confirmed);
+  const mine = getJournalLineageId();
+  const own = new Set(receiptOps.value.filter((op) => op.lineage === mine).flatMap((op) => op.fields.map((f) => f.key)));
+  const frozen = stagedIntentBase(keys, existing, confirmed, own);
   const baseRevision = frozen.revision;
   const baseProfile = frozen.profile ?? existing?.baseProfile ?? confirmed?.profile ?? desired;
   const working = existing?.desiredProfile ?? confirmed?.profile ?? desired;
@@ -3390,6 +3466,7 @@ function prepareStagedWrite(
       (key) => (settledKeys.has(key)
         ? { known: true, value: (planned as Record<string, unknown>)[key] }
         : { known: false }),
+      mine,
     );
     const remainingKeys = dirtyKeys.filter((k) => !settledKeys.has(k));
     const survivor: ProfilePendingWrite | null = remainingKeys.length === 0 ? null : {
@@ -3977,6 +4054,7 @@ export async function refreshConflictQuestion(
       (key) => (confirmedKeys.has(key)
         ? { known: true, value: confirmedRec[key] }
         : { known: false }),
+      getJournalLineageId(),
     );
     // Unconditional. An acknowledgement recorded by an earlier attempt whose
     // key removal failed is invisible to `finished` — readers already skip

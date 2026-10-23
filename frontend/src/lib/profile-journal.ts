@@ -693,6 +693,18 @@ export function appendRebaseReceipt(receipt: RebaseReceipt, token: OwnerToken): 
   return writeUserScopedRaw(key, serialized, token);
 }
 
+/**
+ * Takes back the receipt the same critical section has just appended for an
+ * operation that is still on disk, when the settle it was written for cannot
+ * be finished. MUST be called inside withProfileLock. A receipt hides its
+ * operation from every reader, so one left behind by a settle that stopped
+ * halfway hides part of a closure that is otherwise still outstanding.
+ */
+export function removeRebaseReceipt(ancestorOpId: string, token: OwnerToken): boolean {
+  if (!isOwnerTokenValid(token, token.uid)) return false;
+  return removeUserScopedRaw(`${REBASE_PREFIX}${ancestorOpId}`, token);
+}
+
 function isRebaseReceipt(value: unknown): value is RebaseReceipt {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
   const r = value as Partial<RebaseReceipt>;
