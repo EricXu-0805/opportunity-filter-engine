@@ -27,6 +27,7 @@ from .ucb_common import (
     note_rejected_certificate,
     skip_rejected_certificate,
 )
+from .uiuc_faculty import IN_MEMORIAM_REASON
 
 logger = logging.getLogger(__name__)
 
@@ -394,7 +395,7 @@ def enrich_opportunities(opps: list[dict], save: bool = False,
     stats = {"total": len(opps), "already_has_email": 0, "enriched": 0,
              "scraped": 0, "inferred_pi": 0, "failed": 0, "skipped_budget": 0,
              "skipped_deadline": 0, "skipped_program": 0, "skipped_tombstoned": 0,
-             "skipped_certificate": 0}
+             "skipped_certificate": 0, "skipped_in_memoriam": 0}
 
     for i, opp in enumerate(opps):
         if opp.get("contact_email"):
@@ -421,6 +422,12 @@ def enrich_opportunities(opps: list[dict], save: bool = False,
         # test_no_record_holds_an_address_and_a_tombstone refuses on the data PR.
         if (opp.get("metadata") or {}).get("identity_bound") is False:
             stats["skipped_tombstoned"] += 1
+            continue
+        # A professor the directory lists under "In Memoriam" is never a
+        # contact: the merge drops the address, and the profile page still
+        # shows it, so scraping it would put it back after every refresh.
+        if (opp.get("metadata") or {}).get("deactivation_reason") == IN_MEMORIAM_REASON:
+            stats["skipped_in_memoriam"] += 1
             continue
 
         enriched = False

@@ -204,3 +204,19 @@ def test_enrich_never_readdresses_a_tombstoned_record(monkeypatch):
     assert stats["scraped"] == 0
     assert stats["skipped_tombstoned"] == 1
     assert stats["failed"] == 0
+
+
+def test_enrich_never_readdresses_a_professor_listed_in_memoriam(monkeypatch):
+    """uiuc_faculty retires a directory card listed under "In Memoriam" and
+    drops its address. The profile page still shows the address, and this pass
+    runs after the merge on every refresh, so it put the address back."""
+    fetched = _stub_page(monkeypatch, "<p>Contact: person5@illinois.edu</p>")
+    opp = _fac("uiuc_faculty", "https://psychology.illinois.edu/directory/profile/person5", school="uiuc")
+    opp["contact_email"] = None
+    opp["metadata"] = {"is_active": False, "deactivated_at": "2026-10-23",
+                       "deactivation_reason": "listed_in_memoriam"}
+    stats = enrich_opportunities([opp])
+    assert fetched == []
+    assert opp["contact_email"] is None
+    assert "email_source" not in opp["metadata"]
+    assert (stats["scraped"], stats["skipped_in_memoriam"], stats["failed"]) == (0, 1, 0)

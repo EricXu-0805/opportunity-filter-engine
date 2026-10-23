@@ -447,26 +447,32 @@ def _is_section_label(name: str) -> bool:
     return bool(_NON_PERSON_NAME_RE.search(name or ""))
 
 
-# Card "names" that are a unit, an office or a heading rather than a person.
-# Whole words: as substrings they dropped a real surname containing "school".
+# Card "names" that are a unit, an office or a heading rather than a person:
+# these words, singular or plural, whole or run together ("facultystaff"). As
+# substrings they dropped real surnames that contain "school" or "staff".
 _NON_PERSON_CARD_NAME_RE = re.compile(
-    r"\b(?:faculty|staff|emerit(?:us|a|i|ae)|office|department|school|college|"
-    r"directory|center)\b",
+    r"\b(?:facult(?:y|ies)|staffs?|emerit(?:us|a|i|ae)|offices?|departments?|"
+    r"schools?|colleges?|director(?:y|ies)|centers?)+\b",
     re.IGNORECASE,
 )
+# A card's text runs adjacent elements together ("Faculty<br>Directory" reads
+# "FacultyDirectory"); a lower-to-upper case change marks where a word ended.
+_CAMEL_JOIN_RE = re.compile(r"(?<=[a-z])(?=[A-Z])")
 
 # DirectoryCore list pages group their cards under section headings ("Faculty",
 # "Affiliate Faculty", "Emeritus Faculty", "In Memoriam"). A card under an
 # In Memoriam heading is someone the unit remembers, never a contact.
 _IN_MEMORIAM_RE = re.compile(r"\bin\s+memoriam\b", re.IGNORECASE)
 IN_MEMORIAM_REASON = "listed_in_memoriam"
-_SECTION_HEADING_TAGS = ("h1", "h2", "h3")
+_SECTION_HEADING_TAGS = ("h1", "h2", "h3", "h4", "h5", "h6")
 
 
 def _card_sections(content, cards) -> dict[int, str | None]:
     """The section heading each card sits under, keyed by ``id(card)``: the
-    nearest h1-h3 before it on the page that is not inside a card (a card's own
-    name heading is not a section). None when no heading precedes the card."""
+    nearest heading of any level before it on the page that is not inside a
+    card (a card's own name heading is not a section), so a lower-level
+    heading after "In Memoriam" starts a section of its own. None when no
+    heading precedes the card."""
     card_ids = {id(c) for c in cards}
     in_cards = {id(h) for c in cards for h in c.find_all(_SECTION_HEADING_TAGS)}
     sections: dict[int, str | None] = {}
@@ -592,7 +598,7 @@ def _parse_faculty_card(element, base_url: str, dept: str) -> dict | None:
     name = _clean_name(name)
     if not name or len(name) < 3 or len(name) > 60:
         return None
-    if _NON_PERSON_CARD_NAME_RE.search(name):
+    if _NON_PERSON_CARD_NAME_RE.search(_CAMEL_JOIN_RE.sub(" ", name)):
         return None
 
     result["name"] = name
