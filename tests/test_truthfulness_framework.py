@@ -493,3 +493,16 @@ class TestAnEstimatedReuDeadlineIsNotBeforeItsAward:
             assert estimate is not None
             gap = (start - date.fromisoformat(estimate)).days
             assert gap < 150, f"month {month}: estimate {estimate} is {gap} days early"
+
+
+def test_the_emeritus_or_visiting_stratum_reads_titles_in_any_case_and_form():
+    from truthfulness_audit import RISK_SELECTORS
+
+    selects = dict(RISK_SELECTORS["professor"])["emeritus_or_visiting"]
+    picked = [
+        "Professor Emerita", "Professor Emeritus", "Professors Emeriti",
+        "Associate Professor (retired)", "Retired", "visiting assistant professor",
+    ]
+    passed_over = ["Assistant Professor", "Meritorious Teaching Professor", "Retirement Research Fellow", ""]
+    assert [t for t in picked if not selects(_rec("t", metadata={"faculty_title": t}), {})] == []
+    assert [t for t in passed_over if selects(_rec("t", metadata={"faculty_title": t}), {})] == []
