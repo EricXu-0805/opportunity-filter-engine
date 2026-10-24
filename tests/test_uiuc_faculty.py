@@ -2152,8 +2152,8 @@ def _card_titles(page: str) -> list[str]:
 def test_directorycore_cards_give_each_person_the_title_their_card_states(moved_units):
     for key, page in (("atmos", "climas_faculty.html"), ("geology", "esec_faculty.html")):
         titles = [r["metadata"]["faculty_title"] for r in moved_units[key]]
-        # One card has no title field; it keeps the collector's default.
-        assert titles == [t or "Professor" for t in _card_titles(page)], key
+        # One card has no title field; it gets none.
+        assert titles == [t or "" for t in _card_titles(page)], key
     atmos = Counter(r["metadata"]["faculty_title"] for r in moved_units["atmos"])
     geology = Counter(r["metadata"]["faculty_title"] for r in moved_units["geology"])
     assert atmos["Professor Emeritus"] == 3 and atmos["Director Emeritus"] == 1
@@ -2255,6 +2255,208 @@ def test_a_stated_research_line_with_a_menu_word_in_it_is_still_carried():
     _carry_forward_enrichment(existing, incoming)
     assert incoming["metadata"]["research_areas_raw"] == line
     assert incoming["metadata"]["research_areas_verified_at"] == "2026-10-05T06:00:00"
+
+
+# --- M150: before M143's marker read skipped link text, a profile with no
+# research field of its own stored what its site header menu lists after the
+# "Research Areas" link: a run of site sections (Economics, Statistics,
+# Mathematics, Political Science, History) or the unit's whole research-area
+# menu (Siebel School, ECE, Aerospace, NPRE, ChBE). M143 reads no menu any
+# more, but every stored run was carried onto the fresh row of a person whose
+# profile states nothing. Synthetic units' menus, people and addresses. ---
+
+_SECTION_MENU = ('<li><a href="/research/areas">Research Areas</a></li>'
+                 '<li><a href="/research/centers">Example Research Centers</a></li>'
+                 '<li><a href="/research/undergraduate">Undergraduate Research</a></li>')
+_UNIT_AREAS = ("Algorithms and Theory", "Artificial Intelligence", "Computer Systems", "Data Science",
+               "Example Computing", "Human-Computer Interaction", "Programming Languages",
+               "Scientific Computing", "Security and Privacy")
+_AREA_MENU = ('<li><a href="/research/areas">Research Areas</a><ul>' + "".join(
+    f'<li><a href="/research/areas/{i}">{area}</a></li>' for i, area in enumerate(_UNIT_AREAS)) + "</ul></li>")
+# What the old read stored: the eight lines after the menu link.
+_WHOLE_AREA_MENU = ", ".join(_UNIT_AREAS[:8])
+
+
+def _menu_page(menu: str, body: str, main: bool = True) -> str:
+    """A page of a unit site: its header menu (``menu`` under "Research"), then ``body``."""
+    header = f"""<header><nav><ul>
+      <li class="dropdown"><a href="/research">Research</a><ul>{menu}</ul></li>
+      <li class="dropdown"><a href="/people">People</a><ul><li><a href="/people/faculty">Faculty</a></li></ul></li>
+    </ul></nav></header>"""
+    return (f"<html><body>{header}<main id='main-content'>{body}</main></body></html>" if main
+            else f"<html><body>{header}<div class='view-content'>{body}</div></body></html>")
+
+
+def _fetch_unit(monkeypatch, key: str, menu: str, people: list[tuple[str, str]],
+                profiles: dict[str, str] | None = None, main: bool = True, intro: str = "") -> list[dict]:
+    """The unit's list page lists ``people`` ((slug, name)) after ``intro``; with
+    ``profiles`` the run reads each person's profile page ({slug: fields in its main})."""
+    import src.collectors.uiuc_faculty as f
+
+    cfg = DEPARTMENTS[key]
+    cards = "".join(
+        _section_card(slug, name, "Professor") if main else
+        f'<div class="directory-item"><h3><a href="/directory/profile/{slug}">{name}</a></h3>'
+        f'<a href="mailto:{slug}@illinois.edu">{slug}@illinois.edu</a></div>'
+        for slug, name in people)
+
+    def fetch(url):
+        if url == cfg["url"]:
+            return BeautifulSoup(_menu_page(menu, "<h1>Faculty</h1>" + intro + cards, main), "html.parser")
+        slug = url.rsplit("/", 1)[-1]
+        if profiles is not None and slug in profiles and url == f"{cfg['base']}/directory/profile/{slug}":
+            return BeautifulSoup(_menu_page(menu, f"<h1>Profile</h1>{profiles[slug]}"), "html.parser")
+        return None
+
+    monkeypatch.setattr(f, "_fetch_soup", fetch)
+    monkeypatch.setattr(f, "_scrape_individual_page_keywords", lambda url: [])
+    monkeypatch.setattr(f, "DELAY", 0)
+    return f.fetch_department(key, enrich=profiles is not None)
+
+
+def _stored_unit_row(key: str, name: str, slug: str, areas: str, keywords: list[str]) -> dict:
+    """The row the 2026-10-05 refresh stored for this person."""
+    cfg = DEPARTMENTS[key]
+    row = normalize_faculty({"name": name, "email": f"{slug}@illinois.edu", "research_areas": areas,
+                             "url": f"{cfg['base']}/directory/profile/{slug}"}, cfg, keywords=keywords)
+    row["metadata"].update(last_seen_at="2026-10-05T14:18:05", last_verified="2026-10-05T14:18:05",
+                           first_seen_at="2026-01-10T00:00:00")
+    return row
+
+
+def test_a_stored_site_menu_is_not_carried_when_the_profile_states_no_research(tmp_path, monkeypatch):
+    # Political Science: the profile has no research field, so the fresh row
+    # states none and the stored menu was carried onto it.
+    for main in (True, False):
+        stored = [_stored_unit_row("polisci", "Avery Example", "person1",
+                                   "Example Research Centers, Undergraduate Research", ["political science"])]
+        fresh = _fetch_unit(monkeypatch, "polisci", _SECTION_MENU, [("person1", "Avery Example")],
+                            profiles={"person1": "<div class='field field-name-field-dircore-office'>"
+                                                 "<div class='field__item'>101 Example Hall</div></div>"},
+                            main=main)
+        row = _merge(tmp_path, stored, fresh)["Avery Example"]
+        assert row["metadata"]["research_areas_raw"] == "", main
+        assert "research_areas_verified_at" not in row["metadata"]
+        assert "_site_menu_areas" not in row["metadata"]
+
+
+def test_site_menu_entries_come_out_of_a_stored_value_and_the_persons_own_items_stay(tmp_path, monkeypatch):
+    # Economics' stored menu held one entry M143's label list knows and others
+    # it does not, so M143 carried the whole value.
+    mixed = _stored_unit_row("econ", "Blair Sample", "person2",
+                             "Labor Economics, Example Research Centers, Undergraduate Research",
+                             ["labor economics", "economics"])
+    mixed["metadata"]["research_areas_verified_at"] = "2026-08-20T06:00:00"
+    stored = [
+        _stored_unit_row("econ", "Avery Example", "person1",
+                         "Example Research Centers, Undergraduate Research", ["economics"]),
+        mixed,
+    ]
+    fresh = _fetch_unit(monkeypatch, "econ", _SECTION_MENU,
+                        [("person1", "Avery Example"), ("person2", "Blair Sample")])
+    rows = _merge(tmp_path, stored, fresh)
+    assert rows["Avery Example"]["metadata"]["research_areas_raw"] == ""
+    blair = rows["Blair Sample"]
+    assert blair["metadata"]["research_areas_raw"] == "Labor Economics"
+    # The person's own item keeps the day it was observed.
+    assert blair["metadata"]["research_areas_verified_at"] == "2026-08-20T06:00:00"
+    assert "labor economics" in blair["keywords"]
+
+
+def test_a_departments_whole_research_area_menu_is_not_stored_as_a_persons_areas(tmp_path, monkeypatch):
+    menu_words = ["algorithms and theory", "artificial intelligence", "computer systems", "data science"]
+    gone = _stored_unit_row("cs", "Blair Sample", "person2", _WHOLE_AREA_MENU, menu_words)
+    gone["metadata"]["research_areas_verified_at"] = "2026-08-20T06:00:00"
+    stored = [
+        _stored_unit_row("cs", "Avery Example", "person1", _WHOLE_AREA_MENU, menu_words),
+        gone,  # not listed this run
+        # Keywords another source gave the person stay with them.
+        _stored_unit_row("cs", "Casey Placeholder", "person3", _WHOLE_AREA_MENU,
+                         ["Artificial Intelligence", "Neural Network Pruning"]),
+    ]
+    fresh = _fetch_unit(monkeypatch, "cs", _AREA_MENU,
+                        [("person1", "Avery Example"), ("person3", "Casey Placeholder")],
+                        profiles={"person1": "", "person3": ""})
+    rows = _merge(tmp_path, stored, fresh)
+    avery = rows["Avery Example"]
+    assert avery["metadata"]["research_areas_raw"] == ""
+    assert avery["keywords"] == ["computer science"]
+    assert "intelligence" not in avery["title"].lower() + avery["description_clean"].lower()
+    assert rows["Blair Sample"]["metadata"]["research_areas_raw"] == ""
+    assert "research_areas_verified_at" not in rows["Blair Sample"]["metadata"]
+    assert rows["Blair Sample"]["keywords"] == ["computer science"]
+    casey = rows["Casey Placeholder"]
+    assert casey["metadata"]["research_areas_raw"] == ""
+    assert casey["keywords"] == ["Artificial Intelligence", "Neural Network Pruning"]
+    assert all("_site_menu_areas" not in r["metadata"] for r in rows.values())
+
+
+def test_a_persons_own_research_line_and_list_of_department_areas_are_kept(tmp_path, monkeypatch):
+    own_list = "Artificial Intelligence, Security and Privacy"
+    line = "Sediment transport modelling, River ecology"
+    stored = [
+        _stored_unit_row("cs", "Avery Example", "person1", own_list, ["artificial intelligence"]),
+        _stored_unit_row("cs", "Blair Sample", "person2", line, ["computer science"]),
+        _stored_unit_row("cs", "Casey Placeholder", "person3", _WHOLE_AREA_MENU, ["computer science"]),
+    ]
+    whole_section = "<h2>Research Areas</h2><ul>" + "".join(f"<li>{a}</li>" for a in _UNIT_AREAS[:8]) + "</ul>"
+    fresh = _fetch_unit(monkeypatch, "cs", _AREA_MENU,
+                        [("person1", "Avery Example"), ("person2", "Blair Sample"),
+                         ("person3", "Casey Placeholder"), ("person4", "Devon Example")],
+                        profiles={"person1": "", "person2": "", "person3": whole_section,
+                                  "person4": "<h2>Research Areas</h2><ul><li>Computer Systems</li>"
+                                             "<li>Data Science</li></ul>"})
+    rows = _merge(tmp_path, stored, fresh)
+    # Stored: a few of the department's areas, and a research line.
+    assert rows["Avery Example"]["metadata"]["research_areas_raw"] == own_list
+    assert "artificial intelligence" in rows["Avery Example"]["keywords"]
+    assert rows["Blair Sample"]["metadata"]["research_areas_raw"] == line
+    # Read off the person's own page this run, even the department's whole list.
+    assert rows["Casey Placeholder"]["metadata"]["research_areas_raw"] == _WHOLE_AREA_MENU
+    assert rows["Devon Example"]["metadata"]["research_areas_raw"] == "Computer Systems, Data Science"
+    # A menu with one area after its research link: that area alone is no run.
+    # Nor is a heading in the list page's own text: only the menu was misread.
+    one = ('<li><a href="/research/areas">Research Areas</a><ul>'
+           '<li><a href="/research/areas/ai">Artificial Intelligence</a></li></ul></li>')
+    body_heading = ("<h2>Research Areas</h2><p>Artificial Intelligence</p>"
+                    "<p>Security and Privacy</p><h2>Faculty</h2>")
+    for menu, intro in ((one, ""), (_SECTION_MENU, body_heading)):
+        fresh = _fetch_unit(monkeypatch, "cs", menu, [("person1", "Avery Example")], intro=intro)
+        rows = _merge(tmp_path, [_stored_unit_row("cs", "Avery Example", "person1", own_list,
+                                                  ["artificial intelligence"])], fresh)
+        assert rows["Avery Example"]["metadata"]["research_areas_raw"] == own_list, intro
+
+
+def test_a_menu_of_long_entries_comes_out_whole(tmp_path, monkeypatch):
+    # The old read stored what fits in 400 characters after the link, cut to
+    # whole items under 300; a shorter menu read would leave the last ones as
+    # the person's own.
+    import src.collectors.uiuc_faculty as f
+
+    areas = ("Computational Biology and Bioinformatics", "Computer Architecture and Hardware Systems",
+             "Database Systems and Information Retrieval", "Distributed Systems and Networking",
+             "Human Factors and Interactive Computing", "Machine Learning and Statistical Inference",
+             "Programming Languages and Formal Methods", "Scientific Computing and Numerical Analysis")
+    menu = ('<li><a href="/research/areas">Research Areas</a><ul>' + "".join(
+        f'<li><a href="/research/areas/{i}">{area}</a></li>' for i, area in enumerate(areas)) + "</ul></li>")
+    stored_menu = f._trim_research_areas(", ".join(areas))
+    assert stored_menu.count(",") >= 5 and len(stored_menu) > 200
+    stored = [_stored_unit_row("cs", "Avery Example", "person1", stored_menu,
+                               ["computational biology and bioinformatics"])]
+    fresh = _fetch_unit(monkeypatch, "cs", menu, [("person1", "Avery Example")], profiles={"person1": ""})
+    row = _merge(tmp_path, stored, fresh)["Avery Example"]
+    assert row["metadata"]["research_areas_raw"] == ""
+    assert row["keywords"] == ["computer science"]
+
+
+def test_keywords_made_only_of_the_menus_words_go_back_to_the_broad_field(tmp_path, monkeypatch):
+    # "interaction" is part of a menu entry, not an entry of its own.
+    stored = [_stored_unit_row("cs", "Avery Example", "person1", _WHOLE_AREA_MENU,
+                               ["interaction", "programming languages"])]
+    fresh = _fetch_unit(monkeypatch, "cs", _AREA_MENU, [("person1", "Avery Example")], profiles={"person1": ""})
+    row = _merge(tmp_path, stored, fresh)["Avery Example"]
+    assert row["metadata"]["research_areas_raw"] == ""
+    assert row["keywords"] == ["computer science"]
 
 
 def test_a_title_is_not_read_as_a_research_area(monkeypatch):
@@ -2953,7 +3155,17 @@ def test_in_memoriam_outranks_an_emeritus_card_folded_into_the_same_row_in_eithe
 # div.title beside the name link the page is read by; in a research-area
 # section the same field names a subarea. Synthetic people. ---
 
-def _person_item(slug: str, name: str, title: str) -> str:
+def _person_item(slug: str, name: str, title: str, area: bool = False) -> str:
+    if area:
+        # A research-area section's card, as Physics renders it: no netid, and
+        # the title field holds the card's subarea (data-discipline).
+        return f"""<div class="item person" data-dept="Physics" data-discipline="{title}" id="page-{slug}">
+      <div class="photo"></div>
+      <div class="details">
+        <div class="name"><a href="https://physics.illinois.edu/people/directory/profile/{slug}" target="_top">{name}</a></div>
+        <div class="title">{title}</div>
+      </div>
+    </div>"""
     return f"""<div class="item person cat15 phys" id="id-{slug}" data-netid="{slug}">
       <div class="photo"></div>
       <div class="details">
@@ -2978,7 +3190,7 @@ PERSON_ITEMS_PAGE = _person_items_page([
     ("h3", "Faculty", [("person1", "Avery Example", "Associate Professor<p>Example Faculty Fellow"),
                        ("person2", "Blair Sample", "Professor"),
                        ("person3", "Casey Placeholder", "Research Professor")]),
-    ("h3", "Example Information Science", [("person4", "Devon Example", "Example Matter Theory")]),
+    ("h3", "Example Information Science", [("person4", "Devon Example", "Example Matter Theory", True)]),
     ("h2", "Emeriti/Emeritae", [("person5", "Emery Sample", "Example Endowed Chair Emeritus of Physics and Research Professor"),
                                 ("person6", "Finley Placeholder", "Professor Emeritus")]),
     ("h2", "Affiliated Faculty", [("person7", "Gray Example", "Professor Emeritus in Example Studies and Physics"),
@@ -3155,10 +3367,11 @@ def test_a_current_card_for_the_rows_own_profile_gives_a_row_shown_only_as_emeri
             assert not {"source_url", "_listed_current"} & set(md), case
 
 
-def test_a_listed_rows_current_title_stays_whatever_title_the_persons_other_card_states(tmp_path):
-    # A stored row with a current title keeps it when this run's card for the
-    # same person, for the same profile or for another, states another title.
-    # The other card may be an emeritus listed with an active lab.
+def test_a_listed_rows_title_is_the_one_its_own_profiles_card_states_this_run_never_another_profiles(tmp_path):
+    # A stored row shows the title this run's card for the same profile states
+    # (M149b: a stored title, the old "Professor" default among them, never
+    # outlives it), and keeps its own when only another profile's card states
+    # another title. The card may be an emeritus listed with an active lab.
     url = f"{DEPARTMENTS['physics']['base']}/people/directory/profile/person5"
     for title, section in (("Research Professor", "Research Faculty"),
                            ("Professor Emeritus", "Emeritus Faculty with active research labs")):
@@ -3171,7 +3384,7 @@ def test_a_listed_rows_current_title_stays_whatever_title_the_persons_other_card
         rows = _merge(tmp_path, [stored], [fresh])
         assert list(rows) == ["Emery Q. Sample"], title
         assert _emeritus(rows["Emery Q. Sample"]) == (True, None, False), title
-        assert rows["Emery Q. Sample"]["metadata"]["faculty_title"] == "Professor", title
+        assert rows["Emery Q. Sample"]["metadata"]["faculty_title"] == title
 
     def card(dept, **person):
         return normalize_faculty({"name": "Devon Example", "email": "person4@illinois.edu",
@@ -3186,3 +3399,148 @@ def test_a_listed_rows_current_title_stays_whatever_title_the_persons_other_card
     assert _emeritus(rows["Devon Example"]) == (True, None, False)
     md = rows["Devon Example"]["metadata"]
     assert (md["faculty_title"], md["directory_section"]) == ("Professor of Communication", "Faculty")
+
+
+# --- M149b: a title the card (or the profile the run reads) states is read; one
+# that states none gives no title, never a default rank. Synthetic people. ---
+
+def test_an_engineering_directory_card_with_a_netid_states_its_title_abbreviated_or_without_a_rank(monkeypatch):
+    # The directory's own record of the person (data-netid): its div.title is the
+    # title. A research-area card's (no netid) names a subarea: no title.
+    page = _person_items_page([
+        ("h3", "Faculty", [("person1", "Avery Example", "Asst Prof"), ("person2", "Blair Sample", "RES PROF"),
+                           ("person3", "Casey Placeholder", "Example Partnership Coordinator")]),
+        ("h3", "Affiliates and Adjuncts", [("person8", "Harper Sample", "Department Affiliate")]),
+        ("h3", "Example Information Science", [("person4", "Devon Example", "Example Matter Theory", True)]),
+    ])
+    titles = {r["pi_name"]: r["metadata"]["faculty_title"] for r in _fetch_physics(monkeypatch, page=page)}
+    assert titles == {"Avery Example": "Asst Prof", "Blair Sample": "RES PROF",
+                      "Casey Placeholder": "Example Partnership Coordinator",
+                      "Harper Sample": "Department Affiliate", "Devon Example": ""}
+
+
+def test_a_netid_cards_group_list_is_no_title(monkeypatch):
+    # Bioengineering cards list groups in a second div.title; with the title
+    # field missing, the groups ("Bioengineering") are not read as one.
+    page = _person_items_page([("h3", "Faculty", [("person1", "Avery Example", "Professor")])]).replace(
+        '<div class="title">Professor</div>', '<div class="title groups"><ul><li>Bioengineering</li></ul></div>')
+    assert [r["metadata"]["faculty_title"] for r in _fetch_physics(monkeypatch, page=page)] == [""]
+
+
+def test_an_abbreviated_current_rank_keeps_a_card_under_an_emeritus_heading_listed(tmp_path, monkeypatch):
+    # "RES PROF" is a current rank (consumers read "Prof" as one); "PROF EMERITUS" is not.
+    page = _person_items_page([
+        ("h3", "Faculty", [("person1", "Avery Example", "Professor"), ("person2", "Blair Sample", "Professor"),
+                           ("person3", "Casey Placeholder", "Professor")]),
+        ("h2", "Emeritus Faculty", [("person5", "Emery Sample", "RES PROF"),
+                                    ("person6", "Finley Placeholder", "PROF EMERITUS")])])
+    rows = _merge(tmp_path, [], _fetch_physics(monkeypatch, page=page))
+    assert _emeritus(rows["Emery Sample"]) == (True, None, False)
+    assert _emeritus(rows["Finley Placeholder"]) == (False, "listed_as_emeritus", True)
+
+
+ISCHOOL_TEASERS_PAGE = """<html><body><main><div class="component component--profile-listing">
+  <div class="profile-teaser"><div class="profile-teaser__image-container">
+    <a class="profile-teaser__image-link" href="/people/avery-example"><img alt="Avery Example"/></a></div>
+    <div class="profile-teaser__text-container">
+      <div class="profile-teaser__name"><a class="profile-teaser__link" href="/people/avery-example">Avery Example</a></div>
+      <div class="profile-teaser__title">Teaching Assistant Professor and Example Program Director</div>
+      <div class="profile-teaser__education">PhD, Example Studies</div></div></div>
+  <div class="profile-teaser"><div class="profile-teaser__text-container">
+      <div class="profile-teaser__name"><a class="profile-teaser__link" href="/people/blair-sample">Blair Sample</a></div>
+      <div class="profile-teaser__title">Lecturer</div></div></div>
+</div></main></body></html>"""
+
+
+def test_an_ischool_teaser_states_the_title_under_its_name_link(monkeypatch):
+    import src.collectors.uiuc_faculty as f
+
+    monkeypatch.setattr(f, "_fetch_soup", lambda url: BeautifulSoup(ISCHOOL_TEASERS_PAGE, "html.parser")
+                        if url == DEPARTMENTS["ischool"]["url"] else None)
+    titles = {r["pi_name"]: r["metadata"]["faculty_title"] for r in f.fetch_department("ischool", enrich=False)}
+    assert titles == {"Avery Example": "Teaching Assistant Professor and Example Program Director",
+                      "Blair Sample": "Lecturer"}
+
+
+def test_a_card_that_states_no_title_gets_none_and_its_text_names_no_rank():
+    row = normalize_faculty({"name": "Avery Example", "url": f"{DEPARTMENTS['physics']['base']}/people/person1"},
+                            DEPARTMENTS["physics"], keywords=["physics"])
+    assert row["metadata"]["faculty_title"] == ""
+    assert "Professor" not in row["description_raw"] and "for Avery Example in" in row["description_raw"]
+
+
+def test_a_stored_title_does_not_outlive_this_runs_card_for_the_same_profile_and_the_title_it_states_is_kept(tmp_path):
+    # The stored row (fuller name: the richer one, so the fold keeps it) carries
+    # the "Professor" the old default wrote; this run's card for the same profile
+    # decides the title: the one it states, none when it states none.
+    url = f"{DEPARTMENTS['physics']['base']}/people/directory/profile/person5"
+    for stated in ("Associate Professor", ""):
+        stored = normalize_faculty({"name": "Emery Q. Sample", "email": "person5@illinois.edu", "url": url,
+                                    "title": "Professor"}, DEPARTMENTS["physics"], keywords=["physics"])
+        stored["metadata"]["last_seen_at"] = "2026-10-05T14:18:05"
+        fresh = normalize_faculty({"name": "Emery Sample", "email": "person5@illinois.edu", "url": url,
+                                   "directory_section": "Faculty"}, DEPARTMENTS["physics"], keywords=["physics"])
+        fresh["metadata"]["faculty_title"] = stated
+        rows = _merge(tmp_path, [stored], [fresh])
+        assert list(rows) == ["Emery Q. Sample"], stated
+        assert rows["Emery Q. Sample"]["metadata"]["faculty_title"] == stated
+        assert _emeritus(rows["Emery Q. Sample"]) == (True, None, False), stated
+
+
+def test_a_card_of_this_run_that_states_no_title_leaves_the_title_another_of_its_cards_states(tmp_path):
+    url = f"{DEPARTMENTS['physics']['base']}/people/directory/profile/person1"
+
+    def card(name, title, section):
+        row = normalize_faculty({"name": name, "email": "person1@illinois.edu", "url": url, "title": title,
+                                 "directory_section": section}, DEPARTMENTS["physics"], keywords=["physics"])
+        row["metadata"]["faculty_title"] = title
+        return row
+
+    # Listed again under a research area, on a card stating none: the same row.
+    rows = _merge(tmp_path, [], [card("Avery Example", "Associate Professor", "Faculty"),
+                                 card("Avery Example", "", "Example Information Science")])
+    assert rows["Avery Example"]["metadata"]["faculty_title"] == "Associate Professor"
+    # A second spelling of the same profile read later this run, stating none: folded.
+    rows = _merge(tmp_path, [], [card("Avery Q. Example", "Associate Professor", "Faculty"),
+                                 card("Avery Example", "", "Example Information Science")])
+    assert list(rows) == ["Avery Q. Example"]
+    assert rows["Avery Q. Example"]["metadata"]["faculty_title"] == "Associate Professor"
+
+
+def test_only_a_uiuc_rows_title_follows_a_newer_card_for_its_own_profile():
+    # Other schools' rows (faculty_graph's collapse uses the same carry) keep
+    # their title: their collectors never wrote a default rank.
+    from src.collectors.uiuc_faculty import _carry_newest_liveness
+
+    def row(source, seen, title):
+        return {"source": source, "source_url": "https://a.example/profile/person4",
+                "metadata": {"last_seen_at": seen, "is_active": True, "faculty_title": title}}
+
+    for source, kept in (("uiuc_faculty", ""), ("example_faculty", "Professor")):
+        survivor = row(source, "2026-10-05T00:00:00", "Professor")
+        _carry_newest_liveness(survivor, row(source, "2026-10-26T00:00:00", ""))
+        assert survivor["metadata"]["faculty_title"] == kept, source
+
+
+def test_a_stored_default_title_does_not_survive_this_runs_untitled_card_for_the_same_id(tmp_path):
+    url = f"{DEPARTMENTS['physics']['base']}/people/directory/profile/person1"
+    stored = normalize_faculty({"name": "Avery Example", "email": "person1@illinois.edu", "url": url,
+                                "title": "Professor"}, DEPARTMENTS["physics"], keywords=["physics"])
+    stored["metadata"]["last_seen_at"] = "2026-10-05T14:18:05"
+    fresh = normalize_faculty({"name": "Avery Example", "email": "person1@illinois.edu", "url": url,
+                               "directory_section": "Faculty"}, DEPARTMENTS["physics"], keywords=["physics"])
+    assert stored["id"] == fresh["id"]
+    assert _merge(tmp_path, [stored], [fresh])["Avery Example"]["metadata"]["faculty_title"] == ""
+
+
+def test_a_title_a_later_card_states_is_never_replaced_by_an_earlier_cards(tmp_path):
+    url = f"{DEPARTMENTS['physics']['base']}/people/directory/profile/person1"
+
+    def card(title, section):
+        return normalize_faculty({"name": "Avery Example", "email": "person1@illinois.edu", "url": url,
+                                  "title": title, "directory_section": section}, DEPARTMENTS["physics"],
+                                 keywords=["physics"])
+
+    rows = _merge(tmp_path, [], [card("Research Professor", "Research Faculty"), card("Associate Professor", "Faculty")])
+    md = rows["Avery Example"]["metadata"]
+    assert (md["faculty_title"], md["directory_section"]) == ("Associate Professor", "Faculty")

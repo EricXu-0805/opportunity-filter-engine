@@ -206,20 +206,35 @@ def test_faa_card_parses_name_title_email_and_paginates(monkeypatch):
     assert any(u.endswith("page/2/") for u in calls)  # paginated past page 1
 
 
+# The listing's template: degrees after the dash in the heading, one
+# p.position-title per role.
 VETMED_LISTING = """
 <div class="person-teaser">
-  <a href="/profile?id=baratta3">Alyssa Baratta-Martin – DVM Instructor</a>
-  <img data-src="baratta3@illinois.edu">
+  <div class="profile-picture"><img alt="" data-src="person1@illinois.edu" src="/directory/photos/person1.jpg"/></div>
+  <div class="basic-info"><a href="/profile?id=person1"><h3 class="teaser-title">Avery Example <span> – DVM, PhD</span></h3></a>
+  <p class="position-title">Example Director, Example Clinic</p><p class="position-title">Clinical Assistant Professor</p></div>
+</div>
+<div class="person-teaser">
+  <div class="profile-picture"><img alt="" data-src="person2@illinois.edu" src="/directory/photos/person2.jpg"/></div>
+  <div class="basic-info"><a href="/profile?id=person2"><h3 class="teaser-title">Blair Sample </h3></a>
+  <p class="position-title">Research Assistant Professor</p></div>
+</div>
+<div class="person-teaser">
+  <div class="profile-picture"><img alt="" data-src="person3@illinois.edu" src="/directory/photos/person3.jpg"/></div>
+  <div class="basic-info"><a href="/profile?id=person3"><h3 class="teaser-title">Casey Placeholder <span> – DVM</span></h3></a></div>
 </div>"""
 
 
-def test_vetmed_extracts_img_email_and_splits_name_title(monkeypatch):
+def test_vetmed_extracts_img_email_and_reads_each_position_title_not_the_degrees(monkeypatch):
     monkeypatch.setattr(h, "_fetch_soup", lambda url: _soup(VETMED_LISTING))
-    recs = h.fetch_vetmed()
-    assert recs[0]["pi_name"] == "Alyssa Baratta-Martin"
-    assert recs[0]["contact_email"] == "baratta3@illinois.edu"
-    assert recs[0]["metadata"]["faculty_title"] == "DVM Instructor"
+    recs = h.fetch_vetmed()[:3]
+    assert recs[0]["pi_name"] == "Avery Example"
+    assert recs[0]["contact_email"] == "person1@illinois.edu"
     assert recs[0]["url"].startswith("https://vetmed.illinois.edu/profile?id=")
+    titles = [r["metadata"]["faculty_title"] for r in recs]
+    # No dash: the card's title was never read and fell to "Professor".
+    assert titles == ["Example Director, Example Clinic; Clinical Assistant Professor",
+                      "Research Assistant Professor", ""]
 
 
 MEDIA_LISTING = """
@@ -237,3 +252,102 @@ def test_media_enriches_email_from_profile(monkeypatch):
     chambers = [r for r in recs if r["pi_name"] == "Jason P. Chambers"]
     assert chambers and chambers[0]["contact_email"] == "jpchambe@illinois.edu"
     assert chambers[0]["department"] == "Department of Advertising"
+
+
+# --- M149b: each collector reads the title its card or the profile it already
+# fetches states, and writes none when neither states one. Synthetic people. ---
+
+LAW_TITLED_LISTING = """
+<article class="faculty-member"><div class="entry-details">
+  <h2><a href="https://law.illinois.edu/faculty-research/faculty-profiles/avery-example/">Avery Example</a></h2>
+  <p>Clinical Professor of Law<br/> Example Clinic Director</p></div></article>
+<article class="faculty-member"><div class="entry-details">
+  <h2><a href="https://law.illinois.edu/faculty-research/faculty-profiles/blair-sample/">Blair Sample</a></h2>
+  <p>Example Chair in Law Emeritus</p></div></article>
+<article class="faculty-member"><div class="entry-details">
+  <h2><a href="https://law.illinois.edu/faculty-research/faculty-profiles/casey-placeholder/">Casey Placeholder</a></h2>
+  </div></article>
+"""
+
+
+def test_law_reads_the_listing_title_one_role_per_line_and_an_emeritus_title_retires_the_row(monkeypatch):
+    monkeypatch.setattr(h, "_fetch_soup", lambda url: _soup(LAW_TITLED_LISTING if url == h.LAW_URL else LAW_PROFILE))
+    monkeypatch.setattr(h.time, "sleep", lambda *a: None)
+    recs = {r["pi_name"]: r["metadata"] for r in h.fetch_law()}
+    assert recs["Avery Example"]["faculty_title"] == "Clinical Professor of Law; Example Clinic Director"
+    assert recs["Avery Example"]["is_active"] is True
+    # Read as "Professor" before, so the emeritus chair stayed listed.
+    assert recs["Blair Sample"]["faculty_title"] == "Example Chair in Law Emeritus"
+    assert (recs["Blair Sample"]["is_active"], recs["Blair Sample"]["deactivation_reason"]) == (
+        False, "listed_as_emeritus")
+    assert recs["Casey Placeholder"]["faculty_title"] == ""
+
+
+LER_SYNTHETIC_LISTING = """<ul class="wp-block-list">
+<li><a href="/directory/avery-example">Example, Avery</a></li></ul>"""
+LER_TITLED_PROFILE = """<html><body><div class="profile-header__info">
+<h2 class="profile-header__name">Avery Example</h2><p class="profile-header__ranking">ASSISTANT PROFESSOR</p>
+<p class="profile-header__school">School of Labor &amp; Employment Relations</p></div>
+<a href="mailto:person1@illinois.edu">person1@illinois.edu</a></body></html>"""
+
+
+def test_ler_reads_the_title_its_profile_states_and_writes_none_without_it(monkeypatch):
+    untitled = LER_TITLED_PROFILE.replace('<p class="profile-header__ranking">ASSISTANT PROFESSOR</p>', "")
+    for profile, title in ((LER_TITLED_PROFILE, "ASSISTANT PROFESSOR"), (untitled, "")):
+        monkeypatch.setattr(h, "_fetch_soup",
+                            lambda url, p=profile: _soup(LER_SYNTHETIC_LISTING if url == h.LER_URL else p))
+        monkeypatch.setattr(h.time, "sleep", lambda *a: None)
+        assert {r["metadata"]["faculty_title"] for r in h.fetch_ler()} == {title}
+
+
+MEDIA_SYNTHETIC_LISTING = """<div class="pt-cv-content-item"><h4 class="pt-cv-title">
+  <a href="https://www.media.illinois.edu/example-avery/">Avery Example</a></h4></div>"""
+MEDIA_TITLED_PROFILE = """<html><body><article><h1 class="entry-title">Avery Example</h1><div class="entry-content">
+<div class="wp-block-column"><p class="has-medium-font-size wp-block-paragraph"><em><strong>Professor</strong></em><br/>
+<em><strong>Associate Dean for Example Engagement</strong></em></p><h2>Affiliations</h2>
+<p class="has-medium-font-size">Example Studies</p></div></div>
+<a href="mailto:person1@illinois.edu">Email</a></article></body></html>"""
+
+
+def test_media_reads_the_title_its_profile_states_and_writes_none_without_it(monkeypatch):
+    untitled = '<a href="mailto:person1@illinois.edu">Email</a>'
+    # A first paragraph that names no rank or appointment is no title.
+    no_rank = MEDIA_TITLED_PROFILE.replace("<em><strong>Professor</strong></em><br/>", "").replace(
+        "<em><strong>Associate Dean for Example Engagement</strong></em>", "Example Studies and Media")
+    for profile, title in ((MEDIA_TITLED_PROFILE, "Professor; Associate Dean for Example Engagement"),
+                           (untitled, ""), (no_rank, "")):
+        monkeypatch.setattr(h, "_fetch_soup",
+                            lambda url, p=profile: _soup(MEDIA_SYNTHETIC_LISTING if "-faculty/" in url else p))
+        monkeypatch.setattr(h.time, "sleep", lambda *a: None)
+        assert {r["metadata"]["faculty_title"] for r in h.fetch_media()} == {title}
+
+
+def test_carle_and_faa_cards_without_a_title_get_none(monkeypatch):
+    listing = """<div class="item person" data-netid="person1"><div class="details"><div class="name">Avery Example</div>
+      </div></div>
+    <div class="item person" data-netid="person2"><div class="details"><div class="name">Blair Sample</div>
+      <div class="title">Teaching Associate Professor</div></div></div>"""
+    monkeypatch.setattr(h, "_fetch_soup", lambda url: _soup(listing) if url == h.CARLE_URL else None)
+    monkeypatch.setattr(h.time, "sleep", lambda *a: None)
+    assert [r["metadata"]["faculty_title"] for r in h.fetch_carle()] == ["", "Teaching Associate Professor"]
+    for info in ("", '<div class="person-card__info">Avery Example <a href="mailto:p1@illinois.edu">p1@illinois.edu</a></div>'):
+        card = _soup(f'<article class="person-card"><h2 class="linked-title">Avery Example</h2>{info}</article>')
+        assert h._faa_card(card.select_one("article"), h.FAA_UNITS[0])["metadata"]["faculty_title"] == "", info
+
+
+def test_ler_and_media_rows_whose_profile_cannot_be_read_get_no_title(monkeypatch):
+    monkeypatch.setattr(h.time, "sleep", lambda *a: None)
+    monkeypatch.setattr(h, "_fetch_soup", lambda url: _soup(LER_SYNTHETIC_LISTING) if url == h.LER_URL else None)
+    assert {r["metadata"]["faculty_title"] for r in h.fetch_ler()} == {""}
+    monkeypatch.setattr(h, "_fetch_soup", lambda url: _soup(MEDIA_SYNTHETIC_LISTING) if "-faculty/" in url else None)
+    assert {r["metadata"]["faculty_title"] for r in h.fetch_media()} == {""}
+
+
+def test_a_vetmed_name_with_a_hyphen_is_split_only_at_the_spaced_dash(monkeypatch):
+    listing = """<div class="person-teaser">
+  <div class="profile-picture"><img alt="" data-src="person1@illinois.edu"/></div>
+  <div class="basic-info"><a href="/profile?id=person1"><h3 class="teaser-title">Avery Example-Sample <span> – DVM</span></h3></a>
+  <p class="position-title">Clinical Assistant Professor</p></div></div>"""
+    monkeypatch.setattr(h, "_fetch_soup", lambda url: _soup(listing))
+    rec = h.fetch_vetmed()[0]
+    assert (rec["pi_name"], rec["metadata"]["faculty_title"]) == ("Avery Example-Sample", "Clinical Assistant Professor")

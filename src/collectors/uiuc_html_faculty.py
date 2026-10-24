@@ -35,7 +35,9 @@ import time
 from .uiuc_faculty import (
     DELAY,
     _clean_name,
+    _directory_role_title,
     _fetch_soup,
+    _title_lines,
     normalize_faculty,
 )
 
@@ -184,7 +186,7 @@ def fetch_carle() -> list[dict]:
                 "name": name,
                 "email": email,
                 "url": url,
-                "title": title_el.get_text(strip=True) if title_el else "Professor",
+                "title": title_el.get_text(strip=True) if title_el else "",
                 "research_areas": "; ".join(kws),
             },
             CARLE_CFG,
@@ -204,14 +206,16 @@ def fetch_law() -> list[dict]:
     if soup is None:
         logger.error("Law directory unreachable")
         return []
-    profiles: dict[str, str] = {}
+    profiles: dict[str, tuple[str, str]] = {}
     for art in soup.select("article.faculty-member"):
         h2 = art.select_one("h2")
         link = art.find("a", href=True)
         if h2 and link and "/faculty-profiles/" in link["href"]:
-            profiles.setdefault(link["href"], h2.get_text(strip=True))
+            # The listing states the title under the name, one role per line.
+            profiles.setdefault(link["href"], (h2.get_text(strip=True),
+                                               _title_lines(art.select_one("div.entry-details > p"))))
     out: list[dict] = []
-    for i, (url, name) in enumerate(profiles.items()):
+    for i, (url, (name, title)) in enumerate(profiles.items()):
         name = _clean_name(name)
         if not name:
             continue
@@ -220,7 +224,7 @@ def fetch_law() -> list[dict]:
         kws = (_labeled_phrases(prof) if prof else []) or list(LAW_CFG["keywords"])
         rec = normalize_faculty(
             {"name": name, "email": email, "url": url,
-             "title": "Professor", "research_areas": "; ".join(kws)},
+             "title": title, "research_areas": "; ".join(kws)},
             LAW_CFG,
             keywords=kws,
         )
@@ -260,8 +264,9 @@ def fetch_ler() -> list[dict]:
         email = _first_illinois_email(prof) if prof else ""
         areas = _research_interests(prof) if prof else []
         kws = areas or list(LER_CFG["keywords"])
+        title = _title_lines(prof.select_one("p.profile-header__ranking")) if prof else ""
         rec = normalize_faculty(
-            {"name": name, "email": email, "url": url, "title": "Professor",
+            {"name": name, "email": email, "url": url, "title": title,
              "research_areas": "; ".join(kws)},
             LER_CFG,
             keywords=kws,
@@ -305,11 +310,11 @@ def _faa_card(card, unit: dict) -> dict | None:
     mail = card.select_one('a[href^="mailto:"]')
     email = mail["href"][7:].split("?")[0].strip() if mail else ""
     info = card.select_one(".person-card__info")
-    title = "Professor"
+    title = ""
     if info:
         t = info.get_text(" ", strip=True).replace(name, "", 1)
         t = re.split(r"\S+@\S+", t)[0].strip(" |·–-")
-        title = t[:80] or "Professor"
+        title = t[:80]
     return normalize_faculty(
         {"name": name, "email": email, "url": url, "title": title,
          "research_areas": unit["keywords"][0]},
@@ -369,8 +374,10 @@ def fetch_media() -> list[dict]:
             url = a.get("href", "")
             prof = _fetch_soup(url) if url else None
             email = _first_illinois_email(prof) if prof else ""
+            # The profile's first paragraph states the title, one role per line.
+            title = _directory_role_title(prof.select_one("div.entry-content p.has-medium-font-size")) if prof else None
             rec = normalize_faculty(
-                {"name": name, "email": email, "url": url, "title": "Professor",
+                {"name": name, "email": email, "url": url, "title": title or "",
                  "research_areas": unit["keywords"][0]},
                 {"short": "Media", "name": unit["name"],
                  "majors": unit["majors"], "keywords": unit["keywords"]},
@@ -415,7 +422,8 @@ def fetch_vetmed() -> list[dict]:
             name = _clean_name(parts[0])
             if not name:
                 continue
-            title = parts[1].strip()[:80] if len(parts) > 1 else "Professor"
+            # The heading after the dash holds degrees; each p.position-title is a role.
+            title = "; ".join(filter(None, (_title_lines(p) for p in t.select("p.position-title"))))
             email = next((i.get("data-src") for i in t.select("img")
                           if i.get("data-src", "").endswith("@illinois.edu")), "")
             link = t.find("a", href=True)
@@ -424,7 +432,7 @@ def fetch_vetmed() -> list[dict]:
                 url = "https://vetmed.illinois.edu" + url
             rec = normalize_faculty(
                 {"name": name, "email": email, "url": url,
-                 "title": title or "Professor", "research_areas": unit["keywords"][0]},
+                 "title": title, "research_areas": unit["keywords"][0]},
                 {"short": "VetMed", "name": unit["name"],
                  "majors": unit["majors"], "keywords": unit["keywords"]},
                 keywords=list(unit["keywords"]),

@@ -476,7 +476,7 @@ _ACTIVE_LAB_RE = re.compile(r"\bactive\s+(?:research\s+)?lab(?:s|oratory|oratori
 EMERITUS_REASON = "listed_as_emeritus"
 _EMERITUS_WORD_RE = re.compile(r"\b(?:emerit(?:us|a|i|ae)|retired)\b", re.IGNORECASE)
 _RANK_RE = re.compile(
-    r"\b(?:professor|lecturer|instructor|director|dean|chair|head|scientist|researcher|fellow|scholar"
+    r"\b(?:professor|prof|lecturer|instructor|director|dean|chair|head|scientist|researcher|fellow|scholar"
     r"|(?:affiliate|adjunct|clinical|research|teaching|visiting)\s+faculty|chancellor|provost|president"
     r"|curator|librarian)\b", re.IGNORECASE)
 _ROLE_SPLIT_RE = re.compile(r"[,;/|]")
@@ -528,9 +528,15 @@ def _title_roles(title: str | None) -> list[bool]:
 def _directory_role_title(el) -> str | None:
     """An Engineering directory's div.title when it states a rank or
     appointment: in Physics's research-area sections the same field names a
-    subarea ("High Energy Theory"), which is no title. Each of its lines (a
-    <p> or <br>; an inline tag breaks none) is a title of its own, so two read
-    "Professor; <named> Faculty Scholar", not as one title that reads like a name."""
+    subarea ("High Energy Theory"), which is no title."""
+    text = _title_lines(el)
+    return text if _RANK_RE.search(text) else None
+
+
+def _title_lines(el) -> str:
+    """The title text of ``el``. Each of its lines (a <p> or <br>; an inline
+    tag breaks none) is a title of its own, so two read "Professor; <named>
+    Faculty Scholar", not as one title that reads like a name."""
     lines: list[str] = []
     line_of = None
     breaks = 0
@@ -543,8 +549,7 @@ def _directory_role_title(el) -> str | None:
                 lines.append("")
                 line_of = line
             lines[-1] += node
-    text = "; ".join(filter(None, (" ".join(line.split()) for line in lines)))
-    return text if _RANK_RE.search(text) else None
+    return "; ".join(filter(None, (" ".join(line.split()) for line in lines)))
 
 
 def _listed_with_active_lab(metadata: dict) -> bool:
@@ -595,6 +600,8 @@ def _scrape_grainger_faculty_list(dept_config: dict) -> list[dict]:
     if not soup:
         return []
 
+    # Read before _get_main_content, which can strip the site header.
+    menu_areas = _site_menu_areas(soup)
     content = _get_main_content(soup)
     faculty = []
 
@@ -659,6 +666,10 @@ def _scrape_grainger_faculty_list(dept_config: dict) -> list[dict]:
         faculty = _broad_faculty_extraction(content, base, dept_name)
         for person in faculty:
             person["directory_section"] = None
+
+    if menu_areas:
+        for person in faculty:
+            person["site_menu_areas"] = menu_areas
 
     logger.info(f"  Found {len(faculty)} faculty in {dept_name}")
     return faculty
@@ -741,8 +752,18 @@ def _parse_faculty_card(element, base_url: str, dept: str) -> dict | None:
     elif element.name == "a":
         # Engineering directory cards (div.item.person: Physics, CEE, ...) match
         # no card selector and are read link by link; the title sits beside the link.
+        # A card with a netid is the directory's own record of the person, whose
+        # div.title is their title even when it names no rank ("Department
+        # Affiliate"); a research-area card's (no netid) may name a subarea.
         card = element.find_parent("div", class_="person")
-        title = _directory_role_title(card.select_one("div.title")) if card else None
+        title = None
+        if card is not None:
+            title_div = card.select_one("div.title:not(.groups)")
+            title = _title_lines(title_div) if card.get("data-netid") else _directory_role_title(title_div)
+        teaser = element.find_parent("div", class_="profile-teaser")
+        if teaser is not None:
+            # iSchool's teaser states the title under the name link.
+            title = _title_lines(teaser.select_one("div.profile-teaser__title"))
         if title:
             result["title"] = title
 
@@ -995,7 +1016,9 @@ def normalize_faculty(
     dept_short = dept_config["short"]
     dept_name = dept_config["name"]
     profile_url = person.get("url", "")
-    title = person.get("title", "Professor")
+    # A card (or profile) that states no title gets none, never a default rank:
+    # "" is what every consumer reads as an unknown rank.
+    title = person.get("title") or ""
     research_areas = person.get("research_areas", "")
     section = person.get("directory_section") or ""
     # An emeritus heading retires a card whose own title states no current
@@ -1014,7 +1037,7 @@ def normalize_faculty(
         keywords = _extract_research_keywords(person, dept_config)
 
     desc_parts = [
-        f"Faculty research profile for {title} {name} in the {dept_name} at UIUC.",
+        f"Faculty research profile for {title + ' ' if title else ''}{name} in the {dept_name} at UIUC.",
     ]
     if research_areas:
         desc_parts.append(f"Research areas: {_trim_research_areas(research_areas, 200)}")
@@ -1138,6 +1161,8 @@ def fetch_department(dept_key: str, enrich: bool = True) -> list[dict]:
     for person in raw_faculty:
         opp = normalize_faculty(person, config)
         if opp:
+            if person.get("site_menu_areas"):
+                opp["metadata"][_SITE_MENU_AREAS] = person["site_menu_areas"]
             normalized.append(opp)
 
     return normalized
@@ -1479,6 +1504,44 @@ def _is_site_menu_text(text: str) -> bool:
     return bool(items) and all(i in _SITE_MENU_LABELS for i in items)
 
 
+# Metadata key, never written: the unit's _site_menu_areas, read off its list
+# page this run and taken out of its stored rows by merge_into_processed.
+_SITE_MENU_AREAS = "_site_menu_areas"
+
+
+def _drop_site_menu_areas(record: dict, menu_areas: list[str] | None) -> None:
+    """Take the site menu out of a stored row's research areas.
+
+    A stored research_areas_raw holding every entry of one of the menu's runs
+    (two or more) was read off the menu, not the person: those entries go and
+    the person's own items stay; an emptied value takes its observed-at stamp
+    with it. Keywords that are only the menu's words go too, back to the
+    department's broad field. A person's own list of a few of the department's
+    areas never holds a whole run, so it is kept."""
+    md = record.get("metadata") or {}
+    raw = md.get("research_areas_raw")
+    if not menu_areas or not isinstance(raw, str):
+        return
+    items = [i.strip() for i in raw.split(",") if i.strip()]
+    present = {i.lower() for i in items}
+    menu: set[str] = set()
+    for run in menu_areas:
+        entries = {i.strip().lower() for i in run.split(",") if i.strip()}
+        if len(entries) >= 2 and entries <= present:
+            menu |= entries
+    if not menu:
+        return
+    kept = [i for i in items if i.lower() not in menu]
+    md["research_areas_raw"] = ", ".join(kept)
+    if not kept:
+        md.pop("research_areas_verified_at", None)
+    menu_text = "\n".join(menu)
+    specific = _faculty_specific_keywords(record)
+    if specific and all(k.lower() in menu_text for k in specific):
+        broad = _dept_broad_field(record.get("department", ""))
+        record["keywords"] = [broad] if broad else []
+
+
 def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
     """When a re-scrape upserts over a committed record by stable id, keep the
     committed record's enrichment if it is keyword-richer than the fresh scrape:
@@ -1789,6 +1852,13 @@ def _carry_newest_liveness(survivor: dict, dropped: dict) -> None:
             and (dropped.get("source_url") or "") == (survivor.get("source_url") or "")):
         # The same directory card, so the section it was read under this run.
         meta["directory_section"] = dropped["metadata"]["directory_section"]
+    if (survivor.get("source") == dropped.get("source") == "uiuc_faculty"
+            and (dropped.get("source_url") or "") == (survivor.get("source_url") or "")
+            and (dropped["metadata"].get("faculty_title") or not own)):
+        # And the title that card states this run, none when it states none: a
+        # stored title (the old "Professor" default among them) never outlives
+        # it. A card of this run stating none leaves another card's title.
+        meta["faculty_title"] = dropped["metadata"].get("faculty_title") or ""
     if dropped["metadata"].get("deactivation_reason") == IN_MEMORIAM_REASON:
         # The same person's newer card sits under the directory's In Memoriam
         # heading, so the surviving row is retired with it and loses its address.
@@ -2709,11 +2779,41 @@ def _research_areas_from_soup(soup) -> str:
     for marker in ("Research Interests", "Research Areas", "Research Focus"):
         idx = marker_text.find(marker)
         if idx != -1:
-            chunk = page_text[idx + len(marker):idx + len(marker) + 400]
-            lines = [ln.strip() for ln in chunk.split("\n") if ln.strip()][:8]
+            lines = _lines_after(page_text, idx + len(marker))
             if lines:
                 return _trim_research_areas(", ".join(lines))
     return ""
+
+
+def _lines_after(page_text: str, end: int) -> list[str]:
+    """The lines the marker read takes after a marker: the first eight non-empty
+    ones in the next 400 characters. _site_menu_areas reads a menu this same
+    way, so a menu stored by the old read matches it entry for entry."""
+    return [ln.strip() for ln in page_text[end:end + 400].split("\n") if ln.strip()][:8]
+
+
+def _site_menu_areas(soup) -> list[str]:
+    """What the site's own menu lists after each of its research links, read the
+    way _research_areas_from_soup reads the lines after a marker. Before that
+    read skipped link text it stored these entries as the areas of people whose
+    profile states none: Economics' "Once Research Secured, Research Workshops,
+    Undergraduate Research" on 54 rows, the Siebel School's whole "Research
+    Areas" menu on 71, and the same in ten more units."""
+    strings = list(soup.strings)
+    page_text = "\n".join(strings)
+    found: list[str] = []
+    start = 0
+    for s in strings:
+        if _links_elsewhere(s):
+            for marker in ("Research Interests", "Research Areas", "Research Focus"):
+                at = s.find(marker)
+                if at != -1:
+                    end = start + at + len(marker)
+                    areas = _trim_research_areas(", ".join(_lines_after(page_text, end)))
+                    if areas and areas not in found:
+                        found.append(areas)
+        start += len(s) + 1
+    return found
 
 
 def _bio_text_from_soup(soup) -> str:
@@ -2936,6 +3036,17 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
             existing = json.load(f)
 
     index = {opp["id"]: opp for opp in existing}
+    # Each unit's site menu (read off its list page this run) comes out of its
+    # stored rows before anything is carried from them; this run's own reads
+    # are left as read.
+    menus: dict[str, list[str]] = defaultdict(list)
+    for opp in new_opps:
+        for run in (opp.get("metadata") or {}).pop(_SITE_MENU_AREAS, None) or []:
+            unit = opp["id"].rsplit("-", 1)[0]
+            if run not in menus[unit]:
+                menus[unit].append(run)
+    for opp in existing:
+        _drop_site_menu_areas(opp, menus.get(opp["id"].rsplit("-", 1)[0]))
     added, updated = 0, 0
     # The day each stored row was first retired as emeritus, kept below when
     # it is still retired after the dedups (its own card or one folded into it).
@@ -2959,9 +3070,16 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
             # with whatever richer research the other card holds.
             _carry_forward_enrichment(opp, index[opp["id"]])
             continue
+        again = opp["id"] in read_this_run
         read_this_run.add(opp["id"])
         if opp["id"] in index:
             cur = index[opp["id"]]
+            earlier = cur.get("metadata") or {}
+            if (again and not opp["metadata"].get("faculty_title") and earlier.get("is_active") is not False
+                    and earlier.get("faculty_title") and not _title_is_emeritus(earlier["faculty_title"])):
+                # The page lists the person again on a card that states no title
+                # (a research-area section): the title their other card states stays.
+                opp["metadata"]["faculty_title"] = earlier["faculty_title"]
             opp["metadata"]["first_seen_at"] = cur.get(
                 "metadata", {}
             ).get("first_seen_at", opp["metadata"]["first_seen_at"])

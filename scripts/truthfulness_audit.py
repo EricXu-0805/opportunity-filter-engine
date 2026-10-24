@@ -225,7 +225,9 @@ _ORG_TOKEN_STOPWORDS = frozenset({
 })
 _UNIT_TYPE_RE = re.compile(r"\b(?:Institute|Center|Laboratory|School of)\b")
 _NON_PROFESSOR_RANK_RE = re.compile(r"\b(?:Lecturer|Instructor|Director|Scientist|Fellow)\b")
-_EMERITUS_VISITING_RE = re.compile(r"\b(?:Emeritus|Visiting)\b")
+# Any case and form: titles state "Professor Emerita", "Emeriti",
+# "Associate Professor (retired)" and "visiting" as often as "Emeritus".
+_EMERITUS_VISITING_RE = re.compile(r"\b(?:Emerit(?:us|a|i|ae)|Retired|Visiting)\b", re.IGNORECASE)
 _TITLE_YEAR_RE = re.compile(r"\b(20\d{2})\b")
 _INITIALS_ONLY_RE = re.compile(r"[A-Z]\.?(?:[A-Z]\.?)?")
 _GENERIC_LOCALPART_PREFIXES = ("info", "admin", "contact", "office", "dept")
