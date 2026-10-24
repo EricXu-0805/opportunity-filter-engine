@@ -146,7 +146,7 @@ def _normalize_wigg(person: dict, short: str, dept: str, majors: list[str]) -> d
             "name": (person.get("fullName") or "").strip(),
             "email": (person.get("email") or "").strip(),
             "url": person.get("profileUrl") or "",
-            "title": (person.get("primaryTitle") or "Professor").strip(),
+            "title": (person.get("primaryTitle") or "").strip(),
             "research_areas": "; ".join(kws),
         },
         {"short": short, "name": dept, "majors": majors, "keywords": [broad]},

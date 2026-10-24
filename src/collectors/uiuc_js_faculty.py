@@ -98,8 +98,16 @@ _CATEGORY_SLUGS: frozenset[str] = frozenset({
 })
 
 
+# Every anchor's href and text, and (r) the title the person's card states
+# beside the name link.
+_PERSON_LINKS_JS = (
+    "els => els.map(e => ({h: e.getAttribute('href'), t: e.textContent.trim(), "
+    "r: e.closest('.directorySection--person--role')?.querySelector('.title')?.textContent || ''}))"
+)
+
+
 def _render_person_links(url: str, timeout_ms: int = 45000) -> list[dict]:
-    """Render a JS faculty listing and return raw ``[{h, t}]`` anchor dicts.
+    """Render a JS faculty listing and return raw ``[{h, t, r}]`` anchor dicts.
 
     Playwright is imported lazily here so the module imports cleanly in
     environments where Playwright/Chromium are not installed (the collector
@@ -128,11 +136,7 @@ def _render_person_links(url: str, timeout_ms: int = 45000) -> list[dict]:
             except Exception:
                 pass
             page.wait_for_timeout(1500)
-            links = page.eval_on_selector_all(
-                "a[href]",
-                "els => els.map(e => ({h: e.getAttribute('href'), "
-                "t: e.textContent.trim()}))",
-            )
+            links = page.eval_on_selector_all("a[href]", _PERSON_LINKS_JS)
         except Exception as e:
             logger.warning(f"Failed to render {url}: {e}")
         finally:
@@ -141,7 +145,7 @@ def _render_person_links(url: str, timeout_ms: int = 45000) -> list[dict]:
 
 
 def _scrape_js_faculty_list(dept_config: dict) -> list[dict]:
-    """Render a department listing and return ``[{name, url, email}]`` people."""
+    """Render a department listing and return ``[{name, url, email, title}]`` people."""
     url = dept_config["url"]
     base = dept_config["base"]
     logger.info(f"Rendering {dept_config['short']} faculty from {url}")
@@ -170,6 +174,7 @@ def _scrape_js_faculty_list(dept_config: dict) -> list[dict]:
             "name": name,
             "url": urljoin(base, href),
             "email": f"{slug}@illinois.edu",
+            "title": " ".join((link.get("r") or "").split()),
         })
 
     logger.info(f"  Found {len(people)} faculty in {dept_config['short']}")

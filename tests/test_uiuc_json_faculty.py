@@ -194,3 +194,12 @@ def test_education_routes_office_to_department():
     assert j._education_dept_and_majors("Education Policy, Organization & Leadership")[0] == \
         "Department of Education Policy, Organization & Leadership"
     assert j._education_dept_and_majors("Bureau of Educational Research")[0] == "College of Education"
+
+
+def test_wigg_faculty_without_a_primary_title_get_none(monkeypatch):
+    payload = {"people": [
+        _wigg_person("Avery Example", "person1@illinois.edu", "Faculty", "Health and Kinesiology", title=""),
+        _wigg_person("Blair Sample", "person2@illinois.edu", "Faculty", "Health and Kinesiology", title="Professor"),
+    ]}
+    monkeypatch.setattr(j, "_fetch_json", lambda url: payload)
+    assert [r["metadata"]["faculty_title"] for r in j.fetch_ahs()] == ["", "Professor"]

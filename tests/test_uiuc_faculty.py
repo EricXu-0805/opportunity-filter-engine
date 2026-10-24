@@ -2152,8 +2152,8 @@ def _card_titles(page: str) -> list[str]:
 def test_directorycore_cards_give_each_person_the_title_their_card_states(moved_units):
     for key, page in (("atmos", "climas_faculty.html"), ("geology", "esec_faculty.html")):
         titles = [r["metadata"]["faculty_title"] for r in moved_units[key]]
-        # One card has no title field; it keeps the collector's default.
-        assert titles == [t or "Professor" for t in _card_titles(page)], key
+        # One card has no title field; it gets none.
+        assert titles == [t or "" for t in _card_titles(page)], key
     atmos = Counter(r["metadata"]["faculty_title"] for r in moved_units["atmos"])
     geology = Counter(r["metadata"]["faculty_title"] for r in moved_units["geology"])
     assert atmos["Professor Emeritus"] == 3 and atmos["Director Emeritus"] == 1
@@ -2953,7 +2953,17 @@ def test_in_memoriam_outranks_an_emeritus_card_folded_into_the_same_row_in_eithe
 # div.title beside the name link the page is read by; in a research-area
 # section the same field names a subarea. Synthetic people. ---
 
-def _person_item(slug: str, name: str, title: str) -> str:
+def _person_item(slug: str, name: str, title: str, area: bool = False) -> str:
+    if area:
+        # A research-area section's card, as Physics renders it: no netid, and
+        # the title field holds the card's subarea (data-discipline).
+        return f"""<div class="item person" data-dept="Physics" data-discipline="{title}" id="page-{slug}">
+      <div class="photo"></div>
+      <div class="details">
+        <div class="name"><a href="https://physics.illinois.edu/people/directory/profile/{slug}" target="_top">{name}</a></div>
+        <div class="title">{title}</div>
+      </div>
+    </div>"""
     return f"""<div class="item person cat15 phys" id="id-{slug}" data-netid="{slug}">
       <div class="photo"></div>
       <div class="details">
@@ -2978,7 +2988,7 @@ PERSON_ITEMS_PAGE = _person_items_page([
     ("h3", "Faculty", [("person1", "Avery Example", "Associate Professor<p>Example Faculty Fellow"),
                        ("person2", "Blair Sample", "Professor"),
                        ("person3", "Casey Placeholder", "Research Professor")]),
-    ("h3", "Example Information Science", [("person4", "Devon Example", "Example Matter Theory")]),
+    ("h3", "Example Information Science", [("person4", "Devon Example", "Example Matter Theory", True)]),
     ("h2", "Emeriti/Emeritae", [("person5", "Emery Sample", "Example Endowed Chair Emeritus of Physics and Research Professor"),
                                 ("person6", "Finley Placeholder", "Professor Emeritus")]),
     ("h2", "Affiliated Faculty", [("person7", "Gray Example", "Professor Emeritus in Example Studies and Physics"),
@@ -3155,10 +3165,11 @@ def test_a_current_card_for_the_rows_own_profile_gives_a_row_shown_only_as_emeri
             assert not {"source_url", "_listed_current"} & set(md), case
 
 
-def test_a_listed_rows_current_title_stays_whatever_title_the_persons_other_card_states(tmp_path):
-    # A stored row with a current title keeps it when this run's card for the
-    # same person, for the same profile or for another, states another title.
-    # The other card may be an emeritus listed with an active lab.
+def test_a_listed_rows_title_is_the_one_its_own_profiles_card_states_this_run_never_another_profiles(tmp_path):
+    # A stored row shows the title this run's card for the same profile states
+    # (M149b: a stored title, the old "Professor" default among them, never
+    # outlives it), and keeps its own when only another profile's card states
+    # another title. The card may be an emeritus listed with an active lab.
     url = f"{DEPARTMENTS['physics']['base']}/people/directory/profile/person5"
     for title, section in (("Research Professor", "Research Faculty"),
                            ("Professor Emeritus", "Emeritus Faculty with active research labs")):
@@ -3171,7 +3182,7 @@ def test_a_listed_rows_current_title_stays_whatever_title_the_persons_other_card
         rows = _merge(tmp_path, [stored], [fresh])
         assert list(rows) == ["Emery Q. Sample"], title
         assert _emeritus(rows["Emery Q. Sample"]) == (True, None, False), title
-        assert rows["Emery Q. Sample"]["metadata"]["faculty_title"] == "Professor", title
+        assert rows["Emery Q. Sample"]["metadata"]["faculty_title"] == title
 
     def card(dept, **person):
         return normalize_faculty({"name": "Devon Example", "email": "person4@illinois.edu",
@@ -3186,3 +3197,89 @@ def test_a_listed_rows_current_title_stays_whatever_title_the_persons_other_card
     assert _emeritus(rows["Devon Example"]) == (True, None, False)
     md = rows["Devon Example"]["metadata"]
     assert (md["faculty_title"], md["directory_section"]) == ("Professor of Communication", "Faculty")
+
+
+# --- M149b: a title the card (or the profile the run reads) states is read; one
+# that states none gives no title, never a default rank. Synthetic people. ---
+
+def test_an_engineering_directory_card_with_a_netid_states_its_title_abbreviated_or_without_a_rank(monkeypatch):
+    # The directory's own record of the person (data-netid): its div.title is the
+    # title. A research-area card's (no netid) names a subarea: no title.
+    page = _person_items_page([
+        ("h3", "Faculty", [("person1", "Avery Example", "Asst Prof"), ("person2", "Blair Sample", "RES PROF"),
+                           ("person3", "Casey Placeholder", "Example Partnership Coordinator")]),
+        ("h3", "Affiliates and Adjuncts", [("person8", "Harper Sample", "Department Affiliate")]),
+        ("h3", "Example Information Science", [("person4", "Devon Example", "Example Matter Theory", True)]),
+    ])
+    titles = {r["pi_name"]: r["metadata"]["faculty_title"] for r in _fetch_physics(monkeypatch, page=page)}
+    assert titles == {"Avery Example": "Asst Prof", "Blair Sample": "RES PROF",
+                      "Casey Placeholder": "Example Partnership Coordinator",
+                      "Harper Sample": "Department Affiliate", "Devon Example": ""}
+
+
+ISCHOOL_TEASERS_PAGE = """<html><body><main><div class="component component--profile-listing">
+  <div class="profile-teaser"><div class="profile-teaser__image-container">
+    <a class="profile-teaser__image-link" href="/people/avery-example"><img alt="Avery Example"/></a></div>
+    <div class="profile-teaser__text-container">
+      <div class="profile-teaser__name"><a class="profile-teaser__link" href="/people/avery-example">Avery Example</a></div>
+      <div class="profile-teaser__title">Teaching Assistant Professor and Example Program Director</div>
+      <div class="profile-teaser__education">PhD, Example Studies</div></div></div>
+  <div class="profile-teaser"><div class="profile-teaser__text-container">
+      <div class="profile-teaser__name"><a class="profile-teaser__link" href="/people/blair-sample">Blair Sample</a></div>
+      <div class="profile-teaser__title">Lecturer</div></div></div>
+</div></main></body></html>"""
+
+
+def test_an_ischool_teaser_states_the_title_under_its_name_link(monkeypatch):
+    import src.collectors.uiuc_faculty as f
+
+    monkeypatch.setattr(f, "_fetch_soup", lambda url: BeautifulSoup(ISCHOOL_TEASERS_PAGE, "html.parser")
+                        if url == DEPARTMENTS["ischool"]["url"] else None)
+    titles = {r["pi_name"]: r["metadata"]["faculty_title"] for r in f.fetch_department("ischool", enrich=False)}
+    assert titles == {"Avery Example": "Teaching Assistant Professor and Example Program Director",
+                      "Blair Sample": "Lecturer"}
+
+
+def test_a_card_that_states_no_title_gets_none_and_its_text_names_no_rank():
+    row = normalize_faculty({"name": "Avery Example", "url": f"{DEPARTMENTS['physics']['base']}/people/person1"},
+                            DEPARTMENTS["physics"], keywords=["physics"])
+    assert row["metadata"]["faculty_title"] == ""
+    assert "Professor" not in row["description_raw"] and "for Avery Example in" in row["description_raw"]
+
+
+def test_a_stored_title_does_not_outlive_this_runs_card_for_the_same_profile_and_the_title_it_states_is_kept(tmp_path):
+    # The stored row (fuller name: the richer one, so the fold keeps it) carries
+    # the "Professor" the old default wrote; this run's card for the same profile
+    # decides the title: the one it states, none when it states none.
+    url = f"{DEPARTMENTS['physics']['base']}/people/directory/profile/person5"
+    for stated in ("Associate Professor", ""):
+        stored = normalize_faculty({"name": "Emery Q. Sample", "email": "person5@illinois.edu", "url": url,
+                                    "title": "Professor"}, DEPARTMENTS["physics"], keywords=["physics"])
+        stored["metadata"]["last_seen_at"] = "2026-10-05T14:18:05"
+        fresh = normalize_faculty({"name": "Emery Sample", "email": "person5@illinois.edu", "url": url,
+                                   "directory_section": "Faculty"}, DEPARTMENTS["physics"], keywords=["physics"])
+        fresh["metadata"]["faculty_title"] = stated
+        rows = _merge(tmp_path, [stored], [fresh])
+        assert list(rows) == ["Emery Q. Sample"], stated
+        assert rows["Emery Q. Sample"]["metadata"]["faculty_title"] == stated
+        assert _emeritus(rows["Emery Q. Sample"]) == (True, None, False), stated
+
+
+def test_a_card_of_this_run_that_states_no_title_leaves_the_title_another_of_its_cards_states(tmp_path):
+    url = f"{DEPARTMENTS['physics']['base']}/people/directory/profile/person1"
+
+    def card(name, title, section):
+        row = normalize_faculty({"name": name, "email": "person1@illinois.edu", "url": url, "title": title,
+                                 "directory_section": section}, DEPARTMENTS["physics"], keywords=["physics"])
+        row["metadata"]["faculty_title"] = title
+        return row
+
+    # Listed again under a research area, on a card stating none: the same row.
+    rows = _merge(tmp_path, [], [card("Avery Example", "Associate Professor", "Faculty"),
+                                 card("Avery Example", "", "Example Information Science")])
+    assert rows["Avery Example"]["metadata"]["faculty_title"] == "Associate Professor"
+    # A second spelling of the same profile read later this run, stating none: folded.
+    rows = _merge(tmp_path, [], [card("Avery Q. Example", "Associate Professor", "Faculty"),
+                                 card("Avery Example", "", "Example Information Science")])
+    assert list(rows) == ["Avery Q. Example"]
+    assert rows["Avery Q. Example"]["metadata"]["faculty_title"] == "Associate Professor"

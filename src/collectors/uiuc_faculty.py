@@ -476,7 +476,7 @@ _ACTIVE_LAB_RE = re.compile(r"\bactive\s+(?:research\s+)?lab(?:s|oratory|oratori
 EMERITUS_REASON = "listed_as_emeritus"
 _EMERITUS_WORD_RE = re.compile(r"\b(?:emerit(?:us|a|i|ae)|retired)\b", re.IGNORECASE)
 _RANK_RE = re.compile(
-    r"\b(?:professor|lecturer|instructor|director|dean|chair|head|scientist|researcher|fellow|scholar"
+    r"\b(?:professor|prof|lecturer|instructor|director|dean|chair|head|scientist|researcher|fellow|scholar"
     r"|(?:affiliate|adjunct|clinical|research|teaching|visiting)\s+faculty|chancellor|provost|president"
     r"|curator|librarian)\b", re.IGNORECASE)
 _ROLE_SPLIT_RE = re.compile(r"[,;/|]")
@@ -528,9 +528,15 @@ def _title_roles(title: str | None) -> list[bool]:
 def _directory_role_title(el) -> str | None:
     """An Engineering directory's div.title when it states a rank or
     appointment: in Physics's research-area sections the same field names a
-    subarea ("High Energy Theory"), which is no title. Each of its lines (a
-    <p> or <br>; an inline tag breaks none) is a title of its own, so two read
-    "Professor; <named> Faculty Scholar", not as one title that reads like a name."""
+    subarea ("High Energy Theory"), which is no title."""
+    text = _title_lines(el)
+    return text if _RANK_RE.search(text) else None
+
+
+def _title_lines(el) -> str:
+    """The title text of ``el``. Each of its lines (a <p> or <br>; an inline
+    tag breaks none) is a title of its own, so two read "Professor; <named>
+    Faculty Scholar", not as one title that reads like a name."""
     lines: list[str] = []
     line_of = None
     breaks = 0
@@ -543,8 +549,7 @@ def _directory_role_title(el) -> str | None:
                 lines.append("")
                 line_of = line
             lines[-1] += node
-    text = "; ".join(filter(None, (" ".join(line.split()) for line in lines)))
-    return text if _RANK_RE.search(text) else None
+    return "; ".join(filter(None, (" ".join(line.split()) for line in lines)))
 
 
 def _listed_with_active_lab(metadata: dict) -> bool:
@@ -741,8 +746,18 @@ def _parse_faculty_card(element, base_url: str, dept: str) -> dict | None:
     elif element.name == "a":
         # Engineering directory cards (div.item.person: Physics, CEE, ...) match
         # no card selector and are read link by link; the title sits beside the link.
+        # A card with a netid is the directory's own record of the person, whose
+        # div.title is their title even when it names no rank ("Department
+        # Affiliate"); a research-area card's (no netid) may name a subarea.
         card = element.find_parent("div", class_="person")
-        title = _directory_role_title(card.select_one("div.title")) if card else None
+        title = None
+        if card is not None:
+            title_div = card.select_one("div.title:not(.groups)")
+            title = _title_lines(title_div) if card.get("data-netid") else _directory_role_title(title_div)
+        teaser = element.find_parent("div", class_="profile-teaser")
+        if teaser is not None:
+            # iSchool's teaser states the title under the name link.
+            title = _title_lines(teaser.select_one("div.profile-teaser__title"))
         if title:
             result["title"] = title
 
@@ -995,7 +1010,9 @@ def normalize_faculty(
     dept_short = dept_config["short"]
     dept_name = dept_config["name"]
     profile_url = person.get("url", "")
-    title = person.get("title", "Professor")
+    # A card (or profile) that states no title gets none, never a default rank:
+    # "" is what every consumer reads as an unknown rank.
+    title = person.get("title") or ""
     research_areas = person.get("research_areas", "")
     section = person.get("directory_section") or ""
     # An emeritus heading retires a card whose own title states no current
@@ -1014,7 +1031,7 @@ def normalize_faculty(
         keywords = _extract_research_keywords(person, dept_config)
 
     desc_parts = [
-        f"Faculty research profile for {title} {name} in the {dept_name} at UIUC.",
+        f"Faculty research profile for {title + ' ' if title else ''}{name} in the {dept_name} at UIUC.",
     ]
     if research_areas:
         desc_parts.append(f"Research areas: {_trim_research_areas(research_areas, 200)}")
@@ -1789,6 +1806,13 @@ def _carry_newest_liveness(survivor: dict, dropped: dict) -> None:
             and (dropped.get("source_url") or "") == (survivor.get("source_url") or "")):
         # The same directory card, so the section it was read under this run.
         meta["directory_section"] = dropped["metadata"]["directory_section"]
+    if (survivor.get("source") == dropped.get("source") == "uiuc_faculty"
+            and (dropped.get("source_url") or "") == (survivor.get("source_url") or "")
+            and (dropped["metadata"].get("faculty_title") or not own)):
+        # And the title that card states this run, none when it states none: a
+        # stored title (the old "Professor" default among them) never outlives
+        # it. A card of this run stating none leaves another card's title.
+        meta["faculty_title"] = dropped["metadata"].get("faculty_title") or ""
     if dropped["metadata"].get("deactivation_reason") == IN_MEMORIAM_REASON:
         # The same person's newer card sits under the directory's In Memoriam
         # heading, so the surviving row is retired with it and loses its address.
@@ -2959,9 +2983,16 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
             # with whatever richer research the other card holds.
             _carry_forward_enrichment(opp, index[opp["id"]])
             continue
+        again = opp["id"] in read_this_run
         read_this_run.add(opp["id"])
         if opp["id"] in index:
             cur = index[opp["id"]]
+            earlier = cur.get("metadata") or {}
+            if (again and not opp["metadata"].get("faculty_title") and earlier.get("is_active") is not False
+                    and earlier.get("faculty_title") and not _title_is_emeritus(earlier["faculty_title"])):
+                # The page lists the person again on a card that states no title
+                # (a research-area section): the title their other card states stays.
+                opp["metadata"]["faculty_title"] = earlier["faculty_title"]
             opp["metadata"]["first_seen_at"] = cur.get(
                 "metadata", {}
             ).get("first_seen_at", opp["metadata"]["first_seen_at"])

@@ -102,3 +102,15 @@ def test_js_shorts_do_not_collide_with_static_faculty():
     js_shorts = {c["short"].lower() for c in JS_DEPARTMENTS.values()}
     assert static_shorts.isdisjoint(js_shorts), "JS dept short collides with static"
     assert len(js_shorts) == len(JS_DEPARTMENTS), "duplicate JS short codes"
+
+
+def test_a_rendered_card_gives_the_title_beside_its_name_link_and_none_without_one(monkeypatch):
+    # r: the title the rendered card states (_PERSON_LINKS_JS reads it from the
+    # person's role block); a card stating none gets no title, never a default.
+    anchors = [{"h": "/directory/person1", "t": "Avery Example", "r": " Professor and\n  Head "},
+               {"h": "/directory/person2", "t": "Blair Sample", "r": ""},
+               {"h": "/directory/person3", "t": "Casey Placeholder"}]
+    monkeypatch.setattr(js, "_render_person_links", lambda url, **k: anchors)
+    titles = {r["pi_name"]: r["metadata"]["faculty_title"] for r in fetch_department("ansc")}
+    assert titles == {"Avery Example": "Professor and Head", "Blair Sample": "", "Casey Placeholder": ""}
+    assert ".directorySection--person--role" in js._PERSON_LINKS_JS
