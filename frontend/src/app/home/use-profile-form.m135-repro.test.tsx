@@ -1520,6 +1520,76 @@ describe('a base that moves on brings what another tab or device stored onto the
   });
 });
 
+// Checklist M153 (review of M135, round 5, probe p7): a question is open in
+// tab 1 about the college and the major it picked offline, which another
+// device changed meanwhile. Tab 1 then picks a year, and that save fails in
+// transit. The save had staged the question's fields again, which unlocked
+// them in the outbox, so the question left the screen with the save's
+// "Couldn't save", nothing could answer it, and the edits stayed in the
+// journal. Now the year's save leaves the question's fields alone.
+describe('a save that fails while a question is open (M153)', { timeout: 20_000 }, () => {
+  /** Back online tab 1 is asked; its year then goes out while the network
+   *  refuses every write (`how` 'reset'), or with the browser offline. */
+  async function askedThenYearFails(how: 'reset' | 'offline') {
+    const tab1 = await openTab('tab 1');
+    network(false);
+    await tick(1500);
+    await choose(tab1, 'college', LAS);
+    await choose(tab1, 'major', 'Mathematics');
+    await tick(3000);
+    anotherDevice({ college: GIES, major: 'Finance' });
+    network(true);
+    await tick(5000);
+    expect({ asked: asked(tab1), status: tab1.form().saveStatus }, 'back online').toEqual({ asked: ['college', 'major'], status: 'conflict' });
+    if (how === 'reset') writesFail = true; else network(false);
+    const before = sent.length;
+    await choose(tab1, 'grade', 'Senior');
+    await tick(4000);
+    writesFail = false;
+    expect({
+      asked: asked(tab1), form: academic(tab1.form().profile), stored: { revision: row.revision, ...academic(row.profile) },
+      sent: sent.slice(before).map((s) => [s.expected, s.keys, s.status]),
+    }, 'after the year\'s save failed').toEqual({
+      asked: ['college', 'major'], form: { college: LAS, major: 'Mathematics', grade: 'Senior' },
+      stored: { revision: 2, college: GIES, major: 'Finance', grade: 'Junior' },
+      sent: [[1, ['additional_majors', 'grade'], 'failed']],
+    });
+    return tab1;
+  }
+
+  for (const answer of ['keep', 'other'] as const) {
+    it(`keeps the question on screen, and "${answer === 'keep' ? 'Keep what I typed' : 'Use the other version'}" stores the answer and the year`, async () => {
+      const tab1 = await askedThenYearFails('reset');
+      act(() => { if (answer === 'keep') tab1.form().keepMyChanges(); else tab1.form().useCloudVersion(); });
+      await tick(6000);
+      const stored = answer === 'keep' ? { college: LAS, major: 'Mathematics', grade: 'Senior' } : { college: GIES, major: 'Finance', grade: 'Senior' };
+      expect({ asked: asked(tab1), form: academic(tab1.form().profile), stored: academic(row.profile) }, 'answered')
+        .toEqual({ asked: [], form: stored, stored });
+      // "Use the other version" leaves the answered operations in the journal
+      // here (the answer's write is rebased, and the rebase drops the fields
+      // the row already holds without settling them): the next edit of those
+      // fields is sent once more at the old revision, refused, and stored
+      // with no question.
+      await changeShown(tab1, [['college', GRAINGER], ['major', 'Computer Science']]);
+      expect({ asked: asked(tab1), stored: academic(row.profile), journal: described(outstanding(tab1)) }, 'tab 1 then picks Grainger and Computer Science')
+        .toEqual({ asked: [], stored: { college: GRAINGER, major: 'Computer Science', grade: 'Senior' }, journal: [] });
+    });
+  }
+
+  it('lets "Keep what I typed" be given offline, and stores it with the year once the network is back', async () => {
+    const tab1 = await askedThenYearFails('offline');
+    act(() => { tab1.form().keepMyChanges(); });
+    await tick(3000);
+    expect({ stored: academic(row.profile), form: academic(tab1.form().profile) }, 'answered offline')
+      .toEqual({ stored: { college: GIES, major: 'Finance', grade: 'Junior' }, form: { college: LAS, major: 'Mathematics', grade: 'Senior' } });
+    network(true);
+    await tick(6000);
+    const stored = { college: LAS, major: 'Mathematics', grade: 'Senior' };
+    expect({ asked: asked(tab1), form: academic(tab1.form().profile), stored: academic(row.profile), journal: described(outstanding(tab1)) }, 'back online')
+      .toEqual({ asked: [], form: stored, stored, journal: [] });
+  });
+});
+
 // Checklist M132 (seen during M113): two tabs pick different values offline,
 // and both are asked once back online. A tab's screen showed the other tab's
 // value in an asked field, while "Keep what I typed" there keeps its own. A

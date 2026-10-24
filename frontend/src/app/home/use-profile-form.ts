@@ -459,6 +459,9 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
    *  a per-field answer landing in between must act on what is really on
    *  screen. */
   const conflictsRef = useRef<ProfileConflict[]>([]);
+  /** Each field's edit epoch when the question on screen was last published:
+   *  a question field still at it holds nothing typed since it was asked. */
+  const questionEpochsRef = useRef<Map<string, number>>(new Map());
   /** `applySaveResult` rebuilds a conflict through the refresh handler, and
    *  that handler reports its continued flush back through `applySaveResult`.
    *  One of the two has to be reached indirectly; this is it. */
@@ -515,6 +518,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     conflictPromptRef.current = prompt;
     conflictsRef.current = prompt ? [...prompt.conflicts] : [];
     conflictKeysRef.current = conflictsRef.current.map((c) => c.key);
+    questionEpochsRef.current = new Map(conflictKeysRef.current.map((k) => [k, fieldEpochRef.current.get(k) ?? 0]));
     setConflicts(conflictsRef.current);
     setConflictKeys(conflictKeysRef.current);
   }, []);
@@ -1854,7 +1858,8 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       // taking the shared working copy's value, which can be another tab's,
       // and autosaving it (M137). After any refresh, so does an open question
       // holding a value typed in this tab: the field shows what "Keep what I
-      // typed" keeps, not the working copy another tab's save wrote (M132).
+      // typed" keeps, not the working copy another tab's save wrote (M132),
+      // which the autosave no longer stages again for this tab (M153).
       const held = new Set(refreshed.status === 'current'
         ? refreshed.conflicts.filter((c) => c.newerBuild || context === 'other-tab' || conflictTypedInThisTab(c))
           .map((c) => c.key) : []);
@@ -3007,7 +3012,17 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         );
         return;
       }
-      commitSave(toSave, dirty.value, origin, intent);
+      // A field of the question on screen with nothing typed into it since
+      // it was asked is not staged again (M153): staging unlocks it in the
+      // outbox, and a request that then failed in transit took the question
+      // out of storage, where no answer could reach it. The answer sends it.
+      const keys = dirty.value.filter((k) => !conflictKeysRef.current.includes(k)
+        || (fieldEpochRef.current.get(k) ?? 0) !== questionEpochsRef.current.get(k));
+      if (keys.length === 0) {
+        if (intent === saveIntentRef.current) setSaveStatus(conflictWording(conflictsRef.current));
+        return;
+      }
+      commitSave(toSave, keys, origin, intent);
     }, 1500);
 
     return () => {
