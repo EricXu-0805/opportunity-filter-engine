@@ -298,6 +298,30 @@ describe('a slider move after the other tab sent this tab\'s earlier one (M134)'
   });
 });
 
+// Checklist M138 (review of M136): the guest profile was merged into a
+// signed-in account, so the server answers every write "merged away". Tab A
+// learned it first, which clears this browser's copy of the profile and its
+// journal; tab B, still open beside it with an edit it could not send, read
+// that, found nothing unsent, and said "saved" with the name emptied.
+describe('another tab finding that the guest profile was merged away (M138)', () => {
+  it('says the profile no longer exists, offers no Retry, and keeps the form as shown', async () => {
+    const a = await open('A');
+    const b = await open('B');
+    online = false;
+    await as(b, (f) => f.update('name', 'Alex Kim'));
+    expect(b.hook.result.current.saveStatus).toBe('cloud-failed');
+    online = true;
+    service.commit.mockImplementation(async () => ({ status: 'missing', reason: 'merged_away' }));
+    await as(a, (f) => f.update('grade', 'Senior'));
+    expect(a.hook.result.current.saveStatus).toBe('stale');
+    await tick(3000);
+    const form = b.hook.result.current;
+    expect({ status: form.saveStatus, retry: form.canRetrySync, name: form.profile.name, grade: form.profile.grade, seen: b.seen.slice(-1) })
+      .toEqual({ status: 'stale', retry: false, name: 'Alex Kim', grade: 'Junior', seen: ['stale'] });
+    expect(b.seen).not.toContain('saved');
+  });
+});
+
 /** Locked reads of the profile storage from here on. The typing tab takes the
  *  lock only when its save fires, so in the windows below every one is the
  *  listening tab's read. */

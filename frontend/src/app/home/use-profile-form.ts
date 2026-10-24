@@ -2764,6 +2764,16 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       otherTabReading = true;
       void refreshConflictQuestion(whole, origin.token, 'read').then((refreshed) => {
         if (!current()) return;
+        // Another tab learned that this profile was merged into another
+        // account, which clears this browser's copy of it and its journal
+        // (M138): nothing here is saved or can be, so this tab says what
+        // that tab says, offers no Retry, and keeps the form as shown.
+        const envelope = readProfileSyncEnvelopeStrict();
+        if (envelope.ok && envelope.value?.tombstone?.reason === 'merged') {
+          armRetryable(null);
+          setSaveStatus('stale');
+          return;
+        }
         const owed = refreshed.status === 'current' || refreshed.status === 'settled' ? refreshed.pendingKeys : [];
         const drawn = whole.filter((key) => asked.includes(key) || !owed.includes(key));
         return applyConflictRefreshRef.current?.(refreshed, drawn, origin.token, origin.generation, intent, fence, true, 'other-tab');
@@ -2789,7 +2799,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       window.removeEventListener('offline', recheck); document.removeEventListener('visibilitychange', recheck);
     };
   }, [hydrationState, backgroundOwnerKey, backgroundShare, identityGeneration, epochsNow, unrepresentedNow,
-    recordOutstandingIntents, ownsScreen, publishConflicts, publishProfileRefresh, setSaveStatus]);
+    recordOutstandingIntents, ownsScreen, publishConflicts, publishProfileRefresh, setSaveStatus, armRetryable]);
 
   // The onboarding school gate (a layout-level overlay) finishes *after* this
   // form has already mounted and loaded its profile, so its localStorage write
