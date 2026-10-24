@@ -1563,18 +1563,63 @@ describe('a save that fails while a question is open (M153)', { timeout: 20_000 
       act(() => { if (answer === 'keep') tab1.form().keepMyChanges(); else tab1.form().useCloudVersion(); });
       await tick(6000);
       const stored = answer === 'keep' ? { college: LAS, major: 'Mathematics', grade: 'Senior' } : { college: GIES, major: 'Finance', grade: 'Senior' };
-      expect({ asked: asked(tab1), form: academic(tab1.form().profile), stored: academic(row.profile) }, 'answered')
-        .toEqual({ asked: [], form: stored, stored });
-      // "Use the other version" leaves the answered operations in the journal
-      // here (the answer's write is rebased, and the rebase drops the fields
-      // the row already holds without settling them): the next edit of those
-      // fields is sent once more at the old revision, refused, and stored
-      // with no question.
+      expect({ asked: asked(tab1), form: academic(tab1.form().profile), stored: academic(row.profile), journal: described(outstanding(tab1)) }, 'answered')
+        .toEqual({ asked: [], form: stored, stored, journal: [] });
       await changeShown(tab1, [['college', GRAINGER], ['major', 'Computer Science']]);
       expect({ asked: asked(tab1), stored: academic(row.profile), journal: described(outstanding(tab1)) }, 'tab 1 then picks Grainger and Computer Science')
         .toEqual({ asked: [], stored: { college: GRAINGER, major: 'Computer Science', grade: 'Senior' }, journal: [] });
     });
   }
+
+  // Review of M153 (flows, SF6/F2b): "Use the other version" there left the
+  // answer and the edits it decided against in the journal (the answer's
+  // write went out beside the year at the older revision, and the rebase
+  // dropped the fields the row held without settling them). A college and
+  // major another device stored later stayed off the screen; the next edit,
+  // a reload or a second tab sent the answer's fields again, was refused and
+  // asked about the values the answer took as this tab's own, which "Keep
+  // what I typed" then wrote over the device's.
+  const DEVICE = { college: GRAINGER, major: 'Physics', grade: 'Senior' };
+  async function otherVersionThenDevice() {
+    const tab1 = await askedThenYearFails('reset');
+    act(() => { tab1.form().useCloudVersion(); });
+    await tick(6000);
+    anotherDevice({ college: GRAINGER, major: 'Physics' });
+    return tab1;
+  }
+
+  it('settles what "Use the other version" decided, so another device\'s later change shows and the next edit sends only itself', async () => {
+    const tab1 = await otherVersionThenDevice();
+    act(() => { window.dispatchEvent(new Event('focus')); });
+    await tick(4000);
+    expect({ asked: asked(tab1), form: academic(tab1.form().profile) }, 'tab 1 after a focus check')
+      .toEqual({ asked: [], form: DEVICE });
+    const before = sent.length;
+    await choose(tab1, 'grade', 'Freshman');
+    await tick(4000);
+    expect({
+      asked: asked(tab1), stored: { revision: row.revision, ...academic(row.profile) },
+      sent: sent.slice(before).map((s) => [s.expected, s.keys, s.status]),
+    }, 'tab 1 then picks a year').toEqual({
+      asked: [], stored: { revision: 5, ...DEVICE, grade: 'Freshman' }, sent: [[4, ['grade'], 'applied']],
+    });
+  });
+
+  it('asks nothing about what "Use the other version" decided in the tab reloaded, nor in a second tab, after another device changed it', async () => {
+    const tab1 = await otherVersionThenDevice();
+    const before = sent.length;
+    const reloaded = await reloadTab(tab1);
+    await tick(4000);
+    const tab2 = await openTab('tab 2');
+    await tick(4000);
+    const shows = (tab: Tab) => ({ asked: asked(tab), form: academic(tab.form().profile) });
+    expect({ tab1: shows(reloaded), tab2: shows(tab2), sent: sent.slice(before).map((s) => [s.tab, s.expected, s.keys, s.status]) },
+      'tab 1 reloaded, and tab 2 opened').toEqual({ tab1: { asked: [], form: DEVICE }, tab2: { asked: [], form: DEVICE }, sent: [] });
+    await choose(tab2, 'grade', 'Freshman');
+    await tick(4000);
+    expect({ tab1: asked(reloaded), tab2: asked(tab2), sent: sent.slice(before).map((s) => [s.tab, s.expected, s.keys, s.status]) },
+      'tab 2 then picks a year').toEqual({ tab1: [], tab2: [], sent: [['tab 2', 4, ['grade'], 'applied']] });
+  });
 
   it('lets "Keep what I typed" be given offline, and stores it with the year once the network is back', async () => {
     const tab1 = await askedThenYearFails('offline');
