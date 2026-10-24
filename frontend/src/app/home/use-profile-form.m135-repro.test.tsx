@@ -975,7 +975,9 @@ function idsSortNewestFirst() {
 // gone while an edit it decided against was outstanding again (review of
 // M135, round 1).
 describe('a settle whose receipt does not fit takes back the receipts it wrote (M135)', { timeout: 20_000 }, () => {
-  it('in the answer\'s acknowledgement: the major the answer decided against is never sent over it', async () => {
+  /** Up to tab 1 shown the answer, with its major edit left outstanding;
+   *  `then` follows, in the same receipt order. */
+  async function answerWithTab1sReceiptRefused(then: (tab1: Tab, atAnswer: number) => Promise<void>) {
     // Newest first: the acknowledgement writes tab 1's major edit's receipt
     // after the answer's and tab 2's major edit's.
     const ids = idsSortNewestFirst();
@@ -1008,6 +1010,23 @@ describe('a settle whose receipt does not fit takes back the receipts it wrote (
         refused: 1, stored: { revision: 3, college: GRAINGER, major: 'Finance', grade: 'Senior' },
         sent: [['tab 2', 2, ['major'], 'Finance', 'applied', 3]],
       });
+      // Tab 1 showed its own major while asked (M132), so the answer reaches
+      // it only now, beside its edit the refused receipt left outstanding: it
+      // says that is not saved, and its Retry settles it, sending nothing.
+      // Before M132 tab 1 drew tab 2's major while asked and autosaved it,
+      // which settled the same closure.
+      expect({ form: academic(tab1.form().profile), asked: asked(tab1), status: tab1.form().saveStatus, retry: tab1.form().canRetrySync },
+        'tab 1 after the answer').toEqual({ form: { college: GRAINGER, major: 'Finance', grade: 'Senior' }, asked: [], status: 'cloud-failed', retry: true });
+      await then(tab1, atAnswer);
+    } finally {
+      ids.mockRestore();
+    }
+  }
+
+  it('in the answer\'s acknowledgement: the major the answer decided against is never sent over it', async () => {
+    await answerWithTab1sReceiptRefused(async (tab1, atAnswer) => {
+      act(() => { tab1.form().retryCloudSave(); });
+      await tick(4000);
       const reloaded1 = await reloadTab(tab1);
       await tick(65_000);
       expect({
@@ -1018,9 +1037,35 @@ describe('a settle whose receipt does not fit takes back the receipts it wrote (
         journal: [], receipts: 0, asked: [], form: { college: GRAINGER, major: 'Finance', grade: 'Senior' },
         stored: { revision: 3, college: GRAINGER, major: 'Finance', grade: 'Senior' }, sent: 1,
       });
-    } finally {
-      ids.mockRestore();
-    }
+    });
+  });
+
+  // Without that Retry the reloaded tab keeps the three operations, asking
+  // nothing and showing the answer, until its next edit, which sends the
+  // answer's major once more at the older revision; refused, the major
+  // leaves the journal as the row already holds it, and only the year is
+  // stored. Tab 1's Mathematics is never sent. (On 799a4f49 the three
+  // operations stayed after that edit too, and went out with every next one.)
+  it('in the answer\'s acknowledgement, without a Retry: the next edit sends the answer\'s major once, refused, and leaves nothing pending', async () => {
+    await answerWithTab1sReceiptRefused(async (tab1, atAnswer) => {
+      const reloaded1 = await reloadTab(tab1);
+      await tick(65_000);
+      expect({ journal: described(outstanding(reloaded1)), asked: asked(reloaded1), form: academic(reloaded1.form().profile), sent: sent.length - atAnswer },
+        'tab 1 reloaded, 65 s later').toEqual({
+        journal: ['tab 1 edit of major', 'tab 2 answer of major', 'tab 2 edit of major'], asked: [],
+        form: { college: GRAINGER, major: 'Finance', grade: 'Senior' }, sent: 1,
+      });
+      const before = sent.length;
+      await choose(reloaded1, 'grade', 'Freshman');
+      await tick(4000);
+      expect({
+        journal: described(outstanding(reloaded1)), asked: asked(reloaded1), stored: { revision: row.revision, ...academic(row.profile) },
+        sent: sent.slice(before).map((s) => [s.expected, s.keys, s.values.major, s.status]),
+      }, 'tab 1 then picks a year').toEqual({
+        journal: [], asked: [], stored: { revision: 4, college: GRAINGER, major: 'Finance', grade: 'Freshman' },
+        sent: [[2, ['grade', 'major'], 'Finance', 'conflict'], [3, ['grade'], undefined, 'applied']],
+      });
+    });
   });
 });
 
@@ -1508,5 +1553,316 @@ describe('a base that moves on brings what another tab or device stored onto the
     await tick(3000);
     expect({ shows: tab1.form().profile.home_school, asked: asked(tab1), stored: { revision: row.revision, home_school: row.profile.home_school } },
       'tab 1 once the gate sent it').toEqual({ shows: 'jhu', asked: [], stored: { revision: 4, home_school: 'jhu' } });
+  });
+});
+
+// Checklist M153 (review of M135, round 5, probe p7): a question is open in
+// tab 1 about the college and the major it picked offline, which another
+// device changed meanwhile. Tab 1 then picks a year, and that save fails in
+// transit. The save had staged the question's fields again, which unlocked
+// them in the outbox, so the question left the screen with the save's
+// "Couldn't save", nothing could answer it, and the edits stayed in the
+// journal. Now the year's save leaves the question's fields alone.
+describe('a save that fails while a question is open (M153)', { timeout: 20_000 }, () => {
+  /** Back online tab 1 is asked; its year then goes out while the network
+   *  refuses every write (`how` 'reset'), or with the browser offline. */
+  async function askedThenYearFails(how: 'reset' | 'offline') {
+    const tab1 = await openTab('tab 1');
+    network(false);
+    await tick(1500);
+    await choose(tab1, 'college', LAS);
+    await choose(tab1, 'major', 'Mathematics');
+    await tick(3000);
+    anotherDevice({ college: GIES, major: 'Finance' });
+    network(true);
+    await tick(5000);
+    expect({ asked: asked(tab1), status: tab1.form().saveStatus }, 'back online').toEqual({ asked: ['college', 'major'], status: 'conflict' });
+    if (how === 'reset') writesFail = true; else network(false);
+    const before = sent.length;
+    await choose(tab1, 'grade', 'Senior');
+    await tick(4000);
+    writesFail = false;
+    expect({
+      asked: asked(tab1), form: academic(tab1.form().profile), stored: { revision: row.revision, ...academic(row.profile) },
+      sent: sent.slice(before).map((s) => [s.expected, s.keys, s.status]),
+    }, 'after the year\'s save failed').toEqual({
+      asked: ['college', 'major'], form: { college: LAS, major: 'Mathematics', grade: 'Senior' },
+      stored: { revision: 2, college: GIES, major: 'Finance', grade: 'Junior' },
+      sent: [[1, ['additional_majors', 'grade'], 'failed']],
+    });
+    return tab1;
+  }
+
+  for (const answer of ['keep', 'other'] as const) {
+    it(`keeps the question on screen, and "${answer === 'keep' ? 'Keep what I typed' : 'Use the other version'}" stores the answer and the year`, async () => {
+      const tab1 = await askedThenYearFails('reset');
+      act(() => { if (answer === 'keep') tab1.form().keepMyChanges(); else tab1.form().useCloudVersion(); });
+      await tick(6000);
+      const stored = answer === 'keep' ? { college: LAS, major: 'Mathematics', grade: 'Senior' } : { college: GIES, major: 'Finance', grade: 'Senior' };
+      expect({ asked: asked(tab1), form: academic(tab1.form().profile), stored: academic(row.profile), journal: described(outstanding(tab1)) }, 'answered')
+        .toEqual({ asked: [], form: stored, stored, journal: [] });
+      await changeShown(tab1, [['college', GRAINGER], ['major', 'Computer Science']]);
+      expect({ asked: asked(tab1), stored: academic(row.profile), journal: described(outstanding(tab1)) }, 'tab 1 then picks Grainger and Computer Science')
+        .toEqual({ asked: [], stored: { college: GRAINGER, major: 'Computer Science', grade: 'Senior' }, journal: [] });
+    });
+  }
+
+  // Review of M153 (flows, SF6/F2b): "Use the other version" there left the
+  // answer and the edits it decided against in the journal (the answer's
+  // write went out beside the year at the older revision, and the rebase
+  // dropped the fields the row held without settling them). A college and
+  // major another device stored later stayed off the screen; the next edit,
+  // a reload or a second tab sent the answer's fields again, was refused and
+  // asked about the values the answer took as this tab's own, which "Keep
+  // what I typed" then wrote over the device's.
+  const DEVICE = { college: GRAINGER, major: 'Physics', grade: 'Senior' };
+  async function otherVersionThenDevice() {
+    const tab1 = await askedThenYearFails('reset');
+    act(() => { tab1.form().useCloudVersion(); });
+    await tick(6000);
+    anotherDevice({ college: GRAINGER, major: 'Physics' });
+    return tab1;
+  }
+
+  it('settles what "Use the other version" decided, so another device\'s later change shows and the next edit sends only itself', async () => {
+    const tab1 = await otherVersionThenDevice();
+    act(() => { window.dispatchEvent(new Event('focus')); });
+    await tick(4000);
+    expect({ asked: asked(tab1), form: academic(tab1.form().profile) }, 'tab 1 after a focus check')
+      .toEqual({ asked: [], form: DEVICE });
+    const before = sent.length;
+    await choose(tab1, 'grade', 'Freshman');
+    await tick(4000);
+    expect({
+      asked: asked(tab1), stored: { revision: row.revision, ...academic(row.profile) },
+      sent: sent.slice(before).map((s) => [s.expected, s.keys, s.status]),
+    }, 'tab 1 then picks a year').toEqual({
+      asked: [], stored: { revision: 5, ...DEVICE, grade: 'Freshman' }, sent: [[4, ['grade'], 'applied']],
+    });
+  });
+
+  it('asks nothing about what "Use the other version" decided in the tab reloaded, nor in a second tab, after another device changed it', async () => {
+    const tab1 = await otherVersionThenDevice();
+    const before = sent.length;
+    const reloaded = await reloadTab(tab1);
+    await tick(4000);
+    const tab2 = await openTab('tab 2');
+    await tick(4000);
+    const shows = (tab: Tab) => ({ asked: asked(tab), form: academic(tab.form().profile) });
+    expect({ tab1: shows(reloaded), tab2: shows(tab2), sent: sent.slice(before).map((s) => [s.tab, s.expected, s.keys, s.status]) },
+      'tab 1 reloaded, and tab 2 opened').toEqual({ tab1: { asked: [], form: DEVICE }, tab2: { asked: [], form: DEVICE }, sent: [] });
+    await choose(tab2, 'grade', 'Freshman');
+    await tick(4000);
+    expect({ tab1: asked(reloaded), tab2: asked(tab2), sent: sent.slice(before).map((s) => [s.tab, s.expected, s.keys, s.status]) },
+      'tab 2 then picks a year').toEqual({ tab1: [], tab2: [], sent: [['tab 2', 4, ['grade'], 'applied']] });
+  });
+
+  it('lets "Keep what I typed" be given offline, and stores it with the year once the network is back', async () => {
+    const tab1 = await askedThenYearFails('offline');
+    act(() => { tab1.form().keepMyChanges(); });
+    await tick(3000);
+    expect({ stored: academic(row.profile), form: academic(tab1.form().profile) }, 'answered offline')
+      .toEqual({ stored: { college: GIES, major: 'Finance', grade: 'Junior' }, form: { college: LAS, major: 'Mathematics', grade: 'Senior' } });
+    network(true);
+    await tick(6000);
+    const stored = { college: LAS, major: 'Mathematics', grade: 'Senior' };
+    expect({ asked: asked(tab1), form: academic(tab1.form().profile), stored: academic(row.profile), journal: described(outstanding(tab1)) }, 'back online')
+      .toEqual({ asked: [], form: stored, stored, journal: [] });
+  });
+});
+
+// Review of M153 (flows, F4): the autosave leaves alone a question's field
+// with nothing typed since the question was published, and a focus or online
+// check that asked the same question again inside the autosave pause counted
+// as publishing it: a college picked in that pause stayed on screen and in
+// the journal, never sent, with the question open. As before M153, a field
+// typed after its question appeared is saved by the autosave.
+describe('a field typed into an open question just before a load asks it again (M153)', { timeout: 20_000 }, () => {
+  for (const check of ['focus', 'online'] as const) {
+    it(`is saved by the autosave when a ${check} check lands in the autosave pause`, async () => {
+      const tab1 = await openTab('tab 1');
+      network(false);
+      await tick(1500);
+      await choose(tab1, 'college', LAS);
+      await choose(tab1, 'major', 'Mathematics');
+      await tick(3000);
+      anotherDevice({ college: GIES, major: 'Finance' });
+      network(true);
+      await tick(5000);
+      expect(asked(tab1), 'back online').toEqual(['college', 'major']);
+      const before = sent.length;
+      act(() => { tab1.form().update('college', GRAINGER); });
+      await tick(300);
+      act(() => { window.dispatchEvent(new Event(check)); });
+      await tick(5000);
+      await tick(10_000);
+      const picked = { college: GRAINGER, major: '', grade: 'Junior' };
+      expect({
+        asked: asked(tab1), form: academic(tab1.form().profile), stored: academic(row.profile), journal: described(outstanding(tab1)),
+        sent: sent.slice(before).map((s) => [s.expected, s.keys, s.status]),
+      }, 'after the pick').toEqual({
+        asked: [], form: picked, stored: picked, journal: [],
+        sent: [[1, ['additional_majors', 'college', 'major'], 'conflict'], [2, ['college', 'major'], 'applied']],
+      });
+    });
+  }
+
+  // The pick goes out once. Asked again because another device changed the
+  // college meanwhile, it is the answer's to send, as any asked field with
+  // nothing typed since (on 799a4f49 the pick is never sent, so this fails
+  // at 'asked again').
+  it('is sent once, and asked again after another device changed it meanwhile, is not sent with the next edit', async () => {
+    const tab1 = await openTab('tab 1');
+    network(false);
+    await tick(1500);
+    await choose(tab1, 'college', LAS);
+    await choose(tab1, 'major', 'Mathematics');
+    await tick(3000);
+    anotherDevice({ college: GIES, major: 'Finance' });
+    network(true);
+    await tick(5000);
+    act(() => { tab1.form().update('college', GRAINGER); });
+    await tick(300);
+    act(() => { window.dispatchEvent(new Event('focus')); });
+    anotherDevice({ college: LAS });
+    await tick(5000);
+    await tick(5000);
+    expect({ asked: asked(tab1), college: tab1.form().profile.college, stored: { revision: row.revision, ...academic(row.profile) } }, 'asked again')
+      .toEqual({ asked: ['college'], college: GRAINGER, stored: { revision: 4, college: LAS, major: '', grade: 'Junior' } });
+    const before = sent.length;
+    await choose(tab1, 'grade', 'Senior');
+    await tick(4000);
+    expect({
+      asked: asked(tab1), stored: { revision: row.revision, ...academic(row.profile) },
+      college: sent.slice(before).filter((s) => s.keys.includes('college')).map((s) => [s.expected, s.values.college, s.status]),
+    }, 'tab 1 then picks a year').toEqual({
+      asked: ['college'], stored: { revision: 5, college: LAS, major: '', grade: 'Senior' }, college: [],
+    });
+  });
+});
+
+// Checklist M132 (seen during M113): two tabs pick different values offline,
+// and both are asked once back online. A tab's screen showed the other tab's
+// value in an asked field, while "Keep what I typed" there keeps its own. A
+// tab with a question open shows what it typed in the asked fields, which is
+// what "Keep what I typed" keeps; the question shows the other side. M137
+// (2e7f1e85) kept it so after another tab's write and a load; a save's
+// refresh still drew the working copy, which another tab's save can write.
+describe('a question two tabs are asked shows each tab what it typed in the asked fields (M132)', { timeout: 20_000 }, () => {
+  const shows = (tab: Tab) => ({ asked: asked(tab), form: { college: tab.form().profile.college, major: tab.form().profile.major } });
+  const OWN1 = { college: LAS, major: 'Mathematics' };
+  const OWN2 = { college: GIES, major: 'Finance' };
+
+  it('back online, after a focus check, and after each tab saves another field (a guard; so since M137)', async () => {
+    const { tab1, tab2 } = await disagreeOffline();
+    expect({ tab1: shows(tab1), tab2: shows(tab2) }, 'back online').toEqual({
+      tab1: { asked: ['college', 'major'], form: OWN1 }, tab2: { asked: ['college', 'major'], form: OWN2 },
+    });
+    act(() => { window.dispatchEvent(new Event('focus')); });
+    await tick(3000);
+    expect({ tab1: shows(tab1), tab2: shows(tab2) }, 'after a focus check').toEqual({
+      tab1: { asked: ['college', 'major'], form: OWN1 }, tab2: { asked: ['college', 'major'], form: OWN2 },
+    });
+    await saveResearchInterests(tab2);
+    expect({ tab1: shows(tab1), tab2: shows(tab2) }, 'after tab 2 saves its research interests').toEqual({
+      tab1: { asked: ['college', 'major'], form: OWN1 }, tab2: { asked: ['college', 'major'], form: OWN2 },
+    });
+    act(() => { tab1.form().update('research_interests', 'robotics and control'); });
+    await tick(600);
+    await tick(4000);
+    expect({ tab1: shows(tab1), tab2: shows(tab2) }, 'after tab 1 saves its research interests').toEqual({
+      tab1: { asked: ['college', 'major'], form: OWN1 }, tab2: { asked: ['college', 'major'], form: OWN2 },
+    });
+    act(() => { tab1.form().keepMyChanges(); });
+    await tick(4000);
+    expect({ tab1: shows(tab1), stored: academic(row.profile) }, '"Keep what I typed" in tab 1')
+      .toEqual({ tab1: { asked: [], form: OWN1 }, stored: { ...OWN1, grade: 'Senior' } });
+  });
+
+  it('in a tab opened after a closed tab left its pick unsent (the M113 sequence), after a focus check (a guard; already so before M137)', async () => {
+    const tab1 = await openTab('tab 1');
+    writesFail = true;
+    await choose(tab1, 'college', GIES);
+    await choose(tab1, 'major', 'Finance');
+    await tick(4000);
+    tab1.unmount();
+    await drain();
+    const tab2 = await openTab('tab 2');
+    await choose(tab2, 'college', LAS);
+    await choose(tab2, 'major', 'Mathematics');
+    await choose(tab2, 'grade', 'Senior');
+    await tick(4000);
+    writesFail = false;
+    act(() => { window.dispatchEvent(new Event('focus')); });
+    await tick(4000);
+    expect(shows(tab2), 'tab 2 after a focus check').toEqual({ asked: ['college', 'major'], form: OWN1 });
+    act(() => { tab2.form().keepMyChanges(); });
+    await tick(4000);
+    expect({ tab2: shows(tab2), stored: academic(row.profile) }, '"Keep what I typed" in tab 2')
+      .toEqual({ tab2: { asked: [], form: OWN1 }, stored: { ...OWN1, grade: 'Senior' } });
+  });
+
+  it('when only the major differs, back online, and shows the answer once the other tab keeps its own', async () => {
+    const tab1 = await openTab('tab 1');
+    const tab2 = await openTab('tab 2');
+    network(false);
+    await tick(1500);
+    await choose(tab1, 'major', 'Mathematics');
+    await choose(tab2, 'major', 'Finance');
+    await choose(tab2, 'grade', 'Senior');
+    await tick(4000);
+    network(true);
+    await tick(1000);
+    await tick(4000);
+    const major = (tab: Tab) => ({ asked: asked(tab), major: tab.form().profile.major });
+    expect({ tab1: major(tab1), tab2: major(tab2), stored: row.profile.major }, 'back online').toEqual({
+      tab1: { asked: ['major'], major: 'Mathematics' }, tab2: { asked: ['major'], major: 'Finance' }, stored: 'Computer Science',
+    });
+    const before = sent.length;
+    act(() => { tab2.form().keepMyChanges(); });
+    await tick(4000);
+    act(() => { window.dispatchEvent(new Event('focus')); });
+    await tick(4000);
+    expect({
+      tab1: major(tab1), tab2: major(tab2), stored: row.profile.major, journal: described(outstanding(tab1)),
+      sent: sent.slice(before).map((s) => [s.tab, s.keys, s.values.major, s.status]),
+    }, '"Keep what I typed" in tab 2').toEqual({
+      tab1: { asked: [], major: 'Finance' }, tab2: { asked: [], major: 'Finance' }, stored: 'Finance', journal: [],
+      sent: [['tab 2', ['major'], 'Finance', 'applied']],
+    });
+  });
+
+  // Both tabs also picked a year. Each keeps its college and major at once:
+  // tab 1's answer is stored, and tab 2's, refused as given already, reads
+  // the question again, which comes back with the year still asked.
+  it('after an answer the other tab gave first, in the year still asked (a guard; so since M132)', async () => {
+    const tab1 = await openTab('tab 1');
+    const tab2 = await openTab('tab 2');
+    network(false);
+    await tick(1500);
+    for (const [tab, picks] of [[tab1, [LAS, 'Mathematics', 'Freshman']], [tab2, [GIES, 'Finance', 'Senior']]] as const) {
+      await choose(tab, 'college', picks[0]);
+      await choose(tab, 'major', picks[1]);
+      await choose(tab, 'grade', picks[2]);
+    }
+    await tick(4000);
+    network(true);
+    await tick(1000);
+    await tick(4000);
+    const shows = (tab: Tab) => ({ asked: asked(tab), form: academic(tab.form().profile) });
+    expect({ tab1: asked(tab1), tab2: asked(tab2) }, 'back online').toEqual({ tab1: ['college', 'grade', 'major'], tab2: ['college', 'grade', 'major'] });
+    const before = sent.length;
+    act(() => { tab1.form().keepMyChanges(['college', 'major']); tab2.form().keepMyChanges(['college', 'major']); });
+    await tick(4000);
+    await tick(4000);
+    expect({ tab1: shows(tab1), tab2: shows(tab2), stored: academic(row.profile), sent: sent.slice(before).map((s) => [s.tab, s.keys, s.status]) },
+      'both answered').toEqual({
+      tab1: { asked: ['grade'], form: { ...OWN1, grade: 'Freshman' } }, tab2: { asked: ['grade'], form: { ...OWN1, grade: 'Senior' } },
+      stored: { ...OWN1, grade: 'Junior' }, sent: [['tab 1', ['college', 'major'], 'applied']],
+    });
+    act(() => { tab2.form().keepMyChanges(); });
+    await tick(4000);
+    expect({ tab2: shows(tab2), stored: academic(row.profile) }, '"Keep what I typed" in tab 2')
+      .toEqual({ tab2: { asked: [], form: { ...OWN1, grade: 'Senior' } }, stored: { ...OWN1, grade: 'Senior' } });
   });
 });

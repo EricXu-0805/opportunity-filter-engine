@@ -459,6 +459,10 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
    *  a per-field answer landing in between must act on what is really on
    *  screen. */
   const conflictsRef = useRef<ProfileConflict[]>([]);
+  /** Each field's edit epoch when the question on screen first asked it, or
+   *  when the autosave last staged it while asked: a question field still at
+   *  it holds nothing typed since. */
+  const questionEpochsRef = useRef<Map<string, number>>(new Map());
   /** `applySaveResult` rebuilds a conflict through the refresh handler, and
    *  that handler reports its continued flush back through `applySaveResult`.
    *  One of the two has to be reached indirectly; this is it. */
@@ -512,9 +516,17 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // prove it belongs to this identity or this state, so showing controls
     // for it would be showing controls with nothing behind them.
     const prompt = list.length > 0 && origin ? makeConflictPrompt(origin, list) : null;
+    // A field already asked keeps its mark: a load that asks the same
+    // question again inside the autosave pause is not a new question, and
+    // what was typed before it is still to be saved.
+    const wasAsked = new Set(conflictKeysRef.current);
+    const marks = questionEpochsRef.current;
     conflictPromptRef.current = prompt;
     conflictsRef.current = prompt ? [...prompt.conflicts] : [];
     conflictKeysRef.current = conflictsRef.current.map((c) => c.key);
+    questionEpochsRef.current = new Map(conflictKeysRef.current.map((k) => [
+      k, wasAsked.has(k) && marks.has(k) ? marks.get(k)! : fieldEpochRef.current.get(k) ?? 0,
+    ]));
     setConflicts(conflictsRef.current);
     setConflictKeys(conflictKeysRef.current);
   }, []);
@@ -1852,9 +1864,13 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       // so does, after another tab's write, a question still open: the field
       // keeps what this tab shows until the question is settled, rather than
       // taking the shared working copy's value, which can be another tab's,
-      // and autosaving it (M137).
+      // and autosaving it (M137). After any refresh, so does an open question
+      // holding a value typed in this tab: the field shows what "Keep what I
+      // typed" keeps, not the working copy another tab's save wrote (M132),
+      // which the autosave no longer stages again for this tab (M153).
       const held = new Set(refreshed.status === 'current'
-        ? refreshed.conflicts.filter((c) => c.newerBuild || context === 'other-tab').map((c) => c.key) : []);
+        ? refreshed.conflicts.filter((c) => c.newerBuild || context === 'other-tab' || conflictTypedInThisTab(c))
+          .map((c) => c.key) : []);
       for (const key of asked) {
         if (movedSince(key) || held.has(key)) continue;
         if (!row || !(key in row)) {
@@ -1881,8 +1897,16 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         // whether the displayed object moved. This is an invariant, not the
         // thing that stops a duplicate send: what rules that out is the
         // fire-time dirty read, which finds the operation already settled.
-        if (owed.size === 0 && dirtyKeysRef.current.size === 0 && !weightDirtyRef.current
-          && !asked.some(movedSince)) {
+        // An answer clicked here that finds the question already settled
+        // sends nothing (see below), and drawing that answer is no edit of the
+        // person's either. Such a field showed what this tab typed until then
+        // (M132), so it is drawn here; as when a base moves on
+        // (showRowWhereIdle), a form the autosave has already looked at with
+        // no save waiting starts no save from it.
+        const answerDrawn = changed && context === 'answer' && refreshed.status === 'settled'
+          && pendingSaveRef.current === null && autosaveSawRef.current === profileRef.current && !asked.some(movedSince);
+        if ((owed.size === 0 && dirtyKeysRef.current.size === 0 && !weightDirtyRef.current
+          && !asked.some(movedSince)) || answerDrawn) {
           hydratedProfileRef.current = next;
           hydratedWeightRef.current = weightRef.current;
         }
@@ -2748,6 +2772,16 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       otherTabReading = true;
       void refreshConflictQuestion(whole, origin.token, 'read').then((refreshed) => {
         if (!current()) return;
+        // Another tab learned that this profile was merged into another
+        // account, which clears this browser's copy of it and its journal
+        // (M138): nothing here is saved or can be, so this tab says what
+        // that tab says, offers no Retry, and keeps the form as shown.
+        const envelope = readProfileSyncEnvelopeStrict();
+        if (envelope.ok && envelope.value?.tombstone?.reason === 'merged') {
+          armRetryable(null);
+          setSaveStatus('stale');
+          return;
+        }
         const owed = refreshed.status === 'current' || refreshed.status === 'settled' ? refreshed.pendingKeys : [];
         const drawn = whole.filter((key) => asked.includes(key) || !owed.includes(key));
         return applyConflictRefreshRef.current?.(refreshed, drawn, origin.token, origin.generation, intent, fence, true, 'other-tab');
@@ -2773,7 +2807,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       window.removeEventListener('offline', recheck); document.removeEventListener('visibilitychange', recheck);
     };
   }, [hydrationState, backgroundOwnerKey, backgroundShare, identityGeneration, epochsNow, unrepresentedNow,
-    recordOutstandingIntents, ownsScreen, publishConflicts, publishProfileRefresh, setSaveStatus]);
+    recordOutstandingIntents, ownsScreen, publishConflicts, publishProfileRefresh, setSaveStatus, armRetryable]);
 
   // The onboarding school gate (a layout-level overlay) finishes *after* this
   // form has already mounted and loaded its profile, so its localStorage write
@@ -2996,7 +3030,22 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         );
         return;
       }
-      commitSave(toSave, dirty.value, origin, intent);
+      // A field of the question on screen with nothing typed into it since
+      // it was asked is not staged again (M153): staging unlocks it in the
+      // outbox, and a request that then failed in transit took the question
+      // out of storage, where no answer could reach it. The answer sends it.
+      const keys = dirty.value.filter((k) => !conflictKeysRef.current.includes(k)
+        || (fieldEpochRef.current.get(k) ?? 0) !== questionEpochsRef.current.get(k));
+      if (keys.length === 0) {
+        if (intent === saveIntentRef.current) setSaveStatus(conflictWording(conflictsRef.current));
+        return;
+      }
+      // One typed after its question appeared is staged, once: asked again
+      // after that, it is left to the answer like the others.
+      for (const k of keys) {
+        if (questionEpochsRef.current.has(k)) questionEpochsRef.current.set(k, fieldEpochRef.current.get(k) ?? 0);
+      }
+      commitSave(toSave, keys, origin, intent);
     }, 1500);
 
     return () => {

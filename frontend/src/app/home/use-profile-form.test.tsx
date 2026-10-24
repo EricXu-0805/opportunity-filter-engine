@@ -4355,6 +4355,57 @@ describe('useProfileForm — a generic conflict is reconciled canonically, never
       'and it describes the row as it stands after the answer').toBe('major@11');
   });
 
+  // M132: the remainder rebuilt after one field is answered is drawn from
+  // the shared working copy, which can hold another tab's value. A field of
+  // it this tab typed shows what this tab typed, which is what "Keep what I
+  // typed" keeps.
+  it('the remainder still open keeps a field typed in this tab as typed, not the working copy\'s value (a guard; so since M132)', async () => {
+    await currentQuestionAtRev10();
+    expect(screen.getByTestId('major').textContent, 'typed in this tab').toBe('ECE');
+    const typedHere = (key: string, revision: number, remote: unknown) => ({
+      ...question(key, revision, remote), candidates: [{ value: 'ECE', lineage: getJournalLineageId(), opIds: [`op-${key}-${revision}`] }],
+    });
+    syncOverrides.stageProfilePatch = async () => ({
+      status: 'conflict' as const,
+      revision: 10,
+      remote: { ...ROW, major: 'Statistics' },
+      confirmed: { revision: 10, profile: { ...ROW, major: 'Statistics' } },
+      conflictKeys: ['grade'],
+      conflicts: [await question('grade', 10, 'Junior')],
+    });
+    syncOverrides.refreshConflictQuestion = (async (keys: readonly string[]) => ({
+      status: 'current' as const,
+      profile: { ...ROW, major: 'ECE' },
+      baseProfile: { ...ROW, major: 'Statistics' },
+      revision: 10,
+      conflicts: [...keys].sort().map((k) => (k === 'major' ? typedHere(k, 10, 'Statistics') : question(k, 10, 'Junior'))),
+      pendingKeys: [...keys],
+      flushed: null,
+    })) as never;
+    act(() => { screen.getByTestId('set-interests').click(); });
+    await act(async () => { await new Promise((r) => setTimeout(r, 1700)); });
+    await waitFor(() => expect(screen.getByTestId('conflict-keys').textContent.split(',').sort()).toEqual(['grade', 'major']));
+    syncOverrides.resolveProfileConflict = (async () => (
+      { status: 'saved' as const, revision: 11, profile: { ...ROW, grade: 'Senior', major: 'Statistics' } }
+    )) as never;
+    // The working copy holds another tab's major now.
+    syncOverrides.refreshConflictQuestion = (async (keys: readonly string[]) => ({
+      status: 'current' as const,
+      profile: { ...ROW, grade: 'Senior', major: 'Physics' },
+      baseProfile: { ...ROW, grade: 'Senior', major: 'Statistics' },
+      revision: 11,
+      conflicts: [...keys].map((k) => typedHere(k, 11, 'Statistics')),
+      pendingKeys: [...keys],
+      flushed: null,
+    })) as never;
+    await act(async () => {
+      screen.getByTestId('keep-grade').click();
+      await new Promise((r) => setTimeout(r, 50));
+    });
+    expect({ asked: screen.getByTestId('conflict-revs').textContent, rebuilt: syncOverrides.refreshCalls.at(-1)?.keys, major: screen.getByTestId('major').textContent },
+      'the major still asked, after the year was answered').toEqual({ asked: 'major@11', rebuilt: ['major'], major: 'ECE' });
+  });
+
   /** Two open questions at revision 10, published canonically. */
   async function twoQuestionsAtRev10() {
     await currentQuestionAtRev10();

@@ -1543,6 +1543,30 @@ function ackConfirmedJournalOpsLocked(
   return settleJournalOps(landed, token);
 }
 
+/**
+ * Acknowledges, from a conflict response the write is rebased onto, the
+ * operations behind the keys that response's row already holds as this write
+ * wants them: the rebase drops those keys, so no later response names them.
+ * Such as "Use the other version" given beside another field's save that had
+ * failed (M153, round 2): the answer's write went out at the older revision,
+ * and its operations stayed in the journal, so the next edit of those fields
+ * sent what the answer had decided over whatever another device stored since.
+ * Whole closures only, as in any acknowledgement. Caller holds the lock; a
+ * failure leaves them outstanding, as before.
+ */
+function ackLandedJournalOpsLocked(
+  pending: ProfilePendingWrite,
+  sent: readonly string[],
+  resolution: ConflictResolution,
+  remote: ProfileData,
+  revision: number,
+  token: OwnerToken,
+): boolean {
+  const landed = sent.filter((k) => !resolution.applyKeys.includes(k as ProfileKey)
+    && !resolution.conflictKeys.includes(k as ProfileKey));
+  return landed.length === 0 || ackConfirmedJournalOpsLocked(pending, landed, remote, revision, token);
+}
+
 async function ackConfirmedJournalOps(
   keys: readonly string[],
   confirmedProfile: ProfileData,
@@ -5278,12 +5302,14 @@ function flushByMutation(
             desiredProfile: rebasedDesired,
             dirtyKeys: [...new Set([...resolution.applyKeys as string[], ...pending.lockedKeys])],
           };
-          const rebasedWrite = await withProfileReceiptState(token, () => (
-            writeEnvelope(
+          const rebasedWrite = await withProfileReceiptState(token, () => {
+            const written = writeEnvelope(
               { v: 1, confirmed: { revision: outcome.revision, profile: remote }, pending: rebased, tombstone: null },
               token,
-            ) && writeRawMirror(rebasedDesired, token)
-          ));
+            ) && writeRawMirror(rebasedDesired, token);
+            if (written) ackLandedJournalOpsLocked(pending, sendKeys as string[], resolution, remote, outcome.revision, token);
+            return written;
+          });
           if (!rebasedWrite.ok) return rebasedWrite.result;
           if (!rebasedWrite.value) return { status: 'device-failed', phase: 'stage' };
           continuedAs.set(currentId, rebased.mutationId);
@@ -5315,12 +5341,14 @@ function flushByMutation(
             lockedKeys: [...new Set([...pending.lockedKeys, ...conflictKeys])],
             conflictRemote: remote,
           };
-          const partialWrite = await withProfileReceiptState(token, () => (
-            writeEnvelope(
+          const partialWrite = await withProfileReceiptState(token, () => {
+            const written = writeEnvelope(
               { v: 1, confirmed: { revision: outcome.revision, profile: remote }, pending: partial, tombstone: null },
               token,
-            ) && writeRawMirror(partialDesired, token)
-          ));
+            ) && writeRawMirror(partialDesired, token);
+            if (written) ackLandedJournalOpsLocked(pending, sendKeys as string[], resolution, remote, outcome.revision, token);
+            return written;
+          });
           if (!partialWrite.ok) return partialWrite.result;
           if (!partialWrite.value) return { status: 'device-failed', phase: 'stage' };
           deferredConflict = { keys: conflictKeys, remote };

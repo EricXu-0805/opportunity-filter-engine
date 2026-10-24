@@ -269,6 +269,86 @@ describe('another tab\'s answer and saves reach this tab without a reload (M117)
   });
 });
 
+// Checklist M134 (review of M117, round 4): after the other tab sent this
+// tab's slider move, this tab's next move went out at the revision before
+// that send, was refused, and asked about its own earlier value.
+describe('a slider move after the other tab sent this tab\'s earlier one (M134)', () => {
+  it('is sent at the revision that send stored, and stored with no question (a guard; so since M135)', async () => {
+    const a = await open('A');
+    const b = await open('B');
+    online = false;
+    await as(b, (f) => f.setSearchWeight(90));
+    expect(b.hook.result.current.saveStatus).toBe('cloud-failed');
+    online = true;
+    await as(a, (f) => f.update('name', 'Alex Kim'));
+    expect({ remote: { search_weight: remote.search_weight, name: remote.name }, revision }).toEqual({ remote: { search_weight: 90, name: 'Alex Kim' }, revision: 8 });
+    await tick(2000);
+    expect(b.hook.result.current.saveStatus).toBe('saved');
+    const before = service.commit.mock.calls.length;
+    await as(b, (f) => f.setSearchWeight(60));
+    await tick(3000);
+    expect({
+      sent: service.commit.mock.calls.slice(before).map(([intent]) => [intent.expectedRevision, Object.keys(intent.patch)]),
+      asked: b.hook.result.current.conflicts.map((c) => c.key), status: b.hook.result.current.saveStatus,
+      stored: { search_weight: remote.search_weight, revision }, shows: b.hook.result.current.searchWeight,
+    }).toEqual({
+      sent: [[8, ['search_weight']]], asked: [], status: expect.stringMatching(/^(saved|idle)$/),
+      stored: { search_weight: 60, revision: 9 }, shows: 60,
+    });
+  });
+});
+
+// Checklist M138 (review of M136): the guest profile was merged into a
+// signed-in account, so the server answers every write "merged away". Tab A
+// learned it first, which clears this browser's copy of the profile and its
+// journal; tab B, still open beside it with an edit it could not send, read
+// that, found nothing unsent, and said "saved" with the name emptied.
+describe('another tab finding that the guest profile was merged away (M138)', () => {
+  it('says the profile no longer exists, offers no Retry, and keeps the form as shown', async () => {
+    const a = await open('A');
+    const b = await open('B');
+    online = false;
+    await as(b, (f) => f.update('name', 'Alex Kim'));
+    expect(b.hook.result.current.saveStatus).toBe('cloud-failed');
+    online = true;
+    service.commit.mockImplementation(async () => ({ status: 'missing', reason: 'merged_away' }));
+    await as(a, (f) => f.update('grade', 'Senior'));
+    expect(a.hook.result.current.saveStatus).toBe('stale');
+    await tick(3000);
+    const form = b.hook.result.current;
+    expect({ status: form.saveStatus, retry: form.canRetrySync, name: form.profile.name, grade: form.profile.grade, seen: b.seen.slice(-1) })
+      .toEqual({ status: 'stale', retry: false, name: 'Alex Kim', grade: 'Junior', seen: ['stale'] });
+    expect(b.seen).not.toContain('saved');
+  });
+});
+
+// Checklist M132: while the question is open, a tab's own save or Retry
+// showed the other tab's value in the asked field (the save's refresh drew
+// the shared working copy, which the other tab's write held), while "Keep
+// what I typed" there keeps this tab's.
+describe('a Retry in a tab asked about a field the other tab typed differently (M132)', () => {
+  it('keeps showing what this tab typed there, after the Retry that asked it and a Retry of another field alike (a guard; so since M132)', async () => {
+    const { a, b } = await twoTabsDisagree();
+    const shows = (tab: Tab) => ({
+      asked: tab.hook.result.current.conflicts.map((q) => q.key), research_interests: tab.hook.result.current.profile.research_interests,
+    });
+    expect({ a: shows(a), b: shows(b) }, 'after each tab\'s Retry').toEqual({
+      a: { asked: ['research_interests'], research_interests: 'From tab A' }, b: { asked: ['research_interests'], research_interests: 'From tab B' },
+    });
+    online = false;
+    await as(a, (f) => f.update('grade', 'Senior'));
+    expect(a.hook.result.current.saveStatus, 'tab A\'s year could not be sent').toBe('cloud-failed');
+    online = true;
+    await as(a, (f) => f.retryCloudSave());
+    expect({ a: shows(a), stored: { grade: remote.grade, research_interests: remote.research_interests } }, 'after tab A\'s Retry of its year').toEqual({
+      a: { asked: ['research_interests'], research_interests: 'From tab A' }, stored: { grade: 'Senior', research_interests: 'Original research' },
+    });
+    await as(a, (f) => f.keepMyChanges());
+    expect({ a: shows(a), stored: remote.research_interests }, '"Keep what I typed" in tab A')
+      .toEqual({ a: { asked: [], research_interests: 'From tab A' }, stored: 'From tab A' });
+  });
+});
+
 /** Locked reads of the profile storage from here on. The typing tab takes the
  *  lock only when its save fires, so in the windows below every one is the
  *  listening tab's read. */
