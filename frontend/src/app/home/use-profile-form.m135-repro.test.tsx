@@ -1635,6 +1635,76 @@ describe('a save that fails while a question is open (M153)', { timeout: 20_000 
   });
 });
 
+// Review of M153 (flows, F4): the autosave leaves alone a question's field
+// with nothing typed since the question was published, and a focus or online
+// check that asked the same question again inside the autosave pause counted
+// as publishing it: a college picked in that pause stayed on screen and in
+// the journal, never sent, with the question open. As before M153, a field
+// typed after its question appeared is saved by the autosave.
+describe('a field typed into an open question just before a load asks it again (M153)', { timeout: 20_000 }, () => {
+  for (const check of ['focus', 'online'] as const) {
+    it(`is saved by the autosave when a ${check} check lands in the autosave pause`, async () => {
+      const tab1 = await openTab('tab 1');
+      network(false);
+      await tick(1500);
+      await choose(tab1, 'college', LAS);
+      await choose(tab1, 'major', 'Mathematics');
+      await tick(3000);
+      anotherDevice({ college: GIES, major: 'Finance' });
+      network(true);
+      await tick(5000);
+      expect(asked(tab1), 'back online').toEqual(['college', 'major']);
+      const before = sent.length;
+      act(() => { tab1.form().update('college', GRAINGER); });
+      await tick(300);
+      act(() => { window.dispatchEvent(new Event(check)); });
+      await tick(5000);
+      await tick(10_000);
+      const picked = { college: GRAINGER, major: '', grade: 'Junior' };
+      expect({
+        asked: asked(tab1), form: academic(tab1.form().profile), stored: academic(row.profile), journal: described(outstanding(tab1)),
+        sent: sent.slice(before).map((s) => [s.expected, s.keys, s.status]),
+      }, 'after the pick').toEqual({
+        asked: [], form: picked, stored: picked, journal: [],
+        sent: [[1, ['additional_majors', 'college', 'major'], 'conflict'], [2, ['college', 'major'], 'applied']],
+      });
+    });
+  }
+
+  // The pick goes out once. Asked again because another device changed the
+  // college meanwhile, it is the answer's to send, as any asked field with
+  // nothing typed since (on 799a4f49 the pick is never sent, so this fails
+  // at 'asked again').
+  it('is sent once, and asked again after another device changed it meanwhile, is not sent with the next edit', async () => {
+    const tab1 = await openTab('tab 1');
+    network(false);
+    await tick(1500);
+    await choose(tab1, 'college', LAS);
+    await choose(tab1, 'major', 'Mathematics');
+    await tick(3000);
+    anotherDevice({ college: GIES, major: 'Finance' });
+    network(true);
+    await tick(5000);
+    act(() => { tab1.form().update('college', GRAINGER); });
+    await tick(300);
+    act(() => { window.dispatchEvent(new Event('focus')); });
+    anotherDevice({ college: LAS });
+    await tick(5000);
+    await tick(5000);
+    expect({ asked: asked(tab1), college: tab1.form().profile.college, stored: { revision: row.revision, ...academic(row.profile) } }, 'asked again')
+      .toEqual({ asked: ['college'], college: GRAINGER, stored: { revision: 4, college: LAS, major: '', grade: 'Junior' } });
+    const before = sent.length;
+    await choose(tab1, 'grade', 'Senior');
+    await tick(4000);
+    expect({
+      asked: asked(tab1), stored: { revision: row.revision, ...academic(row.profile) },
+      college: sent.slice(before).filter((s) => s.keys.includes('college')).map((s) => [s.expected, s.values.college, s.status]),
+    }, 'tab 1 then picks a year').toEqual({
+      asked: ['college'], stored: { revision: 5, college: LAS, major: '', grade: 'Senior' }, college: [],
+    });
+  });
+});
+
 // Checklist M132 (seen during M113): two tabs pick different values offline,
 // and both are asked once back online. A tab's screen showed the other tab's
 // value in an asked field, while "Keep what I typed" there keeps its own. A

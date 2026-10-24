@@ -459,8 +459,9 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
    *  a per-field answer landing in between must act on what is really on
    *  screen. */
   const conflictsRef = useRef<ProfileConflict[]>([]);
-  /** Each field's edit epoch when the question on screen was last published:
-   *  a question field still at it holds nothing typed since it was asked. */
+  /** Each field's edit epoch when the question on screen first asked it, or
+   *  when the autosave last staged it while asked: a question field still at
+   *  it holds nothing typed since. */
   const questionEpochsRef = useRef<Map<string, number>>(new Map());
   /** `applySaveResult` rebuilds a conflict through the refresh handler, and
    *  that handler reports its continued flush back through `applySaveResult`.
@@ -515,10 +516,17 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // prove it belongs to this identity or this state, so showing controls
     // for it would be showing controls with nothing behind them.
     const prompt = list.length > 0 && origin ? makeConflictPrompt(origin, list) : null;
+    // A field already asked keeps its mark: a load that asks the same
+    // question again inside the autosave pause is not a new question, and
+    // what was typed before it is still to be saved.
+    const wasAsked = new Set(conflictKeysRef.current);
+    const marks = questionEpochsRef.current;
     conflictPromptRef.current = prompt;
     conflictsRef.current = prompt ? [...prompt.conflicts] : [];
     conflictKeysRef.current = conflictsRef.current.map((c) => c.key);
-    questionEpochsRef.current = new Map(conflictKeysRef.current.map((k) => [k, fieldEpochRef.current.get(k) ?? 0]));
+    questionEpochsRef.current = new Map(conflictKeysRef.current.map((k) => [
+      k, wasAsked.has(k) && marks.has(k) ? marks.get(k)! : fieldEpochRef.current.get(k) ?? 0,
+    ]));
     setConflicts(conflictsRef.current);
     setConflictKeys(conflictKeysRef.current);
   }, []);
@@ -3031,6 +3039,11 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       if (keys.length === 0) {
         if (intent === saveIntentRef.current) setSaveStatus(conflictWording(conflictsRef.current));
         return;
+      }
+      // One typed after its question appeared is staged, once: asked again
+      // after that, it is left to the answer like the others.
+      for (const k of keys) {
+        if (questionEpochsRef.current.has(k)) questionEpochsRef.current.set(k, fieldEpochRef.current.get(k) ?? 0);
       }
       commitSave(toSave, keys, origin, intent);
     }, 1500);
