@@ -1852,9 +1852,12 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
       // so does, after another tab's write, a question still open: the field
       // keeps what this tab shows until the question is settled, rather than
       // taking the shared working copy's value, which can be another tab's,
-      // and autosaving it (M137).
+      // and autosaving it (M137). After any refresh, so does an open question
+      // holding a value typed in this tab: the field shows what "Keep what I
+      // typed" keeps, not the working copy another tab's save wrote (M132).
       const held = new Set(refreshed.status === 'current'
-        ? refreshed.conflicts.filter((c) => c.newerBuild || context === 'other-tab').map((c) => c.key) : []);
+        ? refreshed.conflicts.filter((c) => c.newerBuild || context === 'other-tab' || conflictTypedInThisTab(c))
+          .map((c) => c.key) : []);
       for (const key of asked) {
         if (movedSince(key) || held.has(key)) continue;
         if (!row || !(key in row)) {
@@ -1881,8 +1884,16 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
         // whether the displayed object moved. This is an invariant, not the
         // thing that stops a duplicate send: what rules that out is the
         // fire-time dirty read, which finds the operation already settled.
-        if (owed.size === 0 && dirtyKeysRef.current.size === 0 && !weightDirtyRef.current
-          && !asked.some(movedSince)) {
+        // An answer clicked here that finds the question already settled
+        // sends nothing (see below), and drawing that answer is no edit of the
+        // person's either. Such a field showed what this tab typed until then
+        // (M132), so it is drawn here; as when a base moves on
+        // (showRowWhereIdle), a form the autosave has already looked at with
+        // no save waiting starts no save from it.
+        const answerDrawn = changed && context === 'answer' && refreshed.status === 'settled'
+          && pendingSaveRef.current === null && autosaveSawRef.current === profileRef.current && !asked.some(movedSince);
+        if ((owed.size === 0 && dirtyKeysRef.current.size === 0 && !weightDirtyRef.current
+          && !asked.some(movedSince)) || answerDrawn) {
           hydratedProfileRef.current = next;
           hydratedWeightRef.current = weightRef.current;
         }

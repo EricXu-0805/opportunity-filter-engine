@@ -1008,6 +1008,15 @@ describe('a settle whose receipt does not fit takes back the receipts it wrote (
         refused: 1, stored: { revision: 3, college: GRAINGER, major: 'Finance', grade: 'Senior' },
         sent: [['tab 2', 2, ['major'], 'Finance', 'applied', 3]],
       });
+      // Tab 1 showed its own major while asked (M132), so the answer reaches
+      // it only now, beside its edit the refused receipt left outstanding: it
+      // says that is not saved, and its Retry settles it, sending nothing.
+      // Before M132 tab 1 drew tab 2's major while asked and autosaved it,
+      // which settled the same closure.
+      expect({ form: academic(tab1.form().profile), asked: asked(tab1), status: tab1.form().saveStatus, retry: tab1.form().canRetrySync },
+        'tab 1 after the answer').toEqual({ form: { college: GRAINGER, major: 'Finance', grade: 'Senior' }, asked: [], status: 'cloud-failed', retry: true });
+      act(() => { tab1.form().retryCloudSave(); });
+      await tick(4000);
       const reloaded1 = await reloadTab(tab1);
       await tick(65_000);
       expect({
@@ -1508,5 +1517,97 @@ describe('a base that moves on brings what another tab or device stored onto the
     await tick(3000);
     expect({ shows: tab1.form().profile.home_school, asked: asked(tab1), stored: { revision: row.revision, home_school: row.profile.home_school } },
       'tab 1 once the gate sent it').toEqual({ shows: 'jhu', asked: [], stored: { revision: 4, home_school: 'jhu' } });
+  });
+});
+
+// Checklist M132 (seen during M113): two tabs pick different values offline,
+// and both are asked once back online. A tab's screen showed the other tab's
+// value in an asked field, while "Keep what I typed" there keeps its own. A
+// tab with a question open shows what it typed in the asked fields, which is
+// what "Keep what I typed" keeps; the question shows the other side. M137
+// (2e7f1e85) kept it so after another tab's write and a load; a save's
+// refresh still drew the working copy, which another tab's save can write.
+describe('a question two tabs are asked shows each tab what it typed in the asked fields (M132)', { timeout: 20_000 }, () => {
+  const shows = (tab: Tab) => ({ asked: asked(tab), form: { college: tab.form().profile.college, major: tab.form().profile.major } });
+  const OWN1 = { college: LAS, major: 'Mathematics' };
+  const OWN2 = { college: GIES, major: 'Finance' };
+
+  it('back online, after a focus check, and after each tab saves another field (a guard; so since M137)', async () => {
+    const { tab1, tab2 } = await disagreeOffline();
+    expect({ tab1: shows(tab1), tab2: shows(tab2) }, 'back online').toEqual({
+      tab1: { asked: ['college', 'major'], form: OWN1 }, tab2: { asked: ['college', 'major'], form: OWN2 },
+    });
+    act(() => { window.dispatchEvent(new Event('focus')); });
+    await tick(3000);
+    expect({ tab1: shows(tab1), tab2: shows(tab2) }, 'after a focus check').toEqual({
+      tab1: { asked: ['college', 'major'], form: OWN1 }, tab2: { asked: ['college', 'major'], form: OWN2 },
+    });
+    await saveResearchInterests(tab2);
+    expect({ tab1: shows(tab1), tab2: shows(tab2) }, 'after tab 2 saves its research interests').toEqual({
+      tab1: { asked: ['college', 'major'], form: OWN1 }, tab2: { asked: ['college', 'major'], form: OWN2 },
+    });
+    act(() => { tab1.form().update('research_interests', 'robotics and control'); });
+    await tick(600);
+    await tick(4000);
+    expect({ tab1: shows(tab1), tab2: shows(tab2) }, 'after tab 1 saves its research interests').toEqual({
+      tab1: { asked: ['college', 'major'], form: OWN1 }, tab2: { asked: ['college', 'major'], form: OWN2 },
+    });
+    act(() => { tab1.form().keepMyChanges(); });
+    await tick(4000);
+    expect({ tab1: shows(tab1), stored: academic(row.profile) }, '"Keep what I typed" in tab 1')
+      .toEqual({ tab1: { asked: [], form: OWN1 }, stored: { ...OWN1, grade: 'Senior' } });
+  });
+
+  it('in a tab opened after a closed tab left its pick unsent (the M113 sequence), after a focus check (a guard; already so before M137)', async () => {
+    const tab1 = await openTab('tab 1');
+    writesFail = true;
+    await choose(tab1, 'college', GIES);
+    await choose(tab1, 'major', 'Finance');
+    await tick(4000);
+    tab1.unmount();
+    await drain();
+    const tab2 = await openTab('tab 2');
+    await choose(tab2, 'college', LAS);
+    await choose(tab2, 'major', 'Mathematics');
+    await choose(tab2, 'grade', 'Senior');
+    await tick(4000);
+    writesFail = false;
+    act(() => { window.dispatchEvent(new Event('focus')); });
+    await tick(4000);
+    expect(shows(tab2), 'tab 2 after a focus check').toEqual({ asked: ['college', 'major'], form: OWN1 });
+    act(() => { tab2.form().keepMyChanges(); });
+    await tick(4000);
+    expect({ tab2: shows(tab2), stored: academic(row.profile) }, '"Keep what I typed" in tab 2')
+      .toEqual({ tab2: { asked: [], form: OWN1 }, stored: { ...OWN1, grade: 'Senior' } });
+  });
+
+  it('when only the major differs, back online, and shows the answer once the other tab keeps its own', async () => {
+    const tab1 = await openTab('tab 1');
+    const tab2 = await openTab('tab 2');
+    network(false);
+    await tick(1500);
+    await choose(tab1, 'major', 'Mathematics');
+    await choose(tab2, 'major', 'Finance');
+    await choose(tab2, 'grade', 'Senior');
+    await tick(4000);
+    network(true);
+    await tick(1000);
+    await tick(4000);
+    const major = (tab: Tab) => ({ asked: asked(tab), major: tab.form().profile.major });
+    expect({ tab1: major(tab1), tab2: major(tab2), stored: row.profile.major }, 'back online').toEqual({
+      tab1: { asked: ['major'], major: 'Mathematics' }, tab2: { asked: ['major'], major: 'Finance' }, stored: 'Computer Science',
+    });
+    const before = sent.length;
+    act(() => { tab2.form().keepMyChanges(); });
+    await tick(4000);
+    act(() => { window.dispatchEvent(new Event('focus')); });
+    await tick(4000);
+    expect({
+      tab1: major(tab1), tab2: major(tab2), stored: row.profile.major, journal: described(outstanding(tab1)),
+      sent: sent.slice(before).map((s) => [s.tab, s.keys, s.values.major, s.status]),
+    }, '"Keep what I typed" in tab 2').toEqual({
+      tab1: { asked: [], major: 'Finance' }, tab2: { asked: [], major: 'Finance' }, stored: 'Finance', journal: [],
+      sent: [['tab 2', ['major'], 'Finance', 'applied']],
+    });
   });
 });
