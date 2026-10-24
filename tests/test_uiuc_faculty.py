@@ -3217,6 +3217,18 @@ def test_an_engineering_directory_card_with_a_netid_states_its_title_abbreviated
                       "Harper Sample": "Department Affiliate", "Devon Example": ""}
 
 
+def test_an_abbreviated_current_rank_keeps_a_card_under_an_emeritus_heading_listed(tmp_path, monkeypatch):
+    # "RES PROF" is a current rank (consumers read "Prof" as one); "PROF EMERITUS" is not.
+    page = _person_items_page([
+        ("h3", "Faculty", [("person1", "Avery Example", "Professor"), ("person2", "Blair Sample", "Professor"),
+                           ("person3", "Casey Placeholder", "Professor")]),
+        ("h2", "Emeritus Faculty", [("person5", "Emery Sample", "RES PROF"),
+                                    ("person6", "Finley Placeholder", "PROF EMERITUS")])])
+    rows = _merge(tmp_path, [], _fetch_physics(monkeypatch, page=page))
+    assert _emeritus(rows["Emery Sample"]) == (True, None, False)
+    assert _emeritus(rows["Finley Placeholder"]) == (False, "listed_as_emeritus", True)
+
+
 ISCHOOL_TEASERS_PAGE = """<html><body><main><div class="component component--profile-listing">
   <div class="profile-teaser"><div class="profile-teaser__image-container">
     <a class="profile-teaser__image-link" href="/people/avery-example"><img alt="Avery Example"/></a></div>

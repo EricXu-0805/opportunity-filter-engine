@@ -311,8 +311,11 @@ MEDIA_TITLED_PROFILE = """<html><body><article><h1 class="entry-title">Avery Exa
 
 def test_media_reads_the_title_its_profile_states_and_writes_none_without_it(monkeypatch):
     untitled = '<a href="mailto:person1@illinois.edu">Email</a>'
+    # A first paragraph that names no rank or appointment is no title.
+    no_rank = MEDIA_TITLED_PROFILE.replace("<em><strong>Professor</strong></em><br/>", "").replace(
+        "<em><strong>Associate Dean for Example Engagement</strong></em>", "Example Studies and Media")
     for profile, title in ((MEDIA_TITLED_PROFILE, "Professor; Associate Dean for Example Engagement"),
-                           (untitled, "")):
+                           (untitled, ""), (no_rank, "")):
         monkeypatch.setattr(h, "_fetch_soup",
                             lambda url, p=profile: _soup(MEDIA_SYNTHETIC_LISTING if "-faculty/" in url else p))
         monkeypatch.setattr(h.time, "sleep", lambda *a: None)
