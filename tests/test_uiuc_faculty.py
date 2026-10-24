@@ -3217,6 +3217,14 @@ def test_an_engineering_directory_card_with_a_netid_states_its_title_abbreviated
                       "Harper Sample": "Department Affiliate", "Devon Example": ""}
 
 
+def test_a_netid_cards_group_list_is_no_title(monkeypatch):
+    # Bioengineering cards list groups in a second div.title; with the title
+    # field missing, the groups ("Bioengineering") are not read as one.
+    page = _person_items_page([("h3", "Faculty", [("person1", "Avery Example", "Professor")])]).replace(
+        '<div class="title">Professor</div>', '<div class="title groups"><ul><li>Bioengineering</li></ul></div>')
+    assert [r["metadata"]["faculty_title"] for r in _fetch_physics(monkeypatch, page=page)] == [""]
+
+
 def test_an_abbreviated_current_rank_keeps_a_card_under_an_emeritus_heading_listed(tmp_path, monkeypatch):
     # "RES PROF" is a current rank (consumers read "Prof" as one); "PROF EMERITUS" is not.
     page = _person_items_page([
@@ -3295,3 +3303,18 @@ def test_a_card_of_this_run_that_states_no_title_leaves_the_title_another_of_its
                                  card("Avery Example", "", "Example Information Science")])
     assert list(rows) == ["Avery Q. Example"]
     assert rows["Avery Q. Example"]["metadata"]["faculty_title"] == "Associate Professor"
+
+
+def test_only_a_uiuc_rows_title_follows_a_newer_card_for_its_own_profile():
+    # Other schools' rows (faculty_graph's collapse uses the same carry) keep
+    # their title: their collectors never wrote a default rank.
+    from src.collectors.uiuc_faculty import _carry_newest_liveness
+
+    def row(source, seen, title):
+        return {"source": source, "source_url": "https://a.example/profile/person4",
+                "metadata": {"last_seen_at": seen, "is_active": True, "faculty_title": title}}
+
+    for source, kept in (("uiuc_faculty", ""), ("example_faculty", "Professor")):
+        survivor = row(source, "2026-10-05T00:00:00", "Professor")
+        _carry_newest_liveness(survivor, row(source, "2026-10-26T00:00:00", ""))
+        assert survivor["metadata"]["faculty_title"] == kept, source

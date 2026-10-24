@@ -330,5 +330,6 @@ def test_carle_and_faa_cards_without_a_title_get_none(monkeypatch):
     monkeypatch.setattr(h, "_fetch_soup", lambda url: _soup(listing) if url == h.CARLE_URL else None)
     monkeypatch.setattr(h.time, "sleep", lambda *a: None)
     assert [r["metadata"]["faculty_title"] for r in h.fetch_carle()] == ["", "Teaching Associate Professor"]
-    card = _soup('<article class="person-card"><h2 class="linked-title">Avery Example</h2></article>')
-    assert h._faa_card(card.select_one("article"), h.FAA_UNITS[0])["metadata"]["faculty_title"] == ""
+    for info in ("", '<div class="person-card__info">Avery Example <a href="mailto:p1@illinois.edu">p1@illinois.edu</a></div>'):
+        card = _soup(f'<article class="person-card"><h2 class="linked-title">Avery Example</h2>{info}</article>')
+        assert h._faa_card(card.select_one("article"), h.FAA_UNITS[0])["metadata"]["faculty_title"] == "", info
