@@ -269,6 +269,35 @@ describe('another tab\'s answer and saves reach this tab without a reload (M117)
   });
 });
 
+// Checklist M134 (review of M117, round 4): after the other tab sent this
+// tab's slider move, this tab's next move went out at the revision before
+// that send, was refused, and asked about its own earlier value.
+describe('a slider move after the other tab sent this tab\'s earlier one (M134)', () => {
+  it('is sent at the revision that send stored, and stored with no question (a guard; so since M135)', async () => {
+    const a = await open('A');
+    const b = await open('B');
+    online = false;
+    await as(b, (f) => f.setSearchWeight(90));
+    expect(b.hook.result.current.saveStatus).toBe('cloud-failed');
+    online = true;
+    await as(a, (f) => f.update('name', 'Alex Kim'));
+    expect({ remote: { search_weight: remote.search_weight, name: remote.name }, revision }).toEqual({ remote: { search_weight: 90, name: 'Alex Kim' }, revision: 8 });
+    await tick(2000);
+    expect(b.hook.result.current.saveStatus).toBe('saved');
+    const before = service.commit.mock.calls.length;
+    await as(b, (f) => f.setSearchWeight(60));
+    await tick(3000);
+    expect({
+      sent: service.commit.mock.calls.slice(before).map(([intent]) => [intent.expectedRevision, Object.keys(intent.patch)]),
+      asked: b.hook.result.current.conflicts.map((c) => c.key), status: b.hook.result.current.saveStatus,
+      stored: { search_weight: remote.search_weight, revision }, shows: b.hook.result.current.searchWeight,
+    }).toEqual({
+      sent: [[8, ['search_weight']]], asked: [], status: expect.stringMatching(/^(saved|idle)$/),
+      stored: { search_weight: 60, revision: 9 }, shows: 60,
+    });
+  });
+});
+
 /** Locked reads of the profile storage from here on. The typing tab takes the
  *  lock only when its save fires, so in the windows below every one is the
  *  listening tab's read. */
