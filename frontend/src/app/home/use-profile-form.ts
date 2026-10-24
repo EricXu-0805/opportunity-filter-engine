@@ -765,6 +765,8 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
   // landed late and silently swallowed a real edit made inside the window.
   const hydratedProfileRef = useRef<ProfileData | null>(DEFAULT_PROFILE);
   const hydratedWeightRef = useRef<number | null>(DEFAULT_SEARCH_WEIGHT);
+  // The form the autosave effect last ran for (see showRowWhereIdle).
+  const autosaveSawRef = useRef<ProfileData | null>(null);
   // Edits made BEFORE this identity's row has finished loading, recorded
   // per field. Until the load settles nothing is persisted at all: writing
   // the form as it stands would push DEFAULT_PROFILE plus the one edited
@@ -1260,25 +1262,29 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
   }, [recordIntent, republishRendered, editingOrigin, screenOrigin]);
 
   /**
-   * Shows the résumé fields, and apart from them the course list, as `row`
-   * holds them, when the base moves onto it (M147). Neither moves while an
-   * edit of one is unsent in any tab, a question holds one, or this form has
-   * one it has not written down. An edit of one résumé field sends all of
-   * them, from this form and measured against the base: shown from an older
-   * row, the ones the person did not touch would undo what another tab saved
-   * since.
+   * Shows every field as `row` holds it when the base moves onto it, unless
+   * an edit of it is unsent in any tab, a question holds it (`held`: one the
+   * caller is about to show), or this form has one it has not written down:
+   * an edit in progress here, a burst of typing or a slider being dragged, is
+   * in the journal or owed from its first change. The résumé fields move
+   * together and the course list on its own (M147); every other field alone
+   * (M135). The next edit of a field is measured against the base, so one
+   * shown from an older row would be sent over a value another tab or device
+   * stored since without a question; and an edit of one résumé field sends
+   * all of them as shown.
    */
-  const showResumeAsRow = useCallback((row: ProfileData | null, token: OwnerToken) => {
+  const showRowWhereIdle = useCallback((row: ProfileData | null, token: OwnerToken, held: readonly string[] = []) => {
     const shown = profileRef.current;
     if (!row || shareDraftActiveRef.current) return;
-    const dirty = getDirtyProfileKeys(token, HOME_FORM_WRITER);
+    const dirty = getDirtyProfileKeys(token, null);
     if (!dirty.ok) return;
-    const busy = new Set<string>([...dirty.value, ...unrepresentedNow(), ...conflictKeysRef.current]);
+    const busy = new Set<string>([...dirty.value, ...unrepresentedNow(), ...conflictKeysRef.current, ...held]);
     const read = normalizeProfileForRelease({ ...DEFAULT_PROFILE, ...(migrateProfile(row) ?? {}) } as ProfileData) as unknown as Record<string, unknown>;
     const merged = { ...(shown as unknown as Record<string, unknown>) };
     const empty = (v: unknown) => v === undefined || v === null || v === '' || (Array.isArray(v) && v.length === 0);
+    const alone = (PROFILE_KEYS as readonly string[]).filter((key) => key !== 'courses' && !RESUME_BUNDLE.includes(key as keyof ProfileData));
     let moved = false;
-    for (const unit of [RESUME_BUNDLE, ['courses']]) {
+    for (const unit of [RESUME_BUNDLE, ['courses'], ...alone.map((key) => [key])]) {
       if (unit.some((key) => busy.has(key))) continue;
       for (const key of unit) {
         if ((empty(merged[key]) && empty(read[key])) || JSON.stringify(merged[key]) === JSON.stringify(read[key])) continue;
@@ -1288,19 +1294,22 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     }
     if (!moved) return;
     const next = merged as unknown as ProfileData;
-    // Not an edit of the person's, so it arms no autosave: a form the
-    // autosave held as stored still is, and so is one with no save waiting
-    // and nothing of this tab's unsent that a save could send (an edit in the
-    // question waits for its answer).
+    const weight = typeof next.search_weight === 'number' ? next.search_weight : weightRef.current;
+    // Not an edit of the person's, so it starts no save. A form the autosave
+    // holds as stored still is; so is one it has already looked at with no
+    // save left waiting, whatever of this tab's is unsent (Retry, the
+    // reconnect resend or the next edit sends that). A save waiting still
+    // goes, and a change made to the form in this same moment that the
+    // autosave has not seen yet (a question's fields redrawn) still arms one.
     const stored = hydratedProfileRef.current === shown && hydratedWeightRef.current === weightRef.current;
-    const own = getDirtyProfileKeys(token, HOME_FORM_WRITER, 'own');
-    const sendable = !own.ok || own.value.some((key) => !conflictKeysRef.current.includes(key)) || unrepresentedNow().size > 0;
-    if (stored || (pendingSaveRef.current === null && !sendable)) {
+    if (stored || (pendingSaveRef.current === null && autosaveSawRef.current === shown)) {
       hydratedProfileRef.current = next;
-      hydratedWeightRef.current = weightRef.current;
+      hydratedWeightRef.current = weight;
     }
     profileRef.current = next;
+    weightRef.current = weight;
     setProfile(next);
+    setSearchWeight(weight);
   }, [unrepresentedNow]);
 
   // R67 problem #4 (cross-device sync, code-side portion) + C1-R2B:
@@ -1360,10 +1369,13 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     revision: number,
     token: OwnerToken,
     generation: number,
+    /** Fields a question or an owed edit holds that the caller has yet to
+     *  publish: not drawn from `profile`. */
+    held: readonly string[] = [],
   ) => {
     if (generation !== identityGenerationRef.current) return;
     if (!isOwnerTokenValid(token, token.uid)) return;
-    if (revision > (viewSnapshotRef.current?.revision ?? 0)) showResumeAsRow(profile, token);
+    if (revision > (viewSnapshotRef.current?.revision ?? 0)) showRowWhereIdle(profile, token, held);
     const adopted = makeProfileViewSnapshot({
       baseProfile: profile,
       renderedProfile: profileRef.current,
@@ -1374,7 +1386,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     });
     viewSnapshotRef.current = adopted;
     setViewSnapshot(adopted);
-  }, [showResumeAsRow]);
+  }, [showRowWhereIdle]);
 
   const advanceAcceptedBase = useCallback((
     profile: ProfileData | null,
@@ -1388,7 +1400,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // acknowledgement can use to re-open a conflict the user already settled.
     const held = viewSnapshotRef.current;
     if (held && revision < held.revision) return;
-    if (revision > (held?.revision ?? 0)) showResumeAsRow(profile, token);
+    if (revision > (held?.revision ?? 0)) showRowWhereIdle(profile, token);
     const advanced = makeProfileViewSnapshot({
       baseProfile: profile,
       renderedProfile: profileRef.current,
@@ -1399,7 +1411,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     });
     viewSnapshotRef.current = advanced;
     setViewSnapshot(advanced);
-  }, [showResumeAsRow]);
+  }, [showRowWhereIdle]);
 
   const applySaveResult = useCallback((
     result: ProfileSaveResult,
@@ -1885,7 +1897,9 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
     // the document above. Both halves of the snapshot or neither: a display
     // showing absence beside a baseline still holding the old row is how the
     // next edit gets measured against a row that is gone.
-    adoptAuthoritativeBase(refreshed.baseProfile, refreshed.revision, token, generation);
+    adoptAuthoritativeBase(refreshed.baseProfile, refreshed.revision, token, generation, [
+      ...refreshed.pendingKeys, ...(refreshed.status === 'current' ? refreshed.conflicts.map((c) => c.key) : []),
+    ]);
     if (refreshed.status === 'settled') {
       // Everything this rebuild was asked about. Callers ask about the WHOLE
       // question that is on screen, so a settled answer really does mean
@@ -2880,6 +2894,7 @@ export function useProfileForm(t: TFunc): UseProfileFormResult {
   }, [applySaveResult, epochsNow, ownsScreen, armRetryable, setSaveStatus]);
 
   useEffect(() => {
+    autosaveSawRef.current = profile;
     // Nothing is persisted until this identity's row has settled: see
     // dirtyKeysRef. Edits made before then are visible immediately and
     // merged onto the row when it lands, which is what arms this effect.
