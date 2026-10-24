@@ -2386,14 +2386,14 @@ def test_every_directory_row_records_the_section_heading_it_was_listed_under(mon
                         "Morgan Example": "In Memoriam"}
 
 
-def test_an_ordinary_faculty_card_and_an_emeritus_card_are_unchanged(tmp_path, monkeypatch):
-    # Guard (holds before the In Memoriam rule too): the rule touches no one else.
+def test_an_ordinary_faculty_card_is_unchanged(tmp_path, monkeypatch):
+    # Guard (holds before the In Memoriam and emeritus rules too): the rules touch no one else.
     fresh = _fetch_psych(monkeypatch, MEMORIAL_PAGE)
-    stored = [_stored_psych_row("Avery Example", "person1"), _stored_psych_row("Devon Example", "person4")]
+    stored = [_stored_psych_row("Avery Example", "person1")]
     rows = _merge(tmp_path, stored, fresh)
     for name, slug, title in (("Avery Example", "person1", "Professor"),
                               ("Blair Sample", "person2", "Associate Professor"),
-                              ("Devon Example", "person4", "Professor")):
+                              ("Casey Placeholder", "person3", "Lecturer")):
         row = rows[name]
         assert row["metadata"]["is_active"] is True, name
         assert row["contact_email"] == f"{slug}@illinois.edu", name
@@ -2528,3 +2528,661 @@ def test_the_enrichment_pass_after_the_merge_never_puts_the_address_back(tmp_pat
     assert not any(url.endswith("/person5") for url in fetched)
     # The same pass still finds the address of a current professor without one.
     assert rows["Jordan Sample"]["contact_email"] == "person6@illinois.edu"
+
+
+# --- M149: emeritus and retired faculty are not listed, as at every other
+# school, except someone the directory lists as still running an active lab.
+# The card's own heading or title says so; the stored row is retired by it
+# (UIUC never retires a row for being absent). Synthetic people. ---
+
+EMERITUS_PAGE = _sectioned_page([
+    (None, [("person1", "Avery Example", "Professor"),
+            ("person2", "Blair Sample", "Associate Professor"),
+            ("person3", "Casey Placeholder", "Lecturer"),
+            ("person6", "Emery Sample", "Professor Emeritus")]),
+    ("Emeritus Faculty with active research labs", [("person7", "Finley Placeholder", "Professor Emeritus")]),
+    ("Emeritus Faculty", [("person4", "Devon Example", None), ("person8", "Gray Example", "Associate Professor")]),
+])
+
+
+def _emeritus(row: dict) -> tuple:
+    md = row["metadata"]
+    return md["is_active"], md.get("deactivation_reason"), bool(md.get("deactivated_at"))
+
+
+@pytest.mark.parametrize("heading", ["Emeritus Faculty", "Emeriti", "Emeriti Faculty",
+                                     "Emeritus/Emerita and Retired Faculty", "Emeriti/Emeritae", "EMERITI FACULTY"])
+def test_a_card_under_an_emeritus_heading_retires_the_stored_row_and_keeps_its_address(tmp_path, monkeypatch, heading):
+    page = EMERITUS_PAGE.replace('<h2 style="clear: both;">Emeritus Faculty</h2>', f'<h2 style="clear: both;">{heading}</h2>')
+    rows = _merge(tmp_path, [_stored_psych_row("Devon Example", "person4")], _fetch_psych(monkeypatch, page))
+    # Untitled: the heading says it (a card titled with a current rank stays listed, round 3 below).
+    row = rows["Devon Example"]
+    assert _emeritus(row) == (False, "listed_as_emeritus", True)
+    # Alive and theirs; an inactive row is never offered as a contact.
+    assert row["contact_email"] == "person4@illinois.edu"
+    assert row["metadata"]["first_seen_at"] == "2026-01-10T00:00:00"
+    assert row["metadata"]["directory_section"] == heading
+
+
+@pytest.mark.parametrize("title", ["Professor Emeritus", "Associate Professor Emerita", "Research Associate Professor (retired)",
+                                   "Retired", "professor emeritus of example studies", "Emeriti Faculty"])
+def test_a_card_whose_title_says_emeritus_is_retired_under_an_ordinary_heading(tmp_path, monkeypatch, title):
+    page = EMERITUS_PAGE.replace(">Professor Emeritus</div>", f">{title}</div>", 1)
+    rows = _merge(tmp_path, [_stored_psych_row("Emery Sample", "person6")], _fetch_psych(monkeypatch, page))
+    row = rows["Emery Sample"]
+    assert row["metadata"]["directory_section"] == "Faculty"
+    assert _emeritus(row) == (False, "listed_as_emeritus", True)
+    assert row["metadata"]["faculty_title"] == title
+    assert row["contact_email"] == "person6@illinois.edu"
+
+
+def test_an_emeritus_listed_with_an_active_research_lab_stays_listed_with_their_title(tmp_path, monkeypatch):
+    # Guard (holds before the emeritus rule too, which retired no one): the
+    # rule's one exception. The same person also listed under the plain
+    # Emeritus heading further down the page is still one listed row.
+    page = EMERITUS_PAGE.replace("</main>", "".join((
+        '<div class="views-element-container"><header><h2>Emeritus Faculty</h2></header>',
+        _section_card("person7", "Finley Placeholder", "Professor Emeritus"), "</div></main>")))
+    rows = _merge(tmp_path, [_stored_psych_row("Finley Placeholder", "person7")], _fetch_psych(monkeypatch, page))
+    row = rows["Finley Placeholder"]
+    assert row["metadata"]["is_active"] is True
+    assert "deactivation_reason" not in row["metadata"]
+    assert row["metadata"]["faculty_title"] == "Professor Emeritus"
+    assert row["contact_email"] == "person7@illinois.edu"
+
+
+def test_a_person_listed_under_an_emeritus_and_an_ordinary_heading_stays_listed_whichever_comes_first(tmp_path, monkeypatch):
+    # The ordinary card is a current role, as at every other school, where each
+    # card is judged on its own; also when the emeritus card's title says so.
+    for emeritus_title in (None, "Professor Emeritus"):
+        for sections in ([("Emeritus Faculty", [("person4", "Devon Example", emeritus_title)]),
+                          ("Research Faculty", [("person4", "Devon Example", None)])],
+                         [("Research Faculty", [("person4", "Devon Example", None)]),
+                          ("Emeritus Faculty", [("person4", "Devon Example", emeritus_title)])]):
+            page = _sectioned_page([(None, [("person1", "Avery Example", "Professor"),
+                                            ("person2", "Blair Sample", "Professor"),
+                                            ("person3", "Casey Placeholder", "Professor")])] + sections)
+            row = _merge(tmp_path, [_stored_psych_row("Devon Example", "person4")],
+                         _fetch_psych(monkeypatch, page))["Devon Example"]
+            assert _emeritus(row) == (True, None, False), (emeritus_title, sections[0][0])
+            assert row["contact_email"] == "person4@illinois.edu"
+
+
+def test_a_row_already_retired_as_emeritus_keeps_the_day_it_was_first_read(tmp_path, monkeypatch):
+    # Also when the page lists the person a second time, by an emeritus title
+    # under another heading.
+    twice = EMERITUS_PAGE.replace("</main>", "".join((
+        '<div class="views-element-container"><header><h2>Research Faculty</h2></header>',
+        _section_card("person4", "Devon Example", "Professor Emeritus"), "</div></main>")))
+    for page in (EMERITUS_PAGE, twice):
+        stored = _stored_psych_row("Devon Example", "person4")
+        stored["metadata"].update(is_active=False, deactivated_at="2026-10-12", deactivation_reason="listed_as_emeritus")
+        row = _merge(tmp_path, [stored], _fetch_psych(monkeypatch, page))["Devon Example"]
+        assert (row["metadata"]["is_active"], row["metadata"].get("deactivated_at"), row["contact_email"]) == \
+            (False, "2026-10-12", "person4@illinois.edu")
+
+
+def test_a_richer_duplicate_of_an_emeritus_card_is_retired_with_it_and_keeps_its_first_day(tmp_path, monkeypatch):
+    # Same profile page, a name variant stored under another id: the row dedup
+    # keeps the keyword-richer stored copy, which must not stay listed.
+    variant = _stored_psych_row("Devon Q. Example", "person4")
+    variant["keywords"] = ["implicit memory", "attitude formation", "social cognition"]
+    rows = _merge(tmp_path, [variant], _fetch_psych(monkeypatch, EMERITUS_PAGE))
+    assert "Devon Example" not in rows
+    row = rows["Devon Q. Example"]
+    assert _emeritus(row) == (False, "listed_as_emeritus", True)
+    assert row["contact_email"] == "person4@illinois.edu"
+    row["metadata"]["deactivated_at"] = "2026-10-12"
+    again = _merge(tmp_path, [row], _fetch_psych(monkeypatch, EMERITUS_PAGE))["Devon Q. Example"]
+    assert (again["metadata"]["is_active"], again["metadata"]["deactivated_at"]) == (False, "2026-10-12")
+
+
+def test_an_unmarked_listing_in_another_department_never_lifts_an_emeritus_retirement_and_an_active_lab_is_never_retired():
+    # The carry alone, between rows the merge did not mark as listed with a
+    # current role this run (stored rows); a marked one lifts it (merge test below).
+    from src.collectors.uiuc_faculty import _carry_newest_liveness
+
+    def row(url, seen, **md):
+        return {"source_url": url, "metadata": {"last_seen_at": seen, "is_active": True, **md}}
+
+    retired = dict(is_active=False, deactivated_at="2026-10-12", deactivation_reason="listed_as_emeritus")
+    # A newer plain listing in another department does not contradict the emeritus heading...
+    survivor = row("https://a.example/profile/person4", "2026-10-20T00:00:00", **retired)
+    _carry_newest_liveness(survivor, row("https://b.example/profile/person4", "2026-10-21T00:00:00",
+                                         directory_section="Faculty"))
+    assert _emeritus(survivor) == (False, "listed_as_emeritus", True)
+    # ...the same card listed again, or a listing with an active lab, does.
+    for url, section in (("https://a.example/profile/person4", "Faculty"),
+                         ("https://b.example/profile/person4", "Emeritus Faculty with active research labs")):
+        survivor = row("https://a.example/profile/person4", "2026-10-20T00:00:00", **retired)
+        _carry_newest_liveness(survivor, row(url, "2026-10-21T00:00:00", directory_section=section))
+        assert _emeritus(survivor) == (True, None, False), section
+    # A newer emeritus card of the same person never retires their active-lab row.
+    lab = row("https://b.example/profile/person4", "2026-10-20T00:00:00",
+              directory_section="Emeritus Faculty with active research labs")
+    _carry_newest_liveness(lab, row("https://a.example/profile/person4", "2026-10-21T00:00:00", **retired))
+    assert _emeritus(lab) == (True, None, False)
+
+
+def test_a_profile_page_title_that_says_emeritus_retires_an_untitled_card(tmp_path, monkeypatch):
+    import src.collectors.uiuc_faculty as f
+
+    page = _sectioned_page([(None, [("person1", "Avery Example", "Professor"), ("person2", "Blair Sample", None),
+                                    ("person3", "Casey Placeholder", None)])])
+    profile = ('<html><body><main><div class="field field-name-field-dircore-appt-title"><div class="field__items">'
+               '<div class="field__item">{}</div></div></div></main></body></html>')
+    titles = {"person2": "Professor Emerita", "person3": "Assistant Professor"}
+    base = DEPARTMENTS["psych"]["base"]
+
+    def fetch(url):
+        if url == DEPARTMENTS["psych"]["url"]:
+            return BeautifulSoup(page, "html.parser")
+        slug = url.rsplit("/", 1)[-1]
+        return BeautifulSoup(profile.format(titles[slug]), "html.parser") if url == f"{base}/directory/profile/{slug}" \
+            and slug in titles else None
+
+    monkeypatch.setattr(f, "_fetch_soup", fetch)
+    monkeypatch.setattr(f, "_scrape_individual_page_keywords", lambda url: [])
+    monkeypatch.setattr(f, "DELAY", 0)
+    rows = _merge(tmp_path, [_stored_psych_row("Blair Sample", "person2")], f.fetch_department("psych", enrich=True))
+    assert rows["Blair Sample"]["metadata"]["faculty_title"] == "Professor Emerita"
+    assert _emeritus(rows["Blair Sample"]) == (False, "listed_as_emeritus", True)
+    assert rows["Casey Placeholder"]["metadata"]["faculty_title"] == "Assistant Professor"
+    assert _emeritus(rows["Casey Placeholder"]) == (True, None, False)
+
+
+def test_a_failed_or_partial_page_read_retires_no_emeritus(tmp_path, monkeypatch):
+    # Guard (holds before the emeritus rule too): only what a page that was
+    # read states retires anyone. A failed read; a page that lists no emeritus
+    # card (the stored one is absent, not listed as emeritus); a page mostly
+    # under an emeritus heading, whose heading is not read as one.
+    stored = [_stored_psych_row("Devon Example", "person4"), _stored_psych_row("Avery Example", "person1")]
+    assert _fetch_psych(monkeypatch, None) == []
+    partial = _sectioned_page([(None, [("person1", "Avery Example", "Professor"),
+                                       ("person2", "Blair Sample", "Professor")])])
+    for fresh in ([], _fetch_psych(monkeypatch, partial)):
+        rows = _merge(tmp_path, stored, fresh)
+        assert rows["Devon Example"]["metadata"]["is_active"] is True
+        assert rows["Devon Example"]["metadata"]["last_seen_at"] == "2026-10-05T14:18:05"
+        assert rows["Devon Example"]["contact_email"] == "person4@illinois.edu"
+    mostly = _sectioned_page([("Emeritus Faculty", [("person1", "Avery Example", "Professor"),
+                                                    ("person2", "Blair Sample", "Professor"),
+                                                    ("person3", "Casey Placeholder", None)])])
+    for row in _fetch_psych(monkeypatch, mostly):
+        assert _emeritus(row) == (True, None, False), row["pi_name"]
+
+
+def test_in_memoriam_outranks_an_emeritus_title():
+    # Guard (holds before the emeritus rule too): still no address.
+    row = normalize_faculty({"name": "Morgan Example", "title": "Professor Emeritus", "email": "person5@illinois.edu",
+                             "directory_section": "In Memoriam", "in_memoriam": True},
+                            DEPARTMENTS["psych"], keywords=["psychology"])
+    assert (row["metadata"]["deactivation_reason"], row["contact_email"]) == ("listed_in_memoriam", None)
+
+
+def test_a_row_retired_through_another_departments_emeritus_card_keeps_its_first_day(tmp_path):
+    # Communication lists the person as Professor Emeritus, Psychology under its
+    # Emeritus heading; the address folds both into the richer Communication
+    # row, which a refresh retires again every week from the same cards.
+    def card(dept, **person):
+        return normalize_faculty({"name": "Devon Example", "email": "person4@illinois.edu",
+                                  "url": f"{DEPARTMENTS[dept]['base']}/directory/profile/person4", **person},
+                                 DEPARTMENTS[dept], keywords=["communication"])
+
+    stored = card("comm", title="Professor Emeritus")
+    stored["keywords"] = ["persuasion", "health communication", "media effects"]
+    stored["metadata"].update(is_active=False, deactivated_at="2026-10-12", deactivation_reason="listed_as_emeritus",
+                              last_seen_at="2026-10-05T14:18:05")
+    fresh = [card("comm", title="Professor Emeritus"),
+             card("psych", title="Professor Emeritus", directory_section="Emeritus Faculty")]
+    assert fresh[0]["metadata"]["is_active"] is False and fresh[1]["metadata"]["is_active"] is False
+    rows = _merge(tmp_path, [stored], fresh)
+    assert list(rows) == ["Devon Example"]
+    row = rows["Devon Example"]
+    assert row["department"] == DEPARTMENTS["comm"]["name"]
+    assert (row["metadata"]["is_active"], row["metadata"]["deactivation_reason"], row["metadata"]["deactivated_at"]) == \
+        (False, "listed_as_emeritus", "2026-10-12")
+
+
+# --- M149 round 2: a current role always wins. A title retires only when all
+# its ranks are emeritus or retired; a person listed this run with a current
+# role, on the same page or another department's, stays listed whatever order
+# the departments are read in. Synthetic people. ---
+
+MIXED_TITLES = ["Research Professor, Professor Emeritus", "Associate Professor Emeritus, Associate Research Professor",
+                "Dean Emeritus and Professor of Finance", "Emeritus Dean, Professor",
+                "Professor Emeritus; Example Family Professor of Global Studies",
+                "Professor Emerita and Director of the Example Center",
+                "Affiliate Faculty of Example Education Professor Emerita of Example Studies"]
+ALL_EMERITUS_TITLES = ["Professor Emeritus", "Emeritus Professor of Example Studies", "Example Family Professor Emeritus",
+                       "Associate Professor Emerita", "Retired", "Professor of Viola, Retired", "Director Emeritus",
+                       "Example Chair Emeritus, Professor Emeritus of Biochemistry, and Professor Emeritus of Chemistry",
+                       "Professor Emeritus (Economics, Geography, Urban and Regional Planning)",
+                       "Example Distinguished Professor of Marketing Emeritus", "Research Associate Professor (retired)",
+                       "Example Endowed Chair Emeritus Professor Emeritus of Example Studies",
+                       "Professor of Example Studies, Emeritus; Research Professor Emeritus"]
+
+
+def _json_card(title: str) -> dict:
+    # The JSON/HTML collectors' path: a title and no heading.
+    return normalize_faculty({"name": "Emery Sample", "title": title, "email": "person6@illinois.edu"},
+                             DEPARTMENTS["psych"], keywords=["psychology"])
+
+
+@pytest.mark.parametrize("title", MIXED_TITLES)
+def test_a_title_with_a_current_rank_beside_an_emeritus_one_stays_listed(tmp_path, monkeypatch, title):
+    page = EMERITUS_PAGE.replace(">Professor Emeritus</div>", f">{title}</div>", 1)
+    row = _merge(tmp_path, [_stored_psych_row("Emery Sample", "person6")], _fetch_psych(monkeypatch, page))["Emery Sample"]
+    assert row["metadata"]["directory_section"] == "Faculty"
+    assert _emeritus(row) == (True, None, False)
+    assert row["metadata"]["faculty_title"] == title
+    assert _emeritus(_json_card(title)) == (True, None, False)
+
+
+@pytest.mark.parametrize("title", ALL_EMERITUS_TITLES)
+def test_a_title_whose_ranks_are_all_emeritus_still_retires(tmp_path, monkeypatch, title):
+    # Guard (holds on round 1 too, which retired every emeritus word): the
+    # current-rank reading does not keep a plain emeritus title listed.
+    page = EMERITUS_PAGE.replace(">Professor Emeritus</div>", f">{title}</div>", 1)
+    row = _merge(tmp_path, [_stored_psych_row("Emery Sample", "person6")], _fetch_psych(monkeypatch, page))["Emery Sample"]
+    assert _emeritus(row) == (False, "listed_as_emeritus", True)
+    assert row["contact_email"] == "person6@illinois.edu"
+    assert _emeritus(_json_card(title)) == (False, "listed_as_emeritus", True)
+
+
+def _read_in_order(cards: list[dict]) -> list[dict]:
+    # Rows carry the time their department was read: later departments, later.
+    for minute, card in enumerate(cards):
+        card["metadata"]["last_seen_at"] = f"2026-10-24T10:{minute:02d}:00"
+    return cards
+
+
+def test_another_departments_ordinary_listing_keeps_the_person_listed_in_either_read_order(tmp_path):
+    # Communication lists the person as a professor, Psychology under its
+    # Emeritus heading; one address folds both into one row, whichever is richer.
+    def card(dept, **person):
+        return normalize_faculty({"name": "Devon Example", "email": "person4@illinois.edu",
+                                  "url": f"{DEPARTMENTS[dept]['base']}/directory/profile/person4", **person},
+                                 DEPARTMENTS[dept], keywords=["communication"])
+
+    for richer in ("comm", "psych"):
+        for order in (("comm", "psych"), ("psych", "comm")):
+            stored = card(richer, title="Professor")
+            stored["keywords"] = ["persuasion", "health communication", "media effects"]
+            stored["metadata"]["last_seen_at"] = "2026-10-05T14:18:05"
+            fresh = {"comm": card("comm", title="Professor"),
+                     "psych": card("psych", title="Professor Emeritus", directory_section="Emeritus Faculty")}
+            rows = _merge(tmp_path, [stored], _read_in_order([fresh[d] for d in order]))
+            assert list(rows) == ["Devon Example"], (richer, order)
+            row = rows["Devon Example"]
+            assert row["department"] == DEPARTMENTS[richer]["name"], (richer, order)
+            assert _emeritus(row) == (True, None, False), (richer, order)
+            assert row["contact_email"] == "person4@illinois.edu"
+            # The merge's mark is never written, nor left on the cards.
+            assert not any("_listed_current" in r["metadata"] for r in [row, *fresh.values()])
+
+
+def test_a_program_pages_listing_never_lifts_the_home_departments_emeritus_row(tmp_path):
+    # Neuroscience lists the person as a professor; their home department under
+    # its Emeritus heading. The home department's page decides: the program card
+    # folds into the home row by address and the row stays retired with the home
+    # card's own title, whichever is read first.
+    from src.collectors.uiuc_faculty import _dedup_program_affiliations
+
+    def card(dept, **person):
+        return normalize_faculty({"name": "Devon Example", "email": "person4@illinois.edu",
+                                  "url": f"{DEPARTMENTS[dept]['base']}/directory/profile/person4", **person},
+                                 DEPARTMENTS[dept], keywords=["psychology"])
+
+    def fresh():
+        return {"neuroscience": card("neuroscience", title="Professor, Psychology", directory_section="Faculty Members"),
+                "psych": card("psych", title="Professor Emeritus", directory_section="Emeritus Faculty")}
+
+    for order in (("neuroscience", "psych"), ("psych", "neuroscience")):
+        cards = fresh()
+        kept = _dedup_program_affiliations(_read_in_order([cards[d] for d in order]))
+        assert [r["department"] for r in kept] == [DEPARTMENTS["psych"]["name"]], order
+        row = _merge(tmp_path, [], kept)["Devon Example"]
+        assert _emeritus(row) == (False, "listed_as_emeritus", True), order
+        md = row["metadata"]
+        assert (md["faculty_title"], md["directory_section"]) == ("Professor Emeritus", "Emeritus Faculty"), order
+        assert row["contact_email"] == "person4@illinois.edu" and "neuroscience" in row["keywords"], order
+    # A program card no dedup above matched (the home row comes from a collector
+    # the program dedup does not see) folds at the merge: the same, whichever row
+    # is richer and whichever is read first.
+    for richer in ("neuroscience", "psych"):
+        for order in (("neuroscience", "psych"), ("psych", "neuroscience")):
+            stored = card(richer, title="Professor")
+            stored["keywords"] = ["cognition", "memory", "attention"]
+            stored["metadata"]["last_seen_at"] = "2026-10-05T14:18:05"
+            cards = fresh()
+            rows = _merge(tmp_path, [stored], _read_in_order([cards[d] for d in order]))
+            case = (richer, order)
+            assert list(rows) == ["Devon Example"] and rows["Devon Example"]["department"] == DEPARTMENTS[richer]["name"], case
+            assert _emeritus(rows["Devon Example"]) == (False, "listed_as_emeritus", True), case
+
+
+# --- M149 round 3: an emeritus heading retires only a card whose own title
+# states no current rank; In Memoriam outranks emeritus in any read order.
+# Synthetic people. ---
+
+@pytest.mark.parametrize("title", ["Associate Professor", "Emeritus Professor and Example Director",
+                                   "Example Endowed Chair and Professor Emeritus"])
+def test_a_card_under_an_emeritus_heading_whose_title_states_a_current_rank_stays_listed(tmp_path, monkeypatch, title):
+    page = EMERITUS_PAGE.replace(_section_card("person8", "Gray Example", "Associate Professor"),
+                                 _section_card("person8", "Gray Example", title))
+    rows = _merge(tmp_path, [_stored_psych_row("Gray Example", "person8")], _fetch_psych(monkeypatch, page))
+    row = rows["Gray Example"]
+    assert row["metadata"]["directory_section"] == "Emeritus Faculty"
+    assert row["metadata"]["faculty_title"] == title
+    assert _emeritus(row) == (True, None, False)
+    assert row["contact_email"] == "person8@illinois.edu"
+
+
+@pytest.mark.parametrize("title", [None, "Academic Hourly", "Professor Emeritus", "Research Professor Emeritus"])
+def test_a_card_under_an_emeritus_heading_with_no_current_rank_in_its_title_still_retires(tmp_path, monkeypatch, title):
+    # Guard (holds on round 2 too, where the heading alone retired): no title,
+    # one with no rank, or ranks that are all emeritus.
+    page = EMERITUS_PAGE.replace(_section_card("person8", "Gray Example", "Associate Professor"),
+                                 _section_card("person8", "Gray Example", title))
+    row = _merge(tmp_path, [_stored_psych_row("Gray Example", "person8")], _fetch_psych(monkeypatch, page))["Gray Example"]
+    assert _emeritus(row) == (False, "listed_as_emeritus", True)
+    assert row["contact_email"] == "person8@illinois.edu"
+
+
+def test_a_person_under_in_memoriam_and_another_heading_on_one_page_is_retired_in_memoriam_whichever_comes_first(
+        tmp_path, monkeypatch):
+    for heading, title in (("Emeritus Faculty", None), ("Emeritus Faculty", "Professor Emeritus"),
+                           ("Research Faculty", "Professor")):
+        for sections in ([("In Memoriam", [("person5", "Morgan Example", None)]),
+                          (heading, [("person5", "Morgan Example", title)])],
+                         [(heading, [("person5", "Morgan Example", title)]),
+                          ("In Memoriam", [("person5", "Morgan Example", None)])]):
+            page = _sectioned_page([(None, [("person1", "Avery Example", "Professor"),
+                                            ("person2", "Blair Sample", "Professor"),
+                                            ("person3", "Casey Placeholder", "Professor")])] + sections)
+            row = _merge(tmp_path, [_stored_psych_row("Morgan Example", "person5")],
+                         _fetch_psych(monkeypatch, page))["Morgan Example"]
+            assert (row["metadata"]["is_active"], row["metadata"].get("deactivation_reason"), row["contact_email"]) == \
+                (False, "listed_in_memoriam", None), (heading, title, sections[0][0])
+
+
+def test_in_memoriam_outranks_an_emeritus_card_folded_into_the_same_row_in_either_read_order(tmp_path):
+    # Two spellings of one person on one profile page, one card under In
+    # Memoriam and one under Emeritus Faculty: the profile dedup folds them
+    # into the richer row, which is never relabelled emeritus nor re-dated.
+    url = f"{DEPARTMENTS['psych']['base']}/directory/profile/person5"
+
+    def card(name, **person):
+        return normalize_faculty({"name": name, "email": "person5@illinois.edu", "url": url,
+                                  "title": "Professor Emeritus", **person}, DEPARTMENTS["psych"], keywords=["psychology"])
+
+    def memoriam():
+        return card("Morgan Example", directory_section="In Memoriam", in_memoriam=True)
+
+    def emeritus():
+        return card("Morgan Q. Example", directory_section="Emeritus Faculty", emeritus=True)
+
+    richer_keywords = ["implicit memory", "attitude formation", "social cognition"]
+    for richer in ("Morgan Example", "Morgan Q. Example"):
+        for order in ((memoriam, emeritus), (emeritus, memoriam)):
+            fresh = _read_in_order([make() for make in order])
+            for r in fresh:
+                if r["pi_name"] == richer:
+                    r["keywords"] = list(richer_keywords)
+            rows = _merge(tmp_path, [], fresh)
+            assert list(rows) == [richer], (richer, order[0].__name__)
+            row = rows[richer]
+            assert (row["metadata"]["is_active"], row["metadata"].get("deactivation_reason"), row["contact_email"]) == \
+                (False, "listed_in_memoriam", None), (richer, order[0].__name__)
+    # A row already retired as In Memoriam keeps its first day when a newer
+    # emeritus or In Memoriam card of the other spelling folds into it.
+    for make in (emeritus, memoriam):
+        stored = card("Morgan R. Example", directory_section="In Memoriam", in_memoriam=True)
+        stored["keywords"] = list(richer_keywords)
+        stored["metadata"].update(deactivated_at="2026-10-12", last_seen_at="2026-10-05T14:18:05")
+        fresh = make()
+        rows = _merge(tmp_path, [stored], [fresh])
+        assert list(rows) == ["Morgan R. Example"], fresh["pi_name"]
+        md = rows["Morgan R. Example"]["metadata"]
+        assert (md["is_active"], md["deactivation_reason"], md["deactivated_at"], rows["Morgan R. Example"]["contact_email"]) \
+            == (False, "listed_in_memoriam", "2026-10-12", None), fresh["pi_name"]
+
+
+# --- M149 round 4: an Engineering directory (Physics) card's title sits in
+# div.title beside the name link the page is read by; in a research-area
+# section the same field names a subarea. Synthetic people. ---
+
+def _person_item(slug: str, name: str, title: str) -> str:
+    return f"""<div class="item person cat15 phys" id="id-{slug}" data-netid="{slug}">
+      <div class="photo"></div>
+      <div class="details">
+        <div class="name"><a href="/people/directory/profile/{slug}">{name}</a></div>
+        <div class="pronouns hide-empty" data-value=""></div>
+        <div class="title">{title}</div>
+        <div class="area"><ul><li class="primary"><a href="https://physics.illinois.edu/research/groups-and-centers/example">Example Physics</a></li></ul></div>
+        <div class="contact"><div class="email"><a href="mailto:{slug}@illinois.edu" aria-label="Send email to {slug}@illinois.edu">
+          <span class="fa-stack fa-lg"><i class="fa fa-envelope fa-stack-1x fa-inverse"></i></span></a></div></div>
+      </div>
+    </div>"""
+
+
+def _person_items_page(sections: list[tuple[str, str, list[tuple[str, str, str]]]]) -> str:
+    return "<html><body><main>" + "".join(
+        f'<{tag}>{heading}</{tag}><div class="directory-list directory-list-3">'
+        + "".join(_person_item(*card) for card in cards) + "</div>"
+        for tag, heading, cards in sections) + "</main></body></html>"
+
+
+PERSON_ITEMS_PAGE = _person_items_page([
+    ("h3", "Faculty", [("person1", "Avery Example", "Associate Professor<p>Example Faculty Fellow"),
+                       ("person2", "Blair Sample", "Professor"),
+                       ("person3", "Casey Placeholder", "Research Professor")]),
+    ("h3", "Example Information Science", [("person4", "Devon Example", "Example Matter Theory")]),
+    ("h2", "Emeriti/Emeritae", [("person5", "Emery Sample", "Example Endowed Chair Emeritus of Physics and Research Professor"),
+                                ("person6", "Finley Placeholder", "Professor Emeritus")]),
+    ("h2", "Affiliated Faculty", [("person7", "Gray Example", "Professor Emeritus in Example Studies and Physics"),
+                                  ("person8", "Harper Sample", "Professor in Example Studies")]),
+])
+_ROLE_PROFILE = """<html><body><main><div class="directory-profile"><div class="roles">
+  <strong><h2>Primary Research Area</h2><ul><li>Example Matter Physics</li></ul></strong>
+  <div class="role cat21 primary"><div class="title"><strong>{}</strong></div>
+  <div class="email"><a href="mailto:{slug}@illinois.edu">{slug}@illinois.edu</a></div></div>
+</div></div></main></body></html>"""
+
+
+def _fetch_physics(monkeypatch, profiles: dict[str, str] | None = None, page: str = PERSON_ITEMS_PAGE) -> list[dict]:
+    import src.collectors.uiuc_faculty as f
+
+    base = DEPARTMENTS["physics"]["base"]
+
+    def fetch(url):
+        if url == DEPARTMENTS["physics"]["url"]:
+            return BeautifulSoup(page, "html.parser")
+        slug = url.rsplit("/", 1)[-1]
+        if profiles and slug in profiles and url == f"{base}/people/directory/profile/{slug}":
+            return BeautifulSoup(_ROLE_PROFILE.format(profiles[slug], slug=slug), "html.parser")
+        return None
+
+    monkeypatch.setattr(f, "_fetch_soup", fetch)
+    monkeypatch.setattr(f, "_scrape_individual_page_keywords", lambda url: [])
+    monkeypatch.setattr(f, "DELAY", 0)
+    return f.fetch_department("physics", enrich=profiles is not None)
+
+
+def _stored_physics_row(name: str, slug: str) -> dict:
+    row = normalize_faculty({"name": name, "email": f"{slug}@illinois.edu",
+                             "url": f"{DEPARTMENTS['physics']['base']}/people/directory/profile/{slug}"},
+                            DEPARTMENTS["physics"], keywords=["physics"])
+    row["metadata"].update(last_seen_at="2026-10-05T14:18:05", last_verified="2026-10-05T14:18:05",
+                           first_seen_at="2026-01-10T00:00:00")
+    return row
+
+
+def test_an_engineering_directory_card_gives_the_title_beside_its_name_link(monkeypatch):
+    rows = {r["pi_name"]: r for r in _fetch_physics(monkeypatch)}
+    titles = {name: r["metadata"]["faculty_title"] for name, r in rows.items()}
+    assert titles["Avery Example"] == "Associate Professor; Example Faculty Fellow"
+    assert titles["Blair Sample"] == "Professor"
+    assert titles["Casey Placeholder"] == "Research Professor"
+    assert titles["Harper Sample"] == "Professor in Example Studies"
+    assert rows["Avery Example"]["metadata"]["directory_section"] == "Faculty"
+
+
+def test_a_research_subarea_in_the_title_field_is_no_title_and_the_profiles_role_title_is_read(monkeypatch):
+    # The subarea card gets the title its profile's role card states; read as a
+    # title, the subarea would have kept the profile from being consulted.
+    rows = {r["pi_name"]: r for r in _fetch_physics(monkeypatch, profiles={"person4": "Assistant Professor"})}
+    assert rows["Devon Example"]["metadata"]["directory_section"] == "Example Information Science"
+    assert rows["Devon Example"]["metadata"]["faculty_title"] == "Assistant Professor"
+    assert all("Example Matter Theory" not in r["metadata"]["faculty_title"] for r in rows.values())
+
+
+def test_a_current_rank_in_an_engineering_directory_title_keeps_a_card_under_emeriti_listed(tmp_path, monkeypatch):
+    stored = [_stored_physics_row(name, slug) for name, slug in
+              (("Emery Sample", "person5"), ("Finley Placeholder", "person6"), ("Gray Example", "person7"))]
+    rows = _merge(tmp_path, stored, _fetch_physics(monkeypatch))
+    mixed = rows["Emery Sample"]
+    assert mixed["metadata"]["directory_section"] == "Emeriti/Emeritae"
+    assert _emeritus(mixed) == (True, None, False)
+    assert mixed["metadata"]["faculty_title"] == "Example Endowed Chair Emeritus of Physics and Research Professor"
+    # Ranks all emeritus: retired, under the heading or (by the title) under an ordinary one.
+    assert _emeritus(rows["Finley Placeholder"]) == (False, "listed_as_emeritus", True)
+    assert _emeritus(rows["Gray Example"]) == (False, "listed_as_emeritus", True)
+    assert rows["Gray Example"]["metadata"]["directory_section"] == "Affiliated Faculty"
+    assert rows["Gray Example"]["contact_email"] == "person7@illinois.edu"
+
+
+# --- M149 round 5: each line of a div.title is a title of its own; a person
+# listed with a current role shows that card's title, not an emeritus card's.
+# Synthetic people. ---
+
+def test_each_line_of_an_engineering_directory_title_is_a_title_of_its_own_and_an_inline_tag_breaks_none(monkeypatch):
+    # Run together, "Professor Example Family Faculty Scholar" reads like a name.
+    page = _person_items_page([("h3", "Faculty", [
+        ("person1", "Avery Example", "Professor<p>Example <em>Family</em> Faculty Scholar</p>"),
+        ("person2", "Blair Sample", "Research <strong>Professor</strong><br>Director, Example Center"),
+        ("person3", "Casey Placeholder", "Assistant Professor")])])
+    rows = {r["pi_name"]: r for r in _fetch_physics(monkeypatch, page=page)}
+    assert rows["Avery Example"]["metadata"]["faculty_title"] == "Professor; Example Family Faculty Scholar"
+    assert rows["Blair Sample"]["metadata"]["faculty_title"] == "Research Professor; Director, Example Center"
+    assert rows["Casey Placeholder"]["metadata"]["faculty_title"] == "Assistant Professor"
+
+
+def test_a_person_listed_twice_on_a_page_shows_the_current_cards_title_whichever_comes_last(tmp_path, monkeypatch):
+    research = ("h3", "Research Faculty", [("person5", "Emery Sample", "Research Professor")])
+    emeriti = ("h2", "Emeriti/Emeritae", [("person5", "Emery Sample", "Professor Emeritus")])
+    for sections in ([research, emeriti], [emeriti, research]):
+        page = _person_items_page([("h3", "Faculty", [("person1", "Avery Example", "Professor"),
+                                                      ("person2", "Blair Sample", "Professor"),
+                                                      ("person3", "Casey Placeholder", "Professor")])] + sections)
+        row = _merge(tmp_path, [_stored_physics_row("Emery Sample", "person5")],
+                     _fetch_physics(monkeypatch, page=page))["Emery Sample"]
+        assert _emeritus(row) == (True, None, False), sections[0][1]
+        md = row["metadata"]
+        assert (md["faculty_title"], md["directory_section"]) == ("Research Professor", "Research Faculty"), sections[0][1]
+    # The row is the current card, not the emeritus card relabelled, and keeps
+    # the richer research areas either card states.
+    def card(title, section, keywords):
+        return normalize_faculty({"name": "Emery Sample", "email": "person5@illinois.edu", "title": title,
+                                  "directory_section": section}, DEPARTMENTS["physics"], keywords=keywords)
+
+    for richer in ("current", "emeritus"):
+        for emeritus_last in (True, False):
+            more = ["example nuclear physics", "example detectors", "example accelerators"]
+            current = card("Research Professor", "Example Nuclear Physics", more if richer == "current" else ["physics"])
+            emeritus = card("Professor Emeritus", "Emeriti/Emeritae", more if richer == "emeritus" else ["physics"])
+            cards = _read_in_order([current, emeritus] if emeritus_last else [emeritus, current])
+            expected = {k: v for k, v in current["metadata"].items() if k != "first_seen_at"}
+            row = _merge(tmp_path, [], cards)["Emery Sample"]
+            case = (richer, emeritus_last)
+            assert {k: v for k, v in row["metadata"].items() if k != "first_seen_at"} == expected, case
+            assert row["keywords"] == more, case
+
+
+def test_a_listed_person_folded_with_their_emeritus_row_keeps_the_title_the_rows_own_profile_states(tmp_path):
+    # Communication lists the person as a professor; Psychology under its
+    # Emeritus heading, or as an emeritus with an active lab. One address folds
+    # both into one row, whichever is richer and whichever is read first. The
+    # person stays listed, but the row shows only the title its own card states:
+    # the Communication card is for another profile.
+    def card(dept, **person):
+        return normalize_faculty({"name": "Devon Example", "email": "person4@illinois.edu",
+                                  "url": f"{DEPARTMENTS[dept]['base']}/directory/profile/person4", **person},
+                                 DEPARTMENTS[dept], keywords=["communication"])
+
+    for psych_section in ("Emeritus Faculty", "Emeritus Faculty with active research labs"):
+        for richer in ("comm", "psych"):
+            for order in (("comm", "psych"), ("psych", "comm")):
+                stored = card(richer, title="Professor")
+                stored["keywords"] = ["persuasion", "health communication", "media effects"]
+                stored["metadata"]["last_seen_at"] = "2026-10-05T14:18:05"
+                fresh = {"comm": card("comm", title="Professor of Communication", directory_section="Faculty"),
+                         "psych": card("psych", title="Professor Emeritus", directory_section=psych_section)}
+                row = _merge(tmp_path, [stored], _read_in_order([fresh[d] for d in order]))["Devon Example"]
+                case = (psych_section, richer, order)
+                assert row["department"] == DEPARTMENTS[richer]["name"], case
+                assert _emeritus(row) == (True, None, False), case
+                md = row["metadata"]
+                assert (md["faculty_title"], md["directory_section"]) == {
+                    "comm": ("Professor of Communication", "Faculty"),
+                    "psych": ("Professor Emeritus", psych_section)}[richer], case
+
+
+# --- M149 round 6: a row shows another card's title only when that card is
+# for the row's own profile; a listed row's current title always stays.
+# Synthetic people. ---
+
+def test_a_current_card_for_the_rows_own_profile_gives_a_row_shown_only_as_emeritus_its_title(tmp_path, monkeypatch):
+    # Guard: one page lists the person under two name forms that link the same
+    # profile, the fuller under an emeritus heading (or as an emeritus with an
+    # active lab). The fuller row is kept, stays listed and shows the Research
+    # Faculty card's title, whichever comes first.
+    research = ("h3", "Research Faculty", [("person5", "Emery Sample", "Research Professor")])
+    for heading in ("Emeriti/Emeritae", "Emeritus Faculty with active research labs"):
+        emeriti = ("h2", heading, [("person5", "Emery Q. Sample", "Professor Emeritus")])
+        for sections in ([research, emeriti], [emeriti, research]):
+            page = _person_items_page([("h3", "Faculty", [("person1", "Avery Example", "Professor"),
+                                                          ("person2", "Blair Sample", "Professor"),
+                                                          ("person3", "Casey Placeholder", "Professor")])] + sections)
+            rows = _merge(tmp_path, [], _fetch_physics(monkeypatch, page=page))
+            case = (heading, sections[0][1])
+            assert "Emery Sample" not in rows, case
+            row = rows["Emery Q. Sample"]
+            assert _emeritus(row) == (True, None, False), case
+            md = row["metadata"]
+            assert (md["faculty_title"], md["directory_section"]) == ("Research Professor", "Research Faculty"), case
+            assert not {"source_url", "_listed_current"} & set(md), case
+
+
+def test_a_listed_rows_current_title_stays_whatever_title_the_persons_other_card_states(tmp_path):
+    # A stored row with a current title keeps it when this run's card for the
+    # same person, for the same profile or for another, states another title.
+    # The other card may be an emeritus listed with an active lab.
+    url = f"{DEPARTMENTS['physics']['base']}/people/directory/profile/person5"
+    for title, section in (("Research Professor", "Research Faculty"),
+                           ("Professor Emeritus", "Emeritus Faculty with active research labs")):
+        stored = normalize_faculty({"name": "Emery Q. Sample", "email": "person5@illinois.edu", "url": url,
+                                    "title": "Professor"}, DEPARTMENTS["physics"], keywords=["physics"])
+        stored["metadata"]["last_seen_at"] = "2026-10-05T14:18:05"
+        fresh = normalize_faculty({"name": "Emery Sample", "email": "person5@illinois.edu", "url": url,
+                                   "title": title, "directory_section": section},
+                                  DEPARTMENTS["physics"], keywords=["physics"])
+        rows = _merge(tmp_path, [stored], [fresh])
+        assert list(rows) == ["Emery Q. Sample"], title
+        assert _emeritus(rows["Emery Q. Sample"]) == (True, None, False), title
+        assert rows["Emery Q. Sample"]["metadata"]["faculty_title"] == "Professor", title
+
+    def card(dept, **person):
+        return normalize_faculty({"name": "Devon Example", "email": "person4@illinois.edu",
+                                  "url": f"{DEPARTMENTS[dept]['base']}/directory/profile/person4", **person},
+                                 DEPARTMENTS[dept], keywords=["communication"])
+
+    stored = card("comm", title="Professor of Communication", directory_section="Faculty")
+    stored["keywords"] = ["persuasion", "health communication", "media effects"]
+    stored["metadata"]["last_seen_at"] = "2026-10-05T14:18:05"
+    rows = _merge(tmp_path, [stored], [card("psych", title="Research Professor", directory_section="Research Faculty")])
+    assert list(rows) == ["Devon Example"] and rows["Devon Example"]["department"] == DEPARTMENTS["comm"]["name"]
+    assert _emeritus(rows["Devon Example"]) == (True, None, False)
+    md = rows["Devon Example"]["metadata"]
+    assert (md["faculty_title"], md["directory_section"]) == ("Professor of Communication", "Faculty")
