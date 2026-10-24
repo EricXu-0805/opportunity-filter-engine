@@ -6,6 +6,8 @@ logic that turns rendered anchors into normalized opportunities.
 
 from __future__ import annotations
 
+import pytest
+
 from src.collectors import uiuc_js_faculty as js
 from src.collectors.uiuc_faculty import DEPARTMENTS
 from src.collectors.uiuc_js_faculty import (
@@ -114,3 +116,28 @@ def test_a_rendered_card_gives_the_title_beside_its_name_link_and_none_without_o
     titles = {r["pi_name"]: r["metadata"]["faculty_title"] for r in fetch_department("ansc")}
     assert titles == {"Avery Example": "Professor and Head", "Blair Sample": "", "Casey Placeholder": ""}
     assert ".directorySection--person--role" in js._PERSON_LINKS_JS
+
+
+def test_the_card_script_reads_each_name_links_own_title_in_a_browser():
+    sync_api = pytest.importorskip("playwright.sync_api")
+    html = """<div class="directorySection--person">
+      <div class="directorySection--person--photo"><a href="/directory/person1"><img alt=""></a></div>
+      <div class="directorySection--person--role"><div class="name"><a href="/directory/person1">Avery Example</a></div>
+        <div class="title">Professor and Head</div></div></div>
+    <div class="directorySection--person">
+      <div class="directorySection--person--role"><div class="name"><a href="/directory/person2">Blair Sample</a></div>
+      </div></div>"""
+    with sync_api.sync_playwright() as p:
+        try:
+            browser = p.chromium.launch(headless=True)
+        except sync_api.Error as e:
+            pytest.skip(f"Chromium for Playwright is not installed: {e}")
+        try:
+            page = browser.new_page()
+            page.set_content(html)
+            links = page.eval_on_selector_all("a[href]", js._PERSON_LINKS_JS)
+        finally:
+            browser.close()
+    assert [(a["h"], a["t"], a["r"]) for a in links] == [
+        ("/directory/person1", "", ""), ("/directory/person1", "Avery Example", "Professor and Head"),
+        ("/directory/person2", "Blair Sample", "")]

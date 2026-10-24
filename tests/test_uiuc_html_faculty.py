@@ -333,3 +333,21 @@ def test_carle_and_faa_cards_without_a_title_get_none(monkeypatch):
     for info in ("", '<div class="person-card__info">Avery Example <a href="mailto:p1@illinois.edu">p1@illinois.edu</a></div>'):
         card = _soup(f'<article class="person-card"><h2 class="linked-title">Avery Example</h2>{info}</article>')
         assert h._faa_card(card.select_one("article"), h.FAA_UNITS[0])["metadata"]["faculty_title"] == "", info
+
+
+def test_ler_and_media_rows_whose_profile_cannot_be_read_get_no_title(monkeypatch):
+    monkeypatch.setattr(h.time, "sleep", lambda *a: None)
+    monkeypatch.setattr(h, "_fetch_soup", lambda url: _soup(LER_SYNTHETIC_LISTING) if url == h.LER_URL else None)
+    assert {r["metadata"]["faculty_title"] for r in h.fetch_ler()} == {""}
+    monkeypatch.setattr(h, "_fetch_soup", lambda url: _soup(MEDIA_SYNTHETIC_LISTING) if "-faculty/" in url else None)
+    assert {r["metadata"]["faculty_title"] for r in h.fetch_media()} == {""}
+
+
+def test_a_vetmed_name_with_a_hyphen_is_split_only_at_the_spaced_dash(monkeypatch):
+    listing = """<div class="person-teaser">
+  <div class="profile-picture"><img alt="" data-src="person1@illinois.edu"/></div>
+  <div class="basic-info"><a href="/profile?id=person1"><h3 class="teaser-title">Avery Example-Sample <span> – DVM</span></h3></a>
+  <p class="position-title">Clinical Assistant Professor</p></div></div>"""
+    monkeypatch.setattr(h, "_fetch_soup", lambda url: _soup(listing))
+    rec = h.fetch_vetmed()[0]
+    assert (rec["pi_name"], rec["metadata"]["faculty_title"]) == ("Avery Example-Sample", "Clinical Assistant Professor")

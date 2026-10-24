@@ -3318,3 +3318,27 @@ def test_only_a_uiuc_rows_title_follows_a_newer_card_for_its_own_profile():
         survivor = row(source, "2026-10-05T00:00:00", "Professor")
         _carry_newest_liveness(survivor, row(source, "2026-10-26T00:00:00", ""))
         assert survivor["metadata"]["faculty_title"] == kept, source
+
+
+def test_a_stored_default_title_does_not_survive_this_runs_untitled_card_for_the_same_id(tmp_path):
+    url = f"{DEPARTMENTS['physics']['base']}/people/directory/profile/person1"
+    stored = normalize_faculty({"name": "Avery Example", "email": "person1@illinois.edu", "url": url,
+                                "title": "Professor"}, DEPARTMENTS["physics"], keywords=["physics"])
+    stored["metadata"]["last_seen_at"] = "2026-10-05T14:18:05"
+    fresh = normalize_faculty({"name": "Avery Example", "email": "person1@illinois.edu", "url": url,
+                               "directory_section": "Faculty"}, DEPARTMENTS["physics"], keywords=["physics"])
+    assert stored["id"] == fresh["id"]
+    assert _merge(tmp_path, [stored], [fresh])["Avery Example"]["metadata"]["faculty_title"] == ""
+
+
+def test_a_title_a_later_card_states_is_never_replaced_by_an_earlier_cards(tmp_path):
+    url = f"{DEPARTMENTS['physics']['base']}/people/directory/profile/person1"
+
+    def card(title, section):
+        return normalize_faculty({"name": "Avery Example", "email": "person1@illinois.edu", "url": url,
+                                  "title": title, "directory_section": section}, DEPARTMENTS["physics"],
+                                 keywords=["physics"])
+
+    rows = _merge(tmp_path, [], [card("Research Professor", "Research Faculty"), card("Associate Professor", "Faculty")])
+    md = rows["Avery Example"]["metadata"]
+    assert (md["faculty_title"], md["directory_section"]) == ("Associate Professor", "Faculty")
