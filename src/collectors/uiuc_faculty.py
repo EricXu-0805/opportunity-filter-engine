@@ -25,7 +25,7 @@ from pathlib import Path
 from urllib.parse import urljoin
 
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString
 
 from backend.lib.contact_visibility import (
     canonical_profile_evidence_url,
@@ -40,6 +40,7 @@ from ..evidence import (
     stamp_inferred,
 )
 from .ucb_common import (
+    _RETIRED_TITLE_RE,
     apply_record_contact_claim,
     clear_contact_claim,
     clear_contact_evidence,
@@ -465,6 +466,90 @@ _CAMEL_JOIN_RE = re.compile(r"(?<=[a-z])(?=[A-Z])")
 _IN_MEMORIAM_RE = re.compile(r"\bin\s+memoriam\b", re.IGNORECASE)
 IN_MEMORIAM_REASON = "listed_in_memoriam"
 _SECTION_HEADING_TAGS = ("h1", "h2", "h3", "h4", "h5", "h6")
+# Emeritus and retired faculty are not listed, as at every other school: the
+# engine's retired-title rule, plus the plural some headings use ("Emeriti
+# Faculty"), read on a card's title and on its section heading. Not someone
+# the directory lists as still running a lab ("Emeritus Faculty with active
+# research labs"), nor someone it lists with a current role.
+_EMERITI_RE = re.compile(r"\bemerit(?:i|ae)\b", re.IGNORECASE)
+_ACTIVE_LAB_RE = re.compile(r"\bactive\s+(?:research\s+)?lab(?:s|oratory|oratories)?\b", re.IGNORECASE)
+EMERITUS_REASON = "listed_as_emeritus"
+_EMERITUS_WORD_RE = re.compile(r"\b(?:emerit(?:us|a|i|ae)|retired)\b", re.IGNORECASE)
+_RANK_RE = re.compile(
+    r"\b(?:professor|lecturer|instructor|director|dean|chair|head|scientist|researcher|fellow|scholar"
+    r"|(?:affiliate|adjunct|clinical|research|teaching|visiting)\s+faculty|chancellor|provost|president"
+    r"|curator|librarian)\b", re.IGNORECASE)
+_ROLE_SPLIT_RE = re.compile(r"[,;/|]")
+# Marks a row listed this run with a current role while merge_into_processed
+# dedups, holding that card's title and section; never written.
+_LISTED_CURRENT = "_listed_current"
+
+
+def _says_emeritus(text: str | None) -> bool:
+    return bool(_RETIRED_TITLE_RE.search(text or "") or _EMERITI_RE.search(text or ""))
+
+
+def _title_is_emeritus(title: str | None) -> bool:
+    """Every rank the title holds is emeritus or retired ("Professor Emeritus",
+    "<named chair> Professor Emeritus", "Retired"). A current rank beside one
+    is a current role ("Research Professor, Professor Emeritus", "Dean Emeritus
+    and Professor of Finance"): an emeritus word belongs to the rank nearest it
+    between commas, semicolons or slashes."""
+    return _says_emeritus(title) and all(_title_roles(title))
+
+
+def _title_states_current_rank(title: str | None) -> bool:
+    """The title holds a rank no emeritus word belongs to ("Associate
+    Professor", "Emeritus Professor and <named> Director")."""
+    return not all(_title_roles(title))
+
+
+def _title_roles(title: str | None) -> list[bool]:
+    """One entry per role the title states, True when emeritus or retired."""
+    roles: list[bool] = []
+    for part in _ROLE_SPLIT_RE.split(title or ""):
+        ranks = list(_RANK_RE.finditer(part))
+        words = list(_EMERITUS_WORD_RE.finditer(part))
+        if not ranks:
+            # "Professor of Viola, Retired": the word qualifies the role before it.
+            if words and roles:
+                roles[-1] = True
+            elif words:
+                roles.append(True)
+            continue
+        emeritus = [False] * len(ranks)
+        for w in words:
+            emeritus[min(range(len(ranks)), key=lambda i: min(abs(w.start() - ranks[i].end()),
+                                                              abs(ranks[i].start() - w.end())))] = True
+        roles.extend(emeritus)
+    return roles
+
+
+def _directory_role_title(el) -> str | None:
+    """An Engineering directory's div.title when it states a rank or
+    appointment: in Physics's research-area sections the same field names a
+    subarea ("High Energy Theory"), which is no title. Each of its lines (a
+    <p> or <br>; an inline tag breaks none) is a title of its own, so two read
+    "Professor; <named> Faculty Scholar", not as one title that reads like a name."""
+    lines: list[str] = []
+    line_of = None
+    breaks = 0
+    for node in el.descendants if el else ():
+        if node.name == "br":
+            breaks += 1
+        elif type(node) is NavigableString:
+            line = (id(node.find_parent("p")), breaks)
+            if line != line_of:
+                lines.append("")
+                line_of = line
+            lines[-1] += node
+    text = "; ".join(filter(None, (" ".join(line.split()) for line in lines)))
+    return text if _RANK_RE.search(text) else None
+
+
+def _listed_with_active_lab(metadata: dict) -> bool:
+    return bool(_ACTIVE_LAB_RE.search(metadata.get("directory_section") or "")
+                or _ACTIVE_LAB_RE.search(metadata.get("faculty_title") or ""))
 
 
 def _card_sections(content, cards) -> dict[int, str | None]:
@@ -540,13 +625,35 @@ def _scrape_grainger_faculty_list(dept_config: dict) -> list[dict]:
     # this list's (a memorial block above it), so no one is retired by it.
     memorial = [p for p in faculty if _IN_MEMORIAM_RE.search(p["directory_section"] or "")]
     if memorial and 2 * len(memorial) < len(faculty):
-        for person in memorial:
-            person["in_memoriam"] = True
+        # Every card of the person, so a second card under another heading
+        # (Emeritus Faculty) never gives the row back, whichever comes last.
+        remembered = {p["name"] for p in memorial}
+        for person in faculty:
+            if person["name"] in remembered:
+                person["in_memoriam"] = True
     elif memorial:
         logger.warning(
             f"  {dept_name}: {len(memorial)} of {len(faculty)} cards under an "
             "In Memoriam heading; not read as a memorial section"
         )
+    # The same guard for an Emeritus/Emeriti/Retired heading. One person listed
+    # under several headings is one row: an active-lab heading or title keeps
+    # all their cards listed; a card under an emeritus heading is retired by it
+    # unless the person is listed with a current role too (merge_into_processed).
+    lab = {p["name"] for p in faculty
+           if _ACTIVE_LAB_RE.search(p["directory_section"] or "") or _ACTIVE_LAB_RE.search(p.get("title") or "")}
+    emeriti = [p for p in faculty if _says_emeritus(p["directory_section"]) and p["name"] not in lab]
+    if emeriti and 2 * len(emeriti) >= len(faculty):
+        logger.warning(
+            f"  {dept_name}: {len(emeriti)} of {len(faculty)} cards under an "
+            "emeritus heading; not read as an emeritus section"
+        )
+        emeriti = []
+    for person in faculty:
+        if person["name"] in lab:
+            person["active_lab"] = True
+    for person in emeriti:
+        person["emeritus"] = True
 
     if not faculty:
         faculty = _broad_faculty_extraction(content, base, dept_name)
@@ -631,6 +738,13 @@ def _parse_faculty_card(element, base_url: str, dept: str) -> dict | None:
     )
     if title_el:
         result["title"] = title_el.get_text(strip=True)
+    elif element.name == "a":
+        # Engineering directory cards (div.item.person: Physics, CEE, ...) match
+        # no card selector and are read link by link; the title sits beside the link.
+        card = element.find_parent("div", class_="person")
+        title = _directory_role_title(card.select_one("div.title")) if card else None
+        if title:
+            result["title"] = title
 
     research_el = element.select_one(
         "div.research-areas, "
@@ -735,16 +849,24 @@ def _enrich_faculty_from_profile(person: dict) -> dict:
             person["research_description"] = meta["content"][:300]
 
     if "title" not in person:
+        # A DirectoryCore profile states its title in the field its list cards
+        # use; an emeritus title read here retires the row (normalize_faculty).
         for selector in [
             "div.field--name-field-title",
             "span.person-title",
             "div.person-position",
             "h2.subtitle",
+            "div.field-name-field-dircore-appt-title .field__item",
         ]:
             el = soup.select_one(selector)
             if el:
                 person["title"] = el.get_text(strip=True)
                 break
+        else:
+            # An Engineering directory profile states it in its role card.
+            title = _directory_role_title(soup.select_one("div.role div.title"))
+            if title:
+                person["title"] = title
 
     return person
 
@@ -875,6 +997,14 @@ def normalize_faculty(
     profile_url = person.get("url", "")
     title = person.get("title", "Professor")
     research_areas = person.get("research_areas", "")
+    section = person.get("directory_section") or ""
+    # An emeritus heading retires a card whose own title states no current
+    # rank (none at all, or only emeritus ones).
+    emeritus = (not in_memoriam
+                and bool(_title_is_emeritus(title)
+                         or (person.get("emeritus") and not _title_states_current_rank(person.get("title"))))
+                and not (person.get("active_lab") or _ACTIVE_LAB_RE.search(section)
+                         or _ACTIVE_LAB_RE.search(title or "")))
 
     name_hash = hashlib.md5(f"{dept_short}-{name}".encode()).hexdigest()[:8]
     opp_id = f"faculty-{dept_short.lower()}-{name_hash}"
@@ -974,6 +1104,13 @@ def normalize_faculty(
         metadata["is_active"] = False
         metadata["deactivated_at"] = now[:10]
         metadata["deactivation_reason"] = IN_MEMORIAM_REASON
+    elif emeritus:
+        # Stated by the card's heading or title. The address stays on the row:
+        # the person is alive and it is theirs, and an inactive row is never
+        # offered as a contact (contact_visibility).
+        metadata["is_active"] = False
+        metadata["deactivated_at"] = now[:10]
+        metadata["deactivation_reason"] = EMERITUS_REASON
     return opp
 
 
@@ -1017,7 +1154,9 @@ def _dedup_program_affiliations(opps: list[dict]) -> list[dict]:
     is ECE/MCB/Psych/...; rather than emit a duplicate person record, tag the home
     record's keywords with the program's ``affiliation_keyword`` and drop the
     program copy. Faculty with no home-dept match in this batch are genuinely new
-    and kept as program records. Matched by contact_email."""
+    and kept as program records. Matched by contact_email. The home record keeps
+    the status its own department's page gives it: a program's listing never
+    lifts a professor that page lists as emeritus."""
     if not _PROGRAM_DEPT_NAMES:
         return opps
 
@@ -1571,6 +1710,47 @@ def _observed_at(record: dict) -> datetime | None:
     return seen if seen.tzinfo is None else seen.astimezone(UTC).replace(tzinfo=None)
 
 
+def _lift_emeritus(metadata: dict) -> None:
+    metadata["is_active"] = True
+    metadata.pop("deactivated_at", None)
+    metadata.pop("deactivation_reason", None)
+
+
+def _current_role(opp: dict) -> dict:
+    """The title and section of a card listed with a current role, and the
+    profile URL the card is for."""
+    metadata = opp.get("metadata") or {}
+    role = {"source_url": opp.get("source_url"), "faculty_title": metadata.get("faculty_title")}
+    if "directory_section" in metadata:
+        role["directory_section"] = metadata["directory_section"]
+    return role
+
+
+def _show_current_role(opp: dict, current: dict | None) -> None:
+    """A listed row whose title is the emeritus card's (all its ranks emeritus)
+    shows the title and section of the card listing the person this run (a
+    current role, or an active lab) when that card is for the row's own profile
+    URL: a title read for another profile is never shown under this row's source."""
+    metadata = opp.get("metadata") or {}
+    if (current and metadata.get("is_active") is not False
+            and current["source_url"] == opp.get("source_url")
+            and _title_is_emeritus(metadata.get("faculty_title"))):
+        metadata.pop("directory_section", None)
+        metadata.update({k: v for k, v in current.items() if k != "source_url"})
+
+
+def _retire_in_memoriam(survivor: dict, dropped_metadata: dict) -> None:
+    """Retire ``survivor`` with the In Memoriam card folded into it; a row
+    already retired as In Memoriam keeps the day it was first read."""
+    meta = survivor.setdefault("metadata", {})
+    if not (meta.get("deactivation_reason") == IN_MEMORIAM_REASON and meta.get("deactivated_at")):
+        meta["deactivated_at"] = dropped_metadata.get("deactivated_at")
+    meta["is_active"] = False
+    meta["deactivation_reason"] = IN_MEMORIAM_REASON
+    clear_contact_evidence(survivor, tombstone=carries_contact_evidence(survivor))
+    survivor["contact_email"] = None
+
+
 def _carry_newest_liveness(survivor: dict, dropped: dict) -> None:
     """Move the newest proof of life onto the row that survives dedup.
 
@@ -1580,6 +1760,23 @@ def _carry_newest_liveness(survivor: dict, dropped: dict) -> None:
     decide who has vanished from their directory. Being seen this run is an
     observation about the person, not a property of the better-written row.
     """
+    mark = (dropped.get("metadata") or {}).get(_LISTED_CURRENT)
+    own = (survivor.get("metadata") or {}).get(_LISTED_CURRENT)
+    if mark and not (own and not _title_is_emeritus(own.get("faculty_title"))):
+        # Whichever row was read first: a current role this run keeps the
+        # person listed, with that card's title (merge_into_processed).
+        survivor.setdefault("metadata", {})[_LISTED_CURRENT] = mark
+    if ((dropped.get("metadata") or {}).get("deactivation_reason") == IN_MEMORIAM_REASON
+            and (survivor.get("metadata") or {}).get("deactivation_reason") == EMERITUS_REASON):
+        # In Memoriam outranks an emeritus listing whichever was read last.
+        _retire_in_memoriam(survivor, dropped["metadata"])
+    if ((dropped.get("metadata") or {}).get("deactivation_reason") == EMERITUS_REASON
+            and survivor.get("department") in _PROGRAM_DEPT_NAMES
+            and (survivor.get("metadata") or {}).get("is_active") is not False):
+        # A program's card never keeps listed a professor their own department
+        # lists as emeritus, whichever was read last.
+        survivor.setdefault("metadata", {}).update(is_active=False, deactivation_reason=EMERITUS_REASON,
+                                                   deactivated_at=dropped["metadata"].get("deactivated_at"))
     newer = _observed_at(dropped)
     if newer is None:
         return
@@ -1595,14 +1792,23 @@ def _carry_newest_liveness(survivor: dict, dropped: dict) -> None:
     if dropped["metadata"].get("deactivation_reason") == IN_MEMORIAM_REASON:
         # The same person's newer card sits under the directory's In Memoriam
         # heading, so the surviving row is retired with it and loses its address.
-        meta["is_active"] = False
-        meta["deactivated_at"] = dropped["metadata"].get("deactivated_at")
-        meta["deactivation_reason"] = IN_MEMORIAM_REASON
-        clear_contact_evidence(survivor, tombstone=carries_contact_evidence(survivor))
-        survivor["contact_email"] = None
-    elif (dropped.get("metadata") or {}).get("is_active") is not False:
+        _retire_in_memoriam(survivor, dropped["metadata"])
+    elif dropped["metadata"].get("deactivation_reason") == EMERITUS_REASON:
+        # Listed as emeritus: retired with it, address kept, first date kept.
+        # Not a row listed with an active lab, nor one retired as In Memoriam.
+        if meta.get("deactivation_reason") != IN_MEMORIAM_REASON and not (
+                meta.get("is_active") is not False and _listed_with_active_lab(meta)):
+            if not (meta.get("deactivation_reason") == EMERITUS_REASON and meta.get("deactivated_at")):
+                meta["deactivated_at"] = dropped["metadata"].get("deactivated_at")
+            meta["is_active"] = False
+            meta["deactivation_reason"] = EMERITUS_REASON
+    elif (dropped.get("metadata") or {}).get("is_active") is not False and not (
+            meta.get("deactivation_reason") == EMERITUS_REASON
+            and (dropped.get("source_url") or "") != (survivor.get("source_url") or "")
+            and not _listed_with_active_lab(dropped["metadata"])):
         # Observed after the retirement that removed it: absence is disproven,
-        # so the retirement stamp goes with the timestamp it contradicted.
+        # so the retirement stamp goes with the timestamp it contradicted. An
+        # emeritus listing is lifted only by the same card or an active lab.
         meta["is_active"] = True
         meta.pop("deactivated_at", None)
         meta.pop("deactivation_reason", None)
@@ -2731,8 +2937,29 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
 
     index = {opp["id"]: opp for opp in existing}
     added, updated = 0, 0
+    # The day each stored row was first retired as emeritus, kept below when
+    # it is still retired after the dedups (its own card or one folded into it).
+    emeritus_since: dict[str, str] = {}
+    # A person listed this run with a current role stays listed through every
+    # dedup below, whichever of their cards it keeps and in whatever order the
+    # departments were read; an emeritus card alone does not retire them. A
+    # program's card (a DEPARTMENTS unit with "program": True, e.g. Neuroscience)
+    # is no such listing: the person's own department page decides.
+    listed_current = {opp["id"]: _current_role(opp) for opp in new_opps
+                      if (opp.get("metadata") or {}).get("is_active") is not False
+                      and opp.get("department") not in _PROGRAM_DEPT_NAMES}
+    read_this_run: set[str] = set()
 
     for opp in new_opps:
+        if (opp["id"] in read_this_run
+                and (opp.get("metadata") or {}).get("deactivation_reason") == EMERITUS_REASON
+                and (index[opp["id"]].get("metadata") or {}).get("is_active") is not False):
+            # The page lists the person again under an emeritus heading: the row
+            # stays the card with their current role, its title and section,
+            # with whatever richer research the other card holds.
+            _carry_forward_enrichment(opp, index[opp["id"]])
+            continue
+        read_this_run.add(opp["id"])
         if opp["id"] in index:
             cur = index[opp["id"]]
             opp["metadata"]["first_seen_at"] = cur.get(
@@ -2743,6 +2970,10 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
                     and prior.get("deactivation_reason") == IN_MEMORIAM_REASON
                     and prior.get("deactivated_at")):
                 opp["metadata"]["deactivated_at"] = prior["deactivated_at"]
+            if prior.get("deactivation_reason") == EMERITUS_REASON and prior.get("deactivated_at"):
+                # The stored row comes first; a page listing the person twice
+                # brings this run's card again.
+                emeritus_since.setdefault(opp["id"], prior["deactivated_at"])
             # Don't let a broad/empty re-scrape clobber committed OpenAlex/LLM
             # enrichment on the same stable id.
             _carry_forward_enrichment(cur, opp)
@@ -2753,6 +2984,8 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
             added += 1
 
     all_opps = list(index.values())
+    for opp_id, role in listed_current.items():
+        index[opp_id].setdefault("metadata", {})[_LISTED_CURRENT] = role
 
     all_opps, dropped_nonperson = _drop_nonperson_faculty(all_opps)
     if dropped_nonperson:
@@ -2774,6 +3007,17 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
     all_opps, dropped_decred = _dedup_decredentialed_faculty(all_opps)
     if dropped_decred:
         logger.info(f"Removed {dropped_decred} faculty record(s) duplicated under one name after credential stripping")
+    for opp in all_opps:
+        md = opp.get("metadata") or {}
+        current = md.pop(_LISTED_CURRENT, None)
+        if current and md.get("deactivation_reason") == EMERITUS_REASON:
+            _lift_emeritus(md)
+        # Listed, here or by its own card in a dedup: never shown only as emeritus.
+        _show_current_role(opp, current)
+        if md.get("deactivation_reason") == EMERITUS_REASON and opp["id"] in emeritus_since:
+            md["deactivated_at"] = min(md.get("deactivated_at") or "9999", emeritus_since[opp["id"]])
+    for opp in new_opps:
+        (opp.get("metadata") or {}).pop(_LISTED_CURRENT, None)
 
     with open(filepath, "w", encoding="utf-8") as f:
         json.dump(all_opps, f, indent=2, ensure_ascii=False, default=str)
