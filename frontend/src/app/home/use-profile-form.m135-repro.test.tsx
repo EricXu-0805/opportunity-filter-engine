@@ -975,7 +975,9 @@ function idsSortNewestFirst() {
 // gone while an edit it decided against was outstanding again (review of
 // M135, round 1).
 describe('a settle whose receipt does not fit takes back the receipts it wrote (M135)', { timeout: 20_000 }, () => {
-  it('in the answer\'s acknowledgement: the major the answer decided against is never sent over it', async () => {
+  /** Up to tab 1 shown the answer, with its major edit left outstanding;
+   *  `then` follows, in the same receipt order. */
+  async function answerWithTab1sReceiptRefused(then: (tab1: Tab, atAnswer: number) => Promise<void>) {
     // Newest first: the acknowledgement writes tab 1's major edit's receipt
     // after the answer's and tab 2's major edit's.
     const ids = idsSortNewestFirst();
@@ -1015,6 +1017,14 @@ describe('a settle whose receipt does not fit takes back the receipts it wrote (
       // which settled the same closure.
       expect({ form: academic(tab1.form().profile), asked: asked(tab1), status: tab1.form().saveStatus, retry: tab1.form().canRetrySync },
         'tab 1 after the answer').toEqual({ form: { college: GRAINGER, major: 'Finance', grade: 'Senior' }, asked: [], status: 'cloud-failed', retry: true });
+      await then(tab1, atAnswer);
+    } finally {
+      ids.mockRestore();
+    }
+  }
+
+  it('in the answer\'s acknowledgement: the major the answer decided against is never sent over it', async () => {
+    await answerWithTab1sReceiptRefused(async (tab1, atAnswer) => {
       act(() => { tab1.form().retryCloudSave(); });
       await tick(4000);
       const reloaded1 = await reloadTab(tab1);
@@ -1027,9 +1037,35 @@ describe('a settle whose receipt does not fit takes back the receipts it wrote (
         journal: [], receipts: 0, asked: [], form: { college: GRAINGER, major: 'Finance', grade: 'Senior' },
         stored: { revision: 3, college: GRAINGER, major: 'Finance', grade: 'Senior' }, sent: 1,
       });
-    } finally {
-      ids.mockRestore();
-    }
+    });
+  });
+
+  // Without that Retry the reloaded tab keeps the three operations, asking
+  // nothing and showing the answer, until its next edit, which sends the
+  // answer's major once more at the older revision; refused, the major
+  // leaves the journal as the row already holds it, and only the year is
+  // stored. Tab 1's Mathematics is never sent. (On 799a4f49 the three
+  // operations stayed after that edit too, and went out with every next one.)
+  it('in the answer\'s acknowledgement, without a Retry: the next edit sends the answer\'s major once, refused, and leaves nothing pending', async () => {
+    await answerWithTab1sReceiptRefused(async (tab1, atAnswer) => {
+      const reloaded1 = await reloadTab(tab1);
+      await tick(65_000);
+      expect({ journal: described(outstanding(reloaded1)), asked: asked(reloaded1), form: academic(reloaded1.form().profile), sent: sent.length - atAnswer },
+        'tab 1 reloaded, 65 s later').toEqual({
+        journal: ['tab 1 edit of major', 'tab 2 answer of major', 'tab 2 edit of major'], asked: [],
+        form: { college: GRAINGER, major: 'Finance', grade: 'Senior' }, sent: 1,
+      });
+      const before = sent.length;
+      await choose(reloaded1, 'grade', 'Freshman');
+      await tick(4000);
+      expect({
+        journal: described(outstanding(reloaded1)), asked: asked(reloaded1), stored: { revision: row.revision, ...academic(row.profile) },
+        sent: sent.slice(before).map((s) => [s.expected, s.keys, s.values.major, s.status]),
+      }, 'tab 1 then picks a year').toEqual({
+        journal: [], asked: [], stored: { revision: 4, college: GRAINGER, major: 'Finance', grade: 'Freshman' },
+        sent: [[2, ['grade', 'major'], 'Finance', 'conflict'], [3, ['grade'], undefined, 'applied']],
+      });
+    });
   });
 });
 
@@ -1794,5 +1830,39 @@ describe('a question two tabs are asked shows each tab what it typed in the aske
       tab1: { asked: [], major: 'Finance' }, tab2: { asked: [], major: 'Finance' }, stored: 'Finance', journal: [],
       sent: [['tab 2', ['major'], 'Finance', 'applied']],
     });
+  });
+
+  // Both tabs also picked a year. Each keeps its college and major at once:
+  // tab 1's answer is stored, and tab 2's, refused as given already, reads
+  // the question again, which comes back with the year still asked.
+  it('after an answer the other tab gave first, in the year still asked (a guard; so since M132)', async () => {
+    const tab1 = await openTab('tab 1');
+    const tab2 = await openTab('tab 2');
+    network(false);
+    await tick(1500);
+    for (const [tab, picks] of [[tab1, [LAS, 'Mathematics', 'Freshman']], [tab2, [GIES, 'Finance', 'Senior']]] as const) {
+      await choose(tab, 'college', picks[0]);
+      await choose(tab, 'major', picks[1]);
+      await choose(tab, 'grade', picks[2]);
+    }
+    await tick(4000);
+    network(true);
+    await tick(1000);
+    await tick(4000);
+    const shows = (tab: Tab) => ({ asked: asked(tab), form: academic(tab.form().profile) });
+    expect({ tab1: asked(tab1), tab2: asked(tab2) }, 'back online').toEqual({ tab1: ['college', 'grade', 'major'], tab2: ['college', 'grade', 'major'] });
+    const before = sent.length;
+    act(() => { tab1.form().keepMyChanges(['college', 'major']); tab2.form().keepMyChanges(['college', 'major']); });
+    await tick(4000);
+    await tick(4000);
+    expect({ tab1: shows(tab1), tab2: shows(tab2), stored: academic(row.profile), sent: sent.slice(before).map((s) => [s.tab, s.keys, s.status]) },
+      'both answered').toEqual({
+      tab1: { asked: ['grade'], form: { ...OWN1, grade: 'Freshman' } }, tab2: { asked: ['grade'], form: { ...OWN1, grade: 'Senior' } },
+      stored: { ...OWN1, grade: 'Junior' }, sent: [['tab 1', ['college', 'major'], 'applied']],
+    });
+    act(() => { tab2.form().keepMyChanges(); });
+    await tick(4000);
+    expect({ tab2: shows(tab2), stored: academic(row.profile) }, '"Keep what I typed" in tab 2')
+      .toEqual({ tab2: { asked: [], form: { ...OWN1, grade: 'Senior' } }, stored: { ...OWN1, grade: 'Senior' } });
   });
 });

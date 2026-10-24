@@ -322,6 +322,33 @@ describe('another tab finding that the guest profile was merged away (M138)', ()
   });
 });
 
+// Checklist M132: while the question is open, a tab's own save or Retry
+// showed the other tab's value in the asked field (the save's refresh drew
+// the shared working copy, which the other tab's write held), while "Keep
+// what I typed" there keeps this tab's.
+describe('a Retry in a tab asked about a field the other tab typed differently (M132)', () => {
+  it('keeps showing what this tab typed there, after the Retry that asked it and a Retry of another field alike (a guard; so since M132)', async () => {
+    const { a, b } = await twoTabsDisagree();
+    const shows = (tab: Tab) => ({
+      asked: tab.hook.result.current.conflicts.map((q) => q.key), research_interests: tab.hook.result.current.profile.research_interests,
+    });
+    expect({ a: shows(a), b: shows(b) }, 'after each tab\'s Retry').toEqual({
+      a: { asked: ['research_interests'], research_interests: 'From tab A' }, b: { asked: ['research_interests'], research_interests: 'From tab B' },
+    });
+    online = false;
+    await as(a, (f) => f.update('grade', 'Senior'));
+    expect(a.hook.result.current.saveStatus, 'tab A\'s year could not be sent').toBe('cloud-failed');
+    online = true;
+    await as(a, (f) => f.retryCloudSave());
+    expect({ a: shows(a), stored: { grade: remote.grade, research_interests: remote.research_interests } }, 'after tab A\'s Retry of its year').toEqual({
+      a: { asked: ['research_interests'], research_interests: 'From tab A' }, stored: { grade: 'Senior', research_interests: 'Original research' },
+    });
+    await as(a, (f) => f.keepMyChanges());
+    expect({ a: shows(a), stored: remote.research_interests }, '"Keep what I typed" in tab A')
+      .toEqual({ a: { asked: [], research_interests: 'From tab A' }, stored: 'From tab A' });
+  });
+});
+
 /** Locked reads of the profile storage from here on. The typing tab takes the
  *  lock only when its save fires, so in the windows below every one is the
  *  listening tab's read. */
