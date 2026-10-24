@@ -2257,6 +2257,208 @@ def test_a_stated_research_line_with_a_menu_word_in_it_is_still_carried():
     assert incoming["metadata"]["research_areas_verified_at"] == "2026-10-05T06:00:00"
 
 
+# --- M150: before M143's marker read skipped link text, a profile with no
+# research field of its own stored what its site header menu lists after the
+# "Research Areas" link: a run of site sections (Economics, Statistics,
+# Mathematics, Political Science, History) or the unit's whole research-area
+# menu (Siebel School, ECE, Aerospace, NPRE, ChBE). M143 reads no menu any
+# more, but every stored run was carried onto the fresh row of a person whose
+# profile states nothing. Synthetic units' menus, people and addresses. ---
+
+_SECTION_MENU = ('<li><a href="/research/areas">Research Areas</a></li>'
+                 '<li><a href="/research/centers">Example Research Centers</a></li>'
+                 '<li><a href="/research/undergraduate">Undergraduate Research</a></li>')
+_UNIT_AREAS = ("Algorithms and Theory", "Artificial Intelligence", "Computer Systems", "Data Science",
+               "Example Computing", "Human-Computer Interaction", "Programming Languages",
+               "Scientific Computing", "Security and Privacy")
+_AREA_MENU = ('<li><a href="/research/areas">Research Areas</a><ul>' + "".join(
+    f'<li><a href="/research/areas/{i}">{area}</a></li>' for i, area in enumerate(_UNIT_AREAS)) + "</ul></li>")
+# What the old read stored: the eight lines after the menu link.
+_WHOLE_AREA_MENU = ", ".join(_UNIT_AREAS[:8])
+
+
+def _menu_page(menu: str, body: str, main: bool = True) -> str:
+    """A page of a unit site: its header menu (``menu`` under "Research"), then ``body``."""
+    header = f"""<header><nav><ul>
+      <li class="dropdown"><a href="/research">Research</a><ul>{menu}</ul></li>
+      <li class="dropdown"><a href="/people">People</a><ul><li><a href="/people/faculty">Faculty</a></li></ul></li>
+    </ul></nav></header>"""
+    return (f"<html><body>{header}<main id='main-content'>{body}</main></body></html>" if main
+            else f"<html><body>{header}<div class='view-content'>{body}</div></body></html>")
+
+
+def _fetch_unit(monkeypatch, key: str, menu: str, people: list[tuple[str, str]],
+                profiles: dict[str, str] | None = None, main: bool = True, intro: str = "") -> list[dict]:
+    """The unit's list page lists ``people`` ((slug, name)) after ``intro``; with
+    ``profiles`` the run reads each person's profile page ({slug: fields in its main})."""
+    import src.collectors.uiuc_faculty as f
+
+    cfg = DEPARTMENTS[key]
+    cards = "".join(
+        _section_card(slug, name, "Professor") if main else
+        f'<div class="directory-item"><h3><a href="/directory/profile/{slug}">{name}</a></h3>'
+        f'<a href="mailto:{slug}@illinois.edu">{slug}@illinois.edu</a></div>'
+        for slug, name in people)
+
+    def fetch(url):
+        if url == cfg["url"]:
+            return BeautifulSoup(_menu_page(menu, "<h1>Faculty</h1>" + intro + cards, main), "html.parser")
+        slug = url.rsplit("/", 1)[-1]
+        if profiles is not None and slug in profiles and url == f"{cfg['base']}/directory/profile/{slug}":
+            return BeautifulSoup(_menu_page(menu, f"<h1>Profile</h1>{profiles[slug]}"), "html.parser")
+        return None
+
+    monkeypatch.setattr(f, "_fetch_soup", fetch)
+    monkeypatch.setattr(f, "_scrape_individual_page_keywords", lambda url: [])
+    monkeypatch.setattr(f, "DELAY", 0)
+    return f.fetch_department(key, enrich=profiles is not None)
+
+
+def _stored_unit_row(key: str, name: str, slug: str, areas: str, keywords: list[str]) -> dict:
+    """The row the 2026-10-05 refresh stored for this person."""
+    cfg = DEPARTMENTS[key]
+    row = normalize_faculty({"name": name, "email": f"{slug}@illinois.edu", "research_areas": areas,
+                             "url": f"{cfg['base']}/directory/profile/{slug}"}, cfg, keywords=keywords)
+    row["metadata"].update(last_seen_at="2026-10-05T14:18:05", last_verified="2026-10-05T14:18:05",
+                           first_seen_at="2026-01-10T00:00:00")
+    return row
+
+
+def test_a_stored_site_menu_is_not_carried_when_the_profile_states_no_research(tmp_path, monkeypatch):
+    # Political Science: the profile has no research field, so the fresh row
+    # states none and the stored menu was carried onto it.
+    for main in (True, False):
+        stored = [_stored_unit_row("polisci", "Avery Example", "person1",
+                                   "Example Research Centers, Undergraduate Research", ["political science"])]
+        fresh = _fetch_unit(monkeypatch, "polisci", _SECTION_MENU, [("person1", "Avery Example")],
+                            profiles={"person1": "<div class='field field-name-field-dircore-office'>"
+                                                 "<div class='field__item'>101 Example Hall</div></div>"},
+                            main=main)
+        row = _merge(tmp_path, stored, fresh)["Avery Example"]
+        assert row["metadata"]["research_areas_raw"] == "", main
+        assert "research_areas_verified_at" not in row["metadata"]
+        assert "_site_menu_areas" not in row["metadata"]
+
+
+def test_site_menu_entries_come_out_of_a_stored_value_and_the_persons_own_items_stay(tmp_path, monkeypatch):
+    # Economics' stored menu held one entry M143's label list knows and others
+    # it does not, so M143 carried the whole value.
+    mixed = _stored_unit_row("econ", "Blair Sample", "person2",
+                             "Labor Economics, Example Research Centers, Undergraduate Research",
+                             ["labor economics", "economics"])
+    mixed["metadata"]["research_areas_verified_at"] = "2026-08-20T06:00:00"
+    stored = [
+        _stored_unit_row("econ", "Avery Example", "person1",
+                         "Example Research Centers, Undergraduate Research", ["economics"]),
+        mixed,
+    ]
+    fresh = _fetch_unit(monkeypatch, "econ", _SECTION_MENU,
+                        [("person1", "Avery Example"), ("person2", "Blair Sample")])
+    rows = _merge(tmp_path, stored, fresh)
+    assert rows["Avery Example"]["metadata"]["research_areas_raw"] == ""
+    blair = rows["Blair Sample"]
+    assert blair["metadata"]["research_areas_raw"] == "Labor Economics"
+    # The person's own item keeps the day it was observed.
+    assert blair["metadata"]["research_areas_verified_at"] == "2026-08-20T06:00:00"
+    assert "labor economics" in blair["keywords"]
+
+
+def test_a_departments_whole_research_area_menu_is_not_stored_as_a_persons_areas(tmp_path, monkeypatch):
+    menu_words = ["algorithms and theory", "artificial intelligence", "computer systems", "data science"]
+    gone = _stored_unit_row("cs", "Blair Sample", "person2", _WHOLE_AREA_MENU, menu_words)
+    gone["metadata"]["research_areas_verified_at"] = "2026-08-20T06:00:00"
+    stored = [
+        _stored_unit_row("cs", "Avery Example", "person1", _WHOLE_AREA_MENU, menu_words),
+        gone,  # not listed this run
+        # Keywords another source gave the person stay with them.
+        _stored_unit_row("cs", "Casey Placeholder", "person3", _WHOLE_AREA_MENU,
+                         ["Artificial Intelligence", "Neural Network Pruning"]),
+    ]
+    fresh = _fetch_unit(monkeypatch, "cs", _AREA_MENU,
+                        [("person1", "Avery Example"), ("person3", "Casey Placeholder")],
+                        profiles={"person1": "", "person3": ""})
+    rows = _merge(tmp_path, stored, fresh)
+    avery = rows["Avery Example"]
+    assert avery["metadata"]["research_areas_raw"] == ""
+    assert avery["keywords"] == ["computer science"]
+    assert "intelligence" not in avery["title"].lower() + avery["description_clean"].lower()
+    assert rows["Blair Sample"]["metadata"]["research_areas_raw"] == ""
+    assert "research_areas_verified_at" not in rows["Blair Sample"]["metadata"]
+    assert rows["Blair Sample"]["keywords"] == ["computer science"]
+    casey = rows["Casey Placeholder"]
+    assert casey["metadata"]["research_areas_raw"] == ""
+    assert casey["keywords"] == ["Artificial Intelligence", "Neural Network Pruning"]
+    assert all("_site_menu_areas" not in r["metadata"] for r in rows.values())
+
+
+def test_a_persons_own_research_line_and_list_of_department_areas_are_kept(tmp_path, monkeypatch):
+    own_list = "Artificial Intelligence, Security and Privacy"
+    line = "Sediment transport modelling, River ecology"
+    stored = [
+        _stored_unit_row("cs", "Avery Example", "person1", own_list, ["artificial intelligence"]),
+        _stored_unit_row("cs", "Blair Sample", "person2", line, ["computer science"]),
+        _stored_unit_row("cs", "Casey Placeholder", "person3", _WHOLE_AREA_MENU, ["computer science"]),
+    ]
+    whole_section = "<h2>Research Areas</h2><ul>" + "".join(f"<li>{a}</li>" for a in _UNIT_AREAS[:8]) + "</ul>"
+    fresh = _fetch_unit(monkeypatch, "cs", _AREA_MENU,
+                        [("person1", "Avery Example"), ("person2", "Blair Sample"),
+                         ("person3", "Casey Placeholder"), ("person4", "Devon Example")],
+                        profiles={"person1": "", "person2": "", "person3": whole_section,
+                                  "person4": "<h2>Research Areas</h2><ul><li>Computer Systems</li>"
+                                             "<li>Data Science</li></ul>"})
+    rows = _merge(tmp_path, stored, fresh)
+    # Stored: a few of the department's areas, and a research line.
+    assert rows["Avery Example"]["metadata"]["research_areas_raw"] == own_list
+    assert "artificial intelligence" in rows["Avery Example"]["keywords"]
+    assert rows["Blair Sample"]["metadata"]["research_areas_raw"] == line
+    # Read off the person's own page this run, even the department's whole list.
+    assert rows["Casey Placeholder"]["metadata"]["research_areas_raw"] == _WHOLE_AREA_MENU
+    assert rows["Devon Example"]["metadata"]["research_areas_raw"] == "Computer Systems, Data Science"
+    # A menu with one area after its research link: that area alone is no run.
+    # Nor is a heading in the list page's own text: only the menu was misread.
+    one = ('<li><a href="/research/areas">Research Areas</a><ul>'
+           '<li><a href="/research/areas/ai">Artificial Intelligence</a></li></ul></li>')
+    body_heading = ("<h2>Research Areas</h2><p>Artificial Intelligence</p>"
+                    "<p>Security and Privacy</p><h2>Faculty</h2>")
+    for menu, intro in ((one, ""), (_SECTION_MENU, body_heading)):
+        fresh = _fetch_unit(monkeypatch, "cs", menu, [("person1", "Avery Example")], intro=intro)
+        rows = _merge(tmp_path, [_stored_unit_row("cs", "Avery Example", "person1", own_list,
+                                                  ["artificial intelligence"])], fresh)
+        assert rows["Avery Example"]["metadata"]["research_areas_raw"] == own_list, intro
+
+
+def test_a_menu_of_long_entries_comes_out_whole(tmp_path, monkeypatch):
+    # The old read stored what fits in 400 characters after the link, cut to
+    # whole items under 300; a shorter menu read would leave the last ones as
+    # the person's own.
+    import src.collectors.uiuc_faculty as f
+
+    areas = ("Computational Biology and Bioinformatics", "Computer Architecture and Hardware Systems",
+             "Database Systems and Information Retrieval", "Distributed Systems and Networking",
+             "Human Factors and Interactive Computing", "Machine Learning and Statistical Inference",
+             "Programming Languages and Formal Methods", "Scientific Computing and Numerical Analysis")
+    menu = ('<li><a href="/research/areas">Research Areas</a><ul>' + "".join(
+        f'<li><a href="/research/areas/{i}">{area}</a></li>' for i, area in enumerate(areas)) + "</ul></li>")
+    stored_menu = f._trim_research_areas(", ".join(areas))
+    assert stored_menu.count(",") >= 5 and len(stored_menu) > 200
+    stored = [_stored_unit_row("cs", "Avery Example", "person1", stored_menu,
+                               ["computational biology and bioinformatics"])]
+    fresh = _fetch_unit(monkeypatch, "cs", menu, [("person1", "Avery Example")], profiles={"person1": ""})
+    row = _merge(tmp_path, stored, fresh)["Avery Example"]
+    assert row["metadata"]["research_areas_raw"] == ""
+    assert row["keywords"] == ["computer science"]
+
+
+def test_keywords_made_only_of_the_menus_words_go_back_to_the_broad_field(tmp_path, monkeypatch):
+    # "interaction" is part of a menu entry, not an entry of its own.
+    stored = [_stored_unit_row("cs", "Avery Example", "person1", _WHOLE_AREA_MENU,
+                               ["interaction", "programming languages"])]
+    fresh = _fetch_unit(monkeypatch, "cs", _AREA_MENU, [("person1", "Avery Example")], profiles={"person1": ""})
+    row = _merge(tmp_path, stored, fresh)["Avery Example"]
+    assert row["metadata"]["research_areas_raw"] == ""
+    assert row["keywords"] == ["computer science"]
+
+
 def test_a_title_is_not_read_as_a_research_area(monkeypatch):
     import src.collectors.uiuc_faculty as f
 
