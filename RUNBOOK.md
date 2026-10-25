@@ -621,5 +621,5 @@ clear the site data in their browser.
 
 ## 9. Open work
 
-The single to-do list is the owner's MVP checklist (the private "OE todolist"
-Google Doc, MVP tab, items numbered from M01). Work that is not in it is not planned.
+The single to-do list is the owner's MVP checklist (items numbered from M01).
+Work that is not in it is not planned.
