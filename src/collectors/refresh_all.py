@@ -415,6 +415,7 @@ from .uiuc_our_rss import fetch_and_normalize as fetch_rss
 from .uiuc_our_rss import merge_into_processed as merge_rss
 from .uiuc_siebel import fetch_and_normalize as fetch_siebel
 from .uiuc_siebel import merge_into_processed as merge_siebel
+from .uiuc_sro import deactivate_unlisted as deactivate_sro_unlisted
 from .uiuc_sro import fetch_and_normalize_with_evidence as fetch_sro_with_evidence
 from .uiuc_sro import merge_into_processed as merge_sro
 from .uiuc_urap import fetch_and_normalize as fetch_urap
@@ -715,12 +716,20 @@ def refresh_all(
 
     # 2. SRO database (with optional deep scraping). National: it catalogs
     # external programs hosted elsewhere (school=None in SOURCE_DEFAULTS).
+    # Only a listing read to its last page, every row parsed and normalized,
+    # fills sro_listed_ids for the deactivate_sro_unlisted pass below, with one
+    # listed page as its control.
+    sro_listed_ids: set[str] = set()
+    sro_control_url = ""
     if selected(None):
         logger.info("=" * 50)
         logger.info(f"Collecting from UIUC SRO database (deep={deep})...")
         try:
             sro_opps, sro_evidence = fetch_sro_with_evidence(deep=deep)
             added, updated = merge_sro(sro_opps)
+            if sro_evidence.get("list_complete") is True and sro_evidence.get("normalization_failed") == 0:
+                sro_listed_ids = {o["id"] for o in sro_opps}
+                sro_control_url = sro_opps[0]["url"] if sro_opps else ""
             summary["sources"]["uiuc_sro"] = {
                 **sro_evidence,
                 "fetched": len(sro_opps),
@@ -1628,6 +1637,12 @@ def refresh_all(
             simplify_stale = deactivate_simplify_stale(all_opps, simplify_active_ids)
             summary["sources"]["simplify_internships"]["deactivated_stale"] = simplify_stale
             logger.info("Simplify: %d stale internships deactivated", simplify_stale)
+
+        if sro_listed_ids:
+            sro_unlisted = deactivate_sro_unlisted(all_opps, sro_listed_ids, sro_control_url)
+            summary["sources"]["uiuc_sro"]["unlisted"] = sro_unlisted
+            logger.info("SRO: %d programs no longer listed deactivated, %d kept (control page %s)",
+                        sro_unlisted["deactivated"], sro_unlisted["kept"], sro_unlisted["control"])
 
         # Classify every source's output BEFORE anything reads its status.
         # A collector that fetched nothing because its department moved host

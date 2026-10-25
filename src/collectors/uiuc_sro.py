@@ -18,6 +18,7 @@ from copy import deepcopy
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urljoin, urlsplit
 
 import requests
 from bs4 import BeautifulSoup
@@ -955,6 +956,68 @@ def merge_into_processed(new_opps: list[dict], filepath: str = None) -> tuple[in
         json.dump(all_opps, f, indent=2, ensure_ascii=False, default=str)
 
     return added, updated
+
+
+def page_state(url: str) -> str:
+    """"live" when a program page answers 200 at its own address, "gone" when
+    it redirects to another path (a renamed program) or answers 403, 404 or
+    410 (taken down), and "unknown" for anything else, a timeout included.
+    It runs outside the collector's error handling, so any failure is unknown."""
+    time.sleep(DEEP_SCRAPE_DELAY)
+    try:
+        resp = requests.get(url, timeout=30, allow_redirects=False, headers={
+            "User-Agent": "OpportunityFilterEngine/1.0 (educational project)"
+        })
+        status = resp.status_code
+        if status in (301, 302, 303, 307, 308):
+            target = urljoin(url, resp.headers.get("Location", ""))
+            moved = urlsplit(target).path.rstrip("/") != urlsplit(url).path.rstrip("/")
+            return "gone" if moved else "unknown"
+    except Exception:
+        return "unknown"
+    if status in (403, 404, 410):
+        return "gone"
+    return "live" if status == 200 else "unknown"
+
+
+def deactivate_unlisted(all_opps: list[dict], listed_ids: set[str], control_url: str,
+                        today: str | None = None, check=page_state) -> dict:
+    """Retire, in place, active SRO rows the database no longer lists and whose
+    page is gone.
+
+    A program's page address follows its title, so an edited title moves the
+    page (the old address redirects to the new one) and the renamed program
+    arrives as a new row; its old row, and the row of a program taken down,
+    stayed listed. ``listed_ids`` must come from a listing read to its last
+    page with every row parsed and normalized. Even then a row can shift
+    between pages while they are read and go unseen, so a row the listing
+    left out is retired only when ``check`` finds its page gone, and only
+    after the listed page ``control_url`` answers live: a site refusing us
+    proves nothing. A retired row that comes back is active again when merged.
+    """
+    result = {"deactivated": 0, "kept": 0, "control": None}
+    if not listed_ids:
+        return result
+    candidates = [opp for opp in all_opps
+                  if opp.get("source") == "uiuc_sro" and opp.get("id") not in listed_ids
+                  and opp.setdefault("metadata", {}).get("is_active") is not False]
+    if not candidates:
+        return result
+    result["control"] = check(control_url)
+    if result["control"] != "live":
+        result["kept"] = len(candidates)
+        return result
+    stamp = today or datetime.now(UTC).replace(tzinfo=None).date().isoformat()
+    for opp in candidates:
+        if not isinstance(opp.get("url"), str) or check(opp["url"]) != "gone":
+            result["kept"] += 1
+            continue
+        meta = opp["metadata"]
+        meta["is_active"] = False
+        meta["deactivated_at"] = stamp
+        meta["deactivation_reason"] = "no_longer_listed"
+        result["deactivated"] += 1
+    return result
 
 
 if __name__ == "__main__":

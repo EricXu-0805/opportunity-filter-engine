@@ -122,6 +122,7 @@ class TestPositionUnknown:
         "Postdoctoral Fellow (PI: Professor Doe)",
         "Postdoctoral Researcher in Professor Doe's lab",
         "MFA '27",
+        "Miller Research Fellow",
     ])
     def test_trainee_titles(self, title):
         assert is_trainee_title(title)
@@ -156,6 +157,12 @@ class TestPositionUnknown:
         "Graduate Student Ombudsperson",
         "Program Director, Biology, M.S./Ph.D.",
         "Lecturer (not accepting graduate students)",
+        "Charles B. Morrey, Jr. Math Fellow",
+        "Miller Senior Fellow",
+        "Senior Research Fellow",
+        "Executive Director, Miller Institute for Basic Research in Science",
+        "Miller Research Professor of Physics",
+        "Professor of Law | Co-Faculty Director, Miller Institute for Global Challenges and the Law",
         "",
         None,
     ])
