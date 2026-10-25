@@ -56,7 +56,7 @@ export const metadata: Metadata = {
     title: 'JoinALab — Research Matching',
     description:
       'Evidence-based matching for research positions and internships.',
-    creator: '@guoyi_xu46651',
+    creator: '@guoyi_eric_xu',
   },
   robots: {
     index: true,
