@@ -271,6 +271,10 @@ def test_refresh_all_status_keys_are_mapped_for_school_audience():
         # withdrawn (src/school_scope.py) inactive on every run. It writes no
         # records, so it has no record-level source to map.
         "unsupported_schools",
+        # Retirement pass, not a source: it retires graduate-student and postdoc
+        # rows by their stated title on every run (deactivate_trainee_faculty).
+        # It writes no records of its own.
+        "trainee_titles",
         # Withdraws publication trust from records a superseded attribution
         # gate approved. It fetches nothing and emits no record — it edits the
         # trust stamp on records other collectors produced — so it has no

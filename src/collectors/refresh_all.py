@@ -21,10 +21,11 @@ from src.normalizers.deactivate_past import deactivate_past
 from src.normalizers.deactivate_stale_faculty import (
     FACULTY_SOURCES,
     deactivate_stale_faculty,
+    deactivate_trainee_faculty,
     finalize_unit_ledger,
     observed_profile_pages,
 )
-from src.school_scope import deactivate_unsupported_schools
+from src.school_scope import SEPARATELY_MAINTAINED_SCHOOLS, deactivate_unsupported_schools
 
 
 def _faculty_unit_ledger(scraped: list[dict]) -> dict[str, int]:
@@ -1618,6 +1619,11 @@ def refresh_all(
         # in CI on the next push.
         deact_counts = deactivate_past(all_opps)
 
+        # Graduate students and postdocs are retired on every run, before any
+        # unit ledger counts active rows (deactivate_trainee_faculty).
+        trainees = deactivate_trainee_faculty(
+            all_opps, selected, held=SEPARATELY_MAINTAINED_SCHOOLS)
+
         if simplify_ok:
             simplify_stale = deactivate_simplify_stale(all_opps, simplify_active_ids)
             summary["sources"]["simplify_internships"]["deactivated_stale"] = simplify_stale
@@ -1761,6 +1767,13 @@ def refresh_all(
         # retired record keeps the reason it was retired for.
         unsupported = deactivate_unsupported_schools(all_opps)
         summary["sources"]["unsupported_schools"] = {**unsupported, "status": "ok"}
+        summary["sources"]["trainee_titles"] = {**trainees, "status": "ok"}
+        if trainees["deactivated"] or trainees["held"]:
+            logger.info(
+                "trainee_titles: retired %d graduate student/postdoc row(s) %s; "
+                "left %s to their maintainer",
+                trainees["deactivated"], trainees["by_school"], trainees["held"],
+            )
         if unsupported["deactivated"]:
             logger.info(
                 "unsupported_schools: held %d record(s) inactive across %s",

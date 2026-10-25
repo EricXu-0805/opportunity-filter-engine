@@ -18,7 +18,9 @@ import yaml
 
 from src.normalizers.deactivate_stale_faculty import (
     GRACE_DAYS,
+    TRAINEE_REASON,
     deactivate_stale_faculty,
+    deactivate_trainee_faculty,
     finalize_unit_ledger,
     unit_retirement_authority,
 )
@@ -458,6 +460,63 @@ def test_a_departure_the_page_really_dropped_still_retires():
                                    today=TODAY)
     assert out["newly_deactivated"] == 1
     assert gone["metadata"]["is_active"] is False
+
+
+def test_a_trainee_row_retires_before_the_ledger_and_does_not_block_its_unit():
+    """A graduate student the collector now drops is still linked on the page.
+
+    Left active, that row is a baseline identity the page links and the scrape
+    did not observe: parser loss, which blocks every retirement in the unit.
+    Retired by title first, it leaves the baseline and the unit stays complete.
+    """
+    student = rec("faculty-tu-bio-33333333", seen=RECENT)
+    student["metadata"]["faculty_title"] = "Graduate Student Advisor: Professor Doe"
+    others = [rec(f"faculty-tu-bio-{i:08x}", seen=RECENT) for i in range(9)]
+    opps = [student, *others]
+    entry = observation(observed_ids=[o["id"] for o in others])
+    entry["document_identities"] = [list(ident(o["id"])) for o in opps]
+    entry["completeness_status"] = None
+    entry["retirement_authorized"] = None
+
+    out = deactivate_trainee_faculty(opps, today=TODAY)
+    finalize_unit_ledger({"bio": entry}, opps, "testu_faculty")
+
+    assert out == {"deactivated": 1, "by_school": {"testu": 1}, "held": {}}
+    assert student["metadata"]["is_active"] is False
+    assert student["metadata"]["deactivation_reason"] == TRAINEE_REASON
+    assert student["metadata"]["deactivated_at"] == TODAY.isoformat()
+    assert entry.get("missed_present_identities") == []
+    assert entry["retirement_authorized"] is True
+
+
+def test_the_trainee_pass_keeps_to_its_schools_and_leaves_held_ones_counted():
+    def trainee(rid, school, title="Postdoctoral Scholar", active=True):
+        r = rec(rid, school=school, active=active)
+        r["metadata"]["faculty_title"] = title
+        return r
+
+    here = trainee("faculty-tu-bio-44444444", "testu")
+    other_school = trainee("faculty-ou-bio-55555555", "otheru")
+    held = trainee("faculty-hu-bio-66666666", "heldu")
+    retired_before = trainee("faculty-tu-bio-77777777", "testu", active=False)
+    retired_before["metadata"]["deactivation_reason"] = "absent_from_directory_rescrape"
+    lecturer = trainee("faculty-tu-bio-88888888", "testu",
+                       title="Postdoctoral Fellow and Lecturer")
+    opps = [here, other_school, held, retired_before, lecturer]
+
+    out = deactivate_trainee_faculty(
+        opps, lambda school: school in {"testu", "heldu"}, held=frozenset({"heldu"}),
+        today=TODAY)
+
+    assert out == {"deactivated": 1, "by_school": {"testu": 1}, "held": {"heldu": 1}}
+    assert here["metadata"]["is_active"] is False
+    assert other_school["metadata"]["is_active"] is True
+    assert held["metadata"]["is_active"] is True
+    assert retired_before["metadata"]["deactivation_reason"] == "absent_from_directory_rescrape"
+    assert lecturer["metadata"]["is_active"] is True
+    assert deactivate_trainee_faculty(
+        opps, lambda school: school in {"testu", "heldu"}, held=frozenset({"heldu"}),
+        today=TODAY)["deactivated"] == 0
 
 
 def test_source_health_fixture_carries_no_calendar_dates():

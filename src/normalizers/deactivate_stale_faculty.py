@@ -33,6 +33,8 @@ import secrets
 import unicodedata
 from datetime import date, datetime, timedelta
 
+from src.evidence import TRAINEE_REASON, is_trainee_title
+
 logger = logging.getLogger(__name__)
 
 # Faculty collectors wired into refresh_all; all emit source_type='faculty_research'.
@@ -1257,3 +1259,39 @@ def deactivate_stale_faculty(
                 counts["kept_fresh"] += 1
 
     return counts
+
+
+def deactivate_trainee_faculty(opps: list[dict], selected=None,
+                               held: frozenset[str] = frozenset(),
+                               today: date | None = None) -> dict:
+    """Retire, in place, active faculty rows whose stated title is a graduate
+    student's or a postdoc's own role (``evidence.is_trainee_title``).
+
+    Runs on every refresh, after the merges and before any unit ledger counts
+    active rows: a merge writes ``is_active`` back to True, and a trainee row
+    still active at the baseline, whose card the collector now drops, would
+    read as a person the page links and the scrape missed, which blocks every
+    retirement in its unit. ``selected`` limits the pass to this run's schools;
+    rows of a school in ``held`` are counted, not changed.
+    """
+    stamp = (today or date.today()).isoformat()
+    retired: dict[str, int] = {}
+    kept: dict[str, int] = {}
+    for opp in opps:
+        if opp.get("source_type") != "faculty_research":
+            continue
+        school = opp.get("school")
+        if selected is not None and not selected(school):
+            continue
+        meta = opp.get("metadata") or {}
+        if meta.get("is_active") is False or not is_trainee_title(meta.get("faculty_title")):
+            continue
+        if school in held:
+            kept[school] = kept.get(school, 0) + 1
+            continue
+        meta = opp.setdefault("metadata", {})
+        meta["is_active"] = False
+        meta["deactivated_at"] = stamp
+        meta["deactivation_reason"] = TRAINEE_REASON
+        retired[school] = retired.get(school, 0) + 1
+    return {"deactivated": sum(retired.values()), "by_school": retired, "held": kept}

@@ -136,6 +136,68 @@ def is_professor_rank(title: object) -> bool:
     return isinstance(title, str) and bool(_PROFESSOR_RANK_RE.search(title))
 
 
+# A graduate student, or a postdoc who holds no teaching or professor title, is
+# not someone a student asks to join a lab. A clause naming the person's advisor,
+# mentor, PI or lab ("Advisor: Professor X", "Major Professor: X", "PI: X", "in
+# Professor X's lab") names someone else and is cut first; a degree left at the
+# end under one ("PhD; Major Professor: X") or a degree with a class year ("MFA
+# '27") is that degree's student. The role may sit anywhere ("NSF Postdoctoral
+# Fellow") but not after "for", "of", "with", "to" or "accepting" ("Director of
+# Graduate Students") or before a staff noun ("PhD Student Placement
+# Co-Officer", "Postdoctoral Affairs"). A student phrase in a title that also
+# holds a professor or staff role ("Graduate Student Liaison; Associate
+# Professor", "Academic Advisor, Graduate Students") is that person's duty.
+_ADVISOR_CLAUSE_RE = re.compile(
+    r"\b(?:(?:co-?)?advis[oe]rs?|major\s+professors?|mentors?|supervisors?|co-?pi|pi|hosts?)"
+    r"\s*:.*$", re.IGNORECASE | re.DOTALL)
+_LAB_OF_RE = re.compile(r"\b(?:in|with|under)\s+(?:professor|prof\.|dr\.)\s.*$",
+                        re.IGNORECASE | re.DOTALL)
+_NOT_OWN_ROLE = r"(?<!\bfor )(?<!\bof )(?<!\bwith )(?<!\bto )(?<!\baccepting )"
+_STAFF_NOUN = (r"placement|services|affairs|advis|coordinat|director|program|officer|recruit"
+               r"|support|success|liaison|supervis|mentor|administrat|ombuds|office|training"
+               r"|studies|manager")
+_STUDENT_ROLE_RE = re.compile(
+    _NOT_OWN_ROLE
+    + r"\b(?:graduate|grad|ph\.?\s?d\.?|doctoral|master['’]?s|undergraduate|m\.?\s?s\.?c?"
+    r"|m\.?\s?a\.?|mfa|mphil)[\s-]+(?:student|candidate|research assistant|teaching assistant)s?\b"
+    r"(?!\s+(?:" + _STAFF_NOUN + r"))",
+    re.IGNORECASE,
+)
+_DEGREE_LAST_RE = re.compile(
+    r"(?:^|[/;,]\s*)(?:ph\.?\s?d\.?|m\.?\s?s\.?|m\.?\s?a\.?|master['’]?s|doctoral)\W*$",
+    re.IGNORECASE)
+_CLASS_YEAR_RE = re.compile(
+    r"^\W*(?:m\.?\s?f\.?\s?a\.?|m\.?\s?a\.?|m\.?\s?s\.?|ph\.?\s?d\.?)\s*['’‘]\s*\d{2}\W*$",
+    re.IGNORECASE)
+_POSTDOC_ROLE_RE = re.compile(
+    _NOT_OWN_ROLE + r"\bpost[\s\-‐‑–—]?doc\w*\b(?!\s+(?:" + _STAFF_NOUN + r"))", re.IGNORECASE)
+_PROFESSOR_WORD_RE = re.compile(r"\bprofessors?\b", re.IGNORECASE)
+_STAFF_ROLE_RE = re.compile(
+    r"\b(?:coordinators?|administrators?|directors?|deans?|chairs?|ombuds\w*|advis[oe]rs?"
+    r"|managers?)\b", re.IGNORECASE)
+_TEACHING_ROLE_RE = re.compile(r"\b(?:professors?|lecturers?|instructors?)\b", re.IGNORECASE)
+_DEGREE_HOLDER_RE = re.compile(r"\b(?:professors?|lecturers?|instructors?|scientists?)\b",
+                               re.IGNORECASE)
+
+TRAINEE_REASON = "trainee_title"
+
+
+def is_trainee_title(title: object) -> bool:
+    """True when a stated title is a graduate student's own role, or a postdoc's
+    with no professor, lecturer or instructor title beside it."""
+    if not isinstance(title, str):
+        return False
+    if _CLASS_YEAR_RE.match(title):
+        return True
+    own = _LAB_OF_RE.sub("", _ADVISOR_CLAUSE_RE.sub("", title))
+    if (_STUDENT_ROLE_RE.search(own) and not _PROFESSOR_WORD_RE.search(own)
+            and not _STAFF_ROLE_RE.search(own)):
+        return True
+    if own != title and _DEGREE_LAST_RE.search(own) and not _DEGREE_HOLDER_RE.search(own):
+        return True
+    return bool(_POSTDOC_ROLE_RE.search(own)) and not _TEACHING_ROLE_RE.search(own)
+
+
 # ---------------------------------------------------------------------------
 # 2. Stated vs inferred (field-level inference stamps)
 # ---------------------------------------------------------------------------

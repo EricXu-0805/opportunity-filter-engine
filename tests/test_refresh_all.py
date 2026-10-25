@@ -551,6 +551,90 @@ def test_a_kept_row_takes_another_units_date_only_through_an_observed_page(
     assert saved[0]["metadata"]["last_seen_at"] == expected["metadata"]["last_seen_at"]
 
 
+def test_the_refresh_retires_trainee_rows_before_the_unit_ledgers_count(
+    monkeypatch, tmp_path,
+):
+    """Graduate students and postdocs are retired by title on every run, in this
+    run's schools only, before finalize_unit_ledger counts a unit's active rows
+    (a trainee row still active there would read as a person the scrape missed
+    and block the unit)."""
+    def row(rid, school, title):
+        seeded = _seed_faculty(f"{school}_faculty", rid, 0)
+        seeded.update(school=school, department="Earth Sciences")
+        seeded["metadata"]["faculty_title"] = title
+        return seeded
+
+    student = row("faculty-umich-earth-0000cccc", "umich",
+                  "Graduate Student Advisor: Professor Doe")
+    professor = row("faculty-umich-earth-0000dddd", "umich", "Associate Professor")
+    elsewhere = row("faculty-osu-earth-0000eeee", "osu", "Graduate Student")
+    held = row("faculty-uga-ads-0000ffff", "uga", "PhD; Major Professor: Doe")
+    processed = _stub_with_processed_file(
+        monkeypatch, tmp_path, [student, professor, elsewhere, held])
+
+    active_at_ledger = []
+    finalize = refresh_all.finalize_unit_ledger
+
+    def recording_finalize(ledger, opps, name):
+        active_at_ledger.extend(
+            o["metadata"]["is_active"] for o in opps if o["id"] == student["id"])
+        return finalize(ledger, opps, name)
+
+    def fetch(unit_ledger):
+        unit_ledger["earth"] = {"unit_id": "earth", "observed_entity_ids": [professor["id"]],
+                                "observed_identities": [["url", "testu.edu/people/prof"]],
+                                "unit_url": "https://earth.testu.edu/people/"}
+        return [dict(professor)]
+
+    monkeypatch.setattr(refresh_all, "finalize_unit_ledger", recording_finalize)
+    monkeypatch.setattr(refresh_all, "fetch_umich_faculty", fetch)
+    summary = refresh_all.refresh_all(deep=True, schools={"umich", "uga"})
+
+    saved = {r["id"]: r for r in json.loads(processed.read_text(encoding="utf-8"))}
+    assert saved[student["id"]]["metadata"]["is_active"] is False
+    assert saved[student["id"]]["metadata"]["deactivation_reason"] == "trainee_title"
+    assert saved[professor["id"]]["metadata"]["is_active"] is True
+    assert saved[elsewhere["id"]]["metadata"]["is_active"] is True
+    assert active_at_ledger == [False]
+    assert summary["sources"]["trainee_titles"]["by_school"] == {"umich": 1}
+    # Another maintainer's school is counted, not changed.
+    assert saved[held["id"]]["metadata"]["is_active"] is True
+    assert summary["sources"]["trainee_titles"]["held"] == {"uga": 1}
+
+
+def test_a_partial_berkeley_scrape_with_postdoc_cards_still_retires_no_one(monkeypatch, tmp_path):
+    """Berkeley sources report one count. A postdoc card must not stand in for a
+    professor the scrape missed: 15 of 20 professors read alongside 6 postdoc
+    cards is still a partial scrape that retires no one."""
+    from src.collectors import ucb_common
+    from src.collectors.ucb_math_faculty import MATH_CONFIG
+
+    def row(rid, title):
+        seeded = _seed_faculty("ucb_math_faculty", rid, days_ago=30)
+        seeded["school"] = "ucb"
+        seeded["metadata"]["faculty_title"] = title
+        return seeded
+
+    stored = ([row(f"faculty-ucb-math-prof{i:04d}", "Professor") for i in range(20)]
+              + [row(f"faculty-ucb-math-post{i:04d}", "Postdoctoral Scholar") for i in range(6)])
+    processed = _stub_with_processed_file(monkeypatch, tmp_path, stored)
+    cards = ([{"name": f"Prof Number{chr(65 + i)}", "url": f"https://x/p{i}", "title": "Professor"}
+              for i in range(15)]
+             + [{"name": f"Post Doc{chr(65 + i)}", "url": f"https://x/d{i}",
+                 "title": "Postdoctoral Scholar"} for i in range(6)])
+    monkeypatch.setattr(refresh_all, "fetch_ucb_math", lambda *a, **k: [
+        r for c in cards if (r := ucb_common.normalize_faculty(c, MATH_CONFIG))])
+
+    summary = refresh_all.refresh_all(deep=True, schools={"ucb"})
+
+    pass_info = summary["sources"]["deactivate_stale_faculty"]
+    assert summary["sources"]["ucb_math_faculty"]["fetched"] == 15
+    assert "ucb_math_faculty" in pass_info["skipped_partial_scrape"]
+    saved = json.loads(processed.read_text(encoding="utf-8"))
+    assert all(r["metadata"]["is_active"] for r in saved if "prof" in r["id"])
+    assert summary["sources"]["trainee_titles"]["by_school"] == {"ucb": 6}
+
+
 def test_missing_unit_ledger_surfaces_for_aggregate_faculty_source(
     monkeypatch,
     tmp_path,
