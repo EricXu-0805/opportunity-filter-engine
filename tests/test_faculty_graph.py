@@ -175,6 +175,80 @@ class TestScrapeLayer:
         # "Department of Widgets" is an institution label, not a person.
         assert "Department of Widgets" not in names
 
+    def test_sbu_ecology_reads_only_the_titled_faculty_groups(self, monkeypatch):
+        """Stony Brook Ecology and Evolution's 2026-10 page is one tabbed
+        directory: the Faculty tab holds titled Department and Program Faculty
+        groups, the emeritus and student tabs have no group title, and the
+        staff groups are titled. Only faculty are read, each with the card's
+        "View Profile" link rather than the lab site listed before it."""
+        from bs4 import BeautifulSoup
+
+        from src.collectors.schools.sbu_faculty import SCHOOL
+
+        def card(name, title, slug):
+            view = ('<a class="dept-people-profile-card-link" '
+                    f'href="https://www.example.edu/ecoevo/people/faculty/{slug}.html">View Profile</a>')
+            return (
+                '<div class="dept-people-profile-card"><div class="dept-people-profile-card-body">'
+                f'<p class="dept-people-profile-card-name">{name}</p>'
+                f'<p class="dept-people-profile-card-title">{title}</p>'
+                '<p class="dept-people-profile-card-email">'
+                f'<a href="mailto:{slug}@example.edu">Email</a></p>'
+                '<p class="dept-people-profile-card-desc">Population ecology</p></div>'
+                '<div class="dept-people-profile-card-footer">'
+                f'<a class="dept-people-profile-card-link" href="https://lab.example.org/{slug}">'
+                f'Lab site</a>{view}</div></div>')
+
+        def group(title, *cards):
+            head = f'<H2 class="dept-people-profile-group-title">{title}</H2>' if title else ""
+            return ('<section class="dept-people-profile-group"><div class="dept-people-profile-wrap">'
+                    f'{head}<div class="dept-people-profile-grid">{"".join(cards)}</div></div></section>')
+
+        html = ('<div class="dtib-tab-content">'
+                '<div class="dtib-panel">'
+                + group("Department Faculty", card("Ada Roe", "Professor", "aroe"),
+                        card("Lee Doe", "Adjunct Professor", "ldoe"))
+                + group("Program Faculty", card("Kim Poe", "Associate Professor, SOMAS", "kpoe"))
+                + '</div><div class="dtib-panel">'
+                + group(None, card("Old Prof", "Professor, Emeritus", "oprof")) + '</div>'
+                + '<div class="dtib-panel">' + group(None, card("Pat Student", "", "pstudent"))
+                + '</div><div class="dtib-panel">'
+                + group("Department Administration", card("Sam Staff", "Assistant to the Chair", "sstaff"))
+                + group("Student Professional Staff",
+                        card("Dee Aide", "Student Office Assistant", "daide"))
+                + '</div></div>')
+        monkeypatch.setattr("src.collectors.ucb_common.fetch_soup",
+                            lambda url, **_kw: BeautifulSoup(html, "html.parser"))
+        dept = next(d for d in SCHOOL["departments"] if d["short"] == "EEB")
+
+        people = {p["name"]: p for p in fg._scrape_directory(dept)}
+
+        assert sorted(people) == ["Ada Roe", "Kim Poe"]
+        assert people["Ada Roe"]["url"] == "https://www.example.edu/ecoevo/people/faculty/aroe.html"
+        assert people["Ada Roe"]["email"] == "aroe@example.edu"
+        assert "Population ecology" in people["Kim Poe"]["research_areas"]
+
+    def test_sbu_ecology_keeps_the_stored_ids_of_renamed_cards(self):
+        """A card whose page now writes the name differently keeps the id its
+        row was stored under (id_names), so the row updates in place."""
+        from src.collectors.schools.sbu_faculty import SCHOOL
+
+        dept = next(d for d in SCHOOL["departments"] if d["short"] == "EEB")
+        ids = {fg._normalize(SCHOOL, dept, {"name": page_name, "url": "https://x.edu/p"})["id"]
+               for page_name in dept["id_names"]}
+        # The row stored on 2026-07-18 under the spelling without the accent.
+        assert ids == {"faculty-sbu-eeb-aebbec37"}
+
+    def test_sbu_ecology_is_read_after_the_units_its_program_faculty_belong_to(self):
+        """EEB's Program Faculty are cross-listed professors whose home units
+        (Anthropology, the SoMAS divisions) list them too. A person is read once
+        per school run, by the first unit that lists them, so EEB must come after
+        those units; read first, it takes their cards and blocks their units."""
+        from src.collectors.schools.sbu_faculty import SCHOOL
+
+        order = [d["short"] for d in SCHOOL["departments"]]
+        assert all(order.index("EEB") > order.index(u) for u in ("ANTH", "MAR", "ATM", "SUS"))
+
     def test_scrape_failure_degrades_to_empty(self, monkeypatch):
         monkeypatch.setattr("src.collectors.ucb_common.fetch_soup", lambda url, **_kw: None)
         dept = {"short": "WID", "scrape": {"url": "https://example.edu/x", "selectors": {"card": "div"}}}

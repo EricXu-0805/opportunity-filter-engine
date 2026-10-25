@@ -16,6 +16,8 @@ from __future__ import annotations
 import time
 from datetime import UTC, date, datetime, timedelta
 
+import pytest
+
 from backend.lib.contact_visibility import contact_email_status, verified_send_target
 from backend.lib.position_truth import displayed_title, stated_rank
 from src.collectors.faculty_graph import _normalize as fg_normalize
@@ -27,6 +29,7 @@ from src.evidence import (
     is_inferred,
     is_professor_rank,
     is_synthesized_email_source,
+    is_trainee_title,
     record_conflict,
     source_rank,
     stamp_inferred,
@@ -39,6 +42,7 @@ from src.parsers.llm_tagger import (
     _detect_paid_from_text,
     apply_updates,
 )
+from src.school_scope import SEPARATELY_MAINTAINED_SCHOOLS
 
 SCHOOL = {
     "id_prefix": "test", "source": "test_faculty", "organization": "Test University",
@@ -92,6 +96,82 @@ class TestPositionUnknown:
     def test_emeritus_is_dropped_not_relabeled(self):
         # A retired-status rank never ships as an active contact at all.
         assert fg_normalize(SCHOOL, DEPT, _person(title="Professor Emeritus")) is None
+
+    @pytest.mark.parametrize("title", [
+        "Graduate Student Advisor: Professor Doe",
+        "Graduate Student Advisors: Professor Doe and Professor E. Roe",
+        "PhD Candidate in Geodetic Science | Advisor: Professor Jane Doe",
+        "PhD Candidate, Bridge Fellow Advisor: Professor Doe",
+        "Ph.D. Student",
+        "Graduate Student",
+        "PhD; Major Professor: Doe",
+        "MS; Major Professor: Doe/Roe",
+        "Postdoctoral Fellow",
+        "Post-Doctoral Associate",
+        "Post Doctoral Scholar, Civil Engineering",
+        "Postdoc-Employee",
+        "Postdoctoral Researcher | Incentives, Real Effort",
+        "NSF Postdoctoral Fellow",
+        "Political Science Post Doctoral Fellow",
+        "Legal Studies Graduate Student Instructor",
+        "Extension Program Specialist II Ph.D. student in Agronomy",
+        "MS Candidate; Major Professor: Doe",
+        "Farm Manager/PhD; Major Professor: Doe",
+        "Lecturer, Ph. D. student",
+        "Postdoctoral Fellow; Mentor: Professor Doe",
+        "Postdoctoral Fellow (PI: Professor Doe)",
+        "Postdoctoral Researcher in Professor Doe's lab",
+        "MFA '27",
+    ])
+    def test_trainee_titles(self, title):
+        assert is_trainee_title(title)
+
+    @pytest.mark.parametrize("title", [
+        "Postdoctoral Fellow, Teaching Assistant Professor",
+        "Postdoctoral Fellow and Lecturer in Chemistry",
+        "Postdoctoral Teaching Associate, Part Time Lecturer",
+        "PhD Student Placement Co-Officer",
+        "Graduate Student Advisor",
+        "Graduate Program Director, Associate Professor",
+        "PhD, RN Assistant Professor",
+        "Professor and Associate Dean for Graduate Students and Postdoctoral Fellows",
+        "Lecturer in Biology; Director, Postdoctoral Affairs",
+        "Graduate Research Professor",
+        "PhD Research Assistant Professor",
+        "Ph.D. Teaching Assistant Professor",
+        "Graduate Student Liaison; Associate Professor",
+        "Graduate Teaching Assistant Supervisor; Senior Lecturer",
+        "Director of Graduate Students",
+        "Director of Postdoctoral Affairs",
+        "NSF Postdoctoral Fellow/Evans Instructor",
+        "PhD Assistant Professor",
+        "Director, Postdoctoral Affairs",
+        "Postdoctoral Affairs Coordinator",
+        "Assistant Dean for Graduate and Postdoctoral Studies",
+        "Postdoctoral Training Program Director",
+        "Senior Lecturer, Ph.D.; Advisor: Undergraduate Majors",
+        "Research Scientist, PhD | Advisor: Doe",
+        "Academic Advisor, Graduate Students",
+        "Program Coordinator, PhD Students",
+        "Graduate Student Ombudsperson",
+        "Program Director, Biology, M.S./Ph.D.",
+        "Lecturer (not accepting graduate students)",
+        "",
+        None,
+    ])
+    def test_faculty_titles_are_not_trainee_titles(self, title):
+        assert not is_trainee_title(title)
+
+    def test_graduate_student_and_postdoc_cards_are_dropped_not_relabeled(self):
+        for title in ("Graduate Student Advisor: Professor Doe", "Postdoctoral Scholar"):
+            assert fg_normalize(SCHOOL, DEPT, _person(title=title)) is None
+        kept = fg_normalize(SCHOOL, DEPT, _person(title="Postdoctoral Fellow and Lecturer"))
+        assert kept["metadata"]["is_active"] is True
+
+    def test_a_separately_maintained_school_keeps_its_trainee_rows(self):
+        maintained = {**SCHOOL, "school_slug": next(iter(SEPARATELY_MAINTAINED_SCHOOLS))}
+        rec = fg_normalize(maintained, DEPT, _person(title="Postdoctoral Scholar"))
+        assert rec["metadata"]["is_active"] is True
 
 
 # ---------------------------------------------------------------------------

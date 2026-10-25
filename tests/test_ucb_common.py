@@ -60,6 +60,13 @@ def test_normalize_faculty_drops_institution_name():
     )
 
 
+def test_normalize_faculty_drops_a_postdoc():
+    """Dropped, not emitted: the int ledger counts emitted rows, so an emitted
+    postdoc would stand in for a professor the scrape missed."""
+    assert normalize_faculty(
+        {"name": "Jane Doe", "url": "https://x/jd", "title": "NSF Postdoctoral Fellow"}, _CONFIG) is None
+
+
 def test_normalize_faculty_keeps_real_person():
     opp = normalize_faculty({"name": "David Ackerly", "url": "https://x/a"}, _CONFIG)
     assert opp is not None

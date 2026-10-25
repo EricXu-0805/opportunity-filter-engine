@@ -89,7 +89,8 @@ from ..contact_instructions import (
     retained_sources,
     same_source_page,
 )
-from ..evidence import FACULTY_MAJOR_LABELS_MARKER, is_professor_rank
+from ..evidence import FACULTY_MAJOR_LABELS_MARKER, is_professor_rank, is_trainee_title
+from ..school_scope import SEPARATELY_MAINTAINED_SCHOOLS
 from .import_document import ImportDocumentError, parse_import_html
 from .ucb_common import (
     _RETIRED_TITLE_RE,
@@ -516,6 +517,13 @@ def _normalize(school: dict, dept: dict, person: dict) -> dict | None:
                    html.unescape(person.get("title") or ""),
                    flags=re.IGNORECASE).strip()
     if _RETIRED_TITLE_RE.search(title):
+        return None
+    if (is_trainee_title(title)
+            and school.get("school_slug") not in SEPARATELY_MAINTAINED_SCHOOLS):
+        # A graduate student or postdoc, not a professor to ask. The stored row
+        # is retired by deactivate_trainee_faculty before the unit ledgers
+        # count; a row stored under another title is reported missed and holds
+        # its unit, as a card that turns emeritus does.
         return None
 
     short = dept["short"]

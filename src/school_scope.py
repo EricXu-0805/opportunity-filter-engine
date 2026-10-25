@@ -42,6 +42,13 @@ UNSUPPORTED_SCHOOLS: dict[str, tuple[str, str]] = {
 
 UNSUPPORTED_REASON = "school_unsupported"
 
+# Schools whose collectors and data another maintainer owns. A corpus-wide
+# cleanup that rewrites records counts their rows and leaves them as they are,
+# so that maintainer decides when a new rule reaches them.
+SEPARATELY_MAINTAINED_SCHOOLS = frozenset({
+    "bc", "emory", "georgetown", "nyu", "tufts", "uga", "unc", "uva",
+})
+
 
 def is_supported(slug: object) -> bool:
     """Whether ``slug`` is a school the product currently offers."""
