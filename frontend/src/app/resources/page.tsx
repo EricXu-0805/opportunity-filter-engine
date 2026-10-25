@@ -1,7 +1,7 @@
-import type { Metadata } from 'next';
 import { Mail, BookOpen } from 'lucide-react';
 import { getServerT } from '@/i18n/server';
 import { parseResourcesTab } from '@/lib/resources-tab';
+import { selfReferencingMetadata } from '@/lib/site';
 import ImportPanel from '../import/ImportPanel';
 import ContactTipsCard from './ContactTipsCard';
 import DatabaseLinkCard from './DatabaseLinkCard';
@@ -9,11 +9,11 @@ import HighlightLabType from './HighlightLabType';
 import ResourcesTabs from './ResourcesTabs';
 import { DATABASES, LAB_TYPES } from './types';
 
-export const metadata: Metadata = {
+export const generateMetadata = selfReferencingMetadata('/resources', {
   title: 'Resources — Cold-email guides, research databases & import',
   description:
     'Per-lab-type cold-email guides (wet, dry, humanities) and curated links to Illinois Experts, NIH Reporter, NSF Awards, and Google Scholar — four databases students use to research professors before reaching out — plus an import tool for adding an opportunity from a link or pasted text.',
-};
+});
 
 export default async function ResourcesPage({
   searchParams,

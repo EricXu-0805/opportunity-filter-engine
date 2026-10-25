@@ -49,7 +49,6 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     alternateLocale: 'zh_CN',
-    url: SITE_URL,
   },
   twitter: {
     card: 'summary_large_image',
@@ -62,13 +61,6 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
     googleBot: { index: true, follow: true, 'max-image-preview': 'large' },
-  },
-  alternates: {
-    canonical: SITE_URL,
-    languages: {
-      'en': `${SITE_URL}?lang=en`,
-      'zh': `${SITE_URL}?lang=zh`,
-    },
   },
   manifest: '/manifest.json',
 };

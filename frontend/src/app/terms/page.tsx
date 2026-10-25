@@ -1,11 +1,11 @@
-import type { Metadata } from 'next';
 import MarkdownPreview from '@/components/MarkdownPreview';
+import { selfReferencingMetadata } from '@/lib/site';
 
-export const metadata: Metadata = {
+export const generateMetadata = selfReferencingMetadata('/terms', {
   title: 'Terms of Service',
   description:
     'The terms governing your use of JoinALab, including your responsibilities when contacting third parties and AI-content disclaimers.',
-};
+});
 
 const EFFECTIVE_DATE = 'June 15, 2026';
 

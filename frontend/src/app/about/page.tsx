@@ -1,5 +1,6 @@
-import { Shield, Mail, Globe } from 'lucide-react';
+import { Shield, Mail, Globe, Linkedin, GraduationCap, Contact } from 'lucide-react';
 import { getServerT } from '@/i18n/server';
+import { selfReferencingMetadata } from '@/lib/site';
 import { WalkthroughSection } from '@/app/home/WalkthroughSection';
 
 const STACK = [
@@ -17,6 +18,24 @@ const STACK = [
 const CONTRIBUTORS = [
   { name: 'Emily', initials: 'E', roleKey: 'about.collabEmilyRole' },
 ] as const;
+
+// The author's own profiles. Proper nouns, so not translated.
+const PROFILES = [
+  { label: 'LinkedIn', href: 'https://www.linkedin.com/in/guoyi-eric-xu', Icon: Linkedin },
+  { label: 'Google Scholar', href: 'https://scholar.google.com/citations?user=0UGotE4AAAAJ', Icon: GraduationCap },
+  { label: 'ORCID', href: 'https://orcid.org/0009-0000-3581-5996', Icon: Contact },
+] as const;
+
+const TITLE = 'About';
+const DESCRIPTION =
+  'How JoinALab works and who builds it: an independent student project by Guoyi (Eric) Xu at the University of Illinois Urbana-Champaign.';
+
+export const generateMetadata = selfReferencingMetadata('/about', {
+  title: TITLE,
+  description: DESCRIPTION,
+  openGraph: { title: `${TITLE} · JoinALab`, description: DESCRIPTION },
+  twitter: { title: `${TITLE} · JoinALab`, description: DESCRIPTION },
+});
 
 export default async function AboutPage() {
   const t = await getServerT();
@@ -100,6 +119,17 @@ export default async function AboutPage() {
                     <Globe className="w-4 h-4" />
                     {t('about.websiteLabel')}
                   </a>
+                  {PROFILES.map(({ label, href, Icon }) => (
+                    <a
+                      key={href}
+                      href={href}
+                      rel="me"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white text-gray-900 text-[13px] font-medium ring-1 ring-black/[0.08] hover:bg-gray-50 transition-colors duration-300"
+                    >
+                      <Icon className="w-4 h-4" />
+                      {label}
+                    </a>
+                  ))}
                 </div>
               </div>
             </div>

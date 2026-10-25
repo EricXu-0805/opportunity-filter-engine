@@ -1,13 +1,13 @@
-import type { Metadata } from 'next';
 import MarkdownPreview from '@/components/MarkdownPreview';
 import { MAX_RESUME_TEXT_CHARACTERS } from '@/lib/resume-input';
 import { RELEASE_SCOPE } from '@/lib/release-scope';
+import { selfReferencingMetadata } from '@/lib/site';
 
-export const metadata: Metadata = {
+export const generateMetadata = selfReferencingMetadata('/privacy', {
   title: 'Privacy Policy',
   description:
     'How JoinALab collects, uses, stores, and shares your information, including AI-provider processing and your data rights.',
-};
+});
 
 // With the course list switched off (RELEASE_SCOPE.courseStatus), the policy
 // says what it said before it.

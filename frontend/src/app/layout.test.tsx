@@ -12,12 +12,21 @@ vi.mock('@/components/OnboardingIntro', () => ({ default: () => null }));
 vi.mock('@/components/SchoolConfirmGate', () => ({ default: () => null }));
 vi.mock('@/components/Header', () => ({ default: () => null }));
 
-import { viewport } from './layout';
+import { metadata, viewport } from './layout';
 
 describe('root layout viewport', () => {
   // A soft keyboard must shrink the layout viewport on every page, so dvh-sized
   // dialogs such as the cold-email editor re-fit above it.
   it('asks phones to resize the page content when the keyboard opens', () => {
     expect(viewport.interactiveWidget).toBe('resizes-content');
+  });
+});
+
+describe('root layout metadata', () => {
+  // Whatever the root declares here every route without its own override
+  // inherits, 404s included: they all told crawlers they were the homepage.
+  it('names no canonical, hreflang or og:url for its routes', () => {
+    expect(metadata.alternates).toBeUndefined();
+    expect(metadata.openGraph).not.toHaveProperty('url');
   });
 });
