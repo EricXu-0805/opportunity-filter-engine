@@ -377,11 +377,6 @@ SCHOOL: dict = {
         _deptdir("ANTH", "Department of Anthropology", ["Anthropology"],
                  "https://www.stonybrook.edu/anthropology/faculty-and-staff/",
                  research=True),
-        _deptdir("EEB", "Department of Ecology and Evolution",
-                 ["Biology", "Ecology and Evolution"],
-                 "https://www.stonybrook.edu/ecoevo/people/faculty/",
-                 section={"exclude": r"emerit|administration|phd|m\.a\.|postdoc"},
-                 research=True, ladder=_LADDER_LIGHT),
         _deptdir("BCB", "Department of Biochemistry and Cell Biology",
                  ["Biochemistry", "Biology"],
                  "https://www.stonybrook.edu/biochem/people.html",
@@ -458,6 +453,37 @@ SCHOOL: dict = {
         _somas("SUS", "Sustainability Studies Division (SoMAS)",
                ["Sustainability Studies", "Coastal Environmental Studies"],
                "sustainability-studies"),
+        # ---- Ecology and Evolution (after the units its Program Faculty --------
+        # belong to, so Anthropology and the SoMAS divisions read their own
+        # people first; read first, EEB would take those cards from them).
+        # It moved to the dept-people-profile theme in 2026-10: one tabbed page
+        # whose Faculty tab holds the titled "Department Faculty" and "Program
+        # Faculty" groups. The emeritus, student and postdoc tabs carry no
+        # group title, so only cards in a titled panel are read and the staff
+        # groups are left out by title. A card's profile is its "View Profile"
+        # link; the other links are lab sites.
+        {
+            "short": "EEB", "name": "Department of Ecology and Evolution",
+            "majors": ["Biology", "Ecology and Evolution"],
+            "directory_url": "https://www.stonybrook.edu/ecoevo/people/faculty/",
+            "scrape": {
+                "url": "https://www.stonybrook.edu/ecoevo/people/faculty/",
+                "selectors": {
+                    "card": "div.dtib-panel:has(h2.dept-people-profile-group-title) "
+                            "div.dept-people-profile-card",
+                    "name": "p.dept-people-profile-card-name",
+                    "link": "a.dept-people-profile-card-link:-soup-contains('View Profile')",
+                    "title": "p.dept-people-profile-card-title",
+                    "email": "p.dept-people-profile-card-email a[href^='mailto:']",
+                    "research": "p.dept-people-profile-card-desc",
+                },
+                "ladder_filter": _LADDER_LIGHT,
+                "section_filter": {"heading": "h2",
+                                   "exclude": r"administration|staff|student|emerit|postdoc"},
+            },
+            # Stored before the page wrote the surname with its cedilla.
+            "id_names": {"H. Resit Akçakaya": "H. Resit Akcakaya"},
+        },
         # ---- College of Business --------------------------------------------
         {
             "short": "BUS", "name": "College of Business",
