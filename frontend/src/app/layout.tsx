@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     'Evidence-based matching that helps students find research positions and internships suited to their confirmed background.',
   metadataBase: new URL(SITE_URL),
   applicationName: 'JoinALab',
-  authors: [{ name: 'Eric Xu', url: 'https://github.com/EricXu-0805' }],
+  authors: [{ name: 'Guoyi (Eric) Xu', url: 'https://ericxu-0805.github.io' }],
   keywords: [
     'research matching', 'undergraduate research', 'REU',
     'internships', 'summer programs',
@@ -56,7 +56,7 @@ export const metadata: Metadata = {
     title: 'JoinALab — Research Matching',
     description:
       'Evidence-based matching for research positions and internships.',
-    creator: '@EricXu_0805',
+    creator: '@guoyi_xu46651',
   },
   robots: {
     index: true,

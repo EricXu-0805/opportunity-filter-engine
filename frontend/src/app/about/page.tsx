@@ -1,4 +1,4 @@
-import { Shield, Mail } from 'lucide-react';
+import { Shield, Mail, Globe } from 'lucide-react';
 import { getServerT } from '@/i18n/server';
 import { WalkthroughSection } from '@/app/home/WalkthroughSection';
 
@@ -91,6 +91,14 @@ export default async function AboutPage() {
                   >
                     <Mail className="w-4 h-4" />
                     {t('about.emailLabel')}
+                  </a>
+                  <a
+                    href="https://ericxu-0805.github.io"
+                    rel="author"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white text-gray-900 text-[13px] font-medium ring-1 ring-black/[0.08] hover:bg-gray-50 transition-colors duration-300"
+                  >
+                    <Globe className="w-4 h-4" />
+                    {t('about.websiteLabel')}
                   </a>
                 </div>
               </div>
