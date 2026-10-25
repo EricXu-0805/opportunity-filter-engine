@@ -1945,3 +1945,95 @@ def test_b55_real_sro_evidence_flows_to_health_and_safe_publish(monkeypatch, tmp
         if scenario != "list_failed":
             assert stored["metadata"][SOURCE_KEY] == prior["metadata"][SOURCE_KEY]
             assert stored["metadata"]["last_verified"] == old_time
+
+
+@pytest.mark.parametrize("scenario", ["complete", "control_refused", "list_failed", "normalization_failed",
+                                      "evidence_missing", "merge_failed"])
+def test_a_complete_sro_listing_retires_only_unlisted_programs_whose_page_is_gone(monkeypatch, tmp_path, scenario):
+    import socket
+
+    import requests
+
+    from src.collectors import uiuc_sro
+    from src.collectors.base import RawOpportunity
+
+    base = "https://researchops.web.illinois.edu"
+
+    def stored(slug, title):
+        return uiuc_sro.raw_to_normalized(RawOpportunity(
+            source="uiuc_sro", source_url=f"{base}/?page=0", url=f"{base}/opportunity/{slug}",
+            title=title, description_raw="Study sensors"))
+
+    listed = stored("sensor-reu", "Sensor REU")
+    # The same program under its old title: the database moved its page.
+    renamed = stored("sensor-reu-illinois", "Sensor REU at Illinois")
+    # Still published, but a row shifting between pages kept it out of this read.
+    unseen = stored("dig-week", "Dig week")
+    path = _stub_with_processed_file(monkeypatch, tmp_path, [listed, renamed, unseen])
+    monkeypatch.setattr(socket.socket, "connect", lambda *a, **k: pytest.fail("No external network permitted"))
+    monkeypatch.setattr(uiuc_sro.UIUCSROCollector, "_rate_limit", lambda *a: None)
+    monkeypatch.setattr(uiuc_sro.UIUCSROCollector, "MAX_PAGES", 3)
+    monkeypatch.setattr(uiuc_sro, "DEEP_SCRAPE_DELAY", 0)
+    rows = ('<tr><td class="views-field-title"><a href="/opportunity/sensor-reu">Sensor REU</a><br>Study sensors</td></tr>'
+            '<tr><td class="views-field-title"><a href="/opportunity/field-school">Field school</a><br>Dig sites</td></tr>')
+    table = f'<table class="views-table"><tbody>{rows}</tbody></table>'
+    empty = '<table class="views-table"><tbody></tbody></table>'
+    pages = {
+        f"{base}/opportunity/sensor-reu": (403 if scenario == "control_refused" else 200, None),
+        f"{base}/opportunity/sensor-reu-illinois": (301, "/opportunity/sensor-reu"),
+        f"{base}/opportunity/dig-week": (200, None),
+    }
+
+    class Response:
+        def __init__(self, requested, html="", status=200, location=None):
+            self.url, self.text, self.status_code = requested, html, status
+            self.headers = {"Location": location} if location else {}
+
+        def raise_for_status(self): pass
+
+    def get(requested, **kwargs):
+        if "?page=" in requested:
+            if "page=1" in requested and scenario == "list_failed":
+                raise requests.Timeout("synthetic failure")
+            return Response(requested, table if "page=0" in requested else empty)
+        assert kwargs.get("allow_redirects") is False
+        status, location = pages[requested]
+        return Response(requested, status=status, location=location)
+
+    monkeypatch.setattr(uiuc_sro.requests, "get", get)
+    fetch = uiuc_sro.fetch_and_normalize_with_evidence
+    if scenario == "normalization_failed":
+        normalize = uiuc_sro.raw_to_normalized
+
+        def fail_field_school(raw):
+            if raw.title == "Field school":
+                raise ValueError("synthetic normalization failure")
+            return normalize(raw)
+
+        monkeypatch.setattr(uiuc_sro, "raw_to_normalized", fail_field_school)
+    if scenario == "evidence_missing":
+        def fetch(deep=False):
+            return uiuc_sro.fetch_and_normalize_with_evidence(deep=deep)[0], {}
+    def merge(records):
+        if scenario == "merge_failed":
+            raise OSError("synthetic merge failure")
+        return uiuc_sro.merge_into_processed(records, str(path))
+    monkeypatch.setattr(refresh_all, "fetch_sro_with_evidence", fetch)
+    monkeypatch.setattr(refresh_all, "merge_sro", merge)
+
+    summary = refresh_all.refresh_all(deep=False, national=True)
+
+    info = summary["sources"]["uiuc_sro"]
+    rows_after = {row["id"]: row["metadata"] for row in json.loads(path.read_text(encoding="utf-8"))}
+    assert rows_after[listed["id"]]["is_active"] is True
+    assert rows_after[unseen["id"]]["is_active"] is True
+    if scenario == "complete":
+        assert info["unlisted"] == {"deactivated": 1, "kept": 1, "control": "live"}
+        assert rows_after[renamed["id"]]["is_active"] is False
+        assert rows_after[renamed["id"]]["deactivation_reason"] == "no_longer_listed"
+    else:
+        assert rows_after[renamed["id"]]["is_active"] is True
+        if scenario == "control_refused":
+            assert info["unlisted"] == {"deactivated": 0, "kept": 2, "control": "gone"}
+        else:
+            assert "unlisted" not in info

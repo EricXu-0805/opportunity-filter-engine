@@ -215,6 +215,104 @@ def test_sro_list_only_merge_carries_inference_stamps_with_values(tmp_path):
     assert 'keywords' not in saved['metadata']['inferred_fields']
 
 
+def _sro_row(url, **metadata):
+    item = raw(); item.url = url
+    row = sro.raw_to_normalized(item)
+    row['metadata'].update(metadata)
+    return row
+
+
+def _checks(states):
+    asked = []
+    def check(url):
+        asked.append(url)
+        return states.get(url, 'unknown')
+    return check, asked
+
+
+def test_sro_unlisted_rows_retire_only_when_their_page_is_gone():
+    listed = _sro_row(URL)
+    renamed, taken_down = _sro_row(URL + '-old-title'), _sro_row(URL + '-withdrawn')
+    unseen, unanswered = _sro_row(URL + '-still-live'), _sro_row(URL + '-timed-out')
+    closed = _sro_row(URL + '-closed', is_active=False, deactivated_at='2026-09-01', deactivation_reason='deadline_passed')
+    other = {'id': 'simplify-intern-1', 'source': 'simplify_internships', 'url': URL + '-other', 'metadata': {'is_active': True}}
+    rows = [listed, renamed, taken_down, unseen, unanswered, closed, other]
+    check, asked = _checks({URL: 'live', URL + '-old-title': 'gone', URL + '-withdrawn': 'gone', URL + '-still-live': 'live'})
+    result = sro.deactivate_unlisted(rows, {listed['id']}, URL, today='2026-10-25', check=check)
+    assert result == {'deactivated': 2, 'kept': 2, 'control': 'live'}
+    assert asked[0] == URL and URL + '-closed' not in asked and URL + '-other' not in asked
+    for row in (renamed, taken_down):
+        assert (row['metadata']['is_active'], row['metadata']['deactivated_at'],
+                row['metadata']['deactivation_reason']) == (False, '2026-10-25', 'no_longer_listed')
+    for row in (listed, unseen, unanswered):
+        assert row['metadata']['is_active'] is True and 'deactivation_reason' not in row['metadata']
+    assert (closed['metadata']['deactivated_at'], closed['metadata']['deactivation_reason']) == ('2026-09-01', 'deadline_passed')
+    assert other['metadata']['is_active'] is True
+    again = sro.deactivate_unlisted(rows, {listed['id']}, URL, today='2026-11-01', check=check)
+    assert again['deactivated'] == 0 and renamed['metadata']['deactivated_at'] == '2026-10-25'
+
+
+@pytest.mark.parametrize('control', ['gone', 'unknown'])
+def test_sro_unlisted_rows_stay_when_the_control_page_is_not_live(control):
+    listed, renamed = _sro_row(URL), _sro_row(URL + '-old-title')
+    check, asked = _checks({URL: control, URL + '-old-title': 'gone'})
+    result = sro.deactivate_unlisted([listed, renamed], {listed['id']}, URL, check=check)
+    assert result == {'deactivated': 0, 'kept': 1, 'control': control}
+    assert asked == [URL]
+    assert renamed['metadata']['is_active'] is True
+
+
+def test_sro_unlisted_pass_checks_nothing_without_a_listing_or_candidates():
+    row = _sro_row(URL)
+    check, asked = _checks({URL: 'gone'})
+    assert sro.deactivate_unlisted([row], set(), URL, check=check)['deactivated'] == 0
+    assert sro.deactivate_unlisted([row], {row['id']}, URL, check=check)['control'] is None
+    assert asked == [] and row['metadata']['is_active'] is True
+
+
+class _Answer:
+    def __init__(self, status, location=None):
+        self.status_code = status
+        self.headers = {'Location': location} if location is not None else {}
+
+
+@pytest.mark.parametrize('answer, state', [
+    (_Answer(200), 'live'),
+    (_Answer(301, 'https://example.edu/new-title'), 'gone'),
+    (_Answer(308, '/new-title'), 'gone'),
+    (_Answer(301, URL + '/'), 'unknown'),
+    (_Answer(302, ''), 'unknown'),
+    (_Answer(403), 'gone'),
+    (_Answer(404), 'gone'),
+    (_Answer(410), 'gone'),
+    (_Answer(429), 'unknown'),
+    (_Answer(500), 'unknown'),
+    (TimeoutError(), 'unknown'),
+    (object(), 'unknown'),
+])
+def test_sro_page_state_reads_one_unfollowed_answer(monkeypatch, answer, state):
+    calls, pauses = [], []
+    def get(url, **kwargs):
+        calls.append((url, kwargs.get('allow_redirects'), kwargs.get('timeout')))
+        if isinstance(answer, Exception):
+            raise answer
+        return answer
+    monkeypatch.setattr(sro.time, 'sleep', pauses.append)
+    monkeypatch.setattr(sro.requests, 'get', get)
+    assert sro.page_state(URL) == state
+    assert calls == [(URL, False, 30)]
+    assert pauses == [sro.DEEP_SCRAPE_DELAY]
+
+
+def test_a_retired_sro_program_listed_again_is_active(tmp_path):
+    before = _sro_row(URL, is_active=False, deactivated_at='2026-10-25', deactivation_reason='no_longer_listed')
+    path = tmp_path / 'records.json'; path.write_text(json.dumps([before]))
+    sro.merge_into_processed([sro.raw_to_normalized(raw())], str(path))
+    meta = json.loads(path.read_text())[0]['metadata']
+    assert meta['is_active'] is True
+    assert 'deactivated_at' not in meta and 'deactivation_reason' not in meta
+
+
 @pytest.mark.parametrize('missing', ['all', 'final_url', 'requested_url', 'checked_at', 'wrong_request', 'naive_time', 'future_time'])
 def test_campus_missing_transport_observation_cannot_verify(monkeypatch, missing):
     page = soup()
