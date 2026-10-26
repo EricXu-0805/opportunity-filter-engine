@@ -1000,6 +1000,7 @@ def generate_variants(
 
 # Lower case only: a cut that ends on a surname ("An") or a state ("IN") keeps it.
 _DANGLING_WORDS = frozenset("of in on for with and or to at from by the a an as that which such".split())
+_STEM_JOINERS = frozenset({"and", "or", "to", "&"})
 
 
 def _cap_subject(s: str, limit: int = 72) -> str:
@@ -1010,10 +1011,14 @@ def _cap_subject(s: str, limit: int = 72) -> str:
     body = s[len(prefix):] if s.startswith(prefix) else s
     if len(body) <= limit:
         return s
+    following = body.split(" ")
     words = body[:limit].rsplit(" ", 1)[0].split(" ")
     while len(words) > 1:
         last = words[-1].rstrip(",;:")
-        if last not in _DANGLING_WORDS and not last.endswith("-") and any(c.isalnum() for c in last):
+        # "ground- and surface water": a stem waiting for the word after the
+        # "and". "Imaging- Instrumentation" uses the hyphen as a dash.
+        stem = last.endswith("-") and (words[-1].endswith("-,") or following[len(words)] in _STEM_JOINERS)
+        if last not in _DANGLING_WORDS and not stem and any(c.isalnum() for c in last):
             break
         words.pop()
     return prefix + " ".join(words).rstrip(" ,—-:;(/")

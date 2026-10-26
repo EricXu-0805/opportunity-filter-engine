@@ -315,6 +315,11 @@ class TestTheOpenerNamesSomethingTheProfessorActuallyStudies:
          "Hydrology & water resources & fluid mechanics"),
         ("Sustainable development of surface water and ground- and surface-water treatment plants",
          "Sustainable development of surface water"),
+        ("American poetry and prose of the nineteenth-, twentieth-century transatlantic world",
+         "American poetry and prose"),
+        # A hyphen used as a dash keeps its word.
+        ("Functional Magnetic Resonance Imaging- Instrumentation / Methodology",
+         "Functional Magnetic Resonance Imaging"),
         ("Archival records and community knowledge: accessibility and digital preservation",
          "Archival records and community knowledge"),
         ("Spin dynamics in frustrated antiferromagnets such as kagome lattice systems",
@@ -327,6 +332,12 @@ class TestTheOpenerNamesSomethingTheProfessorActuallyStudies:
         from src.recommender.cold_email import _cap_subject
 
         assert _cap_subject(f"Subject: Research Inquiry — {topic}") == f"Subject: Research Inquiry — {kept}"
+
+    def test_a_word_before_a_hyphen_used_as_a_dash_is_kept(self):
+        from src.recommender.cold_email import _cap_subject
+
+        assert _cap_subject("Subject: Research Assistant Interest — 19-century British literature- Romanticism "
+                            "and Victorian periods") == "Subject: Research Assistant Interest — 19-century British literature"
 
 
 class TestTheAlignmentSentenceUsesTheSameGate:
