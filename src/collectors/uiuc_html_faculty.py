@@ -180,14 +180,15 @@ def fetch_carle() -> list[dict]:
         )
         url = CARLE_PROFILE.format(netid=netid) if netid else CARLE_URL
         prof = _fetch_soup(url) if netid else None
-        kws = (_labeled_phrases(prof) if prof else []) or list(CARLE_CFG["keywords"])
+        stated = _labeled_phrases(prof) if prof else []
+        kws = stated or list(CARLE_CFG["keywords"])
         rec = normalize_faculty(
             {
                 "name": name,
                 "email": email,
                 "url": url,
                 "title": title_el.get_text(strip=True) if title_el else "",
-                "research_areas": "; ".join(kws),
+                "research_areas": "; ".join(stated),
             },
             CARLE_CFG,
             keywords=kws,
@@ -221,10 +222,11 @@ def fetch_law() -> list[dict]:
             continue
         prof = _fetch_soup(url)
         email = _first_illinois_email(prof) if prof else ""
-        kws = (_labeled_phrases(prof) if prof else []) or list(LAW_CFG["keywords"])
+        stated = _labeled_phrases(prof) if prof else []
+        kws = stated or list(LAW_CFG["keywords"])
         rec = normalize_faculty(
             {"name": name, "email": email, "url": url,
-             "title": title, "research_areas": "; ".join(kws)},
+             "title": title, "research_areas": "; ".join(stated)},
             LAW_CFG,
             keywords=kws,
         )
@@ -267,7 +269,7 @@ def fetch_ler() -> list[dict]:
         title = _title_lines(prof.select_one("p.profile-header__ranking")) if prof else ""
         rec = normalize_faculty(
             {"name": name, "email": email, "url": url, "title": title,
-             "research_areas": "; ".join(kws)},
+             "research_areas": "; ".join(areas)},
             LER_CFG,
             keywords=kws,
         )
@@ -316,8 +318,7 @@ def _faa_card(card, unit: dict) -> dict | None:
         t = re.split(r"\S+@\S+", t)[0].strip(" |·–-")
         title = t[:80]
     return normalize_faculty(
-        {"name": name, "email": email, "url": url, "title": title,
-         "research_areas": unit["keywords"][0]},
+        {"name": name, "email": email, "url": url, "title": title},
         {"short": unit["short"], "name": unit["name"],
          "majors": unit["majors"], "keywords": unit["keywords"]},
         keywords=list(unit["keywords"]),
@@ -377,8 +378,7 @@ def fetch_media() -> list[dict]:
             # The profile's first paragraph states the title, one role per line.
             title = _directory_role_title(prof.select_one("div.entry-content p.has-medium-font-size")) if prof else None
             rec = normalize_faculty(
-                {"name": name, "email": email, "url": url, "title": title or "",
-                 "research_areas": unit["keywords"][0]},
+                {"name": name, "email": email, "url": url, "title": title or ""},
                 {"short": "Media", "name": unit["name"],
                  "majors": unit["majors"], "keywords": unit["keywords"]},
                 keywords=list(unit["keywords"]),
@@ -444,8 +444,7 @@ def fetch_vetmed() -> list[dict]:
             if url.startswith("/"):
                 url = "https://vetmed.illinois.edu" + url
             rec = normalize_faculty(
-                {"name": name, "email": email, "url": url,
-                 "title": title, "research_areas": unit["keywords"][0]},
+                {"name": name, "email": email, "url": url, "title": title},
                 {"short": "VetMed", "name": unit["name"],
                  "majors": unit["majors"], "keywords": unit["keywords"],
                  "id_names": unit.get("id_names", {})},

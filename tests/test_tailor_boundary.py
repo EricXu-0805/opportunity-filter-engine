@@ -268,13 +268,17 @@ class TestKeywordsProvenanceReachesThePrompt:
         line = _keywords_line(self._opp(False), "earthquake and tectonic")
         assert line == "- Keywords: earthquake and tectonic\n"
 
-    def test_topics_read_off_publications_say_so(self):
+    def test_inferred_topics_say_so(self):
+        """Topics matched from publications, or a department's field, are ours."""
         from backend.routes.tailor import _keywords_line
 
-        line = _keywords_line(self._opp(True), "earthquake and tectonic")
-        assert "- Keywords:" not in line
-        assert "not stated by the lab" in line
-        assert "earthquake and tectonic" in line
+        for method in ("derived:openalex_topics", "tag:department_field"):
+            opp = self._opp(True)
+            opp["metadata"]["inferred_fields"]["keywords"] = method
+            line = _keywords_line(opp, "earthquake and tectonic")
+            assert "- Keywords:" not in line
+            assert "inferred by our system (not stated by the professor or lab)" in line
+            assert "earthquake and tectonic" in line
 
     def test_every_prompt_builder_uses_the_helper(self):
         import inspect

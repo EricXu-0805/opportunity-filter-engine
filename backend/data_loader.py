@@ -7,6 +7,7 @@ import threading
 from collections.abc import Callable
 from pathlib import Path
 
+from src.collectors.uiuc_faculty import stamp_department_field_keywords
 from src.evidence import neutralize_unverified_faculty_claims, stamp_collector_templates
 from src.import_source import sanitize_import_source
 
@@ -63,6 +64,10 @@ def _strip_html(text: str) -> str:
 
 
 def _sanitize_opportunity(opp: dict) -> dict:
+    # Before the faculty description is rebuilt below, which leaves keywords
+    # we wrote out of it: a department's field on a profile that states no
+    # research is ours, not the professor's.
+    stamp_department_field_keywords(opp)
     # Protect the currently committed legacy shards immediately: faculty
     # directories are contact/research evidence, not proof of an opening's
     # year, effort, location or immigration terms.

@@ -14,13 +14,16 @@ Usage:
 """
 
 import hashlib
+import importlib
 import json
 import logging
+import pkgutil
 import re
 import time
 import unicodedata
 from collections import Counter, defaultdict
 from datetime import UTC, datetime
+from functools import cache
 from pathlib import Path
 from urllib.parse import urljoin
 
@@ -33,10 +36,12 @@ from backend.lib.contact_visibility import (
 )
 
 from ..evidence import (
+    DEPARTMENT_FIELD_METHOD,
     FACULTY_MAJOR_LABELS_MARKER,
     UNIT_MAILBOX_LOCALPARTS,
     dept_name_stems,
     inferred_method,
+    record_kind,
     stamp_inferred,
 )
 from .ucb_common import (
@@ -1671,6 +1676,7 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
         isinstance(areas, str)
         and areas.strip()
         and not _is_site_menu_text(areas)
+        and not _is_department_field_text(areas, existing)
         and not str((incoming.get("metadata") or {}).get("research_areas_raw") or "").strip()
     ):
         md = incoming.setdefault("metadata", {})
@@ -1996,6 +2002,82 @@ def _dept_broad_field(department: str) -> str:
         "", department.strip(), flags=re.IGNORECASE,
     )
     return name.replace(" & ", " and ").strip().lower()
+
+
+@cache
+def _collector_department_fields() -> dict[tuple[str, str], frozenset[str]]:
+    """(source, department) -> the keywords its collector writes for a profile
+    that states no research: a department config's first keyword (UIUC
+    DEPARTMENTS and ACES, each Berkeley config), the whole keyword list of the
+    HTML-directory units (Carle, Law, LER, FAA, Media, VetMed), and Gies's broad
+    field. Read off the configs, so a unit added later is covered."""
+    # Imported here: these modules import this one.
+    from . import uiuc_html_faculty, uiuc_js_faculty, uiuc_json_faculty
+
+    fields: dict[tuple[str, str], set[str]] = defaultdict(set)
+    for cfg in (*DEPARTMENTS.values(), *uiuc_js_faculty.JS_DEPARTMENTS.values()):
+        fields["uiuc_faculty", cfg["name"]].update(cfg.get("keywords", [])[:1])
+    for cfg in (uiuc_html_faculty.CARLE_CFG, uiuc_html_faculty.LAW_CFG, uiuc_html_faculty.LER_CFG,
+                *uiuc_html_faculty.FAA_UNITS, *uiuc_html_faculty.MEDIA_UNITS, *uiuc_html_faculty.VETMED_UNITS):
+        fields["uiuc_faculty", cfg["name"]].update(cfg["keywords"])
+    for department, broad, _majors in (*uiuc_json_faculty._GIES_DEPTS.values(), uiuc_json_faculty._GIES_FALLBACK):
+        fields["uiuc_faculty", department].add(broad)
+    for info in pkgutil.iter_modules([str(Path(__file__).parent)]):
+        if re.fullmatch(r"ucb_\w+_faculty", info.name):
+            module = importlib.import_module(f"{__package__}.{info.name}")
+            for cfg in vars(module).values():
+                if isinstance(cfg, dict) and isinstance(cfg.get("source"), str) and cfg.get("name"):
+                    fields[cfg["source"], cfg["name"]].update(cfg.get("keywords", [])[:1])
+    return {key: frozenset(words) for key, words in fields.items()}
+
+
+@cache
+def _department_field_words(source: str, department: str) -> frozenset[str]:
+    words = set(_collector_department_fields().get((source, department), ()))
+    broad = _dept_broad_field(department)
+    if broad:
+        words.add(broad)
+    for word in list(words):
+        if "," in word or ";" in word or " / " in word:
+            words.update(filter(None, map(_clean_research_phrase, _split_research_phrases(word))))
+    return frozenset(words)
+
+
+def department_field_words(record: dict) -> frozenset[str]:
+    """The words written as a faculty row's keywords when its profile states no
+    research: its collector's fallback (`_collector_department_fields`) and the
+    broad field `_dept_broad_field` derives, which the refresh-time keyword
+    passes write for any school, with the parts the compound split leaves."""
+    return _department_field_words(str(record.get("source") or ""), str(record.get("department") or ""))
+
+
+def stamp_department_field_keywords(record: dict) -> dict:
+    """Stamp a faculty row's keywords as ours when every one is a department
+    field word (`department_field_words`), in place; return record.
+
+    The page never said them: a collector gives a profile that states no
+    research its department's field so the row keeps a topic. Run at load, like
+    `stamp_collector_templates`, from the row as it stands, so no merge or carry
+    has to keep a stored stamp in step with the keywords. Idempotent, and never
+    overrides an existing stamp."""
+    keywords = record.get("keywords")
+    if (record_kind(record) != "faculty_contact" or not isinstance(keywords, list) or not keywords
+            or inferred_method(record, "keywords") is not None):
+        return record
+    words = department_field_words(record)
+    if all(isinstance(k, str) and k in words for k in keywords):
+        metadata = record.setdefault("metadata", {})
+        if isinstance(metadata, dict):
+            stamp_inferred(metadata, "keywords", DEPARTMENT_FIELD_METHOD)
+    return record
+
+
+def _is_department_field_text(text: str, record: dict) -> bool:
+    """Whether stored research text is only department field words: what the
+    HTML and JSON directory collectors wrote there, joined by "; ", for a
+    profile that stated no research, before 2026-10."""
+    entries = [entry.strip() for entry in text.split(";") if entry.strip()]
+    return bool(entries) and set(entries) <= department_field_words(record)
 
 
 def _demote_shared_keyword_pollution(opps: list[dict]) -> int:

@@ -171,14 +171,16 @@ describe('dictionary parity', () => {
     }
   });
 
-  it('names where inferred topics came from by record kind, neutrally, in both locales', () => {
-    // A faculty row's inferred topics come from a matched publication record;
-    // a listing's from our tags, which no publication record produced.
+  it('says inferred topics are ours, by record kind, neutrally, in both locales', () => {
+    // A faculty row's inferred topics come from a matched publication record or
+    // are its department's field, so its note names neither; a listing's come
+    // from our tags, which no publication record produced.
     for (const prefix of ['favorites', 'detail']) {
       for (const locale of ['en', 'zh'] as const) {
         const faculty = translate(locale, `${prefix}.keywordsInferred`);
         const listing = translate(locale, `${prefix}.keywordsInferredListing`);
-        expect(faculty).toMatch(locale === 'en' ? /publication record/ : /论文发表记录/);
+        expect(faculty).toMatch(locale === 'en' ? /our system, not stated on their page/ : /我们的系统推断.*不是对方主页上写的/);
+        expect(faculty).not.toMatch(/publication|论文/);
         expect(listing).not.toMatch(/publication|论文/);
         expect(listing).toMatch(locale === 'en' ? /our system/ : /我们的系统/);
         expect(`${faculty}${listing}`).not.toMatch(/他|她/);

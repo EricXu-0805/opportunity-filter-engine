@@ -236,6 +236,13 @@ def is_inferred(record: dict, field: str) -> bool:
     return inferred_method(record, field) is not None
 
 
+# A faculty row's keywords that are only its department's field, the words a
+# UIUC or Berkeley collector writes when the profile states no research
+# (`src.collectors.uiuc_faculty.stamp_department_field_keywords`, at load): a
+# tag from our config, read off no page.
+DEPARTMENT_FIELD_METHOD = "tag:department_field"
+
+
 def is_read_off_the_page(record: dict, field: str) -> bool:
     """True when ``field`` was inferred by reading the source text.
 
@@ -1285,9 +1292,13 @@ def faculty_profile_summary_fields(record: dict) -> dict:
     metadata = record.get("metadata") or {}
     research_areas = metadata.get("research_areas_raw")
     if not isinstance(research_areas, str) or not research_areas.strip():
+        # Keywords say what the professor works on only when they are the
+        # page's own: topics matched from an OpenAlex author record or a
+        # department tag are ours, and the detail page shows them as such.
+        keywords = record.get("keywords") if keywords_are_source_topics(record) else None
         research_areas = ", ".join(
             value.strip()
-            for value in (record.get("keywords") or [])[:6]
+            for value in (keywords or [])[:6]
             if isinstance(value, str) and value.strip()
         )
     availability = faculty_availability_status(record)

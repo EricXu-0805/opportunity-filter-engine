@@ -137,3 +137,30 @@ def test_a_redacted_field_withdraws_the_fields_even_beside_a_clean_description()
     projected = project_public_opportunity_payload(payload, record)
     assert projected['description_clean'] == 'Faculty research profile for Jane Doe.'
     assert projected['faculty_profile_summary'] is None
+
+
+@pytest.mark.parametrize('method', ['derived:openalex_topics', 'tag:department_field'])
+def test_keywords_we_inferred_are_not_said_as_research_areas(method):
+    """With no stated research text the sentence fell back to the keywords,
+    stamp or not: topics matched from an OpenAlex author record and a
+    department's field read as what the professor works on (M154)."""
+    record = {'source_type': 'faculty_research', 'pi_name': 'Jane Doe', 'department': 'Department of Physics',
+              'keywords': ['physics'], 'metadata': {'inferred_fields': {'keywords': method}}}
+    assert faculty_profile_summary_fields(record)['research_areas'] is None
+    assert 'Research areas' not in _faculty_profile_summary(record)
+    stated = {**record, 'metadata': {}}
+    assert faculty_profile_summary_fields(stated)['research_areas'] == 'physics'
+
+
+def test_the_loader_stamps_a_department_field_before_it_rewrites_the_description():
+    from backend.data_loader import _sanitize_opportunity
+    from src.evidence import DEPARTMENT_FIELD_METHOD, inferred_method
+
+    record = {'id': 'faculty-physics-m154', 'source': 'uiuc_faculty', 'source_type': 'faculty_research',
+              'pi_name': 'Jane Doe', 'department': 'Department of Physics', 'keywords': ['physics'],
+              'description_raw': 'Faculty research profile for Jane Doe. Research areas: physics',
+              'metadata': {'is_active': True, 'research_areas_raw': ''}}
+    served = _sanitize_opportunity(record)
+    assert inferred_method(served, 'keywords') == DEPARTMENT_FIELD_METHOD
+    assert 'Research areas' not in served['description_raw']
+    assert 'physics' not in served['description_clean']

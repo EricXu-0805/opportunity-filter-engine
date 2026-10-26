@@ -353,7 +353,12 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # Sponsorship" is listed for an international student instead of excluded, with
 # a gap line quoting the label and intl score INTL_NO_SPONSORSHIP_INTERNSHIP_SCORE
 # instead of 0 (checklist M121). A filter and a sentence no hashed knob sees.
-_MATCHER_VERSION_BASE = "27"
+# 28: a faculty row's keywords that are only its department's field are ours
+# (checklist M154), so no reason calls them the professor's work, and the
+# faculty description the similarity text reads no longer repeats keywords we
+# inferred (a department's field, OpenAlex topics) as research areas. Sentences
+# and a similarity input no hashed knob sees.
+_MATCHER_VERSION_BASE = "28"
 
 
 def _matcher_fingerprint() -> str:
