@@ -71,7 +71,8 @@ vi.mock('@/components/ResumeUpload', () => ({
 }));
 
 import * as ReactModule from 'react';
-import HomePage from './page';
+import HomePage, { generateMetadata } from './page';
+import type { ResolvingMetadata } from 'next';
 import type { LoadedProfile, ProfilePatchIntent } from '@/lib/supabase';
 import { advanceOwnerEpoch, captureOwnerToken, syncLocalIdentityOwner } from '@/lib/identity-owner';
 
@@ -255,5 +256,25 @@ describe('HomePage — Generate is unavailable until the profile row has loaded'
     await act(async () => { resolveProfileLoad?.(VALID_ROW); });
     await waitFor(() => expect(screen.getByTestId('generate-matches')).not.toBeDisabled());
     expect(screen.queryByTestId('retry-profile-load')).toBeNull();
+  });
+});
+
+describe('HomePage metadata', () => {
+  it('names the homepage as its own canonical and og:url, keeping the root card', async () => {
+    const root = Promise.resolve({
+      openGraph: {
+        title: { absolute: 'JoinALab — Research & Internship Matching', template: null },
+        images: [{ url: 'https://joinalab.com/opengraph-image?v1' }],
+      },
+    }) as unknown as ResolvingMetadata;
+    const meta = await generateMetadata({}, root);
+    expect(meta.alternates?.canonical).toBe('/');
+    expect(meta.openGraph?.url).toBe('/');
+    expect(meta.openGraph?.title).toEqual(expect.objectContaining({
+      absolute: 'JoinALab — Research & Internship Matching',
+    }));
+    expect(meta.openGraph?.images).toEqual([
+      expect.objectContaining({ url: 'https://joinalab.com/opengraph-image?v1' }),
+    ]);
   });
 });
