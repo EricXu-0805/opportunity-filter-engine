@@ -295,16 +295,38 @@ class TestTheOpenerNamesSomethingTheProfessorActuallyStudies:
             "Human-autonomy interaction Human-robot interaction Individual differences"
         ) == ""
 
-    def test_a_pointer_to_a_website_is_not_a_research_area(self):
-        assert self._phrase("Find more information at https://www.example.com") == ""
-        assert self._phrase("Lab website www.example.org") == ""
+    @pytest.mark.parametrize("raw", ["Find out more at http://example.com/lab", "Find out more at www.example.org"])
+    def test_a_pointer_to_a_website_is_not_a_research_area(self, raw):
+        assert self._phrase(raw) == ""
 
-    def test_a_subject_cut_short_does_not_end_on_a_word_that_needs_the_next(self):
+    def test_a_website_keyword_is_not_a_topic(self):
+        from src.recommender.cold_email import _topic_keywords
+
+        opp = {"source_type": "faculty_research", "keywords": ["www.example.com", "coral reef ecology"],
+               "metadata": {}}
+        assert _topic_keywords(opp) == ["coral reef ecology"]
+
+    @pytest.mark.parametrize("topic,kept", [
+        ("Molecular mechanisms underlying diseases of the nervous system in model organisms",
+         "Molecular mechanisms underlying diseases"),
+        ("Cosmology / Particle / and Nuclear / Astrophysics / Gravitation / Quantum theory of fields",
+         "Cosmology / Particle / and Nuclear / Astrophysics"),
+        ("Hydrology & water resources & fluid mechanics & transport & sediments now",
+         "Hydrology & water resources & fluid mechanics"),
+        ("Sustainable development of surface water and ground- and surface-water treatment plants",
+         "Sustainable development of surface water"),
+        ("Archival records and community knowledge: accessibility and digital preservation",
+         "Archival records and community knowledge"),
+        ("Spin dynamics in frustrated antiferromagnets such as kagome lattice systems",
+         "Spin dynamics in frustrated antiferromagnets"),
+        # A surname is not a function word.
+        ("Protein folding in the lab of Professor Wei An Zhangwei and collaborators",
+         "Protein folding in the lab of Professor Wei An"),
+    ])
+    def test_a_subject_cut_short_ends_on_a_word_that_stands_alone(self, topic, kept):
         from src.recommender.cold_email import _cap_subject
 
-        subject = _cap_subject("Subject: Research Inquiry — Molecular mechanisms underlying diseases of the "
-                               "nervous system in model organisms")
-        assert subject == "Subject: Research Inquiry — Molecular mechanisms underlying diseases"
+        assert _cap_subject(f"Subject: Research Inquiry — {topic}") == f"Subject: Research Inquiry — {kept}"
 
 
 class TestTheAlignmentSentenceUsesTheSameGate:

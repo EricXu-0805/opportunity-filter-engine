@@ -152,12 +152,26 @@ def test_keywords_we_inferred_are_not_said_as_research_areas(method):
     assert faculty_profile_summary_fields(stated)['research_areas'] == 'physics'
 
 
+def test_the_description_says_the_first_six_keywords():
+    record = {'source_type': 'faculty_research', 'pi_name': 'Jane Doe', 'department': 'Department of Biology',
+              'keywords': [f'topic {i}' for i in range(8)], 'metadata': {}}
+    assert faculty_profile_summary_fields(record)['research_areas'] == ', '.join(f'topic {i}' for i in range(6))
+
+
 @pytest.mark.parametrize('method', ['derived:openalex_topics', 'tag:department_field'])
-def test_the_ranker_still_counts_the_keywords_the_description_leaves_out(method):
+@pytest.mark.parametrize('keywords,metadata', [
+    (['crispr', 'dna repair'], {}),
+    # The description says stated research text, never the keywords beside it.
+    (['crispr', 'dna repair'], {'research_areas_raw': 'genome editing in plants'}),
+    # It said the first six keywords, cut at 300 characters.
+    ([f'kwalpha{i}' for i in range(8)], {}),
+    ([' '.join(f'w{i}x{j}' for j in range(12)) for i in range(6)], {}),
+], ids=['keywords', 'stated-text', 'eight-keywords', 'over-300-characters'])
+def test_the_ranker_still_counts_the_keywords_the_description_leaves_out(method, keywords, metadata):
     """The similarity text and the TF-IDF fit read the description. Leaving
     our keywords out of both cost CRISPR, EEG and microtubule their place among
     the 5,000 terms the vocabulary keeps; a stamp changes what the description
-    says, not what the ranker counts."""
+    says, not the words the ranker counts."""
     import re
     from collections import Counter
 
@@ -165,18 +179,18 @@ def test_the_ranker_still_counts_the_keywords_the_description_leaves_out(method)
     from src.evidence import neutralize_unverified_faculty_claims
     from src.matcher.ranker import _similarity_corpus
 
-    def served(metadata):
+    def served(extra):
         return neutralize_unverified_faculty_claims({
             'id': 'faculty-m154', 'source_type': 'faculty_research', 'pi_name': 'Jane Doe',
             'department': 'Department of Biology', 'organization': 'Test University',
-            'keywords': ['crispr', 'dna repair'], 'metadata': metadata})
+            'keywords': list(keywords), 'metadata': {**metadata, **extra}})
 
     ours, stated = served({'inferred_fields': {'keywords': method}}), served({})
-    assert 'crispr' not in ours['description_clean']
     for text in (_similarity_corpus, _opportunity_corpus_text):
         ours_words = Counter(re.findall(r'\w+', text(ours).lower()))
         stated_words = Counter(re.findall(r'\w+', text(stated).lower()))
-        assert stated_words - ours_words == Counter(['research', 'areas'])
+        sentence = Counter() if metadata else Counter(['research', 'areas'])
+        assert stated_words - ours_words == sentence
         assert not ours_words - stated_words
 
 

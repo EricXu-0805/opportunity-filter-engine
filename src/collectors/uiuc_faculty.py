@@ -1672,16 +1672,16 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
     # `faculty_availability_status` and the grounding cold email quotes, so
     # losing it costs a truth signal, not just display text. A scrape that DID
     # reach the page still wins, including a professor who deleted theirs.
-    # A text that is only the department's field, beside keywords that are too,
-    # is the collector's fallback twice over and goes (M154); beside other
-    # topics it stays until they are stamped as ours, or the description would
-    # say them as research areas.
+    # A text that is only the department's field, beside keywords that are
+    # ours too (the field, our tags, or a stamp), is the collector's fallback
+    # and goes (M154); beside topics the page is taken to state it stays, or
+    # the description would say those as research areas in its place.
     areas = (existing.get("metadata") or {}).get("research_areas_raw")
     if (
         isinstance(areas, str)
         and areas.strip()
         and not _is_site_menu_text(areas)
-        and not (_is_department_field_text(areas, existing) and _keywords_are_department_field(existing))
+        and not _is_fallback_research_text(areas, existing)
         and not str((incoming.get("metadata") or {}).get("research_areas_raw") or "").strip()
     ):
         md = incoming.setdefault("metadata", {})
@@ -2050,18 +2050,25 @@ def _department_field_words(source: str, department: str) -> frozenset[str]:
     broad = _dept_broad_field(department)
     if broad:
         words.add(broad)
-    if source == "uiuc_faculty":
-        # The tag a program's listing adds to its member's home row.
-        words.update(cfg["affiliation_keyword"] for cfg in _PROGRAM_DEPT_NAMES.values())
-    elif source.startswith("ucb_"):
-        # What the Berkeley keyword bank reads off the unit's name in a title
-        # ("Professor of City & Regional Planning").
-        name = department.lower()
-        words.update(kw for kw in KEYWORD_BANK if re.search(rf"\b{re.escape(kw)}\b", name))
     for word in list(words):
         if "," in word or ";" in word or " / " in word:
             words.update(filter(None, map(_clean_research_phrase, _split_research_phrases(word))))
     return frozenset(words)
+
+
+@cache
+def _department_tag_words(source: str, department: str) -> frozenset[str]:
+    """Words we add to a faculty row's keywords that are no unit's fallback:
+    the tag a program's listing puts on its member's home UIUC row
+    (`_dedup_program_affiliations`), and what the Berkeley keyword bank reads
+    off the unit's name in a title ("Professor of City & Regional Planning"),
+    matched the way that collector matches it."""
+    if source == "uiuc_faculty":
+        return frozenset(cfg["affiliation_keyword"] for cfg in _PROGRAM_DEPT_NAMES.values())
+    if source.startswith("ucb_"):
+        name = department.lower()
+        return frozenset(kw for kw in KEYWORD_BANK if kw in name)
+    return frozenset()
 
 
 def department_field_words(record: dict) -> frozenset[str]:
@@ -2074,7 +2081,8 @@ def department_field_words(record: dict) -> frozenset[str]:
 
 def stamp_department_field_keywords(record: dict) -> dict:
     """Stamp a faculty row's keywords as ours when every one is a department
-    field word (`department_field_words`), in place; return record.
+    field word (`department_field_words`) or one of our tags, in place; return
+    record.
 
     The page never said them: a collector gives a profile that states no
     research its department's field so the row keeps a topic. Run at load, like
@@ -2092,8 +2100,17 @@ def stamp_department_field_keywords(record: dict) -> dict:
 
 def _keywords_are_department_field(record: dict) -> bool:
     keywords = record.get("keywords")
+    if not isinstance(keywords, list) or not keywords or not all(isinstance(k, str) for k in keywords):
+        return False
     words = department_field_words(record)
-    return isinstance(keywords, list) and bool(keywords) and all(isinstance(k, str) and k in words for k in keywords)
+    if all(k in words for k in keywords):
+        return True
+    tags = _department_tag_words(str(record.get("source") or ""), str(record.get("department") or ""))
+    # A tag word the profile's own research text holds may be what the keyword
+    # bank read there: "neuroscience" is also the UIUC bank's reading of
+    # "Cognitive Neuroscience".
+    research = str((record.get("metadata") or {}).get("research_areas_raw") or "").lower()
+    return all(k in words or (k in tags and k not in research) for k in keywords)
 
 
 def _is_department_field_text(text: str, record: dict) -> bool:
@@ -2102,6 +2119,12 @@ def _is_department_field_text(text: str, record: dict) -> bool:
     profile that stated no research, before 2026-10."""
     entries = [entry.strip() for entry in text.split(";") if entry.strip()]
     return bool(entries) and set(entries) <= department_field_words(record)
+
+
+def _is_fallback_research_text(text: str, record: dict) -> bool:
+    """Department field text beside keywords that are ours too."""
+    return _is_department_field_text(text, record) and (
+        _keywords_are_department_field(record) or inferred_method(record, "keywords") is not None)
 
 
 def _demote_shared_keyword_pollution(opps: list[dict]) -> int:
