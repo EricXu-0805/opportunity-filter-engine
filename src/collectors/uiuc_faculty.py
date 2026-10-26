@@ -1029,7 +1029,10 @@ def normalize_faculty(
                 and not (person.get("active_lab") or _ACTIVE_LAB_RE.search(section)
                          or _ACTIVE_LAB_RE.search(title or "")))
 
-    name_hash = hashlib.md5(f"{dept_short}-{name}".encode()).hexdigest()[:8]
+    # A unit that now reads a stored person's name another way maps it to the
+    # stored one in ``id_names``, as faculty_graph does, so the row keeps its id.
+    id_name = (dept_config.get("id_names") or {}).get(name, name)
+    name_hash = hashlib.md5(f"{dept_short}-{id_name}".encode()).hexdigest()[:8]
     opp_id = f"faculty-{dept_short.lower()}-{name_hash}"
 
     now = datetime.now(UTC).replace(tzinfo=None).isoformat()

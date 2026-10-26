@@ -228,7 +228,8 @@ VETMED_LISTING = """
 def test_vetmed_extracts_img_email_and_reads_each_position_title_not_the_degrees(monkeypatch):
     monkeypatch.setattr(h, "_fetch_soup", lambda url: _soup(VETMED_LISTING))
     recs = h.fetch_vetmed()[:3]
-    assert recs[0]["pi_name"] == "Avery Example"
+    # A card that lists no degrees has no dash; its titles stay out of the name.
+    assert [r["pi_name"] for r in recs] == ["Avery Example", "Blair Sample", "Casey Placeholder"]
     assert recs[0]["contact_email"] == "person1@illinois.edu"
     assert recs[0]["url"].startswith("https://vetmed.illinois.edu/profile?id=")
     titles = [r["metadata"]["faculty_title"] for r in recs]
@@ -341,6 +342,22 @@ def test_ler_and_media_rows_whose_profile_cannot_be_read_get_no_title(monkeypatc
     assert {r["metadata"]["faculty_title"] for r in h.fetch_ler()} == {""}
     monkeypatch.setattr(h, "_fetch_soup", lambda url: _soup(MEDIA_SYNTHETIC_LISTING) if "-faculty/" in url else None)
     assert {r["metadata"]["faculty_title"] for r in h.fetch_media()} == {""}
+
+
+def test_vetmed_cards_read_by_name_keep_the_ids_stored_under_their_old_names(monkeypatch):
+    """The rows stored before 2026-10 under names that ran a degree-less card's
+    titles in keep their ids (id_names), so they update in place."""
+    listing = "".join(
+        f'<div class="person-teaser"><div class="basic-info"><a href="/profile?id=p{i}">'
+        f'<h3 class="teaser-title">{name}</h3></a><p class="position-title">Lecturer</p></div></div>'
+        for i, name in enumerate(n for unit in h.VETMED_UNITS for n in unit.get("id_names", {})))
+    monkeypatch.setattr(h, "_fetch_soup", lambda url: _soup(listing))
+    recs = [r for r in h.fetch_vetmed() if r["department"] != "Department of Veterinary Clinical Medicine"]
+    stored = {"faculty-vetmed-9f938cee", "faculty-vetmed-f3ffd4f2", "faculty-vetmed-64ace40c",
+              "faculty-vetmed-8164f832", "faculty-vetmed-d3591cd7"}
+    by_unit = {u["name"]: set(u.get("id_names", {})) for u in h.VETMED_UNITS}
+    assert {r["id"] for r in recs if r["pi_name"] in by_unit[r["department"]]} == stored
+    assert all(" Lecturer" not in r["pi_name"] for r in recs)
 
 
 def test_a_vetmed_name_with_a_hyphen_is_split_only_at_the_spaced_dash(monkeypatch):

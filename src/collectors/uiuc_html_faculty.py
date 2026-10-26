@@ -399,14 +399,25 @@ VETMED_UNITS = [
      "name": "Department of Veterinary Clinical Medicine",
      "majors": ["Veterinary Medicine", "Animal Sciences", "Biology"],
      "keywords": ["veterinary clinical medicine"]},
+    # id_names: rows stored before 2026-10 under a name that ran the card's
+    # position titles in, on cards that list no degrees.
     {"path": "pathobiology/faculty7",
      "name": "Department of Pathobiology",
      "majors": ["Veterinary Medicine", "Pathobiology", "Microbiology", "Biology"],
-     "keywords": ["pathobiology"]},
+     "keywords": ["pathobiology"],
+     "id_names": {
+         "Alberto Brandariz Nunez": "Alberto Brandariz Nunez Research Assistant Professor",
+         "Bahaa Fadl-Alla": "Bahaa Fadl-Alla Veterinary Research Specialist Instructor",
+         "Di Wu": "Di Wu Lecturer",
+     }},
     {"path": "comparative-biosciences/faculty",
      "name": "Department of Comparative Biosciences",
      "majors": ["Veterinary Medicine", "Comparative Biosciences", "Neuroscience",
-                "Biology"], "keywords": ["comparative biosciences"]},
+                "Biology"], "keywords": ["comparative biosciences"],
+     "id_names": {
+         "Andrea Aguiar": "Andrea Aguiar Research Associate Professor",
+         "Ratnakar Singh": "Ratnakar Singh Research Assistant Professor",
+     }},
 ]
 
 
@@ -417,7 +428,9 @@ def fetch_vetmed() -> list[dict]:
         teasers = soup.select("div.person-teaser") if soup else []
         n0 = len(out)
         for t in teasers:
-            heading = t.get_text(" ", strip=True)
+            # The heading alone: a card that lists no degrees has no dash, and the
+            # teaser's text would run its position titles into the name.
+            heading = (t.select_one("h3.teaser-title") or t).get_text(" ", strip=True)
             parts = re.split(r"[–—]|\s-\s", heading, maxsplit=1)
             name = _clean_name(parts[0])
             if not name:
@@ -434,7 +447,8 @@ def fetch_vetmed() -> list[dict]:
                 {"name": name, "email": email, "url": url,
                  "title": title, "research_areas": unit["keywords"][0]},
                 {"short": "VetMed", "name": unit["name"],
-                 "majors": unit["majors"], "keywords": unit["keywords"]},
+                 "majors": unit["majors"], "keywords": unit["keywords"],
+                 "id_names": unit.get("id_names", {})},
                 keywords=list(unit["keywords"]),
             )
             if rec:
