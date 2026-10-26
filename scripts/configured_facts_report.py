@@ -71,6 +71,7 @@ def check_records(records: list[dict]) -> list[dict]:
     the detail page serves it (source, inferred, or unknown)."""
     from backend.lib.opportunity_detail import build_detail_fields
     from backend.routes.opportunities import _redact
+    from src.collectors.uiuc_faculty import stamp_department_field_keywords
     from src.evidence import (
         CONFIGURED_FACT_PATHS,
         CONFIGURED_PROGRAM_METHOD,
@@ -87,6 +88,7 @@ def check_records(records: list[dict]) -> list[dict]:
             continue
         # What the loader does to every served record.
         canonical = copy.deepcopy(record)
+        stamp_department_field_keywords(canonical)
         neutralize_unverified_faculty_claims(canonical)
         stamp_collector_templates(canonical)
         fields = build_detail_fields(_redact(canonical), canonical)["fields"]

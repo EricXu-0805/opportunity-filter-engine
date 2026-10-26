@@ -372,12 +372,14 @@ def build_contract() -> dict:
         build_detail_fields,
     )
     from backend.routes.opportunities import _redact
+    from src.collectors.uiuc_faculty import stamp_department_field_keywords
     from src.evidence import neutralize_unverified_faculty_claims, stamp_collector_templates
 
     cases = []
     for name, record in CASES:
         canonical = copy.deepcopy(record)
         # What the loader does to every served record.
+        stamp_department_field_keywords(canonical)
         neutralize_unverified_faculty_claims(canonical)
         stamp_collector_templates(canonical)
         payload = _redact(canonical)

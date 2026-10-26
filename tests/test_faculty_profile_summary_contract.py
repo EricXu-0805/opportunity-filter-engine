@@ -152,6 +152,34 @@ def test_keywords_we_inferred_are_not_said_as_research_areas(method):
     assert faculty_profile_summary_fields(stated)['research_areas'] == 'physics'
 
 
+@pytest.mark.parametrize('method', ['derived:openalex_topics', 'tag:department_field'])
+def test_the_ranker_still_counts_the_keywords_the_description_leaves_out(method):
+    """The similarity text and the TF-IDF fit read the description. Leaving
+    our keywords out of both cost CRISPR, EEG and microtubule their place among
+    the 5,000 terms the vocabulary keeps; a stamp changes what the description
+    says, not what the ranker counts."""
+    import re
+    from collections import Counter
+
+    from backend.data_loader import _opportunity_corpus_text
+    from src.evidence import neutralize_unverified_faculty_claims
+    from src.matcher.ranker import _similarity_corpus
+
+    def served(metadata):
+        return neutralize_unverified_faculty_claims({
+            'id': 'faculty-m154', 'source_type': 'faculty_research', 'pi_name': 'Jane Doe',
+            'department': 'Department of Biology', 'organization': 'Test University',
+            'keywords': ['crispr', 'dna repair'], 'metadata': metadata})
+
+    ours, stated = served({'inferred_fields': {'keywords': method}}), served({})
+    assert 'crispr' not in ours['description_clean']
+    for text in (_similarity_corpus, _opportunity_corpus_text):
+        ours_words = Counter(re.findall(r'\w+', text(ours).lower()))
+        stated_words = Counter(re.findall(r'\w+', text(stated).lower()))
+        assert stated_words - ours_words == Counter(['research', 'areas'])
+        assert not ours_words - stated_words
+
+
 def test_the_loader_stamps_a_department_field_before_it_rewrites_the_description():
     from backend.data_loader import _sanitize_opportunity
     from src.evidence import DEPARTMENT_FIELD_METHOD, inferred_method

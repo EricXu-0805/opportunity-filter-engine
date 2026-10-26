@@ -737,22 +737,48 @@ def test_every_collector_fallback_is_stamped_as_a_department_tag():
             assert inferred_method(record, "keywords") == DEPARTMENT_FIELD_METHOD, (source, department, word)
 
 
-@pytest.mark.parametrize("department,keywords", [
+@pytest.mark.parametrize("source,department,keywords", [
     # Gies writes its own broad field, and ACES NRES its config's first word,
     # where the derived broad field says "business administration" and
     # "environmental sciences".
-    ("Department of Business Administration", ["business"]),
-    ("Natural Resources & Environmental Sciences", ["natural resources"]),
+    ("uiuc_faculty", "Department of Business Administration", ["business"]),
+    ("uiuc_faculty", "Natural Resources & Environmental Sciences", ["natural resources"]),
     # What the compound split leaves of EPOL's broad field.
-    ("Department of Education Policy, Organization & Leadership", ["organization and leadership"]),
-    ("College of Law", ["law"]),
+    ("uiuc_faculty", "Department of Education Policy, Organization & Leadership", ["organization and leadership"]),
+    # A Berkeley config's word, where the derived broad field names the unit.
+    ("ucb_law_faculty", "Berkeley Law", ["law"]),
+    ("ucb_arch_faculty", "Architecture (College of Environmental Design)", ["architecture"]),
+    ("ucb_journalism_faculty", "Graduate School of Journalism", ["journalism"]),
+    # The Berkeley keyword bank reading the unit's name in a title.
+    ("ucb_dcrp_faculty", "City & Regional Planning (College of Environmental Design)", ["regional planning"]),
+    ("ucb_larch_faculty", "Landscape Architecture & Environmental Planning (College of Environmental Design)",
+     ["landscape architecture", "environmental planning"]),
+    # A program's affiliation tag beside the home department's field.
+    ("uiuc_faculty", "Bioengineering", ["bioengineering", "neuroscience"]),
+    # A person two of a college's units list, kept under either.
+    ("uiuc_faculty", "Department of Comparative Biosciences", ["veterinary clinical medicine"]),
+    ("uiuc_faculty", "Department of Finance", ["business"]),
 ])
-def test_fallbacks_the_derived_broad_field_misses_are_stamped(department, keywords):
+def test_fallbacks_the_derived_broad_field_misses_are_stamped(source, department, keywords):
     from src.collectors.uiuc_faculty import stamp_department_field_keywords
     from src.evidence import DEPARTMENT_FIELD_METHOD, inferred_method
 
-    record = stamp_department_field_keywords(_silent_profile("uiuc_faculty", department, keywords))
+    record = stamp_department_field_keywords(_silent_profile(source, department, keywords))
     assert inferred_method(record, "keywords") == DEPARTMENT_FIELD_METHOD
+
+
+def test_every_berkeley_unit_on_the_shard_has_its_fallback_registered():
+    """The registry finds Berkeley's configs by module name; a unit the
+    discovery misses would leave its rows' fallback shown as their research."""
+    from src.collectors.uiuc_faculty import _collector_department_fields
+
+    shard = Path(__file__).resolve().parents[1] / "data" / "processed" / "shards" / "ucb.json"
+    if not shard.exists():
+        pytest.skip("committed Berkeley shard not present")
+    units = {(r["source"], r["department"]) for r in json.loads(shard.read_text())
+             if r.get("source_type") == "faculty_research" and (r.get("metadata") or {}).get("is_active", True)}
+    assert len(units) > 50
+    assert not units - set(_collector_department_fields())
 
 
 @pytest.mark.parametrize("record", [
@@ -760,6 +786,9 @@ def test_fallbacks_the_derived_broad_field_misses_are_stamped(department, keywor
     _silent_profile("uiuc_faculty", "Department of Physics", ["physics", "quantum optics"]),
     # Another school's directory tag naming the unit, in the page's casing.
     _silent_profile("umich_faculty", "Statistics", ["Statistics"]),
+    # A department config's later words are subfields a page states, not its fallback.
+    _silent_profile("uiuc_faculty", "Department of Chemistry", ["organic chemistry"]),
+    _silent_profile("uiuc_faculty", "Department of Statistics", ["statistics", "data science"]),
     # Another producer's stamp stays.
     _silent_profile("uiuc_faculty", "Department of Physics", ["physics"],
                     inferred_fields={"keywords": "derived:openalex_topics"}),
@@ -807,6 +836,17 @@ def test_research_text_that_is_only_the_department_field_is_not_carried():
     incoming = _silent_profile("uiuc_faculty", "College of Law", ["law"])
     _carry_forward_enrichment(stated, incoming)
     assert incoming["metadata"]["research_areas_raw"] == "Civil Procedure; Constitutional Law"
+
+
+def test_department_field_text_beside_other_topics_is_still_carried():
+    """Until those topics are stamped as ours, the stored field keeps the
+    description from saying them as the professor's research areas."""
+    existing = _silent_profile("uiuc_faculty", "Department of Health and Kinesiology",
+                               ["muscle mass loss", "hemodialysis"],
+                               research_areas_raw="health and kinesiology", last_verified="2026-10-05T00:00:00")
+    incoming = _silent_profile("uiuc_faculty", "Department of Health and Kinesiology", ["health and kinesiology"])
+    _carry_forward_enrichment(existing, incoming)
+    assert incoming["metadata"]["research_areas_raw"] == "health and kinesiology"
 
 
 def test_carry_forward_fresh_email_still_wins():

@@ -8,7 +8,11 @@ from collections.abc import Callable
 from pathlib import Path
 
 from src.collectors.uiuc_faculty import stamp_department_field_keywords
-from src.evidence import neutralize_unverified_faculty_claims, stamp_collector_templates
+from src.evidence import (
+    faculty_summary_inferred_keywords,
+    neutralize_unverified_faculty_claims,
+    stamp_collector_templates,
+)
 from src.import_source import sanitize_import_source
 
 logger = logging.getLogger(__name__)
@@ -136,12 +140,15 @@ def _opportunity_corpus_text(opp: dict) -> str:
     # every term that can appear in a scored record is in the fitted TF-IDF
     # vocabulary (max_features caps it; OOV terms are dropped at transform).
     # research_areas_raw carries the professor's stated areas verbatim — the
-    # only topical signal for faculty whose keywords stayed generic.
+    # only topical signal for faculty whose keywords stayed generic. The
+    # keywords a faculty description leaves out for being ours are counted
+    # where it said them, as the similarity text does.
     parts = [
         opp.get("title", ""),
         opp.get("lab_or_program", ""),
         " ".join(opp.get("keywords", []) or []),
         (opp.get("metadata") or {}).get("research_areas_raw", ""),
+        faculty_summary_inferred_keywords(opp),
         opp.get("description_clean") or opp.get("description_raw") or "",
     ]
     return " ".join(p for p in parts if p)

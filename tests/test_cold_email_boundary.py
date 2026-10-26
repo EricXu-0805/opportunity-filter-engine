@@ -295,6 +295,17 @@ class TestTheOpenerNamesSomethingTheProfessorActuallyStudies:
             "Human-autonomy interaction Human-robot interaction Individual differences"
         ) == ""
 
+    def test_a_pointer_to_a_website_is_not_a_research_area(self):
+        assert self._phrase("Find more information at https://www.example.com") == ""
+        assert self._phrase("Lab website www.example.org") == ""
+
+    def test_a_subject_cut_short_does_not_end_on_a_word_that_needs_the_next(self):
+        from src.recommender.cold_email import _cap_subject
+
+        subject = _cap_subject("Subject: Research Inquiry — Molecular mechanisms underlying diseases of the "
+                               "nervous system in model organisms")
+        assert subject == "Subject: Research Inquiry — Molecular mechanisms underlying diseases"
+
 
 class TestTheAlignmentSentenceUsesTheSameGate:
     """_infer_research_topic feeds "your research on {topic} closely aligns

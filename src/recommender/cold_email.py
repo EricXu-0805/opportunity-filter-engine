@@ -556,7 +556,7 @@ _NOT_AN_AREA_RE = re.compile(
     r"|instructors?|lecturers?|faculty|dean|concentration|award|website|phone|tel|fax|e-?mail"
     r"|teaching|lectures?|coursework|curriculum|syllabus|instruction|mentorship)\b"
     r"|\b(?:ph\.?\s?d|m\.?\s?d|b\.?\s?[as]|m\.?\s?[as]|dr\.?p\.?h|ed\.?d|j\.?d)\b\.?"
-    r"|@|[•·▪●♦*»§¶]|&(?:amp|nbsp|lt|gt|quot|apos)\b|\w&\w|\s[-–—]\s", re.IGNORECASE)
+    r"|@|://|\bwww\.|[•·▪●♦*»§¶]|&(?:amp|nbsp|lt|gt|quot|apos)\b|\w&\w|\s[-–—]\s", re.IGNORECASE)
 _NOT_A_HEAD_RE = re.compile(
     r"^(?:on|in|of|at|to|for|with|from|by|into|about|as|and|or|but"
     r"|how|why|what|when|where|whether|which"
@@ -996,14 +996,21 @@ def generate_variants(
     ]
 
 
+_DANGLING_TAIL_RE = re.compile(r"\s(?:of|in|on|for|with|and|or|to|at|from|by|the|a|an|as|that|which)$",
+                               re.IGNORECASE)
+
+
 def _cap_subject(s: str, limit: int = 72) -> str:
     """Trim a subject line's visible text to a word boundary under `limit` so it
-    isn't cut mid-word in inbox previews (the AI path enforces ~75)."""
+    isn't cut mid-word in inbox previews (the AI path enforces ~75), nor left on
+    a word that needs the next one ("… diseases of the")."""
     prefix = "Subject: "
     body = s[len(prefix):] if s.startswith(prefix) else s
     if len(body) <= limit:
         return s
     trimmed = body[:limit].rsplit(" ", 1)[0].rstrip(" ,—-")
+    while _DANGLING_TAIL_RE.search(trimmed):
+        trimmed = trimmed.rsplit(" ", 1)[0].rstrip(" ,—-")
     return prefix + trimmed
 
 
