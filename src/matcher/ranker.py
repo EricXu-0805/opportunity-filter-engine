@@ -34,6 +34,7 @@ from ..evidence import (
     faculty_positive_major_labels,
     faculty_safe_eligibility,
     faculty_safe_lab_or_program,
+    faculty_summary_inferred_keywords,
     inferred_method,
     is_all_majors_answer,
     is_inferred,
@@ -1414,6 +1415,8 @@ def _similarity_corpus(opportunity: dict) -> str:
         opportunity.get("lab_or_program", ""),
         " ".join(specific_kw),
         research_areas_raw,
+        # Where the description said them before it left them out (M154).
+        faculty_summary_inferred_keywords(opportunity).lower(),
         opp_desc,
     ]))
 

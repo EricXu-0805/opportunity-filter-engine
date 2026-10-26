@@ -479,6 +479,7 @@ _ROLE_KEYWORD_RE = re.compile(
     rf"^(?:{_NO_FUNCTION_WORD}[\w-]+\s+){{0,2}}(?:physicists?|professors?|lecturers?|directors?|chairs?|"
     r"deans?|scientists?|researchers?|fellows?|postdocs?|physicians?|surgeons?|clinicians?|engineers?|"
     r"investigators?)$", re.I)
+_WEBSITE_RE = re.compile(r"://|\bwww\.", re.IGNORECASE)
 _INSTITUTION_KEYWORD_RE = re.compile(
     rf"^(?:{_NO_FUNCTION_WORD}[\w&.'-]+\s+){{0,3}}(?:center|centre|hospital|clinic|institute|university|"
     r"college|school|department|laboratory|lab)$", re.I)
@@ -492,7 +493,8 @@ def _topic_keywords(opportunity: dict) -> list[str]:
             if kw.lower() not in _EMAIL_GENERIC_KW
             and not _ROLE_KEYWORD_RE.match(kw.strip())
             and not _INSTITUTION_KEYWORD_RE.match(kw.strip())
-            and kw.strip().casefold() not in places]
+            and kw.strip().casefold() not in places
+            and not _WEBSITE_RE.search(kw)]
 
 
 def _infer_research_topic(opportunity: dict) -> str:
@@ -556,7 +558,7 @@ _NOT_AN_AREA_RE = re.compile(
     r"|instructors?|lecturers?|faculty|dean|concentration|award|website|phone|tel|fax|e-?mail"
     r"|teaching|lectures?|coursework|curriculum|syllabus|instruction|mentorship)\b"
     r"|\b(?:ph\.?\s?d|m\.?\s?d|b\.?\s?[as]|m\.?\s?[as]|dr\.?p\.?h|ed\.?d|j\.?d)\b\.?"
-    r"|@|[•·▪●♦*»§¶]|&(?:amp|nbsp|lt|gt|quot|apos)\b|\w&\w|\s[-–—]\s", re.IGNORECASE)
+    r"|@|://|\bwww\.|[•·▪●♦*»§¶]|&(?:amp|nbsp|lt|gt|quot|apos)\b|\w&\w|\s[-–—]\s", re.IGNORECASE)
 _NOT_A_HEAD_RE = re.compile(
     r"^(?:on|in|of|at|to|for|with|from|by|into|about|as|and|or|but"
     r"|how|why|what|when|where|whether|which"
@@ -996,15 +998,30 @@ def generate_variants(
     ]
 
 
+# Lower case only: a cut that ends on a surname ("An") or a state ("IN") keeps it.
+_DANGLING_WORDS = frozenset("of in on for with and or to at from by the a an as that which such".split())
+_STEM_JOINERS = frozenset({"and", "or", "to", "&"})
+
+
 def _cap_subject(s: str, limit: int = 72) -> str:
     """Trim a subject line's visible text to a word boundary under `limit` so it
-    isn't cut mid-word in inbox previews (the AI path enforces ~75)."""
+    isn't cut mid-word in inbox previews (the AI path enforces ~75), nor left on
+    what needs the next word: "… diseases of the", "ground- and", "Particle /"."""
     prefix = "Subject: "
     body = s[len(prefix):] if s.startswith(prefix) else s
     if len(body) <= limit:
         return s
-    trimmed = body[:limit].rsplit(" ", 1)[0].rstrip(" ,—-")
-    return prefix + trimmed
+    following = body.split(" ")
+    words = body[:limit].rsplit(" ", 1)[0].split(" ")
+    while len(words) > 1:
+        last = words[-1].rstrip(",;:")
+        # "ground- and surface water": a stem waiting for the word after the
+        # "and". "Imaging- Instrumentation" uses the hyphen as a dash.
+        stem = last.endswith("-") and (words[-1].endswith("-,") or following[len(words)] in _STEM_JOINERS)
+        if last not in _DANGLING_WORDS and not stem and any(c.isalnum() for c in last):
+            break
+        words.pop()
+    return prefix + " ".join(words).rstrip(" ,—-:;(/")
 
 
 def _contact_details(p: dict) -> str:

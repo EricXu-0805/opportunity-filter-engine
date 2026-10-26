@@ -180,14 +180,15 @@ def fetch_carle() -> list[dict]:
         )
         url = CARLE_PROFILE.format(netid=netid) if netid else CARLE_URL
         prof = _fetch_soup(url) if netid else None
-        kws = (_labeled_phrases(prof) if prof else []) or list(CARLE_CFG["keywords"])
+        stated = _labeled_phrases(prof) if prof else []
+        kws = stated or list(CARLE_CFG["keywords"])
         rec = normalize_faculty(
             {
                 "name": name,
                 "email": email,
                 "url": url,
                 "title": title_el.get_text(strip=True) if title_el else "",
-                "research_areas": "; ".join(kws),
+                "research_areas": "; ".join(stated),
             },
             CARLE_CFG,
             keywords=kws,
@@ -221,10 +222,11 @@ def fetch_law() -> list[dict]:
             continue
         prof = _fetch_soup(url)
         email = _first_illinois_email(prof) if prof else ""
-        kws = (_labeled_phrases(prof) if prof else []) or list(LAW_CFG["keywords"])
+        stated = _labeled_phrases(prof) if prof else []
+        kws = stated or list(LAW_CFG["keywords"])
         rec = normalize_faculty(
             {"name": name, "email": email, "url": url,
-             "title": title, "research_areas": "; ".join(kws)},
+             "title": title, "research_areas": "; ".join(stated)},
             LAW_CFG,
             keywords=kws,
         )
@@ -267,7 +269,7 @@ def fetch_ler() -> list[dict]:
         title = _title_lines(prof.select_one("p.profile-header__ranking")) if prof else ""
         rec = normalize_faculty(
             {"name": name, "email": email, "url": url, "title": title,
-             "research_areas": "; ".join(kws)},
+             "research_areas": "; ".join(areas)},
             LER_CFG,
             keywords=kws,
         )
@@ -316,8 +318,7 @@ def _faa_card(card, unit: dict) -> dict | None:
         t = re.split(r"\S+@\S+", t)[0].strip(" |·–-")
         title = t[:80]
     return normalize_faculty(
-        {"name": name, "email": email, "url": url, "title": title,
-         "research_areas": unit["keywords"][0]},
+        {"name": name, "email": email, "url": url, "title": title},
         {"short": unit["short"], "name": unit["name"],
          "majors": unit["majors"], "keywords": unit["keywords"]},
         keywords=list(unit["keywords"]),
@@ -377,8 +378,7 @@ def fetch_media() -> list[dict]:
             # The profile's first paragraph states the title, one role per line.
             title = _directory_role_title(prof.select_one("div.entry-content p.has-medium-font-size")) if prof else None
             rec = normalize_faculty(
-                {"name": name, "email": email, "url": url, "title": title or "",
-                 "research_areas": unit["keywords"][0]},
+                {"name": name, "email": email, "url": url, "title": title or ""},
                 {"short": "Media", "name": unit["name"],
                  "majors": unit["majors"], "keywords": unit["keywords"]},
                 keywords=list(unit["keywords"]),
@@ -399,14 +399,25 @@ VETMED_UNITS = [
      "name": "Department of Veterinary Clinical Medicine",
      "majors": ["Veterinary Medicine", "Animal Sciences", "Biology"],
      "keywords": ["veterinary clinical medicine"]},
+    # id_names: rows stored before 2026-10 under a name that ran the card's
+    # position titles in, on cards that list no degrees.
     {"path": "pathobiology/faculty7",
      "name": "Department of Pathobiology",
      "majors": ["Veterinary Medicine", "Pathobiology", "Microbiology", "Biology"],
-     "keywords": ["pathobiology"]},
+     "keywords": ["pathobiology"],
+     "id_names": {
+         "Alberto Brandariz Nunez": "Alberto Brandariz Nunez Research Assistant Professor",
+         "Bahaa Fadl-Alla": "Bahaa Fadl-Alla Veterinary Research Specialist Instructor",
+         "Di Wu": "Di Wu Lecturer",
+     }},
     {"path": "comparative-biosciences/faculty",
      "name": "Department of Comparative Biosciences",
      "majors": ["Veterinary Medicine", "Comparative Biosciences", "Neuroscience",
-                "Biology"], "keywords": ["comparative biosciences"]},
+                "Biology"], "keywords": ["comparative biosciences"],
+     "id_names": {
+         "Andrea Aguiar": "Andrea Aguiar Research Associate Professor",
+         "Ratnakar Singh": "Ratnakar Singh Research Assistant Professor",
+     }},
 ]
 
 
@@ -417,7 +428,9 @@ def fetch_vetmed() -> list[dict]:
         teasers = soup.select("div.person-teaser") if soup else []
         n0 = len(out)
         for t in teasers:
-            heading = t.get_text(" ", strip=True)
+            # The heading alone: a card that lists no degrees has no dash, and the
+            # teaser's text would run its position titles into the name.
+            heading = (t.select_one("h3.teaser-title") or t).get_text(" ", strip=True)
             parts = re.split(r"[–—]|\s-\s", heading, maxsplit=1)
             name = _clean_name(parts[0])
             if not name:
@@ -431,10 +444,10 @@ def fetch_vetmed() -> list[dict]:
             if url.startswith("/"):
                 url = "https://vetmed.illinois.edu" + url
             rec = normalize_faculty(
-                {"name": name, "email": email, "url": url,
-                 "title": title, "research_areas": unit["keywords"][0]},
+                {"name": name, "email": email, "url": url, "title": title},
                 {"short": "VetMed", "name": unit["name"],
-                 "majors": unit["majors"], "keywords": unit["keywords"]},
+                 "majors": unit["majors"], "keywords": unit["keywords"],
+                 "id_names": unit.get("id_names", {})},
                 keywords=list(unit["keywords"]),
             )
             if rec:

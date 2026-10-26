@@ -674,7 +674,7 @@ describe('OpportunityCard — values we did not read off the page say so', () =>
     expect(screen.queryByText('favorites.keywordsInferred')).toBeNull();
   });
 
-  it("notes a faculty row's topics inferred from a publication record", () => {
+  it("notes a faculty row's topics inferred by our system", () => {
     renderCard({
       ...OPEN, source_type: 'faculty_research', record_kind: 'faculty_contact',
       keywords: ['optics'], keywords_attribution: 'inferred',

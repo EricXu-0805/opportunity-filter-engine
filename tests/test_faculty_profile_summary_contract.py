@@ -137,3 +137,72 @@ def test_a_redacted_field_withdraws_the_fields_even_beside_a_clean_description()
     projected = project_public_opportunity_payload(payload, record)
     assert projected['description_clean'] == 'Faculty research profile for Jane Doe.'
     assert projected['faculty_profile_summary'] is None
+
+
+@pytest.mark.parametrize('method', ['derived:openalex_topics', 'tag:department_field'])
+def test_keywords_we_inferred_are_not_said_as_research_areas(method):
+    """With no stated research text the sentence fell back to the keywords,
+    stamp or not: topics matched from an OpenAlex author record and a
+    department's field read as what the professor works on (M154)."""
+    record = {'source_type': 'faculty_research', 'pi_name': 'Jane Doe', 'department': 'Department of Physics',
+              'keywords': ['physics'], 'metadata': {'inferred_fields': {'keywords': method}}}
+    assert faculty_profile_summary_fields(record)['research_areas'] is None
+    assert 'Research areas' not in _faculty_profile_summary(record)
+    stated = {**record, 'metadata': {}}
+    assert faculty_profile_summary_fields(stated)['research_areas'] == 'physics'
+
+
+def test_the_description_says_the_first_six_keywords():
+    record = {'source_type': 'faculty_research', 'pi_name': 'Jane Doe', 'department': 'Department of Biology',
+              'keywords': [f'topic {i}' for i in range(8)], 'metadata': {}}
+    assert faculty_profile_summary_fields(record)['research_areas'] == ', '.join(f'topic {i}' for i in range(6))
+
+
+@pytest.mark.parametrize('method', ['derived:openalex_topics', 'tag:department_field'])
+@pytest.mark.parametrize('keywords,metadata', [
+    (['crispr', 'dna repair'], {}),
+    # The description says stated research text, never the keywords beside it.
+    (['crispr', 'dna repair'], {'research_areas_raw': 'genome editing in plants'}),
+    # It said the first six keywords, cut at 300 characters.
+    ([f'kwalpha{i}' for i in range(8)], {}),
+    ([' '.join(f'w{i}x{j}' for j in range(12)) for i in range(6)], {}),
+], ids=['keywords', 'stated-text', 'eight-keywords', 'over-300-characters'])
+def test_the_ranker_still_counts_the_keywords_the_description_leaves_out(method, keywords, metadata):
+    """The similarity text and the TF-IDF fit read the description. Leaving
+    our keywords out of both cost CRISPR, EEG and microtubule their place among
+    the 5,000 terms the vocabulary keeps; a stamp changes what the description
+    says, not the words the ranker counts."""
+    import re
+    from collections import Counter
+
+    from backend.data_loader import _opportunity_corpus_text
+    from src.evidence import neutralize_unverified_faculty_claims
+    from src.matcher.ranker import _similarity_corpus
+
+    def served(extra):
+        return neutralize_unverified_faculty_claims({
+            'id': 'faculty-m154', 'source_type': 'faculty_research', 'pi_name': 'Jane Doe',
+            'department': 'Department of Biology', 'organization': 'Test University',
+            'keywords': list(keywords), 'metadata': {**metadata, **extra}})
+
+    ours, stated = served({'inferred_fields': {'keywords': method}}), served({})
+    for text in (_similarity_corpus, _opportunity_corpus_text):
+        ours_words = Counter(re.findall(r'\w+', text(ours).lower()))
+        stated_words = Counter(re.findall(r'\w+', text(stated).lower()))
+        sentence = Counter() if metadata else Counter(['research', 'areas'])
+        assert stated_words - ours_words == sentence
+        assert not ours_words - stated_words
+
+
+def test_the_loader_stamps_a_department_field_before_it_rewrites_the_description():
+    from backend.data_loader import _sanitize_opportunity
+    from src.evidence import DEPARTMENT_FIELD_METHOD, inferred_method
+
+    record = {'id': 'faculty-physics-m154', 'source': 'uiuc_faculty', 'source_type': 'faculty_research',
+              'pi_name': 'Jane Doe', 'department': 'Department of Physics', 'keywords': ['physics'],
+              'description_raw': 'Faculty research profile for Jane Doe. Research areas: physics',
+              'metadata': {'is_active': True, 'research_areas_raw': ''}}
+    served = _sanitize_opportunity(record)
+    assert inferred_method(served, 'keywords') == DEPARTMENT_FIELD_METHOD
+    assert 'Research areas' not in served['description_raw']
+    assert 'physics' not in served['description_clean']

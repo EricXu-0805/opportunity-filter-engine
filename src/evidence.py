@@ -236,6 +236,13 @@ def is_inferred(record: dict, field: str) -> bool:
     return inferred_method(record, field) is not None
 
 
+# A faculty row's keywords that are only its department's field, the words a
+# UIUC or Berkeley collector writes when the profile states no research
+# (`src.collectors.uiuc_faculty.stamp_department_field_keywords`, at load): a
+# tag from our config, read off no page.
+DEPARTMENT_FIELD_METHOD = "tag:department_field"
+
+
 def is_read_off_the_page(record: dict, field: str) -> bool:
     """True when ``field`` was inferred by reading the source text.
 
@@ -1285,11 +1292,10 @@ def faculty_profile_summary_fields(record: dict) -> dict:
     metadata = record.get("metadata") or {}
     research_areas = metadata.get("research_areas_raw")
     if not isinstance(research_areas, str) or not research_areas.strip():
-        research_areas = ", ".join(
-            value.strip()
-            for value in (record.get("keywords") or [])[:6]
-            if isinstance(value, str) and value.strip()
-        )
+        # Keywords say what the professor works on only when they are the
+        # page's own: topics matched from an OpenAlex author record or a
+        # department tag are ours, and the detail page shows them as such.
+        research_areas = _summary_keywords(record) if keywords_are_source_topics(record) else ""
     availability = faculty_availability_status(record)
     return {
         "version": 1,
@@ -1299,6 +1305,32 @@ def faculty_profile_summary_fields(record: dict) -> dict:
         "research_areas": research_areas.strip()[:300] or None,
         "availability": availability if availability in FACULTY_PROFILE_CLOSINGS else "unknown",
     }
+
+
+def _summary_keywords(record: dict) -> str:
+    return ", ".join(
+        value.strip()
+        for value in (record.get("keywords") or [])[:6]
+        if isinstance(value, str) and value.strip()
+    )
+
+
+def faculty_summary_inferred_keywords(record: dict) -> str:
+    """The keywords a faculty description leaves out because we inferred them,
+    as it would say them: a profile that states no research areas, with an
+    OpenAlex match or a department tag for keywords.
+
+    The ranker reads them where the description said them before M154, in its
+    similarity text and its TF-IDF fit. Taken out of both, they cost CRISPR,
+    EEG and microtubule their place among the 5,000 terms the vocabulary keeps,
+    for every student. Whether our own topics should weigh less is M155's to
+    measure, not a side effect of what the description says.
+    """
+    research_areas = (record.get("metadata") or {}).get("research_areas_raw")
+    if (not faculty_contact_claims_unverified(record) or keywords_are_source_topics(record)
+            or (isinstance(research_areas, str) and research_areas.strip())):
+        return ""
+    return _summary_keywords(record).strip()[:300]
 
 
 def render_faculty_profile_summary(fields: dict) -> str:

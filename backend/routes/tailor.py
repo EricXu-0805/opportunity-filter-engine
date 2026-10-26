@@ -280,13 +280,14 @@ def _keywords_line(opp: dict, value: str) -> str:
     """The keywords line for a prompt, labelled by where the list came from.
 
     8,858 records carry keywords derived from the professor's OpenAlex topic
-    clusters rather than anything the lab wrote. Those are broad field labels
-    ("planetary science and exploration") that the model will happily steer a
+    clusters rather than anything the lab wrote, and about 1,400 carry only
+    their department's field. Those are broad field labels ("planetary science
+    and exploration", "political science") that the model will happily steer a
     resume rewrite toward, which is the same failure ``_skills_line`` guards
     against one line below. Same wording the detail page uses for the stamp.
     """
     if is_inferred(opp, "keywords"):
-        return f"- Research topics inferred from the professor's publications (not stated by the lab): {value}\n"
+        return f"- Research topics inferred by our system (not stated by the professor or lab): {value}\n"
     return f"- Keywords: {value}\n"
 
 

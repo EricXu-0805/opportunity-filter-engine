@@ -36,6 +36,7 @@ from src.collectors import pi_enricher, ucb_campus, ucb_common, ucb_sources
 from src.collectors import uiuc_sro as sro
 from src.collectors.base import RawOpportunity
 from src.collectors.simplify_internships import normalize_listing as simplify_listing
+from src.collectors.uiuc_faculty import stamp_department_field_keywords
 from src.contact_instructions import CAPTURE_KEY
 from src.evidence import (
     CONFIGURED_FACT_PATHS,
@@ -65,6 +66,7 @@ _CASES = dict(CASES)
 def _served(record: dict) -> tuple[dict, dict]:
     """(public payload, canonical) exactly as the detail route builds them."""
     canonical = copy.deepcopy(record)
+    stamp_department_field_keywords(canonical)
     neutralize_unverified_faculty_claims(canonical)
     stamp_collector_templates(canonical)
     return _redact(canonical), canonical
@@ -593,6 +595,33 @@ class TestApiAndFrontendAgree:
         assert (payload.get("keywords_attribution") == "inferred") is topics_inferred
         assert (payload.get("majors_attribution") == "inferred") is (majors is not None)
         assert (payload.get("majors_basis") == "configured") is (majors is not None and majors["basis"] == "configured")
+
+    @pytest.mark.parametrize("source,department,word", [
+        ("uiuc_faculty", "Department of Physics", "physics"),
+        ("uiuc_faculty", "College of Law", "law"),
+        ("ucb_ib_faculty", "Department of Integrative Biology", "integrative biology"),
+    ])
+    def test_a_department_field_on_a_silent_profile_is_our_tag(self, source, department, word):
+        # M154: a profile that states no research gets its department's field
+        # as keywords; the facts showed that word as the professor's own
+        # research, dated as if read off the page.
+        record = {**_CASES["faculty_profile"], "source": source, "department": department, "keywords": [word],
+                  "metadata": {"is_active": True, "last_verified": "2026-10-05T00:00:00"}}
+        payload, canonical = _served(record)
+        research = build_detail_fields(payload, canonical)["fields"]["research_content"]
+        assert research["explicit"] == {}
+        assert research["inferred"]["research_areas"] == {"value": [word], "basis": "system_tag"}
+        assert research["provenance"]["observed_at"] is None
+        assert payload["keywords_attribution"] == "inferred"
+
+    def test_stated_research_beside_a_department_field_keeps_both_apart(self):
+        record = {**_CASES["faculty_profile"], "source": "uiuc_faculty", "department": "Department of Physics",
+                  "keywords": ["physics"],
+                  "metadata": {"is_active": True, "last_verified": "2026-10-05T00:00:00",
+                               "research_areas_raw": "Ultracold atoms; quantum simulation"}}
+        research = _fields(record)["research_content"]
+        assert research["explicit"]["research_areas"] == "Ultracold atoms; quantum simulation"
+        assert research["inferred"]["research_areas"] == {"value": ["physics"], "basis": "system_tag"}
 
     def test_a_campus_collectors_own_tags_are_flagged_though_the_facts_drop_them(self):
         # The facts leave out the source-type tags a campus collector appends

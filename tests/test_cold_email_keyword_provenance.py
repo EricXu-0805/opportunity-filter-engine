@@ -114,6 +114,29 @@ def test_a_stamped_faculty_row_stays_excluded():
     assert all(keyword not in surfaces for keyword in KEYWORDS)
 
 
+def test_a_department_field_the_loader_tags_is_not_their_work_in_the_email():
+    """A UIUC profile that states no research keeps its department's field as
+    keywords; the loader stamps it ours (M154), so the email no longer says it
+    is what the professor works on."""
+    from copy import deepcopy
+
+    from backend.data_loader import _sanitize_opportunity
+
+    row = {"id": "faculty-law-m154", "source": "uiuc_faculty", "source_type": "faculty_research",
+           "opportunity_type": "research", "organization": "Test University", "department": "College of Law",
+           "pi_name": "Pat Lee", "keywords": ["law and society"], "eligibility": {}, "application": {},
+           "metadata": {"is_active": True}}
+    stated = deepcopy(row)
+    row["keywords"] = ["law"]
+    served = _sanitize_opportunity(row)
+    assert keywords_basis(served) is not None
+    assert _stated_keywords(served) == []
+    assert _brief_keywords(project_public_detail(served)) == []
+    assert "your work on law" not in _email_surfaces(served)
+    # The same row with a topic the page stated still names it.
+    assert "your work on law and society" in _email_surfaces(_sanitize_opportunity(stated))
+
+
 @pytest.mark.parametrize("opp", [
     *(_record(*value) for value in OUR_TAGS.values()),
     _record("illinois_research_programs", "campus_program", discovered=True),

@@ -140,6 +140,8 @@ def test_carle_parses_listing_and_enriches_from_profile(monkeypatch):
     assert recs[0]["department"] == "Carle Illinois College of Medicine"
     assert "Soft Matter Tribology" in recs[0]["keywords"]   # enriched from profile
     assert recs[1]["keywords"] == ["biomedical sciences"]   # no RI section -> broad
+    # The broad field stands in for keywords only; the page stated no areas.
+    assert [r["metadata"]["research_areas_raw"] for r in recs] == ["Soft Matter Tribology; Wear of Materials", ""]
 
 
 def test_law_dedups_by_profile_url_and_enriches_email_and_areas(monkeypatch):
@@ -154,6 +156,8 @@ def test_law_dedups_by_profile_url_and_enriches_email_and_areas(monkeypatch):
     assert recs[0]["contact_email"] == "jdoe@illinois.edu"
     assert "Constitutional Law" in recs[0]["keywords"]      # enriched from Areas of Expertise
     assert recs[1]["keywords"] == ["law"]                   # no expertise section -> broad
+    assert "Constitutional Law" in recs[0]["metadata"]["research_areas_raw"]
+    assert recs[1]["metadata"]["research_areas_raw"] == ""
 
 
 def test_ler_reverses_name_and_extracts_keywords(monkeypatch):
@@ -165,6 +169,15 @@ def test_ler_reverses_name_and_extracts_keywords(monkeypatch):
     assert recs[0]["pi_name"] == "Leo Alexander"  # "Alexander, Leo" reversed
     assert recs[0]["contact_email"] == "leoa2@illinois.edu"
     assert "Employee recruitment and selection" in recs[0]["keywords"]
+    assert recs[0]["metadata"]["research_areas_raw"].startswith("Employee recruitment and selection")
+
+
+def test_ler_profile_without_interests_states_no_research_areas(monkeypatch):
+    monkeypatch.setattr(h, "_fetch_soup", lambda url: _soup(LER_LISTING) if url == h.LER_URL else _soup("<p>Bio</p>"))
+    monkeypatch.setattr(h.time, "sleep", lambda *a: None)
+    recs = h.fetch_ler()
+    assert {tuple(r["keywords"]) for r in recs} == {tuple(h.LER_CFG["keywords"])}
+    assert {r["metadata"]["research_areas_raw"] for r in recs} == {""}
 
 
 def test_ler_relative_links_made_absolute(monkeypatch):
@@ -203,6 +216,8 @@ def test_faa_card_parses_name_title_email_and_paginates(monkeypatch):
     assert music[0]["pi_name"] == "Andrew Anderson"
     assert music[0]["contact_email"] == "bassist@illinois.edu"
     assert "Double Bass" in music[0]["metadata"]["faculty_title"]
+    # No profile is read: the unit's field is a keyword, never stated research.
+    assert (music[0]["keywords"], music[0]["metadata"]["research_areas_raw"]) == (["music"], "")
     assert any(u.endswith("page/2/") for u in calls)  # paginated past page 1
 
 
@@ -228,10 +243,12 @@ VETMED_LISTING = """
 def test_vetmed_extracts_img_email_and_reads_each_position_title_not_the_degrees(monkeypatch):
     monkeypatch.setattr(h, "_fetch_soup", lambda url: _soup(VETMED_LISTING))
     recs = h.fetch_vetmed()[:3]
-    assert recs[0]["pi_name"] == "Avery Example"
+    # A card that lists no degrees has no dash; its titles stay out of the name.
+    assert [r["pi_name"] for r in recs] == ["Avery Example", "Blair Sample", "Casey Placeholder"]
     assert recs[0]["contact_email"] == "person1@illinois.edu"
     assert recs[0]["url"].startswith("https://vetmed.illinois.edu/profile?id=")
     titles = [r["metadata"]["faculty_title"] for r in recs]
+    assert {r["metadata"]["research_areas_raw"] for r in recs} == {""}
     # No dash: the card's title was never read and fell to "Professor".
     assert titles == ["Example Director, Example Clinic; Clinical Assistant Professor",
                       "Research Assistant Professor", ""]
@@ -252,6 +269,7 @@ def test_media_enriches_email_from_profile(monkeypatch):
     chambers = [r for r in recs if r["pi_name"] == "Jason P. Chambers"]
     assert chambers and chambers[0]["contact_email"] == "jpchambe@illinois.edu"
     assert chambers[0]["department"] == "Department of Advertising"
+    assert chambers[0]["metadata"]["research_areas_raw"] == ""
 
 
 # --- M149b: each collector reads the title its card or the profile it already
@@ -341,6 +359,27 @@ def test_ler_and_media_rows_whose_profile_cannot_be_read_get_no_title(monkeypatc
     assert {r["metadata"]["faculty_title"] for r in h.fetch_ler()} == {""}
     monkeypatch.setattr(h, "_fetch_soup", lambda url: _soup(MEDIA_SYNTHETIC_LISTING) if "-faculty/" in url else None)
     assert {r["metadata"]["faculty_title"] for r in h.fetch_media()} == {""}
+
+
+def test_vetmed_cards_read_by_name_keep_the_ids_stored_under_their_old_names(monkeypatch):
+    """The rows stored before 2026-10 under names that ran a degree-less card's
+    titles in keep their ids (id_names), so they update in place."""
+    listing = "".join(
+        f'<div class="person-teaser"><div class="basic-info"><a href="/profile?id=p{i}">'
+        f'<h3 class="teaser-title">{name}</h3></a><p class="position-title">Lecturer</p></div></div>'
+        for i, name in enumerate(n for unit in h.VETMED_UNITS for n in unit.get("id_names", {})))
+    monkeypatch.setattr(h, "_fetch_soup", lambda url: _soup(listing))
+    recs = [r for r in h.fetch_vetmed() if r["department"] != "Department of Veterinary Clinical Medicine"]
+    stored = {"faculty-vetmed-9f938cee": "Department of Pathobiology",
+              "faculty-vetmed-f3ffd4f2": "Department of Pathobiology",
+              "faculty-vetmed-64ace40c": "Department of Pathobiology",
+              "faculty-vetmed-8164f832": "Department of Comparative Biosciences",
+              "faculty-vetmed-d3591cd7": "Department of Comparative Biosciences"}
+    by_unit = {u["name"]: set(u.get("id_names", {})) for u in h.VETMED_UNITS}
+    assert {r["id"]: r["department"] for r in recs if r["pi_name"] in by_unit[r["department"]]} == stored
+    assert all(" Lecturer" not in r["pi_name"] for r in recs)
+    # Each stored name is the person's own, with the titles the old read ran in.
+    assert all(old.startswith(f"{name} ") for u in h.VETMED_UNITS for name, old in u.get("id_names", {}).items())
 
 
 def test_a_vetmed_name_with_a_hyphen_is_split_only_at_the_spaced_dash(monkeypatch):

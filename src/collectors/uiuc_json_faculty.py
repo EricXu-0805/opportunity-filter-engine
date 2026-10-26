@@ -147,7 +147,8 @@ def _normalize_wigg(person: dict, short: str, dept: str, majors: list[str]) -> d
             "email": (person.get("email") or "").strip(),
             "url": person.get("profileUrl") or "",
             "title": (person.get("primaryTitle") or "").strip(),
-            "research_areas": "; ".join(kws),
+            # The broad field stands in for keywords, never for stated areas.
+            "research_areas": "" if kws == [broad] else "; ".join(kws),
         },
         {"short": short, "name": dept, "majors": majors, "keywords": [broad]},
         keywords=kws,
@@ -222,14 +223,15 @@ def fetch_gies() -> list[dict]:
         dept, broad, majors = _GIES_DEPTS.get(item.get("department"), _GIES_FALLBACK)
         url = item.get("externalurlwithpath") or ""
         prof = _fetch_soup(url) if url else None
-        kws = (_labeled_phrases(prof, split_commas=True) if prof else []) or [broad]
+        stated = _labeled_phrases(prof, split_commas=True) if prof else []
+        kws = stated or [broad]
         rec = normalize_faculty(
             {
                 "name": item["fullnamefirst"].strip(),
                 "email": (item.get("email") or "").strip(),
                 "url": url,
                 "title": (item.get("title") or "").strip(),
-                "research_areas": "; ".join(kws),
+                "research_areas": "; ".join(stated),
             },
             {"short": "Gies", "name": dept, "majors": majors, "keywords": [broad]},
             keywords=kws,

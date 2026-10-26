@@ -148,6 +148,7 @@ _STAMP_PREFIX_BASIS = {
     "estimate": BASIS_ESTIMATE,
     "policy": BASIS_PROGRAM_POLICY,
     "default": BASIS_COLLECTOR_DEFAULT,
+    "tag": BASIS_SYSTEM_TAG,
 }
 
 STATE_SOURCE = "source"

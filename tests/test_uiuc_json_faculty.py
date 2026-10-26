@@ -67,6 +67,14 @@ def test_wigg_keeps_only_faculty_job_type(monkeypatch):
     assert recs[0]["contact_email"] == "jprof@illinois.edu"
 
 
+def test_wigg_faculty_with_no_api_keywords_state_no_research_areas(monkeypatch):
+    payload = {"people": [_wigg_person("Quiet Prof", "qp@illinois.edu", "Faculty",
+                                       "Department of Health and Kinesiology", [])]}
+    monkeypatch.setattr(j, "_fetch_json", lambda url: payload)
+    rec = j.fetch_ahs()[0]
+    assert (rec["keywords"], rec["metadata"]["research_areas_raw"]) == (["health and kinesiology"], "")
+
+
 def test_ahs_routes_office_to_academic_department():
     assert j._ahs_dept_and_majors("Department of Health and Kinesiology")[0] == \
         "Department of Health and Kinesiology"
@@ -165,6 +173,9 @@ def test_gies_enriches_from_profile_research_interests(monkeypatch):
     assert ops["keywords"] == ["Machine learning", "optimization", "Supply chain management"]
     bare = next(r for r in recs if r["pi_name"] == "Bare Prof")
     assert bare["keywords"] == ["finance"]  # no Research Interests -> dept broad field
+    # The broad field stands in for keywords only; the profile stated no areas.
+    assert ops["metadata"]["research_areas_raw"] == "Machine learning; optimization; Supply chain management"
+    assert bare["metadata"]["research_areas_raw"] == ""
 
 
 def test_normalized_record_uses_api_keywords_not_scrape(monkeypatch):
@@ -179,6 +190,7 @@ def test_normalized_record_uses_api_keywords_not_scrape(monkeypatch):
     rec = j.fetch_ahs()[0]
     assert "Vocal Fatigue" in rec["keywords"]
     assert rec["department"] == "Department of Speech and Hearing Science"
+    assert rec["metadata"]["research_areas_raw"] == "Vocal Fatigue; Room Acoustics"
     # Department routing remains a research-topic signal; it is not evidence
     # that a currently available opening has declared eligible majors.
     assert rec["eligibility"]["majors"] == []

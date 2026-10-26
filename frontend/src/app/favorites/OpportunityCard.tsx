@@ -384,8 +384,8 @@ export function OpportunityCard({
                       <span key={kw} className="px-2 py-0.5 rounded-md bg-gray-100 text-[11px] text-gray-600">{kw}</span>
                     ))}
                     {/* A faculty row's inferred topics come from a matched
-                        publication record; a listing's from our keyword bank,
-                        category map or listing config, not a publication. */}
+                        publication record or a department tag; a listing's
+                        from our keyword bank, category map or listing config. */}
                     {opp.keywords_attribution === 'inferred' && (
                       <span className="w-full text-[11px] text-gray-500">
                         {t(isFaculty ? 'favorites.keywordsInferred' : 'favorites.keywordsInferredListing')}

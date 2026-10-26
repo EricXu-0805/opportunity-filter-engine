@@ -1096,6 +1096,34 @@ def test_topics_we_guessed_are_never_stated_as_this_professors_own_work():
     assert ours.final_score == stated.final_score
     assert ours.reasons_fit
 
+
+def test_a_department_field_the_loader_tags_is_never_called_their_work():
+    """A UIUC profile that states no research keeps its department's field as
+    keywords so the row has a topic; the loader stamps it ours (M154) and the
+    reasons stop saying the professor works on it."""
+    served = data_loader._sanitize_opportunity({
+        "id": "faculty-physics-m154", "source": "uiuc_faculty", "source_type": "faculty_research",
+        "organization": "Test University", "department": "Department of Physics", "pi_name": "Avery Example",
+        "opportunity_type": "research", "keywords": ["physics"], "eligibility": {},
+        "metadata": {"is_active": True, "faculty_title": "Professor"},
+    })
+    profile = {
+        "major": "Physics", "grade": "Sophomore", "seeking_type": ["research"],
+        "hard_skills": [], "coursework": [], "experience_level": "none",
+        "resume_ready": True, "can_cold_email": True,
+        "research_interests_text": "physics", "desired_fields": ["physics"], "home_school": "testu",
+    }
+
+    def claims_their_work(reasons):
+        return [r for r in reasons if "work on physics" in r or "(Department of Physics) —" in r]
+
+    ours = rank_opportunity(profile, served, precomputed_sim=0.5)
+    assert ours.reasons_fit
+    assert not claims_their_work(ours.reasons_fit), ours.reasons_fit
+    unstamped = deepcopy(served)
+    unstamped["metadata"].pop("inferred_fields")
+    assert claims_their_work(rank_opportunity(profile, unstamped, precomputed_sim=0.5).reasons_fit)
+
 def _bare_faculty():
     """A faculty record with nothing but the summary WE generate — 50.7% of
     faculty rows carry neither keywords nor research_areas_raw."""

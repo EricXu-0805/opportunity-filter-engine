@@ -349,8 +349,9 @@ export function KeywordsSection({ opp, t }: { opp: Opportunity; t: TFunc }) {
   // Checked for 'inferred', never for absence: a record that never went
   // through enrichment carries nothing here and is stated by default.
   const inferred = opp.keywords_attribution === 'inferred';
-  // A faculty row's inferred topics come from a matched publication record; a
-  // listing's from our keyword bank, category map or listing config.
+  // A faculty row's inferred topics come from a matched publication record or
+  // a department tag; a listing's from our keyword bank, category map or
+  // listing config.
   const note = opportunityRecordKind(opp) === 'faculty_contact' ? 'detail.keywordsInferred' : 'detail.keywordsInferredListing';
   return (
     <Section title={t('detail.sections.keywords')}>
