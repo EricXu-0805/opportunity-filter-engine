@@ -370,11 +370,16 @@ def test_vetmed_cards_read_by_name_keep_the_ids_stored_under_their_old_names(mon
         for i, name in enumerate(n for unit in h.VETMED_UNITS for n in unit.get("id_names", {})))
     monkeypatch.setattr(h, "_fetch_soup", lambda url: _soup(listing))
     recs = [r for r in h.fetch_vetmed() if r["department"] != "Department of Veterinary Clinical Medicine"]
-    stored = {"faculty-vetmed-9f938cee", "faculty-vetmed-f3ffd4f2", "faculty-vetmed-64ace40c",
-              "faculty-vetmed-8164f832", "faculty-vetmed-d3591cd7"}
+    stored = {"faculty-vetmed-9f938cee": "Department of Pathobiology",
+              "faculty-vetmed-f3ffd4f2": "Department of Pathobiology",
+              "faculty-vetmed-64ace40c": "Department of Pathobiology",
+              "faculty-vetmed-8164f832": "Department of Comparative Biosciences",
+              "faculty-vetmed-d3591cd7": "Department of Comparative Biosciences"}
     by_unit = {u["name"]: set(u.get("id_names", {})) for u in h.VETMED_UNITS}
-    assert {r["id"] for r in recs if r["pi_name"] in by_unit[r["department"]]} == stored
+    assert {r["id"]: r["department"] for r in recs if r["pi_name"] in by_unit[r["department"]]} == stored
     assert all(" Lecturer" not in r["pi_name"] for r in recs)
+    # Each stored name is the person's own, with the titles the old read ran in.
+    assert all(old.startswith(f"{name} ") for u in h.VETMED_UNITS for name, old in u.get("id_names", {}).items())
 
 
 def test_a_vetmed_name_with_a_hyphen_is_split_only_at_the_spaced_dash(monkeypatch):
