@@ -54,6 +54,13 @@ describe('match reasons on the zh interface (M107)', () => {
     for (const c of CASES.filter((x) => x.english.includes('by our reading of the page'))) {
       expect(zh(c)).toContain('我们对页面的理解');
     }
+    // Topics we inferred stay ours, and unconfirmed where the English says so (M155).
+    const inferred = CASES.filter((x) => x.english.includes('topics we inferred'));
+    expect(inferred.length).toBeGreaterThanOrEqual(2);
+    for (const c of inferred) {
+      expect(zh(c)).toMatch(/我们.*推断/);
+      if (c.english.includes('not confirmed on their page')) expect(zh(c)).toContain('对方页面未确认');
+    }
     // "may" / "suggests" / "Potential" never become a plain statement.
     for (const key of [
       'year_may_fit', 'major_field_may_fit', 'major_field_may_relate', 'major_may_fit', 'major_may_relate',

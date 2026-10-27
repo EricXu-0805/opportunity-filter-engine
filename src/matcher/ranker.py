@@ -2403,7 +2403,9 @@ def score_upside(
     keyword_score = 25.0
     opp_keywords = st.kw_set
     desired = set(f.lower() for f in profile.get("desired_fields", []))
-    interest_reason = ""
+    # (line, the chips it names): the chips the row's own words name, then
+    # the ones that rest only on keywords that are ours (M155).
+    interest_lines: list[tuple[str, list[str]]] = []
     interest_overlap: set[str] = set()
     if opp_keywords and desired:
         interest_overlap = (
@@ -2412,11 +2414,14 @@ def score_upside(
         )
         if interest_overlap:
             keyword_score = min(100.0, 50.0 + len(interest_overlap) * 25)
-            interest_reason = (
-                f"Matches your interests: {', '.join(sorted(interest_overlap))}"
-                f"{_OUR_TOPICS if st.topics_ours else ''}"
-            )
-            reasons_fit.append(interest_reason)
+            terms = sorted(interest_overlap)
+            ours = [t for t in terms if st.topics_ours and not _word_re(t).search(st.own_words)]
+            stated = [t for t in terms if t not in ours]
+            if stated:
+                interest_lines.append((f"Matches your interests: {', '.join(stated)}", stated))
+            if ours:
+                interest_lines.append((f"Matches your interests: {', '.join(ours)}{_OUR_TOPICS}", ours))
+            reasons_fit.extend(line for line, _ in interest_lines)
 
     # Implicit major→topic steer: lifts the 25.0 baseline tier for a student who
     # gave no explicit interests, so changing major actually reorders results.
@@ -2491,9 +2496,10 @@ def score_upside(
             # since the bare reason still names keywords the similarity reason
             # doesn't. A line with no display_kw names no topic, so a chip that
             # is only inside its wording ("cs" in "topics") is no repetition.
-            if interest_reason and display_kw and len(reasons_fit) > pre_sim_len:
-                if all(kw in reasons_fit[-1] for kw in interest_overlap):
-                    reasons_fit.remove(interest_reason)
+            if interest_lines and display_kw and len(reasons_fit) > pre_sim_len:
+                for line, terms in interest_lines:
+                    if all(kw in reasons_fit[-1] for kw in terms):
+                        reasons_fit.remove(line)
 
     has_skill_signal = st.has_skill_signal
     if opportunity.get("source_type") == "faculty_research":
@@ -3012,6 +3018,9 @@ class _OppStatic:
     kw_inferred: bool
     # The detail page shows these keywords as ours, not the source's topics.
     topics_ours: bool
+    # When topics_ours: the row's own words, lower-cased (its title and the
+    # research text the detail page shows as the source's); else "".
+    own_words: str
     ov_kws: tuple[str, ...]
     ov_set: frozenset[str]
     ov_canon: frozenset[str]
@@ -3065,6 +3074,18 @@ def _cut_name(text: str, name: str) -> str:
     return "".join(pieces)
 
 
+def _own_words(opp: dict) -> str:
+    """A row's title and the research text the detail page shows as the
+    source's (``_research_content`` in backend/lib/opportunity_detail.py),
+    lower-cased."""
+    stated = (opp.get("metadata") or {}).get("research_areas_raw")
+    if not (isinstance(stated, str) and stated.strip()):
+        areas = opp.get("research_areas")
+        stated = areas if isinstance(areas, str) else ", ".join(
+            a for a in (areas if isinstance(areas, list) else []) if isinstance(a, str))
+    return f"{opp.get('title') or ''} {stated}".lower()
+
+
 def _build_opp_static(opp: dict) -> _OppStatic:
     is_faculty_contact = faculty_contact_claims_unverified(opp)
     keywords = opp.get("keywords", []) or []
@@ -3079,6 +3100,7 @@ def _build_opp_static(opp: dict) -> _OppStatic:
         () if kw_inferred
         else tuple(kw for kw in specific_kw if kw not in _ROLE_PROCESS_TOKENS)
     )
+    topics_ours = not keywords_are_source_topics(opp)
 
     # _desired_field_overlap's view of the keywords (stripped, non-empty).
     ov_kws = tuple(k.lower().strip() for k in keywords if k and k.strip())
@@ -3148,7 +3170,8 @@ def _build_opp_static(opp: dict) -> _OppStatic:
         specific_kw=specific_kw,
         display_kw=display_kw,
         kw_inferred=kw_inferred,
-        topics_ours=not keywords_are_source_topics(opp),
+        topics_ours=topics_ours,
+        own_words=_own_words(opp) if topics_ours else "",
         ov_kws=ov_kws,
         ov_set=frozenset(ov_kws),
         ov_canon=ov_canon,
