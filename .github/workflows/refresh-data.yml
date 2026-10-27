@@ -292,9 +292,10 @@ jobs:
         # the weekly broad re-scrape re-fetches the same faculty. uiuc = Monday,
         # so this fires on the first Monday of the month (same cadence as when
         # every deep run was a Monday full run). Folds into the data-refresh PR
-        # below. Polite: ~1s/person, only the broad-only faculty. There were
-        # 7,045 of those on 2026-10-01, 2-4 hours of fetching, so each pass
-        # gets 30 minutes and takes them in a different order every month.
+        # below. Polite: 5 s between lookups (the site's robots.txt crawl
+        # delay), only listed UIUC faculty with no specific keywords: 268 on
+        # 2026-10-27, about 25 minutes. Each pass gets 30 minutes and takes
+        # them in a different order every month.
         if: steps.mode.outputs.deep == 'true'
         run: |
           SHARD="${{ steps.shard.outputs.shard }}"

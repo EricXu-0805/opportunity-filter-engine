@@ -2768,7 +2768,9 @@ def _rebuild_faculty_title_and_desc(opps: list[dict]) -> int:
         name = (o.get("pi_name") or "").strip()
         if not name:
             continue
-        specific = _faculty_specific_keywords(o)
+        # Keywords we inferred (Illinois Experts concepts, M161) are not areas
+        # the profile states, and this text says them as if it did.
+        specific = [] if inferred_method(o, "keywords") else _faculty_specific_keywords(o)
         dept_short = _title_dept_short(o)
         summary = f" ({', '.join(specific[:3])})" if specific else ""
         new_title = (

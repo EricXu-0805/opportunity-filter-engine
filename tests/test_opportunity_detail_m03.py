@@ -614,6 +614,22 @@ class TestApiAndFrontendAgree:
         assert research["provenance"]["observed_at"] is None
         assert payload["keywords_attribution"] == "inferred"
 
+    def test_illinois_experts_concepts_are_an_external_inference(self):
+        # M161: Elsevier's concepts from a person's papers were shown as the
+        # profile's own research, dated as if read off the page.
+        from src.collectors.uiuc_experts import CONCEPTS_METHOD
+
+        record = {**_CASES["faculty_profile"], "source": "uiuc_faculty", "department": "Department of Animal Sciences",
+                  "keywords": ["Oviduct", "Porcine Sperm"],
+                  "metadata": {"is_active": True, "last_verified": "2026-10-05T00:00:00",
+                               "inferred_fields": {"keywords": CONCEPTS_METHOD}}}
+        payload, canonical = _served(record)
+        research = build_detail_fields(payload, canonical)["fields"]["research_content"]
+        assert research["explicit"] == {}
+        assert research["inferred"]["research_areas"] == {"value": ["Oviduct", "Porcine Sperm"],
+                                                          "basis": "external_enrichment"}
+        assert payload["keywords_attribution"] == "inferred"
+
     def test_stated_research_beside_a_department_field_keeps_both_apart(self):
         record = {**_CASES["faculty_profile"], "source": "uiuc_faculty", "department": "Department of Physics",
                   "keywords": ["physics"],
