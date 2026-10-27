@@ -10,7 +10,7 @@ exposes no per-faculty research areas — can be lifted off the bare department
 field that otherwise makes a whole department rank identically.
 
 Only UIUC rows are looked up, and a page counts only when it agrees with the
-row: on the address when both have one, else on the unit and the full name. The
+row: on the address when the row has one, else on the unit and the full name. The
 slug is ``first-last`` and Pure redirects a bare slug to whichever namesake
 holds it as an alias, so a name match alone gave a NRES professor a business
 professor's concepts, and a department-only target list gave a University of
@@ -28,7 +28,6 @@ the weekly faculty scrape re-fetches the same person with only the broad field.
 from __future__ import annotations
 
 import base64
-import binascii
 import hashlib
 import logging
 import re
@@ -41,7 +40,8 @@ import requests
 from bs4 import BeautifulSoup
 
 from ..evidence import stamp_inferred
-from .uiuc_faculty import HEADERS, _faculty_specific_keywords, _is_junk_keyword
+from .faculty_graph import _FRAGMENT_LEADIN_RE
+from .uiuc_faculty import _GENERIC_SINGLE_WORDS, HEADERS, _faculty_specific_keywords, _is_junk_keyword
 
 logger = logging.getLogger(__name__)
 
@@ -100,13 +100,15 @@ def _concepts(soup: BeautifulSoup) -> list[str]:
     badge, dropping the thesaurus category + relevance %), top-ranked first.
     Pure lists one concept from several thesauri ("Direct Numerical Simulation",
     "Direct numerical Simulation"); a repeat in another case, a name the corpus
-    gate reads as junk (_is_junk_keyword) and a name with a comma, which every
-    comma-joined list of keywords would read as two, are left out."""
+    gate rejects (junk, a bare generic word such as "Research", a "such as"
+    lead-in) and a name with a comma, which every comma-joined list of keywords
+    would read as two, are left out."""
     out: list[str] = []
     seen: set[str] = set()
     for c in soup.select("button.concept-badge-large span.concept"):
         t = c.get_text(" ", strip=True)
-        if t and "," not in t and t.lower() not in seen and not _is_junk_keyword(t):
+        if (t and "," not in t and t.lower() not in seen and t.lower() not in _GENERIC_SINGLE_WORDS
+                and not _FRAGMENT_LEADIN_RE.match(t) and not _is_junk_keyword(t)):
             seen.add(t.lower())
             out.append(t)
     return out[:8]
@@ -119,7 +121,7 @@ def _page_emails(soup: BeautifulSoup) -> set[str]:
     for a in soup.select("div.rendering_personorganisationcontactrendererportal li.emails a.email"):
         try:
             text = base64.b64decode(a.get("data-md5") or "", validate=True).decode()
-        except (binascii.Error, UnicodeDecodeError):
+        except ValueError:  # bad base64 (binascii.Error), non-ASCII input, or not UTF-8
             continue
         if text.lower().startswith("mailto:"):
             out.add(text[len("mailto:"):].strip().lower())
@@ -141,13 +143,12 @@ def _page_units(soup: BeautifulSoup) -> set[str]:
 
 
 def _same_person(soup: BeautifulSoup, record: dict) -> bool:
-    """Whether the page is this row's person: the same address when both state
-    one; otherwise the row's unit among the page's positions and the row's full
-    first and last name in the page's own name."""
+    """Whether the page is this row's person: the row's address among the
+    page's; for a row with no address, the row's unit among the page's
+    positions and the row's full first and last name in the page's own name."""
     email = (record.get("contact_email") or "").strip().lower()
-    emails = _page_emails(soup)
-    if email and emails:
-        return email in emails
+    if email:
+        return email in _page_emails(soup)
     first, last = _name_parts(record.get("pi_name") or "")
     h1 = soup.select_one("h1")
     page = _deaccent(h1.get_text(" ", strip=True)).lower().split() if h1 else []

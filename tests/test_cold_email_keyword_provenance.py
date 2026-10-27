@@ -137,6 +137,23 @@ def test_a_department_field_the_loader_tags_is_not_their_work_in_the_email():
     assert "your work on law and society" in _email_surfaces(_sanitize_opportunity(stated))
 
 
+def test_illinois_experts_concepts_are_not_their_work_in_the_email():
+    """M161: Elsevier's concepts from a person's papers were the opener's
+    "your work on ..." for 284 UIUC rows; stamped, the email no longer says so."""
+    from backend.data_loader import _sanitize_opportunity
+    from src.collectors.uiuc_experts import CONCEPTS_METHOD
+
+    row = {"id": "faculty-ansc-m161", "source": "uiuc_faculty", "source_type": "faculty_research",
+           "opportunity_type": "research", "organization": "Test University",
+           "department": "Department of Animal Sciences", "pi_name": "Pat Lee",
+           "keywords": ["Porcine Sperm", "Oviduct"], "eligibility": {}, "application": {},
+           "metadata": {"is_active": True, "inferred_fields": {"keywords": CONCEPTS_METHOD}}}
+    served = _sanitize_opportunity(row)
+    assert _stated_keywords(served) == []
+    assert _brief_keywords(project_public_detail(served)) == []
+    assert "porcine sperm" not in _email_surfaces(served)
+
+
 @pytest.mark.parametrize("opp", [
     *(_record(*value) for value in OUR_TAGS.values()),
     _record("illinois_research_programs", "campus_program", discovered=True),

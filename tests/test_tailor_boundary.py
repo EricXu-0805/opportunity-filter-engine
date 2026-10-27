@@ -272,7 +272,7 @@ class TestKeywordsProvenanceReachesThePrompt:
         """Topics matched from publications, or a department's field, are ours."""
         from backend.routes.tailor import _keywords_line
 
-        for method in ("derived:openalex_topics", "tag:department_field"):
+        for method in ("derived:openalex_topics", "tag:department_field", "derived:illinois_experts_concepts"):
             opp = self._opp(True)
             opp["metadata"]["inferred_fields"]["keywords"] = method
             line = _keywords_line(opp, "earthquake and tectonic")

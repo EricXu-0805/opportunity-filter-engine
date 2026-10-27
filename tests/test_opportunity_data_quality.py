@@ -578,6 +578,13 @@ class TestR70ADataQuality:
         ]
         assert not offenders, f"{len(offenders)} faculty carry a bare nav-junk keyword: {offenders[:5]}"
 
+    def test_no_record_carries_a_top_level_research_areas(self):
+        """The old Illinois Experts pass wrote its concepts into a top-level
+        research_areas, which the detail page reads as the profile's own words
+        (M161). Stated research text lives in metadata.research_areas_raw."""
+        offenders = [o.get("id") for o in _load_data() if "research_areas" in o]
+        assert not offenders, f"{len(offenders)} records carry a top-level research_areas: {offenders[:5]}"
+
     def test_no_duplicate_faculty_at_same_url(self):
         """A cross-appointed professor scraped from two department pages shares
         one profile URL — those must be collapsed to a single record so the

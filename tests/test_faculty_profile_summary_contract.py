@@ -139,7 +139,8 @@ def test_a_redacted_field_withdraws_the_fields_even_beside_a_clean_description()
     assert projected['faculty_profile_summary'] is None
 
 
-@pytest.mark.parametrize('method', ['derived:openalex_topics', 'tag:department_field'])
+@pytest.mark.parametrize('method', ['derived:openalex_topics', 'tag:department_field',
+                                    'derived:illinois_experts_concepts'])
 def test_keywords_we_inferred_are_not_said_as_research_areas(method):
     """With no stated research text the sentence fell back to the keywords,
     stamp or not: topics matched from an OpenAlex author record and a
@@ -158,7 +159,8 @@ def test_the_description_says_the_first_six_keywords():
     assert faculty_profile_summary_fields(record)['research_areas'] == ', '.join(f'topic {i}' for i in range(6))
 
 
-@pytest.mark.parametrize('method', ['derived:openalex_topics', 'tag:department_field'])
+@pytest.mark.parametrize('method', ['derived:openalex_topics', 'tag:department_field',
+                                    'derived:illinois_experts_concepts'])
 @pytest.mark.parametrize('keywords,metadata', [
     (['crispr', 'dna repair'], {}),
     # The description says stated research text, never the keywords beside it.

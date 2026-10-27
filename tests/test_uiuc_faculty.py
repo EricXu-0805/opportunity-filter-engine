@@ -1448,6 +1448,23 @@ def test_rebuild_title_keeps_genuine_specific_areas():
     assert "positions in their lab" not in rows[0]["description_raw"]
 
 
+def test_rebuild_does_not_say_inferred_keywords_as_the_profiles_areas():
+    # M161: Illinois Experts concepts are stamped as inferred; the stored
+    # title and description read "Research areas: <concepts>" as stated.
+    rows = [{
+        "source": "uiuc_faculty", "pi_name": "Ada Example",
+        "department": "Department of Animal Sciences",
+        "keywords": ["Porcine Sperm", "Oviduct"],
+        "metadata": {"faculty_title": "Professor",
+                     "inferred_fields": {"keywords": "derived:illinois_experts_concepts"}},
+        "eligibility": {"eligibility_text_raw": "stale"},
+    }]
+    _rebuild_faculty_title_and_desc(rows)
+    assert "(" not in rows[0]["title"]
+    for text in (rows[0]["title"], rows[0]["description_raw"], rows[0]["eligibility"]["eligibility_text_raw"]):
+        assert "Research areas" not in text and "Oviduct" not in text
+
+
 def test_strip_pi_name_credential_suffix():
     rows = [
         {"source": "uiuc_faculty", "source_type": "faculty_research", "pi_name": "Helene R Dickel Phd"},

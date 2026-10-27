@@ -60,18 +60,41 @@ def test_concepts_extracts_clean_names_only():
 
 def test_concepts_keep_one_case_of_a_name_and_drop_what_the_corpus_gate_rejects():
     # Pure lists a concept once per thesaurus; the corpus gate rejects a
-    # keyword list with a case-only repeat, and junk such as a dangling "A".
-    # A comma would split the name in every comma-joined keyword list.
+    # keyword list with a case-only repeat, junk such as a dangling "A", a bare
+    # generic word and a "such as" lead-in. A comma would split the name in
+    # every comma-joined keyword list.
     soup = _page("Robert Knox", ["Direct Numerical Simulation", "Direct numerical Simulation",
-                                 "Bisphenol A", "4,4'-isopropylidenediphenol", "Turbulence"])
+                                 "Bisphenol A", "4,4'-isopropylidenediphenol", "Research",
+                                 "Such as Speech", "Turbulence"])
     assert e._concepts(soup) == ["Direct Numerical Simulation", "Turbulence"]
 
 
-def test_page_emails_read_the_encoded_attribute_and_skip_a_broken_one():
+def test_page_emails_read_the_encoded_attribute_and_skip_anything_else():
     soup = _page("Robert Knox", [], emails=("RKnox@Illinois.edu",))
-    broken = soup.new_tag("a", attrs={"class": "email", "data-md5": "not base64!"})
-    soup.select_one("li.emails").append(broken)
+    contact = soup.select_one("li.emails")
+    for value in ("not base64!", base64.b64encode(b"tel:2175550100").decode(),
+                  base64.b64encode(b"mailto:rknox@illinois.edu").decode() + " "):
+        contact.append(soup.new_tag("a", attrs={"class": "email", "data-md5": value}))
     assert e._page_emails(soup) == {"rknox@illinois.edu"}
+
+
+def test_lookups_use_the_canonical_url(monkeypatch):
+    asked: list[str] = []
+
+    class Gone:
+        status_code = 404
+
+    monkeypatch.setattr(e.requests, "get", lambda url, **kw: asked.append(url) or Gone())
+    assert e._fetch("robert-knox") is None
+    assert asked == ["https://experts.illinois.edu/en/persons/robert-knox/"]
+
+
+def test_lookups_keep_the_sites_crawl_delay(monkeypatch):
+    slept: list[float] = []
+    monkeypatch.setattr(e, "_fetch", lambda slug: None)
+    monkeypatch.setattr(e.time, "sleep", slept.append)
+    e.enrich([_broad("Ada Lovelace"), _broad("Alan Turing")], {"Department of Physics"})
+    assert slept == [5.0]
 
 
 def test_unit_names_compare_as_pure_writes_them():
@@ -90,15 +113,27 @@ def test_another_address_is_another_person_whatever_the_name_and_unit():
     # business; the name matched, the address did not.
     soup = _page("Robert Knox", [], emails=("rknox2@illinois.edu",), units=("Animal Sciences",))
     assert not e._same_person(soup, _row("Robert Knox", email="rknox@illinois.edu"))
+    other_domain = _page("Robert Knox", [], emails=("rknox@gmail.com",), units=("Animal Sciences",))
+    assert not e._same_person(other_domain, _row("Robert Knox", email="rknox@illinois.edu"))
+
+
+def test_a_row_with_an_address_needs_it_on_the_page():
+    # A page that states no address cannot confirm a row that has one, however
+    # well the name and unit agree: a namesake in the same unit would pass.
+    page = _page("Robert V. Knox", [], units=("Animal Sciences",))
+    assert not e._same_person(page, _row("Robert Knox", email="rknox@illinois.edu"))
 
 
 def test_without_an_address_the_unit_and_the_full_name_decide():
-    page = _page("Robert V. Knox", [], units=("Animal Sciences", "Carl R. Woese Institute for Genomic Biology"))
-    assert e._same_person(page, _row("Robert Knox"))
-    assert e._same_person(page, _row("Robert Knox", email="rknox@illinois.edu"))  # the page states none
-    assert not e._same_person(page, _row("Robert Knox", department="Department of Physics"))
-    assert not e._same_person(page, _row("Rachel Knox"))  # same initial, another first name
+    units = ("Animal Sciences", "Carl R. Woese Institute for Genomic Biology")
+    for page in (_page("Robert V. Knox", [], units=units),
+                 _page("Robert V. Knox", [], emails=("rknox@illinois.edu",), units=units)):
+        assert e._same_person(page, _row("Robert Knox"))
+        assert not e._same_person(page, _row("Robert Knox", department="Department of Physics"))
+        assert not e._same_person(page, _row("Rachel Knox"))  # same initial, another first name
+        assert not e._same_person(page, _row("Robert Fox"))   # same first name, another last
     assert not e._same_person(_page("Robert V. Knox", []), _row("Robert Knox"))  # no positions
+    assert e._same_person(_page("José Andino Martínez", [], units=units), _row("Jose Martinez"))
 
 
 def test_experts_concepts_verified_person_returns_concepts():
@@ -143,12 +178,15 @@ def _knox_page(slug):
 
 
 def test_enrich_only_touches_broad_only_in_target_depts():
+    asked: list[str] = []
     records = [
         _row("Robert Knox", email="rknox@illinois.edu"),                   # broad-only, in-dept -> enrich
         _row("Anna Dilger", keywords=["Pork Quality", "Meat Science"]),     # already specific -> skip
         _row("Jane Doe", department="Department of Physics", keywords=["physics"]),  # out of target depts
     ]
-    out = e.enrich(records, {"Department of Animal Sciences"}, fetch=_knox_page)
+    out = e.enrich(records, {"Department of Animal Sciences"},
+                   fetch=lambda slug: asked.append(slug) or _knox_page(slug))
+    assert asked == ["robert-knox"]
     assert len(out) == 1
     assert out[0]["pi_name"] == "Robert Knox"
     assert out[0]["keywords"] == ["Estrus", "Gilts", "Sows"]
@@ -157,13 +195,17 @@ def test_enrich_only_touches_broad_only_in_target_depts():
 def test_enriched_concepts_are_stamped_and_never_research_text():
     # M161: they are Elsevier's reading of the person's papers; unstamped, the
     # detail page and the email called them the professor's own research.
-    row = _row("Robert Knox", email="rknox@illinois.edu")
+    # 284 stored rows carry this exact method.
+    assert e.CONCEPTS_METHOD == "derived:illinois_experts_concepts"
+    row = _row("Robert Knox", email="rknox@illinois.edu",
+               metadata={"is_active": True, "inferred_fields": {"paid": "rule:federal_org"}})
     [out] = e.enrich([row], {"Department of Animal Sciences"}, fetch=_knox_page)
     assert inferred_method(out, "keywords") == e.CONCEPTS_METHOD
     assert not keywords_are_source_topics(out)
     assert "research_areas" not in out
     assert out["metadata"].get("research_areas_raw") is None
-    assert row["metadata"] == {"is_active": True}  # the stored row is not stamped in passing
+    # the stored row is not stamped in passing
+    assert row["metadata"] == {"is_active": True, "inferred_fields": {"paid": "rule:federal_org"}}
     assert row["keywords"] == ["animal sciences"]
 
 
@@ -219,6 +261,8 @@ def test_the_stamp_survives_the_merge_and_the_next_directory_rescrape(tmp_path):
     [saved] = json.loads(path.read_text(encoding="utf-8"))
     assert saved["keywords"] == ["Ultracold Atoms", "Optical Lattices"]
     assert inferred_method(saved, "keywords") == e.CONCEPTS_METHOD
+    # The stored title and description built from the keywords do not say them.
+    assert "Ultracold" not in saved["title"] + saved["description_clean"] + saved["description_raw"]
 
 
 def _broad(name: str) -> dict:
@@ -227,8 +271,8 @@ def _broad(name: str) -> dict:
 
 
 def test_enrich_stops_at_the_deadline():
-    """7,045 broad-only faculty on 2026-10-01 at ~1s each: the pass cannot
-    finish inside the refresh job, so it stops at its budget."""
+    """268 UIUC targets on 2026-10-27 at 5 s each fill most of the 30-minute
+    budget; a pass that cannot finish stops at its budget."""
     asked: list[str] = []
     out = e.enrich([_broad("Ada Lovelace"), _broad("Alan Turing")],
                    {"Department of Physics"}, deadline=0.0,
