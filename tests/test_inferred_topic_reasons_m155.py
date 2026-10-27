@@ -75,6 +75,15 @@ def test_inferred_keywords_give_the_row_no_focus_area(stamp):
     assert not any("focus area" in reason for reason in fit)
 
 
+@pytest.mark.parametrize("chip", ["cs", "topics"])
+def test_a_chip_inside_the_lines_wording_keeps_its_own_line(chip):
+    """The bare line is dropped only as a repeat of topics the similarity line
+    names; "topics we inferred for ..." names none, though "cs" is in "topics"."""
+    profile = {"research_interests_text": f"{chip} research", "desired_fields": [chip]}
+    _, fit, _ = score_upside(profile, _faculty([chip], stamp="tag:department_field"), precomputed_sim=0.5)
+    assert f"Matches your interests: {chip}{_OUR_TOPICS}" in fit
+
+
 def test_a_row_with_no_keywords_keeps_its_focus_area():
     """Its similarity is to the page's own description."""
     row = {**_listing("illinois_research_programs", "campus_program"), "keywords": [], "pi_name": "Pat Lee"}

@@ -2489,8 +2489,9 @@ def score_upside(
             # "Matches your interests" reason, that earlier reason is pure
             # repetition — drop it. Partial or disjoint coverage keeps both,
             # since the bare reason still names keywords the similarity reason
-            # doesn't.
-            if interest_reason and len(reasons_fit) > pre_sim_len:
+            # doesn't. A line with no display_kw names no topic, so a chip that
+            # is only inside its wording ("cs" in "topics") is no repetition.
+            if interest_reason and display_kw and len(reasons_fit) > pre_sim_len:
                 if all(kw in reasons_fit[-1] for kw in interest_overlap):
                     reasons_fit.remove(interest_reason)
 
