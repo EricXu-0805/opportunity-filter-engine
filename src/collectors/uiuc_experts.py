@@ -41,7 +41,7 @@ from bs4 import BeautifulSoup
 
 from ..evidence import stamp_inferred
 from .faculty_graph import _FRAGMENT_LEADIN_RE
-from .uiuc_faculty import _GENERIC_SINGLE_WORDS, HEADERS, _faculty_specific_keywords, _is_junk_keyword
+from .uiuc_faculty import HEADERS, _faculty_specific_keywords, _is_junk_keyword
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +51,11 @@ TIMEOUT = 15
 # experts.illinois.edu/robots.txt asks for a 5-second crawl delay.
 DELAY = 5.0
 CONCEPTS_METHOD = "derived:illinois_experts_concepts"
+# The bare words the corpus gate rejects as a faculty keyword (tests/
+# test_opportunity_data_quality.py, test_faculty_have_no_bare_research_keyword).
+# Only these: a concept such as "Education" is a topic, unlike the same word
+# as a page heading.
+_GATE_BARE_WORDS = frozenset({"research", "people", "overview", "directory", "news", "events", "resources"})
 
 # Research-active departments whose own campus directory exposes no per-faculty
 # research areas, so their faculty otherwise carry only the department broad
@@ -107,7 +112,7 @@ def _concepts(soup: BeautifulSoup) -> list[str]:
     seen: set[str] = set()
     for c in soup.select("button.concept-badge-large span.concept"):
         t = c.get_text(" ", strip=True)
-        if (t and "," not in t and t.lower() not in seen and t.lower() not in _GENERIC_SINGLE_WORDS
+        if (t and "," not in t and t.lower() not in seen and t.lower() not in _GATE_BARE_WORDS
                 and not _FRAGMENT_LEADIN_RE.match(t) and not _is_junk_keyword(t)):
             seen.add(t.lower())
             out.append(t)

@@ -65,15 +65,16 @@ def test_concepts_keep_one_case_of_a_name_and_drop_what_the_corpus_gate_rejects(
     # every comma-joined keyword list.
     soup = _page("Robert Knox", ["Direct Numerical Simulation", "Direct numerical Simulation",
                                  "Bisphenol A", "4,4'-isopropylidenediphenol", "Research",
-                                 "Such as Speech", "Turbulence"])
-    assert e._concepts(soup) == ["Direct Numerical Simulation", "Turbulence"]
+                                 "Such as Speech", "Education", "Turbulence"])
+    # "Education" is a topic the gate accepts, not a bare page heading.
+    assert e._concepts(soup) == ["Direct Numerical Simulation", "Education", "Turbulence"]
 
 
 def test_page_emails_read_the_encoded_attribute_and_skip_anything_else():
     soup = _page("Robert Knox", [], emails=("RKnox@Illinois.edu",))
     contact = soup.select_one("li.emails")
     for value in ("not base64!", base64.b64encode(b"tel:2175550100").decode(),
-                  base64.b64encode(b"mailto:rknox@illinois.edu").decode() + " "):
+                  base64.b64encode(b"mailto:rknox@illinois.edu").decode() + "\xa0"):
         contact.append(soup.new_tag("a", attrs={"class": "email", "data-md5": value}))
     assert e._page_emails(soup) == {"rknox@illinois.edu"}
 
