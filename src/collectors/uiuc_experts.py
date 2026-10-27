@@ -41,7 +41,7 @@ import requests
 from bs4 import BeautifulSoup
 
 from ..evidence import stamp_inferred
-from .uiuc_faculty import HEADERS, _faculty_specific_keywords
+from .uiuc_faculty import HEADERS, _faculty_specific_keywords, _is_junk_keyword
 
 logger = logging.getLogger(__name__)
 
@@ -97,11 +97,17 @@ def _name_parts(pi_name: str) -> tuple[str | None, str | None]:
 
 def _concepts(soup: BeautifulSoup) -> list[str]:
     """Fingerprint concept names (the clean ``<span class="concept">`` inside each
-    badge, dropping the thesaurus category + relevance %), top-ranked first."""
+    badge, dropping the thesaurus category + relevance %), top-ranked first.
+    Pure lists one concept from several thesauri ("Direct Numerical Simulation",
+    "Direct numerical Simulation"); a repeat in another case, a name the corpus
+    gate reads as junk (_is_junk_keyword) and a name with a comma, which every
+    comma-joined list of keywords would read as two, are left out."""
     out: list[str] = []
+    seen: set[str] = set()
     for c in soup.select("button.concept-badge-large span.concept"):
         t = c.get_text(" ", strip=True)
-        if t and t not in out:
+        if t and "," not in t and t.lower() not in seen and not _is_junk_keyword(t):
+            seen.add(t.lower())
             out.append(t)
     return out[:8]
 

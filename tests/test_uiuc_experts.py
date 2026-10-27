@@ -58,6 +58,15 @@ def test_concepts_extracts_clean_names_only():
     assert e._concepts(soup) == ["Estrus", "Gilts", "Sows"]  # no "Agriculture"/"90%"
 
 
+def test_concepts_keep_one_case_of_a_name_and_drop_what_the_corpus_gate_rejects():
+    # Pure lists a concept once per thesaurus; the corpus gate rejects a
+    # keyword list with a case-only repeat, and junk such as a dangling "A".
+    # A comma would split the name in every comma-joined keyword list.
+    soup = _page("Robert Knox", ["Direct Numerical Simulation", "Direct numerical Simulation",
+                                 "Bisphenol A", "4,4'-isopropylidenediphenol", "Turbulence"])
+    assert e._concepts(soup) == ["Direct Numerical Simulation", "Turbulence"]
+
+
 def test_page_emails_read_the_encoded_attribute_and_skip_a_broken_one():
     soup = _page("Robert Knox", [], emails=("RKnox@Illinois.edu",))
     broken = soup.new_tag("a", attrs={"class": "email", "data-md5": "not base64!"})
