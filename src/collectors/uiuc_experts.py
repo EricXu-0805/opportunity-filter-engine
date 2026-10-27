@@ -9,11 +9,17 @@ geosciences, the veterinary research departments, whose own campus directory
 exposes no per-faculty research areas — can be lifted off the bare department
 field that otherwise makes a whole department rank identically.
 
-Conservative by construction: the slug is ``first-last``; concepts are taken
-only when the person page's own ``<h1>`` confirms the same person (last name a
-token of it AND a shared first initial), so a same-name stranger never leaks
-third-party research areas into the corpus. Clinical/performance faculty (no
-publications) simply 404 and stay honestly broad.
+Only UIUC rows are looked up, and a page counts only when it agrees with the
+row: on the address when both have one, else on the unit and the full name. The
+slug is ``first-last`` and Pure redirects a bare slug to whichever namesake
+holds it as an alias, so a name match alone gave a NRES professor a business
+professor's concepts, and a department-only target list gave a University of
+Chicago physicist those of a UIUC animal scientist (M161). Clinical/performance
+faculty (no publications) simply 404 and stay honestly broad.
+
+The concepts are Elsevier's reading of a person's publications, not words the
+person wrote, so they are stamped ``CONCEPTS_METHOD`` and every reader shows
+them as inferred (``src.evidence.keywords_are_source_topics``).
 
 Run periodically / on demand, NOT in the weekly refresh: Pure fingerprints
 change slowly, and the keyword-richer dedup keeps these concepts in place when
@@ -21,23 +27,30 @@ the weekly faculty scrape re-fetches the same person with only the broad field.
 """
 from __future__ import annotations
 
+import base64
+import binascii
 import hashlib
 import logging
 import re
 import time
 import unicodedata
+from copy import deepcopy
 from datetime import UTC, datetime
 
 import requests
 from bs4 import BeautifulSoup
 
+from ..evidence import stamp_inferred
 from .uiuc_faculty import HEADERS, _faculty_specific_keywords
 
 logger = logging.getLogger(__name__)
 
-EXPERTS_URL = "https://experts.illinois.edu/en/persons/{slug}"
+# The trailing slash is the canonical form; without it every lookup costs a 301.
+EXPERTS_URL = "https://experts.illinois.edu/en/persons/{slug}/"
 TIMEOUT = 15
-DELAY = 1.0
+# experts.illinois.edu/robots.txt asks for a 5-second crawl delay.
+DELAY = 5.0
+CONCEPTS_METHOD = "derived:illinois_experts_concepts"
 
 # Research-active departments whose own campus directory exposes no per-faculty
 # research areas, so their faculty otherwise carry only the department broad
@@ -93,24 +106,57 @@ def _concepts(soup: BeautifulSoup) -> list[str]:
     return out[:8]
 
 
-def _name_confirms(soup: BeautifulSoup, first: str, last: str) -> bool:
-    """The person page's own name must carry this last name AND share the first
-    initial — a slug collision with a different person is not enriched."""
+def _page_emails(soup: BeautifulSoup) -> set[str]:
+    """The page's own addresses. Pure renders each as base64("mailto:<address>")
+    in ``data-md5`` and splits the visible text with scripts."""
+    out: set[str] = set()
+    for a in soup.select("div.rendering_personorganisationcontactrendererportal li.emails a.email"):
+        try:
+            text = base64.b64decode(a.get("data-md5") or "", validate=True).decode()
+        except (binascii.Error, UnicodeDecodeError):
+            continue
+        if text.lower().startswith("mailto:"):
+            out.add(text[len("mailto:"):].strip().lower())
+    return out
+
+
+def _unit_key(name: str) -> str:
+    """"Department of Animal Sciences" and Pure's "Animal Sciences", "Food
+    Science & Human Nutrition" and "Food Science and Human Nutrition", alike."""
+    n = _deaccent(name).lower().replace("&", " and ").strip()
+    n = re.sub(r"^department of ", "", n)
+    return " ".join(re.sub(r"[^a-z0-9]+", " ", n).split())
+
+
+def _page_units(soup: BeautifulSoup) -> set[str]:
+    """The units the page lists the person's positions in."""
+    return {_unit_key(a.get_text(" ", strip=True)) for a in soup.select(
+        "div.rendering_personorganisationlistrendererportal a[rel=Organisation]")}
+
+
+def _same_person(soup: BeautifulSoup, record: dict) -> bool:
+    """Whether the page is this row's person: the same address when both state
+    one; otherwise the row's unit among the page's positions and the row's full
+    first and last name in the page's own name."""
+    email = (record.get("contact_email") or "").strip().lower()
+    emails = _page_emails(soup)
+    if email and emails:
+        return email in emails
+    first, last = _name_parts(record.get("pi_name") or "")
     h1 = soup.select_one("h1")
-    if not h1:
-        return False
-    page = _deaccent(h1.get_text(" ", strip=True)).lower().split()
-    return bool(page) and last.lower() in page and page[0][:1] == first[:1].lower()
+    page = _deaccent(h1.get_text(" ", strip=True)).lower().split() if h1 else []
+    return (bool(first) and first.lower() in page and last.lower() in page
+            and _unit_key(record.get("department") or "") in _page_units(soup))
 
 
-def experts_concepts(pi_name: str, fetch=None) -> list[str]:
-    """Verified Illinois Experts concepts for one professor, or [] if not found /
-    not confidently the same person. ``fetch`` is injectable for tests."""
-    first, last = _name_parts(pi_name)
+def experts_concepts(record: dict, fetch=None) -> list[str]:
+    """Illinois Experts concepts for one faculty row, or [] if not found / not
+    this row's person. ``fetch`` is injectable for tests."""
+    first, last = _name_parts(record.get("pi_name") or "")
     if not first:
         return []
     soup = (fetch or _fetch)(f"{first}-{last}".lower())
-    if soup is None or not _name_confirms(soup, first, last):
+    if soup is None or not _same_person(soup, record):
         return []
     return _concepts(soup)
 
@@ -127,18 +173,25 @@ def _fetch(slug: str) -> BeautifulSoup | None:
 
 def enrich(records: list[dict], departments: set[str], fetch=None,
            deadline: float | None = None, order_key: str = "") -> list[dict]:
-    """For each broad-field-only faculty record in ``departments``, return an
-    enriched copy (same identity, Experts concepts as keywords). Records that
-    don't resolve/verify are skipped — they stay honestly broad. The copies merge
-    back through ``merge_into_processed`` where the keyword-richer dedup replaces
-    the broad originals and rebuilds their titles.
+    """For each listed, broad-field-only UIUC faculty record in ``departments``,
+    return an enriched copy (same identity, Experts concepts as stamped
+    keywords). Records that don't resolve/verify are skipped — they stay
+    honestly broad. The copies merge back through ``merge_into_processed`` where
+    the keyword-richer dedup replaces the broad originals and rebuilds their
+    titles.
+
+    Other schools' departments share these names (6,748 of 7,030 targets on
+    2026-10-26) and the Experts pages are UIUC people's, so only UIUC rows are
+    targets; a scheduled pass also publishes only the shards it refreshed.
 
     ``deadline`` (a ``time.monotonic()`` instant) stops the pass early. Pages
     that 404 leave their record broad, so a fixed order would spend every
     month's budget on the same unresolvable names; ``order_key`` shuffles the
     targets deterministically per key (refresh passes the month)."""
     targets = [o for o in records
-               if o.get("department") in departments and not _faculty_specific_keywords(o)]
+               if o.get("source") == "uiuc_faculty"
+               and (o.get("metadata") or {}).get("is_active") is not False
+               and o.get("department") in departments and not _faculty_specific_keywords(o)]
     if order_key:
         targets.sort(key=lambda o: hashlib.sha256(
             f"{order_key}:{o.get('id') or o.get('pi_name') or ''}".encode()).hexdigest())
@@ -147,11 +200,12 @@ def enrich(records: list[dict], departments: set[str], fetch=None,
         if deadline is not None and time.monotonic() >= deadline:
             logger.info(f"Illinois Experts: time budget spent after {i}/{len(targets)} faculty")
             break
-        concepts = experts_concepts(o.get("pi_name") or "", fetch=fetch)
+        concepts = experts_concepts(o, fetch=fetch)
         if concepts:
-            rec = dict(o)
-            rec["keywords"] = concepts
-            rec["research_areas"] = "; ".join(concepts)
+            # Not research text: the detail page would show any research text
+            # as the profile's own words.
+            rec = {**o, "keywords": concepts, "metadata": deepcopy(o.get("metadata") or {})}
+            stamp_inferred(rec["metadata"], "keywords", CONCEPTS_METHOD)
             out.append(rec)
         if fetch is None and i < len(targets) - 1:
             time.sleep(DELAY)
@@ -196,5 +250,8 @@ if __name__ == "__main__":
             budget = float(sys.argv[sys.argv.index("--time-budget-minutes") + 1])
         refresh(time_budget_minutes=budget)
     else:
+        # A name alone has no row to check the page against: unverified.
         for name in [a for a in sys.argv[1:] if not a.startswith("-")] or ["Klara Nahrstedt"]:
-            print(f"{name}: {experts_concepts(name)}")
+            first, last = _name_parts(name)
+            soup = _fetch(f"{first}-{last}".lower()) if first else None
+            print(f"{name}: {_concepts(soup) if soup else []}")
