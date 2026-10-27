@@ -145,12 +145,14 @@ const ZH_REASONS: Record<string, Render> = {
   brand_faculty_institution: fixed('来自一家知名研究机构的教师主页'),
   brand_institution: fixed('知名机构 —— 对简历很有帮助'),
   publication_pathway: fixed('可能有发表论文或长期参与的机会'),
+  interests_match_ours: (p) => `符合你的兴趣：${quoteList(p.terms)} —— 依据是我们推断的方向，对方页面未确认`,
   interests_match: (p) => `符合你的兴趣：${quoteList(p.terms)}`,
   interest_lab_work: (p) =>
     `你感兴趣的${quoteList(p.interest)}与${quote(p.lab)}在${quoteList(p.work)}方面的工作高度吻合`,
   interest_their_work: (p) => `你感兴趣的${quoteList(p.interest)}与他们在${quoteList(p.work)}方面的工作高度吻合`,
   lab_also_works: (p) => `${quote(p.lab)}也从事${quoteList(p.work)}方面的工作`,
   they_also_work: (p) => `他们也从事${quoteList(p.work)}方面的工作`,
+  interests_lab_ours: (p) => `你的研究兴趣与我们为${quote(p.lab)}推断的方向一致`,
   interests_lab_focus: (p) => `你的研究兴趣与${quote(p.lab)}的研究方向一致`,
   // Dates, level and the record itself
   topic_mismatch: fixed('研究方向看起来与你填写的兴趣不同'),

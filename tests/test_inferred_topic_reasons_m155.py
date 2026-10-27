@@ -1,0 +1,110 @@
+"""M155: a match reason says so when the topics it rests on are ours.
+
+"Matches your interests" matched the student's chips against keywords the
+detail page shows as ours (a department's field, OpenAlex topics, a listing's
+tags) and said nothing of it. "Your research interests align with Prof. X's
+focus area" is the line a row gets when its keywords are inferred and so are
+not named; it gave the row a focus area no page states. Scores do not change.
+"""
+from __future__ import annotations
+
+import pytest
+
+from backend.data_loader import _sanitize_opportunity
+from src.evidence import stamp_inferred
+from src.matcher.ranker import _OUR_TOPICS, rank_opportunity, score_upside
+from src.matcher.reason_keys import reason_key
+
+STAMPS = ["derived:openalex_topics", "derived:illinois_experts_concepts", "tag:department_field"]
+
+
+def _faculty(keywords, *, stamp=None):
+    opp = {
+        "id": "faculty-physics-m155", "source": "uiuc_faculty", "source_type": "faculty_research",
+        "opportunity_type": "research", "pi_name": "Pat Lee", "department": "Department of Physics",
+        "keywords": list(keywords), "description_raw": "Faculty research profile for Pat Lee.",
+        "eligibility": {}, "application": {}, "metadata": {"is_active": True},
+    }
+    if stamp:
+        stamp_inferred(opp["metadata"], "keywords", stamp)
+    return opp
+
+
+def _listing(source, source_type):
+    return {
+        "id": f"m155-{source}", "source": source, "source_type": source_type, "opportunity_type": "research",
+        "title": "Summer Research Program", "keywords": ["machine learning"],
+        "description_raw": "Students join a ten-week summer cohort.", "eligibility": {}, "application": {},
+        "metadata": {"is_active": True},
+    }
+
+
+PHYSICS = {"research_interests_text": "nuclear physics", "desired_fields": ["nuclear physics"]}
+
+
+@pytest.mark.parametrize("stamp", STAMPS)
+def test_interests_matched_against_inferred_topics_say_so(stamp):
+    _, fit, _ = score_upside(PHYSICS, _faculty(["physics"], stamp=stamp), precomputed_sim=0.0)
+    assert f"Matches your interests: nuclear physics{_OUR_TOPICS}" in fit
+    assert "Matches your interests: nuclear physics" not in fit
+
+
+def test_a_profiles_own_keywords_keep_the_plain_line():
+    _, fit, _ = score_upside(PHYSICS, _faculty(["physics"]), precomputed_sim=0.0)
+    assert "Matches your interests: nuclear physics" in fit
+    assert not any(_OUR_TOPICS in reason for reason in fit)
+
+
+@pytest.mark.parametrize(("source", "source_type", "ours"), [
+    ("simplify_internships", "internship", True),
+    ("nsf_reu", "summer_program", True),
+    ("illinois_research_programs", "campus_program", True),
+    ("uiuc_sro", "summer_program", False),
+])
+def test_a_listings_tags_are_ours_and_the_sros_research_area_is_its_own(source, source_type, ours):
+    profile = {"research_interests_text": "", "desired_fields": ["machine learning"]}
+    _, fit, _ = score_upside(profile, _listing(source, source_type), precomputed_sim=0.0)
+    line = "Matches your interests: machine learning"
+    assert (f"{line}{_OUR_TOPICS}" if ours else line) in fit
+
+
+@pytest.mark.parametrize("stamp", STAMPS)
+def test_inferred_keywords_give_the_row_no_focus_area(stamp):
+    _, fit, _ = score_upside(PHYSICS, _faculty(["physics"], stamp=stamp), precomputed_sim=0.5)
+    assert "Your research interests align with topics we inferred for Pat Lee" in fit
+    assert not any("focus area" in reason for reason in fit)
+
+
+def test_a_row_with_no_keywords_keeps_its_focus_area():
+    """Its similarity is to the page's own description."""
+    row = {**_listing("illinois_research_programs", "campus_program"), "keywords": [], "pi_name": "Pat Lee"}
+    _, fit, _ = score_upside({"research_interests_text": "neural decoding"}, row, precomputed_sim=0.6)
+    assert "Your research interests align with Prof. Pat Lee's focus area" in fit
+
+
+@pytest.mark.parametrize("stamp", STAMPS)
+def test_only_the_sentences_change(stamp):
+    for sim in (0.0, 0.5):
+        stamped, fit, gap = score_upside(PHYSICS, _faculty(["physics"], stamp=stamp), precomputed_sim=sim)
+        plain, plain_fit, plain_gap = score_upside(PHYSICS, _faculty(["physics"]), precomputed_sim=sim)
+        assert stamped == plain and len(fit) == len(plain_fit) and gap == plain_gap
+
+
+def test_a_department_field_the_loader_tags_is_matched_as_ours():
+    """A UIUC profile that states no research keeps its department's field as
+    keywords; the loader stamps it ours (M154), and the served reason says so."""
+    row = {
+        "id": "faculty-law-m155", "source": "uiuc_faculty", "source_type": "faculty_research",
+        "opportunity_type": "research", "organization": "University of Illinois Urbana-Champaign",
+        "school": "uiuc", "department": "College of Law", "pi_name": "Pat Lee", "keywords": ["law"],
+        "eligibility": {}, "application": {}, "metadata": {"is_active": True},
+    }
+    result = rank_opportunity({"major": "Political Science", "desired_fields": ["law"]}, _sanitize_opportunity(row))
+    assert f"Matches your interests: law{_OUR_TOPICS}" in result.reasons_fit
+
+
+def test_the_new_lines_key_with_the_students_terms_and_the_rows_label():
+    assert reason_key(f"Matches your interests: nuclear physics, optics{_OUR_TOPICS}", "fit") == {
+        "key": "interests_match_ours", "params": {"terms": "nuclear physics, optics"}}
+    assert reason_key("Your research interests align with topics we inferred for Prof. Pat Lee", "fit") == {
+        "key": "interests_lab_ours", "params": {"lab": "Prof. Pat Lee"}}

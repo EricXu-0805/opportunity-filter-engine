@@ -406,6 +406,14 @@
     },
     {
       "kind": "fit",
+      "english": "Matches your interests: genomics, machine learning — by topics we inferred, not confirmed on their page",
+      "key": "interests_match_ours",
+      "params": {
+        "terms": "genomics, machine learning"
+      }
+    },
+    {
+      "kind": "fit",
       "english": "Your interest in genomics closely matches Prof. Ada Lovelace's work on genomics, proteomics",
       "key": "interest_lab_work",
       "params": {
@@ -444,6 +452,14 @@
       "kind": "fit",
       "english": "Your research interests align with Prof. Ada Lovelace's focus area",
       "key": "interests_lab_focus",
+      "params": {
+        "lab": "Prof. Ada Lovelace"
+      }
+    },
+    {
+      "kind": "fit",
+      "english": "Your research interests align with topics we inferred for Prof. Ada Lovelace",
+      "key": "interests_lab_ours",
       "params": {
         "lab": "Prof. Ada Lovelace"
       }

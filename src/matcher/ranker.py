@@ -40,6 +40,7 @@ from ..evidence import (
     is_inferred,
     is_professor_rank,
     is_read_off_the_page,
+    keywords_are_source_topics,
     target_truth,
 )
 from ..normalizers.school_audience import SOURCE_DEFAULTS
@@ -1835,6 +1836,9 @@ _OUR_READING = ", by our reading of the page — not confirmed on the program pa
 # Ends a restriction one part of which our config supplied and one part of
 # which we read off the page.
 _OUR_LISTING_AND_READING = ", per our listing and our reading of the page — not confirmed on the program page"
+# Ends "Matches your interests: …" when the row's topics are ours (see
+# _OppStatic.topics_ours): its terms are the student's, matched against ours.
+_OUR_TOPICS = " — by topics we inferred, not confirmed on their page"
 
 
 def _intl_terms_basis(opportunity: dict, fields: tuple[str, ...]) -> str | None:
@@ -2408,7 +2412,10 @@ def score_upside(
         )
         if interest_overlap:
             keyword_score = min(100.0, 50.0 + len(interest_overlap) * 25)
-            interest_reason = f"Matches your interests: {', '.join(sorted(interest_overlap))}"
+            interest_reason = (
+                f"Matches your interests: {', '.join(sorted(interest_overlap))}"
+                f"{_OUR_TOPICS if st.topics_ours else ''}"
+            )
             reasons_fit.append(interest_reason)
 
     # Implicit major→topic steer: lifts the 25.0 baseline tier for a student who
@@ -2469,9 +2476,14 @@ def score_upside(
                 )
             elif lab_label:
                 # The similarity is to the student's stated interests, which
-                # are never their background or experience (M13).
+                # are never their background or experience (M13). When
+                # display_kw is empty because the keywords are inferred (a
+                # department's field, OpenAlex topics), the similarity rests
+                # on those, not on a focus area the row states (M155).
                 reasons_fit.append(
-                    f"Your research interests align with {lab_label}'s focus area"
+                    f"Your research interests align with topics we inferred for {lab_label}"
+                    if st.kw_inferred
+                    else f"Your research interests align with {lab_label}'s focus area"
                 )
             # If the similarity reason re-mentions every keyword from the bare
             # "Matches your interests" reason, that earlier reason is pure
@@ -2996,6 +3008,9 @@ class _OppStatic:
     kw_set: frozenset[str]
     specific_kw: tuple[str, ...]
     display_kw: tuple[str, ...]
+    kw_inferred: bool
+    # The detail page shows these keywords as ours, not the source's topics.
+    topics_ours: bool
     ov_kws: tuple[str, ...]
     ov_set: frozenset[str]
     ov_canon: frozenset[str]
@@ -3058,8 +3073,9 @@ def _build_opp_static(opp: dict) -> _OppStatic:
     # display_kw is prose only ("...'s work on X", "They also work on X"), so
     # emptying it for guessed areas drops the authorship claim while leaving
     # specific_kw — which gates and feeds the similarity score — untouched.
+    kw_inferred = is_inferred(opp, "keywords")
     display_kw = (
-        () if is_inferred(opp, "keywords")
+        () if kw_inferred
         else tuple(kw for kw in specific_kw if kw not in _ROLE_PROCESS_TOKENS)
     )
 
@@ -3130,6 +3146,8 @@ def _build_opp_static(opp: dict) -> _OppStatic:
         kw_set=kw_set,
         specific_kw=specific_kw,
         display_kw=display_kw,
+        kw_inferred=kw_inferred,
+        topics_ours=not keywords_are_source_topics(opp),
         ov_kws=ov_kws,
         ov_set=frozenset(ov_kws),
         ov_canon=ov_canon,
