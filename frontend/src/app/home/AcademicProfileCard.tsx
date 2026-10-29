@@ -109,7 +109,7 @@ export function AcademicProfileCard({
   // Values stay English because they're matched against English corpus keywords.
   const have = new Set(
     (profile.research_interests || '')
-      .split(/[,;\n]/)
+      .split(/[,;\n，；、]/)
       .map((s) => s.trim().toLowerCase())
       .filter(Boolean),
   );

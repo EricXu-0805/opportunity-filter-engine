@@ -357,8 +357,10 @@ async function requestWithRevealRetry<T>(
  * Split the free-text research-interests box into discrete topic terms for
  * `desired_fields`, which the matcher intersects with each opportunity's
  * keywords for an exact-match bonus. Previously hardcoded to [], so that bonus
- * path was dead for every real user. Splits on commas/semicolons/newlines and
- * the conjunction "and" (so "computer vision and machine learning" → two terms),
+ * path was dead for every real user. Splits on commas/semicolons/newlines —
+ * ASCII or as a Chinese input method types them (，；、), the set
+ * interest_phrases in src/student_evidence.py splits on — and the conjunction
+ * "and" (so "computer vision and machine learning" → two terms),
  * trims and dedupes without discarding later terms. The full text also travels unchanged. Non-matching terms are
  * harmless — the matcher only rewards terms that actually intersect a keyword.
  */
@@ -366,7 +368,7 @@ export function deriveDesiredFields(interests: string | undefined): string[] {
   if (!interests) return [];
   const seen = new Set<string>();
   const out: string[] = [];
-  for (const raw of interests.split(/[,;\n]|\s+and\s+/i)) {
+  for (const raw of interests.split(/[,;\n，；、]|\s+and\s+/i)) {
     const term = raw.trim();
     const key = term.toLowerCase();
     if (term.length >= 2 && !seen.has(key)) {

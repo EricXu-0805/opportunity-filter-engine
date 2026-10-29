@@ -920,6 +920,38 @@ describe('deriveDesiredFields', () => {
   it('does not split the substring "and" inside a word', () => {
     expect(deriveDesiredFields('understanding language')).toEqual(['understanding language']);
   });
+
+  // M175: a Chinese input method types the comma, semicolon and list comma
+  // full-width; each splits like its ASCII counterpart.
+  it('splits at the full-width comma, full-width semicolon and ideographic comma', () => {
+    expect(deriveDesiredFields('machine learning，computer vision')).toEqual(['machine learning', 'computer vision']);
+    expect(deriveDesiredFields('deep learning；reinforcement learning')).toEqual(['deep learning', 'reinforcement learning']);
+    expect(deriveDesiredFields('Machine Learning、Computer Vision、NLP')).toEqual(['Machine Learning', 'Computer Vision', 'NLP']);
+    expect(deriveDesiredFields('机器学习、计算机视觉，机器人；量子计算')).toEqual(['机器学习', '计算机视觉', '机器人', '量子计算']);
+  });
+
+  it('mixes ASCII and full-width separators and the word "and" in one box', () => {
+    expect(deriveDesiredFields('machine learning, computer vision；robotics、natural language processing'))
+      .toEqual(['machine learning', 'computer vision', 'robotics', 'natural language processing']);
+    expect(deriveDesiredFields('computer vision，machine learning and robotics'))
+      .toEqual(['computer vision', 'machine learning', 'robotics']);
+  });
+
+  it('trims the ideographic space after a full-width comma and drops empty pieces', () => {
+    expect(deriveDesiredFields('machine learning，　computer vision，')).toEqual(['machine learning', 'computer vision']);
+    expect(deriveDesiredFields('machine learning，, Computer Vision')).toEqual(['machine learning', 'Computer Vision']);
+  });
+
+  it('dedupes a term repeated across ASCII and full-width separators', () => {
+    expect(deriveDesiredFields('Machine Learning，machine learning、MACHINE LEARNING, machine learning'))
+      .toEqual(['Machine Learning']);
+  });
+
+  it('does not split at a Chinese conjunction, which also sits inside terms', () => {
+    expect(deriveDesiredFields('调和分析、中和抗体、埃及学、参与式设计'))
+      .toEqual(['调和分析', '中和抗体', '埃及学', '参与式设计']);
+    expect(deriveDesiredFields('machine learning和computer vision')).toEqual(['machine learning和computer vision']);
+  });
 })
 
 describe('chatWithOpportunity — SSE streaming (onDelta present)', () => {
