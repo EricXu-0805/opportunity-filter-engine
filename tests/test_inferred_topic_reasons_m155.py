@@ -144,6 +144,8 @@ def _row(keyword, title, stated):
     ("human\u2013computer interaction", "human\u2013computer interaction", "", "Human-computer interaction"),
     ("data\u00a0science", "data\u00a0science", "Data Science Intern", ""),
     ("c++", "c++", "C++17 Developer Intern", ""),
+    ("c++ developer", "c++ developer", "C++ Developer Intern", ""),
+    ("large language model", "large language model", "", "LLM agents and evaluation"),
 ])
 def test_a_chip_the_rows_words_name_in_another_form_is_its_own(chip, keyword, title, stated):
     """Review round 2: only the chip's own spelling counted, so "ML" in a
@@ -167,6 +169,8 @@ def test_a_chip_the_rows_words_name_in_another_form_is_its_own(chip, keyword, ti
     ("data science", "data science", "Summer Data \u2015 Science Outreach", ""),
     ("data science", "data science", "", "Big data\nscience policy"),
     ("data science", "data science", "", "Big data\rscience policy"),
+    ("c++", "c++", "Cloud Computing Intern", ""),
+    ("ml", "ml", "Supermachine Learning Intern", ""),
 ])
 def test_a_related_word_or_a_word_inside_another_does_not_name_the_chip(chip, keyword, title, stated):
     """Analytics is not data science and neural networks are not deep
@@ -176,6 +180,34 @@ def test_a_related_word_or_a_word_inside_another_does_not_name_the_chip(chip, ke
     profile = {"research_interests_text": "", "desired_fields": [chip]}
     _, fit, _ = score_upside(profile, _row(keyword, title, stated), precomputed_sim=0.0)
     assert f"Matches your interests: {chip}{_OUR_TOPICS}" in fit
+
+
+JOINING = ("\t\u00a0\u1680" + "".join(map(chr, range(0x2000, 0x200B))) + "\u202f\u205f\u3000"
+           + "\u2010\u2011\u2012\u2013")
+
+
+@pytest.mark.parametrize("gap", JOINING, ids=[f"U+{ord(c):04X}" for c in JOINING])
+def test_every_space_and_hyphen_joins_a_terms_words(gap):
+    profile = {"research_interests_text": "", "desired_fields": ["data science"]}
+    _, fit, _ = score_upside(profile, _row("data science", f"Data{gap}Science Intern", ""), precomputed_sim=0.0)
+    assert "Matches your interests: data science" in fit
+
+
+ENDING = "\u2014\u2015\n\r\x0b\u2028\u200b\u00ad\u2212_/."
+
+
+@pytest.mark.parametrize("gap", ENDING, ids=[f"U+{ord(c):04X}" for c in ENDING])
+def test_other_characters_do_not_join_a_terms_words(gap):
+    profile = {"research_interests_text": "", "desired_fields": ["data science"]}
+    _, fit, _ = score_upside(profile, _row("data science", f"Data{gap}Science Intern", ""), precomputed_sim=0.0)
+    assert f"Matches your interests: data science{_OUR_TOPICS}" in fit
+
+
+def test_a_placeholder_research_area_names_nothing():
+    row = _faculty(["unknown"], stamp="derived:openalex_topics")
+    row["research_areas"] = ["Unknown", " N/A "]
+    _, fit, _ = score_upside({"research_interests_text": "", "desired_fields": ["unknown"]}, row, precomputed_sim=0.0)
+    assert f"Matches your interests: unknown{_OUR_TOPICS}" in fit
 
 
 def test_a_professors_name_names_no_topic():
@@ -249,10 +281,16 @@ def test_words_no_test_reads_leave_an_ending_that_still_holds(chip, keyword, tit
     ("robotics " + "y" * 292, False),
     (" ".join(["robotics"] + ["lab"] * 19), True),
     (" ".join(["robotics"] + ["lab"] * 20), False),
-], ids=["300 characters", "301 characters", "20 words", "21 words"])
+    (" " + " ".join(["robotics"] + ["lab"] * 19) + " ", True),
+    ("\u3000".join(["robotics"] + ["lab"] * 20), False),
+    (" ".join(["robotics"] + ["lab"] * 16 + ["end-to-end"]), True),
+    (" ".join(["robotics"] + ["lab"] * 17 + ["end-to-end"]), False),
+], ids=["300 characters", "301 characters", "20 words", "21 words", "20 words between spaces",
+        "21 words joined by ideographic spaces", "20 pieces with a hyphen", "21 pieces with a hyphen"])
 def test_a_chip_past_300_characters_or_20_words_is_never_named(chip, plain):
+    """Words are counted after the split on spaces and hyphens."""
     _, fit, _ = score_upside({"research_interests_text": "", "desired_fields": [chip]},
-                             _row("robotics", "", chip), precomputed_sim=0.0)
+                             _row("robotics", "", " ".join(chip.replace("\u3000", " ").split())), precomputed_sim=0.0)
     assert (f"Matches your interests: {chip}" in fit) is plain
     assert (f"Matches your interests: {chip}{_OUR_TOPICS}" in fit) is not plain
 
@@ -344,6 +382,17 @@ def test_the_lab_summary_follows_the_interest_lines_and_precedes_the_rest(fields
         *interest[:len(fields)],
         "Pat Lee's Field Robotics Lab — embedded systems, aircraft, sensors",
         "Prof. Pat Lee also works on embedded systems, aircraft, sensors",
+    ]
+
+
+def test_the_lab_summary_follows_two_interest_lines_and_nothing_else():
+    row = _listing("nsf_reu", "summer_program", title="Robotics REU", keywords=("robotics", "computer vision"))
+    row["lab_or_program"] = "Field Robotics Lab"
+    fit = rank_opportunity({"desired_fields": ["robotics", "computer vision"]}, row).reasons_fit
+    assert fit[:3] == [
+        "Matches your interests: robotics",
+        f"Matches your interests: computer vision{_OUR_TOPICS}",
+        "Pat Lee's Field Robotics Lab — robotics, computer vision",
     ]
 
 

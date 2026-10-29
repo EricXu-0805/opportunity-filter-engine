@@ -2424,7 +2424,8 @@ def score_upside(
                     len(t) > _TERM_MAX or not any(_named_re(t).search(text) for text in st.own_words)
                 )
             ]
-            stated = [t for t in terms if t not in ours]
+            hedged = set(ours)
+            stated = [t for t in terms if t not in hedged]
             if stated:
                 interest_lines.append((f"Matches your interests: {', '.join(stated)}", stated))
             if ours:
@@ -3132,9 +3133,11 @@ _GAP_FOLD = str.maketrans(
 _TERM_GAP = r"[ \-]+"
 # _named_re and _repeat_re keep one pattern per chip, and a chip is user input
 # of up to 60,000 characters (backend/schemas.py). A chip of more than
-# _TERM_MAX characters or _TERM_WORDS words is a passage, not a topic: the
-# row's words never name it and no line repeats it. Today's longest keyword
-# is 231 characters.
+# _TERM_MAX characters is a passage, not a topic: the row's words never name
+# it and no line repeats it. Today's longest keyword is 231 characters. The
+# row's words never name a chip of more than _TERM_WORDS words either, counted
+# after splitting on spaces and hyphens ("end-to-end" is three); each word
+# adds a gap to its pattern. A kept pattern is then at most about 7 KB.
 _TERM_MAX = 300
 _TERM_WORDS = 20
 
