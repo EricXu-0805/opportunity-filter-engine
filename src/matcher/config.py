@@ -357,7 +357,12 @@ LLM_RERANK_CACHE_MAX = int(_env_float("OFE_LLM_RERANK_CACHE_MAX", 1000))
 # (checklist M154), so no reason calls them the professor's work. Sentences no
 # hashed knob sees; the similarity text still counts the keywords the faculty
 # description stopped saying (`faculty_summary_inferred_keywords`).
-_MATCHER_VERSION_BASE = "28"
+# 29: when a row's keywords are ours (the detail page's rule,
+# `keywords_are_source_topics`), "Matches your interests" says it matched them
+# against topics we inferred, and when they carry an inference stamp the
+# similarity line no longer gives the row a "focus area" (checklist M155).
+# Sentences no hashed knob sees.
+_MATCHER_VERSION_BASE = "29"
 
 
 def _matcher_fingerprint() -> str:

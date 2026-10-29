@@ -1418,7 +1418,9 @@ class TestInterestReasonDedup:
             self._opp(["computer vision", "deep learning", "graphics", "robotics"]),
             precomputed_sim=0.5,
         )
-        assert "Matches your interests: robotics" in fit
+        # A record of no known kind: its keywords are ours, so the line ends
+        # with our note (M155); the dedupe is what this pins.
+        assert any(r.startswith("Matches your interests: robotics") for r in fit)
         assert any("closely matches" in r for r in fit)
 
     def test_no_literal_overlap_does_not_put_the_alignment_in_the_students_mouth(self):

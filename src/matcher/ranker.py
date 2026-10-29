@@ -40,6 +40,7 @@ from ..evidence import (
     is_inferred,
     is_professor_rank,
     is_read_off_the_page,
+    keywords_are_source_topics,
     target_truth,
 )
 from ..normalizers.school_audience import SOURCE_DEFAULTS
@@ -1835,6 +1836,12 @@ _OUR_READING = ", by our reading of the page — not confirmed on the program pa
 # Ends a restriction one part of which our config supplied and one part of
 # which we read off the page.
 _OUR_LISTING_AND_READING = ", per our listing and our reading of the page — not confirmed on the program page"
+# Ends "Matches your interests: …" for the chips the row's own words do not
+# name when its topics are ours (see _OppStatic.topics_ours). Each of them
+# matched a keyword of ours, so the line says how we matched. It says nothing
+# of what the page lacks: a page can name a topic in words no test here reads
+# ("Hardware Engineer" for hardware engineering).
+_OUR_TOPICS = " — based on topics we inferred"
 
 
 def _intl_terms_basis(opportunity: dict, fields: tuple[str, ...]) -> str | None:
@@ -2399,7 +2406,9 @@ def score_upside(
     keyword_score = 25.0
     opp_keywords = st.kw_set
     desired = set(f.lower() for f in profile.get("desired_fields", []))
-    interest_reason = ""
+    # (line, the chips it names): the chips the row's own words name, then
+    # the ones that rest only on keywords that are ours (M155).
+    interest_lines: list[tuple[str, list[str]]] = []
     interest_overlap: set[str] = set()
     if opp_keywords and desired:
         interest_overlap = (
@@ -2408,8 +2417,20 @@ def score_upside(
         )
         if interest_overlap:
             keyword_score = min(100.0, 50.0 + len(interest_overlap) * 25)
-            interest_reason = f"Matches your interests: {', '.join(sorted(interest_overlap))}"
-            reasons_fit.append(interest_reason)
+            terms = sorted(interest_overlap)
+            ours = [
+                t for t in terms
+                if st.topics_ours and (
+                    len(t) > _TERM_MAX or not any(_named_re(t).search(text) for text in st.own_words)
+                )
+            ]
+            hedged = set(ours)
+            stated = [t for t in terms if t not in hedged]
+            if stated:
+                interest_lines.append((f"Matches your interests: {', '.join(stated)}", stated))
+            if ours:
+                interest_lines.append((f"Matches your interests: {', '.join(ours)}{_OUR_TOPICS}", ours))
+            reasons_fit.extend(line for line, _ in interest_lines)
 
     # Implicit major→topic steer: lifts the 25.0 baseline tier for a student who
     # gave no explicit interests, so changing major actually reorders results.
@@ -2469,18 +2490,26 @@ def score_upside(
                 )
             elif lab_label:
                 # The similarity is to the student's stated interests, which
-                # are never their background or experience (M13).
+                # are never their background or experience (M13). When
+                # display_kw is empty because the keywords are inferred (a
+                # department's field, OpenAlex topics), the similarity rests
+                # on those, not on a focus area the row states (M155).
                 reasons_fit.append(
-                    f"Your research interests align with {lab_label}'s focus area"
+                    f"Your research interests align with topics we inferred for {lab_label}"
+                    if st.kw_inferred
+                    else f"Your research interests align with {lab_label}'s focus area"
                 )
             # If the similarity reason re-mentions every keyword from the bare
             # "Matches your interests" reason, that earlier reason is pure
             # repetition — drop it. Partial or disjoint coverage keeps both,
             # since the bare reason still names keywords the similarity reason
-            # doesn't.
-            if interest_reason and len(reasons_fit) > pre_sim_len:
-                if all(kw in reasons_fit[-1] for kw in interest_overlap):
-                    reasons_fit.remove(interest_reason)
+            # doesn't. A line with no display_kw names no topic, so a chip that
+            # is only inside its wording ("cs" in "topics") is no repetition;
+            # nor is one inside another word ("ai" in "aircraft").
+            if interest_lines and display_kw and len(reasons_fit) > pre_sim_len:
+                for line, terms in interest_lines:
+                    if all(len(kw) <= _TERM_MAX and _repeat_re(kw).search(reasons_fit[-1]) for kw in terms):
+                        reasons_fit.remove(line)
 
     has_skill_signal = st.has_skill_signal
     if opportunity.get("source_type") == "faculty_research":
@@ -2996,6 +3025,11 @@ class _OppStatic:
     kw_set: frozenset[str]
     specific_kw: tuple[str, ...]
     display_kw: tuple[str, ...]
+    kw_inferred: bool
+    # The detail page shows these keywords as ours, not the source's topics.
+    topics_ours: bool
+    # When topics_ours: the row's own words (see _own_words); else ().
+    own_words: tuple[str, ...]
     ov_kws: tuple[str, ...]
     ov_set: frozenset[str]
     ov_canon: frozenset[str]
@@ -3049,6 +3083,123 @@ def _cut_name(text: str, name: str) -> str:
     return "".join(pieces)
 
 
+def _own_words(opp: dict) -> tuple[str, ...]:
+    """A row's title and the research text the detail page shows as the
+    source's (``_research_content`` in backend/lib/opportunity_detail.py, which
+    reads the same placeholders as absent), lower-cased and kept apart so that
+    no term runs from one into the other. Uncapped: the detail page trims the
+    text for display, and their page states all of it. A faculty row's title
+    is the professor's name (src/evidence.py), which names no topic."""
+    def text(value: object) -> str:
+        value = value.strip() if isinstance(value, str) else ""
+        return "" if value.lower() in {"unknown", "n/a", "none", "null"} else value
+
+    stated = text((opp.get("metadata") or {}).get("research_areas_raw"))
+    if not stated:
+        areas = opp.get("research_areas")
+        stated = text(areas) if isinstance(areas, str) else ", ".join(
+            t for t in map(text, areas if isinstance(areas, list) else []) if t)
+    title = text(opp.get("title"))
+    if title.casefold() == str(opp.get("pi_name") or "").strip().casefold():
+        title = ""
+    return tuple(t.lower().translate(_GAP_FOLD) for t in (title, stated) if t)
+
+
+# Each group spells one term, short and in full. Narrower than SKILL_SYNONYMS
+# and SEARCH_ALIASES on purpose: "neural networks" is not deep learning, "data
+# analytics" is not data science, and "me" and "os" are ordinary words.
+_SAME_TERM_GROUPS = (
+    ("ml", "machine learning"),
+    ("ai", "artificial intelligence"),
+    ("dl", "deep learning"),
+    ("cv", "computer vision"),
+    ("nlp", "natural language processing"),
+    ("llm", "llms", "large language model", "large language models"),
+    ("hci", "human computer interaction"),
+    ("rl", "reinforcement learning"),
+    ("cs", "computer science"),
+)
+_SAME_TERM = {spelling: group for group in _SAME_TERM_GROUPS for spelling in group}
+# Spaces, hyphens and dashes up to the en dash between a term's words, on one
+# line: "human-computer interaction". An em dash or a line break ends a phrase
+# ("Summer Data — Science Outreach" does not name data science). The texts
+# and terms are folded first (tab and Unicode spaces to " ", Unicode hyphens
+# and the en dash to "-"), so each gap compiles to a two-character class.
+_GAP_FOLD = str.maketrans(
+    "\t\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u202f\u205f\u3000"
+    "\u2010\u2011\u2012\u2013",
+    " " * 17 + "-" * 4,
+)
+_TERM_GAP = r"[ \-]+"
+# _named_re and _repeat_re keep one pattern per chip, and a chip is user input
+# of up to 60,000 characters (backend/schemas.py). A chip of more than
+# _TERM_MAX characters is a passage, not a topic: the row's words never name
+# it and no line repeats it. Today's longest keyword is 231 characters. The
+# row's words never name a chip of more than _TERM_WORDS words either, counted
+# after splitting on spaces and hyphens ("end-to-end" is three); each word
+# adds a gap to its pattern. A kept pattern is then at most about 7 KB.
+_TERM_MAX = 300
+_TERM_WORDS = 20
+
+
+def _number_forms(word: str) -> set[str]:
+    """``word`` with its regular English plural or singular, among forms of
+    four letters or more: "compilers" meets "compiler" and "library"
+    "libraries", but "news" never meets "new" and "ml" never "mls". A word
+    ending -ic or -ics keeps its one form, since "genetic" is not a singular
+    of "genetics"; so "clinic" does not meet "clinics" either."""
+    if len(word) < 4:
+        return {word}
+    if word.endswith("ies"):
+        forms = {word, word[:-3] + "y"}
+    elif word.endswith("es"):
+        forms = {word, word[:-1], word[:-2]}
+    elif word.endswith(("us", "is", "ic", "ics")):
+        return {word}
+    elif word.endswith("s") and not word.endswith("ss"):
+        forms = {word, word[:-1]}
+    elif word.endswith("y") and word[-2] not in "aeiou":
+        forms = {word, word[:-1] + "ies"}
+    else:
+        forms = {word, word + "s", word + "es"}
+    return {form for form in forms if len(form) >= 4}
+
+
+@lru_cache(maxsize=4096)
+def _named_re(term: str) -> "re.Pattern[str]":
+    """A lower-cased text names ``term``: in any spelling of its
+    _SAME_TERM_GROUPS group, singular or plural, with spaces, hyphens or
+    dashes between its words, and as whole words (see _word_re). Never for a
+    term of more than _TERM_WORDS words. Bounded LRU because the terms are
+    user input."""
+    words = [word for word in re.split(_TERM_GAP, term.translate(_GAP_FOLD)) if word]
+    if not words or len(words) > _TERM_WORDS:
+        return re.compile(r"(?!)")
+    key = " ".join(words)
+    alternatives = []
+    for spelling in _SAME_TERM.get(key, (key,)):
+        *head, last = spelling.split(" ")
+        left = r"(?<!\w)" if spelling[:1].isalnum() or spelling[:1] == "_" else ""
+        forms = "|".join(
+            re.escape(form) + (r"(?!\w)" if form[-1:].isalnum() or form[-1:] == "_" else "")
+            for form in sorted(_number_forms(last), key=len, reverse=True)
+        )
+        alternatives.append(left + "".join(re.escape(word) + _TERM_GAP for word in head) + f"(?:{forms})")
+    return re.compile("|".join(alternatives))
+
+
+@lru_cache(maxsize=4096)
+def _repeat_re(term: str) -> "re.Pattern[str]":
+    """``term`` as written and as whole words, or with a plural ending: a line
+    with "large language models" repeats the chip "large language model", and
+    "aircraft" does not repeat "ai". Bounded LRU because the terms are user
+    input."""
+    word_end = term[-1:].isalnum() or term[-1:] == "_"
+    left = r"(?<!\w)" if term[:1].isalnum() or term[:1] == "_" else ""
+    plural, right = (r"(?:e?s)?", r"(?!\w)") if word_end else ("", "")
+    return re.compile(left + re.escape(term) + plural + right)
+
+
 def _build_opp_static(opp: dict) -> _OppStatic:
     is_faculty_contact = faculty_contact_claims_unverified(opp)
     keywords = opp.get("keywords", []) or []
@@ -3058,10 +3209,12 @@ def _build_opp_static(opp: dict) -> _OppStatic:
     # display_kw is prose only ("...'s work on X", "They also work on X"), so
     # emptying it for guessed areas drops the authorship claim while leaving
     # specific_kw — which gates and feeds the similarity score — untouched.
+    kw_inferred = is_inferred(opp, "keywords")
     display_kw = (
-        () if is_inferred(opp, "keywords")
+        () if kw_inferred
         else tuple(kw for kw in specific_kw if kw not in _ROLE_PROCESS_TOKENS)
     )
+    topics_ours = not keywords_are_source_topics(opp)
 
     # _desired_field_overlap's view of the keywords (stripped, non-empty).
     ov_kws = tuple(k.lower().strip() for k in keywords if k and k.strip())
@@ -3130,6 +3283,9 @@ def _build_opp_static(opp: dict) -> _OppStatic:
         kw_set=kw_set,
         specific_kw=specific_kw,
         display_kw=display_kw,
+        kw_inferred=kw_inferred,
+        topics_ours=topics_ours,
+        own_words=_own_words(opp) if topics_ours else (),
         ov_kws=ov_kws,
         ov_set=frozenset(ov_kws),
         ov_canon=ov_canon,
@@ -3711,6 +3867,11 @@ def _rank_opportunity_unlocked(
         # The lab's focus-areas headline reads as context, not personal fit —
         # it slots AFTER a student-specific topical tie when one exists.
         at = 1 if all_fit and _reason_priority(all_fit[0]) == 0 else 0
+        # Not between the two "Matches your interests" lines (M155).
+        if at and len(all_fit) > 1 and all(
+            line.startswith("Matches your interests: ") for line in all_fit[:2]
+        ):
+            at = 2
         if pi and pi in research_summary:
             all_fit.insert(at, research_summary)
         elif opportunity.get("opportunity_type") == "research":

@@ -20,6 +20,7 @@ from src.matcher.ranker import (
     _NOT_ON_PAGE,
     _OUR_LISTING_AND_READING,
     _OUR_READING,
+    _OUR_TOPICS,
     _SIMPLIFY_NO_SPONSORSHIP_GAP,
     _SIMPLIFY_NO_SPONSORSHIP_REASON,
     MatchResult,
@@ -78,6 +79,7 @@ def test_the_fixture_lines_are_the_ones_the_code_writes():
     assert any(_NOT_ON_PAGE in line for line in lines)
     assert any(_OUR_READING in line for line in lines)
     assert any(_OUR_LISTING_AND_READING in line for line in lines)
+    assert any(_OUR_TOPICS in line for line in lines)
     summary = rk._summarize_research(_RESEARCH_SUMMARY_RECORD)
     assert {"kind": "fit", "english": summary, "key": "research_summary", "params": {"text": summary}} in _CASES
 
@@ -341,20 +343,25 @@ def test_a_parameter_holding_a_newline_is_keyed_by_its_own_template():
         assert rk.reason_key(line, case["kind"]) == {"key": case["key"], "params": params}, line
 
 
-def test_a_long_interest_chip_with_a_newline_is_keyed_quickly_or_shown_in_english():
-    """The review's repro: the chip is echoed whole in "Matches your interests"."""
+@pytest.mark.parametrize("source", [None, "uiuc_sro"])
+def test_a_long_interest_chip_with_a_newline_is_keyed_quickly_or_shown_in_english(source):
+    """The review's repro: the chip is echoed whole in "Matches your interests",
+    with our ending when the record's keywords are ours (M155)."""
     record = {"id": "r1", "title": "ML lab", "opportunity_type": "research",
               "keywords": ["machine learning"], "description_clean": "We study machine learning.",
               "eligibility": {}}
+    if source:
+        record.update(source=source, source_type="summer_program")
     for repeats, keyed in ((100, True), (4000, False)):
         chip = "machine learning" + " also works on" * repeats + "\nx"
         profile = {"year": "junior", "major": "Computer Science", "desired_fields": [chip],
                    "seeking_type": ["research"], "experience_level": "some"}
         result = rank_opportunity(profile, record)
-        line = f"Matches your interests: {chip}"
+        line = f"Matches your interests: {chip}{'' if source else _OUR_TOPICS}"
         assert line in result.reasons_fit
         keys = rk.reason_keys(result.reasons_fit, "fit", record=record)
-        expected = {"key": "interests_match", "params": {"terms": chip}} if keyed else None
+        key = "interests_match" if source else "interests_match_ours"
+        expected = {"key": key, "params": {"terms": chip}} if keyed else None
         assert keys[result.reasons_fit.index(line)] == expected
         seconds, _ = _slowest_keying(result.reasons_fit, "fit")
         assert seconds < _PER_LINE_SECONDS, f"{seconds:.3f}s"
