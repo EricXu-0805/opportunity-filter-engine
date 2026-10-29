@@ -630,6 +630,25 @@ class TestApiAndFrontendAgree:
                                                           "basis": "external_enrichment"}
         assert payload["keywords_attribution"] == "inferred"
 
+    def test_directory_keywords_are_an_external_inference(self, monkeypatch):
+        # M166: the UIUC WIGG directory's keyword list, which looks like
+        # Illinois Experts concepts, was stored as research text and shown as
+        # the profile's own research ("Source says").
+        import src.collectors.uiuc_json_faculty as wigg
+
+        person = {"fullName": "Avery Example", "email": "person1@example.edu", "primaryTitle": "Professor",
+                  "profileUrl": "https://ahs.example.edu/directory/profile/person1",
+                  "primaryOffice": "Speech and Hearing Science", "keywords": ["Vocal Fatigue", "Room Acoustics"],
+                  "jobProfiles": [{"jobType": "Faculty"}]}
+        monkeypatch.setattr(wigg, "_fetch_json", lambda url: {"people": [person]})
+        [record] = wigg.fetch_ahs()
+        payload, canonical = _served(record)
+        research = build_detail_fields(payload, canonical)["fields"]["research_content"]
+        assert research["explicit"] == {}
+        assert research["inferred"]["research_areas"] == {"value": ["Vocal Fatigue", "Room Acoustics"],
+                                                          "basis": "external_enrichment"}
+        assert payload["keywords_attribution"] == "inferred"
+
     def test_stated_research_beside_a_department_field_keeps_both_apart(self):
         record = {**_CASES["faculty_profile"], "source": "uiuc_faculty", "department": "Department of Physics",
                   "keywords": ["physics"],

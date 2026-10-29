@@ -591,6 +591,40 @@ class TestR70ADataQuality:
         offenders = [o.get("id") for o in _load_data() if "research_areas" in o]
         assert not offenders, f"{len(offenders)} records carry a top-level research_areas: {offenders[:5]}"
 
+    def test_wigg_directory_rows_hold_no_research_text_and_no_unstamped_keywords(self):
+        """The UIUC WIGG directory (AHS, Education, Social Work) lists keywords
+        that look like Illinois Experts concepts and classification labels, not
+        words the person wrote (M166). Stored as research text or unstamped, the
+        detail page, the email and the match reasons said them as the
+        professor's own work. So a WIGG row holds no research text, and its
+        keywords are the department's field (the loader's tag) or stamped; a
+        data PR that writes the earlier rows back fails here."""
+        from src.collectors.uiuc_faculty import _keywords_are_department_field
+        from src.collectors.uiuc_json_faculty import WIGG_ID_PREFIXES
+        from src.evidence import inferred_method
+
+        # Keywords OpenAlex Pass B wrote on 2026-07-01 (be5dc8de), before
+        # stamps existed, beside the department's field as research text. M170
+        # stamps them; the next UIUC refresh drops that text.
+        pass_b = frozenset({
+            "faculty-ahs-3a219d59", "faculty-ahs-a13ecbb9", "faculty-ahs-ad323917",
+            "faculty-education-29349b67", "faculty-education-4b0f4b2c", "faculty-education-54b73a25",
+            "faculty-education-7446b8c6", "faculty-education-80b7c52d", "faculty-social work-5e89f5d1",
+            "faculty-social work-9d5329be", "faculty-social work-bc688a08", "faculty-social work-c6864e4c",
+            "faculty-social work-cb376b7e",
+        })
+        text, unstamped = [], []
+        for o in _load_data():
+            oid = str(o.get("id") or "")
+            if o.get("source") != "uiuc_faculty" or not oid.startswith(WIGG_ID_PREFIXES) or oid in pass_b:
+                continue
+            if str((o.get("metadata") or {}).get("research_areas_raw") or "").strip():
+                text.append(oid)
+            if o.get("keywords") and inferred_method(o, "keywords") is None and not _keywords_are_department_field(o):
+                unstamped.append(oid)
+        assert not text, f"{len(text)} WIGG directory rows hold research text: {text[:5]}"
+        assert not unstamped, f"{len(unstamped)} WIGG directory rows hold unstamped keywords: {unstamped[:5]}"
+
     def test_no_duplicate_faculty_at_same_url(self):
         """A cross-appointed professor scraped from two department pages shares
         one profile URL — those must be collapsed to a single record so the

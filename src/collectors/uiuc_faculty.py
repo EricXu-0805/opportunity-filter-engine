@@ -1676,12 +1676,19 @@ def _carry_forward_enrichment(existing: dict, incoming: dict) -> None:
     # ours too (the field, our tags, or a stamp), is the collector's fallback
     # and goes (M154); beside topics the page is taken to state it stays, or
     # the description would say those as research areas in its place.
+    # A WIGG directory row (AHS, Education, Social Work) gets none: what its
+    # rows held was the directory's keyword list (M166).
+    # Imported here: that module imports this one.
+    from .uiuc_json_faculty import WIGG_ID_PREFIXES
+
     areas = (existing.get("metadata") or {}).get("research_areas_raw")
     if (
         isinstance(areas, str)
         and areas.strip()
         and not _is_site_menu_text(areas)
         and not _is_fallback_research_text(areas, existing)
+        and not (incoming.get("source") == "uiuc_faculty"
+                 and str(incoming.get("id") or "").startswith(WIGG_ID_PREFIXES))
         and not str((incoming.get("metadata") or {}).get("research_areas_raw") or "").strip()
     ):
         md = incoming.setdefault("metadata", {})

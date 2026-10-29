@@ -21,7 +21,8 @@ from src.matcher.config import MATCHER_VERSION
 from src.matcher.ranker import _OUR_TOPICS, _named_re, _repeat_re, rank_opportunity, score_upside
 from src.matcher.reason_keys import reason_key
 
-STAMPS = ["derived:openalex_topics", "derived:illinois_experts_concepts", "tag:department_field"]
+STAMPS = ["derived:openalex_topics", "derived:illinois_experts_concepts", "derived:illinois_directory_keywords",
+          "tag:department_field"]
 
 
 def _faculty(keywords, *, stamp=None, stated=""):

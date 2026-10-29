@@ -657,6 +657,20 @@ def test_carry_forward_keeps_the_inference_stamp_with_the_keywords():
     assert incoming3["keywords"] == stated["keywords"]
     assert "inferred_fields" not in (incoming3.get("metadata") or {})
 
+    # The WIGG directory's keyword list (M166): a stored, richer list keeps its
+    # stamp over a fresh read that lists only the department's field.
+    from src.collectors.uiuc_json_faculty import DIRECTORY_KEYWORDS_METHOD
+
+    directory = {"id": "faculty-ahs-0a1b2c3d", "source": "uiuc_faculty", "pi_name": "A B",
+                 "department": "Department of Health and Kinesiology",
+                 "keywords": ["Physical Activity", "Exercise Intervention"],
+                 "metadata": {"inferred_fields": {"keywords": DIRECTORY_KEYWORDS_METHOD}}}
+    incoming4 = {"id": "faculty-ahs-0a1b2c3d", "source": "uiuc_faculty", "pi_name": "A B",
+                 "department": "Department of Health and Kinesiology", "keywords": ["health and kinesiology"]}
+    _carry_forward_enrichment(directory, incoming4)
+    assert incoming4["keywords"] == directory["keywords"]
+    assert incoming4["metadata"]["inferred_fields"]["keywords"] == DIRECTORY_KEYWORDS_METHOD
+
 def test_carry_forward_keeps_research_areas_raw():
     """The professor's own stated research areas survive a re-scrape that did
     not reach their detail page.
@@ -694,6 +708,36 @@ def test_carry_forward_keeps_research_areas_raw():
     # The carried statement keeps the date it was actually observed, so nothing
     # downstream can present last week's prose as verified today.
     assert incoming["metadata"]["research_areas_verified_at"] == "2026-08-15T03:59:15"
+
+
+@pytest.mark.parametrize("unit", ["ahs", "education", "social work"])
+def test_carry_forward_gives_a_wigg_row_no_stored_research_text(unit):
+    """What the WIGG directory's rows (AHS, Education, Social Work) held as
+    research text was its keyword list, which the detail page showed as the
+    profile's own words (M166). The collector writes none now; carried, a
+    refresh after a lost repair would show the list again, dated when it was
+    first read."""
+    stored = {
+        "id": f"faculty-{unit}-0a1b2c3d", "source": "uiuc_faculty", "pi_name": "Avery Example",
+        "department": "Department of Speech and Hearing Science", "keywords": ["Vocal Fatigue", "Room Acoustics"],
+        "metadata": {"research_areas_raw": "Vocal Fatigue; Room Acoustics", "last_verified": "2026-10-26T00:00:00"},
+    }
+    # This read lists no keywords for the person: the department's field, with
+    # no stamp, so the rule rests on the id the collector gives the row.
+    fresh = {**stored, "keywords": ["speech and hearing science"],
+             "metadata": {"research_areas_raw": "", "last_verified": "2026-11-02T00:00:00"}}
+    _carry_forward_enrichment(stored, fresh)
+    assert fresh["metadata"]["research_areas_raw"] == ""
+    assert "research_areas_verified_at" not in fresh["metadata"]
+
+    # Another UIUC unit's row, or another collector's under the same id, still
+    # keeps its stored statement.
+    for other in ({"id": "faculty-psych-0a1b2c3d"}, {"source": "faculty_graph"}):
+        prior = {**stored, **other}
+        again = {**fresh, **other, "metadata": {"research_areas_raw": ""}}
+        _carry_forward_enrichment(prior, again)
+        assert again["metadata"]["research_areas_raw"] == "Vocal Fatigue; Room Acoustics"
+        assert again["metadata"]["research_areas_verified_at"] == "2026-10-26T00:00:00"
 
 
 def test_carry_forward_fresh_research_areas_win():
@@ -1483,7 +1527,8 @@ def test_rebuild_title_keeps_genuine_specific_areas():
     assert "positions in their lab" not in rows[0]["description_raw"]
 
 
-@pytest.mark.parametrize("method", ["derived:illinois_experts_concepts", "derived:openalex_topics"])
+@pytest.mark.parametrize("method", ["derived:illinois_experts_concepts", "derived:openalex_topics",
+                                    "derived:illinois_directory_keywords"])
 def test_rebuild_does_not_say_inferred_keywords_as_the_profiles_areas(method):
     # M161: Illinois Experts concepts are stamped as inferred; the stored
     # title and description read "Research areas: <concepts>" as stated.

@@ -5,8 +5,11 @@ filtering, department routing, and keyword hygiene, which these exercise on
 representative API payloads."""
 from __future__ import annotations
 
+import json
+
 import src.collectors.uiuc_json_faculty as j
-from src.collectors.uiuc_faculty import _is_junk_keyword
+from src.collectors.uiuc_faculty import _is_junk_keyword, merge_into_processed
+from src.evidence import inferred_method
 
 
 def _wigg_person(name, email, job_type, office, keywords=None, title="Associate Professor"):
@@ -67,12 +70,27 @@ def test_wigg_keeps_only_faculty_job_type(monkeypatch):
     assert recs[0]["contact_email"] == "jprof@illinois.edu"
 
 
-def test_wigg_faculty_with_no_api_keywords_state_no_research_areas(monkeypatch):
-    payload = {"people": [_wigg_person("Quiet Prof", "qp@illinois.edu", "Faculty",
-                                       "Department of Health and Kinesiology", [])]}
+def test_wigg_skips_a_name_too_short_to_be_a_person(monkeypatch):
+    payload = {"people": [_wigg_person("Al", "short@example.edu", "Faculty", "Office", ["Topic A"])]}
     monkeypatch.setattr(j, "_fetch_json", lambda url: payload)
-    rec = j.fetch_ahs()[0]
-    assert (rec["keywords"], rec["metadata"]["research_areas_raw"]) == (["health and kinesiology"], "")
+    assert j.fetch_ahs() == []
+
+
+def test_wigg_faculty_with_no_api_keywords_state_no_research_areas(monkeypatch):
+    payload = {"people": [
+        _wigg_person("Quiet Prof", "qp@illinois.edu", "Faculty", "Department of Health and Kinesiology", []),
+        # Every keyword is noise the collector drops.
+        _wigg_person("Noisy Prof", "noisy@example.edu", "Faculty", "Department of Health and Kinesiology",
+                     ["USA", "Adults"]),
+    ]}
+    monkeypatch.setattr(j, "_fetch_json", lambda url: payload)
+    recs = j.fetch_ahs()
+    assert len(recs) == 2
+    for rec in recs:
+        assert (rec["keywords"], rec["metadata"]["research_areas_raw"]) == (["health and kinesiology"], "")
+        # The department's field is not the directory's list: the loader stamps
+        # it as our tag (tag:department_field).
+        assert inferred_method(rec, "keywords") is None
 
 
 def test_ahs_routes_office_to_academic_department():
@@ -176,11 +194,17 @@ def test_gies_enriches_from_profile_research_interests(monkeypatch):
     # The broad field stands in for keywords only; the profile stated no areas.
     assert ops["metadata"]["research_areas_raw"] == "Machine learning; optimization; Supply chain management"
     assert bare["metadata"]["research_areas_raw"] == ""
+    # The profile page's own Research Interests are stated, unlike the WIGG
+    # directory's keyword list (M166).
+    assert inferred_method(ops, "keywords") is None and inferred_method(bare, "keywords") is None
 
 
 def test_normalized_record_uses_api_keywords_not_scrape(monkeypatch):
     """The structured API keywords flow straight through normalize_faculty
-    (no per-profile fetch), so a niche area the keyword bank lacks survives."""
+    (no per-profile fetch), so a niche area the keyword bank lacks survives.
+    They look like Illinois Experts concepts, not words the person wrote
+    (M166): stamped as inferred and never research text, which the detail page
+    showed as the profile's own words."""
     payload = {"people": [
         _wigg_person("Vocal Researcher", "vr@illinois.edu", "Faculty",
                      "Department of Speech and Hearing Science",
@@ -188,12 +212,58 @@ def test_normalized_record_uses_api_keywords_not_scrape(monkeypatch):
     ]}
     monkeypatch.setattr(j, "_fetch_json", lambda url: payload)
     rec = j.fetch_ahs()[0]
-    assert "Vocal Fatigue" in rec["keywords"]
+    assert rec["keywords"] == ["Vocal Fatigue", "Room Acoustics"]
     assert rec["department"] == "Department of Speech and Hearing Science"
-    assert rec["metadata"]["research_areas_raw"] == "Vocal Fatigue; Room Acoustics"
+    assert rec["metadata"]["research_areas_raw"] == ""
+    assert "Research areas" not in rec["description_raw"]
+    assert inferred_method(rec, "keywords") == j.DIRECTORY_KEYWORDS_METHOD
     # Department routing remains a research-topic signal; it is not evidence
     # that a currently available opening has declared eligible majors.
     assert rec["eligibility"]["majors"] == []
+
+
+def test_the_directory_keywords_stamp_is_a_derivation():
+    # The detail page names a `derived:` stamp's basis "From a matched external record".
+    assert j.DIRECTORY_KEYWORDS_METHOD == "derived:illinois_directory_keywords"
+
+
+def test_every_wigg_unit_writes_ids_under_the_wigg_prefixes(monkeypatch):
+    """The carry and the corpus gate find the WIGG rows by these prefixes, the
+    ids normalize_faculty builds from each unit's short name; Gies's are not."""
+    def fetch(url):
+        if "facultysearchapi" in url:
+            return {"items": [{"fullnamefirst": "Fin Prof", "email": "fin@example.edu",
+                               "title": "Professor of Finance", "department": "Finance"}]}
+        return {"people": [_wigg_person("Wigg Prof", "wigg@example.edu", "Faculty", "Office", ["Topic A"])]}
+
+    monkeypatch.setattr(j, "_fetch_json", fetch)
+    ids = [r["id"] for fn in (j.fetch_ahs, j.fetch_socialwork, j.fetch_education) for r in fn()]
+    assert [[i for i in ids if i.startswith(prefix)] != [] for prefix in j.WIGG_ID_PREFIXES] == [True] * 3
+    assert len(ids) == 3 and all(i.startswith(j.WIGG_ID_PREFIXES) for i in ids)
+    assert not any(r["id"].startswith(j.WIGG_ID_PREFIXES) for r in j.fetch_gies())
+
+
+def test_a_merged_wigg_row_names_no_directory_keyword(monkeypatch, tmp_path):
+    """The stored title, description and eligibility text a merge writes named
+    the directory's keywords as the profile's areas ("<name> — AHS (Vocal
+    Fatigue, Room Acoustics)"); the stamp travels to the stored row and they
+    name none (M166)."""
+    payload = {"people": [
+        _wigg_person("Vocal Researcher", "vocal@example.edu", "Faculty",
+                     "Department of Speech and Hearing Science",
+                     ["Vocal Fatigue", "Room Acoustics"]),
+    ]}
+    monkeypatch.setattr(j, "_fetch_json", lambda url: payload)
+    path = tmp_path / "opportunities.json"
+    merge_into_processed(j.fetch_ahs(), filepath=str(path))
+    [row] = json.loads(path.read_text(encoding="utf-8"))
+    assert row["title"] == "Vocal Researcher — AHS"
+    assert row["keywords"] == ["Vocal Fatigue", "Room Acoustics"]
+    assert inferred_method(row, "keywords") == j.DIRECTORY_KEYWORDS_METHOD
+    assert row["metadata"]["research_areas_raw"] == ""
+    for text in (row["title"], row["description_raw"], row["description_clean"],
+                 row["eligibility"]["eligibility_text_raw"]):
+        assert "Vocal Fatigue" not in text and "Research areas" not in text
 
 
 def test_education_routes_office_to_department():
