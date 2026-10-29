@@ -4,7 +4,9 @@
 detail page shows as ours (a department's field, OpenAlex topics, a listing's
 tags) and said nothing of it. A chip the row's own words name (its title, the
 research text the detail page shows as the source's) still is the page's,
-abbreviated or in full, singular or plural.
+abbreviated or in full, singular or plural. The other chips' ending says how
+we matched them and claims nothing of the page, which can name a topic in
+words no test reads.
 "Your research interests align with Prof. X's focus area" is the line a row
 gets when its keywords are inferred and so are not named; it gave the row a
 focus area no page states. Scores do not change.
@@ -16,7 +18,7 @@ import pytest
 from backend.data_loader import _sanitize_opportunity
 from src.evidence import stamp_inferred
 from src.matcher.config import MATCHER_VERSION
-from src.matcher.ranker import _OUR_TOPICS, rank_opportunity, score_upside
+from src.matcher.ranker import _OUR_TOPICS, _named_re, _repeat_re, rank_opportunity, score_upside
 from src.matcher.reason_keys import reason_key
 
 STAMPS = ["derived:openalex_topics", "derived:illinois_experts_concepts", "tag:department_field"]
@@ -124,6 +126,16 @@ def _row(keyword, title, stated):
     ("genes", "genes", "", "Gene regulation, chromatin biology"),
     ("digital library", "digital library", "", "Digital Libraries, Human Computer Interaction"),
     ("human-computer interaction", "human-computer interaction", "", "Digital Libraries, Human Computer Interaction"),
+    ("human-computer interaction", "human-computer interaction", "", "Human\u2013computer interaction"),
+    ("data science", "data science", "Data\u00a0Science Intern", ""),
+    ("ai", "ai", "Artificial Intelligence Research Intern", ""),
+    ("nlp", "nlp", "", "Natural language processing, speech"),
+    ("hci", "hci", "", "Human-computer interaction, accessibility"),
+    ("rl", "rl", "", "Reinforcement learning for robotics"),
+    ("gene", "gene", "Genes and Behavior REU", ""),
+    ("energy technologies", "energy technologies", "Energy Technology Intern", ""),
+    ("processes", "processes", "Process Engineering Intern", ""),
+    ("process", "process", "", "Manufacturing processes"),
 ])
 def test_a_chip_the_rows_words_name_in_another_form_is_its_own(chip, keyword, title, stated):
     """Review round 2: only the chip's own spelling counted, so "ML" in a
@@ -142,33 +154,44 @@ def test_a_chip_the_rows_words_name_in_another_form_is_its_own(chip, keyword, ti
     ("genetics", "genetics", "Genetic Algorithms Research Intern", ""),
     ("art", "art", "Smart Grid Intern", ""),
     ("art", "art", "Artist Residency Program", ""),
+    ("genetic", "genetic", "Genetics Summer Research", ""),
+    ("data science", "data science", "Summer Data \u2014 Science Outreach", ""),
+    ("data science", "data science", "", "Big data\nscience policy"),
 ])
 def test_a_related_word_or_a_word_inside_another_does_not_name_the_chip(chip, keyword, title, stated):
     """Analytics is not data science and neural networks are not deep
-    learning; "me" and "new" are words, "genetic" is not a singular of
-    "genetics", and "art" is inside "Smart" and "Artist"."""
+    learning; "me" and "new" are words, "genetic" and "genetics" are two
+    words either way round, "art" is inside "Smart" and "Artist", and an em
+    dash or a line break ends a phrase."""
     profile = {"research_interests_text": "", "desired_fields": [chip]}
     _, fit, _ = score_upside(profile, _row(keyword, title, stated), precomputed_sim=0.0)
     assert f"Matches your interests: {chip}{_OUR_TOPICS}" in fit
 
 
 def test_a_professors_name_names_no_topic():
-    """A faculty row's title is the professor's name, and "Ai" there is a name."""
+    """A faculty row's title is the professor's name, and "Ai" there is a
+    name, whatever its case or spacing."""
     row = _faculty(["ai"], stamp="derived:openalex_topics")
-    row.update(pi_name="Pat Ai", title="Pat Ai")
+    row.update(pi_name=" pat ai", title="Pat Ai")
     _, fit, _ = score_upside({"research_interests_text": "", "desired_fields": ["ai"]}, row, precomputed_sim=0.0)
     assert f"Matches your interests: ai{_OUR_TOPICS}" in fit
 
 
-def test_a_term_does_not_run_from_the_title_into_the_research_text():
-    row = _listing("simplify_internships", "internship", title="Summer Data", keywords=("data science",))
-    row["research_areas"] = "Science of learning"
+@pytest.mark.parametrize(("title", "areas"), [
+    ("Summer Data", "Science of learning"),
+    ("Summer Program", ["Big Data", "Science Policy"]),
+])
+def test_a_term_does_not_run_across_the_rows_words(title, areas):
+    """Not from the title into the research text, nor from one research area
+    into the next."""
+    row = _listing("simplify_internships", "internship", title=title, keywords=("data science",))
+    row["research_areas"] = areas
     profile = {"research_interests_text": "", "desired_fields": ["data science"]}
     _, fit, _ = score_upside(profile, row, precomputed_sim=0.0)
     assert f"Matches your interests: data science{_OUR_TOPICS}" in fit
 
 
-@pytest.mark.parametrize("raw", [None, "  ", "N/A", "unknown"])
+@pytest.mark.parametrize("raw", [None, "  ", "N/A", "unknown", "None", "null"])
 @pytest.mark.parametrize("areas", [["Algebra", "Algebraic Geometry"], "Algebra, Algebraic Geometry"])
 def test_research_areas_stand_in_for_absent_stated_research(raw, areas):
     """As on the detail page: research_areas when research_areas_raw is
@@ -183,6 +206,47 @@ def test_research_areas_stand_in_for_absent_stated_research(raw, areas):
     row["metadata"]["research_areas_raw"] = "Number theory"
     _, fit, _ = score_upside(profile, row, precomputed_sim=0.0)
     assert f"Matches your interests: algebraic geometry{_OUR_TOPICS}" in fit
+
+
+@pytest.mark.parametrize(("title", "areas"), [
+    ("Machine Learning Intern", "Robotics"),
+    ("Summer Intern", "Machine learning, robotics"),
+])
+def test_either_the_title_or_the_research_text_names_the_chip(title, areas):
+    row = _listing("simplify_internships", "internship", title=title, keywords=("machine learning",))
+    row["research_areas"] = areas
+    profile = {"research_interests_text": "", "desired_fields": ["machine learning"]}
+    _, fit, _ = score_upside(profile, row, precomputed_sim=0.0)
+    assert "Matches your interests: machine learning" in fit
+
+
+@pytest.mark.parametrize(("chip", "keyword", "title"), [
+    ("hardware engineering", "hardware", "Hardware Engineer Intern"),
+    ("looking for a software engineering internship", "software engineering", "Software Engineering Internship/Co-Op"),
+])
+def test_words_no_test_reads_leave_an_ending_that_still_holds(chip, keyword, title):
+    """Review round 3: a job title, or a sentence around the topic, names the
+    chip in words no test here reads. The chip matched a keyword of ours, so
+    the ending says that and claims nothing of the page."""
+    profile = {"research_interests_text": "", "desired_fields": [chip]}
+    _, fit, _ = score_upside(profile, _row(keyword, title, ""), precomputed_sim=0.0)
+    assert f"Matches your interests: {chip}{_OUR_TOPICS}" in fit
+    assert _OUR_TOPICS == " \u2014 based on topics we inferred"
+
+
+def test_a_chip_longer_than_any_topic_is_neither_named_nor_repeated():
+    """_named_re and _repeat_re keep one pattern per chip, and a chip can run
+    to 60,000 characters; neither cache holds one past _TERM_MAX."""
+    chip = " ".join(["robotics"] * 40)
+    row = _listing("simplify_internships", "internship", title="Summer Intern", keywords=("robotics",))
+    row["research_areas"] = chip
+    _named_re.cache_clear()
+    _repeat_re.cache_clear()
+    profile = {"research_interests_text": "robotics", "desired_fields": [chip]}
+    _, fit, _ = score_upside(profile, row, precomputed_sim=0.5)
+    assert f"Matches your interests: {chip}{_OUR_TOPICS}" in fit
+    assert "closely matches" in fit[-1]
+    assert _named_re.cache_info().currsize == _repeat_re.cache_info().currsize == 0
 
 
 ROBOTICS_AND_CV = {"research_interests_text": "perception for drones", "desired_fields": ["robotics", "computer vision"]}
@@ -220,27 +284,34 @@ def test_a_chip_inside_another_word_of_the_similarity_line_keeps_its_line(chip, 
 
 @pytest.mark.parametrize(("chip", "keywords", "kept"), [
     ("large language model", ["large language models", "dialogue systems"], False),
+    ("process", ["manufacturing processes", "dialogue systems", "robotics", "process"], False),
     ("nlp", ["natural language processing", "dialogue systems"], True),
     ("unions", ["union political action", "union strategic campaigns", "labor history", "unions"], True),
 ])
 def test_the_bare_line_repeats_the_chip_or_its_plural_only(chip, keywords, kept):
     """"…also works on large language models" repeats the chip "large language
-    model". "natural language processing" does not repeat what the student
-    typed as "nlp", nor "union political action" the chip "unions", as on main."""
+    model", and "manufacturing processes" the chip "process". "natural
+    language processing" does not repeat what the student typed as "nlp", nor
+    "union political action" the chip "unions", as on main."""
     profile = {"research_interests_text": "dialogue agents", "desired_fields": [chip]}
     _, fit, _ = score_upside(profile, _faculty(keywords), precomputed_sim=0.5)
     assert "also works on" in fit[-1]
     assert (f"Matches your interests: {chip}" in fit) is kept
 
 
-def test_the_lab_summary_does_not_split_the_two_interest_lines():
-    row = _listing("nsf_reu", "summer_program", title="Robotics REU", keywords=("robotics", "computer vision"))
+@pytest.mark.parametrize("fields", [["robotics", "computer vision"], ["robotics"]])
+def test_the_lab_summary_follows_the_interest_lines_and_precedes_the_rest(fields):
+    """Not between the two interest lines, and right after a single one."""
+    row = _listing("nsf_reu", "summer_program", title="Robotics REU",
+                   keywords=("embedded systems", "aircraft", "sensors", "robotics", "computer vision"))
     row["lab_or_program"] = "Field Robotics Lab"
-    fit = rank_opportunity({"desired_fields": ["robotics", "computer vision"]}, row).reasons_fit
-    assert fit[:3] == [
-        "Matches your interests: robotics",
-        f"Matches your interests: computer vision{_OUR_TOPICS}",
-        "Pat Lee's Field Robotics Lab — robotics, computer vision",
+    profile = {"desired_fields": fields, "research_interests_text": "perception for drones"}
+    fit = rank_opportunity(profile, row, precomputed_sim=0.5).reasons_fit
+    interest = ["Matches your interests: robotics", f"Matches your interests: computer vision{_OUR_TOPICS}"]
+    assert fit[:len(fields) + 2] == [
+        *interest[:len(fields)],
+        "Pat Lee's Field Robotics Lab — embedded systems, aircraft, sensors",
+        "Prof. Pat Lee also works on embedded systems, aircraft, sensors",
     ]
 
 

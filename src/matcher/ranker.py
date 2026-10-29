@@ -1836,9 +1836,12 @@ _OUR_READING = ", by our reading of the page — not confirmed on the program pa
 # Ends a restriction one part of which our config supplied and one part of
 # which we read off the page.
 _OUR_LISTING_AND_READING = ", per our listing and our reading of the page — not confirmed on the program page"
-# Ends "Matches your interests: …" when the row's topics are ours (see
-# _OppStatic.topics_ours): its terms are the student's, matched against ours.
-_OUR_TOPICS = " — by topics we inferred, not confirmed on their page"
+# Ends "Matches your interests: …" for the chips the row's own words do not
+# name when its topics are ours (see _OppStatic.topics_ours). Each of them
+# matched a keyword of ours, so the line says how we matched. It says nothing
+# of what the page lacks: a page can name a topic in words no test here reads
+# ("Hardware Engineer" for hardware engineering).
+_OUR_TOPICS = " — based on topics we inferred"
 
 
 def _intl_terms_basis(opportunity: dict, fields: tuple[str, ...]) -> str | None:
@@ -2417,7 +2420,9 @@ def score_upside(
             terms = sorted(interest_overlap)
             ours = [
                 t for t in terms
-                if st.topics_ours and not any(_named_re(t).search(text) for text in st.own_words)
+                if st.topics_ours and (
+                    len(t) > _TERM_MAX or not any(_named_re(t).search(text) for text in st.own_words)
+                )
             ]
             stated = [t for t in terms if t not in ours]
             if stated:
@@ -2502,7 +2507,7 @@ def score_upside(
             # nor is one inside another word ("ai" in "aircraft").
             if interest_lines and display_kw and len(reasons_fit) > pre_sim_len:
                 for line, terms in interest_lines:
-                    if all(_repeat_re(kw).search(reasons_fit[-1]) for kw in terms):
+                    if all(len(kw) <= _TERM_MAX and _repeat_re(kw).search(reasons_fit[-1]) for kw in terms):
                         reasons_fit.remove(line)
 
     has_skill_signal = st.has_skill_signal
@@ -3114,21 +3119,29 @@ _SAME_TERM_GROUPS = (
     ("cs", "computer science"),
 )
 _SAME_TERM = {spelling: group for group in _SAME_TERM_GROUPS for spelling in group}
-# Spaces, hyphens and dashes between a term's words: "human-computer interaction".
-_TERM_GAP = r"[\s\-\u2010-\u2015]+"
+# Spaces, hyphens and dashes up to the en dash between a term's words, on one
+# line: "human-computer interaction". An em dash or a line break ends a phrase
+# ("Summer Data — Science Outreach" does not name data science).
+_TERM_GAP = r"[ \t\u00a0\-\u2010-\u2013]+"
+# _named_re and _repeat_re keep one pattern per chip, and a chip is user input
+# of up to 60,000 characters (backend/schemas.py). A longer chip is a passage,
+# not a topic: the row's words never name it and no line repeats it. Today's
+# longest keyword is 231 characters.
+_TERM_MAX = 300
 
 
 def _number_forms(word: str) -> set[str]:
     """``word`` with its regular English plural or singular, among forms of
     four letters or more: "compilers" meets "compiler" and "library"
-    "libraries", but "news" never meets "new" and "ml" never "mls"."""
+    "libraries", but "news" never meets "new", "genetic" never "genetics"
+    (either way round) and "ml" never "mls"."""
     if len(word) < 4:
         return {word}
     if word.endswith("ies"):
         forms = {word, word[:-3] + "y"}
     elif word.endswith("es"):
         forms = {word, word[:-1], word[:-2]}
-    elif word.endswith(("us", "is", "ics")):
+    elif word.endswith(("us", "is", "ic", "ics")):
         return {word}
     elif word.endswith("s") and not word.endswith("ss"):
         forms = {word, word[:-1]}

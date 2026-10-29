@@ -406,7 +406,7 @@
     },
     {
       "kind": "fit",
-      "english": "Matches your interests: genomics, machine learning — by topics we inferred, not confirmed on their page",
+      "english": "Matches your interests: genomics, machine learning — based on topics we inferred",
       "key": "interests_match_ours",
       "params": {
         "terms": "genomics, machine learning"

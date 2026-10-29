@@ -145,7 +145,7 @@ const ZH_REASONS: Record<string, Render> = {
   brand_faculty_institution: fixed('来自一家知名研究机构的教师主页'),
   brand_institution: fixed('知名机构 —— 对简历很有帮助'),
   publication_pathway: fixed('可能有发表论文或长期参与的机会'),
-  interests_match_ours: (p) => `符合你的兴趣：${quoteList(p.terms)} —— 依据是我们推断的方向，对方页面未确认`,
+  interests_match_ours: (p) => `符合你的兴趣：${quoteList(p.terms)} —— 依据是我们推断的方向`,
   interests_match: (p) => `符合你的兴趣：${quoteList(p.terms)}`,
   interest_lab_work: (p) =>
     `你感兴趣的${quoteList(p.interest)}与${quote(p.lab)}在${quoteList(p.work)}方面的工作高度吻合`,
