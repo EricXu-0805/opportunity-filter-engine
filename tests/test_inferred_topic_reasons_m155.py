@@ -136,6 +136,14 @@ def _row(keyword, title, stated):
     ("energy technologies", "energy technologies", "Energy Technology Intern", ""),
     ("processes", "processes", "Process Engineering Intern", ""),
     ("process", "process", "", "Manufacturing processes"),
+    ("survey", "survey", "", "Surveys of distant galaxies"),
+    ("data science", "data science", "Data\tScience Intern", ""),
+    ("data science", "data science", "Data\u2009Science Intern", ""),
+    ("human-computer interaction", "human-computer interaction", "", "Human - Computer Interaction"),
+    ("human-computer interaction", "human-computer interaction", "", "Human\u2011computer interaction"),
+    ("human\u2013computer interaction", "human\u2013computer interaction", "", "Human-computer interaction"),
+    ("data\u00a0science", "data\u00a0science", "Data Science Intern", ""),
+    ("c++", "c++", "C++17 Developer Intern", ""),
 ])
 def test_a_chip_the_rows_words_name_in_another_form_is_its_own(chip, keyword, title, stated):
     """Review round 2: only the chip's own spelling counted, so "ML" in a
@@ -156,7 +164,9 @@ def test_a_chip_the_rows_words_name_in_another_form_is_its_own(chip, keyword, ti
     ("art", "art", "Artist Residency Program", ""),
     ("genetic", "genetic", "Genetics Summer Research", ""),
     ("data science", "data science", "Summer Data \u2014 Science Outreach", ""),
+    ("data science", "data science", "Summer Data \u2015 Science Outreach", ""),
     ("data science", "data science", "", "Big data\nscience policy"),
+    ("data science", "data science", "", "Big data\rscience policy"),
 ])
 def test_a_related_word_or_a_word_inside_another_does_not_name_the_chip(chip, keyword, title, stated):
     """Analytics is not data science and neural networks are not deep
@@ -172,7 +182,7 @@ def test_a_professors_name_names_no_topic():
     """A faculty row's title is the professor's name, and "Ai" there is a
     name, whatever its case or spacing."""
     row = _faculty(["ai"], stamp="derived:openalex_topics")
-    row.update(pi_name=" pat ai", title="Pat Ai")
+    row.update(pi_name=" PAT AI", title="Pat Ai")
     _, fit, _ = score_upside({"research_interests_text": "", "desired_fields": ["ai"]}, row, precomputed_sim=0.0)
     assert f"Matches your interests: ai{_OUR_TOPICS}" in fit
 
@@ -232,6 +242,28 @@ def test_words_no_test_reads_leave_an_ending_that_still_holds(chip, keyword, tit
     _, fit, _ = score_upside(profile, _row(keyword, title, ""), precomputed_sim=0.0)
     assert f"Matches your interests: {chip}{_OUR_TOPICS}" in fit
     assert _OUR_TOPICS == " \u2014 based on topics we inferred"
+
+
+@pytest.mark.parametrize(("chip", "plain"), [
+    ("robotics " + "y" * 291, True),
+    ("robotics " + "y" * 292, False),
+    (" ".join(["robotics"] + ["lab"] * 19), True),
+    (" ".join(["robotics"] + ["lab"] * 20), False),
+], ids=["300 characters", "301 characters", "20 words", "21 words"])
+def test_a_chip_past_300_characters_or_20_words_is_never_named(chip, plain):
+    _, fit, _ = score_upside({"research_interests_text": "", "desired_fields": [chip]},
+                             _row("robotics", "", chip), precomputed_sim=0.0)
+    assert (f"Matches your interests: {chip}" in fit) is plain
+    assert (f"Matches your interests: {chip}{_OUR_TOPICS}" in fit) is not plain
+
+
+@pytest.mark.parametrize(("chip", "kept"), [("robotics " + "y" * 291, False), ("robotics " + "y" * 292, True)],
+                         ids=["300 characters", "301 characters"])
+def test_a_chip_past_300_characters_is_never_a_repeat(chip, kept):
+    profile = {"research_interests_text": chip, "desired_fields": [chip]}
+    _, fit, _ = score_upside(profile, _faculty([chip, "robotics"]), precomputed_sim=0.5)
+    assert "closely matches" in fit[-1]
+    assert (f"Matches your interests: {chip}" in fit) is kept
 
 
 def test_a_chip_longer_than_any_topic_is_neither_named_nor_repeated():
@@ -312,6 +344,19 @@ def test_the_lab_summary_follows_the_interest_lines_and_precedes_the_rest(fields
         *interest[:len(fields)],
         "Pat Lee's Field Robotics Lab — embedded systems, aircraft, sensors",
         "Prof. Pat Lee also works on embedded systems, aircraft, sensors",
+    ]
+
+
+def test_a_type_match_line_is_not_an_interest_line():
+    """"Matches your interest in research" does not hold the summary back."""
+    row = _listing("nsf_reu", "summer_program", title="Robotics REU",
+                   keywords=("embedded systems", "aircraft", "sensors", "robotics", "computer vision"))
+    row["lab_or_program"] = "Field Robotics Lab"
+    fit = rank_opportunity({"desired_fields": ["robotics"], "seeking_type": ["research"]}, row).reasons_fit
+    assert fit[:3] == [
+        "Matches your interests: robotics",
+        "Pat Lee's Field Robotics Lab — embedded systems, aircraft, sensors",
+        "Matches your interest in research",
     ]
 
 

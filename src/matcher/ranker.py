@@ -3101,7 +3101,7 @@ def _own_words(opp: dict) -> tuple[str, ...]:
     title = text(opp.get("title"))
     if title.casefold() == str(opp.get("pi_name") or "").strip().casefold():
         title = ""
-    return tuple(t.lower() for t in (title, stated) if t)
+    return tuple(t.lower().translate(_GAP_FOLD) for t in (title, stated) if t)
 
 
 # Each group spells one term, short and in full. Narrower than SKILL_SYNONYMS
@@ -3121,20 +3121,30 @@ _SAME_TERM_GROUPS = (
 _SAME_TERM = {spelling: group for group in _SAME_TERM_GROUPS for spelling in group}
 # Spaces, hyphens and dashes up to the en dash between a term's words, on one
 # line: "human-computer interaction". An em dash or a line break ends a phrase
-# ("Summer Data — Science Outreach" does not name data science).
-_TERM_GAP = r"[ \t\u00a0\-\u2010-\u2013]+"
+# ("Summer Data — Science Outreach" does not name data science). The texts
+# and terms are folded first (tab and Unicode spaces to " ", Unicode hyphens
+# and the en dash to "-"), so each gap compiles to a two-character class.
+_GAP_FOLD = str.maketrans(
+    "\t\u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u202f\u205f\u3000"
+    "\u2010\u2011\u2012\u2013",
+    " " * 17 + "-" * 4,
+)
+_TERM_GAP = r"[ \-]+"
 # _named_re and _repeat_re keep one pattern per chip, and a chip is user input
-# of up to 60,000 characters (backend/schemas.py). A longer chip is a passage,
-# not a topic: the row's words never name it and no line repeats it. Today's
-# longest keyword is 231 characters.
+# of up to 60,000 characters (backend/schemas.py). A chip of more than
+# _TERM_MAX characters or _TERM_WORDS words is a passage, not a topic: the
+# row's words never name it and no line repeats it. Today's longest keyword
+# is 231 characters.
 _TERM_MAX = 300
+_TERM_WORDS = 20
 
 
 def _number_forms(word: str) -> set[str]:
     """``word`` with its regular English plural or singular, among forms of
     four letters or more: "compilers" meets "compiler" and "library"
-    "libraries", but "news" never meets "new", "genetic" never "genetics"
-    (either way round) and "ml" never "mls"."""
+    "libraries", but "news" never meets "new" and "ml" never "mls". A word
+    ending -ic or -ics keeps its one form, since "genetic" is not a singular
+    of "genetics"; so "clinic" does not meet "clinics" either."""
     if len(word) < 4:
         return {word}
     if word.endswith("ies"):
@@ -3156,19 +3166,22 @@ def _number_forms(word: str) -> set[str]:
 def _named_re(term: str) -> "re.Pattern[str]":
     """A lower-cased text names ``term``: in any spelling of its
     _SAME_TERM_GROUPS group, singular or plural, with spaces, hyphens or
-    dashes between its words, and as whole words (see _word_re). Bounded LRU
-    because the terms are user input."""
-    words = [word for word in re.split(_TERM_GAP, term) if word]
-    if not words:
+    dashes between its words, and as whole words (see _word_re). Never for a
+    term of more than _TERM_WORDS words. Bounded LRU because the terms are
+    user input."""
+    words = [word for word in re.split(_TERM_GAP, term.translate(_GAP_FOLD)) if word]
+    if not words or len(words) > _TERM_WORDS:
         return re.compile(r"(?!)")
     key = " ".join(words)
     alternatives = []
     for spelling in _SAME_TERM.get(key, (key,)):
         *head, last = spelling.split(" ")
         left = r"(?<!\w)" if spelling[:1].isalnum() or spelling[:1] == "_" else ""
-        for form in sorted(_number_forms(last), key=len, reverse=True):
-            right = r"(?!\w)" if form[-1:].isalnum() or form[-1:] == "_" else ""
-            alternatives.append(left + _TERM_GAP.join(map(re.escape, [*head, form])) + right)
+        forms = "|".join(
+            re.escape(form) + (r"(?!\w)" if form[-1:].isalnum() or form[-1:] == "_" else "")
+            for form in sorted(_number_forms(last), key=len, reverse=True)
+        )
+        alternatives.append(left + "".join(re.escape(word) + _TERM_GAP for word in head) + f"(?:{forms})")
     return re.compile("|".join(alternatives))
 
 

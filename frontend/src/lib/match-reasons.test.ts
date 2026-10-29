@@ -62,6 +62,7 @@ describe('match reasons on the zh interface (M107)', () => {
       expect(zh(c)).toMatch(/我们.*推断/);
       expect(zh(c)).not.toContain('未确认');
     }
+    expect(zh(byKey('interests_match_ours'))).toBe('符合你的兴趣：「genomics」、「machine learning」 —— 依据是我们推断的方向');
     // "may" / "suggests" / "Potential" never become a plain statement.
     for (const key of [
       'year_may_fit', 'major_field_may_fit', 'major_field_may_relate', 'major_may_fit', 'major_may_relate',
