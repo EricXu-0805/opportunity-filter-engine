@@ -43,6 +43,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.collectors.atomic_json import atomic_write_json  # noqa: E402
+from src.evidence import inferred_method, record_kind, stamp_inferred  # noqa: E402
 
 WORK_FILE = PROJECT_ROOT / "data" / "processed" / "opportunities.json"
 SHARDS_DIR = PROJECT_ROOT / "data" / "processed" / "shards"
@@ -63,6 +64,50 @@ def _slug(record: dict) -> str:
 # small/volatile shards update freely.
 SHRINK_KEEP_RATIO = 0.7
 SHRINK_GUARD_FLOOR = 100
+
+
+def _keyword_words(record: dict) -> frozenset[str]:
+    """A row's keywords with case and punctuation ignored."""
+    words = (" ".join(re.findall(r"[^\W_]+", k.casefold()))
+             for k in record.get("keywords") or [] if isinstance(k, str))
+    return frozenset(w for w in words if w)
+
+
+def _keyword_stamps(committed: list[dict]) -> dict[str, tuple[str, frozenset[str]]]:
+    """id -> (keyword stamp, keyword words) for the committed rows that carry one."""
+    stamps = {}
+    for r in committed:
+        method = inferred_method(r, "keywords")
+        if method and r.get("id"):
+            stamps[r["id"]] = (method, _keyword_words(r))
+    return stamps
+
+
+def _restore_keyword_stamps(records: list[dict],
+                            committed: dict[str, tuple[str, frozenset[str]]]) -> int:
+    """Give a faculty row written without a keyword stamp the stamp its
+    committed row of the same id carries, when both hold the same keywords
+    apart from case and punctuation. Returns how many rows got it back.
+
+    The stamp is the only thing that says we inferred the keywords instead of
+    reading them off the page, and every reader takes an unstamped faculty
+    keyword as the professor's own words. A merge that replaces metadata
+    wholesale can carry the keywords and drop the stamp: 2,931 rows in the
+    2026-08-28/29 refreshes (#831), 100 Bowdoin rows on 2026-08-19. A row the
+    committed shard holds unstamped never gets one here, and a stamp the new
+    row carries is never replaced."""
+    restored = 0
+    for r in records:
+        prior = committed.get(r.get("id"))
+        if (prior is None or record_kind(r) != "faculty_contact"
+                or inferred_method(r, "keywords") is not None
+                or _keyword_words(r) != prior[1]):
+            continue
+        metadata = r.setdefault("metadata", {})
+        if isinstance(metadata, dict):
+            stamp_inferred(metadata, "keywords", prior[0])
+            restored += 1
+    return restored
 
 
 def split(work_file: Path = WORK_FILE, shards_dir: Path = SHARDS_DIR,
@@ -91,6 +136,11 @@ def split(work_file: Path = WORK_FILE, shards_dir: Path = SHARDS_DIR,
     untouched, so a bad re-scrape can never clobber good faculty data. Kept
     shards are logged loudly; the returned count reflects what is actually on
     disk (the retained old count), not the discarded shrunken count.
+
+    Keyword stamps: a faculty row written without a keyword inference stamp
+    keeps the one its committed row of the same id carries when the keywords
+    are unchanged apart from case and punctuation (``_restore_keyword_stamps``);
+    the count is printed per shard.
     """
     sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
     from minify_corpus import prune_duplicate_raw
@@ -145,12 +195,15 @@ def split(work_file: Path = WORK_FILE, shards_dir: Path = SHARDS_DIR,
     counts: dict[str, int] = {}
     kept: list[tuple[str, int, int]] = []
     old_counts: dict[str, int] = {}
+    old_stamps: dict[str, dict[str, tuple[str, frozenset[str]]]] = {}
     for slug, recs in sorted(by_school.items()):
         shard_path = shards_dir / f"{slug}.json"
         if shard_path.exists():
             try:
                 with open(shard_path, encoding="utf-8") as f:
-                    old_n = len(json.load(f))
+                    committed = json.load(f)
+                old_n = len(committed)
+                old_stamps[slug] = _keyword_stamps(committed)
             except (OSError, ValueError):
                 old_n = 0
         else:
@@ -174,6 +227,14 @@ def split(work_file: Path = WORK_FILE, shards_dir: Path = SHARDS_DIR,
             # its siblings below are written regardless.
             counts[slug] = old_counts[slug]
             continue
+        restored = _restore_keyword_stamps(recs, old_stamps.get(slug, {}))
+        if restored:
+            print(
+                f"shard_corpus: kept the committed keyword stamp on {restored} "
+                f"{slug} faculty row(s) whose keywords are unchanged apart from "
+                f"case and punctuation",
+                file=sys.stderr,
+            )
         atomic_write_json(shard_path, recs, indent=None, separators=(",", ":"))
         counts[slug] = len(recs)
     if kept:
