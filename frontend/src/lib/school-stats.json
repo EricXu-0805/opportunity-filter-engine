@@ -15,9 +15,9 @@
     },
     "asu": {
       "listing_count": 6,
-      "faculty_contact_count": 2439,
+      "faculty_contact_count": 2440,
       "unreviewed_count": 0,
-      "total_count": 2445
+      "total_count": 2446
     },
     "barnard": {
       "listing_count": 6,
@@ -297,9 +297,9 @@
     },
     "ncsu": {
       "listing_count": 5,
-      "faculty_contact_count": 2313,
+      "faculty_contact_count": 2316,
       "unreviewed_count": 0,
-      "total_count": 2318
+      "total_count": 2321
     },
     "nd": {
       "listing_count": 7,
@@ -393,9 +393,9 @@
     },
     "rutgers": {
       "listing_count": 7,
-      "faculty_contact_count": 2025,
+      "faculty_contact_count": 2029,
       "unreviewed_count": 0,
-      "total_count": 2032
+      "total_count": 2036
     },
     "sbu": {
       "listing_count": 6,
@@ -483,9 +483,9 @@
     },
     "ucr": {
       "listing_count": 5,
-      "faculty_contact_count": 1169,
+      "faculty_contact_count": 1170,
       "unreviewed_count": 0,
-      "total_count": 1174
+      "total_count": 1175
     },
     "ucsb": {
       "listing_count": 265,
@@ -531,9 +531,9 @@
     },
     "uiuc": {
       "listing_count": 18,
-      "faculty_contact_count": 2979,
+      "faculty_contact_count": 2989,
       "unreviewed_count": 0,
-      "total_count": 2997
+      "total_count": 3007
     },
     "uky": {
       "listing_count": 3,
@@ -692,5 +692,5 @@
       "total_count": 1250
     }
   },
-  "national_count": 5643
+  "national_count": 5642
 }
