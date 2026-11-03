@@ -5231,18 +5231,18 @@ def _fetch_and_normalize(school: dict, deep: bool, unit_ledger: dict | None) -> 
                 uk = ""
             if rec["id"] in seen_ids:
                 continue
-            held = {id(r): r for r in (by_email.get(ek) if ek else None,
+            holders = {id(r): r for r in (by_email.get(ek) if ek else None,
                                        by_url.get(uk) if uk else None) if r is not None}
-            if held:
+            if holders:
                 stored = rec["id"] in _RUN_START_IDS
-                held_stored = any(r["id"] in _RUN_START_IDS for r in held.values())
-                if not stored or held_stored:
-                    if held_stored and not stored:
+                holder_stored = any(r["id"] in _RUN_START_IDS for r in holders.values())
+                if not stored or holder_stored:
+                    if holder_stored and not stored:
                         read_not_emitted.append(rec)
                     continue
                 # A stored person's row, read on its own unit's page, takes the
                 # place of the row this run would mint for them from another.
-                for r in held.values():
+                for r in holders.values():
                     displaced.add(id(r))
                     if unit_of[id(r)] == _unit_short:
                         read_not_emitted.append(r)
