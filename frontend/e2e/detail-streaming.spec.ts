@@ -15,6 +15,7 @@ import { STORAGE_KEYS } from '../src/lib/storage-keys';
 const frontendDir = path.resolve(__dirname, '..');
 const A = 'stream-fixture-a';
 const B = 'stream-fixture-b';
+const ENCODED = 'stream-fixture-art & design-%25';
 const BODY = 'Complete primary description is available independently of recommendations.';
 type StreamProbe = { responses: number; markers: number; closedWithoutMarker: number; errors: string[] };
 type ProbeWindow = Window & { __detailStreamingProbe?: StreamProbe };
@@ -28,18 +29,22 @@ function opportunity(id: string, title: string): Opportunity {
     target_truth: { listing_state: 'open', reference_only: false, actionable: true,
       accepting_state: 'accepting', reason_code: null, verified_at: '2026-09-24', expires_at: null },
     eligibility: { international_friendly: 'yes', preferred_year: [], majors: [], skills_required: [], citizenship_required: false },
-    application: { application_effort: 'low', requires_resume: 'no', contact_method: 'website' },
+    application: { application_effort: 'low', requires_resume: 'no', contact_method: 'website',
+      application_url: 'https://example.edu/streaming-fixture/apply' },
     metadata: { is_active: true, confidence_score: 1 },
   };
 }
 const records = new Map([
   [A, opportunity(A, 'Streaming target A')],
   [B, opportunity(B, 'Streaming target B')],
+  [ENCODED, opportunity(ENCODED, 'Encoded target')],
 ]);
 type Reply = { status: number; body: unknown };
 const pending = new Map<string, Set<ServerResponse>>();
 const replies = new Map<string, Reply>();
 const requests = new Map<string, number>();
+const detailRequests = new Map<string, number>();
+const detailReplies = new Map<string, Reply>();
 const sockets = new Set<Socket>();
 let upstream: Server | undefined;
 let next: ChildProcess | undefined;
@@ -105,7 +110,9 @@ async function startOwnedServices() {
     if (request.method !== 'GET' || !match) { respond(response, { status: 404, body: {} }); return; }
     const id = decodeURIComponent(match[1]);
     if (!match[2]) {
-      respond(response, records.has(id) ? { status: 200, body: records.get(id) } : { status: 404, body: {} });
+      detailRequests.set(id, (detailRequests.get(id) ?? 0) + 1);
+      respond(response, detailReplies.get(id)
+        ?? (records.has(id) ? { status: 200, body: records.get(id) } : { status: 404, body: {} }));
       return;
     }
     requests.set(id, (requests.get(id) ?? 0) + 1);
@@ -156,13 +163,13 @@ async function expectHealthyMain(page: Page, id: string) {
   await expect(page.getByTestId('return-to-results')).toBeVisible();
 }
 
-test.describe('Production detail streams independently of similar recommendations', () => {
+test.describe('Production detail requests and streaming', () => {
   test.beforeAll(async () => {
     try { await startOwnedServices(); } catch (error) { await stopOwnedServices(); throw error; }
   });
   test.afterAll(async () => { await stopOwnedServices(); });
   test.beforeEach(async ({ page, context }) => {
-    pending.clear(); replies.clear(); requests.clear();
+    pending.clear(); replies.clear(); requests.clear(); detailRequests.clear(); detailReplies.clear();
     await context.route('**/*', async (route) => {
       const url = new URL(route.request().url());
       if (!['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname)) { await route.abort('blockedbyclient'); return; }
@@ -179,6 +186,48 @@ test.describe('Production detail streams independently of similar recommendation
   });
   test.afterEach(async () => {
     for (const id of pending.keys()) release(id, { status: 503, body: {} });
+  });
+
+  test('a fresh request sees a newly closed listing in both content and metadata', async ({ page }) => {
+    release(A, recommendations());
+    await page.goto(`${origin}/opportunities/${A}`);
+    await expectHealthyMain(page, A);
+    await expect(page).toHaveTitle(/Streaming target A/);
+    await expect(page.getByRole('link', { name: 'Apply now', exact: true })).toBeVisible();
+    const updated: Opportunity = {
+      ...records.get(A)!, title: 'Updated closed target A',
+      target_truth: { ...records.get(A)!.target_truth!, listing_state: 'closed',
+        actionable: false, accepting_state: 'not_accepting', reason_code: 'listing_closed' },
+    };
+    detailReplies.set(A, { status: 200, body: updated });
+    await page.reload();
+    await expect(page.getByRole('heading', { level: 1, name: updated.title })).toBeVisible();
+    await expect(page).toHaveTitle(/Updated closed target A/);
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /This listing is closed/);
+    await expect(page.getByRole('link', { name: 'Apply now', exact: true })).toHaveCount(0);
+    expect(Object.fromEntries(detailRequests)).toEqual({ [A]: 2 });
+  });
+
+  test('a temporary detail failure is shared within the render and Retry reads again', async ({ page }) => {
+    detailReplies.set(A, { status: 429, body: {} });
+    await page.goto(`${origin}/opportunities/${A}`);
+    await expect(page.getByRole('heading', { name: 'This opportunity is temporarily unavailable' })).toBeVisible();
+    await expect(page).toHaveTitle(/Opportunity — JoinALab/);
+    expect(Object.fromEntries(detailRequests)).toEqual({ [A]: 1 });
+    detailReplies.delete(A);
+    release(A, recommendations());
+    await page.getByRole('button', { name: 'Retry', exact: true }).click();
+    await expectHealthyMain(page, A);
+    await expect(page).toHaveTitle(/Streaming target A/);
+    expect(Object.fromEntries(detailRequests)).toEqual({ [A]: 2 });
+  });
+
+  test('metadata and content share one read for an encoded record id', async ({ page }) => {
+    release(ENCODED, recommendations());
+    await page.goto(`${origin}/opportunities/${encodeURIComponent(ENCODED)}`);
+    await expectHealthyMain(page, ENCODED);
+    await expect(page).toHaveTitle(/Encoded target/);
+    expect(Object.fromEntries(detailRequests)).toEqual({ [ENCODED]: 1 });
   });
 
   test('shows usable main content before release, then places localized recommendations above the source footer', async ({ page }) => {
