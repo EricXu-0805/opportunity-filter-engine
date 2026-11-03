@@ -104,6 +104,72 @@ def test_short_docx_reads_as_a_compact_resume():
     assert len(document.paragraphs) == 19  # Was 37: one paragraph per field and per skill.
 
 
+@pytest.mark.parametrize('page_size', ['letter', 'a4'])
+@pytest.mark.parametrize('date', ['2026-02', 'Jan 2026 – May 2026', '2026 ☑'])
+def test_docx_long_entry_reserves_room_for_its_complete_date(page_size, date):
+    # LibreOffice split 2026-02 into "2026-" at the right and "02" at
+    # the left of the next line. A right tab alone reserves no space for it.
+    from docx import Document
+    from docx.enum.text import WD_TAB_ALIGNMENT
+    from docx.shared import Emu
+    from fontTools.ttLib import TTFont
+    title = '02. Public survey tables — 项目记录 · Survey team; course staff · Internal course project notes'
+    value = sample('Student')
+    value['page_size'] = page_size
+    value['sections'].append({'kind': 'publications', 'heading': '', 'blocks': [{'lines': [
+        {'role': role, 'label': '', 'text': text} for role, text in [
+            ('title', title), ('date', date), ('publication_status', 'Draft only; not submitted or accepted.'),
+        ]]}]})
+    before = deepcopy(value)
+    document = Document(io.BytesIO(renderer.render_export(value, 'docx')))
+    entry = document.paragraphs[2]
+    assert entry.text == title + '\t' + date
+    # Reserve a date area inside the page, while its tab remains at the page
+    # margin. The title can wrap in its own width without editing either field.
+    advance, rest = 0.0, date
+    for asset in renderer.fonts():  # The text font, then the emoji font for what it lacks.
+        with TTFont(asset.path) as font:
+            cmap, metrics, em = font.getBestCmap(), font['hmtx'], font['head'].unitsPerEm
+            advance += sum(metrics[cmap[ord(char)]][0] for char in rest if ord(char) in cmap) * 10.5 / em
+            rest = ''.join(char for char in rest if ord(char) not in cmap)
+    assert not rest
+    indent = entry.paragraph_format.right_indent
+    assert indent is not None and abs(indent.pt - (advance + 10.5)) < 0.5  # The date, then one em.
+    page = document.sections[0]
+    width = Emu(page.page_width - page.left_margin - page.right_margin)
+    assert [(s.alignment, s.position.twips) for s in entry.paragraph_format.tab_stops] == [
+        (WD_TAB_ALIGNMENT.RIGHT, width.twips)]
+    assert entry.paragraph_format.keep_with_next
+    assert document.paragraphs[3].paragraph_format.right_indent is None
+    assert value == before
+
+
+@pytest.mark.parametrize('page_size', ['letter', 'a4'])
+@pytest.mark.parametrize('date', ['2026年2月', '2023年9月 – 2024年6月', '2023.09 – 至今', '2023年9月 – Present', '２０２６－０２'])
+def test_docx_date_with_wide_characters_gets_no_indent(page_size, date):
+    # LibreOffice wrapped these dates at the indent instead of the margin tab:
+    # "2023年9月 – 2024年6月" split on Chinese rows of 27-39 characters that
+    # kept it whole with the tab alone.
+    from docx import Document
+    from docx.enum.text import WD_TAB_ALIGNMENT
+    from docx.shared import Emu
+    title = '研究助理 · 示例大学计算机学院智能系统实验室 · 北京'
+    value = sample('Student')
+    value['page_size'] = page_size
+    value['sections'].append({'kind': 'activities', 'heading': '', 'blocks': [{'lines': [
+        {'role': role, 'label': '', 'text': text} for role, text in [
+            ('title', title), ('date', date), ('experience', 'Recorded the observed outputs.'),
+        ]]}]})
+    document = Document(io.BytesIO(renderer.render_export(value, 'docx')))
+    entry = document.paragraphs[2]
+    assert entry.text == title + '\t' + date
+    assert entry.paragraph_format.right_indent is None
+    page = document.sections[0]
+    width = Emu(page.page_width - page.left_margin - page.right_margin)
+    assert [(s.alignment, s.position.twips) for s in entry.paragraph_format.tab_stops] == [
+        (WD_TAB_ALIGNMENT.RIGHT, width.twips)]
+
+
 @pytest.mark.parametrize('locale', ['en', 'zh'])
 def test_docx_section_titles_are_level_one_headings_that_look_unchanged(locale):
     # They were Normal paragraphs: the file had no outline, and LibreOffice's PDF export of it no bookmarks.

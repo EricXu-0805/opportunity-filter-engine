@@ -551,6 +551,7 @@ def embed_docx_fonts(document, programs, deadline=None):
 
 
 def render_docx(projection, assets, deadline=None):
+    import uharfbuzz as hb
     from docx import Document
     from docx.enum.text import WD_TAB_ALIGNMENT
     from docx.opc.constants import RELATIONSHIP_TYPE as RT
@@ -588,6 +589,26 @@ def render_docx(projection, assets, deadline=None):
         if hasattr(document.core_properties, key):
             setattr(document.core_properties, key, '')
     document.core_properties.title = 'Resume'
+
+    date_fonts = {}
+
+    def date_space(text, size):
+        # The right tab is outside this indent. Reserve the date's width so a
+        # long title wraps before it rather than splitting "2026-02" across
+        # opposite margins. One em separates them and allows for the template
+        # font used by Latin-only files; CJK files use these exact local fonts.
+        width = 0.0
+        for index, run in font_runs(text, assets, deadline):
+            if index not in date_fonts:
+                date_fonts[index] = hb.Font(hb.Face(assets[index].data))
+            font = date_fonts[index]
+            buffer = hb.Buffer()
+            buffer.add_str(run)
+            buffer.guess_segment_properties()
+            hb.shape(font, buffer)
+            width += sum(abs(position.x_advance) for position in buffer.glyph_positions) * size / font.face.upem
+            check_deadline(deadline)
+        return Pt(width + size)
 
     def add_text(paragraph, text, size=10.5, link=None):
         parent = paragraph._p
@@ -632,6 +653,11 @@ def render_docx(projection, assets, deadline=None):
         for text, link in item.pieces:
             add_text(paragraph, text, DOCX_SIZES[item.style], link)
         if item.right:
+            # LibreOffice wraps a date with wide (e.g. Chinese) characters at this
+            # indent rather than at the margin tab, which would split it on
+            # medium-length rows, so such a date gets no indent.
+            if not any(unicodedata.east_asian_width(char) in 'WF' for char in item.right):
+                layout_format.right_indent = date_space(item.right, DOCX_SIZES[item.style])
             layout_format.tab_stops.add_tab_stop(right_margin, WD_TAB_ALIGNMENT.RIGHT)
             add_text(paragraph, '\t' + item.right, DOCX_SIZES[item.style])
     if any(needed):
